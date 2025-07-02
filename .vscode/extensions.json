@@ -1,0 +1,37 @@
+{
+	"recommendations": [
+		// Go言語
+		"golang.go",
+		// テスト用拡張機能
+		"hbenl.vscode-test-explorer",
+		"premparihar.gotestexplorer",
+		// Database
+		"mtxr.sqltools",
+		"bajdzis.vscode-database",
+		// Database - Postgres
+		"mtxr.sqltools-driver-pg",
+		"ckolkman.vscode-postgre",
+		// Github
+		"github.vscode-github-actions",
+		"mhutchie.git-graph",
+		// Docker
+		"ms-azuretools.vscode-docker",
+		"ms-azuretools.vscode-containers",
+		"ms-vscode-remote.remote-containers",
+		// Markdown
+		"yzhang.markdown-all-in-one",
+		"davidanson.vscode-markdownlint",
+		"bierner.markdown-mermaid",
+		// その他ファイル系
+		"ms-vscode.makefile-tools", // Makefile
+		"mikestead.dotenv", // .env
+		"redhat.vscode-yaml", // yaml
+		"42Crunch.vscode-openapi", // OpenAPI
+		// 便利系
+		"ms-ceintl.vscode-language-pack-ja", // 日本語化
+		"streetsidesoftware.code-spell-checker", // スペルチェッカー
+		"oderwat.indent-rainbow", // インデント数確認
+		"esbenp.prettier-vscode", // go以外へのフォーマッター
+		"dbaeumer.vscode-eslint", // go以外へのリンター
+	],
+}
