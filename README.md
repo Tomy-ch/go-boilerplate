@@ -1,11 +1,15 @@
-# your-boilerplate
+# go-boilerplate
 
 Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture によるベースプロジェクトです。
 `uber/fx` による DI や `sqlc`, `golang-migrate`, `oapi-codegen` などを採用しています。
 
----
+## 利用ツール(サポートバージョン)
 
-## 🚀 構成スタック
+- Go(1.24.4)
+- Docker Desktop
+- Github CLI
+
+## 構成スタック
 
 - **言語**: Go
 - **Webフレームワーク**: Echo
@@ -23,8 +27,6 @@ Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture によるベース
   - cobra（CLI）
   - air（ホットリロード）
   - Docker / docker-compose
-
----
 
 ## ディレクトリ構成
 
