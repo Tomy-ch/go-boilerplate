@@ -1,0 +1,25 @@
+{
+	"go.formatTool": "default",
+	"gopls": {
+		"formatting.gofumpt": true
+	},
+	"[go]": {
+		"editor.insertSpaces": false,
+		"editor.detectIndentation": false,
+		"editor.guides.indentation": true
+	},
+	"[markdown]": {
+		"editor.tabSize": 2,
+		"editor.formatOnSave": true,
+		"editor.formatOnPaste": true
+	},
+	"editor.codeActionsOnSave": {
+		"source.fixAll.markdownlint": "always"
+	},
+	"cSpell.words": [
+		"codegen",
+		"godotenv",
+		"oapi",
+		"sqlc"
+	]
+}
