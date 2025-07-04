@@ -1,0 +1,36 @@
+define do-generate-from-branch
+	@echo "🔄 最新のタグを取得中..."; \
+	make fetch-tags \
+	echo "✅ 最新のタグを取得完了"; \
+	LATEST=$(1); \
+	NEXT=$(2); \
+	BASE_BRANCH=$(3); \
+	BRANCH_PREFIX=$(4); \
+	BRANCH_NAME=$$BRANCH_PREFIX/$$NEXT; \
+	echo "🔖 タグから最新リリースバージョンを取得: 【 $$LATEST 】"; \
+	echo "➡️ 次のリリースバージョンを作成: 【 $$NEXT 】"; \
+	echo "🌱 ブランチを作成: $$BASE_BRANCH → 【 $$BRANCH_NAME 】"; \
+	if git ls-remote --exit-code --heads origin $$BRANCH_NAME > /dev/null; then \
+		echo "❌ ブランチ【 $$BRANCH_NAME 】は既に存在します。処理を中止します。"; \
+		exit 1; \
+	fi; \
+	git fetch origin $$BASE_BRANCH; \
+	git checkout -b $$BRANCH_NAME origin/$$BASE_BRANCH; \
+	git push origin $$BRANCH_NAME; \
+	echo "⚙️ GitHub上のデフォルトブランチを $$BRANCH_NAME に設定します。"; \
+	gh repo edit --default-branch $$BRANCH_NAME; \
+	echo "✅ デフォルトブランチを $$BRANCH_NAME に切り替えて、プッシュしました。"
+endef
+
+.PHONY: hotfix-patch-branch ## productionブランチからhotfixブランチ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
+.PHONY: release-minor-branch ## productionブランチからreleaseブランチ(vX.Y+1.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
+.PHONY: release-major-branch ## productionブランチからreleaseブランチ(vX+1.Y.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
+
+hotfix-patch-branch:
+	$(call do-generate-from-branch,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$3++; print $$1,$$2,$$3}'),production,hotfix)
+
+release-minor-branch:
+	$(call do-generate-from-branch,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$2++; $$3=0; print $$1,$$2,$$3}'),production,release)
+
+release-major-branch:
+	$(call do-generate-from-branch,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$1++; $$2=0; $$3=0; print $$1,$$2,$$3}'),production,release)
