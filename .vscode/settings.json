@@ -17,8 +17,10 @@
 		"source.fixAll.markdownlint": "always"
 	},
 	"cSpell.words": [
+		"anyenv",
 		"codegen",
 		"godotenv",
+		"goenv",
 		"oapi",
 		"sqlc"
 	]
