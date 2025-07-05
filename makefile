@@ -3,6 +3,7 @@ include .makefiles/release-util.mk
 include .makefiles/github.mk
 
 # 依存されないファイル
+include .makefiles/branch-ruleset.mk
 include .makefiles/release-branch.mk
 include .makefiles/release-tag.mk
 include .makefiles/setup-repository.mk
