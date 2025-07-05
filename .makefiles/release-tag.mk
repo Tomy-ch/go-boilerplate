@@ -19,15 +19,36 @@ define do-release-tag
 	fi
 endef
 
-.PHONY: release-patch-tag ## productionブランチにリリースタグ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
-.PHONY: release-minor-tag ## productionブランチにリリースタグ(vX.Y+1.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
-.PHONY: release-major-tag ## productionブランチにリリースタグ(vX+1.Y.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
+.PHONY: release-patch-tag ## productionブランチにリリースタグ(vX.Y.Z+1)を作成
+.PHONY: release-minor-tag ## productionブランチにリリースタグ(vX.Y+1.0)を作成
+.PHONY: release-major-tag ## productionブランチにリリースタグ(vX+1.0.0)を作成
 
 release-patch-tag:
-	$(call do-release-tag,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$3++; print $$1,$$2,$$3}'))
+	$(call do-release-tag,\
+		$(call get-latest-version),\
+		v$(shell \
+			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
+			IFS=. read major minor patch <<< $$V; \
+			echo "$$major.$$minor.$$((patch + 1))" \
+		) \
+	)
 
 release-minor-tag:
-	$(call do-release-tag,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$2++; $$3=0; print $$1,$$2,$$3}'))
+	$(call do-release-tag,\
+		$(call get-latest-version),\
+		v$(shell \
+			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
+			IFS=. read major minor patch <<< $$V; \
+			echo "$$major.$$((minor + 1)).0" \
+		) \
+	)
 
 release-major-tag:
-	$(call do-release-tag,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$1++; $$2=0; $$3=0; print $$1,$$2,$$3}'))
+	$(call do-release-tag,\
+		$(call get-latest-version),\
+		v$(shell \
+			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
+			IFS=. read major minor patch <<< $$V; \
+			echo "$$((major + 1)).0.0" \
+		) \
+	)
