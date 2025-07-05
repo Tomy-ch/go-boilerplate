@@ -20,5 +20,10 @@ func main() {
 		logger.Fatal("called main", zap.Error(err))
 	}
 
-	logger.Info("config", zap.String("server.host", cfg.Server.Host), zap.Int("server.port", cfg.Server.Port), zap.Strings("server.allowedOrigins", cfg.Server.AllowedOrigins))
+	logger.Info(
+		"config",
+		zap.String("server.host", cfg.Server.Host),
+		zap.Int("server.port", cfg.Server.Port),
+		zap.Strings("server.allowedOrigins", cfg.Server.AllowedOrigins),
+	)
 }

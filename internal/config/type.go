@@ -7,5 +7,5 @@ type Config struct {
 type Server struct {
 	Host           string   `env:"HOST,required"`
 	Port           int      `env:"PORT,required"`
-	AllowedOrigins []string `env:"ALLOWED_ORIGINS,required"  envSeparator:","`
+	AllowedOrigins []string `env:"ALLOWED_ORIGINS,required" envSeparator:","`
 }
