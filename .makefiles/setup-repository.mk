@@ -1,52 +1,66 @@
-.PHONY: init-repo
+.PHONY: setup-repo
 
-init-repo: ## リポジトリの初期化
-	@echo "🔧 Checking existing setup..."
+setup-repo: ## リポジトリの初期化
+	@echo "🔧 設定を確認中..."
 
 	@if git rev-parse --verify refs/tags/v0.0.0 >/dev/null 2>&1; then \
-		echo "❌ Tag v0.0.0 already exists. Aborting."; exit 1; \
+		echo "❌ タグ 【v0.0.0】 があります。初期化を停止します。"; exit 1; \
 	fi
 
-	@echo "✅ Initial setup can proceed"
+	@echo "✅ 初期化を開始します"
 
-	# gh-loginへの明示的ログイン
+	@echo "🔧 ghコマンドのログインを開始します..."
 	@make gh-login
+	@echo "✅ ghコマンドのログインが完了しました。"
 
-	# 初期版のタグの生成
+	@echo "🔧 v0.0.0のタグ打ちを開始します..."
 	@git tag -a v0.0.0 -m "Initial boilerplate tag"
 	@git push origin v0.0.0
+	@echo "✅ v0.0.0のタグ打ちが完了しました。"
 
-	# ブランチの作成
+	@echo "🔧 ブランチ作成を開始します..."
 	@if git show-ref --verify --quiet refs/heads/release/v0.1.0; then \
-		echo "🟡 Branch release/v0.1.0 already exists. Skipping."; \
+		echo "🟡 ブランチ 【release/v0.1.0】 は既に存在します。作成処理をスキップします。"; \
 	else \
 		git branch release/v0.1.0; \
 	fi
 
 	@if git show-ref --verify --quiet refs/heads/develop; then \
-		echo "🟡 Branch develop already exists. Skipping."; \
+		echo "🟡 ブランチ 【develop】 は既に存在します。作成処理をスキップします。"; \
 	else \
 		git branch develop; \
 	fi
 
 	@if git show-ref --verify --quiet refs/heads/staging; then \
-		echo "🟡 Branch staging already exists. Skipping."; \
+		echo "🟡 ブランチ 【staging】 は既に存在します。作成処理をスキップします。"; \
 	else \
 		git branch staging; \
 	fi
 
 	@if git show-ref --verify --quiet refs/heads/production; then \
-		echo "🟡 Branch production already exists. Skipping."; \
+		echo "🟡 ブランチ 【production】 は既に存在します。作成処理をスキップします。"; \
 	else \
 		git branch production; \
 	fi
 
 	@git push origin release/v0.1.0 develop staging production
+	@echo "✅ ブランチの作成を終了します。"
 
+	@echo "🔧 デフォルトブランチの設定を開始します..."
 	@REPO=$$(gh repo view --json name,owner -q '.owner.login + "/" + .name'); \
 		gh api -X PATCH repos/$$REPO -f default_branch=release/v0.1.0
 
 	@git fetch --prune
 	@git checkout release/v0.1.0
+	@echo "✅ デフォルトブランチの設定を終了します。"
+
+	@echo "🔧 ルールセットの適用を開始します..."
+	@make apply-branch-protection
+	@echo "✅ ルールセットの適用を終了します。"
+
+	@echo "🔧 ラベルの初期化を開始します..."
+	@make delete-all-labels
+	@make create-default-labels
+	@echo "✅ ラベルの初期化を終了します。"
 
 	@echo "✅ Initialization complete. Default branch: release/v0.1.0"

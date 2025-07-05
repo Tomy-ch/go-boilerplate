@@ -1,6 +1,8 @@
 # 依存されるファイル
 include .makefiles/release-util.mk
 include .makefiles/github.mk
+include .makefiles/branch-ruleset.mk
+include .makefiles/label-setting.mk
 
 # 依存されないファイル
 include .makefiles/release-branch.mk

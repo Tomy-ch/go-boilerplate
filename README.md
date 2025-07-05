@@ -121,3 +121,67 @@ graph TD
 ```bash
 
 ```
+
+## リリース作業手順
+
+### タグ打ち
+
+<details>
+<summary>タグ打ちコマンド</summary>
+
+majorバージョンのタグ打ちとlatestのリリースノートを同期
+
+```bash
+make release-major-tag
+```
+
+minorバージョンのタグ打ちとlatestのリリースノートを同期
+
+```bash
+make release-minor-tag
+```
+
+patchバージョンのタグ打ちとlatestのリリースノートを同期
+
+```bash
+make release-patch-tag
+```
+
+</details>
+
+### 次の開発(リリース)ブランチの作成
+
+<details>
+<summary>タグ打ちコマンド</summary>
+
+majorバージョンを更新したリリースブランチの作成
+
+```bash
+make release-major-tag
+```
+
+minorバージョンを更新したリリースブランチの作成
+
+```bash
+make release-minor-tag
+```
+
+patchバージョンを更新したリリースブランチの作成
+
+```bash
+make release-patch-tag
+```
+
+hotfixブランチの作成
+
+```bash
+make hotfix-patch-branch
+```
+
+</details>
+
+## リポジトリセットアップ手順
+
+```bash
+make setup-repo
+```
