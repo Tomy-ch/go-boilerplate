@@ -1,6 +1,6 @@
-.PHONY: init-repo
+.PHONY: setup-repo
 
-init-repo: ## リポジトリの初期化
+setup-repo: ## リポジトリの初期化
 	@echo "🔧 設定を確認中..."
 
 	@if git rev-parse --verify refs/tags/v0.0.0 >/dev/null 2>&1; then \
@@ -59,7 +59,8 @@ init-repo: ## リポジトリの初期化
 	@echo "✅ ルールセットの適用を終了します。"
 
 	@echo "🔧 ラベルの初期化を開始します..."
-	@make apply-branch-protection
+	@make delete-all-labels
+	@make create-default-labels
 	@echo "✅ ラベルの初期化を終了します。"
 
 	@echo "✅ Initialization complete. Default branch: release/v0.1.0"
