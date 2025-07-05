@@ -27,10 +27,49 @@ endef
 .PHONY: release-major-branch ## productionブランチからreleaseブランチ(vX+1.Y.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
 
 hotfix-patch-branch:
-	$(call do-generate-from-branch,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$3++; print $$1,$$2,$$3}'),production,hotfix)
+	$(call do-generate-from-branch,\
+		$(call get-latest-version),\
+		v$(shell \
+			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
+			IFS=. read major minor patch <<< $$V; \
+			echo "$$major.$$minor.$$((patch + 1))" \
+		),\
+		production,\
+		hotfix \
+	)
+
+release-patch-branch:
+	$(call do-generate-from-branch,\
+		$(call get-latest-version),\
+		v$(shell \
+			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
+			IFS=. read major minor patch <<< $$V; \
+			echo "$$major.$$minor.$$((patch + 1))" \
+		),\
+		production,\
+		release \
+	)
 
 release-minor-branch:
-	$(call do-generate-from-branch,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$2++; $$3=0; print $$1,$$2,$$3}'),production,release)
+	$(call do-generate-from-branch,\
+		$(call get-latest-version),\
+		v$(shell \
+			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
+			IFS=. read major minor patch <<< $$V; \
+			echo "$$major.$$((minor + 1)).0" \
+		),\
+		production,\
+		release \
+	)
 
 release-major-branch:
-	$(call do-generate-from-branch,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$1++; $$2=0; $$3=0; print $$1,$$2,$$3}'),production,release)
+	$(call do-generate-from-branch,\
+		$(call get-latest-version),\
+		v$(shell \
+			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
+			IFS=. read major minor patch <<< $$V; \
+			echo "$$((major + 1)).0.0" \
+		),\
+		production,\
+		release \
+	)
