@@ -1,7 +1,7 @@
-name: 🐛 Bug Report
+name: バグ報告(Bug Report)
 description: 問題を報告するためのテンプレートです
 title: "[Bug] "
-labels: ["bug"]
+labels: ["triage"]
 
 body:
   - type: markdown
