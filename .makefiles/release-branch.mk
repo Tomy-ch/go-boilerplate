@@ -1,5 +1,5 @@
 define do-generate-from-branch
-	@echo "🔄 最新のタグを取得中..."; \
+	echo "🔄 最新のタグを取得中..."; \
 	make fetch-tags; \
 	echo "✅ 最新のタグを取得完了"; \
 	LATEST=$(1); \
@@ -28,49 +28,34 @@ endef
 .PHONY: release-major-branch ## productionブランチからreleaseブランチ(vX+1.Y.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
 
 hotfix-patch-branch:
-	$(call do-generate-from-branch,\
-		$(call get-latest-version),\
-		v$(shell \
-			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
-			IFS=. read major minor patch <<< $$V; \
-			echo "$$major.$$minor.$$((patch + 1))" \
-		),\
-		production,\
-		hotfix \
-	)
+	@V=$(call get-latest-version); \
+	V_NO_V=$$(echo $$V | sed 's/^v//'); \
+	major=$$(echo $$V_NO_V | cut -d. -f1); \
+	minor=$$(echo $$V_NO_V | cut -d. -f2); \
+	patch=$$(echo $$V_NO_V | cut -d. -f3); \
+	NEXT=v$$major.$$minor.$$((patch + 1)); \
+	$(call do-generate-from-branch,$$V,$$NEXT,production,hotfix)
 
 release-patch-branch:
-	$(call do-generate-from-branch,\
-		$(call get-latest-version),\
-		v$(shell \
-			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
-			IFS=. read major minor patch <<< $$V; \
-			echo "$$major.$$minor.$$((patch + 1))" \
-		),\
-		production,\
-		release \
-	)
+	@V=$(call get-latest-version); \
+	V_NO_V=$$(echo $$V | sed 's/^v//'); \
+	major=$$(echo $$V_NO_V | cut -d. -f1); \
+	minor=$$(echo $$V_NO_V | cut -d. -f2); \
+	patch=$$(echo $$V_NO_V | cut -d. -f3); \
+	NEXT=v$$major.$$minor.$$((patch + 1)); \
+	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
 
 release-minor-branch:
-	$(call do-generate-from-branch,\
-		$(call get-latest-version),\
-		v$(shell \
-			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
-			IFS=. read major minor patch <<< $$V; \
-			echo "$$major.$$((minor + 1)).0" \
-		),\
-		production,\
-		release \
-	)
+	@V=$(call get-latest-version); \
+	V_NO_V=$$(echo $$V | sed 's/^v//'); \
+	major=$$(echo $$V_NO_V | cut -d. -f1); \
+	minor=$$(echo $$V_NO_V | cut -d. -f2); \
+	NEXT=v$$major.$$((minor + 1)).0; \
+	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
 
 release-major-branch:
-	$(call do-generate-from-branch,\
-		$(call get-latest-version),\
-		v$(shell \
-			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
-			IFS=. read major minor patch <<< $$V; \
-			echo "$$((major + 1)).0.0" \
-		),\
-		production,\
-		release \
-	)
+	@V=$(call get-latest-version); \
+	V_NO_V=$$(echo $$V | sed 's/^v//'); \
+	major=$$(echo $$V_NO_V | cut -d. -f1); \
+	NEXT=v$$((major + 1)).0.0; \
+	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
