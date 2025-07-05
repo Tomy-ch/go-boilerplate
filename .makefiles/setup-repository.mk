@@ -58,4 +58,8 @@ init-repo: ## リポジトリの初期化
 	@make apply-branch-protection
 	@echo "✅ ルールセットの適用を終了します。"
 
+	@echo "🔧 ラベルの初期化を開始します..."
+	@make apply-branch-protection
+	@echo "✅ ラベルの初期化を終了します。"
+
 	@echo "✅ Initialization complete. Default branch: release/v0.1.0"
