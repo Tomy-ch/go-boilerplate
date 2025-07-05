@@ -24,31 +24,28 @@ endef
 .PHONY: release-major-tag ## productionブランチにリリースタグ(vX+1.0.0)を作成
 
 release-patch-tag:
-	$(call do-release-tag,\
-		$(call get-latest-version),\
-		v$(shell \
-			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
-			IFS=. read major minor patch <<< $$V; \
-			echo "$$major.$$minor.$$((patch + 1))" \
-		) \
-	)
+	@V=$(call get-latest-version); \
+	NEXT=v$$( \
+		V_NO_V=$$(echo $$V | sed 's/^v//'); \
+		IFS=. read major minor patch <<< $$V_NO_V; \
+		echo "$$major.$$minor.$$((patch + 1))" \
+	); \
+	$(MAKE) release-tag TAG=$$NEXT BASE=$$V
 
 release-minor-tag:
-	$(call do-release-tag,\
-		$(call get-latest-version),\
-		v$(shell \
-			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
-			IFS=. read major minor patch <<< $$V; \
-			echo "$$major.$$((minor + 1)).0" \
-		) \
-	)
+	@V=$(call get-latest-version); \
+	NEXT=v$$( \
+		V_NO_V=$$(echo $$V | sed 's/^v//'); \
+		IFS=. read major minor patch <<< $$V_NO_V; \
+		echo "$$major.$$((minor + 1)).0" \
+	); \
+	$(MAKE) release-tag TAG=$$NEXT BASE=$$V
 
 release-major-tag:
-	$(call do-release-tag,\
-		$(call get-latest-version),\
-		v$(shell \
-			V=$$(echo $(call get-latest-version) | sed 's/^v//'); \
-			IFS=. read major minor patch <<< $$V; \
-			echo "$$((major + 1)).0.0" \
-		) \
-	)
+	@V=$(call get-latest-version); \
+	NEXT=v$$( \
+		V_NO_V=$$(echo $$V | sed 's/^v//'); \
+		IFS=. read major minor patch <<< $$V_NO_V; \
+		echo "$$((major + 1)).0.0" \
+	); \
+	$(MAKE) release-tag TAG=$$NEXT BASE=$$V
