@@ -24,5 +24,7 @@
 		"oderwat.indent-rainbow", 
 		"esbenp.prettier-vscode", 
 		"dbaeumer.vscode-eslint", 
+		"wmaurer.change-case",
+		"editorconfig.editorconfig",
 	],
 }

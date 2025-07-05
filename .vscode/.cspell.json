@@ -1,0 +1,24 @@
+{
+    "ignorePaths": [
+        "**/go.sum",
+        "**/go.mod",
+        ".github/settings/labels.json"
+    ],
+    "words": [
+        "anyenv",
+        "caarlos",
+        "codegen",
+        "evilmartians",
+        "godotenv",
+        "goenv",
+        "gofmt",
+        "gofumpt",
+        "golines",
+        "joho",
+        "lefthook",
+        "mvdan",
+        "oapi",
+        "segmentio",
+        "sqlc"
+    ]
+}
