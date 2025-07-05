@@ -1,0 +1,35 @@
+name: 機能追加（Feature Request）
+description: 新しい機能や改善要望を提案する
+title: "[Feature] "
+labels: ["feature", "enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🙋‍♀️ 機能追加・改善要望の提案ありがとうございます！
+
+  - type: input
+    id: summary
+    attributes:
+      label: 要望の概要
+      description: この機能で実現したいことを簡潔に書いてください
+      placeholder: '例: ユーザーがプロフィール画像を設定できるようにしたい'
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: 詳細
+      description: どのような変更・挙動が望ましいですか？
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 補足
+      description: 参考資料や関連Issueなどがあれば記載してください
+    validations:
+      required: false

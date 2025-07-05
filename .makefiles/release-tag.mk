@@ -5,7 +5,7 @@ define do-release-tag
 	git reset --hard origin/production; \
 	echo "✅ 最新のproductionを取得完了"; \
 	echo "🔄 最新のタグを取得中..."; \
-	make fetch-tags \
+	make fetch-tags; \
 	echo "✅ 最新のタグを取得完了"; \
 	echo "🔖 タグから最新タグバージョンを取得: $(1)"; \
 	echo "➡️ 次のリリースバージョンを作成: $(2)"; \
@@ -19,15 +19,33 @@ define do-release-tag
 	fi
 endef
 
-.PHONY: release-patch-tag ## productionブランチにリリースタグ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
-.PHONY: release-minor-tag ## productionブランチにリリースタグ(vX.Y+1.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
-.PHONY: release-major-tag ## productionブランチにリリースタグ(vX+1.Y.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
+.PHONY: release-patch-tag ## productionブランチにリリースタグ(vX.Y.Z+1)を作成
+.PHONY: release-minor-tag ## productionブランチにリリースタグ(vX.Y+1.0)を作成
+.PHONY: release-major-tag ## productionブランチにリリースタグ(vX+1.0.0)を作成
 
 release-patch-tag:
-	$(call do-release-tag,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$3++; print $$1,$$2,$$3}'))
+	@V=$(call get-latest-version); \
+	NEXT=v$$( \
+		V_NO_V=$$(echo $$V | sed 's/^v//'); \
+		IFS=. read major minor patch <<< $$V_NO_V; \
+		echo "$$major.$$minor.$$((patch + 1))" \
+	); \
+	$(call do-release-tag,$$V,$$NEXT)
 
 release-minor-tag:
-	$(call do-release-tag,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$2++; $$3=0; print $$1,$$2,$$3}'))
+	@V=$(call get-latest-version); \
+	NEXT=v$$( \
+		V_NO_V=$$(echo $$V | sed 's/^v//'); \
+		IFS=. read major minor patch <<< $$V_NO_V; \
+		echo "$$major.$$((minor + 1)).0" \
+	); \
+	$(call do-release-tag,$$V,$$NEXT)
 
 release-major-tag:
-	$(call do-release-tag,$(call get-latest-version),v$(shell echo $(call get-latest-version) | sed 's/^v//' | awk -F. -v OFS=. '{$$1++; $$2=0; $$3=0; print $$1,$$2,$$3}'))
+	@V=$(call get-latest-version); \
+	NEXT=v$$( \
+		V_NO_V=$$(echo $$V | sed 's/^v//'); \
+		IFS=. read major minor patch <<< $$V_NO_V; \
+		echo "$$((major + 1)).0.0" \
+	); \
+	$(call do-release-tag,$$V,$$NEXT)
