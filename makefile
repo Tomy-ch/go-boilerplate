@@ -1,11 +1,13 @@
 # 依存されるファイル
-include .makefiles/release-util.mk
-include .makefiles/github.mk
-include .makefiles/branch-ruleset.mk
-include .makefiles/label-setting.mk
+include .makefiles/github/operation/release-util.mk
+include .makefiles/github/setting/github.mk
+include .makefiles/github/setting/branch-ruleset.mk
+include .makefiles/github/setting/label-setting.mk
 
 # 依存されないファイル
-include .makefiles/release-branch.mk
-include .makefiles/release-tag.mk
-include .makefiles/setup-repository.mk
-include .makefiles/update.mk
+include .makefiles/github/operation/release-branch.mk
+include .makefiles/github/operation/release-tag.mk
+include .makefiles/github/operation/setup-repository.mk
+include .makefiles/go/develop.mk
+include .makefiles/go/start.mk
+include .makefiles/tool/update.mk
