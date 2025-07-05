@@ -8,10 +8,17 @@
         "anyenv",
         "caarlos",
         "codegen",
+        "evilmartians",
         "godotenv",
         "goenv",
+        "gofmt",
+        "gofumpt",
+        "golines",
         "joho",
+        "lefthook",
+        "mvdan",
         "oapi",
+        "segmentio",
         "sqlc"
     ]
 }
