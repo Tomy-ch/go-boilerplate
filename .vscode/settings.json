@@ -15,14 +15,5 @@
 	},
 	"editor.codeActionsOnSave": {
 		"source.fixAll.markdownlint": "always"
-	},
-	"cSpell.words": [
-		"anyenv",
-		"codegen",
-		"fbca",
-		"godotenv",
-		"goenv",
-		"oapi",
-		"sqlc"
-	]
+	}
 }
