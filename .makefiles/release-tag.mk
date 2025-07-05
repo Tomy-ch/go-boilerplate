@@ -1,5 +1,5 @@
 define do-release-tag
-	@echo "🔄 productionブランチの最新を取得中..."; \
+	echo "🔄 productionブランチの最新を取得中..."; \
 	git fetch origin production; \
 	git checkout production; \
 	git reset --hard origin/production; \
@@ -25,27 +25,24 @@ endef
 
 release-patch-tag:
 	@V=$(call get-latest-version); \
-	NEXT=v$$( \
-		V_NO_V=$$(echo $$V | sed 's/^v//'); \
-		IFS=. read major minor patch <<< $$V_NO_V; \
-		echo "$$major.$$minor.$$((patch + 1))" \
-	); \
+	V_NO_V=$$(echo $$V | sed 's/^v//'); \
+	major=$$(echo $$V_NO_V | cut -d. -f1); \
+	minor=$$(echo $$V_NO_V | cut -d. -f2); \
+	patch=$$(echo $$V_NO_V | cut -d. -f3); \
+	NEXT=v$$major.$$minor.$$((patch + 1)); \
 	$(call do-release-tag,$$V,$$NEXT)
 
 release-minor-tag:
 	@V=$(call get-latest-version); \
-	NEXT=v$$( \
-		V_NO_V=$$(echo $$V | sed 's/^v//'); \
-		IFS=. read major minor patch <<< $$V_NO_V; \
-		echo "$$major.$$((minor + 1)).0" \
-	); \
+	V_NO_V=$$(echo $$V | sed 's/^v//'); \
+	major=$$(echo $$V_NO_V | cut -d. -f1); \
+	minor=$$(echo $$V_NO_V | cut -d. -f2); \
+	NEXT=v$$major.$$((minor + 1)).0; \
 	$(call do-release-tag,$$V,$$NEXT)
 
 release-major-tag:
 	@V=$(call get-latest-version); \
-	NEXT=v$$( \
-		V_NO_V=$$(echo $$V | sed 's/^v//'); \
-		IFS=. read major minor patch <<< $$V_NO_V; \
-		echo "$$((major + 1)).0.0" \
-	); \
+	V_NO_V=$$(echo $$V | sed 's/^v//'); \
+	major=$$(echo $$V_NO_V | cut -d. -f1); \
+	NEXT=v$$((major + 1)).0.0; \
 	$(call do-release-tag,$$V,$$NEXT)
