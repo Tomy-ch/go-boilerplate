@@ -1,6 +1,6 @@
 define do-generate-from-branch
 	@echo "🔄 最新のタグを取得中..."; \
-	make fetch-tags \
+	make fetch-tags; \
 	echo "✅ 最新のタグを取得完了"; \
 	LATEST=$(1); \
 	NEXT=$(2); \
@@ -23,6 +23,7 @@ define do-generate-from-branch
 endef
 
 .PHONY: hotfix-patch-branch ## productionブランチからhotfixブランチ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
+.PHONY: release-patch-branch ## productionブランチからreleaseブランチ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
 .PHONY: release-minor-branch ## productionブランチからreleaseブランチ(vX.Y+1.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
 .PHONY: release-major-branch ## productionブランチからreleaseブランチ(vX+1.Y.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
 

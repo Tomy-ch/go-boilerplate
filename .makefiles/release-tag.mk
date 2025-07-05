@@ -5,7 +5,7 @@ define do-release-tag
 	git reset --hard origin/production; \
 	echo "✅ 最新のproductionを取得完了"; \
 	echo "🔄 最新のタグを取得中..."; \
-	make fetch-tags \
+	make fetch-tags; \
 	echo "✅ 最新のタグを取得完了"; \
 	echo "🔖 タグから最新タグバージョンを取得: $(1)"; \
 	echo "➡️ 次のリリースバージョンを作成: $(2)"; \
