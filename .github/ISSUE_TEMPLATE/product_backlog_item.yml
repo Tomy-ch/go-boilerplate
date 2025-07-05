@@ -1,0 +1,46 @@
+name: PBI（Product Backlog Item）
+description: プロダクトのタスク
+title: "[PBI] "
+labels: ["feature"]
+
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: PBIの概要
+      description: この機能で実現したいことを簡潔に書いてください
+      placeholder: '例: ユーザーがプロフィール画像を設定できるようにしたい'
+    validations:
+      required: true
+
+  - type: textarea
+    id: to-do-list
+    attributes:
+      label: やることリスト
+      description: このタスクで達成しなければならないこと記載してください
+    validations:
+      required: true
+
+  - type: textarea
+    id: un-to-do-list
+    attributes:
+      label: やらないことリスト
+      description: 達成する必要がないことを記載してください
+    validations:
+      required: true
+
+  - type: textarea
+    id: done-definition
+    attributes:
+      label: 完成の定義
+      description: このタスクをマージする基準を教えて
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 補足
+      description: 参考資料や関連Issueなどがあれば記載してください
+    validations:
+      required: false

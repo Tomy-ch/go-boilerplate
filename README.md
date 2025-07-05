@@ -120,6 +120,8 @@ graph TD
 
 ```bash
 
+make install
+
 ```
 
 ## リリース作業手順
