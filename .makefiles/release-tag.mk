@@ -30,7 +30,7 @@ release-patch-tag:
 		IFS=. read major minor patch <<< $$V_NO_V; \
 		echo "$$major.$$minor.$$((patch + 1))" \
 	); \
-	$(MAKE) do-release-tag TAG=$$NEXT BASE=$$V
+	$(call do-release-tag,$$V,$$NEXT)
 
 release-minor-tag:
 	@V=$(call get-latest-version); \
@@ -39,7 +39,7 @@ release-minor-tag:
 		IFS=. read major minor patch <<< $$V_NO_V; \
 		echo "$$major.$$((minor + 1)).0" \
 	); \
-	$(MAKE) do-release-tag TAG=$$NEXT BASE=$$V
+	$(call do-release-tag,$$V,$$NEXT)
 
 release-major-tag:
 	@V=$(call get-latest-version); \
@@ -48,4 +48,4 @@ release-major-tag:
 		IFS=. read major minor patch <<< $$V_NO_V; \
 		echo "$$((major + 1)).0.0" \
 	); \
-	$(MAKE) do-release-tag TAG=$$NEXT BASE=$$V
+	$(call do-release-tag,$$V,$$NEXT)
