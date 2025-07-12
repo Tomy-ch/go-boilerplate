@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	testUtil.RunWithTestSetup(m)
+	os.Exit(testUtil.RunWithTestSetup(m))
 }
 
 func Test_buildFields(t *testing.T) {
@@ -201,7 +202,7 @@ func Test_logErrorInDev(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			const envKey = "APP_ENV"
+			const envKey = "APP_MODE"
 
 			t.Setenv(envKey, tt.appEnv)
 
@@ -210,18 +211,17 @@ func Test_logErrorInDev(t *testing.T) {
 
 			cfg, err := config.New()
 			if err != nil {
-				panic("failed to create test config: " + err.Error())
+				assert.NoError(t, err)
 			}
 
 			logErrorInDev(logger, cfg, tt.err)
 
 			out := buf.String()
 			if tt.wantOutput {
-				assert.Contains(t, out, `"msg":"\n`+tt.err.Error()+`"`)
+				assert.Contains(t, out, `"msg":"`+tt.err.Error()+`"`)
 			} else {
 				assert.Equal(t, "", out)
 			}
-			assert.NoError(t, err)
 		})
 	}
 }

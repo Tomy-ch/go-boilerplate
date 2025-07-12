@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
@@ -36,8 +37,11 @@ func validateConfig(cfg ConfigLoader) error {
 	}
 
 	for _, origin := range cfg.Server.AllowedOrigins {
-		if strings.HasPrefix(origin, "http://") && origin != "http://localhost" {
-			return ErrHTTPOnlyAllowedForLocalhost
+		if strings.HasPrefix(origin, "http://") {
+			parsedURL, err := url.Parse(origin)
+			if err != nil || (parsedURL.Hostname() != "localhost" && parsedURL.Hostname() != "127.0.0.1") {
+				return ErrHTTPOnlyAllowedForLocalhost
+			}
 		}
 	}
 
