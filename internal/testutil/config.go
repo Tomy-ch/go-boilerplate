@@ -23,7 +23,7 @@ func SetTestEnv(m *testing.M) {
 }
 
 // RunWithTestSetup はテストのセットアップを行ます。
-func RunWithTestSetup(m *testing.M) {
+func RunWithTestSetup(m *testing.M) int {
 	if m == nil {
 		panic("SetUpTest requires *testing.M argument")
 	}
@@ -40,5 +40,5 @@ func RunWithTestSetup(m *testing.M) {
 		panic("failed to create test config: " + err.Error())
 	}
 
-	os.Exit(m.Run())
+	return m.Run()
 }
