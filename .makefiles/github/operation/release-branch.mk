@@ -22,10 +22,12 @@ define do-generate-from-branch
 	echo "✅ デフォルトブランチを $$BRANCH_NAME に切り替えて、プッシュしました。"
 endef
 
-.PHONY: hotfix-patch-branch ## productionブランチからhotfixブランチ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
-.PHONY: release-patch-branch ## productionブランチからreleaseブランチ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
-.PHONY: release-minor-branch ## productionブランチからreleaseブランチ(vX.Y+1.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
-.PHONY: release-major-branch ## productionブランチからreleaseブランチ(vX+1.Y.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
+## リリースブランチの切り替えコマンド
+
+.PHONY: hotfix-patch-branch ## hotfixブランチ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
+.PHONY: release-patch-branch ## releaseブランチ(vX.Y.Z+1)を作成して、デフォルトブランチに設定(現在のタグ基準)
+.PHONY: release-minor-branch ## releaseブランチ(vX.Y+1.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
+.PHONY: release-major-branch ## releaseブランチ(vX+1.Y.Z)を作成して、デフォルトブランチに設定(現在のタグ基準)
 
 hotfix-patch-branch:
 	@V=$(call get-latest-version); \

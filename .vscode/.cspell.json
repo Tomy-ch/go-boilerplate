@@ -1,24 +1,43 @@
 {
-    "ignorePaths": [
-        "**/go.sum",
-        "**/go.mod",
-        ".github/settings/labels.json"
-    ],
-    "words": [
-        "anyenv",
-        "caarlos",
-        "codegen",
-        "evilmartians",
-        "godotenv",
-        "goenv",
-        "gofmt",
-        "gofumpt",
-        "golines",
-        "joho",
-        "lefthook",
-        "mvdan",
-        "oapi",
-        "segmentio",
-        "sqlc"
-    ]
+  "ignorePaths": [
+    "**/go.sum",
+    "**/go.mod",
+    ".github/settings/labels.json"
+  ],
+  "words": [
+    "anyenv",
+    "caarlos",
+    "cockroachdb",
+    "codegen",
+    "ctxhelper",
+    "ctxkey",
+    "errutil",
+    "evilmartians",
+    "expectederrors",
+    "godotenv",
+    "goenv",
+    "GOFILE",
+    "gofmt",
+    "gofumpt",
+    "golines",
+    "gomock",
+    "GOPACKAGE",
+    "httptest",
+    "isgomock",
+    "joho",
+    "labstack",
+    "lefthook",
+    "makefiles",
+    "mockgen",
+    "mvdan",
+    "oapi",
+    "otelzap",
+    "segmentio",
+    "sqlc",
+    "stretchr",
+    "testutil",
+    "xeorrors",
+    "xerrors",
+    "xerrs"
+  ]
 }

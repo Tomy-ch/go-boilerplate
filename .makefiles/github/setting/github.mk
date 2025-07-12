@@ -1,3 +1,4 @@
+## GHコマンド関連
 .PHONY: gh-login ## ghコマンドでログインを行います
 
 gh-login:
