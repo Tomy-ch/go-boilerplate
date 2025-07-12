@@ -19,9 +19,11 @@ define do-release-tag
 	fi
 endef
 
-.PHONY: release-patch-tag ## productionブランチにリリースタグ(vX.Y.Z+1)を作成
-.PHONY: release-minor-tag ## productionブランチにリリースタグ(vX.Y+1.0)を作成
-.PHONY: release-major-tag ## productionブランチにリリースタグ(vX+1.0.0)を作成
+## リリースタグの設定とリリースノートの設定コマンド
+
+.PHONY: release-patch-tag ## リリースタグ(vX.Y.Z+1)を作成
+.PHONY: release-minor-tag ## リリースタグ(vX.Y+1.0)を作成
+.PHONY: release-major-tag ## リリースタグ(vX+1.0.0)を作成
 
 release-patch-tag:
 	@V=$(call get-latest-version); \

@@ -15,5 +15,12 @@
 	},
 	"editor.codeActionsOnSave": {
 		"source.fixAll.markdownlint": "always"
-	}
+	},
+  "material-icon-theme.folders.associations": {
+    "dispatcher": "routes",
+    "ctxhelper": "context",
+    "errutil": "error",
+    "testutil": "test",
+    "testos": "test",
+  }
 }
