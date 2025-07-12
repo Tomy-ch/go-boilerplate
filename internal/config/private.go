@@ -1,7 +1,13 @@
 package config
 
-type Config struct {
-	Server Server
+type ConfigLoader struct {
+	Server      Server
+	Environment Environment
+}
+
+type Environment struct {
+	ServerEnv string `env:"ENV,required"`
+	AppMode   string `env:"APP_MODE,required"`
 }
 
 type Server struct {

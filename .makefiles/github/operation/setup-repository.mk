@@ -1,6 +1,7 @@
-.PHONY: setup-repo
+## リポジトリの初期化
+.PHONY: setup-repo ## リポジトリの初期化
 
-setup-repo: ## リポジトリの初期化
+setup-repo:
 	@echo "🔧 設定を確認中..."
 
 	@if git rev-parse --verify refs/tags/v0.0.0 >/dev/null 2>&1; then \
