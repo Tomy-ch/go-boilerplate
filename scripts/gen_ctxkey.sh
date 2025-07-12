@@ -24,7 +24,7 @@ case "${TYPE_INPUT}" in
     TEST_VALUE=true
     ;;
   *)
-    TEST_VALUE='*new(${TYPE_INPUT})'
+    TEST_VALUE="*new(${TYPE_INPUT})"
     ;;
 esac
 
