@@ -1,6 +1,6 @@
-.PHONY: fetch-tags
+.PHONY: fetch-tags ## Repoのタグを最新化
 
-fetch-tags: ## Repoのタグを最新化
+fetch-tags:
 	@git fetch --tags origin
 
 get-latest-version = $(shell git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1)

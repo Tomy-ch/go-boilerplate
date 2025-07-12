@@ -26,5 +26,6 @@
 		"dbaeumer.vscode-eslint", 
 		"wmaurer.change-case",
 		"editorconfig.editorconfig",
+    "github.copilot",
 	],
 }
