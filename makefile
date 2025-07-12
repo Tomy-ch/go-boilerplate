@@ -8,8 +8,11 @@ include .makefiles/github/setting/label-setting.mk
 include .makefiles/github/operation/release-branch.mk
 include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/operation/setup-repository.mk
-include .makefiles/go/format.mk
 include .makefiles/go/develop.mk
-include .makefiles/go/start.mk
-include .makefiles/tool/update.mk
-include .makefiles/tool/install.mk
+include .makefiles/tool/tool.mk
+include .makefiles/gen/generate.mk
+
+.PHONY: help
+help:
+	@bash scripts/make_help.sh
+
