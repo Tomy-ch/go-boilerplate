@@ -22,10 +22,10 @@ func SetTestEnv(m *testing.M) {
 	}
 }
 
-// RunWithTestSetup はテストのセットアップを行ます。
+// RunWithTestSetup はテストのセットアップを行います。
 func RunWithTestSetup(m *testing.M) int {
 	if m == nil {
-		panic("SetUpTest requires *testing.M argument")
+		panic("RunWithTestSetup requires *testing.M argument")
 	}
 
 	SetTestEnv(m)
