@@ -1,0 +1,16 @@
+type: object
+description: ユーザー情報の基本入力スキーマ
+properties:
+  name:
+    type: string
+    example: "John Doe"
+    maxLength: 50
+  email:
+    type: string
+    format: email
+    example: "john.doe@example.com"
+  phone:
+    type: string
+    pattern: '^\\+?[0-9]{10,15}$'
+    example: "09012345678"
+

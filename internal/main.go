@@ -2,19 +2,17 @@ package main
 
 import (
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/handler"
+	"boilerplate-go/internal/controller/handler/health"
+	"boilerplate-go/internal/controller/handler/healthz"
 	"boilerplate-go/internal/controller/middleware/logging"
 	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/env"
-	errUtil "boilerplate-go/pkg/errutil"
 
 	"go.uber.org/zap"
 )
 
 func main() {
 	l := zap.NewExample()
-
-	xerrors := errUtil.CockroachDBError{}
 
 	err := env.Load()
 	if err != nil {
@@ -33,7 +31,8 @@ func main() {
 
 	e := server.New(cfg, logger)
 
-	handler.RegisterRoutes(e, xerrors)
+	health.BindHandler(e)
+	healthz.BindHandler(e)
 
 	if err := e.Start(":8080"); err != nil {
 		l.Fatal("called main", zap.Error(err))

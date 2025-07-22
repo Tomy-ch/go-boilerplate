@@ -1,0 +1,503 @@
+openapi: 3.0.3
+info:
+  title: 'Boilerplate Go with Onion Architecture, Echo and SQLC'
+  termsOfService: 'https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc'
+  contact:
+    name: TomyC258460
+    url: 'https://x.com/TomyC258460'
+  version: 0.1.0
+  description: |
+    This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
+    It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
+
+    The project is structured around domain-driven principles, with clean separation between interfaces,
+    use cases, domain entities, and infrastructure. All handlers are generated from the OpenAPI specification
+    using oapi-codegen, and strict typing is enforced across the system.
+
+    This API is intended as a production-ready boilerplate that balances performance,
+    flexibility, and developer experience.
+  license:
+    name: MIT License
+    url: 'https://opensource.org/licenses/MIT'
+x-oapi-codegen-strict-server: true
+servers:
+  - url: 'http://localhost:8080'
+    description: Local development server
+  - url: 'https://api.example.com'
+    description: Production server (replace with actual URL)
+  - url: 'https://staging.api.example.com'
+    description: Staging server (replace with actual URL)
+  - url: 'https://development.api.example.com'
+    description: Versioned API endpoint (replace with actual URL)
+paths:
+  /health:
+    get:
+      operationId: GetHealth
+      tags:
+        - health
+      summary: サーバーのヘルスチェック
+      description: サーバーが正常に稼働しているかを確認するためのECSやALB向けのヘルスチェックエンドポイントです。
+      responses:
+        '200':
+          description: サーバーは正常に稼働しています。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseHealth'
+  /healthz:
+    get:
+      operationId: GetHealthz
+      tags:
+        - healthz
+      summary: サーバーのヘルスチェック
+      description: サーバーが正常に稼働しているかを確認するためのEKS向けのヘルスチェックエンドポイントです。
+      responses:
+        '200':
+          description: サーバーは正常に稼働しています。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseHealth'
+  /v1/users:
+    get:
+      operationId: GetUsers
+      tags:
+        - v1/users
+      summary: ユーザー一覧の取得
+      description: ユーザーの一覧を取得します。検索条件やページネーションを指定できます。
+      parameters:
+        - $ref: '#/components/parameters/NameKeywordParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: 取得に成功したユーザー一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseV1Users'
+        '401':
+          description: ユーザー一覧の取得には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザー一覧の取得には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: PostUsers
+      tags:
+        - v1/users
+      summary: ユーザーの作成
+      description: 新しいユーザーを作成します。必要な情報をリクエストボディに含めてください。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPostV1Users'
+      responses:
+        '201':
+          description: ユーザーの作成に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseV1User'
+        '400':
+          description: リクエストが不正です。必要な情報が不足している場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの作成には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの作成には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  '/v1/users/{user_id}':
+    get:
+      operationId: GetUsersDetail
+      tags:
+        - v1/users/detail
+      summary: 単一ユーザーの取得
+      description: 指定されたUUIDに該当するユーザーの詳細情報を取得します。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: ユーザーの取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseV1User'
+        '400':
+          description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの取得には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの取得には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      operationId: PutUsersDetail
+      tags:
+        - v1/users/detail
+      summary: 単一ユーザーの更新
+      description: 指定されたUUIDに該当するユーザーの情報を更新します。必要な情報をリクエストボディに含めてください。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPutV1User'
+      responses:
+        '200':
+          description: ユーザーの更新に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseV1User'
+        '400':
+          description: リクエストが不正です。必要な情報が不足している場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの更新には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの更新には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      operationId: PatchUsersDetail
+      tags:
+        - v1/users/detail
+      summary: 単一ユーザーの部分更新
+      description: 指定されたUUIDに該当するユーザーの情報を部分的に更新します。必要な情報をリクエストボディに含めてください。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPatchV1User'
+      responses:
+        '200':
+          description: ユーザーの部分更新に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseV1User'
+        '400':
+          description: リクエストが不正です。必要な情報が不足している場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの更新には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの更新には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: DeleteUsersDetail
+      tags:
+        - v1/users/detail
+      summary: 単一ユーザーの削除
+      description: 指定されたUUIDに該当するユーザーを削除します。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '204':
+          description: ユーザーの削除に成功しました
+        '400':
+          description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの削除には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの削除には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /_internal/types/error-response:
+    get:
+      summary: （内部用）ErrorResponse型生成用エンドポイント
+      description: |
+        このエンドポイントは Goコード生成のためだけに存在します。 実際には実装・公開されません。
+      tags:
+        - internal/types/error-response
+      operationId: GenerateErrorSchema
+      responses:
+        '200':
+          description: このレスポンスの型を生成するためです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: ページ番号（1から始まる）
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+        example: 1
+    PerPageParam:
+      name: per_page
+      in: query
+      description: 1ページあたりの取得件数
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+        example: 10
+    UserIdParam:
+      name: user_id
+      in: path
+      required: true
+      description: ユーザーのUUID
+      schema:
+        type: string
+        format: uuid
+        example: 123e4567-e89b-12d3-a456-426614174000
+    NameKeywordParam:
+      name: name_keyword
+      in: query
+      description: ユーザー名の部分一致検索キーワード
+      required: false
+      schema:
+        type: string
+        example: John
+  schemas:
+    ErrorResponse:
+      type: object
+      x-tags:
+        - error
+      required:
+        - code
+        - message
+        - details
+      properties:
+        code:
+          type: string
+          example: EXAMPLE_ERROR
+        message:
+          type: string
+          example: 定義されたエラーメッセージ
+        details:
+          type: array
+          items:
+            type: string
+          example:
+            - エラーの詳細の文章1
+            - エラーの詳細の文章2
+    ResponseHealth:
+      type: object
+      description: サーバーのヘルスチェック用のレスポンスです。
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          example: ok
+    ResponseV1User:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@example.com
+        phone:
+          type: string
+          nullable: true
+          example: 09012345678
+    ResponseV1Users:
+      description: ユーザー情報のリストを返すレスポンスです。
+      allOf:
+        - type: object
+          required:
+            - users
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResponseV1User'
+        - type: object
+          required:
+            - total
+            - limit
+            - offset
+          properties:
+            total:
+              type: integer
+              description: 全件数
+              example: 100
+            limit:
+              type: integer
+              description: 1ページあたりの件数
+              example: 10
+            offset:
+              type: integer
+              description: 現在のオフセット
+              example: 0
+    RequestPostV1Users:
+      description: ユーザー情報の新規作成
+      allOf:
+        - type: object
+          description: ユーザー情報の基本入力スキーマ
+          properties:
+            name:
+              type: string
+              example: John Doe
+              maxLength: 50
+            email:
+              type: string
+              format: email
+              example: john.doe@example.com
+            phone:
+              type: string
+              pattern: '^\\+?[0-9]{10,15}$'
+              example: 09012345678
+        - type: object
+          properties:
+            password:
+              type: string
+              description: ユーザーのパスワード
+          required:
+            - name
+            - email
+            - phone
+            - password
+          additionalProperties: false
+    RequestPutV1User:
+      description: ユーザー情報の更新
+      allOf:
+        - $ref: '#/components/schemas/RequestPatchV1User'
+        - type: object
+          additionalProperties: false
+          required:
+            - name
+            - email
+    RequestPatchV1User:
+      description: ユーザー情報の部分更新
+      allOf:
+        - $ref: '#/components/schemas/RequestPostV1Users/allOf/0'
