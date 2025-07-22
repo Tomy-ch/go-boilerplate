@@ -1,0 +1,16 @@
+type: object
+required:
+  - name
+  - email
+properties:
+  name:
+    type: string
+    example: "John Doe"
+  email:
+    type: string
+    format: email
+    example: "john.doe@example.com"
+  phone:
+    type: string
+    nullable: true
+    example: "09012345678"

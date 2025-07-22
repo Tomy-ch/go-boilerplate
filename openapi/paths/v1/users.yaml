@@ -1,0 +1,78 @@
+get:
+  operationId: GetUsers
+  tags:
+    - v1/users
+  summary: ユーザー一覧の取得
+  description: ユーザーの一覧を取得します。検索条件やページネーションを指定できます。
+  parameters:
+    - $ref: '../../components/parameters/user/NameKeywordParam.yaml'
+    - $ref: '../../components/parameters/pagination/PageParam.yaml'
+    - $ref: '../../components/parameters/pagination/PerPageParam.yaml'
+  responses:
+    '200':
+      description: 取得に成功したユーザー一覧
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/users/UsersResponse.yaml'
+    '401':
+      description: ユーザー一覧の取得には認証が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ErrorResponse.yaml'
+    '403':
+      description: ユーザー一覧の取得には権限が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ErrorResponse.yaml'
+    '500':
+      description: サーバーエラーが発生しました。
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ErrorResponse.yaml'
+post:
+  operationId: PostUsers
+  tags:
+    - v1/users
+  summary: ユーザーの作成
+  description: 新しいユーザーを作成します。必要な情報をリクエストボディに含めてください。
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/requests/users/UsersPostRequest.yaml'
+  responses:
+    '201':
+      description: ユーザーの作成に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/UserResponse.yaml'
+    '400':
+      description: リクエストが不正です。必要な情報が不足している場合に返されます。
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ErrorResponse.yaml'
+    '401':
+      description: ユーザーの作成には認証が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ErrorResponse.yaml'
+    '403':
+      description: ユーザーの作成には権限が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ErrorResponse.yaml'
+    '500':
+      description: サーバーエラーが発生しました。
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/ErrorResponse.yaml'

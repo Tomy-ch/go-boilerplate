@@ -1,0 +1,8 @@
+type: object
+description: サーバーのヘルスチェック用のレスポンスです。
+required:
+  - status
+properties:
+  status:
+    type: string
+    example: "ok"

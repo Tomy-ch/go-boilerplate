@@ -1,0 +1,188 @@
+get:
+  operationId: GetUsersDetail
+  tags:
+    - v1/users/detail
+  summary: 単一ユーザーの取得
+  description: 指定されたUUIDに該当するユーザーの詳細情報を取得します。
+  parameters:
+    - $ref: '../../../components/parameters/user/UserIdParam.yaml'
+  responses:
+    '200':
+      description: ユーザーの取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/UserResponse.yaml'
+    '400':
+      description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '401':
+      description: ユーザーの取得には認証が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '403':
+      description: ユーザーの取得には権限が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '404':
+      description: 指定されたUUIDに該当するユーザーが存在しません。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '500':
+      description: サーバーエラーが発生しました。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+put:
+  operationId: PutUsersDetail
+  tags:
+    - v1/users/detail
+  summary: 単一ユーザーの更新
+  description: 指定されたUUIDに該当するユーザーの情報を更新します。必要な情報をリクエストボディに含めてください。
+  parameters:
+  - $ref: '../../../components/parameters/user/UserIdParam.yaml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../../components/requests/users/UserPutRequest.yaml'
+  responses:
+    '200':
+      description: ユーザーの更新に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/UserResponse.yaml'
+    '400':
+      description: リクエストが不正です。必要な情報が不足している場合に返されます。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '401':
+      description: ユーザーの更新には認証が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '403':
+      description: ユーザーの更新には権限が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '404':
+      description: 指定されたUUIDに該当するユーザーが存在しません。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '500':
+      description: サーバーエラーが発生しました。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+patch:
+  operationId: PatchUsersDetail
+  tags:
+    - v1/users/detail
+  summary: 単一ユーザーの部分更新
+  description: 指定されたUUIDに該当するユーザーの情報を部分的に更新します。必要な情報をリクエストボディに含めてください。
+  parameters:
+    - $ref: '../../../components/parameters/user/UserIdParam.yaml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../../components/requests/users/UserPatchRequest.yaml'
+  responses:
+    '200':
+      description: ユーザーの部分更新に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/UserResponse.yaml'
+    '400':
+      description: リクエストが不正です。必要な情報が不足している場合に返されます。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '401':
+      description: ユーザーの更新には認証が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '403':
+      description: ユーザーの更新には権限が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '404':
+      description: 指定されたUUIDに該当するユーザーが存在しません。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '500':
+      description: サーバーエラーが発生しました。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+delete:
+  operationId: DeleteUsersDetail
+  tags:
+    - v1/users/detail
+  summary: 単一ユーザーの削除
+  description: 指定されたUUIDに該当するユーザーを削除します。
+  parameters:
+    - $ref: '../../../components/parameters/user/UserIdParam.yaml'
+  responses:
+    '204':
+      description: ユーザーの削除に成功しました
+    '400':
+      description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '401':
+      description: ユーザーの削除には認証が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '403':
+      description: ユーザーの削除には権限が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '404':
+      description: 指定されたUUIDに該当するユーザーが存在しません。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
+    '500':
+      description: サーバーエラーが発生しました。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
