@@ -1,0 +1,18 @@
+type: object
+required:
+  - total
+  - limit
+  - offset
+properties:
+  total:
+    type: integer
+    description: 全件数
+    example: 100
+  limit:
+    type: integer
+    description: 1ページあたりの件数
+    example: 10
+  offset:
+    type: integer
+    description: 現在のオフセット
+    example: 0

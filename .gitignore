@@ -1,2 +1,3 @@
 # goライブラリの依存解決ディレクトリ
 vendor/
+.DS_Store
