@@ -1,0 +1,8 @@
+description: ユーザー情報の更新
+allOf:
+  - $ref: './UserPatchRequest.yaml'
+  - type: object
+    additionalProperties: false
+    required:
+      - name
+      - email

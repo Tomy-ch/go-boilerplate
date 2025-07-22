@@ -12,4 +12,6 @@ gen-ctxkey:
 	bash scripts/gen_ctxkey.sh $(name) $(type)
 
 go-gen:
+	@echo "🔄 Generating Go code..."
+	@npx -y swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
 	@go generate ./...
