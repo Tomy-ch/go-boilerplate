@@ -1,0 +1,21 @@
+type: object
+x-tags:
+  - error
+required:
+  - code
+  - message
+  - details
+properties:
+  code:
+    type: string
+    example: "EXAMPLE_ERROR"
+  message:
+    type: string
+    example: "定義されたエラーメッセージ"
+  details:
+    type: array
+    items:
+      type: string
+    example:
+      - "エラーの詳細の文章1"
+      - "エラーの詳細の文章2"
