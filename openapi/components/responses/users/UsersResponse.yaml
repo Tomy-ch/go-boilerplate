@@ -1,0 +1,11 @@
+description: ユーザー情報のリストを返すレスポンスです。
+allOf:
+- type: object
+  required:
+    - users
+  properties:
+    users:
+      type: array
+      items:
+        $ref: '../../schemas/UserResponse.yaml'
+- $ref: '../../schemas/PaginationMetadataResponse.yaml'

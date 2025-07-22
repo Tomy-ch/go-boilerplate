@@ -1,0 +1,15 @@
+get:
+  summary: "（内部用）ErrorResponse型生成用エンドポイント"
+  description: >
+    このエンドポイントは Goコード生成のためだけに存在します。
+    実際には実装・公開されません。
+  tags:
+    - internal/types/error-response
+  operationId: GenerateErrorSchema
+  responses:
+    '200':
+      description: このレスポンスの型を生成するためです。
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
