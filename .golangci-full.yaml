@@ -1,0 +1,170 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    # Enabled by Default
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+    # Disabled by Default
+    - asciicheck # ASCII以外の文字を変数名などで使用しているかをチェックします
+    - bidichk # バイディレクショナルテキストのチェックをします
+    - contextcheck # context.Contextの伝播が破棄されていないかをチェックします
+    - depguard # 外部ライブラリの使用を制限します
+    - dupl # 重複コードの検出を行います
+    - errorlint # エラー処理のベストプラクティスをチェックします
+    - exptostd # 標準ライブラリの使用を推奨します
+    - gocheckcompilerdirectives # // go:ディレクティブのチェックを行います
+    - gocritic # Goコードの高級な静的解析を行います
+    - gocyclo # 関数単位での複雑度を計算します
+    - gosec # セキュリティ上の脆弱性を検出します
+    - inamedparam # インターフェースのメソッド定義において「名前なしパラメータ」が使われていないかを検出します
+    - interfacebloat # 1つのインターフェースにメソッドが多すぎる場合に警告を出します
+    - mnd # マジックナンバーの使用を検出します
+    - musttag # Marshal/Unmarshalする際に、エクスポート対象フィールドにタグがついていないことを検出します
+    - nestif # ネストされたif文の深さを制限します
+    - nilnesserr # 正しいエラーが返されているかを検出します
+    - noctx # context.Contextを使用していない非推奨なコードを検出します
+    - nonamedreturns # 名前付きリターン値を全部検出して警告します
+    - prealloc # スライスの事前割り当てを推奨します
+    - predeclared # 予約語の使用をチェックします
+    - recvcheck # 関数のレシーバーが統一的に使用されているかをチェックします
+    - revive # Goコードの静的解析を行うツールで、特にコードの品質とスタイルに焦点を当てています
+    - rowserrcheck # sql系のインスタンスで、行の取得やエラー処理が正しく行われているかをチェックします
+    - spancheck # OpenTelemetryのSpanの使用をチェックします
+    - sqlclosecheck # SQLの接続やトランザクションのクローズ処理をチェックします
+    - testifylint # Testifyのアサーションやモックの使用をチェックします
+    - unparam # 使用されていない関数のパラメータを検出します
+
+  settings:
+    decorder:
+      dec-order:
+        - "const"
+        - "var"
+        - "type"
+        - "func"
+      ignore-underscore-vars: false
+      disable-dec-order-check: false
+      disable-init-func-first-check: false
+    depguard:
+      # 外部ライブラリがシステムの根幹に関わることを避けるために、自作のパッケージを使用することを推奨します。
+      rules:
+        xerror:
+          files:
+            - "**/*.go"
+            - "!**/pkg/xerror/**.go"
+          list-mode: lax
+          deny:
+            - pkg: github.com/cockroachdb/errors
+              desc: "スタックトレース用として導入したライブラリです。
+                代わりに pkg/xerror を使用してください。"
+    dupl:
+      # 重複コードの検出を行います。
+      # 約300トークン以上の重複を検出します。
+      threshold: 300
+    forbidigo:
+      forbid:
+        - pattern: '^print(ln)?$'
+          msg: "禁止：printやprintlnを使わないでください"
+        - pattern: '^fmt\.Print.*$'
+          msg: "禁止：本番用コードにfmt.Print*を残さないでください。
+                ログ出力にはzap.Loggerを使用してください"
+        - pattern: '^spew\.Dump$'
+          msg: "禁止：spew.Dumpは禁止されています"
+      analyze-types: true
+    funcorder:
+      constructor: true
+      struct-method: true
+      alphabetical: true
+    funlen:
+      # 関数の長さを制限して、冗長性と複雑さを減らします。
+      # 関数内の行数チェックは無効にします。
+      lines: -1
+      # 関数内のステートメント数を制限します。
+      statements: 50
+    gocognit:
+      min-complexity: 20
+    godox:
+      keywords:
+        - TODO
+        - FIXME
+    lll:
+      line-length: 150
+    makezero:
+      always: false
+    misspell:
+      locale: UK
+      ignore-rules:
+        - "importas"
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    tagliatelle:
+      case:
+        rules:
+          env: camel
+          json: camel
+    testifylint:
+      enable-all: true
+    usestdlibvars:
+      http-method: true        # HTTPメソッド文字列の検出（"GET" → http.MethodGet）
+      http-status-code: true   # ステータスコードの検出（500 → http.StatusInternalServerError）
+      time-date-month: true    # time.Month(1) の検出
+      time-weekday: true       # time.Weekday(1) の検出
+      time-layout: true        # time レイアウト文字列の検出
+      crypto-hash: true        # crypto.Hash の検出
+      default-rpc-path: true   # rpc.DefaultPath の検出
+      sql-isolation-level: true # sql.IsolationLevel の検出
+      tls-signature-scheme: true # tls.SignatureScheme の検出
+      constant-kind: true      # 定数の種類（Kind）を検出
+      time-month: true         # time.Month の検出
+    whitespace:
+      multi-if: true
+      multi-func: true
+    wrapcheck:
+      extra-ignore-sigs:
+        - xerrs.Wrap(
+
+  exclusions:
+    presets:
+      - comments
+    paths:
+      - vendor
+    rules:
+      - path: (.+)_test\.go
+        linters:
+          - lll
+
+formatters:
+  enable:
+    - goimports
+    - gofumpt
+    - gofmt
+    - golines
+    - swaggo
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
+    goimports:
+      local-prefixes:
+        - "boilerplate-go"
+    gofumpt:
+      module-path: "boilerplate-go"
+      extra-rules: true
+    golines:
+      max-len: 80
+      tab-len: 4
+      shorten-comments: false
+      reformat-tags: true
+      chain-split-dots: true
+  exclusions:
+    paths:
+      - ".*\\.gen\\.go$"
+      - ".*\\.mock\\.go$"
+      - ".*mock_.*\\.go$"
