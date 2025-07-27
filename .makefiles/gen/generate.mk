@@ -1,6 +1,6 @@
 ## 自動生成系
 
-.PHONY: go-gen ## go generateの実行
+.PHONY: gen ## go generateの実行
 .PHONY: gen-ctxkey ## Contextに値を格納するためのコードを生成する(nameとtypeを指定が必要)
 
 gen-ctxkey:
@@ -11,7 +11,7 @@ gen-ctxkey:
 	fi; \
 	bash scripts/gen_ctxkey.sh $(name) $(type)
 
-go-gen:
+gen:
 	@echo "🔄 Generating Go code..."
-	@npx -y swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
-	@go generate ./...
+	@docker compose --profile generate up -d --build
+	@echo "✅ Go code generation completed."

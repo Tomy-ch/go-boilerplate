@@ -1,4 +1,5 @@
-package config
+// Package appconfig は、アプリケーションの設定を管理します。
+package appconfig
 
 import (
 	"fmt"
@@ -11,7 +12,7 @@ import (
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[ConfigLoader]()
 	if err != nil {
-		return nil, fmt.Errorf("%w : %v", ErrFailedToParseConfig, err)
+		return nil, fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
 	}
 
 	if err := validateConfig(cfg); err != nil {
@@ -39,13 +40,17 @@ func validateConfig(cfg ConfigLoader) error {
 	for _, origin := range cfg.Server.AllowedOrigins {
 		if strings.HasPrefix(origin, "http://") {
 			parsedURL, err := url.Parse(origin)
-			if err != nil || (parsedURL.Hostname() != "localhost" && parsedURL.Hostname() != "127.0.0.1") {
+			if err != nil ||
+				(parsedURL.Hostname() != "localhost" && parsedURL.Hostname() != "127.0.0.1") {
+
 				return ErrHTTPOnlyAllowedForLocalhost
 			}
 		}
 	}
 
-	if cfg.Environment.AppMode != DevelopmentMode && cfg.Environment.AppMode != ProductionMode {
+	if cfg.Environment.AppMode != DevelopmentMode &&
+		cfg.Environment.AppMode != ProductionMode {
+
 		return ErrInvalidAppMode
 	}
 
