@@ -1,4 +1,4 @@
-package config
+package appconfig
 
 type ConfigLoader struct {
 	Server      Server
