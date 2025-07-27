@@ -27,5 +27,6 @@
 		"wmaurer.change-case",
 		"editorconfig.editorconfig",
     "github.copilot",
+    "emeraldwalk.runonsave",
 	],
 }

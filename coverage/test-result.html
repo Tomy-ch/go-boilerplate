@@ -1,0 +1,739 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>appconfig: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">boilerplate-go/internal/appconfig/config.go (100.0%)</option>
+				
+				<option value="file1">boilerplate-go/internal/appconfig/types.go (100.0%)</option>
+				
+				<option value="file2">boilerplate-go/internal/controller/ctxhelper/not_found_ctx.go (81.8%)</option>
+				
+				<option value="file3">boilerplate-go/internal/controller/handler/error/response/error_response.go (0.0%)</option>
+				
+				<option value="file4">boilerplate-go/internal/controller/handler/health/health_hander.go (0.0%)</option>
+				
+				<option value="file5">boilerplate-go/internal/controller/handler/healthz/healthz_hander.go (0.0%)</option>
+				
+				<option value="file6">boilerplate-go/internal/controller/middleware/logging/logger_config.go (0.0%)</option>
+				
+				<option value="file7">boilerplate-go/internal/controller/middleware/logging/logging_middleware.go (66.7%)</option>
+				
+				<option value="file8">boilerplate-go/internal/controller/server/server.go (0.0%)</option>
+				
+				<option value="file9">boilerplate-go/internal/domain/expectederrors/notfound.go (100.0%)</option>
+				
+				<option value="file10">boilerplate-go/internal/env/env.go (0.0%)</option>
+				
+				<option value="file11">boilerplate-go/internal/main.go (0.0%)</option>
+				
+				<option value="file12">boilerplate-go/internal/testutil/config.go (20.0%)</option>
+				
+				<option value="file13">boilerplate-go/internal/testutil/os.go (68.8%)</option>
+				
+				<option value="file14">boilerplate-go/pkg/xerror/errors.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Package appconfig は、アプリケーションの設定を管理します。
+package appconfig
+
+import (
+        "fmt"
+        "net/url"
+        "strings"
+
+        "github.com/caarlos0/env/v11"
+)
+
+func New() (*Config, error) <span class="cov5" title="3">{
+        cfg, err := env.ParseAs[ConfigLoader]()
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
+        }</span>
+
+        <span class="cov3" title="2">if err := validateConfig(cfg); err != nil </span><span class="cov1" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov1" title="1">return &amp;Config{
+                environment: environment{
+                        serverEnv: cfg.Environment.ServerEnv,
+                        appMode:   cfg.Environment.AppMode,
+                },
+                server: server{
+                        host:           cfg.Server.Host,
+                        port:           cfg.Server.Port,
+                        allowedOrigins: cfg.Server.AllowedOrigins,
+                },
+        }, nil</span>
+}
+
+func validateConfig(cfg ConfigLoader) error <span class="cov8" title="6">{
+        if cfg.Server.Port &lt; MinPort || cfg.Server.Port &gt; MaxPort </span><span class="cov1" title="1">{
+                return ErrInvalidPortRange
+        }</span>
+
+        <span class="cov7" title="5">for _, origin := range cfg.Server.AllowedOrigins </span><span class="cov10" title="9">{
+                if strings.HasPrefix(origin, "http://") </span><span class="cov7" title="5">{
+                        parsedURL, err := url.Parse(origin)
+                        if err != nil ||
+                                (parsedURL.Hostname() != "localhost" &amp;&amp; parsedURL.Hostname() != "127.0.0.1") </span><span class="cov1" title="1">{
+                                return ErrHTTPOnlyAllowedForLocalhost
+                        }</span>
+                }
+        }
+
+        <span class="cov6" title="4">if cfg.Environment.AppMode != DevelopmentMode &amp;&amp;
+                cfg.Environment.AppMode != ProductionMode </span><span class="cov3" title="2">{
+                return ErrInvalidAppMode
+        }</span>
+
+        <span class="cov3" title="2">return nil</span>
+}
+
+func (c *Config) IsAppEnvProduction() bool <span class="cov3" title="2">{
+        return c.environment.appMode == ProductionMode
+}</span>
+
+func (c *Config) IsAppEnvDevelopment() bool <span class="cov3" title="2">{
+        return c.environment.appMode == DevelopmentMode
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package appconfig
+
+type Config struct {
+        server      server
+        environment environment
+}
+
+type server struct {
+        host           string
+        port           int
+        allowedOrigins []string
+}
+
+type environment struct {
+        serverEnv string
+        appMode   string
+}
+
+// ServerHost は、サーバーがリッスンするホスト名を返します。
+func (c *Config) ServerHost() string <span class="cov8" title="1">{ return c.server.host }</span>
+
+// ServerPort は、サーバーがリッスンするポート番号を返します。
+func (c *Config) ServerPort() int <span class="cov8" title="1">{ return c.server.port }</span>
+
+// AllowedOrigins は、CORSを許可するオリジンのリストを返します。
+func (c *Config) AllowedOrigins() []string <span class="cov8" title="1">{ return c.server.allowedOrigins }</span>
+
+// ServerEnv は、サーバーの環境を返します。
+//
+// 例: "local", "development", "staging", "production" など。
+func (c *Config) ServerEnv() string <span class="cov8" title="1">{ return c.environment.serverEnv }</span>
+
+// AppEnv は、アプリケーションの環境を返します。
+//
+// この環境変数はアプリケーションがどのモードで動作しているかを示します。
+// 例: "development", "production" など。
+func (c *Config) AppMode() string <span class="cov8" title="1">{ return c.environment.appMode }</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Code generated by gen_ctxkey; DO NOT EDIT.
+package ctxhelper
+
+import (
+        "context"
+
+        "boilerplate-go/internal/domain/expectederrors"
+
+        "github.com/labstack/echo/v4"
+)
+
+type notfoundKeyType struct{}
+
+var notfoundKey = notfoundKeyType{}
+
+// --- std lib context ---
+
+func SetNotFound(ctx context.Context, val expectederrors.NotFoundCause) context.Context <span class="cov8" title="1">{
+        return context.WithValue(ctx, notfoundKey, val)
+}</span>
+
+func GetNotFound(ctx context.Context) (expectederrors.NotFoundCause, bool) <span class="cov8" title="1">{
+        val := ctx.Value(notfoundKey)
+        if v, ok := val.(expectederrors.NotFoundCause); ok </span><span class="cov8" title="1">{
+                return v, true
+        }</span>
+        <span class="cov0" title="0">return *new(expectederrors.NotFoundCause), false</span>
+}
+
+// --- echo.Context wrapper ---
+
+func SetNotFoundToEcho(c echo.Context, val expectederrors.NotFoundCause) <span class="cov8" title="1">{
+        ctx := context.WithValue(c.Request().Context(), notfoundKey, val)
+        c.SetRequest(c.Request().WithContext(ctx))
+}</span>
+
+func GetNotFoundFromEcho(c echo.Context) (expectederrors.NotFoundCause, bool) <span class="cov8" title="1">{
+        val := c.Request().Context().Value(notfoundKey)
+        if v, ok := val.(expectederrors.NotFoundCause); ok </span><span class="cov8" title="1">{
+                return v, true
+        }</span>
+        <span class="cov0" title="0">return *new(expectederrors.NotFoundCause), false</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">//go:generate oapi-codegen --include-tags=internal/types/error-response --package=gen --generate=types -o ./gen/types.gen.go $PJ_DIR/openapi/openapi.gen.yaml
+
+// Package error は、echoでのエラーレスポンスを生成するためのユーティリティを提供します。
+package errorresponse
+
+import "boilerplate-go/internal/controller/handler/error/response/gen"
+
+func NewErrorResponse(httpStatus int, details ...string) gen.ErrorResponse <span class="cov0" title="0">{
+        meta, ok := errorMeta[httpStatus]
+        if !ok </span><span class="cov0" title="0">{
+                meta = HTTPErrorMeta{
+                        Code:    codeInternalError,
+                        Message: errorMessageInternalError,
+                }
+        }</span>
+
+        <span class="cov0" title="0">return gen.ErrorResponse{
+                Code:    meta.Code,
+                Message: meta.Message,
+                Details: details,
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">//go:generate oapi-codegen --include-tags=health --package=gen --generate=types -o ./gen/type.gen.go $PJ_DIR/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=health --package=gen --generate=echo-server -o ./gen/server.gen.go $PJ_DIR/openapi/openapi.gen.yaml
+
+// Package health は、サーバーのヘルスチェックのハンドラーを提供します。
+package health
+
+import (
+        "net/http"
+
+        "boilerplate-go/internal/controller/handler/health/gen"
+
+        "github.com/labstack/echo/v4"
+)
+
+type server struct{}
+
+func BindHandler(e *echo.Echo) <span class="cov0" title="0">{
+        gen.RegisterHandlers(e, &amp;server{})
+}</span>
+
+// GetHealth は、サーバーのヘルスチェックを行います。
+func (s *server) GetHealth(ctx echo.Context) error <span class="cov0" title="0">{
+        return ctx.JSON(http.StatusOK, &amp;gen.ResponseHealth{
+                Status: "ok",
+        })
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">//go:generate oapi-codegen --include-tags=healthz --package=gen --generate=types -o ./gen/type.gen.go $PJ_DIR/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=healthz --package=gen --generate=echo-server -o ./gen/server.gen.go $PJ_DIR/openapi/openapi.gen.yaml
+
+// Package healthz は、サーバーのヘルスチェックのハンドラーを提供します。
+package healthz
+
+import (
+        "net/http"
+
+        "boilerplate-go/internal/controller/handler/healthz/gen"
+
+        "github.com/labstack/echo/v4"
+)
+
+type server struct{}
+
+func BindHandler(e *echo.Echo) <span class="cov0" title="0">{
+        gen.RegisterHandlers(e, &amp;server{})
+}</span>
+
+// GetHealthz は、サーバーのヘルスチェックを行います。
+func (s *server) GetHealthz(ctx echo.Context) error <span class="cov0" title="0">{
+        return ctx.JSON(http.StatusOK, &amp;gen.ResponseHealth{
+                Status: "ok",
+        })
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package logging
+
+import (
+        "go.uber.org/zap"
+        "go.uber.org/zap/zapcore"
+)
+
+// NewProductionLogger は、本番環境用のZapロガーを生成します。
+func NewProductionLogger() (*zap.Logger, error) <span class="cov0" title="0">{
+        cfg := zap.Config{
+                Level:            zap.NewAtomicLevelAt(zapcore.InfoLevel),
+                Development:      false,
+                Encoding:         "json",
+                OutputPaths:      []string{"stdout"},
+                ErrorOutputPaths: []string{"stderr"},
+                EncoderConfig: zapcore.EncoderConfig{
+                        TimeKey:       "ts",
+                        LevelKey:      "level",
+                        NameKey:       "logger",
+                        CallerKey:     "caller",
+                        MessageKey:    "msg",
+                        StacktraceKey: "stacktrace",
+                        EncodeTime:    zapcore.ISO8601TimeEncoder,
+                        EncodeLevel:   zapcore.LowercaseLevelEncoder,
+                        EncodeCaller:  zapcore.ShortCallerEncoder,
+                },
+        }
+
+        return cfg.Build(zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+}</span>
+
+// NewDevelopmentLogger は、開発環境用のZapロガーを生成します。
+func NewDevelopmentLogger() (*zap.Logger, error) <span class="cov0" title="0">{
+        cfg := zap.Config{
+                Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
+                Development:      true,
+                Encoding:         "console",
+                OutputPaths:      []string{"stdout"},
+                ErrorOutputPaths: []string{"stderr"},
+                EncoderConfig: zapcore.EncoderConfig{
+                        TimeKey:       "Time",
+                        LevelKey:      "Level",
+                        NameKey:       "Name",
+                        CallerKey:     "Call",
+                        MessageKey:    "Msg",
+                        StacktraceKey: "Stack",
+                        EncodeTime:    zapcore.ISO8601TimeEncoder,
+                        EncodeLevel:   zapcore.CapitalColorLevelEncoder,
+                        EncodeCaller:  zapcore.ShortCallerEncoder,
+                },
+        }
+
+        return cfg.Build(zap.AddCaller(), zap.AddStacktrace(zapcore.WarnLevel))
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Package logging は、Echoフレームワークのミドルウェアとしてリクエストのログの出力を提供します。
+package logging
+
+import (
+        "net/http"
+        "time"
+
+        "boilerplate-go/internal/appconfig"
+        "boilerplate-go/internal/controller/ctxhelper"
+        "boilerplate-go/internal/domain/expectederrors"
+
+        "github.com/labstack/echo/v4"
+        "go.opentelemetry.io/otel/trace"
+        "go.uber.org/zap"
+)
+
+// Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
+func Middleware(
+        logger *zap.Logger,
+        cfg *appconfig.Config,
+) echo.MiddlewareFunc <span class="cov0" title="0">{
+        return func(next echo.HandlerFunc) echo.HandlerFunc </span><span class="cov0" title="0">{
+                return func(c echo.Context) error </span><span class="cov0" title="0">{
+                        start := time.Now()
+                        err := next(c)
+                        latency := time.Since(start)
+
+                        fields := buildFields(c, latency, err)
+                        logRequest(c, logger, fields)
+                        logErrorInDev(logger, cfg, err)
+                        return err
+                }</span>
+        }
+}
+
+// buildFields は、リクエストの情報を含むzap.Fieldのスライスを生成します。
+func buildFields(c echo.Context, latency time.Duration, err error) []zap.Field <span class="cov4" title="2">{
+        req := c.Request()
+        res := c.Response()
+        status := res.Status
+        spanCtx := trace.SpanFromContext(req.Context()).SpanContext()
+
+        fields := []zap.Field{
+                zap.String("method", req.Method),
+                zap.String("uri", req.RequestURI),
+                zap.Int("status", status),
+                zap.Duration("latency", latency),
+                zap.String("remote_ip", c.RealIP()),
+                zap.String("trace_id", spanCtx.TraceID().String()),
+                zap.String("span_id", spanCtx.SpanID().String()),
+        }
+
+        if err != nil </span><span class="cov1" title="1">{
+                fields = append(fields,
+                        zap.Error(err),
+                )
+        }</span>
+
+        <span class="cov4" title="2">return fields</span>
+}
+
+// logRequest は、リクエストのログを出力します。
+// ステータスコードに応じて、エラーログ、警告ログ、または情報ログを出力します。
+func logRequest(c echo.Context, logger *zap.Logger, fields []zap.Field) <span class="cov10" title="5">{
+        status := c.Response().Status
+
+        switch </span>{
+        case status &gt;= MinStatusError:<span class="cov1" title="1">
+                logger.Error("server error", fields...)</span>
+        case status == http.StatusNotFound &amp;&amp; isExpectedNotFound(c):<span class="cov1" title="1">
+                logger.Info("expected not found", fields...)</span>
+        case status &gt;= MinStatusWarn:<span class="cov4" title="2">
+                logger.Warn("client error", fields...)</span>
+        default:<span class="cov1" title="1">
+                logger.Info("request handled", fields...)</span>
+        }
+}
+
+// logErrorInDev は、開発環境でのみのログを出力します。
+func logErrorInDev(logger *zap.Logger, cfg *appconfig.Config, err error) <span class="cov8" title="4">{
+        if cfg.IsAppEnvDevelopment() &amp;&amp; err != nil </span><span class="cov1" title="1">{
+                logger.Error(err.Error())
+        }</span>
+}
+
+// isExpectedNotFound は、リクエストが期待される404 Not Foundエラーであるかどうかを判定します。
+func isExpectedNotFound(c echo.Context) bool <span class="cov10" title="5">{
+        val, ok := ctxhelper.GetNotFoundFromEcho(c)
+        return ok &amp;&amp; expectederrors.IsDefinedNotFoundCause(val)
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package server は、Echoサーバーの初期化と設定を提供します。
+package server
+
+import (
+        "boilerplate-go/internal/appconfig"
+        "boilerplate-go/internal/controller/middleware/logging"
+
+        "github.com/labstack/echo/v4"
+        "go.uber.org/zap"
+)
+
+func New(
+        cfg *appconfig.Config,
+        logger *zap.Logger,
+) *echo.Echo <span class="cov0" title="0">{
+        e := echo.New()
+        e.Use(logging.Middleware(logger, cfg))
+
+        return e
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">// Package expectederrors は、NotFoundエラーの原因を定義します。
+package expectederrors
+
+type NotFoundCause string
+
+const (
+        NotFoundCauseDB      NotFoundCause = "db"
+        NotFoundCauseCognito NotFoundCause = "cognito"
+)
+
+// IsDefinedNotFoundCause は、指定された NotFoundCause が定義済みの原因であるかどうかを判定します。
+func IsDefinedNotFoundCause(cause NotFoundCause) bool <span class="cov10" title="4">{
+        switch cause </span>{
+        case NotFoundCauseDB, NotFoundCauseCognito:<span class="cov5" title="2">
+                return true</span>
+        default:<span class="cov5" title="2">
+                return false</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">// Package env は、環境変数の読み込みを提供します。
+package env
+
+import (
+        "fmt"
+        "os"
+
+        "github.com/joho/godotenv"
+)
+
+// Load は、環境変数を読み込む関数です。
+func Load() error <span class="cov0" title="0">{
+        env := os.Getenv("ENV")
+
+        if env == "" </span><span class="cov0" title="0">{
+                if err := godotenv.Load(".env/.env"); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf(".env/.env load failed : %w", err)
+                }</span>
+                <span class="cov0" title="0">env = os.Getenv("ENV")</span>
+        }
+
+        <span class="cov0" title="0">if err := godotenv.Load(fmt.Sprintf(".env/.env.%s", env)); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf(".env/.env.%s load failed : %w", env, err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package main
+
+import (
+        "boilerplate-go/internal/appconfig"
+        "boilerplate-go/internal/controller/handler/health"
+        "boilerplate-go/internal/controller/handler/healthz"
+        "boilerplate-go/internal/controller/middleware/logging"
+        "boilerplate-go/internal/controller/server"
+        "boilerplate-go/internal/env"
+
+        "go.uber.org/zap"
+)
+
+func main() <span class="cov0" title="0">{
+        l := zap.NewExample()
+
+        err := env.Load()
+        if err != nil </span><span class="cov0" title="0">{
+                l.Fatal("called main", zap.Error(err))
+        }</span>
+
+        <span class="cov0" title="0">cfg, err := appconfig.New()
+        if err != nil </span><span class="cov0" title="0">{
+                l.Fatal("called main", zap.Error(err))
+        }</span>
+
+        <span class="cov0" title="0">logger, err := logging.NewDevelopmentLogger()
+        if err != nil </span><span class="cov0" title="0">{
+                l.Fatal("called main", zap.Error(err))
+        }</span>
+
+        <span class="cov0" title="0">e := server.New(cfg, logger)
+
+        health.BindHandler(e)
+        healthz.BindHandler(e)
+
+        if err := e.Start(":8080"); err != nil </span><span class="cov0" title="0">{
+                l.Fatal("called main", zap.Error(err))
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">// Package testutil は、テスト環境の設定を提供します。
+package testutil
+
+import (
+        "os"
+        "testing"
+
+        "boilerplate-go/internal/appconfig"
+        "boilerplate-go/internal/env"
+)
+
+var Cfg *appconfig.Config
+
+// SetTestEnv はテスト環境で使用される環境変数 "ENV" を "test" に設定します。
+//
+// 引数に *testing.Mを受け取ることで、この関数の実行タイミングを制御しています。
+func SetTestEnv(m *testing.M) <span class="cov10" title="2">{
+        if m == nil </span><span class="cov1" title="1">{
+                panic("SetTestEnv requires *testing.M argument")</span>
+        }
+        <span class="cov1" title="1">if err := os.Setenv("ENV", "test"); err != nil </span><span class="cov0" title="0">{
+                panic("failed to set ENV to 'test': " + err.Error())</span>
+        }
+}
+
+// RunWithTestSetup はテストのセットアップを行います。
+func RunWithTestSetup(m *testing.M) int <span class="cov0" title="0">{
+        if m == nil </span><span class="cov0" title="0">{
+                panic("RunWithTestSetup requires *testing.M argument")</span>
+        }
+
+        <span class="cov0" title="0">SetTestEnv(m)
+        ChdirToProjectRoot(m)
+        err := env.Load()
+        if err != nil </span><span class="cov0" title="0">{
+                panic("failed to load environment variables: " + err.Error())</span>
+        }
+
+        <span class="cov0" title="0">Cfg, err = appconfig.New()
+        if err != nil </span><span class="cov0" title="0">{
+                panic("failed to create test config: " + err.Error())</span>
+        }
+
+        <span class="cov0" title="0">return m.Run()</span>
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package testutil
+
+import (
+        "os"
+        "path/filepath"
+        "testing"
+)
+
+// ChdirToProjectRoot テスト用にプロジェクトルートに移動する。
+//
+// 引数に *testing.Mを受け取ることで、この関数の実行タイミングを制御しています。
+func ChdirToProjectRoot(m *testing.M) <span class="cov1" title="1">{
+        if m == nil </span><span class="cov0" title="0">{
+                panic("ChdirToProjectRoot requires *testing.M argument")</span>
+        }
+
+        <span class="cov1" title="1">if os.Getenv("ENV") != "test" </span><span class="cov0" title="0">{
+                panic("ChdirToProjectRoot is only for test use (ENV=test required)")</span>
+        }
+
+        <span class="cov1" title="1">dir, err := os.Getwd()
+        if err != nil </span><span class="cov0" title="0">{
+                panic("failed to get current working directory: " + err.Error())</span>
+        }
+        <span class="cov1" title="1">for </span><span class="cov10" title="3">{
+                if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil </span><span class="cov1" title="1">{
+                        if err = os.Chdir(dir); err != nil </span><span class="cov0" title="0">{
+                                panic(
+                                        "failed to change directory to project root: " + err.Error(),
+                                )</span>
+                        }
+                        <span class="cov1" title="1">return</span>
+                }
+                <span class="cov6" title="2">parent := filepath.Dir(dir)
+                if parent == dir </span><span class="cov0" title="0">{
+                        panic("go.mod not found in parent dirs")</span>
+                }
+                <span class="cov6" title="2">dir = parent</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package xerror
+
+import (
+        "github.com/cockroachdb/errors"
+)
+
+type CockroachDBError struct{}
+
+func (CockroachDBError) New(msg string) error <span class="cov0" title="0">{
+        return errors.New(msg)
+}</span>
+
+func (CockroachDBError) Wrap(err error, msg string) error <span class="cov0" title="0">{
+        return errors.Wrap(err, msg)
+}</span>
+
+func (CockroachDBError) Is(err, target error) bool <span class="cov0" title="0">{
+        return errors.Is(err, target)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
