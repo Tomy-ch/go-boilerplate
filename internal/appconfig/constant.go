@@ -1,4 +1,4 @@
-package config
+package appconfig
 
 const (
 	// DevelopmentMode は開発環境モードを表します。

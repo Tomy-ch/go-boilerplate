@@ -1,5 +1,7 @@
-//go:generate oapi-codegen --include-tags=healthz --package=gen --generate=types -o ./gen/type.gen.go $PJ_DIR/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=healthz --package=gen --generate=echo-server -o ./gen/server.gen.go $PJ_DIR/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=healthz --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=healthz --package=gen --generate=echo-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+
+// Package healthz は、サーバーのヘルスチェックのハンドラーを提供します。
 package healthz
 
 import (

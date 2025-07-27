@@ -1,14 +1,15 @@
-package testUtil
+// Package testutil は、テスト環境の設定を提供します。
+package testutil
 
 import (
 	"os"
 	"testing"
 
-	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/appconfig"
 	"boilerplate-go/internal/env"
 )
 
-var Cfg *config.Config
+var Cfg *appconfig.Config
 
 // SetTestEnv はテスト環境で使用される環境変数 "ENV" を "test" に設定します。
 //
@@ -35,7 +36,7 @@ func RunWithTestSetup(m *testing.M) int {
 		panic("failed to load environment variables: " + err.Error())
 	}
 
-	Cfg, err = config.New()
+	Cfg, err = appconfig.New()
 	if err != nil {
 		panic("failed to create test config: " + err.Error())
 	}

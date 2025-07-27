@@ -1,3 +1,4 @@
+// Package env は、環境変数の読み込みを提供します。
 package env
 
 import (
@@ -13,13 +14,13 @@ func Load() error {
 
 	if env == "" {
 		if err := godotenv.Load(".env/.env"); err != nil {
-			return fmt.Errorf(".env/.env load failed : %v", err)
+			return fmt.Errorf(".env/.env load failed : %w", err)
 		}
 		env = os.Getenv("ENV")
 	}
 
 	if err := godotenv.Load(fmt.Sprintf(".env/.env.%s", env)); err != nil {
-		return fmt.Errorf(".env/.env.%s load failed : %v", env, err)
+		return fmt.Errorf(".env/.env.%s load failed : %w", env, err)
 	}
 	return nil
 }

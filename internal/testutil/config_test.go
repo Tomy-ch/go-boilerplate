@@ -1,10 +1,10 @@
-package testUtil
+package testutil
 
 import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetTestEnv_SetsENVToTest(t *testing.T) {
@@ -12,7 +12,7 @@ func TestSetTestEnv_SetsENVToTest(t *testing.T) {
 		t.Setenv("ENV", "")
 		SetTestEnv(&testing.M{})
 
-		assert.Equal(t, "test", os.Getenv("ENV"))
+		require.Equal(t, "test", os.Getenv("ENV"))
 	})
 
 	t.Run("引数でnilを渡すとパニックする", func(t *testing.T) {
