@@ -14,21 +14,30 @@ linters:
     - asciicheck # ASCII以外の文字を変数名などで使用しているかをチェックします
     - bidichk # バイディレクショナルテキストのチェックをします
     - contextcheck # context.Contextの伝播が破棄されていないかをチェックします
+    - decorder # constやvarなどの宣言順序をチェックします
     - depguard # 外部ライブラリの使用を制限します
     - dupl # 重複コードの検出を行います
     - errorlint # エラー処理のベストプラクティスをチェックします
     - exptostd # 標準ライブラリの使用を推奨します
+    - forbidigo # 識別子の使用禁止ルールを設定します
+    - funcorder # 構造体に関連する関数・メソッドの配置順序をチェックします
+    - funlen # 関数の長さを制限して、冗長性と複雑さを減らします
     - gocheckcompilerdirectives # // go:ディレクティブのチェックを行います
+    - gocognit # 人間の理解難度を測る指標として、関数・メソッドの認知的複雑度を算出します
     - gocritic # Goコードの高級な静的解析を行います
     - gocyclo # 関数単位での複雑度を計算します
     - gosec # セキュリティ上の脆弱性を検出します
     - inamedparam # インターフェースのメソッド定義において「名前なしパラメータ」が使われていないかを検出します
     - interfacebloat # 1つのインターフェースにメソッドが多すぎる場合に警告を出します
+    - lll # 行の長さを制限します
+    - makezero # make()でのスライス初期化に関するバグを防ぐためのチェックを行います
+    - misspell # スペルミスを検出します
     - mnd # マジックナンバーの使用を検出します
     - musttag # Marshal/Unmarshalする際に、エクスポート対象フィールドにタグがついていないことを検出します
     - nestif # ネストされたif文の深さを制限します
     - nilnesserr # 正しいエラーが返されているかを検出します
     - noctx # context.Contextを使用していない非推奨なコードを検出します
+    - nolintlint # nolintコメントの使用をチェックします
     - nonamedreturns # 名前付きリターン値を全部検出して警告します
     - prealloc # スライスの事前割り当てを推奨します
     - predeclared # 予約語の使用をチェックします
@@ -39,13 +48,14 @@ linters:
     - sqlclosecheck # SQLの接続やトランザクションのクローズ処理をチェックします
     - testifylint # Testifyのアサーションやモックの使用をチェックします
     - unparam # 使用されていない関数のパラメータを検出します
+    - usestdlibvars # 標準ライブラリの変数を使用しているかをチェックします
 
   settings:
     decorder:
       dec-order:
+        - "type"
         - "const"
         - "var"
-        - "type"
         - "func"
       ignore-underscore-vars: false
       disable-dec-order-check: false
@@ -79,7 +89,7 @@ linters:
     funcorder:
       constructor: true
       struct-method: true
-      alphabetical: true
+      alphabetical: false
     funlen:
       # 関数の長さを制限して、冗長性と複雑さを減らします。
       # 関数内の行数チェックは無効にします。
@@ -88,10 +98,6 @@ linters:
       statements: 50
     gocognit:
       min-complexity: 20
-    godox:
-      keywords:
-        - TODO
-        - FIXME
     lll:
       line-length: 150
     makezero:
@@ -103,11 +109,6 @@ linters:
     nolintlint:
       require-explanation: true
       require-specific: true
-    tagliatelle:
-      case:
-        rules:
-          env: camel
-          json: camel
     testifylint:
       enable-all: true
     usestdlibvars:
@@ -122,12 +123,6 @@ linters:
       tls-signature-scheme: true # tls.SignatureScheme の検出
       constant-kind: true      # 定数の種類（Kind）を検出
       time-month: true         # time.Month の検出
-    whitespace:
-      multi-if: true
-      multi-func: true
-    wrapcheck:
-      extra-ignore-sigs:
-        - xerrs.Wrap(
 
   exclusions:
     presets:
