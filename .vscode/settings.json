@@ -22,10 +22,10 @@
     "formatting.gofumpt": true,
     "completeUnimported": true,
     "matcher": "Fuzzy",
+    "staticcheck": true,
     "analyses": {
       "nilness": true,
       "unusedparams": true,
-      "unusedwrite": true,
       "unusedvariable": true,
       "shadow": true
     }
@@ -34,7 +34,7 @@
   // インデント・空白系（Go向け推奨）
   "[go]": {
     "editor.insertSpaces": false,
-    "editor.tabSize": 2,
+    "editor.tabSize": 4,
     "editor.detectIndentation": false,
 		"editor.guides.indentation": true,
     "editor.formatOnSave": true

@@ -18,8 +18,8 @@ services:
     container_name: go-code-generator
     build:
       context: .
-      dockerfile: docker/api-schema/Dockerfile
-      target: go-generator
+      dockerfile: docker/tools/Dockerfile
+      target: go-tools
     tty: true
     volumes:
       - .:/app
@@ -34,8 +34,8 @@ services:
     container_name: swagger-oapi-bundler
     build:
       context: .
-      dockerfile: docker/api-schema/Dockerfile
-      target: openapi-builder
+      dockerfile: docker/tools/Dockerfile
+      target: node-tools
     tty: true
     volumes:
       - .:/app
@@ -48,8 +48,8 @@ services:
     container_name: redoc-docs-generator
     build:
       context: .
-      dockerfile: docker/api-schema/Dockerfile
-      target: openapi-builder
+      dockerfile: docker/tools/Dockerfile
+      target: node-tools
     tty: true
     command: ["redocly", "build-docs", "openapi/openapi.yaml", "--output", "/app/openapi/docs/index.html"]
     volumes:
