@@ -1,0 +1,202 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    # Enabled by Default
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+    # Disabled by Default
+    # - asasalint # ユニバーサルインターフェースを扱うときの潜在的なバグを防ぐチェックです
+    # - asciicheck # ASCII以外の文字を変数名などで使用しているかをチェックします
+    # - bidichk # バイディレクショナルテキストのチェックをします
+    # - bodyclose # HTTPレスポンスのボディが閉じられているかをチェックします
+    # - canonicalheader # HTTPヘッダーの正規化をチェックします
+    # - containedctx # context.Contextが構造体に含まれているかをチェックします
+    # - contextcheck # context.Contextの伝播が破棄されていないかをチェックします
+    # - copyloopvar # ループ変数のコピーをチェックします
+    # - cyclop # 関数+パッケージ単位での複雑度を計算します
+    - decorder # constやvarなどの宣言順序をチェックします
+    - depguard # 外部ライブラリの使用を制限します
+    # - dogsled # _ が複数使用されているかをチェックします
+    # - dupl # 重複コードの検出を行います
+    # - dupword # 重複した単語を検出します
+    # - durationcheck # time.Duration型同士を掛け算してしまう誤用を静的分析で検出する
+    # - embeddedstructfieldcheck # 埋め込み構造体フィールドのチェックを行います
+    # - err113 # エラーチェックのベストプラクティスかをチェックします
+    # - errchkjson # JSON エンコーディングに関する 安全性をチェックします
+    # - errname # エラー名の命名規則をチェックします
+    # - errorlint # エラー内容の検証(As/Is)のベストプラクティスをチェックします
+    # - exhaustive # enum型の全ての値を網羅しているかをチェックします
+    # - exhaustruct # 構造体のフィールドが全て使用されているかをチェックします
+    # - exptostd # 標準ライブラリの使用を推奨します
+    # - fatcontext # context.Contextがループで設定されているかをチェックします
+    # - forbidigo # 識別子の使用禁止ルールを設定します
+    # - forcetypeassert # 型アサーションの強制をチェックします
+    - funcorder # 構造体に関連する関数・メソッドの配置順序をチェックします
+    - funlen # 関数の長さを制限して、冗長性と複雑さを減らします
+    # - ginkgolinter　# Ginkgo/Gomegaのテストのベストプラクティスをチェックします
+    - gocheckcompilerdirectives # コンパイラディレクティブのチェックを行います
+    # - gochecknoglobals # グローバル変数の使用をチェックします
+    # - gochecknoinits # init() 関数が存在しないかを検出する
+    # - gochecksumtype # 合併型／タグ付き列挙型の網羅性を静的にチェックします
+    - gocognit # 人間の理解難度を測る指標として、関数・メソッドの認知的複雑度を算出します
+    # - goconst # 定数の使用を推奨します
+    - gocritic # Goコードの高級な静的解析を行います
+    # - gocyclo # 関数単位での複雑度を計算します
+    # - godot # Goのコメント末尾に必ずピリオドをつけるスタイルをチェックする静的解析ツール
+    - godox # 特定のコメントキーワード（たとえば TODO, FIXME, BUG, OPTIMIZE など）を検出します
+    # - goheader # Goファイルのヘッダーコメントをチェックします
+    # - gomoddirectives # go.modファイルのディレクティブをチェックします
+    # - gomodguard # go.modファイルの依存関係の整合性をチェックします
+    # - goprintffuncname # Printfライクな引数を取る関数が「f」で終わる名前になっているかをチェックします
+    - gosec # セキュリティ上の脆弱性を検出します
+    # - gosmopolitan # i18n（国際化）やlocale（地域対応）の落とし穴になりやすいアンチパターンを検出します
+    # - grouper # グループ化されたコードのスタイルをチェックします
+    # - iface # インターフェースの不適切な使用を検出します
+    # - importas # import文におけるエイリアス（別名）の使い方に対して一貫性を強制します
+    # - inamedparam # インターフェースのメソッド定義において「名前なしパラメータ」が使われていないかを検出します
+    # - interfacebloat # 1つのインターフェースにメソッドが多すぎる場合に警告を出します
+    # - intrange # 書き換えられる“for”ループ構造を検出し、最適な書き方を提案します
+    # - ireturn # 関数がインターフェースを返していないかを検出します
+    - lll # 行の長さを制限します
+    # - loggercheck # ログ呼び出しでキーと値の奇数組合せを静的に検出し、もし不一致があれば警告を出します
+    # - maintidx # メンテナンス性の低いコードを検出します
+    # - makezero # make()でのスライス初期化に関するバグを防ぐためのチェックを行います
+    # - mirror # 文字列とバイトスライスの変換を最適化するパターンを検出します
+    - misspell # スペルミスを検出します
+    # - mnd # マジックナンバーの使用を検出します
+    # - musttag # Marshal/Unmarshalする際に、エクスポート対象フィールドにタグがついていないことを検出します
+    # - nakedret # 名前付き戻り値を持つ関数で、naked return文が使用されていないかを検出します
+    # - nestif # ネストされたif文の深さを制限します
+    # - nilerr # エラーチェックでnilが返されているかを検出します
+    # - nilnesserr # 正しいエラーが返されているかを検出します
+    # - nilnil # nilチェックの冗長性を検出します
+    # - nlreturn # 関数の戻り値がnilnilなどの冗長な値を返していないかを検出します
+    # - noctx # context.Contextを使用していない非推奨なコードを検出します
+    # - noinlineerr # エラーを返す関数がインライン化されていないかを検出します
+    - nolintlint # nolintコメントの使用をチェックします
+    # - nonamedreturns # 名前付きリターン値を全部検出して警告します
+    # - nosprintfhostport # IPv6 アドレスを含むホスト名とポートの文字列化にfmt.Sprintfを使っていないかを検出します
+    # - paralleltest # テスト関数が並列実行されることを確認します
+    # - perfsprint # fmt.Sprintfのパフォーマンスに関する問題を検出します
+    # - prealloc # スライスの事前割り当てを推奨します
+    # - predeclared # 予約語の使用をチェックします
+    # - promlinter # Prometheusのメトリクスに関するベストプラクティスをチェックします
+    # - protogetter # Protocol BuffersのGetterメソッドの使用をチェックします
+    # - reassign # グローバル変数の再代入を検出します
+    # - recvcheck # 関数のレシーバーが統一的に使用されているかをチェックします
+    - revive # Goコードの静的解析を行うツールで、特にコードの品質とスタイルに焦点を当てています
+    # - rowserrcheck # sql系のインスタンスで、行の取得やエラー処理が正しく行われているかをチェックします
+    # - sloglint # ログの書き方をスタイル的観点で静的チェックします
+    - spancheck # OpenTelemetryのSpanの使用をチェックします
+    # - sqlclosecheck # SQLの接続やトランザクションのクローズ処理をチェックします
+    # - tagalign # 構造体タグの整列をチェックします
+    # - tagliatelle # 構造体タグのスタイルをチェックします
+    # - testableexamples # Example関数の末尾に出力内容に関するコメントがあるかをチェックします
+    # - testifylint # Testifyのアサーションやモックの使用をチェックします
+    # - testpackage # テストパッケージを作成することで、ブラックボックステストを行うことを推奨します
+    # - thelper # テストヘルパー関数の使用をチェックします
+    # - tparallel # テスト関数が並列実行されることを確認します
+    # - unconvert # 型が既に同じなのに再度キャストしている冗長コードを検出します
+    # - unparam # 使用されていない関数のパラメータを検出します
+    # - usestdlibvars # 標準ライブラリの変数を使用しているかをチェックします
+    # - usetesting # テストコードで誤った標準ライブラリの関数を使っていないかを検出します
+    # - varnamelen # 変数名の長さを制限します
+    # - wastedassign # 不要な代入を検出します
+    # - whitespace # 不要な空白を検出します
+    # - wrapcheck # エラーメッセージのラップをチェックします
+    # - wsl_v5 # コード中の空行（改行）の追加・削除に関するルール整備を行うツール
+    # - zerologlint # zerolog の使い方において間違いや抜けを防止するための静的解析ツール
+
+  settings:
+    decorder:
+      dec-order:
+        - "type"
+        - "const"
+        - "var"
+        - "func"
+      ignore-underscore-vars: false
+      disable-dec-order-check: false
+      disable-init-func-first-check: false
+    depguard:
+      # 外部ライブラリがシステムの根幹に関わることを避けるために、自作のパッケージを使用することを推奨します。
+      rules:
+        errutil:
+          files:
+            - "**/*.go"
+            - "!**/pkg/xerror/**.go"
+          list-mode: lax
+          deny:
+            - pkg: github.com/cockroachdb/errors
+              desc: "スタックトレース用として導入したライブラリです。
+                代わりに pkg/xerror を使用してください。"
+    funcorder:
+      constructor: true
+      struct-method: true
+      alphabetical: false
+    funlen:
+      # 関数の長さを制限して、冗長性と複雑さを減らします。
+      # 関数内の行数チェックは無効にします。
+      lines: -1
+      # 関数内のステートメント数を制限します。
+      statements: 50
+    gocognit:
+      min-complexity: 20
+    godox:
+      keywords:
+        - TODO
+        - FIXME
+    lll:
+      line-length: 150
+    misspell:
+      locale: UK
+      ignore-rules:
+        - "importas"
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+
+  exclusions:
+    presets:
+      - comments
+    paths:
+      - vendor
+    rules:
+      - path: (.+)_test\.go
+        linters:
+          - lll
+
+formatters:
+  enable:
+    - goimports
+    - gofumpt
+    - gofmt
+    - golines
+    - swaggo
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
+    goimports:
+      local-prefixes:
+        - "boilerplate-go"
+    gofumpt:
+      module-path: "boilerplate-go"
+      extra-rules: true
+    golines:
+      max-len: 80
+      tab-len: 4
+      shorten-comments: false
+      reformat-tags: true
+      chain-split-dots: true
+  exclusions:
+    paths:
+      - ".*\\.gen\\.go$"
+      - ".*\\.mock\\.go$"
+      - ".*mock_.*\\.go$"

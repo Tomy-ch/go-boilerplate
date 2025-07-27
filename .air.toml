@@ -1,0 +1,104 @@
+# =========================
+# 基本設定
+# =========================
+root = "."                      # プロジェクトルート（Docker内 /app）を起点に監視
+tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力するディレクトリ
+
+# =========================
+# ビルド対象設定
+# =========================
+[build]
+  # バイナリのビルドコマンド（Delve用ビルド）
+  # --mod=vendor: vendorディレクトリを優先
+  # -gcflags "all=-N -l": 最適化無効でデバッグしやすくする
+  cmd = "go build --mod=vendor -gcflags \"all=-N -l\" -o tmp/main internal/main.go"
+
+  # ビルド成果物の相対パス（airがここを監視して実行）
+  bin = "./tmp/main"
+
+  # airがビルド後に実行するコマンド（ここではDelveデバッグサーバーを起動）
+  full_bin = "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec --continue tmp/main"
+
+  # バイナリに引数を渡したい場合に使う
+  args_bin = []
+
+  # 監視対象とするファイルの拡張子
+  include_ext = ["go"]
+
+  # 監視対象とするディレクトリ
+  include_dir = ["internal", "cmd", "pkg"]
+
+  # 追加で個別に監視したいファイル（例：環境ファイルなど）
+  include_file = ["env/.env.local"]
+
+  # 無視するファイルのパターン（正規表現）
+  exclude_regex = ["_test\\.go$", "mock_.*\\.go$"]
+
+  # 監視から除外するディレクトリ
+  exclude_dir = ["tmp", "vendor"]
+
+  # 除外対象ファイル（明示的にパスで指定したい場合に使う）
+  exclude_file = []
+
+  # 差分がなければ再ビルドしない
+  exclude_unchanged = true
+
+  # シンボリックリンクを追跡
+  follow_symlink = true
+
+  # 変更検知後にビルドを遅延する時間（ミリ秒）
+  delay = 1000
+
+  # ビルドエラーがあれば実行を停止
+  stop_on_error = true
+
+  # 実行中プロセスをSIGINTで終了（graceful shutdown向け）
+  send_interrupt = true
+
+  # kill信号を送るまでの待機時間（ミリ秒）
+  kill_delay = 0
+
+  # ファイル変更がなくても一定間隔で再起動するか
+  rerun = false
+
+  # ビルドログを保存するファイル
+  log = "air.log"
+
+# =========================
+# 設定ファイルの監視
+# =========================
+[watch]
+  # 除外対象ディレクトリ
+  exclude = ["tmp", "vendor"]
+
+  # 監視する拡張子（設定ファイルやテンプレートも含める）
+  include_ext = ["go", "yaml", "yml"]
+
+  # シンボリックリンクを追跡するか
+  follow_symlink = true
+
+# =========================
+# ログ表示の制御
+# =========================
+[log]
+  time = true          # ログに時刻を表示
+  color = true         # ログに色をつける
+  main_only = false    # 子プロセスのログも表示
+  silent = false       # ログを抑制しない
+
+# =========================
+# ログの色分け
+# =========================
+[color]
+  main = "blue"        # mainセクション（air本体）の色
+  watcher = "cyan"     # ファイル監視ログの色
+  build = "green"      # ビルド成功ログの色
+  runner = "magenta"   # 実行中のバイナリのログ色
+  error = "red"        # エラー時の色
+
+# =========================
+# その他の設定
+# =========================
+[misc]
+  # 終了時に `tmp/main` を削除する（クリーンな状態で再起動）
+  clean_on_exit = true

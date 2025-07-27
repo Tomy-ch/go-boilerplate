@@ -1,11 +1,13 @@
 # go-boilerplate
 
 Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture によるベースプロジェクトです。
+
 `uber/fx` による DI や `sqlc`, `golang-migrate`, `oapi-codegen` などを採用しています。
 
 ## ⚠️ 本テンプレートの前提
 
 このBoilerplateは、PoC〜新規構築期における初期アーキテクチャ整備を支援する目的で提供されています。  
+
 そのため、**以下の前提に合致するチーム/リーダー向けのテンプレート**です。
 
 - Go + Echo + Fx + OpenAPI + sqlc などの構成を理解している
@@ -165,24 +167,24 @@ make release-patch-tag
 ### 次の開発(リリース)ブランチの作成
 
 <details>
-<summary>タグ打ちコマンド</summary>
+<summary>デフォルトブランチ変更コマンド</summary>
 
 majorバージョンを更新したリリースブランチの作成
 
 ```bash
-make release-major-tag
+make release-major-branch
 ```
 
 minorバージョンを更新したリリースブランチの作成
 
 ```bash
-make release-minor-tag
+make release-minor-branch
 ```
 
 patchバージョンを更新したリリースブランチの作成
 
 ```bash
-make release-patch-tag
+make release-patch-branch
 ```
 
 hotfixブランチの作成
