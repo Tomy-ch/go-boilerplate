@@ -1,7 +1,8 @@
+// Package server は、Echoサーバーの初期化と設定を提供します。
 package server
 
 import (
-	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/appconfig"
 	"boilerplate-go/internal/controller/middleware/logging"
 
 	"github.com/labstack/echo/v4"
@@ -9,11 +10,11 @@ import (
 )
 
 func New(
-	cfg *config.Config,
+	cfg *appconfig.Config,
 	logger *zap.Logger,
 ) *echo.Echo {
 	e := echo.New()
-	e.Use(logging.LoggingMiddleware(logger, cfg))
+	e.Use(logging.Middleware(logger, cfg))
 
 	return e
 }

@@ -1,11 +1,11 @@
-package config
+package appconfig
 
 import (
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -37,8 +37,8 @@ func TestNewConfig(t *testing.T) {
 
 			actual, err := New()
 
-			assert.NoError(t, err)
-			assert.Equal(t, expected, actual)
+			require.NoError(t, err)
+			require.Equal(t, expected, actual)
 		})
 	})
 
@@ -47,8 +47,8 @@ func TestNewConfig(t *testing.T) {
 			t.Setenv("ENV", expectedEnv)
 
 			actual, err := New()
-			assert.Nil(t, actual)
-			assert.ErrorContains(t, err, "APP_MODE")
+			require.Nil(t, actual)
+			require.ErrorContains(t, err, "APP_MODE")
 		})
 
 		t.Run("バリデート結果がエラーの場合", func(t *testing.T) {
@@ -59,8 +59,8 @@ func TestNewConfig(t *testing.T) {
 			t.Setenv("ALLOWED_ORIGINS", expectedAllowedOrigins)
 
 			actual, err := New()
-			assert.Nil(t, actual)
-			assert.ErrorIs(t, err, ErrInvalidAppMode)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidAppMode)
 		})
 	})
 }
@@ -88,27 +88,31 @@ func TestGetterMethods(t *testing.T) {
 
 	t.Run("ServerHost", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, expectedHost, cfg.ServerHost())
+		require.Equal(t, expectedHost, cfg.ServerHost())
 	})
 
 	t.Run("ServerPort", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, expectedPort, cfg.ServerPort())
+		require.Equal(t, expectedPort, cfg.ServerPort())
 	})
 
 	t.Run("AllowedOrigins", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, strings.Split(expectedAllowedOrigins, ","), cfg.AllowedOrigins())
+		require.Equal(
+			t,
+			strings.Split(expectedAllowedOrigins, ","),
+			cfg.AllowedOrigins(),
+		)
 	})
 
 	t.Run("ServerEnv", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, expectedEnv, cfg.ServerEnv())
+		require.Equal(t, expectedEnv, cfg.ServerEnv())
 	})
 
 	t.Run("AppMode", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, expectedAppMode, cfg.AppMode())
+		require.Equal(t, expectedAppMode, cfg.AppMode())
 	})
 }
 
@@ -119,7 +123,7 @@ func Test_validateConfig(t *testing.T) {
 		cfg := verifiedConfigLoader()
 
 		err := validateConfig(cfg)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -130,7 +134,7 @@ func Test_validateConfig(t *testing.T) {
 			cfg.Server.Port = MaxPort + 1 // 無効なポート番号
 
 			err := validateConfig(cfg)
-			assert.ErrorIs(t, err, ErrInvalidPortRange)
+			require.ErrorIs(t, err, ErrInvalidPortRange)
 		})
 		t.Run("無効なアプリケーションモード", func(t *testing.T) {
 			t.Parallel()
@@ -138,16 +142,18 @@ func Test_validateConfig(t *testing.T) {
 			cfg.Environment.AppMode = "invalid_mode" // 無効なアプリケーションモード
 
 			err := validateConfig(cfg)
-			assert.ErrorIs(t, err, ErrInvalidAppMode)
+			require.ErrorIs(t, err, ErrInvalidAppMode)
 		})
 
 		t.Run("ローカルホスト以外のHTTPプロトコルのアドレスの場合", func(t *testing.T) {
 			t.Parallel()
 			cfg := verifiedConfigLoader()
-			cfg.Server.AllowedOrigins = []string{"http://example.com"} // HTTPのみのローカルホストが含まれていない
+			cfg.Server.AllowedOrigins = []string{
+				"http://example.com",
+			} // HTTPのみのローカルホストが含まれていない
 
 			err := validateConfig(cfg)
-			assert.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
+			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
 		})
 	})
 }
@@ -158,14 +164,14 @@ func TestIsAppEnvProduction(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.environment.appMode = ProductionMode
-		assert.True(t, cfg.IsAppEnvProduction())
+		require.True(t, cfg.IsAppEnvProduction())
 	})
 
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.environment.appMode = DevelopmentMode
-		assert.False(t, cfg.IsAppEnvProduction())
+		require.False(t, cfg.IsAppEnvProduction())
 	})
 }
 
@@ -175,14 +181,14 @@ func TestIsAppEnvDevelopment(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.environment.appMode = DevelopmentMode
-		assert.True(t, cfg.IsAppEnvDevelopment())
+		require.True(t, cfg.IsAppEnvDevelopment())
 	})
 
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.environment.appMode = ProductionMode
-		assert.False(t, cfg.IsAppEnvDevelopment())
+		require.False(t, cfg.IsAppEnvDevelopment())
 	})
 }
 

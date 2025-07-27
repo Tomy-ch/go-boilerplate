@@ -1,6 +1,7 @@
-package errUtil
+// Package xerror は、エラーハンドリングのユーティリティを提供します。
+package xerror
 
-// XError は、エラーハンドリングのインターフェースです。
+// XErrors は、エラーハンドリングのインターフェースです。
 //
 //	スタックトレース機能を持つライブラリを使用して、エラーの生成とラップを行います。
 type XErrors interface {

@@ -1,4 +1,4 @@
-package testUtil
+package testutil
 
 import (
 	"os"
@@ -25,7 +25,9 @@ func ChdirToProjectRoot(m *testing.M) {
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			if err = os.Chdir(dir); err != nil {
-				panic("failed to change directory to project root: " + err.Error())
+				panic(
+					"failed to change directory to project root: " + err.Error(),
+				)
 			}
 			return
 		}

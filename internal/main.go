@@ -1,7 +1,7 @@
 package main
 
 import (
-	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/appconfig"
 	"boilerplate-go/internal/controller/handler/health"
 	"boilerplate-go/internal/controller/handler/healthz"
 	"boilerplate-go/internal/controller/middleware/logging"
@@ -19,7 +19,7 @@ func main() {
 		l.Fatal("called main", zap.Error(err))
 	}
 
-	cfg, err := config.New()
+	cfg, err := appconfig.New()
 	if err != nil {
 		l.Fatal("called main", zap.Error(err))
 	}

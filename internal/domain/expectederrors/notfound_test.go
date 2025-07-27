@@ -1,9 +1,9 @@
-package expectedErrors
+package expectederrors
 
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsDefinedNotFoundCause(t *testing.T) {
@@ -41,7 +41,7 @@ func TestIsDefinedNotFoundCause(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := IsDefinedNotFoundCause(tt.input)
-			assert.Equal(t, tt.expected, actual)
+			require.Equal(t, tt.expected, actual)
 		})
 	}
 }

@@ -117,9 +117,9 @@
         cfg, err := New()
         require.NoError(t, err)
 
-        assert.Equal(t, expectedAccessKey, cfg.aws.accessKey)
-        assert.Equal(t, expectedSecretKey, cfg.aws.secretKey)
-        assert.Equal(t, expectedRegion, cfg.aws.region)
+        require.Equal(t, expectedAccessKey, cfg.aws.accessKey)
+        require.Equal(t, expectedSecretKey, cfg.aws.secretKey)
+        require.Equal(t, expectedRegion, cfg.aws.region)
     }
     ```
 

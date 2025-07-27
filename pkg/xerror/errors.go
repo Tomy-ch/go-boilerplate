@@ -1,4 +1,4 @@
-package errUtil
+package xerror
 
 import (
 	"github.com/cockroachdb/errors"
