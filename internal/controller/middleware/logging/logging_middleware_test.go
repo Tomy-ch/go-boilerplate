@@ -9,21 +9,21 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/config"
-	ctxHelper "boilerplate-go/internal/controller/ctxhelper"
-	expectedErrors "boilerplate-go/internal/domain/expectederrors"
-	testUtil "boilerplate-go/internal/testutil"
-	errUtil "boilerplate-go/pkg/errutil"
+	"boilerplate-go/internal/appconfig"
+	"boilerplate-go/internal/controller/ctxhelper"
+	"boilerplate-go/internal/domain/expectederrors"
+	"boilerplate-go/internal/testutil"
+	"boilerplate-go/pkg/xerror"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 func TestMain(m *testing.M) {
-	os.Exit(testUtil.RunWithTestSetup(m))
+	os.Exit(testutil.RunWithTestSetup(m))
 }
 
 func Test_buildFields(t *testing.T) {
@@ -78,7 +78,7 @@ func Test_buildFields(t *testing.T) {
 
 		actual := buildFields(c, expectedLatency, nil)
 
-		assert.Equal(t, expected, actual)
+		require.Equal(t, expected, actual)
 	})
 
 	t.Run("エラーがある場合のフィールド生成", func(t *testing.T) {
@@ -99,7 +99,7 @@ func Test_buildFields(t *testing.T) {
 
 		actual := buildFields(c, expectedLatency, expectedErr)
 
-		assert.Equal(t, expected, actual)
+		require.Equal(t, expected, actual)
 	})
 }
 
@@ -107,7 +107,7 @@ func Test_logRequest(t *testing.T) {
 	tests := []struct {
 		name            string
 		status          int
-		notFound        expectedErrors.NotFoundCause
+		notFound        expectederrors.NotFoundCause
 		expectedLevel   string
 		expectedMessage string
 	}{
@@ -120,14 +120,14 @@ func Test_logRequest(t *testing.T) {
 		{
 			name:            "404 Not Found (予期された)→Infoログ(expected not found)",
 			status:          404,
-			notFound:        expectedErrors.NotFoundCauseDB,
+			notFound:        expectederrors.NotFoundCauseDB,
 			expectedLevel:   "info",
 			expectedMessage: "expected not found",
 		},
 		{
 			name:            "404 Not Found (予期されていない)→Warnログ",
 			status:          404,
-			notFound:        expectedErrors.NotFoundCause("unexpected"),
+			notFound:        expectederrors.NotFoundCause("unexpected"),
 			expectedLevel:   "warn",
 			expectedMessage: "client error",
 		},
@@ -153,20 +153,20 @@ func Test_logRequest(t *testing.T) {
 			c := newTestContext(tt.status)
 
 			if tt.notFound != "" {
-				ctxHelper.SetNotFoundToEcho(c, tt.notFound)
+				ctxhelper.SetNotFoundToEcho(c, tt.notFound)
 			}
 
 			logRequest(c, logger, nil)
 
 			out := buf.String()
-			assert.Contains(t, out, `"level":"`+tt.expectedLevel+`"`)
-			assert.Contains(t, out, `"msg":"`+tt.expectedMessage+`"`)
+			require.Contains(t, out, `"level":"`+tt.expectedLevel+`"`)
+			require.Contains(t, out, `"msg":"`+tt.expectedMessage+`"`)
 		})
 	}
 }
 
 func Test_logErrorInDev(t *testing.T) {
-	xerrs := errUtil.CockroachDBError{}
+	xerrs := xerror.CockroachDBError{}
 
 	cases := []struct {
 		name       string
@@ -176,25 +176,25 @@ func Test_logErrorInDev(t *testing.T) {
 	}{
 		{
 			name:       "開発環境かつエラーありである場合、ログ出力される",
-			appEnv:     config.DevelopmentMode,
+			appEnv:     appconfig.DevelopmentMode,
 			err:        xerrs.New("error"),
 			wantOutput: true,
 		},
 		{
 			name:       "開発環境だがエラーがnilである場合、ログ出力されない",
-			appEnv:     config.DevelopmentMode,
+			appEnv:     appconfig.DevelopmentMode,
 			err:        nil,
 			wantOutput: false,
 		},
 		{
 			name:       "本番環境かつエラーありである場合、ログ出力されない",
-			appEnv:     config.ProductionMode,
+			appEnv:     appconfig.ProductionMode,
 			err:        xerrs.New("error"),
 			wantOutput: false,
 		},
 		{
 			name:       "本番環境かつエラーなしである場合、ログ出力されない",
-			appEnv:     config.ProductionMode,
+			appEnv:     appconfig.ProductionMode,
 			err:        nil,
 			wantOutput: false,
 		},
@@ -209,18 +209,18 @@ func Test_logErrorInDev(t *testing.T) {
 			var buf bytes.Buffer
 			logger := newTestLogger(&buf)
 
-			cfg, err := config.New()
+			cfg, err := appconfig.New()
 			if err != nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			logErrorInDev(logger, cfg, tt.err)
 
 			out := buf.String()
 			if tt.wantOutput {
-				assert.Contains(t, out, `"msg":"`+tt.err.Error()+`"`)
+				require.Contains(t, out, `"msg":"`+tt.err.Error()+`"`)
 			} else {
-				assert.Equal(t, "", out)
+				require.Empty(t, out)
 			}
 		})
 	}
@@ -234,25 +234,28 @@ func Test_isExpectedNotFound(t *testing.T) {
 
 		c := newTestEchoContext()
 		ok := isExpectedNotFound(c)
-		assert.False(t, ok)
+		require.False(t, ok)
 	})
 
 	t.Run("contextに未定義のNotFoundCauseがある場合はfalse", func(t *testing.T) {
 		t.Parallel()
 
 		c := newTestEchoContext()
-		ctxHelper.SetNotFoundToEcho(c, expectedErrors.NotFoundCause("unexpected"))
+		ctxhelper.SetNotFoundToEcho(
+			c,
+			expectederrors.NotFoundCause("unexpected"),
+		)
 		ok := isExpectedNotFound(c)
-		assert.False(t, ok)
+		require.False(t, ok)
 	})
 
 	t.Run("contextに定義済みのNotFoundCauseがある場合はtrue", func(t *testing.T) {
 		t.Parallel()
 
 		c := newTestEchoContext()
-		ctxHelper.SetNotFoundToEcho(c, expectedErrors.NotFoundCauseDB)
+		ctxhelper.SetNotFoundToEcho(c, expectederrors.NotFoundCauseDB)
 		ok := isExpectedNotFound(c)
-		assert.True(t, ok)
+		require.True(t, ok)
 	})
 }
 

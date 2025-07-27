@@ -1,20 +1,24 @@
+// Package logging は、Echoフレームワークのミドルウェアとしてリクエストのログの出力を提供します。
 package logging
 
 import (
 	"net/http"
 	"time"
 
-	"boilerplate-go/internal/config"
-	ctxHelper "boilerplate-go/internal/controller/ctxhelper"
-	expectedErrors "boilerplate-go/internal/domain/expectederrors"
+	"boilerplate-go/internal/appconfig"
+	"boilerplate-go/internal/controller/ctxhelper"
+	"boilerplate-go/internal/domain/expectederrors"
 
 	"github.com/labstack/echo/v4"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
-// LoggingMiddleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
-func LoggingMiddleware(logger *zap.Logger, cfg *config.Config) echo.MiddlewareFunc {
+// Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
+func Middleware(
+	logger *zap.Logger,
+	cfg *appconfig.Config,
+) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			start := time.Now()
@@ -73,7 +77,7 @@ func logRequest(c echo.Context, logger *zap.Logger, fields []zap.Field) {
 }
 
 // logErrorInDev は、開発環境でのみのログを出力します。
-func logErrorInDev(logger *zap.Logger, cfg *config.Config, err error) {
+func logErrorInDev(logger *zap.Logger, cfg *appconfig.Config, err error) {
 	if cfg.IsAppEnvDevelopment() && err != nil {
 		logger.Error(err.Error())
 	}
@@ -81,6 +85,6 @@ func logErrorInDev(logger *zap.Logger, cfg *config.Config, err error) {
 
 // isExpectedNotFound は、リクエストが期待される404 Not Foundエラーであるかどうかを判定します。
 func isExpectedNotFound(c echo.Context) bool {
-	val, ok := ctxHelper.GetNotFoundFromEcho(c)
-	return ok && expectedErrors.IsDefinedNotFoundCause(val)
+	val, ok := ctxhelper.GetNotFoundFromEcho(c)
+	return ok && expectederrors.IsDefinedNotFoundCause(val)
 }

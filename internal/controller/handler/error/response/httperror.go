@@ -1,12 +1,17 @@
-package error
+package errorresponse
 
 import "net/http"
+
+type HTTPErrorMeta struct {
+	Code    string
+	Message string
+}
 
 const (
 	// codeBadRequest は、リクエストに不正または不足がある場合に使用されるエラーコードです。
 	codeBadRequest = "BAD_REQUEST"
 	// codeUnauthorized は、認証されていないアクセスに対して使用されるエラーコードです。
-	codeUnauthorized = "UNAUTHORIZED"
+	codeUnauthorized = "UNAUTHORISED"
 	// codeAccessDenied は、アクセス権限がない操作を試みた場合に使用されるエラーコードです。
 	codeAccessDenied = "ACCESS_DENIED"
 	// codeNotFound は、指定されたリソースが存在しない場合に使用されるエラーコードです。
@@ -35,11 +40,6 @@ const (
 	// errorNotAvailable は、機能が未実装または一時的に利用不可な場合に使用されるエラーコードです。
 	errorMessageNotAvailable = "現在この機能はご利用いただけません。しばらくしてから再度お試しください。"
 )
-
-type HTTPErrorMeta struct {
-	Code    string
-	Message string
-}
 
 var errorMeta = map[int]HTTPErrorMeta{
 	http.StatusBadRequest: {

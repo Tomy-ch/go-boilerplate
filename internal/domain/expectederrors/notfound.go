@@ -1,4 +1,5 @@
-package expectedErrors
+// Package expectederrors は、NotFoundエラーの原因を定義します。
+package expectederrors
 
 type NotFoundCause string
 
