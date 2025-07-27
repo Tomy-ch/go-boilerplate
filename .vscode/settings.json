@@ -49,14 +49,6 @@
 	"editor.codeActionsOnSave": {
 		"source.fixAll.markdownlint": "always"
 	},
-  "emeraldwalk.runonsave": {
-    "commands": [
-      {
-        "match": "\\.go$",
-        "cmd": "golangci-lint run --fix"
-      }
-    ]
-  },
 
   // material-icon-themeの設定の一部を追加する
   "material-icon-theme.folders.associations": {
