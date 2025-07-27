@@ -167,7 +167,7 @@ make release-patch-tag
 ### 次の開発(リリース)ブランチの作成
 
 <details>
-<summary>タグ打ちコマンド</summary>
+<summary>デフォルトブランチ変更コマンド</summary>
 
 majorバージョンを更新したリリースブランチの作成
 

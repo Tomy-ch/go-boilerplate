@@ -40,7 +40,12 @@ install:
 	go install github.com/go-delve/delve/cmd/dlv@latest
 	go install github.com/evilmartians/lefthook@latest
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	goenv rehash
+	@if command -v goenv >/dev/null 2>&1; then \
+		echo "goenv is installed. Running 'goenv rehash'..."; \
+		goenv rehash; \
+	else \
+		echo "goenv is not installed. Skipping 'goenv rehash'."; \
+	fi
 	@grep -Fxq 'export PATH="$$HOME/go/bin:$$PATH"' $$HOME/.zprofile || \
 		echo 'export PATH="$$HOME/go/bin:$$PATH"' >> $$HOME/.zprofile
 	@echo "Go tools installed successfully."

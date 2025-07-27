@@ -11,7 +11,6 @@ RUN apk add --no-cache \
   curl \
   git \
   upx \
-  build-base \
   libc6-compat \
   gcompat \
   tzdata \
