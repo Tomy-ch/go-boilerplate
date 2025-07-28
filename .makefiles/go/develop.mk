@@ -1,6 +1,6 @@
 ## 開発環境系(生成系は別ファイルに分離)
-.PHONY: server ## 開発環境の起動
-.PHONY: server-build ## ビルド実行後に、開発環境を起動する
+.PHONY: serve ## 開発環境の起動
+.PHONY: serve-build ## ビルド実行後に、開発環境を起動する
 .PHONY: tools ## 開発ツールの起動
 .PHONY: tools-build ## ビルド実行後に、開発ツールを起動する
 .PHONY: install ## goツールのインストール
@@ -13,13 +13,13 @@
 
 TGT_PKGS := $(shell go list ./... | grep -v '/gen')
 
-server:
+serve:
 	@echo "🔄 開発環境を起動します。"
 	@make del-db-logs
 	@docker compose --profile development up -d
 	@echo "✅ 開発環境の起動が完了しました。"
 
-server-build:
+serve-build:
 	@echo "🧰 ビルド後、開発環境を起動します。"
 	@make del-db-logs
 	@docker compose --profile development up -d --build
