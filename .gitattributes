@@ -1,0 +1,9 @@
+# 改行コード制御
+* text=lf
+*.bat    text eol=crlf
+
+#  linguist制御
+docs/** linguist-documentation=true
+
+# export-ignore
+tmp/main

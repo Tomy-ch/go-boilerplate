@@ -1,62 +1,153 @@
 services:
-  api-server:
-    container_name: go-api-server
+# -------------------------------------
+# 開発環境のサービス
+# -------------------------------------
+  api_server:
+    container_name: go_api_server
     build:
       context: .
       dockerfile: docker/server/Dockerfile
       target: local
-    tty: true
-    volumes:
-      - .:/app
-    working_dir: /app
     ports:
       - "8080:8080"   # APIポート
       - "2345:2345"   # デバッグ(dlv)ポート
+    volumes:
+      - .:/app
+    tty: true
+    stdin_open: true
+    working_dir: /app
+    depends_on:
+      - database
     profiles:
       - development
-  go-generator: # Goコード生成ツール
-    container_name: go-code-generator
+
+  database: # PostgreSQLデータベース
+    container_name: postgres_db
+    image: postgres:17.5
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/database/sql:/docker-entrypoint-initdb.d:ro
+      - ./docker/database/logs:/var/log/postgresql
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres-password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      TZ: Asia/Tokyo
+      PGTZ: Asia/Tokyo
+    user: postgres
+    hostname: postgres-db
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c logging_collector=on
+      -c log_statement=all
+      -c log_destination=stderr
+      -c log_directory=/var/log/postgresql
+      -c log_filename=postgresql.log
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_truncate_on_rotation=on
+      -c log_rotation_age=1d
+    profiles:
+      - development
+      - generate
+      - tools
+
+# -------------------------------------
+# 補助サービス
+# -------------------------------------
+
+  docs_viewer: # 開発用ドキュメントビューア
+    build:
+      context: .
+      dockerfile: docker/document/Dockerfile
+      target: document_viewer
+    container_name: docs_viewer
+    ports:
+      - "8082:80"
+    profiles:
+      - development
+      - tools
+
+  pg_web: # PostgreSQLデータベースのWeb管理ツール
+    container_name: sql_editor
+    image: sosedoff/pgweb:latest
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres-password@postgres-db:5432/local?sslmode=disable
+    depends_on:
+      - database
+    profiles:
+      - tools
+
+# -------------------------------------
+# ツールコンテナ
+# -------------------------------------
+
+  go_code_generator: # Goコード生成ツール
+    container_name: go_code_generator
     build:
       context: .
       dockerfile: docker/tools/Dockerfile
-      target: go-tools
-    tty: true
+      target: go_tools
     volumes:
       - .:/app
     working_dir: /app
     command: ["go", "generate", "-x", "./..."]
     depends_on:
-      - swagger-bundler
+      - swagger_bundler
     profiles:
-      - development
+      - tools
       - generate
-  swagger-bundler: # OpenAPIスキーマのバンドルツール
-    container_name: swagger-oapi-bundler
+
+  swagger_bundler: # OpenAPIスキーマのバンドルツール
+    container_name: swagger_oapi_bundler
     build:
       context: .
       dockerfile: docker/tools/Dockerfile
-      target: node-tools
-    tty: true
+      target: node_tools
     volumes:
       - .:/app
     working_dir: /app
     command: ["swagger-cli","bundle", "openapi/openapi.yaml", "--type", "yaml", "-o", "openapi/openapi.gen.yaml"]
     profiles:
-      - development
+      - tools
       - generate
-  redoc-generator: # OpenAPIドキュメント生成ツール
-    container_name: redoc-docs-generator
+
+  redoc_docs_generator: # OpenAPIドキュメント生成ツール
+    container_name: redoc_docs_generator
     build:
       context: .
       dockerfile: docker/tools/Dockerfile
-      target: node-tools
-    tty: true
-    command: ["redocly", "build-docs", "openapi/openapi.yaml", "--output", "/app/openapi/docs/index.html"]
+      target: node_tools
+    command: ["redocly", "build-docs", "openapi/openapi.yaml", "--output", "/app/docs/openapi/index.html"]
     volumes:
       - .:/app
     working_dir: /app
     depends_on:
-      - swagger-bundler
+      - swagger_bundler
     profiles:
-      - development
+      - tools
       - generate
+
+  schemaspy: # ER図生成ツール
+    image: schemaspy/schemaspy:latest
+    container_name: er_diagram_generator
+    ports:
+      - "5433:3000"
+    volumes:
+      - ./docker/database/schemaspy/schemaspy.properties:/schemaspy.properties
+      - ./docs/er-diagram:/output
+    depends_on:
+      - database
+    profiles:
+      - tools
+      - generate
+
+volumes:
+  pg_data:
+    external: false

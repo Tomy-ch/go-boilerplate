@@ -1,7 +1,7 @@
 # ------------------------------
 # OpenAPI
 # ------------------------------
-FROM node:24.4-alpine AS node-tools
+FROM node:24.4-alpine AS node_tools
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY openapi/ openapi/
 # ------------------------------
 # Goでのコード生成
 # ------------------------------
-FROM golang:1.24.4-alpine AS go-tools
+FROM golang:1.24.4-alpine AS go_tools
 
 WORKDIR /app
 

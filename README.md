@@ -86,6 +86,20 @@ brew install --cask postman
   - air（ホットリロード）
   - Docker / docker-compose
 
+## 開発ドキュメント
+
+```bash
+make tools
+```
+
+<http://localhost:8082/index.html> にアクセスすると、開発ドキュメントが表示されます。
+
+現在の開発ドキュメントは以下の内容を含みます。
+
+- OpenAPI ドキュメント
+- コードカバレッジ
+- ER図
+
 ## ディレクトリ構成
 
 <details>
