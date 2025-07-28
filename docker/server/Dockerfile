@@ -1,7 +1,7 @@
 # ------------------------------
 # 開発環境
 # ------------------------------
-FROM golang:1.24.4-alpine as local
+FROM golang:1.24.4-alpine AS local
 
 # ビルドなどに必要なパッケージをインストール
 RUN apk add --no-cache \

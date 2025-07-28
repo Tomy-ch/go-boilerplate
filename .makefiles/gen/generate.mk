@@ -1,6 +1,7 @@
 ## 自動生成系
 
-.PHONY: gen ## go generateの実行
+.PHONY: gen ## 各種ドキュメントやコードの生成します
+.PHONY: gen-build ## ビルド実行後に、各種生成を実行する
 .PHONY: gen-ctxkey ## Contextに値を格納するためのコードを生成する(nameとtypeを指定が必要)
 
 gen-ctxkey:
@@ -12,6 +13,12 @@ gen-ctxkey:
 	bash scripts/gen_ctxkey.sh $(name) $(type)
 
 gen:
-	@echo "🔄 Generating Go code..."
+	@echo "🔄 各種ドキュメントやコードの生成します..."
+	@docker compose --profile generate up -d
+	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
+
+gen-build:
+	@echo "🧰 ビルド後、各種生成を開始します。"
 	@docker compose --profile generate up -d --build
-	@echo "✅ Go code generation completed."
+	@echo "✅ 生成が完了しました。"
+
