@@ -6,3 +6,6 @@ vendor/
 
 # ビルド済みのバイナリファイル
 tmp/
+
+# DBのログ
+docker/database/logs/

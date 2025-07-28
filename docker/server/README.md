@@ -59,7 +59,7 @@ CMD ["air", "-c", ".air.toml"]
 - 実行例：
 
 ```sh
-make start      # air 経由でアプリ起動
+make serve      # air 経由でアプリ起動
 make lint       # golangci-lint 実行
 make test       # go test 実行
 ```
