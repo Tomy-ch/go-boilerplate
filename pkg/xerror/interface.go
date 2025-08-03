@@ -11,4 +11,6 @@ type XErrors interface {
 	Wrap(err error, msg string) error
 	// Is は、エラーが特定のターゲットエラーと一致するかどうかを判定します。
 	Is(err, target error) bool
+	// As は、エラーが特定のターゲット型に変換可能かどうかを判定します。
+	As(err error, target any) bool
 }

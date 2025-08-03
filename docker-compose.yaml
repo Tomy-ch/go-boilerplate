@@ -88,6 +88,8 @@ services:
 
   er_diagram_generator: # ER図生成ツール
     image: schemaspy/schemaspy:latest
+    ports:
+      - "5433:3000"
     volumes:
       - ./docker/database/schemaspy/schemaspy.properties:/schemaspy.properties
       - ./docs/er-diagram:/output
@@ -117,6 +119,20 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: node_tools
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ""
+    profiles:
+      - generate
+
+  python_tool_runner: # Pythonベースのツールボックス
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+      target: python_tools
     tty: true
     stdin_open: true
     volumes:

@@ -29,6 +29,14 @@ func New() (*Config, error) {
 			port:           cfg.Server.Port,
 			allowedOrigins: cfg.Server.AllowedOrigins,
 		},
+		database: database{
+			host:     cfg.Database.Host,
+			port:     cfg.Database.Port,
+			user:     cfg.Database.User,
+			password: cfg.Database.Password,
+			name:     cfg.Database.Name,
+			sslMode:  cfg.Database.SSLMode,
+		},
 	}, nil
 }
 

@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,14 +21,14 @@ func ChdirToProjectRoot(m *testing.M) {
 
 	dir, err := os.Getwd()
 	if err != nil {
-		panic("failed to get current working directory: " + err.Error())
+		panic(fmt.Sprintf("failed to get current working directory: %v", err))
 	}
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			if err = os.Chdir(dir); err != nil {
-				panic(
-					"failed to change directory to project root: " + err.Error(),
-				)
+				panic(fmt.Sprintf(
+					"failed to change directory to project root: %v", err,
+				))
 			}
 			return
 		}
