@@ -11,7 +11,7 @@ tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力�
   # バイナリのビルドコマンド（Delve用ビルド）
   # --mod=vendor: vendorディレクトリを優先
   # -gcflags "all=-N -l": 最適化無効でデバッグしやすくする
-  cmd = "go build --mod=vendor -gcflags \"all=-N -l\" -o tmp/main internal/main.go"
+  cmd = "go build --mod=vendor -gcflags='all=-N -l' -o tmp/main cmd/main.go"
 
   # ビルド成果物の相対パス（airがここを監視して実行）
   bin = "./tmp/main"
@@ -20,7 +20,7 @@ tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力�
   full_bin = "dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec --continue tmp/main"
 
   # バイナリに引数を渡したい場合に使う
-  args_bin = []
+  args_bin = ["serve"]
 
   # 監視対象とするファイルの拡張子
   include_ext = ["go"]

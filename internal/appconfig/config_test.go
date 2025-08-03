@@ -1,6 +1,7 @@
 package appconfig
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -9,11 +10,20 @@ import (
 )
 
 func TestNewConfig(t *testing.T) {
+	// environment
 	expectedEnv := "test"
 	expectedAppMode := "development"
+	// server
 	expectedHost := "localhost"
 	expectedPort := 8080
 	expectedAllowedOrigins := "http://localhost,https://example.com"
+	// database
+	expectedDBHost := "postgres-db"
+	expectedDBPort := 5432
+	expectedDBUser := "postgres"
+	expectedDBPassword := "postgres-password"
+	expectedDBName := "test"
+	expectedDBSSLMode := "disable"
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) {
@@ -22,6 +32,12 @@ func TestNewConfig(t *testing.T) {
 			t.Setenv("HOST", expectedHost)
 			t.Setenv("PORT", strconv.Itoa(expectedPort))
 			t.Setenv("ALLOWED_ORIGINS", expectedAllowedOrigins)
+			t.Setenv("DB_HOST", expectedDBHost)
+			t.Setenv("DB_PORT", strconv.Itoa(expectedDBPort))
+			t.Setenv("DB_USER", expectedDBUser)
+			t.Setenv("DB_PASSWORD", expectedDBPassword)
+			t.Setenv("DB_NAME", expectedDBName)
+			t.Setenv("DB_SSLMODE", expectedDBSSLMode)
 
 			expected := &Config{
 				environment: environment{
@@ -32,6 +48,14 @@ func TestNewConfig(t *testing.T) {
 					host:           expectedHost,
 					port:           expectedPort,
 					allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
+				},
+				database: database{
+					host:     expectedDBHost,
+					port:     expectedDBPort,
+					user:     expectedDBUser,
+					password: expectedDBPassword,
+					name:     expectedDBName,
+					sslMode:  expectedDBSSLMode,
 				},
 			}
 
@@ -57,6 +81,12 @@ func TestNewConfig(t *testing.T) {
 			t.Setenv("HOST", expectedHost)
 			t.Setenv("PORT", strconv.Itoa(expectedPort))
 			t.Setenv("ALLOWED_ORIGINS", expectedAllowedOrigins)
+			t.Setenv("DB_HOST", expectedDBHost)
+			t.Setenv("DB_PORT", strconv.Itoa(expectedDBPort))
+			t.Setenv("DB_USER", expectedDBUser)
+			t.Setenv("DB_PASSWORD", expectedDBPassword)
+			t.Setenv("DB_NAME", expectedDBName)
+			t.Setenv("DB_SSLMODE", expectedDBSSLMode)
 
 			actual, err := New()
 			require.Nil(t, actual)
@@ -68,11 +98,20 @@ func TestNewConfig(t *testing.T) {
 func TestGetterMethods(t *testing.T) {
 	t.Parallel()
 
+	// environment
 	expectedEnv := "test"
 	expectedAppMode := "development"
+	// server
 	expectedHost := "localhost"
 	expectedPort := 8080
 	expectedAllowedOrigins := "http://localhost,https://example.com"
+	// database
+	expectedDBHost := "postgres-db"
+	expectedDBPort := 5432
+	expectedDBUser := "postgres"
+	expectedDBPassword := "postgres-password"
+	expectedDBName := "test"
+	expectedDBSSLMode := "disable"
 
 	cfg := &Config{
 		environment: environment{
@@ -83,6 +122,14 @@ func TestGetterMethods(t *testing.T) {
 			host:           expectedHost,
 			port:           expectedPort,
 			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
+		},
+		database: database{
+			host:     expectedDBHost,
+			port:     expectedDBPort,
+			user:     expectedDBUser,
+			password: expectedDBPassword,
+			name:     expectedDBName,
+			sslMode:  expectedDBSSLMode,
 		},
 	}
 
@@ -113,6 +160,50 @@ func TestGetterMethods(t *testing.T) {
 	t.Run("AppMode", func(t *testing.T) {
 		t.Parallel()
 		require.Equal(t, expectedAppMode, cfg.AppMode())
+	})
+
+	t.Run("DatabaseHost", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedDBHost, cfg.DatabaseHost())
+	})
+
+	t.Run("DatabasePort", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedDBPort, cfg.DatabasePort())
+	})
+
+	t.Run("DatabaseUser", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedDBUser, cfg.DatabaseUser())
+	})
+
+	t.Run("DatabasePassword", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedDBPassword, cfg.DatabasePassword())
+	})
+
+	t.Run("DatabaseName", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedDBName, cfg.DatabaseName())
+	})
+
+	t.Run("DatabaseSSLMode", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedDBSSLMode, cfg.DatabaseSSLMode())
+	})
+
+	t.Run("DatabaseURL", func(t *testing.T) {
+		t.Parallel()
+		expectedURL := fmt.Sprintf(
+			"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+			expectedDBUser,
+			expectedDBPassword,
+			expectedDBHost,
+			expectedDBPort,
+			expectedDBName,
+			expectedDBSSLMode,
+		)
+		require.Equal(t, expectedURL, cfg.DatabaseURL())
 	})
 }
 

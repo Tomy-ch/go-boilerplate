@@ -6,7 +6,7 @@ import (
 )
 
 // NewProductionLogger は、本番環境用のZapロガーを生成します。
-func NewProductionLogger() (*zap.Logger, error) {
+func NewProductionLogger() *zap.Logger {
 	cfg := zap.Config{
 		Level:            zap.NewAtomicLevelAt(zapcore.InfoLevel),
 		Development:      false,
@@ -26,11 +26,17 @@ func NewProductionLogger() (*zap.Logger, error) {
 		},
 	}
 
-	return cfg.Build(zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+	logger, err := cfg.Build(
+		zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel),
+	)
+	if err != nil {
+		panic("failed to create production logger instance: " + err.Error())
+	}
+	return logger
 }
 
 // NewDevelopmentLogger は、開発環境用のZapロガーを生成します。
-func NewDevelopmentLogger() (*zap.Logger, error) {
+func NewDevelopmentLogger() *zap.Logger {
 	cfg := zap.Config{
 		Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
 		Development:      true,
@@ -50,5 +56,11 @@ func NewDevelopmentLogger() (*zap.Logger, error) {
 		},
 	}
 
-	return cfg.Build(zap.AddCaller(), zap.AddStacktrace(zapcore.WarnLevel))
+	logger, err := cfg.Build(
+		zap.AddCaller(), zap.AddStacktrace(zapcore.WarnLevel),
+	)
+	if err != nil {
+		panic("failed to create development logger instance: " + err.Error())
+	}
+	return logger
 }

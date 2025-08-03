@@ -52,6 +52,7 @@
 
   // material-icon-themeの設定の一部を追加する
   "material-icon-theme.folders.associations": {
+    "appconfig": "config",
     "dispatcher": "routes",
     "ctxhelper": "context",
     "errutil": "error",
