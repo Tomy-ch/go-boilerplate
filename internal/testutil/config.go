@@ -2,6 +2,7 @@
 package testutil
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -19,7 +20,7 @@ func SetTestEnv(m *testing.M) {
 		panic("SetTestEnv requires *testing.M argument")
 	}
 	if err := os.Setenv("ENV", "test"); err != nil {
-		panic("failed to set ENV to 'test': " + err.Error())
+		panic(fmt.Sprintf("failed to set ENV to 'test': %v", err))
 	}
 }
 
@@ -33,12 +34,12 @@ func RunWithTestSetup(m *testing.M) int {
 	ChdirToProjectRoot(m)
 	err := env.Load()
 	if err != nil {
-		panic("failed to load environment variables: " + err.Error())
+		panic(fmt.Sprintf("failed to load environment variables: %v", err))
 	}
 
 	Cfg, err = appconfig.New()
 	if err != nil {
-		panic("failed to create test config: " + err.Error())
+		panic(fmt.Sprintf("failed to create test config: %v", err))
 	}
 
 	return m.Run()

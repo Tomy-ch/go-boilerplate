@@ -171,6 +171,14 @@ linters:
         linters:
           - lll
 
+run:
+  timeout: "30s"
+  tests: true
+  allow-parallel-runners: true
+  allow-serial-runners: true
+  relative-path-mode: wd
+  concurrency: 4
+
 formatters:
   enable:
     - goimports
@@ -200,3 +208,4 @@ formatters:
       - ".*\\.gen\\.go$"
       - ".*\\.mock\\.go$"
       - ".*mock_.*\\.go$"
+      - "vendor/.*"

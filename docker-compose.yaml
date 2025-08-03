@@ -53,7 +53,7 @@ services:
       -c log_rotation_age=1d
     profiles:
       - development
-      - generate
+      - database
       - tools
 
 # -------------------------------------
@@ -68,6 +68,8 @@ services:
     container_name: docs_viewer
     ports:
       - "8082:80"
+    volumes:
+      - ./docs/:/usr/share/nginx/html:ro
     profiles:
       - development
       - tools
@@ -84,68 +86,60 @@ services:
     profiles:
       - tools
 
-# -------------------------------------
-# ツールコンテナ
-# -------------------------------------
-
-  go_code_generator: # Goコード生成ツール
-    container_name: go_code_generator
-    build:
-      context: .
-      dockerfile: docker/tools/Dockerfile
-      target: go_tools
-    volumes:
-      - .:/app
-    working_dir: /app
-    command: ["go", "generate", "-x", "./..."]
-    depends_on:
-      - swagger_bundler
-    profiles:
-      - tools
-      - generate
-
-  swagger_bundler: # OpenAPIスキーマのバンドルツール
-    container_name: swagger_oapi_bundler
-    build:
-      context: .
-      dockerfile: docker/tools/Dockerfile
-      target: node_tools
-    volumes:
-      - .:/app
-    working_dir: /app
-    command: ["swagger-cli","bundle", "openapi/openapi.yaml", "--type", "yaml", "-o", "openapi/openapi.gen.yaml"]
-    profiles:
-      - tools
-      - generate
-
-  redoc_docs_generator: # OpenAPIドキュメント生成ツール
-    container_name: redoc_docs_generator
-    build:
-      context: .
-      dockerfile: docker/tools/Dockerfile
-      target: node_tools
-    command: ["redocly", "build-docs", "openapi/openapi.yaml", "--output", "/app/docs/openapi/index.html"]
-    volumes:
-      - .:/app
-    working_dir: /app
-    depends_on:
-      - swagger_bundler
-    profiles:
-      - tools
-      - generate
-
-  schemaspy: # ER図生成ツール
+  er_diagram_generator: # ER図生成ツール
     image: schemaspy/schemaspy:latest
-    container_name: er_diagram_generator
     ports:
       - "5433:3000"
     volumes:
       - ./docker/database/schemaspy/schemaspy.properties:/schemaspy.properties
       - ./docs/er-diagram:/output
-    depends_on:
-      - database
     profiles:
-      - tools
+      - generate
+
+# -------------------------------------
+# ツールランナー
+# -------------------------------------
+
+  go_tool_runner: # Goベースツールボックス
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+      target: go_tools
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ""
+    profiles:
+      - generate
+
+  node_tool_runner: # Node.jsベースのツールボックス
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+      target: node_tools
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ""
+    profiles:
+      - generate
+
+  python_tool_runner: # Pythonベースのツールボックス
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+      target: python_tools
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ""
+    profiles:
       - generate
 
 volumes:

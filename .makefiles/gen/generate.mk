@@ -1,7 +1,9 @@
 ## 自動生成系
 
-.PHONY: gen ## 各種ドキュメントやコードの生成します
-.PHONY: gen-build ## ビルド実行後に、各種生成を実行する
+.PHONY: gen ## 各種ドキュメントやコードを生成します
+.PHONY: gen-swagger ## OpenAPIをバインドルして生成します
+.PHONY: gen-golang-code ## Goコードを生成します
+.PHONY: gen-redoc ## RedocでOpenAPIドキュメントを生成します
 .PHONY: gen-ctxkey ## Contextに値を格納するためのコードを生成する(nameとtypeを指定が必要)
 
 gen-ctxkey:
@@ -14,11 +16,16 @@ gen-ctxkey:
 
 gen:
 	@echo "🔄 各種ドキュメントやコードの生成します..."
-	@docker compose --profile generate up -d
+	@make gen-swagger
+	@make gen-redoc
+	@make gen-golang-code
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
-gen-build:
-	@echo "🧰 ビルド後、各種生成を開始します。"
-	@docker compose --profile generate up -d --build
-	@echo "✅ 生成が完了しました。"
+gen-golang-code:
+	docker compose run --rm go_tool_runner go generate ./...
 
+gen-swagger:
+	docker compose run --rm node_tool_runner swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
+
+gen-redoc:
+	docker compose run --rm node_tool_runner redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html
