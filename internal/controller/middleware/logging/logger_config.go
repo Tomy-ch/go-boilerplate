@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -30,7 +32,9 @@ func NewProductionLogger() *zap.Logger {
 		zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel),
 	)
 	if err != nil {
-		panic("failed to create production logger instance: " + err.Error())
+		panic(fmt.Sprintf(
+			"failed to create production logger instance: %v", err,
+		))
 	}
 	return logger
 }
@@ -60,7 +64,9 @@ func NewDevelopmentLogger() *zap.Logger {
 		zap.AddCaller(), zap.AddStacktrace(zapcore.WarnLevel),
 	)
 	if err != nil {
-		panic("failed to create development logger instance: " + err.Error())
+		panic(fmt.Sprintf(
+			"failed to create development logger instance: %v", err,
+		))
 	}
 	return logger
 }

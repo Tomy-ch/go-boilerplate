@@ -28,7 +28,7 @@ func NewMigrateDownCommand() *cobra.Command {
 	}
 }
 
-// migrateDownRun は、マイグレーションをダウングレードための実行関数です。
+// migrateDownRun は、マイグレーションをダウングレードするための実行関数です。
 func migrateDownRun(_ *cobra.Command, args []string) error {
 	logger := logging.NewProductionLogger()
 
@@ -46,7 +46,7 @@ func migrateDownRun(_ *cobra.Command, args []string) error {
 		}
 	} else {
 		// 引数がある場合は指定されたバージョンまでダウングレード
-		logger.Info("running migrate down steps", zap.Strings("args", args))
+		logger.Info("running migrate down steps", zap.String("steps", args[0]))
 		if err := executeMigrateStepsDownFromArgs(m, args); err != nil {
 			logger.Error("down migration steps failed", zap.Error(err))
 		}

@@ -45,7 +45,7 @@ func migrateUpRun(_ *cobra.Command, args []string) error {
 		}
 	} else {
 		// 引数がある場合は指定されたバージョンまでアップグレード
-		logger.Info("running migration up to version", zap.Strings("target_version", args))
+		logger.Info("running migration up to version", zap.String("steps", args[0]))
 		if err := executeMigrateStepsUpFromArgs(m, args); err != nil {
 			logger.Panic("migration to version failed", zap.Error(err))
 		}

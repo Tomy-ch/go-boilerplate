@@ -6,7 +6,7 @@ import (
 	"math"
 )
 
-// UintToInt は、uint32をintに変換します。
+// UintToInt は、uintをintに安全に変換します。
 // オーバーフローが発生する場合はエラーを返します。
 func UintToInt(x uint) (int, error) {
 	const maxInt = math.MaxInt
