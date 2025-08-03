@@ -2,7 +2,6 @@
 .PHONY: serve ## 開発環境の起動
 .PHONY: serve-build ## ビルド実行後に、開発環境を起動する
 .PHONY: tools ## 開発ツールの起動
-.PHONY: tools-build ## ビルド実行後に、開発ツールを起動する
 .PHONY: install ## goツールのインストール
 .PHONY: tidy-lib ## ローカルライブラリの依存関係更新
 .PHONY: fix ## コードの自動修正
@@ -11,7 +10,7 @@
 .PHONY: test-repo ## テストの実行とテストレポートの生成
 .PHONY: del-db-logs ## DBのログを削除
 
-TGT_PKGS := $(shell go list ./... | grep -v '/gen')
+TGT_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd)')
 
 serve:
 	@echo "🔄 開発環境を起動します。"
@@ -27,11 +26,6 @@ serve-build:
 
 tools:
 	@echo "🔄 開発ツールを起動します。"
-	@docker compose --profile tools up -d
-	@echo "✅ 開発ツールの起動が完了しました。"
-
-tools-build:
-	@echo "🧰 ビルド後、開発ツールを起動します。"
 	@docker compose --profile tools up -d --build
 	@echo "✅ 開発ツールの起動が完了しました。"
 
