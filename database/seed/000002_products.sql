@@ -36,7 +36,7 @@ INSERT INTO products (id, name, description, price, quantity, stock_warning_thre
 INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at, created_at, updated_at)
     VALUES ('8e897115-312b-4f20-811e-96979682c7dc', '小説', '人気の小説です。', 1500, 10, 0,  '14b21a78-e6f5-48d9-8222-c4db690a6e52', 'b39be992-fe5a-4b4c-9f98-e695f0f5101e', NOW() - INTERVAL '1 year', NOW() - INTERVAL '1 year', NOW() - INTERVAL '6 days') ON CONFLICT (id) DO NOTHING;
 INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, created_at, updated_at)
-    VALUES ('5e0f1b0f-df38-4913-abbf-b9205268da0f', 'イラスト集です。', '美しいイラストが満載の一冊です。', 2500, 5, 1, 'bdf44f06-227c-4549-b2c8-e57b32f06321', 'b39be992-fe5a-4b4c-9f98-e695f0f5101e', NOW() - INTERVAL '3 days', NOW() - INTERVAL '1 days') ON CONFLICT (id) DO NOTHING;
+    VALUES ('5e0f1b0f-df38-4913-abbf-b9205268da0f', 'イラスト集', '美しいイラストが満載の一冊です。', 2500, 5, 1, 'bdf44f06-227c-4549-b2c8-e57b32f06321', 'b39be992-fe5a-4b4c-9f98-e695f0f5101e', NOW() - INTERVAL '3 days', NOW() - INTERVAL '1 days') ON CONFLICT (id) DO NOTHING;
 INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at, created_at, updated_at)
     VALUES ('33c586a3-d975-44c1-9686-1b9d357ebda1', 'ポエム集', '感動的な詩が詰まった一冊です。', 2000, 0, 2, '96b9a6f1-d2b3-477a-90f4-cc8d00871429', 'b39be992-fe5a-4b4c-9f98-e695f0f5101e', NOW() - INTERVAL '2 months', NOW() - INTERVAL '3 months', NOW() - INTERVAL '1 days') ON CONFLICT (id) DO NOTHING;
 INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at, created_at, updated_at)
