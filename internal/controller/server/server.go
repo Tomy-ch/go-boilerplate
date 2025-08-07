@@ -10,11 +10,12 @@ import (
 func New(
 	cfg *appconfig.Config,
 	validator echo.Validator,
+	binder echo.Binder,
 ) *echo.Echo {
 	e := echo.New()
 
 	setPrimitiveEchoSettings(e, cfg)
-	setCustomEchoBindings(e, validator)
+	setCustomEchoBindings(e, validator, binder)
 
 	return e
 }
@@ -39,6 +40,8 @@ func setPrimitiveEchoSettings(
 func setCustomEchoBindings(
 	e *echo.Echo,
 	validator echo.Validator,
+	binder echo.Binder,
 ) {
 	e.Validator = validator
+	e.Binder = binder
 }

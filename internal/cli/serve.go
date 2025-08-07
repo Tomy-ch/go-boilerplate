@@ -33,8 +33,10 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	}
 
 	validator := server.NewValidator()
-	e := server.New(cfg, validator)
+	binder := server.NewBinder()
+	e := server.New(cfg, validator, binder)
 	middleware.UseMiddlewares(e, cfg, logger)
+
 	health.BindHandler(e)
 	healthz.BindHandler(e)
 
