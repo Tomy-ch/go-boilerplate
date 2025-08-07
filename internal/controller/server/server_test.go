@@ -21,12 +21,14 @@ func TestNew(t *testing.T) {
 	cfg := &appconfig.Config{}
 	validator := NewValidator()
 	binder := NewBinder()
+	ipextractor := NewIPExtractor(cfg)
 
-	e := New(cfg, validator, binder)
+	e := New(cfg, validator, binder, ipextractor)
 
 	require.NotNil(t, e)
 	require.Equal(t, validator, e.Validator)
 	require.Equal(t, binder, e.Binder)
+	require.NotNil(t, e.IPExtractor)
 }
 
 func TestSetPrimitiveEchoSettings(t *testing.T) {
@@ -69,9 +71,11 @@ func TestSetCustomEchoBindings(t *testing.T) {
 	e := echo.New()
 	validator := NewValidator()
 	binder := NewBinder()
+	ipextractor := NewIPExtractor(&appconfig.Config{})
 
-	setCustomEchoBindings(e, validator, binder)
+	setCustomEchoBindings(e, validator, binder, ipextractor)
 
 	require.Equal(t, validator, e.Validator)
 	require.Equal(t, binder, e.Binder)
+	require.NotNil(t, e.IPExtractor)
 }

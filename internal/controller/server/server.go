@@ -11,11 +11,12 @@ func New(
 	cfg *appconfig.Config,
 	validator echo.Validator,
 	binder echo.Binder,
+	ipextractor echo.IPExtractor,
 ) *echo.Echo {
 	e := echo.New()
 
 	setPrimitiveEchoSettings(e, cfg)
-	setCustomEchoBindings(e, validator, binder)
+	setCustomEchoBindings(e, validator, binder, ipextractor)
 
 	return e
 }
@@ -41,7 +42,9 @@ func setCustomEchoBindings(
 	e *echo.Echo,
 	validator echo.Validator,
 	binder echo.Binder,
+	ipextractor echo.IPExtractor,
 ) {
 	e.Validator = validator
 	e.Binder = binder
+	e.IPExtractor = ipextractor
 }

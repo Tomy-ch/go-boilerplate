@@ -1,17 +1,20 @@
 package appconfig
 
-import "fmt"
+import (
+	"fmt"
+	"net"
+)
 
 type Config struct {
 	server      server
 	environment environment
 	database    database
+	security    security
 }
 
 type server struct {
-	host           string
-	port           int
-	allowedOrigins []string
+	host string
+	port int
 }
 
 type environment struct {
@@ -28,14 +31,16 @@ type database struct {
 	sslMode  string
 }
 
+type security struct {
+	allowedOrigins []string
+	cidr           *net.IPNet
+}
+
 // ServerHost は、サーバーがリッスンするホスト名を返します。
 func (c *Config) ServerHost() string { return c.server.host }
 
 // ServerPort は、サーバーがリッスンするポート番号を返します。
 func (c *Config) ServerPort() int { return c.server.port }
-
-// AllowedOrigins は、CORSを許可するオリジンのリストを返します。
-func (c *Config) AllowedOrigins() []string { return c.server.allowedOrigins }
 
 // ServerEnv は、サーバーの環境を返します。
 //
@@ -76,4 +81,14 @@ func (c *Config) DatabaseURL() string {
 		c.DatabaseName(),
 		c.DatabaseSSLMode(),
 	)
+}
+
+// AllowedOrigins は、CORSを許可するオリジンのリストを返します。
+func (c *Config) AllowedOrigins() []string {
+	return c.security.allowedOrigins
+}
+
+// CIDR は、セキュリティ設定で使用されるCIDRを返します。
+func (c *Config) CIDR() *net.IPNet {
+	return c.security.cidr
 }
