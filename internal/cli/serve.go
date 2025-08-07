@@ -4,6 +4,7 @@ import (
 	"boilerplate-go/internal/bootstrap"
 	"boilerplate-go/internal/controller/handler/health"
 	"boilerplate-go/internal/controller/handler/healthz"
+	"boilerplate-go/internal/controller/middleware"
 	"boilerplate-go/internal/controller/middleware/logging"
 	"boilerplate-go/internal/controller/server"
 
@@ -31,7 +32,8 @@ func serveRun(_ *cobra.Command, _ []string) error {
 		logger.Fatal("failed to load config", zap.Error(err))
 	}
 
-	e := server.New(cfg, logger)
+	e := server.New()
+	middleware.UseMiddlewares(e, cfg, logger)
 	health.BindHandler(e)
 	healthz.BindHandler(e)
 
