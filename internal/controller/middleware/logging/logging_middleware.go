@@ -78,7 +78,7 @@ func logRequest(c echo.Context, logger *zap.Logger, fields []zap.Field) {
 
 // logErrorInDev は、開発環境でのみのログを出力します。
 func logErrorInDev(logger *zap.Logger, cfg *appconfig.Config, err error) {
-	if cfg.IsAppEnvDevelopment() && err != nil {
+	if cfg.IsAppDevelopmentMode() && err != nil {
 		logger.Error(err.Error())
 	}
 }

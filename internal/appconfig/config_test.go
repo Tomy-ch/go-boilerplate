@@ -249,37 +249,37 @@ func Test_validateConfig(t *testing.T) {
 	})
 }
 
-func TestIsAppEnvProduction(t *testing.T) {
+func TestIsAppProductionMode(t *testing.T) {
 	t.Parallel()
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.environment.appMode = ProductionMode
-		require.True(t, cfg.IsAppEnvProduction())
+		require.True(t, cfg.IsAppProductionMode())
 	})
 
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.environment.appMode = DevelopmentMode
-		require.False(t, cfg.IsAppEnvProduction())
+		require.False(t, cfg.IsAppProductionMode())
 	})
 }
 
-func TestIsAppEnvDevelopment(t *testing.T) {
+func TestIsAppDevelopmentMode(t *testing.T) {
 	t.Parallel()
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.environment.appMode = DevelopmentMode
-		require.True(t, cfg.IsAppEnvDevelopment())
+		require.True(t, cfg.IsAppDevelopmentMode())
 	})
 
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.environment.appMode = ProductionMode
-		require.False(t, cfg.IsAppEnvDevelopment())
+		require.False(t, cfg.IsAppDevelopmentMode())
 	})
 }
 
