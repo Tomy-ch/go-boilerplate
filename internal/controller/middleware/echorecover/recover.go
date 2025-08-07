@@ -14,14 +14,15 @@ import (
 func Middleware(logger *zap.Logger, cfg *appconfig.Config) echo.MiddlewareFunc {
 	var conf middleware.RecoverConfig
 	switch {
-	case cfg.IsAppEnvDevelopment():
+	case cfg.IsAppDevelopmentMode():
 		conf = developmentConfig()
-	case cfg.IsAppEnvProduction():
+	case cfg.IsAppProductionMode():
 		conf = productionConfig()
 	default:
 		conf = productionConfig()
 		logger.Warn(
 			"Unknown environment, using production config for recover middleware",
+			zap.String("env", cfg.AppMode()),
 		)
 	}
 

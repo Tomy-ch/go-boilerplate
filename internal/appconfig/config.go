@@ -65,10 +65,10 @@ func validateConfig(cfg ConfigLoader) error {
 	return nil
 }
 
-func (c *Config) IsAppEnvProduction() bool {
+func (c *Config) IsAppProductionMode() bool {
 	return c.environment.appMode == ProductionMode
 }
 
-func (c *Config) IsAppEnvDevelopment() bool {
+func (c *Config) IsAppDevelopmentMode() bool {
 	return c.environment.appMode == DevelopmentMode
 }

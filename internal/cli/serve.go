@@ -33,9 +33,9 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	}
 
 	e := server.New()
+	middleware.UseMiddlewares(e, cfg, logger)
 	health.BindHandler(e)
 	healthz.BindHandler(e)
-	middleware.UseMiddlewares(e, cfg, logger)
 
 	if err := e.Start(":8080"); err != nil {
 		logger.Fatal("called main", zap.Error(err))
