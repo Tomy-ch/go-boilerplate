@@ -8,6 +8,7 @@ import (
 )
 
 func TestNewBinder(t *testing.T) {
+	t.Parallel()
 	expectedType := &echo.DefaultBinder{}
 	actual := NewBinder()
 	require.NotNil(t, actual)
