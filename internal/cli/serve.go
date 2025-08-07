@@ -32,7 +32,8 @@ func serveRun(_ *cobra.Command, _ []string) error {
 		logger.Fatal("failed to load config", zap.Error(err))
 	}
 
-	e := server.New(cfg)
+	validator := server.NewValidator()
+	e := server.New(cfg, validator)
 	middleware.UseMiddlewares(e, cfg, logger)
 	health.BindHandler(e)
 	healthz.BindHandler(e)

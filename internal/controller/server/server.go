@@ -9,10 +9,12 @@ import (
 
 func New(
 	cfg *appconfig.Config,
+	validator echo.Validator,
 ) *echo.Echo {
 	e := echo.New()
 
 	setPrimitiveEchoSettings(e, cfg)
+	setCustomEchoBindings(e, validator)
 
 	return e
 }
@@ -31,4 +33,12 @@ func setPrimitiveEchoSettings(
 	e.HideBanner = isProduction
 	// ポート番号は本番環境では非表示にする
 	e.HidePort = isProduction
+}
+
+// setCustomEchoBindings は、Echoにカスタムバインディングを設定します。
+func setCustomEchoBindings(
+	e *echo.Echo,
+	validator echo.Validator,
+) {
+	e.Validator = validator
 }
