@@ -10,6 +10,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	productionStackSize  = 4 << 10
+	developmentStackSize = 10 << 10
+)
+
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。
 func Middleware(logger *zap.Logger, cfg *appconfig.Config) echo.MiddlewareFunc {
 	var conf middleware.RecoverConfig
@@ -45,7 +50,7 @@ func Middleware(logger *zap.Logger, cfg *appconfig.Config) echo.MiddlewareFunc {
 // developmentConfig は、開発環境用のリカバリミドルウェアの設定を返します。
 func developmentConfig() middleware.RecoverConfig {
 	return middleware.RecoverConfig{
-		StackSize:         10 << 10, // 10 KB
+		StackSize:         developmentStackSize,
 		DisableStackAll:   false,
 		DisablePrintStack: false,
 		LogLevel:          log.DEBUG,
@@ -55,7 +60,7 @@ func developmentConfig() middleware.RecoverConfig {
 // productionConfig は、本番環境用のリカバリミドルウェアの設定を返します。
 func productionConfig() middleware.RecoverConfig {
 	return middleware.RecoverConfig{
-		StackSize:         4 << 10, // 4 KB
+		StackSize:         productionStackSize,
 		DisableStackAll:   true,
 		DisablePrintStack: true,
 		LogLevel:          log.ERROR,

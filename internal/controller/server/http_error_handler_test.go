@@ -22,7 +22,11 @@ func Test_normalizeHTTPError(t *testing.T) {
 	t.Run("API定義書で定義されたエラー構造でステータスがエラー範囲である場合、指定されたエラーが返る", func(t *testing.T) {
 		t.Parallel()
 
-		expected := errorresponse.New(http.StatusBadRequest, expectedInternal, expectedDetails)
+		expected := errorresponse.New(
+			http.StatusBadRequest,
+			expectedInternal,
+			expectedDetails,
+		)
 		expected.RequestID = expectedRequestID
 
 		actual := normalizeHTTPError(expected, expectedRequestID)
@@ -30,54 +34,73 @@ func Test_normalizeHTTPError(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("API定義書で定義されたエラー構造でステータスがエラー範囲外の場合、内部サーバーエラーとして扱う", func(t *testing.T) {
-		t.Parallel()
+	t.Run(
+		"API定義書で定義されたエラー構造でステータスがエラー範囲外の場合、内部サーバーエラーとして扱う",
+		func(t *testing.T) {
+			t.Parallel()
 
-		expected := errorresponse.New(http.StatusInternalServerError, expectedInternal, expectedDetails)
-		expected.RequestID = expectedRequestID
+			expected := errorresponse.New(
+				http.StatusInternalServerError,
+				expectedInternal,
+				expectedDetails,
+			)
+			expected.RequestID = expectedRequestID
 
-		unknownError := *expected
-		unknownError.HTTPStatus = http.StatusContinue
-		actual := normalizeHTTPError(&unknownError, expectedRequestID)
+			unknownError := *expected
+			unknownError.HTTPStatus = http.StatusContinue
+			actual := normalizeHTTPError(&unknownError, expectedRequestID)
 
-		require.Equal(t, expected, actual)
-	})
+			require.Equal(t, expected, actual)
+		},
+	)
 
-	t.Run("EchoのHTTPError構造でステータスがエラー範囲である場合、指定されたエラーがAPI定義書で定義されたエラー構造で返る", func(t *testing.T) {
-		t.Parallel()
+	t.Run(
+		"EchoのHTTPError構造でステータスがエラー範囲である場合、指定されたエラーがAPI定義書で定義されたエラー構造で返る",
+		func(t *testing.T) {
+			t.Parallel()
 
-		echoError := &echo.HTTPError{
-			Code: http.StatusForbidden,
-		}
+			echoError := &echo.HTTPError{
+				Code: http.StatusForbidden,
+			}
 
-		expected := errorresponse.New(http.StatusForbidden, echoError)
-		expected.RequestID = expectedRequestID
+			expected := errorresponse.New(http.StatusForbidden, echoError)
+			expected.RequestID = expectedRequestID
 
-		actual := normalizeHTTPError(echoError, expectedRequestID)
+			actual := normalizeHTTPError(echoError, expectedRequestID)
 
-		require.Equal(t, expected, actual)
-	})
+			require.Equal(t, expected, actual)
+		},
+	)
 
-	t.Run("EchoのHTTPError構造でステータスがエラー範囲外の場合、内部サーバーエラーがAPI定義書で定義されたエラー構造で返る", func(t *testing.T) {
-		t.Parallel()
+	t.Run(
+		"EchoのHTTPError構造でステータスがエラー範囲外の場合、内部サーバーエラーがAPI定義書で定義されたエラー構造で返る",
+		func(t *testing.T) {
+			t.Parallel()
 
-		echoError := &echo.HTTPError{
-			Code: http.StatusContinue,
-		}
+			echoError := &echo.HTTPError{
+				Code: http.StatusContinue,
+			}
 
-		expected := errorresponse.New(http.StatusInternalServerError, echoError)
-		expected.RequestID = expectedRequestID
-		expected.Internal = echoError
+			expected := errorresponse.New(
+				http.StatusInternalServerError,
+				echoError,
+			)
+			expected.RequestID = expectedRequestID
+			expected.Internal = echoError
 
-		actual := normalizeHTTPError(echoError, expectedRequestID)
+			actual := normalizeHTTPError(echoError, expectedRequestID)
 
-		require.Equal(t, expected, actual)
-	})
+			require.Equal(t, expected, actual)
+		},
+	)
 
 	t.Run("その他のエラーの場合、内部サーバーエラーがAPI定義書で定義されたエラー構造で返る", func(t *testing.T) {
 		t.Parallel()
 
-		expected := errorresponse.New(http.StatusInternalServerError, expectedInternal)
+		expected := errorresponse.New(
+			http.StatusInternalServerError,
+			expectedInternal,
+		)
 		expected.RequestID = expectedRequestID
 
 		actual := normalizeHTTPError(expectedInternal, expectedRequestID)
@@ -107,7 +130,7 @@ func Test_getRequestID(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		id := getRequestID(c)
-		require.Equal(t, "", id)
+		require.Empty(t, id)
 	})
 }
 

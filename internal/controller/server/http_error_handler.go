@@ -24,7 +24,11 @@ func NewHTTPErrorHandler(logger *zap.Logger) echo.HTTPErrorHandler {
 		resp := normalizeHTTPError(err, getRequestID(c))
 		if !c.Response().Committed {
 			if err = c.JSON(resp.HTTPStatus, resp.ErrorResponse); err != nil {
-				logger.Error("failed to write error response", zap.Error(err), zap.String("request_id", resp.RequestID))
+				logger.Error(
+					"failed to write error response",
+					zap.Error(err),
+					zap.String("request_id", resp.RequestID),
+				)
 				c.Response().WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -35,11 +39,17 @@ func NewHTTPErrorHandler(logger *zap.Logger) echo.HTTPErrorHandler {
 
 // normalizeHTTPError は、HTTPエラーを正規化し、エラーレスポンスを生成します。
 // リクエストIDを付与し、エラーの詳細を含めます。
-func normalizeHTTPError(err error, requestID string) *errorresponse.HTTPErrorResponse {
+func normalizeHTTPError(
+	err error,
+	requestID string,
+) *errorresponse.HTTPErrorResponse {
 	var he *errorresponse.HTTPErrorResponse
 	if errors.As(err, &he) {
 		if !isErrorStatus(he.HTTPStatus) {
-			res := errorresponse.New(http.StatusInternalServerError, he.Internal)
+			res := errorresponse.New(
+				http.StatusInternalServerError,
+				he.Internal,
+			)
 			res.Details = he.Details
 			res.RequestID = requestID
 			return res
@@ -66,7 +76,11 @@ func normalizeHTTPError(err error, requestID string) *errorresponse.HTTPErrorRes
 }
 
 // logHTTPError は、HTTPエラーをログに記録します。
-func logHTTPError(logger *zap.Logger, c echo.Context, he *errorresponse.HTTPErrorResponse) {
+func logHTTPError(
+	logger *zap.Logger,
+	c echo.Context,
+	he *errorresponse.HTTPErrorResponse,
+) {
 	fields := []zap.Field{
 		zap.Int("status", he.HTTPStatus),
 		zap.String("method", c.Request().Method),
@@ -91,7 +105,15 @@ func logHTTPError(logger *zap.Logger, c echo.Context, he *errorresponse.HTTPErro
 }
 
 // getRequestID は、EchoのコンテキストからリクエストIDを取得します。
-func getRequestID(c echo.Context) string { return c.Request().Header.Get(echo.HeaderXRequestID) }
+func getRequestID(
+	c echo.Context,
+) string {
+	return c.Request().Header.Get(echo.HeaderXRequestID)
+}
 
 // isErrorStatus は、HTTPステータスコードがエラー範囲（400〜599）にあるかをチェックします。
-func isErrorStatus(s int) bool { return lowerBoundHTTPStatus <= s && s < upperBoundHTTPStatus }
+func isErrorStatus(
+	s int,
+) bool {
+	return lowerBoundHTTPStatus <= s && s < upperBoundHTTPStatus
+}
