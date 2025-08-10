@@ -56,9 +56,8 @@ func normalizeHTTPError(
 			res.RequestId = requestID
 			return res
 		}
-		cp := *he
-		cp.RequestId = requestID
-		return &cp
+		he.RequestId = requestID
+		return he
 	}
 
 	var ehe *echo.HTTPError
