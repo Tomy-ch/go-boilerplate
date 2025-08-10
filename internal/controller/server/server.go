@@ -12,11 +12,12 @@ func New(
 	validator echo.Validator,
 	binder echo.Binder,
 	ipextractor echo.IPExtractor,
+	httpErrorHandler echo.HTTPErrorHandler,
 ) *echo.Echo {
 	e := echo.New()
 
 	setPrimitiveEchoSettings(e, cfg)
-	setCustomEchoBindings(e, validator, binder, ipextractor)
+	setCustomEchoBindings(e, validator, binder, ipextractor, httpErrorHandler)
 
 	return e
 }
@@ -43,8 +44,10 @@ func setCustomEchoBindings(
 	validator echo.Validator,
 	binder echo.Binder,
 	ipextractor echo.IPExtractor,
+	httpErrorHandler echo.HTTPErrorHandler,
 ) {
 	e.Validator = validator
 	e.Binder = binder
 	e.IPExtractor = ipextractor
+	e.HTTPErrorHandler = httpErrorHandler
 }

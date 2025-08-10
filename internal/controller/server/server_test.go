@@ -19,16 +19,18 @@ func TestMain(m *testing.M) {
 func TestNew(t *testing.T) {
 	t.Parallel()
 	cfg := &appconfig.Config{}
+	httpErrorHandler := echo.New().HTTPErrorHandler
 	validator := NewValidator()
 	binder := NewBinder()
 	ipextractor := NewIPExtractor(cfg)
 
-	e := New(cfg, validator, binder, ipextractor)
+	e := New(cfg, validator, binder, ipextractor, httpErrorHandler)
 
 	require.NotNil(t, e)
 	require.Equal(t, validator, e.Validator)
 	require.Equal(t, binder, e.Binder)
 	require.NotNil(t, e.IPExtractor)
+	require.NotNil(t, e.HTTPErrorHandler)
 }
 
 func TestSetPrimitiveEchoSettings(t *testing.T) {
@@ -69,13 +71,15 @@ func TestSetPrimitiveEchoSettings(t *testing.T) {
 func TestSetCustomEchoBindings(t *testing.T) {
 	t.Parallel()
 	e := echo.New()
+	httpErrorHandler := echo.New().HTTPErrorHandler
 	validator := NewValidator()
 	binder := NewBinder()
 	ipextractor := NewIPExtractor(&appconfig.Config{})
 
-	setCustomEchoBindings(e, validator, binder, ipextractor)
+	setCustomEchoBindings(e, validator, binder, ipextractor, httpErrorHandler)
 
 	require.Equal(t, validator, e.Validator)
 	require.Equal(t, binder, e.Binder)
 	require.NotNil(t, e.IPExtractor)
+	require.NotNil(t, e.HTTPErrorHandler)
 }

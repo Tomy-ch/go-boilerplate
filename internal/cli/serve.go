@@ -35,8 +35,9 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	validator := server.NewValidator()
 	binder := server.NewBinder()
 	ipextractor := server.NewIPExtractor(cfg)
+	httpErrorHandler := server.NewHTTPErrorHandler(logger)
 
-	e := server.New(cfg, validator, binder, ipextractor)
+	e := server.New(cfg, validator, binder, ipextractor, httpErrorHandler)
 	middleware.UseMiddlewares(e, cfg, logger)
 
 	health.BindHandler(e)

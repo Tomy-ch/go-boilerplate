@@ -112,7 +112,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseV1User'
+                $ref: '#/components/schemas/UserResponse'
         '400':
           description: リクエストが不正です。必要な情報が不足している場合に返されます。
           content:
@@ -152,7 +152,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseV1User'
+                $ref: '#/components/schemas/UserResponse'
         '400':
           description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
           content:
@@ -203,7 +203,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseV1User'
+                $ref: '#/components/schemas/UserResponse'
         '400':
           description: リクエストが不正です。必要な情報が不足している場合に返されます。
           content:
@@ -254,7 +254,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseV1User'
+                $ref: '#/components/schemas/UserResponse'
         '400':
           description: リクエストが不正です。必要な情報が不足している場合に返されます。
           content:
@@ -384,37 +384,51 @@ components:
   schemas:
     ErrorResponse:
       type: object
-      x-tags:
-        - error
+      description: エラーレスポンスの共通スキーマ
       required:
         - code
         - message
-        - details
+        - requestID
       properties:
         code:
           type: string
+          description: 機械的に処理可能なエラーコード
           example: EXAMPLE_ERROR
         message:
           type: string
+          description: 人間が読めるエラーメッセージ
           example: 定義されたエラーメッセージ
+        requestID:
+          type: string
+          description: リクエストID
+          example: 123e4567-e89b-12d3-a456-426614174000
         details:
           type: array
+          description: エラーの詳細情報(任意)
           items:
             type: string
           example:
             - エラーの詳細の文章1
             - エラーの詳細の文章2
-    ResponseHealth:
+    UserBaseInputRequest:
       type: object
-      description: サーバーのヘルスチェック用のレスポンスです。
-      required:
-        - status
+      description: ユーザー情報の基本入力スキーマ
       properties:
-        status:
+        name:
           type: string
-          example: ok
-    ResponseV1User:
+          example: John Doe
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          example: john.doe@example.com
+        phone:
+          type: string
+          pattern: '^\\+?[0-9]{10,15}$'
+          example: 09012345678
+    UserResponse:
       type: object
+      description: ユーザー情報の基本レスポンススキーマ
       required:
         - name
         - email
@@ -430,6 +444,17 @@ components:
           type: string
           nullable: true
           example: 09012345678
+    ResponseHealth:
+      type: object
+      description: サーバーのヘルスチェック用のレスポンスです。
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          example: ok
+    ResponseV1User:
+      $ref: '#/components/schemas/UserResponse'
     ResponseV1Users:
       description: ユーザー情報のリストを返すレスポンスです。
       allOf:
@@ -440,7 +465,7 @@ components:
             users:
               type: array
               items:
-                $ref: '#/components/schemas/ResponseV1User'
+                $ref: '#/components/schemas/UserResponse'
         - type: object
           required:
             - total
@@ -462,21 +487,7 @@ components:
     RequestPostV1Users:
       description: ユーザー情報の新規作成
       allOf:
-        - type: object
-          description: ユーザー情報の基本入力スキーマ
-          properties:
-            name:
-              type: string
-              example: John Doe
-              maxLength: 50
-            email:
-              type: string
-              format: email
-              example: john.doe@example.com
-            phone:
-              type: string
-              pattern: '^\\+?[0-9]{10,15}$'
-              example: 09012345678
+        - $ref: '#/components/schemas/UserBaseInputRequest'
         - type: object
           properties:
             password:
@@ -501,4 +512,4 @@ components:
     RequestPatchV1User:
       description: ユーザー情報の部分更新
       allOf:
-        - $ref: '#/components/schemas/RequestPostV1Users/allOf/0'
+        - $ref: '#/components/schemas/UserBaseInputRequest'

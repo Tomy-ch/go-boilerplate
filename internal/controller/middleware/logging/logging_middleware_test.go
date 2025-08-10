@@ -9,11 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/appconfig"
 	"boilerplate-go/internal/controller/ctxhelper"
 	"boilerplate-go/internal/domain/expectederrors"
 	"boilerplate-go/internal/testutil"
-	"boilerplate-go/pkg/xerror"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
@@ -161,67 +159,6 @@ func Test_logRequest(t *testing.T) {
 			out := buf.String()
 			require.Contains(t, out, `"level":"`+tt.expectedLevel+`"`)
 			require.Contains(t, out, `"msg":"`+tt.expectedMessage+`"`)
-		})
-	}
-}
-
-func Test_logErrorInDev(t *testing.T) {
-	xerrs := xerror.CockroachDBError{}
-
-	cases := []struct {
-		name       string
-		appEnv     string
-		err        error
-		wantOutput bool
-	}{
-		{
-			name:       "開発環境かつエラーありである場合、ログ出力される",
-			appEnv:     appconfig.DevelopmentMode,
-			err:        xerrs.New("error"),
-			wantOutput: true,
-		},
-		{
-			name:       "開発環境だがエラーがnilである場合、ログ出力されない",
-			appEnv:     appconfig.DevelopmentMode,
-			err:        nil,
-			wantOutput: false,
-		},
-		{
-			name:       "本番環境かつエラーありである場合、ログ出力されない",
-			appEnv:     appconfig.ProductionMode,
-			err:        xerrs.New("error"),
-			wantOutput: false,
-		},
-		{
-			name:       "本番環境かつエラーなしである場合、ログ出力されない",
-			appEnv:     appconfig.ProductionMode,
-			err:        nil,
-			wantOutput: false,
-		},
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			const envKey = "APP_MODE"
-
-			t.Setenv(envKey, tt.appEnv)
-
-			var buf bytes.Buffer
-			logger := newTestLogger(&buf)
-
-			cfg, err := appconfig.New()
-			if err != nil {
-				require.NoError(t, err)
-			}
-
-			logErrorInDev(logger, cfg, tt.err)
-
-			out := buf.String()
-			if tt.wantOutput {
-				require.Contains(t, out, `"msg":"`+tt.err.Error()+`"`)
-			} else {
-				require.Empty(t, out)
-			}
 		})
 	}
 }
