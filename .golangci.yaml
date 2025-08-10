@@ -198,7 +198,7 @@ formatters:
       module-path: "boilerplate-go"
       extra-rules: true
     golines:
-      max-len: 80
+      max-len: 150
       tab-len: 4
       shorten-comments: false
       reformat-tags: true

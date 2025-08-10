@@ -54,6 +54,10 @@ components:
   schemas:
     ErrorResponse:
       $ref: './components/schemas/ErrorResponse.yaml'
+    UserBaseInputRequest:
+      $ref: './components/schemas/UserBaseInputRequest.yaml'
+    UserResponse:
+      $ref: './components/schemas/UserResponse.yaml'
     ResponseHealth:
       $ref: './components/responses/health/HealthResponse.yaml'
     ResponseV1User:

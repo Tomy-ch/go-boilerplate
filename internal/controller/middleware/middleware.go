@@ -17,7 +17,7 @@ func UseMiddlewares(
 	e *echo.Echo, cfg *appconfig.Config, logger *zap.Logger,
 ) {
 	// ログの設定
-	e.Use(logging.Middleware(logger, cfg))
+	e.Use(logging.Middleware(logger))
 	// パニック復旧の設定
 	e.Use(echorecover.Middleware(logger, cfg))
 }

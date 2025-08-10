@@ -1,19 +1,25 @@
 type: object
-x-tags:
-  - error
+description: エラーレスポンスの共通スキーマ
 required:
   - code
   - message
-  - details
+  - request_id
 properties:
   code:
     type: string
+    description: 機械的に処理可能なエラーコード
     example: "EXAMPLE_ERROR"
   message:
     type: string
+    description: 人間が読めるエラーメッセージ
     example: "定義されたエラーメッセージ"
+  request_id:
+    type: string
+    description: リクエストID
+    example: "123e4567-e89b-12d3-a456-426614174000"
   details:
     type: array
+    description: エラーの詳細情報(任意)
     items:
       type: string
     example:

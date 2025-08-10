@@ -32,4 +32,9 @@ var (
 		"failed to parse environment variables: %w",
 		errInvalidConfig,
 	)
+	// ErrFailedToParseCIDR は、CIDRのパースに失敗したことを示すエラーです。
+	ErrFailedToParseCIDR = fmt.Errorf(
+		"failed to parse CIDR: %w",
+		errInvalidConfig,
+	)
 )

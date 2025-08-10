@@ -2,7 +2,7 @@ package errorresponse
 
 import "net/http"
 
-type HTTPErrorMeta struct {
+type httpErrorMeta struct {
 	Code    string
 	Message string
 }
@@ -41,7 +41,7 @@ const (
 	errorMessageNotAvailable = "現在この機能はご利用いただけません。しばらくしてから再度お試しください。"
 )
 
-var errorMeta = map[int]HTTPErrorMeta{
+var errorMeta = map[int]httpErrorMeta{
 	http.StatusBadRequest: {
 		Code:    codeBadRequest,
 		Message: errorMessageBadRequest,
@@ -74,4 +74,16 @@ var errorMeta = map[int]HTTPErrorMeta{
 		Code:    codeNotAvailable,
 		Message: errorMessageNotAvailable,
 	},
+}
+
+// lookupErrorMeta は、HTTPステータスコードに対応するエラーメタデータを取得します。
+// 存在しない場合は、サーバーエラーのメタデータを返します。
+func lookupErrorMeta(status int) httpErrorMeta {
+	if meta, ok := errorMeta[status]; ok {
+		return meta
+	}
+	return httpErrorMeta{
+		Code:    codeInternalError,
+		Message: errorMessageInternalError,
+	}
 }
