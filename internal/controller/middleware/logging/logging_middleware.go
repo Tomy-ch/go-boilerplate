@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"boilerplate-go/internal/appconfig"
 	"boilerplate-go/internal/controller/ctxhelper"
 	"boilerplate-go/internal/domain/expectederrors"
 
@@ -17,7 +16,6 @@ import (
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
 func Middleware(
 	logger *zap.Logger,
-	cfg *appconfig.Config,
 ) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -27,7 +25,6 @@ func Middleware(
 
 			fields := buildFields(c, latency, err)
 			logRequest(c, logger, fields)
-			logErrorInDev(logger, cfg, err)
 			return err
 		}
 	}
@@ -73,13 +70,6 @@ func logRequest(c echo.Context, logger *zap.Logger, fields []zap.Field) {
 		logger.Warn("client error", fields...)
 	default:
 		logger.Info("request handled", fields...)
-	}
-}
-
-// logErrorInDev は、開発環境でのみのログを出力します。
-func logErrorInDev(logger *zap.Logger, cfg *appconfig.Config, err error) {
-	if cfg.IsAppDevelopmentMode() && err != nil {
-		logger.Error(err.Error())
 	}
 }
 

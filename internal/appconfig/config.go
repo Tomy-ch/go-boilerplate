@@ -3,19 +3,26 @@ package appconfig
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
 )
 
+type validatedConfig struct {
+	cidr *net.IPNet
+}
+
+// New は、アプリケーションの設定を初期化します。
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[ConfigLoader]()
 	if err != nil {
 		return nil, fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
 	}
 
-	if err := validateConfig(cfg); err != nil {
+	v, err := validateConfig(cfg)
+	if err != nil {
 		return nil, err
 	}
 
@@ -25,9 +32,8 @@ func New() (*Config, error) {
 			appMode:   cfg.Environment.AppMode,
 		},
 		server: server{
-			host:           cfg.Server.Host,
-			port:           cfg.Server.Port,
-			allowedOrigins: cfg.Server.AllowedOrigins,
+			host: cfg.Server.Host,
+			port: cfg.Server.Port,
 		},
 		database: database{
 			host:     cfg.Database.Host,
@@ -37,21 +43,26 @@ func New() (*Config, error) {
 			name:     cfg.Database.Name,
 			sslMode:  cfg.Database.SSLMode,
 		},
+		security: security{
+			allowedOrigins: cfg.Security.AllowedOrigins,
+			cidr:           v.cidr,
+		},
 	}, nil
 }
 
-func validateConfig(cfg ConfigLoader) error {
+// validateConfig は、ConfigLoaderの内容を検証します。
+func validateConfig(cfg ConfigLoader) (*validatedConfig, error) {
 	if cfg.Server.Port < MinPort || cfg.Server.Port > MaxPort {
-		return ErrInvalidPortRange
+		return nil, ErrInvalidPortRange
 	}
 
-	for _, origin := range cfg.Server.AllowedOrigins {
+	for _, origin := range cfg.Security.AllowedOrigins {
 		if strings.HasPrefix(origin, "http://") {
 			parsedURL, err := url.Parse(origin)
 			if err != nil ||
 				(parsedURL.Hostname() != "localhost" && parsedURL.Hostname() != "127.0.0.1") {
 
-				return ErrHTTPOnlyAllowedForLocalhost
+				return nil, ErrHTTPOnlyAllowedForLocalhost
 			}
 		}
 	}
@@ -59,10 +70,17 @@ func validateConfig(cfg ConfigLoader) error {
 	if cfg.Environment.AppMode != DevelopmentMode &&
 		cfg.Environment.AppMode != ProductionMode {
 
-		return ErrInvalidAppMode
+		return nil, ErrInvalidAppMode
 	}
 
-	return nil
+	_, cidr, err := net.ParseCIDR(cfg.Security.CIDR)
+	if err != nil {
+		return nil, fmt.Errorf("%w : %w", ErrFailedToParseCIDR, err)
+	}
+
+	return &validatedConfig{
+		cidr: cidr,
+	}, nil
 }
 
 func (c *Config) IsAppProductionMode() bool {
