@@ -27,7 +27,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			expectedInternal,
 			expectedDetails,
 		)
-		expected.RequestID = expectedRequestID
+		expected.RequestId = expectedRequestID
 
 		actual := normalizeHTTPError(expected, expectedRequestID)
 
@@ -44,7 +44,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 				expectedInternal,
 				expectedDetails,
 			)
-			expected.RequestID = expectedRequestID
+			expected.RequestId = expectedRequestID
 
 			unknownError := *expected
 			unknownError.HTTPStatus = http.StatusContinue
@@ -64,7 +64,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			}
 
 			expected := errorresponse.New(http.StatusForbidden, echoError)
-			expected.RequestID = expectedRequestID
+			expected.RequestId = expectedRequestID
 
 			actual := normalizeHTTPError(echoError, expectedRequestID)
 
@@ -85,7 +85,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 				http.StatusInternalServerError,
 				echoError,
 			)
-			expected.RequestID = expectedRequestID
+			expected.RequestId = expectedRequestID
 			expected.Internal = echoError
 
 			actual := normalizeHTTPError(echoError, expectedRequestID)
@@ -101,7 +101,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			http.StatusInternalServerError,
 			expectedInternal,
 		)
-		expected.RequestID = expectedRequestID
+		expected.RequestId = expectedRequestID
 
 		actual := normalizeHTTPError(expectedInternal, expectedRequestID)
 

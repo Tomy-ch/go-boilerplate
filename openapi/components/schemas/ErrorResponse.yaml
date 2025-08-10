@@ -3,7 +3,7 @@ description: エラーレスポンスの共通スキーマ
 required:
   - code
   - message
-  - requestID
+  - request_id
 properties:
   code:
     type: string
@@ -13,7 +13,7 @@ properties:
     type: string
     description: 人間が読めるエラーメッセージ
     example: "定義されたエラーメッセージ"
-  requestID:
+  request_id:
     type: string
     description: リクエストID
     example: "123e4567-e89b-12d3-a456-426614174000"

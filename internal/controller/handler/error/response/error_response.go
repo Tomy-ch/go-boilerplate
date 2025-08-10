@@ -4,6 +4,7 @@
 package errorresponse
 
 import (
+	"fmt"
 	"net/http"
 
 	"boilerplate-go/internal/controller/handler/error/response/gen"
@@ -51,5 +52,8 @@ func NewInternalErrorResponse() *HTTPErrorResponse {
 
 // Error メソッドは、HTTPエラーレスポンスの文字列表現を返します。
 func (e *HTTPErrorResponse) Error() string {
-	return e.Internal.Error()
+	if e.Internal != nil {
+		return e.Internal.Error()
+	}
+	return fmt.Sprintf("HTTP %d: %s (%s)", e.HTTPStatus, e.Code, e.Message)
 }

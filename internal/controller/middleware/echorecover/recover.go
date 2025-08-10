@@ -11,8 +11,10 @@ import (
 )
 
 const (
-	productionStackSize  = 4 << 10
-	developmentStackSize = 10 << 10
+	// productionStackSize は、本番環境でのスタックサイズです。
+	productionStackSize = 4 << 10 // 4KB
+	// developmentStackSize は、開発環境でのスタックサイズです。
+	developmentStackSize = 10 << 10 // 10KB
 )
 
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。

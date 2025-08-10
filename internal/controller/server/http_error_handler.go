@@ -27,7 +27,7 @@ func NewHTTPErrorHandler(logger *zap.Logger) echo.HTTPErrorHandler {
 				logger.Error(
 					"failed to write error response",
 					zap.Error(err),
-					zap.String("request_id", resp.RequestID),
+					zap.String("request_id", resp.RequestId),
 				)
 				c.Response().WriteHeader(http.StatusInternalServerError)
 				return
@@ -50,12 +50,14 @@ func normalizeHTTPError(
 				http.StatusInternalServerError,
 				he.Internal,
 			)
-			res.Details = he.Details
-			res.RequestID = requestID
+			if he.Details != nil {
+				res.Details = he.Details
+			}
+			res.RequestId = requestID
 			return res
 		}
 		cp := *he
-		cp.RequestID = requestID
+		cp.RequestId = requestID
 		return &cp
 	}
 
@@ -66,12 +68,12 @@ func normalizeHTTPError(
 			status = http.StatusInternalServerError
 		}
 		res := errorresponse.New(status, err)
-		res.RequestID = requestID
+		res.RequestId = requestID
 		return res
 	}
 
 	res := errorresponse.New(http.StatusInternalServerError, err)
-	res.RequestID = requestID
+	res.RequestId = requestID
 	return res
 }
 
@@ -86,7 +88,7 @@ func logHTTPError(
 		zap.String("method", c.Request().Method),
 		zap.String("path", c.Request().URL.Path),
 		zap.String("remote_ip", c.RealIP()),
-		zap.String("request_id", he.RequestID),
+		zap.String("request_id", he.RequestId),
 		zap.String("error_code", he.Code),
 		zap.String("error_message", he.Message),
 	}

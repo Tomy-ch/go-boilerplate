@@ -14,6 +14,6 @@ type ErrorResponse struct {
 	// Message 人間が読めるエラーメッセージ
 	Message string `json:"message"`
 
-	// RequestID リクエストID
-	RequestID string `json:"requestID"`
+	// RequestId リクエストID
+	RequestId string `json:"request_id"`
 }
