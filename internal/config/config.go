@@ -65,7 +65,6 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 			parsedURL, err := url.Parse(origin)
 			if err != nil ||
 				(parsedURL.Hostname() != "localhost" && parsedURL.Hostname() != "127.0.0.1") {
-
 				return nil, ErrHTTPOnlyAllowedForLocalhost
 			}
 		}

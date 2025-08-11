@@ -8,3 +8,6 @@ pre-commit:
       run: make lint
     test:
       run: make test
+
+skip_output:
+  - meta
