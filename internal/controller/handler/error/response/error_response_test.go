@@ -82,12 +82,13 @@ func TestHTTPErrorResponse_Error(t *testing.T) {
 		httpError := &HTTPErrorResponse{
 			HTTPStatus: http.StatusBadRequest,
 			ErrorResponse: gen.ErrorResponse{
+				Code:    codeBadRequest,
 				Message: errorMessageBadRequest,
 			},
 		}
 
 		expected := fmt.Sprintf(
-			"HTTP %d: %s", http.StatusBadRequest, errorMessageBadRequest,
+			"HTTP %d: %s (%s)", http.StatusBadRequest, codeBadRequest, errorMessageBadRequest,
 		)
 
 		actual := httpError.Error()

@@ -183,19 +183,19 @@ make release-patch-tag
 <details>
 <summary>デフォルトブランチ変更コマンド</summary>
 
-majorバージョンを更新したリリースブランチの作成
+majorバージョンで更新したリリースブランチの作成
 
 ```bash
 make release-major-branch
 ```
 
-minorバージョンを更新したリリースブランチの作成
+minorバージョンで更新したリリースブランチの作成
 
 ```bash
 make release-minor-branch
 ```
 
-patchバージョンを更新したリリースブランチの作成
+patchバージョンで更新したリリースブランチの作成
 
 ```bash
 make release-patch-branch

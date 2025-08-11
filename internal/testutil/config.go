@@ -6,11 +6,10 @@ import (
 	"os"
 	"testing"
 
-	"boilerplate-go/internal/appconfig"
-	"boilerplate-go/internal/env"
+	"boilerplate-go/internal/config"
 )
 
-var Cfg *appconfig.Config
+var Cfg *config.Config
 
 // SetTestEnv はテスト環境で使用される環境変数 "ENV" を "test" に設定します。
 //
@@ -32,12 +31,12 @@ func RunWithTestSetup(m *testing.M) int {
 
 	SetTestEnv(m)
 	ChdirToProjectRoot(m)
-	err := env.Load()
+	err := config.Load()
 	if err != nil {
 		panic(fmt.Sprintf("failed to load environment variables: %v", err))
 	}
 
-	Cfg, err = appconfig.New()
+	Cfg, err = config.New()
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test config: %v", err))
 	}

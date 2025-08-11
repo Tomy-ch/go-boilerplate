@@ -1,5 +1,4 @@
-// Package env は、環境変数の読み込みを提供します。
-package env
+package config
 
 import (
 	"fmt"

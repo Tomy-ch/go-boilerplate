@@ -4,8 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"boilerplate-go/internal/appconfig"
-	"boilerplate-go/internal/env"
+	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/testutil"
 
 	"github.com/labstack/echo/v4"
@@ -18,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	cfg := &appconfig.Config{}
+	cfg := &config.Config{}
 	httpErrorHandler := echo.New().HTTPErrorHandler
 	validator := NewValidator()
 	binder := NewBinder()
@@ -38,10 +37,10 @@ func TestSetPrimitiveEchoSettings(t *testing.T) {
 	t.Run("本番環境モード", func(t *testing.T) {
 		e := echo.New()
 
-		err := env.Load()
+		err := config.Load()
 		require.NoError(t, err)
-		t.Setenv("APP_MODE", appconfig.ProductionMode)
-		cfg, err := appconfig.New()
+		t.Setenv("APP_MODE", config.ProductionMode)
+		cfg, err := config.New()
 		require.NoError(t, err)
 
 		setPrimitiveEchoSettings(e, cfg)
@@ -54,10 +53,10 @@ func TestSetPrimitiveEchoSettings(t *testing.T) {
 	t.Run("開発環境モード", func(t *testing.T) {
 		e := echo.New()
 
-		err := env.Load()
+		err := config.Load()
 		require.NoError(t, err)
-		t.Setenv("APP_MODE", appconfig.DevelopmentMode)
-		cfg, err := appconfig.New()
+		t.Setenv("APP_MODE", config.DevelopmentMode)
+		cfg, err := config.New()
 		require.NoError(t, err)
 
 		setPrimitiveEchoSettings(e, cfg)
@@ -74,7 +73,7 @@ func TestSetCustomEchoBindings(t *testing.T) {
 	httpErrorHandler := echo.New().HTTPErrorHandler
 	validator := NewValidator()
 	binder := NewBinder()
-	ipextractor := NewIPExtractor(&appconfig.Config{})
+	ipextractor := NewIPExtractor(&config.Config{})
 
 	setCustomEchoBindings(e, validator, binder, ipextractor, httpErrorHandler)
 

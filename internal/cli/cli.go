@@ -2,7 +2,7 @@
 package cli
 
 import (
-	"boilerplate-go/internal/bootstrap"
+	"boilerplate-go/internal/config"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/spf13/cobra"
@@ -30,7 +30,7 @@ func RegisterCommands(rootCmd *cobra.Command) {
 
 // buildMigrateInstance は、マイグレーションインスタンスを生成します。
 func buildMigrateInstance() (*migrate.Migrate, error) {
-	cfg, err := bootstrap.SetUpConfig()
+	cfg, err := config.SetUpConfig()
 	if err != nil {
 		return nil, err
 	}

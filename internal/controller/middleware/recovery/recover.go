@@ -1,8 +1,8 @@
-// Package echorecover は、パニックからのリカバリを行うミドルウェアです。
-package echorecover
+// Package recovery は、パニックからのリカバリを行うミドルウェアです。
+package recovery
 
 import (
-	"boilerplate-go/internal/appconfig"
+	"boilerplate-go/internal/config"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -18,7 +18,7 @@ const (
 )
 
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。
-func Middleware(logger *zap.Logger, cfg *appconfig.Config) echo.MiddlewareFunc {
+func Middleware(logger *zap.Logger, cfg *config.Config) echo.MiddlewareFunc {
 	var conf middleware.RecoverConfig
 	switch {
 	case cfg.IsAppDevelopmentMode():

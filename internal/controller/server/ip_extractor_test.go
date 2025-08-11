@@ -4,8 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"boilerplate-go/internal/appconfig"
-	"boilerplate-go/internal/env"
+	"boilerplate-go/internal/config"
 
 	"github.com/stretchr/testify/require"
 )
@@ -16,12 +15,12 @@ func TestNewIPExtractor(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("本番モードの場合", func(t *testing.T) {
-		require.NoError(t, env.Load())
-		t.Setenv("APP_MODE", appconfig.ProductionMode)
+		require.NoError(t, config.Load())
+		t.Setenv("APP_MODE", config.ProductionMode)
 		t.Setenv("SECURITY_CIDR", cidr)
-		cfg, err := appconfig.New()
+		cfg, err := config.New()
 		require.NoError(t, err)
-		require.Equal(t, appconfig.ProductionMode, cfg.AppMode())
+		require.Equal(t, config.ProductionMode, cfg.AppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
 		actual := NewIPExtractor(cfg)
@@ -29,12 +28,12 @@ func TestNewIPExtractor(t *testing.T) {
 	})
 
 	t.Run("開発モードの場合", func(t *testing.T) {
-		require.NoError(t, env.Load())
-		t.Setenv("APP_MODE", appconfig.DevelopmentMode)
+		require.NoError(t, config.Load())
+		t.Setenv("APP_MODE", config.DevelopmentMode)
 		t.Setenv("SECURITY_CIDR", cidr)
-		cfg, err := appconfig.New()
+		cfg, err := config.New()
 		require.NoError(t, err)
-		require.Equal(t, appconfig.DevelopmentMode, cfg.AppMode())
+		require.Equal(t, config.DevelopmentMode, cfg.AppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
 		actual := NewIPExtractor(cfg)
@@ -42,7 +41,7 @@ func TestNewIPExtractor(t *testing.T) {
 	})
 
 	t.Run("開発モードがない場合", func(t *testing.T) {
-		extractor := NewIPExtractor(&appconfig.Config{})
+		extractor := NewIPExtractor(&config.Config{})
 		require.NotNil(t, extractor)
 	})
 }
