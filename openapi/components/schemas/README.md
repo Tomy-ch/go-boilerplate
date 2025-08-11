@@ -7,7 +7,7 @@
 | 種別 | ディレクトリ | 内容 |
 |------------------|-----------------------------------|-----------------------------------|
 | スキーマ定義     | `components/schemas/` | データ構造本体の定義（User, Errorなど） |
-| リクエスト本体   | `components/requestBodies/` | リクエストの意味づけ（content, required等） |
+| リクエスト本体   | `components/request/` | リクエストの意味づけ（content, required等） |
 | レスポンス定義   | `components/responses/` | HTTPステータスごとの返却の意味づけ |
 | パラメータ定義   | `components/parameters/` | クエリ・パスパラメータの定義 |
 | パスエンドポイント | `paths/` | `/v1/users`, `/health` などAPIルート定義 |
@@ -37,13 +37,11 @@ properties:
     nullable: true
 ```
 
-### requestBodiesとresponsesについて
+### requestとresponsesについて
 
-本来は、リクエストとレスポンスの構造は密接に関連しています。そのため、`requestBodies` と `responses` の定義は、同じスキーマを参照することが推奨されます。
+本来のopenapiでは、リクエストとレスポンスは`requestBodies` と `responses` で定義されます。
 
-しかし、`swagger-cli` の制約により、`requestBodies` と `responses` はそれぞれ独立したファイルに分割する必要があります。これにより、スキーマの再利用性と保守性が向上します。
-
-また、`oapi-codegen` のために、全ての `requestBodies` と `responses` は `schemas` として定義してください。
+しかし、`swagger-cli`と`oapi-codegen`の制約により、`requestBodies` と `responses` としてはファイルを分けずに、`schemas` として定義してください。
 
 ### 🧩 PATCH対応ポリシー
 
@@ -88,14 +86,6 @@ schema:
   example: "123e4567-e89b-12d3-a456-426614174000"
 ```
 
-## 🔐 セキュリティ / 厳密性
-
-| 用途         | `additionalProperties` の推奨設定 |
-|--------------|------------------------|
-| RequestBody  | ✅ `false`（バリデーション強化）  |
-| Schema共通部 | ✅ `false` （再利用時の安全） |
-| Response     | 任意（forward compatibility優先） |
-
 ## 🚫 避けるべき構成
 
 - `呼び出し側のschema` で schema 本体を直接定義（→ 再利用性・責務分離 NG）
@@ -114,7 +104,6 @@ schema:
 - [ ] schemas は 1ファイル1スキーマになっているか
 - [ ] requestBodies/responses を schemas として定義しているか
 - [ ] parameters は 1ファイル1パラメータになっているか
-- [ ] additionalProperties: false を必要箇所に入れているか
 - [ ] PATCH 用には専用ラッパー（UserPatchRequestなど）を作っているか
 - [ ] `$ref` はパス相対形式で統一されているか
 
