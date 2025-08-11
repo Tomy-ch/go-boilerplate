@@ -15,5 +15,5 @@ func Middleware() echo.MiddlewareFunc {
 func GetRequestIDFromResponse(
 	c echo.Context,
 ) string {
-	return c.Response().Header().Get(echo.HeaderXRequestID)
+	return c.Request().Header.Get(echo.HeaderXRequestID)
 }
