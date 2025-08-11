@@ -22,6 +22,8 @@ var (
 		MaxPort,
 		errInvalidConfig,
 	)
+	// ErrEmptyAllowedOrigins は、許可されたオリジンが空であってはならないことを示すエラーです。
+	ErrEmptyAllowedOrigins = fmt.Errorf("allowed origins must not be empty: %w", errInvalidConfig)
 	// ErrHTTPOnlyAllowedForLocalhost は、HTTPのみのローカルホストにアクセス可能にするためのエラーを表します。
 	ErrHTTPOnlyAllowedForLocalhost = fmt.Errorf(
 		"http only localhost is allowed: %w",

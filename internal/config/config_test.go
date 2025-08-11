@@ -251,6 +251,7 @@ func Test_validateConfig(t *testing.T) {
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidPortRange)
 		})
+
 		t.Run("無効なアプリケーションモード", func(t *testing.T) {
 			t.Parallel()
 			cfg := verifiedConfigLoader()
@@ -268,6 +269,24 @@ func Test_validateConfig(t *testing.T) {
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
+		})
+
+		t.Run("AllowedOriginsが空の場合", func(t *testing.T) {
+			cfg := verifiedConfigLoader()
+			cfg.Security.AllowedOrigins = []string{} // 空のAllowedOrigins
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrEmptyAllowedOrigins)
+		})
+
+		t.Run("localhost以外でHTTPが許可されている場合", func(t *testing.T) {
+			cfg := verifiedConfigLoader()
+			cfg.Security.AllowedOrigins = []string{"http://example.com"} // localhost以外のHTTP
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
 		})
 	})
 }
