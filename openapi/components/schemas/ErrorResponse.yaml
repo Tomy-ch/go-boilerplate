@@ -16,7 +16,7 @@ properties:
   request_id:
     type: string
     description: リクエストID
-    example: "123e4567-e89b-12d3-a456-426614174000"
+    example: "abcdefghijklmnopqrstuvwxyz"
   details:
     type: array
     description: エラーの詳細情報(任意)

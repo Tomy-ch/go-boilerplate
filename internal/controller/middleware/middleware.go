@@ -5,6 +5,7 @@ import (
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/middleware/logging"
 	"boilerplate-go/internal/controller/middleware/recovery"
+	"boilerplate-go/internal/controller/middleware/requestid"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -20,4 +21,6 @@ func UseMiddlewares(
 	e.Use(logging.Middleware(logger))
 	// パニック復旧の設定
 	e.Use(recovery.Middleware(logger, cfg))
+	// リクエストIDの設定
+	e.Use(requestid.Middleware())
 }
