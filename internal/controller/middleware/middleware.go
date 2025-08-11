@@ -3,6 +3,7 @@ package middleware
 
 import (
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/controller/middleware/cors"
 	"boilerplate-go/internal/controller/middleware/logging"
 	"boilerplate-go/internal/controller/middleware/recovery"
 	"boilerplate-go/internal/controller/middleware/requestid"
@@ -26,4 +27,6 @@ func UseMiddlewares(
 	e.Use(recovery.Middleware(logger, cfg))
 	// リクエストIDの設定
 	e.Use(requestid.Middleware())
+	// CORSの設定
+	e.Use(cors.Middleware(cfg))
 }

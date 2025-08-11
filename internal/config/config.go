@@ -56,6 +56,10 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 		return nil, ErrInvalidPortRange
 	}
 
+	if len(cfg.Security.AllowedOrigins) == 0 {
+		return nil, ErrEmptyAllowedOrigins
+	}
+
 	for _, origin := range cfg.Security.AllowedOrigins {
 		if strings.HasPrefix(origin, "http://") {
 			parsedURL, err := url.Parse(origin)
