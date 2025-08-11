@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	errorresponse "boilerplate-go/internal/controller/handler/error/response"
+	"boilerplate-go/internal/controller/middleware/requestid"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -21,7 +22,7 @@ const (
 // NewHTTPErrorHandler は、EchoのHTTPエラーハンドラーを生成します。
 func NewHTTPErrorHandler(logger *zap.Logger) echo.HTTPErrorHandler {
 	return func(err error, c echo.Context) {
-		resp := normalizeHTTPError(err, getRequestID(c))
+		resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
 		if !c.Response().Committed {
 			if err = c.JSON(resp.HTTPStatus, resp.ErrorResponse); err != nil {
 				logger.Error(
@@ -103,13 +104,6 @@ func logHTTPError(
 	default:
 		logger.Info("http_error", fields...)
 	}
-}
-
-// getRequestID は、EchoのコンテキストからリクエストIDを取得します。
-func getRequestID(
-	c echo.Context,
-) string {
-	return c.Request().Header.Get(echo.HeaderXRequestID)
 }
 
 // isErrorStatus は、HTTPステータスコードがエラー範囲（400〜599）にあるかをチェックします。

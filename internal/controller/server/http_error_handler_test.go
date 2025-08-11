@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	errorresponse "boilerplate-go/internal/controller/handler/error/response"
@@ -106,31 +105,6 @@ func Test_normalizeHTTPError(t *testing.T) {
 		actual := normalizeHTTPError(expectedInternal, expectedRequestID)
 
 		require.Equal(t, expected, actual)
-	})
-}
-
-func Test_getRequestID(t *testing.T) {
-	t.Parallel()
-
-	t.Run("X-Request-ID が設定されている場合", func(t *testing.T) {
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set(echo.HeaderXRequestID, "test-request-id")
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-
-		id := getRequestID(c)
-		require.Equal(t, "test-request-id", id)
-	})
-
-	t.Run("X-Request-ID が設定されていない場合", func(t *testing.T) {
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-
-		id := getRequestID(c)
-		require.Empty(t, id)
 	})
 }
 
