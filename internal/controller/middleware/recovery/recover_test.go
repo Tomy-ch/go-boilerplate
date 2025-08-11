@@ -1,4 +1,4 @@
-package echorecover
+package recovery
 
 import (
 	"testing"

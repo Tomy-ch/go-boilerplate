@@ -1,6 +1,6 @@
-package appconfig
+package config
 
-type ConfigLoader struct {
+type Loader struct {
 	Server      Server
 	Environment Environment
 	Database    Database `envPrefix:"DB_"`

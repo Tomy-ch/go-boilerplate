@@ -1,7 +1,6 @@
-package appconfig
+package config
 
 import (
-	"fmt"
 	"net"
 )
 
@@ -70,18 +69,6 @@ func (c *Config) DatabaseName() string { return c.database.name }
 
 // DatabaseSSLMode は、データベースのSSLモードを返します。
 func (c *Config) DatabaseSSLMode() string { return c.database.sslMode }
-
-func (c *Config) DatabaseURL() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		c.DatabaseUser(),
-		c.DatabasePassword(),
-		c.DatabaseHost(),
-		c.DatabasePort(),
-		c.DatabaseName(),
-		c.DatabaseSSLMode(),
-	)
-}
 
 // AllowedOrigins は、CORSを許可するオリジンのリストを返します。
 func (c *Config) AllowedOrigins() []string {

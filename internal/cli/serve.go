@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"boilerplate-go/internal/bootstrap"
+	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/handler/health"
 	"boilerplate-go/internal/controller/handler/healthz"
 	"boilerplate-go/internal/controller/middleware"
@@ -27,7 +27,7 @@ func NewServeCommand() *cobra.Command {
 func serveRun(_ *cobra.Command, _ []string) error {
 	logger := logging.NewProductionLogger()
 
-	cfg, err := bootstrap.SetUpConfig()
+	cfg, err := config.SetUpConfig()
 	if err != nil {
 		logger.Fatal("failed to load config", zap.Error(err))
 	}

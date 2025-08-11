@@ -1,13 +1,13 @@
 package server
 
 import (
-	"boilerplate-go/internal/appconfig"
+	"boilerplate-go/internal/config"
 
 	"github.com/labstack/echo/v4"
 )
 
 // NewIPExtractor は、EchoでクライアントのIPアドレスを抽出するためのインスタンスを生成します。
-func NewIPExtractor(cfg *appconfig.Config) echo.IPExtractor {
+func NewIPExtractor(cfg *config.Config) echo.IPExtractor {
 	switch {
 	case cfg.IsAppProductionMode():
 		return echo.ExtractIPFromXFFHeader(

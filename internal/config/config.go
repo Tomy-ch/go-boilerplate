@@ -1,5 +1,5 @@
-// Package appconfig は、アプリケーションの設定を管理します。
-package appconfig
+// Package config は、アプリケーションの設定を管理します。
+package config
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ type validatedConfig struct {
 
 // New は、アプリケーションの設定を初期化します。
 func New() (*Config, error) {
-	cfg, err := env.ParseAs[ConfigLoader]()
+	cfg, err := env.ParseAs[Loader]()
 	if err != nil {
 		return nil, fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
 	}
@@ -51,7 +51,7 @@ func New() (*Config, error) {
 }
 
 // validateConfig は、ConfigLoaderの内容を検証します。
-func validateConfig(cfg ConfigLoader) (*validatedConfig, error) {
+func validateConfig(cfg Loader) (*validatedConfig, error) {
 	if cfg.Server.Port < MinPort || cfg.Server.Port > MaxPort {
 		return nil, ErrInvalidPortRange
 	}
@@ -83,10 +83,25 @@ func validateConfig(cfg ConfigLoader) (*validatedConfig, error) {
 	}, nil
 }
 
+// IsAppProductionMode は、アプリケーションが本番環境モードかどうかを返します。
 func (c *Config) IsAppProductionMode() bool {
 	return c.environment.appMode == ProductionMode
 }
 
+// IsAppDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。
 func (c *Config) IsAppDevelopmentMode() bool {
 	return c.environment.appMode == DevelopmentMode
+}
+
+// DatabaseURL は、データベースの接続URLを返します。
+func (c *Config) DatabaseURL() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		c.DatabaseUser(),
+		c.DatabasePassword(),
+		c.DatabaseHost(),
+		c.DatabasePort(),
+		c.DatabaseName(),
+		c.DatabaseSSLMode(),
+	)
 }
