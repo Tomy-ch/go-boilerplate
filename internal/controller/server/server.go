@@ -2,13 +2,13 @@
 package server
 
 import (
-	"boilerplate-go/internal/appconfig"
+	"boilerplate-go/internal/config"
 
 	"github.com/labstack/echo/v4"
 )
 
 func New(
-	cfg *appconfig.Config,
+	cfg *config.Config,
 	validator echo.Validator,
 	binder echo.Binder,
 	ipextractor echo.IPExtractor,
@@ -25,7 +25,7 @@ func New(
 // setPrimitiveEchoSettings は、Echoの基本的なプロパティを設定します。
 func setPrimitiveEchoSettings(
 	e *echo.Echo,
-	cfg *appconfig.Config,
+	cfg *config.Config,
 ) {
 	isProduction := cfg.IsAppProductionMode()
 	isDevelopment := cfg.IsAppDevelopmentMode()

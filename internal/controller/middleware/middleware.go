@@ -2,9 +2,9 @@
 package middleware
 
 import (
-	"boilerplate-go/internal/appconfig"
-	"boilerplate-go/internal/controller/middleware/echorecover"
+	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/middleware/logging"
+	"boilerplate-go/internal/controller/middleware/recovery"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -14,10 +14,10 @@ import (
 //
 // 副作用としてEchoフレームワークにミドルウェアを登録します。
 func UseMiddlewares(
-	e *echo.Echo, cfg *appconfig.Config, logger *zap.Logger,
+	e *echo.Echo, cfg *config.Config, logger *zap.Logger,
 ) {
 	// ログの設定
 	e.Use(logging.Middleware(logger))
 	// パニック復旧の設定
-	e.Use(echorecover.Middleware(logger, cfg))
+	e.Use(recovery.Middleware(logger, cfg))
 }

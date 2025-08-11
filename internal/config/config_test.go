@@ -1,4 +1,4 @@
-package appconfig
+package config
 
 import (
 	"fmt"
@@ -306,8 +306,8 @@ func TestIsAppDevelopmentMode(t *testing.T) {
 	})
 }
 
-func verifiedConfigLoader() ConfigLoader {
-	return ConfigLoader{
+func verifiedConfigLoader() Loader {
+	return Loader{
 		Server: Server{
 			Host: "localhost",
 			Port: 8080,

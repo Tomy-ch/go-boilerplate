@@ -1,4 +1,4 @@
-package appconfig
+package config
 
 import (
 	"errors"

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"boilerplate-go/internal/bootstrap"
+	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/middleware/logging"
 	"boilerplate-go/pkg/xerror"
 
@@ -33,7 +33,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	logger := logging.NewProductionLogger()
 	xerrors := xerror.New()
 
-	cfg, err := bootstrap.SetUpConfig()
+	cfg, err := config.SetUpConfig()
 	if err != nil {
 		logger.Fatal("failed to load config", zap.Error(err))
 	}
