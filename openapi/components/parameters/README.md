@@ -34,30 +34,17 @@ components/
 
 複数のパラメータをまとめて管理したい場合、1ファイルに統合する方法を推奨します。
 
-### 例：pagination.yaml
+### 例：PageParam.yaml
 
 ```yaml
-parameters:
-  PageParam:
-    name: page
-    in: query
-    description: ページ番号（1以上）
-    required: false
-    schema:
-      type: integer
-      minimum: 1
-      example: 1
-
-  PerPageParam:
-    name: per_page
-    in: query
-    description: 1ページあたりの取得件数
-    required: false
-    schema:
-      type: integer
-      minimum: 1
-      maximum: 100
-      example: 10
+name: page
+in: query
+description: ページ番号（1以上）
+required: false
+schema:
+  type: integer
+  minimum: 1
+  example: 1
 ```
 
 ## 再利用の方法
@@ -66,11 +53,9 @@ YAML 内では `$ref` を使用して共通パラメータを再利用します�
 
 ```yaml
 parameters:
-  - $ref: '../../components/parameters/pagination.yaml#/parameters/PageParam'
-  - $ref: '../../components/parameters/user.yaml#/parameters/UserIdParam'
+  - $ref: '../../components/parameters/pagination.yaml'
+  - $ref: '../../components/parameters/user.yaml'
 ```
-
-> `$ref` の使用時は **必ずフラグメント（`#/parameters/...`）付き**で記述してください。
 
 ## 注意点
 
