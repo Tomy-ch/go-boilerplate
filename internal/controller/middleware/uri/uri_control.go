@@ -1,5 +1,5 @@
-// Package uricontrol は、URI制御のミドルウェアを提供します。
-package uricontrol
+// Package uri は、URI制御のミドルウェアを提供します。
+package uri
 
 import (
 	"github.com/labstack/echo/v4"

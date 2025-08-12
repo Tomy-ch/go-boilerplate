@@ -18,6 +18,7 @@ func buildCORSConfig(allowedOrigins []string) middleware.CORSConfig {
 	return middleware.CORSConfig{
 		AllowOrigins: allowedOrigins,
 		AllowMethods: []string{
+			echo.HEAD,
 			echo.GET,
 			echo.POST,
 			echo.PUT,
@@ -32,8 +33,10 @@ func buildCORSConfig(allowedOrigins []string) middleware.CORSConfig {
 			echo.HeaderAuthorization,
 		},
 		ExposeHeaders: []string{
-			echo.HeaderContentLength,
+			echo.HeaderContentDisposition,
+			echo.HeaderLocation,
+			echo.HeaderXRequestID,
 		},
-		AllowCredentials: true,
+		AllowCredentials: false,
 	}
 }
