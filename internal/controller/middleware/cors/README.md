@@ -46,7 +46,8 @@
   - 許可するヘッダーを明示的に指定することが推奨されます。
 - `AllowCredentials`: クッキーなどの含むリクエストを許可するかどうかを指定します。
   - 原則的に、セキュリティ上の理由から `false` に設定することが推奨されます。
-  - 手動で設定された`Authorization`ヘッダーは `false` 下でも許可されます。
+  - `AllowCredentials`はクッキーや認証情報の送信を制御します。
+    `Authorization`ヘッダーの許可は`AllowHeaders`で制御され、`AllowCredentials`の値には依存しません。
 
 ## 注意点
 
