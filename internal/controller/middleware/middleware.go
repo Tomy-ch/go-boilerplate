@@ -4,9 +4,11 @@ package middleware
 import (
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/middleware/cors"
+	"boilerplate-go/internal/controller/middleware/forcejson"
 	"boilerplate-go/internal/controller/middleware/logging"
 	"boilerplate-go/internal/controller/middleware/recovery"
 	"boilerplate-go/internal/controller/middleware/requestid"
+	"boilerplate-go/internal/controller/middleware/security"
 	"boilerplate-go/internal/controller/middleware/uri"
 
 	"github.com/labstack/echo/v4"
@@ -29,4 +31,8 @@ func UseMiddlewares(
 	e.Use(requestid.Middleware())
 	// CORSの設定
 	e.Use(cors.Middleware(cfg))
+	// セキュリティの設定
+	e.Use(security.Middleware(cfg))
+	// ForceJSONの設定
+	e.Use(forcejson.Middleware())
 }
