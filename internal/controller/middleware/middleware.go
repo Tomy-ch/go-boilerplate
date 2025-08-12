@@ -7,7 +7,7 @@ import (
 	"boilerplate-go/internal/controller/middleware/logging"
 	"boilerplate-go/internal/controller/middleware/recovery"
 	"boilerplate-go/internal/controller/middleware/requestid"
-	"boilerplate-go/internal/controller/middleware/uricontrol"
+	"boilerplate-go/internal/controller/middleware/uri"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
@@ -20,7 +20,7 @@ func UseMiddlewares(
 	e *echo.Echo, cfg *config.Config, logger *zap.Logger,
 ) {
 	// URI制御の設定
-	e.Pre(uricontrol.Middleware())
+	e.Pre(uri.Middleware())
 	// ログの設定
 	e.Use(logging.Middleware(logger))
 	// パニック復旧の設定
