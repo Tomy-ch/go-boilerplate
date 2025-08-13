@@ -29,7 +29,7 @@ func Middleware(logger *zap.Logger, cfg *config.Config) echo.MiddlewareFunc {
 		conf = productionConfig()
 		logger.Warn(
 			"Unknown environment, using production config for recover middleware",
-			zap.String("env", cfg.AppMode()),
+			zap.String("env", cfg.ServerAppMode()),
 		)
 	}
 

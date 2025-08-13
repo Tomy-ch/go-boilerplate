@@ -16,11 +16,11 @@ func TestNewIPExtractor(t *testing.T) {
 
 	t.Run("本番モードの場合", func(t *testing.T) {
 		require.NoError(t, config.Load())
-		t.Setenv("APP_MODE", config.ProductionMode)
+		t.Setenv("SERVER_APP_MODE", config.ProductionMode)
 		t.Setenv("SECURITY_CIDR", cidr)
 		cfg, err := config.New()
 		require.NoError(t, err)
-		require.Equal(t, config.ProductionMode, cfg.AppMode())
+		require.Equal(t, config.ProductionMode, cfg.ServerAppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
 		actual := NewIPExtractor(cfg)
@@ -33,7 +33,7 @@ func TestNewIPExtractor(t *testing.T) {
 		t.Setenv("SECURITY_CIDR", cidr)
 		cfg, err := config.New()
 		require.NoError(t, err)
-		require.Equal(t, config.DevelopmentMode, cfg.AppMode())
+		require.Equal(t, config.DevelopmentMode, cfg.ServerAppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
 		actual := NewIPExtractor(cfg)

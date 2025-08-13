@@ -39,7 +39,7 @@ func TestSetPrimitiveEchoSettings(t *testing.T) {
 
 		err := config.Load()
 		require.NoError(t, err)
-		t.Setenv("APP_MODE", config.ProductionMode)
+		t.Setenv("SERVER_APP_MODE", config.ProductionMode)
 		cfg, err := config.New()
 		require.NoError(t, err)
 
@@ -55,7 +55,7 @@ func TestSetPrimitiveEchoSettings(t *testing.T) {
 
 		err := config.Load()
 		require.NoError(t, err)
-		t.Setenv("APP_MODE", config.DevelopmentMode)
+		t.Setenv("SERVER_APP_MODE", config.DevelopmentMode)
 		cfg, err := config.New()
 		require.NoError(t, err)
 
