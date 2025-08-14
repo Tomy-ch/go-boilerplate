@@ -1,4 +1,4 @@
-package errorresponse
+package response
 
 import (
 	"net/http"

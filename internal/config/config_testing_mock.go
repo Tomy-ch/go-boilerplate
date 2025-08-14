@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -26,19 +27,21 @@ var (
 	expectedDBName     = "test"
 	expectedDBSSLMode  = "disable"
 	// dbconnection
-	expectedDBMaxOpenConns   = 10
-	expectedDBMaxIdleConns   = 5
-	expectedDBMaxLifetimeStr = "60s"
-	expectedDBMaxLifetime    = time.Duration(60) * time.Second
-	expectedDBMaxIdleTimeStr = "30s"
-	expectedDBMaxIdleTime    = time.Duration(30) * time.Second
+	expectedDBMaxOpenConns     = 10
+	expectedDBMaxIdleConns     = 5
+	expectedDBMaxLifetimeCount = 60
+	expectedDBMaxLifetimeStr   = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)
+	expectedDBMaxLifetime      = time.Duration(expectedDBMaxLifetimeCount) * time.Second
+	expectedDBMaxIdleTimeCount = 30
+	expectedDBMaxIdleTimeStr   = fmt.Sprintf("%ds", expectedDBMaxIdleTimeCount)
+	expectedDBMaxIdleTime      = time.Duration(expectedDBMaxIdleTimeCount) * time.Second
 	// security
 	expectedAllowedOrigins = "http://localhost,https://example.com"
 	expectedCIDRStr        = "192.168.0.0/24"
 )
 
-// mockConfig は、テスト用のConfigを返します。
-func mockConfig(t *testing.T) Config {
+// MockConfigForTest は、テスト用のConfigを返します。
+func MockConfigForTest(t testing.TB) Config {
 	t.Helper()
 	_, expectedCIDR, err := net.ParseCIDR(expectedCIDRStr)
 	require.NoError(t, err)
@@ -75,7 +78,7 @@ func mockConfig(t *testing.T) Config {
 }
 
 // mockLoader は、テスト用のLoaderを返します。
-func mockLoader(t *testing.T) Loader {
+func mockLoader(t testing.TB) Loader {
 	t.Helper()
 
 	return Loader{
@@ -104,7 +107,7 @@ func mockLoader(t *testing.T) Loader {
 }
 
 // setEnv は、テスト用の環境変数を設定します。
-func setEnv(t *testing.T) {
+func setEnv(t testing.TB) {
 	t.Helper()
 	t.Setenv("OS_TZ", expectedOSTimeZone)
 	t.Setenv("SERVER_ENV", expectedEnv)

@@ -6,47 +6,9 @@ import (
 	"time"
 )
 
-// TODO: 必要最低限になるように、次のタスクで修正する
-
-// SetOSTimeZone は、テスト用にOSのタイムゾーンを設定します。
+// WARN: 本番コードでは使用しないでください。テスト用の設定を行うためのメソッドです。
 //
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetOSTimeZone(t testing.TB, tz string) {
-	t.Helper()
-	prev := c.OSTimeZone()
-	c.os.timezone = tz
-	t.Cleanup(func() { c.os.timezone = prev })
-}
-
-// SetServerHost は、テスト用にサーバーのホスト名を設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetServerHost(t testing.TB, host string) {
-	t.Helper()
-	prev := c.ServerHost()
-	c.server.host = host
-	t.Cleanup(func() { c.server.host = prev })
-}
-
-// SetServerPort は、テスト用にサーバーのポート番号を設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetServerPort(t testing.TB, port int) {
-	t.Helper()
-	prev := c.ServerPort()
-	c.server.port = port
-	t.Cleanup(func() { c.server.port = prev })
-}
-
-// SetServerEnv は、テスト用にサーバーのEnvを設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetServerEnv(t testing.TB, env string) {
-	t.Helper()
-	prev := c.ServerEnv()
-	c.server.serverEnv = env
-	t.Cleanup(func() { c.server.serverEnv = prev })
-}
+// 実装メソッドは無闇に増やさず、必要なものだけを追加してください。
 
 // SetServerAppMode は、テスト用にサーバーのAppModeを設定します。
 //
@@ -146,26 +108,6 @@ func (c *Config) SetDBConnMaxLifetime(t testing.TB, d time.Duration) {
 	prev := c.DBConnMaxLifetime()
 	c.database.connection.maxLifetime = d
 	t.Cleanup(func() { c.database.connection.maxLifetime = prev })
-}
-
-// SetDBConnMaxIdleTime は、テスト用にデータベースの接続の最大アイドル時間を設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetDBConnMaxIdleTime(t testing.TB, d time.Duration) {
-	t.Helper()
-	prev := c.DBConnMaxIdleTime()
-	c.database.connection.maxIdleTime = d
-	t.Cleanup(func() { c.database.connection.maxIdleTime = prev })
-}
-
-// SetAllowedOrigins は、テスト用に許可されたオリジンを設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetAllowedOrigins(t testing.TB, origins []string) {
-	t.Helper()
-	prev := c.AllowedOrigins()
-	c.security.allowedOrigins = origins
-	t.Cleanup(func() { c.security.allowedOrigins = prev })
 }
 
 // SetCIDR は、テスト用にセキュリティのCIDRを設定します。

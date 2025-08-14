@@ -1,7 +1,7 @@
 //go:generate oapi-codegen --include-tags=internal/types/error-response --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
 
-// Package errorresponse は、echoでのエラーレスポンスを生成するためのユーティリティを提供します。
-package errorresponse
+// Package response は、echoでのエラーレスポンスを生成するためのユーティリティを提供します。
+package response
 
 import (
 	"fmt"
