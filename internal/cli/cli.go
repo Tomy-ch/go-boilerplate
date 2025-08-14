@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"boilerplate-go/internal/cli/gensqlc"
 	"boilerplate-go/internal/config"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -25,6 +26,7 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		NewMigrateUpCommand(),
 		NewMigrateDownCommand(),
 		NewDBSeedCommand(),
+		gensqlc.NewCommand(),
 	)
 }
 
@@ -34,5 +36,5 @@ func buildMigrateInstance() (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, err
 	}
-	return migrate.New("file://"+migrateFilePlace, cfg.DatabaseURL())
+	return migrate.New("file://"+migrateFilePlace, cfg.DatabaseDSN())
 }
