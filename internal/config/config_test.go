@@ -173,7 +173,7 @@ func TestIsAppDevelopmentMode(t *testing.T) {
 func TestDatabaseURL(t *testing.T) {
 	t.Parallel()
 
-	cfg := mockConfig(t)
+	cfg := MockConfigForTest(t)
 
 	t.Run("DatabaseURL", func(t *testing.T) {
 		t.Parallel()

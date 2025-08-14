@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	errorresponse "boilerplate-go/internal/controller/handler/error/response"
+	"boilerplate-go/internal/controller/handler/error/response"
 	"boilerplate-go/internal/controller/middleware/requestid"
 
 	"github.com/labstack/echo/v4"
@@ -43,11 +43,11 @@ func NewHTTPErrorHandler(logger *zap.Logger) echo.HTTPErrorHandler {
 func normalizeHTTPError(
 	err error,
 	requestID string,
-) *errorresponse.HTTPErrorResponse {
-	var he *errorresponse.HTTPErrorResponse
+) *response.HTTPErrorResponse {
+	var he *response.HTTPErrorResponse
 	if errors.As(err, &he) {
 		if !isErrorStatus(he.HTTPStatus) {
-			res := errorresponse.New(
+			res := response.New(
 				http.StatusInternalServerError,
 				he.Internal,
 			)
@@ -67,12 +67,12 @@ func normalizeHTTPError(
 		if !isErrorStatus(status) {
 			status = http.StatusInternalServerError
 		}
-		res := errorresponse.New(status, err)
+		res := response.New(status, err)
 		res.RequestId = requestID
 		return res
 	}
 
-	res := errorresponse.New(http.StatusInternalServerError, err)
+	res := response.New(http.StatusInternalServerError, err)
 	res.RequestId = requestID
 	return res
 }
@@ -81,7 +81,7 @@ func normalizeHTTPError(
 func logHTTPError(
 	logger *zap.Logger,
 	c echo.Context,
-	he *errorresponse.HTTPErrorResponse,
+	he *response.HTTPErrorResponse,
 ) {
 	fields := []zap.Field{
 		zap.Int("status", he.HTTPStatus),

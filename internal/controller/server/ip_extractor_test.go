@@ -10,33 +10,35 @@ import (
 )
 
 func TestNewIPExtractor(t *testing.T) {
+	t.Parallel()
+
 	cidr := "192.168.0.0/16"
 	_, parsedCIDR, err := net.ParseCIDR(cidr)
 	require.NoError(t, err)
 
 	t.Run("本番モードの場合", func(t *testing.T) {
-		require.NoError(t, config.Load())
-		t.Setenv("SERVER_APP_MODE", config.ProductionMode)
-		t.Setenv("SECURITY_CIDR", cidr)
-		cfg, err := config.New()
-		require.NoError(t, err)
+		t.Parallel()
+
+		cfg := config.MockConfigForTest(t)
+		cfg.SetServerAppMode(t, config.ProductionMode)
+		cfg.SetCIDR(t, parsedCIDR)
 		require.Equal(t, config.ProductionMode, cfg.ServerAppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
-		actual := NewIPExtractor(cfg)
+		actual := NewIPExtractor(&cfg)
 		require.NotNil(t, actual)
 	})
 
 	t.Run("開発モードの場合", func(t *testing.T) {
-		require.NoError(t, config.Load())
-		t.Setenv("APP_MODE", config.DevelopmentMode)
-		t.Setenv("SECURITY_CIDR", cidr)
-		cfg, err := config.New()
-		require.NoError(t, err)
+		t.Parallel()
+
+		cfg := config.MockConfigForTest(t)
+		cfg.SetServerAppMode(t, config.DevelopmentMode)
+		cfg.SetCIDR(t, parsedCIDR)
 		require.Equal(t, config.DevelopmentMode, cfg.ServerAppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
-		actual := NewIPExtractor(cfg)
+		actual := NewIPExtractor(&cfg)
 		require.NotNil(t, actual)
 	})
 

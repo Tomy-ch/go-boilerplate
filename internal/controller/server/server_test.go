@@ -1,19 +1,13 @@
 package server
 
 import (
-	"os"
 	"testing"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/testutil"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
-
-func TestMain(m *testing.M) {
-	os.Exit(testutil.RunWithTestSetup(m))
-}
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -33,17 +27,16 @@ func TestNew(t *testing.T) {
 }
 
 func TestSetPrimitiveEchoSettings(t *testing.T) {
-	// 環境変数を書き換えるため、並列実行は避ける
+	t.Parallel()
 	t.Run("本番環境モード", func(t *testing.T) {
+		t.Parallel()
+
 		e := echo.New()
 
-		err := config.Load()
-		require.NoError(t, err)
-		t.Setenv("SERVER_APP_MODE", config.ProductionMode)
-		cfg, err := config.New()
-		require.NoError(t, err)
+		cfg := config.MockConfigForTest(t)
+		cfg.SetServerAppMode(t, config.ProductionMode)
 
-		setPrimitiveEchoSettings(e, cfg)
+		setPrimitiveEchoSettings(e, &cfg)
 
 		require.False(t, e.Debug)
 		require.True(t, e.HideBanner)
@@ -51,15 +44,14 @@ func TestSetPrimitiveEchoSettings(t *testing.T) {
 	})
 
 	t.Run("開発環境モード", func(t *testing.T) {
+		t.Parallel()
+
 		e := echo.New()
 
-		err := config.Load()
-		require.NoError(t, err)
-		t.Setenv("SERVER_APP_MODE", config.DevelopmentMode)
-		cfg, err := config.New()
-		require.NoError(t, err)
+		cfg := config.MockConfigForTest(t)
+		cfg.SetServerAppMode(t, config.DevelopmentMode)
 
-		setPrimitiveEchoSettings(e, cfg)
+		setPrimitiveEchoSettings(e, &cfg)
 
 		require.True(t, e.Debug)
 		require.False(t, e.HideBanner)
