@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"boilerplate-go/internal/controller/middleware/logging"
-	"boilerplate-go/pkg/xerror"
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 
@@ -30,7 +30,7 @@ func NewMigrateUpCommand() *cobra.Command {
 // migrateUpRun は、マイグレーションをアップデートするための実行関数です。
 func migrateUpRun(_ *cobra.Command, args []string) error {
 	logger := logging.NewProductionLogger()
-	xerrors := xerror.New()
+	errors := xerrors.New()
 
 	m, err := buildMigrateInstance()
 	if err != nil {
@@ -40,7 +40,7 @@ func migrateUpRun(_ *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		// 引数なしなら全てのマイグレーションをアップ
 		logger.Info("running full migration up")
-		if err := executeMigrateFullUp(m, xerrors); err != nil {
+		if err := executeMigrateFullUp(m, errors); err != nil {
 			logger.Panic("migration failed", zap.Error(err))
 		}
 	} else {
@@ -56,7 +56,7 @@ func migrateUpRun(_ *cobra.Command, args []string) error {
 }
 
 // executeMigrateFullUp は、マイグレーションを全てアップグレードします。
-func executeMigrateFullUp(m *migrate.Migrate, errors xerror.XErrors) error {
+func executeMigrateFullUp(m *migrate.Migrate, errors xerrors.Errors) error {
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return err
 	}

@@ -10,7 +10,7 @@ import (
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/middleware/logging"
-	"boilerplate-go/pkg/xerror"
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/jackc/pgconn"
 
@@ -40,7 +40,7 @@ func NewDBSeedCommand() *cobra.Command {
 // dbSeedRun は、データベースに初期データを投入するための実行関数です。
 func dbSeedRun(_ *cobra.Command, _ []string) error {
 	logger := logging.NewProductionLogger()
-	xerrors := xerror.New()
+	errors := xerrors.New()
 
 	cfg, err := config.SetUpConfig()
 	if err != nil {
@@ -78,7 +78,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 		_, err = db.ExecContext(ctx, string(data))
 		if err != nil {
 			var pgErr *pgconn.PgError
-			if xerrors.As(err, &pgErr) &&
+			if errors.As(err, &pgErr) &&
 				pgErr.Code != relationDoesNotExistCode {
 				logger.Panic(
 					"failed to exec seed file",
