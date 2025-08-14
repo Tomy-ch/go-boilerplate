@@ -17,13 +17,14 @@ type operationSystem struct {
 }
 
 type server struct {
-	serverEnv string
-	appMode   string
-	host      string
-	port      int
+	env     string
+	appMode string
+	host    string
+	port    int
 }
 
 type database struct {
+	driver     string
 	host       string
 	port       int
 	user       string
@@ -57,13 +58,16 @@ func (c *Config) ServerPort() int { return c.server.port }
 // ServerEnv は、サーバーの環境を返します。
 //
 // 例: "local", "development", "staging", "production" など。
-func (c *Config) ServerEnv() string { return c.server.serverEnv }
+func (c *Config) ServerEnv() string { return c.server.env }
 
 // ServerAppMode は、アプリケーションの環境を返します。
 //
 // この環境変数はアプリケーションがどのモードで動作しているかを示します。
 // 例: "development", "production" など。
 func (c *Config) ServerAppMode() string { return c.server.appMode }
+
+// DatabaseDriver は、データベースのドライバー名を返します。
+func (c *Config) DatabaseDriver() string { return c.database.driver }
 
 // DatabaseHost は、データベースのホスト名を返します。
 func (c *Config) DatabaseHost() string { return c.database.host }

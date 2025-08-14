@@ -1,0 +1,102 @@
+package config
+
+import (
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestMockConfigForTest(t *testing.T) {
+	t.Parallel()
+	expected := Config{
+		os: operationSystem{
+			timezone: expectedOSTimeZone,
+		},
+		server: server{
+			env:     expectedServerEnv,
+			appMode: expectedAppMode,
+			host:    expectedHost,
+			port:    expectedPort,
+		},
+		database: database{
+			driver:   expectedDBDriver,
+			host:     expectedDBHost,
+			port:     expectedDBPort,
+			user:     expectedDBUser,
+			password: expectedDBPassword,
+			name:     expectedDBName,
+			sslMode:  expectedDBSSLMode,
+			connection: connection{
+				maxOpenConns: expectedDBMaxOpenConns,
+				maxIdleConns: expectedDBMaxIdleConns,
+				maxLifetime:  expectedDBMaxLifetime,
+				maxIdleTime:  expectedDBMaxIdleTime,
+			},
+		},
+		security: security{
+			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
+			cidr:           expectedCIDR,
+		},
+	}
+
+	actual := MockConfigForTest(t)
+
+	require.Equal(t, expected, actual)
+}
+
+func Test_mockLoader(t *testing.T) {
+	t.Parallel()
+	expected := Loader{
+		OS: OperationSystem{
+			Timezone: expectedOSTimeZone,
+		},
+		Server: Server{
+			Env:     expectedServerEnv,
+			AppMode: expectedAppMode,
+			Host:    expectedHost,
+			Port:    expectedPort,
+		},
+		Database: Database{
+			Host:     expectedDBHost,
+			Port:     expectedDBPort,
+			User:     expectedDBUser,
+			Password: expectedDBPassword,
+			Name:     expectedDBName,
+			SSLMode:  expectedDBSSLMode,
+		},
+		Security: Security{
+			AllowedOrigins: strings.Split(expectedAllowedOrigins, ","),
+			CIDR:           expectedCIDRStr,
+		},
+	}
+
+	actual := mockLoader(t)
+
+	require.Equal(t, expected, actual)
+}
+
+func Test_setEnv(t *testing.T) {
+	setEnv(t)
+
+	require.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
+	require.Equal(t, expectedServerEnv, os.Getenv("SERVER_ENV"))
+	require.Equal(t, expectedAppMode, os.Getenv("SERVER_APP_MODE"))
+	require.Equal(t, expectedHost, os.Getenv("SERVER_HOST"))
+	require.Equal(t, strconv.Itoa(expectedPort), os.Getenv("SERVER_PORT"))
+	require.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
+	require.Equal(t, expectedDBHost, os.Getenv("DB_HOST"))
+	require.Equal(t, strconv.Itoa(expectedDBPort), os.Getenv("DB_PORT"))
+	require.Equal(t, expectedDBUser, os.Getenv("DB_USER"))
+	require.Equal(t, expectedDBPassword, os.Getenv("DB_PASSWORD"))
+	require.Equal(t, expectedDBName, os.Getenv("DB_NAME"))
+	require.Equal(t, expectedDBSSLMode, os.Getenv("DB_SSL_MODE"))
+	require.Equal(t, strconv.Itoa(expectedDBMaxOpenConns), os.Getenv("DB_CONN_MAX_OPEN"))
+	require.Equal(t, strconv.Itoa(expectedDBMaxIdleConns), os.Getenv("DB_CONN_MAX_IDLE"))
+	require.Equal(t, expectedDBMaxLifetimeStr, os.Getenv("DB_CONN_MAX_LIFETIME"))
+	require.Equal(t, expectedDBMaxIdleTimeStr, os.Getenv("DB_CONN_MAX_IDLE_TIME"))
+	require.Equal(t, expectedCIDRStr, os.Getenv("SECURITY_CIDR"))
+	require.Equal(t, expectedAllowedOrigins, os.Getenv("SECURITY_ALLOWED_ORIGINS"))
+}
