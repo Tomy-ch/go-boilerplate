@@ -7,19 +7,18 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
 var (
 	// operationSystem
 	expectedOSTimeZone = "Asia/Tokyo"
 	// server
-	expectedEnv     = "test"
-	expectedAppMode = DevelopmentMode
-	expectedHost    = "localhost"
-	expectedPort    = 8080
+	expectedServerEnv = "test"
+	expectedAppMode   = DevelopmentMode
+	expectedHost      = "localhost"
+	expectedPort      = 8080
 	// database
+	expectedDBDriver   = "pgx"
 	expectedDBHost     = "postgres-db"
 	expectedDBPort     = 5432
 	expectedDBUser     = "postgres"
@@ -38,25 +37,24 @@ var (
 	// security
 	expectedAllowedOrigins = "http://localhost,https://example.com"
 	expectedCIDRStr        = "192.168.0.0/24"
+	_, expectedCIDR, _     = net.ParseCIDR(expectedCIDRStr)
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
 func MockConfigForTest(t testing.TB) Config {
 	t.Helper()
-	_, expectedCIDR, err := net.ParseCIDR(expectedCIDRStr)
-	require.NoError(t, err)
-
 	return Config{
 		os: operationSystem{
 			timezone: expectedOSTimeZone,
 		},
 		server: server{
-			serverEnv: expectedEnv,
-			appMode:   expectedAppMode,
-			host:      expectedHost,
-			port:      expectedPort,
+			env:     expectedServerEnv,
+			appMode: expectedAppMode,
+			host:    expectedHost,
+			port:    expectedPort,
 		},
 		database: database{
+			driver:   expectedDBDriver,
 			host:     expectedDBHost,
 			port:     expectedDBPort,
 			user:     expectedDBUser,
@@ -86,10 +84,10 @@ func mockLoader(t testing.TB) Loader {
 			Timezone: expectedOSTimeZone,
 		},
 		Server: Server{
-			ServerEnv: expectedEnv,
-			AppMode:   expectedAppMode,
-			Host:      expectedHost,
-			Port:      expectedPort,
+			Env:     expectedServerEnv,
+			AppMode: expectedAppMode,
+			Host:    expectedHost,
+			Port:    expectedPort,
 		},
 		Database: Database{
 			Host:     expectedDBHost,
@@ -110,10 +108,11 @@ func mockLoader(t testing.TB) Loader {
 func setEnv(t testing.TB) {
 	t.Helper()
 	t.Setenv("OS_TZ", expectedOSTimeZone)
-	t.Setenv("SERVER_ENV", expectedEnv)
+	t.Setenv("SERVER_ENV", expectedServerEnv)
 	t.Setenv("SERVER_APP_MODE", expectedAppMode)
 	t.Setenv("SERVER_HOST", expectedHost)
 	t.Setenv("SERVER_PORT", strconv.Itoa(expectedPort))
+	t.Setenv("DB_DRIVER", expectedDBDriver)
 	t.Setenv("DB_HOST", expectedDBHost)
 	t.Setenv("DB_PORT", strconv.Itoa(expectedDBPort))
 	t.Setenv("DB_USER", expectedDBUser)

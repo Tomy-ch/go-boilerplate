@@ -3,29 +3,41 @@
   "language": "en",
   "useGitignore": true,
   "ignoreRegExpList": [
-    "/`[\\s\\S]*?`/g"
+    "/`[\\s\\S]*?`/g",
+    "/go install [a-zA-Z0-9\\.\\/]+@latest/g"
   ],
   "ignorePaths": [
     "**/go.sum",
     "**/go.mod",
     ".github/settings/labels.json",
-    "internal/**",
-    "pkg/**",
+    "**.go",
     ".golangci.yaml",
     ".golangci-full.yaml"
   ],
   "words": [
+    "anyenv",
+    "citext",
     "codegen",
+    "covermode",
+    "coverprofile",
+    "ctxkey",
     "godotenv",
+    "goenv",
     "golangci",
+    "healthz",
     "IDOR",
     "lefthook",
     "makefiles",
     "mockgen",
     "oapi",
+    "pgcrypto",
+    "PKGS",
+    "redoc",
     "Redocly",
     "safecast",
     "sqlc",
+    "sqlfluff",
+    "trgm",
     "xerror"
   ]
 }
