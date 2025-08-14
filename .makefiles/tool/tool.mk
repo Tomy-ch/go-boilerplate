@@ -65,9 +65,9 @@ db-migrate-down-%:
 	echo "✅ 完了：バージョン $$version までダウングレードされました。"
 
 db-seed:
-	@echo "🔄 データベースにシードデータを投入します..." \
-	docker compose run --rm go_tool_runner go run cmd/main.go db-seed \
-	echo "✅ シードデータの投入が完了しました。"
+	@echo "🔄 データベースにシードデータを投入します..."
+	docker compose run --rm go_tool_runner go run cmd/main.go db-seed
+	@echo "✅ シードデータの投入が完了しました。"
 
 db-init:
 	@echo "🔄 マイグレーション関連のコマンドを実行します..."
