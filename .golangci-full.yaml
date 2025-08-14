@@ -67,11 +67,15 @@ linters:
           files:
             - "**/*.go"
             - "!**/pkg/xerror/**.go"
+            - "!**/pkg/uuid/**.go"
           list-mode: lax
           deny:
             - pkg: github.com/cockroachdb/errors
               desc: "スタックトレース用として導入したライブラリです。
                 代わりに pkg/xerror を使用してください。"
+            - pkg: github.com/google/uuid
+              desc: "uuid作成用として導入したライブラリです。
+                代わりに pkg/uuid を使用してください。"
     dupl:
       # 重複コードの検出を行います。
       # 約300トークン以上の重複を検出します。
