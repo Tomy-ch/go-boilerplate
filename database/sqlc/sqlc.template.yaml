@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: postgresql
+    database:
+      uri: __DATABASE_URL__
+    queries: database/dml/__TYPE__/__CATEGORY__/
+    gen:
+      go:
+        package: gen
+        out: internal/infrastructure/rdb/sqlc/__TYPE__/__CATEGORY__/gen/
