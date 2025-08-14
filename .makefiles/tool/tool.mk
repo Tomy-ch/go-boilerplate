@@ -85,7 +85,7 @@ gen-sqlc:
 
 gen-sqlc-repo:
 	@echo "🔄 ドメイン用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository \
+	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository; \
 	echo "✅ ドメイン用のSQLCのコード生成が完了しました。"
 
 gen-sqlc-repo-%:
@@ -96,7 +96,7 @@ gen-sqlc-repo-%:
 
 gen-sqlc-qs:
 	@echo "🔄 クエリサービス用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service \
+	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service; \
 	echo "✅ クエリサービス用のSQLCのコード生成が完了しました。"
 
 gen-sqlc-qs-%:
