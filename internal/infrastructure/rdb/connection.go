@@ -25,7 +25,7 @@ type DBTX interface {
 
 // NewDB は Postgres のDB接続を初期化して返します。
 func NewDB(cfg *config.Config) (*sql.DB, error) {
-	db, err := sql.Open("pgx", cfg.DatabaseDSN())
+	db, err := sql.Open(cfg.DatabaseDriver(), cfg.DatabaseDSN())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open DB: %w", err)
 	}

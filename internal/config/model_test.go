@@ -1,7 +1,6 @@
 package config
 
 import (
-	"net"
 	"strings"
 	"testing"
 
@@ -11,10 +10,7 @@ import (
 func TestGetterMethods(t *testing.T) {
 	t.Parallel()
 
-	_, expectedCIDR, err := net.ParseCIDR(expectedCIDRStr)
-	require.NoError(t, err)
-
-	cfg := mockConfig(t)
+	cfg := MockConfigForTest(t)
 
 	t.Run("OSTimeZone", func(t *testing.T) {
 		t.Parallel()
@@ -33,12 +29,17 @@ func TestGetterMethods(t *testing.T) {
 
 	t.Run("ServerEnv", func(t *testing.T) {
 		t.Parallel()
-		require.Equal(t, expectedEnv, cfg.ServerEnv())
+		require.Equal(t, expectedServerEnv, cfg.ServerEnv())
 	})
 
 	t.Run("ServerAppMode", func(t *testing.T) {
 		t.Parallel()
 		require.Equal(t, expectedAppMode, cfg.ServerAppMode())
+	})
+
+	t.Run("DatabaseDriver", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedDBDriver, cfg.DatabaseDriver())
 	})
 
 	t.Run("DatabaseHost", func(t *testing.T) {

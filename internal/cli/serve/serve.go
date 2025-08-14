@@ -1,4 +1,5 @@
-package cli
+// Package serve は、サーバーを起動するためのコマンドを提供するためのパッケージです。
+package serve
 
 import (
 	"boilerplate-go/internal/config"
