@@ -31,12 +31,13 @@ func New() (*Config, error) {
 			timezone: cfg.OS.Timezone,
 		},
 		server: server{
-			serverEnv: cfg.Server.ServerEnv,
-			appMode:   cfg.Server.AppMode,
-			host:      cfg.Server.Host,
-			port:      cfg.Server.Port,
+			env:     cfg.Server.Env,
+			appMode: cfg.Server.AppMode,
+			host:    cfg.Server.Host,
+			port:    cfg.Server.Port,
 		},
 		database: database{
+			driver:   cfg.Database.Driver,
 			host:     cfg.Database.Host,
 			port:     cfg.Database.Port,
 			user:     cfg.Database.User,
@@ -106,7 +107,7 @@ func (c *Config) IsAppDevelopmentMode() bool {
 // DatabaseDSN は、データベースの接続URLを返します。
 func (c *Config) DatabaseDSN() string {
 	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s&TimeZone=%s",
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
 		c.database.user,
 		c.database.password,
 		c.database.host,

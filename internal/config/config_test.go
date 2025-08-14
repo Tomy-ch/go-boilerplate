@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"net"
 	"net/url"
 	"strings"
 	"testing"
@@ -11,9 +10,6 @@ import (
 )
 
 func TestNewConfig(t *testing.T) {
-	_, expectedCIDR, err := net.ParseCIDR(expectedCIDRStr)
-	require.NoError(t, err)
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) {
 			setEnv(t)
@@ -22,12 +18,13 @@ func TestNewConfig(t *testing.T) {
 					timezone: expectedOSTimeZone,
 				},
 				server: server{
-					serverEnv: expectedEnv,
-					appMode:   expectedAppMode,
-					host:      expectedHost,
-					port:      expectedPort,
+					env:     expectedServerEnv,
+					appMode: expectedAppMode,
+					host:    expectedHost,
+					port:    expectedPort,
 				},
 				database: database{
+					driver:   expectedDBDriver,
 					host:     expectedDBHost,
 					port:     expectedDBPort,
 					user:     expectedDBUser,
@@ -56,7 +53,7 @@ func TestNewConfig(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Run("configに必要な環境変数が不足している場合", func(t *testing.T) {
-			t.Setenv("SERVER_ENV", expectedEnv)
+			t.Setenv("SERVER_ENV", expectedServerEnv)
 
 			actual, err := New()
 			require.Nil(t, actual)
@@ -178,7 +175,7 @@ func TestDatabaseURL(t *testing.T) {
 	t.Run("DatabaseURL", func(t *testing.T) {
 		t.Parallel()
 		expectedURL := fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=%s&TimeZone=%s",
+			"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
 			expectedDBUser,
 			expectedDBPassword,
 			expectedDBHost,

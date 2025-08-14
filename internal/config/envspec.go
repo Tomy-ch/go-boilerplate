@@ -14,13 +14,14 @@ type OperationSystem struct {
 }
 
 type Server struct {
-	ServerEnv string `env:"ENV,required"`
-	AppMode   string `env:"APP_MODE,required"`
-	Host      string `env:"HOST,required"`
-	Port      int    `env:"PORT,required"`
+	Env     string `env:"ENV,required"`
+	AppMode string `env:"APP_MODE,required"`
+	Host    string `env:"HOST,required"`
+	Port    int    `env:"PORT,required"`
 }
 
 type Database struct {
+	Driver     string     `env:"DRIVER,required"`
 	Host       string     `env:"HOST,required"`
 	Port       int        `env:"PORT,required"`
 	User       string     `env:"USER,required"`
