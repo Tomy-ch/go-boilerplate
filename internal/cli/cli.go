@@ -3,38 +3,20 @@ package cli
 
 import (
 	"boilerplate-go/internal/cli/gensqlc"
-	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/cli/migrate"
+	"boilerplate-go/internal/cli/seed"
+	"boilerplate-go/internal/cli/serve"
 
-	"github.com/golang-migrate/migrate/v4"
 	"github.com/spf13/cobra"
-)
-
-const (
-	// migrateFilePlace は、マイグレーションファイルの場所を定義します。
-	migrateFilePlace = "database/migrations"
-	// seedFilePlace は、シードファイルの場所を定義します。
-	seedFilePlace = "database/seed"
-
-	// PostgreSQLのエラーコード: 指定のオブジェクトが存在しない場合のコード
-	relationDoesNotExistCode = "42P01"
 )
 
 // RegisterCommands は、CLIのサブコマンドを登録します。
 func RegisterCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(
-		NewServeCommand(),
-		NewMigrateUpCommand(),
-		NewMigrateDownCommand(),
-		NewDBSeedCommand(),
+		serve.NewServeCommand(),
+		migrate.NewMigrateUpCommand(),
+		migrate.NewMigrateDownCommand(),
+		seed.NewDBSeedCommand(),
 		gensqlc.NewCommand(),
 	)
-}
-
-// buildMigrateInstance は、マイグレーションインスタンスを生成します。
-func buildMigrateInstance() (*migrate.Migrate, error) {
-	cfg, err := config.SetUpConfig()
-	if err != nil {
-		return nil, err
-	}
-	return migrate.New("file://"+migrateFilePlace, cfg.DatabaseDSN())
 }

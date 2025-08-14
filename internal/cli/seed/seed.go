@@ -1,4 +1,5 @@
-package cli
+// Package seed は、データベースの初期データ投入に関するコマンドを提供するためのパッケージです。
+package seed
 
 import (
 	"context"
@@ -15,6 +16,14 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+)
+
+const (
+	// seedFilePlace は、シードファイルの場所を定義します。
+	seedFilePlace = "database/seed"
+
+	// PostgreSQLのエラーコード: 指定のオブジェクトが存在しない場合のコード
+	relationDoesNotExistCode = "42P01"
 )
 
 // NewDBSeedCommand は、データベースに初期データを投入するためのコマンドを生成します。
