@@ -5,13 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
 	"boilerplate-go/internal/controller/ctxhelper"
 	"boilerplate-go/internal/domain/expectederrors"
-	"boilerplate-go/internal/testutil"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
@@ -19,10 +17,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
-
-func TestMain(m *testing.M) {
-	os.Exit(testutil.RunWithTestSetup(m))
-}
 
 func Test_buildFields(t *testing.T) {
 	t.Parallel()
@@ -102,6 +96,8 @@ func Test_buildFields(t *testing.T) {
 }
 
 func Test_logRequest(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		status          int
@@ -146,6 +142,8 @@ func Test_logRequest(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			var buf bytes.Buffer
 			logger := newTestLogger(&buf)
 			c := newTestContext(tt.status)
