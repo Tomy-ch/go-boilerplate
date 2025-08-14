@@ -55,6 +55,11 @@ openapi/
 
 ## 注意
 
+- ツールの実行はDocker上で行いますが、その際のワーキングディレクトリは`app/`を採用しています。
+  書き換える場合、`docker-compose.yaml`の`volumes`セクションの他、生成時に参照されるパスも適切に変更する必要があります。
+  対象となるツールは以下の通りです。
+  - oapi-codegen
+  - sqlc
 - OpenAPI スキーマの`$ref`解決やドキュメント生成は`openapi/`配下が前提です。
 - `go generate`に必要なコメントが`internal/interface/handler/...`や`test/...`に記述されている必要があります。
 

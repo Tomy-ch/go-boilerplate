@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
-	"strconv"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -11,48 +11,21 @@ import (
 )
 
 func TestNewConfig(t *testing.T) {
-	// environment
-	expectedEnv := "test"
-	expectedAppMode := "development"
-	// server
-	expectedHost := "localhost"
-	expectedPort := 8080
-	// database
-	expectedDBHost := "postgres-db"
-	expectedDBPort := 5432
-	expectedDBUser := "postgres"
-	expectedDBPassword := "postgres-password"
-	expectedDBName := "test"
-	expectedDBSSLMode := "disable"
-	// security
-	expectedAllowedOrigins := "http://localhost,https://example.com"
-	expectedCIDRStr := "192.168.0.0/24"
 	_, expectedCIDR, err := net.ParseCIDR(expectedCIDRStr)
 	require.NoError(t, err)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) {
-			t.Setenv("ENV", expectedEnv)
-			t.Setenv("APP_MODE", expectedAppMode)
-			t.Setenv("HOST", expectedHost)
-			t.Setenv("PORT", strconv.Itoa(expectedPort))
-			t.Setenv("DB_HOST", expectedDBHost)
-			t.Setenv("DB_PORT", strconv.Itoa(expectedDBPort))
-			t.Setenv("DB_USER", expectedDBUser)
-			t.Setenv("DB_PASSWORD", expectedDBPassword)
-			t.Setenv("DB_NAME", expectedDBName)
-			t.Setenv("DB_SSLMODE", expectedDBSSLMode)
-			t.Setenv("SECURITY_CIDR", expectedCIDRStr)
-			t.Setenv("SECURITY_ALLOWED_ORIGINS", expectedAllowedOrigins)
-
+			setEnv(t)
 			expected := &Config{
-				environment: environment{
-					serverEnv: expectedEnv,
-					appMode:   expectedAppMode,
+				os: operationSystem{
+					timezone: expectedOSTimeZone,
 				},
 				server: server{
-					host: expectedHost,
-					port: expectedPort,
+					serverEnv: expectedEnv,
+					appMode:   expectedAppMode,
+					host:      expectedHost,
+					port:      expectedPort,
 				},
 				database: database{
 					host:     expectedDBHost,
@@ -61,6 +34,12 @@ func TestNewConfig(t *testing.T) {
 					password: expectedDBPassword,
 					name:     expectedDBName,
 					sslMode:  expectedDBSSLMode,
+					connection: connection{
+						maxOpenConns: expectedDBMaxOpenConns,
+						maxIdleConns: expectedDBMaxIdleConns,
+						maxLifetime:  expectedDBMaxLifetime,
+						maxIdleTime:  expectedDBMaxIdleTime,
+					},
 				},
 				security: security{
 					allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
@@ -77,7 +56,7 @@ func TestNewConfig(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Run("configに必要な環境変数が不足している場合", func(t *testing.T) {
-			t.Setenv("ENV", expectedEnv)
+			t.Setenv("SERVER_ENV", expectedEnv)
 
 			actual, err := New()
 			require.Nil(t, actual)
@@ -85,18 +64,8 @@ func TestNewConfig(t *testing.T) {
 		})
 
 		t.Run("バリデート結果がエラーの場合", func(t *testing.T) {
-			t.Setenv("ENV", expectedEnv)
-			t.Setenv("APP_MODE", "invalid_env")
-			t.Setenv("HOST", expectedHost)
-			t.Setenv("PORT", strconv.Itoa(expectedPort))
-			t.Setenv("DB_HOST", expectedDBHost)
-			t.Setenv("DB_PORT", strconv.Itoa(expectedDBPort))
-			t.Setenv("DB_USER", expectedDBUser)
-			t.Setenv("DB_PASSWORD", expectedDBPassword)
-			t.Setenv("DB_NAME", expectedDBName)
-			t.Setenv("DB_SSLMODE", expectedDBSSLMode)
-			t.Setenv("SECURITY_CIDR", expectedCIDRStr)
-			t.Setenv("SECURITY_ALLOWED_ORIGINS", expectedAllowedOrigins)
+			setEnv(t)
+			t.Setenv("SERVER_APP_MODE", "invalid_env")
 
 			actual, err := New()
 			require.Nil(t, actual)
@@ -105,135 +74,11 @@ func TestNewConfig(t *testing.T) {
 	})
 }
 
-func TestGetterMethods(t *testing.T) {
-	t.Parallel()
-
-	// environment
-	expectedEnv := "test"
-	expectedAppMode := "development"
-	// server
-	expectedHost := "localhost"
-	expectedPort := 8080
-	// database
-	expectedDBHost := "postgres-db"
-	expectedDBPort := 5432
-	expectedDBUser := "postgres"
-	expectedDBPassword := "postgres-password"
-	expectedDBName := "test"
-	expectedDBSSLMode := "disable"
-	// security
-	expectedAllowedOrigins := "http://localhost,https://example.com"
-	expectedCIDRStr := "192.168.0.0/24"
-	_, expectedCIDR, err := net.ParseCIDR(expectedCIDRStr)
-	require.NoError(t, err)
-
-	cfg := &Config{
-		environment: environment{
-			serverEnv: expectedEnv,
-			appMode:   expectedAppMode,
-		},
-		server: server{
-			host: expectedHost,
-			port: expectedPort,
-		},
-		database: database{
-			host:     expectedDBHost,
-			port:     expectedDBPort,
-			user:     expectedDBUser,
-			password: expectedDBPassword,
-			name:     expectedDBName,
-			sslMode:  expectedDBSSLMode,
-		},
-		security: security{
-			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			cidr:           expectedCIDR,
-		},
-	}
-
-	t.Run("ServerHost", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedHost, cfg.ServerHost())
-	})
-
-	t.Run("ServerPort", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedPort, cfg.ServerPort())
-	})
-
-	t.Run("ServerEnv", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedEnv, cfg.ServerEnv())
-	})
-
-	t.Run("AppMode", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedAppMode, cfg.AppMode())
-	})
-
-	t.Run("DatabaseHost", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedDBHost, cfg.DatabaseHost())
-	})
-
-	t.Run("DatabasePort", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedDBPort, cfg.DatabasePort())
-	})
-
-	t.Run("DatabaseUser", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedDBUser, cfg.DatabaseUser())
-	})
-
-	t.Run("DatabasePassword", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedDBPassword, cfg.DatabasePassword())
-	})
-
-	t.Run("DatabaseName", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedDBName, cfg.DatabaseName())
-	})
-
-	t.Run("DatabaseSSLMode", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedDBSSLMode, cfg.DatabaseSSLMode())
-	})
-
-	t.Run("DatabaseURL", func(t *testing.T) {
-		t.Parallel()
-		expectedURL := fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-			expectedDBUser,
-			expectedDBPassword,
-			expectedDBHost,
-			expectedDBPort,
-			expectedDBName,
-			expectedDBSSLMode,
-		)
-		require.Equal(t, expectedURL, cfg.DatabaseURL())
-	})
-
-	t.Run("AllowedOrigins", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(
-			t,
-			strings.Split(expectedAllowedOrigins, ","),
-			cfg.AllowedOrigins(),
-		)
-	})
-
-	t.Run("CIDR", func(t *testing.T) {
-		t.Parallel()
-		require.Equal(t, expectedCIDR, cfg.CIDR())
-	})
-}
-
 func Test_validateConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		cfg := verifiedConfigLoader()
+		cfg := mockLoader(t)
 
 		actual, err := validateConfig(cfg)
 		require.NotNil(t, actual)
@@ -244,7 +89,7 @@ func Test_validateConfig(t *testing.T) {
 		t.Parallel()
 		t.Run("無効なポート番号", func(t *testing.T) {
 			t.Parallel()
-			cfg := verifiedConfigLoader()
+			cfg := mockLoader(t)
 			cfg.Server.Port = MaxPort + 1 // 無効なポート番号
 
 			actual, err := validateConfig(cfg)
@@ -254,8 +99,8 @@ func Test_validateConfig(t *testing.T) {
 
 		t.Run("無効なアプリケーションモード", func(t *testing.T) {
 			t.Parallel()
-			cfg := verifiedConfigLoader()
-			cfg.Environment.AppMode = "invalid_mode" // 無効なアプリケーションモード
+			cfg := mockLoader(t)
+			cfg.Server.AppMode = "invalid_mode" // 無効なアプリケーションモード
 
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
@@ -263,7 +108,7 @@ func Test_validateConfig(t *testing.T) {
 		})
 
 		t.Run("CIDRのパースに失敗した場合", func(t *testing.T) {
-			cfg := verifiedConfigLoader()
+			cfg := mockLoader(t)
 			cfg.Security.CIDR = "invalid_cidr" // 無効なCIDR
 
 			actual, err := validateConfig(cfg)
@@ -272,7 +117,7 @@ func Test_validateConfig(t *testing.T) {
 		})
 
 		t.Run("AllowedOriginsが空の場合", func(t *testing.T) {
-			cfg := verifiedConfigLoader()
+			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{} // 空のAllowedOrigins
 
 			actual, err := validateConfig(cfg)
@@ -281,7 +126,7 @@ func Test_validateConfig(t *testing.T) {
 		})
 
 		t.Run("localhost以外でHTTPが許可されている場合", func(t *testing.T) {
-			cfg := verifiedConfigLoader()
+			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{"http://example.com"} // localhost以外のHTTP
 
 			actual, err := validateConfig(cfg)
@@ -296,14 +141,14 @@ func TestIsAppProductionMode(t *testing.T) {
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
-		cfg.environment.appMode = ProductionMode
+		cfg.server.appMode = ProductionMode
 		require.True(t, cfg.IsAppProductionMode())
 	})
 
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
-		cfg.environment.appMode = DevelopmentMode
+		cfg.server.appMode = DevelopmentMode
 		require.False(t, cfg.IsAppProductionMode())
 	})
 }
@@ -313,31 +158,35 @@ func TestIsAppDevelopmentMode(t *testing.T) {
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
-		cfg.environment.appMode = DevelopmentMode
+		cfg.server.appMode = DevelopmentMode
 		require.True(t, cfg.IsAppDevelopmentMode())
 	})
 
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
-		cfg.environment.appMode = ProductionMode
+		cfg.server.appMode = ProductionMode
 		require.False(t, cfg.IsAppDevelopmentMode())
 	})
 }
 
-func verifiedConfigLoader() Loader {
-	return Loader{
-		Server: Server{
-			Host: "localhost",
-			Port: 8080,
-		},
-		Environment: Environment{
-			ServerEnv: "test",
-			AppMode:   DevelopmentMode,
-		},
-		Security: Security{
-			AllowedOrigins: []string{"http://localhost", "https://example.com"},
-			CIDR:           "127.0.0.0/8",
-		},
-	}
+func TestDatabaseURL(t *testing.T) {
+	t.Parallel()
+
+	cfg := mockConfig(t)
+
+	t.Run("DatabaseURL", func(t *testing.T) {
+		t.Parallel()
+		expectedURL := fmt.Sprintf(
+			"postgres://%s:%s@%s:%d/%s?sslmode=%s&TimeZone=%s",
+			expectedDBUser,
+			expectedDBPassword,
+			expectedDBHost,
+			expectedDBPort,
+			expectedDBName,
+			expectedDBSSLMode,
+			url.QueryEscape(expectedOSTimeZone),
+		)
+		require.Equal(t, expectedURL, cfg.DatabaseDSN())
+	})
 }

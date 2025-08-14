@@ -27,13 +27,14 @@ func New() (*Config, error) {
 	}
 
 	return &Config{
-		environment: environment{
-			serverEnv: cfg.Environment.ServerEnv,
-			appMode:   cfg.Environment.AppMode,
+		os: operationSystem{
+			timezone: cfg.OS.Timezone,
 		},
 		server: server{
-			host: cfg.Server.Host,
-			port: cfg.Server.Port,
+			serverEnv: cfg.Server.ServerEnv,
+			appMode:   cfg.Server.AppMode,
+			host:      cfg.Server.Host,
+			port:      cfg.Server.Port,
 		},
 		database: database{
 			host:     cfg.Database.Host,
@@ -42,6 +43,12 @@ func New() (*Config, error) {
 			password: cfg.Database.Password,
 			name:     cfg.Database.Name,
 			sslMode:  cfg.Database.SSLMode,
+			connection: connection{
+				maxOpenConns: cfg.Database.Connection.MaxOpenConns,
+				maxIdleConns: cfg.Database.Connection.MaxIdleConns,
+				maxLifetime:  cfg.Database.Connection.MaxLifetime,
+				maxIdleTime:  cfg.Database.Connection.MaxIdleTime,
+			},
 		},
 		security: security{
 			allowedOrigins: cfg.Security.AllowedOrigins,
@@ -52,7 +59,7 @@ func New() (*Config, error) {
 
 // validateConfig は、ConfigLoaderの内容を検証します。
 func validateConfig(cfg Loader) (*validatedConfig, error) {
-	if cfg.Server.Port < MinPort || cfg.Server.Port > MaxPort {
+	if cfg.Server.Port < MinPort || MaxPort < cfg.Server.Port {
 		return nil, ErrInvalidPortRange
 	}
 
@@ -70,8 +77,8 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 		}
 	}
 
-	if cfg.Environment.AppMode != DevelopmentMode &&
-		cfg.Environment.AppMode != ProductionMode {
+	if cfg.Server.AppMode != DevelopmentMode &&
+		cfg.Server.AppMode != ProductionMode {
 
 		return nil, ErrInvalidAppMode
 	}
@@ -88,23 +95,24 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 
 // IsAppProductionMode は、アプリケーションが本番環境モードかどうかを返します。
 func (c *Config) IsAppProductionMode() bool {
-	return c.environment.appMode == ProductionMode
+	return c.server.appMode == ProductionMode
 }
 
 // IsAppDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。
 func (c *Config) IsAppDevelopmentMode() bool {
-	return c.environment.appMode == DevelopmentMode
+	return c.server.appMode == DevelopmentMode
 }
 
-// DatabaseURL は、データベースの接続URLを返します。
-func (c *Config) DatabaseURL() string {
+// DatabaseDSN は、データベースの接続URLを返します。
+func (c *Config) DatabaseDSN() string {
 	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		c.DatabaseUser(),
-		c.DatabasePassword(),
-		c.DatabaseHost(),
-		c.DatabasePort(),
-		c.DatabaseName(),
-		c.DatabaseSSLMode(),
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s&TimeZone=%s",
+		c.database.user,
+		c.database.password,
+		c.database.host,
+		c.database.port,
+		c.database.name,
+		c.database.sslMode,
+		url.QueryEscape(c.os.timezone),
 	)
 }

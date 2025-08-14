@@ -1,29 +1,40 @@
 package config
 
+import "time"
+
 type Loader struct {
-	Server      Server
-	Environment Environment
-	Database    Database `envPrefix:"DB_"`
-	Security    Security `envPrefix:"SECURITY_"`
+	OS       OperationSystem `envPrefix:"OS_"`
+	Server   Server          `envPrefix:"SERVER_"`
+	Database Database        `envPrefix:"DB_"`
+	Security Security        `envPrefix:"SECURITY_"`
 }
 
-type Environment struct {
-	ServerEnv string `env:"ENV,required"`
-	AppMode   string `env:"APP_MODE,required"`
+type OperationSystem struct {
+	Timezone string `env:"TZ" default:"Asia/Tokyo"`
 }
 
 type Server struct {
-	Host string `env:"HOST,required"`
-	Port int    `env:"PORT,required"`
+	ServerEnv string `env:"ENV,required"`
+	AppMode   string `env:"APP_MODE,required"`
+	Host      string `env:"HOST,required"`
+	Port      int    `env:"PORT,required"`
 }
 
 type Database struct {
-	Host     string `env:"HOST,required"`
-	Port     int    `env:"PORT,required"`
-	User     string `env:"USER,required"`
-	Password string `env:"PASSWORD,required"`
-	Name     string `env:"NAME,required"`
-	SSLMode  string `env:"SSLMODE,required"`
+	Host       string     `env:"HOST,required"`
+	Port       int        `env:"PORT,required"`
+	User       string     `env:"USER,required"`
+	Password   string     `env:"PASSWORD,required"`
+	Name       string     `env:"NAME,required"`
+	SSLMode    string     `env:"SSL_MODE,required"`
+	Connection Connection `                        envPrefix:"CONN_"`
+}
+
+type Connection struct {
+	MaxOpenConns int           `env:"MAX_OPEN,required"`
+	MaxIdleConns int           `env:"MAX_IDLE,required"`
+	MaxLifetime  time.Duration `env:"MAX_LIFETIME,required"`
+	MaxIdleTime  time.Duration `env:"MAX_IDLE_TIME,required"`
 }
 
 type Security struct {
