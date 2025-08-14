@@ -1,10 +1,10 @@
-// Package xerror は、エラーハンドリングのユーティリティを提供します。
-package xerror
+// Package xerrors は、エラーハンドリングのユーティリティを提供します。
+package xerrors
 
-// XErrors は、エラーハンドリングのインターフェースです。
+// Errors は、エラーハンドリングのインターフェースです。
 //
 //	スタックトレース機能を持つライブラリを使用して、エラーの生成とラップを行います。
-type XErrors interface {
+type Errors interface {
 	// New は、新しいエラーを作成します。
 	New(msg string) error
 	// Wrap は、既存のエラーをラップして新しいエラーを作成します。

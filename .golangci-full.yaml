@@ -63,15 +63,15 @@ linters:
     depguard:
       # 外部ライブラリがシステムの根幹に関わることを避けるために、自作のパッケージを使用することを推奨します。
       rules:
-        xerror:
+        xerrors:
           files:
             - "**/*.go"
-            - "!**/pkg/xerror/**.go"
+            - "!**/pkg/xerrors/**.go"
           list-mode: lax
           deny:
             - pkg: github.com/cockroachdb/errors
               desc: "スタックトレース用として導入したライブラリです。
-                代わりに pkg/xerror を使用してください。"
+                代わりに pkg/xerrors を使用してください。"
         uuid:
           files:
             - "**/*.go"
