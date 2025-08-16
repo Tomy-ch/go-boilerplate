@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/controller/middleware/binder"
+	"boilerplate-go/internal/controller/middleware/ipextractor"
+	"boilerplate-go/internal/controller/middleware/validator"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
@@ -12,10 +15,11 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 	cfg := &config.Config{}
-	httpErrorHandler := echo.New().HTTPErrorHandler
-	validator := NewValidator()
-	binder := NewBinder()
-	ipextractor := NewIPExtractor(cfg)
+	defaultEcho := echo.New()
+	httpErrorHandler := defaultEcho.HTTPErrorHandler
+	validator := validator.NewValidator()
+	binder := binder.NewBinder()
+	ipextractor := ipextractor.NewIPExtractor(cfg)
 
 	e := New(cfg, validator, binder, ipextractor, httpErrorHandler)
 
@@ -63,9 +67,9 @@ func TestSetCustomEchoBindings(t *testing.T) {
 	t.Parallel()
 	e := echo.New()
 	httpErrorHandler := echo.New().HTTPErrorHandler
-	validator := NewValidator()
-	binder := NewBinder()
-	ipextractor := NewIPExtractor(&config.Config{})
+	validator := validator.NewValidator()
+	binder := binder.NewBinder()
+	ipextractor := ipextractor.NewIPExtractor(&config.Config{})
 
 	setCustomEchoBindings(e, validator, binder, ipextractor, httpErrorHandler)
 

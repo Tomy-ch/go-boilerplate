@@ -1,4 +1,5 @@
-package server
+// Package errorhandler は、HTTPエラーハンドリングに関する機能を提供します。
+package errorhandler
 
 import (
 	"errors"

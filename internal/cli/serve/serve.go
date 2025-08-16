@@ -7,7 +7,11 @@ import (
 	"boilerplate-go/internal/controller/handler/healthz"
 	v1users "boilerplate-go/internal/controller/handler/v1/users"
 	"boilerplate-go/internal/controller/middleware"
+	"boilerplate-go/internal/controller/middleware/binder"
+	"boilerplate-go/internal/controller/middleware/errorhandler"
+	"boilerplate-go/internal/controller/middleware/ipextractor"
 	"boilerplate-go/internal/controller/middleware/logging"
+	"boilerplate-go/internal/controller/middleware/validator"
 	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/infrastructure/rdb"
 
@@ -35,10 +39,10 @@ func serveRun(_ *cobra.Command, _ []string) error {
 		logger.Fatal("failed to load config", zap.NamedError("config", err))
 	}
 
-	validator := server.NewValidator()
-	binder := server.NewBinder()
-	ipextractor := server.NewIPExtractor(cfg)
-	httpErrorHandler := server.NewHTTPErrorHandler(logger)
+	validator := validator.NewValidator()
+	binder := binder.NewBinder()
+	ipextractor := ipextractor.NewIPExtractor(cfg)
+	httpErrorHandler := errorhandler.NewHTTPErrorHandler(logger)
 
 	e := server.New(cfg, validator, binder, ipextractor, httpErrorHandler)
 	middleware.UseMiddlewares(e, cfg, logger)
