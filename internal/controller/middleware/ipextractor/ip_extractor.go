@@ -1,4 +1,5 @@
-package server
+// Package ipextractor は、IPアドレスの抽出に関する機能を提供します。
+package ipextractor
 
 import (
 	"boilerplate-go/internal/config"

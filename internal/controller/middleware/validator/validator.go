@@ -1,4 +1,5 @@
-package server
+// Package validator は、リクエストの検証を行うミドルウェアを提供します。
+package validator
 
 import (
 	"github.com/go-playground/validator/v10"

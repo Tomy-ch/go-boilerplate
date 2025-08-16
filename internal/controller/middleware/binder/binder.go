@@ -1,4 +1,5 @@
-package server
+// Package binder は、Bind()の仕様を制御するミドルウェアを提供します。
+package binder
 
 import "github.com/labstack/echo/v4"
 
