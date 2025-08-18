@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/usecase/transaction"
+	"boilerplate-go/internal/usecase"
 )
 
 // txManager は、トランザクションの管理を行います。
@@ -15,7 +15,7 @@ type txManager struct {
 }
 
 // NewTransactionManager は、トランザクションマネージャを初期化します。
-func NewTransactionManager(cfg *config.Config, db *sql.DB) transaction.Manager {
+func NewTransactionManager(cfg *config.Config, db *sql.DB) usecase.Manager {
 	return &txManager{
 		cfg: cfg,
 		db:  db,

@@ -1,5 +1,5 @@
-// Package transaction は、トランザクションの管理を提供します。
-package transaction
+// Package usecase は、ユースケースの管理を提供します。
+package usecase
 
 import (
 	"context"

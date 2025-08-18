@@ -1,5 +1,4 @@
-//nolint:decorder // テスト用に型定義を関数の下に書くため
-package transaction
+package usecase
 
 import (
 	"context"
@@ -9,6 +8,42 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+// fakeManager 単純にfnを呼ぶ。
+type fakeManager struct {
+	called   bool
+	afterErr error
+}
+
+// recoveringManager panicをrecoverしてerrorに変換する。
+type recoveringManager struct{}
+
+// passthroughManager panicをそのまま外へ伝播させる。
+type passthroughManager struct{}
+
+func (m *fakeManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
+	m.called = true
+	if err := fn(ctx); err != nil {
+		return err
+	}
+	if m.afterErr != nil {
+		return m.afterErr
+	}
+	return nil
+}
+
+func (m *recoveringManager) Do(ctx context.Context, fn func(ctx context.Context) error) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("panic recovered: %v", p)
+		}
+	}()
+	return fn(ctx)
+}
+
+func (m *passthroughManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
+}
 
 func TestDoWithResult(t *testing.T) {
 	t.Parallel()
@@ -105,40 +140,4 @@ func TestDoWithResult(t *testing.T) {
 			})
 		})
 	})
-}
-
-// fakeManager: 単純に fn を呼ぶ。afterErr を設定すると、fn が成功しても最後にエラーを返す（= コミット失敗の疑似）。
-type fakeManager struct {
-	called   bool
-	afterErr error
-}
-
-func (m *fakeManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
-	m.called = true
-	if err := fn(ctx); err != nil {
-		return err
-	}
-	if m.afterErr != nil {
-		return m.afterErr
-	}
-	return nil
-}
-
-// recoveringManager: panic を recover して error に変換する版（本番想定の挙動の疑似）。
-type recoveringManager struct{}
-
-func (m *recoveringManager) Do(ctx context.Context, fn func(ctx context.Context) error) (err error) {
-	defer func() {
-		if p := recover(); p != nil {
-			err = fmt.Errorf("panic recovered: %v", p)
-		}
-	}()
-	return fn(ctx)
-}
-
-// passthroughManager: panic をそのまま外へ伝播させる版（recover しない）。
-type passthroughManager struct{}
-
-func (m *passthroughManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
-	return fn(ctx)
 }
