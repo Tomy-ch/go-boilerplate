@@ -1,4 +1,4 @@
-# Cookie Middleware
+# Cookie
 
 概要: このディレクトリは、CSRF (Cross-Site Request Forgery) 対策の一環として、クッキーの使用を制御するミドルウェアを提供します。
 

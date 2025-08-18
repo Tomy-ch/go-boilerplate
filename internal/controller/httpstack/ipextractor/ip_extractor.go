@@ -7,7 +7,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+func New(e *echo.Echo, cfg *config.Config) {
+	e.IPExtractor = NewIPExtractor(cfg)
+}
+
 // NewIPExtractor は、EchoでクライアントのIPアドレスを抽出するためのインスタンスを生成します。
+//
+//	本番環境ではX-Forwarded-ForヘッダーからIPアドレスを抽出し、開発環境では直接抽出します。
+//	その他の環境では、本番に準じてX-Forwarded-Forヘッダーから抽出します。
 func NewIPExtractor(cfg *config.Config) echo.IPExtractor {
 	switch {
 	case cfg.IsAppProductionMode():

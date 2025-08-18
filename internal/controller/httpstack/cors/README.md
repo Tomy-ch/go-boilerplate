@@ -1,4 +1,4 @@
-# CORS Middleware
+# CORS
 
 概要: このディレクトリは、CORS (Cross-Origin Resource Sharing) に関するミドルウェアを提供します。特定のオリジンからのリクエストを許可する設定を行います。
 

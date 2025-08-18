@@ -6,8 +6,18 @@ import (
 
 	"boilerplate-go/internal/config"
 
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	e := &echo.Echo{}
+	cfg := config.MockConfigForTest(t)
+	New(e, &cfg)
+	require.NotNil(t, e.IPExtractor)
+}
 
 func TestNewIPExtractor(t *testing.T) {
 	t.Parallel()

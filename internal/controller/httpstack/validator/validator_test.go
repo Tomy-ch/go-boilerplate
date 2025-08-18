@@ -15,12 +15,12 @@ func TestNewValidator(t *testing.T) {
 	t.Parallel()
 	v := NewValidator()
 	require.NotNil(t, v)
-	require.IsType(t, &CustomValidator{}, v)
+	require.IsType(t, &Validator{}, v)
 }
 
 func TestCustomValidator_Validate(t *testing.T) {
 	t.Parallel()
-	cv := &CustomValidator{
+	cv := &Validator{
 		validator: validator.New(),
 	}
 
