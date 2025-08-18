@@ -3,7 +3,7 @@ package migrate
 import (
 	"strconv"
 
-	"boilerplate-go/internal/controller/middleware/logging"
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/spf13/cobra"

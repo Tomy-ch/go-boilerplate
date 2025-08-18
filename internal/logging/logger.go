@@ -1,7 +1,10 @@
+// Package logging は、アプリケーションのロギング機能を提供します。
 package logging
 
 import (
 	"fmt"
+
+	"boilerplate-go/internal/config"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -69,4 +72,15 @@ func NewDevelopmentLogger() *zap.Logger {
 		))
 	}
 	return logger
+}
+
+// New は、指定された設定に基づいて新しいZapロガーを生成します。
+func New(cfg *config.Config) (*zap.Logger, error) {
+	if cfg.IsAppProductionMode() {
+		return NewProductionLogger(), nil
+	}
+	if cfg.IsAppDevelopmentMode() {
+		return NewDevelopmentLogger(), nil
+	}
+	return nil, fmt.Errorf("unknown app mode: %s", cfg.ServerAppMode())
 }

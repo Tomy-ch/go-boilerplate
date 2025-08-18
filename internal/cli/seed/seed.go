@@ -9,7 +9,7 @@ import (
 	"sort"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/middleware/logging"
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/jackc/pgconn"

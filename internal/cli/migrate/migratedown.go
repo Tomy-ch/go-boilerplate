@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strconv"
 
-	"boilerplate-go/internal/controller/middleware/logging"
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/safecast"
 
 	"github.com/spf13/cobra"
