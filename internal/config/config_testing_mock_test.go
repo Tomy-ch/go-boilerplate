@@ -16,10 +16,11 @@ func TestMockConfigForTest(t *testing.T) {
 			timezone: expectedOSTimeZone,
 		},
 		server: server{
-			env:     expectedServerEnv,
-			appMode: expectedAppMode,
-			host:    expectedHost,
-			port:    expectedPort,
+			env:             expectedServerEnv,
+			appMode:         expectedAppMode,
+			host:            expectedHost,
+			port:            expectedPort,
+			shutdownTimeout: expectedShutdownTimeout,
 		},
 		database: database{
 			driver:   expectedDBDriver,
@@ -86,6 +87,7 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, expectedAppMode, os.Getenv("SERVER_APP_MODE"))
 	require.Equal(t, expectedHost, os.Getenv("SERVER_HOST"))
 	require.Equal(t, strconv.Itoa(expectedPort), os.Getenv("SERVER_PORT"))
+	require.Equal(t, expectedServerShutdownTimeoutStr, os.Getenv("SERVER_SHUTDOWN_TIMEOUT"))
 	require.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
 	require.Equal(t, expectedDBHost, os.Getenv("DB_HOST"))
 	require.Equal(t, strconv.Itoa(expectedDBPort), os.Getenv("DB_PORT"))

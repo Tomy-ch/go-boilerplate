@@ -17,10 +17,11 @@ type operationSystem struct {
 }
 
 type server struct {
-	env     string
-	appMode string
-	host    string
-	port    int
+	env             string
+	appMode         string
+	host            string
+	port            int
+	shutdownTimeout time.Duration
 }
 
 type database struct {
@@ -54,6 +55,9 @@ func (c *Config) ServerHost() string { return c.server.host }
 
 // ServerPort は、サーバーがリッスンするポート番号を返します。
 func (c *Config) ServerPort() int { return c.server.port }
+
+// ServerShutdownTimeout は、サーバー停止までの規定時間を返します。
+func (c *Config) ServerShutdownTimeout() time.Duration { return c.server.shutdownTimeout }
 
 // ServerEnv は、サーバーの環境を返します。
 //

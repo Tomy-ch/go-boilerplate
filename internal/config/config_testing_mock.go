@@ -13,10 +13,13 @@ var (
 	// operationSystem
 	expectedOSTimeZone = "Asia/Tokyo"
 	// server
-	expectedServerEnv = "test"
-	expectedAppMode   = DevelopmentMode
-	expectedHost      = "localhost"
-	expectedPort      = 8080
+	expectedServerEnv                  = "test"
+	expectedAppMode                    = DevelopmentMode
+	expectedHost                       = "localhost"
+	expectedPort                       = 8080
+	expectedServerShutdownTimeoutCount = 30
+	expectedServerShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedServerShutdownTimeoutCount)
+	expectedShutdownTimeout            = time.Duration(expectedServerShutdownTimeoutCount) * time.Second
 	// database
 	expectedDBDriver   = "pgx"
 	expectedDBHost     = "postgres-db"
@@ -48,10 +51,11 @@ func MockConfigForTest(t testing.TB) Config {
 			timezone: expectedOSTimeZone,
 		},
 		server: server{
-			env:     expectedServerEnv,
-			appMode: expectedAppMode,
-			host:    expectedHost,
-			port:    expectedPort,
+			env:             expectedServerEnv,
+			appMode:         expectedAppMode,
+			host:            expectedHost,
+			port:            expectedPort,
+			shutdownTimeout: expectedShutdownTimeout,
 		},
 		database: database{
 			driver:   expectedDBDriver,
@@ -112,6 +116,7 @@ func setEnv(t testing.TB) {
 	t.Setenv("SERVER_APP_MODE", expectedAppMode)
 	t.Setenv("SERVER_HOST", expectedHost)
 	t.Setenv("SERVER_PORT", strconv.Itoa(expectedPort))
+	t.Setenv("SERVER_SHUTDOWN_TIMEOUT", expectedServerShutdownTimeoutStr)
 	t.Setenv("DB_DRIVER", expectedDBDriver)
 	t.Setenv("DB_HOST", expectedDBHost)
 	t.Setenv("DB_PORT", strconv.Itoa(expectedDBPort))

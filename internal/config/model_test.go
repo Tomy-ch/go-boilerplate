@@ -27,6 +27,11 @@ func TestGetterMethods(t *testing.T) {
 		require.Equal(t, expectedPort, cfg.ServerPort())
 	})
 
+	t.Run("ServerShutdownTimeout", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedShutdownTimeout, cfg.ServerShutdownTimeout())
+	})
+
 	t.Run("ServerEnv", func(t *testing.T) {
 		t.Parallel()
 		require.Equal(t, expectedServerEnv, cfg.ServerEnv())

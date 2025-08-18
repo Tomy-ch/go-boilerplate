@@ -31,10 +31,11 @@ func New() (*Config, error) {
 			timezone: cfg.OS.Timezone,
 		},
 		server: server{
-			env:     cfg.Server.Env,
-			appMode: cfg.Server.AppMode,
-			host:    cfg.Server.Host,
-			port:    cfg.Server.Port,
+			env:             cfg.Server.Env,
+			appMode:         cfg.Server.AppMode,
+			host:            cfg.Server.Host,
+			port:            cfg.Server.Port,
+			shutdownTimeout: cfg.Server.ShutdownTimeout,
 		},
 		database: database{
 			driver:   cfg.Database.Driver,

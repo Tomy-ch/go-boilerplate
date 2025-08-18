@@ -14,10 +14,11 @@ type OperationSystem struct {
 }
 
 type Server struct {
-	Env     string `env:"ENV,required"`
-	AppMode string `env:"APP_MODE,required"`
-	Host    string `env:"HOST,required"`
-	Port    int    `env:"PORT,required"`
+	Env             string        `env:"ENV,required"`
+	AppMode         string        `env:"APP_MODE,required"`
+	Host            string        `env:"HOST,required"`
+	Port            int           `env:"PORT,required"`
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`
 }
 
 type Database struct {

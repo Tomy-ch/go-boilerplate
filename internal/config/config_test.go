@@ -18,10 +18,11 @@ func TestNewConfig(t *testing.T) {
 					timezone: expectedOSTimeZone,
 				},
 				server: server{
-					env:     expectedServerEnv,
-					appMode: expectedAppMode,
-					host:    expectedHost,
-					port:    expectedPort,
+					env:             expectedServerEnv,
+					appMode:         expectedAppMode,
+					host:            expectedHost,
+					port:            expectedPort,
+					shutdownTimeout: expectedShutdownTimeout,
 				},
 				database: database{
 					driver:   expectedDBDriver,
