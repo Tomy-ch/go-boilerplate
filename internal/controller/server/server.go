@@ -2,52 +2,51 @@
 package server
 
 import (
+	"context"
+	"strconv"
+	"time"
+
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/controller/handler"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
-func New(
-	cfg *config.Config,
-	validator echo.Validator,
-	binder echo.Binder,
-	ipextractor echo.IPExtractor,
-	httpErrorHandler echo.HTTPErrorHandler,
-) *echo.Echo {
-	e := echo.New()
-
-	setPrimitiveEchoSettings(e, cfg)
-	setCustomEchoBindings(e, validator, binder, ipextractor, httpErrorHandler)
-
-	return e
+// New は、サーバーインスタンスを作成します。
+func New() *echo.Echo {
+	return echo.New()
 }
 
-// setPrimitiveEchoSettings は、Echoの基本的なプロパティを設定します。
-func setPrimitiveEchoSettings(
-	e *echo.Echo,
-	cfg *config.Config,
+// ServeHTTP は、HTTPサーバーを起動します。
+func ServeHTTP(
+	lc fx.Lifecycle, e *echo.Echo, cfg *config.Config, z *zap.Logger,
+	// handler.RouteRegistered は、ルート登録が完了したことを示すトークンです。
+	_ *handler.RouteMounted,
 ) {
-	isProduction := cfg.IsAppProductionMode()
-	isDevelopment := cfg.IsAppDevelopmentMode()
-
-	// 開発モード向けのデバッグ支援機能(詳細なエラーメッセージ表示)
-	e.Debug = isDevelopment
-	// バナーは本番環境では非表示にする
-	e.HideBanner = isProduction
-	// ポート番号は本番環境では非表示にする
-	e.HidePort = isProduction
-}
-
-// setCustomEchoBindings は、Echoにカスタムバインディングを設定します。
-func setCustomEchoBindings(
-	e *echo.Echo,
-	validator echo.Validator,
-	binder echo.Binder,
-	ipextractor echo.IPExtractor,
-	httpErrorHandler echo.HTTPErrorHandler,
-) {
-	e.Validator = validator
-	e.Binder = binder
-	e.IPExtractor = ipextractor
-	e.HTTPErrorHandler = httpErrorHandler
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			addr := cfg.ServerPort()
+			go func() {
+				if err := e.Start(":" + strconv.Itoa(addr)); err != nil {
+					z.Error("failed to start http server", zap.Error(err))
+				}
+			}()
+			z.Info("http started",
+				zap.String("port", strconv.Itoa(addr)),
+				zap.Strings("allowed origins", cfg.AllowedOrigins()),
+				zap.String("cidr", cfg.CIDR().IP.String()),
+				zap.String("mode", cfg.ServerAppMode()),
+			)
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			shutdownTime := cfg.ServerShutdownTimeout()
+			ctx, cancel := context.WithTimeout(ctx, shutdownTime*time.Second)
+			defer cancel()
+			z.Info("http stopping")
+			return e.Shutdown(ctx)
+		},
+	})
 }
