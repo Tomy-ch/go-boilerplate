@@ -2,11 +2,7 @@
 package logging
 
 import (
-	"net/http"
 	"time"
-
-	"boilerplate-go/internal/controller/ctxhelper"
-	"boilerplate-go/internal/domain/expectederrors"
 
 	"github.com/labstack/echo/v4"
 	"go.opentelemetry.io/otel/trace"
@@ -20,18 +16,19 @@ func Middleware(
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			start := time.Now()
-			err := next(c)
-			latency := time.Since(start)
+			c.Response().After(func() {
+				latency := time.Since(start)
 
-			fields := buildFields(c, latency, err)
-			logRequest(c, logger, fields)
-			return err
+				fields := buildFields(c, latency)
+				logRequest(c, logger, fields)
+			})
+			return next(c)
 		}
 	}
 }
 
 // buildFields は、リクエストの情報を含むzap.Fieldのスライスを生成します。
-func buildFields(c echo.Context, latency time.Duration, err error) []zap.Field {
+func buildFields(c echo.Context, latency time.Duration) []zap.Field {
 	req := c.Request()
 	res := c.Response()
 	status := res.Status
@@ -47,12 +44,6 @@ func buildFields(c echo.Context, latency time.Duration, err error) []zap.Field {
 		zap.String("span_id", spanCtx.SpanID().String()),
 	}
 
-	if err != nil {
-		fields = append(fields,
-			zap.Error(err),
-		)
-	}
-
 	return fields
 }
 
@@ -60,21 +51,12 @@ func buildFields(c echo.Context, latency time.Duration, err error) []zap.Field {
 // ステータスコードに応じて、エラーログ、警告ログ、または情報ログを出力します。
 func logRequest(c echo.Context, logger *zap.Logger, fields []zap.Field) {
 	status := c.Response().Status
-
 	switch {
 	case status >= MinStatusError:
 		logger.Error("server error", fields...)
-	case status == http.StatusNotFound && isExpectedNotFound(c):
-		logger.Info("expected not found", fields...)
 	case status >= MinStatusWarn:
 		logger.Warn("client error", fields...)
 	default:
 		logger.Info("request handled", fields...)
 	}
-}
-
-// isExpectedNotFound は、リクエストが期待される404 Not Foundエラーであるかどうかを判定します。
-func isExpectedNotFound(c echo.Context) bool {
-	val, ok := ctxhelper.GetNotFoundFromEcho(c)
-	return ok && expectederrors.IsDefinedNotFoundCause(val)
 }

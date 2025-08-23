@@ -2,14 +2,10 @@ package logging
 
 import (
 	"bytes"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"boilerplate-go/internal/controller/ctxhelper"
-	"boilerplate-go/internal/domain/expectederrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
@@ -26,7 +22,6 @@ func Test_buildFields(t *testing.T) {
 	expectedStatus := http.StatusOK
 	expectedLatency := 100 * time.Millisecond
 	expectedRemoteIP := "192.0.2.1"
-	expectedErr := errors.New("test error")
 	expectedTID := trace.TraceID{0x01, 0x02, 0x03}
 	expectedSID := trace.SpanID{0x04, 0x05, 0x06}
 	ipWithPort := expectedRemoteIP + ":12345"
@@ -53,26 +48,6 @@ func Test_buildFields(t *testing.T) {
 		return c
 	}
 
-	t.Run("エラーがない場合のフィールド生成", func(t *testing.T) {
-		t.Parallel()
-
-		c := newContext()
-
-		expected := []zap.Field{
-			zap.String("method", expectedMethod),
-			zap.String("uri", expectedURI),
-			zap.Int("status", expectedStatus),
-			zap.Duration("latency", expectedLatency),
-			zap.String("remote_ip", expectedRemoteIP),
-			zap.String("trace_id", expectedTID.String()),
-			zap.String("span_id", expectedSID.String()),
-		}
-
-		actual := buildFields(c, expectedLatency, nil)
-
-		require.Equal(t, expected, actual)
-	})
-
 	t.Run("エラーがある場合のフィールド生成", func(t *testing.T) {
 		t.Parallel()
 
@@ -86,10 +61,9 @@ func Test_buildFields(t *testing.T) {
 			zap.String("remote_ip", expectedRemoteIP),
 			zap.String("trace_id", expectedTID.String()),
 			zap.String("span_id", expectedSID.String()),
-			zap.Error(expectedErr),
 		}
 
-		actual := buildFields(c, expectedLatency, expectedErr)
+		actual := buildFields(c, expectedLatency)
 
 		require.Equal(t, expected, actual)
 	})
@@ -101,7 +75,6 @@ func Test_logRequest(t *testing.T) {
 	tests := []struct {
 		name            string
 		status          int
-		notFound        expectederrors.NotFoundCause
 		expectedLevel   string
 		expectedMessage string
 	}{
@@ -112,16 +85,8 @@ func Test_logRequest(t *testing.T) {
 			expectedMessage: "server error",
 		},
 		{
-			name:            "404 Not Found (予期された)→Infoログ(expected not found)",
+			name:            "404 Not Found →Warnログ",
 			status:          404,
-			notFound:        expectederrors.NotFoundCauseDB,
-			expectedLevel:   "info",
-			expectedMessage: "expected not found",
-		},
-		{
-			name:            "404 Not Found (予期されていない)→Warnログ",
-			status:          404,
-			notFound:        expectederrors.NotFoundCause("unexpected"),
 			expectedLevel:   "warn",
 			expectedMessage: "client error",
 		},
@@ -148,10 +113,6 @@ func Test_logRequest(t *testing.T) {
 			logger := newTestLogger(&buf)
 			c := newTestContext(tt.status)
 
-			if tt.notFound != "" {
-				ctxhelper.SetNotFoundToEcho(c, tt.notFound)
-			}
-
 			logRequest(c, logger, nil)
 
 			out := buf.String()
@@ -159,39 +120,6 @@ func Test_logRequest(t *testing.T) {
 			require.Contains(t, out, `"msg":"`+tt.expectedMessage+`"`)
 		})
 	}
-}
-
-func Test_isExpectedNotFound(t *testing.T) {
-	t.Parallel()
-
-	t.Run("contextに値が存在しない場合はfalse", func(t *testing.T) {
-		t.Parallel()
-
-		c := newTestEchoContext()
-		ok := isExpectedNotFound(c)
-		require.False(t, ok)
-	})
-
-	t.Run("contextに未定義のNotFoundCauseがある場合はfalse", func(t *testing.T) {
-		t.Parallel()
-
-		c := newTestEchoContext()
-		ctxhelper.SetNotFoundToEcho(
-			c,
-			expectederrors.NotFoundCause("unexpected"),
-		)
-		ok := isExpectedNotFound(c)
-		require.False(t, ok)
-	})
-
-	t.Run("contextに定義済みのNotFoundCauseがある場合はtrue", func(t *testing.T) {
-		t.Parallel()
-
-		c := newTestEchoContext()
-		ctxhelper.SetNotFoundToEcho(c, expectederrors.NotFoundCauseDB)
-		ok := isExpectedNotFound(c)
-		require.True(t, ok)
-	})
 }
 
 func newTestLogger(buf *bytes.Buffer) *zap.Logger {
@@ -214,11 +142,4 @@ func newTestContext(status int) echo.Context {
 	c := e.NewContext(req, rec)
 	c.Response().Status = status
 	return c
-}
-
-func newTestEchoContext() echo.Context {
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	return e.NewContext(req, rec)
 }
