@@ -1,4 +1,4 @@
-## 開発環境系(生成系は別ファイルに分離)
+## 開発環境系
 .PHONY: serve ## 開発環境の起動
 .PHONY: serve-build ## ビルド実行後に、開発環境を起動する
 .PHONY: tools ## 開発ツールの起動
@@ -8,19 +8,24 @@
 .PHONY: lint ## コードの静的解析
 .PHONY: test ## CI用のテスト実行
 .PHONY: test-repo ## テストの実行とテストレポートの生成
-.PHONY: del-db-logs ## DBのログを削除
+.PHONY: go-update ## goenvの更新を実行
 
-TGT_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd)')
+TGT_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)')
+COVER_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)' | tr '\n' ',' | sed 's/,$$//')
+
+go-update:
+	@anyenv update
+	@goenv install "$(cat .go-version)"
 
 serve:
 	@echo "🔄 開発環境を起動します。"
-	@make del-db-logs
+	@make db-logs-delete
 	@docker compose --profile development up -d
 	@echo "✅ 開発環境の起動が完了しました。"
 
 serve-build:
 	@echo "🧰 ビルド後、開発環境を起動します。"
-	@make del-db-logs
+	@make db-logs-delete
 	@docker compose --profile development up -d --build
 	@echo "✅ 開発環境の起動が完了しました。"
 
@@ -40,9 +45,12 @@ lint:
 	@golangci-lint run --config .golangci-full.yaml
 
 test-repo:
-	@go test $(TGT_PKGS) -coverprofile=docs/coverage/coverage.out -covermode=atomic
+	@echo "🔄 テストを実行し、レポートを生成します..."
+	@touch docs/coverage/coverage.out
+	@go test $(TGT_PKGS) -coverpkg=$(COVER_PKGS) -coverprofile=docs/coverage/coverage.out -covermode=atomic  >/dev/null 2>&1
 	@go tool cover -html=docs/coverage/coverage.out -o docs/coverage/test-result.html
 	@rm -f docs/coverage/coverage.out
+	@echo "✅ テストレポートの生成が完了しました。"
 
 test:
 	@go test $(TGT_PKGS) -cover -count=1
@@ -65,6 +73,3 @@ install:
 	@grep -Fxq 'export PATH="$$HOME/go/bin:$$PATH"' $$HOME/.zprofile || \
 		echo 'export PATH="$$HOME/go/bin:$$PATH"' >> $$HOME/.zprofile
 	@echo "Go tools installed successfully."
-
-del-db-logs:
-	@rm -rf docker/database/logs/*

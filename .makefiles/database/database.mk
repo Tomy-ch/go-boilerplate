@@ -1,5 +1,4 @@
-## 開発ツール系
-.PHONY: go-update ## goenvの更新を実行
+## データベース関連のコマンド群
 .PHONY: sql-lint ## SQLマイグレーションファイルのLintを実行
 .PHONY: sql-fix ## SQLマイグレーションファイルの自動修正を実行
 .PHONY: db-schema ## スキーマの更新を実行
@@ -10,15 +9,7 @@
 .PHONY: db-migrate-down-% ## 指定したバージョンまでのマイグレーションをダウングレード
 .PHONY: db-seed ## データベースにシードデータを投入
 .PHONY: db-init ## DBの初期化を行う(マイグレーション、シードデータ投入、スキーマ更新)
-.PHONY: gen-sqlc ## SQLCのコード生成を行う
-.PHONY: gen-sqlc-repo ## ドメイン用のSQLCのコード生成を行う
-.PHONY: gen-sqlc-repo-% ## 指定したドメイン用のSQLCのコード生成を行う
-.PHONY: gen-sqlc-qs ## クエリサービス用のSQLCのコード生成を行う
-.PHONY: gen-sqlc-qs-% ## 指定したクエリサービス用のSQLCのコード生成を行う
-
-go-update:
-	@anyenv update
-	@goenv install "$(cat .go-version)"
+.PHONY: db-logs-delete ## DBのログを削除
 
 sql-lint:
 	docker compose run --rm python_tool_runner sqlfluff lint database/migrations/ --config docker/database/.sqlfluff
@@ -77,30 +68,5 @@ db-init:
 	@make db-schema
 	@echo "✅ マイグレーション関連のコマンドが完了しました。"
 
-gen-sqlc:
-	@echo "🔄 SQLCのコードを生成します..."
-	@make gen-sqlc-repo
-	@make gen-sqlc-qs
-	@echo "✅ SQLCのコード生成が完了しました。"
-
-gen-sqlc-repo:
-	@echo "🔄 ドメイン用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository; \
-	echo "✅ ドメイン用のSQLCのコード生成が完了しました。"
-
-gen-sqlc-repo-%:
-	@category=$*; \
-	echo "🔄 $$categoryドメイン用のSQLCのコードを生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository --category=$$category; \
-	echo "✅ $$categoryドメイン用のSQLCのコード生成が完了しました。"
-
-gen-sqlc-qs:
-	@echo "🔄 クエリサービス用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service; \
-	echo "✅ クエリサービス用のSQLCのコード生成が完了しました。"
-
-gen-sqlc-qs-%:
-	@category=$*; \
-	echo "🔄 $$categoryクエリサービス用のSQLCのコードを生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service --category=$$category; \
-	echo "✅ $$categoryクエリサービス用のSQLCのコード生成が完了しました。"
+db-logs-delete:
+	@rm -rf docker/database/logs/*
