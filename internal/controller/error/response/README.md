@@ -1,4 +1,4 @@
-# response
+# error response
 
 このディレクトリは、HTTPエラーレスポンスの生成と管理を行います。
 

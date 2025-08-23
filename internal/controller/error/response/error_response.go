@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"boilerplate-go/internal/controller/handler/error/response/gen"
+	"boilerplate-go/internal/controller/error/response/gen"
 	"boilerplate-go/pkg/ptr"
 )
 

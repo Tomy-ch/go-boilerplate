@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/controller/handler/error/response/gen"
+	"boilerplate-go/internal/controller/error/response/gen"
 	"boilerplate-go/pkg/ptr"
 
 	"github.com/stretchr/testify/require"

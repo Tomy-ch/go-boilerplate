@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"boilerplate-go/internal/controller/handler/error/response"
+	"boilerplate-go/internal/controller/error/response"
 	"boilerplate-go/internal/controller/httpstack/requestid"
 
 	"github.com/labstack/echo/v4"

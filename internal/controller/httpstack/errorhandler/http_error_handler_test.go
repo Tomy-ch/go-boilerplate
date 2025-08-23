@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/controller/handler/error/response"
+	"boilerplate-go/internal/controller/error/response"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
