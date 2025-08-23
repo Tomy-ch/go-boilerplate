@@ -1,4 +1,4 @@
-package rdb
+package rdbdriver
 
 import (
 	"context"
@@ -47,15 +47,6 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	}
 
 	return tx.Commit()
-}
-
-// ResolveConn は、context.Contextからトランザクションを取得します。
-func ResolveConn(ctx context.Context, db *sql.DB) DBTX {
-	tx, ok := ctx.Value(txKey{}).(*sql.Tx)
-	if ok {
-		return tx
-	}
-	return db
 }
 
 // withTx は、context.Contextにトランザクションを設定します。

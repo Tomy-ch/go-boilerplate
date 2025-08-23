@@ -1,5 +1,5 @@
-// Package rdb は、RDBの接続のための基盤的な機能を提供します。
-package rdb
+// Package rdbdriver は、RDBの接続のための基盤的な機能を提供します。
+package rdbdriver
 
 import (
 	"context"
