@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS users (
     street VARCHAR(255) NOT NULL,
     building VARCHAR(255),
     postal_code VARCHAR(8) NOT NULL,
-    deleted_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT users_id_primary PRIMARY KEY (id),
     CONSTRAINT users_email_unique UNIQUE (email),
     CONSTRAINT users_prefecture_id_foreign FOREIGN KEY (prefecture_id) REFERENCES prefectures (id)

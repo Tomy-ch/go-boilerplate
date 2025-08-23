@@ -3,6 +3,7 @@ SELECT
     u.id,
     u.first_name,
     u.last_name,
+    u.password_hash,
     u.email,
     u.phone,
     u.prefecture_id,
