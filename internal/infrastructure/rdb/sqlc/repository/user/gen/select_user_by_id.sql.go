@@ -17,6 +17,7 @@ SELECT
     u.id,
     u.first_name,
     u.last_name,
+    u.password_hash,
     u.email,
     u.phone,
     u.prefecture_id,
@@ -35,6 +36,7 @@ type GetUserDomainByIDRow struct {
 	ID             uuid.UUID
 	FirstName      string
 	LastName       string
+	PasswordHash   string
 	Email          string
 	Phone          string
 	PrefectureID   uuid.UUID
@@ -53,6 +55,7 @@ func (q *Queries) GetUserDomainByID(ctx context.Context, userIDParam uuid.NullUU
 		&i.ID,
 		&i.FirstName,
 		&i.LastName,
+		&i.PasswordHash,
 		&i.Email,
 		&i.Phone,
 		&i.PrefectureID,

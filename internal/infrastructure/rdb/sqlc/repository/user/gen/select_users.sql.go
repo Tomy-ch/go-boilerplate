@@ -19,6 +19,7 @@ SELECT
     u.last_name,
     u.email,
     u.phone,
+    u.password_hash,
     u.prefecture_id,
     p.name AS prefecture_name,
     u.city,
@@ -30,11 +31,11 @@ FROM users u
 JOIN prefectures p ON u.prefecture_id = p.id
 ORDER BY u.created_at DESC
 LIMIT $2
-OFFSET COALESCE($1, 0)::int4
+OFFSET $1
 `
 
 type GetUsersDomainParams struct {
-	OffsetParam sql.NullInt32
+	OffsetParam sql.NullInt64
 	LimitParam  sql.NullInt64
 }
 
@@ -44,6 +45,7 @@ type GetUsersDomainRow struct {
 	LastName       string
 	Email          string
 	Phone          string
+	PasswordHash   string
 	PrefectureID   uuid.UUID
 	PrefectureName string
 	City           string
@@ -68,6 +70,7 @@ func (q *Queries) GetUsersDomain(ctx context.Context, arg GetUsersDomainParams) 
 			&i.LastName,
 			&i.Email,
 			&i.Phone,
+			&i.PasswordHash,
 			&i.PrefectureID,
 			&i.PrefectureName,
 			&i.City,
