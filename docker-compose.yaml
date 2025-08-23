@@ -3,7 +3,6 @@ services:
 # 開発環境のサービス
 # -------------------------------------
   api_server:
-    container_name: go_api_server
     build:
       context: .
       dockerfile: docker/server/Dockerfile
@@ -22,35 +21,38 @@ services:
       - development
 
   database: # PostgreSQLデータベース
-    container_name: postgres_db
     image: postgres:17.5
     ports:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./docker/database/sql:/docker-entrypoint-initdb.d:ro
-      - ./docker/database/logs:/var/log/postgresql
+      # - ./docker/database/logs:/var/log/postgresql
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres-password
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-      TZ: Asia/Tokyo
-      PGTZ: Asia/Tokyo
     user: postgres
-    hostname: postgres-db
-    command: >
-      postgres
-      -c shared_preload_libraries=pg_stat_statements
-      -c pg_stat_statements.track=all
-      -c logging_collector=on
-      -c log_statement=all
-      -c log_destination=stderr
-      -c log_directory=/var/log/postgresql
-      -c log_filename=postgresql.log
-      -c log_connections=on
-      -c log_disconnections=on
-      -c log_truncate_on_rotation=on
-      -c log_rotation_age=1d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres", "-d", "local"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    # ログファイルがノイズにならないようにコメントアウト
+    # command: >
+    #   postgres
+    #   -c shared_preload_libraries=pg_stat_statements
+    #   -c pg_stat_statements.track=all
+    #   -c logging_collector=on
+    #   -c log_statement=all
+    #   -c log_destination=stderr
+    #   -c log_directory=/var/log/postgresql
+    #   -c log_filename=postgresql.log
+    #   -c log_connections=on
+    #   -c log_disconnections=on
+    #   -c log_truncate_on_rotation=on
+    #   -c log_rotation_age=1d
     profiles:
       - development
       - database
@@ -65,7 +67,6 @@ services:
       context: .
       dockerfile: docker/document/Dockerfile
       target: document_viewer
-    container_name: docs_viewer
     ports:
       - "8082:80"
     volumes:
@@ -74,13 +75,12 @@ services:
       - development
       - tools
 
-  pg_web: # PostgreSQLデータベースのWeb管理ツール
-    container_name: sql_editor
+  sql_editor:
     image: sosedoff/pgweb:latest
     ports:
       - "8081:8081"
     environment:
-      DATABASE_URL: postgres://postgres:postgres-password@postgres-db:5432/local?sslmode=disable
+      DATABASE_URL: postgres://postgres:postgres-password@database:5432/local?sslmode=disable
     depends_on:
       - database
     profiles:
