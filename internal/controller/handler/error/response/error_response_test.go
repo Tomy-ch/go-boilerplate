@@ -1,11 +1,11 @@
 package response
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"testing"
 
+	"boilerplate-go/internal/apperror"
 	"boilerplate-go/internal/controller/handler/error/response/gen"
 	"boilerplate-go/pkg/ptr"
 
@@ -22,7 +22,7 @@ func TestNewErrorResponse(t *testing.T) {
 			t.Parallel()
 
 			httpStatus := http.StatusBadRequest
-			err := errors.New("bad request error")
+			err := fmt.Errorf("bad request error: %w", apperror.ErrInvalidArgument)
 			details := []string{"invalid input", "missing field"}
 
 			expected := &HTTPErrorResponse{}
@@ -32,7 +32,7 @@ func TestNewErrorResponse(t *testing.T) {
 			expected.Details = ptr.To(details)
 			expected.Internal = err
 
-			actual := New(httpStatus, err, details...)
+			actual := New(err, details...)
 
 			require.Equal(t, expected, actual)
 		})
@@ -40,7 +40,7 @@ func TestNewErrorResponse(t *testing.T) {
 		t.Run("detailsがない場合、detailsは表示されないエラー構造体が返る", func(t *testing.T) {
 			t.Parallel()
 			httpStatus := http.StatusInternalServerError
-			err := errors.New("internal server error")
+			err := fmt.Errorf("internal server error: %w", apperror.ErrInternal)
 
 			expected := &HTTPErrorResponse{}
 			expected.HTTPStatus = httpStatus
@@ -48,7 +48,7 @@ func TestNewErrorResponse(t *testing.T) {
 			expected.Message = errorMessageInternalError
 			expected.Internal = err
 
-			actual := New(httpStatus, err)
+			actual := New(err)
 
 			require.Equal(t, expected, actual)
 		})

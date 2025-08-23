@@ -1,10 +1,11 @@
 package errorhandler
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
+	"boilerplate-go/internal/apperror"
 	"boilerplate-go/internal/controller/handler/error/response"
 
 	"github.com/labstack/echo/v4"
@@ -25,13 +26,12 @@ func Test_normalizeHTTPError(t *testing.T) {
 
 	expectedDetails := "expected details"
 	expectedRequestID := "expected request ID"
-	expectedInternal := errors.New("expected internal error")
+	expectedInternal := fmt.Errorf("expected internal error: %w", apperror.ErrValidation)
 
 	t.Run("API定義書で定義されたエラー構造でステータスがエラー範囲である場合、指定されたエラーが返る", func(t *testing.T) {
 		t.Parallel()
 
 		expected := response.New(
-			http.StatusBadRequest,
 			expectedInternal,
 			expectedDetails,
 		)
@@ -48,7 +48,6 @@ func Test_normalizeHTTPError(t *testing.T) {
 			t.Parallel()
 
 			expected := response.New(
-				http.StatusInternalServerError,
 				expectedInternal,
 				expectedDetails,
 			)
@@ -71,7 +70,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 				Code: http.StatusForbidden,
 			}
 
-			expected := response.New(http.StatusForbidden, echoError)
+			expected := response.New(echoError)
 			expected.RequestId = expectedRequestID
 
 			actual := normalizeHTTPError(echoError, expectedRequestID)
@@ -90,7 +89,6 @@ func Test_normalizeHTTPError(t *testing.T) {
 			}
 
 			expected := response.New(
-				http.StatusInternalServerError,
 				echoError,
 			)
 			expected.RequestId = expectedRequestID
@@ -106,7 +104,6 @@ func Test_normalizeHTTPError(t *testing.T) {
 		t.Parallel()
 
 		expected := response.New(
-			http.StatusInternalServerError,
 			expectedInternal,
 		)
 		expected.RequestId = expectedRequestID

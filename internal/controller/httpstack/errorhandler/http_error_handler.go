@@ -53,10 +53,7 @@ func normalizeHTTPError(
 	var he *response.HTTPErrorResponse
 	if errors.As(err, &he) {
 		if !isErrorStatus(he.HTTPStatus) {
-			res := response.New(
-				http.StatusInternalServerError,
-				he.Internal,
-			)
+			res := response.New(he.Internal)
 			if he.Details != nil {
 				res.Details = he.Details
 			}
@@ -69,16 +66,12 @@ func normalizeHTTPError(
 
 	var ehe *echo.HTTPError
 	if errors.As(err, &ehe) {
-		status := ehe.Code
-		if !isErrorStatus(status) {
-			status = http.StatusInternalServerError
-		}
-		res := response.New(status, err)
+		res := response.New(err)
 		res.RequestId = requestID
 		return res
 	}
 
-	res := response.New(http.StatusInternalServerError, err)
+	res := response.New(err)
 	res.RequestId = requestID
 	return res
 }

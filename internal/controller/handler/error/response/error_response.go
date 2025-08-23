@@ -18,11 +18,9 @@ type HTTPErrorResponse struct {
 	Internal   error `json:"-"`
 }
 
-// New は、指定されたHTTPステータスコードに基づいてエラーレスポンスを生成します。
-func New(
-	httpStatus int, err error, details ...string,
-) *HTTPErrorResponse {
-	meta := lookupErrorMeta(httpStatus)
+// New は、エラーの中身に応じて適切なHTTPエラーレスポンスを生成します。
+func New(err error, details ...string) *HTTPErrorResponse {
+	meta := lookupErrorMetaByAppError(err)
 
 	var detailsPtr *[]string
 	if len(details) > 0 {
@@ -34,7 +32,7 @@ func New(
 			Message: meta.Message,
 			Details: detailsPtr,
 		},
-		HTTPStatus: httpStatus,
+		HTTPStatus: meta.Status,
 		Internal:   err,
 	}
 }
