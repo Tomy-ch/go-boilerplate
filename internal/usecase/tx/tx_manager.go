@@ -1,5 +1,5 @@
-// Package usecase は、ユースケースの管理を提供します。
-package usecase
+// Package tx は、トランザクションの管理を提供します。
+package tx
 
 import (
 	"context"
