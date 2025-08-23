@@ -24,12 +24,12 @@ const (
 	maxPage = 10_000
 )
 
-// NewPageFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算してPageを返します。
+// NewPagingFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算してPageを返します。
 //
 //	ページ番号が1未満の場合は1に、1ページあたりの件数が0以下の場合はデフォルト値を使用します。
 //	perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPageまで許容します。
 //	page[offsetの係数]は、最小値1：最大値はmaxPageまで許容します。
-func NewPageFrom1Based(page, perPage *int) (Paging, error) {
+func NewPagingFrom1Based(page, perPage *int) (Paging, error) {
 	limit := defaultPerPage
 	if perPage != nil && *perPage > 0 {
 		limit = *perPage

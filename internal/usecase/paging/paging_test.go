@@ -15,7 +15,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 		t.Parallel()
 
 		t.Run("ページ番号と件数がnilの場合、デフォルト値が使用される", func(t *testing.T) {
-			actual, err := NewPageFrom1Based(nil, nil)
+			actual, err := NewPagingFrom1Based(nil, nil)
 			expected := Paging{
 				limit:  defaultPerPage,
 				offset: 0,
@@ -27,7 +27,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 
 		t.Run("ページ番号が1未満の場合、1として扱われる", func(t *testing.T) {
 			page := -1
-			actual, err := NewPageFrom1Based(&page, nil)
+			actual, err := NewPagingFrom1Based(&page, nil)
 			expected := Paging{
 				limit:  defaultPerPage,
 				offset: 0,
@@ -39,7 +39,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 
 		t.Run("件数が0以下の場合、デフォルト値が使用される", func(t *testing.T) {
 			perPage := 0
-			actual, err := NewPageFrom1Based(nil, &perPage)
+			actual, err := NewPagingFrom1Based(nil, &perPage)
 			expected := Paging{
 				limit:  defaultPerPage,
 				offset: 0,
@@ -51,7 +51,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 
 		t.Run("件数が最大値を超える場合、最大値が使用される", func(t *testing.T) {
 			perPage := maxPerPage + 1
-			actual, err := NewPageFrom1Based(nil, &perPage)
+			actual, err := NewPagingFrom1Based(nil, &perPage)
 			expected := Paging{
 				limit:  maxPerPage,
 				offset: 0,
@@ -65,7 +65,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			page := 3
 			perPage := 50
 			expectedPageCount := 100
-			actual, err := NewPageFrom1Based(&page, &perPage)
+			actual, err := NewPagingFrom1Based(&page, &perPage)
 			expected := Paging{
 				limit:  perPage,
 				offset: expectedPageCount,
@@ -79,7 +79,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			page := maxPage
 			perPage := 10
 			expectedOffset := (maxPage - 1) * perPage
-			actual, err := NewPageFrom1Based(&page, &perPage)
+			actual, err := NewPagingFrom1Based(&page, &perPage)
 			expected := Paging{
 				limit:  perPage,
 				offset: expectedOffset,
@@ -92,7 +92,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 		t.Run("件数が最大値の場合、正しいリミットが設定される", func(t *testing.T) {
 			page := 1
 			perPage := maxPerPage
-			actual, err := NewPageFrom1Based(&page, &perPage)
+			actual, err := NewPagingFrom1Based(&page, &perPage)
 			expected := Paging{
 				limit:  maxPerPage,
 				offset: 0,
@@ -105,7 +105,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 		t.Run("ページ番号が負の値で、件数が負の値の場合、デフォルト値が使用される", func(t *testing.T) {
 			page := -5
 			perPage := -10
-			actual, err := NewPageFrom1Based(&page, &perPage)
+			actual, err := NewPagingFrom1Based(&page, &perPage)
 			expected := Paging{
 				limit:  defaultPerPage,
 				offset: 0,
@@ -121,7 +121,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 
 		t.Run("ページ番号が最大値を超える場合、エラーが返される", func(t *testing.T) {
 			page := maxPage + 1
-			actual, err := NewPageFrom1Based(&page, nil)
+			actual, err := NewPagingFrom1Based(&page, nil)
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			require.Zero(t, actual)
