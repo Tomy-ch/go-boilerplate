@@ -30,7 +30,6 @@ func NewMigrateUpCommand() *cobra.Command {
 // migrateUpRun は、マイグレーションをアップデートするための実行関数です。
 func migrateUpRun(_ *cobra.Command, args []string) error {
 	logger := logging.NewProductionLogger()
-	errors := xerrors.New()
 
 	m, err := buildMigrateInstance()
 	if err != nil {
@@ -40,7 +39,7 @@ func migrateUpRun(_ *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		// 引数なしなら全てのマイグレーションをアップ
 		logger.Info("running full migration up")
-		if err := executeMigrateFullUp(m, errors); err != nil {
+		if err := executeMigrateFullUp(m); err != nil {
 			logger.Panic("migration failed", zap.Error(err))
 		}
 	} else {
@@ -56,8 +55,8 @@ func migrateUpRun(_ *cobra.Command, args []string) error {
 }
 
 // executeMigrateFullUp は、マイグレーションを全てアップグレードします。
-func executeMigrateFullUp(m *migrate.Migrate, errors xerrors.Errors) error {
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+func executeMigrateFullUp(m *migrate.Migrate) error {
+	if err := m.Up(); err != nil && !xerrors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
 	return nil
