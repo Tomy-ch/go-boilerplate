@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/handler"
+	"boilerplate-go/internal/controller/httpstack"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
@@ -22,8 +22,8 @@ func New() *echo.Echo {
 // ServeHTTP は、HTTPサーバーを起動します。
 func ServeHTTP(
 	lc fx.Lifecycle, e *echo.Echo, cfg *config.Config, z *zap.Logger,
-	// handler.RouteRegistered は、ルート登録が完了したことを示すトークンです。
-	_ *handler.RouteMounted,
+	// 下記はサーバー機能の拡張が適用されたことを示すトークン
+	_ *httpstack.AppliedServerExtends,
 ) {
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {

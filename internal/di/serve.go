@@ -2,7 +2,6 @@
 package di
 
 import (
-	"boilerplate-go/internal/controller/handler"
 	"boilerplate-go/internal/controller/server"
 
 	"go.uber.org/fx"
@@ -13,7 +12,6 @@ func ServeModule() fx.Option {
 	return fx.Module("server",
 		fx.Provide(
 			server.New,
-			handler.MountRoutes,
 		),
 		fx.Invoke(
 			server.ServeHTTP,
