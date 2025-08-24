@@ -241,4 +241,86 @@ func TestNullTimeFromPtr(t *testing.T) {
 	})
 }
 
-// 他の関数についても同様の形式でテストを作成します。
+func TestNewNullString(t *testing.T) {
+	t.Parallel()
+
+	t.Run("文字列をsql.NullStringに変換する", func(t *testing.T) {
+		t.Parallel()
+
+		input := "test"
+		expected := sql.NullString{String: input, Valid: true}
+
+		actual := NewNullString(input)
+		require.Equal(t, expected, actual)
+	})
+}
+
+func TestNewNullInt16(t *testing.T) {
+	t.Parallel()
+
+	t.Run("int16をsql.NullInt16に変換する", func(t *testing.T) {
+		t.Parallel()
+
+		input := int16(123)
+		expected := sql.NullInt16{Int16: input, Valid: true}
+
+		actual := NewNullInt16(input)
+		require.Equal(t, expected, actual)
+	})
+}
+
+func TestNewNullInt64(t *testing.T) {
+	t.Parallel()
+
+	t.Run("int64をsql.NullInt64に変換する", func(t *testing.T) {
+		t.Parallel()
+
+		input := int64(123456789)
+		expected := sql.NullInt64{Int64: input, Valid: true}
+
+		actual := NewNullInt64(input)
+		require.Equal(t, expected, actual)
+	})
+}
+
+func TestNewNullBool(t *testing.T) {
+	t.Parallel()
+
+	t.Run("boolをsql.NullBoolに変換する", func(t *testing.T) {
+		t.Parallel()
+
+		input := true
+		expected := sql.NullBool{Bool: input, Valid: true}
+
+		actual := NewNullBool(input)
+		require.Equal(t, expected, actual)
+	})
+}
+
+func TestNewNullFloat64(t *testing.T) {
+	t.Parallel()
+
+	t.Run("float64をsql.NullFloat64に変換する", func(t *testing.T) {
+		t.Parallel()
+
+		input := 123.456
+		expected := sql.NullFloat64{Float64: input, Valid: true}
+
+		actual := NewNullFloat64(input)
+		require.Equal(t, expected, actual)
+	})
+}
+
+func TestNewNullTime(t *testing.T) {
+	t.Parallel()
+
+	t.Run("time.Timeをsql.NullTimeに変換する", func(t *testing.T) {
+		t.Parallel()
+
+		input := time.Now()
+		expected := sql.NullTime{Time: input, Valid: true}
+
+		actual := NewNullTime(input)
+		require.Equal(t, expected, actual)
+	})
+}
