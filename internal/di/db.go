@@ -1,7 +1,7 @@
 package di
 
 import (
-	"boilerplate-go/internal/infrastructure/rdb"
+	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
 
 	"go.uber.org/fx"
 )
@@ -10,8 +10,8 @@ import (
 func DatabaseModule() fx.Option {
 	return fx.Module("db",
 		fx.Provide(
-			rdb.NewDB,
-			rdb.NewTransactionManager,
+			rdbdriver.NewDB,
+			rdbdriver.NewTransactionManager,
 		),
 	)
 }
