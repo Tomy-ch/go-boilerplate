@@ -29,6 +29,11 @@ serve-build:
 	@docker compose --profile development up -d --build
 	@echo "✅ 開発環境の起動が完了しました。"
 
+smoke:
+	@echo "🔄 Smoke Test環境を起動します。"
+	@docker compose --profile smoke up --build -d smoke_server
+	@echo "✅ Smoke Test環境の起動が完了しました。"
+
 tools:
 	@echo "🔄 開発ツールを起動します。"
 	@docker compose --profile tools up -d --build

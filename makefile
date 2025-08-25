@@ -8,7 +8,7 @@ include .makefiles/github/setting/label-setting.mk
 include .makefiles/github/operation/release-branch.mk
 include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/operation/setup-repository.mk
-include .makefiles/go/develop.mk
+include .makefiles/dev/develop.mk
 include .makefiles/database/database.mk
 include .makefiles/gen/generate.mk
 
