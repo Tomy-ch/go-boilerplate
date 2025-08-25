@@ -4,6 +4,7 @@ import "time"
 
 type Loader struct {
 	OS       OperationSystem `envPrefix:"OS_"`
+	App      Application     `envPrefix:"APP_"`
 	Server   Server          `envPrefix:"SERVER_"`
 	Database Database        `envPrefix:"DB_"`
 	Security Security        `envPrefix:"SECURITY_"`
@@ -13,9 +14,13 @@ type OperationSystem struct {
 	Timezone string `env:"TZ" default:"Asia/Tokyo"`
 }
 
-type Server struct {
+type Application struct {
 	Env             string        `env:"ENV,required"`
-	AppMode         string        `env:"APP_MODE,required"`
+	Mode            string        `env:"MODE,required"`
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`
+}
+
+type Server struct {
 	Host            string        `env:"HOST,required"`
 	Port            int           `env:"PORT,required"`
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`

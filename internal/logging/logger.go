@@ -82,5 +82,5 @@ func New(cfg *config.Config) (*zap.Logger, error) {
 	if cfg.IsAppDevelopmentMode() {
 		return NewDevelopmentLogger(), nil
 	}
-	return nil, fmt.Errorf("unknown app mode: %s", cfg.ServerAppMode())
+	return nil, fmt.Errorf("unknown app mode: %s", cfg.AppMode())
 }

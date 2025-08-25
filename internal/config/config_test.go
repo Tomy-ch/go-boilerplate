@@ -17,12 +17,15 @@ func TestNewConfig(t *testing.T) {
 				os: operationSystem{
 					timezone: expectedOSTimeZone,
 				},
+				app: application{
+					env:             expectedApplicationEnv,
+					mode:            expectedApplicationMode,
+					shutdownTimeout: expectedAppShutdownTimeout,
+				},
 				server: server{
-					env:             expectedServerEnv,
-					appMode:         expectedAppMode,
 					host:            expectedHost,
 					port:            expectedPort,
-					shutdownTimeout: expectedShutdownTimeout,
+					shutdownTimeout: expectedServerShutdownTimeout,
 				},
 				database: database{
 					driver:   expectedDBDriver,
@@ -54,7 +57,7 @@ func TestNewConfig(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Run("configに必要な環境変数が不足している場合", func(t *testing.T) {
-			t.Setenv("SERVER_ENV", expectedServerEnv)
+			t.Setenv("SERVER_ENV", expectedApplicationEnv)
 
 			actual, err := New()
 			require.Nil(t, actual)
@@ -63,7 +66,7 @@ func TestNewConfig(t *testing.T) {
 
 		t.Run("バリデート結果がエラーの場合", func(t *testing.T) {
 			setEnv(t)
-			t.Setenv("SERVER_APP_MODE", "invalid_env")
+			t.Setenv("APP_MODE", "invalid_env")
 
 			actual, err := New()
 			require.Nil(t, actual)
@@ -98,7 +101,7 @@ func Test_validateConfig(t *testing.T) {
 		t.Run("無効なアプリケーションモード", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
-			cfg.Server.AppMode = "invalid_mode" // 無効なアプリケーションモード
+			cfg.App.Mode = "invalid_mode" // 無効なアプリケーションモード
 
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
@@ -139,14 +142,14 @@ func TestIsAppProductionMode(t *testing.T) {
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
-		cfg.server.appMode = ProductionMode
+		cfg.app.mode = ProductionMode
 		require.True(t, cfg.IsAppProductionMode())
 	})
 
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
-		cfg.server.appMode = DevelopmentMode
+		cfg.app.mode = DevelopmentMode
 		require.False(t, cfg.IsAppProductionMode())
 	})
 }
@@ -156,14 +159,14 @@ func TestIsAppDevelopmentMode(t *testing.T) {
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
-		cfg.server.appMode = DevelopmentMode
+		cfg.app.mode = DevelopmentMode
 		require.True(t, cfg.IsAppDevelopmentMode())
 	})
 
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
-		cfg.server.appMode = ProductionMode
+		cfg.app.mode = ProductionMode
 		require.False(t, cfg.IsAppDevelopmentMode())
 	})
 }

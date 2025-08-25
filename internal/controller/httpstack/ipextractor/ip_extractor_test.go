@@ -32,7 +32,7 @@ func TestNewIPExtractor(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		cfg.SetServerAppMode(t, config.ProductionMode)
 		cfg.SetCIDR(t, parsedCIDR)
-		require.Equal(t, config.ProductionMode, cfg.ServerAppMode())
+		require.Equal(t, config.ProductionMode, cfg.AppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
 		actual := NewIPExtractor(&cfg)
@@ -45,7 +45,7 @@ func TestNewIPExtractor(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		cfg.SetServerAppMode(t, config.DevelopmentMode)
 		cfg.SetCIDR(t, parsedCIDR)
-		require.Equal(t, config.DevelopmentMode, cfg.ServerAppMode())
+		require.Equal(t, config.DevelopmentMode, cfg.AppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
 		actual := NewIPExtractor(&cfg)

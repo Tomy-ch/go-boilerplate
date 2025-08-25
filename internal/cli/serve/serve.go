@@ -2,6 +2,12 @@
 package serve
 
 import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/di"
 
 	"github.com/spf13/cobra"
@@ -21,7 +27,12 @@ func NewServeCommand() *cobra.Command {
 
 // serveRun は、サーバーを起動するための実行関数です。
 func serveRun(_ *cobra.Command, _ []string) error {
-	fx.New(
+	cfg, err := config.SetUpConfig()
+	if err != nil {
+		return err
+	}
+
+	app := fx.New(
 		// Core Module
 		di.ConfigModule(),
 		di.DatabaseModule(),
@@ -33,6 +44,27 @@ func serveRun(_ *cobra.Command, _ []string) error {
 		di.ControllerModule(),
 		// Server Module
 		di.ServeModule(),
-	).Run()
-	return nil
+	)
+
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		os.Interrupt,
+	)
+	defer stop()
+
+	stopCtx, cancel := context.WithTimeout(
+		context.Background(),
+		cfg.AppShutdownTimeout(),
+	)
+	defer cancel()
+
+	if err := app.Start(ctx); err != nil {
+		return err
+	}
+
+	<-ctx.Done()
+
+	return app.Stop(stopCtx)
 }

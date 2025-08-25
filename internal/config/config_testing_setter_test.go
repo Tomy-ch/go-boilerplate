@@ -10,10 +10,10 @@ import (
 func TestConfigTestingSetters(t *testing.T) {
 	cfg := MockConfigForTest(t)
 
-	t.Run("SetServerAppMode", func(t *testing.T) {
+	t.Run("SetAppMode", func(t *testing.T) {
 		expected := "test-mode"
 		cfg.SetServerAppMode(t, expected)
-		require.Equal(t, expected, cfg.ServerAppMode())
+		require.Equal(t, expected, cfg.AppMode())
 	})
 
 	t.Run("SetDatabaseDriver", func(t *testing.T) {

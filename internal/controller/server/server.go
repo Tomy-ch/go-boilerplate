@@ -4,7 +4,6 @@ package server
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/httpstack"
@@ -37,13 +36,13 @@ func ServeHTTP(
 				zap.String("port", strconv.Itoa(addr)),
 				zap.Strings("allowed origins", cfg.AllowedOrigins()),
 				zap.String("cidr", cfg.CIDR().IP.String()),
-				zap.String("mode", cfg.ServerAppMode()),
+				zap.String("mode", cfg.AppMode()),
 			)
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			shutdownTime := cfg.ServerShutdownTimeout()
-			ctx, cancel := context.WithTimeout(ctx, shutdownTime*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, shutdownTime)
 			defer cancel()
 			z.Info("http stopping")
 			return e.Shutdown(ctx)

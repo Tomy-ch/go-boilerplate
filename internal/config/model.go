@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	os       operationSystem
+	app      application
 	server   server
 	database database
 	security security
@@ -16,9 +17,13 @@ type operationSystem struct {
 	timezone string
 }
 
-type server struct {
+type application struct {
 	env             string
-	appMode         string
+	mode            string
+	shutdownTimeout time.Duration
+}
+
+type server struct {
 	host            string
 	port            int
 	shutdownTimeout time.Duration
@@ -59,16 +64,19 @@ func (c *Config) ServerPort() int { return c.server.port }
 // ServerShutdownTimeout は、サーバー停止までの規定時間を返します。
 func (c *Config) ServerShutdownTimeout() time.Duration { return c.server.shutdownTimeout }
 
-// ServerEnv は、サーバーの環境を返します。
+// AppEnv は、サーバーの環境を返します。
 //
 // 例: "local", "development", "staging", "production" など。
-func (c *Config) ServerEnv() string { return c.server.env }
+func (c *Config) AppEnv() string { return c.app.env }
 
-// ServerAppMode は、アプリケーションの環境を返します。
+// AppMode は、アプリケーションの環境を返します。
 //
 // この環境変数はアプリケーションがどのモードで動作しているかを示します。
 // 例: "development", "production" など。
-func (c *Config) ServerAppMode() string { return c.server.appMode }
+func (c *Config) AppMode() string { return c.app.mode }
+
+// AppShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。
+func (c *Config) AppShutdownTimeout() time.Duration { return c.app.shutdownTimeout }
 
 // DatabaseDriver は、データベースのドライバー名を返します。
 func (c *Config) DatabaseDriver() string { return c.database.driver }

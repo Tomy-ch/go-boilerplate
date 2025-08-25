@@ -29,17 +29,22 @@ func TestGetterMethods(t *testing.T) {
 
 	t.Run("ServerShutdownTimeout", func(t *testing.T) {
 		t.Parallel()
-		require.Equal(t, expectedShutdownTimeout, cfg.ServerShutdownTimeout())
+		require.Equal(t, expectedServerShutdownTimeout, cfg.ServerShutdownTimeout())
 	})
 
-	t.Run("ServerEnv", func(t *testing.T) {
+	t.Run("AppEnv", func(t *testing.T) {
 		t.Parallel()
-		require.Equal(t, expectedServerEnv, cfg.ServerEnv())
+		require.Equal(t, expectedApplicationEnv, cfg.AppEnv())
 	})
 
-	t.Run("ServerAppMode", func(t *testing.T) {
+	t.Run("AppMode", func(t *testing.T) {
 		t.Parallel()
-		require.Equal(t, expectedAppMode, cfg.ServerAppMode())
+		require.Equal(t, expectedApplicationMode, cfg.AppMode())
+	})
+
+	t.Run("AppShutdownTimeout", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedAppShutdownTimeout, cfg.AppShutdownTimeout())
 	})
 
 	t.Run("DatabaseDriver", func(t *testing.T) {
