@@ -82,10 +82,12 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 		}
 	}
 
-	if cfg.App.Mode != DevelopmentMode &&
-		cfg.App.Mode != ProductionMode {
-
+	if cfg.App.Mode != DevelopmentMode && cfg.App.Mode != ProductionMode {
 		return nil, ErrInvalidAppMode
+	}
+
+	if cfg.App.ShutdownTimeout.Microseconds() < cfg.Server.ShutdownTimeout.Microseconds() {
+		return nil, ErrServerErrShutdownTimeoutExceedsApplication
 	}
 
 	_, cidr, err := net.ParseCIDR(cfg.Security.CIDR)

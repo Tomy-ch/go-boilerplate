@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -98,25 +99,6 @@ func Test_validateConfig(t *testing.T) {
 			require.ErrorIs(t, err, ErrInvalidPortRange)
 		})
 
-		t.Run("無効なアプリケーションモード", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.App.Mode = "invalid_mode" // 無効なアプリケーションモード
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidAppMode)
-		})
-
-		t.Run("CIDRのパースに失敗した場合", func(t *testing.T) {
-			cfg := mockLoader(t)
-			cfg.Security.CIDR = "invalid_cidr" // 無効なCIDR
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrFailedToParseCIDR)
-		})
-
 		t.Run("AllowedOriginsが空の場合", func(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{} // 空のAllowedOrigins
@@ -133,6 +115,34 @@ func Test_validateConfig(t *testing.T) {
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
+		})
+
+		t.Run("無効なアプリケーションモード", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.App.Mode = "invalid_mode" // 無効なアプリケーションモード
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidAppMode)
+		})
+
+		t.Run("サーバーのシャットダウンタイムアウトがアプリケーションのシャットダウンタイムアウトを超えている場合", func(t *testing.T) {
+			cfg := mockLoader(t)
+			cfg.Server.ShutdownTimeout = cfg.App.ShutdownTimeout + time.Duration(1*time.Second)
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrServerErrShutdownTimeoutExceedsApplication)
+		})
+
+		t.Run("CIDRのパースに失敗した場合", func(t *testing.T) {
+			cfg := mockLoader(t)
+			cfg.Security.CIDR = "invalid_cidr" // 無効なCIDR
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrFailedToParseCIDR)
 		})
 	})
 }
