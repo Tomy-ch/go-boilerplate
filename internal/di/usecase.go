@@ -10,7 +10,7 @@ import (
 func UsecaseModule() fx.Option {
 	return fx.Module("usecase",
 		fx.Provide(
-			useruc.NewUsecase,
+			useruc.New,
 		),
 	)
 }

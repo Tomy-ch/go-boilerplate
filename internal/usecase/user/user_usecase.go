@@ -27,8 +27,8 @@ type Usecase interface {
 	GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, error)
 }
 
-// NewUsecase は、ユーザーに関するユースケースを初期化します。
-func NewUsecase(userRepo user.Repository) Usecase {
+// New は、ユーザーに関するユースケースを初期化します。
+func New(userRepo user.Repository) Usecase {
 	return &usecase{
 		userRepo: userRepo,
 	}
