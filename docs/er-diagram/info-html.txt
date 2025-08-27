@@ -1,4 +1,4 @@
-date=2025-08-21 16:42:45+0000
+date=2025-08-27 03:34:08+0000
 os=Linux 6.10.14-linuxkit
 schemaspy-version=7.0.2
 schemaspy-revision=v7.0.2
