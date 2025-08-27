@@ -20,7 +20,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			cfg.SetDatabaseHost(t, "localhost")
 
-			db, err := NewDB(&cfg)
+			db, err := NewDB(cfg)
 			require.NoError(t, err)
 			require.NotNil(t, db)
 
@@ -41,7 +41,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			cfg.SetDatabaseDriver(t, "invalid_driver")
 
-			db, err := NewDB(&cfg)
+			db, err := NewDB(cfg)
 			require.Error(t, err)
 			require.Nil(t, db)
 		})
@@ -51,7 +51,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			cfg.SetDatabaseName(t, "nonexistentdb")
 
-			db, err := NewDB(&cfg)
+			db, err := NewDB(cfg)
 			require.Error(t, err)
 			require.Nil(t, db)
 		})

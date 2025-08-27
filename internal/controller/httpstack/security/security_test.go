@@ -16,7 +16,7 @@ func TestBuildSecureConfig(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		cfg.SetServerAppMode(t, config.ProductionMode)
 
-		actual := buildSecureConfig(&cfg)
+		actual := buildSecureConfig(cfg)
 
 		expected := middleware.SecureConfig{
 			XSSProtection:         "",
@@ -35,7 +35,7 @@ func TestBuildSecureConfig(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		cfg.SetServerAppMode(t, config.DevelopmentMode)
 
-		actual := buildSecureConfig(&cfg)
+		actual := buildSecureConfig(cfg)
 
 		expected := middleware.SecureConfig{
 			XSSProtection:      "",

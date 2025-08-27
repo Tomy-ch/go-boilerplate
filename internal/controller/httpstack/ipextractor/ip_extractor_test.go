@@ -15,7 +15,7 @@ func TestNew(t *testing.T) {
 
 	e := &echo.Echo{}
 	cfg := config.MockConfigForTest(t)
-	New(e, &cfg)
+	New(e, cfg)
 	require.NotNil(t, e.IPExtractor)
 }
 
@@ -35,7 +35,7 @@ func TestNewIPExtractor(t *testing.T) {
 		require.Equal(t, config.ProductionMode, cfg.AppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
-		actual := NewIPExtractor(&cfg)
+		actual := NewIPExtractor(cfg)
 		require.NotNil(t, actual)
 	})
 
@@ -48,7 +48,7 @@ func TestNewIPExtractor(t *testing.T) {
 		require.Equal(t, config.DevelopmentMode, cfg.AppMode())
 		require.Equal(t, parsedCIDR.String(), cfg.CIDR().String())
 
-		actual := NewIPExtractor(&cfg)
+		actual := NewIPExtractor(cfg)
 		require.NotNil(t, actual)
 	})
 

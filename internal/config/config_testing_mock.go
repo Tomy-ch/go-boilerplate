@@ -25,7 +25,7 @@ var (
 	expectedAppShutdownTimeout         = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
 	// database
 	expectedDBDriver   = "pgx"
-	expectedDBHost     = "postgres-db"
+	expectedDBHost     = "localhost"
 	expectedDBPort     = 5432
 	expectedDBUser     = "postgres"
 	expectedDBPassword = "postgres-password"
@@ -47,9 +47,9 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) Config {
+func MockConfigForTest(t testing.TB) *Config {
 	t.Helper()
-	return Config{
+	return &Config{
 		os: operationSystem{
 			timezone: expectedOSTimeZone,
 		},
