@@ -9,7 +9,7 @@ import (
 	"sort"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/middleware/logging"
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/jackc/pgconn"
@@ -26,23 +26,38 @@ const (
 	relationDoesNotExistCode = "42P01"
 )
 
+var targetDBintoSeed string
+
 // NewDBSeedCommand は、データベースに初期データを投入するためのコマンドを生成します。
 func NewDBSeedCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "db-seed",
 		Short: "データベースに初期データを投入します。",
 		Long: "このコマンドは、データベースに初期データを投入するためのコマンドです。\n" +
-			"保存先のテーブルが存在しない場合は、保存がスキップされます。",
+			"--database フラグを指定すると、対象のデータベース（例: local, test）を指定して投入を行います。",
 		RunE: dbSeedRun,
 	}
+
+	cmd.Flags().StringVar(&targetDBintoSeed, "database", "", "filter DATABASE (e.g. local)")
+
+	return cmd
 }
 
 // dbSeedRun は、データベースに初期データを投入するための実行関数です。
 func dbSeedRun(_ *cobra.Command, _ []string) error {
 	logger := logging.NewProductionLogger()
-	errors := xerrors.New()
 
-	cfg, err := config.SetUpConfig()
+	err := config.Load()
+	if err != nil {
+		logger.Fatal("failed to load config", zap.Error(err))
+	}
+	if targetDBintoSeed != "" {
+		err = os.Setenv("DB_NAME", targetDBintoSeed)
+		if err != nil {
+			logger.Fatal("failed to set DB_NAME env", zap.Error(err))
+		}
+	}
+	cfg, err := config.New()
 	if err != nil {
 		logger.Fatal("failed to load config", zap.Error(err))
 	}
@@ -78,7 +93,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 		_, err = db.ExecContext(ctx, string(data))
 		if err != nil {
 			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) &&
+			if xerrors.As(err, &pgErr) &&
 				pgErr.Code != relationDoesNotExistCode {
 				logger.Panic(
 					"failed to exec seed file",

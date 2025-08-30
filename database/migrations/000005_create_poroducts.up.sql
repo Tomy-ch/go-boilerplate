@@ -7,9 +7,9 @@ CREATE TABLE IF NOT EXISTS products (
     stock_warning_threshold INTEGER,
     status_id UUID NOT NULL,
     category_id UUID NOT NULL,
-    published_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    published_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT products_id_primary PRIMARY KEY (id),
     CONSTRAINT products_status_id_foreign FOREIGN KEY (status_id) REFERENCES product_statuses (id),
     CONSTRAINT products_category_id_foreign FOREIGN KEY (category_id) REFERENCES product_categories (id)

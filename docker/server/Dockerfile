@@ -1,5 +1,48 @@
 # ------------------------------
-# 開発環境
+# ビルド用
+# ------------------------------
+FROM golang:1.24.4-alpine AS builder
+
+WORKDIR /app
+
+ENV GOPROXY=off \
+    GOSUMDB=off \
+    CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
+
+RUN apk add --no-cache \
+  ca-certificates \
+  tzdata
+
+COPY go.mod go.sum ./
+
+RUN go mod tidy
+RUN go mod vendor
+
+COPY vendor/ ./vendor/
+
+COPY . .
+
+RUN go list -mod=vendor all
+
+RUN go build -mod=vendor -trimpath -ldflags="-s -w" -o /app/bin/server ./cmd/main.go
+
+# ------------------------------
+# スモークテスト用
+# ------------------------------
+FROM alpine:3.20 AS smoke
+
+COPY --from=builder /app/bin/server /app/server
+COPY --from=builder /app/.env/.env.prd /.env/.env.prd
+COPY --from=builder /app/database/migrations /database/migrations
+
+EXPOSE 8080
+
+CMD ["/app/server","serve"]
+
+# ------------------------------
+# ローカル環境
 # ------------------------------
 FROM golang:1.24.4-alpine AS local
 

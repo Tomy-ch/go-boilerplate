@@ -5,33 +5,55 @@
 package v1users
 
 import (
-	"database/sql"
 	"net/http"
 
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
-	userrepo "boilerplate-go/internal/infrastructure/rdb/repository/user"
+	"boilerplate-go/internal/usecase/paging"
+	useruc "boilerplate-go/internal/usecase/user"
+	"boilerplate-go/pkg/ptr"
 
 	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime/types"
 )
 
 type server struct {
-	db *sql.DB
+	uc useruc.Usecase
 }
 
-func BindHandler(e *echo.Echo, db *sql.DB) {
+func BindHandler(e *echo.Echo, uc useruc.Usecase) {
 	gen.RegisterHandlers(e, &server{
-		db: db,
+		uc: uc,
 	})
 }
 
 // GetUsers は、ユーザー一覧を取得します。
-func (s *server) GetUsers(ctx echo.Context, _ gen.GetUsersParams) error {
+func (s *server) GetUsers(ctx echo.Context, params gen.GetUsersParams) error {
 	// WARN: 本来はここで認可を行うべきですが、今回は省略します。
-	results, err := userrepo.New(s.db).GetAllUsers(ctx.Request().Context())
+	page, err := paging.NewPagingFrom1Based(params.Page, params.PerPage)
 	if err != nil {
 		return err
 	}
-	return ctx.JSON(http.StatusOK, results)
+
+	dtos, err := s.uc.GetAllUsers(ctx.Request().Context(), page)
+	if err != nil {
+		return err
+	}
+	users := make([]gen.UserResponse, len(dtos))
+	for i, dto := range dtos {
+		users[i] = gen.UserResponse{
+			Name:  dto.Name,
+			Email: types.Email(dto.Email),
+			Phone: ptr.To(dto.Phone),
+		}
+	}
+
+	res := gen.ResponseV1Users{
+		Users:  users,
+		Limit:  page.Limit(),
+		Offset: page.Offset(),
+	}
+
+	return ctx.JSON(http.StatusOK, res)
 }
 
 // PostUsers implements gen.ServerInterface.

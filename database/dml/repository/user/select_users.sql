@@ -5,6 +5,7 @@ SELECT
     u.last_name,
     u.email,
     u.phone,
+    u.password_hash,
     u.prefecture_id,
     p.name AS prefecture_name,
     u.city,

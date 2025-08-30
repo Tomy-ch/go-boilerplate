@@ -2,9 +2,8 @@ package migrate
 
 import (
 	"errors"
-	"strconv"
 
-	"boilerplate-go/internal/controller/middleware/logging"
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/safecast"
 
 	"github.com/spf13/cobra"
@@ -19,25 +18,33 @@ import (
 
 // NewMigrateDownCommand は、DBのマイグレーションを下げるためのコマンドを生成します。
 func NewMigrateDownCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "migrate-down [target_version]",
-		Short: "database/migrationsのDDL適用をダウングレードします。",
-		Long:  "このコマンドは、指定があれば特定バージョンまでDown操作を行います。引数なしなら全てDownします。",
-		Args:  cobra.MaximumNArgs(1),
-		RunE:  migrateDownRun,
+		Short: "database/migrations のDDLをダウングレードします（--version / --database指定可）。",
+		Long: `database/migrations ディレクトリに存在するDDLマイグレーションを適用します。
+
+引数なしの場合は全てのマイグレーションをDownします。
+--version フラグを指定すると、そのバージョンまでDownします。
+--database フラグを指定すると、対象のデータベース（例: local, test）を指定してDownを行います。`,
+		RunE: migrateDownRun,
 	}
+
+	cmd.Flags().IntVar(&targetVersion, "version", 0, "filter VERSION")
+	cmd.Flags().StringVar(&targetDatabase, "database", "", "filter DATABASE (e.g. local)")
+
+	return cmd
 }
 
 // migrateDownRun は、マイグレーションをダウングレードするための実行関数です。
-func migrateDownRun(_ *cobra.Command, args []string) error {
+func migrateDownRun(_ *cobra.Command, _ []string) error {
 	logger := logging.NewProductionLogger()
 
-	m, err := buildMigrateInstance()
+	m, err := buildMigrateInstance(targetDatabase)
 	if err != nil {
 		logger.Panic("failed to create migrate instance", zap.Error(err))
 	}
 
-	if len(args) == 0 {
+	if targetVersion == 0 {
 		// 引数なしなら全てのマイグレーションをダウングレード
 		logger.Info("running full migration down")
 		err := executeMigrateFullDown(m)
@@ -46,8 +53,8 @@ func migrateDownRun(_ *cobra.Command, args []string) error {
 		}
 	} else {
 		// 引数がある場合は指定されたバージョンまでダウングレード
-		logger.Info("running migrate down steps", zap.String("steps", args[0]))
-		if err := executeMigrateStepsDownFromArgs(m, args); err != nil {
+		logger.Info("running migrate down steps", zap.Int("steps", targetVersion))
+		if err := m.Steps(int(-targetVersion)); err != nil {
 			logger.Error("down migration steps failed", zap.Error(err))
 		}
 	}
@@ -72,13 +79,4 @@ func executeMigrateFullDown(m *migrate.Migrate) error {
 		}
 	}
 	return m.Down()
-}
-
-// executeMigrateStepsDownFromArgs は、指定されたステップ数だけマイグレーションをダウングレードします。
-func executeMigrateStepsDownFromArgs(m *migrate.Migrate, args []string) error {
-	steps, err := strconv.ParseInt(args[0], 10, 64)
-	if err != nil {
-		return err
-	}
-	return m.Steps(int(-steps))
 }

@@ -1,13 +1,14 @@
 package config
 
 import (
-	"errors"
 	"fmt"
+
+	"boilerplate-go/internal/apperror"
 )
 
 var (
 	// errInvalidConfig は、コンフィグ設定に関するエラーを表します。
-	errInvalidConfig = errors.New("config error")
+	errInvalidConfig = fmt.Errorf("config error: %w", apperror.ErrInvalidArgument)
 	// ErrInvalidAppMode は、無効なアプリケーションモードに関するエラーを表します。
 	ErrInvalidAppMode = fmt.Errorf(
 		"invalid app mode, must which be one of %s or %s: %w",
@@ -32,6 +33,11 @@ var (
 	// ErrFailedToParseConfig は、環境変数のパースに失敗したことを示すエラーです。
 	ErrFailedToParseConfig = fmt.Errorf(
 		"failed to parse environment variables: %w",
+		errInvalidConfig,
+	)
+	// ErrServerErrShutdownTimeoutExceedsApplication は、サーバーのシャットダウンタイムアウトがアプリケーションのシャットダウンタイムアウトを超えていることを示すエラーです。
+	ErrServerErrShutdownTimeoutExceedsApplication = fmt.Errorf(
+		"server shutdown timeout exceeds application shutdown timeout: %w",
 		errInvalidConfig,
 	)
 	// ErrFailedToParseCIDR は、CIDRのパースに失敗したことを示すエラーです。

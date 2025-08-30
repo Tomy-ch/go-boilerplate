@@ -14,9 +14,9 @@ import (
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 func (c *Config) SetServerAppMode(t testing.TB, mode string) {
 	t.Helper()
-	prev := c.ServerAppMode()
-	c.server.appMode = mode
-	t.Cleanup(func() { c.server.appMode = prev })
+	prev := c.AppMode()
+	c.app.mode = mode
+	t.Cleanup(func() { c.app.mode = prev })
 }
 
 // SetDatabaseDriver は、テスト用にデータベースのドライバーを設定します。
