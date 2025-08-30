@@ -2,8 +2,8 @@ CREATE TABLE IF NOT EXISTS prefectures (
     id UUID NOT NULL,
     name VARCHAR(100) NOT NULL,
     code SMALLINT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT prefectures_id_primary PRIMARY KEY (id),
     CONSTRAINT prefectures_name_unique UNIQUE (name),
     CONSTRAINT prefectures_code_unique UNIQUE (code)

@@ -1,10 +1,8 @@
 package migrate
 
 import (
-	"strconv"
-
-	"boilerplate-go/internal/controller/middleware/logging"
-	"boilerplate-go/pkg/xerror"
+	"boilerplate-go/internal/logging"
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 
@@ -18,35 +16,42 @@ import (
 
 // NewMigrateUpCommand は、DBのマイグレーションを上げるためのコマンドを生成します。
 func NewMigrateUpCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "migrate-up [target_version]",
-		Short: "database/migrationsのDDL適用をアップグレードします。",
-		Long:  "このコマンドは、指定があれば特定バージョンまでUp操作を行います。引数なしなら全てUpします。",
-		Args:  cobra.MaximumNArgs(1),
-		RunE:  migrateUpRun,
+		Short: "database/migrations のDDLをアップグレードします（--version / --database指定可）。",
+		Long: `database/migrations ディレクトリに存在するDDLマイグレーションを適用します。
+
+引数なしの場合は全てのマイグレーションをUpします。
+--version フラグを指定すると、そのバージョンまでUpします。
+--database フラグを指定すると、対象のデータベース（例: local, test）を指定してUpを行います。`,
+		RunE: migrateUpRun,
 	}
+
+	cmd.Flags().IntVar(&targetVersion, "version", 0, "filter VERSION")
+	cmd.Flags().StringVar(&targetDatabase, "database", "", "filter DATABASE (e.g. local)")
+
+	return cmd
 }
 
 // migrateUpRun は、マイグレーションをアップデートするための実行関数です。
-func migrateUpRun(_ *cobra.Command, args []string) error {
+func migrateUpRun(_ *cobra.Command, _ []string) error {
 	logger := logging.NewProductionLogger()
-	xerrors := xerror.New()
 
-	m, err := buildMigrateInstance()
+	m, err := buildMigrateInstance(targetDatabase)
 	if err != nil {
 		logger.Panic("failed to create migrate instance", zap.Error(err))
 	}
 
-	if len(args) == 0 {
+	if targetVersion == 0 {
 		// 引数なしなら全てのマイグレーションをアップ
 		logger.Info("running full migration up")
-		if err := executeMigrateFullUp(m, xerrors); err != nil {
+		if err := executeMigrateFullUp(m); err != nil {
 			logger.Panic("migration failed", zap.Error(err))
 		}
 	} else {
 		// 引数がある場合は指定されたバージョンまでアップグレード
-		logger.Info("running migration up to version", zap.String("steps", args[0]))
-		if err := executeMigrateStepsUpFromArgs(m, args); err != nil {
+		logger.Info("running migration up to version", zap.Int("steps", targetVersion))
+		if err := m.Steps(targetVersion); err != nil {
 			logger.Panic("migration to version failed", zap.Error(err))
 		}
 	}
@@ -56,18 +61,9 @@ func migrateUpRun(_ *cobra.Command, args []string) error {
 }
 
 // executeMigrateFullUp は、マイグレーションを全てアップグレードします。
-func executeMigrateFullUp(m *migrate.Migrate, errors xerror.XErrors) error {
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+func executeMigrateFullUp(m *migrate.Migrate) error {
+	if err := m.Up(); err != nil && !xerrors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
 	return nil
-}
-
-// executeMigrateStepsUpFromArgs は、指定されたステップ数だけマイグレーションをアップグレードします。
-func executeMigrateStepsUpFromArgs(m *migrate.Migrate, args []string) error {
-	steps, err := strconv.ParseInt(args[0], 10, 64)
-	if err != nil {
-		return err
-	}
-	return m.Steps(int(steps))
 }

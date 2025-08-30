@@ -1,0 +1,20 @@
+package di
+
+import (
+	"boilerplate-go/internal/controller/handler/health"
+	"boilerplate-go/internal/controller/handler/healthz"
+	v1users "boilerplate-go/internal/controller/handler/v1/users"
+
+	"go.uber.org/fx"
+)
+
+// ControllerModule は、コントローラー層の依存関係を提供するfx.Moduleです。
+func ControllerModule() fx.Option {
+	return fx.Module("controller",
+		fx.Invoke(
+			health.BindHandler,
+			healthz.BindHandler,
+			v1users.BindHandler,
+		),
+	)
+}

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<database name="local" schema="public" type="PostgreSQL - 17.5 (Debian 17.5-1.pgdg120+1)">
+<database name="local" schema="public" type="PostgreSQL - 17.5 (Debian 17.5-1.pgdg130+1)">
    <tables>
       <table name="pg_stat_statements" numRows="0" remarks="" schema="public" type="VIEW" viewSql=" SELECT userid,&#10;    dbid,&#10;    toplevel,&#10;    queryid,&#10;    query,&#10;    plans,&#10;    total_plan_time,&#10;    min_plan_time,&#10;    max_plan_time,&#10;    mean_plan_time,&#10;    stddev_plan_time,&#10;    calls,&#10;    total_exec_time,&#10;    min_exec_time,&#10;    max_exec_time,&#10;    mean_exec_time,&#10;    stddev_exec_time,&#10;    rows,&#10;    shared_blks_hit,&#10;    shared_blks_read,&#10;    shared_blks_dirtied,&#10;    shared_blks_written,&#10;    local_blks_hit,&#10;    local_blks_read,&#10;    local_blks_dirtied,&#10;    local_blks_written,&#10;    temp_blks_read,&#10;    temp_blks_written,&#10;    shared_blk_read_time,&#10;    shared_blk_write_time,&#10;    local_blk_read_time,&#10;    local_blk_write_time,&#10;    temp_blk_read_time,&#10;    temp_blk_write_time,&#10;    wal_records,&#10;    wal_fpi,&#10;    wal_bytes,&#10;    jit_functions,&#10;    jit_generation_time,&#10;    jit_inlining_count,&#10;    jit_inlining_time,&#10;    jit_optimization_count,&#10;    jit_optimization_time,&#10;    jit_emission_count,&#10;    jit_emission_time,&#10;    jit_deform_count,&#10;    jit_deform_time,&#10;    stats_since,&#10;    minmax_stats_since&#10;   FROM pg_stat_statements(true) pg_stat_statements(userid, dbid, toplevel, queryid, query, plans, total_plan_time, min_plan_time, max_plan_time, mean_plan_time, stddev_plan_time, calls, total_exec_time, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, shared_blk_read_time, shared_blk_write_time, local_blk_read_time, local_blk_write_time, temp_blk_read_time, temp_blk_write_time, wal_records, wal_fpi, wal_bytes, jit_functions, jit_generation_time, jit_inlining_count, jit_inlining_time, jit_optimization_count, jit_optimization_time, jit_emission_count, jit_emission_time, jit_deform_count, jit_deform_time, stats_since, minmax_stats_since);">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="userid" nullable="true" remarks="" size="10" type="oid" typeCode="-5"/>
@@ -62,8 +62,8 @@
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="都道府県名" size="100" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="都道府県コード" size="5" type="int2" typeCode="5"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="3" name="created_at" nullable="false" remarks="作成日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="updated_at" nullable="false" remarks="更新日時" size="29" type="timestamp" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="3" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="prefectures_id_primary" unique="true">
             <column ascending="true" name="id"/>
@@ -82,8 +82,8 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="100" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="コード" size="5" type="int2" typeCode="5"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="sort_key" nullable="false" remarks="順序" size="5" type="int2" typeCode="5"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="29" type="timestamp" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="product_categories_id_primary" unique="true">
             <column ascending="true" name="id"/>
@@ -105,8 +105,8 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="100" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="コード" size="5" type="int2" typeCode="5"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="sort_key" nullable="false" remarks="順序" size="5" type="int2" typeCode="5"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="29" type="timestamp" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="product_statuses_id_primary" unique="true">
             <column ascending="true" name="id"/>
@@ -136,9 +136,9 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="category_id" nullable="false" remarks="商品カテゴリID" size="2147483647" type="uuid" typeCode="1111">
             <parent column="id" foreignKey="products_category_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="product_categories"/>
          </column>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="8" name="published_at" nullable="true" remarks="公開日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="9" name="created_at" nullable="false" remarks="作成日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="10" name="updated_at" nullable="false" remarks="更新日時" size="29" type="timestamp" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="8" name="published_at" nullable="true" remarks="公開日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="9" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="10" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="products_id_primary" unique="true">
             <column ascending="true" name="id"/>
@@ -154,8 +154,8 @@
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="quantity" nullable="false" remarks="数量" size="10" type="int4" typeCode="4"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="unit_price" nullable="false" remarks="単価" size="10" type="int4" typeCode="4"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="created_at" nullable="false" remarks="作成日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="6" name="updated_at" nullable="false" remarks="更新日時" size="29" type="timestamp" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="6" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="purchase_details_id_primary" unique="true">
             <column ascending="true" name="id"/>
@@ -168,8 +168,8 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="100" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="コード" size="5" type="int2" typeCode="5"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="sort_key" nullable="false" remarks="順序" size="5" type="int2" typeCode="5"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="29" type="timestamp" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="purchase_statuses_id_primary" unique="true">
             <column ascending="true" name="id"/>
@@ -199,13 +199,13 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="tax_amount" nullable="false" remarks="税金額" size="10" type="int4" typeCode="4"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="shipping_fee" nullable="false" remarks="配送料" size="10" type="int4" typeCode="4"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="total_amount" nullable="false" remarks="合計金額" size="10" type="int4" typeCode="4"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="8" name="ordered_at" nullable="false" remarks="注文日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="9" name="paid_at" nullable="true" remarks="支払日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="10" name="canceled_at" nullable="true" remarks="キャンセル日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="shipped_at" nullable="true" remarks="発送日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="12" name="delivered_at" nullable="true" remarks="配達日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="13" name="created_at" nullable="false" remarks="作成日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="14" name="updated_at" nullable="false" remarks="更新日時" size="29" type="timestamp" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="8" name="ordered_at" nullable="false" remarks="注文日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="9" name="paid_at" nullable="true" remarks="支払日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="10" name="canceled_at" nullable="true" remarks="キャンセル日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="shipped_at" nullable="true" remarks="発送日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="12" name="delivered_at" nullable="true" remarks="配達日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="13" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="14" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="purchases_id_primary" unique="true">
             <column ascending="true" name="id"/>
@@ -238,9 +238,9 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="8" name="street" nullable="false" remarks="番地" size="255" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="9" name="building" nullable="true" remarks="建物名" size="255" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="10" name="postal_code" nullable="false" remarks="郵便番号" size="8" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="deleted_at" nullable="true" remarks="削除日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="12" name="created_at" nullable="false" remarks="作成日時" size="29" type="timestamp" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="now()" digits="6" id="13" name="updated_at" nullable="false" remarks="更新日時" size="29" type="timestamp" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="deleted_at" nullable="true" remarks="削除日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="12" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="13" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="users_id_primary" unique="true">
             <column ascending="true" name="id"/>

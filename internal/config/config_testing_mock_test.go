@@ -11,15 +11,19 @@ import (
 
 func TestMockConfigForTest(t *testing.T) {
 	t.Parallel()
-	expected := Config{
+	expected := &Config{
 		os: operationSystem{
 			timezone: expectedOSTimeZone,
 		},
+		app: application{
+			env:             expectedApplicationEnv,
+			mode:            expectedApplicationMode,
+			shutdownTimeout: expectedAppShutdownTimeout,
+		},
 		server: server{
-			env:     expectedServerEnv,
-			appMode: expectedAppMode,
-			host:    expectedHost,
-			port:    expectedPort,
+			host:            expectedHost,
+			port:            expectedPort,
+			shutdownTimeout: expectedServerShutdownTimeout,
 		},
 		database: database{
 			driver:   expectedDBDriver,
@@ -53,11 +57,15 @@ func Test_mockLoader(t *testing.T) {
 		OS: OperationSystem{
 			Timezone: expectedOSTimeZone,
 		},
+		App: Application{
+			Env:             expectedApplicationEnv,
+			Mode:            expectedApplicationMode,
+			ShutdownTimeout: expectedAppShutdownTimeout,
+		},
 		Server: Server{
-			Env:     expectedServerEnv,
-			AppMode: expectedAppMode,
-			Host:    expectedHost,
-			Port:    expectedPort,
+			Host:            expectedHost,
+			Port:            expectedPort,
+			ShutdownTimeout: expectedServerShutdownTimeout,
 		},
 		Database: Database{
 			Host:     expectedDBHost,
@@ -82,10 +90,12 @@ func Test_setEnv(t *testing.T) {
 	setEnv(t)
 
 	require.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
-	require.Equal(t, expectedServerEnv, os.Getenv("SERVER_ENV"))
-	require.Equal(t, expectedAppMode, os.Getenv("SERVER_APP_MODE"))
+	require.Equal(t, expectedApplicationEnv, os.Getenv("APP_ENV"))
+	require.Equal(t, expectedApplicationMode, os.Getenv("APP_MODE"))
+	require.Equal(t, expectedAppShutdownTimeoutStr, os.Getenv("APP_SHUTDOWN_TIMEOUT"))
 	require.Equal(t, expectedHost, os.Getenv("SERVER_HOST"))
 	require.Equal(t, strconv.Itoa(expectedPort), os.Getenv("SERVER_PORT"))
+	require.Equal(t, expectedServerShutdownTimeoutStr, os.Getenv("SERVER_SHUTDOWN_TIMEOUT"))
 	require.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
 	require.Equal(t, expectedDBHost, os.Getenv("DB_HOST"))
 	require.Equal(t, strconv.Itoa(expectedDBPort), os.Getenv("DB_PORT"))

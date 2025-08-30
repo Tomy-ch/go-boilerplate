@@ -30,11 +30,15 @@ func New() (*Config, error) {
 		os: operationSystem{
 			timezone: cfg.OS.Timezone,
 		},
+		app: application{
+			env:             cfg.App.Env,
+			mode:            cfg.App.Mode,
+			shutdownTimeout: cfg.App.ShutdownTimeout,
+		},
 		server: server{
-			env:     cfg.Server.Env,
-			appMode: cfg.Server.AppMode,
-			host:    cfg.Server.Host,
-			port:    cfg.Server.Port,
+			host:            cfg.Server.Host,
+			port:            cfg.Server.Port,
+			shutdownTimeout: cfg.Server.ShutdownTimeout,
 		},
 		database: database{
 			driver:   cfg.Database.Driver,
@@ -78,10 +82,12 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 		}
 	}
 
-	if cfg.Server.AppMode != DevelopmentMode &&
-		cfg.Server.AppMode != ProductionMode {
-
+	if cfg.App.Mode != DevelopmentMode && cfg.App.Mode != ProductionMode {
 		return nil, ErrInvalidAppMode
+	}
+
+	if cfg.App.ShutdownTimeout.Microseconds() < cfg.Server.ShutdownTimeout.Microseconds() {
+		return nil, ErrServerErrShutdownTimeoutExceedsApplication
 	}
 
 	_, cidr, err := net.ParseCIDR(cfg.Security.CIDR)
@@ -96,12 +102,12 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 
 // IsAppProductionMode は、アプリケーションが本番環境モードかどうかを返します。
 func (c *Config) IsAppProductionMode() bool {
-	return c.server.appMode == ProductionMode
+	return c.app.mode == ProductionMode
 }
 
 // IsAppDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。
 func (c *Config) IsAppDevelopmentMode() bool {
-	return c.server.appMode == DevelopmentMode
+	return c.app.mode == DevelopmentMode
 }
 
 // DatabaseDSN は、データベースの接続URLを返します。

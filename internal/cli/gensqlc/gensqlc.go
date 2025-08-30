@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/middleware/logging"
+	"boilerplate-go/internal/logging"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"

@@ -55,8 +55,7 @@
     "appconfig": "config",
     "dispatcher": "routes",
     "ctxhelper": "context",
-    "errutil": "error",
-    "xerror": "error",
+    "xerrors": "error",
     "testutil": "test"
   },
 
