@@ -16,12 +16,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-and-unit:
+  lint:
     uses: ./.github/workflows/golang-setup.yaml
     with:
       go-version: '1.24.x'
   run:
-    needs: lint-and-unit
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
