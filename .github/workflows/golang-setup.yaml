@@ -10,39 +10,18 @@ on:
 jobs:
   setup:
     runs-on: ubuntu-latest
-    outputs:
-      cache-primary-key: ${{ steps.restore.outputs.cache-primary-key }}
-      cache-hit: ${{ steps.restore.outputs['cache-hit'] }}
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ inputs.go-version }}
           check-latest: true
+          cache: true
+          cache-dependency-path: |
+            **/go.sum
 
-      - id: restore
-        name: Restore Go cache
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ inputs.go-version }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ inputs.go-version }}-
-
-      - name: Download modules if cache miss
-        if: steps.restore.outputs.cache-hit != 'true'
-        run: go mod download
-
-      - name: Save Go cache
-        if: always() && steps.restore.outputs.cache-primary-key != ''
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ steps.restore.outputs.cache-primary-key }}
+      - name: Check Go version
+        run: go version
