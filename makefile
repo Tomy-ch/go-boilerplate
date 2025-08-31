@@ -1,3 +1,7 @@
+# 変数定義
+# 環境（local / test / prd など）。未指定なら local
+ENV ?= local
+
 # 依存されるファイル
 include .makefiles/github/operation/release-util.mk
 include .makefiles/github/setting/github.mk
