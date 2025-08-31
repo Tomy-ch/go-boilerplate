@@ -24,7 +24,7 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Fetch & Checkout repository
         uses: actions/checkout@v4
       - name: Golangci-lint Run
         uses: golangci/golangci-lint-action@v8
