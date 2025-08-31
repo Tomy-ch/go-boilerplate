@@ -2,14 +2,14 @@ name: Lint Golang
 
 on:
   pull_request:
-    paths:
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci.yml'
-      - '.golangci-full.yaml'
-      - 'internal/**'
-      - 'pkg/**'
+    # paths:
+    #   - '**/*.go'
+    #   - 'go.mod'
+    #   - 'go.sum'
+    #   - '.golangci.yml'
+    #   - '.golangci-full.yaml'
+    #   - 'internal/**'
+    #   - 'pkg/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
