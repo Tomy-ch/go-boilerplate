@@ -1,4 +1,4 @@
-name: Lint Golang
+name: Golang Lint Workflow
 
 on:
   pull_request:
@@ -8,20 +8,21 @@ on:
     #   - 'go.sum'
     #   - '.golangci.yml'
     #   - '.golangci-full.yaml'
-    #   - 'internal/**'
-    #   - 'pkg/**'
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint:
+  golangci-setup:
     uses: ./.github/workflows/golang-setup.yaml
     with:
-      go-version: '1.24.x'
-  run:
-    needs: lint
+      go-version: '1.24.4'
+  lint:
+    needs: golangci-setup
     runs-on: ubuntu-latest
     steps:
       - name: Fetch & Checkout repository
