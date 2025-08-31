@@ -22,6 +22,7 @@ jobs:
           cache: true
           cache-dependency-path: |
             **/go.sum
-
+      - name: Download Dependencies
+        run: go mod download
       - name: Check Go version
         run: go version

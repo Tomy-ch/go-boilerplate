@@ -2,6 +2,8 @@
 package migrate
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 
 	"boilerplate-go/internal/config"
@@ -37,6 +39,16 @@ func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("env:", os.Getenv("ENV"))
+	fmt.Println("AppENV:", cfg.AppEnv())
+	fmt.Println("cfg.DatabaseDSN():", cfg.DatabaseDSN())
+	fmt.Println("database.user:", cfg.DatabaseUser())
+	fmt.Println("database.password:", cfg.DatabasePassword())
+	fmt.Println("database.host:", cfg.DatabaseHost())
+	fmt.Println("database.port:", cfg.DatabasePort())
+	fmt.Println("database.name:", cfg.DatabaseName())
+	fmt.Println("database.sslMode:", cfg.DatabaseSSLMode())
+	fmt.Println("database.timezone:", url.QueryEscape(cfg.OSTimeZone()))
 
 	return migrate.New("file://"+migrateFilePlace, cfg.DatabaseDSN())
 }
