@@ -2,11 +2,11 @@ name: Golang Test Workflow
 
 on:
   pull_request:
-    # paths:
-    #   - '**/*.go'
-    #   - 'go.mod'
-    #   - 'go.sum'
-    #   - '**/*.sql'
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '**/*.sql'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
