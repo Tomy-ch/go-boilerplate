@@ -15,6 +15,7 @@ include .makefiles/github/operation/setup-repository.mk
 include .makefiles/dev/develop.mk
 include .makefiles/database/database.mk
 include .makefiles/gen/generate.mk
+include .makefiles/ci/ci.mk
 
 .PHONY: help
 help:

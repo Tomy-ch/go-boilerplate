@@ -2,12 +2,12 @@ name: Golang Lint Workflow
 
 on:
   pull_request:
-    paths:
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci.yml'
-      - '.golangci-full.yaml'
+    # paths:
+      # - '**/*.go'
+      # - 'go.mod'
+      # - 'go.sum'
+      # - '.golangci.yml'
+      # - '.golangci-full.yaml'
 
 permissions:
   contents: read

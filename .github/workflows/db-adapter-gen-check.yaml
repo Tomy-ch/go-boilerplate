@@ -1,4 +1,4 @@
-name: Golang Test Workflow
+name: DB Adapter Generation Check
 
 on:
   pull_request:
@@ -7,6 +7,9 @@ on:
     #   - 'go.mod'
     #   - 'go.sum'
     #   - '**/*.sql'
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,17 +20,11 @@ jobs:
     uses: ./.github/workflows/golang-setup.yaml
     with:
       go-version: '1.24.4'
-    permissions:
-      contents: read
-  test:
-    needs: golangci-setup
+  db-adapter-gen-check:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      actions: read
     env:
       ENV: ci
+      SQLC_VER: v1.28.0
     services:
       database:
         image: postgres:17.5
@@ -53,7 +50,18 @@ jobs:
         run: make ci-db-migrate-up
       - name: Seed Database
         run: make ci-db-seed
-      - name: Run Tests with Coverage
-        run: make ci-test
-      - name: Report Test Coverage
-        uses: k1LoW/octocov-action@v1
+      - name: Generate SQLC Code
+        run: make ci-gen-sqlc
+      - name: Check diff
+        run: |
+          set -e
+          git status --porcelain
+          if ! git diff --quiet; then
+            echo "## Generated files are out of date" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            git --no-pager diff --stat >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            git diff > codegen.patch
+            echo "::error::Codegen drift detected. Please run generators locally and commit changes."
+            exit 1
+          fi
