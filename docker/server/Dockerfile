@@ -18,7 +18,6 @@ RUN apk add --no-cache \
 COPY go.mod go.sum ./
 
 RUN go mod tidy
-RUN go mod vendor
 
 COPY vendor/ ./vendor/
 
@@ -29,17 +28,17 @@ RUN go list -mod=vendor all
 RUN go build -mod=vendor -trimpath -ldflags="-s -w" -o /app/bin/server ./cmd/main.go
 
 # ------------------------------
-# スモークテスト用
+# 本番用
 # ------------------------------
-FROM alpine:3.20 AS smoke
+FROM alpine:3.20 AS prd
 
 COPY --from=builder /app/bin/server /app/server
 COPY --from=builder /app/.env/.env.prd /.env/.env.prd
 COPY --from=builder /app/database/migrations /database/migrations
+COPY --from=builder /app/scripts/entrypoint.sh /entrypoint.sh
 
-EXPOSE 8080
-
-CMD ["/app/server","serve"]
+RUN chmod +x /entrypoint.sh
+CMD ["/entrypoint.sh"]
 
 # ------------------------------
 # ローカル環境

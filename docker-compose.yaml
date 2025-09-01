@@ -20,18 +20,6 @@ services:
     profiles:
       - development
 
-  smoke_server:
-    build:
-      context: .
-      dockerfile: docker/server/Dockerfile
-      target: smoke
-    ports:
-      - "8083:8080"
-    environment:
-      - ENV=prd
-    profiles:
-      - production
-
   database: # PostgreSQLデータベース
     image: postgres:17.5
     ports:
