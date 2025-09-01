@@ -1,1 +1,33 @@
 name: Deploy Workflow
+
+on:
+  push:
+    branches:
+      - production
+      - staging
+      - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Execute the build
+        run: echo "Please write the implementation here."
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Execute the deployment
+        run: echo "Please write the implementation here."
