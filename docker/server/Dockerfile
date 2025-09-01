@@ -42,6 +42,19 @@ EXPOSE 8080
 CMD ["/app/server","serve"]
 
 # ------------------------------
+# 本番用
+# ------------------------------
+FROM alpine:3.20 AS prd
+
+COPY --from=builder /app/bin/server /app/server
+COPY --from=builder /app/.env/.env.prd /.env/.env.prd
+COPY --from=builder /app/database/migrations /database/migrations
+COPY --from=builder /app/scripts/entrypoint.sh /entrypoint.sh
+
+RUN chmod +x /entrypoint.sh
+CMD ["/entrypoint.sh"]
+
+# ------------------------------
 # ローカル環境
 # ------------------------------
 FROM golang:1.24.4-alpine AS local
