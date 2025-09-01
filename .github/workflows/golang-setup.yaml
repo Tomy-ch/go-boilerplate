@@ -1,0 +1,28 @@
+name: Golang Setup
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        required: false
+        type: string
+        default: '1.24.4'
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          check-latest: true
+          cache: true
+          cache-dependency-path: |
+            **/go.sum
+      - name: Download Dependencies
+        run: go mod download
+      - name: Check Go version
+        run: go version

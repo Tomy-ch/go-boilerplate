@@ -1,0 +1,94 @@
+name: Docker Image Scan Workflow
+
+on:
+  pull_request:
+    branches: 
+      - production
+      - staging
+      - develop
+  workflow_dispatch:
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+
+  build:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare vendor
+        run: |
+          go mod tidy
+          go mod vendor
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Define image tag
+        id: meta
+        run: |
+          IMAGE="local/${GITHUB_REPOSITORY#*/}/app:${GITHUB_SHA::7}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/server/Dockerfile
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.image }}
+          target: prd
+          push: false
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.image }}
+          format: spdx-json
+          artifact-name: sbom-spdx.json
+          upload-artifact: true
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ steps.meta.outputs.image }}
+          format: table
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          output: trivy-image-scan.txt
+      - name: Upload Trivy report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-scan.txt
+          path: trivy-image-scan.txt
+
+      - name: Comment Trivy result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'trivy-image-scan.txt';
+            const body = fs.readFileSync(path, 'utf8');
+            const pr = context.payload.pull_request?.number;
+            if (!pr) { core.setFailed('Not a PR context'); process.exit(1); }
+            const MAX = 65000; // avoid API limits
+            const truncated = body.length > MAX ? body.slice(0, MAX) + '\n... (truncated) ...' : body;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `## Trivy Image Scan (table)\n\n<details><summary>Image Scan Results</summary>\n\n\n\`\`\`\n${truncated}\n\`\`\`\n\n</details>`
+            });

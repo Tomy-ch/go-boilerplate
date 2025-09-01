@@ -1,0 +1,57 @@
+name: Golang Test Workflow
+
+on:
+  pull_request:
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '**/*.sql'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+    permissions:
+      contents: read
+  test:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    env:
+      ENV: ci
+    services:
+      database:
+        image: postgres:17.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v4
+      - name: Initialize Database Table
+        run: go run cmd/main.go migrate-up --database test
+      - name: Seed Database
+        run: go run cmd/main.go db-seed --database test
+      - name: Run Tests with Coverage
+        run: go test ./... -coverprofile=coverage.out
+      - name: Report Test Coverage
+        uses: k1LoW/octocov-action@v1

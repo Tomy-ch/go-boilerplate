@@ -1,0 +1,33 @@
+name: Golang Lint Workflow
+
+on:
+  pull_request:
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.golangci.yml'
+      - '.golangci-full.yaml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+  lint:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v4
+      - name: Golangci-lint Run
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.3
+          only-new-issues: true
+          args: --config=.golangci-full.yaml

@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+// 下記の変数は、テスト用の期待値以外に、テスト環境の環境変数設定にも使用されます。
+// 変更の際は、テストを必ず実行し、環境変数の設定が正しいことを確認してください。
 var (
 	// operationSystem
 	expectedOSTimeZone = "Asia/Tokyo"
