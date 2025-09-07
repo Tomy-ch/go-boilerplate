@@ -61,9 +61,9 @@ linters:
       disable-dec-order-check: false
       disable-init-func-first-check: false
     depguard:
-      # 外部ライブラリがシステムの根幹に関わることを避けるために、自作のパッケージを使用することを推奨します。
+      # 外部ライブラリがシステムの根幹に関わることを避けるために、pkgディレクトリで薄いラッパー作成し使用することを推奨します。
       rules:
-        xerrors:
+        only_the_original_error_is_permitted:
           files:
             - "**/*.go"
             - "!**/pkg/xerrors/**.go"
@@ -72,7 +72,7 @@ linters:
             - pkg: github.com/cockroachdb/errors
               desc: "スタックトレース用として導入したライブラリです。
                 代わりに pkg/xerrors を使用してください。"
-        uuid:
+        only_the_original_uuid_is_permitted:
           files:
             - "**/*.go"
             - "!**/pkg/uuid/**.go"
@@ -81,6 +81,176 @@ linters:
             - pkg: github.com/google/uuid
               desc: "uuid作成用として導入したライブラリです。
                 代わりに pkg/uuid を使用してください。"
+        # アプリケーションの健全性を保つためのルール
+        reject_dangerous_os: # os系のライブラリの使用を禁止します
+          files:
+            - "**/*.go"
+            - "!**/cmd/**.go" # アプリケーションのエントリポイントでは、終了制御を行うためosの使用を許可します
+            - "!**/internal/cli/**.go" # システムのコマンドライン引数を扱う箇所では、終了制御を行うためosの使用を許可します
+            - "!**/internal/config/**.go" # システムの環境変数を扱う箇所では、ブートストラップの環境変数を取得するためにosの使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: os
+              desc: "configディレクトリ以外でのos系のライブラリの使用は破壊的な副作用を招くため禁止です。
+                設定値はconfigパッケージを介して受け渡してください。"
+        restrict_the_use_of_cli: # cliパッケージの使用を限定します
+          files:
+            - "**/*.go"
+            - "!**/cmd/**.go" # アプリケーションのエントリポイントではcli化ライブラリの使用を許可します
+            - "!**/internal/cli/**.go" # CLIを扱う箇所ではcli化ライブラリの使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: github.com/spf13/cobra
+              desc: "CLI化ライブラリの使用は制限されています。
+                可能な限り、CLI化ライブラリを追加で使用しない実装を心がけてください。"
+        restrict_the_use_of_di_container: # DIコンテナの使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/cli/**.go" # CLIを扱う箇所ではサーバの起動のため許可します
+            - "!**/internal/di/**.go" # DIコンテナを扱う箇所では使用を許可します
+            - "!**/internal/controller/httpstack/**.go" # サーバーの拡張機能を扱う箇所では副作用を正しい順序で拡張機能を追加する必要があるため許可します
+            - "!**/internal/controller/server/**.go" # サーバーのライフサイクルを扱う箇所では使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.uber.org/fx
+              desc: "DIコンテナライブラリの使用は制限されています。
+                可能な限り、DIコンテナを追加で使用しない実装を心がけてください。"
+        independent_apperror: # apperrorパッケージが責務の実装層にも依存しないことを保証します
+          files:
+            - "**/pkg/apperror/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/domain/
+              desc: "apperrorパッケージは他のdomain層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/usecase/
+              desc: "apperrorパッケージは他のusecase層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/controller/
+              desc: "apperrorパッケージは他のcontroller層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "apperrorパッケージは他のinfrastructure層に依存してはいけません。"
+        independent_cli: # cliパッケージが責務の実装層にも依存しないことを保証します
+          files:
+            - "**/internal/cli/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/domain/
+              desc: "cliパッケージは他のdomain層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/usecase/
+              desc: "cliパッケージは他のusecase層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/controller/
+              desc: "cliパッケージは他のcontroller層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "cliパッケージは他のinfrastructure層に依存してはいけません。"
+        independent_config: # configパッケージが責務の実装層にも依存しないことを保証します
+          files:
+            - "**/internal/config/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/domain/
+              desc: "configパッケージはdomain層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/usecase/
+              desc: "configパッケージはusecase層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/controller/
+              desc: "configパッケージはcontroller層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "configパッケージは他のinfrastructure層に依存してはいけません。"
+        independent_logging: # loggingパッケージが責務の実装層にも依存しないことを保証します
+          files:
+            - "**/pkg/logging/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/domain/
+              desc: "loggingパッケージは他のdomain層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/usecase/
+              desc: "loggingパッケージは他のusecase層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/controller/
+              desc: "loggingパッケージは他のcontroller層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "loggingパッケージは他のinfrastructure層に依存してはいけません。"
+        independent_pkg: # pkgディレクトリが他の内部パッケージに依存しないことを保証します
+          files:
+            - "**/pkg/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/
+              desc: "pkgディレクトリはinternalディレクトリから独立している必要があります。
+                internalディレクトリを参照することは禁止です。"
+            - pkg: boilerplate-go/pkg/
+              desc: "pkgディレクトリは他のpkgディレクトリから独立している必要があります。
+                他のpkgディレクトリを参照することは禁止です。"
+        # 責務の侵食崩壊を防ぐためのルール
+        # 特定のライブラリの禁止設定は、.golangci-full.yamlで行っています。
+        #
+        # domain層では外部ライブラリの直接使用を全面的に禁止し、pkg経由での使用を強く推奨します。
+        # 緩める場合はそのライブラリが陳腐化しにくいか、メンテナンスコストが低いかかつ必要性が高いかを考慮してください。
+        # 例： Decimal系のライブラリなど
+        maintain_a_sound_domain:
+          files:
+            - "**/internal/domain/**.go"
+          list-mode: lax
+          deny:
+            - pkg: net/http
+              desc: "Domain層でhttpパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: github.com/labstack/echo/v4
+              desc: "Domain層でechoパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: database/sql
+              desc: "Domain層でdatabase/sqlパッケージを直接使用しないでください。
+                infrastructure層にて処理して、コンストラクタに受け渡してください。"
+            - pkg: boilerplate-go/internal/usecase/
+              desc: "domain層でusecase層を参照することは禁止です。"
+            - pkg: boilerplate-go/internal/controller/
+              desc: "domain層でcontroller層を参照することは禁止です。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "domain層でinfrastructure層を参照することは禁止です。"
+        # usecase層では外界とのやり取りのライブラリの使用を禁止します。
+        # それ以外のライブラリの利用は許可されます。
+        # ただし、外部ライブラリの直接使用は避け、pkg経由での使用を強く推奨します。
+        maintain_a_sound_usecase:
+          files:
+            - "**/internal/usecase/**.go"
+          list-mode: lax
+          deny:
+            - pkg: net/http
+              desc: "Usecase層でhttpパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: github.com/labstack/echo/v4
+              desc: "Usecase層でechoパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: boilerplate-go/internal/controller/
+              desc: "usecase層でcontroller層を参照することは禁止です。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "usecase層でinfrastructure層を参照することは禁止です。"
+        # controller層では、主にHTTPリクエストを扱うライブラリの使用を許可します。
+        # ただし、永続化を行うライブラリの使用は禁止します。(主にdatabase/sqlなど)
+        maintain_a_sound_controller:
+          files:
+            - "**/internal/controller/**.go"
+          list-mode: lax
+          deny:
+            - pkg: database/sql
+              desc: "Controller層で永続化を行うライブラリを直接使用しないでください。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "controller層の責務は入出力境界です。infrastructure層を参照することは禁止です。"
+            - pkg: boilerplate-go/internal/domain/
+              desc: "controller層の責務は入出力境界です。domain層の情報にアクセスすることは禁止です。
+                出力する値は必ずDTOなどを介して受け渡してください。"
+        # infrastructure層では、主に永続化を行うライブラリの使用を許可します。
+        # ただし、HTTPリクエストを扱うライブラリの使用は禁止します。(主にnet/httpなど)
+        maintain_a_sound_infrastructure:
+          files:
+            - "**/internal/infrastructure/**.go"
+          list-mode: lax
+          deny:
+            - pkg: net/http
+              desc: "Domain層でhttpパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: github.com/labstack/echo/v4
+              desc: "Domain層でechoパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: boilerplate-go/internal/controller/
+              desc: "infrastructure層でcontroller層を参照することは禁止です。"
     dupl:
       # 重複コードの検出を行います。
       # 約300トークン以上の重複を検出します。
