@@ -40,6 +40,10 @@ func New() (*Config, error) {
 			port:            cfg.Server.Port,
 			shutdownTimeout: cfg.Server.ShutdownTimeout,
 		},
+		metrics: metrics{
+			host: cfg.Metrics.Host,
+			port: cfg.Metrics.Port,
+		},
 		database: database{
 			driver:   cfg.Database.Driver,
 			host:     cfg.Database.Host,

@@ -6,6 +6,7 @@ type Loader struct {
 	OS       OperationSystem `envPrefix:"OS_"`
 	App      Application     `envPrefix:"APP_"`
 	Server   Server          `envPrefix:"SERVER_"`
+	Metrics  Metrics         `envPrefix:"METRICS_"`
 	Database Database        `envPrefix:"DB_"`
 	Security Security        `envPrefix:"SECURITY_"`
 }
@@ -24,6 +25,11 @@ type Server struct {
 	Host            string        `env:"HOST,required"`
 	Port            int           `env:"PORT,required"`
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`
+}
+
+type Metrics struct {
+	Host string `env:"HOST,required"`
+	Port int    `env:"PORT,required"`
 }
 
 type Database struct {

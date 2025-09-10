@@ -10,6 +10,7 @@ services:
     ports:
       - "8080:8080"   # APIポート
       - "2345:2345"   # デバッグ(dlv)ポート
+      - "6060:6060"   # メトリクス(pprof)ポート
     volumes:
       - .:/app
     tty: true

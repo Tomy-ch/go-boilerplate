@@ -28,6 +28,10 @@ func TestNewConfig(t *testing.T) {
 					port:            expectedPort,
 					shutdownTimeout: expectedServerShutdownTimeout,
 				},
+				metrics: metrics{
+					host: expectedMetricsHost,
+					port: expectedMetricsPort,
+				},
 				database: database{
 					driver:   expectedDBDriver,
 					host:     expectedDBHost,

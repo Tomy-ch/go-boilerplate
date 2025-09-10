@@ -25,6 +25,9 @@ var (
 	expectedAppShutdownTimeoutCount    = 60
 	expectedAppShutdownTimeoutStr      = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
 	expectedAppShutdownTimeout         = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
+	// metrics
+	expectedMetricsHost = "localhost"
+	expectedMetricsPort = 6060
 	// database
 	expectedDBDriver   = "pgx"
 	expectedDBHost     = "localhost"
@@ -65,6 +68,10 @@ func MockConfigForTest(t testing.TB) *Config {
 			port:            expectedPort,
 			shutdownTimeout: expectedServerShutdownTimeout,
 		},
+		metrics: metrics{
+			host: expectedMetricsHost,
+			port: expectedMetricsPort,
+		},
 		database: database{
 			driver:   expectedDBDriver,
 			host:     expectedDBHost,
@@ -100,6 +107,10 @@ func mockLoader(t testing.TB) Loader {
 			Mode:            expectedApplicationMode,
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
+		Metrics: Metrics{
+			Host: expectedMetricsHost,
+			Port: expectedMetricsPort,
+		},
 		Server: Server{
 			Host:            expectedHost,
 			Port:            expectedPort,
@@ -123,13 +134,20 @@ func mockLoader(t testing.TB) Loader {
 // setEnv は、テスト用の環境変数を設定します。
 func setEnv(t testing.TB) {
 	t.Helper()
+	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
+	// Application
 	t.Setenv("APP_ENV", expectedApplicationEnv)
 	t.Setenv("APP_MODE", expectedApplicationMode)
 	t.Setenv("APP_SHUTDOWN_TIMEOUT", expectedAppShutdownTimeoutStr)
+	// Server
 	t.Setenv("SERVER_HOST", expectedHost)
 	t.Setenv("SERVER_PORT", strconv.Itoa(expectedPort))
 	t.Setenv("SERVER_SHUTDOWN_TIMEOUT", expectedServerShutdownTimeoutStr)
+	// Metrics
+	t.Setenv("METRICS_HOST", expectedMetricsHost)
+	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))
+	// Database
 	t.Setenv("DB_DRIVER", expectedDBDriver)
 	t.Setenv("DB_HOST", expectedDBHost)
 	t.Setenv("DB_PORT", strconv.Itoa(expectedDBPort))
@@ -141,6 +159,7 @@ func setEnv(t testing.TB) {
 	t.Setenv("DB_CONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
 	t.Setenv("DB_CONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
 	t.Setenv("DB_CONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
+	// Security
 	t.Setenv("SECURITY_CIDR", expectedCIDRStr)
 	t.Setenv("SECURITY_ALLOWED_ORIGINS", expectedAllowedOrigins)
 }

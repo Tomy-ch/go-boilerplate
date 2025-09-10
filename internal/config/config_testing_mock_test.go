@@ -25,6 +25,10 @@ func TestMockConfigForTest(t *testing.T) {
 			port:            expectedPort,
 			shutdownTimeout: expectedServerShutdownTimeout,
 		},
+		metrics: metrics{
+			host: expectedMetricsHost,
+			port: expectedMetricsPort,
+		},
 		database: database{
 			driver:   expectedDBDriver,
 			host:     expectedDBHost,
@@ -67,6 +71,10 @@ func Test_mockLoader(t *testing.T) {
 			Port:            expectedPort,
 			ShutdownTimeout: expectedServerShutdownTimeout,
 		},
+		Metrics: Metrics{
+			Host: expectedMetricsHost,
+			Port: expectedMetricsPort,
+		},
 		Database: Database{
 			Host:     expectedDBHost,
 			Port:     expectedDBPort,
@@ -88,14 +96,20 @@ func Test_mockLoader(t *testing.T) {
 
 func Test_setEnv(t *testing.T) {
 	setEnv(t)
-
+	// OS
 	require.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
+	// Application
 	require.Equal(t, expectedApplicationEnv, os.Getenv("APP_ENV"))
 	require.Equal(t, expectedApplicationMode, os.Getenv("APP_MODE"))
 	require.Equal(t, expectedAppShutdownTimeoutStr, os.Getenv("APP_SHUTDOWN_TIMEOUT"))
+	// Server
 	require.Equal(t, expectedHost, os.Getenv("SERVER_HOST"))
 	require.Equal(t, strconv.Itoa(expectedPort), os.Getenv("SERVER_PORT"))
 	require.Equal(t, expectedServerShutdownTimeoutStr, os.Getenv("SERVER_SHUTDOWN_TIMEOUT"))
+	// Metrics
+	require.Equal(t, expectedMetricsHost, os.Getenv("METRICS_HOST"))
+	require.Equal(t, strconv.Itoa(expectedMetricsPort), os.Getenv("METRICS_PORT"))
+	// Database
 	require.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
 	require.Equal(t, expectedDBHost, os.Getenv("DB_HOST"))
 	require.Equal(t, strconv.Itoa(expectedDBPort), os.Getenv("DB_PORT"))
@@ -107,6 +121,7 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, strconv.Itoa(expectedDBMaxIdleConns), os.Getenv("DB_CONN_MAX_IDLE"))
 	require.Equal(t, expectedDBMaxLifetimeStr, os.Getenv("DB_CONN_MAX_LIFETIME"))
 	require.Equal(t, expectedDBMaxIdleTimeStr, os.Getenv("DB_CONN_MAX_IDLE_TIME"))
+	// Security
 	require.Equal(t, expectedCIDRStr, os.Getenv("SECURITY_CIDR"))
 	require.Equal(t, expectedAllowedOrigins, os.Getenv("SECURITY_ALLOWED_ORIGINS"))
 }
