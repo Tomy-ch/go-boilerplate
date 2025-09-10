@@ -32,6 +32,16 @@ func TestGetterMethods(t *testing.T) {
 		require.Equal(t, expectedServerShutdownTimeout, cfg.ServerShutdownTimeout())
 	})
 
+	t.Run("MetricsHost", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedMetricsHost, cfg.MetricsHost())
+	})
+
+	t.Run("MetricsPort", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, expectedMetricsPort, cfg.MetricsPort())
+	})
+
 	t.Run("AppEnv", func(t *testing.T) {
 		t.Parallel()
 		require.Equal(t, expectedApplicationEnv, cfg.AppEnv())

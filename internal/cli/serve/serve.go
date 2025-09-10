@@ -3,6 +3,9 @@ package serve
 
 import (
 	"context"
+	"errors"
+	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,6 +33,17 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	cfg, err := config.SetUpConfig()
 	if err != nil {
 		return err
+	}
+
+	var metricsSrv *http.Server
+	if !cfg.IsAppProductionMode() {
+		// 非本番環境では、メトリクスサーバーを起動
+		metricsSrv = MetricsServer(cfg)
+		go func() {
+			if err = metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("metrics server error: %v", err)
+			}
+		}()
 	}
 
 	app := fx.New(
@@ -60,11 +74,17 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	)
 	defer cancel()
 
-	if err := app.Start(ctx); err != nil {
+	if err = app.Start(ctx); err != nil {
 		return err
 	}
 
 	<-ctx.Done()
+
+	if metricsSrv != nil {
+		if err = metricsSrv.Close(); err != nil {
+			log.Printf("metrics server close error: %v", err)
+		}
+	}
 
 	return app.Stop(stopCtx)
 }
