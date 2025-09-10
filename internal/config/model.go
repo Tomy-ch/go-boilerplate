@@ -9,6 +9,7 @@ type Config struct {
 	os       operationSystem
 	app      application
 	server   server
+	metrics  metrics
 	database database
 	security security
 }
@@ -27,6 +28,11 @@ type server struct {
 	host            string
 	port            int
 	shutdownTimeout time.Duration
+}
+
+type metrics struct {
+	host string
+	port int
 }
 
 type database struct {
@@ -63,6 +69,12 @@ func (c *Config) ServerPort() int { return c.server.port }
 
 // ServerShutdownTimeout は、サーバー停止までの規定時間を返します。
 func (c *Config) ServerShutdownTimeout() time.Duration { return c.server.shutdownTimeout }
+
+// MetricsHost は、メトリクスサーバーがリッスンするホスト名を返します。
+func (c *Config) MetricsHost() string { return c.metrics.host }
+
+// MetricsPort は、メトリクスサーバーがリッスンするポート番号を返します。
+func (c *Config) MetricsPort() int { return c.metrics.port }
 
 // AppEnv は、サーバーの環境を返します。
 //

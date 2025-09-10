@@ -124,9 +124,9 @@ linters:
       disable-dec-order-check: false
       disable-init-func-first-check: false
     depguard:
-      # 外部ライブラリがシステムの根幹に関わることを避けるために、自作のパッケージを使用することを推奨します。
+      # 外部ライブラリがシステムの根幹に関わることを避けるために、pkgディレクトリで薄いラッパー作成し使用することを推奨します。
       rules:
-        xerrors:
+        only_the_original_error_is_permitted:
           files:
             - "**/*.go"
             - "!**/pkg/xerrors/**.go"
@@ -135,7 +135,7 @@ linters:
             - pkg: github.com/cockroachdb/errors
               desc: "スタックトレース用として導入したライブラリです。
                 代わりに pkg/xerrors を使用してください。"
-        uuid:
+        only_the_original_uuid_is_permitted:
           files:
             - "**/*.go"
             - "!**/pkg/uuid/**.go"
@@ -144,6 +144,53 @@ linters:
             - pkg: github.com/google/uuid
               desc: "uuid作成用として導入したライブラリです。
                 代わりに pkg/uuid を使用してください。"
+        # DDDの境界侵食を防ぐためのルール
+        # 特定のライブラリの禁止設定は、.golangci-full.yamlで行っています。
+        # 
+        # domain層では外部ライブラリの直接使用を全面的に禁止し、pkg経由での使用を強く推奨します。
+        # 緩める場合はそのライブラリが陳腐化しにくいか、メンテナンスコストが低いかかつ必要性が高いかを考慮してください。
+        # 例： Decimal系のライブラリなど
+        maintain_a_sound_domain:
+          files:
+            - "**/internal/domain/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/usecase/
+              desc: "domain層でusecase層を参照することは禁止です。"
+            - pkg: boilerplate-go/internal/controller/
+              desc: "domain層でcontroller層を参照することは禁止です。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "domain層でinfrastructure層を参照することは禁止です。"
+        # usecase層では外界とのやり取りのライブラリの使用を禁止します。
+        # それ以外のライブラリの利用は許可されます。
+        # ただし、外部ライブラリの直接使用は避け、pkg経由での使用を強く推奨します。
+        maintain_a_sound_usecase:
+          files:
+            - "**/internal/usecase/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/controller/
+              desc: "usecase層でcontroller層を参照することは禁止です。"
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "usecase層でinfrastructure層を参照することは禁止です。"
+        # controller層では、主にHTTPリクエストを扱うライブラリの使用を許可します。
+        # ただし、永続化を行うライブラリの使用は禁止します。(主にdatabase/sqlなど)
+        maintain_a_sound_controller:
+          files:
+            - "**/internal/controller/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/infrastructure/
+              desc: "controller層でinfrastructure層を参照することは禁止です。"
+        # infrastructure層では、主に永続化を行うライブラリの使用を許可します。
+        # ただし、HTTPリクエストを扱うライブラリの使用は禁止します。(主にnet/httpなど)
+        maintain_a_sound_infrastructure:
+          files:
+            - "**/internal/infrastructure/**.go"
+          list-mode: lax
+          deny:
+            - pkg: boilerplate-go/internal/controller/
+              desc: "infrastructure層でcontroller層を参照することは禁止です。"
     funcorder:
       constructor: true
       struct-method: true
