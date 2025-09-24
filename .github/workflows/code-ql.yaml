@@ -1,0 +1,43 @@
+name: Code QL Workflow
+
+on:
+  pull_request:
+    # paths:
+    #   - '**/*.go'
+    #   - 'go.mod'
+    #   - 'go.sum'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+
+  codeql:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:go'

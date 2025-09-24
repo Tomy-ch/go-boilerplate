@@ -1,0 +1,63 @@
+name: Trivy FS Workflow
+
+on:
+  pull_request:
+    # paths:
+    #   - '**/*.go'
+  schedule:
+    - cron: '0 3 * * 1' # 毎週月曜 12:00JST 相当（UTC 03:00）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+
+  # リポジトリファイル/依存物のコンテナ外スキャン（Trivy FS）
+  trivy-fs:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Trivy FS scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          format: table
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          output: trivy-fs.txt
+
+      - name: Upload Trivy FS report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-fs.txt
+          path: trivy-fs.txt
+
+      - name: Comment Trivy FS result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('trivy-fs.txt','utf8');
+            const max = 65000;
+            const truncated = body.length > max ? body.slice(0,max) + '\n... (truncated) ...' : body;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `## Trivy FS Scan (repository)\n\n<details><summary>Results</summary>\n\n\`\`\`\n${truncated}\n\`\`\`\n\n</details>`
+            });

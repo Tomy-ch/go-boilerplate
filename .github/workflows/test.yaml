@@ -46,7 +46,7 @@ jobs:
           --health-start-period=20s
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Initialize Database Table
         run: go run cmd/main.go migrate-up --database test
       - name: Seed Database

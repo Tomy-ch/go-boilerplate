@@ -1,0 +1,37 @@
+name: Tidy Check Workflow
+
+on:
+  pull_request:
+    # paths:
+    #   - 'go.mod'
+    #   - 'go.sum'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+
+  mod-tidy-check:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Tidy (check only)
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum || (echo "::error::go.mod/go.sum が tidy 前後で差分があります"; exit 1)
