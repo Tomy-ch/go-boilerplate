@@ -70,7 +70,7 @@ func NewCommand() *cobra.Command {
 		Use:   "gen-sqlc",
 		Short: "DMLディレクトリ(database/dml/<repository/query_service>)のsqlファイルを対象に sqlc generate を実行",
 		Long: "database/dml/<type>/ 配下のsqlファイルを対象に、\n" +
-			"sqlファイルをdatabase/sqlc/dml/ 配下に一時的にコピーし、\n" +
+			"sqlファイルをdatabase/sqlc/ 配下に一時的にコピーし、\n" +
 			"sqlc generate を実行してコード生成を行います。",
 		RunE: generateSQLCRun,
 	}
@@ -97,6 +97,7 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 	cfg, err := config.SetUpConfig()
 	if err != nil {
 		logger.Fatal("failed to load config", zap.NamedError("config", err))
+		return nil
 	}
 	dbURL := cfg.DatabaseDSN()
 
@@ -111,6 +112,7 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 	var categories []string
 	if categories, err = listDirs(filepath.Join(workDir, dmlRootDir, targetType)); err != nil {
 		logger.Fatal("failed to list directories", zap.String("path", dmlRootDir+targetType), zap.NamedError("os.ReadDir", err))
+		return nil
 	}
 	if len(categories) == 0 {
 		logger.Info("dml directory is empty, skipping sqlc generation", zap.String("path", dmlRootDir+targetType))
@@ -129,8 +131,7 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 			}
 			defer s.Release(1)
 
-			// カテゴリ単位でsqlcを実行
-			return copySQLFile(logger, sqlcRootDir, cat, targetType)
+			return copySQLFile(logger, dmlRootDir, cat, targetType, sqlcRootDir)
 		})
 	}
 	if err := g.Wait(); err != nil {
@@ -192,7 +193,7 @@ func runSQLCForCategory(
 	logger *zap.Logger,
 	tpl, dbURL, targetType string,
 ) error {
-	// 1) テンプレ内のプレースホルダを置換（DB URL / TYPE / CATEGORY）
+	// 1) テンプレ内のプレースホルダを置換
 	repl := strings.NewReplacer(
 		"__DATABASE_URL__", dbURL,
 	).Replace(tpl)
@@ -226,11 +227,12 @@ func runSQLCForCategory(
 // copySQLFile は、指定されたカテゴリのDMLのSQLファイルを指定したディレクトリにコピーします。
 func copySQLFile(
 	logger *zap.Logger,
+	workDir string,
 	category string,
 	targetType string,
 	sqlcDir string,
 ) error {
-	dmlDir := filepath.Join(dmlRootDir, targetType, category)
+	dmlDir := filepath.Join(workDir, targetType, category)
 	return filepath.WalkDir(dmlDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -347,10 +349,15 @@ func ensureUnderDir(logger *zap.Logger, path, baseDir string) error {
 		return err
 	}
 
-	// パスセパレータ考慮した prefix 判定
-	if !strings.HasPrefix(absPath, absBase+string(os.PathSeparator)) && absPath != absBase {
-		logger.Error("path is outside of baseDir", zap.String("path", absPath), zap.String("baseDir", absBase))
+	rel, err := filepath.Rel(absBase, absPath)
+	if err != nil {
+		logger.Error("failed to get relative path", zap.String("baseDir", absBase), zap.String("path", absPath), zap.NamedError("filepath.Rel", err))
 		return err
+	}
+	rel = filepath.Clean(rel)
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		logger.Error("path is outside of baseDir", zap.String("path", absPath), zap.String("baseDir", absBase))
+		return fmt.Errorf("path %s is outside of baseDir %s", absPath, absBase)
 	}
 	return nil
 }
