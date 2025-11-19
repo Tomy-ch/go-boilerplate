@@ -2,9 +2,9 @@ name: Tidy Check Workflow
 
 on:
   pull_request:
-    # paths:
-    #   - 'go.mod'
-    #   - 'go.sum'
+    paths:
+      - 'go.mod'
+      - 'go.sum'
   workflow_dispatch:
 
 permissions:
