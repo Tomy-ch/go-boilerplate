@@ -85,7 +85,7 @@ func NewCommand() *cobra.Command {
 //
 // 手順:
 //  1. 設定ロード(DATABASE_URLを取得)
-//  2. 対象カテゴリの列挙(--category 未指定時は<sqlcRootDir>/<type>配下のサブディレクトリ)
+//  2. 対象カテゴリの列挙(<type>配下の全サブディレクトリ)
 //  3. テンプレYAMLを読み込み、プレースホルダ置換
 //  4. 一時YAMLを作成して【sqlc generate -f】で実行(完了後削除)
 //
@@ -134,13 +134,14 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		logger.Error("failed to run sqlc for generate", zap.NamedError("runSQLCForCategory", err))
+		logger.Error("failed to copy SQL files", zap.NamedError("copySQLFile", err))
 		return err
 	}
 
 	// 5) sqlc generate 実行
 	if err := runSQLCForCategory(rootCtx, logger, string(sqlcYamlRaw), dbURL, targetType); err != nil {
 		logger.Error("failed to run sqlc for generate", zap.NamedError("runSQLCForCategory", err))
+		return err
 	}
 
 	// 6) 一時コピーしたsqlファイルを削除
@@ -225,9 +226,9 @@ func runSQLCForCategory(
 // copySQLFile は、指定されたカテゴリのDMLのSQLファイルを指定したディレクトリにコピーします。
 func copySQLFile(
 	logger *zap.Logger,
-	sqlcDir string,
 	category string,
 	targetType string,
+	sqlcDir string,
 ) error {
 	dmlDir := filepath.Join(dmlRootDir, targetType, category)
 	return filepath.WalkDir(dmlDir, func(path string, d os.DirEntry, err error) error {
@@ -269,15 +270,18 @@ func copySQLFile(
 func copyFile(logger *zap.Logger, src, dst string) error {
 	if err := ensureUnderDir(logger, src, dmlRootDir); err != nil {
 		logger.Error("invalid src path", zap.String("src", src), zap.NamedError("ensureUnderDir", err))
+		return err
 	}
 	if err := ensureUnderDir(logger, dst, sqlcRootDir); err != nil {
 		logger.Error("invalid dst path", zap.String("dst", dst), zap.NamedError("ensureUnderDir", err))
+		return err
 	}
 
 	// #nosec G304 -- src is verified under a fixed root directory and does not originate from user input
 	in, err := os.Open(src)
 	if err != nil {
 		logger.Error("failed to open src file", zap.String("src", src), zap.NamedError("os.Open", err))
+		return err
 	}
 	defer func() {
 		if cerr := in.Close(); cerr != nil {
@@ -289,6 +293,7 @@ func copyFile(logger *zap.Logger, src, dst string) error {
 	out, err := os.Create(dst)
 	if err != nil {
 		logger.Error("failed to create dst file", zap.String("dst", dst), zap.NamedError("os.Create", err))
+		return err
 	}
 	defer func() {
 		if cerr := out.Close(); cerr != nil {
@@ -298,6 +303,7 @@ func copyFile(logger *zap.Logger, src, dst string) error {
 
 	if _, err := io.Copy(out, in); err != nil {
 		logger.Error("failed to copy file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("io.Copy", err))
+		return err
 	}
 	return nil
 }
@@ -310,6 +316,7 @@ func cleanupSQLFiles(logger *zap.Logger, dir string) error {
 			return nil
 		}
 		logger.Error("failed to read directory", zap.String("dir", dir), zap.NamedError("os.ReadDir", err))
+		return err
 	}
 
 	for _, e := range entries {
@@ -319,6 +326,7 @@ func cleanupSQLFiles(logger *zap.Logger, dir string) error {
 		}
 		if err := os.Remove(filepath.Join(dir, name)); err != nil {
 			logger.Error("failed to remove file", zap.String("file", filepath.Join(dir, name)), zap.NamedError("os.Remove", err))
+			return err
 		}
 	}
 
