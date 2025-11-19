@@ -1,4 +1,4 @@
-name: Trivy FS Workflow
+name: Dependency Vulnerability Scan Workflow
 
 on:
   pull_request:

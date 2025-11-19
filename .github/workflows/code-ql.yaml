@@ -1,11 +1,11 @@
-name: Code QL Workflow
+name: Code Security Scan Workflow
 
 on:
   pull_request:
-    # paths:
-    #   - '**/*.go'
-    #   - 'go.mod'
-    #   - 'go.sum'
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
   workflow_dispatch:
 
 permissions:
