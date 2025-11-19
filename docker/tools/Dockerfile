@@ -9,8 +9,7 @@ ENV CGO_ENABLED=0 \
 RUN apk add --no-cache git
 
 # SQLMigration系
-RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest \
-  && go install github.com/jackc/tern@latest
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 # コード生成系
 RUN go install go.uber.org/mock/mockgen@latest \

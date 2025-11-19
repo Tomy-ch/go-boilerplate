@@ -7,9 +7,7 @@
 .PHONY: gen-ctxkey ## Contextに値を格納するためのコードを生成する(nameとtypeを指定が必要)
 .PHONY: gen-sqlc ## SQLCのコード生成を行う
 .PHONY: gen-sqlc-repo ## ドメイン用のSQLCのコード生成を行う
-.PHONY: gen-sqlc-repo-% ## 指定したドメイン用のSQLCのコード生成を行う
 .PHONY: gen-sqlc-qs ## クエリサービス用のSQLCのコード生成を行う
-.PHONY: gen-sqlc-qs-% ## 指定したクエリサービス用のSQLCのコード生成を行う
 
 gen-ctxkey:
 	@if [ -z "$(name)" ] || [ -z "$(type)" ]; then \
@@ -47,19 +45,7 @@ gen-sqlc-repo:
 	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository; \
 	echo "✅ ドメイン用のSQLCのコード生成が完了しました。"
 
-gen-sqlc-repo-%:
-	@category=$*; \
-	echo "🔄 $$categoryドメイン用のSQLCのコードを生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository --category=$$category; \
-	echo "✅ $$categoryドメイン用のSQLCのコード生成が完了しました。"
-
 gen-sqlc-qs:
 	@echo "🔄 クエリサービス用のSQLCのコード生成を行います..."; \
 	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service; \
 	echo "✅ クエリサービス用のSQLCのコード生成が完了しました。"
-
-gen-sqlc-qs-%:
-	@category=$*; \
-	echo "🔄 $$categoryクエリサービス用のSQLCのコードを生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service --category=$$category; \
-	echo "✅ $$categoryクエリサービス用のSQLCのコード生成が完了しました。"
