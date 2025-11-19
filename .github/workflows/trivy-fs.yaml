@@ -1,0 +1,95 @@
+name: Dependency Vulnerability Scan Workflow
+
+on:
+  pull_request:
+    paths:
+      - '**/*.go'
+  schedule:
+    - cron: '0 3 * * 1' # 毎週月曜 12:00JST 相当（UTC 03:00）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+
+  # リポジトリファイル/依存物のコンテナ外スキャン（Trivy FS）
+  trivy-fs:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Trivy FS scan (JSON)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          format: json
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          output: trivy-fs.json
+
+      - name: Create Trivy summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+          
+          # total vulnerability count
+          COUNT=$(jq '
+            .Results
+            | map(.Vulnerabilities // [])
+            | flatten
+            | length
+          ' trivy-fs.json)
+          
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No vulnerabilities found." > trivy-fs-summary.md
+            exit 0
+          fi
+
+          # Build markdown summary
+          jq -r '
+            .Results
+            | map(.Vulnerabilities // [])
+            | flatten
+            | sort_by(.Severity) | reverse
+            | .[]
+            | "- [\(.Severity)] \(.PkgName // "unknown") `\(.InstalledVersion // "?")` → `\(.FixedVersion // "none")` (\(.VulnerabilityID))"
+          ' trivy-fs.json > trivy-fs-summary.md
+
+        shell: bash
+
+      - name: Upload Trivy FS report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-fs
+          path: |
+            trivy-fs.json
+            trivy-fs-summary.md
+
+      - name: Comment Trivy FS result on PR
+        if: ${{ github.event_name == 'pull_request' && steps.summarize.outputs.count != '0' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('trivy-fs-summary.md','utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `## Trivy FS Scan (repository)\n\n${body}`
+            });
