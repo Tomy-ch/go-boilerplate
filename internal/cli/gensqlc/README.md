@@ -44,18 +44,6 @@
 ## 使い方
 
 ```bash
-# RepositoryとQueryService全カテゴリを生成
+# SQLCのコードを生成
 make gen-sqlc
-
-# Repository(Domain用)のみを生成
-make gen-sqlc-repo
-
-# QueryServiceのみを生成
-make gen-sqlc-qs
-
-# Repository(Domain用)で特定カテゴリを生成
-make gen-sqlc-repo-<category>
-
-# QueryServiceで特定カテゴリを生成
-make gen-sqlc-qs-<category>
 ```

@@ -1,5 +1,5 @@
-// Package serve は、サーバーを起動するためのコマンドを提供するためのパッケージです。
-package serve
+// Package server は、サーバーを起動するためのコマンドを提供するためのパッケージです。
+package server
 
 import (
 	"context"
