@@ -8,7 +8,7 @@ import (
 	"boilerplate-go/internal/domain/user"
 	"boilerplate-go/internal/infrastructure/rdb/conv"
 	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc/repository/user/gen"
+	gen "boilerplate-go/internal/infrastructure/rdb/sqlc"
 
 	"go.uber.org/zap"
 )
