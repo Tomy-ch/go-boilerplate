@@ -52,11 +52,26 @@
 
   // material-icon-themeの設定の一部を追加する
   "material-icon-theme.folders.associations": {
-    "appconfig": "config",
-    "dispatcher": "routes",
+    "internal": "private",
+    "apperror": "error",
     "ctxhelper": "context",
+    "handlertest": "test",
+    "httpstack": "config",
+    "di": "interceptor",
+    "domain": "core",
+    "infrastructure": "connection",
+    "rdb": "database",
+    "conv": "tools",
+    "driver": "connection",
+    "rdbtest": "test",
+    "sqlc": "generator",
+    "integration": "test",
+    "usecase": "tasks",
+    "paging": "tools",
+    "tx": "taskfile",
+    "openapi": "api",
+    "paths": "routes",
     "xerrors": "error",
-    "testutil": "test"
   },
 
   // この設定を追加することで、特定のファイルやディレクトリをエクスプローラーから非表示にできます。
