@@ -5,7 +5,7 @@ import (
 	"boilerplate-go/internal/cli/gensqlc"
 	"boilerplate-go/internal/cli/migrate"
 	"boilerplate-go/internal/cli/seed"
-	"boilerplate-go/internal/cli/serve"
+	"boilerplate-go/internal/cli/server"
 
 	"github.com/spf13/cobra"
 )
@@ -13,7 +13,7 @@ import (
 // RegisterCommands は、CLIのサブコマンドを登録します。
 func RegisterCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(
-		serve.NewServeCommand(),
+		server.NewServeCommand(),
 		migrate.NewMigrateUpCommand(),
 		migrate.NewMigrateDownCommand(),
 		seed.NewDBSeedCommand(),
