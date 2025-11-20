@@ -4,7 +4,6 @@ package gensqlc
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -85,9 +84,11 @@ func NewCommand() *cobra.Command {
 //
 // 手順:
 //  1. 設定ロード(DATABASE_URLを取得)
-//  2. 対象カテゴリの列挙(<type>配下の全サブディレクトリ)
-//  3. テンプレYAMLを読み込み、プレースホルダ置換
-//  4. 一時YAMLを作成して【sqlc generate -f】で実行(完了後削除)
+//  2. 設定YAMLの読み込み
+//  3. 対象カテゴリの列挙(<type>配下の全サブディレクトリ)
+//  4. 各カテゴリのSQLファイルをsqlcRootDirへ並列コピー
+//  5. sqlc generate実行
+//  6. 一時コピーしたSQLファイルの削除
 //
 // 並列数はresolveConcurrencyConst()で決定します。
 func generateSQLCRun(_ *cobra.Command, _ []string) error {
@@ -97,22 +98,19 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 	cfg, err := config.SetUpConfig()
 	if err != nil {
 		logger.Fatal("failed to load config", zap.NamedError("config", err))
-		return nil
 	}
 	dbURL := cfg.DatabaseDSN()
 
 	// 2) 設定YAMLの読み込み
 	sqlcYamlRaw, err := os.ReadFile(filepath.Join(workDir, sqlcRootDir, settingYamlFile))
 	if err != nil {
-		logger.Fatal("template read error", zap.NamedError("os.ReadFile", err))
-		return nil
+		logger.Fatal("failed to read settings yaml", zap.NamedError("os.ReadFile", err))
 	}
 
 	// 3) カテゴリ列挙
 	var categories []string
 	if categories, err = listDirs(filepath.Join(workDir, dmlRootDir, targetType)); err != nil {
 		logger.Fatal("failed to list directories", zap.String("path", dmlRootDir+targetType), zap.NamedError("os.ReadDir", err))
-		return nil
 	}
 	if len(categories) == 0 {
 		logger.Info("dml directory is empty, skipping sqlc generation", zap.String("path", dmlRootDir+targetType))
@@ -135,13 +133,13 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		logger.Error("failed to copy SQL files", zap.NamedError("copySQLFile", err))
+		logger.Fatal("failed to copy SQL files", zap.NamedError("copySQLFile", err))
 		return err
 	}
 
 	// 5) sqlc generate 実行
 	if err := runSQLCForCategory(rootCtx, logger, string(sqlcYamlRaw), dbURL, targetType); err != nil {
-		logger.Error("failed to run sqlc for generate", zap.NamedError("runSQLCForCategory", err))
+		logger.Fatal("failed to run sqlc for generate", zap.NamedError("runSQLCForCategory", err))
 		return err
 	}
 
@@ -210,7 +208,7 @@ func runSQLCForCategory(
 	}()
 
 	// 3) YAMLを使ってsqlc実行
-	// #nosec G204 -- genYAML is generated internally and not from user input
+	// #nosec G204 -- settingYamlFile is a constant and does not originate from user
 	cmd := exec.CommandContext(ctx, "sqlc", "generate", "-f", settingYamlFile)
 	cmd.Dir = workDir
 	cmd.Stdout = os.Stdout
@@ -271,41 +269,36 @@ func copySQLFile(
 // copyFile は、srcファイルをdstファイルにコピーします。
 func copyFile(logger *zap.Logger, src, dst string) error {
 	if err := ensureUnderDir(logger, src, dmlRootDir); err != nil {
-		logger.Error("invalid src path", zap.String("src", src), zap.NamedError("ensureUnderDir", err))
-		return err
+		logger.Fatal("invalid src path", zap.String("src", src), zap.NamedError("ensureUnderDir", err))
 	}
 	if err := ensureUnderDir(logger, dst, sqlcRootDir); err != nil {
-		logger.Error("invalid dst path", zap.String("dst", dst), zap.NamedError("ensureUnderDir", err))
-		return err
+		logger.Fatal("invalid dst path", zap.String("dst", dst), zap.NamedError("ensureUnderDir", err))
 	}
 
 	// #nosec G304 -- src is verified under a fixed root directory and does not originate from user input
 	in, err := os.Open(src)
 	if err != nil {
-		logger.Error("failed to open src file", zap.String("src", src), zap.NamedError("os.Open", err))
-		return err
+		logger.Fatal("failed to open src file", zap.String("src", src), zap.NamedError("os.Open", err))
 	}
 	defer func() {
 		if cerr := in.Close(); cerr != nil {
-			logger.Error("failed to close src file", zap.String("src", src), zap.NamedError("in.Close", cerr))
+			logger.Fatal("failed to close src file", zap.String("src", src), zap.NamedError("in.Close", cerr))
 		}
 	}()
 
 	// #nosec G304 -- dst is verified under a fixed root directory and does not originate from user input
 	out, err := os.Create(dst)
 	if err != nil {
-		logger.Error("failed to create dst file", zap.String("dst", dst), zap.NamedError("os.Create", err))
-		return err
+		logger.Fatal("failed to create dst file", zap.String("dst", dst), zap.NamedError("os.Create", err))
 	}
 	defer func() {
 		if cerr := out.Close(); cerr != nil {
-			logger.Error("failed to close dst file", zap.String("dst", dst), zap.NamedError("out.Close", cerr))
+			logger.Fatal("failed to close dst file", zap.String("dst", dst), zap.NamedError("out.Close", cerr))
 		}
 	}()
 
-	if _, err := io.Copy(out, in); err != nil {
-		logger.Error("failed to copy file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("io.Copy", err))
-		return err
+	if err := out.Sync(); err != nil {
+		logger.Fatal("failed to sync dst file", zap.String("dst", dst), zap.NamedError("out.Sync", err))
 	}
 	return nil
 }
@@ -317,8 +310,7 @@ func cleanupSQLFiles(logger *zap.Logger, dir string) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		logger.Error("failed to read directory", zap.String("dir", dir), zap.NamedError("os.ReadDir", err))
-		return err
+		logger.Fatal("failed to read directory", zap.String("dir", dir), zap.NamedError("os.ReadDir", err))
 	}
 
 	for _, e := range entries {
@@ -327,8 +319,7 @@ func cleanupSQLFiles(logger *zap.Logger, dir string) error {
 			continue
 		}
 		if err := os.Remove(filepath.Join(dir, name)); err != nil {
-			logger.Error("failed to remove file", zap.String("file", filepath.Join(dir, name)), zap.NamedError("os.Remove", err))
-			return err
+			logger.Fatal("failed to remove file", zap.String("file", filepath.Join(dir, name)), zap.NamedError("os.Remove", err))
 		}
 	}
 
@@ -357,7 +348,7 @@ func ensureUnderDir(logger *zap.Logger, path, baseDir string) error {
 	rel = filepath.Clean(rel)
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 		logger.Error("path is outside of baseDir", zap.String("path", absPath), zap.String("baseDir", absBase))
-		return fmt.Errorf("path %s is outside of baseDir %s", absPath, absBase)
+		return err
 	}
 	return nil
 }
