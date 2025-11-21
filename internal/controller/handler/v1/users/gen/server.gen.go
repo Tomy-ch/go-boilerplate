@@ -4,11 +4,14 @@
 package gen
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
+	strictecho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 )
 
 // ServerInterface represents all server handlers.
@@ -98,4 +101,177 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/v1/users", wrapper.GetUsers)
 	router.POST(baseURL+"/v1/users", wrapper.PostUsers)
 
+}
+
+type GetUsersRequestObject struct {
+	Params GetUsersParams
+}
+
+type GetUsersResponseObject interface {
+	VisitGetUsersResponse(w http.ResponseWriter) error
+}
+
+type GetUsers200JSONResponse ResponseV1Users
+
+func (response GetUsers200JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUsers401JSONResponse ErrorResponse
+
+func (response GetUsers401JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUsers403JSONResponse ErrorResponse
+
+func (response GetUsers403JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetUsers500JSONResponse ErrorResponse
+
+func (response GetUsers500JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostUsersRequestObject struct {
+	Body *PostUsersJSONRequestBody
+}
+
+type PostUsersResponseObject interface {
+	VisitPostUsersResponse(w http.ResponseWriter) error
+}
+
+type PostUsers201JSONResponse UserResponse
+
+func (response PostUsers201JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostUsers400JSONResponse ErrorResponse
+
+func (response PostUsers400JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostUsers401JSONResponse ErrorResponse
+
+func (response PostUsers401JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostUsers403JSONResponse ErrorResponse
+
+func (response PostUsers403JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostUsers500JSONResponse ErrorResponse
+
+func (response PostUsers500JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+// StrictServerInterface represents all server handlers.
+type StrictServerInterface interface {
+	// ユーザー一覧の取得
+	// (GET /v1/users)
+	GetUsers(ctx context.Context, request GetUsersRequestObject) (GetUsersResponseObject, error)
+	// ユーザーの作成
+	// (POST /v1/users)
+	PostUsers(ctx context.Context, request PostUsersRequestObject) (PostUsersResponseObject, error)
+}
+
+type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
+type StrictMiddlewareFunc = strictecho.StrictEchoMiddlewareFunc
+
+func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
+	return &strictHandler{ssi: ssi, middlewares: middlewares}
+}
+
+type strictHandler struct {
+	ssi         StrictServerInterface
+	middlewares []StrictMiddlewareFunc
+}
+
+// GetUsers operation middleware
+func (sh *strictHandler) GetUsers(ctx echo.Context, params GetUsersParams) error {
+	var request GetUsersRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUsers(ctx.Request().Context(), request.(GetUsersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUsers")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetUsersResponseObject); ok {
+		return validResponse.VisitGetUsersResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostUsers operation middleware
+func (sh *strictHandler) PostUsers(ctx echo.Context) error {
+	var request PostUsersRequestObject
+
+	var body PostUsersJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostUsers(ctx.Request().Context(), request.(PostUsersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostUsers")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostUsersResponseObject); ok {
+		return validResponse.VisitPostUsersResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
