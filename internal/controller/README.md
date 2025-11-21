@@ -120,14 +120,14 @@ func BindHandler(e *echo.Echo, uc user.Service) {
 }
 
 // handler
-func (s *server) GetV1UsersDetail(c echo.Context, params gen.GetUsersParams) error {
+func (s *server) GetV1UsersDetail(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
     // HTTP → VO
-    page := usecase.NewPageFrom1Based(params.Page, params.PerPage)
+    page := usecase.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 
     // Usecase 呼び出し（DTO返却）
     // user.ConditionByName はUsecaseの持ち物
-    list, err := s.uc.GetV1UsersByName(c.Request().Context(), user.ConditionByName{
-        NameKeyword: ptr.StringVal(q.NameKeyword),
+    list, err := s.uc.GetV1UsersByName(ctx, user.ConditionByName{
+        NameKeyword: ptr.StringVal(request.Params.NameKeyword),
         Page:        page,
     })
     if err != nil {
