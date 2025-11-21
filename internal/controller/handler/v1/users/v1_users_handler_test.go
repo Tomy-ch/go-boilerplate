@@ -150,8 +150,12 @@ func Test_server_GetUsers(t *testing.T) {
 			defer ctrl.Finish()
 
 			invalidPage := 1_000_000
-			invalidParams := mockParams
-			invalidParams.Params.Page = ptr.To(invalidPage)
+			invalidParams := gen.GetUsersRequestObject{
+				Params: gen.GetUsersParams{
+					Page:    ptr.To(invalidPage),
+					PerPage: mockParams.Params.PerPage,
+				},
+			}
 
 			mockApp := mock_useruc.NewMockUsecase(ctrl)
 
