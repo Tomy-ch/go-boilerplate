@@ -210,7 +210,7 @@ func runSQLCForCategory(
 	}()
 
 	// 3) YAMLを使ってsqlc実行
-	// #nosec G204 -- settingYamlFile is a constant and does not originate from user
+	// #nosec G204 -- tmpYamlFile is constructed from a constant and does not originate from user input
 	cmd := exec.CommandContext(ctx, "sqlc", "generate", "-f", tmpYamlFile)
 	cmd.Dir = workDir
 	cmd.Stdout = os.Stdout
