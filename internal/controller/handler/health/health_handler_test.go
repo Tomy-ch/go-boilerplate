@@ -1,6 +1,7 @@
 package health
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -31,20 +32,15 @@ func TestBindHandler(t *testing.T) {
 func TestGetHealth(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
-	BindHandler(e)
-
-	_, res, ctx := handlertest.
-		NewEchoTestClient(t, e).
-		Method(http.MethodGet).
-		RequestURL(targetPath).
-		Build()
-
-	s := &server{}
-	err := s.GetHealth(ctx)
-	require.NoError(t, err)
-
+	ctx := context.Background()
 	expectedResponse := gen.ResponseHealth{Status: "ok"}
 
-	handlertest.AssertJSONEqual(t, http.StatusOK, expectedResponse, res)
+	s := &server{}
+	resp, err := s.GetHealth(ctx, gen.GetHealthRequestObject{})
+	require.NoError(t, err)
+
+	actual, ok := resp.(gen.GetHealth200JSONResponse)
+	require.True(t, ok)
+
+	require.Equal(t, expectedResponse, gen.ResponseHealth(actual))
 }
