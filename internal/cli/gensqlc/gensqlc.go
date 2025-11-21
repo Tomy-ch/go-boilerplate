@@ -280,31 +280,31 @@ func copyFile(logger *zap.Logger, src, dst string) error {
 	// #nosec G304 -- src is verified under a fixed root directory and does not originate from user input
 	in, err := os.Open(src)
 	if err != nil {
-		logger.Fatal("failed to open src file", zap.String("src", src), zap.NamedError("os.Open", err))
+		logger.Fatal("failed to open src file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("os.Open", err))
 	}
 	defer func() {
 		if cerr := in.Close(); cerr != nil {
-			logger.Fatal("failed to close src file", zap.String("src", src), zap.NamedError("in.Close", cerr))
+			logger.Fatal("failed to close src file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("in.Close", cerr))
 		}
 	}()
 
 	// #nosec G304 -- dst is verified under a fixed root directory and does not originate from user input
 	out, err := os.Create(dst)
 	if err != nil {
-		logger.Fatal("failed to create dst file", zap.String("dst", dst), zap.NamedError("os.Create", err))
+		logger.Fatal("failed to create dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("os.Create", err))
 	}
 	defer func() {
 		if cerr := out.Close(); cerr != nil {
-			logger.Fatal("failed to close dst file", zap.String("dst", dst), zap.NamedError("out.Close", cerr))
+			logger.Fatal("failed to close dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("out.Close", cerr))
 		}
 	}()
 
 	if _, err = io.Copy(out, in); err != nil {
-		logger.Fatal("failed to copy file content", zap.NamedError("io.Copy", err))
+		logger.Fatal("failed to copy file content", zap.String("src", src), zap.String("dst", dst), zap.NamedError("io.Copy", err))
 	}
 
 	if err := out.Sync(); err != nil {
-		logger.Fatal("failed to sync dst file", zap.String("dst", dst), zap.NamedError("out.Sync", err))
+		logger.Fatal("failed to sync dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("out.Sync", err))
 	}
 	return nil
 }
