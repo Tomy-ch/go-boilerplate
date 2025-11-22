@@ -3,38 +3,33 @@ package validator
 import (
 	"testing"
 
-	"github.com/go-playground/validator/v10"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/require"
 )
 
-type testStruct struct {
-	Name string `validate:"required"`
+func TestMiddleware(t *testing.T) {
+	t.Parallel()
+
+	validator, err := GetValidator()
+	require.NoError(t, err)
+
+	require.NotNil(t, Middleware(validator))
 }
 
-func TestNewValidator(t *testing.T) {
+func TestGetValidator(t *testing.T) {
 	t.Parallel()
-	v := NewValidator()
-	require.NotNil(t, v)
-	require.IsType(t, &Validator{}, v)
+
+	validator, err := GetValidator()
+	require.NoError(t, err)
+	require.IsType(t, &openapi3.T{}, validator)
 }
 
-func TestCustomValidator_Validate(t *testing.T) {
+func TestModule(t *testing.T) {
 	t.Parallel()
-	cv := &Validator{
-		validator: validator.New(),
-	}
+	require.NotNil(t, Module())
+}
 
-	t.Run("正常系/有効な構造体", func(t *testing.T) {
-		t.Parallel()
-		validStruct := testStruct{Name: "Valid Name"}
-		err := cv.Validate(validStruct)
-		require.NoError(t, err)
-	})
-
-	t.Run("異常系/無効な構造体", func(t *testing.T) {
-		t.Parallel()
-		invalidStruct := testStruct{Name: ""}
-		err := cv.Validate(invalidStruct)
-		require.Error(t, err)
-	})
+func TestCoreModule(t *testing.T) {
+	t.Parallel()
+	require.NotNil(t, CoreModule())
 }

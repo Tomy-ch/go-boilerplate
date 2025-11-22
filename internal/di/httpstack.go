@@ -24,6 +24,9 @@ import (
 // HTTPStackModule は、HTTP スタック関連の依存関係を提供するfx.Moduleです。
 func HTTPStackModule() fx.Option {
 	return fx.Module("httpstack",
+		// Core Modules
+		validator.CoreModule(),
+		// Middleware Modules
 		banner.Module(),
 		binder.Module(),
 		cookie.Module(),

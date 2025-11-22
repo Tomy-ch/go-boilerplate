@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLookupErrorMeta(t *testing.T) {
+func TestLookupErrorMetaByHTTPStatus(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -25,7 +25,7 @@ func TestLookupErrorMeta(t *testing.T) {
 				Message: errorMessageAccessDenied,
 			}
 
-			actual := lookupErrorMeta(httpStatus)
+			actual := lookupErrorMetaByHTTPStatus(httpStatus)
 
 			require.Equal(t, expected, actual)
 		})
@@ -40,7 +40,7 @@ func TestLookupErrorMeta(t *testing.T) {
 				Message: errorMessageInternalError,
 			}
 
-			actual := lookupErrorMeta(httpStatus)
+			actual := lookupErrorMetaByHTTPStatus(httpStatus)
 
 			require.Equal(t, expected, actual)
 		})
