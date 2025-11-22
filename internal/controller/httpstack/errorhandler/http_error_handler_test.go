@@ -59,9 +59,9 @@ func Test_normalizeHTTPError(t *testing.T) {
 			reqErr := &openapi3filter.RequestError{}
 			echoErr := &echo.HTTPError{Code: http.StatusBadRequest, Internal: reqErr}
 
-			actual := normalizeHTTPError(echoErr, "rid-openapi-1")
+			actual := normalizeHTTPError(echoErr, expectedRequestID)
 			expected := response.NewHTTPErrorFromStatus(http.StatusBadRequest)
-			expected.RequestId = "rid-openapi-1"
+			expected.RequestId = expectedRequestID
 			expected.Internal = echoErr
 			require.Equal(t, expected, actual)
 		})
@@ -69,25 +69,25 @@ func Test_normalizeHTTPError(t *testing.T) {
 		t.Run("SecurityRequirementsErrorの場合、Unauthorisedとして正規化される", func(t *testing.T) {
 			t.Parallel()
 			secErr := &openapi3filter.SecurityRequirementsError{}
-			echoErr2 := &echo.HTTPError{Code: http.StatusUnauthorized, Internal: secErr}
+			echoErr := &echo.HTTPError{Code: http.StatusUnauthorized, Internal: secErr}
 
-			actual2 := normalizeHTTPError(echoErr2, "rid-openapi-2")
-			expected2 := response.NewHTTPErrorFromStatus(http.StatusUnauthorized)
-			expected2.RequestId = "rid-openapi-2"
-			expected2.Internal = echoErr2
-			require.Equal(t, expected2, actual2)
+			actual := normalizeHTTPError(echoErr, expectedRequestID)
+			expected := response.NewHTTPErrorFromStatus(http.StatusUnauthorized)
+			expected.RequestId = expectedRequestID
+			expected.Internal = echoErr
+			require.Equal(t, expected, actual)
 		})
 
 		t.Run("ResponseErrorの場合、InternalServerErrorとして正規化される", func(t *testing.T) {
 			t.Parallel()
 			respErr := &openapi3filter.ResponseError{}
-			echoErr3 := &echo.HTTPError{Code: http.StatusInternalServerError, Internal: respErr}
+			echoErr := &echo.HTTPError{Code: http.StatusInternalServerError, Internal: respErr}
 
-			actual3 := normalizeHTTPError(echoErr3, "rid-openapi-3")
-			expected3 := response.NewHTTPErrorFromStatus(http.StatusInternalServerError)
-			expected3.RequestId = "rid-openapi-3"
-			expected3.Internal = echoErr3
-			require.Equal(t, expected3, actual3)
+			actual := normalizeHTTPError(echoErr, expectedRequestID)
+			expected := response.NewHTTPErrorFromStatus(http.StatusInternalServerError)
+			expected.RequestId = expectedRequestID
+			expected.Internal = echoErr
+			require.Equal(t, expected, actual)
 		})
 	})
 
