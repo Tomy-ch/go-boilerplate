@@ -16,6 +16,7 @@ func Middleware(validator *openapi3.T) echo.MiddlewareFunc {
 	return middleware.OapiRequestValidator(validator)
 }
 
+// GetValidator は、OpenAPI仕様のバリデータを返します。
 func GetValidator() (*openapi3.T, error) {
 	return gen.GetSwagger()
 }

@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"boilerplate-go/internal/controller/error/response"
-	"boilerplate-go/pkg/ptr"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 )
@@ -31,11 +30,6 @@ func normalizeOpenAPIError(err error, details ...string) *response.HTTPErrorResp
 		return nil
 	}
 
-	var detailsPtr *[]string
-	if len(details) > 0 {
-		detailsPtr = ptr.To(details)
-	}
-	resErr.Details = detailsPtr
 	resErr.Internal = err
 
 	return resErr

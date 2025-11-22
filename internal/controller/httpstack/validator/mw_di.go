@@ -2,7 +2,7 @@ package validator
 
 import "go.uber.org/fx"
 
-// Module は、JOINの強制制御のミドルウェアを提供するfxモジュールを返します。
+// Module は、OpenAPIバリデーションのミドルウェアを提供するfxモジュールを返します。
 func Module() fx.Option {
 	return fx.Module("mw.validator",
 		fx.Provide(
@@ -10,6 +10,15 @@ func Module() fx.Option {
 				Middleware,
 				fx.ResultTags(`group:"middlewares.use"`),
 			),
+		),
+	)
+}
+
+// CoreModule は、ルーティング時に自動で解決されるバリデーションのコア機能部分を提供するfxモジュールを返します。
+func CoreModule() fx.Option {
+	return fx.Module("validator.core",
+		fx.Provide(
+			GetValidator,
 		),
 	)
 }

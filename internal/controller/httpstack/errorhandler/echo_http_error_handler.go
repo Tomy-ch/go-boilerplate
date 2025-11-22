@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"boilerplate-go/internal/controller/error/response"
-	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -18,14 +17,8 @@ func normalizeEchoHTTPError(err error, details ...string) *response.HTTPErrorRes
 		return nil
 	}
 
-	resErr := response.NewHTTPErrorFromStatus(ehe.Code)
-
-	var detailsPtr *[]string
-	if len(details) > 0 {
-		detailsPtr = ptr.To(details)
-	}
-
+	resErr := response.NewHTTPErrorFromStatus(ehe.Code, details...)
 	resErr.Internal = xerrors.Wrap(ehe.Internal, fmt.Sprintf("echo HTTP error: %v", err))
-	resErr.Details = detailsPtr
+
 	return resErr
 }
