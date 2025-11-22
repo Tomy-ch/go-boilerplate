@@ -1,29 +1,21 @@
+//go:generate oapi-codegen --package=gen --generate=spec -o ./gen/validate.gen.go /app/openapi/openapi.gen.yaml
+
 // Package validator は、リクエストの検証を行うミドルウェアを提供します。
 package validator
 
 import (
-	"github.com/go-playground/validator/v10"
+	"boilerplate-go/internal/controller/httpstack/validator/gen"
+
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
+	middleware "github.com/oapi-codegen/echo-middleware"
 )
 
-// Validator は Echo に検証器を提供する構造体
-type Validator struct {
-	validator *validator.Validate
+// Middleware は、リクエストの検証を行うミドルウェアを提供します。
+func Middleware(validator *openapi3.T) echo.MiddlewareFunc {
+	return middleware.OapiRequestValidator(validator)
 }
 
-// New は、Echo に検証器を提供するための関数です。
-func New(e *echo.Echo) {
-	e.Validator = NewValidator()
-}
-
-// NewValidator は、Echoで使用するための検証器を生成します。
-func NewValidator() echo.Validator {
-	return &Validator{
-		validator: validator.New(),
-	}
-}
-
-// Validate は echo.Validator インターフェースの実装
-func (cv *Validator) Validate(i any) error {
-	return cv.validator.Struct(i)
+func GetValidator() (*openapi3.T, error) {
+	return gen.GetSwagger()
 }
