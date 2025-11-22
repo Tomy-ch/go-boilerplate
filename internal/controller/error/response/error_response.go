@@ -18,23 +18,20 @@ type HTTPErrorResponse struct {
 	Internal   error `json:"-"`
 }
 
-// New は、エラーの中身に応じて適切なHTTPエラーレスポンスを生成します。
-func New(err error, details ...string) *HTTPErrorResponse {
+// NewHTTPErrorFromAppError は、エラーの中身がアプリケーションエラーである場合に、対応するHTTPエラーレスポンスを生成します。
+func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByAppError(err)
 
-	var detailsPtr *[]string
-	if len(details) > 0 {
-		detailsPtr = ptr.To(details)
-	}
-	return &HTTPErrorResponse{
-		ErrorResponse: gen.ErrorResponse{
-			Code:    meta.Code,
-			Message: meta.Message,
-			Details: detailsPtr,
-		},
-		HTTPStatus: meta.Status,
-		Internal:   err,
-	}
+	res := newHTTPErrorFromMeta(meta, details...)
+	res.Internal = err
+	return res
+}
+
+// NewHTTPErrorFromStatus は、指定されたHTTPステータスコードに対応するHTTPエラーレスポンスを生成します。
+func NewHTTPErrorFromStatus(httpStatus int, details ...string) *HTTPErrorResponse {
+	meta := lookupErrorMetaByHTTPStatus(httpStatus)
+
+	return newHTTPErrorFromMeta(meta, details...)
 }
 
 // NewInternalErrorResponse は、内部サーバーエラーのエラーレスポンスを生成します。
@@ -54,4 +51,20 @@ func (e *HTTPErrorResponse) Error() string {
 		return e.Internal.Error()
 	}
 	return fmt.Sprintf("HTTP %d: %s (%s)", e.HTTPStatus, e.Code, e.Message)
+}
+
+// newHTTPErrorFromMeta は、指定されたメタ情報からHTTPエラーレスポンスを生成します。
+func newHTTPErrorFromMeta(meta httpErrorMeta, details ...string) *HTTPErrorResponse {
+	var detailsPtr *[]string
+	if len(details) > 0 {
+		detailsPtr = ptr.To(details)
+	}
+	return &HTTPErrorResponse{
+		ErrorResponse: gen.ErrorResponse{
+			Code:    meta.Code,
+			Message: meta.Message,
+			Details: detailsPtr,
+		},
+		HTTPStatus: meta.Status,
+	}
 }

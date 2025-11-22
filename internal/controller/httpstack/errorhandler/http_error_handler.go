@@ -3,6 +3,7 @@ package errorhandler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"boilerplate-go/internal/controller/error/response"
@@ -53,7 +54,7 @@ func normalizeHTTPError(
 	var he *response.HTTPErrorResponse
 	if errors.As(err, &he) {
 		if !isErrorStatus(he.HTTPStatus) {
-			res := response.New(he.Internal)
+			res := response.NewHTTPErrorFromAppError(he.Internal)
 			if he.Details != nil {
 				res.Details = he.Details
 			}
@@ -66,12 +67,17 @@ func normalizeHTTPError(
 
 	var ehe *echo.HTTPError
 	if errors.As(err, &ehe) {
-		res := response.New(err)
-		res.RequestId = requestID
-		return res
+		if res := normalizeOpenAPIError(ehe); res != nil {
+			res.RequestId = requestID
+			return res
+		}
+		if res := normalizeEchoHTTPError(ehe); res != nil {
+			res.RequestId = requestID
+			return res
+		}
 	}
 
-	res := response.New(err)
+	res := response.NewHTTPErrorFromAppError(err)
 	res.RequestId = requestID
 	return res
 }
@@ -93,8 +99,8 @@ func httpErrorField(
 	if he.Details != nil {
 		fields = append(fields, zap.Strings("error_details", *he.Details))
 	}
-	if he.HTTPStatus >= errorLevelBoundHTTPStatus {
-		fields = append(fields, zap.NamedError("stack", he.Internal))
+	if he.Internal != nil {
+		fields = append(fields, zap.String("internal_error", fmt.Sprintf("%v", he.Internal)))
 	}
 	return fields
 }

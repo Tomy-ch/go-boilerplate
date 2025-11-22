@@ -3,11 +3,14 @@ package errorhandler
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"boilerplate-go/internal/apperror"
 	"boilerplate-go/internal/controller/error/response"
+	"boilerplate-go/internal/controller/error/response/gen"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -21,6 +24,13 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, e.HTTPErrorHandler)
 }
 
+func TestNewHTTPErrorHandler(t *testing.T) {
+	t.Parallel()
+	z := zap.NewNop()
+	e := NewHTTPErrorHandler(z)
+	require.NotNil(t, e)
+}
+
 func Test_normalizeHTTPError(t *testing.T) {
 	t.Parallel()
 
@@ -31,15 +41,54 @@ func Test_normalizeHTTPError(t *testing.T) {
 	t.Run("API定義書で定義されたエラー構造でステータスがエラー範囲である場合、指定されたエラーが返る", func(t *testing.T) {
 		t.Parallel()
 
-		expected := response.New(
+		expected := response.NewHTTPErrorFromAppError(
 			expectedInternal,
-			expectedDetails,
 		)
 		expected.RequestId = expectedRequestID
 
-		actual := normalizeHTTPError(expected, expectedRequestID)
+		actual := normalizeHTTPError(expectedInternal, expectedRequestID)
 
 		require.Equal(t, expected, actual)
+	})
+
+	t.Run("EchoのHTTPErrorが内部にOpenAPIエラーを持つ場合、normalizeOpenAPIError経由で正規化される", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("RequestErrorの場合、BadRequestとして正規化される", func(t *testing.T) {
+			t.Parallel()
+			reqErr := &openapi3filter.RequestError{}
+			echoErr := &echo.HTTPError{Code: http.StatusBadRequest, Internal: reqErr}
+
+			actual := normalizeHTTPError(echoErr, "rid-openapi-1")
+			expected := response.NewHTTPErrorFromStatus(http.StatusBadRequest)
+			expected.RequestId = "rid-openapi-1"
+			expected.Internal = echoErr
+			require.Equal(t, expected, actual)
+		})
+
+		t.Run("SecurityRequirementsErrorの場合、Unauthorisedとして正規化される", func(t *testing.T) {
+			t.Parallel()
+			secErr := &openapi3filter.SecurityRequirementsError{}
+			echoErr2 := &echo.HTTPError{Code: http.StatusUnauthorized, Internal: secErr}
+
+			actual2 := normalizeHTTPError(echoErr2, "rid-openapi-2")
+			expected2 := response.NewHTTPErrorFromStatus(http.StatusUnauthorized)
+			expected2.RequestId = "rid-openapi-2"
+			expected2.Internal = echoErr2
+			require.Equal(t, expected2, actual2)
+		})
+
+		t.Run("ResponseErrorの場合、InternalServerErrorとして正規化される", func(t *testing.T) {
+			t.Parallel()
+			respErr := &openapi3filter.ResponseError{}
+			echoErr3 := &echo.HTTPError{Code: http.StatusInternalServerError, Internal: respErr}
+
+			actual3 := normalizeHTTPError(echoErr3, "rid-openapi-3")
+			expected3 := response.NewHTTPErrorFromStatus(http.StatusInternalServerError)
+			expected3.RequestId = "rid-openapi-3"
+			expected3.Internal = echoErr3
+			require.Equal(t, expected3, actual3)
+		})
 	})
 
 	t.Run(
@@ -47,7 +96,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		func(t *testing.T) {
 			t.Parallel()
 
-			expected := response.New(
+			expected := response.NewHTTPErrorFromAppError(
 				expectedInternal,
 				expectedDetails,
 			)
@@ -70,7 +119,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 				Code: http.StatusForbidden,
 			}
 
-			expected := response.New(echoError)
+			expected := response.NewHTTPErrorFromStatus(echoError.Code)
 			expected.RequestId = expectedRequestID
 
 			actual := normalizeHTTPError(echoError, expectedRequestID)
@@ -88,9 +137,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 				Code: http.StatusContinue,
 			}
 
-			expected := response.New(
-				echoError,
-			)
+			expected := response.NewHTTPErrorFromStatus(echoError.Code)
 			expected.RequestId = expectedRequestID
 			expected.Internal = echoError
 
@@ -103,7 +150,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 	t.Run("その他のエラーの場合、内部サーバーエラーがAPI定義書で定義されたエラー構造で返る", func(t *testing.T) {
 		t.Parallel()
 
-		expected := response.New(
+		expected := response.NewHTTPErrorFromAppError(
 			expectedInternal,
 		)
 		expected.RequestId = expectedRequestID
@@ -140,6 +187,88 @@ func Test_isErrorStatus(t *testing.T) {
 		t.Run("600", func(t *testing.T) {
 			t.Parallel()
 			require.False(t, isErrorStatus(600))
+		})
+	})
+}
+
+func Test_httpErrorField(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("DetailsとInternalがnilの場合、想定するフィールドが返る", func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, "/foo", nil)
+			req.RemoteAddr = "1.2.3.4:1234"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			he := &response.HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{
+					Code:      "CODE",
+					Message:   "MSG",
+					Details:   nil,
+					RequestId: "req-1",
+				},
+				HTTPStatus: http.StatusBadRequest,
+				Internal:   nil,
+			}
+
+			actual := httpErrorField(c, he)
+
+			expected := []zap.Field{
+				zap.Int("status", he.HTTPStatus),
+				zap.String("method", http.MethodGet),
+				zap.String("path", "/foo"),
+				zap.String("remote_ip", "1.2.3.4"),
+				zap.String("request_id", he.RequestId),
+				zap.String("error_code", he.Code),
+				zap.String("error_message", he.Message),
+			}
+
+			require.Equal(t, expected, actual)
+		})
+
+		t.Run("DetailsとInternalがある場合、追加フィールドが含まれる", func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodPost, "/bar", nil)
+			req.RemoteAddr = "5.6.7.8:4321"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			ds := []string{"d1", "d2"}
+			internalErr := fmt.Errorf("inner: %w", apperror.ErrConflict)
+			he := &response.HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{
+					Code:      "C2",
+					Message:   "M2",
+					Details:   &ds,
+					RequestId: "req-2",
+				},
+				HTTPStatus: http.StatusInternalServerError,
+				Internal:   internalErr,
+			}
+
+			actual := httpErrorField(c, he)
+
+			expected := []zap.Field{
+				zap.Int("status", he.HTTPStatus),
+				zap.String("method", http.MethodPost),
+				zap.String("path", "/bar"),
+				zap.String("remote_ip", "5.6.7.8"),
+				zap.String("request_id", he.RequestId),
+				zap.String("error_code", he.Code),
+				zap.String("error_message", he.Message),
+				zap.Strings("error_details", ds),
+				zap.String("internal_error", fmt.Sprintf("%v", he.Internal)),
+			}
+
+			require.Equal(t, expected, actual)
 		})
 	})
 }
