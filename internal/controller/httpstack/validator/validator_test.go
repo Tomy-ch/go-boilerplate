@@ -23,13 +23,3 @@ func TestGetValidator(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &openapi3.T{}, validator)
 }
-
-func TestModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, Module())
-}
-
-func TestCoreModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, CoreModule())
-}

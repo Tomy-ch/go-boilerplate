@@ -8,16 +8,20 @@ import (
 	"go.uber.org/zap"
 )
 
+// Module は、Error Handler モジュールを提供します。
 func Module() fx.Option {
 	return fx.Module("server.errorhandler",
 		fx.Provide(
-			func(z *zap.Logger) httpstack.ServeCfgOut {
-				return httpstack.ServeCfgOut{
-					SrvCfg: func(e *echo.Echo) {
-						New(e, z)
-					},
-				}
-			},
+			provideServeConfig,
 		),
 	)
+}
+
+// provideServeConfig は、Error Handler のサーバー設定を提供します。
+func provideServeConfig(z *zap.Logger) httpstack.ServeCfgOut {
+	return httpstack.ServeCfgOut{
+		SrvCfg: func(e *echo.Echo) {
+			New(e, z)
+		},
+	}
 }
