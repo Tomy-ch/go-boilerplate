@@ -14,7 +14,39 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func Test_buildFields(t *testing.T) {
+func TestMiddleware(t *testing.T) {
+	t.Parallel()
+
+	logger := zap.NewNop()
+
+	require.NotNil(t, Middleware(logger))
+}
+
+func Test_requestLogMiddleware_logsAfterHandler(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	logger := newTestLogger(&buf)
+
+	e := echo.New()
+	e.Use(requestLogMiddleware(logger))
+	e.GET("/middleware-test", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/middleware-test", nil)
+	req.RemoteAddr = "203.0.113.5:45678"
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	out := buf.String()
+	require.Contains(t, out, `"msg":"request handled"`)
+	require.Contains(t, out, `"method":"GET"`)
+	require.Contains(t, out, `"uri":"/middleware-test"`)
+}
+
+func Test_buildRequestLogFields(t *testing.T) {
 	t.Parallel()
 
 	expectedMethod := http.MethodGet
@@ -63,13 +95,13 @@ func Test_buildFields(t *testing.T) {
 			zap.String("span_id", expectedSID.String()),
 		}
 
-		actual := buildFields(c, expectedLatency)
+		actual := buildRequestLogFields(c, expectedLatency)
 
 		require.Equal(t, expected, actual)
 	})
 }
 
-func Test_logRequest(t *testing.T) {
+func Test_writeRequestLog(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -113,7 +145,7 @@ func Test_logRequest(t *testing.T) {
 			logger := newTestLogger(&buf)
 			c := newTestContext(tt.status)
 
-			logRequest(c, logger, nil)
+			writeRequestLog(c, logger, nil)
 
 			out := buf.String()
 			require.Contains(t, out, `"level":"`+tt.expectedLevel+`"`)

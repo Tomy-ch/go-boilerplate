@@ -29,20 +29,32 @@ func New(e *echo.Echo, z *zap.Logger) {
 // NewHTTPErrorHandler は、EchoのHTTPエラーハンドラーを生成します。
 func NewHTTPErrorHandler(logger *zap.Logger) echo.HTTPErrorHandler {
 	return func(err error, c echo.Context) {
-		resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
-		if !c.Response().Committed {
-			if err = c.JSON(resp.HTTPStatus, resp.ErrorResponse); err != nil {
-				logger.Error(
-					"failed to write error response",
-					zap.Error(err),
-					zap.String("request_id", resp.RequestId),
-				)
-				c.Response().WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		}
-		logHTTPError(logger, c, resp)
+		handleHTTPError(logger, c, err)
 	}
+}
+
+// handleHTTPError は、HTTPエラーを処理し、適切なレスポンスをクライアントに返します。
+func handleHTTPError(logger *zap.Logger, c echo.Context, err error) {
+	resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
+
+	if !c.Response().Committed {
+		if writeErr := writeErrorResponse(c, resp); writeErr != nil {
+			logger.Error(
+				"failed to write error response",
+				zap.Error(writeErr),
+				zap.String("request_id", resp.RequestId),
+			)
+			c.Response().WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	logHTTPError(logger, c, resp)
+}
+
+// writeErrorResponse は、エラーレスポンスをクライアントに書き込みます。
+func writeErrorResponse(c echo.Context, resp *response.HTTPErrorResponse) error {
+	return c.JSON(resp.HTTPStatus, resp.ErrorResponse)
 }
 
 // normalizeHTTPError は、HTTPエラーを正規化し、エラーレスポンスを生成します。

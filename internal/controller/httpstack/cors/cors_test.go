@@ -3,10 +3,19 @@ package cors
 import (
 	"testing"
 
+	"boilerplate-go/internal/config"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMiddleware(t *testing.T) {
+	t.Parallel()
+	cfg := config.MockConfigForTest(t)
+	mw := Middleware(cfg)
+	require.NotNil(t, mw)
+}
 
 func Test_buildCORSConfig(t *testing.T) {
 	t.Parallel()

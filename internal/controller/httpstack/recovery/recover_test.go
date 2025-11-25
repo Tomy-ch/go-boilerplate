@@ -1,12 +1,104 @@
 package recovery
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"boilerplate-go/internal/config"
+
+	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
+
+func TestMiddleware(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.MockConfigForTest(t)
+	logger := zap.NewNop()
+
+	require.NotNil(t, Middleware(logger, cfg))
+}
+
+func Test_newRecoverLogErrorFunc(t *testing.T) {
+	t.Parallel()
+
+	logger := zap.NewNop()
+
+	e := echo.New()
+
+	t.Run("RemoteAddrがある場合、関数はnilを返しpanicしない", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest(http.MethodGet, "/path", nil)
+		req.RemoteAddr = "9.8.7.6:1234"
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		f := newRecoverLogErrorFunc(logger)
+		err := f(c, fmt.Errorf("boom"), []byte("stack"))
+		require.NoError(t, err)
+	})
+
+	t.Run("X-Real-Ipヘッダがある場合、関数はnilを返しpanicしない", func(t *testing.T) {
+		t.Parallel()
+
+		req := httptest.NewRequest(http.MethodPost, "/other", nil)
+		req.Header.Set("X-Real-Ip", "10.0.0.1")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		f := newRecoverLogErrorFunc(logger)
+		err := f(c, fmt.Errorf("boom2"), []byte("stack2"))
+		require.NoError(t, err)
+	})
+}
+
+func Test_newRecoverConfig(t *testing.T) {
+	t.Parallel()
+
+	logger := zap.NewNop()
+
+	t.Run("開発モードの場合、developmentConfigを返す", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := config.MockConfigForTest(t)
+		cfg.SetServerAppMode(t, config.DevelopmentMode)
+
+		expected := developmentConfig()
+		actual := newRecoverConfig(logger, cfg)
+
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("本番モードの場合、productionConfigを返す", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := config.MockConfigForTest(t)
+		cfg.SetServerAppMode(t, config.ProductionMode)
+
+		expected := productionConfig()
+		actual := newRecoverConfig(logger, cfg)
+
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("不明なモードの場合、warningを出してproductionConfigを返す", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := config.MockConfigForTest(t)
+		cfg.SetServerAppMode(t, "unknown-mode")
+
+		expected := productionConfig()
+		actual := newRecoverConfig(logger, cfg)
+
+		require.Equal(t, expected, actual)
+	})
+}
 
 func TestDevelopmentConfig(t *testing.T) {
 	t.Parallel()
