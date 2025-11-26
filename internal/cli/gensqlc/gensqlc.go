@@ -4,6 +4,7 @@ package gensqlc
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -197,7 +198,8 @@ func runSQLCForCategory(
 	).Replace(tpl)
 
 	// 2) YAMLを書き出し
-	tmpPath := filepath.Join(workDir, settingYamlFile)
+	tmpYamlFile := fmt.Sprintf("temp.%s", settingYamlFile)
+	tmpPath := filepath.Join(workDir, tmpYamlFile)
 	if err := os.WriteFile(tmpPath, []byte(repl), permRWRR); err != nil {
 		return fmt.Errorf("failed to write temporary YAML file: os.WriteFile: %w", err)
 	}
@@ -208,8 +210,8 @@ func runSQLCForCategory(
 	}()
 
 	// 3) YAMLを使ってsqlc実行
-	// #nosec G204 -- settingYamlFile is a constant and does not originate from user
-	cmd := exec.CommandContext(ctx, "sqlc", "generate", "-f", settingYamlFile)
+	// #nosec G204 -- tmpYamlFile is constructed from a constant and does not originate from user input
+	cmd := exec.CommandContext(ctx, "sqlc", "generate", "-f", tmpYamlFile)
 	cmd.Dir = workDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -278,27 +280,31 @@ func copyFile(logger *zap.Logger, src, dst string) error {
 	// #nosec G304 -- src is verified under a fixed root directory and does not originate from user input
 	in, err := os.Open(src)
 	if err != nil {
-		logger.Fatal("failed to open src file", zap.String("src", src), zap.NamedError("os.Open", err))
+		logger.Fatal("failed to open src file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("os.Open", err))
 	}
 	defer func() {
 		if cerr := in.Close(); cerr != nil {
-			logger.Fatal("failed to close src file", zap.String("src", src), zap.NamedError("in.Close", cerr))
+			logger.Fatal("failed to close src file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("in.Close", cerr))
 		}
 	}()
 
 	// #nosec G304 -- dst is verified under a fixed root directory and does not originate from user input
 	out, err := os.Create(dst)
 	if err != nil {
-		logger.Fatal("failed to create dst file", zap.String("dst", dst), zap.NamedError("os.Create", err))
+		logger.Fatal("failed to create dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("os.Create", err))
 	}
 	defer func() {
 		if cerr := out.Close(); cerr != nil {
-			logger.Fatal("failed to close dst file", zap.String("dst", dst), zap.NamedError("out.Close", cerr))
+			logger.Fatal("failed to close dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("out.Close", cerr))
 		}
 	}()
 
+	if _, err = io.Copy(out, in); err != nil {
+		logger.Fatal("failed to copy file content", zap.String("src", src), zap.String("dst", dst), zap.NamedError("io.Copy", err))
+	}
+
 	if err := out.Sync(); err != nil {
-		logger.Fatal("failed to sync dst file", zap.String("dst", dst), zap.NamedError("out.Sync", err))
+		logger.Fatal("failed to sync dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("out.Sync", err))
 	}
 	return nil
 }

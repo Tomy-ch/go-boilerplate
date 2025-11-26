@@ -99,9 +99,9 @@ var errorMeta = map[int]httpErrorMeta{
 	},
 }
 
-// lookupErrorMeta は、HTTPステータスコードに対応するエラーメタデータを取得します。
+// lookupErrorMetaByHTTPStatus は、HTTPステータスコードに対応するエラーメタデータを取得します。
 // 存在しない場合は、サーバーエラーのメタデータを返します。
-func lookupErrorMeta(status int) httpErrorMeta {
+func lookupErrorMetaByHTTPStatus(status int) httpErrorMeta {
 	if meta, ok := errorMeta[status]; ok {
 		return meta
 	}
@@ -116,22 +116,22 @@ func lookupErrorMeta(status int) httpErrorMeta {
 func lookupErrorMetaByAppError(err error) httpErrorMeta {
 	switch {
 	case xerrors.Is(err, apperror.ErrInvalidArgument): // 400
-		return lookupErrorMeta(http.StatusBadRequest)
+		return lookupErrorMetaByHTTPStatus(http.StatusBadRequest)
 	case xerrors.Is(err, apperror.ErrValidation): // 422
-		return lookupErrorMeta(http.StatusUnprocessableEntity)
+		return lookupErrorMetaByHTTPStatus(http.StatusUnprocessableEntity)
 	case xerrors.Is(err, apperror.ErrUnauthenticated): // 401
-		return lookupErrorMeta(http.StatusUnauthorized)
+		return lookupErrorMetaByHTTPStatus(http.StatusUnauthorized)
 	case xerrors.Is(err, apperror.ErrPermissionDenied): // 403
-		return lookupErrorMeta(http.StatusForbidden)
+		return lookupErrorMetaByHTTPStatus(http.StatusForbidden)
 	case xerrors.Is(err, apperror.ErrNotFound): // 404
-		return lookupErrorMeta(http.StatusNotFound)
+		return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
 	case xerrors.Is(err, apperror.ErrConflict): // 409
-		return lookupErrorMeta(http.StatusConflict)
+		return lookupErrorMetaByHTTPStatus(http.StatusConflict)
 	case xerrors.Is(err, apperror.ErrUnavailable): // 503
-		return lookupErrorMeta(http.StatusServiceUnavailable)
+		return lookupErrorMetaByHTTPStatus(http.StatusServiceUnavailable)
 	case xerrors.Is(err, apperror.ErrUnimplemented): // 501
-		return lookupErrorMeta(http.StatusNotImplemented)
+		return lookupErrorMetaByHTTPStatus(http.StatusNotImplemented)
 	default:
-		return lookupErrorMeta(http.StatusInternalServerError)
+		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)
 	}
 }

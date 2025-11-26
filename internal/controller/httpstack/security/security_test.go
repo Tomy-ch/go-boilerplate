@@ -47,3 +47,11 @@ func TestBuildSecureConfig(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 }
+
+func TestMiddleware(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.MockConfigForTest(t)
+
+	require.NotNil(t, Middleware(cfg))
+}

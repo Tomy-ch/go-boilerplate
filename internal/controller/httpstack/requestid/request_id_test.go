@@ -33,3 +33,9 @@ func Test_getRequestID(t *testing.T) {
 		require.Empty(t, id)
 	})
 }
+
+func TestMiddleware(t *testing.T) {
+	t.Parallel()
+
+	require.NotNil(t, Middleware())
+}

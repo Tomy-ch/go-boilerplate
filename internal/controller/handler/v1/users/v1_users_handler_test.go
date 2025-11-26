@@ -1,6 +1,7 @@
 package v1users
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -47,6 +48,8 @@ func TestBindHandler(t *testing.T) {
 func Test_server_GetUsers(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	expectedPage := 1
 	expectedPerPage := 10
 
@@ -56,9 +59,11 @@ func Test_server_GetUsers(t *testing.T) {
 	mockPaging, err := paging.NewPagingFrom1Based(ptr.To(expectedPage), ptr.To(expectedPerPage))
 	require.NoError(t, err)
 
-	mockParams := gen.GetUsersParams{
-		Page:    ptr.To(expectedPage),
-		PerPage: ptr.To(expectedPerPage),
+	mockParams := gen.GetUsersRequestObject{
+		Params: gen.GetUsersParams{
+			Page:    ptr.To(expectedPage),
+			PerPage: ptr.To(expectedPerPage),
+		},
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -66,7 +71,6 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("複数のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			e := echo.New()
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -93,24 +97,18 @@ func Test_server_GetUsers(t *testing.T) {
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(mockDTO, nil)
 
-			BindHandler(e, mockApp)
-
-			_, res, ctx := handlertest.
-				NewEchoTestClient(t, e).
-				Method(http.MethodGet).
-				RequestURL(targetPath).
-				Build()
-
 			s := &server{uc: mockApp}
-			err := s.GetUsers(ctx, mockParams)
+			resp, err := s.GetUsers(ctx, mockParams)
 			require.NoError(t, err)
 
-			handlertest.AssertJSONEqual(t, http.StatusOK, expectedResponse, res)
+			actual, ok := resp.(gen.GetUsers200JSONResponse)
+			require.True(t, ok)
+
+			require.Equal(t, expectedResponse, gen.ResponseV1Users(actual))
 		})
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			e := echo.New()
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -132,19 +130,14 @@ func Test_server_GetUsers(t *testing.T) {
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(mockDTO, nil)
 
-			BindHandler(e, mockApp)
-
-			_, res, ctx := handlertest.
-				NewEchoTestClient(t, e).
-				Method(http.MethodGet).
-				RequestURL(targetPath).
-				Build()
-
 			s := &server{uc: mockApp}
-			err := s.GetUsers(ctx, mockParams)
+			resp, err := s.GetUsers(ctx, mockParams)
 			require.NoError(t, err)
 
-			handlertest.AssertJSONEqual(t, http.StatusOK, expectedResponse, res)
+			actual, ok := resp.(gen.GetUsers200JSONResponse)
+			require.True(t, ok)
+
+			require.Equal(t, expectedResponse, gen.ResponseV1Users(actual))
 		})
 	})
 
@@ -153,39 +146,30 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
-			e := echo.New()
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
 			invalidPage := 1_000_000
-			invalidParams := mockParams
-			invalidParams.Page = ptr.To(invalidPage)
+			invalidParams := gen.GetUsersRequestObject{
+				Params: gen.GetUsersParams{
+					Page:    ptr.To(invalidPage),
+					PerPage: mockParams.Params.PerPage,
+				},
+			}
 
 			mockApp := mock_useruc.NewMockUsecase(ctrl)
-			BindHandler(e, mockApp)
-
-			_, _, ctx := handlertest.
-				NewEchoTestClient(t, e).
-				Method(http.MethodGet).
-				RequestURL(targetPath).
-				Build()
 
 			s := &server{uc: mockApp}
-			err := s.GetUsers(ctx, invalidParams)
+			resp, err := s.GetUsers(ctx, invalidParams)
+			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			e := echo.New()
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-
-			mockParams := gen.GetUsersParams{
-				Page:    ptr.To(expectedPage),
-				PerPage: ptr.To(expectedPerPage),
-			}
 
 			expectedError := apperror.ErrInternal
 
@@ -194,16 +178,9 @@ func Test_server_GetUsers(t *testing.T) {
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(nil, expectedError)
 
-			BindHandler(e, mockApp)
-
-			_, _, ctx := handlertest.
-				NewEchoTestClient(t, e).
-				Method(http.MethodGet).
-				RequestURL(targetPath).
-				Build()
-
 			s := &server{uc: mockApp}
-			err := s.GetUsers(ctx, mockParams)
+			resp, err := s.GetUsers(ctx, mockParams)
+			require.Nil(t, resp)
 			require.ErrorIs(t, err, expectedError)
 		})
 	})

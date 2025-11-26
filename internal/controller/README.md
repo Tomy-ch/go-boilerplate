@@ -33,7 +33,7 @@
 
      ```go
      //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-     //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+     //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
      ```
 
   4. `swagger-cli`でOpenAPIを結合・検証し、`oapi-codegen`で生成
@@ -103,7 +103,7 @@
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // パッケージ名は衝突防止のためURIに合わせてください
 package v1users
@@ -114,20 +114,20 @@ type server struct {
 
 // この関数をdi/handler.goで、[<package>.BindHandler,]として登録する。
 func BindHandler(e *echo.Echo, uc user.Service) {
-    gen.RegisterHandlers(e, &server{
+    gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
         uc: uc,
-    })
+    }, nil))
 }
 
 // handler
-func (s *server) GetV1UsersDetail(c echo.Context, params gen.GetUsersParams) error {
+func (s *server) GetV1UsersDetail(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
     // HTTP → VO
-    page := usecase.NewPageFrom1Based(params.Page, params.PerPage)
+    page := usecase.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 
     // Usecase 呼び出し（DTO返却）
     // user.ConditionByName はUsecaseの持ち物
-    list, err := s.uc.GetV1UsersByName(c.Request().Context(), user.ConditionByName{
-        NameKeyword: ptr.StringVal(q.NameKeyword),
+    list, err := s.uc.GetV1UsersByName(ctx, user.ConditionByName{
+        NameKeyword: ptr.StringVal(request.Params.NameKeyword),
         Page:        page,
     })
     if err != nil {
@@ -151,6 +151,6 @@ func (s *server) GetV1UsersDetail(c echo.Context, params gen.GetUsersParams) err
       Offset: page.Offset(),
     }
 
-    return c.JSON(http.StatusOK, res)
+    return gen.GetUsersByName200JSONResponse(res), nil
 }
 ```

@@ -19,22 +19,31 @@ const (
 
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。
 func Middleware(logger *zap.Logger, cfg *config.Config) echo.MiddlewareFunc {
-	var conf middleware.RecoverConfig
+	cnf := newRecoverConfig(logger, cfg)
+	cnf.LogErrorFunc = newRecoverLogErrorFunc(logger)
+
+	return middleware.RecoverWithConfig(cnf)
+}
+
+// newRecoverConfig は、環境設定に基づいてリカバリミドルウェアの設定を生成します。
+func newRecoverConfig(logger *zap.Logger, cfg *config.Config) middleware.RecoverConfig {
 	switch {
 	case cfg.IsAppDevelopmentMode():
-		conf = developmentConfig()
+		return developmentConfig()
 	case cfg.IsAppProductionMode():
-		conf = productionConfig()
+		return productionConfig()
 	default:
-		conf = productionConfig()
 		logger.Warn(
 			"Unknown environment, using production config for recover middleware",
 			zap.String("env", cfg.AppMode()),
 		)
+		return productionConfig()
 	}
+}
 
-	// ログ出力の設定
-	conf.LogErrorFunc = func(c echo.Context, err error, stack []byte) error {
+// newRecoverLogErrorFunc は、リカバリミドルウェアのログ出力関数を生成します。
+func newRecoverLogErrorFunc(logger *zap.Logger) func(c echo.Context, err error, stack []byte) error {
+	return func(c echo.Context, err error, stack []byte) error {
 		req := c.Request()
 		logger.Error("panic recovered",
 			zap.Error(err),
@@ -45,8 +54,6 @@ func Middleware(logger *zap.Logger, cfg *config.Config) echo.MiddlewareFunc {
 		)
 		return nil
 	}
-
-	return middleware.RecoverWithConfig(conf)
 }
 
 // developmentConfig は、開発環境用のリカバリミドルウェアの設定を返します。

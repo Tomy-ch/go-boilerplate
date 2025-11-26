@@ -3,6 +3,7 @@ package errorhandler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"boilerplate-go/internal/controller/error/response"
@@ -28,20 +29,32 @@ func New(e *echo.Echo, z *zap.Logger) {
 // NewHTTPErrorHandler は、EchoのHTTPエラーハンドラーを生成します。
 func NewHTTPErrorHandler(logger *zap.Logger) echo.HTTPErrorHandler {
 	return func(err error, c echo.Context) {
-		resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
-		if !c.Response().Committed {
-			if err = c.JSON(resp.HTTPStatus, resp.ErrorResponse); err != nil {
-				logger.Error(
-					"failed to write error response",
-					zap.Error(err),
-					zap.String("request_id", resp.RequestId),
-				)
-				c.Response().WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		}
-		logHTTPError(logger, c, resp)
+		handleHTTPError(logger, c, err)
 	}
+}
+
+// handleHTTPError は、HTTPエラーを処理し、適切なレスポンスをクライアントに返します。
+func handleHTTPError(logger *zap.Logger, c echo.Context, err error) {
+	resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
+
+	if !c.Response().Committed {
+		if writeErr := writeErrorResponse(c, resp); writeErr != nil {
+			logger.Error(
+				"failed to write error response",
+				zap.Error(writeErr),
+				zap.String("request_id", resp.RequestId),
+			)
+			c.Response().WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	logHTTPError(logger, c, resp)
+}
+
+// writeErrorResponse は、エラーレスポンスをクライアントに書き込みます。
+func writeErrorResponse(c echo.Context, resp *response.HTTPErrorResponse) error {
+	return c.JSON(resp.HTTPStatus, resp.ErrorResponse)
 }
 
 // normalizeHTTPError は、HTTPエラーを正規化し、エラーレスポンスを生成します。
@@ -53,7 +66,7 @@ func normalizeHTTPError(
 	var he *response.HTTPErrorResponse
 	if errors.As(err, &he) {
 		if !isErrorStatus(he.HTTPStatus) {
-			res := response.New(he.Internal)
+			res := response.NewHTTPErrorFromAppError(he.Internal)
 			if he.Details != nil {
 				res.Details = he.Details
 			}
@@ -66,12 +79,17 @@ func normalizeHTTPError(
 
 	var ehe *echo.HTTPError
 	if errors.As(err, &ehe) {
-		res := response.New(err)
-		res.RequestId = requestID
-		return res
+		if res := normalizeOpenAPIError(ehe); res != nil {
+			res.RequestId = requestID
+			return res
+		}
+		if res := normalizeEchoHTTPError(ehe); res != nil {
+			res.RequestId = requestID
+			return res
+		}
 	}
 
-	res := response.New(err)
+	res := response.NewHTTPErrorFromAppError(err)
 	res.RequestId = requestID
 	return res
 }
@@ -93,8 +111,8 @@ func httpErrorField(
 	if he.Details != nil {
 		fields = append(fields, zap.Strings("error_details", *he.Details))
 	}
-	if he.HTTPStatus >= errorLevelBoundHTTPStatus {
-		fields = append(fields, zap.NamedError("stack", he.Internal))
+	if he.Internal != nil {
+		fields = append(fields, zap.String("internal_error", fmt.Sprintf("%v", he.Internal)))
 	}
 	return fields
 }

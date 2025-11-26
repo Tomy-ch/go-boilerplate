@@ -12,13 +12,16 @@ import (
 func Module() fx.Option {
 	return fx.Module("server.debugmode",
 		fx.Provide(
-			func(cfg *config.Config) httpstack.ServeCfgOut {
-				return httpstack.ServeCfgOut{
-					SrvCfg: func(e *echo.Echo) {
-						New(e, cfg)
-					},
-				}
-			},
+			provideServeConfig,
 		),
 	)
+}
+
+// provideServeConfig は、デバッグモードのサーバー設定を提供します。
+func provideServeConfig(cfg *config.Config) httpstack.ServeCfgOut {
+	return httpstack.ServeCfgOut{
+		SrvCfg: func(e *echo.Echo) {
+			New(e, cfg)
+		},
+	}
 }

@@ -11,11 +11,16 @@ import (
 func Module() fx.Option {
 	return fx.Module("server.binder",
 		fx.Provide(
-			func() httpstack.ServeCfgOut {
-				return httpstack.ServeCfgOut{
-					SrvCfg: func(e *echo.Echo) { New(e) },
-				}
-			},
+			provideServeConfig,
 		),
 	)
+}
+
+// provideServeConfig は、Binder のサーバー設定を提供します。
+func provideServeConfig() httpstack.ServeCfgOut {
+	return httpstack.ServeCfgOut{
+		SrvCfg: func(e *echo.Echo) {
+			New(e)
+		},
+	}
 }
