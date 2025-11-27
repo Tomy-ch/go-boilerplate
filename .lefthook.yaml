@@ -1,13 +1,7 @@
 pre-commit:
-  parallel: false
+  parallel: true
   commands:
-    fix:
-      run: make fix
-      stage_fixed: true
     lint:
       run: make lint
     test:
       run: make test
-
-skip_output:
-  - meta
