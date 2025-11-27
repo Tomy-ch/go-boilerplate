@@ -10,27 +10,71 @@ import (
 	"boilerplate-go/internal/config"
 	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/usecase/tx"
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
+type Manager interface {
+	Do(fn func(ctx context.Context) error) error
+}
+
+// testTxManager はテスト用のトランザクションマネージャーを表します。
+type testTxManager struct {
+	inner tx.Manager
+	t     *testing.T
+}
+
+var rollbackForTestError = xerrors.New("the test was successful, so we rolled it back")
+
 // NewTestInstances はリポジトリのテスト用で必要なインスタンスを生成して返します。
 func NewTestInstances(t *testing.T) (
-	context.Context, *sql.DB, tx.Manager, *zap.Logger, *time.Location,
+	*sql.DB, Manager, *zap.Logger, *time.Location,
 ) {
 	t.Helper()
 
 	cfg := config.MockConfigForTest(t)
+
 	db, err := rdbdriver.NewDB(cfg)
 	require.NoError(t, err)
 
 	nopLogger := zap.NewNop()
-	txm := rdbdriver.NewTransactionManager(cfg, db)
+	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
 
 	location, err := time.LoadLocation(cfg.OSTimeZone())
 	require.NoError(t, err)
 
-	ctx := context.Background()
-	return ctx, db, txm, nopLogger, location
+	txm := &testTxManager{
+		inner: innerTxm,
+		t:     t,
+	}
+
+	return db, txm, nopLogger, location
+}
+
+// Do は、テスト用のトランザクションマネージャーでトランザクションを開始し、引数で渡されたfnを実行し、最後にロールバックします。
+//
+// 使用例:
+//
+//	err := txm.Do(func(ctx context.Context) error {
+//	  // トランザクション内の処理
+//	  return // nil またはエラー
+//	})
+//	require.Error(t, err) or require.NoError(t, err)
+func (t *testTxManager) Do(fn func(ctx context.Context) error) error {
+	t.t.Helper()
+	baseCtx := context.Background()
+
+	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
+		if err := fn(txCtx); err != nil {
+			return err
+		}
+		return rollbackForTestError
+	})
+
+	if xerrors.Is(err, rollbackForTestError) {
+		return nil
+	}
+	return err
 }
