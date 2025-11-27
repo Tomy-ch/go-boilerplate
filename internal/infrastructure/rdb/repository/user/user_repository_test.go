@@ -124,6 +124,7 @@ func TestGetAllUsers(t *testing.T) {
 		})
 
 		t.Run("limit=1でoffset=9の場合、末尾のユーザーが取得できる", func(t *testing.T) {
+			t.Parallel()
 			err := txm.Do(func(ctx context.Context) error {
 				limit := 1
 				offset := 9
@@ -200,7 +201,7 @@ func TestGetAllUsers(t *testing.T) {
 				drv := rdbdriver.ResolveDriverWithLog(ctx, db, z)
 				_, execErr := drv.ExecContext(ctx,
 					"INSERT INTO users "+
-						"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code)"+
+						"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code) "+
 						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
 					"07e5b6d3-0000-4000-8000-000000000000",
 					"Tx",

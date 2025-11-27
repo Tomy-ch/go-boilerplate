@@ -27,7 +27,7 @@ func Test_testTxManager_Do(t *testing.T) {
 	require.NoError(t, err)
 	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
 
-	t.Run("実行時にエラーが発生ない場合、RollbackForTestErrorが返ること", func(t *testing.T) {
+	t.Run("実行時にエラーが発生しない場合、RollbackForTestErrorが返ること", func(t *testing.T) {
 		t.Parallel()
 		txm := &testTxManager{
 			inner: innerTxm,
