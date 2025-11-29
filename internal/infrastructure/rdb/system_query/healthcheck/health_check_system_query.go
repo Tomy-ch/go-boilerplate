@@ -8,7 +8,7 @@ import (
 
 	"boilerplate-go/internal/apperror"
 	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
-	gen "boilerplate-go/internal/infrastructure/rdb/sqlc"
+	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/usecase/healthcheck/query"
 	"boilerplate-go/pkg/xerrors"
 
@@ -30,7 +30,7 @@ func New(db *sql.DB, z *zap.Logger) query.DBSystemQuery {
 // CheckDBHealth は、データベースの健全性をチェックします。
 func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error) {
 	start := time.Now()
-	db := gen.New(rdbdriver.ResolveDriverWithLog(ctx, s.db, s.z))
+	db := sqlc.New(rdbdriver.ResolveDriverWithLog(ctx, s.db, s.z))
 	_, err := db.GetDBHealthCheck(ctx)
 	if err != nil {
 		return query.DBHealth{}, xerrors.Wrap(apperror.ErrUnavailable, err.Error())

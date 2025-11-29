@@ -8,8 +8,8 @@ import (
 	"boilerplate-go/internal/controller/handler/handlertest"
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	"boilerplate-go/internal/usecase/paging"
-	useruc "boilerplate-go/internal/usecase/user"
-	mock_useruc "boilerplate-go/internal/usecase/user/mock"
+	"boilerplate-go/internal/usecase/user"
+	mock_user "boilerplate-go/internal/usecase/user/mock"
 	"boilerplate-go/pkg/ptr"
 
 	"github.com/oapi-codegen/runtime/types"
@@ -23,7 +23,7 @@ func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
 	e, ctrl := handlertest.NewBindHandlerTestInstance(t)
-	mockApp := mock_useruc.NewMockUsecase(ctrl)
+	mockApp := mock_user.NewMockUsecase(ctrl)
 
 	BindHandler(e, mockApp)
 
@@ -46,8 +46,8 @@ func Test_server_GetUsers(t *testing.T) {
 	expectedPage := 1
 	expectedPerPage := 10
 
-	expectedDTO1 := useruc.DTO{Name: "User1", Email: "user1@example.com", Phone: "1234567890"}
-	expectedDTO2 := useruc.DTO{Name: "User2", Email: "user2@example.com", Phone: "0987654321"}
+	expectedDTO1 := user.DTO{Name: "User1", Email: "user1@example.com", Phone: "1234567890"}
+	expectedDTO2 := user.DTO{Name: "User2", Email: "user2@example.com", Phone: "0987654321"}
 
 	mockPaging, err := paging.NewPagingFrom1Based(ptr.To(expectedPage), ptr.To(expectedPerPage))
 	require.NoError(t, err)
@@ -83,8 +83,8 @@ func Test_server_GetUsers(t *testing.T) {
 				Offset: mockPaging.Offset(),
 			}
 
-			mockDTO := []useruc.DTO{expectedDTO1, expectedDTO2}
-			mockApp := mock_useruc.NewMockUsecase(ctrl)
+			mockDTO := []user.DTO{expectedDTO1, expectedDTO2}
+			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(mockDTO, nil)
@@ -115,8 +115,8 @@ func Test_server_GetUsers(t *testing.T) {
 				Offset: mockPaging.Offset(),
 			}
 
-			mockDTO := []useruc.DTO{expectedDTO1}
-			mockApp := mock_useruc.NewMockUsecase(ctrl)
+			mockDTO := []user.DTO{expectedDTO1}
+			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(mockDTO, nil)
@@ -147,7 +147,7 @@ func Test_server_GetUsers(t *testing.T) {
 				},
 			}
 
-			mockApp := mock_useruc.NewMockUsecase(ctrl)
+			mockApp := mock_user.NewMockUsecase(ctrl)
 
 			s := &server{uc: mockApp}
 			resp, err := s.GetUsers(ctx, invalidParams)
@@ -162,7 +162,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 			expectedError := apperror.ErrInternal
 
-			mockApp := mock_useruc.NewMockUsecase(ctrl)
+			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(nil, expectedError)

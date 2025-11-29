@@ -7,7 +7,7 @@ import (
 	v1users "boilerplate-go/internal/controller/handler/v1/users"
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	useruc "boilerplate-go/internal/usecase/user"
-	mock_useruc "boilerplate-go/internal/usecase/user/mock"
+	mock_user "boilerplate-go/internal/usecase/user/mock"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/mock/gomock"
@@ -20,7 +20,7 @@ func TestV1Users_Integration(t *testing.T) {
 		e := echo.New()
 
 		ctrl := gomock.NewController(t)
-		mockApp := mock_useruc.NewMockUsecase(ctrl)
+		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
 			GetAllUsers(gomock.Any(), gomock.Any()).
 			Return([]useruc.DTO{}, nil)

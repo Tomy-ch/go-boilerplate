@@ -28,8 +28,6 @@
 ### 命名/構造
 
 - インターフェイスの実装構造体は`repository`とする
-- パッケージ名は機能名（例：user）＋リポジトリ層を表すサフィックスの`repo`を追加する。
-  - 例: `package userrepo`
 - インスタンスの生成関数名は `New` で統一し、[di/infrastructure.go](../di/repository.go) で登録する。
 
 ### 依存方向
@@ -81,8 +79,8 @@
 ## 最小スニペット（雛形）
 
 ```go
-// 目的 + repoのサフィックス
-package userrepo
+// 唯一性のある名称
+package user
 
 // repositoryで名称固定
 type repository struct {

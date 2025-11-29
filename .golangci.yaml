@@ -191,6 +191,42 @@ linters:
           deny:
             - pkg: boilerplate-go/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"
+        # diコンテナのcontroller層の設定ファイルでは、internal/controller/handler配下で定義されたもののみをimport可能とします。
+        configure_only_the_controller_layer:
+          files:
+            - "**/internal/di/controller.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - boilerplate-go/internal/controller/handler/
+            - go.uber.org/fx
+          deny:
+            - pkg: ".*"
+              desc: "controller用DIでは internal/controller/handler 配下のみ import 可能です"
+        # diコンテナのinfrastructure層の設定ファイルでは、internal/infrastructure/配下で定義されたもののみをimport可能とします。
+        configure_only_the_infrastructure_layer:
+          files:
+            - "**/internal/di/infrastructure.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - boilerplate-go/internal/infrastructure/
+            - go.uber.org/fx
+          deny:
+            - pkg: ".*"
+              desc: "infrastructure用DIでは internal/infrastructure 配下のみ import 可能です"
+        # diコンテナのusecase層の設定ファイルでは、internal/usecase/配下で定義されたもののみをimport可能とします。
+        configure_only_the_usecase_layer:
+          files:
+            - "**/internal/di/usecase.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - boilerplate-go/internal/usecase/
+            - go.uber.org/fx
+          deny:
+            - pkg: ".*"
+              desc: "usecase用DIでは internal/usecase 配下のみ import 可能です"
     funcorder:
       constructor: true
       struct-method: true

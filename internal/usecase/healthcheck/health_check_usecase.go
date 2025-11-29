@@ -1,7 +1,7 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
-// Package healthcheckuc は、システムの健全性チェックに関するユースケースを提供します。
-package healthcheckuc
+// Package healthcheck は、システムの健全性チェックに関するユースケースを提供します。
+package healthcheck
 
 import (
 	"context"

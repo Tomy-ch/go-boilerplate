@@ -1,4 +1,4 @@
-package healthcheckuc
+package healthcheck
 
 import (
 	"context"

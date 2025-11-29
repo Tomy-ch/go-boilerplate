@@ -1,4 +1,4 @@
-package useruc
+package user
 
 import (
 	"context"
