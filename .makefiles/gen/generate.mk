@@ -20,9 +20,8 @@ gen-ctxkey:
 
 gen:
 	@echo "🔄 各種ドキュメントやコードの生成します..."
-	@make gen-swagger
+	@make gen-api
 	@make gen-redoc
-	@make gen-golang-code
 	@make gen-sqlc
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
@@ -31,6 +30,10 @@ gen-golang-code:
 
 gen-swagger:
 	docker compose run --rm node_tool_runner swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
+
+gen-api:
+	@make gen-swagger
+	@make gen-golang-code
 
 gen-redoc:
 	docker compose run --rm node_tool_runner redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html

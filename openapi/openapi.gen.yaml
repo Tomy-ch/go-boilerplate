@@ -58,6 +58,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseHealth'
+  /ready:
+    get:
+      operationId: GetReady
+      tags:
+        - ready
+      summary: サーバー全体のレディネスチェック
+      description: サーバー全体がリクエストを受け付ける準備ができているかを確認するためのレディネスチェックエンドポイントです。
+      responses:
+        '200':
+          description: サーバーはリクエストを受け付ける準備ができています。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseReady'
   /v1/users:
     get:
       operationId: GetUsers
@@ -452,7 +466,40 @@ components:
       properties:
         status:
           type: string
+          description: サーバーの現在のステータスを示します。
           example: ok
+    ResponseReady:
+      type: object
+      description: サーバーのレディネスチェック用のレスポンスです。
+      required:
+        - status
+        - applicationTime
+        - dbResponsedAt
+        - dbLatencyMs
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+            - unhealthy
+          description: サーバーのレディネス状態
+          example: ok
+        applicationTime:
+          type: string
+          format: date-time
+          description: アプリケーションサーバーの現在時刻
+          example: '2024-06-01T12:00:01Z'
+        dbResponsedAt:
+          type: string
+          format: date-time
+          description: データベースが最後に正常に応答した日時
+          example: '2024-06-01T12:00:00Z'
+        dbLatencyMs:
+          type: integer
+          format: int64
+          description: データベース応答までの時間（ミリ秒）
+          example: 8
     ResponseV1User:
       $ref: '#/components/schemas/UserResponse'
     ResponseV1Users:

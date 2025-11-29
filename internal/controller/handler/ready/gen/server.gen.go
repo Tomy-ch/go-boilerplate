@@ -15,9 +15,9 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// サーバーのヘルスチェック
-	// (GET /healthz)
-	GetHealthz(ctx echo.Context) error
+	// サーバー全体のレディネスチェック
+	// (GET /ready)
+	GetReady(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -25,12 +25,12 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// GetHealthz converts echo context to params.
-func (w *ServerInterfaceWrapper) GetHealthz(ctx echo.Context) error {
+// GetReady converts echo context to params.
+func (w *ServerInterfaceWrapper) GetReady(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetHealthz(ctx)
+	err = w.Handler.GetReady(ctx)
 	return err
 }
 
@@ -62,20 +62,20 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/healthz", wrapper.GetHealthz)
+	router.GET(baseURL+"/ready", wrapper.GetReady)
 
 }
 
-type GetHealthzRequestObject struct {
+type GetReadyRequestObject struct {
 }
 
-type GetHealthzResponseObject interface {
-	VisitGetHealthzResponse(w http.ResponseWriter) error
+type GetReadyResponseObject interface {
+	VisitGetReadyResponse(w http.ResponseWriter) error
 }
 
-type GetHealthz200JSONResponse ResponseHealth
+type GetReady200JSONResponse ResponseReady
 
-func (response GetHealthz200JSONResponse) VisitGetHealthzResponse(w http.ResponseWriter) error {
+func (response GetReady200JSONResponse) VisitGetReadyResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
@@ -84,9 +84,9 @@ func (response GetHealthz200JSONResponse) VisitGetHealthzResponse(w http.Respons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// サーバーのヘルスチェック
-	// (GET /healthz)
-	GetHealthz(ctx context.Context, request GetHealthzRequestObject) (GetHealthzResponseObject, error)
+	// サーバー全体のレディネスチェック
+	// (GET /ready)
+	GetReady(ctx context.Context, request GetReadyRequestObject) (GetReadyResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -101,23 +101,23 @@ type strictHandler struct {
 	middlewares []StrictMiddlewareFunc
 }
 
-// GetHealthz operation middleware
-func (sh *strictHandler) GetHealthz(ctx echo.Context) error {
-	var request GetHealthzRequestObject
+// GetReady operation middleware
+func (sh *strictHandler) GetReady(ctx echo.Context) error {
+	var request GetReadyRequestObject
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetHealthz(ctx.Request().Context(), request.(GetHealthzRequestObject))
+		return sh.ssi.GetReady(ctx.Request().Context(), request.(GetReadyRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetHealthz")
+		handler = middleware(handler, "GetReady")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		return err
-	} else if validResponse, ok := response.(GetHealthzResponseObject); ok {
-		return validResponse.VisitGetHealthzResponse(ctx.Response())
+	} else if validResponse, ok := response.(GetReadyResponseObject); ok {
+		return validResponse.VisitGetReadyResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

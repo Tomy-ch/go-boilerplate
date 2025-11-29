@@ -3,6 +3,7 @@ package di
 import (
 	"boilerplate-go/internal/controller/handler/health"
 	"boilerplate-go/internal/controller/handler/healthz"
+	"boilerplate-go/internal/controller/handler/ready"
 	v1users "boilerplate-go/internal/controller/handler/v1/users"
 
 	"go.uber.org/fx"
@@ -14,6 +15,7 @@ func ControllerModule() fx.Option {
 		fx.Invoke(
 			health.BindHandler,
 			healthz.BindHandler,
+			ready.BindHandler,
 			v1users.BindHandler,
 		),
 	)

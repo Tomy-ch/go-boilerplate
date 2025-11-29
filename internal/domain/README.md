@@ -195,7 +195,7 @@ func (e *Entity) FullName() string { return e.firstName + " " + e.lastName }
 // user_repository.go
 
 // ↓はモック生成用のgo:generateコメント
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 package user
 
 // インフラ層で実装されるリポジトリのインターフェース
