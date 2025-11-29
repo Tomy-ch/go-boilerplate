@@ -22,10 +22,10 @@ const targetPath = "/v1/users"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, ctrl := handlertest.NewBindHandlerTestInstance(t)
+	e, ctrl, tf, _ := handlertest.NewTestInstanceForBindHandler(t)
 	mockApp := mock_user.NewMockUsecase(ctrl)
 
-	BindHandler(e, mockApp)
+	BindHandler(e, tf, mockApp)
 
 	expectedMethods := []string{
 		http.MethodGet,
@@ -64,7 +64,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("複数のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
+			ctx, ctrl, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
 
 			expectedResponse := gen.ResponseV1Users{
 				Users: []gen.UserResponse{
@@ -89,7 +89,7 @@ func Test_server_GetUsers(t *testing.T) {
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(mockDTO, nil)
 
-			s := &server{uc: mockApp}
+			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsers(ctx, mockParams)
 			require.NoError(t, err)
 
@@ -101,7 +101,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
+			ctx, ctrl, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
 
 			expectedResponse := gen.ResponseV1Users{
 				Users: []gen.UserResponse{
@@ -121,7 +121,7 @@ func Test_server_GetUsers(t *testing.T) {
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(mockDTO, nil)
 
-			s := &server{uc: mockApp}
+			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsers(ctx, mockParams)
 			require.NoError(t, err)
 
@@ -137,7 +137,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
-			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
+			ctx, ctrl, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
 
 			invalidPage := 1_000_000
 			invalidParams := gen.GetUsersRequestObject{
@@ -149,7 +149,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 
-			s := &server{uc: mockApp}
+			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsers(ctx, invalidParams)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
@@ -158,7 +158,7 @@ func Test_server_GetUsers(t *testing.T) {
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
+			ctx, ctrl, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
 
 			expectedError := apperror.ErrInternal
 
@@ -167,7 +167,7 @@ func Test_server_GetUsers(t *testing.T) {
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(nil, expectedError)
 
-			s := &server{uc: mockApp}
+			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsers(ctx, mockParams)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, expectedError)

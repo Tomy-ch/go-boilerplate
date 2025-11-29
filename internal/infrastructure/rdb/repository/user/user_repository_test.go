@@ -15,22 +15,26 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, _, z, _ := rdbtest.NewTestInstances(t)
+	db, log, tf := rdbtest.NewTestInstancesForNew(t)
 	expected := &repository{
-		db: db,
-		z:  z,
+		tracer: tf.Infra(),
+		db:     db,
+		z:      log,
 	}
-	actual := New(db, z)
-
+	actual := New(db, log, tf)
 	require.Equal(t, expected, actual)
 }
 
 func TestGetAllUsers(t *testing.T) {
 	t.Parallel()
 
-	db, txm, z, _ := rdbtest.NewTestInstances(t)
+	db, txm, log, _, tracer := rdbtest.NewTestInstancesForImplementedInfra(t)
 
-	repo := New(db, z)
+	repo := &repository{
+		tracer: tracer,
+		db:     db,
+		z:      log,
+	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -198,7 +202,7 @@ func TestGetAllUsers(t *testing.T) {
 		t.Run("無効なユーザーが挿入されていてもDomain化の時にエラーになる", func(t *testing.T) {
 			t.Parallel()
 			err := txm.Do(func(ctx context.Context) error {
-				drv := rdbdriver.ResolveDriverWithLog(ctx, db, z)
+				drv := rdbdriver.ResolveDriverWithLog(ctx, db, log)
 				_, execErr := drv.ExecContext(ctx,
 					"INSERT INTO users "+
 						"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code) "+

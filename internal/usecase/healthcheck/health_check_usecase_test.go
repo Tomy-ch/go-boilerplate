@@ -1,14 +1,12 @@
 package healthcheck
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/usecase/healthcheck/query"
 	mock_query "boilerplate-go/internal/usecase/healthcheck/query/mock"
-	"boilerplate-go/pkg/xerrors"
+	"boilerplate-go/internal/usecase/usecasetest"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -17,16 +15,14 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
+	ctrl, tf := usecasetest.NewTestInstanceForNew(t)
 	sysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 
-	cfg := &config.Config{}
-
 	expected := &usecase{
-		cfg:           cfg,
+		tracer:        tf.Usecase(),
 		dbSystemQuery: sysQuery,
 	}
-	actual := New(sysQuery, cfg)
+	actual := New(sysQuery, tf)
 
 	require.Equal(t, expected, actual)
 }
@@ -34,26 +30,23 @@ func TestNew(t *testing.T) {
 func Test_usecase_CheckHealth(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	cfg := config.MockConfigForTest(t)
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("DBのヘルスチェックが正常な場合、OKステータスが返る", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
+			ctx, ctrl, _, lt := usecasetest.NewTestInstanceForImplementedUsecase(t)
 
-			mockSysQuery.EXPECT().CheckDBHealth(ctx).Return(query.DBHealth{
+			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
+			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{
 				Ready:       true,
 				Latency:     1000,
 				ResponsedAt: time.Now(),
 			}, nil).Times(1)
 
 			u := &usecase{
+				tracer:        lt,
 				dbSystemQuery: mockSysQuery,
-				cfg:           cfg,
 			}
 
 			result, err := u.CheckHealth(ctx)
@@ -67,6 +60,8 @@ func Test_usecase_CheckHealth(t *testing.T) {
 
 		t.Run("DBのヘルスチェックが異常な場合、Unhealthyステータスが返る", func(t *testing.T) {
 			t.Parallel()
+			ctx, ctrl, _, lt := usecasetest.NewTestInstanceForImplementedUsecase(t)
+
 			expectedDBHealth := query.DBHealth{
 				Ready:       false,
 				Latency:     0,
@@ -77,15 +72,13 @@ func Test_usecase_CheckHealth(t *testing.T) {
 				ApplicationTime: time.Now(),
 				DBHealthCheck:   expectedDBHealth,
 			}
-			expectedErr := xerrors.New("DB connection failed")
-
-			ctrl := gomock.NewController(t)
+			expectedErr := usecasetest.ExpectedDBError(t)
 
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
-			mockSysQuery.EXPECT().CheckDBHealth(ctx).Return(expectedDBHealth, expectedErr).Times(1)
+			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(expectedDBHealth, expectedErr).Times(1)
 
 			u := &usecase{
-				cfg:           cfg,
+				tracer:        lt,
 				dbSystemQuery: mockSysQuery,
 			}
 

@@ -22,8 +22,8 @@ func TestNewConfig(t *testing.T) {
 					shutdownTimeout: expectedAppShutdownTimeout,
 				},
 				server: ServerConfig{
-					host:            expectedHost,
-					port:            expectedPort,
+					host:            expectedServerHost,
+					port:            expectedServerPort,
 					shutdownTimeout: expectedServerShutdownTimeout,
 				},
 				metrics: MetricsConfig{

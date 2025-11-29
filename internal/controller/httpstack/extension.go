@@ -2,6 +2,8 @@
 package httpstack
 
 import (
+	"sort"
+
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -13,7 +15,7 @@ type ServerExtends struct {
 	// PreList は、Preミドルウェアとして適用されるミドルウェアのリストです。
 	PreList []echo.MiddlewareFunc `group:"middlewares.pre"`
 	// UseList は、Useミドルウェアとして適用されるミドルウェアのリストです。
-	UseList []echo.MiddlewareFunc `group:"middlewares.use"`
+	UseList []UseMiddleware `group:"middlewares.use"`
 	// CfgList は、サーバーに副作用で適用される設定関数のリストです。
 	CfgList []SrvCfg `group:"server.configurators"`
 }
@@ -28,6 +30,20 @@ type SrvCfg func(*echo.Echo)
 type ServeCfgOut struct {
 	fx.Out
 	SrvCfg SrvCfg `group:"server.configurators"`
+}
+
+// UseMiddleware は、Use ミドルウェアとその適用順序を表します。
+type UseMiddleware struct {
+	// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
+	Priority int
+	// Middleware は、適用対象の Echo ミドルウェアです。
+	Middleware echo.MiddlewareFunc
+}
+
+// UseMiddlewareOut は、fx の group 出力用のラッパーです。
+type UseMiddlewareOut struct {
+	fx.Out
+	Middleware UseMiddleware `group:"middlewares.use"`
 }
 
 // ApplyExtends は、サーバー拡張を適用します。
@@ -47,10 +63,16 @@ func ApplyPreMiddlewares(e *echo.Echo, logger *zap.Logger, mws []echo.Middleware
 }
 
 // ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
-func ApplyUseMiddlewares(e *echo.Echo, logger *zap.Logger, mws []echo.MiddlewareFunc) {
+func ApplyUseMiddlewares(e *echo.Echo, logger *zap.Logger, mws []UseMiddleware) {
 	logger.Info("Applying use middleware", zap.Int("count", len(mws)))
+
+	// Order でソートしてから適用
+	sort.Slice(mws, func(i, j int) bool {
+		return mws[i].Priority < mws[j].Priority
+	})
+
 	for _, mw := range mws {
-		e.Use(mw)
+		e.Use(mw.Middleware)
 	}
 }
 

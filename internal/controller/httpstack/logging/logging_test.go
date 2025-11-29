@@ -54,6 +54,7 @@ func Test_buildRequestLogFields(t *testing.T) {
 	expectedStatus := http.StatusOK
 	expectedLatency := 100 * time.Millisecond
 	expectedRemoteIP := "192.0.2.1"
+	expectedRequestID := ""
 	expectedTID := trace.TraceID{0x01, 0x02, 0x03}
 	expectedSID := trace.SpanID{0x04, 0x05, 0x06}
 	ipWithPort := expectedRemoteIP + ":12345"
@@ -91,6 +92,7 @@ func Test_buildRequestLogFields(t *testing.T) {
 			zap.Int("status", expectedStatus),
 			zap.Duration("latency", expectedLatency),
 			zap.String("remote_ip", expectedRemoteIP),
+			zap.String("request_id", expectedRequestID),
 			zap.String("trace_id", expectedTID.String()),
 			zap.String("span_id", expectedSID.String()),
 		}

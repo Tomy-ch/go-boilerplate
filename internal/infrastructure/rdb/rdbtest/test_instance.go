@@ -9,10 +9,12 @@ import (
 
 	"boilerplate-go/internal/config"
 	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/tx"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
 
@@ -26,11 +28,32 @@ type testTxManager struct {
 	t     *testing.T
 }
 
-var rollbackForTestError = xerrors.New("the test was successful, so we rolled it back")
+var rollbackForTestError = xerrors.New("rollback for test")
 
-// NewTestInstances はリポジトリのテスト用で必要なインスタンスを生成して返します。
-func NewTestInstances(t *testing.T) (
-	*sql.DB, Manager, *zap.Logger, *time.Location,
+// NewTestInstancesForNew は、リポジトリのNew関数用テストインスタンスを生成します。
+func NewTestInstancesForNew(t *testing.T) (
+	*sql.DB, *zap.Logger, observability.TracerFactory,
+) {
+	t.Helper()
+
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+	db, err := rdbdriver.NewDB(dbCfg, osCfg, dbConnCfg)
+	require.NoError(t, err)
+
+	nopLogger := zap.NewNop()
+	noopTP := noop.NewTracerProvider()
+	noopTF := observability.NewTracerFactory(noopTP, nopLogger)
+
+	return db, nopLogger, noopTF
+}
+
+// NewTestInstancesForImplementedInfra は、実装済みインフラ用テストインスタンスを生成します。
+func NewTestInstancesForImplementedInfra(t *testing.T) (
+	*sql.DB, Manager, *zap.Logger, *time.Location, observability.LayerTracer,
 ) {
 	t.Helper()
 
@@ -45,15 +68,20 @@ func NewTestInstances(t *testing.T) (
 	nopLogger := zap.NewNop()
 	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
 
-	location, err := time.LoadLocation(osCfg.OSTimeZone())
+	loc, err := time.LoadLocation(osCfg.OSTimeZone())
 	require.NoError(t, err)
+
+	noopTP := noop.NewTracerProvider()
+	noopTF := observability.NewTracerFactory(noopTP, nopLogger)
+
+	tracer := noopTF.Infra()
 
 	txm := &testTxManager{
 		inner: innerTxm,
 		t:     t,
 	}
 
-	return db, txm, nopLogger, location
+	return db, txm, nopLogger, loc, tracer
 }
 
 // Do は、テスト用のトランザクションマネージャーでトランザクションを開始し、引数で渡されたfnを実行し、最後にロールバックします。

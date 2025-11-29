@@ -9,6 +9,7 @@ import (
 	"boilerplate-go/internal/apperror"
 	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
+	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/healthcheck/query"
 	"boilerplate-go/pkg/xerrors"
 
@@ -16,19 +17,24 @@ import (
 )
 
 type systemQuery struct {
-	db *sql.DB
-	z  *zap.Logger
+	tracer observability.LayerTracer
+	db     *sql.DB
+	z      *zap.Logger
 }
 
-func New(db *sql.DB, z *zap.Logger) query.DBSystemQuery {
+func New(db *sql.DB, z *zap.Logger, tf observability.TracerFactory) query.DBSystemQuery {
 	return &systemQuery{
-		db: db,
-		z:  z,
+		tracer: tf.Infra(),
+		db:     db,
+		z:      z,
 	}
 }
 
 // CheckDBHealth は、データベースの健全性をチェックします。
 func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
 	start := time.Now()
 	db := sqlc.New(rdbdriver.ResolveDriverWithLog(ctx, s.db, s.z))
 	_, err := db.GetDBHealthCheck(ctx)

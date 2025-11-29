@@ -22,6 +22,7 @@ type OperationSystemConfig struct {
 
 type ApplicationConfig struct {
 	env             string
+	name            string
 	mode            string
 	shutdownTimeout time.Duration
 }
@@ -79,6 +80,9 @@ func (a *ApplicationConfig) AppEnv() string { return a.env }
 // この環境変数はアプリケーションがどのモードで動作しているかを示します。
 // 例: "development", "production" など。
 func (a *ApplicationConfig) AppMode() string { return a.mode }
+
+// AppName は、アプリケーションの名前を返します。
+func (a *ApplicationConfig) AppName() string { return a.name }
 
 // AppShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。
 func (a *ApplicationConfig) AppShutdownTimeout() time.Duration { return a.shutdownTimeout }

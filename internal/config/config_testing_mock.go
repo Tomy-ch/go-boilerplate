@@ -14,17 +14,19 @@ import (
 var (
 	// operationSystem
 	expectedOSTimeZone = "Asia/Tokyo"
+	// application
+	expectedApplicationEnv          = "test"
+	expectedApplicationName         = "TestApp"
+	expectedApplicationMode         = DevelopmentMode
+	expectedAppShutdownTimeoutCount = 60
+	expectedAppShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
+	expectedAppShutdownTimeout      = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
 	// server
-	expectedApplicationEnv             = "test"
-	expectedApplicationMode            = DevelopmentMode
-	expectedHost                       = "localhost"
-	expectedPort                       = 8080
+	expectedServerHost                 = "localhost"
+	expectedServerPort                 = 8080
 	expectedServerShutdownTimeoutCount = 30
 	expectedServerShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedServerShutdownTimeoutCount)
 	expectedServerShutdownTimeout      = time.Duration(expectedServerShutdownTimeoutCount) * time.Second
-	expectedAppShutdownTimeoutCount    = 60
-	expectedAppShutdownTimeoutStr      = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
-	expectedAppShutdownTimeout         = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
 	// metrics
 	expectedMetricsHost = "localhost"
 	expectedMetricsPort = 6060
@@ -60,12 +62,13 @@ func MockConfigForTest(t testing.TB) *Config {
 		},
 		app: ApplicationConfig{
 			env:             expectedApplicationEnv,
+			name:            expectedApplicationName,
 			mode:            expectedApplicationMode,
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
-			host:            expectedHost,
-			port:            expectedPort,
+			host:            expectedServerHost,
+			port:            expectedServerPort,
 			shutdownTimeout: expectedServerShutdownTimeout,
 		},
 		metrics: MetricsConfig{
@@ -104,6 +107,7 @@ func mockLoader(t testing.TB) Loader {
 		},
 		App: Application{
 			Env:             expectedApplicationEnv,
+			Name:            expectedApplicationName,
 			Mode:            expectedApplicationMode,
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
@@ -112,8 +116,8 @@ func mockLoader(t testing.TB) Loader {
 			Port: expectedMetricsPort,
 		},
 		Server: Server{
-			Host:            expectedHost,
-			Port:            expectedPort,
+			Host:            expectedServerHost,
+			Port:            expectedServerPort,
 			ShutdownTimeout: expectedServerShutdownTimeout,
 		},
 		Database: Database{
@@ -138,11 +142,12 @@ func setEnv(t testing.TB) {
 	t.Setenv("OS_TZ", expectedOSTimeZone)
 	// Application
 	t.Setenv("APP_ENV", expectedApplicationEnv)
+	t.Setenv("APP_NAME", expectedApplicationName)
 	t.Setenv("APP_MODE", expectedApplicationMode)
 	t.Setenv("APP_SHUTDOWN_TIMEOUT", expectedAppShutdownTimeoutStr)
 	// Server
-	t.Setenv("SERVER_HOST", expectedHost)
-	t.Setenv("SERVER_PORT", strconv.Itoa(expectedPort))
+	t.Setenv("SERVER_HOST", expectedServerHost)
+	t.Setenv("SERVER_PORT", strconv.Itoa(expectedServerPort))
 	t.Setenv("SERVER_SHUTDOWN_TIMEOUT", expectedServerShutdownTimeoutStr)
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)

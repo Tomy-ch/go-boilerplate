@@ -1,15 +1,28 @@
 package requestid
 
-import "go.uber.org/fx"
+import (
+	"boilerplate-go/internal/controller/httpstack"
+
+	"go.uber.org/fx"
+)
+
+const priority = 1
 
 // Module は、リクエストID制御のミドルウェアを提供するfxモジュールを返します。
 func Module() fx.Option {
 	return fx.Module("mw.requestid",
 		fx.Provide(
-			fx.Annotate(
-				Middleware,
-				fx.ResultTags(`group:"middlewares.use"`),
-			),
+			UseMiddleware,
 		),
 	)
+}
+
+// UseMiddleware は、リクエストIDの生成ミドルウェアを提供します。
+func UseMiddleware() httpstack.UseMiddlewareOut {
+	return httpstack.UseMiddlewareOut{
+		Middleware: httpstack.UseMiddleware{
+			Priority:   priority,
+			Middleware: Middleware(),
+		},
+	}
 }

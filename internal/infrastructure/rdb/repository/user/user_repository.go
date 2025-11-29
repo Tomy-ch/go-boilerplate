@@ -9,24 +9,30 @@ import (
 	"boilerplate-go/internal/infrastructure/rdb/conv"
 	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
+	"boilerplate-go/internal/observability"
 
 	"go.uber.org/zap"
 )
 
 type repository struct {
-	db *sql.DB
-	z  *zap.Logger
+	tracer observability.LayerTracer
+	db     *sql.DB
+	z      *zap.Logger
 }
 
-func New(db *sql.DB, z *zap.Logger) user.Repository {
+func New(db *sql.DB, z *zap.Logger, tf observability.TracerFactory) user.Repository {
 	return &repository{
-		db: db,
-		z:  z,
+		tracer: tf.Infra(),
+		db:     db,
+		z:      z,
 	}
 }
 
 // GetAllUsers は、全ユーザーの情報を取得します。
 func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.Entities, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
 	db := sqlc.New(rdbdriver.ResolveDriverWithLog(ctx, r.db, r.z))
 	rows, err := db.GetUsersDomain(ctx, sqlc.GetUsersDomainParams{
 		OffsetParam: conv.NewNullInt64(int64(offset)),

@@ -11,13 +11,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewTestInstances(t *testing.T) {
+func TestNewTestInstancesForNew(t *testing.T) {
 	t.Parallel()
-	db, txm, logger, location := NewTestInstances(t)
+	db, logger, tp := NewTestInstancesForNew(t)
+	require.NotNil(t, db)
+	require.NotNil(t, logger)
+	require.NotNil(t, tp)
+}
+
+func TestNewTestInstancesForImplementedInfra(t *testing.T) {
+	t.Parallel()
+	db, txm, logger, location, tracer := NewTestInstancesForImplementedInfra(t)
 	require.NotNil(t, db)
 	require.NotNil(t, txm)
 	require.NotNil(t, logger)
 	require.NotNil(t, location)
+	require.NotNil(t, tracer)
 }
 
 func Test_testTxManager_Do(t *testing.T) {

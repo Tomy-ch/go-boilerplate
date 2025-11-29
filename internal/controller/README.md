@@ -99,6 +99,55 @@
 - 自動判定しているステータスコードを変更するために、エラーを握りつぶして独自に返す
 - ログは **Zap ミドルウェア**（リクエストID, ルート, ステータス, 所要時間）
 
+## Observability（Tracing）の使い方
+
+このboilerplateでは、Controller層で直接OpenTelemetrySDKを扱わず、
+observability.LayerTracerを経由してspanの開始・終了を行います。
+
+### 1. Controller層でのspanの開始と終了
+
+各ハンドラーの先頭で必ず次の2行を記述してください。
+
+```go
+ctx, endSpan := s.tracer.Start(ctx)
+defer endSpan()
+```
+
+- Start(ctx)でspanが開始され、trace_id/span_idがcontextに紐づきます。
+- endSpan()は、spanの終了（span.End）を行います。
+- defer endSpan()により例外や早期returnがあっても必ず終了されます。
+
+ポイント：Controllerはspanの開始・終了だけを知り、
+OpenTelemetry SDK の詳細には一切触れません。
+
+### 2. TracerのDI（observability.LayerTracer）
+
+Controllerは以下のようにobservability.LayerTracerを依存として受け取ります。
+
+```go
+type server struct {
+    tracer observability.LayerTracer
+    uc      user.Usecase // それぞれのユースケース
+}
+```
+
+BindHandler側ではDIコンテナから渡されたtrace.TracerProviderとzap.Loggerを用いて、
+`observability.NewControllerTracer`でController専用のトレーサーを生成します。
+
+```go
+func BindHandler(
+  e *echo.Echo, tf observability.TracerFactory, uc user.Usecase
+) {
+    gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
+        tracer: tf.Controller(),
+        uc:     uc,
+    }, nil))
+}
+```
+
+ここではSDKの生インスタンスを直接使わず、
+observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
+
 ## 参考スニペット
 
 ```go
@@ -108,20 +157,39 @@
 // パッケージ名は衝突防止のためURIに合わせてください
 package v1users
 
+import (
+    "context"
+
+    "boilerplate-go/internal/observability"
+    // それぞれ実装で使うパッケージをimport
+
+    "github.com/labstack/echo/v4"
+    "go.opentelemetry.io/otel/trace"
+    "go.uber.org/zap"
+)
+
+
 type server struct {
-    uc user.Service
+    tracer observability.LayerTracer
+    uc      user.Service
 }
 
 // この関数をdi/handler.goで、[<package>.BindHandler,]として登録する。
-func BindHandler(e *echo.Echo, uc user.Service) {
+func BindHandler(
+  e *echo.Echo, tf observability.TracerFactory, uc user.Service,
+) {
     gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
+        tracer: tf.Controller(),
         uc: uc,
     }, nil))
 }
 
 // handler
 func (s *server) GetV1UsersDetail(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
-    // HTTP → VO
+    // Spanの開始・終了呼び出して設定
+    ctx, endSpan := s.tracer.Start(ctx)
+    defer endSpan()
+
     page := usecase.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 
     // Usecase 呼び出し（DTO返却）

@@ -13,6 +13,7 @@ import (
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 const targetPath = "/ready"
@@ -20,10 +21,10 @@ const targetPath = "/ready"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, ctrl := handlertest.NewBindHandlerTestInstance(t)
+	e, ctrl, tf, _ := handlertest.NewTestInstanceForBindHandler(t)
 	uc := mock_healthcheckuc.NewMockUsecase(ctrl)
 
-	BindHandler(e, uc)
+	BindHandler(e, tf, uc)
 
 	expectedMethods := []string{http.MethodGet}
 
@@ -38,7 +39,7 @@ func TestBindHandler(t *testing.T) {
 func TestGetReady(t *testing.T) {
 	t.Parallel()
 
-	ctx, ctrl, loc := handlertest.NewImplementHandlerTestInstances(t)
+	ctx, ctrl, loc, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -51,7 +52,7 @@ func TestGetReady(t *testing.T) {
 			expectedDBLatency := time.Duration(1500000)
 
 			uc := mock_healthcheckuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CheckHealth(ctx).Return(
+			uc.EXPECT().CheckHealth(gomock.Any()).Return(
 				healthcheckuc.DTO{
 					Status:          expectedStatus,
 					ApplicationTime: expectedAppTime,
@@ -62,6 +63,7 @@ func TestGetReady(t *testing.T) {
 				}, nil)
 
 			s := &server{
+				tracer:        lt,
 				healthUsecase: uc,
 			}
 
@@ -90,11 +92,12 @@ func TestGetReady(t *testing.T) {
 			expectedErr := xerrors.New("example error")
 
 			uc := mock_healthcheckuc.NewMockUsecase(ctrl)
-			uc.EXPECT().CheckHealth(ctx).Return(
+			uc.EXPECT().CheckHealth(gomock.Any()).Return(
 				healthcheckuc.DTO{},
 				expectedErr,
 			)
 			s := &server{
+				tracer:        lt,
 				healthUsecase: uc,
 			}
 

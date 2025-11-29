@@ -4,6 +4,8 @@ package logging
 import (
 	"time"
 
+	"boilerplate-go/internal/controller/httpstack/requestid"
+
 	"github.com/labstack/echo/v4"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -45,6 +47,7 @@ func buildRequestLogFields(c echo.Context, latency time.Duration) []zap.Field {
 		zap.Int("status", status),
 		zap.Duration("latency", latency),
 		zap.String("remote_ip", c.RealIP()),
+		zap.String("request_id", requestid.GetRequestIDFromResponse(c)),
 		zap.String("trace_id", spanCtx.TraceID().String()),
 		zap.String("span_id", spanCtx.SpanID().String()),
 	}

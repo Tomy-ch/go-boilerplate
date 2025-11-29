@@ -17,12 +17,13 @@ func TestMockConfigForTest(t *testing.T) {
 		},
 		app: ApplicationConfig{
 			env:             expectedApplicationEnv,
+			name:            expectedApplicationName,
 			mode:            expectedApplicationMode,
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
-			host:            expectedHost,
-			port:            expectedPort,
+			host:            expectedServerHost,
+			port:            expectedServerPort,
 			shutdownTimeout: expectedServerShutdownTimeout,
 		},
 		metrics: MetricsConfig{
@@ -63,12 +64,13 @@ func Test_mockLoader(t *testing.T) {
 		},
 		App: Application{
 			Env:             expectedApplicationEnv,
+			Name:            expectedApplicationName,
 			Mode:            expectedApplicationMode,
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
 		Server: Server{
-			Host:            expectedHost,
-			Port:            expectedPort,
+			Host:            expectedServerHost,
+			Port:            expectedServerPort,
 			ShutdownTimeout: expectedServerShutdownTimeout,
 		},
 		Metrics: Metrics{
@@ -103,8 +105,8 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, expectedApplicationMode, os.Getenv("APP_MODE"))
 	require.Equal(t, expectedAppShutdownTimeoutStr, os.Getenv("APP_SHUTDOWN_TIMEOUT"))
 	// Server
-	require.Equal(t, expectedHost, os.Getenv("SERVER_HOST"))
-	require.Equal(t, strconv.Itoa(expectedPort), os.Getenv("SERVER_PORT"))
+	require.Equal(t, expectedServerHost, os.Getenv("SERVER_HOST"))
+	require.Equal(t, strconv.Itoa(expectedServerPort), os.Getenv("SERVER_PORT"))
 	require.Equal(t, expectedServerShutdownTimeoutStr, os.Getenv("SERVER_SHUTDOWN_TIMEOUT"))
 	// Metrics
 	require.Equal(t, expectedMetricsHost, os.Getenv("METRICS_HOST"))

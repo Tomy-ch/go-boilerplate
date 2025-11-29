@@ -75,12 +75,12 @@ func TestGetterMethods(t *testing.T) {
 		server := cfg.server
 		t.Run("ServerHost", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedHost, server.ServerHost())
+			require.Equal(t, expectedServerHost, server.ServerHost())
 		})
 
 		t.Run("ServerPort", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedPort, server.ServerPort())
+			require.Equal(t, expectedServerPort, server.ServerPort())
 		})
 
 		t.Run("ServerShutdownTimeout", func(t *testing.T) {
@@ -110,6 +110,11 @@ func TestGetterMethods(t *testing.T) {
 		t.Run("AppEnv", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedApplicationEnv, app.AppEnv())
+		})
+
+		t.Run("AppName", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedApplicationName, app.AppName())
 		})
 
 		t.Run("AppMode", func(t *testing.T) {

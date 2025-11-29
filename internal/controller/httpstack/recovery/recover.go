@@ -18,9 +18,9 @@ const (
 )
 
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。
-func Middleware(logger *zap.Logger, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
-	cnf := newRecoverConfig(logger, appCfg)
-	cnf.LogErrorFunc = newRecoverLogErrorFunc(logger)
+func Middleware(z *zap.Logger, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
+	cnf := newRecoverConfig(z, appCfg)
+	cnf.LogErrorFunc = newRecoverLogErrorFunc(z)
 
 	return middleware.RecoverWithConfig(cnf)
 }

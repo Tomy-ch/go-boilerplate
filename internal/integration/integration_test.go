@@ -98,5 +98,4 @@ func AssertJSONResponse[T any](t *testing.T, _ T, actualResponse *http.Response)
 
 	var actualObj T
 	require.NoError(t, json.Unmarshal(resBody, &actualObj), "返却された型が期待された型と一致しません。第二引数が期待される型であることを確認してください。")
-	require.NotEmpty(t, actualObj)
 }

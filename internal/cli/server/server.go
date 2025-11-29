@@ -50,8 +50,9 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	app := fx.New(
 		// Core Module
 		di.ConfigModule(),
-		di.DatabaseModule(),
 		di.LoggingModule(),
+		di.ObservabilityModule(),
+		di.DatabaseModule(),
 		di.HTTPStackModule(),
 		// DDD Modules
 		di.InfrastructureModule(),

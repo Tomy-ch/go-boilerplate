@@ -10,10 +10,12 @@ import (
 
 func TestNewBindHandlerTestInstance(t *testing.T) {
 	t.Parallel()
-	e, ctrl := NewBindHandlerTestInstance(t)
+	e, ctrl, tp, log := NewTestInstanceForBindHandler(t)
 
 	require.NotNil(t, e)
 	require.NotNil(t, ctrl)
+	require.NotNil(t, tp)
+	require.NotNil(t, log)
 }
 
 func TestNewImplementHandlerTestInstances(t *testing.T) {
@@ -22,9 +24,10 @@ func TestNewImplementHandlerTestInstances(t *testing.T) {
 	expectedLoc, err := time.LoadLocation("Asia/Tokyo")
 	require.NoError(t, err)
 
-	actualCtx, actualCtrl, actualLoc := NewImplementHandlerTestInstances(t)
+	actualCtx, actualCtrl, actualLoc, actualLt := NewTestInstancesForImplementedUsecase(t)
 
 	require.Equal(t, expectedCtx, actualCtx)
 	require.NotNil(t, actualCtrl)
 	require.Equal(t, expectedLoc, actualLoc)
+	require.NotNil(t, actualLt)
 }

@@ -1,7 +1,6 @@
 package health
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -16,8 +15,8 @@ const targetPath = "/health"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, _ := handlertest.NewBindHandlerTestInstance(t)
-	BindHandler(e)
+	e, _, tf, _ := handlertest.NewTestInstanceForBindHandler(t)
+	BindHandler(e, tf)
 
 	expectedMethods := []string{http.MethodGet}
 	handlertest.AssertEchoRouterPath(
@@ -31,10 +30,13 @@ func TestBindHandler(t *testing.T) {
 func TestGetHealth(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx, _, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
+	s := &server{
+		tracer: lt,
+	}
+
 	expectedResponse := gen.ResponseHealth{Status: "ok"}
 
-	s := &server{}
 	resp, err := s.GetHealth(ctx, gen.GetHealthRequestObject{})
 	require.NoError(t, err)
 
