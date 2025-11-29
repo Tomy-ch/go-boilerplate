@@ -5,4 +5,5 @@ required:
 properties:
   status:
     type: string
+    description: サーバーの現在のステータスを示します。
     example: "ok"

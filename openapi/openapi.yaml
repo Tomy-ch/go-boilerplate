@@ -31,9 +31,11 @@ servers:
     description: Versioned API endpoint (replace with actual URL)
 paths:
   /health:
-    $ref: './paths/health.yaml'
+    $ref: './paths/health/health.yaml'
   /healthz:
-    $ref: './paths/healthz.yaml'
+    $ref: './paths/healthz/healthz.yaml'
+  /ready:
+    $ref: './paths/ready/ready.yaml'
   /v1/users:
     $ref: './paths/v1/users.yaml'
   /v1/users/{user_id}:
@@ -59,7 +61,9 @@ components:
     UserResponse:
       $ref: './components/schemas/UserResponse.yaml'
     ResponseHealth:
-      $ref: './components/responses/health/HealthResponse.yaml'
+      $ref: './components/responses/health-check/HealthResponse.yaml'
+    ResponseReady:
+      $ref: './components/responses/health-check/ReadyResponse.yaml'
     ResponseV1User:
       $ref: './components/schemas/UserResponse.yaml'
     ResponseV1Users:

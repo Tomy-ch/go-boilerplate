@@ -2949,7 +2949,7 @@ func DoWithResult[T any](
 }
 </pre>
 		
-		<pre class="file" id="file64" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock$GOPACKAGE
+		<pre class="file" id="file64" style="display: none">//go:generate mockgen -source=mock_$GOFILE -destination=mock_$GOFILE -package=mock$GOPACKAGE
 
 // Package user は、ユーザーに関するユースケースを提供します。
 package user

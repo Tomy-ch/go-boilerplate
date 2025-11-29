@@ -97,8 +97,7 @@
 ## 最小スニペット（雛形）
 
 ```go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock$GOPACKAGE
-
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 // 唯一生のある名称 + ucのサフィックス
 package useruc
 

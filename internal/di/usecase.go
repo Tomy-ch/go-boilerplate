@@ -1,6 +1,7 @@
 package di
 
 import (
+	healthcheckuc "boilerplate-go/internal/usecase/healthcheck"
 	useruc "boilerplate-go/internal/usecase/user"
 
 	"go.uber.org/fx"
@@ -11,6 +12,7 @@ func UsecaseModule() fx.Option {
 	return fx.Module("usecase",
 		fx.Provide(
 			useruc.New,
+			healthcheckuc.New,
 		),
 	)
 }
