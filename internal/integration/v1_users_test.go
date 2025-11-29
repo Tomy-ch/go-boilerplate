@@ -20,7 +20,6 @@ func TestV1Users_Integration(t *testing.T) {
 		e := echo.New()
 
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
 		mockApp := mock_useruc.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
 			GetAllUsers(gomock.Any(), gomock.Any()).

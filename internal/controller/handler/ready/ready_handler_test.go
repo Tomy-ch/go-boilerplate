@@ -1,7 +1,6 @@
 package ready
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -13,9 +12,7 @@ import (
 	"boilerplate-go/internal/usecase/healthcheck/query"
 	"boilerplate-go/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 const targetPath = "/ready"
@@ -23,10 +20,7 @@ const targetPath = "/ready"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	e, ctrl := handlertest.NewBindHandlerTestInstance(t)
 	uc := mock_healthcheckuc.NewMockUsecase(ctrl)
 
 	BindHandler(e, uc)
@@ -44,10 +38,7 @@ func TestBindHandler(t *testing.T) {
 func TestGetReady(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	ctx := context.Background()
+	ctx, ctrl, loc := handlertest.NewImplementHandlerTestInstances(t)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -55,8 +46,8 @@ func TestGetReady(t *testing.T) {
 		t.Run("レディネスチェックが成功する", func(t *testing.T) {
 			t.Parallel()
 			expectedStatus := healthcheckuc.Ok
-			expectedAppTime := time.Date(2024, time.June, 1, 12, 0, 1, 0, time.UTC)
-			expectedDBResAt := time.Date(2024, time.June, 1, 12, 0, 2, 0, time.UTC)
+			expectedAppTime := time.Date(2024, time.June, 1, 12, 0, 1, 0, loc)
+			expectedDBResAt := time.Date(2024, time.June, 1, 12, 0, 2, 0, loc)
 			expectedDBLatency := time.Duration(1500000)
 
 			uc := mock_healthcheckuc.NewMockUsecase(ctrl)

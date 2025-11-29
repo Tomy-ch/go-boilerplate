@@ -1,0 +1,30 @@
+package handlertest
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewBindHandlerTestInstance(t *testing.T) {
+	t.Parallel()
+	e, ctrl := NewBindHandlerTestInstance(t)
+
+	require.NotNil(t, e)
+	require.NotNil(t, ctrl)
+}
+
+func TestNewImplementHandlerTestInstances(t *testing.T) {
+	t.Parallel()
+	expectedCtx := context.Background()
+	expectedLoc, err := time.LoadLocation("Asia/Tokyo")
+	require.NoError(t, err)
+
+	actualCtx, actualCtrl, actualLoc := NewImplementHandlerTestInstances(t)
+
+	require.Equal(t, expectedCtx, actualCtx)
+	require.NotNil(t, actualCtrl)
+	require.Equal(t, expectedLoc, actualLoc)
+}

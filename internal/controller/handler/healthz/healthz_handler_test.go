@@ -8,7 +8,6 @@ import (
 	"boilerplate-go/internal/controller/handler/handlertest"
 	"boilerplate-go/internal/controller/handler/healthz/gen"
 
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +16,7 @@ const targetPath = "/healthz"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
+	e, _ := handlertest.NewBindHandlerTestInstance(t)
 	BindHandler(e)
 
 	expectedMethods := []string{http.MethodGet}
