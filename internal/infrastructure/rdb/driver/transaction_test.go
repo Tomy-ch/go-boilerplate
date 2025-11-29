@@ -13,7 +13,10 @@ import (
 
 func TestNewTransactionManager(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
-	db, err := sql.Open("pgx", cfg.DatabaseDSN())
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
+
+	db, err := sql.Open("pgx", dbCfg.DatabaseDSN(osCfg))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := db.Close()
@@ -26,8 +29,11 @@ func TestNewTransactionManager(t *testing.T) {
 
 func TestTxManager_Do(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
-	cfg.SetDatabaseHost(t, "localhost")
-	db, err := sql.Open("pgx", cfg.DatabaseDSN())
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
+	dbCfg.SetDatabaseHost(t, "localhost")
+
+	db, err := sql.Open("pgx", dbCfg.DatabaseDSN(osCfg))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := db.Close()

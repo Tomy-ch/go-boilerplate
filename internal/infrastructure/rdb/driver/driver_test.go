@@ -12,8 +12,11 @@ import (
 
 func TestResolveConn(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
-	cfg.SetDatabaseHost(t, "localhost")
-	db, err := sql.Open("pgx", cfg.DatabaseDSN())
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
+	dbCfg.SetDatabaseHost(t, "localhost")
+
+	db, err := sql.Open("pgx", dbCfg.DatabaseDSN(osCfg))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := db.Close()

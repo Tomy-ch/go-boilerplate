@@ -9,8 +9,8 @@ import (
 )
 
 // Middleware は、CORSミドルウェアを設定して返します。
-func Middleware(cfg *config.Config) echo.MiddlewareFunc {
-	return middleware.CORSWithConfig(buildCORSConfig(cfg.AllowedOrigins()))
+func Middleware(secCfg *config.SecurityConfig) echo.MiddlewareFunc {
+	return middleware.CORSWithConfig(buildCORSConfig(secCfg.AllowedOrigins()))
 }
 
 // buildCORSConfig は、CORSミドルウェアの設定を構築します。

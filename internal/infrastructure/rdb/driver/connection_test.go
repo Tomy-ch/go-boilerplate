@@ -18,9 +18,12 @@ func TestNewDB(t *testing.T) {
 			t.Parallel()
 
 			cfg := config.MockConfigForTest(t)
-			cfg.SetDatabaseHost(t, "localhost")
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbCfg.SetDatabaseHost(t, "localhost")
+			osCfg := config.NewOSConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-			db, err := NewDB(cfg)
+			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 			require.NoError(t, err)
 			require.NotNil(t, db)
 
@@ -39,9 +42,12 @@ func TestNewDB(t *testing.T) {
 		t.Run("DSNが無効", func(t *testing.T) {
 			t.Parallel()
 			cfg := config.MockConfigForTest(t)
-			cfg.SetDatabaseDriver(t, "invalid_driver")
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbCfg.SetDatabaseDriver(t, "invalid_driver")
+			osCfg := config.NewOSConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-			db, err := NewDB(cfg)
+			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 			require.Error(t, err)
 			require.Nil(t, db)
 		})
@@ -49,9 +55,12 @@ func TestNewDB(t *testing.T) {
 		t.Run("Pingに失敗", func(t *testing.T) {
 			t.Parallel()
 			cfg := config.MockConfigForTest(t)
-			cfg.SetDatabaseName(t, "nonexistentdb")
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbCfg.SetDatabaseName(t, "nonexistentdb")
+			osCfg := config.NewOSConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-			db, err := NewDB(cfg)
+			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 			require.Error(t, err)
 			require.Nil(t, db)
 		})

@@ -18,24 +18,24 @@ const (
 )
 
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。
-func Middleware(logger *zap.Logger, cfg *config.Config) echo.MiddlewareFunc {
-	cnf := newRecoverConfig(logger, cfg)
+func Middleware(logger *zap.Logger, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
+	cnf := newRecoverConfig(logger, appCfg)
 	cnf.LogErrorFunc = newRecoverLogErrorFunc(logger)
 
 	return middleware.RecoverWithConfig(cnf)
 }
 
 // newRecoverConfig は、環境設定に基づいてリカバリミドルウェアの設定を生成します。
-func newRecoverConfig(logger *zap.Logger, cfg *config.Config) middleware.RecoverConfig {
+func newRecoverConfig(logger *zap.Logger, appCfg *config.ApplicationConfig) middleware.RecoverConfig {
 	switch {
-	case cfg.IsAppDevelopmentMode():
+	case appCfg.IsAppDevelopmentMode():
 		return developmentConfig()
-	case cfg.IsAppProductionMode():
+	case appCfg.IsAppProductionMode():
 		return productionConfig()
 	default:
 		logger.Warn(
 			"Unknown environment, using production config for recover middleware",
-			zap.String("env", cfg.AppMode()),
+			zap.String("env", appCfg.AppMode()),
 		)
 		return productionConfig()
 	}

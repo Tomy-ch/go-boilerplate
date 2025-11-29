@@ -14,20 +14,20 @@ func TestNew(t *testing.T) {
 	t.Run("開発モードの場合、Debugがtrueになること", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-		cfg := &config.Config{}
-		cfg.SetServerAppMode(t, config.DevelopmentMode)
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, config.DevelopmentMode)
 
-		New(e, cfg)
+		New(e, appCfg)
 		require.True(t, e.Debug)
 	})
 
 	t.Run("開発モード以外の場合、Debugがfalseになること", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-		cfg := &config.Config{}
-		cfg.SetServerAppMode(t, config.ProductionMode)
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, config.ProductionMode)
 
-		New(e, cfg)
+		New(e, appCfg)
 		require.False(t, e.Debug)
 	})
 }

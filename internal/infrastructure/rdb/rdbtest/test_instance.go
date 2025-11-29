@@ -35,14 +35,17 @@ func NewTestInstances(t *testing.T) (
 	t.Helper()
 
 	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := rdbdriver.NewDB(cfg)
+	db, err := rdbdriver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 
 	nopLogger := zap.NewNop()
 	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
 
-	location, err := time.LoadLocation(cfg.OSTimeZone())
+	location, err := time.LoadLocation(osCfg.OSTimeZone())
 	require.NoError(t, err)
 
 	txm := &testTxManager{

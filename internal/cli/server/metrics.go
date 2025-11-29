@@ -19,9 +19,12 @@ const (
 // MetricsServer は、メトリクスサーバーを生成します。
 // 非本番環境でのみ有効です。
 func MetricsServer(cfg *config.Config) *http.Server {
-	if !cfg.IsAppProductionMode() {
+	appCfg := config.NewApplicationConfig(cfg)
+
+	if !appCfg.IsAppProductionMode() {
+		mtcCfg := config.NewMetricsConfig(cfg)
 		return &http.Server{
-			Addr:              cfg.MetricsHost() + ":" + strconv.Itoa(cfg.MetricsPort()),
+			Addr:              mtcCfg.MetricsHost() + ":" + strconv.Itoa(mtcCfg.MetricsPort()),
 			Handler:           http.DefaultServeMux,
 			ReadHeaderTimeout: readHeaderTimeout,
 			ReadTimeout:       readTimeout,
