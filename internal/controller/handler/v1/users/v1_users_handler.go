@@ -9,7 +9,7 @@ import (
 
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	"boilerplate-go/internal/usecase/paging"
-	useruc "boilerplate-go/internal/usecase/user"
+	"boilerplate-go/internal/usecase/user"
 	"boilerplate-go/pkg/ptr"
 
 	"github.com/labstack/echo/v4"
@@ -17,10 +17,10 @@ import (
 )
 
 type server struct {
-	uc useruc.Usecase
+	uc user.Usecase
 }
 
-func BindHandler(e *echo.Echo, uc useruc.Usecase) {
+func BindHandler(e *echo.Echo, uc user.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		uc: uc,
 	}, nil))
