@@ -1,5 +1,5 @@
-// Package userrepo は、ユーザーに関するドメインのリポジトリを提供します。
-package userrepo
+// Package user は、ユーザーに関するドメインのリポジトリを提供します。
+package user
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"boilerplate-go/internal/domain/user"
 	"boilerplate-go/internal/infrastructure/rdb/conv"
 	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
-	gen "boilerplate-go/internal/infrastructure/rdb/sqlc"
+	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 
 	"go.uber.org/zap"
 )
@@ -27,8 +27,8 @@ func New(db *sql.DB, z *zap.Logger) user.Repository {
 
 // GetAllUsers は、全ユーザーの情報を取得します。
 func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.Entities, error) {
-	db := gen.New(rdbdriver.ResolveDriverWithLog(ctx, r.db, r.z))
-	rows, err := db.GetUsersDomain(ctx, gen.GetUsersDomainParams{
+	db := sqlc.New(rdbdriver.ResolveDriverWithLog(ctx, r.db, r.z))
+	rows, err := db.GetUsersDomain(ctx, sqlc.GetUsersDomainParams{
 		OffsetParam: conv.NewNullInt64(int64(offset)),
 		LimitParam:  conv.NewNullInt64(int64(limit)),
 	})

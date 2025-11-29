@@ -12,8 +12,8 @@ import (
 
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
-	cfg := config.MockConfigForTest(t)
-	mw := Middleware(cfg)
+	secCfg := config.NewSecurityConfig(config.MockConfigForTest(t))
+	mw := Middleware(secCfg)
 	require.NotNil(t, mw)
 }
 

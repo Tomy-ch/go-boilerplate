@@ -20,13 +20,16 @@ func New() *echo.Echo {
 
 // ServeHTTP は、HTTPサーバーを起動します。
 func ServeHTTP(
-	lc fx.Lifecycle, e *echo.Echo, cfg *config.Config, z *zap.Logger,
+	lc fx.Lifecycle, e *echo.Echo, z *zap.Logger,
+	appCfg *config.ApplicationConfig,
+	secCfg *config.SecurityConfig,
+	srvCfg *config.ServerConfig,
 	// 下記はサーバー機能の拡張が適用されたことを示すトークン
 	_ *httpstack.AppliedServerExtends,
 ) {
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			addr := cfg.ServerPort()
+			addr := srvCfg.ServerPort()
 			go func() {
 				if err := e.Start(":" + strconv.Itoa(addr)); err != nil {
 					z.Error("failed to start http server", zap.Error(err))
@@ -34,14 +37,14 @@ func ServeHTTP(
 			}()
 			z.Info("http started",
 				zap.String("port", strconv.Itoa(addr)),
-				zap.Strings("allowed origins", cfg.AllowedOrigins()),
-				zap.String("cidr", cfg.CIDR().IP.String()),
-				zap.String("mode", cfg.AppMode()),
+				zap.Strings("allowed origins", secCfg.AllowedOrigins()),
+				zap.String("cidr", secCfg.CIDR().IP.String()),
+				zap.String("mode", appCfg.AppMode()),
 			)
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			shutdownTime := cfg.ServerShutdownTimeout()
+			shutdownTime := srvCfg.ServerShutdownTimeout()
 			ctx, cancel := context.WithTimeout(ctx, shutdownTime)
 			defer cancel()
 			z.Info("http stopping")

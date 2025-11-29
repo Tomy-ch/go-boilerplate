@@ -4,7 +4,7 @@ package user
 import (
 	"time"
 
-	"boilerplate-go/internal/domain/user/prefecture"
+	"boilerplate-go/internal/domain/prefecture"
 	"boilerplate-go/pkg/stringkit"
 	"boilerplate-go/pkg/uuid"
 	"boilerplate-go/pkg/xerrors"

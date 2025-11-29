@@ -31,8 +31,6 @@
 
 - インターフェイスは`Usecase`（例：`user.Usecase`）で統一。
 - インスタンスの生成関数名は `New` で統一し、[di/usecase.go](../di/usecase.go) で登録する。
-- パッケージ名は機能名（例：user）＋ユースケース層を表すサフィックスの`uc`を追加する。
-  - 例: `package useruc`
 
 ### ビジネスロジックを実装しない？ → 誤解を避けて明確化
 
@@ -97,10 +95,9 @@
 ## 最小スニペット（雛形）
 
 ```go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock$GOPACKAGE
-
-// 唯一生のある名称 + ucのサフィックス
-package useruc
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+// 唯一性のある名称
+package user
 
 // 下位の層とやり取りするためのDTO
 type DTO struct {

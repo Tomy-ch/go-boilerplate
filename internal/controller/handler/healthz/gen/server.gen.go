@@ -57,14 +57,17 @@ func RegisterHandlers(router EchoRouter, si ServerInterface) {
 // Registers handlers, and prepends BaseURL to the paths, so that the paths
 // can be served under a prefix.
 func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
 
 	router.GET(baseURL+"/healthz", wrapper.GetHealthz)
+
 }
 
-type GetHealthzRequestObject struct{}
+type GetHealthzRequestObject struct {
+}
 
 type GetHealthzResponseObject interface {
 	VisitGetHealthzResponse(w http.ResponseWriter) error
@@ -86,10 +89,8 @@ type StrictServerInterface interface {
 	GetHealthz(ctx context.Context, request GetHealthzRequestObject) (GetHealthzResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    = strictecho.StrictEchoHandlerFunc
-	StrictMiddlewareFunc = strictecho.StrictEchoMiddlewareFunc
-)
+type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
+type StrictMiddlewareFunc = strictecho.StrictEchoMiddlewareFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}

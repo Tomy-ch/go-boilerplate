@@ -10,6 +10,6 @@ import (
 // New は、バナーの表示設定を行います。
 //
 // バナーは本番環境では非表示にする
-func New(e *echo.Echo, cfg *config.Config) {
-	e.HideBanner = cfg.IsAppProductionMode()
+func New(e *echo.Echo, appCfg *config.ApplicationConfig) {
+	e.HideBanner = appCfg.IsAppProductionMode()
 }

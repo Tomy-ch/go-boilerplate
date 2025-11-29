@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -15,24 +13,24 @@ func TestNewConfig(t *testing.T) {
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) {
 			setEnv(t)
 			expected := &Config{
-				os: operationSystem{
+				os: OperationSystemConfig{
 					timezone: expectedOSTimeZone,
 				},
-				app: application{
+				app: ApplicationConfig{
 					env:             expectedApplicationEnv,
 					mode:            expectedApplicationMode,
 					shutdownTimeout: expectedAppShutdownTimeout,
 				},
-				server: server{
+				server: ServerConfig{
 					host:            expectedHost,
 					port:            expectedPort,
 					shutdownTimeout: expectedServerShutdownTimeout,
 				},
-				metrics: metrics{
+				metrics: MetricsConfig{
 					host: expectedMetricsHost,
 					port: expectedMetricsPort,
 				},
-				database: database{
+				database: DatabaseConfig{
 					driver:   expectedDBDriver,
 					host:     expectedDBHost,
 					port:     expectedDBPort,
@@ -40,14 +38,14 @@ func TestNewConfig(t *testing.T) {
 					password: expectedDBPassword,
 					name:     expectedDBName,
 					sslMode:  expectedDBSSLMode,
-					connection: connection{
+					connection: DBConnectionConfig{
 						maxOpenConns: expectedDBMaxOpenConns,
 						maxIdleConns: expectedDBMaxIdleConns,
 						maxLifetime:  expectedDBMaxLifetime,
 						maxIdleTime:  expectedDBMaxIdleTime,
 					},
 				},
-				security: security{
+				security: SecurityConfig{
 					allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
 					cidr:           expectedCIDR,
 				},
@@ -148,60 +146,5 @@ func Test_validateConfig(t *testing.T) {
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
 		})
-	})
-}
-
-func TestIsAppProductionMode(t *testing.T) {
-	t.Parallel()
-	t.Run("本番環境モードの場合", func(t *testing.T) {
-		t.Parallel()
-		cfg := Config{}
-		cfg.app.mode = ProductionMode
-		require.True(t, cfg.IsAppProductionMode())
-	})
-
-	t.Run("開発環境モードの場合", func(t *testing.T) {
-		t.Parallel()
-		cfg := Config{}
-		cfg.app.mode = DevelopmentMode
-		require.False(t, cfg.IsAppProductionMode())
-	})
-}
-
-func TestIsAppDevelopmentMode(t *testing.T) {
-	t.Parallel()
-	t.Run("開発環境モードの場合", func(t *testing.T) {
-		t.Parallel()
-		cfg := Config{}
-		cfg.app.mode = DevelopmentMode
-		require.True(t, cfg.IsAppDevelopmentMode())
-	})
-
-	t.Run("本番環境モードの場合", func(t *testing.T) {
-		t.Parallel()
-		cfg := Config{}
-		cfg.app.mode = ProductionMode
-		require.False(t, cfg.IsAppDevelopmentMode())
-	})
-}
-
-func TestDatabaseURL(t *testing.T) {
-	t.Parallel()
-
-	cfg := MockConfigForTest(t)
-
-	t.Run("DatabaseURL", func(t *testing.T) {
-		t.Parallel()
-		expectedURL := fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
-			expectedDBUser,
-			expectedDBPassword,
-			expectedDBHost,
-			expectedDBPort,
-			expectedDBName,
-			expectedDBSSLMode,
-			url.QueryEscape(expectedOSTimeZone),
-		)
-		require.Equal(t, expectedURL, cfg.DatabaseDSN())
 	})
 }

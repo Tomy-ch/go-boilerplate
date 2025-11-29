@@ -8,6 +8,7 @@
 .PHONY: gen-sqlc ## SQLCのコード生成を行う
 .PHONY: gen-sqlc-repo ## ドメイン用のSQLCのコード生成を行う
 .PHONY: gen-sqlc-qs ## クエリサービス用のSQLCのコード生成を行う
+.PHONY: gen-sqlc-sysq ## システムクエリ用のSQLCのコード生成を行う
 
 gen-ctxkey:
 	@if [ -z "$(name)" ] || [ -z "$(type)" ]; then \
@@ -19,9 +20,8 @@ gen-ctxkey:
 
 gen:
 	@echo "🔄 各種ドキュメントやコードの生成します..."
-	@make gen-swagger
+	@make gen-api
 	@make gen-redoc
-	@make gen-golang-code
 	@make gen-sqlc
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
@@ -31,6 +31,10 @@ gen-golang-code:
 gen-swagger:
 	docker compose run --rm node_tool_runner swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
 
+gen-api:
+	@make gen-swagger
+	@make gen-golang-code
+
 gen-redoc:
 	docker compose run --rm node_tool_runner redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html
 
@@ -38,14 +42,23 @@ gen-sqlc:
 	@echo "🔄 SQLCのコードを生成します..."
 	@make gen-sqlc-repo
 	@make gen-sqlc-qs
+	@make gen-sqlc-sysq
 	@echo "✅ SQLCのコード生成が完了しました。"
 
 gen-sqlc-repo:
 	@echo "🔄 ドメイン用のSQLCのコード生成を行います..."; \
 	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository; \
 	echo "✅ ドメイン用のSQLCのコード生成が完了しました。"
+	@make fmt
 
 gen-sqlc-qs:
 	@echo "🔄 クエリサービス用のSQLCのコード生成を行います..."; \
 	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service; \
 	echo "✅ クエリサービス用のSQLCのコード生成が完了しました。"
+	@make fmt
+
+gen-sqlc-sysq:
+	@echo "🔄 システムクエリ用のSQLCのコード生成を行います..."; \
+	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=system_query; \
+	echo "✅ システムクエリ用のSQLCのコード生成が完了しました。"
+	@make fmt

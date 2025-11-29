@@ -1,0 +1,88 @@
+name: Application Boot Verification
+
+on:
+  pull_request:
+    paths:
+      - 'cmd/server/**.go'
+      - 'internal/**.go'
+      - 'go.mod'
+      - 'go.sum'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+    permissions:
+      contents: read
+
+  app-boot-check:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      ENV: ci
+      PORT: 8080
+    services:
+      database:
+        image: postgres:17.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Start server
+        run: |
+          # 例: cobra で `serve` コマンドがある前提
+          go run cmd/main.go serve &
+          echo $! > server.pid
+
+      - name: Wait for /ready endpoint
+        run: |
+          set -euo pipefail
+
+          for i in {1..30}; do
+            if curl -fsS "http://localhost:${PORT}/ready" > /dev/null; then
+              echo "Readiness check OK"
+              exit 0
+            fi
+            echo "Waiting for server... ($i)"
+            sleep 2
+          done
+
+          echo "Readiness check failed"
+          echo "Server logs (if any):"
+          # fx を zap で標準出力に出していればログがここに出る
+          exit 1
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill "$(cat server.pid)" || true
+          fi

@@ -18,7 +18,10 @@ func Test_provideServeConfig(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
-	out := provideServeConfig(cfg)
+	appCfg := config.NewApplicationConfig(cfg)
+	secCfg := config.NewSecurityConfig(cfg)
+
+	out := provideServeConfig(appCfg, secCfg)
 	require.NotNil(t, out)
 	require.NotNil(t, out.SrvCfg)
 

@@ -61,8 +61,10 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		logger.Fatal("failed to load config", zap.Error(err))
 	}
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
 
-	db, err := sql.Open("postgres", cfg.DatabaseDSN())
+	db, err := sql.Open("postgres", dbCfg.DatabaseDSN(osCfg))
 	if err != nil {
 		logger.Panic("failed to open database connection", zap.Error(err))
 	}

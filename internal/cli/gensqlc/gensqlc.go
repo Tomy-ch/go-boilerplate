@@ -100,7 +100,10 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		logger.Fatal("failed to load config", zap.NamedError("config", err))
 	}
-	dbURL := cfg.DatabaseDSN()
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
+
+	dbURL := dbCfg.DatabaseDSN(osCfg)
 
 	// 2) 設定YAMLの読み込み
 	sqlcYamlRaw, err := os.ReadFile(filepath.Join(workDir, sqlcRootDir, settingYamlFile))

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/domain/user/prefecture"
+	"boilerplate-go/internal/domain/prefecture"
 	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/uuid"
 

@@ -14,20 +14,20 @@ func TestNew(t *testing.T) {
 	t.Run("本番モードの場合、ポートは非表示にする", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-		cfg := &config.Config{}
-		cfg.SetServerAppMode(t, config.ProductionMode)
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, config.ProductionMode)
 
-		New(e, cfg)
+		New(e, appCfg)
 		require.True(t, e.HidePort)
 	})
 
 	t.Run("開発モードの場合、ポートは表示される", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-		cfg := &config.Config{}
-		cfg.SetServerAppMode(t, config.DevelopmentMode)
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, config.DevelopmentMode)
 
-		New(e, cfg)
-		require.False(t, e.HideBanner)
+		New(e, appCfg)
+		require.False(t, e.HidePort)
 	})
 }

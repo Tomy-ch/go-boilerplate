@@ -1,7 +1,6 @@
 package v1users
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -9,11 +8,10 @@ import (
 	"boilerplate-go/internal/controller/handler/handlertest"
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	"boilerplate-go/internal/usecase/paging"
-	useruc "boilerplate-go/internal/usecase/user"
-	mock_useruc "boilerplate-go/internal/usecase/user/mock"
+	"boilerplate-go/internal/usecase/user"
+	mock_user "boilerplate-go/internal/usecase/user/mock"
 	"boilerplate-go/pkg/ptr"
 
-	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -24,11 +22,8 @@ const targetPath = "/v1/users"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockApp := mock_useruc.NewMockUsecase(ctrl)
+	e, ctrl := handlertest.NewBindHandlerTestInstance(t)
+	mockApp := mock_user.NewMockUsecase(ctrl)
 
 	BindHandler(e, mockApp)
 
@@ -48,13 +43,11 @@ func TestBindHandler(t *testing.T) {
 func Test_server_GetUsers(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-
 	expectedPage := 1
 	expectedPerPage := 10
 
-	expectedDTO1 := useruc.DTO{Name: "User1", Email: "user1@example.com", Phone: "1234567890"}
-	expectedDTO2 := useruc.DTO{Name: "User2", Email: "user2@example.com", Phone: "0987654321"}
+	expectedDTO1 := user.DTO{Name: "User1", Email: "user1@example.com", Phone: "1234567890"}
+	expectedDTO2 := user.DTO{Name: "User2", Email: "user2@example.com", Phone: "0987654321"}
 
 	mockPaging, err := paging.NewPagingFrom1Based(ptr.To(expectedPage), ptr.To(expectedPerPage))
 	require.NoError(t, err)
@@ -71,8 +64,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("複数のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
 
 			expectedResponse := gen.ResponseV1Users{
 				Users: []gen.UserResponse{
@@ -91,8 +83,8 @@ func Test_server_GetUsers(t *testing.T) {
 				Offset: mockPaging.Offset(),
 			}
 
-			mockDTO := []useruc.DTO{expectedDTO1, expectedDTO2}
-			mockApp := mock_useruc.NewMockUsecase(ctrl)
+			mockDTO := []user.DTO{expectedDTO1, expectedDTO2}
+			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(mockDTO, nil)
@@ -109,8 +101,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
 
 			expectedResponse := gen.ResponseV1Users{
 				Users: []gen.UserResponse{
@@ -124,8 +115,8 @@ func Test_server_GetUsers(t *testing.T) {
 				Offset: mockPaging.Offset(),
 			}
 
-			mockDTO := []useruc.DTO{expectedDTO1}
-			mockApp := mock_useruc.NewMockUsecase(ctrl)
+			mockDTO := []user.DTO{expectedDTO1}
+			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(mockDTO, nil)
@@ -146,8 +137,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
 
 			invalidPage := 1_000_000
 			invalidParams := gen.GetUsersRequestObject{
@@ -157,7 +147,7 @@ func Test_server_GetUsers(t *testing.T) {
 				},
 			}
 
-			mockApp := mock_useruc.NewMockUsecase(ctrl)
+			mockApp := mock_user.NewMockUsecase(ctrl)
 
 			s := &server{uc: mockApp}
 			resp, err := s.GetUsers(ctx, invalidParams)
@@ -168,12 +158,11 @@ func Test_server_GetUsers(t *testing.T) {
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
 
 			expectedError := apperror.ErrInternal
 
-			mockApp := mock_useruc.NewMockUsecase(ctrl)
+			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
 				GetAllUsers(gomock.Any(), mockPaging).
 				Return(nil, expectedError)

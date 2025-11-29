@@ -10,28 +10,28 @@ import (
 
 func TestNew(t *testing.T) {
 	t.Run("production mode", func(t *testing.T) {
-		cfg := &config.Config{}
-		cfg.SetServerAppMode(t, "production")
+		appCfg := config.NewApplicationConfig(&config.Config{})
+		appCfg.SetServerAppMode(t, "production")
 
-		logger, err := New(cfg)
+		logger, err := New(appCfg)
 		require.NoError(t, err)
 		require.NotNil(t, logger)
 	})
 
 	t.Run("development mode", func(t *testing.T) {
-		cfg := &config.Config{}
-		cfg.SetServerAppMode(t, "development")
+		appCfg := config.NewApplicationConfig(&config.Config{})
+		appCfg.SetServerAppMode(t, "development")
 
-		logger, err := New(cfg)
+		logger, err := New(appCfg)
 		require.NoError(t, err)
 		require.NotNil(t, logger)
 	})
 
 	t.Run("unknown mode", func(t *testing.T) {
-		cfg := &config.Config{}
-		cfg.SetServerAppMode(t, "unknown")
+		appCfg := config.NewApplicationConfig(&config.Config{})
+		appCfg.SetServerAppMode(t, "unknown")
 
-		logger, err := New(cfg)
+		logger, err := New(appCfg)
 		require.Error(t, err)
 		require.Nil(t, logger)
 	})

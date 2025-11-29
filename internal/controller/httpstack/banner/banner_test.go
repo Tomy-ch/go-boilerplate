@@ -14,7 +14,7 @@ func TestNew(t *testing.T) {
 	t.Run("本番モードの場合、バナーは非表示にする", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-		cfg := &config.Config{}
+		cfg := &config.ApplicationConfig{}
 		cfg.SetServerAppMode(t, config.ProductionMode)
 
 		New(e, cfg)
@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 	t.Run("開発モードの場合、バナーは表示される", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-		cfg := &config.Config{}
+		cfg := &config.ApplicationConfig{}
 		cfg.SetServerAppMode(t, config.DevelopmentMode)
 
 		New(e, cfg)

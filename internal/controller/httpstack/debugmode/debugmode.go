@@ -8,6 +8,6 @@ import (
 )
 
 // New は、開発モード向けのデバッグ支援機能を設定します。
-func New(e *echo.Echo, cfg *config.Config) {
-	e.Debug = cfg.IsAppDevelopmentMode()
+func New(e *echo.Echo, appCfg *config.ApplicationConfig) {
+	e.Debug = appCfg.IsAppDevelopmentMode()
 }

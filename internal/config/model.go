@@ -1,41 +1,43 @@
 package config
 
 import (
+	"fmt"
 	"net"
+	"net/url"
 	"time"
 )
 
 type Config struct {
-	os       operationSystem
-	app      application
-	server   server
-	metrics  metrics
-	database database
-	security security
+	os       OperationSystemConfig
+	app      ApplicationConfig
+	server   ServerConfig
+	metrics  MetricsConfig
+	database DatabaseConfig
+	security SecurityConfig
 }
 
-type operationSystem struct {
+type OperationSystemConfig struct {
 	timezone string
 }
 
-type application struct {
+type ApplicationConfig struct {
 	env             string
 	mode            string
 	shutdownTimeout time.Duration
 }
 
-type server struct {
+type ServerConfig struct {
 	host            string
 	port            int
 	shutdownTimeout time.Duration
 }
 
-type metrics struct {
+type MetricsConfig struct {
 	host string
 	port int
 }
 
-type database struct {
+type DatabaseConfig struct {
 	driver     string
 	host       string
 	port       int
@@ -43,92 +45,132 @@ type database struct {
 	password   string
 	name       string
 	sslMode    string
-	connection connection
+	connection DBConnectionConfig
 }
 
-type connection struct {
+type DBConnectionConfig struct {
 	maxOpenConns int
 	maxIdleConns int
 	maxLifetime  time.Duration
 	maxIdleTime  time.Duration
 }
 
-type security struct {
+type SecurityConfig struct {
 	allowedOrigins []string
 	cidr           *net.IPNet
 }
 
+// NewOSConfig は、OSの設定を返します。
+func NewOSConfig(cfg *Config) *OperationSystemConfig { return &cfg.os }
+
 // OSTimeZone は、OSのタイムゾーンを返します。
-func (c *Config) OSTimeZone() string { return c.os.timezone }
+func (o *OperationSystemConfig) OSTimeZone() string { return o.timezone }
 
-// ServerHost は、サーバーがリッスンするホスト名を返します。
-func (c *Config) ServerHost() string { return c.server.host }
-
-// ServerPort は、サーバーがリッスンするポート番号を返します。
-func (c *Config) ServerPort() int { return c.server.port }
-
-// ServerShutdownTimeout は、サーバー停止までの規定時間を返します。
-func (c *Config) ServerShutdownTimeout() time.Duration { return c.server.shutdownTimeout }
-
-// MetricsHost は、メトリクスサーバーがリッスンするホスト名を返します。
-func (c *Config) MetricsHost() string { return c.metrics.host }
-
-// MetricsPort は、メトリクスサーバーがリッスンするポート番号を返します。
-func (c *Config) MetricsPort() int { return c.metrics.port }
+// NewApplicationConfig は、アプリケーションの設定を返します。
+func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &cfg.app }
 
 // AppEnv は、サーバーの環境を返します。
 //
 // 例: "local", "development", "staging", "production" など。
-func (c *Config) AppEnv() string { return c.app.env }
+func (a *ApplicationConfig) AppEnv() string { return a.env }
 
 // AppMode は、アプリケーションの環境を返します。
 //
 // この環境変数はアプリケーションがどのモードで動作しているかを示します。
 // 例: "development", "production" など。
-func (c *Config) AppMode() string { return c.app.mode }
+func (a *ApplicationConfig) AppMode() string { return a.mode }
 
 // AppShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。
-func (c *Config) AppShutdownTimeout() time.Duration { return c.app.shutdownTimeout }
+func (a *ApplicationConfig) AppShutdownTimeout() time.Duration { return a.shutdownTimeout }
+
+// IsAppProductionMode は、アプリケーションが本番環境モードかどうかを返します。
+func (a *ApplicationConfig) IsAppProductionMode() bool {
+	return a.mode == ProductionMode
+}
+
+// IsAppDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。
+func (a *ApplicationConfig) IsAppDevelopmentMode() bool {
+	return a.mode == DevelopmentMode
+}
+
+// NewServerConfig は、サーバーの設定を返します。
+func NewServerConfig(cfg *Config) *ServerConfig { return &cfg.server }
+
+// ServerHost は、サーバーがリッスンするホスト名を返します。
+func (s *ServerConfig) ServerHost() string { return s.host }
+
+// ServerPort は、サーバーがリッスンするポート番号を返します。
+func (s *ServerConfig) ServerPort() int { return s.port }
+
+// ServerShutdownTimeout は、サーバー停止までの規定時間を返します。
+func (s *ServerConfig) ServerShutdownTimeout() time.Duration { return s.shutdownTimeout }
+
+// NewMetricsConfig は、メトリクスの設定を返します。
+func NewMetricsConfig(cfg *Config) *MetricsConfig { return &cfg.metrics }
+
+// MetricsHost は、メトリクスサーバーがリッスンするホスト名を返します。
+func (m *MetricsConfig) MetricsHost() string { return m.host }
+
+// MetricsPort は、メトリクスサーバーがリッスンするポート番号を返します。
+func (m *MetricsConfig) MetricsPort() int { return m.port }
+
+// NewDatabaseConfig は、データベースの設定を返します。
+func NewDatabaseConfig(cfg *Config) *DatabaseConfig { return &cfg.database }
 
 // DatabaseDriver は、データベースのドライバー名を返します。
-func (c *Config) DatabaseDriver() string { return c.database.driver }
+func (d *DatabaseConfig) DatabaseDriver() string { return d.driver }
 
 // DatabaseHost は、データベースのホスト名を返します。
-func (c *Config) DatabaseHost() string { return c.database.host }
+func (d *DatabaseConfig) DatabaseHost() string { return d.host }
 
 // DatabasePort は、データベースのポート番号を返します。
-func (c *Config) DatabasePort() int { return c.database.port }
+func (d *DatabaseConfig) DatabasePort() int { return d.port }
 
 // DatabaseUser は、データベースのユーザー名を返します。
-func (c *Config) DatabaseUser() string { return c.database.user }
+func (d *DatabaseConfig) DatabaseUser() string { return d.user }
 
 // DatabasePassword は、データベースのパスワードを返します。
-func (c *Config) DatabasePassword() string { return c.database.password }
+func (d *DatabaseConfig) DatabasePassword() string { return d.password }
 
 // DatabaseName は、データベースの名前を返します。
-func (c *Config) DatabaseName() string { return c.database.name }
+func (d *DatabaseConfig) DatabaseName() string { return d.name }
 
 // DatabaseSSLMode は、データベースのSSLモードを返します。
-func (c *Config) DatabaseSSLMode() string { return c.database.sslMode }
+func (d *DatabaseConfig) DatabaseSSLMode() string { return d.sslMode }
+
+// DatabaseDSN は、データベースの接続URLを返します。
+func (d *DatabaseConfig) DatabaseDSN(o *OperationSystemConfig) string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
+		d.user,
+		d.password,
+		d.host,
+		d.port,
+		d.name,
+		d.sslMode,
+		url.QueryEscape(o.timezone),
+	)
+}
+
+// NewDBConnectionConfig は、データベース接続の設定を返します。
+func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.database.connection }
 
 // DBMaxOpenConns は、データベースの最大オープン接続数を返します。
-func (c *Config) DBMaxOpenConns() int { return c.database.connection.maxOpenConns }
+func (c *DBConnectionConfig) DBMaxOpenConns() int { return c.maxOpenConns }
 
 // DBMaxIdleConns は、データベースの最大アイドル接続数を返します。
-func (c *Config) DBMaxIdleConns() int { return c.database.connection.maxIdleConns }
+func (c *DBConnectionConfig) DBMaxIdleConns() int { return c.maxIdleConns }
 
 // DBConnMaxLifetime は、データベースの接続の最大寿命を返します。
-func (c *Config) DBConnMaxLifetime() time.Duration { return c.database.connection.maxLifetime }
+func (c *DBConnectionConfig) DBConnMaxLifetime() time.Duration { return c.maxLifetime }
 
 // DBConnMaxIdleTime は、データベースの接続の最大アイドル時間を返します。
-func (c *Config) DBConnMaxIdleTime() time.Duration { return c.database.connection.maxIdleTime }
+func (c *DBConnectionConfig) DBConnMaxIdleTime() time.Duration { return c.maxIdleTime }
+
+func NewSecurityConfig(cfg *Config) *SecurityConfig { return &cfg.security }
 
 // AllowedOrigins は、CORSを許可するオリジンのリストを返します。
-func (c *Config) AllowedOrigins() []string {
-	return c.security.allowedOrigins
-}
+func (s *SecurityConfig) AllowedOrigins() []string { return s.allowedOrigins }
 
 // CIDR は、セキュリティ設定で使用されるCIDRを返します。
-func (c *Config) CIDR() *net.IPNet {
-	return c.security.cidr
-}
+func (s *SecurityConfig) CIDR() *net.IPNet { return s.cidr }

@@ -4,9 +4,12 @@ coverage:
 codeToTestRatio:
   code:
     - '**/*.go'
+    - '!**/gen/**.go'
+    - '!**/cmd/**.go'
+    - '!**/sqlc/**.go'
+    - '!**/*.gen.go'
     - '!**/*_test.go'
     - '!**/mock_*.go'
-    - '!**/gen/**'
   test:
     - '**/*_test.go'
 testExecutionTime:

@@ -5,5 +5,6 @@ package gen
 
 // ResponseHealth サーバーのヘルスチェック用のレスポンスです。
 type ResponseHealth struct {
+	// Status サーバーの現在のステータスを示します。
 	Status string `json:"status"`
 }

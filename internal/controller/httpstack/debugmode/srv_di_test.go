@@ -17,8 +17,8 @@ func TestModule(t *testing.T) {
 func Test_provideServeConfig(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	out := provideServeConfig(cfg)
+	appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+	out := provideServeConfig(appCfg)
 	require.NotNil(t, out)
 	require.NotNil(t, out.SrvCfg)
 

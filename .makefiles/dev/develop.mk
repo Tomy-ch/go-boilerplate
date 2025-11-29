@@ -4,14 +4,15 @@
 .PHONY: tools ## 開発ツールの起動
 .PHONY: install ## goツールのインストール
 .PHONY: tidy-lib ## ローカルライブラリの依存関係更新
+.PHONY: fmt ## コードをフォーマット
 .PHONY: fix ## コードの自動修正
 .PHONY: lint ## コードの静的解析
 .PHONY: test ## CI用のテスト実行
 .PHONY: test-repo ## テストの実行とテストレポートの生成
 .PHONY: go-update ## goenvの更新を実行
 
-TGT_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)')
-COVER_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)' | tr '\n' ',' | sed 's/,$$//')
+TGT_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|sqlc)')
+COVER_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|sqlc)' | tr '\n' ',' | sed 's/,$$//')
 
 go-update:
 	@anyenv update
@@ -42,6 +43,11 @@ tools:
 tidy-lib:
 	go mod tidy
 	go mod vendor
+
+fmt:
+	@echo "🔄 コードのフォーマットを実行します..."
+	@go fmt ./...
+	@echo "✅ コードのフォーマットが完了しました。"
 
 fix:
 	@golangci-lint run --fix --config .golangci-full.yaml
