@@ -23,7 +23,11 @@ func TestNewTestInstances(t *testing.T) {
 func Test_testTxManager_Do(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
-	db, err := rdbdriver.NewDB(cfg)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+	db, err := rdbdriver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
 

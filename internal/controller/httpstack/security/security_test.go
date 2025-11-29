@@ -13,10 +13,10 @@ func TestBuildSecureConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("本番モード", func(t *testing.T) {
 		t.Parallel()
-		cfg := config.MockConfigForTest(t)
-		cfg.SetServerAppMode(t, config.ProductionMode)
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, config.ProductionMode)
 
-		actual := buildSecureConfig(cfg)
+		actual := buildSecureConfig(appCfg)
 
 		expected := middleware.SecureConfig{
 			XSSProtection:         "",
@@ -32,10 +32,10 @@ func TestBuildSecureConfig(t *testing.T) {
 
 	t.Run("非本番モード", func(t *testing.T) {
 		t.Parallel()
-		cfg := config.MockConfigForTest(t)
-		cfg.SetServerAppMode(t, config.DevelopmentMode)
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, config.DevelopmentMode)
 
-		actual := buildSecureConfig(cfg)
+		actual := buildSecureConfig(appCfg)
 
 		expected := middleware.SecureConfig{
 			XSSProtection:      "",
@@ -51,7 +51,7 @@ func TestBuildSecureConfig(t *testing.T) {
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
+	appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 
-	require.NotNil(t, Middleware(cfg))
+	require.NotNil(t, Middleware(appCfg))
 }

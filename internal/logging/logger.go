@@ -75,12 +75,12 @@ func NewDevelopmentLogger() *zap.Logger {
 }
 
 // New は、指定された設定に基づいて新しいZapロガーを生成します。
-func New(cfg *config.Config) (*zap.Logger, error) {
-	if cfg.IsAppProductionMode() {
+func New(appCfg *config.ApplicationConfig) (*zap.Logger, error) {
+	if appCfg.IsAppProductionMode() {
 		return NewProductionLogger(), nil
 	}
-	if cfg.IsAppDevelopmentMode() {
+	if appCfg.IsAppDevelopmentMode() {
 		return NewDevelopmentLogger(), nil
 	}
-	return nil, fmt.Errorf("unknown app mode: %s", cfg.AppMode())
+	return nil, fmt.Errorf("unknown app mode: %s", appCfg.AppMode())
 }

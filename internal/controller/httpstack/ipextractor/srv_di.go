@@ -18,10 +18,10 @@ func Module() fx.Option {
 }
 
 // provideServeConfig は、IP Extractor のサーバー設定を提供します。
-func provideServeConfig(cfg *config.Config) httpstack.ServeCfgOut {
+func provideServeConfig(appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig) httpstack.ServeCfgOut {
 	return httpstack.ServeCfgOut{
 		SrvCfg: func(e *echo.Echo) {
-			New(e, cfg)
+			New(e, appCfg, secCfg)
 		},
 	}
 }

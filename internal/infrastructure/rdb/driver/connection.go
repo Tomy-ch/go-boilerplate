@@ -24,17 +24,19 @@ type DBTX interface {
 }
 
 // NewDB は Postgres のDB接続を初期化して返します。
-func NewDB(cfg *config.Config) (*sql.DB, error) {
-	db, err := sql.Open(cfg.DatabaseDriver(), cfg.DatabaseDSN())
+func NewDB(
+	dbCfg *config.DatabaseConfig, osCfg *config.OperationSystemConfig, dbConnCfg *config.DBConnectionConfig,
+) (*sql.DB, error) {
+	db, err := sql.Open(dbCfg.DatabaseDriver(), dbCfg.DatabaseDSN(osCfg))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open DB: %w", err)
 	}
 
 	// 接続プール設定
-	db.SetMaxOpenConns(cfg.DBMaxOpenConns())
-	db.SetMaxIdleConns(cfg.DBMaxIdleConns())
-	db.SetConnMaxLifetime(cfg.DBConnMaxLifetime())
-	db.SetConnMaxIdleTime(cfg.DBConnMaxIdleTime())
+	db.SetMaxOpenConns(dbConnCfg.DBMaxOpenConns())
+	db.SetMaxIdleConns(dbConnCfg.DBMaxIdleConns())
+	db.SetConnMaxLifetime(dbConnCfg.DBConnMaxLifetime())
+	db.SetConnMaxIdleTime(dbConnCfg.DBConnMaxIdleTime())
 
 	// 疎通確認
 	if err := db.PingContext(context.Background()); err != nil {

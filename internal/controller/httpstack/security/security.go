@@ -9,12 +9,12 @@ import (
 )
 
 // Middleware は、セキュリティミドルウェアを構築します。
-func Middleware(cfg *config.Config) echo.MiddlewareFunc {
-	return middleware.SecureWithConfig(buildSecureConfig(cfg))
+func Middleware(appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
+	return middleware.SecureWithConfig(buildSecureConfig(appCfg))
 }
 
 // buildSecureConfig は、セキュリティ設定を構築します。
-func buildSecureConfig(cfg *config.Config) middleware.SecureConfig {
+func buildSecureConfig(appCfg *config.ApplicationConfig) middleware.SecureConfig {
 	scfg := middleware.SecureConfig{
 		XSSProtection:      "",
 		ContentTypeNosniff: "nosniff",
@@ -22,7 +22,7 @@ func buildSecureConfig(cfg *config.Config) middleware.SecureConfig {
 		ReferrerPolicy:     "no-referrer",
 	}
 
-	if cfg.IsAppProductionMode() {
+	if appCfg.IsAppProductionMode() {
 		scfg.HSTSExcludeSubdomains = false
 		scfg.HSTSMaxAge = 31536000
 	}

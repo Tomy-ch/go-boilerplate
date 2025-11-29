@@ -27,24 +27,24 @@ func New() (*Config, error) {
 	}
 
 	return &Config{
-		os: operationSystem{
+		os: OperationSystemConfig{
 			timezone: cfg.OS.Timezone,
 		},
-		app: application{
+		app: ApplicationConfig{
 			env:             cfg.App.Env,
 			mode:            cfg.App.Mode,
 			shutdownTimeout: cfg.App.ShutdownTimeout,
 		},
-		server: server{
+		server: ServerConfig{
 			host:            cfg.Server.Host,
 			port:            cfg.Server.Port,
 			shutdownTimeout: cfg.Server.ShutdownTimeout,
 		},
-		metrics: metrics{
+		metrics: MetricsConfig{
 			host: cfg.Metrics.Host,
 			port: cfg.Metrics.Port,
 		},
-		database: database{
+		database: DatabaseConfig{
 			driver:   cfg.Database.Driver,
 			host:     cfg.Database.Host,
 			port:     cfg.Database.Port,
@@ -52,14 +52,14 @@ func New() (*Config, error) {
 			password: cfg.Database.Password,
 			name:     cfg.Database.Name,
 			sslMode:  cfg.Database.SSLMode,
-			connection: connection{
+			connection: DBConnectionConfig{
 				maxOpenConns: cfg.Database.Connection.MaxOpenConns,
 				maxIdleConns: cfg.Database.Connection.MaxIdleConns,
 				maxLifetime:  cfg.Database.Connection.MaxLifetime,
 				maxIdleTime:  cfg.Database.Connection.MaxIdleTime,
 			},
 		},
-		security: security{
+		security: SecurityConfig{
 			allowedOrigins: cfg.Security.AllowedOrigins,
 			cidr:           v.cidr,
 		},
@@ -102,28 +102,4 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 	return &validatedConfig{
 		cidr: cidr,
 	}, nil
-}
-
-// IsAppProductionMode は、アプリケーションが本番環境モードかどうかを返します。
-func (c *Config) IsAppProductionMode() bool {
-	return c.app.mode == ProductionMode
-}
-
-// IsAppDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。
-func (c *Config) IsAppDevelopmentMode() bool {
-	return c.app.mode == DevelopmentMode
-}
-
-// DatabaseDSN は、データベースの接続URLを返します。
-func (c *Config) DatabaseDSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
-		c.database.user,
-		c.database.password,
-		c.database.host,
-		c.database.port,
-		c.database.name,
-		c.database.sslMode,
-		url.QueryEscape(c.os.timezone),
-	)
 }

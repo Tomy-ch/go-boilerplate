@@ -10,6 +10,6 @@ import (
 // New は、ポート設定を初期化します。
 //
 // ポートは本番環境では非表示にします。
-func New(e *echo.Echo, cfg *config.Config) {
-	e.HidePort = cfg.IsAppProductionMode()
+func New(e *echo.Echo, appCfg *config.ApplicationConfig) {
+	e.HidePort = appCfg.IsAppProductionMode()
 }

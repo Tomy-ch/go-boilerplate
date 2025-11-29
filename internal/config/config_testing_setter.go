@@ -12,49 +12,49 @@ import (
 // SetServerAppMode は、テスト用にサーバーのAppModeを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetServerAppMode(t testing.TB, mode string) {
+func (a *ApplicationConfig) SetServerAppMode(t testing.TB, mode string) {
 	t.Helper()
-	prev := c.AppMode()
-	c.app.mode = mode
-	t.Cleanup(func() { c.app.mode = prev })
+	prev := a.AppMode()
+	a.mode = mode
+	t.Cleanup(func() { a.mode = prev })
 }
 
 // SetDatabaseDriver は、テスト用にデータベースのドライバーを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetDatabaseDriver(t testing.TB, driver string) {
+func (d *DatabaseConfig) SetDatabaseDriver(t testing.TB, driver string) {
 	t.Helper()
-	prev := c.DatabaseDriver()
-	c.database.driver = driver
-	t.Cleanup(func() { c.database.driver = prev })
+	prev := d.DatabaseDriver()
+	d.driver = driver
+	t.Cleanup(func() { d.driver = prev })
 }
 
 // SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetDatabaseHost(t testing.TB, host string) {
+func (d *DatabaseConfig) SetDatabaseHost(t testing.TB, host string) {
 	t.Helper()
-	prev := c.DatabaseHost()
-	c.database.host = host
-	t.Cleanup(func() { c.database.host = prev })
+	prev := d.DatabaseHost()
+	d.host = host
+	t.Cleanup(func() { d.host = prev })
 }
 
 // SetDatabaseName は、テスト用にデータベースの名前を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetDatabaseName(t testing.TB, name string) {
+func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string) {
 	t.Helper()
-	prev := c.DatabaseName()
-	c.database.name = name
-	t.Cleanup(func() { c.database.name = prev })
+	prev := d.DatabaseName()
+	d.name = name
+	t.Cleanup(func() { d.name = prev })
 }
 
 // SetCIDR は、テスト用にセキュリティのCIDRを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *Config) SetCIDR(t testing.TB, cidr *net.IPNet) {
+func (s *SecurityConfig) SetCIDR(t testing.TB, cidr *net.IPNet) {
 	t.Helper()
-	prev := c.CIDR()
-	c.security.cidr = cidr
-	t.Cleanup(func() { c.security.cidr = prev })
+	prev := s.CIDR()
+	s.cidr = cidr
+	t.Cleanup(func() { s.cidr = prev })
 }

@@ -12,24 +12,24 @@ import (
 func TestMockConfigForTest(t *testing.T) {
 	t.Parallel()
 	expected := &Config{
-		os: operationSystem{
+		os: OperationSystemConfig{
 			timezone: expectedOSTimeZone,
 		},
-		app: application{
+		app: ApplicationConfig{
 			env:             expectedApplicationEnv,
 			mode:            expectedApplicationMode,
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
-		server: server{
+		server: ServerConfig{
 			host:            expectedHost,
 			port:            expectedPort,
 			shutdownTimeout: expectedServerShutdownTimeout,
 		},
-		metrics: metrics{
+		metrics: MetricsConfig{
 			host: expectedMetricsHost,
 			port: expectedMetricsPort,
 		},
-		database: database{
+		database: DatabaseConfig{
 			driver:   expectedDBDriver,
 			host:     expectedDBHost,
 			port:     expectedDBPort,
@@ -37,14 +37,14 @@ func TestMockConfigForTest(t *testing.T) {
 			password: expectedDBPassword,
 			name:     expectedDBName,
 			sslMode:  expectedDBSSLMode,
-			connection: connection{
+			connection: DBConnectionConfig{
 				maxOpenConns: expectedDBMaxOpenConns,
 				maxIdleConns: expectedDBMaxIdleConns,
 				maxLifetime:  expectedDBMaxLifetime,
 				maxIdleTime:  expectedDBMaxIdleTime,
 			},
 		},
-		security: security{
+		security: SecurityConfig{
 			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
 			cidr:           expectedCIDR,
 		},

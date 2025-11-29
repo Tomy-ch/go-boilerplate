@@ -12,31 +12,31 @@ func TestConfigTestingSetters(t *testing.T) {
 
 	t.Run("SetAppMode", func(t *testing.T) {
 		expected := "test-mode"
-		cfg.SetServerAppMode(t, expected)
-		require.Equal(t, expected, cfg.AppMode())
+		cfg.app.SetServerAppMode(t, expected)
+		require.Equal(t, expected, cfg.app.AppMode())
 	})
 
 	t.Run("SetDatabaseDriver", func(t *testing.T) {
 		expected := "test-driver"
-		cfg.SetDatabaseDriver(t, expected)
-		require.Equal(t, expected, cfg.DatabaseDriver())
+		cfg.database.SetDatabaseDriver(t, expected)
+		require.Equal(t, expected, cfg.database.DatabaseDriver())
 	})
 
 	t.Run("SetDatabaseHost", func(t *testing.T) {
 		expected := "test-host"
-		cfg.SetDatabaseHost(t, expected)
-		require.Equal(t, expected, cfg.DatabaseHost())
+		cfg.database.SetDatabaseHost(t, expected)
+		require.Equal(t, expected, cfg.database.DatabaseHost())
 	})
 
 	t.Run("SetDatabaseName", func(t *testing.T) {
 		expected := "test-name"
-		cfg.SetDatabaseName(t, expected)
-		require.Equal(t, expected, cfg.DatabaseName())
+		cfg.database.SetDatabaseName(t, expected)
+		require.Equal(t, expected, cfg.database.DatabaseName())
 	})
 
 	t.Run("SetCIDR", func(t *testing.T) {
 		_, testCIDR, _ := net.ParseCIDR("192.168.1.0/24")
-		cfg.SetCIDR(t, testCIDR)
-		require.Equal(t, testCIDR, cfg.CIDR())
+		cfg.security.SetCIDR(t, testCIDR)
+		require.Equal(t, testCIDR, cfg.security.CIDR())
 	})
 }

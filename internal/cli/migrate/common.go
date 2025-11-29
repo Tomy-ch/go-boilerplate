@@ -37,6 +37,8 @@ func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, err
 	}
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
 
-	return migrate.New("file://"+migrateFilePlace, cfg.DatabaseDSN())
+	return migrate.New("file://"+migrateFilePlace, dbCfg.DatabaseDSN(osCfg))
 }

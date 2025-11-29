@@ -18,10 +18,10 @@ import (
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
+	appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 	logger := zap.NewNop()
 
-	require.NotNil(t, Middleware(logger, cfg))
+	require.NotNil(t, Middleware(logger, appCfg))
 }
 
 func Test_newRecoverLogErrorFunc(t *testing.T) {
@@ -66,36 +66,33 @@ func Test_newRecoverConfig(t *testing.T) {
 	t.Run("開発モードの場合、developmentConfigを返す", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.MockConfigForTest(t)
-		cfg.SetServerAppMode(t, config.DevelopmentMode)
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, config.DevelopmentMode)
 
 		expected := developmentConfig()
-		actual := newRecoverConfig(logger, cfg)
-
+		actual := newRecoverConfig(logger, appCfg)
 		require.Equal(t, expected, actual)
 	})
 
 	t.Run("本番モードの場合、productionConfigを返す", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.MockConfigForTest(t)
-		cfg.SetServerAppMode(t, config.ProductionMode)
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, config.ProductionMode)
 
 		expected := productionConfig()
-		actual := newRecoverConfig(logger, cfg)
-
+		actual := newRecoverConfig(logger, appCfg)
 		require.Equal(t, expected, actual)
 	})
 
 	t.Run("不明なモードの場合、warningを出してproductionConfigを返す", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.MockConfigForTest(t)
-		cfg.SetServerAppMode(t, "unknown-mode")
+		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+		appCfg.SetServerAppMode(t, "unknown-mode")
 
 		expected := productionConfig()
-		actual := newRecoverConfig(logger, cfg)
-
+		actual := newRecoverConfig(logger, appCfg)
 		require.Equal(t, expected, actual)
 	})
 }

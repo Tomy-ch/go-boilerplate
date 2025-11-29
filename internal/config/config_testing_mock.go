@@ -55,24 +55,24 @@ var (
 func MockConfigForTest(t testing.TB) *Config {
 	t.Helper()
 	return &Config{
-		os: operationSystem{
+		os: OperationSystemConfig{
 			timezone: expectedOSTimeZone,
 		},
-		app: application{
+		app: ApplicationConfig{
 			env:             expectedApplicationEnv,
 			mode:            expectedApplicationMode,
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
-		server: server{
+		server: ServerConfig{
 			host:            expectedHost,
 			port:            expectedPort,
 			shutdownTimeout: expectedServerShutdownTimeout,
 		},
-		metrics: metrics{
+		metrics: MetricsConfig{
 			host: expectedMetricsHost,
 			port: expectedMetricsPort,
 		},
-		database: database{
+		database: DatabaseConfig{
 			driver:   expectedDBDriver,
 			host:     expectedDBHost,
 			port:     expectedDBPort,
@@ -80,14 +80,14 @@ func MockConfigForTest(t testing.TB) *Config {
 			password: expectedDBPassword,
 			name:     expectedDBName,
 			sslMode:  expectedDBSSLMode,
-			connection: connection{
+			connection: DBConnectionConfig{
 				maxOpenConns: expectedDBMaxOpenConns,
 				maxIdleConns: expectedDBMaxIdleConns,
 				maxLifetime:  expectedDBMaxLifetime,
 				maxIdleTime:  expectedDBMaxIdleTime,
 			},
 		},
-		security: security{
+		security: SecurityConfig{
 			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
 			cidr:           expectedCIDR,
 		},
