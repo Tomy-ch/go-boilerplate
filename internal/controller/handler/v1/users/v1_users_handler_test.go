@@ -1,7 +1,6 @@
 package v1users
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -13,7 +12,6 @@ import (
 	mock_useruc "boilerplate-go/internal/usecase/user/mock"
 	"boilerplate-go/pkg/ptr"
 
-	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -24,10 +22,7 @@ const targetPath = "/v1/users"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	e, ctrl := handlertest.NewBindHandlerTestInstance(t)
 	mockApp := mock_useruc.NewMockUsecase(ctrl)
 
 	BindHandler(e, mockApp)
@@ -47,8 +42,6 @@ func TestBindHandler(t *testing.T) {
 
 func Test_server_GetUsers(t *testing.T) {
 	t.Parallel()
-
-	ctx := context.Background()
 
 	expectedPage := 1
 	expectedPerPage := 10
@@ -71,8 +64,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("複数のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
 
 			expectedResponse := gen.ResponseV1Users{
 				Users: []gen.UserResponse{
@@ -109,8 +101,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
 
 			expectedResponse := gen.ResponseV1Users{
 				Users: []gen.UserResponse{
@@ -146,8 +137,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
 
 			invalidPage := 1_000_000
 			invalidParams := gen.GetUsersRequestObject{
@@ -168,8 +158,7 @@ func Test_server_GetUsers(t *testing.T) {
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+			ctx, ctrl, _ := handlertest.NewImplementHandlerTestInstances(t)
 
 			expectedError := apperror.ErrInternal
 

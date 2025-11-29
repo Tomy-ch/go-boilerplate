@@ -43,7 +43,6 @@ func Test_usecase_CheckHealth(t *testing.T) {
 		t.Run("DBのヘルスチェックが正常な場合、OKステータスが返る", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 
 			mockSysQuery.EXPECT().CheckDBHealth(ctx).Return(query.DBHealth{
@@ -81,7 +80,6 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			expectedErr := xerrors.New("DB connection failed")
 
 			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
 
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 			mockSysQuery.EXPECT().CheckDBHealth(ctx).Return(expectedDBHealth, expectedErr).Times(1)
