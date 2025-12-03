@@ -1,0 +1,146 @@
+name: Generated Artifacts Check
+
+on:
+  pull_request:
+    # 必要に応じて有効化
+    # paths:
+    #   - 'openapi/**'
+    #   - 'database/dml/**'
+    #   - 'database/sqlc/**'
+    #   - '.makefiles/gen/**'
+    #   - 'internal/cli/gensqlc/**'
+    #   - 'internal/cli/migrate/**'
+    #   - 'internal/cli/seed/**'
+    #   - 'cmd/**'
+    #   - 'docker/tools/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+    permissions:
+      contents: read
+
+  generate-check:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      ENV: ci
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Capture committed generator versions
+        id: prev_versions
+        run: |
+          # コミット済みの generator-versions.txt を退避
+          if git show HEAD:docs/meta/generator-versions.txt > /tmp/prev_generator_versions.txt 2>/dev/null; then
+            echo "has_prev=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_prev=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build tool containers
+        run: docker compose build go_tool_runner node_tool_runner
+
+      - name: Start database for sqlc
+        run: docker compose --profile tools up -d database
+
+      - name: Run generators (make gen)
+        run: |
+          make gen
+          # 生成ツールのバージョン情報もここで更新
+          make gen-tools-meta
+
+      - name: Check git diff
+        id: diff_check
+        continue-on-error: true
+        run: |
+          if ! git diff --quiet; then
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+            echo "Generated files are not up-to-date. Please run 'make gen' and commit changes."
+            echo "::group::Git status"
+            git status
+            echo "::endgroup::"
+            echo "::group::Git diff"
+            git diff
+            echo "::endgroup::"
+            exit 1
+          else
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+            echo "No diff detected."
+          fi
+
+      - name: Show changed files
+        if: steps.diff_check.outputs.has_diff == 'true'
+        run: |
+          echo "Changed files:"
+          git diff --name-only
+
+      - name: Comment generator versions on PR
+        if: github.event_name == 'pull_request' && steps.diff_check.outputs.has_diff == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            // 古い方（HEAD の内容）
+            let prev = '';
+            if ('${{ steps.prev_versions.outputs.has_prev }}' === 'true') {
+              try {
+                prev = fs.readFileSync('/tmp/prev_generator_versions.txt', 'utf8');
+              } catch (e) {
+                prev = '(コミット済みの generator-versions.txt の読み込みに失敗しました)';
+              }
+            } else {
+              prev = '(コミット済みの generator-versions.txt は存在しませんでした)';
+            }
+
+            // 新しい方（CI で make gen / make gen-tools-meta した後の内容）
+            let current = '';
+            try {
+              current = fs.readFileSync('docs/meta/generator-versions.txt', 'utf8');
+            } catch (e) {
+              current = '(CI 実行時の generator-versions.txt の読み込みに失敗しました)';
+            }
+
+            const body = [
+              '## **Generated Artifacts Check で生成物の差分を検出しました。**',
+              '',
+              '※ 📤このコメントは Generated Artifacts Check による自動投稿です。',
+              '',
+              'ツールバージョンの比較結果は次の通りです。',
+              '',
+              '---',
+              '',
+              '### 🧾 Before (HEAD の `docs/meta/generator-versions.txt`)',
+              prev,
+              '',
+              '### 🧪 After (CI で再生成した `docs/meta/generator-versions.txt`)',
+              current,
+              '',
+              '- ローカル環境でも `make tools-rebuild` を実行し、',
+              '  `make gen` あるいは `make gen-tools-meta` を実行して生成物を更新し、差分をコミットしてください 🚢',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
+      - name: Fail job if diff exists
+        if: steps.diff_check.outputs.has_diff == 'true'
+        run: exit 1
+
+      - name: Done
+        if: steps.diff_check.outputs.has_diff == 'false'
+        run: echo "✅ Generated artifacts are up-to-date."
