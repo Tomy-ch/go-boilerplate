@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/domain/user"
-	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/rdbtest"
 	"boilerplate-go/pkg/ptr"
 
@@ -15,22 +15,26 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, _, z, _ := rdbtest.NewTestInstances(t)
+	db, provider, tf := rdbtest.NewTestInstancesForNew(t)
 	expected := &repository{
-		db: db,
-		z:  z,
+		db:       db,
+		tracer:   tf.Infra(),
+		provider: provider,
 	}
-	actual := New(db, z)
-
+	actual := New(db, provider, tf)
 	require.Equal(t, expected, actual)
 }
 
 func TestGetAllUsers(t *testing.T) {
 	t.Parallel()
 
-	db, txm, z, _ := rdbtest.NewTestInstances(t)
+	db, txm, provider, _, tracer := rdbtest.NewTestInstancesForImplementedInfra(t)
 
-	repo := New(db, z)
+	repo := &repository{
+		tracer:   tracer,
+		db:       db,
+		provider: provider,
+	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -198,7 +202,7 @@ func TestGetAllUsers(t *testing.T) {
 		t.Run("無効なユーザーが挿入されていてもDomain化の時にエラーになる", func(t *testing.T) {
 			t.Parallel()
 			err := txm.Do(func(ctx context.Context) error {
-				drv := rdbdriver.ResolveDriverWithLog(ctx, db, z)
+				drv := driver.New(ctx, db)
 				_, execErr := drv.ExecContext(ctx,
 					"INSERT INTO users "+
 						"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code) "+

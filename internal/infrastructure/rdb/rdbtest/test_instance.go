@@ -3,18 +3,21 @@ package rdbtest
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
 	"boilerplate-go/internal/config"
-	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/logging"
+	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/tx"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
+
+var rollbackForTestError = xerrors.New("rollback for test")
 
 type Manager interface {
 	Do(fn func(ctx context.Context) error) error
@@ -26,34 +29,65 @@ type testTxManager struct {
 	t     *testing.T
 }
 
-var rollbackForTestError = xerrors.New("the test was successful, so we rolled it back")
-
-// NewTestInstances はリポジトリのテスト用で必要なインスタンスを生成して返します。
-func NewTestInstances(t *testing.T) (
-	*sql.DB, Manager, *zap.Logger, *time.Location,
+// NewTestInstancesForNew は、リポジトリのNew関数用テストインスタンスを生成します。
+func NewTestInstancesForNew(t *testing.T) (
+	driver.DatabaseDriver, driver.LoggingDBProvider, observability.TracerFactory,
 ) {
 	t.Helper()
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := rdbdriver.NewDB(dbCfg, osCfg, dbConnCfg)
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 
 	nopLogger := zap.NewNop()
-	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
+	lf := logging.NewLogFields(obsCfg)
 
-	location, err := time.LoadLocation(osCfg.OSTimeZone())
+	loggingDBProvider := driver.NewLoggingDBProvider(db, nopLogger, lf)
+
+	noopTF := observability.NewTestTracerFactory(t)
+
+	return db, loggingDBProvider, noopTF
+}
+
+// NewTestInstancesForImplementedInfra は、実装済みインフラ用テストインスタンスを生成します。
+func NewTestInstancesForImplementedInfra(t *testing.T) (
+	driver.DatabaseDriver, Manager, driver.LoggingDBProvider, *time.Location, observability.LayerTracer,
+) {
+	t.Helper()
+
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOSConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
+
+	nopLogger := zap.NewNop()
+	lf := logging.NewLogFields(obsCfg)
+	innerTxm := driver.NewTransactionManager(cfg, db)
+
+	loc, err := time.LoadLocation(osCfg.TimeZone())
+	require.NoError(t, err)
+
+	loggingDBProvider := driver.NewLoggingDBProvider(db, nopLogger, lf)
+
+	noopTF := observability.NewTestTracerFactory(t)
+
+	tracer := noopTF.Infra()
 
 	txm := &testTxManager{
 		inner: innerTxm,
 		t:     t,
 	}
 
-	return db, txm, nopLogger, location
+	return db, txm, loggingDBProvider, loc, tracer
 }
 
 // Do は、テスト用のトランザクションマネージャーでトランザクションを開始し、引数で渡されたfnを実行し、最後にロールバックします。

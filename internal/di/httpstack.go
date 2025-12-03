@@ -12,6 +12,7 @@ import (
 	"boilerplate-go/internal/controller/httpstack/forcejson"
 	"boilerplate-go/internal/controller/httpstack/ipextractor"
 	"boilerplate-go/internal/controller/httpstack/logging"
+	"boilerplate-go/internal/controller/httpstack/observability"
 	"boilerplate-go/internal/controller/httpstack/recovery"
 	"boilerplate-go/internal/controller/httpstack/requestid"
 	"boilerplate-go/internal/controller/httpstack/security"
@@ -42,6 +43,7 @@ func HTTPStackModule() fx.Option {
 		security.Module(),
 		uri.Module(),
 		validator.Module(),
+		observability.Module(),
 		fx.Provide(
 			httpstack.ApplyExtends,
 		),

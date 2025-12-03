@@ -18,6 +18,7 @@ func ConfigModule() fx.Option {
 			config.NewDatabaseConfig,
 			config.NewDBConnectionConfig,
 			config.NewMetricsConfig,
+			config.NewObservabilityConfig,
 			config.NewSecurityConfig,
 			config.NewServerConfig,
 		),

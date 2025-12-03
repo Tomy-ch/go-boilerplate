@@ -8,17 +8,20 @@ import (
 	"context"
 
 	"boilerplate-go/internal/controller/handler/ready/gen"
+	"boilerplate-go/internal/observability"
 	healthcheckuc "boilerplate-go/internal/usecase/healthcheck"
 
 	"github.com/labstack/echo/v4"
 )
 
 type server struct {
+	tracer        observability.LayerTracer
 	healthUsecase healthcheckuc.Usecase
 }
 
-func BindHandler(e *echo.Echo, healthUsecase healthcheckuc.Usecase) {
+func BindHandler(e *echo.Echo, tf observability.TracerFactory, healthUsecase healthcheckuc.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
+		tracer:        tf.Controller(),
 		healthUsecase: healthUsecase,
 	}, nil))
 }
@@ -27,6 +30,9 @@ func BindHandler(e *echo.Echo, healthUsecase healthcheckuc.Usecase) {
 func (s *server) GetReady(
 	ctx context.Context, _ gen.GetReadyRequestObject,
 ) (gen.GetReadyResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
 	res, err := s.healthUsecase.CheckHealth(ctx)
 	if err != nil {
 		return nil, err

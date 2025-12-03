@@ -3,6 +3,9 @@ package recovery
 
 import (
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/controller"
+	"boilerplate-go/internal/logging"
+	"boilerplate-go/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -18,9 +21,9 @@ const (
 )
 
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。
-func Middleware(logger *zap.Logger, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
-	cnf := newRecoverConfig(logger, appCfg)
-	cnf.LogErrorFunc = newRecoverLogErrorFunc(logger)
+func Middleware(z *zap.Logger, lf logging.LogFields, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
+	cnf := newRecoverConfig(z, appCfg)
+	cnf.LogErrorFunc = newRecoverLogErrorFunc(z, lf)
 
 	return middleware.RecoverWithConfig(cnf)
 }
@@ -28,30 +31,46 @@ func Middleware(logger *zap.Logger, appCfg *config.ApplicationConfig) echo.Middl
 // newRecoverConfig は、環境設定に基づいてリカバリミドルウェアの設定を生成します。
 func newRecoverConfig(logger *zap.Logger, appCfg *config.ApplicationConfig) middleware.RecoverConfig {
 	switch {
-	case appCfg.IsAppDevelopmentMode():
+	case appCfg.IsDevelopmentMode():
 		return developmentConfig()
-	case appCfg.IsAppProductionMode():
+	case appCfg.IsProductionMode():
 		return productionConfig()
 	default:
 		logger.Warn(
 			"Unknown environment, using production config for recover middleware",
-			zap.String("env", appCfg.AppMode()),
+			zap.String("env", appCfg.Mode()),
 		)
 		return productionConfig()
 	}
 }
 
 // newRecoverLogErrorFunc は、リカバリミドルウェアのログ出力関数を生成します。
-func newRecoverLogErrorFunc(logger *zap.Logger) func(c echo.Context, err error, stack []byte) error {
+func newRecoverLogErrorFunc(logger *zap.Logger, lf logging.LogFields) func(c echo.Context, err error, stack []byte) error {
 	return func(c echo.Context, err error, stack []byte) error {
 		req := c.Request()
-		logger.Error("panic recovered",
+		traceCtx := observability.ExtractSpan(req.Context())
+		reqIn := logging.HTTPRequestLogInput{
+			Method:        req.Method,
+			Path:          c.Path(),
+			URI:           req.RequestURI,
+			RemoteIP:      c.RealIP(),
+			Host:          req.Host,
+			Scheme:        req.URL.Scheme,
+			Proto:         req.Proto,
+			UserAgent:     req.UserAgent(),
+			ContentType:   req.Header.Get(echo.HeaderContentType),
+			ContentLength: req.ContentLength,
+			QueryParams:   controller.ExtractQueryParams(c),
+			PathParams:    controller.ExtractPathParams(c),
+			TraceID:       traceCtx.TraceID(),
+			SpanID:        traceCtx.SpanID(),
+		}
+		recoverFields := []zap.Field{
 			zap.Error(err),
 			zap.ByteString("stack", stack),
-			zap.String("method", req.Method),
-			zap.String("uri", req.RequestURI),
-			zap.String("remote_ip", c.RealIP()),
-		)
+		}
+		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
+		logger.Error("panic recovered", fields...)
 		return nil
 	}
 }

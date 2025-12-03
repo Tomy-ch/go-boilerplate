@@ -29,7 +29,7 @@ func ServeHTTP(
 ) {
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			addr := srvCfg.ServerPort()
+			addr := srvCfg.Port()
 			go func() {
 				if err := e.Start(":" + strconv.Itoa(addr)); err != nil {
 					z.Error("failed to start http server", zap.Error(err))
@@ -37,14 +37,14 @@ func ServeHTTP(
 			}()
 			z.Info("http started",
 				zap.String("port", strconv.Itoa(addr)),
-				zap.Strings("allowed origins", secCfg.AllowedOrigins()),
+				zap.Strings("allowed_origins", secCfg.AllowedOrigins()),
 				zap.String("cidr", secCfg.CIDR().IP.String()),
-				zap.String("mode", appCfg.AppMode()),
+				zap.String("mode", appCfg.Mode()),
 			)
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			shutdownTime := srvCfg.ServerShutdownTimeout()
+			shutdownTime := srvCfg.ShutdownTimeout()
 			ctx, cancel := context.WithTimeout(ctx, shutdownTime)
 			defer cancel()
 			z.Info("http stopping")

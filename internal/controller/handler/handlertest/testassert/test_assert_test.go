@@ -1,4 +1,4 @@
-package handlertest
+package testassert
 
 import (
 	"encoding/json"

@@ -45,9 +45,12 @@ func NewDBSeedCommand() *cobra.Command {
 
 // dbSeedRun は、データベースに初期データを投入するための実行関数です。
 func dbSeedRun(_ *cobra.Command, _ []string) error {
-	logger := logging.NewProductionLogger()
+	logger, err := logging.NewProductionLogger()
+	if err != nil {
+		panic("failed to create logger: " + err.Error())
+	}
 
-	err := config.Load()
+	err = config.Load()
 	if err != nil {
 		logger.Fatal("failed to load config", zap.Error(err))
 	}
@@ -64,7 +67,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
 
-	db, err := sql.Open("postgres", dbCfg.DatabaseDSN(osCfg))
+	db, err := sql.Open("postgres", dbCfg.DSN(osCfg))
 	if err != nil {
 		logger.Panic("failed to open database connection", zap.Error(err))
 	}

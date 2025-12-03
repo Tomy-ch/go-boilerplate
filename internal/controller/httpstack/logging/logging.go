@@ -4,27 +4,46 @@ package logging
 import (
 	"time"
 
+	"boilerplate-go/internal/controller"
+	"boilerplate-go/internal/controller/httpstack/requestid"
+	"boilerplate-go/internal/logging"
+	"boilerplate-go/internal/observability"
+
 	"github.com/labstack/echo/v4"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
-// Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
-func Middleware(logger *zap.Logger) echo.MiddlewareFunc {
-	return requestLogMiddleware(logger)
+type log struct {
+	c        echo.Context
+	lf       logging.LogFields
+	traceCtx observability.TraceContext
 }
 
-// requestLogMiddleware は、リクエストのログを出力するミドルウェアを返します。
-func requestLogMiddleware(logger *zap.Logger) echo.MiddlewareFunc {
+// Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
+func Middleware(logger *zap.Logger, lf logging.LogFields) echo.MiddlewareFunc {
+	return loggingMiddleware(logger, lf)
+}
+
+// loggingMiddleware は、リクエストのログを出力するミドルウェアを返します。
+func loggingMiddleware(logger *zap.Logger, lf logging.LogFields) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			start := time.Now()
 
+			l := log{
+				c:        c,
+				lf:       lf,
+				traceCtx: observability.ExtractSpan(c.Request().Context()),
+			}
+
+			reqFields := l.buildRequestLogFields()
+			logger.Named("http.request").Info("request received", reqFields...)
+
 			c.Response().After(func() {
 				latency := time.Since(start)
 
-				fields := buildRequestLogFields(c, latency)
-				writeRequestLog(c, logger, fields)
+				fields := l.buildResponseLogFields(latency)
+				logger.Named("http.response").Info("request handled", fields...)
 			})
 
 			return next(c)
@@ -33,35 +52,41 @@ func requestLogMiddleware(logger *zap.Logger) echo.MiddlewareFunc {
 }
 
 // buildRequestLogFields は、リクエストの情報を含むzap.Fieldのスライスを生成します。
-func buildRequestLogFields(c echo.Context, latency time.Duration) []zap.Field {
-	req := c.Request()
-	res := c.Response()
-	status := res.Status
-	spanCtx := trace.SpanFromContext(req.Context()).SpanContext()
-
-	fields := []zap.Field{
-		zap.String("method", req.Method),
-		zap.String("uri", req.RequestURI),
-		zap.Int("status", status),
-		zap.Duration("latency", latency),
-		zap.String("remote_ip", c.RealIP()),
-		zap.String("trace_id", spanCtx.TraceID().String()),
-		zap.String("span_id", spanCtx.SpanID().String()),
+func (l log) buildRequestLogFields() []zap.Field {
+	req := l.c.Request()
+	reqIn := logging.HTTPRequestLogInput{
+		Method:        req.Method,
+		URI:           req.RequestURI,
+		Path:          req.URL.Path,
+		RemoteIP:      req.RemoteAddr,
+		Host:          req.Host,
+		Scheme:        req.URL.Scheme,
+		Proto:         req.Proto,
+		UserAgent:     req.UserAgent(),
+		ContentType:   req.Header.Get(echo.HeaderContentType),
+		ContentLength: req.ContentLength,
+		TraceID:       l.traceCtx.TraceID(),
+		SpanID:        l.traceCtx.SpanID(),
+		PathParams:    controller.ExtractPathParams(l.c),
+		QueryParams:   controller.ExtractQueryParams(l.c),
 	}
 
-	return fields
+	return l.lf.BuildHTTPRequestFields(reqIn)
 }
 
-// writeRequestLog は、リクエストのログを出力します。
-// ステータスコードに応じて、エラーログ、警告ログ、または情報ログを出力します。
-func writeRequestLog(c echo.Context, logger *zap.Logger, fields []zap.Field) {
-	status := c.Response().Status
-	switch {
-	case status >= MinStatusError:
-		logger.Error("server error", fields...)
-	case status >= MinStatusWarn:
-		logger.Warn("client error", fields...)
-	default:
-		logger.Info("request handled", fields...)
+// buildResponseLogFields は、リクエストの情報を含むzap.Fieldのスライスを生成します。
+func (l log) buildResponseLogFields(latency time.Duration) []zap.Field {
+	req := l.c.Request()
+	res := l.c.Response()
+	resIn := logging.HTTPResponseLogInput{
+		Method:    req.Method,
+		Path:      req.URL.Path,
+		URI:       req.RequestURI,
+		Status:    res.Status,
+		Latency:   latency,
+		RequestID: requestid.GetRequestIDFromResponse(l.c),
+		TraceID:   l.traceCtx.TraceID(),
+		SpanID:    l.traceCtx.SpanID(),
 	}
+	return l.lf.BuildHTTPResponseFields(resIn)
 }

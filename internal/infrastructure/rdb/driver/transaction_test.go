@@ -1,4 +1,4 @@
-package rdbdriver
+package driver
 
 import (
 	"context"
@@ -16,14 +16,15 @@ func TestNewTransactionManager(t *testing.T) {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
 
-	db, err := sql.Open("pgx", dbCfg.DatabaseDSN(osCfg))
+	db, err := sql.Open("pgx", dbCfg.DSN(osCfg))
+	dbDriver := &dbDriver{db}
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		err := db.Close()
+		err := dbDriver.Close()
 		require.NoError(t, err)
 	})
 
-	manager := NewTransactionManager(cfg, db)
+	manager := NewTransactionManager(cfg, dbDriver)
 	require.NotNil(t, manager)
 }
 
@@ -33,15 +34,15 @@ func TestTxManager_Do(t *testing.T) {
 	osCfg := config.NewOSConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
-	db, err := sql.Open("pgx", dbCfg.DatabaseDSN(osCfg))
+	rowDB, err := sql.Open("pgx", dbCfg.DSN(osCfg))
+	dbDriver := &dbDriver{rowDB}
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		err := db.Close()
+		err := dbDriver.Close()
 		require.NoError(t, err)
 	})
 
-	manager := NewTransactionManager(cfg, db)
-
+	manager := NewTransactionManager(cfg, dbDriver)
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -80,7 +81,7 @@ func TestTxManager_Do(t *testing.T) {
 
 		t.Run("すでにtxがある場合", func(t *testing.T) {
 			ctx := context.Background()
-			tx, err := db.BeginTx(ctx, nil)
+			tx, err := dbDriver.BeginTx(ctx, nil)
 			require.NoError(t, err)
 			t.Cleanup(func() {
 				err = tx.Rollback()

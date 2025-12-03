@@ -3,6 +3,9 @@ package errorhandler
 import (
 	"testing"
 
+	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
+
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -17,7 +20,10 @@ func Test_provideServeConfig(t *testing.T) {
 	t.Parallel()
 
 	z := zap.NewNop()
-	out := provideServeConfig(z)
+	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
+	lf := logging.NewLogFields(obsCfg)
+
+	out := provideServeConfig(z, lf, obsCfg)
 	require.NotNil(t, out)
 	require.NotNil(t, out.SrvCfg)
 

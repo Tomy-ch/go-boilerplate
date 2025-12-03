@@ -11,5 +11,5 @@ import (
 //
 // ポートは本番環境では非表示にします。
 func New(e *echo.Echo, appCfg *config.ApplicationConfig) {
-	e.HidePort = appCfg.IsAppProductionMode()
+	e.HidePort = appCfg.IsProductionMode()
 }

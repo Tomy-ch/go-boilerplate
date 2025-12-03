@@ -3,31 +3,34 @@ package user
 
 import (
 	"context"
-	"database/sql"
 
 	"boilerplate-go/internal/domain/user"
 	"boilerplate-go/internal/infrastructure/rdb/conv"
-	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
-
-	"go.uber.org/zap"
+	"boilerplate-go/internal/observability"
 )
 
 type repository struct {
-	db *sql.DB
-	z  *zap.Logger
+	db       driver.DatabaseDriver
+	provider driver.LoggingDBProvider
+	tracer   observability.LayerTracer
 }
 
-func New(db *sql.DB, z *zap.Logger) user.Repository {
+func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
 	return &repository{
-		db: db,
-		z:  z,
+		db:       db,
+		provider: provider,
+		tracer:   tf.Infra(),
 	}
 }
 
 // GetAllUsers は、全ユーザーの情報を取得します。
 func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.Entities, error) {
-	db := sqlc.New(rdbdriver.ResolveDriverWithLog(ctx, r.db, r.z))
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := sqlc.New(r.provider.NewLoggingDB(ctx))
 	rows, err := db.GetUsersDomain(ctx, sqlc.GetUsersDomainParams{
 		OffsetParam: conv.NewNullInt64(int64(offset)),
 		LimitParam:  conv.NewNullInt64(int64(limit)),

@@ -37,7 +37,10 @@ func NewMigrateDownCommand() *cobra.Command {
 
 // migrateDownRun は、マイグレーションをダウングレードするための実行関数です。
 func migrateDownRun(_ *cobra.Command, _ []string) error {
-	logger := logging.NewProductionLogger()
+	logger, err := logging.NewProductionLogger()
+	if err != nil {
+		panic("failed to create logger: " + err.Error())
+	}
 
 	m, err := buildMigrateInstance(targetDatabase)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
+	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/paging"
 	"boilerplate-go/internal/usecase/user"
 	"boilerplate-go/pkg/ptr"
@@ -17,17 +18,22 @@ import (
 )
 
 type server struct {
-	uc user.Usecase
+	tracer observability.LayerTracer
+	uc     user.Usecase
 }
 
-func BindHandler(e *echo.Echo, uc user.Usecase) {
+func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
-		uc: uc,
+		tracer: tf.Controller(),
+		uc:     uc,
 	}, nil))
 }
 
 // GetUsers は、ユーザー一覧を取得します。
 func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
 	// WARN: 本来はここで認可を行うべきですが、今回は省略します。
 	page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
 	if err != nil {
