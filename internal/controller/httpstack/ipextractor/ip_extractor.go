@@ -17,11 +17,11 @@ func New(e *echo.Echo, appCfg *config.ApplicationConfig, secCfg *config.Security
 //	その他の環境では、本番に準じてX-Forwarded-Forヘッダーから抽出します。
 func NewIPExtractor(appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig) echo.IPExtractor {
 	switch {
-	case appCfg.IsAppProductionMode():
+	case appCfg.IsProductionMode():
 		return echo.ExtractIPFromXFFHeader(
 			echo.TrustIPRange(secCfg.CIDR()),
 		)
-	case appCfg.IsAppDevelopmentMode():
+	case appCfg.IsDevelopmentMode():
 		return echo.ExtractIPDirect()
 	default:
 		// 安全のため、本番に準じてIPアドレスを抽出する

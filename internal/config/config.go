@@ -44,6 +44,10 @@ func New() (*Config, error) {
 			host: cfg.Metrics.Host,
 			port: cfg.Metrics.Port,
 		},
+		observability: ObservabilityConfig{
+			enabled:           cfg.Observability.Enabled,
+			targetStatusCodes: cfg.Observability.TargetStatusCodes,
+		},
 		database: DatabaseConfig{
 			driver:   cfg.Database.Driver,
 			host:     cfg.Database.Host,

@@ -14,20 +14,26 @@ import (
 var (
 	// operationSystem
 	expectedOSTimeZone = "Asia/Tokyo"
+	// application
+	expectedApplicationEnv          = "test"
+	expectedApplicationName         = "TestApp"
+	expectedApplicationMode         = DevelopmentMode
+	expectedAppShutdownTimeoutCount = 60
+	expectedAppShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
+	expectedAppShutdownTimeout      = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
 	// server
-	expectedApplicationEnv             = "test"
-	expectedApplicationMode            = DevelopmentMode
-	expectedHost                       = "localhost"
-	expectedPort                       = 8080
+	expectedServerHost                 = "localhost"
+	expectedServerPort                 = 8080
 	expectedServerShutdownTimeoutCount = 30
 	expectedServerShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedServerShutdownTimeoutCount)
 	expectedServerShutdownTimeout      = time.Duration(expectedServerShutdownTimeoutCount) * time.Second
-	expectedAppShutdownTimeoutCount    = 60
-	expectedAppShutdownTimeoutStr      = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
-	expectedAppShutdownTimeout         = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
 	// metrics
 	expectedMetricsHost = "localhost"
 	expectedMetricsPort = 6060
+	// observability
+	expectedObservabilityEnabled              = true
+	expectedObservabilityTargetStatusCodes    = []int{200, 400, 500}
+	expectedObservabilityTargetStatusCodesStr = "200,400,500"
 	// database
 	expectedDBDriver   = "pgx"
 	expectedDBHost     = "localhost"
@@ -60,17 +66,22 @@ func MockConfigForTest(t testing.TB) *Config {
 		},
 		app: ApplicationConfig{
 			env:             expectedApplicationEnv,
+			name:            expectedApplicationName,
 			mode:            expectedApplicationMode,
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
-			host:            expectedHost,
-			port:            expectedPort,
+			host:            expectedServerHost,
+			port:            expectedServerPort,
 			shutdownTimeout: expectedServerShutdownTimeout,
 		},
 		metrics: MetricsConfig{
 			host: expectedMetricsHost,
 			port: expectedMetricsPort,
+		},
+		observability: ObservabilityConfig{
+			enabled:           expectedObservabilityEnabled,
+			targetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		database: DatabaseConfig{
 			driver:   expectedDBDriver,
@@ -104,6 +115,7 @@ func mockLoader(t testing.TB) Loader {
 		},
 		App: Application{
 			Env:             expectedApplicationEnv,
+			Name:            expectedApplicationName,
 			Mode:            expectedApplicationMode,
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
@@ -111,9 +123,13 @@ func mockLoader(t testing.TB) Loader {
 			Host: expectedMetricsHost,
 			Port: expectedMetricsPort,
 		},
+		Observability: Observability{
+			Enabled:           expectedObservabilityEnabled,
+			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+		},
 		Server: Server{
-			Host:            expectedHost,
-			Port:            expectedPort,
+			Host:            expectedServerHost,
+			Port:            expectedServerPort,
 			ShutdownTimeout: expectedServerShutdownTimeout,
 		},
 		Database: Database{
@@ -131,22 +147,26 @@ func mockLoader(t testing.TB) Loader {
 	}
 }
 
-// setEnv は、テスト用の環境変数を設定します。
-func setEnv(t testing.TB) {
+// setEnvVarsForTesting は、テスト用の環境変数を設定します。
+func setEnvVarsForTesting(t *testing.T) {
 	t.Helper()
 	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
 	// Application
 	t.Setenv("APP_ENV", expectedApplicationEnv)
+	t.Setenv("APP_NAME", expectedApplicationName)
 	t.Setenv("APP_MODE", expectedApplicationMode)
 	t.Setenv("APP_SHUTDOWN_TIMEOUT", expectedAppShutdownTimeoutStr)
 	// Server
-	t.Setenv("SERVER_HOST", expectedHost)
-	t.Setenv("SERVER_PORT", strconv.Itoa(expectedPort))
+	t.Setenv("SERVER_HOST", expectedServerHost)
+	t.Setenv("SERVER_PORT", strconv.Itoa(expectedServerPort))
 	t.Setenv("SERVER_SHUTDOWN_TIMEOUT", expectedServerShutdownTimeoutStr)
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)
 	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))
+	// Observability
+	t.Setenv("OBSERVABILITY_ENABLED", strconv.FormatBool(expectedObservabilityEnabled))
+	t.Setenv("OBSERVABILITY_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
 	// Database
 	t.Setenv("DB_DRIVER", expectedDBDriver)
 	t.Setenv("DB_HOST", expectedDBHost)

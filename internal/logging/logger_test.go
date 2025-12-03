@@ -38,11 +38,13 @@ func TestNew(t *testing.T) {
 }
 
 func TestNewProductionLogger(t *testing.T) {
-	logger := NewProductionLogger()
+	logger, err := NewProductionLogger()
+	require.NoError(t, err)
 	require.NotNil(t, logger)
 }
 
 func TestNewDevelopmentLogger(t *testing.T) {
-	logger := NewDevelopmentLogger()
+	logger, err := NewDevelopmentLogger()
+	require.NoError(t, err)
 	require.NotNil(t, logger)
 }

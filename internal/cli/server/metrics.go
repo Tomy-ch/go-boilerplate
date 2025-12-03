@@ -21,10 +21,10 @@ const (
 func MetricsServer(cfg *config.Config) *http.Server {
 	appCfg := config.NewApplicationConfig(cfg)
 
-	if !appCfg.IsAppProductionMode() {
+	if !appCfg.IsProductionMode() {
 		mtcCfg := config.NewMetricsConfig(cfg)
 		return &http.Server{
-			Addr:              mtcCfg.MetricsHost() + ":" + strconv.Itoa(mtcCfg.MetricsPort()),
+			Addr:              mtcCfg.Host() + ":" + strconv.Itoa(mtcCfg.Port()),
 			Handler:           http.DefaultServeMux,
 			ReadHeaderTimeout: readHeaderTimeout,
 			ReadTimeout:       readTimeout,

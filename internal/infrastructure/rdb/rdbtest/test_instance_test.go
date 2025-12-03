@@ -5,19 +5,28 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/config"
-	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewTestInstances(t *testing.T) {
+func TestNewTestInstancesForNew(t *testing.T) {
 	t.Parallel()
-	db, txm, logger, location := NewTestInstances(t)
+	db, logger, tp := NewTestInstancesForNew(t)
+	require.NotNil(t, db)
+	require.NotNil(t, logger)
+	require.NotNil(t, tp)
+}
+
+func TestNewTestInstancesForImplementedInfra(t *testing.T) {
+	t.Parallel()
+	db, txm, logger, location, tracer := NewTestInstancesForImplementedInfra(t)
 	require.NotNil(t, db)
 	require.NotNil(t, txm)
 	require.NotNil(t, logger)
 	require.NotNil(t, location)
+	require.NotNil(t, tracer)
 }
 
 func Test_testTxManager_Do(t *testing.T) {
@@ -27,9 +36,9 @@ func Test_testTxManager_Do(t *testing.T) {
 	osCfg := config.NewOSConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := rdbdriver.NewDB(dbCfg, osCfg, dbConnCfg)
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
-	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
+	innerTxm := driver.NewTransactionManager(cfg, db)
 
 	t.Run("実行時にエラーが発生しない場合、RollbackForTestErrorが返ること", func(t *testing.T) {
 		t.Parallel()

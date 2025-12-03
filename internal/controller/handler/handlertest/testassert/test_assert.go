@@ -1,5 +1,5 @@
-// Package handlertest は、ハンドラー用のテストユーティリティを提供します。
-package handlertest
+// Package testassert は、テスト用のアサーションヘルパーを提供します。
+package testassert
 
 import (
 	"encoding/json"

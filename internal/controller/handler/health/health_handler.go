@@ -8,18 +8,28 @@ import (
 	"context"
 
 	"boilerplate-go/internal/controller/handler/health/gen"
+	"boilerplate-go/internal/observability"
 
 	"github.com/labstack/echo/v4"
 )
 
-type server struct{}
+type server struct {
+	tracer observability.LayerTracer
+}
 
-func BindHandler(e *echo.Echo) {
-	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{}, nil))
+func BindHandler(
+	e *echo.Echo, tf observability.TracerFactory,
+) {
+	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
+		tracer: tf.Controller(),
+	}, nil))
 }
 
 // GetHealth は、サーバーのヘルスチェックを行います。
-func (s *server) GetHealth(_ context.Context, _ gen.GetHealthRequestObject) (gen.GetHealthResponseObject, error) {
+func (s *server) GetHealth(ctx context.Context, _ gen.GetHealthRequestObject) (gen.GetHealthResponseObject, error) {
+	_, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
 	return gen.GetHealth200JSONResponse(gen.ResponseHealth{
 		Status: "ok",
 	}), nil

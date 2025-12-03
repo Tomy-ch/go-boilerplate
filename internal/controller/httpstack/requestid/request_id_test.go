@@ -12,15 +12,17 @@ import (
 func Test_getRequestID(t *testing.T) {
 	t.Parallel()
 
+	expected := "test-request-id"
+
 	t.Run("X-Request-ID が設定されている場合", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set(echo.HeaderXRequestID, "test-request-id")
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
+		c.Response().Header().Set(echo.HeaderXRequestID, expected)
 
-		id := GetRequestIDFromResponse(c)
-		require.Equal(t, "test-request-id", id)
+		actual := GetRequestIDFromResponse(c)
+		require.Equal(t, expected, actual)
 	})
 
 	t.Run("X-Request-ID が設定されていない場合", func(t *testing.T) {

@@ -92,12 +92,70 @@
 - Listで0件をエラー化（`apperror.ErrNotFound`(404)は単体取得のみ）
 - 別のUsecaseを直接呼んで複雑化（必要なら`Orchestrator`を定義）
 
+## Observability（Tracing）の使い方
+
+この boilerplateUsecase層で直接OpenTelemetrySDKを扱わず、
+observability.LayerTracerを経由してspanの開始・終了を行います。
+
+### 1. Usecase層での span の開始と終了
+
+各ハンドラーの先頭で必ず次の 2 行を記述してください。
+
+```go
+ctx, endSpan := s.tracer.Start(ctx)
+defer endSpan()
+```
+
+- Start(ctx)でspanが開始され、trace_id/span_idがcontextに紐づきます。
+- endSpan()は、spanの終了（span.End）を行います。
+- defer endSpan()により例外や早期returnがあっても必ず終了されます。
+
+ポイント：Usecase は span の開始・終了だけを知り、
+OpenTelemetry SDK の詳細には一切触れません。
+
+### 2. TracerのDI（observability.LayerTracer）
+
+Usecaseは以下のようにobservability.LayerTracerを依存として受け取ります。
+
+```go
+type server struct {
+    tracer   observability.LayerTracer
+    userRepo user.Repository // それぞれのリポジトリ
+}
+```
+
+BindHandler側ではDIコンテナから渡されたtrace.TracerProviderとzap.Loggerを用いて、
+`observability.NewUsecaseTracer`でUsecase専用のトレーサーを生成します。
+
+```go
+func New(tf observability.TracerFactory, userRepo user.Repository) Usecase {
+    return &usecase{
+        tracer:  tf.Usecase(),
+        userRepo: userRepo,
+    }
+}
+```
+
+ここではSDKの生インスタンスを直接使わず、
+observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
+
 ## 最小スニペット（雛形）
 
 ```go
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 // 唯一性のある名称
 package user
+
+import (
+    "context"
+
+    "boilerplate-go/internal/observability"
+    // それぞれ実装で使うパッケージをimport
+
+    "go.opentelemetry.io/otel/trace"
+    "go.uber.org/zap"
+)
+
 
 // 下位の層とやり取りするためのDTO
 type DTO struct {
@@ -108,6 +166,7 @@ type DTO struct {
 
 // usecaseという名称は固定
 type usecase struct {
+    tracer    observability.LayerTracer
     userRepo user.Repository
 }
 
@@ -117,14 +176,19 @@ type Usecase interface {
 }
 
 // Newという名称は固定
-func New(userRepo user.Repository) Usecase {
+func New(tf observability.TracerFactory, userRepo user.Repository) Usecase {
     return &usecase{
+        tracer:  tf.Usecase(),
         // リポジトリの設定
         userRepo: userRepo,
     }
 }
 
 func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, error) {
+    // Spanの開始・終了呼び出して設定
+    ctx, endSpan := u.tracer.Start(ctx)
+    defer endSpan()
+
     // リポジトリの呼び出し
     us, err := u.userRepo.GetAllUsers(ctx, page.Limit(), page.Offset())
     if err != nil {

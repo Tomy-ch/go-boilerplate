@@ -7,12 +7,6 @@ import (
 	"boilerplate-go/pkg/xerrors"
 )
 
-type httpErrorMeta struct {
-	Status  int
-	Code    string
-	Message string
-}
-
 const (
 	// codeBadRequest は、リクエストに不正または不足がある場合に使用されるエラーコードです。
 	codeBadRequest = "BAD_REQUEST"
@@ -97,6 +91,12 @@ var errorMeta = map[int]httpErrorMeta{
 		Code:    codeNotAvailable,
 		Message: errorMessageNotAvailable,
 	},
+}
+
+type httpErrorMeta struct {
+	Status  int
+	Code    string
+	Message string
 }
 
 // lookupErrorMetaByHTTPStatus は、HTTPステータスコードに対応するエラーメタデータを取得します。

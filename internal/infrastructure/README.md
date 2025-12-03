@@ -76,6 +76,55 @@
 - ビジネスロジックやドメインルールの判定を持ち込む。
 - Controller/OpenAPI型を参照する。
 
+## Observability（Tracing）の使い方
+
+この boilerplateでは、Infrastructure層で直接OpenTelemetrySDKを扱わず、
+observability.LayerTracerを経由してspanの開始・終了を行います。
+
+### 1. Infrastructure層での span の開始と終了
+
+各ハンドラーの先頭で必ず次の 2 行を記述してください。
+
+```go
+ctx, endSpan := s.tracer.Start(ctx)
+defer endSpan()
+```
+
+- Start(ctx)でspanが開始され、trace_id/span_idがcontextに紐づきます。
+- endSpan()は、spanの終了（span.End）を行います。
+- defer endSpan()により例外や早期returnがあっても必ず終了されます。
+
+ポイント：Infrastructure は span の開始・終了だけを知り、
+OpenTelemetry SDK の詳細には一切触れません。
+
+### 2. TracerのDI（observability.LayerTracer）
+
+Infrastructureは以下のようにobservability.LayerTracerを依存として受け取ります。
+
+```go
+type server struct {
+    db       driver.DatabaseDriver
+    provider driver.LoggingDBProvider
+    tracer   observability.LayerTracer
+}
+```
+
+BindHandler側ではDIコンテナから渡されたtrace.TracerProviderとzap.Loggerを用いて、
+`observability.NewInfrastructureTracer`でInfrastructure専用のトレーサーを生成します。
+
+```go
+func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
+    return &systemQuery{
+        db:       db,
+        provider: provider,
+        tracer:   tf.Infra(),
+    }
+}
+```
+
+ここではSDKの生インスタンスを直接使わず、
+observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
+
 ## 最小スニペット（雛形）
 
 ```go
@@ -84,26 +133,31 @@ package user
 
 // repositoryで名称固定
 type repository struct {
-    db *sql.DB
-    z  *zap.Logger
+    db       driver.DatabaseDriver
+    provider driver.LoggingDBProvider
+    tracer   observability.LayerTracer
 }
 
 // レコードが見つからない場合のエラー
 var ErrUserNotFound = xerrors.Wrap(apperror.ErrNotFound, "user not found")
 
 // Newで名称固定
-func New(db *sql.DB, z *zap.Logger) user.Repository {
-    return &repository{
-        db: db,
-        z:  z,
+func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
+    return &systemQuery{
+        db:       db,
+        provider: provider,
+        tracer:   tf.Infra(),
     }
 }
 
-
 func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.Entities, error) {
-    // rdbdriver.ResolveDriverWithLogを使うことでログを自動で出力
-    // 不要な場合は、rdbdriver.ResolveDriver(ctx, r.db)を使う
-    db := gen.New(rdbdriver.ResolveDriverWithLog(ctx, r.db, r.z))
+    // Spanの開始・終了呼び出して設定
+    ctx, endSpan := r.tracer.Start(ctx)
+    defer endSpan()
+
+    // driver.ResolveDriverWithLogを使うことでログを自動で出力
+    // 不要な場合は、driver.ResolveDriver(ctx, r.db)を使う
+    db := sqlc.New(r.provider.NewLoggingDB(ctx))
     // genで生成されたDMLの呼び出し
     rows, err := db.GetUsersDomain(ctx, gen.GetUsersDomainParams{
         OffsetParam: conv.NewNullInt64(int64(offset)),

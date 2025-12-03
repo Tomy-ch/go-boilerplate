@@ -11,5 +11,5 @@ import (
 //
 // バナーは本番環境では非表示にする
 func New(e *echo.Echo, appCfg *config.ApplicationConfig) {
-	e.HideBanner = appCfg.IsAppProductionMode()
+	e.HideBanner = appCfg.IsProductionMode()
 }

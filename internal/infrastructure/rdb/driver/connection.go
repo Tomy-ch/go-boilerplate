@@ -1,12 +1,9 @@
-// Package rdbdriver は、RDBの接続のための基盤的な機能を提供します。
-package rdbdriver
+// Package driver は、RDBの接続のための基盤的な機能を提供します。
+package driver
 
 import (
 	"context"
 	"database/sql"
-	"fmt"
-
-	"boilerplate-go/internal/config"
 
 	// pgx driver for db connection (required for runtime registration)
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -23,25 +20,11 @@ type DBTX interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// NewDB は Postgres のDB接続を初期化して返します。
-func NewDB(
-	dbCfg *config.DatabaseConfig, osCfg *config.OperationSystemConfig, dbConnCfg *config.DBConnectionConfig,
-) (*sql.DB, error) {
-	db, err := sql.Open(dbCfg.DatabaseDriver(), dbCfg.DatabaseDSN(osCfg))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open DB: %w", err)
+// New は、DB接続のドライバーを提供します。
+func New(ctx context.Context, db DatabaseDriver) DBTX {
+	tx, ok := ctx.Value(txKey{}).(*sql.Tx)
+	if ok {
+		return tx
 	}
-
-	// 接続プール設定
-	db.SetMaxOpenConns(dbConnCfg.DBMaxOpenConns())
-	db.SetMaxIdleConns(dbConnCfg.DBMaxIdleConns())
-	db.SetConnMaxLifetime(dbConnCfg.DBConnMaxLifetime())
-	db.SetConnMaxIdleTime(dbConnCfg.DBConnMaxIdleTime())
-
-	// 疎通確認
-	if err := db.PingContext(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to ping DB: %w", err)
-	}
-
-	return db, nil
+	return db
 }

@@ -1,13 +1,12 @@
 package user
 
 import (
-	"context"
-	"errors"
 	"testing"
 
 	"boilerplate-go/internal/domain/user"
 	mock_user "boilerplate-go/internal/domain/user/mock"
 	"boilerplate-go/internal/usecase/paging"
+	"boilerplate-go/internal/usecase/usecasetest"
 	"boilerplate-go/pkg/uuid"
 
 	"github.com/stretchr/testify/require"
@@ -17,21 +16,20 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
+	ctrl, tf := usecasetest.NewTestInstanceForNew(t)
 	repo := mock_user.NewMockRepository(ctrl)
 
 	expected := &usecase{
+		tracer:   tf.Usecase(),
 		userRepo: repo,
 	}
-	actual := New(repo)
+	actual := New(repo, tf)
 
 	require.Equal(t, expected, actual)
 }
 
 func TestGetAllUsers(t *testing.T) {
 	t.Parallel()
-
-	ctx := context.Background()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -61,10 +59,13 @@ func TestGetAllUsers(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			ctrl := gomock.NewController(t)
+			ctx, ctrl, _, lt := usecasetest.NewTestInstanceForImplementedUsecase(t)
 			repo := mock_user.NewMockRepository(ctrl)
-			repo.EXPECT().GetAllUsers(ctx, p.Limit(), p.Offset()).Return(user.Entities{*domain}, nil)
-			uc := New(repo)
+			repo.EXPECT().GetAllUsers(gomock.Any(), p.Limit(), p.Offset()).Return(user.Entities{*domain}, nil)
+			uc := &usecase{
+				tracer:   lt,
+				userRepo: repo,
+			}
 
 			expected := []DTO{
 				{
@@ -85,19 +86,25 @@ func TestGetAllUsers(t *testing.T) {
 		t.Run("ユーザー取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
+			expectedErr := usecasetest.ExpectedDBError(t)
+
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
-			require.NoError(t, err)
+			p, actualErr := paging.NewPagingFrom1Based(&page, &perPage)
+			require.NoError(t, actualErr)
 
-			ctrl := gomock.NewController(t)
+			ctx, ctrl, _, lt := usecasetest.NewTestInstanceForImplementedUsecase(t)
+
 			repo := mock_user.NewMockRepository(ctrl)
-			repo.EXPECT().GetAllUsers(ctx, p.Limit(), p.Offset()).Return(nil, errors.New("error"))
-			uc := New(repo)
+			repo.EXPECT().GetAllUsers(gomock.Any(), p.Limit(), p.Offset()).Return(nil, expectedErr)
+			uc := &usecase{
+				tracer:   lt,
+				userRepo: repo,
+			}
 
-			actual, err := uc.GetAllUsers(ctx, p)
-			require.Error(t, err)
+			actual, actualErr := uc.GetAllUsers(ctx, p)
 			require.Nil(t, actual)
+			require.ErrorIs(t, expectedErr, actualErr)
 		})
 	})
 }

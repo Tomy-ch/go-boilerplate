@@ -40,7 +40,7 @@ func TestNewIPExtractor(t *testing.T) {
 		secCfg := config.NewSecurityConfig(cfg)
 		secCfg.SetCIDR(t, parsedCIDR)
 
-		require.Equal(t, config.ProductionMode, appCfg.AppMode())
+		require.Equal(t, config.ProductionMode, appCfg.Mode())
 		require.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
 		actual := NewIPExtractor(appCfg, secCfg)
 		require.NotNil(t, actual)
@@ -56,7 +56,7 @@ func TestNewIPExtractor(t *testing.T) {
 		secCfg := config.NewSecurityConfig(cfg)
 		secCfg.SetCIDR(t, parsedCIDR)
 
-		require.Equal(t, config.DevelopmentMode, appCfg.AppMode())
+		require.Equal(t, config.DevelopmentMode, appCfg.Mode())
 		require.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
 		actual := NewIPExtractor(appCfg, secCfg)
 		require.NotNil(t, actual)

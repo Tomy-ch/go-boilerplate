@@ -53,9 +53,9 @@ linters:
   settings:
     decorder:
       dec-order:
-        - "type"
         - "const"
         - "var"
+        - "type"
         - "func"
       ignore-underscore-vars: false
       disable-dec-order-check: false
@@ -108,6 +108,7 @@ linters:
             - "**/*.go"
             - "!**/internal/cli/**.go" # CLIを扱う箇所ではサーバの起動のため許可します
             - "!**/internal/di/**.go" # DIコンテナを扱う箇所では使用を許可します
+            - "!**/internal/observability/**.go" # オブザーバビリティの初期化箇所では使用を許可します
             - "!**/internal/controller/httpstack/**.go" # サーバーの拡張機能を扱う箇所では副作用を正しい順序で拡張機能を追加する必要があるため許可します
             - "!**/internal/controller/server/**.go" # サーバーのライフサイクルを扱う箇所では使用を許可します
           list-mode: lax
@@ -115,6 +116,15 @@ linters:
             - pkg: go.uber.org/fx
               desc: "DIコンテナライブラリの使用は制限されています。
                 可能な限り、DIコンテナを追加で使用しない実装を心がけてください。"
+        restrict_the_use_of_observability: # オブザーバビリティ関連パッケージの使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/observability/**.go" # オブザーバビリティの初期化箇所では使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.opentelemetry.io/otel
+              desc: "オブザーバビリティ関連ライブラリの使用は制限されています。
+                可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
         independent_apperror: # apperrorパッケージが責務の実装層にも依存しないことを保証します
           files:
             - "**/pkg/apperror/**.go"

@@ -1,11 +1,11 @@
 package health
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/handlertest"
+	"boilerplate-go/internal/controller/handler/handlertest/testassert"
+	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	"boilerplate-go/internal/controller/handler/health/gen"
 
 	"github.com/stretchr/testify/require"
@@ -16,14 +16,14 @@ const targetPath = "/health"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, _ := handlertest.NewBindHandlerTestInstance(t)
-	BindHandler(e)
+	e, _, tf, _ := testinstance.NewTestInstanceForBindHandler(t)
+	BindHandler(e, tf)
 
 	expectedMethods := []string{http.MethodGet}
-	handlertest.AssertEchoRouterPath(
+	testassert.AssertEchoRouterPath(
 		t, targetPath, e.Routes(),
 	)
-	handlertest.AssertEchoRouterMethods(
+	testassert.AssertEchoRouterMethods(
 		t, expectedMethods, e.Routes(),
 	)
 }
@@ -31,10 +31,13 @@ func TestBindHandler(t *testing.T) {
 func TestGetHealth(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx, _, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
+	s := &server{
+		tracer: lt,
+	}
+
 	expectedResponse := gen.ResponseHealth{Status: "ok"}
 
-	s := &server{}
 	resp, err := s.GetHealth(ctx, gen.GetHealthRequestObject{})
 	require.NoError(t, err)
 
