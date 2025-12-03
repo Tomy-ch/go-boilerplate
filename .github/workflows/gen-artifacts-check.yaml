@@ -2,17 +2,17 @@ name: Generated Artifacts Check
 
 on:
   pull_request:
-    # 必要に応じて有効化
-    # paths:
-    #   - 'openapi/**'
-    #   - 'database/dml/**'
-    #   - 'database/sqlc/**'
-    #   - '.makefiles/gen/**'
-    #   - 'internal/cli/gensqlc/**'
-    #   - 'internal/cli/migrate/**'
-    #   - 'internal/cli/seed/**'
-    #   - 'cmd/**'
-    #   - 'docker/tools/**'
+    paths:
+      - '.github/workflows/gen-artifacts-check.yaml'
+      - 'cmd/**'
+      - 'database/dml/**'
+      - 'database/sqlc/**'
+      - 'docker/tools/**'
+      - '.makefiles/gen/**'
+      - 'internal/**'
+      - 'pkg/**'
+      - 'openapi/**'
+      - 'scripts/**'
   workflow_dispatch:
 
 concurrency:
@@ -113,22 +113,32 @@ jobs:
             }
 
             const body = [
-              '## **Generated Artifacts Check で生成物の差分を検出しました。**',
+              '## 🔍 Generated Artifacts Differences Detected',
               '',
-              '※ 📤このコメントは Generated Artifacts Check による自動投稿です。',
+              '@${{ github.event.pull_request.user.login }}',
               '',
-              'ツールバージョンの比較結果は次の通りです。',
+              'This pull request introduces differences in auto-generated artifacts.',
+              'Please update the generated files in your local environment and commit the changes.',
+              '',
+              'Below is the generator version comparison:',
               '',
               '---',
               '',
-              '### 🧾 Before (HEAD の `docs/meta/generator-versions.txt`)',
+              '### Before (HEAD version of `docs/meta/generator-versions.txt`)',
               prev,
               '',
-              '### 🧪 After (CI で再生成した `docs/meta/generator-versions.txt`)',
+              '---',
+              '',
+              '### After (CI-regenerated `docs/meta/generator-versions.txt`)',
               current,
               '',
-              '- ローカル環境でも `make tools-rebuild` を実行し、',
-              '  `make gen` あるいは `make gen-tools-meta` を実行して生成物を更新し、差分をコミットしてください 🚢',
+              '**Action required:**',
+              '',
+              '- Run `make tools-rebuild` locally to rebuild tool containers.',
+              '- Run `make gen` or `make gen-tools-meta` to regenerate artifacts.',
+              '- Commit the updated files.',
+              '',
+              'The CI will pass once the generated artifacts are synchronized.',
             ].join('\n');
 
             await github.rest.issues.createComment({
