@@ -1,4 +1,4 @@
-package rdbdriver
+package driver
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 // txManager は、トランザクションの管理を行います。
 type txManager struct {
 	cfg *config.Config
-	db  *sql.DB
+	db  DatabaseDriver
 }
 
 // NewTransactionManager は、トランザクションマネージャを初期化します。
-func NewTransactionManager(cfg *config.Config, db *sql.DB) tx.Manager {
+func NewTransactionManager(cfg *config.Config, db DatabaseDriver) tx.Manager {
 	return &txManager{
 		cfg: cfg,
 		db:  db,
@@ -28,7 +28,7 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 		return fn(ctx)
 	}
 
-	tx, err := t.db.BeginTx(ctx, nil)
+	tx, err := t.db.beginTx(ctx, nil)
 	if err != nil {
 		return err
 	}

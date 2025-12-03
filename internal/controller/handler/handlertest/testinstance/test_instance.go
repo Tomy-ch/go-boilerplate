@@ -1,4 +1,5 @@
-package handlertest
+// Package testinstance は、ハンドラー用のテストインスタンス生成ユーティリティを提供します。
+package testinstance
 
 import (
 	"context"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
@@ -22,10 +22,8 @@ func NewTestInstanceForBindHandler(t *testing.T) (
 	e := echo.New()
 	ctrl := gomock.NewController(t)
 
-	tp := noop.NewTracerProvider()
 	z := zap.NewNop()
-	tf := observability.NewTracerFactory(tp, z)
-
+	tf := observability.NewTestTracerFactory(t)
 	return e, ctrl, tf, z
 }
 
@@ -40,9 +38,7 @@ func NewTestInstancesForImplementedUsecase(t *testing.T) (
 	location, err := time.LoadLocation("Asia/Tokyo")
 	require.NoError(t, err)
 
-	tp := noop.NewTracerProvider()
-	z := zap.NewNop()
-	tf := observability.NewTracerFactory(tp, z)
+	tf := observability.NewTestTracerFactory(t)
 	lt := tf.Controller()
 
 	return ctx, ctrl, location, lt

@@ -8,11 +8,6 @@ import (
 	"boilerplate-go/pkg/xerrors"
 )
 
-type Paging struct {
-	limit  int
-	offset int
-}
-
 const (
 	// 1ページあたりのデフォルト件数
 	defaultPerPage = 50
@@ -23,6 +18,11 @@ const (
 	// サーバが許容する最大ページ数
 	maxPage = 10_000
 )
+
+type Paging struct {
+	limit  int
+	offset int
+}
 
 // NewPagingFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算してPageを返します。
 //

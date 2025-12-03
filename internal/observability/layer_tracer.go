@@ -6,14 +6,26 @@ import (
 	"fmt"
 	"time"
 
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
+const (
+	delimiter                = "."
+	tracerNameController     = "controller"
+	tracerNameUsecase        = "usecase"
+	tracerNameInfrastructure = "infrastructure"
+
+	// callerSkip は、zap ロガーのコールスタックのスキップ数を定義します。
+	callerSkip = 1
+)
+
 type LayerTracer struct {
 	log      *zap.Logger
+	lf       logging.LogFields
 	tracer   trace.Tracer
 	layer    string
 	pkgName  string
@@ -90,16 +102,24 @@ func WithDomainSpan[T any](
 	ctx, span := lt.tracer.Start(ctx, spanName)
 	start := time.Now()
 
-	lt.log.Info("span", lt.logFields(ctx, layer, pkg, funcName, "start", spanName)...)
+	obsIn := logging.ObservabilityFieldsInput{
+		SpanName: spanName,
+		Layer:    layer,
+		PkgName:  pkg,
+		FuncName: funcName,
+		TraceID:  span.SpanContext().TraceID().String(),
+		SpanID:   span.SpanContext().SpanID().String(),
+	}
+	obsIn.SpanEvent = SpanEventStart
+
+	lt.log.WithOptions(zap.AddCallerSkip(callerSkip)).Info(spanName+delimiter+SpanEventStart, lt.lf.BuildObservabilityFields(obsIn)...)
 
 	defer func() {
-		duration := time.Since(start)
+		event := SpanEventEnd
+		obsIn.SpanEvent = event
+		obsIn.Latency = time.Since(start)
+		lt.log.WithOptions(zap.AddCallerSkip(callerSkip+1)).Info(spanName+delimiter+event, lt.lf.BuildObservabilityFields(obsIn)...)
 		span.End()
-		lt.log.Info("span",
-			lt.logFields(ctx, layer, pkg, funcName, "end", spanName,
-				zap.Float64("duration_ms", float64(duration)/float64(time.Millisecond)),
-			)...,
-		)
 	}()
 
 	v, err := fn(ctx)
@@ -143,14 +163,24 @@ func (lt LayerTracer) spanStartBase(
 	startTime := time.Now()
 
 	lt.log = lt.log.Named(spanName)
-	lt.log.Info("span", lt.logFields(ctx, lt.layer, lt.pkgName, lt.funcName, "start", spanName)...)
+
+	obsIn := logging.ObservabilityFieldsInput{
+		SpanName: spanName,
+		Layer:    lt.layer,
+		PkgName:  lt.pkgName,
+		FuncName: lt.funcName,
+		TraceID:  span.SpanContext().TraceID().String(),
+		SpanID:   span.SpanContext().SpanID().String(),
+	}
+
+	obsIn.SpanEvent = SpanEventStart
+	lt.log.WithOptions(zap.AddCallerSkip(callerSkip+1)).Info(spanName+delimiter+SpanEventStart, lt.lf.BuildObservabilityFields(obsIn)...)
 
 	endSpan := func() {
-		duration := time.Since(startTime)
+		obsIn.SpanEvent = SpanEventEnd
+		obsIn.Latency = time.Since(startTime)
 
-		lt.log.Info("span", lt.logFields(ctx, lt.layer, lt.pkgName, lt.funcName, "end", spanName,
-			zap.Float64("duration_ms", float64(duration)/float64(time.Millisecond)),
-		)...)
+		lt.log.WithOptions(zap.AddCallerSkip(callerSkip)).Info(spanName+delimiter+SpanEventEnd, lt.lf.BuildObservabilityFields(obsIn)...)
 
 		span.End()
 	}

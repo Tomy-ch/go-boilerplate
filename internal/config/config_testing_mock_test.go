@@ -30,6 +30,10 @@ func TestMockConfigForTest(t *testing.T) {
 			host: expectedMetricsHost,
 			port: expectedMetricsPort,
 		},
+		observability: ObservabilityConfig{
+			enabled:           expectedObservabilityEnabled,
+			targetStatusCodes: expectedObservabilityTargetStatusCodes,
+		},
 		database: DatabaseConfig{
 			driver:   expectedDBDriver,
 			host:     expectedDBHost,
@@ -77,6 +81,10 @@ func Test_mockLoader(t *testing.T) {
 			Host: expectedMetricsHost,
 			Port: expectedMetricsPort,
 		},
+		Observability: Observability{
+			Enabled:           expectedObservabilityEnabled,
+			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+		},
 		Database: Database{
 			Host:     expectedDBHost,
 			Port:     expectedDBPort,
@@ -97,7 +105,7 @@ func Test_mockLoader(t *testing.T) {
 }
 
 func Test_setEnv(t *testing.T) {
-	setEnv(t)
+	setEnvVarsForTesting(t)
 	// OS
 	require.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
 	// Application
@@ -111,6 +119,9 @@ func Test_setEnv(t *testing.T) {
 	// Metrics
 	require.Equal(t, expectedMetricsHost, os.Getenv("METRICS_HOST"))
 	require.Equal(t, strconv.Itoa(expectedMetricsPort), os.Getenv("METRICS_PORT"))
+	// Observability
+	require.Equal(t, strconv.FormatBool(expectedObservabilityEnabled), os.Getenv("OBSERVABILITY_ENABLED"))
+	require.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBSERVABILITY_TARGET_STATUS_CODES"))
 	// Database
 	require.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
 	require.Equal(t, expectedDBHost, os.Getenv("DB_HOST"))

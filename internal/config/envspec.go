@@ -3,12 +3,13 @@ package config
 import "time"
 
 type Loader struct {
-	OS       OperationSystem `envPrefix:"OS_"`
-	App      Application     `envPrefix:"APP_"`
-	Server   Server          `envPrefix:"SERVER_"`
-	Metrics  Metrics         `envPrefix:"METRICS_"`
-	Database Database        `envPrefix:"DB_"`
-	Security Security        `envPrefix:"SECURITY_"`
+	OS            OperationSystem `envPrefix:"OS_"`
+	App           Application     `envPrefix:"APP_"`
+	Server        Server          `envPrefix:"SERVER_"`
+	Observability Observability   `envPrefix:"OBSERVABILITY_"`
+	Metrics       Metrics         `envPrefix:"METRICS_"`
+	Database      Database        `envPrefix:"DB_"`
+	Security      Security        `envPrefix:"SECURITY_"`
 }
 
 type OperationSystem struct {
@@ -31,6 +32,11 @@ type Server struct {
 type Metrics struct {
 	Host string `env:"HOST,required"`
 	Port int    `env:"PORT,required"`
+}
+
+type Observability struct {
+	Enabled           bool  `env:"ENABLED,required"`
+	TargetStatusCodes []int `env:"TARGET_STATUS_CODES,required" envSeparator:","`
 }
 
 type Database struct {

@@ -21,6 +21,7 @@ func Module() fx.Option {
 func UseMiddleware() httpstack.UseMiddlewareOut {
 	return httpstack.UseMiddlewareOut{
 		Middleware: httpstack.UseMiddleware{
+			Name:       "requestid",
 			Priority:   priority,
 			Middleware: Middleware(),
 		},

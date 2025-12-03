@@ -12,13 +12,13 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, z, tf := rdbtest.NewTestInstancesForNew(t)
+	db, provider, tf := rdbtest.NewTestInstancesForNew(t)
 	expected := &systemQuery{
-		tracer: tf.Infra(),
-		db:     db,
-		z:      z,
+		tracer:   tf.Infra(),
+		db:       db,
+		provider: provider,
 	}
-	actual := New(db, z, tf)
+	actual := New(db, provider, tf)
 
 	require.Equal(t, expected, actual)
 }
@@ -26,11 +26,11 @@ func TestNew(t *testing.T) {
 func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 	t.Parallel()
 
-	db, txm, z, _, tracer := rdbtest.NewTestInstancesForImplementedInfra(t)
+	db, txm, provider, _, tracer := rdbtest.NewTestInstancesForImplementedInfra(t)
 	s := &systemQuery{
-		tracer: tracer,
-		db:     db,
-		z:      z,
+		tracer:   tracer,
+		db:       db,
+		provider: provider,
 	}
 
 	t.Run("正常系", func(t *testing.T) {

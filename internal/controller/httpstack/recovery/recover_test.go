@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -18,16 +19,21 @@ import (
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+	cfg := config.MockConfigForTest(t)
+	appCfg := config.NewApplicationConfig(cfg)
+	lf := logging.NewLogFields(config.NewObservabilityConfig(cfg))
 	logger := zap.NewNop()
 
-	require.NotNil(t, Middleware(logger, appCfg))
+	require.NotNil(t, Middleware(logger, lf, appCfg))
 }
 
 func Test_newRecoverLogErrorFunc(t *testing.T) {
 	t.Parallel()
 
 	logger := zap.NewNop()
+
+	cfg := config.MockConfigForTest(t)
+	lf := logging.NewLogFields(config.NewObservabilityConfig(cfg))
 
 	e := echo.New()
 
@@ -39,7 +45,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		f := newRecoverLogErrorFunc(logger)
+		f := newRecoverLogErrorFunc(logger, lf)
 		err := f(c, fmt.Errorf("boom"), []byte("stack"))
 		require.NoError(t, err)
 	})
@@ -52,7 +58,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		f := newRecoverLogErrorFunc(logger)
+		f := newRecoverLogErrorFunc(logger, lf)
 		err := f(c, fmt.Errorf("boom2"), []byte("stack2"))
 		require.NoError(t, err)
 	})

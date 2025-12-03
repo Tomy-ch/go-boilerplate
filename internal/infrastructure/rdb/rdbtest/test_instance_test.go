@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/config"
-	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
@@ -36,9 +36,9 @@ func Test_testTxManager_Do(t *testing.T) {
 	osCfg := config.NewOSConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := rdbdriver.NewDB(dbCfg, osCfg, dbConnCfg)
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
-	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
+	innerTxm := driver.NewTransactionManager(cfg, db)
 
 	t.Run("実行時にエラーが発生しない場合、RollbackForTestErrorが返ること", func(t *testing.T) {
 		t.Parallel()

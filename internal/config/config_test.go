@@ -11,7 +11,7 @@ import (
 func TestNewConfig(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) {
-			setEnv(t)
+			setEnvVarsForTesting(t)
 			expected := &Config{
 				os: OperationSystemConfig{
 					timezone: expectedOSTimeZone,
@@ -29,6 +29,10 @@ func TestNewConfig(t *testing.T) {
 				metrics: MetricsConfig{
 					host: expectedMetricsHost,
 					port: expectedMetricsPort,
+				},
+				observability: ObservabilityConfig{
+					enabled:           expectedObservabilityEnabled,
+					targetStatusCodes: expectedObservabilityTargetStatusCodes,
 				},
 				database: DatabaseConfig{
 					driver:   expectedDBDriver,
@@ -68,7 +72,7 @@ func TestNewConfig(t *testing.T) {
 		})
 
 		t.Run("バリデート結果がエラーの場合", func(t *testing.T) {
-			setEnv(t)
+			setEnvVarsForTesting(t)
 			t.Setenv("APP_MODE", "invalid_env")
 
 			actual, err := New()

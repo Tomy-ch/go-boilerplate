@@ -1,80 +1,47 @@
-package rdbdriver
+package driver
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
+	"boilerplate-go/internal/observability"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
-type mockDBTX struct{}
-
-func (m *mockDBTX) ExecContext(_ context.Context, _ string, _ ...any) (sql.Result, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (m *mockDBTX) PrepareContext(_ context.Context, _ string) (*sql.Stmt, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (m *mockDBTX) QueryContext(_ context.Context, _ string, _ ...any) (*sql.Rows, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (m *mockDBTX) QueryRowContext(_ context.Context, _ string, _ ...any) *sql.Row {
-	return nil
-}
-
-func TestNewLoggingDB(t *testing.T) {
+func TestBuildSQLLogFields(t *testing.T) {
 	t.Parallel()
 
-	t.Run("DBTXをラップしてログ出力機能を追加する", func(t *testing.T) {
-		mockDB := &mockDBTX{}
-		logger := zap.NewNop()
+	cfg := config.MockConfigForTest(t)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewLogFields(obsCfg)
 
-		wrappedDB := NewLoggingDB(mockDB, logger)
+	ctx := context.Background()
+	funcName := "TestBuildSQLLogFields"
+	query := "SELECT * FROM users"
+	expectedDuration := time.Duration(100 * time.Millisecond)
+	expectedLatency := float64(expectedDuration) / float64(time.Millisecond)
 
-		require.NotNil(t, wrappedDB)
-	})
-}
+	expected := []zap.Field{
+		zap.String(logging.LayerKey, layer),
+		zap.String(logging.PackageKey, pkg),
+		zap.String(logging.FunctionKey, funcName),
+		zap.String(logging.SpanNameKey, observability.BuildSpanName(layer, pkg, funcName)),
+		zap.String(logging.RawQueryKey, query),
+		zap.String(logging.QueryCompactKey, query),
+		zap.Float64(logging.LatencyKey, expectedLatency),
+	}
 
-func TestBuildZapFields(t *testing.T) {
-	t.Parallel()
+	dwl := &dbWithLogging{
+		provider: &loggingDBProvider{
+			lf: lf,
+		},
+	}
 
-	t.Run("クエリと実行時間を含むzap.Fieldを構築する", func(t *testing.T) {
-		query := "SELECT * FROM users"
-		expectedDuration := time.Duration(100)
-		duration := expectedDuration * time.Millisecond
-		sec := float64(duration) / float64(time.Second)
-
-		fields := buildZapFields(query, duration)
-
-		require.Len(t, fields, 2)
-		require.Equal(t, zap.String("query", query), fields[0])
-		require.Equal(t, zap.Float64("dur_sec", sec), fields[1])
-	})
-}
-
-func TestBuildZapWithArgsFields(t *testing.T) {
-	t.Parallel()
-
-	t.Run("クエリ、実行時間、引数を含むzap.Fieldを構築する", func(t *testing.T) {
-		query := "SELECT * FROM users WHERE id = ?"
-		expectedDuration := time.Duration(200)
-		duration := expectedDuration * time.Millisecond
-		args := []any{1}
-		sec := float64(duration) / float64(time.Second)
-
-		fields := buildZapWithArgsFields(query, duration, args...)
-
-		require.Len(t, fields, 3)
-		require.Equal(t, zap.String("query", query), fields[0])
-		require.Equal(t, zap.Float64("dur_sec", sec), fields[1])
-		require.Equal(t, zap.Any("args", args), fields[2])
-	})
+	actual := dwl.buildSQLLogFields(ctx, funcName, query, expectedDuration, nil, nil)
+	require.Equal(t, expected, actual)
 }

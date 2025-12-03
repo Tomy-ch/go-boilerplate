@@ -7,7 +7,7 @@ import (
 	"go.uber.org/fx"
 )
 
-const priority = 1
+const priority = 4
 
 // Module は、CORS制御のミドルウェアを提供するfxモジュールを返します。
 func Module() fx.Option {
@@ -18,10 +18,11 @@ func Module() fx.Option {
 	)
 }
 
-// UseMiddleware は、可観測性ミドルウェアを提供します。
+// UseMiddleware は、CORS制御のミドルウェアを生成します。
 func UseMiddleware(secCfg *config.SecurityConfig) httpstack.UseMiddlewareOut {
 	return httpstack.UseMiddlewareOut{
 		Middleware: httpstack.UseMiddleware{
+			Name:       "cors",
 			Priority:   priority,
 			Middleware: Middleware(secCfg),
 		},

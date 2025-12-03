@@ -11,6 +11,12 @@ import (
 	"boilerplate-go/internal/usecase/healthcheck/query"
 )
 
+const (
+	Degraded  = "degraded"
+	Ok        = "ok"
+	Unhealthy = "unhealthy"
+)
+
 // DTO は、システムの健全性に関するデータ転送用のオブジェクトです。
 type DTO struct {
 	Status          string
@@ -28,12 +34,6 @@ type usecase struct {
 type Usecase interface {
 	CheckHealth(ctx context.Context) (DTO, error)
 }
-
-const (
-	Degraded  = "degraded"
-	Ok        = "ok"
-	Unhealthy = "unhealthy"
-)
 
 // New は、システムの健全性チェックに関するユースケースを初期化します。
 func New(dbsq query.DBSystemQuery, tf observability.TracerFactory) Usecase {

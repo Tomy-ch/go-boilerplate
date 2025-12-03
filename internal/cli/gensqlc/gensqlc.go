@@ -93,7 +93,10 @@ func NewCommand() *cobra.Command {
 //
 // 並列数はresolveConcurrencyConst()で決定します。
 func generateSQLCRun(_ *cobra.Command, _ []string) error {
-	logger := logging.NewProductionLogger()
+	logger, err := logging.NewProductionLogger()
+	if err != nil {
+		panic("failed to create logger: " + err.Error())
+	}
 
 	// 1) 設定ロード（DATABASE_URL を取得）
 	cfg, err := config.SetUpConfig()
@@ -103,7 +106,7 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
 
-	dbURL := dbCfg.DatabaseDSN(osCfg)
+	dbURL := dbCfg.DSN(osCfg)
 
 	// 2) 設定YAMLの読み込み
 	sqlcYamlRaw, err := os.ReadFile(filepath.Join(workDir, sqlcRootDir, settingYamlFile))

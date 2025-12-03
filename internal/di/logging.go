@@ -11,6 +11,7 @@ func LoggingModule() fx.Option {
 	return fx.Module("logging",
 		fx.Provide(
 			logging.New,
+			logging.NewLogFields,
 		),
 	)
 }

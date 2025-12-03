@@ -3,20 +3,21 @@ package rdbtest
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
 	"boilerplate-go/internal/config"
-	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/tx"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
+
+var rollbackForTestError = xerrors.New("rollback for test")
 
 type Manager interface {
 	Do(fn func(ctx context.Context) error) error
@@ -28,51 +29,56 @@ type testTxManager struct {
 	t     *testing.T
 }
 
-var rollbackForTestError = xerrors.New("rollback for test")
-
 // NewTestInstancesForNew は、リポジトリのNew関数用テストインスタンスを生成します。
 func NewTestInstancesForNew(t *testing.T) (
-	*sql.DB, *zap.Logger, observability.TracerFactory,
+	driver.DatabaseDriver, driver.LoggingDBProvider, observability.TracerFactory,
 ) {
 	t.Helper()
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := rdbdriver.NewDB(dbCfg, osCfg, dbConnCfg)
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 
 	nopLogger := zap.NewNop()
-	noopTP := noop.NewTracerProvider()
-	noopTF := observability.NewTracerFactory(noopTP, nopLogger)
+	lf := logging.NewLogFields(obsCfg)
 
-	return db, nopLogger, noopTF
+	loggingDBProvider := driver.NewLoggingDBProvider(db, nopLogger, lf)
+
+	noopTF := observability.NewTestTracerFactory(t)
+
+	return db, loggingDBProvider, noopTF
 }
 
 // NewTestInstancesForImplementedInfra は、実装済みインフラ用テストインスタンスを生成します。
 func NewTestInstancesForImplementedInfra(t *testing.T) (
-	*sql.DB, Manager, *zap.Logger, *time.Location, observability.LayerTracer,
+	driver.DatabaseDriver, Manager, driver.LoggingDBProvider, *time.Location, observability.LayerTracer,
 ) {
 	t.Helper()
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := rdbdriver.NewDB(dbCfg, osCfg, dbConnCfg)
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 
 	nopLogger := zap.NewNop()
-	innerTxm := rdbdriver.NewTransactionManager(cfg, db)
+	lf := logging.NewLogFields(obsCfg)
+	innerTxm := driver.NewTransactionManager(cfg, db)
 
-	loc, err := time.LoadLocation(osCfg.OSTimeZone())
+	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)
 
-	noopTP := noop.NewTracerProvider()
-	noopTF := observability.NewTracerFactory(noopTP, nopLogger)
+	loggingDBProvider := driver.NewLoggingDBProvider(db, nopLogger, lf)
+
+	noopTF := observability.NewTestTracerFactory(t)
 
 	tracer := noopTF.Infra()
 
@@ -81,7 +87,7 @@ func NewTestInstancesForImplementedInfra(t *testing.T) (
 		t:     t,
 	}
 
-	return db, txm, nopLogger, loc, tracer
+	return db, txm, loggingDBProvider, loc, tracer
 }
 
 // Do は、テスト用のトランザクションマネージャーでトランザクションを開始し、引数で渡されたfnを実行し、最後にロールバックします。

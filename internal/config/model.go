@@ -8,12 +8,13 @@ import (
 )
 
 type Config struct {
-	os       OperationSystemConfig
-	app      ApplicationConfig
-	server   ServerConfig
-	metrics  MetricsConfig
-	database DatabaseConfig
-	security SecurityConfig
+	os            OperationSystemConfig
+	app           ApplicationConfig
+	server        ServerConfig
+	metrics       MetricsConfig
+	observability ObservabilityConfig
+	database      DatabaseConfig
+	security      SecurityConfig
 }
 
 type OperationSystemConfig struct {
@@ -36,6 +37,11 @@ type ServerConfig struct {
 type MetricsConfig struct {
 	host string
 	port int
+}
+
+type ObservabilityConfig struct {
+	enabled           bool
+	targetStatusCodes []int
 }
 
 type DatabaseConfig struct {
@@ -64,86 +70,95 @@ type SecurityConfig struct {
 // NewOSConfig は、OSの設定を返します。
 func NewOSConfig(cfg *Config) *OperationSystemConfig { return &cfg.os }
 
-// OSTimeZone は、OSのタイムゾーンを返します。
-func (o *OperationSystemConfig) OSTimeZone() string { return o.timezone }
+// TimeZone は、OSのタイムゾーンを返します。
+func (o *OperationSystemConfig) TimeZone() string { return o.timezone }
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
 func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &cfg.app }
 
-// AppEnv は、サーバーの環境を返します。
+// Env は、サーバーの環境を返します。
 //
 // 例: "local", "development", "staging", "production" など。
-func (a *ApplicationConfig) AppEnv() string { return a.env }
+func (a *ApplicationConfig) Env() string { return a.env }
 
-// AppMode は、アプリケーションの環境を返します。
+// Mode は、アプリケーションの環境を返します。
 //
 // この環境変数はアプリケーションがどのモードで動作しているかを示します。
 // 例: "development", "production" など。
-func (a *ApplicationConfig) AppMode() string { return a.mode }
+func (a *ApplicationConfig) Mode() string { return a.mode }
 
-// AppName は、アプリケーションの名前を返します。
-func (a *ApplicationConfig) AppName() string { return a.name }
+// Name は、アプリケーションの名前を返します。
+func (a *ApplicationConfig) Name() string { return a.name }
 
-// AppShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。
-func (a *ApplicationConfig) AppShutdownTimeout() time.Duration { return a.shutdownTimeout }
+// ShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。
+func (a *ApplicationConfig) ShutdownTimeout() time.Duration { return a.shutdownTimeout }
 
-// IsAppProductionMode は、アプリケーションが本番環境モードかどうかを返します。
-func (a *ApplicationConfig) IsAppProductionMode() bool {
+// IsProductionMode は、アプリケーションが本番環境モードかどうかを返します。
+func (a *ApplicationConfig) IsProductionMode() bool {
 	return a.mode == ProductionMode
 }
 
-// IsAppDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。
-func (a *ApplicationConfig) IsAppDevelopmentMode() bool {
+// IsDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。
+func (a *ApplicationConfig) IsDevelopmentMode() bool {
 	return a.mode == DevelopmentMode
 }
 
 // NewServerConfig は、サーバーの設定を返します。
 func NewServerConfig(cfg *Config) *ServerConfig { return &cfg.server }
 
-// ServerHost は、サーバーがリッスンするホスト名を返します。
-func (s *ServerConfig) ServerHost() string { return s.host }
+// Host は、サーバーがリッスンするホスト名を返します。
+func (s *ServerConfig) Host() string { return s.host }
 
-// ServerPort は、サーバーがリッスンするポート番号を返します。
-func (s *ServerConfig) ServerPort() int { return s.port }
+// Port は、サーバーがリッスンするポート番号を返します。
+func (s *ServerConfig) Port() int { return s.port }
 
-// ServerShutdownTimeout は、サーバー停止までの規定時間を返します。
-func (s *ServerConfig) ServerShutdownTimeout() time.Duration { return s.shutdownTimeout }
+// ShutdownTimeout は、サーバー停止までの規定時間を返します。
+func (s *ServerConfig) ShutdownTimeout() time.Duration { return s.shutdownTimeout }
 
 // NewMetricsConfig は、メトリクスの設定を返します。
 func NewMetricsConfig(cfg *Config) *MetricsConfig { return &cfg.metrics }
 
-// MetricsHost は、メトリクスサーバーがリッスンするホスト名を返します。
-func (m *MetricsConfig) MetricsHost() string { return m.host }
+// Host は、メトリクスサーバーがリッスンするホスト名を返します。
+func (m *MetricsConfig) Host() string { return m.host }
 
-// MetricsPort は、メトリクスサーバーがリッスンするポート番号を返します。
-func (m *MetricsConfig) MetricsPort() int { return m.port }
+// Port は、メトリクスサーバーがリッスンするポート番号を返します。
+func (m *MetricsConfig) Port() int { return m.port }
+
+// NewObservabilityConfig は、可観測の設定を返します。
+func NewObservabilityConfig(cfg *Config) *ObservabilityConfig { return &cfg.observability }
+
+// Enabled は、可観測モードが有効かどうかを返します。
+func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
+
+// TargetStatusCodes は、可観測モードで監視対象となるHTTPステータスコードのリストを返します。
+func (o *ObservabilityConfig) TargetStatusCodes() []int { return o.targetStatusCodes }
 
 // NewDatabaseConfig は、データベースの設定を返します。
 func NewDatabaseConfig(cfg *Config) *DatabaseConfig { return &cfg.database }
 
-// DatabaseDriver は、データベースのドライバー名を返します。
-func (d *DatabaseConfig) DatabaseDriver() string { return d.driver }
+// Driver は、データベースのドライバー名を返します。
+func (d *DatabaseConfig) Driver() string { return d.driver }
 
-// DatabaseHost は、データベースのホスト名を返します。
-func (d *DatabaseConfig) DatabaseHost() string { return d.host }
+// Host は、データベースのホスト名を返します。
+func (d *DatabaseConfig) Host() string { return d.host }
 
-// DatabasePort は、データベースのポート番号を返します。
-func (d *DatabaseConfig) DatabasePort() int { return d.port }
+// Port は、データベースのポート番号を返します。
+func (d *DatabaseConfig) Port() int { return d.port }
 
-// DatabaseUser は、データベースのユーザー名を返します。
-func (d *DatabaseConfig) DatabaseUser() string { return d.user }
+// User は、データベースのユーザー名を返します。
+func (d *DatabaseConfig) User() string { return d.user }
 
-// DatabasePassword は、データベースのパスワードを返します。
-func (d *DatabaseConfig) DatabasePassword() string { return d.password }
+// Password は、データベースのパスワードを返します。
+func (d *DatabaseConfig) Password() string { return d.password }
 
-// DatabaseName は、データベースの名前を返します。
-func (d *DatabaseConfig) DatabaseName() string { return d.name }
+// DBName は、データベースの名前を返します。
+func (d *DatabaseConfig) DBName() string { return d.name }
 
-// DatabaseSSLMode は、データベースのSSLモードを返します。
-func (d *DatabaseConfig) DatabaseSSLMode() string { return d.sslMode }
+// SSLMode は、データベースのSSLモードを返します。
+func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
 
-// DatabaseDSN は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DatabaseDSN(o *OperationSystemConfig) string {
+// DSN は、データベースの接続URLを返します。
+func (d *DatabaseConfig) DSN(o *OperationSystemConfig) string {
 	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
 		d.user,
@@ -159,17 +174,17 @@ func (d *DatabaseConfig) DatabaseDSN(o *OperationSystemConfig) string {
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.database.connection }
 
-// DBMaxOpenConns は、データベースの最大オープン接続数を返します。
-func (c *DBConnectionConfig) DBMaxOpenConns() int { return c.maxOpenConns }
+// MaxOpenConns は、データベースの最大オープン接続数を返します。
+func (c *DBConnectionConfig) MaxOpenConns() int { return c.maxOpenConns }
 
-// DBMaxIdleConns は、データベースの最大アイドル接続数を返します。
-func (c *DBConnectionConfig) DBMaxIdleConns() int { return c.maxIdleConns }
+// MaxIdleConns は、データベースの最大アイドル接続数を返します。
+func (c *DBConnectionConfig) MaxIdleConns() int { return c.maxIdleConns }
 
-// DBConnMaxLifetime は、データベースの接続の最大寿命を返します。
-func (c *DBConnectionConfig) DBConnMaxLifetime() time.Duration { return c.maxLifetime }
+// MaxLifetime は、データベースの接続の最大寿命を返します。
+func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime }
 
-// DBConnMaxIdleTime は、データベースの接続の最大アイドル時間を返します。
-func (c *DBConnectionConfig) DBConnMaxIdleTime() time.Duration { return c.maxIdleTime }
+// MaxIdleTime は、データベースの接続の最大アイドル時間を返します。
+func (c *DBConnectionConfig) MaxIdleTime() time.Duration { return c.maxIdleTime }
 
 func NewSecurityConfig(cfg *Config) *SecurityConfig { return &cfg.security }
 

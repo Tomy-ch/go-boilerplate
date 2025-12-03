@@ -37,7 +37,7 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	appCfg := config.NewApplicationConfig(cfg)
 
 	var metricsSrv *http.Server
-	if !appCfg.IsAppProductionMode() {
+	if !appCfg.IsProductionMode() {
 		// 非本番環境では、メトリクスサーバーを起動
 		metricsSrv = MetricsServer(cfg)
 		go func() {
@@ -72,7 +72,7 @@ func serveRun(_ *cobra.Command, _ []string) error {
 
 	stopCtx, cancel := context.WithTimeout(
 		context.Background(),
-		appCfg.AppShutdownTimeout(),
+		appCfg.ShutdownTimeout(),
 	)
 	defer cancel()
 

@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/controller/handler/handlertest"
+	"boilerplate-go/internal/controller/handler/handlertest/testassert"
+	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	"boilerplate-go/internal/usecase/paging"
 	"boilerplate-go/internal/usecase/user"
@@ -22,7 +23,7 @@ const targetPath = "/v1/users"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, ctrl, tf, _ := handlertest.NewTestInstanceForBindHandler(t)
+	e, ctrl, tf, _ := testinstance.NewTestInstanceForBindHandler(t)
 	mockApp := mock_user.NewMockUsecase(ctrl)
 
 	BindHandler(e, tf, mockApp)
@@ -32,10 +33,10 @@ func TestBindHandler(t *testing.T) {
 		http.MethodPost,
 	}
 
-	handlertest.AssertEchoRouterPath(
+	testassert.AssertEchoRouterPath(
 		t, targetPath, e.Routes(),
 	)
-	handlertest.AssertEchoRouterMethods(
+	testassert.AssertEchoRouterMethods(
 		t, expectedMethods, e.Routes(),
 	)
 }
@@ -64,7 +65,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("複数のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			ctx, ctrl, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
+			ctx, ctrl, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
 
 			expectedResponse := gen.ResponseV1Users{
 				Users: []gen.UserResponse{
@@ -101,7 +102,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			ctx, ctrl, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
+			ctx, ctrl, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
 
 			expectedResponse := gen.ResponseV1Users{
 				Users: []gen.UserResponse{
@@ -137,7 +138,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
-			ctx, ctrl, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
+			ctx, ctrl, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
 
 			invalidPage := 1_000_000
 			invalidParams := gen.GetUsersRequestObject{
@@ -158,7 +159,7 @@ func Test_server_GetUsers(t *testing.T) {
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			ctx, ctrl, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
+			ctx, ctrl, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
 
 			expectedError := apperror.ErrInternal
 

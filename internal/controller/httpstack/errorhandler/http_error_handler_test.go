@@ -9,8 +9,12 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/apperror"
+	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/error/response"
 	"boilerplate-go/internal/controller/error/response/gen"
+	"boilerplate-go/internal/controller/handler/handlertest/testspan"
+	"boilerplate-go/internal/logging"
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
@@ -40,7 +44,10 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 	e := echo.New()
 	z := zap.NewNop()
-	New(e, z)
+	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
+	lf := logging.NewLogFields(obsCfg)
+
+	New(e, z, lf, obsCfg)
 	require.NotNil(t, e.HTTPErrorHandler)
 }
 
@@ -48,7 +55,9 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 	t.Parallel()
 
 	z := zap.NewNop()
-	handler := NewHTTPErrorHandler(z)
+	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
+	lf := logging.NewLogFields(obsCfg)
+	handler := NewHTTPErrorHandler(z, lf, obsCfg)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/new", nil)
@@ -66,8 +75,8 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 	_, ok := got["code"].(string)
 	require.True(t, ok)
 
-	_, ok2 := got["request_id"].(string)
-	require.True(t, ok2)
+	_, ok = got["request_id"].(string)
+	require.True(t, ok)
 }
 
 func Test_writeErrorResponse(t *testing.T) {
@@ -114,6 +123,10 @@ func Test_handleHTTPError(t *testing.T) {
 		return zap.New(core)
 	}
 
+	cfg := config.MockConfigForTest(t)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewLogFields(obsCfg)
+
 	t.Run("正常系: レスポンス書き込みとログ出力", func(t *testing.T) {
 		t.Parallel()
 
@@ -124,14 +137,16 @@ func Test_handleHTTPError(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/h", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
+		c, end := testspan.StartTestSpanForEcho(t, c)
+		defer end()
 
-		handleHTTPError(logger, c, fmt.Errorf("boom"))
+		handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
 
 		// JSON が書き込まれ、ステータスは内部サーバーエラー (おおむね 500) であること
 		require.Equal(t, http.StatusInternalServerError, rec.Code)
 
 		out := buf.String()
-		require.Contains(t, out, `"msg":"http_error"`)
+		require.Contains(t, out, `"msg":"server_error"`)
 		require.Contains(t, out, `"level":"error"`)
 	})
 
@@ -147,8 +162,10 @@ func Test_handleHTTPError(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/h2", nil)
 		c := e.NewContext(req, bw)
+		c, end := testspan.StartTestSpanForEcho(t, c)
+		defer end()
 
-		handleHTTPError(logger, c, fmt.Errorf("boom2"))
+		handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom2"))
 
 		// writeErrorResponse が失敗した場合、handleHTTPError は Error ログを出す
 		out := buf.String()
@@ -323,11 +340,17 @@ func Test_logHTTPError(t *testing.T) {
 		return zap.New(core)
 	}
 
+	cfg := config.MockConfigForTest(t)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewLogFields(obsCfg)
+
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/p", nil)
 	req.RemoteAddr = "9.8.7.6:1234"
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
+	c, end := testspan.StartTestSpanForEcho(t, c)
+	defer end()
 
 	t.Run("500以上はErrorログ", func(t *testing.T) {
 		t.Parallel()
@@ -344,10 +367,10 @@ func Test_logHTTPError(t *testing.T) {
 			HTTPStatus: http.StatusInternalServerError,
 		}
 
-		logHTTPError(logger, c, he)
+		logHTTPError(c, logger, lf, obsCfg, he)
 
 		out := buf.String()
-		require.Contains(t, out, `"msg":"http_error"`)
+		require.Contains(t, out, `"msg":"server_error"`)
 		require.Contains(t, out, `"level":"error"`)
 		require.Contains(t, out, `"status":`+fmt.Sprint(he.HTTPStatus))
 	})
@@ -367,34 +390,11 @@ func Test_logHTTPError(t *testing.T) {
 			HTTPStatus: http.StatusNotFound,
 		}
 
-		logHTTPError(logger, c, he)
+		logHTTPError(c, logger, lf, obsCfg, he)
 
 		out := buf.String()
-		require.Contains(t, out, `"msg":"http_error"`)
+		require.Contains(t, out, `"msg":"client_error"`)
 		require.Contains(t, out, `"level":"warn"`)
-		require.Contains(t, out, `"status":`+fmt.Sprint(he.HTTPStatus))
-	})
-
-	t.Run("それ以外はInfoログ", func(t *testing.T) {
-		t.Parallel()
-
-		var buf bytes.Buffer
-		logger := newTestLogger(&buf)
-
-		he := &response.HTTPErrorResponse{
-			ErrorResponse: gen.ErrorResponse{
-				Code:      "C200",
-				Message:   "M200",
-				RequestId: "r200",
-			},
-			HTTPStatus: http.StatusOK,
-		}
-
-		logHTTPError(logger, c, he)
-
-		out := buf.String()
-		require.Contains(t, out, `"msg":"http_error"`)
-		require.Contains(t, out, `"level":"info"`)
 		require.Contains(t, out, `"status":`+fmt.Sprint(he.HTTPStatus))
 	})
 }
@@ -432,81 +432,59 @@ func Test_isErrorStatus(t *testing.T) {
 func Test_httpErrorField(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
+	cfg := config.MockConfigForTest(t)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewLogFields(obsCfg)
 
-	t.Run("正常系", func(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/p", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	t.Run("DetailsとInternalがnilの場合、基本フィールドが含まれる", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("DetailsとInternalがnilの場合、想定するフィールドが返る", func(t *testing.T) {
-			t.Parallel()
+		he := &response.HTTPErrorResponse{
+			ErrorResponse: gen.ErrorResponse{
+				Code:      "E_TEST",
+				Message:   "m",
+				RequestId: "rid",
+			},
+			HTTPStatus: http.StatusBadRequest,
+		}
 
-			req := httptest.NewRequest(http.MethodGet, "/foo", nil)
-			req.RemoteAddr = "1.2.3.4:1234"
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
+		fields := httpErrorField(c, lf, he)
 
-			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
-					Code:      "CODE",
-					Message:   "MSG",
-					Details:   nil,
-					RequestId: "req-1",
-				},
-				HTTPStatus: http.StatusBadRequest,
-				Internal:   nil,
-			}
+		require.GreaterOrEqual(t, len(fields), 4)
+		require.Contains(t, fields, zap.Int(logging.StatusKey, he.HTTPStatus))
+		require.Contains(t, fields, zap.String(logging.ErrorCodeKey, he.Code))
+		require.Contains(t, fields, zap.String(logging.ErrorMessageKey, he.Message))
+		require.Contains(t, fields, zap.String(logging.RequestIDKey, he.RequestId))
+	})
 
-			actual := httpErrorField(c, he)
+	t.Run("DetailsとInternalがある場合、内部情報フィールドが含まれる", func(t *testing.T) {
+		t.Parallel()
 
-			expected := []zap.Field{
-				zap.Int("status", he.HTTPStatus),
-				zap.String("method", http.MethodGet),
-				zap.String("path", "/foo"),
-				zap.String("remote_ip", "1.2.3.4"),
-				zap.String("request_id", he.RequestId),
-				zap.String("error_code", he.Code),
-				zap.String("error_message", he.Message),
-			}
+		details := []string{"d1", "d2"}
+		internalErr := fmt.Errorf("internal err")
+		he := &response.HTTPErrorResponse{
+			ErrorResponse: gen.ErrorResponse{
+				Code:      "E_INT",
+				Message:   "m2",
+				Details:   &details,
+				RequestId: "rid2",
+			},
+			HTTPStatus: http.StatusInternalServerError,
+			Internal:   internalErr,
+		}
 
-			require.Equal(t, expected, actual)
-		})
+		fields := httpErrorField(c, lf, he)
 
-		t.Run("DetailsとInternalがある場合、追加フィールドが含まれる", func(t *testing.T) {
-			t.Parallel()
+		// Details フィールド
+		require.Contains(t, fields, zap.Strings(logging.ErrorDetails, details))
 
-			req := httptest.NewRequest(http.MethodPost, "/bar", nil)
-			req.RemoteAddr = "5.6.7.8:4321"
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-
-			ds := []string{"d1", "d2"}
-			internalErr := fmt.Errorf("inner: %w", apperror.ErrConflict)
-			he := &response.HTTPErrorResponse{
-				ErrorResponse: gen.ErrorResponse{
-					Code:      "C2",
-					Message:   "M2",
-					Details:   &ds,
-					RequestId: "req-2",
-				},
-				HTTPStatus: http.StatusInternalServerError,
-				Internal:   internalErr,
-			}
-
-			actual := httpErrorField(c, he)
-
-			expected := []zap.Field{
-				zap.Int("status", he.HTTPStatus),
-				zap.String("method", http.MethodPost),
-				zap.String("path", "/bar"),
-				zap.String("remote_ip", "5.6.7.8"),
-				zap.String("request_id", he.RequestId),
-				zap.String("error_code", he.Code),
-				zap.String("error_message", he.Message),
-				zap.Strings("error_details", ds),
-				zap.String("internal_error", fmt.Sprintf("%v", he.Internal)),
-			}
-
-			require.Equal(t, expected, actual)
-		})
+		// Internal error と stacktrace
+		require.Contains(t, fields, zap.String(logging.InternalErrorKey, he.Internal.Error()))
+		require.Contains(t, fields, zap.String(logging.InternalStackTraceKey, xerrors.StackTrace(he.Internal)))
 	})
 }

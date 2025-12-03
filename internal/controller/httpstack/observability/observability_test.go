@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 	"go.uber.org/fx"
 )
 
@@ -46,15 +46,12 @@ func TestTracerProvider(t *testing.T) {
 	var tpProvided any
 	app := fx.New(
 		fx.Invoke(func(lc fx.Lifecycle) {
-			tpProvided = TracerProvider(lc)
+			tpProvided = observability.TracerProvider(lc)
 		}),
 	)
 
 	ctx := context.Background()
 	require.NoError(t, app.Start(ctx))
 	require.NotNil(t, tpProvided)
-
-	require.Equal(t, tpProvided, otel.GetTracerProvider())
-
 	require.NoError(t, app.Stop(ctx))
 }

@@ -14,7 +14,7 @@ import (
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 func (a *ApplicationConfig) SetServerAppMode(t testing.TB, mode string) {
 	t.Helper()
-	prev := a.AppMode()
+	prev := a.Mode()
 	a.mode = mode
 	t.Cleanup(func() { a.mode = prev })
 }
@@ -24,7 +24,7 @@ func (a *ApplicationConfig) SetServerAppMode(t testing.TB, mode string) {
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 func (d *DatabaseConfig) SetDatabaseDriver(t testing.TB, driver string) {
 	t.Helper()
-	prev := d.DatabaseDriver()
+	prev := d.Driver()
 	d.driver = driver
 	t.Cleanup(func() { d.driver = prev })
 }
@@ -34,7 +34,7 @@ func (d *DatabaseConfig) SetDatabaseDriver(t testing.TB, driver string) {
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 func (d *DatabaseConfig) SetDatabaseHost(t testing.TB, host string) {
 	t.Helper()
-	prev := d.DatabaseHost()
+	prev := d.Host()
 	d.host = host
 	t.Cleanup(func() { d.host = prev })
 }
@@ -44,7 +44,7 @@ func (d *DatabaseConfig) SetDatabaseHost(t testing.TB, host string) {
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string) {
 	t.Helper()
-	prev := d.DatabaseName()
+	prev := d.DBName()
 	d.name = name
 	t.Cleanup(func() { d.name = prev })
 }

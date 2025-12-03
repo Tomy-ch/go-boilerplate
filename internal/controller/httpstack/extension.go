@@ -2,7 +2,11 @@
 package httpstack
 
 import (
+	"fmt"
 	"sort"
+	"strings"
+
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
@@ -13,7 +17,7 @@ import (
 type ServerExtends struct {
 	fx.In
 	// PreList は、Preミドルウェアとして適用されるミドルウェアのリストです。
-	PreList []echo.MiddlewareFunc `group:"middlewares.pre"`
+	PreList []PreMiddleware `group:"middlewares.pre"`
 	// UseList は、Useミドルウェアとして適用されるミドルウェアのリストです。
 	UseList []UseMiddleware `group:"middlewares.use"`
 	// CfgList は、サーバーに副作用で適用される設定関数のリストです。
@@ -32,8 +36,26 @@ type ServeCfgOut struct {
 	SrvCfg SrvCfg `group:"server.configurators"`
 }
 
+// PreMiddleware は、Use ミドルウェアとその適用順序を表します。
+type PreMiddleware struct {
+	// Name は、ミドルウェアの名前です（ログ出力用）
+	Name string
+	// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
+	Priority int
+	// Middleware は、適用対象の Echo ミドルウェアです。
+	Middleware echo.MiddlewareFunc
+}
+
+// PreMiddlewareOut は、fx の group 出力用のラッパーです。
+type PreMiddlewareOut struct {
+	fx.Out
+	Middleware PreMiddleware `group:"middlewares.pre"`
+}
+
 // UseMiddleware は、Use ミドルウェアとその適用順序を表します。
 type UseMiddleware struct {
+	// Name は、ミドルウェアの名前です（ログ出力用）
+	Name string
 	// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
 	Priority int
 	// Middleware は、適用対象の Echo ミドルウェアです。
@@ -47,33 +69,106 @@ type UseMiddlewareOut struct {
 }
 
 // ApplyExtends は、サーバー拡張を適用します。
-func ApplyExtends(e *echo.Echo, logger *zap.Logger, extends ServerExtends) *AppliedServerExtends {
-	ApplyPreMiddlewares(e, logger, extends.PreList)
-	ApplyUseMiddlewares(e, logger, extends.UseList)
+func ApplyExtends(e *echo.Echo, logger *zap.Logger, extends ServerExtends) (*AppliedServerExtends, error) {
+	if err := ApplyPreMiddlewares(e, logger, extends.PreList); err != nil {
+		return nil, err
+	}
+	if err := ApplyUseMiddlewares(e, logger, extends.UseList); err != nil {
+		return nil, err
+	}
 	ApplyConfigurators(e, logger, extends.CfgList)
-	return &AppliedServerExtends{}
+	return &AppliedServerExtends{}, nil
 }
 
 // ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
-func ApplyPreMiddlewares(e *echo.Echo, logger *zap.Logger, mws []echo.MiddlewareFunc) {
-	logger.Info("Applying pre middleware", zap.Int("count", len(mws)))
-	for _, mw := range mws {
-		e.Pre(mw)
+func ApplyPreMiddlewares(e *echo.Echo, logger *zap.Logger, mws []PreMiddleware) error {
+	if err := validatePreMiddlewarePriorityConflicts(mws); err != nil {
+		return err
 	}
-}
 
-// ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
-func ApplyUseMiddlewares(e *echo.Echo, logger *zap.Logger, mws []UseMiddleware) {
-	logger.Info("Applying use middleware", zap.Int("count", len(mws)))
+	logger.Info("Applying pre middleware", zap.Int("count", len(mws)))
 
-	// Order でソートしてから適用
 	sort.Slice(mws, func(i, j int) bool {
 		return mws[i].Priority < mws[j].Priority
 	})
 
 	for _, mw := range mws {
+		logger.Info("Applying pre middleware", zap.Int("priority", mw.Priority), zap.String("middleware", mw.Name))
+		e.Pre(mw.Middleware)
+	}
+	return nil
+}
+
+// ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
+func ApplyUseMiddlewares(e *echo.Echo, logger *zap.Logger, mws []UseMiddleware) error {
+	if err := validateUseMiddlewarePriorityConflicts(mws); err != nil {
+		return err
+	}
+
+	logger.Info("Applying use middleware", zap.Int("count", len(mws)))
+
+	sort.Slice(mws, func(i, j int) bool {
+		return mws[i].Priority < mws[j].Priority
+	})
+
+	for _, mw := range mws {
+		logger.Info("Applying use middleware", zap.Int("priority", mw.Priority), zap.String("middleware", mw.Name))
 		e.Use(mw.Middleware)
 	}
+	return nil
+}
+
+// validateUseMiddlewarePriorityConflicts は、Priority の重複がないか検証します。
+func validateUseMiddlewarePriorityConflicts(mws []UseMiddleware) error {
+	byPriority := make(map[int][]string)
+
+	for _, mw := range mws {
+		byPriority[mw.Priority] = append(byPriority[mw.Priority], mw.Name)
+	}
+
+	conflicts := extractPriorityConflicts(byPriority)
+
+	if len(conflicts) > 0 {
+		return xerrors.New(fmt.Sprintf("duplicate use middleware priorities: %s",
+			strings.Join(conflicts, "; "),
+		))
+	}
+
+	return nil
+}
+
+// validatePreMiddlewarePriorityConflicts は、Priority の重複がないか検証します。
+func validatePreMiddlewarePriorityConflicts(mws []PreMiddleware) error {
+	byPriority := make(map[int][]string)
+
+	for _, mw := range mws {
+		byPriority[mw.Priority] = append(byPriority[mw.Priority], mw.Name)
+	}
+
+	conflicts := extractPriorityConflicts(byPriority)
+
+	if len(conflicts) > 0 {
+		return xerrors.New(fmt.Sprintf("duplicate use middleware priorities: %s",
+			strings.Join(conflicts, "; "),
+		))
+	}
+
+	return nil
+}
+
+// extractPriorityConflicts は、priority ごとに名前が重複しているものを抽出して返します。
+// 戻り値は conflict 表現の文字列スライス。
+func extractPriorityConflicts(byPriority map[int][]string) []string {
+	var conflicts []string
+
+	for p, names := range byPriority {
+		if len(names) > 1 {
+			conflicts = append(conflicts,
+				fmt.Sprintf("priority=%d: %v", p, names),
+			)
+		}
+	}
+	return conflicts
 }
 
 // ApplyConfigurators は、Echoに対して設定関数を適用します。

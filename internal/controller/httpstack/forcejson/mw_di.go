@@ -6,7 +6,7 @@ import (
 	"go.uber.org/fx"
 )
 
-const priority = 1
+const priority = 7
 
 // Module は、JOINの強制制御のミドルウェアを提供するfxモジュールを返します。
 func Module() fx.Option {
@@ -21,6 +21,7 @@ func Module() fx.Option {
 func UseMiddleware() httpstack.UseMiddlewareOut {
 	return httpstack.UseMiddlewareOut{
 		Middleware: httpstack.UseMiddleware{
+			Name:       "forcejson",
 			Priority:   priority,
 			Middleware: Middleware(),
 		},

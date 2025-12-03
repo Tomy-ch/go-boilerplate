@@ -22,7 +22,7 @@ func buildSecureConfig(appCfg *config.ApplicationConfig) middleware.SecureConfig
 		ReferrerPolicy:     "no-referrer",
 	}
 
-	if appCfg.IsAppProductionMode() {
+	if appCfg.IsProductionMode() {
 		scfg.HSTSExcludeSubdomains = false
 		scfg.HSTSMaxAge = 31536000
 	}

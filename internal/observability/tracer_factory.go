@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
@@ -17,22 +18,17 @@ type TracerFactory interface {
 }
 
 type tracerFactory struct {
-	tp trace.TracerProvider
-	z  *zap.Logger
+	tp  trace.TracerProvider
+	log *zap.Logger
+	lf  logging.LogFields
 }
 
-const (
-	delimiter                = "."
-	tracerNameController     = "controller"
-	tracerNameUsecase        = "usecase"
-	tracerNameInfrastructure = "infrastructure"
-)
-
 // NewTracerFactory は、TracerFactory を初期化して返します。
-func NewTracerFactory(tp trace.TracerProvider, z *zap.Logger) TracerFactory {
+func NewTracerFactory(tp trace.TracerProvider, log *zap.Logger, lf logging.LogFields) TracerFactory {
 	return &tracerFactory{
-		tp: tp,
-		z:  z,
+		tp:  tp,
+		log: log,
+		lf:  lf,
 	}
 }
 
@@ -42,7 +38,8 @@ func (t *tracerFactory) Controller() LayerTracer {
 	pkg := fnmeta.ExtractPackageName(full)
 
 	return LayerTracer{
-		log:     t.z,
+		log:     t.log,
+		lf:      t.lf,
 		tracer:  t.tp.Tracer(tracerNameController + delimiter + pkg),
 		layer:   tracerNameController,
 		pkgName: pkg,
@@ -55,7 +52,8 @@ func (t *tracerFactory) Usecase() LayerTracer {
 	pkg := fnmeta.ExtractPackageName(full)
 
 	return LayerTracer{
-		log:     t.z,
+		log:     t.log,
+		lf:      t.lf,
 		tracer:  t.tp.Tracer(tracerNameUsecase + delimiter + pkg),
 		layer:   tracerNameUsecase,
 		pkgName: pkg,
@@ -68,7 +66,8 @@ func (t *tracerFactory) Infra() LayerTracer {
 	pkg := fnmeta.ExtractPackageName(full)
 
 	return LayerTracer{
-		log:     t.z,
+		log:     t.log,
+		lf:      t.lf,
 		tracer:  t.tp.Tracer(tracerNameInfrastructure + delimiter + pkg),
 		layer:   tracerNameInfrastructure,
 		pkgName: pkg,

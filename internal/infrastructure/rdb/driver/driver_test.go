@@ -1,8 +1,7 @@
-package rdbdriver
+package driver
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"boilerplate-go/internal/config"
@@ -10,35 +9,60 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveConn(t *testing.T) {
-	cfg := config.MockConfigForTest(t)
-	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
-	dbCfg.SetDatabaseHost(t, "localhost")
+func TestNewDB(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	db, err := sql.Open("pgx", dbCfg.DatabaseDSN(osCfg))
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := db.Close()
-		require.NoError(t, err)
-	})
+		t.Run("DB接続が成功する", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("トランザクションが存在する場合", func(t *testing.T) {
-		tx, err := db.BeginTx(context.Background(), nil)
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			err := tx.Rollback()
+			cfg := config.MockConfigForTest(t)
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbCfg.SetDatabaseHost(t, "localhost")
+			osCfg := config.NewOSConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
+			require.NoError(t, err)
+			require.NotNil(t, db)
+
+			// 疎通確認
+			err = db.pingContext(context.Background())
+			require.NoError(t, err)
+
+			err = db.close()
 			require.NoError(t, err)
 		})
-
-		ctx := withTx(context.Background(), tx)
-		conn := ResolveDriver(ctx, db)
-		require.Equal(t, tx, conn)
 	})
 
-	t.Run("トランザクションが存在しない場合", func(t *testing.T) {
-		ctx := context.Background()
-		conn := ResolveDriver(ctx, db)
-		require.Equal(t, db, conn)
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("DSNが無効", func(t *testing.T) {
+			t.Parallel()
+			cfg := config.MockConfigForTest(t)
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbCfg.SetDatabaseDriver(t, "invalid_driver")
+			osCfg := config.NewOSConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
+			require.Error(t, err)
+			require.Nil(t, db)
+		})
+
+		t.Run("Pingに失敗", func(t *testing.T) {
+			t.Parallel()
+			cfg := config.MockConfigForTest(t)
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbCfg.SetDatabaseName(t, "nonexistentdb")
+			osCfg := config.NewOSConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
+			require.Error(t, err)
+			require.Nil(t, db)
+		})
 	})
 }

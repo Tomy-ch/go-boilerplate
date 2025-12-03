@@ -7,7 +7,7 @@ import (
 	"go.uber.org/fx"
 )
 
-const priority = 1
+const priority = 5
 
 // Module は、セキュリティ制御のミドルウェアを提供するfxモジュールを返します。
 func Module() fx.Option {
@@ -22,6 +22,7 @@ func Module() fx.Option {
 func UseMiddleware(appCfg *config.ApplicationConfig) httpstack.UseMiddlewareOut {
 	return httpstack.UseMiddlewareOut{
 		Middleware: httpstack.UseMiddleware{
+			Name:       "security",
 			Priority:   priority,
 			Middleware: Middleware(appCfg),
 		},

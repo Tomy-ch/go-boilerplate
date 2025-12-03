@@ -35,7 +35,10 @@ func NewMigrateUpCommand() *cobra.Command {
 
 // migrateUpRun は、マイグレーションをアップデートするための実行関数です。
 func migrateUpRun(_ *cobra.Command, _ []string) error {
-	logger := logging.NewProductionLogger()
+	logger, err := logging.NewProductionLogger()
+	if err != nil {
+		panic("failed to create logger: " + err.Error())
+	}
 
 	m, err := buildMigrateInstance(targetDatabase)
 	if err != nil {

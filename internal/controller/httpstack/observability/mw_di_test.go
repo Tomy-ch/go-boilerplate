@@ -13,16 +13,6 @@ func TestModule(t *testing.T) {
 	require.NotNil(t, Module())
 }
 
-func TestPrimitiveModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, PrimitiveModule())
-}
-
-func TestCoreModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, CoreModule())
-}
-
 func TestUseMiddleware(t *testing.T) {
 	t.Parallel()
 

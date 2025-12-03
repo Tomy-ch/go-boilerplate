@@ -7,6 +7,8 @@ import (
 	"io"
 	"testing"
 
+	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
@@ -34,19 +36,23 @@ func TestLayerTracer_Start(t *testing.T) {
 		defer shutdown()
 
 		logger, buf := newZapLoggerBuffer()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 
-		lt := LayerTracer{log: logger, tracer: tracer, layer: "usecase", pkgName: "pkg", funcName: "Fn"}
+		lt := LayerTracer{
+			log: logger, tracer: tracer, lf: lf,
+			layer: "usecase", pkgName: "pkg", funcName: "Fn",
+		}
 		ctx := context.Background()
-		ctx2, end := lt.Start(ctx)
+		ctx, end := lt.Start(ctx)
 		end()
-		require.NotNil(t, ctx2)
+		require.NotNil(t, ctx)
 
 		objs := decodeZapJSONBuffer(t, buf)
 		require.GreaterOrEqual(t, len(objs), 2)
 
-		require.Equal(t, "start", objs[0]["span_event"])
-		require.Equal(t, "end", objs[1]["span_event"])
-		_, hasDur := objs[1]["duration_ms"]
+		require.Equal(t, SpanEventStart, objs[0]["span_event"])
+		require.Equal(t, SpanEventEnd, objs[1]["span_event"])
+		_, hasDur := objs[1]["latency_ms"]
 		require.True(t, hasDur)
 	})
 
@@ -57,12 +63,16 @@ func TestLayerTracer_Start(t *testing.T) {
 		defer shutdown()
 
 		logger, buf := newZapLoggerBuffer()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 
-		lt := LayerTracer{log: logger, tracer: tracer, layer: "usecase", pkgName: "pkg", funcName: ""}
+		lt := LayerTracer{
+			log: logger, tracer: tracer, lf: lf,
+			layer: "usecase", pkgName: "pkg", funcName: "",
+		}
 		ctx := context.Background()
-		ctx2, end := lt.Start(ctx)
+		ctx, end := lt.Start(ctx)
 		end()
-		require.NotNil(t, ctx2)
+		require.NotNil(t, ctx)
 
 		objs := decodeZapJSONBuffer(t, buf)
 		require.GreaterOrEqual(t, len(objs), 2)
@@ -83,8 +93,12 @@ func TestLayerTracer_StartOptional(t *testing.T) {
 		defer shutdown()
 
 		logger, buf := newZapLoggerBuffer()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 
-		lt := LayerTracer{log: logger, tracer: tracer, layer: "controller", pkgName: "p", funcName: ""}
+		lt := LayerTracer{
+			log: logger, tracer: tracer, lf: lf,
+			layer: "controller", pkgName: "p", funcName: "",
+		}
 		ctx, end := lt.StartOptional(context.Background(), "DB")
 		end()
 		require.NotNil(t, ctx)
@@ -102,8 +116,12 @@ func TestLayerTracer_StartOptional(t *testing.T) {
 		defer shutdown()
 
 		logger, buf := newZapLoggerBuffer()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 
-		lt := LayerTracer{log: logger, tracer: tracer, layer: "controller", pkgName: "p", funcName: "F"}
+		lt := LayerTracer{
+			log: logger, tracer: tracer, lf: lf,
+			layer: "controller", pkgName: "p", funcName: "F",
+		}
 		ctx, end := lt.StartOptional(context.Background(), "DB")
 		end()
 		require.NotNil(t, ctx)
@@ -121,8 +139,12 @@ func TestLayerTracer_StartOptional(t *testing.T) {
 		defer shutdown()
 
 		logger, buf := newZapLoggerBuffer()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 
-		lt := LayerTracer{log: logger, tracer: tracer, layer: "controller", pkgName: "p", funcName: "F"}
+		lt := LayerTracer{
+			log: logger, tracer: tracer, lf: lf,
+			layer: "controller", pkgName: "p", funcName: "F",
+		}
 		ctx, end := lt.StartOptional(context.Background(), "")
 		end()
 		require.NotNil(t, ctx)
@@ -192,8 +214,11 @@ func TestWithDomainSpan_SuccessAndErrorPaths(t *testing.T) {
 		defer shutdown()
 
 		logger, buf := newZapLoggerBuffer()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 
-		lt := LayerTracer{log: logger, tracer: tracer}
+		lt := LayerTracer{
+			log: logger, tracer: tracer, lf: lf,
+		}
 
 		ctx, v, err := WithDomainSpan(
 			context.Background(), lt, "pkg", "Func",
@@ -206,10 +231,10 @@ func TestWithDomainSpan_SuccessAndErrorPaths(t *testing.T) {
 
 		objs := decodeZapJSONBuffer(t, buf)
 		require.GreaterOrEqual(t, len(objs), 2)
-		require.Equal(t, "start", objs[0]["span_event"])
-		require.Equal(t, "end", objs[1]["span_event"])
+		require.Equal(t, SpanEventStart, objs[0]["span_event"])
+		require.Equal(t, SpanEventEnd, objs[1]["span_event"])
 		require.Contains(t, objs[0]["span_name"], "domain.pkg.Func")
-		_, has := objs[1]["duration_ms"]
+		_, has := objs[1]["latency_ms"]
 		require.True(t, has)
 	})
 
@@ -220,8 +245,11 @@ func TestWithDomainSpan_SuccessAndErrorPaths(t *testing.T) {
 		defer shutdown()
 
 		logger, buf := newZapLoggerBuffer()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 
-		lt := LayerTracer{log: logger, tracer: tracer}
+		lt := LayerTracer{
+			log: logger, tracer: tracer, lf: lf,
+		}
 
 		ctx, v, err := WithDomainSpan(
 			context.Background(), lt, "pkg", "Func",
@@ -236,9 +264,9 @@ func TestWithDomainSpan_SuccessAndErrorPaths(t *testing.T) {
 
 		objs := decodeZapJSONBuffer(t, buf)
 		require.GreaterOrEqual(t, len(objs), 2)
-		require.Equal(t, "start", objs[0]["span_event"])
-		require.Equal(t, "end", objs[1]["span_event"])
-		_, has := objs[1]["duration_ms"]
+		require.Equal(t, SpanEventStart, objs[0]["span_event"])
+		require.Equal(t, SpanEventEnd, objs[1]["span_event"])
+		_, has := objs[1]["latency_ms"]
 		require.True(t, has)
 	})
 }

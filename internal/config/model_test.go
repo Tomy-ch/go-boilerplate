@@ -31,6 +31,18 @@ func TestConstructor(t *testing.T) {
 		require.Equal(t, &cfg.metrics, metricsCfg)
 	})
 
+	t.Run("NewObservabilityConfig", func(t *testing.T) {
+		t.Parallel()
+		observabilityCfg := NewObservabilityConfig(cfg)
+		require.Equal(t, &cfg.observability, observabilityCfg)
+	})
+
+	t.Run("NewObservabilityConfig", func(t *testing.T) {
+		t.Parallel()
+		observabilityCfg := NewObservabilityConfig(cfg)
+		require.Equal(t, &cfg.observability, observabilityCfg)
+	})
+
 	t.Run("NewApplicationConfig", func(t *testing.T) {
 		t.Parallel()
 		appCfg := NewApplicationConfig(cfg)
@@ -64,28 +76,28 @@ func TestGetterMethods(t *testing.T) {
 	t.Run("OperatingSystem", func(t *testing.T) {
 		t.Parallel()
 		os := cfg.os
-		t.Run("OSTimeZone", func(t *testing.T) {
+		t.Run("TimeZone", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedOSTimeZone, os.OSTimeZone())
+			require.Equal(t, expectedOSTimeZone, os.TimeZone())
 		})
 	})
 
 	t.Run("Server", func(t *testing.T) {
 		t.Parallel()
 		server := cfg.server
-		t.Run("ServerHost", func(t *testing.T) {
+		t.Run("Host", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerHost, server.ServerHost())
+			require.Equal(t, expectedServerHost, server.Host())
 		})
 
-		t.Run("ServerPort", func(t *testing.T) {
+		t.Run("Port", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerPort, server.ServerPort())
+			require.Equal(t, expectedServerPort, server.Port())
 		})
 
-		t.Run("ServerShutdownTimeout", func(t *testing.T) {
+		t.Run("ShutdownTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerShutdownTimeout, server.ServerShutdownTimeout())
+			require.Equal(t, expectedServerShutdownTimeout, server.ShutdownTimeout())
 		})
 	})
 
@@ -93,101 +105,116 @@ func TestGetterMethods(t *testing.T) {
 		t.Parallel()
 		metrics := cfg.metrics
 
-		t.Run("MetricsHost", func(t *testing.T) {
+		t.Run("Host", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedMetricsHost, metrics.MetricsHost())
+			require.Equal(t, expectedMetricsHost, metrics.Host())
 		})
 
-		t.Run("MetricsPort", func(t *testing.T) {
+		t.Run("Port", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedMetricsPort, metrics.MetricsPort())
+			require.Equal(t, expectedMetricsPort, metrics.Port())
+		})
+	})
+
+	t.Run("Observability", func(t *testing.T) {
+		t.Parallel()
+		observability := cfg.observability
+
+		t.Run("Enabled", func(t *testing.T) {
+			t.Parallel()
+			require.True(t, observability.Enabled())
+		})
+
+		t.Run("TargetStatusCodes", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedObservabilityTargetStatusCodes, observability.TargetStatusCodes())
 		})
 	})
 
 	t.Run("Application", func(t *testing.T) {
 		t.Parallel()
 		app := cfg.app
-		t.Run("AppEnv", func(t *testing.T) {
+		t.Run("Env", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedApplicationEnv, app.AppEnv())
+			require.Equal(t, expectedApplicationEnv, app.Env())
 		})
 
-		t.Run("AppName", func(t *testing.T) {
+		t.Run("Name", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedApplicationName, app.AppName())
+			require.Equal(t, expectedApplicationName, app.Name())
 		})
 
-		t.Run("AppMode", func(t *testing.T) {
+		t.Run("Mode", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedApplicationMode, app.AppMode())
+			require.Equal(t, expectedApplicationMode, app.Mode())
 		})
 
-		t.Run("AppShutdownTimeout", func(t *testing.T) {
+		t.Run("ShutdownTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedAppShutdownTimeout, app.AppShutdownTimeout())
+			require.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
 		})
 	})
 
 	t.Run("Database", func(t *testing.T) {
 		t.Parallel()
 		database := cfg.database
-		t.Run("DatabaseDriver", func(t *testing.T) {
+		t.Run("Driver", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBDriver, database.DatabaseDriver())
+			require.Equal(t, expectedDBDriver, database.Driver())
 		})
 
-		t.Run("DatabaseHost", func(t *testing.T) {
+		t.Run("Host", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBHost, database.DatabaseHost())
+			require.Equal(t, expectedDBHost, database.Host())
 		})
 
-		t.Run("DatabasePort", func(t *testing.T) {
+		t.Run("Port", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBPort, database.DatabasePort())
+			require.Equal(t, expectedDBPort, database.Port())
 		})
 
-		t.Run("DatabaseUser", func(t *testing.T) {
+		t.Run("User", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBUser, database.DatabaseUser())
+			require.Equal(t, expectedDBUser, database.User())
 		})
 
-		t.Run("DatabasePassword", func(t *testing.T) {
+		t.Run("Password", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBPassword, database.DatabasePassword())
+			require.Equal(t, expectedDBPassword, database.Password())
 		})
 
-		t.Run("DatabaseName", func(t *testing.T) {
+		t.Run("DBName", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBName, database.DatabaseName())
+			require.Equal(t, expectedDBName, database.DBName())
 		})
 
-		t.Run("DatabaseSSLMode", func(t *testing.T) {
+		t.Run("SSLMode", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBSSLMode, database.DatabaseSSLMode())
+			require.Equal(t, expectedDBSSLMode, database.SSLMode())
 		})
 	})
 
 	t.Run("DBConnection", func(t *testing.T) {
 		t.Parallel()
 		connection := cfg.database.connection
-		t.Run("DBMaxOpenConns", func(t *testing.T) {
+		t.Run("MaxOpenConns", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxOpenConns, connection.DBMaxOpenConns())
+			require.Equal(t, expectedDBMaxOpenConns, connection.MaxOpenConns())
 		})
 
-		t.Run("DBMaxIdleConns", func(t *testing.T) {
+		t.Run("MaxIdleConns", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxIdleConns, connection.DBMaxIdleConns())
+			require.Equal(t, expectedDBMaxIdleConns, connection.MaxIdleConns())
 		})
 
-		t.Run("DBConnMaxLifetime", func(t *testing.T) {
+		t.Run("MaxLifetime", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxLifetime, connection.DBConnMaxLifetime())
+			require.Equal(t, expectedDBMaxLifetime, connection.MaxLifetime())
 		})
 
-		t.Run("DBConnMaxIdleTime", func(t *testing.T) {
+		t.Run("MaxIdleTime", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxIdleTime, connection.DBConnMaxIdleTime())
+			require.Equal(t, expectedDBMaxIdleTime, connection.MaxIdleTime())
 		})
 	})
 
@@ -216,14 +243,14 @@ func TestIsAppProductionMode(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.app.mode = ProductionMode
-		require.True(t, cfg.app.IsAppProductionMode())
+		require.True(t, cfg.app.IsProductionMode())
 	})
 
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.app.mode = DevelopmentMode
-		require.False(t, cfg.app.IsAppProductionMode())
+		require.False(t, cfg.app.IsProductionMode())
 	})
 }
 
@@ -233,14 +260,14 @@ func TestIsAppDevelopmentMode(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.app.mode = DevelopmentMode
-		require.True(t, cfg.app.IsAppDevelopmentMode())
+		require.True(t, cfg.app.IsDevelopmentMode())
 	})
 
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.app.mode = ProductionMode
-		require.False(t, cfg.app.IsAppDevelopmentMode())
+		require.False(t, cfg.app.IsDevelopmentMode())
 	})
 }
 
@@ -261,6 +288,6 @@ func TestDatabaseURL(t *testing.T) {
 			expectedDBSSLMode,
 			url.QueryEscape(expectedOSTimeZone),
 		)
-		require.Equal(t, expectedURL, cfg.database.DatabaseDSN(&cfg.os))
+		require.Equal(t, expectedURL, cfg.database.DSN(&cfg.os))
 	})
 }

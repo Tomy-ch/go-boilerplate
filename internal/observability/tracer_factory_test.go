@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
+
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
@@ -15,13 +18,15 @@ func TestNewTracerFactory(t *testing.T) {
 	t.Run("TracerProvider と zap.Logger を渡すと TracerFactory を返す", func(t *testing.T) {
 		t.Parallel()
 		provided := otel.GetTracerProvider()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 		log := zap.NewNop()
 
 		expected := &tracerFactory{
-			tp: provided,
-			z:  log,
+			tp:  provided,
+			log: log,
+			lf:  lf,
 		}
-		actual := NewTracerFactory(provided, log)
+		actual := NewTracerFactory(provided, log, lf)
 		require.Equal(t, expected, actual)
 	})
 }
@@ -32,10 +37,12 @@ func TestNewControllerTracer(t *testing.T) {
 	t.Run("TracerProvider を渡すと controller 用 LayerTracer を返す", func(t *testing.T) {
 		t.Parallel()
 		provided := otel.GetTracerProvider()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 		log := zap.NewNop()
 		actualTF := &tracerFactory{
-			tp: provided,
-			z:  log,
+			tp:  provided,
+			log: log,
+			lf:  lf,
 		}
 
 		actual := actualTF.Controller()
@@ -55,10 +62,12 @@ func TestNewUsecaseTracer(t *testing.T) {
 	t.Run("TracerProvider を渡すと usecase 用 LayerTracer を返す", func(t *testing.T) {
 		t.Parallel()
 		provided := otel.GetTracerProvider()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 		log := zap.NewNop()
 		actualTF := &tracerFactory{
-			tp: provided,
-			z:  log,
+			tp:  provided,
+			log: log,
+			lf:  lf,
 		}
 
 		actual := actualTF.Usecase()
@@ -78,10 +87,12 @@ func TestNewInfrastructureTracer(t *testing.T) {
 	t.Run("TracerProvider を渡すと infrastructure 用 LayerTracer を返す", func(t *testing.T) {
 		t.Parallel()
 		provided := otel.GetTracerProvider()
+		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
 		log := zap.NewNop()
 		actualTF := &tracerFactory{
-			tp: provided,
-			z:  log,
+			tp:  provided,
+			log: log,
+			lf:  lf,
 		}
 
 		actual := actualTF.Infra()

@@ -8,6 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestExpectedDBError(t *testing.T) {
+	t.Parallel()
+
+	actual := ExpectedDBError(t)
+	require.Error(t, actual)
+}
+
 func Test_NewTestInstanceForNew(t *testing.T) {
 	t.Parallel()
 	ctrl, tf := NewTestInstanceForNew(t)

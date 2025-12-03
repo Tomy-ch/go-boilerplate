@@ -3,30 +3,27 @@ package healthcheck
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"boilerplate-go/internal/apperror"
-	rdbdriver "boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/healthcheck/query"
 	"boilerplate-go/pkg/xerrors"
-
-	"go.uber.org/zap"
 )
 
 type systemQuery struct {
-	tracer observability.LayerTracer
-	db     *sql.DB
-	z      *zap.Logger
+	db       driver.DatabaseDriver
+	provider driver.LoggingDBProvider
+	tracer   observability.LayerTracer
 }
 
-func New(db *sql.DB, z *zap.Logger, tf observability.TracerFactory) query.DBSystemQuery {
+func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) query.DBSystemQuery {
 	return &systemQuery{
-		tracer: tf.Infra(),
-		db:     db,
-		z:      z,
+		db:       db,
+		provider: provider,
+		tracer:   tf.Infra(),
 	}
 }
 
@@ -36,7 +33,7 @@ func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)
 	defer endSpan()
 
 	start := time.Now()
-	db := sqlc.New(rdbdriver.ResolveDriverWithLog(ctx, s.db, s.z))
+	db := sqlc.New(s.provider.NewLoggingDB(ctx))
 	_, err := db.GetDBHealthCheck(ctx)
 	if err != nil {
 		return query.DBHealth{}, xerrors.Wrap(apperror.ErrUnavailable, err.Error())

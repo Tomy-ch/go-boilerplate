@@ -103,9 +103,9 @@ Infrastructureは以下のようにobservability.LayerTracerを依存として�
 
 ```go
 type server struct {
-    tracer observability.LayerTracer
-    db       *sql.DB
-    z        *zap.Logger
+    db       driver.DatabaseDriver
+    provider driver.LoggingDBProvider
+    tracer   observability.LayerTracer
 }
 ```
 
@@ -113,11 +113,11 @@ BindHandler側ではDIコンテナから渡されたtrace.TracerProviderとzap.L
 `observability.NewInfrastructureTracer`でInfrastructure専用のトレーサーを生成します。
 
 ```go
-func New(db *sql.DB, z *zap.Logger, tf observability.TracerFactory) user.Repository {
+func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
     return &systemQuery{
-        tracer: tf.Infra(),
         db:       db,
-        z:        z,
+        provider: provider,
+        tracer:   tf.Infra(),
     }
 }
 ```
@@ -133,32 +133,31 @@ package user
 
 // repositoryで名称固定
 type repository struct {
-    tracer observability.LayerTracer
-    db       *sql.DB
-    z        *zap.Logger
+    db       driver.DatabaseDriver
+    provider driver.LoggingDBProvider
+    tracer   observability.LayerTracer
 }
 
 // レコードが見つからない場合のエラー
 var ErrUserNotFound = xerrors.Wrap(apperror.ErrNotFound, "user not found")
 
 // Newで名称固定
-func New(db *sql.DB, z *zap.Logger, tf observability.TracerFactory) user.Repository {
-    return &repository{
-        tracer: tf.Infra(),
+func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
+    return &systemQuery{
         db:       db,
-        z:        z,
+        provider: provider,
+        tracer:   tf.Infra(),
     }
 }
-
 
 func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.Entities, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    // rdbdriver.ResolveDriverWithLogを使うことでログを自動で出力
-    // 不要な場合は、rdbdriver.ResolveDriver(ctx, r.db)を使う
-    db := gen.New(rdbdriver.ResolveDriverWithLog(ctx, r.db, r.z))
+    // driver.ResolveDriverWithLogを使うことでログを自動で出力
+    // 不要な場合は、driver.ResolveDriver(ctx, r.db)を使う
+    db := sqlc.New(r.provider.NewLoggingDB(ctx))
     // genで生成されたDMLの呼び出し
     rows, err := db.GetUsersDomain(ctx, gen.GetUsersDomainParams{
         OffsetParam: conv.NewNullInt64(int64(offset)),

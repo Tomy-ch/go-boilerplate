@@ -30,6 +30,10 @@ var (
 	// metrics
 	expectedMetricsHost = "localhost"
 	expectedMetricsPort = 6060
+	// observability
+	expectedObservabilityEnabled              = true
+	expectedObservabilityTargetStatusCodes    = []int{200, 400, 500}
+	expectedObservabilityTargetStatusCodesStr = "200,400,500"
 	// database
 	expectedDBDriver   = "pgx"
 	expectedDBHost     = "localhost"
@@ -75,6 +79,10 @@ func MockConfigForTest(t testing.TB) *Config {
 			host: expectedMetricsHost,
 			port: expectedMetricsPort,
 		},
+		observability: ObservabilityConfig{
+			enabled:           expectedObservabilityEnabled,
+			targetStatusCodes: expectedObservabilityTargetStatusCodes,
+		},
 		database: DatabaseConfig{
 			driver:   expectedDBDriver,
 			host:     expectedDBHost,
@@ -115,6 +123,10 @@ func mockLoader(t testing.TB) Loader {
 			Host: expectedMetricsHost,
 			Port: expectedMetricsPort,
 		},
+		Observability: Observability{
+			Enabled:           expectedObservabilityEnabled,
+			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+		},
 		Server: Server{
 			Host:            expectedServerHost,
 			Port:            expectedServerPort,
@@ -135,8 +147,8 @@ func mockLoader(t testing.TB) Loader {
 	}
 }
 
-// setEnv は、テスト用の環境変数を設定します。
-func setEnv(t testing.TB) {
+// setEnvVarsForTesting は、テスト用の環境変数を設定します。
+func setEnvVarsForTesting(t *testing.T) {
 	t.Helper()
 	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
@@ -152,6 +164,9 @@ func setEnv(t testing.TB) {
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)
 	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))
+	// Observability
+	t.Setenv("OBSERVABILITY_ENABLED", strconv.FormatBool(expectedObservabilityEnabled))
+	t.Setenv("OBSERVABILITY_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
 	// Database
 	t.Setenv("DB_DRIVER", expectedDBDriver)
 	t.Setenv("DB_HOST", expectedDBHost)

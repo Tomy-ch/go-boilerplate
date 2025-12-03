@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/handlertest"
+	"boilerplate-go/internal/controller/handler/handlertest/testassert"
+	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	"boilerplate-go/internal/controller/handler/health/gen"
 
 	"github.com/stretchr/testify/require"
@@ -15,14 +16,14 @@ const targetPath = "/health"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, _, tf, _ := handlertest.NewTestInstanceForBindHandler(t)
+	e, _, tf, _ := testinstance.NewTestInstanceForBindHandler(t)
 	BindHandler(e, tf)
 
 	expectedMethods := []string{http.MethodGet}
-	handlertest.AssertEchoRouterPath(
+	testassert.AssertEchoRouterPath(
 		t, targetPath, e.Routes(),
 	)
-	handlertest.AssertEchoRouterMethods(
+	testassert.AssertEchoRouterMethods(
 		t, expectedMethods, e.Routes(),
 	)
 }
@@ -30,7 +31,7 @@ func TestBindHandler(t *testing.T) {
 func TestGetHealth(t *testing.T) {
 	t.Parallel()
 
-	ctx, _, _, lt := handlertest.NewTestInstancesForImplementedUsecase(t)
+	ctx, _, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
 	s := &server{
 		tracer: lt,
 	}

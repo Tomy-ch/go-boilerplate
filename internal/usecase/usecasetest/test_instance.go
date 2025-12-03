@@ -10,9 +10,7 @@ import (
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 )
 
 func ExpectedDBError(t *testing.T) error {
@@ -26,11 +24,7 @@ func NewTestInstanceForNew(t *testing.T) (
 ) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
-
-	tp := noop.NewTracerProvider()
-	z := zap.NewNop()
-	tf := observability.NewTracerFactory(tp, z)
-
+	tf := observability.NewTestTracerFactory(t)
 	return ctrl, tf
 }
 
@@ -45,9 +39,7 @@ func NewTestInstanceForImplementedUsecase(t *testing.T) (
 	location, err := time.LoadLocation("Asia/Tokyo")
 	require.NoError(t, err)
 
-	tp := noop.NewTracerProvider()
-	z := zap.NewNop()
-	tf := observability.NewTracerFactory(tp, z)
+	tf := observability.NewTestTracerFactory(t)
 	lt := tf.Usecase()
 
 	return ctx, ctrl, location, lt

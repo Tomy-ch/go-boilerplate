@@ -11,7 +11,7 @@ import (
 )
 
 // NewProductionLogger は、本番環境用のZapロガーを生成します。
-func NewProductionLogger() *zap.Logger {
+func NewProductionLogger() (*zap.Logger, error) {
 	cfg := zap.Config{
 		Level:            zap.NewAtomicLevelAt(zapcore.InfoLevel),
 		Development:      false,
@@ -31,19 +31,13 @@ func NewProductionLogger() *zap.Logger {
 		},
 	}
 
-	logger, err := cfg.Build(
+	return cfg.Build(
 		zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel),
 	)
-	if err != nil {
-		panic(fmt.Sprintf(
-			"failed to create production logger instance: %v", err,
-		))
-	}
-	return logger
 }
 
 // NewDevelopmentLogger は、開発環境用のZapロガーを生成します。
-func NewDevelopmentLogger() *zap.Logger {
+func NewDevelopmentLogger() (*zap.Logger, error) {
 	cfg := zap.Config{
 		Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
 		Development:      true,
@@ -63,24 +57,18 @@ func NewDevelopmentLogger() *zap.Logger {
 		},
 	}
 
-	logger, err := cfg.Build(
+	return cfg.Build(
 		zap.AddCaller(), zap.AddStacktrace(zapcore.WarnLevel),
 	)
-	if err != nil {
-		panic(fmt.Sprintf(
-			"failed to create development logger instance: %v", err,
-		))
-	}
-	return logger
 }
 
 // New は、指定された設定に基づいて新しいZapロガーを生成します。
 func New(appCfg *config.ApplicationConfig) (*zap.Logger, error) {
-	if appCfg.IsAppProductionMode() {
-		return NewProductionLogger(), nil
+	if appCfg.IsProductionMode() {
+		return NewProductionLogger()
 	}
-	if appCfg.IsAppDevelopmentMode() {
-		return NewDevelopmentLogger(), nil
+	if appCfg.IsDevelopmentMode() {
+		return NewDevelopmentLogger()
 	}
-	return nil, fmt.Errorf("unknown app mode: %s", appCfg.AppMode())
+	return nil, fmt.Errorf("unknown app mode: %s", appCfg.Mode())
 }

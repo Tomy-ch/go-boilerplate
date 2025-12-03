@@ -2,12 +2,13 @@ package logging
 
 import (
 	"boilerplate-go/internal/controller/httpstack"
+	"boilerplate-go/internal/logging"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-const priority = 2
+const priority = 8
 
 // Module は、ロギング制御のミドルウェアを提供するfxモジュールを返します。
 func Module() fx.Option {
@@ -19,11 +20,12 @@ func Module() fx.Option {
 }
 
 // UseMiddleware は、OTelロギングミドルウェアを提供します。
-func UseMiddleware(z *zap.Logger) httpstack.UseMiddlewareOut {
+func UseMiddleware(z *zap.Logger, lf logging.LogFields) httpstack.UseMiddlewareOut {
 	return httpstack.UseMiddlewareOut{
 		Middleware: httpstack.UseMiddleware{
+			Name:       "logging",
 			Priority:   priority,
-			Middleware: Middleware(z),
+			Middleware: Middleware(z, lf),
 		},
 	}
 }
