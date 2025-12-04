@@ -6,19 +6,20 @@ import (
 	"os"
 
 	"boilerplate-go/internal/cli"
+	"boilerplate-go/internal/system"
 
 	"github.com/spf13/cobra"
 )
 
 func main() {
-	const applicationName = "BoilerplateGo"
+	const applicationName = "boilerplate-go"
 
 	c := &cobra.Command{
 		Use:   applicationName,
 		Short: applicationName + "アプリケーションのCLIエントリポイントです。",
 		Long: applicationName + "は、開発・マイグレーション・コード生成などを行うためのコマンドラインツールです。\n" +
 			"用途に応じて、\"serve\", \"migrate-up\",  \"seed\"などのサブコマンドを使用します。",
-		Version: "1.0.0",
+		Version: system.Version + " (rev: " + system.Revision + ", built at: " + system.BuildDate + ")",
 	}
 	cli.RegisterCommands(c)
 	if err := c.Execute(); err != nil {
