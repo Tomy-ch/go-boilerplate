@@ -9,7 +9,7 @@
 .PHONY: gen-sqlc-repo ## ドメイン用のSQLCのコード生成を行う
 .PHONY: gen-sqlc-qs ## クエリサービス用のSQLCのコード生成を行う
 .PHONY: gen-sqlc-sysq ## システムクエリ用のSQLCのコード生成を行う
-.PHONY: gen-tools-meta ## CI前提：生成ツールのバージョン情報を出力する
+.PHONY: gen-tools-meta ## 生成ツールのバージョン情報を出力する
 
 gen-ctxkey:
 	@if [ -z "$(name)" ] || [ -z "$(type)" ]; then \
@@ -22,7 +22,6 @@ gen-ctxkey:
 gen:
 	@echo "🔄 各種ドキュメントやコードの生成します..."
 	@make gen-api
-	@make gen-redoc
 	@make gen-sqlc
 	@make gen-tools-meta
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
@@ -36,6 +35,7 @@ gen-swagger:
 gen-api:
 	@make gen-swagger
 	@make gen-golang-code
+	@make gen-redoc
 
 gen-redoc:
 	docker compose run --rm node_tool_runner redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html

@@ -4,7 +4,8 @@ import (
 	"boilerplate-go/internal/controller/handler/health"
 	"boilerplate-go/internal/controller/handler/healthz"
 	"boilerplate-go/internal/controller/handler/ready"
-	v1users "boilerplate-go/internal/controller/handler/v1/users"
+	"boilerplate-go/internal/controller/handler/v1/users"
+	"boilerplate-go/internal/controller/handler/version"
 
 	"go.uber.org/fx"
 )
@@ -16,7 +17,9 @@ func ControllerModule() fx.Option {
 			health.BindHandler,
 			healthz.BindHandler,
 			ready.BindHandler,
-			v1users.BindHandler,
+			version.BindHandler,
+			// サンプルのハンドラー
+			users.BindHandler,
 		),
 	)
 }

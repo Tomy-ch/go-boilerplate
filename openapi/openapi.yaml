@@ -36,6 +36,9 @@ paths:
     $ref: './paths/healthz/healthz.yaml'
   /ready:
     $ref: './paths/ready/ready.yaml'
+  /version:
+    $ref: './paths/version/version.yaml'
+  # サンプルAPI用のパス
   /v1/users:
     $ref: './paths/v1/users.yaml'
   /v1/users/{user_id}:
@@ -56,14 +59,17 @@ components:
   schemas:
     ErrorResponse:
       $ref: './components/schemas/ErrorResponse.yaml'
-    UserBaseInputRequest:
-      $ref: './components/schemas/UserBaseInputRequest.yaml'
-    UserResponse:
-      $ref: './components/schemas/UserResponse.yaml'
     ResponseHealth:
       $ref: './components/responses/health-check/HealthResponse.yaml'
     ResponseReady:
       $ref: './components/responses/health-check/ReadyResponse.yaml'
+    ResponseVersion:
+      $ref: './components/responses/version/VersionResponse.yaml'
+    # サンプルAPI用の型定義
+    UserBaseInputRequest:
+      $ref: './components/schemas/UserBaseInputRequest.yaml'
+    UserResponse:
+      $ref: './components/schemas/UserResponse.yaml'
     ResponseV1User:
       $ref: './components/schemas/UserResponse.yaml'
     ResponseV1Users:

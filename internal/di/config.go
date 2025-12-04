@@ -22,5 +22,8 @@ func ConfigModule() fx.Option {
 			config.NewSecurityConfig,
 			config.NewServerConfig,
 		),
+		fx.Provide(
+			config.NewTimeLocation,
+		),
 	)
 }

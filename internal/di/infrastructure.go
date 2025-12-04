@@ -12,6 +12,7 @@ func InfrastructureModule() fx.Option {
 	return fx.Module("infrastructure",
 		fx.Module("repository",
 			fx.Provide(
+				// サンプルのリポジトリ
 				user.New,
 			),
 		),

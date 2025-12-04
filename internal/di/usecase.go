@@ -11,8 +11,9 @@ import (
 func UsecaseModule() fx.Option {
 	return fx.Module("usecase",
 		fx.Provide(
-			user.New,
 			healthcheck.New,
+			// サンプルのユースケース
+			user.New,
 		),
 	)
 }

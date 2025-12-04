@@ -54,6 +54,7 @@ func serveRun(_ *cobra.Command, _ []string) error {
 		di.ObservabilityModule(),
 		di.DatabaseModule(),
 		di.HTTPStackModule(),
+		di.SystemModule(),
 		// DDD Modules
 		di.InfrastructureModule(),
 		di.UsecaseModule(),
