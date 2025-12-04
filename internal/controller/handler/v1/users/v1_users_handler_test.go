@@ -1,4 +1,4 @@
-package v1users
+package users
 
 import (
 	"net/http"

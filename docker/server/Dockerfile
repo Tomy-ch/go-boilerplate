@@ -11,6 +11,10 @@ ENV GOPROXY=off \
     GOOS=linux \
     GOARCH=amd64
 
+ARG VERSION=dev
+ARG REVISION=none
+ARG BUILD_DATE=2024-12-31T21:00:00Z
+
 RUN apk add --no-cache \
   ca-certificates \
   tzdata
@@ -25,7 +29,12 @@ COPY . .
 
 RUN go list -mod=vendor all
 
-RUN go build -mod=vendor -trimpath -ldflags="-s -w" -o /app/bin/server ./cmd/main.go
+RUN go build -mod=vendor -trimpath \
+  -ldflags="-s -w \
+    -X 'boilerplate-go/internal/system.Version=${VERSION}' \
+    -X 'boilerplate-go/internal/system.Revision=${REVISION}' \
+    -X 'boilerplate-go/internal/system.BuildDate=${BUILD_DATE}'" \
+  -o /app/bin/server ./cmd/main.go
 
 # ------------------------------
 # 本番用

@@ -72,6 +72,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseReady'
+  /version:
+    get:
+      operationId: GetVersion
+      tags:
+        - version
+      summary: サーバーのバージョン情報を取得します。
+      description: サーバーのバージョン情報を取得するためのエンドポイントです。
+      responses:
+        '200':
+          description: サーバーのバージョン情報を返します。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseVersion'
   /v1/users:
     get:
       operationId: GetUsers
@@ -424,40 +438,6 @@ components:
           example:
             - エラーの詳細の文章1
             - エラーの詳細の文章2
-    UserBaseInputRequest:
-      type: object
-      description: ユーザー情報の基本入力スキーマ
-      properties:
-        name:
-          type: string
-          example: John Doe
-          maxLength: 50
-        email:
-          type: string
-          format: email
-          example: john.doe@example.com
-        phone:
-          type: string
-          pattern: '^\\+?[0-9]{10,15}$'
-          example: 09012345678
-    UserResponse:
-      type: object
-      description: ユーザー情報の基本レスポンススキーマ
-      required:
-        - name
-        - email
-      properties:
-        name:
-          type: string
-          example: John Doe
-        email:
-          type: string
-          format: email
-          example: john.doe@example.com
-        phone:
-          type: string
-          nullable: true
-          example: 09012345678
     ResponseHealth:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。
@@ -500,6 +480,66 @@ components:
           format: int64
           description: データベース応答までの時間（ミリ秒）
           example: 8
+    ResponseVersion:
+      type: object
+      description: サーバーのバージョン情報用のレスポンスです。
+      required:
+        - version
+        - revision
+        - buildDate
+        - environment
+        - service
+      properties:
+        version:
+          type: string
+          description: アプリケーションのバージョン
+        revision:
+          type: string
+          description: アプリケーションのリビジョン
+        buildDate:
+          type: string
+          format: date-time
+          description: アプリケーションのビルド日時
+        environment:
+          type: string
+          description: 実行環境
+        service:
+          type: string
+          description: サービス名
+    UserBaseInputRequest:
+      type: object
+      description: ユーザー情報の基本入力スキーマ
+      properties:
+        name:
+          type: string
+          example: John Doe
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          example: john.doe@example.com
+        phone:
+          type: string
+          pattern: '^\\+?[0-9]{10,15}$'
+          example: 09012345678
+    UserResponse:
+      type: object
+      description: ユーザー情報の基本レスポンススキーマ
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@example.com
+        phone:
+          type: string
+          nullable: true
+          example: 09012345678
     ResponseV1User:
       $ref: '#/components/schemas/UserResponse'
     ResponseV1Users:

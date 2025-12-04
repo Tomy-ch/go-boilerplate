@@ -1,0 +1,25 @@
+type: object
+description: サーバーのバージョン情報用のレスポンスです。
+required:
+  - version
+  - revision
+  - buildDate
+  - environment
+  - service
+properties:
+  version:
+    type: string
+    description: アプリケーションのバージョン
+  revision:
+    type: string
+    description: アプリケーションのリビジョン
+  buildDate:
+    type: string
+    format: date-time
+    description: アプリケーションのビルド日時
+  environment:
+    type: string
+    description: 実行環境
+  service:
+    type: string
+    description: サービス名
