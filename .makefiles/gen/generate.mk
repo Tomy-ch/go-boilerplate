@@ -9,6 +9,7 @@
 .PHONY: gen-sqlc-repo ## ドメイン用のSQLCのコード生成を行う
 .PHONY: gen-sqlc-qs ## クエリサービス用のSQLCのコード生成を行う
 .PHONY: gen-sqlc-sysq ## システムクエリ用のSQLCのコード生成を行う
+.PHONY: gen-tools-meta ## CI前提：生成ツールのバージョン情報を出力する
 
 gen-ctxkey:
 	@if [ -z "$(name)" ] || [ -z "$(type)" ]; then \
@@ -23,6 +24,7 @@ gen:
 	@make gen-api
 	@make gen-redoc
 	@make gen-sqlc
+	@make gen-tools-meta
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
 gen-golang-code:
@@ -62,3 +64,9 @@ gen-sqlc-sysq:
 	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=system_query; \
 	echo "✅ システムクエリ用のSQLCのコード生成が完了しました。"
 	@make fmt
+
+gen-tools-meta:
+	@echo "🔍 生成ツールのバージョン情報を出力します..."
+	docker compose run --rm go_tool_runner sh scripts/gen_generator_versions.sh go
+	docker compose run --rm node_tool_runner sh scripts/gen_generator_versions.sh node
+	@echo "✅ 生成ツールのバージョン情報の出力が完了しました。"
