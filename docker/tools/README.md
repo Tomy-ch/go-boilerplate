@@ -4,6 +4,10 @@
 
 各種ツールでの生成は、docker-composeを通じて行います。
 
+## ツールを追加したら（重要）
+
+[GEN_GENERATOR_VERSIONS.md](../../scripts/GEN_GENERATOR_VERSIONS.md)を参照し、生成ツールのバージョン情報を記録するスクリプトを修正してください。
+
 ## 利用目的
 
 - `swagger-cli`: OpenAPIのYAMLスキーマのバンドル（`$ref` 解決）
