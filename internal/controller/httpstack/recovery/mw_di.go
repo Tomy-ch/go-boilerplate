@@ -6,7 +6,6 @@ import (
 	"boilerplate-go/internal/logging"
 
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 const priority = 3
@@ -21,12 +20,12 @@ func Module() fx.Option {
 }
 
 // UseMiddleware は、リカバリ制御ミドルウェアを提供します。
-func UseMiddleware(z *zap.Logger, lf logging.LogFields, appCfg *config.ApplicationConfig) httpstack.UseMiddlewareOut {
+func UseMiddleware(logger logging.Logger, lf logging.LogFieldBuilder, appCfg *config.ApplicationConfig) httpstack.UseMiddlewareOut {
 	return httpstack.UseMiddlewareOut{
 		Middleware: httpstack.UseMiddleware{
 			Name:       "recovery",
 			Priority:   priority,
-			Middleware: Middleware(z, lf, appCfg),
+			Middleware: Middleware(logger, lf, appCfg),
 		},
 	}
 }

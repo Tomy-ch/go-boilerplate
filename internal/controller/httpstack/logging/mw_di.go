@@ -5,7 +5,6 @@ import (
 	"boilerplate-go/internal/logging"
 
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 const priority = 8
@@ -20,7 +19,7 @@ func Module() fx.Option {
 }
 
 // UseMiddleware は、OTelロギングミドルウェアを提供します。
-func UseMiddleware(z *zap.Logger, lf logging.LogFields) httpstack.UseMiddlewareOut {
+func UseMiddleware(z logging.Logger, lf logging.LogFieldBuilder) httpstack.UseMiddlewareOut {
 	return httpstack.UseMiddlewareOut{
 		Middleware: httpstack.UseMiddleware{
 			Name:       "logging",

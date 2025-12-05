@@ -14,7 +14,6 @@ import (
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 var rollbackForTestError = xerrors.New("rollback for test")
@@ -44,10 +43,10 @@ func NewTestInstancesForNew(t *testing.T) (
 	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 
-	nopLogger := zap.NewNop()
+	mockLogger := logging.NewTestInstance(t)
 	lf := logging.NewLogFields(obsCfg)
 
-	loggingDBProvider := driver.NewLoggingDBProvider(db, nopLogger, lf)
+	loggingDBProvider := driver.NewLoggingDBProvider(db, mockLogger, lf)
 
 	noopTF := observability.NewTestTracerFactory(t)
 
@@ -69,14 +68,14 @@ func NewTestInstancesForImplementedInfra(t *testing.T) (
 	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 
-	nopLogger := zap.NewNop()
+	mockLogger := logging.NewTestInstance(t)
 	lf := logging.NewLogFields(obsCfg)
 	innerTxm := driver.NewTransactionManager(cfg, db)
 
 	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)
 
-	loggingDBProvider := driver.NewLoggingDBProvider(db, nopLogger, lf)
+	loggingDBProvider := driver.NewLoggingDBProvider(db, mockLogger, lf)
 
 	noopTF := observability.NewTestTracerFactory(t)
 

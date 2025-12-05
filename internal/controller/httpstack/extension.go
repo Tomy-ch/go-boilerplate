@@ -6,11 +6,11 @@ import (
 	"sort"
 	"strings"
 
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 // ServerExtends は、サーバーの拡張機能を表します。
@@ -69,7 +69,7 @@ type UseMiddlewareOut struct {
 }
 
 // ApplyExtends は、サーバー拡張を適用します。
-func ApplyExtends(e *echo.Echo, logger *zap.Logger, extends ServerExtends) (*AppliedServerExtends, error) {
+func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*AppliedServerExtends, error) {
 	if err := ApplyPreMiddlewares(e, logger, extends.PreList); err != nil {
 		return nil, err
 	}
@@ -81,38 +81,44 @@ func ApplyExtends(e *echo.Echo, logger *zap.Logger, extends ServerExtends) (*App
 }
 
 // ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
-func ApplyPreMiddlewares(e *echo.Echo, logger *zap.Logger, mws []PreMiddleware) error {
+func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddleware) error {
 	if err := validatePreMiddlewarePriorityConflicts(mws); err != nil {
 		return err
 	}
 
-	logger.Info("Applying pre middleware", zap.Int("count", len(mws)))
+	logger.Named("ApplyPreMiddlewares").Info("Applying pre middleware", logging.Int("count", len(mws)))
 
 	sort.Slice(mws, func(i, j int) bool {
 		return mws[i].Priority < mws[j].Priority
 	})
 
 	for _, mw := range mws {
-		logger.Info("Applying pre middleware", zap.Int("priority", mw.Priority), zap.String("middleware", mw.Name))
+		logger.Named("ApplyPreMiddlewares").Info("Applying pre middleware",
+			logging.Int("priority", mw.Priority),
+			logging.String("middleware", mw.Name),
+		)
 		e.Pre(mw.Middleware)
 	}
 	return nil
 }
 
 // ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
-func ApplyUseMiddlewares(e *echo.Echo, logger *zap.Logger, mws []UseMiddleware) error {
+func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddleware) error {
 	if err := validateUseMiddlewarePriorityConflicts(mws); err != nil {
 		return err
 	}
 
-	logger.Info("Applying use middleware", zap.Int("count", len(mws)))
+	logger.Named("ApplyUseMiddlewares").Info("Applying use middleware", logging.Int("count", len(mws)))
 
 	sort.Slice(mws, func(i, j int) bool {
 		return mws[i].Priority < mws[j].Priority
 	})
 
 	for _, mw := range mws {
-		logger.Info("Applying use middleware", zap.Int("priority", mw.Priority), zap.String("middleware", mw.Name))
+		logger.Named("ApplyUseMiddlewares").Info("Applying use middleware",
+			logging.Int("priority", mw.Priority),
+			logging.String("middleware", mw.Name),
+		)
 		e.Use(mw.Middleware)
 	}
 	return nil
@@ -172,8 +178,8 @@ func extractPriorityConflicts(byPriority map[int][]string) []string {
 }
 
 // ApplyConfigurators は、Echoに対して設定関数を適用します。
-func ApplyConfigurators(e *echo.Echo, logger *zap.Logger, cfgs []SrvCfg) {
-	logger.Info("Applying server configurator", zap.Int("count", len(cfgs)))
+func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) {
+	logger.Named("ApplyConfigurators").Info("Applying server configurator", logging.Int("count", len(cfgs)))
 	for _, cfg := range cfgs {
 		cfg(e)
 	}

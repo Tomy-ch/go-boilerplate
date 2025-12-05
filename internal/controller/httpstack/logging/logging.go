@@ -10,22 +10,21 @@ import (
 	"boilerplate-go/internal/observability"
 
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
 )
 
 type log struct {
 	c        echo.Context
-	lf       logging.LogFields
+	lf       logging.LogFieldBuilder
 	traceCtx observability.TraceContext
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
-func Middleware(logger *zap.Logger, lf logging.LogFields) echo.MiddlewareFunc {
+func Middleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.MiddlewareFunc {
 	return loggingMiddleware(logger, lf)
 }
 
 // loggingMiddleware は、リクエストのログを出力するミドルウェアを返します。
-func loggingMiddleware(logger *zap.Logger, lf logging.LogFields) echo.MiddlewareFunc {
+func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			start := time.Now()
@@ -51,8 +50,8 @@ func loggingMiddleware(logger *zap.Logger, lf logging.LogFields) echo.Middleware
 	}
 }
 
-// buildRequestLogFields は、リクエストの情報を含むzap.Fieldのスライスを生成します。
-func (l log) buildRequestLogFields() []zap.Field {
+// buildRequestLogFields は、リクエストの情報を含むFieldのスライスを生成します。
+func (l log) buildRequestLogFields() []*logging.Field {
 	req := l.c.Request()
 	reqIn := logging.HTTPRequestLogInput{
 		Method:        req.Method,
@@ -74,8 +73,8 @@ func (l log) buildRequestLogFields() []zap.Field {
 	return l.lf.BuildHTTPRequestFields(reqIn)
 }
 
-// buildResponseLogFields は、リクエストの情報を含むzap.Fieldのスライスを生成します。
-func (l log) buildResponseLogFields(latency time.Duration) []zap.Field {
+// buildResponseLogFields は、リクエストの情報を含むFieldのスライスを生成します。
+func (l log) buildResponseLogFields(latency time.Duration) []*logging.Field {
 	req := l.c.Request()
 	res := l.c.Response()
 	resIn := logging.HTTPResponseLogInput{

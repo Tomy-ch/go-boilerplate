@@ -2,7 +2,7 @@
 
 .PHONY: gen ## 各種ドキュメントやコードを生成します
 .PHONY: gen-swagger ## OpenAPIをバインドルして生成します
-.PHONY: gen-golang-code ## Goコードを生成します
+.PHONY: gen-go ## Goコードを生成します
 .PHONY: gen-redoc ## RedocでOpenAPIドキュメントを生成します
 .PHONY: gen-ctxkey ## Contextに値を格納するためのコードを生成する(nameとtypeを指定が必要)
 .PHONY: gen-sqlc ## SQLCのコード生成を行う
@@ -26,7 +26,7 @@ gen:
 	@make gen-tools-meta
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
-gen-golang-code:
+gen-go:
 	docker compose run --rm go_tool_runner go generate ./...
 
 gen-swagger:
@@ -34,7 +34,7 @@ gen-swagger:
 
 gen-api:
 	@make gen-swagger
-	@make gen-golang-code
+	@make gen-go
 	@make gen-redoc
 
 gen-redoc:

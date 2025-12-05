@@ -9,14 +9,13 @@ import (
 	"boilerplate-go/internal/logging"
 
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestNewLoggingDBProvider(t *testing.T) {
 	t.Parallel()
 
 	db := &dbDriver{&sql.DB{}}
-	l := zap.NewNop()
+	l := logging.NewTestInstance(t)
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
@@ -36,7 +35,7 @@ func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 	t.Parallel()
 
 	db := &dbDriver{&sql.DB{}}
-	l := zap.NewNop()
+	l := logging.NewTestInstance(t)
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)

@@ -7,8 +7,6 @@ import (
 
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
-
-	"go.uber.org/zap"
 )
 
 const (
@@ -59,7 +57,7 @@ func (dwl *dbWithLogging) QueryRowContext(ctx context.Context, query string, arg
 // buildSQLLogFields は、SQLクエリのログ出力用フィールドを構築します。
 func (dwl *dbWithLogging) buildSQLLogFields(
 	ctx context.Context, funcName, query string, duration time.Duration, args []any, err error,
-) []zap.Field {
+) []*logging.Field {
 	traceCtx := observability.ExtractSpan(ctx)
 	sqlIn := logging.SQLFieldsInput{
 		Layer:    layer,
@@ -77,8 +75,9 @@ func (dwl *dbWithLogging) buildSQLLogFields(
 	return dwl.provider.logFields().BuildSQLFields(sqlIn)
 }
 
-func (dwl *dbWithLogging) logQueryResult(msg string, fields []zap.Field, err error) {
-	logger := dwl.provider.logger().WithOptions(zap.AddCallerSkip(callSkip))
+// logQueryResult は、SQLクエリの実行結果をログ出力します。
+func (dwl *dbWithLogging) logQueryResult(msg string, fields []*logging.Field, err error) {
+	logger := dwl.provider.logger().Named("driver.Query").CallerSkip(callSkip)
 	if err == nil {
 		logger.Info(msg, fields...)
 	} else {

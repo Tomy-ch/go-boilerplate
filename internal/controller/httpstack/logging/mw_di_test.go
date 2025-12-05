@@ -7,7 +7,6 @@ import (
 	"boilerplate-go/internal/logging"
 
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestModule(t *testing.T) {
@@ -22,7 +21,7 @@ func TestUseMiddleware(t *testing.T) {
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 
-	out := UseMiddleware(zap.NewNop(), lf)
+	out := UseMiddleware(logging.NewTestInstance(t), lf)
 	require.Equal(t, priority, out.Middleware.Priority)
 	require.NotNil(t, out.Middleware.Middleware)
 }

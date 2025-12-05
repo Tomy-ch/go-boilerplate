@@ -8,7 +8,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestModule(t *testing.T) {
@@ -19,11 +18,11 @@ func TestModule(t *testing.T) {
 func Test_provideServeConfig(t *testing.T) {
 	t.Parallel()
 
-	z := zap.NewNop()
+	log := logging.NewTestInstance(t)
 	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 	lf := logging.NewLogFields(obsCfg)
 
-	out := provideServeConfig(z, lf, obsCfg)
+	out := provideServeConfig(log, lf, obsCfg)
 	require.NotNil(t, out)
 	require.NotNil(t, out.SrvCfg)
 

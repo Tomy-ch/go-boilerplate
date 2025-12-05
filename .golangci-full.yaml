@@ -115,7 +115,16 @@ linters:
           deny:
             - pkg: go.uber.org/fx
               desc: "DIコンテナライブラリの使用は制限されています。
-                可能な限り、DIコンテナを追加で使用しない実装を心がけてください。"
+                可能な限り、DIコンテナを追加で使用しない実装を心がけてください。" 
+        restrict_the_use_of_zap_logger: # zapロガーの使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/logging/**.go" # loggingパッケージではロガーの初期化を行うため使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.uber.org/zap
+              desc: "zapロガーライブラリの使用はlogging/のみに制限されています。
+                可能な限り、ロギングライブラリを追加で使用しない実装を心がけてください。"
         restrict_the_use_of_observability: # オブザーバビリティ関連パッケージの使用を制限します
           files:
             - "**/*.go"

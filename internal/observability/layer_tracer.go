@@ -10,7 +10,6 @@ import (
 	"boilerplate-go/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 )
 
 const (
@@ -24,8 +23,8 @@ const (
 )
 
 type LayerTracer struct {
-	log      *zap.Logger
-	lf       logging.LogFields
+	log      logging.Logger
+	lf       logging.LogFieldBuilder
 	tracer   trace.Tracer
 	layer    string
 	pkgName  string
@@ -112,13 +111,13 @@ func WithDomainSpan[T any](
 	}
 	obsIn.SpanEvent = SpanEventStart
 
-	lt.log.WithOptions(zap.AddCallerSkip(callerSkip)).Info(spanName+delimiter+SpanEventStart, lt.lf.BuildObservabilityFields(obsIn)...)
+	lt.log.CallerSkip(callerSkip).Info(spanName+delimiter+SpanEventStart, lt.lf.BuildObservabilityFields(obsIn)...)
 
 	defer func() {
 		event := SpanEventEnd
 		obsIn.SpanEvent = event
 		obsIn.Latency = time.Since(start)
-		lt.log.WithOptions(zap.AddCallerSkip(callerSkip+1)).Info(spanName+delimiter+event, lt.lf.BuildObservabilityFields(obsIn)...)
+		lt.log.CallerSkip(callerSkip+1).Info(spanName+delimiter+event, lt.lf.BuildObservabilityFields(obsIn)...)
 		span.End()
 	}()
 
@@ -174,13 +173,13 @@ func (lt LayerTracer) spanStartBase(
 	}
 
 	obsIn.SpanEvent = SpanEventStart
-	lt.log.WithOptions(zap.AddCallerSkip(callerSkip+1)).Info(spanName+delimiter+SpanEventStart, lt.lf.BuildObservabilityFields(obsIn)...)
+	lt.log.CallerSkip(callerSkip+1).Info(spanName+delimiter+SpanEventStart, lt.lf.BuildObservabilityFields(obsIn)...)
 
 	endSpan := func() {
 		obsIn.SpanEvent = SpanEventEnd
 		obsIn.Latency = time.Since(startTime)
 
-		lt.log.WithOptions(zap.AddCallerSkip(callerSkip)).Info(spanName+delimiter+SpanEventEnd, lt.lf.BuildObservabilityFields(obsIn)...)
+		lt.log.CallerSkip(callerSkip).Info(spanName+delimiter+SpanEventEnd, lt.lf.BuildObservabilityFields(obsIn)...)
 
 		span.End()
 	}

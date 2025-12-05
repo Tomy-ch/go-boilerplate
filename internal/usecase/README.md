@@ -151,9 +151,6 @@ import (
 
     "boilerplate-go/internal/observability"
     // それぞれ実装で使うパッケージをimport
-
-    "go.opentelemetry.io/otel/trace"
-    "go.uber.org/zap"
 )
 
 

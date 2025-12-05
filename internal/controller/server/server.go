@@ -7,10 +7,10 @@ import (
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/httpstack"
+	"boilerplate-go/internal/logging"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 // New は、サーバーインスタンスを作成します。
@@ -20,7 +20,7 @@ func New() *echo.Echo {
 
 // ServeHTTP は、HTTPサーバーを起動します。
 func ServeHTTP(
-	lc fx.Lifecycle, e *echo.Echo, z *zap.Logger,
+	lc fx.Lifecycle, e *echo.Echo, z logging.Logger,
 	appCfg *config.ApplicationConfig,
 	secCfg *config.SecurityConfig,
 	srvCfg *config.ServerConfig,
@@ -32,14 +32,14 @@ func ServeHTTP(
 			addr := srvCfg.Port()
 			go func() {
 				if err := e.Start(":" + strconv.Itoa(addr)); err != nil {
-					z.Error("failed to start http server", zap.Error(err))
+					z.Named("server.Start").Error("failed to start http server", logging.Error("e.Start", err))
 				}
 			}()
-			z.Info("http started",
-				zap.String("port", strconv.Itoa(addr)),
-				zap.Strings("allowed_origins", secCfg.AllowedOrigins()),
-				zap.String("cidr", secCfg.CIDR().IP.String()),
-				zap.String("mode", appCfg.Mode()),
+			z.Named("server.Start").Info("http started",
+				logging.String("port", strconv.Itoa(addr)),
+				logging.Strings("allowed_origins", secCfg.AllowedOrigins()),
+				logging.String("cidr", secCfg.CIDR().IP.String()),
+				logging.String("mode", appCfg.Mode()),
 			)
 			return nil
 		},
