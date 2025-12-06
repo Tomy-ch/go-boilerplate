@@ -97,7 +97,7 @@ func Error(key string, err error) *Field {
 	}
 }
 
-// Stacktrace は、エラースタックトレースのログフィールドに作成します。
+// Stacktrace は、エラースタックトレースのログフィールドを作成します。
 func Stacktrace(key string, err error) *Field {
 	return &Field{
 		key:         key,

@@ -83,10 +83,12 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	files, err := filepath.Glob(seedFilePlace + "/*.sql")
 	if err != nil {
 		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error("globSeedFiles", err))
+		return err
 	}
 
 	ctx := context.Background()
 
+	var readFilesErr error
 	sort.Strings(files)
 	for _, f := range files {
 		//nolint:gosec // safe: seeds folder only contains project‑owned SQL files
@@ -97,6 +99,8 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 				logging.String("file", f),
 				logging.Error("os.ReadFile", err),
 			)
+			readFilesErr = err
+			continue
 		}
 		_, err = db.ExecContext(ctx, string(data))
 		log := logger.Named("dbSeedRun.ExecContext")
@@ -121,6 +125,9 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 				logging.String("file", f),
 			)
 		}
+	}
+	if readFilesErr != nil {
+		return readFilesErr
 	}
 	logger.Named("dbSeedRun").Info("✅ seeding completed")
 

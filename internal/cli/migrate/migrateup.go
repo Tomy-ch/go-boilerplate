@@ -43,6 +43,7 @@ func migrateUpRun(_ *cobra.Command, _ []string) error {
 		logger.Named("migrateUpRun.buildMigrateInstance").Error("failed to create migrate instance",
 			logging.Error("buildMigrateInstance", err),
 		)
+		return err
 	}
 
 	if targetVersion == 0 {
@@ -52,6 +53,7 @@ func migrateUpRun(_ *cobra.Command, _ []string) error {
 			logger.Named("migrateUpRun.executeMigrateFullUp").Error("migration failed",
 				logging.Error("executeMigrateFullUp", err),
 			)
+			return err
 		}
 	} else {
 		// 引数がある場合は指定されたバージョンまでアップグレード
@@ -60,6 +62,7 @@ func migrateUpRun(_ *cobra.Command, _ []string) error {
 			logger.Named("migrateUpRun.migrateUpSteps").Error("migration to version failed",
 				logging.Error("migrateUpSteps", err),
 			)
+			return err
 		}
 	}
 	logger.Named("migrateUpRun").Info("✅ migration completed")

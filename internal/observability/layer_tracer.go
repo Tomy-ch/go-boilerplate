@@ -19,7 +19,7 @@ const (
 	tracerNameInfrastructure = "infrastructure"
 
 	// callerSkip は、zap ロガーのコールスタックのスキップ数を定義します。
-	callerSkip = 1
+	callerSkip = 2
 )
 
 type LayerTracer struct {
