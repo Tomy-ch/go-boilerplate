@@ -86,7 +86,7 @@ linters:
           files:
             - "**/*.go"
             - "!**/cmd/**.go" # アプリケーションのエントリポイントでは、終了制御を行うためosの使用を許可します
-            - "!**/internal/cli/**.go" # システムのコマンドライン引数を扱う箇所では、終了制御を行うためosの使用を許可します
+            - "!**/internal/cli/**.go" # CLIを扱う箇所では、ファイル操作などが必要なためosの使用を許可します
             - "!**/internal/config/**.go" # システムの環境変数を扱う箇所では、ブートストラップの環境変数を取得するためにosの使用を許可します
           list-mode: lax
           deny:
@@ -106,16 +106,21 @@ linters:
         restrict_the_use_of_di_container: # DIコンテナの使用を制限します
           files:
             - "**/*.go"
-            - "!**/internal/cli/**.go" # CLIを扱う箇所ではサーバの起動のため許可します
             - "!**/internal/di/**.go" # DIコンテナを扱う箇所では使用を許可します
-            - "!**/internal/observability/**.go" # オブザーバビリティの初期化箇所では使用を許可します
-            - "!**/internal/controller/httpstack/**.go" # サーバーの拡張機能を扱う箇所では副作用を正しい順序で拡張機能を追加する必要があるため許可します
-            - "!**/internal/controller/server/**.go" # サーバーのライフサイクルを扱う箇所では使用を許可します
           list-mode: lax
           deny:
             - pkg: go.uber.org/fx
               desc: "DIコンテナライブラリの使用は制限されています。
                 可能な限り、DIコンテナを追加で使用しない実装を心がけてください。"
+        restrict_the_use_of_zap_logger: # zapロガーの使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/logging/**.go" # loggingパッケージではロガーの初期化を行うため使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.uber.org/zap
+              desc: "zapロガーライブラリの使用はlogging/のみに制限されています。
+                可能な限り、ロギングライブラリを追加で使用しない実装を心がけてください。"
         restrict_the_use_of_observability: # オブザーバビリティ関連パッケージの使用を制限します
           files:
             - "**/*.go"

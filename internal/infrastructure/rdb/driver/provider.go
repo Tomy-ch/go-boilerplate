@@ -5,25 +5,23 @@ import (
 	"context"
 
 	"boilerplate-go/internal/logging"
-
-	"go.uber.org/zap"
 )
 
 type LoggingDBProvider interface {
 	NewLoggingDB(ctx context.Context) DBTX
-	logger() *zap.Logger
-	logFields() logging.LogFields
+	logger() logging.Logger
+	logFields() logging.LogFieldBuilder
 }
 
 // loggingDBProvider は、DBTXを提供します。
 type loggingDBProvider struct {
 	db DatabaseDriver
-	l  *zap.Logger
-	lf logging.LogFields
+	l  logging.Logger
+	lf logging.LogFieldBuilder
 }
 
 // NewLoggingDBProvider は、DBTXProviderの新しいインスタンスを生成します。
-func NewLoggingDBProvider(db DatabaseDriver, log *zap.Logger, lf logging.LogFields) LoggingDBProvider {
+func NewLoggingDBProvider(db DatabaseDriver, log logging.Logger, lf logging.LogFieldBuilder) LoggingDBProvider {
 	return &loggingDBProvider{
 		db: db,
 		l:  log,
@@ -41,11 +39,11 @@ func (cd *loggingDBProvider) NewLoggingDB(ctx context.Context) DBTX {
 }
 
 // logger は、ロガーを返します。
-func (cd *loggingDBProvider) logger() *zap.Logger {
+func (cd *loggingDBProvider) logger() logging.Logger {
 	return cd.l
 }
 
 // logFields は、ログフィールドのビルダーを返します。
-func (cd *loggingDBProvider) logFields() logging.LogFields {
+func (cd *loggingDBProvider) logFields() logging.LogFieldBuilder {
 	return cd.lf
 }

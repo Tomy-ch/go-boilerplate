@@ -6,25 +6,25 @@ import (
 	"testing"
 	"time"
 
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 )
 
 // NewTestInstanceForBindHandler は、BindHandler用インスタンスを生成します。
 func NewTestInstanceForBindHandler(t *testing.T) (
-	*echo.Echo, *gomock.Controller, observability.TracerFactory, *zap.Logger,
+	*echo.Echo, *gomock.Controller, observability.TracerFactory, logging.Logger,
 ) {
 	t.Helper()
 	e := echo.New()
 	ctrl := gomock.NewController(t)
 
-	z := zap.NewNop()
+	log := logging.NewTestInstance(t)
 	tf := observability.NewTestTracerFactory(t)
-	return e, ctrl, tf, z
+	return e, ctrl, tf, log
 }
 
 // NewTestInstancesForImplementedUsecase は、エンドポイントのテスト用インスタンスを生成します。

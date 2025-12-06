@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
-	"go.uber.org/zap"
 )
 
 func TestNewTestTracerFactory(t *testing.T) {
@@ -19,7 +18,7 @@ func TestNewTestTracerFactory(t *testing.T) {
 	lf := logging.NewLogFields(obsCfg)
 
 	tp := noop.NewTracerProvider()
-	z := zap.NewNop()
+	z := logging.NewTestInstance(t)
 
 	expected := &tracerFactory{
 		tp:  tp,

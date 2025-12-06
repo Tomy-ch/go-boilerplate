@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgconn"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 const (
@@ -52,73 +51,85 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 
 	err = config.Load()
 	if err != nil {
-		logger.Fatal("failed to load config", zap.Error(err))
+		logger.Named("dbSeedRun.configLoad").Error("failed to load config", logging.Error("configLoad", err))
+		return err
 	}
 	if targetDBintoSeed != "" {
 		err = os.Setenv("DB_NAME", targetDBintoSeed)
 		if err != nil {
-			logger.Fatal("failed to set DB_NAME env", zap.Error(err))
+			logger.Named("dbSeedRun.setenv").Error("failed to set DB_NAME env", logging.Error("setenv", err))
+			return err
 		}
 	}
 	cfg, err := config.New()
 	if err != nil {
-		logger.Fatal("failed to load config", zap.Error(err))
+		logger.Named("dbSeedRun.configNew").Error("failed to load config", logging.Error("configNew", err))
+		return err
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
 
 	db, err := sql.Open("postgres", dbCfg.DSN(osCfg))
 	if err != nil {
-		logger.Panic("failed to open database connection", zap.Error(err))
+		logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error("dbOpen", err))
+		return err
 	}
 	defer func() {
 		if cerr := db.Close(); cerr != nil {
-			logger.Error("failed to close database connection", zap.Error(cerr))
+			logger.Named("dbSeedRun.dbClose").Error("failed to close database connection", logging.Error("dbClose", cerr))
 		}
 	}()
 
 	files, err := filepath.Glob(seedFilePlace + "/*.sql")
 	if err != nil {
-		logger.Panic("failed to glob seed files", zap.Error(err))
+		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error("globSeedFiles", err))
+		return err
 	}
 
 	ctx := context.Background()
 
+	var readFilesErr error
 	sort.Strings(files)
 	for _, f := range files {
 		//nolint:gosec // safe: seeds folder only contains project‑owned SQL files
 		data, err := os.ReadFile(f)
 		if err != nil {
-			logger.Panic(
+			logger.Named("dbSeedRun.os.ReadFile").Error(
 				"failed to read seed file",
-				zap.String("file", f),
-				zap.Error(err),
+				logging.String("file", f),
+				logging.Error("os.ReadFile", err),
 			)
+			readFilesErr = err
+			continue
 		}
 		_, err = db.ExecContext(ctx, string(data))
+		log := logger.Named("dbSeedRun.ExecContext")
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if xerrors.As(err, &pgErr) &&
 				pgErr.Code != relationDoesNotExistCode {
-				logger.Panic(
+				log.Error(
 					"failed to exec seed file",
-					zap.String("file", f),
-					zap.Error(err),
+					logging.String("file", f),
+					logging.Error("db.ExecContext", err),
 				)
 			}
-			logger.Warn(
+			log.Warn(
 				"table does not exist, skipping seed",
-				zap.String("file", f),
-				zap.Error(err),
+				logging.String("file", f),
+				logging.Error("db.ExecContext", err),
 			)
 		} else {
-			logger.Info(
+			log.Info(
 				"seed file executed successfully",
-				zap.String("file", f),
+				logging.String("file", f),
 			)
 		}
 	}
-	logger.Info("✅ seeding completed")
+	if readFilesErr != nil {
+		return readFilesErr
+	}
+	logger.Named("dbSeedRun").Info("✅ seeding completed")
 
 	return nil
 }

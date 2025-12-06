@@ -1,6 +1,9 @@
 package server
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof" //nolint:gosec // G108: 非本番環境でのプロファイリング用にインポート
 	"strconv"
@@ -17,20 +20,32 @@ const (
 )
 
 // MetricsServer は、メトリクスサーバーを生成します。
-// 非本番環境でのみ有効です。
-func MetricsServer(cfg *config.Config) *http.Server {
-	appCfg := config.NewApplicationConfig(cfg)
+func MetricsServer(mtcCfg *config.MetricsConfig) *http.Server {
+	return &http.Server{
+		Addr:              mtcCfg.Host() + ":" + strconv.Itoa(mtcCfg.Port()),
+		Handler:           http.DefaultServeMux,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
+}
 
-	if !appCfg.IsProductionMode() {
-		mtcCfg := config.NewMetricsConfig(cfg)
-		return &http.Server{
-			Addr:              mtcCfg.Host() + ":" + strconv.Itoa(mtcCfg.Port()),
-			Handler:           http.DefaultServeMux,
-			ReadHeaderTimeout: readHeaderTimeout,
-			ReadTimeout:       readTimeout,
-			WriteTimeout:      writeTimeout,
-			IdleTimeout:       idleTimeout,
+// NewMetricsServer は、メトリクスサーバーの開始および終了関数を生成します。
+func NewMetricsServer(mtcCfg *config.MetricsConfig) (func(), func(ctx context.Context)) {
+	metricsSrv := MetricsServer(mtcCfg)
+
+	start := func() {
+		go func() {
+			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				panic(fmt.Errorf("metrics server error: %w", err))
+			}
+		}()
+	}
+	end := func(ctx context.Context) {
+		if err := metricsSrv.Shutdown(ctx); err != nil {
+			panic(fmt.Errorf("metrics server shutdown error: %w", err))
 		}
 	}
-	return nil
+	return start, end
 }

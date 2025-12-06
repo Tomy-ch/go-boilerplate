@@ -5,7 +5,6 @@ import (
 	"boilerplate-go/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 )
 
 type TracerFactory interface {
@@ -19,12 +18,12 @@ type TracerFactory interface {
 
 type tracerFactory struct {
 	tp  trace.TracerProvider
-	log *zap.Logger
-	lf  logging.LogFields
+	log logging.Logger
+	lf  logging.LogFieldBuilder
 }
 
 // NewTracerFactory は、TracerFactory を初期化して返します。
-func NewTracerFactory(tp trace.TracerProvider, log *zap.Logger, lf logging.LogFields) TracerFactory {
+func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.LogFieldBuilder) TracerFactory {
 	return &tracerFactory{
 		tp:  tp,
 		log: log,

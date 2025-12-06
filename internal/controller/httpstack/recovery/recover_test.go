@@ -13,7 +13,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -22,7 +21,7 @@ func TestMiddleware(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)
 	lf := logging.NewLogFields(config.NewObservabilityConfig(cfg))
-	logger := zap.NewNop()
+	logger := logging.NewTestInstance(t)
 
 	require.NotNil(t, Middleware(logger, lf, appCfg))
 }
@@ -30,7 +29,7 @@ func TestMiddleware(t *testing.T) {
 func Test_newRecoverLogErrorFunc(t *testing.T) {
 	t.Parallel()
 
-	logger := zap.NewNop()
+	logger := logging.NewTestInstance(t)
 
 	cfg := config.MockConfigForTest(t)
 	lf := logging.NewLogFields(config.NewObservabilityConfig(cfg))
@@ -67,7 +66,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 func Test_newRecoverConfig(t *testing.T) {
 	t.Parallel()
 
-	logger := zap.NewNop()
+	logger := logging.NewTestInstance(t)
 
 	t.Run("開発モードの場合、developmentConfigを返す", func(t *testing.T) {
 		t.Parallel()
