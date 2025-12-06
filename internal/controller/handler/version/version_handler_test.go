@@ -10,6 +10,7 @@ import (
 	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	"boilerplate-go/internal/controller/handler/version/gen"
 	"boilerplate-go/internal/system"
+	mock_system "boilerplate-go/internal/system/mock"
 	"boilerplate-go/pkg/datetime"
 
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,7 @@ func TestBindHandler(t *testing.T) {
 func TestGetVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx, _, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
+	ctx, ctrl, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
 	bi := system.NewBuildInfo()
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)
@@ -87,10 +88,11 @@ func TestGetVersion(t *testing.T) {
 	t.Run("異常系: ビルド日時のパースに失敗", func(t *testing.T) {
 		t.Parallel()
 
-		invalidBI := system.NewTestBuildInfo(t, "1.0.0", "abc123", "invalid-date")
+		mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
+		mockBuildInfo.EXPECT().BuildDate().Return("invalid-date-string").AnyTimes()
 		s := &server{
 			tracer:    lt,
-			buildInfo: invalidBI,
+			buildInfo: mockBuildInfo,
 			appCfg:    appCfg,
 			loc:       loc,
 		}

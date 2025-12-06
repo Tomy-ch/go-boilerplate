@@ -16,7 +16,6 @@ import (
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
-	zap "go.uber.org/zap"
 )
 
 // MockLoggingDBProvider is a mock of LoggingDBProvider interface.
@@ -58,10 +57,10 @@ func (mr *MockLoggingDBProviderMockRecorder) NewLoggingDB(ctx any) *gomock.Call 
 }
 
 // logFields mocks base method.
-func (m *MockLoggingDBProvider) logFields() logging.LogFields {
+func (m *MockLoggingDBProvider) logFields() logging.LogFieldBuilder {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "logFields")
-	ret0, _ := ret[0].(logging.LogFields)
+	ret0, _ := ret[0].(logging.LogFieldBuilder)
 	return ret0
 }
 
@@ -72,10 +71,10 @@ func (mr *MockLoggingDBProviderMockRecorder) logFields() *gomock.Call {
 }
 
 // logger mocks base method.
-func (m *MockLoggingDBProvider) logger() *zap.Logger {
+func (m *MockLoggingDBProvider) logger() logging.Logger {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "logger")
-	ret0, _ := ret[0].(*zap.Logger)
+	ret0, _ := ret[0].(logging.Logger)
 	return ret0
 }
 

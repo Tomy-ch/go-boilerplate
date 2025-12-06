@@ -6,8 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.uber.org/zap"
-
 	"github.com/golang-migrate/migrate/v4"
 	// postgres driver for golang-migrate (required for runtime registration)
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -42,23 +40,32 @@ func migrateUpRun(_ *cobra.Command, _ []string) error {
 
 	m, err := buildMigrateInstance(targetDatabase)
 	if err != nil {
-		logger.Panic("failed to create migrate instance", zap.Error(err))
+		logger.Named("migrateUpRun.buildMigrateInstance").Error("failed to create migrate instance",
+			logging.Error("buildMigrateInstance", err),
+		)
+		return err
 	}
 
 	if targetVersion == 0 {
 		// 引数なしなら全てのマイグレーションをアップ
-		logger.Info("running full migration up")
+		logger.Named("migrateUpRun").Info("running full migration up")
 		if err := executeMigrateFullUp(m); err != nil {
-			logger.Panic("migration failed", zap.Error(err))
+			logger.Named("migrateUpRun.executeMigrateFullUp").Error("migration failed",
+				logging.Error("executeMigrateFullUp", err),
+			)
+			return err
 		}
 	} else {
 		// 引数がある場合は指定されたバージョンまでアップグレード
-		logger.Info("running migration up to version", zap.Int("steps", targetVersion))
+		logger.Named("migrateUpRun").Info("running migration up to version", logging.Int("steps", targetVersion))
 		if err := m.Steps(targetVersion); err != nil {
-			logger.Panic("migration to version failed", zap.Error(err))
+			logger.Named("migrateUpRun.migrateUpSteps").Error("migration to version failed",
+				logging.Error("migrateUpSteps", err),
+			)
+			return err
 		}
 	}
-	logger.Info("✅ migration completed")
+	logger.Named("migrateUpRun").Info("✅ migration completed")
 
 	return nil
 }

@@ -14,7 +14,6 @@ import (
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
 )
 
 const (
@@ -25,19 +24,19 @@ const (
 )
 
 // New は、EchoのHTTPエラーハンドラーを生成します。
-func New(e *echo.Echo, z *zap.Logger, lf logging.LogFields, obsCfg *config.ObservabilityConfig) {
-	e.HTTPErrorHandler = NewHTTPErrorHandler(z, lf, obsCfg)
+func New(e *echo.Echo, log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig) {
+	e.HTTPErrorHandler = NewHTTPErrorHandler(log, lf, obsCfg)
 }
 
 // NewHTTPErrorHandler は、EchoのHTTPエラーハンドラーを生成します。
-func NewHTTPErrorHandler(logger *zap.Logger, lf logging.LogFields, obsCfg *config.ObservabilityConfig) echo.HTTPErrorHandler {
+func NewHTTPErrorHandler(logger logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig) echo.HTTPErrorHandler {
 	return func(err error, c echo.Context) {
 		handleHTTPError(c, logger, lf, obsCfg, err)
 	}
 }
 
 // handleHTTPError は、HTTPエラーを処理し、適切なレスポンスをクライアントに返します。
-func handleHTTPError(c echo.Context, logger *zap.Logger, lf logging.LogFields, obsCfg *config.ObservabilityConfig, err error) {
+func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig, err error) {
 	resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
 
 	if !c.Response().Committed {
@@ -60,9 +59,9 @@ func handleHTTPError(c echo.Context, logger *zap.Logger, lf logging.LogFields, o
 				TraceID:       traceCtx.TraceID(),
 				SpanID:        traceCtx.SpanID(),
 			}
-			writeErrFields := []zap.Field{zap.String(logging.InternalErrorKey, writeErr.Error())}
+			writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}
 			fields := append(lf.BuildHTTPRequestFields(reqIn), writeErrFields...)
-			logger.Error("failed to write error response", fields...)
+			logger.Named("errorhandler.handleHTTPError").Error("failed to write error response", fields...)
 			c.Response().WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -116,16 +115,16 @@ func normalizeHTTPError(
 // httpErrorField は、HTTPエラーに関するログフィールドを生成します。
 func httpErrorField(
 	c echo.Context,
-	lf logging.LogFields,
+	lf logging.LogFieldBuilder,
 	he *response.HTTPErrorResponse,
-) []zap.Field {
+) []*logging.Field {
 	req := c.Request()
 	traceCtx := observability.ExtractSpan(req.Context())
-	fields := []zap.Field{
-		zap.Int(logging.StatusKey, he.HTTPStatus),
-		zap.String(logging.ErrorCodeKey, he.Code),
-		zap.String(logging.ErrorMessageKey, he.Message),
-		zap.String(logging.RequestIDKey, he.RequestId),
+	fields := []*logging.Field{
+		logging.Int(logging.StatusKey, he.HTTPStatus),
+		logging.String(logging.ErrorCodeKey, he.Code),
+		logging.String(logging.ErrorMessageKey, he.Message),
+		logging.String(logging.RequestIDKey, he.RequestId),
 	}
 	reqIn := logging.HTTPRequestLogInput{
 		Method:        req.Method,
@@ -145,12 +144,12 @@ func httpErrorField(
 	}
 	fields = append(fields, lf.BuildHTTPRequestFields(reqIn)...)
 	if he.Details != nil {
-		fields = append(fields, zap.Strings(logging.ErrorDetails, *he.Details))
+		fields = append(fields, logging.Strings(logging.ErrorDetails, *he.Details))
 	}
 	if he.Internal != nil {
-		additionalFields := []zap.Field{
-			zap.String(logging.InternalErrorKey, he.Internal.Error()),
-			zap.String(logging.InternalStackTraceKey, xerrors.StackTrace(he.Internal)),
+		additionalFields := []*logging.Field{
+			logging.String(logging.InternalErrorKey, he.Internal.Error()),
+			logging.String(logging.InternalStackTraceKey, xerrors.StackTrace(he.Internal)),
 		}
 		fields = append(fields, additionalFields...)
 	}
@@ -160,8 +159,8 @@ func httpErrorField(
 // logHTTPError は、HTTPエラーをログに記録します。
 func logHTTPError(
 	c echo.Context,
-	logger *zap.Logger,
-	lf logging.LogFields,
+	logger logging.Logger,
+	lf logging.LogFieldBuilder,
 	obsCfg *config.ObservabilityConfig,
 	he *response.HTTPErrorResponse,
 ) {

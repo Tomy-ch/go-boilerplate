@@ -11,7 +11,6 @@ import (
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace/noop"
-	"go.uber.org/zap"
 )
 
 // NewTestTracerFactory は、テスト用のTracerFactoryを返します。
@@ -22,7 +21,7 @@ func NewTestTracerFactory(t *testing.T) TracerFactory {
 	lf := logging.NewLogFields(obsCfg)
 
 	tp := noop.NewTracerProvider()
-	z := zap.NewNop()
+	z := logging.NewTestInstance(t)
 	return NewTracerFactory(tp, z, lf)
 }
 

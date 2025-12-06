@@ -15,7 +15,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 type EchoTestParam struct {
@@ -41,7 +40,7 @@ func NewEchoTestClient(t *testing.T, e *echo.Echo) *EchoTestClient {
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
-	errorhandler.New(e, zap.NewNop(), lf, obsCfg)
+	errorhandler.New(e, logging.NewTestInstance(t), lf, obsCfg)
 	return &EchoTestClient{
 		t:       t,
 		e:       e,

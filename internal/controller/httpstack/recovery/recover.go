@@ -10,7 +10,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
-	"go.uber.org/zap"
 )
 
 const (
@@ -21,7 +20,7 @@ const (
 )
 
 // Middleware は、Echoフレームワークのミドルウェアで、パニックからのリカバリを行います。
-func Middleware(z *zap.Logger, lf logging.LogFields, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
+func Middleware(z logging.Logger, lf logging.LogFieldBuilder, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
 	cnf := newRecoverConfig(z, appCfg)
 	cnf.LogErrorFunc = newRecoverLogErrorFunc(z, lf)
 
@@ -29,23 +28,23 @@ func Middleware(z *zap.Logger, lf logging.LogFields, appCfg *config.ApplicationC
 }
 
 // newRecoverConfig は、環境設定に基づいてリカバリミドルウェアの設定を生成します。
-func newRecoverConfig(logger *zap.Logger, appCfg *config.ApplicationConfig) middleware.RecoverConfig {
+func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) middleware.RecoverConfig {
 	switch {
 	case appCfg.IsDevelopmentMode():
 		return developmentConfig()
 	case appCfg.IsProductionMode():
 		return productionConfig()
 	default:
-		logger.Warn(
+		logger.Named("middleware.recover").Warn(
 			"Unknown environment, using production config for recover middleware",
-			zap.String("env", appCfg.Mode()),
+			logging.String("env", appCfg.Mode()),
 		)
 		return productionConfig()
 	}
 }
 
 // newRecoverLogErrorFunc は、リカバリミドルウェアのログ出力関数を生成します。
-func newRecoverLogErrorFunc(logger *zap.Logger, lf logging.LogFields) func(c echo.Context, err error, stack []byte) error {
+func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c echo.Context, err error, stack []byte) error {
 	return func(c echo.Context, err error, stack []byte) error {
 		req := c.Request()
 		traceCtx := observability.ExtractSpan(req.Context())
@@ -65,12 +64,12 @@ func newRecoverLogErrorFunc(logger *zap.Logger, lf logging.LogFields) func(c ech
 			TraceID:       traceCtx.TraceID(),
 			SpanID:        traceCtx.SpanID(),
 		}
-		recoverFields := []zap.Field{
-			zap.Error(err),
-			zap.ByteString("stack", stack),
+		recoverFields := []*logging.Field{
+			logging.Error("error", err),
+			logging.Any("stack", stack),
 		}
 		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
-		logger.Error("panic recovered", fields...)
+		logger.Named("middleware.recover").Error("panic recovered", fields...)
 		return nil
 	}
 }

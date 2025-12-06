@@ -164,8 +164,6 @@ import (
     // それぞれ実装で使うパッケージをimport
 
     "github.com/labstack/echo/v4"
-    "go.opentelemetry.io/otel/trace"
-    "go.uber.org/zap"
 )
 
 

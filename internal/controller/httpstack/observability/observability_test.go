@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/config"
+	mock_lifecycle "boilerplate-go/internal/di/lifecycle/mock"
 	"boilerplate-go/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/fx"
+	"go.uber.org/mock/gomock"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -43,15 +44,19 @@ func TestMiddleware_Integration(t *testing.T) {
 func TestTracerProvider(t *testing.T) {
 	t.Parallel()
 
-	var tpProvided any
-	app := fx.New(
-		fx.Invoke(func(lc fx.Lifecycle) {
-			tpProvided = observability.TracerProvider(lc)
-		}),
-	)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	ctx := context.Background()
-	require.NoError(t, app.Start(ctx))
-	require.NotNil(t, tpProvided)
-	require.NoError(t, app.Stop(ctx))
+	mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
+	var shutdownFunc func(context.Context) error
+	dummy := func(context.Context) error { return nil }
+	mockReg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
+		shutdownFunc = args[0].(func(context.Context) error)
+	}).Times(1)
+
+	tp := observability.TracerProvider(mockReg)
+	require.NotNil(t, tp)
+	require.NotNil(t, shutdownFunc)
+
+	require.NoError(t, shutdownFunc(context.Background()))
 }

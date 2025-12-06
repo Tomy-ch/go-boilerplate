@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
-	"go.uber.org/zap"
 )
 
 func TestNewTracerFactory(t *testing.T) {
@@ -19,7 +18,7 @@ func TestNewTracerFactory(t *testing.T) {
 		t.Parallel()
 		provided := otel.GetTracerProvider()
 		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
-		log := zap.NewNop()
+		log := logging.NewTestInstance(t)
 
 		expected := &tracerFactory{
 			tp:  provided,
@@ -38,7 +37,7 @@ func TestNewControllerTracer(t *testing.T) {
 		t.Parallel()
 		provided := otel.GetTracerProvider()
 		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
-		log := zap.NewNop()
+		log := logging.NewTestInstance(t)
 		actualTF := &tracerFactory{
 			tp:  provided,
 			log: log,
@@ -63,7 +62,7 @@ func TestNewUsecaseTracer(t *testing.T) {
 		t.Parallel()
 		provided := otel.GetTracerProvider()
 		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
-		log := zap.NewNop()
+		log := logging.NewTestInstance(t)
 		actualTF := &tracerFactory{
 			tp:  provided,
 			log: log,
@@ -88,7 +87,7 @@ func TestNewInfrastructureTracer(t *testing.T) {
 		t.Parallel()
 		provided := otel.GetTracerProvider()
 		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
-		log := zap.NewNop()
+		log := logging.NewTestInstance(t)
 		actualTF := &tracerFactory{
 			tp:  provided,
 			log: log,

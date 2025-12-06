@@ -16,7 +16,6 @@ import (
 	"boilerplate-go/internal/logging"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 )
@@ -101,7 +100,10 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 	// 1) 設定ロード（DATABASE_URL を取得）
 	cfg, err := config.SetUpConfig()
 	if err != nil {
-		logger.Fatal("failed to load config", zap.NamedError("config", err))
+		logger.Named("gensqlc.SetUpConfig").Error("failed to load config",
+			logging.Error("config", err),
+		)
+		return err
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
@@ -111,16 +113,24 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 	// 2) 設定YAMLの読み込み
 	sqlcYamlRaw, err := os.ReadFile(filepath.Join(workDir, sqlcRootDir, settingYamlFile))
 	if err != nil {
-		logger.Fatal("failed to read settings yaml", zap.NamedError("os.ReadFile", err))
+		logger.Named("gensqlc.ReadFile").Error("failed to read settings yaml",
+			logging.Error("os.ReadFile", err),
+		)
+		return err
 	}
 
 	// 3) カテゴリ列挙
 	var categories []string
 	if categories, err = listDirs(filepath.Join(workDir, dmlRootDir, targetType)); err != nil {
-		logger.Fatal("failed to list directories", zap.String("path", dmlRootDir+targetType), zap.NamedError("os.ReadDir", err))
+		logger.Named("gensqlc.listDirs").Error("failed to list directories",
+			logging.Error("os.ReadDir", err),
+		)
+		return err
 	}
 	if len(categories) == 0 {
-		logger.Info("dml directory is empty, skipping sqlc generation", zap.String("path", dmlRootDir+targetType))
+		logger.Named("gensqlc.NoCategories").Info("no categories found under dml directory, nothing to do",
+			logging.String("dml_path", dmlRootDir+targetType),
+		)
 		return nil
 	}
 
@@ -140,13 +150,17 @@ func generateSQLCRun(_ *cobra.Command, _ []string) error {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		logger.Fatal("failed to copy SQL files", zap.NamedError("copySQLFile", err))
+		logger.Named("gensqlc.copySQLFile").Error("failed to copy SQL files",
+			logging.Error("copySQLFile", err),
+		)
 		return err
 	}
 
 	// 5) sqlc generate 実行
 	if err := runSQLCForCategory(rootCtx, logger, string(sqlcYamlRaw), dbURL, targetType); err != nil {
-		logger.Fatal("failed to run sqlc for generate", zap.NamedError("runSQLCForCategory", err))
+		logger.Named("gensqlc.runSQLCForCategory").Error("failed to run sqlc for generate",
+			logging.Error("runSQLCForCategory", err),
+		)
 		return err
 	}
 
@@ -195,7 +209,7 @@ func resolveConcurrencyConst() int {
 // runSQLCForCategory は、指定されたカテゴリの一時YAMLを作成→sqlc generateを実行します。
 func runSQLCForCategory(
 	ctx context.Context,
-	logger *zap.Logger,
+	logger logging.Logger,
 	tpl, dbURL, targetType string,
 ) error {
 	// 1) テンプレ内のプレースホルダを置換
@@ -211,7 +225,10 @@ func runSQLCForCategory(
 	}
 	defer func() {
 		if err := os.Remove(tmpPath); err != nil {
-			logger.Warn("failed to remove YAML file", zap.NamedError("os.Remove", err))
+			logger.Named("gensqlc.removeTempYAML").Warn("failed to remove YAML file",
+				logging.Error("os.Remove", err),
+			)
+			return
 		}
 	}()
 
@@ -225,14 +242,16 @@ func runSQLCForCategory(
 		return fmt.Errorf("sqlc generate failed: type: %s, exec.Run: %w", targetType, err)
 	}
 
-	logger.Info("sqlc generate completed", zap.String("type", targetType))
+	logger.Named("gensqlc.runSQLCForCategory").Info("sqlc generate completed",
+		logging.String("type", targetType),
+	)
 
 	return nil
 }
 
 // copySQLFile は、指定されたカテゴリのDMLのSQLファイルを指定したディレクトリにコピーします。
 func copySQLFile(
-	logger *zap.Logger,
+	logger logging.Logger,
 	workDir string,
 	category string,
 	targetType string,
@@ -261,9 +280,9 @@ func copySQLFile(
 		newName := fmt.Sprintf("%s_%s_%s.sql", category, targetType, nameWithoutExt)
 		dstPath := filepath.Join(sqlcDir, newName)
 
-		logger.Debug("copy dml sql to sqlc",
-			zap.String("src", path),
-			zap.String("dst", dstPath),
+		logger.Named("gensqlc.copySQLFile").Info("copy dml sql to sqlc",
+			logging.String("src", path),
+			logging.String("dst", dstPath),
 		)
 
 		if err := copyFile(logger, path, dstPath); err != nil {
@@ -275,54 +294,95 @@ func copySQLFile(
 }
 
 // copyFile は、srcファイルをdstファイルにコピーします。
-func copyFile(logger *zap.Logger, src, dst string) error {
+func copyFile(logger logging.Logger, src, dst string) error {
 	if err := ensureUnderDir(logger, src, dmlRootDir); err != nil {
-		logger.Fatal("invalid src path", zap.String("src", src), zap.NamedError("ensureUnderDir", err))
+		logger.Named("gensqlc.copyFile").Error("invalid src path",
+			logging.String("src", src),
+			logging.Error("ensureUnderDir", err),
+		)
+		return err
 	}
 	if err := ensureUnderDir(logger, dst, sqlcRootDir); err != nil {
-		logger.Fatal("invalid dst path", zap.String("dst", dst), zap.NamedError("ensureUnderDir", err))
+		logger.Named("gensqlc.copyFile").Error("invalid dst path",
+			logging.String("dst", dst),
+			logging.Error("ensureUnderDir", err),
+		)
+		return err
 	}
 
 	// #nosec G304 -- src is verified under a fixed root directory and does not originate from user input
 	in, err := os.Open(src)
 	if err != nil {
-		logger.Fatal("failed to open src file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("os.Open", err))
+		logger.Named("gensqlc.copyFile").Error("failed to open src file",
+			logging.String("src", src),
+			logging.String("dst", dst),
+			logging.Error("os.Open", err),
+		)
+		return err
 	}
 	defer func() {
 		if cerr := in.Close(); cerr != nil {
-			logger.Fatal("failed to close src file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("in.Close", cerr))
+			logger.Named("gensqlc.copyFile").Error("failed to close src file",
+				logging.String("src", src),
+				logging.String("dst", dst),
+				logging.Error("in.Close", cerr),
+			)
+			return
 		}
 	}()
 
 	// #nosec G304 -- dst is verified under a fixed root directory and does not originate from user input
 	out, err := os.Create(dst)
 	if err != nil {
-		logger.Fatal("failed to create dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("os.Create", err))
+		logger.Named("gensqlc.copyFile").Error("failed to create dst file",
+			logging.String("src", src),
+			logging.String("dst", dst),
+			logging.Error("os.Create", err),
+		)
+		return err
 	}
 	defer func() {
 		if cerr := out.Close(); cerr != nil {
-			logger.Fatal("failed to close dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("out.Close", cerr))
+			logger.Named("gensqlc.copyFile").Error("failed to close dst file",
+				logging.String("src", src),
+				logging.String("dst", dst),
+				logging.Error("out.Close", cerr),
+			)
 		}
 	}()
 
 	if _, err = io.Copy(out, in); err != nil {
-		logger.Fatal("failed to copy file content", zap.String("src", src), zap.String("dst", dst), zap.NamedError("io.Copy", err))
+		logger.Named("gensqlc.copyFile").Error("failed to copy file content",
+			logging.String("src", src),
+			logging.String("dst", dst),
+			logging.Error("io.Copy", err),
+		)
+		return err
 	}
 
 	if err := out.Sync(); err != nil {
-		logger.Fatal("failed to sync dst file", zap.String("src", src), zap.String("dst", dst), zap.NamedError("out.Sync", err))
+		logger.Named("gensqlc.copyFile").Error("failed to sync dst file",
+			logging.String("src", src),
+			logging.String("dst", dst),
+			logging.Error("out.Sync", err),
+		)
+		return err
 	}
 	return nil
 }
 
 // cleanupSQLFiles は、指定したディレクトリ内の.sqlファイルを削除します。
-func cleanupSQLFiles(logger *zap.Logger, dir string) error {
+func cleanupSQLFiles(logger logging.Logger, dir string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		logger.Fatal("failed to read directory", zap.String("dir", dir), zap.NamedError("os.ReadDir", err))
+		logger.Named("gensqlc.cleanupSQLFiles").Error("failed to read directory",
+			logging.String("dir", dir),
+			logging.Error("os.ReadDir", err),
+		)
+		return err
 	}
 
 	for _, e := range entries {
@@ -331,7 +391,11 @@ func cleanupSQLFiles(logger *zap.Logger, dir string) error {
 			continue
 		}
 		if err := os.Remove(filepath.Join(dir, name)); err != nil {
-			logger.Fatal("failed to remove file", zap.String("file", filepath.Join(dir, name)), zap.NamedError("os.Remove", err))
+			logger.Named("gensqlc.cleanupSQLFiles").Error("failed to remove file",
+				logging.String("file", filepath.Join(dir, name)),
+				logging.Error("os.Remove", err),
+			)
+			return err
 		}
 	}
 
@@ -339,27 +403,40 @@ func cleanupSQLFiles(logger *zap.Logger, dir string) error {
 }
 
 // ensureUnderDir は path が baseDir 配下かを検証します。
-func ensureUnderDir(logger *zap.Logger, path, baseDir string) error {
+func ensureUnderDir(logger logging.Logger, path, baseDir string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		logger.Error("failed to get absolute path", zap.String("path", path), zap.NamedError("filepath.Abs", err))
+		logger.Named("gensqlc.ensureUnderDir").Error("failed to get absolute path",
+			logging.String("path", path),
+			logging.Error("filepath.Abs", err),
+		)
 		return err
 	}
 
 	absBase, err := filepath.Abs(baseDir)
 	if err != nil {
-		logger.Error("failed to get absolute baseDir", zap.String("baseDir", baseDir), zap.NamedError("filepath.Abs", err))
+		logger.Named("gensqlc.ensureUnderDir").Error("failed to get absolute baseDir",
+			logging.String("baseDir", baseDir),
+			logging.Error("filepath.Abs", err),
+		)
 		return err
 	}
 
 	rel, err := filepath.Rel(absBase, absPath)
 	if err != nil {
-		logger.Error("failed to get relative path", zap.String("baseDir", absBase), zap.String("path", absPath), zap.NamedError("filepath.Rel", err))
+		logger.Named("gensqlc.ensureUnderDir").Error("failed to get relative path",
+			logging.String("baseDir", absBase),
+			logging.String("path", absPath),
+			logging.Error("filepath.Rel", err),
+		)
 		return err
 	}
 	rel = filepath.Clean(rel)
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		logger.Error("path is outside of baseDir", zap.String("path", absPath), zap.String("baseDir", absBase))
+		logger.Named("gensqlc.ensureUnderDir").Error("path is outside of baseDir",
+			logging.String("path", absPath),
+			logging.String("baseDir", absBase),
+		)
 		return err
 	}
 	return nil
