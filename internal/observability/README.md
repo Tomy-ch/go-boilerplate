@@ -1,6 +1,8 @@
 # internal/observability
 
-概要: アプリケーションのトレース・ログ・メトリクスなどの観測（Observability）機能を提供するユーティリティ群です。トレーサの生成、レイヤ別トレース、呼び出し元情報取得などのヘルパーをまとめています。
+概要: アプリケーションのトレース・ログ・メトリクスなどの観測（Observability）機能を提供するユーティリティ群です。
+
+トレーサの生成、レイヤ別トレース、呼び出し元情報取得、テスト用の観測インスタンスなどのヘルパーをまとめています。
 
 ## 役割
 
@@ -15,13 +17,60 @@
 
 - 必須度: 本番運用で推奨
 
-理由: トレーシングやロギングは運用時の障害解析やパフォーマンス解析に重要です。必須ではない機能（サービスは動く）が多いですが、運用性向上のため導入を推奨します。
+理由: トレーシングやロギングは運用時の障害解析やパフォーマンス解析に重要です。適切なトレーシングを入れることで、問題発生時の原因特定が容易になります。
 
 ### 開発/テスト運用での必須度
 
 - 必須度: 開発/テスト運用で推奨
 
-理由: 開発時にトレースや呼び出し情報があるとデバッグが容易になります。CIや統合テストでの動作確認用テストインスタンスも含まれており、テスト品質向上に寄与します。
+理由: 開発時にトレースや呼び出し情報があるとデバッグが容易になります。`test_instance.go` を使ってテスト環境向けに軽量化した観測を行えます。
+
+## 利用例（簡易）
+
+### 初期化
+
+```go
+// main.go 等の起動箇所で
+ctx := context.Background()
+tp, err := observability.NewProvider(observability.ProviderConfig{
+    ServiceName: "my-service",
+    Environment: "production",
+    // OTLP エンドポイント等は環境変数で制御
+})
+if err != nil {
+    // ハンドリング
+}
+defer tp.Shutdown(ctx)
+
+tracer := observability.NewTracerFactory("my-service").Tracer("controller")
+// tracer を使って span を開始
+
+// layer_tracer を使った典型例
+lt := observability.NewLayerTracer(tracer, "Usecase")
+ctx, span := lt.Start(ctx, "HandlePurchase")
+defer span.End()
+
+// エラーが発生した場合
+lt.RecordError(span, err)
+```
+
+### テストでの利用
+
+```go
+// internal/observability/test_instance.go を使うと、外部エクスポートを無効化した
+// 軽量なプロバイダが取得できます。
+tp := observability.NewTestInstance()
+defer tp.Shutdown(context.Background())
+
+// go test 実行例
+// go test ./internal/observability -v
+```
+
+## 実装上の注意
+
+- 外部エクスポーター（OTLP/Jaeger など）への接続失敗がアプリ起動を阻害しないよう、フェールセーフな設計にしてください。
+- トレースに埋め込む属性に個人情報や機密情報を含めないでください。
+- `caller.go` が提供する呼び出し元情報はパフォーマンスに影響を与える可能性があるため、必要最小限の利用に留めてください。
 
 ### 無効化した場合の影響
 

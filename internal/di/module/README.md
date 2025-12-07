@@ -4,7 +4,7 @@
 
 ## 役割
 
-- 各レイヤ（config / controller / db / infrastructure / logging / observability / system / usecase）ごとの DI 提供を集約し、アプリケーションの起動時に必要な依存関係を組み立てます。
+- 各レイヤごとの DI 提供を集約し、アプリケーションの起動時に必要な依存関係を組み立てます。
 
 ## 必要度
 
