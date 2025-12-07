@@ -1,11 +1,11 @@
-package driver
+package loggingdb
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
 
 	"github.com/stretchr/testify/require"
@@ -14,14 +14,14 @@ import (
 func TestNewLoggingDBProvider(t *testing.T) {
 	t.Parallel()
 
-	db := &dbDriver{&sql.DB{}}
+	db := driver.NewTestInstance(t)
 	l := logging.NewTestInstance(t)
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 
-	expected := &loggingDBProvider{
+	expected := &provider{
 		db: db,
 		l:  l,
 		lf: lf,
@@ -34,14 +34,14 @@ func TestNewLoggingDBProvider(t *testing.T) {
 func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 	t.Parallel()
 
-	db := &dbDriver{&sql.DB{}}
+	db := driver.NewTestInstance(t)
 	l := logging.NewTestInstance(t)
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 
-	provider := &loggingDBProvider{
+	provider := &provider{
 		db: db,
 		l:  l,
 		lf: lf,
@@ -53,4 +53,35 @@ func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 	dwl := loggingDB.(*dbWithLogging)
 	require.Equal(t, ctx, dwl.ctx)
 	require.Equal(t, provider, dwl.provider)
+}
+
+func TestLoggingDBProvider_logger(t *testing.T) {
+	t.Parallel()
+
+	db := driver.NewTestInstance(t)
+	l := logging.NewTestInstance(t)
+
+	provider := &provider{
+		db: db,
+		l:  l,
+	}
+
+	require.Equal(t, l, provider.Logger())
+}
+
+func TestLoggingDBProvider_logFields(t *testing.T) {
+	t.Parallel()
+
+	db := driver.NewTestInstance(t)
+
+	cfg := config.MockConfigForTest(t)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewLogFields(obsCfg)
+
+	provider := &provider{
+		db: db,
+		lf: lf,
+	}
+
+	require.Equal(t, lf, provider.LogFields())
 }
