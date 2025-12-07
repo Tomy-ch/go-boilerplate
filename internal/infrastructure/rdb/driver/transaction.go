@@ -28,7 +28,7 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 		return fn(ctx)
 	}
 
-	tx, err := t.db.beginTx(ctx, nil)
+	tx, err := t.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}

@@ -30,8 +30,6 @@ func (s *server) GetHealth(ctx context.Context, _ gen.GetHealthRequestObject) (g
 	_, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	// time.Sleep(10 * time.Second)
-
 	return gen.GetHealth200JSONResponse(gen.ResponseHealth{
 		Status: "ok",
 	}), nil

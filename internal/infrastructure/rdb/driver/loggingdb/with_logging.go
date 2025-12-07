@@ -1,10 +1,11 @@
-package driver
+package loggingdb
 
 import (
 	"context"
 	"database/sql"
 	"time"
 
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 )
@@ -17,9 +18,9 @@ const (
 
 // dbWithLogging は DBTX をラップしてログを出してから実処理へ委譲する。
 type dbWithLogging struct {
-	db       DBTX
+	db       driver.DBTX
 	ctx      context.Context
-	provider LoggingDBProvider
+	provider DBProvider
 }
 
 func (dwl *dbWithLogging) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
@@ -72,12 +73,12 @@ func (dwl *dbWithLogging) buildSQLLogFields(
 		TraceID:  traceCtx.TraceID(),
 		SpanID:   traceCtx.SpanID(),
 	}
-	return dwl.provider.logFields().BuildSQLFields(sqlIn)
+	return dwl.provider.LogFields().BuildSQLFields(sqlIn)
 }
 
 // logQueryResult は、SQLクエリの実行結果をログ出力します。
 func (dwl *dbWithLogging) logQueryResult(msg string, fields []*logging.Field, err error) {
-	logger := dwl.provider.logger().Named("driver.Query").CallerSkip(callSkip)
+	logger := dwl.provider.Logger().Named("driver.Query").CallerSkip(callSkip)
 	if err == nil {
 		logger.Info(msg, fields...)
 	} else {
