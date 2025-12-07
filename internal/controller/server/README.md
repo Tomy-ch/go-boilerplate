@@ -57,5 +57,3 @@ extension 配下で適用されたミドルウェア・サーバー設定を最�
 - ログには logging.Logger を使用し、zap の生利用は禁止（封印層のため）
 - セキュリティ情報（allowed_origins / CIDR）は起動ログで確認可能
 - graceful shutdown の Timeout は ServerConfig に従うため、設定ミスに注意すること
-
-以上が `server` ディレクトリの README です。
