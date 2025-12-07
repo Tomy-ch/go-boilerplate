@@ -7,6 +7,7 @@ import (
 
 	"boilerplate-go/internal/apperror"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/healthcheck/query"
@@ -15,11 +16,11 @@ import (
 
 type systemQuery struct {
 	db       driver.DatabaseDriver
-	provider driver.LoggingDBProvider
+	provider loggingdb.DBProvider
 	tracer   observability.LayerTracer
 }
 
-func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) query.DBSystemQuery {
+func New(db driver.DatabaseDriver, provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery {
 	return &systemQuery{
 		db:       db,
 		provider: provider,

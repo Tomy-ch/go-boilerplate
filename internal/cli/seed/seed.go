@@ -49,21 +49,8 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 		panic("failed to create logger: " + err.Error())
 	}
 
-	err = config.Load()
+	cfg, err := newConfigForSeed(logger)
 	if err != nil {
-		logger.Named("dbSeedRun.configLoad").Error("failed to load config", logging.Error("configLoad", err))
-		return err
-	}
-	if targetDBintoSeed != "" {
-		err = os.Setenv("DB_NAME", targetDBintoSeed)
-		if err != nil {
-			logger.Named("dbSeedRun.setenv").Error("failed to set DB_NAME env", logging.Error("setenv", err))
-			return err
-		}
-	}
-	cfg, err := config.New()
-	if err != nil {
-		logger.Named("dbSeedRun.configNew").Error("failed to load config", logging.Error("configNew", err))
 		return err
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
@@ -132,4 +119,25 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	logger.Named("dbSeedRun").Info("✅ seeding completed")
 
 	return nil
+}
+
+func newConfigForSeed(logger logging.Logger) (*config.Config, error) {
+	err := config.Load()
+	if err != nil {
+		logger.Named("dbSeedRun.configLoad").Error("failed to load config", logging.Error("configLoad", err))
+		return nil, err
+	}
+	if targetDBintoSeed != "" {
+		err = os.Setenv("DB_NAME", targetDBintoSeed)
+		if err != nil {
+			logger.Named("dbSeedRun.setenv").Error("failed to set DB_NAME env", logging.Error("setenv", err))
+			return nil, err
+		}
+	}
+	cfg, err := config.New()
+	if err != nil {
+		logger.Named("dbSeedRun.configNew").Error("failed to load config", logging.Error("configNew", err))
+		return nil, err
+	}
+	return cfg, nil
 }

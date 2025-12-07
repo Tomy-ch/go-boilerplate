@@ -2,6 +2,7 @@ package module
 
 import (
 	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 
 	"go.uber.org/fx"
 )
@@ -12,7 +13,7 @@ func DatabaseModule() fx.Option {
 		fx.Provide(
 			driver.NewDB,
 			driver.NewTransactionManager,
-			driver.NewLoggingDBProvider,
+			loggingdb.NewLoggingDBProvider,
 		),
 	)
 }

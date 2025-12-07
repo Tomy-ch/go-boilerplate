@@ -28,10 +28,10 @@ func TestNewDB(t *testing.T) {
 			require.NotNil(t, db)
 
 			// 疎通確認
-			err = db.pingContext(context.Background())
+			err = db.PingContext(context.Background())
 			require.NoError(t, err)
 
-			err = db.close()
+			err = db.Close()
 			require.NoError(t, err)
 		})
 	})

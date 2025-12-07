@@ -1,4 +1,6 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+
+// Package driver は、RDBの接続のための基盤的な機能を提供します。
 package driver
 
 import (
@@ -10,14 +12,11 @@ import (
 )
 
 type DatabaseDriver interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	DBTX
 
-	beginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-	pingContext(ctx context.Context) error
-	close() error
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	PingContext(ctx context.Context) error
+	Close() error
 }
 
 type dbDriver struct{ *sql.DB }
@@ -25,7 +24,6 @@ type dbDriver struct{ *sql.DB }
 // NewDB は Postgres のDB接続を初期化して返します。
 func NewDB(
 	dbCfg *config.DatabaseConfig, osCfg *config.OperationSystemConfig, dbConnCfg *config.DBConnectionConfig,
-	// ) (*sql.DB, error) {
 ) (DatabaseDriver, error) {
 	db, err := sql.Open(dbCfg.Driver(), dbCfg.DSN(osCfg))
 	if err != nil {
@@ -66,16 +64,17 @@ func (d *dbDriver) QueryRowContext(ctx context.Context, query string, args ...an
 	return d.DB.QueryRowContext(ctx, query, args...)
 }
 
-func (d *dbDriver) beginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
-	return d.BeginTx(ctx, opts)
+// BeginTx は、DB.BeginTxを呼び出します。
+func (d *dbDriver) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	return d.DB.BeginTx(ctx, opts)
 }
 
-// pingContext は、DB.PingContextを呼び出します。
-func (d *dbDriver) pingContext(ctx context.Context) error {
-	return d.PingContext(ctx)
+// PingContext は、DB.PingContextを呼び出します。
+func (d *dbDriver) PingContext(ctx context.Context) error {
+	return d.DB.PingContext(ctx)
 }
 
-// close は、DB.Closeを呼び出します。
-func (d *dbDriver) close() error {
-	return d.Close()
+// Close は、DB.Closeを呼び出します。
+func (d *dbDriver) Close() error {
+	return d.DB.Close()
 }

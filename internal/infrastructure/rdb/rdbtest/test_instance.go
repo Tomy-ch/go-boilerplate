@@ -8,6 +8,7 @@ import (
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/tx"
@@ -30,7 +31,7 @@ type testTxManager struct {
 
 // NewTestInstancesForNew は、リポジトリのNew関数用テストインスタンスを生成します。
 func NewTestInstancesForNew(t *testing.T) (
-	driver.DatabaseDriver, driver.LoggingDBProvider, observability.TracerFactory,
+	driver.DatabaseDriver, loggingdb.DBProvider, observability.TracerFactory,
 ) {
 	t.Helper()
 
@@ -46,7 +47,7 @@ func NewTestInstancesForNew(t *testing.T) (
 	mockLogger := logging.NewTestInstance(t)
 	lf := logging.NewLogFields(obsCfg)
 
-	loggingDBProvider := driver.NewLoggingDBProvider(db, mockLogger, lf)
+	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, mockLogger, lf)
 
 	noopTF := observability.NewTestTracerFactory(t)
 
@@ -55,7 +56,7 @@ func NewTestInstancesForNew(t *testing.T) (
 
 // NewTestInstancesForImplementedInfra は、実装済みインフラ用テストインスタンスを生成します。
 func NewTestInstancesForImplementedInfra(t *testing.T) (
-	driver.DatabaseDriver, Manager, driver.LoggingDBProvider, *time.Location, observability.LayerTracer,
+	driver.DatabaseDriver, Manager, loggingdb.DBProvider, *time.Location, observability.LayerTracer,
 ) {
 	t.Helper()
 
@@ -75,7 +76,7 @@ func NewTestInstancesForImplementedInfra(t *testing.T) (
 	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)
 
-	loggingDBProvider := driver.NewLoggingDBProvider(db, mockLogger, lf)
+	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, mockLogger, lf)
 
 	noopTF := observability.NewTestTracerFactory(t)
 

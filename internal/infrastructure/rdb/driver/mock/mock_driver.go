@@ -41,6 +41,35 @@ func (m *MockDatabaseDriver) EXPECT() *MockDatabaseDriverMockRecorder {
 	return m.recorder
 }
 
+// BeginTx mocks base method.
+func (m *MockDatabaseDriver) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTx", ctx, opts)
+	ret0, _ := ret[0].(*sql.Tx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BeginTx indicates an expected call of BeginTx.
+func (mr *MockDatabaseDriverMockRecorder) BeginTx(ctx, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTx", reflect.TypeOf((*MockDatabaseDriver)(nil).BeginTx), ctx, opts)
+}
+
+// Close mocks base method.
+func (m *MockDatabaseDriver) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockDatabaseDriverMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDatabaseDriver)(nil).Close))
+}
+
 // ExecContext mocks base method.
 func (m *MockDatabaseDriver) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	m.ctrl.T.Helper()
@@ -59,6 +88,20 @@ func (mr *MockDatabaseDriverMockRecorder) ExecContext(ctx, query any, args ...an
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, query}, args...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecContext", reflect.TypeOf((*MockDatabaseDriver)(nil).ExecContext), varargs...)
+}
+
+// PingContext mocks base method.
+func (m *MockDatabaseDriver) PingContext(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PingContext", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PingContext indicates an expected call of PingContext.
+func (mr *MockDatabaseDriverMockRecorder) PingContext(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingContext", reflect.TypeOf((*MockDatabaseDriver)(nil).PingContext), ctx)
 }
 
 // PrepareContext mocks base method.
@@ -113,47 +156,4 @@ func (mr *MockDatabaseDriverMockRecorder) QueryRowContext(ctx, query any, args .
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, query}, args...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRowContext", reflect.TypeOf((*MockDatabaseDriver)(nil).QueryRowContext), varargs...)
-}
-
-// beginTx mocks base method.
-func (m *MockDatabaseDriver) beginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "beginTx", ctx, opts)
-	ret0, _ := ret[0].(*sql.Tx)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// beginTx indicates an expected call of beginTx.
-func (mr *MockDatabaseDriverMockRecorder) beginTx(ctx, opts any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "beginTx", reflect.TypeOf((*MockDatabaseDriver)(nil).beginTx), ctx, opts)
-}
-
-// close mocks base method.
-func (m *MockDatabaseDriver) close() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "close")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// close indicates an expected call of close.
-func (mr *MockDatabaseDriverMockRecorder) close() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "close", reflect.TypeOf((*MockDatabaseDriver)(nil).close))
-}
-
-// pingContext mocks base method.
-func (m *MockDatabaseDriver) pingContext(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "pingContext", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// pingContext indicates an expected call of pingContext.
-func (mr *MockDatabaseDriverMockRecorder) pingContext(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "pingContext", reflect.TypeOf((*MockDatabaseDriver)(nil).pingContext), ctx)
 }
