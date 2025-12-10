@@ -14,8 +14,13 @@ import (
 )
 
 // NewAppServer は、サーバーインスタンスを作成します。
-func NewAppServer() *echo.Echo {
-	return echo.New()
+func NewAppServer(srvCfg *config.ServerConfig) *echo.Echo {
+	e := echo.New()
+	e.Server.ReadHeaderTimeout = srvCfg.ReadHeaderTimeout()
+	e.Server.ReadTimeout = srvCfg.ReadTimeout()
+	e.Server.WriteTimeout = srvCfg.WriteTimeout()
+	e.Server.IdleTimeout = srvCfg.IdleTimeout()
+	return e
 }
 
 // ServeHTTP は、HTTPサーバーを起動します。
@@ -30,7 +35,7 @@ func ServeHTTP(
 	_ *extension.AppliedServerExtends,
 ) {
 	reg.RegisterStart(newStartServerFunc(e, srvCfg, log, secCfg, appCfg))
-	reg.RegisterStop(newStopServerFunc(e, log, srvCfg))
+	reg.RegisterStop(newStopServerFunc(e, log))
 }
 
 // newStartServerFunc は、HTTPサーバーを起動する関数を生成します。
@@ -60,13 +65,10 @@ func newStartServerFunc(
 
 // newStopServerFunc は、HTTPサーバーを停止する関数を生成します。
 func newStopServerFunc(
-	e *echo.Echo, log logging.Logger, srvCfg *config.ServerConfig,
+	e *echo.Echo, log logging.Logger,
 ) func(context.Context) error {
 	return func(ctx context.Context) error {
-		shutdownTime := srvCfg.ShutdownTimeout()
-		ctx, cancel := context.WithTimeout(ctx, shutdownTime)
-		defer cancel()
-		log.Info("http stopping")
+		log.Named("server.Stop").Info("http stopping")
 		return e.Shutdown(ctx)
 	}
 }

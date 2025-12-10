@@ -36,9 +36,12 @@ func New() (*Config, error) {
 			shutdownTimeout: cfg.App.ShutdownTimeout,
 		},
 		server: ServerConfig{
-			host:            cfg.Server.Host,
-			port:            cfg.Server.Port,
-			shutdownTimeout: cfg.Server.ShutdownTimeout,
+			host:              cfg.Server.Host,
+			port:              cfg.Server.Port,
+			readHeaderTimeout: cfg.Server.ReadHeaderTimeout,
+			readTimeout:       cfg.Server.ReadTimeout,
+			writeTimeout:      cfg.Server.WriteTimeout,
+			idleTimeout:       cfg.Server.IdleTimeout,
 		},
 		metrics: MetricsConfig{
 			host: cfg.Metrics.Host,
@@ -94,8 +97,12 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 		return nil, ErrInvalidAppMode
 	}
 
-	if cfg.App.ShutdownTimeout.Microseconds() < cfg.Server.ShutdownTimeout.Microseconds() {
-		return nil, ErrServerErrShutdownTimeoutExceedsApplication
+	if cfg.Server.ReadHeaderTimeout.Microseconds() > cfg.Server.ReadTimeout.Microseconds() {
+		return nil, ErrReadHeaderTimeoutExceedsReadTimeout
+	}
+
+	if cfg.Server.ReadTimeout.Microseconds() > cfg.Server.WriteTimeout.Microseconds() {
+		return nil, ErrReadTimeoutExceedsWriteTimeout
 	}
 
 	_, cidr, err := net.ParseCIDR(cfg.Security.CIDR)

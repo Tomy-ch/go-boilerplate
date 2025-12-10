@@ -22,9 +22,12 @@ func TestMockConfigForTest(t *testing.T) {
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
-			host:            expectedServerHost,
-			port:            expectedServerPort,
-			shutdownTimeout: expectedServerShutdownTimeout,
+			host:              expectedServerHost,
+			port:              expectedServerPort,
+			readHeaderTimeout: expectedServerReadHeaderTimeout,
+			readTimeout:       expectedServerReadTimeout,
+			writeTimeout:      expectedServerWriteTimeout,
+			idleTimeout:       expectedServerIdleTimeout,
 		},
 		metrics: MetricsConfig{
 			host: expectedMetricsHost,
@@ -73,9 +76,12 @@ func Test_mockLoader(t *testing.T) {
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
 		Server: Server{
-			Host:            expectedServerHost,
-			Port:            expectedServerPort,
-			ShutdownTimeout: expectedServerShutdownTimeout,
+			Host:              expectedServerHost,
+			Port:              expectedServerPort,
+			ReadHeaderTimeout: expectedServerReadHeaderTimeout,
+			ReadTimeout:       expectedServerReadTimeout,
+			WriteTimeout:      expectedServerWriteTimeout,
+			IdleTimeout:       expectedServerIdleTimeout,
 		},
 		Metrics: Metrics{
 			Host: expectedMetricsHost,
@@ -115,7 +121,10 @@ func Test_setEnv(t *testing.T) {
 	// Server
 	require.Equal(t, expectedServerHost, os.Getenv("SERVER_HOST"))
 	require.Equal(t, strconv.Itoa(expectedServerPort), os.Getenv("SERVER_PORT"))
-	require.Equal(t, expectedServerShutdownTimeoutStr, os.Getenv("SERVER_SHUTDOWN_TIMEOUT"))
+	require.Equal(t, expectedServerReadHeaderTimeoutStr, os.Getenv("SERVER_READ_HEADER_TIMEOUT"))
+	require.Equal(t, expectedServerReadTimeoutStr, os.Getenv("SERVER_READ_TIMEOUT"))
+	require.Equal(t, expectedServerWriteTimeoutStr, os.Getenv("SERVER_WRITE_TIMEOUT"))
+	require.Equal(t, expectedServerIdleTimeoutStr, os.Getenv("SERVER_IDLE_TIMEOUT"))
 	// Metrics
 	require.Equal(t, expectedMetricsHost, os.Getenv("METRICS_HOST"))
 	require.Equal(t, strconv.Itoa(expectedMetricsPort), os.Getenv("METRICS_PORT"))

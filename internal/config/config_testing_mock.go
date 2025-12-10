@@ -22,11 +22,20 @@ var (
 	expectedAppShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
 	expectedAppShutdownTimeout      = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
 	// server
-	expectedServerHost                 = "localhost"
-	expectedServerPort                 = 8080
-	expectedServerShutdownTimeoutCount = 30
-	expectedServerShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedServerShutdownTimeoutCount)
-	expectedServerShutdownTimeout      = time.Duration(expectedServerShutdownTimeoutCount) * time.Second
+	expectedServerHost                   = "localhost"
+	expectedServerPort                   = 8080
+	expectedServerReadHeaderTimeoutCount = 5
+	expectedServerReadHeaderTimeoutStr   = fmt.Sprintf("%ds", expectedServerReadHeaderTimeoutCount)
+	expectedServerReadHeaderTimeout      = time.Duration(expectedServerReadHeaderTimeoutCount) * time.Second
+	expectedServerReadTimeoutCount       = 10
+	expectedServerReadTimeoutStr         = fmt.Sprintf("%ds", expectedServerReadTimeoutCount)
+	expectedServerReadTimeout            = time.Duration(expectedServerReadTimeoutCount) * time.Second
+	expectedServerWriteTimeoutCount      = 10
+	expectedServerWriteTimeoutStr        = fmt.Sprintf("%ds", expectedServerWriteTimeoutCount)
+	expectedServerWriteTimeout           = time.Duration(expectedServerWriteTimeoutCount) * time.Second
+	expectedServerIdleTimeoutCount       = 60
+	expectedServerIdleTimeoutStr         = fmt.Sprintf("%ds", expectedServerIdleTimeoutCount)
+	expectedServerIdleTimeout            = time.Duration(expectedServerIdleTimeoutCount) * time.Second
 	// metrics
 	expectedMetricsHost = "localhost"
 	expectedMetricsPort = 6060
@@ -71,9 +80,12 @@ func MockConfigForTest(t testing.TB) *Config {
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
-			host:            expectedServerHost,
-			port:            expectedServerPort,
-			shutdownTimeout: expectedServerShutdownTimeout,
+			host:              expectedServerHost,
+			port:              expectedServerPort,
+			readHeaderTimeout: expectedServerReadHeaderTimeout,
+			readTimeout:       expectedServerReadTimeout,
+			writeTimeout:      expectedServerWriteTimeout,
+			idleTimeout:       expectedServerIdleTimeout,
 		},
 		metrics: MetricsConfig{
 			host: expectedMetricsHost,
@@ -128,9 +140,12 @@ func mockLoader(t testing.TB) Loader {
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		Server: Server{
-			Host:            expectedServerHost,
-			Port:            expectedServerPort,
-			ShutdownTimeout: expectedServerShutdownTimeout,
+			Host:              expectedServerHost,
+			Port:              expectedServerPort,
+			ReadHeaderTimeout: expectedServerReadHeaderTimeout,
+			ReadTimeout:       expectedServerReadTimeout,
+			WriteTimeout:      expectedServerWriteTimeout,
+			IdleTimeout:       expectedServerIdleTimeout,
 		},
 		Database: Database{
 			Host:     expectedDBHost,
@@ -160,7 +175,10 @@ func setEnvVarsForTesting(t *testing.T) {
 	// Server
 	t.Setenv("SERVER_HOST", expectedServerHost)
 	t.Setenv("SERVER_PORT", strconv.Itoa(expectedServerPort))
-	t.Setenv("SERVER_SHUTDOWN_TIMEOUT", expectedServerShutdownTimeoutStr)
+	t.Setenv("SERVER_READ_HEADER_TIMEOUT", expectedServerReadHeaderTimeoutStr)
+	t.Setenv("SERVER_READ_TIMEOUT", expectedServerReadTimeoutStr)
+	t.Setenv("SERVER_WRITE_TIMEOUT", expectedServerWriteTimeoutStr)
+	t.Setenv("SERVER_IDLE_TIMEOUT", expectedServerIdleTimeoutStr)
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)
 	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))

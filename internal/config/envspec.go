@@ -24,9 +24,12 @@ type Application struct {
 }
 
 type Server struct {
-	Host            string        `env:"HOST,required"`
-	Port            int           `env:"PORT,required"`
-	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`
+	Host              string        `env:"HOST,required"`
+	Port              int           `env:"PORT,required"`
+	ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT,required"`
+	ReadTimeout       time.Duration `env:"READ_TIMEOUT,required"`
+	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT,required"`
+	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT,required"`
 }
 
 type Metrics struct {

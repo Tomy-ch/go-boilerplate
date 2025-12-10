@@ -35,9 +35,14 @@ var (
 		"failed to parse environment variables: %w",
 		errInvalidConfig,
 	)
-	// ErrServerErrShutdownTimeoutExceedsApplication は、サーバーのシャットダウンタイムアウトがアプリケーションのシャットダウンタイムアウトを超えていることを示すエラーです。
-	ErrServerErrShutdownTimeoutExceedsApplication = fmt.Errorf(
-		"server shutdown timeout exceeds application shutdown timeout: %w",
+	// ErrReadHeaderTimeoutExceedsReadTimeout は、ReadHeaderTimeoutがReadTimeoutを超えていることを示すエラーです。
+	ErrReadHeaderTimeoutExceedsReadTimeout = fmt.Errorf(
+		"read header timeout exceeds read timeout: %w",
+		errInvalidConfig,
+	)
+	// ErrReadTimeoutExceedsWriteTimeout は、ReadTimeoutがWriteTimeoutを超えていることを示すエラーです。
+	ErrReadTimeoutExceedsWriteTimeout = fmt.Errorf(
+		"read timeout exceeds write timeout: %w",
 		errInvalidConfig,
 	)
 	// ErrFailedToParseCIDR は、CIDRのパースに失敗したことを示すエラーです。

@@ -95,9 +95,24 @@ func TestGetterMethods(t *testing.T) {
 			require.Equal(t, expectedServerPort, server.Port())
 		})
 
-		t.Run("ShutdownTimeout", func(t *testing.T) {
+		t.Run("ReadHeaderTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerShutdownTimeout, server.ShutdownTimeout())
+			require.Equal(t, expectedServerReadHeaderTimeout, server.ReadHeaderTimeout())
+		})
+
+		t.Run("ReadTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedServerReadTimeout, server.ReadTimeout())
+		})
+
+		t.Run("WriteTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedServerWriteTimeout, server.WriteTimeout())
+		})
+
+		t.Run("IdleTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
 		})
 	})
 

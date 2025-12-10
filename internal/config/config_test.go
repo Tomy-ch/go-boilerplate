@@ -3,7 +3,6 @@ package config
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -22,9 +21,12 @@ func TestNewConfig(t *testing.T) {
 					shutdownTimeout: expectedAppShutdownTimeout,
 				},
 				server: ServerConfig{
-					host:            expectedServerHost,
-					port:            expectedServerPort,
-					shutdownTimeout: expectedServerShutdownTimeout,
+					host:              expectedServerHost,
+					port:              expectedServerPort,
+					readHeaderTimeout: expectedServerReadHeaderTimeout,
+					readTimeout:       expectedServerReadTimeout,
+					writeTimeout:      expectedServerWriteTimeout,
+					idleTimeout:       expectedServerIdleTimeout,
 				},
 				metrics: MetricsConfig{
 					host: expectedMetricsHost,
@@ -133,13 +135,22 @@ func Test_validateConfig(t *testing.T) {
 			require.ErrorIs(t, err, ErrInvalidAppMode)
 		})
 
-		t.Run("サーバーのシャットダウンタイムアウトがアプリケーションのシャットダウンタイムアウトを超えている場合", func(t *testing.T) {
+		t.Run("ReadHeaderTimeoutがReadTimeoutを超えている場合", func(t *testing.T) {
 			cfg := mockLoader(t)
-			cfg.Server.ShutdownTimeout = cfg.App.ShutdownTimeout + time.Duration(1*time.Second)
+			cfg.Server.ReadHeaderTimeout = cfg.Server.ReadTimeout + cfg.Server.ReadTimeout
 
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrServerErrShutdownTimeoutExceedsApplication)
+			require.ErrorIs(t, err, ErrReadHeaderTimeoutExceedsReadTimeout)
+		})
+
+		t.Run("ReadTimeoutがWriteTimeoutを超えている場合", func(t *testing.T) {
+			cfg := mockLoader(t)
+			cfg.Server.ReadTimeout = cfg.Server.WriteTimeout + cfg.Server.WriteTimeout
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrReadTimeoutExceedsWriteTimeout)
 		})
 
 		t.Run("CIDRのパースに失敗した場合", func(t *testing.T) {

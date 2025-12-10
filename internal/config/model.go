@@ -29,9 +29,12 @@ type ApplicationConfig struct {
 }
 
 type ServerConfig struct {
-	host            string
-	port            int
-	shutdownTimeout time.Duration
+	host              string
+	port              int
+	readHeaderTimeout time.Duration
+	readTimeout       time.Duration
+	writeTimeout      time.Duration
+	idleTimeout       time.Duration
 }
 
 type MetricsConfig struct {
@@ -112,8 +115,17 @@ func (s *ServerConfig) Host() string { return s.host }
 // Port は、サーバーがリッスンするポート番号を返します。
 func (s *ServerConfig) Port() int { return s.port }
 
-// ShutdownTimeout は、サーバー停止までの規定時間を返します。
-func (s *ServerConfig) ShutdownTimeout() time.Duration { return s.shutdownTimeout }
+// ReadHeaderTimeout は、サーバーのヘッダー読み取りタイムアウトを返します。
+func (s *ServerConfig) ReadHeaderTimeout() time.Duration { return s.readHeaderTimeout }
+
+// ReadTimeout は、サーバーの読み取りタイムアウトを返します。
+func (s *ServerConfig) ReadTimeout() time.Duration { return s.readTimeout }
+
+// WriteTimeout は、サーバーの書き込みタイムアウトを返します。
+func (s *ServerConfig) WriteTimeout() time.Duration { return s.writeTimeout }
+
+// IdleTimeout は、サーバーのアイドルタイムアウトを返します。
+func (s *ServerConfig) IdleTimeout() time.Duration { return s.idleTimeout }
 
 // NewMetricsConfig は、メトリクスの設定を返します。
 func NewMetricsConfig(cfg *Config) *MetricsConfig { return &cfg.metrics }
