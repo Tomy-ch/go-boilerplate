@@ -18,16 +18,18 @@ func TestNewLoggingDBProvider(t *testing.T) {
 	l := logging.NewTestInstance(t)
 
 	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 
 	expected := &provider{
-		db: db,
-		l:  l,
-		lf: lf,
+		db:    db,
+		dbCfg: dbCfg,
+		l:     l,
+		lf:    lf,
 	}
 
-	provider := NewLoggingDBProvider(db, l, lf)
+	provider := NewLoggingDBProvider(db, dbCfg, l, lf)
 	require.Equal(t, expected, provider)
 }
 
@@ -84,4 +86,19 @@ func TestLoggingDBProvider_logFields(t *testing.T) {
 	}
 
 	require.Equal(t, lf, provider.LogFields())
+}
+
+func TestLoggingDBProvider_dbConfig(t *testing.T) {
+	t.Parallel()
+
+	db := driver.NewTestInstance(t)
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+
+	provider := &provider{
+		db:    db,
+		dbCfg: dbCfg,
+	}
+
+	require.Equal(t, dbCfg, provider.DBConfig())
 }

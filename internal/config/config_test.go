@@ -37,19 +37,20 @@ func TestNewConfig(t *testing.T) {
 					targetStatusCodes: expectedObservabilityTargetStatusCodes,
 				},
 				database: DatabaseConfig{
-					driver:   expectedDBDriver,
-					host:     expectedDBHost,
-					port:     expectedDBPort,
-					user:     expectedDBUser,
-					password: expectedDBPassword,
-					name:     expectedDBName,
-					sslMode:  expectedDBSSLMode,
-					connection: DBConnectionConfig{
-						maxOpenConns: expectedDBMaxOpenConns,
-						maxIdleConns: expectedDBMaxIdleConns,
-						maxLifetime:  expectedDBMaxLifetime,
-						maxIdleTime:  expectedDBMaxIdleTime,
-					},
+					driver:                 expectedDBDriver,
+					host:                   expectedDBHost,
+					port:                   expectedDBPort,
+					user:                   expectedDBUser,
+					password:               expectedDBPassword,
+					name:                   expectedDBName,
+					sslMode:                expectedDBSSLMode,
+					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+				},
+				dbconnection: DBConnectionConfig{
+					maxOpenConns: expectedDBMaxOpenConns,
+					maxIdleConns: expectedDBMaxIdleConns,
+					maxLifetime:  expectedDBMaxLifetime,
+					maxIdleTime:  expectedDBMaxIdleTime,
 				},
 				security: SecurityConfig{
 					allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
@@ -142,15 +143,6 @@ func Test_validateConfig(t *testing.T) {
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrReadHeaderTimeoutExceedsReadTimeout)
-		})
-
-		t.Run("ReadTimeoutがWriteTimeoutを超えている場合", func(t *testing.T) {
-			cfg := mockLoader(t)
-			cfg.Server.ReadTimeout = cfg.Server.WriteTimeout + cfg.Server.WriteTimeout
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrReadTimeoutExceedsWriteTimeout)
 		})
 
 		t.Run("CIDRのパースに失敗した場合", func(t *testing.T) {

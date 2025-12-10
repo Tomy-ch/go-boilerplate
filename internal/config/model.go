@@ -14,6 +14,7 @@ type Config struct {
 	metrics       MetricsConfig
 	observability ObservabilityConfig
 	database      DatabaseConfig
+	dbconnection  DBConnectionConfig
 	security      SecurityConfig
 }
 
@@ -48,14 +49,14 @@ type ObservabilityConfig struct {
 }
 
 type DatabaseConfig struct {
-	driver     string
-	host       string
-	port       int
-	user       string
-	password   string
-	name       string
-	sslMode    string
-	connection DBConnectionConfig
+	driver                 string
+	host                   string
+	port                   int
+	user                   string
+	password               string
+	name                   string
+	sslMode                string
+	slowQueryWarnThreshold time.Duration
 }
 
 type DBConnectionConfig struct {
@@ -169,6 +170,9 @@ func (d *DatabaseConfig) DBName() string { return d.name }
 // SSLMode は、データベースのSSLモードを返します。
 func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
 
+// SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。
+func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
+
 // DSN は、データベースの接続URLを返します。
 func (d *DatabaseConfig) DSN(o *OperationSystemConfig) string {
 	return fmt.Sprintf(
@@ -184,7 +188,7 @@ func (d *DatabaseConfig) DSN(o *OperationSystemConfig) string {
 }
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。
-func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.database.connection }
+func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }
 
 // MaxOpenConns は、データベースの最大オープン接続数を返します。
 func (c *DBConnectionConfig) MaxOpenConns() int { return c.maxOpenConns }

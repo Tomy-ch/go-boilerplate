@@ -22,6 +22,7 @@ func Test_dbWithLogging_ExecContext(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 	lg := logging.NewTestInstance(t)
@@ -38,6 +39,7 @@ func Test_dbWithLogging_ExecContext(t *testing.T) {
 	mp := mock_loggingdb.NewMockDBProvider(ctrl)
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
+	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
@@ -51,6 +53,7 @@ func Test_dbWithLogging_PrepareContext(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 	lg := logging.NewTestInstance(t)
@@ -65,6 +68,7 @@ func Test_dbWithLogging_PrepareContext(t *testing.T) {
 	mp := mock_loggingdb.NewMockDBProvider(ctrl)
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
+	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
@@ -77,6 +81,7 @@ func Test_dbWithLogging_QueryContext(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 	lg := logging.NewTestInstance(t)
@@ -91,6 +96,7 @@ func Test_dbWithLogging_QueryContext(t *testing.T) {
 	mp := mock_loggingdb.NewMockDBProvider(ctrl)
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
+	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
@@ -104,6 +110,7 @@ func Test_dbWithLogging_QueryRowContext(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 	lg := logging.NewTestInstance(t)
@@ -118,6 +125,7 @@ func Test_dbWithLogging_QueryRowContext(t *testing.T) {
 	mp := mock_loggingdb.NewMockDBProvider(ctrl)
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
+	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
@@ -151,6 +159,7 @@ func Test_logQueryResult(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewLogFields(obsCfg)
 
@@ -160,6 +169,7 @@ func Test_logQueryResult(t *testing.T) {
 	t.Run("Infoが呼ばれる", func(t *testing.T) {
 		t.Parallel()
 
+		mockDuration := dbCfg.SlowQueryWarnThreshold() - time.Duration(100*time.Millisecond)
 		mockLog := mock_logging.NewMockLogger(ctrl)
 		mockLog.EXPECT().Named("driver.Query").Return(mockLog)
 		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
@@ -168,14 +178,36 @@ func Test_logQueryResult(t *testing.T) {
 		mp := mock_loggingdb.NewMockDBProvider(ctrl)
 		mp.EXPECT().LogFields().Return(lf).AnyTimes()
 		mp.EXPECT().Logger().Return(mockLog).AnyTimes()
+		mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+
 		dwl := &dbWithLogging{provider: mp}
 
-		dwl.logQueryResult("SQL Exec", nil, nil)
+		dwl.logQueryResult("SQL Exec", mockDuration, nil, nil)
+	})
+
+	t.Run("遅いクエリでWarnが呼ばれる", func(t *testing.T) {
+		t.Parallel()
+
+		mockDuration := dbCfg.SlowQueryWarnThreshold() + time.Duration(100*time.Millisecond)
+		mockLog := mock_logging.NewMockLogger(ctrl)
+		mockLog.EXPECT().Named("driver.Query").Return(mockLog)
+		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
+		mockLog.EXPECT().Warn("SQL Exec")
+
+		mp := mock_loggingdb.NewMockDBProvider(ctrl)
+		mp.EXPECT().LogFields().Return(lf).AnyTimes()
+		mp.EXPECT().Logger().Return(mockLog).AnyTimes()
+		mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+
+		dwl := &dbWithLogging{provider: mp}
+
+		dwl.logQueryResult("SQL Exec", mockDuration, nil, nil)
 	})
 
 	t.Run("Errorが呼ばれる", func(t *testing.T) {
 		t.Parallel()
 
+		mockDuration := dbCfg.SlowQueryWarnThreshold() - time.Duration(100*time.Millisecond)
 		mockLog := mock_logging.NewMockLogger(ctrl)
 		mockLog.EXPECT().Named("driver.Query").Return(mockLog)
 		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
@@ -183,8 +215,9 @@ func Test_logQueryResult(t *testing.T) {
 		mp := mock_loggingdb.NewMockDBProvider(ctrl)
 		mp.EXPECT().LogFields().Return(lf).AnyTimes()
 		mp.EXPECT().Logger().Return(mockLog).AnyTimes()
+		mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
 		dwl := &dbWithLogging{provider: mp}
 
-		dwl.logQueryResult("SQL Exec", nil, errors.New("boom"))
+		dwl.logQueryResult("SQL Exec", mockDuration, nil, errors.New("boom"))
 	})
 }

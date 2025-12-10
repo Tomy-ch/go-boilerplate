@@ -30,7 +30,7 @@ var (
 	expectedServerReadTimeoutCount       = 10
 	expectedServerReadTimeoutStr         = fmt.Sprintf("%ds", expectedServerReadTimeoutCount)
 	expectedServerReadTimeout            = time.Duration(expectedServerReadTimeoutCount) * time.Second
-	expectedServerWriteTimeoutCount      = 10
+	expectedServerWriteTimeoutCount      = 15
 	expectedServerWriteTimeoutStr        = fmt.Sprintf("%ds", expectedServerWriteTimeoutCount)
 	expectedServerWriteTimeout           = time.Duration(expectedServerWriteTimeoutCount) * time.Second
 	expectedServerIdleTimeoutCount       = 60
@@ -44,13 +44,16 @@ var (
 	expectedObservabilityTargetStatusCodes    = []int{200, 400, 500}
 	expectedObservabilityTargetStatusCodesStr = "200,400,500"
 	// database
-	expectedDBDriver   = "pgx"
-	expectedDBHost     = "localhost"
-	expectedDBPort     = 5432
-	expectedDBUser     = "postgres"
-	expectedDBPassword = "postgres-password"
-	expectedDBName     = "test"
-	expectedDBSSLMode  = "disable"
+	expectedDBDriver                      = "pgx"
+	expectedDBHost                        = "localhost"
+	expectedDBPort                        = 5432
+	expectedDBUser                        = "postgres"
+	expectedDBPassword                    = "postgres-password"
+	expectedDBName                        = "test"
+	expectedDBSSLMode                     = "disable"
+	expectedDBSlowQueryWarnThresholdCount = 500
+	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
+	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
 	// dbconnection
 	expectedDBMaxOpenConns     = 10
 	expectedDBMaxIdleConns     = 5
@@ -96,19 +99,20 @@ func MockConfigForTest(t testing.TB) *Config {
 			targetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		database: DatabaseConfig{
-			driver:   expectedDBDriver,
-			host:     expectedDBHost,
-			port:     expectedDBPort,
-			user:     expectedDBUser,
-			password: expectedDBPassword,
-			name:     expectedDBName,
-			sslMode:  expectedDBSSLMode,
-			connection: DBConnectionConfig{
-				maxOpenConns: expectedDBMaxOpenConns,
-				maxIdleConns: expectedDBMaxIdleConns,
-				maxLifetime:  expectedDBMaxLifetime,
-				maxIdleTime:  expectedDBMaxIdleTime,
-			},
+			driver:                 expectedDBDriver,
+			host:                   expectedDBHost,
+			port:                   expectedDBPort,
+			user:                   expectedDBUser,
+			password:               expectedDBPassword,
+			name:                   expectedDBName,
+			sslMode:                expectedDBSSLMode,
+			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+		},
+		dbconnection: DBConnectionConfig{
+			maxOpenConns: expectedDBMaxOpenConns,
+			maxIdleConns: expectedDBMaxIdleConns,
+			maxLifetime:  expectedDBMaxLifetime,
+			maxIdleTime:  expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
@@ -148,12 +152,19 @@ func mockLoader(t testing.TB) Loader {
 			IdleTimeout:       expectedServerIdleTimeout,
 		},
 		Database: Database{
-			Host:     expectedDBHost,
-			Port:     expectedDBPort,
-			User:     expectedDBUser,
-			Password: expectedDBPassword,
-			Name:     expectedDBName,
-			SSLMode:  expectedDBSSLMode,
+			Host:                   expectedDBHost,
+			Port:                   expectedDBPort,
+			User:                   expectedDBUser,
+			Password:               expectedDBPassword,
+			Name:                   expectedDBName,
+			SSLMode:                expectedDBSSLMode,
+			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+		},
+		DBConnection: DBConnection{
+			MaxOpenConns: expectedDBMaxOpenConns,
+			MaxIdleConns: expectedDBMaxIdleConns,
+			MaxLifetime:  expectedDBMaxLifetime,
+			MaxIdleTime:  expectedDBMaxIdleTime,
 		},
 		Security: Security{
 			AllowedOrigins: strings.Split(expectedAllowedOrigins, ","),
@@ -193,10 +204,12 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("DB_PASSWORD", expectedDBPassword)
 	t.Setenv("DB_NAME", expectedDBName)
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
-	t.Setenv("DB_CONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
-	t.Setenv("DB_CONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
-	t.Setenv("DB_CONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
-	t.Setenv("DB_CONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
+	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
+	// DBConnection
+	t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
+	t.Setenv("DBCONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
+	t.Setenv("DBCONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
+	t.Setenv("DBCONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
 	// Security
 	t.Setenv("SECURITY_CIDR", expectedCIDRStr)
 	t.Setenv("SECURITY_ALLOWED_ORIGINS", expectedAllowedOrigins)

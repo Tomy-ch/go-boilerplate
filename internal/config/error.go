@@ -40,11 +40,6 @@ var (
 		"read header timeout exceeds read timeout: %w",
 		errInvalidConfig,
 	)
-	// ErrReadTimeoutExceedsWriteTimeout は、ReadTimeoutがWriteTimeoutを超えていることを示すエラーです。
-	ErrReadTimeoutExceedsWriteTimeout = fmt.Errorf(
-		"read timeout exceeds write timeout: %w",
-		errInvalidConfig,
-	)
 	// ErrFailedToParseCIDR は、CIDRのパースに失敗したことを示すエラーです。
 	ErrFailedToParseCIDR = fmt.Errorf(
 		"failed to parse CIDR: %w",

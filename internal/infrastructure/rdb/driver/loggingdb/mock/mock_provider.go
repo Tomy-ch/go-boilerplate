@@ -10,6 +10,7 @@
 package mock_loggingdb
 
 import (
+	config "boilerplate-go/internal/config"
 	driver "boilerplate-go/internal/infrastructure/rdb/driver"
 	logging "boilerplate-go/internal/logging"
 	context "context"
@@ -40,6 +41,20 @@ func NewMockDBProvider(ctrl *gomock.Controller) *MockDBProvider {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDBProvider) EXPECT() *MockDBProviderMockRecorder {
 	return m.recorder
+}
+
+// DBConfig mocks base method.
+func (m *MockDBProvider) DBConfig() *config.DatabaseConfig {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DBConfig")
+	ret0, _ := ret[0].(*config.DatabaseConfig)
+	return ret0
+}
+
+// DBConfig indicates an expected call of DBConfig.
+func (mr *MockDBProviderMockRecorder) DBConfig() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DBConfig", reflect.TypeOf((*MockDBProvider)(nil).DBConfig))
 }
 
 // LogFields mocks base method.

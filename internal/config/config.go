@@ -52,19 +52,20 @@ func New() (*Config, error) {
 			targetStatusCodes: cfg.Observability.TargetStatusCodes,
 		},
 		database: DatabaseConfig{
-			driver:   cfg.Database.Driver,
-			host:     cfg.Database.Host,
-			port:     cfg.Database.Port,
-			user:     cfg.Database.User,
-			password: cfg.Database.Password,
-			name:     cfg.Database.Name,
-			sslMode:  cfg.Database.SSLMode,
-			connection: DBConnectionConfig{
-				maxOpenConns: cfg.Database.Connection.MaxOpenConns,
-				maxIdleConns: cfg.Database.Connection.MaxIdleConns,
-				maxLifetime:  cfg.Database.Connection.MaxLifetime,
-				maxIdleTime:  cfg.Database.Connection.MaxIdleTime,
-			},
+			driver:                 cfg.Database.Driver,
+			host:                   cfg.Database.Host,
+			port:                   cfg.Database.Port,
+			user:                   cfg.Database.User,
+			password:               cfg.Database.Password,
+			name:                   cfg.Database.Name,
+			sslMode:                cfg.Database.SSLMode,
+			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
+		},
+		dbconnection: DBConnectionConfig{
+			maxOpenConns: cfg.DBConnection.MaxOpenConns,
+			maxIdleConns: cfg.DBConnection.MaxIdleConns,
+			maxLifetime:  cfg.DBConnection.MaxLifetime,
+			maxIdleTime:  cfg.DBConnection.MaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins: cfg.Security.AllowedOrigins,
@@ -99,10 +100,6 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 
 	if cfg.Server.ReadHeaderTimeout.Microseconds() > cfg.Server.ReadTimeout.Microseconds() {
 		return nil, ErrReadHeaderTimeoutExceedsReadTimeout
-	}
-
-	if cfg.Server.ReadTimeout.Microseconds() > cfg.Server.WriteTimeout.Microseconds() {
-		return nil, ErrReadTimeoutExceedsWriteTimeout
 	}
 
 	_, cidr, err := net.ParseCIDR(cfg.Security.CIDR)
