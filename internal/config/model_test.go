@@ -58,7 +58,7 @@ func TestConstructor(t *testing.T) {
 	t.Run("NewDBConnectionConfig", func(t *testing.T) {
 		t.Parallel()
 		dbConnCfg := NewDBConnectionConfig(cfg)
-		require.Equal(t, &cfg.database.connection, dbConnCfg)
+		require.Equal(t, &cfg.dbconnection, dbConnCfg)
 	})
 
 	t.Run("NewSecurityConfig", func(t *testing.T) {
@@ -95,9 +95,24 @@ func TestGetterMethods(t *testing.T) {
 			require.Equal(t, expectedServerPort, server.Port())
 		})
 
-		t.Run("ShutdownTimeout", func(t *testing.T) {
+		t.Run("ReadHeaderTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerShutdownTimeout, server.ShutdownTimeout())
+			require.Equal(t, expectedServerReadHeaderTimeout, server.ReadHeaderTimeout())
+		})
+
+		t.Run("ReadTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedServerReadTimeout, server.ReadTimeout())
+		})
+
+		t.Run("WriteTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedServerWriteTimeout, server.WriteTimeout())
+		})
+
+		t.Run("IdleTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
 		})
 	})
 
@@ -192,11 +207,16 @@ func TestGetterMethods(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedDBSSLMode, database.SSLMode())
 		})
+
+		t.Run("SlowQueryWarnThreshold", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
+		})
 	})
 
 	t.Run("DBConnection", func(t *testing.T) {
 		t.Parallel()
-		connection := cfg.database.connection
+		connection := cfg.dbconnection
 		t.Run("MaxOpenConns", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedDBMaxOpenConns, connection.MaxOpenConns())

@@ -33,8 +33,3 @@
 
 - `SecurityConfig.AllowedOrigins()` が正しく設定されていることを確認してください。
 - `AllowCredentials` は現状 `false` に設定されています。必要に応じて実装を変更してください。
-- テストは `cors_test.go` にあるため、CI での検証を推奨します。
-
-## 作成・更新
-
-作成・更新: `internal/controller/httpstack/cors` の実装に合わせて記述。

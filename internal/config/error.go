@@ -35,9 +35,34 @@ var (
 		"failed to parse environment variables: %w",
 		errInvalidConfig,
 	)
-	// ErrServerErrShutdownTimeoutExceedsApplication は、サーバーのシャットダウンタイムアウトがアプリケーションのシャットダウンタイムアウトを超えていることを示すエラーです。
-	ErrServerErrShutdownTimeoutExceedsApplication = fmt.Errorf(
-		"server shutdown timeout exceeds application shutdown timeout: %w",
+	// ErrInvalidReadHeaderTimeout は、ReadHeaderTimeoutが0以下であることを示すエラーです。
+	ErrInvalidReadHeaderTimeout = fmt.Errorf(
+		"invalid read header timeout, must be greater than 0: %w",
+		errInvalidConfig,
+	)
+	// ErrInvalidReadTimeout は、ReadTimeoutが0以下であることを示すエラーです。
+	ErrInvalidReadTimeout = fmt.Errorf(
+		"invalid read timeout, must be greater than 0: %w",
+		errInvalidConfig,
+	)
+	// ErrInvalidWriteTimeout は、WriteTimeoutが0以下であることを示すエラーです。
+	ErrInvalidWriteTimeout = fmt.Errorf(
+		"invalid write timeout, must be greater than 0: %w",
+		errInvalidConfig,
+	)
+	// ErrInvalidIdleTimeout は、IdleTimeoutが0以下であることを示すエラーです。
+	ErrInvalidIdleTimeout = fmt.Errorf(
+		"invalid idle timeout, must be greater than 0: %w",
+		errInvalidConfig,
+	)
+	// ErrReadHeaderTimeoutExceedsReadTimeout は、ReadHeaderTimeoutがReadTimeoutを超えていることを示すエラーです。
+	ErrReadHeaderTimeoutExceedsReadTimeout = fmt.Errorf(
+		"read header timeout exceeds read timeout: %w",
+		errInvalidConfig,
+	)
+	// ErrInvalidSlowQueryWarnThreshold は、無効なスロークエリ警告閾値に関するエラーを表します。
+	ErrInvalidSlowQueryWarnThreshold = fmt.Errorf(
+		"invalid slow query warn threshold, must be greater than or equal to 0: %w",
 		errInvalidConfig,
 	)
 	// ErrFailedToParseCIDR は、CIDRのパースに失敗したことを示すエラーです。

@@ -32,8 +32,3 @@
 ## 注意点
 
 - 本番環境でポート番号をログに出力しないことを確認したい場合は、`ApplicationConfig` の `IsProductionMode()` の実装を確認してください。
-- テストは `default_port_test.go` にあるため、CI での実行を推奨します。
-
-## 作成・更新
-
-作成・更新: `internal/controller/httpstack/defaultport` の実装に合わせて記述。

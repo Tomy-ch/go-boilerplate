@@ -6,6 +6,7 @@ package loggingdb
 import (
 	"context"
 
+	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
 )
@@ -14,21 +15,24 @@ type DBProvider interface {
 	NewLoggingDB(ctx context.Context) driver.DBTX
 	Logger() logging.Logger
 	LogFields() logging.LogFieldBuilder
+	DBConfig() *config.DatabaseConfig
 }
 
 // provider は、ログ付きDB接続を提供します。
 type provider struct {
-	db driver.DatabaseDriver
-	l  logging.Logger
-	lf logging.LogFieldBuilder
+	db    driver.DatabaseDriver
+	dbCfg *config.DatabaseConfig
+	l     logging.Logger
+	lf    logging.LogFieldBuilder
 }
 
 // NewLoggingDBProvider は、DBTXProviderの新しいインスタンスを生成します。
-func NewLoggingDBProvider(db driver.DatabaseDriver, log logging.Logger, lf logging.LogFieldBuilder) DBProvider {
+func NewLoggingDBProvider(db driver.DatabaseDriver, dbCfg *config.DatabaseConfig, log logging.Logger, lf logging.LogFieldBuilder) DBProvider {
 	return &provider{
-		db: db,
-		l:  log,
-		lf: lf,
+		db:    db,
+		dbCfg: dbCfg,
+		l:     log,
+		lf:    lf,
 	}
 }
 
@@ -49,4 +53,9 @@ func (p *provider) Logger() logging.Logger {
 // LogFields は、ログフィールドのビルダーを返します。
 func (p *provider) LogFields() logging.LogFieldBuilder {
 	return p.lf
+}
+
+// DBConfig は、データベース設定を返します。
+func (p *provider) DBConfig() *config.DatabaseConfig {
+	return p.dbCfg
 }

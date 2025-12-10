@@ -32,8 +32,3 @@
 ## 注意点
 
 - カスタムバインダを導入する場合は `NewBinder()` の実装を変更してください。
-- `binder_test.go` にテストがあるため、CI でのテスト実行を推奨します。
-
-## 作成・更新
-
-作成・更新: `internal/controller/httpstack/binder` の実装に合わせて記述。
