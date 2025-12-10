@@ -17,7 +17,10 @@ func TestNew(t *testing.T) {
 	dbCfg.SetDatabaseHost(t, "localhost")
 
 	db, err := sql.Open("pgx", dbCfg.DSN(osCfg))
-	dbDriver := &dbDriver{db}
+	dbDriver := &dbDriver{
+		db:    db,
+		dbCfg: dbCfg,
+	}
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := dbDriver.Close()

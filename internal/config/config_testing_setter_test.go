@@ -3,6 +3,7 @@ package config
 import (
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -32,6 +33,12 @@ func TestConfigTestingSetters(t *testing.T) {
 		expected := "test-name"
 		cfg.database.SetDatabaseName(t, expected)
 		require.Equal(t, expected, cfg.database.DBName())
+	})
+
+	t.Run("SetDefaultTimeout", func(t *testing.T) {
+		expected := 10 * time.Second
+		cfg.database.SetDefaultTimeout(t, expected)
+		require.Equal(t, expected, cfg.database.DefaultTimeout())
 	})
 
 	t.Run("SetCIDR", func(t *testing.T) {

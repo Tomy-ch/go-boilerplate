@@ -157,3 +157,18 @@ func (mr *MockDatabaseDriverMockRecorder) QueryRowContext(ctx, query any, args .
 	varargs := append([]any{ctx, query}, args...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRowContext", reflect.TypeOf((*MockDatabaseDriver)(nil).QueryRowContext), varargs...)
 }
+
+// ResolveQueryTimeout mocks base method.
+func (m *MockDatabaseDriver) ResolveQueryTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveQueryTimeout", ctx)
+	ret0, _ := ret[0].(context.Context)
+	ret1, _ := ret[1].(context.CancelFunc)
+	return ret0, ret1
+}
+
+// ResolveQueryTimeout indicates an expected call of ResolveQueryTimeout.
+func (mr *MockDatabaseDriverMockRecorder) ResolveQueryTimeout(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveQueryTimeout", reflect.TypeOf((*MockDatabaseDriver)(nil).ResolveQueryTimeout), ctx)
+}

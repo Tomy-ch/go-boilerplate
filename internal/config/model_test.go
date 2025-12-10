@@ -58,7 +58,7 @@ func TestConstructor(t *testing.T) {
 	t.Run("NewDBConnectionConfig", func(t *testing.T) {
 		t.Parallel()
 		dbConnCfg := NewDBConnectionConfig(cfg)
-		require.Equal(t, &cfg.database.connection, dbConnCfg)
+		require.Equal(t, &cfg.dbconnection, dbConnCfg)
 	})
 
 	t.Run("NewSecurityConfig", func(t *testing.T) {
@@ -207,11 +207,16 @@ func TestGetterMethods(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedDBSSLMode, database.SSLMode())
 		})
+
+		t.Run("DefaultTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedDBDefaultTimeout, database.DefaultTimeout())
+		})
 	})
 
 	t.Run("DBConnection", func(t *testing.T) {
 		t.Parallel()
-		connection := cfg.database.connection
+		connection := cfg.dbconnection
 		t.Run("MaxOpenConns", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedDBMaxOpenConns, connection.MaxOpenConns())

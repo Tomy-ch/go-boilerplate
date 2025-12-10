@@ -14,7 +14,7 @@ import (
 func TestNewLoggingDBProvider(t *testing.T) {
 	t.Parallel()
 
-	db := driver.NewTestInstance(t)
+	db := driver.NewMockInstance(t)
 	l := logging.NewTestInstance(t)
 
 	cfg := config.MockConfigForTest(t)
@@ -34,7 +34,7 @@ func TestNewLoggingDBProvider(t *testing.T) {
 func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 	t.Parallel()
 
-	db := driver.NewTestInstance(t)
+	db := driver.NewMockInstance(t)
 	l := logging.NewTestInstance(t)
 
 	cfg := config.MockConfigForTest(t)
@@ -58,7 +58,7 @@ func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 func TestLoggingDBProvider_logger(t *testing.T) {
 	t.Parallel()
 
-	db := driver.NewTestInstance(t)
+	db := driver.NewMockInstance(t)
 	l := logging.NewTestInstance(t)
 
 	provider := &provider{
@@ -72,7 +72,7 @@ func TestLoggingDBProvider_logger(t *testing.T) {
 func TestLoggingDBProvider_logFields(t *testing.T) {
 	t.Parallel()
 
-	db := driver.NewTestInstance(t)
+	db := driver.NewMockInstance(t)
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)

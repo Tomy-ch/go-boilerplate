@@ -9,6 +9,7 @@ type Loader struct {
 	Observability Observability   `envPrefix:"OBSERVABILITY_"`
 	Metrics       Metrics         `envPrefix:"METRICS_"`
 	Database      Database        `envPrefix:"DB_"`
+	DBConnection  Connection      `envPrefix:"DBCONN_"`
 	Security      Security        `envPrefix:"SECURITY_"`
 }
 
@@ -43,14 +44,14 @@ type Observability struct {
 }
 
 type Database struct {
-	Driver     string     `env:"DRIVER,required"`
-	Host       string     `env:"HOST,required"`
-	Port       int        `env:"PORT,required"`
-	User       string     `env:"USER,required"`
-	Password   string     `env:"PASSWORD,required"`
-	Name       string     `env:"NAME,required"`
-	SSLMode    string     `env:"SSL_MODE,required"`
-	Connection Connection `                        envPrefix:"CONN_"`
+	Driver         string        `env:"DRIVER,required"`
+	Host           string        `env:"HOST,required"`
+	Port           int           `env:"PORT,required"`
+	User           string        `env:"USER,required"`
+	Password       string        `env:"PASSWORD,required"`
+	Name           string        `env:"NAME,required"`
+	SSLMode        string        `env:"SSL_MODE,required"`
+	DefaultTimeout time.Duration `env:"DEFAULT_TIMEOUT,required"`
 }
 
 type Connection struct {

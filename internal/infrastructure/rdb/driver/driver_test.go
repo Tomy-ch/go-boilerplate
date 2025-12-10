@@ -3,8 +3,10 @@ package driver
 import (
 	"context"
 	"testing"
+	"time"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/ctxhelper"
 
 	"github.com/stretchr/testify/require"
 )
@@ -64,5 +66,84 @@ func TestNewDB(t *testing.T) {
 			require.Error(t, err)
 			require.Nil(t, db)
 		})
+	})
+}
+
+func Test_dbDriver_ResolveQueryTimeout(t *testing.T) {
+	cfg := config.MockConfigForTest(t)
+	expectedDelta := float64(1 * time.Millisecond)
+
+	t.Run("ctxにDBタイムアウトのオーバーライドが設定されている場合、その値でWithTimeoutされる", func(t *testing.T) {
+		defaultTimeout := 3 * time.Second
+		dbCfg := config.NewDatabaseConfig(cfg)
+		dbCfg.SetDefaultTimeout(t, defaultTimeout)
+		override := 1 * time.Second
+
+		mockDB := NewMockInstance(t)
+		mockDBDriver := mockDB.(*dbDriver)
+		mockDBDriver.dbCfg = dbCfg
+
+		baseCtx := context.Background()
+		ctx := ctxhelper.WithDbTimeout(baseCtx, override)
+
+		gotCtx, cancel := mockDBDriver.ResolveQueryTimeout(ctx)
+		defer cancel()
+
+		deadline, ok := gotCtx.Deadline()
+		require.True(t, ok, "Deadline should be set when override > 0")
+
+		now := time.Now()
+		diff := deadline.Sub(now)
+
+		require.InDelta(t, float64(override), float64(diff), expectedDelta)
+	})
+
+	t.Run("ctxに0以下のDBタイムアウトが設定されている場合、タイムアウトなしとしてそのctxをそのまま返す", func(t *testing.T) {
+		t.Parallel()
+
+		defaultTimeout := 3 * time.Second
+		dbCfg := config.NewDatabaseConfig(cfg)
+		dbCfg.SetDefaultTimeout(t, defaultTimeout)
+		override := time.Duration(0)
+
+		mockDB := NewMockInstance(t)
+		mockDBDriver := mockDB.(*dbDriver)
+		mockDBDriver.dbCfg = config.NewDatabaseConfig(config.MockConfigForTest(t))
+
+		baseCtx := context.Background()
+		ctx := ctxhelper.WithDbTimeout(baseCtx, override)
+
+		gotCtx, cancel := mockDBDriver.ResolveQueryTimeout(ctx)
+		defer cancel()
+
+		require.Same(t, ctx, gotCtx)
+
+		_, ok := gotCtx.Deadline()
+		require.False(t, ok)
+	})
+
+	t.Run("ctxにDBタイムアウトのオーバーライドが無い場合、デフォルトタイムアウトでWithTimeoutされる", func(t *testing.T) {
+		t.Parallel()
+
+		defaultTimeout := 3 * time.Second
+		dbCfg := config.NewDatabaseConfig(cfg)
+		dbCfg.SetDefaultTimeout(t, defaultTimeout)
+
+		mockDB := NewMockInstance(t)
+		mockDBDriver := mockDB.(*dbDriver)
+		mockDBDriver.dbCfg = dbCfg
+
+		baseCtx := context.Background()
+
+		gotCtx, cancel := mockDBDriver.ResolveQueryTimeout(baseCtx)
+		defer cancel()
+
+		deadline, ok := gotCtx.Deadline()
+		require.True(t, ok)
+
+		now := time.Now()
+		diff := deadline.Sub(now)
+
+		require.InDelta(t, float64(defaultTimeout), float64(diff), expectedDelta)
 	})
 }

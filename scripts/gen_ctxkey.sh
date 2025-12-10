@@ -6,9 +6,19 @@ TYPE_INPUT=$2  # e.g. string
 
 NAME_LOWER=$(echo "$NAME_INPUT" | tr '[:upper:]' '[:lower:]')
 NAME_MIXED=$(echo "$NAME_INPUT" | sed -E 's/([a-z])([A-Z])/\1_\2/g' | tr '[:upper:]' '[:lower:]')
-NAME_CAMEL=$(echo "$NAME_INPUT" | sed -E 's/[^a-zA-Z0-9]+/ /g' | sed -E 's/(^| )(.)/\U\2/g' | tr -d ' ')
+NAME_CAMEL=$(
+  echo "$NAME_MIXED" \
+  | awk -F'_' '{
+      for (i = 1; i <= NF; i++) {
+        $i = toupper(substr($i, 1, 1)) substr($i, 2)
+      }
+      OFS = ""
+      print
+    }' \
+  | tr -d '[:space:]'
+)
 
-OUT_DIR="internal/controller/ctxhelper"
+OUT_DIR="internal/ctxhelper"
 OUT_FILE="${OUT_DIR}/${NAME_MIXED}_ctx.go"
 TEST_FILE="${OUT_DIR}/${NAME_MIXED}_ctx_test.go"
 
@@ -41,37 +51,18 @@ package ctxhelper
 
 import (
 	"context"
-
-	"github.com/labstack/echo/v4"
 )
 
 type ${NAME_LOWER}KeyType struct{}
 
 var ${NAME_LOWER}Key = ${NAME_LOWER}KeyType{}
 
-// --- std lib context ---
-
-func Set${NAME_CAMEL}(ctx context.Context, val ${TYPE_INPUT}) context.Context {
+func With${NAME_CAMEL}(ctx context.Context, val ${TYPE_INPUT}) context.Context {
 	return context.WithValue(ctx, ${NAME_LOWER}Key, val)
 }
 
-func Get${NAME_CAMEL}(ctx context.Context) (${TYPE_INPUT}, bool) {
+func ${NAME_CAMEL}FromContext(ctx context.Context) (${TYPE_INPUT}, bool) {
 	val := ctx.Value(${NAME_LOWER}Key)
-	if v, ok := val.(${TYPE_INPUT}); ok {
-		return v, true
-	}
-	return *new(${TYPE_INPUT}), false
-}
-
-// --- echo.Context wrapper ---
-
-func Set${NAME_CAMEL}ToEcho(c echo.Context, val ${TYPE_INPUT}) {
-	ctx := context.WithValue(c.Request().Context(), ${NAME_LOWER}Key, val)
-	c.SetRequest(c.Request().WithContext(ctx))
-}
-
-func Get${NAME_CAMEL}FromEcho(c echo.Context) (${TYPE_INPUT}, bool) {
-	val := c.Request().Context().Value(${NAME_LOWER}Key)
 	if v, ok := val.(${TYPE_INPUT}); ok {
 		return v, true
 	}
@@ -85,15 +76,12 @@ package ctxhelper
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSet${NAME_CAMEL}(t *testing.T) {
+func TestWith${NAME_CAMEL}(t *testing.T) {
 	t.Parallel()
 
 	base := context.Background()
@@ -106,15 +94,15 @@ func TestSet${NAME_CAMEL}(t *testing.T) {
 	require.Equal(t, ${TEST_SUCCESS_VALUE}, v)
 }
 
-func TestGet${NAME_CAMEL}(t *testing.T) {
+func Test${NAME_CAMEL}FromContext(t *testing.T) {
 	t.Parallel()
 
 	t.Run("standard context", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		ctx = Set${NAME_CAMEL}(ctx, ${TEST_SUCCESS_VALUE})
+		ctx = With${NAME_CAMEL}(ctx, ${TEST_SUCCESS_VALUE})
 
-		val, ok := Get${NAME_CAMEL}(ctx)
+		val, ok := ${NAME_CAMEL}FromContext(ctx)
 		require.True(t, ok)
 		require.Equal(t, ${TEST_SUCCESS_VALUE}, val)
 	})
@@ -122,42 +110,11 @@ func TestGet${NAME_CAMEL}(t *testing.T) {
 	t.Run("standard context - no value", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		val, ok := Get${NAME_CAMEL}(ctx)
+		val, ok := ${NAME_CAMEL}FromContext(ctx)
 		require.False(t, ok)
 		require.Equal(t, ${TEST_FAIL_VALUE}, val)
 	})
 }
-
-func TestSet${NAME_CAMEL}ToEcho(t *testing.T) {
-	t.Parallel()
-
-	t.Run("echo context", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-
-		Set${NAME_CAMEL}ToEcho(c, ${TEST_SUCCESS_VALUE})
-		val, ok := Get${NAME_CAMEL}FromEcho(c)
-
-		require.True(t, ok)
-		require.Equal(t, ${TEST_SUCCESS_VALUE}, val)
-	})
-
-	t.Run("echo context - no value", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-
-		val, ok := Get${NAME_CAMEL}FromEcho(c)
-		require.False(t, ok)
-		require.Equal(t, ${TEST_FAIL_VALUE}, val)
-	})
-}
-
 EOF
 
 echo "✅ ${OUT_FILE}を生成しました"

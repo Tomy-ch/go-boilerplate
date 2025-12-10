@@ -3,6 +3,7 @@ package config
 import (
 	"net"
 	"testing"
+	"time"
 )
 
 // WARN: 本番コードでは使用しないでください。テスト用の設定を行うためのメソッドです。
@@ -47,6 +48,16 @@ func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string) {
 	prev := d.DBName()
 	d.name = name
 	t.Cleanup(func() { d.name = prev })
+}
+
+// SetDefaultTimeout は、テスト用にデフォルトのDBタイムアウトを設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (d *DatabaseConfig) SetDefaultTimeout(t testing.TB, timeout time.Duration) {
+	t.Helper()
+	prev := d.DefaultTimeout()
+	d.defaultTimeout = timeout
+	t.Cleanup(func() { d.defaultTimeout = prev })
 }
 
 // SetCIDR は、テスト用にセキュリティのCIDRを設定します。
