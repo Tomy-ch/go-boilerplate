@@ -76,15 +76,79 @@ func New() (*Config, error) {
 
 // validateConfig は、ConfigLoaderの内容を検証します。
 func validateConfig(cfg Loader) (*validatedConfig, error) {
-	if cfg.Server.Port < MinPort || MaxPort < cfg.Server.Port {
-		return nil, ErrInvalidPortRange
+	if err := validateApplicationConfig(cfg.App); err != nil {
+		return nil, err
 	}
 
-	if len(cfg.Security.AllowedOrigins) == 0 {
+	if err := validateServerConfig(cfg.Server); err != nil {
+		return nil, err
+	}
+
+	if err := validateDatabaseConfig(cfg.Database); err != nil {
+		return nil, err
+	}
+
+	cidr, err := validateSecurityConfig(cfg.Security)
+	if err != nil {
+		return nil, err
+	}
+
+	return &validatedConfig{
+		cidr: cidr,
+	}, nil
+}
+
+// validateApplicationConfig は、アプリケーション設定を検証します。
+func validateApplicationConfig(appCfg Application) error {
+	if appCfg.Mode != DevelopmentMode && appCfg.Mode != ProductionMode {
+		return ErrInvalidAppMode
+	}
+	return nil
+}
+
+// validateServerConfig は、サーバー設定を検証します。
+func validateServerConfig(srvCfg Server) error {
+	if srvCfg.Port < MinPort || MaxPort < srvCfg.Port {
+		return ErrInvalidPortRange
+	}
+
+	if srvCfg.ReadHeaderTimeout <= 0 {
+		return ErrInvalidReadHeaderTimeout
+	}
+
+	if srvCfg.ReadTimeout <= 0 {
+		return ErrInvalidReadTimeout
+	}
+
+	if srvCfg.WriteTimeout <= 0 {
+		return ErrInvalidWriteTimeout
+	}
+
+	if srvCfg.IdleTimeout <= 0 {
+		return ErrInvalidIdleTimeout
+	}
+
+	if srvCfg.ReadHeaderTimeout > srvCfg.ReadTimeout {
+		return ErrReadHeaderTimeoutExceedsReadTimeout
+	}
+	return nil
+}
+
+// validateDatabaseConfig は、データベース設定を検証します。
+func validateDatabaseConfig(dbCfg Database) error {
+	if dbCfg.SlowQueryWarnThreshold < 0 {
+		return ErrInvalidSlowQueryWarnThreshold
+	}
+	return nil
+}
+
+// validateSecurityConfig は、セキュリティ設定を検証します。
+func validateSecurityConfig(secCfg Security) (*net.IPNet, error) {
+	if len(secCfg.AllowedOrigins) == 0 {
 		return nil, ErrEmptyAllowedOrigins
 	}
 
-	for _, origin := range cfg.Security.AllowedOrigins {
+	for _, origin := range secCfg.AllowedOrigins {
 		if strings.HasPrefix(origin, "http://") {
 			parsedURL, err := url.Parse(origin)
 			if err != nil ||
@@ -94,20 +158,10 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 		}
 	}
 
-	if cfg.App.Mode != DevelopmentMode && cfg.App.Mode != ProductionMode {
-		return nil, ErrInvalidAppMode
-	}
-
-	if cfg.Server.ReadHeaderTimeout.Microseconds() > cfg.Server.ReadTimeout.Microseconds() {
-		return nil, ErrReadHeaderTimeoutExceedsReadTimeout
-	}
-
-	_, cidr, err := net.ParseCIDR(cfg.Security.CIDR)
+	_, cidr, err := net.ParseCIDR(secCfg.CIDR)
 	if err != nil {
 		return nil, fmt.Errorf("%w : %w", ErrFailedToParseCIDR, err)
 	}
 
-	return &validatedConfig{
-		cidr: cidr,
-	}, nil
+	return cidr, nil
 }

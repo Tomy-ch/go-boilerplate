@@ -171,6 +171,9 @@ func (d *DatabaseConfig) DBName() string { return d.name }
 func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
 
 // SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。
+//
+// この値より長く実行されたクエリは警告レベルでログ出力されます。
+// 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
 
 // DSN は、データベースの接続URLを返します。
