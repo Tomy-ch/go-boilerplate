@@ -22,9 +22,12 @@ func TestMockConfigForTest(t *testing.T) {
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
-			host:            expectedServerHost,
-			port:            expectedServerPort,
-			shutdownTimeout: expectedServerShutdownTimeout,
+			host:              expectedServerHost,
+			port:              expectedServerPort,
+			readHeaderTimeout: expectedServerReadHeaderTimeout,
+			readTimeout:       expectedServerReadTimeout,
+			writeTimeout:      expectedServerWriteTimeout,
+			idleTimeout:       expectedServerIdleTimeout,
 		},
 		metrics: MetricsConfig{
 			host: expectedMetricsHost,
@@ -35,19 +38,20 @@ func TestMockConfigForTest(t *testing.T) {
 			targetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		database: DatabaseConfig{
-			driver:   expectedDBDriver,
-			host:     expectedDBHost,
-			port:     expectedDBPort,
-			user:     expectedDBUser,
-			password: expectedDBPassword,
-			name:     expectedDBName,
-			sslMode:  expectedDBSSLMode,
-			connection: DBConnectionConfig{
-				maxOpenConns: expectedDBMaxOpenConns,
-				maxIdleConns: expectedDBMaxIdleConns,
-				maxLifetime:  expectedDBMaxLifetime,
-				maxIdleTime:  expectedDBMaxIdleTime,
-			},
+			driver:                 expectedDBDriver,
+			host:                   expectedDBHost,
+			port:                   expectedDBPort,
+			user:                   expectedDBUser,
+			password:               expectedDBPassword,
+			name:                   expectedDBName,
+			sslMode:                expectedDBSSLMode,
+			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+		},
+		dbconnection: DBConnectionConfig{
+			maxOpenConns: expectedDBMaxOpenConns,
+			maxIdleConns: expectedDBMaxIdleConns,
+			maxLifetime:  expectedDBMaxLifetime,
+			maxIdleTime:  expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
@@ -73,9 +77,12 @@ func Test_mockLoader(t *testing.T) {
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
 		Server: Server{
-			Host:            expectedServerHost,
-			Port:            expectedServerPort,
-			ShutdownTimeout: expectedServerShutdownTimeout,
+			Host:              expectedServerHost,
+			Port:              expectedServerPort,
+			ReadHeaderTimeout: expectedServerReadHeaderTimeout,
+			ReadTimeout:       expectedServerReadTimeout,
+			WriteTimeout:      expectedServerWriteTimeout,
+			IdleTimeout:       expectedServerIdleTimeout,
 		},
 		Metrics: Metrics{
 			Host: expectedMetricsHost,
@@ -86,12 +93,19 @@ func Test_mockLoader(t *testing.T) {
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		Database: Database{
-			Host:     expectedDBHost,
-			Port:     expectedDBPort,
-			User:     expectedDBUser,
-			Password: expectedDBPassword,
-			Name:     expectedDBName,
-			SSLMode:  expectedDBSSLMode,
+			Host:                   expectedDBHost,
+			Port:                   expectedDBPort,
+			User:                   expectedDBUser,
+			Password:               expectedDBPassword,
+			Name:                   expectedDBName,
+			SSLMode:                expectedDBSSLMode,
+			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+		},
+		DBConnection: DBConnection{
+			MaxOpenConns: expectedDBMaxOpenConns,
+			MaxIdleConns: expectedDBMaxIdleConns,
+			MaxLifetime:  expectedDBMaxLifetime,
+			MaxIdleTime:  expectedDBMaxIdleTime,
 		},
 		Security: Security{
 			AllowedOrigins: strings.Split(expectedAllowedOrigins, ","),
@@ -115,7 +129,10 @@ func Test_setEnv(t *testing.T) {
 	// Server
 	require.Equal(t, expectedServerHost, os.Getenv("SERVER_HOST"))
 	require.Equal(t, strconv.Itoa(expectedServerPort), os.Getenv("SERVER_PORT"))
-	require.Equal(t, expectedServerShutdownTimeoutStr, os.Getenv("SERVER_SHUTDOWN_TIMEOUT"))
+	require.Equal(t, expectedServerReadHeaderTimeoutStr, os.Getenv("SERVER_READ_HEADER_TIMEOUT"))
+	require.Equal(t, expectedServerReadTimeoutStr, os.Getenv("SERVER_READ_TIMEOUT"))
+	require.Equal(t, expectedServerWriteTimeoutStr, os.Getenv("SERVER_WRITE_TIMEOUT"))
+	require.Equal(t, expectedServerIdleTimeoutStr, os.Getenv("SERVER_IDLE_TIMEOUT"))
 	// Metrics
 	require.Equal(t, expectedMetricsHost, os.Getenv("METRICS_HOST"))
 	require.Equal(t, strconv.Itoa(expectedMetricsPort), os.Getenv("METRICS_PORT"))
@@ -130,10 +147,12 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, expectedDBPassword, os.Getenv("DB_PASSWORD"))
 	require.Equal(t, expectedDBName, os.Getenv("DB_NAME"))
 	require.Equal(t, expectedDBSSLMode, os.Getenv("DB_SSL_MODE"))
-	require.Equal(t, strconv.Itoa(expectedDBMaxOpenConns), os.Getenv("DB_CONN_MAX_OPEN"))
-	require.Equal(t, strconv.Itoa(expectedDBMaxIdleConns), os.Getenv("DB_CONN_MAX_IDLE"))
-	require.Equal(t, expectedDBMaxLifetimeStr, os.Getenv("DB_CONN_MAX_LIFETIME"))
-	require.Equal(t, expectedDBMaxIdleTimeStr, os.Getenv("DB_CONN_MAX_IDLE_TIME"))
+	require.Equal(t, expectedDBSlowQueryWarnThresholdStr, os.Getenv("DB_SLOW_QUERY_WARN_THRESHOLD"))
+	// DBConnection
+	require.Equal(t, strconv.Itoa(expectedDBMaxOpenConns), os.Getenv("DBCONN_MAX_OPEN"))
+	require.Equal(t, strconv.Itoa(expectedDBMaxIdleConns), os.Getenv("DBCONN_MAX_IDLE"))
+	require.Equal(t, expectedDBMaxLifetimeStr, os.Getenv("DBCONN_MAX_LIFETIME"))
+	require.Equal(t, expectedDBMaxIdleTimeStr, os.Getenv("DBCONN_MAX_IDLE_TIME"))
 	// Security
 	require.Equal(t, expectedCIDRStr, os.Getenv("SECURITY_CIDR"))
 	require.Equal(t, expectedAllowedOrigins, os.Getenv("SECURITY_ALLOWED_ORIGINS"))

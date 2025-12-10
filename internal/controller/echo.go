@@ -21,8 +21,7 @@ func ExtractQueryParams(c echo.Context) map[string][]string {
 	return cloneValues(c.Request().URL.Query())
 }
 
-// cloneValues は url.Values を map[string][]string にコピーします。
-// (logging にそのまま渡してもよいし、将来的に加工してもよい)
+// cloneValues は、url.Valuesのディープコピーを作成してmap[string][]stringとして返します。
 func cloneValues(v url.Values) map[string][]string {
 	if v == nil {
 		return nil

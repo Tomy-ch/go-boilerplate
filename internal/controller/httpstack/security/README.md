@@ -38,8 +38,3 @@
 
 - Content-Security-Policy（CSP）などの細かなポリシーはこのパッケージで扱っていません。必要であれば別途 CSP ミドルウェアを導入してください。
 - HSTS を有効にする際は HTTPS を確実に提供していることを確認してください（誤った HSTS 設定はローカル環境でのテストを困難にします）。
-- テストは `security_test.go` にあるため、CI での検証を推奨します。
-
-## 作成・更新
-
-作成・更新: `internal/controller/httpstack/security` の実装に合わせて記述。

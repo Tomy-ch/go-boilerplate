@@ -47,7 +47,7 @@ func NewTestInstancesForNew(t *testing.T) (
 	mockLogger := logging.NewTestInstance(t)
 	lf := logging.NewLogFields(obsCfg)
 
-	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, mockLogger, lf)
+	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, dbCfg, mockLogger, lf)
 
 	noopTF := observability.NewTestTracerFactory(t)
 
@@ -76,7 +76,7 @@ func NewTestInstancesForImplementedInfra(t *testing.T) (
 	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)
 
-	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, mockLogger, lf)
+	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, dbCfg, mockLogger, lf)
 
 	noopTF := observability.NewTestTracerFactory(t)
 

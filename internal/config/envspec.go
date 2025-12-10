@@ -9,6 +9,7 @@ type Loader struct {
 	Observability Observability   `envPrefix:"OBSERVABILITY_"`
 	Metrics       Metrics         `envPrefix:"METRICS_"`
 	Database      Database        `envPrefix:"DB_"`
+	DBConnection  DBConnection    `envPrefix:"DBCONN_"`
 	Security      Security        `envPrefix:"SECURITY_"`
 }
 
@@ -24,9 +25,12 @@ type Application struct {
 }
 
 type Server struct {
-	Host            string        `env:"HOST,required"`
-	Port            int           `env:"PORT,required"`
-	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`
+	Host              string        `env:"HOST,required"`
+	Port              int           `env:"PORT,required"`
+	ReadHeaderTimeout time.Duration `env:"READ_HEADER_TIMEOUT,required"`
+	ReadTimeout       time.Duration `env:"READ_TIMEOUT,required"`
+	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT,required"`
+	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT,required"`
 }
 
 type Metrics struct {
@@ -40,17 +44,17 @@ type Observability struct {
 }
 
 type Database struct {
-	Driver     string     `env:"DRIVER,required"`
-	Host       string     `env:"HOST,required"`
-	Port       int        `env:"PORT,required"`
-	User       string     `env:"USER,required"`
-	Password   string     `env:"PASSWORD,required"`
-	Name       string     `env:"NAME,required"`
-	SSLMode    string     `env:"SSL_MODE,required"`
-	Connection Connection `                        envPrefix:"CONN_"`
+	Driver                 string        `env:"DRIVER,required"`
+	Host                   string        `env:"HOST,required"`
+	Port                   int           `env:"PORT,required"`
+	User                   string        `env:"USER,required"`
+	Password               string        `env:"PASSWORD,required"`
+	Name                   string        `env:"NAME,required"`
+	SSLMode                string        `env:"SSL_MODE,required"`
+	SlowQueryWarnThreshold time.Duration `env:"SLOW_QUERY_WARN_THRESHOLD,required"`
 }
 
-type Connection struct {
+type DBConnection struct {
 	MaxOpenConns int           `env:"MAX_OPEN,required"`
 	MaxIdleConns int           `env:"MAX_IDLE,required"`
 	MaxLifetime  time.Duration `env:"MAX_LIFETIME,required"`

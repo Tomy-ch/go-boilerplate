@@ -26,32 +26,36 @@ type dbWithLogging struct {
 func (dwl *dbWithLogging) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	start := time.Now()
 	res, err := dwl.db.ExecContext(ctx, query, args...)
-	fields := dwl.buildSQLLogFields(ctx, "ExecContext", query, time.Since(start), args, err)
-	dwl.logQueryResult("SQL Exec", fields, err)
+	duration := time.Since(start)
+	fields := dwl.buildSQLLogFields(ctx, "ExecContext", query, duration, args, err)
+	dwl.logQueryResult("SQL Exec", duration, fields, err)
 	return res, err
 }
 
 func (dwl *dbWithLogging) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	start := time.Now()
 	stmt, err := dwl.db.PrepareContext(ctx, query)
-	fields := dwl.buildSQLLogFields(ctx, "PrepareContext", query, time.Since(start), nil, err)
-	dwl.logQueryResult("SQL Prepare", fields, err)
+	duration := time.Since(start)
+	fields := dwl.buildSQLLogFields(ctx, "PrepareContext", query, duration, nil, err)
+	dwl.logQueryResult("SQL Prepare", duration, fields, err)
 	return stmt, err
 }
 
 func (dwl *dbWithLogging) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	start := time.Now()
 	rows, err := dwl.db.QueryContext(ctx, query, args...)
-	fields := dwl.buildSQLLogFields(ctx, "QueryContext", query, time.Since(start), args, err)
-	dwl.logQueryResult("SQL Query", fields, err)
+	duration := time.Since(start)
+	fields := dwl.buildSQLLogFields(ctx, "QueryContext", query, duration, args, err)
+	dwl.logQueryResult("SQL Query", duration, fields, err)
 	return rows, err
 }
 
 func (dwl *dbWithLogging) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	start := time.Now()
 	row := dwl.db.QueryRowContext(ctx, query, args...)
-	fields := dwl.buildSQLLogFields(ctx, "QueryRowContext", query, time.Since(start), args, nil)
-	dwl.logQueryResult("SQL QueryRow", fields, nil)
+	duration := time.Since(start)
+	fields := dwl.buildSQLLogFields(ctx, "QueryRowContext", query, duration, args, nil)
+	dwl.logQueryResult("SQL QueryRow", duration, fields, nil)
 	return row
 }
 
@@ -77,11 +81,17 @@ func (dwl *dbWithLogging) buildSQLLogFields(
 }
 
 // logQueryResult は、SQLクエリの実行結果をログ出力します。
-func (dwl *dbWithLogging) logQueryResult(msg string, fields []*logging.Field, err error) {
+func (dwl *dbWithLogging) logQueryResult(
+	msg string, duration time.Duration, fields []*logging.Field, err error,
+) {
 	logger := dwl.provider.Logger().Named("driver.Query").CallerSkip(callSkip)
-	if err == nil {
-		logger.Info(msg, fields...)
-	} else {
+	threshold := dwl.provider.DBConfig().SlowQueryWarnThreshold()
+	switch {
+	case err != nil:
 		logger.Error(msg, fields...)
+	case threshold > 0 && duration > threshold:
+		logger.Warn(msg, fields...)
+	default:
+		logger.Info(msg, fields...)
 	}
 }

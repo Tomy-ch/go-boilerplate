@@ -22,11 +22,20 @@ var (
 	expectedAppShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
 	expectedAppShutdownTimeout      = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
 	// server
-	expectedServerHost                 = "localhost"
-	expectedServerPort                 = 8080
-	expectedServerShutdownTimeoutCount = 30
-	expectedServerShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedServerShutdownTimeoutCount)
-	expectedServerShutdownTimeout      = time.Duration(expectedServerShutdownTimeoutCount) * time.Second
+	expectedServerHost                   = "localhost"
+	expectedServerPort                   = 8080
+	expectedServerReadHeaderTimeoutCount = 5
+	expectedServerReadHeaderTimeoutStr   = fmt.Sprintf("%ds", expectedServerReadHeaderTimeoutCount)
+	expectedServerReadHeaderTimeout      = time.Duration(expectedServerReadHeaderTimeoutCount) * time.Second
+	expectedServerReadTimeoutCount       = 10
+	expectedServerReadTimeoutStr         = fmt.Sprintf("%ds", expectedServerReadTimeoutCount)
+	expectedServerReadTimeout            = time.Duration(expectedServerReadTimeoutCount) * time.Second
+	expectedServerWriteTimeoutCount      = 15
+	expectedServerWriteTimeoutStr        = fmt.Sprintf("%ds", expectedServerWriteTimeoutCount)
+	expectedServerWriteTimeout           = time.Duration(expectedServerWriteTimeoutCount) * time.Second
+	expectedServerIdleTimeoutCount       = 60
+	expectedServerIdleTimeoutStr         = fmt.Sprintf("%ds", expectedServerIdleTimeoutCount)
+	expectedServerIdleTimeout            = time.Duration(expectedServerIdleTimeoutCount) * time.Second
 	// metrics
 	expectedMetricsHost = "localhost"
 	expectedMetricsPort = 6060
@@ -35,13 +44,16 @@ var (
 	expectedObservabilityTargetStatusCodes    = []int{200, 400, 500}
 	expectedObservabilityTargetStatusCodesStr = "200,400,500"
 	// database
-	expectedDBDriver   = "pgx"
-	expectedDBHost     = "localhost"
-	expectedDBPort     = 5432
-	expectedDBUser     = "postgres"
-	expectedDBPassword = "postgres-password"
-	expectedDBName     = "test"
-	expectedDBSSLMode  = "disable"
+	expectedDBDriver                      = "pgx"
+	expectedDBHost                        = "localhost"
+	expectedDBPort                        = 5432
+	expectedDBUser                        = "postgres"
+	expectedDBPassword                    = "postgres-password"
+	expectedDBName                        = "test"
+	expectedDBSSLMode                     = "disable"
+	expectedDBSlowQueryWarnThresholdCount = 500
+	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
+	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
 	// dbconnection
 	expectedDBMaxOpenConns     = 10
 	expectedDBMaxIdleConns     = 5
@@ -71,9 +83,12 @@ func MockConfigForTest(t testing.TB) *Config {
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
-			host:            expectedServerHost,
-			port:            expectedServerPort,
-			shutdownTimeout: expectedServerShutdownTimeout,
+			host:              expectedServerHost,
+			port:              expectedServerPort,
+			readHeaderTimeout: expectedServerReadHeaderTimeout,
+			readTimeout:       expectedServerReadTimeout,
+			writeTimeout:      expectedServerWriteTimeout,
+			idleTimeout:       expectedServerIdleTimeout,
 		},
 		metrics: MetricsConfig{
 			host: expectedMetricsHost,
@@ -84,19 +99,20 @@ func MockConfigForTest(t testing.TB) *Config {
 			targetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		database: DatabaseConfig{
-			driver:   expectedDBDriver,
-			host:     expectedDBHost,
-			port:     expectedDBPort,
-			user:     expectedDBUser,
-			password: expectedDBPassword,
-			name:     expectedDBName,
-			sslMode:  expectedDBSSLMode,
-			connection: DBConnectionConfig{
-				maxOpenConns: expectedDBMaxOpenConns,
-				maxIdleConns: expectedDBMaxIdleConns,
-				maxLifetime:  expectedDBMaxLifetime,
-				maxIdleTime:  expectedDBMaxIdleTime,
-			},
+			driver:                 expectedDBDriver,
+			host:                   expectedDBHost,
+			port:                   expectedDBPort,
+			user:                   expectedDBUser,
+			password:               expectedDBPassword,
+			name:                   expectedDBName,
+			sslMode:                expectedDBSSLMode,
+			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+		},
+		dbconnection: DBConnectionConfig{
+			maxOpenConns: expectedDBMaxOpenConns,
+			maxIdleConns: expectedDBMaxIdleConns,
+			maxLifetime:  expectedDBMaxLifetime,
+			maxIdleTime:  expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
@@ -128,17 +144,27 @@ func mockLoader(t testing.TB) Loader {
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		Server: Server{
-			Host:            expectedServerHost,
-			Port:            expectedServerPort,
-			ShutdownTimeout: expectedServerShutdownTimeout,
+			Host:              expectedServerHost,
+			Port:              expectedServerPort,
+			ReadHeaderTimeout: expectedServerReadHeaderTimeout,
+			ReadTimeout:       expectedServerReadTimeout,
+			WriteTimeout:      expectedServerWriteTimeout,
+			IdleTimeout:       expectedServerIdleTimeout,
 		},
 		Database: Database{
-			Host:     expectedDBHost,
-			Port:     expectedDBPort,
-			User:     expectedDBUser,
-			Password: expectedDBPassword,
-			Name:     expectedDBName,
-			SSLMode:  expectedDBSSLMode,
+			Host:                   expectedDBHost,
+			Port:                   expectedDBPort,
+			User:                   expectedDBUser,
+			Password:               expectedDBPassword,
+			Name:                   expectedDBName,
+			SSLMode:                expectedDBSSLMode,
+			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+		},
+		DBConnection: DBConnection{
+			MaxOpenConns: expectedDBMaxOpenConns,
+			MaxIdleConns: expectedDBMaxIdleConns,
+			MaxLifetime:  expectedDBMaxLifetime,
+			MaxIdleTime:  expectedDBMaxIdleTime,
 		},
 		Security: Security{
 			AllowedOrigins: strings.Split(expectedAllowedOrigins, ","),
@@ -160,7 +186,10 @@ func setEnvVarsForTesting(t *testing.T) {
 	// Server
 	t.Setenv("SERVER_HOST", expectedServerHost)
 	t.Setenv("SERVER_PORT", strconv.Itoa(expectedServerPort))
-	t.Setenv("SERVER_SHUTDOWN_TIMEOUT", expectedServerShutdownTimeoutStr)
+	t.Setenv("SERVER_READ_HEADER_TIMEOUT", expectedServerReadHeaderTimeoutStr)
+	t.Setenv("SERVER_READ_TIMEOUT", expectedServerReadTimeoutStr)
+	t.Setenv("SERVER_WRITE_TIMEOUT", expectedServerWriteTimeoutStr)
+	t.Setenv("SERVER_IDLE_TIMEOUT", expectedServerIdleTimeoutStr)
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)
 	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))
@@ -175,10 +204,12 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("DB_PASSWORD", expectedDBPassword)
 	t.Setenv("DB_NAME", expectedDBName)
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
-	t.Setenv("DB_CONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
-	t.Setenv("DB_CONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
-	t.Setenv("DB_CONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
-	t.Setenv("DB_CONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
+	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
+	// DBConnection
+	t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
+	t.Setenv("DBCONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
+	t.Setenv("DBCONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
+	t.Setenv("DBCONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
 	// Security
 	t.Setenv("SECURITY_CIDR", expectedCIDRStr)
 	t.Setenv("SECURITY_ALLOWED_ORIGINS", expectedAllowedOrigins)

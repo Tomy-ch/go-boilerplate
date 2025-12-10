@@ -33,8 +33,3 @@
 
 - `ApplicationConfig` に `IsProductionMode()` メソッドが存在することを前提としています。
 - バナー表示の制御は軽微な UI/ログの調整であり、セキュリティやビジネスロジックには影響しません。
-- テストは `banner_test.go` にあるため、CI でテストが走る構成にしておくことを推奨します。
-
-## 作成・更新
-
-作成・更新: `internal/controller/httpstack/banner` の実装に合わせて記述。
