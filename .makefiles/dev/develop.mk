@@ -9,6 +9,14 @@
 .PHONY: fmt ## コードをフォーマット
 .PHONY: fix ## コードの自動修正
 .PHONY: lint ## コードの静的解析
+.PHONY: sql-lint ## SQLのLintを実行
+.PHONY: sql-lint-migrations ## マイグレーションSQLのLintを実行
+.PHONY: sql-lint-dml ## DML系SQLのLintを実行
+.PHONY: sql-lint-seed ## シードデータSQLのLintを実行
+.PHONY: sql-fix ## SQLの自動修正を実行
+.PHONY: sql-fix-migrations ## マイグレーションSQLの自動修正を実行
+.PHONY: sql-fix-dml ## DML系SQLの自動修正を実行
+.PHONY: sql-fix-seed ## シードデータSQLの自動修正を実行
 .PHONY: test ## CI用のテスト実行
 .PHONY: test-repo ## テストの実行とテストレポートの生成
 .PHONY: go-update ## goenvの更新を実行
@@ -62,6 +70,34 @@ fix:
 
 lint:
 	@golangci-lint run --config .golangci-full.yaml
+
+sql-lint:
+	@make sql-lint-migrations
+	@make sql-lint-dml
+	@make sql-lint-seed
+
+sql-lint-migrations:
+	@docker compose run --rm python_tool_runner sqlfluff lint database/migrations/ --config docker/database/sqlfluff/.migrations.sqlfluff
+
+sql-lint-dml:
+	@docker compose run --rm python_tool_runner sqlfluff lint database/dml/ --config docker/database/sqlfluff/.dml.sqlfluff
+
+sql-lint-seed:
+	@docker compose run --rm python_tool_runner sqlfluff lint database/seed/ --config docker/database/sqlfluff/.seed.sqlfluff
+
+sql-fix:
+	@make sql-fix-migrations
+	@make sql-fix-dml
+	@make sql-fix-seed
+
+sql-fix-migrations:
+	@docker compose run --rm python_tool_runner sqlfluff fix database/migrations/ --config docker/database/sqlfluff/.migrations.sqlfluff
+
+sql-fix-dml:
+	@docker compose run --rm python_tool_runner sqlfluff fix database/dml/ --config docker/database/sqlfluff/.dml.sqlfluff
+
+sql-fix-seed:
+	@docker compose run --rm python_tool_runner sqlfluff fix database/seed/ --config docker/database/sqlfluff/.seed.sqlfluff
 
 test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."

@@ -1,6 +1,4 @@
 ## データベース関連のコマンド群
-.PHONY: sql-lint ## SQLマイグレーションファイルのLintを実行
-.PHONY: sql-fix ## SQLマイグレーションファイルの自動修正を実行
 .PHONY: db-schema ## スキーマの更新を実行
 .PHONY: new-migrate-% ## 新しいマイグレーションファイルを生成します
 .PHONY: db-migrate-up ## 全てのマイグレーションを最新まで適用
@@ -13,12 +11,6 @@
 
 # 対象DB（local / test / prd など）。未指定なら local
 DB ?= local
-
-sql-lint:
-	docker compose run --rm python_tool_runner sqlfluff lint database/migrations/ --config docker/database/.sqlfluff
-
-sql-fix:
-	docker compose run --rm python_tool_runner sqlfluff fix database/migrations/ --config docker/database/.sqlfluff
 
 db-schema:
 	@echo "🔄 スキーマの更新を実行します..."

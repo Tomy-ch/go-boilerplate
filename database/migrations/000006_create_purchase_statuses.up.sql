@@ -21,14 +21,14 @@ COMMENT ON COLUMN purchase_statuses.updated_at IS '更新日時';
 
 -- Insert initial purchase statuses data
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
-    ('a66c996c-86b2-41d8-9bdd-9b685fb7c47d', '未処理', 1, 1) ON CONFLICT (id) DO NOTHING;
+('a66c996c-86b2-41d8-9bdd-9b685fb7c47d', '未処理', 1, 1) ON CONFLICT (id) DO NOTHING;
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
-    ('e328c9f7-ea8b-49a7-a798-77bc538e3ffe', '受付中', 2, 2) ON CONFLICT (id) DO NOTHING;
+('e328c9f7-ea8b-49a7-a798-77bc538e3ffe', '受付中', 2, 2) ON CONFLICT (id) DO NOTHING;
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
-    ('c6b37666-ffe3-4969-9de7-a7eb6ccd2d74', '確認中', 3, 3) ON CONFLICT (id) DO NOTHING;
+('c6b37666-ffe3-4969-9de7-a7eb6ccd2d74', '確認中', 3, 3) ON CONFLICT (id) DO NOTHING;
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
-    ('323dee43-6553-4f9d-a55f-086ad5625eef', '処理中', 4, 4) ON CONFLICT (id) DO NOTHING;
+('323dee43-6553-4f9d-a55f-086ad5625eef', '処理中', 4, 4) ON CONFLICT (id) DO NOTHING;
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
-    ('1904bf76-7d37-4288-bc15-359d2512ac91', '完了', 5, 5) ON CONFLICT (id) DO NOTHING;
+('1904bf76-7d37-4288-bc15-359d2512ac91', '完了', 5, 5) ON CONFLICT (id) DO NOTHING;
 INSERT INTO purchase_statuses (id, name, code, sort_key) VALUES
-    ('e9d72547-adfe-48d9-9037-bd1f55d4158b', 'キャンセル', 6, 6) ON CONFLICT (id) DO NOTHING;
+('e9d72547-adfe-48d9-9037-bd1f55d4158b', 'キャンセル', 6, 6) ON CONFLICT (id) DO NOTHING;

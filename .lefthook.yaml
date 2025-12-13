@@ -5,3 +5,5 @@ pre-commit:
       run: make lint
     test:
       run: make test
+    sql-lint:
+      run: make sql-lint
