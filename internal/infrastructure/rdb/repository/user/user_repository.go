@@ -8,6 +8,7 @@ import (
 	"boilerplate-go/internal/infrastructure/rdb/conv"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/observability"
 )
@@ -37,7 +38,7 @@ func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.E
 		LimitParam:  conv.NewNullInt64(int64(limit)),
 	})
 	if err != nil {
-		return nil, err
+		return nil, pgerror.NormalizeError(err)
 	}
 
 	users := make(user.Entities, len(rows))
