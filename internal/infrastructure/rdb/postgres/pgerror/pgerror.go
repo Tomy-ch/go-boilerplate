@@ -35,6 +35,8 @@ func NormalizeError(err error) error {
 			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
 		case "23502": // NOT NULL制約違反
 			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
+		case "23514": // チェック制約違反
+			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
 		case "22001": // 文字数超過
 			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
 		case "22P02": // 型変換エラー
@@ -64,7 +66,7 @@ func IsUnavailable(err error) bool {
 
 	// ネットワーク／ドライバ系
 	var ne net.Error
-	if errors.As(err, &ne) {
+	if errors.As(err, &ne) && ne.Timeout() {
 		return true
 	}
 	if errors.Is(err, driver.ErrBadConn) {

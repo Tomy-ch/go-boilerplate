@@ -27,6 +27,14 @@ func TestNormalizePgError(t *testing.T) {
 		got := NormalizeError(nil)
 		require.NoError(t, got)
 	})
+
+	t.Run("contextが期限切れの場合", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeError(context.DeadlineExceeded)
+		require.Error(t, got)
+		require.ErrorIs(t, got, apperror.ErrUnavailable)
+	})
+
 	t.Run("ユニーク制約違反", func(t *testing.T) {
 		t.Parallel()
 		got := NormalizeError(&pgconn.PgError{Code: "23505", Message: "dup"})
@@ -44,6 +52,13 @@ func TestNormalizePgError(t *testing.T) {
 	t.Run("NOT NULL制約違反", func(t *testing.T) {
 		t.Parallel()
 		got := NormalizeError(&pgconn.PgError{Code: "23502", Message: "not null"})
+		require.Error(t, got)
+		require.ErrorIs(t, got, apperror.ErrInvalidArgument)
+	})
+
+	t.Run("チェック制約違反", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeError(&pgconn.PgError{Code: "23514", Message: "check constraint"})
 		require.Error(t, got)
 		require.ErrorIs(t, got, apperror.ErrInvalidArgument)
 	})
@@ -74,13 +89,6 @@ func TestNormalizePgError(t *testing.T) {
 		got := NormalizeError(sql.ErrNoRows)
 		require.Error(t, got)
 		require.ErrorIs(t, got, apperror.ErrNotFound)
-	})
-
-	t.Run("コンテキスト期限切れ", func(t *testing.T) {
-		t.Parallel()
-		got := NormalizeError(context.DeadlineExceeded)
-		require.Error(t, got)
-		require.ErrorIs(t, got, apperror.ErrUnavailable)
 	})
 
 	t.Run("ドライバの接続不良", func(t *testing.T) {
