@@ -48,3 +48,14 @@ RUN npm install -g swagger-cli@latest --no-audit --no-fund \
 
 ENTRYPOINT []
 CMD []
+
+# ------------------------------
+# Python
+# ------------------------------
+FROM python:3.14.2-slim AS python_tools
+
+WORKDIR /app
+RUN pip install --no-cache-dir "sqlfluff[jinja]"
+
+ENTRYPOINT []
+CMD []

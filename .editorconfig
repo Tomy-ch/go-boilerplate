@@ -27,6 +27,10 @@ indent_size = 2
 indent_style = space
 indent_size = 4
 
+[*.sh]
+indent_style = space
+indent_size = 2
+
 [*.toml]
 indent_style = space
 indent_size = 2
@@ -42,7 +46,6 @@ indent_size = 2
 [Dockerfile]
 indent_style = space
 indent_size = 2
-
 
 [makefile]
 indent_style = tab
