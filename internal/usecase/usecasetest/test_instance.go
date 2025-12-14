@@ -24,7 +24,7 @@ func NewTestInstanceForNew(t *testing.T) (
 ) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
-	tf := observability.NewTestTracerFactory(t)
+	tf := observability.NewNoopTracerFactory(t)
 	return ctrl, tf
 }
 
@@ -39,7 +39,7 @@ func NewTestInstanceForImplementedUsecase(t *testing.T) (
 	location, err := time.LoadLocation("Asia/Tokyo")
 	require.NoError(t, err)
 
-	tf := observability.NewTestTracerFactory(t)
+	tf := observability.NewNoopTracerFactory(t)
 	lt := tf.Usecase()
 
 	return ctx, ctrl, location, lt

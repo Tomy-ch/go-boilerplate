@@ -3,7 +3,6 @@ package instrumentation
 import (
 	"testing"
 
-	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/logging"
 
 	"github.com/stretchr/testify/require"
@@ -17,11 +16,9 @@ func TestLoggingModule(t *testing.T) {
 func TestLoggingMiddleware(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
-	out := LoggingMiddleware(logging.NewTestInstance(t), lf)
+	out := LoggingMiddleware(logging.NewTestLogger(t), lf)
 	require.Equal(t, loggingPriority, out.Middleware.Priority)
 	require.NotNil(t, out.Middleware.Middleware)
 }

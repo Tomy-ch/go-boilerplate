@@ -42,7 +42,7 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
 	if !c.Response().Committed {
 		if writeErr := writeErrorResponse(c, resp); writeErr != nil {
 			req := c.Request()
-			traceCtx := observability.ExtractSpan(req.Context())
+			traceCtx := observability.ExtractTraceContext(req.Context())
 			reqIn := logging.HTTPRequestLogInput{
 				Method:        req.Method,
 				Path:          c.Path(),
@@ -119,7 +119,7 @@ func httpErrorField(
 	he *response.HTTPErrorResponse,
 ) []*logging.Field {
 	req := c.Request()
-	traceCtx := observability.ExtractSpan(req.Context())
+	traceCtx := observability.ExtractTraceContext(req.Context())
 	fields := []*logging.Field{
 		logging.Int(logging.StatusKey, he.HTTPStatus),
 		logging.String(logging.ErrorCodeKey, he.Code),
