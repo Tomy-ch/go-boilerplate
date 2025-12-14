@@ -1,3 +1,5 @@
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+
 // Package observability は、可観測性に関連するユーティリティを提供します。
 package observability
 
@@ -18,7 +20,7 @@ const (
 	tracerNameUsecase        = "usecase"
 	tracerNameInfrastructure = "infrastructure"
 
-	// callerSkip は、zap ロガーのコールスタックのスキップ数を定義します。
+	// callerSkip は、ロガーのコールスタックのスキップ数を定義します。
 	callerSkip = 2
 )
 
@@ -32,15 +34,6 @@ type LayerTracer struct {
 }
 
 // Start は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
-//
-// この時、Infoレベルでspanの開始・終了をログ出力する。
-//
-// 呼び出し元は処理完了時に endSpan を呼び出すことで span を確実に終了させることを想定している。
-//
-// 典型的な呼び出し方:
-//
-//	ctx, endSpan := layerTracer.Start(ctx)
-//	defer endSpan()
 func (lt LayerTracer) Start(
 	ctx context.Context,
 	opts ...trace.SpanStartOption,
@@ -50,22 +43,11 @@ func (lt LayerTracer) Start(
 		lt.funcName = fnmeta.ExtractFunctionName(full)
 	}
 
-	return lt.spanStartBase(ctx, "", opts...)
+	return lt.startSpan(ctx, "", opts...)
 }
 
-// StartOptional は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
-//
-// この時、Infoレベルでspanの開始・終了をログ出力する。
-//
-// optionalName を指定することで、span 名に追加情報を付与できる。
-//
-// 呼び出し元は処理完了時に endSpan を呼び出すことで span を確実に終了させることを想定している。
-//
-// 典型的な呼び出し方:
-//
-//	ctx, endSpan := layerTracer.StartOptional(ctx, "DBQuery")
-//	defer endSpan()
-func (lt LayerTracer) StartOptional(
+// StartWithSuffix は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
+func (lt LayerTracer) StartWithSuffix(
 	ctx context.Context,
 	optionalName string,
 	opts ...trace.SpanStartOption,
@@ -75,10 +57,10 @@ func (lt LayerTracer) StartOptional(
 		lt.funcName = fnmeta.ExtractFunctionName(full)
 	}
 
-	return lt.spanStartBase(ctx, optionalName, opts...)
+	return lt.startSpan(ctx, optionalName, opts...)
 }
 
-// WithDomainSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
+// RunDomainWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
 //
 // span の開始・終了時に Infoレベルでログ出力を行う。
 //
@@ -86,11 +68,11 @@ func (lt LayerTracer) StartOptional(
 //
 // 典型的な呼び出し方:
 //
-//	ctx, result, err := layerTracer.WithDomainSpan(ctx, "user", "FullName", func(ctx context.Context) (T, error) {
+//	ctx, result, err := layerTracer.RunDomainWithSpan(ctx, "user", "FullName", func(ctx context.Context) (T, error) {
 //	    // 処理内容
 //	})
-func WithDomainSpan[T any](
-	ctx context.Context,
+func RunDomainWithSpan[T any](
+	parentCtx context.Context,
 	lt LayerTracer,
 	pkg, funcName string,
 	fn func(ctx context.Context) (T, error),
@@ -98,91 +80,95 @@ func WithDomainSpan[T any](
 	const layer = "domain"
 	spanName := fmt.Sprintf("%s.%s.%s", layer, pkg, funcName)
 
-	ctx, span := lt.tracer.Start(ctx, spanName)
+	tc, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName)
 	start := time.Now()
 
 	obsIn := logging.ObservabilityFieldsInput{
-		SpanName: spanName,
-		Layer:    layer,
-		PkgName:  pkg,
-		FuncName: funcName,
-		TraceID:  span.SpanContext().TraceID().String(),
-		SpanID:   span.SpanContext().SpanID().String(),
+		SpanName:     spanName,
+		Layer:        layer,
+		PkgName:      pkg,
+		FuncName:     funcName,
+		TraceID:      tc.TraceID(),
+		ParentSpanID: tc.ParentSpanID(),
+		SpanID:       tc.SpanID(),
 	}
-	obsIn.SpanEvent = SpanEventStart
+	obsIn.EventType = SpanEventStart
 
-	lt.log.CallerSkip(callerSkip).Info(spanName+delimiter+SpanEventStart, lt.lf.BuildObservabilityFields(obsIn)...)
+	lt.logSpanEvent(callerSkip, obsIn)
 
 	defer func() {
 		event := SpanEventEnd
-		obsIn.SpanEvent = event
+		obsIn.EventType = event
 		obsIn.Latency = time.Since(start)
-		lt.log.CallerSkip(callerSkip+1).Info(spanName+delimiter+event, lt.lf.BuildObservabilityFields(obsIn)...)
-		span.End()
+		lt.logSpanEvent(callerSkip+1, obsIn)
+		end()
 	}()
 
-	v, err := fn(ctx)
+	v, err := fn(childCtx)
 	if err != nil {
 		var zero T
-		return ctx, zero, err
+		return childCtx, zero, err
 	}
 
-	return ctx, v, nil
+	return childCtx, v, nil
 }
 
-// fullName は、LayerTracer の情報をもとに完全なspan名を生成します。
-func (lt LayerTracer) fullName(optionalName string) string {
-	fullName := lt.layer + "." + lt.pkgName + "." + lt.funcName
+// FullName は、LayerTracer の情報をもとに完全なspan名を生成します。
+func (lt LayerTracer) makeSpanName(optionalName string) string {
+	fullName := lt.layer + delimiter + lt.pkgName + delimiter + lt.funcName
 	if optionalName != "" {
-		fullName += "." + optionalName
+		fullName += delimiter + optionalName
 	}
 	return fullName
 }
 
-// spanStartBase は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
+// startSpan は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
 //
 // optionalName を指定することで、span 名に追加情報を付与できる。
 //
 // このメソッドは LayerTracer の共通の span 開始ロジックを提供します。
 //
 // 呼び出し元は処理完了時に endSpan を呼び出すことで span を確実に終了させることを想定している。
-//
-// 典型的な呼び出し方:
-//
-//	ctx, endSpan := layerTracer.spanStartBase(ctx, "OptionalSpanName")
-//	defer endSpan()
-func (lt LayerTracer) spanStartBase(
-	ctx context.Context,
+func (lt LayerTracer) startSpan(
+	parentCtx context.Context,
 	optionalName string,
 	opts ...trace.SpanStartOption,
 ) (context.Context, func()) {
-	spanName := lt.fullName(optionalName)
-	ctx, span := lt.tracer.Start(ctx, spanName, opts...)
+	spanName := lt.makeSpanName(optionalName)
+	tc, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName, opts...)
 
 	startTime := time.Now()
 
-	lt.log = lt.log.Named(spanName)
-
 	obsIn := logging.ObservabilityFieldsInput{
-		SpanName: spanName,
-		Layer:    lt.layer,
-		PkgName:  lt.pkgName,
-		FuncName: lt.funcName,
-		TraceID:  span.SpanContext().TraceID().String(),
-		SpanID:   span.SpanContext().SpanID().String(),
+		SpanName:     spanName,
+		Layer:        lt.layer,
+		PkgName:      lt.pkgName,
+		FuncName:     lt.funcName,
+		EventAt:      time.Now(),
+		TraceID:      tc.TraceID(),
+		SpanID:       tc.SpanID(),
+		ParentSpanID: tc.ParentSpanID(),
 	}
 
-	obsIn.SpanEvent = SpanEventStart
-	lt.log.CallerSkip(callerSkip+1).Info(spanName+delimiter+SpanEventStart, lt.lf.BuildObservabilityFields(obsIn)...)
+	obsIn.EventType = SpanEventStart
+	lt.logSpanEvent(callerSkip+1, obsIn)
 
 	endSpan := func() {
-		obsIn.SpanEvent = SpanEventEnd
+		obsIn.EventType = SpanEventEnd
 		obsIn.Latency = time.Since(startTime)
 
-		lt.log.CallerSkip(callerSkip).Info(spanName+delimiter+SpanEventEnd, lt.lf.BuildObservabilityFields(obsIn)...)
+		lt.logSpanEvent(callerSkip, obsIn)
 
-		span.End()
+		end()
 	}
 
-	return ctx, endSpan
+	return childCtx, endSpan
+}
+
+// logSpanEvent は、指定された観測可能性フィールドを使用してログを記録します。
+func (lt LayerTracer) logSpanEvent(callerSkip int, obs logging.ObservabilityFieldsInput) {
+	lt.log.Named(obs.Layer).CallerSkip(callerSkip).Info(
+		obs.SpanName+delimiter+obs.EventType,
+		lt.lf.BuildObservabilityFields(obs)...,
+	)
 }
