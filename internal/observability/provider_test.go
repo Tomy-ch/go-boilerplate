@@ -13,7 +13,6 @@ import (
 )
 
 func Test_TracerProvider(t *testing.T) {
-	t.Parallel()
 	t.Run("ShutdownRegistrarにシャットダウン処理を登録し、グローバルプロバイダーのTracerProviderを返す", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()

@@ -15,7 +15,7 @@ import (
 type log struct {
 	c        echo.Context
 	lf       logging.LogFieldBuilder
-	traceCtx observability.TraceContext
+	traceCtx *observability.TraceContext
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
@@ -32,7 +32,7 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 			l := log{
 				c:        c,
 				lf:       lf,
-				traceCtx: observability.ExtractSpan(c.Request().Context()),
+				traceCtx: observability.ExtractTraceContext(c.Request().Context()),
 			}
 
 			reqFields := l.buildRequestLogFields()
@@ -54,6 +54,7 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 func (l log) buildRequestLogFields() []*logging.Field {
 	req := l.c.Request()
 	reqIn := logging.HTTPRequestLogInput{
+		EventAt:       time.Now(),
 		Method:        req.Method,
 		URI:           req.RequestURI,
 		Path:          req.URL.Path,
@@ -78,6 +79,7 @@ func (l log) buildResponseLogFields(latency time.Duration) []*logging.Field {
 	req := l.c.Request()
 	res := l.c.Response()
 	resIn := logging.HTTPResponseLogInput{
+		EventAt:   time.Now(),
 		Method:    req.Method,
 		Path:      req.URL.Path,
 		URI:       req.RequestURI,

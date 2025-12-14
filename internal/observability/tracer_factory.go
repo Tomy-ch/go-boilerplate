@@ -38,13 +38,7 @@ func (t *tracerFactory) Controller() LayerTracer {
 	full := getCallerFullName()
 	pkg := fnmeta.ExtractPackageName(full)
 
-	return LayerTracer{
-		log:     t.log,
-		lf:      t.lf,
-		tracer:  t.tp.Tracer(tracerNameController + delimiter + pkg),
-		layer:   tracerNameController,
-		pkgName: pkg,
-	}
+	return t.newLayerTracer(tracerNameController, pkg)
 }
 
 // Usecase は Usecase 層用のトレーサーを返します。
@@ -52,13 +46,7 @@ func (t *tracerFactory) Usecase() LayerTracer {
 	full := getCallerFullName()
 	pkg := fnmeta.ExtractPackageName(full)
 
-	return LayerTracer{
-		log:     t.log,
-		lf:      t.lf,
-		tracer:  t.tp.Tracer(tracerNameUsecase + delimiter + pkg),
-		layer:   tracerNameUsecase,
-		pkgName: pkg,
-	}
+	return t.newLayerTracer(tracerNameUsecase, pkg)
 }
 
 // Infra は Infrastructure 層用のトレーサーを返します。
@@ -66,11 +54,16 @@ func (t *tracerFactory) Infra() LayerTracer {
 	full := getCallerFullName()
 	pkg := fnmeta.ExtractPackageName(full)
 
+	return t.newLayerTracer(tracerNameInfrastructure, pkg)
+}
+
+// newLayerTracer は LayerTracer を初期化して返します。
+func (t *tracerFactory) newLayerTracer(layer, pkgName string) LayerTracer {
 	return LayerTracer{
 		log:     t.log,
 		lf:      t.lf,
-		tracer:  t.tp.Tracer(tracerNameInfrastructure + delimiter + pkg),
-		layer:   tracerNameInfrastructure,
-		pkgName: pkg,
+		tracer:  t.tp.Tracer(layer + delimiter + pkgName),
+		layer:   layer,
+		pkgName: pkgName,
 	}
 }

@@ -47,7 +47,7 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c echo.Context, err error, stack []byte) error {
 	return func(c echo.Context, err error, stack []byte) error {
 		req := c.Request()
-		traceCtx := observability.ExtractSpan(req.Context())
+		traceCtx := observability.ExtractTraceContext(req.Context())
 		reqIn := logging.HTTPRequestLogInput{
 			Method:        req.Method,
 			Path:          c.Path(),

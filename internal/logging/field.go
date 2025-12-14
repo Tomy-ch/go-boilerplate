@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"time"
+
 	"boilerplate-go/pkg/xerrors"
 )
 
@@ -85,6 +87,15 @@ func Bool(key string, v bool) *Field {
 		key:       key,
 		kind:      fieldBool,
 		boolValue: v,
+	}
+}
+
+// Time は、時間のログフィールドを作成します。
+func Time(key string, v time.Time) *Field {
+	return &Field{
+		key:         key,
+		kind:        fieldString,
+		stringValue: v.Format(time.RFC3339Nano),
 	}
 }
 

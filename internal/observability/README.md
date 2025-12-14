@@ -23,7 +23,7 @@
 
 - 必須度: 開発/テスト運用で推奨
 
-理由: 開発時にトレースや呼び出し情報があるとデバッグが容易になります。`test_instance.go` を使ってテスト環境向けに軽量化した観測を行えます。
+理由: 開発時にトレースや呼び出し情報があるとデバッグが容易になります。`test_kit.go` を使ってテスト環境向けに軽量化した観測を行えます。
 
 ## 利用例（簡易）
 
@@ -57,10 +57,9 @@ lt.RecordError(span, err)
 ### テストでの利用
 
 ```go
-// internal/observability/test_instance.go を使うと、外部エクスポートを無効化した
+// internal/observability/test_kit.go を使うと、外部エクスポートを無効化した
 // 軽量なプロバイダが取得できます。
-tp := observability.NewTestInstance()
-defer tp.Shutdown(context.Background())
+nlt := observability.NewNoopLayerTracer()
 
 // go test 実行例
 // go test ./internal/observability -v
@@ -82,4 +81,4 @@ defer tp.Shutdown(context.Background())
 - トレーサやログに出力する情報に機密データが含まれないよう注意してください（ユーザーデータ、トークン等）。
 - 本番では適切なサンプルレートや出力先（OTLP、Jaeger 等）を設定し、コストやパフォーマンスへの影響を制御してください。
 - 観測用のミドルウェアやヘルパーは副作用がないように実装し、エラーが発生してもアプリ本体の挙動に影響を与えないようにしてください。
-- テスト用インスタンス（`test_instance.go`）はCI環境でのリソース制約を考慮して設定してください。
+- テスト用インスタンス（`test_kit.go`）はCI環境でのリソース制約を考慮して設定してください。

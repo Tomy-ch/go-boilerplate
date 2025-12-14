@@ -13,6 +13,7 @@ import (
 	config "boilerplate-go/internal/config"
 	driver "boilerplate-go/internal/infrastructure/rdb/driver"
 	logging "boilerplate-go/internal/logging"
+	observability "boilerplate-go/internal/observability"
 	context "context"
 	reflect "reflect"
 
@@ -55,6 +56,20 @@ func (m *MockDBProvider) DBConfig() *config.DatabaseConfig {
 func (mr *MockDBProviderMockRecorder) DBConfig() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DBConfig", reflect.TypeOf((*MockDBProvider)(nil).DBConfig))
+}
+
+// LayerTracer mocks base method.
+func (m *MockDBProvider) LayerTracer() observability.LayerTracer {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LayerTracer")
+	ret0, _ := ret[0].(observability.LayerTracer)
+	return ret0
+}
+
+// LayerTracer indicates an expected call of LayerTracer.
+func (mr *MockDBProviderMockRecorder) LayerTracer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LayerTracer", reflect.TypeOf((*MockDBProvider)(nil).LayerTracer))
 }
 
 // LogFields mocks base method.

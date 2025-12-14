@@ -47,7 +47,7 @@ func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, e
 		return nil, err
 	}
 	// return nil, apperror.ErrConflict
-	_, res, err := observability.WithDomainSpan(
+	_, res, err := observability.RunDomainWithSpan(
 		ctx, u.tracer, "user", "mapToDTOs", func(_ context.Context) ([]DTO, error) {
 			dtos := make([]DTO, len(us))
 			for i, u := range us {

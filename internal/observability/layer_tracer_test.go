@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
@@ -13,15 +12,15 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func TestLayerTracer_fullName(t *testing.T) {
+func TestLayerTracer_makeSpanName(t *testing.T) {
 	t.Parallel()
 
 	lt := LayerTracer{layer: "usecase", pkgName: "mypkg", funcName: "Do"}
-	require.Equal(t, "usecase.mypkg.Do", lt.fullName(""))
-	require.Equal(t, "usecase.mypkg.Do.Optional", lt.fullName("Optional"))
+	require.Equal(t, "usecase.mypkg.Do", lt.makeSpanName(""))
+	require.Equal(t, "usecase.mypkg.Do.Optional", lt.makeSpanName("Optional"))
 }
 
-func TestLayerTracer(t *testing.T) {
+func Test_LayerTracer_Start(t *testing.T) {
 	t.Parallel()
 
 	t.Run("funcName が既に設定されている場合", func(t *testing.T) {
@@ -30,8 +29,8 @@ func TestLayerTracer(t *testing.T) {
 		tracer, shutdown := newTestTracer(t)
 		defer shutdown()
 
-		logger := logging.NewTestInstance(t)
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
+		logger := logging.NewTestLogger(t)
+		lf := logging.NewTestLogFieldBuilder(t)
 
 		lt := LayerTracer{
 			log: logger, tracer: tracer, lf: lf,
@@ -49,8 +48,8 @@ func TestLayerTracer(t *testing.T) {
 		tracer, shutdown := newTestTracer(t)
 		defer shutdown()
 
-		logger := logging.NewTestInstance(t)
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
+		logger := logging.NewTestLogger(t)
+		lf := logging.NewTestLogFieldBuilder(t)
 
 		lt := LayerTracer{
 			log: logger, tracer: tracer, lf: lf,
@@ -61,6 +60,10 @@ func TestLayerTracer(t *testing.T) {
 		end()
 		require.NotNil(t, ctx)
 	})
+}
+
+func Test_LayerTracer_StartWithSuffix(t *testing.T) {
+	t.Parallel()
 
 	t.Run("funcName が空の場合 getCallerFullName によって設定される", func(t *testing.T) {
 		t.Parallel()
@@ -68,14 +71,14 @@ func TestLayerTracer(t *testing.T) {
 		tracer, shutdown := newTestTracer(t)
 		defer shutdown()
 
-		logger := logging.NewTestInstance(t)
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
+		logger := logging.NewTestLogger(t)
+		lf := logging.NewTestLogFieldBuilder(t)
 
 		lt := LayerTracer{
 			log: logger, tracer: tracer, lf: lf,
 			layer: "controller", pkgName: "p", funcName: "",
 		}
-		ctx, end := lt.StartOptional(context.Background(), "DB")
+		ctx, end := lt.StartWithSuffix(context.Background(), "DB")
 		end()
 		require.NotNil(t, ctx)
 	})
@@ -86,14 +89,14 @@ func TestLayerTracer(t *testing.T) {
 		tracer, shutdown := newTestTracer(t)
 		defer shutdown()
 
-		logger := logging.NewTestInstance(t)
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
+		logger := logging.NewTestLogger(t)
+		lf := logging.NewTestLogFieldBuilder(t)
 
 		lt := LayerTracer{
 			log: logger, tracer: tracer, lf: lf,
 			layer: "controller", pkgName: "p", funcName: "F",
 		}
-		ctx, end := lt.StartOptional(context.Background(), "DB")
+		ctx, end := lt.StartWithSuffix(context.Background(), "DB")
 		end()
 		require.NotNil(t, ctx)
 	})
@@ -104,20 +107,20 @@ func TestLayerTracer(t *testing.T) {
 		tracer, shutdown := newTestTracer(t)
 		defer shutdown()
 
-		logger := logging.NewTestInstance(t)
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
+		logger := logging.NewTestLogger(t)
+		lf := logging.NewTestLogFieldBuilder(t)
 
 		lt := LayerTracer{
 			log: logger, tracer: tracer, lf: lf,
 			layer: "controller", pkgName: "p", funcName: "F",
 		}
-		ctx, end := lt.StartOptional(context.Background(), "")
+		ctx, end := lt.StartWithSuffix(context.Background(), "")
 		end()
 		require.NotNil(t, ctx)
 	})
 }
 
-func TestWithDomainSpan(t *testing.T) {
+func TestRunDomainWithSpan(t *testing.T) {
 	t.Parallel()
 
 	t.Run("成功時は値を返しログにstart/endが出る", func(t *testing.T) {
@@ -126,14 +129,14 @@ func TestWithDomainSpan(t *testing.T) {
 		tracer, shutdown := newTestTracer(t)
 		defer shutdown()
 
-		logger := logging.NewTestInstance(t)
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
+		logger := logging.NewTestLogger(t)
+		lf := logging.NewTestLogFieldBuilder(t)
 
 		lt := LayerTracer{
 			log: logger, tracer: tracer, lf: lf,
 		}
 
-		ctx, v, err := WithDomainSpan(
+		ctx, v, err := RunDomainWithSpan(
 			context.Background(), lt, "pkg", "Func",
 			func(_ context.Context) (string, error) {
 				return "ok", nil
@@ -149,14 +152,14 @@ func TestWithDomainSpan(t *testing.T) {
 		tracer, shutdown := newTestTracer(t)
 		defer shutdown()
 
-		logger := logging.NewTestInstance(t)
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
+		logger := logging.NewTestLogger(t)
+		lf := logging.NewTestLogFieldBuilder(t)
 
 		lt := LayerTracer{
 			log: logger, tracer: tracer, lf: lf,
 		}
 
-		ctx, v, err := WithDomainSpan(
+		ctx, v, err := RunDomainWithSpan(
 			context.Background(), lt, "pkg", "Func",
 			func(_ context.Context) (string, error) {
 				return "", xerrors.New("failure")
@@ -169,13 +172,57 @@ func TestWithDomainSpan(t *testing.T) {
 	})
 }
 
-func newTracerProvider() *sdktrace.TracerProvider {
-	return sdktrace.NewTracerProvider()
+func Test_makeSpanName(t *testing.T) {
+	t.Parallel()
+
+	expectedLayer := "layer"
+	expectedPkgName := "pkg"
+	expectedFuncName := "func"
+	optionalName := "extra"
+	expected := expectedLayer + delimiter + expectedPkgName + delimiter + expectedFuncName
+
+	lt := LayerTracer{layer: expectedLayer, pkgName: expectedPkgName, funcName: expectedFuncName}
+
+	t.Run("optionalName が空の場合", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, expected, lt.makeSpanName(""))
+	})
+
+	t.Run("optionalName が指定された場合", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, expected+delimiter+optionalName, lt.makeSpanName(optionalName))
+	})
+}
+
+func Test_startSpan(t *testing.T) {
+	t.Parallel()
+
+	expectedLayer := "layer"
+	expectedPkgName := "pkg"
+	expectedFuncName := "func"
+
+	tracer, shutdown := newTestTracer(t)
+	defer shutdown()
+
+	logger := logging.NewTestLogger(t)
+	lf := logging.NewTestLogFieldBuilder(t)
+
+	lt := LayerTracer{
+		log: logger, tracer: tracer, lf: lf,
+		layer: expectedLayer, pkgName: expectedPkgName, funcName: expectedFuncName,
+	}
+
+	ctx := context.Background()
+	spanCtx, end := lt.startSpan(ctx, "optional")
+	end()
+	require.NotNil(t, spanCtx)
 }
 
 func newTestTracer(t *testing.T) (trace.Tracer, func()) {
 	t.Helper()
-	tp := newTracerProvider()
+	tp := sdktrace.NewTracerProvider()
 	tracer := tp.Tracer("test")
 	return tracer, func() { _ = tp.Shutdown(context.Background()) }
 }
