@@ -13,6 +13,7 @@ import (
 	mock_driver "boilerplate-go/internal/infrastructure/rdb/driver/mock"
 	"boilerplate-go/internal/logging"
 	mock_logging "boilerplate-go/internal/logging/mock"
+	"boilerplate-go/internal/observability"
 
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
@@ -23,9 +24,9 @@ func Test_dbWithLogging_ExecContext(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
-	lg := logging.NewTestInstance(t)
+	lf := logging.NewTestLogFieldBuilder(t)
+	lg := logging.NewTestLogger(t)
+	noopLayerTracer := observability.NewNoopLayerTracer(t)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -40,6 +41,7 @@ func Test_dbWithLogging_ExecContext(t *testing.T) {
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
 	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
@@ -54,9 +56,9 @@ func Test_dbWithLogging_PrepareContext(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
-	lg := logging.NewTestInstance(t)
+	lf := logging.NewTestLogFieldBuilder(t)
+	lg := logging.NewTestLogger(t)
+	noopLayerTracer := observability.NewNoopLayerTracer(t)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -69,6 +71,7 @@ func Test_dbWithLogging_PrepareContext(t *testing.T) {
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
 	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
@@ -82,9 +85,9 @@ func Test_dbWithLogging_QueryContext(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
-	lg := logging.NewTestInstance(t)
+	lf := logging.NewTestLogFieldBuilder(t)
+	lg := logging.NewTestLogger(t)
+	noopLayerTracer := observability.NewNoopLayerTracer(t)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -97,6 +100,7 @@ func Test_dbWithLogging_QueryContext(t *testing.T) {
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
 	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
@@ -111,9 +115,9 @@ func Test_dbWithLogging_QueryRowContext(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
-	lg := logging.NewTestInstance(t)
+	lf := logging.NewTestLogFieldBuilder(t)
+	lg := logging.NewTestLogger(t)
+	noopLayerTracer := observability.NewNoopLayerTracer(t)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -126,6 +130,7 @@ func Test_dbWithLogging_QueryRowContext(t *testing.T) {
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
 	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
@@ -133,14 +138,30 @@ func Test_dbWithLogging_QueryRowContext(t *testing.T) {
 	require.Nil(t, row)
 }
 
-func Test_buildSQLLogFields(t *testing.T) {
+func Test_dbWithLogging_buildSQLStartLogFields(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
-	ctx := context.Background()
+	tc := observability.TraceContext{}
+	funcName := "TestBuildSQLLogFields"
+
+	dwl := &dbWithLogging{
+		provider: &provider{
+			lf: lf,
+		},
+	}
+
+	actual := dwl.buildSQLStartLogFields(tc, funcName)
+	require.NotEmpty(t, actual)
+}
+
+func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
+	t.Parallel()
+
+	lf := logging.NewTestLogFieldBuilder(t)
+
+	tc := observability.TraceContext{}
 	funcName := "TestBuildSQLLogFields"
 	query := "select 1"
 	expectedDuration := time.Duration(100 * time.Millisecond)
@@ -151,17 +172,16 @@ func Test_buildSQLLogFields(t *testing.T) {
 		},
 	}
 
-	actual := dwl.buildSQLLogFields(ctx, funcName, query, expectedDuration, nil, nil)
+	actual := dwl.buildSQLEndLogFields(tc, funcName, query, expectedDuration, nil, nil)
 	require.NotEmpty(t, actual)
 }
 
-func Test_logQueryResult(t *testing.T) {
+func Test_dbWithLogging_logQueryResult(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -171,7 +191,7 @@ func Test_logQueryResult(t *testing.T) {
 
 		mockDuration := dbCfg.SlowQueryWarnThreshold() - time.Duration(100*time.Millisecond)
 		mockLog := mock_logging.NewMockLogger(ctrl)
-		mockLog.EXPECT().Named("driver.Query").Return(mockLog)
+		mockLog.EXPECT().Named(layer).Return(mockLog)
 		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
 		mockLog.EXPECT().Info("SQL Exec")
 
@@ -190,7 +210,7 @@ func Test_logQueryResult(t *testing.T) {
 
 		mockDuration := dbCfg.SlowQueryWarnThreshold() + time.Duration(100*time.Millisecond)
 		mockLog := mock_logging.NewMockLogger(ctrl)
-		mockLog.EXPECT().Named("driver.Query").Return(mockLog)
+		mockLog.EXPECT().Named(layer).Return(mockLog)
 		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
 		mockLog.EXPECT().Warn("SQL Exec")
 
@@ -209,7 +229,7 @@ func Test_logQueryResult(t *testing.T) {
 
 		mockDuration := dbCfg.SlowQueryWarnThreshold() - time.Duration(100*time.Millisecond)
 		mockLog := mock_logging.NewMockLogger(ctrl)
-		mockLog.EXPECT().Named("driver.Query").Return(mockLog)
+		mockLog.EXPECT().Named(layer).Return(mockLog)
 		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
 		mockLog.EXPECT().Error("SQL Exec")
 		mp := mock_loggingdb.NewMockDBProvider(ctrl)
