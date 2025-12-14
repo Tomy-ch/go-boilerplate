@@ -12,7 +12,8 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, provider, tf := rdbtest.NewTestInstancesForNew(t)
+	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
+	tf := rdbtest.NewNoopTracerFactory(t)
 	expected := &systemQuery{
 		tracer:   tf.Infra(),
 		db:       db,
@@ -26,7 +27,9 @@ func TestNew(t *testing.T) {
 func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 	t.Parallel()
 
-	db, txm, provider, _, tracer := rdbtest.NewTestInstancesForImplementedInfra(t)
+	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
+	tracer := rdbtest.NewNoopInfraLayerTracer(t)
+	txm := rdbtest.NewTestTransactionManager(t)
 	s := &systemQuery{
 		tracer:   tracer,
 		db:       db,
@@ -39,15 +42,13 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 		t.Run("DBのヘルスチェックが成功する", func(t *testing.T) {
 			t.Parallel()
 
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				res, err := s.CheckDBHealth(ctx)
 				require.NoError(t, err)
 				require.True(t, res.Ready)
 				require.Positive(t, res.Latency.Microseconds())
 				require.NotZero(t, res.ResponsedAt)
-				return nil
 			})
-			require.NoError(t, err)
 		})
 	})
 }

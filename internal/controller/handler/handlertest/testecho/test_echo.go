@@ -39,8 +39,8 @@ func NewEchoTestClient(t *testing.T, e *echo.Echo) *EchoTestClient {
 	t.Helper()
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
-	errorhandler.New(e, logging.NewTestInstance(t), lf, obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
+	errorhandler.New(e, logging.NewTestLogger(t), lf, obsCfg)
 	return &EchoTestClient{
 		t:       t,
 		e:       e,

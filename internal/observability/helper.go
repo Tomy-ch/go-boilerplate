@@ -15,8 +15,9 @@ const (
 
 // TraceContext は、トレースを識別するための情報を保持します。
 type TraceContext struct {
-	traceID string
-	spanID  string
+	traceID      string
+	spanID       string
+	parentSpanID string
 }
 
 // ShouldLogWithSpan は、o11yモードとSpanの有無から、「このログを span 前提で出してよいか」を判定します。
@@ -29,25 +30,55 @@ func BuildSpanName(layer, pkgName, funcName string) string {
 	return layer + delimiter + pkgName + delimiter + funcName
 }
 
-// ExtractSpan は、Context からトレース情報を抽出して返します。
-func ExtractSpan(ctx context.Context) TraceContext {
+// ExtractTraceContext は、Context からトレース情報を抽出して返します。
+func ExtractTraceContext(ctx context.Context) *TraceContext {
 	span := trace.SpanFromContext(ctx)
 	if !span.SpanContext().IsValid() {
-		return TraceContext{}
+		return &TraceContext{}
 	}
 	spanCtx := span.SpanContext()
-	return TraceContext{
+	return &TraceContext{
 		traceID: spanCtx.TraceID().String(),
 		spanID:  spanCtx.SpanID().String(),
 	}
 }
 
+// StartSpanWithParent は、新しい子スパンを開始し、TraceContext、子コンテキスト、終了関数を返します。
+func StartSpanWithParent(
+	ctx context.Context,
+	tracer LayerTracer,
+	name string,
+	opts ...trace.SpanStartOption,
+) (TraceContext, context.Context, func()) {
+	parentSC := trace.SpanFromContext(ctx).SpanContext()
+
+	childCtx, span := tracer.tracer.Start(ctx, name, opts...)
+	childSC := span.SpanContext()
+
+	tc := TraceContext{
+		traceID: childSC.TraceID().String(),
+		spanID:  childSC.SpanID().String(),
+	}
+
+	if parentSC.IsValid() {
+		tc.parentSpanID = parentSC.SpanID().String()
+	}
+
+	end := func() { span.End() }
+	return tc, childCtx, end
+}
+
 // TraceID は、TraceContext から TraceID を取得します。
-func (tc TraceContext) TraceID() string {
+func (tc *TraceContext) TraceID() string {
 	return tc.traceID
 }
 
 // SpanID は、TraceContext から SpanID を取得します。
-func (tc TraceContext) SpanID() string {
+func (tc *TraceContext) SpanID() string {
 	return tc.spanID
+}
+
+// ParentSpanID は、TraceContext から ParentSpanID を取得します。
+func (tc *TraceContext) ParentSpanID() string {
+	return tc.parentSpanID
 }

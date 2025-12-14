@@ -12,16 +12,20 @@ import (
 type LogFieldBuilder interface {
 	BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field
 	BuildHTTPResponseFields(resp HTTPResponseLogInput) []*Field
-	BuildSQLFields(sql SQLFieldsInput) []*Field
+	BuildSQLStartFields(sql SQLFieldsStartInput) []*Field
+	BuildSQLEndFields(sql SQLFieldsEndInput) []*Field
 	BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field
 }
 
 type logFieldBuilder struct {
 	obsCfg *config.ObservabilityConfig
+	osCfg  *config.OperationSystemConfig
 }
 
 // HTTPRequestLogInput は、HTTPリクエストのログ出力用の入力情報をまとめた構造体です。
 type HTTPRequestLogInput struct {
+	EventAt time.Time
+
 	Method   string
 	Path     string
 	URI      string
@@ -43,56 +47,89 @@ type HTTPRequestLogInput struct {
 
 // HTTPResponseLogInput は、HTTPレスポンスのログ出力用の入力情報をまとめた構造体です。
 type HTTPResponseLogInput struct {
-	Method    string
-	Path      string
-	URI       string
-	Status    int
-	Latency   time.Duration
+	EventAt time.Time
+
+	Method string
+	Path   string
+	URI    string
+	Status int
+
+	Latency time.Duration
+
 	RequestID string
 	TraceID   string
 	SpanID    string
 }
 
-// SQLFieldsInput は、SQL ログ出力用の入力情報をまとめた構造体です。
-type SQLFieldsInput struct {
+// SQLFieldsStartInput は、SQL ログ出力用の入力情報をまとめた構造体です。
+type SQLFieldsStartInput struct {
 	Layer    string
 	PkgName  string
 	FuncName string
 	SpanName string
 
-	Query    string
-	Duration time.Duration
-	Args     []any
-	Err      error
-	SpanID   string
-	TraceID  string
+	EventAt time.Time
+
+	TraceID      string
+	SpanID       string
+	ParentSpanID string
+}
+
+// SQLFieldsEndInput は、SQL ログ出力用の入力情報をまとめた構造体です。
+type SQLFieldsEndInput struct {
+	Layer    string
+	PkgName  string
+	FuncName string
+	SpanName string
+
+	EventAt time.Time
+
+	Latency time.Duration
+
+	Query string
+	Args  []any
+	Err   error
+
+	TraceID      string
+	SpanID       string
+	ParentSpanID string
 }
 
 // ObservabilityFieldsInput は、オブザーバビリティ用のログフィールド生成の入力情報をまとめた構造体です。
 type ObservabilityFieldsInput struct {
-	Layer     string
-	PkgName   string
-	FuncName  string
-	SpanEvent string
-	SpanName  string
-	Latency   time.Duration
+	Layer    string
+	PkgName  string
+	FuncName string
+	SpanName string
 
-	SpanID  string
-	TraceID string
+	EventType string
+	EventAt   time.Time
+
+	Latency time.Duration
+
+	TraceID      string
+	SpanID       string
+	ParentSpanID string
 }
 
 // NewLogFields は、ログフィールド生成用のLogFieldsインスタンスを生成します。
 func NewLogFields(
 	obsCfg *config.ObservabilityConfig,
+	osCfg *config.OperationSystemConfig,
 ) LogFieldBuilder {
 	return &logFieldBuilder{
 		obsCfg: obsCfg,
+		osCfg:  osCfg,
 	}
 }
 
 // BuildHTTPRequestFields は、HTTPリクエストの情報を含むFieldのスライスを生成します。
 func (l *logFieldBuilder) BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field {
 	fields := []*Field{
+		String(EventTypeKey, EventTypeStart),
+		Time(EventAtKey, req.EventAt),
+		String(eventTzKey, l.osCfg.TimeZone()),
+
 		String(MethodKey, req.Method),
 		String(PathKey, req.Path),
 		String(URIKey, req.URI),
@@ -109,36 +146,62 @@ func (l *logFieldBuilder) BuildHTTPRequestFields(req HTTPRequestLogInput) []*Fie
 		Any(PathParamsKey, req.PathParams),
 	}
 
-	return l.appendTraceSpanFields(fields, req.TraceID, req.SpanID)
+	return l.appendTraceSpanFields(fields, req.TraceID, req.SpanID, "")
 }
 
 // BuildHTTPResponseFields は、HTTPレスポンスの情報を含むFieldのスライスを生成します。
 func (l *logFieldBuilder) BuildHTTPResponseFields(resp HTTPResponseLogInput) []*Field {
 	fields := []*Field{
+		String(EventTypeKey, EventTypeEnd),
+		Time(EventAtKey, resp.EventAt),
+		String(eventTzKey, l.osCfg.TimeZone()),
+
+		Float64(LatencyKey, l.latencyMs(resp.Latency)),
+
 		Int(StatusKey, resp.Status),
 		String(MethodKey, resp.Method),
 		String(PathKey, resp.Path),
 		String(URIKey, resp.URI),
-		Float64(LatencyKey, l.latencyMs(resp.Latency)),
+
 		String(RequestIDKey, resp.RequestID),
 	}
 
-	return l.appendTraceSpanFields(fields, resp.TraceID, resp.SpanID)
+	return l.appendTraceSpanFields(fields, resp.TraceID, resp.SpanID, "")
 }
 
-// BuildSQLFields は、SQL ログ出力用の Field スライスを構築します。
-func (l *logFieldBuilder) BuildSQLFields(s SQLFieldsInput) []*Field {
+// BuildSQLStartFields は、SQLの開始時点のログ出力用の Field スライスを構築します。
+func (l *logFieldBuilder) BuildSQLStartFields(sql SQLFieldsStartInput) []*Field {
+	fields := []*Field{
+		String(EventTypeKey, EventTypeStart),
+		Time(EventAtKey, sql.EventAt),
+		String(eventTzKey, l.osCfg.TimeZone()),
+
+		String(LayerKey, sql.Layer),
+		String(PackageKey, sql.PkgName),
+		String(FunctionKey, sql.FuncName),
+		String(SpanNameKey, sql.SpanName),
+	}
+
+	return l.appendTraceSpanFields(fields, sql.TraceID, sql.SpanID, sql.ParentSpanID)
+}
+
+// BuildSQLEndFields は、SQLの終了時点のログ出力用の Field スライスを構築します。
+func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field {
 	rawQuery := s.Query
 	compact := l.buildCompactQuery(rawQuery)
 
 	fields := []*Field{
+		String(EventTypeKey, EventTypeEnd),
+		Time(EventAtKey, s.EventAt),
+		String(eventTzKey, l.osCfg.TimeZone()),
+
 		String(LayerKey, s.Layer),
 		String(PackageKey, s.PkgName),
 		String(FunctionKey, s.FuncName),
 		String(SpanNameKey, s.SpanName),
 		String(RawQueryKey, rawQuery),
 		String(QueryCompactKey, compact),
-		Float64(LatencyKey, l.latencyMs(s.Duration)),
+		Float64(LatencyKey, l.latencyMs(s.Latency)),
 	}
 
 	if len(s.Args) > 0 {
@@ -152,13 +215,16 @@ func (l *logFieldBuilder) BuildSQLFields(s SQLFieldsInput) []*Field {
 		fields = append(fields, Error(InternalErrorKey, s.Err))
 	}
 
-	return l.appendTraceSpanFields(fields, s.TraceID, s.SpanID)
+	return l.appendTraceSpanFields(fields, s.TraceID, s.SpanID, s.ParentSpanID)
 }
 
 // BuildObservabilityFields は、オブザーバビリティ用のログフィールドを生成します。
 func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field {
 	fields := []*Field{
-		String(SpanEventKey, obs.SpanEvent),
+		String(EventTypeKey, obs.EventType),
+		Time(EventAtKey, obs.EventAt),
+		String(eventTzKey, l.osCfg.TimeZone()),
+
 		String(SpanNameKey, obs.SpanName),
 		String(LayerKey, obs.Layer),
 		String(PackageKey, obs.PkgName),
@@ -171,7 +237,7 @@ func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput)
 		)
 	}
 
-	return l.appendTraceSpanFields(fields, obs.TraceID, obs.SpanID)
+	return l.appendTraceSpanFields(fields, obs.TraceID, obs.SpanID, obs.ParentSpanID)
 }
 
 // appendTraceSpanFields は、obs が有効なとき trace/span を fields に追加する。
@@ -179,14 +245,23 @@ func (l *logFieldBuilder) appendTraceSpanFields(
 	fields []*Field,
 	traceID string,
 	spanID string,
+	parentSpanID string,
 ) []*Field {
 	if !l.obsCfg.Enabled() || traceID == "" || spanID == "" {
 		return fields
 	}
 
-	return append(fields,
+	fields = append(fields,
 		String(TraceIDKey, traceID),
 		String(SpanIDKey, spanID),
+	)
+
+	if parentSpanID == "" {
+		return fields
+	}
+
+	return append(fields,
+		String(ParentSpanIDKey, parentSpanID),
 	)
 }
 

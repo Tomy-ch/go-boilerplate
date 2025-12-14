@@ -15,7 +15,8 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, provider, tf := rdbtest.NewTestInstancesForNew(t)
+	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
+	tf := rdbtest.NewNoopTracerFactory(t)
 	expected := &repository{
 		db:       db,
 		tracer:   tf.Infra(),
@@ -28,7 +29,9 @@ func TestNew(t *testing.T) {
 func TestGetAllUsers(t *testing.T) {
 	t.Parallel()
 
-	db, txm, provider, _, tracer := rdbtest.NewTestInstancesForImplementedInfra(t)
+	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
+	tracer := rdbtest.NewNoopInfraLayerTracer(t)
+	txm := rdbtest.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   tracer,
@@ -42,7 +45,7 @@ func TestGetAllUsers(t *testing.T) {
 		t.Run("limitとoffsetを指定した場合、作成順で複数件が取得できる", func(t *testing.T) {
 			t.Parallel()
 
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				limit := 100
 				offset := 0
 
@@ -88,15 +91,12 @@ func TestGetAllUsers(t *testing.T) {
 
 				require.Equal(t, expectedFirst, &actualFirst)
 				require.Equal(t, expectedLast, &actualLast)
-
-				return nil
 			})
-			require.NoError(t, err)
 		})
 
 		t.Run("limit=1でoffset=0の場合先頭のユーザーが取得できる", func(t *testing.T) {
 			t.Parallel()
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				limit := 1
 				offset := 0
 
@@ -122,14 +122,12 @@ func TestGetAllUsers(t *testing.T) {
 				require.Len(t, actual, expectedLength)
 
 				require.Equal(t, expected, &actual[0])
-				return nil
 			})
-			require.NoError(t, err)
 		})
 
 		t.Run("limit=1でoffset=9の場合、末尾のユーザーが取得できる", func(t *testing.T) {
 			t.Parallel()
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				limit := 1
 				offset := 9
 				expected, getAllUsersErr := user.New(
@@ -155,22 +153,18 @@ func TestGetAllUsers(t *testing.T) {
 				actual := all[len(all)-1]
 
 				require.Equal(t, expected, &actual)
-				return nil
 			})
-			require.NoError(t, err)
 		})
 
 		t.Run("limit=0の場合、空配列になる", func(t *testing.T) {
 			t.Parallel()
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				limit := 0
 				offset := 0
 				actual, err := repo.GetAllUsers(ctx, limit, offset)
 				require.NoError(t, err)
 				require.Empty(t, actual)
-				return nil
 			})
-			require.NoError(t, err)
 		})
 	})
 
@@ -179,29 +173,25 @@ func TestGetAllUsers(t *testing.T) {
 
 		t.Run("limitが負数の場合、エラーになる", func(t *testing.T) {
 			t.Parallel()
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.GetAllUsers(ctx, -1, 0)
 				require.Nil(t, actual)
 				require.Error(t, err)
-				return err
 			})
-			require.Error(t, err)
 		})
 
 		t.Run("offsetが負数の場合、エラーになる", func(t *testing.T) {
 			t.Parallel()
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.GetAllUsers(ctx, 10, -1)
 				require.Nil(t, actual)
 				require.Error(t, err)
-				return err
 			})
-			require.Error(t, err)
 		})
 
 		t.Run("無効なユーザーが挿入されていてもDomain化の時にエラーになる", func(t *testing.T) {
 			t.Parallel()
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, db)
 				_, execErr := drv.ExecContext(ctx,
 					"INSERT INTO users "+
@@ -223,10 +213,7 @@ func TestGetAllUsers(t *testing.T) {
 				res, actualErr := repo.GetAllUsers(ctx, 100, 0)
 				require.Nil(t, res)
 				require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
-
-				return actualErr
 			})
-			require.Error(t, err)
 		})
 	})
 }

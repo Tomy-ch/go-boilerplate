@@ -27,8 +27,8 @@ SELECT
     u.building,
     u.postal_code,
     u.deleted_at
-FROM users u
-JOIN prefectures p ON u.prefecture_id = p.id
+FROM users AS u
+INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 WHERE u.id = $1
 `
 

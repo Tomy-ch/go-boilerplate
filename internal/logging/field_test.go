@@ -2,6 +2,7 @@ package logging
 
 import (
 	"testing"
+	"time"
 
 	"boilerplate-go/pkg/xerrors"
 
@@ -95,6 +96,21 @@ func TestBool(t *testing.T) {
 	}
 
 	actual := Bool(expectedKey, expectedBool)
+	require.Equal(t, expected, actual)
+}
+
+func TestTime(t *testing.T) {
+	t.Parallel()
+
+	expectedKey := "key"
+	expectedTime := time.Date(2024, time.January, 2, 15, 4, 5, 0, time.UTC)
+	expected := &Field{
+		key:         expectedKey,
+		kind:        fieldString,
+		stringValue: expectedTime.Format(time.RFC3339Nano),
+	}
+
+	actual := Time(expectedKey, expectedTime)
 	require.Equal(t, expected, actual)
 }
 

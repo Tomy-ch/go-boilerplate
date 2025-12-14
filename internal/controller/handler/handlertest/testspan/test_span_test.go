@@ -21,7 +21,7 @@ func TestStartTestSpanForEcho(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 
-		setupCtx, setupSpan := observability.NewTestSpanContext(t)
+		setupCtx, setupSpan := observability.NewStubSpanContext(t)
 		defer setupSpan()
 		req = req.WithContext(setupCtx)
 
@@ -32,7 +32,7 @@ func TestStartTestSpanForEcho(t *testing.T) {
 		require.NotNil(t, nc)
 		require.NotNil(t, end)
 
-		sc := observability.ExtractSpan(c.Request().Context())
+		sc := observability.ExtractTraceContext(c.Request().Context())
 		require.NotEmpty(t, sc.SpanID())
 		require.NotEmpty(t, sc.TraceID())
 
@@ -51,7 +51,7 @@ func TestStartTestSpanForEcho(t *testing.T) {
 		require.NotNil(t, nc)
 		require.NotNil(t, end)
 
-		_ = observability.ExtractSpan(c.Request().Context())
+		_ = observability.ExtractTraceContext(c.Request().Context())
 		end()
 	})
 }

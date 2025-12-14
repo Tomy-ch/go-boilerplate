@@ -7,7 +7,7 @@
 主要な提供機能:
 
 - **環境別ロガー生成**: `New`, `NewProductionLogger`, `NewDevelopmentLogger` により環境に合った `Logger` を返します。
-- **テスト用ロガー**: `NewTestInstance(t *testing.T)` でテスト向けに `zap.NewNop()` ベースのロガーを生成します。
+- **テスト用ロガー**: `NewTestLogger(t *testing.T)` でテスト向けに `zap.NewNop()` ベースのロガーを生成します。
 - **フィールドヘルパ**: `String`, `Int`, `Bool`, `Error`, `Any` などで安全にフィールドを作成できます。
 
 ## 役割
@@ -16,7 +16,7 @@
 
 - 環境（開発 / 本番）に応じたデフォルト設定の提供
 - アプリケーションコードから使いやすい `Logger` インターフェースの提供
-- テストでの取り扱いを容易にする `NewTestInstance` の提供
+- テストでの取り扱いを容易にする `NewTestLogger` の提供
 
 ## 必要度
 
@@ -28,7 +28,7 @@
 ### 開発/テスト運用での必須度
 
 - **必須度: 開発/テスト運用で必須**
-- 理由: 開発時は可読性の高いコンソール出力（色付き、詳細なデバッグレベル）を使うことで迅速なデバッグが可能です。テストでは `NewTestInstance` を使い副作用なしにロギングを扱えます。
+- 理由: 開発時は可読性の高いコンソール出力（色付き、詳細なデバッグレベル）を使うことで迅速なデバッグが可能です。テストでは `NewTestLogger` を使い副作用なしにロギングを扱えます。
 
 ## 利用例
 
@@ -61,7 +61,7 @@ logger.Error("failed to process", logging.String("user_id", "123"), logging.Erro
 
 ```go
 func TestSomething(t *testing.T) {
-  logger := logging.NewTestInstance(t)
+  logger := logging.NewTestLogger(t)
   // テスト内では zap の出力を行わない NOP ロガーが返る
   logger.Info("starting test")
 }
