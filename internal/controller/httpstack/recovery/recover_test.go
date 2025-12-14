@@ -20,8 +20,8 @@ func TestMiddleware(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)
-	lf := logging.NewLogFields(config.NewObservabilityConfig(cfg))
-	logger := logging.NewTestInstance(t)
+	lf := logging.NewTestLogFieldBuilder(t)
+	logger := logging.NewTestLogger(t)
 
 	require.NotNil(t, Middleware(logger, lf, appCfg))
 }
@@ -29,10 +29,9 @@ func TestMiddleware(t *testing.T) {
 func Test_newRecoverLogErrorFunc(t *testing.T) {
 	t.Parallel()
 
-	logger := logging.NewTestInstance(t)
+	logger := logging.NewTestLogger(t)
 
-	cfg := config.MockConfigForTest(t)
-	lf := logging.NewLogFields(config.NewObservabilityConfig(cfg))
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
 
@@ -66,7 +65,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 func Test_newRecoverConfig(t *testing.T) {
 	t.Parallel()
 
-	logger := logging.NewTestInstance(t)
+	logger := logging.NewTestLogger(t)
 
 	t.Run("開発モードの場合、developmentConfigを返す", func(t *testing.T) {
 		t.Parallel()

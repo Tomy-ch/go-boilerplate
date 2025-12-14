@@ -113,7 +113,7 @@ func RunDomainWithSpan[T any](
 	return childCtx, v, nil
 }
 
-// FullName は、LayerTracer の情報をもとに完全なspan名を生成します。
+// makeSpanName は、LayerTracer の情報をもとに完全なspan名を生成します。
 func (lt LayerTracer) makeSpanName(optionalName string) string {
 	fullName := lt.layer + delimiter + lt.pkgName + delimiter + lt.funcName
 	if optionalName != "" {

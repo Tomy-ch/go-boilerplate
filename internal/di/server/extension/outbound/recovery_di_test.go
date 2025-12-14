@@ -19,8 +19,8 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)
-	lf := logging.NewLogFields(config.NewObservabilityConfig(cfg))
-	logger := logging.NewTestInstance(t)
+	lf := logging.NewTestLogFieldBuilder(t)
+	logger := logging.NewTestLogger(t)
 
 	mw := RecoveryMiddleware(logger, lf, appCfg)
 

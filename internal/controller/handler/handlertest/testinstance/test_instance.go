@@ -22,8 +22,8 @@ func NewTestInstanceForBindHandler(t *testing.T) (
 	e := echo.New()
 	ctrl := gomock.NewController(t)
 
-	log := logging.NewTestInstance(t)
-	tf := observability.NewTestTracerFactory(t)
+	log := logging.NewTestLogger(t)
+	tf := observability.NewNoopTracerFactory(t)
 	return e, ctrl, tf, log
 }
 
@@ -38,7 +38,7 @@ func NewTestInstancesForImplementedUsecase(t *testing.T) (
 	location, err := time.LoadLocation("Asia/Tokyo")
 	require.NoError(t, err)
 
-	tf := observability.NewTestTracerFactory(t)
+	tf := observability.NewNoopTracerFactory(t)
 	lt := tf.Controller()
 
 	return ctx, ctrl, location, lt

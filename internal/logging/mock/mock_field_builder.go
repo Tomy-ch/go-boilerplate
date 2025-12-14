@@ -10,9 +10,8 @@
 package mock_logging
 
 import (
-	reflect "reflect"
-
 	logging "boilerplate-go/internal/logging"
+	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
 )
@@ -95,4 +94,18 @@ func (m *MockLogFieldBuilder) BuildSQLEndFields(sql logging.SQLFieldsEndInput) [
 func (mr *MockLogFieldBuilderMockRecorder) BuildSQLEndFields(sql any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildSQLEndFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildSQLEndFields), sql)
+}
+
+// BuildSQLStartFields mocks base method.
+func (m *MockLogFieldBuilder) BuildSQLStartFields(sql logging.SQLFieldsStartInput) []*logging.Field {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BuildSQLStartFields", sql)
+	ret0, _ := ret[0].([]*logging.Field)
+	return ret0
+}
+
+// BuildSQLStartFields indicates an expected call of BuildSQLStartFields.
+func (mr *MockLogFieldBuilderMockRecorder) BuildSQLStartFields(sql any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildSQLStartFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildSQLStartFields), sql)
 }
