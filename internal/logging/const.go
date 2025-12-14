@@ -3,6 +3,17 @@ package logging
 const (
 	// HTTPレスポンス系ログのキー
 
+	// EventTypeKey は、イベントタイプを表すログフィールドのキーです。
+	EventTypeKey = "event_type"
+	// EventTypeStart は、開始イベントを表すイベントタイプの値です。
+	EventTypeStart = "start"
+	// EventTypeEnd は、終了イベントを表すイベントタイプの値です。
+	EventTypeEnd = "end"
+	// EventAtKey は、イベント発生時刻を表すログフィールドのキーです。
+	EventAtKey = "event_at"
+	// eventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。
+	eventTzKey = "event_tz"
+
 	// StatusKey は、HTTPステータスコードを表すログフィールドのキーです。
 	StatusKey = "status"
 	// MethodKey は、HTTPメソッドを表すログフィールドのキーです。
@@ -67,8 +78,8 @@ const (
 	TraceIDKey = "trace_id"
 	// SpanIDKey は、スパンIDを表すログフィールドのキーです。
 	SpanIDKey = "span_id"
-	// SpanEventKey は、スパンイベントを表すログフィールドのキーです。
-	SpanEventKey = "span_event"
+	// ParentSpanIDKey は、親スパンIDを表すログフィールドのキーです。
+	ParentSpanIDKey = "parent_span_id"
 	// SpanNameKey は、スパン名を表すログフィールドのキーです。
 	SpanNameKey = "span_name"
 	// LayerKey は、DDDのレイヤーを表すログフィールドのキーです。
