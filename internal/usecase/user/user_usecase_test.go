@@ -97,7 +97,7 @@ func TestGetAllUsers(t *testing.T) {
 			t.Parallel()
 
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindAll(gomock.Any(), p.Limit(), p.Offset()).Return(user.Entities{userDomain}, nil)
+			userRepo.EXPECT().FindAll(gomock.Any(), p.Limit32(), p.Offset32()).Return(user.Entities{userDomain}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Entities{prefectureDomain}, nil)
 			uc := &usecase{
@@ -122,7 +122,7 @@ func TestGetAllUsers(t *testing.T) {
 			keywords := []string{*params.Keyword}
 
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByKeyword(gomock.Any(), keywords, params.Active, p.Limit(), p.Offset()).Return(user.Entities{userDomain}, nil)
+			userRepo.EXPECT().FindByKeyword(gomock.Any(), keywords, params.Active, p.Limit32(), p.Offset32()).Return(user.Entities{userDomain}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Entities{prefectureDomain}, nil)
 			uc := &usecase{
@@ -151,7 +151,7 @@ func TestGetAllUsers(t *testing.T) {
 			require.NoError(t, actualErr)
 
 			repo := mock_user.NewMockRepository(ctrl)
-			repo.EXPECT().FindAll(gomock.Any(), p.Limit(), p.Offset()).Return(nil, expectedErr)
+			repo.EXPECT().FindAll(gomock.Any(), p.Limit32(), p.Offset32()).Return(nil, expectedErr)
 			uc := &usecase{
 				tracer:   lt,
 				userRepo: repo,
@@ -175,7 +175,7 @@ func TestGetAllUsers(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindAll(gomock.Any(), p.Limit(), p.Offset()).Return(user.Entities{userDomain}, nil)
+			userRepo.EXPECT().FindAll(gomock.Any(), p.Limit32(), p.Offset32()).Return(user.Entities{userDomain}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(nil, expectedErr)
 			uc := &usecase{
