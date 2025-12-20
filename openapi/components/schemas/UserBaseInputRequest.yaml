@@ -27,7 +27,7 @@ properties:
     type: string
     pattern: '^\+?[0-9]{10,15}$'
     example: "09012345678"
-  postlalCode:
+  postalCode:
     description: 郵便番号
     type: string
     pattern: '^[0-9]{3}-[0-9]{4}$'

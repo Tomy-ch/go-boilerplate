@@ -86,6 +86,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseVersion'
+  /_internal/types/error-response:
+    get:
+      summary: （内部用）ErrorResponse型生成用エンドポイント
+      description: |
+        このエンドポイントは Goコード生成のためだけに存在します。 実際には実装・公開されません。
+      tags:
+        - internal/types/error-response
+      operationId: GenerateErrorSchema
+      responses:
+        '200':
+          description: このレスポンスの型を生成するためです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/users:
     get:
       operationId: GetUsers
@@ -355,21 +370,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /_internal/types/error-response:
-    get:
-      summary: （内部用）ErrorResponse型生成用エンドポイント
-      description: |
-        このエンドポイントは Goコード生成のためだけに存在します。 実際には実装・公開されません。
-      tags:
-        - internal/types/error-response
-      operationId: GenerateErrorSchema
-      responses:
-        '200':
-          description: このレスポンスの型を生成するためです。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
     KeywordParam:
@@ -546,7 +546,7 @@ components:
           type: string
           pattern: '^\+?[0-9]{10,15}$'
           example: 09012345678
-        postlalCode:
+        postalCode:
           description: 郵便番号
           type: string
           pattern: '^[0-9]{3}-[0-9]{4}$'
@@ -680,7 +680,7 @@ components:
             - prefecture
             - city
             - street
-            - postlalCode
+            - postalCode
             - building
     RequestPutV1User:
       description: ユーザー情報の更新
@@ -691,7 +691,7 @@ components:
             - lastName
             - email
             - password
-            - postlalCode
+            - postalCode
             - phone
             - prefecture
             - city

@@ -214,7 +214,7 @@
             <column ascending="true" name="code"/>
          </index>
       </table>
-      <table name="schema_migrations" remarks="" schema="public" type="TABLE">
+      <table name="schema_migrations" numRows="1" remarks="" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="version" nullable="false" remarks="" size="19" type="int8" typeCode="-5"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="dirty" nullable="false" remarks="" size="1" type="bool" typeCode="-7"/>
          <primaryKey column="version" sequenceNumberInPK="1"/>

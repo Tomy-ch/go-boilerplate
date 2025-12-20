@@ -6,7 +6,7 @@ allOf:
       - lastName
       - email
       - password
-      - postlalCode
+      - postalCode
       - phone
       - prefecture
       - city

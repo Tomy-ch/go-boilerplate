@@ -63,16 +63,16 @@ func TestV1Users_Integration(t *testing.T) {
 
 		req := gen.PostUsersRequestObject{
 			Body: &gen.PostUsersJSONRequestBody{
-				FirstName:   "First",
-				LastName:    "Last",
-				Email:       types.Email("new@example.com"),
-				Phone:       "09000000000",
-				PostlalCode: "123-4567",
-				Prefecture:  "Tokyo",
-				City:        "Shibuya",
-				Street:      "1-1-1",
-				Building:    ptr.To("Building"),
-				Password:    "secret",
+				FirstName:  "First",
+				LastName:   "Last",
+				Email:      types.Email("new@example.com"),
+				Phone:      "09000000000",
+				PostalCode: "123-4567",
+				Prefecture: "Tokyo",
+				City:       "Shibuya",
+				Street:     "1-1-1",
+				Building:   ptr.To("Building"),
+				Password:   "secret",
 			},
 		}
 

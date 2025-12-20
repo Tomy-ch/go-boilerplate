@@ -210,16 +210,16 @@ func Test_server_PostUsers(t *testing.T) {
 
 		req := gen.PostUsersRequestObject{
 			Body: &gen.PostUsersJSONRequestBody{
-				FirstName:   "First",
-				LastName:    "Last",
-				Email:       types.Email("new@example.com"),
-				Phone:       "09000000000",
-				PostlalCode: "123-4567",
-				Prefecture:  "Tokyo",
-				City:        "Shibuya",
-				Street:      "1-1-1",
-				Building:    ptr.To("Building"),
-				Password:    "secret",
+				FirstName:  "First",
+				LastName:   "Last",
+				Email:      types.Email("new@example.com"),
+				Phone:      "09000000000",
+				PostalCode: "123-4567",
+				Prefecture: "Tokyo",
+				City:       "Shibuya",
+				Street:     "1-1-1",
+				Building:   ptr.To("Building"),
+				Password:   "secret",
 			},
 		}
 
@@ -228,7 +228,7 @@ func Test_server_PostUsers(t *testing.T) {
 			LastName:       req.Body.LastName,
 			Email:          string(req.Body.Email),
 			Phone:          req.Body.Phone,
-			PostalCode:     req.Body.PostlalCode,
+			PostalCode:     req.Body.PostalCode,
 			PrefectureName: req.Body.Prefecture,
 			City:           req.Body.City,
 			Street:         req.Body.Street,

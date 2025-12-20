@@ -92,7 +92,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	createPrams.LastName = request.Body.LastName
 	createPrams.Email = string(request.Body.Email)
 	createPrams.Phone = request.Body.Phone
-	createPrams.PostalCode = request.Body.PostlalCode
+	createPrams.PostalCode = request.Body.PostalCode
 	createPrams.PrefectureName = request.Body.Prefecture
 	createPrams.City = request.Body.City
 	createPrams.Street = request.Body.Street

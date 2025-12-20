@@ -15,5 +15,5 @@ allOf:
       - prefecture
       - city
       - street
-      - postlalCode
+      - postalCode
       - building

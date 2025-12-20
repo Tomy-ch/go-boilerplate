@@ -45,8 +45,8 @@ type RequestPostV1Users struct {
 	// Phone 電話番号
 	Phone string `json:"phone"`
 
-	// PostlalCode 郵便番号
-	PostlalCode string `json:"postlalCode"`
+	// PostalCode 郵便番号
+	PostalCode string `json:"postalCode"`
 
 	// Prefecture 都道府県
 	Prefecture string `json:"prefecture"`
@@ -91,8 +91,8 @@ type UserBaseInputRequest struct {
 	// Phone 電話番号
 	Phone *string `json:"phone,omitempty"`
 
-	// PostlalCode 郵便番号
-	PostlalCode *string `json:"postlalCode,omitempty"`
+	// PostalCode 郵便番号
+	PostalCode *string `json:"postalCode,omitempty"`
 
 	// Prefecture 都道府県
 	Prefecture *string `json:"prefecture,omitempty"`
