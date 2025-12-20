@@ -21,8 +21,8 @@
 .PHONY: test-repo ## テストの実行とテストレポートの生成
 .PHONY: go-update ## goenvの更新を実行
 
-TGT_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|sqlc)')
-COVER_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|sqlc)' | tr '\n' ',' | sed 's/,$$//')
+TGT_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)')
+COVER_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)' | tr '\n' ',' | sed 's/,$$//')
 
 go-update:
 	@anyenv update

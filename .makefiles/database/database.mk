@@ -8,6 +8,13 @@
 .PHONY: db-seed ## データベースにシードデータを投入
 .PHONY: db-init ## DBの初期化を行う(マイグレーション、シードデータ投入、スキーマ更新)
 .PHONY: db-logs-delete ## DBのログを削除
+.PHONY: fix-collation ## データベースのコラテーションを修正
+.PHONY: dump-schema ## スキーマのダンプを実行
+.PHONY: merge-dml ## DMLのマージを実行
+.PHONY: merge-dml-repo ## ドメイン用DMLのマージ
+.PHONY: merge-dml-qs ## クエリサービス用DMLのマージ
+.PHONY: merge-dml-sysq ## システムクエリ用DMLのマージ
+.PHONY: merge-dml-% ## 指定したタイプのDMLのマージを実行 (type=repo|qs|sysq)
 
 # 対象DB（local / test / prd など）。未指定なら local
 DB ?= local
@@ -27,6 +34,26 @@ new-migrate-%:
 	fi && \
 	docker compose run --rm go_tool_runner migrate create -ext sql -dir database/migrations -seq "$$file_name"
 	@echo "✅ 新しいマイグレーションファイルが生成されました: database/migrations/$$file_name.up-down.sql"
+
+fix-collation:
+	@echo "🔄 データベースのコラテーションを修正します... (database=$(DB))"
+	@docker compose run --rm go_tool_runner go run cmd/main.go fix-collation
+	@echo "✅ データベースのコラテーション修正が完了しました。 (database=$(DB))"
+
+dump-schema:
+	@echo "🔄 スキーマのダンプを実行します..."
+	@docker compose run --rm go_tool_runner go run cmd/main.go dump-schema
+	@echo "✅ スキーマのダンプが完了しました。"
+
+merge-dml-repo: merge-dml-repository
+merge-dml-qs: merge-dml-query_service
+merge-dml-sysq: merge-dml-system_query
+merge-dml: merge-dml-repo merge-dml-qs merge-dml-sysq
+
+merge-dml-%:
+	@echo "🔄 DMLのマージを実行します... (type=$*)"
+	@docker compose run --rm go_tool_runner go run cmd/main.go merge-dml --type=$*
+	@echo "✅ DMLのマージが完了しました。 (type=$*)"
 
 # -------------------------------
 # 汎用ターゲット（DB可変）

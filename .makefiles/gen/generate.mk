@@ -13,6 +13,8 @@
 .PHONY: gen-sqlc-sysq ## システムクエリ用のSQLCのコード生成を行う
 .PHONY: gen-tools-meta ## 生成ツールのバージョン情報を出力する
 
+SQLC_OUT := /app/internal/infrastructure/rdb/sqlc/gen
+
 gen-ctxkey:
 	@if [ -z "$(name)" ] || [ -z "$(type)" ]; then \
 	echo "❌ nameとtypeの引数が必要です。以下のように指定してください："; \
@@ -29,10 +31,10 @@ gen:
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
 gen-go-code:
-	docker compose run --rm go_tool_runner go generate ./...
+	@docker compose run --rm go_tool_runner go generate ./...
 
 gen-swagger:
-	docker compose run --rm node_tool_runner swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
+	@docker compose run --rm node_tool_runner swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
 
 gen-api:
 	@make gen-swagger
@@ -47,28 +49,37 @@ gen-redoc:
 
 gen-sqlc:
 	@echo "🔄 SQLCのコードを生成します..."
-	@make gen-sqlc-repo
-	@make gen-sqlc-qs
-	@make gen-sqlc-sysq
+	@make dump-schema
+	@make merge-dml
+	@make exc-sqlc
+	@make fmt
 	@echo "✅ SQLCのコード生成が完了しました。"
 
 gen-sqlc-repo:
-	@echo "🔄 ドメイン用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository; \
-	echo "✅ ドメイン用のSQLCのコード生成が完了しました。"
-	@make fmt
+	@echo "🔄 ドメイン用のSQLCコードを生成します..."
+	@make dump-schema
+	@make merge-dml-repo
+	@make exc-sqlc
+	@echo "✅ ドメイン用のSQLCコード生成が完了しました。"
 
 gen-sqlc-qs:
-	@echo "🔄 クエリサービス用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service; \
-	echo "✅ クエリサービス用のSQLCのコード生成が完了しました。"
-	@make fmt
+	@echo "🔄 クエリサービス用のSQLCコードを生成します..."
+	@make dump-schema
+	@make merge-dml-qs
+	@make exc-sqlc
+	@echo "✅ クエリサービス用のSQLCコード生成が完了しました。"
 
 gen-sqlc-sysq:
-	@echo "🔄 システムクエリ用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=system_query; \
-	echo "✅ システムクエリ用のSQLCのコード生成が完了しました。"
-	@make fmt
+	@echo "🔄 システムクエリ用のSQLCコードを生成します..."
+	@make dump-schema
+	@make merge-dml-sysq
+	@make exc-sqlc
+	@echo "✅ システムクエリ用のSQLCコード生成が完了しました。"
+
+exc-sqlc:
+	@docker compose run --rm go_tool_runner sh -lc '\
+		rm -f $(SQLC_OUT)/*.gen.sql.go && \
+		cd /app && sqlc generate -f sqlc.yaml'
 
 gen-tools-meta:
 	@echo "🔍 生成ツールのバージョン情報を出力します..."
