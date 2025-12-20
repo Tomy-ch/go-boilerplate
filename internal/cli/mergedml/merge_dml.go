@@ -150,7 +150,7 @@ func (g *generator) dmlTypeRootAbs(targetType string) string {
 }
 
 // buildCategorySQLFile は、指定されたカテゴリのSQLファイルを連結して1つのSQLファイルにまとめます。
-func (g *generator) buildCategorySQLFile(
+func (g *generator) buildCategorySQLFile( //nolint:gocognit // SQL生成ロジックのため分岐が多くなる設計
 	category string,
 	targetType string,
 ) error {
@@ -218,7 +218,14 @@ func (g *generator) buildCategorySQLFile(
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() {
+		if closeErr := out.Close(); closeErr != nil {
+			g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.buildCategorySQLFile").Warn("failed to close output sql file",
+				logging.String("dst", dstPath),
+				logging.Error("close", closeErr),
+			)
+		}
+	}()
 
 	for _, fpath := range files {
 		// 由来が分かるように見出しを入れる（sqlcはSQLコメントなら無害）

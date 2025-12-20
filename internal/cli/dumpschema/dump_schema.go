@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const schemaFilePerm = 0o644 // rw-r--r--
+
 var (
 	// dumpCommand は、スキーマダンプに使用するコマンド名を表します。
 	dumpCommand = "pg_dump"
@@ -44,7 +46,7 @@ func newGenerator(logger logging.Logger) *generator {
 	return &generator{
 		logger:          logger,
 		callerSkipCount: 1,
-		permmission:     0o644, // rw-r--r--
+		permmission:     schemaFilePerm,
 		workDir:         "/app",
 		schemaRelPath:   "database/gen/schema.gen.sql",
 		dumpCommand:     dumpCommand,
@@ -106,7 +108,14 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create schema file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Warn("failed to close schema file",
+				logging.String("schema", g.schemaRelPath),
+				logging.Error("close", closeErr),
+			)
+		}
+	}()
 
 	args := append([]string{dbURL}, g.dumpArgs...)
 
@@ -154,10 +163,10 @@ func (g *generator) sanitizeSchemaInPlace() error {
 	}
 
 	if err := os.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permmission); err != nil {
-		return fmt.Errorf("write sanitized schema: %w", err)
+		return fmt.Errorf("write sanitised schema: %w", err)
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",
+	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.sanitizeSchemaInPlace").Info("schema sanitised for sqlc",
 		logging.String("schema", g.schemaRelPath),
 	)
 	return nil
