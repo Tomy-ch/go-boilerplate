@@ -4,28 +4,26 @@ package user
 import (
 	"time"
 
-	"boilerplate-go/internal/domain/prefecture"
 	"boilerplate-go/pkg/stringkit"
 	"boilerplate-go/pkg/uuid"
 	"boilerplate-go/pkg/xerrors"
 )
 
-type Entities []Entity
+type Entities []*Entity
 
 type Entity struct {
-	id             uuid.UUID
-	firstName      string
-	lastName       string
-	password       string
-	email          string
-	phone          string
-	prefectureID   uuid.UUID
-	prefectureName string
-	city           string
-	street         string
-	building       *string
-	postalCode     string
-	deletedAt      *time.Time
+	id           uuid.UUID
+	firstName    string
+	lastName     string
+	password     string
+	email        string
+	phone        string
+	prefectureID uuid.UUID
+	city         string
+	street       string
+	building     *string
+	postalCode   string
+	deletedAt    *time.Time
 }
 
 // New は、ユーザーエンティティの検証と生成を行います。
@@ -37,7 +35,6 @@ func New(
 	email string,
 	phone string,
 	prefectureIDStr string,
-	prefectureName string,
 	city string,
 	street string,
 	building *string,
@@ -55,12 +52,6 @@ func New(
 
 	if !stringkit.InRange(lastName, minLength, maxLastNameLength) {
 		return nil, xerrors.Wrap(ErrInvalidLastName, stringkit.ErrorMsgInRange(minLength, maxLastNameLength, lastName))
-	}
-
-	if !stringkit.InRange(prefectureName, prefecture.MinLength, prefecture.MaxPrefectureNameLength) {
-		return nil, xerrors.Wrap(
-			ErrInvalidPrefectureName, stringkit.ErrorMsgInRange(prefecture.MinLength, prefecture.MaxPrefectureNameLength, prefectureName),
-		)
 	}
 
 	if !stringkit.InRange(password, minLength, maxPasswordLength) {
@@ -101,19 +92,18 @@ func New(
 	}
 
 	return &Entity{
-		id:             id,
-		firstName:      firstName,
-		lastName:       lastName,
-		password:       password,
-		email:          email,
-		phone:          phone,
-		prefectureID:   prefectureID,
-		prefectureName: prefectureName,
-		city:           city,
-		street:         street,
-		building:       building,
-		postalCode:     postalCode,
-		deletedAt:      deletedAt,
+		id:           id,
+		firstName:    firstName,
+		lastName:     lastName,
+		password:     password,
+		email:        email,
+		phone:        phone,
+		prefectureID: prefectureID,
+		city:         city,
+		street:       street,
+		building:     building,
+		postalCode:   postalCode,
+		deletedAt:    deletedAt,
 	}, nil
 }
 
@@ -137,9 +127,6 @@ func (u *Entity) Phone() string { return u.phone }
 
 // PrefectureID は、ユーザーの都道府県IDを返します。
 func (u *Entity) PrefectureID() uuid.UUID { return u.prefectureID }
-
-// PrefectureName は、ユーザーの都道府県名を返します。
-func (u *Entity) PrefectureName() string { return u.prefectureName }
 
 // City は、ユーザーの市区町村名を返します。
 func (u *Entity) City() string { return u.city }
