@@ -94,7 +94,8 @@ paths:
       summary: ユーザー一覧の取得
       description: ユーザーの一覧を取得します。検索条件やページネーションを指定できます。
       parameters:
-        - $ref: '#/components/parameters/NameKeywordParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/ActiveParam'
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
       responses:
@@ -371,6 +372,23 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
+    KeywordParam:
+      name: keyword
+      in: query
+      description: 全文検索キーワード
+      required: false
+      schema:
+        type: string
+        example: example keyword
+    ActiveParam:
+      name: active
+      in: query
+      description: null
+      required: false
+      schema:
+        type: boolean
+        description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
+        example: true
     PageParam:
       name: page
       in: query
@@ -401,14 +419,6 @@ components:
         type: string
         format: uuid
         example: 123e4567-e89b-12d3-a456-426614174000
-    NameKeywordParam:
-      name: name_keyword
-      in: query
-      description: ユーザー名の部分一致検索キーワード
-      required: false
-      schema:
-        type: string
-        example: John
   schemas:
     ErrorResponse:
       type: object
@@ -507,39 +517,120 @@ components:
           type: string
           description: サービス名
     UserBaseInputRequest:
-      type: object
       description: ユーザー情報の基本入力スキーマ
+      additionalProperties: false
       properties:
-        name:
+        firstName:
+          description: 苗字
           type: string
-          example: John Doe
+          example: Alice
+          maxLength: 50
+        lastName:
+          description: 名前
+          type: string
+          example: Smith
           maxLength: 50
         email:
+          description: メールアドレス
           type: string
           format: email
-          example: john.doe@example.com
-        phone:
+          example: alice.smith@example.com
+        password:
+          description: パスワード
           type: string
-          pattern: '^\\+?[0-9]{10,15}$'
+          format: password
+          minLength: 8
+          example: P@ssw0rd!
+        phone:
+          description: 電話番号
+          type: string
+          pattern: '^\+?[0-9]{10,15}$'
           example: 09012345678
+        postlalCode:
+          description: 郵便番号
+          type: string
+          pattern: '^[0-9]{3}-[0-9]{4}$'
+          example: 150-0041
+        prefecture:
+          description: 都道府県
+          type: string
+          example: 東京都
+          maxLength: 100
+        city:
+          description: 市区町村
+          type: string
+          example: Shibuya
+          maxLength: 100
+        street:
+          description: 丁目・番地
+          type: string
+          example: 1-2-3 Jinnan
+          maxLength: 200
+        building:
+          description: 建物名・部屋番号
+          type: string
+          example: Shibuya Building 101
+          maxLength: 200
+          nullable: true
     UserResponse:
       type: object
       description: ユーザー情報の基本レスポンススキーマ
       required:
-        - name
+        - firstName
+        - lastName
+        - phone
         - email
+        - postalCode
+        - prefecture
+        - city
+        - street
       properties:
-        name:
+        firstName:
+          description: 苗字
           type: string
-          example: John Doe
+          example: John
+          maxLength: 50
+        lastName:
+          description: 名前
+          type: string
+          example: Doe
+          maxLength: 50
         email:
           type: string
+          description: メールアドレス
           format: email
           example: john.doe@example.com
         phone:
           type: string
+          description: 電話番号
           nullable: true
+          pattern: '^\+?[0-9]{10,15}$'
           example: 09012345678
+        postalCode:
+          description: 郵便番号
+          type: string
+          pattern: '^[0-9]{3}-[0-9]{4}$'
+          example: 150-0041
+        prefecture:
+          description: 都道府県
+          type: string
+          example: Tokyo
+          maxLength: 100
+        city:
+          description: 市区町村
+          type: string
+          example: Shibuya
+          maxLength: 100
+        street:
+          description: 丁目・番地
+          type: string
+          example: 1-2-3 Jinnan
+          maxLength: 200
+        building:
+          description: 建物名・部屋番号
+          type: string
+          example: Shibuya Building 101
+          maxLength: 200
     ResponseV1User:
       $ref: '#/components/schemas/UserResponse'
     ResponseV1Users:
@@ -575,27 +666,37 @@ components:
       description: ユーザー情報の新規作成
       allOf:
         - $ref: '#/components/schemas/UserBaseInputRequest'
-        - type: object
-          properties:
+        - properties:
             password:
               type: string
               description: ユーザーのパスワード
               example: password123
           required:
-            - name
+            - firstName
+            - lastName
             - email
-            - phone
             - password
-          additionalProperties: false
+            - phone
+            - prefecture
+            - city
+            - street
+            - postlalCode
+            - building
     RequestPutV1User:
       description: ユーザー情報の更新
       allOf:
         - $ref: '#/components/schemas/RequestPatchV1User'
-        - type: object
-          additionalProperties: false
-          required:
-            - name
+        - required:
+            - firstName
+            - lastName
             - email
+            - password
+            - postlalCode
+            - phone
+            - prefecture
+            - city
+            - street
+            - building
     RequestPatchV1User:
       description: ユーザー情報の部分更新
       allOf:
