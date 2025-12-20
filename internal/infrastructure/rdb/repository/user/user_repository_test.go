@@ -52,8 +52,8 @@ func TestFindAll(t *testing.T) {
 			// t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				limit := 100
-				offset := 0
+				limit := int32(100)
+				offset := int32(0)
 
 				expectedFirst, err := user.New(
 					"eaabee3e-3b7a-4f61-8fa9-030944625e92",
@@ -102,8 +102,8 @@ func TestFindAll(t *testing.T) {
 			// t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				limit := 1
-				offset := 0
+				limit := int32(1)
+				offset := int32(0)
 
 				expected, err := user.New(
 					"eaabee3e-3b7a-4f61-8fa9-030944625e92",
@@ -133,8 +133,8 @@ func TestFindAll(t *testing.T) {
 			// t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				limit := 1
-				offset := 9
+				limit := int32(1)
+				offset := int32(9)
 				expected, getAllUsersErr := user.New(
 					"550e8400-e29b-41d4-a716-446655440000",
 					"John",
@@ -164,8 +164,8 @@ func TestFindAll(t *testing.T) {
 			// t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				limit := 0
-				offset := 0
+				limit := int32(0)
+				offset := int32(0)
 				actual, err := repo.FindAll(ctx, limit, offset)
 				require.NoError(t, err)
 				require.Empty(t, actual)
@@ -249,8 +249,8 @@ func TestFindByKeyword(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				keywords := []string{"Grace"}
-				limit := 10
-				offset := 0
+				limit := int32(10)
+				offset := int32(0)
 
 				expected, err := user.New(
 					"c688ffbc-731e-4257-82e9-d34b4712afd6",

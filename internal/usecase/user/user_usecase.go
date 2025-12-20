@@ -86,9 +86,9 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, 
 
 	if params != nil {
 		keywords := search.ParseSearchTokens(params.Keyword, search.DefaultMaxTokens)
-		us, err = u.userRepo.FindByKeyword(ctx, keywords, params.Active, page.Limit(), page.Offset())
+		us, err = u.userRepo.FindByKeyword(ctx, keywords, params.Active, page.Limit32(), page.Offset32())
 	} else {
-		us, err = u.userRepo.FindAll(ctx, page.Limit(), page.Offset())
+		us, err = u.userRepo.FindAll(ctx, page.Limit32(), page.Offset32())
 	}
 
 	if err != nil {

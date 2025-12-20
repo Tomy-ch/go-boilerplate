@@ -34,14 +34,14 @@ func New(
 }
 
 // FindAll は、全ユーザーの情報を取得します。
-func (r *repository) FindAll(ctx context.Context, limit, offset int) (user.Entities, error) {
+func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Entities, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(r.provider.NewLoggingDB(ctx))
 	rows, err := db.ListUsers(ctx, &gen.ListUsersParams{
-		OffsetParam: int32(offset),
-		LimitParam:  int32(limit),
+		OffsetParam: offset,
+		LimitParam:  limit,
 	})
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
@@ -72,7 +72,7 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int) (user.Entit
 }
 
 // FindByKeyword は、キーワード検索でユーザーの情報を取得します。
-func (r *repository) FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int) (user.Entities, error) {
+func (r *repository) FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Entities, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 

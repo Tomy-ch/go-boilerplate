@@ -57,7 +57,7 @@ func (mr *MockRepositoryMockRecorder) CreateUser(ctx, datetime, arg2 any) *gomoc
 }
 
 // FindAll mocks base method.
-func (m *MockRepository) FindAll(ctx context.Context, limit, offset int) (user.Entities, error) {
+func (m *MockRepository) FindAll(ctx context.Context, limit, offset int32) (user.Entities, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindAll", ctx, limit, offset)
 	ret0, _ := ret[0].(user.Entities)
@@ -72,7 +72,7 @@ func (mr *MockRepositoryMockRecorder) FindAll(ctx, limit, offset any) *gomock.Ca
 }
 
 // FindByKeyword mocks base method.
-func (m *MockRepository) FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int) (user.Entities, error) {
+func (m *MockRepository) FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Entities, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindByKeyword", ctx, keywords, active, limit, offset)
 	ret0, _ := ret[0].(user.Entities)

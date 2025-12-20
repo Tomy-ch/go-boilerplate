@@ -20,8 +20,8 @@ func ParseSearchTokens(keyword *string, maxTokens int) []string {
 	}
 
 	raw := splitIntoTerms(*keyword)
-	normalized := trimAndDropEmpty(raw)
-	unique := dedupePreserveOrder(normalized)
+	normalised := trimAndDropEmpty(raw)
+	unique := dedupePreserveOrder(normalised)
 
 	return limit(unique, maxTokens)
 }
@@ -62,9 +62,9 @@ func dedupePreserveOrder(ss []string) []string {
 }
 
 // limit は、配列の要素数を上限までに制限します。
-func limit(ss []string, max int) []string {
-	if len(ss) <= max {
+func limit(ss []string, maxVal int) []string {
+	if len(ss) <= maxVal {
 		return ss
 	}
-	return ss[:max]
+	return ss[:maxVal]
 }

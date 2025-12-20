@@ -214,6 +214,11 @@ type Purchases struct {
 	UpdatedAt time.Time
 }
 
+type SchemaMigrations struct {
+	Version int64
+	Dirty   bool
+}
+
 // ユーザ
 type Users struct {
 	// ID

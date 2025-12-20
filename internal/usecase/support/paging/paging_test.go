@@ -155,4 +155,28 @@ func TestPage_Getters(t *testing.T) {
 
 		require.Equal(t, expected, actual)
 	})
+
+	t.Run("Limit32が正しい値を返す", func(t *testing.T) {
+		page := &Paging{
+			limit:  100,
+			offset: 200,
+		}
+
+		actual := page.Limit32()
+		expected := int32(100)
+
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("Offset32が正しい値を返す", func(t *testing.T) {
+		page := &Paging{
+			limit:  100,
+			offset: 200,
+		}
+
+		actual := page.Offset32()
+		expected := int32(200)
+
+		require.Equal(t, expected, actual)
+	})
 }

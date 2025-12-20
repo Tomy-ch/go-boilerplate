@@ -161,8 +161,8 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int) (user.Entit
     db := gen.New(r.provider.NewLoggingDB(ctx))
     // genで生成されたDMLの呼び出し
     rows, err := db.ListUsers(ctx, &sqlc.ListUsersParams{
-        OffsetParam: conv.NewNullInt64(int64(offset)),
-        LimitParam:  conv.NewNullInt64(int64(limit)),
+        OffsetParam: offset,
+        LimitParam:  limit,
     })
     if err != nil {
         // エラー正規化して返す。
