@@ -4,28 +4,79 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	v1users "boilerplate-go/internal/controller/handler/v1/users"
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
+	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/user"
 	mock_user "boilerplate-go/internal/usecase/user/mock"
+	"boilerplate-go/pkg/ptr"
 
+	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime/types"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestV1Users_Integration(t *testing.T) {
 	t.Parallel()
 
+	expectedDTO := user.MutableFields{FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890"}
+
 	t.Run("GET /v1/usersのエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		e, ctrl, tf, _ := testinstance.NewTestInstanceForBindHandler(t)
+		e := echo.New()
+		ctrl := gomock.NewController(t)
+		tf := observability.NewNoopTracerFactory(t)
+
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
-			GetAllUsers(gomock.Any(), gomock.Any()).
-			Return([]user.DTO{}, nil)
+			ListUsersByKeyword(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return([]user.MutableFields{expectedDTO}, nil)
 
 		v1users.BindHandler(e, tf, mockApp)
 
+		expected := gen.ResponseV1Users{
+			Users: []gen.UserResponse{
+				{
+					FirstName: expectedDTO.FirstName,
+					LastName:  expectedDTO.LastName,
+					Email:     types.Email(expectedDTO.Email),
+					Phone:     ptr.To(expectedDTO.Phone),
+				},
+			},
+		}
+
 		actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
-		AssertJSONResponse(t, gen.ResponseV1Users{}, actual)
+		AssertJSONResponse(t, expected, actual)
+	})
+
+	t.Run("POST /v1/usersのエンドポイントが正常に動作することを確認する", func(t *testing.T) {
+		e := echo.New()
+		ctrl := gomock.NewController(t)
+		tf := observability.NewNoopTracerFactory(t)
+
+		mockApp := mock_user.NewMockUsecase(ctrl)
+		mockApp.EXPECT().
+			CreateUser(gomock.Any(), gomock.Any()).
+			Return(user.MutableFields{}, nil)
+
+		v1users.BindHandler(e, tf, mockApp)
+
+		req := gen.PostUsersRequestObject{
+			Body: &gen.PostUsersJSONRequestBody{
+				FirstName:   "First",
+				LastName:    "Last",
+				Email:       types.Email("new@example.com"),
+				Phone:       "09000000000",
+				PostlalCode: "123-4567",
+				Prefecture:  "Tokyo",
+				City:        "Shibuya",
+				Street:      "1-1-1",
+				Building:    ptr.To("Building"),
+				Password:    "secret",
+			},
+		}
+
+		actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, nil)
+		require.Equal(t, http.StatusCreated, actual.StatusCode)
 	})
 }
