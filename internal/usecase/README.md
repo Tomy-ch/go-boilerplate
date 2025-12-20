@@ -120,18 +120,26 @@ Usecaseは以下のようにobservability.LayerTracerを依存として受け取
 ```go
 type server struct {
     tracer   observability.LayerTracer
+    txm      tx.Manager
     userRepo user.Repository // それぞれのリポジトリ
+    pftRepo  prefecture.Repository
 }
 ```
 
-BindHandler側ではDIコンテナから渡されたtrace.TracerProviderとzap.Loggerを用いて、
-`observability.NewUsecaseTracer`でUsecase専用のトレーサーを生成します。
+New関数内では、`observability.NewUsecaseTracer`でUsecase専用のトレーサーを生成します。
 
 ```go
-func New(tf observability.TracerFactory, userRepo user.Repository) Usecase {
+func New(
+    tf observability.TracerFactory,
+    txm tx.Manager,
+    userRepo user.Repository,
+    prefectureRepo prefecture.Repository,
+) Usecase {
     return &usecase{
-        tracer:  tf.Usecase(),
+        tracer:   tf.Usecase(),
+        txm:      txm,
         userRepo: userRepo,
+        pftRepo:  prefectureRepo,
     }
 }
 ```
@@ -155,29 +163,53 @@ import (
 
 
 // 下位の層とやり取りするためのDTO
-type DTO struct {
-    Name  string
-    Email string
-    Phone string
+type UserMutableFields struct {
+    FirstName      string
+    LastName       string
+    Email          string
+    Phone          string
+    PostalCode     string
+    PrefectureName string
+    City           string
+    Street         string
+    Building       *string
 }
+
+type CreateUserParamsDTO struct {
+    UserID   uuid.UUID
+    Password string
+
+    UserMutableFields
+}
+
 
 // usecaseという名称は固定
 type usecase struct {
-    tracer    observability.LayerTracer
+    tracer   observability.LayerTracer
+    txm      tx.Manager
     userRepo user.Repository
+    pftRepo  prefecture.Repository
 }
 
 // Usecaseという名称は固定
 type Usecase interface {
-    GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, error)
+    GetAllUsers(ctx context.Context, page paging.Paging) ([]UserMutableFields, error)
+    CreateUser(ctx context.Context, dto CreateUserParamsDTO) (UserMutableFields, error)
+
 }
 
 // Newという名称は固定
-func New(tf observability.TracerFactory, userRepo user.Repository) Usecase {
+func New(
+    tf observability.TracerFactory,
+    txm tx.Manager,
+    userRepo user.Repository,
+    prefectureRepo prefecture.Repository,
+) Usecase {
     return &usecase{
-        tracer:  tf.Usecase(),
-        // リポジトリの設定
+        tracer:   tf.Usecase(),
+        txm:      txm,
         userRepo: userRepo,
+        pftRepo:  prefectureRepo,
     }
 }
 
@@ -186,22 +218,69 @@ func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, e
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
 
-    // リポジトリの呼び出し
-    us, err := u.userRepo.GetAllUsers(ctx, page.Limit(), page.Offset())
+    // ユーザー一覧取得（Domainエンティティのスライス）
+    us, err := u.userRepo.FindAll(ctx, page.Limit(), page.Offset())
     if err != nil {
-        return nil, err
+       return nil, err
     }
-    // ドメインモデル → DTO への変換
-    dtos := make([]DTO, len(us))
-    for i, u := range us {
-        dtos[i] = DTO{
-            // ビジネスロジックの呼び出し
-            Name:  u.FullName(),
-            Phone: u.Phone(),
-            Email: u.Email(),
-        }
+
+    // オプション: observability.WithDomainSpanでDomain層のspanを作成
+    // 可観測性を高めるために、Domain層の処理もspanとして切り出すことができます。
+    // オプションなのでなくても構いません。
+    // 第一引数のctxは、後続で使う場合は返り値を受け取って上書きしてください。
+    ctx, prefectureMap, err := observability.WithDomainSpan(
+        ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
+            // ユーザーの都道府県IDを集めて、一括で都道府県エンティティを取得
+            pids := make([]uuid.UUID, len(us))
+            for i, u := range us {
+                pids[i] = u.PrefectureID()
+            }
+
+            // 都道府県エンティティの取得
+            // IDsメソッドは複数IDで一括取得するリポジトリメソッドの例
+            ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
+            if pftErr != nil {
+              return nil, pftErr
+            }
+
+            // 取得した都道府県エンティティをマップに詰め替え
+            // Mapにすることで、後続のループで高速に参照できるようにする
+            prefectureMap := make(map[uuid.UUID]*prefecture.Entity, len(ps))
+            for _, p := range ps {
+                prefectureMap[p.ID()] = p
+            }
+
+            return prefectureMap, nil
+      })
+    if err != nil {
+      return nil, err
     }
-    return dtos, nil
+
+    // ctxは、後続でobservability.WithDomainSpanを使わない場合は不要
+    _, dtos, err := observability.WithDomainSpan(
+        ctx, u.tracer, "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
+            // 結果をDTOに詰め替え
+            dtos := make([]UserMutableFields, len(us))
+            for i, u := range us {
+                dtos[i] = UserMutableFields{
+                    FirstName:  u.FirstName(),
+                    LastName:   u.LastName(),
+                    Email:      u.Email(),
+                    Phone:      u.Phone(),
+                    PostalCode: u.PostalCode(),
+                    City:       u.City(),
+                    Street:     u.Street(),
+                    Building:   u.Building(),
+                }
+                // 都道府県名をマップから取得してセット
+                if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
+                    dtos[i].PrefectureName = p.Name()
+                }
+            }
+            return dtos, nil
+        })
+
+    return dtos, err
 }
 
 ```
