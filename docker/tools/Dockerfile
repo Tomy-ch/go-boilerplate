@@ -29,7 +29,7 @@ WORKDIR /app
 
 ENV PATH="/go/bin:$PATH"
 
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash postgresql-client
 
 COPY --from=go_tools_builder /out/ /usr/local/bin/
 

@@ -1831,6 +1831,20 @@
         "autoUpdated": "",
         "defaultValue": "now()",
         "comments": "<p>更新日時</p>"
+    },
+    {
+        "tableName": "users",
+        "tableFileName": "users",
+        "tableType": "Table",
+        "keyClass": "indexedColumn",
+        "keyTitle": "Indexed",
+        "name": "<i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i>search_text",
+        "type": "text",
+        "length": 2147483647,
+        "nullable": "√",
+        "autoUpdated": "",
+        "defaultValue": "(((((((((((((((COALESCE(first_name, ''::character varying))::text || ' '::text) || (COALESCE(last_name, ''::character varying))::text) || ' '::text) || (COALESCE(email, ''::character varying))::text) || ' '::text) || (COALESCE(phone, ''::character varying))::text) || ' '::text) || (COALESCE(city, ''::character varying))::text) || ' '::text) || (COALESCE(street, ''::character varying))::text) || ' '::text) || (COALESCE(building, ''::character varying))::text) || ' '::text) || (COALESCE(postal_code, ''::character varying))::text)",
+        "comments": "<p>全文検索用テキスト</p>"
     }
 ];
                     var config = {
