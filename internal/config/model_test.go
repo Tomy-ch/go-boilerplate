@@ -291,12 +291,32 @@ func TestIsAppDevelopmentMode(t *testing.T) {
 	})
 }
 
-func TestDatabaseURL(t *testing.T) {
+func TestDSN(t *testing.T) {
 	t.Parallel()
 
 	cfg := MockConfigForTest(t)
 
-	t.Run("DatabaseURL", func(t *testing.T) {
+	t.Run("DSN", func(t *testing.T) {
+		t.Parallel()
+		expectedURL := fmt.Sprintf(
+			"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+			expectedDBUser,
+			expectedDBPassword,
+			expectedDBHost,
+			expectedDBPort,
+			expectedDBName,
+			expectedDBSSLMode,
+		)
+		require.Equal(t, expectedURL, cfg.database.DSN())
+	})
+}
+
+func TestDSNWithTimeZone(t *testing.T) {
+	t.Parallel()
+
+	cfg := MockConfigForTest(t)
+
+	t.Run("DSNWithTimeZone", func(t *testing.T) {
 		t.Parallel()
 		expectedURL := fmt.Sprintf(
 			"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
@@ -308,6 +328,6 @@ func TestDatabaseURL(t *testing.T) {
 			expectedDBSSLMode,
 			url.QueryEscape(expectedOSTimeZone),
 		)
-		require.Equal(t, expectedURL, cfg.database.DSN(&cfg.os))
+		require.Equal(t, expectedURL, cfg.database.DSNWithTimeZone(&cfg.os))
 	})
 }

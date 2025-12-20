@@ -7,14 +7,14 @@ include .makefiles/github/operation/release-util.mk
 include .makefiles/github/setting/github.mk
 include .makefiles/github/setting/branch-ruleset.mk
 include .makefiles/github/setting/label-setting.mk
+include .makefiles/database/database.mk
 
 # 依存されないファイル
 include .makefiles/github/operation/release-branch.mk
 include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/operation/setup-repository.mk
-include .makefiles/dev/develop.mk
-include .makefiles/database/database.mk
 include .makefiles/gen/generate.mk
+include .makefiles/dev/develop.mk
 
 .PHONY: help
 help:
