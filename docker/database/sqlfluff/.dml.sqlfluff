@@ -2,6 +2,7 @@
 dialect = postgres
 templater = placeholder
 max_line_length = 100
+exclude_rules = RF03
 ; 現時点で次の公式報告があり、並列実行を有効にすると `resource_tracker: leaked semaphore` の警告や異常終了の恐れがあるので、processes = 1 とする。
 ; Related official references:
 ; - intermittent ResourceTracker called reentrantly for resource cleanup in tests:
