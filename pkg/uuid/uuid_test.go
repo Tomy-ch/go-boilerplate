@@ -3,6 +3,7 @@ package uuid
 import (
 	"testing"
 
+	guid "github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,6 +20,23 @@ func TestNewTestFromSalt(t *testing.T) {
 	uuid1 := NewTestFromSalt(t, salt)
 	uuid2 := NewTestFromSalt(t, salt)
 	require.Equal(t, uuid1, uuid2)
+}
+
+func TestBytes(t *testing.T) {
+	t.Parallel()
+	uuid, err := New()
+	require.NoError(t, err)
+	bytes := uuid.Bytes()
+	require.Len(t, bytes, 16)
+	require.Equal(t, uuid.b, bytes)
+}
+
+func TestToPrimitive(t *testing.T) {
+	t.Parallel()
+	uuid, err := New()
+	require.NoError(t, err)
+	primitive := uuid.ToPrimitive()
+	require.Equal(t, toGoogle(uuid), primitive)
 }
 
 func TestString(t *testing.T) {
@@ -69,4 +87,52 @@ func TestParse(t *testing.T) {
 		require.Empty(t, actual)
 		require.Error(t, err)
 	})
+}
+
+func TestFromPrimitiveList(t *testing.T) {
+	t.Parallel()
+	uuid1, err := New()
+	require.NoError(t, err)
+	uuid2, err := New()
+	require.NoError(t, err)
+
+	primitiveList := []guid.UUID{
+		toGoogle(uuid1),
+		toGoogle(uuid2),
+	}
+
+	uuidList := FromPrimitiveList(primitiveList)
+	require.Len(t, uuidList, 2)
+	require.True(t, uuid1.Equal(uuidList[0]))
+	require.True(t, uuid2.Equal(uuidList[1]))
+}
+
+func TestToPrimitiveList(t *testing.T) {
+	t.Parallel()
+	uuid1, err := New()
+	require.NoError(t, err)
+	uuid2, err := New()
+	require.NoError(t, err)
+
+	uuidList := []UUID{uuid1, uuid2}
+
+	primitiveList := ToPrimitiveList(uuidList)
+	require.Len(t, primitiveList, 2)
+	require.Equal(t, toGoogle(uuid1), primitiveList[0])
+	require.Equal(t, toGoogle(uuid2), primitiveList[1])
+}
+
+func TestToPrimitiveUniqueList(t *testing.T) {
+	t.Parallel()
+	uuid1, err := New()
+	require.NoError(t, err)
+	uuid2, err := New()
+	require.NoError(t, err)
+
+	uuidList := []UUID{uuid1, uuid2, uuid1, uuid2}
+
+	primitiveList := ToPrimitiveUniqueList(uuidList)
+	require.Len(t, primitiveList, 2)
+	require.Contains(t, primitiveList, toGoogle(uuid1))
+	require.Contains(t, primitiveList, toGoogle(uuid2))
 }
