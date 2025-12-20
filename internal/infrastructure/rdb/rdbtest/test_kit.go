@@ -4,7 +4,6 @@ package rdbtest
 import (
 	"context"
 	"testing"
-	"time"
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
@@ -46,29 +45,6 @@ func NewTestDBWithLoggingProvider(t *testing.T) (driver.DatabaseDriver, loggingd
 	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, dbCfg, mockLogger, lf, tracer)
 
 	return db, loggingDBProvider
-}
-
-// NewNoopTracerFactory は、テスト用のトレーサーファクトリーを生成します。
-func NewNoopTracerFactory(t *testing.T) observability.TracerFactory {
-	t.Helper()
-	return observability.NewNoopTracerFactory(t)
-}
-
-// NewNoopInfraLayerTracer は、テスト用のレイヤートレーサーを生成します。
-func NewNoopInfraLayerTracer(t *testing.T) observability.LayerTracer {
-	t.Helper()
-	return NewNoopTracerFactory(t).Infra()
-}
-
-// NewTestLocation は、テスト用のタイムゾーンロケーションを生成します。
-func NewTestLocation(t *testing.T) *time.Location {
-	t.Helper()
-	cfg := config.MockConfigForTest(t)
-	osCfg := config.NewOSConfig(cfg)
-
-	loc, err := time.LoadLocation(osCfg.TimeZone())
-	require.NoError(t, err)
-	return loc
 }
 
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
