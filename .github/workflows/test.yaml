@@ -47,6 +47,15 @@ jobs:
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Setup DB (wait & init)
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: test
+          user: postgres
+          password: postgres-password
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
       - name: Initialize Database Table
         run: go run cmd/main.go migrate-up --database test
       - name: Seed Database
