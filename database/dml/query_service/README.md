@@ -48,7 +48,7 @@ database/dml/query_service/
   - -- name: コメントで関数名を明示します。
   - 必要に応じてパラメータや返却カラムの型をコメントに記載します。
 - 生成
-  - gen-sqlc --type qsコマンドで対象カテゴリの SQLC コードを生成します。
+  - gen-query-qsコマンドで対象カテゴリの SQLC コードを生成します。
 - パフォーマンス
   - N+1禁止：QueryService内で必要な関連は一括取得します。
   - ページング：LIMIT/OFFSETデフォ。大規模は Keyset も検討します。

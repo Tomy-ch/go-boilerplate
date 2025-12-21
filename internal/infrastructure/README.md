@@ -45,6 +45,7 @@
 ### トランザクション
 
 - Tx 境界はUsecase側で管理。Infraは`*sql.DB`/`*sql.Tx`の両方に対応できるようにする。
+- ただし、保存処理などが絡むテストでは、影響しあい不安定になるため`t.Parallel()`での**並列実行不可**とする。
 
 ### ロギング
 
@@ -64,7 +65,7 @@
 
 ### Do
 
-- `sqlc`生成コードでクエリ発行し、**Domain エンティティへ変換**して返す。
+- `sqlc/gen`の生成コードでクエリ発行し、**Domain エンティティへ変換**して返す。
 - `conv/nullable`で **nullable ⇔ ポインタ**変換を一元化。
 - `ErrNoRows` → `ErrNotFound`、ユニーク制約 → `ErrConflict` 等に正規化。
 - テストでRepositoryの変換とエラー正規化を検証。
@@ -109,8 +110,7 @@ type server struct {
 }
 ```
 
-BindHandler側ではDIコンテナから渡されたtrace.TracerProviderとzap.Loggerを用いて、
-`observability.NewInfrastructureTracer`でInfrastructure専用のトレーサーを生成します。
+New関数内では、`observability.NewInfrastructureTracer`でInfrastructure専用のトレーサーを生成します。
 
 ```go
 func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
@@ -138,38 +138,36 @@ type repository struct {
     tracer   observability.LayerTracer
 }
 
-// レコードが見つからない場合のエラー
-var ErrUserNotFound = xerrors.Wrap(apperror.ErrNotFound, "user not found")
-
 // Newで名称固定
-func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
-    return &systemQuery{
+func New(
+    db driver.DatabaseDriver,
+    provider loggingdb.DBProvider,
+    tf observability.TracerFactory,
+) user.Repository {
+    return &repository{
         db:       db,
         provider: provider,
         tracer:   tf.Infra(),
     }
 }
 
-func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.Entities, error) {
+func (r *repository) FindAll(ctx context.Context, limit, offset int) (user.Entities, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
     // driver.ResolveDriverWithLogを使うことでログを自動で出力
     // 不要な場合は、driver.ResolveDriver(ctx, r.db)を使う
-    db := sqlc.New(r.provider.NewLoggingDB(ctx))
+    db := gen.New(r.provider.NewLoggingDB(ctx))
     // genで生成されたDMLの呼び出し
-    rows, err := db.GetUsersDomain(ctx, gen.GetUsersDomainParams{
-        OffsetParam: conv.NewNullInt64(int64(offset)),
-        LimitParam:  conv.NewNullInt64(int64(limit)),
+    rows, err := db.ListUsers(ctx, &sqlc.ListUsersParams{
+        OffsetParam: offset,
+        LimitParam:  limit,
     })
     if err != nil {
-        // レコードが見つからない場合のエラー
-        // 本来は0件でもnilを返す設計が正しいが、例として記載
-        if xerrors.Is(err, sql.ErrNoRows) {
-            return nil, xerrors.Wrap(ErrUserNotFound, err.Error())
-        }
-        return nil, err
+        // エラー正規化して返す。
+        // エラー内容はpgerrorパッケージ（internal/infrastructure/rdb/postgres/pgerror）で判定される
+        return nil, pgerror.NormalizeError(err)
     }
 
     // Domainエンティティへの詰め替え
@@ -183,7 +181,6 @@ func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.E
             row.Email,
             row.Phone,
             row.PrefectureID.String(),
-            row.PrefectureName,
             row.City,
             row.Street,
             conv.StringPtrFromNull(row.Building),
@@ -193,7 +190,7 @@ func (r *repository) GetAllUsers(ctx context.Context, limit, offset int) (user.E
         if err != nil {
             return nil, err
         }
-        users[i] = *user
+        users[i] = user
     }
     return users, nil
 }

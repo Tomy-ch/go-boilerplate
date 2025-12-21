@@ -56,7 +56,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
 
-	db, err := sql.Open("postgres", dbCfg.DSN(osCfg))
+	db, err := sql.Open("postgres", dbCfg.DSNWithTimeZone(osCfg))
 	if err != nil {
 		logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error("dbOpen", err))
 		return err

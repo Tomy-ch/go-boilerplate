@@ -5,7 +5,8 @@ get:
   summary: ユーザー一覧の取得
   description: ユーザーの一覧を取得します。検索条件やページネーションを指定できます。
   parameters:
-    - $ref: '../../components/parameters/user/NameKeywordParam.yaml'
+    - $ref: '../../components/parameters/search/KeywordParam.yaml'
+    - $ref: '../../components/parameters/search/ActiveParam.yaml'
     - $ref: '../../components/parameters/pagination/PageParam.yaml'
     - $ref: '../../components/parameters/pagination/PerPageParam.yaml'
   responses:

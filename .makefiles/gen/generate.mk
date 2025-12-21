@@ -7,11 +7,13 @@
 .PHONY: gen-go-code ## Goコードを生成します
 .PHONY: gen-redoc ## RedocでOpenAPIドキュメントを生成します
 .PHONY: gen-ctxkey ## Contextに値を格納するためのコードを生成する(nameとtypeを指定が必要)
-.PHONY: gen-sqlc ## SQLCのコード生成を行う
-.PHONY: gen-sqlc-repo ## ドメイン用のSQLCのコード生成を行う
-.PHONY: gen-sqlc-qs ## クエリサービス用のSQLCのコード生成を行う
-.PHONY: gen-sqlc-sysq ## システムクエリ用のSQLCのコード生成を行う
+.PHONY: gen-query ## SQLCのコード生成を行う
+.PHONY: gen-query-repo ## ドメイン用のSQLCのコード生成を行う
+.PHONY: gen-query-qs ## クエリサービス用のSQLCのコード生成を行う
+.PHONY: gen-query-sysq ## システムクエリ用のSQLCのコード生成を行う
 .PHONY: gen-tools-meta ## 生成ツールのバージョン情報を出力する
+
+SQLC_OUT := /app/internal/infrastructure/rdb/sqlc/gen
 
 gen-ctxkey:
 	@if [ -z "$(name)" ] || [ -z "$(type)" ]; then \
@@ -24,15 +26,21 @@ gen-ctxkey:
 gen:
 	@echo "🔄 各種ドキュメントやコードの生成します..."
 	@make gen-api
-	@make gen-sqlc
+	@make gen-query
 	@make gen-doc
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
 gen-go-code:
-	docker compose run --rm go_tool_runner go generate ./...
+	@docker compose run --rm go_tool_runner make gen-go-code-ci
+
+gen-go-code-ci:
+	go generate ./...
 
 gen-swagger:
-	docker compose run --rm node_tool_runner swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
+	@docker compose run --rm node_tool_runner make gen-swagger-ci
+
+gen-swagger-ci:
+	swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
 
 gen-api:
 	@make gen-swagger
@@ -42,33 +50,50 @@ gen-doc:
 	@make gen-redoc
 	@make gen-tools-meta
 
-gen-redoc:
-	docker compose run --rm node_tool_runner redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html
+gen-api-docs:
+	@docker compose run --rm node_tool_runner make gen-api-docs-ci
 
-gen-sqlc:
+gen-api-docs-ci:
+	redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html
+
+gen-query:
 	@echo "🔄 SQLCのコードを生成します..."
-	@make gen-sqlc-repo
-	@make gen-sqlc-qs
-	@make gen-sqlc-sysq
+	@make dump-schema
+	@make merge-dml
+	@make gen-sqlc
+	@make fmt
 	@echo "✅ SQLCのコード生成が完了しました。"
 
-gen-sqlc-repo:
-	@echo "🔄 ドメイン用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=repository; \
-	echo "✅ ドメイン用のSQLCのコード生成が完了しました。"
-	@make fmt
+gen-query-repo:
+	@echo "🔄 ドメイン用のSQLCコードを生成します..."
+	@make dump-schema
+	@make merge-dml-repo
+	@make gen-sqlc
+	@echo "✅ ドメイン用のSQLCコード生成が完了しました。"
 
-gen-sqlc-qs:
-	@echo "🔄 クエリサービス用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=query_service; \
-	echo "✅ クエリサービス用のSQLCのコード生成が完了しました。"
-	@make fmt
+gen-query-qs:
+	@echo "🔄 クエリサービス用のSQLCコードを生成します..."
+	@make dump-schema
+	@make merge-dml-qs
+	@make gen-sqlc
+	@echo "✅ クエリサービス用のSQLCコード生成が完了しました。"
 
-gen-sqlc-sysq:
-	@echo "🔄 システムクエリ用のSQLCのコード生成を行います..."; \
-	docker compose run --rm go_tool_runner go run cmd/main.go gen-sqlc --type=system_query; \
-	echo "✅ システムクエリ用のSQLCのコード生成が完了しました。"
-	@make fmt
+gen-query-sysq:
+	@echo "🔄 システムクエリ用のSQLCコードを生成します..."
+	@make dump-schema
+	@make merge-dml-sysq
+	@make gen-sqlc
+	@echo "✅ システムクエリ用のSQLCコード生成が完了しました。"
+
+gen-sqlc:
+	@docker compose run --rm go_tool_runner make remove-generated-sqlc
+	@docker compose run --rm go_tool_runner make sqlc-generate
+
+remove-generated-sqlc:
+	rm -f $(SQLC_OUT)/*.gen.sql.go
+
+sqlc-generate:
+	sqlc generate -f sqlc.yaml
 
 gen-tools-meta:
 	@echo "🔍 生成ツールのバージョン情報を出力します..."

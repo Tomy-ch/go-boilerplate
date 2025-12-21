@@ -1,18 +1,21 @@
 package ready
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
 
+	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/handler/handlertest/testassert"
-	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	"boilerplate-go/internal/controller/handler/ready/gen"
+	"boilerplate-go/internal/observability"
 	healthcheckuc "boilerplate-go/internal/usecase/healthcheck"
 	mock_healthcheckuc "boilerplate-go/internal/usecase/healthcheck/mock"
 	"boilerplate-go/internal/usecase/healthcheck/query"
 	"boilerplate-go/pkg/xerrors"
 
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -22,7 +25,10 @@ const targetPath = "/ready"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, ctrl, tf, _ := testinstance.NewTestInstanceForBindHandler(t)
+	e := echo.New()
+	ctrl := gomock.NewController(t)
+	tf := observability.NewNoopTracerFactory(t)
+
 	uc := mock_healthcheckuc.NewMockUsecase(ctrl)
 
 	BindHandler(e, tf, uc)
@@ -40,7 +46,10 @@ func TestBindHandler(t *testing.T) {
 func TestGetReady(t *testing.T) {
 	t.Parallel()
 
-	ctx, ctrl, loc, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	lt := observability.NewMockControllerLayerTracer(t)
+	loc := config.NewTestLocation(t)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()

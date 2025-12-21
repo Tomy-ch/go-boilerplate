@@ -5,8 +5,68 @@ import (
 	"testing"
 	"time"
 
+	"boilerplate-go/pkg/uuid"
+
+	googleUUID "github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
+
+func TestUUIDPtrFromNull(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Validがtrueの場合、ポインタが返される", func(t *testing.T) {
+		nullUUID := googleUUID.NullUUID{UUID: googleUUID.MustParse("123e4567-e89b-12d3-a456-426614174000"), Valid: true}
+		expected, err := uuid.Parse("123e4567-e89b-12d3-a456-426614174000")
+		require.NoError(t, err)
+
+		actual, err := UUIDPtrFromNull(nullUUID)
+		require.NoError(t, err)
+		require.NotNil(t, actual)
+		require.Equal(t, &expected, actual)
+	})
+
+	t.Run("Validがfalseの場合、nilが返される", func(t *testing.T) {
+		nullUUID := googleUUID.NullUUID{Valid: false}
+
+		actual, err := UUIDPtrFromNull(nullUUID)
+		require.NoError(t, err)
+		require.Nil(t, actual)
+	})
+}
+
+func TestNullUUIDFromPtr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ポインタがnilでない場合、ValidがtrueのgoogleUUID.NullUUIDが返される", func(t *testing.T) {
+		input, err := uuid.Parse("123e4567-e89b-12d3-a456-426614174000")
+		require.NoError(t, err)
+		expected := googleUUID.NullUUID{UUID: googleUUID.MustParse("123e4567-e89b-12d3-a456-426614174000"), Valid: true}
+
+		actual := NullUUIDFromPtr(&input)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("ポインタがnilの場合、ValidがfalseのgoogleUUID.NullUUIDが返される", func(t *testing.T) {
+		expected := googleUUID.NullUUID{Valid: false}
+
+		actual := NullUUIDFromPtr(nil)
+		require.Equal(t, expected, actual)
+	})
+}
+
+func TestNewNullUUID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("UUIDをgoogleUUID.NullUUIDに変換する", func(t *testing.T) {
+		t.Parallel()
+		input, err := uuid.Parse("123e4567-e89b-12d3-a456-426614174000")
+		require.NoError(t, err)
+		expected := googleUUID.NullUUID{UUID: googleUUID.MustParse("123e4567-e89b-12d3-a456-426614174000"), Valid: true}
+
+		actual := NewNullUUID(input)
+		require.Equal(t, expected, actual)
+	})
+}
 
 func TestStringPtrFromNull(t *testing.T) {
 	t.Parallel()
