@@ -55,6 +55,7 @@
 
   // material-icon-themeの設定の一部を追加する
   "material-icon-theme.folders.associations": {
+    "actions": "gh-workflows",
     "internal": "private",
     "apperror": "error",
     "ctxhelper": "context",
