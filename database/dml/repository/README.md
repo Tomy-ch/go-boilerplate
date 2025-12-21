@@ -37,4 +37,4 @@ database/dml/repository/
 - -- name: コメントで生成関数名を明示。
 - 複雑な条件や結合は最小限に抑える（集計はQS側で行う）。
 - 生成方法
-  `make gen-sqlc` コマンドで対象カテゴリの SQLC コードを生成。
+  gen-query-repo コマンドで対象カテゴリの SQLC コードを生成。
