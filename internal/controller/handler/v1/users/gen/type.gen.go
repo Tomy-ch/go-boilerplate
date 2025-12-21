@@ -131,7 +131,7 @@ type UserResponse struct {
 	Street string `json:"street"`
 }
 
-// ActiveParam 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
+// ActiveParam defines model for ActiveParam.
 type ActiveParam = bool
 
 // KeywordParam defines model for KeywordParam.
@@ -147,7 +147,9 @@ type PerPageParam = int
 type GetUsersParams struct {
 	// Keyword 全文検索キーワード
 	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`
-	Active  *ActiveParam  `form:"active,omitempty" json:"active,omitempty"`
+
+	// Active 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
+	Active *ActiveParam `form:"active,omitempty" json:"active,omitempty"`
 
 	// Page ページ番号（1から始まる）
 	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`
