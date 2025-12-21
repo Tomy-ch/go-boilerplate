@@ -40,12 +40,37 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install psql client
+    - name: Update apt and install postgresql client dependencies
       if: ${{ inputs.install_psql == 'true' }}
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y postgresql-client
+        sudo apt-get install -y ca-certificates curl gnupg lsb-release
+        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+          | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+        echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt \
+          $(lsb_release -cs)-pgdg main" \
+          | sudo tee /etc/apt/sources.list.d/pgdg.list
+        sudo apt-get update
+
+    - name: Install psql client(17)
+      if: ${{ inputs.install_psql == 'true' }}
+      shell: bash
+      run: |
+        sudo apt-get install -y postgresql-client-17
+        echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+    - name: Postgres Client Version
+      if: ${{ inputs.install_psql == 'true' }}
+      shell: bash
+      run: |
+        psql --version
+
+    - name: PG_DUMP Version
+      if: ${{ inputs.install_psql == 'true' }}
+      shell: bash
+      run: |
+        pg_dump --version
 
     - name: Wait for database
       shell: bash

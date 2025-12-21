@@ -47,8 +47,6 @@ jobs:
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
-      - name: Install psql client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Setup DB (wait & init)
         uses: ./.github/actions/setup-postgres
         with:

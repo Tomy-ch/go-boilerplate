@@ -18,6 +18,10 @@
 
 # 対象DB（local / test / prd など）。未指定なら local
 DB ?= local
+# 作業ディレクトリ
+work-dir ?= "/app"
+# マージDMLタイプ
+type ?= ""
 
 db-schema:
 	@echo "🔄 スキーマの更新を実行します..."
@@ -45,29 +49,41 @@ fix-collation-ci:
 
 dump-schema:
 	@echo "🔄 スキーマのダンプを実行します..."
-	@docker compose run --rm go_tool_runner make dump-schema-ci
+	@docker compose run --rm go_tool_runner make dump-schema-ci work-dir="$(work-dir)"
 	@echo "✅ スキーマのダンプが完了しました。"
 
 dump-schema-ci:
-	go run cmd/main.go dump-schema
+	go run cmd/main.go dump-schema --work-dir=$(work-dir)
 
-merge-dml-%:
-	@echo "🔄 DMLのマージを実行します... (type=$*)"
-	@docker compose run --rm go_tool_runner make merge-dml-ci-$(*)
-	@echo "✅ DMLのマージが完了しました。 (type=$*)"
+merge-dml-core:
+	@echo "🔄 DMLのマージを実行します... (type=$(type) work-dir=$(work-dir))"
+	@docker compose run --rm go_tool_runner make merge-dml-ci-core type="$(type)" work-dir="$(work-dir)"
+	@echo "✅ DMLのマージが完了しました。 (type=$(type) work-dir=$(work-dir))"
 
-merge-dml-repo: merge-dml-repository
-merge-dml-qs: merge-dml-query_service
-merge-dml-sysq: merge-dml-system_query
-merge-dml: merge-dml-repo merge-dml-qs merge-dml-sysq
+merge-dml-repo:
+	make merge-dml-core type="repository" work-dir="/app"
+merge-dml-qs:
+	make merge-dml-core type="query_service" work-dir="/app"
+merge-dml-sysq:
+	make merge-dml-core type="system_query" work-dir="/app"
+merge-dml:
+	make merge-dml-repo
+	make merge-dml-qs
+	make merge-dml-sysq
 
-merge-dml-ci-%:
-	go run cmd/main.go merge-dml --type=$*
+merge-dml-ci-core:
+	go run cmd/main.go merge-dml --type=$(type) --work-dir=$(work-dir)
 
-merge-dml-ci-repo: merge-dml-ci-repository
-merge-dml-ci-qs: merge-dml-ci-query_service
-merge-dml-ci-sysq: merge-dml-ci-system_query
-merge-dml-ci: merge-dml-ci-repo merge-dml-ci-qs merge-dml-ci-sysq
+merge-dml-ci-repo:
+	make merge-dml-ci-core type="repository" work-dir=$(work-dir)
+merge-dml-ci-qs:
+	make merge-dml-ci-core type="query_service" work-dir=$(work-dir)
+merge-dml-ci-sysq:
+	make merge-dml-ci-core type="system_query" work-dir=$(work-dir)
+merge-dml-ci:
+	make merge-dml-ci-repo work-dir=$(work-dir)
+	make merge-dml-ci-qs work-dir=$(work-dir)
+	make merge-dml-ci-sysq work-dir=$(work-dir)
 
 # -------------------------------
 # 汎用ターゲット（DB可変）

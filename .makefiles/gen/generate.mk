@@ -26,20 +26,20 @@ gen-ctxkey:
 gen:
 	@echo "🔄 各種ドキュメントやコードの生成します..."
 	@make gen-api
-	@make gen-sqlc
+	@make gen-query
 	@make gen-doc
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
 gen-go-code:
-	@docker compose run --rm go_tool_runner make go-code-generate
+	@docker compose run --rm go_tool_runner make gen-go-code-ci
 
-go-code-generate:
+gen-go-code-ci:
 	go generate ./...
 
 gen-swagger:
-	@docker compose run --rm node_tool_runner make bundle-swagger
+	@docker compose run --rm node_tool_runner make gen-swagger-ci
 
-bundle-swagger:
+gen-swagger-ci:
 	swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
 
 gen-api:
@@ -50,10 +50,10 @@ gen-doc:
 	@make gen-redoc
 	@make gen-tools-meta
 
-gen-redoc:
-	@docker compose run --rm node_tool_runner make api-docs-generate
+gen-api-docs:
+	@docker compose run --rm node_tool_runner make gen-api-docs-ci
 
-api-docs-generate:
+gen-api-docs-ci:
 	redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html
 
 gen-query:
