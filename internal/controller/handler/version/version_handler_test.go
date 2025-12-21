@@ -1,19 +1,22 @@
 package version
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/handler/handlertest/testassert"
-	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	"boilerplate-go/internal/controller/handler/version/gen"
+	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/system"
 	mock_system "boilerplate-go/internal/system/mock"
 	"boilerplate-go/pkg/datetime"
 
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 const targetPath = "/version"
@@ -21,7 +24,9 @@ const targetPath = "/version"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, _, tf, _ := testinstance.NewTestInstanceForBindHandler(t)
+	e := echo.New()
+	tf := observability.NewNoopTracerFactory(t)
+
 	bi := system.NewBuildInfo()
 
 	cfg := config.MockConfigForTest(t)
@@ -46,7 +51,10 @@ func TestBindHandler(t *testing.T) {
 func TestGetVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx, ctrl, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
+	ctx := context.Background()
+	ctrl := gomock.NewController(t)
+	lt := observability.NewMockControllerLayerTracer(t)
+
 	bi := system.NewBuildInfo()
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)

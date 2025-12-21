@@ -177,15 +177,23 @@ func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
 
 // DSN は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSN(o *OperationSystemConfig) string {
+func (d *DatabaseConfig) DSN() string {
 	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		d.user,
 		d.password,
 		d.host,
 		d.port,
 		d.name,
 		d.sslMode,
+	)
+}
+
+// DSNWithTimeZone は、データベースの接続URLを返します。
+func (d *DatabaseConfig) DSNWithTimeZone(o *OperationSystemConfig) string {
+	return fmt.Sprintf(
+		"%s&timezone=%s",
+		d.DSN(),
 		url.QueryEscape(o.timezone),
 	)
 }

@@ -6,7 +6,6 @@ codeToTestRatio:
     - '**/*.go'
     - '!**/gen/**.go'
     - '!**/cmd/**.go'
-    - '!**/sqlc/**.go'
     - '!**/*.gen.go'
     - '!**/*_test.go'
     - '!**/mock_*.go'

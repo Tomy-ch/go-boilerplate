@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/infrastructure/rdb/rdbtest"
+	"boilerplate-go/internal/observability"
 
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +14,7 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 
 	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
-	tf := rdbtest.NewNoopTracerFactory(t)
+	tf := observability.NewNoopTracerFactory(t)
 	expected := &systemQuery{
 		tracer:   tf.Infra(),
 		db:       db,
@@ -28,10 +29,12 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 	t.Parallel()
 
 	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
-	tracer := rdbtest.NewNoopInfraLayerTracer(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+
 	txm := rdbtest.NewTestTransactionManager(t)
+
 	s := &systemQuery{
-		tracer:   tracer,
+		tracer:   lt,
 		db:       db,
 		provider: provider,
 	}

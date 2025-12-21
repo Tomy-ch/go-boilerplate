@@ -16,7 +16,7 @@ func TestNew(t *testing.T) {
 	osCfg := config.NewOSConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
-	db, err := sql.Open("pgx", dbCfg.DSN(osCfg))
+	db, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
 	dbDriver := &dbDriver{db}
 	require.NoError(t, err)
 	t.Cleanup(func() {

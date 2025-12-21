@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	"boilerplate-go/internal/controller/handler/version"
 	"boilerplate-go/internal/controller/handler/version/gen"
+	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/system"
 
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,8 @@ func TestVersionIntegration(t *testing.T) {
 	t.Parallel()
 
 	t.Run("GET /versionのエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		e, _, tf, _ := testinstance.NewTestInstanceForBindHandler(t)
+		e := echo.New()
+		tf := observability.NewNoopTracerFactory(t)
 
 		bi := system.NewBuildInfo()
 		cfg := config.MockConfigForTest(t)

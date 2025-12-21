@@ -1,16 +1,55 @@
-type: object
 description: ユーザー情報の基本入力スキーマ
+additionalProperties: false
 properties:
-  name:
+  firstName:
+    description: 苗字
     type: string
-    example: "John Doe"
+    example: "Alice"
+    maxLength: 50
+  lastName:
+    description: 名前
+    type: string
+    example: "Smith"
     maxLength: 50
   email:
+    description: メールアドレス
     type: string
     format: email
-    example: "john.doe@example.com"
-  phone:
+    example: "alice.smith@example.com"
+  password:
+    description: パスワード
     type: string
-    pattern: '^\\+?[0-9]{10,15}$'
+    format: password
+    minLength: 8
+    example: "P@ssw0rd!"
+  phone:
+    description: 電話番号
+    type: string
+    pattern: '^\+?[0-9]{10,15}$'
     example: "09012345678"
-
+  postalCode:
+    description: 郵便番号
+    type: string
+    pattern: '^[0-9]{3}-[0-9]{4}$'
+    example: "150-0041"
+  prefecture:
+    description: 都道府県
+    type: string
+    example: "東京都"
+    maxLength: 100
+  city:
+    description: 市区町村
+    type: string
+    example: "Shibuya"
+    maxLength: 100
+  street:
+    description: 丁目・番地
+    type: string
+    example: "1-2-3 Jinnan"
+    maxLength: 200
+  building:
+    description: 建物名・部屋番号
+    type: string
+    example: "Shibuya Building 101"
+    maxLength: 200
+    nullable: true

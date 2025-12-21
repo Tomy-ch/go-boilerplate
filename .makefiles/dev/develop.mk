@@ -21,9 +21,6 @@
 .PHONY: test-repo ## テストの実行とテストレポートの生成
 .PHONY: go-update ## goenvの更新を実行
 
-TGT_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|sqlc)')
-COVER_PKGS := $(shell go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|sqlc)' | tr '\n' ',' | sed 's/,$$//')
-
 go-update:
 	@anyenv update
 	@goenv install "$(cat .go-version)"
@@ -49,6 +46,7 @@ tools-rebuild:
 	@echo "🔄 開発ツールコンテナを再ビルドします。"
 	@docker compose build --no-cache --pull go_tool_runner
 	@docker compose build --no-cache --pull node_tool_runner
+	@docker compose build --no-cache --pull python_tool_runner
 	@echo "✅ 開発ツールコンテナの再ビルドが完了しました。"
 
 smoke:
@@ -77,13 +75,22 @@ sql-lint:
 	@make sql-lint-seed
 
 sql-lint-migrations:
-	@docker compose run --rm python_tool_runner sqlfluff lint database/migrations/ --config docker/database/sqlfluff/.migrations.sqlfluff
+	@docker compose run --rm python_tool_runner make sql-lint-migrations-ci
+
+sql-lint-migrations-ci:
+	sqlfluff lint database/migrations/ --config docker/database/sqlfluff/.migrations.sqlfluff
 
 sql-lint-dml:
-	@docker compose run --rm python_tool_runner sqlfluff lint database/dml/ --config docker/database/sqlfluff/.dml.sqlfluff
+	@docker compose run --rm python_tool_runner make sql-lint-dml-ci
+
+sql-lint-dml-ci:
+	sqlfluff lint database/dml/ --config docker/database/sqlfluff/.dml.sqlfluff
 
 sql-lint-seed:
-	@docker compose run --rm python_tool_runner sqlfluff lint database/seed/ --config docker/database/sqlfluff/.seed.sqlfluff
+	@docker compose run --rm python_tool_runner make sql-lint-seed-ci
+
+sql-lint-seed-ci:
+	sqlfluff lint database/seed/ --config docker/database/sqlfluff/.seed.sqlfluff
 
 sql-fix:
 	@make sql-fix-migrations
@@ -91,24 +98,39 @@ sql-fix:
 	@make sql-fix-seed
 
 sql-fix-migrations:
-	@docker compose run --rm python_tool_runner sqlfluff fix database/migrations/ --config docker/database/sqlfluff/.migrations.sqlfluff
+	@docker compose run --rm python_tool_runner make sql-fix-migrations-ci
+
+sql-fix-migrations-ci:
+	sqlfluff fix database/migrations/ --config docker/database/sqlfluff/.migrations.sqlfluff
 
 sql-fix-dml:
-	@docker compose run --rm python_tool_runner sqlfluff fix database/dml/ --config docker/database/sqlfluff/.dml.sqlfluff
+	@docker compose run --rm python_tool_runner make sql-fix-dml-ci
+
+sql-fix-dml-ci:
+	sqlfluff fix database/dml/ --config docker/database/sqlfluff/.dml.sqlfluff
 
 sql-fix-seed:
-	@docker compose run --rm python_tool_runner sqlfluff fix database/seed/ --config docker/database/sqlfluff/.seed.sqlfluff
+	@docker compose run --rm python_tool_runner make sql-fix-seed-ci
+
+sql-fix-seed-ci:
+	sqlfluff fix database/seed/ --config docker/database/sqlfluff/.seed.sqlfluff
 
 test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
 	@touch docs/coverage/coverage.out
-	@go test $(TGT_PKGS) -coverpkg=$(COVER_PKGS) -coverprofile=docs/coverage/coverage.out -covermode=atomic  >/dev/null 2>&1
+	@TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)(/|$$)')"; \
+	COVER_PKGS="$$(go list ./... \
+		| grep -Ev '/(gen|cli|cmd|mock|apperror)(/|$$)' \
+		| tr '\n' ',' \
+		| sed 's/,$$//')"; \
+	go test $(TGT_PKGS) -coverpkg=$(COVER_PKGS) -coverprofile=docs/coverage/coverage.out -covermode=atomic  >/dev/null 2>&1
 	@go tool cover -html=docs/coverage/coverage.out -o docs/coverage/test-result.html
 	@rm -f docs/coverage/coverage.out
 	@echo "✅ テストレポートの生成が完了しました。"
 
 test:
-	@go test $(TGT_PKGS) -cover -count=1
+	@TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)(/|$$)')"; \
+	go test $$TGT_PKGS -cover -count=1
 
 install:
 	@echo "Installing Go tools..."

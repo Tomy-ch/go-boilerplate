@@ -10,7 +10,7 @@
 package mock_user
 
 import (
-	paging "boilerplate-go/internal/usecase/paging"
+	paging "boilerplate-go/internal/usecase/support/paging"
 	user "boilerplate-go/internal/usecase/user"
 	context "context"
 	reflect "reflect"
@@ -42,17 +42,32 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 	return m.recorder
 }
 
-// GetAllUsers mocks base method.
-func (m *MockUsecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]user.DTO, error) {
+// CreateUser mocks base method.
+func (m *MockUsecase) CreateUser(ctx context.Context, dto *user.CreateParamsDTO) (user.MutableFields, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllUsers", ctx, page)
-	ret0, _ := ret[0].([]user.DTO)
+	ret := m.ctrl.Call(m, "CreateUser", ctx, dto)
+	ret0, _ := ret[0].(user.MutableFields)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAllUsers indicates an expected call of GetAllUsers.
-func (mr *MockUsecaseMockRecorder) GetAllUsers(ctx, page any) *gomock.Call {
+// CreateUser indicates an expected call of CreateUser.
+func (mr *MockUsecaseMockRecorder) CreateUser(ctx, dto any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllUsers", reflect.TypeOf((*MockUsecase)(nil).GetAllUsers), ctx, page)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUsecase)(nil).CreateUser), ctx, dto)
+}
+
+// ListUsersByKeyword mocks base method.
+func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, params *user.GetParamsDTO, page *paging.Paging) ([]user.MutableFields, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUsersByKeyword", ctx, params, page)
+	ret0, _ := ret[0].([]user.MutableFields)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUsersByKeyword indicates an expected call of ListUsersByKeyword.
+func (mr *MockUsecaseMockRecorder) ListUsersByKeyword(ctx, params, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersByKeyword", reflect.TypeOf((*MockUsecase)(nil).ListUsersByKeyword), ctx, params, page)
 }

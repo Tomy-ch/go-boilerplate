@@ -28,6 +28,26 @@ func NewNoopTracerFactory(t *testing.T) TracerFactory {
 	return NewTracerFactory(tp, tl, lf)
 }
 
+// NewMockControllerLayerTracer は、テスト用のコントローラーレイヤートレーサーを生成します。
+func NewMockControllerLayerTracer(t *testing.T) LayerTracer {
+	t.Helper()
+	tf := NewNoopTracerFactory(t)
+	return tf.Controller()
+}
+
+// NewMockUsecaseLayerTracer は、テスト用のユースケースレイヤートレーサーを生成します。
+func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer {
+	t.Helper()
+	tf := NewNoopTracerFactory(t)
+	return tf.Usecase()
+}
+
+func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
+	t.Helper()
+	tf := NewNoopTracerFactory(t)
+	return tf.Infra()
+}
+
 // NewNoopLayerTracer は、テスト用に LayerTracer を無効化して返します。
 func NewNoopLayerTracer(t *testing.T) LayerTracer {
 	t.Helper()

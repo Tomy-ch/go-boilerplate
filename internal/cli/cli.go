@@ -2,7 +2,9 @@
 package cli
 
 import (
-	"boilerplate-go/internal/cli/gensqlc"
+	"boilerplate-go/internal/cli/dumpschema"
+	"boilerplate-go/internal/cli/fixcollation"
+	"boilerplate-go/internal/cli/mergedml"
 	"boilerplate-go/internal/cli/migrate"
 	"boilerplate-go/internal/cli/seed"
 	"boilerplate-go/internal/cli/server"
@@ -17,6 +19,8 @@ func RegisterCommands(rootCmd *cobra.Command) {
 		migrate.NewMigrateUpCommand(),
 		migrate.NewMigrateDownCommand(),
 		seed.NewDBSeedCommand(),
-		gensqlc.NewCommand(),
+		fixcollation.NewCommand(),
+		dumpschema.NewCommand(),
+		mergedml.NewCommand(),
 	)
 }

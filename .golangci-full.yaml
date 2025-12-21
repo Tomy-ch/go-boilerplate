@@ -66,7 +66,7 @@ linters:
         only_the_original_error_is_permitted:
           files:
             - "**/*.go"
-            - "!**/pkg/xerrors/**.go"
+            - "!**/pkg/xerrors/**.go" # pkg/xerrors配下ではアプリケーション全体で使用するエラーラッパーを実装するため許可します
           list-mode: lax
           deny:
             - pkg: github.com/cockroachdb/errors
@@ -75,7 +75,8 @@ linters:
         only_the_original_uuid_is_permitted:
           files:
             - "**/*.go"
-            - "!**/pkg/uuid/**.go"
+            - "!**/pkg/uuid/**.go" # pkg/uuid配下ではアプリケーション全体で使用するuuidライブラリのラッパーを実装するため許可します
+            - "!**/internal/infrastructure/rdb/conv/**.go" # conv配下ではORMの型変換のためuuidライブラリの使用を許可します
           list-mode: lax
           deny:
             - pkg: github.com/google/uuid

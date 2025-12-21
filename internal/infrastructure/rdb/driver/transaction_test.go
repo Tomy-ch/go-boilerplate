@@ -16,7 +16,7 @@ func TestNewTransactionManager(t *testing.T) {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOSConfig(cfg)
 
-	db, err := sql.Open("pgx", dbCfg.DSN(osCfg))
+	db, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
 	dbDriver := &dbDriver{db}
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -34,7 +34,7 @@ func TestTxManager_Do(t *testing.T) {
 	osCfg := config.NewOSConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
-	rowDB, err := sql.Open("pgx", dbCfg.DSN(osCfg))
+	rowDB, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
 	dbDriver := &dbDriver{rowDB}
 	require.NoError(t, err)
 	t.Cleanup(func() {

@@ -214,7 +214,7 @@
             <column ascending="true" name="code"/>
          </index>
       </table>
-      <table name="schema_migrations" remarks="" schema="public" type="TABLE">
+      <table name="schema_migrations" numRows="1" remarks="" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="version" nullable="false" remarks="" size="19" type="int8" typeCode="-5"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="dirty" nullable="false" remarks="" size="1" type="bool" typeCode="-7"/>
          <primaryKey column="version" sequenceNumberInPK="1"/>
@@ -241,12 +241,16 @@
          <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="deleted_at" nullable="true" remarks="削除日時" size="35" type="timestamptz" typeCode="93"/>
          <column autoUpdated="false" defaultValue="now()" digits="6" id="12" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
          <column autoUpdated="false" defaultValue="now()" digits="6" id="13" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="(((((((((((((((COALESCE(first_name, ''::character varying))::text || ' '::text) || (COALESCE(last_name, ''::character varying))::text) || ' '::text) || (COALESCE(email, ''::character varying))::text) || ' '::text) || (COALESCE(phone, ''::character varying))::text) || ' '::text) || (COALESCE(city, ''::character varying))::text) || ' '::text) || (COALESCE(street, ''::character varying))::text) || ' '::text) || (COALESCE(building, ''::character varying))::text) || ' '::text) || (COALESCE(postal_code, ''::character varying))::text)" digits="0" id="14" name="search_text" nullable="true" remarks="全文検索用テキスト" size="2147483647" type="text" typeCode="12"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="users_id_primary" unique="true">
             <column ascending="true" name="id"/>
          </index>
          <index name="users_email_unique" unique="true">
             <column ascending="true" name="email"/>
+         </index>
+         <index name="users_search_text_trgm_idx" unique="false">
+            <column ascending="true" name="search_text"/>
          </index>
       </table>
    </tables>

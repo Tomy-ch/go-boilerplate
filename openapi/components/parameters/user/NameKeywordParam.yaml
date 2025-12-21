@@ -1,7 +1,0 @@
-name: name_keyword
-in: query
-description: ユーザー名の部分一致検索キーワード
-required: false
-schema:
-  type: string
-  example: "John"

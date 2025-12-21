@@ -1,0 +1,7 @@
+name: keyword
+in: query
+description: 全文検索キーワード
+required: false
+schema:
+  type: string
+  example: "example keyword"

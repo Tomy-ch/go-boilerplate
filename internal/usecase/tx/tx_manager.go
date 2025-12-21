@@ -1,3 +1,5 @@
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+
 // Package tx は、トランザクションの管理を提供します。
 package tx
 

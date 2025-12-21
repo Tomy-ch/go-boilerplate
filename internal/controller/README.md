@@ -131,8 +131,7 @@ type server struct {
 }
 ```
 
-BindHandler側ではDIコンテナから渡されたtrace.TracerProviderとzap.Loggerを用いて、
-`observability.NewControllerTracer`でController専用のトレーサーを生成します。
+BindHandler側では、`observability.NewControllerTracer`でController専用のトレーサーを生成します。
 
 ```go
 func BindHandler(

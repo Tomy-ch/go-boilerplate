@@ -55,6 +55,7 @@
 
   // material-icon-themeの設定の一部を追加する
   "material-icon-theme.folders.associations": {
+    "actions": "gh-workflows",
     "internal": "private",
     "apperror": "error",
     "ctxhelper": "context",
@@ -67,12 +68,11 @@
     "conv": "tools",
     "driver": "connection",
     "rdbtest": "test",
-    "sqlc": "generator",
     "integration": "test",
     "observability": "meta",
     "usecase": "tasks",
     "usecasetest": "test",
-    "paging": "tools",
+    "support": "tools",
     "tx": "taskfile",
     "openapi": "api",
     "paths": "routes",

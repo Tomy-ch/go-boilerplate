@@ -38,24 +38,26 @@ paths:
     $ref: './paths/ready/ready.yaml'
   /version:
     $ref: './paths/version/version.yaml'
+  # ここから下のoapi-codegenで型定義を生成するためのパス
+  /_internal/types/error-response:
+    $ref: './paths/internal/types/error_response.yaml'
   # サンプルAPI用のパス
   /v1/users:
     $ref: './paths/v1/users.yaml'
   /v1/users/{user_id}:
     $ref: './paths/v1/users/user_id.yaml'
-  # ここから下のoapi-codegenで型定義を生成するためのパス
-  /_internal/types/error-response:
-    $ref: './paths/internal/types/error_response.yaml'
 components:
   parameters:
+    KeywordParam:
+      $ref: './components/parameters/search/KeywordParam.yaml'
+    ActiveParam:
+      $ref: './components/parameters/search/ActiveParam.yaml'
     PageParam:
       $ref: './components/parameters/pagination/PageParam.yaml'
     PerPageParam:
       $ref: './components/parameters/pagination/PerPageParam.yaml'
     UserIdParam:
       $ref: './components/parameters/user/UserIdParam.yaml'
-    NameKeywordParam:
-      $ref: './components/parameters/user/NameKeywordParam.yaml'
   schemas:
     ErrorResponse:
       $ref: './components/schemas/ErrorResponse.yaml'

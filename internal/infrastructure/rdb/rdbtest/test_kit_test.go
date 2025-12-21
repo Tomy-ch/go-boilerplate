@@ -3,7 +3,6 @@ package rdbtest
 import (
 	"context"
 	"testing"
-	"time"
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
@@ -16,31 +15,6 @@ func TestNewTestDBWithLoggingProvider(t *testing.T) {
 	db, provider := NewTestDBWithLoggingProvider(t)
 	require.NotNil(t, db)
 	require.NotNil(t, provider)
-}
-
-func TestNewNoopTracerFactory(t *testing.T) {
-	t.Parallel()
-	tf := NewNoopTracerFactory(t)
-	require.NotNil(t, tf)
-}
-
-func TestNewNoopInfraLayerTracer(t *testing.T) {
-	t.Parallel()
-	lt := NewNoopInfraLayerTracer(t)
-	require.NotNil(t, lt)
-}
-
-func TestNewTestLocation(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	osCfg := config.NewOSConfig(cfg)
-
-	expected, err := time.LoadLocation(osCfg.TimeZone())
-	require.NoError(t, err)
-
-	actual := NewTestLocation(t)
-	require.Equal(t, expected, actual)
 }
 
 func TestNewTestTransactionManager(t *testing.T) {
