@@ -4,9 +4,9 @@ on:
   pull_request:
     paths:
       - '.github/workflows/gen-db-artifacts-check.yaml'
-      - 'database/**'
-      - 'docker/db/**'
-      - '.makefiles/**'
+      - 'database/**/*.sql'
+      - 'docker/db/**/*.sql'
+      - '.makefiles/**/*.mk'
   workflow_dispatch:
 
 concurrency:
@@ -131,6 +131,7 @@ jobs:
 
             // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
             const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
+            const updatedLine = `🕒 最終更新時刻: ${updatedAtJST} (JST)`;
 
             const body = hasDiff
               ? [
@@ -143,7 +144,7 @@ jobs:
                   '',
                   'ローカルでDB生成コマンド（例: `make gen` / `make gen-query`）を実行して差分をコミットしてください。',
                   '',
-                  `🕒 最終更新時刻: ${updatedAtJST} (JST)`,
+                  updatedLine,
                 ].join('\n')
               : [
                   marker,
@@ -151,9 +152,9 @@ jobs:
                   '',
                   commitLine,
                   '',
-                  '現在このPRでは、DB生成物の差分は見つかりませんでした。',
+                  'DB生成物の差分は見つかりませんでした。',
                   '',
-                  `🕒 最終更新時刻: ${updatedAtJST} (JST)`,
+                  updatedLine,
                 ].join('\n');
 
             // 既存コメントがあれば更新（スパム防止）

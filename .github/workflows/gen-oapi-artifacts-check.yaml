@@ -1,13 +1,13 @@
-name: Generated Go Artifacts Check
+name: Generated OpenAPI Artifacts Check
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/gen-go-artifacts-check.yaml'
+      - '.github/workflows/gen-oapi-artifacts-check.yaml'
       - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.makefiles/**'
+      - 'openapi/**/*.yaml'
+      - '.makefiles/**/*.mk'
+      - 'scripts/**/*.sh'
   workflow_dispatch:
 
 concurrency:
@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
 
-  generate-go-check:
+  generate-oapi-check:
     needs: golangci-setup
     runs-on: ubuntu-latest
     permissions:
@@ -32,8 +32,11 @@ jobs:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
 
-      - name: Run Go generators
-        run: make gen-go-code
+      - name: Run OpenAPI Bundle
+        run: make gen-swagger
+
+      - name: Generate OpenAPI Docs
+        run: make gen-redoc
 
       - name: Detect generated changes (file list)
         id: gen_diff
@@ -49,7 +52,7 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
-      - name: Comment changed files on PR
+      - name: Comment generated status on PR (diff/no-diff)
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
@@ -57,18 +60,10 @@ jobs:
           script: |
             const fs = require('fs');
 
-            const marker = '<!-- generated-go-artifacts-filelist -->';
-            const hasDiff = ('${{ steps.gen_diff.outputs.has_diff }}' === 'true');
+            const marker = '<!-- generated-oapi-artifacts-filelist -->';
 
-            let files = [];
-            if (hasDiff) {
-              try {
-                const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
-                files = raw ? raw.split('\n').filter(Boolean) : [];
-              } catch (e) {
-                files = ['(changed_files.txt の読み込みに失敗しました)'];
-              }
-            }
+            const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
+            const files = raw ? raw.split('\n').filter(Boolean) : [];
 
             const updatedAtJST = new Date().toLocaleString('ja-JP', {
               timeZone: 'Asia/Tokyo',
@@ -85,37 +80,38 @@ jobs:
               || process.env.GITHUB_SHA
               || context.sha;
             const shortSha = headSha.slice(0, 7);
-
             const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
             const commitUrl = `${repoUrl}/commit/${headSha}`;
 
-            // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
             const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
             const updatedLine = `🕒 最終更新時刻: ${updatedAtJST} (JST)`;
 
-            const body = hasDiff
-              ? [
-                  marker,
-                  '## 🧾 Go生成物の差分が検出されました（変更ファイル一覧）',
-                  '',
-                  commitLine,
-                  '',
-                  ...(files.length ? files.map(f => `- \`${f}\``) : ['(変更ファイルなし)']),
-                  '',
-                  'ローカルで `make gen-go-code`（または `make gen`）を実行して差分をコミットしてください。',
-                  '',
-                  updatedLine,
-                ].join('\n')
-              : [
-                  marker,
-                  '## ✅ Go生成物の差分は検出されませんでした',
-                  '',
-                  commitLine,
-                  '',
-                  'このPRでは、Go生成物の差分は見つかりませんでした。',
-                  '',
-                  updatedLine,
-                ].join('\n');
+            let body;
+            if (files.length > 0) {
+              body = [
+                marker,
+                '## 🧾 OpenAPI生成物の差分が検出されました（変更ファイル一覧）',
+                '',
+                commitLine,
+                '',
+                ...files.map(f => `- \`${f}\``),
+                '',
+                'ローカルで `make gen` を実行して差分をコミットしてください。',
+                '',
+                updatedLine,
+              ].join('\n');
+            } else {
+              body = [
+                marker,
+                '## ✅ OpenAPI生成物の差分は解消されました',
+                '',
+                commitLine,
+                '',
+                'OpenAPI生成物の差分は見つかりませんでした。',
+                '',
+                updatedLine,
+              ].join('\n');
+            }
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -125,7 +121,6 @@ jobs:
             });
 
             const existing = comments.find(c => (c.body || '').includes(marker));
-
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
