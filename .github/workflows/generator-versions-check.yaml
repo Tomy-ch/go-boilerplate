@@ -1,18 +1,14 @@
-name: Generated Artifacts Check
+name: Generator Versions Check
 
 on:
+  push:
+    branches:
+      - production
+      - staging
+      - develop
   pull_request:
     paths:
-      - '.github/workflows/gen-artifacts-check.yaml'
-      - 'cmd/**'
-      - 'database/dml/**'
-      - 'database/sqlc/**'
-      - 'docker/tools/**'
-      - '.makefiles/gen/**'
-      - 'internal/**'
-      - 'pkg/**'
-      - 'openapi/**'
-      - 'scripts/**'
+      - '.github/workflows/generator-versions-check.yaml'
   workflow_dispatch:
 
 concurrency:
@@ -25,7 +21,7 @@ jobs:
     permissions:
       contents: read
 
-  generate-check:
+  generate-tools-check:
     needs: golangci-setup
     runs-on: ubuntu-latest
     permissions:
@@ -47,17 +43,8 @@ jobs:
             echo "has_prev=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build tool containers
-        run: docker compose build go_tool_runner node_tool_runner
-
-      - name: Start database for sqlc
-        run: docker compose --profile tools up -d database
-
-      - name: Run generators (make gen)
-        run: |
-          make gen
-          # 生成ツールのバージョン情報もここで更新
-          make gen-tools-meta
+      - name: Run generator versions update (make gen-tools-meta)
+        run: make gen-tools-meta
 
       - name: Check git diff
         id: diff_check
