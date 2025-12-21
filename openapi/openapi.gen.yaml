@@ -383,11 +383,10 @@ components:
     ActiveParam:
       name: active
       in: query
-      description: null
+      description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
       required: false
       schema:
         type: boolean
-        description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
         example: true
     PageParam:
       name: page
