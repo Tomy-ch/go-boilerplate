@@ -1,0 +1,100 @@
+name: Setup Postgres (wait & init)
+description: Wait for PostgreSQL service to be ready and apply init SQL
+
+inputs:
+  host:
+    required: false
+    description: Postgres host address
+    default: localhost
+  port:
+    required: false
+    description: Postgres port
+    default: "5432"
+  user:
+    required: false
+    description: Postgres user
+    default: postgres
+  db:
+    required: true
+    description: Postgres database name
+  password:
+    required: true
+    description: Postgres password
+  init_sql:
+    required: false
+    description: Path to SQL file to initialize the database
+    default: ""
+  install_psql:
+    required: false
+    description: Whether to install the psql client
+    default: "true"
+  max_attempts:
+    required: false
+    description: Maximum number of attempts to check if Postgres is ready
+    default: "60"
+  sleep_seconds:
+    required: false
+    description: Number of seconds to wait between attempts to check if Postgres is ready
+    default: "1"
+
+runs:
+  using: composite
+  steps:
+    - name: Update apt and install postgresql client dependencies
+      if: ${{ inputs.install_psql == 'true' }}
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ca-certificates curl gnupg lsb-release
+        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+          | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+        echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt \
+          $(lsb_release -cs)-pgdg main" \
+          | sudo tee /etc/apt/sources.list.d/pgdg.list
+        sudo apt-get update
+
+    - name: Install psql client(17)
+      if: ${{ inputs.install_psql == 'true' }}
+      shell: bash
+      run: |
+        sudo apt-get install -y postgresql-client-17
+        echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+    - name: Postgres Client Version
+      if: ${{ inputs.install_psql == 'true' }}
+      shell: bash
+      run: |
+        psql --version
+
+    - name: PG_DUMP Version
+      if: ${{ inputs.install_psql == 'true' }}
+      shell: bash
+      run: |
+        pg_dump --version
+
+    - name: Wait for database
+      shell: bash
+      env:
+        PGPASSWORD: ${{ inputs.password }}
+      run: |
+        echo "Waiting for Postgres... host=${{ inputs.host }} port=${{ inputs.port }} db=${{ inputs.db }}"
+        for i in $(seq 1 ${{ inputs.max_attempts }}); do
+          if pg_isready -h "${{ inputs.host }}" -p "${{ inputs.port }}" -U "${{ inputs.user }}" -d "${{ inputs.db }}"; then
+            echo "Postgres is ready."
+            exit 0
+          fi
+          sleep "${{ inputs.sleep_seconds }}"
+        done
+        echo "Postgres did not become ready in time."
+        exit 1
+
+    - name: Apply init SQL (optional)
+      if: ${{ inputs.init_sql != '' }}
+      shell: bash
+      env:
+        PGPASSWORD: ${{ inputs.password }}
+      run: |
+        test -f "${{ inputs.init_sql }}" || (echo "init_sql not found: ${{ inputs.init_sql }}" && exit 1)
+        psql -h "${{ inputs.host }}" -p "${{ inputs.port }}" -U "${{ inputs.user }}" -d "${{ inputs.db }}" \
+          -v ON_ERROR_STOP=1 \
+          -f "${{ inputs.init_sql }}"

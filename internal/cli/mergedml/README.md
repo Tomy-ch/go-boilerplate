@@ -34,9 +34,10 @@
 
 - コマンド（アプリケーションに組み込まれた CLI として提供されます）
   - `merge-dml --type repository`
-  - `merge-dml --type query_service`
+  - `merge-dml --type query_service --work-dir /app`
 - フラグ:
   - `--type` : 対象のタイプ（必須） — 例: `repository` または `query_service`。
+  - `--work-dir` : 作業ディレクトリのパス（省略時は `/app`）。
 
 ### 実行例
 

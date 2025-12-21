@@ -1,0 +1,187 @@
+name: Generated Database Artifacts Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/gen-db-artifacts-check.yaml'
+      - 'database/**/*.sql'
+      - 'docker/db/**/*.sql'
+      - '.makefiles/**/*.mk'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-setup:
+    uses: ./.github/workflows/golang-setup.yaml
+    permissions:
+      contents: read
+
+  generate-db-check:
+    needs: golangci-setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      ENV: ci
+      DB: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres-password
+
+    services:
+      database:
+        image: postgres:17.5
+        env:
+          POSTGRES_USER: ${{ env.DB_USER }}
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_DB: ${{ env.DB }}
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v5
+      - name: Install sqlc
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Setup DB (wait & init)
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: ${{ env.DB }}
+          user: ${{ env.DB_USER }}
+          password: ${{ env.DB_PASSWORD }}
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
+      - name: Initialize Database Table
+        run: make db-migrate-ci-up DB=${{ env.DB }}
+      - name: Dump schema
+        run: make dump-schema-ci work-dir="."
+      - name: Merge DML
+        run: make merge-dml-ci work-dir="."
+      - name: Remove generated SQLC code
+        run: make remove-generated-sqlc
+      - name: Generate SQLC code
+        run: make sqlc-generate
+      - name: Format generated code
+        run: make fmt
+      - name: Detect generated changes (file list)
+        id: gen_diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          files="$(git diff --name-only)"
+          if [ -n "$files" ]; then
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "$files" > /tmp/changed_files.txt
+          else
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+            : > /tmp/changed_files.txt
+          fi
+      - name: Comment changed files on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- generated-artifacts-filelist -->';
+
+            const hasDiff = ('${{ steps.gen_diff.outputs.has_diff }}' === 'true');
+
+            let files = [];
+            if (hasDiff) {
+              try {
+                const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
+                files = raw ? raw.split('\n').filter(Boolean) : [];
+              } catch (e) {
+                files = ['(changed_files.txt の読み込みに失敗しました)'];
+              }
+            }
+
+            const updatedAtJST = new Date().toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+
+            const headSha =
+              (context.payload.pull_request?.head?.sha)
+              || process.env.GITHUB_SHA
+              || context.sha;
+            const shortSha = headSha.slice(0, 7);
+
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${headSha}`;
+
+            // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
+            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
+            const updatedLine = `🕒 最終更新時刻: ${updatedAtJST} (JST)`;
+
+            const body = hasDiff
+              ? [
+                  marker,
+                  '## 🧾 DB生成物の差分が検出されました（変更ファイル一覧）',
+                  '',
+                  commitLine,
+                  '',
+                  ...(files.length ? files.map(f => `- \`${f}\``) : ['(変更ファイルなし)']),
+                  '',
+                  'ローカルでDB生成コマンド（例: `make gen` / `make gen-query`）を実行して差分をコミットしてください。',
+                  '',
+                  updatedLine,
+                ].join('\n')
+              : [
+                  marker,
+                  '## ✅ DB生成物の差分は解消されました',
+                  '',
+                  commitLine,
+                  '',
+                  'DB生成物の差分は見つかりませんでした。',
+                  '',
+                  updatedLine,
+                ].join('\n');
+
+            // 既存コメントがあれば更新（スパム防止）
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c => (c.body || '').includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }
+      - name: Fail if diff exists
+        if: steps.gen_diff.outputs.has_diff == 'true'
+        run: exit 1

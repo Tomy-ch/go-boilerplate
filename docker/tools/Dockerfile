@@ -29,7 +29,7 @@ WORKDIR /app
 
 ENV PATH="/go/bin:$PATH"
 
-RUN apk add --no-cache bash postgresql-client
+RUN apk add --no-cache bash make postgresql-client
 
 COPY --from=go_tools_builder /out/ /usr/local/bin/
 
@@ -43,6 +43,8 @@ FROM node:24.4-alpine AS node_tools
 
 WORKDIR /app
 
+RUN apk add --no-cache bash make
+
 RUN npm install -g swagger-cli@latest --no-audit --no-fund \
   && npm install -g @redocly/cli@latest
 
@@ -53,6 +55,12 @@ CMD []
 # Python
 # ------------------------------
 FROM python:3.14.2-slim AS python_tools
+
+RUN apt-get update
+
+RUN apt-get install -y --no-install-recommends make bash
+
+RUN rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 RUN pip install --no-cache-dir "sqlfluff[jinja]"

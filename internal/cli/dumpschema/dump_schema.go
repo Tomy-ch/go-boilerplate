@@ -27,6 +27,15 @@ var (
 		"--no-privileges",
 		"--format=plain",
 	}
+	// workDir は、作業ディレクトリのパスを表します。
+	workDir string
+
+	// trimPrefixes は、スキーマファイルから除去する行の接頭辞を表します。
+	trimPrefixes = []string{
+		`\`,
+		"-- Dumped from database version",
+		"-- Dumped by pg_dump version",
+	}
 )
 
 type generator struct {
@@ -47,7 +56,7 @@ func newGenerator(logger logging.Logger) *generator {
 		logger:          logger,
 		callerSkipCount: 1,
 		permmission:     schemaFilePerm,
-		workDir:         "/app",
+		workDir:         workDir,
 		schemaRelPath:   "database/gen/schema.gen.sql",
 		dumpCommand:     dumpCommand,
 		dumpArgs:        dumpSubArgs,
@@ -56,7 +65,7 @@ func newGenerator(logger logging.Logger) *generator {
 
 // NewCommand は、sqlc generate コマンドを生成します。
 func NewCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "dump-schema",
 		Short: "databaseに接続してスキーマをダンプして読み込みやすい形に整形します。",
 		Long: "ファイルで定義されたdumpコマンドを実行してDBスキーマをダンプし、\n" +
@@ -64,6 +73,10 @@ func NewCommand() *cobra.Command {
 			"dumpコマンドを変更したい場合は、dumpCommandおよびdumpArgs変数を修正してください。",
 		RunE: generateDumpSchema,
 	}
+
+	cmd.Flags().StringVar(&workDir, "work-dir", "/app", "working directory path")
+
+	return cmd
 }
 
 // generateDumpSchema は、DBスキーマをダンプし整形します。
@@ -156,7 +169,13 @@ func (g *generator) sanitizeSchemaInPlace() error {
 	out := make([]string, 0, len(lines))
 	for _, ln := range lines {
 		trim := strings.TrimSpace(ln)
-		if strings.HasPrefix(trim, `\`) {
+		for _, prefix := range trimPrefixes {
+			if strings.HasPrefix(trim, prefix) {
+				trim = ""
+				break
+			}
+		}
+		if trim == "" {
 			continue
 		}
 		out = append(out, ln)

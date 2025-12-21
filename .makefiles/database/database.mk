@@ -18,6 +18,10 @@
 
 # 対象DB（local / test / prd など）。未指定なら local
 DB ?= local
+# 作業ディレクトリ
+work-dir ?= "/app"
+# マージDMLタイプ
+type ?= ""
 
 db-schema:
 	@echo "🔄 スキーマの更新を実行します..."
@@ -36,24 +40,50 @@ new-migrate-%:
 	@echo "✅ 新しいマイグレーションファイルが生成されました: database/migrations/$$file_name.up-down.sql"
 
 fix-collation:
-	@echo "🔄 データベースのコラテーションを修正します... (database=$(DB))"
-	@docker compose run --rm go_tool_runner go run cmd/main.go fix-collation
-	@echo "✅ データベースのコラテーション修正が完了しました。 (database=$(DB))"
+	@echo "🔄 データベースのコラテーションを修正します..."
+	@docker compose run --rm go_tool_runner make fix-collation-ci
+	@echo "✅ データベースのコラテーション修正が完了しました。"
+
+fix-collation-ci:
+	go run cmd/main.go fix-collation
 
 dump-schema:
 	@echo "🔄 スキーマのダンプを実行します..."
-	@docker compose run --rm go_tool_runner go run cmd/main.go dump-schema
+	@docker compose run --rm go_tool_runner make dump-schema-ci work-dir="$(work-dir)"
 	@echo "✅ スキーマのダンプが完了しました。"
 
-merge-dml-repo: merge-dml-repository
-merge-dml-qs: merge-dml-query_service
-merge-dml-sysq: merge-dml-system_query
-merge-dml: merge-dml-repo merge-dml-qs merge-dml-sysq
+dump-schema-ci:
+	go run cmd/main.go dump-schema --work-dir=$(work-dir)
 
-merge-dml-%:
-	@echo "🔄 DMLのマージを実行します... (type=$*)"
-	@docker compose run --rm go_tool_runner go run cmd/main.go merge-dml --type=$*
-	@echo "✅ DMLのマージが完了しました。 (type=$*)"
+merge-dml-core:
+	@echo "🔄 DMLのマージを実行します... (type=$(type) work-dir=$(work-dir))"
+	@docker compose run --rm go_tool_runner make merge-dml-ci-core type="$(type)" work-dir="$(work-dir)"
+	@echo "✅ DMLのマージが完了しました。 (type=$(type) work-dir=$(work-dir))"
+
+merge-dml-repo:
+	make merge-dml-core type="repository" work-dir="/app"
+merge-dml-qs:
+	make merge-dml-core type="query_service" work-dir="/app"
+merge-dml-sysq:
+	make merge-dml-core type="system_query" work-dir="/app"
+merge-dml:
+	make merge-dml-repo
+	make merge-dml-qs
+	make merge-dml-sysq
+
+merge-dml-ci-core:
+	go run cmd/main.go merge-dml --type=$(type) --work-dir=$(work-dir)
+
+merge-dml-ci-repo:
+	make merge-dml-ci-core type="repository" work-dir=$(work-dir)
+merge-dml-ci-qs:
+	make merge-dml-ci-core type="query_service" work-dir=$(work-dir)
+merge-dml-ci-sysq:
+	make merge-dml-ci-core type="system_query" work-dir=$(work-dir)
+merge-dml-ci:
+	make merge-dml-ci-repo work-dir=$(work-dir)
+	make merge-dml-ci-qs work-dir=$(work-dir)
+	make merge-dml-ci-sysq work-dir=$(work-dir)
 
 # -------------------------------
 # 汎用ターゲット（DB可変）
@@ -65,30 +95,45 @@ merge-dml-%:
 # -------------------------------
 db-migrate-up:
 	@echo "🔄 マイグレーション: 最新版までアップグレードします... (database=$(DB))"
-	docker compose run --rm go_tool_runner go run cmd/main.go migrate-up --database $(DB)
+	@docker compose run --rm go_tool_runner make db-migrate-ci-up
 	@echo "✅ 完了：全マイグレーション適用されました。 (database=$(DB))"
+
+db-migrate-ci-up:
+	go run cmd/main.go migrate-up --database $(DB)
 
 db-migrate-up-%:
 	@version=$*; \
 	echo "🔄 マイグレーション: バージョン $$version 版までアップグレードします... (database=$(DB))"; \
-	docker compose run --rm go_tool_runner go run cmd/main.go migrate-up --database $(DB) --version $$version; \
+	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$version; \
 	echo "✅ 完了：バージョン $$version まで適用されました。 (database=$(DB))"
+
+db-migrate-ci-up-%:
+	go run cmd/main.go migrate-up --database $(DB) --version $*
 
 db-migrate-down:
 	@echo "🔄 マイグレーション: 初期状態までダウングレードします... (database=$(DB))"
-	docker compose run --rm go_tool_runner go run cmd/main.go migrate-down --database $(DB)
+	@docker compose run --rm go_tool_runner make db-migrate-ci-down
 	@echo "✅ 完了：全マイグレーションダウングレードされました。 (database=$(DB))"
+
+db-migrate-ci-down:
+	go run cmd/main.go migrate-down --database $(DB)
 
 db-migrate-down-%:
 	@version=$*; \
 	echo "🔄 マイグレーション: バージョン $$version までダウングレードします... (database=$(DB))"; \
-	docker compose run --rm go_tool_runner go run cmd/main.go migrate-down --database $(DB) --version $$version; \
+	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$version; \
 	echo "✅ 完了：バージョン $$version までダウングレードされました。 (database=$(DB))"
+
+db-migrate-ci-down-%:
+	go run cmd/main.go migrate-down --database $(DB) --version $*
 
 db-seed:
 	@echo "🔄 データベースにシードデータを投入します... (database=$(DB))"
-	docker compose run --rm go_tool_runner go run cmd/main.go db-seed --database $(DB)
+	@docker compose run --rm go_tool_runner make db-seed-ci
 	@echo "✅ シードデータの投入が完了しました。 (database=$(DB))"
+
+db-seed-ci:
+	go run cmd/main.go db-seed --database $(DB)
 
 # -------------------------------
 # localDBに対してのエイリアス（local固定）

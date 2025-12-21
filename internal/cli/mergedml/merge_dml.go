@@ -36,8 +36,12 @@ const (
 	minSQLCConcurrency = 2
 )
 
-// targetType は、SQLC生成の対象タイプ(repository|query_service)を表します。
-var targetType string
+var (
+	// targetType は、SQLC生成の対象タイプ(repository|query_service)を表します。
+	targetType string
+	// workDir は、作業ディレクトリのパスを表します。
+	workDir string
+)
 
 type generator struct {
 	logger          logging.Logger
@@ -54,7 +58,7 @@ func newGenerator(logger logging.Logger) *generator {
 	return &generator{
 		logger:          logger,
 		callerSkipCount: 1,
-		workDir:         "/app",
+		workDir:         workDir,
 		dmlRootDir:      "database/dml/",
 		genRootDir:      "database/gen/",
 		sqlcCfg:         "sqlc.yaml",
@@ -74,6 +78,7 @@ func NewCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&targetType, "type", "", "filter TYPE (repository|query_service)")
 	_ = cmd.MarkFlagRequired("type")
+	cmd.Flags().StringVar(&workDir, "work-dir", "/app", "working directory path")
 
 	return cmd
 }

@@ -47,4 +47,4 @@ database/dml/system_query/
   - -- name: コメントで関数名を明示します。
   - 必要に応じてパラメータや返却カラムの型をコメントに記載します。
 - 生成
-  - gen-sqlc --type qsコマンドで対象カテゴリの SQLC コードを生成します。
+  - gen-query-sysqコマンドで対象カテゴリの SQLC コードを生成します。
