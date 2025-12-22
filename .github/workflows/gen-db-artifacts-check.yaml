@@ -71,9 +71,9 @@ jobs:
       - name: Merge DML
         run: make merge-dml-ci work-dir="."
       - name: Remove generated SQLC code
-        run: make remove-generated-sqlc
+        run: make remove-generated-sqlc-ci
       - name: Generate SQLC code
-        run: make sqlc-generate
+        run: make sqlc-generate-ci
       - name: Format generated code
         run: make fmt
       - name: Detect generated changes (file list)
