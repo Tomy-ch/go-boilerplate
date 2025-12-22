@@ -36,7 +36,7 @@ jobs:
         run: make gen-swagger
 
       - name: Generate OpenAPI Docs
-        run: make gen-redoc
+        run: make gen-api-docs
 
       - name: Detect generated changes (file list)
         id: gen_diff
