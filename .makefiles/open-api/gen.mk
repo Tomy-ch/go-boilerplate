@@ -1,9 +1,9 @@
 ## OpenAPI関連の生成コマンド群
 # -----Dockerコンテナ内で実行するコマンド群-----
+.PHONY: gen-swagger ## OpenAPIをバンドルしてOpenAPIファイルを一つにまとめます
 .PHONY: gen-api-docs ## OpenAPIに基づき、APIドキュメントを生成します
-.PHONY: gen-swagger ## OpenAPIをバインドルしてOpenAPIファイルを一つにまとめます
 # -----CI用ターゲット-----
-.PHONY: gen-swagger-ci ## OpenAPIをバインドルしてOpenAPIファイルを一つにまとめます（CI用）
+.PHONY: gen-swagger-ci ## OpenAPIをバンドルしてOpenAPIファイルを一つにまとめます（CI用）
 .PHONY: gen-api-docs-ci ## OpenAPIに基づき、APIドキュメントを生成します（CI用）
 
 # -----Dockerコンテナ内で実行するコマンド群-----

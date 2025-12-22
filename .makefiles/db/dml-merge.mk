@@ -1,5 +1,5 @@
 ## DMLマージ関連のコマンド群
-# -----Dockerコンテナ内で実行するCI用ターゲット-----
+# -----Dockerコンテナ内で実行するコマンド群-----
 .PHONY: merge-dml ## DMLのマージを実行
 .PHONY: merge-dml-repo ## ドメイン用DMLのマージ
 .PHONY: merge-dml-qs ## クエリサービス用DMLのマージ
@@ -12,7 +12,7 @@
 .PHONY: merge-dml-ci-sysq ## システムクエリ用DMLのマージ（CI用）
 .PHONY: merge-dml-ci-core ## 指定したタイプのDMLのマージを実行（CI用） (例: make merge-dml-ci-core type="repository" work-dir="/app")
 
-# -----Dockerコンテナ内で実行するCI用ターゲット-----
+# -----Dockerコンテナ内で実行するコマンド群-----
 merge-dml:
 	make merge-dml-repo
 	make merge-dml-qs
