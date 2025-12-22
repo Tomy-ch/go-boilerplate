@@ -4,7 +4,7 @@
 
 go-update:
 	@anyenv update
-	@goenv install "$(cat .go-version)"
+	@goenv install "$$(cat .go-version)"
 
 install-tools:
 	@echo "Installing Go tools..."

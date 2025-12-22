@@ -1,5 +1,5 @@
 ## DBに対するシードデータ投入のコマンド群
-# -----Dockerコンテナ内で実行するCI用ターゲット-----
+# -----Dockerコンテナ内で実行するコマンド群-----
 .PHONY: db-seed ## データベースにシードデータを投入
 # -----CI用ターゲット-----
 .PHONY: db-seed-ci ## データベースにシードデータを投入（CI用）
@@ -8,7 +8,7 @@
 # -----TestDBに対してのシードデータ投入エイリアス-----
 .PHONY: db-test-seed ## TestDBに対してシードデータを投入
 
-# -----Dockerコンテナ内で実行するCI用ターゲット-----
+# -----Dockerコンテナ内で実行するコマンド群-----
 db-seed:
 	@echo "🔄 データベースにシードデータを投入します... (database=$(DB))"
 	@docker compose run --rm go_tool_runner make db-seed-ci
