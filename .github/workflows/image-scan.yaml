@@ -2,10 +2,12 @@ name: Docker Image Scan Workflow
 
 on:
   pull_request:
-    branches: 
+    branches:
       - production
       - staging
       - develop
+    paths:
+      - '.github/workflows/image-scan.yaml'
   workflow_dispatch:
 
 concurrency:

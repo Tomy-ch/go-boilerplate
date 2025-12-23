@@ -3,6 +3,7 @@ name: Golang Lint Workflow
 on:
   pull_request:
     paths:
+      - '.github/workflows/lint.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'

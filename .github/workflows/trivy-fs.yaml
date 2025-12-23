@@ -3,6 +3,7 @@ name: Dependency Vulnerability Scan Workflow
 on:
   pull_request:
     paths:
+      - '.github/workflows/trivy-fs.yaml'
       - '**/*.go'
   schedule:
     - cron: '0 3 * * 1' # 毎週月曜 12:00JST 相当（UTC 03:00）

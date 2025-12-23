@@ -6,6 +6,8 @@ on:
       - production
       - staging
       - develop
+    paths:
+      - '.github/workflows/generator-versions-check.yaml'
   pull_request:
     paths:
       - '.github/workflows/generator-versions-check.yaml'

@@ -3,6 +3,7 @@ name: Go Module Consistency Check Workflow
 on:
   pull_request:
     paths:
+      - '.github/workflows/tidy-check.yaml'
       - 'go.mod'
       - 'go.sum'
   workflow_dispatch:
