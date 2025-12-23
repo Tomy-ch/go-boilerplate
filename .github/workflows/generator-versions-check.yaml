@@ -1,12 +1,12 @@
 name: Generator Versions Check
 
 on:
-  push:
+  pull_request:
     branches:
       - production
       - staging
       - develop
-  pull_request:
+  push:
     paths:
       - '.github/workflows/generator-versions-check.yaml'
   workflow_dispatch:

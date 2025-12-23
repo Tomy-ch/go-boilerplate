@@ -1,11 +1,14 @@
 name: Deploy Workflow
 
 on:
-  push:
+  pull_request:
     branches:
       - production
       - staging
       - develop
+  push:
+    paths:
+      - '.github/workflows/deploy.yaml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
