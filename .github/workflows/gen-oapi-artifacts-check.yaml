@@ -103,11 +103,11 @@ jobs:
             } else {
               body = [
                 marker,
-                '## ✅ OpenAPI生成物の差分は解消されました',
+                '## ✅ OpenAPI生成物の差分は検出されませんでした',
                 '',
                 commitLine,
                 '',
-                'OpenAPI生成物の差分は見つかりませんでした。',
+                'OpenAPI生成物の差分は検出されませんでした。',
                 '',
                 updatedLine,
               ].join('\n');
