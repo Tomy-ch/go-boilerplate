@@ -5,9 +5,6 @@ vendor/
 # ビルド済みのバイナリファイル
 tmp/
 
-# DBのログ
-docker/database/logs/
-
 # -----ファイル-----
 # ディレクトリの表示管理ファイル
 .DS_Store

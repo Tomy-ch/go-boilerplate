@@ -6,10 +6,10 @@
 
 ## パラメータの種類と目的
 
-| 用途           | 定義場所           | 例                     |
-|----------------|--------------------|------------------------|
-| クエリパラメータ | `in: query`        | `?page=1&per_page=10`  |
-| パスパラメータ   | `in: path`         | `/users/{user_id}`     |
+| 用途 | 定義場所 | 例 |
+| --- | ------- | -- |
+| クエリパラメータ | `in: query` | `?page=1&per_page=10` |
+| パスパラメータ | `in: path` | `/users/{user_id}` |
 
 ## ディレクトリと命名ポリシー
 
@@ -24,11 +24,11 @@ components/
 
 ### 命名規則
 
-| 要素       | 規則            | 例                         |
-|------------|------------------|----------------------------|
-| ファイル名 | PascalCase       | `Pagination.yaml`, `User.yaml` |
-| 定義名     | PascalCase       | `PageParam`, `UserIdParam`     |
-| `$ref`       | パス + fragment | `#/components/parameters/UserIdParam`      |
+| 要素 | 規則 | 例 |
+| --- | ---- | -- |
+| ファイル名 | PascalCase | `Pagination.yaml`, `User.yaml` |
+| 定義名 | PascalCase | `PageParam`, `UserIdParam` |
+| `$ref` | パス + fragment | `#/components/parameters/UserIdParam` |
 
 ## 統合パラメータファイルの使用
 

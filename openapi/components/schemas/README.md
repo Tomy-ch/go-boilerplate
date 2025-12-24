@@ -5,11 +5,11 @@
 ## 🧱 ディレクトリ構造ルール
 
 | 種別 | ディレクトリ | 内容 |
-|------------------|-----------------------------------|-----------------------------------|
-| スキーマ定義     | `components/schemas/` | データ構造本体の定義（User, Errorなど） |
-| リクエスト本体   | `components/request/` | リクエストの意味づけ（content, required等） |
-| レスポンス定義   | `components/responses/` | HTTPステータスごとの返却の意味づけ |
-| パラメータ定義   | `components/parameters/` | クエリ・パスパラメータの定義 |
+| ---- | --------- | ---- |
+| スキーマ定義 | `components/schemas/` | データ構造本体の定義（User, Errorなど） |
+| リクエスト本体 | `components/request/` | リクエストの意味づけ（content, required等） |
+| レスポンス定義 | `components/responses/` | HTTPステータスごとの返却の意味づけ |
+| パラメータ定義 | `components/parameters/` | クエリ・パスパラメータの定義 |
 | パスエンドポイント | `paths/` | `/v1/users`, `/health` などAPIルート定義 |
 
 ## 🔩 schemas（構造定義）

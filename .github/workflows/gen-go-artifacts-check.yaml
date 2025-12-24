@@ -66,7 +66,7 @@ jobs:
                 const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
                 files = raw ? raw.split('\n').filter(Boolean) : [];
               } catch (e) {
-                files = ['(changed_files.txt の読み込みに失敗しました)'];
+                files = ['(Failed to read changed_files.txt)'];
               }
             }
 
@@ -91,28 +91,28 @@ jobs:
 
             // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
             const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
-            const updatedLine = `🕒 最終更新時刻: ${updatedAtJST} (JST)`;
+            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
             const body = hasDiff
               ? [
                   marker,
-                  '## 🧾 Go生成物の差分が検出されました（変更ファイル一覧）',
+                  '## 🧾 Differences in Go generated output have been detected (list of modified files)',
                   '',
                   commitLine,
                   '',
-                  ...(files.length ? files.map(f => `- \`${f}\``) : ['(変更ファイルなし)']),
+                  ...(files.length ? files.map(f => `- \`${f}\``) : ['(no changed files)']),
                   '',
-                  'ローカルで `make gen-go-code`（または `make gen`）を実行して差分をコミットしてください。',
+                  'Please run `make gen-go-code` (or `make gen`) locally and commit the changes.',
                   '',
                   updatedLine,
                 ].join('\n')
               : [
                   marker,
-                  '## ✅ Go生成物の差分は検出されませんでした',
+                  '## ✅ No differences in Go generated output were detected',
                   '',
                   commitLine,
                   '',
-                  'このPRでは、Go生成物の差分は見つかりませんでした。',
+                  'No differences in Go generated output were detected.',
                   '',
                   updatedLine,
                 ].join('\n');
