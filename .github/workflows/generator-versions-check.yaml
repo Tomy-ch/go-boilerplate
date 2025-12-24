@@ -27,6 +27,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write
     env:
       ENV: ci
     steps:
@@ -72,7 +73,7 @@ jobs:
           git diff --name-only
 
       - name: Comment generator versions on PR
-        if: github.event_name == 'pull_request' && steps.diff_check.outputs.has_diff == 'true'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -80,6 +81,7 @@ jobs:
             const fs = require('fs');
 
             const marker = '<!-- generated-go-artifacts-generator-versions -->';
+            const hasDiff = ('${{ steps.diff_check.outputs.has_diff }}' === 'true');
 
             // 古い方（HEAD の内容）
             let prev = '';
@@ -93,7 +95,7 @@ jobs:
               prev = '(The committed generator-versions.txt file did not exist.)';
             }
 
-            // 新しい方（CI で make gen / make gen-tools-meta した後の内容）
+            // 新しい方（CI 実行後）
             let current = '';
             try {
               current = fs.readFileSync('docs/meta/generator-versions.txt', 'utf8');
@@ -122,8 +124,6 @@ jobs:
             const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
             const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
-            const marker = '<!-- generated-go-artifacts-generator-versions -->';
-
             const body = hasDiff
               ? [
                   marker,
@@ -136,16 +136,10 @@ jobs:
                   'This pull request introduces differences in auto-generated artifacts.',
                   'Please update the generated files in your local environment and commit the changes.',
                   '',
-                  'Below is the generator version comparison:',
-                  '',
-                  '---',
-                  '',
                   '### Before (HEAD version of `docs/meta/generator-versions.txt`)',
                   '```',
                   prev.trimEnd(),
                   '```',
-                  '',
-                  '---',
                   '',
                   '### After (CI-regenerated `docs/meta/generator-versions.txt`)',
                   '```',
@@ -158,13 +152,11 @@ jobs:
                   '- Run `make gen` or `make gen-tools-meta` to regenerate artifacts.',
                   '- Commit the updated files.',
                   '',
-                  'The CI will pass once the generated artifacts are synchronized.',
-                  '',
                   updatedLine,
                 ].join('\n')
               : [
                   marker,
-                  '## ✅ No differences in generator versions were detected',
+                  '## ✅ Generator Versions Check: PASS',
                   '',
                   commitLine,
                   '',
