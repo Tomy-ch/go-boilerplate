@@ -3,6 +3,7 @@ name: Code Security Scan Workflow
 on:
   pull_request:
     paths:
+      - '.github/workflows/code-ql.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'

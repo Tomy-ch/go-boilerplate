@@ -130,7 +130,7 @@ jobs:
               line('seed', codeS),
               '',
               `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
-              `- 🕒 最終更新時刻: ${updatedAtJST} (JST)`,
+              `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
               '',
               `<details><summary> ${icon(codeM)} migrations log</summary>`,
               '',

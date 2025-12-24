@@ -3,6 +3,7 @@ name: Application Boot Verification
 on:
   pull_request:
     paths:
+      - '.github/workflows/app-di-startup-check.yaml'
       - 'cmd/server/**.go'
       - 'internal/**.go'
       - 'go.mod'

@@ -84,30 +84,30 @@ jobs:
             const commitUrl = `${repoUrl}/commit/${headSha}`;
 
             const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
-            const updatedLine = `🕒 最終更新時刻: ${updatedAtJST} (JST)`;
+            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
             let body;
             if (files.length > 0) {
               body = [
                 marker,
-                '## 🧾 OpenAPI生成物の差分が検出されました（変更ファイル一覧）',
+                '## 🧾 Differences in OpenAPI generated output have been detected (list of modified files)',
                 '',
                 commitLine,
                 '',
                 ...files.map(f => `- \`${f}\``),
                 '',
-                'ローカルで `make gen` を実行して差分をコミットしてください。',
+                'Please run `make gen` locally and commit the changes.',
                 '',
                 updatedLine,
               ].join('\n');
             } else {
               body = [
                 marker,
-                '## ✅ OpenAPI生成物の差分は解消されました',
+                '## ✅ No differences in OpenAPI generated output were detected',
                 '',
                 commitLine,
                 '',
-                'OpenAPI生成物の差分は見つかりませんでした。',
+                'No differences in OpenAPI generated output were detected.',
                 '',
                 updatedLine,
               ].join('\n');

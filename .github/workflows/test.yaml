@@ -3,6 +3,7 @@ name: Golang Test Workflow
 on:
   pull_request:
     paths:
+      - '.github/workflows/test.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
