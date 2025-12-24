@@ -23,12 +23,145 @@ jobs:
   lint:
     needs: golangci-setup
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
-      - name: Golangci-lint Run
-        uses: golangci/golangci-lint-action@v8
+
+      - name: Install golangci-lint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          export GOBIN=/usr/local/bin
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+          golangci-lint version
+
+      - name: Run golangci-lint
+        id: golangci
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp
+
+          golangci-lint run --config=.golangci-full.yaml \
+            --output.text.path=/tmp/golangci-lint.log \
+            --output.text.print-issued-lines=true \
+            --output.text.print-linter-name=true
+
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Comment Go lint result on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
         with:
-          version: v2.3
-          only-new-issues: true
-          args: --config=.golangci-full.yaml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const marker = '<!-- golangci-lint-result -->';
+            const status = '${{ steps.golangci.outputs.status }}';
+            const code = '${{ steps.golangci.outputs.exit_code }}';
+
+            const updatedAtJST = new Date().toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+
+            const headSha =
+              (context.payload.pull_request?.head?.sha)
+              || process.env.GITHUB_SHA
+              || context.sha;
+            const shortSha = headSha.slice(0, 7);
+
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${headSha}`;
+
+            const read = (p) => {
+              try { return fs.readFileSync(p, 'utf8').trim(); }
+              catch (e) { return '(log not found)'; }
+            };
+
+            const trimLog = (txt) => {
+              const MAX = 45000;
+              if (txt.length <= MAX) return txt;
+              return txt.slice(0, MAX) + '\n... (truncated)';
+            };
+
+            const title = status === 'success'
+              ? '✅ Go lint: PASS (golangci-lint)'
+              : '❌ Go lint: FAIL (golangci-lint)';
+
+            const line = (code) =>
+              (code === '0')
+                ? '- ✅ golangci-lint has completed successfully.'
+                : '- ❌ Issues have been detected by golangci-lint. Please make the necessary corrections locally and commit the changes.';
+
+            const icon = (code) => (code === '0' ? '✅' : '🚨');
+
+            const body = [
+              marker,
+              `## ${title}`,
+              '',
+              line(code),
+              '',
+              `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
+              `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
+              '',
+              `<details><summary> ${icon(code)} golangci-lint log</summary>`,
+              '',
+              '```text',
+              trimLog(read('/tmp/golangci-lint.log')),
+              '```',
+              '</details>',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c => (c.body || '').includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }
+
+      - name: Fail if golangci-lint failed
+        if: always()
+        shell: bash
+        run: |
+          code='${{ steps.golangci.outputs.exit_code }}'
+          if [ "$code" != "0" ]; then
+            echo "golangci-lint failed with exit code $code"
+            exit 1
+          fi
