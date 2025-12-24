@@ -6,9 +6,6 @@ on:
       - production
       - staging
       - develop
-  push:
-    paths:
-      - '.github/workflows/generator-versions-check.yaml'
   workflow_dispatch:
 
 concurrency:
@@ -137,14 +134,12 @@ jobs:
                   'Please update the generated files in your local environment and commit the changes.',
                   '',
                   '### Before (HEAD version of `docs/meta/generator-versions.txt`)',
-                  '```',
+                  '',
                   prev.trimEnd(),
-                  '```',
                   '',
                   '### After (CI-regenerated `docs/meta/generator-versions.txt`)',
-                  '```',
+                  '',
                   current.trimEnd(),
-                  '```',
                   '',
                   '**Action required:**',
                   '',

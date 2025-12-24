@@ -6,9 +6,6 @@ on:
       - production
       - staging
       - develop
-  push:
-    paths:
-      - '.github/workflows/image-scan.yaml'
   workflow_dispatch:
 
 concurrency:
