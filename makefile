@@ -36,7 +36,7 @@ include .makefiles/go/sqlc.mk
 # メタ情報関連
 include .makefiles/meta/gen.mk
 # OpenAPI関連
-include .makefiles/open-api/gen.mk
+include .makefiles/openapi/gen.mk
 # スクリプト関連
 include .makefiles/scripts/gen.mk
 # SQL関連
