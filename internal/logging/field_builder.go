@@ -128,7 +128,7 @@ func (l *logFieldBuilder) BuildHTTPRequestFields(req HTTPRequestLogInput) []*Fie
 	fields := []*Field{
 		String(EventTypeKey, EventTypeStart),
 		Time(EventAtKey, req.EventAt),
-		String(eventTzKey, l.osCfg.TimeZone()),
+		String(EventTzKey, l.osCfg.TimeZone()),
 
 		String(MethodKey, req.Method),
 		String(PathKey, req.Path),
@@ -154,7 +154,7 @@ func (l *logFieldBuilder) BuildHTTPResponseFields(resp HTTPResponseLogInput) []*
 	fields := []*Field{
 		String(EventTypeKey, EventTypeEnd),
 		Time(EventAtKey, resp.EventAt),
-		String(eventTzKey, l.osCfg.TimeZone()),
+		String(EventTzKey, l.osCfg.TimeZone()),
 
 		Float64(LatencyKey, l.latencyMs(resp.Latency)),
 
@@ -174,7 +174,7 @@ func (l *logFieldBuilder) BuildSQLStartFields(sql SQLFieldsStartInput) []*Field 
 	fields := []*Field{
 		String(EventTypeKey, EventTypeStart),
 		Time(EventAtKey, sql.EventAt),
-		String(eventTzKey, l.osCfg.TimeZone()),
+		String(EventTzKey, l.osCfg.TimeZone()),
 
 		String(LayerKey, sql.Layer),
 		String(PackageKey, sql.PkgName),
@@ -193,7 +193,7 @@ func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field {
 	fields := []*Field{
 		String(EventTypeKey, EventTypeEnd),
 		Time(EventAtKey, s.EventAt),
-		String(eventTzKey, l.osCfg.TimeZone()),
+		String(EventTzKey, l.osCfg.TimeZone()),
 
 		String(LayerKey, s.Layer),
 		String(PackageKey, s.PkgName),
@@ -206,8 +206,8 @@ func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field {
 
 	if len(s.Args) > 0 {
 		fields = append(fields,
-			Any(ArgsKey, s.Args),
-			String(ArgsRawKey, fmt.Sprint(s.Args)),
+			Any(QueryArgsKey, s.Args),
+			String(QueryArgsRawKey, fmt.Sprint(s.Args)),
 		)
 	}
 
@@ -223,7 +223,7 @@ func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput)
 	fields := []*Field{
 		String(EventTypeKey, obs.EventType),
 		Time(EventAtKey, obs.EventAt),
-		String(eventTzKey, l.osCfg.TimeZone()),
+		String(EventTzKey, l.osCfg.TimeZone()),
 
 		String(SpanNameKey, obs.SpanName),
 		String(LayerKey, obs.Layer),
