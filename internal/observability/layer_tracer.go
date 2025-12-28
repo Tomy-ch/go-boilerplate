@@ -21,7 +21,7 @@ const (
 	tracerNameInfrastructure = "infrastructure"
 
 	// callerSkip は、ロガーのコールスタックのスキップ数を定義します。
-	callerSkip = 2
+	callerSkip = 3
 )
 
 type LayerTracer struct {
