@@ -10,8 +10,8 @@ import (
 	mock_user "boilerplate-go/internal/domain/user/mock"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/support/paging"
+	"boilerplate-go/internal/usecase/testkit"
 	mock_tx "boilerplate-go/internal/usecase/tx/mock"
-	"boilerplate-go/internal/usecase/usecasetest"
 	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/uuid"
 
@@ -143,7 +143,7 @@ func TestGetAllUsers(t *testing.T) {
 		t.Run("ユーザー取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := usecasetest.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError(t)
 
 			page := 1
 			perPage := 100
@@ -165,7 +165,7 @@ func TestGetAllUsers(t *testing.T) {
 		t.Run("都道府県取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := usecasetest.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError(t)
 
 			page := 1
 			perPage := 100
@@ -197,7 +197,7 @@ func TestCreateUser(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	lt := observability.NewMockUsecaseLayerTracer(t)
-	mockTxManager := usecasetest.NewMockTransactionManager(t)
+	mockTxManager := testkit.NewMockTransactionManager(t)
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
 
@@ -281,7 +281,7 @@ func TestCreateUser(t *testing.T) {
 		t.Run("都道府県の取得に失敗した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := usecasetest.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError(t)
 
 			createDTO := &CreateParamsDTO{}
 			createDTO.PrefectureName = prefectureName
@@ -334,7 +334,7 @@ func TestCreateUser(t *testing.T) {
 	t.Run("ユーザー作成に失敗した場合、エラーが返される", func(t *testing.T) {
 		t.Parallel()
 
-		expectedErr := usecasetest.ExpectedDBError(t)
+		expectedErr := testkit.ExpectedDBError(t)
 
 		createDTO := &CreateParamsDTO{}
 		createDTO.UserID = userDomain.ID()

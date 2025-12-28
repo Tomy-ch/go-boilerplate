@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/handlertest/testassert"
 	"boilerplate-go/internal/controller/handler/healthz/gen"
+	"boilerplate-go/internal/controller/handler/testkit/testassert"
 	"boilerplate-go/internal/observability"
 
 	"github.com/labstack/echo/v4"

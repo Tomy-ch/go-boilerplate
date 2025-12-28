@@ -8,7 +8,7 @@ import (
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/healthcheck/query"
 	mock_query "boilerplate-go/internal/usecase/healthcheck/query/mock"
-	"boilerplate-go/internal/usecase/usecasetest"
+	"boilerplate-go/internal/usecase/testkit"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -79,7 +79,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 				ApplicationTime: time.Now(),
 				DBHealthCheck:   expectedDBHealth,
 			}
-			expectedErr := usecasetest.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError(t)
 
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(expectedDBHealth, expectedErr).Times(1)

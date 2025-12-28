@@ -1,4 +1,4 @@
-package usecasetest
+package testkit
 
 import (
 	"testing"

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/controller/handler/handlertest/testspan"
+	"boilerplate-go/internal/controller/handler/testkit/testspan"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 
