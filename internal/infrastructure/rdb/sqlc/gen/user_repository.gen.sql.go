@@ -14,6 +14,32 @@ import (
 	"github.com/lib/pq"
 )
 
+const countUsersByDeletedState = `-- name: CountUsersByDeletedState :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE CASE $1::DELETED_STATE
+        WHEN 'active' THEN u.deleted_at IS NULL
+        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
+        ELSE TRUE
+    END
+`
+
+// === source: database/dml/repository/user/count_user.sql ===
+//
+//	SELECT COUNT(*)
+//	FROM users AS u
+//	WHERE CASE $1::DELETED_STATE
+//	        WHEN 'active' THEN u.deleted_at IS NULL
+//	        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
+//	        ELSE TRUE
+//	    END
+func (q *Queries) CountUsersByDeletedState(ctx context.Context, deletedState DeletedState) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsersByDeletedState, deletedState)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (
     id,
