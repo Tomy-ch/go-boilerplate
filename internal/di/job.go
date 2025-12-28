@@ -13,7 +13,7 @@ import (
 	"go.uber.org/fx"
 )
 
-const callerSkip = 2
+const callSkip = 2
 
 type (
 	// StartFunc は、ジョブの開始関数の型を表します。
@@ -65,7 +65,7 @@ func RunJob() (StartFunc, StopFunc) {
 		state.Set(name, args, done)
 
 		if err := app.Start(ctx); err != nil {
-			logger.Named("job.RunJob").CallerSkip(callerSkip).Error(
+			logger.Named("job.RunJob").CallerSkip(callSkip).Error(
 				"failed to start job application",
 				logging.String(logging.EventTypeKey, logging.EventTypeStart),
 				logging.Time(logging.EventAtKey, time.Now()),
@@ -79,7 +79,7 @@ func RunJob() (StartFunc, StopFunc) {
 			return done
 		}
 
-		logger.Named("job.RunJob").CallerSkip(callerSkip).Info(
+		logger.Named("job.RunJob").CallerSkip(callSkip).Info(
 			"job started",
 			logging.String(logging.EventTypeKey, logging.EventTypeStart),
 			logging.Time(logging.EventAtKey, time.Now()),
@@ -93,7 +93,7 @@ func RunJob() (StartFunc, StopFunc) {
 
 	stop := func(ctx context.Context) error {
 		if err := app.Stop(ctx); err != nil {
-			logger.Named("job.RunJob").CallerSkip(callerSkip).Error(
+			logger.Named("job.RunJob").CallerSkip(callSkip).Error(
 				"failed to stop job application",
 				logging.String(logging.EventTypeKey, logging.EventTypeEnd),
 				logging.Time(logging.EventAtKey, time.Now()),
@@ -103,7 +103,7 @@ func RunJob() (StartFunc, StopFunc) {
 			return err
 		}
 
-		logger.Named("job.RunJob").CallerSkip(callerSkip).Info(
+		logger.Named("job.RunJob").CallerSkip(callSkip).Info(
 			"job application finished",
 			logging.String(logging.EventTypeKey, logging.EventTypeEnd),
 			logging.Time(logging.EventAtKey, time.Now()),
