@@ -17,8 +17,9 @@ include .makefiles/db/dml-merge.mk
 include .makefiles/db/seed.mk
 include .makefiles/db/fix.mk
 include .makefiles/db/gen.mk
-# Docker関連
-include .makefiles/docker/build.mk
+# Application関連
+include .makefiles/app/server.mk
+include .makefiles/app/job.mk
 # GitHub関連
 include .makefiles/github/operation/release-branch.mk
 include .makefiles/github/operation/release-tag.mk
