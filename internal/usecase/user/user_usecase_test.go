@@ -366,3 +366,33 @@ func TestCreateUser(t *testing.T) {
 		require.ErrorIs(t, expectedErr, err)
 	})
 }
+
+func Test_usecase_CountUsers(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	tf := observability.NewNoopTracerFactory(t)
+	userRepo := mock_user.NewMockRepository(ctrl)
+
+	u := &usecase{
+		tracer:   tf.Usecase(),
+		userRepo: userRepo,
+	}
+
+	t.Run("ユーザーの総件数が正常に取得できること", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		active := ptr.To(true)
+		expectedCount := int64(42)
+
+		userRepo.
+			EXPECT().
+			CountByActive(gomock.Any(), active).
+			Return(expectedCount, nil)
+
+		actualCount, err := u.CountUsers(ctx, active)
+		require.NoError(t, err)
+		require.Equal(t, expectedCount, actualCount)
+	})
+}

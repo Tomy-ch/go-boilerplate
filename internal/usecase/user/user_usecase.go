@@ -57,6 +57,8 @@ type Usecase interface {
 	ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
 	// CreateUser は、ユーザーを作成します。
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+	// CountUsers は、ユーザーの総件数を返します。
+	CountUsers(ctx context.Context, active *bool) (int64, error)
 }
 
 // New は、ユーザーに関するユースケースを初期化します。
@@ -199,4 +201,11 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 		Street:         userEntity.Street(),
 		Building:       userEntity.Building(),
 	}, nil
+}
+
+// CountUsers は、ユーザーの総件数を返すユースケースです。
+func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+	return u.userRepo.CountByActive(ctx, active)
 }

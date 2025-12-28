@@ -42,6 +42,21 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 	return m.recorder
 }
 
+// CountUsers mocks base method.
+func (m *MockUsecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountUsers", ctx, active)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountUsers indicates an expected call of CountUsers.
+func (mr *MockUsecaseMockRecorder) CountUsers(ctx, active any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountUsers", reflect.TypeOf((*MockUsecase)(nil).CountUsers), ctx, active)
+}
+
 // CreateUser mocks base method.
 func (m *MockUsecase) CreateUser(ctx context.Context, dto *user.CreateParamsDTO) (user.MutableFields, error) {
 	m.ctrl.T.Helper()
