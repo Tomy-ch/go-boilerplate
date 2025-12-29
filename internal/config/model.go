@@ -67,8 +67,14 @@ type DBConnectionConfig struct {
 }
 
 type SecurityConfig struct {
-	allowedOrigins []string
-	cidr           *net.IPNet
+	allowedOrigins        []string
+	cidr                  *net.IPNet
+	contentTypeNosniff    string
+	xFrameOptions         string
+	hstsMaxAge            time.Duration
+	hstsExcludeSubdomains bool
+	hstsPreloadEnabled    bool
+	referrerPolicy        string
 }
 
 // NewOSConfig は、OSの設定を返します。
@@ -220,3 +226,21 @@ func (s *SecurityConfig) AllowedOrigins() []string { return s.allowedOrigins }
 
 // CIDR は、セキュリティ設定で使用されるCIDRを返します。
 func (s *SecurityConfig) CIDR() *net.IPNet { return s.cidr }
+
+// ContentTypeNosniff は、X-Content-Type-Optionsヘッダーの値を返します。
+func (s *SecurityConfig) ContentTypeNosniff() string { return s.contentTypeNosniff }
+
+// XFrameOptions は、X-Frame-Optionsヘッダーの値を返します。
+func (s *SecurityConfig) XFrameOptions() string { return s.xFrameOptions }
+
+// HSTSMaxAge は、HSTSの最大年齢を返します。
+func (s *SecurityConfig) HSTSMaxAge() time.Duration { return s.hstsMaxAge }
+
+// HSTSExcludeSubdomains は、HSTSでサブドメインを除外するかどうかを返します。
+func (s *SecurityConfig) HSTSExcludeSubdomains() bool { return s.hstsExcludeSubdomains }
+
+// HSTSPreloadEnabled は、HSTSのプリロードが有効かどうかを返します。
+func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled }
+
+// ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
+func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }

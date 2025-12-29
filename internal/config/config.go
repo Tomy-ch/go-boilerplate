@@ -68,8 +68,14 @@ func New() (*Config, error) {
 			maxIdleTime:  cfg.DBConnection.MaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins: cfg.Security.AllowedOrigins,
-			cidr:           v.cidr,
+			allowedOrigins:        cfg.Security.AllowedOrigins,
+			cidr:                  v.cidr,
+			contentTypeNosniff:    cfg.Security.ContentTypeNosniff,
+			xFrameOptions:         cfg.Security.XFrameOptions,
+			hstsMaxAge:            cfg.Security.HSTSMaxAge,
+			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
+			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
+			referrerPolicy:        cfg.Security.ReferrerPolicy,
 		},
 	}, nil
 }

@@ -254,6 +254,36 @@ func TestGetterMethods(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedCIDR, security.CIDR())
 		})
+
+		t.Run("ContentTypeNosniff", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedContentTypeNosniff, security.ContentTypeNosniff())
+		})
+
+		t.Run("XFrameOptions", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedXFrameOptions, security.XFrameOptions())
+		})
+
+		t.Run("HSTSMaxAge", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedHSTSMaxAge, security.HSTSMaxAge())
+		})
+
+		t.Run("HSTSExcludeSubdomains", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedHSTSExcludeSubdomains, security.HSTSExcludeSubdomains())
+		})
+
+		t.Run("HSTSPreloadEnabled", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedHSTSPreloadEnabled, security.HSTSPreloadEnabled())
+		})
+
+		t.Run("ReferrerPolicy", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
+		})
 	})
 }
 
