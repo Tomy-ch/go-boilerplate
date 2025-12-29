@@ -62,6 +62,12 @@ type DBConnection struct {
 }
 
 type Security struct {
-	AllowedOrigins []string `env:"ALLOWED_ORIGINS,required" envSeparator:","`
-	CIDR           string   `env:"CIDR,required"`
+	AllowedOrigins        []string      `env:"ALLOWED_ORIGINS,required"         envSeparator:","`
+	CIDR                  string        `env:"CIDR,required"`
+	ContentTypeNosniff    string        `env:"CONTENT_TYPE_NOSNIFF,required"`
+	XFrameOptions         string        `env:"X_FRAME_OPTIONS,required"`
+	HSTSMaxAge            time.Duration `env:"HSTS_MAX_AGE,required"`
+	HSTSExcludeSubdomains bool          `env:"HSTS_EXCLUDE_SUBDOMAINS,required"`
+	HSTSPreloadEnabled    bool          `env:"HSTS_PRELOAD_ENABLED,required"`
+	ReferrerPolicy        string        `env:"REFERRER_POLICY,required"`
 }

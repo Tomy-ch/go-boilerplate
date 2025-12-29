@@ -53,8 +53,14 @@ func TestNewConfig(t *testing.T) {
 					maxIdleTime:  expectedDBMaxIdleTime,
 				},
 				security: SecurityConfig{
-					allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-					cidr:           expectedCIDR,
+					allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+					cidr:                  expectedCIDR,
+					contentTypeNosniff:    expectedContentTypeNosniff,
+					xFrameOptions:         expectedXFrameOptions,
+					hstsMaxAge:            expectedHSTSMaxAge,
+					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
+					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
+					referrerPolicy:        expectedReferrerPolicy,
 				},
 			}
 

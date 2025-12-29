@@ -54,8 +54,14 @@ func TestMockConfigForTest(t *testing.T) {
 			maxIdleTime:  expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			cidr:           expectedCIDR,
+			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+			cidr:                  expectedCIDR,
+			contentTypeNosniff:    expectedContentTypeNosniff,
+			xFrameOptions:         expectedXFrameOptions,
+			hstsMaxAge:            expectedHSTSMaxAge,
+			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
+			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
+			referrerPolicy:        expectedReferrerPolicy,
 		},
 	}
 
@@ -108,8 +114,14 @@ func Test_mockLoader(t *testing.T) {
 			MaxIdleTime:  expectedDBMaxIdleTime,
 		},
 		Security: Security{
-			AllowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			CIDR:           expectedCIDRStr,
+			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+			CIDR:                  expectedCIDRStr,
+			ContentTypeNosniff:    expectedContentTypeNosniff,
+			XFrameOptions:         expectedXFrameOptions,
+			HSTSMaxAge:            expectedHSTSMaxAge,
+			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
+			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
+			ReferrerPolicy:        expectedReferrerPolicy,
 		},
 	}
 
@@ -156,4 +168,10 @@ func Test_setEnv(t *testing.T) {
 	// Security
 	require.Equal(t, expectedCIDRStr, os.Getenv("SECURITY_CIDR"))
 	require.Equal(t, expectedAllowedOrigins, os.Getenv("SECURITY_ALLOWED_ORIGINS"))
+	require.Equal(t, expectedContentTypeNosniff, os.Getenv("SECURITY_CONTENT_TYPE_NOSNIFF"))
+	require.Equal(t, expectedXFrameOptions, os.Getenv("SECURITY_X_FRAME_OPTIONS"))
+	require.Equal(t, expectedHSTSMaxAgeStr, os.Getenv("SECURITY_HSTS_MAX_AGE"))
+	require.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
+	require.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
+	require.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
 }

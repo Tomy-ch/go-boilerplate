@@ -64,9 +64,16 @@ var (
 	expectedDBMaxIdleTimeStr   = fmt.Sprintf("%ds", expectedDBMaxIdleTimeCount)
 	expectedDBMaxIdleTime      = time.Duration(expectedDBMaxIdleTimeCount) * time.Second
 	// security
-	expectedAllowedOrigins = "http://localhost,https://example.com"
-	expectedCIDRStr        = "192.168.0.0/24"
-	_, expectedCIDR, _     = net.ParseCIDR(expectedCIDRStr)
+	expectedAllowedOrigins        = "http://localhost,https://example.com"
+	expectedCIDRStr               = "192.168.0.0/24"
+	_, expectedCIDR, _            = net.ParseCIDR(expectedCIDRStr)
+	expectedContentTypeNosniff    = "nosniff"
+	expectedXFrameOptions         = "SAMEORIGIN"
+	expectedHSTSMaxAge            = 31536000 * time.Second
+	expectedHSTSMaxAgeStr         = fmt.Sprintf("%ds", int(expectedHSTSMaxAge.Seconds()))
+	expectedHSTSExcludeSubdomains = false
+	expectedHSTSPreloadEnabled    = false
+	expectedReferrerPolicy        = "no-referrer"
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -115,8 +122,14 @@ func MockConfigForTest(t testing.TB) *Config {
 			maxIdleTime:  expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			cidr:           expectedCIDR,
+			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+			cidr:                  expectedCIDR,
+			contentTypeNosniff:    expectedContentTypeNosniff,
+			xFrameOptions:         expectedXFrameOptions,
+			hstsMaxAge:            expectedHSTSMaxAge,
+			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
+			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
+			referrerPolicy:        expectedReferrerPolicy,
 		},
 	}
 }
@@ -167,8 +180,14 @@ func mockLoader(t testing.TB) Loader {
 			MaxIdleTime:  expectedDBMaxIdleTime,
 		},
 		Security: Security{
-			AllowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			CIDR:           expectedCIDRStr,
+			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+			CIDR:                  expectedCIDRStr,
+			ContentTypeNosniff:    expectedContentTypeNosniff,
+			XFrameOptions:         expectedXFrameOptions,
+			HSTSMaxAge:            expectedHSTSMaxAge,
+			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
+			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
+			ReferrerPolicy:        expectedReferrerPolicy,
 		},
 	}
 }
@@ -213,4 +232,10 @@ func setEnvVarsForTesting(t *testing.T) {
 	// Security
 	t.Setenv("SECURITY_CIDR", expectedCIDRStr)
 	t.Setenv("SECURITY_ALLOWED_ORIGINS", expectedAllowedOrigins)
+	t.Setenv("SECURITY_CONTENT_TYPE_NOSNIFF", expectedContentTypeNosniff)
+	t.Setenv("SECURITY_X_FRAME_OPTIONS", expectedXFrameOptions)
+	t.Setenv("SECURITY_HSTS_MAX_AGE", expectedHSTSMaxAgeStr)
+	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
+	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
+	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
 }
