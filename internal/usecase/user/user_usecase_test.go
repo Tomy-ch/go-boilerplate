@@ -10,8 +10,8 @@ import (
 	mock_user "boilerplate-go/internal/domain/user/mock"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/support/paging"
+	"boilerplate-go/internal/usecase/testkit"
 	mock_tx "boilerplate-go/internal/usecase/tx/mock"
-	"boilerplate-go/internal/usecase/usecasetest"
 	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/uuid"
 
@@ -143,7 +143,7 @@ func TestGetAllUsers(t *testing.T) {
 		t.Run("ユーザー取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := usecasetest.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError(t)
 
 			page := 1
 			perPage := 100
@@ -165,7 +165,7 @@ func TestGetAllUsers(t *testing.T) {
 		t.Run("都道府県取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := usecasetest.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError(t)
 
 			page := 1
 			perPage := 100
@@ -197,7 +197,7 @@ func TestCreateUser(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	lt := observability.NewMockUsecaseLayerTracer(t)
-	mockTxManager := usecasetest.NewMockTransactionManager(t)
+	mockTxManager := testkit.NewMockTransactionManager(t)
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
 
@@ -281,7 +281,7 @@ func TestCreateUser(t *testing.T) {
 		t.Run("都道府県の取得に失敗した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := usecasetest.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError(t)
 
 			createDTO := &CreateParamsDTO{}
 			createDTO.PrefectureName = prefectureName
@@ -334,7 +334,7 @@ func TestCreateUser(t *testing.T) {
 	t.Run("ユーザー作成に失敗した場合、エラーが返される", func(t *testing.T) {
 		t.Parallel()
 
-		expectedErr := usecasetest.ExpectedDBError(t)
+		expectedErr := testkit.ExpectedDBError(t)
 
 		createDTO := &CreateParamsDTO{}
 		createDTO.UserID = userDomain.ID()
@@ -364,5 +364,35 @@ func TestCreateUser(t *testing.T) {
 		actual, err := uc.CreateUser(ctx, createDTO)
 		require.Equal(t, MutableFields{}, actual)
 		require.ErrorIs(t, expectedErr, err)
+	})
+}
+
+func Test_usecase_CountUsers(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	tf := observability.NewNoopTracerFactory(t)
+	userRepo := mock_user.NewMockRepository(ctrl)
+
+	u := &usecase{
+		tracer:   tf.Usecase(),
+		userRepo: userRepo,
+	}
+
+	t.Run("ユーザーの総件数が正常に取得できること", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := t.Context()
+		active := ptr.To(true)
+		expectedCount := int64(42)
+
+		userRepo.
+			EXPECT().
+			CountByActive(gomock.Any(), active).
+			Return(expectedCount, nil)
+
+		actualCount, err := u.CountUsers(ctx, active)
+		require.NoError(t, err)
+		require.Equal(t, expectedCount, actualCount)
 	})
 }

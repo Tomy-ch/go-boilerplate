@@ -4,8 +4,8 @@ package logging
 import (
 	"time"
 
-	"boilerplate-go/internal/controller"
 	"boilerplate-go/internal/controller/httpstack/requestid"
+	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 
@@ -67,8 +67,8 @@ func (l log) buildRequestLogFields() []*logging.Field {
 		ContentLength: req.ContentLength,
 		TraceID:       l.traceCtx.TraceID(),
 		SpanID:        l.traceCtx.SpanID(),
-		PathParams:    controller.ExtractPathParams(l.c),
-		QueryParams:   controller.ExtractQueryParams(l.c),
+		PathParams:    server.ExtractPathParams(l.c),
+		QueryParams:   server.ExtractQueryParams(l.c),
 	}
 
 	return l.lf.BuildHTTPRequestFields(reqIn)

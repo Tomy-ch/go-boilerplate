@@ -42,24 +42,24 @@ new-migrate-%:
 #   make db-seed DB=test
 # -------------------------------
 db-migrate-up:
-	@echo "🔄 マイグレーション: 最新版までアップグレードします... (database=$(DB))"
+	@echo "🧱 マイグレーション: 最新版までアップグレードします... (database=$(DB))"
 	@docker compose run --rm go_tool_runner make db-migrate-ci-up
 	@echo "✅ 完了：全マイグレーション適用されました。 (database=$(DB))"
 
 db-migrate-up-%:
 	@version=$*; \
-	echo "🔄 マイグレーション: バージョン $$version 版までアップグレードします... (database=$(DB))"; \
+	echo "🧱 マイグレーション: バージョン $$version 版までアップグレードします... (database=$(DB))"; \
 	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$version; \
 	echo "✅ 完了：バージョン $$version まで適用されました。 (database=$(DB))"
 
 db-migrate-down:
-	@echo "🔄 マイグレーション: 初期状態までダウングレードします... (database=$(DB))"
+	@echo "💥 マイグレーション: 初期状態までダウングレードします... (database=$(DB))"
 	@docker compose run --rm go_tool_runner make db-migrate-ci-down
 	@echo "✅ 完了：全マイグレーションダウングレードされました。 (database=$(DB))"
 
 db-migrate-down-%:
 	@version=$*; \
-	echo "🔄 マイグレーション: バージョン $$version までダウングレードします... (database=$(DB))"; \
+	echo "💥 マイグレーション: バージョン $$version までダウングレードします... (database=$(DB))"; \
 	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$version; \
 	echo "✅ 完了：バージョン $$version までダウングレードされました。 (database=$(DB))"
 

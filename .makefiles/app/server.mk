@@ -1,4 +1,4 @@
-## Dockerを用いた開発環境関連のコマンド群
+## アプリケーションサーバー関連
 .PHONY: serve ## 開発環境の起動
 .PHONY: serve-build ## ビルド実行後に、開発環境を起動する
 .PHONY: tools ## 開発ツールの起動

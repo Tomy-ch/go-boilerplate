@@ -1,5 +1,4 @@
-// Package controller は、コントローラ層に関連するコードを提供します。
-package controller
+package server
 
 import (
 	"net/url"

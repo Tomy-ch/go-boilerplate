@@ -3,7 +3,7 @@ package recovery
 
 import (
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller"
+	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 
@@ -59,8 +59,8 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 			UserAgent:     req.UserAgent(),
 			ContentType:   req.Header.Get(echo.HeaderContentType),
 			ContentLength: req.ContentLength,
-			QueryParams:   controller.ExtractQueryParams(c),
-			PathParams:    controller.ExtractPathParams(c),
+			QueryParams:   server.ExtractQueryParams(c),
+			PathParams:    server.ExtractPathParams(c),
 			TraceID:       traceCtx.TraceID(),
 			SpanID:        traceCtx.SpanID(),
 		}

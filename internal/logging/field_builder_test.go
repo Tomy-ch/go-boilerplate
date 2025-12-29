@@ -65,7 +65,7 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, EventTypeStart),
 			Time(EventAtKey, exampleInput.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 
 			String(MethodKey, exampleInput.Method),
 			String(PathKey, exampleInput.Path),
@@ -97,7 +97,7 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, EventTypeStart),
 			Time(EventAtKey, input.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 
 			String(MethodKey, input.Method),
 			String(PathKey, input.Path),
@@ -150,7 +150,7 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, EventTypeEnd),
 			Time(EventAtKey, exampleInput.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 			Float64(LatencyKey, latencyMs),
 
 			Int(StatusKey, exampleInput.Status),
@@ -177,7 +177,7 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, EventTypeEnd),
 			Time(EventAtKey, input.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 			Float64(LatencyKey, latencyMs),
 
 			Int(StatusKey, input.Status),
@@ -222,7 +222,7 @@ func TestLogFields_BuildSQLStartFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, EventTypeStart),
 			Time(EventAtKey, s.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 			String(LayerKey, s.Layer),
 			String(PackageKey, s.PkgName),
 			String(FunctionKey, s.FuncName),
@@ -250,7 +250,7 @@ func TestLogFields_BuildSQLStartFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, EventTypeStart),
 			Time(EventAtKey, s.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 			String(LayerKey, s.Layer),
 			String(PackageKey, s.PkgName),
 			String(FunctionKey, s.FuncName),
@@ -293,7 +293,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, EventTypeEnd),
 			Time(EventAtKey, s.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 			String(LayerKey, s.Layer),
 			String(PackageKey, s.PkgName),
 			String(FunctionKey, s.FuncName),
@@ -329,7 +329,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, EventTypeEnd),
 			Time(EventAtKey, s.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 			String(LayerKey, s.Layer),
 			String(PackageKey, s.PkgName),
 			String(FunctionKey, s.FuncName),
@@ -337,8 +337,8 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 			String(RawQueryKey, q),
 			String(QueryCompactKey, "SELECT 1 FROM tbl"),
 			Float64(LatencyKey, float64(12)),
-			Any(ArgsKey, args),
-			String(ArgsRawKey, fmt.Sprint(args)),
+			Any(QueryArgsKey, args),
+			String(QueryArgsRawKey, fmt.Sprint(args)),
 			Error(InternalErrorKey, err),
 			String(TraceIDKey, "tx"),
 			String(SpanIDKey, "sx"),
@@ -376,7 +376,7 @@ func TestLogFields_BuildObservabilityFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, obs.EventType),
 			Time(EventAtKey, obs.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 			String(SpanNameKey, obs.SpanName),
 			String(LayerKey, obs.Layer),
 			String(PackageKey, obs.PkgName),
@@ -406,7 +406,7 @@ func TestLogFields_BuildObservabilityFields(t *testing.T) {
 		expected := []*Field{
 			String(EventTypeKey, obs.EventType),
 			Time(EventAtKey, obs.EventAt),
-			String(eventTzKey, osCfg.TimeZone()),
+			String(EventTzKey, osCfg.TimeZone()),
 			String(SpanNameKey, obs.SpanName),
 			String(LayerKey, obs.Layer),
 			String(PackageKey, obs.PkgName),

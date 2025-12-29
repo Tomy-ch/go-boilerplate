@@ -20,8 +20,8 @@ const (
 	tracerNameUsecase        = "usecase"
 	tracerNameInfrastructure = "infrastructure"
 
-	// callerSkip は、ロガーのコールスタックのスキップ数を定義します。
-	callerSkip = 2
+	// callSkip は、ロガーのコールスタックのスキップ数を定義します。
+	callSkip = 3
 )
 
 type LayerTracer struct {
@@ -94,13 +94,13 @@ func RunDomainWithSpan[T any](
 	}
 	obsIn.EventType = SpanEventStart
 
-	lt.logSpanEvent(callerSkip, obsIn)
+	lt.logSpanEvent(callSkip, obsIn)
 
 	defer func() {
 		event := SpanEventEnd
 		obsIn.EventType = event
 		obsIn.Latency = time.Since(start)
-		lt.logSpanEvent(callerSkip+1, obsIn)
+		lt.logSpanEvent(callSkip+1, obsIn)
 		end()
 	}()
 
@@ -151,13 +151,13 @@ func (lt LayerTracer) startSpan(
 	}
 
 	obsIn.EventType = SpanEventStart
-	lt.logSpanEvent(callerSkip+1, obsIn)
+	lt.logSpanEvent(callSkip+1, obsIn)
 
 	endSpan := func() {
 		obsIn.EventType = SpanEventEnd
 		obsIn.Latency = time.Since(startTime)
 
-		lt.logSpanEvent(callerSkip, obsIn)
+		lt.logSpanEvent(callSkip, obsIn)
 
 		end()
 	}

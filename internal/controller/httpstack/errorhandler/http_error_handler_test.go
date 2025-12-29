@@ -11,7 +11,7 @@ import (
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/error/response"
 	"boilerplate-go/internal/controller/error/response/gen"
-	"boilerplate-go/internal/controller/handler/handlertest/testspan"
+	"boilerplate-go/internal/controller/handler/testkit/testspan"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 

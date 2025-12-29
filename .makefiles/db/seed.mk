@@ -10,7 +10,7 @@
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 db-seed:
-	@echo "🔄 データベースにシードデータを投入します... (database=$(DB))"
+	@echo "🌱 データベースにシードデータを投入します... (database=$(DB))"
 	@docker compose run --rm go_tool_runner make db-seed-ci
 	@echo "✅ シードデータの投入が完了しました。 (database=$(DB))"
 

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/handler/handlertest/testassert"
 	"boilerplate-go/internal/controller/handler/ready/gen"
+	"boilerplate-go/internal/controller/handler/testkit/testassert"
 	"boilerplate-go/internal/observability"
 	healthcheckuc "boilerplate-go/internal/usecase/healthcheck"
 	mock_healthcheckuc "boilerplate-go/internal/usecase/healthcheck/mock"

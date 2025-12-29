@@ -1,5 +1,5 @@
-// Package usecasetest は、ユースケースのテストに関連するユーティリティを提供します。
-package usecasetest
+// Package testkit は、ユースケースのテストに関連するユーティリティを提供します。
+package testkit
 
 import (
 	"context"

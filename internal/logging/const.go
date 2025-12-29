@@ -11,8 +11,8 @@ const (
 	EventTypeEnd = "end"
 	// EventAtKey は、イベント発生時刻を表すログフィールドのキーです。
 	EventAtKey = "event_at"
-	// eventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。
-	eventTzKey = "event_tz"
+	// EventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。
+	EventTzKey = "event_tz"
 
 	// StatusKey は、HTTPステータスコードを表すログフィールドのキーです。
 	StatusKey = "status"
@@ -67,10 +67,21 @@ const (
 	RawQueryKey = "raw_query"
 	// QueryCompactKey は、コンパクト化されたSQLクエリを表すログフィールドのキーです。
 	QueryCompactKey = "query_compact"
-	// ArgsKey は、SQLクエリの引数を表すログフィールドのキーです。
-	ArgsKey = "args"
-	// ArgsRawKey は、生のSQLクエリ引数を表すログフィールドのキーです。
-	ArgsRawKey = "args_raw"
+	// QueryArgsKey は、SQLクエリの引数を表すログフィールドのキーです。
+	QueryArgsKey = "args"
+	// QueryArgsRawKey は、生のSQLクエリ引数を表すログフィールドのキーです。
+	QueryArgsRawKey = "args_raw"
+
+	// Job系ログのキー
+
+	// JobNameKey は、ジョブ名を表すログフィールドのキーです。
+	JobNameKey = "job_name"
+	// JobArgsKey は、ジョブ引数を表すログフィールドのキーです。
+	JobArgsKey = "job_args"
+	// JobErrorKey は、ジョブエラーを表すログフィールドのキーです。
+	JobErrorKey = "job_error"
+	// JobResultKey は、ジョブ結果を表すログフィールドのキーです。
+	JobResultKey = "job_result"
 
 	// 可観測系ログのキー
 

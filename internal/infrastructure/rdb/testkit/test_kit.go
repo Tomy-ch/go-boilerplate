@@ -1,5 +1,5 @@
-// Package rdbtest は RDB のテスト用インスタンスを提供します。
-package rdbtest
+// Package testkit は RDB のテスト用インスタンスを提供します。
+package testkit
 
 import (
 	"context"
