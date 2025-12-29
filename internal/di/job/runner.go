@@ -8,13 +8,13 @@ import (
 	"go.uber.org/fx"
 )
 
-// JobRunnerIn は、Runnerの入力パラメータを表します。
-type JobRunnerIn struct {
+// RunnerIn は、Runnerの入力パラメータを表します。
+type RunnerIn struct {
 	fx.In
 	Jobs []job.Job `group:"jobs"`
 }
 
 // ProvideRunner は、ジョブランナーを提供します。
-func ProvideRunner(in JobRunnerIn) (job.Runner, error) {
+func ProvideRunner(in RunnerIn) (job.Runner, error) {
 	return jobrunner.NewRunner(in.Jobs)
 }
