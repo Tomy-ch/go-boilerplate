@@ -1,14 +1,12 @@
-# コントローラー層（`internal/controller`）ガイド
+# コントローラー層のジョブ（`internal/controller/job`）ガイド
 
 ## この boilerplate での役割
 
 internal/controller/job は、CLI（Cobra）から起動される **バッチ/ジョブのエントリポイント（Controller層）**です。
 
-この層の責務は、HTTP Handler と同じ思想で次に限定します。
-
 - ジョブの入出力（引数 args の解釈、結果の出力形式）を整える
+  - args からジョブのビジネスロジックに必要なパラメーターを抽出・変換する
 - Observability（LayerTracer）で span を開始・終了する
-- args からジョブのビジネスロジックに必要なパラメーターを抽出・変換する
 - ユースケース（Usecase層）を呼び出す
 - エラーを apperror / errorresponse（または Job 用のエラー表現）に寄せる
 - 結果をログに整形して出す
