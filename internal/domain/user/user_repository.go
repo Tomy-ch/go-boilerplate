@@ -13,4 +13,6 @@ type Repository interface {
 	FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (Entities, error)
 	// CreateUser は、ユーザーを作成します。
 	CreateUser(ctx context.Context, datetime time.Time, user *Entity) error
+	// CountByActive は、アクティブ状態に基づいてユーザーの総件数を返します。
+	CountByActive(ctx context.Context, active *bool) (int64, error)
 }

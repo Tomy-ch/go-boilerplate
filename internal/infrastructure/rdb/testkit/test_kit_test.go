@@ -1,4 +1,4 @@
-package rdbtest
+package testkit
 
 import (
 	"context"

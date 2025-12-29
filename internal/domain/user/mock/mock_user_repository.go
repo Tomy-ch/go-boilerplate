@@ -42,6 +42,21 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// CountByActive mocks base method.
+func (m *MockRepository) CountByActive(ctx context.Context, active *bool) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountByActive", ctx, active)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountByActive indicates an expected call of CountByActive.
+func (mr *MockRepositoryMockRecorder) CountByActive(ctx, active any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByActive", reflect.TypeOf((*MockRepository)(nil).CountByActive), ctx, active)
+}
+
 // CreateUser mocks base method.
 func (m *MockRepository) CreateUser(ctx context.Context, datetime time.Time, arg2 *user.Entity) error {
 	m.ctrl.T.Helper()

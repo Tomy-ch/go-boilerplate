@@ -143,3 +143,16 @@ func (r *repository) CreateUser(ctx context.Context, datetime time.Time, user *u
 	}
 	return nil
 }
+
+// CountByActive は、アクティブ状態に基づいてユーザーの総件数を返します。
+func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(r.provider.NewLoggingDB(ctx))
+	count, err := db.CountUsersByDeletedState(ctx, sqlc.BoolPtrToDeletedState(active))
+	if err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+	return count, nil
+}

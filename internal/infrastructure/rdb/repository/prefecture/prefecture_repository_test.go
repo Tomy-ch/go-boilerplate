@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/domain/prefecture"
-	"boilerplate-go/internal/infrastructure/rdb/rdbtest"
+	"boilerplate-go/internal/infrastructure/rdb/testkit"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/pkg/uuid"
 
@@ -15,7 +15,7 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
+	db, provider := testkit.NewTestDBWithLoggingProvider(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &repository{
 		db:       db,
@@ -30,10 +30,10 @@ func TestFindByName(t *testing.T) {
 	// t.Parallel()　// NOTE: 並列実行不可
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
-	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
+	db, provider := testkit.NewTestDBWithLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := rdbtest.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
@@ -71,10 +71,10 @@ func TestFindByID(t *testing.T) {
 	// t.Parallel()　// NOTE: 並列実行不可
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
-	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
+	db, provider := testkit.NewTestDBWithLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := rdbtest.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
@@ -114,10 +114,10 @@ func TestFindByIDs(t *testing.T) {
 	// t.Parallel()　// NOTE: 並列実行不可
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
-	db, provider := rdbtest.NewTestDBWithLoggingProvider(t)
+	db, provider := testkit.NewTestDBWithLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := rdbtest.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
