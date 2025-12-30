@@ -8,6 +8,7 @@
 - CORS 設定の適用（AllowOrigins / AllowMethods / AllowHeaders 等）
 - セキュリティヘッダの付与（HSTS / XSS-Protection / NoSniff 等）
 - Cookie 設定および属性付与（Secure / HttpOnly / SameSite）
+- IP レートリミット制御（IP アドレスごとのリクエスト制限）
 
 これらを **DI（Uber FX）経由でミドルウェアとして提供し、routing や handler から独立して管理**します。
 
@@ -22,6 +23,7 @@
 - CORS はブラウザ経由の外部アクセス制御に不可欠
 - セキュリティヘッダは XSS・クリックジャッキング等の攻撃への防御に必要
 - Cookie 属性 (Secure / HttpOnly / SameSite) は認証情報の保護に必須
+- IP レートリミット制御はサービスの過負荷防止および悪意あるアクセス制限に必須
 
 **本番の API 保護において必須の機能群です。**
 
@@ -34,6 +36,7 @@
 - CORS がないとローカルフロントエンド (Next.js 等) が API にアクセスできない
 - セキュリティヘッダは本番用設定の検証として有効
 - Cookie の挙動（SameSite / Secure 等）を早めに確認できる
+- IP レートリミットは開発中は無効化しても良いが、本番用設定の確認には有用
 
 ※ 環境に応じて CORS 設定を緩めることは可能です。
 
