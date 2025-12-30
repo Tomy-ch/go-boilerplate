@@ -32,7 +32,7 @@ type testTxManager struct {
 func NewTestDBWithLoggingProvider(t *testing.T) (driver.DatabaseDriver, loggingdb.DBProvider) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 	tracer := observability.NewNoopTracerFactory(t)
 
@@ -52,7 +52,7 @@ func NewTestTransactionManager(t *testing.T) TransactionRunner {
 	t.Helper()
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)

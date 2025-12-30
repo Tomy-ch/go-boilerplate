@@ -14,7 +14,7 @@ import (
 func TestNewTransactionManager(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	db, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
 	dbDriver := &dbDriver{db}
@@ -31,7 +31,7 @@ func TestNewTransactionManager(t *testing.T) {
 func TestTxManager_Do(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
 	rowDB, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))

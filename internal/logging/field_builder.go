@@ -156,7 +156,7 @@ func (l *logFieldBuilder) BuildHTTPResponseFields(resp HTTPResponseLogInput) []*
 		Time(EventAtKey, resp.EventAt),
 		String(EventTzKey, l.osCfg.TimeZone()),
 
-		Float64(LatencyKey, l.latencyMs(resp.Latency)),
+		DurationMs(LatencyKey, resp.Latency),
 
 		Int(StatusKey, resp.Status),
 		String(MethodKey, resp.Method),
@@ -201,7 +201,7 @@ func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field {
 		String(SpanNameKey, s.SpanName),
 		String(RawQueryKey, rawQuery),
 		String(QueryCompactKey, compact),
-		Float64(LatencyKey, l.latencyMs(s.Latency)),
+		DurationMs(LatencyKey, s.Latency),
 	}
 
 	if len(s.Args) > 0 {
@@ -233,7 +233,7 @@ func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput)
 
 	if obs.Latency > 0 {
 		fields = append(fields,
-			Float64(LatencyKey, l.latencyMs(obs.Latency)),
+			DurationMs(LatencyKey, obs.Latency),
 		)
 	}
 
@@ -263,11 +263,6 @@ func (l *logFieldBuilder) appendTraceSpanFields(
 	return append(fields,
 		String(ParentSpanIDKey, parentSpanID),
 	)
-}
-
-// latencyMs は、latency をミリ秒単位の float64 に変換します。
-func (*logFieldBuilder) latencyMs(latency time.Duration) float64 {
-	return float64(latency) / float64(time.Millisecond)
 }
 
 // buildCompactQuery は、SQL クエリを1行の短縮表現に変換します。
