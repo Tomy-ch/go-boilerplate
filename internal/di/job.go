@@ -33,7 +33,7 @@ func NewJobCore() fx.Option {
 	return fx.Options(
 		// Lifecycle Module
 		lifecycle.Module(),
-		// Core Module
+		// Common Module
 		module.ConfigModule(),
 		module.LoggingModule(),
 		module.ObservabilityModule(),
