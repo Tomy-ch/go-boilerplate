@@ -2,7 +2,6 @@
 package errorhandler
 
 import (
-	"errors"
 	"net/http"
 
 	"boilerplate-go/internal/config"
@@ -82,7 +81,7 @@ func normalizeHTTPError(
 	requestID string,
 ) *response.HTTPErrorResponse {
 	var he *response.HTTPErrorResponse
-	if errors.As(err, &he) {
+	if xerrors.As(err, &he) {
 		if !isErrorStatus(he.HTTPStatus) {
 			res := response.NewHTTPErrorFromAppError(he.Internal)
 			if he.Details != nil {
@@ -96,7 +95,7 @@ func normalizeHTTPError(
 	}
 
 	var ehe *echo.HTTPError
-	if errors.As(err, &ehe) {
+	if xerrors.As(err, &ehe) {
 		if res := normalizeOpenAPIError(ehe); res != nil {
 			res.RequestId = requestID
 			return res
@@ -164,7 +163,7 @@ func logHTTPError(
 	obsCfg *config.ObservabilityConfig,
 	he *response.HTTPErrorResponse,
 ) {
-	if !observability.ShouldLogWithSpan(c.Request().Context(), obsCfg) {
+	if !obsCfg.TargetStatusCodeSet()[he.HTTPStatus] {
 		return
 	}
 	fields := httpErrorField(c, lf, he)
