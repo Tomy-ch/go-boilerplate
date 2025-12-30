@@ -16,6 +16,7 @@ type Config struct {
 	database      DatabaseConfig
 	dbconnection  DBConnectionConfig
 	security      SecurityConfig
+	ipRateLimit   IPRateLimitConfig
 }
 
 type OperationSystemConfig struct {
@@ -44,8 +45,9 @@ type MetricsConfig struct {
 }
 
 type ObservabilityConfig struct {
-	enabled           bool
-	targetStatusCodes []int
+	enabled             bool
+	targetStatusCodes   []int
+	targetStatusCodeSet map[int]bool
 }
 
 type DatabaseConfig struct {
@@ -77,8 +79,17 @@ type SecurityConfig struct {
 	referrerPolicy        string
 }
 
-// NewOSConfig は、OSの設定を返します。
-func NewOSConfig(cfg *Config) *OperationSystemConfig { return &cfg.os }
+type IPRateLimitConfig struct {
+	enabled         bool
+	requests        int
+	per             time.Duration
+	burst           int
+	ttl             time.Duration
+	cleanupInterval time.Duration
+}
+
+// NewOperationSystemConfig は、OSの設定を返します。
+func NewOperationSystemConfig(cfg *Config) *OperationSystemConfig { return &cfg.os }
 
 // TimeZone は、OSのタイムゾーンを返します。
 func (o *OperationSystemConfig) TimeZone() string { return o.timezone }
@@ -152,6 +163,9 @@ func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
 // TargetStatusCodes は、可観測モードで監視対象となるHTTPステータスコードのリストを返します。
 func (o *ObservabilityConfig) TargetStatusCodes() []int { return o.targetStatusCodes }
 
+// TargetStatusCodeSet は、可観測モードで監視対象となるHTTPステータスコードのセットを返します。
+func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool { return o.targetStatusCodeSet }
+
 // NewDatabaseConfig は、データベースの設定を返します。
 func NewDatabaseConfig(cfg *Config) *DatabaseConfig { return &cfg.database }
 
@@ -219,6 +233,7 @@ func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime 
 // MaxIdleTime は、データベースの接続の最大アイドル時間を返します。
 func (c *DBConnectionConfig) MaxIdleTime() time.Duration { return c.maxIdleTime }
 
+// NewSecurityConfig は、セキュリティの設定を返します。
 func NewSecurityConfig(cfg *Config) *SecurityConfig { return &cfg.security }
 
 // AllowedOrigins は、CORSを許可するオリジンのリストを返します。
@@ -244,3 +259,29 @@ func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled
 
 // ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
 func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
+
+// NewIPRateLimitConfig は、IPレートリミットの設定を返します。
+func NewIPRateLimitConfig(cfg *Config) *IPRateLimitConfig { return &cfg.ipRateLimit }
+
+// Enabled は、IPレートリミットが有効かどうかを返します。
+func (i *IPRateLimitConfig) Enabled() bool { return i.enabled }
+
+// Requests は、IPレートリミットのリクエスト数を返します。
+func (i *IPRateLimitConfig) Requests() int { return i.requests }
+
+// Per は、IPレートリミットの期間を返します。
+func (i *IPRateLimitConfig) Per() time.Duration { return i.per }
+
+// Burst は、IPレートリミットのバースト数を返します。
+func (i *IPRateLimitConfig) Burst() int { return i.burst }
+
+// TTL は、IPレートリミットのエントリの有効期限を返します。
+func (i *IPRateLimitConfig) TTL() time.Duration { return i.ttl }
+
+// CleanupInterval は、IPレートリミットのエントリのクリーンアップ間隔を返します。
+func (i *IPRateLimitConfig) CleanupInterval() time.Duration { return i.cleanupInterval }
+
+// Limit は、IPレートリミットの制限値を返します。
+func (i *IPRateLimitConfig) Limit() float64 {
+	return float64(i.requests) / i.per.Seconds()
+}

@@ -11,7 +11,7 @@ import (
 func NewTestLocation(t *testing.T) *time.Location {
 	t.Helper()
 	cfg := MockConfigForTest(t)
-	osCfg := NewOSConfig(cfg)
+	osCfg := NewOperationSystemConfig(cfg)
 
 	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)

@@ -41,8 +41,9 @@ var (
 	expectedMetricsPort = 6060
 	// observability
 	expectedObservabilityEnabled              = true
-	expectedObservabilityTargetStatusCodes    = []int{200, 400, 500}
-	expectedObservabilityTargetStatusCodesStr = "200,400,500"
+	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
+	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
+	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
 	// database
 	expectedDBDriver                      = "pgx"
 	expectedDBHost                        = "localhost"
@@ -69,11 +70,25 @@ var (
 	_, expectedCIDR, _            = net.ParseCIDR(expectedCIDRStr)
 	expectedContentTypeNosniff    = "nosniff"
 	expectedXFrameOptions         = "SAMEORIGIN"
-	expectedHSTSMaxAge            = 31536000 * time.Second
-	expectedHSTSMaxAgeStr         = fmt.Sprintf("%ds", int(expectedHSTSMaxAge.Seconds()))
+	expectedHSTSMaxAgeCount       = 31536000
+	expectedHSTSMaxAge            = time.Duration(expectedHSTSMaxAgeCount) * time.Second
+	expectedHSTSMaxAgeStr         = fmt.Sprintf("%ds", expectedHSTSMaxAgeCount)
 	expectedHSTSExcludeSubdomains = false
 	expectedHSTSPreloadEnabled    = false
 	expectedReferrerPolicy        = "no-referrer"
+	// ip rate limit
+	expectedIPRateLimitEnabled              = true
+	expectedIPRateLimitRequests             = 100
+	expectedIPRateLimitPerCount             = 1
+	expectedIPRateLimitPer                  = time.Duration(expectedIPRateLimitPerCount) * time.Minute
+	expectedIPRateLimitPerStr               = fmt.Sprintf("%dm", expectedIPRateLimitPerCount)
+	expectedIPRateLimitBurst                = 20
+	expectedIPRateLimitTTLCount             = 60
+	expectedIPRateLimitTTLStr               = fmt.Sprintf("%ds", expectedIPRateLimitTTLCount)
+	expectedIPRateLimitTTL                  = time.Duration(expectedIPRateLimitTTLCount) * time.Second
+	expectedIPRateLimitCleanupIntervalCount = 120
+	expectedIPRateLimitCleanupIntervalStr   = fmt.Sprintf("%ds", expectedIPRateLimitCleanupIntervalCount)
+	expectedIPRateLimitCleanupInterval      = time.Duration(expectedIPRateLimitCleanupIntervalCount) * time.Second
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -102,8 +117,9 @@ func MockConfigForTest(t testing.TB) *Config {
 			port: expectedMetricsPort,
 		},
 		observability: ObservabilityConfig{
-			enabled:           expectedObservabilityEnabled,
-			targetStatusCodes: expectedObservabilityTargetStatusCodes,
+			enabled:             expectedObservabilityEnabled,
+			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
+			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
 		database: DatabaseConfig{
 			driver:                 expectedDBDriver,
@@ -130,6 +146,14 @@ func MockConfigForTest(t testing.TB) *Config {
 			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
+		},
+		ipRateLimit: IPRateLimitConfig{
+			enabled:         expectedIPRateLimitEnabled,
+			requests:        expectedIPRateLimitRequests,
+			per:             expectedIPRateLimitPer,
+			burst:           expectedIPRateLimitBurst,
+			ttl:             expectedIPRateLimitTTL,
+			cleanupInterval: expectedIPRateLimitCleanupInterval,
 		},
 	}
 }
@@ -189,6 +213,14 @@ func mockLoader(t testing.TB) Loader {
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
 		},
+		IPRateLimit: IPRateLimit{
+			Enabled:         expectedIPRateLimitEnabled,
+			Requests:        expectedIPRateLimitRequests,
+			Per:             expectedIPRateLimitPer,
+			Burst:           expectedIPRateLimitBurst,
+			TTL:             expectedIPRateLimitTTL,
+			CleanupInterval: expectedIPRateLimitCleanupInterval,
+		},
 	}
 }
 
@@ -238,4 +270,11 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
 	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
 	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
+	// IPRateLimit
+	t.Setenv("IP_RATE_LIMITER_ENABLED", strconv.FormatBool(expectedIPRateLimitEnabled))
+	t.Setenv("IP_RATE_LIMITER_REQUESTS", strconv.Itoa(expectedIPRateLimitRequests))
+	t.Setenv("IP_RATE_LIMITER_PER", expectedIPRateLimitPerStr)
+	t.Setenv("IP_RATE_LIMITER_BURST", strconv.Itoa(expectedIPRateLimitBurst))
+	t.Setenv("IP_RATE_LIMITER_TTL", expectedIPRateLimitTTLStr)
+	t.Setenv("IP_RATE_LIMITER_CLEANUP_INTERVAL", expectedIPRateLimitCleanupIntervalStr)
 }

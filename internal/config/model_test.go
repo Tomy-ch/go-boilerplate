@@ -15,7 +15,7 @@ func TestConstructor(t *testing.T) {
 
 	t.Run("NewOSConfig", func(t *testing.T) {
 		t.Parallel()
-		osCfg := NewOSConfig(cfg)
+		osCfg := NewOperationSystemConfig(cfg)
 		require.Equal(t, &cfg.os, osCfg)
 	})
 
@@ -65,6 +65,12 @@ func TestConstructor(t *testing.T) {
 		t.Parallel()
 		securityCfg := NewSecurityConfig(cfg)
 		require.Equal(t, &cfg.security, securityCfg)
+	})
+
+	t.Run("NewIPRateLimitConfig", func(t *testing.T) {
+		t.Parallel()
+		ipRateLimitCfg := NewIPRateLimitConfig(cfg)
+		require.Equal(t, &cfg.ipRateLimit, ipRateLimitCfg)
 	})
 }
 
@@ -143,6 +149,11 @@ func TestGetterMethods(t *testing.T) {
 		t.Run("TargetStatusCodes", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedObservabilityTargetStatusCodes, observability.TargetStatusCodes())
+		})
+
+		t.Run("TargetStatusCodeSet", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedObservabilityTargetStatusCodeSet, observability.TargetStatusCodeSet())
 		})
 	})
 
@@ -285,9 +296,44 @@ func TestGetterMethods(t *testing.T) {
 			require.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
 		})
 	})
+
+	t.Run("IPRateLimit", func(t *testing.T) {
+		t.Parallel()
+		ipRateLimit := cfg.ipRateLimit
+
+		t.Run("Enabled", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedIPRateLimitEnabled, ipRateLimit.Enabled())
+		})
+
+		t.Run("Requests", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedIPRateLimitRequests, ipRateLimit.Requests())
+		})
+
+		t.Run("Per", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedIPRateLimitPer, ipRateLimit.Per())
+		})
+
+		t.Run("Burst", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedIPRateLimitBurst, ipRateLimit.Burst())
+		})
+
+		t.Run("TTL", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedIPRateLimitTTL, ipRateLimit.TTL())
+		})
+
+		t.Run("CleanupInterval", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedIPRateLimitCleanupInterval, ipRateLimit.CleanupInterval())
+		})
+	})
 }
 
-func TestIsAppProductionMode(t *testing.T) {
+func Test_ApplicationConfig_IsProductionMode(t *testing.T) {
 	t.Parallel()
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
@@ -304,7 +350,7 @@ func TestIsAppProductionMode(t *testing.T) {
 	})
 }
 
-func TestIsAppDevelopmentMode(t *testing.T) {
+func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
 	t.Parallel()
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
@@ -321,7 +367,7 @@ func TestIsAppDevelopmentMode(t *testing.T) {
 	})
 }
 
-func TestDSN(t *testing.T) {
+func Test_DatabaseConfig_DSN(t *testing.T) {
 	t.Parallel()
 
 	cfg := MockConfigForTest(t)
@@ -341,7 +387,7 @@ func TestDSN(t *testing.T) {
 	})
 }
 
-func TestDSNWithTimeZone(t *testing.T) {
+func Test_DatabaseConfig_DSNWithTimeZone(t *testing.T) {
 	t.Parallel()
 
 	cfg := MockConfigForTest(t)
@@ -359,5 +405,21 @@ func TestDSNWithTimeZone(t *testing.T) {
 			url.QueryEscape(expectedOSTimeZone),
 		)
 		require.Equal(t, expectedURL, cfg.database.DSNWithTimeZone(&cfg.os))
+	})
+}
+
+func Test_IPRateLimitConfig_Limit(t *testing.T) {
+	t.Parallel()
+
+	cfg := MockConfigForTest(t)
+	ipRateLimitCfg := cfg.ipRateLimit
+
+	t.Run("Limit", func(t *testing.T) {
+		t.Parallel()
+		delta := float64(0.0001)
+		expected := float64(expectedIPRateLimitRequests) / expectedIPRateLimitPer.Seconds()
+		actual := ipRateLimitCfg.Limit()
+
+		require.InEpsilon(t, expected, actual, delta)
 	})
 }

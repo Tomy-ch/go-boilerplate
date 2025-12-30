@@ -48,8 +48,9 @@ func New() (*Config, error) {
 			port: cfg.Metrics.Port,
 		},
 		observability: ObservabilityConfig{
-			enabled:           cfg.Observability.Enabled,
-			targetStatusCodes: cfg.Observability.TargetStatusCodes,
+			enabled:             cfg.Observability.Enabled,
+			targetStatusCodes:   cfg.Observability.TargetStatusCodes,
+			targetStatusCodeSet: buildStatusCodeSet(cfg.Observability.TargetStatusCodes),
 		},
 		database: DatabaseConfig{
 			driver:                 cfg.Database.Driver,
@@ -77,6 +78,14 @@ func New() (*Config, error) {
 			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
 			referrerPolicy:        cfg.Security.ReferrerPolicy,
 		},
+		ipRateLimit: IPRateLimitConfig{
+			enabled:         cfg.IPRateLimit.Enabled,
+			requests:        cfg.IPRateLimit.Requests,
+			per:             cfg.IPRateLimit.Per,
+			burst:           cfg.IPRateLimit.Burst,
+			ttl:             cfg.IPRateLimit.TTL,
+			cleanupInterval: cfg.IPRateLimit.CleanupInterval,
+		},
 	}, nil
 }
 
@@ -96,6 +105,10 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 
 	cidr, err := validateSecurityConfig(cfg.Security)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := validateIPRateLimitConfig(cfg.IPRateLimit); err != nil {
 		return nil, err
 	}
 
@@ -170,4 +183,42 @@ func validateSecurityConfig(secCfg Security) (*net.IPNet, error) {
 	}
 
 	return cidr, nil
+}
+
+// validateIPRateLimitConfig は、IPレートリミット設定を検証します。
+func validateIPRateLimitConfig(iprCfg IPRateLimit) error {
+	if !iprCfg.Enabled {
+		return nil
+	}
+
+	if iprCfg.Requests <= 0 {
+		return ErrInvalidIPRateLimitRequests
+	}
+
+	if iprCfg.Per <= 0 {
+		return ErrInvalidIPRateLimitPer
+	}
+
+	if iprCfg.Burst < 0 {
+		return ErrInvalidIPRateLimitBurst
+	}
+
+	if iprCfg.TTL <= 0 {
+		return ErrInvalidIPRateLimitTTL
+	}
+
+	if iprCfg.CleanupInterval <= 0 {
+		return ErrInvalidIPRateLimitCleanupInterval
+	}
+
+	return nil
+}
+
+// buildStatusCodeSet は、HTTPステータスコードのセットを構築します。
+func buildStatusCodeSet(codes []int) map[int]bool {
+	m := make(map[int]bool, len(codes))
+	for _, code := range codes {
+		m[code] = true
+	}
+	return m
 }
