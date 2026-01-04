@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/di/job"
 	"boilerplate-go/internal/di/lifecycle"
 	"boilerplate-go/internal/di/module"
+	"boilerplate-go/internal/di/shutdowner"
 	"boilerplate-go/internal/logging"
+	"boilerplate-go/internal/usecase/support/job"
 
 	"go.uber.org/fx"
 )
@@ -23,7 +24,7 @@ type (
 )
 
 type JobDeps struct {
-	State  *job.State
+	State  job.State
 	Logger logging.Logger
 	OSCfg  *config.OperationSystemConfig
 }
@@ -31,6 +32,8 @@ type JobDeps struct {
 // NewJobCore は、ジョブの fx.App インスタンスを作成します。
 func NewJobCore() fx.Option {
 	return fx.Options(
+		// Shutdowner Module
+		shutdowner.Module(),
 		// Lifecycle Module
 		lifecycle.Module(),
 		// Common Module
@@ -50,7 +53,7 @@ func NewJobCore() fx.Option {
 // RunJob は、指定されたコンテキストとタイムアウトでジョブランナーを実行します。
 func RunJob() (StartFunc, StopFunc) {
 	var (
-		state  *job.State
+		state  job.State
 		logger logging.Logger
 		osCfg  *config.OperationSystemConfig
 	)
