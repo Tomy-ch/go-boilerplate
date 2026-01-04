@@ -12,7 +12,7 @@ const rateLimitPriority = 9
 
 // RateLimitModule は、レートリミット制御のミドルウェアを提供するfxモジュールを返します。
 func RateLimitModule() fx.Option {
-	return fx.Module("mw.rate_limit",
+	return fx.Module("mw.ratelimit",
 		fx.Provide(
 			RateLimitMiddleware,
 		),
@@ -23,7 +23,7 @@ func RateLimitModule() fx.Option {
 func RateLimitMiddleware(rl ratelimit.IPRateLimiter, ipCfg *config.IPRateLimitConfig) extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
-			Name:       "rate_limit",
+			Name:       "ratelimit",
 			Priority:   rateLimitPriority,
 			Middleware: ratelimit.Middleware(rl, ipCfg),
 		},

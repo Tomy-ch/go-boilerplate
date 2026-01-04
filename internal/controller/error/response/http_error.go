@@ -41,7 +41,7 @@ const (
 	errorMessageResourceConflict = "既に同じ情報が登録されています。"
 	// errorMessageValidationFailed は、入力値の検証に失敗した場合のメッセージです。
 	errorMessageValidationFailed = "入力内容の検証に失敗しました。修正して再度お試しください。"
-	// errorTooManyRequests は、リクエストが多すぎる場合に使用されるエラーコードです。
+	// errorMessageTooManyRequests は、リクエストが多すぎる場合に使用されるエラーコードです。
 	errorMessageTooManyRequests = "リクエストが多すぎます。しばらくしてから再度お試しください。"
 	// errorInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーコードです。
 	errorMessageInternalError = "サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。"
