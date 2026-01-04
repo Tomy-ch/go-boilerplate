@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -18,4 +20,63 @@ func TestNewTestLocation(t *testing.T) {
 
 	actual := NewTestLocation(t)
 	require.Equal(t, expected, actual)
+}
+
+func TestEnsureRepoRootAndEnv_ChangesDirAndRestores(t *testing.T) {
+	// 親のカレントディレクトリを保持
+	orig, err := os.Getwd()
+	require.NoError(t, err)
+
+	// サブテスト内で一時的にリポジトリ内のサブディレクトリを作成して
+	// EnsureRepoRootAndEnv がリポジトリルートに移動すること、その後に復元されることを確認する。
+	prevEnv := os.Getenv(envKey)
+
+	t.Run("go.mod を持つリポジトリルートに移動し ENV を設定する", func(t *testing.T) {
+		// リポジトリルートを探す
+		repoRoot := ""
+		p := orig
+		for {
+			if _, inErr := os.Stat(filepath.Join(p, "go.mod")); inErr == nil {
+				repoRoot = p
+				break
+			}
+			parent := filepath.Dir(p)
+			if parent == p {
+				break
+			}
+			p = parent
+		}
+		require.NotEmpty(t, repoRoot)
+
+		EnsureRepoRootAndEnv(t, TestingEnvValue)
+
+		cwd, inErr := os.Getwd()
+		require.NoError(t, inErr)
+		// 呼び出し先のカレントディレクトリが go.mod を持つルートであること
+		require.FileExists(t, filepath.Join(cwd, "go.mod"))
+
+		// ENV が設定されていること
+		require.Equal(t, TestingEnvValue, os.Getenv(envKey))
+	})
+
+	t.Run("go.mod が見つからない場合は cwd を変更せず ENV を設定する", func(t *testing.T) {
+		tmp := t.TempDir()
+		t.Chdir(tmp)
+
+		EnsureRepoRootAndEnv(t, TestingEnvValue)
+
+		cwd, inErr := os.Getwd()
+		require.NoError(t, inErr)
+		// go.mod が見つからないため cwd は変更されない
+		require.Equal(t, tmp, cwd)
+
+		// ただし ENV は設定される
+		require.Equal(t, TestingEnvValue, os.Getenv(envKey))
+	})
+
+	// 復元されていることを確認
+	cwdAfter, err := os.Getwd()
+	require.NoError(t, err)
+	require.Equal(t, orig, cwdAfter)
+	require.Equal(t, prevEnv, os.Getenv(envKey))
 }

@@ -563,7 +563,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestGetterMethods(t *testing.T) {
+func TestEntity_Accessors(t *testing.T) {
 	t.Parallel()
 	id := uuid.NewTestFromSalt(t, "user")
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture")

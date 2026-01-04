@@ -91,3 +91,33 @@ func TestNew(t *testing.T) {
 		})
 	})
 }
+
+func TestEntity_Accessors(t *testing.T) {
+	t.Parallel()
+
+	id, err := uuid.New()
+	require.NoError(t, err)
+	name := "Osaka"
+	code := 27
+
+	prefecture, err := New(id.String(), name, code)
+	require.NoError(t, err)
+
+	t.Run("IDメソッドは正しいIDを返す", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, id, prefecture.ID())
+	})
+
+	t.Run("Nameメソッドは正しい名前を返す", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, name, prefecture.Name())
+	})
+
+	t.Run("Codeメソッドは正しいコードを返す", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, code, prefecture.Code())
+	})
+}

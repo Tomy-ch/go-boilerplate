@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+const (
+	// envKey は、環境変数のキー名です。
+	envKey = "ENV"
+	// TestingEnvValue は、テスト用の環境変数の値です。
+	TestingEnvValue = "ci"
+)
+
 // 下記の変数は、テスト用の期待値以外に、テスト環境の環境変数設定にも使用されます。
 // 変更の際は、テストを必ず実行し、環境変数の設定が正しいことを確認してください。
 var (
