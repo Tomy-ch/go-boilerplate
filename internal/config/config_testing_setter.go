@@ -3,6 +3,7 @@ package config
 import (
 	"net"
 	"testing"
+	"time"
 )
 
 // WARN: 本番コードでは使用しないでください。テスト用の設定を行うためのメソッドです。
@@ -57,4 +58,14 @@ func (s *SecurityConfig) SetCIDR(t testing.TB, cidr *net.IPNet) {
 	prev := s.CIDR()
 	s.cidr = cidr
 	t.Cleanup(func() { s.cidr = prev })
+}
+
+// SetCleanupInterval は、テスト用にIPレート制限のクリーンアップ間隔を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (i *IPRateLimitConfig) SetCleanupInterval(t testing.TB, interval time.Duration) {
+	t.Helper()
+	prev := i.cleanupInterval
+	i.cleanupInterval = interval
+	t.Cleanup(func() { i.cleanupInterval = prev })
 }

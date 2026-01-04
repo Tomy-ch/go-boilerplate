@@ -31,7 +31,7 @@ func TestBindHandler(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestGetVersion(t *testing.T) {
 	bi := system.NewBuildInfo()
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)

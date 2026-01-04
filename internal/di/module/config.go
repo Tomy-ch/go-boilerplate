@@ -14,14 +14,15 @@ func ConfigModule() fx.Option {
 			config.SetUpConfig,
 		),
 		fx.Provide(
-			config.NewOSConfig,
+			config.NewOperationSystemConfig,
 			config.NewApplicationConfig,
+			config.NewServerConfig,
 			config.NewDatabaseConfig,
 			config.NewDBConnectionConfig,
 			config.NewMetricsConfig,
 			config.NewObservabilityConfig,
 			config.NewSecurityConfig,
-			config.NewServerConfig,
+			config.NewIPRateLimitConfig,
 		),
 		fx.Provide(
 			config.NewTimeLocation,

@@ -1,8 +1,12 @@
 package job
 
-import "sync"
+import (
+	"sync"
 
-type State struct {
+	"boilerplate-go/internal/usecase/support/job"
+)
+
+type state struct {
 	mu sync.Mutex
 
 	name string
@@ -11,12 +15,12 @@ type State struct {
 }
 
 // NewState は、新しい State インスタンスを生成します。
-func NewState() *State {
-	return &State{}
+func NewState() job.State {
+	return &state{}
 }
 
 // Set は、ジョブの状態を設定します。
-func (s *State) Set(name string, args []string, done chan error) {
+func (s *state) Set(name string, args []string, done chan error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.name = name
@@ -25,7 +29,7 @@ func (s *State) Set(name string, args []string, done chan error) {
 }
 
 // Snapshot は、現在のジョブの状態をスナップショットとして取得します。
-func (s *State) Snapshot() (string, []string, chan error) {
+func (s *state) Snapshot() (string, []string, chan error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.name, s.args, s.done

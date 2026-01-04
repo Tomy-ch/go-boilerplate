@@ -140,6 +140,17 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			actual := lookupErrorMetaByAppError(apperror.ErrUnimplemented)
 			require.Equal(t, expected, actual)
 		})
+
+		t.Run("ErrTooManyRequestsの場合、TooManyRequestsが返される", func(t *testing.T) {
+			expected := httpErrorMeta{
+				Status:  http.StatusTooManyRequests,
+				Code:    codeTooManyRequests,
+				Message: errorMessageTooManyRequests,
+			}
+
+			actual := lookupErrorMetaByAppError(apperror.ErrTooManyRequests)
+			require.Equal(t, expected, actual)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

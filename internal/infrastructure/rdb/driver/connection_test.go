@@ -13,7 +13,7 @@ import (
 func TestNew(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
 	db, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))

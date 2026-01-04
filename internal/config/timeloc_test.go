@@ -12,7 +12,7 @@ func TestNewTimeLocation(t *testing.T) {
 	t.Run("有効なタイムゾーンの場合、正しいロケーションが返ること", func(t *testing.T) {
 		t.Parallel()
 		cfg := MockConfigForTest(t)
-		osCfg := NewOSConfig(cfg)
+		osCfg := NewOperationSystemConfig(cfg)
 
 		loc, err := NewTimeLocation(osCfg)
 		require.NoError(t, err)
@@ -24,7 +24,7 @@ func TestNewTimeLocation(t *testing.T) {
 
 		invalidCfg := MockConfigForTest(t)
 		invalidCfg.os.timezone = "Invalid/Timezone"
-		osCfg := NewOSConfig(invalidCfg)
+		osCfg := NewOperationSystemConfig(invalidCfg)
 
 		loc, err := NewTimeLocation(osCfg)
 		require.Error(t, err)

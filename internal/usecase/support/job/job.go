@@ -22,3 +22,11 @@ type Runner interface {
 	// Names は、登録されているジョブの名前一覧を返します。
 	Names() []string
 }
+
+// State は、ジョブの状態を管理するインターフェースです。
+type State interface {
+	// Set は、ジョブの状態を設定します。
+	Set(name string, args []string, done chan error)
+	// Snapshot は、現在のジョブの状態をスナップショットとして取得します。
+	Snapshot() (string, []string, chan error)
+}

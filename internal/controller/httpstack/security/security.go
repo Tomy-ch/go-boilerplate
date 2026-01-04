@@ -9,23 +9,18 @@ import (
 )
 
 // Middleware は、セキュリティミドルウェアを構築します。
-func Middleware(appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
-	return middleware.SecureWithConfig(buildSecureConfig(appCfg))
+func Middleware(secCfg *config.SecurityConfig) echo.MiddlewareFunc {
+	return middleware.SecureWithConfig(buildSecureConfig(secCfg))
 }
 
 // buildSecureConfig は、セキュリティ設定を構築します。
-func buildSecureConfig(appCfg *config.ApplicationConfig) middleware.SecureConfig {
-	scfg := middleware.SecureConfig{
-		XSSProtection:      "",
-		ContentTypeNosniff: "nosniff",
-		XFrameOptions:      "DENY",
-		ReferrerPolicy:     "no-referrer",
+func buildSecureConfig(secCfg *config.SecurityConfig) middleware.SecureConfig {
+	return middleware.SecureConfig{
+		ContentTypeNosniff:    secCfg.ContentTypeNosniff(),
+		ReferrerPolicy:        secCfg.ReferrerPolicy(),
+		XFrameOptions:         secCfg.XFrameOptions(),
+		HSTSMaxAge:            int(secCfg.HSTSMaxAge().Seconds()),
+		HSTSExcludeSubdomains: secCfg.HSTSExcludeSubdomains(),
+		HSTSPreloadEnabled:    secCfg.HSTSPreloadEnabled(),
 	}
-
-	if appCfg.IsProductionMode() {
-		scfg.HSTSExcludeSubdomains = false
-		scfg.HSTSMaxAge = 31536000
-	}
-
-	return scfg
 }

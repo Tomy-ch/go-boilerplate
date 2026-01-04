@@ -11,6 +11,7 @@ type Loader struct {
 	Database      Database        `envPrefix:"DB_"`
 	DBConnection  DBConnection    `envPrefix:"DBCONN_"`
 	Security      Security        `envPrefix:"SECURITY_"`
+	IPRateLimit   IPRateLimit     `envPrefix:"IP_RATE_LIMITER_"`
 }
 
 type OperationSystem struct {
@@ -62,6 +63,21 @@ type DBConnection struct {
 }
 
 type Security struct {
-	AllowedOrigins []string `env:"ALLOWED_ORIGINS,required" envSeparator:","`
-	CIDR           string   `env:"CIDR,required"`
+	AllowedOrigins        []string      `env:"ALLOWED_ORIGINS,required"         envSeparator:","`
+	CIDR                  string        `env:"CIDR,required"`
+	ContentTypeNosniff    string        `env:"CONTENT_TYPE_NOSNIFF,required"`
+	XFrameOptions         string        `env:"X_FRAME_OPTIONS,required"`
+	HSTSMaxAge            time.Duration `env:"HSTS_MAX_AGE,required"`
+	HSTSExcludeSubdomains bool          `env:"HSTS_EXCLUDE_SUBDOMAINS,required"`
+	HSTSPreloadEnabled    bool          `env:"HSTS_PRELOAD_ENABLED,required"`
+	ReferrerPolicy        string        `env:"REFERRER_POLICY,required"`
+}
+
+type IPRateLimit struct {
+	Enabled         bool          `env:"ENABLED,required"`
+	Requests        int           `env:"REQUESTS,required"`
+	Per             time.Duration `env:"PER,required"`
+	Burst           int           `env:"BURST,required"`
+	TTL             time.Duration `env:"TTL,required"`
+	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL,required"`
 }

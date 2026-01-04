@@ -27,7 +27,7 @@ func Test_testTxManager_Do(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)

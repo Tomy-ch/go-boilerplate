@@ -114,6 +114,21 @@ func TestTime(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
+func TestDurationMs(t *testing.T) {
+	t.Parallel()
+
+	expectedKey := "key"
+	expectedDuration := 1500 * time.Millisecond
+	expected := &Field{
+		key:          expectedKey,
+		kind:         fieldFloat64,
+		float64Value: 1500.0,
+	}
+
+	actual := DurationMs(expectedKey, expectedDuration)
+	require.Equal(t, expected, actual)
+}
+
 func TestError(t *testing.T) {
 	t.Parallel()
 
@@ -157,4 +172,14 @@ func TestAny(t *testing.T) {
 
 	actual := Any(expectedKey, expectedAny)
 	require.Equal(t, expected, actual)
+}
+
+func Test_latencyMs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ミリ秒変換が正しい", func(t *testing.T) {
+		t.Parallel()
+		ms := latencyMs(250 * time.Millisecond)
+		require.InEpsilon(t, float64(250), ms, 0.01)
+	})
 }

@@ -9,6 +9,13 @@ import (
 	"time"
 )
 
+const (
+	// envKey は、環境変数のキー名です。
+	envKey = "ENV"
+	// TestingEnvValue は、テスト用の環境変数の値です。
+	TestingEnvValue = "ci"
+)
+
 // 下記の変数は、テスト用の期待値以外に、テスト環境の環境変数設定にも使用されます。
 // 変更の際は、テストを必ず実行し、環境変数の設定が正しいことを確認してください。
 var (
@@ -41,8 +48,9 @@ var (
 	expectedMetricsPort = 6060
 	// observability
 	expectedObservabilityEnabled              = true
-	expectedObservabilityTargetStatusCodes    = []int{200, 400, 500}
-	expectedObservabilityTargetStatusCodesStr = "200,400,500"
+	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
+	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
+	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
 	// database
 	expectedDBDriver                      = "pgx"
 	expectedDBHost                        = "localhost"
@@ -64,9 +72,30 @@ var (
 	expectedDBMaxIdleTimeStr   = fmt.Sprintf("%ds", expectedDBMaxIdleTimeCount)
 	expectedDBMaxIdleTime      = time.Duration(expectedDBMaxIdleTimeCount) * time.Second
 	// security
-	expectedAllowedOrigins = "http://localhost,https://example.com"
-	expectedCIDRStr        = "192.168.0.0/24"
-	_, expectedCIDR, _     = net.ParseCIDR(expectedCIDRStr)
+	expectedAllowedOrigins        = "http://localhost,https://example.com"
+	expectedCIDRStr               = "192.168.0.0/24"
+	_, expectedCIDR, _            = net.ParseCIDR(expectedCIDRStr)
+	expectedContentTypeNosniff    = "nosniff"
+	expectedXFrameOptions         = "SAMEORIGIN"
+	expectedHSTSMaxAgeCount       = 31536000
+	expectedHSTSMaxAge            = time.Duration(expectedHSTSMaxAgeCount) * time.Second
+	expectedHSTSMaxAgeStr         = fmt.Sprintf("%ds", expectedHSTSMaxAgeCount)
+	expectedHSTSExcludeSubdomains = false
+	expectedHSTSPreloadEnabled    = false
+	expectedReferrerPolicy        = "no-referrer"
+	// ip rate limit
+	expectedIPRateLimitEnabled              = true
+	expectedIPRateLimitRequests             = 100
+	expectedIPRateLimitPerCount             = 1
+	expectedIPRateLimitPer                  = time.Duration(expectedIPRateLimitPerCount) * time.Minute
+	expectedIPRateLimitPerStr               = fmt.Sprintf("%dm", expectedIPRateLimitPerCount)
+	expectedIPRateLimitBurst                = 20
+	expectedIPRateLimitTTLCount             = 60
+	expectedIPRateLimitTTLStr               = fmt.Sprintf("%ds", expectedIPRateLimitTTLCount)
+	expectedIPRateLimitTTL                  = time.Duration(expectedIPRateLimitTTLCount) * time.Second
+	expectedIPRateLimitCleanupIntervalCount = 120
+	expectedIPRateLimitCleanupIntervalStr   = fmt.Sprintf("%ds", expectedIPRateLimitCleanupIntervalCount)
+	expectedIPRateLimitCleanupInterval      = time.Duration(expectedIPRateLimitCleanupIntervalCount) * time.Second
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -95,8 +124,9 @@ func MockConfigForTest(t testing.TB) *Config {
 			port: expectedMetricsPort,
 		},
 		observability: ObservabilityConfig{
-			enabled:           expectedObservabilityEnabled,
-			targetStatusCodes: expectedObservabilityTargetStatusCodes,
+			enabled:             expectedObservabilityEnabled,
+			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
+			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
 		database: DatabaseConfig{
 			driver:                 expectedDBDriver,
@@ -115,8 +145,22 @@ func MockConfigForTest(t testing.TB) *Config {
 			maxIdleTime:  expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			cidr:           expectedCIDR,
+			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+			cidr:                  expectedCIDR,
+			contentTypeNosniff:    expectedContentTypeNosniff,
+			xFrameOptions:         expectedXFrameOptions,
+			hstsMaxAge:            expectedHSTSMaxAge,
+			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
+			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
+			referrerPolicy:        expectedReferrerPolicy,
+		},
+		ipRateLimit: IPRateLimitConfig{
+			enabled:         expectedIPRateLimitEnabled,
+			requests:        expectedIPRateLimitRequests,
+			per:             expectedIPRateLimitPer,
+			burst:           expectedIPRateLimitBurst,
+			ttl:             expectedIPRateLimitTTL,
+			cleanupInterval: expectedIPRateLimitCleanupInterval,
 		},
 	}
 }
@@ -167,8 +211,22 @@ func mockLoader(t testing.TB) Loader {
 			MaxIdleTime:  expectedDBMaxIdleTime,
 		},
 		Security: Security{
-			AllowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			CIDR:           expectedCIDRStr,
+			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+			CIDR:                  expectedCIDRStr,
+			ContentTypeNosniff:    expectedContentTypeNosniff,
+			XFrameOptions:         expectedXFrameOptions,
+			HSTSMaxAge:            expectedHSTSMaxAge,
+			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
+			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
+			ReferrerPolicy:        expectedReferrerPolicy,
+		},
+		IPRateLimit: IPRateLimit{
+			Enabled:         expectedIPRateLimitEnabled,
+			Requests:        expectedIPRateLimitRequests,
+			Per:             expectedIPRateLimitPer,
+			Burst:           expectedIPRateLimitBurst,
+			TTL:             expectedIPRateLimitTTL,
+			CleanupInterval: expectedIPRateLimitCleanupInterval,
 		},
 	}
 }
@@ -213,4 +271,17 @@ func setEnvVarsForTesting(t *testing.T) {
 	// Security
 	t.Setenv("SECURITY_CIDR", expectedCIDRStr)
 	t.Setenv("SECURITY_ALLOWED_ORIGINS", expectedAllowedOrigins)
+	t.Setenv("SECURITY_CONTENT_TYPE_NOSNIFF", expectedContentTypeNosniff)
+	t.Setenv("SECURITY_X_FRAME_OPTIONS", expectedXFrameOptions)
+	t.Setenv("SECURITY_HSTS_MAX_AGE", expectedHSTSMaxAgeStr)
+	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
+	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
+	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
+	// IPRateLimit
+	t.Setenv("IP_RATE_LIMITER_ENABLED", strconv.FormatBool(expectedIPRateLimitEnabled))
+	t.Setenv("IP_RATE_LIMITER_REQUESTS", strconv.Itoa(expectedIPRateLimitRequests))
+	t.Setenv("IP_RATE_LIMITER_PER", expectedIPRateLimitPerStr)
+	t.Setenv("IP_RATE_LIMITER_BURST", strconv.Itoa(expectedIPRateLimitBurst))
+	t.Setenv("IP_RATE_LIMITER_TTL", expectedIPRateLimitTTLStr)
+	t.Setenv("IP_RATE_LIMITER_CLEANUP_INTERVAL", expectedIPRateLimitCleanupIntervalStr)
 }

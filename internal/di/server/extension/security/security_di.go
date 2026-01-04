@@ -21,12 +21,12 @@ func Module() fx.Option {
 }
 
 // Middleware は、セキュリティミドルウェアを提供します。
-func Middleware(appCfg *config.ApplicationConfig) extension.UseMiddlewareOut {
+func Middleware(secCfg *config.SecurityConfig) extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
 			Name:       "security",
 			Priority:   securityPriority,
-			Middleware: security.Middleware(appCfg),
+			Middleware: security.Middleware(secCfg),
 		},
 	}
 }
