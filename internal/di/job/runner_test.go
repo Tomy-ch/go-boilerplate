@@ -17,7 +17,6 @@ func TestProvideRunner(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
 
 		j1 := mock_job.NewMockJob(ctrl)
 		j1.EXPECT().Name().Return("job1").AnyTimes()
@@ -33,7 +32,6 @@ func TestProvideRunner(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
 
 		j1 := mock_job.NewMockJob(ctrl)
 		j1.EXPECT().Name().Return("dup").AnyTimes()

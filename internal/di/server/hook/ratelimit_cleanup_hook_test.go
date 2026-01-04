@@ -93,7 +93,6 @@ func Test_rateLimitCleanupHook_Register(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	reg := mock_lifecycle.NewMockRegistrar(ctrl)
 	rl := mock_ratelimit.NewMockIPRateLimiter(ctrl)

@@ -19,7 +19,6 @@ func TestDatabaseModule_Composes(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
 
 		mockLogger := mock_logging.NewMockLogger(ctrl)
 		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)

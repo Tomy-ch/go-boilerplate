@@ -18,7 +18,6 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	var startFn func(context.Context) error
 	var shutdownFn func(context.Context) error
@@ -51,7 +50,6 @@ func Test_newStartServerFunc(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	mockLogger := mock_logging.NewMockLogger(ctrl)
 	namedMock := mock_logging.NewMockLogger(ctrl)
@@ -77,7 +75,6 @@ func Test_newStopServerFunc(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	mockLogger := mock_logging.NewMockLogger(ctrl)
 

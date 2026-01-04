@@ -29,7 +29,6 @@ func Test_dbWithLogging_ExecContext(t *testing.T) {
 	noopLayerTracer := observability.NewNoopLayerTracer(t)
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	md := mock_driver.NewMockDBTX(ctrl)
 
@@ -61,7 +60,6 @@ func Test_dbWithLogging_PrepareContext(t *testing.T) {
 	noopLayerTracer := observability.NewNoopLayerTracer(t)
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	md := mock_driver.NewMockDBTX(ctrl)
 	var dbtx driver.DBTX = md
@@ -90,7 +88,6 @@ func Test_dbWithLogging_QueryContext(t *testing.T) {
 	noopLayerTracer := observability.NewNoopLayerTracer(t)
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	md := mock_driver.NewMockDBTX(ctrl)
 	var dbtx driver.DBTX = md
@@ -120,7 +117,6 @@ func Test_dbWithLogging_QueryRowContext(t *testing.T) {
 	noopLayerTracer := observability.NewNoopLayerTracer(t)
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	md := mock_driver.NewMockDBTX(ctrl)
 	var dbtx driver.DBTX = md
@@ -184,7 +180,6 @@ func Test_dbWithLogging_logQueryResult(t *testing.T) {
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	t.Run("Infoが呼ばれる", func(t *testing.T) {
 		t.Parallel()

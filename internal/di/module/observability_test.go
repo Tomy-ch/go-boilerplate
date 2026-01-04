@@ -20,7 +20,6 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
 
 		mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
 		mockLog := mock_logging.NewMockLogger(ctrl)
