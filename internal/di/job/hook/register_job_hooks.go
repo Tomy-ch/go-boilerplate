@@ -1,25 +1,26 @@
-package job
+// Package hook は、ジョブのライフサイクルフックを提供します。
+package hook
 
 import (
 	"context"
 	"time"
 
 	"boilerplate-go/internal/config"
+
 	"boilerplate-go/internal/di/lifecycle"
+	"boilerplate-go/internal/di/shutdowner"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/usecase/support/job"
-
-	"go.uber.org/fx"
 )
 
 // RegisterJobHooks は、ジョブのライフサイクルフックを登録します。
 func RegisterJobHooks(
 	reg lifecycle.Registrar,
-	sd fx.Shutdowner,
+	sd shutdowner.Shutdowner,
 	runner job.Runner,
 	logger logging.Logger,
 	osCfg *config.OperationSystemConfig,
-	state *State,
+	state job.State,
 ) {
 	reg.RegisterStart(func(startCtx context.Context) error {
 		go func() {
