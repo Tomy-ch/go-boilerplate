@@ -1,8 +1,10 @@
 package module
 
 import (
+	"boilerplate-go/internal/controller/job"
 	"boilerplate-go/internal/controller/job/usercount"
-	"boilerplate-go/internal/di/job"
+	dijob "boilerplate-go/internal/di/job"
+	"boilerplate-go/internal/di/job/hook"
 
 	"go.uber.org/fx"
 )
@@ -14,10 +16,10 @@ func JobModule() fx.Option {
 			usercount.New,
 		),
 		fx.Provide(
-			job.ProvideRunner,
+			dijob.ProvideRunner,
 			job.NewState,
 		),
-		fx.Invoke(job.RegisterJobHooks),
+		fx.Invoke(hook.RegisterJobHooks),
 	)
 }
 

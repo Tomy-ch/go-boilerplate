@@ -34,8 +34,9 @@ func TestMockConfigForTest(t *testing.T) {
 			port: expectedMetricsPort,
 		},
 		observability: ObservabilityConfig{
-			enabled:           expectedObservabilityEnabled,
-			targetStatusCodes: expectedObservabilityTargetStatusCodes,
+			enabled:             expectedObservabilityEnabled,
+			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
+			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
 		database: DatabaseConfig{
 			driver:                 expectedDBDriver,
@@ -62,6 +63,14 @@ func TestMockConfigForTest(t *testing.T) {
 			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
+		},
+		ipRateLimit: IPRateLimitConfig{
+			enabled:         expectedIPRateLimitEnabled,
+			requests:        expectedIPRateLimitRequests,
+			per:             expectedIPRateLimitPer,
+			burst:           expectedIPRateLimitBurst,
+			ttl:             expectedIPRateLimitTTL,
+			cleanupInterval: expectedIPRateLimitCleanupInterval,
 		},
 	}
 
@@ -123,6 +132,14 @@ func Test_mockLoader(t *testing.T) {
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
 		},
+		IPRateLimit: IPRateLimit{
+			Enabled:         expectedIPRateLimitEnabled,
+			Requests:        expectedIPRateLimitRequests,
+			Per:             expectedIPRateLimitPer,
+			Burst:           expectedIPRateLimitBurst,
+			TTL:             expectedIPRateLimitTTL,
+			CleanupInterval: expectedIPRateLimitCleanupInterval,
+		},
 	}
 
 	actual := mockLoader(t)
@@ -174,4 +191,11 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
 	require.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
 	require.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
+	// IPRateLimit
+	require.Equal(t, strconv.FormatBool(expectedIPRateLimitEnabled), os.Getenv("IP_RATE_LIMITER_ENABLED"))
+	require.Equal(t, strconv.Itoa(expectedIPRateLimitRequests), os.Getenv("IP_RATE_LIMITER_REQUESTS"))
+	require.Equal(t, expectedIPRateLimitPerStr, os.Getenv("IP_RATE_LIMITER_PER"))
+	require.Equal(t, strconv.Itoa(expectedIPRateLimitBurst), os.Getenv("IP_RATE_LIMITER_BURST"))
+	require.Equal(t, expectedIPRateLimitTTLStr, os.Getenv("IP_RATE_LIMITER_TTL"))
+	require.Equal(t, expectedIPRateLimitCleanupIntervalStr, os.Getenv("IP_RATE_LIMITER_CLEANUP_INTERVAL"))
 }

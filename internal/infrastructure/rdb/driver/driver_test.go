@@ -20,7 +20,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			dbCfg := config.NewDatabaseConfig(cfg)
 			dbCfg.SetDatabaseHost(t, "localhost")
-			osCfg := config.NewOSConfig(cfg)
+			osCfg := config.NewOperationSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
@@ -44,7 +44,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			dbCfg := config.NewDatabaseConfig(cfg)
 			dbCfg.SetDatabaseDriver(t, "invalid_driver")
-			osCfg := config.NewOSConfig(cfg)
+			osCfg := config.NewOperationSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
@@ -57,7 +57,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			dbCfg := config.NewDatabaseConfig(cfg)
 			dbCfg.SetDatabaseName(t, "nonexistentdb")
-			osCfg := config.NewOSConfig(cfg)
+			osCfg := config.NewOperationSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)

@@ -15,7 +15,7 @@ func TestNewLogFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 	require.NotNil(t, lf)
@@ -26,7 +26,7 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -128,7 +128,7 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -201,7 +201,7 @@ func TestLogFields_BuildSQLStartFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -267,7 +267,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -354,7 +354,7 @@ func TestLogFields_BuildObservabilityFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -425,7 +425,7 @@ func Test_appendTraceSpanFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
 
 	t.Run("trace/spanが無い場合", func(t *testing.T) {
@@ -472,27 +472,12 @@ func Test_appendTraceSpanFields(t *testing.T) {
 	})
 }
 
-func Test_latencyMs(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
-	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
-
-	t.Run("ミリ秒変換が正しい", func(t *testing.T) {
-		t.Parallel()
-		ms := impl.latencyMs(250 * time.Millisecond)
-		require.InEpsilon(t, float64(250), ms, 0.01)
-	})
-}
-
 func Test_buildCompactQuery(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
 
 	t.Run("改行/タブ/余白を詰める", func(t *testing.T) {

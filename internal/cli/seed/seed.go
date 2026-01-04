@@ -54,7 +54,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
 	db, err := sql.Open("postgres", dbCfg.DSNWithTimeZone(osCfg))
 	if err != nil {

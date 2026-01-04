@@ -19,7 +19,7 @@ func TestNewTestLogFieldBuilder(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 	obsCfg := config.NewObservabilityConfig(cfg)
 
 	actual := NewTestLogFieldBuilder(t)

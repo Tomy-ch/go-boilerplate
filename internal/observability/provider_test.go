@@ -15,7 +15,6 @@ import (
 func Test_TracerProvider(t *testing.T) {
 	t.Run("ShutdownRegistrarにシャットダウン処理を登録し、グローバルプロバイダーのTracerProviderを返す", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
 
 		mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
 
@@ -42,7 +41,6 @@ func Test_TracerProvider(t *testing.T) {
 
 	t.Run("シャットダウン時にコンテキストがキャンセルされてもエラーを返さない", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
 
 		mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
 		var shutdownFunc func(context.Context) error

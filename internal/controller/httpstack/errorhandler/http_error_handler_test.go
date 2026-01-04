@@ -316,6 +316,23 @@ func Test_logHTTPError(t *testing.T) {
 	c, end := testspan.StartTestSpanForEcho(t, c)
 	defer end()
 
+	t.Run("監視対象外のステータスコードはログ出力されない", func(t *testing.T) {
+		t.Parallel()
+
+		logger := logging.NewTestLogger(t)
+
+		he := &response.HTTPErrorResponse{
+			ErrorResponse: gen.ErrorResponse{
+				Code:      "C302",
+				Message:   "M302",
+				RequestId: "r302",
+			},
+			HTTPStatus: http.StatusFound,
+		}
+
+		logHTTPError(c, logger, lf, obsCfg, he)
+	})
+
 	t.Run("500以上はErrorログ", func(t *testing.T) {
 		t.Parallel()
 

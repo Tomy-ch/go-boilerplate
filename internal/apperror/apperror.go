@@ -16,6 +16,8 @@ var (
 	ErrConflict = xerrors.New("conflict")
 	// 検証が失敗した場合に使用します。422 Unprocessable Entity に対応します。
 	ErrValidation = xerrors.New("validation error")
+	// リクエストが多すぎる場合に使用します。429 Too Many Requests に対応します。
+	ErrTooManyRequests = xerrors.New("too many requests")
 	// サーバ内部で予期しないエラーが発生した場合に使用します。500 Internal Server Error に対応します。
 	ErrInternal = xerrors.New("internal error")
 	// 実装されていない操作が呼び出された場合に使用します。501 Not Implemented に対応します。

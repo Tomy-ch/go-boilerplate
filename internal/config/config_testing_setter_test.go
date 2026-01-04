@@ -3,6 +3,7 @@ package config
 import (
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -38,5 +39,11 @@ func TestConfigTestingSetters(t *testing.T) {
 		_, testCIDR, _ := net.ParseCIDR("192.168.1.0/24")
 		cfg.security.SetCIDR(t, testCIDR)
 		require.Equal(t, testCIDR, cfg.security.CIDR())
+	})
+
+	t.Run("SetCleanupInterval", func(t *testing.T) {
+		expected := 10 * time.Millisecond
+		cfg.ipRateLimit.SetCleanupInterval(t, expected)
+		require.Equal(t, expected, cfg.ipRateLimit.CleanupInterval())
 	})
 }
