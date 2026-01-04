@@ -41,10 +41,10 @@ func (m *MockShutdowner) EXPECT() *MockShutdownerMockRecorder {
 }
 
 // Shutdown mocks base method.
-func (m *MockShutdowner) Shutdown(arg0 ...fx.ShutdownOption) error {
+func (m *MockShutdowner) Shutdown(opt ...fx.ShutdownOption) error {
 	m.ctrl.T.Helper()
 	varargs := []any{}
-	for _, a := range arg0 {
+	for _, a := range opt {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Shutdown", varargs...)
@@ -53,7 +53,7 @@ func (m *MockShutdowner) Shutdown(arg0 ...fx.ShutdownOption) error {
 }
 
 // Shutdown indicates an expected call of Shutdown.
-func (mr *MockShutdownerMockRecorder) Shutdown(arg0 ...any) *gomock.Call {
+func (mr *MockShutdownerMockRecorder) Shutdown(opt ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockShutdowner)(nil).Shutdown), arg0...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockShutdowner)(nil).Shutdown), opt...)
 }
