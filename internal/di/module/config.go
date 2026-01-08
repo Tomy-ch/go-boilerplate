@@ -22,6 +22,7 @@ func ConfigModule() fx.Option {
 			config.NewMetricsConfig,
 			config.NewObservabilityConfig,
 			config.NewSecurityConfig,
+			config.NewSecureCookieConfig,
 			config.NewIPRateLimitConfig,
 		),
 		fx.Provide(

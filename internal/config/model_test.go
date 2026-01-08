@@ -67,6 +67,12 @@ func TestConstructor(t *testing.T) {
 		require.Equal(t, &cfg.security, securityCfg)
 	})
 
+	t.Run("NewSecureCookieConfig", func(t *testing.T) {
+		t.Parallel()
+		secureCookieCfg := NewSecureCookieConfig(cfg)
+		require.Equal(t, &cfg.secureCookie, secureCookieCfg)
+	})
+
 	t.Run("NewIPRateLimitConfig", func(t *testing.T) {
 		t.Parallel()
 		ipRateLimitCfg := NewIPRateLimitConfig(cfg)
@@ -294,6 +300,26 @@ func TestGetterMethods(t *testing.T) {
 		t.Run("ReferrerPolicy", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
+		})
+	})
+
+	t.Run("SecureCookie", func(t *testing.T) {
+		t.Parallel()
+		secureCookie := cfg.secureCookie
+
+		t.Run("Secure", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedSecureCookieSecure, secureCookie.Secure())
+		})
+
+		t.Run("SameSite", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
+		})
+
+		t.Run("Domain", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
 		})
 	})
 
