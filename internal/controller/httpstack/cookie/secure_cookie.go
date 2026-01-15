@@ -20,7 +20,7 @@ type SecurityCookie struct {
 	// skipCookieNames は、上書き対象から除外する Cookie 名の集合です。
 	skipCookieNames map[string]struct{}
 
-	// FoerceSecure は、Secure 属性を強制的に付与/削除します（nil は上書きしない）
+	// forceSecure は、Secure 属性を強制的に付与/削除します（nil は上書きしない）
 	forceSecure *bool
 	// forceHTTPOnly は、HttpOnly 属性を強制的に付与/削除します（nil は上書きしない）
 	forceHTTPOnly *bool
