@@ -33,6 +33,7 @@ func NewApplicationCore() *fx.App {
 		// Core Module
 		core.IPRateLimiterModule(),
 		core.ValidatorModule(),
+		core.SecurityCookieModule(),
 		// Common Module
 		module.ConfigModule(),
 		module.LoggingModule(),
