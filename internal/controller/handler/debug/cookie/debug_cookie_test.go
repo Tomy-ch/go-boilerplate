@@ -32,15 +32,15 @@ func TestBindHandler(t *testing.T) {
 
 	expectedPathPrefix := "/debug/cookie"
 
-	auctualRoutes := e.Routes()
-	for _, r := range auctualRoutes {
+	actualRoutes := e.Routes()
+	for _, r := range actualRoutes {
 		require.Contains(t, r.Path, expectedPathPrefix)
 	}
-	require.Len(t, auctualRoutes, len(expectedMethods))
+	require.Len(t, actualRoutes, len(expectedMethods))
 
-	actualMethods := make([]string, len(auctualRoutes))
+	actualMethods := make([]string, len(actualRoutes))
 
-	for i, r := range auctualRoutes {
+	for i, r := range actualRoutes {
 		actualMethods[i] = r.Method
 	}
 

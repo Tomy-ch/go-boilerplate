@@ -98,11 +98,11 @@ func (h *server) GetDebugCookieRawStream(ctx echo.Context) error {
 	ctx.Response().WriteHeader(http.StatusOK)
 	ctx.Response().Flush()
 
-	sleepTimeCount := 150
+	sleepMillis := 150
 	for i := 0; i < 3; i++ {
 		_, _ = ctx.Response().Write([]byte("data: ping\n\n"))
 		ctx.Response().Flush()
-		time.Sleep(time.Duration(sleepTimeCount) * time.Millisecond)
+		time.Sleep(time.Duration(sleepMillis) * time.Millisecond)
 	}
 
 	return nil
