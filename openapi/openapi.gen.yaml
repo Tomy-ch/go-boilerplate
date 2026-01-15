@@ -370,6 +370,152 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /debug/cookie:
+    get:
+      operationId: GetDebugCookie
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - request cookie確認（Cookieヘッダと解析結果を返す）
+        このエンドポイントは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebugCookieInspectResponse'
+    post:
+      operationId: PostDebugCookie
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - issue Set-Cookie (rewrite確認用)
+        このエンドポイントは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DebugIssueCookieRequest'
+      responses:
+        '204':
+          description: No Content
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+    delete:
+      operationId: DeleteDebugCookie
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - clear cookie
+        このエンドポイントは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+            default: __Host-access_token
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+            default: /
+      responses:
+        '204':
+          description: No Content
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+  /debug/cookie/copy:
+    get:
+      operationId: GetDebugCookieRawCopy
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - io.Copy / ReadFrom 経路確認
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        サーバ側で io.Copy を使ってレスポンスボディを書き出します。
+        SecurityCookie MW による Set-Cookie rewrite と、ReadFrom 経路でも壊れないことを確認できます。
+      responses:
+        '200':
+          description: OK
+          headers:
+            Set-Cookie:
+              description: (debug) issued cookie (MWでrewriteされる想定)
+              schema:
+                type: string
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                sample:
+                  value: |
+                    hello-cookie
+                    hello-cookie
+  /debug/cookie/stream:
+    get:
+      operationId: GetDebugCookieRawStream
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - Flush 経路確認（SSE風）
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        text/event-stream を返し、サーバ側で複数回 Flush() を呼びます。
+        SecurityCookie MW による Set-Cookie の rewrite と、Flush 経路で壊れないことを確認できます。
+      responses:
+        '200':
+          description: OK (SSE stream)
+          headers:
+            Set-Cookie:
+              description: (debug) issued cookie (MWでrewriteされる想定)
+              schema:
+                type: string
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              examples:
+                ping:
+                  value: |
+                    data: ping
+  /debug/cookie/ws:
+    get:
+      operationId: GetDebugCookieRawWs
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - WebSocket / Hijack 経路確認
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        WebSocket に Upgrade します（内部で Hijack が関与する実装を想定）。
+        OpenAPI 3.0 では WebSocket を厳密に表現できないため、101 と説明で表します。
+        動作確認は wscat 等で行ってください。
+      responses:
+        '101':
+          description: Switching Protocols (WebSocket)
+          headers:
+            Upgrade:
+              schema:
+                type: string
+                example: websocket
+            Connection:
+              schema:
+                type: string
+                example: Upgrade
+            Sec-WebSocket-Accept:
+              schema:
+                type: string
+        '400':
+          description: Bad Request (Upgrade 失敗)
 components:
   parameters:
     KeywordParam:
@@ -700,3 +846,30 @@ components:
       description: ユーザー情報の部分更新
       allOf:
         - $ref: '#/components/schemas/UserBaseInputRequest'
+    DebugIssueCookieRequest:
+      additionalProperties: false
+      description: |
+        Debug - issue Set-Cookie request schema
+        このリクエストは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      properties:
+        setCookie:
+          type: string
+          description: Raw Set-Cookie header value
+          example: __Host-access_token=rawtoken; Path=/hoge; Domain=example.com; SameSite=None
+      required:
+        - setCookie
+    DebugCookieInspectResponse:
+      description: |
+        Debug - request cookie確認（Cookieヘッダと解析結果を返す）
+        このレスポンスは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      additionalProperties: false
+      properties:
+        rawCookieHeader:
+          type: string
+        cookies:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - rawCookieHeader
+        - cookies
