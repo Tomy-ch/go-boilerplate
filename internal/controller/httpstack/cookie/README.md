@@ -2,6 +2,8 @@
 
 概要: `internal/controller/httpstack/cookie` パッケージは、HTTP レスポンスの `Set-Cookie` ヘッダを書き換え・正規化するための機能を提供します。Echo 用ミドルウェアでレスポンス書き換えラッパーを挿入し、セキュアな Cookie ポリシー（Secure/HttpOnly/SameSite/Path/Domain/Max-Age 等）の強制や不要な属性の調整を行います。
 
+各設定値については、[SecureCookie](./SECURE_COOKIE.md) ドキュメントを参照してください。
+
 ## 役割
 
 - Echo ミドルウェア `Middleware(cfg *SecurityCookie)` を提供し、レスポンスの `Set-Cookie` を `SecurityCookie` 設定に従って上書きします。
