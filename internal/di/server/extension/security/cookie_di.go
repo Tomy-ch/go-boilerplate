@@ -11,7 +11,7 @@ const cookiePriority = 10
 
 // CookieModule は、Cookie制御のミドルウェアを提供するfxモジュールを返します。
 func CookieModule() fx.Option {
-	return fx.Module("mw.cookie",
+	return fx.Module("mw.secure_cookie",
 		fx.Provide(
 			CookieMiddleware,
 		),
@@ -19,12 +19,12 @@ func CookieModule() fx.Option {
 }
 
 // CookieMiddleware は、可観測性ミドルウェアを提供します。
-func CookieMiddleware() extension.UseMiddlewareOut {
+func CookieMiddleware(secCookie *cookie.SecurityCookie) extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
-			Name:       "cookie",
+			Name:       "secure_cookie",
 			Priority:   cookiePriority,
-			Middleware: cookie.Middleware(),
+			Middleware: cookie.Middleware(secCookie),
 		},
 	}
 }

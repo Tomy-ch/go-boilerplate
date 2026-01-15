@@ -16,6 +16,7 @@ type Config struct {
 	database      DatabaseConfig
 	dbconnection  DBConnectionConfig
 	security      SecurityConfig
+	secureCookie  SecureCookieConfig
 	ipRateLimit   IPRateLimitConfig
 }
 
@@ -77,6 +78,12 @@ type SecurityConfig struct {
 	hstsExcludeSubdomains bool
 	hstsPreloadEnabled    bool
 	referrerPolicy        string
+}
+
+type SecureCookieConfig struct {
+	secure   *bool
+	sameSite string
+	domain   string
 }
 
 type IPRateLimitConfig struct {
@@ -259,6 +266,18 @@ func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled
 
 // ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
 func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
+
+// NewSecureCookieConfig は、セキュアクッキーの設定を返します。
+func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }
+
+// Secure は、Secure属性の強制設定を返します。
+func (s *SecureCookieConfig) Secure() *bool { return s.secure }
+
+// SameSite は、SameSite属性の強制設定を返します。
+func (s *SecureCookieConfig) SameSite() string { return s.sameSite }
+
+// Domain は、Domain属性の強制設定を返します。
+func (s *SecureCookieConfig) Domain() string { return s.domain }
 
 // NewIPRateLimitConfig は、IPレートリミットの設定を返します。
 func NewIPRateLimitConfig(cfg *Config) *IPRateLimitConfig { return &cfg.ipRateLimit }

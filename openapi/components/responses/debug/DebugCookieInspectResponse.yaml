@@ -1,0 +1,12 @@
+description: |
+  Debug - request cookie確認（Cookieヘッダと解析結果を返す）
+  このレスポンスは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+additionalProperties: false
+properties:
+  rawCookieHeader:
+    type: string
+  cookies:
+    type: object
+    additionalProperties:
+      type: string
+required: [rawCookieHeader, cookies]

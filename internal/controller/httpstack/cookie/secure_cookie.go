@@ -1,0 +1,139 @@
+// Package cookie は、セキュアなCookie設定を提供します。
+package cookie
+
+import (
+	"fmt"
+	"strings"
+
+	"boilerplate-go/internal/config"
+	"boilerplate-go/pkg/ptr"
+)
+
+// SecurityCookie は Set-Cookie を正規化するための設定です。
+type SecurityCookie struct {
+	// applyToAll が true の場合は Set-Cookie を全部対象にする
+	applyToAll bool
+
+	// cookieNames は、ApplyToAll が false の場合に対象とする Cookie 名の集合です。
+	cookieNames map[string]struct{}
+
+	// skipCookieNames は、上書き対象から除外する Cookie 名の集合です。
+	skipCookieNames map[string]struct{}
+
+	// forceSecure は、Secure 属性を強制的に付与/削除します（nil は上書きしない）
+	forceSecure *bool
+	// forceHTTPOnly は、HttpOnly 属性を強制的に付与/削除します（nil は上書きしない）
+	forceHTTPOnly *bool
+
+	// forceSameSite は、SameSite 属性を強制的に上書きします。
+	// "Lax" / "Strict" / "None" / ""(上書きしない)
+	forceSameSite string
+
+	// forcePath は Path 属性を強制的に上書きします。
+	// 空文字列の場合は上書きしません。
+	forcePath string
+	// forceDomain は Domain 属性を強制的に上書きします。
+	// 空文字列の場合は上書きしません。
+	forceDomain string
+
+	// forceMaxAge は Max-Age 属性を強制的に上書きします（nil は上書きしない）
+	forceMaxAge *int
+
+	// enforceSecureWhenSameSiteNone は、SameSite=None の場合に Secure 属性を強制的に付与します。
+	enforceSecureWhenSameSiteNone bool
+}
+
+// NewSecurityCookie は、設定から SecurityCookie を構築します。
+func NewSecurityCookie(
+	p *config.SecureCookieConfig,
+) *SecurityCookie {
+	cfg := &SecurityCookie{
+		// デフォルト（boilerplate 推奨値）
+		applyToAll: true,
+
+		// 基本 true 固定で良い（プロダクト要件が出たら opts で変更）
+		forceHTTPOnly: ptr.To(true),
+
+		// SameSite=None のとき Secure を要求（ブラウザ仕様に沿って安全側）
+		enforceSecureWhenSameSiteNone: true,
+
+		// 多くのケースで "/" 固定
+		forcePath: "/",
+
+		// 下記は用途に応じて変更する想定
+		cookieNames:     map[string]struct{}{},
+		skipCookieNames: map[string]struct{}{},
+		forceMaxAge:     nil,
+	}
+
+	cfg.forceSecure = p.Secure()
+	// SameSite: 空なら上書きしない、指定があれば上書き
+	if s := strings.TrimSpace(p.SameSite()); s != "" {
+		cfg.forceSameSite = s
+	}
+	// Domain: 空なら上書きしない
+	// （__Host- を使う場合は Rewrite 内で Domain が落とされる）
+	if d := strings.TrimSpace(p.Domain()); d != "" {
+		cfg.forceDomain = d
+	}
+
+	return cfg
+}
+
+// RewriteSetCookie は Set-Cookie ヘッダ値（1本）を cfg に基づいて上書きします。
+// 失敗時は空文字を返します（呼び出し側で元の raw を使う想定）。
+func (cfg *SecurityCookie) RewriteSetCookie(raw string) string {
+	name, value, attrs, ok := parseSetCookie(raw)
+	if !ok || name == "" {
+		return ""
+	}
+
+	// 対象判定
+	if !cfg.applyToAll {
+		if _, ok := cfg.cookieNames[name]; !ok {
+			return raw
+		}
+	}
+	if _, ok := cfg.skipCookieNames[name]; ok {
+		return raw
+	}
+
+	hostPrefix := strings.HasPrefix(name, "__Host-")
+	securePrefix := strings.HasPrefix(name, "__Secure-") || hostPrefix
+
+	if cfg.forceSecure != nil {
+		setBoolAttr(attrs, "secure", *cfg.forceSecure)
+	}
+	if cfg.forceHTTPOnly != nil {
+		setBoolAttr(attrs, "httponly", *cfg.forceHTTPOnly)
+	}
+	if cfg.forceSameSite != "" {
+		setKVAttr(attrs, "samesite", cfg.forceSameSite)
+		if cfg.enforceSecureWhenSameSiteNone && strings.EqualFold(cfg.forceSameSite, "None") {
+			setBoolAttr(attrs, "secure", true)
+		}
+	}
+	if cfg.forcePath != "" {
+		setKVAttr(attrs, "path", cfg.forcePath)
+	}
+	if cfg.forceDomain != "" {
+		setKVAttr(attrs, "domain", cfg.forceDomain)
+	}
+	if cfg.forceMaxAge != nil {
+		setKVAttr(attrs, "max-age", fmt.Sprintf("%d", *cfg.forceMaxAge))
+	}
+	// expires は整合性が難しいので、この雛形では触らない（必要なら追加）
+
+	// prefix 強制
+	if securePrefix {
+		setBoolAttr(attrs, "secure", true)
+	}
+	if hostPrefix {
+		// __Host- は Secure + Path=/ + Domain無し
+		setBoolAttr(attrs, "secure", true)
+		setKVAttr(attrs, "path", "/")
+		delAttr(attrs, "domain")
+	}
+
+	return buildSetCookie(name, value, attrs)
+}

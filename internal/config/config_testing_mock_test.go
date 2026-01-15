@@ -64,6 +64,11 @@ func TestMockConfigForTest(t *testing.T) {
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
 		},
+		secureCookie: SecureCookieConfig{
+			secure:   expectedSecureCookieSecure,
+			sameSite: expectedSecureCookieSameSite,
+			domain:   expectedSecureCookieDomain,
+		},
 		ipRateLimit: IPRateLimitConfig{
 			enabled:         expectedIPRateLimitEnabled,
 			requests:        expectedIPRateLimitRequests,
@@ -132,6 +137,11 @@ func Test_mockLoader(t *testing.T) {
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
 		},
+		SecureCookie: SecureCookie{
+			Secure:   expectedSecureCookieSecure,
+			SameSite: expectedSecureCookieSameSite,
+			Domain:   expectedSecureCookieDomain,
+		},
 		IPRateLimit: IPRateLimit{
 			Enabled:         expectedIPRateLimitEnabled,
 			Requests:        expectedIPRateLimitRequests,
@@ -191,6 +201,10 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
 	require.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
 	require.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
+	// Secure Cookie
+	require.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
+	require.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))
+	require.Equal(t, expectedSecureCookieDomain, os.Getenv("SECURE_COOKIE_DOMAIN"))
 	// IPRateLimit
 	require.Equal(t, strconv.FormatBool(expectedIPRateLimitEnabled), os.Getenv("IP_RATE_LIMITER_ENABLED"))
 	require.Equal(t, strconv.Itoa(expectedIPRateLimitRequests), os.Getenv("IP_RATE_LIMITER_REQUESTS"))

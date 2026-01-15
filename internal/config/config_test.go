@@ -63,6 +63,11 @@ func TestNewConfig(t *testing.T) {
 					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 					referrerPolicy:        expectedReferrerPolicy,
 				},
+				secureCookie: SecureCookieConfig{
+					secure:   expectedSecureCookieSecure,
+					sameSite: expectedSecureCookieSameSite,
+					domain:   expectedSecureCookieDomain,
+				},
 				ipRateLimit: IPRateLimitConfig{
 					enabled:         expectedIPRateLimitEnabled,
 					requests:        expectedIPRateLimitRequests,
