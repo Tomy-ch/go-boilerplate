@@ -377,7 +377,7 @@ paths:
         - debug/cookie
       summary: |
         Debug - request cookie確認（Cookieヘッダと解析結果を返す）
-            このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
       responses:
         '200':
           description: OK
@@ -391,7 +391,7 @@ paths:
         - debug/cookie
       summary: |
         Debug - issue Set-Cookie (rewrite確認用)
-            このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
       requestBody:
         required: true
         content:
@@ -411,7 +411,7 @@ paths:
         - debug/cookie
       summary: |
         Debug - clear cookie
-            このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
       parameters:
         - name: name
           in: query

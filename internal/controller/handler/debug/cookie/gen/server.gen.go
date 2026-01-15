@@ -18,21 +18,15 @@ import (
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Debug - clear cookie
-	//
-	//	このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-	//
+	// このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
 	// (DELETE /debug/cookie)
 	DeleteDebugCookie(ctx echo.Context, params DeleteDebugCookieParams) error
 	// Debug - request cookie確認（Cookieヘッダと解析結果を返す）
-	//
-	//	このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-	//
+	// このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
 	// (GET /debug/cookie)
 	GetDebugCookie(ctx echo.Context) error
 	// Debug - issue Set-Cookie (rewrite確認用)
-	//
-	//	このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-	//
+	// このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
 	// (POST /debug/cookie)
 	PostDebugCookie(ctx echo.Context) error
 	// Debug - io.Copy / ReadFrom 経路確認
@@ -314,21 +308,15 @@ func (response GetDebugCookieRawWs400Response) VisitGetDebugCookieRawWsResponse(
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Debug - clear cookie
-	//
-	//	このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-	//
+	// このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
 	// (DELETE /debug/cookie)
 	DeleteDebugCookie(ctx context.Context, request DeleteDebugCookieRequestObject) (DeleteDebugCookieResponseObject, error)
 	// Debug - request cookie確認（Cookieヘッダと解析結果を返す）
-	//
-	//	このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-	//
+	// このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
 	// (GET /debug/cookie)
 	GetDebugCookie(ctx context.Context, request GetDebugCookieRequestObject) (GetDebugCookieResponseObject, error)
 	// Debug - issue Set-Cookie (rewrite確認用)
-	//
-	//	このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-	//
+	// このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
 	// (POST /debug/cookie)
 	PostDebugCookie(ctx context.Context, request PostDebugCookieRequestObject) (PostDebugCookieResponseObject, error)
 	// Debug - io.Copy / ReadFrom 経路確認
