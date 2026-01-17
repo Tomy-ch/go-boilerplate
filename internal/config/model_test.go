@@ -73,6 +73,12 @@ func TestConstructor(t *testing.T) {
 		require.Equal(t, &cfg.secureCookie, secureCookieCfg)
 	})
 
+	t.Run("NewAuthConfig", func(t *testing.T) {
+		t.Parallel()
+		authCfg := NewAuthConfig(cfg)
+		require.Equal(t, &cfg.auth, authCfg)
+	})
+
 	t.Run("NewIPRateLimitConfig", func(t *testing.T) {
 		t.Parallel()
 		ipRateLimitCfg := NewIPRateLimitConfig(cfg)
@@ -320,6 +326,26 @@ func TestGetterMethods(t *testing.T) {
 		t.Run("Domain", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
+		})
+	})
+
+	t.Run("Auth", func(t *testing.T) {
+		t.Parallel()
+		auth := cfg.auth
+
+		t.Run("CookieName", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedAuthCookieName, auth.CookieName())
+		})
+
+		t.Run("HeaderName", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedAuthHeaderName, auth.HeaderName())
+		})
+
+		t.Run("AllowedHeaderBearer", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
 		})
 	})
 

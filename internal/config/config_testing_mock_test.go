@@ -69,6 +69,11 @@ func TestMockConfigForTest(t *testing.T) {
 			sameSite: expectedSecureCookieSameSite,
 			domain:   expectedSecureCookieDomain,
 		},
+		auth: AuthConfig{
+			cookieName:          expectedAuthCookieName,
+			headerName:          expectedAuthHeaderName,
+			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+		},
 		ipRateLimit: IPRateLimitConfig{
 			enabled:         expectedIPRateLimitEnabled,
 			requests:        expectedIPRateLimitRequests,
@@ -142,6 +147,11 @@ func Test_mockLoader(t *testing.T) {
 			SameSite: expectedSecureCookieSameSite,
 			Domain:   expectedSecureCookieDomain,
 		},
+		Auth: Auth{
+			CookieName:          expectedAuthCookieName,
+			HeaderName:          expectedAuthHeaderName,
+			AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+		},
 		IPRateLimit: IPRateLimit{
 			Enabled:         expectedIPRateLimitEnabled,
 			Requests:        expectedIPRateLimitRequests,
@@ -205,6 +215,10 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
 	require.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))
 	require.Equal(t, expectedSecureCookieDomain, os.Getenv("SECURE_COOKIE_DOMAIN"))
+	// Auth
+	require.Equal(t, expectedAuthCookieName, os.Getenv("AUTH_COOKIE_NAME"))
+	require.Equal(t, expectedAuthHeaderName, os.Getenv("AUTH_HEADER_NAME"))
+	require.Equal(t, strconv.FormatBool(expectedAuthAllowedHeaderBearer), os.Getenv("AUTH_ALLOWED_HEADER_BEARER"))
 	// IPRateLimit
 	require.Equal(t, strconv.FormatBool(expectedIPRateLimitEnabled), os.Getenv("IP_RATE_LIMITER_ENABLED"))
 	require.Equal(t, strconv.Itoa(expectedIPRateLimitRequests), os.Getenv("IP_RATE_LIMITER_REQUESTS"))
