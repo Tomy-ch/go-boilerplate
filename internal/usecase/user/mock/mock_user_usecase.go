@@ -10,10 +10,11 @@
 package mock_user
 
 import (
-	paging "boilerplate-go/internal/usecase/support/paging"
-	user "boilerplate-go/internal/usecase/user"
 	context "context"
 	reflect "reflect"
+
+	paging "boilerplate-go/internal/usecase/tools/paging"
+	user "boilerplate-go/internal/usecase/user"
 
 	gomock "go.uber.org/mock/gomock"
 )

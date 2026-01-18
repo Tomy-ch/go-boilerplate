@@ -11,8 +11,8 @@ import (
 	"boilerplate-go/internal/domain/user"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/interface/tx"
-	"boilerplate-go/internal/usecase/support/paging"
-	"boilerplate-go/internal/usecase/support/search"
+	"boilerplate-go/internal/usecase/tools/paging"
+	"boilerplate-go/internal/usecase/tools/search"
 	"boilerplate-go/pkg/uuid"
 )
 

@@ -9,7 +9,7 @@ import (
 
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/support/paging"
+	"boilerplate-go/internal/usecase/tools/paging"
 	"boilerplate-go/internal/usecase/user"
 	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/uuid"

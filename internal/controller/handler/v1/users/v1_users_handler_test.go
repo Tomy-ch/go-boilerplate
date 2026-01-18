@@ -9,7 +9,7 @@ import (
 	"boilerplate-go/internal/controller/handler/testkit/testassert"
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/support/paging"
+	"boilerplate-go/internal/usecase/tools/paging"
 	"boilerplate-go/internal/usecase/user"
 	mock_user "boilerplate-go/internal/usecase/user/mock"
 	"boilerplate-go/pkg/ptr"
