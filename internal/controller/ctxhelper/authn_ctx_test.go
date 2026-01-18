@@ -3,17 +3,14 @@ package ctxhelper
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"boilerplate-go/internal/domain/auth"
 
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetUauthn(t *testing.T) {
+func TestSetAuthn(t *testing.T) {
 	t.Parallel()
 
 	base := context.Background()
@@ -26,15 +23,15 @@ func TestSetUauthn(t *testing.T) {
 	require.Equal(t, *new(auth.Authn), v)
 }
 
-func TestGetUauthn(t *testing.T) {
+func TestGetAuthn(t *testing.T) {
 	t.Parallel()
 
 	t.Run("standard context", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		ctx = SetUauthn(ctx, *new(auth.Authn))
+		ctx = SetAuthn(ctx, *new(auth.Authn))
 
-		val, ok := GetUauthn(ctx)
+		val, ok := GetAuthn(ctx)
 		require.True(t, ok)
 		require.Equal(t, *new(auth.Authn), val)
 	})
@@ -42,37 +39,7 @@ func TestGetUauthn(t *testing.T) {
 	t.Run("standard context - no value", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		val, ok := GetUauthn(ctx)
-		require.False(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
-	})
-}
-
-func TestSetUauthnToEcho(t *testing.T) {
-	t.Parallel()
-
-	t.Run("echo context", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-
-		SetUauthnToEcho(c, *new(auth.Authn))
-		val, ok := GetUauthnFromEcho(c)
-
-		require.True(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
-	})
-
-	t.Run("echo context - no value", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-
-		val, ok := GetUauthnFromEcho(c)
+		val, ok := GetAuthn(ctx)
 		require.False(t, ok)
 		require.Equal(t, *new(auth.Authn), val)
 	})
