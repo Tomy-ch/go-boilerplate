@@ -18,7 +18,7 @@ func CookieModule() fx.Option {
 	)
 }
 
-// CookieMiddleware は、可観測性ミドルウェアを提供します。
+// CookieMiddleware は、セキュアCookieのミドルウェアを提供します。
 func CookieMiddleware(secCookie *cookie.SecurityCookie) extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
