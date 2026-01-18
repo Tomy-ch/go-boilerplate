@@ -10,7 +10,7 @@ import (
 	"boilerplate-go/internal/domain/prefecture"
 	"boilerplate-go/internal/domain/user"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/interface/tx"
+	"boilerplate-go/internal/usecase/boundary/tx"
 	"boilerplate-go/internal/usecase/tools/paging"
 	"boilerplate-go/internal/usecase/tools/search"
 	"boilerplate-go/pkg/uuid"

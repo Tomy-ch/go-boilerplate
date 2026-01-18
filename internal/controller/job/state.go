@@ -3,7 +3,7 @@ package job
 import (
 	"sync"
 
-	"boilerplate-go/internal/usecase/interface/job"
+	"boilerplate-go/internal/usecase/boundary/job"
 )
 
 type state struct {

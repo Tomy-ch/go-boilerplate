@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"boilerplate-go/internal/usecase/interface/job"
+	"boilerplate-go/internal/usecase/boundary/job"
 	"boilerplate-go/pkg/xerrors"
 )
 

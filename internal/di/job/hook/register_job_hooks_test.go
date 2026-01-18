@@ -13,7 +13,7 @@ import (
 	mock_lifecycle "boilerplate-go/internal/di/lifecycle/mock"
 	mock_shutdowner "boilerplate-go/internal/di/shutdowner/mock"
 	mock_logging "boilerplate-go/internal/logging/mock"
-	mock_job "boilerplate-go/internal/usecase/interface/job/mock"
+	mock_job "boilerplate-go/internal/usecase/boundary/job/mock"
 )
 
 func TestRegisterJobHooks(t *testing.T) {

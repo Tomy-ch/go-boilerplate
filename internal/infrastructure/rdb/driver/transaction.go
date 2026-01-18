@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/usecase/interface/tx"
+	"boilerplate-go/internal/usecase/boundary/tx"
 )
 
 // txManager は、トランザクションの管理を行います。

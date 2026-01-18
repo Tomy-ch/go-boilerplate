@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/domain/auth"
+	"boilerplate-go/internal/usecase/boundary/auth"
 
 	"github.com/stretchr/testify/require"
 )

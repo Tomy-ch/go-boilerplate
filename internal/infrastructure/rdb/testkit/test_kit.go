@@ -10,7 +10,7 @@ import (
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/interface/tx"
+	"boilerplate-go/internal/usecase/boundary/tx"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"

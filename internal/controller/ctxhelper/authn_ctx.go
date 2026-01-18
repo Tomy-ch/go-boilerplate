@@ -6,7 +6,7 @@ package ctxhelper
 import (
 	"context"
 
-	"boilerplate-go/internal/domain/auth"
+	"boilerplate-go/internal/usecase/boundary/auth"
 )
 
 type authnKeyType struct{}
