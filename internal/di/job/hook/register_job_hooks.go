@@ -10,7 +10,7 @@ import (
 	"boilerplate-go/internal/di/lifecycle"
 	"boilerplate-go/internal/di/shutdowner"
 	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/usecase/support/job"
+	"boilerplate-go/internal/usecase/interface/job"
 )
 
 // RegisterJobHooks は、ジョブのライフサイクルフックを登録します。

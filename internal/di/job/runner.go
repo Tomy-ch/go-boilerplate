@@ -3,7 +3,7 @@ package job
 
 import (
 	jobrunner "boilerplate-go/internal/controller/job"
-	"boilerplate-go/internal/usecase/support/job"
+	"boilerplate-go/internal/usecase/interface/job"
 
 	"go.uber.org/fx"
 )
