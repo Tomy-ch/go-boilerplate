@@ -7,48 +7,46 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"boilerplate-go/internal/usecase/boundary/auth"
-
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetAuthn(t *testing.T) {
+func TestSetEchoContext(t *testing.T) {
 	t.Parallel()
 
 	base := context.Background()
-	ctx := context.WithValue(base, authnKey, *new(auth.Authn))
+	ctx := context.WithValue(base, echocontextKey, *new(echo.Context))
 
-	val := ctx.Value(authnKey)
+	val := ctx.Value(echocontextKey)
 	require.NotNil(t, val)
-	v, ok := val.(auth.Authn)
+	v, ok := val.(echo.Context)
 	require.True(t, ok)
-	require.Equal(t, *new(auth.Authn), v)
+	require.Equal(t, *new(echo.Context), v)
 }
 
-func TestGetAuthn(t *testing.T) {
+func TestGetEchoContext(t *testing.T) {
 	t.Parallel()
 
 	t.Run("standard context", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		ctx = SetAuthn(ctx, *new(auth.Authn))
+		ctx = SetEchoContext(ctx, *new(echo.Context))
 
-		val, ok := GetAuthn(ctx)
+		val, ok := GetEchoContext(ctx)
 		require.True(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		require.Equal(t, *new(echo.Context), val)
 	})
 
 	t.Run("standard context - no value", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		val, ok := GetAuthn(ctx)
+		val, ok := GetEchoContext(ctx)
 		require.False(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		require.Equal(t, *new(echo.Context), val)
 	})
 }
 
-func TestSetAuthnToEcho(t *testing.T) {
+func TestSetEchoContextToEcho(t *testing.T) {
 	t.Parallel()
 
 	t.Run("echo context", func(t *testing.T) {
@@ -58,11 +56,11 @@ func TestSetAuthnToEcho(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		SetAuthnToEcho(c, *new(auth.Authn))
-		val, ok := GetAuthnFromEcho(c)
+		SetEchoContextToEcho(c, *new(echo.Context))
+		val, ok := GetEchoContextFromEcho(c)
 
 		require.True(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		require.Equal(t, *new(echo.Context), val)
 	})
 
 	t.Run("echo context - no value", func(t *testing.T) {
@@ -72,8 +70,8 @@ func TestSetAuthnToEcho(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		val, ok := GetAuthnFromEcho(c)
+		val, ok := GetEchoContextFromEcho(c)
 		require.False(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		require.Equal(t, *new(echo.Context), val)
 	})
 }

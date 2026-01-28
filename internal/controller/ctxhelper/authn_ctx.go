@@ -7,6 +7,8 @@ import (
 	"context"
 
 	"boilerplate-go/internal/usecase/boundary/auth"
+
+	"github.com/labstack/echo/v4"
 )
 
 type authnKeyType struct{}
@@ -21,6 +23,21 @@ func SetAuthn(ctx context.Context, val auth.Authn) context.Context {
 
 func GetAuthn(ctx context.Context) (auth.Authn, bool) {
 	val := ctx.Value(authnKey)
+	if v, ok := val.(auth.Authn); ok {
+		return v, true
+	}
+	return *new(auth.Authn), false
+}
+
+// --- echo.Context wrapper ---
+
+func SetAuthnToEcho(c echo.Context, val auth.Authn) {
+	ctx := context.WithValue(c.Request().Context(), authnKey, val)
+	c.SetRequest(c.Request().WithContext(ctx))
+}
+
+func GetAuthnFromEcho(c echo.Context) (auth.Authn, bool) {
+	val := c.Request().Context().Value(authnKey)
 	if v, ok := val.(auth.Authn); ok {
 		return v, true
 	}
