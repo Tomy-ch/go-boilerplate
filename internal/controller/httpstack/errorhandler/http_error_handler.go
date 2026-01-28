@@ -3,6 +3,7 @@ package errorhandler
 
 import (
 	"net/http"
+	"time"
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/error/response"
@@ -43,6 +44,7 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
 			req := c.Request()
 			traceCtx := observability.ExtractTraceContext(req.Context())
 			reqIn := logging.HTTPRequestLogInput{
+				EventAt:       time.Now(),
 				Method:        req.Method,
 				Path:          c.Path(),
 				URI:           req.RequestURI,
@@ -126,6 +128,7 @@ func httpErrorField(
 		logging.String(logging.RequestIDKey, he.RequestId),
 	}
 	reqIn := logging.HTTPRequestLogInput{
+		EventAt:       time.Now(),
 		Method:        req.Method,
 		Path:          c.Path(),
 		URI:           req.RequestURI,
