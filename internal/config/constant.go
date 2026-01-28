@@ -1,6 +1,19 @@
 package config
 
 const (
+	// EnvLocal はローカル開発環境を表します。
+	EnvLocal = "local"
+	// EnvCI はCI環境を表します。
+	EnvCI = "ci"
+	// EnvTest はテスト環境を表します。
+	EnvTest = "test"
+	// EnvDevelopment は開発環境を表します。
+	EnvDevelopment = "development"
+	// EnvStaging はステージング環境を表します。
+	EnvStaging = "staging"
+	// EnvProduction は本番環境を表します。
+	EnvProduction = "production"
+
 	// DevelopmentMode は開発環境モードを表します。
 	DevelopmentMode = "development"
 	// ProductionMode は本番環境モードを表します。
