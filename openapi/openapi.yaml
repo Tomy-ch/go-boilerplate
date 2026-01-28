@@ -67,6 +67,9 @@ components:
       $ref: './components/parameters/pagination/PerPageParam.yaml'
     UserIdParam:
       $ref: './components/parameters/user/UserIdParam.yaml'
+  securitySchemes:
+    BearerAuth:
+      $ref: './components/schemas/BearerAuth.yaml'
   schemas:
     ErrorResponse:
       $ref: './components/schemas/ErrorResponse.yaml'
