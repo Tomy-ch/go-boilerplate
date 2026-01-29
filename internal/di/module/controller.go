@@ -4,6 +4,7 @@ import (
 	"boilerplate-go/internal/controller/handler/debug/cookie"
 	"boilerplate-go/internal/controller/handler/health"
 	"boilerplate-go/internal/controller/handler/healthz"
+	"boilerplate-go/internal/controller/handler/metrics"
 	"boilerplate-go/internal/controller/handler/ready"
 	"boilerplate-go/internal/controller/handler/v1/users"
 	"boilerplate-go/internal/controller/handler/version"
@@ -19,6 +20,7 @@ func ControllerModule() fx.Option {
 			healthz.BindHandler,
 			ready.BindHandler,
 			version.BindHandler,
+			metrics.BindHandler,
 			// サンプルのハンドラー
 			users.BindHandler,
 			// デバッグ用のハンドラー（サービスを作成する際には必ず削除してください）
