@@ -42,8 +42,10 @@ type ServerConfig struct {
 }
 
 type MetricsConfig struct {
-	host string
-	port int
+	host     string
+	port     int
+	userName string
+	password string
 }
 
 type ObservabilityConfig struct {
@@ -167,6 +169,12 @@ func (m *MetricsConfig) Host() string { return m.host }
 
 // Port は、メトリクスサーバーがリッスンするポート番号を返します。
 func (m *MetricsConfig) Port() int { return m.port }
+
+// UserName は、メトリクスサーバーの認証に使用するユーザー名を返します。
+func (m *MetricsConfig) UserName() string { return m.userName }
+
+// Password は、メトリクスサーバーの認証に使用するパスワードを返します。
+func (m *MetricsConfig) Password() string { return m.password }
 
 // NewObservabilityConfig は、可観測の設定を返します。
 func NewObservabilityConfig(cfg *Config) *ObservabilityConfig { return &cfg.observability }

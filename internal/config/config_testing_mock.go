@@ -46,8 +46,10 @@ var (
 	expectedServerIdleTimeoutStr         = fmt.Sprintf("%ds", expectedServerIdleTimeoutCount)
 	expectedServerIdleTimeout            = time.Duration(expectedServerIdleTimeoutCount) * time.Second
 	// metrics
-	expectedMetricsHost = "localhost"
-	expectedMetricsPort = 6060
+	expectedMetricsHost     = "localhost"
+	expectedMetricsPort     = 6060
+	expectedMetricsUserName = "metrics-user"
+	expectedMetricsPassword = "metrics-password"
 	// observability
 	expectedObservabilityEnabled              = true
 	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
@@ -130,8 +132,10 @@ func MockConfigForTest(t testing.TB) *Config {
 			idleTimeout:       expectedServerIdleTimeout,
 		},
 		metrics: MetricsConfig{
-			host: expectedMetricsHost,
-			port: expectedMetricsPort,
+			host:     expectedMetricsHost,
+			port:     expectedMetricsPort,
+			userName: expectedMetricsUserName,
+			password: expectedMetricsPassword,
 		},
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
@@ -200,8 +204,10 @@ func mockLoader(t testing.TB) Loader {
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
 		Metrics: Metrics{
-			Host: expectedMetricsHost,
-			Port: expectedMetricsPort,
+			Host:     expectedMetricsHost,
+			Port:     expectedMetricsPort,
+			UserName: expectedMetricsUserName,
+			Password: expectedMetricsPassword,
 		},
 		Observability: Observability{
 			Enabled:           expectedObservabilityEnabled,
@@ -281,6 +287,8 @@ func setEnvVarsForTesting(t *testing.T) {
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)
 	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))
+	t.Setenv("METRICS_USERNAME", expectedMetricsUserName)
+	t.Setenv("METRICS_PASSWORD", expectedMetricsPassword)
 	// Observability
 	t.Setenv("OBSERVABILITY_ENABLED", strconv.FormatBool(expectedObservabilityEnabled))
 	t.Setenv("OBSERVABILITY_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)

@@ -44,8 +44,10 @@ func New() (*Config, error) {
 			idleTimeout:       cfg.Server.IdleTimeout,
 		},
 		metrics: MetricsConfig{
-			host: cfg.Metrics.Host,
-			port: cfg.Metrics.Port,
+			host:     cfg.Metrics.Host,
+			port:     cfg.Metrics.Port,
+			userName: cfg.Metrics.UserName,
+			password: cfg.Metrics.Password,
 		},
 		observability: ObservabilityConfig{
 			enabled:             cfg.Observability.Enabled,

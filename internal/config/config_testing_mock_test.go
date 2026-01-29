@@ -30,8 +30,10 @@ func TestMockConfigForTest(t *testing.T) {
 			idleTimeout:       expectedServerIdleTimeout,
 		},
 		metrics: MetricsConfig{
-			host: expectedMetricsHost,
-			port: expectedMetricsPort,
+			host:     expectedMetricsHost,
+			port:     expectedMetricsPort,
+			userName: expectedMetricsUserName,
+			password: expectedMetricsPassword,
 		},
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
@@ -110,8 +112,10 @@ func Test_mockLoader(t *testing.T) {
 			IdleTimeout:       expectedServerIdleTimeout,
 		},
 		Metrics: Metrics{
-			Host: expectedMetricsHost,
-			Port: expectedMetricsPort,
+			Host:     expectedMetricsHost,
+			Port:     expectedMetricsPort,
+			UserName: expectedMetricsUserName,
+			Password: expectedMetricsPassword,
 		},
 		Observability: Observability{
 			Enabled:           expectedObservabilityEnabled,
@@ -185,6 +189,8 @@ func Test_setEnv(t *testing.T) {
 	// Metrics
 	require.Equal(t, expectedMetricsHost, os.Getenv("METRICS_HOST"))
 	require.Equal(t, strconv.Itoa(expectedMetricsPort), os.Getenv("METRICS_PORT"))
+	require.Equal(t, expectedMetricsUserName, os.Getenv("METRICS_USERNAME"))
+	require.Equal(t, expectedMetricsPassword, os.Getenv("METRICS_PASSWORD"))
 	// Observability
 	require.Equal(t, strconv.FormatBool(expectedObservabilityEnabled), os.Getenv("OBSERVABILITY_ENABLED"))
 	require.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBSERVABILITY_TARGET_STATUS_CODES"))
