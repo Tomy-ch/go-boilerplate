@@ -37,6 +37,8 @@ func NewApplicationCore() *fx.App {
 		core.ValidatorModule(),
 		core.SecurityCookieModule(),
 		core.AuthnModule(),
+		core.BasicAuthModule(),
+		core.SkipperModule(),
 		// Common Module
 		module.LoggingModule(),
 		module.ObservabilityModule(),
