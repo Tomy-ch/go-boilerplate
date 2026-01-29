@@ -1,0 +1,61 @@
+get:
+  operationId: GetDebugCookie
+  tags:
+    - debug/cookie
+  summary: |
+    Debug - request cookie確認（Cookieヘッダと解析結果を返す）
+    このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+  responses:
+    "200":
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/responses/debug/DebugCookieInspectResponse.yaml"
+post:
+  operationId: PostDebugCookie
+  tags:
+    - debug/cookie
+  summary: |
+    Debug - issue Set-Cookie (rewrite確認用)
+    このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/requests/debug/DebugIssueCookieRequest.yaml"
+  responses:
+    "204":
+      description: No Content
+      headers:
+        Set-Cookie:
+          schema:
+            type: string
+delete:
+  operationId: DeleteDebugCookie
+  tags:
+    - debug/cookie
+  summary: |
+    Debug - clear cookie
+    このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+  parameters:
+    - name: name
+      in: query
+      required: false
+      schema:
+        type: string
+        default: "__Host-access_token"
+    - name: path
+      in: query
+      required: false
+      schema:
+        type: string
+        default: "/"
+  responses:
+    "204":
+      description: No Content
+      headers:
+        Set-Cookie:
+          schema:
+            type: string

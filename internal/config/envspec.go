@@ -11,6 +11,8 @@ type Loader struct {
 	Database      Database        `envPrefix:"DB_"`
 	DBConnection  DBConnection    `envPrefix:"DBCONN_"`
 	Security      Security        `envPrefix:"SECURITY_"`
+	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
+	Auth          Auth            `envPrefix:"AUTH_"`
 	IPRateLimit   IPRateLimit     `envPrefix:"IP_RATE_LIMITER_"`
 }
 
@@ -71,6 +73,18 @@ type Security struct {
 	HSTSExcludeSubdomains bool          `env:"HSTS_EXCLUDE_SUBDOMAINS,required"`
 	HSTSPreloadEnabled    bool          `env:"HSTS_PRELOAD_ENABLED,required"`
 	ReferrerPolicy        string        `env:"REFERRER_POLICY,required"`
+}
+
+type SecureCookie struct {
+	Secure   *bool  `env:"SECURE"`
+	SameSite string `env:"SAME_SITE"`
+	Domain   string `env:"DOMAIN"`
+}
+
+type Auth struct {
+	CookieName          string `env:"COOKIE_NAME,required"`
+	HeaderName          string `env:"HEADER_NAME,required"`
+	AllowedHeaderBearer bool   `env:"ALLOWED_HEADER_BEARER,required"`
 }
 
 type IPRateLimit struct {

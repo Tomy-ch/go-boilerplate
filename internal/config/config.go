@@ -78,6 +78,16 @@ func New() (*Config, error) {
 			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
 			referrerPolicy:        cfg.Security.ReferrerPolicy,
 		},
+		secureCookie: SecureCookieConfig{
+			secure:   cfg.SecureCookie.Secure,
+			sameSite: cfg.SecureCookie.SameSite,
+			domain:   cfg.SecureCookie.Domain,
+		},
+		auth: AuthConfig{
+			cookieName:          cfg.Auth.CookieName,
+			headerName:          cfg.Auth.HeaderName,
+			allowedHeaderBearer: cfg.Auth.AllowedHeaderBearer,
+		},
 		ipRateLimit: IPRateLimitConfig{
 			enabled:         cfg.IPRateLimit.Enabled,
 			requests:        cfg.IPRateLimit.Requests,

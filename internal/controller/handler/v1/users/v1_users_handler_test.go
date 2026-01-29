@@ -7,12 +7,14 @@ import (
 
 	"boilerplate-go/internal/apperror"
 	"boilerplate-go/internal/controller/handler/testkit/testassert"
+	"boilerplate-go/internal/controller/handler/testkit/testauth"
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/support/paging"
+	"boilerplate-go/internal/usecase/tools/paging"
 	"boilerplate-go/internal/usecase/user"
 	mock_user "boilerplate-go/internal/usecase/user/mock"
 	"boilerplate-go/pkg/ptr"
+	"boilerplate-go/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
@@ -201,10 +203,14 @@ func Test_server_GetUsers(t *testing.T) {
 func Test_server_PostUsers(t *testing.T) {
 	t.Parallel()
 
+	userID, err := uuid.New()
+	require.NoError(t, err)
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
+		ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String())
 		ctrl := gomock.NewController(t)
 		lt := observability.NewMockControllerLayerTracer(t)
 
@@ -252,29 +258,84 @@ func Test_server_PostUsers(t *testing.T) {
 		require.Equal(t, ptr.To(expectedDTO.Phone), got.Phone)
 	})
 
-	t.Run("異常系: Usecaseがエラーを返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
+		t.Run("認証情報が存在しない場合、ErrUnauthenticatedUserが返る", func(t *testing.T) {
+			t.Parallel()
 
-		req := gen.PostUsersRequestObject{
-			Body: &gen.PostUsersJSONRequestBody{
-				FirstName: "A",
-				LastName:  "B",
-				Email:     types.Email("err@example.com"),
-				Password:  "pw",
-			},
-		}
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockControllerLayerTracer(t)
+			req := gen.PostUsersRequestObject{
+				Body: &gen.PostUsersJSONRequestBody{
+					FirstName: "A",
+					LastName:  "B",
+					Email:     types.Email("err@example.com"),
+					Password:  "pw",
+				},
+			}
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		expectedErr := apperror.ErrInternal
-		mockApp.EXPECT().CreateUser(gomock.Any(), gomock.AssignableToTypeOf(&user.CreateParamsDTO{})).Return(user.MutableFields{}, expectedErr)
+			mockApp := mock_user.NewMockUsecase(ctrl)
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PostUsers(ctx, req)
-		require.Nil(t, resp)
-		require.ErrorIs(t, err, expectedErr)
+			s := &server{tracer: lt, uc: mockApp}
+			resp, err := s.PostUsers(ctx, req)
+
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
+		t.Run("認証データのsubjectにuuidが含まれない場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ctx = testauth.MakeAvailableAuthn(ctx, t, "invalid-subject")
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockControllerLayerTracer(t)
+			req := gen.PostUsersRequestObject{
+				Body: &gen.PostUsersJSONRequestBody{
+					FirstName: "A",
+					LastName:  "B",
+					Email:     types.Email("err@example.com"),
+					Password:  "pw",
+				},
+			}
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+
+			s := &server{tracer: lt, uc: mockApp}
+			resp, err := s.PostUsers(ctx, req)
+
+			require.Nil(t, resp)
+			require.Error(t, err)
+		})
+
+		t.Run("Usecaseがエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String())
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockControllerLayerTracer(t)
+
+			req := gen.PostUsersRequestObject{
+				Body: &gen.PostUsersJSONRequestBody{
+					FirstName: "A",
+					LastName:  "B",
+					Email:     types.Email("err@example.com"),
+					Password:  "pw",
+				},
+			}
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			expectedErr := apperror.ErrInternal
+			mockApp.EXPECT().CreateUser(gomock.Any(), gomock.AssignableToTypeOf(&user.CreateParamsDTO{})).Return(user.MutableFields{}, expectedErr)
+
+			s := &server{tracer: lt, uc: mockApp}
+			resp, err := s.PostUsers(ctx, req)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, expectedErr)
+		})
 	})
 }

@@ -14,7 +14,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_requestLogMiddleware(t *testing.T) {
+func TestMiddleware(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewTestLogger(t)
+
+	lf := logging.NewTestLogFieldBuilder(t)
+
+	require.NotNil(t, Middleware(logger, lf))
+}
+
+func Test_loggingMiddleware(t *testing.T) {
 	t.Parallel()
 
 	lf := logging.NewTestLogFieldBuilder(t)
@@ -33,16 +43,6 @@ func Test_requestLogMiddleware(t *testing.T) {
 
 	handler := loggingMiddleware(logger, lf)(next)
 	require.NoError(t, handler(c))
-}
-
-func TestMiddleware(t *testing.T) {
-	t.Parallel()
-
-	logger := logging.NewTestLogger(t)
-
-	lf := logging.NewTestLogFieldBuilder(t)
-
-	require.NotNil(t, Middleware(logger, lf))
 }
 
 func Test_log_buildRequestLogFields(t *testing.T) {

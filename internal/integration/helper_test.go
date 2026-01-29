@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"boilerplate-go/internal/controller/ctxhelper"
+	"boilerplate-go/internal/usecase/boundary/auth"
+	"boilerplate-go/pkg/uuid"
+
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
@@ -20,6 +24,25 @@ type Server struct {
 	ts      *httptest.Server
 	baseURL string
 	client  *http.Client
+}
+
+// MakeAvailableUserID は、指定したユーザーIDで認証された状態を模擬するミドルウェアをEchoに追加し、
+// その認証情報を含むHTTPヘッダーを返します。
+func MakeAvailableUserID(t *testing.T, e *echo.Echo, id uuid.UUID) http.Header {
+	t.Helper()
+
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if a, err := auth.New(id.String(), "local-mock", nil, nil); err == nil {
+				ctxhelper.SetAuthnToEcho(c, *a)
+			}
+			return next(c)
+		}
+	})
+
+	h := http.Header{}
+	h.Set("Authorization", "Bearer debug:"+id.String())
+	return h
 }
 
 // StartServer は Echo を起動し、httptest.Server を返す。

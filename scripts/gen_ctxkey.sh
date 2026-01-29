@@ -160,8 +160,8 @@ func TestSet${NAME_CAMEL}ToEcho(t *testing.T) {
 
 EOF
 
-echo "✅ ${OUT_FILE}を生成しました"
-echo "✅ ${TEST_FILE}を生成しました"
+echo "✅ ${OUT_FILE} を生成しました"
+echo "✅ ${TEST_FILE} を生成しました"
 if [[ "$TEST_SUCCESS_VALUE" =~ ^\*new\(([A-Za-z0-9_]+\.[A-Za-z0-9_]+)\)$ ]]; then
 	echo "⚠️ プリミティブな型以外を検出しました。生成されたファイルで Ctrl + S（保存）して、自動インポートを実行してください。"
 fi

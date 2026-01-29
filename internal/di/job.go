@@ -9,7 +9,7 @@ import (
 	"boilerplate-go/internal/di/module"
 	"boilerplate-go/internal/di/shutdowner"
 	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/usecase/support/job"
+	"boilerplate-go/internal/usecase/boundary/job"
 
 	"go.uber.org/fx"
 )

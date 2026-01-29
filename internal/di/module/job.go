@@ -25,14 +25,14 @@ func JobModule() fx.Option {
 
 // provideJobs は、ジョブのコンストラクタをfxのオプションとして提供します。
 func provideJobs(constructors ...any) fx.Option {
-	opts := make([]fx.Option, 0, len(constructors))
-	for _, c := range constructors {
-		opts = append(opts, fx.Provide(
+	opts := make([]fx.Option, len(constructors))
+	for i, c := range constructors {
+		opts[i] = fx.Provide(
 			fx.Annotate(
 				c,
 				fx.ResultTags(`group:"jobs"`),
 			),
-		))
+		)
 	}
 	return fx.Options(opts...)
 }

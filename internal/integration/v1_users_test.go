@@ -10,6 +10,7 @@ import (
 	"boilerplate-go/internal/usecase/user"
 	mock_user "boilerplate-go/internal/usecase/user/mock"
 	"boilerplate-go/pkg/ptr"
+	"boilerplate-go/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
@@ -76,7 +77,10 @@ func TestV1Users_Integration(t *testing.T) {
 			},
 		}
 
-		actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, nil)
+		uuid, err := uuid.Parse("d1f64798-7321-242b-e4ff-115f6a0b7803")
+		require.NoError(t, err)
+		headers := MakeAvailableUserID(t, e, uuid)
+		actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, headers)
 		require.Equal(t, http.StatusCreated, actual.StatusCode)
 	})
 }

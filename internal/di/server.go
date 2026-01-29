@@ -30,11 +30,14 @@ func NewApplicationCore() *fx.App {
 	return fx.New(
 		// Lifecycle Module
 		lifecycle.Module(),
+		// Config Module
+		module.ConfigModule(),
 		// Core Module
 		core.IPRateLimiterModule(),
 		core.ValidatorModule(),
+		core.SecurityCookieModule(),
+		core.AuthnModule(),
 		// Common Module
-		module.ConfigModule(),
 		module.LoggingModule(),
 		module.ObservabilityModule(),
 		module.DatabaseModule(),

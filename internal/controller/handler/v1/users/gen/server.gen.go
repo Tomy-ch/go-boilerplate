@@ -72,6 +72,8 @@ func (w *ServerInterfaceWrapper) GetUsers(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) PostUsers(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(BearerAuthScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostUsers(ctx)
 	return err

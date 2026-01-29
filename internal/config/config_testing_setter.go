@@ -20,6 +20,16 @@ func (a *ApplicationConfig) SetServerAppMode(t testing.TB, mode string) {
 	t.Cleanup(func() { a.mode = prev })
 }
 
+// SetAppEnv は、テスト用にアプリケーションの環境を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *ApplicationConfig) SetAppEnv(t testing.TB, env string) {
+	t.Helper()
+	prev := a.Env()
+	a.env = env
+	t.Cleanup(func() { a.env = prev })
+}
+
 // SetDatabaseDriver は、テスト用にデータベースのドライバーを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
@@ -68,4 +78,24 @@ func (i *IPRateLimitConfig) SetCleanupInterval(t testing.TB, interval time.Durat
 	prev := i.cleanupInterval
 	i.cleanupInterval = interval
 	t.Cleanup(func() { i.cleanupInterval = prev })
+}
+
+// SetHeaderName は、テスト用に認証のヘッダ名を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *AuthConfig) SetHeaderName(t testing.TB, headerName string) {
+	t.Helper()
+	prev := a.headerName
+	a.headerName = headerName
+	t.Cleanup(func() { a.headerName = prev })
+}
+
+// SetAllowedHeaderBearer は、テスト用に認証の許可されたヘッダベアラーを設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *AuthConfig) SetAllowedHeaderBearer(t testing.TB, allowed bool) {
+	t.Helper()
+	prev := a.allowedHeaderBearer
+	a.allowedHeaderBearer = allowed
+	t.Cleanup(func() { a.allowedHeaderBearer = prev })
 }

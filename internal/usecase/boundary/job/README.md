@@ -1,6 +1,6 @@
 # job サポートパッケージ
 
-概要: `internal/usecase/support/job` パッケージは、アプリケーション内で実行可能なジョブを定義・登録・実行するための抽象（`Job`）と実装（`Runner`）、およびテスト用のモックを提供します。ジョブは `Name()` と `Execute(ctx, args)` を実装することで登録可能です。
+概要: `internal/usecase/interface/job` パッケージは、アプリケーション内で実行可能なジョブを定義・登録・実行するための抽象（`Job`）と実装（`Runner`）、およびテスト用のモックを提供します。ジョブは `Name()` と `Execute(ctx, args)` を実装することで登録可能です。
 
 ## 役割
 

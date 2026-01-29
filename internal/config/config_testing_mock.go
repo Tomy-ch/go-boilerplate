@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"boilerplate-go/pkg/ptr"
 )
 
 const (
@@ -83,6 +85,14 @@ var (
 	expectedHSTSExcludeSubdomains = false
 	expectedHSTSPreloadEnabled    = false
 	expectedReferrerPolicy        = "no-referrer"
+	// secure cookie
+	expectedSecureCookieSecure   = ptr.To(true)
+	expectedSecureCookieSameSite = "Strict"
+	expectedSecureCookieDomain   = "localhost"
+	// auth
+	expectedAuthCookieName          = "auth_token"
+	expectedAuthHeaderName          = "Authorization"
+	expectedAuthAllowedHeaderBearer = true
 	// ip rate limit
 	expectedIPRateLimitEnabled              = true
 	expectedIPRateLimitRequests             = 100
@@ -154,6 +164,16 @@ func MockConfigForTest(t testing.TB) *Config {
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
 		},
+		secureCookie: SecureCookieConfig{
+			secure:   expectedSecureCookieSecure,
+			sameSite: expectedSecureCookieSameSite,
+			domain:   expectedSecureCookieDomain,
+		},
+		auth: AuthConfig{
+			cookieName:          expectedAuthCookieName,
+			headerName:          expectedAuthHeaderName,
+			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+		},
 		ipRateLimit: IPRateLimitConfig{
 			enabled:         expectedIPRateLimitEnabled,
 			requests:        expectedIPRateLimitRequests,
@@ -220,6 +240,16 @@ func mockLoader(t testing.TB) Loader {
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
 		},
+		SecureCookie: SecureCookie{
+			Secure:   expectedSecureCookieSecure,
+			SameSite: expectedSecureCookieSameSite,
+			Domain:   expectedSecureCookieDomain,
+		},
+		Auth: Auth{
+			CookieName:          expectedAuthCookieName,
+			HeaderName:          expectedAuthHeaderName,
+			AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+		},
 		IPRateLimit: IPRateLimit{
 			Enabled:         expectedIPRateLimitEnabled,
 			Requests:        expectedIPRateLimitRequests,
@@ -277,6 +307,14 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
 	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
 	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
+	// Secure Cookie
+	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
+	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
+	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
+	// Auth
+	t.Setenv("AUTH_COOKIE_NAME", expectedAuthCookieName)
+	t.Setenv("AUTH_HEADER_NAME", expectedAuthHeaderName)
+	t.Setenv("AUTH_ALLOWED_HEADER_BEARER", strconv.FormatBool(expectedAuthAllowedHeaderBearer))
 	// IPRateLimit
 	t.Setenv("IP_RATE_LIMITER_ENABLED", strconv.FormatBool(expectedIPRateLimitEnabled))
 	t.Setenv("IP_RATE_LIMITER_REQUESTS", strconv.Itoa(expectedIPRateLimitRequests))

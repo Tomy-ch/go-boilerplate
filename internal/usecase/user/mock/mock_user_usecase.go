@@ -10,7 +10,7 @@
 package mock_user
 
 import (
-	paging "boilerplate-go/internal/usecase/support/paging"
+	paging "boilerplate-go/internal/usecase/tools/paging"
 	user "boilerplate-go/internal/usecase/user"
 	context "context"
 	reflect "reflect"

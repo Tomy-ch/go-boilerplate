@@ -255,7 +255,7 @@
 				
 				<option value="file99">boilerplate-go/internal/usecase/support/search/search.go (100.0%)</option>
 				
-				<option value="file100">boilerplate-go/internal/usecase/tx/tx_manager.go (100.0%)</option>
+				<option value="file100">boilerplate-go/internal/usecase/support/tx/tx_manager.go (100.0%)</option>
 				
 				<option value="file101">boilerplate-go/internal/usecase/usecasetest/test_kit.go (100.0%)</option>
 				
@@ -4548,7 +4548,7 @@ import (
         "database/sql"
 
         "boilerplate-go/internal/config"
-        "boilerplate-go/internal/usecase/tx"
+        "boilerplate-go/internal/usecase/boundary/tx"
 )
 
 // txManager は、トランザクションの管理を行います。
@@ -4699,7 +4699,7 @@ import (
         "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
         "boilerplate-go/internal/logging"
         "boilerplate-go/internal/observability"
-        "boilerplate-go/internal/usecase/tx"
+        "boilerplate-go/internal/usecase/boundary/tx"
         "boilerplate-go/pkg/xerrors"
 
         "github.com/stretchr/testify/require"
@@ -6505,8 +6505,8 @@ import (
         "context"
         "testing"
 
-        "boilerplate-go/internal/usecase/tx"
-        mock_tx "boilerplate-go/internal/usecase/tx/mock"
+        "boilerplate-go/internal/usecase/boundary/tx"
+        mock_tx "boilerplate-go/internal/usecase/boundary/tx/mock"
         "boilerplate-go/pkg/xerrors"
 
         "go.uber.org/mock/gomock"
@@ -6546,7 +6546,7 @@ import (
         "boilerplate-go/internal/observability"
         "boilerplate-go/internal/usecase/support/paging"
         "boilerplate-go/internal/usecase/support/search"
-        "boilerplate-go/internal/usecase/tx"
+        "boilerplate-go/internal/usecase/boundary/tx"
         "boilerplate-go/pkg/uuid"
 )
 

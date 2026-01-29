@@ -2,6 +2,8 @@
 package recovery
 
 import (
+	"time"
+
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/logging"
@@ -49,6 +51,7 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 		req := c.Request()
 		traceCtx := observability.ExtractTraceContext(req.Context())
 		reqIn := logging.HTTPRequestLogInput{
+			EventAt:       time.Now(),
 			Method:        req.Method,
 			Path:          c.Path(),
 			URI:           req.RequestURI,

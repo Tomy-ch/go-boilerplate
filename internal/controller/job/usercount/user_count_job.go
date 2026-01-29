@@ -6,7 +6,7 @@ import (
 
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/support/job"
+	"boilerplate-go/internal/usecase/boundary/job"
 	"boilerplate-go/internal/usecase/user"
 	"boilerplate-go/pkg/ptr"
 )
