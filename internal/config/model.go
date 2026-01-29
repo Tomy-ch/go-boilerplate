@@ -17,6 +17,7 @@ type Config struct {
 	dbconnection  DBConnectionConfig
 	security      SecurityConfig
 	secureCookie  SecureCookieConfig
+	auth          AuthConfig
 	ipRateLimit   IPRateLimitConfig
 }
 
@@ -84,6 +85,12 @@ type SecureCookieConfig struct {
 	secure   *bool
 	sameSite string
 	domain   string
+}
+
+type AuthConfig struct {
+	cookieName          string
+	headerName          string
+	allowedHeaderBearer bool
 }
 
 type IPRateLimitConfig struct {
@@ -278,6 +285,18 @@ func (s *SecureCookieConfig) SameSite() string { return s.sameSite }
 
 // Domain は、Domain属性の強制設定を返します。
 func (s *SecureCookieConfig) Domain() string { return s.domain }
+
+// NewAuthConfig は、認証の設定を返します。
+func NewAuthConfig(cfg *Config) *AuthConfig { return &cfg.auth }
+
+// CookieName は、認証に使用するCookie名を返します。
+func (a *AuthConfig) CookieName() string { return a.cookieName }
+
+// HeaderName は、認証に使用するヘッダー名を返します。
+func (a *AuthConfig) HeaderName() string { return a.headerName }
+
+// AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
+func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
 
 // NewIPRateLimitConfig は、IPレートリミットの設定を返します。
 func NewIPRateLimitConfig(cfg *Config) *IPRateLimitConfig { return &cfg.ipRateLimit }

@@ -1,0 +1,50 @@
+package auth
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewCredential(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("accessToken が空文字でない場合、Credential インスタンスが生成される", func(t *testing.T) {
+			t.Parallel()
+
+			expected := &Credential{
+				accessToken: "test-access-token",
+			}
+
+			cred, err := NewCredential("test-access-token")
+			require.NoError(t, err)
+
+			require.Equal(t, expected, cred)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("accessToken が空文字の場合、ErrArgumentTokenMissing エラーになる", func(t *testing.T) {
+			t.Parallel()
+
+			cred, err := NewCredential("")
+
+			require.Nil(t, cred)
+			require.ErrorIs(t, err, ErrArgumentTokenMissing)
+		})
+	})
+}
+
+func TestCredential_AccessToken(t *testing.T) {
+	t.Parallel()
+
+	cred, err := NewCredential("test-access-token")
+	require.NoError(t, err)
+
+	require.Equal(t, "test-access-token", cred.AccessToken())
+}

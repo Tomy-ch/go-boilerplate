@@ -1,0 +1,4 @@
+type: http
+description: 認証にBearerトークンを使用することを示します。
+scheme: bearer
+bearerFormat: JWT

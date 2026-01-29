@@ -68,6 +68,11 @@ func TestNewConfig(t *testing.T) {
 					sameSite: expectedSecureCookieSameSite,
 					domain:   expectedSecureCookieDomain,
 				},
+				auth: AuthConfig{
+					cookieName:          expectedAuthCookieName,
+					headerName:          expectedAuthHeaderName,
+					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+				},
 				ipRateLimit: IPRateLimitConfig{
 					enabled:         expectedIPRateLimitEnabled,
 					requests:        expectedIPRateLimitRequests,

@@ -43,7 +43,7 @@ func MiddlewareModule() fx.Option {
 		decoration.DefaultPortModule(),
 		inbound.IPExtractorModule(),
 		inbound.URIModule(),
-		inbound.ValidatorModule(),
+		inbound.OpenAPIModule(),
 		outbound.ErrorHandlerModule(),
 		outbound.ForceJSONModule(),
 		outbound.RecoveryModule(),

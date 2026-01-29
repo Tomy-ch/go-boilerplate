@@ -7,16 +7,20 @@ package users
 import (
 	"context"
 
+	"boilerplate-go/internal/apperror"
+	"boilerplate-go/internal/controller/ctxhelper"
 	"boilerplate-go/internal/controller/handler/v1/users/gen"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/support/paging"
+	"boilerplate-go/internal/usecase/tools/paging"
 	"boilerplate-go/internal/usecase/user"
 	"boilerplate-go/pkg/ptr"
-	"boilerplate-go/pkg/uuid"
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 )
+
+var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
@@ -80,10 +84,13 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	// WARN: 本来はここで認証を行い、userIDを取得すべきですが、今回はランダムなIDを使用します。
-	userID, err := uuid.New()
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+	userID, err := authn.ID()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
 	}
 
 	createPrams := &user.CreateParamsDTO{}

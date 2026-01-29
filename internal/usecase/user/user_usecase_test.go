@@ -9,9 +9,9 @@ import (
 	"boilerplate-go/internal/domain/user"
 	mock_user "boilerplate-go/internal/domain/user/mock"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/support/paging"
+	mock_tx "boilerplate-go/internal/usecase/boundary/tx/mock"
 	"boilerplate-go/internal/usecase/testkit"
-	mock_tx "boilerplate-go/internal/usecase/tx/mock"
+	"boilerplate-go/internal/usecase/tools/paging"
 	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/uuid"
 

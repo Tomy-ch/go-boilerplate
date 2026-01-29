@@ -83,6 +83,11 @@ func New() (*Config, error) {
 			sameSite: cfg.SecureCookie.SameSite,
 			domain:   cfg.SecureCookie.Domain,
 		},
+		auth: AuthConfig{
+			cookieName:          cfg.Auth.CookieName,
+			headerName:          cfg.Auth.HeaderName,
+			allowedHeaderBearer: cfg.Auth.AllowedHeaderBearer,
+		},
 		ipRateLimit: IPRateLimitConfig{
 			enabled:         cfg.IPRateLimit.Enabled,
 			requests:        cfg.IPRateLimit.Requests,

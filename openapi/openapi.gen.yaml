@@ -144,6 +144,8 @@ paths:
         - v1/users
       summary: ユーザーの作成
       description: 新しいユーザーを作成します。必要な情報をリクエストボディに含めてください。
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -564,6 +566,12 @@ components:
         type: string
         format: uuid
         example: 123e4567-e89b-12d3-a456-426614174000
+  securitySchemes:
+    BearerAuth:
+      type: http
+      description: 認証にBearerトークンを使用することを示します。
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     ErrorResponse:
       type: object

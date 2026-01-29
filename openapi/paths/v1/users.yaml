@@ -40,6 +40,8 @@ post:
     - v1/users
   summary: ユーザーの作成
   description: 新しいユーザーを作成します。必要な情報をリクエストボディに含めてください。
+  security:
+    - BearerAuth: []
   requestBody:
     required: true
     content:
