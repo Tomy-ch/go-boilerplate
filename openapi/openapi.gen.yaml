@@ -58,6 +58,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseHealth'
+  /metrics:
+    get:
+      operationId: GetMetrics
+      tags:
+        - metrics
+      summary: サーバーのメトリクス取得
+      description: サーバーのメトリクス情報を取得するためのエンドポイントです。
+      responses:
+        '200':
+          description: サーバーは正常に稼働しています。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseHealth'
   /ready:
     get:
       operationId: GetReady
