@@ -1,1 +1,1 @@
-CREATE TYPE deleted_state AS ENUM ('active', 'deleted', 'all');
+CREATE TYPE DELETED_STATE AS ENUM ('active', 'deleted', 'all');
