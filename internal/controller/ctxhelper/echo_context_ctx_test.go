@@ -15,13 +15,18 @@ func TestSetEchoContext(t *testing.T) {
 	t.Parallel()
 
 	base := context.Background()
-	ctx := context.WithValue(base, echocontextKey, *new(echo.Context))
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	ctx := SetEchoContext(base, c)
 
 	val := ctx.Value(echocontextKey)
 	require.NotNil(t, val)
 	v, ok := val.(echo.Context)
 	require.True(t, ok)
-	require.Equal(t, *new(echo.Context), v)
+	require.Equal(t, c, v)
 }
 
 func TestGetEchoContext(t *testing.T) {
@@ -30,11 +35,16 @@ func TestGetEchoContext(t *testing.T) {
 	t.Run("standard context", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		ctx = SetEchoContext(ctx, *new(echo.Context))
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		ctx = SetEchoContext(ctx, c)
 
 		val, ok := GetEchoContext(ctx)
 		require.True(t, ok)
-		require.Equal(t, *new(echo.Context), val)
+		require.Equal(t, c, val)
 	})
 
 	t.Run("standard context - no value", func(t *testing.T) {
@@ -56,11 +66,16 @@ func TestSetEchoContextToEcho(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		SetEchoContextToEcho(c, *new(echo.Context))
+		e2 := echo.New()
+		req2 := httptest.NewRequest(http.MethodGet, "/other", nil)
+		rec2 := httptest.NewRecorder()
+		c2 := e2.NewContext(req2, rec2)
+
+		SetEchoContextToEcho(c, c2)
 		val, ok := GetEchoContextFromEcho(c)
 
 		require.True(t, ok)
-		require.Equal(t, *new(echo.Context), val)
+		require.Equal(t, c2, val)
 	})
 
 	t.Run("echo context - no value", func(t *testing.T) {

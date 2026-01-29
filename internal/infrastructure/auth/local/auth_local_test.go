@@ -32,8 +32,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		authenticator := New()
-		token := "debug:some-subject"
-		cred, err := authbd.NewCredential(token)
+		cred, err := authbd.NewCredential("debug:some-subject")
 		require.NoError(t, err)
 
 		authn, err := authenticator.Authenticate(ctx, cred)
@@ -46,8 +45,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		authenticator := New()
-		token := "invalid-token"
-		cred, err := authbd.NewCredential(token)
+		cred, err := authbd.NewCredential("invalid-token")
 		require.NoError(t, err)
 
 		authn, err := authenticator.Authenticate(ctx, cred)
@@ -67,9 +65,8 @@ func Test_authenticator_resolveSubject(t *testing.T) {
 				prefix:   localPrefix,
 			},
 		}
-		token := "debug:example-subject"
 
-		subject := authenticator.resolveSubject(token)
+		subject := authenticator.resolveSubject("debug:example-subject")
 		require.Equal(t, "example-subject", subject)
 	})
 
@@ -84,6 +81,6 @@ func Test_authenticator_resolveSubject(t *testing.T) {
 		token := "invalid-token"
 
 		subject := authenticator.resolveSubject(token)
-		require.Equal(t, "", subject)
+		require.Empty(t, subject)
 	})
 }

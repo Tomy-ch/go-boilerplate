@@ -199,7 +199,7 @@ func Test_extractToken(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.Header.Set(ac.HeaderName(), "Token abcdef")
 		tok := extractToken(req, ac)
-		require.Equal(t, "", tok)
+		require.Empty(t, tok)
 	})
 
 	t.Run("Header: AllowedHeaderBearer=false の場合はヘッダ値をそのまま返す", func(t *testing.T) {
@@ -227,6 +227,6 @@ func Test_extractToken(t *testing.T) {
 		ac := config.NewAuthConfig(cfg)
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		tok := extractToken(req, ac)
-		require.Equal(t, "", tok)
+		require.Empty(t, tok)
 	})
 }
