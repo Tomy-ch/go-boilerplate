@@ -16,7 +16,7 @@ sql_file_exts = .sql,.sql.j2,.dml,.ddl
 ignore_template_errors = True
 
 [sqlfluff:indentation]
-allow_implicit_indents = True
+implicit_indents = allow
 
 [sqlfluff:rules:capitalisation.keywords]
 capitalisation_policy = upper
