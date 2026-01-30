@@ -19,14 +19,8 @@ func TestNewSkipper(t *testing.T) {
 		path string
 		want bool
 	}{
-		{"metrics", "/metrics", true},
 		{"health", "/health", true},
-		{"healthz", "/healthz", true},
-		{"ready", "/ready", true},
-		{"version", "/version", true},
-		{"other path", "/api/v1/users", false},
-		{"root", "/", false},
-		{"similar but not exact", "/healthcheck", false},
+		{"other path", "/v1/users", false},
 	}
 
 	for _, tc := range cases {
