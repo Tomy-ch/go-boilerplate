@@ -147,6 +147,16 @@ func TestGetterMethods(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedMetricsPort, metrics.Port())
 		})
+
+		t.Run("UserName", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedMetricsUserName, metrics.UserName())
+		})
+
+		t.Run("Password", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedMetricsPassword, metrics.Password())
+		})
 	})
 
 	t.Run("Observability", func(t *testing.T) {

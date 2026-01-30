@@ -5,6 +5,8 @@ import (
 	"boilerplate-go/internal/controller/httpstack/oapi"
 	"boilerplate-go/internal/di/server/extension"
 
+	echomw "github.com/labstack/echo/v4/middleware"
+
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"go.uber.org/fx"
@@ -24,13 +26,14 @@ func OpenAPIModule() fx.Option {
 // OpenAPIMiddleware は、バリデーションミドルウェアを提供します。
 func OpenAPIMiddleware(
 	spec *openapi3.T,
+	skipper echomw.Skipper,
 	authFunc openapi3filter.AuthenticationFunc,
 ) extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
 			Name:       "openapi",
 			Priority:   validatorUsePriority,
-			Middleware: oapi.Middleware(spec, authFunc),
+			Middleware: oapi.Middleware(spec, skipper, authFunc),
 		},
 	}
 }

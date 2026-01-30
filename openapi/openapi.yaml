@@ -34,6 +34,8 @@ paths:
     $ref: './paths/health/health.yaml'
   /healthz:
     $ref: './paths/healthz/healthz.yaml'
+  /metrics:
+    $ref: './paths/metrics/metrics.yaml'
   /ready:
     $ref: './paths/ready/ready.yaml'
   /version:
@@ -70,6 +72,8 @@ components:
   securitySchemes:
     BearerAuth:
       $ref: './components/schemas/BearerAuth.yaml'
+    BasicAuth:
+      $ref: './components/schemas/BasicAuth.yaml'
   schemas:
     ErrorResponse:
       $ref: './components/schemas/ErrorResponse.yaml'

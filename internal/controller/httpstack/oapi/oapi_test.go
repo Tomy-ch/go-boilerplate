@@ -14,7 +14,7 @@ import (
 
 func TestMiddleware(t *testing.T) {
 	spec := &openapi3.T{}
-	mw := Middleware(spec, nil)
+	mw := Middleware(spec, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

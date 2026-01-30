@@ -17,10 +17,11 @@ import (
 )
 
 const (
-	lowerBoundHTTPStatus = 400
-	upperBoundHTTPStatus = 600
-
+	lowerBoundHTTPStatus      = 400
+	upperBoundHTTPStatus      = 600
 	errorLevelBoundHTTPStatus = 500
+
+	errHandlerKey = "http_error_handler"
 )
 
 // New は、EchoのHTTPエラーハンドラーを生成します。
@@ -37,6 +38,11 @@ func NewHTTPErrorHandler(logger logging.Logger, lf logging.LogFieldBuilder, obsC
 
 // handleHTTPError は、HTTPエラーを処理し、適切なレスポンスをクライアントに返します。
 func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig, err error) {
+	if v, ok := c.Get(errHandlerKey).(bool); ok && v {
+		return
+	}
+	c.Set(errHandlerKey, true)
+
 	resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
 
 	if !c.Response().Committed {
@@ -172,9 +178,9 @@ func logHTTPError(
 	fields := httpErrorField(c, lf, he)
 	switch {
 	case he.HTTPStatus >= errorLevelBoundHTTPStatus:
-		logger.Error("server_error", fields...)
+		logger.Error("errorhandler.server_error", fields...)
 	default:
-		logger.Warn("client_error", fields...)
+		logger.Warn("errorhandler.client_error", fields...)
 	}
 }
 

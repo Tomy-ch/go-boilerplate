@@ -126,6 +126,7 @@ func Test_handleHTTPError(t *testing.T) {
 		defer end()
 
 		handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
+		handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
 
 		// JSON が書き込まれ、ステータスは内部サーバーエラー (おおむね 500) であること
 		require.Equal(t, http.StatusInternalServerError, rec.Code)

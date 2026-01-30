@@ -4,6 +4,7 @@ package logging
 import (
 	"time"
 
+	"boilerplate-go/internal/controller/httpstack/ops"
 	"boilerplate-go/internal/controller/httpstack/requestid"
 	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/logging"
@@ -27,6 +28,10 @@ func Middleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.Middlewa
 func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if ops.IsOpsPath(c.Request().URL.Path) {
+				return next(c)
+			}
+
 			start := time.Now()
 
 			l := log{

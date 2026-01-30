@@ -37,8 +37,10 @@ type Server struct {
 }
 
 type Metrics struct {
-	Host string `env:"HOST,required"`
-	Port int    `env:"PORT,required"`
+	Host     string `env:"HOST,required"`
+	Port     int    `env:"PORT,required"`
+	UserName string `env:"USERNAME,required"`
+	Password string `env:"PASSWORD,required"`
 }
 
 type Observability struct {
