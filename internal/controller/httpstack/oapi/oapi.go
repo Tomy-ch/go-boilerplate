@@ -4,6 +4,7 @@ package oapi
 import (
 	"boilerplate-go/internal/controller/ctxhelper"
 
+	echomw "github.com/labstack/echo/v4/middleware"
 	oapimw "github.com/oapi-codegen/echo-middleware"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -14,9 +15,12 @@ import (
 // Middleware は、認証情報を抽出するミドルウェアを返します。
 func Middleware(
 	spec *openapi3.T,
+	skipper echomw.Skipper,
 	authFunc openapi3filter.AuthenticationFunc,
 ) echo.MiddlewareFunc {
 	oapiValidator := oapimw.OapiRequestValidatorWithOptions(spec, &oapimw.Options{
+		SilenceServersWarning: true,
+		Skipper:               skipper,
 		Options: openapi3filter.Options{
 			AuthenticationFunc: authFunc,
 		},

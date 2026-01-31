@@ -27,22 +27,43 @@ func TestMiddleware(t *testing.T) {
 func Test_loggingMiddleware(t *testing.T) {
 	t.Parallel()
 
-	lf := logging.NewTestLogFieldBuilder(t)
+	t.Run("非運用系APIではログが出力される", func(t *testing.T) {
+		lf := logging.NewTestLogFieldBuilder(t)
 
-	next := func(c echo.Context) error {
-		return c.String(http.StatusOK, "ok")
-	}
+		next := func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		}
 
-	logger := logging.NewTestLogger(t)
+		logger := logging.NewTestLogger(t)
 
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/mw", nil)
-	req.RemoteAddr = "203.0.113.5:45678"
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/mw", nil)
+		req.RemoteAddr = "203.0.113.5:45678"
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
 
-	handler := loggingMiddleware(logger, lf)(next)
-	require.NoError(t, handler(c))
+		handler := loggingMiddleware(logger, lf)(next)
+		require.NoError(t, handler(c))
+	})
+
+	t.Run("運用系APIではログが出力されない", func(t *testing.T) {
+		lf := logging.NewTestLogFieldBuilder(t)
+
+		next := func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		}
+
+		logger := logging.NewTestLogger(t)
+
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		req.RemoteAddr = "203.0.113.5:45678"
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := loggingMiddleware(logger, lf)(next)
+		require.NoError(t, handler(c))
+	})
 }
 
 func Test_log_buildRequestLogFields(t *testing.T) {

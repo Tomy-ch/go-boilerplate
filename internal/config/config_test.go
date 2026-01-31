@@ -29,8 +29,10 @@ func TestNewConfig(t *testing.T) {
 					idleTimeout:       expectedServerIdleTimeout,
 				},
 				metrics: MetricsConfig{
-					host: expectedMetricsHost,
-					port: expectedMetricsPort,
+					host:     expectedMetricsHost,
+					port:     expectedMetricsPort,
+					userName: expectedMetricsUserName,
+					password: expectedMetricsPassword,
 				},
 				observability: ObservabilityConfig{
 					enabled:             expectedObservabilityEnabled,

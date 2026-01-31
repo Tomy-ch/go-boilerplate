@@ -49,6 +49,25 @@ func Test_Middleware(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		ipCfg := config.NewIPRateLimitConfig(cfg)
 
+		t.Run("発行されたURIが運用系APIの場合、次のハンドラがそのまま呼ばれる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			mockRL := mock_ratelimit.NewMockIPRateLimiter(ctrl)
+
+			req := httptest.NewRequest(http.MethodGet, "/health", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			mw := Middleware(mockRL, ipCfg)
+			h := mw(func(c echo.Context) error {
+				return c.String(http.StatusOK, "allowed")
+			})
+			err := h(c)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, rec.Code)
+		})
+
 		t.Run("許可されるケースの場合、次のハンドラが呼ばれる", func(t *testing.T) {
 			t.Parallel()
 

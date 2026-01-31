@@ -58,6 +58,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseHealth'
+  /metrics:
+    get:
+      operationId: GetMetrics
+      tags:
+        - metrics
+      security:
+        - basicAuth: []
+      summary: サーバーのメトリクス取得
+      description: サーバーのメトリクス情報を取得するためのエンドポイントです。
+      responses:
+        '200':
+          description: サーバーは正常に稼働しています。
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: メトリクス情報を含むプレーンテキスト
   /ready:
     get:
       operationId: GetReady
@@ -572,6 +589,10 @@ components:
       description: 認証にBearerトークンを使用することを示します。
       scheme: bearer
       bearerFormat: JWT
+    BasicAuth:
+      type: http
+      description: 認証にBasic認証を使用することを示します。
+      scheme: basic
   schemas:
     ErrorResponse:
       type: object
