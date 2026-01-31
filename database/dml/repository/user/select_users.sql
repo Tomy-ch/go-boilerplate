@@ -1,20 +1,5 @@
--- name: GetUsersDomain :many
-SELECT
-    u.id,
-    u.first_name,
-    u.last_name,
-    u.email,
-    u.phone,
-    u.password_hash,
-    u.prefecture_id,
-    p.name AS prefecture_name,
-    u.city,
-    u.street,
-    u.building,
-    u.postal_code,
-    u.deleted_at
-FROM users u
-JOIN prefectures p ON u.prefecture_id = p.id
+-- name: ListUsers :many
+SELECT sqlc.embed(u)
+FROM users AS u
 ORDER BY u.created_at DESC
-LIMIT sqlc.arg(limit_param)
-OFFSET sqlc.arg(offset_param);
+LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');

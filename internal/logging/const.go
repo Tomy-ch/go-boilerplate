@@ -3,6 +3,17 @@ package logging
 const (
 	// HTTPレスポンス系ログのキー
 
+	// EventTypeKey は、イベントタイプを表すログフィールドのキーです。
+	EventTypeKey = "event_type"
+	// EventTypeStart は、開始イベントを表すイベントタイプの値です。
+	EventTypeStart = "start"
+	// EventTypeEnd は、終了イベントを表すイベントタイプの値です。
+	EventTypeEnd = "end"
+	// EventAtKey は、イベント発生時刻を表すログフィールドのキーです。
+	EventAtKey = "event_at"
+	// EventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。
+	EventTzKey = "event_tz"
+
 	// StatusKey は、HTTPステータスコードを表すログフィールドのキーです。
 	StatusKey = "status"
 	// MethodKey は、HTTPメソッドを表すログフィールドのキーです。
@@ -56,10 +67,21 @@ const (
 	RawQueryKey = "raw_query"
 	// QueryCompactKey は、コンパクト化されたSQLクエリを表すログフィールドのキーです。
 	QueryCompactKey = "query_compact"
-	// ArgsKey は、SQLクエリの引数を表すログフィールドのキーです。
-	ArgsKey = "args"
-	// ArgsRawKey は、生のSQLクエリ引数を表すログフィールドのキーです。
-	ArgsRawKey = "args_raw"
+	// QueryArgsKey は、SQLクエリの引数を表すログフィールドのキーです。
+	QueryArgsKey = "args"
+	// QueryArgsRawKey は、生のSQLクエリ引数を表すログフィールドのキーです。
+	QueryArgsRawKey = "args_raw"
+
+	// Job系ログのキー
+
+	// JobNameKey は、ジョブ名を表すログフィールドのキーです。
+	JobNameKey = "job_name"
+	// JobArgsKey は、ジョブ引数を表すログフィールドのキーです。
+	JobArgsKey = "job_args"
+	// JobErrorKey は、ジョブエラーを表すログフィールドのキーです。
+	JobErrorKey = "job_error"
+	// JobResultKey は、ジョブ結果を表すログフィールドのキーです。
+	JobResultKey = "job_result"
 
 	// 可観測系ログのキー
 
@@ -67,8 +89,8 @@ const (
 	TraceIDKey = "trace_id"
 	// SpanIDKey は、スパンIDを表すログフィールドのキーです。
 	SpanIDKey = "span_id"
-	// SpanEventKey は、スパンイベントを表すログフィールドのキーです。
-	SpanEventKey = "span_event"
+	// ParentSpanIDKey は、親スパンIDを表すログフィールドのキーです。
+	ParentSpanIDKey = "parent_span_id"
 	// SpanNameKey は、スパン名を表すログフィールドのキーです。
 	SpanNameKey = "span_name"
 	// LayerKey は、DDDのレイヤーを表すログフィールドのキーです。

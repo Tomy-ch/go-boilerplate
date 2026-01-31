@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/logging"
 
 	"github.com/stretchr/testify/require"
@@ -12,13 +11,10 @@ import (
 )
 
 func TestNewTracerFactory(t *testing.T) {
-	t.Parallel()
-
 	t.Run("TracerProvider と zap.Logger を渡すと TracerFactory を返す", func(t *testing.T) {
-		t.Parallel()
 		provided := otel.GetTracerProvider()
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
-		log := logging.NewTestInstance(t)
+		lf := logging.NewTestLogFieldBuilder(t)
+		log := logging.NewTestLogger(t)
 
 		expected := &tracerFactory{
 			tp:  provided,
@@ -30,14 +26,11 @@ func TestNewTracerFactory(t *testing.T) {
 	})
 }
 
-func TestNewControllerTracer(t *testing.T) {
-	t.Parallel()
-
+func Test_tracerFactory_Controller(t *testing.T) {
 	t.Run("TracerProvider を渡すと controller 用 LayerTracer を返す", func(t *testing.T) {
-		t.Parallel()
 		provided := otel.GetTracerProvider()
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
-		log := logging.NewTestInstance(t)
+		lf := logging.NewTestLogFieldBuilder(t)
+		log := logging.NewTestLogger(t)
 		actualTF := &tracerFactory{
 			tp:  provided,
 			log: log,
@@ -45,9 +38,7 @@ func TestNewControllerTracer(t *testing.T) {
 		}
 
 		actual := actualTF.Controller()
-		require.NotNil(t, actual.tracer)
-		require.Equal(t, tracerNameController, actual.layer)
-		require.NotEmpty(t, actual.pkgName)
+		require.NotNil(t, actual)
 
 		ctx, end := actual.Start(context.Background())
 		end()
@@ -55,14 +46,11 @@ func TestNewControllerTracer(t *testing.T) {
 	})
 }
 
-func TestNewUsecaseTracer(t *testing.T) {
-	t.Parallel()
-
+func Test_tracerFactory_Usecase(t *testing.T) {
 	t.Run("TracerProvider を渡すと usecase 用 LayerTracer を返す", func(t *testing.T) {
-		t.Parallel()
 		provided := otel.GetTracerProvider()
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
-		log := logging.NewTestInstance(t)
+		lf := logging.NewTestLogFieldBuilder(t)
+		log := logging.NewTestLogger(t)
 		actualTF := &tracerFactory{
 			tp:  provided,
 			log: log,
@@ -70,9 +58,7 @@ func TestNewUsecaseTracer(t *testing.T) {
 		}
 
 		actual := actualTF.Usecase()
-		require.NotNil(t, actual.tracer)
-		require.Equal(t, tracerNameUsecase, actual.layer)
-		require.NotEmpty(t, actual.pkgName)
+		require.NotNil(t, actual)
 
 		ctx, end := actual.Start(context.Background())
 		end()
@@ -80,14 +66,11 @@ func TestNewUsecaseTracer(t *testing.T) {
 	})
 }
 
-func TestNewInfrastructureTracer(t *testing.T) {
-	t.Parallel()
-
+func Test_tracerFactory_Infra(t *testing.T) {
 	t.Run("TracerProvider を渡すと infrastructure 用 LayerTracer を返す", func(t *testing.T) {
-		t.Parallel()
 		provided := otel.GetTracerProvider()
-		lf := logging.NewLogFields(config.NewObservabilityConfig(config.MockConfigForTest(t)))
-		log := logging.NewTestInstance(t)
+		lf := logging.NewTestLogFieldBuilder(t)
+		log := logging.NewTestLogger(t)
 		actualTF := &tracerFactory{
 			tp:  provided,
 			log: log,
@@ -95,12 +78,30 @@ func TestNewInfrastructureTracer(t *testing.T) {
 		}
 
 		actual := actualTF.Infra()
-		require.NotNil(t, actual.tracer)
-		require.Equal(t, tracerNameInfrastructure, actual.layer)
-		require.NotEmpty(t, actual.pkgName)
+		require.NotNil(t, actual)
 
 		ctx, end := actual.Start(context.Background())
 		end()
 		require.NotNil(t, ctx)
+	})
+}
+
+func Test_tracerFactory_newLayerTracer(t *testing.T) {
+	t.Run("layer と pkgName を渡すと LayerTracer を返す", func(t *testing.T) {
+		provided := otel.GetTracerProvider()
+		lf := logging.NewTestLogFieldBuilder(t)
+		log := logging.NewTestLogger(t)
+		actualTF := &tracerFactory{
+			tp:  provided,
+			log: log,
+			lf:  lf,
+		}
+
+		layer := "usecase"
+		pkgName := "pkg"
+		actual := actualTF.newLayerTracer(layer, pkgName)
+		require.NotNil(t, actual)
+		require.Equal(t, layer, actual.layer)
+		require.Equal(t, pkgName, actual.pkgName)
 	})
 }

@@ -3,18 +3,54 @@
 ENV ?= local
 
 # 依存されるファイル
+# DB関連
+include .makefiles/db/vars.mk
+# Go言語関連
+include .makefiles/go/vars.mk
+# GitHub関連
 include .makefiles/github/operation/release-util.mk
+
+# 依存されないファイル
+# DB関連
+include .makefiles/db/migrate.mk
+include .makefiles/db/dml-merge.mk
+include .makefiles/db/seed.mk
+include .makefiles/db/fix.mk
+include .makefiles/db/gen.mk
+# Application関連
+include .makefiles/app/server.mk
+include .makefiles/app/job.mk
+# GitHub関連
+include .makefiles/github/operation/release-branch.mk
+include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/setting/github.mk
 include .makefiles/github/setting/branch-ruleset.mk
 include .makefiles/github/setting/label-setting.mk
+# Go言語関連
+include .makefiles/go/fmt.mk
+include .makefiles/go/gen.mk
+include .makefiles/go/golangci-lint.mk
+include .makefiles/go/installer.mk
+include .makefiles/go/lib.mk
+include .makefiles/go/test.mk
+include .makefiles/go/sqlc.mk
+# メタ情報関連
+include .makefiles/meta/gen.mk
+# OpenAPI関連
+include .makefiles/openapi/gen.mk
+# スクリプト関連
+include .makefiles/scripts/gen.mk
+# SQL関連
+include .makefiles/sql/fix.mk
+include .makefiles/sql/lint.mk
 
-# 依存されないファイル
-include .makefiles/github/operation/release-branch.mk
-include .makefiles/github/operation/release-tag.mk
+# 一括実行系ファイル
+# GitHub関連
 include .makefiles/github/operation/setup-repository.mk
-include .makefiles/dev/develop.mk
-include .makefiles/database/database.mk
-include .makefiles/gen/generate.mk
+# DB関連
+include .makefiles/db/start-up.mk
+# 生成関連
+include .makefiles/gen/gen.mk
 
 .PHONY: help
 help:

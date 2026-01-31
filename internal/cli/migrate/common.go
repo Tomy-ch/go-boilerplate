@@ -38,7 +38,7 @@ func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
 		return nil, err
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
-	return migrate.New("file://"+migrateFilePlace, dbCfg.DSN(osCfg))
+	return migrate.New("file://"+migrateFilePlace, dbCfg.DSNWithTimeZone(osCfg))
 }

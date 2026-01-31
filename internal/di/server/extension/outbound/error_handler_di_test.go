@@ -18,9 +18,9 @@ func TestErrorHandlerModule(t *testing.T) {
 func Test_provideErrorHandlerServeConfig(t *testing.T) {
 	t.Parallel()
 
-	log := logging.NewTestInstance(t)
+	log := logging.NewTestLogger(t)
 	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	out := provideErrorHandlerServeConfig(log, lf, obsCfg)
 	require.NotNil(t, out)

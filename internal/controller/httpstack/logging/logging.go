@@ -4,8 +4,9 @@ package logging
 import (
 	"time"
 
-	"boilerplate-go/internal/controller"
+	"boilerplate-go/internal/controller/httpstack/ops"
 	"boilerplate-go/internal/controller/httpstack/requestid"
+	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 
@@ -15,7 +16,7 @@ import (
 type log struct {
 	c        echo.Context
 	lf       logging.LogFieldBuilder
-	traceCtx observability.TraceContext
+	traceCtx *observability.TraceContext
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
@@ -27,12 +28,16 @@ func Middleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.Middlewa
 func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if ops.IsOpsPath(c.Request().URL.Path) {
+				return next(c)
+			}
+
 			start := time.Now()
 
 			l := log{
 				c:        c,
 				lf:       lf,
-				traceCtx: observability.ExtractSpan(c.Request().Context()),
+				traceCtx: observability.ExtractTraceContext(c.Request().Context()),
 			}
 
 			reqFields := l.buildRequestLogFields()
@@ -54,6 +59,7 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 func (l log) buildRequestLogFields() []*logging.Field {
 	req := l.c.Request()
 	reqIn := logging.HTTPRequestLogInput{
+		EventAt:       time.Now(),
 		Method:        req.Method,
 		URI:           req.RequestURI,
 		Path:          req.URL.Path,
@@ -66,8 +72,8 @@ func (l log) buildRequestLogFields() []*logging.Field {
 		ContentLength: req.ContentLength,
 		TraceID:       l.traceCtx.TraceID(),
 		SpanID:        l.traceCtx.SpanID(),
-		PathParams:    controller.ExtractPathParams(l.c),
-		QueryParams:   controller.ExtractQueryParams(l.c),
+		PathParams:    server.ExtractPathParams(l.c),
+		QueryParams:   server.ExtractQueryParams(l.c),
 	}
 
 	return l.lf.BuildHTTPRequestFields(reqIn)
@@ -78,6 +84,7 @@ func (l log) buildResponseLogFields(latency time.Duration) []*logging.Field {
 	req := l.c.Request()
 	res := l.c.Response()
 	resIn := logging.HTTPResponseLogInput{
+		EventAt:   time.Now(),
 		Method:    req.Method,
 		Path:      req.URL.Path,
 		URI:       req.RequestURI,

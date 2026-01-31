@@ -33,8 +33,3 @@
 
 - 本番環境で `Debug` を有効にしないように `ApplicationConfig` の設定を確認してください。
 - デバッグ出力はログに多くの情報を含むため、機密情報が含まれないよう注意してください。
-- `debugmode_test.go` に単体テストがあるため、CI でのテスト実行を推奨します。
-
-## 作成・更新
-
-作成・更新: `internal/controller/httpstack/debugmode` の実装に合わせて記述。

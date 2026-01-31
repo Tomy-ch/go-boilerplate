@@ -1,37 +1,36 @@
-# SQLC ベストプラクティス集
+# SQLC ベストプラクティス
 
-このドキュメントでは、`sqlc` のコード生成を最適化するための **独自ディレクティブ** や **擬似関数** の使い方をまとめます。  
-これらを活用することで、生成される Go コードの可読性・保守性を大幅に向上できます。
+`sqlc` でのコード生成を前提に、**PostgreSQL + Go** でよく使う記法だけを最小限まとめたメモです。
 
-## 1. 基本構文：`-- name:` と実行種別
+## 1. `-- name:` と実行種別
 
-各 SQL ファイルには、**クエリ名**と**実行種別**をコメントで指定します。
+各クエリの先頭に「クエリ名 + 実行種別」をコメントで付与します。
 
 ```sql
 -- name: GetUser :one
 SELECT * FROM users WHERE id = sqlc.arg(id);
 
 -- name: CreateUser :exec
-INSERT INTO users (name, email) VALUES (sqlc.arg(name), sqlc.arg(email));
+INSERT INTO users (name, email)
+VALUES (sqlc.arg(name), sqlc.arg(email));
 ```
 
-| 実行種別 | 説明 |
-|----------|------|
-| `:one`       | 単一レコードを返す |
-| `:many`      | 複数レコードを返す |
-| `:exec`      | 結果を返さない（INSERT, UPDATE, DELETE） |
-| `:execrows`  | `RowsAffected` を返す |
-| `:batch`     | 複数クエリをバッチ実行 |
+代表的な種別：
 
-## 2. `sqlc.arg()` — 引数名を明示する
+- `:one`     … 単一レコードを返す  
+- `:many`    … 複数レコードを返す  
+- `:exec`    … 結果なし（INSERT/UPDATE/DELETE）  
+- `:execrows`… `RowsAffected` を返す  
+- `:batch`   … 複数クエリをバッチ実行  
 
-パラメータ名を明示的に指定することで、生成される構造体のフィールド名を制御できます。
+## 2. `sqlc.arg()` でパラメータ名を固定する
+
+`sqlc.arg()` を使うと、生成される構造体のフィールド名を制御できます。  
+`@param_name` 形式も同じ意味で利用可能です。
 
 ```sql
 WHERE age > sqlc.arg(min_age)
 ```
-
-生成される Go コード例：
 
 ```go
 type GetUsersParams struct {
@@ -39,16 +38,22 @@ type GetUsersParams struct {
 }
 ```
 
-一部のパラメータでは、nullableを許容するために`sql.carg()`を利用しても、`sql.NullXxxx`が生成されます。
+ページングなど、nullable を許容したいパラメータでも `sqlc.arg()` を使います。
 
 ```sql
-LIMIT sqlc.arg(limit_param)
+LIMIT  sqlc.arg(limit_param)
 OFFSET sqlc.arg(offset_param)
 ```
 
-## 3. `sqlc.embed()` — 構造体埋め込み
+また、PostgreSQL では、@を使うことでも同様にパラメータ名を指定できます。
 
-JOIN 結果をネスト構造で返したい場合に使用します。
+```sql
+WHERE age > @min_age
+```
+
+## 3. `sqlc.embed()` で JOIN 結果をネスト
+
+JOIN 結果をネストした構造体で受け取りたい場合に使います。
 
 ```sql
 -- name: GetUserWithProfile :one
@@ -58,8 +63,6 @@ JOIN profiles p ON p.user_id = u.id
 WHERE u.id = sqlc.arg(id);
 ```
 
-生成される Go コード例：
-
 ```go
 type GetUserWithProfileRow struct {
     User    User
@@ -67,15 +70,13 @@ type GetUserWithProfileRow struct {
 }
 ```
 
-## 4. `sqlc.narg()` — NULL 許容パラメータ
+## 4. `sqlc.narg()` で NULL 許容パラメータ
 
-NULL を許容するパラメータを指定します。
+NULL を取り得る条件には `sqlc.narg()` を使います。
 
 ```sql
 WHERE deleted_at IS sqlc.narg(deleted_at)
 ```
-
-生成される Go コード例：
 
 ```go
 type GetUsersParams struct {
@@ -83,15 +84,13 @@ type GetUsersParams struct {
 }
 ```
 
-## 5. 型キャストで型推論を補強
+## 5. CAST で Go 側の型を補強する
 
-PostgreSQL の型を明示することで、Go 側の型も強制できます。
+PostgreSQL 側で明示的に型キャストすると、生成される Go の型も揃えやすくなります。
 
 ```sql
 WHERE id = sqlc.arg(user_id)::uuid
 ```
-
-生成される Go コード例（`pgx` 使用時など）：
 
 ```go
 type GetUserParams struct {
@@ -99,15 +98,15 @@ type GetUserParams struct {
 }
 ```
 
-## 6. 生成ファイル側で生成型をオーバーライドする
+## 6. `overrides` で生成型を上書きする
 
-`database/sqlc/sqlc.template.yaml`で生成の型を上書きできます。
+`sqlc.yaml`（例: `database/sqlc/sqlc.template.yaml`）で DB 型と Go 型の対応を上書きできます。
 
 ```yaml
 version: "2"
 sql:
-  - engine: postgresql
-    # ...
+
+- engine: postgresql
     gen:
       go:
         package: gen
@@ -117,15 +116,13 @@ sql:
             go_type: "int"
 ```
 
-## 7. 配列パラメータ
+## 7. 配列パラメータは `ANY()` と組み合わせる
 
-配列を渡す場合は `ANY()` と型キャストを併用します。
+複数 ID をまとめて渡したい場合は、スライス + `ANY()` を使います。
 
 ```sql
 WHERE id = ANY(sqlc.arg(user_ids)::uuid[])
 ```
-
-生成される Go コード例：
 
 ```go
 type GetUsersParams struct {
@@ -133,16 +130,14 @@ type GetUsersParams struct {
 }
 ```
 
-## 8. 戻り値フィールド名を意識した SELECT
+## 8. SELECT カラム名 = Go フィールド名
 
-カラム名に応じて Go 側のフィールド名が決まります。
+SELECT するカラム名が、そのまま `Row` 構造体のフィールド名になります。
 
 ```sql
 -- name: GetUserEmailAndName :one
 SELECT email, name FROM users WHERE id = sqlc.arg(id);
 ```
-
-生成される Go コード例：
 
 ```go
 type GetUserEmailAndNameRow struct {
@@ -151,7 +146,9 @@ type GetUserEmailAndNameRow struct {
 }
 ```
 
-## 9. 複雑クエリはサブクエリ / CTE で可読性確保
+## 9. 複雑な検索はサブクエリ / CTE で整理
+
+長くなりがちな検索クエリは、サブクエリや CTE で分割して可読性を確保します。
 
 ```sql
 -- name: SearchUsers :many
@@ -162,18 +159,18 @@ SELECT * FROM (
 ORDER BY name;
 ```
 
-## 推奨運用フロー
+## 推奨ルール（超要約）
 
-1. 必須: 各クエリに`-- name:`と種別を付与
-2. 必須: パラメータは必ず`sqlc.arg()`で命名
-3. 必須: NULL許容は`sqlc.narg()`を使う
-4. 任意: JOINは`sqlc.embed()`を活用
-5. 任意: 型は必要に応じてCASTで強制
-6. 任意: 配列やIN句は`ANY()`と併用
-7. 任意: 長いクエリはCTEやサブクエリで整理
+1. **必須**: すべてのクエリに `-- name:` + 種別を付ける  
+2. **必須**: パラメータは必ず `sqlc.arg()` / `@param` で命名する  
+3. **必須**: NULL 許容は `sqlc.narg()` を使う  
+4. **推奨**: JOIN は `sqlc.embed()` でネストする  
+5. **推奨**: 型を合わせたいところは CAST を明示  
+6. **推奨**: 配列は `ANY()` + `[]T` で扱う  
+7. **推奨**: 複雑なクエリはサブクエリ/CTE で切り出す  
 
 ## 参考リンク
 
 - [sqlc 公式ドキュメント](https://docs.sqlc.dev/en/latest/)
 - [PostgreSQL 型一覧](https://www.postgresql.org/docs/current/datatype.html)
-- [Go Database/SQL パッケージ](https://pkg.go.dev/database/sql)
+- [Go `database/sql` パッケージ](https://pkg.go.dev/database/sql)

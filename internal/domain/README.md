@@ -121,10 +121,10 @@ var (
     // apperror.ErrValidation(422)をラップし、フィールドごとに特定できるようにする
     errInvalid               = xerrors.Wrap(apperror.ErrValidation, "invalid user")
     // 基底エラーをラップしてフィールドごとに特定できるようにする
-    ErrInvalidID             = xerrors.Wrap(errInvalid, "id: ")
-    ErrInvalidFirstName      = xerrors.Wrap(errInvalid, "first name: ")
-    ErrInvalidLastName       = xerrors.Wrap(errInvalid, "last name: ")
-    ErrInvalidPassword       = xerrors.Wrap(errInvalid, "password: ")
+    ErrInvalidID             = xerrors.Wrap(errInvalid, "id failed")
+    ErrInvalidFirstName      = xerrors.Wrap(errInvalid, "first name failed")
+    ErrInvalidLastName       = xerrors.Wrap(errInvalid, "last name failed")
+    ErrInvalidPassword       = xerrors.Wrap(errInvalid, "password failed")
 )
 ```
 
@@ -144,7 +144,7 @@ type Entity struct {
 
 // 複数のエンティティをまとめて扱う場合のスライス型
 // 別途定義することで、この構造体のメソッドとして振る舞いを追加できる
-type Entities []Entity
+type Entities []*Entity
 
 // Newの名称固定
 func New(

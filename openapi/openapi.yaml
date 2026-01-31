@@ -34,28 +34,46 @@ paths:
     $ref: './paths/health/health.yaml'
   /healthz:
     $ref: './paths/healthz/healthz.yaml'
+  /metrics:
+    $ref: './paths/metrics/metrics.yaml'
   /ready:
     $ref: './paths/ready/ready.yaml'
   /version:
     $ref: './paths/version/version.yaml'
+  # ここから下のoapi-codegenで型定義を生成するためのパス
+  /_internal/types/error-response:
+    $ref: './paths/internal/types/error_response.yaml'
   # サンプルAPI用のパス
   /v1/users:
     $ref: './paths/v1/users.yaml'
   /v1/users/{user_id}:
     $ref: './paths/v1/users/user_id.yaml'
-  # ここから下のoapi-codegenで型定義を生成するためのパス
-  /_internal/types/error-response:
-    $ref: './paths/internal/types/error_response.yaml'
+  # デバッグ用のパス(サービスを作成する際には必ず削除してください)
+  /debug/cookie:
+    $ref: './paths/debug/cookie.yaml'
+  /debug/cookie/copy:
+    $ref: './paths/debug/cookie/copy.yaml'
+  /debug/cookie/stream:
+    $ref: './paths/debug/cookie/stream.yaml'
+  /debug/cookie/ws:
+    $ref: './paths/debug/cookie/ws.yaml'
 components:
   parameters:
+    KeywordParam:
+      $ref: './components/parameters/search/KeywordParam.yaml'
+    ActiveParam:
+      $ref: './components/parameters/search/ActiveParam.yaml'
     PageParam:
       $ref: './components/parameters/pagination/PageParam.yaml'
     PerPageParam:
       $ref: './components/parameters/pagination/PerPageParam.yaml'
     UserIdParam:
       $ref: './components/parameters/user/UserIdParam.yaml'
-    NameKeywordParam:
-      $ref: './components/parameters/user/NameKeywordParam.yaml'
+  securitySchemes:
+    BearerAuth:
+      $ref: './components/schemas/BearerAuth.yaml'
+    BasicAuth:
+      $ref: './components/schemas/BasicAuth.yaml'
   schemas:
     ErrorResponse:
       $ref: './components/schemas/ErrorResponse.yaml'
@@ -80,3 +98,8 @@ components:
       $ref: './components/requests/users/UserPutRequest.yaml'
     RequestPatchV1User:
       $ref: './components/requests/users/UserPatchRequest.yaml'
+    # デバッグ用の型定義(サービスを作成する際には必ず削除してください)
+    DebugIssueCookieRequest:
+      $ref: './components/requests/debug/DebugIssueCookieRequest.yaml'
+    DebugCookieInspectResponse:
+      $ref: './components/responses/debug/DebugCookieInspectResponse.yaml'

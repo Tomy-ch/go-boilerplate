@@ -3,9 +3,8 @@ name: Dependency Vulnerability Scan Workflow
 on:
   pull_request:
     paths:
+      - '.github/workflows/trivy-fs.yaml'
       - '**/*.go'
-  schedule:
-    - cron: '0 3 * * 1' # 毎週月曜 12:00JST 相当（UTC 03:00）
   workflow_dispatch:
 
 permissions:
@@ -22,7 +21,6 @@ jobs:
   golangci-setup:
     uses: ./.github/workflows/golang-setup.yaml
 
-  # リポジトリファイル/依存物のコンテナ外スキャン（Trivy FS）
   trivy-fs:
     needs: golangci-setup
     runs-on: ubuntu-latest
@@ -81,15 +79,88 @@ jobs:
             trivy-fs-summary.md
 
       - name: Comment Trivy FS result on PR
-        if: ${{ github.event_name == 'pull_request' && steps.summarize.outputs.count != '0' }}
+        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const body = fs.readFileSync('trivy-fs-summary.md','utf8');
-            await github.rest.issues.createComment({
+
+            const marker = '<!-- trivy-fs-result -->';
+            const count = Number('${{ steps.summarize.outputs.count }}' || '0');
+
+            const updatedAtJST = new Date().toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+
+            const headSha =
+              (context.payload.pull_request?.head?.sha)
+              || process.env.GITHUB_SHA
+              || context.sha;
+            const shortSha = headSha.slice(0, 7);
+
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${headSha}`;
+
+            const read = (p) => {
+              try { return fs.readFileSync(p, 'utf8').trim(); }
+              catch (e) { return '(summary not found)'; }
+            };
+
+            const trimLog = (txt) => {
+              const MAX = 45000; // コメント上限対策
+              if (txt.length <= MAX) return txt;
+              return txt.slice(0, MAX) + '\n... (truncated)';
+            };
+
+            const title = (count === 0)
+              ? '✅ Trivy FS: PASS (no vulnerabilities)'
+              : `🚨 Trivy FS: FOUND (${count})`;
+
+            const summary = read('trivy-fs-summary.md');
+
+            const body = [
+              marker,
+              `## ${title}`,
+              '',
+              `- Total vulnerabilities: **${count}**`,
+              `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
+              `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
+              '',
+              '<details><summary>📄 Summary</summary>',
+              '',
+              trimLog(summary),
+              '',
+              '</details>',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              body: `## Trivy FS Scan (repository)\n\n${body}`
+              per_page: 100,
             });
+
+            const existing = comments.find(c => (c.body || '').includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }

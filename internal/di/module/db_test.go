@@ -1,0 +1,42 @@
+package module
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/fx"
+	gomock "go.uber.org/mock/gomock"
+
+	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
+	mock_logging "boilerplate-go/internal/logging/mock"
+	"boilerplate-go/internal/observability"
+)
+
+func TestDatabaseModule_Composes(t *testing.T) {
+	t.Run("fx アプリに DatabaseModule を追加して起動できる", func(t *testing.T) {
+		t.Parallel()
+
+		ctrl := gomock.NewController(t)
+
+		mockLogger := mock_logging.NewMockLogger(ctrl)
+		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
+
+		app := fx.New(
+			DatabaseModule(),
+			fx.Provide(func() testing.TB { return t }),
+			fx.Provide(config.MockConfigForTest),
+			fx.Provide(config.NewDatabaseConfig),
+			fx.Provide(config.NewOperationSystemConfig),
+			fx.Provide(config.NewDBConnectionConfig),
+			fx.Provide(func() logging.Logger { return mockLogger }),
+			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+			fx.Provide(observability.NewNoopTracerFactory),
+			fx.NopLogger,
+		)
+
+		require.NoError(t, app.Start(context.Background()))
+		require.NoError(t, app.Stop(context.Background()))
+	})
+}

@@ -16,6 +16,9 @@ type Config struct {
 	database      DatabaseConfig
 	dbconnection  DBConnectionConfig
 	security      SecurityConfig
+	secureCookie  SecureCookieConfig
+	auth          AuthConfig
+	ipRateLimit   IPRateLimitConfig
 }
 
 type OperationSystemConfig struct {
@@ -39,24 +42,28 @@ type ServerConfig struct {
 }
 
 type MetricsConfig struct {
-	host string
-	port int
+	host     string
+	port     int
+	userName string
+	password string
 }
 
 type ObservabilityConfig struct {
-	enabled           bool
-	targetStatusCodes []int
+	enabled             bool
+	targetStatusCodes   []int
+	targetStatusCodeSet map[int]bool
 }
 
 type DatabaseConfig struct {
-	driver         string
-	host           string
-	port           int
-	user           string
-	password       string
-	name           string
-	sslMode        string
-	defaultTimeout time.Duration
+	driver                 string
+	host                   string
+	port                   int
+	user                   string
+	password               string
+	name                   string
+	sslMode                string
+	defaultTimeout         time.Duration
+	slowQueryWarnThreshold time.Duration
 }
 
 type DBConnectionConfig struct {
@@ -67,12 +74,39 @@ type DBConnectionConfig struct {
 }
 
 type SecurityConfig struct {
-	allowedOrigins []string
-	cidr           *net.IPNet
+	allowedOrigins        []string
+	cidr                  *net.IPNet
+	contentTypeNosniff    string
+	xFrameOptions         string
+	hstsMaxAge            time.Duration
+	hstsExcludeSubdomains bool
+	hstsPreloadEnabled    bool
+	referrerPolicy        string
 }
 
-// NewOSConfig は、OSの設定を返します。
-func NewOSConfig(cfg *Config) *OperationSystemConfig { return &cfg.os }
+type SecureCookieConfig struct {
+	secure   *bool
+	sameSite string
+	domain   string
+}
+
+type AuthConfig struct {
+	cookieName          string
+	headerName          string
+	allowedHeaderBearer bool
+}
+
+type IPRateLimitConfig struct {
+	enabled         bool
+	requests        int
+	per             time.Duration
+	burst           int
+	ttl             time.Duration
+	cleanupInterval time.Duration
+}
+
+// NewOperationSystemConfig は、OSの設定を返します。
+func NewOperationSystemConfig(cfg *Config) *OperationSystemConfig { return &cfg.os }
 
 // TimeZone は、OSのタイムゾーンを返します。
 func (o *OperationSystemConfig) TimeZone() string { return o.timezone }
@@ -137,6 +171,12 @@ func (m *MetricsConfig) Host() string { return m.host }
 // Port は、メトリクスサーバーがリッスンするポート番号を返します。
 func (m *MetricsConfig) Port() int { return m.port }
 
+// UserName は、メトリクスサーバーの認証に使用するユーザー名を返します。
+func (m *MetricsConfig) UserName() string { return m.userName }
+
+// Password は、メトリクスサーバーの認証に使用するパスワードを返します。
+func (m *MetricsConfig) Password() string { return m.password }
+
 // NewObservabilityConfig は、可観測の設定を返します。
 func NewObservabilityConfig(cfg *Config) *ObservabilityConfig { return &cfg.observability }
 
@@ -145,6 +185,9 @@ func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
 
 // TargetStatusCodes は、可観測モードで監視対象となるHTTPステータスコードのリストを返します。
 func (o *ObservabilityConfig) TargetStatusCodes() []int { return o.targetStatusCodes }
+
+// TargetStatusCodeSet は、可観測モードで監視対象となるHTTPステータスコードのセットを返します。
+func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool { return o.targetStatusCodeSet }
 
 // NewDatabaseConfig は、データベースの設定を返します。
 func NewDatabaseConfig(cfg *Config) *DatabaseConfig { return &cfg.database }
@@ -173,16 +216,30 @@ func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
 // DefaultTimeout は、データベースのデフォルトタイムアウトを返します。
 func (d *DatabaseConfig) DefaultTimeout() time.Duration { return d.defaultTimeout }
 
+// SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。
+//
+// この値より長く実行されたクエリは警告レベルでログ出力されます。
+// 0以下の値の場合、スロークエリ警告は無効になります。
+func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
+
 // DSN は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSN(o *OperationSystemConfig) string {
+func (d *DatabaseConfig) DSN() string {
 	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		d.user,
 		d.password,
 		d.host,
 		d.port,
 		d.name,
 		d.sslMode,
+	)
+}
+
+// DSNWithTimeZone は、データベースの接続URLを返します。
+func (d *DatabaseConfig) DSNWithTimeZone(o *OperationSystemConfig) string {
+	return fmt.Sprintf(
+		"%s&timezone=%s",
+		d.DSN(),
 		url.QueryEscape(o.timezone),
 	)
 }
@@ -202,6 +259,7 @@ func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime 
 // MaxIdleTime は、データベースの接続の最大アイドル時間を返します。
 func (c *DBConnectionConfig) MaxIdleTime() time.Duration { return c.maxIdleTime }
 
+// NewSecurityConfig は、セキュリティの設定を返します。
 func NewSecurityConfig(cfg *Config) *SecurityConfig { return &cfg.security }
 
 // AllowedOrigins は、CORSを許可するオリジンのリストを返します。
@@ -209,3 +267,71 @@ func (s *SecurityConfig) AllowedOrigins() []string { return s.allowedOrigins }
 
 // CIDR は、セキュリティ設定で使用されるCIDRを返します。
 func (s *SecurityConfig) CIDR() *net.IPNet { return s.cidr }
+
+// ContentTypeNosniff は、X-Content-Type-Optionsヘッダーの値を返します。
+func (s *SecurityConfig) ContentTypeNosniff() string { return s.contentTypeNosniff }
+
+// XFrameOptions は、X-Frame-Optionsヘッダーの値を返します。
+func (s *SecurityConfig) XFrameOptions() string { return s.xFrameOptions }
+
+// HSTSMaxAge は、HSTSの最大年齢を返します。
+func (s *SecurityConfig) HSTSMaxAge() time.Duration { return s.hstsMaxAge }
+
+// HSTSExcludeSubdomains は、HSTSでサブドメインを除外するかどうかを返します。
+func (s *SecurityConfig) HSTSExcludeSubdomains() bool { return s.hstsExcludeSubdomains }
+
+// HSTSPreloadEnabled は、HSTSのプリロードが有効かどうかを返します。
+func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled }
+
+// ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
+func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
+
+// NewSecureCookieConfig は、セキュアクッキーの設定を返します。
+func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }
+
+// Secure は、Secure属性の強制設定を返します。
+func (s *SecureCookieConfig) Secure() *bool { return s.secure }
+
+// SameSite は、SameSite属性の強制設定を返します。
+func (s *SecureCookieConfig) SameSite() string { return s.sameSite }
+
+// Domain は、Domain属性の強制設定を返します。
+func (s *SecureCookieConfig) Domain() string { return s.domain }
+
+// NewAuthConfig は、認証の設定を返します。
+func NewAuthConfig(cfg *Config) *AuthConfig { return &cfg.auth }
+
+// CookieName は、認証に使用するCookie名を返します。
+func (a *AuthConfig) CookieName() string { return a.cookieName }
+
+// HeaderName は、認証に使用するヘッダー名を返します。
+func (a *AuthConfig) HeaderName() string { return a.headerName }
+
+// AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
+func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
+
+// NewIPRateLimitConfig は、IPレートリミットの設定を返します。
+func NewIPRateLimitConfig(cfg *Config) *IPRateLimitConfig { return &cfg.ipRateLimit }
+
+// Enabled は、IPレートリミットが有効かどうかを返します。
+func (i *IPRateLimitConfig) Enabled() bool { return i.enabled }
+
+// Requests は、IPレートリミットのリクエスト数を返します。
+func (i *IPRateLimitConfig) Requests() int { return i.requests }
+
+// Per は、IPレートリミットの期間を返します。
+func (i *IPRateLimitConfig) Per() time.Duration { return i.per }
+
+// Burst は、IPレートリミットのバースト数を返します。
+func (i *IPRateLimitConfig) Burst() int { return i.burst }
+
+// TTL は、IPレートリミットのエントリの有効期限を返します。
+func (i *IPRateLimitConfig) TTL() time.Duration { return i.ttl }
+
+// CleanupInterval は、IPレートリミットのエントリのクリーンアップ間隔を返します。
+func (i *IPRateLimitConfig) CleanupInterval() time.Duration { return i.cleanupInterval }
+
+// Limit は、IPレートリミットの制限値を返します。
+func (i *IPRateLimitConfig) Limit() float64 {
+	return float64(i.requests) / i.per.Seconds()
+}

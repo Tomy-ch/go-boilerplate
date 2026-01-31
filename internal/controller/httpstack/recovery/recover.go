@@ -2,8 +2,10 @@
 package recovery
 
 import (
+	"time"
+
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller"
+	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 
@@ -47,8 +49,9 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c echo.Context, err error, stack []byte) error {
 	return func(c echo.Context, err error, stack []byte) error {
 		req := c.Request()
-		traceCtx := observability.ExtractSpan(req.Context())
+		traceCtx := observability.ExtractTraceContext(req.Context())
 		reqIn := logging.HTTPRequestLogInput{
+			EventAt:       time.Now(),
 			Method:        req.Method,
 			Path:          c.Path(),
 			URI:           req.RequestURI,
@@ -59,8 +62,8 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 			UserAgent:     req.UserAgent(),
 			ContentType:   req.Header.Get(echo.HeaderContentType),
 			ContentLength: req.ContentLength,
-			QueryParams:   controller.ExtractQueryParams(c),
-			PathParams:    controller.ExtractPathParams(c),
+			QueryParams:   server.ExtractQueryParams(c),
+			PathParams:    server.ExtractPathParams(c),
 			TraceID:       traceCtx.TraceID(),
 			SpanID:        traceCtx.SpanID(),
 		}

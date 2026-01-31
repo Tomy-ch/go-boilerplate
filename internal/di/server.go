@@ -28,20 +28,29 @@ func NewApplicationServer(app *fx.App) (func(context.Context) error, func(contex
 // NewApplicationCore は、アプリケーションの fx.App インスタンスを作成します。
 func NewApplicationCore() *fx.App {
 	return fx.New(
-		// Core Module
+		// Lifecycle Module
 		lifecycle.Module(),
+		// Config Module
 		module.ConfigModule(),
+		// Core Module
+		core.IPRateLimiterModule(),
+		core.ValidatorModule(),
+		core.SecurityCookieModule(),
+		core.AuthnModule(),
+		core.BasicAuthModule(),
+		core.SkipperModule(),
+		// Common Module
 		module.LoggingModule(),
 		module.ObservabilityModule(),
 		module.DatabaseModule(),
 		module.SystemModule(),
-		core.ValidatorModule(),
-		server.HTTPStackModule(),
+		server.MiddlewareModule(),
 		// DDD Modules
 		module.InfrastructureModule(),
 		module.UsecaseModule(),
 		module.ControllerModule(),
 		// Server Module
-		server.ServeModule(),
+		server.Module(),
+		server.HookModule(),
 	)
 }

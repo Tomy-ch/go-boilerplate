@@ -7,6 +7,15 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"boilerplate-go/pkg/ptr"
+)
+
+const (
+	// envKey は、環境変数のキー名です。
+	envKey = "ENV"
+	// TestingEnvValue は、テスト用の環境変数の値です。
+	TestingEnvValue = "ci"
 )
 
 // 下記の変数は、テスト用の期待値以外に、テスト環境の環境変数設定にも使用されます。
@@ -37,23 +46,29 @@ var (
 	expectedServerIdleTimeoutStr         = fmt.Sprintf("%ds", expectedServerIdleTimeoutCount)
 	expectedServerIdleTimeout            = time.Duration(expectedServerIdleTimeoutCount) * time.Second
 	// metrics
-	expectedMetricsHost = "localhost"
-	expectedMetricsPort = 6060
+	expectedMetricsHost     = "localhost"
+	expectedMetricsPort     = 6060
+	expectedMetricsUserName = "metrics-user"
+	expectedMetricsPassword = "metrics-password"
 	// observability
 	expectedObservabilityEnabled              = true
-	expectedObservabilityTargetStatusCodes    = []int{200, 400, 500}
-	expectedObservabilityTargetStatusCodesStr = "200,400,500"
+	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
+	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
+	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
 	// database
-	expectedDBDriver              = "pgx"
-	expectedDBHost                = "localhost"
-	expectedDBPort                = 5432
-	expectedDBUser                = "postgres"
-	expectedDBPassword            = "postgres-password"
-	expectedDBName                = "test"
-	expectedDBSSLMode             = "disable"
-	expectedDBDefaultTimeoutCount = 750
-	expectedDBDefaultTimeoutStr   = fmt.Sprintf("%dms", expectedDBDefaultTimeoutCount)
-	expectedDBDefaultTimeout      = time.Duration(expectedDBDefaultTimeoutCount) * time.Millisecond
+	expectedDBDriver                      = "pgx"
+	expectedDBHost                        = "localhost"
+	expectedDBPort                        = 5432
+	expectedDBUser                        = "postgres"
+	expectedDBPassword                    = "postgres-password"
+	expectedDBName                        = "test"
+	expectedDBSSLMode                     = "disable"
+	expectedDBDefaultTimeoutCount         = 750
+	expectedDBDefaultTimeoutStr           = fmt.Sprintf("%dms", expectedDBDefaultTimeoutCount)
+	expectedDBDefaultTimeout              = time.Duration(expectedDBDefaultTimeoutCount) * time.Millisecond
+	expectedDBSlowQueryWarnThresholdCount = 500
+	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
+	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
 	// dbconnection
 	expectedDBMaxOpenConns     = 10
 	expectedDBMaxIdleConns     = 5
@@ -64,9 +79,38 @@ var (
 	expectedDBMaxIdleTimeStr   = fmt.Sprintf("%ds", expectedDBMaxIdleTimeCount)
 	expectedDBMaxIdleTime      = time.Duration(expectedDBMaxIdleTimeCount) * time.Second
 	// security
-	expectedAllowedOrigins = "http://localhost,https://example.com"
-	expectedCIDRStr        = "192.168.0.0/24"
-	_, expectedCIDR, _     = net.ParseCIDR(expectedCIDRStr)
+	expectedAllowedOrigins        = "http://localhost,https://example.com"
+	expectedCIDRStr               = "192.168.0.0/24"
+	_, expectedCIDR, _            = net.ParseCIDR(expectedCIDRStr)
+	expectedContentTypeNosniff    = "nosniff"
+	expectedXFrameOptions         = "SAMEORIGIN"
+	expectedHSTSMaxAgeCount       = 31536000
+	expectedHSTSMaxAge            = time.Duration(expectedHSTSMaxAgeCount) * time.Second
+	expectedHSTSMaxAgeStr         = fmt.Sprintf("%ds", expectedHSTSMaxAgeCount)
+	expectedHSTSExcludeSubdomains = false
+	expectedHSTSPreloadEnabled    = false
+	expectedReferrerPolicy        = "no-referrer"
+	// secure cookie
+	expectedSecureCookieSecure   = ptr.To(true)
+	expectedSecureCookieSameSite = "Strict"
+	expectedSecureCookieDomain   = "localhost"
+	// auth
+	expectedAuthCookieName          = "auth_token"
+	expectedAuthHeaderName          = "Authorization"
+	expectedAuthAllowedHeaderBearer = true
+	// ip rate limit
+	expectedIPRateLimitEnabled              = true
+	expectedIPRateLimitRequests             = 100
+	expectedIPRateLimitPerCount             = 1
+	expectedIPRateLimitPer                  = time.Duration(expectedIPRateLimitPerCount) * time.Minute
+	expectedIPRateLimitPerStr               = fmt.Sprintf("%dm", expectedIPRateLimitPerCount)
+	expectedIPRateLimitBurst                = 20
+	expectedIPRateLimitTTLCount             = 60
+	expectedIPRateLimitTTLStr               = fmt.Sprintf("%ds", expectedIPRateLimitTTLCount)
+	expectedIPRateLimitTTL                  = time.Duration(expectedIPRateLimitTTLCount) * time.Second
+	expectedIPRateLimitCleanupIntervalCount = 120
+	expectedIPRateLimitCleanupIntervalStr   = fmt.Sprintf("%ds", expectedIPRateLimitCleanupIntervalCount)
+	expectedIPRateLimitCleanupInterval      = time.Duration(expectedIPRateLimitCleanupIntervalCount) * time.Second
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -91,22 +135,26 @@ func MockConfigForTest(t testing.TB) *Config {
 			idleTimeout:       expectedServerIdleTimeout,
 		},
 		metrics: MetricsConfig{
-			host: expectedMetricsHost,
-			port: expectedMetricsPort,
+			host:     expectedMetricsHost,
+			port:     expectedMetricsPort,
+			userName: expectedMetricsUserName,
+			password: expectedMetricsPassword,
 		},
 		observability: ObservabilityConfig{
-			enabled:           expectedObservabilityEnabled,
-			targetStatusCodes: expectedObservabilityTargetStatusCodes,
+			enabled:             expectedObservabilityEnabled,
+			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
+			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
 		database: DatabaseConfig{
-			driver:         expectedDBDriver,
-			host:           expectedDBHost,
-			port:           expectedDBPort,
-			user:           expectedDBUser,
-			password:       expectedDBPassword,
-			name:           expectedDBName,
-			sslMode:        expectedDBSSLMode,
-			defaultTimeout: expectedDBDefaultTimeout,
+			driver:                 expectedDBDriver,
+			host:                   expectedDBHost,
+			port:                   expectedDBPort,
+			user:                   expectedDBUser,
+			password:               expectedDBPassword,
+			name:                   expectedDBName,
+			sslMode:                expectedDBSSLMode,
+			defaultTimeout:         expectedDBDefaultTimeout,
+			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
 			maxOpenConns: expectedDBMaxOpenConns,
@@ -115,8 +163,32 @@ func MockConfigForTest(t testing.TB) *Config {
 			maxIdleTime:  expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			cidr:           expectedCIDR,
+			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+			cidr:                  expectedCIDR,
+			contentTypeNosniff:    expectedContentTypeNosniff,
+			xFrameOptions:         expectedXFrameOptions,
+			hstsMaxAge:            expectedHSTSMaxAge,
+			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
+			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
+			referrerPolicy:        expectedReferrerPolicy,
+		},
+		secureCookie: SecureCookieConfig{
+			secure:   expectedSecureCookieSecure,
+			sameSite: expectedSecureCookieSameSite,
+			domain:   expectedSecureCookieDomain,
+		},
+		auth: AuthConfig{
+			cookieName:          expectedAuthCookieName,
+			headerName:          expectedAuthHeaderName,
+			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+		},
+		ipRateLimit: IPRateLimitConfig{
+			enabled:         expectedIPRateLimitEnabled,
+			requests:        expectedIPRateLimitRequests,
+			per:             expectedIPRateLimitPer,
+			burst:           expectedIPRateLimitBurst,
+			ttl:             expectedIPRateLimitTTL,
+			cleanupInterval: expectedIPRateLimitCleanupInterval,
 		},
 	}
 }
@@ -136,8 +208,10 @@ func mockLoader(t testing.TB) Loader {
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
 		Metrics: Metrics{
-			Host: expectedMetricsHost,
-			Port: expectedMetricsPort,
+			Host:     expectedMetricsHost,
+			Port:     expectedMetricsPort,
+			UserName: expectedMetricsUserName,
+			Password: expectedMetricsPassword,
 		},
 		Observability: Observability{
 			Enabled:           expectedObservabilityEnabled,
@@ -152,30 +226,54 @@ func mockLoader(t testing.TB) Loader {
 			IdleTimeout:       expectedServerIdleTimeout,
 		},
 		Database: Database{
-			Driver:         expectedDBDriver,
-			Host:           expectedDBHost,
-			Port:           expectedDBPort,
-			User:           expectedDBUser,
-			Password:       expectedDBPassword,
-			Name:           expectedDBName,
-			SSLMode:        expectedDBSSLMode,
-			DefaultTimeout: expectedDBDefaultTimeout,
+			Host:                   expectedDBHost,
+			Port:                   expectedDBPort,
+			User:                   expectedDBUser,
+			Password:               expectedDBPassword,
+			Name:                   expectedDBName,
+			SSLMode:                expectedDBSSLMode,
+			DefaultTimeout:         expectedDBDefaultTimeout,
+			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
-		DBConnection: Connection{
+		DBConnection: DBConnection{
 			MaxOpenConns: expectedDBMaxOpenConns,
 			MaxIdleConns: expectedDBMaxIdleConns,
 			MaxLifetime:  expectedDBMaxLifetime,
 			MaxIdleTime:  expectedDBMaxIdleTime,
 		},
 		Security: Security{
-			AllowedOrigins: strings.Split(expectedAllowedOrigins, ","),
-			CIDR:           expectedCIDRStr,
+			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
+			CIDR:                  expectedCIDRStr,
+			ContentTypeNosniff:    expectedContentTypeNosniff,
+			XFrameOptions:         expectedXFrameOptions,
+			HSTSMaxAge:            expectedHSTSMaxAge,
+			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
+			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
+			ReferrerPolicy:        expectedReferrerPolicy,
+		},
+		SecureCookie: SecureCookie{
+			Secure:   expectedSecureCookieSecure,
+			SameSite: expectedSecureCookieSameSite,
+			Domain:   expectedSecureCookieDomain,
+		},
+		Auth: Auth{
+			CookieName:          expectedAuthCookieName,
+			HeaderName:          expectedAuthHeaderName,
+			AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+		},
+		IPRateLimit: IPRateLimit{
+			Enabled:         expectedIPRateLimitEnabled,
+			Requests:        expectedIPRateLimitRequests,
+			Per:             expectedIPRateLimitPer,
+			Burst:           expectedIPRateLimitBurst,
+			TTL:             expectedIPRateLimitTTL,
+			CleanupInterval: expectedIPRateLimitCleanupInterval,
 		},
 	}
 }
 
 // setEnvVarsForTesting は、テスト用の環境変数を設定します。
-func setEnvVarsForTesting(t *testing.T) {
+func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環境変数設定が長くなるため
 	t.Helper()
 	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
@@ -194,6 +292,8 @@ func setEnvVarsForTesting(t *testing.T) {
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)
 	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))
+	t.Setenv("METRICS_USERNAME", expectedMetricsUserName)
+	t.Setenv("METRICS_PASSWORD", expectedMetricsPassword)
 	// Observability
 	t.Setenv("OBSERVABILITY_ENABLED", strconv.FormatBool(expectedObservabilityEnabled))
 	t.Setenv("OBSERVABILITY_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
@@ -206,7 +306,8 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("DB_NAME", expectedDBName)
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
 	t.Setenv("DB_DEFAULT_TIMEOUT", expectedDBDefaultTimeoutStr)
-	// DB Connection
+	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
+	// DBConnection
 	t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
 	t.Setenv("DBCONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
 	t.Setenv("DBCONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
@@ -214,4 +315,25 @@ func setEnvVarsForTesting(t *testing.T) {
 	// Security
 	t.Setenv("SECURITY_CIDR", expectedCIDRStr)
 	t.Setenv("SECURITY_ALLOWED_ORIGINS", expectedAllowedOrigins)
+	t.Setenv("SECURITY_CONTENT_TYPE_NOSNIFF", expectedContentTypeNosniff)
+	t.Setenv("SECURITY_X_FRAME_OPTIONS", expectedXFrameOptions)
+	t.Setenv("SECURITY_HSTS_MAX_AGE", expectedHSTSMaxAgeStr)
+	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
+	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
+	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
+	// Secure Cookie
+	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
+	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
+	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
+	// Auth
+	t.Setenv("AUTH_COOKIE_NAME", expectedAuthCookieName)
+	t.Setenv("AUTH_HEADER_NAME", expectedAuthHeaderName)
+	t.Setenv("AUTH_ALLOWED_HEADER_BEARER", strconv.FormatBool(expectedAuthAllowedHeaderBearer))
+	// IPRateLimit
+	t.Setenv("IP_RATE_LIMITER_ENABLED", strconv.FormatBool(expectedIPRateLimitEnabled))
+	t.Setenv("IP_RATE_LIMITER_REQUESTS", strconv.Itoa(expectedIPRateLimitRequests))
+	t.Setenv("IP_RATE_LIMITER_PER", expectedIPRateLimitPerStr)
+	t.Setenv("IP_RATE_LIMITER_BURST", strconv.Itoa(expectedIPRateLimitBurst))
+	t.Setenv("IP_RATE_LIMITER_TTL", expectedIPRateLimitTTLStr)
+	t.Setenv("IP_RATE_LIMITER_CLEANUP_INTERVAL", expectedIPRateLimitCleanupIntervalStr)
 }

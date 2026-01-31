@@ -1,0 +1,192 @@
+# インフラ層のRDB（`internal/infrastructure/rdb`）ガイド
+
+## この boilerplate での役割
+
+- RDB 実装は `internal/infrastructure/rdb/...` に配置。PostgreSQL を想定。
+- `sqlc` の生成物を利用し、**Repository 実装**で
+  - クエリ呼び出し
+  - `sql.Null*` などの**nullable変換**
+  - **Domainエンティティへの詰め替え**
+  を行う。
+- ドライバ解決とSQLのロガー（`zap`）はここで利用・注入。
+
+## sqlc のラッパーを利用
+
+- **生成クエリ**を安全に呼び出すため、`sqlc`のsqlcの生成ファイルを使用。
+- 取得結果は **infra専用のRow型** → **Domainエンティティ**へマッピング。
+- **nullable変換**は `internal/infrastructure/rdb/conv` のユーティリティを使用し、
+  `sql.NullString ⇔ *string` / `sql.NullTime ⇔ *time.Time` 変換を一元化。
+
+## 実装する上での注意点
+
+### 命名/構造
+
+- インターフェイスの実装構造体は`repository`とする
+- インスタンスの生成関数名は `New` で統一し、[di/infrastructure.go](../di/repository.go) で登録する。
+
+### 依存方向
+
+- Repository の **インターフェースは Domain 層**（`internal/domain/<agg>/repository.go`）に置く。
+- Infra はそのインターフェースを**実装するだけ**。
+
+### 変換の責務
+
+- `sqlc`生成Row/Modelを**上位へ返さない**。必ずDomainへ詰め替えて返す。
+- `sql.ErrNoRows` 等は **`apperror.ErrNotFound` に正規化**して返す。
+- ユニーク制約違反は **`apperror.ErrConflict` に正規化**して返す。
+- その他のエラーは **`apperror.ErrInternal` に正規化**して返す。
+
+### トランザクション
+
+- Tx 境界はUsecase側で管理。Infraは`*sql.DB`/`*sql.Tx`の両方に対応できるようにする。
+- ただし、保存処理などが絡むテストでは、影響しあい不安定になるため`t.Parallel()`での**並列実行不可**とする。
+
+### ロギング
+
+- 機微情報（パスワード等）のログ出力は禁止。クエリバインド値は極力マスク。
+
+### エラー正規化
+
+- ドライバ固有のエラーを `apperror` にマップ（NotFound/Conflict/Unavailable 等）。
+
+## 呼び出せる層
+
+- **Usecase→Infra（Repository実装）** のみ。
+- ControllerやDomainから直接Infra実装を呼ばない。
+- DI（`fx`）で **Repository実装**をProvideし、Usecaseへ注入する。
+
+## やっていいこと / いけないこと(まとめ)
+
+### Do
+
+- `sqlc/gen`の生成コードでクエリ発行し、**Domain エンティティへ変換**して返す。
+- `conv/nullable`で **nullable ⇔ ポインタ**変換を一元化。
+- `ErrNoRows` → `ErrNotFound`、ユニーク制約 → `ErrConflict` 等に正規化。
+- テストでRepositoryの変換とエラー正規化を検証。
+
+### Don’t
+
+- DomainのインターフェースをInfraで定義する。
+- `sqlc`生成型や`sql.Null*`を上位層に返す。
+- ビジネスロジックやドメインルールの判定を持ち込む。
+- Controller/OpenAPI型を参照する。
+
+## Observability（Tracing）の使い方
+
+この boilerplateでは、Infrastructure層で直接OpenTelemetrySDKを扱わず、
+observability.LayerTracerを経由してspanの開始・終了を行います。
+
+### 1. Infrastructure層での span の開始と終了
+
+各ハンドラーの先頭で必ず次の 2 行を記述してください。
+
+```go
+ctx, endSpan := s.tracer.Start(ctx)
+defer endSpan()
+```
+
+- Start(ctx)でspanが開始され、trace_id/span_idがcontextに紐づきます。
+- endSpan()は、spanの終了（span.End）を行います。
+- defer endSpan()により例外や早期returnがあっても必ず終了されます。
+
+ポイント：Infrastructure は span の開始・終了だけを知り、
+OpenTelemetry SDK の詳細には一切触れません。
+
+### 2. TracerのDI（observability.LayerTracer）
+
+Infrastructureは以下のようにobservability.LayerTracerを依存として受け取ります。
+
+```go
+type server struct {
+    db       driver.DatabaseDriver
+    provider driver.LoggingDBProvider
+    tracer   observability.LayerTracer
+}
+```
+
+New関数内では、`observability.NewInfrastructureTracer`でInfrastructure専用のトレーサーを生成します。
+
+```go
+func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
+    return &systemQuery{
+        db:       db,
+        provider: provider,
+        tracer:   tf.Infra(),
+    }
+}
+```
+
+ここではSDKの生インスタンスを直接使わず、
+observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
+
+## 最小スニペット（雛形）
+
+```go
+// 唯一性のある名称
+package user
+
+// repositoryで名称固定
+type repository struct {
+    db       driver.DatabaseDriver
+    provider driver.LoggingDBProvider
+    tracer   observability.LayerTracer
+}
+
+// Newで名称固定
+func New(
+    db driver.DatabaseDriver,
+    provider loggingdb.DBProvider,
+    tf observability.TracerFactory,
+) user.Repository {
+    return &repository{
+        db:       db,
+        provider: provider,
+        tracer:   tf.Infra(),
+    }
+}
+
+func (r *repository) FindAll(ctx context.Context, limit, offset int) (user.Entities, error) {
+    // Spanの開始・終了呼び出して設定
+    ctx, endSpan := r.tracer.Start(ctx)
+    defer endSpan()
+
+    // driver.ResolveDriverWithLogを使うことでログを自動で出力
+    // 不要な場合は、driver.ResolveDriver(ctx, r.db)を使う
+    db := gen.New(r.provider.NewLoggingDB(ctx))
+    // genで生成されたDMLの呼び出し
+    rows, err := db.ListUsers(ctx, &sqlc.ListUsersParams{
+        OffsetParam: offset,
+        LimitParam:  limit,
+    })
+    if err != nil {
+        // エラー正規化して返す。
+        // エラー内容はpgerrorパッケージ（internal/infrastructure/rdb/postgres/pgerror）で判定される
+        return nil, pgerror.NormalizeError(err)
+    }
+
+    // Domainエンティティへの詰め替え
+    users := make(user.Entities, len(rows))
+    for i, row := range rows {
+        user, err := user.New(
+            row.ID.String(),
+            row.FirstName,
+            row.LastName,
+            row.PasswordHash,
+            row.Email,
+            row.Phone,
+            row.PrefectureID.String(),
+            row.City,
+            row.Street,
+            conv.StringPtrFromNull(row.Building),
+            row.PostalCode,
+            conv.TimePtrFromNull(row.DeletedAt),
+        )
+        if err != nil {
+            return nil, err
+        }
+        users[i] = user
+    }
+    return users, nil
+}
+
+```

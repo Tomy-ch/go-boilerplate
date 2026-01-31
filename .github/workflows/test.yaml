@@ -3,6 +3,7 @@ name: Golang Test Workflow
 on:
   pull_request:
     paths:
+      - '.github/workflows/test.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
@@ -47,11 +48,18 @@ jobs:
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
+      - name: Setup DB (wait & init)
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: test
+          user: postgres
+          password: postgres-password
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
       - name: Initialize Database Table
         run: go run cmd/main.go migrate-up --database test
       - name: Seed Database
         run: go run cmd/main.go db-seed --database test
       - name: Run Tests with Coverage
-        run: go test ./... -coverprofile=coverage.out
+        run: make test-cover-ci
       - name: Report Test Coverage
         uses: k1LoW/octocov-action@v1

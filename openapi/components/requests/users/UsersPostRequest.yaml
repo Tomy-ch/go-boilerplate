@@ -1,15 +1,19 @@
 description: ユーザー情報の新規作成
 allOf:
   - $ref: '../../schemas/UserBaseInputRequest.yaml'
-  - type: object
-    properties:
+  - properties:
       password:
         type: string
         description: ユーザーのパスワード
         example: 'password123'
     required:
-      - name
+      - firstName
+      - lastName
       - email
-      - phone
       - password
-    additionalProperties: false
+      - phone
+      - prefecture
+      - city
+      - street
+      - postalCode
+      - building

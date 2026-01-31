@@ -40,7 +40,7 @@ func TestApplyPreMiddlewares(t *testing.T) {
 			{Name: "A", Priority: 1, Middleware: mwA},
 		}
 
-		err := ApplyPreMiddlewares(e, logging.NewTestInstance(t), mws)
+		err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
 		require.NoError(t, err)
 
 		// 適当なハンドラを登録して 1 回リクエスト
@@ -75,7 +75,7 @@ func TestApplyPreMiddlewares(t *testing.T) {
 			},
 		}
 
-		err := ApplyPreMiddlewares(e, logging.NewTestInstance(t), mws)
+		err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
 		require.Error(t, err)
 		// エラーメッセージの一部まで見ておきたい場合
 		require.Contains(t, err.Error(), "priority")
@@ -111,7 +111,7 @@ func TestServerExtends(t *testing.T) {
 				{Name: "A", Priority: 1, Middleware: mwA},
 			}
 
-			err := ApplyUseMiddlewares(e, logging.NewTestInstance(t), mws)
+			err := ApplyUseMiddlewares(e, logging.NewTestLogger(t), mws)
 			require.NoError(t, err)
 
 			e.GET("/", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
@@ -137,7 +137,7 @@ func TestServerExtends(t *testing.T) {
 				})
 			}
 
-			ApplyConfigurators(e, logging.NewTestInstance(t), []SrvCfg{cfg})
+			ApplyConfigurators(e, logging.NewTestLogger(t), []SrvCfg{cfg})
 
 			req := httptest.NewRequest(http.MethodGet, "/cfg", nil)
 			rec := httptest.NewRecorder()
@@ -176,7 +176,7 @@ func TestServerExtends(t *testing.T) {
 				CfgList: []SrvCfg{cfg},
 			}
 
-			_, err := ApplyExtends(e, logging.NewTestInstance(t), extends)
+			_, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
 			require.NoError(t, err)
 
 			req := httptest.NewRequest(http.MethodGet, "/ext", nil)
@@ -202,7 +202,7 @@ func TestServerExtends(t *testing.T) {
 				{Name: "B", Priority: 1, Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next }},
 			}
 
-			err := ApplyUseMiddlewares(e, logging.NewTestInstance(t), dup)
+			err := ApplyUseMiddlewares(e, logging.NewTestLogger(t), dup)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "priority")
 		})
@@ -219,7 +219,7 @@ func TestServerExtends(t *testing.T) {
 				},
 			}
 
-			applied, err := ApplyExtends(e, logging.NewTestInstance(t), extends)
+			applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
 
 			require.Error(t, err)
 			require.Nil(t, applied)
@@ -273,7 +273,7 @@ func TestApplyExtends(t *testing.T) {
 			CfgList: []SrvCfg{cfg},
 		}
 
-		applied, err := ApplyExtends(e, logging.NewTestInstance(t), extends)
+		applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
 		require.NoError(t, err)
 		require.NotNil(t, applied)
 
@@ -307,7 +307,7 @@ func TestApplyExtends(t *testing.T) {
 			},
 		}
 
-		applied, err := ApplyExtends(e, logging.NewTestInstance(t), extends)
+		applied, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
 
 		require.Error(t, err)
 		require.Nil(t, applied)
@@ -319,11 +319,11 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 
 	e := echo.New()
 	// ensure calling with nil/empty slices does not panic
-	err := ApplyPreMiddlewares(e, logging.NewTestInstance(t), nil)
+	err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), nil)
 	require.NoError(t, err)
-	err = ApplyUseMiddlewares(e, logging.NewTestInstance(t), nil)
+	err = ApplyUseMiddlewares(e, logging.NewTestLogger(t), nil)
 	require.NoError(t, err)
-	ApplyConfigurators(e, logging.NewTestInstance(t), nil)
+	ApplyConfigurators(e, logging.NewTestLogger(t), nil)
 
 	// still able to register and serve a route
 	e.GET("/ok", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })

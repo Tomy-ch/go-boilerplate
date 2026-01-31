@@ -44,22 +44,26 @@ func New() (*Config, error) {
 			idleTimeout:       cfg.Server.IdleTimeout,
 		},
 		metrics: MetricsConfig{
-			host: cfg.Metrics.Host,
-			port: cfg.Metrics.Port,
+			host:     cfg.Metrics.Host,
+			port:     cfg.Metrics.Port,
+			userName: cfg.Metrics.UserName,
+			password: cfg.Metrics.Password,
 		},
 		observability: ObservabilityConfig{
-			enabled:           cfg.Observability.Enabled,
-			targetStatusCodes: cfg.Observability.TargetStatusCodes,
+			enabled:             cfg.Observability.Enabled,
+			targetStatusCodes:   cfg.Observability.TargetStatusCodes,
+			targetStatusCodeSet: buildStatusCodeSet(cfg.Observability.TargetStatusCodes),
 		},
 		database: DatabaseConfig{
-			driver:         cfg.Database.Driver,
-			host:           cfg.Database.Host,
-			port:           cfg.Database.Port,
-			user:           cfg.Database.User,
-			password:       cfg.Database.Password,
-			name:           cfg.Database.Name,
-			sslMode:        cfg.Database.SSLMode,
-			defaultTimeout: cfg.Database.DefaultTimeout,
+			driver:                 cfg.Database.Driver,
+			host:                   cfg.Database.Host,
+			port:                   cfg.Database.Port,
+			user:                   cfg.Database.User,
+			password:               cfg.Database.Password,
+			name:                   cfg.Database.Name,
+			sslMode:                cfg.Database.SSLMode,
+			defaultTimeout:         cfg.Database.DefaultTimeout,
+			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
 			maxOpenConns: cfg.DBConnection.MaxOpenConns,
@@ -68,23 +72,115 @@ func New() (*Config, error) {
 			maxIdleTime:  cfg.DBConnection.MaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins: cfg.Security.AllowedOrigins,
-			cidr:           v.cidr,
+			allowedOrigins:        cfg.Security.AllowedOrigins,
+			cidr:                  v.cidr,
+			contentTypeNosniff:    cfg.Security.ContentTypeNosniff,
+			xFrameOptions:         cfg.Security.XFrameOptions,
+			hstsMaxAge:            cfg.Security.HSTSMaxAge,
+			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
+			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
+			referrerPolicy:        cfg.Security.ReferrerPolicy,
+		},
+		secureCookie: SecureCookieConfig{
+			secure:   cfg.SecureCookie.Secure,
+			sameSite: cfg.SecureCookie.SameSite,
+			domain:   cfg.SecureCookie.Domain,
+		},
+		auth: AuthConfig{
+			cookieName:          cfg.Auth.CookieName,
+			headerName:          cfg.Auth.HeaderName,
+			allowedHeaderBearer: cfg.Auth.AllowedHeaderBearer,
+		},
+		ipRateLimit: IPRateLimitConfig{
+			enabled:         cfg.IPRateLimit.Enabled,
+			requests:        cfg.IPRateLimit.Requests,
+			per:             cfg.IPRateLimit.Per,
+			burst:           cfg.IPRateLimit.Burst,
+			ttl:             cfg.IPRateLimit.TTL,
+			cleanupInterval: cfg.IPRateLimit.CleanupInterval,
 		},
 	}, nil
 }
 
 // validateConfig は、ConfigLoaderの内容を検証します。
 func validateConfig(cfg Loader) (*validatedConfig, error) {
-	if cfg.Server.Port < MinPort || MaxPort < cfg.Server.Port {
-		return nil, ErrInvalidPortRange
+	if err := validateApplicationConfig(cfg.App); err != nil {
+		return nil, err
 	}
 
-	if len(cfg.Security.AllowedOrigins) == 0 {
+	if err := validateServerConfig(cfg.Server); err != nil {
+		return nil, err
+	}
+
+	if err := validateDatabaseConfig(cfg.Database); err != nil {
+		return nil, err
+	}
+
+	cidr, err := validateSecurityConfig(cfg.Security)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateIPRateLimitConfig(cfg.IPRateLimit); err != nil {
+		return nil, err
+	}
+
+	return &validatedConfig{
+		cidr: cidr,
+	}, nil
+}
+
+// validateApplicationConfig は、アプリケーション設定を検証します。
+func validateApplicationConfig(appCfg Application) error {
+	if appCfg.Mode != DevelopmentMode && appCfg.Mode != ProductionMode {
+		return ErrInvalidAppMode
+	}
+	return nil
+}
+
+// validateServerConfig は、サーバー設定を検証します。
+func validateServerConfig(srvCfg Server) error {
+	if srvCfg.Port < MinPort || MaxPort < srvCfg.Port {
+		return ErrInvalidPortRange
+	}
+
+	if srvCfg.ReadHeaderTimeout <= 0 {
+		return ErrInvalidReadHeaderTimeout
+	}
+
+	if srvCfg.ReadTimeout <= 0 {
+		return ErrInvalidReadTimeout
+	}
+
+	if srvCfg.WriteTimeout <= 0 {
+		return ErrInvalidWriteTimeout
+	}
+
+	if srvCfg.IdleTimeout <= 0 {
+		return ErrInvalidIdleTimeout
+	}
+
+	if srvCfg.ReadHeaderTimeout > srvCfg.ReadTimeout {
+		return ErrReadHeaderTimeoutExceedsReadTimeout
+	}
+	return nil
+}
+
+// validateDatabaseConfig は、データベース設定を検証します。
+func validateDatabaseConfig(dbCfg Database) error {
+	if dbCfg.SlowQueryWarnThreshold < 0 {
+		return ErrInvalidSlowQueryWarnThreshold
+	}
+	return nil
+}
+
+// validateSecurityConfig は、セキュリティ設定を検証します。
+func validateSecurityConfig(secCfg Security) (*net.IPNet, error) {
+	if len(secCfg.AllowedOrigins) == 0 {
 		return nil, ErrEmptyAllowedOrigins
 	}
 
-	for _, origin := range cfg.Security.AllowedOrigins {
+	for _, origin := range secCfg.AllowedOrigins {
 		if strings.HasPrefix(origin, "http://") {
 			parsedURL, err := url.Parse(origin)
 			if err != nil ||
@@ -94,24 +190,48 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 		}
 	}
 
-	if cfg.App.Mode != DevelopmentMode && cfg.App.Mode != ProductionMode {
-		return nil, ErrInvalidAppMode
-	}
-
-	if cfg.Server.ReadHeaderTimeout.Microseconds() > cfg.Server.ReadTimeout.Microseconds() {
-		return nil, ErrReadHeaderTimeoutExceedsReadTimeout
-	}
-
-	if cfg.Server.ReadTimeout.Microseconds() > cfg.Server.WriteTimeout.Microseconds() {
-		return nil, ErrReadTimeoutExceedsWriteTimeout
-	}
-
-	_, cidr, err := net.ParseCIDR(cfg.Security.CIDR)
+	_, cidr, err := net.ParseCIDR(secCfg.CIDR)
 	if err != nil {
 		return nil, fmt.Errorf("%w : %w", ErrFailedToParseCIDR, err)
 	}
 
-	return &validatedConfig{
-		cidr: cidr,
-	}, nil
+	return cidr, nil
+}
+
+// validateIPRateLimitConfig は、IPレートリミット設定を検証します。
+func validateIPRateLimitConfig(iprCfg IPRateLimit) error {
+	if !iprCfg.Enabled {
+		return nil
+	}
+
+	if iprCfg.Requests <= 0 {
+		return ErrInvalidIPRateLimitRequests
+	}
+
+	if iprCfg.Per <= 0 {
+		return ErrInvalidIPRateLimitPer
+	}
+
+	if iprCfg.Burst < 0 {
+		return ErrInvalidIPRateLimitBurst
+	}
+
+	if iprCfg.TTL <= 0 {
+		return ErrInvalidIPRateLimitTTL
+	}
+
+	if iprCfg.CleanupInterval <= 0 {
+		return ErrInvalidIPRateLimitCleanupInterval
+	}
+
+	return nil
+}
+
+// buildStatusCodeSet は、HTTPステータスコードのセットを構築します。
+func buildStatusCodeSet(codes []int) map[int]bool {
+	m := make(map[int]bool, len(codes))
+	for _, code := range codes {
+		m[code] = true
+	}
+	return m
 }

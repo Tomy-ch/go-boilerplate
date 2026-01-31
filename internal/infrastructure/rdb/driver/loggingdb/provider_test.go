@@ -7,6 +7,7 @@ import (
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
+	"boilerplate-go/internal/observability"
 
 	"github.com/stretchr/testify/require"
 )
@@ -14,32 +15,36 @@ import (
 func TestNewLoggingDBProvider(t *testing.T) {
 	t.Parallel()
 
-	db := driver.NewMockInstance(t)
-	l := logging.NewTestInstance(t)
-
 	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	db := driver.NewTestInstance(t, dbCfg)
+	l := logging.NewTestLogger(t)
+
+	tracer := observability.NewNoopTracerFactory(t)
+
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	expected := &provider{
-		db: db,
-		l:  l,
-		lf: lf,
+		db:     db,
+		dbCfg:  dbCfg,
+		l:      l,
+		lf:     lf,
+		tracer: tracer.Infra(),
 	}
 
-	provider := NewLoggingDBProvider(db, l, lf)
+	provider := NewLoggingDBProvider(db, dbCfg, l, lf, tracer)
 	require.Equal(t, expected, provider)
 }
 
 func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 	t.Parallel()
 
-	db := driver.NewMockInstance(t)
-	l := logging.NewTestInstance(t)
-
 	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	db := driver.NewTestInstance(t, dbCfg)
+	l := logging.NewTestLogger(t)
+
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	provider := &provider{
 		db: db,
@@ -55,11 +60,13 @@ func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 	require.Equal(t, provider, dwl.provider)
 }
 
-func TestLoggingDBProvider_logger(t *testing.T) {
+func Test_provider_Logger(t *testing.T) {
 	t.Parallel()
 
-	db := driver.NewMockInstance(t)
-	l := logging.NewTestInstance(t)
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	db := driver.NewTestInstance(t, dbCfg)
+	l := logging.NewTestLogger(t)
 
 	provider := &provider{
 		db: db,
@@ -69,14 +76,12 @@ func TestLoggingDBProvider_logger(t *testing.T) {
 	require.Equal(t, l, provider.Logger())
 }
 
-func TestLoggingDBProvider_logFields(t *testing.T) {
+func Test_provider_LogFields(t *testing.T) {
 	t.Parallel()
 
 	db := driver.NewMockInstance(t)
 
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	provider := &provider{
 		db: db,
@@ -84,4 +89,33 @@ func TestLoggingDBProvider_logFields(t *testing.T) {
 	}
 
 	require.Equal(t, lf, provider.LogFields())
+}
+
+func Test_provider_DBConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	db := driver.NewTestInstance(t, dbCfg)
+
+	provider := &provider{
+		db:    db,
+		dbCfg: dbCfg,
+	}
+
+	require.Equal(t, dbCfg, provider.DBConfig())
+}
+
+func Test_provider_LayerTracer(t *testing.T) {
+	t.Parallel()
+
+	tracer := observability.NewNoopTracerFactory(t)
+
+	expectedTracer := tracer.Infra()
+
+	provider := &provider{
+		tracer: expectedTracer,
+	}
+
+	require.Equal(t, expectedTracer, provider.LayerTracer())
 }

@@ -1,13 +1,15 @@
 package healthz
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/handlertest/testassert"
-	"boilerplate-go/internal/controller/handler/handlertest/testinstance"
 	"boilerplate-go/internal/controller/handler/healthz/gen"
+	"boilerplate-go/internal/controller/handler/testkit/testassert"
+	"boilerplate-go/internal/observability"
 
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +18,9 @@ const targetPath = "/healthz"
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
-	e, _, tf, _ := testinstance.NewTestInstanceForBindHandler(t)
+	e := echo.New()
+	tf := observability.NewNoopTracerFactory(t)
+
 	BindHandler(e, tf)
 
 	expectedMethods := []string{http.MethodGet}
@@ -32,7 +36,9 @@ func TestBindHandler(t *testing.T) {
 func TestGetHealthz(t *testing.T) {
 	t.Parallel()
 
-	ctx, _, _, lt := testinstance.NewTestInstancesForImplementedUsecase(t)
+	ctx := context.Background()
+	lt := observability.NewMockControllerLayerTracer(t)
+
 	s := &server{
 		tracer: lt,
 	}

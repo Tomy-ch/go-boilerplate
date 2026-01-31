@@ -33,8 +33,3 @@
 
 - ログにはスタックや内部情報が含まれるため、本番環境では出力を抑制する設定になっています。必要に応じて `newRecoverConfig` や `newRecoverLogErrorFunc` をカスタマイズしてください。
 - `recover` と `logging` / `observability` ミドルウェアを組み合わせることで、パニック時の情報をトレースやログに一貫して送れます。
-- テストは `recover_test.go` にあるため、CI での検証を推奨します。
-
-## 作成・更新
-
-作成・更新: `internal/controller/httpstack/recovery` の実装に合わせて記述。

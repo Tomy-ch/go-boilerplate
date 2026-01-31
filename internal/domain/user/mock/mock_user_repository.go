@@ -13,6 +13,7 @@ import (
 	user "boilerplate-go/internal/domain/user"
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "go.uber.org/mock/gomock"
 )
@@ -41,17 +42,61 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
-// GetAllUsers mocks base method.
-func (m *MockRepository) GetAllUsers(ctx context.Context, limit, offset int) (user.Entities, error) {
+// CountByActive mocks base method.
+func (m *MockRepository) CountByActive(ctx context.Context, active *bool) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllUsers", ctx, limit, offset)
+	ret := m.ctrl.Call(m, "CountByActive", ctx, active)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountByActive indicates an expected call of CountByActive.
+func (mr *MockRepositoryMockRecorder) CountByActive(ctx, active any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByActive", reflect.TypeOf((*MockRepository)(nil).CountByActive), ctx, active)
+}
+
+// CreateUser mocks base method.
+func (m *MockRepository) CreateUser(ctx context.Context, datetime time.Time, arg2 *user.Entity) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateUser", ctx, datetime, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateUser indicates an expected call of CreateUser.
+func (mr *MockRepositoryMockRecorder) CreateUser(ctx, datetime, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockRepository)(nil).CreateUser), ctx, datetime, arg2)
+}
+
+// FindAll mocks base method.
+func (m *MockRepository) FindAll(ctx context.Context, limit, offset int32) (user.Entities, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindAll", ctx, limit, offset)
 	ret0, _ := ret[0].(user.Entities)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAllUsers indicates an expected call of GetAllUsers.
-func (mr *MockRepositoryMockRecorder) GetAllUsers(ctx, limit, offset any) *gomock.Call {
+// FindAll indicates an expected call of FindAll.
+func (mr *MockRepositoryMockRecorder) FindAll(ctx, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllUsers", reflect.TypeOf((*MockRepository)(nil).GetAllUsers), ctx, limit, offset)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindAll", reflect.TypeOf((*MockRepository)(nil).FindAll), ctx, limit, offset)
+}
+
+// FindByKeyword mocks base method.
+func (m *MockRepository) FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Entities, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByKeyword", ctx, keywords, active, limit, offset)
+	ret0, _ := ret[0].(user.Entities)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByKeyword indicates an expected call of FindByKeyword.
+func (mr *MockRepositoryMockRecorder) FindByKeyword(ctx, keywords, active, limit, offset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByKeyword", reflect.TypeOf((*MockRepository)(nil).FindByKeyword), ctx, keywords, active, limit, offset)
 }

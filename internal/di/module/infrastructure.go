@@ -1,6 +1,7 @@
 package module
 
 import (
+	"boilerplate-go/internal/infrastructure/rdb/repository/prefecture"
 	"boilerplate-go/internal/infrastructure/rdb/repository/user"
 	"boilerplate-go/internal/infrastructure/rdb/system_query/healthcheck"
 
@@ -14,6 +15,7 @@ func InfrastructureModule() fx.Option {
 			fx.Provide(
 				// サンプルのリポジトリ
 				user.New,
+				prefecture.New,
 			),
 		),
 		fx.Module("query_service",

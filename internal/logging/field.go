@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"time"
+
 	"boilerplate-go/pkg/xerrors"
 )
 
@@ -88,6 +90,24 @@ func Bool(key string, v bool) *Field {
 	}
 }
 
+// Time は、時間のログフィールドを作成します。
+func Time(key string, v time.Time) *Field {
+	return &Field{
+		key:         key,
+		kind:        fieldString,
+		stringValue: v.Format(time.RFC3339Nano),
+	}
+}
+
+// DurationMs は、時間間隔のログフィールドをミリ秒単位で作成します。
+func DurationMs(key string, v time.Duration) *Field {
+	return &Field{
+		key:          key,
+		kind:         fieldFloat64,
+		float64Value: latencyMs(v),
+	}
+}
+
 // Error は、エラーのログフィールドを作成します。
 func Error(key string, err error) *Field {
 	return &Field{
@@ -113,4 +133,9 @@ func Any(key string, v any) *Field {
 		kind:     fieldAny,
 		anyValue: v,
 	}
+}
+
+// latencyMs は、latency をミリ秒単位の float64 に変換します。
+func latencyMs(latency time.Duration) float64 {
+	return float64(latency) / float64(time.Millisecond)
 }

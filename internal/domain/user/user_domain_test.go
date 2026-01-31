@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/domain/prefecture"
 	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/uuid"
 
@@ -21,7 +20,6 @@ func TestNew(t *testing.T) {
 	passwordHash := "hashed_password"
 	email := "john.doe@example.com"
 	phone := "1234567890"
-	prefectureName := "Tokyo"
 	city := "Shibuya"
 	street := "1-2-3"
 	postalCode := "150-0001"
@@ -29,19 +27,18 @@ func TestNew(t *testing.T) {
 	deletedAt := ptr.To(time.Now().AddDate(-1, 0, 0))
 
 	expected := &Entity{
-		id:             id,
-		firstName:      firstName,
-		lastName:       lastName,
-		password:       passwordHash,
-		email:          email,
-		phone:          phone,
-		prefectureID:   prefectureID,
-		prefectureName: prefectureName,
-		city:           city,
-		street:         street,
-		building:       building,
-		postalCode:     postalCode,
-		deletedAt:      deletedAt,
+		id:           id,
+		firstName:    firstName,
+		lastName:     lastName,
+		password:     passwordHash,
+		email:        email,
+		phone:        phone,
+		prefectureID: prefectureID,
+		city:         city,
+		street:       street,
+		building:     building,
+		postalCode:   postalCode,
+		deletedAt:    deletedAt,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -57,7 +54,6 @@ func TestNew(t *testing.T) {
 				email,
 				phone,
 				prefectureID.String(),
-				prefectureName,
 				city,
 				street,
 				building,
@@ -83,7 +79,6 @@ func TestNew(t *testing.T) {
 				email,
 				phone,
 				prefectureID.String(),
-				prefectureName,
 				city,
 				street,
 				building,
@@ -107,7 +102,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -128,7 +123,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -154,7 +149,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -176,7 +171,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -188,55 +183,6 @@ func TestNew(t *testing.T) {
 				require.ErrorIs(t, err, ErrInvalidLastName)
 			})
 		})
-
-		t.Run("prefectureNameが範囲外の場合、エラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			t.Run("prefectureNameの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
-				t.Parallel()
-				actual, err := New(
-					id.String(),
-					firstName,
-					lastName,
-					passwordHash,
-					email,
-					phone,
-					prefectureID.String(),
-					strings.Repeat("県", prefecture.MinLength-1),
-					city,
-					street,
-					building,
-					postalCode,
-					deletedAt,
-				)
-
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPrefectureName)
-			})
-
-			t.Run("prefectureNameの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
-				t.Parallel()
-				actual, err := New(
-					id.String(),
-					firstName,
-					lastName,
-					passwordHash,
-					email,
-					phone,
-					prefectureID.String(),
-					strings.Repeat("県", prefecture.MaxPrefectureNameLength+1),
-					city,
-					street,
-					building,
-					postalCode,
-					deletedAt,
-				)
-
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPrefectureName)
-			})
-		})
-
 		t.Run("passwordが範囲外の場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -250,7 +196,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -272,7 +218,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -298,7 +244,7 @@ func TestNew(t *testing.T) {
 					strings.Repeat("a", minLength-1),
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -320,7 +266,7 @@ func TestNew(t *testing.T) {
 					strings.Repeat("a", maxEmailLength+1),
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -346,7 +292,7 @@ func TestNew(t *testing.T) {
 					email,
 					strings.Repeat("1", minLength-1),
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -368,7 +314,7 @@ func TestNew(t *testing.T) {
 					email,
 					strings.Repeat("1", maxPhoneLength+1),
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -391,7 +337,6 @@ func TestNew(t *testing.T) {
 				email,
 				phone,
 				prefectureID.String(),
-				prefectureName,
 				city,
 				street,
 				building,
@@ -416,7 +361,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					strings.Repeat("市", minLength-1),
 					street,
 					building,
@@ -438,7 +383,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					strings.Repeat("市", maxCityLength+1),
 					street,
 					building,
@@ -464,7 +409,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					strings.Repeat("番", minLength-1),
 					building,
@@ -486,7 +431,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					strings.Repeat("番", maxStreetLength+1),
 					building,
@@ -512,7 +457,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					ptr.To(strings.Repeat("建", minLength-1)),
@@ -534,7 +479,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					ptr.To(strings.Repeat("建", maxBuildingLength+1)),
@@ -560,7 +505,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -582,7 +527,7 @@ func TestNew(t *testing.T) {
 					email,
 					phone,
 					prefectureID.String(),
-					prefectureName,
+
 					city,
 					street,
 					building,
@@ -605,7 +550,6 @@ func TestNew(t *testing.T) {
 				email,
 				phone,
 				"invalid-prefecture-id",
-				prefectureName,
 				city,
 				street,
 				building,
@@ -619,7 +563,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestGetterMethods(t *testing.T) {
+func TestEntity_Accessors(t *testing.T) {
 	t.Parallel()
 	id := uuid.NewTestFromSalt(t, "user")
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture")
@@ -628,7 +572,6 @@ func TestGetterMethods(t *testing.T) {
 	passwordHash := "hashed_password"
 	email := "john.doe@example.com"
 	phone := "1234567890"
-	prefectureName := "Tokyo"
 	city := "Shibuya"
 	street := "1-2-3"
 	postalCode := "150-0001"
@@ -636,19 +579,18 @@ func TestGetterMethods(t *testing.T) {
 	deletedAt := ptr.To(time.Now().AddDate(-1, 0, 0))
 
 	expected := &Entity{
-		id:             id,
-		firstName:      firstName,
-		lastName:       lastName,
-		password:       passwordHash,
-		email:          email,
-		phone:          phone,
-		prefectureID:   prefectureID,
-		prefectureName: prefectureName,
-		city:           city,
-		street:         street,
-		building:       building,
-		postalCode:     postalCode,
-		deletedAt:      deletedAt,
+		id:           id,
+		firstName:    firstName,
+		lastName:     lastName,
+		password:     passwordHash,
+		email:        email,
+		phone:        phone,
+		prefectureID: prefectureID,
+		city:         city,
+		street:       street,
+		building:     building,
+		postalCode:   postalCode,
+		deletedAt:    deletedAt,
 	}
 
 	t.Run("IDメソッドが保存した文字列をuuid.UUIDに変換した値を返す", func(t *testing.T) {
@@ -705,14 +647,6 @@ func TestGetterMethods(t *testing.T) {
 		expected := expected
 		actual := expected.PrefectureID()
 		require.Equal(t, expected.prefectureID, actual)
-	})
-
-	t.Run("PrefectureNameメソッドが保存した正しい値を返す", func(t *testing.T) {
-		t.Parallel()
-
-		expected := expected
-		actual := expected.PrefectureName()
-		require.Equal(t, expected.prefectureName, actual)
 	})
 
 	t.Run("Cityメソッドが保存した正しい値を返す", func(t *testing.T) {

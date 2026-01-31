@@ -5,13 +5,12 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/apperror"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc"
+	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
+	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/healthcheck/query"
-	"boilerplate-go/pkg/xerrors"
 )
 
 type systemQuery struct {
@@ -34,10 +33,10 @@ func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)
 	defer endSpan()
 
 	start := time.Now()
-	db := sqlc.New(s.provider.NewLoggingDB(ctx))
+	db := gen.New(s.provider.NewLoggingDB(ctx))
 	_, err := db.GetDBHealthCheck(ctx)
 	if err != nil {
-		return query.DBHealth{}, xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+		return query.DBHealth{}, pgerror.NormalizeError(err)
 	}
 	latency := time.Since(start)
 

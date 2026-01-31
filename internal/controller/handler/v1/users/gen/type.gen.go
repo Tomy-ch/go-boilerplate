@@ -7,6 +7,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	BearerAuthScopes = "BearerAuth.Scopes"
+)
+
 // ErrorResponse エラーレスポンスの共通スキーマ
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
@@ -24,12 +28,35 @@ type ErrorResponse struct {
 
 // RequestPostV1Users defines model for RequestPostV1Users.
 type RequestPostV1Users struct {
+	// Building 建物名・部屋番号
+	Building *string `json:"building"`
+
+	// City 市区町村
+	City string `json:"city"`
+
+	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
-	Name  string              `json:"name"`
+
+	// FirstName 苗字
+	FirstName string `json:"firstName"`
+
+	// LastName 名前
+	LastName string `json:"lastName"`
 
 	// Password ユーザーのパスワード
 	Password string `json:"password"`
-	Phone    string `json:"phone"`
+
+	// Phone 電話番号
+	Phone string `json:"phone"`
+
+	// PostalCode 郵便番号
+	PostalCode string `json:"postalCode"`
+
+	// Prefecture 都道府県
+	Prefecture string `json:"prefecture"`
+
+	// Street 丁目・番地
+	Street string `json:"street"`
 }
 
 // ResponseV1Users defines model for ResponseV1Users.
@@ -47,20 +74,72 @@ type ResponseV1Users struct {
 
 // UserBaseInputRequest ユーザー情報の基本入力スキーマ
 type UserBaseInputRequest struct {
+	// Building 建物名・部屋番号
+	Building *string `json:"building"`
+
+	// City 市区町村
+	City *string `json:"city,omitempty"`
+
+	// Email メールアドレス
 	Email *openapi_types.Email `json:"email,omitempty"`
-	Name  *string              `json:"name,omitempty"`
-	Phone *string              `json:"phone,omitempty"`
+
+	// FirstName 苗字
+	FirstName *string `json:"firstName,omitempty"`
+
+	// LastName 名前
+	LastName *string `json:"lastName,omitempty"`
+
+	// Password パスワード
+	Password *string `json:"password,omitempty"`
+
+	// Phone 電話番号
+	Phone *string `json:"phone,omitempty"`
+
+	// PostalCode 郵便番号
+	PostalCode *string `json:"postalCode,omitempty"`
+
+	// Prefecture 都道府県
+	Prefecture *string `json:"prefecture,omitempty"`
+
+	// Street 丁目・番地
+	Street *string `json:"street,omitempty"`
 }
 
 // UserResponse ユーザー情報の基本レスポンススキーマ
 type UserResponse struct {
+	// Building 建物名・部屋番号
+	Building *string `json:"building,omitempty"`
+
+	// City 市区町村
+	City string `json:"city"`
+
+	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
-	Name  string              `json:"name"`
-	Phone *string             `json:"phone"`
+
+	// FirstName 苗字
+	FirstName string `json:"firstName"`
+
+	// LastName 名前
+	LastName string `json:"lastName"`
+
+	// Phone 電話番号
+	Phone *string `json:"phone"`
+
+	// PostalCode 郵便番号
+	PostalCode string `json:"postalCode"`
+
+	// Prefecture 都道府県
+	Prefecture string `json:"prefecture"`
+
+	// Street 丁目・番地
+	Street string `json:"street"`
 }
 
-// NameKeywordParam defines model for NameKeywordParam.
-type NameKeywordParam = string
+// ActiveParam defines model for ActiveParam.
+type ActiveParam = bool
+
+// KeywordParam defines model for KeywordParam.
+type KeywordParam = string
 
 // PageParam defines model for PageParam.
 type PageParam = int
@@ -70,8 +149,11 @@ type PerPageParam = int
 
 // GetUsersParams defines parameters for GetUsers.
 type GetUsersParams struct {
-	// NameKeyword ユーザー名の部分一致検索キーワード
-	NameKeyword *NameKeywordParam `form:"name_keyword,omitempty" json:"name_keyword,omitempty"`
+	// Keyword 全文検索キーワード
+	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`
+
+	// Active 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
+	Active *ActiveParam `form:"active,omitempty" json:"active,omitempty"`
 
 	// Page ページ番号（1から始まる）
 	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`

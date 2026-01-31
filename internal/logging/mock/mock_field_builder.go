@@ -82,16 +82,30 @@ func (mr *MockLogFieldBuilderMockRecorder) BuildObservabilityFields(obs any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildObservabilityFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildObservabilityFields), obs)
 }
 
-// BuildSQLFields mocks base method.
-func (m *MockLogFieldBuilder) BuildSQLFields(sql logging.SQLFieldsInput) []*logging.Field {
+// BuildSQLEndFields mocks base method.
+func (m *MockLogFieldBuilder) BuildSQLEndFields(sql logging.SQLFieldsEndInput) []*logging.Field {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BuildSQLFields", sql)
+	ret := m.ctrl.Call(m, "BuildSQLEndFields", sql)
 	ret0, _ := ret[0].([]*logging.Field)
 	return ret0
 }
 
-// BuildSQLFields indicates an expected call of BuildSQLFields.
-func (mr *MockLogFieldBuilderMockRecorder) BuildSQLFields(sql any) *gomock.Call {
+// BuildSQLEndFields indicates an expected call of BuildSQLEndFields.
+func (mr *MockLogFieldBuilderMockRecorder) BuildSQLEndFields(sql any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildSQLFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildSQLFields), sql)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildSQLEndFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildSQLEndFields), sql)
+}
+
+// BuildSQLStartFields mocks base method.
+func (m *MockLogFieldBuilder) BuildSQLStartFields(sql logging.SQLFieldsStartInput) []*logging.Field {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BuildSQLStartFields", sql)
+	ret0, _ := ret[0].([]*logging.Field)
+	return ret0
+}
+
+// BuildSQLStartFields indicates an expected call of BuildSQLStartFields.
+func (mr *MockLogFieldBuilderMockRecorder) BuildSQLStartFields(sql any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildSQLStartFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildSQLStartFields), sql)
 }

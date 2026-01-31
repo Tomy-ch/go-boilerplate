@@ -1,12 +1,14 @@
 package healthcheck
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/healthcheck/query"
 	mock_query "boilerplate-go/internal/usecase/healthcheck/query/mock"
-	"boilerplate-go/internal/usecase/usecasetest"
+	"boilerplate-go/internal/usecase/testkit"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -15,7 +17,8 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	ctrl, tf := usecasetest.NewTestInstanceForNew(t)
+	ctrl := gomock.NewController(t)
+	tf := observability.NewNoopTracerFactory(t)
 	sysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 
 	expected := &usecase{
@@ -35,7 +38,9 @@ func Test_usecase_CheckHealth(t *testing.T) {
 
 		t.Run("DBのヘルスチェックが正常な場合、OKステータスが返る", func(t *testing.T) {
 			t.Parallel()
-			ctx, ctrl, _, lt := usecasetest.NewTestInstanceForImplementedUsecase(t)
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
 
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{
@@ -60,7 +65,9 @@ func Test_usecase_CheckHealth(t *testing.T) {
 
 		t.Run("DBのヘルスチェックが異常な場合、Unhealthyステータスが返る", func(t *testing.T) {
 			t.Parallel()
-			ctx, ctrl, _, lt := usecasetest.NewTestInstanceForImplementedUsecase(t)
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
 
 			expectedDBHealth := query.DBHealth{
 				Ready:       false,
@@ -72,7 +79,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 				ApplicationTime: time.Now(),
 				DBHealthCheck:   expectedDBHealth,
 			}
-			expectedErr := usecasetest.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError(t)
 
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(expectedDBHealth, expectedErr).Times(1)

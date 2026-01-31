@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/infrastructure/rdb/rdbtest"
+	"boilerplate-go/internal/infrastructure/rdb/testkit"
+	"boilerplate-go/internal/observability"
 
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +13,8 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, provider, tf := rdbtest.NewTestInstancesForNew(t)
+	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	tf := observability.NewNoopTracerFactory(t)
 	expected := &systemQuery{
 		tracer:   tf.Infra(),
 		db:       db,
@@ -26,9 +28,13 @@ func TestNew(t *testing.T) {
 func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 	t.Parallel()
 
-	db, txm, provider, _, tracer := rdbtest.NewTestInstancesForImplementedInfra(t)
+	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+
+	txm := testkit.NewTestTransactionManager(t)
+
 	s := &systemQuery{
-		tracer:   tracer,
+		tracer:   lt,
 		db:       db,
 		provider: provider,
 	}
@@ -39,15 +45,13 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 		t.Run("DBのヘルスチェックが成功する", func(t *testing.T) {
 			t.Parallel()
 
-			err := txm.Do(func(ctx context.Context) error {
+			txm.WithinTx(func(ctx context.Context) {
 				res, err := s.CheckDBHealth(ctx)
 				require.NoError(t, err)
 				require.True(t, res.Ready)
 				require.Positive(t, res.Latency.Microseconds())
 				require.NotZero(t, res.ResponsedAt)
-				return nil
 			})
-			require.NoError(t, err)
 		})
 	})
 }

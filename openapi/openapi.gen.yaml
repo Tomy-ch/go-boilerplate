@@ -58,6 +58,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseHealth'
+  /metrics:
+    get:
+      operationId: GetMetrics
+      tags:
+        - metrics
+      security:
+        - basicAuth: []
+      summary: サーバーのメトリクス取得
+      description: サーバーのメトリクス情報を取得するためのエンドポイントです。
+      responses:
+        '200':
+          description: サーバーは正常に稼働しています。
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: メトリクス情報を含むプレーンテキスト
   /ready:
     get:
       operationId: GetReady
@@ -86,6 +103,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResponseVersion'
+  /_internal/types/error-response:
+    get:
+      summary: （内部用）ErrorResponse型生成用エンドポイント
+      description: |
+        このエンドポイントは Goコード生成のためだけに存在します。 実際には実装・公開されません。
+      tags:
+        - internal/types/error-response
+      operationId: GenerateErrorSchema
+      responses:
+        '200':
+          description: このレスポンスの型を生成するためです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/users:
     get:
       operationId: GetUsers
@@ -94,7 +126,8 @@ paths:
       summary: ユーザー一覧の取得
       description: ユーザーの一覧を取得します。検索条件やページネーションを指定できます。
       parameters:
-        - $ref: '#/components/parameters/NameKeywordParam'
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/ActiveParam'
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
       responses:
@@ -128,6 +161,8 @@ paths:
         - v1/users
       summary: ユーザーの作成
       description: 新しいユーザーを作成します。必要な情報をリクエストボディに含めてください。
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -354,23 +389,170 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /_internal/types/error-response:
+  /debug/cookie:
     get:
-      summary: （内部用）ErrorResponse型生成用エンドポイント
-      description: |
-        このエンドポイントは Goコード生成のためだけに存在します。 実際には実装・公開されません。
+      operationId: GetDebugCookie
       tags:
-        - internal/types/error-response
-      operationId: GenerateErrorSchema
+        - debug/cookie
+      summary: |
+        Debug - request cookie確認（Cookieヘッダと解析結果を返す）
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
       responses:
         '200':
-          description: このレスポンスの型を生成するためです。
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/DebugCookieInspectResponse'
+    post:
+      operationId: PostDebugCookie
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - issue Set-Cookie (rewrite確認用)
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DebugIssueCookieRequest'
+      responses:
+        '204':
+          description: No Content
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+    delete:
+      operationId: DeleteDebugCookie
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - clear cookie
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+            default: __Host-access_token
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+            default: /
+      responses:
+        '204':
+          description: No Content
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+  /debug/cookie/copy:
+    get:
+      operationId: GetDebugCookieRawCopy
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - io.Copy / ReadFrom 経路確認
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        サーバ側で io.Copy を使ってレスポンスボディを書き出します。
+        SecurityCookie MW による Set-Cookie rewrite と、ReadFrom 経路でも壊れないことを確認できます。
+      responses:
+        '200':
+          description: OK
+          headers:
+            Set-Cookie:
+              description: (debug) issued cookie (MWでrewriteされる想定)
+              schema:
+                type: string
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                sample:
+                  value: |
+                    hello-cookie
+                    hello-cookie
+  /debug/cookie/stream:
+    get:
+      operationId: GetDebugCookieRawStream
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - Flush 経路確認（SSE風）
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        text/event-stream を返し、サーバ側で複数回 Flush() を呼びます。
+        SecurityCookie MW による Set-Cookie の rewrite と、Flush 経路で壊れないことを確認できます。
+      responses:
+        '200':
+          description: OK (SSE stream)
+          headers:
+            Set-Cookie:
+              description: (debug) issued cookie (MWでrewriteされる想定)
+              schema:
+                type: string
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              examples:
+                ping:
+                  value: |
+                    data: ping
+  /debug/cookie/ws:
+    get:
+      operationId: GetDebugCookieRawWs
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - WebSocket / Hijack 経路確認
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        WebSocket に Upgrade します（内部で Hijack が関与する実装を想定）。
+        OpenAPI 3.0 では WebSocket を厳密に表現できないため、101 と説明で表します。
+        動作確認は wscat 等で行ってください。
+      responses:
+        '101':
+          description: Switching Protocols (WebSocket)
+          headers:
+            Upgrade:
+              schema:
+                type: string
+                example: websocket
+            Connection:
+              schema:
+                type: string
+                example: Upgrade
+            Sec-WebSocket-Accept:
+              schema:
+                type: string
+        '400':
+          description: Bad Request (Upgrade 失敗)
 components:
   parameters:
+    KeywordParam:
+      name: keyword
+      in: query
+      description: 全文検索キーワード
+      required: false
+      schema:
+        type: string
+        example: example keyword
+    ActiveParam:
+      name: active
+      in: query
+      description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
+      required: false
+      schema:
+        type: boolean
+        example: true
     PageParam:
       name: page
       in: query
@@ -401,14 +583,16 @@ components:
         type: string
         format: uuid
         example: 123e4567-e89b-12d3-a456-426614174000
-    NameKeywordParam:
-      name: name_keyword
-      in: query
-      description: ユーザー名の部分一致検索キーワード
-      required: false
-      schema:
-        type: string
-        example: John
+  securitySchemes:
+    BearerAuth:
+      type: http
+      description: 認証にBearerトークンを使用することを示します。
+      scheme: bearer
+      bearerFormat: JWT
+    BasicAuth:
+      type: http
+      description: 認証にBasic認証を使用することを示します。
+      scheme: basic
   schemas:
     ErrorResponse:
       type: object
@@ -507,39 +691,120 @@ components:
           type: string
           description: サービス名
     UserBaseInputRequest:
-      type: object
       description: ユーザー情報の基本入力スキーマ
+      additionalProperties: false
       properties:
-        name:
+        firstName:
+          description: 苗字
           type: string
-          example: John Doe
+          example: Alice
+          maxLength: 50
+        lastName:
+          description: 名前
+          type: string
+          example: Smith
           maxLength: 50
         email:
+          description: メールアドレス
           type: string
           format: email
-          example: john.doe@example.com
-        phone:
+          example: alice.smith@example.com
+        password:
+          description: パスワード
           type: string
-          pattern: '^\\+?[0-9]{10,15}$'
+          format: password
+          minLength: 8
+          example: P@ssw0rd!
+        phone:
+          description: 電話番号
+          type: string
+          pattern: '^\+?[0-9]{10,15}$'
           example: 09012345678
+        postalCode:
+          description: 郵便番号
+          type: string
+          pattern: '^[0-9]{3}-[0-9]{4}$'
+          example: 150-0041
+        prefecture:
+          description: 都道府県
+          type: string
+          example: 東京都
+          maxLength: 100
+        city:
+          description: 市区町村
+          type: string
+          example: Shibuya
+          maxLength: 100
+        street:
+          description: 丁目・番地
+          type: string
+          example: 1-2-3 Jinnan
+          maxLength: 200
+        building:
+          description: 建物名・部屋番号
+          type: string
+          example: Shibuya Building 101
+          maxLength: 200
+          nullable: true
     UserResponse:
       type: object
       description: ユーザー情報の基本レスポンススキーマ
       required:
-        - name
+        - firstName
+        - lastName
+        - phone
         - email
+        - postalCode
+        - prefecture
+        - city
+        - street
       properties:
-        name:
+        firstName:
+          description: 苗字
           type: string
-          example: John Doe
+          example: John
+          maxLength: 50
+        lastName:
+          description: 名前
+          type: string
+          example: Doe
+          maxLength: 50
         email:
           type: string
+          description: メールアドレス
           format: email
           example: john.doe@example.com
         phone:
           type: string
+          description: 電話番号
           nullable: true
+          pattern: '^\+?[0-9]{10,15}$'
           example: 09012345678
+        postalCode:
+          description: 郵便番号
+          type: string
+          pattern: '^[0-9]{3}-[0-9]{4}$'
+          example: 150-0041
+        prefecture:
+          description: 都道府県
+          type: string
+          example: Tokyo
+          maxLength: 100
+        city:
+          description: 市区町村
+          type: string
+          example: Shibuya
+          maxLength: 100
+        street:
+          description: 丁目・番地
+          type: string
+          example: 1-2-3 Jinnan
+          maxLength: 200
+        building:
+          description: 建物名・部屋番号
+          type: string
+          example: Shibuya Building 101
+          maxLength: 200
     ResponseV1User:
       $ref: '#/components/schemas/UserResponse'
     ResponseV1Users:
@@ -575,28 +840,65 @@ components:
       description: ユーザー情報の新規作成
       allOf:
         - $ref: '#/components/schemas/UserBaseInputRequest'
-        - type: object
-          properties:
+        - properties:
             password:
               type: string
               description: ユーザーのパスワード
               example: password123
           required:
-            - name
+            - firstName
+            - lastName
             - email
-            - phone
             - password
-          additionalProperties: false
+            - phone
+            - prefecture
+            - city
+            - street
+            - postalCode
+            - building
     RequestPutV1User:
       description: ユーザー情報の更新
       allOf:
         - $ref: '#/components/schemas/RequestPatchV1User'
-        - type: object
-          additionalProperties: false
-          required:
-            - name
+        - required:
+            - firstName
+            - lastName
             - email
+            - password
+            - postalCode
+            - phone
+            - prefecture
+            - city
+            - street
+            - building
     RequestPatchV1User:
       description: ユーザー情報の部分更新
       allOf:
         - $ref: '#/components/schemas/UserBaseInputRequest'
+    DebugIssueCookieRequest:
+      additionalProperties: false
+      description: |
+        Debug - issue Set-Cookie request schema
+        このリクエストは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      properties:
+        setCookie:
+          type: string
+          description: Raw Set-Cookie header value
+          example: __Host-access_token=rawtoken; Path=/hoge; Domain=example.com; SameSite=None
+      required:
+        - setCookie
+    DebugCookieInspectResponse:
+      description: |
+        Debug - request cookie確認（Cookieヘッダと解析結果を返す）
+        このレスポンスは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      additionalProperties: false
+      properties:
+        rawCookieHeader:
+          type: string
+        cookies:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - rawCookieHeader
+        - cookies

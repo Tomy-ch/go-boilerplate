@@ -32,8 +32,3 @@
 ## 注意点
 
 - `SecurityConfig.CIDR()` に正しい信頼するプロキシの CIDR リストを設定してください。誤った CIDR 設定は攻撃者による IP 偽装を許してしまう可能性があります。
-- テストは `ip_extractor_test.go` にあるため、CI での検証を推奨します。
-
-## 作成・更新
-
-作成・更新: `internal/controller/httpstack/ipextractor` の実装に合わせて記述。

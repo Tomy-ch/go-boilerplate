@@ -13,6 +13,8 @@ import (
 	"go.uber.org/fx"
 )
 
+const callerSkip = 2
+
 // ServerExtends は、サーバーの拡張機能を表します。
 type ServerExtends struct {
 	fx.In
@@ -86,14 +88,18 @@ func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddlewar
 		return err
 	}
 
-	logger.Named("ApplyPreMiddlewares").Info("Applying pre middleware", logging.Int("count", len(mws)))
+	logger.Named("ApplyPreMiddlewares").CallerSkip(callerSkip).Info(
+		"Applying pre middleware",
+		logging.Int("count", len(mws)),
+	)
 
 	sort.Slice(mws, func(i, j int) bool {
 		return mws[i].Priority < mws[j].Priority
 	})
 
 	for _, mw := range mws {
-		logger.Named("ApplyPreMiddlewares").Info("Applying pre middleware",
+		logger.Named("ApplyPreMiddlewares").CallerSkip(callerSkip).Info(
+			"Applying pre middleware",
 			logging.Int("priority", mw.Priority),
 			logging.String("middleware", mw.Name),
 		)
@@ -108,14 +114,18 @@ func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddlewar
 		return err
 	}
 
-	logger.Named("ApplyUseMiddlewares").Info("Applying use middleware", logging.Int("count", len(mws)))
+	logger.Named("ApplyUseMiddlewares").CallerSkip(callerSkip).Info(
+		"Applying use middleware",
+		logging.Int("count", len(mws)),
+	)
 
 	sort.Slice(mws, func(i, j int) bool {
 		return mws[i].Priority < mws[j].Priority
 	})
 
 	for _, mw := range mws {
-		logger.Named("ApplyUseMiddlewares").Info("Applying use middleware",
+		logger.Named("ApplyUseMiddlewares").CallerSkip(callerSkip).Info(
+			"Applying use middleware",
 			logging.Int("priority", mw.Priority),
 			logging.String("middleware", mw.Name),
 		)
@@ -179,7 +189,10 @@ func extractPriorityConflicts(byPriority map[int][]string) []string {
 
 // ApplyConfigurators は、Echoに対して設定関数を適用します。
 func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) {
-	logger.Named("ApplyConfigurators").Info("Applying server configurator", logging.Int("count", len(cfgs)))
+	logger.Named("ApplyConfigurators").CallerSkip(callerSkip).Info(
+		"Applying server configurator",
+		logging.Int("count", len(cfgs)),
+	)
 	for _, cfg := range cfgs {
 		cfg(e)
 	}

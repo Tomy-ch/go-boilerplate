@@ -2,13 +2,13 @@
 package errorhandler
 
 import (
-	"errors"
 	"net/http"
+	"time"
 
 	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller"
 	"boilerplate-go/internal/controller/error/response"
 	"boilerplate-go/internal/controller/httpstack/requestid"
+	"boilerplate-go/internal/controller/server"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/pkg/xerrors"
@@ -17,10 +17,11 @@ import (
 )
 
 const (
-	lowerBoundHTTPStatus = 400
-	upperBoundHTTPStatus = 600
-
+	lowerBoundHTTPStatus      = 400
+	upperBoundHTTPStatus      = 600
 	errorLevelBoundHTTPStatus = 500
+
+	errHandlerKey = "http_error_handler"
 )
 
 // New は、EchoのHTTPエラーハンドラーを生成します。
@@ -37,13 +38,19 @@ func NewHTTPErrorHandler(logger logging.Logger, lf logging.LogFieldBuilder, obsC
 
 // handleHTTPError は、HTTPエラーを処理し、適切なレスポンスをクライアントに返します。
 func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig, err error) {
+	if v, ok := c.Get(errHandlerKey).(bool); ok && v {
+		return
+	}
+	c.Set(errHandlerKey, true)
+
 	resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
 
 	if !c.Response().Committed {
 		if writeErr := writeErrorResponse(c, resp); writeErr != nil {
 			req := c.Request()
-			traceCtx := observability.ExtractSpan(req.Context())
+			traceCtx := observability.ExtractTraceContext(req.Context())
 			reqIn := logging.HTTPRequestLogInput{
+				EventAt:       time.Now(),
 				Method:        req.Method,
 				Path:          c.Path(),
 				URI:           req.RequestURI,
@@ -54,8 +61,8 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
 				UserAgent:     req.UserAgent(),
 				ContentType:   req.Header.Get(echo.HeaderContentType),
 				ContentLength: req.ContentLength,
-				QueryParams:   controller.ExtractQueryParams(c),
-				PathParams:    controller.ExtractPathParams(c),
+				QueryParams:   server.ExtractQueryParams(c),
+				PathParams:    server.ExtractPathParams(c),
 				TraceID:       traceCtx.TraceID(),
 				SpanID:        traceCtx.SpanID(),
 			}
@@ -82,7 +89,7 @@ func normalizeHTTPError(
 	requestID string,
 ) *response.HTTPErrorResponse {
 	var he *response.HTTPErrorResponse
-	if errors.As(err, &he) {
+	if xerrors.As(err, &he) {
 		if !isErrorStatus(he.HTTPStatus) {
 			res := response.NewHTTPErrorFromAppError(he.Internal)
 			if he.Details != nil {
@@ -96,7 +103,7 @@ func normalizeHTTPError(
 	}
 
 	var ehe *echo.HTTPError
-	if errors.As(err, &ehe) {
+	if xerrors.As(err, &ehe) {
 		if res := normalizeOpenAPIError(ehe); res != nil {
 			res.RequestId = requestID
 			return res
@@ -119,7 +126,7 @@ func httpErrorField(
 	he *response.HTTPErrorResponse,
 ) []*logging.Field {
 	req := c.Request()
-	traceCtx := observability.ExtractSpan(req.Context())
+	traceCtx := observability.ExtractTraceContext(req.Context())
 	fields := []*logging.Field{
 		logging.Int(logging.StatusKey, he.HTTPStatus),
 		logging.String(logging.ErrorCodeKey, he.Code),
@@ -127,6 +134,7 @@ func httpErrorField(
 		logging.String(logging.RequestIDKey, he.RequestId),
 	}
 	reqIn := logging.HTTPRequestLogInput{
+		EventAt:       time.Now(),
 		Method:        req.Method,
 		Path:          c.Path(),
 		URI:           req.RequestURI,
@@ -137,8 +145,8 @@ func httpErrorField(
 		UserAgent:     req.UserAgent(),
 		ContentType:   req.Header.Get(echo.HeaderContentType),
 		ContentLength: req.ContentLength,
-		QueryParams:   controller.ExtractQueryParams(c),
-		PathParams:    controller.ExtractPathParams(c),
+		QueryParams:   server.ExtractQueryParams(c),
+		PathParams:    server.ExtractPathParams(c),
 		TraceID:       traceCtx.TraceID(),
 		SpanID:        traceCtx.SpanID(),
 	}
@@ -164,15 +172,15 @@ func logHTTPError(
 	obsCfg *config.ObservabilityConfig,
 	he *response.HTTPErrorResponse,
 ) {
-	if !observability.ShouldLogWithSpan(c.Request().Context(), obsCfg) {
+	if !obsCfg.TargetStatusCodeSet()[he.HTTPStatus] {
 		return
 	}
 	fields := httpErrorField(c, lf, he)
 	switch {
 	case he.HTTPStatus >= errorLevelBoundHTTPStatus:
-		logger.Error("server_error", fields...)
+		logger.Error("errorhandler.server_error", fields...)
 	default:
-		logger.Warn("client_error", fields...)
+		logger.Warn("errorhandler.client_error", fields...)
 	}
 }
 

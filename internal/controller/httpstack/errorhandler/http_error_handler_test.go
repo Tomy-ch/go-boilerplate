@@ -11,7 +11,7 @@ import (
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/controller/error/response"
 	"boilerplate-go/internal/controller/error/response/gen"
-	"boilerplate-go/internal/controller/handler/handlertest/testspan"
+	"boilerplate-go/internal/controller/handler/testkit/testspan"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
@@ -40,9 +40,9 @@ func (b *badWriter) WriteHeader(statusCode int) { b.wroteHeader = statusCode }
 func TestNew(t *testing.T) {
 	t.Parallel()
 	e := echo.New()
-	z := logging.NewTestInstance(t)
+	z := logging.NewTestLogger(t)
 	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	New(e, z, lf, obsCfg)
 	require.NotNil(t, e.HTTPErrorHandler)
@@ -51,9 +51,9 @@ func TestNew(t *testing.T) {
 func TestNewHTTPErrorHandler(t *testing.T) {
 	t.Parallel()
 
-	z := logging.NewTestInstance(t)
+	z := logging.NewTestLogger(t)
 	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 	handler := NewHTTPErrorHandler(z, lf, obsCfg)
 
 	e := echo.New()
@@ -111,12 +111,12 @@ func Test_handleHTTPError(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	t.Run("正常系: レスポンス書き込みとログ出力", func(t *testing.T) {
 		t.Parallel()
 
-		logger := logging.NewTestInstance(t)
+		logger := logging.NewTestLogger(t)
 
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/h", nil)
@@ -126,6 +126,7 @@ func Test_handleHTTPError(t *testing.T) {
 		defer end()
 
 		handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
+		handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
 
 		// JSON が書き込まれ、ステータスは内部サーバーエラー (おおむね 500) であること
 		require.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -134,7 +135,7 @@ func Test_handleHTTPError(t *testing.T) {
 	t.Run("書き込み失敗時: エラーログ出力と500セット", func(t *testing.T) {
 		t.Parallel()
 
-		logger := logging.NewTestInstance(t)
+		logger := logging.NewTestLogger(t)
 
 		// badWriter は Write が失敗することで c.JSON を失敗させる
 		bw := &badWriter{}
@@ -306,7 +307,7 @@ func Test_logHTTPError(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/p", nil)
@@ -316,10 +317,27 @@ func Test_logHTTPError(t *testing.T) {
 	c, end := testspan.StartTestSpanForEcho(t, c)
 	defer end()
 
+	t.Run("監視対象外のステータスコードはログ出力されない", func(t *testing.T) {
+		t.Parallel()
+
+		logger := logging.NewTestLogger(t)
+
+		he := &response.HTTPErrorResponse{
+			ErrorResponse: gen.ErrorResponse{
+				Code:      "C302",
+				Message:   "M302",
+				RequestId: "r302",
+			},
+			HTTPStatus: http.StatusFound,
+		}
+
+		logHTTPError(c, logger, lf, obsCfg, he)
+	})
+
 	t.Run("500以上はErrorログ", func(t *testing.T) {
 		t.Parallel()
 
-		logger := logging.NewTestInstance(t)
+		logger := logging.NewTestLogger(t)
 
 		he := &response.HTTPErrorResponse{
 			ErrorResponse: gen.ErrorResponse{
@@ -336,7 +354,7 @@ func Test_logHTTPError(t *testing.T) {
 	t.Run("400〜499はWarnログ", func(t *testing.T) {
 		t.Parallel()
 
-		logger := logging.NewTestInstance(t)
+		logger := logging.NewTestLogger(t)
 
 		he := &response.HTTPErrorResponse{
 			ErrorResponse: gen.ErrorResponse{
@@ -384,9 +402,7 @@ func Test_isErrorStatus(t *testing.T) {
 func Test_httpErrorField(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/p", nil)

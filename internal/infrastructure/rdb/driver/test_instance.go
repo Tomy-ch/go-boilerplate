@@ -24,9 +24,9 @@ func NewMockInstance(t *testing.T) DatabaseDriver {
 func NewTestInstance(t *testing.T, dbCfg *config.DatabaseConfig) DatabaseDriver {
 	t.Helper()
 	cfg := config.MockConfigForTest(t)
-	osCfg := config.NewOSConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
 
-	db, err := sql.Open("pgx", dbCfg.DSN(osCfg))
+	db, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
 	require.NoError(t, err, "failed to open database")
 
 	t.Cleanup(func() {

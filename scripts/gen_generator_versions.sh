@@ -33,6 +33,23 @@ node_section() {
   echo "- redocly: $(normalize "$(redocly --version 2>&1 || echo 'unknown')")"
 }
 
+python_section() {
+  local py="python"
+  if ! command -v python >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+    py="python3"
+  fi
+
+  local pip="pip"
+  if ! command -v pip >/dev/null 2>&1 && command -v pip3 >/dev/null 2>&1; then
+    pip="pip3"
+  fi
+
+  echo ""
+  echo "**Python-based tools (python_tool_runner)**"
+  echo ""
+  echo "- sqlfluff: $(normalize "$(sqlfluff --version 2>&1 || "${py}" -m sqlfluff --version 2>&1 || "${py}" -c 'import sqlfluff; print(sqlfluff.__version__)' 2>/dev/null || echo 'unknown')")"
+}
+
 case "$MODE" in
   go)
     {
@@ -49,11 +66,21 @@ case "$MODE" in
       node_section
     } >> "$OUTPUT_FILE"
     ;;
+  python)
+    {
+      # go/node 側がまだ生成されてないケースも考えて、ファイルが無ければヘッダを書く
+      if [ ! -f "$OUTPUT_FILE" ]; then
+        header
+      fi
+      python_section
+    } >> "$OUTPUT_FILE"
+    ;;
   *)
     {
       header
       go_section
       node_section
+    python_section
     } > "$OUTPUT_FILE"
     ;;
 esac

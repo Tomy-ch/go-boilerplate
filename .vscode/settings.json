@@ -55,10 +55,11 @@
 
   // material-icon-themeの設定の一部を追加する
   "material-icon-theme.folders.associations": {
+    "testkit": "test",
+    "actions": "gh-workflows",
     "internal": "private",
     "apperror": "error",
     "ctxhelper": "context",
-    "handlertest": "test",
     "httpstack": "middleware",
     "di": "interceptor",
     "domain": "core",
@@ -66,13 +67,10 @@
     "rdb": "database",
     "conv": "tools",
     "driver": "connection",
-    "rdbtest": "test",
-    "sqlc": "generator",
     "integration": "test",
     "observability": "meta",
     "usecase": "tasks",
-    "usecasetest": "test",
-    "paging": "tools",
+    "support": "tools",
     "tx": "taskfile",
     "openapi": "api",
     "paths": "routes",

@@ -1,0 +1,124 @@
+// Package integration は統合テスト用のパッケージです。
+package integration
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"boilerplate-go/internal/ctxhelper"
+	"boilerplate-go/internal/usecase/boundary/auth"
+	"boilerplate-go/pkg/uuid"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/require"
+)
+
+type Server struct {
+	t       *testing.T
+	e       *echo.Echo
+	ts      *httptest.Server
+	baseURL string
+	client  *http.Client
+}
+
+// MakeAvailableUserID は、指定したユーザーIDで認証された状態を模擬するミドルウェアをEchoに追加し、
+// その認証情報を含むHTTPヘッダーを返します。
+func MakeAvailableUserID(t *testing.T, e *echo.Echo, id uuid.UUID) http.Header {
+	t.Helper()
+
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if a, err := auth.New(id.String(), "local-mock", nil, nil); err == nil {
+				ctxhelper.SetAuthnToEcho(c, *a)
+			}
+			return next(c)
+		}
+	})
+
+	h := http.Header{}
+	h.Set("Authorization", "Bearer debug:"+id.String())
+	return h
+}
+
+// StartServer は Echo を起動し、httptest.Server を返す。
+//
+// e はハンドラが設定済みの状態で渡すこと。
+func StartServer(t *testing.T, e *echo.Echo) *Server {
+	t.Helper()
+
+	ts := httptest.NewServer(e)
+	t.Cleanup(ts.Close)
+
+	return &Server{
+		t:       t,
+		e:       e,
+		ts:      ts,
+		baseURL: ts.URL,
+		client:  &http.Client{Timeout: 3 * time.Second},
+	}
+}
+
+// StopServer は、サーバーを停止します。
+func (s *Server) StopServer() { s.t.Helper(); s.t.Cleanup(s.ts.Close) }
+
+// Do は、任意メソッド/パス/ボディでHTTPを実行する。
+func (s *Server) Do(
+	method, path string, reqBody io.Reader, contentType string, headers http.Header,
+) *http.Response {
+	s.t.Helper()
+
+	req, err := http.NewRequestWithContext(s.t.Context(), method, s.baseURL+path, reqBody)
+	require.NoError(s.t, err)
+
+	for k, vals := range headers {
+		for _, v := range vals {
+			req.Header.Add(k, v)
+		}
+	}
+	if contentType != "" && req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+
+	res, err := s.client.Do(req)
+	require.NoError(s.t, err)
+	defer s.t.Cleanup(func() {
+		require.NoError(s.t, res.Body.Close())
+	})
+
+	return res
+}
+
+// DoJSON は、JSONで送受信するユーティリティ。
+func (s *Server) DoJSON(
+	method, path string, reqBody any, headers http.Header,
+) *http.Response {
+	s.t.Helper()
+
+	var r io.Reader
+	if reqBody != nil {
+		buf, err := json.Marshal(reqBody)
+		require.NoError(s.t, err)
+		r = bytes.NewReader(buf)
+	}
+
+	return s.Do(method, path, r, "application/json", headers)
+}
+
+// AssertJSONResponse は、JSONレスポンスの内容を検証するユーティリティ。
+func AssertJSONResponse[T any](t *testing.T, _ T, actualResponse *http.Response) {
+	t.Helper()
+
+	resBody, err := io.ReadAll(actualResponse.Body)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusOK, actualResponse.StatusCode)
+	require.Contains(t, "application/json", actualResponse.Header.Get(echo.HeaderContentType))
+
+	var actualObj T
+	require.NoError(t, json.Unmarshal(resBody, &actualObj), "返却された型が期待された型と一致しません。第二引数が期待される型であることを確認してください。")
+}

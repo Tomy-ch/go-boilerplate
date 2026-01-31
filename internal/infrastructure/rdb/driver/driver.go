@@ -31,7 +31,7 @@ type dbDriver struct {
 func NewDB(
 	dbCfg *config.DatabaseConfig, osCfg *config.OperationSystemConfig, dbConnCfg *config.DBConnectionConfig,
 ) (DatabaseDriver, error) {
-	db, err := sql.Open(dbCfg.Driver(), dbCfg.DSN(osCfg))
+	db, err := sql.Open(dbCfg.Driver(), dbCfg.DSNWithTimeZone(osCfg))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open DB: %w", err)
 	}

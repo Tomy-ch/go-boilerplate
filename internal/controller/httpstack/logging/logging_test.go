@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/handler/handlertest/testspan"
+	"boilerplate-go/internal/controller/handler/testkit/testspan"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 
@@ -15,47 +14,62 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_requestLogMiddleware(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
-
-	next := func(c echo.Context) error {
-		return c.String(http.StatusOK, "ok")
-	}
-
-	logger := logging.NewTestInstance(t)
-
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/mw", nil)
-	req.RemoteAddr = "203.0.113.5:45678"
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	handler := loggingMiddleware(logger, lf)(next)
-	require.NoError(t, handler(c))
-}
-
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	logger := logging.NewTestInstance(t)
+	logger := logging.NewTestLogger(t)
 
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	require.NotNil(t, Middleware(logger, lf))
+}
+
+func Test_loggingMiddleware(t *testing.T) {
+	t.Parallel()
+
+	t.Run("非運用系APIではログが出力される", func(t *testing.T) {
+		lf := logging.NewTestLogFieldBuilder(t)
+
+		next := func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		}
+
+		logger := logging.NewTestLogger(t)
+
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/mw", nil)
+		req.RemoteAddr = "203.0.113.5:45678"
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := loggingMiddleware(logger, lf)(next)
+		require.NoError(t, handler(c))
+	})
+
+	t.Run("運用系APIではログが出力されない", func(t *testing.T) {
+		lf := logging.NewTestLogFieldBuilder(t)
+
+		next := func(c echo.Context) error {
+			return c.String(http.StatusOK, "ok")
+		}
+
+		logger := logging.NewTestLogger(t)
+
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		req.RemoteAddr = "203.0.113.5:45678"
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := loggingMiddleware(logger, lf)(next)
+		require.NoError(t, handler(c))
+	})
 }
 
 func Test_log_buildRequestLogFields(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/path?foo=bar", nil)
@@ -72,7 +86,7 @@ func Test_log_buildRequestLogFields(t *testing.T) {
 		cWithSpan, end := testspan.StartTestSpanForEcho(t, c)
 		defer end()
 
-		tc := observability.ExtractSpan(cWithSpan.Request().Context())
+		tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
 		l := log{c: cWithSpan, lf: lf, traceCtx: tc}
 		fields := l.buildRequestLogFields()
 		require.NotEmpty(t, fields)
@@ -82,9 +96,7 @@ func Test_log_buildRequestLogFields(t *testing.T) {
 func Test_log_buildResponseLogFields(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewLogFields(obsCfg)
+	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/resp", nil)
@@ -101,7 +113,7 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 		c.Response().Status = expectedStatus
 		c.Response().Header().Set("X-Request-Id", expectedRequestID)
 
-		l := log{c: c, lf: lf, traceCtx: observability.TraceContext{}}
+		l := log{c: c, lf: lf, traceCtx: &observability.TraceContext{}}
 		fields := l.buildResponseLogFields(150 * time.Millisecond)
 
 		require.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
@@ -120,7 +132,7 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 		cWithSpan.Response().Status = expectedStatus
 		cWithSpan.Response().Header().Set("X-Request-Id", expectedRequestID)
 
-		tc := observability.ExtractSpan(cWithSpan.Request().Context())
+		tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
 		l := log{c: cWithSpan, lf: lf, traceCtx: tc}
 		fields := l.buildResponseLogFields(20 * time.Millisecond)
 
