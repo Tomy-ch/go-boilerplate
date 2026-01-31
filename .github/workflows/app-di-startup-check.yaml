@@ -59,9 +59,32 @@ jobs:
 
       - name: Start server
         run: |
-          # 例: cobra で `serve` コマンドがある前提
-          go run cmd/main.go serve &
+          set -euo pipefail
+          # `cmd/server/main.go` がエントリポイントの前提
+          # 標準出力/標準エラーをログに残して、失敗時に原因を追えるようにする
+          if [ -d ./cmd/server ] && [ -f ./cmd/server/main.go ]; then
+            MAIN_PKG=./cmd/server
+          elif [ -d ./cmd ] && [ -f ./cmd/main.go ]; then
+            MAIN_PKG=./cmd
+          else
+            echo "Cannot find main package under ./cmd"
+            echo "--- cmd tree ---"
+            find ./cmd -maxdepth 3 -type f -name 'main.go' -print || true
+            exit 1
+          fi
+
+          go run "$MAIN_PKG" serve > server.log 2>&1 &
           echo $! > server.pid
+
+          # すぐ落ちていないか軽く確認
+          sleep 1
+          if ! kill -0 "$(cat server.pid)" 2>/dev/null; then
+            echo "Server process exited immediately"
+            echo "--- server.log ---"
+            cat server.log || true
+            exit 1
+          fi
+
 
       - name: Wait for /ready endpoint
         run: |
@@ -72,13 +95,22 @@ jobs:
               echo "Readiness check OK"
               exit 0
             fi
+
+            # 途中でプロセスが死んでいたら即ログを出して落とす
+            if [ -f server.pid ] && ! kill -0 "$(cat server.pid)" 2>/dev/null; then
+              echo "Server process is not running (attempt: $i)"
+              echo "--- server.log ---"
+              tail -n 200 server.log || true
+              exit 1
+            fi
+
             echo "Waiting for server... ($i)"
             sleep 2
           done
 
           echo "Readiness check failed"
-          echo "Server logs (if any):"
-          # fx を zap で標準出力に出していればログがここに出る
+          echo "--- server.log (tail) ---"
+          tail -n 200 server.log || true
           exit 1
 
       - name: Stop server
@@ -86,4 +118,5 @@ jobs:
         run: |
           if [ -f server.pid ]; then
             kill "$(cat server.pid)" || true
+            wait "$(cat server.pid)" || true
           fi

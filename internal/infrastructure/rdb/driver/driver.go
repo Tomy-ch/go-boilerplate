@@ -77,8 +77,6 @@ func (d *dbDriver) QueryContext(ctx context.Context, query string, args ...any) 
 
 // QueryRowContext は、DB.QueryRowContextを呼び出します。
 func (d *dbDriver) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	ctx, cancel := d.ResolveQueryTimeout(ctx)
-	defer cancel()
 	return d.db.QueryRowContext(ctx, query, args...)
 }
 
