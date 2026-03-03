@@ -1,6 +1,6 @@
 ## GHのラベルを操作する
-.PHONY: reset-labels ## すべてのラベルを削除（既存ラベル含む）
-.PHONY: delete-all-labels ## .github/settings/labels.json に基づいてラベルを作成
+.PHONY: create-default-labels ## .github/settings/labels.json に基づいてラベルを作成
+.PHONY: delete-all-labels ## すべてのラベルを削除（既存ラベル含む）
 
 delete-all-labels:
 	@echo "🗑 既存のラベルを削除します..."
