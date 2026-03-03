@@ -2,302 +2,164 @@
 
 Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture によるベースプロジェクトです。
 
-`uber/fx` による DI や `sqlc`, `golang-migrate`, `oapi-codegen` などを採用しています。
+`uber/fx` による DI、`sqlc`, `golang-migrate`, `oapi-codegen` を採用し、  
+**契約駆動 + 型安全 + レイヤ分離** を前提とした構成になっています。
 
-## 本テンプレートの前提
+## Architecture Overview
 
-このBoilerplateは、PoC〜新規構築期における初期アーキテクチャ整備を支援する目的で提供されています。  
+本プロジェクトは **軽量 Onion Architecture** を採用しています。
 
-学習用や社内向けのPoCなどであれば、**そのまま利用しても問題ありません**。
+`controller → usecase → domain ← infrastructure`
 
-本番で運用する場合は**以下の前提に合致するチーム/リーダー向けのテンプレート**です。
+- 依存関係は必ず内側へ向かう
+- domain は純粋で副作用を持たない
+- infrastructure は domain の interface を実装する
+- controller はビジネスロジックを持たない
 
-- Go + Echo + Fx + OpenAPI + sqlc などの構成を理解している
-- `.env` 管理方針とセキュリティポリシーの線引きが判断できる
-- 初期構築の意思決定ができる（=TL相当）
+## API Development Policy (OpenAPI First)
 
-上記を満たさない場合、テンプレートの誤用・理解不足による事故が起きる可能性があります。
+本プロジェクトは **OpenAPI-first** で開発します。
 
-## Gitコミットメッセージ用プレフィックス一覧
+API変更は必ず以下の順序で行います：
 
-| プレフィックス | 説明 |
-| ------------ | --- |
-| `Feat` | 新しい機能追加 |
-| `Fix` | バグ修正 |
-| `Docs` | ドキュメントのみの変更 |
-| `Style` | フォーマット、スペース、セミコロンの修正など（動作に影響なし） |
-| `Refactor` | リファクタリング（機能追加やバグ修正を含まないコード改善） |
-| `Perf` | パフォーマンス改善 |
-| `Test` | テストの追加・修正 |
-| `Build` | ビルドシステムや依存関係に関する変更 |
-| `Ci` | CI 設定やスクリプトの変更 |
-| `Chore` | その他の雑多な変更（ビルド以外の補助タスク） |
-| `Revert` | コミットの取り消し |
+1. `openapi/` の定義を修正  
+2. `make gen-api` でコード生成  
+3. handler / usecase を実装  
 
-## 利用ツール(サポートバージョン)
+生成ファイルは手動で編集してはいけません。
 
-- Go(1.24.4)
-- Docker Desktop
-- Github CLI
-- Postman
+## Branch Strategy
 
-<details>
-<summary>手動インストール先のURL</summary>
+本リポジトリは **release-centric branching model** を採用しています。
 
-下記のサイトからダウンロードして進めてください。
+- 機能ブランチは最新の `release/*` から作成する  
+- `develop`, `staging`, `production` へは release 経由でのみ反映される  
+- 保護ブランチへの直接コミットは禁止  
+- すべての変更は Pull Request 経由で行う  
 
-- [Golang](https://go.dev/dl/)
-- [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
-- [Github CLI](https://cli.github.com/)
-- [Postman](https://www.postman.com/downloads/)
+この戦略により：
 
-</details>
+- バージョン整合性の維持  
+- 安全なリリースフロー  
+- AI支援開発時の事故防止  
 
-<details>
-<summary>brewでのインストール方法</summary>
+を実現しています。
 
-コピペで実行できます。
+## Intended Use Cases
 
-```bash
-# anyenvのインストール
-brew install anyenv
-anyenv init
-echo 'eval "$(anyenv init -)"' >> ~/.zprofile
+このBoilerplateは以下の用途を想定しています：
 
-# anyenvのupdateプラグインのインストール
-mkdir -p $(anyenv root)/plugins
-git clone https://github.com/znz/anyenv-update.git $(anyenv root)/plugins/anyenv-update
-anyenv update
+- 新規プロダクトのバックエンド構築  
+- PoC〜初期スケールフェーズ  
+- 厳格なレイヤ分離が必要なチーム開発  
+- 型安全なSQL管理が必要なプロジェクト  
+- AI支援開発を前提とした設計統制  
 
-# goenvのインストール
-anyenv install goenv
-goenv install "$(cat .go-version)"
+以下の用途には向きません：
 
-# dockerのインストール
-brew install --cask docker
+- 単一ファイルで完結する小規模API  
+- アーキテクチャ境界を設けない高速プロトタイピング  
 
-# Github CLIのインストール
-brew install gh
-
-# Postmanのインストール
-brew install --cask postman
-```
-
-</details>
-
-## 構成スタック
-
-- **言語**: Go
-- **Webフレームワーク**: Echo
-- **DI**: uber/fx
-- **API定義**: OpenAPI
-  - **コード生成**: oapi-codegen
-- **DB**: PostgreSQL
-- **ORM/Query**: sqlc
-- **マイグレーション**: golang-migrate
-  - **マイグレーション統合**: tern
-- **開発補助**:
-  - godotenv
-  - zap
-  - testify
-  - cobra（CLI）
-  - air（ホットリロード）
-  - Docker / docker-compose
-
-## 開発ドキュメント
-
-```bash
-make tools
-```
-
-<http://localhost:8082/index.html> にアクセスすると、開発ドキュメントが表示されます。
-
-現在の開発ドキュメントは以下の内容を含みます。
-
-- OpenAPI ドキュメント
-- コードカバレッジ
-- ER図
-
-## ディレクトリ構成
-
-<details>
-<summary>展開する</summary>
+## Directory Structure
 
 ```text
- ./
-├──  cmd/ # main.go が配置されるディレクトリ
-├──  database/ # データベース関連のファイルを配置
-│   │
-│   ├──  dml/ # データ操作言語 (DML) スクリプトを配置
-│   │   ├──  query_service/ # クエリサービスのsqlc用のsqlファイルを配置
-│   │   └──  repository/ # リポジトリのsqlc用のsqlファイルを配置
-│   │
-│   ├──  migrations/ # DDLとマスタデータを持つマイグレーションsqlファイルを配置
-│   ├──  seed/ # 開発環境での初期データを投入するためのsqlファイルを配置
-│   └──  sqlc/ # SQLCでの設定ファイルを配置
-│
-├──  docker/ # Dockerfileとそれぞれの役割の設定ファイルなどを配置
-│   └──  <Dockerの役割>/ # 各種Dockerfileを配置
-│
-├──  docs/
-│   ├──  coverage/ # 生成されたテストカバレッジレポート
-│   ├──  er-diagram/ # 生成されたER図
-│   ├──  openapi/ # 生成されたOpenAPI仕様の定義
-│   └──  index.html # 全体のドキュメントのためのルーティングファイル
-│
-├──  internal/
-│   │
-│   ├──  apperror/ # アプリケーションの基底エラーを定義するパッケージ
-│   │
-│   ├──  cli/
-│   │   ├──  <各種CLI>/ # cliコマンドごとのディレクトリを作成する
-│   │   └──  cli.go # このディレクトリのcliを統合するためのファイル
-│   │
-│   ├──  config/ # アプリ全体で使うコンフィグ設定の生成
-│   │
-│   ├──  controller/ # コントローラー層
-│   │   │
-│   │   ├──  ctxhelper/ # コンテキストに特定の項目を設定・取得するためのヘルパーパッケージ
-│   │   ├──  error/
-│   │   │   └──  response/ # エラーレスポンスを生成するためのパッケージ
-│   │   ├──  handler/ # ハンドラーの実装(URIと同じ構成にする)
-│   │   ├──  httpstack/ # サーバの拡張機能を提供するパッケージ
-│   │   │   └──  extension.go # 拡張機能を適用するためのファイル
-│   │   └──  server/ # サーバーの起動や本体の処理
-│   │
-│   ├──  di/ # 依存性注入(DI)
-│   │   ├──  config.go # コンフィグ設定のDI
-│   │   ├──  db.go # DB接続のDI
-│   │   ├──  handler.go # コントローラ層のDI
-│   │   ├──  httpstack.go # サーバー拡張機能のDI
-│   │   ├──  logging.go # ロギングのDI
-│   │   ├──  repository.go # インフラ層のDI
-│   │   ├──  serve.go # サーバーのDI
-│   │   └──  usecase.go # ユースケース層のDI
-│   │
-│   ├──  domain/ # ドメイン層
-│   │
-│   ├──  infrastructure/ # インフラストラクチャ層
-│   │   └──  rdb/ # RDBの実装
-│   │       ├──  conv/ # sql専用の型との変換処理
-│   │       ├──  driver/ # RDBの接続ドライバの実装
-│   │       ├──  repository/ # リポジトリの実装
-│   │       ├──  queryservice/ # クエリサービスの実装
-│   │       └──  sqlc/ # SQLCの生成物の自動配置場所
-│   │
-│   ├──  logging/ # ロギング関連
-│   │
-│   └──  usecase/ # ユースケース関連
-│       ├──  paging/ # ページング関連
-│       └──  tx/ # トランザクション(インターフェイス)関連
-│
-├──  openapi/ # OpenAPI仕様の定義
-│   │
-│   ├──  components/
-│   │   ├──  parameters/
-│   │   │   └──  pagination/ # 共通で使うページネーションのパラメータ
-│   │   │       ├──  PageParam.yaml
-│   │   │       └──  PerPageParam.yaml
-│   │   ├──  requests/ # APIリクエストの定義(定義を配置するのはschema)
-│   │   ├──  responses/ # APIレスポンスの定義(定義を配置するのはschema)
-│   │   └──  schemas/ # 共通のスキーマ定義
-│   │
-│   ├──  paths/
-│   │   ├──  internal/ # 特定のoapi-codegenの生成物を利用するためのパス
-│   │   │   └──  types/
-│   │   │       └──  error_response.yaml
-│   │   ├──  v1/
-│   │   │   ├──  users/
-│   │   │   │   └──  user_id.yaml  # http:localhost/v1/users/{user_id} に対応するファイル
-│   │   │   └──  users.yaml # http:localhost/v1/users に対応するファイル
-│   │   └──  health.yaml # http:localhost/v1/health に対応するファイル
-│   │
-│   ├──  openapi.gen.yaml # 自動生成されたOpenAPI仕様
-│   └──  openapi.yaml
-│
-├──  pkg/ # 全体で使う汎用的なパッケージ
-├──  scripts/ # 自動生成などで使うスクリプトの配置場所
-├──  tmp/ # airを使うときのキャッシュディレクトリ
-├──  docker-compose.yaml
-├──  go.mod
-├──  go.sum
-├──  makefile
-└── 󰂺 README.md
+.
+├── cmd/            # Application entrypoint
+├── internal/       # Application code (Onion Architecture)
+│   ├── domain/
+│   ├── usecase/
+│   ├── infrastructure/
+│   ├── controller/
+│   └── di/
+├── database/       # Migrations & SQL (sqlc)
+├── openapi/        # API contracts (OpenAPI-first)
+├── pkg/            # Shared utilities
+├── docker/
+├── docs/
+└── makefile
 ```
 
-</details>
+詳細な構造説明は各ディレクトリ直下の README を参照してください。
 
-## 開発開始手順
+## Stack
+
+- **Language**: Go
+- **Web Framework**: Echo
+- **DI**: uber/fx
+- **API Definition**: OpenAPI + oapi-codegen
+- **DB**: PostgreSQL
+- **Query**: sqlc
+- **Migration**: golang-migrate (+ tern)
+- **Logging**: zap
+- **Testing**: testify
+- **CLI**: cobra
+- **Dev Tools**: Docker / docker-compose / air
+
+## Getting Started
 
 ```bash
-
 make install
 make serve
 make tools
 make db-init
-
 ```
 
-## リリース作業手順
+## Release Workflow
 
-### タグ打ち
-
-<details>
-<summary>タグ打ちコマンド</summary>
-
-majorバージョンのタグ打ちとlatestのリリースノートを同期
+タグ発行：
 
 ```bash
-make release-major-tag
+make release-major-tag # メジャーリリース
+make release-minor-tag # マイナーリリース
+make release-patch-tag # パッチリリース
 ```
 
-minorバージョンのタグ打ちとlatestのリリースノートを同期
-
-```bash
-make release-minor-tag
-```
-
-patchバージョンのタグ打ちとlatestのリリースノートを同期
-
-```bash
-make release-patch-tag
-```
-
-</details>
-
-### 次の開発(リリース)ブランチの作成
-
-<details>
-<summary>デフォルトブランチ変更コマンド</summary>
-
-majorバージョンで更新したリリースブランチの作成
+次リリースブランチ作成：
 
 ```bash
 make release-major-branch
-```
-
-minorバージョンで更新したリリースブランチの作成
-
-```bash
 make release-minor-branch
-```
-
-patchバージョンで更新したリリースブランチの作成
-
-```bash
 make release-patch-branch
-```
-
-hotfixブランチの作成
-
-```bash
 make hotfix-patch-branch
 ```
 
-</details>
+## AI-Safe Design
 
-## リポジトリセットアップ手順
+本テンプレートは AI支援開発を前提に設計されています。
 
-```bash
-make setup-repo
-```
+- レイヤ強制
+- 生成物分離
+- release基準ブランチ運用
+- OpenAPI-first
+- domain純粋性の維持
+
+これらはアーキテクチャの逸脱や意図しない変更を防ぐための制約です。
+
+## 本テンプレートの前提
+
+本テンプレートは以下を理解しているチーム向けです：
+
+- Go + Echo + Fx + OpenAPI + sqlc 構成
+- レイヤアーキテクチャ
+- .env 管理とセキュリティ境界の判断
+- 初期構築の意思決定が可能（TL相当）
+
+## Tools (Required Versions)
+
+- Go
+  - バージョンは `go.mod` を参照
+- Docker Desktop
+- GitHub CLI
+- Postman
+
+## License
+
+This project is licensed under the MIT License.
+See [LICENSE](./LICENSE) for details.
+
+## 参考
+
+- [バージョニングルール](docs/versioning.md)
+
+This repository is not just a collection of libraries.
+Its primary value lies in architectural constraints and design philosophy.
