@@ -22,11 +22,11 @@ services:
       - development
 
   database: # PostgreSQLデータベース
-    image: postgres:17.5
+    image: postgres:18.3-bookworm
     ports:
       - "5432:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql
       - ./docker/database/sql:/docker-entrypoint-initdb.d:ro
       # - ./docker/database/logs:/var/log/postgresql
     environment:

@@ -342,6 +342,13 @@ linters:
       require-specific: true
     testifylint:
       enable-all: true
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - []
+            - []
+            - [{ skipPackageNameChecks: true }]
     usestdlibvars:
       http-method: true        # HTTPメソッド文字列の検出（"GET" → http.MethodGet）
       http-status-code: true   # ステータスコードの検出（500 → http.StatusInternalServerError）

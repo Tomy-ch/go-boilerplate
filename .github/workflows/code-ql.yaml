@@ -20,11 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  golangci-setup:
-    uses: ./.github/workflows/golang-setup.yaml
-
   codeql:
-    needs: golangci-setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

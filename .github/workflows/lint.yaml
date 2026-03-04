@@ -18,10 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  golangci-setup:
-    uses: ./.github/workflows/golang-setup.yaml
   lint:
-    needs: golangci-setup
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,6 +26,15 @@ jobs:
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check Go version
+        run: go version
 
       - name: Install golangci-lint
         shell: bash
@@ -49,17 +55,20 @@ jobs:
           mkdir -p /tmp
 
           golangci-lint run --config=.golangci-full.yaml \
-            --output.text.path=/tmp/golangci-lint.log \
             --output.text.print-issued-lines=true \
-            --output.text.print-linter-name=true
+            --output.text.print-linter-name=true \
+            2>&1 | tee /tmp/golangci-lint.log
 
-          code=$?
+          code=${PIPESTATUS[0]}
+
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
           fi
+
           exit 0
 
       - name: Comment Go lint result on PR
