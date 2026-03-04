@@ -1,0 +1,186 @@
+name: ER Diagram Artifacts Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/e-r-diagram-artifacts-check.yaml'
+      - 'database/**/*.sql'
+      - 'docker/db/**/*.sql'
+      - 'docs/e-r-diagram/**'
+      - '.makefiles/**/*.mk'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  er-diagram-check:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    env:
+      ENV: ci
+      DB: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres-password
+
+    services:
+      database:
+        image: postgres:17.5
+        env:
+          POSTGRES_USER: ${{ env.DB_USER }}
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_DB: ${{ env.DB }}
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup DB (wait & init)
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: ${{ env.DB }}
+          user: ${{ env.DB_USER }}
+          password: ${{ env.DB_PASSWORD }}
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
+
+      - name: Initialize Database Table
+        run: make db-migrate-ci-up DB=${{ env.DB }}
+
+      - name: Generate ER diagram (SchemaSpy)
+        run: make schemaspy-ci
+
+      - name: Detect generated changes (file list)
+        id: er_diff
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          files="$(git diff --name-only docs/e-r-diagram \
+            ':(exclude)docs/e-r-diagram/index.html' \
+            ':(exclude)docs/e-r-diagram/info-html.txt')"
+
+          if [ -n "$files" ]; then
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "$files" > /tmp/changed_files.txt
+          else
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+            : > /tmp/changed_files.txt
+          fi
+
+      - name: Comment changed files on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- er-diagram-artifacts-filelist -->';
+
+            const hasDiff = ('${{ steps.er_diff.outputs.has_diff }}' === 'true');
+
+            let files = [];
+            if (hasDiff) {
+              try {
+                const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
+                files = raw ? raw.split('\n').filter(Boolean) : [];
+              } catch (e) {
+                files = ['(Failed to read changed_files.txt)'];
+              }
+            }
+
+            const updatedAtJST = new Date().toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+
+            const headSha =
+              (context.payload.pull_request?.head?.sha)
+              || process.env.GITHUB_SHA
+              || context.sha;
+            const shortSha = headSha.slice(0, 7);
+
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${headSha}`;
+
+            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
+            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
+
+            const body = hasDiff
+              ? [
+                  marker,
+                  '## 🗺 Differences in ER diagram artifacts detected',
+                  '',
+                  commitLine,
+                  '',
+                  ...(files.length ? files.map(f => `- \`${f}\``) : ['(no changed files)']),
+                  '',
+                  'Please regenerate ER diagram artifacts locally and commit the changes.',
+                  '',
+                  updatedLine,
+                ].join('\n')
+              : [
+                  marker,
+                  '## ✅ No differences in ER diagram artifacts detected',
+                  '',
+                  commitLine,
+                  '',
+                  'ER diagram artifacts are up to date.',
+                  '',
+                  updatedLine,
+                ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c => (c.body || '').includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }
+
+      - name: Fail if diff exists
+        if: steps.er_diff.outputs.has_diff == 'true'
+        run: exit 1
