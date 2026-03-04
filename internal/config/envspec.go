@@ -40,6 +40,7 @@ type Metrics struct {
 	Host     string `env:"HOST,required"`
 	Port     int    `env:"PORT,required"`
 	UserName string `env:"USERNAME,required"`
+	//nolint:gosec // safe: Metrics passwords are managed via environment variables.
 	Password string `env:"PASSWORD,required"`
 }
 
@@ -49,10 +50,11 @@ type Observability struct {
 }
 
 type Database struct {
-	Driver                 string        `env:"DRIVER,required"`
-	Host                   string        `env:"HOST,required"`
-	Port                   int           `env:"PORT,required"`
-	User                   string        `env:"USER,required"`
+	Driver string `env:"DRIVER,required"`
+	Host   string `env:"HOST,required"`
+	Port   int    `env:"PORT,required"`
+	User   string `env:"USER,required"`
+	//nolint:gosec // safe: Database passwords are managed via environment variables.
 	Password               string        `env:"PASSWORD,required"`
 	Name                   string        `env:"NAME,required"`
 	SSLMode                string        `env:"SSL_MODE,required"`

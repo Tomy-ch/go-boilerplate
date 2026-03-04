@@ -37,7 +37,8 @@ type GetParamsDTO struct {
 
 // CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
 type CreateParamsDTO struct {
-	UserID   uuid.UUID
+	UserID uuid.UUID
+	//nolint:gosec // safe: Password is a legitimate field for user creation DTO.
 	Password string
 
 	MutableFields
