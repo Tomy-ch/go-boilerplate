@@ -69,7 +69,7 @@ controller → usecase → domain ← infrastructure
 
 Dependencies always point inward.
 
-## # OpenAPI-first Development
+### OpenAPI-first Development
 
 API contracts are defined using OpenAPI.
 
@@ -85,7 +85,7 @@ Handler implementation
 Usecase implementation
 ```
 
-## # SQL-first Data Access
+### SQL-first Data Access
 
 Data access is designed around SQL rather than ORM abstractions.
 
@@ -97,7 +97,7 @@ sqlc
 Type-safe Go code
 ```
 
-## # Structural Safety
+### Structural Safety
 
 This repository prioritizes **structural safety over convention**.
 

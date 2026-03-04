@@ -387,7 +387,7 @@ After executing the command, please correct any areas that could not be fixed.
 
 Finally, run `make lint` to check for any errors.
 
-### Do not edit generated files and directlies
+### Do not edit generated files and directories
 
 - `**/**.gen.go`
 - `**/**.sql.go`
