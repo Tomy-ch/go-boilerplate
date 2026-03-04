@@ -12,7 +12,7 @@ import (
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/spf13/cobra"
 )

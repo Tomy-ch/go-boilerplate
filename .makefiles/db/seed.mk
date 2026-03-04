@@ -11,7 +11,7 @@
 # -----Dockerコンテナ内で実行するコマンド群-----
 db-seed:
 	@echo "🌱 データベースにシードデータを投入します... (database=$(DB))"
-	@docker compose run --rm go_tool_runner make db-seed-ci
+	@docker compose run --rm go_tool_runner make db-seed-ci DB=$(DB)
 	@echo "✅ シードデータの投入が完了しました。 (database=$(DB))"
 
 # -----CI用ターゲット-----

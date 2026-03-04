@@ -1,6 +1,34 @@
+define check_duplicate
+@PREFIXES=$$(ls database/migrations/*.$1.sql | xargs -n1 basename | cut -d'_' -f1); \
+DUP=$$(echo "$$PREFIXES" | sort | uniq -d); \
+if [ -n "$$DUP" ]; then \
+	echo "Duplicate migration numbers ($1): $$DUP"; \
+	exit 1; \
+fi
+endef
+
+define check_gap
+@PREFIXES=$$(ls database/migrations/*.$1.sql | xargs -n1 basename | cut -d'_' -f1); \
+SORTED=$$(echo "$$PREFIXES" | sort); \
+FIRST=$$(echo "$$SORTED" | head -n1); \
+LAST=$$(echo "$$SORTED" | tail -n1); \
+WIDTH=$$(echo "$$FIRST" | wc -c); \
+EXPECTED=$$(seq $$(echo $$FIRST | sed 's/^0*//') $$(echo $$LAST | sed 's/^0*//') | xargs -I{} printf "%0$$(($$WIDTH-1))d\n" {}); \
+if [ "$$SORTED" != "$$EXPECTED" ]; then \
+	echo "Migration version gap detected ($1)"; \
+	echo "Existing :"; echo "$$SORTED"; \
+	echo "Expected :"; echo "$$EXPECTED"; \
+	exit 1; \
+fi
+endef
+
 ## DBマイグレーション関連のコマンド群
 # -----Migrateターゲット-----
 .PHONY: new-migrate-% ## 新しいマイグレーションファイルを生成します
+.PHONY: check-migration-up-version ## マイグレーションファイルのバージョン重複をチェックします
+.PHONY: check-migration-down-version ## マイグレーションファイルのバージョン重複をチェックします
+.PHONY: check-migration-up-gap ## マイグレーションファイルのバージョンのバージョンギャップをチェックします
+.PHONY: check-migration-down-gap ## マイグレーションファイルのバージョンのバージョンギャップをチェックします
 .PHONY: db-migrate-up ## 全てのマイグレーションを最新まで適用
 .PHONY: db-migrate-up-% ## 指定したバージョンまでのマイグレーションを適用
 .PHONY: db-migrate-down ## 全てのマイグレーションを初期状態までダウングレード
@@ -33,6 +61,18 @@ new-migrate-%:
 	docker compose run --rm go_tool_runner migrate create -ext sql -dir database/migrations -seq "$$file_name"
 	@echo "✅ 新しいマイグレーションファイルが生成されました: database/migrations/$$file_name.up-down.sql"
 
+check-migration-up-version:
+	$(call check_duplicate,up)
+
+check-migration-down-version:
+	$(call check_duplicate,down)
+
+check-migration-up-gap:
+	$(call check_gap,up)
+
+check-migration-down-gap:
+	$(call check_gap,down)
+
 # -------------------------------
 # 汎用ターゲット（DB可変）
 # 使い方:
@@ -43,24 +83,24 @@ new-migrate-%:
 # -------------------------------
 db-migrate-up:
 	@echo "🧱 マイグレーション: 最新版までアップグレードします... (database=$(DB))"
-	@docker compose run --rm go_tool_runner make db-migrate-ci-up
+	@docker compose run --rm go_tool_runner make db-migrate-ci-up DB=$(DB)
 	@echo "✅ 完了：全マイグレーション適用されました。 (database=$(DB))"
 
 db-migrate-up-%:
 	@version=$*; \
 	echo "🧱 マイグレーション: バージョン $$version 版までアップグレードします... (database=$(DB))"; \
-	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$version; \
+	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$version DB=$(DB); \
 	echo "✅ 完了：バージョン $$version まで適用されました。 (database=$(DB))"
 
 db-migrate-down:
 	@echo "💥 マイグレーション: 初期状態までダウングレードします... (database=$(DB))"
-	@docker compose run --rm go_tool_runner make db-migrate-ci-down
+	@docker compose run --rm go_tool_runner make db-migrate-ci-down DB=$(DB)
 	@echo "✅ 完了：全マイグレーションダウングレードされました。 (database=$(DB))"
 
 db-migrate-down-%:
 	@version=$*; \
 	echo "💥 マイグレーション: バージョン $$version までダウングレードします... (database=$(DB))"; \
-	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$version; \
+	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$version DB=$(DB); \
 	echo "✅ 完了：バージョン $$version までダウングレードされました。 (database=$(DB))"
 
 # -----LocalDBに対してのMigrateエイリアス-----
