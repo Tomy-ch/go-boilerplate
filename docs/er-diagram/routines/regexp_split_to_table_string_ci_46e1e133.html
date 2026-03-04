@@ -73,7 +73,7 @@
             <div class="content-wrapper">
                 <!-- Content Header (Page header) -->
                 <section class="content-header">
-                    <h1>split_part(citext, citext, integer)</h1><br />
+                    <h1>regexp_split_to_table(string citext, pattern citext)</h1><br />
                 </section>
                 <!-- Main content -->
                 <section class="content">
@@ -97,18 +97,13 @@
                                 </thead>
                                 <tbody>
                                 <tr>
-                                    <td></td>
+                                    <td>string</td>
                                     <td>citext</td>
                                     <td>IN</td>
                                 </tr>
                                 <tr>
-                                    <td></td>
+                                    <td>pattern</td>
                                     <td>citext</td>
-                                    <td>IN</td>
-                                </tr>
-                                <tr>
-                                    <td></td>
-                                    <td>integer</td>
                                     <td>IN</td>
                                 </tr>
                                 </tbody>
