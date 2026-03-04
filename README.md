@@ -1,68 +1,141 @@
 # go-boilerplate
 
-Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture によるベースプロジェクトです。
+![Go Version](https://img.shields.io/github/go-mod/go-version/Tomy-ch/boilerplate-go-echo-oapi-sqlc)
+![License](https://img.shields.io/github/license/Tomy-ch/boilerplate-go-echo-oapi-sqlc)
+![CI](https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc/actions/workflows/ci.yml/badge.svg)
 
-`uber/fx` による DI、`sqlc`, `golang-migrate`, `oapi-codegen` を採用し、  
-**契約駆動 + 型安全 + レイヤ分離** を前提とした構成になっています。
+English | [日本語](README.ja.md)
+
+A backend base project built with **Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture**.
+
+This boilerplate integrates:
+
+- `uber/fx` (Dependency Injection)
+- `sqlc` (Type-safe SQL)
+- `golang-migrate` (Schema migrations)
+- `oapi-codegen` (OpenAPI code generation)
+
+to provide a **contract-driven, type-safe, layered backend architecture**.
+
+## Quick Start
+
+Run the project locally in a few commands.
+
+```bash
+git clone https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc.git
+cd boilerplate-go-echo-oapi-sqlc
+
+make install
+make serve
+```
+
+Initialize database:
+
+```bash
+make db-init
+```
+
+The API server will start locally.
+
+## Example API
+
+Example request:
+
+```bash
+curl http://localhost:8080/health
+```
+
+Example response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+## Why This Boilerplate Exists
+
+In backend development, each project often requires designing from scratch:
+
+- Architecture
+- Library selection
+- Directory structure
+- Development workflow
+
+As a result, the same design discussions and trial-and-error processes tend to be repeated across projects.
+
+This boilerplate provides a **baseline architecture that reduces initial design cost and enables teams to start development safely and quickly**.
+
+It combines:
+
+- Onion Architecture
+- OpenAPI-first development
+- Type-safe SQL with sqlc
+- Dependency Injection
+- Structural checks via CI
+
+to provide a **contract-driven, type-safe, layered backend architecture**.
+
+The value of this boilerplate is not tied to any specific library, but to **the integration of widely used OSS tools into a coherent architecture**.
 
 ## Architecture Overview
 
-本プロジェクトは **軽量 Onion Architecture** を採用しています。
+This project adopts **Onion Architecture**.
 
-`controller → usecase → domain ← infrastructure`
+```txt
+controller → usecase → domain ← infrastructure
+```
 
-- 依存関係は必ず内側へ向かう
-- domain は純粋で副作用を持たない
-- infrastructure は domain の interface を実装する
-- controller はビジネスロジックを持たない
+Principles:
+
+- Dependencies always point inward
+- Domain remains pure and side-effect free
+- Infrastructure implements domain interfaces
+- Controllers do not contain business logic
+
+See full documentation:
+
+```txt
+docs/architecture.md
+```
 
 ## API Development Policy (OpenAPI First)
 
-本プロジェクトは **OpenAPI-first** で開発します。
+This project follows an **OpenAPI-first** workflow.
 
-API変更は必ず以下の順序で行います：
+API changes must follow this sequence:
 
-1. `openapi/` の定義を修正  
-2. `make gen-api` でコード生成  
-3. handler / usecase を実装  
+1. Modify OpenAPI definition (`openapi/`)
+2. Generate code
 
-生成ファイルは手動で編集してはいけません。
+```sh
+make gen-api
+```
+
+1. Implement handler / usecase
+
+Generated files **must never be edited manually**.
 
 ## Branch Strategy
 
-本リポジトリは **release-centric branching model** を採用しています。
+This repository uses a **release-centric branching model**.
 
-- 機能ブランチは最新の `release/*` から作成する  
-- `develop`, `staging`, `production` へは release 経由でのみ反映される  
-- 保護ブランチへの直接コミットは禁止  
-- すべての変更は Pull Request 経由で行う  
+Rules:
 
-この戦略により：
+- Feature branches must be created from `release/*`
+- `develop`, `staging`, `production` accept changes only via release branches
+- Direct commits to protected branches are prohibited
+- All changes must go through Pull Requests
 
-- バージョン整合性の維持  
-- 安全なリリースフロー  
-- AI支援開発時の事故防止  
+Benefits:
 
-を実現しています。
-
-## Intended Use Cases
-
-このBoilerplateは以下の用途を想定しています：
-
-- 新規プロダクトのバックエンド構築  
-- PoC〜初期スケールフェーズ  
-- 厳格なレイヤ分離が必要なチーム開発  
-- 型安全なSQL管理が必要なプロジェクト  
-- AI支援開発を前提とした設計統制  
-
-以下の用途には向きません：
-
-- 単一ファイルで完結する小規模API  
-- アーキテクチャ境界を設けない高速プロトタイピング  
+- Version consistency
+- Safer release workflows
+- Reduced risk when using AI-assisted development
 
 ## Directory Structure
 
-```text
+```txt
 .
 ├── cmd/            # Application entrypoint
 ├── internal/       # Application code (Onion Architecture)
@@ -72,94 +145,170 @@ API変更は必ず以下の順序で行います：
 │   ├── controller/
 │   └── di/
 ├── database/       # Migrations & SQL (sqlc)
-├── openapi/        # API contracts (OpenAPI-first)
+├── openapi/        # API contracts
 ├── pkg/            # Shared utilities
 ├── docker/
 ├── docs/
 └── makefile
 ```
 
-詳細な構造説明は各ディレクトリ直下の README を参照してください。
-
 ## Stack
 
-- **Language**: Go
-- **Web Framework**: Echo
-- **DI**: uber/fx
-- **API Definition**: OpenAPI + oapi-codegen
-- **DB**: PostgreSQL
-- **Query**: sqlc
-- **Migration**: golang-migrate (+ tern)
-- **Logging**: zap
-- **Testing**: testify
-- **CLI**: cobra
-- **Dev Tools**: Docker / docker-compose / air
-
-## Getting Started
-
-```bash
-make install
-make serve
-make tools
-make db-init
-```
-
-## Release Workflow
-
-タグ発行：
-
-```bash
-make release-major-tag # メジャーリリース
-make release-minor-tag # マイナーリリース
-make release-patch-tag # パッチリリース
-```
-
-次リリースブランチ作成：
-
-```bash
-make release-major-branch
-make release-minor-branch
-make release-patch-branch
-make hotfix-patch-branch
-```
+|Category|Technology|
+|----------|------------|
+|Language|Go|
+|Web Framework|Echo|
+|Dependency Injection|uber/fx|
+|API Definition|OpenAPI + oapi-codegen|
+|Database|PostgreSQL|
+|Query|sqlc|
+|Migration|golang-migrate|
+|Logging|zap|
+|Testing|testify|
+|CLI|cobra|
+|Dev Tools|Docker / docker-compose / air|
 
 ## AI-Safe Design
 
-本テンプレートは AI支援開発を前提に設計されています。
+This boilerplate is designed for **AI-assisted development**.
 
-- レイヤ強制
-- 生成物分離
-- release基準ブランチ運用
-- OpenAPI-first
-- domain純粋性の維持
+Constraints are intentionally introduced to prevent unintended architectural drift.
 
-これらはアーキテクチャの逸脱や意図しない変更を防ぐための制約です。
+Key mechanisms:
 
-## 本テンプレートの前提
+- Enforced layering
+- Generated code separation
+- Release-based branching
+- OpenAPI-first API design
+- Domain layer purity
 
-本テンプレートは以下を理解しているチーム向けです：
+These constraints help AI agents generate safer code.
 
-- Go + Echo + Fx + OpenAPI + sqlc 構成
-- レイヤアーキテクチャ
-- .env 管理とセキュリティ境界の判断
-- 初期構築の意思決定が可能（TL相当）
+## Documentation
 
-## Tools (Required Versions)
+Detailed documentation is available in `docs/`.
 
-- Go
-  - バージョンは `go.mod` を参照
-- Docker Desktop
-- GitHub CLI
-- Postman
+- Architecture  
+- Development Workflow  
+- Architectural Rules  
+- Design Decisions  
+- Versioning Policy  
+
+```txt
+docs/
+```
+
+## Intended System Types
+
+Designed for:
+
+- New backend products
+- PoC → early scale phase
+- Strict layered team development
+- Systems with strong domain rules
+- Long-term maintainable backends
+
+Not ideal for:
+
+- Single-file micro APIs
+- Rapid prototypes without architecture
+- Ultra-low latency systems
+- Strong microservice decomposition
+
+This template assumes a **modular monolith architecture**.
+
+## SaaS / Vendor Neutrality
+
+This project intentionally avoids lock-in to specific SaaS vendors.
+
+Observability and tooling are designed to support:
+
+- OSS-first tooling
+- Vendor-neutral architecture
+
+## Extensibility
+
+Components under `internal/` are loosely coupled.
+
+Dependency Injection enables replacement of:
+
+- Infrastructure
+- Implementations
+- Middleware
+
+depending on runtime environments.
+
+## Maintainer Policy / Disclaimer
+
+This repository is **independently maintained by the author**.
+
+It is not affiliated with any organization.
+
+While provided in good faith, **no guarantees are made regarding security, stability, or suitability for specific use cases**.
+
+Users are responsible for verifying:
+
+- Dependency vulnerabilities
+- Security configuration
+- Operational compatibility
+
+before using this template.
+
+## Library Selection Policy
+
+Libraries are selected based on:
+
+- Active maintenance
+- Community adoption
+- Replaceability
+- Avoiding strong framework lock-in
+
+The architecture assumes **replaceable components**.
+
+## Maintenance Policy
+
+The maintainer may provide:
+
+- Dependency updates
+- Security fixes
+- Architectural improvements
+
+However, the following are **not guaranteed**:
+
+- Issue response deadlines
+- Guaranteed bug fixes
+- Long-term maintenance commitments
+
+## Future Boilerplates
+
+Planned future releases:
+
+- Frontend Boilerplate
+- Infrastructure Boilerplate
+- Observability Boilerplate
+
+## AI-Agent Documentation
+
+This repository includes documentation designed for AI agents.
+
+However, the project remains fully maintainable **without AI tools**.
 
 ## License
 
-This project is licensed under the MIT License.
-See [LICENSE](./LICENSE) for details.
+MIT License
 
-## 参考
+See:
 
-- [バージョニングルール](docs/versioning.md)
+```txt
+LICENSE
+```
 
-This repository is not just a collection of libraries.
-Its primary value lies in architectural constraints and design philosophy.
+## Reference
+
+- [versioning.md](docs/project/versioning.md)
+- [architecture-index.md](docs/index.md)
+  - [architecture.md](docs/architecture.md)
+  - [development-flow.md](docs/development-flow.md)
+  - [decisions.md](docs/decisions.md)
+  - [rules.md](docs/rules.md)
+- [go-upgrade.md](docs/maintenance/go-upgrade.md)

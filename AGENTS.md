@@ -28,6 +28,39 @@ The structure is intentionally strict to ensure:
 
 Do not introduce new architectural patterns unless explicitly instructed.
 
+## Architecture Documentation
+
+This repository contains structured architecture documentation under `docs/`.
+
+AI agents MUST read these documents before making architectural changes.
+
+Recommended reading order:
+
+Required reading:
+
+```txt
+docs/architecture.md
+docs/rules.md
+```
+
+Optional reference:
+
+```txt
+docs/development-flow.md
+docs/decisions.md
+```
+
+Purpose of each document:
+
+|Document|Purpose|
+|----------|--------|
+|rules.md|Non-negotiable architectural constraints|
+|architecture.md|System structure and layer responsibilities|
+|development-flow.md|How development tasks must be performed|
+|decisions.md|Rationale behind technology choices|
+
+When generating or modifying code, always follow the rules defined in `docs/rules.md`.
+
 ## Root Folders
 
 ### AI Modification Scope
@@ -107,6 +140,9 @@ Domain layer must not:
 - Access environment variables
 - Perform I/O
 - Use logging frameworks
+- Use context.Context
+- Use database clients
+- Import infrastructure packages
 - Depend on time, randomness, or system state directly
 
 ### usecase/
@@ -262,7 +298,14 @@ Migration rules:
 
 API Change:
 
-- Modify OpenAPI source → regenerate → update handler → update usecase
+API changes MUST follow this order:
+
+1. Modify OpenAPI source (`openapi/**/*.yaml`)
+2. Regenerate code (`make gen-api`)
+3. Implement handler
+4. Implement usecase
+
+Handlers and usecases MUST NOT be implemented before the OpenAPI contract exists.
 
 Database Change:
 
@@ -344,15 +387,13 @@ After executing the command, please correct any areas that could not be fixed.
 
 Finally, run `make lint` to check for any errors.
 
-### Do not edit generated files
+### Do not edit generated files and directlies
 
-- `**/**.gen.go` - Generated code files
-- `**/**.sql.go` - Generated SQL query code files
-- `**/openapi.gen.yaml` - Generated OpenAPI spec file
-- `docs/coverage/**` - Generated Code coverage reports
-- `docs/er-diagram/**` - Generated Entity-relationship diagrams
-- `docs/meta/**` - Generated Project metadata files
-- `docs/openapi/**` - Generated OpenAPI documentation files
+- `**/**.gen.go`
+- `**/**.sql.go`
+- `*_mock.go`
+- `**/openapi.gen.yaml`
+- `docs/`
 
 ## Testing Instructions
 
@@ -460,3 +501,5 @@ This file must be maintained by humans only.
 AI agents must NOT modify this file unless explicitly instructed by a human.
 
 Changes to this file must be intentional and reviewed carefully, as it defines repository-wide development rules.
+
+If the correct implementation location is unclear, prefer modifying an existing file rather than creating a new one.
