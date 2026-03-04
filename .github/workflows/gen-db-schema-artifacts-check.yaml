@@ -186,6 +186,30 @@ jobs:
               });
             }
 
+      - name: Detect generated changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "===== GIT STATUS ====="
+          git status
+
+          echo "===== GIT DIFF ====="
+          git diff docs/db-schema || true
+
+          echo "===== UNTRACKED FILES ====="
+          git ls-files --others --exclude-standard docs/db-schema || true
+
+          files="$(git diff --name-only docs/db-schema)"
+
+          if [ -n "$files" ]; then
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "$files" > /tmp/changed_files.txt
+          else
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+            : > /tmp/changed_files.txt
+          fi
+
       - name: Fail if diff exists
         if: steps.er_diff.outputs.has_diff == 'true'
         run: exit 1

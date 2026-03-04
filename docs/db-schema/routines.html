@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>local.public</title>
+        <title>test.public</title>
         <!-- Tell the browser to be responsive to screen width -->
         <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
         <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
@@ -46,7 +46,7 @@
                 <nav class="navbar navbar-static-top">
                     <div class="container">
                         <div class="navbar-header">
-                            <a href="index.html" class="navbar-brand"><b>local</b></a><span class="navbar-brand" style="padding-left: 0">.public</span>
+                            <a href="index.html" class="navbar-brand"><b>test</b></a><span class="navbar-brand" style="padding-left: 0">.public</span>
                             <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse"><i class="fa fa-bars"></i></button>
                         </div>
 
@@ -103,20 +103,20 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td><a href="routines/texticlike_citext__text__f1f03d2b.html">texticlike(citext, text)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>internal</td>
-                                        <td>true</td>
-                                        <td>boolean</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/hmac_bytea__bytea__text__12a4167b.html">hmac(bytea, bytea, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>bytea</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/texticlike_citext__text__f1f03d2b.html">texticlike(citext, text)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>internal</td>
+                                        <td>true</td>
+                                        <td>boolean</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -148,11 +148,11 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/regexp_matches_citext__citext___47f2f6e3.html">regexp_matches(citext, citext, text)</a></td>
+                                        <td><a href="routines/fips_mode___6f11b63d.html">fips_mode()</a></td>
                                         <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>SETOF text[]</td>
+                                        <td>c</td>
+                                        <td>false</td>
+                                        <td>boolean</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -256,20 +256,20 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/gtrgm_options_internal__aa66c8e.html">gtrgm_options(internal)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>true</td>
-                                        <td>void</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/strict_word_similarity_dist_op__ef8992d0.html">strict_word_similarity_dist_op(text, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>real</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/gtrgm_options_internal__aa66c8e.html">gtrgm_options(internal)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>true</td>
+                                        <td>void</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -292,11 +292,11 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/regexp_replace_citext__citext___fe61f4e3.html">regexp_replace(citext, citext, text, text)</a></td>
+                                        <td><a href="routines/similarity_text__text__671bb316.html">similarity(text, text)</a></td>
                                         <td>FUNCTION</td>
-                                        <td>sql</td>
+                                        <td>c</td>
                                         <td>true</td>
-                                        <td>text</td>
+                                        <td>real</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -310,15 +310,6 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/similarity_text__text__671bb316.html">similarity(text, text)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>true</td>
-                                        <td>real</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/texticnlike_citext__text__5947d86b.html">texticnlike(citext, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>internal</td>
@@ -328,20 +319,20 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/show_trgm_text__b321dcda.html">show_trgm(text)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>true</td>
-                                        <td>text[]</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/citext_hash_extended_citext__bi_5cc2f969.html">citext_hash_extended(citext, bigint)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>bigint</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/show_trgm_text__b321dcda.html">show_trgm(text)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>true</td>
+                                        <td>text[]</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -360,6 +351,15 @@
                                         <td>c</td>
                                         <td>true</td>
                                         <td>boolean</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/regexp_split_to_table_string_ci_c82c8dd9.html">regexp_split_to_table(string citext, pattern citext, flags text)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>SETOF text</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -481,15 +481,6 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/gtrgm_in_cstring__e710afa4.html">gtrgm_in(cstring)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>true</td>
-                                        <td>gtrgm</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/min_citext__b6de5b20.html">min(citext)</a></td>
                                         <td>AGGREGATE</td>
                                         <td>internal</td>
@@ -504,6 +495,15 @@
                                         <td>c</td>
                                         <td>true</td>
                                         <td>internal</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/gtrgm_in_cstring__e710afa4.html">gtrgm_in(cstring)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>true</td>
+                                        <td>gtrgm</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -634,11 +634,11 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/strict_word_similarity_dist_com_2868ff56.html">strict_word_similarity_dist_commutator_op(text, text)</a></td>
+                                        <td><a href="routines/hstore_eq_hstore__hstore__638d648d.html">hstore_eq(hstore, hstore)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
-                                        <td>real</td>
+                                        <td>boolean</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -652,29 +652,11 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/hstore_eq_hstore__hstore__638d648d.html">hstore_eq(hstore, hstore)</a></td>
+                                        <td><a href="routines/strict_word_similarity_dist_com_2868ff56.html">strict_word_similarity_dist_commutator_op(text, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
-                                        <td>boolean</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="routines/regexp_split_to_array_citext__c_2a6237b6.html">regexp_split_to_array(citext, citext, text)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>text[]</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="routines/regexp_match_citext__citext__te_bfcff875.html">regexp_match(citext, citext, text)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>text[]</td>
+                                        <td>real</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -724,15 +706,6 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/regexp_split_to_array_citext__c_17ee36b7.html">regexp_split_to_array(citext, citext)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>text[]</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/pgp_armor_headers_text__OUT_key_f5c70f7e.html">pgp_armor_headers(text, OUT key text, OUT value text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -760,6 +733,15 @@
                                         <td></td>
                                     </tr>
                                     <tr>
+                                        <td><a href="routines/pg_stat_statements_reset_userid_a892db43.html">pg_stat_statements_reset(userid oid DEFAULT 0, dbid oid DEFAULT 0, queryid bigint DEFAULT 0, minmax_only boolean DEFAULT false)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>false</td>
+                                        <td>timestamp with time zone</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
                                         <td><a href="routines/gin_extract_value_trgm_text__in_939db366.html">gin_extract_value_trgm(text, internal)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -778,20 +760,20 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/pg_stat_statements_reset_userid_a892db43.html">pg_stat_statements_reset(userid oid DEFAULT 0, dbid oid DEFAULT 0, queryid bigint DEFAULT 0, minmax_only boolean DEFAULT false)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>false</td>
-                                        <td>timestamp with time zone</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/hstore_record__b6089149.html">hstore(record)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>hstore</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/regexp_split_to_table_string_ci_46e1e133.html">regexp_split_to_table(string citext, pattern citext)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>SETOF text</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -814,15 +796,6 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/regexp_replace_citext__citext___611a99a4.html">regexp_replace(citext, citext, text)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>text</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/hstore_version_diag_hstore__98ce8c20.html">hstore_version_diag(hstore)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -837,15 +810,6 @@
                                         <td>c</td>
                                         <td>true</td>
                                         <td>void</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="routines/pg_stat_statements_showtext_boo_bd8b4ab8.html">pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>false</td>
-                                        <td>SETOF record</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -931,6 +895,15 @@
                                         <td></td>
                                     </tr>
                                     <tr>
+                                        <td><a href="routines/regexp_matches_string_citext__p_68d09cbb.html">regexp_matches(string citext, pattern citext)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>SETOF text[]</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
                                         <td><a href="routines/armor_bytea__text____text____b52ecb33.html">armor(bytea, text[], text[])</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -940,11 +913,29 @@
                                         <td></td>
                                     </tr>
                                     <tr>
+                                        <td><a href="routines/regexp_split_to_array_string_ci_7847ce6e.html">regexp_split_to_array(string citext, pattern citext, flags text)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>text[]</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
                                         <td><a href="routines/gin_extract_hstore_hstore__inte_d3e63921.html">gin_extract_hstore(hstore, internal)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>internal</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/regexp_matches_string_citext__p_e0763d61.html">regexp_matches(string citext, pattern citext, flags text)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>SETOF text[]</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -967,15 +958,6 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/regexp_split_to_table_citext__c_efe2762c.html">regexp_split_to_table(citext, citext)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>SETOF text</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/hs_concat_hstore__hstore__147c5423.html">hs_concat(hstore, hstore)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -994,20 +976,20 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/gin_extract_query_trgm_text__in_d6e582af.html">gin_extract_query_trgm(text, internal, smallint, internal, internal, internal, internal)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>true</td>
-                                        <td>internal</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/citext_ne_citext__citext__87c1368a.html">citext_ne(citext, citext)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>boolean</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/gin_extract_query_trgm_text__in_d6e582af.html">gin_extract_query_trgm(text, internal, smallint, internal, internal, internal, internal)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>true</td>
+                                        <td>internal</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1026,6 +1008,15 @@
                                         <td>c</td>
                                         <td>true</td>
                                         <td>anyelement</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/regexp_match_string_citext__pat_14e73f69.html">regexp_match(string citext, pattern citext)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>text[]</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1093,6 +1084,33 @@
                                         <td></td>
                                     </tr>
                                     <tr>
+                                        <td><a href="routines/regexp_replace_string_citext__p_9bed8f71.html">regexp_replace(string citext, pattern citext, replacement text, flags text)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>text</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/pg_stat_statements_showtext_boo_663c01fe.html">pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>false</td>
+                                        <td>SETOF record</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/regexp_split_to_array_string_ci_88119948.html">regexp_split_to_array(string citext, pattern citext)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>text[]</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
                                         <td><a href="routines/crypt_text__text__f4fa8121.html">crypt(text, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -1129,20 +1147,20 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/delete_hstore__hstore__553eff06.html">delete(hstore, hstore)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>true</td>
-                                        <td>hstore</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/encrypt_iv_bytea__bytea__bytea__3207e510.html">encrypt_iv(bytea, bytea, bytea, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>bytea</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/delete_hstore__hstore__553eff06.html">delete(hstore, hstore)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>true</td>
+                                        <td>hstore</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1156,15 +1174,6 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/slice_array_hstore__text____f4582fb1.html">slice_array(hstore, text[])</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>true</td>
-                                        <td>text[]</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/pgp_sym_encrypt_text__text__tex_ab2eabf9.html">pgp_sym_encrypt(text, text, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -1174,11 +1183,11 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/hstore_in_cstring__bd282b52.html">hstore_in(cstring)</a></td>
+                                        <td><a href="routines/slice_array_hstore__text____f4582fb1.html">slice_array(hstore, text[])</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
-                                        <td>hstore</td>
+                                        <td>text[]</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1188,6 +1197,15 @@
                                         <td>c</td>
                                         <td>true</td>
                                         <td>internal</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/hstore_in_cstring__bd282b52.html">hstore_in(cstring)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>true</td>
+                                        <td>hstore</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1228,6 +1246,24 @@
                                         <td></td>
                                     </tr>
                                     <tr>
+                                        <td><a href="routines/regexp_match_string_citext__pat_22b84b0f.html">regexp_match(string citext, pattern citext, flags text)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>text[]</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/regexp_replace_string_citext__pa_fa686cb.html">regexp_replace(string citext, pattern citext, replacement text)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>text</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
                                         <td><a href="routines/citextin_cstring__c453c8a5.html">citextin(cstring)</a></td>
                                         <td>FUNCTION</td>
                                         <td>internal</td>
@@ -1242,15 +1278,6 @@
                                         <td>c</td>
                                         <td>false</td>
                                         <td>bytea</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="routines/regexp_matches_citext__citext__64151ba4.html">regexp_matches(citext, citext)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>SETOF text[]</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1336,15 +1363,6 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/regexp_match_citext__citext__3fef32b6.html">regexp_match(citext, citext)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>text[]</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/gtrgm_distance_internal__text___218d08fb.html">gtrgm_distance(internal, text, smallint, oid, internal)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -1390,20 +1408,20 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/texticregexeq_citext__citext__1f7093f3.html">texticregexeq(citext, citext)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>internal</td>
-                                        <td>true</td>
-                                        <td>boolean</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/pgp_pub_encrypt_text__bytea__te_be7ad0db.html">pgp_pub_encrypt(text, bytea, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>false</td>
                                         <td>bytea</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/texticregexeq_citext__citext__1f7093f3.html">texticregexeq(citext, citext)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>internal</td>
+                                        <td>true</td>
+                                        <td>boolean</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1417,20 +1435,20 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/citext_inet__2fe43b40.html">citext(inet)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>internal</td>
-                                        <td>true</td>
-                                        <td>citext</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/word_similarity_dist_op_text__t_f9503946.html">word_similarity_dist_op(text, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>real</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/citext_inet__2fe43b40.html">citext(inet)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>internal</td>
+                                        <td>true</td>
+                                        <td>citext</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1498,20 +1516,20 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/set_limit_real__6a809e41.html">set_limit(real)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>c</td>
-                                        <td>false</td>
-                                        <td>real</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/hmac_text__text__text__be846cd9.html">hmac(text, text, text)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
                                         <td>true</td>
                                         <td>bytea</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><a href="routines/set_limit_real__6a809e41.html">set_limit(real)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>c</td>
+                                        <td>false</td>
+                                        <td>real</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1597,15 +1615,6 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/regexp_split_to_table_citext__c_11244b6b.html">regexp_split_to_table(citext, citext, text)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>SETOF text</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
                                         <td><a href="routines/gtrgm_picksplit_internal__inter_270b22b8.html">gtrgm_picksplit(internal, internal)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -1620,15 +1629,6 @@
                                         <td>c</td>
                                         <td>true</td>
                                         <td>boolean</td>
-                                        <td>INVOKER</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="routines/split_part_citext__citext__inte_a9d08569.html">split_part(citext, citext, integer)</a></td>
-                                        <td>FUNCTION</td>
-                                        <td>sql</td>
-                                        <td>true</td>
-                                        <td>text</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1651,6 +1651,15 @@
                                         <td></td>
                                     </tr>
                                     <tr>
+                                        <td><a href="routines/split_part_citext__citext__inte_a9d08569.html">split_part(citext, citext, integer)</a></td>
+                                        <td>FUNCTION</td>
+                                        <td>sql</td>
+                                        <td>true</td>
+                                        <td>text</td>
+                                        <td>INVOKER</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
                                         <td><a href="routines/hstore_subscript_handler_intern_12fc72b4.html">hstore_subscript_handler(internal)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
@@ -1669,11 +1678,11 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/hstore_send_hstore__71aa5d36.html">hstore_send(hstore)</a></td>
+                                        <td><a href="routines/gen_salt_text__integer__9e9a20af.html">gen_salt(text, integer)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
-                                        <td>true</td>
-                                        <td>bytea</td>
+                                        <td>false</td>
+                                        <td>text</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>
@@ -1687,11 +1696,11 @@
                                         <td></td>
                                     </tr>
                                     <tr>
-                                        <td><a href="routines/gen_salt_text__integer__9e9a20af.html">gen_salt(text, integer)</a></td>
+                                        <td><a href="routines/hstore_send_hstore__71aa5d36.html">hstore_send(hstore)</a></td>
                                         <td>FUNCTION</td>
                                         <td>c</td>
-                                        <td>false</td>
-                                        <td>text</td>
+                                        <td>true</td>
+                                        <td>bytea</td>
                                         <td>INVOKER</td>
                                         <td></td>
                                     </tr>

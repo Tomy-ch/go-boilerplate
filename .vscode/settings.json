@@ -80,5 +80,6 @@
   // この設定を追加することで、特定のファイルやディレクトリをエクスプローラーから非表示にできます。
   "files.exclude": {
     "openapi/openapi.gen.yaml": true // 42crunch.vscode-openapi がエラーを誤検知するため、エクスプローラーから非表示にします。
-  }
+  },
+  "makefile.configureOnOpen": false
 }
