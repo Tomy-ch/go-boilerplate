@@ -1,12 +1,11 @@
-name: ER Diagram Artifacts Check
+name: Generated Database Query Artifacts Check
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/e-r-diagram-artifacts-check.yaml'
+      - '.github/workflows/gen-db-query-artifacts-check.yaml'
       - 'database/**/*.sql'
       - 'docker/db/**/*.sql'
-      - 'docs/e-r-diagram/**'
       - '.makefiles/**/*.mk'
   workflow_dispatch:
 
@@ -15,13 +14,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  er-diagram-check:
+  generate-db-query-check:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       pull-requests: write
-
     env:
       ENV: ci
       DB: test
@@ -57,6 +54,10 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Install sqlc
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
       - name: Setup DB (wait & init)
         uses: ./.github/actions/setup-postgres
         with:
@@ -64,23 +65,24 @@ jobs:
           user: ${{ env.DB_USER }}
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
-
       - name: Initialize Database Table
         run: make db-migrate-ci-up DB=${{ env.DB }}
-
-      - name: Generate ER diagram (SchemaSpy)
-        run: make schemaspy-ci
-
+      - name: Dump schema
+        run: make dump-schema-ci work-dir="."
+      - name: Merge DML
+        run: make merge-dml-ci work-dir="."
+      - name: Remove generated SQLC code
+        run: make remove-generated-sqlc-ci
+      - name: Generate SQLC code
+        run: make sqlc-generate-ci
+      - name: Format generated code
+        run: make fmt
       - name: Detect generated changes (file list)
-        id: er_diff
+        id: gen_diff
         shell: bash
         run: |
           set -euo pipefail
-
-          files="$(git diff --name-only docs/e-r-diagram \
-            ':(exclude)docs/e-r-diagram/index.html' \
-            ':(exclude)docs/e-r-diagram/info-html.txt')"
-
+          files="$(git diff --name-only)"
           if [ -n "$files" ]; then
             echo "has_diff=true" >> "$GITHUB_OUTPUT"
             printf "%s\n" "$files" > /tmp/changed_files.txt
@@ -88,7 +90,6 @@ jobs:
             echo "has_diff=false" >> "$GITHUB_OUTPUT"
             : > /tmp/changed_files.txt
           fi
-
       - name: Comment changed files on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -96,9 +97,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const marker = '<!-- er-diagram-artifacts-filelist -->';
+            const marker = '<!-- generated-artifacts-filelist -->';
 
-            const hasDiff = ('${{ steps.er_diff.outputs.has_diff }}' === 'true');
+            const hasDiff = ('${{ steps.gen_diff.outputs.has_diff }}' === 'true');
 
             let files = [];
             if (hasDiff) {
@@ -129,33 +130,35 @@ jobs:
             const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
             const commitUrl = `${repoUrl}/commit/${headSha}`;
 
+            // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
             const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
             const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
             const body = hasDiff
               ? [
                   marker,
-                  '## 🗺 Differences in ER diagram artifacts detected',
+                  '## 🧾 Differences in database output have been detected (list of modified files)',
                   '',
                   commitLine,
                   '',
                   ...(files.length ? files.map(f => `- \`${f}\``) : ['(no changed files)']),
                   '',
-                  'Please regenerate ER diagram artifacts locally and commit the changes.',
+                  'Please run the database generation command locally (e.g., `make gen` / `make gen-query`) and commit the changes.',
                   '',
                   updatedLine,
                 ].join('\n')
               : [
                   marker,
-                  '## ✅ No differences in ER diagram artifacts detected',
+                  '## ✅ No differences in database output were detected',
                   '',
                   commitLine,
                   '',
-                  'ER diagram artifacts are up to date.',
+                  'No differences in database output were found.',
                   '',
                   updatedLine,
                 ].join('\n');
 
+            // 既存コメントがあれば更新（スパム防止）
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -180,7 +183,6 @@ jobs:
                 body,
               });
             }
-
       - name: Fail if diff exists
-        if: steps.er_diff.outputs.has_diff == 'true'
+        if: steps.gen_diff.outputs.has_diff == 'true'
         run: exit 1

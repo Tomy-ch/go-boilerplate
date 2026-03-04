@@ -79,7 +79,7 @@ services:
       - "5433:3000"
     volumes:
       - ./docker/database/schemaspy/schemaspy.properties:/schemaspy.properties
-      - ./docs/er-diagram:/output
+      - ./docs/db-schema:/output
     profiles:
       - generate
 
