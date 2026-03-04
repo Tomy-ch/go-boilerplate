@@ -15,13 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  golangci-setup:
-    uses: ./.github/workflows/golang-setup.yaml
-    permissions:
-      contents: read
-
   app-boot-check:
-    needs: golangci-setup
     runs-on: ubuntu-latest
     permissions:
       contents: read

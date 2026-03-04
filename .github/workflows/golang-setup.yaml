@@ -1,15 +1,17 @@
-name: Golang Setup
+name: Go Module Check
+
 on:
   workflow_call:
     inputs:
       go-version:
         required: false
         type: string
-        default: '1.26.0'
+        default: "1.26.0"
 
 jobs:
-  setup:
+  mod-check:
     runs-on: ubuntu-latest
+
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
@@ -22,7 +24,14 @@ jobs:
           cache: true
           cache-dependency-path: |
             **/go.sum
+
       - name: Download Dependencies
         run: go mod download
-      - name: Check Go version
-        run: go version
+
+      - name: Verify go.mod / go.sum are tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Verify modules build graph
+        run: go list -mod=readonly ./...

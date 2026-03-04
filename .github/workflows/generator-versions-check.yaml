@@ -31,6 +31,12 @@ jobs:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
 
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
       - name: Capture committed generator versions
         id: prev_versions
         run: |
