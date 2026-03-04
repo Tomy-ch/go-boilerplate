@@ -3,22 +3,30 @@ name: migration-check
 on:
   pull_request:
     paths:
-      - "database/migrations/**"
+      - 'database/migrations/**'
+      - '.github/workflows/migration-check.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   migration-check:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run migration checks
+        id: migration
+        continue-on-error: true
+        shell: bash
         run: |
           set +e
 
           RESULT_FILE=/tmp/migration_result.txt
-          STATUS_FILE=/tmp/migration_status.txt
-
           echo "" > $RESULT_FILE
 
           run_check () {
@@ -62,9 +70,9 @@ jobs:
           fi
 
           if [ $FAIL -ne 0 ]; then
-            echo "failed" > $STATUS_FILE
+            echo "status=failure" >> "$GITHUB_OUTPUT"
           else
-            echo "success" > $STATUS_FILE
+            echo "status=success" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Comment migration result on PR
@@ -76,9 +84,12 @@ jobs:
             const fs = require('fs');
 
             const marker = '<!-- migration-check-result -->';
+            const status = '${{ steps.migration.outputs.status }}';
 
-            const status = fs.readFileSync('/tmp/migration_status.txt', 'utf8').trim();
-            const result = fs.readFileSync('/tmp/migration_result.txt', 'utf8').trim();
+            const result = (() => {
+              try { return fs.readFileSync('/tmp/migration_result.txt', 'utf8').trim(); }
+              catch { return '(log not found)'; }
+            })();
 
             const updatedAtJST = new Date().toLocaleString('ja-JP', {
               timeZone: 'Asia/Tokyo',
@@ -99,9 +110,6 @@ jobs:
             const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
             const commitUrl = `${repoUrl}/commit/${headSha}`;
 
-            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
-            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
-
             let body;
 
             if (status === 'success') {
@@ -109,24 +117,24 @@ jobs:
                 marker,
                 '## ✅ Migration checks passed',
                 '',
-                commitLine,
+                `🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
                 '',
                 'All migration validations passed.',
                 '',
-                updatedLine,
+                `🕒 UpdatedAt: ${updatedAtJST} (JST)`
               ].join('\n');
             } else {
               body = [
                 marker,
                 '## ❌ Migration check failed',
                 '',
-                commitLine,
+                `🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
                 '',
                 '```',
                 result,
                 '```',
                 '',
-                updatedLine,
+                `🕒 UpdatedAt: ${updatedAtJST} (JST)`
               ].join('\n');
             }
 
@@ -137,7 +145,9 @@ jobs:
               per_page: 100,
             });
 
-            const existing = comments.find(c => (c.body || '').includes(marker));
+            const existing = comments
+              .filter(c => (c.body || '').includes(marker))
+              .sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
 
             if (existing) {
               await github.rest.issues.updateComment({
@@ -154,3 +164,7 @@ jobs:
                 body,
               });
             }
+
+      - name: Fail job if migration check failed
+        if: steps.migration.outputs.status != 'success'
+        run: exit 1

@@ -141,6 +141,7 @@ func RegisterHandlers(router EchoRouter, si ServerInterface) {
 // Registers handlers, and prepends BaseURL to the paths, so that the paths
 // can be served under a prefix.
 func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string) {
+
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,
 	}
@@ -151,6 +152,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/debug/cookie/copy", wrapper.GetDebugCookieRawCopy)
 	router.GET(baseURL+"/debug/cookie/stream", wrapper.GetDebugCookieRawStream)
 	router.GET(baseURL+"/debug/cookie/ws", wrapper.GetDebugCookieRawWs)
+
 }
 
 type DeleteDebugCookieRequestObject struct {
@@ -175,7 +177,8 @@ func (response DeleteDebugCookie204Response) VisitDeleteDebugCookieResponse(w ht
 	return nil
 }
 
-type GetDebugCookieRequestObject struct{}
+type GetDebugCookieRequestObject struct {
+}
 
 type GetDebugCookieResponseObject interface {
 	VisitGetDebugCookieResponse(w http.ResponseWriter) error
@@ -212,7 +215,8 @@ func (response PostDebugCookie204Response) VisitPostDebugCookieResponse(w http.R
 	return nil
 }
 
-type GetDebugCookieRawCopyRequestObject struct{}
+type GetDebugCookieRawCopyRequestObject struct {
+}
 
 type GetDebugCookieRawCopyResponseObject interface {
 	VisitGetDebugCookieRawCopyResponse(w http.ResponseWriter) error
@@ -236,7 +240,8 @@ func (response GetDebugCookieRawCopy200TextResponse) VisitGetDebugCookieRawCopyR
 	return err
 }
 
-type GetDebugCookieRawStreamRequestObject struct{}
+type GetDebugCookieRawStreamRequestObject struct {
+}
 
 type GetDebugCookieRawStreamResponseObject interface {
 	VisitGetDebugCookieRawStreamResponse(w http.ResponseWriter) error
@@ -267,7 +272,8 @@ func (response GetDebugCookieRawStream200TexteventStreamResponse) VisitGetDebugC
 	return err
 }
 
-type GetDebugCookieRawWsRequestObject struct{}
+type GetDebugCookieRawWsRequestObject struct {
+}
 
 type GetDebugCookieRawWsResponseObject interface {
 	VisitGetDebugCookieRawWsResponse(w http.ResponseWriter) error
@@ -291,7 +297,8 @@ func (response GetDebugCookieRawWs101Response) VisitGetDebugCookieRawWsResponse(
 	return nil
 }
 
-type GetDebugCookieRawWs400Response struct{}
+type GetDebugCookieRawWs400Response struct {
+}
 
 func (response GetDebugCookieRawWs400Response) VisitGetDebugCookieRawWsResponse(w http.ResponseWriter) error {
 	w.WriteHeader(400)
@@ -326,10 +333,8 @@ type StrictServerInterface interface {
 	GetDebugCookieRawWs(ctx context.Context, request GetDebugCookieRawWsRequestObject) (GetDebugCookieRawWsResponseObject, error)
 }
 
-type (
-	StrictHandlerFunc    = strictecho.StrictEchoHandlerFunc
-	StrictMiddlewareFunc = strictecho.StrictEchoMiddlewareFunc
-)
+type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
+type StrictMiddlewareFunc = strictecho.StrictEchoMiddlewareFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
 	return &strictHandler{ssi: ssi, middlewares: middlewares}
