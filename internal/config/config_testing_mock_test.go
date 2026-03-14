@@ -65,6 +65,7 @@ func TestMockConfigForTest(t *testing.T) {
 			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
+			bcryptCost:            expectedBcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   expectedSecureCookieSecure,
@@ -145,6 +146,7 @@ func Test_mockLoader(t *testing.T) {
 			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
+			BcryptCost:            expectedBcryptCost,
 		},
 		SecureCookie: SecureCookie{
 			Secure:   expectedSecureCookieSecure,
@@ -217,6 +219,7 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
 	require.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
 	require.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
+	require.Equal(t, strconv.Itoa(expectedBcryptCost), os.Getenv("SECURITY_BCRYPT_COST"))
 	// Secure Cookie
 	require.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
 	require.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))

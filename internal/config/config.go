@@ -79,6 +79,7 @@ func New() (*Config, error) {
 			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
 			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
 			referrerPolicy:        cfg.Security.ReferrerPolicy,
+			bcryptCost:            cfg.Security.BcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   cfg.SecureCookie.Secure,

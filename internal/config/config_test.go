@@ -64,6 +64,7 @@ func TestNewConfig(t *testing.T) {
 					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 					referrerPolicy:        expectedReferrerPolicy,
+					bcryptCost:            expectedBcryptCost,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
