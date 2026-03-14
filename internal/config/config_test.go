@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -306,6 +307,28 @@ func Test_validateSecurityConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Run("BcryptCostが無効な場合", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("BcryptCostがbcrypt.MinCost未満の場合", func(t *testing.T) {
+				cfg := mockLoader(t)
+				cfg.Security.BcryptCost = bcrypt.MinCost - 1 // 無効なBcryptCost
+
+				actual, err := validateConfig(cfg)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidBcryptCost)
+			})
+
+			t.Run("BcryptCostがbcrypt.MaxCostを超えている場合", func(t *testing.T) {
+				cfg := mockLoader(t)
+				cfg.Security.BcryptCost = bcrypt.MaxCost + 1 // 無効なBcryptCost
+
+				actual, err := validateConfig(cfg)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidBcryptCost)
+			})
+		})
+
 		t.Run("AllowedOriginsが空の場合", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"boilerplate-go/pkg/ptr"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -87,7 +89,7 @@ var (
 	expectedHSTSExcludeSubdomains = false
 	expectedHSTSPreloadEnabled    = false
 	expectedReferrerPolicy        = "no-referrer"
-	expectedBcryptCost            = 1
+	expectedBcryptCost            = bcrypt.MinCost
 	// secure cookie
 	expectedSecureCookieSecure   = ptr.To(true)
 	expectedSecureCookieSameSite = "Strict"

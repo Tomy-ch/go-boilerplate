@@ -201,8 +201,8 @@ func TestGetAllUsers(t *testing.T) {
 			}
 
 			actual, err := uc.ListUsersByKeyword(ctx, nil, p)
-			require.ErrorIs(t, expectedErr, err)
 			require.Nil(t, actual)
+			require.ErrorIs(t, err, expectedErr)
 		})
 	})
 }
