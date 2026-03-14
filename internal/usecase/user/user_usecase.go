@@ -161,7 +161,12 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 	defer endSpan()
 
 	now := u.clock.Now()
-	passwordHash, err := u.byencrypter.Hash(dto.RawPassword)
+	rawPassword, err := user.NewRawPassword(dto.RawPassword)
+	if err != nil {
+		return MutableFields{}, err
+	}
+
+	passwordHash, err := u.byencrypter.Hash(rawPassword.Value())
 	if err != nil {
 		return MutableFields{}, err
 	}

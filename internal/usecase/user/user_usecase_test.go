@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -287,6 +288,26 @@ func TestCreate(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("生パスワードの検証が失敗した場合、エラーが返される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			createDTO := newCreateDTO(userDomain, prefectureName)
+			createDTO.RawPassword = strings.Repeat("a", user.MaxRawPasswordLength+1) // パスワードを最大長+1にしてエラーを発生させる
+
+			clock := mock_clock.NewMockClock(ctrl)
+			clock.EXPECT().Now().Return(now)
+
+			uc := &usecase{
+				tracer: lt,
+				clock:  clock,
+			}
+
+			actual, err := uc.CreateUser(ctx, createDTO)
+			require.Equal(t, MutableFields{}, actual)
+			require.ErrorIs(t, err, user.ErrPassword)
+		})
+
 		t.Run("暗号化が失敗した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
@@ -302,7 +323,6 @@ func TestCreate(t *testing.T) {
 
 			uc := &usecase{
 				tracer:      lt,
-				txm:         mockTxManager,
 				clock:       clock,
 				byencrypter: byencrypter,
 			}
