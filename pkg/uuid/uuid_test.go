@@ -31,6 +31,16 @@ func TestBytes(t *testing.T) {
 	require.Equal(t, uuid.b, bytes)
 }
 
+func TestIsNil(t *testing.T) {
+	t.Parallel()
+	var nilUUID UUID
+	require.True(t, nilUUID.IsNil())
+
+	uuid, err := New()
+	require.NoError(t, err)
+	require.False(t, uuid.IsNil())
+}
+
 func TestToPrimitive(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
@@ -87,6 +97,17 @@ func TestParse(t *testing.T) {
 		require.Empty(t, actual)
 		require.Error(t, err)
 	})
+}
+
+func TestFromPrimitive(t *testing.T) {
+	t.Parallel()
+
+	uuid, err := New()
+	require.NoError(t, err)
+
+	primitive := toGoogle(uuid)
+	actual := FromPrimitive(primitive)
+	require.True(t, uuid.Equal(actual))
 }
 
 func TestFromPrimitiveList(t *testing.T) {
