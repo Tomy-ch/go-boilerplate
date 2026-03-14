@@ -182,13 +182,12 @@ func TestCreateUser(t *testing.T) {
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
 	provider := testkit.NewTestLoggingProvider(t)
+	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
-
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
-		tracer: lt,
-
+		tracer:   lt,
 		provider: provider,
 	}
 
@@ -227,7 +226,7 @@ func TestCreateUser(t *testing.T) {
 				createErr := repo.Create(ctx, userEntity)
 				require.NoError(t, createErr)
 
-				user, err := gen.New(driver.New(ctx, testkit.NewTestDB(t))).GetUserByID(ctx, userEntity.ID().ToPrimitive())
+				user, err := gen.New(driver.New(ctx, db)).GetUserByID(ctx, userEntity.ID().ToPrimitive())
 				require.NoError(t, err)
 				require.Equal(t, userEntity.ID().String(), user.Users.ID.String())
 			})
