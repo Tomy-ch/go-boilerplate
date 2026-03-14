@@ -309,7 +309,7 @@ func TestCreate(t *testing.T) {
 
 			actual, err := uc.CreateUser(ctx, createDTO)
 			require.Equal(t, MutableFields{}, actual)
-			require.ErrorIs(t, expectedErr, err)
+			require.ErrorIs(t, err, expectedErr)
 		})
 
 		t.Run("都道府県の取得に失敗した場合、エラーが返される", func(t *testing.T) {
@@ -340,7 +340,7 @@ func TestCreate(t *testing.T) {
 
 			actual, err := uc.CreateUser(ctx, createDTO)
 			require.Equal(t, MutableFields{}, actual)
-			require.ErrorIs(t, expectedErr, err)
+			require.ErrorIs(t, err, expectedErr)
 		})
 
 		t.Run("ユーザードメインの生成に失敗した場合、エラーが返される", func(t *testing.T) {
@@ -407,7 +407,7 @@ func TestCreate(t *testing.T) {
 
 			actual, err := uc.CreateUser(ctx, createDTO)
 			require.Equal(t, MutableFields{}, actual)
-			require.ErrorIs(t, expectedErr, err)
+			require.ErrorIs(t, err, expectedErr)
 		})
 	})
 }
