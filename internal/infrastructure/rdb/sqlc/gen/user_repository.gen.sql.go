@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 const countUsersByDeletedState = `-- name: CountUsersByDeletedState :one
@@ -209,86 +208,6 @@ func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListU
 	var items []*ListUsersRow
 	for rows.Next() {
 		var i ListUsersRow
-		if err := rows.Scan(
-			&i.Users.ID,
-			&i.Users.FirstName,
-			&i.Users.LastName,
-			&i.Users.PasswordHash,
-			&i.Users.Email,
-			&i.Users.Phone,
-			&i.Users.PrefectureID,
-			&i.Users.City,
-			&i.Users.Street,
-			&i.Users.Building,
-			&i.Users.PostalCode,
-			&i.Users.DeletedAt,
-			&i.Users.CreatedAt,
-			&i.Users.UpdatedAt,
-			&i.Users.SearchText,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, &i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listUsersByKeywords = `-- name: ListUsersByKeywords :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
-FROM users AS u
-WHERE CASE $1::DELETED_STATE
-        WHEN 'active' THEN u.deleted_at IS NULL
-        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
-        ELSE TRUE
-    END
-    AND u.search_text ILIKE ALL($2::TEXT [])
-ORDER BY u.created_at DESC
-LIMIT $4 OFFSET $3
-`
-
-type ListUsersByKeywordsParams struct {
-	DeletedState  DeletedState
-	PatternsParam []string
-	OffsetParam   int32
-	LimitParam    int32
-}
-
-type ListUsersByKeywordsRow struct {
-	Users Users
-}
-
-// === source: database/dml/repository/user/select_users_by_keyword.sql ===
-//
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
-//	FROM users AS u
-//	WHERE CASE $1::DELETED_STATE
-//	        WHEN 'active' THEN u.deleted_at IS NULL
-//	        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
-//	        ELSE TRUE
-//	    END
-//	    AND u.search_text ILIKE ALL($2::TEXT [])
-//	ORDER BY u.created_at DESC
-//	LIMIT $4 OFFSET $3
-func (q *Queries) ListUsersByKeywords(ctx context.Context, arg *ListUsersByKeywordsParams) ([]*ListUsersByKeywordsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsersByKeywords,
-		arg.DeletedState,
-		pq.Array(arg.PatternsParam),
-		arg.OffsetParam,
-		arg.LimitParam,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []*ListUsersByKeywordsRow
-	for rows.Next() {
-		var i ListUsersByKeywordsRow
 		if err := rows.Scan(
 			&i.Users.ID,
 			&i.Users.FirstName,
