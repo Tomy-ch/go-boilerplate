@@ -15,14 +15,13 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &repository{
-		db:       db,
 		tracer:   tf.Infra(),
 		provider: provider,
 	}
-	actual := New(db, provider, tf)
+	actual := New(provider, tf)
 	require.Equal(t, expected, actual)
 }
 
@@ -30,14 +29,13 @@ func TestFindByName(t *testing.T) {
 	// t.Parallel()　// NOTE: 並列実行不可
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
-		db:       db,
 		provider: provider,
 	}
 
@@ -71,14 +69,13 @@ func TestFindByID(t *testing.T) {
 	// t.Parallel()　// NOTE: 並列実行不可
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
-		db:       db,
 		provider: provider,
 	}
 
@@ -114,14 +111,13 @@ func TestFindByIDs(t *testing.T) {
 	// t.Parallel()　// NOTE: 並列実行不可
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
-		db:       db,
 		provider: provider,
 	}
 

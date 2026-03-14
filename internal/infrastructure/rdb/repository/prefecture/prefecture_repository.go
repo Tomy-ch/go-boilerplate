@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"boilerplate-go/internal/domain/prefecture"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
@@ -14,18 +13,15 @@ import (
 )
 
 type repository struct {
-	db       driver.DatabaseDriver
 	provider loggingdb.DBProvider
 	tracer   observability.LayerTracer
 }
 
 func New(
-	db driver.DatabaseDriver,
 	provider loggingdb.DBProvider,
 	tf observability.TracerFactory,
 ) prefecture.Repository {
 	return &repository{
-		db:       db,
 		provider: provider,
 		tracer:   tf.Infra(),
 	}

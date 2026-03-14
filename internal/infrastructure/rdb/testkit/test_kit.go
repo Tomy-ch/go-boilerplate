@@ -28,8 +28,21 @@ type testTxManager struct {
 	t     *testing.T
 }
 
-// NewTestDBWithLoggingProvider は、テスト用のデータベースドライバーとログ付きDBプロバイダーを生成します。
-func NewTestDBWithLoggingProvider(t *testing.T) (driver.DatabaseDriver, loggingdb.DBProvider) {
+// NewTestDB は、テスト用のデータベースドライバーを生成します。
+func NewTestDB(t *testing.T) driver.DatabaseDriver {
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOperationSystemConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
+	require.NoError(t, err)
+
+	return db
+}
+
+// NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
+func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
@@ -42,9 +55,7 @@ func NewTestDBWithLoggingProvider(t *testing.T) (driver.DatabaseDriver, loggingd
 	mockLogger := logging.NewTestLogger(t)
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, dbCfg, mockLogger, lf, tracer)
-
-	return db, loggingDBProvider
+	return loggingdb.NewLoggingDBProvider(db, dbCfg, mockLogger, lf, tracer)
 }
 
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
