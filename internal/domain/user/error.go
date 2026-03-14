@@ -19,7 +19,6 @@ var (
 	ErrInvalidStreet         = xerrors.Wrap(errInvalid, "street failed")
 	ErrInvalidBuilding       = xerrors.Wrap(errInvalid, "building failed")
 	ErrInvalidPostalCode     = xerrors.Wrap(errInvalid, "postal code failed")
-	ErrInvalidCreatedAt      = xerrors.Wrap(errInvalid, "created at failed")
 	ErrInvalidUpdatedAt      = xerrors.Wrap(errInvalid, "updated at failed")
 	ErrInvalidDeletedAt      = xerrors.Wrap(errInvalid, "deleted at failed")
 )
