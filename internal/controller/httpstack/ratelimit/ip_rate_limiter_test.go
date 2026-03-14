@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,7 +45,8 @@ func Test_iPRateLimiter_resolveClientIP(t *testing.T) {
 	t.Run("RealIPが空の場合、unknownを返す", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		req.RemoteAddr = ""
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -58,7 +60,8 @@ func Test_iPRateLimiter_resolveClientIP(t *testing.T) {
 		t.Parallel()
 
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		req.Header.Set(echo.HeaderXRealIP, "1.2.3.4")
 		c := e.NewContext(req, httptest.NewRecorder())
 		ip := rl.resolveClientIP(c)
@@ -98,8 +101,10 @@ func Test_iPRateLimiter_ensureLimiter(t *testing.T) {
 func Test_iPRateLimiter_AllowRequest(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
 	cfg := config.MockConfigForTest(t)
 	ipCfg := config.NewIPRateLimitConfig(cfg)
+
 	rl := &iPRateLimiter{
 		cfg:     ipCfg,
 		limit:   rate.Limit(ipCfg.Limit()),
@@ -111,7 +116,8 @@ func Test_iPRateLimiter_AllowRequest(t *testing.T) {
 	t.Run("IPRateLimiterのEnabledがtrueの場合、limiterのAllow結果が返される", func(t *testing.T) {
 		t.Parallel()
 		rl.limit = rate.Limit(1000)
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		req.Header.Set(echo.HeaderXRealIP, "10.0.0.1")
 		c := e.NewContext(req, httptest.NewRecorder())
 		ok := rl.AllowRequest(c)
@@ -121,7 +127,7 @@ func Test_iPRateLimiter_AllowRequest(t *testing.T) {
 	t.Run("IPRateLimiterのEnabledがfalseの場合、常にtrueが返される", func(t *testing.T) {
 		t.Parallel()
 		rl.entries["10.0.0.2"] = &limiterEntry{limiter: rate.NewLimiter(0, 0), lastSeen: time.Now()}
-		req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+		req2 := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		req2.Header.Set(echo.HeaderXRealIP, "10.0.0.2")
 		c2 := e.NewContext(req2, httptest.NewRecorder())
 		ok2 := rl.AllowRequest(c2)

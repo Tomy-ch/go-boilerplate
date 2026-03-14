@@ -84,7 +84,6 @@ func (s *Server) Do(
 		req.Header.Set("Content-Type", contentType)
 	}
 
-	//nolint:gosec // safe: Using an HTTP client within test code is safe.
 	res, err := s.client.Do(req)
 	require.NoError(s.t, err)
 	defer s.t.Cleanup(func() {

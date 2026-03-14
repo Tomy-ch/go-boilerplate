@@ -1,6 +1,7 @@
 package errorhandler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -57,7 +58,9 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 	handler := NewHTTPErrorHandler(z, lf, obsCfg)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/new", nil)
+	ctx := context.Background()
+
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/new", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -80,7 +83,8 @@ func Test_writeErrorResponse(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/err", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/err", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -119,7 +123,8 @@ func Test_handleHTTPError(t *testing.T) {
 		logger := logging.NewTestLogger(t)
 
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/h", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/h", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c, end := testspan.StartTestSpanForEcho(t, c)
@@ -141,7 +146,8 @@ func Test_handleHTTPError(t *testing.T) {
 		bw := &badWriter{}
 
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/h2", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/h2", nil)
 		c := e.NewContext(req, bw)
 		c, end := testspan.StartTestSpanForEcho(t, c)
 		defer end()
@@ -310,7 +316,8 @@ func Test_logHTTPError(t *testing.T) {
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/p", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/p", nil)
 	req.RemoteAddr = "9.8.7.6:1234"
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -405,7 +412,8 @@ func Test_httpErrorField(t *testing.T) {
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/p", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/p", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 

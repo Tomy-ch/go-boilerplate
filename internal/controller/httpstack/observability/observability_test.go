@@ -33,7 +33,8 @@ func TestMiddleware_Integration(t *testing.T) {
 	e := echo.New()
 	e.Use(Middleware(appCfg))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 

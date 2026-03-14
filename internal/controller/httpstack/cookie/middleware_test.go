@@ -1,6 +1,7 @@
 package cookie
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,7 +27,8 @@ func Test_secureCookieMiddleware_RewritesSetCookie(t *testing.T) {
 	secCookie := NewSecurityCookie(secCfg)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 

@@ -1,6 +1,7 @@
 package forcejson
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -39,7 +40,8 @@ func Test_ensureJSONContentType(t *testing.T) {
 
 	newCtx := func() echo.Context {
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 		return e.NewContext(req, rec)
 	}
@@ -109,7 +111,8 @@ func Test_forceJSONContentTypeMiddleware(t *testing.T) {
 			return nil
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/test-empty", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test-empty", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 
@@ -129,7 +132,8 @@ func Test_forceJSONContentTypeMiddleware(t *testing.T) {
 			return nil
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/test-html", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test-html", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 
@@ -149,7 +153,8 @@ func Test_forceJSONContentTypeMiddleware(t *testing.T) {
 			return nil
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/test-json", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test-json", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 

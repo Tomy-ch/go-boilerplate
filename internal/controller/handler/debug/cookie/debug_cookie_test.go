@@ -1,6 +1,7 @@
 package cookie
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -62,7 +63,9 @@ func Test_server_GetDebugCookie(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodGet, path, nil)
+			ctx := context.Background()
+
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
@@ -90,7 +93,9 @@ func Test_server_GetDebugCookie(t *testing.T) {
 			cookieVal := cookieHostAccessTokenKey + "=" + cookieHostAccessTokenValue + "; " + cookieThemeKey + "=" + cookieThemeValue
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodGet, path, nil)
+			ctx := context.Background()
+
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 			req.Header.Set("Cookie", cookieVal)
 
 			rec := httptest.NewRecorder()
@@ -126,7 +131,8 @@ func Test_server_PostDebugCookie(t *testing.T) {
 			setCookie := "__Host-access_token=rawtoken; Path=/hoge; Domain=example.com; SameSite=None"
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"setCookie":"`+setCookie+`"}`))
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, path, strings.NewReader(`{"setCookie":"`+setCookie+`"}`))
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -151,7 +157,8 @@ func Test_server_PostDebugCookie(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"setCookie":`))
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, path, strings.NewReader(`{"setCookie":`))
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -175,7 +182,8 @@ func Test_server_DeleteDebugCookie(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodDelete, path, nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, path, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
@@ -197,7 +205,8 @@ func Test_server_DeleteDebugCookie(t *testing.T) {
 			p := "/hoge"
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodDelete, path+"?name="+name+"&path="+p, nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, path+"?name="+name+"&path="+p, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
@@ -229,7 +238,8 @@ func Test_server_GetDebugCookieRawCopy(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodGet, path, nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
@@ -262,7 +272,8 @@ func Test_server_GetDebugCookieRawStream(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodGet, path, nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 

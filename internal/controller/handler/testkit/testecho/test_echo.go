@@ -3,6 +3,7 @@ package testecho
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -137,7 +138,8 @@ func (b *EchoTestClient) Build() (*http.Request, *httptest.ResponseRecorder, ech
 		b.t.Fatal("requestURL か routePattern のいずれかを設定してください")
 	}
 
-	req := httptest.NewRequest(b.method, target, b.body)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, b.method, target, b.body)
 	for k, vv := range b.headers {
 		for _, v := range vv {
 			req.Header.Add(k, v)
