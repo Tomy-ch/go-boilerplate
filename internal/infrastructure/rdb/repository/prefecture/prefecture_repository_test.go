@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestFindByName(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
+	t.Parallel()
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
 	provider := testkit.NewTestLoggingProvider(t)
@@ -66,7 +66,7 @@ func TestFindByName(t *testing.T) {
 }
 
 func TestFindByID(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
+	t.Parallel()
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
 	provider := testkit.NewTestLoggingProvider(t)
@@ -108,7 +108,7 @@ func TestFindByID(t *testing.T) {
 }
 
 func TestFindByIDs(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
+	t.Parallel()
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
 	provider := testkit.NewTestLoggingProvider(t)

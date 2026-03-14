@@ -31,7 +31,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestFindAll(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
+	t.Parallel()
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
 	provider := testkit.NewTestLoggingProvider(t)
@@ -178,7 +178,7 @@ func TestFindAll(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
+	t.Parallel()
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
 	provider := testkit.NewTestLoggingProvider(t)
@@ -272,7 +272,7 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestCountByActive(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
+	t.Parallel()
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
 	provider := testkit.NewTestLoggingProvider(t)

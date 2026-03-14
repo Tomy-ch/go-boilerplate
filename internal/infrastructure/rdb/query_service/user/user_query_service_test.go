@@ -27,7 +27,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestFindByKeyword(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
+	t.Parallel()
 	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
 
 	provider := testkit.NewTestLoggingProvider(t)
