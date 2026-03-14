@@ -20,9 +20,10 @@ import (
 var rollbackForTestError = xerrors.New("rollback for test")
 
 var (
-	testDB driver.DatabaseDriver
-	dbOnce sync.Once
-	txLock sync.Mutex
+	testDB  driver.DatabaseDriver
+	initErr error
+	dbOnce  sync.Once
+	txLock  sync.Mutex
 )
 
 type TransactionRunner interface {
@@ -104,11 +105,11 @@ func getTestDB(t *testing.T) driver.DatabaseDriver {
 		osCfg := config.NewOperationSystemConfig(cfg)
 		dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-		db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
-		require.NoError(t, err)
-
-		testDB = db
+		testDB, initErr = driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	})
+
+	require.NoError(t, initErr)
+	require.NotNil(t, testDB)
 
 	return testDB
 }
