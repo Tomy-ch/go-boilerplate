@@ -21,4 +21,6 @@ var (
 	ErrInvalidPostalCode     = xerrors.Wrap(errInvalid, "postal code failed")
 	ErrInvalidUpdatedAt      = xerrors.Wrap(errInvalid, "updated at failed")
 	ErrInvalidDeletedAt      = xerrors.Wrap(errInvalid, "deleted at failed")
+
+	ErrPassword = xerrors.Wrap(apperror.ErrValidation, "invalid password")
 )
