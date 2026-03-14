@@ -47,13 +47,13 @@ type CreateParamsDTO struct {
 
 // usecase は、ユーザーに関するユースケースを提供します。
 type usecase struct {
-	tracer      observability.LayerTracer
-	txm         tx.Manager
-	clock       clock.Clock
-	byencrypter security.Bcrypter
-	userRepo    user.Repository
-	pftRepo     prefecture.Repository
-	userQS      query.UserQueryService
+	tracer    observability.LayerTracer
+	txm       tx.Manager
+	clock     clock.Clock
+	encrypter security.Encrypter
+	userRepo  user.Repository
+	pftRepo   prefecture.Repository
+	userQS    query.UserQueryService
 }
 
 // Usecase は、ユーザーに関するユースケースを定義します。
@@ -71,19 +71,19 @@ func New(
 	tf observability.TracerFactory,
 	txm tx.Manager,
 	clock clock.Clock,
-	byencrypter security.Bcrypter,
+	byencrypter security.Encrypter,
 	userRepo user.Repository,
 	prefectureRepo prefecture.Repository,
 	userQueryService query.UserQueryService,
 ) Usecase {
 	return &usecase{
-		tracer:      tf.Usecase(),
-		txm:         txm,
-		clock:       clock,
-		byencrypter: byencrypter,
-		userRepo:    userRepo,
-		pftRepo:     prefectureRepo,
-		userQS:      userQueryService,
+		tracer:    tf.Usecase(),
+		txm:       txm,
+		clock:     clock,
+		encrypter: byencrypter,
+		userRepo:  userRepo,
+		pftRepo:   prefectureRepo,
+		userQS:    userQueryService,
 	}
 }
 
@@ -166,7 +166,7 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 		return MutableFields{}, err
 	}
 
-	passwordHash, err := u.byencrypter.Hash(rawPassword.Value())
+	passwordHash, err := u.encrypter.Hash(rawPassword.Value())
 	if err != nil {
 		return MutableFields{}, err
 	}

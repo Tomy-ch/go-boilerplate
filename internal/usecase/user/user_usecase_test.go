@@ -32,19 +32,19 @@ func TestNew(t *testing.T) {
 	tf := observability.NewNoopTracerFactory(t)
 	mockTxManager := mock_tx.NewMockManager(ctrl)
 	clock := mock_clock.NewMockClock(ctrl)
-	byencrypter := mock_security.NewMockBcrypter(ctrl)
+	byencrypter := mock_security.NewMockEncrypter(ctrl)
 	userRepo := mock_user.NewMockRepository(ctrl)
 	pftRepo := mock_prefecture.NewMockRepository(ctrl)
 	userQS := mock_query.NewMockUserQueryService(ctrl)
 
 	expected := &usecase{
-		tracer:      tf.Usecase(),
-		txm:         mockTxManager,
-		clock:       clock,
-		byencrypter: byencrypter,
-		userRepo:    userRepo,
-		pftRepo:     pftRepo,
-		userQS:      userQS,
+		tracer:    tf.Usecase(),
+		txm:       mockTxManager,
+		clock:     clock,
+		encrypter: byencrypter,
+		userRepo:  userRepo,
+		pftRepo:   pftRepo,
+		userQS:    userQS,
 	}
 	actual := New(tf, mockTxManager, clock, byencrypter, userRepo, pftRepo, userQS)
 
@@ -257,7 +257,7 @@ func TestCreate(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			byencrypter := mock_security.NewMockBcrypter(ctrl)
+			byencrypter := mock_security.NewMockEncrypter(ctrl)
 			byencrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().Create(
@@ -271,12 +271,12 @@ func TestCreate(t *testing.T) {
 			).Return(pftDomain, nil)
 
 			uc := &usecase{
-				tracer:      lt,
-				txm:         mockTxManager,
-				clock:       clock,
-				byencrypter: byencrypter,
-				userRepo:    userRepo,
-				pftRepo:     pftRepo,
+				tracer:    lt,
+				txm:       mockTxManager,
+				clock:     clock,
+				encrypter: byencrypter,
+				userRepo:  userRepo,
+				pftRepo:   pftRepo,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
@@ -318,13 +318,13 @@ func TestCreate(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			byencrypter := mock_security.NewMockBcrypter(ctrl)
+			byencrypter := mock_security.NewMockEncrypter(ctrl)
 			byencrypter.EXPECT().Hash(createDTO.RawPassword).Return("", expectedErr)
 
 			uc := &usecase{
-				tracer:      lt,
-				clock:       clock,
-				byencrypter: byencrypter,
+				tracer:    lt,
+				clock:     clock,
+				encrypter: byencrypter,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
@@ -342,7 +342,7 @@ func TestCreate(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			byencrypter := mock_security.NewMockBcrypter(ctrl)
+			byencrypter := mock_security.NewMockEncrypter(ctrl)
 			byencrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(
@@ -351,11 +351,11 @@ func TestCreate(t *testing.T) {
 			).Return(nil, expectedErr)
 
 			uc := &usecase{
-				tracer:      lt,
-				txm:         mockTxManager,
-				clock:       clock,
-				byencrypter: byencrypter,
-				pftRepo:     pftRepo,
+				tracer:    lt,
+				txm:       mockTxManager,
+				clock:     clock,
+				encrypter: byencrypter,
+				pftRepo:   pftRepo,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
@@ -372,7 +372,7 @@ func TestCreate(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			byencrypter := mock_security.NewMockBcrypter(ctrl)
+			byencrypter := mock_security.NewMockEncrypter(ctrl)
 			byencrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(
@@ -381,11 +381,11 @@ func TestCreate(t *testing.T) {
 			).Return(pftDomain, nil)
 
 			uc := &usecase{
-				tracer:      lt,
-				txm:         mockTxManager,
-				clock:       clock,
-				byencrypter: byencrypter,
-				pftRepo:     pftRepo,
+				tracer:    lt,
+				txm:       mockTxManager,
+				clock:     clock,
+				encrypter: byencrypter,
+				pftRepo:   pftRepo,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
@@ -403,7 +403,7 @@ func TestCreate(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			byencrypter := mock_security.NewMockBcrypter(ctrl)
+			byencrypter := mock_security.NewMockEncrypter(ctrl)
 			byencrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().Create(
@@ -417,12 +417,12 @@ func TestCreate(t *testing.T) {
 			).Return(pftDomain, nil)
 
 			uc := &usecase{
-				tracer:      lt,
-				txm:         mockTxManager,
-				clock:       clock,
-				byencrypter: byencrypter,
-				userRepo:    userRepo,
-				pftRepo:     pftRepo,
+				tracer:    lt,
+				txm:       mockTxManager,
+				clock:     clock,
+				encrypter: byencrypter,
+				userRepo:  userRepo,
+				pftRepo:   pftRepo,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)

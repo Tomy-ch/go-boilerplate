@@ -14,7 +14,7 @@ type bcrypter struct {
 }
 
 // NewBcryptHasher は、BcryptHasherを生成します。
-func NewBcryptHasher(secCfg *config.SecurityConfig) security.Bcrypter {
+func NewBcryptHasher(secCfg *config.SecurityConfig) security.Encrypter {
 	return &bcrypter{cost: secCfg.BcryptCost()}
 }
 
