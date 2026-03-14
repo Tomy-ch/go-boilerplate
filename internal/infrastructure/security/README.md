@@ -8,7 +8,7 @@
 
 - `NewBcryptHasher()` 関数: パスワードをハッシュ化するための `BcryptHasher` を生成します。
 - `Hash(password string) (string, error)` メソッド: パスワードをハッシュ化します。
-- `Compare(hashedPassword, password string) error` メソッド: ハッシュ化されたパスワードと平文のパスワードを比較します。
+- `Compare(hash, password string) (bool, error)` メソッド: ハッシュ化されたパスワードと平文のパスワードを比較します。
 
 ## 使い方
 
