@@ -46,10 +46,10 @@ func TestFindAll(t *testing.T) {
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("limitとoffsetを指定した場合、作成順で複数件が取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				limit := int32(100)
@@ -73,7 +73,7 @@ func TestFindAll(t *testing.T) {
 		})
 
 		t.Run("limit=1でoffset=0の場合先頭のユーザーが取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			firstUserID, err := uuid.Parse("eaabee3e-3b7a-4f61-8fa9-030944625e92")
 			require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestFindAll(t *testing.T) {
 		})
 
 		t.Run("limit=1でoffset=9の場合、末尾のユーザーが取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			lastUserID, err := uuid.Parse("550e8400-e29b-41d4-a716-446655440000")
 			require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestFindAll(t *testing.T) {
 		})
 
 		t.Run("limit=0の場合、空配列になる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				limit := int32(0)
@@ -124,10 +124,10 @@ func TestFindAll(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("limitが負数の場合、エラーになる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.FindAll(ctx, -1, 0)
@@ -137,7 +137,7 @@ func TestFindAll(t *testing.T) {
 		})
 
 		t.Run("offsetが負数の場合、エラーになる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.FindAll(ctx, 10, -1)
@@ -147,7 +147,7 @@ func TestFindAll(t *testing.T) {
 		})
 
 		t.Run("無効なユーザーが挿入されていてもDomain化の時にエラーになる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, db)
@@ -190,10 +190,10 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("有効なユーザーエンティティの場合、ユーザーが作成できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				now := time.Now()
@@ -232,10 +232,10 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("重複するメールアドレスの場合、エラーになる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				now := time.Now()
@@ -284,9 +284,9 @@ func TestCountByActive(t *testing.T) {
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 		t.Run("active=trueの場合、アクティブなユーザーの件数が取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, ptr.To(true))
 				require.NoError(t, err)
@@ -294,7 +294,7 @@ func TestCountByActive(t *testing.T) {
 			})
 		})
 		t.Run("active=falseの場合、非アクティブなユーザーの件数が取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, ptr.To(false))
 				require.NoError(t, err)
@@ -302,7 +302,7 @@ func TestCountByActive(t *testing.T) {
 			})
 		})
 		t.Run("active=nilの場合、全ユーザーの件数が取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, nil)
 				require.NoError(t, err)

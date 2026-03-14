@@ -41,10 +41,10 @@ func TestFindByKeyword(t *testing.T) {
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("キーワードにマッチするユーザーが取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				keywords := []string{"Grace"}
@@ -71,10 +71,10 @@ func TestFindByKeyword(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("limitが負数の場合、エラーになる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.FindByKeyword(ctx, nil, nil, -1, 0)
@@ -84,7 +84,7 @@ func TestFindByKeyword(t *testing.T) {
 		})
 
 		t.Run("offsetが負数の場合、エラーになる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				actual, err := repo.FindByKeyword(ctx, nil, nil, 10, -1)
@@ -94,7 +94,7 @@ func TestFindByKeyword(t *testing.T) {
 		})
 
 		t.Run("無効なユーザーが挿入されていてもDomain化の時にエラーになる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, db)

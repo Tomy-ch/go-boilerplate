@@ -39,10 +39,10 @@ func TestFindByName(t *testing.T) {
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("有効な都道府県名の場合、都道府県エンティティが取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			expectedID := "101caa1e-84e7-4ceb-9108-50d40b6be1a3"
 			expectedName := "東京都"
@@ -78,10 +78,10 @@ func TestFindByID(t *testing.T) {
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("有効な都道府県IDの場合、都道府県エンティティが取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			expectedID := "101caa1e-84e7-4ceb-9108-50d40b6be1a3"
 			expectedName := "東京都"
@@ -119,10 +119,10 @@ func TestFindByIDs(t *testing.T) {
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("有効な都道府県ID一覧の場合、都道府県エンティティ一覧が取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			expectedIDs := []string{
 				"101caa1e-84e7-4ceb-9108-50d40b6be1a3",
