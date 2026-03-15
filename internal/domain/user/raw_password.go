@@ -15,7 +15,7 @@ type RawPassword struct {
 func NewRawPassword(v string) (RawPassword, error) {
 	if !stringkit.InRange(v, MinRawPasswordLength, MaxRawPasswordLength) {
 		return RawPassword{}, xerrors.Wrap(
-			ErrPassword,
+			ErrInvalidRawPassword,
 			fmt.Sprintf("password must be between %d and %d characters", MinRawPasswordLength, MaxRawPasswordLength),
 		)
 	}

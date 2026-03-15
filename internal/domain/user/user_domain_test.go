@@ -215,7 +215,7 @@ func TestNew(t *testing.T) {
 				)
 
 				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPassword)
+				require.ErrorIs(t, err, ErrInvalidPasswordHash)
 			})
 
 			t.Run("passwordの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -238,7 +238,7 @@ func TestNew(t *testing.T) {
 				)
 
 				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPassword)
+				require.ErrorIs(t, err, ErrInvalidPasswordHash)
 			})
 		})
 

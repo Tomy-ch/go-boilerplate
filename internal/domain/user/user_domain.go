@@ -59,7 +59,7 @@ func New(
 	}
 
 	if !stringkit.InRange(passwordHash, minLength, maxPasswordLength) {
-		return nil, xerrors.Wrap(ErrInvalidPassword, stringkit.ErrorMsgInRange(minLength, maxPasswordLength, passwordHash))
+		return nil, xerrors.Wrap(ErrInvalidPasswordHash, stringkit.ErrorMsgInRange(minLength, maxPasswordLength, passwordHash))
 	}
 
 	if !stringkit.InRange(email, minLength, maxEmailLength) {

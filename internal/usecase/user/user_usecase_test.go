@@ -305,7 +305,7 @@ func TestCreate(t *testing.T) {
 
 			actual, err := uc.CreateUser(ctx, createDTO)
 			require.Equal(t, MutableFields{}, actual)
-			require.ErrorIs(t, err, user.ErrPassword)
+			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
 		})
 
 		t.Run("暗号化が失敗した場合、エラーが返される", func(t *testing.T) {

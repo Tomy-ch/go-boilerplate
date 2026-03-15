@@ -30,7 +30,7 @@ func TestNewRawPassword(t *testing.T) {
 
 			actual, err := NewRawPassword(invalidPassword)
 			require.Empty(t, actual)
-			require.ErrorIs(t, err, ErrPassword)
+			require.ErrorIs(t, err, ErrInvalidRawPassword)
 		})
 
 		t.Run("パスワードがMaxRawPasswordLengthを超える場合、エラーになる", func(t *testing.T) {
@@ -40,7 +40,7 @@ func TestNewRawPassword(t *testing.T) {
 
 			actual, err := NewRawPassword(invalidPassword)
 			require.Empty(t, actual)
-			require.ErrorIs(t, err, ErrPassword)
+			require.ErrorIs(t, err, ErrInvalidRawPassword)
 		})
 	})
 }

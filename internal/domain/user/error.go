@@ -10,7 +10,7 @@ var (
 	ErrInvalidID             = xerrors.Wrap(errInvalid, "id failed")
 	ErrInvalidFirstName      = xerrors.Wrap(errInvalid, "first name failed")
 	ErrInvalidLastName       = xerrors.Wrap(errInvalid, "last name failed")
-	ErrInvalidPassword       = xerrors.Wrap(errInvalid, "password failed")
+	ErrInvalidPasswordHash   = xerrors.Wrap(errInvalid, "password hash failed")
 	ErrInvalidEmail          = xerrors.Wrap(errInvalid, "email failed")
 	ErrInvalidPhone          = xerrors.Wrap(errInvalid, "phone failed")
 	ErrInvalidPrefectureID   = xerrors.Wrap(errInvalid, "prefecture id failed")
@@ -22,5 +22,5 @@ var (
 	ErrInvalidUpdatedAt      = xerrors.Wrap(errInvalid, "updated at failed")
 	ErrInvalidDeletedAt      = xerrors.Wrap(errInvalid, "deleted at failed")
 
-	ErrPassword = xerrors.Wrap(apperror.ErrValidation, "invalid password")
+	ErrInvalidRawPassword = xerrors.Wrap(apperror.ErrValidation, "invalid raw password")
 )
