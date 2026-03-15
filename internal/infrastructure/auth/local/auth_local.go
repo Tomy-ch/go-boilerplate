@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	localProvider = "local-mock"
-	localPrefix   = "debug:"
+	localPrefix = "debug:"
 )
 
 var ErrLocalMockAuthenticatorInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, "local mock authenticator: invalid token")
@@ -37,7 +36,7 @@ type authenticator struct {
 // New は LocalMockAuthenticator のコンストラクタです。
 func New() authbd.Authenticator {
 	return &authenticator{cfg: &config{
-		provider: localProvider,
+		provider: authbd.ProviderMock,
 		prefix:   localPrefix,
 	}}
 }

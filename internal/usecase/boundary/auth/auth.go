@@ -10,8 +10,6 @@ import (
 const (
 	// ProviderMock はモック認証プロバイダを示します。
 	ProviderMock = "mock"
-	// ProviderAuthServer は認証サーバーを示します。
-	ProviderAuthServer = "auth-server"
 )
 
 // Authn は、認証結果を表します。
