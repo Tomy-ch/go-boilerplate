@@ -134,7 +134,7 @@ func TestSet${NAME_CAMEL}ToEcho(t *testing.T) {
 	t.Run("echo context", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-    ctx := context.Background()
+		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -149,7 +149,7 @@ func TestSet${NAME_CAMEL}ToEcho(t *testing.T) {
 	t.Run("echo context - no value", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
-    ctx := context.Background()
+		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
