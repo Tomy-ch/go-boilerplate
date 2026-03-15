@@ -44,6 +44,8 @@ func NewTestDB(t *testing.T) driver.DatabaseDriver {
 
 // NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
 func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
+	t.Helper()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	tracer := observability.NewNoopTracerFactory(t)
