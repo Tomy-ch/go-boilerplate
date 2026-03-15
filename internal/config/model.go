@@ -81,6 +81,7 @@ type SecurityConfig struct {
 	hstsExcludeSubdomains bool
 	hstsPreloadEnabled    bool
 	referrerPolicy        string
+	bcryptCost            int
 }
 
 type SecureCookieConfig struct {
@@ -281,6 +282,9 @@ func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled
 
 // ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
 func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
+
+// BcryptCost は、bcryptのコストを返します。
+func (s *SecurityConfig) BcryptCost() int { return s.bcryptCost }
 
 // NewSecureCookieConfig は、セキュアクッキーの設定を返します。
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }

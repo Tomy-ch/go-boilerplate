@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,7 +15,8 @@ func Test_ExtractPathParams(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/users/123/books/abc", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/users/123/books/abc", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
@@ -46,7 +48,8 @@ func Test_ExtractQueryParams(t *testing.T) {
 
 	t.Run("クエリが無い場合は空マップを返す", func(t *testing.T) {
 		t.Parallel()
-		req := httptest.NewRequest(http.MethodGet, "/path", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
@@ -58,7 +61,8 @@ func Test_ExtractQueryParams(t *testing.T) {
 
 	t.Run("複数値クエリを正しくコピーして返す", func(t *testing.T) {
 		t.Parallel()
-		req := httptest.NewRequest(http.MethodGet, "/path?foo=1&foo=2&bar=x", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path?foo=1&foo=2&bar=x", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 

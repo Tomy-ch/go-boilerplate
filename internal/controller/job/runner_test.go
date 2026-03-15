@@ -114,7 +114,7 @@ func Test_runner_Run(t *testing.T) {
 			require.NoError(t, err)
 
 			actualErr := runner.Run(t.Context(), jobName, []string{})
-			require.ErrorIs(t, expectedErr, actualErr)
+			require.ErrorIs(t, actualErr, expectedErr)
 		})
 	})
 }

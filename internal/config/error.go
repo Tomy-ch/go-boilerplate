@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"boilerplate-go/internal/apperror"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -25,6 +27,13 @@ var (
 	)
 	// ErrEmptyAllowedOrigins は、許可されたオリジンが空であってはならないことを示すエラーです。
 	ErrEmptyAllowedOrigins = fmt.Errorf("allowed origins must not be empty: %w", errInvalidConfig)
+	//
+	ErrInvalidBcryptCost = fmt.Errorf(
+		"invalid bcrypt cost, must be between %d and %d: %w",
+		bcrypt.MinCost,
+		bcrypt.MaxCost,
+		errInvalidConfig,
+	)
 	// ErrHTTPOnlyAllowedForLocalhost は、HTTPのみのローカルホストにアクセス可能にするためのエラーを表します。
 	ErrHTTPOnlyAllowedForLocalhost = fmt.Errorf(
 		"http only localhost is allowed: %w",

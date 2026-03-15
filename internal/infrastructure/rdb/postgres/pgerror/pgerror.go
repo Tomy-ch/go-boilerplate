@@ -22,8 +22,8 @@ func NormalizeError(err error) error {
 		return nil
 	}
 
-	if IsUnavailable(err) { // 接続関連エラー
-		return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+	if errors.Is(err, sql.ErrNoRows) {
+		return xerrors.Wrap(apperror.ErrNotFound, err.Error())
 	}
 
 	var pgErr *pgconn.PgError
@@ -31,24 +31,15 @@ func NormalizeError(err error) error {
 		switch pgErr.Code {
 		case "23505": // ユニーク制約違反
 			return xerrors.Wrap(apperror.ErrConflict, err.Error())
-		case "23503": // 外部キー制約違反
-			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
-		case "23502": // NOT NULL制約違反
-			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
-		case "23514": // チェック制約違反
-			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
-		case "22001": // 文字数超過
-			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
-		case "22P02": // 型変換エラー
+		case "23503", "23502", "23514", "22001", "22P02":
+			// 外部キー制約違反 / NOT NULL制約違反 / チェック制約違反 / 文字数超過 / 型変換エラー
 			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
 		case "42501": // 権限不足
 			return xerrors.Wrap(apperror.ErrPermissionDenied, err.Error())
-		default:
-			return xerrors.Wrap(apperror.ErrInternal, err.Error())
 		}
 	}
-	if errors.Is(err, sql.ErrNoRows) {
-		return xerrors.Wrap(apperror.ErrNotFound, err.Error())
+	if IsUnavailable(err) { // 接続関連エラー
+		return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
 	}
 	return xerrors.Wrap(apperror.ErrInternal, err.Error())
 }

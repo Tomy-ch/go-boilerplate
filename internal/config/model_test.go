@@ -317,6 +317,11 @@ func TestGetterMethods(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
 		})
+
+		t.Run("BcryptCost", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedBcryptCost, security.BcryptCost())
+		})
 	})
 
 	t.Run("SecureCookie", func(t *testing.T) {

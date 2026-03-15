@@ -13,14 +13,13 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &systemQuery{
 		tracer:   tf.Infra(),
-		db:       db,
 		provider: provider,
 	}
-	actual := New(db, provider, tf)
+	actual := New(provider, tf)
 
 	require.Equal(t, expected, actual)
 }
@@ -28,14 +27,13 @@ func TestNew(t *testing.T) {
 func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 	t.Parallel()
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	s := &systemQuery{
 		tracer:   lt,
-		db:       db,
 		provider: provider,
 	}
 

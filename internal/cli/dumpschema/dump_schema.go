@@ -181,6 +181,7 @@ func (g *generator) sanitizeSchemaInPlace() error {
 		out = append(out, ln)
 	}
 
+	//nolint:gosec // safe: path comes from trusted CLI input
 	if err := os.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permmission); err != nil {
 		return fmt.Errorf("write sanitised schema: %w", err)
 	}

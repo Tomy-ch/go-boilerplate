@@ -5,14 +5,16 @@ package user
 
 import (
 	"context"
-	"time"
 
 	"boilerplate-go/internal/domain/prefecture"
 	"boilerplate-go/internal/domain/user"
 	"boilerplate-go/internal/observability"
+	"boilerplate-go/internal/usecase/boundary/clock"
+	"boilerplate-go/internal/usecase/boundary/security"
 	"boilerplate-go/internal/usecase/boundary/tx"
 	"boilerplate-go/internal/usecase/tools/paging"
 	"boilerplate-go/internal/usecase/tools/search"
+	"boilerplate-go/internal/usecase/user/query"
 	"boilerplate-go/pkg/uuid"
 )
 
@@ -37,19 +39,21 @@ type GetParamsDTO struct {
 
 // CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
 type CreateParamsDTO struct {
-	UserID uuid.UUID
-	//nolint:gosec // safe: Password is a legitimate field for user creation DTO.
-	Password string
+	UserID      uuid.UUID
+	RawPassword string
 
 	MutableFields
 }
 
 // usecase は、ユーザーに関するユースケースを提供します。
 type usecase struct {
-	tracer   observability.LayerTracer
-	txm      tx.Manager
-	userRepo user.Repository
-	pftRepo  prefecture.Repository
+	tracer    observability.LayerTracer
+	txm       tx.Manager
+	clock     clock.Clock
+	encrypter security.Encrypter
+	userRepo  user.Repository
+	pftRepo   prefecture.Repository
+	userQS    query.UserQueryService
 }
 
 // Usecase は、ユーザーに関するユースケースを定義します。
@@ -66,14 +70,20 @@ type Usecase interface {
 func New(
 	tf observability.TracerFactory,
 	txm tx.Manager,
+	clock clock.Clock,
+	encrypter security.Encrypter,
 	userRepo user.Repository,
 	prefectureRepo prefecture.Repository,
+	userQueryService query.UserQueryService,
 ) Usecase {
 	return &usecase{
-		tracer:   tf.Usecase(),
-		txm:      txm,
-		userRepo: userRepo,
-		pftRepo:  prefectureRepo,
+		tracer:    tf.Usecase(),
+		txm:       txm,
+		clock:     clock,
+		encrypter: encrypter,
+		userRepo:  userRepo,
+		pftRepo:   prefectureRepo,
+		userQS:    userQueryService,
 	}
 }
 
@@ -83,13 +93,13 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, 
 	defer endSpan()
 
 	var (
-		us  user.Entities
+		us  user.Users
 		err error
 	)
 
 	if params != nil {
 		keywords := search.ParseSearchTokens(params.Keyword, search.DefaultMaxTokens)
-		us, err = u.userRepo.FindByKeyword(ctx, keywords, params.Active, page.Limit32(), page.Offset32())
+		us, err = u.userQS.FindByKeyword(ctx, keywords, params.Active, page.Limit32(), page.Offset32())
 	} else {
 		us, err = u.userRepo.FindAll(ctx, page.Limit32(), page.Offset32())
 	}
@@ -150,13 +160,22 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	now := time.Now()
+	now := u.clock.Now()
+	rawPassword, err := user.NewRawPassword(dto.RawPassword)
+	if err != nil {
+		return MutableFields{}, err
+	}
+
+	passwordHash, err := u.encrypter.Hash(rawPassword.Value())
+	if err != nil {
+		return MutableFields{}, err
+	}
 
 	var (
-		userEntity *user.Entity
+		userEntity *user.User
 		pftDomain  *prefecture.Entity
 	)
-	err := u.txm.Do(ctx, func(ctx context.Context) error {
+	err = u.txm.Do(ctx, func(ctx context.Context) error {
 		var err error
 		pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
 		if err != nil {
@@ -164,24 +183,26 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 		}
 
 		userEntity, err = user.New(
-			dto.UserID.String(),
+			dto.UserID,
 			dto.FirstName,
 			dto.LastName,
-			dto.Password,
+			passwordHash,
 			dto.Email,
 			dto.Phone,
-			pftDomain.ID().String(),
+			pftDomain.ID(),
 			dto.City,
 			dto.Street,
 			dto.Building,
 			dto.PostalCode,
+			now,
+			now,
 			nil,
 		)
 		if err != nil {
 			return err
 		}
 
-		err = u.userRepo.CreateUser(ctx, now, userEntity)
+		err = u.userRepo.Create(ctx, userEntity)
 		if err != nil {
 			return err
 		}

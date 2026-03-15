@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"boilerplate-go/pkg/ptr"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -87,6 +89,7 @@ var (
 	expectedHSTSExcludeSubdomains = false
 	expectedHSTSPreloadEnabled    = false
 	expectedReferrerPolicy        = "no-referrer"
+	expectedBcryptCost            = bcrypt.MinCost
 	// secure cookie
 	expectedSecureCookieSecure   = ptr.To(true)
 	expectedSecureCookieSameSite = "Strict"
@@ -167,6 +170,7 @@ func MockConfigForTest(t testing.TB) *Config {
 			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
+			bcryptCost:            expectedBcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   expectedSecureCookieSecure,
@@ -245,6 +249,7 @@ func mockLoader(t testing.TB) Loader {
 			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
+			BcryptCost:            expectedBcryptCost,
 		},
 		SecureCookie: SecureCookie{
 			Secure:   expectedSecureCookieSecure,
@@ -268,7 +273,8 @@ func mockLoader(t testing.TB) Loader {
 }
 
 // setEnvVarsForTesting は、テスト用の環境変数を設定します。
-func setEnvVarsForTesting(t *testing.T) {
+func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function is only used
+	//  for testing and setting environment variables, so the complexity is acceptable.
 	t.Helper()
 	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
@@ -315,6 +321,7 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
 	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
 	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
+	t.Setenv("SECURITY_BCRYPT_COST", strconv.Itoa(expectedBcryptCost))
 	// Secure Cookie
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)

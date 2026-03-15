@@ -15,37 +15,34 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &repository{
-		db:       db,
 		tracer:   tf.Infra(),
 		provider: provider,
 	}
-	actual := New(db, provider, tf)
+	actual := New(provider, tf)
 	require.Equal(t, expected, actual)
 }
 
 func TestFindByName(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
-	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
+	t.Parallel()
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
-		db:       db,
 		provider: provider,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("有効な都道府県名の場合、都道府県エンティティが取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			expectedID := "101caa1e-84e7-4ceb-9108-50d40b6be1a3"
 			expectedName := "東京都"
@@ -68,25 +65,23 @@ func TestFindByName(t *testing.T) {
 }
 
 func TestFindByID(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
-	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
+	t.Parallel()
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
-		db:       db,
 		provider: provider,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("有効な都道府県IDの場合、都道府県エンティティが取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			expectedID := "101caa1e-84e7-4ceb-9108-50d40b6be1a3"
 			expectedName := "東京都"
@@ -111,25 +106,23 @@ func TestFindByID(t *testing.T) {
 }
 
 func TestFindByIDs(t *testing.T) {
-	// t.Parallel()　// NOTE: 並列実行不可
-	// 保存処理などが影響しあい、テストが不安定になるため並列実行不可とする。
+	t.Parallel()
 
-	db, provider := testkit.NewTestDBWithLoggingProvider(t)
+	provider := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer:   lt,
-		db:       db,
 		provider: provider,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
-		// t.Parallel()
+		t.Parallel()
 
 		t.Run("有効な都道府県ID一覧の場合、都道府県エンティティ一覧が取得できる", func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 
 			expectedIDs := []string{
 				"101caa1e-84e7-4ceb-9108-50d40b6be1a3",

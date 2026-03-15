@@ -35,8 +35,11 @@ func (u UUID) String() string { return toGoogle(u).String() }
 // Bytes は、UUIDをバイト配列に変換します。
 func (u UUID) Bytes() [16]byte { return u.b }
 
-// ToPrimitive は、UUIDからgithub.com/google/uuid の uuid.UUID を生成します。
+// ToPrimitive は、UUIDから github.com/google/uuid の uuid.UUID を生成します。
 func (u UUID) ToPrimitive() uuid.UUID { return toGoogle(u) }
+
+// IsNil は、UUIDが全てゼロであるかどうかを判定します。
+func (u UUID) IsNil() bool { return u.b == [16]byte{} }
 
 // Equal は、引数のUUIDと等しいかどうかを判定します。
 func (u UUID) Equal(v UUID) bool { return u.b == v.b }
@@ -55,6 +58,9 @@ func Parse(s string) (UUID, error) {
 	}
 	return fromGoogle(g), nil
 }
+
+// FromPrimitive は、github.com/google/uuid の uuid.UUID からUUIDを生成します。
+func FromPrimitive(g uuid.UUID) UUID { return fromGoogle(g) }
 
 // FromPrimitiveList は、uuid.UUIDのスライスをUUIDのスライスに変換します。
 func FromPrimitiveList(pl []uuid.UUID) []UUID {

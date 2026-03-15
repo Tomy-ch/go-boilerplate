@@ -10,10 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewTestDBWithLoggingProvider(t *testing.T) {
+func TestNewTestDB(t *testing.T) {
 	t.Parallel()
-	db, provider := NewTestDBWithLoggingProvider(t)
+	db := NewTestDB(t)
 	require.NotNil(t, db)
+}
+
+func TestNewTestLoggingProvider(t *testing.T) {
+	t.Parallel()
+	provider := NewTestLoggingProvider(t)
 	require.NotNil(t, provider)
 }
 

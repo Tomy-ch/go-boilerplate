@@ -3,6 +3,7 @@ package testkit
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"boilerplate-go/internal/config"
@@ -18,6 +19,13 @@ import (
 
 var rollbackForTestError = xerrors.New("rollback for test")
 
+var (
+	testDB  driver.DatabaseDriver
+	initErr error
+	dbOnce  sync.Once
+	txLock  sync.Mutex
+)
+
 type TransactionRunner interface {
 	WithinTx(fn func(ctx context.Context))
 }
@@ -28,36 +36,32 @@ type testTxManager struct {
 	t     *testing.T
 }
 
-// NewTestDBWithLoggingProvider は、テスト用のデータベースドライバーとログ付きDBプロバイダーを生成します。
-func NewTestDBWithLoggingProvider(t *testing.T) (driver.DatabaseDriver, loggingdb.DBProvider) {
+// NewTestDB は、テスト用のデータベースドライバーを生成します。
+func NewTestDB(t *testing.T) driver.DatabaseDriver {
+	t.Helper()
+	return getTestDB(t)
+}
+
+// NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
+func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
+	t.Helper()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
-	dbConnCfg := config.NewDBConnectionConfig(cfg)
 	tracer := observability.NewNoopTracerFactory(t)
-
-	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
-	require.NoError(t, err)
 
 	mockLogger := logging.NewTestLogger(t)
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	loggingDBProvider := loggingdb.NewLoggingDBProvider(db, dbCfg, mockLogger, lf, tracer)
-
-	return db, loggingDBProvider
+	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, mockLogger, lf, tracer)
 }
 
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
 func NewTestTransactionManager(t *testing.T) TransactionRunner {
 	t.Helper()
 	cfg := config.MockConfigForTest(t)
-	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
-	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
-	require.NoError(t, err)
-	innerTxm := driver.NewTransactionManager(cfg, db)
+	innerTxm := driver.NewTransactionManager(cfg, getTestDB(t))
 
 	txm := &testTxManager{
 		inner: innerTxm,
@@ -76,6 +80,10 @@ func NewTestTransactionManager(t *testing.T) TransactionRunner {
 //	})
 func (t *testTxManager) WithinTx(fn func(ctx context.Context)) {
 	t.t.Helper()
+
+	txLock.Lock()
+	defer txLock.Unlock()
+
 	baseCtx := context.Background()
 
 	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
@@ -87,4 +95,23 @@ func (t *testTxManager) WithinTx(fn func(ctx context.Context)) {
 		return
 	}
 	require.NoError(t.t, err)
+}
+
+// getTestDB は、テスト用のデータベースドライバーを生成します。シングルトンパターンで実装されており、複数回呼び出されても同じインスタンスを返します。
+func getTestDB(t *testing.T) driver.DatabaseDriver {
+	t.Helper()
+
+	dbOnce.Do(func() {
+		cfg := config.MockConfigForTest(t)
+		dbCfg := config.NewDatabaseConfig(cfg)
+		osCfg := config.NewOperationSystemConfig(cfg)
+		dbConnCfg := config.NewDBConnectionConfig(cfg)
+
+		testDB, initErr = driver.NewDB(dbCfg, osCfg, dbConnCfg)
+	})
+
+	require.NoError(t, initErr)
+	require.NotNil(t, testDB)
+
+	return testDB
 }

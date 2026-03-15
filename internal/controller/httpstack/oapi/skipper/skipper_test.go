@@ -1,6 +1,7 @@
 package skipper
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -27,7 +28,9 @@ func TestNewSkipper(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			ctx := context.Background()
+
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, tc.path, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 

@@ -111,9 +111,9 @@ func TestGetReady(t *testing.T) {
 				healthUsecase: uc,
 			}
 
-			res, actualErr := s.GetReady(ctx, gen.GetReadyRequestObject{})
+			res, err := s.GetReady(ctx, gen.GetReadyRequestObject{})
 			require.Nil(t, res)
-			require.ErrorIs(t, expectedErr, actualErr)
+			require.ErrorIs(t, err, expectedErr)
 		})
 	})
 }

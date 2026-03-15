@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/caarlos0/env/v11"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type validatedConfig struct {
@@ -79,6 +80,7 @@ func New() (*Config, error) {
 			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
 			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
 			referrerPolicy:        cfg.Security.ReferrerPolicy,
+			bcryptCost:            cfg.Security.BcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   cfg.SecureCookie.Secure,
@@ -177,6 +179,10 @@ func validateDatabaseConfig(dbCfg Database) error {
 func validateSecurityConfig(secCfg Security) (*net.IPNet, error) {
 	if len(secCfg.AllowedOrigins) == 0 {
 		return nil, ErrEmptyAllowedOrigins
+	}
+
+	if secCfg.BcryptCost < bcrypt.MinCost || bcrypt.MaxCost < secCfg.BcryptCost {
+		return nil, ErrInvalidBcryptCost
 	}
 
 	for _, origin := range secCfg.AllowedOrigins {

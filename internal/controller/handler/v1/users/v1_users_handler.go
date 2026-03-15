@@ -104,7 +104,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	createPrams.City = request.Body.City
 	createPrams.Street = request.Body.Street
 	createPrams.Building = request.Body.Building
-	createPrams.Password = request.Body.Password
+	createPrams.RawPassword = request.Body.Password
 
 	dto, err := s.uc.CreateUser(ctx, createPrams)
 	if err != nil {
