@@ -135,16 +135,11 @@ header p {
   transition: transform 0.15s ease;
 }
 
-.card-link:hover::after {
-  transform: translateX(4px);
-  color: var(--primary);
-}
-
 .card-md::after {
   content: "📄";
 }
 
-.card-md:hover::after {
+.card.card-md:hover::after {
   transform: none;
   color: var(--muted);
 }
