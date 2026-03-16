@@ -42,7 +42,7 @@ func TestGetHealthz(t *testing.T) {
 	s := &server{
 		tracer: lt,
 	}
-	expectedResponse := gen.ResponseHealth{Status: "ok"}
+	expectedResponse := gen.HealthResponse{Status: "ok"}
 
 	resp, err := s.GetHealthz(ctx, gen.GetHealthzRequestObject{})
 	require.NoError(t, err)
@@ -50,5 +50,5 @@ func TestGetHealthz(t *testing.T) {
 	actual, ok := resp.(gen.GetHealthz200JSONResponse)
 	require.True(t, ok)
 
-	require.Equal(t, expectedResponse, gen.ResponseHealth(actual))
+	require.Equal(t, expectedResponse, gen.HealthResponse(actual))
 }

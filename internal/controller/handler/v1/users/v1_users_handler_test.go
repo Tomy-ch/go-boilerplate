@@ -76,7 +76,7 @@ func Test_server_GetUsers(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
-			expectedResponse := gen.ResponseV1Users{
+			expectedResponse := gen.UsersResponse{
 				Users: []gen.UserResponse{
 					{
 						FirstName: expectedDTO1.FirstName,
@@ -110,7 +110,7 @@ func Test_server_GetUsers(t *testing.T) {
 			actual, ok := resp.(gen.GetUsers200JSONResponse)
 			require.True(t, ok)
 
-			require.Equal(t, expectedResponse, gen.ResponseV1Users(actual))
+			require.Equal(t, expectedResponse, gen.UsersResponse(actual))
 		})
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
@@ -119,7 +119,7 @@ func Test_server_GetUsers(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
-			expectedResponse := gen.ResponseV1Users{
+			expectedResponse := gen.UsersResponse{
 				Users: []gen.UserResponse{
 					{
 						FirstName: expectedDTO1.FirstName,
@@ -147,7 +147,7 @@ func Test_server_GetUsers(t *testing.T) {
 			actual, ok := resp.(gen.GetUsers200JSONResponse)
 			require.True(t, ok)
 
-			require.Equal(t, expectedResponse, gen.ResponseV1Users(actual))
+			require.Equal(t, expectedResponse, gen.UsersResponse(actual))
 		})
 	})
 

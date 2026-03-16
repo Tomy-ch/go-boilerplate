@@ -32,6 +32,6 @@ func TestVersionIntegration(t *testing.T) {
 
 		version.BindHandler(e, tf, loc, bi, appCfg)
 		actual := StartServer(t, e).DoJSON(http.MethodGet, "/version", nil, nil)
-		AssertJSONResponse(t, gen.ResponseVersion{}, actual)
+		AssertJSONResponse(t, gen.VersionResponse{}, actual)
 	})
 }

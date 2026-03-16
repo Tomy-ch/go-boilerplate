@@ -70,7 +70,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 		}
 	}
 
-	res := gen.ResponseV1Users{
+	res := gen.UsersResponse{
 		Users:  users,
 		Limit:  page.Limit(),
 		Offset: page.Offset(),
