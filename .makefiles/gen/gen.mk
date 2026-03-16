@@ -2,6 +2,7 @@
 .PHONY: gen ## 各種ドキュメントやコードを生成します
 .PHONY: gen-api ## API関連のドキュメントやコードを生成します
 .PHONY: gen-docs ## ドキュメント関連の生成を行います
+.PHONY: gen-all-docs ## ドキュメント関連の生成を全て行います
 .PHONY: gen-query ## SQLCのコード生成を行う
 .PHONY: gen-query-repo ## ドメイン用のSQLCのコード生成を行う
 .PHONY: gen-query-qs ## クエリサービス用のSQLCのコード生成を行う
@@ -22,6 +23,9 @@ gen-docs:
 	@make gen-api-docs
 	@make gen-tools-meta
 	@make gen-docs-json
+
+gen-all-docs:
+	@make gen-docs
 	@make gen-db-schema
 	@make gen-test-repo
 
