@@ -96,7 +96,7 @@ jobs:
                 '',
                 ...files.map(f => `- \`${f}\``),
                 '',
-                'Please run `make gen` locally and commit the changes.',
+                'Please run `make gen-api && make gen-api-docs` locally and commit the changes.',
                 '',
                 updatedLine,
               ].join('\n');
