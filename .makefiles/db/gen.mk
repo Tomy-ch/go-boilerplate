@@ -1,12 +1,12 @@
 ## DBに対する生成コマンド群
 # -----Dockerコンテナ内で実行するターゲット-----
-.PHONY: db-schema ## スキーマの更新を実行
+.PHONY: gen-db-schema ## スキーマの更新を実行
 .PHONY: dump-schema ## スキーマのダンプを実行
 # ----CI用ターゲット-----
 .PHONY: dump-schema-ci ## スキーマのダンプを実行（CI用）
 
 # -----Dockerコンテナ内で実行するターゲット-----
-db-schema:
+gen-db-schema:
 	@echo "🔄 スキーマの更新を実行します..."
 	docker compose run --rm er_diagram_generator
 	@echo "✅ スキーマの更新が完了しました。"

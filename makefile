@@ -34,8 +34,8 @@ include .makefiles/go/installer.mk
 include .makefiles/go/lib.mk
 include .makefiles/go/test.mk
 include .makefiles/go/sqlc.mk
-# メタ情報関連
-include .makefiles/meta/gen.mk
+# ドキュメント関連
+include .makefiles/docs/gen.mk
 # OpenAPI関連
 include .makefiles/openapi/gen.mk
 # スクリプト関連

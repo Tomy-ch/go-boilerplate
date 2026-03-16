@@ -15,7 +15,7 @@ gen-api-docs:
 
 # -----CI用ターゲット-----
 gen-swagger-ci:
-	swagger-cli bundle openapi/openapi.yaml --type yaml -o openapi/openapi.gen.yaml
+	redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml
 
 gen-api-docs-ci:
 	redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html
