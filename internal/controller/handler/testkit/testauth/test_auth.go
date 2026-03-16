@@ -18,7 +18,7 @@ func MakeAvailableAuthn(ctx context.Context, t *testing.T, subject string) conte
 	t.Helper()
 	authn, err := auth.New(
 		subject,
-		"local-mock",
+		"test",
 		nil,
 		nil,
 	)

@@ -33,7 +33,7 @@ func MakeAvailableUserID(t *testing.T, e *echo.Echo, id uuid.UUID) http.Header {
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if a, err := auth.New(id.String(), "local-mock", nil, nil); err == nil {
+			if a, err := auth.New(id.String(), "test", nil, nil); err == nil {
 				ctxhelper.SetAuthnToEcho(c, *a)
 			}
 			return next(c)
