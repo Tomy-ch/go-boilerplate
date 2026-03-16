@@ -26,41 +26,8 @@ type ErrorResponse struct {
 	RequestId string `json:"request_id"`
 }
 
-// RequestPostV1Users defines model for RequestPostV1Users.
-type RequestPostV1Users struct {
-	// Building 建物名・部屋番号
-	Building *string `json:"building"`
-
-	// City 市区町村
-	City string `json:"city"`
-
-	// Email メールアドレス
-	Email openapi_types.Email `json:"email"`
-
-	// FirstName 苗字
-	FirstName string `json:"firstName"`
-
-	// LastName 名前
-	LastName string `json:"lastName"`
-
-	// Password ユーザーのパスワード
-	Password string `json:"password"`
-
-	// Phone 電話番号
-	Phone string `json:"phone"`
-
-	// PostalCode 郵便番号
-	PostalCode string `json:"postalCode"`
-
-	// Prefecture 都道府県
-	Prefecture string `json:"prefecture"`
-
-	// Street 丁目・番地
-	Street string `json:"street"`
-}
-
-// ResponseV1Users defines model for ResponseV1Users.
-type ResponseV1Users struct {
+// PaginationMetadataResponse defines model for PaginationMetadataResponse.
+type PaginationMetadataResponse struct {
 	// Limit 1ページあたりの件数
 	Limit int `json:"limit"`
 
@@ -68,8 +35,7 @@ type ResponseV1Users struct {
 	Offset int `json:"offset"`
 
 	// Total 全件数
-	Total int            `json:"total"`
-	Users []UserResponse `json:"users"`
+	Total int `json:"total"`
 }
 
 // UserBaseInputRequest ユーザー情報の基本入力スキーマ
@@ -135,6 +101,52 @@ type UserResponse struct {
 	Street string `json:"street"`
 }
 
+// UsersPostRequest defines model for UsersPostRequest.
+type UsersPostRequest struct {
+	// Building 建物名・部屋番号
+	Building *string `json:"building"`
+
+	// City 市区町村
+	City string `json:"city"`
+
+	// Email メールアドレス
+	Email openapi_types.Email `json:"email"`
+
+	// FirstName 苗字
+	FirstName string `json:"firstName"`
+
+	// LastName 名前
+	LastName string `json:"lastName"`
+
+	// Password ユーザーのパスワード
+	Password string `json:"password"`
+
+	// Phone 電話番号
+	Phone string `json:"phone"`
+
+	// PostalCode 郵便番号
+	PostalCode string `json:"postalCode"`
+
+	// Prefecture 都道府県
+	Prefecture string `json:"prefecture"`
+
+	// Street 丁目・番地
+	Street string `json:"street"`
+}
+
+// UsersResponse defines model for UsersResponse.
+type UsersResponse struct {
+	// Limit 1ページあたりの件数
+	Limit int `json:"limit"`
+
+	// Offset 現在のオフセット
+	Offset int `json:"offset"`
+
+	// Total 全件数
+	Total int            `json:"total"`
+	Users []UserResponse `json:"users"`
+}
+
 // ActiveParam defines model for ActiveParam.
 type ActiveParam = bool
 
@@ -163,4 +175,4 @@ type GetUsersParams struct {
 }
 
 // PostUsersJSONRequestBody defines body for PostUsers for application/json ContentType.
-type PostUsersJSONRequestBody = RequestPostV1Users
+type PostUsersJSONRequestBody = UsersPostRequest

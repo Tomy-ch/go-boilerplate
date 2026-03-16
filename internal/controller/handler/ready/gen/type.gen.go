@@ -7,15 +7,15 @@ import (
 	"time"
 )
 
-// Defines values for ResponseReadyStatus.
+// Defines values for ReadyResponseStatus.
 const (
-	Degraded  ResponseReadyStatus = "degraded"
-	Ok        ResponseReadyStatus = "ok"
-	Unhealthy ResponseReadyStatus = "unhealthy"
+	Degraded  ReadyResponseStatus = "degraded"
+	Ok        ReadyResponseStatus = "ok"
+	Unhealthy ReadyResponseStatus = "unhealthy"
 )
 
-// Valid indicates whether the value is a known member of the ResponseReadyStatus enum.
-func (e ResponseReadyStatus) Valid() bool {
+// Valid indicates whether the value is a known member of the ReadyResponseStatus enum.
+func (e ReadyResponseStatus) Valid() bool {
 	switch e {
 	case Degraded:
 		return true
@@ -28,8 +28,8 @@ func (e ResponseReadyStatus) Valid() bool {
 	}
 }
 
-// ResponseReady サーバーのレディネスチェック用のレスポンスです。
-type ResponseReady struct {
+// ReadyResponse サーバーのレディネスチェック用のレスポンスです。
+type ReadyResponse struct {
 	// ApplicationTime アプリケーションサーバーの現在時刻
 	ApplicationTime time.Time `json:"applicationTime"`
 
@@ -40,8 +40,8 @@ type ResponseReady struct {
 	DbResponsedAt time.Time `json:"dbResponsedAt"`
 
 	// Status サーバーのレディネス状態
-	Status ResponseReadyStatus `json:"status"`
+	Status ReadyResponseStatus `json:"status"`
 }
 
-// ResponseReadyStatus サーバーのレディネス状態
-type ResponseReadyStatus string
+// ReadyResponseStatus サーバーのレディネス状態
+type ReadyResponseStatus string

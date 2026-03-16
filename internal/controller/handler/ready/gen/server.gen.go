@@ -73,7 +73,7 @@ type GetReadyResponseObject interface {
 	VisitGetReadyResponse(w http.ResponseWriter) error
 }
 
-type GetReady200JSONResponse ResponseReady
+type GetReady200JSONResponse ReadyResponse
 
 func (response GetReady200JSONResponse) VisitGetReadyResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")

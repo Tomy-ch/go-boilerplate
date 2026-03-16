@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// ResponseVersion サーバーのバージョン情報用のレスポンスです。
-type ResponseVersion struct {
+// VersionResponse サーバーのバージョン情報用のレスポンスです。
+type VersionResponse struct {
 	// BuildDate アプリケーションのビルド日時
 	BuildDate time.Time `json:"buildDate"`
 
