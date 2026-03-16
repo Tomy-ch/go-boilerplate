@@ -586,7 +586,10 @@ components:
   securitySchemes:
     BearerAuth:
       type: http
-      description: 認証にBearerトークンを使用することを示します。
+      description: |
+        認証にBearerトークンを使用することを示します。
+        exampleの値は、ローカル環境でのテスト用に使用されるダミートークンの形式です。
+        実際の運用環境では、適切なJWTトークンを使用してください。
       scheme: bearer
       bearerFormat: JWT
       example: 'debug: 1aefc648-571d-4bbd-a812-ea3668c989cb'
