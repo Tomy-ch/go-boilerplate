@@ -14,7 +14,7 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		provider := ProviderAuthServer
+		provider := ProviderMock
 		scopes := []string{}
 		claims := map[string]any{"role": "user"}
 
