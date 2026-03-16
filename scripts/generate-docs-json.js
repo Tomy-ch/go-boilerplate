@@ -20,7 +20,10 @@ function title(str) {
 
 function listFiles(dir, ext) {
   if (!fs.existsSync(dir)) return []
-  return fs.readdirSync(dir).filter(f => f.endsWith(ext))
+  return fs
+    .readdirSync(dir)
+    .filter(f => f.endsWith(ext))
+    .sort((a, b) => a.localeCompare(b))
 }
 
 function mdItems(dir, prefix) {
@@ -77,7 +80,6 @@ function generateSections() {
     .filter(item => !item.path.startsWith("./"))
 
   const jaRoot = mdItems(jaDir, "../ja")
-    .filter(item => !item.path.startsWith("../ja/"))
 
   if (enRoot.length) {
     sections.push({
@@ -101,6 +103,7 @@ function generateSections() {
     .filter(d => d.isDirectory())
     .map(d => d.name)
     .filter(d => !RESERVED.includes(d))
+    .sort((a, b) => a.localeCompare(b))
 
   for (const dir of dirs) {
 
