@@ -29,7 +29,6 @@ node_section() {
   echo ""
   echo "**Node-based tools (node_tool_runner)**"
   echo ""
-  echo "- swagger-cli: $(normalize "$(swagger-cli --version 2>&1 || echo 'unknown')")"
   echo "- redocly: $(normalize "$(redocly --version 2>&1 || echo 'unknown')")"
 }
 
