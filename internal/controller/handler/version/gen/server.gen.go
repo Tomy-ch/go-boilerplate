@@ -73,7 +73,7 @@ type GetVersionResponseObject interface {
 	VisitGetVersionResponse(w http.ResponseWriter) error
 }
 
-type GetVersion200JSONResponse ResponseVersion
+type GetVersion200JSONResponse VersionResponse
 
 func (response GetVersion200JSONResponse) VisitGetVersionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")

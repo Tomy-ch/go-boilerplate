@@ -120,7 +120,7 @@ type GetUsersResponseObject interface {
 	VisitGetUsersResponse(w http.ResponseWriter) error
 }
 
-type GetUsers200JSONResponse ResponseV1Users
+type GetUsers200JSONResponse UsersResponse
 
 func (response GetUsers200JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")

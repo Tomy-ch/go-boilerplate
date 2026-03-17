@@ -37,8 +37,8 @@ func (s *server) GetReady(
 	if err != nil {
 		return nil, err
 	}
-	return gen.GetReady200JSONResponse(gen.ResponseReady{
-		Status:          gen.ResponseReadyStatus(res.Status),
+	return gen.GetReady200JSONResponse(gen.ReadyResponse{
+		Status:          gen.ReadyResponseStatus(res.Status),
 		ApplicationTime: res.ApplicationTime,
 		DbLatencyMs:     res.DBHealthCheck.Latency.Milliseconds(),
 		DbResponsedAt:   res.DBHealthCheck.ResponsedAt,

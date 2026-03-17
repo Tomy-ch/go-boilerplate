@@ -35,7 +35,7 @@ func TestV1Users_Integration(t *testing.T) {
 
 		v1users.BindHandler(e, tf, mockApp)
 
-		expected := gen.ResponseV1Users{
+		expected := gen.UsersResponse{
 			Users: []gen.UserResponse{
 				{
 					FirstName: expectedDTO.FirstName,

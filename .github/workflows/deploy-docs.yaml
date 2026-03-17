@@ -1,0 +1,46 @@
+name: Deploy Docs Portal
+
+on:
+  push:
+    branches:
+      - production
+    paths:
+      - "docs/**"
+      - "scripts/generate-docs-json.js"
+      - ".github/workflows/deploy-docs.yaml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Generate docs.json
+        run: node scripts/generate-docs-json.js
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

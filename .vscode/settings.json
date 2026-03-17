@@ -77,9 +77,6 @@
 		"editor.formatOnPaste": true
   },
 
-  "files.exclude": {
-    "openapi/openapi.gen.yaml": true
-  },
   "makefile.configureOnOpen": false,
   "editor.suggestSelection": "first",
   "files.watcherExclude": {

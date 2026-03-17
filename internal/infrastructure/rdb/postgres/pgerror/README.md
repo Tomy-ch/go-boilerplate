@@ -1,57 +1,194 @@
-# pgerror パッケージ
+# pgerror Package
 
-概要: **PostgreSQL 固有のエラー正規化および接続エラー判定ロジックを提供するインフラ層コンポーネント。アプリケーション全体で一貫した DB エラー処理を実現するための変換レイヤー。**
+English | [日本語](README.ja.md)
 
-## 役割
+Overview: **An Infrastructure-layer component that normalizes PostgreSQL-specific errors into application-wide errors and determines database connectivity failures. It acts as a translation layer that hides database-specific error semantics from upper layers.**
 
-このディレクトリは、PostgreSQL 特有のエラーをアプリケーション共通のエラー形式へ正規化し、  
-ドメイン層・ユースケース層が DB の仕様を意識せずに済むようにするための責務を持ちます。
+## Architectural Position
 
-主な役割:
+```txt
+Repository
+   ↓
+pgerror
+   ↓
+PostgreSQL driver (pgx / pgconn)
+```
 
-- PostgreSQL の SQLSTATE コードに基づいたアプリケーションエラー (`apperror`) へのマッピング  
-  - 例: 23505 = Conflict（ユニーク制約違反）
-  - 例: 23503 = InvalidArgument（外部キー制約違反）
-- 接続不可エラー（ネットワーク / タイムアウト / driver.BadConn / SQLSTATE 08XXX）の判定
-- `sql.ErrNoRows` をアプリケーションの `NotFound` エラーへ正規化
-- Infrastructure 層から Usecase 層へ返却されるエラーを安全かつ一貫した形式に変換
+`pgerror` is the layer responsible for **converting errors returned by the DB driver into application-level errors**.
 
-## 必要度
+By introducing this layer:
 
-### 本番運用での必須度
+- Usecase
+- Domain
+- Handler
 
-- 必須度: **本番運用で必須**
+do not need to understand **PostgreSQL-specific error semantics**.
 
-理由:  
-PostgreSQL 特有のエラーハンドリングをしない場合、以下の問題が発生します。
+## Responsibility
 
-- 本番環境でユニーク制約違反や FK 制約違反が発生した際、適切なエラーコード（409 / 400）が返せない
-- DB 接続断・ネットワーク劣化を正しく復旧可能な状態として扱えない
-- 例外がそのまま露出し、アプリケーションのセキュリティ・保守性が低下する
+This package normalizes PostgreSQL-specific errors into a common application error format.
 
-アプリケーションとして正しい応答を返すために必須の層です。
+Primary responsibilities:
 
-### 開発/テスト運用での必須度
+- Convert PostgreSQL SQLSTATE codes into `apperror`
+- Detect database connectivity failures
+- Convert `sql.ErrNoRows` into `NotFound`
+- Standardize error contracts between Infrastructure and Usecase layers
 
-- 必須度: **開発/テスト運用で必須**
+This enables **separating DB-specific error logic from application code**.
 
-理由:
+## Error Normalization
 
-- sqlc / repository のテストで発生する PostgreSQL エラーを正規化し、上位層が想定どおりに動作しているか確認できる
-- インフラ固有のエラーを隠蔽することで、テストケースの可読性と安定性を向上できる
-- 予期しない raw error を防ぎ、CI 上でのデバッグが容易になる
+`NormalizeError` converts PostgreSQL errors into application-level errors.
 
-### 無効化した場合の影響
+```go
+func NormalizeError(err error) error
+```
 
-- PostgreSQL の raw error が上位レイヤーに漏れ、アプリケーションのエラーレスポンス仕様が崩れる
-- ユニーク制約違反や型変換エラーが内部エラー扱いとなり、誤った HTTP ステータスが返る
-- 接続不可時の復旧ロジックが機能せず、サービス劣化が検出できない
-- Usecase / Handler レイヤーで DB 仕様に依存した分岐を書く必要が生じ、設計崩壊の原因となる
+Processing flow:
 
-## 注意点
+```txt
+DB error
+   ↓
+NormalizeError
+   ↓
+AppError (apperror)
+```
 
-- PostgreSQL のエラー判定は SQLSTATE を使用するため、pgx ドライバ（pgconn）が返すエラー形式に依存している
-- `NormalizeError` は **インフラ層から Usecase 層へ返す唯一のエラー変換ポイント** として使用することが望ましい
-- `IsUnavailable` は「再試行可能かどうか」など、上位レイヤーでの復旧判断に利用する
-- SQLSTATE 08XXX（接続エラー系）は PostgreSQL 固有なので、他 DB（MySQL/TiDB 等）とは互換性がない
-- domain/usecase 層で PostgreSQL 固有の判定を行わないこと（層の責務を侵害するため）
+This function is recommended to be the **single normalization point for errors returned from the Infrastructure layer to the Usecase layer**.
+
+## SQLSTATE Mapping
+
+The following PostgreSQL SQLSTATE codes are mapped to application errors.
+
+|SQLSTATE|Meaning|AppError|
+|---|---|---|
+|23505|unique violation|Conflict|
+|23503|foreign key violation|InvalidArgument|
+|23502|not null violation|InvalidArgument|
+|23514|check violation|InvalidArgument|
+|22001|string too long|InvalidArgument|
+|22P02|invalid text representation|InvalidArgument|
+|42501|insufficient privilege|PermissionDenied|
+
+PostgreSQL errors that do not match these cases are mapped to:
+
+```txt
+Internal
+```
+
+## Special Handling
+
+### sql.ErrNoRows
+
+`sql.ErrNoRows` is not a PostgreSQL SQLSTATE and therefore handled separately.
+
+```txt
+sql.ErrNoRows
+   ↓
+NotFound
+```
+
+This allows the Repository layer to simply write:
+
+```go
+return NormalizeError(err)
+```
+
+and still correctly produce a `NotFound` error.
+
+## Connection Failure Detection
+
+`IsUnavailable` determines whether an error represents a database connectivity failure.
+
+```go
+func IsUnavailable(err error) bool
+```
+
+The following errors are treated as connectivity failures.
+
+```txt
+context.DeadlineExceeded
+net.Error (timeout)
+driver.ErrBadConn
+PostgreSQL SQLSTATE 08XXX
+```
+
+This detection can be used for:
+
+- retry mechanisms
+- circuit breakers
+- failover handling
+
+## Error Wrapping
+
+`pgerror` preserves the original database error while converting it to an application error.
+
+The resulting structure is:
+
+```txt
+apperror
++
+original error message
+```
+
+Errors are wrapped using `xerrors.Wrap`, allowing the system to retain:
+
+- the application-level error classification
+- the original database error
+
+## Necessity
+
+### Production
+
+Required.
+
+Reasons:
+
+- Convert database constraint violations into correct HTTP responses
+- Detect database connectivity failures
+- Prevent exposure of raw database errors
+
+This makes the layer essential for production systems.
+
+### Development / Testing
+
+Required.
+
+Reasons:
+
+- Hide database error semantics from tests
+- Stabilize error handling in CI environments
+- Improve readability of sqlc / repository tests
+
+## Notes
+
+### Use NormalizeError at a Single Boundary
+
+`NormalizeError` should be applied **only once at the Infrastructure → Usecase boundary**.
+
+Applying it multiple times may corrupt the error structure.
+
+### PostgreSQL-Specific Behavior
+
+SQLSTATE codes starting with `08XXX` represent PostgreSQL connection errors.
+
+If the application migrates to another database (e.g., MySQL / TiDB), the implementation of:
+
+```txt
+pgerror
+```
+
+must be replaced accordingly.
+
+### Avoid DB-Specific Logic in Upper Layers
+
+Do not write DB-specific logic in Usecase or Domain layers such as:
+
+```txt
+SQLSTATE
+pgconn
+pgx
+```
+
+Database-specific error handling must remain inside the Infrastructure layer.

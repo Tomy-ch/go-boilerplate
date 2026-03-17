@@ -73,7 +73,7 @@ type GetHealthzResponseObject interface {
 	VisitGetHealthzResponse(w http.ResponseWriter) error
 }
 
-type GetHealthz200JSONResponse ResponseHealth
+type GetHealthz200JSONResponse HealthResponse
 
 func (response GetHealthz200JSONResponse) VisitGetHealthzResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")

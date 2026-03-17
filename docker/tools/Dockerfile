@@ -39,14 +39,13 @@ CMD []
 # ------------------------------
 # Node.js
 # ------------------------------
-FROM node:24.4-alpine AS node_tools
+FROM node:24.14-alpine AS node_tools
 
 WORKDIR /app
 
 RUN apk add --no-cache bash make
 
-RUN npm install -g swagger-cli@latest --no-audit --no-fund \
-  && npm install -g @redocly/cli@latest
+RUN npm install -g @redocly/cli@latest
 
 ENTRYPOINT []
 CMD []

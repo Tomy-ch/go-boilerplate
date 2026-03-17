@@ -16,17 +16,17 @@ import (
 )
 
 type service struct {
-	provider loggingdb.DBProvider
-	tracer   observability.LayerTracer
+	db     loggingdb.DBProvider
+	tracer observability.LayerTracer
 }
 
 func New(
-	provider loggingdb.DBProvider,
+	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
 ) query.UserQueryService {
 	return &service{
-		provider: provider,
-		tracer:   tf.Infra(),
+		db:     db,
+		tracer: tf.Infra(),
 	}
 }
 
@@ -41,7 +41,7 @@ func (s *service) FindByKeyword(ctx context.Context, keywords []string, active *
 		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
 	}
 
-	db := gen.New(s.provider.NewLoggingDB(ctx))
+	db := gen.New(s.db.NewLoggingDB(ctx))
 	rows, err := db.ListUsersByKeywords(ctx, &gen.ListUsersByKeywordsParams{
 		PatternsParam: tokens,
 		DeletedState:  sqlc.BoolPtrToDeletedState(active),

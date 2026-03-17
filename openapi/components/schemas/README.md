@@ -1,6 +1,6 @@
 # 📘 OpenAPI 定義設計ポリシー
 
-このドキュメントは、`swagger-cli` を使用する前提で構築された OpenAPI ファイル群の設計・分割方針を示します。
+このドキュメントは、`redocly` を使用する前提で構築された OpenAPI ファイル群の設計・分割方針を示します。
 
 ## 🧱 ディレクトリ構造ルール
 
@@ -41,7 +41,7 @@ properties:
 
 本来のopenapiでは、リクエストとレスポンスは`requestBodies` と `responses` で定義されます。
 
-しかし、`swagger-cli`と`oapi-codegen`の制約により、`requestBodies` と `responses` としてはファイルを分けずに、`schemas` として定義してください。
+しかし、`redocly`と`oapi-codegen`の制約により、`requestBodies` と `responses` としてはファイルを分けずに、`schemas` として定義してください。
 
 ### 🧩 PATCH対応ポリシー
 
@@ -102,9 +102,8 @@ schema:
 ## ✅ チェックリスト
 
 - [ ] schemas は 1ファイル1スキーマになっているか
-- [ ] requestBodies/responses を schemas として定義しているか
 - [ ] parameters は 1ファイル1パラメータになっているか
 - [ ] PATCH 用には専用ラッパー（UserPatchRequestなど）を作っているか
 - [ ] `$ref` はパス相対形式で統一されているか
 
-この構成とポリシーに従うことで、swagger-cli での bundle / lint / CI 対応が容易になり、ツール互換性・保守性・チーム間の設計認知も向上します。
+この構成とポリシーに従うことで、redocly での bundle / lint / CI 対応が容易になり、ツール互換性・保守性・チーム間の設計認知も向上します。

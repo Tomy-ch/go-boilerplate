@@ -1,0 +1,296 @@
+{
+  "title": "boilerplate-go Documentation",
+  "subtitle": "This document portal provides access to the repository implementation, test results, E-R diagrams, and more.",
+  "sections": [
+    {
+      "title": "Guides (English)",
+      "items": [
+        {
+          "name": "Apperror",
+          "path": "./guides/apperror.md"
+        },
+        {
+          "name": "Config",
+          "path": "./guides/config.md"
+        },
+        {
+          "name": "Controller Handler",
+          "path": "./guides/controller-handler.md"
+        },
+        {
+          "name": "Controller Job",
+          "path": "./guides/controller-job.md"
+        },
+        {
+          "name": "Controller",
+          "path": "./guides/controller.md"
+        },
+        {
+          "name": "Di",
+          "path": "./guides/di.md"
+        },
+        {
+          "name": "Domain",
+          "path": "./guides/domain.md"
+        },
+        {
+          "name": "Infrastructure Auth",
+          "path": "./guides/infrastructure-auth.md"
+        },
+        {
+          "name": "Infrastructure Rdb Query Service",
+          "path": "./guides/infrastructure-rdb-query-service.md"
+        },
+        {
+          "name": "Infrastructure Rdb Repository",
+          "path": "./guides/infrastructure-rdb-repository.md"
+        },
+        {
+          "name": "Infrastructure",
+          "path": "./guides/infrastructure.md"
+        },
+        {
+          "name": "Integration",
+          "path": "./guides/integration.md"
+        },
+        {
+          "name": "Logging",
+          "path": "./guides/logging.md"
+        },
+        {
+          "name": "Observability",
+          "path": "./guides/observability.md"
+        },
+        {
+          "name": "Openapi",
+          "path": "./guides/openapi.md"
+        },
+        {
+          "name": "Overview",
+          "path": "./guides/overview.md"
+        },
+        {
+          "name": "System",
+          "path": "./guides/system.md"
+        },
+        {
+          "name": "Usecase",
+          "path": "./guides/usecase.md"
+        }
+      ]
+    },
+    {
+      "title": "Guides (Japanese)",
+      "items": [
+        {
+          "name": "Apperror",
+          "path": "./guides/ja/apperror.ja.md"
+        },
+        {
+          "name": "Config",
+          "path": "./guides/ja/config.ja.md"
+        },
+        {
+          "name": "Controller Handler",
+          "path": "./guides/ja/controller-handler.ja.md"
+        },
+        {
+          "name": "Controller Job",
+          "path": "./guides/ja/controller-job.ja.md"
+        },
+        {
+          "name": "Controller",
+          "path": "./guides/ja/controller.ja.md"
+        },
+        {
+          "name": "Di",
+          "path": "./guides/ja/di.ja.md"
+        },
+        {
+          "name": "Domain",
+          "path": "./guides/ja/domain.ja.md"
+        },
+        {
+          "name": "Infrastructure Auth",
+          "path": "./guides/ja/infrastructure-auth.ja.md"
+        },
+        {
+          "name": "Infrastructure Rdb Query Service",
+          "path": "./guides/ja/infrastructure-rdb-query-service.ja.md"
+        },
+        {
+          "name": "Infrastructure Rdb Repository",
+          "path": "./guides/ja/infrastructure-rdb-repository.ja.md"
+        },
+        {
+          "name": "Infrastructure",
+          "path": "./guides/ja/infrastructure.ja.md"
+        },
+        {
+          "name": "Integration",
+          "path": "./guides/ja/integration.ja.md"
+        },
+        {
+          "name": "Logging",
+          "path": "./guides/ja/logging.ja.md"
+        },
+        {
+          "name": "Observability",
+          "path": "./guides/ja/observability.ja.md"
+        },
+        {
+          "name": "Openapi",
+          "path": "./guides/ja/openapi.ja.md"
+        },
+        {
+          "name": "Overview",
+          "path": "./guides/ja/overview.ja.md"
+        },
+        {
+          "name": "System",
+          "path": "./guides/ja/system.ja.md"
+        },
+        {
+          "name": "Usecase",
+          "path": "./guides/ja/usecase.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Architecture (English)",
+      "items": [
+        {
+          "name": "Architecture",
+          "path": "../architecture.md"
+        },
+        {
+          "name": "Decisions",
+          "path": "../decisions.md"
+        },
+        {
+          "name": "Development Flow",
+          "path": "../development-flow.md"
+        },
+        {
+          "name": "Index",
+          "path": "../index.md"
+        },
+        {
+          "name": "Rules",
+          "path": "../rules.md"
+        }
+      ]
+    },
+    {
+      "title": "Architecture (Japanese)",
+      "items": [
+        {
+          "name": "Architecture",
+          "path": "../ja/architecture.ja.md"
+        },
+        {
+          "name": "Decisions",
+          "path": "../ja/decisions.ja.md"
+        },
+        {
+          "name": "Development Flow",
+          "path": "../ja/development-flow.ja.md"
+        },
+        {
+          "name": "Index",
+          "path": "../ja/index.ja.md"
+        },
+        {
+          "name": "Rules",
+          "path": "../ja/rules.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Er Diagram",
+      "items": [
+        {
+          "name": "Er Diagram",
+          "path": "../er-diagram/index.html"
+        }
+      ]
+    },
+    {
+      "title": "Maintenance (English)",
+      "items": [
+        {
+          "name": "Docs Structure",
+          "path": "../maintenance/docs-structure.md"
+        },
+        {
+          "name": "Go Upgrade",
+          "path": "../maintenance/go-upgrade.md"
+        },
+        {
+          "name": "Versions Generator",
+          "path": "../maintenance/versions_generator.md"
+        }
+      ]
+    },
+    {
+      "title": "Maintenance (Japanese)",
+      "items": [
+        {
+          "name": "Docs Structure",
+          "path": "../ja/maintenance/docs-structure.ja.md"
+        },
+        {
+          "name": "Go Upgrade",
+          "path": "../ja/maintenance/go-upgrade.ja.md"
+        },
+        {
+          "name": "Versions Generator",
+          "path": "../ja/maintenance/versions_generator.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Openapi",
+      "items": [
+        {
+          "name": "Openapi",
+          "path": "../openapi/index.html"
+        }
+      ]
+    },
+    {
+      "title": "Project (English)",
+      "items": [
+        {
+          "name": "Policy",
+          "path": "../project/policy.md"
+        },
+        {
+          "name": "Scope",
+          "path": "../project/scope.md"
+        },
+        {
+          "name": "Versioning",
+          "path": "../project/versioning.md"
+        }
+      ]
+    },
+    {
+      "title": "Project (Japanese)",
+      "items": [
+        {
+          "name": "Policy",
+          "path": "../ja/project/policy.ja.md"
+        },
+        {
+          "name": "Scope",
+          "path": "../ja/project/scope.ja.md"
+        },
+        {
+          "name": "Versioning",
+          "path": "../ja/project/versioning.ja.md"
+        }
+      ]
+    }
+  ]
+}

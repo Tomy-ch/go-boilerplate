@@ -15,27 +15,27 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &repository{
-		tracer:   tf.Infra(),
-		provider: provider,
+		tracer: tf.Infra(),
+		db:     loggingDB,
 	}
-	actual := New(provider, tf)
+	actual := New(loggingDB, tf)
 	require.Equal(t, expected, actual)
 }
 
 func TestFindByName(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
-		tracer:   lt,
-		provider: provider,
+		tracer: lt,
+		db:     loggingDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -67,14 +67,14 @@ func TestFindByName(t *testing.T) {
 func TestFindByID(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
-		tracer:   lt,
-		provider: provider,
+		tracer: lt,
+		db:     loggingDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -108,14 +108,14 @@ func TestFindByID(t *testing.T) {
 func TestFindByIDs(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
-		tracer:   lt,
-		provider: provider,
+		tracer: lt,
+		db:     loggingDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
