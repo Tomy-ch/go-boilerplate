@@ -13,17 +13,17 @@ import (
 )
 
 type repository struct {
-	provider loggingdb.DBProvider
-	tracer   observability.LayerTracer
+	db     loggingdb.DBProvider
+	tracer observability.LayerTracer
 }
 
 func New(
-	provider loggingdb.DBProvider,
+	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
 ) prefecture.Repository {
 	return &repository{
-		provider: provider,
-		tracer:   tf.Infra(),
+		db:     db,
+		tracer: tf.Infra(),
 	}
 }
 
@@ -32,7 +32,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.En
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
+	db := gen.New(r.db.NewLoggingDB(ctx))
 	row, err := db.GetPrefectureDomainByID(ctx, id.ToPrimitive())
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
@@ -50,7 +50,7 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
+	db := gen.New(r.db.NewLoggingDB(ctx))
 	rows, err := db.GetPrefectureDomainByIDs(ctx, uuid.ToPrimitiveUniqueList(ids))
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
@@ -77,7 +77,7 @@ func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.E
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
+	db := gen.New(r.db.NewLoggingDB(ctx))
 	row, err := db.GetPrefectureDomainByName(ctx, name)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)

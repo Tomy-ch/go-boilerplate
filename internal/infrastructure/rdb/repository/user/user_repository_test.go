@@ -20,20 +20,20 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &repository{
-		tracer:   tf.Infra(),
-		provider: provider,
+		tracer: tf.Infra(),
+		db:     loggingDB,
 	}
-	actual := New(provider, tf)
+	actual := New(loggingDB, tf)
 	require.Equal(t, expected, actual)
 }
 
 func TestFindAll(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
@@ -41,8 +41,7 @@ func TestFindAll(t *testing.T) {
 
 	repo := &repository{
 		tracer: lt,
-
-		provider: provider,
+		db:     loggingDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -179,14 +178,14 @@ func TestFindAll(t *testing.T) {
 func TestCreateUser(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
-		tracer:   lt,
-		provider: provider,
+		tracer: lt,
+		db:     loggingDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -272,15 +271,14 @@ func TestCreateUser(t *testing.T) {
 func TestCountByActive(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &repository{
 		tracer: lt,
-
-		provider: provider,
+		db:     loggingDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {

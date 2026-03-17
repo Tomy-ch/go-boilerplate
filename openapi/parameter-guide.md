@@ -25,9 +25,9 @@ parameters:
 
 ## 命名規則まとめ
 
-| 用途       | 命名規則       | 例                        |
+|用途|命名規則|例|
 |------------|----------------|---------------------------|
-| パス名     | スラッグ形式    | `/v1/users/{user_id}`     |
-| ディレクトリ | snake_case     | `components/parameters/`  |
-| ファイル名 | PascalCase     | `UserIdParam.yaml`        |
-| 定義名     | PascalCase     | `UserIdParam`             |
+|パス名|スラッグ形式|`/v1/users/{user_id}`|
+|ディレクトリ|snake_case|`components/parameters/`|
+|ファイル名|PascalCase|`UserIdParam.yaml`|
+|定義名|PascalCase|`UserIdParam`|

@@ -141,14 +141,14 @@ function generateSections() {
 }
 
 const docsJson = {
-  title: "Go Boilerplate Documentation",
-  subtitle: "Golang × Echo × OpenAPI × PostgreSQL",
+  title: "boilerplate-go Documentation",
+  subtitle: "This document portal provides access to the repository implementation, test results, E-R diagrams, and more.",
   sections: generateSections()
 }
 
 fs.writeFileSync(
   path.join(portalDir, "docs.json"),
-  JSON.stringify(docsJson, null, 2)
+  JSON.stringify(docsJson, null, 2) + "\n"
 )
 
 console.log("docs.json generated")

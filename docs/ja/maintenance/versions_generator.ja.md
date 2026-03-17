@@ -1,4 +1,4 @@
-# Generator Versions — メンテナンスガイド
+# Versions Generator — メンテナンスガイド
 
 このドキュメントは、**Tools コンテナ（go_tool_runner / node_tool_runner）に生成ツールを追加したユーザー**が
 「追加後に何をする必要があるか」を明確にするためのガイドです。
@@ -8,7 +8,7 @@
 
 そのため、新規ツールの追加時には以下の対応が必須です。
 
-## 1. `scripts/gen_generator_versions.sh` にバージョン取得処理を追加する
+## 1. `scripts/gen_tools_version.sh` にバージョン取得処理を追加する
 
 ツールを追加したら、まず **このスクリプトにツールのバージョン出力処理を追記**してください。
 
@@ -86,13 +86,13 @@ PRを作成すると、GitHubActionsの生成物チェックWF(/.github/workflow
 
 ## 要約：ツール追加時に必要な作業
 
-| 作業 | 必須 | 説明 |
+|作業|必須|説明|
 |------|------|------|
-| `scripts/gen_generator_versions.sh` に追記 | 必須 | バージョン情報の出力 |
-| `make gen-tools-meta` を実行 | 必須 | manifest の更新 |
-| 生成物・manifest をコミット | 必須 | CI と同期 |
-| `make gen` で生成物更新 | 必須 | 追加ツールが影響する生成物がある場合 |
-| docker-compose にツールを追加 | 必要に応じて | 新しいサービスが必要な場合 |
+|`scripts/gen_tools_version.sh` に追記|必須|バージョン情報の出力|
+|`make gen-tools-meta` を実行|必須|manifest の更新|
+|生成物・manifest をコミット|必須|CI と同期|
+|`make gen` で生成物更新|必須|追加ツールが影響する生成物がある場合|
+|docker-compose にツールを追加|必要に応じて|新しいサービスが必要な場合|
 
 ## 🔚 おわりに
 

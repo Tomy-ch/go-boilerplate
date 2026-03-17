@@ -1,132 +1,349 @@
-# コントローラー層のハンドラー（`internal/controller/handler`）ガイド
+# Controller Handler Guide (`internal/controller/handler`)
 
-## この boilerplate での役割
+English | [日本語](README.ja.md)
 
-internal/controller/handler は、CLI（Cobra）から起動される **サーバーのエントリポイント（Controller層）**です。
+## What is the Controller Layer
 
-- 入力のパース/軽い検証（型・必須チェック）
-- Observability（LayerTracer）で span を開始・終了する
-- ユースケース（Usecase層）を呼び出す
-  - 送信用の **DTO/VO** に詰め替えて渡す
-  - Usecaseから返却されたDTO→OpenAPI型への詰め替え
-- エラーは[apperrorで定義されているマップピング](../apperror/README.md)で apperrorのエラーを統一マッピングして返却される。
-- ページングは`paging.NewPageFrom1Based()` に渡して正規化。
-- リクエストID/ロギングなどはミドルウェア（Echo + Zap）で実施。
+The **Controller Layer** is defined as the following components.
 
-「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
+- handler – Receives HTTP requests and delegates processing to the Usecase layer.
+- router – Registers routes and starts the HTTP server.
+- middleware – Executes common processing before/after requests such as logging, request IDs, and tracing.
 
-## oapi-codegenからハンドラの生成
+The Controller receives HTTP requests and delegates processing to the Usecase layer.
 
-- 生成する際には、[openapi/openapi.yaml](../../openapi/openapi.yaml)に定義したルーティングに沿う形で、
-  `internal/controller/handler/`の先のディレクトリをURIとして再現してハンドラファイルを生成してください。
-  1. [openapi/openapi.yaml](../../openapi/openapi.yaml)などにAPI定義を作成
-     - [生成を前提としたOpenAPIガイドライン](../../openapi/README.md)を参照
-  2. `internal/controller/handler/`の先のディレクトリをURIとして再現
-     - 例1: `/v1/users` → `internal/controller/handler/v1/users/`
-     - 例2: `/v1/users/{id}` → `internal/controller/handler/v1/users/detail/`
-  3. 作成したファイルの先頭に生成用のコメントを追加
+The Controller is the **input/output boundary of the application**.
 
-     ```go
-     //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-     //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
-     ```
+## Role in This Repository
 
-  4. `swagger-cli`でOpenAPIを結合・検証し、`oapi-codegen`で生成
-     - `make gen` で一括生成可能
-  5. `internal/controller/handler/<version>/<resource>/gen`に生成物が出力される。
-  6. 生成物をもとにコントローラーを実装する。
-  7. 実装したコントローラーの`BindHandler`を[コントローラー層のDIモジュール](../di/handler.go)に登録する。
-- 入出力の型（パラメータ・ボディ・レスポンス）は生成物を使用し、**Usecase の DTO と明確に分離**。  
-- スキーマ変更は **OpenAPI → 再生成 → 実装調整**の一方向。生成物は**編集禁止**。
+`internal/controller/handler` is the **server entry point (Controller layer)** launched from the CLI (Cobra).
 
-## 実装上の注意点（HTTPの要素をUsecaseに漏らさない）
+Responsibilities:
 
-### 命名/構造
+- Parse input / perform lightweight validation (type checks, required fields)
+- Start and end spans via Observability (`LayerTracer`)
+- Call the Usecase layer
+  - Convert request data into **DTO / VO** before passing it
+  - Convert DTO returned from Usecase into OpenAPI response types
+- Errors are returned using unified mappings defined in  
+  [apperror mapping](../../apperror/README.md)
+- Paging parameters are normalized using `paging.NewPageFrom1Based()`
+- Request ID and logging are handled by middleware (Echo + Zap)
 
-- ルーティングの登録関数は `BindHandler` とし、[di/handler.go](../di/handler.go)で登録する。
-- URIとした時のリソース構造を再現し、パスパラメータに関しては`detail`で分離して命名する。
-  - 例1: package v1users
-  - 例2: package v1usersdetail
+Business logic, database access, and domain model operations are delegated to  
+Usecase / Domain / Infrastructure layers, keeping Controllers thin.
 
-### UsecaseにHTTPの語彙を入れない
+## What is a Presenter
 
-- `http.Request`/`http.Header`/`http.Status*`などの`http.`を**絶対**渡さない。  
-- Usecaseの引数はDTO / VO（例：`Page`）/ Contextのみ。
+A **Presenter** converts: `Usecase DTO → OpenAPI Response Type`
 
-### ページング
+## Architecture
 
-- Controller: `page & per_page`を受け取り、`usecase.NewPagingFrom1Based()`でhttpを意味（Paging）へ変換。
-- Usecase: `Paging`を受け、方針（上限・既定）を一元管理。
+### Architecture Flow
 
-### エラーマッピング
+This diagram shows the HTTP request processing flow.
 
-- Controller層で直接定義し、呼び出される基底のエラー（`apperror`）は下記のもの。
-  - `ErrInvalidArgument` → 400
-  - `ErrUnauthenticated` → 401
-  - `ErrUnimplemented` → 501
-  - `ErrUnavailable` → 503
-- 0件リストは**正常**（200 + 空配列）。**NotFound は単体取得のみ**。  
+```mermaid
+flowchart LR
 
-### トランザクション
+Client --> Router(oapi-codegen generated)
+Router(oapi-codegen generated) --> Middleware
+Middleware --> Handler
+Handler --> Usecase
+Usecase --> Domain
+Usecase --> Repository
+Repository --> Database
 
-- Controller は Tx を知らない。Tx 境界は Usecase（`TxManager`）が握る。
+Handler --> Presenter
+Presenter --> Response
+Response --> Client
+```
 
-## 呼び出せる層
+Request processing order:
 
-- **Controller → Usecase のみ**（＋生成物`gen`、DTO/Presenter、`apperror`/`errorresponse`）。  
-- **Infra / Domain を直接呼ばない**。  
-- DI（`fx`）で `handler` は `usecase.Service` を受け取る。
+1. Router (Echo) resolves the route
+2. Middleware executes common processing (logging / tracing / request IDs)
+3. Handler (Controller) parses inputs
+4. Handler delegates processing to Usecase via DTO
+5. Usecase accesses Domain / Repository
+6. DTO is converted to an OpenAPI response (Presenter)
+7. HTTP response is returned
 
-## やっていいこと / いけないこと(まとめ)
+Handler performs the following transformation:
 
-### Do
+```txt
+HTTP Request
+→ Parse / Validate
+→ DTO
+→ Usecase
+→ DTO
+→ Presenter
+→ HTTP Response
+```
 
-- `Get...Params` → **VO/DTO（Page, Filters など）**へ変換
-- DTO → `gen` レスポンスへ **Presenter** として詰め替え
-- `httptest` + `testify` で **エンドツーエンド風** にハンドラを検証
+### Controller Layer Structure
 
-### Don’t
+The **Controller Layer** is defined as follows.
 
-- Usecase に `http.Status`, `echo.Context`, `*http.Request` などの HTTP 要素を渡す
-- Usecase で `limit/offset` を直に決めるために **HTTP のパラメータ生値**を渡す  
-- `sqlc` 生成型やDB列名をControllerにそのまま持ち込む
-- 一覧0件で `ErrNotFound` を返して404にする  
-- 自動判定しているステータスコードを変更するために、エラーを握りつぶして独自に返す
-- ログは **Zap ミドルウェア**（リクエストID, ルート, ステータス, 所要時間）
+```mermaid
+flowchart TB
 
-## Observability（Tracing）の使い方
+subgraph Controller Layer
+    Router
+    Middleware
+    Handler
+end
 
-このboilerplateでは、Controller層で直接OpenTelemetrySDKを扱わず、
-observability.LayerTracerを経由してspanの開始・終了を行います。
+Handler --> Usecase
+Usecase --> Domain
+Usecase --> Infrastructure
+Infrastructure --> Database
+```
 
-### 1. Controller層でのspanの開始と終了
+The Controller is responsible for **HTTP input/output boundaries**.
 
-各ハンドラーの先頭で必ず次の2行を記述してください。
+Responsibilities:
+
+Router  
+Registers HTTP routes
+
+Middleware  
+Executes shared processing (Logging / RequestID / Trace)
+
+Handler  
+Receives HTTP requests and invokes Usecase
+
+### Dependency Rules
+
+Dependency rules for the Controller layer.
+
+```mermaid
+flowchart TB
+
+Controller --> Usecase
+Usecase --> Domain
+Usecase --> Infrastructure
+Infrastructure --> Database
+
+Controller -. forbidden .-> Domain
+Controller -. forbidden .-> Infrastructure
+```
+
+Allowed dependencies
+
+- Controller → Usecase
+- Controller → Presenter
+- Controller → apperror
+
+Forbidden dependencies
+
+- Controller → Domain
+- Controller → Infrastructure
+- Controller → Database
+
+Controllers must access lower layers **only through Usecase**.
+
+## Handler Design
+
+### Handler Responsibilities
+
+Handlers orchestrate HTTP requests and return responses while inserting necessary processing steps.
+
+```mermaid
+flowchart LR
+
+Request --> Parse
+Parse --> Validate
+Validate --> StartSpan
+StartSpan --> CallUsecase
+CallUsecase --> DTO
+DTO --> Presenter
+Presenter --> Response
+```
+
+Handler responsibilities:
+
+1. Parse request
+2. Lightweight validation
+3. Start trace span
+4. Call Usecase
+5. Convert DTO → Response
+6. Return response
+
+Handlers **must not contain business logic**.
+
+### Thin Controller Principle
+
+```mermaid
+flowchart TB
+
+Handler --> Parse
+Handler --> Validate
+Handler --> Presenter
+Handler --> Tracing
+
+Usecase --> BusinessLogic
+Usecase --> Transaction
+Usecase --> DomainCall
+```
+
+Controller responsibilities:
+
+- Request parsing
+- Validation
+- Presenter transformation
+- Tracing
+
+Controllers must NOT perform:
+
+- Business logic
+- Database access
+- Transaction management
+- Domain model manipulation
+
+## OpenAPI Integration
+
+### OpenAPI Code Generation Flow
+
+```mermaid
+flowchart LR
+
+OpenAPI --> swagger-cli
+swagger-cli --> openapi.gen.yaml
+openapi.gen.yaml --> oapi-codegen
+oapi-codegen --> gen_types
+oapi-codegen --> gen_server
+
+gen_server --> Handler
+Handler --> Usecase
+```
+
+Development flow:
+
+1. Write OpenAPI definition
+2. Merge/validate with swagger-cli
+3. Generate code with oapi-codegen
+4. Implement Handler logic
+
+Generated code is output to the `gen/` directory.
+
+### Generating Handlers from oapi-codegen
+
+When generating handlers, follow the routing structure defined in  
+[openapi/openapi.yaml](../../../openapi/openapi.yaml) and reproduce the URI structure under:
+
+`internal/controller/handler/`
+
+Steps:
+
+1. Define APIs in `openapi/openapi.yaml`
+   - See [OpenAPI generation guidelines](../../../openapi/README.md)
+
+2. Recreate the URI structure under the handler directory
+
+Examples:
+
+`/v1/users` → `internal/controller/handler/v1/users/`
+
+`/v1/users/{id}` → `internal/controller/handler/v1/users/detail/`
+
+1. Add generation comments at the top of the file
+
+```go
+//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+```
+
+1. Merge and validate OpenAPI using `swagger-cli`
+2. Run `make gen`
+3. Generated files will appear under:
+
+`internal/controller/handler/<version>/<resource>/gen`
+
+1. Implement the Controller based on the generated code
+2. Register `BindHandler` in the Controller DI module:
+
+`internal/di/module/controller.go`
+
+Input/output types (params, body, response) must use generated types and remain **separate from Usecase DTOs**.
+
+Schema changes must follow:
+
+OpenAPI → Regenerate → Adjust implementation
+
+Generated files **must never be edited manually**.
+
+### Generated Code Policy
+
+`gen/` directories contain **auto-generated code from oapi-codegen**.
+
+The following actions are prohibited:
+
+- Editing code inside `gen/`
+- Modifying generated type definitions
+- Modifying generated interfaces manually
+
+If changes are required, follow this order:
+
+OpenAPI → `make gen` → Regenerate code
+
+## Observability
+
+### Observability Flow
+
+Tracing flow within the Controller.
+
+```mermaid
+flowchart LR
+
+Handler --> LayerTracer
+LayerTracer --> OpenTelemetry
+OpenTelemetry --> Exporter
+Exporter --> Grafana
+```
+
+Controllers **do not interact with OpenTelemetry SDK directly**.
+
+Controller usage:
+
+```go
+ctx, endSpan := tracer.Start(ctx)
+defer endSpan()
+```
+
+Tracer creation and configuration are encapsulated inside the **observability layer**.
+
+### Using Observability (Tracing)
+
+Uses `observability.LayerTracer` instead of directly interacting with the OpenTelemetry SDK.
+
+#### 1. Starting and Ending Spans
+
+Each handler must start and end a span as follows:
 
 ```go
 ctx, endSpan := s.tracer.Start(ctx)
 defer endSpan()
 ```
 
-- Start(ctx)でspanが開始され、trace_id/span_idがcontextに紐づきます。
-- endSpan()は、spanの終了（span.End）を行います。
-- defer endSpan()により例外や早期returnがあっても必ず終了されます。
+- `Start(ctx)` creates a span and attaches trace_id/span_id to the context
+- `endSpan()` finishes the span (`span.End`)
+- Using `defer` ensures spans always close
 
-ポイント：Controllerはspanの開始・終了だけを知り、
-OpenTelemetry SDK の詳細には一切触れません。
+Controllers only know **how to start and end spans**, not how tracing is implemented.
 
-### 2. TracerのDI（observability.LayerTracer）
+#### 2. Tracer Dependency Injection
 
-Controllerは以下のようにobservability.LayerTracerを依存として受け取ります。
+Controllers receive `observability.LayerTracer` as a dependency.
 
 ```go
 type server struct {
     tracer observability.LayerTracer
-    uc      user.Usecase // それぞれのユースケース
+    uc      user.Usecase
 }
 ```
 
-BindHandler側では、`observability.NewControllerTracer`でController専用のトレーサーを生成します。
+In `BindHandler`, a Controller-specific tracer is created.
 
 ```go
 func BindHandler(
@@ -139,10 +356,320 @@ func BindHandler(
 }
 ```
 
-ここではSDKの生インスタンスを直接使わず、
-observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
+The observability layer hides SDK implementation details such as tracer creation and naming.
 
-## 参考スニペット
+## Implementation Rules
+
+### Prevent HTTP Leakage into Usecase
+
+#### Naming / Structure
+
+- Route registration functions must be named `BindHandler`
+- Register them in  
+  `internal/di/module/controller.go`
+
+Resource naming must reflect the URI structure.
+
+Examples:
+
+- `package v1users`
+- `package v1usersdetail`
+
+#### Do Not Introduce HTTP Concepts into Usecase
+
+Never pass the following to Usecase:
+
+- `http.Request`
+- `http.Header`
+- `http.Status*`
+
+Usecase arguments must consist of:
+
+- DTO
+- VO (example: `Page`)
+- `context.Context`
+
+#### Paging
+
+Controller
+
+Receives `page` & `per_page` and converts them using:
+
+`usecase.NewPagingFrom1Based()`
+
+Usecase
+
+Receives `Paging` and controls limits / defaults centrally.
+
+#### Error Mapping
+
+Controller errors are mapped using `apperror`.
+
+Supported base errors:
+
+- `ErrInvalidArgument` → 400
+- `ErrUnauthenticated` → 401
+- `ErrUnimplemented` → 501
+- `ErrUnavailable` → 503
+
+List endpoints returning **0 items are normal**  
+(200 + empty array)
+
+`NotFound` should only be used for **single-resource retrieval**.
+
+#### Transactions
+
+Controllers must not manage transactions.
+
+Transaction boundaries are handled by the Usecase layer (`TxManager`).
+
+### Dependency Policy
+
+Controller dependencies are restricted.
+
+The allowed direction is:
+
+Controller → Usecase → Domain / Infrastructure
+
+`make lint` checks for dependency violations.
+
+Allowed
+
+- Controller → Usecase
+- Controller → Presenter
+- Controller → apperror
+
+DI (`fx`) injects `usecase.Service` into handlers.
+
+Forbidden
+
+- Controller → Domain
+- Controller → Infrastructure
+- Controller → Database
+
+Controllers must never call Infra or Domain directly.
+
+### Do / Don't Summary
+
+#### Do
+
+- Convert `Get...Params` → VO / DTO (Page, Filters)
+- Convert DTO → `gen` response via Presenter
+- Test handlers using `httptest` + `testify`
+
+#### Don’t
+
+- Pass HTTP objects into Usecase
+- Pass raw HTTP parameters for limit/offset into Usecase
+- Use sqlc generated types in Controller
+- Return 404 for empty lists
+- Override auto-mapped status codes manually
+- Implement logging inside handlers (handled by Zap middleware)
+
+## Test Strategy
+
+Tests in the Controller layer verify the **behavior of the HTTP boundary**.
+
+Controller tests **do not use the real Usecase implementation** and instead rely on mocks.  
+Because the Controller follows the **Thin Controller principle**, its responsibility is limited to **HTTP Request / Response transformation and invoking the Usecase**.
+
+### Test Dependencies
+
+|Dependency|Test Method|
+|---|---|
+|Usecase|mock|
+|Domain|not used|
+|Infrastructure|not used|
+|Echo Router|real instance|
+|Presenter|real implementation|
+|Observability LayerTracer|mock / noop|
+
+### Test Targets
+
+Controller tests verify the following:
+
+- Router is correctly registered
+- HTTP Request is correctly converted into DTO
+- Usecase is called correctly
+- Usecase return values are correctly converted into OpenAPI Response
+- Errors are propagated correctly
+- The handler fulfills only the responsibility of the HTTP boundary
+
+### Test Structure
+
+Controller tests follow the structure below.
+
+```text
+TestBindHandler
+Test_server_<Operation>
+```
+
+Example:
+
+```text
+TestBindHandler
+Test_server_GetUsers
+Test_server_PostUsers
+TestGetHealth
+TestGetReady
+TestGetVersion
+```
+
+### Router Tests
+
+Router tests verify the **result of route registration**.
+
+Verification targets:
+
+- path
+- method
+
+Example:
+
+```go
+testassert.AssertEchoRouterPath(t, targetPath, e.Routes())
+testassert.AssertEchoRouterMethods(t, expectedMethods, e.Routes())
+```
+
+This test confirms that the handler is exposed with the **correct URI and HTTP Method**.
+
+### Handler Tests
+
+Handler tests **mock the Usecase** and verify only the responsibilities of the Controller.
+
+Example:
+
+```go
+mockApp := mock_user.NewMockUsecase(ctrl)
+mockApp.EXPECT().
+    ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
+    Return(mockDTO, nil)
+```
+
+Verification targets:
+
+- Parameter normalization
+- DTO construction
+- Usecase invocation
+- Conversion to OpenAPI response
+
+### Response Verification
+
+Responses are verified through **OpenAPI generated types**.
+
+Example:
+
+```go
+actual, ok := resp.(gen.GetUsers200JSONResponse)
+require.True(t, ok)
+
+require.Equal(t, expectedResponse, gen.ResponseV1Users(actual))
+```
+
+Controller tests confirm that **type conversion at the HTTP response boundary** is correct.
+
+### Error Tests
+
+The Controller generally **returns errors from the Usecase or prior processing as-is**.
+
+Example:
+
+```go
+require.Nil(t, resp)
+require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+```
+
+Verification targets:
+
+- Paging conversion errors
+- Missing authentication information
+- Usecase errors
+- BuildInfo / Config / Usecase return errors
+
+The Controller layer **must not reinterpret errors as business logic**.
+
+### Testing the Thin Controller Principle
+
+Controller tests **do not verify business logic**.
+
+The following are the only targets for verification:
+
+```text
+HTTP boundary
+DTO conversion
+Usecase invocation
+Response conversion
+Error propagation
+```
+
+Business rule validation is verified in **Usecase / Domain tests**.
+
+### Observability Tests
+
+Controller tests do not verify the internal implementation of Observability.  
+Instead, they confirm that the handler can execute safely by **replacing LayerTracer**.
+
+Example:
+
+```go
+lt := observability.NewMockControllerLayerTracer(t)
+s := &server{
+    tracer: lt,
+    uc:     mockApp,
+}
+```
+
+Alternatively, a noop tracer can be used when only verifying route registration.
+
+```go
+tf := observability.NewNoopTracerFactory(t)
+```
+
+### Test Design Policy
+
+#### 1. Usecase Must Be Mocked
+
+Since the Controller’s responsibility ends at invoking the Usecase,  
+**the Usecase implementation itself is outside the scope of Controller tests**.
+
+#### 2. Infrastructure Must Not Be Used
+
+Controller tests must not use DB / SQL / external APIs.
+
+#### 3. Verify Using OpenAPI Types
+
+Responses should be validated after being converted into **OpenAPI generated types**.
+
+#### 4. Fail Fast
+
+Assertions should primarily use `require`.
+
+Example:
+
+```go
+require.NoError(t, err)
+require.True(t, ok)
+require.Equal(t, expected, actual)
+```
+
+If a prerequisite fails, the test should fail immediately to maintain clarity of test intent.
+
+### What Controller Tests Do Not Cover
+
+Controller tests do **not** cover the following:
+
+- Domain logic correctness
+- Repository implementation
+- SQL execution
+- Database connections
+- Transaction control
+- Application logic inside the Usecase
+
+These are the responsibility of **Usecase / Domain / Infrastructure tests**.
+
+## Example
+
+### Example Handler
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
@@ -154,18 +681,17 @@ import (
     "context"
 
     "boilerplate-go/internal/observability"
-    // それぞれ実装で使うパッケージをimport
+    // import packages required by your implementation
 
     "github.com/labstack/echo/v4"
 )
-
 
 type server struct {
     tracer observability.LayerTracer
     uc      user.Service
 }
 
-// この関数をdi/handler.goで、[<package>.BindHandler,]として登録する。
+// Register this function in di/handler.go as [<package>.BindHandler]
 func BindHandler(
   e *echo.Echo, tf observability.TracerFactory, uc user.Service,
 ) {
@@ -176,25 +702,29 @@ func BindHandler(
 }
 
 // handler
-func (s *server) GetV1UsersDetail(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
-    // Spanの開始・終了呼び出して設定
+func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
+    // Start and end span for tracing
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
 
-    page := usecase.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
-
-    // Usecase 呼び出し（DTO返却）
-    // user.ConditionByName はUsecaseの持ち物
-    list, err := s.uc.GetV1UsersByName(ctx, user.ConditionByName{
-        NameKeyword: ptr.StringVal(request.Params.NameKeyword),
-        Page:        page,
-    })
+    page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
     if err != nil {
-        // エラーの基底値に従って、対応するHTTPステータスを返すのでハンドリングは不要
-        return err
+        return nil, err
     }
 
-    // プレゼンター処理(DTO → OpenAPIの型)
+    params := &user.GetParamsDTO{
+        Keyword: request.Params.Keyword,
+        Active:  request.Params.Active,
+    }
+
+    // Call the Usecase (returns DTOs)
+    dtos, err := s.uc.ListUsersByKeyword(ctx, params, page)
+    if err != nil {
+        // HTTP status is automatically mapped based on the base error type
+        return nil, err
+    }
+
+    // Presenter conversion (DTO → OpenAPI response)
     users := make([]gen.UserResponse, len(dtos))
     for i, dto := range dtos {
       users[i] = gen.UserResponse{
@@ -204,12 +734,13 @@ func (s *server) GetV1UsersDetail(ctx context.Context, request gen.GetUsersReque
       }
     }
 
-    res := gen.ResponseV1Users{
+    res := gen.UsersResponse{
       Users:  users,
       Limit:  page.Limit(),
       Offset: page.Offset(),
     }
 
-    return gen.GetUsersByName200JSONResponse(res), nil
+    // Return OpenAPI response type (method name depends on generated code)
+    return gen.GetUsers200JSONResponse(res), nil
 }
 ```

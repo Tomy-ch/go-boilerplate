@@ -16,28 +16,28 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &service{
-		tracer:   tf.Infra(),
-		provider: provider,
+		tracer: tf.Infra(),
+		db:     loggingDB,
 	}
-	actual := New(provider, tf)
+	actual := New(loggingDB, tf)
 	require.Equal(t, expected, actual)
 }
 
 func TestFindByKeyword(t *testing.T) {
 	t.Parallel()
 
-	provider := testkit.NewTestLoggingProvider(t)
+	loggingDB := testkit.NewTestLoggingProvider(t)
 	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	txm := testkit.NewTestTransactionManager(t)
 
 	repo := &service{
-		tracer:   lt,
-		provider: provider,
+		tracer: lt,
+		db:     loggingDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {

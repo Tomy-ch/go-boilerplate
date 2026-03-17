@@ -1,132 +1,561 @@
-# ユースケース層（`internal/usecase`）ガイド
+# Usecase Layer (`internal/usecase`) Guide
 
-## オニオンアーキテクチャでの役割
+English | [日本語](README_ja.md)
 
-- アプリケーションサービスとして、ユースケースの **手続き（ワークフロー）** を調整する層。
-- 入力（DTO/VO）を受けて、**Domain（エンティティ/ドメインサービス）とRepository（ドメインの抽象）** を組み合わせ、結果（DTO）を返す。
-- トランザクション境界と整合性の担保の単一起源（Tx開始/終了、リトライ方針など）。
-- 外界（HTTP/DB/メッセージング）の詳細は知らない。純粋なアプリ語彙で完結する。
+## Role in Onion Architecture
 
-## この boilerplate での役割
+- Acts as an **application service layer** that orchestrates **procedures (workflows)** of use cases.
+- Receives inputs (DTO/VO), combines **Domain (entities / domain services) and Repository (domain abstractions)**, and returns results (DTO).
+- Serves as the **single source of truth for transaction boundaries and consistency control** (Tx start/end, retry policies, etc.).
+- Does not know details of the outside world (HTTP / DB / messaging). It operates purely within **application vocabulary**.
 
-- internal/usecase/<feature>/ に Command/Query のサービスを配置（例：user/）。
-  - Command：作成/更新/削除（Txを開始し、Domainの不変条件を満たすように調整）。
-  - Query（QS）：読み取り最適化。必要に応じて DTO で直接返す（Domainへはマップしない方針を許容）。
-  - Pagination/Validation など プロトコル非依存のポリシーを一元化
-    - 例：`NewPageFrom1Based`、`MaxPerPage`、`MaxOffsetAllowed`
-- errorは `apperror.ErrXXX` にラップしてController層がHTTPにマップできるようにする。
-- DI（fx）では Repository（interface/TxManager/Configなどの依存を受け取る。
+## Usecase Layer Processing Flow
 
-## サードパーティを最小限に抑える
+The Usecase layer is a **layer that orchestrates the application workflow**.  
+It defines **the order of execution** by combining Domain and Repository.
 
-- Usecaseは原則 標準ライブラリのみ（context, time, errors, fmt など）。
-- ORM・SQL実行・HTTPクライアント・EchoなどI/O系は一切持ち込まない。
-- 型定義やDTOもプロジェクト内型で閉じる。sqlc生成型/driver型やOpenAPI生成型は上位/下位の層に隔離。
-- テストも`testify`/`mock`程度に留め、モックはinterfaceベースで注入。
-- どうしても必要な場合は、[pkg/](../../../pkg/)で薄いラッパーを作成する。
+```txt
+DTO
+    ↓
+Usecase
+    ↓
+Domain call
+    ↓
+Repository
+    ↓
+(Optional) Boundary call (Tx / Clock / Security / Auth etc.)
+    ↓
+Domain call
+    ↓
+DTO
+```
 
-## 実装上の注意点
+The basic workflow is:
 
-### 命名/構造
+1. Receive DTO
+2. Apply input normalization / policies
+3. Call Domain
+4. Persist through Repository
+5. Convert to DTO
+6. Return result
 
-- インターフェイスは`Usecase`（例：`user.Usecase`）で統一。
-- インスタンスの生成関数名は `New` で統一し、[di/usecase.go](../di/usecase.go) で登録する。
+Usecase is **not the place to implement business rules**.  
+Business rules must be implemented in the **Domain layer**.
 
-### ビジネスロジックを実装しない？ → 誤解を避けて明確化
+However, calling **Domain business rules from Usecase is allowed**.  
+The responsibility of Usecase is to **compose Domain behaviors to construct the use case workflow**.
 
-- “ドメインロジック”は Domain 層に置く（エンティティ/VO/ドメインサービスのメソッド）。
-- Usecase は“手続きロジック”（順序・Tx・外部境界の協調・入力検証と方針適用）を担当。
+In other words:
 
-### HTTP/DBの要素は持ち込まない
+**Usecase may call Domain business rules, but must not define new business rules.**
 
-- `http.*`, `echo.Context`, `sqlc` 型、`sql.Null*`、DB列名、OpenAPI生成型…を引数/戻り値に使わない。
-- 代わりに DTO/VO（Page/Filters/Actor） で表現。
+Usecase only handles:
 
-### エラー方針
+- Workflow orchestration
+- Transaction management
+- Domain / Repository coordination
+- DTO transformation
 
-- 入力の意味的な不正:
-  - `apperror.ErrValidation` → 422
-  - `apperror.ErrInvalidArgument` → 400
-- 存在しない:
-  - `apperror.ErrNotFound` → 404
-- 競合:
-  - `apperror.ErrConflict` → 409
-- 一時的不可:
-  - `apperror.ErrUnavailable` → 503
-- 想定外:
-  - そのまま or `apperror.ErrInternal` に包む → 500
+## Application Service Design Policy
 
-### ページング
+This repository adopts the **Application Service Pattern** for Usecases.
 
-- NewPageFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
-- Offset 上限（悪意対策）を超えたら `apperror.ErrInvalidArgument` を返す。
+Application Service represents **application logic per use case**.
 
-## 呼び出せる層 / 呼び出せない層
+```mermaid
+flowchart TB
 
-### 呼び出せる層
+subgraph Usecase Layer
+    BoundaryInterface
+    ApplicationService
+end
 
-- Domain（エンティティ/ドメインサービス/Repositoryインタフェース）
-- TxManager / Config / (必要なら) QueryService
+Controller --> ApplicationService
 
-### 呼び出せない層
+ApplicationService --> Domain
+ApplicationService --> BoundaryInterface
 
-- 他のUsecaseからの呼び出しは基本禁止（循環・肥大化を避ける。必要なら“アプリサービス（`Orchestrator`）”を別モジュールとして明示）。
-- UsecaseからInfra/Controller/HTTP/OpenAPI/SQL"実装"は呼ばない。
+Infrastructure --> Domain
+Infrastructure --> BoundaryInterface
+```
 
-## やっていいこと / いけないこと(まとめ)
+Responsibilities of Application Service:
+
+- Processing per use case
+- Transaction boundary
+- Ordering of domain operations
+- DTO ↔ Domain conversion
+
+Things Application Service **must not do**:
+
+- Implement business rules
+- Directly access infrastructure
+- Depend on frameworks
+
+Application Service should **only compose Domain behaviors**.
+
+## Application Policy
+
+The Usecase layer handles **Application Policy**.
+
+Application Policy is a **rule that determines application behavior rather than domain logic**.
+
+Domain and Usecase responsibilities are separated as follows:
+
+|Type|Content|Layer|
+|-----|-----|-----|
+|Domain Logic|Business rules|Domain|
+|Application Policy|Workflow of the use case|Usecase|
+
+### Examples of Domain Logic
+
+```txt
+Username constraints
+Password format rules
+State transitions
+```
+
+These belong to the **Domain layer**.
+
+### Examples of Application Policy
+
+```txt
+Hash password when creating a user
+Execute user creation inside a transaction
+Fetch prefecture information when retrieving user list
+```
+
+These belong to the **Usecase layer**.
+
+Usecase responsibility:
+
+```txt
+Usecase = Application Policy + Workflow
+Domain  = Business Rule
+```
+
+## Boundary Concept
+
+In this repository, **Boundary interfaces are introduced so that Usecase does not directly depend on Infrastructure**.
+
+Boundary represents an **interface describing interaction with external systems**.
+
+Usecase references **only interfaces**, and implementations are provided by Infrastructure.
+
+### Typical Boundaries
+
+```txt
+Transaction Manager
+Clock
+Security (PasswordHasher etc.)
+Auth Context
+Messaging / EventPublisher
+Observability
+```
+
+### Time Handling Policy
+
+In this repository, **time acquisition is centrally managed in the Usecase layer**.
+
+Therefore **direct calls to `time.Now()` are prohibited**.
+
+Instead, use the Boundary provided **`clock.Clock`**.
+
+Reasons:
+
+- To make tests deterministic
+- To isolate timezone and time‑source differences
+- To prevent AI tools or developers from introducing `time.Now()` directly
+
+Usecase must obtain time as follows:
+
+```go
+now := u.clock.Now()
+```
+
+Example:
+
+```go
+now := u.clock.Now()
+userEntity, err := user.New(..., now, now, nil)
+```
+
+### Rule
+
+Usecase layer must follow this rule:
+
+```txt
+Forbidden: time.Now()
+Allowed:   clock.Clock.Now()
+```
+
+Time should be obtained in **Usecase → then passed into Domain**.
+
+Domain should not acquire time by itself.
+
+This guarantees that **time‑dependent logic remains fully testable**.
+
+### Dependency structure
+
+```mermaid
+flowchart LR
+
+Controller --> Usecase
+
+Usecase --> Domain
+Usecase --> RepositoryInterface
+Usecase --> BoundaryInterface
+
+Infrastructure --> RepositoryInterface
+Infrastructure --> BoundaryInterface
+```
+
+Important rules:
+
+- Usecase **must not depend on Infrastructure**
+- Usecase **must only reference interfaces**
+- Infrastructure **implements interfaces**
+
+This preserves **Dependency Inversion**.
+
+## CQRS Policy
+
+This repository **does not adopt full CQRS separation**.
+
+Reasons:
+
+- Overengineering for small to medium services
+- Full separation reduces reuse
+- Repository complexity increases
+
+Instead, a **lightweight CQRS policy** is adopted.
+
+### Command
+
+Operations that change state.
+
+Examples:
+
+```txt
+CreateUser
+UpdateUser
+DeleteUser
+ChangePassword
+```
+
+Characteristics:
+
+- Uses Domain Entities
+- Requires transactions
+- Validates Domain invariants
+
+### Query
+
+Read-only operations.
+
+Examples:
+
+```txt
+GetUser
+ListUsers
+SearchUsers
+```
+
+Characteristics:
+
+- Returning DTO directly is allowed
+- Domain conversion may be skipped
+- Transactions are not required
+
+### Queries allowed in Repository
+
+```txt
+FindAll
+FindByID
+FindByKeyword
+CountAll
+CountByActive
+```
+
+JOIN is allowed **as long as domain boundaries are not violated**.
+
+### Queries not allowed in Repository
+
+```txt
+GROUP BY
+Aggregation functions
+WITH clauses
+Complex analytical queries
+```
+
+These belong to:
+
+- Analytics
+- Reporting
+- Data pipelines
+
+## Role in this repository
+
+- Place Command / Query services under `internal/usecase/<feature>/` (e.g., `user/`).
+  - Command: create/update/delete (start Tx and ensure Domain invariants).
+  - Query (QS): read optimization. Returning DTO directly is allowed.
+  - Centralize protocol-independent policies such as Pagination / Validation.
+    - Example: `NewPageFrom1Based`, `MaxPerPage`, `MaxOffsetAllowed`
+- Wrap errors using `apperror.ErrXXX` so Controller can map them to HTTP responses.
+- DI (fx) injects dependencies such as Repository interfaces, TxManager, and Config.
+
+## Minimize third-party dependencies
+
+- Usecase should rely mostly on **standard library** (`context`, `time`, `errors`, `fmt` etc.).
+- ORM / SQL execution / HTTP clients / Echo / I/O frameworks must not be used.
+- DTOs and types should remain inside the project. sqlc types, driver types, and OpenAPI generated types should be isolated to other layers.
+- Tests should use minimal tools (`testify`, `mock`). Mocks are injected via interfaces.
+- If absolutely necessary, create a thin wrapper under `[pkg/](../../pkg/)`.
+
+## Implementation Notes
+
+### Naming / Structure
+
+- Interface name should be unified as `Usecase` (e.g., `user.Usecase`).
+- Constructor should be named `New`, registered in `di/module/usecase.go`.
+
+### Clarification about “not implementing business logic”
+
+- **Domain logic** belongs to the Domain layer.
+- Usecase handles **procedural logic** (ordering, transaction control, boundary coordination, input policy).
+
+### Do not introduce HTTP/DB concepts
+
+Forbidden types in parameters or return values:
+
+- `http.*`
+- `echo.Context`
+- `sqlc` generated types
+- `sql.Null*`
+- DB column names
+- OpenAPI generated types
+
+Use DTO / VO instead (Page / Filters / Actor).
+
+### Error Policy
+
+Semantic input errors:
+
+- `apperror.ErrValidation` → 422
+- `apperror.ErrInvalidArgument` → 400
+
+Not found:
+
+- `apperror.ErrNotFound` → 404
+
+Conflict:
+
+- `apperror.ErrConflict` → 409
+
+Temporary unavailable:
+
+- `apperror.ErrUnavailable` → 503
+
+Unexpected errors:
+
+- return as-is or wrap with `apperror.ErrInternal` → 500
+
+### Pagination
+
+- Use `NewPageFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
+- If offset exceeds allowed limit, return `apperror.ErrInvalidArgument`.
+
+## Callable / Non-callable Layers
+
+### Allowed dependencies
+
+- Domain (entities / domain services / repository interfaces)
+- Boundary (tx / clock / security / auth etc.)
+- QueryService (if needed)
+
+### Forbidden dependencies
+
+- Calling another Usecase directly (avoid cycles and bloating).
+- Accessing Infra / Controller / HTTP / OpenAPI / SQL implementations.
+
+Usecase **must not depend on Infrastructure**.
+
+Infrastructure access must go through:
+
+- Repository interfaces
+- Boundary interfaces
+
+## Testing Strategy
+
+Usecase tests must be **pure unit tests**.
+
+External systems and Infrastructure must not be used.
+
+### Test dependencies
+
+|Dependency|Strategy|
+|---|---|
+|Domain|real implementation|
+|Repository|mock|
+|Boundary|mock|
+|Infrastructure|not used|
+
+### Testing goals
+
+Verify:
+
+- Correct order of Domain / Repository / Boundary calls
+- Transaction boundary behavior
+- Error propagation
+- DTO composition
+
+### Domain should not be mocked
+
+Domain contains **actual business rules**, so real implementation should be used.
+
+```go
+userDomain, err := user.New(...)
+require.NoError(t, err)
+```
+
+### Repository / Boundary should be mocked
+
+Repositories and Boundaries are injected as interfaces.
+
+```go
+ctrl := gomock.NewController(t)
+
+userRepo := mock_user.NewMockRepository(ctrl)
+clock := mock_clock.NewMockClock(ctrl)
+byencrypter := mock_security.NewMockBcrypter(ctrl)
+```
+
+### Test targets
+
+Normal cases:
+
+- Correct DTO returned
+- Repository called correctly
+- Boundary invoked correctly
+- Transaction used correctly
+
+Error cases:
+
+- Boundary errors propagate
+- Repository errors propagate
+- Domain creation failure propagates
+- Empty / zero result handling
+
+### Test structure
+
+Tests should be divided into **success / failure cases**.
+
+```txt
+TestCreateUser
+  ├ success
+  └ failure
+
+TestListUsers
+  ├ success
+  └ failure
+```
+
+### Deterministic
+
+Use fixed time values.
+
+```go
+now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+clock.EXPECT().Now().Return(now)
+```
+
+### Fail Fast
+
+Prefer `require`.
+
+```go
+require.NoError(t, err)
+require.Equal(t, expected, actual)
+```
+
+### What not to test
+
+Do not test:
+
+- DB connections
+- SQL execution
+- HTTP requests
+- OpenAPI types
+- Infrastructure implementation details
+
+These belong to **Infrastructure / Controller**.
+
+### Summary
+
+```txt
+Usecase
+ ├ Domain         -> real
+ ├ Repository     -> mock
+ ├ Boundary       -> mock
+ └ Infrastructure -> not used
+```
+
+This allows fast and stable validation of:
+
+- Workflow
+- Application policy
+- Transaction boundaries
+- Error propagation
+- DTO conversion
+
+## Do / Don’t
 
 ### Do
 
-- **DTO/VO（Page, Filters, Actor）**で受け渡し
-- Tx 境界をここで定義（TxManager 経由で Do(ctx, func(txCtx){ ... })）
-- Usecase層で初出の`apperror`でエラー分類を付与（errors.Is で Controller が判定しやすく）
-- QSはRow→DTOに最短でマップ、CommandはDomainを介す。
-- 表駆動テストでユースケースの分岐とTxの挙動を確認（testify）
+- Pass DTO / VO (Page, Filters, Actor)
+- Define Tx boundary here
+- Attach `apperror` classification
+- Query returns DTO quickly
+- Use table-driven tests
 
 ### Don’t
 
-- DomainのEntityを直接返す
-- `http.Status` や `echo.Context` を引数に取る/返す
-- `sqlc`生成型や`sql.Null*`を引数/戻り値に使う
-- `openapi/gen`の型を直接返す（DTOに詰め替えるのはControllerの責務）
-- Listで0件をエラー化（`apperror.ErrNotFound`(404)は単体取得のみ）
-- 別のUsecaseを直接呼んで複雑化（必要なら`Orchestrator`を定義）
+- Return Domain entities directly
+- Accept / return `http.Status` or `echo.Context`
+- Use `sqlc` generated types
+- Return OpenAPI generated types
+- Treat empty list as error
+- Call other Usecases directly
 
-## Observability（Tracing）の使い方
+## Observability (Tracing)
 
-この boilerplateUsecase層で直接OpenTelemetrySDKを扱わず、
-observability.LayerTracerを経由してspanの開始・終了を行います。
+The Usecase layer does not use OpenTelemetry SDK directly.
 
-### 1. Usecase層での span の開始と終了
+Instead, it uses **observability.LayerTracer**.
 
-各ハンドラーの先頭で必ず次の 2 行を記述してください。
+### Start / End span
 
 ```go
 ctx, endSpan := s.tracer.Start(ctx)
 defer endSpan()
 ```
 
-- Start(ctx)でspanが開始され、trace_id/span_idがcontextに紐づきます。
-- endSpan()は、spanの終了（span.End）を行います。
-- defer endSpan()により例外や早期returnがあっても必ず終了されます。
+- `Start(ctx)` starts a span
+- `endSpan()` ends it
+- `defer` guarantees closing
 
-ポイント：Usecase は span の開始・終了だけを知り、
-OpenTelemetry SDK の詳細には一切触れません。
-
-### 2. TracerのDI（observability.LayerTracer）
-
-Usecaseは以下のようにobservability.LayerTracerを依存として受け取ります。
+### Tracer injection
 
 ```go
 type server struct {
     tracer   observability.LayerTracer
     txm      tx.Manager
-    userRepo user.Repository // それぞれのリポジトリ
+    userRepo user.Repository
     pftRepo  prefecture.Repository
 }
 ```
 
-New関数内では、`observability.NewUsecaseTracer`でUsecase専用のトレーサーを生成します。
+Constructor:
 
 ```go
 func New(
@@ -144,25 +573,23 @@ func New(
 }
 ```
 
-ここではSDKの生インスタンスを直接使わず、
-observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
+Observability layer hides SDK details.
 
-## 最小スニペット（雛形）
+## Implementation Example
 
 ```go
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
-// 唯一性のある名称
+// Unique package name
 package user
 
 import (
     "context"
 
     "boilerplate-go/internal/observability"
-    // それぞれ実装で使うパッケージをimport
+    // Import packages required for the implementation
 )
 
-
-// 下位の層とやり取りするためのDTO
+// DTO used for communication with lower layers
 type UserMutableFields struct {
     FirstName      string
     LastName       string
@@ -182,84 +609,108 @@ type CreateUserParamsDTO struct {
     UserMutableFields
 }
 
-
-// usecaseという名称は固定
+// The struct name "usecase" is fixed
 type usecase struct {
-    tracer   observability.LayerTracer
-    txm      tx.Manager
-    userRepo user.Repository
-    pftRepo  prefecture.Repository
+    tracer    observability.LayerTracer
+    txm       tx.Manager
+    clock     clock.Clock
+    encrypter security.Encrypter
+    userRepo  user.Repository
+    pftRepo   prefecture.Repository
+    userQS    query.UserQueryService
 }
 
-// Usecaseという名称は固定
+// Usecase defines the use cases related to users.
 type Usecase interface {
-    GetAllUsers(ctx context.Context, page paging.Paging) ([]UserMutableFields, error)
-    CreateUser(ctx context.Context, dto CreateUserParamsDTO) (UserMutableFields, error)
+    // ListUsersByKeyword retrieves a list of users.
+    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
 
+    // CreateUser creates a user.
+    CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+
+    // CountUsers returns the total number of users.
+    CountUsers(ctx context.Context, active *bool) (int64, error)
 }
 
-// Newという名称は固定
+// Constructor name "New" is fixed
 func New(
     tf observability.TracerFactory,
     txm tx.Manager,
+    clock clock.Clock,
+    encrypter security.Encrypter,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
+    userQueryService query.UserQueryService,
 ) Usecase {
     return &usecase{
-        tracer:   tf.Usecase(),
-        txm:      txm,
-        userRepo: userRepo,
-        pftRepo:  prefectureRepo,
+        tracer:    tf.Usecase(),
+        txm:       txm,
+        clock:     clock,
+        encrypter: encrypter,
+        userRepo:  userRepo,
+        pftRepo:   prefectureRepo,
+        userQS:    userQueryService,
     }
 }
 
 func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, error) {
-    // Spanの開始・終了呼び出して設定
+
+    // Start and end the span
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
 
-    // ユーザー一覧取得（Domainエンティティのスライス）
-    us, err := u.userRepo.FindAll(ctx, page.Limit(), page.Offset())
-    if err != nil {
-       return nil, err
+    var (
+        us  user.Users
+        err error
+    )
+
+    // Fetch user list (slice of Domain entities)
+    if params != nil {
+        keywords := search.ParseSearchTokens(params.Keyword, search.DefaultMaxTokens)
+        us, err = u.userQS.FindByKeyword(ctx, keywords, params.Active, page.Limit32(), page.Offset32())
+    } else {
+        us, err = u.userRepo.FindAll(ctx, page.Limit32(), page.Offset32())
     }
 
-    // オプション: observability.WithDomainSpanでDomain層のspanを作成
-    // 可観測性を高めるために、Domain層の処理もspanとして切り出すことができます。
-    // オプションなのでなくても構いません。
-    // 第一引数のctxは、後続で使う場合は返り値を受け取って上書きしてください。
-    ctx, prefectureMap, err := observability.WithDomainSpan(
+    if err != nil {
+        return nil, err
+    }
+
+    // Optional: create a span for Domain processing
+    // To improve observability, Domain processing can be separated into its own span.
+    ctx, prefectureMap, err := observability.RunDomainWithSpan(
         ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
-            // ユーザーの都道府県IDを集めて、一括で都道府県エンティティを取得
+
+            // Collect prefecture IDs from users
             pids := make([]uuid.UUID, len(us))
             for i, u := range us {
                 pids[i] = u.PrefectureID()
             }
 
-            // 都道府県エンティティの取得
-            // IDsメソッドは複数IDで一括取得するリポジトリメソッドの例
+            // Retrieve prefecture entities
             ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
             if pftErr != nil {
-              return nil, pftErr
+                return nil, pftErr
             }
 
-            // 取得した都道府県エンティティをマップに詰め替え
-            // Mapにすることで、後続のループで高速に参照できるようにする
+            // Convert prefecture entities to a map
+            // Using a map allows fast lookup during later loops
             prefectureMap := make(map[uuid.UUID]*prefecture.Entity, len(ps))
             for _, p := range ps {
                 prefectureMap[p.ID()] = p
             }
 
             return prefectureMap, nil
-      })
+        })
+
     if err != nil {
-      return nil, err
+        return nil, err
     }
 
-    // ctxは、後続でobservability.WithDomainSpanを使わない場合は不要
-    _, dtos, err := observability.WithDomainSpan(
+    _, dtos, err := observability.RunDomainWithSpan(
         ctx, u.tracer, "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
-            // 結果をDTOに詰め替え
+
+            // Convert results into DTOs
             dtos := make([]UserMutableFields, len(us))
             for i, u := range us {
                 dtos[i] = UserMutableFields{
@@ -272,15 +723,98 @@ func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, e
                     Street:     u.Street(),
                     Building:   u.Building(),
                 }
-                // 都道府県名をマップから取得してセット
+
+                // Attach prefecture name retrieved from the map
                 if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
                     dtos[i].PrefectureName = p.Name()
                 }
             }
+
             return dtos, nil
         })
 
     return dtos, err
 }
 
+// CreateUser is the use case that creates a user.
+func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error) {
+
+    ctx, endSpan := u.tracer.Start(ctx)
+    defer endSpan()
+
+    // Time acquisition follows the rule that time is centrally managed in the Usecase layer
+    now := u.clock.Now()
+
+    // Password validation rules are defined in the Domain layer
+    rawPassword, err := user.NewRawPassword(dto.RawPassword)
+    if err != nil {
+        return MutableFields{}, err
+    }
+
+    // Password hashing is a security rule, so the Boundary encrypter is used
+    passwordHash, err := u.encrypter.Hash(rawPassword.Value())
+    if err != nil {
+        return MutableFields{}, err
+    }
+
+    var (
+        userEntity *user.User
+        pftDomain  *prefecture.Entity
+    )
+
+    // Transaction start and end are delegated to TxManager
+    err = u.txm.Do(ctx, func(ctx context.Context) error {
+
+        var err error
+
+        pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
+        if err != nil {
+            return err
+        }
+
+        userEntity, err = user.New(
+            dto.UserID,
+            dto.FirstName,
+            dto.LastName,
+            passwordHash,
+            dto.Email,
+            dto.Phone,
+            pftDomain.ID(),
+            dto.City,
+            dto.Street,
+            dto.Building,
+            dto.PostalCode,
+            now,
+            now,
+            nil,
+        )
+
+        if err != nil {
+            return err
+        }
+
+        err = u.userRepo.Create(ctx, userEntity)
+        if err != nil {
+            return err
+        }
+
+        return nil
+    })
+
+    if err != nil {
+        return MutableFields{}, err
+    }
+
+    return MutableFields{
+        FirstName:      userEntity.FirstName(),
+        LastName:       userEntity.LastName(),
+        Email:          userEntity.Email(),
+        Phone:          userEntity.Phone(),
+        PostalCode:     userEntity.PostalCode(),
+        PrefectureName: pftDomain.Name(),
+        City:           userEntity.City(),
+        Street:         userEntity.Street(),
+        Building:       userEntity.Building(),
+    }, nil
+}
 ```

@@ -1,6 +1,6 @@
 {
-  "title": "Go Boilerplate Documentation",
-  "subtitle": "Golang × Echo × OpenAPI × PostgreSQL",
+  "title": "boilerplate-go Documentation",
+  "subtitle": "This document portal provides access to the repository implementation, test results, E-R diagrams, and more.",
   "sections": [
     {
       "title": "Guides (English)",
@@ -38,8 +38,16 @@
           "path": "./guides/infrastructure-auth.md"
         },
         {
+          "name": "Infrastructure Rdb Query Service",
+          "path": "./guides/infrastructure-rdb-query-service.md"
+        },
+        {
           "name": "Infrastructure Rdb Repository",
           "path": "./guides/infrastructure-rdb-repository.md"
+        },
+        {
+          "name": "Infrastructure",
+          "path": "./guides/infrastructure.md"
         },
         {
           "name": "Integration",
@@ -52,6 +60,10 @@
         {
           "name": "Observability",
           "path": "./guides/observability.md"
+        },
+        {
+          "name": "Openapi",
+          "path": "./guides/openapi.md"
         },
         {
           "name": "Overview",
@@ -103,8 +115,16 @@
           "path": "./guides/ja/infrastructure-auth.ja.md"
         },
         {
+          "name": "Infrastructure Rdb Query Service",
+          "path": "./guides/ja/infrastructure-rdb-query-service.ja.md"
+        },
+        {
           "name": "Infrastructure Rdb Repository",
           "path": "./guides/ja/infrastructure-rdb-repository.ja.md"
+        },
+        {
+          "name": "Infrastructure",
+          "path": "./guides/ja/infrastructure.ja.md"
         },
         {
           "name": "Integration",
@@ -117,6 +137,10 @@
         {
           "name": "Observability",
           "path": "./guides/ja/observability.ja.md"
+        },
+        {
+          "name": "Openapi",
+          "path": "./guides/ja/openapi.ja.md"
         },
         {
           "name": "Overview",

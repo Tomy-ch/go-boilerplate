@@ -15,17 +15,17 @@ import (
 )
 
 type repository struct {
-	provider loggingdb.DBProvider
-	tracer   observability.LayerTracer
+	db     loggingdb.DBProvider
+	tracer observability.LayerTracer
 }
 
 func New(
-	provider loggingdb.DBProvider,
+	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
 ) user.Repository {
 	return &repository{
-		provider: provider,
-		tracer:   tf.Infra(),
+		db:     db,
+		tracer: tf.Infra(),
 	}
 }
 
@@ -34,7 +34,7 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Use
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
+	db := gen.New(r.db.NewLoggingDB(ctx))
 	rows, err := db.ListUsers(ctx, &gen.ListUsersParams{
 		OffsetParam: offset,
 		LimitParam:  limit,
@@ -74,7 +74,7 @@ func (r *repository) Create(ctx context.Context, user *user.User) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
+	db := gen.New(r.db.NewLoggingDB(ctx))
 	err := db.CreateUser(ctx, &gen.CreateUserParams{
 		ID:           user.ID().ToPrimitive(),
 		FirstName:    user.FirstName(),
@@ -101,7 +101,7 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
+	db := gen.New(r.db.NewLoggingDB(ctx))
 	count, err := db.CountUsersByDeletedState(ctx, sqlc.BoolPtrToDeletedState(active))
 	if err != nil {
 		return 0, pgerror.NormalizeError(err)
