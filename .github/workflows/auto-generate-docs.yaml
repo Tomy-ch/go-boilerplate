@@ -2,11 +2,11 @@ name: Generate Docs on Merge
 
 on:
   push:
-    branches:
-      - production
-      - staging
-      - develop
-      - release/**
+    # branches:
+    #   - production
+    #   - staging
+    #   - develop
+    #   - release/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,7 +25,6 @@ jobs:
       DB: test
       DB_USER: postgres
       DB_PASSWORD: postgres-password
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     services:
       database:
@@ -53,11 +52,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
 
       - name: Setup DB
         uses: ./.github/actions/setup-postgres
