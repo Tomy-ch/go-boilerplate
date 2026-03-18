@@ -2,8 +2,8 @@ name: Deploy Docs Portal
 
 on:
   push:
-    # branches:
-    #   - production
+    branches:
+      - production
     paths:
       - "docs/**"
       - "scripts/gen-docs-json.mjs"
