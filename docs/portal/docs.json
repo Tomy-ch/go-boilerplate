@@ -245,11 +245,154 @@
       ]
     },
     {
+      "title": "Ja (English)",
+      "items": [
+        {
+          "name": "Architecture",
+          "path": "../ja/architecture.ja.md"
+        },
+        {
+          "name": "Decisions",
+          "path": "../ja/decisions.ja.md"
+        },
+        {
+          "name": "Development Flow",
+          "path": "../ja/development-flow.ja.md"
+        },
+        {
+          "name": "Index",
+          "path": "../ja/index.ja.md"
+        },
+        {
+          "name": "Rules",
+          "path": "../ja/rules.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Maintenance (English)",
+      "items": [
+        {
+          "name": "Docs Structure",
+          "path": "../maintenance/docs-structure.md"
+        },
+        {
+          "name": "Go Upgrade",
+          "path": "../maintenance/go-upgrade.md"
+        },
+        {
+          "name": "Versions Generator",
+          "path": "../maintenance/versions-generator.md"
+        }
+      ]
+    },
+    {
+      "title": "Maintenance (Japanese)",
+      "items": [
+        {
+          "name": "Docs Structure",
+          "path": "../ja/maintenance/docs-structure.ja.md"
+        },
+        {
+          "name": "Go Upgrade",
+          "path": "../ja/maintenance/go-upgrade.ja.md"
+        },
+        {
+          "name": "Versions Generator",
+          "path": "../ja/maintenance/versions_generator.ja.md"
+        }
+      ]
+    },
+    {
       "title": "Openapi",
       "items": [
         {
           "name": "Openapi",
           "path": "../openapi/index.html"
+        }
+      ]
+    },
+    {
+      "title": "Project (English)",
+      "items": [
+        {
+          "name": "Policy",
+          "path": "../project/policy.md"
+        },
+        {
+          "name": "Scope",
+          "path": "../project/scope.md"
+        },
+        {
+          "name": "Versioning",
+          "path": "../project/versioning.md"
+        }
+      ]
+    },
+    {
+      "title": "Project (Japanese)",
+      "items": [
+        {
+          "name": "Policy",
+          "path": "../ja/project/policy.ja.md"
+        },
+        {
+          "name": "Scope",
+          "path": "../ja/project/scope.ja.md"
+        },
+        {
+          "name": "Versioning",
+          "path": "../ja/project/versioning.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Architecture (English)",
+      "items": [
+        {
+          "name": "Architecture",
+          "path": "../architecture.md"
+        },
+        {
+          "name": "Decisions",
+          "path": "../decisions.md"
+        },
+        {
+          "name": "Development Flow",
+          "path": "../development-flow.md"
+        },
+        {
+          "name": "Index",
+          "path": "../index.md"
+        },
+        {
+          "name": "Rules",
+          "path": "../rules.md"
+        }
+      ]
+    },
+    {
+      "title": "Architecture (Japanese)",
+      "items": [
+        {
+          "name": "Architecture",
+          "path": "../ja/architecture.ja.md"
+        },
+        {
+          "name": "Decisions",
+          "path": "../ja/decisions.ja.md"
+        },
+        {
+          "name": "Development Flow",
+          "path": "../ja/development-flow.ja.md"
+        },
+        {
+          "name": "Index",
+          "path": "../ja/index.ja.md"
+        },
+        {
+          "name": "Rules",
+          "path": "../ja/rules.ja.md"
         }
       ]
     }

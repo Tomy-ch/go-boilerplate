@@ -64,15 +64,15 @@ function generateSections() {
   const rootDirs = fs.readdirSync(docsDir, { withFileTypes: true })
     .filter(d => d.isDirectory())
     .map(d => d.name)
-    .filter(name => name !== "portal")
+    .filter(name => name !== "portal" && name !== "ja")
     .sort((a, b) => a.localeCompare(b))
 
   for (const dir of rootDirs) {
+    const dirPath = path.join(docsDir, dir)
 
-    const indexPath = path.join(docsDir, dir, "index.html")
-
+    // ① HTML (priority)
+    const indexPath = path.join(dirPath, "index.html")
     if (fs.existsSync(indexPath)) {
-
       sections.push({
         title: title(dir),
         items: [
@@ -82,7 +82,40 @@ function generateSections() {
           }
         ]
       })
+      continue
+    }
 
+    // ② Markdown fallback (EN)
+    const mdFiles = fs.readdirSync(dirPath)
+      .filter(f => f.endsWith(".md"))
+      .sort((a, b) => a.localeCompare(b))
+
+    if (mdFiles.length) {
+      sections.push({
+        title: `${title(dir)} (English)`,
+        items: mdFiles.map(f => ({
+          name: title(f),
+          path: `../${dir}/${f}`
+        }))
+      })
+    }
+
+    const jaDirPath = path.join(docsDir, "ja", dir)
+
+    if (fs.existsSync(jaDirPath)) {
+      const jaFiles = fs.readdirSync(jaDirPath)
+        .filter(f => f.endsWith(".md"))
+        .sort((a, b) => a.localeCompare(b))
+
+      if (jaFiles.length) {
+        sections.push({
+          title: `${title(dir)} (Japanese)`,
+          items: jaFiles.map(f => ({
+            name: title(f),
+            path: `../ja/${dir}/${f}`
+          }))
+        })
+      }
     }
   }
 
@@ -93,13 +126,31 @@ function generateSections() {
 
   if (rootFiles.length) {
     sections.push({
-      title: "Documents",
+      title: "Architecture (English)",
       items: rootFiles.map(f => ({
         name: title(f),
         path: `../${f}`
       }))
     })
   }
+
+    const jaRootDir = path.join(docsDir, "ja")
+
+    if (fs.existsSync(jaRootDir)) {
+      const jaRootFiles = fs.readdirSync(jaRootDir)
+        .filter(f => f.endsWith(".md"))
+        .sort((a, b) => a.localeCompare(b))
+
+      if (jaRootFiles.length) {
+        sections.push({
+          title: "Architecture (Japanese)",
+          items: jaRootFiles.map(f => ({
+            name: title(f),
+            path: `../ja/${f}`
+          }))
+        })
+      }
+    }
 
   return sections
 }
