@@ -41,7 +41,7 @@ This project manages the Go version using the `.go-version` file.
 Example:
 
 ```text
-1.26.0
+1.26.1
 ```
 
 ## 3. Update Local Go Environment
@@ -51,8 +51,8 @@ This project **recommends using goenv** (but it is not required).
 ### Using goenv
 
 ```sh
-goenv install 1.26.0
-goenv local 1.26.0
+goenv install 1.26.1
+goenv local 1.26.1
 ```
 
 Verify the installation:
@@ -89,9 +89,10 @@ Target directory:
 Example:
 
 ```yaml
-- uses: actions/setup-go@v5
+- uses: actions/setup-go@v6
   with:
-    go-version: '1.26.x'
+    go-version-file: go.mod
+    cache: true
 ```
 
 ## 5. Update Go Version in `go.mod`
@@ -99,7 +100,7 @@ Example:
 Update the Go version declared in `go.mod`.
 
 ```sh
-go mod edit -go=1.26
+go mod edit -go=1.26.1
 ```
 
 ## 6. Update Dependencies and Vendor
@@ -142,7 +143,7 @@ Update the Go version used in the Dockerfile.
 Example:
 
 ```dockerfile
-FROM golang:1.26
+FROM golang:1.26.1
 ```
 
 ## 9. Rebuild Docker Containers

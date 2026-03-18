@@ -25,7 +25,7 @@
 git clone <https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc.git>
 cd boilerplate-go-echo-oapi-sqlc
 
-make install
+make install-tools
 make serve
 make tools
 ```

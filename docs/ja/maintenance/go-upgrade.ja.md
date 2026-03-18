@@ -43,7 +43,7 @@ https://go.dev/doc/devel/release
 例
 
 ```text
-1.26.0
+1.26.1
 ```
 
 ## 3. ローカル Go 環境の更新
@@ -53,8 +53,8 @@ https://go.dev/doc/devel/release
 ### goenv を使用する場合
 
 ```sh
-goenv install 1.26.0
-goenv local 1.26.0
+goenv install 1.26.1
+goenv local 1.26.1
 ```
 
 確認
@@ -91,15 +91,16 @@ GitHub Actions の Go version を更新します。
 例
 
 ```yaml
-- uses: actions/setup-go@v5
+- uses: actions/setup-go@v6
   with:
-    go-version: '1.26.x'
+    go-version-file: go.mod
+    cache: true
 ```
 
 ## 5. `go.mod` の Go version 更新
 
 ```sh
-go mod edit -go=1.26
+go mod edit -go=1.26.1
 ```
 
 ## 6. 依存関係と vendor の更新
@@ -142,7 +143,7 @@ Dockerfile の Go version を更新します。
 例
 
 ```dockerfile
-FROM golang:1.26
+FROM golang:1.26.1
 ```
 
 ## 9. Docker コンテナ再ビルド

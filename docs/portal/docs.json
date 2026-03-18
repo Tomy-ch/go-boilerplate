@@ -228,7 +228,7 @@
         },
         {
           "name": "Versions Generator",
-          "path": "../maintenance/versions_generator.md"
+          "path": "../maintenance/versions-generator.md"
         }
       ]
     },

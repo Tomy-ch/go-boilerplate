@@ -1,7 +1,7 @@
 # ------------------------------
 # ビルド用
 # ------------------------------
-FROM golang:1.26.0-alpine AS builder
+FROM golang:1.26.1-alpine AS builder
 
 WORKDIR /app
 
@@ -52,7 +52,7 @@ CMD ["/entrypoint.sh"]
 # ------------------------------
 # ローカル環境
 # ------------------------------
-FROM golang:1.26.0-alpine AS local
+FROM golang:1.26.1-alpine AS local
 
 # ビルドなどに必要なパッケージをインストール
 RUN apk add --no-cache \
