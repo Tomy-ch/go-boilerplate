@@ -86,7 +86,7 @@ jobs:
         run: make gen-test-repo
 
       - name: Generate ER Diagram
-        run: make gen-db-schema-ci
+        run: make gen-db-schema
 
       - name: Detect changes
         id: diff
