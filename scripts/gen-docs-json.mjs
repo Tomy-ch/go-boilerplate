@@ -20,45 +20,46 @@ function title(str) {
 function generateSections() {
   const manifestPath = path.join(portalDir, "manifest.yaml")
 
-  if (!fs.existsSync(manifestPath)) {
-    console.warn("manifest.yaml not found, fallback to legacy behavior")
-    return []
+  const sections = []
+  let manifest = null
+
+  if (fs.existsSync(manifestPath)) {
+    manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"))
+  } else {
+    console.warn("manifest.yaml not found; using filesystem scan fallback")
   }
 
-  const manifest = yaml.load(fs.readFileSync(manifestPath, "utf-8"))
+  if (manifest) {
+    for (const [group, entries] of Object.entries(manifest)) {
+      const enItems = []
+      const jaItems = []
 
-  const sections = []
+      for (const entry of entries) {
+        const name = title(path.basename(entry.dst))
+        const relativePath = entry.dst.replace(/^docs\/portal\//, "./")
 
-  for (const [group, entries] of Object.entries(manifest)) {
-    const enItems = []
-    const jaItems = []
+        if (relativePath.includes("/ja/")) {
+          jaItems.push({ name, path: relativePath })
+        } else {
+          enItems.push({ name, path: relativePath })
+        }
+      }
 
-    for (const entry of entries) {
-      const name = title(path.basename(entry.dst))
-      const relativePath = entry.dst.replace(/^docs\/portal\//, "./")
+      if (enItems.length) {
+        sections.push({
+          title: `${title(group)} (English)`,
+          items: enItems.sort((a, b) => a.name.localeCompare(b.name))
+        })
+      }
 
-      if (relativePath.includes("/ja/")) {
-        jaItems.push({ name, path: relativePath })
-      } else {
-        enItems.push({ name, path: relativePath })
+      if (jaItems.length) {
+        sections.push({
+          title: `${title(group)} (Japanese)`,
+          items: jaItems.sort((a, b) => a.name.localeCompare(b.name))
+        })
       }
     }
-
-    if (enItems.length) {
-      sections.push({
-        title: `${title(group)} (English)`,
-        items: enItems.sort((a, b) => a.name.localeCompare(b.name))
-      })
-    }
-
-    if (jaItems.length) {
-      sections.push({
-        title: `${title(group)} (Japanese)`,
-        items: jaItems.sort((a, b) => a.name.localeCompare(b.name))
-      })
-    }
   }
-
 
   const rootDirs = fs.readdirSync(docsDir, { withFileTypes: true })
     .filter(d => d.isDirectory())
@@ -83,6 +84,21 @@ function generateSections() {
       })
 
     }
+  }
+
+  // fallback: add root-level markdown files (if manifest not used or incomplete)
+  const rootFiles = fs.readdirSync(docsDir)
+    .filter(f => f.endsWith(".md"))
+    .sort((a, b) => a.localeCompare(b))
+
+  if (rootFiles.length) {
+    sections.push({
+      title: "Documents",
+      items: rootFiles.map(f => ({
+        name: title(f),
+        path: `../${f}`
+      }))
+    })
   }
 
   return sections
