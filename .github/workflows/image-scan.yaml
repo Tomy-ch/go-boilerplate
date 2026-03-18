@@ -197,7 +197,7 @@ jobs:
             }
 
       - name: Upload SBOM summary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-summary.md
           path: sbom-summary.md
@@ -212,7 +212,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
           output: trivy-image-scan.txt
       - name: Upload Trivy report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-image-scan.txt
           path: trivy-image-scan.txt
