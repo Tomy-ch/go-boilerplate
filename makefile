@@ -7,8 +7,6 @@ ENV ?= local
 include .makefiles/db/vars.mk
 # Go言語関連
 include .makefiles/go/vars.mk
-# GitHub関連
-include .makefiles/github/operation/release-util.mk
 
 # 依存されないファイル
 # DB関連
