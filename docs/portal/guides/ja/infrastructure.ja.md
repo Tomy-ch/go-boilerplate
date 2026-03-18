@@ -140,7 +140,7 @@ Infrastructure 層では以下を行ってはいけません。
 - testkit を利用
 
 ```txt
-    実DB + rollback + 並列実行（Txは直列化）
+    実DB + ロールバック + 並列実行（Txでは直列化）
 ```
 
 ## 設計原則まとめ
