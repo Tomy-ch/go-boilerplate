@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -117,7 +117,7 @@ jobs:
 
       - name: Comment SBOM Summary on PR
         if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -197,7 +197,7 @@ jobs:
             }
 
       - name: Upload SBOM summary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-summary.md
           path: sbom-summary.md
@@ -212,14 +212,14 @@ jobs:
           severity: 'CRITICAL,HIGH'
           output: trivy-image-scan.txt
       - name: Upload Trivy report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-image-scan.txt
           path: trivy-image-scan.txt
 
       - name: Comment Trivy result on PR
         if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

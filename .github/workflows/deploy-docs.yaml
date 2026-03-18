@@ -6,7 +6,7 @@ on:
       - production
     paths:
       - "docs/**"
-      - "scripts/generate-docs-json.js"
+      - "scripts/gen-docs-json.mjs"
       - ".github/workflows/deploy-docs.yaml"
 
 permissions:
@@ -21,15 +21,7 @@ jobs:
 
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Generate docs.json
-        run: node scripts/generate-docs-json.js
+        uses: actions/checkout@v6
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

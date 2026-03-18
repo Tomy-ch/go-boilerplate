@@ -24,7 +24,7 @@ jobs:
       ENV: ci
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -33,7 +33,7 @@ jobs:
           cache: true
 
       - name: Run OpenAPI Bundle
-        run: make gen-swagger
+        run: make gen-bundle-oapi
 
       - name: Generate OpenAPI Docs
         run: make gen-api-docs
@@ -54,7 +54,7 @@ jobs:
 
       - name: Comment generated status on PR (diff/no-diff)
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

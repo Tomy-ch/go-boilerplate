@@ -1,3 +1,5 @@
+get-latest-version = $(shell git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1)
+
 define do-release-tag
 	echo "🔄 productionブランチの最新を取得中..."; \
 	git fetch origin production; \
@@ -5,7 +7,7 @@ define do-release-tag
 	git reset --hard origin/production; \
 	echo "✅ 最新のproductionを取得完了"; \
 	echo "🔄 最新のタグを取得中..."; \
-	make fetch-tags; \
+	git fetch --tags origin; \
 	echo "✅ 最新のタグを取得完了"; \
 	echo "🔖 タグから最新タグバージョンを取得: $(1)"; \
 	echo "➡️ 次のリリースバージョンを作成: $(2)"; \
@@ -21,30 +23,21 @@ endef
 
 ## リリースタグの設定とリリースノートの設定コマンド
 
-.PHONY: release-patch-tag ## リリースタグ(vX.Y.Z+1)を作成
-.PHONY: release-minor-tag ## リリースタグ(vX.Y+1.0)を作成
-.PHONY: release-major-tag ## リリースタグ(vX+1.0.0)を作成
+.PHONY: tag-patch ## リリースタグ(vX.Y.Z+1)を作成
+.PHONY: tag-minor ## リリースタグ(vX.Y+1.0)を作成
+.PHONY: tag-major ## リリースタグ(vX+1.0.0)を作成
 
-release-patch-tag:
+tag-patch:
 	@V=$(call get-latest-version); \
-	V_NO_V=$$(echo $$V | sed 's/^v//'); \
-	major=$$(echo $$V_NO_V | cut -d. -f1); \
-	minor=$$(echo $$V_NO_V | cut -d. -f2); \
-	patch=$$(echo $$V_NO_V | cut -d. -f3); \
-	NEXT=v$$major.$$minor.$$((patch + 1)); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.js $$V patch); \
 	$(call do-release-tag,$$V,$$NEXT)
 
-release-minor-tag:
+tag-minor:
 	@V=$(call get-latest-version); \
-	V_NO_V=$$(echo $$V | sed 's/^v//'); \
-	major=$$(echo $$V_NO_V | cut -d. -f1); \
-	minor=$$(echo $$V_NO_V | cut -d. -f2); \
-	NEXT=v$$major.$$((minor + 1)).0; \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.js $$V minor); \
 	$(call do-release-tag,$$V,$$NEXT)
 
-release-major-tag:
+tag-major:
 	@V=$(call get-latest-version); \
-	V_NO_V=$$(echo $$V | sed 's/^v//'); \
-	major=$$(echo $$V_NO_V | cut -d. -f1); \
-	NEXT=v$$((major + 1)).0.0; \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.js $$V major); \
 	$(call do-release-tag,$$V,$$NEXT)

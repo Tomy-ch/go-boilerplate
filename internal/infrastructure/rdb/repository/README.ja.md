@@ -307,8 +307,17 @@ OpenTelemetry SDK には直接依存しません。
 
 Repository 実装は次の依存を持ちます。
 
+- loggingdb.DBProvider は、Repository が利用する唯一の DB アクセス入口です。
+  - SQL ログ出力
+  - トレース連携
+  - DB / Tx の透過切り替え
+  を提供します。
+
 - driver.DatabaseDriver は、ロギング機能を持たない純粋な DB 接続ドライバです。
-- loggingdb.DBProvider は、ロギング機能を持つ DB 接続プロバイダです。
+  - ロギングが不要な場合は、`r.db.NewDB(ctx)` を使用して直接取得できます。
+
+- observability.TracerFactory は、LayerTracer を生成するためのファクトリです。
+  - Repository では Infra レイヤー用 tracer を使用します
 
 ```go
 type repository struct {
@@ -431,7 +440,7 @@ ROLLBACK
 の形で実行されます。
 
 トランザクションを直列化することで、複数テストが同時に走っても
-DB状態の競合やテスト間の干渉が発生しないようにしています.
+DB状態の競合やテスト間の干渉が発生しないようにしています。
 
 ### Domain エラーの検証
 

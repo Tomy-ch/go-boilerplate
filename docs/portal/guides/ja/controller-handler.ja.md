@@ -503,7 +503,7 @@ Response は **OpenAPI 生成型** を通して検証します。
 actual, ok := resp.(gen.GetUsers200JSONResponse)
 require.True(t, ok)
 
-require.Equal(t, expectedResponse, gen.ResponseV1Users(actual))
+require.Equal(t, expectedResponse, gen.UsersResponse(actual))
 ```
 
 Controller テストでは **HTTPレスポンス境界の型変換**が正しいことを確認します。
@@ -676,7 +676,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
       }
     }
 
-    res := gen.ResponseV1Users{
+    res := gen.UsersResponse{
       Users:  users,
       Limit:  page.Limit(),
       Offset: page.Offset(),

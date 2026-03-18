@@ -22,6 +22,9 @@ jobs:
       actions: read
     env:
       ENV: ci
+      DB: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres-password
     services:
       database:
         image: postgres:17.5
@@ -42,7 +45,7 @@ jobs:
           --health-start-period=20s
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -53,16 +56,16 @@ jobs:
       - name: Setup DB (wait & init)
         uses: ./.github/actions/setup-postgres
         with:
-          db: test
-          user: postgres
-          password: postgres-password
+          db: ${{ env.DB }}
+          user: ${{ env.DB_USER }}
+          password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
       - name: Initialize Database Table
-        run: go run cmd/main.go migrate-up --database test
+        run: go run cmd/main.go migrate-up --database ${{ env.DB }}
 
       - name: Seed Database
-        run: go run cmd/main.go db-seed --database test
+        run: go run cmd/main.go db-seed --database ${{ env.DB }}
 
       - name: Run Tests with Coverage
         run: make test-cover-ci

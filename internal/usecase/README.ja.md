@@ -190,7 +190,7 @@ Usecase 層では以下を守ります。
 時刻の取得は **Usecase → Domain へ渡す**形で扱い、
 Domain 側では新たに時刻を取得しない設計を推奨します。
 
-これにより **時刻依存ロジックを完全にテスト可能に保つ**ことができます.
+これにより **時刻依存ロジックを完全にテスト可能に保つ**ことができます。
 
 ### 依存関係
 
@@ -657,7 +657,7 @@ func New(
     }
 }
 
-func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Paging) ([]DTO, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()

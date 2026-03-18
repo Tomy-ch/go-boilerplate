@@ -45,6 +45,9 @@ WORKDIR /app
 
 RUN apk add --no-cache bash make
 
+COPY docker/tools/package.json ./
+RUN npm install
+
 RUN npm install -g @redocly/cli@latest
 
 ENTRYPOINT []

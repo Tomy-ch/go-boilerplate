@@ -653,8 +653,7 @@ func New(
     }
 }
 
-func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, error) {
-
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Paging) ([]DTO, error) {
     // Start and end the span
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()

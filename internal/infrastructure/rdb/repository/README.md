@@ -285,12 +285,21 @@ Repository only knows about:
 
 It does not depend directly on the OpenTelemetry SDK.
 
-## Repository Struct
+## Repository Structure
 
-Repository implementations depend on the following components:
+A Repository implementation depends on the following components:
 
-- `driver.DatabaseDriver` — a pure DB connection driver without logging
-- `loggingdb.DBProvider` — a DB connection provider with logging support
+- `loggingdb.DBProvider` is the **only entry point for DB access** used by the Repository.
+  - Provides SQL logging
+  - Integrates with tracing
+  - Transparently switches between DB and Tx
+
+- `driver.DatabaseDriver` is a **pure database driver without logging capabilities**.
+  - Used internally by `loggingdb`
+  - Not referenced directly from the Repository
+
+- `observability.TracerFactory` is a factory for creating `LayerTracer`.
+  - The Repository uses a tracer for the Infrastructure layer
 
 ```go
 type repository struct {

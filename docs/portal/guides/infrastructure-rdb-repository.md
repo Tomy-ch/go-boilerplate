@@ -212,19 +212,19 @@ Purpose:
 
 Repository does not directly use `driver.DatabaseDriver`.
 
-Instead it generates the sqlc Querier using:
+Instead, it generates the sqlc Querier using:
 
 ```go
-db := gen.New(r.provider.NewLoggingDB(ctx))
+db := gen.New(r.db.NewLoggingDB(ctx))
 ```
 
-`loggingdb.DBProvider` provides:
+`loggingdb.DBProvider` provides the following features:
 
-- SQL logging
+- SQL log output
 - Transparent DB / Tx switching
-- Context-based connection resolution
+- Context‑based connection resolution
 
-Repository therefore **does not need to know the DB connection state**.
+This allows Repository implementations to remain **agnostic to the current DB connection state**.
 
 ## Error Normalization
 
@@ -285,15 +285,26 @@ Repository only knows about:
 
 It does not depend directly on the OpenTelemetry SDK.
 
-## Repository struct
+## Repository Structure
 
-Repository implementations use the following dependencies:
+A Repository implementation depends on the following components:
+
+- `loggingdb.DBProvider` is the **only entry point for DB access** used by the Repository.
+  - Provides SQL logging
+  - Integrates with tracing
+  - Transparently switches between DB and Tx
+
+- `driver.DatabaseDriver` is a **pure database driver without logging capabilities**.
+  - Used internally by `loggingdb`
+  - Not referenced directly from the Repository
+
+- `observability.TracerFactory` is a factory for creating `LayerTracer`.
+  - The Repository uses a tracer for the Infrastructure layer
 
 ```go
 type repository struct {
-    db       driver.DatabaseDriver
-    provider loggingdb.DBProvider
-    tracer   observability.LayerTracer
+    db     loggingdb.DBProvider
+    tracer observability.LayerTracer
 }
 ```
 
@@ -301,14 +312,12 @@ Constructor:
 
 ```go
 func New(
-    db driver.DatabaseDriver,
-    provider loggingdb.DBProvider,
+    db loggingdb.DBProvider,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
-        db:       db,
-        provider: provider,
-        tracer:   tf.Infra(),
+        db:     db,
+        tracer: tf.Infra(),
     }
 }
 ```
@@ -388,24 +397,37 @@ Benefits:
 
 ### Parallel Execution
 
-Repository tests **must not run in parallel**.
+Repository tests can call `t.Parallel()` and run concurrently.
 
-Reason:
-
-```txt
-A shared database is used.
-```
-
-Concurrent execution may cause:
-
-- data races
-- unstable tests
-
-Therefore the rule is:
+However, the transaction manager created via:
 
 ```go
-// do not use t.Parallel()
+txm := testkit.NewTestTransactionManager(t)
 ```
+
+**serializes transaction execution internally.**
+
+The actual execution model is:
+
+```txt
+Test execution       → Parallel
+Transaction execution → Serialized
+```
+
+Each test runs inside `WithinTx`:
+
+```txt
+BEGIN
+ ↓
+test
+ ↓
+ROLLBACK
+```
+
+Because transactions are serialized, even if multiple tests run at the same time,
+**database state conflicts and cross‑test interference are prevented.**
+
+This allows Repository tests to safely use `t.Parallel()`.
 
 ### Domain Error Verification
 
@@ -448,33 +470,170 @@ ErrConflict
 ErrNotFound
 ```
 
-### Summary
+## Repository Anti‑Patterns
 
-Repository testing policy:
+There are several **common incorrect implementation patterns** in the Repository layer.
+These break architectural boundaries and **must not be implemented.**
+
+### 1. Writing Business Logic
+
+Repository is a **persistence layer**.
+Business rules must not be implemented here.
+
+Bad example:
+
+```go
+func (r *repository) Create(ctx context.Context, user *user.User) error {
+    if user.IsPremium() {
+        // ❌ business rule
+    }
+}
+```
+
+Correct responsibility:
 
 ```txt
 Repository
- ├ sqlc
- ├ driver
- ├ loggingdb
- └ PostgreSQL
+ ├ Query execution
+ ├ Row → Domain conversion
+ └ Error normalization
 ```
 
-The above stack is tested **using a real DB integration test**.
+Business rules belong to the **Domain / Usecase layers**.
+
+---
+
+### 2. Creating DTOs
+
+Repository **must not create DTOs**.
+
+Bad example:
+
+```go
+return UserDTO{
+    Name: row.Users.Name,
+}
+```
+
+Repository must return **Domain entities only**.
+
+```go
+return user.New(...)
+```
+
+DTO transformation belongs to **Usecase / Presenter layers**.
+
+---
+
+### 3. Returning sqlc Rows Directly
+
+sqlc Row types are **Infrastructure‑specific types**.
+
+Bad example:
+
+```go
+return rows
+```
+
+Rows must always be converted to Domain entities.
+
+```go
+u, err := user.New(...)
+```
+
+Reason:
 
 ```txt
-Domain          → Unit Test
-Usecase         → Unit Test
-Repository      → Integration Test
-Controller      → Unit Test
-Integration     → HTTP Test
+Do not leak sqlc types to upper layers
 ```
 
-This ensures verification of:
+---
 
-- SQL correctness
-- Domain conversion
-- error normalization
+### 4. Implementing QueryService in Repository
+
+Repository represents an **aggregate persistence abstraction**.
+
+Therefore methods like:
+
+```txt
+FindByKeyword
+SearchUser
+AggregateSearch
+```
+
+must **not** be implemented in Repository.
+
+Search functionality must be implemented in a dedicated:
+
+```txt
+QueryService
+```
+
+layer.
+
+---
+
+### 5. Starting Transactions
+
+Repository **must not start transactions**.
+
+Bad example:
+
+```go
+tx, _ := db.Begin()
+```
+
+Transaction boundaries belong to the **Usecase layer**.
+
+Repository executes queries via:
+
+```go
+gen.New(r.db.NewLoggingDB(ctx))
+```
+
+which transparently switches between:
+
+```txt
+Tx / DB
+```
+
+---
+
+### 6. Referencing Controller Types
+
+Repository must not depend on the **HTTP layer**.
+
+Bad example:
+
+```go
+func (r *repository) Create(ctx echo.Context)
+```
+
+Repository must use **pure Go interfaces**.
+
+```go
+func (r *repository) Create(ctx context.Context, user *user.User)
+```
+
+---
+
+### 7. Defining Domain Interfaces in Infrastructure
+
+Repository interfaces must be defined in the **Domain layer**.
+
+Bad example:
+
+```txt
+internal/infrastructure/repository/user_repository_interface.go
+```
+
+Correct location:
+
+```txt
+internal/domain/user/repository.go
+```
+
+Infrastructure should only **implement Domain interfaces**.
 
 ## Do / Don't
 
@@ -499,42 +658,50 @@ This ensures verification of:
 ```go
 package user
 
+// repository name is fixed
 type repository struct {
-    db       driver.DatabaseDriver
-    provider loggingdb.DBProvider
-    tracer   observability.LayerTracer
+    db     loggingdb.DBProvider
+    tracer observability.LayerTracer
 }
 
+// constructor name is fixed
 func New(
-    db driver.DatabaseDriver,
-    provider loggingdb.DBProvider,
+    db loggingdb.DBProvider,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
-        db:       db,
-        provider: provider,
-        tracer:   tf.Infra(),
+        db:     db,
+        tracer: tf.Infra(),
     }
 }
 
 func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Users, error) {
+
+    // Start and end span
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    db := gen.New(r.provider.NewLoggingDB(ctx))
+    // Using ResolveDriverWithLog automatically outputs SQL logs
+    // If logging is unnecessary, ResolveDriver can be used instead
+    db := gen.New(r.db.NewLoggingDB(ctx))
 
+    // Call DML generated by sqlc
     rows, err := db.ListUsers(ctx, &gen.ListUsersParams{
         OffsetParam: offset,
         LimitParam:  limit,
     })
 
     if err != nil {
+        // Normalize and return DB errors
+        // Error classification is handled by the pgerror package
         return nil, pgerror.NormalizeError(err)
     }
 
+    // Convert rows to Domain entities
     users := make(user.Users, len(rows))
 
     for i, row := range rows {
+
         u, err := user.New(
             uuid.FromPrimitive(row.Users.ID),
             row.Users.FirstName,
@@ -551,6 +718,7 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Use
             row.Users.UpdatedAt,
             conv.TimePtrFromNull(row.Users.DeletedAt),
         )
+
         if err != nil {
             return nil, err
         }

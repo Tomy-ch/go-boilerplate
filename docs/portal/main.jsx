@@ -2,11 +2,14 @@
 function Card({ name, path, onOpen }) {
 
   const isMarkdown = path.endsWith(".md")
+  const isExternal = path.startsWith("http")
 
   return (
     <a
       className={`card ${isMarkdown ? "card-md" : "card-link"}`}
       href={path}
+      target={isExternal ? "_blank" : undefined}
+      rel={isExternal ? "noopener noreferrer" : undefined}
       onClick={(e) => {
         if (isMarkdown) {
           e.preventDefault()
@@ -158,7 +161,10 @@ function buildVisibleSections(allSections, lang) {
   if (!Array.isArray(allSections)) return []
 
   if (lang === "EN") {
-    return allSections.filter((section) => !section.title.includes("Japanese"))
+    return allSections.filter((section) => {
+      // English or non-language sections
+      return !section.title.includes("Japanese")
+    })
   }
 
   const jaSections = new Map()
@@ -187,7 +193,10 @@ function buildVisibleSections(allSections, lang) {
   })
 
   return orderedBases
-    .map((base) => jaSections.get(base) || enSections.get(base))
+    .map((base) => {
+      // prefer JA if exists, else EN
+      return jaSections.get(base) || enSections.get(base)
+    })
     .filter(Boolean)
 }
 
@@ -242,7 +251,6 @@ function App() {
       .then((md) => {
         const html = marked.parse(md)
         setMdHtml(html)
-        window.scrollTo(0, 0)
       })
       .catch((err) => {
         console.error(err)

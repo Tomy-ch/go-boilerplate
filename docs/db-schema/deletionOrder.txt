@@ -1,0 +1,9 @@
+schema_migrations
+purchase_details
+purchases
+products
+users
+purchase_statuses
+product_statuses
+product_categories
+prefectures

@@ -25,7 +25,7 @@ Run the project locally in a few commands.
 git clone https://github.com/Tomy-ch/go-boilerplate.git
 cd go-boilerplate
 
-make install
+make install-tools
 make serve
 make tools
 ```

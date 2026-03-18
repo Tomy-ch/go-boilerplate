@@ -1,174 +1,176 @@
-# インフラ層（`internal/infrastructure`）ガイド
+# Infrastructure Layer Guide (`internal/infrastructure`)
 
-## 役割
+## Responsibility
 
-Infrastructure 層は、**外部技術（DB・外部API・認証・セキュリティ等）へのアクセス実装**を担う層です。
+The Infrastructure layer is responsible for **implementing access to external technologies** (DB, external APIs, authentication, security, etc.).
 
-この層は以下の責務を持ちます。
+This layer has the following responsibilities:
 
-- 外部I/Oの実装（RDB / API / 認証 / システム）
-- Domain が定義した interface の実装
-- 技術的詳細（接続・リトライ・ドライバ・ログ等）のカプセル化
-- エラーの正規化
-- Observability（ログ / トレース）の付与
+- Implement external I/O (RDB / API / authentication / system)
+- Implement interfaces defined by the Domain
+- Encapsulate technical details (connection, retry, drivers, logging, etc.)
+- Normalize errors
+- Provide Observability (logging / tracing)
 
-上位層（Domain / Usecase）は、**Infrastructure の実装詳細を一切意識しません。**
+Upper layers (Domain / Usecase) **must not be aware of Infrastructure implementation details**.
 
-## オニオンアーキテクチャでの位置
-
-```txt
-    Domain
-      ↑
-    Usecase
-      ↑
-    Infrastructure
-```
-
-- Domain / Usecase は抽象のみ
-- Infrastructure は具体実装
-
-## 依存関係
+## Position in Onion Architecture
 
 ```txt
-    Domain ← Infrastructure（実装）
-    Usecase ← Infrastructure（利用）
+Domain
+  ↑
+Usecase
+  ↑
+Infrastructure
 ```
 
-- Infrastructure は Domain に依存する
-- Domain / Usecase は Infrastructure に依存してはならない
+- Domain / Usecase define abstractions only
+- Infrastructure provides concrete implementations
 
-## Usecaseとの関係
-
-- トランザクション境界は Usecase 層が管理
-- Infrastructure はトランザクションを開始しない
-- トランザクションは context.Context により伝搬される
+## Dependencies
 
 ```txt
-    Usecase（Tx開始）
-      ↓
-    Repository / QueryService
-      ↓
-    driver（Tx使用）
+Domain ← Infrastructure (implementation)
+Usecase ← Infrastructure (usage)
 ```
 
-## エラーハンドリング
+- Infrastructure depends on Domain
+- Domain / Usecase must not depend on Infrastructure
 
-Infrastructure 層は外部技術のエラーをそのまま返さず、  
-**アプリケーション共通エラーへ変換**します。
+## Relationship with Usecase
 
-例：
+- Transaction boundaries are managed by the Usecase layer
+- Infrastructure must not start transactions
+- Transactions are propagated via `context.Context`
 
-- PostgreSQL エラー → pgerror.NormalizeError
-- 外部APIエラー → apperror に変換
+```txt
+Usecase (starts Tx)
+  ↓
+Repository / QueryService
+  ↓
+driver (uses Tx)
+```
+
+## Error Handling
+
+Infrastructure must not return raw external errors.  
+Instead, it must **convert them into application-level errors**.
+
+Examples:
+
+- PostgreSQL errors → `pgerror.NormalizeError`
+- External API errors → converted to `apperror`
 
 ## Observability
 
-Infrastructure 層では以下の可観測性を提供します。
+Infrastructure provides the following observability features:
 
-- SQL / 外部I/Oのログ出力
-- OpenTelemetry によるトレース
-- 実行時間計測（slow query）
+- SQL / external I/O logging
+- OpenTelemetry tracing
+- Execution time measurement (e.g., slow queries)
 
-主に loggingdb などの wrapper で実現します。
+Typically implemented via wrappers such as `loggingdb`.
 
-## 禁止事項
+## Prohibited Practices
 
-Infrastructure 層では以下を行ってはいけません。
+The following must not be done in the Infrastructure layer:
 
-- ビジネスロジックの実装
-- Domain ルールの分岐
-- Usecase の意思決定
-- HTTP / Framework 依存コードの持ち込み
-- トランザクションの開始
+- Implement business logic
+- Branch on Domain rules
+- Make Usecase-level decisions
+- Introduce HTTP / framework-dependent code
+- Start transactions
 
-## 実装ルール
+## Implementation Rules
 
-- SQL 実行は sqlc を使用する
-- Repository に検索ロジックを書かない（QueryServiceへ）
-- driver を直接使わず loggingdb 経由で利用する
-- context を必ず伝搬する
-- 外部エラーは必ず正規化する
+- Use `sqlc` for SQL execution
+- Do not implement search logic in Repository (use QueryService)
+- Do not use driver directly; use it via loggingdb
+- Always propagate `context`
+- Always normalize external errors
 
-## ディレクトリ構成
+## Directory Structure
 
 ```txt
-    internal/infrastructure
-     ├ auth/
-     ├ rdb/
-     ├ security/
-     └ system/
+internal/infrastructure
+ ├ auth/
+ ├ rdb/
+ ├ security/
+ └ system/
 ```
 
-## 各サブシステム
+## Subsystems
 
-### 認証アクセス実装
+### Authentication
 
-- トークン検証
-- 認証情報の取得
+- Token validation
+- Extraction of authentication information
 
-→ [auth/README.ja.md](./auth/README.ja.md) を参照
+→ See [auth/README.md](./auth/README.md)
 
-### RDBアクセス実装
+### RDB Access
 
 - Repository / QueryService
-- sqlc による型安全な SQL 実行
-- driver によるトランザクション管理
-- loggingdb によるログ / トレース
-- PostgreSQL エラー正規化
+- Type-safe SQL execution via sqlc
+- Transaction management via driver
+- Logging / tracing via loggingdb
+- PostgreSQL error normalization
 
-→ [rdb/README.ja.md](./rdb/README.ja.md) を参照
+→ See [rdb/README.md](./rdb/README.md)
 
-### セキュリティアクセス実装
+### Security
 
-- 暗号化 / ハッシュ
-- トークン生成
+- Encryption / hashing
+- Token generation
 
-→ [security/README.ja.md](./security/README.ja.md) を参照
+→ See [security/README.md](./security/README.md)
 
-### システムアクセス実装
+### System
 
-- clock（時刻管理）
-- ID生成
-- システムユーティリティ
+- Clock (time management)
+- ID generation
+- System utilities
 
-→ [system/README.ja.md](./system/README.ja.md) を参照
+→ See [system/README.md](./system/README.md)
 
-## テスト戦略
+## Test Strategy
 
-- 実DBを用いた Integration Test
-- トランザクション rollback による状態隔離
-- testkit を利用
+- Integration tests using a real database
+- State isolation via transaction rollback
+- Use `testkit`
 
 ```txt
-    実DB + rollback + 並列実行（Txは直列化）
+Real DB + rollback + no parallel execution (Tx serialized)
 ```
 
-## 設計原則まとめ
+## Design Principles Summary
 
-### 1. 技術詳細のカプセル化
+### 1. Encapsulation of Technical Details
 
-DB / API / 認証 / セキュリティ  
-→ Infrastructure に閉じ込める
+DB / API / authentication / security  
+→ encapsulated within Infrastructure
 
-### 2. 依存関係の逆転
+### 2. Dependency Inversion
 
-Domain が interface を定義  
-Infrastructure が実装する
+Domain defines interfaces  
+Infrastructure implements them
 
-### 3. 責務分離
+### 3. Separation of Responsibilities
 
-永続化 → Repository  
-検索   → QueryService
+```txt
+Persistence → Repository
+Query       → QueryService
+```
 
-### 4. トランザクション管理
+### 4. Transaction Management
 
-Usecase が管理  
-Infrastructure は関与しない
+Usecase manages transactions  
+Infrastructure does not participate
 
-### 5. エラー統一
+### 5. Unified Error Handling
 
-外部エラー → アプリケーションエラー
+External errors → application errors
 
-### 6. 可観測性
+### 6. Observability
 
 logging / tracing / metrics
