@@ -657,7 +657,7 @@ func New(
     }
 }
 
-func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Paging) ([]DTO, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
