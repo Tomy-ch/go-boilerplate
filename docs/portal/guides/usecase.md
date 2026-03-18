@@ -153,6 +153,48 @@ Messaging / EventPublisher
 Observability
 ```
 
+### Time Handling Policy
+
+In this repository, **time acquisition is centrally managed in the Usecase layer**.
+
+Therefore **direct calls to `time.Now()` are prohibited**.
+
+Instead, use the Boundary provided **`clock.Clock`**.
+
+Reasons:
+
+- To make tests deterministic
+- To isolate timezone and time‑source differences
+- To prevent AI tools or developers from introducing `time.Now()` directly
+
+Usecase must obtain time as follows:
+
+```go
+now := u.clock.Now()
+```
+
+Example:
+
+```go
+now := u.clock.Now()
+userEntity, err := user.New(..., now, now, nil)
+```
+
+### Rule
+
+Usecase layer must follow this rule:
+
+```txt
+Forbidden: time.Now()
+Allowed:   clock.Clock.Now()
+```
+
+Time should be obtained in **Usecase → then passed into Domain**.
+
+Domain should not acquire time by itself.
+
+This guarantees that **time‑dependent logic remains fully testable**.
+
 ### Dependency structure
 
 ```mermaid
@@ -533,22 +575,21 @@ func New(
 
 Observability layer hides SDK details.
 
-## Minimal Example
+## Implementation Example
 
 ```go
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
-// unique package name
+// Unique package name
 package user
 
 import (
     "context"
 
     "boilerplate-go/internal/observability"
-    // import packages needed for implementation
+    // Import packages required for the implementation
 )
 
-
-// DTO used to communicate with lower layers
+// DTO used for communication with lower layers
 type UserMutableFields struct {
     FirstName      string
     LastName       string
@@ -568,79 +609,108 @@ type CreateUserParamsDTO struct {
     UserMutableFields
 }
 
-
-// usecase struct name is fixed
+// The struct name "usecase" is fixed
 type usecase struct {
-    tracer   observability.LayerTracer
-    txm      tx.Manager
-    userRepo user.Repository
-    pftRepo  prefecture.Repository
+    tracer    observability.LayerTracer
+    txm       tx.Manager
+    clock     clock.Clock
+    encrypter security.Encrypter
+    userRepo  user.Repository
+    pftRepo   prefecture.Repository
+    userQS    query.UserQueryService
 }
 
-// Usecase interface name is fixed
+// Usecase defines the use cases related to users.
 type Usecase interface {
-    GetAllUsers(ctx context.Context, page paging.Paging) ([]UserMutableFields, error)
-    CreateUser(ctx context.Context, dto CreateUserParamsDTO) (UserMutableFields, error)
+    // ListUsersByKeyword retrieves a list of users.
+    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
 
+    // CreateUser creates a user.
+    CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+
+    // CountUsers returns the total number of users.
+    CountUsers(ctx context.Context, active *bool) (int64, error)
 }
 
-// constructor name is fixed
+// Constructor name "New" is fixed
 func New(
     tf observability.TracerFactory,
     txm tx.Manager,
+    clock clock.Clock,
+    encrypter security.Encrypter,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
+    userQueryService query.UserQueryService,
 ) Usecase {
     return &usecase{
-        tracer:   tf.Usecase(),
-        txm:      txm,
-        userRepo: userRepo,
-        pftRepo:  prefectureRepo,
+        tracer:    tf.Usecase(),
+        txm:       txm,
+        clock:     clock,
+        encrypter: encrypter,
+        userRepo:  userRepo,
+        pftRepo:   prefectureRepo,
+        userQS:    userQueryService,
     }
 }
 
 func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, error) {
-    // Start and end span
+
+    // Start and end the span
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
 
+    var (
+        us  user.Users
+        err error
+    )
+
     // Fetch user list (slice of Domain entities)
-    us, err := u.userRepo.FindAll(ctx, page.Limit(), page.Offset())
-    if err != nil {
-       return nil, err
+    if params != nil {
+        keywords := search.ParseSearchTokens(params.Keyword, search.DefaultMaxTokens)
+        us, err = u.userQS.FindByKeyword(ctx, keywords, params.Active, page.Limit32(), page.Offset32())
+    } else {
+        us, err = u.userRepo.FindAll(ctx, page.Limit32(), page.Offset32())
     }
 
-    // Optional: create span for Domain processing
+    if err != nil {
+        return nil, err
+    }
+
+    // Optional: create a span for Domain processing
+    // To improve observability, Domain processing can be separated into its own span.
     ctx, prefectureMap, err := observability.RunDomainWithSpan(
         ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
 
-            // collect prefecture IDs from users
+            // Collect prefecture IDs from users
             pids := make([]uuid.UUID, len(us))
             for i, u := range us {
                 pids[i] = u.PrefectureID()
             }
 
-            // fetch prefecture entities
+            // Retrieve prefecture entities
             ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
             if pftErr != nil {
-              return nil, pftErr
+                return nil, pftErr
             }
 
-            // convert to map for fast lookup
+            // Convert prefecture entities to a map
+            // Using a map allows fast lookup during later loops
             prefectureMap := make(map[uuid.UUID]*prefecture.Entity, len(ps))
             for _, p := range ps {
                 prefectureMap[p.ID()] = p
             }
 
             return prefectureMap, nil
-      })
+        })
+
     if err != nil {
-      return nil, err
+        return nil, err
     }
 
     _, dtos, err := observability.RunDomainWithSpan(
         ctx, u.tracer, "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
 
+            // Convert results into DTOs
             dtos := make([]UserMutableFields, len(us))
             for i, u := range us {
                 dtos[i] = UserMutableFields{
@@ -654,14 +724,97 @@ func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, e
                     Building:   u.Building(),
                 }
 
-                // attach prefecture name
+                // Attach prefecture name retrieved from the map
                 if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
                     dtos[i].PrefectureName = p.Name()
                 }
             }
+
             return dtos, nil
         })
 
     return dtos, err
+}
+
+// CreateUser is the use case that creates a user.
+func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error) {
+
+    ctx, endSpan := u.tracer.Start(ctx)
+    defer endSpan()
+
+    // Time acquisition follows the rule that time is centrally managed in the Usecase layer
+    now := u.clock.Now()
+
+    // Password validation rules are defined in the Domain layer
+    rawPassword, err := user.NewRawPassword(dto.RawPassword)
+    if err != nil {
+        return MutableFields{}, err
+    }
+
+    // Password hashing is a security rule, so the Boundary encrypter is used
+    passwordHash, err := u.encrypter.Hash(rawPassword.Value())
+    if err != nil {
+        return MutableFields{}, err
+    }
+
+    var (
+        userEntity *user.User
+        pftDomain  *prefecture.Entity
+    )
+
+    // Transaction start and end are delegated to TxManager
+    err = u.txm.Do(ctx, func(ctx context.Context) error {
+
+        var err error
+
+        pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
+        if err != nil {
+            return err
+        }
+
+        userEntity, err = user.New(
+            dto.UserID,
+            dto.FirstName,
+            dto.LastName,
+            passwordHash,
+            dto.Email,
+            dto.Phone,
+            pftDomain.ID(),
+            dto.City,
+            dto.Street,
+            dto.Building,
+            dto.PostalCode,
+            now,
+            now,
+            nil,
+        )
+
+        if err != nil {
+            return err
+        }
+
+        err = u.userRepo.Create(ctx, userEntity)
+        if err != nil {
+            return err
+        }
+
+        return nil
+    })
+
+    if err != nil {
+        return MutableFields{}, err
+    }
+
+    return MutableFields{
+        FirstName:      userEntity.FirstName(),
+        LastName:       userEntity.LastName(),
+        Email:          userEntity.Email(),
+        Phone:          userEntity.Phone(),
+        PostalCode:     userEntity.PostalCode(),
+        PrefectureName: pftDomain.Name(),
+        City:           userEntity.City(),
+        Street:         userEntity.Street(),
+        Building:       userEntity.Building(),
+    }, nil
 }
 ```

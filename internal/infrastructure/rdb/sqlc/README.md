@@ -46,21 +46,21 @@ Escapes characters that have special meaning in `LIKE` queries:
 - `_`
 - the escape character itself
 
-+++go
+```go
 escaped := EscapeForLike(keyword, DefaultLikeEscapeChar)
-+++
+```
 
 `DefaultLikeEscapeChar` is defined as:
 
-+++go
+```go
 const DefaultLikeEscapeChar = "\\"
-+++
+```
 
 In SQL, it is typically used like this:
 
-+++sql
+```sql
 WHERE name ILIKE $1 ESCAPE '\\'
-+++
+```
 
 ### LIKE Pattern Generation
 
@@ -68,26 +68,26 @@ Helpers for generating search patterns.
 
 #### Prefix match
 
-+++go
+```go
 pattern := WrapPrefixLikePattern(token)
-+++
+```
 
 Result: `token%`
 
 #### Suffix match
 
-+++go
+```go
 pattern := WrapSuffixLikePattern(token)
-+++
+```
 
 Result: `%token`
 
 #### Contains match
 
-+++go
+```go
 escaped := EscapeForLike(keyword, DefaultLikeEscapeChar)
 pattern := WrapContainsLikePattern(escaped)
-+++
+```
 
 Result: `%escaped%`
 
@@ -113,9 +113,9 @@ Converts `*bool` to `gen.DeletedState`.
 
 Example:
 
-+++go
+```go
 state := BoolPtrToDeletedState(filter.Deleted)
-+++
+```
 
 ### BoolToDeletedState
 
@@ -128,9 +128,9 @@ Converts `bool` to `gen.DeletedState`.
 
 Example:
 
-+++go
+```go
 state := BoolToDeletedState(isDeleted)
-+++
+```
 
 ## Design Policy
 

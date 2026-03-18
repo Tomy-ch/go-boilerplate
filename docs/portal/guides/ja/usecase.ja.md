@@ -151,6 +151,47 @@ Messaging / EventPublisher
 Observability
 ```
 
+### 時刻の扱い
+
+本リポジトリでは **時刻の取得は Usecase 層で一元管理**します。
+
+そのため **`time.Now()` を直接呼び出すことは禁止**します。
+
+代わりに Boundary として提供される **`clock.Clock`** を利用します。
+
+理由：
+
+- テストを deterministic（再現可能）にするため
+- タイムゾーンや時刻ソースの差異を吸収するため
+- AI や開発者が `time.Now()` を直接使うことを防ぐため
+
+Usecase では必ず次のように時刻を取得します。
+
+```go
+now := u.clock.Now()
+```
+
+例：
+
+```go
+now := u.clock.Now()
+userEntity, err := user.New(..., now, now, nil)
+```
+
+### ルール
+
+Usecase 層では以下を守ります。
+
+```txt
+禁止: time.Now()
+許可: clock.Clock.Now()
+```
+
+時刻の取得は **Usecase → Domain へ渡す**形で扱い、
+Domain 側では新たに時刻を取得しない設計を推奨します。
+
+これにより **時刻依存ロジックを完全にテスト可能に保つ**ことができます.
+
 ### 依存関係
 
 ```mermaid
@@ -228,10 +269,21 @@ SearchUsers
 ```txt
 FindAll
 FindByID
-FindByKeyword
 CountAll
 CountByActive
 ```
+
+検索や複雑な条件検索（キーワード検索など）は **QueryService** に分離します。
+
+例：
+
+```txt
+FindByKeyword
+SearchUsers
+ListUsersByCondition
+```
+
+QueryService は **読み取り最適化レイヤー**として扱い、DTO または Domain Entity を返すことを許容します。
 
 JOIN は **ドメイン境界を壊さない範囲で許可**します。
 
@@ -338,6 +390,7 @@ Usecase のテストでは次の依存関係を採用します。
 |---|---|
 |Domain|実装を使用|
 |Repository|mock|
+|QueryService|mock|
 |Boundary|mock|
 |Infrastructure|使用しない|
 
@@ -451,28 +504,6 @@ Usecase テストでは以下を扱いません。
 
 これらは **Infrastructure / Controller の責務**です。
 
-### まとめ
-
-Usecase テストは次の依存関係で実施します。
-
-```text
-Usecase
- ├ Domain         -> real
- ├ Repository     -> mock
- ├ Boundary       -> mock
- └ Infrastructure -> not used
-```
-
-この方針により、Usecase 層の責務である
-
-- ワークフロー
-- アプリケーションポリシー
-- トランザクション境界
-- エラー伝播
-- DTO変換
-
-を高速かつ安定して検証できます。
-
 ## やっていいこと / いけないこと(まとめ)
 
 ### Do
@@ -482,6 +513,7 @@ Usecase
 - Usecase層で初出の`apperror`でエラー分類を付与（errors.Is で Controller が判定しやすく）
 - QSはRow→DTOに最短でマップ、CommandはDomainを介す。
 - 表駆動テストでユースケースの分岐とTxの挙動を確認（testify）
+- 読み取り最適化が必要な場合は QueryService を利用する
 
 ### Don’t
 
@@ -547,7 +579,7 @@ func New(
 ここではSDKの生インスタンスを直接使わず、
 observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
 
-## 実装例（雛形）
+## 実装例
 
 ```go
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
@@ -585,31 +617,43 @@ type CreateUserParamsDTO struct {
 
 // usecaseという名称は固定
 type usecase struct {
-    tracer   observability.LayerTracer
-    txm      tx.Manager
-    userRepo user.Repository
-    pftRepo  prefecture.Repository
+    tracer    observability.LayerTracer
+    txm       tx.Manager
+    clock     clock.Clock
+    encrypter security.Encrypter
+    userRepo  user.Repository
+    pftRepo   prefecture.Repository
+    userQS    query.UserQueryService
 }
 
-// Usecaseという名称は固定
+// Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
-    GetAllUsers(ctx context.Context, page paging.Paging) ([]UserMutableFields, error)
-    CreateUser(ctx context.Context, dto CreateUserParamsDTO) (UserMutableFields, error)
-
+    // ListUsersByKeyword は、ユーザー一覧を取得します。
+    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
+    // CreateUser は、ユーザーを作成します。
+    CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+    // CountUsers は、ユーザーの総件数を返します。
+    CountUsers(ctx context.Context, active *bool) (int64, error)
 }
 
 // Newという名称は固定
 func New(
     tf observability.TracerFactory,
     txm tx.Manager,
+    clock clock.Clock,
+    encrypter security.Encrypter,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
+    userQueryService query.UserQueryService,
 ) Usecase {
     return &usecase{
-        tracer:   tf.Usecase(),
-        txm:      txm,
-        userRepo: userRepo,
-        pftRepo:  prefectureRepo,
+        tracer:    tf.Usecase(),
+        txm:       txm,
+        clock:     clock,
+        encrypter: encrypter,
+        userRepo:  userRepo,
+        pftRepo:   prefectureRepo,
+        userQS:    userQueryService,
     }
 }
 
@@ -618,11 +662,23 @@ func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, e
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
 
+    var (
+        us  user.Users
+        err error
+    )
+
     // ユーザー一覧取得（Domainエンティティのスライス）
-    us, err := u.userRepo.FindAll(ctx, page.Limit(), page.Offset())
-    if err != nil {
-       return nil, err
+    if params != nil {
+        keywords := search.ParseSearchTokens(params.Keyword, search.DefaultMaxTokens)
+        us, err = u.userQS.FindByKeyword(ctx, keywords, params.Active, page.Limit32(), page.Offset32())
+    } else {
+        us, err = u.userRepo.FindAll(ctx, page.Limit32(), page.Offset32())
     }
+
+    if err != nil {
+        return nil, err
+    }
+
 
     // オプション: observability.RunDomainWithSpanでDomain層のspanを作成
     // 可観測性を高めるために、Domain層の処理もspanとして切り出すことができます。
@@ -682,5 +738,80 @@ func (u *usecase) GetAllUsers(ctx context.Context, page paging.Paging) ([]DTO, e
 
     return dtos, err
 }
+
+// CreateUser は、ユーザーを作成するユースケースです。
+func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error) {
+    ctx, endSpan := u.tracer.Start(ctx)
+    defer endSpan()
+
+    // 時刻の取得はUsecase層で一元管理するルールに従う
+    now := u.clock.Now()
+    // パスワードのハッシュ化などはDomain層で定義したルールを呼び出す
+    rawPassword, err := user.NewRawPassword(dto.RawPassword)
+    if err != nil {
+        return MutableFields{}, err
+    }
+
+    // パスワードのハッシュ化はセキュリティのルールなので、Boundaryで提供されるencrypterを使う
+    passwordHash, err := u.encrypter.Hash(rawPassword.Value())
+    if err != nil {
+        return MutableFields{}, err
+    }
+
+    var (
+        userEntity *user.User
+        pftDomain  *prefecture.Entity
+    )
+    // トランザクションの開始と終了をTxManagerに任せる
+    err = u.txm.Do(ctx, func(ctx context.Context) error {
+        var err error
+        pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
+        if err != nil {
+            return err
+        }
+
+        userEntity, err = user.New(
+            dto.UserID,
+            dto.FirstName,
+            dto.LastName,
+            passwordHash,
+            dto.Email,
+            dto.Phone,
+            pftDomain.ID(),
+            dto.City,
+            dto.Street,
+            dto.Building,
+            dto.PostalCode,
+            now,
+            now,
+            nil,
+        )
+        if err != nil {
+          return err
+        }
+
+        err = u.userRepo.Create(ctx, userEntity)
+        if err != nil {
+          return err
+        }
+        return nil
+    })
+    if err != nil {
+      return MutableFields{}, err
+    }
+
+    return MutableFields{
+      FirstName:      userEntity.FirstName(),
+      LastName:       userEntity.LastName(),
+      Email:          userEntity.Email(),
+      Phone:          userEntity.Phone(),
+      PostalCode:     userEntity.PostalCode(),
+      PrefectureName: pftDomain.Name(),
+      City:           userEntity.City(),
+      Street:         userEntity.Street(),
+      Building:       userEntity.Building(),
+    }, nil
+}
+
 
 ```

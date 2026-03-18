@@ -221,7 +221,7 @@ DeletedState: sqlc.BoolPtrToDeletedState(active)
 Repository は直接 `driver.DatabaseDriver` を使わず
 
 ```go
-db := gen.New(r.provider.NewLoggingDB(ctx))
+db := gen.New(r.db.NewLoggingDB(ctx))
 ```
 
 で sqlc Querier を生成します。
@@ -266,7 +266,7 @@ Repository は Tx を開始しません。
 クエリ実行は
 
 ```go
-gen.New(provider.NewLoggingDB(ctx))
+gen.New(r.db.NewLoggingDB(ctx))
 ```
 
 を利用して行います。
@@ -303,15 +303,17 @@ Repository は
 
 OpenTelemetry SDK には直接依存しません。
 
-## Repository struct
+## Repository構造体
 
 Repository 実装は次の依存を持ちます。
 
+- driver.DatabaseDriver は、ロギング機能を持たない純粋な DB 接続ドライバです。
+- loggingdb.DBProvider は、ロギング機能を持つ DB 接続プロバイダです。
+
 ```go
 type repository struct {
-    db       driver.DatabaseDriver
-    provider loggingdb.DBProvider
-    tracer   observability.LayerTracer
+    db     loggingdb.DBProvider
+    tracer observability.LayerTracer
 }
 ```
 
@@ -319,13 +321,11 @@ constructor
 
 ```go
 func New(
-    db driver.DatabaseDriver,
-    provider loggingdb.DBProvider,
+    db loggingdb.DBProvider,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
         db:       db,
-        provider: provider,
         tracer:   tf.Infra(),
     }
 }
@@ -406,26 +406,32 @@ ROLLBACK
 
 ### 並列実行
 
-Repository テストは **並列実行を行いません**。
+Repository テストでは `t.Parallel()` を使用してテスト自体は並列実行できます。
 
-理由
+ただし、`testkit.NewTestTransactionManager(t)` が提供するトランザクションマネージャは
+内部でトランザクション実行を **直列化**します。
+
+そのため実行モデルは次のようになります。
 
 ```txt
-共有 DB を使用しているため
+テスト実行        → 並列
+トランザクション  → 直列
 ```
 
-同時実行すると
+各テストは `WithinTx` 内で
 
-- データ競合
-- テストの不安定化
-
-が発生する可能性があります。
-
-そのため次のルールとします。
-
-```go
-// t.Parallel() は使用しない
+```txt
+BEGIN
+ ↓
+test
+ ↓
+ROLLBACK
 ```
+
+の形で実行されます。
+
+トランザクションを直列化することで、複数テストが同時に走っても
+DB状態の競合やテスト間の干渉が発生しないようにしています.
 
 ### Domain エラーの検証
 
@@ -472,35 +478,166 @@ ErrNotFound
 
 などの **正規化結果**を検証します。
 
-### まとめ
+## Repository Anti-Patterns
 
-Repository テストの方針
+Repository 層では **よくある誤った実装パターン**があります。  
+これらはアーキテクチャ境界を壊す原因になるため **実装してはいけません。**
+
+### 1. ビジネスロジックを書く
+
+Repository は **永続化層**です。  
+ビジネスルールを書いてはいけません。
+
+NG例
+
+```go
+func (r *repository) Create(ctx context.Context, user *user.User) error {
+    if user.IsPremium() {
+        // ❌ ビジネスルール
+    }
+}
+```
+
+正しい責務
 
 ```txt
 Repository
- ├ sqlc
- ├ driver
- ├ loggingdb
- └ PostgreSQL
+ ├ Query 実行
+ ├ Row → Domain 変換
+ └ エラー正規化
 ```
 
-を **実 DB で検証する Integration Test** とします。
+ビジネスルールは **Domain / Usecase 層の責務**です。
+
+### 2. DTO を生成する
+
+Repository は **DTO を生成しません。**
+
+NG例
+
+```go
+return UserDTO{
+    Name: row.Users.Name,
+}
+```
+
+Repository は **Domain エンティティのみ返却**します。
+
+```go
+return user.New(...)
+```
+
+DTO 変換は **Usecase / Presenter 層の責務**です。
+
+### 3. sqlc Row をそのまま返す
+
+sqlc の Row 型は **Infrastructure 専用型**です。
+
+NG例
+
+```go
+return rows
+```
+
+必ず Domain へ変換します。
+
+```go
+u, err := user.New(...)
+```
+
+理由
 
 ```txt
-Domain          → Unit Test
-Usecase         → Unit Test
-Repository      → Integration Test
-Controller      → Unit Test
-Integration     → HTTP Test
+sqlc 型を上位層に漏らさない
 ```
 
-これにより
+### 4. QueryService を書く
 
-- SQL の正しさ
-- Domain 変換
-- エラー正規化
+Repository は **集約単位の永続化抽象**です。
 
-を安全に検証できます。
+そのため
+
+```txt
+FindByKeyword
+SearchUser
+AggregateSearch
+```
+
+などの **検索専用 API を実装してはいけません。**
+
+検索は
+
+```txt
+QueryService
+```
+
+として別レイヤーに分離します。
+
+### 5. トランザクションを開始する
+
+Repository は **トランザクション境界を管理しません。**
+
+NG例
+
+```go
+tx, _ := db.Begin()
+```
+
+トランザクション管理は
+
+```txt
+Usecase
+```
+
+の責務です。
+
+Repository は
+
+```go
+gen.New(r.db.NewLoggingDB(ctx))
+```
+
+を使用して
+
+```txt
+Tx / DB
+```
+
+を透過的に利用します。
+
+### 6. Controller 型を参照する
+
+Repository は **HTTP 層に依存しません。**
+
+NG例
+
+```go
+func (r *repository) Create(ctx echo.Context)
+```
+
+Repository は **純粋な Go インターフェース**で実装します。
+
+```go
+func (r *repository) Create(ctx context.Context, user *user.User)
+```
+
+### 7. Domain interface を Infra に定義する
+
+Repository Interface は **Domain 層に定義します。**
+
+NG例
+
+```txt
+internal/infrastructure/repository/user_repository_interface.go
+```
+
+正しい配置
+
+```txt
+internal/domain/user/repository.go
+```
+
+Infra は **Domain Interface の実装のみ**を行います。
 
 ## Do / Don't
 
@@ -527,20 +664,17 @@ package user
 
 // repositoryで名称固定
 type repository struct {
-    db       driver.DatabaseDriver
-    provider driver.LoggingDBProvider
-    tracer   observability.LayerTracer
+    db     loggingdb.DBProvider
+    tracer observability.LayerTracer
 }
 
 // Newで名称固定
 func New(
-    db driver.DatabaseDriver,
-    provider loggingdb.DBProvider,
+    db loggingdb.DBProvider,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
         db:       db,
-        provider: provider,
         tracer:   tf.Infra(),
     }
 }
@@ -552,7 +686,7 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Use
 
     // driver.ResolveDriverWithLogを使うことでログを自動で出力
     // 不要な場合は、driver.ResolveDriver(ctx, r.db)を使う
-    db := gen.New(r.provider.NewLoggingDB(ctx))
+    db := gen.New(r.db.NewLoggingDB(ctx))
 
     // genで生成されたDMLの呼び出し
     rows, err := db.ListUsers(ctx, &gen.ListUsersParams{

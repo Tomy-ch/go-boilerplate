@@ -37,21 +37,21 @@ Reasons
 
 Errors should **always wrap a base error category**.
 
-+++go
+```go
 // Wrap a domain error with an application error category
 if err != nil {
     return xerrors.Wrap(apperror.ErrConflict, "failed to create user")
 }
-+++
+```
 
 The Controller layer determines the category using `xerrors.Is`.
 
-+++go
+```go
 // Map application error to HTTP status
 if xerrors.Is(err, apperror.ErrNotFound) {
     return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
 }
-+++
+```
 
 ## Translating Infrastructure Errors
 
@@ -64,7 +64,7 @@ Reasons
 
 Example
 
-+++go
+```go
 // Translate database error into an application error
 if xerrors.As(err, &sql.ErrNoRows) {
     switch pgErr.Code {
@@ -74,7 +74,7 @@ if xerrors.As(err, &sql.ErrNoRows) {
         return xerrors.Wrap(apperror.ErrInternal, err.Error())
     }
 }
-+++
+```
 
 Typically this translation occurs in:
 
@@ -89,20 +89,20 @@ Conversion to HTTP status codes is the **responsibility of the Controller layer*
 
 In this boilerplate, the Controller's `errorhandler` middleware performs a **two-step conversion**.
 
-+++txt
+```txt
 apperror
    ↓
 HTTP Status
    ↓
 Error Meta (status / code / message)
-+++
+```
 
 Example
 
-+++go
+```go
 case xerrors.Is(err, apperror.ErrNotFound):
     return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
-+++
+```
 
 `lookupErrorMetaByHTTPStatus` returns **HTTP error metadata** containing:
 
@@ -125,7 +125,7 @@ In job execution, the common flow is:
 - Log the error
 - The Runner decides the exit code
 
-+++txt
+```txt
 Usecase
     return apperror.ErrUnavailable
 
@@ -134,7 +134,7 @@ Job Controller
 
 Job Runner
     exit code decision
-+++
+```
 
 ## Adding New Error Categories
 
@@ -142,7 +142,7 @@ New error categories should **not be added casually**.
 
 Evaluation criteria
 
-+++txt
+```txt
 OK
 
 - Occurs across multiple use cases
@@ -152,7 +152,7 @@ NG
 
 - Used only by a single use case
 - Added solely due to HTTP status requirements
-+++
+```
 
 If a new category is added, document the following in the README:
 
