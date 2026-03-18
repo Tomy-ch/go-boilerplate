@@ -2,11 +2,11 @@ name: Generate Docs on Merge
 
 on:
   push:
-    # branches:
-    #   - production
-    #   - staging
-    #   - develop
-    #   - release/**
+    branches:
+      - production
+      - staging
+      - develop
+      - release/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
