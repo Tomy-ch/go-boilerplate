@@ -11,7 +11,7 @@ gen-tools-meta:
 	@echo "✅ 生成ツールのバージョン情報の出力が完了しました。"
 
 gen-docs-json-ci:
-	node scripts/generate-docs-json.js
+	node scripts/gen-docs-json.mjs
 
 gen-docs-json:
 	@echo "🔍 Portal用のドキュメントリンクのJSONを生成します..."

@@ -6,7 +6,7 @@ on:
       - production
     paths:
       - "docs/**"
-      - "scripts/generate-docs-json.js"
+      - "scripts/gen-docs-json.mjs"
       - ".github/workflows/deploy-docs.yaml"
 
 permissions:
@@ -29,7 +29,7 @@ jobs:
           node-version: 24
 
       - name: Generate docs.json
-        run: node scripts/generate-docs-json.js
+        run: node scripts/gen-docs-json.mjs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
