@@ -33,7 +33,7 @@ jobs:
           cache: true
 
       - name: Run OpenAPI Bundle
-        run: make gen-swagger
+        run: make gen-bundle-oapi
 
       - name: Generate OpenAPI Docs
         run: make gen-api-docs

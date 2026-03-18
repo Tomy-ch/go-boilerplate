@@ -16,7 +16,7 @@ gen:
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
 gen-api:
-	@make gen-swagger
+	@make gen-bundle-oapi
 	@make gen-go-code
 
 gen-docs:
