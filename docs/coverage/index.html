@@ -245,7 +245,7 @@
 				
 				<option value="file94">boilerplate-go/internal/di/server/extension/security/security_di.go (100.0%)</option>
 				
-				<option value="file95">boilerplate-go/internal/di/server/hook/http_server_hook.go (100.0%)</option>
+				<option value="file95">boilerplate-go/internal/di/server/hook/http_server_hook.go (91.7%)</option>
 				
 				<option value="file96">boilerplate-go/internal/di/server/hook/ratelimit_cleanup_hook.go (100.0%)</option>
 				
@@ -1080,14 +1080,14 @@ import (
 func Load() error <span class="cov10" title="12">{
         env := os.Getenv("ENV")
 
-        if env == "" </span><span class="cov6" title="4">{
-                if err := godotenv.Load(".env/.env"); err != nil </span><span class="cov4" title="3">{
+        if env == "" </span><span class="cov4" title="3">{
+                if err := godotenv.Load(".env/.env"); err != nil </span><span class="cov3" title="2">{
                         return fmt.Errorf(".env/.env load failed : %w", err)
                 }</span>
                 <span class="cov1" title="1">env = os.Getenv("ENV")</span>
         }
 
-        <span class="cov8" title="9">if err := godotenv.Load(fmt.Sprintf(".env/.env.%s", env)); err != nil </span><span class="cov1" title="1">{
+        <span class="cov9" title="10">if err := godotenv.Load(fmt.Sprintf(".env/.env.%s", env)); err != nil </span><span class="cov3" title="2">{
                 return fmt.Errorf(".env/.env.%s load failed : %w", env, err)
         }</span>
         <span class="cov8" title="8">return nil</span>
@@ -1483,16 +1483,16 @@ func EnsureRepoRootAndEnv(t *testing.T, env string) <span class="cov6" title="7"
 
         // find repo root by locating go.mod upwards
         <span class="cov6" title="7">p := orig
-        for </span><span class="cov10" title="27">{
-                if _, err := os.Stat(filepath.Join(p, "go.mod")); err == nil </span><span class="cov5" title="6">{
+        for </span><span class="cov10" title="23">{
+                if _, err := os.Stat(filepath.Join(p, "go.mod")); err == nil </span><span class="cov6" title="6">{
                         t.Chdir(p)
                         break</span>
                 }
-                <span class="cov9" title="21">parent := filepath.Dir(p)
+                <span class="cov9" title="17">parent := filepath.Dir(p)
                 if parent == p </span><span class="cov1" title="1">{
                         break</span>
                 }
-                <span class="cov9" title="20">p = parent</span>
+                <span class="cov8" title="16">p = parent</span>
         }
 
         <span class="cov6" title="7">t.Setenv(envKey, env)</span>
@@ -5853,7 +5853,7 @@ func newStartServerFunc(
         return func(_ context.Context) error </span><span class="cov1" title="1">{
                 addr := srvCfg.Port()
                 go func() </span><span class="cov1" title="1">{
-                        if err := e.Start(":" + strconv.Itoa(addr)); err != nil </span><span class="cov1" title="1">{
+                        if err := e.Start(":" + strconv.Itoa(addr)); err != nil </span><span class="cov0" title="0">{
                                 log.Named("server.Start").Error("failed to start http server", logging.Error("e.Start", err))
                         }</span>
                 }()
@@ -7824,7 +7824,7 @@ func DurationMs(key string, v time.Duration) *Field <span class="cov6" title="11
 }</span>
 
 // Error は、エラーのログフィールドを作成します。
-func Error(key string, err error) *Field <span class="cov4" title="14">{
+func Error(key string, err error) *Field <span class="cov4" title="13">{
         return &amp;Field{
                 key:        key,
                 kind:       fieldError,
