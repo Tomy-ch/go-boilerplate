@@ -198,15 +198,6 @@ function buildVisibleSections(allSections, lang) {
       return jaSections.get(base) || enSections.get(base)
     })
     .filter(Boolean)
-    .concat(
-      allSections.filter((section) => {
-        // sections without language suffix (e.g. Openapi, ER Diagram)
-        return (
-          !section.title.includes("English") &&
-          !section.title.includes("Japanese")
-        )
-      })
-    )
 }
 
 function sortSections(sections) {
