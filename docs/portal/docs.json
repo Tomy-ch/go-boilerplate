@@ -3,15 +3,29 @@
   "subtitle": "This document portal provides access to the repository implementation, test results, E-R diagrams, and more.",
   "sections": [
     {
-      "title": "Guides (English)",
+      "title": "Overview (English)",
       "items": [
         {
-          "name": "Apperror",
-          "path": "./guides/apperror.md"
-        },
+          "name": "Overview",
+          "path": "./guides/overview.md"
+        }
+      ]
+    },
+    {
+      "title": "Overview (Japanese)",
+      "items": [
         {
-          "name": "Config",
-          "path": "./guides/config.md"
+          "name": "Overview",
+          "path": "./guides/ja/overview.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Controller (English)",
+      "items": [
+        {
+          "name": "Controller",
+          "path": "./guides/controller.md"
         },
         {
           "name": "Controller Handler",
@@ -20,18 +34,68 @@
         {
           "name": "Controller Job",
           "path": "./guides/controller-job.md"
-        },
+        }
+      ]
+    },
+    {
+      "title": "Controller (Japanese)",
+      "items": [
         {
           "name": "Controller",
-          "path": "./guides/controller.md"
+          "path": "./guides/ja/controller.ja.md"
         },
         {
-          "name": "Di",
-          "path": "./guides/di.md"
+          "name": "Controller Handler",
+          "path": "./guides/ja/controller-handler.ja.md"
         },
+        {
+          "name": "Controller Job",
+          "path": "./guides/ja/controller-job.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Domain (English)",
+      "items": [
         {
           "name": "Domain",
           "path": "./guides/domain.md"
+        }
+      ]
+    },
+    {
+      "title": "Domain (Japanese)",
+      "items": [
+        {
+          "name": "Domain",
+          "path": "./guides/ja/domain.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Usecase (English)",
+      "items": [
+        {
+          "name": "Usecase",
+          "path": "./guides/usecase.md"
+        }
+      ]
+    },
+    {
+      "title": "Usecase (Japanese)",
+      "items": [
+        {
+          "name": "Usecase",
+          "path": "./guides/ja/usecase.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Infrastructure (English)",
+      "items": [
+        {
+          "name": "Infrastructure",
+          "path": "./guides/infrastructure.md"
         },
         {
           "name": "Infrastructure Auth",
@@ -44,71 +108,15 @@
         {
           "name": "Infrastructure Rdb Repository",
           "path": "./guides/infrastructure-rdb-repository.md"
-        },
-        {
-          "name": "Infrastructure",
-          "path": "./guides/infrastructure.md"
-        },
-        {
-          "name": "Integration",
-          "path": "./guides/integration.md"
-        },
-        {
-          "name": "Logging",
-          "path": "./guides/logging.md"
-        },
-        {
-          "name": "Observability",
-          "path": "./guides/observability.md"
-        },
-        {
-          "name": "Openapi",
-          "path": "./guides/openapi.md"
-        },
-        {
-          "name": "Overview",
-          "path": "./guides/overview.md"
-        },
-        {
-          "name": "System",
-          "path": "./guides/system.md"
-        },
-        {
-          "name": "Usecase",
-          "path": "./guides/usecase.md"
         }
       ]
     },
     {
-      "title": "Guides (Japanese)",
+      "title": "Infrastructure (Japanese)",
       "items": [
         {
-          "name": "Apperror",
-          "path": "./guides/ja/apperror.ja.md"
-        },
-        {
-          "name": "Config",
-          "path": "./guides/ja/config.ja.md"
-        },
-        {
-          "name": "Controller Handler",
-          "path": "./guides/ja/controller-handler.ja.md"
-        },
-        {
-          "name": "Controller Job",
-          "path": "./guides/ja/controller-job.ja.md"
-        },
-        {
-          "name": "Controller",
-          "path": "./guides/ja/controller.ja.md"
-        },
-        {
-          "name": "Di",
-          "path": "./guides/ja/di.ja.md"
-        },
-        {
-          "name": "Domain",
-          "path": "./guides/ja/domain.ja.md"
+          "name": "Infrastructure",
+          "path": "./guides/ja/infrastructure.ja.md"
         },
         {
           "name": "Infrastructure Auth",
@@ -121,14 +129,52 @@
         {
           "name": "Infrastructure Rdb Repository",
           "path": "./guides/ja/infrastructure-rdb-repository.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Cross Cutting (English)",
+      "items": [
+        {
+          "name": "Apperror",
+          "path": "./guides/apperror.md"
         },
         {
-          "name": "Infrastructure",
-          "path": "./guides/ja/infrastructure.ja.md"
+          "name": "Config",
+          "path": "./guides/config.md"
         },
         {
-          "name": "Integration",
-          "path": "./guides/ja/integration.ja.md"
+          "name": "Di",
+          "path": "./guides/di.md"
+        },
+        {
+          "name": "Logging",
+          "path": "./guides/logging.md"
+        },
+        {
+          "name": "Observability",
+          "path": "./guides/observability.md"
+        },
+        {
+          "name": "System",
+          "path": "./guides/system.md"
+        }
+      ]
+    },
+    {
+      "title": "Cross Cutting (Japanese)",
+      "items": [
+        {
+          "name": "Apperror",
+          "path": "./guides/ja/apperror.ja.md"
+        },
+        {
+          "name": "Config",
+          "path": "./guides/ja/config.ja.md"
+        },
+        {
+          "name": "Di",
+          "path": "./guides/ja/di.ja.md"
         },
         {
           "name": "Logging",
@@ -139,70 +185,53 @@
           "path": "./guides/ja/observability.ja.md"
         },
         {
-          "name": "Openapi",
-          "path": "./guides/ja/openapi.ja.md"
-        },
-        {
-          "name": "Overview",
-          "path": "./guides/ja/overview.ja.md"
-        },
-        {
           "name": "System",
           "path": "./guides/ja/system.ja.md"
-        },
-        {
-          "name": "Usecase",
-          "path": "./guides/ja/usecase.ja.md"
         }
       ]
     },
     {
-      "title": "Architecture (English)",
+      "title": "Integration (English)",
       "items": [
         {
-          "name": "Architecture",
-          "path": "../architecture.md"
-        },
-        {
-          "name": "Decisions",
-          "path": "../decisions.md"
-        },
-        {
-          "name": "Development Flow",
-          "path": "../development-flow.md"
-        },
-        {
-          "name": "Index",
-          "path": "../index.md"
-        },
-        {
-          "name": "Rules",
-          "path": "../rules.md"
+          "name": "Integration",
+          "path": "./guides/integration.md"
         }
       ]
     },
     {
-      "title": "Architecture (Japanese)",
+      "title": "Integration (Japanese)",
       "items": [
         {
-          "name": "Architecture",
-          "path": "../ja/architecture.ja.md"
-        },
+          "name": "Integration",
+          "path": "./guides/ja/integration.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "External (English)",
+      "items": [
         {
-          "name": "Decisions",
-          "path": "../ja/decisions.ja.md"
-        },
+          "name": "Openapi",
+          "path": "./guides/openapi.md"
+        }
+      ]
+    },
+    {
+      "title": "External (Japanese)",
+      "items": [
         {
-          "name": "Development Flow",
-          "path": "../ja/development-flow.ja.md"
-        },
+          "name": "Openapi",
+          "path": "./guides/ja/openapi.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Coverage",
+      "items": [
         {
-          "name": "Index",
-          "path": "../ja/index.ja.md"
-        },
-        {
-          "name": "Rules",
-          "path": "../ja/rules.ja.md"
+          "name": "Coverage",
+          "path": "../coverage/index.html"
         }
       ]
     },
@@ -216,79 +245,11 @@
       ]
     },
     {
-      "title": "Maintenance (English)",
-      "items": [
-        {
-          "name": "Docs Structure",
-          "path": "../maintenance/docs-structure.md"
-        },
-        {
-          "name": "Go Upgrade",
-          "path": "../maintenance/go-upgrade.md"
-        },
-        {
-          "name": "Versions Generator",
-          "path": "../maintenance/versions-generator.md"
-        }
-      ]
-    },
-    {
-      "title": "Maintenance (Japanese)",
-      "items": [
-        {
-          "name": "Docs Structure",
-          "path": "../ja/maintenance/docs-structure.ja.md"
-        },
-        {
-          "name": "Go Upgrade",
-          "path": "../ja/maintenance/go-upgrade.ja.md"
-        },
-        {
-          "name": "Versions Generator",
-          "path": "../ja/maintenance/versions_generator.ja.md"
-        }
-      ]
-    },
-    {
       "title": "Openapi",
       "items": [
         {
           "name": "Openapi",
           "path": "../openapi/index.html"
-        }
-      ]
-    },
-    {
-      "title": "Project (English)",
-      "items": [
-        {
-          "name": "Policy",
-          "path": "../project/policy.md"
-        },
-        {
-          "name": "Scope",
-          "path": "../project/scope.md"
-        },
-        {
-          "name": "Versioning",
-          "path": "../project/versioning.md"
-        }
-      ]
-    },
-    {
-      "title": "Project (Japanese)",
-      "items": [
-        {
-          "name": "Policy",
-          "path": "../ja/project/policy.ja.md"
-        },
-        {
-          "name": "Scope",
-          "path": "../ja/project/scope.ja.md"
-        },
-        {
-          "name": "Versioning",
-          "path": "../ja/project/versioning.ja.md"
         }
       ]
     }
