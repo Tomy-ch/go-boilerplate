@@ -15,7 +15,7 @@ gen-db-schema:
 gen-db-schema-ci:
 	docker run --rm \
 		--network host \
-		-u $(id -u):$(id -g) \
+		-u $(shell id -u):$(shell id -g) \
 		-v $(PWD)/docs/db-schema:/output \
 		-v $(PWD)/docker/database/schemaspy/schemaspy-ci.properties:/schemaspy.properties \
 		schemaspy/schemaspy:latest \
