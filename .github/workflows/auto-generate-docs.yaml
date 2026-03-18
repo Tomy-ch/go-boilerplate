@@ -1,0 +1,108 @@
+name: Generate Docs on Merge
+
+on:
+  push:
+    # branches:
+    #   - production
+    #   - staging
+    #   - develop
+    #   - release/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    env:
+      ENV: ci
+      DB: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres-password
+
+    services:
+      database:
+        image: postgres:17.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup DB
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: ${{ env.DB }}
+          user: ${{ env.DB_USER }}
+          password: ${{ env.DB_PASSWORD }}
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
+
+      - name: Generate OpenAPI bundle
+        run: make gen-bundle-oapi
+
+      - name: Generate OpenAPI docs
+        run: make gen-api-docs
+
+      - name: Generate Portal Docs
+        run: |
+          make gen-portal-docs
+          make gen-docs-json
+
+      - name: Migrate
+        run: go run cmd/main.go migrate-up --database ${{ env.DB }}
+
+      - name: Seed Database
+        run: go run cmd/main.go db-seed --database ${{ env.DB }}
+
+      - name: Generate Test Repo Docs
+        run: make gen-test-repo
+
+      - name: Generate ER Diagram
+        run: make gen-db-schema-ci
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "has_diff=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_diff=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit & Push
+        if: steps.diff.outputs.has_diff == 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add .
+          git commit -m "chore: auto update docs [skip ci]"
+          git push
