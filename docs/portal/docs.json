@@ -236,6 +236,15 @@
       ]
     },
     {
+      "title": "Db Schema",
+      "items": [
+        {
+          "name": "Db Schema",
+          "path": "../db-schema/index.html"
+        }
+      ]
+    },
+    {
       "title": "Er Diagram",
       "items": [
         {
