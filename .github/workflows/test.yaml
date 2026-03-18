@@ -45,7 +45,7 @@ jobs:
           --health-start-period=20s
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
