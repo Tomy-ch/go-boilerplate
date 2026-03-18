@@ -2,8 +2,8 @@ name: Deploy Docs Portal
 
 on:
   push:
-    branches:
-      - production
+    # branches:
+    #   - production
     paths:
       - "docs/**"
       - "scripts/gen-docs-json.mjs"
@@ -22,17 +22,6 @@ jobs:
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v5
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate docs.json
-        run: node scripts/gen-docs-json.mjs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
