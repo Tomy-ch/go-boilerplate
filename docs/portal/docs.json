@@ -245,31 +245,6 @@
       ]
     },
     {
-      "title": "Ja (English)",
-      "items": [
-        {
-          "name": "Architecture",
-          "path": "../ja/architecture.ja.md"
-        },
-        {
-          "name": "Decisions",
-          "path": "../ja/decisions.ja.md"
-        },
-        {
-          "name": "Development Flow",
-          "path": "../ja/development-flow.ja.md"
-        },
-        {
-          "name": "Index",
-          "path": "../ja/index.ja.md"
-        },
-        {
-          "name": "Rules",
-          "path": "../ja/rules.ja.md"
-        }
-      ]
-    },
-    {
       "title": "Maintenance (English)",
       "items": [
         {
