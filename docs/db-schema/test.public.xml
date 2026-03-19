@@ -121,7 +121,7 @@
             <column ascending="true" name="sort_key"/>
          </index>
       </table>
-      <table name="products" numRows="100" remarks="商品" schema="public" type="TABLE">
+      <table name="products" remarks="商品" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
             <child column="product_id" foreignKey="purchase_details_product_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchase_details"/>
          </column>
