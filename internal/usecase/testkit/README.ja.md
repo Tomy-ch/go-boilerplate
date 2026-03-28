@@ -16,7 +16,7 @@
 
     ```go
     func Test_SomeUsecase_DBError(t *testing.T) {
-      expected := usecasetest.ExpectedDBError(t)
+      expected := testkit.ExpectedDBError(t)
       // expected をモックの返却値や期待エラー判定に利用
     }
     ```
@@ -25,7 +25,7 @@
 
     ```go
     func Test_SomeUsecase_WithTx(t *testing.T) {
-      mockTx := usecasetest.NewMockTransactionManager(t)
+      mockTx := testkit.NewMockTransactionManager(t)
       // mockTx をユースケースの依存に注入してテストを実行
     }
     ```
@@ -39,4 +39,4 @@
 
 ## テスト
 
-- 本パッケージ自体にも単体テストが含まれている場合があります。`go test ./internal/usecase/usecasetest` で実行できます。
+- 本パッケージ自体にも単体テストが含まれている場合があります。`go test ./internal/usecase/testkit` で実行できます。

@@ -1,4 +1,4 @@
-# Documentation Structure Rules (Documentation Structure Rules)
+# Documentation Structure Rules
 
 This project uses an **automatically generated documentation portal**.
 

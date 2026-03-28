@@ -119,7 +119,7 @@ Infra --> Domain
 Infra --> External["External Systems"]
 ```
 
-See [docs/architecture.md](docs/architecture.md) for detailed documentation.:
+See [docs/architecture.md](docs/architecture.md) for detailed documentation.
 
 ## API Development Policy (OpenAPI First)
 

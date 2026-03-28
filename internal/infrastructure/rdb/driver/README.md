@@ -1,6 +1,6 @@
 # driver
 
-[English](README.md) | Japanese
+[English](README.md) | 日本語
 
 Overview: **A foundational driver layer for RDB (PostgreSQL) connectivity. Provides connection management, transaction boundaries, and sqlc execution adapters.**
 
@@ -146,7 +146,7 @@ This enables **safe handling of nested transactions**.
 
 ### Always propagate Context
 
-Transactions are stored in `"context.Context`. Therefore, always propagate `ctx` to lower layers.
+Transactions are stored in `context.Context`. Therefore, always propagate `ctx` to lower layers.
 
 ### Repository must use driver.New()
 

@@ -1,6 +1,6 @@
 # loggingdb
 
-[English](README.en.md) | Japanese
+English | [日本語](README.ja.md)
 
 Overview: **An Observability wrapper layer that adds SQL execution logs and trace information to DB access. Actual query execution is delegated to the driver layer, and only log formatting and trace integration are added.**
 

@@ -1,6 +1,6 @@
 # RDB Infrastructure Guide (`internal/infrastructure/rdb`)
 
-[English](README.md) | Japanese
+[English](README.md) | 日本語
 
 ## Role
 
@@ -75,7 +75,7 @@ Important: **Repository does not contain business logic**
 
 See details below.
 
-[repository directory README](repository/README.ja.md)
+[repository directory README](repository/README.md)
 
 ## QueryService
 
@@ -94,7 +94,7 @@ Important: **Search must be implemented in QueryService, not Repository**
 
 See details below.
 
-[query_service directory README](query_service/README.ja.md)
+[query_service directory README](query_service/README.md)
 
 ## sqlc
 

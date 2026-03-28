@@ -1,6 +1,6 @@
 # logging
 
-[English](README.md) | Japanese
+[English](README.md) | 日本語
 
 `internal/logging` provides a **structured logging foundation** used across the entire application.
 

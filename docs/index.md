@@ -12,10 +12,10 @@ The documentation is intended for both **human developers** and **AI agents**.
 
 |Document|Description|
 |--------|--------|
-|[architecture.ja.md](architecture.ja.md)|Overall system architecture and layer responsibilities|
-|[rules.ja.md](rules.ja.md)|Architectural rules that must not be violated|
-|[development-flow.ja.md](development-flow.ja.md)|Standard development workflow|
-|[decisions.ja.md](decisions.ja.md)|Background of technology selection and design decisions|
+|[architecture.md](architecture.md)|Overall system architecture and layer responsibilities|
+|[rules.md](rules.md)|Architectural rules that must not be violated|
+|[development-flow.md](development-flow.md)|Standard development workflow|
+|[decisions.md](decisions.md)|Background of technology selection and design decisions|
 
 ## Recommended Reading Order
 
@@ -23,21 +23,21 @@ The documentation is intended for both **human developers** and **AI agents**.
 
 ```mermaid
 flowchart TB
-    A["architecture.ja.md"] --> B["development-flow.ja.md"] --> C["rules.ja.md"] --> D["decisions.ja.md"]
+    A["architecture.md"] --> B["development-flow.md"] --> C["rules.md"] --> D["decisions.md"]
 ```
 
 ### Maintainers / Contributors
 
 ```mermaid
 flowchart TB
-    A["architecture.ja.md"] --> B["rules.ja.md"] --> C["development-flow.ja.md"] --> D["decisions.ja.md"]
+    A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["decisions.md"]
 ```
 
 ### AI Agents
 
 ```mermaid
 flowchart TB
-    A["rules.ja.md"] --> B["architecture.ja.md"] --> C["development-flow.ja.md"]
+    A["rules.md"] --> B["architecture.md"] --> C["development-flow.md"]
 ```
 
 ## Key Concepts
@@ -95,8 +95,8 @@ Constraints are intentionally introduced to prevent architectural violations.
 
 Before generating code, AI agents must refer to:
 
-- `rules.ja.md`
-- `architecture.ja.md`
+- `rules.md`
+- `architecture.md`
 
 ## Relationship with Other Documents
 
@@ -104,7 +104,7 @@ The overall structure of the documentation is as follows:
 
 ```mermaid
 flowchart TB
-    Readme["README.md"] --> Index["docs/index.ja.md"] --> Docs["architecture.ja.md / rules.ja.md / development-flow.ja.md"]
+    Readme["README.md"] --> Index["docs/index.md"] --> Docs["architecture.md / rules.md / development-flow.md"]
 ```
 
 `README.md` explains the project overview,  
@@ -114,9 +114,9 @@ while the `docs/` directory contains detailed design documents.
 
 When making changes to this project, follow these rules:
 
-1. Follow the architectural rules defined in `rules.ja.md`  
-2. Follow the development workflow described in `development-flow.ja.md`  
-3. Maintain consistency with the structure described in `architecture.ja.md`  
+1. Follow the architectural rules defined in `rules.md`  
+2. Follow the development workflow described in `development-flow.md`  
+3. Maintain consistency with the structure described in `architecture.md`  
 
 If architectural changes are required, update the related documentation accordingly.
 

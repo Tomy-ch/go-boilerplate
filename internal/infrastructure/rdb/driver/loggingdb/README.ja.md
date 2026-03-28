@@ -1,6 +1,6 @@
 # loggingdb
 
-[English](README.en.md) | 日本語
+[English](README.md) | 日本語
 
 概要: **DB アクセスに対して SQL 実行ログとトレース情報を付与するための Observability ラッパーレイヤー。実際のクエリ実行は driver 層へ委譲し、ログ整形・トレース連携のみを追加します。**
 

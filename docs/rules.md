@@ -216,8 +216,8 @@ AI agents must follow:
 
 Before generating code, AI agents must refer to the following documents.
 
-- `architecture.ja.md`
-- `development-flow.ja.md`
+- `architecture.md`
+- `development-flow.md`
 
 ## Summary
 

@@ -146,7 +146,7 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 
 ### Context を必ず伝搬する
 
-トランザクションは`"context.Context`に格納されます。そのため`ctx`を必ず下位レイヤに伝搬してください。
+トランザクションは`context.Context`に格納されます。そのため`ctx`を必ず下位レイヤに伝搬してください。
 
 ### Repository は driver.New() を使用する
 

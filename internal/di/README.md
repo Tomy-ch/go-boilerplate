@@ -220,9 +220,11 @@ are **framework-independent**.
 
 ## Don't（Prohibited）
 
-### Write business logic
+### Writing business logic
 
 The following must not be written in the DI layer:
+
+In particular, do not write **business logic**.
 
 - Domain logic
 - DB queries

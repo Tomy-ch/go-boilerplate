@@ -147,8 +147,8 @@ AI-generated code must comply with:
 
 Before generating code, AI agents must refer to:
 
-- `architecture.ja.md`
-- `rules.ja.md`
+- `architecture.md`
+- `rules.md`
 
 ## Summary
 

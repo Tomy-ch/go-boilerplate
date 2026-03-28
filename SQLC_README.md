@@ -1,5 +1,7 @@
 # sqlc.yaml Options Affecting Go Code Generation (sqlc v1.30.0 / PostgreSQL)
 
+English | [日本語](SQLC_README.ja.md)
+
 This section summarizes the main `sqlc.yaml` (`version: "2"`) options that **affect generated Go code**.  
 (Examples assume PostgreSQL + Go, focusing on keys under `gen.go`)
 

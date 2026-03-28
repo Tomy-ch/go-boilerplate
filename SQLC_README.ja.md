@@ -1,6 +1,6 @@
 # Goコード生成に影響する `sqlc.yaml` の主なオプション（sqlc v1.30.0 / PostgreSQL）
 
-[English](README.md) | 日本語
+[English](SQLC_README.md) | 日本語
 
 このセクションでは、`sqlc.yaml`（`version: "2"`）において **Goコードの生成結果に影響する**主な設定をまとめます。  
 （例は PostgreSQL + Go を前提。`gen.go` 配下のキーを中心に記載）

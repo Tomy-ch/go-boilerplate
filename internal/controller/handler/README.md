@@ -23,7 +23,7 @@ The Controller is the **input/output boundary of the application**.
 - Call Usecase (Usecase layer)
   - Convert to **DTO/VO for input**
   - Convert DTO returned from Usecase → OpenAPI type
-- Errors are returned using unified mapping defined in [apperror](../../apperror/README.ja.md)
+- Errors are returned using unified mapping defined in [apperror](../../apperror/README.md)
 - Paging is normalized using `paging.NewPageFrom1Based()`
 - Request ID / logging is handled by middleware (Echo + Zap)
 
@@ -223,7 +223,7 @@ Generated code is output under `gen/`.
   reproduce directory structure under `internal/controller/handler/` as URI.
 
 1. Create API definition in OpenAPI
-   - Refer to [OpenAPI guideline for generation](../../../openapi/README.ja.md)
+   - Refer to [OpenAPI guideline for generation](../../../openapi/README.md)
 2. Reproduce URI structure under `internal/controller/handler/`
    - Example1: `/v1/users` → `internal/controller/handler/v1/users/`
    - Example2: `/v1/users/{id}` → `internal/controller/handler/v1/users/detail/`

@@ -1,6 +1,6 @@
 # Repository Implementation Guide
 
-[English](README.md) | Japanese
+[English](README.md) | 日本語
 
 ## Responsibility
 

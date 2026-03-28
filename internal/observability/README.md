@@ -1,6 +1,6 @@
 # internal/observability
 
-[English](README.md) | Japanese
+[English](README.md) | 日本語
 
 `internal/observability` is a package that provides **tracing and observability logging integration** for this project.
 

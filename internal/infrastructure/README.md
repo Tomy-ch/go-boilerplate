@@ -119,7 +119,7 @@ flowchart TB
 - Token validation
 - Retrieval of authentication information
 
-→ Refer to [auth/README.ja.md](./auth/README.ja.md)
+→ Refer to [auth/README.md](./auth/README.md)
 
 ### RDB Access Implementation
 
@@ -129,14 +129,14 @@ flowchart TB
 - Logging / tracing using loggingdb
 - PostgreSQL error normalization
 
-→ Refer to [rdb/README.ja.md](./rdb/README.ja.md)
+→ Refer to [rdb/README.md](./rdb/README.md)
 
 ### Security Access Implementation
 
 - Encryption / hashing
 - Token generation
 
-→ Refer to [security/README.ja.md](./security/README.ja.md)
+→ Refer to [security/README.md](./security/README.md)
 
 ### System Access Implementation
 
@@ -144,7 +144,7 @@ flowchart TB
 - ID generation
 - System utilities
 
-→ Refer to [system/README.ja.md](./system/README.ja.md)
+→ Refer to [system/README.md](./system/README.md)
 
 ## Test Strategy
 

@@ -1,6 +1,6 @@
 # `conv` Package
 
-[English](README.md) | Japanese
+[English](README.md) | 日本語
 
 Overview: Provides utility functions to convert between `database/sql` nullable types (`sql.NullString`, `sql.NullInt16`, `sql.NullInt64`, `sql.NullBool`, `sql.NullFloat64`, `sql.NullTime`) and Go pointer types (`*string`, `*int64`, etc.), as well as `googleUUID.NullUUID`.
 

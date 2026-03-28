@@ -1,6 +1,6 @@
 # internal/system
 
-[English](README.md) | Japanese
+[English](README.md) | 日本語
 
 `internal/system` is a package that provides **runtime metadata (build information)** for the application.
 
