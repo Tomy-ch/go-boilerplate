@@ -6,12 +6,12 @@ on:
       - release/** 
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   generate-docs:
-    if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]')
+    if: github.actor != 'github-actions[bot]' && !startsWith(github.ref_name, 'auto/docs-update/') && !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
 
     permissions:
@@ -52,6 +52,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Tidy & Vendor
+        run: make tidy-lib
+
       - name: Setup DB
         uses: ./.github/actions/setup-postgres
         with:
@@ -65,11 +68,6 @@ jobs:
 
       - name: Generate OpenAPI docs
         run: make gen-api-docs
-
-      - name: Generate Portal Docs
-        run: |
-          make gen-portal-docs
-          make gen-docs-json
 
       - name: Migrate
         run: go run cmd/main.go migrate-up --database ${{ env.DB }}
@@ -86,19 +84,24 @@ jobs:
       - name: Detect changes
         id: diff
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
+          if ! git diff --exit-code; then
             echo "has_diff=true" >> $GITHUB_OUTPUT
           else
             echo "has_diff=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Generate Portal Docs
+        run: |
+          make gen-portal-docs
+          make gen-docs-json
 
       - name: Create PR
         id: cpr
         if: steps.diff.outputs.has_diff == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "chore: auto update docs [skip ci]"
-          branch: auto/docs-update/${{ github.ref_name }}
+          commit-message: "chore(docs): auto update docs [skip ci]"
+          branch: auto/docs-update/${{ github.ref_name }}-${{ github.run_id }}
           base: ${{ github.ref_name }}
           title: "chore: auto update docs"
           body: |
