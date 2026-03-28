@@ -27,7 +27,7 @@ jobs:
       DB_PASSWORD: postgres-password
     services:
       database:
-        image: postgres:17.5
+        image: postgres:18.3-bookworm
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres-password
