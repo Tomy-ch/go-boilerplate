@@ -6,7 +6,7 @@
 - 外界（HTTP / DB / UI）への関心は一切持たず、**純粋なモデルと言語** で振る舞いを定義する。
 - 変更に最も強い層。**ここが壊れない限りプロダクトは保守できる** という前提で守る。
 
-## このboilerplateでの役割
+## このプロジェクトでの役割
 
 - `internal/domain/<bounded-context>/<aggregate>/` 配下に **Entity / ValueObject / DomainService / Repository(IF)** を配置する。
 

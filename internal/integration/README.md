@@ -1,139 +1,124 @@
 ## integration Directory
 
-English | [日本語](README.ja.md)
+This directory is a place to organize **integration tests**.
 
-This directory contains **integration tests**.
+It starts an Echo server and verifies through the **actual HTTP communication path**, which cannot be fully covered by unit tests.
 
-These tests start an Echo server and verify behavior through the **actual HTTP request path**, which cannot be fully covered by unit tests.
-
-These tests are **not full system integration tests including DB or Infrastructure**, but rather **HTTP boundary tests**.
+These tests are **not integration tests that include DB or Infrastructure, but integration tests aimed at verifying the HTTP boundary**.
 
 ## Test Strategy
 
 This project adopts the following test strategy.
 
-```txt
-Domain        → Unit Test
-Usecase       → Unit Test
-Controller    → Unit Test
-Integration   → HTTP boundary test
+- `Domain` → Unit Test
+- `Usecase` → Unit Test
+- `Controller` → Unit Test
+- `Integration` → HTTP boundary test
+
+Integration tests perform only **verification of the entire HTTP path behavior**.
+
+In other words, the following scope is verified.
+
+```mermaid
+flowchart TB
+    Router --> Middleware --> Handler --> Presenter["Presenter / Response serialization"]
 ```
 
-Integration tests verify **the behavior of the entire HTTP path**.
-
-Specifically, the following components are tested.
-
-```txt
-Router
-↓
-Middleware
-↓
-Handler
-↓
-Presenter / Response serialization
-```
-
-The following are **not covered by integration tests**:
+The following are **not handled in integration tests**.
 
 - Domain logic
 - Internal Usecase logic
-- Repository implementations
-- DB connections
+- Repository implementation
+- DB connection
 - SQL execution
 
-## Test Level Definition (Test Pyramid)
+## Definition of Test Levels (Test Pyramid)
 
-This project follows the **Test Pyramid** strategy.
+This project adopts a test strategy based on the **Test Pyramid**.
 
-```txt
-        E2E (none)
-      Integration
-   Controller Unit
-   Usecase Unit
-     Domain Unit
+```mermaid
+flowchart TB
+    Domain["Domain Unit"]
+    Usecase["Usecase Unit"]
+    Controller["Controller Unit"]
+    Integration["Integration"]
+    E2E["E2E (none)"]
+
+    Domain --> Usecase --> Controller --> Integration --> E2E
 ```
 
 Policy:
 
-- Write most tests as **Domain / Usecase unit tests**
-- Integration tests verify **only the HTTP boundary**
-- **E2E tests are not handled in this repository**
+- Write tests centered on **Domain / Usecase Unit Test**
+- Integration Test performs **only HTTP boundary verification**
+- E2E tests are not handled in this project
 
-This strategy provides the following benefits:
+This policy provides the following benefits.
 
 - Faster test execution
-- Better test maintainability
-- Easier root-cause analysis when tests fail
+- Improved test maintainability
+- Easier root cause identification when failures occur
 
-## Why Usecase Is Mocked
+## Why Usecase is mocked
 
-Integration tests **mock the Usecase layer**.
+In integration tests, **Usecase is mocked**.
 
 The reason is **to preserve layer boundaries**.
 
-The purpose of integration tests is to verify the **HTTP layer**, limited to the following components.
+The purpose of integration tests is **verification of the HTTP Layer**,  
+and only the following scope is targeted.
 
-```txt
-Router
-↓
-Middleware
-↓
-Handler
-↓
-Response serialization
+```mermaid
+flowchart TB
+    Router --> Middleware --> Handler --> Response["Response serialization"]
 ```
 
-Usecase / Domain / Repository logic belongs to **unit tests**.
+The logic of Usecase / Domain / Repository  
+belongs to **Unit Test responsibility**.
 
-If the real Usecase implementation were used, the test scope would expand to include:
+If Usecase is used as-is in implementation:
 
 - DB
 - Repository
 - Domain
 
-This would break the purpose of **HTTP boundary testing**.
+the test scope expands to include these,  
+and **the purpose of HTTP boundary test is broken**.
 
 ## Integration Test Placement Policy
 
-Integration tests are placed to verify **public API behavior**.
+Integration tests are placed as **verification of public API behavior**.
 
-Example endpoints:
+Example target endpoints:
 
-```txt
-/health
-/healthz
-/ready
-/version
-/v1/...
-```
+- `/health`
+- `/healthz`
+- `/ready`
+- `/version`
+- `/v1/...`
 
-In other words, integration tests target only:
+In other words, only **public HTTP APIs** are the target of integration tests.
 
-```txt
-Public HTTP APIs
-```
+Detailed logic of internal functions and handlers  
+is verified by **Controller Unit Test**.
 
-Internal functions or detailed handler logic are verified by **Controller unit tests**.
+## Reason for having the integration directory
 
-## Why the integration Directory Exists
+### Separation of layers
 
-### Layer Separation
-
-Unit tests target individual functions or handlers,  
+Unit tests target individual functions and handlers,  
 while integration tests verify the **entire flow from router → middleware → handler → response serialization**.
 
-Separating this directory clarifies **test purpose and granularity**.
+By separating this directory, **the purpose and granularity of tests are clarified**.
 
-```txt
-internal/controller/handler/... → Handler Unit Test
-internal/integration            → HTTP Integration Test
-```
+- `internal/controller/handler/...` → Handler Unit Test
+- `internal/integration` → HTTP Integration Test
 
-### Verification Close to Real Operation
+### Verification close to actual operation
 
-Integration tests **send real HTTP requests**.
+Integration tests verify by **sending actual HTTP requests**.
 
-This allows verification of:
+This allows confirmation of the following.
 
 - Router binding
 - Middleware application
@@ -141,79 +126,58 @@ This allows verification of:
 - Response serialization
 - HTTP status codes
 
-They can also be used for **CI/CD or smoke tests**.
+It can also be used for CI/CD and smoke testing.
 
-## Scope of Integration Tests
+## Scope of Integration Test
 
-Integration tests cover the following components.
+The scope handled by integration tests is as follows.
 
-```txt
-Echo Router
-↓
-Middleware
-↓
-Handler
-↓
-Response
+```mermaid
+flowchart TB
+    Router["Echo Router"] --> Middleware --> Handler --> Response
 ```
 
-Usecase is **mocked**.
+Usecase uses **mock**.
 
 Reason:
 
-The goal of integration tests is **HTTP boundary verification**,  
-not application logic validation.
+The purpose of integration tests is **verification of HTTP boundary**,  
+and not validation of application logic.
 
-Example:
+Example
 
-```txt
-mock_user.NewMockUsecase
-mock_healthcheck.NewMockUsecase
-```
+- `mock_user.NewMockUsecase`
+- `mock_healthcheck.NewMockUsecase`
 
 ## Test Flow
 
-Integration tests follow the steps below.
+Integration tests are executed with the following steps.
 
-```txt
-Echo.New()
-↓
-BindHandler
-↓
-StartServer
-↓
-HTTP Request
-↓
-Assert Response
+```mermaid
+flowchart TB
+    New["Echo.New()"] --> Bind["BindHandler"] --> Start["StartServer"] --> Req["HTTP Request"] --> Assert["Assert Response"]
 ```
 
-Example:
+Concrete example
 
-```txt
-echo.New()
-↓
-handler.BindHandler()
-↓
-StartServer()
-↓
-DoJSON()
-↓
-AssertJSONResponse()
+```mermaid
+flowchart TB
+    New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponse()"]
 ```
 
-## Functions Defined in integration_test.go
+## Functions defined in integration_test.go
 
 ### `StartServer(t *testing.T, e *echo.Echo) *Server`
 
-Starts Echo using `httptest.NewServer` and returns a test server.
+Starts Echo using `httptest.NewServer` and returns a simple server for integration testing.
 
 Features:
 
-- Server automatically stops via `t.Cleanup`
+- Server automatically stops with `t.Cleanup`
 - Holds an internal HTTP client
-- Provides helper functions `Do` / `DoJSON`
+- Provides test helper functions `Do` / `DoJSON`
 
-Example:
+Usage example:
 
 ```go
 e := echo.New()
@@ -226,13 +190,14 @@ srv := StartServer(t, e)
 
 Stops the server explicitly.
 
-In most cases, the server stops automatically via `t.Cleanup` in `StartServer`.
+Normally, the server is automatically stopped by `t.Cleanup` in `StartServer`,  
+so it is not used except in special cases.
 
 ### `Do(method, path string, reqBody io.Reader, contentType string, headers http.Header)`
 
-Sends an HTTP request with arbitrary method, path, and body.
+Sends an arbitrary HTTP request.
 
-Features:
+Functions:
 
 - Specify HTTP method
 - Specify request body
@@ -243,7 +208,7 @@ Internally uses `http.NewRequestWithContext`.
 
 ### `DoJSON(method, path string, reqBody any, headers http.Header)`
 
-Shortcut function for JSON requests.
+Shortcut function for JSON.
 
 Features:
 
@@ -259,15 +224,15 @@ actual := srv.DoJSON(http.MethodGet, "/health", nil, nil)
 
 ### `AssertJSONResponse[T any]`
 
-Utility for verifying JSON responses.
+Utility to verify the contents of JSON response.
 
-Validation includes:
+Verification contents:
 
 - HTTP Status Code = 200
 - Content-Type = application/json
 - JSON can be unmarshaled into type `T`
 
-Example:
+Usage example:
 
 ```go
 AssertJSONResponse(t, gen.ResponseHealth{}, actual)
@@ -279,10 +244,10 @@ AssertJSONResponse(t, gen.ResponseHealth{}, actual)
 
 A helper that **simulates an authenticated user** in integration tests.
 
-Internally it adds Echo middleware and sets authentication info using  
-`ctxhelper.SetAuthnToEcho`.
+Internally adds Echo Middleware and  
+sets authentication information using `ctxhelper.SetAuthnToEcho`.
 
-Example:
+Usage example:
 
 ```go
 headers := MakeAvailableUserID(t, e, userID)
@@ -291,42 +256,32 @@ srv.DoJSON(http.MethodPost, "/v1/users", body, headers)
 
 ## Test Design Policy
 
-Integration tests follow these principles.
+Integration tests follow the following principles.
 
-### 1 Do Not Use Infrastructure
+### 1 Do not use Infrastructure
 
-Integration tests must not use:
+In integration tests:
 
 - DB
 - SQL
 - Repository
 
-### 2 Mock the Usecase Layer
+are not used.
 
-Integration tests **mock the Usecase layer**.
+### 2 Mock Usecase
 
-Reason:
+In integration tests, **Usecase is mocked**.
 
-```go
-integration = HTTP boundary test
-```
+Reason: because `integration = HTTP boundary test`.
 
-### 3 Use Real HTTP Requests
+### 3 Actually hit HTTP
 
-Handlers should not be called directly.
+Do not call handler directly, but use `httptest.Server`.
 
-Instead, use:
+### 4 Verify with response types
 
-```go
-httptest.Server
-```
+Responses are verified using **OpenAPI types**.
 
-### 4 Validate Using Response Types
-
-Responses are verified using **OpenAPI generated types**.
-
-```go
-gen.ResponseV1Users
-gen.ResponseHealth
-gen.ResponseVersion
-```
+- `gen.ResponseV1Users`
+- `gen.ResponseHealth`
+- `gen.ResponseVersion`

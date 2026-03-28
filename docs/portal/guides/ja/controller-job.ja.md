@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-## このリポジトリでの役割
+## このプロジェクトでの役割
 
 internal/controller/job は、CLI（Cobra）から起動される **バッチ/ジョブのエントリポイント（Controller層）**です。
 

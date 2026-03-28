@@ -2,9 +2,9 @@
 
 [English](../index.md) | 日本語
 
-このディレクトリには **go-boilerplate** プロジェクトのアーキテクチャおよび開発に関するドキュメントが含まれています。
+このディレクトリには、このプロジェクトのアーキテクチャおよび開発に関するドキュメントが含まれています。
 
-これらのドキュメントでは、このリポジトリで採用されている **設計思想、アーキテクチャルール、開発フロー** を説明しています。
+これらのドキュメントでは、このプロジェクトで採用されている **設計思想、アーキテクチャルール、開発フロー** を説明しています。
 
 ドキュメントは **人間の開発者** と **AIエージェント** の両方を対象としています。
 
@@ -21,50 +21,37 @@
 
 ### 新しく参加する開発者
 
-```txt
-architecture.ja.md
-↓
-development-flow.ja.md
-↓
-rules.ja.md
-↓
-decisions.ja.md
+```mermaid
+flowchart TB
+    A["architecture.ja.md"] --> B["development-flow.ja.md"] --> C["rules.ja.md"] --> D["decisions.ja.md"]
 ```
 
 ### メンテナ / コントリビューター
 
-```txt
-architecture.ja.md
-↓
-rules.ja.md
-↓
-development-flow.ja.md
-↓
-decisions.ja.md
+```mermaid
+flowchart TB
+    A["architecture.ja.md"] --> B["rules.ja.md"] --> C["development-flow.ja.md"] --> D["decisions.ja.md"]
 ```
 
 ### AIエージェント
 
-```txt
-rules.ja.md
-↓
-architecture.ja.md
-↓
-development-flow.ja.md
-↓
-decisions.ja.md
+```mermaid
+flowchart TB
+    A["rules.ja.md"] --> B["architecture.ja.md"] --> C["development-flow.ja.md"]
 ```
 
 ## 主要コンセプト
 
-このBoilerplateは、いくつかの重要な設計原則に基づいて構築されています。
+このプロジェクトは、いくつかの重要な設計原則に基づいて構築されています。
 
 ### Onion Architecture
 
 システムは以下のレイヤ構造に従っています。
 
-```txt
-controller → usecase → domain ← infrastructure
+```mermaid
+flowchart LR
+    Controller --> Usecase --> Domain
+    Infrastructure --> Domain
 ```
 
 依存関係は常に **内側のレイヤへ向かう** 必要があります。
@@ -75,31 +62,23 @@ API契約は **OpenAPI** によって定義されます。
 
 実装は必ず契約定義に従って行われます。
 
-```txt
-OpenAPI
-↓
-コード生成
-↓
-Handler 実装
-↓
-Usecase 実装
+```mermaid
+flowchart TB
+    OpenAPI --> Gen["コード生成"] --> Handler["Handler 実装"] --> Usecase["Usecase 実装"]
 ```
 
 ### SQL-first データアクセス
 
 データアクセスは ORM ではなく **SQLを中心に設計**されています。
 
-```txt
-SQL
-↓
-sqlc
-↓
-型安全なGoコード
+```mermaid
+flowchart TB
+    SQL --> Sqlc["sqlc"] --> Code["型安全なGoコード"]
 ```
 
 ### 構造的安全性（Structural Safety）
 
-このリポジトリでは **慣習よりも構造による安全性** を重視しています。
+このプロジェクトでは **慣習よりも構造による安全性** を重視しています。
 
 暗黙のルールや人のレビューに依存するのではなく、以下によって安全性を担保します。
 
@@ -110,27 +89,22 @@ sqlc
 
 ## AI支援開発
 
-このリポジトリは **AI支援開発ツールと安全に連携できるよう設計**されています。
+このプロジェクトは **AI支援開発ツールと安全に連携できるよう設計**されています。
 
 アーキテクチャ違反を防ぐために、意図的に制約が設けられています。
 
 AIエージェントはコード生成を行う前に、必ず以下のドキュメントを参照してください。
 
-```txt
-rules.ja.md
-architecture.ja.md
-```
+- `rules.ja.md`
+- `architecture.ja.md`
 
 ## 他ドキュメントとの関係
 
 ドキュメントの全体構造は以下の通りです。
 
-```txt
-README.md
-   ↓
-docs/index.ja.md
-   ↓
-architecture.ja.md / rules.ja.md / development-flow.ja.md
+```mermaid
+flowchart TB
+    Readme["README.md"] --> Index["docs/index.ja.md"] --> Docs["architecture.ja.md / rules.ja.md / development-flow.ja.md"]
 ```
 
 `README.md` はプロジェクトの概要を説明し、  
@@ -138,7 +112,7 @@ architecture.ja.md / rules.ja.md / development-flow.ja.md
 
 ## コントリビューションガイド
 
-このリポジトリに変更を加える場合は、以下のルールに従ってください。
+このプロジェクトに変更を加える場合は、以下のルールに従ってください。
 
 1. `rules.ja.md` に定義されたアーキテクチャルールを遵守する  
 2. `development-flow.ja.md` に記載された開発フローに従う  
@@ -146,9 +120,9 @@ architecture.ja.md / rules.ja.md / development-flow.ja.md
 
 アーキテクチャ変更が必要な場合は、関連するドキュメントも更新してください。
 
-## このBoilerplateの思想
+## このプロジェクトの思想
 
-このBoilerplateは **安全で保守しやすいバックエンドの出発点** を提供することを目的としています。
+このプロジェクトは **安全で保守しやすいバックエンドの出発点** を提供することを目的としています。
 
 特定の「唯一の正しいアーキテクチャ」を強制するものではなく、  
 チームが必要に応じて拡張・調整できる **構造化されたベースライン** を提供します。

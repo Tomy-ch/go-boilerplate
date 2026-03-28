@@ -1,54 +1,57 @@
 # Project Scope
 
-This document describes the intended scope of this boilerplate.
+This document describes the **intended scope** of this project.
 
-The goal is to clarify **what kinds of systems this template is designed for** and **what it is not intended to support**.
+The goal is to clarify **what kind of systems this template is designed for**  
+and **what use cases are not intended**.
 
-## Assumed Team
+## Target Team
 
 This template assumes a team that understands the following technologies and practices:
 
-- Go + Echo + Fx + OpenAPI + sqlc architecture
+- Architecture using Go + Echo + Fx + OpenAPI + sqlc
 - Contract-driven API development using OpenAPI
-- SQL-centered data access design
-- Layered architectures (Onion / Clean Architecture)
-- Docker / Docker Compose development environments
-- .env configuration management
-- Basic security boundary awareness
+- SQL-centric data access design
+- Layered architecture (Onion / Clean Architecture)
+- Development environments using Docker / Docker Compose
+- Configuration management using `.env`
+- Basic understanding of security boundaries
 
-It is assumed that the team can make **initial architectural decisions**, typically at a **Tech Lead level**.
+It is also assumed that the team includes members capable of making **initial architectural decisions**.  
+As a guideline, this targets teams with **Tech Lead-level technical judgment**.
 
-## Intended System Types
+## Target Systems
 
-This template is designed for the following types of systems:
+This template is suitable for the following types of systems:
 
 - Backend services for new products
-- PoC to early scaling phase applications
-- Systems requiring strict layer separation
+- Applications in PoC to early scaling phases
+- Systems requiring clear layer separation
 - Projects requiring type-safe SQL management
-- Systems with strong domain constraints (legal rules, business rules, etc.)
-- Backend systems expected to be maintained long term
-- Enterprise-style domain-driven applications
+- Systems with strong domain constraints (e.g., regulations, business rules)
+- Backend systems intended for long-term maintenance
+- Enterprise-grade domain-driven applications
 
-The architecture assumes a **modular monolith based on Onion Architecture**.
+This architecture assumes a **modular monolith based on Onion Architecture**.
 
-## Not Intended For
+## Non-Target Use Cases
 
 This template may not be suitable for the following cases:
 
 - Extremely small APIs implemented in a single file
 - Rapid prototyping without architectural boundaries
-- Ultra-low latency systems requiring minimal abstraction
-- Systems designed primarily as microservices
+- Ultra low-latency systems where abstraction must be minimized
+- Systems designed as microservices from the beginning
 
-## Architecture Assumption
+## Architectural Assumptions
 
-This boilerplate assumes a **modular monolith architecture**.
+This project is based on a **modular monolith architecture**.
 
 Characteristics:
 
-- Single deployable application
+- A single deployable application
 - Clear module boundaries
-- Layer separation through Onion Architecture
+- Layer separation based on Onion Architecture
 
-Microservices can be introduced later if necessary, but they are **not the primary goal of this template**.
+It is possible to split into microservices in the future if needed,  
+but that is **not the primary goal of this template**.

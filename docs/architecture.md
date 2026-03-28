@@ -2,72 +2,71 @@
 
 ## Overview
 
-This project provides a backend architecture template for Go applications based on three primary goals:
+This project is a backend architecture template for Go applications based on the following three primary objectives.
 
 - **Contract-driven development**
 - **Type safety**
 - **Clear layer separation**
 
-The template combines the following architectural approaches:
+This template combines the following architectural approaches.
 
 - Pragmatic Onion Architecture
 - OpenAPI-first development
 - SQL-first data access
 - Dependency Injection
-- Structural safety enforced by CI
+- Structural safety guaranteed by CI
 
-These components form a backend foundation that prioritizes **maintainability, predictability, and structural safety**.
+With these elements,  
+it provides a backend foundation that emphasizes **maintainability, predictability, and structural safety**.
 
-This architecture is not intended to fit every type of system.  
-It is particularly effective for **business systems and long-lived backend services**.
+This architecture is not suitable for all systems.  
+It is particularly effective for the following types of systems.
+
+- **Business systems**
+- **Backend services operated over a long period**
 
 ## Architectural Principles
 
-The template is built on several design principles.
+This template is based on several design principles.
 
-## Contract-first API
+### Contract-first API
 
 API contracts are defined using **OpenAPI**.
 
-Code generation ensures that the implementation stays consistent with the API specification.
+Through code generation, the implementation is always kept consistent with the API specification.
 
-Typical workflow:
+Typical development flow:
 
-```txt
-OpenAPI specification
-↓
-Code generation
-↓
-Handler implementation
-↓
-Usecase implementation
+```mermaid
+flowchart TB
+    OpenAPI["OpenAPI specification"] --> Gen["Code generation"] --> Handler["Handler implementation"] --> Usecase["Usecase implementation"]
 ```
 
-Generated code must **never be edited manually**.
+Generated code **must not be edited manually**.
 
 ### Dependency Inversion
 
-Dependencies always point **toward the inner layers**.
+Dependencies must always point **toward inner layers**.
 
-```txt
-controller → usecase → domain
-                     ↑
-              infrastructure
+```mermaid
+flowchart LR
+    Controller --> Usecase --> Domain
+    Infra["infrastructure"] --> Domain
 ```
 
 Key ideas:
 
 - Inner layers do not depend on outer layers
-- Domain remains independent from frameworks
-- Infrastructure implements domain interfaces
+- Domain does not depend on frameworks
+- Infrastructure implements interfaces of the Domain
 
-This rule protects the **stability of the core domain logic**.
+This rule ensures **core domain stability**.
 
 ### SQL-first Data Access
 
-Data access is designed around **SQL rather than ORM abstractions**.
+Data access is designed to be **SQL-centric rather than ORM-based**.
 
-SQL queries are defined explicitly and compiled into type-safe Go code using `sqlc`.
+SQL queries are explicitly defined and converted into type-safe Go code by `sqlc`.
 
 Benefits:
 
@@ -77,26 +76,28 @@ Benefits:
 
 ### Structural Safety
 
-This repository prioritizes **structural safety over implicit conventions**.
+This project emphasizes **structural safety**, rather than implicit conventions.
 
-Instead of relying solely on code review or team discipline, safety is enforced through tools.
+Instead of relying only on code reviews or team rules,  
+safety is ensured by tools.
 
 Examples:
 
 - Code generation
 - Lint rules
 - CI validation
-- Layer boundaries
+- Layer boundary constraints
 
-These mechanisms help prevent accidental architectural violations.
+With these mechanisms,  
+architectural violations can be prevented.
 
 ### Vendor Neutrality
 
-The template avoids strong coupling to specific SaaS platforms or proprietary tooling.
+This template avoids strong dependencies on specific SaaS or proprietary tools.
 
-Where possible, the architecture prefers:
+As much as possible, the following are prioritized.
 
-- OSS-based tooling
+- OSS-based tools
 - Replaceable components
 - Vendor-neutral integrations
 
@@ -104,161 +105,135 @@ This ensures long-term flexibility.
 
 ## System Architecture
 
-The system follows a **Pragmatic Onion Architecture**.
+This system adopts a **Pragmatic Onion Architecture**.
 
-```txt
-┌─────────────┐
-│ Controller  │
-└──────┬──────┘
-       ↓
-┌─────────────┐
-│   Usecase   │
-└──────┬──────┘
-       ↓
-┌─────────────┐
-│   Domain    │
-└──────┬──────┘
-       ↑
-┌─────────────┐
-│Infrastructure│
-└─────────────┘
+```mermaid
+flowchart TB
+    Controller --> Usecase --> Domain
+    Infrastructure --> Domain
 ```
 
 Characteristics:
 
 - Outer layers depend on inner layers
 - Domain is the most stable layer
-- Infrastructure implements domain interfaces
+- Infrastructure implements Domain interfaces
 
-This structure allows the domain logic to remain stable even if external systems change.
+With this structure, even if external systems change,  
+domain logic can remain stable.
 
 ## Layer Responsibilities
 
-## Controller
+### Controller
 
-The controller layer handles **HTTP transport concerns**.
+The Controller layer is responsible for the **HTTP transport layer**.
 
 Responsibilities:
 
-- HTTP request/response handling
+- HTTP request / response handling
 - Input validation
-- Error translation
-- Calling usecases
+- Error transformation
+- Calling Usecase
 
-Controllers must **not contain business logic**.
+Controller **must not contain business logic**.
 
 ### Usecase
 
-The usecase layer implements **application-level logic**.
+The Usecase layer implements **application-level processing**.
 
 Responsibilities:
 
 - Application workflows
 - Coordination of domain objects
 - Transaction boundaries
-- Interaction between domain and infrastructure
+- Coordination between Domain and Infrastructure
 
-Usecases orchestrate domain behavior but should avoid low-level infrastructure details.
+Usecase orchestrates domain behavior,  
+but does not handle low-level infrastructure details.
 
 ### Domain
 
-The domain layer represents the **core business logic**.
+The Domain layer represents the **core of business logic**.
 
 Responsibilities:
 
-- Entities
-- Value objects
+- Entity
+- Value Object
 - Domain rules
-- Repository interfaces
+- Repository Interface
 
-Domain code must remain **pure and independent of external frameworks**.
+Domain code must be **completely independent of frameworks**.
 
 ### Infrastructure
 
-The infrastructure layer integrates external systems.
+The Infrastructure layer is responsible for integration with external systems.
 
 Responsibilities:
 
 - Database access
 - External service integration
-- Repository implementations
+- Repository implementation
 
-Infrastructure components implement interfaces defined by the domain layer.
+Infrastructure implements interfaces defined in the Domain layer.
 
 ## Request Flow
 
-A typical request follows this flow:
+A typical request is processed in the following flow.
 
-```txt
-HTTP Request
-   ↓
-Echo Router
-   ↓
-Controller
-   ↓
-Usecase
-   ↓
-Domain
-   ↓
-Repository Interface
-   ↓
-Infrastructure
-   ↓
-Database
+```mermaid
+flowchart TB
+    Req["HTTP Request"] --> Router["Echo Router"] --> Controller --> Usecase --> Domain --> Repo["Repository Interface"] --> Infra["Infrastructure"] --> DB["Database"]
 ```
 
-This structure ensures that:
+With this structure:
 
-- HTTP logic stays in controllers
-- application orchestration stays in usecases
-- business logic stays in domain
+- HTTP logic is handled in Controller
+- Application control is handled in Usecase
+- Business logic is handled in Domain
+
+Each is clearly separated.
 
 ## Dependency Injection
 
-This project uses **Uber Fx** as the dependency injection container.
+This project uses **Uber Fx** as the DI container.
 
-The DI container is responsible for:
+Role of the DI container:
 
-- component initialization
-- dependency resolution
-- lifecycle management
+- Component initialization
+- Dependency resolution
+- Lifecycle management
 
-Typical wiring order:
+Typical dependency assembly order:
 
-```txt
-Repository
- ↓
-Usecase
- ↓
-Handler
- ↓
-Router
+```mermaid
+flowchart TB
+    Repo["Repository"] --> Usecase --> Handler --> Router
 ```
 
-Using DI helps maintain loose coupling between layers.
+By using DI, coupling between layers can be kept low.
 
 ## Code Generation
 
-Code generation plays a critical role in this architecture.
+Code generation is an important element of this architecture.
 
-The following components rely on generation:
+It is used in the following components.
 
-- OpenAPI server interfaces (`oapi-codegen`)
-- SQL query bindings (`sqlc`)
+- OpenAPI server interface (`oapi-codegen`)
+- SQL query binding (`sqlc`)
 
 Rules:
 
 - Generated code must not be edited manually
-- Generated code must be reproducible
-- CI checks verify generation consistency
+- Generated code must always be reproducible
+- CI verifies consistency of generated code
 
 ## Project Structure
 
-Key directories:
+Main directories:
 
 ```txt
 cmd/
-Application entrypoints
+Application entry point
 
 internal/
 Application code
@@ -270,10 +245,10 @@ openapi/
 API contracts
 
 docs/
-Architecture documentation
+Documentation
 ```
 
-The `internal/` directory contains the layered application code.
+The `internal/` directory contains application code with a layered structure.
 
 ## Modular Monolith Strategy
 
@@ -281,45 +256,48 @@ This template assumes a **modular monolith architecture**.
 
 Characteristics:
 
-- single deployable application
-- internal module boundaries
-- strict layer separation
+- Single deployable application
+- Internal module boundaries
+- Strict layer separation
 
-Microservices are **not the primary design goal**.
+Microservices are **not the primary goal**.
 
-However, clear module boundaries make future extraction possible.
+However, because clear module boundaries exist,  
+future service decomposition is possible.
 
 ## Extensibility
 
-Components under `internal/` are connected using dependency injection.
+Components under `internal/`  
+are connected through Dependency Injection.
 
-This allows relatively easy replacement of:
+This makes the following replacements relatively easy.
 
-- repositories
+- repository
 - middleware
-- infrastructure integrations
+- infrastructure integration
 
-The architecture is designed to allow **infrastructure changes without modifying domain logic**.
+This architecture is designed with the premise that  
+**infrastructure can be changed without modifying domain logic**.
 
-## AI-Assisted Development
+## AI-assisted Development
 
-This repository is designed to work safely with AI-assisted development tools.
+This project is designed to safely integrate with AI-assisted development tools.
 
-Architectural constraints help prevent AI-generated code from violating core design rules.
+Architectural constraints prevent  
+AI-generated code from violating design rules.
 
-AI agents should always consult:
+AI agents should refer to the following before generating code.
 
 - `rules.md`
 - `architecture.md`
-
-before generating code.
 
 ## Non-Goals
 
 This template does not aim to be:
 
-- a microservice framework
-- an ultra-low latency architecture
-- a universal architecture for all system types
+- A microservices framework
+- An ultra low-latency architecture
+- A universal architecture applicable to all systems
 
-The goal of this project is to provide a **maintainable and structurally safe backend architecture** for typical business applications.
+The goal of this project is  
+**to provide a backend foundation with maintainability and structural safety for general business systems**.

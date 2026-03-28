@@ -28,14 +28,14 @@ RDB を利用するテストでは次の問題が発生します。
 
 ## アーキテクチャ上の位置
 
-```txt
-Repository Test
-     ↓
- testkit
-     ↓
- driver / loggingdb
-     ↓
- PostgreSQL
+```mermaid
+flowchart TD
+    A[Repository Test]
+    B[testkit]
+    C[driver / loggingdb]
+    D[(PostgreSQL)]
+
+    A --> B --> C --> D
 ```
 
 `testkit` は **テスト専用の Infrastructure ヘルパー層**です。
@@ -65,14 +65,14 @@ LoggingDBProvider を生成します。
 
 内部では次の処理を行います。
 
-```txt
-MockConfigForTest
-↓
-DatabaseConfig
-↓
-Logging / Tracer 初期化
-↓
-loggingdb.NewLoggingDBProvider
+```mermaid
+flowchart TD
+    A[MockConfigForTest]
+    B[DatabaseConfig]
+    C[Logging / Tracer 初期化]
+    D[loggingdb.NewLoggingDBProvider]
+
+    A --> B --> C --> D
 ```
 
 ### NewTestTransactionManager
@@ -85,10 +85,12 @@ func NewTestTransactionManager(t *testing.T) TransactionRunner
 
 内部では
 
-```txt
-config.MockConfigForTest
-↓
-driver.NewTransactionManager
+```mermaid
+flowchart TD
+    A[config.MockConfigForTest]
+    B[driver.NewTransactionManager]
+
+    A --> B
 ```
 
 を利用します。
@@ -113,34 +115,37 @@ func (t *testTxManager) WithinTx(fn func(ctx context.Context))
 
 処理の流れ
 
-```txt
-Transaction Begin
-↓
-fn(ctx) 実行
-↓
-rollbackForTestError を返す
-↓
-Rollback
+```mermaid
+flowchart TD
+    A[Transaction Begin]
+    B[fn(ctx) 実行]
+    C[rollbackForTestError を返す]
+    D[Rollback]
+
+    A --> B --> C --> D
 ```
 
 内部では `tx.Manager.Do` を利用しています。
 
-```txt
-Do(fn)
-↓
-error を返すことで rollback
+```mermaid
+flowchart TD
+    A[Do(fn)]
+    B[error を返すことで rollback]
+
+    A --> B
 ```
 
 ## ロールバックの仕組み
 
 `WithinTx` は次の仕組みでロールバックを実現しています。
 
-```txt
-fn 実行
-↓
-rollbackForTestError を返す
-↓
-tx.Manager が rollback
+```mermaid
+flowchart TD
+    A[fn 実行]
+    B[rollbackForTestError を返す]
+    C[tx.Manager が rollback]
+
+    A --> B --> C
 ```
 
 この特殊エラーは
@@ -159,9 +164,10 @@ Repository テストは `t.Parallel()` を使用して並列実行できます�
 
 ただし、トランザクションは内部で直列化されます。
 
-```txt
-テスト実行        → 並列
-トランザクション  → 直列
+```mermaid
+flowchart LR
+    A[テスト実行] -->|並列| B
+    C[トランザクション] -->|直列| D
 ```
 
 これは次の実装によって保証されています。
@@ -193,11 +199,7 @@ var (
 )
 ```
 
-```txt
-プロセス内で1つのDBインスタンスを共有
-```
-
-これにより
+**プロセス内で1つのDBインスタンスを共有** することで
 
 - 接続コスト削減
 - テスト高速化
@@ -228,20 +230,23 @@ repo := repository.NewRepository(provider)
 
 `testkit` を使うことで次の設計が可能になります。
 
-```txt
-Repository Test
-↓
-Real DB
-↓
-Transaction Rollback
+```mermaid
+flowchart TD
+    A[Repository Test]
+    B[Real DB]
+    C[Transaction Rollback]
+
+    A --> B --> C
 ```
 
 つまり
 
-```txt
-実DBを使う
-+
-テスト後に状態を戻す
+```mermaid
+flowchart TD
+    A[実DBを使う]
+    B[テスト後に状態を戻す]
+
+    A --> B
 ```
 
 という **安全な Integration Test** を実現できます。
@@ -280,10 +285,4 @@ require / assert
 
 `WithinTx` を使用した場合、トランザクションは **必ず rollback されます。**
 
-そのため
-
-```txt
-永続データを残すテスト
-```
-
-には使用できません。
+そのため `永続データを残すテスト` には使用できません。

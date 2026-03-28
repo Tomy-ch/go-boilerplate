@@ -1,6 +1,6 @@
-# support パッケージ
+# tools パッケージ
 
-`support` パッケージは、ユースケース層で再利用される小さなユーティリティ群を収めています。現在は主に `paging`（ページングの共通処理）と `search`（検索キーワードのトークン化）を提供します。
+`tools` パッケージは、ユースケース層で再利用される小さなユーティリティ群を収めています。現在は主に `paging`（ページングの共通処理）と `search`（検索キーワードのトークン化）を提供します。
 
 ## 提供する主な機能
 
@@ -24,8 +24,8 @@ pg, err := paging.NewPagingFrom1Based(ptr.To(1), ptr.To(20))
 if err != nil {
   // エラーハンドリング
 }
-limit := pg.Limit()
-offset := pg.Offset()
+0limit := pg.Limit()
+o00ffset := pg.Offset()
 // これらをリポジトリのクエリに渡す
 ```
 

@@ -3,41 +3,46 @@
 ## Role in Onion Architecture
 
 - The **core of the business**. It represents **essential rules** such as entities, value objects, domain services, and domain events.
-- It has **no concern for external systems** (HTTP / DB / UI) and defines behavior using **pure domain models and language**.
-- It is the **most stable layer**. The design assumes that **as long as this layer does not break, the product remains maintainable**.
+- It has no concern for external systems (HTTP / DB / UI) and defines behavior using **pure models and language**.
+- The most resilient layer to change. It is protected under the assumption that **as long as this layer does not break, the product remains maintainable**.
 
-## Role in this boilerplate
+## Role in this project
 
-- Place **Entity / ValueObject / DomainService / Repository (interface)** under:
-
-```txt
-internal/domain/<bounded-context>/<aggregate>/
-```
+- Place **Entity / ValueObject / DomainService / Repository (IF)** under `internal/domain/<bounded-context>/<aggregate>/`.
 
 Example: `internal/domain/user/`
 
-```txt
-user_domain.go       ← Aggregate Root (User)
-value.go             ← Value Objects
-service.go           ← Domain Service
-user_repository.go   ← Repository Interface
-error.go             ← Domain errors
-constant.go          ← Validation constants
+```mermaid
+flowchart TB
+    Root["Aggregate: user"]
+    A["user_domain.go (Aggregate Root)"]
+    B["value.go (ValueObject)"]
+    C["service.go (Domain Service)"]
+    D["user_repository.go (Repository IF)"]
+    E["error.go (Domain Error)"]
+    F["constant.go (Validation Const)"]
+
+    Root --> A
+    Root --> B
+    Root --> C
+    Root --> D
+    Root --> E
+    Root --> F
 ```
 
-- Business rules should be expressed using **pure functions without side effects** whenever possible.  
-  I/O, time retrieval, and random generation should be **injected as arguments**.
+- As a principle, describe rules using **functions without side effects (pure functions)**.  
+  I/O, time retrieval, and random generation should depend on **values injected via arguments**.
 
-- State changes must be done through **entity methods**, and must not access external resources.
+- State changes must be performed through **entity methods**, and must not access external resources.
 
 - Types should follow an **effectively immutable** approach.
 
-  - private fields + getters
+  - private field + getter
   - defensive copy (`ptr.Copy`)
   - setters are prohibited
   - state changes occur through **behavior methods**
 
-- Dependencies should be **injected through constructors**.
+- Dependencies should be **injected via constructors**.
 
 - External libraries must not be imported directly; they should be used **through pkg wrappers**.
 
@@ -49,7 +54,7 @@ Examples:
 
 ## Domain boundaries
 
-The Domain layer is responsible for **expressing business rules and state transitions**.
+The Domain layer is a layer that **expresses business rules and state transitions**.
 
 Domain responsibilities:
 
@@ -58,21 +63,21 @@ Domain responsibilities:
 - Value consistency
 - Business rules
 
-Domain is **not responsible for**:
+What Domain is not responsible for:
 
 - Search specifications
-- DB optimizations
-- SQL structures
+- DB optimization
+- SQL structure
 - External API calls
 - Aggregation processing
 
-These belong to other layers:
+These are handled in the following layers:
 
 - Usecase
 - QueryService
 - ReadModel
 
-Repositories should **only provide persistence abstractions**.
+Repository provides **only persistence abstraction**.
 
 Simple queries are acceptable in practice.
 
@@ -86,8 +91,8 @@ Allowed examples:
 
 ### Naming / structure
 
-- Struct names should match the **domain concept**
-- Slice types may be defined when needed
+- Struct names should be **domain names**
+- Slice types may be defined when necessary
 
 ```go
 type Users []*User
@@ -97,64 +102,64 @@ type Users []*User
 - Package name should be the domain name
 - Constructor name should be `New`
 
-### Do not set fields outside the constructor
+### Do not set outside constructor
 
-- Invariants must be guaranteed in `New(...)`
+- Invariants are guaranteed in `New(...)`
 - setters are prohibited
-- state transitions occur through **behavior methods**
+- state changes occur through **behavior methods**
 
-### Access via getters
+### Access via getter
 
 - Fields must not be exported
 
-```txt
+```go
 ID()
 FirstName()
 Email()
 ```
 
-- Pointer types must use **defensive copy**
+- pointer types must use **defensive copy**
 
 ```go
 ptr.Copy(...)
 ```
 
-### Do not use struct tags
+### Do not add tags to struct
 
-The Domain layer must not know the outside world.
+Domain must not know the outside world.
 
 Forbidden:
 
-```txt
+```text
 json
 db
 validate
 ```
 
-These belong to DTO or Infrastructure.
+These belong to DTO / Infrastructure.
 
 ### Handling time and ID
 
-- `time.Now()` must not be used in Domain
-- UUID generation must not be done in Domain
+- Do not use `time.Now()` in Domain
+- Do not generate UUID in Domain
 
-Generation must happen in:
+Generation must be done in:
 
 - Controller
 - Usecase
 
-Domain only receives **typed values**
+Domain receives only **typed values**
 
-```txt
+```go
 uuid.UUID
 time.Time
 ```
 
 ### Validation
 
-#### Format validation
+#### Format check
 
-Prefer **Value Objects**
+Principle: **Value Objects**
 
 Example:
 
@@ -162,13 +167,13 @@ Example:
 NewEmail(...)
 ```
 
-Lightweight domains may allow primitive types.
+Primitive types may be allowed in lightweight domains.
 
-#### Boundary validation
+#### Boundary value check
 
-Boundary values should be defined in `constant.go`
+Boundary values are defined in `constant.go`
 
-```txt
+```go
 minLength
 maxEmailLength
 ```
@@ -177,12 +182,12 @@ maxEmailLength
 
 Errors must be **specific errors**
 
-```txt
+```go
 ErrInvalidEmail
 ErrInvalidPostalCode
 ```
 
-Abstract errors should not be returned directly.
+Do not return abstract errors directly.
 
 ```go
 if !stringkit.InRange(email, minLength, maxEmailLength) {
@@ -190,7 +195,7 @@ if !stringkit.InRange(email, minLength, maxEmailLength) {
 }
 ```
 
-### Domain Invariants
+### Invariants (Domain Invariant)
 
 Entities must **always satisfy invariants**.
 
@@ -205,23 +210,24 @@ Invariant enforcement points:
 - `New(...)`
 - state transition methods
 
-Usecase / Repository **must not enforce invariants**.
+Usecase / Repository  
+**do not have responsibility to enforce invariants**.
 
 ## Aggregate Design
 
-In this boilerplate, **Aggregate is the design unit**.
+In this project, **Aggregate is the design unit**.
 
-```txt
+```text
 internal/domain/<bounded-context>/<aggregate>/
 ```
 
 ### Aggregate Root
 
-Each aggregate has **one Root**.
+Each Aggregate has **one Root**.
 
 Responsibilities:
 
-- integrity guarantee
+- consistency guarantee
 - external operation entry point
 - persistence target
 
@@ -231,7 +237,7 @@ type User struct {
 }
 ```
 
-Repositories are defined **for the root**
+Repository is defined **for the Root**
 
 ```go
 type Repository interface {
@@ -239,33 +245,35 @@ type Repository interface {
 }
 ```
 
-### Aggregate integrity
+### Aggregate consistency
 
-All changes must go **through the root**
+Changes must go **through the Root only**
 
-```txt
-Usecase → Aggregate Root → Entity
+```mermaid
+flowchart LR
+    Usecase --> Root["Aggregate Root"] --> Entity
 ```
 
-### Aggregate boundary
+### Aggregate Boundary
 
-Aggregates must remain **small**
+Keep Aggregate **small**
 
 Principle:
 
-```txt
-1 Aggregate = 1 Transaction Boundary
+```mermaid
+flowchart TB
+    Rule["1 Aggregate = 1 Transaction Boundary"]
 ```
 
 Avoid:
 
-- huge aggregates
-- direct DB schema mapping
+- large aggregates
+- direct DB structure mapping
 - tightly coupled models
 
-### Cross-aggregate references
+### Cross-aggregate reference
 
-References must be **by ID only**
+References must be **ID only**
 
 ```go
 type Order struct {
@@ -275,30 +283,30 @@ type Order struct {
 
 Forbidden:
 
-```go
-type Order struct {
+```text
+Order {
     user *User
 }
 ```
 
 ### Multi-aggregate rules
 
-Rules across aggregates belong to:
+Rules across multiple aggregates belong to:
 
 - Domain Service
 - Usecase
 
 Example:
 
-```txt
-User cancellation → stop Subscription
+```text
+User cancellation → Subscription stop
 ```
 
 ### Query and Aggregate
 
-Aggregates are **Write Models**
+Aggregate is a **Write Model**
 
-They must not handle:
+Do not handle:
 
 - aggregation
 - reporting
@@ -310,9 +318,9 @@ These belong to:
 - QueryService
 - ReadModel
 
-## Dependency inversion for infrastructure
+## Dependency inversion for Infrastructure layer
 
-Repositories are **persistence abstractions**
+Repository is a **persistence abstraction**
 
 ```go
 type Repository interface {
@@ -324,30 +332,30 @@ type Repository interface {
 
 Implementation:
 
-```txt
+```text
 internal/infrastructure/persistence/postgres/
 ```
 
-Mapping is done using `sqlc`.
+Mapping to Domain is done by `sqlc`.
 
-### Allowed repository methods
+### Methods allowed in Repository
 
 - `FindAll`
 - `FindByXXX`
 - `CountByXXX`
 
-Expected operations:
+Assumed operations:
 
-```txt
+```text
 SELECT / WHERE / JOIN
 ```
 
-### Methods that must not be in repository
+### What must not be in Repository
 
 - GROUP BY
 - SUM / AVG
-- WITH clauses
-- cross-boundary joins
+- WITH clause
+- cross-boundary JOIN
 
 Place them in:
 
@@ -361,7 +369,7 @@ Called from:
 
 - Usecase
 
-Domain **must not call other layers**.
+Domain **must not call other layers**
 
 Cross-aggregate rules:
 
@@ -369,7 +377,7 @@ Cross-aggregate rules:
 
 Exception:
 
-```txt
+```text
 read-only aggregate reference
 ```
 
@@ -386,7 +394,7 @@ Forbidden dependencies:
 
 ### Constructor validation
 
-`New(...)` must guarantee **invariants**
+`New(...)` guarantees **invariants**
 
 Examples:
 
@@ -398,53 +406,53 @@ Examples:
 require.ErrorIs(t, err, ErrInvalidEmail)
 ```
 
-### Getter contract tests
+### Getter contract test
 
-```txt
-ID()
-FirstName()
-Email()
-CreatedAt()
-UpdatedAt()
+Target:
+
+```go
+func (u *User) ID() uuid.UUID
+func (u *User) FirstName() string
+func (u *User) Email() string
+func (u *User) CreatedAt() time.Time
+func (u *User) UpdatedAt() time.Time
 ```
 
-### Immutable guarantee tests
+### Immutable guarantee test
 
-Pointer fields:
+Target:
 
-```txt
-*string
-*time.Time
+pointer types:
+
+```go
+func (u *User) Building() *string
+func (u *User) DeletedAt() *time.Time
 ```
 
 Verification:
 
-1. mutate constructor pointer
-2. mutate getter result
+1. modify constructor pointer
+2. modify getter return value
 
-Entity must remain unchanged.
+Internal state must not change.
 
-### Domain behavior tests
+### Domain behavior test
 
 Example:
 
 ```go
-FullName()
+func (u *User) FullName() string {
+    return u.firstName + " " + u.lastName
+}
 ```
 
-Expected:
-
-```txt
-firstName + " " + lastName
-```
-
-### Error classification tests
+### Error classification test
 
 ```go
 require.ErrorIs(t, err, ErrInvalidEmail)
 ```
 
-### Test design policies
+### Test design policy
 
 #### Deterministic
 
@@ -458,15 +466,15 @@ baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
 t.Parallel()
 ```
 
-#### Fail fast
+#### Fail Fast
 
 ```go
 require.NoError(t, err)
 ```
 
-### Test fixture
+### Test Fixture
 
-Fixture usage is recommended.
+Fixture is recommended.
 
 Reasons:
 
@@ -503,12 +511,13 @@ func newTestUser(t *testing.T)*User {
 }
 ```
 
-### Invariant preservation tests
+### Invariant preservation test
 
 State transition test:
 
-```go
-Before → Behavior → After
+```mermaid
+flowchart LR
+    Before --> Behavior --> After
 ```
 
 Example:
@@ -537,9 +546,9 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 ### Do
 
 - guarantee integrity in constructor
-- state transitions via behavior methods
-- ensure consistency with Value Objects
-- abstract persistence via Repository
+- state transition via behavior methods
+- ensure consistency via Value Objects
+- Repository abstraction
 - table-driven tests
 
 ### Don’t
@@ -550,6 +559,208 @@ Forbidden:
 - echo.*
 - sqlc types
 - json tags
-- setters
+- setter
 - DB-driven design
 - time.Now() in Domain
+
+```go
+// constant.go
+package user
+
+const (
+    minLength           = 1
+    maxFirstNameLength  = 100
+    maxLastNameLength   = 100
+    maxPasswordLength   = 255
+    maxEmailLength      = 100
+    maxPhoneLength      = 20
+    maxCityLength       = 100
+    maxStreetLength     = 255
+    maxBuildingLength   = 255
+    maxPostalCodeLength = 8
+)
+```
+
+```go
+// error.go
+package user
+
+import (
+    "boilerplate-go/internal/apperror"
+    "boilerplate-go/pkg/xerrors"
+)
+
+var (
+    errInvalid             = xerrors.Wrap(apperror.ErrValidation, "invalid user")
+    ErrInvalidID           = xerrors.Wrap(errInvalid, "id failed")
+    ErrInvalidFirstName    = xerrors.Wrap(errInvalid, "first name failed")
+    ErrInvalidLastName     = xerrors.Wrap(errInvalid, "last name failed")
+    ErrInvalidPassword     = xerrors.Wrap(errInvalid, "password failed")
+    ErrInvalidEmail        = xerrors.Wrap(errInvalid, "email failed")
+    ErrInvalidPhone        = xerrors.Wrap(errInvalid, "phone failed")
+    ErrInvalidPrefectureID = xerrors.Wrap(errInvalid, "prefecture id failed")
+    ErrInvalidCity         = xerrors.Wrap(errInvalid, "city failed")
+    ErrInvalidStreet       = xerrors.Wrap(errInvalid, "street failed")
+    ErrInvalidBuilding     = xerrors.Wrap(errInvalid, "building failed")
+    ErrInvalidPostalCode   = xerrors.Wrap(errInvalid, "postal code failed")
+    ErrInvalidUpdatedAt    = xerrors.Wrap(errInvalid, "updated at failed")
+    ErrInvalidDeletedAt    = xerrors.Wrap(errInvalid, "deleted at failed")
+)
+```
+
+```go
+// user_domain.go
+package user
+
+import (
+    "time"
+
+    "boilerplate-go/pkg/ptr"
+    "boilerplate-go/pkg/stringkit"
+    "boilerplate-go/pkg/uuid"
+    "boilerplate-go/pkg/xerrors"
+)
+
+type Users []*User
+
+type User struct {
+    id           uuid.UUID
+    firstName    string
+    lastName     string
+    passwordHash string
+    email        string
+    phone        string
+    prefectureID uuid.UUID
+    city         string
+    street       string
+    building     *string
+    postalCode   string
+    createdAt    time.Time
+    updatedAt    time.Time
+    deletedAt    *time.Time
+}
+
+func New(
+    id uuid.UUID,
+    firstName string,
+    lastName string,
+    passwordHash string,
+    email string,
+    phone string,
+    prefectureID uuid.UUID,
+    city string,
+    street string,
+    building *string,
+    postalCode string,
+    createdAt time.Time,
+    updatedAt time.Time,
+    deletedAt *time.Time,
+) (*User, error) {
+    if id.IsNil() {
+        return nil, xerrors.Wrap(ErrInvalidID, "id is required")
+    }
+
+    if !stringkit.InRange(firstName, minLength, maxFirstNameLength) {
+        return nil, xerrors.Wrap(ErrInvalidFirstName, stringkit.ErrorMsgInRange(minLength, maxFirstNameLength, firstName))
+    }
+
+    if !stringkit.InRange(lastName, minLength, maxLastNameLength) {
+        return nil, xerrors.Wrap(ErrInvalidLastName, stringkit.ErrorMsgInRange(minLength, maxLastNameLength, lastName))
+    }
+
+    if !stringkit.InRange(passwordHash, minLength, maxPasswordLength) {
+        return nil, xerrors.Wrap(ErrInvalidPassword, stringkit.ErrorMsgInRange(minLength, maxPasswordLength, passwordHash))
+    }
+
+    if !stringkit.InRange(email, minLength, maxEmailLength) {
+        return nil, xerrors.Wrap(ErrInvalidEmail, stringkit.ErrorMsgInRange(minLength, maxEmailLength, email))
+    }
+
+    if !stringkit.InRange(phone, minLength, maxPhoneLength) {
+        return nil, xerrors.Wrap(ErrInvalidPhone, stringkit.ErrorMsgInRange(minLength, maxPhoneLength, phone))
+    }
+
+    if prefectureID.IsNil() {
+        return nil, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
+    }
+
+    if !stringkit.InRange(city, minLength, maxCityLength) {
+        return nil, xerrors.Wrap(ErrInvalidCity, stringkit.ErrorMsgInRange(minLength, maxCityLength, city))
+    }
+
+    if !stringkit.InRange(street, minLength, maxStreetLength) {
+        return nil, xerrors.Wrap(ErrInvalidStreet, stringkit.ErrorMsgInRange(minLength, maxStreetLength, street))
+    }
+
+    if building != nil && !stringkit.InRange(*building, minLength, maxBuildingLength) {
+        return nil, xerrors.Wrap(ErrInvalidBuilding, stringkit.ErrorMsgInRange(minLength, maxBuildingLength, *building))
+    }
+
+    if !stringkit.InRange(postalCode, minLength, maxPostalCodeLength) {
+        return nil, xerrors.Wrap(ErrInvalidPostalCode, stringkit.ErrorMsgInRange(minLength, maxPostalCodeLength, postalCode))
+    }
+
+    if updatedAt.Before(createdAt) {
+        return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
+    }
+
+    if deletedAt != nil && deletedAt.Before(createdAt) {
+        return nil, xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to createdAt")
+    }
+
+    if deletedAt != nil && deletedAt.Before(updatedAt) {
+        return nil, xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to updatedAt")
+    }
+
+    return &User{
+        id:           id,
+        firstName:    firstName,
+        lastName:     lastName,
+        passwordHash: passwordHash,
+        email:        email,
+        phone:        phone,
+        prefectureID: prefectureID,
+        city:         city,
+        street:       street,
+        building:     ptr.Copy(building),
+        postalCode:   postalCode,
+        createdAt:    createdAt,
+        updatedAt:    updatedAt,
+        deletedAt:    ptr.Copy(deletedAt),
+    }, nil
+}
+
+func (u *User) ID() uuid.UUID        { return u.id }
+func (u *User) FirstName() string    { return u.firstName }
+func (u *User) LastName() string     { return u.lastName }
+func (u *User) PasswordHash() string { return u.passwordHash }
+func (u *User) Email() string        { return u.email }
+func (u *User) Phone() string        { return u.phone }
+func (u *User) PrefectureID() uuid.UUID { return u.prefectureID }
+func (u *User) City() string         { return u.city }
+func (u *User) Street() string       { return u.street }
+func (u *User) Building() *string    { return ptr.Copy(u.building) }
+func (u *User) PostalCode() string   { return u.postalCode }
+func (u *User) CreatedAt() time.Time { return u.createdAt }
+func (u *User) UpdatedAt() time.Time { return u.updatedAt }
+func (u *User) DeletedAt() *time.Time { return ptr.Copy(u.deletedAt) }
+
+func (u *User) FullName() string {
+    return u.firstName + " " + u.lastName
+}
+```
+
+```go
+// user_repository.go
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+package user
+
+import "context"
+
+type Repository interface {
+    FindAll(ctx context.Context, limit, offset int32) (Users, error)
+    FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (Users, error)
+    CreateUser(ctx context.Context, user *User) error
+    CountByActive(ctx context.Context, active *bool) (int64, error)
+}
+```

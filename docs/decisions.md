@@ -1,14 +1,15 @@
-# Architectural Decisions
+# Architecture Decisions
 
-This document explains the **technical choices made in this boilerplate**.
+This document explains the **reasons behind the technology choices** adopted in this project.
 
-The goal is not to claim that these technologies are universally superior, but to clarify **why they were chosen for this architecture**.
+The purpose here is not to claim that these technologies are always the best,  
+but to clarify **why they were adopted in this architecture**.
 
-These decisions are guided by the following design goals.
+These technology choices are made based on the following design goals.
 
 ## Design Goals
 
-This boilerplate prioritizes:
+This project prioritizes the following.
 
 - Maintainability
 - Structural safety
@@ -16,186 +17,194 @@ This boilerplate prioritizes:
 - Replaceable infrastructure
 - Long-term operability
 
-Performance and minimal abstraction are **not the primary goals** of this template.
+Performance and minimization of abstraction are  
+**not the primary goals** of this template.
 
 ## Why Onion Architecture
 
-### Why Onion Architecture - Intent
+### Intent (Onion Architecture)
 
-Separate business logic from infrastructure and framework dependencies.
+To separate business logic from infrastructure and framework dependencies.
 
-### Why Onion Architecture - Decision
+### Decision (Onion Architecture)
 
-The project adopts a **Pragmatic Onion Architecture**.
+This project adopts **Pragmatic Onion Architecture**.
 
-This structure enforces dependency direction:
+In this structure, the direction of dependencies is enforced as follows.
 
-```txt
-controller → usecase → domain
-                     ↑
-              infrastructure
+```mermaid
+flowchart LR
+    Controller --> Usecase --> Domain
+    Infrastructure --> Domain
 ```
 
-The domain layer remains independent of external systems.
+The Domain layer maintains independence from external systems.
 
-### Why Onion Architecture - Benefits
+### Benefits (Onion Architecture)
 
 - Clear separation of responsibilities
-- Improved testability
+- Ease of testing
 - Replaceable infrastructure
 - Stable domain core
 
-### Why Onion Architecture - Alternatives Considered
+### Alternatives Considered (Onion Architecture)
 
 #### Layered MVC
 
-Simpler but tends to mix domain and infrastructure logic.
+It is simple, but tends to mix domain logic and infrastructure logic.
 
 #### Clean Architecture
 
-Very similar in concept, but often introduces additional abstraction layers.
+Conceptually very similar,  
+but it tends to introduce additional abstraction layers.
 
-The chosen approach is a **simplified pragmatic version**.
+This project adopts a **more practical simplified version**.
 
 ## Why OpenAPI-first
 
-### Why OpenAPI-first - Intent
+### Intent (OpenAPI-first)
 
-Define API contracts explicitly before implementation.
+To clearly define API contracts before implementation.
 
-### Why OpenAPI-first -  Decision
+### Decision (OpenAPI-first)
 
-API specifications are written using **OpenAPI**, and server code is generated using `oapi-codegen`.
+API specifications are defined using **OpenAPI**,  
+and server code is generated using `oapi-codegen`.
 
-### Why OpenAPI-first -  Benefits
+### Benefits (OpenAPI-first)
 
 - Clear API contracts
 - Type-safe request/response structures
-- Consistency between backend and frontend
-- Automatic API documentation
+- Consistency with frontend
+- Automatic generation of API documentation
 
-### Why OpenAPI-first -  Alternatives Considered
+### Alternatives Considered (OpenAPI-first)
 
 #### Code-first API
 
-Generating OpenAPI from code can lead to unclear API contracts.
+Generating OpenAPI from code  
+can lead to unclear API contracts.
 
 #### GraphQL-first
 
-GraphQL introduces additional complexity and is not always necessary for typical backend services.
+GraphQL is powerful, but may introduce high complexity in general backend services.
 
 ## Why SQL-first
 
-### Why SQL-first - Intent
+### Intent (SQL-first)
 
-Treat SQL as a **first-class contract** rather than hiding it behind an ORM.
+To treat SQL explicitly as a contract rather than hiding it behind an ORM.
 
-### Why SQL-first - Decision
+### Decision (SQL-first)
 
-Queries are written directly in SQL and compiled using `sqlc`.
+Queries are written directly in SQL, and Go code is generated using `sqlc`.
 
-### Why SQL-first - Benefits
+### Benefits (SQL-first)
 
 - Full control over queries
 - Clear performance characteristics
 - Explicit data access patterns
 
-### Why SQL-first - Alternatives Considered
+### Alternatives Considered (SQL-first)
 
 #### Full ORM
 
-ORM frameworks often obscure query behavior and performance.
+ORMs are convenient, but  
+can obscure query behavior and performance.
 
 #### Query Builder
 
-Query builders reduce SQL visibility and can introduce additional complexity.
+SQL visibility decreases, and additional abstraction may increase complexity.
 
 ## Why sqlc
 
-### Why sqlc - Intent
+### Intent (sqlc)
 
-Combine explicit SQL with **type-safe Go code**.
+To combine explicit SQL with **type-safe Go code**.
 
-### Why sqlc - Decision
+### Decision (sqlc)
 
 `sqlc` is used to generate Go code from SQL queries.
 
-### Why sqlc - Benefits
+### Benefits (sqlc)
 
 - Compile-time type safety
-- Explicit SQL definitions
+- Clear SQL definitions
 - Minimal runtime abstraction
 
-### Why sqlc - Alternatives Considered
+### Alternatives Considered (sqlc)
 
 #### GORM
 
-Provides convenience but introduces ORM abstraction and hidden queries.
+A convenient ORM, but  
+introduces ORM abstraction and implicit query generation.
 
 #### Ent
 
-Schema-first approach that requires a different workflow.
+A schema-first approach that requires a different development workflow.
 
 ## Why Echo
 
-### Why Echo - Intent
+### Intent (Echo)
 
-Provide a lightweight and predictable HTTP framework.
+To provide a lightweight and predictable HTTP framework.
 
-### Why Echo - Decision
+### Decision (Echo)
 
-The project uses **Echo** for HTTP routing and middleware.
+**Echo** is used for HTTP routing and middleware.
 
-### Why Echo - Benefits
+### Benefits (Echo)
 
-- Simple and explicit middleware system
-- Minimal abstraction
-- Good performance characteristics
+- Simple and clear middleware structure
+- Low abstraction
+- Good performance
 
-### Why Echo - Alternatives Considered
+### Alternatives Considered (Echo)
 
 #### Gin
 
-Very similar, but Echo provides slightly cleaner middleware composition.
+A very similar framework, but Echo has a slightly simpler middleware structure.
 
 #### Chi
 
-Excellent router, but Echo provides a more complete framework experience.
+An excellent router, but Echo provides more complete framework features.
 
 ## Why Fx
 
-### Why Fx - Intent
+### Intent (Fx)
 
-Provide structured dependency injection and application lifecycle management.
+To provide structured dependency resolution and  
+application lifecycle management.
 
-### Why Fx - Decision
+### Decision (Fx)
 
-The project uses **Uber Fx** as the dependency injection container.
+**Uber Fx** is adopted as the dependency injection container.
 
-### Why Fx - Benefits
+### Benefits (Fx)
 
 - Explicit dependency wiring
-- Lifecycle management
-- Structured module composition
+- Application lifecycle management
+- Organized module structure
 
-### Why Fx - Alternatives Considered
+### Alternatives Considered (Fx)
 
-#### Manual dependency wiring
+#### Manual DI
 
-Works well for small systems but becomes difficult to maintain as the system grows.
+Effective for small systems, but becomes difficult to manage as systems grow.
 
 #### Google Wire
 
-Compile-time DI but lacks runtime lifecycle management.
+Compile-time DI, but does not provide runtime lifecycle management.
 
 ## Future Evolution
 
-These decisions are **not immutable**.
+These technology choices are **not immutable**.
 
-Technologies may change if:
+They may change in the following cases.
 
-- the ecosystem evolves
-- better tools become available
-- architectural constraints change
+- Evolution of the ecosystem
+- Emergence of better tools
+- Changes in architectural constraints
 
-However, changes should maintain the **core design goals of this template**.
+However, even when changes are made,  
+the **design goals of this template** must be preserved.

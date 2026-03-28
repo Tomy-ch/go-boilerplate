@@ -1,114 +1,108 @@
 # loggingdb
 
-English | [日本語](README.ja.md)
+[English](README.en.md) | Japanese
 
-Overview: **An observability wrapper layer that adds SQL execution logging and trace information to DB access. Actual query execution is delegated to the driver layer, while loggingdb adds log formatting and tracing integration.**
+Overview: **An Observability wrapper layer that adds SQL execution logs and trace information to DB access. Actual query execution is delegated to the driver layer, and only log formatting and trace integration are added.**
 
-`loggingdb` is an **observability adapter positioned above the driver layer**.
+loggingdb is an **observability adapter positioned above the driver**.
 
 ## Architectural Position
 
-```txt
-Usecase
-   ↓
-Repository
-   ↓
-loggingdb
-   ↓
-driver
-   ↓
-PostgreSQL
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
 ```
 
-`loggingdb` **does not perform database execution itself.**
+loggingdb **does not perform DB execution processing itself.**
 
-It wraps `driver.DBTX` and adds the following behavior during SQL execution:
+It wraps `driver.DBTX` and adds the following processing during SQL execution:
 
-- SQL logging
+- SQL log output
 - OpenTelemetry trace integration
-- Query execution latency measurement
-- Slow query detection
+- Query execution time measurement
+- slow query detection
 
 ## Responsibility
 
 This directory provides **observability for SQL execution**.
 
-Primary responsibilities:
+Main responsibilities:
 
-- Provide a logging wrapper for `driver.DBTX`
-- Emit SQL execution logs
-- Create OpenTelemetry spans
-- Measure query execution latency
+- Provide a logging wrapper that wraps `driver.DBTX`
+- Output SQL execution logs
+- Generate OpenTelemetry spans
+- Measure query execution time
 - Detect slow queries
-- Structure logging fields
+- Structure log fields
 
-With this design, upper layers (`repository / usecase / handler`) do not need to handle:
+As a result, upper layers (repository / usecase / handler):
 
 - logging implementation
 - tracing implementation
+
+do not need to be aware of these at all.
 
 ## DBTX Wrapper
 
 The core implementation of loggingdb is a **DBTX wrapper**.
 
-```txt
-driver.DBTX
-     ↓ wrap
-loggingdb (dbWithLogging)
-     ↓
-SQL logging + tracing
+```mermaid
+flowchart TB
+    DBTX["driver.DBTX"] --> Wrap["wrap"] --> Logging["loggingdb (dbWithLogging)"] --> Obs["SQL logging + tracing"]
 ```
 
-`dbWithLogging` wraps `driver.DBTX` and performs the following steps around SQL execution:
+`dbWithLogging` wraps `driver.DBTX` and performs the following processing before and after SQL execution:
 
 1. Start an OpenTelemetry span
-2. Execute the SQL query
+2. Execute SQL
 3. Measure execution time
-4. Emit SQL logs
-5. Evaluate error conditions
+4. Output SQL logs
+5. Determine errors
 
 ## SQL Log Contents
 
-The emitted logs include the following fields:
+The output logs include the following information.
 
-```txt
-Query
-Args
-Latency
-Error
-TraceID
-SpanID
-ParentSpanID
+```mermaid
+flowchart TB
+    A["Query"]
+    B["Args"]
+    C["Latency"]
+    D["Error"]
+    E["TraceID"]
+    F["SpanID"]
+    G["ParentSpanID"]
 ```
 
-This enables tracing both:
+This enables:
 
 - API requests
-- database queries
+- DB queries
 
-within the **same trace context**.
+to be **traced within a single trace context**.
 
 ## Slow Query
 
-`loggingdb` automatically detects slow queries.
+loggingdb automatically determines slow queries.
 
-The threshold is defined by:
+The determination of slow queries depends on the following configuration.
 
 ```go
 DBConfig().SlowQueryWarnThreshold()
 ```
 
-The log level is determined using the following rules:
+The log level is determined by the following rules.
 
-```txt
-Error 발생 → ERROR
-slow query → WARN
-normal query → INFO
+```mermaid
+flowchart TB
+    Err["Error query"] --> ERROR["ERROR"]
+    Slow["slow query"] --> WARN["WARN"]
+    Normal["normal query"] --> INFO["INFO"]
 ```
 
 ## Provider
 
-`DBProvider` is a **DI adapter** that aggregates dependencies required by loggingdb.
+`DBProvider` is a **DI Adapter** that aggregates the dependencies required for loggingdb.
 
 Provided dependencies:
 
@@ -118,86 +112,73 @@ Provided dependencies:
 - `DatabaseConfig`
 - `LayerTracer`
 
-Through this design, loggingdb avoids directly depending on:
+This allows loggingdb to:
 
 - logging implementation
 - tracing implementation
 
-and instead receives them via DI.
+not depend directly on them, and use them via DI.
 
 ## Necessity
 
 ### Production
 
-Recommended.
+Recommended
 
-Reasons:
+Reason:
 
 - detection of slow queries
 - investigation of DB errors
-- correlation between API requests and DB queries
+- trace integration between API and DB
 
-These capabilities are **highly valuable for operational monitoring**.
+These are **highly useful for operational monitoring**.
 
-However, in extremely high-throughput environments you may consider:
+However, in extremely high-traffic environments, considering increased log volume:
 
-```txt
-sampling
-slow query only logging
-```
+- sampling
+- logging only slow queries
 
-to reduce log volume.
+can also be considered.
 
 ### Development / Testing
 
-Strongly recommended.
+Strongly recommended
 
-Reasons:
+Reason:
 
-- verify issued SQL queries
-- debug sqlc query behavior
-- assist database-related testing
+- confirmation of issued SQL
+- verification of sqlc query behavior
+- debugging during DB testing
 
-Logging during development is especially useful for debugging.
+Therefore, it is very effective during development.
 
 ## Notes
 
 ### loggingdb does not perform DB I/O
 
-`loggingdb` is a **pure wrapper**.
+loggingdb is a **pure wrapper**.
 
 All actual SQL execution is delegated to the driver layer.
 
-```txt
-loggingdb
-   ↓ delegate
-driver
+```mermaid
+flowchart TB
+    Logging["loggingdb"] --> Driver["driver"]
 ```
 
 ### Always propagate Context
 
-Trace information is stored in:
+Trace information is stored in `context.Context`.
 
-```txt
-context.Context
-```
+Therefore, always propagate `ctx` to lower layers.
 
-Therefore you must always propagate:
+### Log volume with large number of queries
 
-```txt
-ctx
-```
+`ExecContext`
 
-to lower layers.
+`QueryContext`
 
-### Log volume with high query counts
+`QueryRowContext`
 
-Logs are emitted for each DB operation:
+For each **DB operation, a log is output**.
 
-```txt
-ExecContext
-QueryContext
-QueryRowContext
-```
-
-If a process performs a large number of queries, the resulting log volume may increase significantly.
+In processes that execute a large number of queries, log volume may increase.

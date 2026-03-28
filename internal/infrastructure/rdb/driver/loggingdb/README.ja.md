@@ -8,16 +8,9 @@ loggingdb は **driver の上位に配置される observability adapter** で�
 
 ## アーキテクチャ上の位置
 
-```txt
-Usecase
-   ↓
-Repository
-   ↓
-loggingdb
-   ↓
-driver
-   ↓
-PostgreSQL
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
 ```
 
 loggingdb は **DB 実行処理そのものは行いません。**
@@ -53,12 +46,9 @@ loggingdb は **DB 実行処理そのものは行いません。**
 
 loggingdb のコア実装は **DBTX wrapper** です。
 
-```txt
-driver.DBTX
-     ↓ wrap
-loggingdb (dbWithLogging)
-     ↓
-SQL logging + tracing
+```mermaid
+flowchart TB
+    DBTX["driver.DBTX"] --> Wrap["wrap"] --> Logging["loggingdb (dbWithLogging)"] --> Obs["SQL logging + tracing"]
 ```
 
 `dbWithLogging` は `driver.DBTX` をラップし、SQL 実行前後で次の処理を行います。
@@ -73,14 +63,15 @@ SQL logging + tracing
 
 出力されるログには以下の情報が含まれます。
 
-```txt
-Query
-Args
-Latency
-Error
-TraceID
-SpanID
-ParentSpanID
+```mermaid
+flowchart TB
+    A["Query"]
+    B["Args"]
+    C["Latency"]
+    D["Error"]
+    E["TraceID"]
+    F["SpanID"]
+    G["ParentSpanID"]
 ```
 
 これにより
@@ -102,10 +93,11 @@ DBConfig().SlowQueryWarnThreshold()
 
 ログレベルは以下のルールで決定されます。
 
-```txt
-Error 발생 → ERROR
-slow query → WARN
-normal query → INFO
+```mermaid
+flowchart TB
+    Err["Error query"] --> ERROR["ERROR"]
+    Slow["slow query"] --> WARN["WARN"]
+    Normal["normal query"] --> INFO["INFO"]
 ```
 
 ## Provider
@@ -168,29 +160,16 @@ loggingdb は **pure wrapper** です。
 
 実際の SQL 実行はすべて driver 層に委譲されます。
 
-```txt
-loggingdb
-   ↓ delegate
- driver
+```mermaid
+flowchart TB
+    Logging["loggingdb"] --> Driver["driver"]
 ```
 
 ### Context を必ず伝搬する
 
-トレース情報は
+トレース情報は`context.Context`に格納されます。
 
-```txt
-context.Context
-```
-
-に格納されます。
-
-そのため
-
-```txt
-ctx
-```
-
-を必ず下位レイヤへ伝搬してください。
+そのため`ctx`を必ず下位レイヤに伝搬してください。
 
 ### 大量クエリ時のログ量
 

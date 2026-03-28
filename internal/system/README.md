@@ -1,24 +1,24 @@
 # internal/system
 
-English | [日本語](README_ja.md)
+[English](README.md) | Japanese
 
-`internal/system` provides **runtime metadata (build information)** for the application.
+`internal/system` is a package that provides **runtime metadata (build information)** for the application.
 
 This package handles **process metadata** that is independent of business logic and infrastructure.  
-It allows the application to access **version information, Git revision, and build timestamp**.
+It enables the application to retrieve **version information, Git revision, and build timestamp**.
 
 These values are typically **injected at build time using Go `ldflags`**.
 
 ## Responsibility
 
-The responsibilities of this package are:
+The responsibilities of this package are as follows.
 
 - Store **application build metadata**
-- Provide runtime access to **Version / Revision / BuildDate**
-- Provide APIs usable by version display (`--version`) or diagnostic endpoints
+- Enable retrieval of **Version / Revision / BuildDate** at runtime
+- Provide APIs usable by version display (`--version`) and diagnostic endpoints
 - Allow **BuildInfo to be mocked in tests**
 
-This package **does not contain business logic**.
+This package **does not contain business logic.**
 
 ## Package Structure
 
@@ -32,8 +32,8 @@ internal/system
 |File|Role|
 |---|---|
 |`buildinfo.go`|BuildInfo interface and implementation|
-|`version.go`|Build metadata embedded at build time|
-|`mock/`|Mocks used for testing|
+|`version.go`|Metadata embedded at build time|
+|`mock/`|Mocks for testing|
 
 ## BuildInfo Interface
 
@@ -47,13 +47,13 @@ type BuildInfo interface {
 }
 ```
 
-Implementation:
+Implementation
 
 ```go
 func NewBuildInfo() BuildInfo
 ```
 
-Usage example:
+Usage example
 
 ```go
 bi := system.NewBuildInfo()
@@ -65,9 +65,9 @@ buildDate := bi.BuildDate()
 
 This design enables:
 
-- Mock injection during testing
-- Abstraction of version retrieval
-- Dependency injection through DI
+- Injection of mocks during testing
+- Abstraction of version retrieval logic
+- Dependency injection via DI
 
 ## version.go
 
@@ -81,13 +81,13 @@ var (
 )
 ```
 
-These default values serve as **fallback values for development environments**.
+The default values are **fallback values for development environments**.
 
-Actual values are overridden during `go build`.
+Actual values are overwritten during `go build`.
 
 ## Build-Time Value Injection
 
-CI / Docker / Makefile typically inject values as follows.
+In CI / Docker / Makefile, values are typically injected as follows.
 
 Example:
 
@@ -98,7 +98,7 @@ go build \
             -X 'internal/system.BuildDate=2025-01-01T00:00:00Z'"
 ```
 
-Example in Dockerfile:
+In Dockerfile, it is used as follows.
 
 ```bash
 ARG VERSION
@@ -115,49 +115,36 @@ RUN go build \
 
 BuildInfo is used for the following purposes.
 
-Examples:
+- `--version` command
+- `/version` API
+- `/health` endpoint
+- log output
+- diagnostic information
 
-```txt
---version command
-/version API
-/health endpoint
-log output
-diagnostic information
-```
-
-Example output:
-
-```txt
-service version=1.2.3 revision=abc123 build=2025-01-01
-```
+Example: `service version=1.2.3 revision=abc123 build=2025-01-01`
 
 ## Layer Position
 
-`internal/system` belongs to the **runtime metadata layer of the application**.
+`internal/system` is the **runtime metadata layer of the application**.
 
-```txt
-Controller
-Usecase
-Domain
-Infrastructure
-System (runtime metadata)
+```mermaid
+flowchart TB
+    Controller --> Usecase --> Domain --> Infrastructure --> System["System (runtime metadata)"]
 ```
 
-Characteristics:
+Characteristics
 
-- Contains no business logic
+- Does not contain business logic
 - Does not depend on Infrastructure
 - Accessible from the entire application
 
 ## Testing
 
-Because `BuildInfo` is defined as an interface, tests can use mocks.
+Since `BuildInfo` is an interface, mocks can be used in tests.
 
-```bash
-go:generate mockgen
-```
+`go:generate mockgen`
 
-Example:
+Example
 
 ```go
 mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
@@ -166,26 +153,15 @@ mockBuildInfo.EXPECT().Version().Return("1.0.0")
 
 ## Security Considerations
 
-Build metadata must **not include** the following:
+The following information must **not be included** in build metadata.
 
 - authentication tokens
 - environment variables
 - private keys
 - personal information
 
-Recommended metadata to include:
+Information that should be included:
 
 - Version
 - Git Revision
 - Build Date
-
-## Summary
-
-`internal/system` provides:
-
-- build metadata
-- version management
-- runtime metadata retrieval
-- testable abstractions
-
-It functions as the **runtime metadata package for the application**.

@@ -16,12 +16,13 @@ Infrastructure 層は、**外部技術（DB・外部API・認証・セキュリ�
 
 ## オニオンアーキテクチャでの位置
 
-```txt
-    Domain
-      ↑
-    Usecase
-      ↑
-    Infrastructure
+```mermaid
+flowchart TB
+    Infra["Infrastructure"]
+    Usecase["Usecase"]
+    Domain["Domain"]
+
+    Infra --> Usecase --> Domain
 ```
 
 - Domain / Usecase は抽象のみ
@@ -29,9 +30,14 @@ Infrastructure 層は、**外部技術（DB・外部API・認証・セキュリ�
 
 ## 依存関係
 
-```txt
-    Domain ← Infrastructure（実装）
-    Usecase ← Infrastructure（利用）
+```mermaid
+flowchart LR
+    Infra["Infrastructure"]
+    Domain["Domain（interface）"]
+    Usecase["Usecase"]
+
+    Infra --> Domain
+    Infra --> Usecase
 ```
 
 - Infrastructure は Domain に依存する
@@ -43,12 +49,13 @@ Infrastructure 層は、**外部技術（DB・外部API・認証・セキュリ�
 - Infrastructure はトランザクションを開始しない
 - トランザクションは context.Context により伝搬される
 
-```txt
-    Usecase（Tx開始）
-      ↓
-    Repository / QueryService
-      ↓
-    driver（Tx使用）
+```mermaid
+flowchart TB
+    UC["Usecase（Tx開始）"]
+    Repo["Repository / QueryService"]
+    Driver["driver（Tx使用）"]
+
+    UC --> Repo --> Driver
 ```
 
 ## エラーハンドリング
@@ -91,12 +98,18 @@ Infrastructure 層では以下を行ってはいけません。
 
 ## ディレクトリ構成
 
-```txt
-    internal/infrastructure
-     ├ auth/
-     ├ rdb/
-     ├ security/
-     └ system/
+```mermaid
+flowchart TB
+    Root["internal/infrastructure"]
+    Auth["auth/"]
+    RDB["rdb/"]
+    Sec["security/"]
+    Sys["system/"]
+
+    Root --> Auth
+    Root --> RDB
+    Root --> Sec
+    Root --> Sys
 ```
 
 ## 各サブシステム
@@ -139,8 +152,14 @@ Infrastructure 層では以下を行ってはいけません。
 - トランザクション rollback による状態隔離
 - testkit を利用
 
-```txt
-    実DB + rollback + 並列実行（Txは直列化）
+```mermaid
+flowchart TB
+    DB["実DB"]
+    Rollback["rollback"]
+    Parallel["並列実行"]
+    Serial["Txは直列化"]
+
+    DB --> Rollback --> Parallel --> Serial
 ```
 
 ## 設計原則まとめ

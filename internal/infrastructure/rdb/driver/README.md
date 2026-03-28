@@ -1,88 +1,82 @@
 # driver
 
-English | [日本語](README_ja.md)
+[English](README.md) | Japanese
 
 Overview: **A foundational driver layer for RDB (PostgreSQL) connectivity. Provides connection management, transaction boundaries, and sqlc execution adapters.**
 
-This package is the **lowest-level DB access infrastructure** in the Infrastructure layer.
+This package is the **lowest-level DB access infrastructure in the Infrastructure layer**.
 
-Repository implementations access the database through this driver.
+The Repository layer accesses the DB through this driver.
 
 ## Architectural Position
 
-```txt
-Usecase
-   ↓
-Repository
-   ↓
-Driver (this package)
-   ↓
-PostgreSQL
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository"] --> Driver["Driver (this package)"] --> DB["PostgreSQL"]
 ```
 
-The driver acts as the **lowest-level adapter for RDB connections**.
+Driver is the **lowest-level adapter for RDB connections**.
 
 ## Responsibilities
 
-This directory provides the following capabilities:
+This directory provides the following functions.
 
 - **DatabaseDriver abstraction** wrapping `sql.DB`
 - **Transaction management (`tx.Manager`)**
-- **DBTX interface for sqlc execution**
+- **DBTX interface provision for sqlc**
 - **Connection pool configuration**
-- **Database connectivity check at startup (fail fast)**
+- **DB connectivity check at startup (fail fast)**
 
-With this design, the Repository layer does not directly depend on concrete database implementations such as:
+As a result, the Repository layer:
 
-```txt
-sql.DB
-sql.Tx
-pgx driver
+```mermaid
+flowchart TB
+    A["sql.DB"]
+    B["sql.Tx"]
+    C["pgx driver"]
 ```
+
+is designed to **not directly depend on concrete DB implementations** such as these.
 
 ## DB Initialization
 
-`NewDB()` initializes the database connection.
+`NewDB()` initializes the DB connection.
 
 ```go
 func NewDB(...) (DatabaseDriver, error)
 ```
 
-The process includes:
+Processing contents:
 
 1. Initialize connection with `sql.Open()`
-2. Configure connection pool settings
+2. Connection pool configuration
+    - MaxOpenConns
+    - MaxIdleConns
+    - ConnMaxLifetime
+    - ConnMaxIdleTime
+3. DB connectivity check using `PingContext`
 
-```txt
-MaxOpenConns
-MaxIdleConns
-ConnMaxLifetime
-ConnMaxIdleTime
-```
-
-1. Verify connectivity using `PingContext`
-
-If the ping fails, an **error is returned at startup (fail fast)**.
+If Ping fails, it is designed to **return an error at startup (fail fast)**.
 
 ## DatabaseDriver
 
 `DatabaseDriver` is an interface that abstracts `sql.DB`.
 
 ```go
-type DatabaseDriver interface {
-    DBTX
+ type DatabaseDriver interface {
+     DBTX
 
-    BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-    PingContext(ctx context.Context) error
-    Close() error
-}
+     BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+     PingContext(ctx context.Context) error
+     Close() error
+ }
 ```
 
 Purpose:
 
 - Avoid direct dependency on `sql.DB`
-- Allow mocking during tests
-- Abstract transaction initialization
+- Enable mocking in tests
+- Abstract transaction start
 
 The implementation is provided by `dbDriver`.
 
@@ -91,26 +85,27 @@ The implementation is provided by `dbDriver`.
 `DBTX` is the **minimal interface required by sqlc**.
 
 ```go
-type DBTX interface {
-    ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-    PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
-    QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-    QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
+ type DBTX interface {
+     ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+     PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
+     QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+     QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+ }
 ```
 
-This interface allows sqlc to execute queries using either:
+With this interface, sqlc can:
 
-```txt
-*sql.DB
-*sql.Tx
+```mermaid
+flowchart TB
+    A["*sql.DB"]
+    B["*sql.Tx"]
 ```
 
-without changing the generated code.
+execute the same query code with either.
 
 ## Transaction Transparent Layer
 
-`connection.go` provides a **transaction-transparent adapter** via `New()`.
+`New()` in `connection.go` is a **transaction-transparent adapter**.
 
 ```go
 func New(ctx context.Context, db DatabaseDriver) DBTX
@@ -118,22 +113,13 @@ func New(ctx context.Context, db DatabaseDriver) DBTX
 
 Behavior:
 
-```txt
-If Tx exists in context
-    ↓
-return *sql.Tx
-
-If Tx does not exist
-    ↓
-return DatabaseDriver
+```mermaid
+flowchart TB
+    HasTx["Tx exists in context"] --> ReturnTx["return *sql.Tx"]
+    NoTx["No Tx"] --> ReturnDB["return DatabaseDriver"]
 ```
 
-This allows the Repository layer to execute queries without worrying about whether it is using:
-
-```txt
-DB
-Tx
-```
+This allows the Repository layer to execute queries without being aware of the difference between `DB` and `Tx`.
 
 ## Transaction Management
 
@@ -145,36 +131,24 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 })
 ```
 
-Internally it performs:
+Internally, it performs the following processing.
 
 1. Check if a Tx exists in context
-2. If present → **reuse existing transaction**
-3. If absent → **start a new transaction**
-4. Execute the function
+2. If it exists → **reuse existing Tx**
+3. If it does not exist → **start new Tx**
+4. Execute fn
 5. Success → commit
-6. Error → rollback
+6. error → rollback
 
-This design allows **safe handling of nested transactions**.
+This enables **safe handling of nested transactions**.
 
-## Important Notes
+## Notes
 
 ### Always propagate Context
 
-Transactions are stored in:
+Transactions are stored in `"context.Context`. Therefore, always propagate `ctx` to lower layers.
 
-```txt
-context.Context
-```
-
-Therefore you must always propagate:
-
-```txt
-ctx
-```
-
-to lower layers.
-
-### Repository must use `driver.New()`
+### Repository must use driver.New()
 
 In the Repository layer:
 
@@ -182,20 +156,15 @@ In the Repository layer:
 driver.New(ctx, db)
 ```
 
-should be used to obtain `DBTX`.
+is used to obtain `DBTX`.
 
-This enables transparent switching between:
-
-```txt
-Tx
-DB
-```
+This allows transparent switching between `Tx` and `DB`.
 
 ## Necessity
 
 ### Production
 
-Required.
+Required
 
 Reason:
 
@@ -207,9 +176,9 @@ all depend on this layer.
 
 ### Development / Testing
 
-Recommended.
+Recommended
 
 Reason:
 
 - `DatabaseDriver` is an interface
-- Allows mocking for testing
+- Enables testing using mocks

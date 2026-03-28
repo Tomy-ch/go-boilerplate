@@ -42,18 +42,20 @@ UUID はアプリケーション側の `pkg/uuid.UUID` と相互変換されま�
 
 各型について **対称的な変換 API** を提供します。
 
-```txt
-NullXxx  → *T
-*T       → NullXxx
-T        → NullXxx
+```mermaid
+flowchart TB
+    A["NullXxx"] --> B["*T"]
+    B --> C["NullXxx"]
+    D["T"] --> C
 ```
 
 具体例（string）
 
-```txt
-StringPtrFromNull
-NullStringFromPtr
-NewNullString
+```mermaid
+flowchart TB
+    A["StringPtrFromNull"]
+    B["NullStringFromPtr"]
+    C["NewNullString"]
 ```
 
 この対称設計により、読み取りと書き込みの両方で同じルールを利用できます。
@@ -70,9 +72,10 @@ name := conv.StringPtrFromNull(row.Name)
 
 変換ルール
 
-```txt
-NULL  → nil
-value → *value
+```mermaid
+flowchart TB
+    Null["NULL"] --> Nil["nil"]
+    Val["value"] --> Ptr["*value"]
 ```
 
 アプリケーション側では `nil` を使って NULL を判定できます。
@@ -87,9 +90,10 @@ row.Name = conv.NullStringFromPtr(namePtr)
 
 変換ルール
 
-```txt
-nil  → NULL
-value → Valid=true
+```mermaid
+flowchart TB
+    Nil["nil"] --> Null["NULL"]
+    Val["value"] --> Valid["Valid=true"]
 ```
 
 ### 値から nullable を生成
@@ -143,12 +147,13 @@ nullable 型から生成されるポインタは、内部値のコピーを参�
 
 役割
 
-```txt
-sqlc generated code
-        ↓
-conv utilities
-        ↓
-application code
+```mermaid
+flowchart TB
+    Sqlc["sqlc generated code"]
+    Conv["conv utilities"]
+    App["application code"]
+
+    Sqlc --> Conv --> App
 ```
 
 これにより
@@ -220,18 +225,30 @@ application code
 
 新しい nullable 型を追加する場合は次の命名規則に従ってください。
 
-```txt
-XxxPtrFromNull
-NullXxxFromPtr
-NewNullXxx
+```go
+func XxxPtrFromNull (...) {
+  // Implementation
+}
+func NullXxxFromPtr (...) {
+  // Implementation
+}
+func NewNullXxx (...) {
+  // Implementation
+}
 ```
 
 例
 
-```txt
-DecimalPtrFromNull
-NullDecimalFromPtr
-NewNullDecimal
+```go
+func DecimalPtrFromNull (...) {
+  // Implementation
+}
+func NullDecimalFromPtr (...) {
+  // Implementation
+}
+func NewNullDecimal (...) {
+  // Implementation
+}
 ```
 
 この規則により API の一貫性を保ちます。

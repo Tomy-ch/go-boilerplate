@@ -10,14 +10,9 @@ Repository 層はこの driver を通して DB にアクセスします。
 
 ## アーキテクチャ上の位置
 
-```txt
-Usecase
-   ↓
-Repository
-   ↓
-Driver (このパッケージ)
-   ↓
-PostgreSQL
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository"] --> Driver["Driver (このパッケージ)"] --> DB["PostgreSQL"]
 ```
 
 Driver は **RDB 接続の最下層アダプタ**です。
@@ -34,10 +29,11 @@ Driver は **RDB 接続の最下層アダプタ**です。
 
 これにより Repository 層は
 
-```txt
-sql.DB
-sql.Tx
-pgx driver
+```mermaid
+flowchart TB
+    A["sql.DB"]
+    B["sql.Tx"]
+    C["pgx driver"]
 ```
 
 などの **具体 DB 実装に直接依存しない設計**になります。
@@ -54,15 +50,11 @@ func NewDB(...) (DatabaseDriver, error)
 
 1. `sql.Open()` による接続初期化
 2. 接続プール設定
-
-```txt
-MaxOpenConns
-MaxIdleConns
-ConnMaxLifetime
-ConnMaxIdleTime
-```
-
-1. `PingContext` による DB 疎通確認
+    - MaxOpenConns
+    - MaxIdleConns
+    - ConnMaxLifetime
+    - ConnMaxIdleTime
+3. `PingContext` による DB 疎通確認
 
 Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設計です。
 
@@ -103,9 +95,10 @@ Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設
 
 このインターフェースにより sqlc は
 
-```txt
-*sql.DB
-*sql.Tx
+```mermaid
+flowchart TB
+    A["*sql.DB"]
+    B["*sql.Tx"]
 ```
 
 のどちらでも同じクエリコードを実行できます。
@@ -120,24 +113,13 @@ func New(ctx context.Context, db DatabaseDriver) DBTX
 
 挙動:
 
-```txt
-context に Tx がある
-    ↓
-*sql.Tx を返す
-
-Tx がない
-    ↓
-DatabaseDriver を返す
+```mermaid
+flowchart TB
+    HasTx["context に Tx がある"] --> ReturnTx["*sql.Tx を返す"]
+    NoTx["Tx がない"] --> ReturnDB["DatabaseDriver を返す"]
 ```
 
-これにより Repository 層は
-
-```txt
-DB
-Tx
-```
-
-の違いを意識せずクエリを実行できます。
+これにより Repository 層は`DB`と`Tx`の違いを意識せずクエリを実行できます。
 
 ## トランザクション管理
 
@@ -164,21 +146,7 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 
 ### Context を必ず伝搬する
 
-トランザクションは
-
-```txt
-context.Context
-```
-
-に格納されます。
-
-そのため
-
-```txt
-ctx
-```
-
-を必ず下位レイヤに伝搬してください。
+トランザクションは`"context.Context`に格納されます。そのため`ctx`を必ず下位レイヤに伝搬してください。
 
 ### Repository は driver.New() を使用する
 
@@ -190,14 +158,7 @@ driver.New(ctx, db)
 
 を利用して `DBTX` を取得します。
 
-これにより
-
-```txt
-Txtxt
-DB
-```
-
-を透過的に切り替えることができます。
+これにより`Tx`と`DB`を透過的に切り替えることができます。
 
 ## 必要度
 

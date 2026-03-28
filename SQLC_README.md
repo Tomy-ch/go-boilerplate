@@ -1,123 +1,143 @@
-# Goコード生成に影響する `sqlc.yaml` の主なオプション（sqlc v1.30.0 / PostgreSQL）
+# sqlc.yaml Options Affecting Go Code Generation (sqlc v1.30.0 / PostgreSQL)
 
-このセクションでは、`sqlc.yaml`（`version: "2"`）において **Goコードの生成結果に影響する**主な設定をまとめます。  
-（例は PostgreSQL + Go を前提。`gen.go` 配下のキーを中心に記載）
+This section summarizes the main `sqlc.yaml` (`version: "2"`) options that **affect generated Go code**.  
+(Examples assume PostgreSQL + Go, focusing on keys under `gen.go`)
 
-## 最小構成（ベース）
+## Minimal Configuration (Base)
 
 ```yaml
 version: "2"
 sql:
-
 - engine: "postgresql"
-    schema: "postgresql/schema.sql"
-    queries: "postgresql/query.sql"
-    gen:
-      go:
-        package: "db"
-        out: "internal/infrastructure/rdb/gen"
-        sql_package: "pgx/v5"
+  schema: "postgresql/schema.sql"
+  queries: "postgresql/query.sql"
+  gen:
+    go:
+      package: "db"
+      out: "internal/infrastructure/rdb/gen"
+      sql_package: "pgx/v5"
 ```
 
-`version: "2"` では `packages:` ではなく **`sql:` 配下に定義**します。
+In `version: "2"`, definitions are placed under **`sql:` instead of `packages:`**.
 
-## [sqlセクション](https://docs.sqlc.dev/en/latest/reference/config.html#sql)
+## SQL Section
 
 ### engine
 
-`postgresql`, `mysql`, `sqlite`の内から利用するDBエンジンを指定します。
+Specifies the database engine:
+
+- `postgresql`
+- `mysql`
+- `sqlite`
 
 ### schema
 
-ここのセクションの情報を元に **DBスキーマ情報を取得** します。
+Used to **load database schema information**.
 
-ここの情報を元にして、DMLから生成される構造体のフィールド型やNULL可否などが決まります。
+This determines:
 
-下記の三つのうちいずれかを指定します：
+- Generated struct field types
+- NULLability
+- Enum definitions
 
-- マイグレーションディレクトリへのパス
-- 特定のマイグレーションファイルのリスト
-- dumpしたスキーマSQLファイルなどへのパス
+You can specify one of the following:
+
+- Path to a migration directory
+- List of migration files
+- Dumped schema SQL file
 
 ### queries
 
-ここのセクションの情報を元に **SQLクエリを解析** し、Goコードの生成を行います。
+Used to **parse SQL queries and generate Go code**.
 
-DMLのパスを指定します。この時のパスは **SQLファイル単位でもディレクトリ単位でも指定可能** です。
+- Can point to a single SQL file or a directory
 
 ### database
 
-DB接続情報を指定し、**実行時にDBへ接続してスキーマ情報を取得** する場合に使います。
+Specifies DB connection info to **fetch schema at runtime**.
 
-その場合、正しく型情報やEnum情報を取得することができず、生成コードの品質が落ちる可能性があるため、 **可能な限り `schema` セクションでスキーマ情報を取得する方法を推奨** します。
+⚠️ Not recommended:
+
+- May fail to correctly infer types/enums
+- Can degrade generated code quality
+
+👉 Prefer using the `schema` section.
 
 ### strict_function_checks
 
-呼び出されたSQL関数が存在しない場合にエラーを返します。
+Returns an error if a referenced SQL function does not exist.
 
-デフォルトは**false**です。
+- Default: `false`
 
 ### strict_order_by
 
-order by列が曖昧な場合にエラーを返します。
+Returns an error if `ORDER BY` columns are ambiguous.
 
-デフォルトは**true**です。
+- Default: `true`
 
-## 1. 出力先とパッケージ構成
+## 1. Output & Package Configuration
 
 ### `package`
 
-生成される Go の `package` 名。
+Name of the generated Go package.
 
 ### `out`
 
-生成ファイルの出力先ディレクトリ。
+Output directory for generated files.
 
 ### `sql_package`
 
-生成コードが利用する DB ドライバのAPIを選びます（例：`pgx/v5`, `pgx/v4`, `database/sql`）。
+Specifies the DB driver API used by generated code:
 
-- `pgx/v5` を選ぶと、生成コードは pgx の型・インターフェースに寄ります
-- `database/sql` を選ぶと、標準 `database/sql` ベースになります
+- `pgx/v5`
+- `pgx/v4`
+- `database/sql`
 
-## 2. Prepared Statements（明示Prepare）
+Notes:
+
+- `pgx/v5` → uses pgx-native types/interfaces
+- `database/sql` → uses standard library
+
+## 2. Prepared Statements
 
 ### `emit_prepared_queries`
 
-`true` の場合、**生成コードに「PrepareしてStmtを保持して実行する」実装**が入ります。
+If `true`, generated code explicitly prepares and reuses statements.
 
-- **pgx/v5 は暗黙的に prepared statement を扱える**ため、追加設定不要（= 必要性は相対的に低い）と明記されています。
-- `database/sql` など「暗黙preparedが無い/弱い」ドライバで、起動時に prepare して使い回したい場合に選択肢になります。
+Notes:
 
-## 3. 生成されるAPI形状（インターフェース/メソッド形）
+- `pgx/v5` already supports implicit prepared statements → usually unnecessary
+- Useful with `database/sql` when you want explicit prepare at startup
+
+## 3. Generated API Shape
 
 ### `emit_interface`
 
-`true` にすると `Querier` のようなインターフェースが生成され、モックやDIがしやすくなります。
+Generates an interface (e.g., `Querier`) for easier mocking and DI.
 
 ### `emit_methods_with_db_argument`
 
-`true` にすると、`Queries` が内部にDBを保持する形ではなく、**各メソッドがDB（またはTx）を引数で受け取る**形になります。
+If `true`, methods take `DB`/`Tx` as arguments instead of storing it internally.
 
-## 4. タグ出力（json/db）
+## 4. Struct Tags
 
 ### `emit_json_tags`
 
-`true` にすると、生成structに `json:"..."` が付きます。
+Adds `json:"..."` tags to generated structs.
 
 ### `emit_db_tags`
 
-`true` にすると、生成structに `db:"..."` が付きます。
+Adds `db:"..."` tags to generated structs.
 
-## 5. 命名・構造体生成の制御
+## 5. Naming & Struct Generation
 
 ### `emit_exact_table_names`
 
-`true` にすると、テーブル名の単数化などの変換を抑制し、テーブル名寄りの構造体名になります。
+Disables singularization; struct names match table names more closely.
 
 ### `rename`
 
-特定カラム名 → Goフィールド名 を個別に上書きします。
+Overrides specific column → Go field names.
 
 ```yaml
 gen:
@@ -128,43 +148,43 @@ gen:
 
 ### `initialisms`
 
-頭字語（例：ID/URL/API など）の扱いを調整します。
+Controls handling of initialisms (e.g., ID, URL, API).
 
 ### `omit_unused_structs`
 
-`true` で、クエリで参照されないテーブル構造体等の生成を省略します。
+If `true`, omits structs for unused tables.
 
-## 6. NULL・ポインタ系の生成方針
+## 6. NULL / Pointer Behavior
 
 ### `emit_pointers_for_null_types`
 
-`true` で、NULL可能カラムを `sql.NullString` 系ではなく `*string` などのポインタで表現します。  
-（※どの `sql_package` で効くかはドライバ依存のため、採用時は生成結果の確認推奨）
+If `true`, nullable columns become pointers (`*string`) instead of `sql.NullString`.
+
+⚠️ Behavior depends on `sql_package`, so verify generated code.
 
 ### `emit_result_struct_pointers`
 
-`true` で、`Row` 構造体を値ではなくポインタとして返す形に寄せます。
+If `true`, query result structs are returned as pointers.
 
 ### `emit_params_struct_pointers`
 
-`true` で、`Params` 構造体を値ではなくポインタで受け取る形に寄せます。
+If `true`, parameter structs are passed as pointers.
 
-## 7. Enum補助コード
+## 7. Enum Helpers
 
 ### `emit_enum_valid_method`
 
-`true` で、Enum型に `Valid()` 的な検証メソッドが生成されます。
+Generates a `Valid()` method for enum types.
 
 ### `emit_all_enum_values`
 
-`true` で、Enumの全値を返すヘルパーが生成されます。
+Generates helper to return all enum values.
 
-## 8. 型マッピング（オーバーライド）
+## 8. Type Mapping (Overrides)
 
 ### `overrides`
 
-DB型 → Go型 を上書きできます（`db_type` 指定やカラム単位指定など）。  
-例：
+Overrides DB type → Go type mapping.
 
 ```yaml
 gen:
@@ -174,26 +194,25 @@ gen:
         go_type: "int"
 ```
 
-## 9. バッチ生成ファイル名（`batch.go` の制御）
+## 9. Batch File Naming
 
 ### `output_batch_file_name`
 
-バッチ関連の生成物のファイル名を変えられます（デフォルトが `batch.go`）。  
-※バッチ系アノテーションを使っていると生成される、という挙動とセットで覚えると良いです。
+Customizes the filename for batch-related generated code (default: `batch.go`).
 
-## 10. ビルドタグ・JSONタグケース
+## 10. Build Tags & JSON Case Style
 
 ### `build_tags`
 
-生成ファイルに Go ビルドタグを付けたいときに使います。
+Adds Go build tags to generated files.
 
 ### `json_tags_case_style`
 
-JSONタグのケース（camel/snake等）を指定します。
+Controls JSON tag casing (e.g., camelCase, snake_case).
 
-## まとめ（採用の指針）
+## Summary (Recommended Usage)
 
-- **DI/モック重視** → `emit_interface: true`
-- **構造体に json を付与したい** → `emit_json_tags: true`
-- **NULL表現をポインタ寄りにしたい** → `emit_pointers_for_null_types: true`（生成結果を確認）
-- **preparedを明示したい** → `emit_prepared_queries: true`（pgx/v5 なら基本は不要）
+- **For DI / mocking** → `emit_interface: true`
+- **For JSON serialization** → `emit_json_tags: true`
+- **For pointer-based NULL handling** → `emit_pointers_for_null_types: true` (verify output)
+- **For explicit prepared statements** → `emit_prepared_queries: true` (usually unnecessary with pgx/v5)
