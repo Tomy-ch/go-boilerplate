@@ -2,54 +2,47 @@
 
 [English](README.md) | 日本語
 
-## Responsibility
+## Role
 
-`internal/infrastructure/rdb` is a **subsystem for using RDB (PostgreSQL)** within the Infrastructure layer.
+`internal/infrastructure/rdb` is an **Infrastructure subsystem for using RDB (PostgreSQL)**.
 
-This directory is responsible for:
+This directory has the following responsibilities.
 
-- PostgreSQL connection management
-- SQL execution (via sqlc)
-- Repository / QueryService implementations
-- SQL logging and tracing (Observability)
+- Connection management to PostgreSQL
+- SQL execution (sqlc)
+- Repository / QueryService implementation
+- SQL execution logging and tracing (Observability)
 - PostgreSQL error normalization
 - Conversion between DB nullable types and Go types
 
-Domain / Usecase can use persistence and querying **without being aware of RDB implementation details**.
+Domain / Usecase can use **data persistence and querying without being aware of RDB implementation details**.
 
 ## RDB Architecture
 
-This directory is structured into the following layers:
+This directory is composed of the following layered structure.
 
-```txt
-Usecase
-   ↓
-Repository / QueryService
-   ↓
-loggingdb
-   ↓
-driver
-   ↓
-PostgreSQL
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
 ```
 
-Each layer has the following responsibilities:
+The responsibilities of each layer are as follows.
 
-|Layer|Responsibility|
+|Layer|Role|
 |---|---|
-|Repository|Aggregate persistence (implements Domain Repository Interface)|
-|QueryService|Read-only queries (implements Usecase Interface)|
-|loggingdb|SQL logging / tracing (Observability wrapper)|
-|driver|DB connection and transaction management|
-|PostgreSQL|Actual database|
+|Repository|Aggregate persistence (implementation of Domain Repository Interface)|
+|QueryService|Provides search-specific queries (implementation of Usecase Interface)|
+|loggingdb|Adds SQL logging / tracing (Observability wrapper)|
+|driver|DB connection management / transaction management|
+|PostgreSQL|Actual DB|
 
-Supporting components:
+The following exist as supporting components.
 
-|Component|Responsibility|
+|Component|Role|
 |---|---|
-|sqlc|Type-safe query execution generated from SQL|
+|sqlc|Type-safe query execution code generated from SQL|
 |conv|Conversion between nullable types and Go types|
-|pgerror|PostgreSQL error → application error normalization|
+|pgerror|PostgreSQL error → application error conversion|
 |testkit|RDB test utilities (real DB + rollback)|
 
 ## Directory Structure
@@ -57,12 +50,12 @@ Supporting components:
 ```txt
 internal/infrastructure/rdb
 
- ├ repository/        Repository implementations
- ├ query_service/     QueryService implementations
+ ├ repository/        Repository implementation
+ ├ query_service/     QueryService implementation
  ├ driver/            DB connection / transaction
  │   └ loggingdb/     SQL logging / tracing wrapper
- ├ sqlc/              sqlc generated code + SQL helpers
- ├ conv/              nullable conversion utilities
+ ├ sqlc/              sqlc generated code + SQL helper
+ ├ conv/              nullable type conversion
  ├ postgres/
  │   └ pgerror/       PostgreSQL error normalization
  └ testkit/           RDB test utilities
@@ -70,243 +63,198 @@ internal/infrastructure/rdb
 
 ## Repository
 
-Repository implements the **Domain Repository Interface**.
+Repository is the layer that **implements the Domain Repository Interface**.
 
-Responsibilities:
+Main responsibilities
 
-- Execute sqlc queries
-- Convert Row → Domain entities
-- Normalize DB errors
+- sqlc query execution
+- Row → Domain entity conversion
+- DB error normalization
 
-Important:
+Important: **Repository does not contain business logic**
 
-```txt
-Repository must not contain business logic
-```
+See details below.
 
-See details:
-
-[repository README](repository/README.ja.md)
+[repository directory README](repository/README.md)
 
 ## QueryService
 
-QueryService provides **read-only query operations** such as search and listing.
+QueryService is the layer that **provides read-only queries such as search and listing**.
 
-While Repository handles aggregate persistence,  
-QueryService is specialized for querying.
+While Repository handles Aggregate persistence,  
+QueryService is specialized for search use cases.
 
-Responsibilities:
+Main responsibilities
 
 - Execute search queries
 - Convert Row → Domain / DTO
 - Normalize DB errors
 
-Important:
+Important: **Search must be implemented in QueryService, not Repository**
 
-```txt
-Search logic must be implemented in QueryService, not Repository
-```
+See details below.
 
-See details:
-
-[query_service README](query_service/README.ja.md)
+[query_service directory README](query_service/README.md)
 
 ## sqlc
 
-`sqlc` generates Go code from SQL.
+`sqlc` is a tool that generates Go code from SQL.
 
-This directory provides:
+In this directory:
 
-- Generated query code
-- LIKE search helpers
-- Enum / state conversion helpers
+- sqlc generated code
+- LIKE search helper
+- Enum / state conversion helper
 
-Generated code is located at:
+are provided.
 
-```txt
-internal/infrastructure/rdb/sqlc/gen
-```
+Generated code is placed at:
 
-See details:
+`internal/infrastructure/rdb/sqlc/gen`
 
-[sqlc README](sqlc/README.md)
+See details below.
+
+[sqlc directory README](sqlc/README.md)
 
 ## conv
 
-`conv` provides **conversion utilities between nullable types and Go pointer types**.
+`conv` is a **utility for converting between nullable types and Go pointer types**.
 
-```txt
-sql.NullString ⇔ *string
-sql.NullTime   ⇔*time.Time
+```mermaid
+flowchart LR
+    A["sql.NullString"] <--> B["*string"]
+    C["sql.NullTime"] <--> D["*time.Time"]
 ```
 
 Used in Repository / QueryService implementations.
 
-See details:
+See details below.
 
-[conv README](conv/README.md)
+[conv directory README](conv/README.md)
 
 ## driver
 
-`driver` is the **lowest layer providing DB connection and transaction management**.
+`driver` is the **lowest layer that provides DB connection and transaction management**.
 
-Main features:
+Main functions
 
 - DatabaseDriver abstraction
-- Connection pool management
-- Transaction management (`tx.Manager`)
+- DB connection pool management
+- Transaction management (tx.Manager)
 - DBTX interface for sqlc
 
-Important:
+Important: **Transaction boundaries are managed by the Usecase layer**
 
-```txt
-Transaction boundaries are managed by the Usecase layer
-```
+See details below.
 
-See details:
-
-[driver README](driver/README.md)
+[driver directory README](driver/README.md)
 
 ## loggingdb
 
-`loggingdb` is an **Observability wrapper that adds SQL logging and tracing**.
+`loggingdb` is an **Observability wrapper that adds SQL execution logs and tracing**.
 
-```txt
-Repository / QueryService
-   ↓
-loggingdb
-   ↓
-driver
+```mermaid
+flowchart TB
+    Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"]
 ```
 
-Main features:
+Main functions
 
-- SQL logging
-- OpenTelemetry spans
-- Query latency measurement
-- Slow query detection
+- SQL log output
+- OpenTelemetry span
+- Query execution time measurement
+- slow query detection
 
-Important:
+Important:  
+**loggingdb does not execute DB operations (pure wrapper)**
 
-```txt
-loggingdb does not execute DB operations (pure wrapper)
-```
+See details below.
 
-See details:
-
-[loggingdb README](driver/loggingdb/README.md)
+[loggingdb directory README](driver/loggingdb/README.md)
 
 ## PostgreSQL Error Normalization
 
-`postgres/pgerror` converts **PostgreSQL-specific errors into application errors**.
+`postgres/pgerror` is a **layer that converts PostgreSQL-specific errors into application errors**.
 
-Repository / QueryService should use:
+Repository / QueryService use:
 
 ```go
 pgerror.NormalizeError(err)
 ```
 
-Typical mappings:
+to normalize DB errors.
 
-```txt
-sql.ErrNoRows      → ErrNotFound
-unique violation   → ErrConflict
-connection error   → ErrUnavailable
-others             → ErrInternal
+Main conversions
+
+```mermaid
+flowchart TB
+    A["sql.ErrNoRows"] -->|→| B["ErrNotFound"]
+    C["unique violation"] -->|→| D["ErrConflict"]
+    E["connection error"] -->|→| F["ErrUnavailable"]
+    G["others"] -->|→| H["ErrInternal"]
 ```
 
-See details:
+See details below.
 
-[pgerror README](postgres/pgerror/README.md)
+[pgerror directory README](postgres/pgerror/README.md)
 
 ## testkit
 
-`testkit` provides **utilities for testing with RDB**.
+`testkit` is a **utility for testing using RDB**.
 
-Main features:
+Main functions
 
 - Test DB initialization
-- LoggingDBProvider creation
-- Transaction-based tests (automatic rollback)
+- LoggingDBProvider generation
+- Transaction-based testing (automatic rollback)
 
-Test characteristics:
+Test characteristics
 
-```txt
-Real DB
-+
-Transaction rollback
-+
-No parallel execution (Tx-based)
-```
+- real DB
+- transaction rollback
+- parallel execution (Tx is serialized)
 
-See details:
+See details below.
 
-[testkit README](testkit/README.md)
+[testkit directory README](testkit/README.md)
 
 ## Design Principles
 
-This RDB subsystem is based on the following principles:
+This RDB subsystem is based on the following design principles.
 
 ### 1. Hiding DB Implementation
 
 Domain / Usecase do not depend on:
 
-```txt
-sql
-pgx
-sql.DB
-```
+- sql
+- pgx
+- sql.DB
 
 ### 2. Separation of Responsibility (Repository / QueryService)
 
-```txt
-Write / persistence → Repository
-Read / query        → QueryService
-```
+- Write / persistence → Repository
+- Search / read       → QueryService
 
-### 3. Centralized Transaction Boundary
+### 3. Centralized Transaction Boundary Management
 
-```txt
-Usecase manages transactions
-Infrastructure does not start transactions
-```
+Usecase manages Tx, and Infrastructure does not start Tx.
 
-### 4. Error Normalization
+### 4. DB Error Normalization
 
-PostgreSQL-specific errors are converted via:
+PostgreSQL-specific errors are converted into application-wide errors by `pgerror`.
 
-```txt
-pgerror
-```
+### 5. SQL Type Safety
 
-into application-level errors.
-
-### 5. Type-Safe SQL
-
-All SQL execution goes through:
-
-```txt
-sqlc
-```
+All SQL execution is performed through `sqlc`.
 
 ### 6. Observability
 
-SQL logging and tracing are handled by:
+SQL execution logging and tracing are provided by `loggingdb`.
 
-```txt
-loggingdb
-```
+### 7. Test Strategy (Integration-based)
 
-### 7. Test Strategy (Integration-first)
+Repository / QueryService tests are executed with:
 
-Repository / QueryService tests use:
-
-```txt
 real DB + rollback
-```
 
-This is safely implemented using:
-
-```txt
-testkit
-```
+This is safely implemented using `testkit`.

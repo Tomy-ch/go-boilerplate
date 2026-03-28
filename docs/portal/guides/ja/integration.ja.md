@@ -55,7 +55,7 @@ Presenter / Response serialization
 
 - **Domain / Usecase の Unit Test を中心にテストを書く**
 - Integration Test は **HTTP 境界の検証のみ**
-- E2E テストはこのリポジトリでは扱いません
+- E2E テストはこのプロジェクトでは扱いません
 
 この方針により次のメリットを得ます。
 

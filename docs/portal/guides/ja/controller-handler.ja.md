@@ -14,7 +14,7 @@ HTTPリクエストを受け取り、Usecase層へ処理を委譲する責務を
 
 Controllerは **アプリケーションの入出力境界** です。
 
-## このリポジトリでの役割
+## このプロジェクトでの役割
 
 internal/controller/handler は、CLI（Cobra）から起動される **サーバーのエントリポイント（Controller層）**です。
 

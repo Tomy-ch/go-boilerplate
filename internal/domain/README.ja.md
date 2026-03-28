@@ -6,19 +6,28 @@
 - 外界（HTTP / DB / UI）への関心は一切持たず、**純粋なモデルと言語** で振る舞いを定義する。
 - 変更に最も強い層。**ここが壊れない限りプロダクトは保守できる** という前提で守る。
 
-## このboilerplateでの役割
+## このプロジェクトでの役割
 
 - `internal/domain/<bounded-context>/<aggregate>/` 配下に **Entity / ValueObject / DomainService / Repository(IF)** を配置する。
 
 例）`internal/domain/user/`
 
-```text
-user_domain.go       ← Aggregate Root (User)
-value.go             ← 値オブジェクト
-service.go           ← Domain Service
-user_repository.go   ← Repository Interface
-error.go             ← ドメインエラー
-constant.go          ← 検証定数
+```mermaid
+flowchart TB
+    Root["Aggregate: user"]
+    A["user_domain.go (Aggregate Root)"]
+    B["value.go (ValueObject)"]
+    C["service.go (Domain Service)"]
+    D["user_repository.go (Repository IF)"]
+    E["error.go (Domain Error)"]
+    F["constant.go (Validation Const)"]
+
+    Root --> A
+    Root --> B
+    Root --> C
+    Root --> D
+    Root --> E
+    Root --> F
 ```
 
 - **副作用を持たない関数（純関数）** でルールを記述するのが原則。  
@@ -206,7 +215,7 @@ Usecase / Repository は
 
 ## Aggregate Design
 
-この boilerplate では **Aggregate を設計単位**とする。
+このプロジェクトでは **Aggregate を設計単位**とする。
 
 ```text
 internal/domain/<bounded-context>/<aggregate>/
@@ -240,8 +249,9 @@ type Repository interface {
 
 変更は **Root経由のみ**
 
-```text
-Usecase → Aggregate Root → Entity
+```mermaid
+flowchart LR
+    Usecase --> Root["Aggregate Root"] --> Entity
 ```
 
 ### Aggregate Boundary
@@ -250,8 +260,9 @@ Aggregate は **小さく保つ**
 
 基本原則：
 
-```text
-1 Aggregate = 1 Transaction Boundary
+```mermaid
+flowchart TB
+    Rule["1 Aggregate = 1 Transaction Boundary"]
 ```
 
 避ける：
@@ -399,21 +410,25 @@ require.ErrorIs(t, err, ErrInvalidEmail)
 
 ### Getter 契約テスト
 
-```text
-ID()
-FirstName()
-Email()
-CreatedAt()
-UpdatedAt()
+対象：
+
+```go
+func (u *User) ID() uuid.UUID
+func (u *User) FirstName() string
+func (u *User) Email() string
+func (u *User) CreatedAt() time.Time
+func (u *User) UpdatedAt() time.Time
 ```
 
 ### Immutable 保証テスト
 
+対象：
+
 pointer型：
 
-```text
-*string
-*time.Time
+```go
+func (u *User) Building() *string
+func (u *User) DeletedAt() *time.Time
 ```
 
 検証：
@@ -427,14 +442,10 @@ Entity内部は変化しない。
 
 例：
 
-```text
-FullName()
-```
-
-結果：
-
-```text
-firstName + " " + lastName
+```go
+func (u *User) FullName() string {
+    return u.firstName + " " + u.lastName
+}
 ```
 
 ### エラー分類テスト
@@ -506,8 +517,9 @@ func newTestUser(t *testing.T)*User {
 
 状態遷移テスト：
 
-```text
-Before → Behavior → After
+```mermaid
+flowchart LR
+    Before --> Behavior --> After
 ```
 
 例：

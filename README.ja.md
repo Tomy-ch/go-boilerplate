@@ -1,14 +1,14 @@
 # go-boilerplate
 
-![Go Version](https://img.shields.io/github/go-mod/go-version/Tomy-ch/boilerplate-go-echo-oapi-sqlc)  
-![License](https://img.shields.io/github/license/Tomy-ch/boilerplate-go-echo-oapi-sqlc)  
-![CI](https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc/actions/workflows/ci.yml/badge.svg)
+![Go Version](https://img.shields.io/github/go-mod/go-version/Tomy-ch/go-boilerplate)  
+![License](https://img.shields.io/github/license/Tomy-ch/go-boilerplate)  
+![CI](https://github.com/Tomy-ch/go-boilerplate/actions/workflows/ci.yml/badge.svg)
 
 日本語 | [English](README.md)
 
 **Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture** をベースに構築されたバックエンド用のベースプロジェクトです。
 
-この boilerplate は以下を統合しています。
+このプロジェクトは以下を統合しています。
 
 - `uber/fx`（Dependency Injection）
 - `sqlc`（型安全な SQL）
@@ -22,8 +22,8 @@
 以下のコマンドでローカル起動できます。
 
 ```bash
-git clone <https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc.git>
-cd boilerplate-go-echo-oapi-sqlc
+git clone <https://github.com/Tomy-ch/go-boilerplate.git>
+cd go-boilerplate
 
 make install-tools
 make serve
@@ -95,11 +95,61 @@ controller → usecase → domain ← infrastructure
 - Infrastructure は Domain Interface を実装する
 - Controller にビジネスロジックは置かない
 
-詳細は以下を参照してください。
+```mermaid
+flowchart TB
 
-```txt
-docs/architecture.md
+Client --> Controller
+
+Controller --> Usecase
+Job --> Usecase
+
+Usecase --> Domain
+Usecase --> Repository
+Usecase --> QueryService
+
+Repository --> Domain
+QueryService --> Domain
+
+Repository --> DB
+QueryService --> DB
+
+Repository --> Infra
+QueryService --> Infra
+
+Infra --> Domain
+Infra --> External["External Systems"]
 ```
+
+詳細は[docs/architecture.md](docs/architecture.md)を参照してください。
+
+## アーキテクチャガバナンス
+
+本プロジェクトでは、アーキテクチャの一貫性を維持するために以下の方針を採用しています。
+
+### 基本方針
+
+- レイヤー境界は厳密に守る
+- Domain の純粋性を維持する
+- Infrastructure の詳細を上位層に漏らさない
+
+### 例外の扱い
+
+例外的な実装が必要な場合：
+
+- 理由を明文化する（コメント or ADR）
+- 一時的な回避か恒久対応かを明確にする
+- レビューで必ず合意を取る
+
+### レビュー観点
+
+- レイヤー違反がないか
+- Domain にビジネスロジックが閉じているか
+- Infrastructure 依存が漏れていないか
+
+### AI利用時の注意
+
+- 生成コードがアーキテクチャを破っていないか確認する
+- ルールに従わないコードは修正する
 
 ## API 開発ポリシー（OpenAPI First）
 
@@ -107,25 +157,20 @@ docs/architecture.md
 
 API を変更する場合は以下の順序で行います。
 
-1. OpenAPI 定義を変更する
+1. OpenAPI 定義(`openapi/`)を変更する
+2. コードを生成する
 
-```txt
-openapi/
-```
+    ```sh
+    make gen-api
+    ```
 
-1. コードを生成する
-
-```sh
-make gen-api
-```
-
-1. handler / usecase を実装する
+3. handler / usecase を実装する
 
 生成されたコードは **手動編集してはいけません**。
 
 ## ブランチ戦略
 
-このリポジトリでは **release 中心のブランチモデル** を採用しています。
+このプロジェクトでは **release 中心のブランチモデル** を採用しています。
 
 ルール：
 
@@ -197,15 +242,11 @@ make gen-api
 
 詳細なドキュメントは `docs/` にあります。
 
-- Architecture  
-- Development Workflow  
-- Architectural Rules  
-- Design Decisions  
-- Versioning Policy  
-
-```txt
-docs/
-```
+- [Architecture](docs/ja/architecture.ja.md)  
+- [Development Workflow](docs/ja/development-flow.ja.md)  
+- [Architectural Rules](docs/ja/rules.ja.md)  
+- [Design Decisions](docs/ja/decisions.ja.md)  
+- [Versioning Policy](docs/ja/project/versioning.ja.md)  
 
 ## 想定システム
 
@@ -249,7 +290,7 @@ Dependency Injection により
 
 ## メンテナーポリシー / 免責
 
-このリポジトリは **作者個人によって管理されています**。
+このプロジェクトは **作者個人によって管理されています**。
 
 特定の組織とは関係ありません。
 
@@ -300,8 +341,7 @@ Dependency Injection により
 
 ## AI エージェント向けドキュメント
 
-このリポジトリには  
-AI エージェント向けのドキュメントも含まれています。
+このプロジェクトには、AI エージェント向けのドキュメントも含まれています。
 
 ただし、このプロジェクトは**AIツールなしでも完全に保守可能**な設計になっています。
 

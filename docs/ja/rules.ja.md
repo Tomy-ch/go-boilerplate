@@ -1,6 +1,6 @@
 # アーキテクチャルール
 
-このドキュメントは、このリポジトリにおける **破ってはいけないアーキテクチャルール** を定義します。
+このドキュメントは、このプロジェクトにおける **破ってはいけないアーキテクチャルール** を定義します。
 
 これらのルールは **人間の開発者** と **AIエージェント** の両方が必ず遵守する必要があります。
 
@@ -12,18 +12,19 @@
 
 ### 許可される依存
 
-```txt
-controller → usecase
-usecase → domain
-infrastructure → domain
+```mermaid
+flowchart LR
+    Controller --> Usecase --> Domain
+    Infrastructure --> Domain
 ```
 
 ### 禁止される依存
 
-```txt
-domain → infrastructure
-domain → controller
-usecase → controller
+```mermaid
+flowchart LR
+    Domain -.-> Infra["infrastructure"]
+    Domain -.-> Controller
+    Usecase -.-> Controller
 ```
 
 **domain レイヤは常に最も独立したレイヤである必要があります。**
@@ -31,6 +32,17 @@ usecase → controller
 ### 理由
 
 このルールにより、ドメインモデルがフレームワークやインフラストラクチャに依存することを防ぎます。
+
+## Usecase 依存ルール
+
+Usecase は Infrastructure に直接依存してはなりません。
+
+- 依存は必ず Boundary（interface）を通す
+- Infrastructure 実装は DI によって注入される
+
+```txt
+Usecase → Boundary(interface) → Infrastructure
+```
 
 ## 生成コードルール
 
@@ -65,14 +77,9 @@ usecase → controller
 
 API の変更は必ず **OpenAPI 定義から開始**します。
 
-```txt
-OpenAPI
-  ↓
-oapi-codegen
-  ↓
-Server Interface
-  ↓
-Handler Implementation
+```mermaid
+flowchart TB
+    OpenAPI --> Gen["oapi-codegen"] --> IF["Server Interface"] --> Handler["Handler Implementation"]
 ```
 
 ### OpenAPI-first ルール
@@ -94,14 +101,9 @@ OpenAPI 定義は **APIの唯一のソース（Single Source of Truth）** で�
 
 ### 典型的なフロー
 
-```txt
-Migration
-↓
-Schema change
-↓
-SQL query update
-↓
-sqlc regeneration
+```mermaid
+flowchart TB
+    Migration --> Schema["Schema change"] --> SQL["SQL query update"] --> Gen["sqlc regeneration"]
 ```
 
 これにより、データベースの履歴を常に再現可能に保つことができます。
@@ -129,6 +131,11 @@ Domain レイヤでは以下の処理を **行ってはいけません**。
 - ビジネスルール
 - Repository インターフェース
 
+## Context 伝搬ルール
+
+- context.Context は必ず下位レイヤへ伝搬する
+- 新規に context を生成してはいけない（例: context.Background）
+
 ## Infrastructure 実装ルール
 
 Infrastructure コンポーネントは  
@@ -145,6 +152,27 @@ Infrastructure コンポーネントは
 - database adapter
 - 外部 API クライアント
 - repository 実装
+
+## Repository / QueryService ルール
+
+- Repository は Aggregate 永続化のみを扱う
+- 検索・一覧取得は QueryService に実装する
+
+禁止：
+
+- Repository に検索ロジックを書くこと
+- QueryService にドメインロジックを書くこと
+
+## DTO / 型境界ルール
+
+- OpenAPI の型を Usecase に渡してはいけない
+- Controller で DTO に変換すること
+- Domain は OpenAPI 型を知らない
+
+## Infrastructure 型漏洩禁止
+
+- sqlc の生成型を Usecase / Domain に渡してはいけない
+- 必ず Domain Entity または DTO に変換する
 
 ## レイヤ責務ルール
 
@@ -170,6 +198,11 @@ Controller に **ビジネスロジックを書いてはいけません**。
 
 Usecase は **直接 Infrastructure に依存することを避けるべき**です。
 
+### トランザクションルール
+
+- トランザクションは Usecase 層でのみ開始する
+- Infrastructure / Repository はトランザクションを開始してはいけない
+
 ## AIエージェントルール
 
 AI が生成するコードも、すべてのアーキテクチャルールに従う必要があります。
@@ -183,10 +216,8 @@ AI エージェントは以下を守る必要があります。
 
 コード生成を行う前に、AI エージェントは以下のドキュメントを参照してください。
 
-```txt
-architecture.ja.md
-development-flow.ja.md
-```
+- `architecture.ja.md`
+- `development-flow.ja.md`
 
 ## Summary
 

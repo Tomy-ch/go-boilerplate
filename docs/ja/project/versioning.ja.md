@@ -1,6 +1,6 @@
 # バージョン管理方針（Versioning Policy）
 
-本リポジトリは **Semantic Versioning（SemVer）** を採用しています。
+プロジェクトは **Semantic Versioning（SemVer）** を採用しています。
 
 - MAJOR
 - MINOR
@@ -19,7 +19,7 @@
 
 ## リリースブランチ戦略
 
-本リポジトリは **release-centric branching model** を採用しています。
+プロジェクトは **release-centric branching model** を採用しています。
 
 - 機能開発は最新の `release/*` ブランチから分岐します
 - `develop`, `staging`, `production` へは release 経由でのみ反映されます

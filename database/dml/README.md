@@ -1,10 +1,12 @@
-# SQLC ベストプラクティス
+# SQLC Best Practices
 
-`sqlc` でのコード生成を前提に、**PostgreSQL + Go** でよく使う記法だけを最小限まとめたメモです。
+English | [日本語](README.ja.md)
 
-## 1. `-- name:` と実行種別
+This is a minimal reference summarizing only commonly used patterns for **PostgreSQL + Go** assuming code generation with `sqlc`.
 
-各クエリの先頭に「クエリ名 + 実行種別」をコメントで付与します。
+## 1. `-- name:` and Execution Type
+
+Add a comment with "query name + execution type" at the beginning of each query.
 
 ```sql
 -- name: GetUser :one
@@ -15,18 +17,18 @@ INSERT INTO users (name, email)
 VALUES (sqlc.arg(name), sqlc.arg(email));
 ```
 
-代表的な種別：
+Representative types:
 
-- `:one`     … 単一レコードを返す  
-- `:many`    … 複数レコードを返す  
-- `:exec`    … 結果なし（INSERT/UPDATE/DELETE）  
-- `:execrows`… `RowsAffected` を返す  
-- `:batch`   … 複数クエリをバッチ実行  
+- `:one`     … returns a single record  
+- `:many`    … returns multiple records  
+- `:exec`    … no result (INSERT/UPDATE/DELETE)  
+- `:execrows`… returns `RowsAffected`  
+- `:batch`   … executes multiple queries in batch  
 
-## 2. `sqlc.arg()` でパラメータ名を固定する
+## 2. Fix Parameter Names with `sqlc.arg()`
 
-`sqlc.arg()` を使うと、生成される構造体のフィールド名を制御できます。  
-`@param_name` 形式も同じ意味で利用可能です。
+Using `sqlc.arg()` allows you to control the field names of generated structs.  
+The `@param_name` format can also be used with the same meaning.
 
 ```sql
 WHERE age > sqlc.arg(min_age)
@@ -38,22 +40,22 @@ type GetUsersParams struct {
 }
 ```
 
-ページングなど、nullable を許容したいパラメータでも `sqlc.arg()` を使います。
+Use `sqlc.arg()` even for parameters that allow nullable values such as pagination.
 
 ```sql
 LIMIT  sqlc.arg(limit_param)
 OFFSET sqlc.arg(offset_param)
 ```
 
-また、PostgreSQL では、@を使うことでも同様にパラメータ名を指定できます。
+Also, in PostgreSQL, you can specify parameter names using `@` as well.
 
 ```sql
 WHERE age > @min_age
 ```
 
-## 3. `sqlc.embed()` で JOIN 結果をネスト
+## 3. Nest JOIN Results with `sqlc.embed()`
 
-JOIN 結果をネストした構造体で受け取りたい場合に使います。
+Use this when you want to receive JOIN results as nested structs.
 
 ```sql
 -- name: GetUserWithProfile :one
@@ -70,9 +72,9 @@ type GetUserWithProfileRow struct {
 }
 ```
 
-## 4. `sqlc.narg()` で NULL 許容パラメータ
+## 4. Nullable Parameters with `sqlc.narg()`
 
-NULL を取り得る条件には `sqlc.narg()` を使います。
+Use `sqlc.narg()` for conditions that can take NULL.
 
 ```sql
 WHERE deleted_at IS sqlc.narg(deleted_at)
@@ -84,9 +86,9 @@ type GetUsersParams struct {
 }
 ```
 
-## 5. CAST で Go 側の型を補強する
+## 5. Reinforce Go Types with CAST
 
-PostgreSQL 側で明示的に型キャストすると、生成される Go の型も揃えやすくなります。
+Explicit type casting on the PostgreSQL side helps align generated Go types.
 
 ```sql
 WHERE id = sqlc.arg(user_id)::uuid
@@ -98,9 +100,9 @@ type GetUserParams struct {
 }
 ```
 
-## 6. `overrides` で生成型を上書きする
+## 6. Override Generated Types with `overrides`
 
-`sqlc.yaml`（例: `database/sqlc/sqlc.template.yaml`）で DB 型と Go 型の対応を上書きできます。
+You can override DB type to Go type mappings in `sqlc.yaml` (e.g. `database/sqlc/sqlc.template.yaml`).
 
 ```yaml
 version: "2"
@@ -116,9 +118,9 @@ sql:
             go_type: "int"
 ```
 
-## 7. 配列パラメータは `ANY()` と組み合わせる
+## 7. Combine Array Parameters with `ANY()`
 
-複数 ID をまとめて渡したい場合は、スライス + `ANY()` を使います。
+To pass multiple IDs at once, use slices + `ANY()`.
 
 ```sql
 WHERE id = ANY(sqlc.arg(user_ids)::uuid[])
@@ -130,9 +132,9 @@ type GetUsersParams struct {
 }
 ```
 
-## 8. SELECT カラム名 = Go フィールド名
+## 8. SELECT Column Names = Go Field Names
 
-SELECT するカラム名が、そのまま `Row` 構造体のフィールド名になります。
+Column names selected become field names of the `Row` struct as-is.
 
 ```sql
 -- name: GetUserEmailAndName :one
@@ -146,9 +148,9 @@ type GetUserEmailAndNameRow struct {
 }
 ```
 
-## 9. 複雑な検索はサブクエリ / CTE で整理
+## 9. Organize Complex Queries with Subqueries / CTE
 
-長くなりがちな検索クエリは、サブクエリや CTE で分割して可読性を確保します。
+Split complex queries using subqueries or CTEs to maintain readability.
 
 ```sql
 -- name: SearchUsers :many
@@ -159,18 +161,18 @@ SELECT * FROM (
 ORDER BY name;
 ```
 
-## 推奨ルール（超要約）
+## Recommended Rules (Concise Summary)
 
-1. **必須**: すべてのクエリに `-- name:` + 種別を付ける  
-2. **必須**: パラメータは必ず `sqlc.arg()` / `@param` で命名する  
-3. **必須**: NULL 許容は `sqlc.narg()` を使う  
-4. **推奨**: JOIN は `sqlc.embed()` でネストする  
-5. **推奨**: 型を合わせたいところは CAST を明示  
-6. **推奨**: 配列は `ANY()` + `[]T` で扱う  
-7. **推奨**: 複雑なクエリはサブクエリ/CTE で切り出す  
+1. **Required**: Add `-- name:` + type to all queries  
+2. **Required**: Always name parameters using `sqlc.arg()` / `@param`  
+3. **Required**: Use `sqlc.narg()` for nullable parameters  
+4. **Recommended**: Use `sqlc.embed()` for JOIN nesting  
+5. **Recommended**: Explicitly use CAST where types need alignment  
+6. **Recommended**: Use `ANY()` + `[]T` for arrays  
+7. **Recommended**: Split complex queries with subqueries/CTE  
 
-## 参考リンク
+## Reference Links
 
-- [sqlc 公式ドキュメント](https://docs.sqlc.dev/en/latest/)
-- [PostgreSQL 型一覧](https://www.postgresql.org/docs/current/datatype.html)
-- [Go `database/sql` パッケージ](https://pkg.go.dev/database/sql)
+- [sqlc official documentation](https://docs.sqlc.dev/en/latest/)
+- [PostgreSQL data types](https://www.postgresql.org/docs/current/datatype.html)
+- [Go `database/sql` package](https://pkg.go.dev/database/sql)

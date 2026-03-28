@@ -1,13 +1,13 @@
-# system パッケージ
+# system Package
 
-概要: このパッケージは、時刻の取得をはじめとするシステム関連の機能を提供します。環境ごとやサービスごとに適切なモジュールを追加してください。
+Overview: This package provides system-related functionality such as obtaining the current time. Add appropriate modules for each environment or service.
 
-`Clock` を実装し、現在の時刻を取得します。
+Implements `Clock` and retrieves the current time.
 
-## 提供する主な機能
+## Main Features Provided
 
-- `NewClock()` 関数: 現在の時刻を取得します。
+- `NewClock()` function: Retrieves the current time.
 
-## 使い方
+## Usage
 
-システムへの取り込みは、`internal/di/module/infrastructure.go` の `system` に実装を追加してください。
+To integrate into the system, add the implementation to `system` in `internal/di/module/infrastructure.go`.

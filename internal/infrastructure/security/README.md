@@ -1,17 +1,17 @@
-# security パッケージ
+# security Package
 
-概要: このパッケージは、暗号化をはじめとするセキュリティ関連の機能を提供します。
+Overview: This package provides security-related functionality, including encryption.
 
-`BcryptHasher` を実装し、パスワードのハッシュ化と比較を行います。
+It implements `BcryptHasher` to perform password hashing and comparison.
 
-## 提供する主な機能
+## Main Features Provided
 
-- `NewBcryptHasher()` 関数: パスワードをハッシュ化するための `BcryptHasher` を生成します。
-- `Hash(password string) (string, error)` メソッド: パスワードをハッシュ化します。
-- `Compare(hash, password string) (bool, error)` メソッド: ハッシュ化されたパスワードと平文のパスワードを比較します。
+- `NewBcryptHasher()` function: Generates a `BcryptHasher` for hashing passwords.
+- `Hash(password string) (string, error)` method: Hashes a password.
+- `Compare(hash, password string) (bool, error)` method: Compares a hashed password with a plaintext password.
 
-## 使い方
+## Usage
 
-環境ごとやサービスごとに適切な `BcryptHasher` を実装し、アプリケーションのセキュリティを確保します。
+Implement an appropriate `BcryptHasher` for each environment or service to ensure application security.
 
-システムへの取り込みは、`internal/di/module/infrastructure.go` の `security` に実装を追加してください。
+To integrate into the system, add the implementation to `security` in `internal/di/module/infrastructure.go`.

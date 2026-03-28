@@ -6,12 +6,9 @@
 
 ## アーキテクチャ上の位置
 
-```txt
-Repository
-   ↓
-pgerror
-   ↓
-PostgreSQL driver (pgx / pgconn)
+```mermaid
+flowchart TB
+    Repo["Repository"] --> PgErr["pgerror"] --> Driver["PostgreSQL driver (pgx / pgconn)"]
 ```
 
 pgerror は **DB driver が返すエラーをアプリケーション共通エラーへ変換するレイヤー**です。
@@ -47,12 +44,9 @@ func NormalizeError(err error) error
 
 処理の流れ:
 
-```txt
-DB error
-   ↓
-NormalizeError
-   ↓
-AppError (apperror)
+```mermaid
+flowchart TB
+    DBErr["DB error"] --> Norm["NormalizeError"] --> App["AppError (apperror)"]
 ```
 
 この関数は **Infrastructure 層から Usecase 層へ返すエラーの唯一の正規化ポイント**として使用することが推奨されます。
@@ -71,13 +65,7 @@ AppError (apperror)
 |22P02|invalid text representation|InvalidArgument|
 |42501|insufficient privilege|PermissionDenied|
 
-これらに該当しない PostgreSQL エラーは
-
-```txt
-Internal
-```
-
-として扱われます。
+これらに該当しない PostgreSQL エラーは `Internal` エラーへ変換されます。
 
 ## 特別処理
 
@@ -85,10 +73,9 @@ Internal
 
 `sql.ErrNoRows` は PostgreSQL SQLSTATE ではないため特別扱いされます。
 
-```txt
-sql.ErrNoRows
-   ↓
-NotFound
+```mermaid
+flowchart TB
+    NoRows["sql.ErrNoRows"] --> NotFound["NotFound"]
 ```
 
 これにより Repository 層は
@@ -109,12 +96,10 @@ func IsUnavailable(err error) bool
 
 以下のエラーが接続不可として扱われます。
 
-```txt
-context.DeadlineExceeded
-net.Error (timeout)
-driver.ErrBadConn
-PostgreSQL SQLSTATE 08XXX
-```
+- context.DeadlineExceeded
+- net.Error (timeout)
+- driver.ErrBadConn
+- PostgreSQL SQLSTATE 08XXX
 
 この判定は
 
@@ -126,15 +111,7 @@ PostgreSQL SQLSTATE 08XXX
 
 ## エラーラッピング
 
-pgerror は元の DB エラーを保持したまま
-
-```txt
-apperror
-+ 
-original error message
-```
-
-の形で `xerrors.Wrap` によりラップします。
+pgerror は元の DB エラーを保持したまま、`apperror` + `original error message`の形で `xerrors.Wrap` によりラップします。
 
 これにより
 
@@ -179,22 +156,8 @@ original error message
 
 SQLSTATE `08XXX` は PostgreSQL 固有の接続エラーです。
 
-他 DB (MySQL / TiDB など) に移行する場合は
-
-```txt
-pgerror
-```
-
-の実装を差し替える必要があります。
+他 DB (MySQL / TiDB など) に移行する場合は`pgerror`の実装を差し替える必要があります。
 
 ### 上位レイヤーで DB 判定をしない
 
-Usecase / Domain 層で
-
-```txt
-SQLSTATE
-pgconn
-pgx
-```
-
-などの DB 依存ロジックを書かないようにしてください。
+Usecase / Domain 層で`SQLSTATE` / `pgconn` / `pgx`などの DB 依存ロジックを書かないようにしてください。

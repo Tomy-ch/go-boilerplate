@@ -1,44 +1,46 @@
 # Go Version Upgrade Procedure
 
-This document describes the **procedure for upgrading the Go version** used in this project.
+This document explains the **procedure for updating the Go version** in this project.
 
-Upgrading Go may affect several parts of the system, including:
+Updating the Go version affects the following.
 
 - Go toolchain
 - Dependency packages
 - Go tools
 - Code generation
-- CI configuration
+- CI
 - Docker images
 
-Therefore, follow the steps below when upgrading the Go version.
+Therefore, update according to the following steps.
 
 ## 1. Check Release Notes
 
-Before upgrading, review the official Go release notes for the target version.
+Go programming language
 
-Items to check:
+Check the Release Notes of the target version.
 
-- Changes to the language specification
+Main items to check
+
+- Changes to the language spec
 - Breaking changes in the standard library
-- Updates to `go vet`
-- Toolchain changes
+- Changes to `go vet`
+- Changes to the toolchain
 
-Example:
+Example
 
 ```text
-https://go.dev/doc/devel/release
+<https://go.dev/doc/devel/release>
 ```
 
 ## 2. Update `.go-version`
 
-This project manages the Go version using the `.go-version` file.
+This project manages the Go version using `.go-version`.
 
 ```text
 .go-version
 ```
 
-Example:
+Example
 
 ```text
 1.26.1
@@ -46,87 +48,86 @@ Example:
 
 ## 3. Update Local Go Environment
 
-This project **recommends using goenv** (but it is not required).
+This project **recommends using goenv (not mandatory)**.
 
-### Using goenv
+### When using goenv
 
 ```sh
 goenv install 1.26.1
 goenv local 1.26.1
 ```
 
-Verify the installation:
+Verification
 
 ```sh
 go version
 ```
 
-### Without goenv
+### When not using goenv
 
-If you use Homebrew:
+If using Homebrew
 
 ```sh
 brew update
 brew upgrade go
 ```
 
-Verify:
+Verification
 
 ```sh
 go version
 ```
 
-## 4. Update Go Version in CI
+## 4. Update Go version in CI
 
-Update the Go version used in GitHub Actions.
+Update the Go version in GitHub Actions.
 
-Target directory:
+Target directory
 
 ```text
 .github/workflows
 ```
 
-Example:
+Example
 
 ```yaml
+
 - uses: actions/setup-go@v6
   with:
     go-version-file: go.mod
     cache: true
 ```
 
-## 5. Update Go Version in `go.mod`
-
-Update the Go version declared in `go.mod`.
+## 5. Update Go version in `go.mod`
 
 ```sh
 go mod edit -go=1.26.1
 ```
 
-## 6. Update Dependencies and Vendor
+## 6. Update dependencies and vendor
 
-This project uses the **Makefile task `tidy-lib`** to manage dependencies.
+This project uses **Makefile task `tidy-lib`** for dependency management.
 
 ```sh
 make tidy-lib
 ```
 
-This task runs:
+This task executes the following.
 
 - `go mod tidy`
 - `go mod vendor`
 
-## 7. Reinstall Go Tools
+## 7. Reinstall Go tools
 
-When upgrading Go, previously installed tools remain built with the older Go version.
+When the Go version is updated, Go tools remain as binaries built with the old Go version.
 
-Reinstall them to ensure compatibility.
+Therefore, reinstall the tools.
 
 ```sh
 make install-tools
 ```
 
-Tools typically installed include:
+Main tools installed
 
 - gopls
 - golangci-lint
@@ -136,45 +137,41 @@ Tools typically installed include:
 - impl
 - goplay
 
-## 8. Update Docker Image
+## 8. Update Docker image
 
-Update the Go version used in the Dockerfile.
+Update the Go version in the Dockerfile.
 
-Example:
+Example
 
 ```dockerfile
 FROM golang:1.26.1
 ```
 
-## 9. Rebuild Docker Containers
+## 9. Rebuild Docker containers
 
-This project provides Makefile tasks to rebuild Docker images.
+In this project, Docker build can be executed with the following commands.
 
-Server containers:
+Server containers
 
 ```sh
 make serve-build
 ```
 
-Tool containers:
+Tool containers
 
 ```sh
 make tools-rebuild
 ```
 
-## 10. Regenerate Code
+## 10. Re-run code generation
 
-Changes in the Go version may affect generated code.
-
-Run code generation again.
+Generated code may change due to Go version changes.
 
 ```sh
 make gen
 ```
 
-## 11. Run Tests
-
-Execute the test suite.
+## 11. Run tests
 
 ```sh
 make test
@@ -186,17 +183,15 @@ or
 go test ./...
 ```
 
-## 12. Run Lint
-
-Run lint checks to ensure code quality.
+## 12. Run lint
 
 ```sh
 make lint
 ```
 
-## 13. Final Verification
+## 13. Final check
 
-Ensure all the following commands succeed.
+Ensure that all of the following commands succeed.
 
 ```sh
 make tidy-lib
@@ -210,17 +205,17 @@ make tools-rebuild
 
 ## Upgrade Checklist
 
-When upgrading the Go version, verify the following:
+When updating the Go version, check the following.
 
-- [ ] Review Go release notes
+- [ ] Check Release Notes
 - [ ] Update `.go-version`
-- [ ] Update local Go environment
-- [ ] Update Go version in CI
-- [ ] Update Go version in `go.mod`
+- [ ] Update local Go
+- [ ] Update CI Go version
+- [ ] Update `go.mod` Go version
 - [ ] Run `make tidy-lib`
 - [ ] Run `make install-tools`
 - [ ] Update Dockerfile
 - [ ] Rebuild Docker containers
-- [ ] Regenerate code
-- [ ] Run tests
+- [ ] Re-run code generation
+- [ ] Run test
 - [ ] Run lint

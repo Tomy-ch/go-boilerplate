@@ -1,24 +1,23 @@
 # `conv` Package
 
-English | [日本語](README.ja.md)
+[English](README.md) | 日本語
 
-Overview:  
-The `conv` package provides utility functions to convert between `database/sql` nullable types (`sql.NullString`, `sql.NullInt16`, `sql.NullInt64`, `sql.NullBool`, `sql.NullFloat64`, `sql.NullTime`) and Go pointer types (`*string`, `*int64`, etc.), as well as `googleUUID.NullUUID`.
+Overview: Provides utility functions to convert between `database/sql` nullable types (`sql.NullString`, `sql.NullInt16`, `sql.NullInt64`, `sql.NullBool`, `sql.NullFloat64`, `sql.NullTime`) and Go pointer types (`*string`, `*int64`, etc.), as well as `googleUUID.NullUUID`.
 
-This package is primarily used as an **Infrastructure-layer utility combined with sqlc-generated code**.
+This package is primarily an **Infrastructure-layer utility used in combination with sqlc-generated code**.
 
 ## Responsibility
 
-This package acts as a bridge between **nullable database values** and **pointer values used in application code**.
+This package bridges nullable values in the database and pointer values in application code.
 
 Primary responsibilities:
 
-- Convert nullable values retrieved from the database into pointer types that are easier to use in application code
+- Convert nullable values retrieved from the database into pointer types that are easy to use in application code
 - Convert pointer values created in the application into `sql.NullXxx` types for database writes
-- Encapsulate NULL-handling logic into reusable functions to prevent duplication
-- Clearly separate database-specific types from application-level types
+- Encapsulate NULL handling into functions to prevent duplicated logic
+- Clearly separate database-specific types from application types
 
-This design allows **NULL handling to be centralized in a single place**.
+This allows **NULL handling to be centralized in a single place**.
 
 ## Supported Types
 
@@ -37,65 +36,69 @@ This package handles the following nullable types.
 
 - `github.com/google/uuid.NullUUID`
 
-UUID values are converted to and from the application's `pkg/uuid.UUID`.
+UUID is converted to and from the application's `pkg/uuid.UUID`.
 
-## Conversion Patterns
+## Provided Conversion Patterns
 
-For each supported type, **symmetric conversion APIs** are provided.
+For each type, **symmetric conversion APIs** are provided.
 
-```txt
-NullXxx  → *T
-*T       → NullXxx
-T        → NullXxx
+```mermaid
+flowchart TB
+    A["NullXxx"] --> B["*T"]
+    B --> C["NullXxx"]
+    D["T"] --> C
 ```
 
-Example (string):
+Example (string)
 
-```txt
-StringPtrFromNull
-NullStringFromPtr
-NewNullString
+```mermaid
+flowchart TB
+    A["StringPtrFromNull"]
+    B["NullStringFromPtr"]
+    C["NewNullString"]
 ```
 
-This symmetric design allows the same rules to be used for both reads and writes.
+This symmetric design allows the same rules to be used for both reading and writing.
 
 ## Usage (Behavior-Based)
 
-### Read Path
+### Read Side
 
-Convert nullable values retrieved from the database into pointer types.
+Convert nullable values retrieved from the database into pointers.
 
 ```go
 name := conv.StringPtrFromNull(row.Name)
 ```
 
-Conversion rules:
+Conversion rules
 
-```txt
-NULL  → nil
-value → *value
+```mermaid
+flowchart TB
+    Null["NULL"] --> Nil["nil"]
+    Val["value"] --> Ptr["*value"]
 ```
 
-Application code can check for NULL using `nil`.
+In application code, `nil` can be used to determine NULL.
 
-### Write Path
+### Write Side
 
-Convert pointer values into nullable database types.
+Convert pointers into nullable types.
 
 ```go
 row.Name = conv.NullStringFromPtr(namePtr)
 ```
 
-Conversion rules:
+Conversion rules
 
-```txt
-nil   → NULL
-value → Valid=true
+```mermaid
+flowchart TB
+    Nil["nil"] --> Null["NULL"]
+    Val["value"] --> Valid["Valid=true"]
 ```
 
-### Creating Nullable Values
+### Create nullable from value
 
-Convert non-null values into nullable types.
+Convert non-NULL values into nullable types.
 
 ```go
 row.Name = conv.NewNullString("alice")
@@ -103,7 +106,7 @@ row.Name = conv.NewNullString("alice")
 
 ## UUID Conversion
 
-UUID helpers convert between `googleUUID.NullUUID` and the application's `uuid.UUID`.
+UUID conversion converts between `googleUUID.NullUUID` and the application's `uuid.UUID`.
 
 ```go
 UUIDPtrFromNull
@@ -113,9 +116,9 @@ NewNullUUID
 
 Note:
 
-- `UUIDPtrFromNull` performs UUID parsing and therefore **returns an error**.
+- `UUIDPtrFromNull` involves UUID parsing and therefore **returns an error**.
 
-Example:
+Example
 
 ```go
 u, err := conv.UUIDPtrFromNull(row.UserID)
@@ -126,107 +129,124 @@ if err != nil {
 
 ## Pointer Safety
 
-Pointers generated from nullable types reference a **copy of the internal value**.
+Pointers generated from nullable types reference a copy of the internal value.
 
-That means they behave like:
+In other words
 
 ```txt
 &ns.String
 ```
 
-They **do not reference driver-managed memory**, so they are safe to use as normal pointer values.
+This means they do not directly reference the internal memory of the DB driver.
+
+Therefore, they can be safely handled as normal pointer values.
 
 ## Relationship with sqlc
 
 This package is primarily used as a **support utility for sqlc-generated code**.
 
-Role:
+Role
 
-```txt
-sqlc generated code
-        ↓
-conv utilities
-        ↓
-application code
+```mermaid
+flowchart TB
+    Sqlc["sqlc generated code"]
+    Conv["conv utilities"]
+    App["application code"]
+
+    Sqlc --> Conv --> App
 ```
 
-This ensures clear separation between:
+This enables separation of responsibilities between:
 
-- Database types
+- DB types
 - Application types
 
 ## Testing
 
 Unit tests are provided for each function (`nullable_test.go`).
 
-The tests use `testify/require` and verify:
+Tests use `testify/require` and verify the following:
 
-- `Valid` flags are correctly set
-- NULL → nil conversions
-- nil → NULL conversions
+- `Valid` flag is correctly set
+- NULL → nil
+- nil → NULL
 
 ## Necessity
 
 ### Production
 
-Not strictly required, but **strongly recommended**.
+Not required, but **strongly recommended**.
 
-Reasons:
+Reason
 
 - Centralized NULL handling
-- Reduced duplicate logic
-- Lower risk of bugs
+- Prevent duplicated code
+- Reduce bug risk
 
 ### Development / Testing
 
-Recommended.
+Recommended
 
-Reasons:
+Reason
 
-- Simplifies expression of NULL / non-NULL cases
-- Improves readability of test code
+- Easily express NULL / non-NULL cases
+- Improve readability of test code
 
-## Impact if Not Used
+## Impact if Disabled
 
-Disabling this package usually does not cause direct runtime failures, but it may lead to:
+Direct runtime failures are unlikely, but:
 
-- NULL handling scattered throughout the codebase
-- Increased duplicated logic
-- Higher risk of subtle bugs
+- NULL handling becomes scattered across the codebase
+- Duplicate logic increases
+- Becomes a source of bugs
+
+These risks may arise.
 
 ## Notes
 
 This package provides **conversion utilities only**.
 
-Responsibilities it does **not** handle:
+Responsibilities not handled:
 
-- Database query execution
+- DB query execution
 - Transaction management
 - Domain logic
 
-Those should be implemented in:
+These should be implemented in:
 
 - Repository
 - Usecase
 
-or other appropriate layers.
+and other layers.
 
 ## Extension Rules
 
-When adding support for a new nullable type, follow the naming convention below.
+When adding new nullable types, follow the naming convention below.
 
-```txt
-XxxPtrFromNull
-NullXxxFromPtr
-NewNullXxx
+```go
+func XxxPtrFromNull (...) {
+  // Implementation
+}
+func NullXxxFromPtr (...) {
+  // Implementation
+}
+func NewNullXxx (...) {
+  // Implementation
+}
 ```
 
-Example:
+Example
 
-```txt
-DecimalPtrFromNull
-NullDecimalFromPtr
-NewNullDecimal
+```go
+func DecimalPtrFromNull (...) {
+  // Implementation
+}
+func NullDecimalFromPtr (...) {
+  // Implementation
+}
+func NewNullDecimal (...) {
+  // Implementation
+}
 ```
 
-Following this rule maintains API consistency.
+This rule maintains API consistency.

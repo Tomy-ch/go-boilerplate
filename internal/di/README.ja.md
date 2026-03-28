@@ -75,7 +75,7 @@ DI レイヤはこの **依存関係の接合点 (Composition Root)** を提供�
 
 を **最終的に組み合わせる唯一の場所**です。
 
-## このリポジトリでの DI の役割
+## このプロジェクトでの DI の役割
 
 このプロジェクトでは DI は次の用途で使用されています。
 
@@ -226,9 +226,11 @@ reg.RegisterStop(stopFunc)
 
 ## Don't（やってはいけないこと）
 
-### ビジネスロジックを書く
+### ビジネスロジックを書くこと
 
 DI 層に書いてはいけないもの
+
+特に、**ビジネスロジック**を書いてはいけません。
 
 - ドメインロジック
 - DBクエリ
@@ -250,7 +252,7 @@ Controller --> Infrastructure
 flowchart TD
 
 Controller --> Usecase
-Usecase --> Domain Interface
+Usecase --> DomainInterface
 DomainInterface --> Infrastructure
 ```
 
@@ -405,17 +407,3 @@ ApplyExtends --> ServerConfigurators
 ### Plugin Architecture
 
 拡張機能は **Module / Extension として追加**
-
-## まとめ
-
-`internal/di` はこのアプリケーションの**依存関係 / 起動 / 拡張 / 実行モード**を統括するレイヤです。
-
-この設計によって
-
-- Onion Architecture
-- DDD
-- Job Runner
-- Plugin Middleware
-- Observability
-
-が **統合されています。**

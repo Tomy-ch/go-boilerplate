@@ -58,6 +58,19 @@ infrastructure:
   - src: internal/infrastructure/rdb/query_service/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb-query-service.ja.md
 
+
+database:
+  # English
+  - src: database/dml/README.md
+    dst: docs/portal/guides/sqlc-query-guide.md
+  - src: SQLC_README.md
+    dst: docs/portal/guides/sqlc-settings.md
+  # Japanese
+  - src: database/dml/README.ja.md
+    dst: docs/portal/guides/ja/sqlc-query-guide.ja.md
+  - src: SQLC_README.ja.md
+    dst: docs/portal/guides/ja/sqlc-settings.ja.md
+
 cross-cutting:
   # English
   - src: internal/apperror/README.md

@@ -38,14 +38,9 @@ API契約は **OpenAPI** を使用して定義されます。
 
 典型的な開発フロー：
 
-```txt
-OpenAPI specification
-↓
-Code generation
-↓
-Handler implementation
-↓
-Usecase implementation
+```mermaid
+flowchart TB
+    OpenAPI["OpenAPI specification"] --> Gen["Code generation"] --> Handler["Handler implementation"] --> Usecase["Usecase implementation"]
 ```
 
 生成コードは **手動で編集してはいけません**。
@@ -54,10 +49,10 @@ Usecase implementation
 
 依存関係は常に **内側のレイヤに向かう** 必要があります。
 
-```txt
-controller → usecase → domain
-                     ↑
-              infrastructure
+```mermaid
+flowchart LR
+    Controller --> Usecase --> Domain
+    Infra["infrastructure"] --> Domain
 ```
 
 重要な考え方：
@@ -82,8 +77,7 @@ SQLクエリは明示的に定義され、`sqlc` により型安全なGoコー�
 
 ### Structural Safety
 
-このリポジトリは、暗黙的な慣習ではなく  
-**構造的安全性（Structural Safety）** を重視します。
+このプロジェクトは、暗黙的な慣習ではなく、**構造的安全性（Structural Safety）** を重視します。
 
 コードレビューやチームルールのみに依存するのではなく、  
 ツールによって安全性を担保します。
@@ -115,22 +109,10 @@ SQLクエリは明示的に定義され、`sqlc` により型安全なGoコー�
 
 このシステムは **Pragmatic Onion Architecture** を採用しています。
 
-```txt
-┌─────────────┐
-│ Controller  │
-└──────┬──────┘
-       ↓
-┌─────────────┐
-│   Usecase   │
-└──────┬──────┘
-       ↓
-┌─────────────┐
-│   Domain    │
-└──────┬──────┘
-       ↑
-┌─────────────┐
-│Infrastructure│
-└─────────────┘
+```mermaid
+flowchart TB
+    Controller --> Usecase --> Domain
+    Infrastructure --> Domain
 ```
 
 特徴：
@@ -200,22 +182,9 @@ Infrastructure は Domain レイヤで定義されたインターフェースを
 
 典型的なリクエストは以下の流れで処理されます。
 
-```txt
-HTTP Request
-   ↓
-Echo Router
-   ↓
-Controller
-   ↓
-Usecase
-   ↓
-Domain
-   ↓
-Repository Interface
-   ↓
-Infrastructure
-   ↓
-Database
+```mermaid
+flowchart TB
+    Req["HTTP Request"] --> Router["Echo Router"] --> Controller --> Usecase --> Domain --> Repo["Repository Interface"] --> Infra["Infrastructure"] --> DB["Database"]
 ```
 
 この構造により、
@@ -238,14 +207,9 @@ DIコンテナの役割：
 
 典型的な依存関係の組み立て順：
 
-```txt
-Repository
- ↓
-Usecase
- ↓
-Handler
- ↓
-Router
+```mermaid
+flowchart TB
+    Repo["Repository"] --> Usecase --> Handler --> Router
 ```
 
 DIを利用することで、レイヤ間の結合度を低く保つことができます。
@@ -320,7 +284,7 @@ Dependency Injection によって接続されています。
 
 ## AI支援開発
 
-このリポジトリは AI支援開発ツールと安全に連携できるよう設計されています。
+このプロジェクトは AI支援開発ツールと安全に連携できるよう設計されています。
 
 アーキテクチャ制約により、  
 AI生成コードが設計ルールを破ることを防ぎます。

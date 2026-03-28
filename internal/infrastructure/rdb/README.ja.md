@@ -21,16 +21,9 @@ Domain / Usecase は **RDB の実装詳細を意識せずにデータ永続化�
 
 このディレクトリは次のレイヤー構造で構成されています。
 
-```txt
-Usecase
-   ↓
-Repository / QueryService
-   ↓
-loggingdb
-   ↓
-driver
-   ↓
-PostgreSQL
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
 ```
 
 各レイヤーの責務は次の通りです。
@@ -78,11 +71,7 @@ Repository は **Domain の Repository Interface を実装する層**です。
 - Row → Domain エンティティ変換
 - DB エラー正規化
 
-重要:
-
-```txt
-Repository はビジネスロジックを持たない
-```
+重要: **Repository はビジネスロジックを持たない**
 
 詳細は以下を参照してください。
 
@@ -101,11 +90,7 @@ QueryService は検索用途に特化します。
 - Row → Domain / DTO 変換
 - DB エラー正規化
 
-重要:
-
-```txt
-検索は Repository ではなく QueryService に実装する
-```
+重要: **検索は Repository ではなく QueryService に実装する**
 
 詳細は以下を参照してください。
 
@@ -123,11 +108,7 @@ QueryService は検索用途に特化します。
 
 などを提供します。
 
-```txt
-internal/infrastructure/rdb/sqlc/gen
-```
-
-に生成コードが配置されます。
+`internal/infrastructure/rdb/sqlc/gen` に生成コードが配置されます。
 
 詳細は以下を参照してください。
 
@@ -137,9 +118,10 @@ internal/infrastructure/rdb/sqlc/gen
 
 `conv` は **nullable 型と Go ポインタ型の変換ユーティリティ**です。
 
-```txt
-sql.NullString ⇔ *string
-sql.NullTime   ⇔ *time.Time
+```mermaid
+flowchart LR
+    A["sql.NullString"] <--> B["*string"]
+    C["sql.NullTime"] <--> D["*time.Time"]
 ```
 
 Repository / QueryService 実装で利用されます。
@@ -159,11 +141,7 @@ Repository / QueryService 実装で利用されます。
 - トランザクション管理（tx.Manager）
 - sqlc 用 DBTX インターフェース
 
-重要:
-
-```txt
-トランザクション境界は Usecase 層が管理する
-```
+重要: **トランザクション境界は Usecase 層が管理する**
 
 詳細は以下を参照してください。
 
@@ -173,12 +151,9 @@ Repository / QueryService 実装で利用されます。
 
 `loggingdb` は **SQL 実行ログとトレースを付与する Observability wrapper** です。
 
-```txt
-Repository / QueryService
-   ↓
-loggingdb
-   ↓
-driver
+```mermaid
+flowchart TB
+    Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"]
 ```
 
 主な機能
@@ -188,11 +163,8 @@ driver
 - クエリ実行時間計測
 - slow query 判定
 
-重要:
-
-```txt
-loggingdb は DB 実行を行わない（pure wrapper）
-```
+重要:  
+**loggingdb は DB 実行を行わない（pure wrapper）**
 
 詳細は以下を参照してください。
 
@@ -212,11 +184,12 @@ pgerror.NormalizeError(err)
 
 主な変換
 
-```txt
-sql.ErrNoRows      → ErrNotFound
-unique violation   → ErrConflict
-connection error   → ErrUnavailable
-others             → ErrInternal
+```mermaid
+flowchart TB
+    A["sql.ErrNoRows"] -->|→| B["ErrNotFound"]
+    C["unique violation"] -->|→| D["ErrConflict"]
+    E["connection error"] -->|→| F["ErrUnavailable"]
+    G["others"] -->|→| H["ErrInternal"]
 ```
 
 詳細は以下を参照してください。
@@ -235,13 +208,9 @@ others             → ErrInternal
 
 テスト特性
 
-```txt
-実DB
-+
-トランザクション rollback
-+
-並列実行（Tx は直列）
-```
+- 実DB
+- トランザクション rollback
+- 並列実行（Tx は直列）
 
 詳細は以下を参照してください。
 
@@ -255,70 +224,39 @@ others             → ErrInternal
 
 Domain / Usecase は
 
-```txt
-sql
-pgx
-sql.DB
-```
+- sql
+- pgx
+- sql.DB
 
 などの DB 実装に依存しません。
 
 ### 2. 責務分離（Repository / QueryService）
 
-```txt
-書き込み / 永続化 → Repository
-検索 / 読み取り   → QueryService
-```
+- 書き込み / 永続化 → Repository
+- 検索 / 読み取り   → QueryService
 
 ### 3. トランザクション境界の集中管理
 
-```txt
-Usecase が Tx を管理
-Infra は Tx を開始しない
-```
+Usecase が Tx を管理し、Infra は Tx を開始しません。
 
 ### 4. DB エラーの正規化
 
-PostgreSQL 固有エラーは
-
-```txt
-pgerror
-```
-
-でアプリケーション共通エラーへ変換します。
+PostgreSQL 固有エラーは`pgerror`でアプリケーション共通エラーへ変換します。
 
 ### 5. SQL 型安全
 
-SQL 実行はすべて
-
-```txt
-sqlc
-```
-
-を通して行います。
+SQL 実行はすべて`sqlc`を通して行います。
 
 ### 6. 可観測性
 
-SQL 実行ログとトレースは
-
-```txt
-loggingdb
-```
-
-が提供します。
+SQL 実行ログとトレースは`loggingdb`が提供します。
 
 ### 7. テスト戦略（Integration 前提）
 
 Repository / QueryService テストは
 
-```txt
 実DB + rollback
-```
 
 で実行します。
 
-```txt
-testkit
-```
-
-を利用して安全に実現します。
+`testkit`を利用して安全に実現します。

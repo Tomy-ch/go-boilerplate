@@ -1,6 +1,6 @@
 # 開発ワークフロー
 
-このドキュメントでは、このリポジトリで使用される **標準的な開発フロー** を説明します。
+このドキュメントでは、このプロジェクトで使用される **標準的な開発フロー** を説明します。
 
 これらのワークフローは、アーキテクチャの整合性を維持し、  
 生成コードが常にソース定義と同期されることを保証するために存在します。
@@ -16,14 +16,9 @@ APIエンドポイントを変更する場合は、以下の順序 **必ず従�
 3. handler を実装または更新する  
 4. usecase ロジックを実装または更新する  
 
-```txt
-OpenAPI
-↓
-コード生成
-↓
-Handler
-↓
-Usecase
+```mermaid
+flowchart TB
+    OpenAPI --> Gen["コード生成"] --> Handler --> Usecase
 ```
 
 ### API変更時の注意
@@ -44,16 +39,9 @@ Usecase
 4. 必要に応じて repository 実装を更新する  
 5. 必要に応じて usecase を更新する  
 
-```txt
-Migration
-↓
-SQL query update
-↓
-sqlc generation
-↓
-Repository update
-↓
-Usecase update
+```mermaid
+flowchart TB
+    Migration --> SQL["SQL query update"] --> Gen["sqlc generation"] --> Repo["Repository update"] --> Usecase["Usecase update"]
 ```
 
 ### データベース変更時の注意
@@ -72,12 +60,9 @@ Usecase update
 2. 必要に応じて domain ロジックを更新する  
 3. データアクセスが変わる場合は repository interface を更新する  
 
-```txt
-Usecase
-↓
-Domain
-↓
-Repository Interface
+```mermaid
+flowchart TB
+    Usecase --> Domain --> RepoIF["Repository Interface"]
 ```
 
 外部連携やデータベース処理に変更がない限り、  
@@ -90,7 +75,7 @@ Infrastructure の変更は **不要な場合が多い** です。
 
 ## APIコード生成
 
-```txt
+```sh
 make gen-api
 ```
 
@@ -98,7 +83,7 @@ OpenAPI 定義からサーバインターフェースと型定義を生成しま
 
 ## SQLコード生成
 
-```txt
+```sh
 make gen-query
 ```
 
@@ -128,13 +113,11 @@ make gen-query
 
 一般的な機能開発は、以下の順序で進めます。
 
-```txt
-1 API 定義（OpenAPI）
-2 Usecase 実装
-3 必要に応じて Repository 実装
-4 Handler 実装
-5 テスト追加
-```
+1. API 定義（OpenAPI）
+2. Usecase 実装
+3. 必要に応じて Repository 実装
+4. Handler 実装
+5. テスト追加
 
 この順序により、
 
@@ -153,8 +136,7 @@ CI はアーキテクチャ整合性を維持する役割を持ちます。
 - Lint チェック
 - ビルド検証
 
-これにより、アーキテクチャの逸脱を防ぎ、  
-リポジトリの再現性を保ちます。
+これにより、アーキテクチャの逸脱を防ぎ、プロジェクトの再現性を保ちます。
 
 ## AI支援開発
 
@@ -169,10 +151,8 @@ AIが生成するコードも、以下を守る必要があります。
 
 AIエージェントはコード生成前に、必ず以下のドキュメントを参照してください。
 
-```txt
-architecture.ja.md
-rules.ja.md
-```
+- `architecture.ja.md`
+- `rules.ja.md`
 
 ## Summary
 

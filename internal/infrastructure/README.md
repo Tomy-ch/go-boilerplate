@@ -1,27 +1,28 @@
-# Infrastructure Layer Guide (`internal/infrastructure`)
+# Infrastructure Layer (`internal/infrastructure`) Guide
 
-## Responsibility
+## Role
 
-The Infrastructure layer is responsible for **implementing access to external technologies** (DB, external APIs, authentication, security, etc.).
+The Infrastructure layer is responsible for **implementing access to external technologies (DB, external APIs, authentication, security, etc.)**.
 
-This layer has the following responsibilities:
+This layer has the following responsibilities.
 
-- Implement external I/O (RDB / API / authentication / system)
-- Implement interfaces defined by the Domain
-- Encapsulate technical details (connection, retry, drivers, logging, etc.)
-- Normalize errors
-- Provide Observability (logging / tracing)
+- Implementation of external I/O (RDB / API / authentication / system)
+- Implementation of interfaces defined by the Domain
+- Encapsulation of technical details (connection, retry, drivers, logging, etc.)
+- Error normalization
+- Provision of Observability (logging / tracing)
 
-Upper layers (Domain / Usecase) **must not be aware of Infrastructure implementation details**.
+Upper layers (Domain / Usecase) **must not be aware of Infrastructure implementation details at all.**
 
 ## Position in Onion Architecture
 
-```txt
-Domain
-  ↑
-Usecase
-  ↑
-Infrastructure
+```mermaid
+flowchart TB
+    Infra["Infrastructure"]
+    Usecase["Usecase"]
+    Domain["Domain"]
+
+    Infra --> Usecase --> Domain
 ```
 
 - Domain / Usecase define abstractions only
@@ -29,9 +30,14 @@ Infrastructure
 
 ## Dependencies
 
-```txt
-Domain ← Infrastructure (implementation)
-Usecase ← Infrastructure (usage)
+```mermaid
+flowchart LR
+    Infra["Infrastructure"]
+    Domain["Domain（interface）"]
+    Usecase["Usecase"]
+
+    Infra --> Domain
+    Infra --> Usecase
 ```
 
 - Infrastructure depends on Domain
@@ -43,104 +49,117 @@ Usecase ← Infrastructure (usage)
 - Infrastructure must not start transactions
 - Transactions are propagated via `context.Context`
 
-```txt
-Usecase (starts Tx)
-  ↓
-Repository / QueryService
-  ↓
-driver (uses Tx)
+```mermaid
+flowchart TB
+    UC["Usecase（Tx start）"]
+    Repo["Repository / QueryService"]
+    Driver["driver（use Tx）"]
+
+    UC --> Repo --> Driver
 ```
 
 ## Error Handling
 
-Infrastructure must not return raw external errors.  
-Instead, it must **convert them into application-level errors**.
+The Infrastructure layer must not return external technology errors as-is,  
+but must **convert them into application-wide errors**.
 
 Examples:
 
-- PostgreSQL errors → `pgerror.NormalizeError`
-- External API errors → converted to `apperror`
+- PostgreSQL errors → pgerror.NormalizeError
+- External API errors → converted to apperror
 
 ## Observability
 
-Infrastructure provides the following observability features:
+The Infrastructure layer provides the following observability.
 
-- SQL / external I/O logging
-- OpenTelemetry tracing
-- Execution time measurement (e.g., slow queries)
+- SQL / external I/O log output
+- Tracing using OpenTelemetry
+- Execution time measurement (slow query)
 
-Typically implemented via wrappers such as `loggingdb`.
+Mainly implemented using wrappers such as loggingdb.
 
 ## Prohibited Practices
 
-The following must not be done in the Infrastructure layer:
+The following must not be done in the Infrastructure layer.
 
-- Implement business logic
-- Branch on Domain rules
-- Make Usecase-level decisions
-- Introduce HTTP / framework-dependent code
-- Start transactions
+- Implementation of business logic
+- Branching based on Domain rules
+- Decision making of Usecase
+- Introducing HTTP / framework-dependent code
+- Starting transactions
 
 ## Implementation Rules
 
-- Use `sqlc` for SQL execution
-- Do not implement search logic in Repository (use QueryService)
+- Use sqlc for SQL execution
+- Do not write search logic in Repository (use QueryService)
 - Do not use driver directly; use it via loggingdb
-- Always propagate `context`
+- Always propagate context
 - Always normalize external errors
 
 ## Directory Structure
 
-```txt
-internal/infrastructure
- ├ auth/
- ├ rdb/
- ├ security/
- └ system/
+```mermaid
+flowchart TB
+    Root["internal/infrastructure"]
+    Auth["auth/"]
+    RDB["rdb/"]
+    Sec["security/"]
+    Sys["system/"]
+
+    Root --> Auth
+    Root --> RDB
+    Root --> Sec
+    Root --> Sys
 ```
 
 ## Subsystems
 
-### Authentication
+### Authentication Access Implementation
 
 - Token validation
-- Extraction of authentication information
+- Retrieval of authentication information
 
-→ See [auth/README.md](./auth/README.md)
+→ Refer to [auth/README.md](./auth/README.md)
 
-### RDB Access
+### RDB Access Implementation
 
 - Repository / QueryService
-- Type-safe SQL execution via sqlc
-- Transaction management via driver
-- Logging / tracing via loggingdb
+- Type-safe SQL execution using sqlc
+- Transaction management using driver
+- Logging / tracing using loggingdb
 - PostgreSQL error normalization
 
-→ See [rdb/README.md](./rdb/README.md)
+→ Refer to [rdb/README.md](./rdb/README.md)
 
-### Security
+### Security Access Implementation
 
 - Encryption / hashing
 - Token generation
 
-→ See [security/README.md](./security/README.md)
+→ Refer to [security/README.md](./security/README.md)
 
-### System
+### System Access Implementation
 
-- Clock (time management)
+- clock (time management)
 - ID generation
 - System utilities
 
-→ See [system/README.md](./system/README.md)
+→ Refer to [system/README.md](./system/README.md)
 
 ## Test Strategy
 
-- Integration tests using a real database
-- State isolation via transaction rollback
-- Use `testkit`
+- Integration Test using real DB
+- State isolation using transaction rollback
+- Use testkit
 
-```txt
-Real DB + rollback + no parallel execution (Tx serialized)
+```mermaid
+flowchart TB
+    DB["real DB"]
+    Rollback["rollback"]
+    Parallel["parallel execution"]
+    Serial["Tx is serialized"]
+
+    DB --> Rollback --> Parallel --> Serial
 ```
 
 ## Design Principles Summary
@@ -148,7 +167,7 @@ Real DB + rollback + no parallel execution (Tx serialized)
 ### 1. Encapsulation of Technical Details
 
 DB / API / authentication / security  
-→ encapsulated within Infrastructure
+→ encapsulated in Infrastructure
 
 ### 2. Dependency Inversion
 
@@ -158,7 +177,7 @@ Infrastructure implements them
 ### 3. Separation of Responsibilities
 
 ```txt
-Persistence → Repository
+Persistence → Repository  
 Query       → QueryService
 ```
 

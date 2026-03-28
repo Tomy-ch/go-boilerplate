@@ -1,72 +1,74 @@
 # Project Policy
 
-This document describes the policies used to maintain this boilerplate.
+This document describes the policies for maintaining and operating this project.
 
 ## Maintainer Policy
 
-This repository is an **independent project maintained by the author**.
+This project is an **independently maintained project managed by the author**.
 
-It is not affiliated with any company or organization.
+It is not affiliated with any specific company or organization.
 
-Architectural and implementation decisions reflect the author's personal design philosophy.
+All decisions regarding architecture and implementation are made based on  
+**the author's design philosophy**.
 
 ## Disclaimer
 
 This template is provided in good faith.
 
-However, **no guarantees are made regarding suitability for specific use cases, security, or operational stability**.
+However, **no guarantees are made** regarding the following:
 
-Users are responsible for verifying:
+- Fitness for a particular purpose
+- Security
+- Operational stability
 
-- Dependency vulnerabilities
-- Security configuration
-- Operational compatibility
+When using this template, users must verify the following by themselves:
 
-before using this template.
+- Vulnerabilities in dependencies
+- Security configurations
+- Compatibility with their runtime environment
 
 ## Maintenance Policy
 
-The maintainer may provide:
+The maintainer may perform the following within reasonable scope:
 
 - Dependency updates
 - Security updates
 - Architectural improvements
 
-when possible.
-
 However, the following are **not guaranteed**:
 
-- Response deadlines for Issues
-- Guaranteed bug fixes
-- Long-term maintenance commitments
+- Response time to issues
+- Bug fixes
+- Continuation of long-term maintenance
 
-If you discover a problem, please open an Issue.
+If you find an issue, please create an Issue.
 
-The maintainer will address it when possible.
+The maintainer will respond within reasonable scope.
 
 ## Library Selection Policy
 
-The value of this boilerplate lies not in any specific library but in **the integration of widely adopted OSS tools into a coherent architecture**.
+The value of this project lies not in specific libraries themselves, but in  
+**integrating widely-used OSS tools into a consistent architecture**.
 
 Libraries are selected based on the following criteria:
 
-- Actively maintained by a healthy community
-- Widely adopted in production environments
-- Replaceable if necessary
-- Avoiding strong framework lock-in
+- Maintained by an active community
+- Widely used in production environments
+- Replaceable when necessary
+- Avoid strong lock-in to specific frameworks
 
-The architecture assumes **replaceable components**.
+This architecture assumes **component replaceability**.
 
-Libraries are chosen such that they can be replaced or forked if required.
+If necessary, libraries are intended to be replaceable or forkable.
 
 ## Vendor Neutrality
 
-The architecture intentionally avoids tight coupling to specific SaaS vendors.
+This architecture is designed to avoid strong dependency on specific SaaS vendors.
 
-For example:
+Examples:
 
-- Observability tooling avoids hard dependency on services such as Datadog
-- OSS-based tooling is preferred
-- Vendor-neutral designs are encouraged
+- Observability avoids strong dependency on specific services such as Datadog
+- OSS-based tools are prioritized
+- Vendor-neutral design is encouraged
 
-This approach ensures that the system can run in a wide variety of environments.
+This policy ensures flexibility to operate the system across various environments.

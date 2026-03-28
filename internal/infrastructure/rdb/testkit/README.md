@@ -1,46 +1,46 @@
 ## `testkit` Package
 
-English | [日本語](README.ja.md)
+[English](README.md) | 日本語
 
-Overview: **A utility package that provides helpers for tests using an RDB.**
+Overview: **A package that provides utilities for tests using RDB.**
 
-It is primarily used for:
+It is mainly used for the following purposes.
 
-- Easily creating a test `DatabaseDriver`
-- Initializing Infrastructure including `LoggingDBProvider`
-- Running tests inside transactions that are always rolled back
+- Easily create a test `DatabaseDriver`
+- Initialize Infrastructure including LoggingDBProvider
+- Execute tests within a transaction and always roll back
 
-This package is a **helper tool to simplify writing Repository and Infrastructure tests**.
+This package is a **support tool to make writing Repository and Infrastructure tests easier**.
 
 ## Purpose
 
-Tests that use an RDB often face the following problems:
+The following problems occur in tests that use RDB.
 
-- DB initialization code becomes repetitive and lengthy
+- DB initialization code becomes lengthy each time
 - Transaction management becomes complicated
-- Test data cleanup is required after each test
+- Data cleanup after tests is required
 
-`testkit` solves these problems by providing:
+`testkit` provides the following features to solve these.
 
 - Test DB initialization
-- LoggingDBProvider creation
+- Creation of LoggingDBProvider
 - Automatic rollback transactions
 
 ## Architectural Position
 
-```txt
-Repository Test
-     ↓
- testkit
-     ↓
- driver / loggingdb
-     ↓
- PostgreSQL
+```mermaid
+flowchart TD
+    A[Repository Test]
+    B[testkit]
+    C[driver / loggingdb]
+    D[(PostgreSQL)]
+
+    A --> B --> C --> D
 ```
 
-`testkit` acts as a **test-only Infrastructure helper layer**.
+`testkit` is a **test-only Infrastructure helper layer**.
 
-## Provided APIs
+## Provided API
 
 ### NewTestDB
 
@@ -50,34 +50,30 @@ func NewTestDB(t *testing.T) driver.DatabaseDriver
 
 Creates a test `DatabaseDriver`.
 
----
-
 ### NewTestLoggingProvider
 
 ```go
 func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider
 ```
 
-Creates a `LoggingDBProvider`.
+Creates a LoggingDBProvider.
 
-Primary use cases:
+Main use cases:
 
 - Repository tests
 - QueryService tests
 
-Internally, it performs:
+Internally, it performs the following processing.
 
-```txt
-MockConfigForTest
-↓
-DatabaseConfig
-↓
-Logging / Tracer initialization
-↓
-loggingdb.NewLoggingDBProvider
+```mermaid
+flowchart TD
+    A[MockConfigForTest]
+    B[DatabaseConfig]
+    C[Logging / Tracer initialization]
+    D[loggingdb.NewLoggingDBProvider]
+
+    A --> B --> C --> D
 ```
-
----
 
 ### NewTestTransactionManager
 
@@ -87,15 +83,15 @@ func NewTestTransactionManager(t *testing.T) TransactionRunner
 
 Creates a transaction manager for testing.
 
-Internally it uses:
+Internally, it uses:
 
-```txt
-config.MockConfigForTest
-↓
-driver.NewTransactionManager
+```mermaid
+flowchart TD
+    A[config.MockConfigForTest]
+    B[driver.NewTransactionManager]
+
+    A --> B
 ```
-
----
 
 ## Transaction Execution
 
@@ -107,48 +103,47 @@ type TransactionRunner interface {
 }
 ```
 
----
-
 ### WithinTx
 
 ```go
 func (t *testTxManager) WithinTx(fn func(ctx context.Context))
 ```
 
-Executes the provided function **inside a transaction**.
+Executes the specified function **inside a transaction**.
 
-Execution flow:
+Processing flow:
 
-```txt
-Transaction Begin
-↓
-fn(ctx) execution
-↓
-return rollbackForTestError
-↓
-Rollback
+```mermaid
+flowchart TD
+    A[Transaction Begin]
+    B[Execute fn(ctx)]
+    C[Return rollbackForTestError]
+    D[Rollback]
+
+    A --> B --> C --> D
 ```
 
-Internally, it uses `tx.Manager.Do`:
+Internally, it uses `tx.Manager.Do`.
 
-```txt
-Do(fn)
-↓
-returning an error triggers rollback
+```mermaid
+flowchart TD
+    A[Do(fn)]
+    B[Return error to trigger rollback]
+
+    A --> B
 ```
-
----
 
 ## Rollback Mechanism
 
-`WithinTx` performs rollback using the following mechanism:
+`WithinTx` achieves rollback with the following mechanism.
 
-```txt
-execute fn
-↓
-return rollbackForTestError
-↓
-tx.Manager performs rollback
+```mermaid
+flowchart TD
+    A[Execute fn]
+    B[Return rollbackForTestError]
+    C[tx.Manager performs rollback]
+
+    A --> B --> C
 ```
 
 This special error is defined as:
@@ -159,20 +154,19 @@ var rollbackForTestError = xerrors.New("rollback for test")
 
 This error is treated as **success in tests**.
 
----
-
 ## Parallel Execution
 
 Repository tests can be executed in parallel using `t.Parallel()`.
 
 However, transactions are serialized internally.
 
-```txt
-Test execution     → Parallel
-Transactions       → Serialized
+```mermaid
+flowchart LR
+    A[Test execution] -->|parallel| B
+    C[Transactions] -->|serialized| D
 ```
 
-This behavior is guaranteed by:
+This is guaranteed by the following implementation.
 
 ```go
 txLock sync.Mutex
@@ -185,10 +179,8 @@ defer txLock.Unlock()
 
 This ensures:
 
-- Prevention of DB state conflicts
-- Isolation between tests
-
----
+- Preventing DB state conflicts
+- Preventing interference between tests
 
 ## DB Instance
 
@@ -201,16 +193,12 @@ var (
 )
 ```
 
-```txt
-A single DB instance is shared within the process
-```
-
-This enables:
+By **sharing a single DB instance within the process**:
 
 - Reduced connection cost
 - Faster test execution
 
----
+are achieved.
 
 ## Usage Examples
 
@@ -224,8 +212,6 @@ txm.WithinTx(func(ctx context.Context) {
 })
 ```
 
----
-
 ### Repository Test
 
 ```go
@@ -234,84 +220,63 @@ provider := testkit.NewTestLoggingProvider(t)
 repo := repository.NewRepository(provider)
 ```
 
----
-
 ## Test Design Policy
 
-Using `testkit` enables the following design:
+By using `testkit`, the following design becomes possible.
 
-```txt
-Repository Test
-↓
-Real DB
-↓
-Transaction Rollback
+```mermaid
+flowchart TD
+    A[Repository Test]
+    B[Real DB]
+    C[Transaction Rollback]
+
+    A --> B --> C
 ```
 
 In other words:
 
-```txt
-Use a real database
-+
-Restore the state after the test
+```mermaid
+flowchart TD
+    A[Use real DB]
+    B[Restore state after test]
+
+    A --> B
 ```
 
-This enables **safe integration tests**.
-
----
+This enables **safe Integration Test**.
 
 ## Notes
 
-### Connects to a Real Database
+### Connects to a Real DB
 
-This package connects to a **real PostgreSQL instance**.
+This package connects to an **actual PostgreSQL**.
 
-Therefore you must configure:
+Therefore, you must configure:
 
-- a test database
-- a CI database
-
----
+- Test DB
+- CI DB
 
 ### Design of WithinTx
 
-`WithinTx` does not return a value from the function.
+`WithinTx` does not accept a return value from fn.
 
 ```go
 fn(ctx)
 return rollbackForTestError
 ```
 
-Therefore, assertions in tests should be written using:
+Therefore, assertions in tests should use:
 
 ```go
 require / assert
 ```
 
----
+### Transactions Are Always Rolled Back
 
-### Transactions Always Roll Back
+When using `WithinTx`, transactions are **always rolled back**.
 
-When using `WithinTx`, the transaction will **always be rolled back**.
-
-Therefore it cannot be used for tests that require:
+Therefore, it cannot be used for tests that:
 
 ```txt
-persistent data
+persist data
 ```
-
----
-
-## Summary
-
-`testkit` provides:
-
-```txt
-Real DB
-+
-Automatic rollback
-+
-Parallel safety
-```
-
-as a **testing infrastructure package**.

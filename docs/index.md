@@ -1,155 +1,128 @@
 # Documentation
 
-English | [日本語](ja/index.ja.md)
+[English](../index.md) | Japanese
 
-This directory contains the architecture and development documentation for the **go-boilerplate** project.
+This directory contains documentation related to the architecture and development of this project.
 
-These documents describe the design philosophy, architectural rules, and development workflows used in this repository.
+These documents explain the **design philosophy, architectural rules, and development workflows** adopted in this project.
 
 The documentation is intended for both **human developers** and **AI agents**.
 
-## Documentation Overview
+## Document List
 
 |Document|Description|
 |--------|--------|
-|[architecture.md](architecture.md)|High-level architecture and layer responsibilities|
-|[rules.md](rules.md)|Architectural constraints that must not be violated|
-|[development-flow.md](development-flow.md)|Standard development workflows|
-|[decisions.md](decisions.md)|Rationale behind architectural and technology choices|
+|[architecture.md](architecture.md)|Overall system architecture and layer responsibilities|
+|[rules.md](rules.md)|Architectural rules that must not be violated|
+|[development-flow.md](development-flow.md)|Standard development workflow|
+|[decisions.md](decisions.md)|Background of technology selection and design decisions|
 
 ## Recommended Reading Order
 
-For new developers:
+### New Developers
 
-```txt
-architecture.md
-↓
-development-flow.md
-↓
-rules.md
-↓
-decisions.md
+```mermaid
+flowchart TB
+    A["architecture.md"] --> B["development-flow.md"] --> C["rules.md"] --> D["decisions.md"]
 ```
 
-For maintainers and contributors:
+### Maintainers / Contributors
 
-```txt
-architecture.md
-↓
-rules.md
-↓
-development-flow.md
-↓
-decisions.md
+```mermaid
+flowchart TB
+    A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["decisions.md"]
 ```
 
-For AI agents:
+### AI Agents
 
-```txt
-rules.md
-↓
-architecture.md
-↓
-development-flow.md
-↓
-decisions.md
+```mermaid
+flowchart TB
+    A["rules.md"] --> B["architecture.md"] --> C["development-flow.md"]
 ```
 
 ## Key Concepts
 
-The boilerplate is built around several core principles.
+This project is built on several important design principles.
 
 ### Onion Architecture
 
-The system follows a layered architecture:
+The system follows the layered structure below.
 
-```txt
-controller → usecase → domain ← infrastructure
+```mermaid
+flowchart LR
+    Controller --> Usecase --> Domain
+    Infrastructure --> Domain
 ```
 
-Dependencies always point inward.
+Dependencies must always point **toward inner layers**.
 
 ### OpenAPI-first Development
 
-API contracts are defined using OpenAPI.
+API contracts are defined using **OpenAPI**.
 
-Implementation must follow the contract definition.
+Implementation must always follow the contract definition.
 
-```txt
-OpenAPI
-↓
-Code generation
-↓
-Handler implementation
-↓
-Usecase implementation
+```mermaid
+flowchart TB
+    OpenAPI --> Gen["Code generation"] --> Handler["Handler implementation"] --> Usecase["Usecase implementation"]
 ```
 
 ### SQL-first Data Access
 
-Data access is designed around SQL rather than ORM abstractions.
+Data access is designed around **SQL rather than ORM**.
 
-```txt
-SQL
-↓
-sqlc
-↓
-Type-safe Go code
+```mermaid
+flowchart TB
+    SQL --> Sqlc["sqlc"] --> Code["Type-safe Go code"]
 ```
 
 ### Structural Safety
 
-This repository prioritizes **structural safety over convention**.
+This project prioritizes **structural safety over convention**.
 
-Instead of relying on implicit rules or manual review, the architecture enforces safety through:
+Instead of relying on implicit rules or manual reviews, safety is enforced through:
 
 - Layer separation
 - Code generation
 - CI checks
 - Lint rules
 
-## AI-Assisted Development
+## AI-assisted Development
 
-This repository is designed to work safely with AI-assisted development tools.
+This project is designed to work safely with **AI-assisted development tools**.
 
 Constraints are intentionally introduced to prevent architectural violations.
 
-AI agents should always consult:
+Before generating code, AI agents must refer to:
 
-```txt
-rules.md
-architecture.md
+- `rules.md`
+- `architecture.md`
+
+## Relationship with Other Documents
+
+The overall structure of the documentation is as follows:
+
+```mermaid
+flowchart TB
+    Readme["README.md"] --> Index["docs/index.md"] --> Docs["architecture.md / rules.md / development-flow.md"]
 ```
 
-before generating code.
+`README.md` explains the project overview,  
+while the `docs/` directory contains detailed design documents.
 
-## Relationship With Other Documentation
+## Contribution Guide
 
-High-level overview:
+When making changes to this project, follow these rules:
 
-```txt
-README.md
-   ↓
-docs/index.md
-   ↓
-architecture / rules / development-flow
-```
+1. Follow the architectural rules defined in `rules.md`  
+2. Follow the development workflow described in `development-flow.md`  
+3. Maintain consistency with the structure described in `architecture.md`  
 
-`README.md` provides a quick overview of the project,  
-while the `docs/` directory contains detailed design documentation.
+If architectural changes are required, update the related documentation accordingly.
 
-## Contribution Guidelines
+## Philosophy of This Project
 
-When contributing to the repository:
+This project aims to provide a **safe and maintainable starting point for backend development**.
 
-1. Follow the architectural rules defined in `rules.md`
-2. Follow the workflows described in `development-flow.md`
-3. Ensure changes remain consistent with the architecture described in `architecture.md`
-
-If architectural changes are required, update the corresponding documentation.
-
-## Philosophy
-
-This boilerplate aims to provide a **safe and maintainable backend starting point**.
-
-The goal is not to enforce a single "correct" architecture, but to provide a **well-structured baseline** that teams can adapt to their needs.
+It does not enforce a single “correct” architecture,  
+but instead provides a **structured baseline** that teams can extend and adapt as needed.
