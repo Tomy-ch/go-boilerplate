@@ -36,7 +36,7 @@ jobs:
           go mod vendor
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Define image tag
         id: meta
@@ -45,7 +45,7 @@ jobs:
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./docker/server/Dockerfile
@@ -203,7 +203,7 @@ jobs:
           path: sbom-summary.md
 
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
           format: table
