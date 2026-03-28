@@ -16,7 +16,7 @@ Overview: This package provides helpers to support testing in the Usecase layer.
 
     ```go
     func Test_SomeUsecase_DBError(t *testing.T) {
-      expected := usecasetest.ExpectedDBError(t)
+      expected := testkit.ExpectedDBError(t)
       // Use expected as the return value of mocks or for expected error assertions
     }
     ```
@@ -25,7 +25,7 @@ Overview: This package provides helpers to support testing in the Usecase layer.
 
     ```go
     func Test_SomeUsecase_WithTx(t *testing.T) {
-      mockTx := usecasetest.NewMockTransactionManager(t)
+      mockTx := testkit.NewMockTransactionManager(t)
       // Inject mockTx into Usecase dependencies and execute the test
     }
     ```
@@ -39,4 +39,4 @@ This mock executes `fn(ctx)` immediately when `Do(ctx, fn)` is called, allowing 
 
 ## Test
 
-- This package itself may include unit tests. You can run them with `go test ./internal/usecase/usecasetest`.
+- This package itself may include unit tests. You can run them with `go test ./internal/usecase/testkit`.

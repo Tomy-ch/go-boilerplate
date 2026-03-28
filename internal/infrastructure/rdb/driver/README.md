@@ -146,7 +146,7 @@ This enables **safe handling of nested transactions**.
 
 ### Always propagate Context
 
-Transactions are stored in `"context.Context`. Therefore, always propagate `ctx` to lower layers.
+Transactions are stored in `context.Context`. Therefore, always propagate `ctx` to lower layers.
 
 ### Repository must use driver.New()
 

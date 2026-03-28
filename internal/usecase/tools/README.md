@@ -24,8 +24,8 @@ pg, err := paging.NewPagingFrom1Based(ptr.To(1), ptr.To(20))
 if err != nil {
   // エラーハンドリング
 }
-0limit := pg.Limit()
-o00ffset := pg.Offset()
+limit := pg.Limit()
+offset := pg.Offset()
 // これらをリポジトリのクエリに渡す
 ```
 
