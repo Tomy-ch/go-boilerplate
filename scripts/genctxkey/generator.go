@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"go/format" //nolint:depguard // generator (scripts配下)でのファイル操作は許可
+	"go/format"
 	"os"
 	"path/filepath"
 	"strings"
