@@ -4,7 +4,7 @@
 
 ## Controller Layerとは
 
-このboilerplateでは以下を **Controller Layer** と定義します。
+このプロジェクトでは以下を **Controller Layer** と定義します。
 
 - handler - HTTPリクエストを受け取り、Usecase層へ処理を委譲する責務を持ちます。
 - router - ルーティングの登録とHTTPサーバーの起動を担います。
@@ -65,14 +65,14 @@ Response --> Client
 
 Handlerの役割は次の変換です。
 
-```txt
-HTTP Request
-→ Parse / Validate
-→ DTO
-→ Usecase
-→ DTO
-→ Presenter
-→ HTTP Response
+```mermaid
+flowchart LR
+    Req["HTTP Request"] --> Parse["Parse / Validate"]
+    Parse --> DTO1["DTO"]
+    DTO1 --> UC["Usecase"]
+    UC --> DTO2["DTO"]
+    DTO2 --> Presenter["Presenter"]
+    Presenter --> Res["HTTP Response"]
 ```
 
 ### Controllerレイヤー設計
@@ -285,7 +285,7 @@ defer endSpan()
 
 ### Observability（Tracing）の使い方
 
-このboilerplateでは、Controller層で直接OpenTelemetrySDKを扱わず、
+このプロジェクトでは、Controller層で直接OpenTelemetrySDKを扱わず、
 observability.LayerTracerを経由してspanの開始・終了を行います。
 
 #### 1. Controller層でのspanの開始と終了
@@ -330,6 +330,94 @@ func BindHandler(
 
 ここではSDKの生インスタンスを直接使わず、
 observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
+
+## DI（Dependency Injection）の仕組み（Controller Layer）
+
+このプロジェクトでは、Controller（Handler）は **Uber Fx による DI** で組み立てられます。
+Handler は **自分で依存を生成せず、すべてコンストラクタ引数として受け取る**のが原則です。
+
+### 全体構成
+
+各ハンドラは `BindHandler` として定義され、`fx.Invoke` によって起動時に登録されます。
+
+```mermaid
+flowchart TB
+    Module["ControllerModule (fx.Module)"]
+    Invoke["fx.Invoke(BindHandler...)"]
+    Bind["BindHandler(echo, tracerFactory, usecase...)"]
+    Server["server{ tracer, usecase } を生成"]
+    Register["oapi.RegisterHandlers(e, server)"]
+
+    Module --> Invoke
+    Invoke --> Bind
+    Bind --> Server
+    Server --> Register
+```
+
+### internal/di/module/controller.go の役割
+
+```go
+func ControllerModule() fx.Option {
+    return fx.Module("controller",
+        fx.Invoke(
+            health.BindHandler,
+            users.BindHandler,
+            // 他のハンドラ
+        ),
+    )
+}
+```
+
+- `fx.Invoke`
+  - Handler の登録関数（BindHandler）を起動時に実行
+- 各 BindHandler は **DIされた依存（Echo / TracerFactory / Usecase）を受け取る**
+
+### BindHandler の設計
+
+```go
+func BindHandler(
+    e *echo.Echo,
+    tf observability.TracerFactory,
+    uc user.Service,
+) {
+    gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
+        tracer: tf.Controller(),
+        uc:     uc,
+    }, nil))
+}
+```
+
+ポイント：
+
+- `echo.Echo` は fx により自動注入される
+- `TracerFactory` からレイヤー専用 tracer を取得
+- `Usecase` は interface 経由で注入される（具象には依存しない）
+
+### Handler 構造体のルール
+
+```go
+type server struct {
+    tracer observability.LayerTracer
+    uc     user.Service
+}
+```
+
+- フィールドは **DIで受け取る依存のみ**
+- new を使って内部で依存生成しない
+- interface（Usecase）に依存する
+
+### なぜ fx.Invoke を使うのか
+
+- ルーティング登録をアプリ起動時に自動化できる
+- Handler 追加時に main.go を変更しなくてよい
+- DIコンテナによる依存解決とライフサイクル管理が可能
+
+### AI / 開発者向けルール
+
+- 新しい Handler を追加する場合は `internal/di/module/controller.go` の `fx.Invoke(...)` に追加すること
+- Handler 内で new して依存を生成しないこと
+- 必ず constructor（BindHandler）経由で依存を受け取ること
+- Usecase は interface を受け取り、具象型に依存しないこと
 
 ## Implementation Rules
 
@@ -439,20 +527,37 @@ Controller テストでは次の内容を検証します。
 
 Controller のテストは次の構成で実装します。
 
-```text
-TestBindHandler
-Test_server_<Operation>
+```go
+func TestBindHandler(t *testing.T) {
+    // Test implementation
+}
+
+func Test_server_<Operation>(t *testing.T) {
+    // Test implementation
+}
 ```
 
 例：
 
-```text
-TestBindHandler
-Test_server_GetUsers
-Test_server_PostUsers
-TestGetHealth
-TestGetReady
-TestGetVersion
+```go
+func TestBindHandler(t *testing.T) {
+    // Routerへの登録を検証
+}
+func Test_server_GetUsers(t *testing.T) {
+    // Handlerの振る舞いを検証
+}
+func Test_server_PostUsers(t *testing.T) {
+    // Handlerの振る舞いを検証
+}
+func Test_server_GetHealth(t *testing.T) {
+    // Handlerの振る舞いを検証
+}
+func Test_server_GetReady(t *testing.T) {
+    // Handlerの振る舞いを検証
+}
+func Test_server_GetVersion(t *testing.T) {
+    // Handlerの振る舞いを検証
+}
 ```
 
 ### Router テスト
@@ -534,12 +639,15 @@ Controller テストでは **ビジネスロジックを検証しません。**
 
 検証対象は次のみです。
 
-```text
-HTTP boundary
-DTO変換
-Usecase呼び出し
-Response変換
-Error伝播
+```mermaid
+flowchart TB
+    A["HTTP boundary"]
+    B["DTO変換"]
+    C["Usecase呼び出し"]
+    D["Response変換"]
+    E["Error伝播"]
+
+    A --> B --> C --> D --> E
 ```
 
 ビジネスルールの妥当性は **Usecase / Domain のテストで検証**します。

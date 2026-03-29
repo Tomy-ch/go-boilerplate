@@ -79,19 +79,15 @@ logger, err := logging.New(appCfg)
 
 ### Production Logger
 
-```txt
-Encoding: JSON
-Level: Info
-Stacktrace: Error以上
-```
+- Encoding: JSON
+- Level: Info
+- Stacktrace: Error以上
 
 ### Development Logger
 
-```txt
-Encoding: Console
-Level: Debug
-Stacktrace: Warn以上
-```
+- Encoding: Console
+- Level: Debug
+- Stacktrace: Warn以上
 
 ## Field
 
@@ -152,24 +148,20 @@ HTTPリクエスト / レスポンスログは次のフィールドを出力し�
 
 例（Request）
 
-```txt
-event_type=start
-method=GET
-path=/v1/users
-remote_ip=...
-trace_id=...
-span_id=...
-```
+- `event_type=start`
+- `method=GET`
+- `path=/v1/users`
+- `remote_ip=...`
+- `trace_id=...`
+- `span_id=...`
 
 例（Response）
 
-```txt
-event_type=end
-status=200
-latency_ms=12
-trace_id=...
-span_id=...
-```
+- `event_type=end`
+- `status=200`
+- `latency_ms=12`
+- `trace_id=...`
+- `span_id=...`
 
 ## SQL Logging
 
@@ -177,27 +169,21 @@ SQLログは **開始 / 終了**の2イベントで出力されます。
 
 ### SQL Start
 
-```txt
-event_type=start
-layer=repository
-span_name=FindUser
-```
+- `event_type=start`
+- `layer=repository`
+- `span_name=FindUser`
 
 ### SQL End
 
-```txt
-event_type=end
-latency_ms=4
-query=SELECT ...
-args=[...]
-```
+- `event_type=end`
+- `latency_ms=4`
+- `query=SELECT ...`
+- `args=[...]`
 
 クエリは
 
-```txt
-raw_query
-query_compact
-```
+- `raw_query`
+- `query_compact`
 
 の2種類が出力されます。
 
@@ -205,14 +191,12 @@ query_compact
 
 Observabilityログは trace/span 情報を含みます。
 
-```txt
-trace_id
-span_id
-parent_span_id
-layer
-package
-function
-```
+- `trace_id`
+- `span_id`
+- `parent_span_id`
+- `layer`
+- `package`
+- `function`
 
 Observabilityが無効な場合は出力されません。
 
@@ -242,14 +226,7 @@ logging.NewTestLogFieldBuilder(t)
 
 ### 1 zap を直接使わせない
 
-アプリケーションコードは
-
-```txt
-zap.Logger
-zap.Field
-```
-
-に依存しません。
+アプリケーションコードは `zap.Logger`, `zap.Field` に依存しません。
 
 ### 2 Field をラップする
 
@@ -264,21 +241,13 @@ zap.Field
 
 trace / span 情報は logging 層で統合します。
 
-```txt
-trace_id
-span_id
-parent_span_id
-```
+- `trace_id`
+- `span_id`
+- `parent_span_id`
 
 ### 4 テスト容易性
 
-Logger は interface のため
-
-```txt
-mockgen
-```
-
-でモック生成可能です。
+Logger は interface のため `mockgen` でモック生成可能です。
 
 ## セキュリティ注意点
 

@@ -1,17 +1,17 @@
 # logging
 
-English | [日本語](README.ja.md)
+[English](README.md) | 日本語
 
 `internal/logging` provides a **structured logging foundation** used across the entire application.
 
-This package is built on top of `zap`, but introduces an abstraction layer so that application code can **use logging without directly depending on zap**.
+This package is based on `zap`, while providing an abstraction layer that allows application code to handle logging **without directly depending on zap**.
 
-The primary goals are:
+The main purposes are as follows.
 
-- Standardizing log formats
-- Safely generating log fields
-- Integrating with observability (trace/span)
-- Improving testability
+- Standardization of log formats
+- Safe generation of log fields
+- Integration with observability (trace/span)
+- Ensuring testability
 - Providing a framework-independent logging API
 
 ## Package Structure
@@ -31,16 +31,16 @@ The role of each file is as follows.
 
 |File|Role|
 |---|---|
-|`logger.go`|Logger interface used by application code|
-|`logger_core.go`|Implementation using `zap.Logger`|
-|`field.go`|Type definition for log fields|
-|`field_builder.go`|Generators for HTTP / SQL / Observability log fields|
+|`logger.go`|Logger interface used by application|
+|`logger_core.go`|Implementation of zap.Logger|
+|`field.go`|Type of log fields|
+|`field_builder.go`|Generation of HTTP / SQL / Observability log fields|
 |`const.go`|Log key definitions|
 |`test_kit.go`|Logger / FieldBuilder for testing|
 
 ## Logger Interface
 
-Application code only uses the **Logger interface**.
+Application code uses only the **Logger interface**.
 
 ```go
 type Logger interface {
@@ -54,21 +54,21 @@ type Logger interface {
 }
 ```
 
-This design provides the following benefits:
+This design provides:
 
-- Encapsulates zap dependency internally
-- Allows mocking in tests
-- Enables logging implementation changes without affecting the application layer
+- Encapsulation of zap dependency
+- Ability to replace with mocks in tests
+- No impact on application layer even if logging implementation changes
 
 ## Logger Creation
 
-The Logger is created depending on the application runtime mode.
+Logger is created according to the application runtime mode.
 
 ```go
 logger, err := logging.New(appCfg)
 ```
 
-Internally, different logger configurations are used.
+Internally, the following loggers are used.
 
 |Mode|Logger|
 |---|---|
@@ -77,19 +77,15 @@ Internally, different logger configurations are used.
 
 ### Production Logger
 
-```txt
-Encoding: JSON
-Level: Info
-Stacktrace: Error and above
-```
+- Encoding: JSON
+- Level: Info
+- Stacktrace: Error and above
 
 ### Development Logger
 
-```txt
-Encoding: Console
-Level: Debug
-Stacktrace: Warn and above
-```
+- Encoding: Console
+- Level: Debug
+- Stacktrace: Warn and above
 
 ## Field
 
@@ -103,7 +99,7 @@ logger.Info(
 )
 ```
 
-Supported field types:
+Supported types
 
 |Function|Type|
 |---|---|
@@ -116,15 +112,15 @@ Supported field types:
 |Error|error|
 |Any|any|
 
-The goals of this design:
+Purpose of this design
 
-- Prevent direct usage of `zap.Field`
+- Prevent direct usage of zap.Field
 - Ensure safe field generation
-- Provide a unified logging API
+- Unify API
 
 ## LogFieldBuilder
 
-A component responsible for generating log fields for HTTP / SQL / Observability events.
+A component that consolidates log field generation for HTTP / SQL / Observability.
 
 ```go
 type LogFieldBuilder interface {
@@ -136,97 +132,85 @@ type LogFieldBuilder interface {
 }
 ```
 
-Typical usage includes:
+Use cases
 
-- HTTP access logging
-- SQL logging
-- trace/span logging
+- HTTP access logs
+- SQL logs
+- trace/span logs
 
-These fields enable **automatic structured logging generation**.
+Automatically generates **structured logs**.
 
 ## HTTP Logging
 
 HTTP request / response logs output the following fields.
 
-Example (Request):
+Example (Request)
 
-```txt
-event_type=start
-method=GET
-path=/v1/users
-remote_ip=...
-trace_id=...
-span_id=...
-```
+- `event_type=start`
+- `method=GET`
+- `path=/v1/users`
+- `remote_ip=...`
+- `trace_id=...`
+- `span_id=...`
 
-Example (Response):
+Example (Response)
 
-```txt
-event_type=end
-status=200
-latency_ms=12
-trace_id=...
-span_id=...
-```
+- `event_type=end`
+- `status=200`
+- `latency_ms=12`
+- `trace_id=...`
+- `span_id=...`
 
 ## SQL Logging
 
-SQL logs are emitted as two events: **start** and **end**.
+SQL logs are output as two events: **start / end**.
 
 ### SQL Start
 
-```txt
-event_type=start
-layer=repository
-span_name=FindUser
-```
+- `event_type=start`
+- `layer=repository`
+- `span_name=FindUser`
 
 ### SQL End
 
-```txt
-event_type=end
-latency_ms=4
-query=SELECT ...
-args=[...]
-```
+- `event_type=end`
+- `latency_ms=4`
+- `query=SELECT ...`
+- `args=[...]`
 
-Two types of query representations are logged:
+Queries are output in two formats.
 
-```txt
-raw_query
-query_compact
-```
+- `raw_query`
+- `query_compact`
 
 ## Observability Logging
 
-Observability logs include trace and span information.
+Observability logs include trace/span information.
 
-```txt
-trace_id
-span_id
-parent_span_id
-layer
-package
-function
-```
+- `trace_id`
+- `span_id`
+- `parent_span_id`
+- `layer`
+- `package`
+- `function`
 
-If observability is disabled, these fields are not emitted.
+If observability is disabled, these are not output.
 
 ## Test Kit
 
-For testing, use `NewTestLogger`.
+In tests, use `NewTestLogger`.
 
 ```go
 logger := logging.NewTestLogger(t)
 ```
 
-Features:
+Features
 
-- Uses `zaptest.NewLogger`
-- Outputs logs to `testing.T`
+- `zaptest.NewLogger`
+- Outputs test logs to `testing.T`
 - No side effects
 
-Test instance for `LogFieldBuilder`:
+Test instance for LogFieldBuilder
 
 ```go
 logging.NewTestLogFieldBuilder(t)
@@ -234,52 +218,39 @@ logging.NewTestLogFieldBuilder(t)
 
 ## Design Policy
 
-The logging package is designed based on the following policies.
+This logging package is designed based on the following policies.
 
-### 1 Do Not Use zap Directly
+### 1 Do not use zap directly
 
-Application code must not depend on:
+Application code does not depend on `zap.Logger`, `zap.Field`.
 
-```txt
-zap.Logger
-zap.Field
-```
+### 2 Wrap Field
 
-### 2 Wrap Fields
+Log fields use the `Field` type.
 
-Log fields are generated using the `Field` type.
-
-Reasons:
+Reason
 
 - Fix the field generation API
-- Hide zap dependencies
+- Hide zap dependency
 
 ### 3 Integrate Observability
 
-Trace and span information are integrated within the logging layer.
+trace / span information is integrated at the logging layer.
 
-```txt
-trace_id
-span_id
-parent_span_id
-```
+- `trace_id`
+- `span_id`
+- `parent_span_id`
 
 ### 4 Testability
 
-Since Logger is an interface:
-
-```txt
-mockgen
-```
-
-can be used to generate mocks.
+Since Logger is an interface, it can be mocked using `mockgen`.
 
 ## Security Considerations
 
-The following information **must not be logged**:
+Be careful not to output the following information in logs.
 
 - passwords
 - authentication tokens
 - personal information
 
-If such data must appear in logs, **masking should be applied**.
+If necessary, apply **masking processing**.

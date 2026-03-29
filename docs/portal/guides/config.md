@@ -1,148 +1,114 @@
 # `Config` Package
 
-This directory defines configuration used across the entire application.
+This directory defines configuration files used across the entire application.
 
 ## Implementation
 
-This package is responsible for reading application settings from environment variables and providing them as **typed configuration structures** throughout the application.
+This package is responsible for reading application settings from environment variables and providing them as typed structures across the entire application. The main implementation flow is as follows.
 
-The main implementation flow is as follows:
+- Environment variables are parsed into a `Loader` (including a test `Loader`) and values are loaded using `env.ParseAs[Loader]()` (implementation files: `loader.go` / `envspec.go`).
+- The loaded values in `Loader` are converted into a `Config` type, and validation (`validateConfig()`) is performed internally as needed (implementation files: `config.go`, `model.go`).
+- The generated `*Config` is treated as immutable (no setters exposed) and is injected into the application via a setup function (`SetUpConfig`) for registering into the DI container (DI related: `internal/di/module/config.go`).
 
-- Environment variables are parsed into a `Loader` structure (including a testing `Loader`) using `env.ParseAs[Loader]()` (implementation files: `loader.go` / `envspec.go`).
-- The loaded `Loader` values are converted into the `Config` type, and internal validation (`validateConfig()`) is executed when necessary (implementation files: `config.go`, `model.go`).
-- The generated `*Config` is treated as immutable (no setters are exposed) and injected into the application through a setup function (`SetUpConfig`) registered in the DI container (DI reference: `internal/di/module/config.go`).
+Design points:
 
-Design highlights:
-
-- Configuration is loaded at startup and never modified during runtime (treated as immutable).
-- Missing required values are detected by `validateConfig()`, causing the application to fail fast during startup instead of running in an invalid state.
-- Testing helpers and mocks (`config_testing_mock.go`, `config_testing_setter.go`) are provided so environment variables can be overridden in test environments to verify `New()` behavior.
+- Configuration is loaded collectively at initialization and values are not changed during runtime (treated as immutable).
+- Missing required values are detected in `validateConfig()`, and startup failure (explicit error return) is triggered to prevent running in an invalid state.
+- Testing helpers and mocks (`config_testing_mock.go`, `config_testing_setter.go`) are provided to allow substituting environment variables and verifying the behavior of `New()` in test environments.
 
 ## Config Loading Flow
 
-The configuration loading process during application startup is shown below.
+The configuration loading flow at application startup is as follows.
 
-```txt
-.env files
-    ↓
-Load (godotenv)
-    ↓
-env.ParseAs[Loader]()
-    ↓
-validateConfig()
-    ↓
-Config struct
-    ↓
-SubConfig Provider<br/>(NewServerConfig etc.)
-    ↓
-DI (Uber Fx)
+```mermaid
+flowchart TB
+    Env[".env files"]
+    Load["Load (godotenv)"]
+    Parse["env.ParseAs[Loader]()"]
+    Validate["validateConfig()"]
+    Config["Config struct"]
+    Sub["SubConfig Provider (NewServerConfig etc.)"]
+    DI["DI (Uber Fx)"]
+
+    Env --> Load --> Parse --> Validate --> Config --> Sub --> DI
 ```
 
-### Role of Each Step
+### Responsibilities of Each Step
 
 - **Load()**
-  - Loads `.env/.env` and `.env/.env.<ENV>` and sets environment variables.
+  - Loads `env/.env` and `env/.env.<ENV>` and sets environment variables.
 
 - **env.ParseAs[Loader]**
   - Maps environment variables into the `Loader` struct defined in `envspec.go`.
 
 - **validateConfig()**
-  - Validates values such as port ranges, CIDR blocks, and timeout values.
-  - If an invalid configuration exists, startup fails with an explicit error.
+  - Validates port ranges, CIDR, timeout values, etc.
+  - Returns an error at startup if there is invalid configuration.
 
 - **Config struct**
   - Converts `Loader` values into internal structures (`model.go`).
   - Treated as an **immutable configuration object** that cannot be modified externally.
 
 - **SubConfig Provider**
-  - Functions such as `NewServerConfig` and `NewDatabaseConfig`
-  - Inject only the required configuration values into each component.
+  - Through functions such as `NewServerConfig` and `NewDatabaseConfig`
+  - Injects only the necessary configuration into each component.
 
 - **DI (Uber Fx)**
-  - Registered through `fx.Provide` in `internal/di/module/config.go`
+  - Registered via `fx.Provide` in `internal/di/module/config.go`
   - Used across the entire application.
 
 ## Design Principles
 
-This Config package is implemented based on the following principles.
+This Config package is implemented based on the following design principles.
 
 - **Configuration is immutable**
-  - Configuration is loaded only once during startup and never modified at runtime.
+  - Configuration is loaded only once at startup and is not changed during runtime.
 
 - **Configuration is loaded only at startup**
-  - Initialization sequence: `.env` → `Loader` → `validateConfig()` → `Config`.
+  - Initialized in the order `.env → Loader → validateConfig() → Config`.
 
 - **Domain / Usecase must not depend on environment variables**
-  - Interpretation of environment variables is isolated within the Config layer.
+  - Interpretation of environment variables is confined to the Config layer.
 
-- **Configuration should be accessed through typed SubConfig providers**
-  - Providers such as `NewServerConfig` or `NewDatabaseConfig` expose only the required configuration for each component.
+- **Use typed SubConfig providers to obtain configuration**
+  - Through providers such as `NewServerConfig` and `NewDatabaseConfig`,
+    only the necessary configuration is passed to each component.
 
-This design minimizes configuration coupling and improves testability and maintainability.
+This minimizes configuration dependency in the application and improves testability and maintainability.
 
 ## Main Libraries Used
 
-- `github.com/caarlos0/env/v11`  
-  Used to map environment variables into Go structs (tag-based configuration such as `env:"KEY,required"`).
-
-- Uber Fx DI pattern  
-  Configuration values are injected through `fx.Provide` (DI implementation: `internal/di/module/config.go`).
-
-- Testing libraries  
-  `testify/require` together with `config_testing_*` helpers are used to reliably verify environment-variable-based behavior.
+- `github.com/caarlos0/env/v11` — Used to map environment variables to structs (tag-based, e.g., `env:"KEY,required"`).
+- Since the Uber Fx pattern is adopted for DI registration, configuration values are injected via `fx.Provide` (DI implementation: `internal/di/module/config.go`).
+- In tests, assertion libraries such as `testify/require` are used together with project-internal `config_testing_*` helpers to reliably verify environment-variable-based behavior.
 
 ## Importance
 
-The following describes the operational importance and expected impact.
+The following describes importance and expected impact in real-world operations.
 
-### Importance in Production
+### Production Importance
 
-- Importance: **High**
+- Level: High
+  - Reason: Values essential for operation such as database connection information, authentication information for external services, listening ports, CORS settings, and security settings (HSTS, etc.) are provided via environment variables, so failure to read them correctly leads to startup failure or critical issues.
+  - Countermeasure: Required fields should be validated by `validateConfig()` before startup, and an explicit error should be returned when missing.
 
-Reason:
+### Development / Test Importance
 
-Database connection information, external service credentials, listening ports, CORS configuration, and security settings (HSTS etc.) are provided through environment variables. If these cannot be loaded correctly, the application may fail to start or encounter serious runtime failures.
-
-Recommended mitigation:
-
-Required fields should be validated by `validateConfig()` before startup, and missing values should cause explicit startup errors.
-
-### Importance in Development / Testing
-
-- Importance: **High (but replaceable with defaults or mocks)**
-
-Reason:
-
-Tests rely on specific environment variables to validate behavior. Proper environment management is therefore important.
-
-Because test helpers exist in the repository, CI and local tests can reproduce behavior using `t.Setenv`.
-
-Example:
-
-Use `config_testing_setter.go` to inject test configuration values and verify that `New()` binds them correctly.
+- Level: High (however can be substituted with defaults or mocks)
+  - Reason: In tests, behavior is verified by setting specific ENV values, so environment variable management is important. Since test helpers are available within the project, reproducibility can be achieved in CI and local tests by combining with `t.Setenv`.
+  - Example: Use `config_testing_setter.go` to inject test configuration and verify that `New()` binds correctly.
 
 ### Impact if Disabled
 
-Impact range: **Minor to Critical (depending on configuration)**
+- Impact range: Minor to critical (depending on configuration items)
+  - Minor: Some options such as log level and debug flags can be safely substituted with default values.
+  - Critical: Missing DB connection information or external API keys will cause startup failure or runtime errors.
+  - Recommended action: Before production operation, run `go build` and `go test ./...` to ensure validation by `validateConfig()` passes. It is safer to establish a practice of validating required ENV in the CI pipeline.
 
-- Minor: Some options such as log levels or debug flags may fall back to safe defaults.
-- Critical: Missing DB connection info or external API keys will cause startup failures or runtime errors.
+### How to Add a New Category (e.g., AWS or GCP)
 
-Recommended practice:
-
-Before production deployment, run:
-
-```bash
-go build
-go test ./...
-```
-
-Ensure `validateConfig()` passes.  
-It is also recommended to validate required environment variables in CI pipelines.
-
-### How to Add a New Category (Example: AWS / GCP)
-
-1. Add a new private structure for the category in `model.go`.
+1. Add a new struct for the category in `model.go` (e.g., `AWS` or `GCP`).  
+    - Example:
 
     ```go
     type aws struct {
@@ -152,18 +118,20 @@ It is also recommended to validate required environment variables in CI pipeline
     }
     ```
 
-2. Add the new category as a field in the `Config` struct.
+2. Add the new category struct as a field in the `Config` struct.
+    - Example:
 
     ```go
     type Config struct {
         server server
-        aws    aws // newly added category
+        aws    aws // add new category
     }
     ```
 
-3. Define the corresponding structure in `envspec.go`.
-
-    Each field must include an `env` tag.
+3. Define the new category struct in `envspec.go`.
+    - Add `env` tags to each field and specify `required`, `envSeparator`, etc. as needed.
+    - Also add the public struct defined in `model.go` to `envspec.go`.
+    - Example:
 
     ```go
     type AWS struct {
@@ -173,24 +141,25 @@ It is also recommended to validate required environment variables in CI pipeline
     }
     ```
 
-4. Add the category to the `Loader` struct.
+4. Add the new category struct as a field in the `Loader` struct.
+    - Example:
 
     ```go
     type Loader struct {
         Server Server
-        AWS    AWS // newly added category
+        AWS    AWS // add new category
     }
     ```
 
-5. `env.ParseAs[Loader]()` automatically binds environment variables to the `Loader`.
-
-    Add validation if needed in `validateConfig()` and convert `Loader` into `Config`.
+5. In the `New` function of `config.go`, call `env.ParseAs[Loader]()` to automatically bind values from environment variables into `Loader`.
+    - Implement validation for the added category inside the `validateConfig()` function if necessary.
+    - Finally, convert from `Loader` to `Config` and return the `Config` struct.
 
     ```go
     func New() (*Config, error) {
         cfg, err := env.ParseAs[Loader]()
-
-        if err := validateConfig(cfg); err != nil {
+        
+        if err := validateConfig(cfg); err != nil { // perform validation here
             return nil, err
         }
 
@@ -205,13 +174,13 @@ It is also recommended to validate required environment variables in CI pipeline
                 secretKey: cfg.AWS.SecretKey,
                 region:    cfg.AWS.Region,
             },
-        }, nil
+    }, nil
     }
     ```
 
-6. Implement getter methods if external access is required.
-
-    Setter methods **must not be implemented**.
+6. Implement getter methods for each category as needed to allow external access to values.
+    - Creating setter methods is prohibited. The purpose of config.go is limited to retrieving and binding values from environment variables, and modifying configuration values is not intended.
+    - Example:
 
     ```go
     func (c *Config) AWSAccessKey() string {
@@ -227,7 +196,9 @@ It is also recommended to validate required environment variables in CI pipeline
     }
     ```
 
-7. Add test cases in `config_test.go`.
+7. Add test cases for the added category in `config_test.go`.
+    - In test cases, set environment variables and call `New()` to verify that values are correctly bound.
+    - Example:
 
     ```go
     func TestNewAWSConfig(t *testing.T) {
@@ -248,42 +219,36 @@ It is also recommended to validate required environment variables in CI pipeline
     }
     ```
 
-    Also add validation tests for `validateConfig()`.
+    - Also add tests for validation inside the `validateConfig` function.
 
-8. Provide a public SubConfig provider similar to existing ones.
+8. Similar to existing `NewHogehogeConfig`, ensure the signature where DI receives `*config.Config` and returns a public type (`*config.AWSConfig`).
 
-    ```go
-    // internal/config/aws_config.go (example)
-    package config
+```go
+// internal/config/aws_config.go (example)
+package config
 
-    type AWSConfig struct {
-        AccessKey string
-        SecretKey string
-        Region    string
+type AWSConfig struct {
+    AccessKey string
+    SecretKey string
+    Region    string
+}
+
+// NewAWSConfig receives *config.Config from DI and returns a public type *config.AWSConfig used by services
+func NewAWSConfig(cfg *Config) *AWSConfig {
+    return &AWSConfig{
+        AccessKey: cfg.aws.accessKey,
+        SecretKey: cfg.aws.secretKey,
+        Region:    cfg.aws.region,
     }
-
-    // NewAWSConfig receives *config.Config from DI
-    // and returns the public type*config.AWSConfig used by services.
-    func NewAWSConfig(cfg *Config)*AWSConfig {
-        return &AWSConfig{
-            AccessKey: cfg.aws.accessKey,
-            SecretKey: cfg.aws.secretKey,
-            Region:    cfg.aws.region,
-        }
-    }
-    ```
-
-Notes:
-
-- Follow project naming conventions for struct and field names.
-- After adding a provider to DI, register components that consume that type (e.g., an AWS client factory).
-- Missing registrations or type mismatches will cause build errors. Always verify with:
-
-```bash
-go build
-go test ./...
+}
 ```
+
+Points:
+
+- Follow project naming conventions for field names and struct names.
+- After adding a provider to DI, register the component that receives that type (e.g., AWS client factory) in the DI container.
+- Missing additions or type mismatches will cause build errors, so verify with `go build` and `go test ./...`.
 
 ## Notes
 
-For security reasons, sensitive information (such as API keys or passwords) must be managed through environment variables and **must not be hardcoded in source code**.
+- For security reasons, do not hardcode sensitive information (e.g., API keys or passwords) in code. Manage them via environment variables.
