@@ -113,3 +113,17 @@ func (mr *MockDBProviderMockRecorder) NewLoggingDB(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewLoggingDB", reflect.TypeOf((*MockDBProvider)(nil).NewLoggingDB), ctx)
 }
+
+// ObservabilityConfig mocks base method.
+func (m *MockDBProvider) ObservabilityConfig() *config.ObservabilityConfig {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ObservabilityConfig")
+	ret0, _ := ret[0].(*config.ObservabilityConfig)
+	return ret0
+}
+
+// ObservabilityConfig indicates an expected call of ObservabilityConfig.
+func (mr *MockDBProviderMockRecorder) ObservabilityConfig() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObservabilityConfig", reflect.TypeOf((*MockDBProvider)(nil).ObservabilityConfig))
+}

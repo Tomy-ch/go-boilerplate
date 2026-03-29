@@ -23,7 +23,10 @@ var (
 	testDB  driver.DatabaseDriver
 	initErr error
 	dbOnce  sync.Once
-	txLock  sync.Mutex
+	// txLock は、テスト用のトランザクションマネージャーでトランザクションを開始する際のロックです。
+	// これにより、テストが並行して実行される場合でも、トランザクションの競合を防止します。
+	// テスト数が増加し、ボトルネックとなる場合はテスト用のDocker一時コンテナを用意するライブラリの導入を検討してください。
+	txLock sync.Mutex
 )
 
 type TransactionRunner interface {
@@ -48,12 +51,13 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	tracer := observability.NewNoopTracerFactory(t)
 
 	mockLogger := logging.NewTestLogger(t)
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, mockLogger, lf, tracer)
+	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
 }
 
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。

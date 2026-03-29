@@ -37,6 +37,7 @@ func TestNewConfig(t *testing.T) {
 				},
 				observability: ObservabilityConfig{
 					enabled:             expectedObservabilityEnabled,
+					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 				},

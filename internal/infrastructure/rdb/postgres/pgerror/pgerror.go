@@ -36,6 +36,10 @@ func NormalizeError(err error) error {
 			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
 		case "42501": // 権限不足
 			return xerrors.Wrap(apperror.ErrPermissionDenied, err.Error())
+		case "40001", "40P01": // 直列化失敗 / トランザクションのデッドロック(リトライ可能)
+			return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+		case "57014": // クエリのキャンセル
+			return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
 		}
 	}
 	if IsUnavailable(err) { // 接続関連エラー

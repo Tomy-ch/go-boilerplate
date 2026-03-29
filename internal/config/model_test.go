@@ -168,6 +168,11 @@ func TestGetterMethods(t *testing.T) {
 			require.True(t, observability.Enabled())
 		})
 
+		t.Run("MaskedDBQueryArgs", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
+		})
+
 		t.Run("TargetStatusCodes", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedObservabilityTargetStatusCodes, observability.TargetStatusCodes())

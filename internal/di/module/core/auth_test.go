@@ -38,7 +38,7 @@ func Test_provideAuthenticator(t *testing.T) {
 	t.Run("ローカル環境では local.Authenticator が提供される", func(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetAppEnv(t, config.EnvLocal)
+		appCfg.SetApplicationEnv(t, config.EnvLocal)
 		logger := logging.NewTestLogger(t)
 
 		authenticator := provideAuthenticator(appCfg, logger)
@@ -50,7 +50,7 @@ func Test_provideAuthenticator(t *testing.T) {
 	t.Run("CI環境では local.Authenticator が提供される", func(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetAppEnv(t, config.EnvCI)
+		appCfg.SetApplicationEnv(t, config.EnvCI)
 		logger := logging.NewTestLogger(t)
 
 		authenticator := provideAuthenticator(appCfg, logger)
@@ -62,7 +62,7 @@ func Test_provideAuthenticator(t *testing.T) {
 	t.Run("テスト環境では local.Authenticator が提供される", func(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetAppEnv(t, config.EnvTest)
+		appCfg.SetApplicationEnv(t, config.EnvTest)
 		logger := logging.NewTestLogger(t)
 
 		authenticator := provideAuthenticator(appCfg, logger)
@@ -74,7 +74,7 @@ func Test_provideAuthenticator(t *testing.T) {
 	t.Run("その他の環境では本番用 Authenticator が提供される", func(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetAppEnv(t, config.EnvProduction)
+		appCfg.SetApplicationEnv(t, config.EnvProduction)
 		logger := logging.NewTestLogger(t)
 
 		authenticator := provideAuthenticator(appCfg, logger)

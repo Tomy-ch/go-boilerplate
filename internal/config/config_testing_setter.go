@@ -10,24 +10,44 @@ import (
 //
 // 実装メソッドは無闇に増やさず、必要なものだけを追加してください。
 
-// SetServerAppMode は、テスト用にサーバーのAppModeを設定します。
+// SetApplicationMode は、テスト用にサーバーのAppModeを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *ApplicationConfig) SetServerAppMode(t testing.TB, mode string) {
+func (a *ApplicationConfig) SetApplicationMode(t testing.TB, mode string) {
 	t.Helper()
 	prev := a.Mode()
 	a.mode = mode
 	t.Cleanup(func() { a.mode = prev })
 }
 
-// SetAppEnv は、テスト用にアプリケーションの環境を設定します。
+// SetApplicationEnv は、テスト用にアプリケーションの環境を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *ApplicationConfig) SetAppEnv(t testing.TB, env string) {
+func (a *ApplicationConfig) SetApplicationEnv(t testing.TB, env string) {
 	t.Helper()
 	prev := a.Env()
 	a.env = env
 	t.Cleanup(func() { a.env = prev })
+}
+
+// SetServerPort は、テスト用にサーバーのポートを設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (s *ServerConfig) SetServerPort(t testing.TB, port int) {
+	t.Helper()
+	prev := s.Port()
+	s.port = port
+	t.Cleanup(func() { s.port = prev })
+}
+
+// SetObservabilityMaskedDBQueryArgs は、テスト用にオブザーバビリティのDBクエリ引数の設定を行います。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(t testing.TB, val bool) {
+	t.Helper()
+	prev := o.MaskedDBQueryArgs()
+	o.maskedDBQueryArgs = val
+	t.Cleanup(func() { o.maskedDBQueryArgs = prev })
 }
 
 // SetDatabaseDriver は、テスト用にデータベースのドライバーを設定します。

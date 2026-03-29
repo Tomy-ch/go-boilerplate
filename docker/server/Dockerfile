@@ -1,6 +1,7 @@
 # ------------------------------
 # ビルド用
 # ------------------------------
+# NOTE: 本番利用時にはダイジェストを指定することを推奨
 FROM golang:1.26.1-alpine AS builder
 
 WORKDIR /app
@@ -39,6 +40,7 @@ RUN go build -mod=vendor -trimpath \
 # ------------------------------
 # 本番用
 # ------------------------------
+# NOTE: 本番利用時にはダイジェストを指定することを推奨
 FROM alpine:3.23 AS prd
 
 ENV ENV=prd
@@ -76,6 +78,8 @@ RUN apk add --no-cache \
   make
 
 # Goのモジュール
+# NOTE: バージョンを固定してCI環境と同じ環境を構築してください。
+#       @latestは開発初期の利便性のために使用しています。
 RUN go install github.com/air-verse/air@latest \
   && go install github.com/go-delve/delve/cmd/dlv@latest \
   && go install github.com/segmentio/golines@latest \

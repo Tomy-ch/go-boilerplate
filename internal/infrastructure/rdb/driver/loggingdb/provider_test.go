@@ -22,17 +22,19 @@ func TestNewLoggingDBProvider(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	expected := &provider{
 		db:     db,
 		dbCfg:  dbCfg,
+		obsCfg: obsCfg,
 		l:      l,
 		lf:     lf,
 		tracer: tracer.Infra(),
 	}
 
-	provider := NewLoggingDBProvider(db, dbCfg, l, lf, tracer)
+	provider := NewLoggingDBProvider(db, dbCfg, obsCfg, l, lf, tracer)
 	require.Equal(t, expected, provider)
 }
 

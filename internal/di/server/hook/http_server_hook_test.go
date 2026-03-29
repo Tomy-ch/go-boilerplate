@@ -2,6 +2,7 @@ package hook
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	"boilerplate-go/internal/config"
@@ -49,26 +50,73 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 func Test_newStartServerFunc(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
+	t.Run("HTTPサーバーが起動後にListenerが設定されること", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
 
-	mockLogger := mock_logging.NewMockLogger(ctrl)
-	namedMock := mock_logging.NewMockLogger(ctrl)
+		mockLogger := mock_logging.NewMockLogger(ctrl)
+		namedMock := mock_logging.NewMockLogger(ctrl)
 
-	mockLogger.EXPECT().Named("server.Start").Return(namedMock).AnyTimes()
-	namedMock.EXPECT().CallerSkip(serverCallerSkip).Return(namedMock).AnyTimes()
-	namedMock.EXPECT().Info("http started", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
-	namedMock.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
+		mockLogger.EXPECT().Named("server.Start").Return(namedMock).AnyTimes()
+		namedMock.EXPECT().CallerSkip(serverCallerSkip).Return(namedMock).AnyTimes()
+		namedMock.EXPECT().
+			Info("http started", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(1)
+		namedMock.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
 
-	cfg := config.MockConfigForTest(t)
-	appCfg := config.NewApplicationConfig(cfg)
-	secCfg := config.NewSecurityConfig(cfg)
-	srvCfg := config.NewServerConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+		lc := &net.ListenConfig{}
+		ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		port := ln.Addr().(*net.TCPAddr).Port
+		require.NoError(t, err)
+		require.NoError(t, ln.Close())
 
-	e := server.NewAppServer(srvCfg)
+		cfg := config.MockConfigForTest(t)
+		appCfg := config.NewApplicationConfig(cfg)
+		secCfg := config.NewSecurityConfig(cfg)
+		srvCfg := config.NewServerConfig(cfg)
+		osCfg := config.NewOperationSystemConfig(cfg)
+		srvCfg.SetServerPort(t, port)
 
-	fn := newStartServerFunc(e, srvCfg, mockLogger, secCfg, appCfg, osCfg)
-	require.NoError(t, fn(context.Background()))
+		e := server.NewAppServer(srvCfg)
+
+		fn := newStartServerFunc(e, srvCfg, mockLogger, secCfg, appCfg, osCfg)
+		err = fn(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, e.Listener)
+
+		t.Cleanup(func() {
+			_ = e.Shutdown(context.Background())
+		})
+	})
+
+	t.Run("ポートのリッスンに失敗した場合、エラーが返されること", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		mockLogger := mock_logging.NewMockLogger(ctrl)
+
+		lc := &net.ListenConfig{}
+		ln, err := lc.Listen(context.Background(), "tcp", ":0")
+		require.NoError(t, err)
+		port := ln.Addr().(*net.TCPAddr).Port
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_ = ln.Close()
+		})
+
+		cfg := config.MockConfigForTest(t)
+		appCfg := config.NewApplicationConfig(cfg)
+		secCfg := config.NewSecurityConfig(cfg)
+		srvCfg := config.NewServerConfig(cfg)
+		osCfg := config.NewOperationSystemConfig(cfg)
+		srvCfg.SetServerPort(t, port)
+
+		e := server.NewAppServer(srvCfg)
+		fn := newStartServerFunc(e, srvCfg, mockLogger, secCfg, appCfg, osCfg)
+
+		err = fn(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to listen on port")
+	})
 }
 
 func Test_newStopServerFunc(t *testing.T) {

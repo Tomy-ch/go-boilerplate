@@ -84,6 +84,27 @@ func TestNormalizePgError(t *testing.T) {
 		require.ErrorIs(t, got, apperror.ErrPermissionDenied)
 	})
 
+	t.Run("直列化失敗", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeError(&pgconn.PgError{Code: "40001", Message: "serialisation failure"})
+		require.Error(t, got)
+		require.ErrorIs(t, got, apperror.ErrUnavailable)
+	})
+
+	t.Run("トランザクションのデッドロック", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeError(&pgconn.PgError{Code: "40P01", Message: "transaction failure"})
+		require.Error(t, got)
+		require.ErrorIs(t, got, apperror.ErrUnavailable)
+	})
+
+	t.Run("クエリのキャンセル", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeError(&pgconn.PgError{Code: "57014", Message: "query canceled"})
+		require.Error(t, got)
+		require.ErrorIs(t, got, apperror.ErrUnavailable)
+	})
+
 	t.Run("該当なし（NoRows）", func(t *testing.T) {
 		t.Parallel()
 		got := NormalizeError(sql.ErrNoRows)

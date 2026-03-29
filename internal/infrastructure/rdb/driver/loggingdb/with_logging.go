@@ -124,6 +124,11 @@ func (dwl *dbWithLogging) buildSQLStartLogFields(tc observability.TraceContext, 
 func (dwl *dbWithLogging) buildSQLEndLogFields(
 	tc observability.TraceContext, funcName, query string, duration time.Duration, args []any, err error,
 ) []*logging.Field {
+	logArgs := args
+	if dwl.provider.ObservabilityConfig().MaskedDBQueryArgs() {
+		logArgs = nil
+	}
+
 	sqlIn := logging.SQLFieldsEndInput{
 		Layer:    layer,
 		PkgName:  pkg,
@@ -134,7 +139,7 @@ func (dwl *dbWithLogging) buildSQLEndLogFields(
 
 		Query:        query,
 		Latency:      duration,
-		Args:         args,
+		Args:         logArgs,
 		Err:          err,
 		TraceID:      tc.TraceID(),
 		SpanID:       tc.SpanID(),

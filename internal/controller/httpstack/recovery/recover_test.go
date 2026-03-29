@@ -76,7 +76,7 @@ func Test_newRecoverConfig(t *testing.T) {
 		t.Parallel()
 
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetServerAppMode(t, config.DevelopmentMode)
+		appCfg.SetApplicationMode(t, config.DevelopmentMode)
 
 		expected := developmentConfig()
 		actual := newRecoverConfig(logger, appCfg)
@@ -87,7 +87,7 @@ func Test_newRecoverConfig(t *testing.T) {
 		t.Parallel()
 
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetServerAppMode(t, config.ProductionMode)
+		appCfg.SetApplicationMode(t, config.ProductionMode)
 
 		expected := productionConfig()
 		actual := newRecoverConfig(logger, appCfg)
@@ -98,7 +98,7 @@ func Test_newRecoverConfig(t *testing.T) {
 		t.Parallel()
 
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetServerAppMode(t, "unknown-mode")
+		appCfg.SetApplicationMode(t, "unknown-mode")
 
 		expected := productionConfig()
 		actual := newRecoverConfig(logger, appCfg)

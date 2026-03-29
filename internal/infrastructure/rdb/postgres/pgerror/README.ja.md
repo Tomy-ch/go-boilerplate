@@ -64,6 +64,9 @@ flowchart TB
 |22001|string too long|InvalidArgument|
 |22P02|invalid text representation|InvalidArgument|
 |42501|insufficient privilege|PermissionDenied|
+|40001|serialization failure|Unavailable|
+|40P01|deadlock detected|Unavailable|
+|57014|query canceled|Unavailable|
 
 これらに該当しない PostgreSQL エラーは `Internal` エラーへ変換されます。
 

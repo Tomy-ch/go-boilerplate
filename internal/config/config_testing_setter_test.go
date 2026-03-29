@@ -13,14 +13,26 @@ func TestConfigTestingSetters(t *testing.T) {
 
 	t.Run("SetAppMode", func(t *testing.T) {
 		expected := "test-mode"
-		cfg.app.SetServerAppMode(t, expected)
+		cfg.app.SetApplicationMode(t, expected)
 		require.Equal(t, expected, cfg.app.Mode())
 	})
 
 	t.Run("SetAppEnv", func(t *testing.T) {
 		expected := "test-env"
-		cfg.app.SetAppEnv(t, expected)
+		cfg.app.SetApplicationEnv(t, expected)
 		require.Equal(t, expected, cfg.app.Env())
+	})
+
+	t.Run("SetServerPort", func(t *testing.T) {
+		expected := 8081
+		cfg.server.SetServerPort(t, expected)
+		require.Equal(t, expected, cfg.server.Port())
+	})
+
+	t.Run("SetObservabilityMaskedDBQueryArgs", func(t *testing.T) {
+		expected := true
+		cfg.observability.SetObservabilityMaskedDBQueryArgs(t, expected)
+		require.Equal(t, expected, cfg.observability.MaskedDBQueryArgs())
 	})
 
 	t.Run("SetDatabaseDriver", func(t *testing.T) {
