@@ -52,7 +52,10 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir string) error {
 		return err
 	}
 
-	lower := strings.ToLower(name)
+	lower, err := toIdentifierLower(name)
+	if err != nil {
+		return err
+	}
 
 	// import handling with qualifier alignment
 	alias, err := resolveImportAlias(typ, importPath, importAlias)
@@ -136,6 +139,30 @@ func toExportedName(s string) (string, error) {
 	return out, nil
 }
 
+func toIdentifierLower(s string) (string, error) {
+	// split on non-alnum, join, and lower
+	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
+	var out string
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+		out += strings.ToLower(p)
+	}
+	if out == "" {
+		return "", fmt.Errorf("invalid name: %s", s)
+	}
+	// ensure starts with a letter or '_'
+	runes := []rune(out)
+	if !unicode.IsLetter(runes[0]) && runes[0] != '_' {
+		out = "x" + out
+	}
+	if !isValidIdentifier(out) {
+		return "", fmt.Errorf("invalid identifier: %s", out)
+	}
+	return out, nil
+}
+
 func isValidIdentifier(s string) bool {
 	if s == "" {
 		return false
@@ -193,12 +220,14 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 }
 
 func extractQualifier(t string) string {
-	// Extract first identifier before '.' (e.g., auth.Authn -> auth)
-	i := strings.Index(t, ".")
-	if i > 0 {
-		return t[:i]
+	// find last occurrence of identifier followed by '.'
+	re := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*\.`)
+	matches := re.FindAllString(t, -1)
+	if len(matches) == 0 {
+		return ""
 	}
-	return ""
+	last := matches[len(matches)-1]
+	return strings.TrimSuffix(last, ".")
 }
 
 func lastSegment(path string) string {
