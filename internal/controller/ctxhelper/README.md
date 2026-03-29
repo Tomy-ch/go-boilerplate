@@ -1,22 +1,82 @@
 # ctxhelper
 
-このパッケージは、context.ContextとEchoフレームワークのコンテキストを操作するためのヘルパー関数を提供します。
+English | [日本語](README.ja.md)
 
-## 実装方法
+ctxhelper is a "boundary layer that controls the usage of context".
 
-このパッケージでは、同じ実装が多く作成することになるため、`make gen-ctxkey`を実行してコード生成を行います。
+This package provides helper functions for manipulating `context.Context` and the context of the Echo framework.
 
-## 使用方法
+## Implementation Method
 
-`make gen-ctxkey`を実行すると、以下のようなコードが生成されます。
+The code in this package must not be implemented manually, and is created through code generation.
 
-実行する際には、nameとtypeを指定する必要があります。
+For details on the generation mechanism, refer to the following:
 
-### 実行例
+- `scripts/genctxkey/README.md`
+
+## Usage
+
+When adding a ctxkey, add a definition to `generate.go` as follows.
+
+```go
+//go:generate go run ../../../scripts/genctxkey --name UserID --type string --out .
+```
+
+When using external types:
+
+```go
+//go:generate go run ../../../scripts/genctxkey --name Authn --type "auth.Authn" --import boilerplate-go/internal/usecase/boundary/auth --out .
+```
+
+Then execute the following.
 
 ```bash
-% make gen-ctxkey name=UserID type=string
-✅ Generated: internal/controller/ctxhelper/user_id_ctx.go
-✅ Generated: internal/controller/ctxhelper/user_id_ctx_test.go
-%
+make gen-go-code
 ```
+
+## How to specify type
+
+### Primitive types / same-package types
+
+```bash
+--type string
+--type UserID
+```
+
+- import is not required
+- handled directly as a type
+
+### Types from external packages
+
+```bash
+--type "auth.Authn"
+--import boilerplate-go/internal/usecase/boundary/auth
+```
+
+- `--type` is specified in Go type format
+- package is explicitly specified with `--import`
+- `--alias` is optional
+
+### Complex types
+
+```bash
+--type "*[]auth.Authn"
+--type "map[string]auth.Authn"
+```
+
+- supports pointer / slice / map / generic
+
+## Notes
+
+- specifying only import path (e.g., `github.com/foo/bar`) is not allowed
+- external types must always specify both `--type` and `--import`
+
+## About editing
+
+Files with `.gen.go` in this directory are automatically generated code.
+
+- manual editing is prohibited in principle
+- make changes through `scripts/genctxkey`
+
+As an exception, minor fixes for dependency resolution (such as import adjustments) are allowed,  
+but it is recommended to implement permanent fixes on the generator side.

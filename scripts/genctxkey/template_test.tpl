@@ -7,48 +7,50 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	{{- if .ImportPath}}
 
-	auth "boilerplate-go/internal/usecase/boundary/auth"
+	{{.ImportAlias}} "{{.ImportPath}}"
+	{{- end}}
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetAuthn(t *testing.T) {
+func TestSet{{.NameCamel}}(t *testing.T) {
 	t.Parallel()
 
 	base := context.Background()
-	ctx := context.WithValue(base, authnKey, *new(auth.Authn))
+	ctx := context.WithValue(base, {{.NameLower}}Key, {{.TestSuccessValue}})
 
-	val := ctx.Value(authnKey)
-	v, ok := val.(auth.Authn)
+	val := ctx.Value({{.NameLower}}Key)
+	v, ok := val.({{.Type}})
 	require.True(t, ok)
-	require.Equal(t, *new(auth.Authn), v)
+	require.Equal(t, {{.TestSuccessValue}}, v)
 }
 
-func TestGetAuthn(t *testing.T) {
+func TestGet{{.NameCamel}}(t *testing.T) {
 	t.Parallel()
 
 	t.Run("standard context", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		ctx = SetAuthn(ctx, *new(auth.Authn))
+		ctx = Set{{.NameCamel}}(ctx, {{.TestSuccessValue}})
 
-		val, ok := GetAuthn(ctx)
+		val, ok := Get{{.NameCamel}}(ctx)
 		require.True(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		require.Equal(t, {{.TestSuccessValue}}, val)
 	})
 
 	t.Run("standard context - no value", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		val, ok := GetAuthn(ctx)
+		val, ok := Get{{.NameCamel}}(ctx)
 		require.False(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		require.Equal(t, {{.TestFailValue}}, val)
 	})
 }
 
-func TestSetAuthnToEcho(t *testing.T) {
+func TestSet{{.NameCamel}}ToEcho(t *testing.T) {
 	t.Parallel()
 
 	t.Run("echo context", func(t *testing.T) {
@@ -59,11 +61,11 @@ func TestSetAuthnToEcho(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		SetAuthnToEcho(c, *new(auth.Authn))
-		val, ok := GetAuthnFromEcho(c)
+		Set{{.NameCamel}}ToEcho(c, {{.TestSuccessValue}})
+		val, ok := Get{{.NameCamel}}FromEcho(c)
 
 		require.True(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		require.Equal(t, {{.TestSuccessValue}}, val)
 	})
 
 	t.Run("echo context - no value", func(t *testing.T) {
@@ -74,8 +76,8 @@ func TestSetAuthnToEcho(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		val, ok := GetAuthnFromEcho(c)
+		val, ok := Get{{.NameCamel}}FromEcho(c)
 		require.False(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		require.Equal(t, {{.TestFailValue}}, val)
 	})
 }

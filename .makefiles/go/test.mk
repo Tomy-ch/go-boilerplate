@@ -4,15 +4,15 @@
 .PHONY: test-cover-ci ## CI用のカバレッジ付きテスト実行
 
 test:
-	@TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)(/|$$)')"; \
+	@TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|scripts)(/|$$)')"; \
 	go test $$TGT_PKGS -cover -count=1
 
 gen-test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
 	touch docs/coverage/coverage.out
-	TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)(/|$$)')"; \
+	TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|scripts)(/|$$)')"; \
 	COVER_PKGS="$$(go list ./... \
-		| grep -Ev '/(gen|cli|cmd|mock|apperror)(/|$$)' \
+		| grep -Ev '/(gen|cli|cmd|mock|apperror|scripts)(/|$$)' \
 		| tr '\n' ',' \
 		| sed 's/,$$//')"; \
 	go test $$TGT_PKGS -coverpkg=$$COVER_PKGS -coverprofile=docs/coverage/coverage.out -covermode=atomic  >/dev/null 2>&1
@@ -21,9 +21,9 @@ gen-test-repo:
 	@echo "✅ テストレポートの生成が完了しました。"
 
 test-cover-ci:
-	@TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror)(/|$$)')"; \
+	@TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|scripts)(/|$$)')"; \
 	COVER_PKGS="$$(go list ./... \
-		| grep -Ev '/(gen|cli|cmd|mock|apperror)(/|$$)' \
+		| grep -Ev '/(gen|cli|cmd|mock|apperror|scripts)(/|$$)' \
 		| tr '\n' ',' \
 		| sed 's/,$$//')"; \
 	go test $$TGT_PKGS -coverpkg=$$COVER_PKGS -coverprofile=coverage.out -covermode=atomic -count=1
