@@ -36,8 +36,6 @@ include .makefiles/go/sqlc.mk
 include .makefiles/docs/gen.mk
 # OpenAPI関連
 include .makefiles/openapi/gen.mk
-# スクリプト関連
-include .makefiles/scripts/gen.mk
 # SQL関連
 include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk
