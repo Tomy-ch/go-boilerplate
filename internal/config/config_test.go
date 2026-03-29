@@ -285,16 +285,6 @@ func Test_validateDatabaseConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Run("無効なスロークエリ警告閾値", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.Database.SlowQueryWarnThreshold = -1 // 無効なスロークエリ警告閾値
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidSlowQueryWarnThreshold)
-		})
-
 		t.Run("無効なデータベースポート番号", func(t *testing.T) {
 			t.Parallel()
 
@@ -315,6 +305,26 @@ func Test_validateDatabaseConfig(t *testing.T) {
 				require.Nil(t, actual)
 				require.ErrorIs(t, err, ErrInvalidDBPortRange)
 			})
+		})
+
+		t.Run("無効なデータベースPingタイムアウト", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Database.PingTimeout = 0 // 無効なデータベースPingタイムアウト
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidDBPingTimeout)
+		})
+
+		t.Run("無効なスロークエリ警告閾値", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Database.SlowQueryWarnThreshold = -1 // 無効なスロークエリ警告閾値
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidSlowQueryWarnThreshold)
 		})
 	})
 }

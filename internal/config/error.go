@@ -76,6 +76,11 @@ var (
 		MaxPort,
 		errInvalidConfig,
 	)
+	// ErrInvalidDBPingTimeout は、データベースの無効なPingタイムアウトに関するエラーを表します。
+	ErrInvalidDBPingTimeout = fmt.Errorf(
+		"invalid database ping timeout, must be greater than 0: %w",
+		errInvalidConfig,
+	)
 	// ErrInvalidSlowQueryWarnThreshold は、無効なスロークエリ警告閾値に関するエラーを表します。
 	ErrInvalidSlowQueryWarnThreshold = fmt.Errorf(
 		"invalid slow query warn threshold, must be greater than or equal to 0: %w",

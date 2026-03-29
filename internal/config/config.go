@@ -173,6 +173,9 @@ func validateDatabaseConfig(dbCfg Database) error {
 	if dbCfg.Port < MinPort || MaxPort < dbCfg.Port {
 		return ErrInvalidDBPortRange
 	}
+	if dbCfg.PingTimeout <= 0 {
+		return ErrInvalidDBPingTimeout
+	}
 	if dbCfg.SlowQueryWarnThreshold < 0 {
 		return ErrInvalidSlowQueryWarnThreshold
 	}
