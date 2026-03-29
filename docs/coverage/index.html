@@ -267,7 +267,7 @@
 				
 				<option value="file105">boilerplate-go/internal/infrastructure/rdb/driver/connection.go (100.0%)</option>
 				
-				<option value="file106">boilerplate-go/internal/infrastructure/rdb/driver/driver.go (76.5%)</option>
+				<option value="file106">boilerplate-go/internal/infrastructure/rdb/driver/driver.go (78.9%)</option>
 				
 				<option value="file107">boilerplate-go/internal/infrastructure/rdb/driver/loggingdb/provider.go (100.0%)</option>
 				
@@ -275,7 +275,7 @@
 				
 				<option value="file109">boilerplate-go/internal/infrastructure/rdb/driver/test_instance.go (100.0%)</option>
 				
-				<option value="file110">boilerplate-go/internal/infrastructure/rdb/driver/transaction.go (93.8%)</option>
+				<option value="file110">boilerplate-go/internal/infrastructure/rdb/driver/transaction.go (83.3%)</option>
 				
 				<option value="file111">boilerplate-go/internal/infrastructure/rdb/postgres/pgerror/pgerror.go (100.0%)</option>
 				
@@ -443,6 +443,7 @@ func New() (*Config, error) <span class="cov4" title="10">{
                         password:               cfg.Database.Password,
                         name:                   cfg.Database.Name,
                         sslMode:                cfg.Database.SSLMode,
+                        pingTimeout:            cfg.Database.PingTimeout,
                         slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
                 },
                 dbconnection: DBConnectionConfig{
@@ -484,16 +485,16 @@ func New() (*Config, error) <span class="cov4" title="10">{
 }
 
 // validateConfig は、ConfigLoaderの内容を検証します。
-func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov5" title="33">{
+func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov6" title="36">{
         if err := validateApplicationConfig(cfg.App); err != nil </span><span class="cov2" title="3">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="30">if err := validateServerConfig(cfg.Server); err != nil </span><span class="cov3" title="7">{
+        <span class="cov5" title="33">if err := validateServerConfig(cfg.Server); err != nil </span><span class="cov3" title="7">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="23">if err := validateDatabaseConfig(cfg.Database); err != nil </span><span class="cov1" title="2">{
+        <span class="cov5" title="26">if err := validateDatabaseConfig(cfg.Database); err != nil </span><span class="cov3" title="5">{
                 return nil, err
         }</span>
 
@@ -512,44 +513,50 @@ func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov5" tit
 }
 
 // validateApplicationConfig は、アプリケーション設定を検証します。
-func validateApplicationConfig(appCfg Application) error <span class="cov5" title="34">{
+func validateApplicationConfig(appCfg Application) error <span class="cov6" title="37">{
         if appCfg.Mode != DevelopmentMode &amp;&amp; appCfg.Mode != ProductionMode </span><span class="cov2" title="3">{
                 return ErrInvalidAppMode
         }</span>
-        <span class="cov5" title="31">return nil</span>
+        <span class="cov5" title="34">return nil</span>
 }
 
 // validateServerConfig は、サーバー設定を検証します。
-func validateServerConfig(srvCfg Server) error <span class="cov5" title="31">{
+func validateServerConfig(srvCfg Server) error <span class="cov5" title="34">{
         if srvCfg.Port &lt; MinPort || MaxPort &lt; srvCfg.Port </span><span class="cov1" title="1">{
                 return ErrInvalidPortRange
         }</span>
 
-        <span class="cov5" title="30">if srvCfg.ReadHeaderTimeout &lt;= 0 </span><span class="cov1" title="2">{
+        <span class="cov5" title="33">if srvCfg.ReadHeaderTimeout &lt;= 0 </span><span class="cov1" title="2">{
                 return ErrInvalidReadHeaderTimeout
         }</span>
 
-        <span class="cov5" title="28">if srvCfg.ReadTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="31">if srvCfg.ReadTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidReadTimeout
         }</span>
 
-        <span class="cov5" title="27">if srvCfg.WriteTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="30">if srvCfg.WriteTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidWriteTimeout
         }</span>
 
-        <span class="cov5" title="26">if srvCfg.IdleTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="29">if srvCfg.IdleTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidIdleTimeout
         }</span>
 
-        <span class="cov5" title="25">if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout </span><span class="cov1" title="1">{
+        <span class="cov5" title="28">if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout </span><span class="cov1" title="1">{
                 return ErrReadHeaderTimeoutExceedsReadTimeout
         }</span>
-        <span class="cov5" title="24">return nil</span>
+        <span class="cov5" title="27">return nil</span>
 }
 
 // validateDatabaseConfig は、データベース設定を検証します。
-func validateDatabaseConfig(dbCfg Database) error <span class="cov5" title="24">{
-        if dbCfg.SlowQueryWarnThreshold &lt; 0 </span><span class="cov1" title="2">{
+func validateDatabaseConfig(dbCfg Database) error <span class="cov5" title="27">{
+        if dbCfg.Port &lt; MinPort || MaxPort &lt; dbCfg.Port </span><span class="cov1" title="2">{
+                return ErrInvalidDBPortRange
+        }</span>
+        <span class="cov5" title="25">if dbCfg.PingTimeout &lt;= 0 </span><span class="cov1" title="1">{
+                return ErrInvalidDBPingTimeout
+        }</span>
+        <span class="cov5" title="24">if dbCfg.SlowQueryWarnThreshold &lt; 0 </span><span class="cov1" title="2">{
                 return ErrInvalidSlowQueryWarnThreshold
         }</span>
         <span class="cov5" title="22">return nil</span>
@@ -689,6 +696,9 @@ var (
         expectedDBPassword                    = "postgres-password"
         expectedDBName                        = "test"
         expectedDBSSLMode                     = "disable"
+        expectedDBPingTimeoutCount            = 5
+        expectedDBPingTimeoutStr              = fmt.Sprintf("%ds", expectedDBPingTimeoutCount)
+        expectedDBPingTimeout                 = time.Duration(expectedDBPingTimeoutCount) * time.Second
         expectedDBSlowQueryWarnThresholdCount = 500
         expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
         expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
@@ -777,6 +787,7 @@ func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="283">{
                         password:               expectedDBPassword,
                         name:                   expectedDBName,
                         sslMode:                expectedDBSSLMode,
+                        pingTimeout:            expectedDBPingTimeout,
                         slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
                 },
                 dbconnection: DBConnectionConfig{
@@ -818,7 +829,7 @@ func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="283">{
 }</span>
 
 // mockLoader は、テスト用のLoaderを返します。
-func mockLoader(t testing.TB) Loader <span class="cov6" title="31">{
+func mockLoader(t testing.TB) Loader <span class="cov6" title="34">{
         t.Helper()
 
         return Loader{
@@ -856,6 +867,7 @@ func mockLoader(t testing.TB) Loader <span class="cov6" title="31">{
                         Password:               expectedDBPassword,
                         Name:                   expectedDBName,
                         SSLMode:                expectedDBSSLMode,
+                        PingTimeout:            expectedDBPingTimeout,
                         SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
                 },
                 DBConnection: DBConnection{
@@ -930,6 +942,7 @@ func setEnvVarsForTesting(t *testing.T) <span class="cov2" title="3">{ //nolint:
         t.Setenv("DB_PASSWORD", expectedDBPassword)
         t.Setenv("DB_NAME", expectedDBName)
         t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
+        t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
         t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
         // DBConnection
         t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
@@ -1158,6 +1171,7 @@ type DatabaseConfig struct {
         password               string
         name                   string
         sslMode                string
+        pingTimeout            time.Duration
         slowQueryWarnThreshold time.Duration
 }
 
@@ -1308,6 +1322,9 @@ func (d *DatabaseConfig) DBName() string <span class="cov3" title="4">{ return d
 
 // SSLMode は、データベースのSSLモードを返します。
 func (d *DatabaseConfig) SSLMode() string <span class="cov1" title="1">{ return d.sslMode }</span>
+
+// PingTimeout は、データベースのpingタイムアウトを返します。
+func (d *DatabaseConfig) PingTimeout() time.Duration <span class="cov5" title="13">{ return d.pingTimeout }</span>
 
 // SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。
 //
@@ -6693,7 +6710,9 @@ func NewDB(
         db.SetConnMaxIdleTime(dbConnCfg.MaxIdleTime())
 
         // 疎通確認
-        if err := db.PingContext(context.Background()); err != nil </span><span class="cov1" title="1">{
+        pingCtx, cancel := context.WithTimeout(context.Background(), dbCfg.PingTimeout())
+        defer cancel()
+        if err := db.PingContext(pingCtx); err != nil </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("failed to ping DB: %w", err)
         }</span>
 
@@ -6999,20 +7018,25 @@ import (
         "database/sql"
 
         "boilerplate-go/internal/config"
+        "boilerplate-go/internal/logging"
         "boilerplate-go/internal/usecase/boundary/tx"
 )
 
+const callerSkipCount = 1
+
 // txManager は、トランザクションの管理を行います。
 type txManager struct {
-        cfg *config.Config
-        db  DatabaseDriver
+        cfg    *config.Config
+        db     DatabaseDriver
+        logger logging.Logger
 }
 
 // NewTransactionManager は、トランザクションマネージャを初期化します。
-func NewTransactionManager(cfg *config.Config, db DatabaseDriver) tx.Manager <span class="cov8" title="16">{
+func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager <span class="cov8" title="16">{
         return &amp;txManager{
-                cfg: cfg,
-                db:  db,
+                cfg:    cfg,
+                db:     db,
+                logger: logger,
         }
 }</span>
 
@@ -7028,17 +7052,27 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
         }</span>
         <span class="cov9" title="24">defer func() </span><span class="cov9" title="24">{
                 if p := recover(); p != nil </span><span class="cov1" title="1">{
-                        _ = tx.Rollback()
-                        panic(p)</span>
+                        if pgErr := tx.Rollback(); pgErr != nil </span><span class="cov0" title="0">{
+                                t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
+                                        "Failed to rollback transaction on panic", logging.Error("rollback transaction", pgErr),
+                                )
+                        }</span>
+                        <span class="cov1" title="1">panic(p)</span>
                 }
         }()
 
         <span class="cov9" title="24">ctx = withTx(ctx, tx)
 
         if err := fn(ctx); err != nil </span><span class="cov9" title="22">{
-                _ = tx.Rollback()
-                return err
-        }</span>
+                if pgErr := tx.Rollback(); pgErr != nil </span><span class="cov0" title="0">{
+                        t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
+                                "Failed to rollback transaction",
+                                logging.Error("rollback transaction", pgErr),
+                                logging.Error("original error", err),
+                        )
+                }</span>
+                <span class="cov9" title="22">return err</span>
+        }
 
         <span class="cov1" title="1">return tx.Commit()</span>
 }
@@ -7591,8 +7625,9 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider <span class="cov8
 func NewTestTransactionManager(t *testing.T) TransactionRunner <span class="cov7" title="9">{
         t.Helper()
         cfg := config.MockConfigForTest(t)
+        testLogger := logging.NewTestLogger(t)
 
-        innerTxm := driver.NewTransactionManager(cfg, getTestDB(t))
+        innerTxm := driver.NewTransactionManager(cfg, getTestDB(t), testLogger)
 
         txm := &amp;testTxManager{
                 inner: innerTxm,
@@ -7751,7 +7786,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key, v string) *Field <span class="cov10" title="2060">{
+func String(key, v string) *Field <span class="cov10" title="2037">{
         return &amp;Field{
                 key:         key,
                 kind:        fieldString,
@@ -7760,7 +7795,7 @@ func String(key, v string) *Field <span class="cov10" title="2060">{
 }</span>
 
 // Int は、整数のログフィールドを作成します。
-func Int(key string, v int) *Field <span class="cov5" title="42">{
+func Int(key string, v int) *Field <span class="cov5" title="65">{
         return &amp;Field{
                 key:      key,
                 kind:     fieldInt,
@@ -7841,7 +7876,7 @@ func Stacktrace(key string, err error) *Field <span class="cov1" title="1">{
 }</span>
 
 // Any は、任意の型のログフィールドを作成します。
-func Any(key string, v any) *Field <span class="cov5" title="57">{
+func Any(key string, v any) *Field <span class="cov5" title="34">{
         return &amp;Field{
                 key:      key,
                 kind:     fieldAny,
@@ -7859,7 +7894,6 @@ func latencyMs(latency time.Duration) float64 <span class="cov6" title="114">{
 package logging
 
 import (
-        "fmt"
         "strings"
         "time"
 
@@ -8063,8 +8097,7 @@ func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field <span 
 
         if len(s.Args) &gt; 0 </span><span class="cov6" title="22">{
                 fields = append(fields,
-                        Any(QueryArgsKey, s.Args),
-                        String(QueryArgsRawKey, fmt.Sprint(s.Args)),
+                        Int(QueryArgsCountKey, len(s.Args)),
                 )
         }</span>
 
@@ -8206,13 +8239,13 @@ func (l *logger) Error(msg string, fields ...*Field) <span class="cov4" title="1
 func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title="241">{
         zfs := make([]zap.Field, 0, len(fs))
 
-        for _, f := range fs </span><span class="cov10" title="2170">{
+        for _, f := range fs </span><span class="cov10" title="2149">{
                 switch f.kind </span>{
-                case fieldString:<span class="cov9" title="1978">
+                case fieldString:<span class="cov9" title="1957">
                         zfs = append(zfs, zap.String(f.key, f.stringValue))</span>
                 case fieldStrings:<span class="cov2" title="3">
                         zfs = append(zfs, zap.Strings(f.key, f.stringsValue))</span>
-                case fieldInt:<span class="cov4" title="27">
+                case fieldInt:<span class="cov5" title="48">
                         zfs = append(zfs, zap.Int(f.key, f.intValue))</span>
                 case fieldInt64:<span class="cov3" title="12">
                         zfs = append(zfs, zap.Int64(f.key, f.int64Value))</span>
@@ -8222,7 +8255,7 @@ func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title
                         zfs = append(zfs, zap.Bool(f.key, f.boolValue))</span>
                 case fieldError:<span class="cov3" title="10">
                         zfs = append(zfs, zap.Error(f.errorValue))</span>
-                default:<span class="cov5" title="40">
+                default:<span class="cov4" title="19">
                         zfs = append(zfs, zap.Any(f.key, f.anyValue))</span>
                 }
         }
@@ -8321,7 +8354,7 @@ import (
 )
 
 // NewTestLogger は、テスト用のLoggerインスタンスを生成します。
-func NewTestLogger(t *testing.T) Logger <span class="cov10" title="148">{
+func NewTestLogger(t *testing.T) Logger <span class="cov10" title="160">{
         t.Helper()
         return &amp;logger{log: zaptest.NewLogger(t)}
 }</span>
@@ -9136,19 +9169,28 @@ func NewPagingFrom1Based(page, perPage *int) (*Paging, error) <span class="cov10
 func (p Paging) Limit() int <span class="cov6" title="6">{ return p.limit }</span>
 
 // Limit32 は、ページの取得上限をint32型で返します。
-func (p Paging) Limit32() int32 <span class="cov7" title="9">{
-        //nolint:gosec // G115: Potential integer truncation when converting from int to int32
-        return int32(p.limit)
-}</span>
+// limit は1ページあたりの件数であり、安全のためmaxPerPageでクランプしてからint32へ変換します。
+func (p Paging) Limit32() int32 <span class="cov8" title="10">{
+        limit := p.limit
+        if limit &gt; maxPerPage </span><span class="cov1" title="1">{
+                limit = maxPerPage
+        }</span>
+        <span class="cov8" title="10">return int32(limit)</span>
+}
 
 // Offset は、ページのオフセットを返します。
 func (p Paging) Offset() int <span class="cov6" title="6">{ return p.offset }</span>
 
 // Offset32 は、ページのオフセットをint32型で返します。
-func (p Paging) Offset32() int32 <span class="cov7" title="9">{
-        //nolint:gosec // G115: Potential integer truncation when converting from int to int32
-        return int32(p.offset)
-}</span>
+// offset が maxOffset を超える場合でも、maxOffset にクランプした上で int32 に変換することで安全性を担保します。
+func (p Paging) Offset32() int32 <span class="cov8" title="10">{
+        offset := p.offset
+        maxOffset := maxPage * maxPerPage
+        if offset &gt; maxOffset </span><span class="cov1" title="1">{
+                offset = maxOffset
+        }</span>
+        <span class="cov8" title="10">return int32(offset)</span>
+}
 </pre>
 		
 		<pre class="file" id="file139" style="display: none">// Package search は、検索関連のユースケースをサポートするユーティリティを提供します。
@@ -9160,19 +9202,28 @@ import (
 )
 
 const (
+        // DefaultMaxTokens は、キーワードをトークンに分割する際のデフォルトのトークン数を表します。
         DefaultMaxTokens = 30
+        // MaxKeywordLength は、キーワードの最大長を表します。
+        MaxKeywordLength = 1024
 )
 
 // ParseSearchTokens は、キーワード文字列をトークンに分割し、正規化、重複排除、上限設定を行います。
-func ParseSearchTokens(keyword *string, maxTokens int) []string <span class="cov3" title="7">{
+func ParseSearchTokens(keyword *string, maxTokens int) []string <span class="cov3" title="8">{
         if keyword == nil || *keyword == "" </span><span class="cov1" title="2">{
                 return []string{}
         }</span>
-        <span class="cov3" title="5">if maxTokens &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov3" title="6">if maxTokens &lt;= 0 </span><span class="cov1" title="1">{
                 maxTokens = DefaultMaxTokens
         }</span>
 
-        <span class="cov3" title="5">raw := splitIntoTerms(*keyword)
+        <span class="cov3" title="6">k := *keyword
+        rs := []rune(k)
+        if len(rs) &gt; MaxKeywordLength </span><span class="cov1" title="1">{
+                k = string(rs[:MaxKeywordLength])
+        }</span>
+
+        <span class="cov3" title="6">raw := splitIntoTerms(k)
         normalised := trimAndDropEmpty(raw)
         unique := dedupePreserveOrder(normalised)
 
@@ -9180,43 +9231,43 @@ func ParseSearchTokens(keyword *string, maxTokens int) []string <span class="cov
 }
 
 // splitIntoTerms は、キーワード文字列を '_' または空白で分割します。
-func splitIntoTerms(keyword string) []string <span class="cov3" title="8">{
-        return strings.FieldsFunc(keyword, func(r rune) bool </span><span class="cov10" title="626">{
+func splitIntoTerms(keyword string) []string <span class="cov3" title="9">{
+        return strings.FieldsFunc(keyword, func(r rune) bool </span><span class="cov10" title="1650">{
                 return r == '_' || unicode.IsSpace(r)
         }</span>)
 }
 
 // trimAndDropEmpty は、配列の各要素の前後の空白を削除し、空文字列の要素を排除します。
-func trimAndDropEmpty(ss []string) []string <span class="cov3" title="7">{
+func trimAndDropEmpty(ss []string) []string <span class="cov3" title="8">{
         out := make([]string, 0, len(ss))
-        for _, t := range ss </span><span class="cov6" title="49">{
+        for _, t := range ss </span><span class="cov5" title="50">{
                 t = strings.TrimSpace(t)
                 if t == "" </span><span class="cov1" title="2">{
                         continue</span>
                 }
-                <span class="cov6" title="47">out = append(out, t)</span>
+                <span class="cov5" title="48">out = append(out, t)</span>
         }
-        <span class="cov3" title="7">return out</span>
+        <span class="cov3" title="8">return out</span>
 }
 
 // dedupePreserveOrder は、配列の要素の重複を排除し、元の順序を保持します。
-func dedupePreserveOrder(ss []string) []string <span class="cov3" title="7">{
+func dedupePreserveOrder(ss []string) []string <span class="cov3" title="8">{
         seen := make(map[string]struct{}, len(ss))
         out := make([]string, 0, len(ss))
 
-        for _, t := range ss </span><span class="cov6" title="53">{
+        for _, t := range ss </span><span class="cov5" title="54">{
                 if _, ok := seen[t]; ok </span><span class="cov2" title="3">{
                         continue</span>
                 }
-                <span class="cov6" title="50">seen[t] = struct{}{}
+                <span class="cov5" title="51">seen[t] = struct{}{}
                 out = append(out, t)</span>
         }
-        <span class="cov3" title="7">return out</span>
+        <span class="cov3" title="8">return out</span>
 }
 
 // limit は、配列の要素数を上限までに制限します。
-func limit(ss []string, maxVal int) []string <span class="cov3" title="7">{
-        if len(ss) &lt;= maxVal </span><span class="cov2" title="4">{
+func limit(ss []string, maxVal int) []string <span class="cov3" title="8">{
+        if len(ss) &lt;= maxVal </span><span class="cov2" title="5">{
                 return ss
         }</span>
         <span class="cov2" title="3">return ss[:maxVal]</span>
@@ -9640,7 +9691,7 @@ func ExtractPackageName(full string) string <span class="cov9" title="103">{
 package ptr
 
 // To は、引数として渡された値のポインタを返します。
-func To[T any](v T) *T <span class="cov10" title="117">{ return &amp;v }</span>
+func To[T any](v T) *T <span class="cov10" title="118">{ return &amp;v }</span>
 
 // Copy は、引数として渡されたポインタをコピーして返します。
 func Copy[T any](v *T) *T <span class="cov9" title="74">{
