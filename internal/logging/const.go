@@ -67,10 +67,8 @@ const (
 	RawQueryKey = "raw_query"
 	// QueryCompactKey は、コンパクト化されたSQLクエリを表すログフィールドのキーです。
 	QueryCompactKey = "query_compact"
-	// QueryArgsKey は、SQLクエリの引数を表すログフィールドのキーです。
-	QueryArgsKey = "args"
-	// QueryArgsRawKey は、生のSQLクエリ引数を表すログフィールドのキーです。
-	QueryArgsRawKey = "args_raw"
+	// QueryArgsCountKey は、SQLクエリ引数の数を表すログフィールドのキーです。
+	QueryArgsCountKey = "args_count"
 
 	// Job系ログのキー
 
