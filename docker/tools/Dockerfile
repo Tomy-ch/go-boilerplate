@@ -31,6 +31,9 @@ WORKDIR /app
 
 COPY --from=go_tools_builder /out/ /usr/local/bin/
 
+ENV GOCACHE=/tmp/go-build \
+    GOMODCACHE=/tmp/go-mod
+
 ENTRYPOINT []
 CMD []
 
