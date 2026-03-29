@@ -12,7 +12,7 @@ The code in this package must not be implemented manually, and is created throug
 
 For details on the generation mechanism, refer to the following:
 
-- `scripts/genctxkey/README.ja.md`
+- `scripts/genctxkey/README.md`
 
 ## Usage
 
