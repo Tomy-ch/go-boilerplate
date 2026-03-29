@@ -21,7 +21,6 @@ func TestSetAuthn(t *testing.T) {
 	ctx := context.WithValue(base, authnKey, *new(auth.Authn))
 
 	val := ctx.Value(authnKey)
-	require.NotNil(t, val)
 	v, ok := val.(auth.Authn)
 	require.True(t, ok)
 	require.Equal(t, *new(auth.Authn), v)
