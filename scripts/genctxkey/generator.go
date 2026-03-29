@@ -55,21 +55,11 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir string) error {
 	lower := strings.ToLower(name)
 
 	// import handling with qualifier alignment
-	if importPath != "" {
-		qualifier := extractQualifier(typ)
-
-		if importAlias == "" {
-			if qualifier != "" {
-				importAlias = qualifier
-			} else {
-				importAlias = sanitizeAlias(lastSegment(importPath))
-			}
-		} else {
-			if qualifier != "" && qualifier != importAlias {
-				return fmt.Errorf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias)
-			}
-		}
+	alias, err := resolveImportAlias(typ, importPath, importAlias)
+	if err != nil {
+		return err
 	}
+	importAlias = alias
 
 	typeExpr := typ
 
@@ -177,6 +167,29 @@ func sanitizeAlias(s string) string {
 	}
 
 	return s
+}
+
+func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
+	if importPath == "" {
+		return importAlias, nil
+	}
+
+	qualifier := extractQualifier(typ)
+
+	// No alias provided: prefer qualifier, fallback to last segment
+	if importAlias == "" {
+		if qualifier != "" {
+			return qualifier, nil
+		}
+		return sanitizeAlias(lastSegment(importPath)), nil
+	}
+
+	// Alias provided: validate against qualifier when present
+	if qualifier != "" && qualifier != importAlias {
+		return "", fmt.Errorf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias)
+	}
+
+	return importAlias, nil
 }
 
 func extractQualifier(t string) string {
