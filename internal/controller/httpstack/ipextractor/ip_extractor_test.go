@@ -35,7 +35,7 @@ func TestNewIPExtractor(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 
 		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetServerAppMode(t, config.ProductionMode)
+		appCfg.SetApplicationMode(t, config.ProductionMode)
 
 		secCfg := config.NewSecurityConfig(cfg)
 		secCfg.SetCIDR(t, parsedCIDR)
@@ -51,7 +51,7 @@ func TestNewIPExtractor(t *testing.T) {
 
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetServerAppMode(t, config.DevelopmentMode)
+		appCfg.SetApplicationMode(t, config.DevelopmentMode)
 
 		secCfg := config.NewSecurityConfig(cfg)
 		secCfg.SetCIDR(t, parsedCIDR)

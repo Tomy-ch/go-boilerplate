@@ -15,7 +15,7 @@ func TestNew(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
 		cfg := &config.ApplicationConfig{}
-		cfg.SetServerAppMode(t, config.ProductionMode)
+		cfg.SetApplicationMode(t, config.ProductionMode)
 
 		New(e, cfg)
 		require.True(t, e.HideBanner)
@@ -25,7 +25,7 @@ func TestNew(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
 		cfg := &config.ApplicationConfig{}
-		cfg.SetServerAppMode(t, config.DevelopmentMode)
+		cfg.SetApplicationMode(t, config.DevelopmentMode)
 
 		New(e, cfg)
 		require.False(t, e.HideBanner)
