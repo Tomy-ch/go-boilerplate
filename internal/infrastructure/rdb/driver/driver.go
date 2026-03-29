@@ -37,7 +37,9 @@ func NewDB(
 	db.SetConnMaxIdleTime(dbConnCfg.MaxIdleTime())
 
 	// 疎通確認
-	if err := db.PingContext(context.Background()); err != nil {
+	pingCtx, cancel := context.WithTimeout(context.Background(), dbCfg.PingTimeout())
+	defer cancel()
+	if err := db.PingContext(pingCtx); err != nil {
 		return nil, fmt.Errorf("failed to ping DB: %w", err)
 	}
 
