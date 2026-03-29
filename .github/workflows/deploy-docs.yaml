@@ -6,7 +6,8 @@ on:
       - production
     paths:
       - "docs/**"
-      - "scripts/gen-docs-json.mjs"
+      - "scripts/gen-docs-json.cjs"
+      - "scripts/gen-portal-docs.cjs"
       - ".github/workflows/deploy-docs.yaml"
 
 permissions:
