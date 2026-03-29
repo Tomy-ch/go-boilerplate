@@ -23,8 +23,9 @@ func ParseSearchTokens(keyword *string, maxTokens int) []string {
 	}
 
 	k := *keyword
-	if len(k) > MaxKeywordLength {
-		k = k[:MaxKeywordLength]
+	rs := []rune(k)
+	if len(rs) > MaxKeywordLength {
+		k = string(rs[:MaxKeywordLength])
 	}
 
 	raw := splitIntoTerms(k)
