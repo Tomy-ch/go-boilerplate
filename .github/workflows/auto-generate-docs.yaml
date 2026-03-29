@@ -93,7 +93,10 @@ jobs:
       - name: Detect changes
         id: diff
         run: |
-          if ! git diff --quiet; then
+          if ! git diff --quiet -- . \
+            ':(exclude)docs/db-schema/index.html' \
+            ':(exclude)docs/db-schema/info-html.txt'
+          then
             echo "has_diff=true" >> $GITHUB_OUTPUT
           else
             echo "has_diff=false" >> $GITHUB_OUTPUT
