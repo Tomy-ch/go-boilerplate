@@ -52,9 +52,12 @@ func GenerateCtxKey(name, typ, outDir string) error {
 
 	if strings.Contains(typ, "/") {
 		// expect format: github.com/foo/bar.Type
+		lastSlash := strings.LastIndex(typ, "/")
 		lastDot := strings.LastIndex(typ, ".")
-		if lastDot == -1 {
-			return fmt.Errorf("invalid type format: %s", typ)
+
+		// ensure '.' exists after last '/'
+		if lastDot == -1 || lastDot < lastSlash {
+			return fmt.Errorf("invalid type format (expected importpath.Type): %s", typ)
 		}
 
 		importPath = typ[:lastDot]
