@@ -56,6 +56,7 @@ type Database struct {
 	Password               string        `env:"PASSWORD,required"`
 	Name                   string        `env:"NAME,required"`
 	SSLMode                string        `env:"SSL_MODE,required"`
+	PingTimeout            time.Duration `env:"PING_TIMEOUT,required"`
 	SlowQueryWarnThreshold time.Duration `env:"SLOW_QUERY_WARN_THRESHOLD,required"`
 }
 

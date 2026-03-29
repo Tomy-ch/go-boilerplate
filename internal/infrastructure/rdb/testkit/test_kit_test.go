@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
+
 	"boilerplate-go/internal/infrastructure/rdb/driver"
 
 	"github.com/stretchr/testify/require"
@@ -35,9 +37,11 @@ func Test_testTxManager_Do(t *testing.T) {
 	osCfg := config.NewOperationSystemConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
+	testLogger := logging.NewTestLogger(t)
+
 	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
-	innerTxm := driver.NewTransactionManager(cfg, db)
+	innerTxm := driver.NewTransactionManager(cfg, db, testLogger)
 
 	t.Run("実行時にエラーが発生しない場合、正常に終了すること", func(t *testing.T) {
 		t.Parallel()

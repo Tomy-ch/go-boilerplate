@@ -62,6 +62,7 @@ type DatabaseConfig struct {
 	password               string
 	name                   string
 	sslMode                string
+	pingTimeout            time.Duration
 	slowQueryWarnThreshold time.Duration
 }
 
@@ -212,6 +213,9 @@ func (d *DatabaseConfig) DBName() string { return d.name }
 
 // SSLMode は、データベースのSSLモードを返します。
 func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
+
+// PingTimeout は、データベースのpingタイムアウトを返します。
+func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 
 // SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。
 //

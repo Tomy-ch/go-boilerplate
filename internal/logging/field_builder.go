@@ -2,7 +2,6 @@
 package logging
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -206,8 +205,7 @@ func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field {
 
 	if len(s.Args) > 0 {
 		fields = append(fields,
-			Any(QueryArgsKey, s.Args),
-			String(QueryArgsRawKey, fmt.Sprint(s.Args)),
+			Int(QueryArgsCountKey, len(s.Args)),
 		)
 	}
 

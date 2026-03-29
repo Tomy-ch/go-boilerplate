@@ -7,7 +7,10 @@ import (
 )
 
 const (
+	// DefaultMaxTokens は、キーワードをトークンに分割する際のデフォルトのトークン数を表します。
 	DefaultMaxTokens = 30
+	// MaxKeywordLength は、キーワードの最大長を表します。
+	MaxKeywordLength = 1024
 )
 
 // ParseSearchTokens は、キーワード文字列をトークンに分割し、正規化、重複排除、上限設定を行います。
@@ -19,7 +22,13 @@ func ParseSearchTokens(keyword *string, maxTokens int) []string {
 		maxTokens = DefaultMaxTokens
 	}
 
-	raw := splitIntoTerms(*keyword)
+	k := *keyword
+	rs := []rune(k)
+	if len(rs) > MaxKeywordLength {
+		k = string(rs[:MaxKeywordLength])
+	}
+
+	raw := splitIntoTerms(k)
 	normalised := trimAndDropEmpty(raw)
 	unique := dedupePreserveOrder(normalised)
 

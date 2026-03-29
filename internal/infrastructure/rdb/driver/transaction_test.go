@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
 
 	"github.com/stretchr/testify/require"
 )
@@ -15,6 +16,7 @@ func TestNewTransactionManager(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
+	testLogger := logging.NewTestLogger(t)
 
 	db, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
 	dbDriver := &dbDriver{db}
@@ -24,7 +26,7 @@ func TestNewTransactionManager(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	manager := NewTransactionManager(cfg, dbDriver)
+	manager := NewTransactionManager(cfg, dbDriver, testLogger)
 	require.NotNil(t, manager)
 }
 
@@ -34,6 +36,8 @@ func TestTxManager_Do(t *testing.T) {
 	osCfg := config.NewOperationSystemConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
+	testLogger := logging.NewTestLogger(t)
+
 	rowDB, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
 	dbDriver := &dbDriver{rowDB}
 	require.NoError(t, err)
@@ -42,7 +46,7 @@ func TestTxManager_Do(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	manager := NewTransactionManager(cfg, dbDriver)
+	manager := NewTransactionManager(cfg, dbDriver, testLogger)
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 

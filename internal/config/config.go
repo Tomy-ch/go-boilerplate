@@ -63,6 +63,7 @@ func New() (*Config, error) {
 			password:               cfg.Database.Password,
 			name:                   cfg.Database.Name,
 			sslMode:                cfg.Database.SSLMode,
+			pingTimeout:            cfg.Database.PingTimeout,
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
@@ -169,6 +170,12 @@ func validateServerConfig(srvCfg Server) error {
 
 // validateDatabaseConfig は、データベース設定を検証します。
 func validateDatabaseConfig(dbCfg Database) error {
+	if dbCfg.Port < MinPort || MaxPort < dbCfg.Port {
+		return ErrInvalidDBPortRange
+	}
+	if dbCfg.PingTimeout <= 0 {
+		return ErrInvalidDBPingTimeout
+	}
 	if dbCfg.SlowQueryWarnThreshold < 0 {
 		return ErrInvalidSlowQueryWarnThreshold
 	}

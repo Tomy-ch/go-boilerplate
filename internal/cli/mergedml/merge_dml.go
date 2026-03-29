@@ -87,7 +87,7 @@ func NewCommand() *cobra.Command {
 func mergeDMLRun(_ *cobra.Command, _ []string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
-		panic("failed to create logger: " + err.Error())
+		return fmt.Errorf("failed to create logger: %w", err)
 	}
 
 	gen := newGenerator(logger)

@@ -66,6 +66,21 @@ func TestParseSearchTokens(t *testing.T) {
 			expected := []string{"foo", "bar"}
 			require.Equal(t, expected, actual)
 		})
+
+		t.Run("MaxKeywordLengthを超える場合は切り詰められる", func(t *testing.T) {
+			t.Parallel()
+
+			// MaxKeywordLengthより長い単一トークンを作成
+			long := strings.Repeat("a", MaxKeywordLength+10)
+			input := ptr.To(long)
+
+			actual := ParseSearchTokens(input, 10)
+
+			// 1トークンで、長さがMaxKeywordLengthに切り詰められていること
+			require.Len(t, actual, 1)
+			require.Len(t, actual[0], MaxKeywordLength)
+			require.Equal(t, strings.Repeat("a", MaxKeywordLength), actual[0])
+		})
 	})
 }
 
