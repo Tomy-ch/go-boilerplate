@@ -1,8 +1,8 @@
 # go-boilerplate
 
-![Go Version](https://img.shields.io/github/go-mod/go-version/Tomy-ch/boilerplate-go-echo-oapi-sqlc)
-![License](https://img.shields.io/github/license/Tomy-ch/boilerplate-go-echo-oapi-sqlc)
-![CI](https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc/actions/workflows/ci.yml/badge.svg)
+![Go Version](https://img.shields.io/github/go-mod/go-version/Tomy-ch/go-boilerplate)
+![License](https://img.shields.io/github/license/Tomy-ch/go-boilerplate)
+![CI](https://github.com/Tomy-ch/go-boilerplate/actions/workflows/ci.yml/badge.svg)
 
 English | [日本語](README.ja.md)
 
@@ -94,11 +94,32 @@ Principles:
 - Infrastructure implements domain interfaces
 - Controllers do not contain business logic
 
-See full documentation:
+```mermaid
+flowchart TB
 
-```txt
-docs/architecture.md
+Client --> Controller
+
+Controller --> Usecase
+Job --> Usecase
+
+Usecase --> Domain
+Usecase --> Repository
+Usecase --> QueryService
+
+Repository --> Domain
+QueryService --> Domain
+
+Repository --> DB
+QueryService --> DB
+
+Repository --> Infra
+QueryService --> Infra
+
+Infra --> Domain
+Infra --> External["External Systems"]
 ```
+
+See [docs/architecture.md](docs/architecture.md) for detailed documentation.
 
 ## API Development Policy (OpenAPI First)
 
@@ -109,11 +130,11 @@ API changes must follow this sequence:
 1. Modify OpenAPI definition (`openapi/`)
 2. Generate code
 
-```sh
-make gen-api
-```
+    ```sh
+    make gen-api
+    ```
 
-1. Implement handler / usecase
+3. Implement handler / usecase
 
 Generated files **must never be edited manually**.
 
@@ -189,11 +210,11 @@ These constraints help AI agents generate safer code.
 
 Detailed documentation is available in `docs/`.
 
-- Architecture  
-- Development Workflow  
-- Architectural Rules  
-- Design Decisions  
-- Versioning Policy  
+- [Architecture](docs/architecture.md)  
+- [Development Workflow](docs/development-flow.md)  
+- [Architectural Rules](docs/rules.md)  
+- [Design Decisions](docs/decisions.md)  
+- [Versioning Policy](docs/project/versioning.md)  
 
 ```txt
 docs/

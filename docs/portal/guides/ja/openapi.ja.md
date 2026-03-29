@@ -62,24 +62,14 @@
 
 例：
 
-```txt
-    UserBaseInput → 構造
-    UsersPostRequest → 「作成」の意味
-```
+- `UserBaseInput` → 構造
+- `UsersPostRequest` → 「作成」の意味
 
 ### 3. `$ref` は相対パスで統一
 
-禁止：
+禁止：`#/components/...`
 
-```txt
-    #/components/...
-```
-
-推奨：
-
-```txt
-    ../../components/schemas/User.yaml
-```
+推奨：`../../components/schemas/User.yaml`
 
 理由：
 
@@ -98,37 +88,27 @@
 
 - リソースは複数形
 
-```txt
-    /users
-```
+例：`/users`
 
 - CRUDはHTTPメソッドで表現
 
-```txt
-    GET /users
-    POST /users
-    PATCH /users/{id}
-```
+- `GET /users`
+- `POST /users`
+- `PATCH /users/{id}`
 
 - 非CRUDは action サフィックス
 
-```txt
-    POST /users/{id}:deactivate
-```
+例：`POST /users/{id}:deactivate`
 
 ### バージョニング
 
 - URLで管理
 
-```txt
-    /v1/users
-```
+例：`/v1/users`
 
 - 破壊的変更時
 
-```txt
-    /v2/... を新設
-```
+破壊的変更時は ` /v2/... ` を新設
 
 ## セキュリティポリシー
 
@@ -151,9 +131,7 @@
 
 Goコード生成：
 
-```txt
-    make go-gen
-```
+`make go-gen`
 
 生成内容：
 
@@ -163,14 +141,9 @@ Goコード生成：
 
 ## アーキテクチャ上の位置
 
-```txt
-    OpenAPI
-        ↓
-    Controller（oapi-codegen）
-        ↓
-    Usecase
-        ↓
-    Domain
+```mermaid
+flowchart TB
+    OpenAPI --> Controller["Controller（oapi-codegen）"] --> Usecase --> Domain
 ```
 
 OpenAPI は **Controller境界の契約**です。
@@ -185,16 +158,9 @@ OpenAPIは以下を定義します。
 
 Controllerの責務：
 
-```txt
-    HTTP Request
-        ↓
-    DTO
-        ↓
-    Usecase
-        ↓
-    DTO
-        ↓
-    OpenAPI Response
+```mermaid
+flowchart TB
+    Req["HTTP Request"] --> DTO1["DTO"] --> UC["Usecase"] --> DTO2["DTO"] --> Res["OpenAPI Response"]
 ```
 
 ## 禁止事項
@@ -223,19 +189,16 @@ Controllerの責務：
 
 例：
 
-```txt
-    UserBaseInput
-        ↓
-    UserPatchRequest
+```mermaid
+flowchart TB
+    Base["UserBaseInput"] --> Patch["UserPatchRequest"]
 ```
 
 ## Debug APIについて
 
 以下は開発用です：
 
-```txt
-    /debug/cookie
-    /debug/cookie/*
-```
+- `/debug/cookie`
+- `/debug/cookie/*`
 
 本番では削除してください。

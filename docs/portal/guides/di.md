@@ -4,15 +4,11 @@ English | [日本語](README.ja.md)
 
 `internal/di` is the **central layer for Dependency Injection (DI)** in this application.
 
-This layer builds a DI container based on **Uber Fx** and manages:
-
-- Application **initialization**
-- **Execution**
-- **Shutdown**
-- **Lifecycle management**
+This layer builds a DI container based on **Uber Fx**,  
+and orchestrates **initialization / execution / shutdown / lifecycle management** of the application.
 
 This layer **does not contain business logic**.  
-Instead, it is responsible for:
+Instead, it has the following responsibilities:
 
 - Constructing **dependencies between layers**
 - Switching **application execution modes**
@@ -20,25 +16,25 @@ Instead, it is responsible for:
 - Middleware / extension configuration
 - Connecting Infrastructure / Usecase / Controller
 
-## What is Dependency Injection?
+## What is Dependency Injection
 
-Dependency Injection (DI) is a design pattern that:
+Dependency Injection (DI) is:
 
-> **Separates dependency creation from application code**
+> **A design pattern that separates dependency creation from application code**
 
-In normal code, dependencies may look like this:
+In normal code, dependencies are created as follows:
 
 ```go
 service := NewService(NewRepository(NewDB()))
 ```
 
-This approach causes several problems:
+Such code causes the following problems:
 
 - Dependencies become fixed
 - Testing becomes difficult
-- Environment-based switching becomes hard
+- Switching per execution environment becomes difficult
 
-With DI, dependency creation is handled by a **container**.
+When using DI, dependency creation is handled by the **container**.
 
 ```go
 fx.Provide(
@@ -48,38 +44,40 @@ fx.Provide(
 )
 ```
 
-The container analyzes dependencies and automatically constructs the **object graph**.
+The container analyzes dependencies and automatically constructs the object graph.
 
 ## Role of DI in This Architecture
 
 This project is structured based on **Onion Architecture / DDD**.
 
-The layer dependencies look like this:
+The dependencies between layers are as follows:
 
 ```mermaid
 flowchart TD
 
 Controller --> Usecase
-Usecase --> DomainInterface
+Usecase --> Domain Interface
 Infrastructure --> DomainInterface
 ```
 
-The DI layer provides the **Composition Root** for these dependencies.
+The DI layer provides the **composition root (junction point of dependencies)**.
 
-In other words, it is the **single place where the following layers are assembled**:
+In other words, it is:
 
 - Domain
 - Usecase
 - Infrastructure
 - Controller
 
-## Role of DI in This Repository
+the **only place where they are ultimately assembled**.
+
+## Role of DI in This Project
 
 In this project, DI is used for the following purposes.
 
 ## 1. Application Execution
 
-DI manages **application startup**.
+DI **manages the application startup process**
 
 ```go
 fx.New(
@@ -89,18 +87,20 @@ fx.New(
 )
 ```
 
-Here the following components are connected:
+Here:
 
-- Configuration
-- Logging
-- Database
-- Middleware
+- configuration
+- logging
+- DB
+- middleware
 - Controller
 - Usecase
 
+are all connected.
+
 ## 2. Execution Mode Switching
 
-This project supports **two execution modes**.
+This project has **two execution modes**.
 
 ### HTTP Server
 
@@ -114,12 +114,14 @@ internal/di/server.go
 internal/di/job.go
 ```
 
-This allows both of the following to run on the **same architecture**:
+This allows:
 
 |Execution Mode|Purpose|
 |---|---|
 |Server|Web API|
 |Job|CLI / Batch|
+
+to run on the **same architecture**.
 
 ## 3. Environment-Based Dependency Switching
 
@@ -134,14 +136,12 @@ case config.EnvLocal:
 }
 ```
 
-This allows differences between:
+This allows handling differences between:
 
 - Local
 - CI
 - Test
 - Production
-
-to be handled cleanly.
 
 ## Structure of the DI Layer
 
@@ -160,11 +160,11 @@ job/
 
 ## Do / Don't
 
-## Do
+## Do（Allowed）
 
-## Assemble dependencies
+### Assemble dependencies
 
-The DI layer **connects components**.
+In the DI layer, **components are connected**.
 
 ```go
 fx.Provide(
@@ -174,9 +174,9 @@ fx.Provide(
 )
 ```
 
-## Switch implementations by environment
+### Switch implementations per environment
 
-DI acts as the **environment-based implementation switch point**.
+DI is the **switch point for implementation differences per execution environment**.
 
 ```go
 switch cfg.Env() {
@@ -187,9 +187,9 @@ case config.EnvProd:
 }
 ```
 
-## Lifecycle management
+### Lifecycle management
 
-The DI layer can register **startup and shutdown hooks**.
+In the DI layer, **startup / shutdown hooks** can be registered.
 
 ```go
 reg.RegisterStart(startFunc)
@@ -199,36 +199,38 @@ reg.RegisterStop(stopFunc)
 Examples:
 
 - HTTP Server startup
-- RateLimit cleanup
-- Job runner
+- RateLimit Cleanup
+- Job Runner
 
-## Isolate external frameworks
+### Isolate external frameworks
 
 The following dependencies are **contained within the DI layer**:
 
 - Echo
 - Uber Fx
-- Database drivers
+- DB driver
 - OpenTelemetry SDK
 
-This ensures that:
+This ensures:
 
 - Domain
 - Usecase
 
-remain **framework-independent**.
+are **framework-independent**.
 
-## Don't
+## Don't（Prohibited）
 
-## Do not implement business logic
+### Writing business logic
 
-The DI layer must not contain:
+The following must not be written in the DI layer:
+
+In particular, do not write **business logic**.
 
 - Domain logic
-- Database queries
+- DB queries
 - Business rules
 
-## Do not create cross-layer dependencies
+### Create dependencies that bypass layers
 
 NG
 
@@ -248,7 +250,7 @@ Usecase --> DomainInterface
 DomainInterface --> Infrastructure
 ```
 
-## Do not instantiate dependencies manually
+### Instantiate with `new` without DI
 
 NG
 
@@ -262,7 +264,7 @@ Correct approach
 fx.Provide(NewService)
 ```
 
-## Do not introduce frameworks into Domain / Usecase
+### Bring frameworks into Domain / Usecase
 
 NG
 
@@ -382,15 +384,15 @@ ApplyExtends --> ServerConfigurators
 
 ## Design Principles
 
-This DI layer follows these principles.
+This DI layer is based on the following principles.
 
 ### Composition Root
 
-Dependency wiring happens **only in the DI layer**
+Dependency wiring is done **only in the DI layer**
 
 ### Framework Isolation
 
-Framework dependencies are **contained in DI**
+Framework dependencies are **contained within DI**
 
 ### Environment Switch
 
@@ -399,17 +401,3 @@ Environment differences are **handled in DI**
 ### Plugin Architecture
 
 Extensions are added as **Modules / Extensions**
-
-## Summary
-
-`internal/di` is the layer responsible for **dependency wiring, startup, extension, and execution modes** of this application.
-
-This design integrates:
-
-- Onion Architecture
-- Domain Driven Design
-- Job Runner
-- Plugin Middleware
-- Observability
-
-into a **single coherent system**.
