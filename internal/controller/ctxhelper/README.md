@@ -12,7 +12,7 @@ The code in this package must not be implemented manually, and is created throug
 
 For details on the generation mechanism, refer to the following:
 
-- `scripts/genctxkey/README.md`
+- `scripts/genctxkey/README.ja.md`
 
 ## Usage
 
@@ -22,60 +22,61 @@ When adding a ctxkey, add a definition to `generate.go` as follows.
 //go:generate go run ../../../scripts/genctxkey --name UserID --type string --out .
 ```
 
+When using external types:
+
+```go
+//go:generate go run ../../../scripts/genctxkey --name Authn --type "auth.Authn" --import github.com/your/project/internal/domain/auth --out .
+```
+
 Then execute the following.
 
 ```bash
 make gen-go-code
 ```
 
-For details on the generation process and options, refer to [scripts/genctxkey/README.md](../../../scripts/genctxkey/README.md).
+## How to specify type
 
-## Notes
-
-### How to specify type
-
-The `--type` when generating ctxkey must be specified according to the following rules.
-
-#### Primitive types / same-package types
+### Primitive types / same-package types
 
 ```bash
 --type string
 --type UserID
 ```
 
-- No import is required
-- It is handled directly as a type
+- import is not required
+- handled directly as a type
 
-#### Types from external packages (recommended)
+### Types from external packages
 
 ```bash
---type github.com/your/project/internal/domain/auth.Authn
+--type "auth.Authn"
+--import github.com/your/project/internal/domain/auth
 ```
 
-- Specify in the format `<import-path>.<Type>`
-- The generator automatically resolves import and alias
+- `--type` is specified in Go type format
+- package is explicitly specified with `--import`
+- `--alias` is optional
 
-Example of generated code:
+### Complex types
 
-```go
-import (
-    auth "github.com/your/project/internal/domain/auth"
-)
-
-func GetAuthn(ctx context.Context) (auth.Authn, bool)
+```bash
+--type "*[]auth.Authn"
+--type "map[string]auth.Authn"
 ```
 
-#### Caution
+- supports pointer / slice / map / generic
 
-- Specifying only `<import-path>` (e.g., `github.com/foo/bar`) is not allowed
-- Be sure to include the type name
+## Notes
 
-### About editing
+- specifying only import path (e.g., `github.com/foo/bar`) is not allowed
+- external types must always specify both `--type` and `--import`
+
+## About editing
 
 Files with `.gen.go` in this directory are automatically generated code.
 
-- Manual editing is prohibited in principle
-- Make changes through `scripts/genctxkey`
+- manual editing is prohibited in principle
+- make changes through `scripts/genctxkey`
 
-As an exception, minor fixes for dependency resolution (such as import adjustments) are allowed,
+As an exception, minor fixes for dependency resolution (such as import adjustments) are allowed,  
 but it is recommended to implement permanent fixes on the generator side.

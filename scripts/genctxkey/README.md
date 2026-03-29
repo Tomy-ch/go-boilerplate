@@ -16,8 +16,6 @@ This tool automatically generates helper functions to solve these problems.
 
 ## Generated Code
 
-The following code is generated.
-
 - for context.Context
   - `SetXxx`
   - `GetXxx`
@@ -32,7 +30,7 @@ The following code is generated.
 ```go
 package ctxhelper
 
-//go:generate go run ../../../scripts/genctxkey --name authn --type github.com/your/project/internal/domain/auth.Authn --out .
+//go:generate go run ../../../scripts/genctxkey --name authn --type "auth.Authn" --import github.com/your/project/internal/domain/auth --out .
 ```
 
 ### 2. Generate code
@@ -51,49 +49,37 @@ make gen-go-code
 ```
 
 - import is not required
-- handled directly as a type
+- handled directly as a Go type
 
-### Types from external packages (recommended)
+### Types from external packages
 
 ```sh
---type github.com/your/project/internal/domain/auth.Authn
+--type "auth.Authn"
+--import github.com/your/project/internal/domain/auth
 ```
 
-#### Format
+- specify Go type format in `--type`
+- explicitly specify package with `--import`
+- `--alias` is optional (auto-generated if not specified)
 
-```text
-<import-path>.<Type>
+### Complex types (supported)
+
+```sh
+--type "*[]auth.Authn"
+--type "map[string]auth.Authn"
 ```
 
-### Behavior during generation
+- supports pointer / slice / map / generic
+- types are treated as Go type expressions, not strings
 
-```text
-github.com/your/project/internal/domain/auth.Authn
-```
-
-↓
-
-```text
-import auth "github.com/your/project/internal/domain/auth"
-```
-
-↓
-
-```text
-auth.Authn
-```
-
-is handled in this way.
-
-### Notes
-
-The following is invalid:
+## Invalid examples
 
 ```sh
 --type github.com/foo/bar
 ```
 
-Be sure to include the type name.
+- specifying only import path is invalid
+- when using external types, combine `--type` and `--import`
 
 ## Output Specification
 
@@ -104,13 +90,11 @@ Be sure to include the type name.
 
 ## Design Policy
 
-### 1. Concentrate responsibilities in the generator
+### 1. Responsibilities of generator
 
-- import resolution
-- alias determination
-- type formatting
-
-All are handled on the generator side.
+- focus on code generation
+- treat types as Go type expressions, do not analyze them
+- process imports based on CLI input
 
 ### 2. template has minimal responsibility
 
@@ -122,12 +106,12 @@ All are handled on the generator side.
 - no heuristic processing (goimports not used)
 - always generates identical results
 
-## About Editing
+## About editing
 
 Generated `.gen.go` files are auto-generated code.
 
 - manual editing is prohibited in principle
-- changes must be made through the generator
+- make changes through the generator
 
 ### Exceptions
 
@@ -146,7 +130,7 @@ However:
 - `ctxhelper` generation is not executed in CI
 - generation is performed locally, and results are committed
 
-## Caution
+## Notes
 
 This tool is based on the following principles:
 
@@ -158,8 +142,8 @@ This tool is based on the following principles:
 
 |Item|Policy|
 |------|------|
-|type specification|full path recommended|
-|import|resolved by generator|
+|type specification|Go type format|
+|import|explicit via CLI|
 |generation|reproducible|
 |editing|prohibited in principle (exceptions exist)|
 

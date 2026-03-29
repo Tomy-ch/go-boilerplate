@@ -16,8 +16,6 @@ context に対する値の格納・取得を、以下のような問題を避け
 
 ## 生成されるコード
 
-以下のようなコードが生成されます。
-
 - context.Context 用
   - `SetXxx`
   - `GetXxx`
@@ -32,7 +30,7 @@ context に対する値の格納・取得を、以下のような問題を避け
 ```go
 package ctxhelper
 
-//go:generate go run ../../../scripts/genctxkey --name authn --type github.com/your/project/internal/domain/auth.Authn --out .
+//go:generate go run ../../../scripts/genctxkey --name authn --type "auth.Authn" --import github.com/your/project/internal/domain/auth --out .
 ```
 
 ### 2. コード生成
@@ -51,49 +49,37 @@ make gen-go-code
 ```
 
 - import は不要
-- そのまま型として扱われます
+- Goの型としてそのまま扱われます
 
-### 外部パッケージの型（推奨）
+### 外部パッケージの型
 
 ```sh
---type github.com/your/project/internal/domain/auth.Authn
+--type "auth.Authn"
+--import github.com/your/project/internal/domain/auth
 ```
 
-#### フォーマット
+- `--type` には Goの型式を指定します
+- `--import` でパッケージを明示します
+- `--alias` は省略可能（未指定時は自動生成）
 
-```text
-<import-path>.<Type>
+### 複雑な型（対応）
+
+```sh
+--type "*[]auth.Authn"
+--type "map[string]auth.Authn"
 ```
 
-### 生成時の挙動
+- pointer / slice / map / generic に対応
+- 型は文字列としてではなく Go の型式として扱われます
 
-```text
-github.com/your/project/internal/domain/auth.Authn
-```
-
-↓
-
-```text
-import auth "github.com/your/project/internal/domain/auth"
-```
-
-↓
-
-```text
-auth.Authn
-```
-
-として扱われます。
-
-### 注意
-
-以下は無効です：
+## 無効な例
 
 ```sh
 --type github.com/foo/bar
 ```
 
-必ず型名まで含めて指定してください。
+- import path のみは無効です
+- 外部型を使う場合は `--type` と `--import` を組み合わせて指定してください
 
 ## 出力仕様
 
@@ -104,13 +90,11 @@ auth.Authn
 
 ## 設計方針
 
-### 1. generator に責務を集中
+### 1. generator の責務
 
-- import 解決
-- alias 決定
-- 型の整形
-
-すべて generator 側で行います。
+- コード生成に専念
+- 型は Go の型式として扱い、解析は行わない
+- import は CLI 入力に基づいて処理
 
 ### 2. template は最小責務
 
@@ -158,8 +142,8 @@ auth.Authn
 
 |項目|方針|
 |------|------|
-|型指定|フルパス推奨|
-|import|generatorで解決|
+|型指定|Goの型式|
+|import|CLIで明示|
 |生成|再現可能|
 |編集|原則禁止（例外あり）|
 

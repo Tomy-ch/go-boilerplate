@@ -22,59 +22,60 @@ ctxkeyを追加する場合は、以下のように `generate.go` に定義を�
 //go:generate go run ../../../scripts/genctxkey --name UserID --type string --out .
 ```
 
+外部型を使用する場合：
+
+```go
+//go:generate go run ../../../scripts/genctxkey --name Authn --type "auth.Authn" --import github.com/your/project/internal/domain/auth --out .
+```
+
 その後、以下を実行します。
 
 ```bash
 make gen-go-code
 ```
 
-生成処理の詳細やオプションについては、[scripts/genctxkey/README.ja.md](../../../scripts/genctxkey/README.ja.md) を参照してください。
+## type の指定方法
 
-## 注意事項
-
-### type の指定方法
-
-ctxkey生成時の `--type` は以下のルールに従って指定します。
-
-#### 基本型 / 同一パッケージ型
+### 基本型 / 同一パッケージ型
 
 ```bash
 --type string
 --type UserID
 ```
 
-- import は不要です
+- import は不要
 - そのまま型として扱われます
 
-#### 外部パッケージの型（推奨）
+### 外部パッケージの型
 
 ```bash
---type github.com/your/project/internal/domain/auth.Authn
+--type "auth.Authn"
+--import github.com/your/project/internal/domain/auth
 ```
 
-- `<import-path>.<Type>` の形式で指定します
-- generator が import と alias を自動解決します
+- `--type` は Go の型式で指定
+- `--import` でパッケージを明示
+- `--alias` は任意
 
-生成されるコード例：
+### 複雑な型
 
-```go
-import (
-    auth "github.com/your/project/internal/domain/auth"
-)
-
-func GetAuthn(ctx context.Context) (auth.Authn, bool)
+```bash
+--type "*[]auth.Authn"
+--type "map[string]auth.Authn"
 ```
 
-#### 注意
+- pointer / slice / map / generic に対応
 
-- `<import-path>` のみ（例: `github.com/foo/bar`）は指定できません
-- 必ず型名まで含めて指定してください
+## 注意
 
-### 編集について
+- import path のみ（例: `github.com/foo/bar`）は指定不可
+- 外部型は必ず `--type` と `--import` をセットで指定
+
+## 編集について
 
 本ディレクトリ内の `.gen.go` ファイルは自動生成されたコードです。
 
-- 原則として手動編集は禁止です
+- 原則として手動編集は禁止
 - 変更は `scripts/genctxkey` を通して行ってください
 
 例外として、依存解決のための軽微な修正（import調整など）は許可されますが、
