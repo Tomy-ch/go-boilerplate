@@ -52,6 +52,8 @@ RUN npm install
 # node_modulesの参照パスを追加
 ENV NODE_PATH=/opt/tools/node_modules
 
+RUN npm install -g @redocly/cli@latest
+
 WORKDIR /app
 
 ENTRYPOINT []

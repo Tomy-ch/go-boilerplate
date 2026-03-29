@@ -92,7 +92,7 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: go_tools
-    user: "${UID:-1000}:${GID:-1000}"
+    user: root
     tty: true
     stdin_open: true
     volumes:
@@ -107,7 +107,7 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: node_tools
-    user: "${UID:-1000}:${GID:-1000}"
+    user: root
     tty: true
     stdin_open: true
     volumes:
@@ -122,7 +122,7 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: python_tools
-    user: "${UID:-1000}:${GID:-1000}"
+    user: root
     tty: true
     stdin_open: true
     volumes:
