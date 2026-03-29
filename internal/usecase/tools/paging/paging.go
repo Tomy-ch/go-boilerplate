@@ -56,7 +56,7 @@ func NewPagingFrom1Based(page, perPage *int) (*Paging, error) {
 func (p Paging) Limit() int { return p.limit }
 
 // Limit32 は、ページの取得上限をint32型で返します。
-// limit は、1ページあたりの件数であり、maxPerPageを超えることはないため、int32の範囲内であることが保証されます。
+// limit は1ページあたりの件数であり、安全のためmaxPerPageでクランプしてからint32へ変換します。
 func (p Paging) Limit32() int32 {
 	limit := p.limit
 	if limit > maxPerPage {
@@ -69,7 +69,7 @@ func (p Paging) Limit32() int32 {
 func (p Paging) Offset() int { return p.offset }
 
 // Offset32 は、ページのオフセットをint32型で返します。
-// offset は、ページ番号がmaxPageを超えないことが保証されているため、int32の範囲内であることが保証されます。
+// offset が maxOffset を超える場合でも、maxOffset にクランプした上で int32 に変換することで安全性を担保します。
 func (p Paging) Offset32() int32 {
 	offset := p.offset
 	maxOffset := maxPage * maxPerPage
