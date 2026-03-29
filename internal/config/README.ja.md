@@ -36,7 +36,7 @@ flowchart TB
 ### 各ステップの役割
 
 - **Load()**
-  - `.env/.env` および `.env/.env.<ENV>` を読み込み、環境変数をセットします。
+  - `env/.env` および `env/.env.<ENV>` を読み込み、環境変数をセットします。
 
 - **env.ParseAs[Loader]**
   - `envspec.go` に定義された `Loader` 構造体へ環境変数をマッピングします。

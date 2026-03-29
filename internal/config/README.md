@@ -36,7 +36,7 @@ flowchart TB
 ### Responsibilities of Each Step
 
 - **Load()**
-  - Loads `.env/.env` and `.env/.env.<ENV>` and sets environment variables.
+  - Loads `env/.env` and `env/.env.<ENV>` and sets environment variables.
 
 - **env.ParseAs[Loader]**
   - Maps environment variables into the `Loader` struct defined in `envspec.go`.

@@ -41,6 +41,8 @@ RUN go build -mod=vendor -trimpath \
 # ------------------------------
 FROM alpine:3.23 AS prd
 
+ENV ENV=prd
+
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
@@ -48,7 +50,7 @@ RUN addgroup -S app && adduser -S app -G app
 USER app
 
 COPY --from=builder --chown=app:app /app/bin/server /app/server
-COPY --from=builder --chown=app:app /app/.env/.env.prd /.env/.env.prd
+COPY --from=builder --chown=app:app /app/env/.env.prd /env/.env.prd
 COPY --from=builder --chown=app:app /app/database/migrations /database/migrations
 COPY --from=builder --chown=app:app /app/scripts/entrypoint.sh /entrypoint.sh
 
