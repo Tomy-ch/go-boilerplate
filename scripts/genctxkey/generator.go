@@ -6,15 +6,17 @@ import (
 	"go/format"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
+	"unicode"
 
 	_ "embed"
 )
 
 const (
-	dirPerm  = 0o750
-	filePerm = 0o600
+	dirPerm  = 0o755
+	filePerm = 0o644
 )
 
 //go:embed template_ctx.tpl
@@ -34,7 +36,7 @@ type Param struct {
 	TestFailValue    string
 }
 
-func GenerateCtxKey(name, typ, outDir string) error {
+func GenerateCtxKey(name, typ, importPath, importAlias, outDir string) error {
 	if name == "" || typ == "" {
 		return fmt.Errorf("name and type are required")
 	}
@@ -44,38 +46,29 @@ func GenerateCtxKey(name, typ, outDir string) error {
 	}
 	outDir = filepath.Clean(outDir)
 
-	lower := strings.ToLower(name)
-
-	var importPath string
-	var importAlias string
-	typeName := typ
-
-	if strings.Contains(typ, "/") {
-		// expect format: github.com/foo/bar.Type
-		lastSlash := strings.LastIndex(typ, "/")
-		lastDot := strings.LastIndex(typ, ".")
-
-		// ensure '.' exists after last '/'
-		if lastDot == -1 || lastDot < lastSlash {
-			return fmt.Errorf("invalid type format (expected importpath.Type): %s", typ)
-		}
-
-		importPath = typ[:lastDot]
-		rawType := typ[lastDot+1:]
-
-		parts := strings.Split(importPath, "/")
-		importAlias = parts[len(parts)-1]
-
-		typeName = importAlias + "." + rawType
+	camel, err := toExportedName(name)
+	if err != nil {
+		return err
 	}
 
-	success, fail := resolveTestValue(typeName, lower)
+	lower := strings.ToLower(name)
+
+	// import handling
+	if importPath != "" {
+		if importAlias == "" {
+			importAlias = sanitizeAlias(lastSegment(importPath))
+		}
+	}
+
+	typeExpr := typ
+
+	success, fail := resolveTestValue(typeExpr, lower)
 
 	p := Param{
 		NameLower:        lower,
 		NameFlat:         lower,
-		NameCamel:        toCamel(name),
-		Type:             typeName,
+		NameCamel:        camel,
+		Type:             typeExpr,
 		ImportPath:       importPath,
 		ImportAlias:      importAlias,
 		TestSuccessValue: success,
@@ -86,12 +79,10 @@ func GenerateCtxKey(name, typ, outDir string) error {
 		return err
 	}
 
-	// ctx
 	if err := writeFile(filepath.Join(outDir, p.NameFlat+"_ctx.gen.go"), ctxTpl, p); err != nil {
 		return err
 	}
 
-	// test
 	if err := writeFile(filepath.Join(outDir, p.NameFlat+"_ctx_test.go"), testTpl, p); err != nil {
 		return err
 	}
@@ -112,7 +103,7 @@ func writeFile(path, tpl string, p Param) error {
 		return err
 	}
 
-	if existing, err := os.ReadFile(path); err == nil { //nolint:gosec // generator controlled path
+	if existing, err := os.ReadFile(path); err == nil {
 		if bytes.Equal(existing, src) {
 			return nil
 		}
@@ -121,8 +112,60 @@ func writeFile(path, tpl string, p Param) error {
 	return os.WriteFile(path, src, filePerm)
 }
 
-func toCamel(s string) string {
-	return strings.ToUpper(s[:1]) + s[1:]
+func toExportedName(s string) (string, error) {
+	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
+
+	var out string
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+		runes := []rune(p)
+		out += strings.ToUpper(string(runes[0])) + string(runes[1:])
+	}
+
+	if out == "" {
+		return "", fmt.Errorf("invalid name: %s", s)
+	}
+
+	if !isValidIdentifier(out) {
+		return "", fmt.Errorf("invalid identifier: %s", out)
+	}
+
+	return out, nil
+}
+
+func isValidIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 {
+			if !unicode.IsLetter(r) && r != '_' {
+				return false
+			}
+		} else {
+			if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func sanitizeAlias(s string) string {
+	s = strings.ReplaceAll(s, "-", "_")
+	s = strings.ReplaceAll(s, ".", "_")
+
+	if !isValidIdentifier(s) {
+		return "pkg"
+	}
+	return s
+}
+
+func lastSegment(path string) string {
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-1]
 }
 
 func resolveTestValue(t, nameLower string) (string, string) {
