@@ -39,12 +39,18 @@ RUN go build -mod=vendor -trimpath \
 # ------------------------------
 # 本番用
 # ------------------------------
-FROM alpine:3.20 AS prd
+FROM alpine:3.23 AS prd
 
-COPY --from=builder /app/bin/server /app/server
-COPY --from=builder /app/.env/.env.prd /.env/.env.prd
-COPY --from=builder /app/database/migrations /database/migrations
-COPY --from=builder /app/scripts/entrypoint.sh /entrypoint.sh
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+RUN addgroup -S app && adduser -S app -G app
+USER app
+
+COPY --from=builder --chown=app:app /app/bin/server /app/server
+COPY --from=builder --chown=app:app /app/.env/.env.prd /.env/.env.prd
+COPY --from=builder --chown=app:app /app/database/migrations /database/migrations
+COPY --from=builder --chown=app:app /app/scripts/entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 CMD ["/entrypoint.sh"]

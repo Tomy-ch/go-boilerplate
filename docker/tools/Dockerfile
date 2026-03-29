@@ -25,11 +25,9 @@ RUN rm -rf /go/pkg/mod /root/.cache/go-build
 # ------------------------------
 FROM golang:1.26.1-alpine AS go_tools
 
-WORKDIR /app
-
-ENV PATH="/go/bin:$PATH"
-
 RUN apk add --no-cache bash make postgresql-client
+
+WORKDIR /app
 
 COPY --from=go_tools_builder /out/ /usr/local/bin/
 
@@ -41,14 +39,17 @@ CMD []
 # ------------------------------
 FROM node:24.14-alpine AS node_tools
 
-WORKDIR /app
-
 RUN apk add --no-cache bash make
+
+WORKDIR /opt/tools
 
 COPY docker/tools/package.json ./
 RUN npm install
 
-RUN npm install -g @redocly/cli@latest
+# node_modulesの参照パスを追加
+ENV NODE_PATH=/opt/tools/node_modules
+
+WORKDIR /app
 
 ENTRYPOINT []
 CMD []
