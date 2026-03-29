@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -53,10 +54,20 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir string) error {
 
 	lower := strings.ToLower(name)
 
-	// import handling
+	// import handling with qualifier alignment
 	if importPath != "" {
+		qualifier := extractQualifier(typ)
+
 		if importAlias == "" {
-			importAlias = sanitizeAlias(lastSegment(importPath))
+			if qualifier != "" {
+				importAlias = qualifier
+			} else {
+				importAlias = sanitizeAlias(lastSegment(importPath))
+			}
+		} else {
+			if qualifier != "" && qualifier != importAlias {
+				return fmt.Errorf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias)
+			}
 		}
 	}
 
@@ -160,7 +171,21 @@ func sanitizeAlias(s string) string {
 	if !isValidIdentifier(s) {
 		return "pkg"
 	}
+
+	if token.Lookup(s).IsKeyword() {
+		return "pkg"
+	}
+
 	return s
+}
+
+func extractQualifier(t string) string {
+	// Extract first identifier before '.' (e.g., auth.Authn -> auth)
+	i := strings.Index(t, ".")
+	if i > 0 {
+		return t[:i]
+	}
+	return ""
 }
 
 func lastSegment(path string) string {
