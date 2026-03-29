@@ -3,7 +3,7 @@ name: Auto-generate Docs Pull Request
 on:
   push:
     branches:
-      - release/** 
+      - release/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
@@ -81,29 +81,54 @@ jobs:
       - name: Generate ER Diagram
         run: make gen-db-schema-ci
 
-      - name: Detect changes
-        id: diff
-        run: |
-          if ! git diff --exit-code; then
-            echo "has_diff=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_diff=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Generate Portal Docs
         run: |
           make gen-portal-docs
           make gen-docs-json
 
+      - name: Fix permissions
+        run: |
+          sudo chown -R $USER:$USER docs
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if ! git diff --quiet; then
+            echo "has_diff=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_diff=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create PR
-        id: cpr
         if: steps.diff.outputs.has_diff == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           commit-message: "chore(docs): auto update docs [skip ci]"
           branch: auto/docs-update/${{ github.ref_name }}-${{ github.run_id }}
           base: ${{ github.ref_name }}
-          title: "chore: auto update docs"
+          title: "chore(docs): sync generated artifacts"
           body: |
-            Auto-generated docs update.
+            ## 🤖 Auto-generated Docs Sync
+
+            This PR contains only **generated artifacts**.
+
+            ### 🔗 Source of truth
+            All changes are derived from already reviewed sources:
+            - OpenAPI definitions
+            - SQL / database schema
+            - Go code
+
+            ### 📦 Included outputs
+            - OpenAPI docs
+            - ER diagram
+            - Test repository docs
+            - Portal docs / docs.json
+
+            ### ⚠️ Notes
+            - No manual edits are included
+            - Safe to auto-merge if CI passes
+            - This PR is for keeping generated outputs in sync with source changes
+
+            Generated from: `${{ github.ref_name }}`
+            Run ID: `${{ github.run_id }}`
           delete-branch: true
