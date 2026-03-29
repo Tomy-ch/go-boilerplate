@@ -84,14 +84,14 @@ func TestNormalizePgError(t *testing.T) {
 		require.ErrorIs(t, got, apperror.ErrPermissionDenied)
 	})
 
-	t.Run("トランザクションのデッドロック", func(t *testing.T) {
+	t.Run("直列化失敗", func(t *testing.T) {
 		t.Parallel()
-		got := NormalizeError(&pgconn.PgError{Code: "40001", Message: "deadlock"})
+		got := NormalizeError(&pgconn.PgError{Code: "40001", Message: "serialisation failure"})
 		require.Error(t, got)
 		require.ErrorIs(t, got, apperror.ErrUnavailable)
 	})
 
-	t.Run("トランザクションの失敗(リトライ可能)", func(t *testing.T) {
+	t.Run("トランザクションのデッドロック", func(t *testing.T) {
 		t.Parallel()
 		got := NormalizeError(&pgconn.PgError{Code: "40P01", Message: "transaction failure"})
 		require.Error(t, got)
