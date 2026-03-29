@@ -175,7 +175,8 @@ func Test_mockLoader(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
-func Test_setEnv(t *testing.T) {
+func Test_setEnv(t *testing.T) { //nolint:funlen // safe: This function is only used
+	//  for testing and setting environment variables, so the complexity is acceptable.
 	setEnvVarsForTesting(t)
 	// OS
 	require.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
