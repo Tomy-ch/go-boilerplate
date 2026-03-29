@@ -133,6 +133,32 @@
       ]
     },
     {
+      "title": "Database (English)",
+      "items": [
+        {
+          "name": "Sqlc Query Guide",
+          "path": "./guides/sqlc-query-guide.md"
+        },
+        {
+          "name": "Sqlc Settings",
+          "path": "./guides/sqlc-settings.md"
+        }
+      ]
+    },
+    {
+      "title": "Database (Japanese)",
+      "items": [
+        {
+          "name": "Sqlc Query Guide",
+          "path": "./guides/ja/sqlc-query-guide.ja.md"
+        },
+        {
+          "name": "Sqlc Settings",
+          "path": "./guides/ja/sqlc-settings.ja.md"
+        }
+      ]
+    },
+    {
       "title": "Cross Cutting (English)",
       "items": [
         {
@@ -187,6 +213,32 @@
         {
           "name": "System",
           "path": "./guides/ja/system.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Context Helper (English)",
+      "items": [
+        {
+          "name": "How To Generate Ctxhelper",
+          "path": "./guides/how-to-generate-ctxhelper.md"
+        },
+        {
+          "name": "How To Use Context Helper",
+          "path": "./guides/how-to-use-context-helper.md"
+        }
+      ]
+    },
+    {
+      "title": "Context Helper (Japanese)",
+      "items": [
+        {
+          "name": "How To Generate Ctxhelper",
+          "path": "./guides/ja/how-to-generate-ctxhelper.ja.md"
+        },
+        {
+          "name": "How To Use Context Helper",
+          "path": "./guides/ja/how-to-use-context-helper.ja.md"
         }
       ]
     },
@@ -300,6 +352,10 @@
       "title": "Project (English)",
       "items": [
         {
+          "name": "Out Of Scope",
+          "path": "../project/out-of-scope.md"
+        },
+        {
           "name": "Policy",
           "path": "../project/policy.md"
         },
@@ -316,6 +372,10 @@
     {
       "title": "Project (Japanese)",
       "items": [
+        {
+          "name": "Out Of Scope",
+          "path": "../ja/project/out-of-scope.ja.md"
+        },
         {
           "name": "Policy",
           "path": "../ja/project/policy.ja.md"

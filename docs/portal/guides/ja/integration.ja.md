@@ -10,25 +10,18 @@
 
 本プロジェクトでは以下のテスト戦略を採用しています。
 
-```txt
-Domain        → Unit Test
-Usecase       → Unit Test
-Controller    → Unit Test
-Integration   → HTTP boundary test
-```
+- `Domain` → Unit Test
+- `Usecase` → Unit Test
+- `Controller` → Unit Test
+- `Integration` → HTTP boundary test
 
 integration テストでは **HTTP 経路全体の動作確認**のみを行います。
 
 つまり次の範囲を検証します。
 
-```txt
-Router
-↓
-Middleware
-↓
-Handler
-↓
-Presenter / Response serialization
+```mermaid
+flowchart TB
+    Router --> Middleware --> Handler --> Presenter["Presenter / Response serialization"]
 ```
 
 以下は **integration テストでは扱いません**
@@ -43,12 +36,15 @@ Presenter / Response serialization
 
 本プロジェクトでは **Test Pyramid** を前提としたテスト戦略を採用しています。
 
-```txt
-        E2E (なし)
-      Integration
-   Controller Unit
-   Usecase Unit
-     Domain Unit
+```mermaid
+flowchart TB
+    Domain["Domain Unit"]
+    Usecase["Usecase Unit"]
+    Controller["Controller Unit"]
+    Integration["Integration"]
+    E2E["E2E (なし)"]
+
+    Domain --> Usecase --> Controller --> Integration --> E2E
 ```
 
 方針：
@@ -72,14 +68,9 @@ integration テストでは **Usecase を mock 化**します。
 integration テストの目的は **HTTP Layer の検証**であり、  
 以下の範囲のみを対象とします。
 
-```txt
-Router
-↓
-Middleware
-↓
-Handler
-↓
-Response serialization
+```mermaid
+flowchart TB
+    Router --> Middleware --> Handler --> Response["Response serialization"]
 ```
 
 Usecase / Domain / Repository のロジックは  
@@ -100,21 +91,13 @@ integration テストは **公開 API の動作確認**として配置します�
 
 対象となるエンドポイント例：
 
-```txt
-/health
-/healthz
-/ready
-/version
-/v1/...
-```
+- `/health`
+- `/healthz`
+- `/ready`
+- `/version`
+- `/v1/...`
 
-つまり
-
-```txt
-公開される HTTP API
-```
-
-のみを integration テストの対象とします。
+つまり、**公開される HTTP API** のみを integration テストの対象とします。
 
 内部関数や handler の細かなロジックは  
 **Controller Unit Test で検証します。**
@@ -128,10 +111,8 @@ integration テストは **公開 API の動作確認**として配置します�
 
 このディレクトリを分けることで、**テストの目的と粒度を明確にしています。**
 
-```txt
-internal/controller/handler/... → Handler Unit Test
-internal/integration            → HTTP Integration Test
-```
+- `internal/controller/handler/...` → Handler Unit Test
+- `internal/integration` → HTTP Integration Test
 
 ### 実運用に近い検証
 
@@ -151,14 +132,9 @@ CI/CD やスモークテストとしても利用できます。
 
 integration テストで扱う範囲は次の通りです。
 
-```txt
-Echo Router
-↓
-Middleware
-↓
-Handler
-↓
-Response
+```mermaid
+flowchart TB
+    Router["Echo Router"] --> Middleware --> Handler --> Response
 ```
 
 Usecase は **mock を利用します。**
@@ -170,39 +146,23 @@ integration テストの目的は **HTTP boundary の検証**であり
 
 例
 
-```txt
-mock_user.NewMockUsecase
-mock_healthcheck.NewMockUsecase
-```
+- `mock_user.NewMockUsecase`
+- `mock_healthcheck.NewMockUsecase`
 
 ## テストの流れ
 
 integration テストは次の手順で実行されます。
 
-```txt
-Echo.New()
-↓
-BindHandler
-↓
-StartServer
-↓
-HTTP Request
-↓
-Assert Response
+```mermaid
+flowchart TB
+    New["Echo.New()"] --> Bind["BindHandler"] --> Start["StartServer"] --> Req["HTTP Request"] --> Assert["Assert Response"]
 ```
 
 具体例
 
-```txt
-echo.New()
-↓
-handler.BindHandler()
-↓
-StartServer()
-↓
-DoJSON()
-↓
-AssertJSONResponse()
+```mermaid
+flowchart TB
+    New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponse()"]
 ```
 
 ## integration_test.go で定義されている関数
@@ -312,30 +272,16 @@ integration テストでは
 
 integration テストでは **Usecase を mock 化**します。
 
-理由
-
-```go
-integration = HTTP boundary test
-```
-
-であるためです。
+理由: `integration = HTTP boundary test` であるためです。
 
 ### 3 HTTP を実際に叩く
 
-handler を直接呼ぶのではなく
-
-```go
-httptest.Server
-```
-
-を利用します。
+handler を直接呼ぶのではなく `httptest.Server` を利用します。
 
 ### 4 レスポンス型で検証
 
 レスポンスは **OpenAPI 型**で検証します。
 
-```go
-gen.ResponseV1Users
-gen.ResponseHealth
-gen.ResponseVersion
-```
+- `gen.ResponseV1Users`
+- `gen.ResponseHealth`
+- `gen.ResponseVersion`

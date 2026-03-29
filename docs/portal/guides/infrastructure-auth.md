@@ -1,31 +1,31 @@
 # auth Directory
 
-`internal/infrastructure/auth` provides the **authentication infrastructure** for the application.
+`internal/infrastructure/auth` is a directory that provides **Authentication Infrastructure**.
 
-This directory contains the **Authenticator implementations** used by the application.  
-Implementations are **separated by environment** (e.g., `local`, `stg`, `prd`).
+This directory contains the **implementations of Authenticator** used by the application.  
+Implementations are **separated by environment (local / stg / prd, etc.)**.
 
-The authentication abstraction interface is defined as a **Boundary in the Usecase layer**.
+The abstraction interface for authentication is defined as a **Boundary in the Usecase layer**.
 
 ```txt
 internal/usecase/boundary/auth
 ```
 
-The Infrastructure layer provides **concrete implementations** of this Boundary.
+In the Infrastructure layer, this Boundary is **implemented concretely**.
 
-## Responsibility
+## Role
 
-The responsibilities of this directory are:
+The responsibilities of this directory are as follows.
 
 - Provide **environment-specific implementations** of `Authenticator`
-- Implement integrations with external authentication systems (JWT / OAuth / Cognito, etc.)
+- Implement integration with external authentication systems (JWT / OAuth / Cognito, etc.)
 - Generate **Authn information from authentication tokens**
 
-This layer **does not contain business logic**.
+This layer **does not handle business logic**.
 
-## Architectural Position
+## Position in Architecture
 
-Authentication processing follows the layered architecture below.
+Authentication processing is implemented in the following layered structure.
 
 ```mermaid
 flowchart TB
@@ -36,11 +36,11 @@ Infrastructure["Infrastructure (auth implementation)"] -. implements .-> Boundar
 ```
 
 Infrastructure **only implements the Boundary**,  
-and acts as the concrete implementation invoked by the Usecase layer.
+and is the concrete implementation directly invoked from the Usecase.
 
 ## Directory Structure
 
-The expected structure is as follows.
+The future structure will be as follows.
 
 ```txt
 internal/infrastructure/auth
@@ -56,39 +56,39 @@ internal/infrastructure/auth
 |Directory|Purpose|
 |---|---|
 |`local`|Simple authentication for local development|
-|`stg`|Authentication implementation for staging environments|
-|`prd`|Authentication implementation for production environments|
+|`stg`|Authentication for staging environments|
+|`prd`|Authentication for production environments|
 
 ## Local Implementation
 
-`local` provides **authentication implementation for local development only**.
+`local` is an **authentication implementation dedicated to local development**.
 
-Characteristics:
+Characteristics
 
 - Does not perform token signature verification
-- Extracts the subject from the token string
-- Used as a lightweight authentication mechanism for development
+- Extracts Subject from the token string
+- Used as simple authentication for development
 
-Example:
+Example
 
 ```txt
 Authorization: Bearer debug:user123
 ```
 
-In this case:
+In this case
 
 ```txt
 subject = user123
 provider = <env>
 ```
 
-An Authn object is generated with this information.
+Authn is generated.
 
 ## Staging / Production Implementation
 
-In `stg` and `prd`, authentication typically involves implementations such as:
+In stg / prd, authentication such as the following is typically implemented.
 
-Examples:
+Example
 
 - JWT verification
 - OAuth2
@@ -96,27 +96,27 @@ Examples:
 - AWS Cognito
 - Auth0
 
-These implementations typically perform:
+Here, the following are performed.
 
 - signature verification
 - token validation
 - claims extraction
 
-## DI Registration
+## Registration to DI
 
-The Authenticator is registered in a DI module.
+Authenticator is registered in the DI module.
 
 ```txt
 internal/di/module/core/auth.go
 ```
 
-Example:
+Example
 
 ```txt
 func provideAuthenticator(...) auth.Authenticator
 ```
 
-The implementation is switched based on environment variables or configuration:
+Based on environment variables or configuration,
 
 ```txt
 local
@@ -125,36 +125,40 @@ stg
 prd
 ```
 
+the implementation is switched.
+
 ## Design Policy
 
-This directory follows the policies below.
+This directory is designed based on the following policies.
 
 ### 1 Implement the Boundary
 
-Infrastructure implements the `Authenticator` defined in:
+Infrastructure implements the `Authenticator` in:
 
 ```txt
 usecase/boundary/auth
 ```
 
-### 2 No Business Logic
+### 2 Do not include business logic
 
-This package handles **authentication processing only**.
+This package is responsible for **authentication processing only**.
 
-The following are **not handled here**:
+The following are not handled.
 
 - authorization checks
-- role evaluation
+- role determination
 - business rules
 
-These belong to the **Usecase layer**.
+These are handled in the **Usecase layer**.
 
-### 3 Environment-Based Separation
+### 3 Separate by environment
 
-Authentication mechanisms may differ depending on the environment, so implementations are separated into:
+Since authentication methods may differ by environment,
 
 ```txt
 local
 stg
 prd
 ```
+
+they are separated into directories.

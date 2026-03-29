@@ -20,26 +20,23 @@
 
 アプリケーション起動時の設定読み込みの流れは次の通りです。
 
-```txt
-.env files
-    ↓
-Load (godotenv)
-    ↓
-env.ParseAs[Loader]()
-    ↓
-validateConfig()
-    ↓
-Config struct
-    ↓
-SubConfig Provider<br/>(NewServerConfig など)
-    ↓
-DI (Uber Fx)
+```mermaid
+flowchart TB
+    Env[".env files"]
+    Load["Load (godotenv)"]
+    Parse["env.ParseAs[Loader]()"]
+    Validate["validateConfig()"]
+    Config["Config struct"]
+    Sub["SubConfig Provider (NewServerConfig など)"]
+    DI["DI (Uber Fx)"]
+
+    Env --> Load --> Parse --> Validate --> Config --> Sub --> DI
 ```
 
 ### 各ステップの役割
 
 - **Load()**
-  - `.env/.env` および `.env/.env.<ENV>` を読み込み、環境変数をセットします。
+  - `env/.env` および `env/.env.<ENV>` を読み込み、環境変数をセットします。
 
 - **env.ParseAs[Loader]**
   - `envspec.go` に定義された `Loader` 構造体へ環境変数をマッピングします。
