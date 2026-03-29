@@ -2,6 +2,9 @@ package hook
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -9,6 +12,7 @@ import (
 	"boilerplate-go/internal/di/lifecycle"
 	"boilerplate-go/internal/di/server/extension"
 	"boilerplate-go/internal/logging"
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 )
@@ -40,10 +44,18 @@ func newStartServerFunc(
 	appCfg *config.ApplicationConfig,
 	osCfg *config.OperationSystemConfig,
 ) func(context.Context) error {
-	return func(_ context.Context) error {
+	return func(ctx context.Context) error {
 		addr := srvCfg.Port()
+
+		lc := &net.ListenConfig{}
+		ln, err := lc.Listen(ctx, "tcp", ":"+strconv.Itoa(addr))
+		if err != nil {
+			return fmt.Errorf("failed to listen on port %d: %w", addr, err)
+		}
+		e.Listener = ln
+
 		go func() {
-			if err := e.Start(":" + strconv.Itoa(addr)); err != nil {
+			if err := e.Start(""); err != nil && !xerrors.Is(err, http.ErrServerClosed) {
 				log.Named("server.Start").Error("failed to start http server", logging.Error("e.Start", err))
 			}
 		}()
