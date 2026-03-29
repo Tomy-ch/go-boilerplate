@@ -169,6 +169,9 @@ func validateServerConfig(srvCfg Server) error {
 
 // validateDatabaseConfig は、データベース設定を検証します。
 func validateDatabaseConfig(dbCfg Database) error {
+	if dbCfg.Port < MinPort || MaxPort < dbCfg.Port {
+		return ErrInvalidDBPortRange
+	}
 	if dbCfg.SlowQueryWarnThreshold < 0 {
 		return ErrInvalidSlowQueryWarnThreshold
 	}

@@ -293,6 +293,28 @@ func Test_validateDatabaseConfig(t *testing.T) {
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidSlowQueryWarnThreshold)
 		})
+
+		t.Run("無効なデータベースポート番号", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("ポート番号がMinPort未満の場合", func(t *testing.T) {
+				cfg := mockLoader(t)
+				cfg.Database.Port = MinPort - 1 // 無効なデータベースポート番号
+
+				actual, err := validateConfig(cfg)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidDBPortRange)
+			})
+
+			t.Run("ポート番号がMaxPortを超えている場合", func(t *testing.T) {
+				cfg := mockLoader(t)
+				cfg.Database.Port = MaxPort + 1 // 無効なデータベースポート番号
+
+				actual, err := validateConfig(cfg)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidDBPortRange)
+			})
+		})
 	})
 }
 

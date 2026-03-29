@@ -69,6 +69,13 @@ var (
 		"read header timeout exceeds read timeout: %w",
 		errInvalidConfig,
 	)
+	// ErrInvalidDBPortRange は、データベースの無効なポート範囲に関するエラーを表します。
+	ErrInvalidDBPortRange = fmt.Errorf(
+		"invalid database port range, must be between %d and %d: %w",
+		MinPort,
+		MaxPort,
+		errInvalidConfig,
+	)
 	// ErrInvalidSlowQueryWarnThreshold は、無効なスロークエリ警告閾値に関するエラーを表します。
 	ErrInvalidSlowQueryWarnThreshold = fmt.Errorf(
 		"invalid slow query warn threshold, must be greater than or equal to 0: %w",
