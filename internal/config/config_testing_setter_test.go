@@ -23,6 +23,12 @@ func TestConfigTestingSetters(t *testing.T) {
 		require.Equal(t, expected, cfg.app.Env())
 	})
 
+	t.Run("SetObservabilityMaskedDBQueryArgs", func(t *testing.T) {
+		expected := true
+		cfg.observability.SetObservabilityMaskedDBQueryArgs(t, expected)
+		require.Equal(t, expected, cfg.observability.MaskedDBQueryArgs())
+	})
+
 	t.Run("SetDatabaseDriver", func(t *testing.T) {
 		expected := "test-driver"
 		cfg.database.SetDatabaseDriver(t, expected)

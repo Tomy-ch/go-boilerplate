@@ -30,6 +30,16 @@ func (a *ApplicationConfig) SetAppEnv(t testing.TB, env string) {
 	t.Cleanup(func() { a.env = prev })
 }
 
+// SetObservabilityMaskedDBQueryArgs は、テスト用にオブザーバビリティのDBクエリ引数の設定を行います。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(t testing.TB, val bool) {
+	t.Helper()
+	prev := o.maskedDBQueryArgs
+	o.maskedDBQueryArgs = val
+	t.Cleanup(func() { o.maskedDBQueryArgs = prev })
+}
+
 // SetDatabaseDriver は、テスト用にデータベースのドライバーを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。

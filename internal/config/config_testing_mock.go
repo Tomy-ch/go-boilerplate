@@ -54,6 +54,7 @@ var (
 	expectedMetricsPassword = "metrics-password"
 	// observability
 	expectedObservabilityEnabled              = true
+	expectedObservabilityMaskedDBQueryArgs    = false
 	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
 	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
 	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
@@ -145,6 +146,7 @@ func MockConfigForTest(t testing.TB) *Config {
 		},
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
+			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
@@ -219,6 +221,7 @@ func mockLoader(t testing.TB) Loader {
 		},
 		Observability: Observability{
 			Enabled:           expectedObservabilityEnabled,
+			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		Server: Server{
@@ -302,6 +305,7 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function
 	t.Setenv("METRICS_PASSWORD", expectedMetricsPassword)
 	// Observability
 	t.Setenv("OBSERVABILITY_ENABLED", strconv.FormatBool(expectedObservabilityEnabled))
+	t.Setenv("OBSERVABILITY_MASKED_DB_QUERY_ARGS", strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs))
 	t.Setenv("OBSERVABILITY_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
 	// Database
 	t.Setenv("DB_DRIVER", expectedDBDriver)

@@ -37,6 +37,7 @@ func TestMockConfigForTest(t *testing.T) {
 		},
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
+			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
@@ -121,6 +122,7 @@ func Test_mockLoader(t *testing.T) {
 		},
 		Observability: Observability{
 			Enabled:           expectedObservabilityEnabled,
+			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		Database: Database{
@@ -198,6 +200,7 @@ func Test_setEnv(t *testing.T) { //nolint:funlen // safe: This function is only 
 	require.Equal(t, expectedMetricsPassword, os.Getenv("METRICS_PASSWORD"))
 	// Observability
 	require.Equal(t, strconv.FormatBool(expectedObservabilityEnabled), os.Getenv("OBSERVABILITY_ENABLED"))
+	require.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBSERVABILITY_MASKED_DB_QUERY_ARGS"))
 	require.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBSERVABILITY_TARGET_STATUS_CODES"))
 	// Database
 	require.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
