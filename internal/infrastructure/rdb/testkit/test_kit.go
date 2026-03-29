@@ -23,7 +23,10 @@ var (
 	testDB  driver.DatabaseDriver
 	initErr error
 	dbOnce  sync.Once
-	txLock  sync.Mutex
+	// txLock は、テスト用のトランザクションマネージャーでトランザクションを開始する際のロックです。
+	// これにより、テストが並行して実行される場合でも、トランザクションの競合を防止します。
+	// テスト数が増加し、ボトルネックとなる場合はテスト用のDcoker一時コンテナを用意するライブラリの導入を検討してください。
+	txLock sync.Mutex
 )
 
 type TransactionRunner interface {
