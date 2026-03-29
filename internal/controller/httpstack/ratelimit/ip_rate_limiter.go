@@ -18,6 +18,10 @@ type IPRateLimiter interface {
 }
 
 // iPRateLimiter は、IPアドレスごとのレートリミッターを提供します。
+//
+// この実装はインメモリであり、単一プロセス内での使用を想定しています。
+// 大量のIPアドレスを扱う場合や、分散環境での使用には適していません。
+// 複数のレプリカへの並行スケール時は、この機能を外してRedis等の外部ストアを利用することを検討してください。
 type iPRateLimiter struct {
 	cfg     *config.IPRateLimitConfig
 	limit   rate.Limit
