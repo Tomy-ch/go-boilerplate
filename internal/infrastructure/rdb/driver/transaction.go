@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/usecase/boundary/tx"
 )
@@ -61,7 +62,11 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+
+	return nil
 }
 
 // withTx は、context.Contextにトランザクションを設定します。
