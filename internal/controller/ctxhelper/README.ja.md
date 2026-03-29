@@ -1,6 +1,6 @@
 # ctxhelper
 
-English | [日本語](README.ja.md)
+[English](README.md) | 日本語
 
 ctxhelperは「contextの利用を制御する境界レイヤ」です。
 
