@@ -168,6 +168,18 @@ func TestPage_Getters(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
+	t.Run("Limit32がmaxPerPageを超える場合はクランプされる", func(t *testing.T) {
+		page := &Paging{
+			limit:  maxPerPage + 100,
+			offset: 0,
+		}
+
+		actual := page.Limit32()
+		expected := int32(maxPerPage)
+
+		require.Equal(t, expected, actual)
+	})
+
 	t.Run("Offset32が正しい値を返す", func(t *testing.T) {
 		page := &Paging{
 			limit:  100,
@@ -176,6 +188,18 @@ func TestPage_Getters(t *testing.T) {
 
 		actual := page.Offset32()
 		expected := int32(200)
+
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("Offset32が最大値を超える場合はクランプされる", func(t *testing.T) {
+		page := &Paging{
+			limit:  0,
+			offset: maxPage*maxPerPage + 1000,
+		}
+
+		actual := page.Offset32()
+		expected := int32(maxPage * maxPerPage)
 
 		require.Equal(t, expected, actual)
 	})
