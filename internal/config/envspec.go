@@ -46,7 +46,7 @@ type Metrics struct {
 type Observability struct {
 	Enabled           bool  `env:"ENABLED,required"`
 	MaskedDBQueryArgs bool  `env:"MASKED_DB_QUERY_ARGS,required"`
-	TargetStatusCodes []int `env:"TARGET_STATUS_CODES,required" envSeparator:","`
+	TargetStatusCodes []int `env:"TARGET_STATUS_CODES,required"  envSeparator:","`
 }
 
 type Database struct {
