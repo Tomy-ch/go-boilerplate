@@ -65,6 +65,9 @@ var (
 	expectedDBPassword                    = "postgres-password"
 	expectedDBName                        = "test"
 	expectedDBSSLMode                     = "disable"
+	expectedDBPingTimeoutCount            = 5
+	expectedDBPingTimeoutStr              = fmt.Sprintf("%ds", expectedDBPingTimeoutCount)
+	expectedDBPingTimeout                 = time.Duration(expectedDBPingTimeoutCount) * time.Second
 	expectedDBSlowQueryWarnThresholdCount = 500
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
@@ -153,6 +156,7 @@ func MockConfigForTest(t testing.TB) *Config {
 			password:               expectedDBPassword,
 			name:                   expectedDBName,
 			sslMode:                expectedDBSSLMode,
+			pingTimeout:            expectedDBPingTimeout,
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
@@ -232,6 +236,7 @@ func mockLoader(t testing.TB) Loader {
 			Password:               expectedDBPassword,
 			Name:                   expectedDBName,
 			SSLMode:                expectedDBSSLMode,
+			PingTimeout:            expectedDBPingTimeout,
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		DBConnection: DBConnection{
@@ -306,6 +311,7 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function
 	t.Setenv("DB_PASSWORD", expectedDBPassword)
 	t.Setenv("DB_NAME", expectedDBName)
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
+	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
 	// DBConnection
 	t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))

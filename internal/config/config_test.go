@@ -48,6 +48,7 @@ func TestNewConfig(t *testing.T) {
 					password:               expectedDBPassword,
 					name:                   expectedDBName,
 					sslMode:                expectedDBSSLMode,
+					pingTimeout:            expectedDBPingTimeout,
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 				},
 				dbconnection: DBConnectionConfig{

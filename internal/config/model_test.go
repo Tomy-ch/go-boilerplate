@@ -241,6 +241,11 @@ func TestGetterMethods(t *testing.T) {
 			require.Equal(t, expectedDBSSLMode, database.SSLMode())
 		})
 
+		t.Run("PingTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedDBPingTimeout, database.PingTimeout())
+		})
+
 		t.Run("SlowQueryWarnThreshold", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())

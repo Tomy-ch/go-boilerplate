@@ -63,6 +63,7 @@ func New() (*Config, error) {
 			password:               cfg.Database.Password,
 			name:                   cfg.Database.Name,
 			sslMode:                cfg.Database.SSLMode,
+			pingTimeout:            cfg.Database.PingTimeout,
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{

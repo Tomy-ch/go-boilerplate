@@ -48,6 +48,7 @@ func TestMockConfigForTest(t *testing.T) {
 			password:               expectedDBPassword,
 			name:                   expectedDBName,
 			sslMode:                expectedDBSSLMode,
+			pingTimeout:            expectedDBPingTimeout,
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
@@ -129,6 +130,7 @@ func Test_mockLoader(t *testing.T) {
 			Password:               expectedDBPassword,
 			Name:                   expectedDBName,
 			SSLMode:                expectedDBSSLMode,
+			PingTimeout:            expectedDBPingTimeout,
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		DBConnection: DBConnection{
@@ -204,6 +206,7 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, expectedDBPassword, os.Getenv("DB_PASSWORD"))
 	require.Equal(t, expectedDBName, os.Getenv("DB_NAME"))
 	require.Equal(t, expectedDBSSLMode, os.Getenv("DB_SSL_MODE"))
+	require.Equal(t, expectedDBPingTimeoutStr, os.Getenv("DB_PING_TIMEOUT"))
 	require.Equal(t, expectedDBSlowQueryWarnThresholdStr, os.Getenv("DB_SLOW_QUERY_WARN_THRESHOLD"))
 	// DBConnection
 	require.Equal(t, strconv.Itoa(expectedDBMaxOpenConns), os.Getenv("DBCONN_MAX_OPEN"))
