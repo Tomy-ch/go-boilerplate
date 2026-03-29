@@ -64,6 +64,9 @@ The following PostgreSQL SQLSTATE values are converted into application errors.
 |22001|string too long|InvalidArgument|
 |22P02|invalid text representation|InvalidArgument|
 |42501|insufficient privilege|PermissionDenied|
+|40001|serialization failure|Unavailable|
+|40P01|deadlock detected|Unavailable|
+|57014|query canceled|Unavailable|
 
 PostgreSQL errors that do not match these cases are converted into `Internal` errors.
 
