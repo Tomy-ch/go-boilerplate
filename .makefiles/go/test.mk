@@ -9,7 +9,7 @@ test:
 
 gen-test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
-	touch docs/coverage/coverage.out
+	rm -f docs/coverage/coverage.out
 	TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cli|cmd|mock|apperror|scripts)(/|$$)')"; \
 	COVER_PKGS="$$(go list ./... \
 		| grep -Ev '/(gen|cli|cmd|mock|apperror|scripts)(/|$$)' \
