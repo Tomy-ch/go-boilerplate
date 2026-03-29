@@ -48,12 +48,13 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	tracer := observability.NewNoopTracerFactory(t)
 
 	mockLogger := logging.NewTestLogger(t)
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, mockLogger, lf, tracer)
+	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
 }
 
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
