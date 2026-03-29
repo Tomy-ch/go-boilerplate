@@ -23,7 +23,6 @@ func TestSet{{.NameCamel}}(t *testing.T) {
 	ctx := context.WithValue(base, {{.NameLower}}Key, {{.TestSuccessValue}})
 
 	val := ctx.Value({{.NameLower}}Key)
-	require.NotNil(t, val)
 	v, ok := val.({{.Type}})
 	require.True(t, ok)
 	require.Equal(t, {{.TestSuccessValue}}, v)
