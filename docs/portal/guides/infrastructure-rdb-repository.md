@@ -14,14 +14,16 @@ The responsibilities of this layer are strictly limited to the following three:
 
 Repository **must not contain business logic**.
 
-```txt
-Usecase
-   ↓
-Repository (Infra)
-   ↓
-sqlc
-   ↓
-Database
+```mermaid
+flowchart TB
+    Usecase["Usecase"]
+    Repo["Repository (Infra)"]
+    Sqlc["sqlc"]
+    DB["Database"]
+
+    Usecase --> Repo
+    Repo --> Sqlc
+    Sqlc --> DB
 ```
 
 Repository simply **implements the Repository Interface defined by the Domain**.
@@ -34,7 +36,7 @@ Repository implementations should be placed in:
 internal/infrastructure/rdb/repository/<aggregate>/
 ```
 
-Example:
+Example
 
 ```txt
 repository/
@@ -46,40 +48,40 @@ repository/
 
 The Repository Interface must be placed in the **Domain layer**.
 
-```txt
-internal/domain/<aggregate>/repository.go
-```
+Location: `internal/domain/<aggregate>/repository.go`
 
 Infrastructure **only implements** this interface.
 
 ## Repository Method Responsibility
 
-Repository methods perform only the following processing:
+Repository methods perform only the following processing.
 
-```txt
-Query
- ↓
-sqlc
- ↓
-Row
- ↓
-Domain Entity
- ↓
-return
+```mermaid
+flowchart TB
+    Query["Query"]
+    Sqlc["sqlc"]
+    Row["Row"]
+    Domain["Domain Entity"]
+    Ret["return"]
+
+    Query --> Sqlc
+    Sqlc --> Row
+    Row --> Domain
+    Domain --> Ret
 ```
 
-Repository must not implement:
+Repository must not perform:
 
 - Business rules
-- Aggregation logic
-- DTO creation
+- Aggregation processing
+- DTO generation
 - Usecase logic
 
-These belong to the **Usecase / Domain layers**.
+These are the **responsibility of Usecase / Domain**.
 
 ## Using sqlc
 
-Repository must use **sqlc generated query code**.
+Repository uses **sqlc generated query code**.
 
 ```go
 rows, err := db.ListUsers(ctx, &gen.ListUsersParams{...})
@@ -87,20 +89,20 @@ rows, err := db.ListUsers(ctx, &gen.ListUsersParams{...})
 
 With sqlc:
 
-- SQL execution becomes type-safe
-- Queries are verified at compile time
+- Type-safe SQL execution
+- Compile-time validation
+
+becomes possible.
 
 Generated code is located at:
 
-```txt
-internal/infrastructure/rdb/sqlc/gen
-```
+`internal/infrastructure/rdb/sqlc/gen`
 
 ## Row → Domain Conversion
 
-Structures returned by sqlc are **Infrastructure-only types**.
+Row structures returned by sqlc are **Infrastructure-only types**.
 
-Therefore Repository must always convert them to **Domain entities**.
+Therefore Repository must always **convert them into Domain entities**.
 
 ```go
 user, err := user.New(
@@ -113,13 +115,13 @@ user, err := user.New(
 
 Important rules:
 
-- Never return sqlc Rows to upper layers
-- Always use Domain constructors
+- Do not return sqlc Rows to upper layers
+- Use Domain constructors
 
 ## Domain Constructor Errors
 
 If Domain entity creation fails,  
-the error **must be returned as-is**.
+the error must be **returned as-is**.
 
 ```go
 user, err := user.New(...)
@@ -128,17 +130,17 @@ if err != nil {
 }
 ```
 
-Reasons include:
+Reason:
 
 - Domain invariant violation
 - DB data inconsistency
 - Migration mistakes
 
-These must be treated as **Domain-layer responsibility**.
+These are treated as **Domain-layer responsibility**.
 
 ## UUID Conversion
 
-The database uses primitive UUID values.
+DB uses primitive UUID.
 
 Domain uses `pkg/uuid.UUID`.
 
@@ -149,11 +151,9 @@ uuid.FromPrimitive(row.ID)
 uuid.ToPrimitiveUniqueList(ids)
 ```
 
-UUID operations must use:
+UUID operations use:
 
-```txt
-pkg/uuid
-```
+`pkg/uuid`
 
 wrapper utilities.
 
@@ -161,42 +161,39 @@ wrapper utilities.
 
 Nullable DB values are represented using `sql.Null*`.
 
-Repository should convert them using:
+Repository converts them using:
 
-```txt
-internal/infrastructure/rdb/conv
-```
+`internal/infrastructure/rdb/conv`
 
-Example:
+Example
 
 ```go
 conv.StringPtrFromNull(row.Users.Building)
 conv.NullStringFromPtr(user.Building())
 ```
 
-This centralizes conversions such as:
+This centralizes conversion:
 
-```txt
-sql.NullString ⇔ *string
-sql.NullTime   ⇔*time.Time
+```mermaid
+flowchart LR
+    NullString["sql.NullString"] <--> StringPtr["*string"]
+    NullTime["sql.NullTime"] <--> TimePtr["*time.Time"]
 ```
 
-## sqlc Helpers
+## sqlc Helper
 
-Helper utilities for LIKE search and similar tasks are located in:
+Helper processing such as LIKE search uses:
 
-```txt
-internal/infrastructure/rdb/sqlc
-```
+`internal/infrastructure/rdb/sqlc`
 
-Example:
+Example
 
 ```go
 escaped := sqlc.EscapeForLike(keyword, sqlc.DefaultLikeEscapeChar)
 pattern := sqlc.WrapContainsLikePattern(escaped)
 ```
 
-Deleted state example:
+Deleted state:
 
 ```go
 DeletedState: sqlc.BoolPtrToDeletedState(active)
@@ -212,94 +209,188 @@ Purpose:
 
 Repository does not directly use `driver.DatabaseDriver`.
 
-Instead, it generates the sqlc Querier using:
-
 ```go
 db := gen.New(r.db.NewLoggingDB(ctx))
 ```
 
-`loggingdb.DBProvider` provides the following features:
+`loggingdb.DBProvider` provides:
 
 - SQL log output
 - Transparent DB / Tx switching
-- Context‑based connection resolution
+- Context-based connection acquisition
 
-This allows Repository implementations to remain **agnostic to the current DB connection state**.
+Repository becomes a design that **does not need to be aware of DB connection state**.
 
 ## Error Normalization
 
-PostgreSQL errors are normalized via:
+PostgreSQL errors are converted into `apperror` by:
 
-```txt
-internal/infrastructure/rdb/postgres/pgerror
-```
+`internal/infrastructure/rdb/postgres/pgerror`
 
 ```go
 return pgerror.NormalizeError(err)
 ```
 
-Typical mappings:
+Main mappings:
 
-```txt
-sql.ErrNoRows      → ErrNotFound
-unique violation   → ErrConflict
-connection error   → ErrUnavailable
-others             → ErrInternal
+```mermaid
+flowchart TB
+    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    Unique["unique violation"] --> Conflict["ErrConflict"]
+    Conn["connection error"] --> Unavail["ErrUnavailable"]
+    Others["others"] --> Internal["ErrInternal"]
 ```
 
 ## Transactions
 
-Transaction boundaries are **managed by the Usecase layer**.
+Transaction boundaries are the responsibility of **Usecase**.
 
-Repository must never start transactions.
+Transaction management is the responsibility of **Usecase**.
 
-Queries are executed using:
+Query execution is performed using:
 
 ```go
-gen.New(provider.NewLoggingDB(ctx))
+gen.New(r.db.NewLoggingDB(ctx))
 ```
 
-This transparently switches between:
+With this:
 
-```txt
-Tx / DB
+Repository uses
+
+```go
+gen.New(r.db.NewLoggingDB(ctx))
 ```
 
-## Observability (Tracing)
+to transparently use `Tx / DB`.
 
-Infrastructure uses:
+## Observability（Tracing）
 
-```txt
-observability.LayerTracer
-```
+In the Infrastructure layer:
+
+`observability.LayerTracer` is used.
 
 ```go
 ctx, endSpan := r.tracer.Start(ctx)
 defer endSpan()
 ```
 
-Repository only knows about:
+Repository only handles:
 
 - span start
 - span end
 
-It does not depend directly on the OpenTelemetry SDK.
+It does not directly depend on OpenTelemetry SDK.
+
+## DI（Dependency Injection）の仕組み（Repository）
+
+Repository is created using **DI with Uber Fx**.  
+In the Infrastructure layer, it implements the **Domain Repository Interface and provides it to the DI container**.
+
+### Overall Structure
+
+Repository is registered with `fx.Provide` and injected into Usecase.
+
+```mermaid
+flowchart TB
+    Module["InfrastructureModule"]
+    Provide["fx.Provide(user.New)"]
+    Interface["user.Repository (interface)"]
+    Usecase["Usecase"]
+
+    Module --> Provide
+    Provide --> Interface
+    Interface --> Usecase
+```
+
+### Role of internal/di/module/infrastructure.go
+
+```go
+func InfrastructureModule() fx.Option {
+    return fx.Module("infrastructure",
+        fx.Module("repository",
+            fx.Provide(
+                user.New,
+                prefecture.New,
+            ),
+        ),
+    )
+}
+```
+
+- `fx.Provide`
+  - Registers the Repository constructor
+- Return value is **Domain interface type**
+  - Example: `user.Repository`
+
+### Repository Constructor Design
+
+```go
+func New(
+    db loggingdb.DBProvider,
+    tf observability.TracerFactory,
+) user.Repository {
+    return &repository{
+        db:       db,
+        tracer:   tf.Infra(),
+    }
+}
+```
+
+Key points:
+
+- Return type must be **interface (Domain definition)**
+- All dependencies must be received as arguments (no new)
+- External dependencies (DB / Tracer) are confined to Infrastructure
+
+### DI Flow
+
+```mermaid
+flowchart TB
+    Provide["fx.Provide(user.New)"]
+    Interface["user.Repository (interface)"]
+    Usecase["Usecase (dependency)"]
+
+    Provide --> Interface
+    Interface --> Usecase
+```
+
+On the Usecase side:
+
+```go
+type service struct {
+    repo user.Repository
+}
+```
+
+is used to receive via interface.
+
+### Why return interface
+
+- Domain depends only on interface
+- Infrastructure can be replaced (mock / alternative DB)
+- Maintains dependency inversion of Onion Architecture
+
+### Rules for AI / Developers
+
+- Repository constructor must be defined as `New`
+- Return type must be interface (Domain definition)
+- Do not new dependencies inside Repository
+- Register DI in `internal/di/module/infrastructure.go`
 
 ## Repository Structure
 
-A Repository implementation depends on the following components:
+Repository implementation has the following dependencies.
 
-- `loggingdb.DBProvider` is the **only entry point for DB access** used by the Repository.
-  - Provides SQL logging
-  - Integrates with tracing
-  - Transparently switches between DB and Tx
+- loggingdb.DBProvider is the only DB access entry point used by Repository
+  - SQL logging
+  - Trace integration
+  - Transparent DB / Tx switching
 
-- `driver.DatabaseDriver` is a **pure database driver without logging capabilities**.
-  - Used internally by `loggingdb`
-  - Not referenced directly from the Repository
+- driver.DatabaseDriver is a pure DB connection driver without logging
+  - If logging is unnecessary, it can be obtained via `r.db.NewDB(ctx)`
 
-- `observability.TracerFactory` is a factory for creating `LayerTracer`.
-  - The Repository uses a tracer for the Infrastructure layer
+- observability.TracerFactory is a factory for generating LayerTracer
+  - Repository uses Infra layer tracer
 
 ```go
 type repository struct {
@@ -308,7 +399,7 @@ type repository struct {
 }
 ```
 
-Constructor:
+constructor
 
 ```go
 func New(
@@ -316,8 +407,8 @@ func New(
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
-        db:     db,
-        tracer: tf.Infra(),
+        db:       db,
+        tracer:   tf.Infra(),
     }
 }
 ```
@@ -326,51 +417,53 @@ func New(
 
 Repository tests are implemented as **Infrastructure Integration Tests**.
 
-Because Repository is responsible for SQL execution correctness,  
-tests **must use a real database instead of mocks**.
+Because Repository includes correctness of SQL execution as responsibility,  
+it must be verified using a real DB without mocks.
 
-Test structure:
+The structure under test is:
 
-```txt
-Repository
-   ↓
-sqlc
-   ↓
-driver
-   ↓
-PostgreSQL
+```mermaid
+flowchart TB
+    Repo["Repository"]
+    Sqlc["sqlc"]
+    Driver["driver"]
+    PG["PostgreSQL"]
+
+    Repo --> Sqlc
+    Sqlc --> Driver
+    Driver --> PG
 ```
 
-The entire layer is tested **using a real database**.
+This entire layer is tested with a real DB.
 
-### Test Objectives
+### Test Purpose
 
 Repository tests verify:
 
 - SQL queries execute correctly
-- Row → Domain conversion works correctly
+- Row → Domain conversion is correct
 - Domain constructor errors propagate correctly
 - PostgreSQL errors are normalized via `pgerror.NormalizeError`
 - Pagination (limit / offset) works correctly
 
-Repository tests **do not validate Domain logic**.
+Repository tests **do not aim to validate Domain logic**.
 
-### Test Environment
+### Test Execution Environment
 
-Repository tests initialize the DB using `testkit`.
+Repository tests initialize DB using `testkit`.
 
 ```go
 db, provider := testkit.NewTestDBWithLoggingProvider(t)
 ```
 
-This function provides:
+This provides:
 
 - test DB connection
 - loggingdb.DBProvider
 
-### Transaction Tests
+### Transaction Test
 
-Each test runs **inside a transaction**.
+Each test runs within a transaction.
 
 ```go
 txm := testkit.NewTestTransactionManager(t)
@@ -380,134 +473,139 @@ txm.WithinTx(func(ctx context.Context) {
 })
 ```
 
-Internal flow:
+Internal behavior:
 
-```txt
-BEGIN
- ↓
-test
- ↓
-ROLLBACK
+```mermaid
+flowchart TB
+    Begin["BEGIN"]
+    Test["test"]
+    Rollback["ROLLBACK"]
+
+    Begin --> Test
+    Test --> Rollback
 ```
 
-Benefits:
+This ensures:
 
 - DB state remains clean
-- test isolation is guaranteed
+- test independence is maintained
 
 ### Parallel Execution
 
-Repository tests can call `t.Parallel()` and run concurrently.
+Repository tests can use `t.Parallel()` for parallel execution.
 
-However, the transaction manager created via:
+However, `testkit.NewTestTransactionManager(t)` serializes transaction execution internally.
 
-```go
-txm := testkit.NewTestTransactionManager(t)
+Execution model:
+
+```mermaid
+flowchart TB
+    Parallel["test execution (parallel)"]
+    Serial["transaction (serialized)"]
+
+    Parallel --> Serial
 ```
 
-**serializes transaction execution internally.**
+Each test executes inside `WithinTx`:
 
-The actual execution model is:
+```mermaid
+flowchart TB
+    Begin["BEGIN"]
+    Test["test"]
+    Rollback["ROLLBACK"]
 
-```txt
-Test execution       → Parallel
-Transaction execution → Serialized
+    Begin --> Test
+    Test --> Rollback
 ```
 
-Each test runs inside `WithinTx`:
+By serializing transactions, even when multiple tests run simultaneously:
 
-```txt
-BEGIN
- ↓
-test
- ↓
-ROLLBACK
-```
+- DB state conflicts
+- cross-test interference
 
-Because transactions are serialized, even if multiple tests run at the same time,
-**database state conflicts and cross‑test interference are prevented.**
-
-This allows Repository tests to safely use `t.Parallel()`.
+are prevented.
 
 ### Domain Error Verification
 
-Repository uses Domain constructors for Row → Domain conversion.
+Repository uses Domain constructor for Row → Domain conversion.
 
-If **invalid data exists in the DB**,  
-Domain errors will occur.
+Therefore, if invalid data exists in DB, Domain errors occur.
 
-Tests should verify these cases.
+Tests verify this.
 
 ```go
 require.ErrorIs(t, err, user.ErrInvalidLastName)
 ```
 
-This validates cases such as:
+This validates:
 
-```txt
-DB data inconsistency
-migration errors
-Domain invariant violations
+```mermaid
+flowchart TB
+    A["DB data inconsistency"]
+    B["migration mistakes"]
+    C["Domain invariant violation"]
 ```
 
-### Error Normalization in Tests
+### Test Error Normalization
 
-DB errors are converted using `pgerror.NormalizeError`.
+DB errors are converted to `apperror` via `pgerror.NormalizeError`.
 
-Example mappings:
+Example:
 
-```txt
-sql.ErrNoRows      → ErrNotFound
-unique violation   → ErrConflict
-connection error   → ErrUnavailable
-others             → ErrInternal
+```mermaid
+flowchart TB
+    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    Unique["unique violation"] --> Conflict["ErrConflict"]
+    Conn["connection error"] --> Unavail["ErrUnavailable"]
+    Others["others"] --> Internal["ErrInternal"]
 ```
 
-Repository tests should verify **normalized results** such as:
+Repository tests verify normalized results such as:
 
-```txt
-ErrConflict
-ErrNotFound
-```
+- `ErrConflict`
+- `ErrNotFound`
 
-## Repository Anti‑Patterns
+## Repository Anti-Patterns
 
-There are several **common incorrect implementation patterns** in the Repository layer.
-These break architectural boundaries and **must not be implemented.**
+Repository layer has common incorrect implementation patterns.  
+These break architectural boundaries and must not be implemented.
 
 ### 1. Writing Business Logic
 
-Repository is a **persistence layer**.
-Business rules must not be implemented here.
+Repository is a persistence layer.  
+Business rules must not be written.
 
-Bad example:
+NG example
 
 ```go
-func (r *repository) Create(ctx context.Context, user *user.User) error {
+func (r *repository) Create(ctx context.Context, user*user.User) error {
     if user.IsPremium() {
         // ❌ business rule
     }
 }
 ```
 
-Correct responsibility:
+Correct responsibility
 
-```txt
-Repository
- ├ Query execution
- ├ Row → Domain conversion
- └ Error normalization
+```mermaid
+flowchart TB
+    Repo["Repository"]
+    Query["Query execution"]
+    Map["Row → Domain conversion"]
+    Err["Error normalization"]
+
+    Repo --> Query
+    Repo --> Map
+    Repo --> Err
 ```
 
-Business rules belong to the **Domain / Usecase layers**.
+Business rules belong to Domain / Usecase.
 
----
+### 2. Creating DTO
 
-### 2. Creating DTOs
+Repository does not create DTO.
 
-Repository **must not create DTOs**.
-
-Bad example:
+NG example
 
 ```go
 return UserDTO{
@@ -515,125 +613,95 @@ return UserDTO{
 }
 ```
 
-Repository must return **Domain entities only**.
+Repository returns only Domain entities.
 
 ```go
 return user.New(...)
 ```
 
-DTO transformation belongs to **Usecase / Presenter layers**.
+DTO conversion belongs to Usecase / Presenter.
 
----
+### 3. Returning sqlc Row directly
 
-### 3. Returning sqlc Rows Directly
+sqlc Row is Infrastructure-specific type.
 
-sqlc Row types are **Infrastructure‑specific types**.
-
-Bad example:
+NG example
 
 ```go
 return rows
 ```
 
-Rows must always be converted to Domain entities.
+Always convert to Domain.
 
 ```go
 u, err := user.New(...)
 ```
 
-Reason:
+Reason: do not leak sqlc type to upper layers.
 
-```txt
-Do not leak sqlc types to upper layers
-```
+### 4. Writing QueryService
 
----
+Repository is aggregate-level persistence abstraction.
 
-### 4. Implementing QueryService in Repository
+Therefore:
 
-Repository represents an **aggregate persistence abstraction**.
+- `FindByKeyword`
+- `SearchUser`
+- `AggregateSearch`
 
-Therefore methods like:
+must not be implemented.
 
-```txt
-FindByKeyword
-SearchUser
-AggregateSearch
-```
+Search is separated into QueryService.
 
-must **not** be implemented in Repository.
+### 5. Starting transaction
 
-Search functionality must be implemented in a dedicated:
+Repository does not manage transaction boundaries.
 
-```txt
-QueryService
-```
-
-layer.
-
----
-
-### 5. Starting Transactions
-
-Repository **must not start transactions**.
-
-Bad example:
+NG example
 
 ```go
 tx, _ := db.Begin()
 ```
 
-Transaction boundaries belong to the **Usecase layer**.
+Transaction management belongs to Usecase.
 
-Repository executes queries via:
+Repository uses:
 
 ```go
 gen.New(r.db.NewLoggingDB(ctx))
 ```
 
-which transparently switches between:
+to transparently use Tx / DB.
 
-```txt
-Tx / DB
-```
+### 6. Referencing Controller type
 
----
+Repository must not depend on HTTP layer.
 
-### 6. Referencing Controller Types
-
-Repository must not depend on the **HTTP layer**.
-
-Bad example:
+NG example
 
 ```go
 func (r *repository) Create(ctx echo.Context)
 ```
 
-Repository must use **pure Go interfaces**.
+Correct
 
 ```go
-func (r *repository) Create(ctx context.Context, user *user.User)
+func (r *repository) Create(ctx context.Context, user*user.User)
 ```
 
----
+### 7. Defining Domain interface in Infra
 
-### 7. Defining Domain Interfaces in Infrastructure
+Repository Interface is defined in Domain.
 
-Repository interfaces must be defined in the **Domain layer**.
+NG example
 
-Bad example:
+`internal/infrastructure/repository/user_repository_interface.go`
 
-```txt
-internal/infrastructure/repository/user_repository_interface.go
-```
+Correct
 
-Correct location:
+`internal/domain/user/repository.go`
 
-```txt
-internal/domain/user/repository.go
-```
-
-Infrastructure should only **implement Domain interfaces**.
+Infra only implements Domain interface.
 
 ## Do / Don't
 
@@ -643,65 +711,62 @@ Infrastructure should only **implement Domain interfaces**.
 - Convert Row → Domain
 - Use conv for nullable conversion
 - Use pgerror.NormalizeError
-- Use LIKE helper utilities
+- Use LIKE helper
 
 ### Don't
 
-- Define Domain interfaces in Infrastructure
+- Define Domain interface in Infra
 - Return sqlc types to upper layers
 - Write business logic
-- Reference Controller types
-- Implement QueryService
+- Reference Controller type
+- Write QueryService
 
-## Minimal Snippet
+## Implementation Example
 
 ```go
 package user
 
-// repository name is fixed
+// repository name fixed
 type repository struct {
     db     loggingdb.DBProvider
     tracer observability.LayerTracer
 }
 
-// constructor name is fixed
+// constructor name fixed
 func New(
     db loggingdb.DBProvider,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
-        db:     db,
-        tracer: tf.Infra(),
+        db:       db,
+        tracer:   tf.Infra(),
     }
 }
 
 func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Users, error) {
-
-    // Start and end span
+    // Start / end span
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    // Using ResolveDriverWithLog automatically outputs SQL logs
-    // If logging is unnecessary, ResolveDriver can be used instead
+    // Use driver.ResolveDriverWithLog for automatic logging
+    // If unnecessary, use driver.ResolveDriver(ctx, r.db)
     db := gen.New(r.db.NewLoggingDB(ctx))
 
-    // Call DML generated by sqlc
+    // Call sqlc generated DML
     rows, err := db.ListUsers(ctx, &gen.ListUsersParams{
         OffsetParam: offset,
         LimitParam:  limit,
     })
 
     if err != nil {
-        // Normalize and return DB errors
-        // Error classification is handled by the pgerror package
+        // Normalize error
+        // Classification handled in pgerror package
         return nil, pgerror.NormalizeError(err)
     }
 
-    // Convert rows to Domain entities
+    // Map to Domain entity
     users := make(user.Users, len(rows))
-
     for i, row := range rows {
-
         u, err := user.New(
             uuid.FromPrimitive(row.Users.ID),
             row.Users.FirstName,
@@ -718,14 +783,11 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Use
             row.Users.UpdatedAt,
             conv.TimePtrFromNull(row.Users.DeletedAt),
         )
-
         if err != nil {
             return nil, err
         }
-
         users[i] = u
     }
-
     return users, nil
 }
 ```

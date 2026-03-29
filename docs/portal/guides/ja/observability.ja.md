@@ -110,19 +110,13 @@ ctx, end := tracer.Start(ctx)
 defer end()
 ```
 
-span名は次のルールで生成されます。
-
-```txt
-layer.package.function
-```
+span名は `layer.package.function` のルールで生成されます。
 
 例
 
-```txt
-usecase.user.CreateUser
-controller.user.GetUsers
-infrastructure.user.FindByID
-```
+- `usecase.user.CreateUser`
+- `controller.user.GetUsers`
+- `infrastructure.user.FindByID`
 
 ### 4. Domain span helper
 
@@ -154,21 +148,17 @@ span開始 / 終了時には **structured logging** が出力されます。
 
 Start
 
-```txt
-event_type=start
-span_name=usecase.user.CreateUser
-trace_id=...
-span_id=...
-```
+- `event_type=start`
+- `span_name=usecase.user.CreateUser`
+- `trace_id=...`
+- `span_id=...`
 
 End
 
-```txt
-event_type=end
-latency=12ms
-trace_id=...
-span_id=...
-```
+- `event_type=end`
+- `latency=12ms`
+- `trace_id=...`
+- `span_id=...`
 
 ログ出力は `internal/logging` の `LogFieldBuilder` を使用します。
 
@@ -267,13 +257,7 @@ lt := observability.NewMockUsecaseLayerTracer(t)
 
 ### 1 Layer単位のトレーシング
 
-span名は必ず
-
-```txt
-layer.package.function
-```
-
-形式になります。
+span名は必ず `layer.package.function` 形式になります。
 
 理由
 
@@ -284,24 +268,16 @@ layer.package.function
 
 spanイベントは logging パッケージを通じて出力します。
 
-```txt
-trace_id
-span_id
-parent_span_id
-layer
-pkg
-function
-```
+- `trace_id`
+- `span_id`
+- `parent_span_id`
+- `layer`
+- `pkg`
+- `function`
 
 ### 3 アプリケーションコードはOTelに依存しない
 
-アプリケーションコードは
-
-```txt
-LayerTracer
-```
-
-のみ利用します。
+アプリケーションコードは `LayerTracer` のみ利用します。
 
 OpenTelemetry SDK は **observability パッケージ内に閉じ込めます。**
 

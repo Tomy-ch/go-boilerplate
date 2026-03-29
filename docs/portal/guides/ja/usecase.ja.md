@@ -14,20 +14,23 @@
 ユースケースは **アプリケーションのワークフローを調整するレイヤー**です。  
 Domain と Repository を組み合わせて **処理の順序を定義**します。
 
-```txt
-DTO
-    ↓
-Usecase
-    ↓
-Domain呼び出し
-    ↓
-Repository
-    ↓
-(必要に応じて)Boundary呼び出し（Tx/Clock/Security/Authなど）
-    ↓
-Domainの呼び出し
-    ↓
-DTO
+```mermaid
+flowchart TB
+
+    DTO_in["DTO (Input)"]
+    Usecase["Usecase (Application Service)"]
+    Domain1["Domain (Business Rule)"]
+    Repo["Repository (Persistence)"]
+    Boundary["Boundary (Tx / Clock / Security / Auth)"]
+    Domain2["Domain (Re-evaluation / Composition)"]
+    DTO_out["DTO (Output)"]
+
+    DTO_in --> Usecase
+    Usecase --> Domain1
+    Domain1 --> Repo
+    Repo --> Boundary
+    Boundary --> Domain2
+    Domain2 --> DTO_out
 ```
 
 基本的な処理フローは以下です。
@@ -56,7 +59,7 @@ Usecaseは以下のみを担当します。
 
 ## アプリケーションサービス層の設計方針
 
-本リポジトリの Usecase は **Application Service Pattern** を採用しています。
+プロジェクトの Usecase は **Application Service Pattern** を採用しています。
 
 Application Service は **ユースケース単位のアプリケーションロジック**を表現します。
 
@@ -107,34 +110,38 @@ Domain と Usecase の責務は次のように分離されます。
 
 ### Domain Logic の例
 
-```txt
-ユーザー名の制約
-パスワードの形式ルール
-状態遷移
+```mermaid
+flowchart TB
+    A["ユーザー名の制約"]
+    B["パスワード形式ルール"]
+    C["状態遷移"]
 ```
 
 これらは **Domain 層に実装します。**
 
 ### Application Policy の例
 
-```txt
-ユーザー作成時はパスワードをハッシュ化する
-ユーザー作成はトランザクション内で実行する
-ユーザー一覧取得時は都道府県情報を取得する
+```mermaid
+flowchart TB
+    A["パスワードをハッシュ化"]
+    B["トランザクション内で実行"]
+    C["都道府県情報を取得"]
 ```
 
 これらは **Usecase 層に実装します。**
 
 Usecase の役割は次の通りです。
 
-```txt
-Usecase = Application Policy + Workflow
-Domain  = Business Rule
+```mermaid
+flowchart LR
+    Usecase["Usecase"] --> Policy["Application Policy"]
+    Usecase --> Workflow["Workflow"]
+    Domain["Domain"] --> Rule["Business Rule"]
 ```
 
 ## Boundaryのコンセプト
 
-本リポジトリでは **Usecase が Infrastructure に直接依存しないようにするため Boundary を導入しています。**
+プロジェクトでは **Usecase が Infrastructure に直接依存しないようにするため Boundary を導入しています。**
 
 Boundary とは **外部システムとの境界を表すインターフェース**です。
 
@@ -142,18 +149,16 @@ Usecase はこれらの **interface のみ参照**し、実装は Infrastructure
 
 ### 代表的な Boundary
 
-```txt
-Transaction Manager
-Clock
-Security (PasswordHasher 等)
-Auth Context
-Messaging / EventPublisher
-Observability
-```
+- `Transaction Manager`
+- `Clock`
+- `Security (PasswordHasher 等)`
+- `Auth Context`
+- `Messaging / EventPublisher`
+- `Observability`
 
 ### 時刻の扱い
 
-本リポジトリでは **時刻の取得は Usecase 層で一元管理**します。
+プロジェクトでは **時刻の取得は Usecase 層で一元管理**します。
 
 そのため **`time.Now()` を直接呼び出すことは禁止**します。
 
@@ -182,10 +187,8 @@ userEntity, err := user.New(..., now, now, nil)
 
 Usecase 層では以下を守ります。
 
-```txt
-禁止: time.Now()
-許可: clock.Clock.Now()
-```
+- 禁止: `time.Now()`
+- 許可: `clock.Clock.Now()`
 
 時刻の取得は **Usecase → Domain へ渡す**形で扱い、
 Domain 側では新たに時刻を取得しない設計を推奨します。
@@ -217,7 +220,7 @@ Infrastructure --> BoundaryInterface
 
 ## CQRSポリシー
 
-本リポジトリでは **完全な CQRS 分離は採用していません。**
+プロジェクトでは **完全な CQRS 分離は採用していません。**
 
 理由
 
@@ -233,12 +236,10 @@ Infrastructure --> BoundaryInterface
 
 例
 
-```txt
-CreateUser
-UpdateUser
-DeleteUser
-ChangePassword
-```
+- `CreateUser`
+- `UpdateUser`
+- `DeleteUser`
+- `ChangePassword`
 
 特徴
 
@@ -252,11 +253,9 @@ ChangePassword
 
 例
 
-```txt
-GetUser
-ListUsers
-SearchUsers
-```
+- `GetUser`
+- `ListUsers`
+- `SearchUsers`
 
 特徴
 
@@ -266,22 +265,21 @@ SearchUsers
 
 ### Repository に許可する Query
 
-```txt
-FindAll
-FindByID
-CountAll
-CountByActive
+```mermaid
+flowchart TB
+    A["FindAll"]
+    B["FindByID"]
+    C["CountAll"]
+    D["CountByActive"]
 ```
 
 検索や複雑な条件検索（キーワード検索など）は **QueryService** に分離します。
 
 例：
 
-```txt
-FindByKeyword
-SearchUsers
-ListUsersByCondition
-```
+- `FindByKeyword`
+- `SearchUsers`
+- `ListUsersByCondition`
 
 QueryService は **読み取り最適化レイヤー**として扱い、DTO または Domain Entity を返すことを許容します。
 
@@ -289,11 +287,12 @@ JOIN は **ドメイン境界を壊さない範囲で許可**します。
 
 ### Repository に含めないもの
 
-```txt
-GROUP BY
-集計関数
-WITH句
-複雑な分析クエリ
+```mermaid
+flowchart TB
+    A["GROUP BY"]
+    B["集計関数"]
+    C["WITH句"]
+    D["複雑な分析クエリ"]
 ```
 
 これらは
@@ -304,15 +303,20 @@ WITH句
 
 など別レイヤーで扱います。
 
-## このリポジトリでの役割
+## このプロジェクトでの役割
 
-- internal/usecase/<feature>/ に Command/Query のサービスを配置（例：user/）。
-  - Command：作成/更新/削除（Txを開始し、Domainの不変条件を満たすように調整）。
-  - Query（QS）：読み取り最適化。必要に応じて DTO で直接返す（Domainへはマップしない方針を許容）。
-  - Pagination/Validation など プロトコル非依存のポリシーを一元化
-    - 例：`NewPageFrom1Based`、`MaxPerPage`、`MaxOffsetAllowed`
-- errorは `apperror.ErrXXX` にラップしてController層がHTTPにマップできるようにする。
-- DI（fx）では Repository（interface/TxManager/Configなどの依存を受け取る）。
+```mermaid
+flowchart TB
+    Command["Command (Create/Update/Delete)"]
+    Query["Query (Read)"]
+    Policy["Pagination / Validation"]
+    Error["Error Handling"]
+
+    Command --> Usecase
+    Query --> Usecase
+    Policy --> Usecase
+    Error --> Usecase
+```
 
 ## サードパーティを最小限に抑える
 
@@ -321,6 +325,118 @@ WITH句
 - 型定義やDTOもプロジェクト内型で閉じる。sqlc生成型/driver型やOpenAPI生成型は上位/下位の層に隔離。
 - テストも`testify`/`mock`程度に留め、モックはinterfaceベースで注入。
 - どうしても必要な場合は、[pkg/](../../pkg/)で薄いラッパーを作成する。
+
+## DI（Dependency Injection）の仕組み（Usecase）
+
+Usecase は **Uber Fx による DI** で生成されます。  
+Usecase は **Repository / QueryService / Boundary を interface 経由で受け取る**ことが原則です。
+
+### 全体構成
+
+Usecase は `fx.Provide` により登録され、Controller / Job に注入されます。
+
+```mermaid
+flowchart TB
+    Module["UsecaseModule"]
+    Provide["fx.Provide(user.New)"]
+    Interface["user.Usecase (interface)"]
+    Consumer["Controller / Job"]
+
+    Module --> Provide
+    Provide --> Interface
+    Interface --> Consumer
+```
+
+### internal/di/module/usecase.go の役割
+
+```go
+func UsecaseModule() fx.Option {
+    return fx.Module("usecase",
+        fx.Provide(
+            healthcheck.New,
+            user.New,
+        ),
+    )
+}
+```
+
+- `fx.Provide`
+  - Usecase のコンストラクタを登録
+- 戻り値は **Usecase interface**
+  - 例: `user.Usecase`
+
+### Usecase のコンストラクタ設計
+
+```go
+func New(
+    tf observability.TracerFactory,
+    txm tx.Manager,
+    clock clock.Clock,
+    encrypter security.Encrypter,
+    userRepo user.Repository,
+    userQS query.UserQueryService,
+) Usecase {
+    return &usecase{
+        tracer:    tf.Usecase(),
+        txm:       txm,
+        clock:     clock,
+        encrypter: encrypter,
+        userRepo:  userRepo,
+        userQS:    userQS,
+    }
+}
+```
+
+ポイント：
+
+- 戻り値は **interface（Usecase定義）**
+- 依存はすべて引数で受け取る（new禁止）
+- Repository / QueryService は interface 経由で受け取る
+- Boundary（tx / clock / security 等）も interface で受け取る
+
+### DI の流れ
+
+```mermaid
+flowchart TB
+    Provide["fx.Provide(user.New)"]
+    Interface["user.Usecase"]
+    Consumer["Controller / Job (依存)"]
+
+    Provide --> Interface
+    Interface --> Consumer
+```
+
+### なぜ interface を返すのか
+
+- Controller / Job は Usecase の抽象にのみ依存する
+- 実装の差し替えが可能（mock / feature切替）
+- Onion Architecture の依存逆転を維持する
+
+### Repository / QueryService との関係
+
+```mermaid
+flowchart TB
+    Usecase["Usecase"]
+
+    Repo["Repository（domain interface）"]
+    QS["QueryService（usecase interface）"]
+    Boundary["Boundary（外部依存の抽象）"]
+
+    Usecase --> Repo
+    Usecase --> QS
+    Usecase --> Boundary
+```
+
+- Repository は **永続化**
+- QueryService は **検索**
+- Usecase はそれらを **組み合わせる**
+
+### AI / 開発者向けルール
+
+- Usecase の constructor は必ず `New` で定義すること
+- 戻り値は Usecase interface にすること
+- Usecase 内で依存を new しないこと
+- DI登録は `internal/di/module/usecase.go` に追加すること
 
 ## 実装上の注意点
 
@@ -526,7 +642,7 @@ Usecase テストでは以下を扱いません。
 
 ## Observability（Tracing）の使い方
 
-この boilerplateUsecase層で直接OpenTelemetrySDKを扱わず、
+この Usecase層で直接OpenTelemetrySDKを扱わず、
 observability.LayerTracerを経由してspanの開始・終了を行います。
 
 ### 1. Usecase層での span の開始と終了
@@ -553,7 +669,7 @@ Usecaseは以下のようにobservability.LayerTracerを依存として受け取
 type server struct {
     tracer   observability.LayerTracer
     txm      tx.Manager
-    userRepo user.Repository // それぞれのリポジトリ
+    userRepo user.Repository // それぞれのプロジェクト
     pftRepo  prefecture.Repository
 }
 ```
@@ -693,7 +809,7 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
             }
 
             // 都道府県エンティティの取得
-            // IDsメソッドは複数IDで一括取得するリポジトリメソッドの例
+            // IDsメソッドは複数IDで一括取得するプロジェクトメソッドの例
             ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
             if pftErr != nil {
               return nil, pftErr

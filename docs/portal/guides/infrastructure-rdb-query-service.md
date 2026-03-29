@@ -7,21 +7,14 @@ Query Service is a layer that provides **read-only queries such as search and li
 While Repository represents **aggregate persistence abstraction**,  
 Query Service provides **query-specific search operations**.
 
-```txt
-Controller
-   ↓
-Usecase
-   ↓
-QueryService
-   ↓
-sqlc
-   ↓
-Database
+```mermaid
+flowchart TB
+    Controller --> Usecase --> QS["QueryService"] --> Sqlc["sqlc"] --> DB["Database"]
 ```
 
 Query Service has the following responsibilities:
 
-1. Execute SQL queries
+1. Execute SQL search
 2. Convert Row → Domain
 3. Normalize DB errors
 
@@ -29,11 +22,9 @@ Query Service **must not contain business logic.**
 
 ## Architecture Position
 
-QueryService implementations are placed in:
+QueryService implementations are placed in the following location.
 
-```txt
-internal/infrastructure/rdb/query_service/<aggregate>/
-```
+`internal/infrastructure/rdb/query_service/<aggregate>/`
 
 Example
 
@@ -43,11 +34,9 @@ query_service/
      └ user_query_service.go
 ```
 
-QueryService interfaces are defined in the **Usecase layer**.
+QueryService interfaces are placed in the **Usecase layer**.
 
-```txt
-internal/usecase/<aggregate>/query
-```
+`internal/usecase/<aggregate>/query`
 
 Example
 
@@ -61,24 +50,17 @@ Infrastructure only **implements this interface**.
 
 QueryService is responsible for **search-oriented data retrieval**.
 
-```txt
-Query
- ↓
-sqlc
- ↓
-Row
- ↓
-Domain Entity or DTO
- ↓
-return
+```mermaid
+flowchart TB
+    Query --> Sqlc --> Row --> Domain["Domain Entity or DTO"] --> Ret["return"]
 ```
 
-QueryService does NOT:
+QueryService does not perform the following:
 
-- Implement business rules
-- Contain usecase logic
-- Handle controller concerns
-- Manage transactions
+- Business rules
+- Usecase logic
+- Controller processing
+- Transaction management
 
 ## sqlc Usage
 
@@ -88,24 +70,18 @@ QueryService uses **sqlc generated queries**.
 rows, err := db.ListUsersByKeywords(ctx, ...)
 ```
 
-sqlc provides:
+With sqlc:
 
 - Type-safe SQL execution
 - Compile-time SQL validation
 
-Generated code:
+becomes possible.
 
-```txt
-internal/infrastructure/rdb/sqlc/gen
-```
+Generated code is placed in `internal/infrastructure/rdb/sqlc/gen`.
 
 ## LIKE Search Helper
 
-For keyword search, use helpers from:
-
-```txt
-internal/infrastructure/rdb/sqlc
-```
+For keyword search, use helpers from `internal/infrastructure/rdb/sqlc`.
 
 Example
 
@@ -121,19 +97,19 @@ Purpose:
 
 ## Deleted State Handling
 
-Deleted-state filtering uses:
+Deleted state filtering uses:
 
 ```go
 DeletedState: sqlc.BoolPtrToDeletedState(active)
 ```
 
-This enables:
+This enables control of:
 
-```txt
-active / inactive / all
-```
+- `active`
+- `inactive`
+- `all`
 
-state control.
+states.
 
 ## Row → Return Type Conversion
 
@@ -148,21 +124,14 @@ user, err := user.New(
 )
 ```
 
-Important rule:
-
-```txt
-Do not return sqlc Row to upper layers
-```
+Important rule:  
+**Do not return sqlc Row to upper layers**
 
 ## UUID Conversion
 
 DB uses primitive UUID.
 
-Domain uses:
-
-```txt
-pkg/uuid.UUID
-```
+Domain uses `pkg/uuid.UUID`.
 
 Conversion:
 
@@ -172,11 +141,7 @@ uuid.FromPrimitive(row.ID)
 
 ## Nullable Conversion
 
-Nullable DB values are converted using:
-
-```txt
-internal/infrastructure/rdb/conv
-```
+Nullable DB values are converted using `internal/infrastructure/rdb/conv`.
 
 Example
 
@@ -195,17 +160,13 @@ db := gen.New(s.db.NewLoggingDB(ctx))
 
 `loggingdb.DBProvider` provides:
 
-- SQL logging
+- SQL logs
 - DB / Tx switching
 - Context binding
 
 ## Error Normalization
 
-PostgreSQL errors are normalized via:
-
-```txt
-internal/infrastructure/rdb/postgres/pgerror
-```
+PostgreSQL errors are normalized via `internal/infrastructure/rdb/postgres/pgerror`.
 
 ```go
 return pgerror.NormalizeError(err)
@@ -213,20 +174,17 @@ return pgerror.NormalizeError(err)
 
 Main mappings:
 
-```txt
-sql.ErrNoRows      → ErrNotFound
-unique violation   → ErrConflict
-connection error   → ErrUnavailable
-others             → ErrInternal
+```mermaid
+flowchart TB
+    A["sql.ErrNoRows"] --> B["ErrNotFound"]
+    C["unique violation"] --> D["ErrConflict"]
+    E["connection error"] --> F["ErrUnavailable"]
+    G["others"] --> H["ErrInternal"]
 ```
 
 ## Observability (Tracing)
 
-QueryService uses:
-
-```txt
-observability.LayerTracer
-```
+QueryService uses `observability.LayerTracer` for tracing.
 
 ```go
 ctx, endSpan := s.tracer.Start(ctx)
@@ -235,13 +193,111 @@ defer endSpan()
 
 QueryService handles only:
 
-```txt
-Span start / end
+`Span start / end`
+
+## DI (Dependency Injection) Mechanism (Query Service)
+
+Query Service is created using **DI with Uber Fx**.  
+Like Repository, it is implemented in the Infrastructure layer and injected into the Usecase layer interface.
+
+### Overall Structure
+
+Query Service is registered via `fx.Provide` and injected into Usecase.
+
+```mermaid
+flowchart TB
+    Module["InfrastructureModule"]
+    Provide["fx.Provide(userqs.New)"]
+    IF["query.UserQueryService (interface)"]
+    Usecase["Usecase"]
+
+    Module --> Provide --> IF --> Usecase
 ```
+
+### Role of internal/di/module/infrastructure.go
+
+```go
+func InfrastructureModule() fx.Option {
+    return fx.Module("infrastructure",
+        fx.Module("query_service",
+            fx.Provide(
+                userqs.New,
+            ),
+        ),
+    )
+}
+```
+
+- `fx.Provide`
+  - Registers the Query Service constructor
+- Return value is the **interface defined in the Usecase layer**
+  - Example: `query.UserQueryService`
+
+### Query Service Constructor Design
+
+```go
+func New(
+    db loggingdb.DBProvider,
+    tf observability.TracerFactory,
+) query.UserQueryService {
+    return &service{
+        db:     db,
+        tracer: tf.Infra(),
+    }
+}
+```
+
+Key points:
+
+- Return value must be an **interface (Usecase definition)**
+- All dependencies must be received as arguments (new is prohibited)
+- External dependencies such as DB / Tracer are confined to Infrastructure
+
+### DI Flow
+
+```mermaid
+flowchart TB
+    Provide["fx.Provide(userqs.New)"]
+    IF["query.UserQueryService"]
+    Usecase["Usecase (dependency)"]
+
+    Provide --> IF --> Usecase
+```
+
+On the Usecase side:
+
+```go
+type service struct {
+    qs query.UserQueryService
+}
+```
+
+is used to receive via interface.
+
+### Difference from Repository (DI perspective)
+
+||Repository|Query Service|
+|---|---|---|
+|interface definition location|domain|usecase|
+|return type|domain.Repository|query.QueryService|
+|purpose|persistence|search|
+
+### Why return Usecase interface
+
+- Query is a Usecase concern (per usecase)
+- Not placed in Domain because it is not aggregate-based
+- Allows flexible handling of search specification changes
+
+### Rules for AI / Developers
+
+- Query Service constructor must always be defined as `New`
+- Return value must be the Usecase interface
+- Do not new dependencies inside Query Service
+- Register DI in `internal/di/module/infrastructure.go`
 
 ## QueryService Structure
 
-QueryService has the following dependencies:
+QueryService has the following dependencies.
 
 ```go
 type service struct {
@@ -272,14 +328,14 @@ Repository and QueryService have different roles.
 |---|---|---|
 |Purpose|Aggregate persistence|Search|
 |Operation|CRUD|Search|
-|Responsibility|Aggregate-based|Query-specific|
+|Responsibility|Aggregate unit|Search-specific|
 |Placement|domain interface|usecase interface|
 
 ## Anti-Patterns
 
-### 1. Writing search logic in Repository
+### 1. Writing search in Repository
 
-Search must not be implemented in Repository.
+Search must not be written in Repository.
 
 NG
 
@@ -287,13 +343,7 @@ NG
 func (r *repository) FindByKeyword(...)
 ```
 
-Search belongs to:
-
-```txt
-QueryService
-```
-
----
+Search should be implemented in `QueryService`.
 
 ### 2. Writing business logic
 
@@ -305,8 +355,6 @@ NG
 if user.IsPremium() {
 }
 ```
-
----
 
 ### 3. Returning sqlc Row
 
@@ -338,7 +386,7 @@ func New(
   }
 }
 
-func (s *service) FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Users, error) {
+func (s *service) FindByKeyword(ctx context.Context, keywords []string, active*bool, limit, offset int32) (user.Users, error) {
     // Start / end span
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()

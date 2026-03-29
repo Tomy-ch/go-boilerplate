@@ -89,15 +89,16 @@ if xerrors.As(err, &sql.ErrNoRows) {
 
 HTTP ステータスコードへの変換は **Controller 層の責務**です。
 
-この boilerplate では Controller の `errorhandler` ミドルウェアで
+このプロジェクトでは Controller の `errorhandler` ミドルウェアで
 次の2段階変換を行います。
 
-```txt
-apperror
-   ↓
-HTTP Status
-   ↓
-Error Meta (status / code / message)
+```mermaid
+flowchart TB
+    AppErr["apperror"]
+    HTTP["HTTP Status"]
+    Meta["Error Meta (status / code / message)"]
+
+    AppErr --> HTTP --> Meta
 ```
 
 例
@@ -134,15 +135,17 @@ Job 実行では通常
 
 という形になります。
 
-```txt
-Usecase
-    return apperror.ErrUnavailable
+```mermaid
+flowchart TB
+    UC["Usecase"]
+    Return["return apperror.ErrUnavailable"]
+    Controller["Job Controller"]
+    Log["log error"]
+    Runner["Job Runner"]
+    Exit["exit code decision"]
 
-Job Controller
-    log error
-
-Job Runner
-    exit code decision
+    UC --> Return --> Controller
+    Controller --> Log --> Runner --> Exit
 ```
 
 ## 新しいエラーカテゴリを追加する場合
@@ -151,16 +154,20 @@ Job Runner
 
 判断基準
 
-```txt
-OK
+```mermaid
+flowchart TB
+    OK["OK"]
+    OK1["複数のユースケースで発生する"]
+    OK2["アプリケーション全体で共通概念"]
 
-- 複数のユースケースで発生する
-- アプリケーション全体で共通概念
+    NG["NG"]
+    NG1["特定ユースケースだけで使う"]
+    NG2["HTTP ステータスの都合だけで追加"]
 
-NG
-
-- 特定ユースケースだけで使う
-- HTTP ステータスの都合だけで追加
+    OK --> OK1
+    OK --> OK2
+    NG --> NG1
+    NG --> NG2
 ```
 
 追加する場合は README に次を記載してください。
