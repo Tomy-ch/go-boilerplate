@@ -25,7 +25,7 @@ When adding a ctxkey, add a definition to `generate.go` as follows.
 When using external types:
 
 ```go
-//go:generate go run ../../../scripts/genctxkey --name Authn --type "auth.Authn" --import github.com/your/project/internal/domain/auth --out .
+//go:generate go run ../../../scripts/genctxkey --name Authn --type "auth.Authn" --import boilerplate-go/internal/usecase/boundary/auth --out .
 ```
 
 Then execute the following.
@@ -50,7 +50,7 @@ make gen-go-code
 
 ```bash
 --type "auth.Authn"
---import github.com/your/project/internal/domain/auth
+--import boilerplate-go/internal/usecase/boundary/auth
 ```
 
 - `--type` is specified in Go type format

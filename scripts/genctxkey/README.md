@@ -30,7 +30,7 @@ This tool automatically generates helper functions to solve these problems.
 ```go
 package ctxhelper
 
-//go:generate go run ../../../scripts/genctxkey --name authn --type "auth.Authn" --import github.com/your/project/internal/domain/auth --out .
+//go:generate go run ../../../scripts/genctxkey --name authn --type "auth.Authn" --import boilerplate-go/internal/usecase/boundary/auth --out .
 ```
 
 ### 2. Generate code
@@ -55,7 +55,7 @@ make gen-go-code
 
 ```sh
 --type "auth.Authn"
---import github.com/your/project/internal/domain/auth
+--import boilerplate-go/internal/usecase/boundary/auth
 ```
 
 - specify Go type format in `--type`
