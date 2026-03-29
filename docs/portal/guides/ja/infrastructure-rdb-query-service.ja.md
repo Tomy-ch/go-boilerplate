@@ -7,16 +7,9 @@ Query Service は **検索・一覧取得などの読み取り専用クエリー
 Repository が **Aggregate 永続化の抽象**であるのに対して、  
 Query Service は **検索用途の専用クエリー**を提供します。
 
-```txt
-Controller
-   ↓
-Usecase
-   ↓
-QueryService
-   ↓
-sqlc
-   ↓
-Database
+```mermaid
+flowchart TB
+    Controller --> Usecase --> QS["QueryService"] --> Sqlc["sqlc"] --> DB["Database"]
 ```
 
 Query Service の責務は次の通りです。
@@ -31,9 +24,7 @@ Query Service は **ビジネスロジックを持ちません。**
 
 QueryService 実装は次の場所に配置します。
 
-```txt
-internal/infrastructure/rdb/query_service/<aggregate>/
-```
+`internal/infrastructure/rdb/query_service/<aggregate>/`
 
 例
 
@@ -45,9 +36,7 @@ query_service/
 
 QueryService Interface は **Usecase 層**に配置します。
 
-```txt
-internal/usecase/<aggregate>/query
-```
+`internal/usecase/<aggregate>/query`
 
 例
 
@@ -61,16 +50,9 @@ Infra はこの Interface を **実装するのみ**です。
 
 QueryService は **検索専用のデータ取得**を担当します。
 
-```txt
-Query
- ↓
-sqlc
- ↓
-Row
- ↓
-Domain Entity or DTO
- ↓
-return
+```mermaid
+flowchart TB
+    Query --> Sqlc --> Row --> Domain["Domain Entity or DTO"] --> Ret["return"]
 ```
 
 QueryService は次を行いません。
@@ -95,21 +77,11 @@ sqlc により
 
 が可能になります。
 
-生成コード
-
-```txt
-internal/infrastructure/rdb/sqlc/gen
-```
+生成コードは、`internal/infrastructure/rdb/sqlc/gen` に配置されます。
 
 ## LIKE検索ヘルパー
 
-キーワード検索では
-
-```txt
-internal/infrastructure/rdb/sqlc
-```
-
-のヘルパーを利用します。
+キーワード検索では`internal/infrastructure/rdb/sqlc`のヘルパーを利用します。
 
 例
 
@@ -135,9 +107,9 @@ DeletedState: sqlc.BoolPtrToDeletedState(active)
 
 これにより
 
-```txt
-active / inactive / all
-```
+- `active`
+- `inactive`
+- `all`
 
 の状態制御が可能になります。
 
@@ -154,23 +126,14 @@ user, err := user.New(
 )
 ```
 
-重要ルール
-
-```txt
-sqlc Row を上位層に返さない
-```
+重要ルールとしては、  
+**sqlc Row を上位層に返さない**
 
 ## UUID 変換
 
 DB は primitive UUID を使用します。
 
-Domain は
-
-```txt
-pkg/uuid.UUID
-```
-
-を使用します。
+Domain は`pkg/uuid.UUID`を使用します。
 
 変換
 
@@ -180,13 +143,7 @@ uuid.FromPrimitive(row.ID)
 
 ## Nullable 変換
 
-Nullable DB値は
-
-```txt
-internal/infrastructure/rdb/conv
-```
-
-を利用して変換します。
+Nullable DB値は`internal/infrastructure/rdb/conv`を利用して変換します。
 
 例
 
@@ -213,13 +170,7 @@ db := gen.New(s.db.NewLoggingDB(ctx))
 
 ## エラー正規化
 
-PostgreSQL エラーは
-
-```txt
-internal/infrastructure/rdb/postgres/pgerror
-```
-
-で正規化します。
+PostgreSQL エラーは`internal/infrastructure/rdb/postgres/pgerror`で正規化します。
 
 ```go
 return pgerror.NormalizeError(err)
@@ -227,35 +178,124 @@ return pgerror.NormalizeError(err)
 
 主な変換
 
-```txt
-sql.ErrNoRows      → ErrNotFound
-unique violation   → ErrConflict
-connection error   → ErrUnavailable
-others             → ErrInternal
+```mermaid
+flowchart TB
+    A["sql.ErrNoRows"] --> B["ErrNotFound"]
+    C["unique violation"] --> D["ErrConflict"]
+    E["connection error"] --> F["ErrUnavailable"]
+    G["others"] --> H["ErrInternal"]
 ```
 
 ## Observability（Tracing）
 
-QueryService では
-
-```txt
-observability.LayerTracer
-```
-
-を利用します。
+QueryService では`observability.LayerTracer`を利用してトレースを提供します。
 
 ```go
 ctx, endSpan := s.tracer.Start(ctx)
 defer endSpan()
 ```
 
-QueryService は
+QueryService は`Span start / end`のみを扱います。
 
-```txt
-Span start / end
+## DI（Dependency Injection）の仕組み（Query Service）
+
+Query Service は **Uber Fx による DI** で生成されます。  
+Repository と同様に、Infrastructure 層で実装し、Usecase 層の interface に注入されます。
+
+### 全体構成
+
+Query Service は `fx.Provide` により登録され、Usecase に注入されます。
+
+```mermaid
+flowchart TB
+    Module["InfrastructureModule"]
+    Provide["fx.Provide(userqs.New)"]
+    IF["query.UserQueryService (interface)"]
+    Usecase["Usecase"]
+
+    Module --> Provide --> IF --> Usecase
 ```
 
-のみを扱います。
+### internal/di/module/infrastructure.go の役割
+
+```go
+func InfrastructureModule() fx.Option {
+    return fx.Module("infrastructure",
+        fx.Module("query_service",
+            fx.Provide(
+                userqs.New,
+            ),
+        ),
+    )
+}
+```
+
+- `fx.Provide`
+  - Query Service のコンストラクタを登録
+- 戻り値は **Usecase 層で定義された interface**
+  - 例: `query.UserQueryService`
+
+### Query Service のコンストラクタ設計
+
+```go
+func New(
+    db loggingdb.DBProvider,
+    tf observability.TracerFactory,
+) query.UserQueryService {
+    return &service{
+        db:     db,
+        tracer: tf.Infra(),
+    }
+}
+```
+
+ポイント：
+
+- 戻り値は **interface（Usecase定義）**
+- 依存はすべて引数で受け取る（new禁止）
+- DB / Tracer などの外部依存は Infrastructure に閉じ込める
+
+### DI の流れ
+
+```mermaid
+flowchart TB
+    Provide["fx.Provide(userqs.New)"]
+    IF["query.UserQueryService"]
+    Usecase["Usecase (依存)"]
+
+    Provide --> IF --> Usecase
+```
+
+Usecase 側では
+
+```go
+type service struct {
+    qs query.UserQueryService
+}
+```
+
+のように interface で受け取ります。
+
+### Repository との違い（DI観点）
+
+||Repository|Query Service|
+|---|---|---|
+|interface 定義場所|domain|usecase|
+|返却型|domain.Repository|query.QueryService|
+|用途|永続化|検索|
+
+### なぜ Usecase interface を返すのか
+
+- Query は Usecase の関心事（ユースケース単位）
+- Aggregate単位ではないため Domain に置かない
+- 検索仕様変更に柔軟に対応できる
+
+### AI / 開発者向けルール
+
+- Query Service の constructor は必ず `New` で定義すること
+- 戻り値は Usecase interface にすること
+- Query Service 内で依存を new しないこと
+- DI登録は `internal/di/module/infrastructure.go` に追加すること
 
 ## QueryService 構造体
 
@@ -305,13 +345,7 @@ NG
 func (r *repository) FindByKeyword(...)
 ```
 
-検索は
-
-```txt
-QueryService
-```
-
-に実装します。
+検索は`QueryService`に実装します。
 
 ### 2. ビジネスロジックを書く
 

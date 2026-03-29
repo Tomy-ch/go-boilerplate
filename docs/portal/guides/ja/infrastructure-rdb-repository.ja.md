@@ -14,14 +14,16 @@ Repository は **Domain の永続化抽象（Repository Interface）を Infrastr
 
 Repository は **ビジネスロジックを持ちません**。
 
-```txt
-Usecase
-   ↓
-Repository (Infra)
-   ↓
-sqlc
-   ↓
-Database
+```mermaid
+flowchart TB
+    Usecase["Usecase"]
+    Repo["Repository (Infra)"]
+    Sqlc["sqlc"]
+    DB["Database"]
+
+    Usecase --> Repo
+    Repo --> Sqlc
+    Sqlc --> DB
 ```
 
 Repository は Domain が定義する Repository Interface を **実装するだけ**の層です。
@@ -30,9 +32,7 @@ Repository は Domain が定義する Repository Interface を **実装するだ
 
 Repository 実装は次の場所に配置します。
 
-```txt
-internal/infrastructure/rdb/repository/<aggregate>/
-```
+`internal/infrastructure/rdb/repository/<aggregate>/`
 
 例
 
@@ -46,9 +46,7 @@ repository/
 
 Repository Interface は **Domain 層に配置**されます。
 
-```txt
-internal/domain/<aggregate>/repository.go
-```
+配置場所：`internal/domain/<aggregate>/repository.go`
 
 Infra はこのインターフェースを **実装するのみ**です。
 
@@ -56,16 +54,18 @@ Infra はこのインターフェースを **実装するのみ**です。
 
 Repository メソッドは次の処理だけを行います。
 
-```txt
-Query
- ↓
-sqlc
- ↓
-Row
- ↓
-Domain Entity
- ↓
-return
+```mermaid
+flowchart TB
+    Query["Query"]
+    Sqlc["sqlc"]
+    Row["Row"]
+    Domain["Domain Entity"]
+    Ret["return"]
+
+    Query --> Sqlc
+    Sqlc --> Row
+    Row --> Domain
+    Domain --> Ret
 ```
 
 Repository は次を行いません。
@@ -94,9 +94,7 @@ sqlc により
 
 sqlc の生成コードは次の場所にあります。
 
-```txt
-internal/infrastructure/rdb/sqlc/gen
-```
+`internal/infrastructure/rdb/sqlc/gen`
 
 ## Row → Domain 変換
 
@@ -153,9 +151,7 @@ uuid.ToPrimitiveUniqueList(ids)
 
 UUID 操作は
 
-```txt
-pkg/uuid
-```
+`pkg/uuid`
 
 のラッパーを利用します。
 
@@ -165,9 +161,7 @@ DB の nullable 値は `sql.Null*` 型で表現されます。
 
 Repository では
 
-```txt
-internal/infrastructure/rdb/conv
-```
+`internal/infrastructure/rdb/conv`
 
 のユーティリティを使用して変換します。
 
@@ -180,9 +174,10 @@ conv.NullStringFromPtr(user.Building())
 
 これにより
 
-```txt
-sql.NullString ⇔ *string
-sql.NullTime   ⇔ *time.Time
+```mermaid
+flowchart LR
+    NullString["sql.NullString"] <--> StringPtr["*string"]
+    NullTime["sql.NullTime"] <--> TimePtr["*time.Time"]
 ```
 
 の変換を一元化できます。
@@ -191,9 +186,7 @@ sql.NullTime   ⇔ *time.Time
 
 LIKE検索などの補助処理は
 
-```txt
-internal/infrastructure/rdb/sqlc
-```
+`internal/infrastructure/rdb/sqlc`
 
 の helper を使用します。
 
@@ -238,9 +231,7 @@ Repository は **DB接続状態を意識しない設計**になります。
 
 PostgreSQL エラーは
 
-```txt
-internal/infrastructure/rdb/postgres/pgerror
-```
+`internal/infrastructure/rdb/postgres/pgerror`
 
 で `apperror` に変換します。
 
@@ -250,18 +241,19 @@ return pgerror.NormalizeError(err)
 
 主な変換
 
-```txt
-sql.ErrNoRows      → ErrNotFound
-unique violation   → ErrConflict
-connection error   → ErrUnavailable
-others             → ErrInternal
+```mermaid
+flowchart TB
+    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    Unique["unique violation"] --> Conflict["ErrConflict"]
+    Conn["connection error"] --> Unavail["ErrUnavailable"]
+    Others["others"] --> Internal["ErrInternal"]
 ```
 
 ## トランザクション
 
-トランザクション境界は **Usecase 層**が管理します。
+トランザクション境界は **Usecase** の責務です。
 
-Repository は Tx を開始しません。
+トランザクション管理は **Usecase** の責務です。
 
 クエリ実行は
 
@@ -273,19 +265,19 @@ gen.New(r.db.NewLoggingDB(ctx))
 
 これにより
 
-```txt
-Tx / DB
+Repository は
+
+```go
+gen.New(r.db.NewLoggingDB(ctx))
 ```
 
-を透過的に切り替えます。
+を使用して `Tx / DB` を透過的に利用します。
 
 ## Observability（Tracing）
 
 Infrastructure 層では
 
-```txt
-observability.LayerTracer
-```
+`observability.LayerTracer`
 
 を利用します。
 
@@ -302,6 +294,102 @@ Repository は
 のみを知ります。
 
 OpenTelemetry SDK には直接依存しません。
+
+## DI（Dependency Injection）の仕組み（Repository）
+
+Repository は **Uber Fx による DI** で生成されます。  
+Infrastructure 層では **Domain の Repository Interface を実装し、DIコンテナに提供する**役割を持ちます。
+
+### 全体構成
+
+Repository は `fx.Provide` により登録され、Usecase に注入されます。
+
+```mermaid
+flowchart TB
+    Module["InfrastructureModule"]
+    Provide["fx.Provide(user.New)"]
+    Interface["user.Repository (interface)"]
+    Usecase["Usecase"]
+
+    Module --> Provide
+    Provide --> Interface
+    Interface --> Usecase
+```
+
+### internal/di/module/infrastructure.go の役割
+
+```go
+func InfrastructureModule() fx.Option {
+    return fx.Module("infrastructure",
+        fx.Module("repository",
+            fx.Provide(
+                user.New,
+                prefecture.New,
+            ),
+        ),
+    )
+}
+```
+
+- `fx.Provide`
+  - Repository のコンストラクタを登録
+- 戻り値は **Domain の interface 型**
+  - 例: `user.Repository`
+
+### Repository のコンストラクタ設計
+
+```go
+func New(
+    db loggingdb.DBProvider,
+    tf observability.TracerFactory,
+) user.Repository {
+    return &repository{
+        db:       db,
+        tracer:   tf.Infra(),
+    }
+}
+```
+
+ポイント：
+
+- 戻り値は **interface（Domain定義）**
+- 依存はすべて引数で受け取る（new禁止）
+- DB / Tracer などの外部依存は Infrastructure に閉じ込める
+
+### DI の流れ
+
+```mermaid
+flowchart TB
+    Provide["fx.Provide(user.New)"]
+    Interface["user.Repository (interface)"]
+    Usecase["Usecase (依存)"]
+
+    Provide --> Interface
+    Interface --> Usecase
+```
+
+Usecase 側では
+
+```go
+type service struct {
+    repo user.Repository
+}
+```
+
+のように interface で受け取ります。
+
+### なぜ interface を返すのか
+
+- Domain が依存するのは interface のみ
+- Infrastructure の差し替えが可能（mock / 別DB）
+- Onion Architecture の依存逆転を守る
+
+### AI / 開発者向けルール
+
+- Repository の constructor は必ず `New` で定義すること
+- 戻り値は interface（Domain定義）にすること
+- Repository 内で依存を new しないこと
+- DI登録は `internal/di/module/infrastructure.go` に追加すること
 
 ## Repository構造体
 
@@ -349,14 +437,16 @@ Repository は SQL 実行の正しさも責務に含むため、
 
 テスト対象の構造は次の通りです。
 
-```txt
-Repository
-   ↓
-sqlc
-   ↓
-driver
-   ↓
-PostgreSQL
+```mermaid
+flowchart TB
+    Repo["Repository"]
+    Sqlc["sqlc"]
+    Driver["driver"]
+    PG["PostgreSQL"]
+
+    Repo --> Sqlc
+    Sqlc --> Driver
+    Driver --> PG
 ```
 
 このレイヤー全体を **実 DB でテスト**します。
@@ -400,12 +490,14 @@ Repository テストは `testkit` を使用して DB を初期化します。
 
 内部動作
 
-```txt
-BEGIN
- ↓
-test
- ↓
-ROLLBACK
+```mermaid
+flowchart TB
+    Begin["BEGIN"]
+    Test["test"]
+    Rollback["ROLLBACK"]
+
+    Begin --> Test
+    Test --> Rollback
 ```
 
 これにより
@@ -422,19 +514,24 @@ Repository テストでは `t.Parallel()` を使用してテスト自体は並�
 
 そのため実行モデルは次のようになります。
 
-```txt
-テスト実行        → 並列
-トランザクション  → 直列
+```mermaid
+flowchart TB
+    Parallel["テスト実行（並列）"]
+    Serial["トランザクション（直列）"]
+
+    Parallel --> Serial
 ```
 
 各テストは `WithinTx` 内で
 
-```txt
-BEGIN
- ↓
-test
- ↓
-ROLLBACK
+```mermaid
+flowchart TB
+    Begin["BEGIN"]
+    Test["test"]
+    Rollback["ROLLBACK"]
+
+    Begin --> Test
+    Test --> Rollback
 ```
 
 の形で実行されます。
@@ -458,32 +555,31 @@ require.ErrorIs(t, err, user.ErrInvalidLastName)
 
 これは次のケースを検証します。
 
-```txt
-DBデータ不整合
-migrationミス
-Domain invariant violation
+```mermaid
+flowchart TB
+    A["DBデータ不整合"]
+    B["migrationミス"]
+    C["Domain invariant violation"]
 ```
 
 ### テストのエラー正規化
 
-DB エラーは `pgerror.NormalizeError` により
-`apperror` に変換されます。
+DB エラーは `pgerror.NormalizeError` により `apperror` に変換されます。
 
 例
 
-```txt
-sql.ErrNoRows      → ErrNotFound
-unique violation   → ErrConflict
-connection error   → ErrUnavailable
-others             → ErrInternal
+```mermaid
+flowchart TB
+    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    Unique["unique violation"] --> Conflict["ErrConflict"]
+    Conn["connection error"] --> Unavail["ErrUnavailable"]
+    Others["others"] --> Internal["ErrInternal"]
 ```
 
 Repository テストでは
 
-```txt
-ErrConflict
-ErrNotFound
-```
+- `ErrConflict`
+- `ErrNotFound`
 
 などの **正規化結果**を検証します。
 
@@ -509,11 +605,16 @@ func (r *repository) Create(ctx context.Context, user *user.User) error {
 
 正しい責務
 
-```txt
-Repository
- ├ Query 実行
- ├ Row → Domain 変換
- └ エラー正規化
+```mermaid
+flowchart TB
+    Repo["Repository"]
+    Query["Query 実行"]
+    Map["Row → Domain 変換"]
+    Err["エラー正規化"]
+
+    Repo --> Query
+    Repo --> Map
+    Repo --> Err
 ```
 
 ビジネスルールは **Domain / Usecase 層の責務**です。
@@ -554,11 +655,7 @@ return rows
 u, err := user.New(...)
 ```
 
-理由
-
-```txt
-sqlc 型を上位層に漏らさない
-```
+理由：**sqlc 型を上位層に漏らさない**
 
 ### 4. QueryService を書く
 
@@ -566,21 +663,13 @@ Repository は **集約単位の永続化抽象**です。
 
 そのため
 
-```txt
-FindByKeyword
-SearchUser
-AggregateSearch
-```
+- `FindByKeyword`
+- `SearchUser`
+- `AggregateSearch`
 
 などの **検索専用 API を実装してはいけません。**
 
-検索は
-
-```txt
-QueryService
-```
-
-として別レイヤーに分離します。
+検索は`QueryService`として別レイヤーに分離します。
 
 ### 5. トランザクションを開始する
 
@@ -592,13 +681,7 @@ NG例
 tx, _ := db.Begin()
 ```
 
-トランザクション管理は
-
-```txt
-Usecase
-```
-
-の責務です。
+トランザクション管理は **Usecase** の責務です。
 
 Repository は
 
@@ -606,13 +689,7 @@ Repository は
 gen.New(r.db.NewLoggingDB(ctx))
 ```
 
-を使用して
-
-```txt
-Tx / DB
-```
-
-を透過的に利用します。
+を使用して `Tx / DB` を透過的に利用します。
 
 ### 6. Controller 型を参照する
 
@@ -636,15 +713,11 @@ Repository Interface は **Domain 層に定義します。**
 
 NG例
 
-```txt
-internal/infrastructure/repository/user_repository_interface.go
-```
+`internal/infrastructure/repository/user_repository_interface.go`
 
 正しい配置
 
-```txt
-internal/domain/user/repository.go
-```
+`internal/domain/user/repository.go`
 
 Infra は **Domain Interface の実装のみ**を行います。
 

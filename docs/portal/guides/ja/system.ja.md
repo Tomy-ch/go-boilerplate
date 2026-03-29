@@ -117,32 +117,21 @@ RUN go build \
 
 BuildInfo は次の用途で使用されます。
 
-例
+- `--version` コマンド
+- `/version` API
+- `/health` エンドポイント
+- ログ出力
+- 診断情報
 
-```txt
---version コマンド
-/version API
-/health エンドポイント
-ログ出力
-診断情報
-```
-
-例：
-
-```txt
-service version=1.2.3 revision=abc123 build=2025-01-01
-```
+例：`service version=1.2.3 revision=abc123 build=2025-01-01`
 
 ## レイヤー上の位置
 
 `internal/system` は **アプリケーションのランタイム情報レイヤー**です。
 
-```txt
-Controller
-Usecase
-Domain
-Infrastructure
-System (runtime metadata)
+```mermaid
+flowchart TB
+    Controller --> Usecase --> Domain --> Infrastructure --> System["System (runtime metadata)"]
 ```
 
 特徴
@@ -155,9 +144,7 @@ System (runtime metadata)
 
 `BuildInfo` は interface のため、テストでは mock を利用できます。
 
-```bash
-go:generate mockgen
-```
+`go:generate mockgen`
 
 例
 
@@ -180,14 +167,3 @@ mockBuildInfo.EXPECT().Version().Return("1.0.0")
 - Version
 - Git Revision
 - Build Date
-
-## まとめ
-
-`internal/system` は
-
-- ビルドメタ情報の提供
-- バージョン管理
-- 実行時メタデータ取得
-- テスト可能な抽象化
-
-を提供する **アプリケーションのランタイムメタ情報パッケージ**です。

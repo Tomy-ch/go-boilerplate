@@ -1,28 +1,23 @@
-# Controller Layer Job (`internal/controller/job`) Guide
+# Job Controller Layer (`internal/controller/job`) Guide
 
-English | [日本語](README.ja.md)
+[English](README.md) | 日本語
 
-## Role in This Repository
+## Role in This Project
 
-`internal/controller/job` is the **entry point for batch/jobs (Controller layer)** invoked from the CLI using Cobra.
+`internal/controller/job` is the **batch/job entry point (Controller layer)** that is invoked from the CLI (Cobra).
 
-Responsibilities:
-
-- Normalize job inputs and outputs (interpret `args`, format results)
-  - Extract and convert parameters required by business logic from CLI args
-- Start and finish spans using Observability (`LayerTracer`)
+- Normalize job input/output (interpretation of args, output format of results)
+  - Extract and convert parameters required for job business logic from args
+- Start and end spans with Observability (LayerTracer)
 - Call the Usecase layer
-- Normalize errors to `apperror` / `errorresponse` (or Job-specific error forms)
-- Format and output results via logs
+- Normalize errors to apperror / errorresponse (or an error representation for Job)
+- Format and output results to logs
 
-**Business logic**, **DB access**, and **domain model manipulation** must live in **Usecase / Domain / Infrastructure**.  
-The Controller must remain thin.
+Delegate "business logic", "DB access", and "domain model operations" to Usecase / Domain / Infra, and keep the Controller thin.
 
 ## Architecture
 
-### Job Execution Flow
-
-This is the execution flow when a job runs.
+### Processing Flow When Running a Job
 
 ```mermaid
 flowchart LR
@@ -34,101 +29,98 @@ Usecase --> Infrastructure
 Infrastructure --> Database
 ```
 
-Jobs do not pass through HTTP.  
-They enter the Controller directly from the CLI.
+Jobs enter the Controller directly from the CLI without going through HTTP.
 
-Execution flow:
+The processing flow is as follows:
 
 1. Cobra receives the CLI command
-2. Job Controller interprets `args`
-3. The Usecase layer is called
+2. Job Controller interprets args
+3. Calls Usecase
 4. Domain / Infrastructure perform data processing
-5. Results are emitted as logs
+5. Outputs results to logs
 
-HTTP Controller and Job Controller have **the same role**,  
-but **their input protocols differ**.
+HTTP Controller and Job Controller **have the same role, differing only in input protocol**.
 
-## Controller Types
+## Types of Controller
 
-This boilerplate defines two types of controllers.
+This project has two types of Controllers.
 
-- HTTP Controller: converts HTTP requests into Usecase calls
-- Job Controller: converts CLI executions into Usecase calls
+- HTTP Controller: Converts HTTP requests into Usecase calls
+- Job Controller: Converts CLI execution into Usecase calls
 
-A Job Controller can be understood as a **Controller without HTTP**.
+You can think of Job Controller as a **Controller without HTTP**.
 
-### Difference Between Job Controller and HTTP Controller
+### Differences Between Job Controller and HTTP Controller
 
 HTTP Controller
 
-- Handles HTTP requests
+- Processes HTTP requests
 - Returns OpenAPI responses
 - Passes through middleware
 
 Job Controller
 
-- Handles CLI args
-- Expresses results via logs
-- No HTTP middleware
+- Processes CLI args
+- Represents results via log output
+- No HTTP middleware exists
 
 ## Responsibility for args Parsing
 
-Parsing CLI args is the **Controller’s responsibility**.
+Parsing of args is the responsibility of the Controller.
 
 The Controller's role is to **convert CLI syntax into typed values**.
 
 Example
 
-```txt
---since 2024-01-01
-↓
-Controller: convert to time.Time
-↓
-Usecase: use in business logic
+```mermaid
+flowchart TB
+    Arg["Arg: --since 2024-01-01"]
+    Controller["Controller: convert to time.Time"]
+    Usecase["Usecase: used in business logic"]
+
+    Arg --> Controller --> Usecase
 ```
 
-Controller responsibilities:
+Controller
 
-- CLI argument syntax interpretation
+- Syntax interpretation of CLI arguments
 - Type conversion
-- Range validation
+- Range checking
 
-Usecase responsibilities:
+Usecase
 
-- Applying business rules
+- Application of business rules
 
-## Exit Code Handling
+## Handling Exit Code
 
-Job Controllers **must not call `os.Exit()`**.
+Job Controller **must not call `os.Exit()`**.
 
-Reason:
+Reason
 
 - Exit codes are managed by the CLI / Runner layer
-- If Controllers terminate the process directly, responsibilities become mixed
+- If Controller controls process termination, responsibilities are broken
 
-Recommended flow:
+Recommended
 
-```txt
-Controller
-↓
-return error
-↓
-JobRunner
-↓
-Exit code decision
+```mermaid
+flowchart TB
+    Controller --> Return["return error"]
+    Return --> Runner["JobRunner"]
+    Runner --> Exit["Exit code decision"]
 ```
 
-## Recommended Logging Structure
+## Recommended Log Output Structure
 
-Job execution results should be emitted using **structured logging**.
+It is recommended to output job execution results as **structured logs**.
 
-Recommended fields:
+Recommended fields
 
-```txt
-job
-duration
-result_count
-error
+```mermaid
+flowchart TB
+    Job["job"]
+    Duration["duration"]
+    Result["result_count"]
+    Error["error"]
 ```
 
 Example
@@ -143,108 +135,107 @@ u.logging.Named(jobName).Info(
 
 ## How to Parse args
 
-Simple jobs may parse `args` directly.
+For simple jobs, you may parse `args` directly.
 
-For more complex jobs, using `flag` or `pflag` is recommended.
+For complex jobs, it is recommended to use `flag` or `pflag`.
 
-```txt
-Simple job:
-    parse args manually
-
-Complex job:
-    use flag / pflag
+```mermaid
+flowchart TB
+    Simple["Simple job: parse args manually"]
+    Complex["Complex job: use flag / pflag"]
 ```
 
-## Job Design Guidelines
+## Guidelines for Job Design
 
-Jobs should be designed to be **idempotent whenever possible**.
+Design jobs to be **idempotent whenever possible**.
 
-Reason:
+Reason
 
-- Batch jobs may be retried
-- Operational recovery becomes easier
+- Batch jobs are likely to be re-executed
+- Makes retries during operation easier
 
 Example
 
-```txt
-Good
-reindex-users
-cleanup-sessions
+```mermaid
+flowchart TB
+    Good["Good"]
+    A["reindex-users"]
+    B["cleanup-sessions"]
+    Bad["Bad"]
+    C["delete-all-data"]
 
-Bad
-delete-all-data
+    Good --> A
+    Good --> B
+    Bad --> C
 ```
 
-## Job Granularity
+## Granularity of Job
 
-Recommended:
+Recommended
 
-```txt
-1 job = 1 operational task
+```mermaid
+flowchart TB
+    Rule["1 job = 1 operational task"]
 ```
 
-Examples:
+Example
 
-```txt
-user-count
-fix-collation
-reindex-users
-cleanup-sessions
+```mermaid
+flowchart TB
+    A["user-count"]
+    B["fix-collation"]
+    C["reindex-users"]
+    D["cleanup-sessions"]
 ```
 
-A job should represent **a single operational task**.
+Design jobs at the granularity of **a single operational task**.
 
 ## Implementation Notes
 
-### Naming / Structure
+### Naming/Structure
 
-Recommended structure: **1 job type = 1 package (1 directory)**.
+The recommended structure is "1 job type = 1 package (1 directory)".
 
-Naming conventions:
+The following naming policy is stable.
 
-- Package name: lowercase (Go style)  
-  - examples: `usercount`, `fixcollation`
-- Job name (Runner key): **kebab-case**
-  - examples: `user-count`, `fix-collation`, `dump-schema`
-- Align the name with `cobra job <name>` for consistency and documentation clarity
+- Package name: Go style lower (not lower_snake) (e.g., usercount, fixcollation)
+- Job name (key used by Runner): kebab-case is recommended
+  - e.g., user-count / fix-collation / dump-schema
+- Makes it easy to match with Cobra's job <name> and to document in README
 
-## Allowed Layer Calls
+## Layers That Can Be Called
 
-- **Controller → Usecase only**  
-  (plus generated code `gen`, DTO/Presenter, `apperror` / `errorresponse`)
-
+- **Controller → Usecase only** (plus generated code `gen`, DTO/Presenter, `apperror`/`errorresponse`)
 - **Do not call Infra / Domain directly**
+- In DI (`fx`), `handler` receives `usecase.Service`
 
-- DI (`fx`) should inject `usecase.Service` into the handler
-
-## Do / Don't Summary
+## Do's and Don'ts (Summary)
 
 ### Do
 
-- Interpret args as the **minimum required parameters** for the job  
-  - examples: `--dry-run`, `--limit`, `--since`
-- Perform **input validation** in the Controller
-  - type conversion
-  - range checks
-- Call Usecase and format the result to logs or stdout
-- Return `apperror` or converted errors for unified handling in the JobRunner
-- Start a LayerTracer span and always close it using `defer`
-- Record job start/end, inputs, and results (such as record counts) in structured logs
+- Interpret args as "the minimum arguments required by the job"
+  - e.g.: --dry-run, --limit, --since, etc.
+- Perform input value validation (type conversion, range checking) in the Controller
+  - Do not go as far as business rules (e.g., whether state transitions are allowed)
+- Call Usecase, receive results, and format them for logs or standard output
+- Return apperror / convert and return errors (to make unified handling in JobRunner easier)
+- Start a span with LayerTracer and always close it with defer
+- Leave job start/end, input, and result (record count, etc.) as structured logs
 
-### Don't
+### Don’t
 
-- Access DB drivers or `sqlc` Querier from the Controller
-- Call repositories directly from the Controller
-- Implement domain entity creation or persistence logic in the Controller
-- Directly interact with the OpenTelemetry SDK (`sdktrace.NewTracerProvider`, etc.)
-- Call `os.Exit()` in the middle of a job
-- Ignore the unified output/log format rules
+- Directly touch DB drivers or sqlc Querier in the Controller (Infra's responsibility)
+- Call Repository directly in the Controller (do not skip Usecase)
+- Write logic for creating/persisting domain entities in the Controller
+- Directly touch OTel SDK (do not write sdktrace.NewTracerProvider() etc. in the Controller)
+- Call os.Exit() in the middle of a job (may conflict with Runner/CLI control)
+- Ignore unified rules for output format (log/standard output) (will be a nightmare in operation)
 
 ## Test Strategy
 
-Tests in the Job Controller layer verify the **behavior of the CLI boundary**.
+Tests for the Job Controller layer verify **the behavior at the CLI boundary**.
 
-In this layer, **the Usecase implementation is not used and mocks are used instead**.
+In this layer, **do not use the Usecase implementation, use mocks**.
 
 ### Test Dependencies
 
@@ -260,28 +251,34 @@ In this layer, **the Usecase implementation is not used and mocks are used inste
 
 Job Controller tests verify the following:
 
-- CLI args parsing
+- Parsing of CLI args
 - Usecase invocation
 - Error propagation
 - Log output
 
 ### Test Structure
 
-Job Controller tests are implemented with the following structure.
+Job Controller tests are implemented in the following structure.
 
-```text
-TestNew
-TestJob_Name
-TestJob_Execute
+```go
+func TestNew(t *testing.T) {
+    // Test implementation
+}
+func TestJob_Name(t *testing.T) {
+    // Test implementation
+}
+func TestJob_Execute(t *testing.T) {
+    // Test implementation
+}
 ```
 
 ### Success Case Tests
 
-The success cases verify the following:
+In success cases, verify the following:
 
 - args are correctly interpreted
-- Usecase is called with the correct arguments
-- no error occurs
+- Usecase is called with correct arguments
+- No error occurs
 
 Example:
 
@@ -293,7 +290,7 @@ mockApp.EXPECT().
 
 ### Error Case Tests
 
-Error cases verify that errors returned by the Usecase are propagated as-is.
+In error cases, verify that errors returned by Usecase are returned as-is.
 
 ```go
 mockApp.EXPECT().
@@ -305,84 +302,100 @@ require.Equal(t, assertError, err)
 
 ### Runner Tests
 
-Runner tests verify **only the job registry and dispatch logic**.
-
-```text
-Test_NewRunner
-Test_runner_Run
-Test_runner_Names
-```
-
-Verification targets:
-
-- detection of duplicate job names
-- error when an unregistered job is requested
-- execution of a job
-
-### State Tests
-
-The state tests verify **only the state management logic that includes a mutex**.
-
-```text
-TestState
-```
-
-Verification targets:
-
-- consistency between Set → Snapshot
-- usability of the channel
-
-### Test Policy
-
-The following are **not performed in Job Controller tests**:
-
-- DB connections
-- SQL execution
-- Domain logic validation
-- validation of internal Usecase logic
-
-These are the responsibility of **Usecase / Domain / Infrastructure tests**.
-
-## Observability (Tracing)
-
-In this boilerplate, the Controller layer does **not directly interact with the OpenTelemetry SDK**.
-
-Instead, spans are started and finished through `observability.LayerTracer`.
-
-### 1. Starting and Ending a Span in the Controller
-
-Every handler must begin with the following lines.
+Runner tests **only the registry/dispatch of jobs**.
 
 ```go
-ctx, endSpan := s.tracer.Start(ctx)
-defer endSpan()
-```
-
-Explanation:
-
-- `Start(ctx)` begins a span and attaches `trace_id/span_id` to the context
-- `endSpan()` ends the span (`span.End`)
-- `defer endSpan()` ensures the span closes even if early returns or errors occur
-
-Key points:
-
-- The Controller only knows about starting and ending spans
-- It never touches OpenTelemetry SDK internals
-- Job Controllers start spans the same way as HTTP Controllers, enabling CLI traces to integrate with the same tracing system
-
-### 2. Tracer Dependency Injection (`observability.LayerTracer`)
-
-Controllers receive `observability.LayerTracer` as a dependency.
-
-```go
-type jobImpl struct {
-    tracer  observability.LayerTracer // tracer used for observability
-    logging logging.Logger            // logger for job result output
-    usecase hoge.Usecase              // usecase executed by this job
+func Test_NewRunner(t *testing.T) {
+    // Test implementation
+}
+func TestRunner_Run(t *testing.T) {
+    // Test implementation
+}
+func TestRunner_Names(t *testing.T) {
+    // Test implementation
 }
 ```
 
-The tracer is created through `observability.TracerFactory`.
+Verification targets
+
+- Detection of duplicate job names
+- Error for unregistered jobs
+- Execution of jobs
+
+### State Tests
+
+state tests **only the state holding logic including mutex**.
+
+```go
+func TestState(t *testing.T) {
+    // Test implementation
+}
+```
+
+Verification targets
+
+- Consistency between Set → Snapshot
+- Usability of the channel
+
+### Test Policy
+
+Job Controller tests do not perform the following.
+
+- DB connection
+- SQL execution
+- Domain logic verification
+- Verification of internal Usecase logic
+
+These are the responsibility of **Usecase / Domain / Infrastructure tests**.
+
+## DI (Dependency Injection) Mechanism
+
+In this project, Job Controller is dependency-injected (DI) by Uber Fx.
+
+### Overall Structure
+
+Jobs are grouped into `group:"jobs"` and aggregated in Runner.
+
+```mermaid
+flowchart TB
+    A["fx.Provide(usercount.New)"]
+    B["fx.Provide(otherJob.New)"]
+    Group["group:\"jobs\""]
+    Jobs["[]job.Job"]
+    Runner["JobRunner"]
+
+    A --> Group
+    B --> Group
+    Group --> Jobs --> Runner
+```
+
+### Role of module/job.go
+
+```go
+func JobModule() fx.Option {
+    return fx.Module("job",
+        provideJobs(
+            usercount.New,
+        ),
+        fx.Provide(
+            dijob.ProvideRunner,
+            job.NewState,
+        ),
+        fx.Invoke(hook.RegisterJobHooks),
+    )
+}
+```
+
+- `provideJobs(...)`
+  - Registers constructors for each Job to `group:"jobs"`
+- `ProvideRunner`
+  - Receives the list of Jobs and creates a Runner to manage execution
+- `RegisterJobHooks`
+  - Binds Jobs to the CLI at app startup
+
+### Job Constructor Design
+
+Jobs should **receive Usecase / Logger / Tracer via DI**.
 
 ```go
 func New(
@@ -398,13 +411,77 @@ func New(
 }
 ```
 
-Here:
+Points:
 
-- The Controller never directly uses SDK instances
-- The observability layer hides tracer generation rules
-  - layer name
-  - package name
-  - function name extraction
+- Controller does not create dependencies itself
+- Always receive dependencies from DI (fx)
+- This allows replacement with mocks during testing
+
+### Why Use group:"jobs"
+
+- Adding Jobs does not require modification of Runner
+- Jobs can be added in a plug-in manner
+- Satisfies the Open/Closed Principle
+
+### Rules for AI/Developers
+
+- When adding a Job, add it to `provideJobs(...)` in `module/job.go`
+- Do not bypass DI to instantiate with new
+- Always receive dependencies via constructor
+
+## Observability (Tracing) Usage
+
+In this project, the Controller layer does not directly handle the OpenTelemetry SDK,
+but starts/ends spans via observability.LayerTracer.
+
+### 1. Starting and Ending a Span in the Controller Layer
+
+At the beginning of each handler, always write the following two lines.
+
+```go
+ctx, endSpan := s.tracer.Start(ctx)
+defer endSpan()
+```
+
+- Start(ctx) starts a span and associates trace_id/span_id with the context.
+- endSpan() ends the span (span.End).
+- defer endSpan() ensures the span is always ended even on exceptions or early returns.
+
+Points:
+
+- Controller only knows how to start/end spans, and does not touch OpenTelemetry SDK details.
+- Job Controller also starts a span in the same way. This allows CLI executions to be integrated into the same trace infrastructure as HTTP traces.
+
+### 2. DI of Tracer (observability.LayerTracer)
+
+Controllers receive observability.LayerTracer as a dependency as follows.
+
+```go
+type jobImpl struct {
+    tracer  observability.LayerTracer // Tracer for observability
+    logging logging.Logger // For result log output
+    usecase hoge.Usecase // Usecase used by each job
+}
+```
+
+On the BindHandler side, a Controller-specific tracer is generated with `observability.NewControllerTracer`.
+
+```go
+func New(
+    tf observability.TracerFactory,
+    usecase user.Usecase,
+    logging logging.Logger,
+) job.Job {
+    return &jobImpl{
+        tracer:  tf.Controller(),
+        usecase: usecase,
+        logging: logging,
+    }
+}
+```
+
+Here, raw SDK instances are not used directly,
+and the observability layer hides the tracer generation rules (layer name, package name, function name extraction) internally.
 
 ## Reference Snippet
 
@@ -415,16 +492,16 @@ import (
     "context"
 
     "boilerplate-go/internal/observability"
-    // Import packages required by the implementation
+    // Import packages used in the implementation
 )
 
-// Define the job name
+// Definition of job name
 const jobName = "user-count"
 
 type jobImpl struct {
-    tracer  observability.LayerTracer // tracer for observability
-    usecase user.Usecase              // controller calls the usecase
-    logging logging.Logger            // logger for result output
+    tracer  observability.LayerTracer // Tracer for observability
+    usecase user.Usecase // Usecase called from controller
+    logging logging.Logger // For result log output
 }
 
 // Register this function in internal/di/module/job.go as [<package>.New,]
@@ -441,19 +518,19 @@ func New(
 }
 
 // Name implements the Name method of the job.Job interface.
-// In most cases, this implementation can be used as-is.
+// Unless you have a specific intention, use this implementation as is.
 func (u *jobImpl) Name() string {
     return jobName
 }
 
 // Execute implements the Execute method of the job.Job interface.
 func (u *jobImpl) Execute(ctx context.Context, args []string) error {
-    // Start a tracing span
+    // Start a span for tracing
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
 
-    // Implement the main job logic here (argument parsing)
-    // For complex jobs, using flag or pflag is recommended.
+    // Implement the main logic of the job here (argument parsing)
+    // For complex jobs, it is recommended to use flag or pflag.
     var active *bool
     for _, a := range args {
         switch a {
@@ -471,9 +548,9 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
     }
 
     // Output the result to logs
-    u.logging.Named(jobName).Info(
+    u.logging.Named(jobName).Info( // Output is recommended at Info level, add job name with Name
         "Result: total user count",
-        logging.Int64(logging.JobResultKey, count),
+        logging.Int64(logging.JobResultKey, count), // Use constant key for result
     )
 
     return nil

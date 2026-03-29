@@ -43,7 +43,7 @@ HTTP Controller と Job Controller は **入力プロトコルが異なるだけ
 
 ## Controller の種類
 
-この boilerplate では Controller は2種類存在します。
+このプロジェクトでは Controller は2種類存在します。
 
 - HTTP Controller: HTTP リクエストを Usecase 呼び出しに変換する
 - Job Controller: CLI 実行を Usecase 呼び出しに変換する
@@ -72,12 +72,13 @@ Controller は **CLI 構文を型付き値に変換する役割**を持ちます
 
 例
 
-```txt
---since 2024-01-01
-↓
-Controller: time.Time に変換
-↓
-Usecase: ビジネスロジックで利用
+```mermaid
+flowchart TB
+    Arg["Arg: --since 2024-01-01"]
+    Controller["Controller: time.Time に変換"]
+    Usecase["Usecase: ビジネスロジックで利用"]
+
+    Arg --> Controller --> Usecase
 ```
 
 Controller
@@ -101,14 +102,11 @@ Job Controller は `os.Exit()` を呼び出してはいけません。
 
 推奨
 
-```txt
-Controller
-↓
-return error
-↓
-JobRunner
-↓
-Exit code decision
+```mermaid
+flowchart TB
+    Controller --> Return["return error"]
+    Return --> Runner["JobRunner"]
+    Runner --> Exit["Exit code decision"]
 ```
 
 ## ログ出力の推奨構造
@@ -117,11 +115,12 @@ Exit code decision
 
 推奨フィールド
 
-```txt
-job
-duration
-result_count
-error
+```mermaid
+flowchart TB
+    Job["job"]
+    Duration["duration"]
+    Result["result_count"]
+    Error["error"]
 ```
 
 例
@@ -140,12 +139,10 @@ u.logging.Named(jobName).Info(
 
 複雑なジョブでは `flag` または `pflag` の利用を推奨します。
 
-```txt
-Simple job:
-    parse args manually
-
-Complex job:
-    use flag / pflag
+```mermaid
+flowchart TB
+    Simple["Simple job: parse args manually"]
+    Complex["Complex job: use flag / pflag"]
 ```
 
 ## Job 設計の指針
@@ -159,30 +156,36 @@ Complex job:
 
 例
 
-```txt
-Good
-reindex-users
-cleanup-sessions
+```mermaid
+flowchart TB
+    Good["Good"]
+    A["reindex-users"]
+    B["cleanup-sessions"]
+    Bad["Bad"]
+    C["delete-all-data"]
 
-Bad
-delete-all-data
+    Good --> A
+    Good --> B
+    Bad --> C
 ```
 
 ## Job の粒度
 
 推奨
 
-```txt
-1 job = 1 operational task
+```mermaid
+flowchart TB
+    Rule["1 job = 1 operational task"]
 ```
 
 例
 
-```txt
-user-count
-fix-collation
-reindex-users
-cleanup-sessions
+```mermaid
+flowchart TB
+    A["user-count"]
+    B["fix-collation"]
+    C["reindex-users"]
+    D["cleanup-sessions"]
 ```
 
 ジョブは **単一の運用タスク**を表す粒度で設計してください。
@@ -257,10 +260,16 @@ Job Controller テストでは次の内容を検証します。
 
 Job Controller のテストは次の構成で実装します。
 
-```text
-TestNew
-TestJob_Name
-TestJob_Execute
+```go
+func TestNew(t *testing.T) {
+    // Test implementation
+}
+func TestJob_Name(t *testing.T) {
+    // Test implementation
+}
+func TestJob_Execute(t *testing.T) {
+    // Test implementation
+}
 ```
 
 ### 正常系テスト
@@ -295,10 +304,16 @@ require.Equal(t, assertError, err)
 
 Runner は **Job の registry / dispatch のみ**をテストします。
 
-```text
-Test_NewRunner
-Test_runner_Run
-Test_runner_Names
+```go
+func Test_NewRunner(t *testing.T) {
+    // Test implementation
+}
+func TestRunner_Run(t *testing.T) {
+    // Test implementation
+}
+func TestRunner_Names(t *testing.T) {
+    // Test implementation
+}
 ```
 
 確認対象
@@ -311,8 +326,10 @@ Test_runner_Names
 
 state は **mutex を含む状態保持ロジック**のみをテストします。
 
-```text
-TestState
+```go
+func TestState(t *testing.T) {
+    // Test implementation
+}
 ```
 
 確認対象
@@ -331,9 +348,90 @@ Job Controller テストでは次を行いません。
 
 これらは **Usecase / Domain / Infrastructure テストの責務**です。
 
+## DI（Dependency Injection）の仕組み
+
+このプロジェクトでは、Job Controller は Uber Fx によって依存性注入（DI）されます。
+
+### 全体構成
+
+Job は `group:"jobs"` にまとめられ、Runner に集約されます。
+
+```mermaid
+flowchart TB
+    A["fx.Provide(usercount.New)"]
+    B["fx.Provide(otherJob.New)"]
+    Group["group:”jobs”"]
+    Jobs["[]job.Job"]
+    Runner["JobRunner"]
+
+    A --> Group
+    B --> Group
+    Group --> Jobs --> Runner
+```
+
+### module/job.go の役割
+
+```go
+func JobModule() fx.Option {
+    return fx.Module("job",
+        provideJobs(
+            usercount.New,
+        ),
+        fx.Provide(
+            dijob.ProvideRunner,
+            job.NewState,
+        ),
+        fx.Invoke(hook.RegisterJobHooks),
+    )
+}
+```
+
+- `provideJobs(...)`
+  - 各 Job のコンストラクタを `group:"jobs"` に登録
+- `ProvideRunner`
+  - Job の一覧を受け取り、実行を管理する Runner を生成
+- `RegisterJobHooks`
+  - アプリ起動時に Job を CLI にバインド
+
+### Job のコンストラクタ設計
+
+Job は **Usecase / Logger / Tracer を DI で受け取る**構造にします。
+
+```go
+func New(
+    tf observability.TracerFactory,
+    usecase user.Usecase,
+    logging logging.Logger,
+) job.Job {
+    return &jobImpl{
+        tracer:  tf.Controller(),
+        usecase: usecase,
+        logging: logging,
+    }
+}
+```
+
+ポイント：
+
+- Controller は自分で依存を生成しない
+- 必ず DI（fx）から受け取る
+- これによりテスト時は mock に差し替え可能
+
+### なぜ group:"jobs" を使うのか
+
+- Job を追加しても Runner 側の修正が不要
+- Plug-in 的に Job を増やせる
+- Open/Closed Principle を満たす
+
+### AI/開発者向けルール
+
+- Job を追加する場合は `module/job.go` の `provideJobs(...)` に追加すること
+- DI をバイパスして new しないこと
+- 依存は必ず constructor 経由で受け取ること
+
 ## Observability（Tracing）の使い方
 
-このboilerplateでは、Controller層で直接OpenTelemetrySDKを扱わず、
+このプロジェクトでは、Controller層で直接OpenTelemetrySDKを扱わず、
 observability.LayerTracerを経由してspanの開始・終了を行います。
 
 ### 1. Controller層でのspanの開始と終了
