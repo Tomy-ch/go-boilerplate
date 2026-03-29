@@ -1,6 +1,7 @@
 package module
 
 import (
+	"boilerplate-go/internal/di/server/hook"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 
@@ -14,6 +15,9 @@ func DatabaseModule() fx.Option {
 			driver.NewDB,
 			driver.NewTransactionManager,
 			loggingdb.NewLoggingDBProvider,
+		),
+		fx.Invoke(
+			hook.RegisterDBCloseHooks,
 		),
 	)
 }

@@ -9,6 +9,8 @@ import (
 	gomock "go.uber.org/mock/gomock"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/di/lifecycle"
+	"boilerplate-go/internal/di/server/hook"
 	"boilerplate-go/internal/logging"
 	mock_logging "boilerplate-go/internal/logging/mock"
 	"boilerplate-go/internal/observability"
@@ -23,7 +25,11 @@ func TestDatabaseModule_Composes(t *testing.T) {
 		mockLogger := mock_logging.NewMockLogger(ctrl)
 		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
 
+		mockLogger.EXPECT().Named("db.CloseHook").Return(mockLogger).AnyTimes()
+		mockLogger.EXPECT().Info("Closing database connection").AnyTimes()
+
 		app := fx.New(
+			lifecycle.Module(),
 			DatabaseModule(),
 			fx.Provide(func() testing.TB { return t }),
 			fx.Provide(config.MockConfigForTest),
@@ -34,6 +40,7 @@ func TestDatabaseModule_Composes(t *testing.T) {
 			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
 			fx.Provide(observability.NewNoopTracerFactory),
 			fx.NopLogger,
+			fx.Invoke(hook.RegisterDBCloseHooks),
 		)
 
 		require.NoError(t, app.Start(context.Background()))
