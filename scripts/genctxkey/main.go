@@ -25,8 +25,12 @@ func main() {
 	}
 
 	// enforce fully-qualified type if package path is included
-	if strings.Contains(typ, "/") && !strings.Contains(typ, ".") {
-		log.Fatal("type must be in format <import-path>.<Type>, e.g. github.com/foo/bar.Authn")
+	if strings.Contains(typ, "/") {
+		lastSlash := strings.LastIndex(typ, "/")
+		lastDot := strings.LastIndex(typ, ".")
+		if lastDot == -1 || lastDot <= lastSlash {
+			log.Fatal("type must be in format <import-path>.<Type>, e.g. github.com/foo/bar.Authn")
+		}
 	}
 
 	if err := GenerateCtxKey(name, typ, out); err != nil {
