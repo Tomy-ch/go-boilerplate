@@ -103,7 +103,7 @@ func writeFile(path, tpl string, p Param) error {
 		return err
 	}
 
-	if existing, err := os.ReadFile(path); err == nil {
+	if existing, err := os.ReadFile(path); err == nil { //nolint:gosec // generator writes/reads controlled path
 		if bytes.Equal(existing, src) {
 			return nil
 		}
