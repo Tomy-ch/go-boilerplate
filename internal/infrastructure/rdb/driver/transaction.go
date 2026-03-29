@@ -5,20 +5,25 @@ import (
 	"database/sql"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/usecase/boundary/tx"
 )
 
+const callerSkipCount = 1
+
 // txManager は、トランザクションの管理を行います。
 type txManager struct {
-	cfg *config.Config
-	db  DatabaseDriver
+	cfg    *config.Config
+	db     DatabaseDriver
+	logger logging.Logger
 }
 
 // NewTransactionManager は、トランザクションマネージャを初期化します。
-func NewTransactionManager(cfg *config.Config, db DatabaseDriver) tx.Manager {
+func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager {
 	return &txManager{
-		cfg: cfg,
-		db:  db,
+		cfg:    cfg,
+		db:     db,
+		logger: logger,
 	}
 }
 
@@ -34,7 +39,11 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	}
 	defer func() {
 		if p := recover(); p != nil {
-			_ = tx.Rollback()
+			if pgErr := tx.Rollback(); pgErr != nil {
+				t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
+					"Failed to rollback transaction on panic", logging.Error("rollback transaction", pgErr),
+				)
+			}
 			panic(p)
 		}
 	}()
@@ -42,7 +51,13 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	ctx = withTx(ctx, tx)
 
 	if err := fn(ctx); err != nil {
-		_ = tx.Rollback()
+		if pgErr := tx.Rollback(); pgErr != nil {
+			t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
+				"Failed to rollback transaction",
+				logging.Error("rollback transaction", pgErr),
+				logging.Error("original error", err),
+			)
+		}
 		return err
 	}
 

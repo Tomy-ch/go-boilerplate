@@ -60,8 +60,9 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
 func NewTestTransactionManager(t *testing.T) TransactionRunner {
 	t.Helper()
 	cfg := config.MockConfigForTest(t)
+	testLogger := logging.NewTestLogger(t)
 
-	innerTxm := driver.NewTransactionManager(cfg, getTestDB(t))
+	innerTxm := driver.NewTransactionManager(cfg, getTestDB(t), testLogger)
 
 	txm := &testTxManager{
 		inner: innerTxm,
