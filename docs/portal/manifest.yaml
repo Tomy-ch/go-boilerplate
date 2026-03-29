@@ -99,6 +99,18 @@ cross-cutting:
   - src: internal/system/README.ja.md
     dst: docs/portal/guides/ja/system.ja.md
 
+context-helper:
+  # English
+  - src: internal/controller/ctxhelper/README.md
+    dst: docs/portal/guides/how-to-use-context-helper.md
+  - src: scripts/genctxkey/README.md
+    dst: docs/portal/guides/how-to-generate-ctxhelper.md
+  # Japanese
+  - src: internal/controller/ctxhelper/README.ja.md
+    dst: docs/portal/guides/ja/how-to-use-context-helper.ja.md
+  - src: scripts/genctxkey/README.ja.md
+    dst: docs/portal/guides/ja/how-to-generate-ctxhelper.ja.md
+
 integration:
   # English
   - src: internal/integration/README.md
