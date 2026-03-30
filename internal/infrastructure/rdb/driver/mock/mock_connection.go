@@ -11,9 +11,10 @@ package mock_driver
 
 import (
 	context "context"
-	sql "database/sql"
 	reflect "reflect"
 
+	pgx "github.com/jackc/pgx/v5"
+	pgconn "github.com/jackc/pgx/v5/pgconn"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,76 +42,61 @@ func (m *MockDBTX) EXPECT() *MockDBTXMockRecorder {
 	return m.recorder
 }
 
-// ExecContext mocks base method.
-func (m *MockDBTX) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+// Exec mocks base method.
+func (m *MockDBTX) Exec(arg0 context.Context, arg1 string, arg2 ...any) (pgconn.CommandTag, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx, query}
-	for _, a := range args {
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "ExecContext", varargs...)
-	ret0, _ := ret[0].(sql.Result)
+	ret := m.ctrl.Call(m, "Exec", varargs...)
+	ret0, _ := ret[0].(pgconn.CommandTag)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ExecContext indicates an expected call of ExecContext.
-func (mr *MockDBTXMockRecorder) ExecContext(ctx, query any, args ...any) *gomock.Call {
+// Exec indicates an expected call of Exec.
+func (mr *MockDBTXMockRecorder) Exec(arg0, arg1 any, arg2 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, query}, args...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecContext", reflect.TypeOf((*MockDBTX)(nil).ExecContext), varargs...)
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockDBTX)(nil).Exec), varargs...)
 }
 
-// PrepareContext mocks base method.
-func (m *MockDBTX) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+// Query mocks base method.
+func (m *MockDBTX) Query(arg0 context.Context, arg1 string, arg2 ...any) (pgx.Rows, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PrepareContext", ctx, query)
-	ret0, _ := ret[0].(*sql.Stmt)
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Query", varargs...)
+	ret0, _ := ret[0].(pgx.Rows)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// PrepareContext indicates an expected call of PrepareContext.
-func (mr *MockDBTXMockRecorder) PrepareContext(ctx, query any) *gomock.Call {
+// Query indicates an expected call of Query.
+func (mr *MockDBTXMockRecorder) Query(arg0, arg1 any, arg2 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareContext", reflect.TypeOf((*MockDBTX)(nil).PrepareContext), ctx, query)
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockDBTX)(nil).Query), varargs...)
 }
 
-// QueryContext mocks base method.
-func (m *MockDBTX) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+// QueryRow mocks base method.
+func (m *MockDBTX) QueryRow(arg0 context.Context, arg1 string, arg2 ...any) pgx.Row {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx, query}
-	for _, a := range args {
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "QueryContext", varargs...)
-	ret0, _ := ret[0].(*sql.Rows)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryContext indicates an expected call of QueryContext.
-func (mr *MockDBTXMockRecorder) QueryContext(ctx, query any, args ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, query}, args...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryContext", reflect.TypeOf((*MockDBTX)(nil).QueryContext), varargs...)
-}
-
-// QueryRowContext mocks base method.
-func (m *MockDBTX) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	m.ctrl.T.Helper()
-	varargs := []any{ctx, query}
-	for _, a := range args {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "QueryRowContext", varargs...)
-	ret0, _ := ret[0].(*sql.Row)
+	ret := m.ctrl.Call(m, "QueryRow", varargs...)
+	ret0, _ := ret[0].(pgx.Row)
 	return ret0
 }
 
-// QueryRowContext indicates an expected call of QueryRowContext.
-func (mr *MockDBTXMockRecorder) QueryRowContext(ctx, query any, args ...any) *gomock.Call {
+// QueryRow indicates an expected call of QueryRow.
+func (mr *MockDBTXMockRecorder) QueryRow(arg0, arg1 any, arg2 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, query}, args...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRowContext", reflect.TypeOf((*MockDBTX)(nil).QueryRowContext), varargs...)
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRow", reflect.TypeOf((*MockDBTX)(nil).QueryRow), varargs...)
 }

@@ -11,9 +11,11 @@ package mock_driver
 
 import (
 	context "context"
-	sql "database/sql"
 	reflect "reflect"
 
+	pgx "github.com/jackc/pgx/v5"
+	pgconn "github.com/jackc/pgx/v5/pgconn"
+	pgxpool "github.com/jackc/pgx/v5/pgxpool"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,19 +43,19 @@ func (m *MockDatabaseDriver) EXPECT() *MockDatabaseDriverMockRecorder {
 	return m.recorder
 }
 
-// BeginTx mocks base method.
-func (m *MockDatabaseDriver) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+// Begin mocks base method.
+func (m *MockDatabaseDriver) Begin(ctx context.Context) (pgx.Tx, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BeginTx", ctx, opts)
-	ret0, _ := ret[0].(*sql.Tx)
+	ret := m.ctrl.Call(m, "Begin", ctx)
+	ret0, _ := ret[0].(pgx.Tx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// BeginTx indicates an expected call of BeginTx.
-func (mr *MockDatabaseDriverMockRecorder) BeginTx(ctx, opts any) *gomock.Call {
+// Begin indicates an expected call of Begin.
+func (mr *MockDatabaseDriverMockRecorder) Begin(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTx", reflect.TypeOf((*MockDatabaseDriver)(nil).BeginTx), ctx, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockDatabaseDriver)(nil).Begin), ctx)
 }
 
 // Close mocks base method.
@@ -70,90 +72,89 @@ func (mr *MockDatabaseDriverMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDatabaseDriver)(nil).Close))
 }
 
-// ExecContext mocks base method.
-func (m *MockDatabaseDriver) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+// Exec mocks base method.
+func (m *MockDatabaseDriver) Exec(arg0 context.Context, arg1 string, arg2 ...any) (pgconn.CommandTag, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx, query}
-	for _, a := range args {
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "ExecContext", varargs...)
-	ret0, _ := ret[0].(sql.Result)
+	ret := m.ctrl.Call(m, "Exec", varargs...)
+	ret0, _ := ret[0].(pgconn.CommandTag)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ExecContext indicates an expected call of ExecContext.
-func (mr *MockDatabaseDriverMockRecorder) ExecContext(ctx, query any, args ...any) *gomock.Call {
+// Exec indicates an expected call of Exec.
+func (mr *MockDatabaseDriverMockRecorder) Exec(arg0, arg1 any, arg2 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, query}, args...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecContext", reflect.TypeOf((*MockDatabaseDriver)(nil).ExecContext), varargs...)
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockDatabaseDriver)(nil).Exec), varargs...)
 }
 
-// PingContext mocks base method.
-func (m *MockDatabaseDriver) PingContext(ctx context.Context) error {
+// Ping mocks base method.
+func (m *MockDatabaseDriver) Ping(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PingContext", ctx)
+	ret := m.ctrl.Call(m, "Ping", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// PingContext indicates an expected call of PingContext.
-func (mr *MockDatabaseDriverMockRecorder) PingContext(ctx any) *gomock.Call {
+// Ping indicates an expected call of Ping.
+func (mr *MockDatabaseDriverMockRecorder) Ping(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingContext", reflect.TypeOf((*MockDatabaseDriver)(nil).PingContext), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockDatabaseDriver)(nil).Ping), ctx)
 }
 
-// PrepareContext mocks base method.
-func (m *MockDatabaseDriver) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+// Query mocks base method.
+func (m *MockDatabaseDriver) Query(arg0 context.Context, arg1 string, arg2 ...any) (pgx.Rows, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PrepareContext", ctx, query)
-	ret0, _ := ret[0].(*sql.Stmt)
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Query", varargs...)
+	ret0, _ := ret[0].(pgx.Rows)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// PrepareContext indicates an expected call of PrepareContext.
-func (mr *MockDatabaseDriverMockRecorder) PrepareContext(ctx, query any) *gomock.Call {
+// Query indicates an expected call of Query.
+func (mr *MockDatabaseDriverMockRecorder) Query(arg0, arg1 any, arg2 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareContext", reflect.TypeOf((*MockDatabaseDriver)(nil).PrepareContext), ctx, query)
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockDatabaseDriver)(nil).Query), varargs...)
 }
 
-// QueryContext mocks base method.
-func (m *MockDatabaseDriver) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+// QueryRow mocks base method.
+func (m *MockDatabaseDriver) QueryRow(arg0 context.Context, arg1 string, arg2 ...any) pgx.Row {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx, query}
-	for _, a := range args {
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "QueryContext", varargs...)
-	ret0, _ := ret[0].(*sql.Rows)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryContext indicates an expected call of QueryContext.
-func (mr *MockDatabaseDriverMockRecorder) QueryContext(ctx, query any, args ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, query}, args...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryContext", reflect.TypeOf((*MockDatabaseDriver)(nil).QueryContext), varargs...)
-}
-
-// QueryRowContext mocks base method.
-func (m *MockDatabaseDriver) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	m.ctrl.T.Helper()
-	varargs := []any{ctx, query}
-	for _, a := range args {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "QueryRowContext", varargs...)
-	ret0, _ := ret[0].(*sql.Row)
+	ret := m.ctrl.Call(m, "QueryRow", varargs...)
+	ret0, _ := ret[0].(pgx.Row)
 	return ret0
 }
 
-// QueryRowContext indicates an expected call of QueryRowContext.
-func (mr *MockDatabaseDriverMockRecorder) QueryRowContext(ctx, query any, args ...any) *gomock.Call {
+// QueryRow indicates an expected call of QueryRow.
+func (mr *MockDatabaseDriverMockRecorder) QueryRow(arg0, arg1 any, arg2 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, query}, args...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRowContext", reflect.TypeOf((*MockDatabaseDriver)(nil).QueryRowContext), varargs...)
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRow", reflect.TypeOf((*MockDatabaseDriver)(nil).QueryRow), varargs...)
+}
+
+// Stats mocks base method.
+func (m *MockDatabaseDriver) Stats() *pgxpool.Stat {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stats")
+	ret0, _ := ret[0].(*pgxpool.Stat)
+	return ret0
+}
+
+// Stats indicates an expected call of Stats.
+func (mr *MockDatabaseDriverMockRecorder) Stats() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stats", reflect.TypeOf((*MockDatabaseDriver)(nil).Stats))
 }
