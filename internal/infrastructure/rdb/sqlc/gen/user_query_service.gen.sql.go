@@ -7,8 +7,6 @@ package gen
 
 import (
 	"context"
-
-	"github.com/lib/pq"
 )
 
 const listUsersByKeywords = `-- name: ListUsersByKeywords :many
@@ -48,9 +46,9 @@ type ListUsersByKeywordsRow struct {
 //	ORDER BY u.created_at DESC
 //	LIMIT $4 OFFSET $3
 func (q *Queries) ListUsersByKeywords(ctx context.Context, arg *ListUsersByKeywordsParams) ([]*ListUsersByKeywordsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsersByKeywords,
+	rows, err := q.db.Query(ctx, listUsersByKeywords,
 		arg.DeletedState,
-		pq.Array(arg.PatternsParam),
+		arg.PatternsParam,
 		arg.OffsetParam,
 		arg.LimitParam,
 	)
@@ -81,9 +79,6 @@ func (q *Queries) ListUsersByKeywords(ctx context.Context, arg *ListUsersByKeywo
 			return nil, err
 		}
 		items = append(items, &i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
