@@ -98,7 +98,7 @@ func TestFindByKeyword(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, db)
-				_, execErr := drv.ExecContext(ctx,
+				_, execErr := drv.Exec(ctx,
 					"INSERT INTO users "+
 						"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code) "+
 						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",

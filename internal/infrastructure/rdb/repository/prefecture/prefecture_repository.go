@@ -33,7 +33,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.En
 	defer endSpan()
 
 	db := gen.New(r.db.NewLoggingDB(ctx))
-	row, err := db.GetPrefectureDomainByID(ctx, id.ToPrimitive())
+	row, err := db.GetPrefectureDomainByID(ctx, id)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
@@ -51,7 +51,7 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
 	defer endSpan()
 
 	db := gen.New(r.db.NewLoggingDB(ctx))
-	rows, err := db.GetPrefectureDomainByIDs(ctx, uuid.ToPrimitiveUniqueList(ids))
+	rows, err := db.GetPrefectureDomainByIDs(ctx, ids)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
