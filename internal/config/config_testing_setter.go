@@ -50,16 +50,6 @@ func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(t testing.TB, va
 	t.Cleanup(func() { o.maskedDBQueryArgs = prev })
 }
 
-// SetDatabaseDriver は、テスト用にデータベースのドライバーを設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (d *DatabaseConfig) SetDatabaseDriver(t testing.TB, driver string) {
-	t.Helper()
-	prev := d.Driver()
-	d.driver = driver
-	t.Cleanup(func() { d.driver = prev })
-}
-
 // SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
@@ -78,6 +68,26 @@ func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string) {
 	prev := d.DBName()
 	d.name = name
 	t.Cleanup(func() { d.name = prev })
+}
+
+// SetDatabasePassword は、テスト用にデータベースのパスワードを設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (d *DatabaseConfig) SetDatabasePassword(t testing.TB, password string) {
+	t.Helper()
+	prev := d.Password()
+	d.password = password
+	t.Cleanup(func() { d.password = prev })
+}
+
+// SetMaxOpenConns は、テスト用にDB接続の最大オープン数を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (c *DBConnectionConfig) SetMaxOpenConns(t testing.TB, maxOpenConns int32) {
+	t.Helper()
+	prev := c.MaxOpenConns()
+	c.maxOpenConns = maxOpenConns
+	t.Cleanup(func() { c.maxOpenConns = prev })
 }
 
 // SetCIDR は、テスト用にセキュリティのCIDRを設定します。

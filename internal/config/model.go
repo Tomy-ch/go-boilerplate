@@ -68,8 +68,8 @@ type DatabaseConfig struct {
 }
 
 type DBConnectionConfig struct {
-	maxOpenConns int
-	maxIdleConns int
+	maxOpenConns int32
+	maxIdleConns int32
 	maxLifetime  time.Duration
 	maxIdleTime  time.Duration
 }
@@ -253,10 +253,10 @@ func (d *DatabaseConfig) DSNWithTimeZone(o *OperationSystemConfig) string {
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }
 
 // MaxOpenConns は、データベースの最大オープン接続数を返します。
-func (c *DBConnectionConfig) MaxOpenConns() int { return c.maxOpenConns }
+func (c *DBConnectionConfig) MaxOpenConns() int32 { return c.maxOpenConns }
 
 // MaxIdleConns は、データベースの最大アイドル接続数を返します。
-func (c *DBConnectionConfig) MaxIdleConns() int { return c.maxIdleConns }
+func (c *DBConnectionConfig) MaxIdleConns() int32 { return c.maxIdleConns }
 
 // MaxLifetime は、データベースの接続の最大寿命を返します。
 func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime }

@@ -35,12 +35,6 @@ func TestConfigTestingSetters(t *testing.T) {
 		require.Equal(t, expected, cfg.observability.MaskedDBQueryArgs())
 	})
 
-	t.Run("SetDatabaseDriver", func(t *testing.T) {
-		expected := "test-driver"
-		cfg.database.SetDatabaseDriver(t, expected)
-		require.Equal(t, expected, cfg.database.Driver())
-	})
-
 	t.Run("SetDatabaseHost", func(t *testing.T) {
 		expected := "test-host"
 		cfg.database.SetDatabaseHost(t, expected)
@@ -51,6 +45,18 @@ func TestConfigTestingSetters(t *testing.T) {
 		expected := "test-name"
 		cfg.database.SetDatabaseName(t, expected)
 		require.Equal(t, expected, cfg.database.DBName())
+	})
+
+	t.Run("SetDatabasePassword", func(t *testing.T) {
+		expected := "test-password"
+		cfg.database.SetDatabasePassword(t, expected)
+		require.Equal(t, expected, cfg.database.Password())
+	})
+
+	t.Run("SetMaxOpenConns", func(t *testing.T) {
+		expected := int32(20)
+		cfg.dbconnection.SetMaxOpenConns(t, expected)
+		require.Equal(t, expected, cfg.dbconnection.MaxOpenConns())
 	})
 
 	t.Run("SetCIDR", func(t *testing.T) {

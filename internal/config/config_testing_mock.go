@@ -73,8 +73,8 @@ var (
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
 	// dbconnection
-	expectedDBMaxOpenConns     = 10
-	expectedDBMaxIdleConns     = 5
+	expectedDBMaxOpenConns     = int32(10)
+	expectedDBMaxIdleConns     = int32(5)
 	expectedDBMaxLifetimeCount = 60
 	expectedDBMaxLifetimeStr   = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)
 	expectedDBMaxLifetime      = time.Duration(expectedDBMaxLifetimeCount) * time.Second
@@ -318,8 +318,8 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function
 	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
 	// DBConnection
-	t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
-	t.Setenv("DBCONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
+	t.Setenv("DBCONN_MAX_OPEN", strconv.FormatInt(int64(expectedDBMaxOpenConns), 10))
+	t.Setenv("DBCONN_MAX_IDLE", strconv.FormatInt(int64(expectedDBMaxIdleConns), 10))
 	t.Setenv("DBCONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
 	t.Setenv("DBCONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
 	// Security

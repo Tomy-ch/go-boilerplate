@@ -213,8 +213,8 @@ func Test_setEnv(t *testing.T) { //nolint:funlen // safe: This function is only 
 	require.Equal(t, expectedDBPingTimeoutStr, os.Getenv("DB_PING_TIMEOUT"))
 	require.Equal(t, expectedDBSlowQueryWarnThresholdStr, os.Getenv("DB_SLOW_QUERY_WARN_THRESHOLD"))
 	// DBConnection
-	require.Equal(t, strconv.Itoa(expectedDBMaxOpenConns), os.Getenv("DBCONN_MAX_OPEN"))
-	require.Equal(t, strconv.Itoa(expectedDBMaxIdleConns), os.Getenv("DBCONN_MAX_IDLE"))
+	require.Equal(t, strconv.FormatInt(int64(expectedDBMaxOpenConns), 10), os.Getenv("DBCONN_MAX_OPEN"))
+	require.Equal(t, strconv.FormatInt(int64(expectedDBMaxIdleConns), 10), os.Getenv("DBCONN_MAX_IDLE"))
 	require.Equal(t, expectedDBMaxLifetimeStr, os.Getenv("DBCONN_MAX_LIFETIME"))
 	require.Equal(t, expectedDBMaxIdleTimeStr, os.Getenv("DBCONN_MAX_IDLE_TIME"))
 	// Security
