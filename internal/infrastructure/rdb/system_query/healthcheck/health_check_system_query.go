@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
@@ -14,12 +15,18 @@ import (
 
 type systemQuery struct {
 	db     loggingdb.DBProvider
+	dbPool driver.DatabaseDriver
 	tracer observability.LayerTracer
 }
 
-func New(provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery {
+func New(
+	provider loggingdb.DBProvider,
+	dbPool driver.DatabaseDriver,
+	tf observability.TracerFactory,
+) query.DBSystemQuery {
 	return &systemQuery{
 		db:     provider,
+		dbPool: dbPool,
 		tracer: tf.Infra(),
 	}
 }
@@ -37,9 +44,15 @@ func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)
 	}
 	latency := time.Since(start)
 
+	stat := s.dbPool.Stats()
+
 	return query.DBHealth{
-		Ready:       true,
-		ResponsedAt: time.Now(),
-		Latency:     latency,
+		Ready:            true,
+		ResponsedAt:      time.Now(),
+		Latency:          latency,
+		TotalConnections: stat.TotalConns(),
+		IdleConnections:  stat.IdleConns(),
+		AcquiredCount:    stat.AcquiredConns(),
+		MaxConnections:   stat.MaxConns(),
 	}, nil
 }
