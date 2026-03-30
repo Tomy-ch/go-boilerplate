@@ -3,12 +3,12 @@ package seed
 
 import (
 	"context"
-	"database/sql"
 	"os"
 	"path/filepath"
 	"sort"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
@@ -55,8 +55,9 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := sql.Open("postgres", dbCfg.DSNWithTimeZone(osCfg))
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	if err != nil {
 		logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error("dbOpen", err))
 		return err
@@ -89,7 +90,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 			readFilesErr = err
 			continue
 		}
-		_, err = db.ExecContext(ctx, string(data))
+		_, err = db.Exec(ctx, string(data))
 		log := logger.Named("dbSeedRun.ExecContext")
 		if err != nil {
 			var pgErr *pgconn.PgError
