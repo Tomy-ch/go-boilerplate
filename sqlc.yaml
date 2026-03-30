@@ -6,7 +6,7 @@ sql:
     strict_function_checks: true
     gen:
       go:
-        sql_package: database/sql
+        sql_package: pgx/v5
         out: internal/infrastructure/rdb/sqlc/gen/
         package: gen
         emit_db_tags: false
@@ -28,3 +28,34 @@ sql:
         output_models_file_name: models.gen.go
         output_querier_file_name: querier.gen.go
         output_copyfrom_file_name: copyfrom.gen.go
+        overrides:
+          - db_type: "pg_catalog.numeric"
+            go_type: github.com/shopspring/decimal.Decimal
+          - db_type: "pg_catalog.numeric"
+            go_type:
+              import: github.com/shopspring/decimal
+              type: Decimal
+              pointer: true
+            nullable: true
+          - db_type: uuid
+            go_type:
+              import: boilerplate-go/pkg/uuid
+              package: uuid
+              type: UUID
+          - db_type: uuid
+            nullable: true
+            go_type:
+              import: boilerplate-go/pkg/uuid
+              package: uuid
+              type: UUID
+              pointer: true
+          - db_type: "pg_catalog.timestamptz"
+            go_type:
+              import: time
+              type: Time
+          - db_type: "pg_catalog.timestamptz"
+            nullable: true
+            go_type:
+              import: time
+              type: Time
+              pointer: true
