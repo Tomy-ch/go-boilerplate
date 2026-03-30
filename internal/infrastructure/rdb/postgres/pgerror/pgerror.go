@@ -3,8 +3,6 @@ package pgerror
 
 import (
 	"context"
-	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"net"
 	"strings"
@@ -12,6 +10,7 @@ import (
 	"boilerplate-go/internal/apperror"
 	"boilerplate-go/pkg/xerrors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -22,7 +21,7 @@ func NormalizeError(err error) error {
 		return nil
 	}
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return xerrors.Wrap(apperror.ErrNotFound, err.Error())
 	}
 
@@ -62,9 +61,6 @@ func IsUnavailable(err error) bool {
 	// ネットワーク／ドライバ系
 	var ne net.Error
 	if errors.As(err, &ne) && ne.Timeout() {
-		return true
-	}
-	if errors.Is(err, driver.ErrBadConn) {
 		return true
 	}
 
