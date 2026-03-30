@@ -34,7 +34,7 @@ func TestRegisterDBCloseHooks(t *testing.T) {
 	namedMock := mock_logging.NewMockLogger(ctrl)
 	logger.EXPECT().Named("db.CloseHook").Return(namedMock)
 	namedMock.EXPECT().Info("Closing database connection")
-	db.EXPECT().Close().Return(nil)
+	db.EXPECT().Close()
 
 	require.NoError(t, closeFn(context.Background()))
 }

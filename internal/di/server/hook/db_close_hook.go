@@ -14,8 +14,9 @@ func RegisterDBCloseHooks(
 	db driver.DatabaseDriver,
 	logger logging.Logger,
 ) {
-	reg.RegisterStop(func(ctx context.Context) error {
+	reg.RegisterStop(func(_ context.Context) error {
 		logger.Named("db.CloseHook").Info("Closing database connection")
-		return db.Close()
+		db.Close()
+		return nil
 	})
 }
