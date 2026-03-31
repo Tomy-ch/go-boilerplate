@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
+//nolint:recvcheck // safe: UUID is immutable (value object); pointer receiver is required only for Scan to implement sql.Scanner
 type UUID struct{ b [16]byte }
 
 // New は、uuidを生成します。生成に失敗した場合はエラーを返します。
