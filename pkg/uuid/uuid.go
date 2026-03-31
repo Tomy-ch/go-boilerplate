@@ -72,6 +72,6 @@ func (u *UUID) Scan(src any) error {
 }
 
 // Value は、UUIDをデータベースに保存するための値に変換します。変換に失敗した場合はエラーを返します。
-func Value(u UUID) (driver.Value, error) {
+func (u UUID) Value() (driver.Value, error) {
 	return toGoogle(u).Value()
 }
