@@ -64,7 +64,7 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
 			int(row.Code),
 		)
 		if err != nil {
-			return nil, pgerror.NormalizeError(err)
+			return nil, err
 		}
 		prefectures[i] = prefectureEntity
 	}
