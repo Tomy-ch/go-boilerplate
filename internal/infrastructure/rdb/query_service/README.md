@@ -146,13 +146,13 @@ Nullable DB values are converted using `internal/infrastructure/rdb/conv`.
 Example
 
 ```go
-conv.StringPtrFromNull(row.Users.Building)
+row.Users.Buildin)
 conv.TimePtrFromNull(row.Users.DeletedAt)
 ```
 
 ## LoggingDBProvider
 
-QueryService does not directly use DB driver.
+ueryService does not directly use DB drive.
 
 ```go
 db := gen.New(s.db.NewLoggingDB(ctx))
@@ -418,20 +418,20 @@ func (s *service) FindByKeyword(ctx context.Context, keywords []string, active*b
     users := make(user.Users, len(rows))
     for i, row := range rows {
         u, err := user.New(
-            uuid.FromPrimitive(row.Users.ID),
+            row.Users.ID,
             row.Users.FirstName,
             row.Users.LastName,
             row.Users.PasswordHash,
             row.Users.Email,
             row.Users.Phone,
-            uuid.FromPrimitive(row.Users.PrefectureID),
+            row.Users.PrefectureID,
             row.Users.City,
             row.Users.Street,
-            conv.StringPtrFromNull(row.Users.Building),
+            row.Users.Building,
             row.Users.PostalCode,
             row.Users.CreatedAt,
             row.Users.UpdatedAt,
-            conv.TimePtrFromNull(row.Users.DeletedAt),
+            row.Users.DeletedAt,
         )
         if err != nil {
             return nil, err
