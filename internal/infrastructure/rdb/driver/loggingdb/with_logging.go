@@ -60,14 +60,15 @@ func (dwl *dbWithLogging) Query(ctx context.Context, sql string, args ...any) (p
 	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlQuery, fields...)
 
 	rows, err := dwl.db.Query(ctx, sql, args...) //nolint:sqlclosecheck // ownership transferred to caller; closed in sqlc layer
-	if err != nil {
-		return nil, err
-	}
 	duration := time.Since(start)
 
 	fields = dwl.buildSQLEndLogFields(tc, queryFunc, sql, duration, args, err)
 	dwl.logQueryResult(sqlQuery, duration, fields, err)
-	return rows, err
+
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 func (dwl *dbWithLogging) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {

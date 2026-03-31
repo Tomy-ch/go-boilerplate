@@ -141,7 +141,7 @@ func TestValue(t *testing.T) {
 	u, err := New()
 	require.NoError(t, err)
 
-	v, err := Value(u)
+	v, err := u.Value()
 	require.NoError(t, err)
 	require.Equal(t, u.String(), v)
 }
