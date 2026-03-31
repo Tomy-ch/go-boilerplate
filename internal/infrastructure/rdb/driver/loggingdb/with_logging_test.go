@@ -80,6 +80,9 @@ func Test_dbWithLogging_Query(t *testing.T) {
 	rows, err := dwl.Query(context.Background(), "SELECT 1")
 	require.NoError(t, err)
 	require.Nil(t, rows)
+	if rows != nil {
+		defer rows.Close()
+	}
 }
 
 func Test_dbWithLogging_QueryRow(t *testing.T) {

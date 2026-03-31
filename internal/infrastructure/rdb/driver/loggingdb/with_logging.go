@@ -59,7 +59,10 @@ func (dwl *dbWithLogging) Query(ctx context.Context, sql string, args ...any) (p
 	fields := dwl.buildSQLStartLogFields(tc, queryFunc)
 	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlQuery, fields...)
 
-	rows, err := dwl.db.Query(ctx, sql, args...)
+	rows, err := dwl.db.Query(ctx, sql, args...) //nolint:sqlclosecheck // ownership transferred to caller; closed in sqlc layer
+	if err != nil {
+		return nil, err
+	}
 	duration := time.Since(start)
 
 	fields = dwl.buildSQLEndLogFields(tc, queryFunc, sql, duration, args, err)
