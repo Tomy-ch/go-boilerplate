@@ -57,17 +57,17 @@ func NewDB(
 }
 
 // Exec は、DB.Execを呼び出します。
-func (d *dbDriver) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
+func (d *dbDriver) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	return d.pool.Exec(ctx, sql, args...)
 }
 
 // Query は、DB.Queryを呼び出します。
-func (d *dbDriver) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+func (d *dbDriver) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	return d.pool.Query(ctx, sql, args...)
 }
 
 // QueryRow は、DB.QueryRowを呼び出します。
-func (d *dbDriver) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
+func (d *dbDriver) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	return d.pool.QueryRow(ctx, sql, args...)
 }
 
