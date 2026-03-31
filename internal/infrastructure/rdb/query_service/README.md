@@ -152,7 +152,7 @@ conv.TimePtrFromNull(row.Users.DeletedAt)
 
 ## LoggingDBProvider
 
-ueryService does not directly use DB drive.
+QueryService does not directly use DB drive.
 
 ```go
 db := gen.New(s.db.NewLoggingDB(ctx))
