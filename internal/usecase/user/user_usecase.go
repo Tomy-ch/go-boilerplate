@@ -109,7 +109,7 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, 
 	}
 
 	ctx, prefectureMap, err := observability.RunDomainWithSpan(
-		ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
+		ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) {
 			pids := make([]uuid.UUID, len(us))
 			for i, u := range us {
 				pids[i] = u.PrefectureID()
@@ -120,7 +120,7 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, 
 				return nil, pftErr
 			}
 
-			prefectureMap := make(map[uuid.UUID]*prefecture.Entity, len(ps))
+			prefectureMap := make(map[uuid.UUID]*prefecture.Prefecture, len(ps))
 			for _, p := range ps {
 				prefectureMap[p.ID()] = p
 			}
@@ -173,7 +173,7 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 
 	var (
 		userEntity *user.User
-		pftDomain  *prefecture.Entity
+		pftDomain  *prefecture.Prefecture
 	)
 	err = u.txm.Do(ctx, func(ctx context.Context) error {
 		var err error

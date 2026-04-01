@@ -87,7 +87,7 @@ func TestGetAllUsers(t *testing.T) {
 		require.NoError(t, err)
 
 		prefectureDomain, err := prefecture.New(
-			prefectureID.String(),
+			prefectureID,
 			"prefecture_name",
 			1,
 		)
@@ -114,7 +114,7 @@ func TestGetAllUsers(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindAll(gomock.Any(), p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Entities{prefectureDomain}, nil)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
 			uc := &usecase{
 				tracer:   lt,
 				userRepo: userRepo,
@@ -140,7 +140,7 @@ func TestGetAllUsers(t *testing.T) {
 			userQS := mock_query.NewMockUserQueryService(ctrl)
 			userQS.EXPECT().FindByKeyword(gomock.Any(), keywords, params.Active, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Entities{prefectureDomain}, nil)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
 			uc := &usecase{
 				tracer:  lt,
 				userQS:  userQS,
@@ -239,7 +239,7 @@ func TestCreate(t *testing.T) {
 	prefectureName := "prefecture_name"
 
 	pftDomain, err := prefecture.New(
-		prefectureID.String(),
+		prefectureID,
 		prefectureName,
 		1,
 	)
