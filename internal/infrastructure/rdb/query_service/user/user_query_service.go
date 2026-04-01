@@ -39,10 +39,15 @@ func (s *service) FindByKeyword(ctx context.Context, keywords []string, active *
 		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
 	}
 
+	var activeState gen.ActiveState
+	if active != nil {
+		activeState = sqlc.BoolToActiveState(*active)
+	}
+
 	db := gen.New(s.db.NewLoggingDB(ctx))
 	rows, err := db.ListUsersByKeywords(ctx, &gen.ListUsersByKeywordsParams{
 		PatternsParam: tokens,
-		DeletedState:  sqlc.BoolPtrToDeletedState(active),
+		ActiveState:   activeState,
 		LimitParam:    int32(limit),
 		OffsetParam:   int32(offset),
 	})

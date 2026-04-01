@@ -99,8 +99,13 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
+	var activeState gen.ActiveState
+	if active != nil {
+		activeState = sqlc.BoolToActiveState(*active)
+	}
+
 	db := gen.New(r.db.NewLoggingDB(ctx))
-	count, err := db.CountUsersByDeletedState(ctx, sqlc.BoolPtrToDeletedState(active))
+	count, err := db.CountUsersByActiveState(ctx, activeState)
 	if err != nil {
 		return 0, pgerror.NormalizeError(err)
 	}

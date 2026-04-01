@@ -288,7 +288,7 @@ func TestCountByActive(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, ptr.To(true))
 				require.NoError(t, err)
-				require.Equal(t, int64(2), got)
+				require.Equal(t, int64(8), got)
 			})
 		})
 		t.Run("active=falseの場合、非アクティブなユーザーの件数が取得できる", func(t *testing.T) {
@@ -296,7 +296,7 @@ func TestCountByActive(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, ptr.To(false))
 				require.NoError(t, err)
-				require.Equal(t, int64(8), got)
+				require.Equal(t, int64(2), got)
 			})
 		})
 		t.Run("active=nilの場合、全ユーザーの件数が取得できる", func(t *testing.T) {
