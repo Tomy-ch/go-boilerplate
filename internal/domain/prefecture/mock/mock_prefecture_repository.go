@@ -10,11 +10,10 @@
 package mock_prefecture
 
 import (
-	context "context"
-	reflect "reflect"
-
 	prefecture "boilerplate-go/internal/domain/prefecture"
 	uuid "boilerplate-go/pkg/uuid"
+	context "context"
+	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
 )
