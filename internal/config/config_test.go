@@ -53,8 +53,8 @@ func TestNewConfig(t *testing.T) {
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 				},
 				dbconnection: DBConnectionConfig{
-					maxOpenConns: expectedDBMaxOpenConnsInt32,
-					maxIdleConns: expectedDBMaxIdleConnsInt32,
+					maxOpenConns: expectedDBMaxConnsInt32,
+					maxIdleConns: expectedDBMinConnsInt32,
 					maxLifetime:  expectedDBMaxLifetime,
 					maxIdleTime:  expectedDBMaxIdleTime,
 				},

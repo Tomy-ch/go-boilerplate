@@ -50,8 +50,8 @@ Processing contents:
 
 1. Initialize connection with `sql.Open()`
 2. Connection pool configuration
-    - MaxOpenConns
-    - MaxIdleConns
+    - MaxConns
+    - MinConns
     - ConnMaxLifetime
     - ConnMaxIdleTime
 3. DB connectivity check using `PingContext`

@@ -35,8 +35,8 @@ func NewDB(
 	}
 
 	// 接続プール設定
-	poolCfg.MaxConns = dbConnCfg.MaxOpenConns()
-	poolCfg.MinConns = dbConnCfg.MaxIdleConns()
+	poolCfg.MaxConns = dbConnCfg.MaxConns()
+	poolCfg.MinConns = dbConnCfg.MinConns()
 	poolCfg.MaxConnLifetime = dbConnCfg.MaxLifetime()
 	poolCfg.MaxConnIdleTime = dbConnCfg.MaxIdleTime()
 

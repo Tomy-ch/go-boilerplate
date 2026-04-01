@@ -252,11 +252,11 @@ func (d *DatabaseConfig) DSNWithTimeZone(o *OperationSystemConfig) string {
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }
 
-// MaxOpenConns は、データベースの最大オープン接続数を返します。
-func (c *DBConnectionConfig) MaxOpenConns() int32 { return c.maxOpenConns }
+// MaxConns は、データベースの最大オープン接続数を返します。
+func (c *DBConnectionConfig) MaxConns() int32 { return c.maxOpenConns }
 
-// MaxIdleConns は、データベースの最大アイドル接続数を返します。
-func (c *DBConnectionConfig) MaxIdleConns() int32 { return c.maxIdleConns }
+// MinConns は、データベースの最大アイドル接続数を返します。
+func (c *DBConnectionConfig) MinConns() int32 { return c.maxIdleConns }
 
 // MaxLifetime は、データベースの接続の最大寿命を返します。
 func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime }

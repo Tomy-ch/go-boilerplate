@@ -260,14 +260,14 @@ func TestGetterMethods(t *testing.T) {
 	t.Run("DBConnection", func(t *testing.T) {
 		t.Parallel()
 		connection := cfg.dbconnection
-		t.Run("MaxOpenConns", func(t *testing.T) {
+		t.Run("MaxConns", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxOpenConnsInt32, connection.MaxOpenConns())
+			require.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
 		})
 
-		t.Run("MaxIdleConns", func(t *testing.T) {
+		t.Run("MinConns", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxIdleConnsInt32, connection.MaxIdleConns())
+			require.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
 		})
 
 		t.Run("MaxLifetime", func(t *testing.T) {

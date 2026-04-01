@@ -53,10 +53,10 @@ func TestConfigTestingSetters(t *testing.T) {
 		require.Equal(t, expected, cfg.database.Password())
 	})
 
-	t.Run("SetMaxOpenConns", func(t *testing.T) {
+	t.Run("SetMaxConns", func(t *testing.T) {
 		expected := int32(20)
-		cfg.dbconnection.SetMaxOpenConns(t, expected)
-		require.Equal(t, expected, cfg.dbconnection.MaxOpenConns())
+		cfg.dbconnection.SetMaxConns(t, expected)
+		require.Equal(t, expected, cfg.dbconnection.MaxConns())
 	})
 
 	t.Run("SetCIDR", func(t *testing.T) {

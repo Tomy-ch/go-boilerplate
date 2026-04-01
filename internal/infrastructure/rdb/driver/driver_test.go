@@ -81,7 +81,7 @@ func TestNewDB(t *testing.T) {
 			osCfg := config.NewOperationSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 			// 無効な値を設定して、コネクションプールの作成に失敗させる
-			dbConnCfg.SetMaxOpenConns(t, -1)
+			dbConnCfg.SetMaxConns(t, -1)
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 			require.Error(t, err)

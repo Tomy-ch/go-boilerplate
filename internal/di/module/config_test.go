@@ -50,7 +50,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 		require.Equal(t, config.NewMetricsConfig(cfg).Port(), metricsCfg.Port())
 		require.Equal(t, config.NewObservabilityConfig(cfg).Enabled(), obsCfg.Enabled())
 		require.Equal(t, config.NewDatabaseConfig(cfg).Driver(), dbCfg.Driver())
-		require.Equal(t, config.NewDBConnectionConfig(cfg).MaxOpenConns(), dbConnCfg.MaxOpenConns())
+		require.Equal(t, config.NewDBConnectionConfig(cfg).MaxConns(), dbConnCfg.MaxConns())
 		require.Equal(t, config.NewSecurityConfig(cfg).AllowedOrigins(), secCfg.AllowedOrigins())
 		require.Equal(t, config.NewIPRateLimitConfig(cfg).Enabled(), ipCfg.Enabled())
 	})

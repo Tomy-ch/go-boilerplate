@@ -62,10 +62,10 @@ type Database struct {
 }
 
 type DBConnection struct {
-	MaxOpenConns int32         `env:"MAX_OPEN,required"`
-	MaxIdleConns int32         `env:"MAX_IDLE,required"`
-	MaxLifetime  time.Duration `env:"MAX_LIFETIME,required"`
-	MaxIdleTime  time.Duration `env:"MAX_IDLE_TIME,required"`
+	MaxConns    int32         `env:"MAX_CONNS,required"`
+	MinConns    int32         `env:"MIN_CONNS,required"`
+	MaxLifetime time.Duration `env:"MAX_LIFETIME,required"`
+	MaxIdleTime time.Duration `env:"MAX_IDLE_TIME,required"`
 }
 
 type Security struct {

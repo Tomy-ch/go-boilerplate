@@ -50,8 +50,8 @@ func NewDB(...) (DatabaseDriver, error)
 
 1. `sql.Open()` による接続初期化
 2. 接続プール設定
-    - MaxOpenConns
-    - MaxIdleConns
+    - MaxConns
+    - MinConns
     - ConnMaxLifetime
     - ConnMaxIdleTime
 3. `PingContext` による DB 疎通確認

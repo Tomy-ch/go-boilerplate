@@ -73,16 +73,16 @@ var (
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
 	// dbconnection
-	expectedDBMaxOpenConns      = 10
-	expectedDBMaxOpenConnsInt32 = int32(expectedDBMaxOpenConns)
-	expectedDBMaxIdleConns      = 5
-	expectedDBMaxIdleConnsInt32 = int32(expectedDBMaxIdleConns)
-	expectedDBMaxLifetimeCount  = 60
-	expectedDBMaxLifetimeStr    = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)
-	expectedDBMaxLifetime       = time.Duration(expectedDBMaxLifetimeCount) * time.Second
-	expectedDBMaxIdleTimeCount  = 30
-	expectedDBMaxIdleTimeStr    = fmt.Sprintf("%ds", expectedDBMaxIdleTimeCount)
-	expectedDBMaxIdleTime       = time.Duration(expectedDBMaxIdleTimeCount) * time.Second
+	expectedDBMaxConns         = 10
+	expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
+	expectedDBMinConns         = 5
+	expectedDBMinConnsInt32    = int32(expectedDBMinConns)
+	expectedDBMaxLifetimeCount = 60
+	expectedDBMaxLifetimeStr   = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)
+	expectedDBMaxLifetime      = time.Duration(expectedDBMaxLifetimeCount) * time.Second
+	expectedDBMaxIdleTimeCount = 30
+	expectedDBMaxIdleTimeStr   = fmt.Sprintf("%ds", expectedDBMaxIdleTimeCount)
+	expectedDBMaxIdleTime      = time.Duration(expectedDBMaxIdleTimeCount) * time.Second
 	// security
 	expectedAllowedOrigins        = "http://localhost,https://example.com"
 	expectedCIDRStr               = "192.168.0.0/24"
@@ -164,8 +164,8 @@ func MockConfigForTest(t testing.TB) *Config {
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: expectedDBMaxOpenConnsInt32,
-			maxIdleConns: expectedDBMaxIdleConnsInt32,
+			maxOpenConns: expectedDBMaxConnsInt32,
+			maxIdleConns: expectedDBMinConnsInt32,
 			maxLifetime:  expectedDBMaxLifetime,
 			maxIdleTime:  expectedDBMaxIdleTime,
 		},
@@ -245,10 +245,10 @@ func mockLoader(t testing.TB) Loader {
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		DBConnection: DBConnection{
-			MaxOpenConns: expectedDBMaxOpenConnsInt32,
-			MaxIdleConns: expectedDBMaxIdleConnsInt32,
-			MaxLifetime:  expectedDBMaxLifetime,
-			MaxIdleTime:  expectedDBMaxIdleTime,
+			MaxConns:    expectedDBMaxConnsInt32,
+			MinConns:    expectedDBMinConnsInt32,
+			MaxLifetime: expectedDBMaxLifetime,
+			MaxIdleTime: expectedDBMaxIdleTime,
 		},
 		Security: Security{
 			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -320,8 +320,8 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function
 	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
 	// DBConnection
-	t.Setenv("DBCONN_MAX_OPEN", strconv.FormatInt(int64(expectedDBMaxOpenConnsInt32), 10))
-	t.Setenv("DBCONN_MAX_IDLE", strconv.FormatInt(int64(expectedDBMaxIdleConnsInt32), 10))
+	t.Setenv("DBCONN_MAX_CONNS", strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10))
+	t.Setenv("DBCONN_MIN_CONNS", strconv.FormatInt(int64(expectedDBMinConnsInt32), 10))
 	t.Setenv("DBCONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
 	t.Setenv("DBCONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
 	// Security
