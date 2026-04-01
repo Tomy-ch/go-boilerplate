@@ -91,7 +91,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 			continue
 		}
 		_, err = db.Exec(ctx, string(data))
-		log := logger.Named("dbSeedRun.ExecContext")
+		log := logger.Named("dbSeedRun.Exec")
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if xerrors.As(err, &pgErr) &&
@@ -99,13 +99,13 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 				log.Error(
 					"failed to exec seed file",
 					logging.String("file", f),
-					logging.Error("db.ExecContext", err),
+					logging.Error("db.Exec", err),
 				)
 			}
 			log.Warn(
 				"table does not exist, skipping seed",
 				logging.String("file", f),
-				logging.Error("db.ExecContext", err),
+				logging.Error("db.Exec", err),
 			)
 		} else {
 			log.Info(
