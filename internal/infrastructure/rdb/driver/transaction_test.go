@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 
@@ -15,38 +14,36 @@ import (
 func TestNewTransactionManager(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
 	testLogger := logging.NewTestLogger(t)
 
-	db, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
-	dbDriver := &dbDriver{db}
+	db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		err := dbDriver.Close()
-		require.NoError(t, err)
+		require.NoError(t, db.Close())
 	})
 
-	manager := NewTransactionManager(cfg, dbDriver, testLogger)
+	manager := NewTransactionManager(cfg, db, testLogger)
 	require.NotNil(t, manager)
 }
 
 func TestTxManager_Do(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
 	testLogger := logging.NewTestLogger(t)
 
-	rowDB, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
-	dbDriver := &dbDriver{rowDB}
+	db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		err := dbDriver.Close()
-		require.NoError(t, err)
+		require.NoError(t, db.Close())
 	})
 
-	manager := NewTransactionManager(cfg, dbDriver, testLogger)
+	manager := NewTransactionManager(cfg, db, testLogger)
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -85,10 +82,10 @@ func TestTxManager_Do(t *testing.T) {
 
 		t.Run("すでにtxがある場合", func(t *testing.T) {
 			ctx := context.Background()
-			tx, err := dbDriver.BeginTx(ctx, nil)
+			tx, err := db.Begin(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() {
-				err = tx.Rollback()
+				err = tx.Rollback(context.Background())
 				require.NoError(t, err)
 			})
 

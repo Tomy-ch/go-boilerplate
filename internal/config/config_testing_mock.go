@@ -73,8 +73,10 @@ var (
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
 	// dbconnection
-	expectedDBMaxOpenConns     = 10
-	expectedDBMaxIdleConns     = 5
+	expectedDBMaxConns         = 10
+	expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
+	expectedDBMinConns         = 5
+	expectedDBMinConnsInt32    = int32(expectedDBMinConns)
 	expectedDBMaxLifetimeCount = 60
 	expectedDBMaxLifetimeStr   = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)
 	expectedDBMaxLifetime      = time.Duration(expectedDBMaxLifetimeCount) * time.Second
@@ -162,10 +164,10 @@ func MockConfigForTest(t testing.TB) *Config {
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: expectedDBMaxOpenConns,
-			maxIdleConns: expectedDBMaxIdleConns,
-			maxLifetime:  expectedDBMaxLifetime,
-			maxIdleTime:  expectedDBMaxIdleTime,
+			maxConns:    expectedDBMaxConnsInt32,
+			minConns:    expectedDBMinConnsInt32,
+			maxLifetime: expectedDBMaxLifetime,
+			maxIdleTime: expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -243,10 +245,10 @@ func mockLoader(t testing.TB) Loader {
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		DBConnection: DBConnection{
-			MaxOpenConns: expectedDBMaxOpenConns,
-			MaxIdleConns: expectedDBMaxIdleConns,
-			MaxLifetime:  expectedDBMaxLifetime,
-			MaxIdleTime:  expectedDBMaxIdleTime,
+			MaxConns:    expectedDBMaxConnsInt32,
+			MinConns:    expectedDBMinConnsInt32,
+			MaxLifetime: expectedDBMaxLifetime,
+			MaxIdleTime: expectedDBMaxIdleTime,
 		},
 		Security: Security{
 			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -318,8 +320,8 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function
 	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
 	// DBConnection
-	t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
-	t.Setenv("DBCONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
+	t.Setenv("DBCONN_MAX_CONNS", strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10))
+	t.Setenv("DBCONN_MIN_CONNS", strconv.FormatInt(int64(expectedDBMinConnsInt32), 10))
 	t.Setenv("DBCONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
 	t.Setenv("DBCONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
 	// Security

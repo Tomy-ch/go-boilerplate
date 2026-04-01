@@ -155,8 +155,8 @@ linters:
               desc: "cliパッケージは他のusecase層に依存してはいけません。"
             - pkg: boilerplate-go/internal/controller/
               desc: "cliパッケージは他のcontroller層に依存してはいけません。"
-            - pkg: boilerplate-go/internal/infrastructure/
-              desc: "cliパッケージは他のinfrastructure層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/infrastructure/(?!.*driver)
+              desc: "cliパッケージは他のinfrastructure層に依存してはいけません。ただし、driver配下のものは、コマンド実装のために必要な場合があるため例外とします。"
         independent_config: # configパッケージが責務の実装層にも依存しないことを保証します
           files:
             - "**/internal/config/**.go"

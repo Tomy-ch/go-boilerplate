@@ -3,12 +3,12 @@ package seed
 
 import (
 	"context"
-	"database/sql"
 	"os"
 	"path/filepath"
 	"sort"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/pkg/xerrors"
 
@@ -55,8 +55,9 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := sql.Open("postgres", dbCfg.DSNWithTimeZone(osCfg))
+	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	if err != nil {
 		logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error("dbOpen", err))
 		return err
@@ -89,8 +90,8 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 			readFilesErr = err
 			continue
 		}
-		_, err = db.ExecContext(ctx, string(data))
-		log := logger.Named("dbSeedRun.ExecContext")
+		_, err = db.Exec(ctx, string(data))
+		log := logger.Named("dbSeedRun.Exec")
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if xerrors.As(err, &pgErr) &&
@@ -98,13 +99,13 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 				log.Error(
 					"failed to exec seed file",
 					logging.String("file", f),
-					logging.Error("db.ExecContext", err),
+					logging.Error("db.Exec", err),
 				)
 			}
 			log.Warn(
 				"table does not exist, skipping seed",
 				logging.String("file", f),
-				logging.Error("db.ExecContext", err),
+				logging.Error("db.Exec", err),
 			)
 		} else {
 			log.Info(

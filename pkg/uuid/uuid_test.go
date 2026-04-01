@@ -3,7 +3,6 @@ package uuid
 import (
 	"testing"
 
-	guid "github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -99,61 +98,50 @@ func TestParse(t *testing.T) {
 	})
 }
 
-func TestFromPrimitive(t *testing.T) {
+func TestScan(t *testing.T) {
 	t.Parallel()
-
-	uuid, err := New()
+	u, err := New()
 	require.NoError(t, err)
 
-	primitive := toGoogle(uuid)
-	actual := FromPrimitive(primitive)
-	require.True(t, uuid.Equal(actual))
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("文字列からスキャンできる", func(t *testing.T) {
+			t.Parallel()
+			var s UUID
+			err := s.Scan(u.String())
+			require.NoError(t, err)
+			require.True(t, u.Equal(s))
+		})
+
+		t.Run("バイト列からスキャンできる", func(t *testing.T) {
+			t.Parallel()
+			var s UUID
+			b := u.Bytes()
+			err := s.Scan(b[:])
+			require.NoError(t, err)
+			require.True(t, u.Equal(s))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("サポート外の型だとエラーになる", func(t *testing.T) {
+			t.Parallel()
+			var s UUID
+			err := s.Scan(123)
+			require.Error(t, err)
+		})
+	})
 }
 
-func TestFromPrimitiveList(t *testing.T) {
+func TestValue(t *testing.T) {
 	t.Parallel()
-	uuid1, err := New()
-	require.NoError(t, err)
-	uuid2, err := New()
+	u, err := New()
 	require.NoError(t, err)
 
-	primitiveList := []guid.UUID{
-		toGoogle(uuid1),
-		toGoogle(uuid2),
-	}
-
-	uuidList := FromPrimitiveList(primitiveList)
-	require.Len(t, uuidList, 2)
-	require.True(t, uuid1.Equal(uuidList[0]))
-	require.True(t, uuid2.Equal(uuidList[1]))
-}
-
-func TestToPrimitiveList(t *testing.T) {
-	t.Parallel()
-	uuid1, err := New()
+	v, err := u.Value()
 	require.NoError(t, err)
-	uuid2, err := New()
-	require.NoError(t, err)
-
-	uuidList := []UUID{uuid1, uuid2}
-
-	primitiveList := ToPrimitiveList(uuidList)
-	require.Len(t, primitiveList, 2)
-	require.Equal(t, toGoogle(uuid1), primitiveList[0])
-	require.Equal(t, toGoogle(uuid2), primitiveList[1])
-}
-
-func TestToPrimitiveUniqueList(t *testing.T) {
-	t.Parallel()
-	uuid1, err := New()
-	require.NoError(t, err)
-	uuid2, err := New()
-	require.NoError(t, err)
-
-	uuidList := []UUID{uuid1, uuid2, uuid1, uuid2}
-
-	primitiveList := ToPrimitiveUniqueList(uuidList)
-	require.Len(t, primitiveList, 2)
-	require.Contains(t, primitiveList, toGoogle(uuid1))
-	require.Contains(t, primitiveList, toGoogle(uuid2))
+	require.Equal(t, u.String(), v)
 }

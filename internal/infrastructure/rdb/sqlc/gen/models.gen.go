@@ -5,12 +5,11 @@
 package gen
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	uuid "boilerplate-go/pkg/uuid"
 )
 
 type DeletedState string
@@ -127,19 +126,19 @@ type Products struct {
 	// 名称
 	Name string
 	// 説明
-	Description sql.NullString
+	Description *string
 	// 価格
 	Price int32
 	// 在庫数
 	Quantity int32
 	// 在庫警告閾値
-	StockWarningThreshold sql.NullInt32
+	StockWarningThreshold *int32
 	// 商品ステータスID
 	StatusID uuid.UUID
 	// 商品カテゴリID
 	CategoryID uuid.UUID
 	// 公開日時
-	PublishedAt sql.NullTime
+	PublishedAt *time.Time
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -201,13 +200,13 @@ type Purchases struct {
 	// 注文日時
 	OrderedAt time.Time
 	// 支払日時
-	PaidAt sql.NullTime
+	PaidAt *time.Time
 	// キャンセル日時
-	CanceledAt sql.NullTime
+	CanceledAt *time.Time
 	// 発送日時
-	ShippedAt sql.NullTime
+	ShippedAt *time.Time
 	// 配達日時
-	DeliveredAt sql.NullTime
+	DeliveredAt *time.Time
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -240,15 +239,15 @@ type Users struct {
 	// 番地
 	Street string
 	// 建物名
-	Building sql.NullString
+	Building *string
 	// 郵便番号
 	PostalCode string
 	// 削除日時
-	DeletedAt sql.NullTime
+	DeletedAt *time.Time
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
 	UpdatedAt time.Time
 	// 全文検索用テキスト
-	SearchText sql.NullString
+	SearchText *string
 }

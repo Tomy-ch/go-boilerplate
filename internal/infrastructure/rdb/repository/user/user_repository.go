@@ -5,13 +5,11 @@ import (
 	"context"
 
 	"boilerplate-go/internal/domain/user"
-	"boilerplate-go/internal/infrastructure/rdb/conv"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
 	"boilerplate-go/internal/observability"
-	"boilerplate-go/pkg/uuid"
 )
 
 type repository struct {
@@ -46,20 +44,20 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Use
 	users := make(user.Users, len(rows))
 	for i, row := range rows {
 		user, err := user.New(
-			uuid.FromPrimitive(row.Users.ID),
+			row.Users.ID,
 			row.Users.FirstName,
 			row.Users.LastName,
 			row.Users.PasswordHash,
 			row.Users.Email,
 			row.Users.Phone,
-			uuid.FromPrimitive(row.Users.PrefectureID),
+			row.Users.PrefectureID,
 			row.Users.City,
 			row.Users.Street,
-			conv.StringPtrFromNull(row.Users.Building),
+			row.Users.Building,
 			row.Users.PostalCode,
 			row.Users.CreatedAt,
 			row.Users.UpdatedAt,
-			conv.TimePtrFromNull(row.Users.DeletedAt),
+			row.Users.DeletedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -76,16 +74,16 @@ func (r *repository) Create(ctx context.Context, user *user.User) error {
 
 	db := gen.New(r.db.NewLoggingDB(ctx))
 	err := db.CreateUser(ctx, &gen.CreateUserParams{
-		ID:           user.ID().ToPrimitive(),
+		ID:           user.ID(),
 		FirstName:    user.FirstName(),
 		LastName:     user.LastName(),
 		PasswordHash: user.PasswordHash(),
 		Email:        user.Email(),
 		Phone:        user.Phone(),
-		PrefectureID: user.PrefectureID().ToPrimitive(),
+		PrefectureID: user.PrefectureID(),
 		City:         user.City(),
 		Street:       user.Street(),
-		Building:     conv.NullStringFromPtr(user.Building()),
+		Building:     user.Building(),
 		PostalCode:   user.PostalCode(),
 		CreatedAt:    user.CreatedAt(),
 		UpdatedAt:    user.UpdatedAt(),

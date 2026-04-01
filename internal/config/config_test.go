@@ -53,10 +53,10 @@ func TestNewConfig(t *testing.T) {
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 				},
 				dbconnection: DBConnectionConfig{
-					maxOpenConns: expectedDBMaxOpenConns,
-					maxIdleConns: expectedDBMaxIdleConns,
-					maxLifetime:  expectedDBMaxLifetime,
-					maxIdleTime:  expectedDBMaxIdleTime,
+					maxConns:    expectedDBMaxConnsInt32,
+					minConns:    expectedDBMinConnsInt32,
+					maxLifetime: expectedDBMaxLifetime,
+					maxIdleTime: expectedDBMaxIdleTime,
 				},
 				security: SecurityConfig{
 					allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -326,6 +326,29 @@ func Test_validateDatabaseConfig(t *testing.T) {
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidSlowQueryWarnThreshold)
+		})
+	})
+}
+
+func Test_validateDBConnectionConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		cfg := mockLoader(t)
+		err := validateDBConnectionConfig(cfg.DBConnection)
+		require.NoError(t, err)
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("MinConnsがMaxConnsを超えている場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.DBConnection.MinConns = cfg.DBConnection.MaxConns + 1 // MinConnsがMaxConnsを超える
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidExceedMaxConns)
 		})
 	})
 }

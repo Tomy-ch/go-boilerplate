@@ -100,11 +100,16 @@ sqlc の生成コードは次の場所にあります。
 
 sqlc が返す Row 構造体は **Infrastructure 専用型**です。
 
-そのため Repository は必ず **Domain エンティティへ変換**します。
+ただし、本プロジェクトでは sqlc の override を利用して、生成時に次のような型変換を適用しています。
+
+- nullable → pointer 型
+- UUID → `pkg/uuid` 型
+
+そのため Repository では、追加の変換処理をほとんど行わず、生成済みの型をそのまま Domain constructor に渡せます。
 
 ```go
-user, err := user.New(
-    uuid.FromPrimitive(row.Users.ID),
+userEntity, err := user.New(
+    row.Users.ID,
     row.Users.FirstName,
     row.Users.LastName,
     ...
@@ -113,8 +118,9 @@ user, err := user.New(
 
 重要ルール
 
-- `sqlc` Row を上位層に返さない
+- `sqlc` 型をそのまま上位層へ返さない
 - Domain constructor を利用する
+- Repository は Row / Model を Domain エンティティへ詰め替えて返す
 
 ## Domain constructor error
 
@@ -122,7 +128,7 @@ Domain エンティティ生成に失敗した場合、
 そのエラーは **そのまま返却します。**
 
 ```go
-user, err := user.New(...)
+userEntity, err := user.New(...)
 if err != nil {
     return nil, err
 }
@@ -136,51 +142,17 @@ if err != nil {
 
 これらは **Domainレイヤーの責務として扱う**ためです。
 
-## UUID 変換
+## UUID について
 
-DB は primitive UUID を使用します。
+本プロジェクトでは sqlc override により、DB 上の UUID と Domain で利用する `pkg/uuid` を同一の扱いに寄せています。
 
-Domain では `pkg/uuid.UUID` を使用します。
-
-そのため変換が必要になります。
+そのため Repository での明示的な UUID 変換は基本的に不要です。
 
 ```go
-uuid.FromPrimitive(row.ID)
-uuid.ToPrimitiveUniqueList(ids)
+row.Users.ID // そのまま Domain constructor に渡せる
 ```
 
-UUID 操作は
-
-`pkg/uuid`
-
-のラッパーを利用します。
-
-## nullable 変換
-
-DB の nullable 値は `sql.Null*` 型で表現されます。
-
-Repository では
-
-`internal/infrastructure/rdb/conv`
-
-のユーティリティを使用して変換します。
-
-例
-
-```go
-conv.StringPtrFromNull(row.Users.Building)
-conv.NullStringFromPtr(user.Building())
-```
-
-これにより
-
-```mermaid
-flowchart LR
-    NullString["sql.NullString"] <--> StringPtr["*string"]
-    NullTime["sql.NullTime"] <--> TimePtr["*time.Time"]
-```
-
-の変換を一元化できます。
+UUID の生成・比較・補助処理は `pkg/uuid` のラッパーを利用します。
 
 ## sqlc helper
 
@@ -209,15 +181,32 @@ DeletedState: sqlc.BoolPtrToDeletedState(active)
 - 検索パターン統一
 - 状態変換の一元化
 
+## LIKE検索について
+
+LIKE 検索は Repository で実装して問題ありません。
+
+ただし、次の条件を満たす必要があります。
+
+- 単一フィールドの単純検索であること
+- ドメインロジックを含まないこと
+- sqlc helper を利用すること
+- 集約の永続化責務の範囲に収まること
+
+次のようなケースは QueryService に分離します。
+
+- 複数フィールド検索
+- AND / OR を組み合わせた検索
+- relevance やスコアリングを伴う検索
+- 複雑なフィルタ + ソート + ページング
+- 一覧画面専用の読み取り最適化検索
+
 ## LoggingDBProvider
 
-Repository は直接 `driver.DatabaseDriver` を使わず
+Repository は通常、`loggingdb.DBProvider` を利用して DB にアクセスします。
 
 ```go
 db := gen.New(r.db.NewLoggingDB(ctx))
 ```
-
-で sqlc Querier を生成します。
 
 `loggingdb.DBProvider` は次を提供します。
 
@@ -226,6 +215,25 @@ db := gen.New(r.db.NewLoggingDB(ctx))
 - Contextベース接続取得
 
 Repository は **DB接続状態を意識しない設計**になります。
+
+## driver の直接利用
+
+ロギングが不要な場合は、ロギングなしの DB アクセスを利用できます。
+
+```go
+db := gen.New(r.db.NewDB(ctx))
+```
+
+用途
+
+- 高頻度処理でログノイズを抑えたい場合
+- ロギング不要な単純処理
+- ベンチマークや最小経路の確認
+
+原則
+
+- 通常は `NewLoggingDB(ctx)` を使用する
+- 明確な理由がある場合のみ `NewDB(ctx)` を使用する
 
 ## エラー正規化
 
@@ -291,9 +299,17 @@ Repository は
 - span開始
 - span終了
 
-のみを知ります。
+のみを責務とします。
 
-OpenTelemetry SDK には直接依存しません。
+### span名について
+
+span名は LayerTracer 側で統一的に付与されるため、Repository 側で明示的に指定する必要はありません。
+
+### 設計意図
+
+- トレーシングの一貫性確保
+- 各レイヤーでの責務分離
+- OpenTelemetry への直接依存排除
 
 ## DI（Dependency Injection）の仕組み（Repository）
 
@@ -395,14 +411,17 @@ type service struct {
 
 Repository 実装は次の依存を持ちます。
 
-- loggingdb.DBProvider は、Repository が利用する唯一の DB アクセス入口です。
+- loggingdb.DBProvider は、Repository が通常利用する DB アクセス入口です。
   - SQL ログ出力
   - トレース連携
   - DB / Tx の透過切り替え
   を提供します。
 
-- driver.DatabaseDriver は、ロギング機能を持たない純粋な DB 接続ドライバです。
-  - ロギングが不要な場合は、`r.db.NewDB(ctx)` を使用して直接取得できます。
+- ロギングが不要な場合は、`r.db.NewDB(ctx)` を利用してロギングなしの DB アクセスを使用できます。
+  - 高頻度処理
+  - ベンチマーク
+  - ログノイズを避けたい処理
+  など、明確な理由がある場合のみ使います。
 
 - observability.TracerFactory は、LayerTracer を生成するためのファクトリです。
   - Repository では Infra レイヤー用 tracer を使用します
@@ -468,7 +487,7 @@ Repository テストは **Domain ロジックの検証を目的としません**
 Repository テストは `testkit` を使用して DB を初期化します。
 
 ```go
- db, provider := testkit.NewTestDBWithLoggingProvider(t)
+db, provider := testkit.NewTestDBWithLoggingProvider(t)
 ```
 
 この関数は次を提供します。
@@ -481,11 +500,11 @@ Repository テストは `testkit` を使用して DB を初期化します。
 各テストは **トランザクション内で実行されます**。
 
 ```go
- txm := testkit.NewTestTransactionManager(t)
+txm := testkit.NewTestTransactionManager(t)
 
- txm.WithinTx(func(ctx context.Context) {
-     // test logic
- })
+txm.WithinTx(func(ctx context.Context) {
+    // test logic
+})
 ```
 
 内部動作
@@ -661,15 +680,28 @@ u, err := user.New(...)
 
 Repository は **集約単位の永続化抽象**です。
 
-そのため
+そのため、以下のような処理は Repository に含めて問題ありません。
 
-- `FindByKeyword`
-- `SearchUser`
-- `AggregateSearch`
+- 単純な条件フィルタ
+- 件数取得（COUNT）
+- ID / 外部キーによる取得
+- 集約の責務に収まる単純な絞り込み
 
-などの **検索専用 API を実装してはいけません。**
+例
 
-検索は`QueryService`として別レイヤーに分離します。
+```go
+CountByActive(ctx context.Context, active *bool)
+```
+
+一方で、以下のような **検索専用 API** は Repository に実装してはいけません。
+
+- フルテキスト検索
+- 複数条件を横断する複雑な検索
+- 集計・ランキング
+- UI依存の検索
+- 一覧画面専用の読み取り最適化検索
+
+これらは `QueryService` として別レイヤーに分離します。
 
 ### 5. トランザクションを開始する
 
@@ -782,25 +814,24 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Use
         return nil, pgerror.NormalizeError(err)
     }
 
-
     // Domainエンティティへの詰め替え
     users := make(user.Users, len(rows))
     for i, row := range rows {
         u, err := user.New(
-            uuid.FromPrimitive(row.Users.ID),
+            row.Users.ID,
             row.Users.FirstName,
             row.Users.LastName,
             row.Users.PasswordHash,
             row.Users.Email,
             row.Users.Phone,
-            uuid.FromPrimitive(row.Users.PrefectureID),
+            row.Users.PrefectureID,
             row.Users.City,
             row.Users.Street,
-            conv.StringPtrFromNull(row.Users.Building),
+            row.Users.Building,
             row.Users.PostalCode,
             row.Users.CreatedAt,
             row.Users.UpdatedAt,
-            conv.TimePtrFromNull(row.Users.DeletedAt),
+            row.Users.DeletedAt,
         )
         if err != nil {
             return nil, err

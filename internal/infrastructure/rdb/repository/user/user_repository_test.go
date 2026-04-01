@@ -150,7 +150,7 @@ func TestFindAll(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, db)
-				_, execErr := drv.ExecContext(ctx,
+				_, execErr := drv.Exec(ctx,
 					"INSERT INTO users "+
 						"(id, first_name, last_name, password_hash, email, phone, prefecture_id, city, street, postal_code) "+
 						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
@@ -223,9 +223,9 @@ func TestCreateUser(t *testing.T) {
 				createErr := repo.Create(ctx, userEntity)
 				require.NoError(t, createErr)
 
-				user, err := gen.New(driver.New(ctx, db)).GetUserByID(ctx, userEntity.ID().ToPrimitive())
+				user, err := gen.New(driver.New(ctx, db)).GetUserByID(ctx, userEntity.ID())
 				require.NoError(t, err)
-				require.Equal(t, userEntity.ID().String(), user.Users.ID.String())
+				require.Equal(t, userEntity.ID(), user.Users.ID)
 			})
 		})
 	})

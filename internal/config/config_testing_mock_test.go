@@ -53,10 +53,10 @@ func TestMockConfigForTest(t *testing.T) {
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: expectedDBMaxOpenConns,
-			maxIdleConns: expectedDBMaxIdleConns,
-			maxLifetime:  expectedDBMaxLifetime,
-			maxIdleTime:  expectedDBMaxIdleTime,
+			maxConns:    expectedDBMaxConnsInt32,
+			minConns:    expectedDBMinConnsInt32,
+			maxLifetime: expectedDBMaxLifetime,
+			maxIdleTime: expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -136,10 +136,10 @@ func Test_mockLoader(t *testing.T) {
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		DBConnection: DBConnection{
-			MaxOpenConns: expectedDBMaxOpenConns,
-			MaxIdleConns: expectedDBMaxIdleConns,
-			MaxLifetime:  expectedDBMaxLifetime,
-			MaxIdleTime:  expectedDBMaxIdleTime,
+			MaxConns:    expectedDBMaxConnsInt32,
+			MinConns:    expectedDBMinConnsInt32,
+			MaxLifetime: expectedDBMaxLifetime,
+			MaxIdleTime: expectedDBMaxIdleTime,
 		},
 		Security: Security{
 			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -213,8 +213,8 @@ func Test_setEnv(t *testing.T) { //nolint:funlen // safe: This function is only 
 	require.Equal(t, expectedDBPingTimeoutStr, os.Getenv("DB_PING_TIMEOUT"))
 	require.Equal(t, expectedDBSlowQueryWarnThresholdStr, os.Getenv("DB_SLOW_QUERY_WARN_THRESHOLD"))
 	// DBConnection
-	require.Equal(t, strconv.Itoa(expectedDBMaxOpenConns), os.Getenv("DBCONN_MAX_OPEN"))
-	require.Equal(t, strconv.Itoa(expectedDBMaxIdleConns), os.Getenv("DBCONN_MAX_IDLE"))
+	require.Equal(t, strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10), os.Getenv("DBCONN_MAX_CONNS"))
+	require.Equal(t, strconv.FormatInt(int64(expectedDBMinConnsInt32), 10), os.Getenv("DBCONN_MIN_CONNS"))
 	require.Equal(t, expectedDBMaxLifetimeStr, os.Getenv("DBCONN_MAX_LIFETIME"))
 	require.Equal(t, expectedDBMaxIdleTimeStr, os.Getenv("DBCONN_MAX_IDLE_TIME"))
 	// Security

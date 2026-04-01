@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"boilerplate-go/internal/config"
@@ -13,33 +12,32 @@ import (
 func TestNew(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
-	db, err := sql.Open("pgx", dbCfg.DSNWithTimeZone(osCfg))
-	dbDriver := &dbDriver{db}
+	db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		err := dbDriver.Close()
-		require.NoError(t, err)
+		require.NoError(t, db.Close())
 	})
 
 	t.Run("トランザクションが存在する場合", func(t *testing.T) {
-		tx, err := dbDriver.BeginTx(context.Background(), nil)
+		tx, err := db.Begin(context.Background())
 		require.NoError(t, err)
 		t.Cleanup(func() {
-			err := tx.Rollback()
+			err := tx.Rollback(context.Background())
 			require.NoError(t, err)
 		})
 
 		ctx := withTx(context.Background(), tx)
-		conn := New(ctx, dbDriver)
+		conn := New(ctx, db)
 		require.Equal(t, tx, conn)
 	})
 
 	t.Run("トランザクションが存在しない場合", func(t *testing.T) {
 		ctx := context.Background()
-		conn := New(ctx, dbDriver)
-		require.Equal(t, dbDriver, conn)
+		conn := New(ctx, db)
+		require.Equal(t, db, conn)
 	})
 }

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
 
 	"github.com/spf13/cobra"
@@ -49,7 +50,7 @@ func runFixCollation(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
-	dbURL := dbCfg.DSN()
+	dbURL := driver.DSNString(dbCfg)
 
 	ctx := context.Background()
 

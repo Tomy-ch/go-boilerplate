@@ -7,10 +7,9 @@ package gen
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
-	"github.com/google/uuid"
+	uuid "boilerplate-go/pkg/uuid"
 )
 
 const countUsersByDeletedState = `-- name: CountUsersByDeletedState :one
@@ -33,7 +32,7 @@ WHERE CASE $1::DELETED_STATE
 //	        ELSE TRUE
 //	    END
 func (q *Queries) CountUsersByDeletedState(ctx context.Context, deletedState DeletedState) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUsersByDeletedState, deletedState)
+	row := q.db.QueryRow(ctx, countUsersByDeletedState, deletedState)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -82,7 +81,7 @@ type CreateUserParams struct {
 	PrefectureID uuid.UUID
 	City         string
 	Street       string
-	Building     sql.NullString
+	Building     *string
 	PostalCode   string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -121,7 +120,7 @@ type CreateUserParams struct {
 //	    $13
 //	)
 func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) error {
-	_, err := q.db.ExecContext(ctx, createUser,
+	_, err := q.db.Exec(ctx, createUser,
 		arg.ID,
 		arg.FirstName,
 		arg.LastName,
@@ -155,7 +154,7 @@ type GetUserByIDRow struct {
 //	FROM users AS u
 //	WHERE u.id = $1
 func (q *Queries) GetUserByID(ctx context.Context, userIDParam uuid.UUID) (*GetUserByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserByID, userIDParam)
+	row := q.db.QueryRow(ctx, getUserByID, userIDParam)
 	var i GetUserByIDRow
 	err := row.Scan(
 		&i.Users.ID,
@@ -200,7 +199,7 @@ type ListUsersRow struct {
 //	ORDER BY u.created_at DESC
 //	LIMIT $2 OFFSET $1
 func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers, arg.OffsetParam, arg.LimitParam)
+	rows, err := q.db.Query(ctx, listUsers, arg.OffsetParam, arg.LimitParam)
 	if err != nil {
 		return nil, err
 	}
@@ -228,9 +227,6 @@ func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListU
 			return nil, err
 		}
 		items = append(items, &i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

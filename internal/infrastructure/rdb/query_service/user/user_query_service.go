@@ -5,14 +5,12 @@ import (
 	"context"
 
 	"boilerplate-go/internal/domain/user"
-	"boilerplate-go/internal/infrastructure/rdb/conv"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/user/query"
-	"boilerplate-go/pkg/uuid"
 )
 
 type service struct {
@@ -55,20 +53,20 @@ func (s *service) FindByKeyword(ctx context.Context, keywords []string, active *
 	users := make(user.Users, len(rows))
 	for i, row := range rows {
 		user, err := user.New(
-			uuid.FromPrimitive(row.Users.ID),
+			row.Users.ID,
 			row.Users.FirstName,
 			row.Users.LastName,
 			row.Users.PasswordHash,
 			row.Users.Email,
 			row.Users.Phone,
-			uuid.FromPrimitive(row.Users.PrefectureID),
+			row.Users.PrefectureID,
 			row.Users.City,
 			row.Users.Street,
-			conv.StringPtrFromNull(row.Users.Building),
+			row.Users.Building,
 			row.Users.PostalCode,
 			row.Users.CreatedAt,
 			row.Users.UpdatedAt,
-			conv.TimePtrFromNull(row.Users.DeletedAt),
+			row.Users.DeletedAt,
 		)
 		if err != nil {
 			return nil, err

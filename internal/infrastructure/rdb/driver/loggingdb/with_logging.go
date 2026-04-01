@@ -2,12 +2,14 @@ package loggingdb
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -16,14 +18,12 @@ const (
 	pkg      = "driver"
 
 	sqlExec        = "Execute statement"
-	sqlPrepare     = "Prepare statement"
 	sqlQuery       = "Query multiple rows"
 	sqlQuerySingle = "Query single row"
 
-	execContext     = "ExecContext"
-	prepareContext  = "PrepareContext"
-	queryContext    = "QueryContext"
-	queryRowContext = "QueryRowContext"
+	execFunc     = "Exec"
+	queryFunc    = "Query"
+	queryRowFunc = "QueryRow"
 )
 
 // dbWithLogging は DBTX をラップしてログを出してから実処理へ委譲する。
@@ -33,72 +33,57 @@ type dbWithLogging struct {
 	provider DBProvider
 }
 
-func (dwl *dbWithLogging) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+func (dwl *dbWithLogging) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	start := time.Now()
 
-	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, execContext))
+	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, execFunc))
 	defer end()
 
-	fields := dwl.buildSQLStartLogFields(tc, execContext)
+	fields := dwl.buildSQLStartLogFields(tc, execFunc)
 	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlExec, fields...)
 
-	res, err := dwl.db.ExecContext(ctx, query, args...)
+	res, err := dwl.db.Exec(ctx, sql, args...)
 	duration := time.Since(start)
 
-	fields = dwl.buildSQLEndLogFields(tc, execContext, query, duration, args, err)
+	fields = dwl.buildSQLEndLogFields(tc, execFunc, sql, duration, args, err)
 	dwl.logQueryResult(sqlExec, duration, fields, err)
 	return res, err
 }
 
-func (dwl *dbWithLogging) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+func (dwl *dbWithLogging) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	start := time.Now()
 
-	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, prepareContext))
+	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, queryFunc))
 	defer end()
 
-	fields := dwl.buildSQLStartLogFields(tc, prepareContext)
-	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlPrepare, fields...)
-
-	//nolint:sqlclosecheck // wrapper: caller is responsible for closing returned *sql.Stmt
-	stmt, err := dwl.db.PrepareContext(ctx, query)
-	duration := time.Since(start)
-
-	fields = dwl.buildSQLEndLogFields(tc, prepareContext, query, duration, nil, err)
-	dwl.logQueryResult(sqlPrepare, duration, fields, err)
-	return stmt, err
-}
-
-func (dwl *dbWithLogging) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	start := time.Now()
-
-	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, queryContext))
-	defer end()
-
-	fields := dwl.buildSQLStartLogFields(tc, queryContext)
+	fields := dwl.buildSQLStartLogFields(tc, queryFunc)
 	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlQuery, fields...)
 
-	//nolint:sqlclosecheck // wrapper: caller is responsible for closing returned *sql.Rows
-	rows, err := dwl.db.QueryContext(ctx, query, args...)
+	rows, err := dwl.db.Query(ctx, sql, args...) //nolint:sqlclosecheck // ownership transferred to caller; closed in sqlc layer
 	duration := time.Since(start)
 
-	fields = dwl.buildSQLEndLogFields(tc, queryContext, query, duration, args, err)
+	fields = dwl.buildSQLEndLogFields(tc, queryFunc, sql, duration, args, err)
 	dwl.logQueryResult(sqlQuery, duration, fields, err)
-	return rows, err
+
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
-func (dwl *dbWithLogging) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+func (dwl *dbWithLogging) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {
 	start := time.Now()
 
-	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, queryRowContext))
+	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, queryRowFunc))
 	defer end()
 
-	fields := dwl.buildSQLStartLogFields(tc, queryRowContext)
+	fields := dwl.buildSQLStartLogFields(tc, queryRowFunc)
 	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlQuerySingle, fields...)
 
-	row := dwl.db.QueryRowContext(ctx, query, args...)
+	row := dwl.db.QueryRow(ctx, query, args...)
 	duration := time.Since(start)
 
-	fields = dwl.buildSQLEndLogFields(tc, queryRowContext, query, duration, args, nil)
+	fields = dwl.buildSQLEndLogFields(tc, queryRowFunc, query, duration, args, nil)
 	dwl.logQueryResult(sqlQuerySingle, duration, fields, nil)
 	return row
 }

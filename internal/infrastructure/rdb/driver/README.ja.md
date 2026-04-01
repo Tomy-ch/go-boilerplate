@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-概要: **RDB（PostgreSQL）接続のための基盤ドライバレイヤー。接続管理・トランザクション境界・sqlc 実行アダプタを提供します。**
+概要: **RDB（PostgreSQL / pgx）接続のための基盤ドライバレイヤー。接続管理・トランザクション境界・sqlc 実行アダプタを提供します。**
 
 このパッケージは **Infrastructure 層の最下位に位置する DB アクセス基盤**です。
 
@@ -21,9 +21,9 @@ Driver は **RDB 接続の最下層アダプタ**です。
 
 このディレクトリは次の機能を提供します。
 
-- `sql.DB` をラップした **DatabaseDriver 抽象化**
+- `pgxpool.Pool` をラップした **DatabaseDriver 抽象化**
 - **トランザクション管理 (`tx.Manager`)**
-- **sqlc 用の DBTX インターフェース提供**
+- **pgx ベースの DBTX インターフェース提供（sqlc 互換）**
 - **接続プール設定**
 - **DB 起動時の疎通確認 (fail fast)**
 
@@ -31,12 +31,11 @@ Driver は **RDB 接続の最下層アダプタ**です。
 
 ```mermaid
 flowchart TB
-    A["sql.DB"]
-    B["sql.Tx"]
-    C["pgx driver"]
+    A["pgxpool.Pool"]
+    B["pgx.Tx"]
 ```
 
-などの **具体 DB 実装に直接依存しない設計**になります。
+のどちらでも同じクエリコードを実行できます。
 
 ## DB 初期化
 
@@ -48,33 +47,34 @@ func NewDB(...) (DatabaseDriver, error)
 
 処理内容:
 
-1. `sql.Open()` による接続初期化
+1. `pgxpool.NewWithConfig()` による接続初期化
 2. 接続プール設定
-    - MaxOpenConns
-    - MaxIdleConns
+    - MaxConns
+    - MinConns
     - ConnMaxLifetime
     - ConnMaxIdleTime
-3. `PingContext` による DB 疎通確認
+3. `Ping` による DB 疎通確認
 
 Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設計です。
 
 ## DatabaseDriver
 
-`DatabaseDriver` は `sql.DB` を抽象化したインターフェースです。
+`DatabaseDriver` は `pgxpool.Pool` を抽象化したインターフェースです。
 
 ```go
  type DatabaseDriver interface {
      DBTX
 
-     BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-     PingContext(ctx context.Context) error
+     Begin(ctx context.Context) (pgx.Tx, error)
+     Ping(ctx context.Context) error
      Close() error
+     Stats() *pgxpool.Stat
  }
 ```
 
 目的:
 
-- `sql.DB` への直接依存を避ける
+- `pgxpool.Pool` への直接依存を避ける
 - テスト時に mock 化を可能にする
 - トランザクション開始を抽象化する
 
@@ -86,10 +86,9 @@ Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設
 
 ```go
  type DBTX interface {
-     ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-     PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
-     QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-     QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+     Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error)
+     Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
+     QueryRow(ctx context.Context, query string, args ...any) pgx.Row
  }
 ```
 
@@ -97,8 +96,8 @@ Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設
 
 ```mermaid
 flowchart TB
-    A["*sql.DB"]
-    B["*sql.Tx"]
+    A["pgxpool.Pool"]
+    B["pgx.Tx"]
 ```
 
 のどちらでも同じクエリコードを実行できます。
@@ -115,8 +114,8 @@ func New(ctx context.Context, db DatabaseDriver) DBTX
 
 ```mermaid
 flowchart TB
-    HasTx["context に Tx がある"] --> ReturnTx["*sql.Tx を返す"]
-    NoTx["Tx がない"] --> ReturnDB["DatabaseDriver を返す"]
+    HasTx["context に Tx がある"] --> ReturnTx["pgx.Tx を返す"]
+    NoTx["Tx がない"] --> ReturnDB["pgxpool.Pool（DatabaseDriver）を返す"]
 ```
 
 これにより Repository 層は`DB`と`Tx`の違いを意識せずクエリを実行できます。
@@ -140,9 +139,77 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 5. 成功 → commit
 6. error → rollback
 
+※ pgx.Tx を利用したトランザクション管理です。
+
 これにより **ネストトランザクションを安全に扱うことができます。**
 
 ## 注意点
+
+### トランザクション cleanup タイムアウト
+
+rollback / commit 実行時は、リクエストの `context` がキャンセルされていても cleanup を必ず試行する必要があります。
+
+そのため、以下のパターンを採用しています。
+
+```go
+context.WithTimeout(
+    context.WithoutCancel(ctx),
+    cleanupTimeout,
+)
+```
+
+#### なぜ `context.WithoutCancel(ctx)` を使うのか
+
+cleanup は **リクエストライフサイクルに依存してはいけません**。
+
+もし元の `ctx` をそのまま使うと:
+
+- request timeout / client cancel により
+- rollback / commit がキャンセルされ
+- トランザクションが開いたまま残り
+- connection pool が枯渇する可能性があります
+
+`context.WithoutCancel(ctx)` を使うことで:
+
+- cleanup は必ず実行される
+- trace / logger / correlation ID は維持される
+
+> cleanup は「成功させること」ではなく「安全に試みること」が重要です。
+
+#### cleanupTimeout について
+
+- rollback / commit に許可する最大時間
+- 現在は `5秒` に固定
+
+この値は **ビジネス設定ではなくインフラ保護のためのセーフティ値** です。
+
+- 長すぎると:
+  - goroutine 詰まり
+  - connection pool 枯渇
+- 短すぎると:
+  - cleanup 未完了
+
+そのため、環境変数ではなく driver 内の定数として管理しています。
+
+ポイント:
+
+- `context.WithoutCancel(ctx)`
+  - リクエストキャンセルの影響を受けずに cleanup を実行
+  - trace / logger / correlation ID は維持される
+
+- `cleanupTimeout`
+  - cleanup（rollback / commit）に対する最大待機時間
+  - 現在は `5秒` に固定
+
+この値は**ビジネス設定ではなくインフラ保護のためのセーフティ値**です。
+
+- 長くしすぎると:
+  - goroutine 詰まり
+  - connection pool 枯渇
+- 短すぎると:
+  - cleanup 未完了
+
+そのため、通常は driver 内の定数として管理し、環境変数などで外部化しない方針としています。
 
 ### Context を必ず伝搬する
 

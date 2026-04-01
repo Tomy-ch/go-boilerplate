@@ -1,9 +1,7 @@
 package config
 
 import (
-	"fmt"
 	"net"
-	"net/url"
 	"time"
 )
 
@@ -68,10 +66,10 @@ type DatabaseConfig struct {
 }
 
 type DBConnectionConfig struct {
-	maxOpenConns int
-	maxIdleConns int
-	maxLifetime  time.Duration
-	maxIdleTime  time.Duration
+	maxConns    int32
+	minConns    int32
+	maxLifetime time.Duration
+	maxIdleTime time.Duration
 }
 
 type SecurityConfig struct {
@@ -227,36 +225,14 @@ func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
 
-// DSN は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		d.user,
-		d.password,
-		d.host,
-		d.port,
-		d.name,
-		d.sslMode,
-	)
-}
-
-// DSNWithTimeZone は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSNWithTimeZone(o *OperationSystemConfig) string {
-	return fmt.Sprintf(
-		"%s&timezone=%s",
-		d.DSN(),
-		url.QueryEscape(o.timezone),
-	)
-}
-
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }
 
-// MaxOpenConns は、データベースの最大オープン接続数を返します。
-func (c *DBConnectionConfig) MaxOpenConns() int { return c.maxOpenConns }
+// MaxConns は、データベースの最大オープン接続数を返します。
+func (c *DBConnectionConfig) MaxConns() int32 { return c.maxConns }
 
-// MaxIdleConns は、データベースの最大アイドル接続数を返します。
-func (c *DBConnectionConfig) MaxIdleConns() int { return c.maxIdleConns }
+// MinConns は、pgxpool の最小プールサイズ（最小接続数）を返します。
+func (c *DBConnectionConfig) MinConns() int32 { return c.minConns }
 
 // MaxLifetime は、データベースの接続の最大寿命を返します。
 func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime }

@@ -17,7 +17,10 @@ type systemQuery struct {
 	tracer observability.LayerTracer
 }
 
-func New(provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery {
+func New(
+	provider loggingdb.DBProvider,
+	tf observability.TracerFactory,
+) query.DBSystemQuery {
 	return &systemQuery{
 		db:     provider,
 		tracer: tf.Infra(),

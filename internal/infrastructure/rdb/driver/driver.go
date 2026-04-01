@@ -5,78 +5,89 @@ package driver
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"boilerplate-go/internal/config"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type DatabaseDriver interface {
 	DBTX
 
-	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-	PingContext(ctx context.Context) error
+	Begin(ctx context.Context) (pgx.Tx, error)
+	Ping(ctx context.Context) error
 	Close() error
+	Stats() *pgxpool.Stat
 }
 
-type dbDriver struct{ *sql.DB }
+type dbDriver struct{ pool *pgxpool.Pool }
 
 // NewDB は Postgres のDB接続を初期化して返します。
 func NewDB(
 	dbCfg *config.DatabaseConfig, osCfg *config.OperationSystemConfig, dbConnCfg *config.DBConnectionConfig,
 ) (DatabaseDriver, error) {
-	db, err := sql.Open(dbCfg.Driver(), dbCfg.DSNWithTimeZone(osCfg))
+	poolCfg, err := pgxpool.ParseConfig(DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
-		return nil, fmt.Errorf("failed to open DB: %w", err)
+		return nil, fmt.Errorf("failed to parse DB config: %w", err)
 	}
 
 	// 接続プール設定
-	db.SetMaxOpenConns(dbConnCfg.MaxOpenConns())
-	db.SetMaxIdleConns(dbConnCfg.MaxIdleConns())
-	db.SetConnMaxLifetime(dbConnCfg.MaxLifetime())
-	db.SetConnMaxIdleTime(dbConnCfg.MaxIdleTime())
+	poolCfg.MaxConns = dbConnCfg.MaxConns()
+	poolCfg.MinConns = dbConnCfg.MinConns()
+	poolCfg.MaxConnLifetime = dbConnCfg.MaxLifetime()
+	poolCfg.MaxConnIdleTime = dbConnCfg.MaxIdleTime()
 
-	// 疎通確認
-	pingCtx, cancel := context.WithTimeout(context.Background(), dbCfg.PingTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), dbCfg.PingTimeout())
 	defer cancel()
-	if err := db.PingContext(pingCtx); err != nil {
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DB connection pool: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("failed to ping DB: %w", err)
 	}
 
-	return &dbDriver{DB: db}, nil
+	return &dbDriver{pool: pool}, nil
 }
 
-// ExecContext は、DB.ExecContextを呼び出します。
-func (d *dbDriver) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return d.DB.ExecContext(ctx, query, args...)
+// Exec は、DB.Execを呼び出します。
+func (d *dbDriver) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return d.pool.Exec(ctx, sql, args...)
 }
 
-// PrepareContext は、DB.PrepareContextを呼び出します。
-func (d *dbDriver) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
-	return d.DB.PrepareContext(ctx, query)
+// Query は、DB.Queryを呼び出します。
+func (d *dbDriver) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return d.pool.Query(ctx, sql, args...)
 }
 
-// QueryContext は、DB.QueryContextを呼び出します。
-func (d *dbDriver) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	return d.DB.QueryContext(ctx, query, args...)
+// QueryRow は、DB.QueryRowを呼び出します。
+func (d *dbDriver) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return d.pool.QueryRow(ctx, sql, args...)
 }
 
-// QueryRowContext は、DB.QueryRowContextを呼び出します。
-func (d *dbDriver) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	return d.DB.QueryRowContext(ctx, query, args...)
+// Begin は、DB.Beginを呼び出します。
+func (d *dbDriver) Begin(ctx context.Context) (pgx.Tx, error) {
+	return d.pool.Begin(ctx)
 }
 
-// BeginTx は、DB.BeginTxを呼び出します。
-func (d *dbDriver) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
-	return d.DB.BeginTx(ctx, opts)
-}
-
-// PingContext は、DB.PingContextを呼び出します。
-func (d *dbDriver) PingContext(ctx context.Context) error {
-	return d.DB.PingContext(ctx)
+// Ping は、DB.Pingを呼び出します。
+func (d *dbDriver) Ping(ctx context.Context) error {
+	return d.pool.Ping(ctx)
 }
 
 // Close は、DB.Closeを呼び出します。
 func (d *dbDriver) Close() error {
-	return d.DB.Close()
+	d.pool.Close()
+	return nil
+}
+
+// Stats は、DB.Statsを呼び出します。
+func (d *dbDriver) Stats() *pgxpool.Stat {
+	return d.pool.Stat()
 }

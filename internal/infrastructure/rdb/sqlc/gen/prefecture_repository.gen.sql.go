@@ -8,8 +8,7 @@ package gen
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"github.com/lib/pq"
+	uuid "boilerplate-go/pkg/uuid"
 )
 
 const getPrefectureDomainByID = `-- name: GetPrefectureDomainByID :one
@@ -36,7 +35,7 @@ type GetPrefectureDomainByIDRow struct {
 //	FROM prefectures AS p
 //	WHERE p.id = $1
 func (q *Queries) GetPrefectureDomainByID(ctx context.Context, idParam uuid.UUID) (*GetPrefectureDomainByIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getPrefectureDomainByID, idParam)
+	row := q.db.QueryRow(ctx, getPrefectureDomainByID, idParam)
 	var i GetPrefectureDomainByIDRow
 	err := row.Scan(&i.ID, &i.Name, &i.Code)
 	return &i, err
@@ -68,7 +67,7 @@ type GetPrefectureDomainByIDsRow struct {
 //	WHERE p.id = ANY($1::UUID [])
 //	ORDER BY p.code
 func (q *Queries) GetPrefectureDomainByIDs(ctx context.Context, idsParam []uuid.UUID) ([]*GetPrefectureDomainByIDsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getPrefectureDomainByIDs, pq.Array(idsParam))
+	rows, err := q.db.Query(ctx, getPrefectureDomainByIDs, idsParam)
 	if err != nil {
 		return nil, err
 	}
@@ -80,9 +79,6 @@ func (q *Queries) GetPrefectureDomainByIDs(ctx context.Context, idsParam []uuid.
 			return nil, err
 		}
 		items = append(items, &i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -114,7 +110,7 @@ type GetPrefectureDomainByNameRow struct {
 //	FROM prefectures AS p
 //	WHERE p.name = $1
 func (q *Queries) GetPrefectureDomainByName(ctx context.Context, nameParam string) (*GetPrefectureDomainByNameRow, error) {
-	row := q.db.QueryRowContext(ctx, getPrefectureDomainByName, nameParam)
+	row := q.db.QueryRow(ctx, getPrefectureDomainByName, nameParam)
 	var i GetPrefectureDomainByNameRow
 	err := row.Scan(&i.ID, &i.Name, &i.Code)
 	return &i, err

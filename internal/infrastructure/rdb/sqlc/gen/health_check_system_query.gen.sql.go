@@ -17,7 +17,7 @@ SELECT 1 AS health_check
 //
 //	SELECT 1 AS health_check
 func (q *Queries) GetDBHealthCheck(ctx context.Context) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getDBHealthCheck)
+	row := q.db.QueryRow(ctx, getDBHealthCheck)
 	var health_check int32
 	err := row.Scan(&health_check)
 	return health_check, err

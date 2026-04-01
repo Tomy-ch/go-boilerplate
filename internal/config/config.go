@@ -68,10 +68,10 @@ func New() (*Config, error) {
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: cfg.DBConnection.MaxOpenConns,
-			maxIdleConns: cfg.DBConnection.MaxIdleConns,
-			maxLifetime:  cfg.DBConnection.MaxLifetime,
-			maxIdleTime:  cfg.DBConnection.MaxIdleTime,
+			maxConns:    cfg.DBConnection.MaxConns,
+			minConns:    cfg.DBConnection.MinConns,
+			maxLifetime: cfg.DBConnection.MaxLifetime,
+			maxIdleTime: cfg.DBConnection.MaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins:        cfg.Security.AllowedOrigins,
@@ -116,6 +116,10 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 	}
 
 	if err := validateDatabaseConfig(cfg.Database); err != nil {
+		return nil, err
+	}
+
+	if err := validateDBConnectionConfig(cfg.DBConnection); err != nil {
 		return nil, err
 	}
 
@@ -179,6 +183,14 @@ func validateDatabaseConfig(dbCfg Database) error {
 	}
 	if dbCfg.SlowQueryWarnThreshold < 0 {
 		return ErrInvalidSlowQueryWarnThreshold
+	}
+	return nil
+}
+
+// validateDBConnectionConfig は、データベース接続設定を検証します。
+func validateDBConnectionConfig(dbConnCfg DBConnection) error {
+	if dbConnCfg.MinConns > dbConnCfg.MaxConns {
+		return ErrInvalidExceedMaxConns
 	}
 	return nil
 }

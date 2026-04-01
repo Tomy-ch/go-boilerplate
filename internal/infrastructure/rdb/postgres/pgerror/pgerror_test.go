@@ -2,13 +2,12 @@ package pgerror
 
 import (
 	"context"
-	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"testing"
 
 	"boilerplate-go/internal/apperror"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
 )
@@ -107,16 +106,9 @@ func TestNormalizePgError(t *testing.T) {
 
 	t.Run("該当なし（NoRows）", func(t *testing.T) {
 		t.Parallel()
-		got := NormalizeError(sql.ErrNoRows)
+		got := NormalizeError(pgx.ErrNoRows)
 		require.Error(t, got)
 		require.ErrorIs(t, got, apperror.ErrNotFound)
-	})
-
-	t.Run("ドライバの接続不良", func(t *testing.T) {
-		t.Parallel()
-		got := NormalizeError(driver.ErrBadConn)
-		require.Error(t, got)
-		require.ErrorIs(t, got, apperror.ErrUnavailable)
 	})
 
 	t.Run("Postgres接続エラー(08xxx)", func(t *testing.T) {
@@ -152,12 +144,6 @@ func TestIsUnavailable(t *testing.T) {
 	t.Run("コンテキスト期限切れ", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(context.DeadlineExceeded)
-		require.True(t, got)
-	})
-
-	t.Run("ドライバの接続不良", func(t *testing.T) {
-		t.Parallel()
-		got := IsUnavailable(driver.ErrBadConn)
 		require.True(t, got)
 	})
 

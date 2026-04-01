@@ -1,10 +1,10 @@
 # driver
 
-[English](README.md) | 日本語
+English | [日本語](README.ja.md)
 
-Overview: **A foundational driver layer for RDB (PostgreSQL) connectivity. Provides connection management, transaction boundaries, and sqlc execution adapters.**
+Overview: **Base driver layer for RDB (PostgreSQL / pgx) connections. Provides connection management, transaction boundaries, and sqlc execution adapters.**
 
-This package is the **lowest-level DB access infrastructure in the Infrastructure layer**.
+This package is the **lowest-level DB access foundation in the Infrastructure layer**.
 
 The Repository layer accesses the DB through this driver.
 
@@ -19,24 +19,21 @@ Driver is the **lowest-level adapter for RDB connections**.
 
 ## Responsibilities
 
-This directory provides the following functions.
+This directory provides the following functionalities:
 
-- **DatabaseDriver abstraction** wrapping `sql.DB`
+- **DatabaseDriver abstraction** wrapping `pgxpool.Pool`
 - **Transaction management (`tx.Manager`)**
-- **DBTX interface provision for sqlc**
+- **Provision of pgx-based DBTX interface (sqlc compatible)**
 - **Connection pool configuration**
-- **DB connectivity check at startup (fail fast)**
+- **Connectivity check at DB startup (fail fast)**
 
-As a result, the Repository layer:
+With this, the Repository layer can execute the same query code with either:
 
 ```mermaid
 flowchart TB
-    A["sql.DB"]
-    B["sql.Tx"]
-    C["pgx driver"]
+    A["pgxpool.Pool"]
+    B["pgx.Tx"]
 ```
-
-is designed to **not directly depend on concrete DB implementations** such as these.
 
 ## DB Initialization
 
@@ -46,39 +43,40 @@ is designed to **not directly depend on concrete DB implementations** such as th
 func NewDB(...) (DatabaseDriver, error)
 ```
 
-Processing contents:
+Processing details:
 
-1. Initialize connection with `sql.Open()`
-2. Connection pool configuration
-    - MaxOpenConns
-    - MaxIdleConns
+1. Initialize connection via `pgxpool.NewWithConfig()`
+2. Configure connection pool
+    - MaxConns
+    - MinConns
     - ConnMaxLifetime
     - ConnMaxIdleTime
-3. DB connectivity check using `PingContext`
+3. Verify DB connectivity using `Ping`
 
-If Ping fails, it is designed to **return an error at startup (fail fast)**.
+If Ping fails, it returns an error at startup (**fail fast** design).
 
 ## DatabaseDriver
 
-`DatabaseDriver` is an interface that abstracts `sql.DB`.
+`DatabaseDriver` is an interface that abstracts `pgxpool.Pool`.
 
 ```go
  type DatabaseDriver interface {
      DBTX
 
-     BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-     PingContext(ctx context.Context) error
+     Begin(ctx context.Context) (pgx.Tx, error)
+     Ping(ctx context.Context) error
      Close() error
+     Stats() *pgxpool.Stat
  }
 ```
 
 Purpose:
 
-- Avoid direct dependency on `sql.DB`
-- Enable mocking in tests
+- Avoid direct dependency on `pgxpool.Pool`
+- Enable mocking during tests
 - Abstract transaction start
 
-The implementation is provided by `dbDriver`.
+Implementation is provided by `dbDriver`.
 
 ## DBTX
 
@@ -86,22 +84,19 @@ The implementation is provided by `dbDriver`.
 
 ```go
  type DBTX interface {
-     ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-     PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
-     QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-     QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+     Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error)
+     Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
+     QueryRow(ctx context.Context, query string, args ...any) pgx.Row
  }
 ```
 
-With this interface, sqlc can:
+With this interface, sqlc can execute the same query code with either:
 
 ```mermaid
 flowchart TB
-    A["*sql.DB"]
-    B["*sql.Tx"]
+    A["pgxpool.Pool"]
+    B["pgx.Tx"]
 ```
-
-execute the same query code with either.
 
 ## Transaction Transparent Layer
 
@@ -115,15 +110,15 @@ Behavior:
 
 ```mermaid
 flowchart TB
-    HasTx["Tx exists in context"] --> ReturnTx["return *sql.Tx"]
-    NoTx["No Tx"] --> ReturnDB["return DatabaseDriver"]
+    HasTx["Tx exists in context"] --> ReturnTx["Return pgx.Tx"]
+    NoTx["No Tx"] --> ReturnDB["Return pgxpool.Pool (DatabaseDriver)"]
 ```
 
-This allows the Repository layer to execute queries without being aware of the difference between `DB` and `Tx`.
+With this, the Repository layer can execute queries without being aware of the difference between `DB` and `Tx`.
 
 ## Transaction Management
 
-`tx.Manager` provides transaction boundaries for the Usecase layer.
+`tx.Manager` provides transaction boundaries in the Usecase layer.
 
 ```go
 err := tx.Do(ctx, func(ctx context.Context) error {
@@ -131,18 +126,63 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 })
 ```
 
-Internally, it performs the following processing.
+Internally, it performs the following:
 
-1. Check if a Tx exists in context
-2. If it exists → **reuse existing Tx**
-3. If it does not exist → **start new Tx**
+1. Check if Tx exists in context
+2. If exists → **reuse existing Tx**
+3. If not → **start new Tx**
 4. Execute fn
 5. Success → commit
 6. error → rollback
 
+- Uses pgx.Tx for transaction management.
+
 This enables **safe handling of nested transactions**.
 
 ## Notes
+
+### Transaction cleanup timeout
+
+When executing rollback / commit, cleanup must run even if the request context is canceled.  
+To achieve this, the following pattern is used:
+
+```go
+context.WithTimeout(
+    context.WithoutCancel(ctx),
+    cleanupTimeout,
+)
+```
+
+#### Why `context.WithoutCancel(ctx)`?
+
+Cleanup must **not depend on the request lifecycle**.
+
+- If the request is canceled (timeout / client disconnect), using the original `ctx` would cause:
+  - rollback/commit to be canceled
+  - transaction left open
+  - connection not returned to the pool
+
+Using `context.WithoutCancel(ctx)` ensures:
+
+- cleanup always runs
+- trace / logger / correlation ID are preserved
+
+> Cleanup is about **attempting safely**, not guaranteeing success.
+
+#### About `cleanupTimeout`
+
+- Maximum time allowed for cleanup (rollback / commit)
+- Currently fixed to `5 seconds`
+
+This value is **not a business configuration but a safety mechanism for infrastructure protection**.
+
+- If too large:
+  - Goroutine blocking
+  - Connection pool exhaustion
+- If too small:
+  - Cleanup may not complete
+
+Therefore, it is intentionally kept as a constant inside the driver and not exposed via environment variables.
 
 ### Always propagate Context
 
@@ -156,7 +196,7 @@ In the Repository layer:
 driver.New(ctx, db)
 ```
 
-is used to obtain `DBTX`.
+Use this to obtain `DBTX`.
 
 This allows transparent switching between `Tx` and `DB`.
 
@@ -172,7 +212,7 @@ Reason:
 - Transaction boundaries
 - sqlc query execution
 
-all depend on this layer.
+All depend on this layer.
 
 ### Development / Testing
 
@@ -181,4 +221,4 @@ Recommended
 Reason:
 
 - `DatabaseDriver` is an interface
-- Enables testing using mocks
+- Enables testing with mocks

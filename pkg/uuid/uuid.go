@@ -2,11 +2,13 @@
 package uuid
 
 import (
+	"database/sql/driver"
 	"testing"
 
 	"github.com/google/uuid"
 )
 
+//nolint:recvcheck // safe: UUID is immutable (value object); pointer receiver is required only for Scan to implement sql.Scanner
 type UUID struct{ b [16]byte }
 
 // New は、uuidを生成します。生成に失敗した場合はエラーを返します。
@@ -59,39 +61,17 @@ func Parse(s string) (UUID, error) {
 	return fromGoogle(g), nil
 }
 
-// FromPrimitive は、github.com/google/uuid の uuid.UUID からUUIDを生成します。
-func FromPrimitive(g uuid.UUID) UUID { return fromGoogle(g) }
-
-// FromPrimitiveList は、uuid.UUIDのスライスをUUIDのスライスに変換します。
-func FromPrimitiveList(pl []uuid.UUID) []UUID {
-	ul := make([]UUID, len(pl))
-	for i, p := range pl {
-		ul[i].b = p
+// Scan は、データベースからUUIDをスキャンします。スキャンに失敗した場合はエラーを返します。
+func (u *UUID) Scan(src any) error {
+	var g uuid.UUID
+	if err := g.Scan(src); err != nil {
+		return err
 	}
-	return ul
+	u.b = g
+	return nil
 }
 
-// ToPrimitiveList は、UUIDのスライスをuuid.UUIDのスライスに変換します。
-func ToPrimitiveList(ul []UUID) []uuid.UUID {
-	pl := make([]uuid.UUID, len(ul))
-	for i, u := range ul {
-		pl[i] = u.b
-	}
-	return pl
-}
-
-// ToPrimitiveUniqueList は、UUIDのスライスをuuid.UUIDのスライスに変換します。
-// 重複するUUIDは一つにまとめられます。
-func ToPrimitiveUniqueList(ul []UUID) []uuid.UUID {
-	out := make([]uuid.UUID, 0, len(ul))
-	seen := make(map[uuid.UUID]struct{}, len(ul))
-
-	for _, u := range ul {
-		if _, ok := seen[u.b]; ok {
-			continue
-		}
-		seen[u.b] = struct{}{}
-		out = append(out, u.b)
-	}
-	return out
+// Value は、UUIDをデータベースに保存するための値に変換します。変換に失敗した場合はエラーを返します。
+func (u UUID) Value() (driver.Value, error) {
+	return toGoogle(u).Value()
 }
