@@ -245,7 +245,7 @@
 				
 				<option value="file94">boilerplate-go/internal/di/server/extension/security/security_di.go (100.0%)</option>
 				
-				<option value="file95">boilerplate-go/internal/di/server/hook/db_close_hook.go (100.0%)</option>
+				<option value="file95">boilerplate-go/internal/di/server/hook/db_close_hook.go (66.7%)</option>
 				
 				<option value="file96">boilerplate-go/internal/di/server/hook/http_server_hook.go (94.1%)</option>
 				
@@ -265,19 +265,19 @@
 				
 				<option value="file104">boilerplate-go/internal/infrastructure/auth/local/auth_local.go (100.0%)</option>
 				
-				<option value="file105">boilerplate-go/internal/infrastructure/rdb/conv/nullable.go (98.1%)</option>
+				<option value="file105">boilerplate-go/internal/infrastructure/rdb/driver/config.go (100.0%)</option>
 				
 				<option value="file106">boilerplate-go/internal/infrastructure/rdb/driver/connection.go (100.0%)</option>
 				
-				<option value="file107">boilerplate-go/internal/infrastructure/rdb/driver/driver.go (78.9%)</option>
+				<option value="file107">boilerplate-go/internal/infrastructure/rdb/driver/driver.go (100.0%)</option>
 				
 				<option value="file108">boilerplate-go/internal/infrastructure/rdb/driver/loggingdb/provider.go (100.0%)</option>
 				
-				<option value="file109">boilerplate-go/internal/infrastructure/rdb/driver/loggingdb/with_logging.go (100.0%)</option>
+				<option value="file109">boilerplate-go/internal/infrastructure/rdb/driver/loggingdb/with_logging.go (97.8%)</option>
 				
-				<option value="file110">boilerplate-go/internal/infrastructure/rdb/driver/test_instance.go (100.0%)</option>
+				<option value="file110">boilerplate-go/internal/infrastructure/rdb/driver/transaction.go (83.3%)</option>
 				
-				<option value="file111">boilerplate-go/internal/infrastructure/rdb/driver/transaction.go (80.0%)</option>
+				<option value="file111">boilerplate-go/internal/infrastructure/rdb/metrics/pool_stats_collector.go (97.1%)</option>
 				
 				<option value="file112">boilerplate-go/internal/infrastructure/rdb/postgres/pgerror/pgerror.go (100.0%)</option>
 				
@@ -355,7 +355,7 @@
 				
 				<option value="file149">boilerplate-go/pkg/uuid/helper.go (100.0%)</option>
 				
-				<option value="file150">boilerplate-go/pkg/uuid/uuid.go (97.2%)</option>
+				<option value="file150">boilerplate-go/pkg/uuid/uuid.go (96.0%)</option>
 				
 				<option value="file151">boilerplate-go/pkg/xerrors/errors.go (100.0%)</option>
 				
@@ -450,10 +450,10 @@ func New() (*Config, error) <span class="cov4" title="10">{
                         slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
                 },
                 dbconnection: DBConnectionConfig{
-                        maxOpenConns: cfg.DBConnection.MaxOpenConns,
-                        maxIdleConns: cfg.DBConnection.MaxIdleConns,
-                        maxLifetime:  cfg.DBConnection.MaxLifetime,
-                        maxIdleTime:  cfg.DBConnection.MaxIdleTime,
+                        maxConns:    cfg.DBConnection.MaxConns,
+                        minConns:    cfg.DBConnection.MinConns,
+                        maxLifetime: cfg.DBConnection.MaxLifetime,
+                        maxIdleTime: cfg.DBConnection.MaxIdleTime,
                 },
                 security: SecurityConfig{
                         allowedOrigins:        cfg.Security.AllowedOrigins,
@@ -488,16 +488,20 @@ func New() (*Config, error) <span class="cov4" title="10">{
 }
 
 // validateConfig は、ConfigLoaderの内容を検証します。
-func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov6" title="36">{
+func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov6" title="37">{
         if err := validateApplicationConfig(cfg.App); err != nil </span><span class="cov2" title="3">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="33">if err := validateServerConfig(cfg.Server); err != nil </span><span class="cov3" title="7">{
+        <span class="cov5" title="34">if err := validateServerConfig(cfg.Server); err != nil </span><span class="cov3" title="7">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="26">if err := validateDatabaseConfig(cfg.Database); err != nil </span><span class="cov3" title="5">{
+        <span class="cov5" title="27">if err := validateDatabaseConfig(cfg.Database); err != nil </span><span class="cov3" title="5">{
+                return nil, err
+        }</span>
+
+        <span class="cov5" title="22">if err := validateDBConnectionConfig(cfg.DBConnection); err != nil </span><span class="cov1" title="1">{
                 return nil, err
         }</span>
 
@@ -516,51 +520,59 @@ func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov6" tit
 }
 
 // validateApplicationConfig は、アプリケーション設定を検証します。
-func validateApplicationConfig(appCfg Application) error <span class="cov6" title="37">{
+func validateApplicationConfig(appCfg Application) error <span class="cov6" title="38">{
         if appCfg.Mode != DevelopmentMode &amp;&amp; appCfg.Mode != ProductionMode </span><span class="cov2" title="3">{
                 return ErrInvalidAppMode
         }</span>
-        <span class="cov5" title="34">return nil</span>
+        <span class="cov5" title="35">return nil</span>
 }
 
 // validateServerConfig は、サーバー設定を検証します。
-func validateServerConfig(srvCfg Server) error <span class="cov5" title="34">{
+func validateServerConfig(srvCfg Server) error <span class="cov5" title="35">{
         if srvCfg.Port &lt; MinPort || MaxPort &lt; srvCfg.Port </span><span class="cov1" title="1">{
                 return ErrInvalidPortRange
         }</span>
 
-        <span class="cov5" title="33">if srvCfg.ReadHeaderTimeout &lt;= 0 </span><span class="cov1" title="2">{
+        <span class="cov5" title="34">if srvCfg.ReadHeaderTimeout &lt;= 0 </span><span class="cov1" title="2">{
                 return ErrInvalidReadHeaderTimeout
         }</span>
 
-        <span class="cov5" title="31">if srvCfg.ReadTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="32">if srvCfg.ReadTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidReadTimeout
         }</span>
 
-        <span class="cov5" title="30">if srvCfg.WriteTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="31">if srvCfg.WriteTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidWriteTimeout
         }</span>
 
-        <span class="cov5" title="29">if srvCfg.IdleTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="30">if srvCfg.IdleTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidIdleTimeout
         }</span>
 
-        <span class="cov5" title="28">if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout </span><span class="cov1" title="1">{
+        <span class="cov5" title="29">if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout </span><span class="cov1" title="1">{
                 return ErrReadHeaderTimeoutExceedsReadTimeout
         }</span>
-        <span class="cov5" title="27">return nil</span>
+        <span class="cov5" title="28">return nil</span>
 }
 
 // validateDatabaseConfig は、データベース設定を検証します。
-func validateDatabaseConfig(dbCfg Database) error <span class="cov5" title="27">{
+func validateDatabaseConfig(dbCfg Database) error <span class="cov5" title="28">{
         if dbCfg.Port &lt; MinPort || MaxPort &lt; dbCfg.Port </span><span class="cov1" title="2">{
                 return ErrInvalidDBPortRange
         }</span>
-        <span class="cov5" title="25">if dbCfg.PingTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="26">if dbCfg.PingTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidDBPingTimeout
         }</span>
-        <span class="cov5" title="24">if dbCfg.SlowQueryWarnThreshold &lt; 0 </span><span class="cov1" title="2">{
+        <span class="cov5" title="25">if dbCfg.SlowQueryWarnThreshold &lt; 0 </span><span class="cov1" title="2">{
                 return ErrInvalidSlowQueryWarnThreshold
+        }</span>
+        <span class="cov5" title="23">return nil</span>
+}
+
+// validateDBConnectionConfig は、データベース接続設定を検証します。
+func validateDBConnectionConfig(dbConnCfg DBConnection) error <span class="cov5" title="23">{
+        if dbConnCfg.MinConns &gt; dbConnCfg.MaxConns </span><span class="cov1" title="1">{
+                return ErrInvalidExceedMaxConns
         }</span>
         <span class="cov5" title="22">return nil</span>
 }
@@ -623,12 +635,12 @@ func validateIPRateLimitConfig(iprCfg IPRateLimit) error <span class="cov4" titl
 }
 
 // buildStatusCodeSet は、HTTPステータスコードのセットを構築します。
-func buildStatusCodeSet(codes []int) map[int]bool <span class="cov6" title="60">{
+func buildStatusCodeSet(codes []int) map[int]bool <span class="cov6" title="61">{
         m := make(map[int]bool, len(codes))
-        for _, code := range codes </span><span class="cov10" title="593">{
+        for _, code := range codes </span><span class="cov10" title="603">{
                 m[code] = true
         }</span>
-        <span class="cov6" title="60">return m</span>
+        <span class="cov6" title="61">return m</span>
 }
 </pre>
 		
@@ -707,8 +719,10 @@ var (
         expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
         expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
         // dbconnection
-        expectedDBMaxOpenConns     = 10
-        expectedDBMaxIdleConns     = 5
+        expectedDBMaxConns         = 10
+        expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
+        expectedDBMinConns         = 5
+        expectedDBMinConnsInt32    = int32(expectedDBMinConns)
         expectedDBMaxLifetimeCount = 60
         expectedDBMaxLifetimeStr   = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)
         expectedDBMaxLifetime      = time.Duration(expectedDBMaxLifetimeCount) * time.Second
@@ -752,7 +766,7 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="288">{
+func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="289">{
         t.Helper()
         return &amp;Config{
                 os: OperationSystemConfig{
@@ -796,10 +810,10 @@ func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="288">{
                         slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
                 },
                 dbconnection: DBConnectionConfig{
-                        maxOpenConns: expectedDBMaxOpenConns,
-                        maxIdleConns: expectedDBMaxIdleConns,
-                        maxLifetime:  expectedDBMaxLifetime,
-                        maxIdleTime:  expectedDBMaxIdleTime,
+                        maxConns:    expectedDBMaxConnsInt32,
+                        minConns:    expectedDBMinConnsInt32,
+                        maxLifetime: expectedDBMaxLifetime,
+                        maxIdleTime: expectedDBMaxIdleTime,
                 },
                 security: SecurityConfig{
                         allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -834,7 +848,7 @@ func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="288">{
 }</span>
 
 // mockLoader は、テスト用のLoaderを返します。
-func mockLoader(t testing.TB) Loader <span class="cov6" title="34">{
+func mockLoader(t testing.TB) Loader <span class="cov6" title="36">{
         t.Helper()
 
         return Loader{
@@ -877,10 +891,10 @@ func mockLoader(t testing.TB) Loader <span class="cov6" title="34">{
                         SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
                 },
                 DBConnection: DBConnection{
-                        MaxOpenConns: expectedDBMaxOpenConns,
-                        MaxIdleConns: expectedDBMaxIdleConns,
-                        MaxLifetime:  expectedDBMaxLifetime,
-                        MaxIdleTime:  expectedDBMaxIdleTime,
+                        MaxConns:    expectedDBMaxConnsInt32,
+                        MinConns:    expectedDBMinConnsInt32,
+                        MaxLifetime: expectedDBMaxLifetime,
+                        MaxIdleTime: expectedDBMaxIdleTime,
                 },
                 Security: Security{
                         AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -952,8 +966,8 @@ func setEnvVarsForTesting(t *testing.T) <span class="cov2" title="3">{ //nolint:
         t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
         t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
         // DBConnection
-        t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
-        t.Setenv("DBCONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
+        t.Setenv("DBCONN_MAX_CONNS", strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10))
+        t.Setenv("DBCONN_MIN_CONNS", strconv.FormatInt(int64(expectedDBMinConnsInt32), 10))
         t.Setenv("DBCONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
         t.Setenv("DBCONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
         // Security
@@ -1036,24 +1050,14 @@ func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(t testing.TB, va
         t.Cleanup(func() </span><span class="cov3" title="2">{ o.maskedDBQueryArgs = prev }</span>)
 }
 
-// SetDatabaseDriver は、テスト用にデータベースのドライバーを設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (d *DatabaseConfig) SetDatabaseDriver(t testing.TB, driver string) <span class="cov3" title="2">{
-        t.Helper()
-        prev := d.Driver()
-        d.driver = driver
-        t.Cleanup(func() </span><span class="cov3" title="2">{ d.driver = prev }</span>)
-}
-
 // SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (d *DatabaseConfig) SetDatabaseHost(t testing.TB, host string) <span class="cov5" title="4">{
+func (d *DatabaseConfig) SetDatabaseHost(t testing.TB, host string) <span class="cov6" title="5">{
         t.Helper()
         prev := d.Host()
         d.host = host
-        t.Cleanup(func() </span><span class="cov5" title="4">{ d.host = prev }</span>)
+        t.Cleanup(func() </span><span class="cov6" title="5">{ d.host = prev }</span>)
 }
 
 // SetDatabaseName は、テスト用にデータベースの名前を設定します。
@@ -1064,6 +1068,16 @@ func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string) <span class=
         prev := d.DBName()
         d.name = name
         t.Cleanup(func() </span><span class="cov3" title="2">{ d.name = prev }</span>)
+}
+
+// SetMaxConns は、テスト用にDB接続の最大オープン数を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (c *DBConnectionConfig) SetMaxConns(t testing.TB, maxConns int32) <span class="cov3" title="2">{
+        t.Helper()
+        prev := c.MaxConns()
+        c.maxConns = maxConns
+        t.Cleanup(func() </span><span class="cov3" title="2">{ c.maxConns = prev }</span>)
 }
 
 // SetCIDR は、テスト用にセキュリティのCIDRを設定します。
@@ -1137,9 +1151,7 @@ func Load() error <span class="cov10" title="12">{
 		<pre class="file" id="file4" style="display: none">package config
 
 import (
-        "fmt"
         "net"
-        "net/url"
         "time"
 )
 
@@ -1204,10 +1216,10 @@ type DatabaseConfig struct {
 }
 
 type DBConnectionConfig struct {
-        maxOpenConns int
-        maxIdleConns int
-        maxLifetime  time.Duration
-        maxIdleTime  time.Duration
+        maxConns    int32
+        minConns    int32
+        maxLifetime time.Duration
+        maxIdleTime time.Duration
 }
 
 type SecurityConfig struct {
@@ -1244,13 +1256,13 @@ type IPRateLimitConfig struct {
 }
 
 // NewOperationSystemConfig は、OSの設定を返します。
-func NewOperationSystemConfig(cfg *Config) *OperationSystemConfig <span class="cov9" title="185">{ return &amp;cfg.os }</span>
+func NewOperationSystemConfig(cfg *Config) *OperationSystemConfig <span class="cov9" title="187">{ return &amp;cfg.os }</span>
 
 // TimeZone は、OSのタイムゾーンを返します。
-func (o *OperationSystemConfig) TimeZone() string <span class="cov10" title="259">{ return o.timezone }</span>
+func (o *OperationSystemConfig) TimeZone() string <span class="cov10" title="280">{ return o.timezone }</span>
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
-func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov7" title="41">{ return &amp;cfg.app }</span>
+func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov6" title="41">{ return &amp;cfg.app }</span>
 
 // Env は、サーバーの環境を返します。
 //
@@ -1261,7 +1273,7 @@ func (a *ApplicationConfig) Env() string <span class="cov5" title="18">{ return 
 //
 // この環境変数はアプリケーションがどのモードで動作しているかを示します。
 // 例: "development", "production" など。
-func (a *ApplicationConfig) Mode() string <span class="cov6" title="22">{ return a.mode }</span>
+func (a *ApplicationConfig) Mode() string <span class="cov5" title="22">{ return a.mode }</span>
 
 // Name は、アプリケーションの名前を返します。
 func (a *ApplicationConfig) Name() string <span class="cov4" title="7">{ return a.name }</span>
@@ -1316,13 +1328,13 @@ func (m *MetricsConfig) UserName() string <span class="cov3" title="6">{ return 
 func (m *MetricsConfig) Password() string <span class="cov3" title="5">{ return m.password }</span>
 
 // NewObservabilityConfig は、可観測の設定を返します。
-func NewObservabilityConfig(cfg *Config) *ObservabilityConfig <span class="cov9" title="188">{ return &amp;cfg.observability }</span>
+func NewObservabilityConfig(cfg *Config) *ObservabilityConfig <span class="cov9" title="185">{ return &amp;cfg.observability }</span>
 
 // Enabled は、可観測モードが有効かどうかを返します。
-func (o *ObservabilityConfig) Enabled() bool <span class="cov9" title="232">{ return o.enabled }</span>
+func (o *ObservabilityConfig) Enabled() bool <span class="cov9" title="230">{ return o.enabled }</span>
 
 // MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。
-func (o *ObservabilityConfig) MaskedDBQueryArgs() bool <span class="cov6" title="30">{ return o.maskedDBQueryArgs }</span>
+func (o *ObservabilityConfig) MaskedDBQueryArgs() bool <span class="cov6" title="29">{ return o.maskedDBQueryArgs }</span>
 
 // TargetStatusCodes は、可観測モードで監視対象となるHTTPステータスコードのリストを返します。
 func (o *ObservabilityConfig) TargetStatusCodes() []int <span class="cov1" title="1">{ return o.targetStatusCodes }</span>
@@ -1331,77 +1343,55 @@ func (o *ObservabilityConfig) TargetStatusCodes() []int <span class="cov1" title
 func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool <span class="cov3" title="6">{ return o.targetStatusCodeSet }</span>
 
 // NewDatabaseConfig は、データベースの設定を返します。
-func NewDatabaseConfig(cfg *Config) *DatabaseConfig <span class="cov6" title="40">{ return &amp;cfg.database }</span>
+func NewDatabaseConfig(cfg *Config) *DatabaseConfig <span class="cov7" title="45">{ return &amp;cfg.database }</span>
 
 // Driver は、データベースのドライバー名を返します。
-func (d *DatabaseConfig) Driver() string <span class="cov5" title="20">{ return d.driver }</span>
+func (d *DatabaseConfig) Driver() string <span class="cov2" title="3">{ return d.driver }</span>
 
 // Host は、データベースのホスト名を返します。
-func (d *DatabaseConfig) Host() string <span class="cov3" title="6">{ return d.host }</span>
+func (d *DatabaseConfig) Host() string <span class="cov6" title="34">{ return d.host }</span>
 
 // Port は、データベースのポート番号を返します。
-func (d *DatabaseConfig) Port() int <span class="cov1" title="1">{ return d.port }</span>
+func (d *DatabaseConfig) Port() int <span class="cov6" title="28">{ return d.port }</span>
 
 // User は、データベースのユーザー名を返します。
-func (d *DatabaseConfig) User() string <span class="cov1" title="1">{ return d.user }</span>
+func (d *DatabaseConfig) User() string <span class="cov6" title="28">{ return d.user }</span>
 
 // Password は、データベースのパスワードを返します。
-func (d *DatabaseConfig) Password() string <span class="cov1" title="1">{ return d.password }</span>
+func (d *DatabaseConfig) Password() string <span class="cov6" title="28">{ return d.password }</span>
 
 // DBName は、データベースの名前を返します。
-func (d *DatabaseConfig) DBName() string <span class="cov3" title="4">{ return d.name }</span>
+func (d *DatabaseConfig) DBName() string <span class="cov6" title="31">{ return d.name }</span>
 
 // SSLMode は、データベースのSSLモードを返します。
-func (d *DatabaseConfig) SSLMode() string <span class="cov1" title="1">{ return d.sslMode }</span>
+func (d *DatabaseConfig) SSLMode() string <span class="cov6" title="28">{ return d.sslMode }</span>
 
 // PingTimeout は、データベースのpingタイムアウトを返します。
-func (d *DatabaseConfig) PingTimeout() time.Duration <span class="cov5" title="14">{ return d.pingTimeout }</span>
+func (d *DatabaseConfig) PingTimeout() time.Duration <span class="cov5" title="19">{ return d.pingTimeout }</span>
 
 // SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。
 //
 // この値より長く実行されたクエリは警告レベルでログ出力されます。
 // 0以下の値の場合、スロークエリ警告は無効になります。
-func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration <span class="cov6" title="31">{ return d.slowQueryWarnThreshold }</span>
-
-// DSN は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSN() string <span class="cov5" title="19">{
-        return fmt.Sprintf(
-                "postgres://%s:%s@%s:%d/%s?sslmode=%s",
-                d.user,
-                d.password,
-                d.host,
-                d.port,
-                d.name,
-                d.sslMode,
-        )
-}</span>
-
-// DSNWithTimeZone は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSNWithTimeZone(o *OperationSystemConfig) string <span class="cov5" title="18">{
-        return fmt.Sprintf(
-                "%s&amp;timezone=%s",
-                d.DSN(),
-                url.QueryEscape(o.timezone),
-        )
-}</span>
+func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration <span class="cov6" title="30">{ return d.slowQueryWarnThreshold }</span>
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。
-func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig <span class="cov5" title="17">{ return &amp;cfg.dbconnection }</span>
+func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig <span class="cov5" title="22">{ return &amp;cfg.dbconnection }</span>
 
-// MaxOpenConns は、データベースの最大オープン接続数を返します。
-func (c *DBConnectionConfig) MaxOpenConns() int <span class="cov5" title="16">{ return c.maxOpenConns }</span>
+// MaxConns は、データベースの最大オープン接続数を返します。
+func (c *DBConnectionConfig) MaxConns() int32 <span class="cov6" title="24">{ return c.maxConns }</span>
 
-// MaxIdleConns は、データベースの最大アイドル接続数を返します。
-func (c *DBConnectionConfig) MaxIdleConns() int <span class="cov5" title="14">{ return c.maxIdleConns }</span>
+// MinConns は、pgxpool の最小プールサイズ（最小接続数）を返します。
+func (c *DBConnectionConfig) MinConns() int32 <span class="cov5" title="19">{ return c.minConns }</span>
 
 // MaxLifetime は、データベースの接続の最大寿命を返します。
-func (c *DBConnectionConfig) MaxLifetime() time.Duration <span class="cov5" title="14">{ return c.maxLifetime }</span>
+func (c *DBConnectionConfig) MaxLifetime() time.Duration <span class="cov5" title="19">{ return c.maxLifetime }</span>
 
 // MaxIdleTime は、データベースの接続の最大アイドル時間を返します。
-func (c *DBConnectionConfig) MaxIdleTime() time.Duration <span class="cov5" title="14">{ return c.maxIdleTime }</span>
+func (c *DBConnectionConfig) MaxIdleTime() time.Duration <span class="cov5" title="19">{ return c.maxIdleTime }</span>
 
 // NewSecurityConfig は、セキュリティの設定を返します。
-func NewSecurityConfig(cfg *Config) *SecurityConfig <span class="cov6" title="22">{ return &amp;cfg.security }</span>
+func NewSecurityConfig(cfg *Config) *SecurityConfig <span class="cov5" title="22">{ return &amp;cfg.security }</span>
 
 // AllowedOrigins は、CORSを許可するオリジンのリストを返します。
 func (s *SecurityConfig) AllowedOrigins() []string <span class="cov3" title="6">{ return s.allowedOrigins }</span>
@@ -1449,7 +1439,7 @@ func NewAuthConfig(cfg *Config) *AuthConfig <span class="cov5" title="15">{ retu
 func (a *AuthConfig) CookieName() string <span class="cov6" title="32">{ return a.cookieName }</span>
 
 // HeaderName は、認証に使用するヘッダー名を返します。
-func (a *AuthConfig) HeaderName() string <span class="cov6" title="22">{ return a.headerName }</span>
+func (a *AuthConfig) HeaderName() string <span class="cov5" title="22">{ return a.headerName }</span>
 
 // AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
 func (a *AuthConfig) AllowedHeaderBearer() bool <span class="cov3" title="6">{ return a.allowedHeaderBearer }</span>
@@ -4863,6 +4853,7 @@ import (
         "boilerplate-go/internal/di/server/hook"
         "boilerplate-go/internal/infrastructure/rdb/driver"
         "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+        "boilerplate-go/internal/infrastructure/rdb/metrics"
 
         "go.uber.org/fx"
 )
@@ -4874,9 +4865,11 @@ func DatabaseModule() fx.Option <span class="cov10" title="7">{
                         driver.NewDB,
                         driver.NewTransactionManager,
                         loggingdb.NewLoggingDBProvider,
+                        metrics.New,
                 ),
                 fx.Invoke(
                         hook.RegisterDBCloseHooks,
+                        metrics.RegisterPoolStatsCollector,
                 ),
         )
 }</span>
@@ -5879,10 +5872,14 @@ func RegisterDBCloseHooks(
         db driver.DatabaseDriver,
         logger logging.Logger,
 ) <span class="cov10" title="7">{
-        reg.RegisterStop(func(ctx context.Context) error </span><span class="cov7" title="4">{
+        reg.RegisterStop(func(_ context.Context) error </span><span class="cov7" title="4">{
                 logger.Named("db.CloseHook").Info("Closing database connection")
-                return db.Close()
-        }</span>)
+                if err := db.Close(); err != nil </span><span class="cov0" title="0">{
+                        logger.Named("db.CloseHook").Error("failed to close database", logging.Error("db error", err))
+                        return err
+                }</span>
+                <span class="cov7" title="4">return nil</span>
+        })
 }
 </pre>
 		
@@ -6546,170 +6543,48 @@ func (a *authenticator) resolveSubject(token string) string <span class="cov6" t
 }
 </pre>
 		
-		<pre class="file" id="file105" style="display: none">// Package conv は、database/sqlのnullable型をポインタと変換するためのユーティリティを提供します。
-package conv
+		<pre class="file" id="file105" style="display: none">package driver
 
 import (
-        "database/sql"
-        "time"
+        "fmt"
+        "net/url"
 
-        "boilerplate-go/internal/apperror"
-        "boilerplate-go/pkg/uuid"
-        "boilerplate-go/pkg/xerrors"
-
-        googleUUID "github.com/google/uuid"
+        "boilerplate-go/internal/config"
 )
 
-// UUIDPtrFromNull は、googleUUID.NullUUIDをポインタに変換します。
-func UUIDPtrFromNull(nu googleUUID.NullUUID) (*uuid.UUID, error) <span class="cov3" title="2">{
-        if !nu.Valid </span><span class="cov1" title="1">{
-                return nil, nil
-        }</span>
+// DSN は、データベースの接続URLを返します。
+func DSN(dbCfg *config.DatabaseConfig) *url.URL <span class="cov10" title="23">{
+        u := &amp;url.URL{
+                Scheme: "postgres",
+                User:   url.UserPassword(dbCfg.User(), dbCfg.Password()),
+                Host:   fmt.Sprintf("%s:%d", dbCfg.Host(), dbCfg.Port()),
+                Path:   dbCfg.DBName(),
+        }
 
-        <span class="cov1" title="1">parsedUUID, err := uuid.Parse(nu.UUID.String())
-        if err != nil </span><span class="cov0" title="0">{
-                return nil, xerrors.Wrap(apperror.ErrInternal, err.Error())
-        }</span>
-        <span class="cov1" title="1">return &amp;parsedUUID, nil</span>
-}
+        q := u.Query()
+        q.Set("sslmode", dbCfg.SSLMode())
+        u.RawQuery = q.Encode()
 
-// NullUUIDFromPtr は、ポインタをgoogleUUID.NullUUIDに変換します。
-func NullUUIDFromPtr(u *uuid.UUID) googleUUID.NullUUID <span class="cov3" title="2">{
-        if u == nil </span><span class="cov1" title="1">{
-                return googleUUID.NullUUID{Valid: false}
-        }</span>
-        <span class="cov1" title="1">return NewNullUUID(*u)</span>
-}
-
-// NewNullUUID は、引数をgoogleUUID.NullUUIDに変換します。
-func NewNullUUID(u uuid.UUID) googleUUID.NullUUID <span class="cov3" title="2">{
-        return googleUUID.NullUUID{UUID: googleUUID.UUID(u.Bytes()), Valid: true}
+        return u
 }</span>
 
-// StringPtrFromNull は、sql.NullStringをポインタに変換します。
-func StringPtrFromNull(ns sql.NullString) *string <span class="cov10" title="17">{
-        if ns.Valid </span><span class="cov8" title="11">{
-                return &amp;ns.String
-        }</span>
-        <span class="cov6" title="6">return nil</span>
-}
-
-// NullStringFromPtr は、ポインタをsql.NullStringに変換します。
-func NullStringFromPtr(s *string) sql.NullString <span class="cov5" title="4">{
-        if s == nil </span><span class="cov1" title="1">{
-                return sql.NullString{Valid: false}
-        }</span>
-        <span class="cov4" title="3">return NewNullString(*s)</span>
-}
-
-// NewNullString は、引数をsql.NullStringに変換します。
-func NewNullString(s string) sql.NullString <span class="cov5" title="4">{
-        return sql.NullString{String: s, Valid: true}
+// DSNWithTimeZone は、データベースの接続URLを返します。タイムゾーン情報をクエリパラメータに追加します。
+func DSNWithTimeZone(db *config.DatabaseConfig, os *config.OperationSystemConfig) *url.URL <span class="cov9" title="21">{
+        u := DSN(db)
+        q := u.Query()
+        q.Set("timezone", os.TimeZone())
+        u.RawQuery = q.Encode()
+        return u
 }</span>
 
-// Int16PtrFromNull は、sql.NullInt16をポインタに変換します。
-func Int16PtrFromNull(n sql.NullInt16) *int16 <span class="cov3" title="2">{
-        if n.Valid </span><span class="cov1" title="1">{
-                return &amp;n.Int16
-        }</span>
-        <span class="cov1" title="1">return nil</span>
-}
-
-// NullInt16FromPtr は、ポインタをsql.NullInt16に変換します。
-func NullInt16FromPtr(p *int16) sql.NullInt16 <span class="cov3" title="2">{
-        if p == nil </span><span class="cov1" title="1">{
-                return sql.NullInt16{Valid: false}
-        }</span>
-        <span class="cov1" title="1">return NewNullInt16(*p)</span>
-}
-
-// NewNullInt16 は、引数をsql.NullInt16に変換します。
-func NewNullInt16(n int16) sql.NullInt16 <span class="cov3" title="2">{
-        return sql.NullInt16{Int16: n, Valid: true}
+// DSNString は、DSNを文字列形式で返します。
+func DSNString(dbCfg *config.DatabaseConfig) string <span class="cov1" title="1">{
+        return DSN(dbCfg).String()
 }</span>
 
-// Int64PtrFromNull は、sql.NullInt64をポインタに変換します。
-func Int64PtrFromNull(n sql.NullInt64) *int64 <span class="cov3" title="2">{
-        if n.Valid </span><span class="cov1" title="1">{
-                return &amp;n.Int64
-        }</span>
-        <span class="cov1" title="1">return nil</span>
-}
-
-// NullInt64FromPtr は、ポインタをsql.NullInt64に変換します。
-func NullInt64FromPtr(p *int64) sql.NullInt64 <span class="cov3" title="2">{
-        if p == nil </span><span class="cov1" title="1">{
-                return sql.NullInt64{Valid: false}
-        }</span>
-        <span class="cov1" title="1">return NewNullInt64(*p)</span>
-}
-
-// NewNullInt64 は、引数をsql.NullInt64に変換します。
-func NewNullInt64(n int64) sql.NullInt64 <span class="cov3" title="2">{
-        return sql.NullInt64{Int64: n, Valid: true}
-}</span>
-
-// BoolPtrFromNull は、sql.NullBoolをポインタに変換します。
-func BoolPtrFromNull(n sql.NullBool) *bool <span class="cov3" title="2">{
-        if n.Valid </span><span class="cov1" title="1">{
-                return &amp;n.Bool
-        }</span>
-        <span class="cov1" title="1">return nil</span>
-}
-
-// NullBoolFromPtr は、ポインタをsql.NullBoolに変換します。
-func NullBoolFromPtr(p *bool) sql.NullBool <span class="cov3" title="2">{
-        if p == nil </span><span class="cov1" title="1">{
-                return sql.NullBool{Valid: false}
-        }</span>
-        <span class="cov1" title="1">return NewNullBool(*p)</span>
-}
-
-// NewNullBool は、引数をsql.NullBoolに変換します。
-func NewNullBool(b bool) sql.NullBool <span class="cov3" title="2">{
-        return sql.NullBool{Bool: b, Valid: true}
-}</span>
-
-// Float64PtrFromNull は、sql.NullFloat64をポインタに変換します。
-func Float64PtrFromNull(n sql.NullFloat64) *float64 <span class="cov3" title="2">{
-        if n.Valid </span><span class="cov1" title="1">{
-                return &amp;n.Float64
-        }</span>
-        <span class="cov1" title="1">return nil</span>
-}
-
-// NullFloat64FromPtr は、ポインタをsql.NullFloat64に変換します。
-func NullFloat64FromPtr(p *float64) sql.NullFloat64 <span class="cov3" title="2">{
-        if p == nil </span><span class="cov1" title="1">{
-                return sql.NullFloat64{Valid: false}
-        }</span>
-        <span class="cov1" title="1">return NewNullFloat64(*p)</span>
-}
-
-// NewNullFloat64 は、引数をsql.NullFloat64に変換します。
-func NewNullFloat64(n float64) sql.NullFloat64 <span class="cov3" title="2">{
-        return sql.NullFloat64{Float64: n, Valid: true}
-}</span>
-
-// TimePtrFromNull は、sql.NullTimeをポインタに変換します。
-func TimePtrFromNull(n sql.NullTime) *time.Time <span class="cov10" title="17">{
-        if n.Valid </span><span class="cov4" title="3">{
-                return &amp;n.Time
-        }</span>
-        <span class="cov9" title="14">return nil</span>
-}
-
-// NullTimeFromPtr は、ポインタをsql.NullTimeに変換します。
-func NullTimeFromPtr(p *time.Time) sql.NullTime <span class="cov3" title="2">{
-        if p == nil </span><span class="cov1" title="1">{
-                return sql.NullTime{Valid: false}
-        }</span>
-        <span class="cov1" title="1">return NewNullTime(*p)</span>
-}
-
-// NewNullTime は、引数をsql.NullTimeに変換します。
-func NewNullTime(t time.Time) sql.NullTime <span class="cov3" title="2">{
-        return sql.NullTime{Time: t, Valid: true}
+// DSNWithTimeZoneString は、DSNWithTimeZoneを文字列形式で返します。
+func DSNWithTimeZoneString(db *config.DatabaseConfig, os *config.OperationSystemConfig) string <span class="cov9" title="20">{
+        return DSNWithTimeZone(db, os).String()
 }</span>
 </pre>
 		
@@ -6718,10 +6593,9 @@ package driver
 
 import (
         "context"
-        "database/sql"
 
-        // pgx driver for db connection (required for runtime registration)
-        _ "github.com/jackc/pgx/v5/stdlib"
+        "github.com/jackc/pgx/v5"
+        "github.com/jackc/pgx/v5/pgconn"
 )
 
 // txKey は、トランザクションマネージャを識別するためのコンテキストキーです。
@@ -6729,15 +6603,14 @@ type txKey struct{}
 
 // DBTX は RDBMSが期待する最小インターフェイス
 type DBTX interface {
-        ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-        PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
-        QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-        QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+        Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+        Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+        QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
 // New は、DB接続のドライバーを提供します。
 func New(ctx context.Context, db DatabaseDriver) DBTX <span class="cov10" title="26">{
-        tx, ok := ctx.Value(txKey{}).(*sql.Tx)
+        tx, ok := ctx.Value(txKey{}).(pgx.Tx)
         if ok </span><span class="cov9" title="24">{
                 return tx
         }</span>
@@ -6752,80 +6625,91 @@ package driver
 
 import (
         "context"
-        "database/sql"
         "fmt"
 
         "boilerplate-go/internal/config"
+
+        "github.com/jackc/pgx/v5"
+        "github.com/jackc/pgx/v5/pgconn"
+        "github.com/jackc/pgx/v5/pgxpool"
 )
 
 type DatabaseDriver interface {
         DBTX
 
-        BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-        PingContext(ctx context.Context) error
+        Begin(ctx context.Context) (pgx.Tx, error)
+        Ping(ctx context.Context) error
         Close() error
+        Stats() *pgxpool.Stat
 }
 
-type dbDriver struct{ *sql.DB }
+type dbDriver struct{ pool *pgxpool.Pool }
 
 // NewDB は Postgres のDB接続を初期化して返します。
 func NewDB(
         dbCfg *config.DatabaseConfig, osCfg *config.OperationSystemConfig, dbConnCfg *config.DBConnectionConfig,
-) (DatabaseDriver, error) <span class="cov8" title="14">{
-        db, err := sql.Open(dbCfg.Driver(), dbCfg.DSNWithTimeZone(osCfg))
+) (DatabaseDriver, error) <span class="cov9" title="19">{
+        poolCfg, err := pgxpool.ParseConfig(DSNWithTimeZoneString(dbCfg, osCfg))
         if err != nil </span><span class="cov1" title="1">{
-                return nil, fmt.Errorf("failed to open DB: %w", err)
+                return nil, fmt.Errorf("failed to parse DB config: %w", err)
         }</span>
 
         // 接続プール設定
-        <span class="cov8" title="13">db.SetMaxOpenConns(dbConnCfg.MaxOpenConns())
-        db.SetMaxIdleConns(dbConnCfg.MaxIdleConns())
-        db.SetConnMaxLifetime(dbConnCfg.MaxLifetime())
-        db.SetConnMaxIdleTime(dbConnCfg.MaxIdleTime())
+        <span class="cov8" title="18">poolCfg.MaxConns = dbConnCfg.MaxConns()
+        poolCfg.MinConns = dbConnCfg.MinConns()
+        poolCfg.MaxConnLifetime = dbConnCfg.MaxLifetime()
+        poolCfg.MaxConnIdleTime = dbConnCfg.MaxIdleTime()
 
-        // 疎通確認
-        pingCtx, cancel := context.WithTimeout(context.Background(), dbCfg.PingTimeout())
+        ctx, cancel := context.WithTimeout(context.Background(), dbCfg.PingTimeout())
         defer cancel()
-        if err := db.PingContext(pingCtx); err != nil </span><span class="cov1" title="1">{
+
+        pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, fmt.Errorf("failed to create DB connection pool: %w", err)
+        }</span>
+
+        <span class="cov8" title="17">if err := pool.Ping(ctx); err != nil </span><span class="cov1" title="1">{
+                pool.Close()
                 return nil, fmt.Errorf("failed to ping DB: %w", err)
         }</span>
 
-        <span class="cov7" title="12">return &amp;dbDriver{DB: db}, nil</span>
+        <span class="cov8" title="16">return &amp;dbDriver{pool: pool}, nil</span>
 }
 
-// ExecContext は、DB.ExecContextを呼び出します。
-func (d *dbDriver) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) <span class="cov0" title="0">{
-        return d.DB.ExecContext(ctx, query, args...)
+// Exec は、DB.Execを呼び出します。
+func (d *dbDriver) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) <span class="cov1" title="1">{
+        return d.pool.Exec(ctx, sql, args...)
 }</span>
 
-// PrepareContext は、DB.PrepareContextを呼び出します。
-func (d *dbDriver) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) <span class="cov0" title="0">{
-        return d.DB.PrepareContext(ctx, query)
+// Query は、DB.Queryを呼び出します。
+func (d *dbDriver) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) <span class="cov1" title="1">{
+        return d.pool.Query(ctx, sql, args...)
 }</span>
 
-// QueryContext は、DB.QueryContextを呼び出します。
-func (d *dbDriver) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) <span class="cov0" title="0">{
-        return d.DB.QueryContext(ctx, query, args...)
+// QueryRow は、DB.QueryRowを呼び出します。
+func (d *dbDriver) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row <span class="cov1" title="1">{
+        return d.pool.QueryRow(ctx, sql, args...)
 }</span>
 
-// QueryRowContext は、DB.QueryRowContextを呼び出します。
-func (d *dbDriver) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row <span class="cov0" title="0">{
-        return d.DB.QueryRowContext(ctx, query, args...)
+// Begin は、DB.Beginを呼び出します。
+func (d *dbDriver) Begin(ctx context.Context) (pgx.Tx, error) <span class="cov10" title="26">{
+        return d.pool.Begin(ctx)
 }</span>
 
-// BeginTx は、DB.BeginTxを呼び出します。
-func (d *dbDriver) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) <span class="cov10" title="26">{
-        return d.DB.BeginTx(ctx, opts)
-}</span>
-
-// PingContext は、DB.PingContextを呼び出します。
-func (d *dbDriver) PingContext(ctx context.Context) error <span class="cov1" title="1">{
-        return d.DB.PingContext(ctx)
+// Ping は、DB.Pingを呼び出します。
+func (d *dbDriver) Ping(ctx context.Context) error <span class="cov1" title="1">{
+        return d.pool.Ping(ctx)
 }</span>
 
 // Close は、DB.Closeを呼び出します。
 func (d *dbDriver) Close() error <span class="cov6" title="7">{
-        return d.DB.Close()
+        d.pool.Close()
+        return nil
+}</span>
+
+// Stats は、DB.Statsを呼び出します。
+func (d *dbDriver) Stats() *pgxpool.Stat <span class="cov2" title="2">{
+        return d.pool.Stat()
 }</span>
 </pre>
 		
@@ -6920,12 +6804,14 @@ func (p *provider) LayerTracer() observability.LayerTracer <span class="cov8" ti
 
 import (
         "context"
-        "database/sql"
         "time"
 
         "boilerplate-go/internal/infrastructure/rdb/driver"
         "boilerplate-go/internal/logging"
         "boilerplate-go/internal/observability"
+
+        "github.com/jackc/pgx/v5"
+        "github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -6934,14 +6820,12 @@ const (
         pkg      = "driver"
 
         sqlExec        = "Execute statement"
-        sqlPrepare     = "Prepare statement"
         sqlQuery       = "Query multiple rows"
         sqlQuerySingle = "Query single row"
 
-        execContext     = "ExecContext"
-        prepareContext  = "PrepareContext"
-        queryContext    = "QueryContext"
-        queryRowContext = "QueryRowContext"
+        execFunc     = "Exec"
+        queryFunc    = "Query"
+        queryRowFunc = "QueryRow"
 )
 
 // dbWithLogging は DBTX をラップしてログを出してから実処理へ委譲する。
@@ -6951,78 +6835,63 @@ type dbWithLogging struct {
         provider DBProvider
 }
 
-func (dwl *dbWithLogging) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) <span class="cov4" title="3">{
+func (dwl *dbWithLogging) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) <span class="cov4" title="3">{
         start := time.Now()
 
-        tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, execContext))
+        tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, execFunc))
         defer end()
 
-        fields := dwl.buildSQLStartLogFields(tc, execContext)
+        fields := dwl.buildSQLStartLogFields(tc, execFunc)
         dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlExec, fields...)
 
-        res, err := dwl.db.ExecContext(ctx, query, args...)
+        res, err := dwl.db.Exec(ctx, sql, args...)
         duration := time.Since(start)
 
-        fields = dwl.buildSQLEndLogFields(tc, execContext, query, duration, args, err)
+        fields = dwl.buildSQLEndLogFields(tc, execFunc, sql, duration, args, err)
         dwl.logQueryResult(sqlExec, duration, fields, err)
         return res, err
 }</span>
 
-func (dwl *dbWithLogging) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) <span class="cov1" title="1">{
+func (dwl *dbWithLogging) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) <span class="cov8" title="13">{
         start := time.Now()
 
-        tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, prepareContext))
+        tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, queryFunc))
         defer end()
 
-        fields := dwl.buildSQLStartLogFields(tc, prepareContext)
-        dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlPrepare, fields...)
-
-        //nolint:sqlclosecheck // wrapper: caller is responsible for closing returned *sql.Stmt
-        stmt, err := dwl.db.PrepareContext(ctx, query)
-        duration := time.Since(start)
-
-        fields = dwl.buildSQLEndLogFields(tc, prepareContext, query, duration, nil, err)
-        dwl.logQueryResult(sqlPrepare, duration, fields, err)
-        return stmt, err
-}</span>
-
-func (dwl *dbWithLogging) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) <span class="cov8" title="13">{
-        start := time.Now()
-
-        tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, queryContext))
-        defer end()
-
-        fields := dwl.buildSQLStartLogFields(tc, queryContext)
+        fields := dwl.buildSQLStartLogFields(tc, queryFunc)
         dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlQuery, fields...)
 
-        //nolint:sqlclosecheck // wrapper: caller is responsible for closing returned *sql.Rows
-        rows, err := dwl.db.QueryContext(ctx, query, args...)
+        rows, err := dwl.db.Query(ctx, sql, args...) //nolint:sqlclosecheck // ownership transferred to caller; closed in sqlc layer
         duration := time.Since(start)
 
-        fields = dwl.buildSQLEndLogFields(tc, queryContext, query, duration, args, err)
+        fields = dwl.buildSQLEndLogFields(tc, queryFunc, sql, duration, args, err)
         dwl.logQueryResult(sqlQuery, duration, fields, err)
-        return rows, err
-}</span>
 
-func (dwl *dbWithLogging) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row <span class="cov6" title="7">{
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="13">return rows, nil</span>
+}
+
+func (dwl *dbWithLogging) QueryRow(ctx context.Context, query string, args ...any) pgx.Row <span class="cov6" title="7">{
         start := time.Now()
 
-        tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, queryRowContext))
+        tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), observability.BuildSpanName(layer, pkg, queryRowFunc))
         defer end()
 
-        fields := dwl.buildSQLStartLogFields(tc, queryRowContext)
+        fields := dwl.buildSQLStartLogFields(tc, queryRowFunc)
         dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlQuerySingle, fields...)
 
-        row := dwl.db.QueryRowContext(ctx, query, args...)
+        row := dwl.db.QueryRow(ctx, query, args...)
         duration := time.Since(start)
 
-        fields = dwl.buildSQLEndLogFields(tc, queryRowContext, query, duration, args, nil)
+        fields = dwl.buildSQLEndLogFields(tc, queryRowFunc, query, duration, args, nil)
         dwl.logQueryResult(sqlQuerySingle, duration, fields, nil)
         return row
 }</span>
 
 // buildSQLStartLogFields は、SQLクエリの開始ログ出力用フィールドを構築します。
-func (dwl *dbWithLogging) buildSQLStartLogFields(tc observability.TraceContext, funcName string) []*logging.Field <span class="cov9" title="25">{
+func (dwl *dbWithLogging) buildSQLStartLogFields(tc observability.TraceContext, funcName string) []*logging.Field <span class="cov9" title="24">{
         sqlIn := logging.SQLFieldsStartInput{
                 Layer:    layer,
                 PkgName:  pkg,
@@ -7041,13 +6910,13 @@ func (dwl *dbWithLogging) buildSQLStartLogFields(tc observability.TraceContext, 
 // buildSQLEndLogFields は、SQLクエリの終了ログ出力用フィールドを構築します。
 func (dwl *dbWithLogging) buildSQLEndLogFields(
         tc observability.TraceContext, funcName, query string, duration time.Duration, args []any, err error,
-) []*logging.Field <span class="cov9" title="26">{
+) []*logging.Field <span class="cov9" title="25">{
         logArgs := args
         if dwl.provider.ObservabilityConfig().MaskedDBQueryArgs() </span><span class="cov1" title="1">{
                 logArgs = nil
         }</span>
 
-        <span class="cov9" title="26">sqlIn := logging.SQLFieldsEndInput{
+        <span class="cov9" title="25">sqlIn := logging.SQLFieldsEndInput{
                 Layer:    layer,
                 PkgName:  pkg,
                 FuncName: funcName,
@@ -7069,15 +6938,15 @@ func (dwl *dbWithLogging) buildSQLEndLogFields(
 // logQueryResult は、SQLクエリの実行結果をログ出力します。
 func (dwl *dbWithLogging) logQueryResult(
         msg string, duration time.Duration, fields []*logging.Field, err error,
-) <span class="cov10" title="27">{
+) <span class="cov10" title="26">{
         logger := dwl.provider.Logger().Named(layer).CallerSkip(callSkip)
         threshold := dwl.provider.DBConfig().SlowQueryWarnThreshold()
         switch </span>{
-        case err != nil:<span class="cov5" title="6">
+        case err != nil:<span class="cov2" title="2">
                 logger.Error(msg, fields...)</span>
         case threshold &gt; 0 &amp;&amp; duration &gt; threshold:<span class="cov1" title="1">
                 logger.Warn(msg, fields...)</span>
-        default:<span class="cov9" title="20">
+        default:<span class="cov9" title="23">
                 logger.Info(msg, fields...)</span>
         }
 }
@@ -7086,32 +6955,21 @@ func (dwl *dbWithLogging) logQueryResult(
 		<pre class="file" id="file110" style="display: none">package driver
 
 import (
-        "database/sql"
-        "testing"
-
-        "boilerplate-go/pkg/ptr"
-)
-
-// NewTestInstance は、テスト用のDatabaseDriverインスタンスを生成します。
-func NewTestInstance(t *testing.T) DatabaseDriver <span class="cov10" title="6">{
-        t.Helper()
-        return &amp;dbDriver{DB: ptr.To(sql.DB{})}
-}</span>
-</pre>
-		
-		<pre class="file" id="file111" style="display: none">package driver
-
-import (
         "context"
-        "database/sql"
+        "time"
 
         "boilerplate-go/internal/config"
         "boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
         "boilerplate-go/internal/logging"
         "boilerplate-go/internal/usecase/boundary/tx"
+
+        "github.com/jackc/pgx/v5"
 )
 
-const callerSkipCount = 1
+const (
+        callerSkipCount = 1
+        cleanupTimeout  = 5 * time.Second
+)
 
 // txManager は、トランザクションの管理を行います。
 type txManager struct {
@@ -7131,29 +6989,33 @@ func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging
 
 // Do は、トランザクションを開始し、引数で渡されたfnを実行します。
 func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) error <span class="cov9" title="25">{
-        if _, ok := ctx.Value(txKey{}).(*sql.Tx); ok </span><span class="cov1" title="1">{
+        if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok </span><span class="cov1" title="1">{
                 return fn(ctx)
         }</span>
 
-        <span class="cov9" title="24">tx, err := t.db.BeginTx(ctx, nil)
+        <span class="cov9" title="24">tx, err := t.db.Begin(ctx)
         if err != nil </span><span class="cov0" title="0">{
                 return err
         }</span>
-        <span class="cov9" title="24">defer func() </span><span class="cov9" title="24">{
+        <span class="cov9" title="24">defer func(ctx context.Context) </span><span class="cov9" title="24">{
                 if p := recover(); p != nil </span><span class="cov1" title="1">{
-                        if pgErr := tx.Rollback(); pgErr != nil </span><span class="cov0" title="0">{
+                        cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+                        defer cancel()
+                        if pgErr := tx.Rollback(cleanupCtx); pgErr != nil </span><span class="cov0" title="0">{
                                 t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
                                         "Failed to rollback transaction on panic", logging.Error("rollback transaction", pgErr),
                                 )
                         }</span>
                         <span class="cov1" title="1">panic(p)</span>
                 }
-        }()
+        }(ctx)
 
         <span class="cov9" title="24">ctx = withTx(ctx, tx)
 
         if err := fn(ctx); err != nil </span><span class="cov9" title="22">{
-                if pgErr := tx.Rollback(); pgErr != nil </span><span class="cov0" title="0">{
+                cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+                defer cancel()
+                if pgErr := tx.Rollback(cleanupCtx); pgErr != nil </span><span class="cov0" title="0">{
                         t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
                                 "Failed to rollback transaction",
                                 logging.Error("rollback transaction", pgErr),
@@ -7163,7 +7025,7 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
                 <span class="cov9" title="22">return err</span>
         }
 
-        <span class="cov1" title="1">if err := tx.Commit(); err != nil </span><span class="cov0" title="0">{
+        <span class="cov1" title="1">if err := tx.Commit(ctx); err != nil </span><span class="cov0" title="0">{
                 return pgerror.NormalizeError(err)
         }</span>
 
@@ -7171,9 +7033,168 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 }
 
 // withTx は、context.Contextにトランザクションを設定します。
-func withTx(ctx context.Context, tx *sql.Tx) context.Context <span class="cov10" title="26">{
+func withTx(ctx context.Context, tx pgx.Tx) context.Context <span class="cov10" title="26">{
         return context.WithValue(ctx, txKey{}, tx)
 }</span>
+</pre>
+		
+		<pre class="file" id="file111" style="display: none">// Package metrics は、RDBのコネクションプールの統計情報を収集するための機能を提供します。
+package metrics
+
+import (
+        "boilerplate-go/internal/infrastructure/rdb/driver"
+        "boilerplate-go/pkg/xerrors"
+
+        "github.com/prometheus/client_golang/prometheus"
+)
+
+const namespace = "pgxpool"
+
+type PoolStatsCollector struct {
+        db driver.DatabaseDriver
+
+        acquiredConns     *prometheus.Desc
+        idleConns         *prometheus.Desc
+        totalConns        *prometheus.Desc
+        constructingConns *prometheus.Desc
+        maxConns          *prometheus.Desc
+
+        acquireCount            *prometheus.Desc
+        acquireDuration         *prometheus.Desc
+        canceledAcquireCount    *prometheus.Desc
+        emptyAcquireCount       *prometheus.Desc
+        newConnsCount           *prometheus.Desc
+        maxLifetimeDestroyCount *prometheus.Desc
+        maxIdleDestroyCount     *prometheus.Desc
+        emptyAcquireWaitTime    *prometheus.Desc
+}
+
+// New は、PoolStatsCollectorを初期化して返します。
+func New(db driver.DatabaseDriver) *PoolStatsCollector <span class="cov10" title="10">{
+        return &amp;PoolStatsCollector{
+                db: db,
+
+                // Gauges
+                acquiredConns: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "acquired_conns"),
+                        "Number of currently acquired connections in the pool.",
+                        nil, nil,
+                ),
+                idleConns: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "idle_conns"),
+                        "Number of currently idle connections in the pool.",
+                        nil, nil,
+                ),
+                totalConns: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "total_conns"),
+                        "Total number of connections currently in the pool.",
+                        nil, nil,
+                ),
+                constructingConns: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "constructing_conns"),
+                        "Number of connections currently being constructed.",
+                        nil, nil,
+                ),
+                maxConns: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "max_conns"),
+                        "Maximum number of connections allowed in the pool.",
+                        nil, nil,
+                ),
+
+                // Counters
+                acquireCount: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "acquire_count_total"),
+                        "Total number of successful connection acquires from the pool.",
+                        nil, nil,
+                ),
+                acquireDuration: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "acquire_duration_seconds_total"),
+                        "Total duration of all successful connection acquires.",
+                        nil, nil,
+                ),
+                canceledAcquireCount: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "canceled_acquire_count_total"),
+                        "Total number of  canceled connection acquires.",
+                        nil, nil,
+                ),
+                emptyAcquireCount: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "empty_acquire_count_total"),
+                        "Total number of acquires that had to create a new connection because the pool was empty.",
+                        nil, nil,
+                ),
+                newConnsCount: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "new_conns_count_total"),
+                        "Total number of new connections created.",
+                        nil, nil,
+                ),
+                maxLifetimeDestroyCount: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "max_lifetime_destroy_count_total"),
+                        "Total number of connections destroyed due to max lifetime.",
+                        nil, nil,
+                ),
+                maxIdleDestroyCount: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "max_idle_destroy_count_total"),
+                        "Total number of connections destroyed due to max idle time.",
+                        nil, nil,
+                ),
+                emptyAcquireWaitTime: prometheus.NewDesc(
+                        prometheus.BuildFQName(namespace, "", "empty_acquire_wait_time_seconds_total"),
+                        "Total duration of all acquires that had to wait for a connection because the pool was empty.",
+                        nil, nil,
+                ),
+        }
+}</span>
+
+// Describe は、PoolStatsCollectorのメトリクスの説明をPrometheusに提供します。
+func (c *PoolStatsCollector) Describe(ch chan&lt;- *prometheus.Desc) <span class="cov9" title="9">{
+        ch &lt;- c.acquiredConns
+        ch &lt;- c.idleConns
+        ch &lt;- c.totalConns
+        ch &lt;- c.constructingConns
+        ch &lt;- c.maxConns
+
+        ch &lt;- c.acquireCount
+        ch &lt;- c.acquireDuration
+        ch &lt;- c.canceledAcquireCount
+        ch &lt;- c.emptyAcquireCount
+        ch &lt;- c.newConnsCount
+        ch &lt;- c.maxLifetimeDestroyCount
+        ch &lt;- c.maxIdleDestroyCount
+        ch &lt;- c.emptyAcquireWaitTime
+}</span>
+
+// Collect は、PoolStatsCollectorのメトリクスを収集してPrometheusに提供します。
+func (c *PoolStatsCollector) Collect(ch chan&lt;- prometheus.Metric) <span class="cov1" title="1">{
+        stats := c.db.Stats()
+
+        ch &lt;- prometheus.MustNewConstMetric(c.acquiredConns, prometheus.GaugeValue, float64(stats.AcquiredConns()))
+        ch &lt;- prometheus.MustNewConstMetric(c.idleConns, prometheus.GaugeValue, float64(stats.IdleConns()))
+        ch &lt;- prometheus.MustNewConstMetric(c.totalConns, prometheus.GaugeValue, float64(stats.TotalConns()))
+        ch &lt;- prometheus.MustNewConstMetric(c.constructingConns, prometheus.GaugeValue, float64(stats.ConstructingConns()))
+        ch &lt;- prometheus.MustNewConstMetric(c.maxConns, prometheus.GaugeValue, float64(stats.MaxConns()))
+
+        ch &lt;- prometheus.MustNewConstMetric(c.acquireCount, prometheus.CounterValue, float64(stats.AcquireCount()))
+        ch &lt;- prometheus.MustNewConstMetric(c.acquireDuration, prometheus.CounterValue, stats.AcquireDuration().Seconds())
+        ch &lt;- prometheus.MustNewConstMetric(c.canceledAcquireCount, prometheus.CounterValue, float64(stats.CanceledAcquireCount()))
+        ch &lt;- prometheus.MustNewConstMetric(c.emptyAcquireCount, prometheus.CounterValue, float64(stats.EmptyAcquireCount()))
+        ch &lt;- prometheus.MustNewConstMetric(c.newConnsCount, prometheus.CounterValue, float64(stats.NewConnsCount()))
+        ch &lt;- prometheus.MustNewConstMetric(c.maxLifetimeDestroyCount, prometheus.CounterValue, float64(stats.MaxLifetimeDestroyCount()))
+        ch &lt;- prometheus.MustNewConstMetric(c.maxIdleDestroyCount, prometheus.CounterValue, float64(stats.MaxIdleDestroyCount()))
+        ch &lt;- prometheus.MustNewConstMetric(c.emptyAcquireWaitTime, prometheus.CounterValue, stats.EmptyAcquireWaitTime().Seconds())
+}</span>
+
+// RegisterPoolStatsCollector は、PoolStatsCollectorをPrometheusのレジストリに登録します。
+func RegisterPoolStatsCollector(c *PoolStatsCollector) error <span class="cov9" title="8">{
+        err := prometheus.Register(c)
+        if err != nil </span><span class="cov6" title="4">{
+                var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+                if xerrors.As(err, &amp;alreadyRegisteredErr) </span><span class="cov6" title="4">{
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return err</span>
+        }
+        <span class="cov6" title="4">return nil</span>
+}
 </pre>
 		
 		<pre class="file" id="file112" style="display: none">// Package pgerror は、PostgreSQL固有の処理を提供します。
@@ -7181,8 +7202,6 @@ package pgerror
 
 import (
         "context"
-        "database/sql"
-        "database/sql/driver"
         "errors"
         "net"
         "strings"
@@ -7190,21 +7209,22 @@ import (
         "boilerplate-go/internal/apperror"
         "boilerplate-go/pkg/xerrors"
 
+        "github.com/jackc/pgx/v5"
         "github.com/jackc/pgx/v5/pgconn"
 )
 
 // NormalizeError は、PostgreSQLのエラーをアプリケーション固有のエラーに変換します。
 // Infrastructure層から返されるPostgreSQLエラーを一貫した形で処理するために使用します。
-func NormalizeError(err error) error <span class="cov10" title="22">{
+func NormalizeError(err error) error <span class="cov10" title="21">{
         if err == nil </span><span class="cov1" title="1">{
                 return nil
         }</span>
 
-        <span class="cov9" title="21">if errors.Is(err, sql.ErrNoRows) </span><span class="cov1" title="1">{
+        <span class="cov9" title="20">if errors.Is(err, pgx.ErrNoRows) </span><span class="cov1" title="1">{
                 return xerrors.Wrap(apperror.ErrNotFound, err.Error())
         }</span>
 
-        <span class="cov9" title="20">var pgErr *pgconn.PgError
+        <span class="cov9" title="19">var pgErr *pgconn.PgError
         if errors.As(err, &amp;pgErr) </span><span class="cov9" title="17">{
                 switch pgErr.Code </span>{
                 case "23505":<span class="cov3" title="2"> // ユニーク制約違反
@@ -7220,29 +7240,26 @@ func NormalizeError(err error) error <span class="cov10" title="22">{
                         return xerrors.Wrap(apperror.ErrUnavailable, err.Error())</span>
                 }
         }
-        <span class="cov7" title="9">if IsUnavailable(err) </span><span class="cov4" title="3">{ // 接続関連エラー
+        <span class="cov7" title="8">if IsUnavailable(err) </span><span class="cov3" title="2">{ // 接続関連エラー
                 return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
         }</span>
         <span class="cov6" title="6">return xerrors.Wrap(apperror.ErrInternal, err.Error())</span>
 }
 
 // IsUnavailable は、与えられたエラーがデータベースの接続不可エラーであるかを判定します。
-func IsUnavailable(err error) bool <span class="cov9" title="16">{
+func IsUnavailable(err error) bool <span class="cov8" title="14">{
         if err == nil </span><span class="cov1" title="1">{
                 return false
         }</span>
 
         // context のタイムアウト
-        <span class="cov8" title="15">if errors.Is(err, context.DeadlineExceeded) </span><span class="cov3" title="2">{
+        <span class="cov8" title="13">if errors.Is(err, context.DeadlineExceeded) </span><span class="cov3" title="2">{
                 return true
         }</span>
 
         // ネットワーク／ドライバ系
-        <span class="cov8" title="13">var ne net.Error
+        <span class="cov8" title="11">var ne net.Error
         if errors.As(err, &amp;ne) &amp;&amp; ne.Timeout() </span><span class="cov1" title="1">{
-                return true
-        }</span>
-        <span class="cov8" title="12">if errors.Is(err, driver.ErrBadConn) </span><span class="cov3" title="2">{
                 return true
         }</span>
 
@@ -7267,14 +7284,12 @@ import (
         "context"
 
         "boilerplate-go/internal/domain/user"
-        "boilerplate-go/internal/infrastructure/rdb/conv"
         "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
         "boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
         "boilerplate-go/internal/infrastructure/rdb/sqlc"
         "boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
         "boilerplate-go/internal/observability"
         "boilerplate-go/internal/usecase/user/query"
-        "boilerplate-go/pkg/uuid"
 )
 
 type service struct {
@@ -7317,20 +7332,20 @@ func (s *service) FindByKeyword(ctx context.Context, keywords []string, active *
         <span class="cov4" title="2">users := make(user.Users, len(rows))
         for i, row := range rows </span><span class="cov4" title="2">{
                 user, err := user.New(
-                        uuid.FromPrimitive(row.Users.ID),
+                        row.Users.ID,
                         row.Users.FirstName,
                         row.Users.LastName,
                         row.Users.PasswordHash,
                         row.Users.Email,
                         row.Users.Phone,
-                        uuid.FromPrimitive(row.Users.PrefectureID),
+                        row.Users.PrefectureID,
                         row.Users.City,
                         row.Users.Street,
-                        conv.StringPtrFromNull(row.Users.Building),
+                        row.Users.Building,
                         row.Users.PostalCode,
                         row.Users.CreatedAt,
                         row.Users.UpdatedAt,
-                        conv.TimePtrFromNull(row.Users.DeletedAt),
+                        row.Users.DeletedAt,
                 )
                 if err != nil </span><span class="cov1" title="1">{
                         return nil, err
@@ -7376,7 +7391,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.En
         defer endSpan()
 
         db := gen.New(r.db.NewLoggingDB(ctx))
-        row, err := db.GetPrefectureDomainByID(ctx, id.ToPrimitive())
+        row, err := db.GetPrefectureDomainByID(ctx, id)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, pgerror.NormalizeError(err)
         }</span>
@@ -7394,7 +7409,7 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
         defer endSpan()
 
         db := gen.New(r.db.NewLoggingDB(ctx))
-        rows, err := db.GetPrefectureDomainByIDs(ctx, uuid.ToPrimitiveUniqueList(ids))
+        rows, err := db.GetPrefectureDomainByIDs(ctx, ids)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, pgerror.NormalizeError(err)
         }</span>
@@ -7407,7 +7422,7 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
                         int(row.Code),
                 )
                 if err != nil </span><span class="cov0" title="0">{
-                        return nil, pgerror.NormalizeError(err)
+                        return nil, err
                 }</span>
                 <span class="cov4" title="2">prefectures[i] = prefectureEntity</span>
         }
@@ -7441,13 +7456,11 @@ import (
         "context"
 
         "boilerplate-go/internal/domain/user"
-        "boilerplate-go/internal/infrastructure/rdb/conv"
         "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
         "boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
         "boilerplate-go/internal/infrastructure/rdb/sqlc"
         "boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
         "boilerplate-go/internal/observability"
-        "boilerplate-go/pkg/uuid"
 )
 
 type repository struct {
@@ -7482,20 +7495,20 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Use
         <span class="cov6" title="5">users := make(user.Users, len(rows))
         for i, row := range rows </span><span class="cov10" title="13">{
                 user, err := user.New(
-                        uuid.FromPrimitive(row.Users.ID),
+                        row.Users.ID,
                         row.Users.FirstName,
                         row.Users.LastName,
                         row.Users.PasswordHash,
                         row.Users.Email,
                         row.Users.Phone,
-                        uuid.FromPrimitive(row.Users.PrefectureID),
+                        row.Users.PrefectureID,
                         row.Users.City,
                         row.Users.Street,
-                        conv.StringPtrFromNull(row.Users.Building),
+                        row.Users.Building,
                         row.Users.PostalCode,
                         row.Users.CreatedAt,
                         row.Users.UpdatedAt,
-                        conv.TimePtrFromNull(row.Users.DeletedAt),
+                        row.Users.DeletedAt,
                 )
                 if err != nil </span><span class="cov1" title="1">{
                         return nil, err
@@ -7512,16 +7525,16 @@ func (r *repository) Create(ctx context.Context, user *user.User) error <span cl
 
         db := gen.New(r.db.NewLoggingDB(ctx))
         err := db.CreateUser(ctx, &amp;gen.CreateUserParams{
-                ID:           user.ID().ToPrimitive(),
+                ID:           user.ID(),
                 FirstName:    user.FirstName(),
                 LastName:     user.LastName(),
                 PasswordHash: user.PasswordHash(),
                 Email:        user.Email(),
                 Phone:        user.Phone(),
-                PrefectureID: user.PrefectureID().ToPrimitive(),
+                PrefectureID: user.PrefectureID(),
                 City:         user.City(),
                 Street:       user.Street(),
-                Building:     conv.NullStringFromPtr(user.Building()),
+                Building:     user.Building(),
                 PostalCode:   user.PostalCode(),
                 CreatedAt:    user.CreatedAt(),
                 UpdatedAt:    user.UpdatedAt(),
@@ -7632,7 +7645,10 @@ type systemQuery struct {
         tracer observability.LayerTracer
 }
 
-func New(provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery <span class="cov8" title="1">{
+func New(
+        provider loggingdb.DBProvider,
+        tf observability.TracerFactory,
+) query.DBSystemQuery <span class="cov8" title="1">{
         return &amp;systemQuery{
                 db:     provider,
                 tracer: tf.Infra(),
@@ -7702,13 +7718,13 @@ type testTxManager struct {
 }
 
 // NewTestDB は、テスト用のデータベースドライバーを生成します。
-func NewTestDB(t *testing.T) driver.DatabaseDriver <span class="cov4" title="4">{
+func NewTestDB(t *testing.T) driver.DatabaseDriver <span class="cov6" title="9">{
         t.Helper()
         return getTestDB(t)
 }</span>
 
 // NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
-func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider <span class="cov8" title="13">{
+func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider <span class="cov7" title="13">{
         t.Helper()
 
         cfg := config.MockConfigForTest(t)
@@ -7723,7 +7739,7 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider <span class="cov8
 }</span>
 
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
-func NewTestTransactionManager(t *testing.T) TransactionRunner <span class="cov7" title="9">{
+func NewTestTransactionManager(t *testing.T) TransactionRunner <span class="cov6" title="9">{
         t.Helper()
         cfg := config.MockConfigForTest(t)
         testLogger := logging.NewTestLogger(t)
@@ -7745,7 +7761,7 @@ func NewTestTransactionManager(t *testing.T) TransactionRunner <span class="cov7
 //        txm.WithinTx(func(ctx context.Context) {
 //          // トランザクション内の処理
 //        })
-func (t *testTxManager) WithinTx(fn func(ctx context.Context)) <span class="cov9" title="21">{
+func (t *testTxManager) WithinTx(fn func(ctx context.Context)) <span class="cov8" title="21">{
         t.t.Helper()
 
         txLock.Lock()
@@ -7753,22 +7769,22 @@ func (t *testTxManager) WithinTx(fn func(ctx context.Context)) <span class="cov9
 
         baseCtx := context.Background()
 
-        err := t.inner.Do(baseCtx, func(txCtx context.Context) error </span><span class="cov9" title="21">{
+        err := t.inner.Do(baseCtx, func(txCtx context.Context) error </span><span class="cov8" title="21">{
                 fn(txCtx)
                 return rollbackForTestError
         }</span>)
 
-        <span class="cov9" title="21">if xerrors.Is(err, rollbackForTestError) </span><span class="cov9" title="21">{
+        <span class="cov8" title="21">if xerrors.Is(err, rollbackForTestError) </span><span class="cov8" title="21">{
                 return
         }</span>
         <span class="cov0" title="0">require.NoError(t.t, err)</span>
 }
 
 // getTestDB は、テスト用のデータベースドライバーを生成します。シングルトンパターンで実装されており、複数回呼び出されても同じインスタンスを返します。
-func getTestDB(t *testing.T) driver.DatabaseDriver <span class="cov10" title="26">{
+func getTestDB(t *testing.T) driver.DatabaseDriver <span class="cov10" title="31">{
         t.Helper()
 
-        dbOnce.Do(func() </span><span class="cov5" title="5">{
+        dbOnce.Do(func() </span><span class="cov5" title="6">{
                 cfg := config.MockConfigForTest(t)
                 dbCfg := config.NewDatabaseConfig(cfg)
                 osCfg := config.NewOperationSystemConfig(cfg)
@@ -7777,7 +7793,7 @@ func getTestDB(t *testing.T) driver.DatabaseDriver <span class="cov10" title="26
                 testDB, initErr = driver.NewDB(dbCfg, osCfg, dbConnCfg)
         }</span>)
 
-        <span class="cov10" title="26">require.NoError(t, initErr)
+        <span class="cov10" title="31">require.NoError(t, initErr)
         require.NotNil(t, testDB)
 
         return testDB</span>
@@ -7887,7 +7903,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key, v string) *Field <span class="cov10" title="2045">{
+func String(key, v string) *Field <span class="cov10" title="2027">{
         return &amp;Field{
                 key:         key,
                 kind:        fieldString,
@@ -7941,7 +7957,7 @@ func Bool(key string, v bool) *Field <span class="cov2" title="5">{
 }</span>
 
 // Time は、時間のログフィールドを作成します。
-func Time(key string, v time.Time) *Field <span class="cov7" title="248">{
+func Time(key string, v time.Time) *Field <span class="cov7" title="246">{
         return &amp;Field{
                 key:         key,
                 kind:        fieldString,
@@ -7950,7 +7966,7 @@ func Time(key string, v time.Time) *Field <span class="cov7" title="248">{
 }</span>
 
 // DurationMs は、時間間隔のログフィールドをミリ秒単位で作成します。
-func DurationMs(key string, v time.Duration) *Field <span class="cov6" title="114">{
+func DurationMs(key string, v time.Duration) *Field <span class="cov6" title="113">{
         return &amp;Field{
                 key:          key,
                 kind:         fieldFloat64,
@@ -7959,7 +7975,7 @@ func DurationMs(key string, v time.Duration) *Field <span class="cov6" title="11
 }</span>
 
 // Error は、エラーのログフィールドを作成します。
-func Error(key string, err error) *Field <span class="cov4" title="13">{
+func Error(key string, err error) *Field <span class="cov3" title="9">{
         return &amp;Field{
                 key:        key,
                 kind:       fieldError,
@@ -7986,7 +8002,7 @@ func Any(key string, v any) *Field <span class="cov5" title="34">{
 }</span>
 
 // latencyMs は、latency をミリ秒単位の float64 に変換します。
-func latencyMs(latency time.Duration) float64 <span class="cov6" title="115">{
+func latencyMs(latency time.Duration) float64 <span class="cov6" title="114">{
         return float64(latency) / float64(time.Millisecond)
 }</span>
 </pre>
@@ -8108,7 +8124,7 @@ type ObservabilityFieldsInput struct {
 func NewLogFields(
         obsCfg *config.ObservabilityConfig,
         osCfg *config.OperationSystemConfig,
-) LogFieldBuilder <span class="cov9" title="147">{
+) LogFieldBuilder <span class="cov9" title="145">{
         return &amp;logFieldBuilder{
                 obsCfg: obsCfg,
                 osCfg:  osCfg,
@@ -8162,7 +8178,7 @@ func (l *logFieldBuilder) BuildHTTPResponseFields(resp HTTPResponseLogInput) []*
 }</span>
 
 // BuildSQLStartFields は、SQLの開始時点のログ出力用の Field スライスを構築します。
-func (l *logFieldBuilder) BuildSQLStartFields(sql SQLFieldsStartInput) []*Field <span class="cov6" title="27">{
+func (l *logFieldBuilder) BuildSQLStartFields(sql SQLFieldsStartInput) []*Field <span class="cov6" title="26">{
         fields := []*Field{
                 String(EventTypeKey, EventTypeStart),
                 Time(EventAtKey, sql.EventAt),
@@ -8178,7 +8194,7 @@ func (l *logFieldBuilder) BuildSQLStartFields(sql SQLFieldsStartInput) []*Field 
 }</span>
 
 // BuildSQLEndFields は、SQLの終了時点のログ出力用の Field スライスを構築します。
-func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field <span class="cov6" title="28">{
+func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field <span class="cov6" title="27">{
         rawQuery := s.Query
         compact := l.buildCompactQuery(rawQuery)
 
@@ -8202,11 +8218,11 @@ func (l *logFieldBuilder) BuildSQLEndFields(s SQLFieldsEndInput) []*Field <span 
                 )
         }</span>
 
-        <span class="cov6" title="28">if s.Err != nil </span><span class="cov3" title="6">{
+        <span class="cov6" title="27">if s.Err != nil </span><span class="cov2" title="2">{
                 fields = append(fields, Error(InternalErrorKey, s.Err))
         }</span>
 
-        <span class="cov6" title="28">return l.appendTraceSpanFields(fields, s.TraceID, s.SpanID, s.ParentSpanID)</span>
+        <span class="cov6" title="27">return l.appendTraceSpanFields(fields, s.TraceID, s.SpanID, s.ParentSpanID)</span>
 }
 
 // BuildObservabilityFields は、オブザーバビリティ用のログフィールドを生成します。
@@ -8237,17 +8253,17 @@ func (l *logFieldBuilder) appendTraceSpanFields(
         traceID string,
         spanID string,
         parentSpanID string,
-) []*Field <span class="cov10" title="225">{
+) []*Field <span class="cov10" title="223">{
         if !l.obsCfg.Enabled() || traceID == "" || spanID == "" </span><span class="cov5" title="18">{
                 return fields
         }</span>
 
-        <span class="cov9" title="207">fields = append(fields,
+        <span class="cov9" title="205">fields = append(fields,
                 String(TraceIDKey, traceID),
                 String(SpanIDKey, spanID),
         )
 
-        if parentSpanID == "" </span><span class="cov9" title="205">{
+        if parentSpanID == "" </span><span class="cov9" title="203">{
                 return fields
         }</span>
 
@@ -8257,12 +8273,12 @@ func (l *logFieldBuilder) appendTraceSpanFields(
 }
 
 // buildCompactQuery は、SQL クエリを1行の短縮表現に変換します。
-func (*logFieldBuilder) buildCompactQuery(q string) string <span class="cov6" title="30">{
+func (*logFieldBuilder) buildCompactQuery(q string) string <span class="cov6" title="29">{
         if q == "" </span><span class="cov1" title="1">{
                 return ""
         }</span>
 
-        <span class="cov6" title="29">s := strings.ReplaceAll(q, "\n", " ")
+        <span class="cov6" title="28">s := strings.ReplaceAll(q, "\n", " ")
         s = strings.ReplaceAll(s, "\t", " ")
 
         s = strings.Join(strings.Fields(s), " ")
@@ -8303,14 +8319,14 @@ type logger struct {
 }
 
 // Named は、新しい名前付きの Logger を返す。
-func (l *logger) Named(name string) Logger <span class="cov7" title="232">{
+func (l *logger) Named(name string) Logger <span class="cov7" title="230">{
         return &amp;logger{
                 log: l.log.Named(name),
         }
 }</span>
 
 // CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
-func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="223">{
+func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="221">{
         return &amp;logger{
                 log: l.log.WithOptions(zap.AddCallerSkip(skip)),
         }
@@ -8322,7 +8338,7 @@ func (l *logger) Debug(msg string, fields ...*Field) <span class="cov1" title="1
 }</span>
 
 // Info は情報レベルのログを出力する。
-func (l *logger) Info(msg string, fields ...*Field) <span class="cov7" title="222">{
+func (l *logger) Info(msg string, fields ...*Field) <span class="cov7" title="224">{
         l.log.Info(msg, l.ConvertFields(fields)...)
 }</span>
 
@@ -8332,17 +8348,17 @@ func (l *logger) Warn(msg string, fields ...*Field) <span class="cov2" title="3"
 }</span>
 
 // Error はエラーレベルのログを出力する。
-func (l *logger) Error(msg string, fields ...*Field) <span class="cov4" title="15">{
+func (l *logger) Error(msg string, fields ...*Field) <span class="cov3" title="11">{
         l.log.Error(msg, l.ConvertFields(fields)...)
 }</span>
 
 // ConvertFields は Field のスライスを zap.Field のスライスに変換する。
-func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title="242">{
+func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title="240">{
         zfs := make([]zap.Field, 0, len(fs))
 
-        for _, f := range fs </span><span class="cov10" title="2149">{
+        for _, f := range fs </span><span class="cov10" title="2124">{
                 switch f.kind </span>{
-                case fieldString:<span class="cov9" title="1957">
+                case fieldString:<span class="cov9" title="1937">
                         zfs = append(zfs, zap.String(f.key, f.stringValue))</span>
                 case fieldStrings:<span class="cov2" title="3">
                         zfs = append(zfs, zap.Strings(f.key, f.stringsValue))</span>
@@ -8350,18 +8366,18 @@ func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title
                         zfs = append(zfs, zap.Int(f.key, f.intValue))</span>
                 case fieldInt64:<span class="cov3" title="12">
                         zfs = append(zfs, zap.Int64(f.key, f.int64Value))</span>
-                case fieldFloat64:<span class="cov6" title="99">
+                case fieldFloat64:<span class="cov6" title="98">
                         zfs = append(zfs, zap.Float64(f.key, f.float64Value))</span>
                 case fieldBool:<span class="cov1" title="1">
                         zfs = append(zfs, zap.Bool(f.key, f.boolValue))</span>
-                case fieldError:<span class="cov3" title="10">
+                case fieldError:<span class="cov3" title="6">
                         zfs = append(zfs, zap.Error(f.errorValue))</span>
                 default:<span class="cov4" title="19">
                         zfs = append(zfs, zap.Any(f.key, f.anyValue))</span>
                 }
         }
 
-        <span class="cov7" title="242">return zfs</span>
+        <span class="cov7" title="240">return zfs</span>
 }
 </pre>
 		
@@ -8455,13 +8471,13 @@ import (
 )
 
 // NewTestLogger は、テスト用のLoggerインスタンスを生成します。
-func NewTestLogger(t *testing.T) Logger <span class="cov10" title="160">{
+func NewTestLogger(t *testing.T) Logger <span class="cov10" title="158">{
         t.Helper()
         return &amp;logger{log: zaptest.NewLogger(t)}
 }</span>
 
 // NewTestLogFieldBuilder は、テスト用のLogFieldBuilderインスタンスを生成します。
-func NewTestLogFieldBuilder(t *testing.T) LogFieldBuilder <span class="cov9" title="134">{
+func NewTestLogFieldBuilder(t *testing.T) LogFieldBuilder <span class="cov9" title="132">{
         t.Helper()
 
         cfg := config.MockConfigForTest(t)
@@ -8519,7 +8535,7 @@ func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) 
 }</span>
 
 // BuildSpanName は、レイヤー名、パッケージ名、関数名からスパン名を構築します。
-func BuildSpanName(layer, pkgName, funcName string) string <span class="cov8" title="76">{
+func BuildSpanName(layer, pkgName, funcName string) string <span class="cov8" title="73">{
         return layer + delimiter + pkgName + delimiter + funcName
 }</span>
 
@@ -8529,7 +8545,7 @@ func ExtractTraceContext(ctx context.Context) *TraceContext <span class="cov6" t
         if !span.SpanContext().IsValid() </span><span class="cov4" title="7">{
                 return &amp;TraceContext{}
         }</span>
-        <span class="cov4" title="9">spanCtx := span.SpanContext()
+        <span class="cov5" title="9">spanCtx := span.SpanContext()
         return &amp;TraceContext{
                 traceID: spanCtx.TraceID().String(),
                 spanID:  spanCtx.SpanID().String(),
@@ -8542,7 +8558,7 @@ func StartSpanWithParent(
         tracer LayerTracer,
         name string,
         opts ...trace.SpanStartOption,
-) (TraceContext, context.Context, func()) <span class="cov9" title="98">{
+) (TraceContext, context.Context, func()) <span class="cov9" title="97">{
         parentSC := trace.SpanFromContext(ctx).SpanContext()
 
         childCtx, span := tracer.tracer.Start(ctx, name, opts...)
@@ -8557,22 +8573,22 @@ func StartSpanWithParent(
                 tc.parentSpanID = parentSC.SpanID().String()
         }</span>
 
-        <span class="cov9" title="98">end := func() </span><span class="cov9" title="98">{ span.End() }</span>
-        <span class="cov9" title="98">return tc, childCtx, end</span>
+        <span class="cov9" title="97">end := func() </span><span class="cov9" title="97">{ span.End() }</span>
+        <span class="cov9" title="97">return tc, childCtx, end</span>
 }
 
 // TraceID は、TraceContext から TraceID を取得します。
-func (tc *TraceContext) TraceID() string <span class="cov10" title="141">{
+func (tc *TraceContext) TraceID() string <span class="cov10" title="139">{
         return tc.traceID
 }</span>
 
 // SpanID は、TraceContext から SpanID を取得します。
-func (tc *TraceContext) SpanID() string <span class="cov10" title="141">{
+func (tc *TraceContext) SpanID() string <span class="cov10" title="139">{
         return tc.spanID
 }</span>
 
 // ParentSpanID は、TraceContext から ParentSpanID を取得します。
-func (tc *TraceContext) ParentSpanID() string <span class="cov9" title="125">{
+func (tc *TraceContext) ParentSpanID() string <span class="cov9" title="123">{
         return tc.parentSpanID
 }</span>
 </pre>
@@ -8833,7 +8849,7 @@ func NewMockInfraLayerTracer(t *testing.T) LayerTracer <span class="cov5" title=
 }</span>
 
 // NewNoopLayerTracer は、テスト用に LayerTracer を無効化して返します。
-func NewNoopLayerTracer(t *testing.T) LayerTracer <span class="cov4" title="5">{
+func NewNoopLayerTracer(t *testing.T) LayerTracer <span class="cov4" title="4">{
         t.Helper()
         return LayerTracer{
                 log:     logging.NewTestLogger(t),
@@ -9792,7 +9808,7 @@ func ExtractPackageName(full string) string <span class="cov9" title="103">{
 package ptr
 
 // To は、引数として渡された値のポインタを返します。
-func To[T any](v T) *T <span class="cov10" title="118">{ return &amp;v }</span>
+func To[T any](v T) *T <span class="cov10" title="113">{ return &amp;v }</span>
 
 // Copy は、引数として渡されたポインタをコピーして返します。
 func Copy[T any](v *T) *T <span class="cov9" title="74">{
@@ -9926,13 +9942,13 @@ import (
         guuid "github.com/google/uuid"
 )
 
-func fromGoogle(g guuid.UUID) UUID <span class="cov10" title="106">{
+func fromGoogle(g guuid.UUID) UUID <span class="cov10" title="66">{
         var u UUID
         copy(u.b[:], g[:])
         return u
 }</span>
 
-func toGoogle(u UUID) guuid.UUID <span class="cov7" title="34">{
+func toGoogle(u UUID) guuid.UUID <span class="cov8" title="35">{
         var g guuid.UUID
         copy(g[:], u.b[:])
         return g
@@ -9943,20 +9959,22 @@ func toGoogle(u UUID) guuid.UUID <span class="cov7" title="34">{
 package uuid
 
 import (
+        "database/sql/driver"
         "testing"
 
         "github.com/google/uuid"
 )
 
+//nolint:recvcheck // safe: UUID is immutable (value object); pointer receiver is required only for Scan to implement sql.Scanner
 type UUID struct{ b [16]byte }
 
 // New は、uuidを生成します。生成に失敗した場合はエラーを返します。
-func New() (UUID, error) <span class="cov7" title="20">{
+func New() (UUID, error) <span class="cov6" title="15">{
         g, err := uuid.NewV7()
         if err != nil </span><span class="cov0" title="0">{
                 return UUID{}, err
         }</span>
-        <span class="cov7" title="20">return fromGoogle(g), nil</span>
+        <span class="cov6" title="15">return fromGoogle(g), nil</span>
 }
 
 // NewTestFromSalt はテスト専用の決定論UUID生成関数です。
@@ -9971,19 +9989,19 @@ func NewTestFromSalt(t testing.TB, salt string) UUID <span class="cov6" title="1
 }</span>
 
 // String は、UUIDを文字列に変換します。
-func (u UUID) String() string <span class="cov6" title="18">{ return toGoogle(u).String() }</span>
+func (u UUID) String() string <span class="cov7" title="23">{ return toGoogle(u).String() }</span>
 
 // Bytes は、UUIDをバイト配列に変換します。
-func (u UUID) Bytes() [16]byte <span class="cov3" title="3">{ return u.b }</span>
+func (u UUID) Bytes() [16]byte <span class="cov2" title="2">{ return u.b }</span>
 
 // ToPrimitive は、UUIDから github.com/google/uuid の uuid.UUID を生成します。
-func (u UUID) ToPrimitive() uuid.UUID <span class="cov4" title="7">{ return toGoogle(u) }</span>
+func (u UUID) ToPrimitive() uuid.UUID <span class="cov1" title="1">{ return toGoogle(u) }</span>
 
 // IsNil は、UUIDが全てゼロであるかどうかを判定します。
 func (u UUID) IsNil() bool <span class="cov10" title="86">{ return u.b == [16]byte{} }</span>
 
 // Equal は、引数のUUIDと等しいかどうかを判定します。
-func (u UUID) Equal(v UUID) bool <span class="cov4" title="5">{ return u.b == v.b }</span>
+func (u UUID) Equal(v UUID) bool <span class="cov3" title="4">{ return u.b == v.b }</span>
 
 // ToPtr は、UUIDのポインタを返します。
 func (u UUID) ToPtr() *UUID <span class="cov2" title="2">{ return &amp;u }</span>
@@ -9992,50 +10010,28 @@ func (u UUID) ToPtr() *UUID <span class="cov2" title="2">{ return &amp;u }</span
 func (u UUID) EqualPtr(v *UUID) bool <span class="cov1" title="1">{ return v != nil &amp;&amp; u.b == v.b }</span>
 
 // Parse は、文字列からUUIDを解析します。解析に失敗した場合はエラーを返します。
-func Parse(s string) (UUID, error) <span class="cov9" title="56">{
+func Parse(s string) (UUID, error) <span class="cov8" title="52">{
         g, err := uuid.Parse(s)
         if err != nil </span><span class="cov6" title="14">{
                 return UUID{}, err
         }</span>
-        <span class="cov8" title="42">return fromGoogle(g), nil</span>
+        <span class="cov8" title="38">return fromGoogle(g), nil</span>
 }
 
-// FromPrimitive は、github.com/google/uuid の uuid.UUID からUUIDを生成します。
-func FromPrimitive(g uuid.UUID) UUID <span class="cov7" title="31">{ return fromGoogle(g) }</span>
-
-// FromPrimitiveList は、uuid.UUIDのスライスをUUIDのスライスに変換します。
-func FromPrimitiveList(pl []uuid.UUID) []UUID <span class="cov1" title="1">{
-        ul := make([]UUID, len(pl))
-        for i, p := range pl </span><span class="cov2" title="2">{
-                ul[i].b = p
+// Scan は、データベースからUUIDをスキャンします。スキャンに失敗した場合はエラーを返します。
+func (u *UUID) Scan(src any) error <span class="cov9" title="79">{
+        var g uuid.UUID
+        if err := g.Scan(src); err != nil </span><span class="cov1" title="1">{
+                return err
         }</span>
-        <span class="cov1" title="1">return ul</span>
+        <span class="cov9" title="78">u.b = g
+        return nil</span>
 }
 
-// ToPrimitiveList は、UUIDのスライスをuuid.UUIDのスライスに変換します。
-func ToPrimitiveList(ul []UUID) []uuid.UUID <span class="cov1" title="1">{
-        pl := make([]uuid.UUID, len(ul))
-        for i, u := range ul </span><span class="cov2" title="2">{
-                pl[i] = u.b
-        }</span>
-        <span class="cov1" title="1">return pl</span>
-}
-
-// ToPrimitiveUniqueList は、UUIDのスライスをuuid.UUIDのスライスに変換します。
-// 重複するUUIDは一つにまとめられます。
-func ToPrimitiveUniqueList(ul []UUID) []uuid.UUID <span class="cov2" title="2">{
-        out := make([]uuid.UUID, 0, len(ul))
-        seen := make(map[uuid.UUID]struct{}, len(ul))
-
-        for _, u := range ul </span><span class="cov4" title="6">{
-                if _, ok := seen[u.b]; ok </span><span class="cov2" title="2">{
-                        continue</span>
-                }
-                <span class="cov3" title="4">seen[u.b] = struct{}{}
-                out = append(out, u.b)</span>
-        }
-        <span class="cov2" title="2">return out</span>
-}
+// Value は、UUIDをデータベースに保存するための値に変換します。変換に失敗した場合はエラーを返します。
+func (u UUID) Value() (driver.Value, error) <span class="cov5" title="9">{
+        return toGoogle(u).Value()
+}</span>
 </pre>
 		
 		<pre class="file" id="file151" style="display: none">package xerrors
@@ -10047,13 +10043,13 @@ import (
 )
 
 // New は、新しいエラーを生成します。
-func New(msg string) error <span class="cov10" title="649">{
+func New(msg string) error <span class="cov10" title="650">{
         return errors.New(msg)
 }</span>
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
-func Wrap(err error, msg string) error <span class="cov8" title="300">{
+func Wrap(err error, msg string) error <span class="cov8" title="299">{
         return errors.Wrap(err, msg)
 }</span>
 
@@ -10063,7 +10059,7 @@ func Is(err, target error) bool <span class="cov8" title="164">{
 }</span>
 
 // As は、エラーが特定のターゲット型に変換可能かを判定します。
-func As(err error, target any) bool <span class="cov5" title="28">{
+func As(err error, target any) bool <span class="cov5" title="32">{
         return errors.As(err, target)
 }</span>
 

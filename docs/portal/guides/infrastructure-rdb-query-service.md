@@ -129,25 +129,25 @@ Important rule:
 
 ## UUID Conversion
 
-DB uses primitive UUID.
+DB uses `pkg/uuid.UUID`.
 
 Domain uses `pkg/uuid.UUID`.
 
 Conversion:
 
 ```go
-uuid.FromPrimitive(row.ID)
+row.ID // pkg/uuid.UUID
 ```
 
 ## Nullable Conversion
 
-Nullable DB values are converted using `internal/infrastructure/rdb/conv`.
+In this project, we use `sqlc override` to ensure that the UUIDs in the database and the `pkg/uuid` used in the domain are treated identically.
 
-Example
+Therefore, explicit UUID conversion in the QueryService is generally unnecessary.
 
 ```go
-conv.StringPtrFromNull(row.Users.Building)
-conv.TimePtrFromNull(row.Users.DeletedAt)
+row.Users.Building   // *string
+row.Users.DeletedAt  // *time.Time
 ```
 
 ## LoggingDBProvider
@@ -418,20 +418,20 @@ func (s *service) FindByKeyword(ctx context.Context, keywords []string, active*b
     users := make(user.Users, len(rows))
     for i, row := range rows {
         u, err := user.New(
-            uuid.FromPrimitive(row.Users.ID),
+            row.Users.ID,
             row.Users.FirstName,
             row.Users.LastName,
             row.Users.PasswordHash,
             row.Users.Email,
             row.Users.Phone,
-            uuid.FromPrimitive(row.Users.PrefectureID),
+            row.Users.PrefectureID,
             row.Users.City,
             row.Users.Street,
-            conv.StringPtrFromNull(row.Users.Building),
+            row.Users.Building,
             row.Users.PostalCode,
             row.Users.CreatedAt,
             row.Users.UpdatedAt,
-            conv.TimePtrFromNull(row.Users.DeletedAt),
+            row.Users.DeletedAt,
         )
         if err != nil {
             return nil, err

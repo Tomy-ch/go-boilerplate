@@ -115,58 +115,86 @@ DeletedState: sqlc.BoolPtrToDeletedState(active)
 
 ## Row → 返却型への変換
 
-sqlc の Row は **Infrastructure 型**です。
+sqlc が返す Row 構造体は **Infrastructure 専用型**です。
 
-QueryService は必ず **返却型(Domain Entity or DTO)に変換**します。
+ただし、本プロジェクトでは sqlc の override を利用して、生成時に次のような型変換を適用しています。
+
+- nullable → pointer 型
+- UUID → `pkg/uuid` 型
+
+そのため QueryService では、追加の変換処理をほとんど行わず、生成済みの型をそのまま Domain constructor または DTO に渡せます。
 
 ```go
-user, err := user.New(
-    uuid.FromPrimitive(row.Users.ID),
-    ...,
+u, err := user.New(
+    row.Users.ID,
+    row.Users.FirstName,
+    row.Users.LastName,
+    ...
 )
 ```
 
-重要ルールとしては、  
-**sqlc Row を上位層に返さない**
+重要ルール
 
-## UUID 変換
+- sqlc Row をそのまま上位層へ返さない
+- Domain Entity または DTO に変換する
 
-DB は primitive UUID を使用します。
+## UUID について
 
-Domain は`pkg/uuid.UUID`を使用します。
+本プロジェクトでは sqlc override により、DB 上の UUID と Domain で利用する `pkg/uuid` を同一の扱いに寄せています。
 
-変換
+そのため QueryService での明示的な UUID 変換は基本的に不要です。
 
 ```go
-uuid.FromPrimitive(row.ID)
+row.Users.ID // そのまま利用可能
 ```
 
-## Nullable 変換
+UUID の生成・比較・補助処理は `pkg/uuid` のラッパーを利用します。
 
-Nullable DB値は`internal/infrastructure/rdb/conv`を利用して変換します。
+## Nullable について
 
-例
+nullable 値は sqlc override により pointer 型として扱われます。
+
+そのため QueryService では追加の変換処理は不要です。
 
 ```go
-conv.StringPtrFromNull(row.Users.Building)
-conv.TimePtrFromNull(row.Users.DeletedAt)
+row.Users.Building   // *string
+row.Users.DeletedAt  // *time.Time
 ```
 
 ## LoggingDBProvider
 
-QueryService は DB Driver を直接使用しません。
+QueryService は通常、`loggingdb.DBProvider` を利用して DB にアクセスします。
 
 ```go
 db := gen.New(s.db.NewLoggingDB(ctx))
 ```
 
-`loggingdb.DBProvider` は
+`loggingdb.DBProvider` は次を提供します。
 
-- SQLログ
-- DB / Tx切替
-- Context接続
+- SQL ログ出力
+- DB / Tx の透過切り替え
+- Contextベース接続取得
 
-を提供します。
+QueryService は **DB接続状態を意識しない設計**になります。
+
+## driver の直接利用
+
+ロギングが不要な場合は、ロギングなしの DB アクセスを利用できます。
+
+```go
+db := gen.New(s.db.NewDB(ctx))
+```
+
+用途
+
+- 高頻度処理でログノイズを抑えたい場合
+- ロギング不要な単純処理
+- ベンチマークや最小経路の確認
+
+原則
+
+- 通常は `NewLoggingDB(ctx)` を使用する
+- 明確な理由がある場合のみ `NewDB(ctx)` を使用する
 
 ## エラー正規化
 
@@ -188,14 +216,33 @@ flowchart TB
 
 ## Observability（Tracing）
 
-QueryService では`observability.LayerTracer`を利用してトレースを提供します。
+QueryService では
+
+`observability.LayerTracer`
+
+を利用します。
 
 ```go
 ctx, endSpan := s.tracer.Start(ctx)
 defer endSpan()
 ```
 
-QueryService は`Span start / end`のみを扱います。
+QueryService は
+
+- span開始
+- span終了
+
+のみを責務とします。
+
+### span名について
+
+span名は LayerTracer 側で統一的に付与されるため、QueryService 側で明示的に指定する必要はありません。
+
+### 設計意図
+
+- トレーシングの一貫性確保
+- 各レイヤーでの責務分離
+- OpenTelemetry への直接依存排除
 
 ## DI（Dependency Injection）の仕組み（Query Service）
 
@@ -337,15 +384,15 @@ Repository と QueryService の役割は異なります。
 
 ### 1. Repository に検索を書く
 
-検索を Repository に書いてはいけません。
+検索処理は Repository ではなく QueryService に実装します。
 
-NG
+ただし Repository では、次のような単純なフィルタは許容されます。
 
-```go
-func (r *repository) FindByKeyword(...)
-```
+- ID / 外部キーによる取得
+- 単純な条件絞り込み
+- 件数取得（COUNT）
 
-検索は`QueryService`に実装します。
+それ以上の検索（複数条件・全文検索など）は QueryService に実装します。
 
 ### 2. ビジネスロジックを書く
 
@@ -420,20 +467,20 @@ func (s *service) FindByKeyword(ctx context.Context, keywords []string, active *
     users := make(user.Users, len(rows))
     for i, row := range rows {
         u, err := user.New(
-            uuid.FromPrimitive(row.Users.ID),
+            row.Users.ID,
             row.Users.FirstName,
             row.Users.LastName,
             row.Users.PasswordHash,
             row.Users.Email,
             row.Users.Phone,
-            uuid.FromPrimitive(row.Users.PrefectureID),
+            row.Users.PrefectureID,
             row.Users.City,
             row.Users.Street,
-            conv.StringPtrFromNull(row.Users.Building),
+            row.Users.Building,
             row.Users.PostalCode,
             row.Users.CreatedAt,
             row.Users.UpdatedAt,
-            conv.TimePtrFromNull(row.Users.DeletedAt),
+            row.Users.DeletedAt,
         )
         if err != nil {
             return nil, err
