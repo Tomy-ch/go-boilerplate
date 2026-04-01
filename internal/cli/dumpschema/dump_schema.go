@@ -101,8 +101,8 @@ func generateDumpSchema(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	dbCfig := config.NewDatabaseConfig(cfg)
-	dbURL := driver.DSNString(dbCfig)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	dbURL := driver.DSNString(dbCfg)
 
 	ctx := context.Background()
 	if err = gen.dumpSchema(ctx, dbURL); err != nil {
