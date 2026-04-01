@@ -53,7 +53,6 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 				require.True(t, res.Ready)
 				require.Positive(t, res.Latency.Microseconds())
 				require.NotZero(t, res.ResponsedAt)
-				require.Positive(t, res.MaxConnections)
 			})
 		})
 	})

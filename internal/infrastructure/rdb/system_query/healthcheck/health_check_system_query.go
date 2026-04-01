@@ -44,15 +44,9 @@ func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)
 	}
 	latency := time.Since(start)
 
-	stat := s.dbPool.Stats()
-
 	return query.DBHealth{
-		Ready:            true,
-		ResponsedAt:      time.Now(),
-		Latency:          latency,
-		TotalConnections: stat.TotalConns(),
-		IdleConnections:  stat.IdleConns(),
-		AcquiredCount:    stat.AcquiredConns(),
-		MaxConnections:   stat.MaxConns(),
+		Ready:       true,
+		ResponsedAt: time.Now(),
+		Latency:     latency,
 	}, nil
 }

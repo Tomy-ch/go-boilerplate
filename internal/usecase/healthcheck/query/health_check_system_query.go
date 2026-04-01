@@ -19,8 +19,8 @@ type DBHealth struct {
 	Latency     time.Duration
 
 	// コネクションプールの統計情報
-	TotalConnections int32
-	IdleConnections  int32
-	AcquiredCount    int32
-	MaxConnections   int32
+	TotalConnections    int32
+	IdleConnections     int32
+	AcquiredConnections int32
+	MaxConnections      int32
 }
