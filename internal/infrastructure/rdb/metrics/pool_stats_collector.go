@@ -3,6 +3,7 @@ package metrics
 
 import (
 	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"boilerplate-go/pkg/xerrors"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -143,6 +144,14 @@ func (c *PoolStatsCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 // RegisterPoolStatsCollector は、PoolStatsCollectorをPrometheusのレジストリに登録します。
-func RegisterPoolStatsCollector(c *PoolStatsCollector) {
-	_ = prometheus.Register(c)
+func RegisterPoolStatsCollector(c *PoolStatsCollector) error {
+	err := prometheus.Register(c)
+	if err != nil {
+		var alreadyRegisteredErr prometheus.AlreadyRegisteredError
+		if xerrors.As(err, &alreadyRegisteredErr) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }

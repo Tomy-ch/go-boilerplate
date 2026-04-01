@@ -56,8 +56,42 @@ func TestPoolStatsCollector_Collect(t *testing.T) {
 }
 
 func TestRegisterPoolStatsCollector(t *testing.T) {
-	db := testkit.NewTestDB(t)
-	collector := New(db)
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("初回登録", func(t *testing.T) {
+			reg := prometheus.NewRegistry()
+			orig := prometheus.DefaultRegisterer
+			prometheus.DefaultRegisterer = reg
+			t.Cleanup(func() {
+				prometheus.DefaultRegisterer = orig
+			})
 
-	RegisterPoolStatsCollector(collector)
+			db := testkit.NewTestDB(t)
+			collector := New(db)
+
+			err := RegisterPoolStatsCollector(collector)
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("重複登録", func(t *testing.T) {
+			reg := prometheus.NewRegistry()
+			orig := prometheus.DefaultRegisterer
+			prometheus.DefaultRegisterer = reg
+			t.Cleanup(func() {
+				prometheus.DefaultRegisterer = orig
+			})
+
+			db := testkit.NewTestDB(t)
+			collector := New(db)
+
+			// 1回目登録
+			err := RegisterPoolStatsCollector(collector)
+			require.NoError(t, err)
+
+			// 2回目登録（duplicate）
+			err = RegisterPoolStatsCollector(collector)
+			require.NoError(t, err) // ← ここがポイント
+		})
+	})
 }
