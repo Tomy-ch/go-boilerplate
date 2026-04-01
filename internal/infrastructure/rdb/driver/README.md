@@ -141,6 +141,38 @@ This enables **safe handling of nested transactions**.
 
 ## Notes
 
+### Transaction cleanup timeout
+
+When executing rollback / commit, cleanup must run even if the request context is canceled.  
+To achieve this, the following pattern is used:
+
+```go
+context.WithTimeout(
+    context.WithoutCancel(ctx),
+    cleanupTimeout,
+)
+```
+
+Key points:
+
+- `context.WithoutCancel(ctx)`
+  - Ensures cleanup is not affected by request cancellation
+  - Preserves trace / logger / correlation IDs
+
+- `cleanupTimeout`
+  - Maximum time allowed for cleanup (rollback / commit)
+  - Currently fixed to `5 seconds`
+
+This value is **not a business configuration but a safety mechanism for infrastructure protection**.
+
+- If too large:
+  - Goroutine blocking
+  - Connection pool exhaustion
+- If too small:
+  - Cleanup may not complete
+
+Therefore, it is intentionally kept as a constant inside the driver and not exposed via environment variables.
+
 ### Always propagate Context
 
 Transactions are stored in `context.Context`. Therefore, always propagate `ctx` to lower layers.

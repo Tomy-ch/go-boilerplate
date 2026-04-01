@@ -145,6 +145,37 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 
 ## 注意点
 
+### トランザクション cleanup タイムアウト
+
+トランザクションの rollback / commit 実行時には、リクエストの `context` がキャンセルされている場合でも確実に cleanup が行われるように、以下のような設計を採用しています。
+
+```go
+context.WithTimeout(
+    context.WithoutCancel(ctx),
+    cleanupTimeout,
+)
+```
+
+ポイント:
+
+- `context.WithoutCancel(ctx)`
+  - リクエストキャンセルの影響を受けずに cleanup を実行
+  - trace / logger / correlation ID は維持される
+
+- `cleanupTimeout`
+  - cleanup（rollback / commit）に対する最大待機時間
+  - 現在は `5秒` に固定
+
+この値は**ビジネス設定ではなくインフラ保護のためのセーフティ値**です。
+
+- 長くしすぎると:
+  - goroutine 詰まり
+  - connection pool 枯渇
+- 短すぎると:
+  - cleanup 未完了
+
+そのため、通常は driver 内の定数として管理し、環境変数などで外部化しない方針としています。
+
 ### Context を必ず伝搬する
 
 トランザクションは`context.Context`に格納されます。そのため`ctx`を必ず下位レイヤに伝搬してください。
