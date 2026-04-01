@@ -67,6 +67,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 			City:       dto.City,
 			Street:     dto.Street,
 			Building:   dto.Building,
+			DeletedAt:  dto.DeletedAt,
 		}
 	}
 
@@ -121,6 +122,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 		City:       dto.City,
 		Street:     dto.Street,
 		Building:   dto.Building,
+		DeletedAt:  dto.DeletedAt,
 	}
 
 	return gen.PostUsers201JSONResponse(res), nil

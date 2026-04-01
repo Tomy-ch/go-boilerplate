@@ -5,6 +5,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"boilerplate-go/internal/domain/prefecture"
 	"boilerplate-go/internal/domain/user"
@@ -29,6 +30,7 @@ type MutableFields struct {
 	City           string
 	Street         string
 	Building       *string
+	DeletedAt      *time.Time
 }
 
 // GetParamsDTO は、ユーザー取得に必要なパラメータを表します。
@@ -144,6 +146,7 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, 
 					City:       u.City(),
 					Street:     u.Street(),
 					Building:   u.Building(),
+					DeletedAt:  u.DeletedAt(),
 				}
 				if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
 					dtos[i].PrefectureName = p.Name()
@@ -222,6 +225,7 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 		City:           userEntity.City(),
 		Street:         userEntity.Street(),
 		Building:       userEntity.Building(),
+		DeletedAt:      userEntity.DeletedAt(),
 	}, nil
 }
 
