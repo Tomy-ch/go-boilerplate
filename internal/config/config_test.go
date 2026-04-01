@@ -330,6 +330,29 @@ func Test_validateDatabaseConfig(t *testing.T) {
 	})
 }
 
+func Test_validateDBConnectionConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		cfg := mockLoader(t)
+		err := validateDBConnectionConfig(cfg.DBConnection)
+		require.NoError(t, err)
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("MinConnsがMaxConnsを超えている場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.DBConnection.MinConns = cfg.DBConnection.MaxConns + 1 // MinConnsがMaxConnsを超える
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidExseedMaxConns)
+		})
+	})
+}
+
 func Test_validateSecurityConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
