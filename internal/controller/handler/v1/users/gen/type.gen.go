@@ -4,6 +4,8 @@
 package gen
 
 import (
+	"time"
+
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -78,6 +80,9 @@ type UserResponse struct {
 
 	// City 市区町村
 	City string `json:"city"`
+
+	// DeletedAt ユーザーが削除された日時。削除されていない場合はnull。
+	DeletedAt *time.Time `json:"deletedAt"`
 
 	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
