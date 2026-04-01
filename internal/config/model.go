@@ -66,10 +66,10 @@ type DatabaseConfig struct {
 }
 
 type DBConnectionConfig struct {
-	maxOpenConns int32
-	maxIdleConns int32
-	maxLifetime  time.Duration
-	maxIdleTime  time.Duration
+	maxConns    int32
+	minConns    int32
+	maxLifetime time.Duration
+	maxIdleTime time.Duration
 }
 
 type SecurityConfig struct {
@@ -229,10 +229,10 @@ func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQ
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }
 
 // MaxConns は、データベースの最大オープン接続数を返します。
-func (c *DBConnectionConfig) MaxConns() int32 { return c.maxOpenConns }
+func (c *DBConnectionConfig) MaxConns() int32 { return c.maxConns }
 
 // MinConns は、pgxpool の最小プールサイズ（最小接続数）を返します。
-func (c *DBConnectionConfig) MinConns() int32 { return c.maxIdleConns }
+func (c *DBConnectionConfig) MinConns() int32 { return c.minConns }
 
 // MaxLifetime は、データベースの接続の最大寿命を返します。
 func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime }

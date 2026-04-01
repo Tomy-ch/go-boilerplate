@@ -164,10 +164,10 @@ func MockConfigForTest(t testing.TB) *Config {
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: expectedDBMaxConnsInt32,
-			maxIdleConns: expectedDBMinConnsInt32,
-			maxLifetime:  expectedDBMaxLifetime,
-			maxIdleTime:  expectedDBMaxIdleTime,
+			maxConns:    expectedDBMaxConnsInt32,
+			minConns:    expectedDBMinConnsInt32,
+			maxLifetime: expectedDBMaxLifetime,
+			maxIdleTime: expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),

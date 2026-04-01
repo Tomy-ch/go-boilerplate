@@ -68,10 +68,10 @@ func New() (*Config, error) {
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: cfg.DBConnection.MaxConns,
-			maxIdleConns: cfg.DBConnection.MinConns,
-			maxLifetime:  cfg.DBConnection.MaxLifetime,
-			maxIdleTime:  cfg.DBConnection.MaxIdleTime,
+			maxConns:    cfg.DBConnection.MaxConns,
+			minConns:    cfg.DBConnection.MinConns,
+			maxLifetime: cfg.DBConnection.MaxLifetime,
+			maxIdleTime: cfg.DBConnection.MaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins:        cfg.Security.AllowedOrigins,

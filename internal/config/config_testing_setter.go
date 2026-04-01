@@ -76,8 +76,8 @@ func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string) {
 func (c *DBConnectionConfig) SetMaxConns(t testing.TB, maxConns int32) {
 	t.Helper()
 	prev := c.MaxConns()
-	c.maxOpenConns = maxConns
-	t.Cleanup(func() { c.maxOpenConns = prev })
+	c.maxConns = maxConns
+	t.Cleanup(func() { c.maxConns = prev })
 }
 
 // SetCIDR は、テスト用にセキュリティのCIDRを設定します。
