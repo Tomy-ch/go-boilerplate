@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -441,47 +439,6 @@ func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
 		cfg := Config{}
 		cfg.app.mode = ProductionMode
 		require.False(t, cfg.app.IsDevelopmentMode())
-	})
-}
-
-func Test_DatabaseConfig_DSN(t *testing.T) {
-	t.Parallel()
-
-	cfg := MockConfigForTest(t)
-
-	t.Run("DSN", func(t *testing.T) {
-		t.Parallel()
-		expectedURL := fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-			expectedDBUser,
-			expectedDBPassword,
-			expectedDBHost,
-			expectedDBPort,
-			expectedDBName,
-			expectedDBSSLMode,
-		)
-		require.Equal(t, expectedURL, cfg.database.DSN())
-	})
-}
-
-func Test_DatabaseConfig_DSNWithTimeZone(t *testing.T) {
-	t.Parallel()
-
-	cfg := MockConfigForTest(t)
-
-	t.Run("DSNWithTimeZone", func(t *testing.T) {
-		t.Parallel()
-		expectedURL := fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
-			expectedDBUser,
-			expectedDBPassword,
-			expectedDBHost,
-			expectedDBPort,
-			expectedDBName,
-			expectedDBSSLMode,
-			url.QueryEscape(expectedOSTimeZone),
-		)
-		require.Equal(t, expectedURL, cfg.database.DSNWithTimeZone(&cfg.os))
 	})
 }
 

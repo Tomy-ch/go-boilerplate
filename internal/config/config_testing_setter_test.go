@@ -47,12 +47,6 @@ func TestConfigTestingSetters(t *testing.T) {
 		require.Equal(t, expected, cfg.database.DBName())
 	})
 
-	t.Run("SetDatabasePassword", func(t *testing.T) {
-		expected := "test-password"
-		cfg.database.SetDatabasePassword(t, expected)
-		require.Equal(t, expected, cfg.database.Password())
-	})
-
 	t.Run("SetMaxConns", func(t *testing.T) {
 		expected := int32(20)
 		cfg.dbconnection.SetMaxConns(t, expected)

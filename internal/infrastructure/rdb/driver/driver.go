@@ -29,7 +29,7 @@ type dbDriver struct{ pool *pgxpool.Pool }
 func NewDB(
 	dbCfg *config.DatabaseConfig, osCfg *config.OperationSystemConfig, dbConnCfg *config.DBConnectionConfig,
 ) (DatabaseDriver, error) {
-	poolCfg, err := pgxpool.ParseConfig(dbCfg.DSNWithTimeZone(osCfg))
+	poolCfg, err := pgxpool.ParseConfig(DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse DB config: %w", err)
 	}

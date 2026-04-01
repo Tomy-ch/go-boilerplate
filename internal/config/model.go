@@ -1,9 +1,7 @@
 package config
 
 import (
-	"fmt"
 	"net"
-	"net/url"
 	"time"
 )
 
@@ -226,28 +224,6 @@ func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 // この値より長く実行されたクエリは警告レベルでログ出力されます。
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
-
-// DSN は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		d.user,
-		d.password,
-		d.host,
-		d.port,
-		d.name,
-		d.sslMode,
-	)
-}
-
-// DSNWithTimeZone は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSNWithTimeZone(o *OperationSystemConfig) string {
-	return fmt.Sprintf(
-		"%s&timezone=%s",
-		d.DSN(),
-		url.QueryEscape(o.timezone),
-	)
-}
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }

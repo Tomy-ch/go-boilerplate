@@ -64,7 +64,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			dbCfg := config.NewDatabaseConfig(cfg)
 			// パスワードに特殊文字を含めて、接続文字列の生成に失敗させる
-			dbCfg.SetDatabasePassword(t, "p%ZZword")
+			dbCfg.SetDatabaseHost(t, "://invalid-host")
 			osCfg := config.NewOperationSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
