@@ -63,7 +63,7 @@ func TestNewDB(t *testing.T) {
 			t.Parallel()
 			cfg := config.MockConfigForTest(t)
 			dbCfg := config.NewDatabaseConfig(cfg)
-			// パスワードに特殊文字を含めて、接続文字列の生成に失敗させる
+			// 無効なホストを設定して、DSNのパースに失敗させる
 			dbCfg.SetDatabaseHost(t, "://invalid-host")
 			osCfg := config.NewOperationSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
