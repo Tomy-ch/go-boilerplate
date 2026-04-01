@@ -83,10 +83,10 @@ func (d *DatabaseConfig) SetDatabasePassword(t testing.TB, password string) {
 // SetMaxConns は、テスト用にDB接続の最大オープン数を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *DBConnectionConfig) SetMaxConns(t testing.TB, maxOpenConns int32) {
+func (c *DBConnectionConfig) SetMaxConns(t testing.TB, maxConns int32) {
 	t.Helper()
 	prev := c.MaxConns()
-	c.maxOpenConns = maxOpenConns
+	c.maxOpenConns = maxConns
 	t.Cleanup(func() { c.maxOpenConns = prev })
 }
 
