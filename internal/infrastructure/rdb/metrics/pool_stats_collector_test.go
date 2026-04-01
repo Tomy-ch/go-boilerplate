@@ -91,7 +91,7 @@ func TestRegisterPoolStatsCollector(t *testing.T) {
 
 			// 2回目登録（duplicate）
 			err = RegisterPoolStatsCollector(collector)
-			require.NoError(t, err) // ← ここがポイント
+			require.NoError(t, err)
 		})
 	})
 }
