@@ -17,10 +17,4 @@ type DBHealth struct {
 	Ready       bool
 	ResponsedAt time.Time
 	Latency     time.Duration
-
-	// コネクションプールの統計情報
-	TotalConnections    int32
-	IdleConnections     int32
-	AcquiredConnections int32
-	MaxConnections      int32
 }
