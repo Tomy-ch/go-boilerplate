@@ -5,7 +5,6 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
@@ -15,18 +14,15 @@ import (
 
 type systemQuery struct {
 	db     loggingdb.DBProvider
-	dbPool driver.DatabaseDriver
 	tracer observability.LayerTracer
 }
 
 func New(
 	provider loggingdb.DBProvider,
-	dbPool driver.DatabaseDriver,
 	tf observability.TracerFactory,
 ) query.DBSystemQuery {
 	return &systemQuery{
 		db:     provider,
-		dbPool: dbPool,
 		tracer: tf.Infra(),
 	}
 }
