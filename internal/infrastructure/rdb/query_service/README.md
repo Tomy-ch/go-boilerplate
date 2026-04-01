@@ -146,13 +146,13 @@ Nullable DB values are converted using `internal/infrastructure/rdb/conv`.
 Example
 
 ```go
-row.Users.Buildin)
+row.Users.Building
 conv.TimePtrFromNull(row.Users.DeletedAt)
 ```
 
 ## LoggingDBProvider
 
-QueryService does not directly use DB drive.
+QueryService does not directly use DB driver.
 
 ```go
 db := gen.New(s.db.NewLoggingDB(ctx))
