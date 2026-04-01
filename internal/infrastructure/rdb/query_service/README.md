@@ -129,25 +129,25 @@ Important rule:
 
 ## UUID Conversion
 
-DB uses primitive UUID.
+DB uses `pkg/uuid.UUID`.
 
 Domain uses `pkg/uuid.UUID`.
 
 Conversion:
 
 ```go
-uuid.FromPrimitive(row.ID)
+row.ID // pkg/uuid.UUID
 ```
 
 ## Nullable Conversion
 
-Nullable DB values are converted using `internal/infrastructure/rdb/conv`.
+In this project, we use `sqlc override` to ensure that the UUIDs in the database and the `pkg/uuid` used in the domain are treated identically.
 
-Example
+Therefore, explicit UUID conversion in the QueryService is generally unnecessary.
 
 ```go
-row.Users.Building
-conv.TimePtrFromNull(row.Users.DeletedAt)
+row.Users.Building   // *string
+row.Users.DeletedAt  // *time.Time
 ```
 
 ## LoggingDBProvider
