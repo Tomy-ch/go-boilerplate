@@ -97,7 +97,7 @@ func Test_tracerFactory_newLayerTracer(t *testing.T) {
 			lf:  lf,
 		}
 
-		layer := "usecase"
+		layer := Usecase
 		pkgName := "pkg"
 		actual := actualTF.newLayerTracer(layer, pkgName)
 		require.NotNil(t, actual)

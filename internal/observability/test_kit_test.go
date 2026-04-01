@@ -26,7 +26,7 @@ func TestNewMockControllerLayerTracer(t *testing.T) {
 	t.Parallel()
 
 	actual := NewMockControllerLayerTracer(t)
-	require.Equal(t, "controller", actual.layer)
+	require.Equal(t, Controller, actual.layer)
 	require.NotNil(t, actual.tracer)
 	require.NotNil(t, actual.log)
 	require.NotNil(t, actual.lf)
@@ -36,7 +36,7 @@ func TestNewMockUsecaseLayerTracer(t *testing.T) {
 	t.Parallel()
 
 	actual := NewMockUsecaseLayerTracer(t)
-	require.Equal(t, "usecase", actual.layer)
+	require.Equal(t, Usecase, actual.layer)
 	require.NotNil(t, actual.tracer)
 	require.NotNil(t, actual.log)
 	require.NotNil(t, actual.lf)
@@ -46,7 +46,7 @@ func TestNewMockInfraLayerTracer(t *testing.T) {
 	t.Parallel()
 
 	actual := NewMockInfraLayerTracer(t)
-	require.Equal(t, "infrastructure", actual.layer)
+	require.Equal(t, Infra, actual.layer)
 	require.NotNil(t, actual.tracer)
 	require.NotNil(t, actual.log)
 	require.NotNil(t, actual.lf)
