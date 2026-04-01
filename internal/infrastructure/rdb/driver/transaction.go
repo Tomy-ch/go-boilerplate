@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"time"
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
@@ -11,7 +12,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const callerSkipCount = 1
+const (
+	callerSkipCount = 1
+	cleanupTimeout  = 5 * time.Second
+)
 
 // txManager は、トランザクションの管理を行います。
 type txManager struct {
@@ -41,7 +45,9 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	}
 	defer func() {
 		if p := recover(); p != nil {
-			if pgErr := tx.Rollback(ctx); pgErr != nil {
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+			defer cancel()
+			if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
 				t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
 					"Failed to rollback transaction on panic", logging.Error("rollback transaction", pgErr),
 				)
@@ -53,7 +59,9 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	ctx = withTx(ctx, tx)
 
 	if err := fn(ctx); err != nil {
-		if pgErr := tx.Rollback(ctx); pgErr != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+		defer cancel()
+		if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
 			t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
 				"Failed to rollback transaction",
 				logging.Error("rollback transaction", pgErr),
