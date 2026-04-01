@@ -348,7 +348,7 @@ func Test_validateDBConnectionConfig(t *testing.T) {
 
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidExseedMaxConns)
+			require.ErrorIs(t, err, ErrInvalidExceedMaxConns)
 		})
 	})
 }

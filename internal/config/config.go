@@ -190,7 +190,7 @@ func validateDatabaseConfig(dbCfg Database) error {
 // validateDBConnectionConfig は、データベース接続設定を検証します。
 func validateDBConnectionConfig(dbConnCfg DBConnection) error {
 	if dbConnCfg.MinConns > dbConnCfg.MaxConns {
-		return ErrInvalidExseedMaxConns
+		return ErrInvalidExceedMaxConns
 	}
 	return nil
 }

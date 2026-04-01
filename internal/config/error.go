@@ -86,8 +86,8 @@ var (
 		"invalid slow query warn threshold, must be greater than or equal to 0: %w",
 		errInvalidConfig,
 	)
-	// ErrInvalidExseedMaxConns は、データベースの最大接続数が過剰であることに関するエラーを表します。
-	ErrInvalidExseedMaxConns = fmt.Errorf(
+	// ErrInvalidExceedMaxConns は、データベースの最大接続数が過剰であることに関するエラーを表します。
+	ErrInvalidExceedMaxConns = fmt.Errorf(
 		"invalid database max connections, min connections must be less than or equal to max connections: %w",
 		errInvalidConfig,
 	)
