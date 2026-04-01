@@ -695,6 +695,7 @@ components:
         - prefecture
         - city
         - street
+        - deletedAt
       properties:
         firstName:
           description: 苗字
@@ -742,6 +743,11 @@ components:
           type: string
           example: Shibuya Building 101
           maxLength: 200
+        deletedAt:
+          description: ユーザーが削除された日時。削除されていない場合はnull。
+          type: string
+          format: date-time
+          nullable: true
     ResponseV1User:
       $ref: '#/components/schemas/UserResponse'
     ResponseV1Users:
