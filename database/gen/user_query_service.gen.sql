@@ -3,7 +3,7 @@
 -- name: ListUsersByKeywords :many
 SELECT sqlc.embed(u)
 FROM users AS u
-WHERE CASE sqlc.arg('deleted_state')::DELETED_STATE
+WHERE CASE sqlc.arg('active_state')
         WHEN 'active' THEN u.deleted_at IS NULL
         WHEN 'deleted' THEN u.deleted_at IS NOT NULL
         ELSE TRUE
