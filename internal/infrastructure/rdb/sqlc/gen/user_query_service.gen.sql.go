@@ -12,7 +12,7 @@ import (
 const listUsersByKeywords = `-- name: ListUsersByKeywords :many
 SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-WHERE CASE $1::DELETED_STATE
+WHERE CASE $1
         WHEN 'active' THEN u.deleted_at IS NULL
         WHEN 'deleted' THEN u.deleted_at IS NOT NULL
         ELSE TRUE
@@ -23,7 +23,7 @@ LIMIT $4 OFFSET $3
 `
 
 type ListUsersByKeywordsParams struct {
-	DeletedState  DeletedState
+	ActiveState   interface{}
 	PatternsParam []string
 	OffsetParam   int32
 	LimitParam    int32
@@ -37,7 +37,7 @@ type ListUsersByKeywordsRow struct {
 //
 //	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
-//	WHERE CASE $1::DELETED_STATE
+//	WHERE CASE $1
 //	        WHEN 'active' THEN u.deleted_at IS NULL
 //	        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
 //	        ELSE TRUE
@@ -47,7 +47,7 @@ type ListUsersByKeywordsRow struct {
 //	LIMIT $4 OFFSET $3
 func (q *Queries) ListUsersByKeywords(ctx context.Context, arg *ListUsersByKeywordsParams) ([]*ListUsersByKeywordsRow, error) {
 	rows, err := q.db.Query(ctx, listUsersByKeywords,
-		arg.DeletedState,
+		arg.ActiveState,
 		arg.PatternsParam,
 		arg.OffsetParam,
 		arg.LimitParam,

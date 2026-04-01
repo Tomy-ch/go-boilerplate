@@ -12,10 +12,10 @@ import (
 	uuid "boilerplate-go/pkg/uuid"
 )
 
-const countUsersByDeletedState = `-- name: CountUsersByDeletedState :one
+const countUsersByActiveState = `-- name: CountUsersByActiveState :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE CASE $1::DELETED_STATE
+WHERE CASE $1
         WHEN 'active' THEN u.deleted_at IS NULL
         WHEN 'deleted' THEN u.deleted_at IS NOT NULL
         ELSE TRUE
@@ -26,13 +26,13 @@ WHERE CASE $1::DELETED_STATE
 //
 //	SELECT COUNT(*)
 //	FROM users AS u
-//	WHERE CASE $1::DELETED_STATE
+//	WHERE CASE $1
 //	        WHEN 'active' THEN u.deleted_at IS NULL
 //	        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
 //	        ELSE TRUE
 //	    END
-func (q *Queries) CountUsersByDeletedState(ctx context.Context, deletedState DeletedState) (int64, error) {
-	row := q.db.QueryRow(ctx, countUsersByDeletedState, deletedState)
+func (q *Queries) CountUsersByActiveState(ctx context.Context, activeState interface{}) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersByActiveState, activeState)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

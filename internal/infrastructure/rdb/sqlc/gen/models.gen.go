@@ -12,64 +12,61 @@ import (
 	uuid "boilerplate-go/pkg/uuid"
 )
 
-type DeletedState string
+type ActiveState string
 
 const (
-	DeletedStateActive  DeletedState = "active"
-	DeletedStateDeleted DeletedState = "deleted"
-	DeletedStateAll     DeletedState = "all"
+	ActiveStateActive  ActiveState = "active"
+	ActiveStateDeleted ActiveState = "deleted"
 )
 
-func (e *DeletedState) Scan(src interface{}) error {
+func (e *ActiveState) Scan(src interface{}) error {
 	switch s := src.(type) {
 	case []byte:
-		*e = DeletedState(s)
+		*e = ActiveState(s)
 	case string:
-		*e = DeletedState(s)
+		*e = ActiveState(s)
 	default:
-		return fmt.Errorf("unsupported scan type for DeletedState: %T", src)
+		return fmt.Errorf("unsupported scan type for ActiveState: %T", src)
 	}
 	return nil
 }
 
-type NullDeletedState struct {
-	DeletedState DeletedState
-	Valid        bool // Valid is true if DeletedState is not NULL
+type NullActiveState struct {
+	ActiveState ActiveState
+	Valid       bool // Valid is true if ActiveState is not NULL
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullDeletedState) Scan(value interface{}) error {
+func (ns *NullActiveState) Scan(value interface{}) error {
 	if value == nil {
-		ns.DeletedState, ns.Valid = "", false
+		ns.ActiveState, ns.Valid = "", false
 		return nil
 	}
 	ns.Valid = true
-	return ns.DeletedState.Scan(value)
+	return ns.ActiveState.Scan(value)
 }
 
 // Value implements the driver Valuer interface.
-func (ns NullDeletedState) Value() (driver.Value, error) {
+func (ns NullActiveState) Value() (driver.Value, error) {
 	if !ns.Valid {
 		return nil, nil
 	}
-	return string(ns.DeletedState), nil
+	return string(ns.ActiveState), nil
 }
 
-func (e DeletedState) Valid() bool {
+func (e ActiveState) Valid() bool {
 	switch e {
-	case DeletedStateActive,
-		DeletedStateDeleted,
-		DeletedStateAll:
+	case ActiveStateActive,
+		ActiveStateDeleted:
 		return true
 	}
 	return false
 }
 
-func AllDeletedStateValues() []DeletedState {
-	return []DeletedState{
-		DeletedStateActive,
-		DeletedStateDeleted,
-		DeletedStateAll,
+func AllActiveStateValues() []ActiveState {
+	return []ActiveState{
+		ActiveStateActive,
+		ActiveStateDeleted,
 	}
 }
 
