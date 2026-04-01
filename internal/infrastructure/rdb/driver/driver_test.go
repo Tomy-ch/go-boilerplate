@@ -34,8 +34,8 @@ func TestNewDB(t *testing.T) {
 			require.NoError(t, err)
 
 			ct, err := db.Exec(ctx, "SELECT 1")
-			require.NotEmpty(t, ct)
 			require.NoError(t, err)
+			require.NotEmpty(t, ct)
 
 			rows, err := db.Query(ctx, "SELECT 1")
 			require.NoError(t, err)
@@ -70,8 +70,8 @@ func TestNewDB(t *testing.T) {
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 			require.Error(t, err)
-			require.Nil(t, db)
 			require.Contains(t, err.Error(), "failed to parse DB config")
+			require.Nil(t, db)
 		})
 
 		t.Run("コネクションプールの作成に失敗する", func(t *testing.T) {
