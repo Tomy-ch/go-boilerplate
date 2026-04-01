@@ -43,9 +43,9 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	if err != nil {
 		return err
 	}
-	defer func() {
+	defer func(ctx context.Context) {
 		if p := recover(); p != nil {
-			cleanupCtx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 			defer cancel()
 			if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
 				t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
@@ -54,12 +54,12 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 			}
 			panic(p)
 		}
-	}()
+	}(ctx)
 
 	ctx = withTx(ctx, tx)
 
 	if err := fn(ctx); err != nil {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 		defer cancel()
 		if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
 			t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
