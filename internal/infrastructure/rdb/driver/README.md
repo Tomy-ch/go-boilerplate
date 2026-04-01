@@ -153,15 +153,26 @@ context.WithTimeout(
 )
 ```
 
-Key points:
+#### Why `context.WithoutCancel(ctx)`?
 
-- `context.WithoutCancel(ctx)`
-  - Ensures cleanup is not affected by request cancellation
-  - Preserves trace / logger / correlation IDs
+Cleanup must **not depend on the request lifecycle**.
 
-- `cleanupTimeout`
-  - Maximum time allowed for cleanup (rollback / commit)
-  - Currently fixed to `5 seconds`
+- If the request is canceled (timeout / client disconnect), using the original `ctx` would cause:
+  - rollback/commit to be canceled
+  - transaction left open
+  - connection not returned to the pool
+
+Using `context.WithoutCancel(ctx)` ensures:
+
+- cleanup always runs
+- trace / logger / correlation ID are preserved
+
+> Cleanup is about **attempting safely**, not guaranteeing success.
+
+#### About `cleanupTimeout`
+
+- Maximum time allowed for cleanup (rollback / commit)
+- Currently fixed to `5 seconds`
 
 This value is **not a business configuration but a safety mechanism for infrastructure protection**.
 
