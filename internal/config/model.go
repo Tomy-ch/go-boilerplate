@@ -255,7 +255,7 @@ func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconn
 // MaxConns は、データベースの最大オープン接続数を返します。
 func (c *DBConnectionConfig) MaxConns() int32 { return c.maxOpenConns }
 
-// MinConns は、データベースの最大アイドル接続数を返します。
+// MinConns は、pgxpool の最小プールサイズ（最小接続数）を返します。
 func (c *DBConnectionConfig) MinConns() int32 { return c.maxIdleConns }
 
 // MaxLifetime は、データベースの接続の最大寿命を返します。
