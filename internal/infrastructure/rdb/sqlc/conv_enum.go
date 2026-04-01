@@ -3,28 +3,13 @@ package sqlc
 
 import "boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
 
-// BoolPtrToDeletedState は、*bool 型の値を gen.DeletedState 型に変換します。
+// BoolToActiveState は、bool 型の値を gen.ActiveState 型に変換します。
 //
-//	引数が nil の場合は gen.DeletedStateAll を返します。
-//	引数が true の場合は gen.DeletedStateDeleted を返します。
-//	引数が false の場合は gen.DeletedStateActive を返します。
-func BoolPtrToDeletedState(b *bool) gen.DeletedState {
-	if b == nil {
-		return gen.DeletedStateAll
-	}
-	if *b {
-		return gen.DeletedStateDeleted
-	}
-	return gen.DeletedStateActive
-}
-
-// BoolToDeletedState は、bool 型の値を gen.DeletedState 型に変換します。
-//
-//	引数が true の場合は gen.DeletedStateDeleted を返します。
-//	引数が false の場合は gen.DeletedStateActive を返します。
-func BoolToDeletedState(b bool) gen.DeletedState {
+//	引数が true の場合は gen.ActiveStateDeleted を返します。
+//	引数が false の場合は gen.ActiveStateActive を返します。
+func BoolToActiveState(b bool) gen.ActiveState {
 	if b {
-		return gen.DeletedStateDeleted
+		return gen.ActiveStateActive
 	}
-	return gen.DeletedStateActive
+	return gen.ActiveStateDeleted
 }
