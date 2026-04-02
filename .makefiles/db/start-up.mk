@@ -7,7 +7,6 @@ db-init:
 	@echo "🔄 DB初期化関連のコマンドを実行します..."
 	@make db-init-local
 	@make db-init-test
-	@make gen-db-schema
 	@echo "✅ DB初期化関連のコマンドが完了しました。"
 
 db-init-local:
