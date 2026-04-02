@@ -44,13 +44,6 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 -- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: -
 --
 COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
---
--- Name: active_state; Type: TYPE; Schema: public; Owner: -
---
-CREATE TYPE public.active_state AS ENUM (
-    'active',
-    'deleted'
-);
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 --
