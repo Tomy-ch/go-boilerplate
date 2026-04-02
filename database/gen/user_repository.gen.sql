@@ -1,13 +1,18 @@
 
 -- === source: database/dml/repository/user/count_user.sql ===
--- name: CountUsersByActiveState :one
+-- name: CountUsers :one
+SELECT COUNT(*)
+FROM users AS u;
+
+-- name: CountActiveUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE CASE sqlc.arg('active_state')
-        WHEN 'active' THEN u.deleted_at IS NULL
-        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
-        ELSE TRUE
-    END;
+WHERE u.deleted_at IS NULL;
+
+-- name: CountDeletedUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.deleted_at IS NOT NULL;
 
 -- === source: database/dml/repository/user/insert_user.sql ===
 -- name: CreateUser :exec
