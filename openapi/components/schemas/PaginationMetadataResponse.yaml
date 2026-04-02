@@ -6,6 +6,7 @@ required:
 properties:
   total:
     type: integer
+    format: int64
     description: 全件数
     example: 100
   limit:

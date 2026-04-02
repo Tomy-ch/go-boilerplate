@@ -123,9 +123,8 @@ paths:
       tags:
         - v1/users
       summary: ユーザー一覧の取得
-      description: ユーザーの一覧を取得します。検索条件やページネーションを指定できます。
+      description: ユーザーの一覧を取得します。ページネーションを指定できます。
       parameters:
-        - $ref: '#/components/parameters/KeywordParam'
         - $ref: '#/components/parameters/ActiveParam'
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
@@ -378,6 +377,43 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/users/search:
+    get:
+      operationId: GetUsersSearch
+      tags:
+        - v1/users/search
+      summary: ユーザー一覧の取得
+      description: 検索条件に基づいてユーザーの一覧を取得します。ページネーションを指定できます。
+      parameters:
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/ActiveParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: 検索条件に基づいて取得したユーザー一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersSearchResponse'
+        '401':
+          description: ユーザー一覧の取得には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザー一覧の取得には権限が必要です。
           content:
             application/json:
               schema:
@@ -715,7 +751,6 @@ components:
         phone:
           type: string
           description: 電話番号
-          nullable: true
           pattern: ^\+?[0-9]{10,15}$
           example: '09012345678'
         postalCode:
@@ -748,6 +783,20 @@ components:
           type: string
           format: date-time
           nullable: true
+    UsersSearchResponse:
+      description: ユーザー検索のレスポンススキーマ
+      allOf:
+        - type: object
+          required:
+            - users
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/UsersSearchResponseItem'
+        - $ref: '#/components/schemas/PaginationMetadataResponse'
+    UserSearchResponseItem:
+      $ref: '#/components/schemas/UsersSearchResponseItem'
     ResponseV1User:
       $ref: '#/components/schemas/UserResponse'
     ResponseV1Users:
@@ -862,6 +911,7 @@ components:
       properties:
         total:
           type: integer
+          format: int64
           description: 全件数
           example: 100
         limit:
@@ -923,4 +973,16 @@ components:
             - city
             - street
             - building
+    UsersSearchResponseItem:
+      description: 検索条件に基づいて取得したユーザー情報
+      allOf:
+        - $ref: '#/components/schemas/UserResponse'
+        - type: object
+          required:
+            - registeredAt
+          properties:
+            registeredAt:
+              description: 登録日時
+              type: string
+              format: date-time
 x-oapi-codegen-strict-server: true

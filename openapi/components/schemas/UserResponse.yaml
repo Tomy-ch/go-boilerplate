@@ -29,7 +29,6 @@ properties:
   phone:
     type: string
     description: 電話番号
-    nullable: true
     pattern: '^\+?[0-9]{10,15}$'
     example: "09012345678"
   postalCode:
