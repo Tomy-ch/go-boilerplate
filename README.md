@@ -36,7 +36,7 @@ Initialize database:
 make db-init
 ```
 
-Others commands are available, see [Make Target List](.makefiles/README.md).
+Other commands are available, see [Make Target List](.makefiles/README.md).
 
 The API server will start locally.
 
