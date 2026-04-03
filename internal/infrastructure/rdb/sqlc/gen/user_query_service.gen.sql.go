@@ -69,7 +69,7 @@ func (q *Queries) CountSearchUsers(ctx context.Context, patternsParam []string) 
 
 const searchActiveUsers = `-- name: SearchActiveUsers :many
 SELECT
-    p.name AS prefecqture_name,
+    p.name AS prefecture_name,
     u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 INNER JOIN prefectures AS p ON u.prefecture_id = p.id
@@ -86,14 +86,14 @@ type SearchActiveUsersParams struct {
 }
 
 type SearchActiveUsersRow struct {
-	PrefecqtureName string
-	Users           Users
+	PrefectureName string
+	Users          Users
 }
 
 // SearchActiveUsers
 //
 //	SELECT
-//	    p.name AS prefecqture_name,
+//	    p.name AS prefecture_name,
 //	    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	INNER JOIN prefectures AS p ON u.prefecture_id = p.id
@@ -111,7 +111,7 @@ func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersP
 	for rows.Next() {
 		var i SearchActiveUsersRow
 		if err := rows.Scan(
-			&i.PrefecqtureName,
+			&i.PrefectureName,
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
@@ -140,7 +140,7 @@ func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersP
 
 const searchDeletedUsers = `-- name: SearchDeletedUsers :many
 SELECT
-    p.name AS prefecqture_name,
+    p.name AS prefecture_name,
     u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 INNER JOIN prefectures AS p ON u.prefecture_id = p.id
@@ -157,14 +157,14 @@ type SearchDeletedUsersParams struct {
 }
 
 type SearchDeletedUsersRow struct {
-	PrefecqtureName string
-	Users           Users
+	PrefectureName string
+	Users          Users
 }
 
 // SearchDeletedUsers
 //
 //	SELECT
-//	    p.name AS prefecqture_name,
+//	    p.name AS prefecture_name,
 //	    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	INNER JOIN prefectures AS p ON u.prefecture_id = p.id
@@ -182,7 +182,7 @@ func (q *Queries) SearchDeletedUsers(ctx context.Context, arg *SearchDeletedUser
 	for rows.Next() {
 		var i SearchDeletedUsersRow
 		if err := rows.Scan(
-			&i.PrefecqtureName,
+			&i.PrefectureName,
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
@@ -211,7 +211,7 @@ func (q *Queries) SearchDeletedUsers(ctx context.Context, arg *SearchDeletedUser
 
 const searchUsers = `-- name: SearchUsers :many
 SELECT
-    p.name AS prefecqture_name,
+    p.name AS prefecture_name,
     u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 INNER JOIN prefectures AS p ON u.prefecture_id = p.id
@@ -227,14 +227,14 @@ type SearchUsersParams struct {
 }
 
 type SearchUsersRow struct {
-	PrefecqtureName string
-	Users           Users
+	PrefectureName string
+	Users          Users
 }
 
 // === source: database/dml/query_service/user/select_users_by_keyword.sql ===
 //
 //	SELECT
-//	    p.name AS prefecqture_name,
+//	    p.name AS prefecture_name,
 //	    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	INNER JOIN prefectures AS p ON u.prefecture_id = p.id
@@ -251,7 +251,7 @@ func (q *Queries) SearchUsers(ctx context.Context, arg *SearchUsersParams) ([]*S
 	for rows.Next() {
 		var i SearchUsersRow
 		if err := rows.Scan(
-			&i.PrefecqtureName,
+			&i.PrefectureName,
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
