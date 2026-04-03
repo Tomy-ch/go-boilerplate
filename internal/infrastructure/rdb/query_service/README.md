@@ -1,24 +1,26 @@
 # Query Service Implementation Guide
 
+English | [日本語](README.ja.md)
+
 ## Role
 
-Query Service is a layer that provides **read-only queries such as search and listing**.
+Query Service is a layer that provides **read-only queries such as search and list retrieval**.
 
-While Repository represents **aggregate persistence abstraction**,  
-Query Service provides **query-specific search operations**.
+While Repository is an **abstraction for Aggregate persistence**,  
+Query Service provides **dedicated queries for search use cases**.
 
 ```mermaid
 flowchart TB
     Controller --> Usecase --> QS["QueryService"] --> Sqlc["sqlc"] --> DB["Database"]
 ```
 
-Query Service has the following responsibilities:
+The responsibilities of Query Service are as follows:
 
 1. Execute SQL search
 2. Convert Row → Domain
 3. Normalize DB errors
 
-Query Service **must not contain business logic.**
+Query Service **does not contain business logic.**
 
 ## Architecture Position
 
@@ -44,11 +46,11 @@ Example
 internal/usecase/user/query/user_query_service.go
 ```
 
-Infrastructure only **implements this interface**.
+Infrastructure **only implements this interface**.
 
-## QueryService Responsibility
+## QueryService Responsibilities
 
-QueryService is responsible for **search-oriented data retrieval**.
+QueryService is responsible for **search-specific data retrieval**.
 
 ```mermaid
 flowchart TB
@@ -67,17 +69,24 @@ QueryService does not perform the following:
 QueryService uses **sqlc generated queries**.
 
 ```go
-rows, err := db.ListUsersByKeywords(ctx, ...)
+rows, err := db.SearchUsers(ctx, &gen.SearchUsersParams{...})
 ```
 
-With sqlc:
+## SQL Splitting Design
 
-- Type-safe SQL execution
-- Compile-time SQL validation
+Search conditions (active / deleted / all) are not branched within SQL, but implemented as separate queries.
 
-becomes possible.
+Example:
 
-Generated code is placed in `internal/infrastructure/rdb/sqlc/gen`.
+- SearchUsers
+- SearchActiveUsers
+- SearchDeletedUsers
+
+Reasons:
+
+- Improve SQL readability
+- Improve index efficiency
+- Simplify sqlc generated code
 
 ## LIKE Search Helper
 
@@ -95,64 +104,80 @@ Purpose:
 - Prevent LIKE injection
 - Standardize search patterns
 
-## Deleted State Handling
+Keyword search is executed with OR conditions (ILIKE ANY).
 
-Deleted state filtering uses:
+## Deleted State Control
+
+Filtering by deleted state is handled by branching in Go and calling dedicated queries.
 
 ```go
-DeletedState: sqlc.BoolPtrToDeletedState(active)
+switch {
+case filter.Active == nil:
+    // all
+case *filter.Active:
+    // active
+case !*filter.Active:
+    // deleted
+}
 ```
 
-This enables control of:
+With this design:
 
-- `active`
-- `inactive`
-- `all`
-
-states.
+- Prevent SQL complexity
+- Maintain index efficiency
+- Improve readability
 
 ## Row → Return Type Conversion
 
-sqlc Rows are **Infrastructure types**.
+Row structs returned by sqlc are **Infrastructure-specific types**.
 
-QueryService must always convert them into **return types (Domain Entity or DTO)**.
+However, in this project, type conversions are applied at generation time using sqlc override:
+
+- nullable → pointer type
+- UUID → `pkg/uuid` type
+
+Therefore, QueryService can pass generated types directly to Domain constructors or DTOs with minimal additional conversion.
 
 ```go
-user, err := user.New(
-    uuid.FromPrimitive(row.Users.ID),
-    ...,
+u, err := user.New(
+    row.ID,
+    row.FirstName,
+    row.LastName,
+    ...
 )
 ```
 
-Important rule:  
-**Do not return sqlc Row to upper layers**
+Important rules:
 
-## UUID Conversion
+- Do not return sqlc Row directly to upper layers
+- Convert to Domain Entity or DTO
 
-DB uses `pkg/uuid.UUID`.
+## About UUID
 
-Domain uses `pkg/uuid.UUID`.
+In this project, sqlc override aligns UUID in DB and `pkg/uuid` used in Domain.
 
-Conversion:
+Therefore, explicit UUID conversion in QueryService is generally unnecessary.
 
 ```go
-row.ID // pkg/uuid.UUID
+row.Users.ID // usable as-is
 ```
 
-## Nullable Conversion
+Use the `pkg/uuid` wrapper for UUID generation, comparison, and helper operations.
 
-In this project, we use `sqlc override` to ensure that the UUIDs in the database and the `pkg/uuid` used in the domain are treated identically.
+## About Nullable
 
-Therefore, explicit UUID conversion in the QueryService is generally unnecessary.
+Nullable values are handled as pointer types via sqlc override.
+
+Therefore, additional conversion in QueryService is unnecessary.
 
 ```go
 row.Users.Building   // *string
-row.Users.DeletedAt  // *time.Time
+row.Users.DeletedAt  //*time.Time
 ```
 
 ## LoggingDBProvider
 
-QueryService does not directly use DB driver.
+QueryService typically uses `loggingdb.DBProvider` to access the DB.
 
 ```go
 db := gen.New(s.db.NewLoggingDB(ctx))
@@ -160,13 +185,34 @@ db := gen.New(s.db.NewLoggingDB(ctx))
 
 `loggingdb.DBProvider` provides:
 
-- SQL logs
-- DB / Tx switching
-- Context binding
+- SQL logging
+- Transparent switching between DB / Tx
+- Context-based connection retrieval
+
+QueryService is designed to **not be aware of DB connection state**.
+
+## Direct driver Usage
+
+If logging is unnecessary, non-logging DB access can be used.
+
+```go
+db := gen.New(s.db.NewDB(ctx))
+```
+
+Use cases:
+
+- Suppress log noise in high-frequency processing
+- Simple processing without logging
+- Benchmarking or minimal path verification
+
+Principles:
+
+- Normally use `NewLoggingDB(ctx)`
+- Use `NewDB(ctx)` only when there is a clear reason
 
 ## Error Normalization
 
-PostgreSQL errors are normalized via `internal/infrastructure/rdb/postgres/pgerror`.
+PostgreSQL errors are normalized in `internal/infrastructure/rdb/postgres/pgerror`.
 
 ```go
 return pgerror.NormalizeError(err)
@@ -184,16 +230,29 @@ flowchart TB
 
 ## Observability (Tracing)
 
-QueryService uses `observability.LayerTracer` for tracing.
+QueryService uses:
+
+`observability.LayerTracer`
 
 ```go
 ctx, endSpan := s.tracer.Start(ctx)
 defer endSpan()
 ```
 
-QueryService handles only:
+QueryService is responsible only for:
 
-`Span start / end`
+- span start
+- span end
+
+### About span name
+
+Span names are uniformly assigned by LayerTracer, so QueryService does not need to explicitly specify them.
+
+### Design Intent
+
+- Ensure tracing consistency
+- Separate responsibilities across layers
+- Eliminate direct dependency on OpenTelemetry
 
 ## DI (Dependency Injection) Mechanism (Query Service)
 
@@ -306,7 +365,7 @@ type service struct {
 }
 ```
 
-Constructor:
+constructor
 
 ```go
 func New(
@@ -326,24 +385,24 @@ Repository and QueryService have different roles.
 
 ||Repository|QueryService|
 |---|---|---|
-|Purpose|Aggregate persistence|Search|
-|Operation|CRUD|Search|
-|Responsibility|Aggregate unit|Search-specific|
-|Placement|domain interface|usecase interface|
+|purpose|Aggregate persistence|search|
+|operation|CRUD|search|
+|responsibility|Aggregate unit|search-specific|
+|placement|domain interface|usecase interface|
 
 ## Anti-Patterns
 
 ### 1. Writing search in Repository
 
-Search must not be written in Repository.
+Search processing should be implemented in QueryService, not Repository.
 
-NG
+However, the following simple filters are allowed in Repository:
 
-```go
-func (r *repository) FindByKeyword(...)
-```
+- Retrieval by ID / foreign key
+- Simple condition filtering
+- Count retrieval (COUNT)
 
-Search should be implemented in `QueryService`.
+More complex searches (multiple conditions, full-text search, etc.) should be implemented in QueryService.
 
 ### 2. Writing business logic
 
@@ -369,76 +428,98 @@ Always convert to Domain.
 ## Implementation Example
 
 ```go
-// service name is fixed
+// service is the implementation of QueryService.
+// It is responsible for DB access and tracing.
 type service struct {
-  db     loggingdb.DBProvider
-  tracer observability.LayerTracer
+    db     loggingdb.DBProvider
+    tracer observability.LayerTracer
 }
 
-// New function name is fixed
+// New is the constructor for QueryService.
+// All dependencies are injected externally; no new is performed internally.
 func New(
-  db loggingdb.DBProvider,
-  tf observability.TracerFactory,
+    db loggingdb.DBProvider,
+    tf observability.TracerFactory,
 ) query.UserQueryService {
-  return &service{
-    db:     db,
-    tracer: tf.Infra(),
-  }
+    return &service{
+        db:     db,
+        tracer: tf.Infra(),
+    }
 }
 
-func (s *service) FindByKeyword(ctx context.Context, keywords []string, active*bool, limit, offset int32) (user.Users, error) {
-    // Start / end span
+// FindByFilter searches users based on keywords and deleted state.
+// - Keywords are converted to LIKE patterns
+// - Deleted state is branched in Go
+// - SQL uses dedicated queries
+func (s *service) FindByFilter(ctx context.Context, filter*query.UserSearchFilter, limit, offset int32) (query.UserSearchResults, error) {
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
 
-    // Pre-processing for QueryService usage
-    tokens := make([]string, len(keywords))
-    for i, kw := range keywords {
+    // Convert keywords to LIKE search patterns
+    tokens := make([]string, len(filter.Keywords))
+    for i, kw := range filter.Keywords {
         escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
         tokens[i] = sqlc.WrapContainsLikePattern(escaped)
     }
 
-    // Use logging-enabled DB driver
-    // If not needed, use driver.ResolveDriver(ctx, r.db)
+    // Acquire DB connection using loggingDB
     db := gen.New(s.db.NewLoggingDB(ctx))
 
-    rows, err := db.ListUsersByKeywords(ctx, &gen.ListUsersByKeywordsParams{
-        PatternsParam: tokens,
-        DeletedState:  sqlc.BoolPtrToDeletedState(active),
-        LimitParam:    limit,
-        OffsetParam:   offset,
-    })
+    // Switch queries based on deleted state
+    switch {
+    case filter.Active == nil:
+        return fetchSearchAll(ctx, db, &gen.SearchUsersParams{
+            PatternsParam: tokens,
+            LimitParam:    limit,
+            OffsetParam:   offset,
+        })
+    case *filter.Active:
+        return fetchSearchActive(ctx, db, &gen.SearchActiveUsersParams{
+            PatternsParam: tokens,
+            LimitParam:    limit,
+            OffsetParam:   offset,
+        })
+    case !*filter.Active:
+        return fetchSearchDeleted(ctx, db, &gen.SearchDeletedUsersParams{
+            PatternsParam: tokens,
+            LimitParam:    limit,
+            OffsetParam:   offset,
+        })
+    default:
+        panic("unreachable: invalid active")
+    }
+}
+
+// fetchSearchAll is a helper function to search all users.
+// It separates logic from QueryService and clarifies responsibilities.
+func fetchSearchAll(
+    ctx context.Context,
+    db *gen.Queries,
+    params*gen.SearchUsersParams,
+) (query.UserSearchResults, error) {
+    rows, err := db.SearchUsers(ctx, params)
     if err != nil {
-        // Normalize error before returning
-        // Error classification is handled in pgerror package
         return nil, pgerror.NormalizeError(err)
     }
 
-    // Map to Domain entity or DTO
-    users := make(user.Users, len(rows))
+    // Row → DTO conversion
+    results := make(query.UserSearchResults, len(rows))
     for i, row := range rows {
-        u, err := user.New(
-            row.Users.ID,
-            row.Users.FirstName,
-            row.Users.LastName,
-            row.Users.PasswordHash,
-            row.Users.Email,
-            row.Users.Phone,
-            row.Users.PrefectureID,
-            row.Users.City,
-            row.Users.Street,
-            row.Users.Building,
-            row.Users.PostalCode,
-            row.Users.CreatedAt,
-            row.Users.UpdatedAt,
-            row.Users.DeletedAt,
-        )
-        if err != nil {
-            return nil, err
+        results[i] = &query.UserSearchResult{
+            FirstName:      row.FirstName,
+            LastName:       row.LastName,
+            Email:          row.Email,
+            Phone:          row.Phone,
+            PostalCode:     row.PostalCode,
+            PrefectureName: row.PrefectureName,
+            City:           row.City,
+            Street:         row.Street,
+            Building:       row.Building,
+            RegisteredAt:   row.CreatedAt,
+            DeletedAt:      row.DeletedAt,
         }
-        users[i] = u
     }
 
-    return users, nil
+    return results, nil
 }
 ```
