@@ -50,13 +50,13 @@ func (q *Queries) CountDeletedUsers(ctx context.Context) (int64, error) {
 
 const countUsers = `-- name: CountUsers :one
 SELECT COUNT(*)
-FROM users AS u
+FROM users
 `
 
 // === source: database/dml/repository/user/count_user.sql ===
 //
 //	SELECT COUNT(*)
-//	FROM users AS u
+//	FROM users
 func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countUsers)
 	var count int64

@@ -12,7 +12,7 @@ import (
 const countSearchActiveUsers = `-- name: CountSearchActiveUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ALL($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT [])
     AND u.deleted_at IS NULL
 `
 
@@ -20,7 +20,7 @@ WHERE u.search_text ILIKE ALL($1::TEXT [])
 //
 //	SELECT COUNT(*)
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ALL($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT [])
 //	    AND u.deleted_at IS NULL
 func (q *Queries) CountSearchActiveUsers(ctx context.Context, patternsParam []string) (int64, error) {
 	row := q.db.QueryRow(ctx, countSearchActiveUsers, patternsParam)
@@ -32,7 +32,7 @@ func (q *Queries) CountSearchActiveUsers(ctx context.Context, patternsParam []st
 const countSearchDeletedUsers = `-- name: CountSearchDeletedUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ALL($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT [])
     AND u.deleted_at IS NOT NULL
 `
 
@@ -40,7 +40,7 @@ WHERE u.search_text ILIKE ALL($1::TEXT [])
 //
 //	SELECT COUNT(*)
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ALL($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT [])
 //	    AND u.deleted_at IS NOT NULL
 func (q *Queries) CountSearchDeletedUsers(ctx context.Context, patternsParam []string) (int64, error) {
 	row := q.db.QueryRow(ctx, countSearchDeletedUsers, patternsParam)
@@ -52,14 +52,14 @@ func (q *Queries) CountSearchDeletedUsers(ctx context.Context, patternsParam []s
 const countSearchUsers = `-- name: CountSearchUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE u.search_text ILIKE ALL($1::TEXT [])
+WHERE u.search_text ILIKE ANY($1::TEXT [])
 `
 
 // === source: database/dml/query_service/user/count_user_by_keyword.sql ===
 //
 //	SELECT COUNT(*)
 //	FROM users AS u
-//	WHERE u.search_text ILIKE ALL($1::TEXT [])
+//	WHERE u.search_text ILIKE ANY($1::TEXT [])
 func (q *Queries) CountSearchUsers(ctx context.Context, patternsParam []string) (int64, error) {
 	row := q.db.QueryRow(ctx, countSearchUsers, patternsParam)
 	var count int64
@@ -68,9 +68,11 @@ func (q *Queries) CountSearchUsers(ctx context.Context, patternsParam []string) 
 }
 
 const searchActiveUsers = `-- name: SearchActiveUsers :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text, p.name AS prefecqture_name
+SELECT
+    p.name AS prefecqture_name,
+    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-JOIN prefectures AS p ON u.prefecture_id = p.id
+INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 WHERE u.search_text ILIKE ANY($1::TEXT [])
     AND u.deleted_at IS NULL
 ORDER BY u.created_at DESC
@@ -84,15 +86,17 @@ type SearchActiveUsersParams struct {
 }
 
 type SearchActiveUsersRow struct {
-	Users           Users
 	PrefecqtureName string
+	Users           Users
 }
 
 // SearchActiveUsers
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text, p.name AS prefecqture_name
+//	SELECT
+//	    p.name AS prefecqture_name,
+//	    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
-//	JOIN prefectures AS p ON u.prefecture_id = p.id
+//	INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 //	WHERE u.search_text ILIKE ANY($1::TEXT [])
 //	    AND u.deleted_at IS NULL
 //	ORDER BY u.created_at DESC
@@ -107,6 +111,7 @@ func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersP
 	for rows.Next() {
 		var i SearchActiveUsersRow
 		if err := rows.Scan(
+			&i.PrefecqtureName,
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
@@ -122,7 +127,6 @@ func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersP
 			&i.Users.CreatedAt,
 			&i.Users.UpdatedAt,
 			&i.Users.SearchText,
-			&i.PrefecqtureName,
 		); err != nil {
 			return nil, err
 		}
@@ -135,9 +139,11 @@ func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersP
 }
 
 const searchDeletedUsers = `-- name: SearchDeletedUsers :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text, p.name AS prefecqture_name
+SELECT
+    p.name AS prefecqture_name,
+    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-JOIN prefectures AS p ON u.prefecture_id = p.id
+INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 WHERE u.search_text ILIKE ANY($1::TEXT [])
     AND u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
@@ -151,15 +157,17 @@ type SearchDeletedUsersParams struct {
 }
 
 type SearchDeletedUsersRow struct {
-	Users           Users
 	PrefecqtureName string
+	Users           Users
 }
 
 // SearchDeletedUsers
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text, p.name AS prefecqture_name
+//	SELECT
+//	    p.name AS prefecqture_name,
+//	    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
-//	JOIN prefectures AS p ON u.prefecture_id = p.id
+//	INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 //	WHERE u.search_text ILIKE ANY($1::TEXT [])
 //	    AND u.deleted_at IS NOT NULL
 //	ORDER BY u.created_at DESC
@@ -174,6 +182,7 @@ func (q *Queries) SearchDeletedUsers(ctx context.Context, arg *SearchDeletedUser
 	for rows.Next() {
 		var i SearchDeletedUsersRow
 		if err := rows.Scan(
+			&i.PrefecqtureName,
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
@@ -189,7 +198,6 @@ func (q *Queries) SearchDeletedUsers(ctx context.Context, arg *SearchDeletedUser
 			&i.Users.CreatedAt,
 			&i.Users.UpdatedAt,
 			&i.Users.SearchText,
-			&i.PrefecqtureName,
 		); err != nil {
 			return nil, err
 		}
@@ -202,9 +210,11 @@ func (q *Queries) SearchDeletedUsers(ctx context.Context, arg *SearchDeletedUser
 }
 
 const searchUsers = `-- name: SearchUsers :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text, p.name AS prefecqture_name
+SELECT
+    p.name AS prefecqture_name,
+    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
-JOIN prefectures AS p ON u.prefecture_id = p.id
+INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 WHERE u.search_text ILIKE ANY($1::TEXT [])
 ORDER BY u.created_at DESC
 LIMIT $3 OFFSET $2
@@ -217,15 +227,17 @@ type SearchUsersParams struct {
 }
 
 type SearchUsersRow struct {
-	Users           Users
 	PrefecqtureName string
+	Users           Users
 }
 
 // === source: database/dml/query_service/user/select_users_by_keyword.sql ===
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text, p.name AS prefecqture_name
+//	SELECT
+//	    p.name AS prefecqture_name,
+//	    u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
-//	JOIN prefectures AS p ON u.prefecture_id = p.id
+//	INNER JOIN prefectures AS p ON u.prefecture_id = p.id
 //	WHERE u.search_text ILIKE ANY($1::TEXT [])
 //	ORDER BY u.created_at DESC
 //	LIMIT $3 OFFSET $2
@@ -239,6 +251,7 @@ func (q *Queries) SearchUsers(ctx context.Context, arg *SearchUsersParams) ([]*S
 	for rows.Next() {
 		var i SearchUsersRow
 		if err := rows.Scan(
+			&i.PrefecqtureName,
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
@@ -254,7 +267,6 @@ func (q *Queries) SearchUsers(ctx context.Context, arg *SearchUsersParams) ([]*S
 			&i.Users.CreatedAt,
 			&i.Users.UpdatedAt,
 			&i.Users.SearchText,
-			&i.PrefecqtureName,
 		); err != nil {
 			return nil, err
 		}
