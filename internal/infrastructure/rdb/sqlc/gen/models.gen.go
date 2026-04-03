@@ -5,70 +5,10 @@
 package gen
 
 import (
-	"database/sql/driver"
-	"fmt"
 	"time"
 
 	uuid "boilerplate-go/pkg/uuid"
 )
-
-type ActiveState string
-
-const (
-	ActiveStateActive  ActiveState = "active"
-	ActiveStateDeleted ActiveState = "deleted"
-)
-
-func (e *ActiveState) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = ActiveState(s)
-	case string:
-		*e = ActiveState(s)
-	default:
-		return fmt.Errorf("unsupported scan type for ActiveState: %T", src)
-	}
-	return nil
-}
-
-type NullActiveState struct {
-	ActiveState ActiveState
-	Valid       bool // Valid is true if ActiveState is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullActiveState) Scan(value interface{}) error {
-	if value == nil {
-		ns.ActiveState, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.ActiveState.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullActiveState) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.ActiveState), nil
-}
-
-func (e ActiveState) Valid() bool {
-	switch e {
-	case ActiveStateActive,
-		ActiveStateDeleted:
-		return true
-	}
-	return false
-}
-
-func AllActiveStateValues() []ActiveState {
-	return []ActiveState{
-		ActiveStateActive,
-		ActiveStateDeleted,
-	}
-}
 
 // 都道府県
 type Prefectures struct {
