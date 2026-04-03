@@ -1,6 +1,6 @@
 # DI Layer (`internal/di`)
 
-English | [日本語](README.ja.md)
+[English](README.md) | 日本語
 
 `internal/di` は、このアプリケーションにおける **依存性注入 (Dependency Injection: DI)** の中枢レイヤです。
 

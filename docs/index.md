@@ -1,6 +1,6 @@
 # Documentation
 
-[English](../index.md) | Japanese
+English | [日本語](./ja/index.ja.md)
 
 This directory contains documentation related to the architecture and development of this project.
 

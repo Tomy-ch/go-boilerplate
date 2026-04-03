@@ -1,6 +1,6 @@
 ## `testkit` Package
 
-[English](README.md) | 日本語
+English | [日本語](README.ja.md)
 
 Overview: **A package that provides utilities for tests using RDB.**
 

@@ -1,6 +1,6 @@
 # pgerror Package
 
-[English](README.md) | 日本語
+English | [日本語](README.ja.md)
 
 Overview: **An Infrastructure-layer component that normalizes PostgreSQL-specific errors into application-wide errors and determines database connectivity failures. It acts as a translation layer that hides database-specific error semantics from upper layers.**
 
