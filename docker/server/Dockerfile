@@ -45,8 +45,7 @@ FROM alpine:3.23 AS prd
 
 ENV ENV=prd
 
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+RUN apk add --no-cache ca-certificates tzdata
 
 RUN addgroup -S app && adduser -S app -G app
 USER app

@@ -1,6 +1,6 @@
 # Controller Layer Handler (`internal/controller/handler`) Guide
 
-[English](README.md) | 日本語
+English | [日本語](README.ja.md)
 
 ## What is the Controller Layer
 

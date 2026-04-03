@@ -1,5 +1,5 @@
 ## DB関連のコマンドの一括実行
-.PHONY: db-init ## DBの初期化を行う(マイグレーション、シードデータ投入、スキーマ更新)
+.PHONY: db-init ## DBの初期化を行う(マイグレーション、シードデータ投入)
 .PHONY: db-init-local ## LocalDBの初期化を行う(マイグレーション、シードデータ投入)
 .PHONY: db-init-test ## TestDBの初期化を行う(マイグレーション、シードデータ投入)
 

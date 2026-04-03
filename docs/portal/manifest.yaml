@@ -6,6 +6,14 @@ overview:
   - src: README.ja.md
     dst: docs/portal/guides/ja/overview.ja.md
 
+make_commands:
+  # English
+  - src: .makefiles/README.md
+    dst: docs/portal/guides/make.md
+  # Japanese
+  - src: .makefiles/README.ja.md
+    dst: docs/portal/guides/ja/make.ja.md
+
 controller:
   # English
   - src: internal/controller/README.md
@@ -57,7 +65,6 @@ infrastructure:
     dst: docs/portal/guides/ja/infrastructure-rdb-repository.ja.md
   - src: internal/infrastructure/rdb/query_service/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb-query-service.ja.md
-
 
 database:
   # English

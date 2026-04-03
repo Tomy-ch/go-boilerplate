@@ -4,17 +4,17 @@ ENV ?= local
 
 # 依存されるファイル
 # DB関連
-include .makefiles/db/vars.mk
+include .makefiles/database/vars.mk
 # Go言語関連
 include .makefiles/go/vars.mk
 
 # 依存されないファイル
 # DB関連
-include .makefiles/db/migrate.mk
-include .makefiles/db/dml-merge.mk
-include .makefiles/db/seed.mk
-include .makefiles/db/fix.mk
-include .makefiles/db/gen.mk
+include .makefiles/database/migrate.mk
+include .makefiles/database/dml-merge.mk
+include .makefiles/database/seed.mk
+include .makefiles/database/fix.mk
+include .makefiles/database/gen.mk
 # Application関連
 include .makefiles/app/server.mk
 include .makefiles/app/job.mk
@@ -44,7 +44,7 @@ include .makefiles/sql/lint.mk
 # GitHub関連
 include .makefiles/github/operation/setup-repository.mk
 # DB関連
-include .makefiles/db/start-up.mk
+include .makefiles/database/start-up.mk
 # 生成関連
 include .makefiles/gen/gen.mk
 

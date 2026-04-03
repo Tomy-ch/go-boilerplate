@@ -20,7 +20,7 @@ WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
 -- === source: database/dml/query_service/user/select_users_by_keyword.sql ===
 -- name: SearchUsers :many
 SELECT
-    p.name AS prefecqture_name,
+    p.name AS prefecture_name,
     sqlc.embed(u)
 FROM users AS u
 INNER JOIN prefectures AS p ON u.prefecture_id = p.id
@@ -30,7 +30,7 @@ LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 
 -- name: SearchActiveUsers :many
 SELECT
-    p.name AS prefecqture_name,
+    p.name AS prefecture_name,
     sqlc.embed(u)
 FROM users AS u
 INNER JOIN prefectures AS p ON u.prefecture_id = p.id
@@ -41,7 +41,7 @@ LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 
 -- name: SearchDeletedUsers :many
 SELECT
-    p.name AS prefecqture_name,
+    p.name AS prefecture_name,
     sqlc.embed(u)
 FROM users AS u
 INNER JOIN prefectures AS p ON u.prefecture_id = p.id
