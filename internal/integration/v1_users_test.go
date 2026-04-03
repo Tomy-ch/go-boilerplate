@@ -30,7 +30,10 @@ func TestV1Users_Integration(t *testing.T) {
 
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
-			ListUsersByKeyword(gomock.Any(), gomock.Any(), gomock.Any()).
+			CountUsers(gomock.Any(), gomock.Any()).
+			Return(int64(1), nil)
+		mockApp.EXPECT().
+			ListUsers(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return([]user.MutableFields{expectedDTO}, nil)
 
 		v1users.BindHandler(e, tf, mockApp)
@@ -41,7 +44,7 @@ func TestV1Users_Integration(t *testing.T) {
 					FirstName: expectedDTO.FirstName,
 					LastName:  expectedDTO.LastName,
 					Email:     types.Email(expectedDTO.Email),
-					Phone:     ptr.To(expectedDTO.Phone),
+					Phone:     expectedDTO.Phone,
 				},
 			},
 		}
