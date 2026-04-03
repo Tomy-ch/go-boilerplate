@@ -9,10 +9,6 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-const (
-	BearerAuthScopes = "BearerAuth.Scopes"
-)
-
 // ErrorResponse エラーレスポンスの共通スキーマ
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
@@ -38,39 +34,6 @@ type PaginationMetadataResponse struct {
 
 	// Total 全件数
 	Total int64 `json:"total"`
-}
-
-// UserBaseInputRequest ユーザー情報の基本入力スキーマ
-type UserBaseInputRequest struct {
-	// Building 建物名・部屋番号
-	Building *string `json:"building,omitempty"`
-
-	// City 市区町村
-	City *string `json:"city,omitempty"`
-
-	// Email メールアドレス
-	Email *openapi_types.Email `json:"email,omitempty"`
-
-	// FirstName 苗字
-	FirstName *string `json:"firstName,omitempty"`
-
-	// LastName 名前
-	LastName *string `json:"lastName,omitempty"`
-
-	// Password パスワード
-	Password *string `json:"password,omitempty"`
-
-	// Phone 電話番号
-	Phone *string `json:"phone,omitempty"`
-
-	// PostalCode 郵便番号
-	PostalCode *string `json:"postalCode,omitempty"`
-
-	// Prefecture 都道府県
-	Prefecture *string `json:"prefecture,omitempty"`
-
-	// Street 丁目・番地
-	Street *string `json:"street,omitempty"`
 }
 
 // UserResponse ユーザー情報の基本レスポンススキーマ
@@ -106,13 +69,29 @@ type UserResponse struct {
 	Street string `json:"street"`
 }
 
-// UsersPostRequest defines model for UsersPostRequest.
-type UsersPostRequest struct {
+// UsersSearchResponse defines model for UsersSearchResponse.
+type UsersSearchResponse struct {
+	// Limit 1ページあたりの件数
+	Limit int `json:"limit"`
+
+	// Offset 現在のオフセット
+	Offset int `json:"offset"`
+
+	// Total 全件数
+	Total int64                     `json:"total"`
+	Users []UsersSearchResponseItem `json:"users"`
+}
+
+// UsersSearchResponseItem defines model for UsersSearchResponseItem.
+type UsersSearchResponseItem struct {
 	// Building 建物名・部屋番号
-	Building *string `json:"building"`
+	Building *string `json:"building,omitempty"`
 
 	// City 市区町村
 	City string `json:"city"`
+
+	// DeletedAt ユーザーが削除された日時。削除されていない場合はnull。
+	DeletedAt *time.Time `json:"deletedAt"`
 
 	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
@@ -123,9 +102,6 @@ type UsersPostRequest struct {
 	// LastName 名前
 	LastName string `json:"lastName"`
 
-	// Password ユーザーのパスワード
-	Password string `json:"password"`
-
 	// Phone 電話番号
 	Phone string `json:"phone"`
 
@@ -135,25 +111,18 @@ type UsersPostRequest struct {
 	// Prefecture 都道府県
 	Prefecture string `json:"prefecture"`
 
+	// RegisteredAt 登録日時
+	RegisteredAt time.Time `json:"registeredAt"`
+
 	// Street 丁目・番地
 	Street string `json:"street"`
 }
 
-// UsersResponse defines model for UsersResponse.
-type UsersResponse struct {
-	// Limit 1ページあたりの件数
-	Limit int `json:"limit"`
-
-	// Offset 現在のオフセット
-	Offset int `json:"offset"`
-
-	// Total 全件数
-	Total int64          `json:"total"`
-	Users []UserResponse `json:"users"`
-}
-
 // ActiveParam defines model for ActiveParam.
 type ActiveParam = bool
+
+// KeywordParam defines model for KeywordParam.
+type KeywordParam = string
 
 // PageParam defines model for PageParam.
 type PageParam = int
@@ -161,8 +130,11 @@ type PageParam = int
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
 
-// GetUsersParams defines parameters for GetUsers.
-type GetUsersParams struct {
+// GetUsersSearchParams defines parameters for GetUsersSearch.
+type GetUsersSearchParams struct {
+	// Keyword 全文検索キーワード
+	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`
+
 	// Active 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
 	Active *ActiveParam `form:"active,omitempty" json:"active,omitempty"`
 
@@ -172,6 +144,3 @@ type GetUsersParams struct {
 	// PerPage 1ページあたりの取得件数
 	PerPage *PerPageParam `form:"per_page,omitempty" json:"per_page,omitempty"`
 }
-
-// PostUsersJSONRequestBody defines body for PostUsers for application/json ContentType.
-type PostUsersJSONRequestBody = UsersPostRequest

@@ -17,11 +17,8 @@ import (
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// ユーザー一覧の取得
-	// (GET /v1/users)
-	GetUsers(ctx echo.Context, params GetUsersParams) error
-	// ユーザーの作成
-	// (POST /v1/users)
-	PostUsers(ctx echo.Context) error
+	// (GET /v1/users/search)
+	GetUsersSearch(ctx echo.Context, params GetUsersSearchParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -29,12 +26,19 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// GetUsers converts echo context to params.
-func (w *ServerInterfaceWrapper) GetUsers(ctx echo.Context) error {
+// GetUsersSearch converts echo context to params.
+func (w *ServerInterfaceWrapper) GetUsersSearch(ctx echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetUsersParams
+	var params GetUsersSearchParams
+	// ------------- Optional query parameter "keyword" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", ctx.QueryParams(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter keyword: %s", err))
+	}
+
 	// ------------- Optional query parameter "active" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "active", ctx.QueryParams(), &params.Active, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
@@ -57,18 +61,7 @@ func (w *ServerInterfaceWrapper) GetUsers(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetUsers(ctx, params)
-	return err
-}
-
-// PostUsers converts echo context to params.
-func (w *ServerInterfaceWrapper) PostUsers(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostUsers(ctx)
+	err = w.Handler.GetUsersSearch(ctx, params)
 	return err
 }
 
@@ -100,102 +93,48 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/v1/users", wrapper.GetUsers)
-	router.POST(baseURL+"/v1/users", wrapper.PostUsers)
+	router.GET(baseURL+"/v1/users/search", wrapper.GetUsersSearch)
 
 }
 
-type GetUsersRequestObject struct {
-	Params GetUsersParams
+type GetUsersSearchRequestObject struct {
+	Params GetUsersSearchParams
 }
 
-type GetUsersResponseObject interface {
-	VisitGetUsersResponse(w http.ResponseWriter) error
+type GetUsersSearchResponseObject interface {
+	VisitGetUsersSearchResponse(w http.ResponseWriter) error
 }
 
-type GetUsers200JSONResponse UsersResponse
+type GetUsersSearch200JSONResponse UsersSearchResponse
 
-func (response GetUsers200JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+func (response GetUsersSearch200JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUsers401JSONResponse ErrorResponse
+type GetUsersSearch401JSONResponse ErrorResponse
 
-func (response GetUsers401JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+func (response GetUsersSearch401JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUsers403JSONResponse ErrorResponse
+type GetUsersSearch403JSONResponse ErrorResponse
 
-func (response GetUsers403JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+func (response GetUsersSearch403JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetUsers500JSONResponse ErrorResponse
+type GetUsersSearch500JSONResponse ErrorResponse
 
-func (response GetUsers500JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostUsersRequestObject struct {
-	Body *PostUsersJSONRequestBody
-}
-
-type PostUsersResponseObject interface {
-	VisitPostUsersResponse(w http.ResponseWriter) error
-}
-
-type PostUsers201JSONResponse UserResponse
-
-func (response PostUsers201JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostUsers400JSONResponse ErrorResponse
-
-func (response PostUsers400JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostUsers401JSONResponse ErrorResponse
-
-func (response PostUsers401JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostUsers403JSONResponse ErrorResponse
-
-func (response PostUsers403JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostUsers500JSONResponse ErrorResponse
-
-func (response PostUsers500JSONResponse) VisitPostUsersResponse(w http.ResponseWriter) error {
+func (response GetUsersSearch500JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -205,11 +144,8 @@ func (response PostUsers500JSONResponse) VisitPostUsersResponse(w http.ResponseW
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// ユーザー一覧の取得
-	// (GET /v1/users)
-	GetUsers(ctx context.Context, request GetUsersRequestObject) (GetUsersResponseObject, error)
-	// ユーザーの作成
-	// (POST /v1/users)
-	PostUsers(ctx context.Context, request PostUsersRequestObject) (PostUsersResponseObject, error)
+	// (GET /v1/users/search)
+	GetUsersSearch(ctx context.Context, request GetUsersSearchRequestObject) (GetUsersSearchResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -224,54 +160,25 @@ type strictHandler struct {
 	middlewares []StrictMiddlewareFunc
 }
 
-// GetUsers operation middleware
-func (sh *strictHandler) GetUsers(ctx echo.Context, params GetUsersParams) error {
-	var request GetUsersRequestObject
+// GetUsersSearch operation middleware
+func (sh *strictHandler) GetUsersSearch(ctx echo.Context, params GetUsersSearchParams) error {
+	var request GetUsersSearchRequestObject
 
 	request.Params = params
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetUsers(ctx.Request().Context(), request.(GetUsersRequestObject))
+		return sh.ssi.GetUsersSearch(ctx.Request().Context(), request.(GetUsersSearchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetUsers")
+		handler = middleware(handler, "GetUsersSearch")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		return err
-	} else if validResponse, ok := response.(GetUsersResponseObject); ok {
-		return validResponse.VisitGetUsersResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
-// PostUsers operation middleware
-func (sh *strictHandler) PostUsers(ctx echo.Context) error {
-	var request PostUsersRequestObject
-
-	var body PostUsersJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.PostUsers(ctx.Request().Context(), request.(PostUsersRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostUsers")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(PostUsersResponseObject); ok {
-		return validResponse.VisitPostUsersResponse(ctx.Response())
+	} else if validResponse, ok := response.(GetUsersSearchResponseObject); ok {
+		return validResponse.VisitGetUsersSearchResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
