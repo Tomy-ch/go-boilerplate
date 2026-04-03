@@ -1,4 +1,4 @@
-package loggingdb
+package loggingdriver
 
 import (
 	"context"
