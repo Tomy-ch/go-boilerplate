@@ -1,6 +1,6 @@
 -- name: CountUsers :one
 SELECT COUNT(*)
-FROM users AS u;
+FROM users;
 
 -- name: CountActiveUsers :one
 SELECT COUNT(*)
