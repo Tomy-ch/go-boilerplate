@@ -54,7 +54,7 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 	}
 }
 
-// FindByDeleted は、削除されたユーザーの情報を取得します。
+// fetchListUsersRows は、ユーザーの情報を取得します。
 func fetchListUsersRows(
 	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
 ) (user.Users, error) {
