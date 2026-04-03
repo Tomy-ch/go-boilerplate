@@ -141,8 +141,12 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			}
 
 			mockApp := mock_query.NewMockUsecase(ctrl)
-			mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging).Return(mockDTO, nil)
-			mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{})).Return(expectedTotal, nil)
+			mockApp.EXPECT().ListUsersByKeyword(
+				gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging,
+			).Return(mockDTO, nil)
+			mockApp.EXPECT().CountUsersByKeyword(
+				gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}),
+			).Return(expectedTotal, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsersSearch(ctx, mockParams)
@@ -199,8 +203,12 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			}
 
 			mockApp := mock_query.NewMockUsecase(ctrl)
-			mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging).Return(mockDTO, nil)
-			mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{})).Return(expectedTotal, nil)
+			mockApp.EXPECT().ListUsersByKeyword(
+				gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging,
+			).Return(mockDTO, nil)
+			mockApp.EXPECT().CountUsersByKeyword(
+				gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}),
+			).Return(expectedTotal, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsersSearch(ctx, mockParams)
@@ -252,7 +260,9 @@ func Test_server_GetUsersSearch(t *testing.T) {
 				expectedErr := apperror.ErrInternal
 
 				mockApp := mock_query.NewMockUsecase(ctrl)
-				mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging).Return(nil, expectedErr)
+				mockApp.EXPECT().ListUsersByKeyword(
+					gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging,
+				).Return(nil, expectedErr)
 
 				s := &server{tracer: lt, uc: mockApp}
 				resp, err := s.GetUsersSearch(ctx, mockParams)
@@ -273,8 +283,12 @@ func Test_server_GetUsersSearch(t *testing.T) {
 					&query.UserSearchResult{FirstName: "F1"},
 				}
 				mockApp := mock_query.NewMockUsecase(ctrl)
-				mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging).Return(mockDTO, nil)
-				mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{})).Return(int64(0), expectedErr)
+				mockApp.EXPECT().ListUsersByKeyword(
+					gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging,
+				).Return(mockDTO, nil)
+				mockApp.EXPECT().CountUsersByKeyword(
+					gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}),
+				).Return(int64(0), expectedErr)
 
 				s := &server{tracer: lt, uc: mockApp}
 				resp, err := s.GetUsersSearch(ctx, mockParams)
