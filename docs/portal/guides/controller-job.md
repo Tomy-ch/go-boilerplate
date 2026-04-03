@@ -1,6 +1,6 @@
 # Job Controller Layer (`internal/controller/job`) Guide
 
-[English](README.md) | 日本語
+English | [日本語](README.ja.md)
 
 ## Role in This Project
 

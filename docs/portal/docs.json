@@ -21,6 +21,24 @@
       ]
     },
     {
+      "title": "Make Commands (English)",
+      "items": [
+        {
+          "name": "Make",
+          "path": "./guides/make.md"
+        }
+      ]
+    },
+    {
+      "title": "Make Commands (Japanese)",
+      "items": [
+        {
+          "name": "Make",
+          "path": "./guides/ja/make.ja.md"
+        }
+      ]
+    },
+    {
       "title": "Controller (English)",
       "items": [
         {
