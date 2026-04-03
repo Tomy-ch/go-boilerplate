@@ -273,9 +273,9 @@
 				
 				<option value="file108">boilerplate-go/internal/infrastructure/rdb/driver/driver.go (100.0%)</option>
 				
-				<option value="file109">boilerplate-go/internal/infrastructure/rdb/driver/loggingdb/provider.go (100.0%)</option>
+				<option value="file109">boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver/provider.go (100.0%)</option>
 				
-				<option value="file110">boilerplate-go/internal/infrastructure/rdb/driver/loggingdb/with_logging.go (97.8%)</option>
+				<option value="file110">boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver/with_logging.go (97.8%)</option>
 				
 				<option value="file111">boilerplate-go/internal/infrastructure/rdb/driver/transaction.go (83.3%)</option>
 				
@@ -4938,7 +4938,7 @@ func ValidatorModule() fx.Option <span class="cov10" title="2">{
 import (
         "boilerplate-go/internal/di/server/hook"
         "boilerplate-go/internal/infrastructure/rdb/driver"
-        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
         "boilerplate-go/internal/infrastructure/rdb/metrics"
 
         "go.uber.org/fx"
@@ -4950,7 +4950,7 @@ func DatabaseModule() fx.Option <span class="cov10" title="7">{
                 fx.Provide(
                         driver.NewDB,
                         driver.NewTransactionManager,
-                        loggingdb.NewLoggingDBProvider,
+                        loggingdriver.NewLoggingDBProvider,
                         metrics.New,
                 ),
                 fx.Invoke(
@@ -6802,8 +6802,8 @@ func (d *dbDriver) Stats() *pgxpool.Stat <span class="cov2" title="2">{
 		
 		<pre class="file" id="file109" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
-// Package loggingdb は、ログ付きのDB接続を提供します。
-package loggingdb
+// Package loggingdriver は、ログ付きのDB接続を提供します。
+package loggingdriver
 
 import (
         "context"
@@ -6887,7 +6887,7 @@ func (p *provider) LayerTracer() observability.LayerTracer <span class="cov8" ti
 }</span>
 </pre>
 		
-		<pre class="file" id="file110" style="display: none">package loggingdb
+		<pre class="file" id="file110" style="display: none">package loggingdriver
 
 import (
         "context"
@@ -7370,7 +7370,7 @@ package user
 import (
         "context"
 
-        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
         "boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
         "boilerplate-go/internal/infrastructure/rdb/sqlc"
         "boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
@@ -7379,12 +7379,12 @@ import (
 )
 
 type service struct {
-        db     loggingdb.DBProvider
+        db     loggingdriver.DBProvider
         tracer observability.LayerTracer
 }
 
 func New(
-        db loggingdb.DBProvider,
+        db loggingdriver.DBProvider,
         tf observability.TracerFactory,
 ) query.UserQueryService <span class="cov1" title="1">{
         return &amp;service{
@@ -7561,7 +7561,7 @@ import (
         "context"
 
         "boilerplate-go/internal/domain/prefecture"
-        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
         "boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
         "boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
         "boilerplate-go/internal/observability"
@@ -7569,12 +7569,12 @@ import (
 )
 
 type repository struct {
-        db     loggingdb.DBProvider
+        db     loggingdriver.DBProvider
         tracer observability.LayerTracer
 }
 
 func New(
-        db loggingdb.DBProvider,
+        db loggingdriver.DBProvider,
         tf observability.TracerFactory,
 ) prefecture.Repository <span class="cov10" title="5">{
         return &amp;repository{
@@ -7654,19 +7654,19 @@ import (
         "context"
 
         "boilerplate-go/internal/domain/user"
-        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
         "boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
         "boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
         "boilerplate-go/internal/observability"
 )
 
 type repository struct {
-        db     loggingdb.DBProvider
+        db     loggingdriver.DBProvider
         tracer observability.LayerTracer
 }
 
 func New(
-        db loggingdb.DBProvider,
+        db loggingdriver.DBProvider,
         tf observability.TracerFactory,
 ) user.Repository <span class="cov6" title="5">{
         return &amp;repository{
@@ -7908,7 +7908,7 @@ import (
         "context"
         "time"
 
-        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
         "boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
         "boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
         "boilerplate-go/internal/observability"
@@ -7916,12 +7916,12 @@ import (
 )
 
 type systemQuery struct {
-        db     loggingdb.DBProvider
+        db     loggingdriver.DBProvider
         tracer observability.LayerTracer
 }
 
 func New(
-        provider loggingdb.DBProvider,
+        provider loggingdriver.DBProvider,
         tf observability.TracerFactory,
 ) query.DBSystemQuery <span class="cov8" title="1">{
         return &amp;systemQuery{
@@ -7961,7 +7961,7 @@ import (
 
         "boilerplate-go/internal/config"
         "boilerplate-go/internal/infrastructure/rdb/driver"
-        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+        "boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
         "boilerplate-go/internal/logging"
         "boilerplate-go/internal/observability"
         "boilerplate-go/internal/usecase/boundary/tx"
@@ -7999,7 +7999,7 @@ func NewTestDB(t *testing.T) driver.DatabaseDriver <span class="cov6" title="8">
 }</span>
 
 // NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
-func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider <span class="cov7" title="14">{
+func NewTestLoggingProvider(t *testing.T) loggingdriver.DBProvider <span class="cov7" title="14">{
         t.Helper()
 
         cfg := config.MockConfigForTest(t)
@@ -8010,7 +8010,7 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider <span class="cov7
         mockLogger := logging.NewTestLogger(t)
         lf := logging.NewTestLogFieldBuilder(t)
 
-        return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
+        return loggingdriver.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
 }</span>
 
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
