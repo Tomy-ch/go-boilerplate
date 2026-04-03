@@ -25,6 +25,7 @@ git clone <https://github.com/Tomy-ch/go-boilerplate.git>
 cd go-boilerplate
 
 make install-tools
+make tidy-lib
 make serve
 make tools
 ```
@@ -36,6 +37,8 @@ make db-init
 ```
 
 API サーバーがローカルで起動します。
+
+その他のコマンドは、[Makeターゲット一覧](.makefiles/README.ja.md)を参照してください。
 
 ## Example API
 
@@ -361,3 +364,4 @@ LICENSE
   - [decisions.md](docs/ja/decisions.ja.md)
   - [rules.md](docs/ja/rules.ja.md)
 - [go-upgrade.md](docs/maintenance/ja/go-upgrade.ja.md)
+- [Make Commands](.makefiles/README.ja.md)

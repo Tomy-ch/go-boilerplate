@@ -1,6 +1,6 @@
 # app error
 
-[English](README.md) | 日本語
+English | [日本語](README.ja.md)
 
 The `apperror` package defines **application-wide error classifications independent of layers**.
 

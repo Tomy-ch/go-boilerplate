@@ -25,6 +25,7 @@ git clone https://github.com/Tomy-ch/go-boilerplate.git
 cd go-boilerplate
 
 make install-tools
+make tidy-lib
 make serve
 make tools
 ```
@@ -34,6 +35,8 @@ Initialize database:
 ```bash
 make db-init
 ```
+
+Other commands are available, see [Make Target List](.makefiles/README.md).
 
 The API server will start locally.
 
@@ -333,3 +336,4 @@ LICENSE
   - [decisions.md](docs/decisions.md)
   - [rules.md](docs/rules.md)
 - [go-upgrade.md](docs/maintenance/go-upgrade.md)
+- [Make Commands](.makefiles/README.md)
