@@ -169,17 +169,18 @@ escaped := sqlc.EscapeForLike(keyword, sqlc.DefaultLikeEscapeChar)
 pattern := sqlc.WrapContainsLikePattern(escaped)
 ```
 
-削除状態
+削除状態の制御は SQL 内で行わず、Go 側で分岐して専用クエリを呼び分けます。
 
 ```go
-DeletedState: sqlc.BoolPtrToDeletedState(active)
+switch {
+case active == nil:
+    // 全件
+case *active:
+    // active
+case !*active:
+    // deleted
+}
 ```
-
-目的
-
-- LIKEインジェクション防止
-- 検索パターン統一
-- 状態変換の一元化
 
 ## LIKE検索について
 
@@ -776,45 +777,64 @@ Infra は **Domain Interface の実装のみ**を行います。
 ```go
 package user
 
-// repositoryで名称固定
 type repository struct {
     db     loggingdb.DBProvider
     tracer observability.LayerTracer
 }
 
-// Newで名称固定
+// New は Repository のコンストラクタです。
+// 依存はすべて外から注入します。
 func New(
     db loggingdb.DBProvider,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
-        db:       db,
-        tracer:   tf.Infra(),
+        db:     db,
+        tracer: tf.Infra(),
     }
 }
 
-func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Users, error) {
-    // Spanの開始・終了呼び出して設定
+// FindByActive は、アクティブ状態に基づいてユーザーを取得します。
+// 削除状態は Go 側で分岐し、SQL は専用クエリを呼び分けます。
+func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (user.Users, error) {
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    // driver.ResolveDriverWithLogを使うことでログを自動で出力
-    // 不要な場合は、driver.ResolveDriver(ctx, r.db)を使う
     db := gen.New(r.db.NewLoggingDB(ctx))
 
-    // genで生成されたDMLの呼び出し
-    rows, err := db.ListUsers(ctx, &gen.ListUsersParams{
-        OffsetParam: offset,
-        LimitParam:  limit,
-    })
+    switch {
+    case active == nil:
+        return fetchListUsersRows(ctx, db, &gen.ListUsersParams{
+            OffsetParam: offset,
+            LimitParam:  limit,
+        })
+    case *active:
+        return fetchListUsersRowsByActive(ctx, db, &gen.ListActiveUsersParams{
+            OffsetParam: offset,
+            LimitParam:  limit,
+        })
+    case !*active:
+        return fetchListUsersRowsByDeleted(ctx, db, &gen.ListDeletedUsersParams{
+            OffsetParam: offset,
+            LimitParam:  limit,
+        })
+    default:
+        panic("unreachable: invalid active")
+    }
+}
 
+// fetchListUsersRows は、全ユーザー取得処理を行います。
+// QueryService からロジックを分離し、責務を明確にします。
+func fetchListUsersRows(
+    ctx context.Context,
+    db *gen.Queries,
+    params *gen.ListUsersParams,
+) (user.Users, error) {
+    rows, err := db.ListUsers(ctx, params)
     if err != nil {
-        // エラー正規化して返す。
-        // エラー内容はpgerrorパッケージ（internal/infrastructure/rdb/postgres/pgerror）で判定される
         return nil, pgerror.NormalizeError(err)
     }
 
-    // Domainエンティティへの詰め替え
     users := make(user.Users, len(rows))
     for i, row := range rows {
         u, err := user.New(
