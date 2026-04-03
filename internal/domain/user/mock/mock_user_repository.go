@@ -70,17 +70,17 @@ func (mr *MockRepositoryMockRecorder) Create(ctx, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, arg1)
 }
 
-// FindAll mocks base method.
-func (m *MockRepository) FindAll(ctx context.Context, limit, offset int32) (user.Users, error) {
+// FindByActive mocks base method.
+func (m *MockRepository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (user.Users, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindAll", ctx, limit, offset)
+	ret := m.ctrl.Call(m, "FindByActive", ctx, active, limit, offset)
 	ret0, _ := ret[0].(user.Users)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// FindAll indicates an expected call of FindAll.
-func (mr *MockRepositoryMockRecorder) FindAll(ctx, limit, offset any) *gomock.Call {
+// FindByActive indicates an expected call of FindByActive.
+func (mr *MockRepositoryMockRecorder) FindByActive(ctx, active, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindAll", reflect.TypeOf((*MockRepository)(nil).FindAll), ctx, limit, offset)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByActive", reflect.TypeOf((*MockRepository)(nil).FindByActive), ctx, active, limit, offset)
 }
