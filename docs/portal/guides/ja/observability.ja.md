@@ -118,14 +118,17 @@ span名は `layer.package.function` のルールで生成されます。
 - `controller.user.GetUsers`
 - `infrastructure.user.FindByID`
 
-### 4. Domain span helper
+### 4. Span Helper (RunWithSpan)
 
-Domain処理は `RunDomainWithSpan` で計測できます。
+任意の処理は `RunWithSpan` で簡単に span 計測できます。
+
+この関数はレイヤに依存せず、任意の処理を span + observability logging とともに実行するためのユーティリティです。
 
 ```go
-ctx, result, err := observability.RunDomainWithSpan(
+ctx, result, err := observability.RunWithSpan(
     ctx,
     tracer,
+    observability.Usecase,
     "user",
     "FullName",
     func(ctx context.Context) (string, error) {
@@ -134,13 +137,11 @@ ctx, result, err := observability.RunDomainWithSpan(
 )
 ```
 
-この関数は
+この関数を使うことで、以下を自動で処理します。
 
 - span開始
 - span終了
 - observabilityログ出力
-
-を自動で処理します。
 
 ## Span Logging
 
