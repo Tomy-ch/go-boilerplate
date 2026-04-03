@@ -48,6 +48,8 @@ paths:
     $ref: './paths/v1/users.yaml'
   /v1/users/{user_id}:
     $ref: './paths/v1/users/user_id.yaml'
+  /v1/users/search:
+    $ref: './paths/v1/users/search/search.yaml'
   # デバッグ用のパス(サービスを作成する際には必ず削除してください)
   /debug/cookie:
     $ref: './paths/debug/cookie.yaml'
@@ -88,6 +90,10 @@ components:
       $ref: './components/schemas/UserBaseInputRequest.yaml'
     UserResponse:
       $ref: './components/schemas/UserResponse.yaml'
+    UsersSearchResponse:
+      $ref: './components/responses/users/UsersSearchResponse.yaml'
+    UserSearchResponseItem:
+      $ref: './components/responses/users/UsersSearchResponseItem.yaml'
     ResponseV1User:
       $ref: './components/schemas/UserResponse.yaml'
     ResponseV1Users:

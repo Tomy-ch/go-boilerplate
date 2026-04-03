@@ -118,14 +118,17 @@ Example
 - `controller.user.GetUsers`
 - `infrastructure.user.FindByID`
 
-### 4. Domain Span Helper
+### 4. Span Helper (RunWithSpan)
 
-Domain processing can be measured using `RunDomainWithSpan`.
+You can easily measure spans for arbitrary processing using `RunWithSpan`.
+
+This function is a utility that executes arbitrary processing along with span + observability logging, without depending on any specific layer.
 
 ```go
-ctx, result, err := observability.RunDomainWithSpan(
+ctx, result, err := observability.RunWithSpan(
     ctx,
     tracer,
+    observability.Usecase,
     "user",
     "FullName",
     func(ctx context.Context) (string, error) {
@@ -134,7 +137,7 @@ ctx, result, err := observability.RunDomainWithSpan(
 )
 ```
 
-This function automatically performs:
+By using this function, the following are handled automatically:
 
 - span start
 - span end

@@ -5,73 +5,10 @@
 package gen
 
 import (
-	"database/sql/driver"
-	"fmt"
 	"time"
 
 	uuid "boilerplate-go/pkg/uuid"
 )
-
-type DeletedState string
-
-const (
-	DeletedStateActive  DeletedState = "active"
-	DeletedStateDeleted DeletedState = "deleted"
-	DeletedStateAll     DeletedState = "all"
-)
-
-func (e *DeletedState) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = DeletedState(s)
-	case string:
-		*e = DeletedState(s)
-	default:
-		return fmt.Errorf("unsupported scan type for DeletedState: %T", src)
-	}
-	return nil
-}
-
-type NullDeletedState struct {
-	DeletedState DeletedState
-	Valid        bool // Valid is true if DeletedState is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullDeletedState) Scan(value interface{}) error {
-	if value == nil {
-		ns.DeletedState, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.DeletedState.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullDeletedState) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.DeletedState), nil
-}
-
-func (e DeletedState) Valid() bool {
-	switch e {
-	case DeletedStateActive,
-		DeletedStateDeleted,
-		DeletedStateAll:
-		return true
-	}
-	return false
-}
-
-func AllDeletedStateValues() []DeletedState {
-	return []DeletedState{
-		DeletedStateActive,
-		DeletedStateDeleted,
-		DeletedStateAll,
-	}
-}
 
 // 都道府県
 type Prefectures struct {

@@ -9,6 +9,7 @@ required:
   - prefecture
   - city
   - street
+  - deletedAt
 properties:
   firstName:
     description: 苗字
@@ -28,7 +29,6 @@ properties:
   phone:
     type: string
     description: 電話番号
-    nullable: true
     pattern: '^\+?[0-9]{10,15}$'
     example: "09012345678"
   postalCode:
@@ -56,3 +56,8 @@ properties:
     type: string
     example: "Shibuya Building 101"
     maxLength: 200
+  deletedAt:
+    description: ユーザーが削除された日時。削除されていない場合はnull。
+    type: string
+    format: date-time
+    nullable: true

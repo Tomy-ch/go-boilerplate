@@ -1,8 +1,13 @@
--- name: CountUsersByDeletedState :one
+-- name: CountUsers :one
+SELECT COUNT(*)
+FROM users;
+
+-- name: CountActiveUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE CASE sqlc.arg('deleted_state')::DELETED_STATE
-        WHEN 'active' THEN u.deleted_at IS NULL
-        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
-        ELSE TRUE
-    END;
+WHERE u.deleted_at IS NULL;
+
+-- name: CountDeletedUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.deleted_at IS NOT NULL;

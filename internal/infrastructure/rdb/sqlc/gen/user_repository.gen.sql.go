@@ -12,27 +12,53 @@ import (
 	uuid "boilerplate-go/pkg/uuid"
 )
 
-const countUsersByDeletedState = `-- name: CountUsersByDeletedState :one
+const countActiveUsers = `-- name: CountActiveUsers :one
 SELECT COUNT(*)
 FROM users AS u
-WHERE CASE $1::DELETED_STATE
-        WHEN 'active' THEN u.deleted_at IS NULL
-        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
-        ELSE TRUE
-    END
+WHERE u.deleted_at IS NULL
+`
+
+// CountActiveUsers
+//
+//	SELECT COUNT(*)
+//	FROM users AS u
+//	WHERE u.deleted_at IS NULL
+func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countDeletedUsers = `-- name: CountDeletedUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.deleted_at IS NOT NULL
+`
+
+// CountDeletedUsers
+//
+//	SELECT COUNT(*)
+//	FROM users AS u
+//	WHERE u.deleted_at IS NOT NULL
+func (q *Queries) CountDeletedUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countDeletedUsers)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*)
+FROM users
 `
 
 // === source: database/dml/repository/user/count_user.sql ===
 //
 //	SELECT COUNT(*)
-//	FROM users AS u
-//	WHERE CASE $1::DELETED_STATE
-//	        WHEN 'active' THEN u.deleted_at IS NULL
-//	        WHEN 'deleted' THEN u.deleted_at IS NOT NULL
-//	        ELSE TRUE
-//	    END
-func (q *Queries) CountUsersByDeletedState(ctx context.Context, deletedState DeletedState) (int64, error) {
-	row := q.db.QueryRow(ctx, countUsersByDeletedState, deletedState)
+//	FROM users
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -174,6 +200,126 @@ func (q *Queries) GetUserByID(ctx context.Context, userIDParam uuid.UUID) (*GetU
 		&i.Users.SearchText,
 	)
 	return &i, err
+}
+
+const listActiveUsers = `-- name: ListActiveUsers :many
+SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.deleted_at IS NULL
+ORDER BY u.created_at DESC
+LIMIT $2 OFFSET $1
+`
+
+type ListActiveUsersParams struct {
+	OffsetParam int32
+	LimitParam  int32
+}
+
+type ListActiveUsersRow struct {
+	Users Users
+}
+
+// ListActiveUsers
+//
+//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.deleted_at IS NULL
+//	ORDER BY u.created_at DESC
+//	LIMIT $2 OFFSET $1
+func (q *Queries) ListActiveUsers(ctx context.Context, arg *ListActiveUsersParams) ([]*ListActiveUsersRow, error) {
+	rows, err := q.db.Query(ctx, listActiveUsers, arg.OffsetParam, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListActiveUsersRow
+	for rows.Next() {
+		var i ListActiveUsersRow
+		if err := rows.Scan(
+			&i.Users.ID,
+			&i.Users.FirstName,
+			&i.Users.LastName,
+			&i.Users.PasswordHash,
+			&i.Users.Email,
+			&i.Users.Phone,
+			&i.Users.PrefectureID,
+			&i.Users.City,
+			&i.Users.Street,
+			&i.Users.Building,
+			&i.Users.PostalCode,
+			&i.Users.DeletedAt,
+			&i.Users.CreatedAt,
+			&i.Users.UpdatedAt,
+			&i.Users.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDeletedUsers = `-- name: ListDeletedUsers :many
+SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.deleted_at IS NOT NULL
+ORDER BY u.created_at DESC
+LIMIT $2 OFFSET $1
+`
+
+type ListDeletedUsersParams struct {
+	OffsetParam int32
+	LimitParam  int32
+}
+
+type ListDeletedUsersRow struct {
+	Users Users
+}
+
+// ListDeletedUsers
+//
+//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.deleted_at IS NOT NULL
+//	ORDER BY u.created_at DESC
+//	LIMIT $2 OFFSET $1
+func (q *Queries) ListDeletedUsers(ctx context.Context, arg *ListDeletedUsersParams) ([]*ListDeletedUsersRow, error) {
+	rows, err := q.db.Query(ctx, listDeletedUsers, arg.OffsetParam, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListDeletedUsersRow
+	for rows.Next() {
+		var i ListDeletedUsersRow
+		if err := rows.Scan(
+			&i.Users.ID,
+			&i.Users.FirstName,
+			&i.Users.LastName,
+			&i.Users.PasswordHash,
+			&i.Users.Email,
+			&i.Users.Phone,
+			&i.Users.PrefectureID,
+			&i.Users.City,
+			&i.Users.Street,
+			&i.Users.Building,
+			&i.Users.PostalCode,
+			&i.Users.DeletedAt,
+			&i.Users.CreatedAt,
+			&i.Users.UpdatedAt,
+			&i.Users.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUsers = `-- name: ListUsers :many

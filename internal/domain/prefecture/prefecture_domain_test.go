@@ -23,25 +23,27 @@ func TestNew(t *testing.T) {
 		t.Run("有効な都道府県名の場合、Prefectureエンティティが生成される", func(t *testing.T) {
 			t.Parallel()
 
-			expected := &Entity{
+			expected := &Prefecture{
 				id:   expectedUUID,
 				name: expectedName,
 				code: expectedCode,
 			}
 
-			actual, err := New(expectedUUID.String(), expectedName, expectedCode)
+			actual, err := New(expectedUUID, expectedName, expectedCode)
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			require.Equal(t, expected.id, actual.id)
+			require.Equal(t, expected.name, actual.name)
+			require.Equal(t, expected.code, actual.code)
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("無効なIDの場合、ErrInvalidIDエラーが返される", func(t *testing.T) {
+		t.Run("IDがゼロ値の場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			res, err := New("invalid-uuid", "Tokyo", expectedCode)
+			res, err := New(uuid.UUID{}, "Tokyo", expectedCode)
 			require.Nil(t, res)
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
@@ -53,7 +55,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidName := strings.Repeat("字", MinPrefectureNameLength-1)
-				res, err := New(expectedUUID.String(), invalidName, expectedCode)
+				res, err := New(expectedUUID, invalidName, expectedCode)
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidPrefectureName)
 			})
@@ -62,7 +64,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidName := strings.Repeat("字", MaxPrefectureNameLength+1)
-				res, err := New(expectedUUID.String(), invalidName, expectedCode)
+				res, err := New(expectedUUID, invalidName, expectedCode)
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidPrefectureName)
 			})
@@ -75,7 +77,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidCode := MinCode - 1
-				res, err := New(expectedUUID.String(), expectedName, invalidCode)
+				res, err := New(expectedUUID, expectedName, invalidCode)
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidCode)
 			})
@@ -84,7 +86,7 @@ func TestNew(t *testing.T) {
 				t.Parallel()
 
 				invalidCode := MaxCode + 1
-				res, err := New(expectedUUID.String(), expectedName, invalidCode)
+				res, err := New(expectedUUID, expectedName, invalidCode)
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidCode)
 			})
@@ -100,7 +102,7 @@ func TestEntity_Accessors(t *testing.T) {
 	name := "Osaka"
 	code := 27
 
-	prefecture, err := New(id.String(), name, code)
+	prefecture, err := New(id, name, code)
 	require.NoError(t, err)
 
 	t.Run("IDメソッドは正しいIDを返す", func(t *testing.T) {

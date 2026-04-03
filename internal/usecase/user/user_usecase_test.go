@@ -16,7 +16,6 @@ import (
 	mock_tx "boilerplate-go/internal/usecase/boundary/tx/mock"
 	"boilerplate-go/internal/usecase/testkit"
 	"boilerplate-go/internal/usecase/tools/paging"
-	mock_query "boilerplate-go/internal/usecase/user/query/mock"
 	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/uuid"
 	"boilerplate-go/pkg/xerrors"
@@ -35,7 +34,6 @@ func TestNew(t *testing.T) {
 	encrypter := mock_security.NewMockEncrypter(ctrl)
 	userRepo := mock_user.NewMockRepository(ctrl)
 	pftRepo := mock_prefecture.NewMockRepository(ctrl)
-	userQS := mock_query.NewMockUserQueryService(ctrl)
 
 	expected := &usecase{
 		tracer:    tf.Usecase(),
@@ -44,14 +42,13 @@ func TestNew(t *testing.T) {
 		encrypter: encrypter,
 		userRepo:  userRepo,
 		pftRepo:   pftRepo,
-		userQS:    userQS,
 	}
-	actual := New(tf, mockTxManager, clock, encrypter, userRepo, pftRepo, userQS)
+	actual := New(tf, mockTxManager, clock, encrypter, userRepo, pftRepo)
 
 	require.Equal(t, expected, actual)
 }
 
-func TestGetAllUsers(t *testing.T) {
+func Test_usecase_ListUsers(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -87,7 +84,7 @@ func TestGetAllUsers(t *testing.T) {
 		require.NoError(t, err)
 
 		prefectureDomain, err := prefecture.New(
-			prefectureID.String(),
+			prefectureID,
 			"prefecture_name",
 			1,
 		)
@@ -107,47 +104,21 @@ func TestGetAllUsers(t *testing.T) {
 			},
 		}
 
-		t.Run("paramsがない場合、全件取得が実行されユーザー情報がリストで取得できる", func(t *testing.T) {
+		t.Run("activeがnilの場合、全件取得が実行されユーザー情報がリストで取得できる", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindAll(gomock.Any(), p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Entities{prefectureDomain}, nil)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
 			uc := &usecase{
 				tracer:   lt,
 				userRepo: userRepo,
 				pftRepo:  pftRepo,
 			}
 
-			actual, err := uc.ListUsersByKeyword(ctx, nil, p)
-			require.NoError(t, err)
-			require.Equal(t, expected, actual)
-		})
-
-		t.Run("paramsがある場合、キーワード検索が実行されユーザー情報がリストで取得できる", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-
-			params := &GetParamsDTO{
-				Keyword: ptr.To("first"),
-				Active:  nil,
-			}
-
-			keywords := []string{*params.Keyword}
-
-			userQS := mock_query.NewMockUserQueryService(ctrl)
-			userQS.EXPECT().FindByKeyword(gomock.Any(), keywords, params.Active, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
-			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Entities{prefectureDomain}, nil)
-			uc := &usecase{
-				tracer:  lt,
-				userQS:  userQS,
-				pftRepo: pftRepo,
-			}
-
-			actual, err := uc.ListUsersByKeyword(ctx, params, p)
+			actual, err := uc.ListUsers(ctx, nil, p)
 			require.NoError(t, err)
 			require.Equal(t, expected, actual)
 		})
@@ -168,13 +139,13 @@ func TestGetAllUsers(t *testing.T) {
 			require.NoError(t, actualErr)
 
 			repo := mock_user.NewMockRepository(ctrl)
-			repo.EXPECT().FindAll(gomock.Any(), p.Limit32(), p.Offset32()).Return(nil, expectedErr)
+			repo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
 			uc := &usecase{
 				tracer:   lt,
 				userRepo: repo,
 			}
 
-			actual, actualErr := uc.ListUsersByKeyword(ctx, nil, p)
+			actual, actualErr := uc.ListUsers(ctx, nil, p)
 			require.Nil(t, actual)
 			require.ErrorIs(t, expectedErr, actualErr)
 		})
@@ -192,7 +163,7 @@ func TestGetAllUsers(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindAll(gomock.Any(), p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(nil, expectedErr)
 			uc := &usecase{
@@ -201,14 +172,14 @@ func TestGetAllUsers(t *testing.T) {
 				pftRepo:  pftRepo,
 			}
 
-			actual, err := uc.ListUsersByKeyword(ctx, nil, p)
+			actual, err := uc.ListUsers(ctx, nil, p)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 	})
 }
 
-func TestCreate(t *testing.T) {
+func Test_usecase_Create(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -239,7 +210,7 @@ func TestCreate(t *testing.T) {
 	prefectureName := "prefecture_name"
 
 	pftDomain, err := prefecture.New(
-		prefectureID.String(),
+		prefectureID,
 		prefectureName,
 		1,
 	)

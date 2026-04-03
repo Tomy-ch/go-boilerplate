@@ -120,7 +120,7 @@ func Test_LayerTracer_StartWithSuffix(t *testing.T) {
 	})
 }
 
-func TestRunDomainWithSpan(t *testing.T) {
+func TestRunWithSpan(t *testing.T) {
 	t.Parallel()
 
 	t.Run("成功時は値を返しログにstart/endが出る", func(t *testing.T) {
@@ -136,8 +136,8 @@ func TestRunDomainWithSpan(t *testing.T) {
 			log: logger, tracer: tracer, lf: lf,
 		}
 
-		ctx, v, err := RunDomainWithSpan(
-			context.Background(), lt, "pkg", "Func",
+		ctx, v, err := RunWithSpan(
+			context.Background(), lt, Usecase, "pkg", "Func",
 			func(_ context.Context) (string, error) {
 				return "ok", nil
 			})
@@ -159,8 +159,8 @@ func TestRunDomainWithSpan(t *testing.T) {
 			log: logger, tracer: tracer, lf: lf,
 		}
 
-		ctx, v, err := RunDomainWithSpan(
-			context.Background(), lt, "pkg", "Func",
+		ctx, v, err := RunWithSpan(
+			context.Background(), lt, Usecase, "pkg", "Func",
 			func(_ context.Context) (string, error) {
 				return "", xerrors.New("failure")
 			})
@@ -181,7 +181,7 @@ func Test_makeSpanName(t *testing.T) {
 	optionalName := "extra"
 	expected := expectedLayer + delimiter + expectedPkgName + delimiter + expectedFuncName
 
-	lt := LayerTracer{layer: expectedLayer, pkgName: expectedPkgName, funcName: expectedFuncName}
+	lt := LayerTracer{layer: layerName(expectedLayer), pkgName: expectedPkgName, funcName: expectedFuncName}
 
 	t.Run("optionalName が空の場合", func(t *testing.T) {
 		t.Parallel()
@@ -199,7 +199,7 @@ func Test_makeSpanName(t *testing.T) {
 func Test_startSpan(t *testing.T) {
 	t.Parallel()
 
-	expectedLayer := "layer"
+	expectedLayer := Usecase
 	expectedPkgName := "pkg"
 	expectedFuncName := "func"
 

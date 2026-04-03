@@ -4,6 +4,8 @@
 package gen
 
 import (
+	"time"
+
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -35,7 +37,7 @@ type PaginationMetadataResponse struct {
 	Offset int `json:"offset"`
 
 	// Total 全件数
-	Total int `json:"total"`
+	Total int64 `json:"total"`
 }
 
 // UserBaseInputRequest ユーザー情報の基本入力スキーマ
@@ -79,6 +81,9 @@ type UserResponse struct {
 	// City 市区町村
 	City string `json:"city"`
 
+	// DeletedAt ユーザーが削除された日時。削除されていない場合はnull。
+	DeletedAt *time.Time `json:"deletedAt"`
+
 	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
 
@@ -89,7 +94,7 @@ type UserResponse struct {
 	LastName string `json:"lastName"`
 
 	// Phone 電話番号
-	Phone *string `json:"phone"`
+	Phone string `json:"phone"`
 
 	// PostalCode 郵便番号
 	PostalCode string `json:"postalCode"`
@@ -143,15 +148,12 @@ type UsersResponse struct {
 	Offset int `json:"offset"`
 
 	// Total 全件数
-	Total int            `json:"total"`
+	Total int64          `json:"total"`
 	Users []UserResponse `json:"users"`
 }
 
 // ActiveParam defines model for ActiveParam.
 type ActiveParam = bool
-
-// KeywordParam defines model for KeywordParam.
-type KeywordParam = string
 
 // PageParam defines model for PageParam.
 type PageParam = int
@@ -161,9 +163,6 @@ type PerPageParam = int
 
 // GetUsersParams defines parameters for GetUsers.
 type GetUsersParams struct {
-	// Keyword 全文検索キーワード
-	Keyword *KeywordParam `form:"keyword,omitempty" json:"keyword,omitempty"`
-
 	// Active 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
 	Active *ActiveParam `form:"active,omitempty" json:"active,omitempty"`
 

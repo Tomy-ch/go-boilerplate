@@ -28,7 +28,7 @@ func New(
 }
 
 // FindByID は、IDから都道府県エンティティを取得します。
-func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Entity, error) {
+func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Prefecture, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
@@ -39,14 +39,14 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.En
 	}
 
 	return prefecture.New(
-		row.ID.String(),
+		row.ID,
 		row.Name,
 		int(row.Code),
 	)
 }
 
 // FindByIDs は、複数IDから都道府県エンティティ一覧を取得します。
-func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Entities, error) {
+func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Prefectures, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
@@ -56,10 +56,10 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	prefectures := make(prefecture.Entities, len(rows))
+	prefectures := make(prefecture.Prefectures, len(rows))
 	for i, row := range rows {
 		prefectureEntity, err := prefecture.New(
-			row.ID.String(),
+			row.ID,
 			row.Name,
 			int(row.Code),
 		)
@@ -73,7 +73,7 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
 }
 
 // FindByName は、都道府県名から都道府県エンティティを取得します。
-func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.Entity, error) {
+func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.Prefecture, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
@@ -84,7 +84,7 @@ func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.E
 	}
 
 	return prefecture.New(
-		row.ID.String(),
+		row.ID,
 		row.Name,
 		int(row.Code),
 	)

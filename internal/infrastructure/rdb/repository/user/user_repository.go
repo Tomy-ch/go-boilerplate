@@ -7,7 +7,6 @@ import (
 	"boilerplate-go/internal/domain/user"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
 	"boilerplate-go/internal/observability"
 )
@@ -27,16 +26,109 @@ func New(
 	}
 }
 
-// FindAll は、全ユーザーの情報を取得します。
-func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Users, error) {
+// FindByActive は、アクティブ状態に基づいてユーザーの情報を取得します。
+func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (user.Users, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(r.db.NewLoggingDB(ctx))
-	rows, err := db.ListUsers(ctx, &gen.ListUsersParams{
-		OffsetParam: offset,
-		LimitParam:  limit,
-	})
+
+	switch {
+	case active == nil:
+		return fetchListUsersRows(ctx, db, &gen.ListUsersParams{
+			OffsetParam: offset,
+			LimitParam:  limit,
+		})
+	case *active:
+		return fetchListUsersRowsByActive(ctx, db, &gen.ListActiveUsersParams{
+			OffsetParam: offset,
+			LimitParam:  limit,
+		})
+	case !*active:
+		return fetchListUsersRowsByDeleted(ctx, db, &gen.ListDeletedUsersParams{
+			OffsetParam: offset,
+			LimitParam:  limit,
+		})
+	default:
+		panic("unreachable: invalid active")
+	}
+}
+
+// fetchListUsersRows は、ユーザーの情報を取得します。
+func fetchListUsersRows(
+	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
+) (user.Users, error) {
+	rows, err := db.ListUsers(ctx, params)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	users := make(user.Users, len(rows))
+	for i, row := range rows {
+		user, err := user.New(
+			row.Users.ID,
+			row.Users.FirstName,
+			row.Users.LastName,
+			row.Users.PasswordHash,
+			row.Users.Email,
+			row.Users.Phone,
+			row.Users.PrefectureID,
+			row.Users.City,
+			row.Users.Street,
+			row.Users.Building,
+			row.Users.PostalCode,
+			row.Users.CreatedAt,
+			row.Users.UpdatedAt,
+			row.Users.DeletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users[i] = user
+	}
+	return users, nil
+}
+
+// fetchListUsersRowsByActive は、アクティブ状態に基づいてユーザーの情報を取得します。
+func fetchListUsersRowsByActive(
+	ctx context.Context, db *gen.Queries, params *gen.ListActiveUsersParams,
+) (user.Users, error) {
+	rows, err := db.ListActiveUsers(ctx, params)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	users := make(user.Users, len(rows))
+	for i, row := range rows {
+		user, err := user.New(
+			row.Users.ID,
+			row.Users.FirstName,
+			row.Users.LastName,
+			row.Users.PasswordHash,
+			row.Users.Email,
+			row.Users.Phone,
+			row.Users.PrefectureID,
+			row.Users.City,
+			row.Users.Street,
+			row.Users.Building,
+			row.Users.PostalCode,
+			row.Users.CreatedAt,
+			row.Users.UpdatedAt,
+			row.Users.DeletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users[i] = user
+	}
+	return users, nil
+}
+
+// fetchListUsersRowsByDeleted は、削除されたユーザーの情報を取得します。
+func fetchListUsersRowsByDeleted(
+	ctx context.Context, db *gen.Queries, params *gen.ListDeletedUsersParams,
+) (user.Users, error) {
+	rows, err := db.ListDeletedUsers(ctx, params)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
@@ -100,9 +192,26 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 	defer endSpan()
 
 	db := gen.New(r.db.NewLoggingDB(ctx))
-	count, err := db.CountUsersByDeletedState(ctx, sqlc.BoolPtrToDeletedState(active))
+
+	var (
+		count int64
+		err   error
+	)
+
+	switch {
+	case active == nil:
+		count, err = db.CountUsers(ctx)
+	case *active:
+		count, err = db.CountActiveUsers(ctx)
+	case !*active:
+		count, err = db.CountDeletedUsers(ctx)
+	default:
+		panic("unreachable: invalid active")
+	}
+
 	if err != nil {
 		return 0, pgerror.NormalizeError(err)
 	}
+
 	return count, nil
 }

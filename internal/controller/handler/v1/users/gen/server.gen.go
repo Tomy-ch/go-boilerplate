@@ -35,13 +35,6 @@ func (w *ServerInterfaceWrapper) GetUsers(ctx echo.Context) error {
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetUsersParams
-	// ------------- Optional query parameter "keyword" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "keyword", ctx.QueryParams(), &params.Keyword, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter keyword: %s", err))
-	}
-
 	// ------------- Optional query parameter "active" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "active", ctx.QueryParams(), &params.Active, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})

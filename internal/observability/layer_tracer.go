@@ -15,20 +15,22 @@ import (
 )
 
 const (
-	delimiter                = "."
-	tracerNameController     = "controller"
-	tracerNameUsecase        = "usecase"
-	tracerNameInfrastructure = "infrastructure"
+	delimiter            = "."
+	Controller layerName = "controller"
+	Usecase    layerName = "usecase"
+	Infra      layerName = "infrastructure"
 
 	// callSkip は、ロガーのコールスタックのスキップ数を定義します。
 	callSkip = 3
 )
 
+type layerName string
+
 type LayerTracer struct {
 	log      logging.Logger
 	lf       logging.LogFieldBuilder
 	tracer   trace.Tracer
-	layer    string
+	layer    layerName
 	pkgName  string
 	funcName string
 }
@@ -60,7 +62,7 @@ func (lt LayerTracer) StartWithSuffix(
 	return lt.startSpan(ctx, optionalName, opts...)
 }
 
-// RunDomainWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
+// RunWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
 //
 // span の開始・終了時に Infoレベルでログ出力を行う。
 //
@@ -68,16 +70,16 @@ func (lt LayerTracer) StartWithSuffix(
 //
 // 典型的な呼び出し方:
 //
-//	ctx, result, err := layerTracer.RunDomainWithSpan(ctx, "user", "FullName", func(ctx context.Context) (T, error) {
+//	ctx, result, err := layerTracer.RunWithSpan(ctx, "usecase", "user", "FullName", func(ctx context.Context) (T, error) {
 //	    // 処理内容
 //	})
-func RunDomainWithSpan[T any](
+func RunWithSpan[T any](
 	parentCtx context.Context,
 	lt LayerTracer,
+	layer layerName,
 	pkg, funcName string,
 	fn func(ctx context.Context) (T, error),
 ) (context.Context, T, error) {
-	const layer = "domain"
 	spanName := fmt.Sprintf("%s.%s.%s", layer, pkg, funcName)
 
 	tc, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName)
@@ -85,7 +87,7 @@ func RunDomainWithSpan[T any](
 
 	obsIn := logging.ObservabilityFieldsInput{
 		SpanName:     spanName,
-		Layer:        layer,
+		Layer:        string(layer),
 		PkgName:      pkg,
 		FuncName:     funcName,
 		TraceID:      tc.TraceID(),
@@ -115,7 +117,7 @@ func RunDomainWithSpan[T any](
 
 // makeSpanName は、LayerTracer の情報をもとに完全なspan名を生成します。
 func (lt LayerTracer) makeSpanName(optionalName string) string {
-	fullName := lt.layer + delimiter + lt.pkgName + delimiter + lt.funcName
+	fullName := string(lt.layer) + delimiter + lt.pkgName + delimiter + lt.funcName
 	if optionalName != "" {
 		fullName += delimiter + optionalName
 	}
@@ -141,7 +143,7 @@ func (lt LayerTracer) startSpan(
 
 	obsIn := logging.ObservabilityFieldsInput{
 		SpanName:     spanName,
-		Layer:        lt.layer,
+		Layer:        string(lt.layer),
 		PkgName:      lt.pkgName,
 		FuncName:     lt.funcName,
 		EventAt:      time.Now(),
