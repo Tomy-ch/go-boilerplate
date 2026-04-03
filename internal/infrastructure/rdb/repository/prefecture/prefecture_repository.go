@@ -5,7 +5,7 @@ import (
 	"context"
 
 	"boilerplate-go/internal/domain/prefecture"
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
 	"boilerplate-go/internal/observability"
@@ -13,12 +13,12 @@ import (
 )
 
 type repository struct {
-	db     loggingdb.DBProvider
+	db     loggingdriver.DBProvider
 	tracer observability.LayerTracer
 }
 
 func New(
-	db loggingdb.DBProvider,
+	db loggingdriver.DBProvider,
 	tf observability.TracerFactory,
 ) prefecture.Repository {
 	return &repository{

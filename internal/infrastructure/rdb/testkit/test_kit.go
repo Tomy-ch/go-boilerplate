@@ -8,7 +8,7 @@ import (
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
+	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
 	"boilerplate-go/internal/logging"
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/boundary/tx"
@@ -46,7 +46,7 @@ func NewTestDB(t *testing.T) driver.DatabaseDriver {
 }
 
 // NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
-func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
+func NewTestLoggingProvider(t *testing.T) loggingdriver.DBProvider {
 	t.Helper()
 
 	cfg := config.MockConfigForTest(t)
@@ -57,7 +57,7 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
 	mockLogger := logging.NewTestLogger(t)
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
+	return loggingdriver.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
 }
 
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
