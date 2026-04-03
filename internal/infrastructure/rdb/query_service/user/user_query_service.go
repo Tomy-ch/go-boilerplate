@@ -37,6 +37,9 @@ func (s *service) FindByFilter(ctx context.Context, filter *query.UserSearchFilt
 		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
 		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
 	}
+	if len(tokens) == 0 {
+		tokens = []string{"%"}
+	}
 
 	db := gen.New(s.db.NewLoggingDB(ctx))
 
@@ -154,6 +157,9 @@ func (s *service) CountByFilter(ctx context.Context, filter *query.UserSearchFil
 	for i, kw := range filter.Keywords {
 		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
 		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
+	}
+	if len(tokens) == 0 {
+		tokens = []string{"%"}
 	}
 
 	db := gen.New(s.db.NewLoggingDB(ctx))

@@ -121,6 +121,68 @@ func Test_service_FindByFilter(t *testing.T) {
 				require.Equal(t, lastName, actual[0].LastName)
 			})
 		})
+
+		t.Run("keywordsが空の場合、全件取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+			limit := int32(20)
+			offset := int32(0)
+
+			expectedLength := 10
+
+			actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   nil,
+			}, limit, offset)
+			require.NoError(t, err)
+
+			require.Len(t, actual, expectedLength)
+		})
+
+		t.Run("keywordsが空かつactive=trueの場合、アクティブのみ取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+			limit := int32(20)
+			offset := int32(0)
+			active := true
+
+			expectedLength := 8
+
+			actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   &active,
+			}, limit, offset)
+			require.NoError(t, err)
+
+			require.Len(t, actual, expectedLength)
+		})
+
+		t.Run("keywordsが空かつactive=falseの場合、削除済みのみ取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+			limit := int32(20)
+			offset := int32(0)
+			active := false
+
+			expectedLength := 2
+
+			actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   &active,
+			}, limit, offset)
+			require.NoError(t, err)
+
+			require.Len(t, actual, expectedLength)
+		})
 	})
 }
 
