@@ -2,7 +2,6 @@
 
 ![Go Version](https://img.shields.io/github/go-mod/go-version/Tomy-ch/go-boilerplate)
 ![License](https://img.shields.io/github/license/Tomy-ch/go-boilerplate)
-![CI](https://github.com/Tomy-ch/go-boilerplate/actions/workflows/ci.yml/badge.svg)
 
 English | [日本語](README.ja.md)
 

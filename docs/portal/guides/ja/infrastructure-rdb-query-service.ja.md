@@ -1,5 +1,7 @@
 # Query Service 実装ガイド
 
+[English](README.md) | 日本語
+
 ## 役割
 
 Query Service は **検索・一覧取得などの読み取り専用クエリーを提供する層**です。
@@ -67,17 +69,24 @@ QueryService は次を行いません。
 QueryService は **sqlc 生成クエリ**を利用します。
 
 ```go
-rows, err := db.ListUsersByKeywords(ctx, ...)
+rows, err := db.SearchUsers(ctx, &gen.SearchUsersParams{...})
 ```
 
-sqlc により
+## SQL分割設計
 
-- 型安全なSQL実行
-- コンパイル時SQL検証
+検索条件（active / deleted / all）は SQL 内で分岐せず、クエリを分割して実装します。
 
-が可能になります。
+例：
 
-生成コードは、`internal/infrastructure/rdb/sqlc/gen` に配置されます。
+- SearchUsers
+- SearchActiveUsers
+- SearchDeletedUsers
+
+理由：
+
+- SQLの可読性向上
+- インデックス効率の向上
+- sqlc生成コードの単純化
 
 ## LIKE検索ヘルパー
 
@@ -95,23 +104,28 @@ pattern := sqlc.WrapContainsLikePattern(escaped)
 - LIKEインジェクション防止
 - 検索パターン統一
 
+キーワード検索は OR 条件（ILIKE ANY）で実行されます。
+
 ## 削除状態の制御
 
-削除状態のフィルタリングは
+削除状態のフィルタリングは、Go側で分岐し、専用クエリを呼び分けます。
 
 ```go
-DeletedState: sqlc.BoolPtrToDeletedState(active)
+switch {
+case filter.Active == nil:
+    // 全件
+case *filter.Active:
+    // active
+case !*filter.Active:
+    // deleted
+}
 ```
 
-を利用します。
+この設計により：
 
-これにより
-
-- `active`
-- `inactive`
-- `all`
-
-の状態制御が可能になります。
+- SQLの複雑化を防ぐ
+- インデックス効率を維持する
+- 可読性を向上させる
 
 ## Row → 返却型への変換
 
@@ -126,9 +140,9 @@ sqlc が返す Row 構造体は **Infrastructure 専用型**です。
 
 ```go
 u, err := user.New(
-    row.Users.ID,
-    row.Users.FirstName,
-    row.Users.LastName,
+    row.ID,
+    row.FirstName,
+    row.LastName,
     ...
 )
 ```
@@ -418,76 +432,98 @@ return rows
 ## 実装例
 
 ```go
-// serviceで名称固定
+// service は QueryService の実装です。
+// DBアクセスとトレーシングを責務として持ちます。
 type service struct {
-  db     loggingdb.DBProvider
-  tracer observability.LayerTracer
+    db     loggingdb.DBProvider
+    tracer observability.LayerTracer
 }
 
-// Newで名称固定
+// New は QueryService のコンストラクタです。
+// 依存はすべて外から注入し、内部で new は行いません。
 func New(
-  db loggingdb.DBProvider,
-  tf observability.TracerFactory,
+    db loggingdb.DBProvider,
+    tf observability.TracerFactory,
 ) query.UserQueryService {
-  return &service{
-    db:     db,
-    tracer: tf.Infra(),
-  }
+    return &service{
+        db:     db,
+        tracer: tf.Infra(),
+    }
 }
 
-func (s *service) FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Users, error) {
-    // Spanの開始・終了呼び出して設定
+// FindByFilter は、キーワードと削除状態に基づいてユーザーを検索します。
+// - キーワードは LIKE パターンに変換
+// - 削除状態は Go 側で分岐
+// - SQL は専用クエリを呼び分ける
+func (s *service) FindByFilter(ctx context.Context, filter *query.UserSearchFilter, limit, offset int32) (query.UserSearchResults, error) {
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
 
-    // QueryServiceを利用する側での前処理
-    tokens := make([]string, len(keywords))
-    for i, kw := range keywords {
+    // キーワードを LIKE 検索用のパターンに変換
+    tokens := make([]string, len(filter.Keywords))
+    for i, kw := range filter.Keywords {
         escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
         tokens[i] = sqlc.WrapContainsLikePattern(escaped)
     }
 
-    // driver.ResolveDriverWithLogを使うことでログを自動で出力
-    // 不要な場合は、driver.ResolveDriver(ctx, r.db)を使う
+    // loggingDB を利用して DB 接続を取得
     db := gen.New(s.db.NewLoggingDB(ctx))
 
-    rows, err := db.ListUsersByKeywords(ctx, &gen.ListUsersByKeywordsParams{
-        PatternsParam: tokens,
-        DeletedState:  sqlc.BoolPtrToDeletedState(active),
-        LimitParam:    limit,
-        OffsetParam:   offset,
-    })
+    // 削除状態に応じてクエリを切り替える
+    switch {
+    case filter.Active == nil:
+        return fetchSearchAll(ctx, db, &gen.SearchUsersParams{
+            PatternsParam: tokens,
+            LimitParam:    limit,
+            OffsetParam:   offset,
+        })
+    case *filter.Active:
+        return fetchSearchActive(ctx, db, &gen.SearchActiveUsersParams{
+            PatternsParam: tokens,
+            LimitParam:    limit,
+            OffsetParam:   offset,
+        })
+    case !*filter.Active:
+        return fetchSearchDeleted(ctx, db, &gen.SearchDeletedUsersParams{
+            PatternsParam: tokens,
+            LimitParam:    limit,
+            OffsetParam:   offset,
+        })
+    default:
+        panic("unreachable: invalid active")
+    }
+}
+
+// fetchSearchAll は、全ユーザーを検索するヘルパー関数です。
+// QueryService からロジックを分離し、責務を明確にします。
+func fetchSearchAll(
+    ctx context.Context,
+    db *gen.Queries,
+    params *gen.SearchUsersParams,
+) (query.UserSearchResults, error) {
+    rows, err := db.SearchUsers(ctx, params)
     if err != nil {
-        // エラー正規化して返す。
-        // エラー内容はpgerrorパッケージ（internal/infrastructure/rdb/postgres/pgerror）で判定される
         return nil, pgerror.NormalizeError(err)
     }
 
-    // Domainエンティティ or DTO への詰め替え
-    users := make(user.Users, len(rows))
+    // Row → DTO 変換
+    results := make(query.UserSearchResults, len(rows))
     for i, row := range rows {
-        u, err := user.New(
-            row.Users.ID,
-            row.Users.FirstName,
-            row.Users.LastName,
-            row.Users.PasswordHash,
-            row.Users.Email,
-            row.Users.Phone,
-            row.Users.PrefectureID,
-            row.Users.City,
-            row.Users.Street,
-            row.Users.Building,
-            row.Users.PostalCode,
-            row.Users.CreatedAt,
-            row.Users.UpdatedAt,
-            row.Users.DeletedAt,
-        )
-        if err != nil {
-            return nil, err
+        results[i] = &query.UserSearchResult{
+            FirstName:      row.FirstName,
+            LastName:       row.LastName,
+            Email:          row.Email,
+            Phone:          row.Phone,
+            PostalCode:     row.PostalCode,
+            PrefectureName: row.PrefectureName,
+            City:           row.City,
+            Street:         row.Street,
+            Building:       row.Building,
+            RegisteredAt:   row.CreatedAt,
+            DeletedAt:      row.DeletedAt,
         }
-        users[i] = u
     }
 
-    return users, nil
+    return results, nil
 }
 ```
