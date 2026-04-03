@@ -3,6 +3,7 @@ package module
 import (
 	"boilerplate-go/internal/usecase/healthcheck"
 	"boilerplate-go/internal/usecase/user"
+	"boilerplate-go/internal/usecase/user/search"
 
 	"go.uber.org/fx"
 )
@@ -14,6 +15,7 @@ func UsecaseModule() fx.Option {
 			healthcheck.New,
 			// サンプルのユースケース
 			user.New,
+			search.New,
 		),
 	)
 }
