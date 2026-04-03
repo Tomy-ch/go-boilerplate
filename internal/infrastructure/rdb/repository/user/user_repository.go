@@ -192,14 +192,26 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 	defer endSpan()
 
 	db := gen.New(r.db.NewLoggingDB(ctx))
+
+	var (
+		count int64
+		err   error
+	)
+
 	switch {
 	case active == nil:
-		return db.CountUsers(ctx)
+		count, err = db.CountUsers(ctx)
 	case *active:
-		return db.CountActiveUsers(ctx)
+		count, err = db.CountActiveUsers(ctx)
 	case !*active:
-		return db.CountDeletedUsers(ctx)
+		count, err = db.CountDeletedUsers(ctx)
 	default:
 		panic("unreachable: invalid active")
 	}
+
+	if err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+
+	return count, nil
 }
