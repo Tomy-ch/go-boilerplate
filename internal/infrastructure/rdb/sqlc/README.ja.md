@@ -95,43 +95,6 @@ pattern := WrapContainsLikePattern(escaped)
 
 `LIKE` 検索では必ず `EscapeForLike` を実行してからパターンを生成してください。
 
-## Enum 変換ヘルパー
-
-sqlc が生成する Enum 型への変換を補助する関数を提供します。
-
-現在は `DeletedState` 変換をサポートしています。
-
-### BoolPtrToDeletedState
-
-`*bool` を `gen.DeletedState` に変換します。
-
-|入力|結果|
-|-----|-----|
-|nil|DeletedStateAll|
-|true|DeletedStateDeleted|
-|false|DeletedStateActive|
-
-例
-
-```go
-state := BoolPtrToDeletedState(filter.Deleted)
-```
-
-### BoolToDeletedState
-
-`bool` を `gen.DeletedState` に変換します。
-
-|入力|結果|
-|-----|-----|
-|true|DeletedStateDeleted|
-|false|DeletedStateActive|
-
-例
-
-```go
-state := BoolToDeletedState(isDeleted)
-```
-
 ## 設計方針
 
 このパッケージは **Infrastructure 層専用の補助ライブラリ**です。

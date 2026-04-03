@@ -95,43 +95,6 @@ Result: `%escaped%`
 
 For `LIKE` searches, always execute `EscapeForLike` before generating the pattern.
 
-## Enum Conversion Helpers
-
-Provides helper functions to convert values into sqlc-generated Enum types.
-
-Currently supports conversion for `DeletedState`.
-
-### BoolPtrToDeletedState
-
-Converts `*bool` to `gen.DeletedState`.
-
-|Input|Result|
-|-----|-----|
-|nil|DeletedStateAll|
-|true|DeletedStateDeleted|
-|false|DeletedStateActive|
-
-Example
-
-```go
-state := BoolPtrToDeletedState(filter.Deleted)
-```
-
-### BoolToDeletedState
-
-Converts `bool` to `gen.DeletedState`.
-
-|Input|Result|
-|-----|-----|
-|true|DeletedStateDeleted|
-|false|DeletedStateActive|
-
-Example
-
-```go
-state := BoolToDeletedState(isDeleted)
-```
-
 ## Design Policy
 
 This package is an **Infrastructure-layer dedicated helper library**.
