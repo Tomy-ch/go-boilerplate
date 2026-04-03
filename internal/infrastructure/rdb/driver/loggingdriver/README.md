@@ -1,19 +1,19 @@
-# loggingdb
+# logging driver
 
 English | [日本語](README.ja.md)
 
 Overview: **An Observability wrapper layer that adds SQL execution logs and trace information to DB access. Actual query execution is delegated to the driver layer, and only log formatting and trace integration are added.**
 
-loggingdb is an **observability adapter positioned above the driver**.
+logging driver is an **observability adapter positioned above the driver**.
 
 ## Architectural Position
 
 ```mermaid
 flowchart TB
-    Usecase --> Repo["Repository"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
+    Usecase --> Repo["Repository"] --> Logging["logging driver"] --> Driver["driver"] --> DB["PostgreSQL"]
 ```
 
-loggingdb **does not perform DB execution processing itself.**
+logging driver **does not perform DB execution processing itself.**
 
 It wraps `driver.DBTX` and adds the following processing during SQL execution:
 
@@ -44,11 +44,11 @@ do not need to be aware of these at all.
 
 ## DBTX Wrapper
 
-The core implementation of loggingdb is a **DBTX wrapper**.
+The core implementation of logging driver is a **DBTX wrapper**.
 
 ```mermaid
 flowchart TB
-    DBTX["driver.DBTX"] --> Wrap["wrap"] --> Logging["loggingdb (dbWithLogging)"] --> Obs["SQL logging + tracing"]
+    DBTX["driver.DBTX"] --> Wrap["wrap"] --> Logging["logging driver (dbWithLogging)"] --> Obs["SQL logging + tracing"]
 ```
 
 `dbWithLogging` wraps `driver.DBTX` and performs the following processing before and after SQL execution:
@@ -83,7 +83,7 @@ to be **traced within a single trace context**.
 
 ## Slow Query
 
-loggingdb automatically determines slow queries.
+logging driver automatically determines slow queries.
 
 The determination of slow queries depends on the following configuration.
 
@@ -102,7 +102,7 @@ flowchart TB
 
 ## Provider
 
-`DBProvider` is a **DI Adapter** that aggregates the dependencies required for loggingdb.
+`DBProvider` is a **DI Adapter** that aggregates the dependencies required for logging driver.
 
 Provided dependencies:
 
@@ -112,7 +112,7 @@ Provided dependencies:
 - `DatabaseConfig`
 - `LayerTracer`
 
-This allows loggingdb to:
+This allows logging driver to:
 
 - logging implementation
 - tracing implementation
@@ -154,15 +154,15 @@ Therefore, it is very effective during development.
 
 ## Notes
 
-### loggingdb does not perform DB I/O
+### logging driver does not perform DB I/O
 
-loggingdb is a **pure wrapper**.
+logging driver is a **pure wrapper**.
 
 All actual SQL execution is delegated to the driver layer.
 
 ```mermaid
 flowchart TB
-    Logging["loggingdb"] --> Driver["driver"]
+    Logging["logging driver"] --> Driver["driver"]
 ```
 
 ### Always propagate Context

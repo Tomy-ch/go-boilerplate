@@ -1,19 +1,19 @@
-# loggingdb
+# logging driver
 
 [English](README.md) | 日本語
 
 概要: **DB アクセスに対して SQL 実行ログとトレース情報を付与するための Observability ラッパーレイヤー。実際のクエリ実行は driver 層へ委譲し、ログ整形・トレース連携のみを追加します。**
 
-loggingdb は **driver の上位に配置される observability adapter** です。
+logging driver は **driver の上位に配置される observability adapter** です。
 
 ## アーキテクチャ上の位置
 
 ```mermaid
 flowchart TB
-    Usecase --> Repo["Repository"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
+    Usecase --> Repo["Repository"] --> Logging["logging driver"] --> Driver["driver"] --> DB["PostgreSQL"]
 ```
 
-loggingdb は **DB 実行処理そのものは行いません。**
+logging driver は **DB 実行処理そのものは行いません。**
 
 `driver.DBTX` をラップし、SQL 実行時に以下の処理を追加します。
 
@@ -44,11 +44,11 @@ loggingdb は **DB 実行処理そのものは行いません。**
 
 ## DBTX Wrapper
 
-loggingdb のコア実装は **DBTX wrapper** です。
+logging driver のコア実装は **DBTX wrapper** です。
 
 ```mermaid
 flowchart TB
-    DBTX["driver.DBTX"] --> Wrap["wrap"] --> Logging["loggingdb (dbWithLogging)"] --> Obs["SQL logging + tracing"]
+    DBTX["driver.DBTX"] --> Wrap["wrap"] --> Logging["logging driver (dbWithLogging)"] --> Obs["SQL logging + tracing"]
 ```
 
 `dbWithLogging` は `driver.DBTX` をラップし、SQL 実行前後で次の処理を行います。
@@ -83,7 +83,7 @@ flowchart TB
 
 ## Slow Query
 
-loggingdb では slow query を自動判定します。
+logging driver では slow query を自動判定します。
 
 slow query の判定は次の設定に依存します。
 
@@ -102,7 +102,7 @@ flowchart TB
 
 ## Provider
 
-`DBProvider` は loggingdb に必要な依存関係をまとめる **DI Adapter** です。
+`DBProvider` は logging driver に必要な依存関係をまとめる **DI Adapter** です。
 
 提供する依存:
 
@@ -112,7 +112,7 @@ flowchart TB
 - `DatabaseConfig`
 - `LayerTracer`
 
-これにより loggingdb は
+これにより logging driver は
 
 - ログ実装
 - トレース実装
@@ -154,15 +154,15 @@ flowchart TB
 
 ## 注意点
 
-### loggingdb は DB I/O を行わない
+### logging driver は DB I/O を行わない
 
-loggingdb は **pure wrapper** です。
+logging driver は **pure wrapper** です。
 
 実際の SQL 実行はすべて driver 層に委譲されます。
 
 ```mermaid
 flowchart TB
-    Logging["loggingdb"] --> Driver["driver"]
+    Logging["logging driver"] --> Driver["driver"]
 ```
 
 ### Context を必ず伝搬する

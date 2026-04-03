@@ -1,4 +1,4 @@
-package loggingdb
+package loggingdriver
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"boilerplate-go/internal/config"
 	"boilerplate-go/internal/infrastructure/rdb/driver"
-	mock_loggingdb "boilerplate-go/internal/infrastructure/rdb/driver/loggingdb/mock"
+	mock_loggingdb "boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver/mock"
 	mock_driver "boilerplate-go/internal/infrastructure/rdb/driver/mock"
 	"boilerplate-go/internal/logging"
 	mock_logging "boilerplate-go/internal/logging/mock"
