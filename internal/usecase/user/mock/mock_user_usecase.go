@@ -72,17 +72,17 @@ func (mr *MockUsecaseMockRecorder) CreateUser(ctx, dto any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUsecase)(nil).CreateUser), ctx, dto)
 }
 
-// ListUsersByKeyword mocks base method.
-func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, params *user.GetParamsDTO, page *paging.Paging) ([]user.MutableFields, error) {
+// ListUsers mocks base method.
+func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]user.MutableFields, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListUsersByKeyword", ctx, params, page)
+	ret := m.ctrl.Call(m, "ListUsers", ctx, active, page)
 	ret0, _ := ret[0].([]user.MutableFields)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListUsersByKeyword indicates an expected call of ListUsersByKeyword.
-func (mr *MockUsecaseMockRecorder) ListUsersByKeyword(ctx, params, page any) *gomock.Call {
+// ListUsers indicates an expected call of ListUsers.
+func (mr *MockUsecaseMockRecorder) ListUsers(ctx, active, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersByKeyword", reflect.TypeOf((*MockUsecase)(nil).ListUsersByKeyword), ctx, params, page)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsers", reflect.TypeOf((*MockUsecase)(nil).ListUsers), ctx, active, page)
 }

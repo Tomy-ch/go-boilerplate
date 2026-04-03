@@ -14,8 +14,6 @@ import (
 	"boilerplate-go/internal/usecase/boundary/security"
 	"boilerplate-go/internal/usecase/boundary/tx"
 	"boilerplate-go/internal/usecase/tools/paging"
-	"boilerplate-go/internal/usecase/tools/search"
-	"boilerplate-go/internal/usecase/user/query"
 	"boilerplate-go/pkg/uuid"
 )
 
@@ -31,12 +29,6 @@ type MutableFields struct {
 	Street         string
 	Building       *string
 	DeletedAt      *time.Time
-}
-
-// GetParamsDTO は、ユーザー取得に必要なパラメータを表します。
-type GetParamsDTO struct {
-	Keyword *string
-	Active  *bool
 }
 
 // CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
@@ -55,13 +47,12 @@ type usecase struct {
 	encrypter security.Encrypter
 	userRepo  user.Repository
 	pftRepo   prefecture.Repository
-	userQS    query.UserQueryService
 }
 
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
-	// ListUsersByKeyword は、ユーザー一覧を取得します。
-	ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
+	// ListUsers は、ユーザー一覧を取得します。
+	ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]MutableFields, error)
 	// CreateUser は、ユーザーを作成します。
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
 	// CountUsers は、ユーザーの総件数を返します。
@@ -76,7 +67,6 @@ func New(
 	encrypter security.Encrypter,
 	userRepo user.Repository,
 	prefectureRepo prefecture.Repository,
-	userQueryService query.UserQueryService,
 ) Usecase {
 	return &usecase{
 		tracer:    tf.Usecase(),
@@ -85,33 +75,20 @@ func New(
 		encrypter: encrypter,
 		userRepo:  userRepo,
 		pftRepo:   prefectureRepo,
-		userQS:    userQueryService,
 	}
 }
 
-// ListUsersByKeyword は、ユーザー一覧を取得するユースケースです。
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error) {
+func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]MutableFields, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	var (
-		us  user.Users
-		err error
-	)
-
-	if params != nil {
-		keywords := search.ParseSearchTokens(params.Keyword, search.DefaultMaxTokens)
-		us, err = u.userQS.FindByKeyword(ctx, keywords, params.Active, page.Limit32(), page.Offset32())
-	} else {
-		us, err = u.userRepo.FindAll(ctx, page.Limit32(), page.Offset32())
-	}
-
+	us, err := u.userRepo.FindByActive(ctx, active, page.Limit32(), page.Offset32())
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, prefectureMap, err := observability.RunDomainWithSpan(
-		ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) {
+	_, prefectureMap, err := observability.RunWithSpan(
+		ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) {
 			pids := make([]uuid.UUID, len(us))
 			for i, u := range us {
 				pids[i] = u.PrefectureID()
@@ -133,29 +110,25 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, 
 		return nil, err
 	}
 
-	_, dtos, err := observability.RunDomainWithSpan(
-		ctx, u.tracer, "user", "buildDTOs", func(_ context.Context) ([]MutableFields, error) {
-			dtos := make([]MutableFields, len(us))
-			for i, u := range us {
-				dtos[i] = MutableFields{
-					FirstName:  u.FirstName(),
-					LastName:   u.LastName(),
-					Email:      u.Email(),
-					Phone:      u.Phone(),
-					PostalCode: u.PostalCode(),
-					City:       u.City(),
-					Street:     u.Street(),
-					Building:   u.Building(),
-					DeletedAt:  u.DeletedAt(),
-				}
-				if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
-					dtos[i].PrefectureName = p.Name()
-				}
-			}
-			return dtos, nil
-		})
+	dtos := make([]MutableFields, len(us))
+	for i, u := range us {
+		dtos[i] = MutableFields{
+			FirstName:  u.FirstName(),
+			LastName:   u.LastName(),
+			Email:      u.Email(),
+			Phone:      u.Phone(),
+			PostalCode: u.PostalCode(),
+			City:       u.City(),
+			Street:     u.Street(),
+			Building:   u.Building(),
+			DeletedAt:  u.DeletedAt(),
+		}
+		if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
+			dtos[i].PrefectureName = p.Name()
+		}
+	}
 
-	return dtos, err
+	return dtos, nil
 }
 
 // CreateUser は、ユーザーを作成するユースケースです。
