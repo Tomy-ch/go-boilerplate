@@ -38,8 +38,8 @@ ORGとREPOは適宜置き換えてください。派生設定は気になる箇�
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
 
-# ===== 派生設定（基本これでOK） =====
-export MODULE=${ORG}/${REPO}
+# ===== 派生設定 =====
+export MODULE=${REPO}
 export APP_NAME=${REPO}
 export OPENAPI_TITLE=${REPO}
 export COPILOT_TITLE=${REPO}

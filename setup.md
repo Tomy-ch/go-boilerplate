@@ -38,8 +38,8 @@ Replace ORG and REPO as appropriate. Only change derived settings if necessary.
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
 
-# ===== Derived Settings (usually OK as-is) =====
-export MODULE=${ORG}/${REPO}
+# ===== Derived Settings =====
+export MODULE=${REPO}
 export APP_NAME=${REPO}
 export OPENAPI_TITLE=${REPO}
 export COPILOT_TITLE=${REPO}
