@@ -30,7 +30,7 @@ context に対する値の格納・取得を、以下のような問題を避け
 ```go
 package ctxhelper
 
-//go:generate go run ../../../scripts/genctxkey --name authn --type "auth.Authn" --import boilerplate-go/internal/usecase/boundary/auth --out .
+//go:generate go run ../../../scripts/genctxkey --name authn --type "auth.Authn" --import go-boilerplate/internal/usecase/boundary/auth --out .
 ```
 
 ### 2. コード生成
@@ -55,7 +55,7 @@ make gen-go-code
 
 ```sh
 --type "auth.Authn"
---import boilerplate-go/internal/usecase/boundary/auth
+--import go-boilerplate/internal/usecase/boundary/auth
 ```
 
 - `--type` には Goの型式を指定します
