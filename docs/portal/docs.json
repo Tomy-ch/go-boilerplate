@@ -39,6 +39,24 @@
       ]
     },
     {
+      "title": "Environment Variables (English)",
+      "items": [
+        {
+          "name": "Environment Variables",
+          "path": "./guides/environment-variables.md"
+        }
+      ]
+    },
+    {
+      "title": "Environment Variables (Japanese)",
+      "items": [
+        {
+          "name": "Environment Variables",
+          "path": "./guides/ja/environment-variables.ja.md"
+        }
+      ]
+    },
+    {
       "title": "Controller (English)",
       "items": [
         {
@@ -335,6 +353,10 @@
           "path": "../maintenance/go-upgrade.md"
         },
         {
+          "name": "Setup",
+          "path": "../maintenance/setup.md"
+        },
+        {
           "name": "Versions Generator",
           "path": "../maintenance/versions-generator.md"
         }
@@ -350,6 +372,10 @@
         {
           "name": "Go Upgrade",
           "path": "../ja/maintenance/go-upgrade.ja.md"
+        },
+        {
+          "name": "Setup",
+          "path": "../ja/maintenance/setup.ja.md"
         },
         {
           "name": "Versions Generator",

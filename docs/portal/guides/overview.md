@@ -16,6 +16,22 @@ This boilerplate integrates:
 
 to provide a **contract-driven, type-safe, layered backend architecture**.
 
+## Prerequisites
+
+This project requires the following tools to be installed before running:
+
+- Visual Studio Code (recommended)
+- Docker Desktop
+- Make
+- GitHub CLI (gh)
+
+### Prerequisites Notes
+
+- Docker Desktop is required to run PostgreSQL and other services via Docker Compose.
+- Make is used to simplify development commands (e.g. build, test, generate).
+- GitHub CLI is used for interacting with GitHub workflows and automation (optional but recommended).
+- Visual Studio Code is recommended for development, especially with Go and OpenAPI extensions.
+
 ## Quick Start
 
 Run the project locally in a few commands.
@@ -25,6 +41,7 @@ git clone https://github.com/Tomy-ch/go-boilerplate.git
 cd go-boilerplate
 
 make install-tools
+make activate-tools
 make tidy-lib
 make serve
 make tools
@@ -55,6 +72,12 @@ Example response:
   "status": "ok"
 }
 ```
+
+## Getting Started
+
+Before starting development, make sure to follow the setup steps.
+
+[See Setup Instructions](./docs/maintenance/setup.md)
 
 ## Why This Boilerplate Exists
 

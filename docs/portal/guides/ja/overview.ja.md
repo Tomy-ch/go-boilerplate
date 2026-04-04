@@ -16,6 +16,22 @@
 
 これにより、**スキーマ駆動（schema-driven）かつ型安全なレイヤードバックエンドアーキテクチャ**を提供します。
 
+## 前提条件
+
+本プロジェクトを実行するには、以下のツールを事前にインストールしておく必要があります。
+
+- Visual Studio Code（推奨）
+- Docker Desktop
+- Make
+- GitHub CLI（gh）
+
+### 前提条件の補足
+
+- Docker Desktop は、Docker Compose を用いて PostgreSQL などのサービスを起動するために必要です。
+- Make は、ビルド・テスト・コード生成などの開発コマンドを簡略化するために使用します。
+- GitHub CLI は、GitHub Actions や各種自動化との連携に使用します（任意ですが推奨）。
+- Visual Studio Code は、Go や OpenAPI 関連の拡張機能と組み合わせることで、効率的な開発が可能です。
+
 ## Quick Start
 
 以下のコマンドでローカル起動できます。
@@ -25,6 +41,7 @@ git clone <https://github.com/Tomy-ch/go-boilerplate.git>
 cd go-boilerplate
 
 make install-tools
+make activate-tools
 make tidy-lib
 make serve
 make tools
@@ -55,6 +72,12 @@ curl <http://localhost:8080/health>
   "status": "ok"
 }
 ```
+
+## Getting Started
+
+開発を開始する前に、必ず以下のセットアップ手順を実行してください。
+
+[セットアップ手順はこちら](./docs/ja/maintenance/setup.ja.md)
 
 ## この Boilerplate の目的
 

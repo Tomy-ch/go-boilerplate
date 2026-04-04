@@ -213,6 +213,7 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | --- | --- | --- |
 | `make go-update` | `anyenv update` を実行し、`.go-version` に記載された Go バージョンを `goenv` でインストールします。 | なし |
 | `make install-tools` | Go 開発で利用するツールをインストールします。 | `gopls`、`gotests`、`impl`、`goplay`、`dlv`、`lefthook`、`golangci-lint` などを導入します。 |
+| `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 
 ## `.makefiles/docs` 系
 
@@ -229,7 +230,7 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make gen` | 各種コード・ドキュメント生成をまとめて実行します。 | `gen-api` → `gen-query` → `gen-docs` を順に実行します。 |
-| `make gen-api` | API 関連の生成処理をまとめて実行します。 | `gen-bundle-oapi` と `gen-go-code` を実行します。 |
+| `make gen-api` | API 関連の生成処理をまとめて実行します。 | `gen-bundle-oapi` →  `gen-api-docs` → `gen-go-code` を実行します。 |
 | `make gen-docs` | ドキュメント関連の生成処理をまとめて実行します。 | `gen-api-docs`、`gen-tools-meta`、`gen-portal-docs`、`gen-docs-json` を実行します。 |
 | `make gen-all-docs` | すべてのドキュメント生成処理を実行します。 | `gen-docs`、`gen-db-schema`、`gen-test-repo` を実行します。 |
 | `make gen-query` | SQLC コード生成をまとめて実行します。 | `dump-schema` → `merge-dml` → `gen-sqlc` → `fmt` を順に実行します。 |
@@ -263,6 +264,16 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 - ラベル初期化
 
 新規リポジトリを boilerplate として立ち上げる際の初期セットアップ用コマンドです。
+
+#### セットアップ補助コマンド
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make setup-replace-module OLD_MODULE=<old> NEW_MODULE=<new>` | Go モジュール名を一括置換します。 | `node_tool_runner` を使用して `go.mod` や import パスを更新します。 |
+| `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | アプリケーション名や OpenAPI タイトルなどのメタデータを一括置換します。 | README や OpenAPI 定義などに反映されます。 |
+| `make setup-replace-repository-reference REPOSITORY=<org/repo>` | リポジトリ参照（GitHub URL など）を一括置換します。 | README やドキュメント内のリンクを更新します。 |
+| `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | LICENSE の著作権表記を更新します。 | 年は省略可能です。 |
+| `make setup-remove-debug-handlers` | Debug 用ハンドラ一式を削除します。 | 本番利用時の不要コード削除に使用します。 |
 
 ### リリースブランチ関連
 

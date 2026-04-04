@@ -3,7 +3,7 @@
 English | [日本語](README.ja.md)
 
 This document explains the roles of `make` commands available in this repository.
-Make targets are mainly organized into the following categories.
+Make targets are mainly organized into the following units.
 
 - `.makefiles/app` : Application startup / Job execution
 - `.makefiles/database` : DB initialization / Migration / Seed / DML / Schema
@@ -213,6 +213,7 @@ Targets include Migration / DML / Seed SQL.
 | --- | --- | --- |
 | `make go-update` | Executes `anyenv update` and installs Go version from `.go-version` via `goenv`. | None |
 | `make install-tools` | Installs tools used in Go development. | Installs `gopls`, `gotests`, `impl`, `goplay`, `dlv`, `lefthook`, `golangci-lint`, etc. |
+| `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 
 ## `.makefiles/docs` group
 
@@ -229,7 +230,7 @@ Targets include Migration / DML / Seed SQL.
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make gen` | Executes all code and documentation generation in batch. | Executes `gen-api` → `gen-query` → `gen-docs`. |
-| `make gen-api` | Executes API-related generation in batch. | Executes `gen-bundle-oapi` and `gen-go-code`. |
+| `make gen-api` | Executes API-related generation in batch. | Executes `gen-bundle-oapi` →  `gen-api-docs` → `gen-go-code`. |
 | `make gen-docs` | Executes documentation-related generation in batch. | Executes `gen-api-docs`, `gen-tools-meta`, `gen-portal-docs`, `gen-docs-json`. |
 | `make gen-all-docs` | Executes all documentation generation processes. | Executes `gen-docs`, `gen-db-schema`, `gen-test-repo`. |
 | `make gen-query` | Executes SQLC code generation in batch. | Executes `dump-schema` → `merge-dml` → `gen-sqlc` → `fmt`. |
@@ -248,7 +249,7 @@ Targets include Migration / DML / Seed SQL.
 | `make create-default-labels` | Creates default labels based on `.github/settings/labels.json`. | None |
 | `make apply-branch-protection` | Applies branch rules based on `.github/settings/branch-protection.json`. | None |
 
-### GitHub repository initialization
+### GitHub repository initialization related
 
 #### `make setup-repo`
 
@@ -264,14 +265,24 @@ Performs the following in order.
 
 This is an initial setup command when launching a new repository as a boilerplate.
 
+#### Setup helper commands
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make setup-replace-module OLD_MODULE=<old> NEW_MODULE=<new>` | Replaces Go module name in batch. | Updates `go.mod` and import paths using `node_tool_runner`. |
+| `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | Replaces application name and OpenAPI title in batch. | Reflected in README and OpenAPI definitions. |
+| `make setup-replace-repository-reference REPOSITORY=<org/repo>` | Replaces repository references (GitHub URLs, etc.) in batch. | Updates links in README and documentation. |
+| `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | Updates LICENSE copyright notation. | Year is optional. |
+| `make setup-remove-debug-handlers` | Removes debug handler set. | Used to remove unnecessary code for production use. |
+
 ### Release branch related
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make hotfix-patch` | Creates a hotfix branch from `production` and sets it as the default branch. | Increments patch version based on the latest tag. |
-| `make branch-patch` | Creates a patch release branch from `production` and sets it as the default branch. | Increments patch version based on the latest tag. |
-| `make branch-minor` | Creates a minor release branch from `production` and sets it as the default branch. | Increments minor version based on the latest tag. |
-| `make branch-major` | Creates a major release branch from `production` and sets it as the default branch. | Increments major version based on the latest tag. |
+| `make hotfix-patch` | Creates a hotfix branch from `production` and sets it as the default branch. | Advances patch by one based on the latest tag. |
+| `make branch-patch` | Creates a patch release branch from `production` and sets it as the default branch. | Advances patch version based on the latest tag. |
+| `make branch-minor` | Creates a minor release branch from `production` and sets it as the default branch. | Advances minor version based on the latest tag. |
+| `make branch-major` | Creates a major release branch from `production` and sets it as the default branch. | Advances major version based on the latest tag. |
 
 ### Release tag related
 
