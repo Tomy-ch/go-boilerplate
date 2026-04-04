@@ -25,7 +25,7 @@ git clone https://github.com/Tomy-ch/go-boilerplate.git
 cd go-boilerplate
 
 make install-tools
-make lh-install
+make activate-tools
 make tidy-lib
 make serve
 make tools
@@ -56,6 +56,12 @@ Example response:
   "status": "ok"
 }
 ```
+
+## Getting Started
+
+Before starting development, make sure to follow the setup steps.
+
+[See Setup Instructions](./docs/setup.md)
 
 ## Why This Boilerplate Exists
 

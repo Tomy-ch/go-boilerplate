@@ -25,7 +25,7 @@ git clone <https://github.com/Tomy-ch/go-boilerplate.git>
 cd go-boilerplate
 
 make install-tools
-make lh-install
+make activate-tools
 make tidy-lib
 make serve
 make tools
@@ -56,6 +56,12 @@ curl <http://localhost:8080/health>
   "status": "ok"
 }
 ```
+
+## Getting Started
+
+開発を開始する前に、必ず以下のセットアップ手順を実行してください。
+
+[セットアップ手順はこちら](./docs/setup.md)
 
 ## この Boilerplate の目的
 
