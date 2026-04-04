@@ -16,6 +16,22 @@ This boilerplate integrates:
 
 to provide a **contract-driven, type-safe, layered backend architecture**.
 
+## Prerequisites
+
+This project requires the following tools to be installed before running:
+
+- Visual Studio Code (recommended)
+- Docker Desktop
+- Make
+- GitHub CLI (gh)
+
+### Prerequisites Notes
+
+- Docker Desktop is required to run PostgreSQL and other services via Docker Compose.
+- Make is used to simplify development commands (e.g. build, test, generate).
+- GitHub CLI is used for interacting with GitHub workflows and automation (optional but recommended).
+- Visual Studio Code is recommended for development, especially with Go and OpenAPI extensions.
+
 ## Quick Start
 
 Run the project locally in a few commands.
