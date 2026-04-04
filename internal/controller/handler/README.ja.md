@@ -729,7 +729,7 @@ package users
 import (
     "context"
 
-    "boilerplate-go/internal/observability"
+    "go-boilerplate/internal/observability"
     // それぞれ実装で使うパッケージをimport
 
     "github.com/labstack/echo/v4"

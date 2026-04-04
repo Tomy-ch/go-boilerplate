@@ -7,13 +7,13 @@ package users
 import (
 	"context"
 
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/controller/ctxhelper"
-	"boilerplate-go/internal/controller/handler/v1/users/gen"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/tools/paging"
-	"boilerplate-go/internal/usecase/user"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/ctxhelper"
+	"go-boilerplate/internal/controller/handler/v1/users/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/internal/usecase/user"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"

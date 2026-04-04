@@ -2,15 +2,15 @@
 package server
 
 import (
-	"boilerplate-go/internal/controller/server"
-	"boilerplate-go/internal/di/server/extension"
-	"boilerplate-go/internal/di/server/extension/decoration"
-	"boilerplate-go/internal/di/server/extension/inbound"
-	"boilerplate-go/internal/di/server/extension/instrumentation"
-	"boilerplate-go/internal/di/server/extension/nonprod"
-	"boilerplate-go/internal/di/server/extension/outbound"
-	"boilerplate-go/internal/di/server/extension/security"
-	"boilerplate-go/internal/di/server/hook"
+	"go-boilerplate/internal/controller/server"
+	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/di/server/extension/decoration"
+	"go-boilerplate/internal/di/server/extension/inbound"
+	"go-boilerplate/internal/di/server/extension/instrumentation"
+	"go-boilerplate/internal/di/server/extension/nonprod"
+	"go-boilerplate/internal/di/server/extension/outbound"
+	"go-boilerplate/internal/di/server/extension/security"
+	"go-boilerplate/internal/di/server/hook"
 
 	"go.uber.org/fx"
 )

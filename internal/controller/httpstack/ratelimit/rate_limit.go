@@ -2,9 +2,9 @@
 package ratelimit
 
 import (
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/ops"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/ops"
 
 	"github.com/labstack/echo/v4"
 )

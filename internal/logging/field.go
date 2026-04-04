@@ -3,7 +3,7 @@ package logging
 import (
 	"time"
 
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (

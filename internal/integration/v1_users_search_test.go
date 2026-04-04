@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	searchhandler "boilerplate-go/internal/controller/handler/v1/users/search"
-	"boilerplate-go/internal/controller/handler/v1/users/search/gen"
-	"boilerplate-go/internal/observability"
-	mock_search "boilerplate-go/internal/usecase/user/search/mock"
-	"boilerplate-go/internal/usecase/user/search/query"
+	searchhandler "go-boilerplate/internal/controller/handler/v1/users/search"
+	"go-boilerplate/internal/controller/handler/v1/users/search/gen"
+	"go-boilerplate/internal/observability"
+	mock_search "go-boilerplate/internal/usecase/user/search/mock"
+	"go-boilerplate/internal/usecase/user/search/query"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/mock/gomock"

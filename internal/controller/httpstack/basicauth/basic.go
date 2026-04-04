@@ -2,8 +2,8 @@
 package basicauth
 
 import (
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"

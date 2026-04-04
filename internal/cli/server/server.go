@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"boilerplate-go/internal/config"
-	server "boilerplate-go/internal/di"
+	"go-boilerplate/internal/config"
+	server "go-boilerplate/internal/di"
 
 	"github.com/spf13/cobra"
 )

@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
-	mock_lifecycle "boilerplate-go/internal/di/lifecycle/mock"
-	mock_shutdowner "boilerplate-go/internal/di/shutdowner/mock"
-	mock_logging "boilerplate-go/internal/logging/mock"
-	mock_job "boilerplate-go/internal/usecase/boundary/job/mock"
+	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
+	mock_shutdowner "go-boilerplate/internal/di/shutdowner/mock"
+	mock_logging "go-boilerplate/internal/logging/mock"
+	mock_job "go-boilerplate/internal/usecase/boundary/job/mock"
 )
 
 func TestRegisterJobHooks(t *testing.T) {

@@ -2,7 +2,7 @@
 package module
 
 import (
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"go.uber.org/fx"
 )

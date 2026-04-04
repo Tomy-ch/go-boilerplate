@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"boilerplate-go/internal/controller/ctxhelper"
+	"go-boilerplate/internal/controller/ctxhelper"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"

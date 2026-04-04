@@ -1,9 +1,9 @@
 package module
 
 import (
-	"boilerplate-go/internal/usecase/healthcheck"
-	"boilerplate-go/internal/usecase/user"
-	"boilerplate-go/internal/usecase/user/search"
+	"go-boilerplate/internal/usecase/healthcheck"
+	"go-boilerplate/internal/usecase/user"
+	"go-boilerplate/internal/usecase/user/search"
 
 	"go.uber.org/fx"
 )

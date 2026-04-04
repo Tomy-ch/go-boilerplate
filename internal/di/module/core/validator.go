@@ -2,7 +2,7 @@
 package core
 
 import (
-	"boilerplate-go/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/controller/httpstack/oapi/validator"
 
 	"go.uber.org/fx"
 )

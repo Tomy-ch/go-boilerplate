@@ -21,12 +21,8 @@ make activate-tools
 ローカルで起動してみて、問題なく動作することを確認してください。
 
 ```sh
-# サーバー起動
 make serve
-# 開発補助ツール起動
 make tools
-
-# 開発とテスト用のDBの初期化
 make db-init
 ```
 
@@ -37,11 +33,9 @@ make db-init
 ORGとREPOは適宜置き換えてください。派生設定は気になる箇所のみ変更してください。
 
 ```sh
-# ===== 一括設定 =====
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
 
-# ===== 派生設定 =====
 export MODULE=${REPO}
 export APP_NAME=${REPO}
 export OPENAPI_TITLE=${REPO}
@@ -49,11 +43,12 @@ export COPILOT_TITLE=${REPO}
 export COPYRIGHT_HOLDER=${ORG}
 export COPYRIGHT_YEAR=$(date +%Y)
 
-# ===== 実行 =====
-make setup-replace-module OLD_MODULE=boilerplate-go NEW_MODULE=$MODULE
+make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=$MODULE
 make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
 make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
 make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
+make gen-api
+make gen-sqlc
 make tidy-lib
 ```
 
@@ -62,13 +57,9 @@ make tidy-lib
 テストと静的解析、コード生成、ヘルスチェックなど、基本的な機能が問題なく動作することを確認してください。
 
 ```sh
-# テスト
 make test
-# 静的解析
 make lint
-# コード生成
 make gen
-# ヘルスチェック
 curl http://localhost:8080/health
 curl http://localhost:8080/ready
 ```
@@ -146,7 +137,7 @@ usecaseの[Authenticator](internal/usecase/boundary/auth/authenticator.go)イン
 セットアップのタイミングでの削除は必須ではないですが、本番にリリースする前には必ず削除してください。
 
 ```sh
-make setup-remove-debug-handlers # 認証周りのデバッグハンドラーを削除します。必要に応じて実行してください。
+make setup-remove-debug-handlers
 ```
 
 ## Phase 11: サンプルAPIの削除

@@ -21,12 +21,8 @@ make activate-tools
 Start the application locally and confirm it works without issues.
 
 ```sh
-# Start server
 make serve
-# Start development support tools
 make tools
-
-# Initialize DB for development and testing
 make db-init
 ```
 
@@ -37,11 +33,9 @@ Run the following commands to execute the script that replaces the Go module nam
 Replace ORG and REPO as appropriate. Only change derived settings if necessary.
 
 ```sh
-# ===== Bulk Settings =====
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
 
-# ===== Derived Settings =====
 export MODULE=${REPO}
 export APP_NAME=${REPO}
 export OPENAPI_TITLE=${REPO}
@@ -49,11 +43,12 @@ export COPILOT_TITLE=${REPO}
 export COPYRIGHT_HOLDER=${ORG}
 export COPYRIGHT_YEAR=$(date +%Y)
 
-# ===== Execute =====
-make setup-replace-module OLD_MODULE=boilerplate-go NEW_MODULE=$MODULE
+make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=$MODULE
 make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
 make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
 make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
+make gen-api
+make gen-sqlc
 make tidy-lib
 ```
 
@@ -62,13 +57,9 @@ make tidy-lib
 Confirm that basic functionality works correctly, including tests, static analysis, code generation, and health checks.
 
 ```sh
-# Test
 make test
-# Static analysis
 make lint
-# Code generation
 make gen
-# Health check
 curl http://localhost:8080/health
 curl http://localhost:8080/ready
 ```
@@ -143,7 +134,7 @@ Authentication debug APIs pose security risks, so remove them as necessary.
 It is not mandatory to remove them during setup, but you MUST remove them before releasing to production.
 
 ```sh
-make setup-remove-debug-handlers # Removes debug handlers related to authentication. Execute if necessary.
+make setup-remove-debug-handlers
 ```
 
 ## Phase 11: Remove Sample APIs

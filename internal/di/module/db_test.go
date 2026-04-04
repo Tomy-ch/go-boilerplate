@@ -8,12 +8,12 @@ import (
 	"go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/di/lifecycle"
-	"boilerplate-go/internal/di/server/hook"
-	"boilerplate-go/internal/logging"
-	mock_logging "boilerplate-go/internal/logging/mock"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/di/lifecycle"
+	"go-boilerplate/internal/di/server/hook"
+	"go-boilerplate/internal/logging"
+	mock_logging "go-boilerplate/internal/logging/mock"
+	"go-boilerplate/internal/observability"
 )
 
 func TestDatabaseModule_Composes(t *testing.T) {

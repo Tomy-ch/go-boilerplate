@@ -4,7 +4,7 @@ package auth
 import (
 	"strings"
 
-	"boilerplate-go/pkg/uuid"
+	"go-boilerplate/pkg/uuid"
 )
 
 const (

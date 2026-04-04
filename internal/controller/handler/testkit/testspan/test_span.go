@@ -4,7 +4,7 @@ package testspan
 import (
 	"testing"
 
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 )

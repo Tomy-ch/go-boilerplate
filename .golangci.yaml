@@ -151,11 +151,11 @@ linters:
             - "**/internal/domain/**.go"
           list-mode: lax
           deny:
-            - pkg: boilerplate-go/internal/usecase/
+            - pkg: go-boilerplate/internal/usecase/
               desc: "domain層でusecase層を参照することは禁止です。"
-            - pkg: boilerplate-go/internal/controller/
+            - pkg: go-boilerplate/internal/controller/
               desc: "domain層でcontroller層を参照することは禁止です。"
-            - pkg: boilerplate-go/internal/infrastructure/
+            - pkg: go-boilerplate/internal/infrastructure/
               desc: "domain層でinfrastructure層を参照することは禁止です。"
         # usecase層では外界とのやり取りのライブラリの使用を禁止します。
         # それ以外のライブラリの利用は許可されます。
@@ -165,9 +165,9 @@ linters:
             - "**/internal/usecase/**.go"
           list-mode: lax
           deny:
-            - pkg: boilerplate-go/internal/controller/
+            - pkg: go-boilerplate/internal/controller/
               desc: "usecase層でcontroller層を参照することは禁止です。"
-            - pkg: boilerplate-go/internal/infrastructure/
+            - pkg: go-boilerplate/internal/infrastructure/
               desc: "usecase層でinfrastructure層を参照することは禁止です。"
         # controller層では、主にHTTPリクエストを扱うライブラリの使用を許可します。
         # ただし、永続化を行うライブラリの使用は禁止します。(主にdatabase/sqlなど)
@@ -176,7 +176,7 @@ linters:
             - "**/internal/controller/**.go"
           list-mode: lax
           deny:
-            - pkg: boilerplate-go/internal/infrastructure/
+            - pkg: go-boilerplate/internal/infrastructure/
               desc: "controller層でinfrastructure層を参照することは禁止です。"
         # infrastructure層では、主に永続化を行うライブラリの使用を許可します。
         # ただし、HTTPリクエストを扱うライブラリの使用は禁止します。(主にnet/httpなど)
@@ -185,7 +185,7 @@ linters:
             - "**/internal/infrastructure/**.go"
           list-mode: lax
           deny:
-            - pkg: boilerplate-go/internal/controller/
+            - pkg: go-boilerplate/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"
     funcorder:
       constructor: true
@@ -252,9 +252,9 @@ formatters:
           replacement: 'any'
     goimports:
       local-prefixes:
-        - "boilerplate-go"
+        - "go-boilerplate"
     gofumpt:
-      module-path: "boilerplate-go"
+      module-path: "go-boilerplate"
       extra-rules: true
     golines:
       max-len: 150

@@ -10,9 +10,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/errorhandler"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/errorhandler"
+	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

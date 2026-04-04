@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/di"
+	"go-boilerplate/internal/di"
 
 	"github.com/spf13/cobra"
 )

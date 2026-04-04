@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"

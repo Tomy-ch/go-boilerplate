@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	uuid "boilerplate-go/pkg/uuid"
+	uuid "go-boilerplate/pkg/uuid"
 )
 
 const countActiveUsers = `-- name: CountActiveUsers :one

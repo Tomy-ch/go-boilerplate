@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 )
 
 // DSN は、データベースの接続URLを返します。

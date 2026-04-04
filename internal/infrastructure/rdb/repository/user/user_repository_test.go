@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/domain/user"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
-	"boilerplate-go/internal/infrastructure/rdb/testkit"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/pkg/ptr"
-	"boilerplate-go/pkg/uuid"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/user"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
+	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/require"
 )

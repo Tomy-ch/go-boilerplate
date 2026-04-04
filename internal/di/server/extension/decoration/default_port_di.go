@@ -1,9 +1,9 @@
 package decoration
 
 import (
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/defaultport"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/defaultport"
+	"go-boilerplate/internal/di/server/extension"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"

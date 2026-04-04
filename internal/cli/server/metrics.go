@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 )
 
 const (

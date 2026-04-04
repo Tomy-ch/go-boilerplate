@@ -1,8 +1,8 @@
 package inbound
 
 import (
-	"boilerplate-go/internal/controller/httpstack/uri"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/controller/httpstack/uri"
+	"go-boilerplate/internal/di/server/extension"
 
 	"go.uber.org/fx"
 )

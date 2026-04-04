@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"boilerplate-go/internal/apperror"
+	"go-boilerplate/internal/apperror"
 
 	"golang.org/x/crypto/bcrypt"
 )

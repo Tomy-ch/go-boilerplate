@@ -1,14 +1,14 @@
 package module
 
 import (
-	"boilerplate-go/internal/controller/handler/debug/cookie"
-	"boilerplate-go/internal/controller/handler/health"
-	"boilerplate-go/internal/controller/handler/healthz"
-	"boilerplate-go/internal/controller/handler/metrics"
-	"boilerplate-go/internal/controller/handler/ready"
-	"boilerplate-go/internal/controller/handler/v1/users"
-	"boilerplate-go/internal/controller/handler/v1/users/search"
-	"boilerplate-go/internal/controller/handler/version"
+	"go-boilerplate/internal/controller/handler/debug/cookie"
+	"go-boilerplate/internal/controller/handler/health"
+	"go-boilerplate/internal/controller/handler/healthz"
+	"go-boilerplate/internal/controller/handler/metrics"
+	"go-boilerplate/internal/controller/handler/ready"
+	"go-boilerplate/internal/controller/handler/v1/users"
+	"go-boilerplate/internal/controller/handler/v1/users/search"
+	"go-boilerplate/internal/controller/handler/version"
 
 	"go.uber.org/fx"
 )

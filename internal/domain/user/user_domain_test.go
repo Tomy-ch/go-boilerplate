@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/pkg/ptr"
-	"boilerplate-go/pkg/uuid"
+	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/require"
 )

@@ -1,10 +1,10 @@
 package outbound
 
 import (
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/recovery"
-	"boilerplate-go/internal/di/server/extension"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/recovery"
+	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/logging"
 
 	"go.uber.org/fx"
 )

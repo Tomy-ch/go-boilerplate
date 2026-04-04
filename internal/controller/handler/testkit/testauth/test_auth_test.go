@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/controller/ctxhelper"
+	"go-boilerplate/internal/controller/ctxhelper"
 
 	"github.com/stretchr/testify/require"
 )

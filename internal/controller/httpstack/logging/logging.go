@@ -4,11 +4,11 @@ package logging
 import (
 	"time"
 
-	"boilerplate-go/internal/controller/httpstack/ops"
-	"boilerplate-go/internal/controller/httpstack/requestid"
-	"boilerplate-go/internal/controller/server"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/controller/httpstack/ops"
+	"go-boilerplate/internal/controller/httpstack/requestid"
+	"go-boilerplate/internal/controller/server"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 )

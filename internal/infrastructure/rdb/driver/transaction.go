@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/usecase/boundary/tx"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/usecase/boundary/tx"
 
 	"github.com/jackc/pgx/v5"
 )

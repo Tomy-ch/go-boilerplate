@@ -8,8 +8,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/logging"
 )
 
 func TestShouldLogWithSpan(t *testing.T) {

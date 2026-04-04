@@ -8,13 +8,13 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/handler/version/gen"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/system"
-	"boilerplate-go/pkg/datetime"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/handler/version/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/system"
+	"go-boilerplate/pkg/datetime"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 )

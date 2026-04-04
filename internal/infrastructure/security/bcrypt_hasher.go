@@ -2,9 +2,9 @@
 package security
 
 import (
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/usecase/boundary/security"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/usecase/boundary/security"
+	"go-boilerplate/pkg/xerrors"
 
 	"golang.org/x/crypto/bcrypt"
 )

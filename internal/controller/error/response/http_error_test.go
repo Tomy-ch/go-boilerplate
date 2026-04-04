@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/apperror"
+	"go-boilerplate/internal/apperror"
 
 	"github.com/stretchr/testify/require"
 )

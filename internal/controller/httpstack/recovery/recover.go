@@ -4,10 +4,10 @@ package recovery
 import (
 	"time"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/server"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/server"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"

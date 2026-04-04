@@ -4,7 +4,7 @@ package system
 import (
 	"time"
 
-	"boilerplate-go/internal/usecase/boundary/clock"
+	"go-boilerplate/internal/usecase/boundary/clock"
 )
 
 type c struct{}

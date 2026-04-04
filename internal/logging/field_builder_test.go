@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"github.com/stretchr/testify/require"
 )

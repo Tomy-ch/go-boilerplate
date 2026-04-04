@@ -3,10 +3,10 @@ package usercount
 import (
 	"testing"
 
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
-	mock_user "boilerplate-go/internal/usecase/user/mock"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	mock_user "go-boilerplate/internal/usecase/user/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

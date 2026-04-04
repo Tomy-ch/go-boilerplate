@@ -6,13 +6,13 @@ import (
 	"sync"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/boundary/tx"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/tx"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 )

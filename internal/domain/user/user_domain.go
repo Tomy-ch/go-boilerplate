@@ -4,10 +4,10 @@ package user
 import (
 	"time"
 
-	"boilerplate-go/pkg/ptr"
-	"boilerplate-go/pkg/stringkit"
-	"boilerplate-go/pkg/uuid"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/stringkit"
+	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 type Users []*User

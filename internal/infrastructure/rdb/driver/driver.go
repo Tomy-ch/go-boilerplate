@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"

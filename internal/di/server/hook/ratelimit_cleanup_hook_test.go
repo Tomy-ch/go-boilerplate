@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
-	"boilerplate-go/internal/config"
-	mock_ratelimit "boilerplate-go/internal/controller/httpstack/ratelimit/mock"
-	mock_lifecycle "boilerplate-go/internal/di/lifecycle/mock"
-	mock_logging "boilerplate-go/internal/logging/mock"
+	"go-boilerplate/internal/config"
+	mock_ratelimit "go-boilerplate/internal/controller/httpstack/ratelimit/mock"
+	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
+	mock_logging "go-boilerplate/internal/logging/mock"
 )
 
 func TestRegisterRateLimitHooks(t *testing.T) {

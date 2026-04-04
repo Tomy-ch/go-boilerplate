@@ -7,8 +7,8 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/healthcheck/query"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/healthcheck/query"
 )
 
 const (

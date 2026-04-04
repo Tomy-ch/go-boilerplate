@@ -1,12 +1,12 @@
 package core
 
 import (
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/oapi/auth"
-	"boilerplate-go/internal/infrastructure/auth/local"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/oapi/auth"
+	"go-boilerplate/internal/infrastructure/auth/local"
+	"go-boilerplate/internal/logging"
 
-	authbd "boilerplate-go/internal/usecase/boundary/auth"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
 	"go.uber.org/fx"
 )

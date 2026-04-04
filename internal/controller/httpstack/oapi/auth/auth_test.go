@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/ctxhelper"
-	authbd "boilerplate-go/internal/usecase/boundary/auth"
-	mock_auth "boilerplate-go/internal/usecase/boundary/auth/mock"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/ctxhelper"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	mock_auth "go-boilerplate/internal/usecase/boundary/auth/mock"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"

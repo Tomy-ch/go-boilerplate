@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 )
 
 type LogFieldBuilder interface {

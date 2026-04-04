@@ -1,8 +1,8 @@
 package instrumentation
 
 import (
-	"boilerplate-go/internal/controller/httpstack/requestid"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/controller/httpstack/requestid"
+	"go-boilerplate/internal/di/server/extension"
 
 	"go.uber.org/fx"
 )

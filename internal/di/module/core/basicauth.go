@@ -1,7 +1,7 @@
 package core
 
 import (
-	"boilerplate-go/internal/controller/httpstack/basicauth"
+	"go-boilerplate/internal/controller/httpstack/basicauth"
 
 	"go.uber.org/fx"
 )

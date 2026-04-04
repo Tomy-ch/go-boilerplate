@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 )
 
 func TestConfigConstructors_WithProvidedConfig(t *testing.T) {

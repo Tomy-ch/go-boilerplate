@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
-	usecasejob "boilerplate-go/internal/usecase/boundary/job"
-	mock_job "boilerplate-go/internal/usecase/boundary/job/mock"
+	usecasejob "go-boilerplate/internal/usecase/boundary/job"
+	mock_job "go-boilerplate/internal/usecase/boundary/job/mock"
 )
 
 func TestProvideRunner(t *testing.T) {

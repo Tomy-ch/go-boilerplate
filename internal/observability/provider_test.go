@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	mock_lifecycle "boilerplate-go/internal/di/lifecycle/mock"
+	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"

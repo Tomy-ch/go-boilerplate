@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/infrastructure/rdb/testkit"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/user/search/query"
-	"boilerplate-go/pkg/ptr"
+	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/user/search/query"
+	"go-boilerplate/pkg/ptr"
 
 	"github.com/stretchr/testify/require"
 )

@@ -1,7 +1,7 @@
 // Package apperror は、層の制約無くアプリケーション全体で使用できるエラーを定義します。
 package apperror
 
-import "boilerplate-go/pkg/xerrors"
+import "go-boilerplate/pkg/xerrors"
 
 var (
 	// 引数が無効な場合に使用します。400 Bad Request に対応します。

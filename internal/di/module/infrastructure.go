@@ -1,12 +1,12 @@
 package module
 
 import (
-	userqs "boilerplate-go/internal/infrastructure/rdb/query_service/user"
-	"boilerplate-go/internal/infrastructure/rdb/repository/prefecture"
-	"boilerplate-go/internal/infrastructure/rdb/repository/user"
-	"boilerplate-go/internal/infrastructure/rdb/system_query/healthcheck"
-	"boilerplate-go/internal/infrastructure/security"
-	"boilerplate-go/internal/infrastructure/system"
+	userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user"
+	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"
+	"go-boilerplate/internal/infrastructure/rdb/repository/user"
+	"go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck"
+	"go-boilerplate/internal/infrastructure/security"
+	"go-boilerplate/internal/infrastructure/system"
 
 	"go.uber.org/fx"
 )

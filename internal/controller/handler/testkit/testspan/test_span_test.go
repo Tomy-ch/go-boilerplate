@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

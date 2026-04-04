@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/cookie"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/cookie"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
