@@ -2,13 +2,9 @@ overview:
   # English
   - src: README.md
     dst: docs/portal/guides/overview.md
-  - src: setup.md
-    dst: docs/portal/guides/setup.md
   # Japanese
   - src: README.ja.md
     dst: docs/portal/guides/ja/overview.ja.md
-  - src: setup.ja.md
-    dst: docs/portal/guides/ja/setup.ja.md
 
 make_commands:
   # English
