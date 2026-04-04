@@ -1,6 +1,6 @@
 # Post-Repository Clone Task List
 
-English | [日本語](setup.md)
+English | [日本語](setup.ja.md)
 
 For details of Make commands, refer to [Make Target List](.makefiles/README.md).
 
@@ -72,11 +72,8 @@ curl http://localhost:8080/ready
 
 ## Phase 5: Manual Rewrites
 
-1. Rewrite the contents of [README.md](README.md) and [README.md](README.md) according to your project.
-2. Since [README.md](README.md) is written in English, you may replace it with [README.md](README.md) if necessary.
-    - However, documentation generation scripts such as [gen-docs-json.cjs](scripts/gen-docs-json.cjs) and its source [manifest.yaml](docs/portal/manifest.yaml) reference [README.md](README.md), so if you fully replace it, you must also modify these scripts.
-    - Additionally, the portal display React supports En/Jp switching, so if you change README.md to Japanese, you must also modify the portal display React.
-3. Rewrite the contents of [openapi.yaml](openapi/openapi.yaml) according to your project.
+1. Rewrite the contents of README.md according to your project.
+2. Rewrite the contents of [openapi.yaml](openapi/openapi.yaml) according to your project.
     - Rewrite the entire Info section according to your project.
         - title
         - termsOfService
