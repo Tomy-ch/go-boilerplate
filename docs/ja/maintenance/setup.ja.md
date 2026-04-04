@@ -8,7 +8,10 @@ Makeコマンド詳細は [Makeターゲット一覧](.makefiles/README.ja.md) �
 
 VSCode開発で必要なツールをインストールします。
 
+バージョンについては動作確認しているバージョンを `tools.yaml` に記載しています。必要に応じてこのバージョンを変更してください。
+
 ```sh
+make sync-tools
 make install-tools
 make activate-tools
 ```
