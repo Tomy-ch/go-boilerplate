@@ -213,6 +213,7 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | --- | --- | --- |
 | `make go-update` | `anyenv update` を実行し、`.go-version` に記載された Go バージョンを `goenv` でインストールします。 | なし |
 | `make install-tools` | Go 開発で利用するツールをインストールします。 | `gopls`、`gotests`、`impl`、`goplay`、`dlv`、`lefthook`、`golangci-lint` などを導入します。 |
+| `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 
 ## `.makefiles/docs` 系
 

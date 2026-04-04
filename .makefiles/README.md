@@ -213,6 +213,7 @@ Targets include Migration / DML / Seed SQL.
 | --- | --- | --- |
 | `make go-update` | Executes `anyenv update` and installs Go version from `.go-version` via `goenv`. | None |
 | `make install-tools` | Installs tools used in Go development. | Installs `gopls`, `gotests`, `impl`, `goplay`, `dlv`, `lefthook`, `golangci-lint`, etc. |
+| `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 
 ## `.makefiles/docs` group
 
