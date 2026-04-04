@@ -5,9 +5,7 @@ const DELETE_TARGETS = [
   "internal/controller/handler/debug",
   "openapi/paths/debug",
   "openapi/components/requests/debug",
-  "openapi/components/request/debug",
-  "openapi/components/responses/debug",
-  "openapi/components/respone/degub"
+  "openapi/components/responses/debug"
 ]
 
 const CONTROLLER_MODULE_FILE = "internal/di/module/controller.go"
