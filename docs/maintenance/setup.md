@@ -47,7 +47,7 @@ make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=$MODULE
 make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
 make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
 make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
-make go-gen-code
+make gen-api
 make gen-sqlc
 make tidy-lib
 ```
