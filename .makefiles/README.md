@@ -230,7 +230,7 @@ Targets include Migration / DML / Seed SQL.
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make gen` | Executes all code and documentation generation in batch. | Executes `gen-api` → `gen-query` → `gen-docs`. |
-| `make gen-api` | Executes API-related generation in batch. | Executes `gen-bundle-oapi` and `gen-go-code`. |
+| `make gen-api` | Executes API-related generation in batch. | Executes `gen-bundle-oapi` →  `gen-api-docs` → `gen-go-code`. |
 | `make gen-docs` | Executes documentation-related generation in batch. | Executes `gen-api-docs`, `gen-tools-meta`, `gen-portal-docs`, `gen-docs-json`. |
 | `make gen-all-docs` | Executes all documentation generation processes. | Executes `gen-docs`, `gen-db-schema`, `gen-test-repo`. |
 | `make gen-query` | Executes SQLC code generation in batch. | Executes `dump-schema` → `merge-dml` → `gen-sqlc` → `fmt`. |

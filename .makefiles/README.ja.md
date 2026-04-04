@@ -230,7 +230,7 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make gen` | 各種コード・ドキュメント生成をまとめて実行します。 | `gen-api` → `gen-query` → `gen-docs` を順に実行します。 |
-| `make gen-api` | API 関連の生成処理をまとめて実行します。 | `gen-bundle-oapi` と `gen-go-code` を実行します。 |
+| `make gen-api` | API 関連の生成処理をまとめて実行します。 | `gen-bundle-oapi` →  `gen-api-docs` → `gen-go-code` を実行します。 |
 | `make gen-docs` | ドキュメント関連の生成処理をまとめて実行します。 | `gen-api-docs`、`gen-tools-meta`、`gen-portal-docs`、`gen-docs-json` を実行します。 |
 | `make gen-all-docs` | すべてのドキュメント生成処理を実行します。 | `gen-docs`、`gen-db-schema`、`gen-test-repo` を実行します。 |
 | `make gen-query` | SQLC コード生成をまとめて実行します。 | `dump-schema` → `merge-dml` → `gen-sqlc` → `fmt` を順に実行します。 |
