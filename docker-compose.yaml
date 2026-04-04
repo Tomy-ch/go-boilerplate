@@ -58,7 +58,6 @@ services:
     volumes:
       - ./docs/portal:/usr/share/nginx/html:ro
     profiles:
-      - development
       - tools
 
   sql_editor:
