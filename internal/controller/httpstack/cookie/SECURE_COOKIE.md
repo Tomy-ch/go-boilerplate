@@ -10,7 +10,7 @@
 - 失敗時（解析できないヘッダなど）は、安全のため `RewriteSetCookie` が空文字を返します  
   → 呼び出し側（ResponseWriter wrapper）は **元の raw を通す**運用が推奨です
 
-## NewSecurityCookie の方針（boilerplate推奨）
+## NewSecurityCookie の方針（推奨）
 
 `NewSecurityCookie(p *config.SecureCookieConfig)` は、基本的に以下の思想で初期化します。
 

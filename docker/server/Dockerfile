@@ -1,7 +1,8 @@
 # ------------------------------
 # ビルド用
 # ------------------------------
-FROM golang:1.24.4-alpine AS builder
+# NOTE: 本番利用時にはダイジェストを指定することを推奨
+FROM golang:1.26.1-alpine AS builder
 
 WORKDIR /app
 
@@ -39,12 +40,20 @@ RUN go build -mod=vendor -trimpath \
 # ------------------------------
 # 本番用
 # ------------------------------
-FROM alpine:3.20 AS prd
+# NOTE: 本番利用時にはダイジェストを指定することを推奨
+FROM alpine:3.23 AS prd
 
-COPY --from=builder /app/bin/server /app/server
-COPY --from=builder /app/.env/.env.prd /.env/.env.prd
-COPY --from=builder /app/database/migrations /database/migrations
-COPY --from=builder /app/scripts/entrypoint.sh /entrypoint.sh
+ENV ENV=prd
+
+RUN apk add --no-cache ca-certificates tzdata
+
+RUN addgroup -S app && adduser -S app -G app
+USER app
+
+COPY --from=builder --chown=app:app /app/bin/server /app/server
+COPY --from=builder --chown=app:app /app/env/.env.prd /env/.env.prd
+COPY --from=builder --chown=app:app /app/database/migrations /database/migrations
+COPY --from=builder --chown=app:app /app/scripts/entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 CMD ["/entrypoint.sh"]
@@ -52,7 +61,7 @@ CMD ["/entrypoint.sh"]
 # ------------------------------
 # ローカル環境
 # ------------------------------
-FROM golang:1.24.4-alpine AS local
+FROM golang:1.26.1-alpine AS local
 
 # ビルドなどに必要なパッケージをインストール
 RUN apk add --no-cache \
@@ -68,12 +77,12 @@ RUN apk add --no-cache \
   make
 
 # Goのモジュール
+# NOTE: バージョンを固定してCI環境と同じ環境を構築してください。
+#       @latestは開発初期の利便性のために使用しています。
 RUN go install github.com/air-verse/air@latest \
   && go install github.com/go-delve/delve/cmd/dlv@latest \
   && go install github.com/segmentio/golines@latest \
-  && go install github.com/evilmartians/lefthook@latest \
   && go install mvdan.cc/gofumpt@latest \
-  && go install github.com/fatih/gomodifytags@latest \
   && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 
 # go installでインストールしたバイナリのパスを通す

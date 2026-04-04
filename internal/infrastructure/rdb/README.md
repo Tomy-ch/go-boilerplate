@@ -1,192 +1,260 @@
-# インフラ層のRDB（`internal/infrastructure/rdb`）ガイド
+# RDB Infrastructure Guide (`internal/infrastructure/rdb`)
 
-## この boilerplate での役割
+English | [日本語](README.ja.md)
 
-- RDB 実装は `internal/infrastructure/rdb/...` に配置。PostgreSQL を想定。
-- `sqlc` の生成物を利用し、**Repository 実装**で
-  - クエリ呼び出し
-  - `sql.Null*` などの**nullable変換**
-  - **Domainエンティティへの詰め替え**
-  を行う。
-- ドライバ解決とSQLのロガー（`zap`）はここで利用・注入。
+## Role
 
-## sqlc のラッパーを利用
+`internal/infrastructure/rdb` is an **Infrastructure subsystem for using RDB (PostgreSQL)**.
 
-- **生成クエリ**を安全に呼び出すため、`sqlc`のsqlcの生成ファイルを使用。
-- 取得結果は **infra専用のRow型** → **Domainエンティティ**へマッピング。
-- **nullable変換**は `internal/infrastructure/rdb/conv` のユーティリティを使用し、
-  `sql.NullString ⇔ *string` / `sql.NullTime ⇔ *time.Time` 変換を一元化。
+This directory has the following responsibilities.
 
-## 実装する上での注意点
+- Connection management to PostgreSQL
+- SQL execution (sqlc)
+- Repository / QueryService implementation
+- SQL execution logging and tracing (Observability)
+- PostgreSQL error normalization
+- Conversion between DB nullable types and Go types
 
-### 命名/構造
+Domain / Usecase can use **data persistence and querying without being aware of RDB implementation details**.
 
-- インターフェイスの実装構造体は`repository`とする
-- インスタンスの生成関数名は `New` で統一し、[di/infrastructure.go](../di/repository.go) で登録する。
+## RDB Architecture
 
-### 依存方向
+This directory is composed of the following layered structure.
 
-- Repository の **インターフェースは Domain 層**（`internal/domain/<agg>/repository.go`）に置く。
-- Infra はそのインターフェースを**実装するだけ**。
-
-### 変換の責務
-
-- `sqlc`生成Row/Modelを**上位へ返さない**。必ずDomainへ詰め替えて返す。
-- `sql.ErrNoRows` 等は **`apperror.ErrNotFound` に正規化**して返す。
-- ユニーク制約違反は **`apperror.ErrConflict` に正規化**して返す。
-- その他のエラーは **`apperror.ErrInternal` に正規化**して返す。
-
-### トランザクション
-
-- Tx 境界はUsecase側で管理。Infraは`*sql.DB`/`*sql.Tx`の両方に対応できるようにする。
-- ただし、保存処理などが絡むテストでは、影響しあい不安定になるため`t.Parallel()`での**並列実行不可**とする。
-
-### ロギング
-
-- 機微情報（パスワード等）のログ出力は禁止。クエリバインド値は極力マスク。
-
-### エラー正規化
-
-- ドライバ固有のエラーを `apperror` にマップ（NotFound/Conflict/Unavailable 等）。
-
-## 呼び出せる層
-
-- **Usecase→Infra（Repository実装）** のみ。
-- ControllerやDomainから直接Infra実装を呼ばない。
-- DI（`fx`）で **Repository実装**をProvideし、Usecaseへ注入する。
-
-## やっていいこと / いけないこと(まとめ)
-
-### Do
-
-- `sqlc/gen`の生成コードでクエリ発行し、**Domain エンティティへ変換**して返す。
-- `conv/nullable`で **nullable ⇔ ポインタ**変換を一元化。
-- `ErrNoRows` → `ErrNotFound`、ユニーク制約 → `ErrConflict` 等に正規化。
-- テストでRepositoryの変換とエラー正規化を検証。
-
-### Don’t
-
-- DomainのインターフェースをInfraで定義する。
-- `sqlc`生成型や`sql.Null*`を上位層に返す。
-- ビジネスロジックやドメインルールの判定を持ち込む。
-- Controller/OpenAPI型を参照する。
-
-## Observability（Tracing）の使い方
-
-この boilerplateでは、Infrastructure層で直接OpenTelemetrySDKを扱わず、
-observability.LayerTracerを経由してspanの開始・終了を行います。
-
-### 1. Infrastructure層での span の開始と終了
-
-各ハンドラーの先頭で必ず次の 2 行を記述してください。
-
-```go
-ctx, endSpan := s.tracer.Start(ctx)
-defer endSpan()
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
 ```
 
-- Start(ctx)でspanが開始され、trace_id/span_idがcontextに紐づきます。
-- endSpan()は、spanの終了（span.End）を行います。
-- defer endSpan()により例外や早期returnがあっても必ず終了されます。
+The responsibilities of each layer are as follows.
 
-ポイント：Infrastructure は span の開始・終了だけを知り、
-OpenTelemetry SDK の詳細には一切触れません。
+|Layer|Role|
+|---|---|
+|Repository|Aggregate persistence (implementation of Domain Repository Interface)|
+|QueryService|Provides search-specific queries (implementation of Usecase Interface)|
+|loggingdb|Adds SQL logging / tracing (Observability wrapper)|
+|driver|DB connection management / transaction management|
+|PostgreSQL|Actual DB|
 
-### 2. TracerのDI（observability.LayerTracer）
+The following exist as supporting components.
 
-Infrastructureは以下のようにobservability.LayerTracerを依存として受け取ります。
+|Component|Role|
+|---|---|
+|sqlc|Type-safe query execution code generated from SQL|
+|conv|Conversion between nullable types and Go types|
+|pgerror|PostgreSQL error → application error conversion|
+|testkit|RDB test utilities (real DB + rollback)|
 
-```go
-type server struct {
-    db       driver.DatabaseDriver
-    provider driver.LoggingDBProvider
-    tracer   observability.LayerTracer
-}
+## Directory Structure
+
+```txt
+internal/infrastructure/rdb
+
+ ├ repository/        Repository implementation
+ ├ query_service/     QueryService implementation
+ ├ driver/            DB connection / transaction
+ │   └ loggingdb/     SQL logging / tracing wrapper
+ ├ sqlc/              sqlc generated code + SQL helper
+ ├ conv/              nullable type conversion
+ ├ postgres/
+ │   └ pgerror/       PostgreSQL error normalization
+ └ testkit/           RDB test utilities
 ```
 
-New関数内では、`observability.NewInfrastructureTracer`でInfrastructure専用のトレーサーを生成します。
+## Repository
 
-```go
-func New(db driver.DatabaseDriver, provider driver.LoggingDBProvider, tf observability.TracerFactory) user.Repository {
-    return &systemQuery{
-        db:       db,
-        provider: provider,
-        tracer:   tf.Infra(),
-    }
-}
+Repository is the layer that **implements the Domain Repository Interface**.
+
+Main responsibilities
+
+- sqlc query execution
+- Row → Domain entity conversion
+- DB error normalization
+
+Important: **Repository does not contain business logic**
+
+See details below.
+
+[repository directory README](repository/README.md)
+
+## QueryService
+
+QueryService is the layer that **provides read-only queries such as search and listing**.
+
+While Repository handles Aggregate persistence,  
+QueryService is specialized for search use cases.
+
+Main responsibilities
+
+- Execute search queries
+- Convert Row → Domain / DTO
+- Normalize DB errors
+
+Important: **Search must be implemented in QueryService, not Repository**
+
+See details below.
+
+[query_service directory README](query_service/README.md)
+
+## sqlc
+
+`sqlc` is a tool that generates Go code from SQL.
+
+In this directory:
+
+- sqlc generated code
+- LIKE search helper
+- Enum / state conversion helper
+
+are provided.
+
+Generated code is placed at:
+
+`internal/infrastructure/rdb/sqlc/gen`
+
+See details below.
+
+[sqlc directory README](sqlc/README.md)
+
+## conv
+
+`conv` is a **utility for converting between nullable types and Go pointer types**.
+
+```mermaid
+flowchart LR
+    A["sql.NullString"] <--> B["*string"]
+    C["sql.NullTime"] <--> D["*time.Time"]
 ```
 
-ここではSDKの生インスタンスを直接使わず、
-observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
+Used in Repository / QueryService implementations.
 
-## 最小スニペット（雛形）
+See details below.
+
+[conv directory README](conv/README.md)
+
+## driver
+
+`driver` is the **lowest layer that provides DB connection and transaction management**.
+
+Main functions
+
+- DatabaseDriver abstraction
+- DB connection pool management
+- Transaction management (tx.Manager)
+- DBTX interface for sqlc
+
+Important: **Transaction boundaries are managed by the Usecase layer**
+
+See details below.
+
+[driver directory README](driver/README.md)
+
+## loggingdb
+
+`loggingdb` is an **Observability wrapper that adds SQL execution logs and tracing**.
+
+```mermaid
+flowchart TB
+    Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"]
+```
+
+Main functions
+
+- SQL log output
+- OpenTelemetry span
+- Query execution time measurement
+- slow query detection
+
+Important:  
+**loggingdb does not execute DB operations (pure wrapper)**
+
+See details below.
+
+[loggingdb directory README](driver/loggingdb/README.md)
+
+## PostgreSQL Error Normalization
+
+`postgres/pgerror` is a **layer that converts PostgreSQL-specific errors into application errors**.
+
+Repository / QueryService use:
 
 ```go
-// 唯一性のある名称
-package user
-
-// repositoryで名称固定
-type repository struct {
-    db       driver.DatabaseDriver
-    provider driver.LoggingDBProvider
-    tracer   observability.LayerTracer
-}
-
-// Newで名称固定
-func New(
-    db driver.DatabaseDriver,
-    provider loggingdb.DBProvider,
-    tf observability.TracerFactory,
-) user.Repository {
-    return &repository{
-        db:       db,
-        provider: provider,
-        tracer:   tf.Infra(),
-    }
-}
-
-func (r *repository) FindAll(ctx context.Context, limit, offset int) (user.Entities, error) {
-    // Spanの開始・終了呼び出して設定
-    ctx, endSpan := r.tracer.Start(ctx)
-    defer endSpan()
-
-    // driver.ResolveDriverWithLogを使うことでログを自動で出力
-    // 不要な場合は、driver.ResolveDriver(ctx, r.db)を使う
-    db := gen.New(r.provider.NewLoggingDB(ctx))
-    // genで生成されたDMLの呼び出し
-    rows, err := db.ListUsers(ctx, &sqlc.ListUsersParams{
-        OffsetParam: offset,
-        LimitParam:  limit,
-    })
-    if err != nil {
-        // エラー正規化して返す。
-        // エラー内容はpgerrorパッケージ（internal/infrastructure/rdb/postgres/pgerror）で判定される
-        return nil, pgerror.NormalizeError(err)
-    }
-
-    // Domainエンティティへの詰め替え
-    users := make(user.Entities, len(rows))
-    for i, row := range rows {
-        user, err := user.New(
-            row.ID.String(),
-            row.FirstName,
-            row.LastName,
-            row.PasswordHash,
-            row.Email,
-            row.Phone,
-            row.PrefectureID.String(),
-            row.City,
-            row.Street,
-            conv.StringPtrFromNull(row.Building),
-            row.PostalCode,
-            conv.TimePtrFromNull(row.DeletedAt),
-        )
-        if err != nil {
-            return nil, err
-        }
-        users[i] = user
-    }
-    return users, nil
-}
-
+pgerror.NormalizeError(err)
 ```
+
+to normalize DB errors.
+
+Main conversions
+
+```mermaid
+flowchart TB
+    A["sql.ErrNoRows"] -->|→| B["ErrNotFound"]
+    C["unique violation"] -->|→| D["ErrConflict"]
+    E["connection error"] -->|→| F["ErrUnavailable"]
+    G["others"] -->|→| H["ErrInternal"]
+```
+
+See details below.
+
+[pgerror directory README](postgres/pgerror/README.md)
+
+## testkit
+
+`testkit` is a **utility for testing using RDB**.
+
+Main functions
+
+- Test DB initialization
+- LoggingDBProvider generation
+- Transaction-based testing (automatic rollback)
+
+Test characteristics
+
+- real DB
+- transaction rollback
+- parallel execution (Tx is serialized)
+
+See details below.
+
+[testkit directory README](testkit/README.md)
+
+## Design Principles
+
+This RDB subsystem is based on the following design principles.
+
+### 1. Hiding DB Implementation
+
+Domain / Usecase do not depend on:
+
+- sql
+- pgx
+- sql.DB
+
+### 2. Separation of Responsibility (Repository / QueryService)
+
+- Write / persistence → Repository
+- Search / read       → QueryService
+
+### 3. Centralized Transaction Boundary Management
+
+Usecase manages Tx, and Infrastructure does not start Tx.
+
+### 4. DB Error Normalization
+
+PostgreSQL-specific errors are converted into application-wide errors by `pgerror`.
+
+### 5. SQL Type Safety
+
+All SQL execution is performed through `sqlc`.
+
+### 6. Observability
+
+SQL execution logging and tracing are provided by `loggingdb`.
+
+### 7. Test Strategy (Integration-based)
+
+Repository / QueryService tests are executed with:
+
+real DB + rollback
+
+This is safely implemented using `testkit`.

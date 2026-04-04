@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -48,7 +49,8 @@ func TestApplyPreMiddlewares(t *testing.T) {
 			return c.String(http.StatusOK, "ok")
 		})
 
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 
@@ -116,7 +118,8 @@ func TestServerExtends(t *testing.T) {
 
 			e.GET("/", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
 
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -139,7 +142,8 @@ func TestServerExtends(t *testing.T) {
 
 			ApplyConfigurators(e, logging.NewTestLogger(t), []SrvCfg{cfg})
 
-			req := httptest.NewRequest(http.MethodGet, "/cfg", nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/cfg", nil)
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -179,7 +183,8 @@ func TestServerExtends(t *testing.T) {
 			_, err := ApplyExtends(e, logging.NewTestLogger(t), extends)
 			require.NoError(t, err)
 
-			req := httptest.NewRequest(http.MethodGet, "/ext", nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ext", nil)
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
 
@@ -277,7 +282,8 @@ func TestApplyExtends(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, applied)
 
-		req := httptest.NewRequest(http.MethodGet, "/ext", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ext", nil)
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 
@@ -327,7 +333,8 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 
 	// still able to register and serve a route
 	e.GET("/ok", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
-	req := httptest.NewRequest(http.MethodGet, "/ok", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ok", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)

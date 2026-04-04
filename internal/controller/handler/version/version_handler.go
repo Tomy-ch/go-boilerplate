@@ -51,7 +51,7 @@ func (s *server) GetVersion(ctx context.Context, _ gen.GetVersionRequestObject) 
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
 	}
 
-	return gen.GetVersion200JSONResponse(gen.ResponseVersion{
+	return gen.GetVersion200JSONResponse(gen.VersionResponse{
 		Version:     s.buildInfo.Version(),
 		Revision:    s.buildInfo.Revision(),
 		BuildDate:   buildDate,

@@ -1,46 +1,224 @@
 # driver
 
-概要: **RDB（PostgreSQL）接続のための基盤ドライバレイヤー。トランザクション管理・接続プール設定・DB抽象化を担当します。**
+English | [日本語](README.ja.md)
 
-## 役割
+Overview: **Base driver layer for RDB (PostgreSQL / pgx) connections. Provides connection management, transaction boundaries, and sqlc execution adapters.**
 
-このディレクトリは、以下のような **RDB アクセスの最下層基盤** を提供します。
+This package is the **lowest-level DB access foundation in the Infrastructure layer**.
 
-- `sql.DB` をラップして、DB 依存を `DatabaseDriver` インターフェースに抽象化
-- トランザクション管理 (`tx.Manager`)
-- `sqlc` が要求する `DBTX` インターフェースの実装
-- テスト用の簡易 DB ドライバの提供（`NewTestInstance`）
-- 接続プールや疎通確認など、DB 初期化ロジックの統合
+The Repository layer accesses the DB through this driver.
 
-上位レイヤ（repository/usecase/domain）が DB の具体実装に依存しないようにします。
+## Architectural Position
 
-## 必要度
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository"] --> Driver["Driver (this package)"] --> DB["PostgreSQL"]
+```
 
-### 本番運用での必須度
+Driver is the **lowest-level adapter for RDB connections**.
 
-- 必須度: **本番運用で必須**
+## Responsibilities
 
-理由:  
-本番環境では `sql.DB` を安全に利用するために、接続プール設定・疎通確認・トランザクション管理が絶対に必要です。また、repository 層は `DatabaseDriver` を前提として生成されているため、本番では必須です。
+This directory provides the following functionalities:
 
-### 開発/テスト運用での必須度
+- **DatabaseDriver abstraction** wrapping `pgxpool.Pool`
+- **Transaction management (`tx.Manager`)**
+- **Provision of pgx-based DBTX interface (sqlc compatible)**
+- **Connection pool configuration**
+- **Connectivity check at DB startup (fail fast)**
 
-- 必須度: **開発/テスト運用で推奨**
+With this, the Repository layer can execute the same query code with either:
 
-理由:  
-ユニットテストでは `NewTestInstance` により、実 DB を持たないテストが可能です。  
-結合/E2E テストでは、docker-compose 上の Postgres と接続して動作確認できます。
+```mermaid
+flowchart TB
+    A["pgxpool.Pool"]
+    B["pgx.Tx"]
+```
 
-### 無効化した場合の影響
+## DB Initialization
 
-- repository 層が DB にアクセスできなくなる
-- トランザクション (`tx.Do`) が動作しなくなる
-- sqlc が生成したクエリ処理が利用不可能になる
-- DB 疎通確認が無くなり、起動時の致命的エラー検知が困難になる
+`NewDB()` initializes the DB connection.
 
-## 注意点
+```go
+func NewDB(...) (DatabaseDriver, error)
+```
 
-- `DatabaseDriver` を通じて DB へアクセスすることにより、domain/usecase 層が DB 実装を意識することを防ぎます
-- `context.Context` によるトランザクションの伝搬 (`withTx`) に依存しているため、middleware/handler で context の上書きに注意
-- `NewTestInstance` は sqlc のテスト用として最低限のダミー構造体を返す仕様であり、実際の DB 動作は行いません
-- DB 接続が失敗した場合、`NewDB` は明示的にエラーを返すため、Fx の DI 構成ではエラーハンドリングが必要
+Processing details:
+
+1. Initialize connection via `pgxpool.NewWithConfig()`
+2. Configure connection pool
+    - MaxConns
+    - MinConns
+    - ConnMaxLifetime
+    - ConnMaxIdleTime
+3. Verify DB connectivity using `Ping`
+
+If Ping fails, it returns an error at startup (**fail fast** design).
+
+## DatabaseDriver
+
+`DatabaseDriver` is an interface that abstracts `pgxpool.Pool`.
+
+```go
+ type DatabaseDriver interface {
+     DBTX
+
+     Begin(ctx context.Context) (pgx.Tx, error)
+     Ping(ctx context.Context) error
+     Close() error
+     Stats() *pgxpool.Stat
+ }
+```
+
+Purpose:
+
+- Avoid direct dependency on `pgxpool.Pool`
+- Enable mocking during tests
+- Abstract transaction start
+
+Implementation is provided by `dbDriver`.
+
+## DBTX
+
+`DBTX` is the **minimal interface required by sqlc**.
+
+```go
+ type DBTX interface {
+     Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error)
+     Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
+     QueryRow(ctx context.Context, query string, args ...any) pgx.Row
+ }
+```
+
+With this interface, sqlc can execute the same query code with either:
+
+```mermaid
+flowchart TB
+    A["pgxpool.Pool"]
+    B["pgx.Tx"]
+```
+
+## Transaction Transparent Layer
+
+`New()` in `connection.go` is a **transaction-transparent adapter**.
+
+```go
+func New(ctx context.Context, db DatabaseDriver) DBTX
+```
+
+Behavior:
+
+```mermaid
+flowchart TB
+    HasTx["Tx exists in context"] --> ReturnTx["Return pgx.Tx"]
+    NoTx["No Tx"] --> ReturnDB["Return pgxpool.Pool (DatabaseDriver)"]
+```
+
+With this, the Repository layer can execute queries without being aware of the difference between `DB` and `Tx`.
+
+## Transaction Management
+
+`tx.Manager` provides transaction boundaries in the Usecase layer.
+
+```go
+err := tx.Do(ctx, func(ctx context.Context) error {
+    ...
+})
+```
+
+Internally, it performs the following:
+
+1. Check if Tx exists in context
+2. If exists → **reuse existing Tx**
+3. If not → **start new Tx**
+4. Execute fn
+5. Success → commit
+6. error → rollback
+
+- Uses pgx.Tx for transaction management.
+
+This enables **safe handling of nested transactions**.
+
+## Notes
+
+### Transaction cleanup timeout
+
+When executing rollback / commit, cleanup must run even if the request context is canceled.  
+To achieve this, the following pattern is used:
+
+```go
+context.WithTimeout(
+    context.WithoutCancel(ctx),
+    cleanupTimeout,
+)
+```
+
+#### Why `context.WithoutCancel(ctx)`?
+
+Cleanup must **not depend on the request lifecycle**.
+
+- If the request is canceled (timeout / client disconnect), using the original `ctx` would cause:
+  - rollback/commit to be canceled
+  - transaction left open
+  - connection not returned to the pool
+
+Using `context.WithoutCancel(ctx)` ensures:
+
+- cleanup always runs
+- trace / logger / correlation ID are preserved
+
+> Cleanup is about **attempting safely**, not guaranteeing success.
+
+#### About `cleanupTimeout`
+
+- Maximum time allowed for cleanup (rollback / commit)
+- Currently fixed to `5 seconds`
+
+This value is **not a business configuration but a safety mechanism for infrastructure protection**.
+
+- If too large:
+  - Goroutine blocking
+  - Connection pool exhaustion
+- If too small:
+  - Cleanup may not complete
+
+Therefore, it is intentionally kept as a constant inside the driver and not exposed via environment variables.
+
+### Always propagate Context
+
+Transactions are stored in `context.Context`. Therefore, always propagate `ctx` to lower layers.
+
+### Repository must use driver.New()
+
+In the Repository layer:
+
+```go
+driver.New(ctx, db)
+```
+
+Use this to obtain `DBTX`.
+
+This allows transparent switching between `Tx` and `DB`.
+
+## Necessity
+
+### Production
+
+Required
+
+Reason:
+
+- DB connection management
+- Transaction boundaries
+- sqlc query execution
+
+All depend on this layer.
+
+### Development / Testing
+
+Recommended
+
+Reason:
+
+- `DatabaseDriver` is an interface
+- Enables testing with mocks

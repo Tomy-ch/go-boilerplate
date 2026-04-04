@@ -77,8 +77,8 @@ func TestGetReady(t *testing.T) {
 				healthUsecase: uc,
 			}
 
-			expected := gen.GetReady200JSONResponse(gen.ResponseReady{
-				Status:          gen.ResponseReadyStatus(expectedStatus),
+			expected := gen.GetReady200JSONResponse(gen.ReadyResponse{
+				Status:          gen.ReadyResponseStatus(expectedStatus),
 				ApplicationTime: expectedAppTime,
 				DbLatencyMs:     expectedDBLatency.Milliseconds(),
 				DbResponsedAt:   expectedDBResAt,
@@ -111,9 +111,9 @@ func TestGetReady(t *testing.T) {
 				healthUsecase: uc,
 			}
 
-			res, actualErr := s.GetReady(ctx, gen.GetReadyRequestObject{})
+			res, err := s.GetReady(ctx, gen.GetReadyRequestObject{})
 			require.Nil(t, res)
-			require.ErrorIs(t, expectedErr, actualErr)
+			require.ErrorIs(t, err, expectedErr)
 		})
 	})
 }

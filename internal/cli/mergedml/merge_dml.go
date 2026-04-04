@@ -69,14 +69,14 @@ func newGenerator(logger logging.Logger) *generator {
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "merge-dml",
-		Short: "DMLディレクトリ(database/dml/<repository/query_service>)のsqlファイルを対象にして、<type>ごとにマージします。",
-		Long: "指定されたタイプ(repository|query_service)のDMLディレクトリ内の全サブディレクトリを走査し、\n" +
+		Short: "DMLディレクトリ(database/dml/<repository/query_service/command_service>)のsqlファイルを対象にして、<type>ごとにマージします。",
+		Long: "指定されたタイプ(repository|query_service|command_service)のDMLディレクトリ内の全サブディレクトリを走査し、\n" +
 			"各カテゴリごとにSQLファイルを連結して1つのSQLファイルにまとめます。\n" +
 			"生成されるファイルは database/gen/ 配下に <category>_<type>.gen.sql という名前で保存されます。",
 		RunE: mergeDMLRun,
 	}
 
-	cmd.Flags().StringVar(&targetType, "type", "", "filter TYPE (repository|query_service)")
+	cmd.Flags().StringVar(&targetType, "type", "", "filter TYPE (repository|query_service|command_service)")
 	_ = cmd.MarkFlagRequired("type")
 	cmd.Flags().StringVar(&workDir, "work-dir", "/app", "working directory path")
 
@@ -87,7 +87,7 @@ func NewCommand() *cobra.Command {
 func mergeDMLRun(_ *cobra.Command, _ []string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
-		panic("failed to create logger: " + err.Error())
+		return fmt.Errorf("failed to create logger: %w", err)
 	}
 
 	gen := newGenerator(logger)

@@ -2,7 +2,6 @@ package loggingdb
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -15,15 +14,17 @@ import (
 	mock_logging "boilerplate-go/internal/logging/mock"
 	"boilerplate-go/internal/observability"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 )
 
-func Test_dbWithLogging_ExecContext(t *testing.T) {
+func Test_dbWithLogging_Exec(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewTestLogFieldBuilder(t)
 	lg := logging.NewTestLogger(t)
 	noopLayerTracer := observability.NewNoopLayerTracer(t)
@@ -33,28 +34,29 @@ func Test_dbWithLogging_ExecContext(t *testing.T) {
 	md := mock_driver.NewMockDBTX(ctrl)
 
 	var dbtx driver.DBTX = md
-
-	md.EXPECT().ExecContext(gomock.Any(), "INSERT INTO users (name) VALUES (?)", "alice").Return(nil, nil)
+	md.EXPECT().Exec(gomock.Any(), "INSERT INTO users (name) VALUES ($1)", "alice").Return(pgconn.CommandTag{}, nil)
 
 	mp := mock_loggingdb.NewMockDBProvider(ctrl)
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
 	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+	mp.EXPECT().ObservabilityConfig().Return(obsCfg).AnyTimes()
 	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
-	res, err := dwl.ExecContext(context.Background(), "INSERT INTO users (name) VALUES (?)", "alice")
+	res, err := dwl.Exec(context.Background(), "INSERT INTO users (name) VALUES ($1)", "alice")
 	require.NoError(t, err)
 
-	require.Nil(t, res)
+	require.Equal(t, pgconn.CommandTag{}, res)
 }
 
-func Test_dbWithLogging_PrepareContext(t *testing.T) {
+func Test_dbWithLogging_Query(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewTestLogFieldBuilder(t)
 	lg := logging.NewTestLogger(t)
 	noopLayerTracer := observability.NewNoopLayerTracer(t)
@@ -62,56 +64,33 @@ func Test_dbWithLogging_PrepareContext(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	md := mock_driver.NewMockDBTX(ctrl)
+
 	var dbtx driver.DBTX = md
-	md.EXPECT().PrepareContext(gomock.Any(), "INSERT INTO users (name) VALUES (?)").Return((*sql.Stmt)(nil), nil)
+	md.EXPECT().Query(gomock.Any(), "SELECT 1").Return(nil, nil)
 
 	mp := mock_loggingdb.NewMockDBProvider(ctrl)
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
 	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+	mp.EXPECT().ObservabilityConfig().Return(obsCfg).AnyTimes()
 	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
-	stmt, err := dwl.PrepareContext(context.Background(), "INSERT INTO users (name) VALUES (?)")
-	require.NoError(t, err)
-	require.Nil(t, stmt)
-}
-
-func Test_dbWithLogging_QueryContext(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	dbCfg := config.NewDatabaseConfig(cfg)
-	lf := logging.NewTestLogFieldBuilder(t)
-	lg := logging.NewTestLogger(t)
-	noopLayerTracer := observability.NewNoopLayerTracer(t)
-
-	ctrl := gomock.NewController(t)
-
-	md := mock_driver.NewMockDBTX(ctrl)
-	var dbtx driver.DBTX = md
-	md.EXPECT().QueryContext(gomock.Any(), "select 1").Return((*sql.Rows)(nil), nil)
-
-	mp := mock_loggingdb.NewMockDBProvider(ctrl)
-	mp.EXPECT().LogFields().Return(lf).AnyTimes()
-	mp.EXPECT().Logger().Return(lg).AnyTimes()
-	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
-	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
-
-	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
-
-	//nolint:rowserrcheck // このテストではrowsがnilであることを確認するだけなのでCloseは不要
-	rows, err := dwl.QueryContext(context.Background(), "select 1")
+	rows, err := dwl.Query(context.Background(), "SELECT 1")
 	require.NoError(t, err)
 	require.Nil(t, rows)
+	if rows != nil {
+		defer rows.Close()
+	}
 }
 
-func Test_dbWithLogging_QueryRowContext(t *testing.T) {
+func Test_dbWithLogging_QueryRow(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
 	lf := logging.NewTestLogFieldBuilder(t)
 	lg := logging.NewTestLogger(t)
 	noopLayerTracer := observability.NewNoopLayerTracer(t)
@@ -120,17 +99,18 @@ func Test_dbWithLogging_QueryRowContext(t *testing.T) {
 
 	md := mock_driver.NewMockDBTX(ctrl)
 	var dbtx driver.DBTX = md
-	md.EXPECT().QueryRowContext(gomock.Any(), "SELECT ?", 1).Return((*sql.Row)(nil))
+	md.EXPECT().QueryRow(gomock.Any(), "SELECT $1", 1).Return(nil)
 
 	mp := mock_loggingdb.NewMockDBProvider(ctrl)
 	mp.EXPECT().LogFields().Return(lf).AnyTimes()
 	mp.EXPECT().Logger().Return(lg).AnyTimes()
 	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+	mp.EXPECT().ObservabilityConfig().Return(obsCfg).AnyTimes()
 	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
 	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
 
-	row := dwl.QueryRowContext(context.Background(), "SELECT ?", 1)
+	row := dwl.QueryRow(context.Background(), "SELECT $1", 1)
 	require.Nil(t, row)
 }
 
@@ -155,21 +135,50 @@ func Test_dbWithLogging_buildSQLStartLogFields(t *testing.T) {
 func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 	t.Parallel()
 
-	lf := logging.NewTestLogFieldBuilder(t)
+	t.Run("observabilityConfigでMaskedDBQueryArgsがtrueのとき、ログにクエリ引数が含まれない", func(t *testing.T) {
+		cfg := config.MockConfigForTest(t)
+		obsCfg := config.NewObservabilityConfig(cfg)
+		obsCfg.SetObservabilityMaskedDBQueryArgs(t, true)
 
-	tc := observability.TraceContext{}
-	funcName := "TestBuildSQLLogFields"
-	query := "select 1"
-	expectedDuration := time.Duration(100 * time.Millisecond)
+		lf := logging.NewTestLogFieldBuilder(t)
 
-	dwl := &dbWithLogging{
-		provider: &provider{
-			lf: lf,
-		},
-	}
+		tc := observability.TraceContext{}
+		funcName := "TestBuildSQLLogFields"
+		query := "SELECT * FROM users WHERE id = $1"
+		args := []any{123}
 
-	actual := dwl.buildSQLEndLogFields(tc, funcName, query, expectedDuration, nil, nil)
-	require.NotEmpty(t, actual)
+		dwl := &dbWithLogging{
+			provider: &provider{
+				lf:     lf,
+				obsCfg: obsCfg,
+			},
+		}
+
+		fields := dwl.buildSQLEndLogFields(tc, funcName, query, time.Second, args, nil)
+
+		require.NotEmpty(t, fields)
+	})
+
+	t.Run("observabilityConfigでMaskedDBQueryArgsがfalseのとき、ログにクエリ引数が含まれる", func(t *testing.T) {
+		cfg := config.MockConfigForTest(t)
+		obsCfg := config.NewObservabilityConfig(cfg)
+		lf := logging.NewTestLogFieldBuilder(t)
+
+		tc := observability.TraceContext{}
+		funcName := "TestBuildSQLLogFields"
+		query := "SELECT 1"
+		expectedDuration := time.Duration(100 * time.Millisecond)
+
+		dwl := &dbWithLogging{
+			provider: &provider{
+				lf:     lf,
+				obsCfg: obsCfg,
+			},
+		}
+
+		actual := dwl.buildSQLEndLogFields(tc, funcName, query, expectedDuration, nil, nil)
+		require.NotEmpty(t, actual)
+	})
 }
 
 func Test_dbWithLogging_logQueryResult(t *testing.T) {

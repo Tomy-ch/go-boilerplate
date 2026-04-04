@@ -19,7 +19,6 @@ info:
   license:
     name: MIT License
     url: https://opensource.org/licenses/MIT
-x-oapi-codegen-strict-server: true
 servers:
   - url: http://localhost:8080
     description: Local development server
@@ -30,6 +29,7 @@ servers:
   - url: https://development.api.example.com
     description: Versioned API endpoint (replace with actual URL)
 paths:
+  # Operation handlers
   /health:
     $ref: './paths/health/health.yaml'
   /healthz:
@@ -40,7 +40,7 @@ paths:
     $ref: './paths/ready/ready.yaml'
   /version:
     $ref: './paths/version/version.yaml'
-  # ここから下のoapi-codegenで型定義を生成するためのパス
+  # For error type generation
   /_internal/types/error-response:
     $ref: './paths/internal/types/error_response.yaml'
   # サンプルAPI用のパス
@@ -48,6 +48,8 @@ paths:
     $ref: './paths/v1/users.yaml'
   /v1/users/{user_id}:
     $ref: './paths/v1/users/user_id.yaml'
+  /v1/users/search:
+    $ref: './paths/v1/users/search/search.yaml'
   # デバッグ用のパス(サービスを作成する際には必ず削除してください)
   /debug/cookie:
     $ref: './paths/debug/cookie.yaml'
@@ -59,14 +61,15 @@ paths:
     $ref: './paths/debug/cookie/ws.yaml'
 components:
   parameters:
-    KeywordParam:
-      $ref: './components/parameters/search/KeywordParam.yaml'
-    ActiveParam:
-      $ref: './components/parameters/search/ActiveParam.yaml'
     PageParam:
       $ref: './components/parameters/pagination/PageParam.yaml'
     PerPageParam:
       $ref: './components/parameters/pagination/PerPageParam.yaml'
+    # サンプルAPI用のパラメーター定義
+    KeywordParam:
+      $ref: './components/parameters/search/KeywordParam.yaml'
+    ActiveParam:
+      $ref: './components/parameters/search/ActiveParam.yaml'
     UserIdParam:
       $ref: './components/parameters/user/UserIdParam.yaml'
   securitySchemes:
@@ -88,6 +91,10 @@ components:
       $ref: './components/schemas/UserBaseInputRequest.yaml'
     UserResponse:
       $ref: './components/schemas/UserResponse.yaml'
+    UsersSearchResponse:
+      $ref: './components/responses/users/UsersSearchResponse.yaml'
+    UserSearchResponseItem:
+      $ref: './components/responses/users/UsersSearchResponseItem.yaml'
     ResponseV1User:
       $ref: './components/schemas/UserResponse.yaml'
     ResponseV1Users:

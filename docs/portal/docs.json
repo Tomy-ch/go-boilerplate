@@ -1,0 +1,488 @@
+{
+  "title": "boilerplate-go Documentation",
+  "subtitle": "This document portal provides access to the repository implementation, test results, E-R diagrams, and more.",
+  "sections": [
+    {
+      "title": "Overview (English)",
+      "items": [
+        {
+          "name": "Overview",
+          "path": "./guides/overview.md"
+        }
+      ]
+    },
+    {
+      "title": "Overview (Japanese)",
+      "items": [
+        {
+          "name": "Overview",
+          "path": "./guides/ja/overview.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Make Commands (English)",
+      "items": [
+        {
+          "name": "Make",
+          "path": "./guides/make.md"
+        }
+      ]
+    },
+    {
+      "title": "Make Commands (Japanese)",
+      "items": [
+        {
+          "name": "Make",
+          "path": "./guides/ja/make.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Environment Variables (English)",
+      "items": [
+        {
+          "name": "Environment Variables",
+          "path": "./guides/environment-variables.md"
+        }
+      ]
+    },
+    {
+      "title": "Environment Variables (Japanese)",
+      "items": [
+        {
+          "name": "Environment Variables",
+          "path": "./guides/ja/environment-variables.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Controller (English)",
+      "items": [
+        {
+          "name": "Controller",
+          "path": "./guides/controller.md"
+        },
+        {
+          "name": "Controller Handler",
+          "path": "./guides/controller-handler.md"
+        },
+        {
+          "name": "Controller Job",
+          "path": "./guides/controller-job.md"
+        }
+      ]
+    },
+    {
+      "title": "Controller (Japanese)",
+      "items": [
+        {
+          "name": "Controller",
+          "path": "./guides/ja/controller.ja.md"
+        },
+        {
+          "name": "Controller Handler",
+          "path": "./guides/ja/controller-handler.ja.md"
+        },
+        {
+          "name": "Controller Job",
+          "path": "./guides/ja/controller-job.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Domain (English)",
+      "items": [
+        {
+          "name": "Domain",
+          "path": "./guides/domain.md"
+        }
+      ]
+    },
+    {
+      "title": "Domain (Japanese)",
+      "items": [
+        {
+          "name": "Domain",
+          "path": "./guides/ja/domain.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Usecase (English)",
+      "items": [
+        {
+          "name": "Usecase",
+          "path": "./guides/usecase.md"
+        }
+      ]
+    },
+    {
+      "title": "Usecase (Japanese)",
+      "items": [
+        {
+          "name": "Usecase",
+          "path": "./guides/ja/usecase.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Infrastructure (English)",
+      "items": [
+        {
+          "name": "Infrastructure",
+          "path": "./guides/infrastructure.md"
+        },
+        {
+          "name": "Infrastructure Auth",
+          "path": "./guides/infrastructure-auth.md"
+        },
+        {
+          "name": "Infrastructure Rdb Query Service",
+          "path": "./guides/infrastructure-rdb-query-service.md"
+        },
+        {
+          "name": "Infrastructure Rdb Repository",
+          "path": "./guides/infrastructure-rdb-repository.md"
+        }
+      ]
+    },
+    {
+      "title": "Infrastructure (Japanese)",
+      "items": [
+        {
+          "name": "Infrastructure",
+          "path": "./guides/ja/infrastructure.ja.md"
+        },
+        {
+          "name": "Infrastructure Auth",
+          "path": "./guides/ja/infrastructure-auth.ja.md"
+        },
+        {
+          "name": "Infrastructure Rdb Query Service",
+          "path": "./guides/ja/infrastructure-rdb-query-service.ja.md"
+        },
+        {
+          "name": "Infrastructure Rdb Repository",
+          "path": "./guides/ja/infrastructure-rdb-repository.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Database (English)",
+      "items": [
+        {
+          "name": "Sqlc Query Guide",
+          "path": "./guides/sqlc-query-guide.md"
+        },
+        {
+          "name": "Sqlc Settings",
+          "path": "./guides/sqlc-settings.md"
+        }
+      ]
+    },
+    {
+      "title": "Database (Japanese)",
+      "items": [
+        {
+          "name": "Sqlc Query Guide",
+          "path": "./guides/ja/sqlc-query-guide.ja.md"
+        },
+        {
+          "name": "Sqlc Settings",
+          "path": "./guides/ja/sqlc-settings.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Cross Cutting (English)",
+      "items": [
+        {
+          "name": "Apperror",
+          "path": "./guides/apperror.md"
+        },
+        {
+          "name": "Config",
+          "path": "./guides/config.md"
+        },
+        {
+          "name": "Di",
+          "path": "./guides/di.md"
+        },
+        {
+          "name": "Logging",
+          "path": "./guides/logging.md"
+        },
+        {
+          "name": "Observability",
+          "path": "./guides/observability.md"
+        },
+        {
+          "name": "System",
+          "path": "./guides/system.md"
+        }
+      ]
+    },
+    {
+      "title": "Cross Cutting (Japanese)",
+      "items": [
+        {
+          "name": "Apperror",
+          "path": "./guides/ja/apperror.ja.md"
+        },
+        {
+          "name": "Config",
+          "path": "./guides/ja/config.ja.md"
+        },
+        {
+          "name": "Di",
+          "path": "./guides/ja/di.ja.md"
+        },
+        {
+          "name": "Logging",
+          "path": "./guides/ja/logging.ja.md"
+        },
+        {
+          "name": "Observability",
+          "path": "./guides/ja/observability.ja.md"
+        },
+        {
+          "name": "System",
+          "path": "./guides/ja/system.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Context Helper (English)",
+      "items": [
+        {
+          "name": "How To Generate Ctxhelper",
+          "path": "./guides/how-to-generate-ctxhelper.md"
+        },
+        {
+          "name": "How To Use Context Helper",
+          "path": "./guides/how-to-use-context-helper.md"
+        }
+      ]
+    },
+    {
+      "title": "Context Helper (Japanese)",
+      "items": [
+        {
+          "name": "How To Generate Ctxhelper",
+          "path": "./guides/ja/how-to-generate-ctxhelper.ja.md"
+        },
+        {
+          "name": "How To Use Context Helper",
+          "path": "./guides/ja/how-to-use-context-helper.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Integration (English)",
+      "items": [
+        {
+          "name": "Integration",
+          "path": "./guides/integration.md"
+        }
+      ]
+    },
+    {
+      "title": "Integration (Japanese)",
+      "items": [
+        {
+          "name": "Integration",
+          "path": "./guides/ja/integration.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "External (English)",
+      "items": [
+        {
+          "name": "Openapi",
+          "path": "./guides/openapi.md"
+        }
+      ]
+    },
+    {
+      "title": "External (Japanese)",
+      "items": [
+        {
+          "name": "Openapi",
+          "path": "./guides/ja/openapi.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Coverage",
+      "items": [
+        {
+          "name": "Coverage",
+          "path": "../coverage/index.html"
+        }
+      ]
+    },
+    {
+      "title": "Db Schema",
+      "items": [
+        {
+          "name": "Db Schema",
+          "path": "../db-schema/index.html"
+        }
+      ]
+    },
+    {
+      "title": "Er Diagram",
+      "items": [
+        {
+          "name": "Er Diagram",
+          "path": "../er-diagram/index.html"
+        }
+      ]
+    },
+    {
+      "title": "Maintenance (English)",
+      "items": [
+        {
+          "name": "Docs Structure",
+          "path": "../maintenance/docs-structure.md"
+        },
+        {
+          "name": "Go Upgrade",
+          "path": "../maintenance/go-upgrade.md"
+        },
+        {
+          "name": "Setup",
+          "path": "../maintenance/setup.md"
+        },
+        {
+          "name": "Versions Generator",
+          "path": "../maintenance/versions-generator.md"
+        }
+      ]
+    },
+    {
+      "title": "Maintenance (Japanese)",
+      "items": [
+        {
+          "name": "Docs Structure",
+          "path": "../ja/maintenance/docs-structure.ja.md"
+        },
+        {
+          "name": "Go Upgrade",
+          "path": "../ja/maintenance/go-upgrade.ja.md"
+        },
+        {
+          "name": "Setup",
+          "path": "../ja/maintenance/setup.ja.md"
+        },
+        {
+          "name": "Versions Generator",
+          "path": "../ja/maintenance/versions-generator.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Openapi",
+      "items": [
+        {
+          "name": "Openapi",
+          "path": "../openapi/index.html"
+        }
+      ]
+    },
+    {
+      "title": "Project (English)",
+      "items": [
+        {
+          "name": "Out Of Scope",
+          "path": "../project/out-of-scope.md"
+        },
+        {
+          "name": "Policy",
+          "path": "../project/policy.md"
+        },
+        {
+          "name": "Scope",
+          "path": "../project/scope.md"
+        },
+        {
+          "name": "Versioning",
+          "path": "../project/versioning.md"
+        }
+      ]
+    },
+    {
+      "title": "Project (Japanese)",
+      "items": [
+        {
+          "name": "Out Of Scope",
+          "path": "../ja/project/out-of-scope.ja.md"
+        },
+        {
+          "name": "Policy",
+          "path": "../ja/project/policy.ja.md"
+        },
+        {
+          "name": "Scope",
+          "path": "../ja/project/scope.ja.md"
+        },
+        {
+          "name": "Versioning",
+          "path": "../ja/project/versioning.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Architecture (English)",
+      "items": [
+        {
+          "name": "Architecture",
+          "path": "../architecture.md"
+        },
+        {
+          "name": "Decisions",
+          "path": "../decisions.md"
+        },
+        {
+          "name": "Development Flow",
+          "path": "../development-flow.md"
+        },
+        {
+          "name": "Index",
+          "path": "../index.md"
+        },
+        {
+          "name": "Rules",
+          "path": "../rules.md"
+        }
+      ]
+    },
+    {
+      "title": "Architecture (Japanese)",
+      "items": [
+        {
+          "name": "Architecture",
+          "path": "../ja/architecture.ja.md"
+        },
+        {
+          "name": "Decisions",
+          "path": "../ja/decisions.ja.md"
+        },
+        {
+          "name": "Development Flow",
+          "path": "../ja/development-flow.ja.md"
+        },
+        {
+          "name": "Index",
+          "path": "../ja/index.ja.md"
+        },
+        {
+          "name": "Rules",
+          "path": "../ja/rules.ja.md"
+        }
+      ]
+    }
+  ]
+}

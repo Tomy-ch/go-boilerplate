@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -37,7 +38,8 @@ func Test_loggingMiddleware(t *testing.T) {
 		logger := logging.NewTestLogger(t)
 
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/mw", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/mw", nil)
 		req.RemoteAddr = "203.0.113.5:45678"
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -56,7 +58,8 @@ func Test_loggingMiddleware(t *testing.T) {
 		logger := logging.NewTestLogger(t)
 
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/health", nil)
 		req.RemoteAddr = "203.0.113.5:45678"
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -72,7 +75,8 @@ func Test_log_buildRequestLogFields(t *testing.T) {
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/path?foo=bar", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path?foo=bar", nil)
 	req.RemoteAddr = "1.2.3.4:5678"
 	req.Header.Set("User-Agent", "ua-test")
 	req.Host = "example.local"
@@ -99,7 +103,8 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 	lf := logging.NewTestLogFieldBuilder(t)
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/resp", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/resp", nil)
 	req.RemoteAddr = "5.6.7.8:9000"
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)

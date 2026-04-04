@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestNewConfig(t *testing.T) {
@@ -36,6 +37,7 @@ func TestNewConfig(t *testing.T) {
 				},
 				observability: ObservabilityConfig{
 					enabled:             expectedObservabilityEnabled,
+					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 				},
@@ -47,13 +49,14 @@ func TestNewConfig(t *testing.T) {
 					password:               expectedDBPassword,
 					name:                   expectedDBName,
 					sslMode:                expectedDBSSLMode,
+					pingTimeout:            expectedDBPingTimeout,
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 				},
 				dbconnection: DBConnectionConfig{
-					maxOpenConns: expectedDBMaxOpenConns,
-					maxIdleConns: expectedDBMaxIdleConns,
-					maxLifetime:  expectedDBMaxLifetime,
-					maxIdleTime:  expectedDBMaxIdleTime,
+					maxConns:    expectedDBMaxConnsInt32,
+					minConns:    expectedDBMinConnsInt32,
+					maxLifetime: expectedDBMaxLifetime,
+					maxIdleTime: expectedDBMaxIdleTime,
 				},
 				security: SecurityConfig{
 					allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -64,6 +67,7 @@ func TestNewConfig(t *testing.T) {
 					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 					referrerPolicy:        expectedReferrerPolicy,
+					bcryptCost:            expectedBcryptCost,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
@@ -282,6 +286,38 @@ func Test_validateDatabaseConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Run("無効なデータベースポート番号", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("ポート番号がMinPort未満の場合", func(t *testing.T) {
+				cfg := mockLoader(t)
+				cfg.Database.Port = MinPort - 1 // 無効なデータベースポート番号
+
+				actual, err := validateConfig(cfg)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidDBPortRange)
+			})
+
+			t.Run("ポート番号がMaxPortを超えている場合", func(t *testing.T) {
+				cfg := mockLoader(t)
+				cfg.Database.Port = MaxPort + 1 // 無効なデータベースポート番号
+
+				actual, err := validateConfig(cfg)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidDBPortRange)
+			})
+		})
+
+		t.Run("無効なデータベースPingタイムアウト", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Database.PingTimeout = 0 // 無効なデータベースPingタイムアウト
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidDBPingTimeout)
+		})
+
 		t.Run("無効なスロークエリ警告閾値", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
@@ -290,6 +326,29 @@ func Test_validateDatabaseConfig(t *testing.T) {
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidSlowQueryWarnThreshold)
+		})
+	})
+}
+
+func Test_validateDBConnectionConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		cfg := mockLoader(t)
+		err := validateDBConnectionConfig(cfg.DBConnection)
+		require.NoError(t, err)
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("MinConnsがMaxConnsを超えている場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.DBConnection.MinConns = cfg.DBConnection.MaxConns + 1 // MinConnsがMaxConnsを超える
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrInvalidExceedMaxConns)
 		})
 	})
 }
@@ -305,6 +364,28 @@ func Test_validateSecurityConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Run("BcryptCostが無効な場合", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("BcryptCostがbcrypt.MinCost未満の場合", func(t *testing.T) {
+				cfg := mockLoader(t)
+				cfg.Security.BcryptCost = bcrypt.MinCost - 1 // 無効なBcryptCost
+
+				actual, err := validateConfig(cfg)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidBcryptCost)
+			})
+
+			t.Run("BcryptCostがbcrypt.MaxCostを超えている場合", func(t *testing.T) {
+				cfg := mockLoader(t)
+				cfg.Security.BcryptCost = bcrypt.MaxCost + 1 // 無効なBcryptCost
+
+				actual, err := validateConfig(cfg)
+				require.Nil(t, actual)
+				require.ErrorIs(t, err, ErrInvalidBcryptCost)
+			})
+		})
+
 		t.Run("AllowedOriginsが空の場合", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)

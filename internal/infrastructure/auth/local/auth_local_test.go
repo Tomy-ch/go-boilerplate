@@ -16,7 +16,7 @@ func TestNew(t *testing.T) {
 		t.Parallel()
 		expected := &authenticator{
 			cfg: &config{
-				provider: localProvider,
+				provider: authbd.ProviderMock,
 				prefix:   localPrefix,
 			},
 		}
@@ -38,7 +38,7 @@ func Test_authenticator_Authenticate(t *testing.T) {
 		authn, err := authenticator.Authenticate(ctx, cred)
 		require.NoError(t, err)
 		require.Equal(t, "some-subject", authn.Subject())
-		require.Equal(t, localProvider, authn.Provider())
+		require.Equal(t, authbd.ProviderMock, authn.Provider())
 	})
 
 	t.Run("トークン文字列が prefix を含まない場合はエラーになる", func(t *testing.T) {
@@ -61,7 +61,7 @@ func Test_authenticator_resolveSubject(t *testing.T) {
 		t.Parallel()
 		authenticator := &authenticator{
 			cfg: &config{
-				provider: localProvider,
+				provider: authbd.ProviderMock,
 				prefix:   localPrefix,
 			},
 		}
@@ -74,7 +74,7 @@ func Test_authenticator_resolveSubject(t *testing.T) {
 		t.Parallel()
 		authenticator := &authenticator{
 			cfg: &config{
-				provider: localProvider,
+				provider: authbd.ProviderMock,
 				prefix:   localPrefix,
 			},
 		}

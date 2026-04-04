@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/logging"
 
 	"github.com/spf13/cobra"
@@ -100,7 +101,8 @@ func generateDumpSchema(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	dbURL := config.NewDatabaseConfig(cfg).DSN()
+	dbCfg := config.NewDatabaseConfig(cfg)
+	dbURL := driver.DSNString(dbCfg)
 
 	ctx := context.Background()
 	if err = gen.dumpSchema(ctx, dbURL); err != nil {
@@ -181,6 +183,7 @@ func (g *generator) sanitizeSchemaInPlace() error {
 		out = append(out, ln)
 	}
 
+	//nolint:gosec // safe: path comes from trusted CLI input
 	if err := os.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permmission); err != nil {
 		return fmt.Errorf("write sanitised schema: %w", err)
 	}

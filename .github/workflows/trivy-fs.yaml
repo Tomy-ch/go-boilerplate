@@ -18,18 +18,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  golangci-setup:
-    uses: ./.github/workflows/golang-setup.yaml
-
   trivy-fs:
-    needs: golangci-setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Trivy FS scan (JSON)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: fs
           format: json
@@ -71,7 +67,7 @@ jobs:
         shell: bash
 
       - name: Upload Trivy FS report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-fs
           path: |
@@ -80,7 +76,7 @@ jobs:
 
       - name: Comment Trivy FS result on PR
         if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

@@ -76,7 +76,7 @@ func TestGetVersion(t *testing.T) {
 		buildDate, err := datetime.ParseRFC3339UTCInLocation(bi.BuildDate(), loc)
 		require.NoError(t, err)
 
-		expectedResponse := gen.ResponseVersion{
+		expectedResponse := gen.VersionResponse{
 			Version:     bi.Version(),
 			Revision:    bi.Revision(),
 			BuildDate:   buildDate,
@@ -90,7 +90,7 @@ func TestGetVersion(t *testing.T) {
 		actual, ok := resp.(gen.GetVersion200JSONResponse)
 		require.True(t, ok)
 
-		require.Equal(t, expectedResponse, gen.ResponseVersion(actual))
+		require.Equal(t, expectedResponse, gen.VersionResponse(actual))
 	})
 
 	t.Run("異常系: ビルド日時のパースに失敗", func(t *testing.T) {

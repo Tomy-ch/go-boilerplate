@@ -5,7 +5,6 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
@@ -14,16 +13,17 @@ import (
 )
 
 type systemQuery struct {
-	db       driver.DatabaseDriver
-	provider loggingdb.DBProvider
-	tracer   observability.LayerTracer
+	db     loggingdb.DBProvider
+	tracer observability.LayerTracer
 }
 
-func New(db driver.DatabaseDriver, provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery {
+func New(
+	provider loggingdb.DBProvider,
+	tf observability.TracerFactory,
+) query.DBSystemQuery {
 	return &systemQuery{
-		db:       db,
-		provider: provider,
-		tracer:   tf.Infra(),
+		db:     provider,
+		tracer: tf.Infra(),
 	}
 }
 
@@ -33,7 +33,7 @@ func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)
 	defer endSpan()
 
 	start := time.Now()
-	db := gen.New(s.provider.NewLoggingDB(ctx))
+	db := gen.New(s.db.NewLoggingDB(ctx))
 	_, err := db.GetDBHealthCheck(ctx)
 	if err != nil {
 		return query.DBHealth{}, pgerror.NormalizeError(err)

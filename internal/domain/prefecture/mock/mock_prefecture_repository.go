@@ -43,10 +43,10 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // FindByID mocks base method.
-func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Entity, error) {
+func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Prefecture, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindByID", ctx, id)
-	ret0, _ := ret[0].(*prefecture.Entity)
+	ret0, _ := ret[0].(*prefecture.Prefecture)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -58,10 +58,10 @@ func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call {
 }
 
 // FindByIDs mocks base method.
-func (m *MockRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Entities, error) {
+func (m *MockRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Prefectures, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindByIDs", ctx, ids)
-	ret0, _ := ret[0].(prefecture.Entities)
+	ret0, _ := ret[0].(prefecture.Prefectures)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -73,10 +73,10 @@ func (mr *MockRepositoryMockRecorder) FindByIDs(ctx, ids any) *gomock.Call {
 }
 
 // FindByName mocks base method.
-func (m *MockRepository) FindByName(ctx context.Context, name string) (*prefecture.Entity, error) {
+func (m *MockRepository) FindByName(ctx context.Context, name string) (*prefecture.Prefecture, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindByName", ctx, name)
-	ret0, _ := ret[0].(*prefecture.Entity)
+	ret0, _ := ret[0].(*prefecture.Prefecture)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

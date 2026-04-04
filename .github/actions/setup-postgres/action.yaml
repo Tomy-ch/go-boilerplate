@@ -2,6 +2,10 @@ name: Setup Postgres (wait & init)
 description: Wait for PostgreSQL service to be ready and apply init SQL
 
 inputs:
+  pg_version:
+    description: PostgreSQL version to install (if install_psql is true)
+    required: false
+    default: "18"
   host:
     required: false
     description: Postgres host address
@@ -53,12 +57,12 @@ runs:
           | sudo tee /etc/apt/sources.list.d/pgdg.list
         sudo apt-get update
 
-    - name: Install psql client(17)
+    - name: Install psql client(${{ inputs.pg_version }})
       if: ${{ inputs.install_psql == 'true' }}
       shell: bash
       run: |
-        sudo apt-get install -y postgresql-client-17
-        echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+        sudo apt-get install -y postgresql-client-${{ inputs.pg_version }}
+        echo "/usr/lib/postgresql/${{ inputs.pg_version }}/bin" >> "$GITHUB_PATH"
 
     - name: Postgres Client Version
       if: ${{ inputs.install_psql == 'true' }}

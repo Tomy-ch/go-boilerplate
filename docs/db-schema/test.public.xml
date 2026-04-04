@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<database name="test" schema="public" type="PostgreSQL - 18.3 (Debian 18.3-1.pgdg12+1)">
+   <tables>
+      <table name="pg_stat_statements" numRows="0" remarks="" schema="public" type="VIEW" viewSql=" SELECT userid,&#10;    dbid,&#10;    toplevel,&#10;    queryid,&#10;    query,&#10;    plans,&#10;    total_plan_time,&#10;    min_plan_time,&#10;    max_plan_time,&#10;    mean_plan_time,&#10;    stddev_plan_time,&#10;    calls,&#10;    total_exec_time,&#10;    min_exec_time,&#10;    max_exec_time,&#10;    mean_exec_time,&#10;    stddev_exec_time,&#10;    rows,&#10;    shared_blks_hit,&#10;    shared_blks_read,&#10;    shared_blks_dirtied,&#10;    shared_blks_written,&#10;    local_blks_hit,&#10;    local_blks_read,&#10;    local_blks_dirtied,&#10;    local_blks_written,&#10;    temp_blks_read,&#10;    temp_blks_written,&#10;    shared_blk_read_time,&#10;    shared_blk_write_time,&#10;    local_blk_read_time,&#10;    local_blk_write_time,&#10;    temp_blk_read_time,&#10;    temp_blk_write_time,&#10;    wal_records,&#10;    wal_fpi,&#10;    wal_bytes,&#10;    wal_buffers_full,&#10;    jit_functions,&#10;    jit_generation_time,&#10;    jit_inlining_count,&#10;    jit_inlining_time,&#10;    jit_optimization_count,&#10;    jit_optimization_time,&#10;    jit_emission_count,&#10;    jit_emission_time,&#10;    jit_deform_count,&#10;    jit_deform_time,&#10;    parallel_workers_to_launch,&#10;    parallel_workers_launched,&#10;    stats_since,&#10;    minmax_stats_since&#10;   FROM pg_stat_statements(true) pg_stat_statements(userid, dbid, toplevel, queryid, query, plans, total_plan_time, min_plan_time, max_plan_time, mean_plan_time, stddev_plan_time, calls, total_exec_time, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, shared_blk_read_time, shared_blk_write_time, local_blk_read_time, local_blk_write_time, temp_blk_read_time, temp_blk_write_time, wal_records, wal_fpi, wal_bytes, wal_buffers_full, jit_functions, jit_generation_time, jit_inlining_count, jit_inlining_time, jit_optimization_count, jit_optimization_time, jit_emission_count, jit_emission_time, jit_deform_count, jit_deform_time, parallel_workers_to_launch, parallel_workers_launched, stats_since, minmax_stats_since);">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="userid" nullable="true" remarks="" size="10" type="oid" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="dbid" nullable="true" remarks="" size="10" type="oid" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="toplevel" nullable="true" remarks="" size="1" type="bool" typeCode="-7"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="queryid" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="query" nullable="true" remarks="" size="2147483647" type="text" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="plans" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="6" name="total_plan_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="7" name="min_plan_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="8" name="max_plan_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="9" name="mean_plan_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="10" name="stddev_plan_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="11" name="calls" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="12" name="total_exec_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="13" name="min_exec_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="14" name="max_exec_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="15" name="mean_exec_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="16" name="stddev_exec_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="17" name="rows" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="18" name="shared_blks_hit" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="19" name="shared_blks_read" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="20" name="shared_blks_dirtied" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="21" name="shared_blks_written" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="22" name="local_blks_hit" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="23" name="local_blks_read" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="24" name="local_blks_dirtied" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="25" name="local_blks_written" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="26" name="temp_blks_read" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="27" name="temp_blks_written" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="28" name="shared_blk_read_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="29" name="shared_blk_write_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="30" name="local_blk_read_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="31" name="local_blk_write_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="32" name="temp_blk_read_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="33" name="temp_blk_write_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="34" name="wal_records" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="35" name="wal_fpi" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="36" name="wal_bytes" nullable="true" remarks="" size="0" type="numeric" typeCode="2"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="37" name="wal_buffers_full" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="38" name="jit_functions" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="39" name="jit_generation_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="40" name="jit_inlining_count" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="41" name="jit_inlining_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="42" name="jit_optimization_count" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="43" name="jit_optimization_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="44" name="jit_emission_count" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="45" name="jit_emission_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="46" name="jit_deform_count" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="17" id="47" name="jit_deform_time" nullable="true" remarks="" size="17" type="float8" typeCode="8"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="48" name="parallel_workers_to_launch" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="49" name="parallel_workers_launched" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="50" name="stats_since" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="51" name="minmax_stats_since" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+      </table>
+      <table name="pg_stat_statements_info" numRows="0" remarks="" schema="public" type="VIEW" viewSql=" SELECT dealloc,&#10;    stats_reset&#10;   FROM pg_stat_statements_info() pg_stat_statements_info(dealloc, stats_reset);">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="dealloc" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="1" name="stats_reset" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+      </table>
+      <table name="prefectures" remarks="都道府県" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
+            <child column="prefecture_id" foreignKey="users_prefecture_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="users"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="都道府県名" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="都道府県コード" size="5" type="int2" typeCode="5"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="3" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="prefectures_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="prefectures_code_unique" unique="true">
+            <column ascending="true" name="code"/>
+         </index>
+         <index name="prefectures_name_unique" unique="true">
+            <column ascending="true" name="name"/>
+         </index>
+      </table>
+      <table name="product_categories" remarks="商品カテゴリ" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
+            <child column="category_id" foreignKey="products_category_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="products"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="コード" size="5" type="int2" typeCode="5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="sort_key" nullable="false" remarks="順序" size="5" type="int2" typeCode="5"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="product_categories_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="product_categories_code_unique" unique="true">
+            <column ascending="true" name="code"/>
+         </index>
+         <index name="product_categories_name_unique" unique="true">
+            <column ascending="true" name="name"/>
+         </index>
+         <index name="product_categories_sort_key_unique" unique="true">
+            <column ascending="true" name="sort_key"/>
+         </index>
+      </table>
+      <table name="product_statuses" remarks="商品ステータス" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
+            <child column="status_id" foreignKey="products_status_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="products"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="コード" size="5" type="int2" typeCode="5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="sort_key" nullable="false" remarks="順序" size="5" type="int2" typeCode="5"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="product_statuses_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="product_statuses_code_unique" unique="true">
+            <column ascending="true" name="code"/>
+         </index>
+         <index name="product_statuses_name_unique" unique="true">
+            <column ascending="true" name="name"/>
+         </index>
+         <index name="product_statuses_sort_key_unique" unique="true">
+            <column ascending="true" name="sort_key"/>
+         </index>
+      </table>
+      <table name="products" numRows="100" remarks="商品" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
+            <child column="product_id" foreignKey="purchase_details_product_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchase_details"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="description" nullable="true" remarks="説明" size="2147483647" type="text" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="price" nullable="false" remarks="価格" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="quantity" nullable="false" remarks="在庫数" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="stock_warning_threshold" nullable="true" remarks="在庫警告閾値" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="status_id" nullable="false" remarks="商品ステータスID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="products_status_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="product_statuses"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="category_id" nullable="false" remarks="商品カテゴリID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="products_category_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="product_categories"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="8" name="published_at" nullable="true" remarks="公開日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="9" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="10" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="products_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+      </table>
+      <table name="purchase_details" remarks="購入詳細" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="purchase_id" nullable="false" remarks="購入ID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="purchase_details_purchase_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchases"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="product_id" nullable="false" remarks="商品ID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="purchase_details_product_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="products"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="quantity" nullable="false" remarks="数量" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="unit_price" nullable="false" remarks="単価" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="6" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="purchase_details_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+      </table>
+      <table name="purchase_statuses" remarks="購入ステータス" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
+            <child column="status_id" foreignKey="purchases_status_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchases"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="name" nullable="false" remarks="名称" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="code" nullable="false" remarks="コード" size="5" type="int2" typeCode="5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="sort_key" nullable="false" remarks="順序" size="5" type="int2" typeCode="5"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="4" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="5" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="purchase_statuses_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="purchase_statuses_code_unique" unique="true">
+            <column ascending="true" name="code"/>
+         </index>
+         <index name="purchase_statuses_name_unique" unique="true">
+            <column ascending="true" name="name"/>
+         </index>
+         <index name="purchase_statuses_sort_key_unique" unique="true">
+            <column ascending="true" name="sort_key"/>
+         </index>
+      </table>
+      <table name="purchases" remarks="購入" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
+            <child column="purchase_id" foreignKey="purchase_details_purchase_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchase_details"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="code" nullable="false" remarks="コード" size="50" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="user_id" nullable="false" remarks="ユーザID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="purchases_user_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="users"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="status_id" nullable="false" remarks="購入ステータスID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="purchases_status_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchase_statuses"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="subtotal_amount" nullable="false" remarks="小計金額" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="tax_amount" nullable="false" remarks="税金額" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="shipping_fee" nullable="false" remarks="配送料" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="total_amount" nullable="false" remarks="合計金額" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="8" name="ordered_at" nullable="false" remarks="注文日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="9" name="paid_at" nullable="true" remarks="支払日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="10" name="canceled_at" nullable="true" remarks="キャンセル日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="shipped_at" nullable="true" remarks="発送日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="12" name="delivered_at" nullable="true" remarks="配達日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="13" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="14" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="purchases_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="purchases_code_unique" unique="true">
+            <column ascending="true" name="code"/>
+         </index>
+      </table>
+      <table name="schema_migrations" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="version" nullable="false" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="dirty" nullable="false" remarks="" size="1" type="bool" typeCode="-7"/>
+         <primaryKey column="version" sequenceNumberInPK="1"/>
+         <index name="schema_migrations_pkey" unique="true">
+            <column ascending="true" name="version"/>
+         </index>
+      </table>
+      <table name="users" remarks="ユーザ" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="ID" size="2147483647" type="uuid" typeCode="1111">
+            <child column="user_id" foreignKey="purchases_user_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="purchases"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="first_name" nullable="false" remarks="名前" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="last_name" nullable="false" remarks="苗字" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="password_hash" nullable="false" remarks="パスワードハッシュ" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="email" nullable="false" remarks="メールアドレス" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="phone" nullable="false" remarks="電話番号" size="20" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="prefecture_id" nullable="false" remarks="都道府県ID" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="users_prefecture_id_foreign" implied="false" onDeleteCascade="false" schema="public" table="prefectures"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="city" nullable="false" remarks="市区町村" size="100" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="8" name="street" nullable="false" remarks="番地" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="9" name="building" nullable="true" remarks="建物名" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="10" name="postal_code" nullable="false" remarks="郵便番号" size="8" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="deleted_at" nullable="true" remarks="削除日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="12" name="created_at" nullable="false" remarks="作成日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="13" name="updated_at" nullable="false" remarks="更新日時" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="(((((((((((((((COALESCE(first_name, ''::character varying))::text || ' '::text) || (COALESCE(last_name, ''::character varying))::text) || ' '::text) || (COALESCE(email, ''::character varying))::text) || ' '::text) || (COALESCE(phone, ''::character varying))::text) || ' '::text) || (COALESCE(city, ''::character varying))::text) || ' '::text) || (COALESCE(street, ''::character varying))::text) || ' '::text) || (COALESCE(building, ''::character varying))::text) || ' '::text) || (COALESCE(postal_code, ''::character varying))::text)" digits="0" id="14" name="search_text" nullable="true" remarks="全文検索用テキスト" size="2147483647" type="text" typeCode="12"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="users_id_primary" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="users_email_unique" unique="true">
+            <column ascending="true" name="email"/>
+         </index>
+         <index name="users_search_text_trgm_idx" unique="false">
+            <column ascending="true" name="search_text"/>
+         </index>
+      </table>
+   </tables>
+</database>

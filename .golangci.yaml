@@ -212,6 +212,13 @@ linters:
     nolintlint:
       require-explanation: true
       require-specific: true
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - []
+            - []
+            - [{ skipPackageNameChecks: true }] # 変数名の命名規則をチェックしますが、パッケージ名のチェックはスキップします。これにより、パッケージ名が変数名と同じ場合でもエラーにならなくなります。
 
   exclusions:
     presets:

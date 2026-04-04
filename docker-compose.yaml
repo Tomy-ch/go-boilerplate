@@ -22,13 +22,12 @@ services:
       - development
 
   database: # PostgreSQLデータベース
-    image: postgres:17.5
+    image: postgres:18.3-bookworm
     ports:
       - "5432:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql
       - ./docker/database/sql:/docker-entrypoint-initdb.d:ro
-      # - ./docker/database/logs:/var/log/postgresql
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres-password
@@ -57,9 +56,8 @@ services:
     ports:
       - "8082:80"
     volumes:
-      - ./docs/:/usr/share/nginx/html:ro
+      - ./docs/portal:/usr/share/nginx/html:ro
     profiles:
-      - development
       - tools
 
   sql_editor:
@@ -75,6 +73,7 @@ services:
 
   er_diagram_generator: # ER図生成ツール
     image: schemaspy/schemaspy:latest
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "5433:3000"
     volumes:
@@ -92,6 +91,7 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: go_tools
+    user: root
     tty: true
     stdin_open: true
     volumes:
@@ -106,6 +106,7 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: node_tools
+    user: root
     tty: true
     stdin_open: true
     volumes:
@@ -120,6 +121,7 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: python_tools
+    user: root
     tty: true
     stdin_open: true
     volumes:

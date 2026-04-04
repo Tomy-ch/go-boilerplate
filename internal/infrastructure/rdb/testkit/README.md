@@ -1,53 +1,282 @@
-# `rdbtest` パッケージ
+## `testkit` Package
 
-概要: テスト用の RDB 接続インスタンスやテスト向けトランザクション管理を提供するユーティリティ群です。リポジトリのユニット/統合テストで、実装済みインフラや New 関数の振る舞いを検証するときに使います。
+English | [日本語](README.ja.md)
 
-## 目的
+Overview: **A package that provides utilities for tests using RDB.**
 
-- テスト用 DB インスタンスとログ付き DB プロバイダを簡単に作成するためのヘルパーを提供します。
-- テスト実行中の DB 操作をロールバックするトランザクションヘルパーを提供し、テストの独立性を保ちます。
+It is mainly used for the following purposes.
 
-## 主要 API（実装に合わせた説明）
+- Easily create a test `DatabaseDriver`
+- Initialize Infrastructure including LoggingDBProvider
+- Execute tests within a transaction and always roll back
 
-- `NewTestDBWithLoggingProvider(t *testing.T) (driver.DatabaseDriver, loggingdb.DBProvider)`
-  - テスト用の `driver.DatabaseDriver`（実際の DB へ接続）と、ログ付きの `loggingdb.DBProvider` を生成します。テスト用の設定を内部で読み込みます。
+This package is a **support tool to make writing Repository and Infrastructure tests easier**.
 
-- `NewTestTransactionManager(t *testing.T) TransactionRunner`
-  - トランザクション内で処理を実行し、終了時に必ずロールバックするためのテスト用トランザクションマネージャーを返します。
+## Purpose
 
-- `TransactionRunner`（インターフェース）
-  - `WithinTx(fn func(ctx context.Context))` を実装します。渡した関数をトランザクション内で実行し、終了時にロールバックします。
+The following problems occur in tests that use RDB.
 
-実装上の補足:
+- DB initialization code becomes lengthy each time
+- Transaction management becomes complicated
+- Data cleanup after tests is required
 
-- テスト内で行った操作を DB に残さないため、`WithinTx` は内部で意図的にエラー（`rollbackForTestError`）を返してロールバック処理を誘発し、エラーがその特殊値の場合は成功扱いとして処理します。
+`testkit` provides the following features to solve these.
 
-## 使用例
+- Test DB initialization
+- Creation of LoggingDBProvider
+- Automatic rollback transactions
 
-例: トランザクション内でリポジトリの操作を行い、変更を残さずに検証する。
+## Architectural Position
+
+```mermaid
+flowchart TD
+    A[Repository Test]
+    B[testkit]
+    C[driver / loggingdb]
+    D[(PostgreSQL)]
+
+    A --> B --> C --> D
+```
+
+`testkit` is a **test-only Infrastructure helper layer**.
+
+## Provided API
+
+### NewTestDB
 
 ```go
-txm := rdbtest.NewTestTransactionManager(t)
+func NewTestDB(t *testing.T) driver.DatabaseDriver
+```
+
+Creates a test `DatabaseDriver`.
+
+### NewTestLoggingProvider
+
+```go
+func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider
+```
+
+Creates a LoggingDBProvider.
+
+Main use cases:
+
+- Repository tests
+- QueryService tests
+
+Internally, it performs the following processing.
+
+```mermaid
+flowchart TD
+    A[MockConfigForTest]
+    B[DatabaseConfig]
+    C[Logging / Tracer initialization]
+    D[loggingdb.NewLoggingDBProvider]
+
+    A --> B --> C --> D
+```
+
+### NewTestTransactionManager
+
+```go
+func NewTestTransactionManager(t *testing.T) TransactionRunner
+```
+
+Creates a transaction manager for testing.
+
+Internally, it uses:
+
+```mermaid
+flowchart TD
+    A[config.MockConfigForTest]
+    B[driver.NewTransactionManager]
+
+    A --> B
+```
+
+## Transaction Execution
+
+### TransactionRunner
+
+```go
+type TransactionRunner interface {
+    WithinTx(fn func(ctx context.Context))
+}
+```
+
+### WithinTx
+
+```go
+func (t *testTxManager) WithinTx(fn func(ctx context.Context))
+```
+
+Executes the specified function **inside a transaction**.
+
+Processing flow:
+
+```mermaid
+flowchart TD
+    A[Transaction Begin]
+    B[Execute fn(ctx)]
+    C[Return rollbackForTestError]
+    D[Rollback]
+
+    A --> B --> C --> D
+```
+
+Internally, it uses `tx.Manager.Do`.
+
+```mermaid
+flowchart TD
+    A[Do(fn)]
+    B[Return error to trigger rollback]
+
+    A --> B
+```
+
+## Rollback Mechanism
+
+`WithinTx` achieves rollback with the following mechanism.
+
+```mermaid
+flowchart TD
+    A[Execute fn]
+    B[Return rollbackForTestError]
+    C[tx.Manager performs rollback]
+
+    A --> B --> C
+```
+
+This special error is defined as:
+
+```go
+var rollbackForTestError = xerrors.New("rollback for test")
+```
+
+This error is treated as **success in tests**.
+
+## Parallel Execution
+
+Repository tests can be executed in parallel using `t.Parallel()`.
+
+However, transactions are serialized internally.
+
+```mermaid
+flowchart LR
+    A[Test execution] -->|parallel| B
+    C[Transactions] -->|serialized| D
+```
+
+This is guaranteed by the following implementation.
+
+```go
+txLock sync.Mutex
+```
+
+```go
+txLock.Lock()
+defer txLock.Unlock()
+```
+
+This ensures:
+
+- Preventing DB state conflicts
+- Preventing interference between tests
+
+## DB Instance
+
+The test DB is managed as a singleton.
+
+```go
+var (
+    testDB driver.DatabaseDriver
+    dbOnce sync.Once
+)
+```
+
+By **sharing a single DB instance within the process**:
+
+- Reduced connection cost
+- Faster test execution
+
+are achieved.
+
+## Usage Examples
+
+### Transaction-Based Test
+
+```go
+txm := testkit.NewTestTransactionManager(t)
+
 txm.WithinTx(func(ctx context.Context) {
-    // ここで tx コンテキストを使ってリポジトリを操作する
-    // 例: repo := repository.NewRepo(db)
-    // repo.Create(ctx, ...)
-    // テスト終了時に必ずロールバックされる
+    repo.Create(ctx, ...)
 })
 ```
 
-例: ログ付き DB プロバイダを取得してインフラの New() に渡す
+### Repository Test
 
 ```go
-db, loggingProvider := rdbtest.NewTestDBWithLoggingProvider(t)
-// db/loggingProvider を使って実際のリポジトリ/インフラを初期化
+provider := testkit.NewTestLoggingProvider(t)
+
+repo := repository.NewRepository(provider)
 ```
 
-## テスト
+## Test Design Policy
 
-- 本ディレクトリには単体テストが含まれており、テストインスタンス生成や `WithinTx` のロールバック振る舞いが検証されています。`go test ./...` で実行できます。
+By using `testkit`, the following design becomes possible.
 
-## 注意点
+```mermaid
+flowchart TD
+    A[Repository Test]
+    B[Real DB]
+    C[Transaction Rollback]
 
-- テスト用インスタンスは実際に DB に接続します。CI やローカルで実行する際はテスト用 DB の接続情報が正しく設定されていることを確認してください。
-- `WithinTx` は常にロールバックを行う動作です。永続的な副作用を検証したい場合は別途専用のセットアップを使ってください。
+    A --> B --> C
+```
+
+In other words:
+
+```mermaid
+flowchart TD
+    A[Use real DB]
+    B[Restore state after test]
+
+    A --> B
+```
+
+This enables **safe Integration Test**.
+
+## Notes
+
+### Connects to a Real DB
+
+This package connects to an **actual PostgreSQL**.
+
+Therefore, you must configure:
+
+- Test DB
+- CI DB
+
+### Design of WithinTx
+
+`WithinTx` does not accept a return value from fn.
+
+```go
+fn(ctx)
+return rollbackForTestError
+```
+
+Therefore, assertions in tests should use:
+
+```go
+require / assert
+```
+
+### Transactions Are Always Rolled Back
+
+When using `WithinTx`, transactions are **always rolled back**.
+
+Therefore, it cannot be used for tests that:
+
+```txt
+persist data
+```

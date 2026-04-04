@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"boilerplate-go/pkg/ptr"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -52,6 +54,7 @@ var (
 	expectedMetricsPassword = "metrics-password"
 	// observability
 	expectedObservabilityEnabled              = true
+	expectedObservabilityMaskedDBQueryArgs    = false
 	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
 	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
 	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
@@ -63,12 +66,17 @@ var (
 	expectedDBPassword                    = "postgres-password"
 	expectedDBName                        = "test"
 	expectedDBSSLMode                     = "disable"
+	expectedDBPingTimeoutCount            = 5
+	expectedDBPingTimeoutStr              = fmt.Sprintf("%ds", expectedDBPingTimeoutCount)
+	expectedDBPingTimeout                 = time.Duration(expectedDBPingTimeoutCount) * time.Second
 	expectedDBSlowQueryWarnThresholdCount = 500
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
 	// dbconnection
-	expectedDBMaxOpenConns     = 10
-	expectedDBMaxIdleConns     = 5
+	expectedDBMaxConns         = 10
+	expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
+	expectedDBMinConns         = 5
+	expectedDBMinConnsInt32    = int32(expectedDBMinConns)
 	expectedDBMaxLifetimeCount = 60
 	expectedDBMaxLifetimeStr   = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)
 	expectedDBMaxLifetime      = time.Duration(expectedDBMaxLifetimeCount) * time.Second
@@ -87,6 +95,7 @@ var (
 	expectedHSTSExcludeSubdomains = false
 	expectedHSTSPreloadEnabled    = false
 	expectedReferrerPolicy        = "no-referrer"
+	expectedBcryptCost            = bcrypt.MinCost
 	// secure cookie
 	expectedSecureCookieSecure   = ptr.To(true)
 	expectedSecureCookieSameSite = "Strict"
@@ -139,6 +148,7 @@ func MockConfigForTest(t testing.TB) *Config {
 		},
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
+			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
@@ -150,13 +160,14 @@ func MockConfigForTest(t testing.TB) *Config {
 			password:               expectedDBPassword,
 			name:                   expectedDBName,
 			sslMode:                expectedDBSSLMode,
+			pingTimeout:            expectedDBPingTimeout,
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: expectedDBMaxOpenConns,
-			maxIdleConns: expectedDBMaxIdleConns,
-			maxLifetime:  expectedDBMaxLifetime,
-			maxIdleTime:  expectedDBMaxIdleTime,
+			maxConns:    expectedDBMaxConnsInt32,
+			minConns:    expectedDBMinConnsInt32,
+			maxLifetime: expectedDBMaxLifetime,
+			maxIdleTime: expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -167,6 +178,7 @@ func MockConfigForTest(t testing.TB) *Config {
 			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
+			bcryptCost:            expectedBcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   expectedSecureCookieSecure,
@@ -211,6 +223,7 @@ func mockLoader(t testing.TB) Loader {
 		},
 		Observability: Observability{
 			Enabled:           expectedObservabilityEnabled,
+			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		Server: Server{
@@ -228,13 +241,14 @@ func mockLoader(t testing.TB) Loader {
 			Password:               expectedDBPassword,
 			Name:                   expectedDBName,
 			SSLMode:                expectedDBSSLMode,
+			PingTimeout:            expectedDBPingTimeout,
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		DBConnection: DBConnection{
-			MaxOpenConns: expectedDBMaxOpenConns,
-			MaxIdleConns: expectedDBMaxIdleConns,
-			MaxLifetime:  expectedDBMaxLifetime,
-			MaxIdleTime:  expectedDBMaxIdleTime,
+			MaxConns:    expectedDBMaxConnsInt32,
+			MinConns:    expectedDBMinConnsInt32,
+			MaxLifetime: expectedDBMaxLifetime,
+			MaxIdleTime: expectedDBMaxIdleTime,
 		},
 		Security: Security{
 			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -245,6 +259,7 @@ func mockLoader(t testing.TB) Loader {
 			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
+			BcryptCost:            expectedBcryptCost,
 		},
 		SecureCookie: SecureCookie{
 			Secure:   expectedSecureCookieSecure,
@@ -268,7 +283,8 @@ func mockLoader(t testing.TB) Loader {
 }
 
 // setEnvVarsForTesting は、テスト用の環境変数を設定します。
-func setEnvVarsForTesting(t *testing.T) {
+func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function is only used
+	//  for testing and setting environment variables, so the complexity is acceptable.
 	t.Helper()
 	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
@@ -291,6 +307,7 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("METRICS_PASSWORD", expectedMetricsPassword)
 	// Observability
 	t.Setenv("OBSERVABILITY_ENABLED", strconv.FormatBool(expectedObservabilityEnabled))
+	t.Setenv("OBSERVABILITY_MASKED_DB_QUERY_ARGS", strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs))
 	t.Setenv("OBSERVABILITY_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
 	// Database
 	t.Setenv("DB_DRIVER", expectedDBDriver)
@@ -300,10 +317,11 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("DB_PASSWORD", expectedDBPassword)
 	t.Setenv("DB_NAME", expectedDBName)
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
+	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
 	// DBConnection
-	t.Setenv("DBCONN_MAX_OPEN", strconv.Itoa(expectedDBMaxOpenConns))
-	t.Setenv("DBCONN_MAX_IDLE", strconv.Itoa(expectedDBMaxIdleConns))
+	t.Setenv("DBCONN_MAX_CONNS", strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10))
+	t.Setenv("DBCONN_MIN_CONNS", strconv.FormatInt(int64(expectedDBMinConnsInt32), 10))
 	t.Setenv("DBCONN_MAX_LIFETIME", expectedDBMaxLifetimeStr)
 	t.Setenv("DBCONN_MAX_IDLE_TIME", expectedDBMaxIdleTimeStr)
 	// Security
@@ -315,6 +333,7 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
 	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
 	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
+	t.Setenv("SECURITY_BCRYPT_COST", strconv.Itoa(expectedBcryptCost))
 	// Secure Cookie
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)

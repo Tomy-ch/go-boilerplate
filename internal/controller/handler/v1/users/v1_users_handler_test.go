@@ -53,6 +53,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 	expectedPage := 1
 	expectedPerPage := 10
+	expectedTotal := int64(2)
 
 	expectedDTO1 := user.MutableFields{FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890"}
 	expectedDTO2 := user.MutableFields{FirstName: "User2", LastName: "Two", Email: "user2@example.com", Phone: "0987654321"}
@@ -76,32 +77,34 @@ func Test_server_GetUsers(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
-			expectedResponse := gen.ResponseV1Users{
+			expectedResponse := gen.UsersResponse{
 				Users: []gen.UserResponse{
 					{
 						FirstName: expectedDTO1.FirstName,
 						LastName:  expectedDTO1.LastName,
 						Email:     types.Email(expectedDTO1.Email),
-						Phone:     ptr.To(expectedDTO1.Phone),
+						Phone:     expectedDTO1.Phone,
 					},
 					{
 						FirstName: expectedDTO2.FirstName,
 						LastName:  expectedDTO2.LastName,
 						Email:     types.Email(expectedDTO2.Email),
-						Phone:     ptr.To(expectedDTO2.Phone),
+						Phone:     expectedDTO2.Phone,
 					},
 				},
 				Limit:  mockPaging.Limit(),
 				Offset: mockPaging.Offset(),
+				Total:  expectedTotal,
 			}
-
-			expectedParams := &user.GetParamsDTO{}
 
 			mockDTO := []user.MutableFields{expectedDTO1, expectedDTO2}
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
+				ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
 				Return(mockDTO, nil)
+			mockApp.EXPECT().
+				CountUsers(gomock.Any(), mockParams.Params.Active).
+				Return(expectedTotal, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsers(ctx, mockParams)
@@ -110,7 +113,7 @@ func Test_server_GetUsers(t *testing.T) {
 			actual, ok := resp.(gen.GetUsers200JSONResponse)
 			require.True(t, ok)
 
-			require.Equal(t, expectedResponse, gen.ResponseV1Users(actual))
+			require.Equal(t, expectedResponse, gen.UsersResponse(actual))
 		})
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
@@ -119,26 +122,28 @@ func Test_server_GetUsers(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
-			expectedResponse := gen.ResponseV1Users{
+			expectedResponse := gen.UsersResponse{
 				Users: []gen.UserResponse{
 					{
 						FirstName: expectedDTO1.FirstName,
 						LastName:  expectedDTO1.LastName,
 						Email:     types.Email(expectedDTO1.Email),
-						Phone:     ptr.To(expectedDTO1.Phone),
+						Phone:     expectedDTO1.Phone,
 					},
 				},
 				Limit:  mockPaging.Limit(),
 				Offset: mockPaging.Offset(),
+				Total:  expectedTotal,
 			}
-
-			expectedParams := &user.GetParamsDTO{}
 
 			mockDTO := []user.MutableFields{expectedDTO1}
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
+				ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
 				Return(mockDTO, nil)
+			mockApp.EXPECT().
+				CountUsers(gomock.Any(), mockParams.Params.Active).
+				Return(expectedTotal, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsers(ctx, mockParams)
@@ -147,7 +152,7 @@ func Test_server_GetUsers(t *testing.T) {
 			actual, ok := resp.(gen.GetUsers200JSONResponse)
 			require.True(t, ok)
 
-			require.Equal(t, expectedResponse, gen.ResponseV1Users(actual))
+			require.Equal(t, expectedResponse, gen.UsersResponse(actual))
 		})
 	})
 
@@ -179,23 +184,49 @@ func Test_server_GetUsers(t *testing.T) {
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
-			ctrl := gomock.NewController(t)
-			lt := observability.NewMockControllerLayerTracer(t)
+			t.Run("ListUsersByKeywordがエラーを返す場合", func(t *testing.T) {
+				t.Parallel()
 
-			expectedError := apperror.ErrInternal
+				ctx := context.Background()
+				ctrl := gomock.NewController(t)
+				lt := observability.NewMockControllerLayerTracer(t)
 
-			expectedParams := &user.GetParamsDTO{}
+				expectedError := apperror.ErrInternal
 
-			mockApp := mock_user.NewMockUsecase(ctrl)
-			mockApp.EXPECT().
-				ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
-				Return(nil, expectedError)
+				mockApp := mock_user.NewMockUsecase(ctrl)
+				mockApp.EXPECT().
+					ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
+					Return(nil, expectedError)
 
-			s := &server{tracer: lt, uc: mockApp}
-			resp, err := s.GetUsers(ctx, mockParams)
-			require.Nil(t, resp)
-			require.ErrorIs(t, err, expectedError)
+				s := &server{tracer: lt, uc: mockApp}
+				resp, err := s.GetUsers(ctx, mockParams)
+				require.Nil(t, resp)
+				require.ErrorIs(t, err, expectedError)
+			})
+
+			t.Run("CountUsersがエラーを返す場合", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+				ctrl := gomock.NewController(t)
+				lt := observability.NewMockControllerLayerTracer(t)
+
+				expectedError := apperror.ErrInternal
+
+				mockDTO := []user.MutableFields{expectedDTO1, expectedDTO2}
+				mockApp := mock_user.NewMockUsecase(ctrl)
+				mockApp.EXPECT().
+					ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
+					Return(mockDTO, nil)
+				mockApp.EXPECT().
+					CountUsers(gomock.Any(), mockParams.Params.Active).
+					Return(int64(0), expectedError)
+
+				s := &server{tracer: lt, uc: mockApp}
+				resp, err := s.GetUsers(ctx, mockParams)
+				require.Nil(t, resp)
+				require.ErrorIs(t, err, expectedError)
+			})
 		})
 	})
 }
@@ -255,7 +286,7 @@ func Test_server_PostUsers(t *testing.T) {
 		require.Equal(t, expectedDTO.FirstName, got.FirstName)
 		require.Equal(t, expectedDTO.LastName, got.LastName)
 		require.Equal(t, types.Email(expectedDTO.Email), got.Email)
-		require.Equal(t, ptr.To(expectedDTO.Phone), got.Phone)
+		require.Equal(t, expectedDTO.Phone, got.Phone)
 	})
 
 	t.Run("異常系", func(t *testing.T) {

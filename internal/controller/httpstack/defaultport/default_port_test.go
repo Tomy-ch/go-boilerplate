@@ -15,7 +15,7 @@ func TestNew(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetServerAppMode(t, config.ProductionMode)
+		appCfg.SetApplicationMode(t, config.ProductionMode)
 
 		New(e, appCfg)
 		require.True(t, e.HidePort)
@@ -25,7 +25,7 @@ func TestNew(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetServerAppMode(t, config.DevelopmentMode)
+		appCfg.SetApplicationMode(t, config.DevelopmentMode)
 
 		New(e, appCfg)
 		require.False(t, e.HidePort)

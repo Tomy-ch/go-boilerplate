@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -168,6 +166,11 @@ func TestGetterMethods(t *testing.T) {
 			require.True(t, observability.Enabled())
 		})
 
+		t.Run("MaskedDBQueryArgs", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
+		})
+
 		t.Run("TargetStatusCodes", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedObservabilityTargetStatusCodes, observability.TargetStatusCodes())
@@ -241,6 +244,11 @@ func TestGetterMethods(t *testing.T) {
 			require.Equal(t, expectedDBSSLMode, database.SSLMode())
 		})
 
+		t.Run("PingTimeout", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedDBPingTimeout, database.PingTimeout())
+		})
+
 		t.Run("SlowQueryWarnThreshold", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
@@ -250,14 +258,14 @@ func TestGetterMethods(t *testing.T) {
 	t.Run("DBConnection", func(t *testing.T) {
 		t.Parallel()
 		connection := cfg.dbconnection
-		t.Run("MaxOpenConns", func(t *testing.T) {
+		t.Run("MaxConns", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxOpenConns, connection.MaxOpenConns())
+			require.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
 		})
 
-		t.Run("MaxIdleConns", func(t *testing.T) {
+		t.Run("MinConns", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxIdleConns, connection.MaxIdleConns())
+			require.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
 		})
 
 		t.Run("MaxLifetime", func(t *testing.T) {
@@ -316,6 +324,11 @@ func TestGetterMethods(t *testing.T) {
 		t.Run("ReferrerPolicy", func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
+		})
+
+		t.Run("BcryptCost", func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, expectedBcryptCost, security.BcryptCost())
 		})
 	})
 
@@ -426,47 +439,6 @@ func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
 		cfg := Config{}
 		cfg.app.mode = ProductionMode
 		require.False(t, cfg.app.IsDevelopmentMode())
-	})
-}
-
-func Test_DatabaseConfig_DSN(t *testing.T) {
-	t.Parallel()
-
-	cfg := MockConfigForTest(t)
-
-	t.Run("DSN", func(t *testing.T) {
-		t.Parallel()
-		expectedURL := fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-			expectedDBUser,
-			expectedDBPassword,
-			expectedDBHost,
-			expectedDBPort,
-			expectedDBName,
-			expectedDBSSLMode,
-		)
-		require.Equal(t, expectedURL, cfg.database.DSN())
-	})
-}
-
-func Test_DatabaseConfig_DSNWithTimeZone(t *testing.T) {
-	t.Parallel()
-
-	cfg := MockConfigForTest(t)
-
-	t.Run("DSNWithTimeZone", func(t *testing.T) {
-		t.Parallel()
-		expectedURL := fmt.Sprintf(
-			"postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=%s",
-			expectedDBUser,
-			expectedDBPassword,
-			expectedDBHost,
-			expectedDBPort,
-			expectedDBName,
-			expectedDBSSLMode,
-			url.QueryEscape(expectedOSTimeZone),
-		)
-		require.Equal(t, expectedURL, cfg.database.DSNWithTimeZone(&cfg.os))
 	})
 }
 

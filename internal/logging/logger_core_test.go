@@ -11,7 +11,7 @@ import (
 func TestNew(t *testing.T) {
 	t.Run("production mode", func(t *testing.T) {
 		appCfg := config.NewApplicationConfig(&config.Config{})
-		appCfg.SetServerAppMode(t, "production")
+		appCfg.SetApplicationMode(t, "production")
 
 		logger, err := New(appCfg)
 		require.NoError(t, err)
@@ -20,7 +20,7 @@ func TestNew(t *testing.T) {
 
 	t.Run("development mode", func(t *testing.T) {
 		appCfg := config.NewApplicationConfig(&config.Config{})
-		appCfg.SetServerAppMode(t, "development")
+		appCfg.SetApplicationMode(t, "development")
 
 		logger, err := New(appCfg)
 		require.NoError(t, err)
@@ -29,7 +29,7 @@ func TestNew(t *testing.T) {
 
 	t.Run("unknown mode", func(t *testing.T) {
 		appCfg := config.NewApplicationConfig(&config.Config{})
-		appCfg.SetServerAppMode(t, "unknown")
+		appCfg.SetApplicationMode(t, "unknown")
 
 		logger, err := New(appCfg)
 		require.Error(t, err)

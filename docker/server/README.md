@@ -33,9 +33,7 @@
 | `air` | ホットリロードツール |
 | `dlv` | Delve: Goのデバッガ |
 | `golines` | 行長制限つきのGo整形ツール（`gofumpt` ベース） |
-| `lefthook` | Git hook 管理ツール（test/lint自動実行に利用） |
 | `gofumpt` | `gofmt` + alpha の整形強化版 |
-| `gomodifytags` | 構造体のタグ編集 CLI ツール |
 | `golangci-lint` | 多機能Go linter（`make lint` などで使用） |
 
 ## ワークディレクトリ

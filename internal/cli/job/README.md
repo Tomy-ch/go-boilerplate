@@ -28,13 +28,13 @@ job <job-name> [args...] [--timeout DURATION]
 - ローカルでバイナリを使う例:
 
 ```sh
-./your-app job usercount --timeout 30s
+./your-app job user-count --timeout 30s
 ```
 
 - `go run` で実行する例（開発）:
 
 ```sh
-go run ./cmd/main.go job usercount --timeout 30s
+go run ./cmd/main.go job user-count --timeout 30s
 ```
 
 ## 前提 / 要件

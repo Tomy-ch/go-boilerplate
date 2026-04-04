@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"boilerplate-go/internal/domain/prefecture"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
@@ -14,61 +13,58 @@ import (
 )
 
 type repository struct {
-	db       driver.DatabaseDriver
-	provider loggingdb.DBProvider
-	tracer   observability.LayerTracer
+	db     loggingdb.DBProvider
+	tracer observability.LayerTracer
 }
 
 func New(
-	db driver.DatabaseDriver,
-	provider loggingdb.DBProvider,
+	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
 ) prefecture.Repository {
 	return &repository{
-		db:       db,
-		provider: provider,
-		tracer:   tf.Infra(),
+		db:     db,
+		tracer: tf.Infra(),
 	}
 }
 
 // FindByID は、IDから都道府県エンティティを取得します。
-func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Entity, error) {
+func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Prefecture, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
-	row, err := db.GetPrefectureDomainByID(ctx, id.ToPrimitive())
+	db := gen.New(r.db.NewLoggingDB(ctx))
+	row, err := db.GetPrefectureDomainByID(ctx, id)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
 	return prefecture.New(
-		row.ID.String(),
+		row.ID,
 		row.Name,
 		int(row.Code),
 	)
 }
 
 // FindByIDs は、複数IDから都道府県エンティティ一覧を取得します。
-func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Entities, error) {
+func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Prefectures, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
-	rows, err := db.GetPrefectureDomainByIDs(ctx, uuid.ToPrimitiveUniqueList(ids))
+	db := gen.New(r.db.NewLoggingDB(ctx))
+	rows, err := db.GetPrefectureDomainByIDs(ctx, ids)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	prefectures := make(prefecture.Entities, len(rows))
+	prefectures := make(prefecture.Prefectures, len(rows))
 	for i, row := range rows {
 		prefectureEntity, err := prefecture.New(
-			row.ID.String(),
+			row.ID,
 			row.Name,
 			int(row.Code),
 		)
 		if err != nil {
-			return nil, pgerror.NormalizeError(err)
+			return nil, err
 		}
 		prefectures[i] = prefectureEntity
 	}
@@ -77,18 +73,18 @@ func (r *repository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture
 }
 
 // FindByName は、都道府県名から都道府県エンティティを取得します。
-func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.Entity, error) {
+func (r *repository) FindByName(ctx context.Context, name string) (*prefecture.Prefecture, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
+	db := gen.New(r.db.NewLoggingDB(ctx))
 	row, err := db.GetPrefectureDomainByName(ctx, name)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
 	return prefecture.New(
-		row.ID.String(),
+		row.ID,
 		row.Name,
 		int(row.Code),
 	)

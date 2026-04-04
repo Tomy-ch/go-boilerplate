@@ -64,3 +64,31 @@ func TestTo(t *testing.T) {
 		})
 	})
 }
+
+func TestCopy(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		type example struct {
+			Field string
+		}
+
+		v := &example{Field: "test"}
+		actual := Copy(v)
+		require.NotNil(t, actual)
+		require.Equal(t, *v, *actual)
+
+		// ポインタが異なることを確認
+		require.NotSame(t, v, actual)
+	})
+
+	t.Run("nilの場合", func(t *testing.T) {
+		t.Parallel()
+
+		var v *int = nil
+		actual := Copy(v)
+		require.Nil(t, actual)
+	})
+}

@@ -11,4 +11,7 @@ const (
 	maxStreetLength     = 255
 	maxBuildingLength   = 255
 	maxPostalCodeLength = 8
+
+	MaxRawPasswordLength = 64
+	MinRawPasswordLength = 8
 )

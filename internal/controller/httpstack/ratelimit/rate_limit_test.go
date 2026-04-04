@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,7 +27,8 @@ func Test_Middleware(t *testing.T) {
 		mw := Middleware(nil, ipCfg)
 
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
@@ -55,7 +57,8 @@ func Test_Middleware(t *testing.T) {
 			e := echo.New()
 			mockRL := mock_ratelimit.NewMockIPRateLimiter(ctrl)
 
-			req := httptest.NewRequest(http.MethodGet, "/health", nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/health", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
@@ -75,7 +78,8 @@ func Test_Middleware(t *testing.T) {
 			mockRL := mock_ratelimit.NewMockIPRateLimiter(ctrl)
 			mockRL.EXPECT().AllowRequest(gomock.Any()).Return(true)
 
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
@@ -95,7 +99,8 @@ func Test_Middleware(t *testing.T) {
 			mockRL := mock_ratelimit.NewMockIPRateLimiter(ctrl)
 			mockRL.EXPECT().AllowRequest(gomock.Any()).Return(false)
 
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 

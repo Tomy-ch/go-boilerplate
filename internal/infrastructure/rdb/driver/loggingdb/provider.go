@@ -17,6 +17,7 @@ type DBProvider interface {
 	Logger() logging.Logger
 	LogFields() logging.LogFieldBuilder
 	DBConfig() *config.DatabaseConfig
+	ObservabilityConfig() *config.ObservabilityConfig
 	LayerTracer() observability.LayerTracer
 }
 
@@ -24,6 +25,7 @@ type DBProvider interface {
 type provider struct {
 	db     driver.DatabaseDriver
 	dbCfg  *config.DatabaseConfig
+	obsCfg *config.ObservabilityConfig
 	l      logging.Logger
 	lf     logging.LogFieldBuilder
 	tracer observability.LayerTracer
@@ -33,6 +35,7 @@ type provider struct {
 func NewLoggingDBProvider(
 	db driver.DatabaseDriver,
 	dbCfg *config.DatabaseConfig,
+	obsCfg *config.ObservabilityConfig,
 	log logging.Logger,
 	lf logging.LogFieldBuilder,
 	tracer observability.TracerFactory,
@@ -40,6 +43,7 @@ func NewLoggingDBProvider(
 	return &provider{
 		db:     db,
 		dbCfg:  dbCfg,
+		obsCfg: obsCfg,
 		l:      log,
 		lf:     lf,
 		tracer: tracer.Infra(),
@@ -68,6 +72,11 @@ func (p *provider) LogFields() logging.LogFieldBuilder {
 // DBConfig は、データベース設定を返します。
 func (p *provider) DBConfig() *config.DatabaseConfig {
 	return p.dbCfg
+}
+
+// ObservabilityConfig は、観測可能性設定を返します。
+func (p *provider) ObservabilityConfig() *config.ObservabilityConfig {
+	return p.obsCfg
 }
 
 // LayerTracer は、レイヤートレーサーを返します。

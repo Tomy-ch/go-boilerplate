@@ -1,9 +1,12 @@
 package module
 
 import (
+	userqs "boilerplate-go/internal/infrastructure/rdb/query_service/user"
 	"boilerplate-go/internal/infrastructure/rdb/repository/prefecture"
 	"boilerplate-go/internal/infrastructure/rdb/repository/user"
 	"boilerplate-go/internal/infrastructure/rdb/system_query/healthcheck"
+	"boilerplate-go/internal/infrastructure/security"
+	"boilerplate-go/internal/infrastructure/system"
 
 	"go.uber.org/fx"
 )
@@ -19,11 +22,23 @@ func InfrastructureModule() fx.Option {
 			),
 		),
 		fx.Module("query_service",
-			fx.Provide(),
+			fx.Provide(
+				userqs.New,
+			),
 		),
 		fx.Module("system_query",
 			fx.Provide(
 				healthcheck.New,
+			),
+		),
+		fx.Module("system",
+			fx.Provide(
+				system.NewClock,
+			),
+		),
+		fx.Module("security",
+			fx.Provide(
+				security.NewBcryptHasher,
 			),
 		),
 	)

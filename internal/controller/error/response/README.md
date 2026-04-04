@@ -37,7 +37,7 @@
 
 - **エラーレスポンスロジックの修正**: `internal/controller/error/response/error_response.go` を編集します。ここに、レスポンス組み立て、`RequestID` の付与、`Details` の扱いを定義しています。
 - **エラーコード／メッセージの管理**: `internal/controller/error/response/http_error.go` に標準定義（`const`）があります。ここで `Code` とデフォルト `Message` の対応を編集してください。
-- **型定義の更新**: `openapi` 仕様を更新した場合は、`gen/` 内の自動生成コードを再生成してください（本リポジトリの生成手順に従うこと）。
+- **型定義の更新**: `openapi` 仕様を更新した場合は、`gen/` 内の自動生成コードを再生成してください（プロジェクトの生成手順に従うこと）。
 
 例: 既存のエラーコードに `BAD_GATEWAY` を追加したいときは、`http_error.go` に定数と既定メッセージを追加し、必要なら `error_response.go` のマッピングにルールを追加します。
 

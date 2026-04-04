@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"boilerplate-go/internal/config"
+	"boilerplate-go/internal/infrastructure/rdb/driver"
 
 	"github.com/golang-migrate/migrate/v4"
 )
@@ -40,5 +41,5 @@ func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
 
-	return migrate.New("file://"+migrateFilePlace, dbCfg.DSNWithTimeZone(osCfg))
+	return migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
 }

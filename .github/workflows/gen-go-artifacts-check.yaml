@@ -15,13 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  golangci-setup:
-    uses: ./.github/workflows/golang-setup.yaml
-    permissions:
-      contents: read
-
   generate-go-check:
-    needs: golangci-setup
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,7 +24,13 @@ jobs:
       ENV: ci
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Run Go generators
         run: make gen-go-code
@@ -51,7 +51,7 @@ jobs:
 
       - name: Comment changed files on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

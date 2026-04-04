@@ -1,10 +1,10 @@
 openapi: 3.0.3
 info:
-  title: 'Boilerplate Go with Onion Architecture, Echo and SQLC'
-  termsOfService: 'https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc'
+  title: Boilerplate Go with Onion Architecture, Echo and SQLC
+  termsOfService: https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc
   contact:
     name: TomyC258460
-    url: 'https://x.com/TomyC258460'
+    url: https://x.com/TomyC258460
   version: 0.1.0
   description: |
     This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
@@ -18,16 +18,15 @@ info:
     flexibility, and developer experience.
   license:
     name: MIT License
-    url: 'https://opensource.org/licenses/MIT'
-x-oapi-codegen-strict-server: true
+    url: https://opensource.org/licenses/MIT
 servers:
-  - url: 'http://localhost:8080'
+  - url: http://localhost:8080
     description: Local development server
-  - url: 'https://api.example.com'
+  - url: https://api.example.com
     description: Production server (replace with actual URL)
-  - url: 'https://staging.api.example.com'
+  - url: https://staging.api.example.com
     description: Staging server (replace with actual URL)
-  - url: 'https://development.api.example.com'
+  - url: https://development.api.example.com
     description: Versioned API endpoint (replace with actual URL)
 paths:
   /health:
@@ -43,7 +42,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseHealth'
+                $ref: '#/components/schemas/HealthResponse'
   /healthz:
     get:
       operationId: GetHealthz
@@ -57,14 +56,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseHealth'
+                $ref: '#/components/schemas/HealthResponse'
   /metrics:
     get:
       operationId: GetMetrics
       tags:
         - metrics
       security:
-        - basicAuth: []
+        - BasicAuth: []
       summary: サーバーのメトリクス取得
       description: サーバーのメトリクス情報を取得するためのエンドポイントです。
       responses:
@@ -88,7 +87,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseReady'
+                $ref: '#/components/schemas/ReadyResponse'
   /version:
     get:
       operationId: GetVersion
@@ -102,7 +101,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseVersion'
+                $ref: '#/components/schemas/VersionResponse'
   /_internal/types/error-response:
     get:
       summary: （内部用）ErrorResponse型生成用エンドポイント
@@ -124,9 +123,8 @@ paths:
       tags:
         - v1/users
       summary: ユーザー一覧の取得
-      description: ユーザーの一覧を取得します。検索条件やページネーションを指定できます。
+      description: ユーザーの一覧を取得します。ページネーションを指定できます。
       parameters:
-        - $ref: '#/components/parameters/KeywordParam'
         - $ref: '#/components/parameters/ActiveParam'
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
@@ -136,7 +134,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResponseV1Users'
+                $ref: '#/components/schemas/UsersResponse'
         '401':
           description: ユーザー一覧の取得には認証が必要です。
           content:
@@ -168,7 +166,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RequestPostV1Users'
+              $ref: '#/components/schemas/UsersPostRequest'
       responses:
         '201':
           description: ユーザーの作成に成功しました
@@ -200,7 +198,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  '/v1/users/{user_id}':
+  /v1/users/{user_id}:
     get:
       operationId: GetUsersDetail
       tags:
@@ -259,7 +257,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RequestPutV1User'
+              $ref: '#/components/schemas/UserPutRequest'
       responses:
         '200':
           description: ユーザーの更新に成功しました
@@ -310,7 +308,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RequestPatchV1User'
+              $ref: '#/components/schemas/UserPatchRequest'
       responses:
         '200':
           description: ユーザーの部分更新に成功しました
@@ -379,6 +377,43 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/users/search:
+    get:
+      operationId: GetUsersSearch
+      tags:
+        - v1/users/search
+      summary: ユーザー一覧の取得
+      description: 検索条件に基づいてユーザーの一覧を取得します。ページネーションを指定できます。
+      parameters:
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/ActiveParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: 検索条件に基づいて取得したユーザー一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersSearchResponse'
+        '401':
+          description: ユーザー一覧の取得には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザー一覧の取得には権限が必要です。
           content:
             application/json:
               schema:
@@ -537,22 +572,6 @@ paths:
           description: Bad Request (Upgrade 失敗)
 components:
   parameters:
-    KeywordParam:
-      name: keyword
-      in: query
-      description: 全文検索キーワード
-      required: false
-      schema:
-        type: string
-        example: example keyword
-    ActiveParam:
-      name: active
-      in: query
-      description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
-      required: false
-      schema:
-        type: boolean
-        example: true
     PageParam:
       name: page
       in: query
@@ -574,6 +593,22 @@ components:
         maximum: 100
         default: 10
         example: 10
+    KeywordParam:
+      name: keyword
+      in: query
+      description: 全文検索キーワード
+      required: false
+      schema:
+        type: string
+        example: example keyword
+    ActiveParam:
+      name: active
+      in: query
+      description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
+      required: false
+      schema:
+        type: boolean
+        example: true
     UserIdParam:
       name: user_id
       in: path
@@ -623,73 +658,11 @@ components:
             - エラーの詳細の文章1
             - エラーの詳細の文章2
     ResponseHealth:
-      type: object
-      description: サーバーのヘルスチェック用のレスポンスです。
-      required:
-        - status
-      properties:
-        status:
-          type: string
-          description: サーバーの現在のステータスを示します。
-          example: ok
+      $ref: '#/components/schemas/HealthResponse'
     ResponseReady:
-      type: object
-      description: サーバーのレディネスチェック用のレスポンスです。
-      required:
-        - status
-        - applicationTime
-        - dbResponsedAt
-        - dbLatencyMs
-      properties:
-        status:
-          type: string
-          enum:
-            - ok
-            - degraded
-            - unhealthy
-          description: サーバーのレディネス状態
-          example: ok
-        applicationTime:
-          type: string
-          format: date-time
-          description: アプリケーションサーバーの現在時刻
-          example: '2024-06-01T12:00:01Z'
-        dbResponsedAt:
-          type: string
-          format: date-time
-          description: データベースが最後に正常に応答した日時
-          example: '2024-06-01T12:00:00Z'
-        dbLatencyMs:
-          type: integer
-          format: int64
-          description: データベース応答までの時間（ミリ秒）
-          example: 8
+      $ref: '#/components/schemas/ReadyResponse'
     ResponseVersion:
-      type: object
-      description: サーバーのバージョン情報用のレスポンスです。
-      required:
-        - version
-        - revision
-        - buildDate
-        - environment
-        - service
-      properties:
-        version:
-          type: string
-          description: アプリケーションのバージョン
-        revision:
-          type: string
-          description: アプリケーションのリビジョン
-        buildDate:
-          type: string
-          format: date-time
-          description: アプリケーションのビルド日時
-        environment:
-          type: string
-          description: 実行環境
-        service:
-          type: string
-          description: サービス名
+      $ref: '#/components/schemas/VersionResponse'
     UserBaseInputRequest:
       description: ユーザー情報の基本入力スキーマ
       additionalProperties: false
@@ -718,12 +691,12 @@ components:
         phone:
           description: 電話番号
           type: string
-          pattern: '^\+?[0-9]{10,15}$'
-          example: 09012345678
+          pattern: ^\+?[0-9]{10,15}$
+          example: '09012345678'
         postalCode:
           description: 郵便番号
           type: string
-          pattern: '^[0-9]{3}-[0-9]{4}$'
+          pattern: ^[0-9]{3}-[0-9]{4}$
           example: 150-0041
         prefecture:
           description: 都道府県
@@ -758,6 +731,7 @@ components:
         - prefecture
         - city
         - street
+        - deletedAt
       properties:
         firstName:
           description: 苗字
@@ -777,13 +751,12 @@ components:
         phone:
           type: string
           description: 電話番号
-          nullable: true
-          pattern: '^\+?[0-9]{10,15}$'
-          example: 09012345678
+          pattern: ^\+?[0-9]{10,15}$
+          example: '09012345678'
         postalCode:
           description: 郵便番号
           type: string
-          pattern: '^[0-9]{3}-[0-9]{4}$'
+          pattern: ^[0-9]{3}-[0-9]{4}$
           example: 150-0041
         prefecture:
           description: 都道府県
@@ -805,10 +778,13 @@ components:
           type: string
           example: Shibuya Building 101
           maxLength: 200
-    ResponseV1User:
-      $ref: '#/components/schemas/UserResponse'
-    ResponseV1Users:
-      description: ユーザー情報のリストを返すレスポンスです。
+        deletedAt:
+          description: ユーザーが削除された日時。削除されていない場合はnull。
+          type: string
+          format: date-time
+          nullable: true
+    UsersSearchResponse:
+      description: ユーザー検索のレスポンススキーマ
       allOf:
         - type: object
           required:
@@ -817,64 +793,20 @@ components:
             users:
               type: array
               items:
-                $ref: '#/components/schemas/UserResponse'
-        - type: object
-          required:
-            - total
-            - limit
-            - offset
-          properties:
-            total:
-              type: integer
-              description: 全件数
-              example: 100
-            limit:
-              type: integer
-              description: 1ページあたりの件数
-              example: 10
-            offset:
-              type: integer
-              description: 現在のオフセット
-              example: 0
+                $ref: '#/components/schemas/UsersSearchResponseItem'
+        - $ref: '#/components/schemas/PaginationMetadataResponse'
+    UserSearchResponseItem:
+      $ref: '#/components/schemas/UsersSearchResponseItem'
+    ResponseV1User:
+      $ref: '#/components/schemas/UserResponse'
+    ResponseV1Users:
+      $ref: '#/components/schemas/UsersResponse'
     RequestPostV1Users:
-      description: ユーザー情報の新規作成
-      allOf:
-        - $ref: '#/components/schemas/UserBaseInputRequest'
-        - properties:
-            password:
-              type: string
-              description: ユーザーのパスワード
-              example: password123
-          required:
-            - firstName
-            - lastName
-            - email
-            - password
-            - phone
-            - prefecture
-            - city
-            - street
-            - postalCode
-            - building
+      $ref: '#/components/schemas/UsersPostRequest'
     RequestPutV1User:
-      description: ユーザー情報の更新
-      allOf:
-        - $ref: '#/components/schemas/RequestPatchV1User'
-        - required:
-            - firstName
-            - lastName
-            - email
-            - password
-            - postalCode
-            - phone
-            - prefecture
-            - city
-            - street
-            - building
+      $ref: '#/components/schemas/UserPutRequest'
     RequestPatchV1User:
-      description: ユーザー情報の部分更新
-      allOf:
-        - $ref: '#/components/schemas/UserBaseInputRequest'
+      $ref: '#/components/schemas/UserPatchRequest'
     DebugIssueCookieRequest:
       additionalProperties: false
       description: |
@@ -902,3 +834,154 @@ components:
       required:
         - rawCookieHeader
         - cookies
+    HealthResponse:
+      type: object
+      description: サーバーのヘルスチェック用のレスポンスです。
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: サーバーの現在のステータスを示します。
+          example: ok
+    ReadyResponse:
+      type: object
+      description: サーバーのレディネスチェック用のレスポンスです。
+      required:
+        - status
+        - applicationTime
+        - dbResponsedAt
+        - dbLatencyMs
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+            - unhealthy
+          description: サーバーのレディネス状態
+          example: ok
+        applicationTime:
+          type: string
+          format: date-time
+          description: アプリケーションサーバーの現在時刻
+          example: '2024-06-01T12:00:01Z'
+        dbResponsedAt:
+          type: string
+          format: date-time
+          description: データベースが最後に正常に応答した日時
+          example: '2024-06-01T12:00:00Z'
+        dbLatencyMs:
+          type: integer
+          format: int64
+          description: データベース応答までの時間（ミリ秒）
+          example: 8
+    VersionResponse:
+      type: object
+      description: サーバーのバージョン情報用のレスポンスです。
+      required:
+        - version
+        - revision
+        - buildDate
+        - environment
+        - service
+      properties:
+        version:
+          type: string
+          description: アプリケーションのバージョン
+        revision:
+          type: string
+          description: アプリケーションのリビジョン
+        buildDate:
+          type: string
+          format: date-time
+          description: アプリケーションのビルド日時
+        environment:
+          type: string
+          description: 実行環境
+        service:
+          type: string
+          description: サービス名
+    PaginationMetadataResponse:
+      type: object
+      required:
+        - total
+        - limit
+        - offset
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: 全件数
+          example: 100
+        limit:
+          type: integer
+          description: 1ページあたりの件数
+          example: 10
+        offset:
+          type: integer
+          description: 現在のオフセット
+          example: 0
+    UsersResponse:
+      description: ユーザー情報のリストを返すレスポンスです。
+      allOf:
+        - type: object
+          required:
+            - users
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserResponse'
+        - $ref: '#/components/schemas/PaginationMetadataResponse'
+    UsersPostRequest:
+      description: ユーザー情報の新規作成
+      allOf:
+        - $ref: '#/components/schemas/UserBaseInputRequest'
+        - properties:
+            password:
+              type: string
+              description: ユーザーのパスワード
+              example: password123
+          required:
+            - firstName
+            - lastName
+            - email
+            - password
+            - phone
+            - prefecture
+            - city
+            - street
+            - postalCode
+            - building
+    UserPatchRequest:
+      description: ユーザー情報の部分更新
+      allOf:
+        - $ref: '#/components/schemas/UserBaseInputRequest'
+    UserPutRequest:
+      description: ユーザー情報の更新
+      allOf:
+        - $ref: '#/components/schemas/UserPatchRequest'
+        - required:
+            - firstName
+            - lastName
+            - email
+            - password
+            - postalCode
+            - phone
+            - prefecture
+            - city
+            - street
+            - building
+    UsersSearchResponseItem:
+      description: 検索条件に基づいて取得したユーザー情報
+      allOf:
+        - $ref: '#/components/schemas/UserResponse'
+        - type: object
+          required:
+            - registeredAt
+          properties:
+            registeredAt:
+              description: 登録日時
+              type: string
+              format: date-time

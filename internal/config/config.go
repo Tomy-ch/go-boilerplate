@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/caarlos0/env/v11"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type validatedConfig struct {
@@ -51,6 +52,7 @@ func New() (*Config, error) {
 		},
 		observability: ObservabilityConfig{
 			enabled:             cfg.Observability.Enabled,
+			maskedDBQueryArgs:   cfg.Observability.MaskedDBQueryArgs,
 			targetStatusCodes:   cfg.Observability.TargetStatusCodes,
 			targetStatusCodeSet: buildStatusCodeSet(cfg.Observability.TargetStatusCodes),
 		},
@@ -62,13 +64,14 @@ func New() (*Config, error) {
 			password:               cfg.Database.Password,
 			name:                   cfg.Database.Name,
 			sslMode:                cfg.Database.SSLMode,
+			pingTimeout:            cfg.Database.PingTimeout,
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: cfg.DBConnection.MaxOpenConns,
-			maxIdleConns: cfg.DBConnection.MaxIdleConns,
-			maxLifetime:  cfg.DBConnection.MaxLifetime,
-			maxIdleTime:  cfg.DBConnection.MaxIdleTime,
+			maxConns:    cfg.DBConnection.MaxConns,
+			minConns:    cfg.DBConnection.MinConns,
+			maxLifetime: cfg.DBConnection.MaxLifetime,
+			maxIdleTime: cfg.DBConnection.MaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins:        cfg.Security.AllowedOrigins,
@@ -79,6 +82,7 @@ func New() (*Config, error) {
 			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
 			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
 			referrerPolicy:        cfg.Security.ReferrerPolicy,
+			bcryptCost:            cfg.Security.BcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   cfg.SecureCookie.Secure,
@@ -112,6 +116,10 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 	}
 
 	if err := validateDatabaseConfig(cfg.Database); err != nil {
+		return nil, err
+	}
+
+	if err := validateDBConnectionConfig(cfg.DBConnection); err != nil {
 		return nil, err
 	}
 
@@ -167,8 +175,22 @@ func validateServerConfig(srvCfg Server) error {
 
 // validateDatabaseConfig は、データベース設定を検証します。
 func validateDatabaseConfig(dbCfg Database) error {
+	if dbCfg.Port < MinPort || MaxPort < dbCfg.Port {
+		return ErrInvalidDBPortRange
+	}
+	if dbCfg.PingTimeout <= 0 {
+		return ErrInvalidDBPingTimeout
+	}
 	if dbCfg.SlowQueryWarnThreshold < 0 {
 		return ErrInvalidSlowQueryWarnThreshold
+	}
+	return nil
+}
+
+// validateDBConnectionConfig は、データベース接続設定を検証します。
+func validateDBConnectionConfig(dbConnCfg DBConnection) error {
+	if dbConnCfg.MinConns > dbConnCfg.MaxConns {
+		return ErrInvalidExceedMaxConns
 	}
 	return nil
 }
@@ -177,6 +199,10 @@ func validateDatabaseConfig(dbCfg Database) error {
 func validateSecurityConfig(secCfg Security) (*net.IPNet, error) {
 	if len(secCfg.AllowedOrigins) == 0 {
 		return nil, ErrEmptyAllowedOrigins
+	}
+
+	if secCfg.BcryptCost < bcrypt.MinCost || bcrypt.MaxCost < secCfg.BcryptCost {
+		return nil, ErrInvalidBcryptCost
 	}
 
 	for _, origin := range secCfg.AllowedOrigins {

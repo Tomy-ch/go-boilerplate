@@ -89,11 +89,11 @@ linters:
             - "!**/cmd/**.go" # アプリケーションのエントリポイントでは、終了制御を行うためosの使用を許可します
             - "!**/internal/cli/**.go" # CLIを扱う箇所では、ファイル操作などが必要なためosの使用を許可します
             - "!**/internal/config/**.go" # システムの環境変数を扱う箇所では、ブートストラップの環境変数を取得するためにosの使用を許可します
+            - "!**/scripts/**.go" # スクリプトを扱う箇所では、ファイル操作などが必要なためosの使用を許可します
           list-mode: lax
           deny:
             - pkg: os
-              desc: "configディレクトリ以外でのos系のライブラリの使用は破壊的な副作用を招くため禁止です。
-                設定値はconfigパッケージを介して受け渡してください。"
+              desc: "configとcli、scriptsディレクトリ以外でのos系のライブラリの使用は破壊的な副作用を招くため禁止です。"
         restrict_the_use_of_cli: # cliパッケージの使用を限定します
           files:
             - "**/*.go"
@@ -155,8 +155,8 @@ linters:
               desc: "cliパッケージは他のusecase層に依存してはいけません。"
             - pkg: boilerplate-go/internal/controller/
               desc: "cliパッケージは他のcontroller層に依存してはいけません。"
-            - pkg: boilerplate-go/internal/infrastructure/
-              desc: "cliパッケージは他のinfrastructure層に依存してはいけません。"
+            - pkg: boilerplate-go/internal/infrastructure/(?!.*driver)
+              desc: "cliパッケージは他のinfrastructure層に依存してはいけません。ただし、driver配下のものは、コマンド実装のために必要な場合があるため例外とします。"
         independent_config: # configパッケージが責務の実装層にも依存しないことを保証します
           files:
             - "**/internal/config/**.go"
@@ -342,6 +342,13 @@ linters:
       require-specific: true
     testifylint:
       enable-all: true
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - []
+            - []
+            - [{ skipPackageNameChecks: true }]
     usestdlibvars:
       http-method: true        # HTTPメソッド文字列の検出（"GET" → http.MethodGet）
       http-status-code: true   # ステータスコードの検出（500 → http.StatusInternalServerError）

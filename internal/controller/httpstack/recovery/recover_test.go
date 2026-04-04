@@ -1,6 +1,7 @@
 package recovery
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -38,7 +39,9 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 	t.Run("RemoteAddrがある場合、関数はnilを返しpanicしない", func(t *testing.T) {
 		t.Parallel()
 
-		req := httptest.NewRequest(http.MethodGet, "/path", nil)
+		ctx := context.Background()
+
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path", nil)
 		req.RemoteAddr = "9.8.7.6:1234"
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -51,7 +54,9 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 	t.Run("X-Real-Ipヘッダがある場合、関数はnilを返しpanicしない", func(t *testing.T) {
 		t.Parallel()
 
-		req := httptest.NewRequest(http.MethodPost, "/other", nil)
+		ctx := context.Background()
+
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/other", nil)
 		req.Header.Set("X-Real-Ip", "10.0.0.1")
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -71,7 +76,7 @@ func Test_newRecoverConfig(t *testing.T) {
 		t.Parallel()
 
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetServerAppMode(t, config.DevelopmentMode)
+		appCfg.SetApplicationMode(t, config.DevelopmentMode)
 
 		expected := developmentConfig()
 		actual := newRecoverConfig(logger, appCfg)
@@ -82,7 +87,7 @@ func Test_newRecoverConfig(t *testing.T) {
 		t.Parallel()
 
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetServerAppMode(t, config.ProductionMode)
+		appCfg.SetApplicationMode(t, config.ProductionMode)
 
 		expected := productionConfig()
 		actual := newRecoverConfig(logger, appCfg)
@@ -93,7 +98,7 @@ func Test_newRecoverConfig(t *testing.T) {
 		t.Parallel()
 
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetServerAppMode(t, "unknown-mode")
+		appCfg.SetApplicationMode(t, "unknown-mode")
 
 		expected := productionConfig()
 		actual := newRecoverConfig(logger, appCfg)

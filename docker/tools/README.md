@@ -6,12 +6,11 @@
 
 ## ツールを追加したら（重要）
 
-[GEN_GENERATOR_VERSIONS.md](../../scripts/GEN_GENERATOR_VERSIONS.md)を参照し、生成ツールのバージョン情報を記録するスクリプトを修正してください。
+[versions_generator.ja.md](../../docs/ja/maintenance/versions_generator.ja.md)を参照し、生成ツールのバージョン情報を記録するスクリプトを修正してください。
 
 ## 利用目的
 
-- `swagger-cli`: OpenAPIのYAMLスキーマのバンドル（`$ref` 解決）
-- `redocly/cli`: RedocドキュメントのHTML出力
+- `redocly/cli`: OpenAPIのYAMLスキーマのバンドル（`$ref` 解決）とOpenAPIドキュメントのHTML出力
 - `oapi-codegen`: Goコードの自動生成（Echoサーバ/型定義など）
 - `mockgen`: Goのinterfaceに基づくMock生成
 
@@ -19,11 +18,10 @@
 
 ```text
 # openapi-builder (Nodeベース)
-- swagger-cli
-- redocly/cli(swagger-cliで生成されるyamlに依存します)
+- redocly/cli
 
 # go-generator (Goベース)
-- oapi-codegen(swagger-cliで生成されるyamlに依存します)
+- oapi-codegen
 - mockgen
 ```
 
@@ -69,7 +67,6 @@ openapi/
 
 ## 関連ツール公式
 
-- [swagger-cli](https://github.com/APIDevTools/swagger-cli)
 - [Redocly CLI](https://github.com/Redocly/redocly-cli)
 - [oapi-codegen](https://github.com/deepmap/oapi-codegen)
 - [mockgen (uber/mock)](https://github.com/uber-go/mock)

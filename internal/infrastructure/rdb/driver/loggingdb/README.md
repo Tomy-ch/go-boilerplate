@@ -1,60 +1,184 @@
 # loggingdb
 
-概要: **DB へのアクセスに対して SQL 実行ログを付与するためのラッパーレイヤー。実際のクエリ処理は DatabaseDriver に委譲し、ログ整形・出力を追加する。**
+English | [日本語](README.ja.md)
 
-## 役割
+Overview: **An Observability wrapper layer that adds SQL execution logs and trace information to DB access. Actual query execution is delegated to the driver layer, and only log formatting and trace integration are added.**
 
-このディレクトリは、以下のような **SQL ロギングの責務** を担います。
+loggingdb is an **observability adapter positioned above the driver**.
 
-- `DatabaseDriver`（実 DB）をラップし、SQL 実行前後にログを出力する
-- 実行クエリ・引数・所要時間・エラー・トレース情報（TraceID/SpanID） をログ構造化フィールドとして出力
-- `DBProvider` によるロギング付き DBTX の生成 (`NewLoggingDB`)
-- `logger` と `LogFieldBuilder` を注入しログ形式の一貫性を保持
-- OpenTelemetry トレース情報と連携するための `observability.ExtractSpan` の利用
+## Architectural Position
 
-上位レイヤ（repository / sqlc / usecase）はログ実装を一切意識せずに SQL ログを取得できます。
+```mermaid
+flowchart TB
+    Usecase --> Repo["Repository"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
+```
 
-## 必要度
+loggingdb **does not perform DB execution processing itself.**
 
-### 本番運用での必須度
+It wraps `driver.DBTX` and adds the following processing during SQL execution:
 
-- 必須度: **本番運用で推奨**
+- SQL log output
+- OpenTelemetry trace integration
+- Query execution time measurement
+- slow query detection
 
-理由:  
-DB ログは問題発生時の調査に不可欠です。  
-特に以下の場面で強力です。
+## Responsibility
 
-- N+1 / 遅延クエリの発見
-- API 処理単位のトレーシング連動
-- エラー SQL の特定
+This directory provides **observability for SQL execution**.
 
-ただし、**ログコストを気にする環境（高トラフィック）では OFF にする構成も許容**されます。  
-そのため「必須」ではなく「推奨」。
+Main responsibilities:
 
-### 開発/テスト運用での必須度
+- Provide a logging wrapper that wraps `driver.DBTX`
+- Output SQL execution logs
+- Generate OpenTelemetry spans
+- Measure query execution time
+- Detect slow queries
+- Structure log fields
 
-- 必須度: **開発/テスト運用で必須**
+As a result, upper layers (repository / usecase / handler):
 
-理由:  
-開発中は以下の理由で SQL ログが必須級です。
+- logging implementation
+- tracing implementation
 
-- クエリが正しく発行されているかの確認
-- sqlc 生成クエリの挙動把握
-- DB テスト時にエラー箇所を迅速に把握
+do not need to be aware of these at all.
 
-ユニットテスト ～ E2E テストの全範囲で役立ちます。
+## DBTX Wrapper
 
-### 無効化した場合の影響
+The core implementation of loggingdb is a **DBTX wrapper**.
 
-- SQL ログがすべて出力されなくなる
-- 遅いクエリ・誤ったクエリの発見が難しくなる
-- OpenTelemetry と SQL レイヤーの紐づきが消える
-- repository/usecase 側では動作に影響しない（あくまで観測性の低下）
+```mermaid
+flowchart TB
+    DBTX["driver.DBTX"] --> Wrap["wrap"] --> Logging["loggingdb (dbWithLogging)"] --> Obs["SQL logging + tracing"]
+```
 
-## 注意点
+`dbWithLogging` wraps `driver.DBTX` and performs the following processing before and after SQL execution:
 
-- loggingdb は **実 DB への I/O を行わない**。あくまで logging wrapper である
-- context による TraceID/SpanID を利用するため、handler 層で context を破壊しないこと
-- `LogFieldBuilder` に依存しているため、ログ出力形式を変更する場合は builder の設定が必要
-- `ExecContext` / `QueryContext` / `QueryRowContext` など、db 操作ごとにログが発生するため大量クエリ処理ではログ量が増える可能性あり
-- slow query log を追加したい場合はこのレイヤーに拡張する
+1. Start an OpenTelemetry span
+2. Execute SQL
+3. Measure execution time
+4. Output SQL logs
+5. Determine errors
+
+## SQL Log Contents
+
+The output logs include the following information.
+
+```mermaid
+flowchart TB
+    A["Query"]
+    B["Args"]
+    C["Latency"]
+    D["Error"]
+    E["TraceID"]
+    F["SpanID"]
+    G["ParentSpanID"]
+```
+
+This enables:
+
+- API requests
+- DB queries
+
+to be **traced within a single trace context**.
+
+## Slow Query
+
+loggingdb automatically determines slow queries.
+
+The determination of slow queries depends on the following configuration.
+
+```go
+DBConfig().SlowQueryWarnThreshold()
+```
+
+The log level is determined by the following rules.
+
+```mermaid
+flowchart TB
+    Err["Error query"] --> ERROR["ERROR"]
+    Slow["slow query"] --> WARN["WARN"]
+    Normal["normal query"] --> INFO["INFO"]
+```
+
+## Provider
+
+`DBProvider` is a **DI Adapter** that aggregates the dependencies required for loggingdb.
+
+Provided dependencies:
+
+- `DatabaseDriver`
+- `Logger`
+- `LogFieldBuilder`
+- `DatabaseConfig`
+- `LayerTracer`
+
+This allows loggingdb to:
+
+- logging implementation
+- tracing implementation
+
+not depend directly on them, and use them via DI.
+
+## Necessity
+
+### Production
+
+Recommended
+
+Reason:
+
+- detection of slow queries
+- investigation of DB errors
+- trace integration between API and DB
+
+These are **highly useful for operational monitoring**.
+
+However, in extremely high-traffic environments, considering increased log volume:
+
+- sampling
+- logging only slow queries
+
+can also be considered.
+
+### Development / Testing
+
+Strongly recommended
+
+Reason:
+
+- confirmation of issued SQL
+- verification of sqlc query behavior
+- debugging during DB testing
+
+Therefore, it is very effective during development.
+
+## Notes
+
+### loggingdb does not perform DB I/O
+
+loggingdb is a **pure wrapper**.
+
+All actual SQL execution is delegated to the driver layer.
+
+```mermaid
+flowchart TB
+    Logging["loggingdb"] --> Driver["driver"]
+```
+
+### Always propagate Context
+
+Trace information is stored in `context.Context`.
+
+Therefore, always propagate `ctx` to lower layers.
+
+### Log volume with large number of queries
+
+`ExecContext`
+
+`QueryContext`
+
+`QueryRowContext`
+
+For each **DB operation, a log is output**.
+
+In processes that execute a large number of queries, log volume may increase.

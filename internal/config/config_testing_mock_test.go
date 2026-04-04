@@ -37,6 +37,7 @@ func TestMockConfigForTest(t *testing.T) {
 		},
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
+			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
@@ -48,13 +49,14 @@ func TestMockConfigForTest(t *testing.T) {
 			password:               expectedDBPassword,
 			name:                   expectedDBName,
 			sslMode:                expectedDBSSLMode,
+			pingTimeout:            expectedDBPingTimeout,
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		dbconnection: DBConnectionConfig{
-			maxOpenConns: expectedDBMaxOpenConns,
-			maxIdleConns: expectedDBMaxIdleConns,
-			maxLifetime:  expectedDBMaxLifetime,
-			maxIdleTime:  expectedDBMaxIdleTime,
+			maxConns:    expectedDBMaxConnsInt32,
+			minConns:    expectedDBMinConnsInt32,
+			maxLifetime: expectedDBMaxLifetime,
+			maxIdleTime: expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
 			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -65,6 +67,7 @@ func TestMockConfigForTest(t *testing.T) {
 			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
 			referrerPolicy:        expectedReferrerPolicy,
+			bcryptCost:            expectedBcryptCost,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   expectedSecureCookieSecure,
@@ -119,6 +122,7 @@ func Test_mockLoader(t *testing.T) {
 		},
 		Observability: Observability{
 			Enabled:           expectedObservabilityEnabled,
+			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		Database: Database{
@@ -128,13 +132,14 @@ func Test_mockLoader(t *testing.T) {
 			Password:               expectedDBPassword,
 			Name:                   expectedDBName,
 			SSLMode:                expectedDBSSLMode,
+			PingTimeout:            expectedDBPingTimeout,
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 		},
 		DBConnection: DBConnection{
-			MaxOpenConns: expectedDBMaxOpenConns,
-			MaxIdleConns: expectedDBMaxIdleConns,
-			MaxLifetime:  expectedDBMaxLifetime,
-			MaxIdleTime:  expectedDBMaxIdleTime,
+			MaxConns:    expectedDBMaxConnsInt32,
+			MinConns:    expectedDBMinConnsInt32,
+			MaxLifetime: expectedDBMaxLifetime,
+			MaxIdleTime: expectedDBMaxIdleTime,
 		},
 		Security: Security{
 			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
@@ -145,6 +150,7 @@ func Test_mockLoader(t *testing.T) {
 			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
 			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
 			ReferrerPolicy:        expectedReferrerPolicy,
+			BcryptCost:            expectedBcryptCost,
 		},
 		SecureCookie: SecureCookie{
 			Secure:   expectedSecureCookieSecure,
@@ -171,7 +177,8 @@ func Test_mockLoader(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
-func Test_setEnv(t *testing.T) {
+func Test_setEnv(t *testing.T) { //nolint:funlen // safe: This function is only used
+	//  for testing and setting environment variables, so the complexity is acceptable.
 	setEnvVarsForTesting(t)
 	// OS
 	require.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
@@ -193,6 +200,7 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, expectedMetricsPassword, os.Getenv("METRICS_PASSWORD"))
 	// Observability
 	require.Equal(t, strconv.FormatBool(expectedObservabilityEnabled), os.Getenv("OBSERVABILITY_ENABLED"))
+	require.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBSERVABILITY_MASKED_DB_QUERY_ARGS"))
 	require.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBSERVABILITY_TARGET_STATUS_CODES"))
 	// Database
 	require.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
@@ -202,10 +210,11 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, expectedDBPassword, os.Getenv("DB_PASSWORD"))
 	require.Equal(t, expectedDBName, os.Getenv("DB_NAME"))
 	require.Equal(t, expectedDBSSLMode, os.Getenv("DB_SSL_MODE"))
+	require.Equal(t, expectedDBPingTimeoutStr, os.Getenv("DB_PING_TIMEOUT"))
 	require.Equal(t, expectedDBSlowQueryWarnThresholdStr, os.Getenv("DB_SLOW_QUERY_WARN_THRESHOLD"))
 	// DBConnection
-	require.Equal(t, strconv.Itoa(expectedDBMaxOpenConns), os.Getenv("DBCONN_MAX_OPEN"))
-	require.Equal(t, strconv.Itoa(expectedDBMaxIdleConns), os.Getenv("DBCONN_MAX_IDLE"))
+	require.Equal(t, strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10), os.Getenv("DBCONN_MAX_CONNS"))
+	require.Equal(t, strconv.FormatInt(int64(expectedDBMinConnsInt32), 10), os.Getenv("DBCONN_MIN_CONNS"))
 	require.Equal(t, expectedDBMaxLifetimeStr, os.Getenv("DBCONN_MAX_LIFETIME"))
 	require.Equal(t, expectedDBMaxIdleTimeStr, os.Getenv("DBCONN_MAX_IDLE_TIME"))
 	// Security
@@ -217,6 +226,7 @@ func Test_setEnv(t *testing.T) {
 	require.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
 	require.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
 	require.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
+	require.Equal(t, strconv.Itoa(expectedBcryptCost), os.Getenv("SECURITY_BCRYPT_COST"))
 	// Secure Cookie
 	require.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
 	require.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))

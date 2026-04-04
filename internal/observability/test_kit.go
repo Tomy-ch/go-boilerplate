@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	tracer = "noop-tracer"
-	layer  = "noop-layer"
-	pkg    = "noop-pkg"
-	span   = "noop-span"
+	tracer           = "noop-tracer"
+	layer  layerName = "noop-layer"
+	pkg              = "noop-pkg"
+	span             = "noop-span"
 )
 
 // NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。

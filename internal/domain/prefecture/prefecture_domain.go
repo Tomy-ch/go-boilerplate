@@ -16,9 +16,9 @@ const (
 	MaxCode                 = 47
 )
 
-type Entities []*Entity
+type Prefectures []*Prefecture
 
-type Entity struct {
+type Prefecture struct {
 	id   uuid.UUID
 	name string
 	code int
@@ -26,13 +26,12 @@ type Entity struct {
 
 // New は、都道府県エンティティの検証と生成を行います。
 func New(
-	idStr string,
+	id uuid.UUID,
 	name string,
 	code int,
-) (*Entity, error) {
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		return nil, xerrors.Wrap(ErrInvalidID, err.Error())
+) (*Prefecture, error) {
+	if id.IsNil() {
+		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
 	if !stringkit.InRange(name, MinPrefectureNameLength, MaxPrefectureNameLength) {
 		return nil, xerrors.Wrap(
@@ -47,7 +46,7 @@ func New(
 		)
 	}
 
-	return &Entity{
+	return &Prefecture{
 		id:   id,
 		name: name,
 		code: code,
@@ -55,10 +54,10 @@ func New(
 }
 
 // ID は、都道府県のIDを返します。
-func (p *Entity) ID() uuid.UUID { return p.id }
+func (p *Prefecture) ID() uuid.UUID { return p.id }
 
 // Name は、都道府県名を返します。
-func (p *Entity) Name() string { return p.name }
+func (p *Prefecture) Name() string { return p.name }
 
 // Code は、都道府県コードを返します。
-func (p *Entity) Code() int { return p.code }
+func (p *Prefecture) Code() int { return p.code }

@@ -15,13 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  golangci-setup:
-    uses: ./.github/workflows/golang-setup.yaml
-    permissions:
-      contents: read
-
   generate-oapi-check:
-    needs: golangci-setup
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,10 +24,16 @@ jobs:
       ENV: ci
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Run OpenAPI Bundle
-        run: make gen-swagger
+        run: make gen-bundle-oapi
 
       - name: Generate OpenAPI Docs
         run: make gen-api-docs
@@ -54,7 +54,7 @@ jobs:
 
       - name: Comment generated status on PR (diff/no-diff)
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -96,7 +96,7 @@ jobs:
                 '',
                 ...files.map(f => `- \`${f}\``),
                 '',
-                'Please run `make gen` locally and commit the changes.',
+                'Please run `make gen-api` locally and commit the changes.',
                 '',
                 updatedLine,
               ].join('\n');

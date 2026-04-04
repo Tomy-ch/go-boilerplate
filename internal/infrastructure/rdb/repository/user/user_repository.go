@@ -3,65 +3,83 @@ package user
 
 import (
 	"context"
-	"time"
 
 	"boilerplate-go/internal/domain/user"
-	"boilerplate-go/internal/infrastructure/rdb/conv"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
 	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
 	"boilerplate-go/internal/observability"
 )
 
 type repository struct {
-	db       driver.DatabaseDriver
-	provider loggingdb.DBProvider
-	tracer   observability.LayerTracer
+	db     loggingdb.DBProvider
+	tracer observability.LayerTracer
 }
 
 func New(
-	db driver.DatabaseDriver,
-	provider loggingdb.DBProvider,
+	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
 ) user.Repository {
 	return &repository{
-		db:       db,
-		provider: provider,
-		tracer:   tf.Infra(),
+		db:     db,
+		tracer: tf.Infra(),
 	}
 }
 
-// FindAll は、全ユーザーの情報を取得します。
-func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Entities, error) {
+// FindByActive は、アクティブ状態に基づいてユーザーの情報を取得します。
+func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (user.Users, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
-	rows, err := db.ListUsers(ctx, &gen.ListUsersParams{
-		OffsetParam: offset,
-		LimitParam:  limit,
-	})
+	db := gen.New(r.db.NewLoggingDB(ctx))
+
+	switch {
+	case active == nil:
+		return fetchListUsersRows(ctx, db, &gen.ListUsersParams{
+			OffsetParam: offset,
+			LimitParam:  limit,
+		})
+	case *active:
+		return fetchListUsersRowsByActive(ctx, db, &gen.ListActiveUsersParams{
+			OffsetParam: offset,
+			LimitParam:  limit,
+		})
+	case !*active:
+		return fetchListUsersRowsByDeleted(ctx, db, &gen.ListDeletedUsersParams{
+			OffsetParam: offset,
+			LimitParam:  limit,
+		})
+	default:
+		panic("unreachable: invalid active")
+	}
+}
+
+// fetchListUsersRows は、ユーザーの情報を取得します。
+func fetchListUsersRows(
+	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
+) (user.Users, error) {
+	rows, err := db.ListUsers(ctx, params)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	users := make(user.Entities, len(rows))
+	users := make(user.Users, len(rows))
 	for i, row := range rows {
 		user, err := user.New(
-			row.Users.ID.String(),
+			row.Users.ID,
 			row.Users.FirstName,
 			row.Users.LastName,
 			row.Users.PasswordHash,
 			row.Users.Email,
 			row.Users.Phone,
-			row.Users.PrefectureID.String(),
+			row.Users.PrefectureID,
 			row.Users.City,
 			row.Users.Street,
-			conv.StringPtrFromNull(row.Users.Building),
+			row.Users.Building,
 			row.Users.PostalCode,
-			conv.TimePtrFromNull(row.Users.DeletedAt),
+			row.Users.CreatedAt,
+			row.Users.UpdatedAt,
+			row.Users.DeletedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -71,43 +89,32 @@ func (r *repository) FindAll(ctx context.Context, limit, offset int32) (user.Ent
 	return users, nil
 }
 
-// FindByKeyword は、キーワード検索でユーザーの情報を取得します。
-func (r *repository) FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (user.Entities, error) {
-	ctx, endSpan := r.tracer.Start(ctx)
-	defer endSpan()
-
-	tokens := make([]string, len(keywords))
-	for i, kw := range keywords {
-		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
-		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
-	}
-
-	db := gen.New(r.provider.NewLoggingDB(ctx))
-	rows, err := db.ListUsersByKeywords(ctx, &gen.ListUsersByKeywordsParams{
-		PatternsParam: tokens,
-		DeletedState:  sqlc.BoolPtrToDeletedState(active),
-		LimitParam:    int32(limit),
-		OffsetParam:   int32(offset),
-	})
+// fetchListUsersRowsByActive は、アクティブ状態に基づいてユーザーの情報を取得します。
+func fetchListUsersRowsByActive(
+	ctx context.Context, db *gen.Queries, params *gen.ListActiveUsersParams,
+) (user.Users, error) {
+	rows, err := db.ListActiveUsers(ctx, params)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	users := make(user.Entities, len(rows))
+	users := make(user.Users, len(rows))
 	for i, row := range rows {
 		user, err := user.New(
-			row.Users.ID.String(),
+			row.Users.ID,
 			row.Users.FirstName,
 			row.Users.LastName,
 			row.Users.PasswordHash,
 			row.Users.Email,
 			row.Users.Phone,
-			row.Users.PrefectureID.String(),
+			row.Users.PrefectureID,
 			row.Users.City,
 			row.Users.Street,
-			conv.StringPtrFromNull(row.Users.Building),
+			row.Users.Building,
 			row.Users.PostalCode,
-			conv.TimePtrFromNull(row.Users.DeletedAt),
+			row.Users.CreatedAt,
+			row.Users.UpdatedAt,
+			row.Users.DeletedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -117,26 +124,61 @@ func (r *repository) FindByKeyword(ctx context.Context, keywords []string, activ
 	return users, nil
 }
 
-// CreateUser は、ユーザーを作成します。
-func (r *repository) CreateUser(ctx context.Context, datetime time.Time, user *user.Entity) error {
+// fetchListUsersRowsByDeleted は、削除されたユーザーの情報を取得します。
+func fetchListUsersRowsByDeleted(
+	ctx context.Context, db *gen.Queries, params *gen.ListDeletedUsersParams,
+) (user.Users, error) {
+	rows, err := db.ListDeletedUsers(ctx, params)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	users := make(user.Users, len(rows))
+	for i, row := range rows {
+		user, err := user.New(
+			row.Users.ID,
+			row.Users.FirstName,
+			row.Users.LastName,
+			row.Users.PasswordHash,
+			row.Users.Email,
+			row.Users.Phone,
+			row.Users.PrefectureID,
+			row.Users.City,
+			row.Users.Street,
+			row.Users.Building,
+			row.Users.PostalCode,
+			row.Users.CreatedAt,
+			row.Users.UpdatedAt,
+			row.Users.DeletedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users[i] = user
+	}
+	return users, nil
+}
+
+// Create は、ユーザーを作成します。
+func (r *repository) Create(ctx context.Context, user *user.User) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
+	db := gen.New(r.db.NewLoggingDB(ctx))
 	err := db.CreateUser(ctx, &gen.CreateUserParams{
-		ID:           user.ID().ToPrimitive(),
+		ID:           user.ID(),
 		FirstName:    user.FirstName(),
 		LastName:     user.LastName(),
-		PasswordHash: user.Password(),
+		PasswordHash: user.PasswordHash(),
 		Email:        user.Email(),
 		Phone:        user.Phone(),
-		PrefectureID: user.PrefectureID().ToPrimitive(),
+		PrefectureID: user.PrefectureID(),
 		City:         user.City(),
 		Street:       user.Street(),
-		Building:     conv.NullStringFromPtr(user.Building()),
+		Building:     user.Building(),
 		PostalCode:   user.PostalCode(),
-		CreatedAt:    datetime,
-		UpdatedAt:    datetime,
+		CreatedAt:    user.CreatedAt(),
+		UpdatedAt:    user.UpdatedAt(),
 	})
 	if err != nil {
 		return pgerror.NormalizeError(err)
@@ -149,10 +191,27 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.provider.NewLoggingDB(ctx))
-	count, err := db.CountUsersByDeletedState(ctx, sqlc.BoolPtrToDeletedState(active))
+	db := gen.New(r.db.NewLoggingDB(ctx))
+
+	var (
+		count int64
+		err   error
+	)
+
+	switch {
+	case active == nil:
+		count, err = db.CountUsers(ctx)
+	case *active:
+		count, err = db.CountActiveUsers(ctx)
+	case !*active:
+		count, err = db.CountDeletedUsers(ctx)
+	default:
+		panic("unreachable: invalid active")
+	}
+
 	if err != nil {
 		return 0, pgerror.NormalizeError(err)
 	}
+
 	return count, nil
 }

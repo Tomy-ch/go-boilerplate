@@ -1,6 +1,7 @@
 package oapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,8 @@ func TestMiddleware(t *testing.T) {
 	spec := &openapi3.T{}
 	mw := Middleware(spec, nil, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e := echo.New()
 	c := e.NewContext(req, rec)

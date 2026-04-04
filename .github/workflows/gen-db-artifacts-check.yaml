@@ -14,13 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  golangci-setup:
-    uses: ./.github/workflows/golang-setup.yaml
-    permissions:
-      contents: read
-
   generate-db-check:
-    needs: golangci-setup
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,7 +27,7 @@ jobs:
 
     services:
       database:
-        image: postgres:17.5
+        image: postgres:18.3-bookworm
         env:
           POSTGRES_USER: ${{ env.DB_USER }}
           POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
@@ -52,7 +46,14 @@ jobs:
 
     steps:
       - name: Fetch & Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
       - name: Install sqlc
         run: |
           go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
@@ -91,7 +92,7 @@ jobs:
           fi
       - name: Comment changed files on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

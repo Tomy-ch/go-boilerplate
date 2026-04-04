@@ -1,9 +1,7 @@
 package config
 
 import (
-	"fmt"
 	"net"
-	"net/url"
 	"time"
 )
 
@@ -50,6 +48,7 @@ type MetricsConfig struct {
 
 type ObservabilityConfig struct {
 	enabled             bool
+	maskedDBQueryArgs   bool
 	targetStatusCodes   []int
 	targetStatusCodeSet map[int]bool
 }
@@ -62,14 +61,15 @@ type DatabaseConfig struct {
 	password               string
 	name                   string
 	sslMode                string
+	pingTimeout            time.Duration
 	slowQueryWarnThreshold time.Duration
 }
 
 type DBConnectionConfig struct {
-	maxOpenConns int
-	maxIdleConns int
-	maxLifetime  time.Duration
-	maxIdleTime  time.Duration
+	maxConns    int32
+	minConns    int32
+	maxLifetime time.Duration
+	maxIdleTime time.Duration
 }
 
 type SecurityConfig struct {
@@ -81,6 +81,7 @@ type SecurityConfig struct {
 	hstsExcludeSubdomains bool
 	hstsPreloadEnabled    bool
 	referrerPolicy        string
+	bcryptCost            int
 }
 
 type SecureCookieConfig struct {
@@ -182,6 +183,9 @@ func NewObservabilityConfig(cfg *Config) *ObservabilityConfig { return &cfg.obse
 // Enabled は、可観測モードが有効かどうかを返します。
 func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
 
+// MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。
+func (o *ObservabilityConfig) MaskedDBQueryArgs() bool { return o.maskedDBQueryArgs }
+
 // TargetStatusCodes は、可観測モードで監視対象となるHTTPステータスコードのリストを返します。
 func (o *ObservabilityConfig) TargetStatusCodes() []int { return o.targetStatusCodes }
 
@@ -212,42 +216,23 @@ func (d *DatabaseConfig) DBName() string { return d.name }
 // SSLMode は、データベースのSSLモードを返します。
 func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
 
+// PingTimeout は、データベースのpingタイムアウトを返します。
+func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
+
 // SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。
 //
 // この値より長く実行されたクエリは警告レベルでログ出力されます。
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
 
-// DSN は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		d.user,
-		d.password,
-		d.host,
-		d.port,
-		d.name,
-		d.sslMode,
-	)
-}
-
-// DSNWithTimeZone は、データベースの接続URLを返します。
-func (d *DatabaseConfig) DSNWithTimeZone(o *OperationSystemConfig) string {
-	return fmt.Sprintf(
-		"%s&timezone=%s",
-		d.DSN(),
-		url.QueryEscape(o.timezone),
-	)
-}
-
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }
 
-// MaxOpenConns は、データベースの最大オープン接続数を返します。
-func (c *DBConnectionConfig) MaxOpenConns() int { return c.maxOpenConns }
+// MaxConns は、データベースの最大オープン接続数を返します。
+func (c *DBConnectionConfig) MaxConns() int32 { return c.maxConns }
 
-// MaxIdleConns は、データベースの最大アイドル接続数を返します。
-func (c *DBConnectionConfig) MaxIdleConns() int { return c.maxIdleConns }
+// MinConns は、pgxpool の最小プールサイズ（最小接続数）を返します。
+func (c *DBConnectionConfig) MinConns() int32 { return c.minConns }
 
 // MaxLifetime は、データベースの接続の最大寿命を返します。
 func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime }
@@ -281,6 +266,9 @@ func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled
 
 // ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
 func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
+
+// BcryptCost は、bcryptのコストを返します。
+func (s *SecurityConfig) BcryptCost() int { return s.bcryptCost }
 
 // NewSecureCookieConfig は、セキュアクッキーの設定を返します。
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }

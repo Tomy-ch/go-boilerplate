@@ -13,7 +13,6 @@ import (
 	"boilerplate-go/internal/observability"
 	"boilerplate-go/internal/usecase/tools/paging"
 	"boilerplate-go/internal/usecase/user"
-	"boilerplate-go/pkg/ptr"
 	"boilerplate-go/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
@@ -45,12 +44,12 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 		return nil, err
 	}
 
-	params := &user.GetParamsDTO{
-		Keyword: request.Params.Keyword,
-		Active:  request.Params.Active,
+	dtos, err := s.uc.ListUsers(ctx, request.Params.Active, page)
+	if err != nil {
+		return nil, err
 	}
 
-	dtos, err := s.uc.ListUsersByKeyword(ctx, params, page)
+	total, err := s.uc.CountUsers(ctx, request.Params.Active)
 	if err != nil {
 		return nil, err
 	}
@@ -61,17 +60,19 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 			FirstName:  dto.FirstName,
 			LastName:   dto.LastName,
 			Email:      types.Email(dto.Email),
-			Phone:      ptr.To(dto.Phone),
+			Phone:      dto.Phone,
 			PostalCode: dto.PostalCode,
 			Prefecture: dto.PrefectureName,
 			City:       dto.City,
 			Street:     dto.Street,
 			Building:   dto.Building,
+			DeletedAt:  dto.DeletedAt,
 		}
 	}
 
-	res := gen.ResponseV1Users{
+	res := gen.UsersResponse{
 		Users:  users,
+		Total:  total,
 		Limit:  page.Limit(),
 		Offset: page.Offset(),
 	}
@@ -104,7 +105,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	createPrams.City = request.Body.City
 	createPrams.Street = request.Body.Street
 	createPrams.Building = request.Body.Building
-	createPrams.Password = request.Body.Password
+	createPrams.RawPassword = request.Body.Password
 
 	dto, err := s.uc.CreateUser(ctx, createPrams)
 	if err != nil {
@@ -115,12 +116,13 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
 		Email:      types.Email(dto.Email),
-		Phone:      ptr.To(dto.Phone),
+		Phone:      dto.Phone,
 		PostalCode: dto.PostalCode,
 		Prefecture: dto.PrefectureName,
 		City:       dto.City,
 		Street:     dto.Street,
 		Building:   dto.Building,
+		DeletedAt:  dto.DeletedAt,
 	}
 
 	return gen.PostUsers201JSONResponse(res), nil

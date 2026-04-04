@@ -1,7 +1,7 @@
 # ------------------------------
 # Go (builder) - ここでだけ go install する
 # ------------------------------
-FROM golang:1.24.4-alpine AS go_tools_builder
+FROM golang:1.26.1-alpine AS go_tools_builder
 
 ENV CGO_ENABLED=0 \
     GOBIN=/out
@@ -23,15 +23,16 @@ RUN rm -rf /go/pkg/mod /root/.cache/go-build
 # ------------------------------
 # Go
 # ------------------------------
-FROM golang:1.24.4-alpine AS go_tools
-
-WORKDIR /app
-
-ENV PATH="/go/bin:$PATH"
+FROM golang:1.26.1-alpine AS go_tools
 
 RUN apk add --no-cache bash make postgresql-client
 
+WORKDIR /app
+
 COPY --from=go_tools_builder /out/ /usr/local/bin/
+
+ENV GOCACHE=/tmp/go-build \
+    GOMODCACHE=/tmp/go-mod
 
 ENTRYPOINT []
 CMD []
@@ -39,14 +40,21 @@ CMD []
 # ------------------------------
 # Node.js
 # ------------------------------
-FROM node:24.4-alpine AS node_tools
-
-WORKDIR /app
+FROM node:24.14-alpine AS node_tools
 
 RUN apk add --no-cache bash make
 
-RUN npm install -g swagger-cli@latest --no-audit --no-fund \
-  && npm install -g @redocly/cli@latest
+WORKDIR /opt/tools
+
+COPY docker/tools/package.json ./
+RUN npm install
+
+# node_modulesの参照パスを追加
+ENV NODE_PATH=/opt/tools/node_modules
+
+RUN npm install -g @redocly/cli@latest
+
+WORKDIR /app
 
 ENTRYPOINT []
 CMD []

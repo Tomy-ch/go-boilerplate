@@ -7,16 +7,10 @@
     "impl": "${HOME}/go/bin/impl"
   },
 
-  // 保存時に golangci-lint 実行（Go拡張による）
   "go.lintTool": "golangci-lint-v2",
-
-  // 保存時にファイル or パッケージ単位で実行
   "go.lintOnSave": "package",
-
-  // gopls 設定(補完・定義ジャンプなど)
   "go.useLanguageServer": true,
 
-  // Language Server(gopls) 設定
   "gopls": {
     "usePlaceholders": true,
     "formatting.gofumpt": true,
@@ -28,32 +22,15 @@
       "unusedparams": true,
       "unusedvariable": true,
       "shadow": true
-    }
+    },
+    "build.directoryFilters": [
+      "-node_modules",
+      "-vendor",
+      "-dist",
+      "-tmp"
+    ]
   },
 
-  // インデント・空白系（Go向け推奨）
-  "[go]": {
-    "editor.insertSpaces": false,
-    "editor.tabSize": 4,
-    "editor.detectIndentation": false,
-		"editor.guides.indentation": true,
-    "editor.formatOnSave": true
-  },
-	"[markdown]": {
-		"editor.tabSize": 2,
-		"editor.formatOnSave": true,
-		"editor.formatOnPaste": true
-	},
-
-  // 保存時にインポートと整形を自動実行
-	"editor.codeActionsOnSave": {
-		"source.fixAll.markdownlint": "always"
-	},
-
-  // 補完候補の選択動作を変更
-  "editor.suggestSelection": "first",
-
-  // material-icon-themeの設定の一部を追加する
   "material-icon-theme.folders.associations": {
     "testkit": "test",
     "actions": "gh-workflows",
@@ -77,8 +54,45 @@
     "xerrors": "error",
   },
 
-  // この設定を追加することで、特定のファイルやディレクトリをエクスプローラーから非表示にできます。
-  "files.exclude": {
-    "openapi/openapi.gen.yaml": true // 42crunch.vscode-openapi がエラーを誤検知するため、エクスプローラーから非表示にします。
+  "[go]": {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+		"editor.guides.indentation": true,
+    "editor.formatOnSave": true
+  },
+	"[markdown]": {
+		"editor.tabSize": 2,
+		"editor.formatOnSave": true,
+		"editor.formatOnPaste": true
+	},
+  "[javascriptreact]": {
+    "editor.tabSize": 2,
+		"editor.formatOnSave": true,
+		"editor.formatOnPaste": true
+  },
+  "[javascript]": {
+    "editor.tabSize": 2,
+		"editor.formatOnSave": true,
+		"editor.formatOnPaste": true
+  },
+
+  "makefile.configureOnOpen": false,
+  "editor.suggestSelection": "first",
+  "files.watcherExclude": {
+    "**/vendor/**": true,
+    "**/.git/**": true,
+    "**/dist/**": true
+  },
+  "search.exclude": {
+    "**/vendor": true,
+    "**/.git/**": true
+  },
+  "json.schemaDownload.enable": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.markdownlint": "always"
+  },
+  "json.schemaDownload.trustedDomains": {
+    "https://raw.githubusercontent.com": true
   }
 }

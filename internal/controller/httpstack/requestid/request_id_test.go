@@ -1,6 +1,7 @@
 package requestid
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,8 @@ func Test_getRequestID(t *testing.T) {
 
 	t.Run("X-Request-ID が設定されている場合", func(t *testing.T) {
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.Response().Header().Set(echo.HeaderXRequestID, expected)
@@ -27,7 +29,8 @@ func Test_getRequestID(t *testing.T) {
 
 	t.Run("X-Request-ID が設定されていない場合", func(t *testing.T) {
 		e := echo.New()
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 

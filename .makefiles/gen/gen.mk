@@ -1,7 +1,8 @@
 ## 生成関連のコマンドの一括実行コマンド群
 .PHONY: gen ## 各種ドキュメントやコードを生成します
 .PHONY: gen-api ## API関連のドキュメントやコードを生成します
-.PHONY: gen-doc ## ドキュメント関連の生成を行います
+.PHONY: gen-docs ## ドキュメント関連の生成を行います
+.PHONY: gen-all-docs ## ドキュメント関連の生成を全て行います
 .PHONY: gen-query ## SQLCのコード生成を行う
 .PHONY: gen-query-repo ## ドメイン用のSQLCのコード生成を行う
 .PHONY: gen-query-qs ## クエリサービス用のSQLCのコード生成を行う
@@ -11,16 +12,24 @@ gen:
 	@echo "🔄 各種ドキュメントやコードの生成します..."
 	@make gen-api
 	@make gen-query
-	@make gen-doc
+	@make gen-docs
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
 gen-api:
-	@make gen-swagger
+	@make gen-bundle-oapi
+	@make gen-api-docs
 	@make gen-go-code
 
-gen-doc:
+gen-docs:
 	@make gen-api-docs
 	@make gen-tools-meta
+	@make gen-portal-docs
+	@make gen-docs-json
+
+gen-all-docs:
+	@make gen-docs
+	@make gen-db-schema
+	@make gen-test-repo
 
 gen-query:
 	@echo "🔄 SQLCのコードを生成します..."

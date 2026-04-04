@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,13 +27,14 @@ func TestBindHandler_BasicAuth(t *testing.T) {
 	e := echo.New()
 	BindHandler(e, validator)
 
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/metrics", nil)
 	req.SetBasicAuth(mtc.UserName(), mtc.Password())
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	req2 := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	req2 := httptest.NewRequestWithContext(ctx, http.MethodGet, "/metrics", nil)
 	rec2 := httptest.NewRecorder()
 	e.ServeHTTP(rec2, req2)
 	require.Equal(t, http.StatusUnauthorized, rec2.Code)

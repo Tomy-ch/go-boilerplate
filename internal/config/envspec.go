@@ -45,7 +45,8 @@ type Metrics struct {
 
 type Observability struct {
 	Enabled           bool  `env:"ENABLED,required"`
-	TargetStatusCodes []int `env:"TARGET_STATUS_CODES,required" envSeparator:","`
+	MaskedDBQueryArgs bool  `env:"MASKED_DB_QUERY_ARGS,required"`
+	TargetStatusCodes []int `env:"TARGET_STATUS_CODES,required"  envSeparator:","`
 }
 
 type Database struct {
@@ -56,14 +57,15 @@ type Database struct {
 	Password               string        `env:"PASSWORD,required"`
 	Name                   string        `env:"NAME,required"`
 	SSLMode                string        `env:"SSL_MODE,required"`
+	PingTimeout            time.Duration `env:"PING_TIMEOUT,required"`
 	SlowQueryWarnThreshold time.Duration `env:"SLOW_QUERY_WARN_THRESHOLD,required"`
 }
 
 type DBConnection struct {
-	MaxOpenConns int           `env:"MAX_OPEN,required"`
-	MaxIdleConns int           `env:"MAX_IDLE,required"`
-	MaxLifetime  time.Duration `env:"MAX_LIFETIME,required"`
-	MaxIdleTime  time.Duration `env:"MAX_IDLE_TIME,required"`
+	MaxConns    int32         `env:"MAX_CONNS,required"`
+	MinConns    int32         `env:"MIN_CONNS,required"`
+	MaxLifetime time.Duration `env:"MAX_LIFETIME,required"`
+	MaxIdleTime time.Duration `env:"MAX_IDLE_TIME,required"`
 }
 
 type Security struct {
@@ -75,6 +77,7 @@ type Security struct {
 	HSTSExcludeSubdomains bool          `env:"HSTS_EXCLUDE_SUBDOMAINS,required"`
 	HSTSPreloadEnabled    bool          `env:"HSTS_PRELOAD_ENABLED,required"`
 	ReferrerPolicy        string        `env:"REFERRER_POLICY,required"`
+	BcryptCost            int           `env:"BCRYPT_COST,required"`
 }
 
 type SecureCookie struct {
