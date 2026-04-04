@@ -33,20 +33,20 @@ endef
 
 hotfix-patch:
 	@V=$(call get-latest-version); \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.js $$V patch); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V patch); \
 	$(call do-generate-from-branch,$$V,$$NEXT,production,hotfix)
 
 branch-patch:
 	@V=$(call get-latest-version); \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.js $$V patch); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V patch); \
 	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
 
 branch-minor:
 	@V=$(call get-latest-version); \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.js $$V minor); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V minor); \
 	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
 
 branch-major:
 	@V=$(call get-latest-version); \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.js $$V major); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V major); \
 	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
