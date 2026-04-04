@@ -1,7 +1,7 @@
 package core
 
 import (
-	"boilerplate-go/internal/controller/httpstack/oapi/skipper"
+	"go-boilerplate/internal/controller/httpstack/oapi/skipper"
 
 	"go.uber.org/fx"
 )

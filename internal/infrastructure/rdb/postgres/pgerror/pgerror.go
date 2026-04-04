@@ -7,8 +7,8 @@ import (
 	"net"
 	"strings"
 
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"

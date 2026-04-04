@@ -5,9 +5,9 @@ import (
 	"context"
 	"strings"
 
-	"boilerplate-go/internal/apperror"
-	authbd "boilerplate-go/internal/usecase/boundary/auth"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/apperror"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (

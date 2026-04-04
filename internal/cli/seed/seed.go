@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"sort"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5/pgconn"
 

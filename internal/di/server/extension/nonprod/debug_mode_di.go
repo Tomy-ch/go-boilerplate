@@ -2,9 +2,9 @@
 package nonprod
 
 import (
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/debugmode"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/debugmode"
+	"go-boilerplate/internal/di/server/extension"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"

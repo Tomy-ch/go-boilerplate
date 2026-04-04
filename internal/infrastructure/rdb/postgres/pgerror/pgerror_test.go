@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"boilerplate-go/internal/apperror"
+	"go-boilerplate/internal/apperror"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"

@@ -39,13 +39,13 @@ sql:
             nullable: true
           - db_type: uuid
             go_type:
-              import: boilerplate-go/pkg/uuid
+              import: go-boilerplate/pkg/uuid
               package: uuid
               type: UUID
           - db_type: uuid
             nullable: true
             go_type:
-              import: boilerplate-go/pkg/uuid
+              import: go-boilerplate/pkg/uuid
               package: uuid
               type: UUID
               pointer: true

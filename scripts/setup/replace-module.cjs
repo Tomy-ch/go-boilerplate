@@ -34,18 +34,18 @@ function printUsage() {
   node scripts/setup/replace-module.cjs <old-module> <new-module> [--dry-run]
 
 例:
-  node scripts/setup/replace-module.cjs boilerplate-go example-api
+  node scripts/setup/replace-module.cjs go-boilerplate example-api
   node scripts/setup/replace-module.cjs old-project new-project --dry-run
 
 補足:
-  Go モジュール名は boilerplate-go のような単純なプロジェクト名を想定しています。
+  Go モジュール名は go-boilerplate のような単純なプロジェクト名を想定しています。
   docs 配下と生成物 (*.gen.go, *.sql.go, *_mock.go, openapi/openapi.gen.yaml) は対象外です。`)
 }
 
 function ensureSimpleModuleName(value, flagName) {
   if (!/^[A-Za-z0-9._-]+$/.test(value)) {
     throw new Error(
-      `${flagName} は boilerplate-go のような単純なプロジェクト名で指定してください。`
+      `${flagName} は go-boilerplate のような単純なプロジェクト名で指定してください。`
     )
   }
 }

@@ -1,7 +1,7 @@
 package core
 
 import (
-	"boilerplate-go/internal/controller/httpstack/ratelimit"
+	"go-boilerplate/internal/controller/httpstack/ratelimit"
 
 	"go.uber.org/fx"
 )

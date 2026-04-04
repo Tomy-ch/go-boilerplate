@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/logging"
 )
 
 func TestLoggingModule_ProvidesLoggerAndFields(t *testing.T) {

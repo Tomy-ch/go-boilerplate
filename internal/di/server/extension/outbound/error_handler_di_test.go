@@ -3,8 +3,8 @@ package outbound
 import (
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/health/gen"
-	"boilerplate-go/internal/controller/handler/healthz"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/controller/handler/health/gen"
+	"go-boilerplate/internal/controller/handler/healthz"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 )

@@ -1,4 +1,4 @@
-module boilerplate-go
+module go-boilerplate
 
 go 1.26.1
 

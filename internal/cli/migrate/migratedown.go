@@ -3,8 +3,8 @@ package migrate
 import (
 	"errors"
 
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/safecast"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/safecast"
 
 	"github.com/spf13/cobra"
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"

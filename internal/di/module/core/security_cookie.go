@@ -1,7 +1,7 @@
 package core
 
 import (
-	"boilerplate-go/internal/controller/httpstack/cookie"
+	"go-boilerplate/internal/controller/httpstack/cookie"
 
 	"go.uber.org/fx"
 )

@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	mock_driver "boilerplate-go/internal/infrastructure/rdb/driver/mock"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/config"
+	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

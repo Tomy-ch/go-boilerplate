@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"boilerplate-go/internal/controller/error/response/gen"
-	"boilerplate-go/pkg/ptr"
+	"go-boilerplate/internal/controller/error/response/gen"
+	"go-boilerplate/pkg/ptr"
 )
 
 // HTTPErrorResponse は、HTTPエラーレスポンスの構造体です。

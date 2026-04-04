@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/error/response"
-	"boilerplate-go/internal/controller/httpstack/requestid"
-	"boilerplate-go/internal/controller/server"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/error/response"
+	"go-boilerplate/internal/controller/httpstack/requestid"
+	"go-boilerplate/internal/controller/server"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 )

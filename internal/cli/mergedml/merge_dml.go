@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/logging"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"

@@ -1,8 +1,8 @@
 package outbound
 
 import (
-	"boilerplate-go/internal/controller/httpstack/forcejson"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/controller/httpstack/forcejson"
+	"go-boilerplate/internal/di/server/extension"
 
 	"go.uber.org/fx"
 )

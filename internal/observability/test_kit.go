@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/logging"
 
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/pkg/ptr"
+	"go-boilerplate/pkg/ptr"
 
 	"golang.org/x/crypto/bcrypt"
 )

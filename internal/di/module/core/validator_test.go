@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	echomw "github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/require"

@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

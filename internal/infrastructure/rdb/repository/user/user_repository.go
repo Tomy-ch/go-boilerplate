@@ -4,11 +4,11 @@ package user
 import (
 	"context"
 
-	"boilerplate-go/internal/domain/user"
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
-	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/domain/user"
+	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
+	"go-boilerplate/internal/observability"
 )
 
 type repository struct {

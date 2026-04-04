@@ -3,9 +3,9 @@ package hook
 import (
 	"context"
 
-	"boilerplate-go/internal/di/lifecycle"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/di/lifecycle"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/logging"
 )
 
 // RegisterDBCloseHooks は、アプリケーションのシャットダウン時にデータベース接続を閉じるためのフックを登録します。

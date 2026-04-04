@@ -1,8 +1,8 @@
 package migrate
 
 import (
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 

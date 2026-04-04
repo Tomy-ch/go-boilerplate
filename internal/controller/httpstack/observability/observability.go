@@ -2,7 +2,7 @@
 package observability
 
 import (
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"

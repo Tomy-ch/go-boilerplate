@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 )

@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"

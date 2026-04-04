@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/health/gen"
-	"boilerplate-go/internal/controller/handler/testkit/testassert"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/controller/handler/health/gen"
+	"go-boilerplate/internal/controller/handler/testkit/testassert"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

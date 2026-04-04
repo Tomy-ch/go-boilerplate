@@ -3,7 +3,7 @@ package logging
 import (
 	"testing"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"go.uber.org/zap/zaptest"
 )

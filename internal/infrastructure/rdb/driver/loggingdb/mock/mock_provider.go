@@ -10,11 +10,11 @@
 package mock_loggingdb
 
 import (
-	config "boilerplate-go/internal/config"
-	driver "boilerplate-go/internal/infrastructure/rdb/driver"
-	logging "boilerplate-go/internal/logging"
-	observability "boilerplate-go/internal/observability"
 	context "context"
+	config "go-boilerplate/internal/config"
+	driver "go-boilerplate/internal/infrastructure/rdb/driver"
+	logging "go-boilerplate/internal/logging"
+	observability "go-boilerplate/internal/observability"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

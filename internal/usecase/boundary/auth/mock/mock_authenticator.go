@@ -10,8 +10,8 @@
 package mock_auth
 
 import (
-	auth "boilerplate-go/internal/usecase/boundary/auth"
 	context "context"
+	auth "go-boilerplate/internal/usecase/boundary/auth"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

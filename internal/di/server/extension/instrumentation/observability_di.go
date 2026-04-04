@@ -1,9 +1,9 @@
 package instrumentation
 
 import (
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/observability"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/observability"
+	"go-boilerplate/internal/di/server/extension"
 
 	"go.uber.org/fx"
 )

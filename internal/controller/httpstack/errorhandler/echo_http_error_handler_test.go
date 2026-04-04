@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/error/response"
+	"go-boilerplate/internal/controller/error/response"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

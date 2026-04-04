@@ -4,8 +4,8 @@ package migrate
 import (
 	"os"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 
 	"github.com/golang-migrate/migrate/v4"
 )

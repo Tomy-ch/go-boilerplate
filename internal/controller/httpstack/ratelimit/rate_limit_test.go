@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/config"
-	mock_ratelimit "boilerplate-go/internal/controller/httpstack/ratelimit/mock"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
+	mock_ratelimit "go-boilerplate/internal/controller/httpstack/ratelimit/mock"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

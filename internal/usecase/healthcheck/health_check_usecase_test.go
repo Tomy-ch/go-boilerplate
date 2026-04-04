@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/healthcheck/query"
-	mock_query "boilerplate-go/internal/usecase/healthcheck/query/mock"
-	"boilerplate-go/internal/usecase/testkit"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/healthcheck/query"
+	mock_query "go-boilerplate/internal/usecase/healthcheck/query/mock"
+	"go-boilerplate/internal/usecase/testkit"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

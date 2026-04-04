@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/infrastructure/rdb/testkit"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/observability"
 
 	"github.com/stretchr/testify/require"
 )

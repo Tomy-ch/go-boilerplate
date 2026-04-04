@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/fnmeta"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
 )

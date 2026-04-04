@@ -3,7 +3,7 @@ package observability
 import (
 	"context"
 
-	"boilerplate-go/internal/di/lifecycle"
+	"go-boilerplate/internal/di/lifecycle"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/resource"

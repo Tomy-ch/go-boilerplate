@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	config "boilerplate-go/internal/config"
+	config "go-boilerplate/internal/config"
 
 	"github.com/stretchr/testify/require"
 )

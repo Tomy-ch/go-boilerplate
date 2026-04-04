@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/pkg/ptr"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/ptr"
 )
 
 // SecurityCookie は Set-Cookie を正規化するための設定です。

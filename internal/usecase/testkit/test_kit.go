@@ -5,9 +5,9 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/usecase/boundary/tx"
-	mock_tx "boilerplate-go/internal/usecase/boundary/tx/mock"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/usecase/boundary/tx"
+	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"go.uber.org/mock/gomock"
 )

@@ -2,9 +2,9 @@
 package instrumentation
 
 import (
-	hslogger "boilerplate-go/internal/controller/httpstack/logging"
-	"boilerplate-go/internal/di/server/extension"
-	"boilerplate-go/internal/logging"
+	hslogger "go-boilerplate/internal/controller/httpstack/logging"
+	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/logging"
 
 	"go.uber.org/fx"
 )

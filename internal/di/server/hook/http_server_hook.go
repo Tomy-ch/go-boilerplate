@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/di/lifecycle"
-	"boilerplate-go/internal/di/server/extension"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/di/lifecycle"
+	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 )

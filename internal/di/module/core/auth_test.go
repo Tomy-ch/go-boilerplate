@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/infrastructure/auth/local"
-	"boilerplate-go/internal/logging"
-	authbd "boilerplate-go/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/auth/local"
+	"go-boilerplate/internal/logging"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"

@@ -7,14 +7,14 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/domain/prefecture"
-	"boilerplate-go/internal/domain/user"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/boundary/clock"
-	"boilerplate-go/internal/usecase/boundary/security"
-	"boilerplate-go/internal/usecase/boundary/tx"
-	"boilerplate-go/internal/usecase/tools/paging"
-	"boilerplate-go/pkg/uuid"
+	"go-boilerplate/internal/domain/prefecture"
+	"go-boilerplate/internal/domain/user"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/clock"
+	"go-boilerplate/internal/usecase/boundary/security"
+	"go-boilerplate/internal/usecase/boundary/tx"
+	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/uuid"
 )
 
 // MutableFields は、ユーザー取得結果のDTOを表します。

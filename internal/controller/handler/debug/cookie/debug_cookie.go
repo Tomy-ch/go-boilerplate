@@ -15,7 +15,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"boilerplate-go/internal/controller/handler/debug/cookie/gen"
+	"go-boilerplate/internal/controller/handler/debug/cookie/gen"
 
 	"github.com/labstack/echo/v4"
 )

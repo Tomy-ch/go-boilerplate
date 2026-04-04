@@ -32,9 +32,9 @@ RUN go list -mod=vendor all
 
 RUN go build -mod=vendor -trimpath \
   -ldflags="-s -w \
-    -X 'boilerplate-go/internal/system.Version=${VERSION}' \
-    -X 'boilerplate-go/internal/system.Revision=${REVISION}' \
-    -X 'boilerplate-go/internal/system.BuildDate=${BUILD_DATE}'" \
+    -X 'go-boilerplate/internal/system.Version=${VERSION}' \
+    -X 'go-boilerplate/internal/system.Revision=${REVISION}' \
+    -X 'go-boilerplate/internal/system.BuildDate=${BUILD_DATE}'" \
   -o /app/bin/server ./cmd/main.go
 
 # ------------------------------

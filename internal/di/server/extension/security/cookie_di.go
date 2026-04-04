@@ -1,8 +1,8 @@
 package security
 
 import (
-	"boilerplate-go/internal/controller/httpstack/cookie"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/controller/httpstack/cookie"
+	"go-boilerplate/internal/di/server/extension"
 
 	"go.uber.org/fx"
 )

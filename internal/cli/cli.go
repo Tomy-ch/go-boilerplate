@@ -2,13 +2,13 @@
 package cli
 
 import (
-	"boilerplate-go/internal/cli/dumpschema"
-	"boilerplate-go/internal/cli/fixcollation"
-	"boilerplate-go/internal/cli/job"
-	"boilerplate-go/internal/cli/mergedml"
-	"boilerplate-go/internal/cli/migrate"
-	"boilerplate-go/internal/cli/seed"
-	"boilerplate-go/internal/cli/server"
+	"go-boilerplate/internal/cli/dumpschema"
+	"go-boilerplate/internal/cli/fixcollation"
+	"go-boilerplate/internal/cli/job"
+	"go-boilerplate/internal/cli/mergedml"
+	"go-boilerplate/internal/cli/migrate"
+	"go-boilerplate/internal/cli/seed"
+	"go-boilerplate/internal/cli/server"
 
 	"github.com/spf13/cobra"
 )

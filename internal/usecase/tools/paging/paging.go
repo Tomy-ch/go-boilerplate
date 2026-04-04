@@ -4,8 +4,8 @@ package paging
 import (
 	"fmt"
 
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (

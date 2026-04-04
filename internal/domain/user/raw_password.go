@@ -3,8 +3,8 @@ package user
 import (
 	"fmt"
 
-	"boilerplate-go/pkg/stringkit"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/pkg/stringkit"
+	"go-boilerplate/pkg/xerrors"
 )
 
 type RawPassword struct {

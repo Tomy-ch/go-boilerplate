@@ -4,7 +4,7 @@
 package validator
 
 import (
-	"boilerplate-go/internal/controller/httpstack/oapi/validator/gen"
+	"go-boilerplate/internal/controller/httpstack/oapi/validator/gen"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"

@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/di/lifecycle"
-	"boilerplate-go/internal/di/module"
-	"boilerplate-go/internal/di/shutdowner"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/usecase/boundary/job"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/di/lifecycle"
+	"go-boilerplate/internal/di/module"
+	"go-boilerplate/internal/di/shutdowner"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/usecase/boundary/job"
 
 	"go.uber.org/fx"
 )

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"boilerplate-go/internal/controller/error/response"
+	"go-boilerplate/internal/controller/error/response"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 )

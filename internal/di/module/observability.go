@@ -1,7 +1,7 @@
 package module
 
 import (
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/observability"
 
 	"go.uber.org/fx"
 )

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/handler/version"
-	"boilerplate-go/internal/controller/handler/version/gen"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/system"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/handler/version"
+	"go-boilerplate/internal/controller/handler/version/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/system"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

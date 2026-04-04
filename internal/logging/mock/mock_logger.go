@@ -10,7 +10,7 @@
 package mock_logging
 
 import (
-	logging "boilerplate-go/internal/logging"
+	logging "go-boilerplate/internal/logging"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

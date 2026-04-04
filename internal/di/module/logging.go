@@ -1,7 +1,7 @@
 package module
 
 import (
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/logging"
 
 	"go.uber.org/fx"
 )

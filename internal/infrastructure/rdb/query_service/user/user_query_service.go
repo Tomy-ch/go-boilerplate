@@ -4,12 +4,12 @@ package user
 import (
 	"context"
 
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
-	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/user/search/query"
+	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/user/search/query"
 )
 
 type service struct {
