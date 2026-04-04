@@ -24,7 +24,7 @@ const replacements = [
         value: `sqlc@${tools.sqlc}`,
       },
       {
-        regex: /sqlfluff\[jinja\]==[\w\.\-]+/,
+        regex: /sqlfluff\[jinja\](==[\w\.\-]+)?/,
         value: `sqlfluff[jinja]==${tools.sqlfluff}`,
       },
 	  {
