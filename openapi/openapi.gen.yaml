@@ -63,7 +63,7 @@ paths:
       tags:
         - metrics
       security:
-        - basicAuth: []
+        - BasicAuth: []
       summary: サーバーのメトリクス取得
       description: サーバーのメトリクス情報を取得するためのエンドポイントです。
       responses:
@@ -572,22 +572,6 @@ paths:
           description: Bad Request (Upgrade 失敗)
 components:
   parameters:
-    KeywordParam:
-      name: keyword
-      in: query
-      description: 全文検索キーワード
-      required: false
-      schema:
-        type: string
-        example: example keyword
-    ActiveParam:
-      name: active
-      in: query
-      description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
-      required: false
-      schema:
-        type: boolean
-        example: true
     PageParam:
       name: page
       in: query
@@ -609,6 +593,22 @@ components:
         maximum: 100
         default: 10
         example: 10
+    KeywordParam:
+      name: keyword
+      in: query
+      description: 全文検索キーワード
+      required: false
+      schema:
+        type: string
+        example: example keyword
+    ActiveParam:
+      name: active
+      in: query
+      description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
+      required: false
+      schema:
+        type: boolean
+        example: true
     UserIdParam:
       name: user_id
       in: path
@@ -985,4 +985,3 @@ components:
               description: 登録日時
               type: string
               format: date-time
-x-oapi-codegen-strict-server: true
