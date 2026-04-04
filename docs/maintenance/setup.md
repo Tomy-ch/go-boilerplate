@@ -166,3 +166,16 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
     4. Remove sample Infra code and its test code that now cause errors.
 4. Remove sample API domain code
     - Delete code used by the sample API and its test code under [internal/domain/](internal/domain/). Since directories under this path contain only sample domain code, you may delete entire directories.
+
+## Phase Extra: About IP Rate Limiting
+
+In this project, an `in-memory IP rate limiter` is provided as a sample implementation.
+
+However, this approach is not suitable for environments with multiple instances or frequent instance restarts.
+
+If unnecessary, delete the following:
+
+- Remove the line `security.RateLimitModule(),` from RateLimitModule in [internal/di/server/server.go](../../internal/di/server/server.go)
+- Delete the entire file [internal/di/server/extension/security/rate_limit_di.go](../../internal/di/server/extension/security/rate_limit_di.go)
+- Delete the entire file [internal/di/server/extension/security/rate_limit_di_test.go](../../internal/di/server/extension/security/rate_limit_di_test.go)
+- Delete the entire directory [internal/controller/httpstack/ratelimit/](../../internal/controller/httpstack/ratelimit/)
