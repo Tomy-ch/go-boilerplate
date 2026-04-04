@@ -17,6 +17,7 @@ gen:
 
 gen-api:
 	@make gen-bundle-oapi
+	@make gen-api-docs
 	@make gen-go-code
 
 gen-docs:
