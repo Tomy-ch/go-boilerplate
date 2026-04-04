@@ -105,6 +105,7 @@ git add -A
 git commit -m "Initial commit: setup boilerplate for $REPO"
 git push origin main
 make setup-repo
+make branch-minor
 ```
 
 ### Git Cloneから始めた場合
@@ -115,6 +116,7 @@ git add -A
 git commit -m "Initial commit: setup boilerplate for $REPO"
 git push -u origin main
 make setup-repo
+make branch-minor
 ```
 
 ## Phase 8: デプロイ設定の作成
