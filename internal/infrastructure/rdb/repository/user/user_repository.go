@@ -5,19 +5,19 @@ import (
 	"context"
 
 	"boilerplate-go/internal/domain/user"
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
+	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
 	"boilerplate-go/internal/observability"
 )
 
 type repository struct {
-	db     loggingdriver.DBProvider
+	db     loggingdb.DBProvider
 	tracer observability.LayerTracer
 }
 
 func New(
-	db loggingdriver.DBProvider,
+	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
 ) user.Repository {
 	return &repository{
