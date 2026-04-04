@@ -26,7 +26,6 @@ const EXCLUDED_PATH_PREFIXES = [
 const EXCLUDED_PATH_SUFFIXES = [
   ".gen.go",
   ".sql.go",
-  "_mock.go",
   `${path.sep}openapi.gen.yaml`
 ]
 
