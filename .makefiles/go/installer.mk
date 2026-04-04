@@ -1,6 +1,7 @@
 ## Go言語のツールインストーラー
 .PHONY: go-update ## goenvの更新を実行
 .PHONY: install-tools ## goツールのインストール
+.PHONY: activate-tools ## lefthookのインストールを実行
 
 go-update:
 	@anyenv update
@@ -25,3 +26,5 @@ install-tools:
 		echo 'export PATH="$$HOME/go/bin:$$PATH"' >> $$HOME/.zprofile
 	@echo "Go tools installed successfully."
 
+activate-tools:
+	lefthook install

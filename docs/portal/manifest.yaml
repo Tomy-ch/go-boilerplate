@@ -14,6 +14,14 @@ make_commands:
   - src: .makefiles/README.ja.md
     dst: docs/portal/guides/ja/make.ja.md
 
+environment_variables:
+  # English
+  - src: env/README.md
+    dst: docs/portal/guides/environment-variables.md
+  # Japanese
+  - src: env/README.ja.md
+    dst: docs/portal/guides/ja/environment-variables.ja.md
+
 controller:
   # English
   - src: internal/controller/README.md

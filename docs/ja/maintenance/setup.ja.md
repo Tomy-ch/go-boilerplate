@@ -1,0 +1,175 @@
+# リポジトリ複製後の作業リスト
+
+[English](setup.md) | 日本語
+
+Makeコマンド詳細は [Makeターゲット一覧](.makefiles/README.ja.md) を参照してください。
+
+## Phase 1: ツールのセットアップ
+
+VSCode開発で必要なツールをインストールします。
+
+```sh
+make install-tools
+make activate-tools
+```
+
+## Phase 2: ローカル起動確認
+
+ローカルで起動してみて、問題なく動作することを確認してください。
+
+```sh
+# サーバー起動
+make serve
+# 開発補助ツール起動
+make tools
+
+# 開発とテスト用のDBの初期化
+make db-init
+```
+
+## Phase 3: ローカライゼーションスクリプトの実行
+
+下記コマンドで、Goモジュール名を一括置換するスクリプトを実行してください。
+
+ORGとREPOは適宜置き換えてください。派生設定は気になる箇所のみ変更してください。
+
+```sh
+# ===== 一括設定 =====
+export ORG=<your-org/git-user-name>
+export REPO=<your-repo>
+
+# ===== 派生設定 =====
+export MODULE=${REPO}
+export APP_NAME=${REPO}
+export OPENAPI_TITLE=${REPO}
+export COPILOT_TITLE=${REPO}
+export COPYRIGHT_HOLDER=${ORG}
+export COPYRIGHT_YEAR=$(date +%Y)
+
+# ===== 実行 =====
+make setup-replace-module OLD_MODULE=boilerplate-go NEW_MODULE=$MODULE
+make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
+make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
+make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
+make tidy-lib
+```
+
+## Phase 4: ローカライゼーションの検証
+
+テストと静的解析、コード生成、ヘルスチェックなど、基本的な機能が問題なく動作することを確認してください。
+
+```sh
+# テスト
+make test
+# 静的解析
+make lint
+# コード生成
+make gen
+# ヘルスチェック
+curl http://localhost:8080/health
+curl http://localhost:8080/ready
+```
+
+## Phase 5: 手動書き換え
+
+1. [README.md](README.md), [README.ja.md](README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
+2. [README.md](README.md) は英語で書かれているので、必要に応じて [README.ja.md](README.ja.md) を [README.md](README.md) に置換しても構いません。
+    - ただし、[gen-docs-json.cjs](scripts/gen-docs-json.cjs) やその生成元になる [manifest.yaml](docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
+    - また、portal表示のReactも EnとJp切り替えを持つので、README.mdを日本語にする場合は、portal表示のReactも書き換える必要があります。
+3. [openapi.yaml](openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。
+    - Infoセクション全体をプロジェクトに合わせて書き換えてください。
+        - title
+        - termsOfService
+        - contact
+        - version
+        - description
+        - license
+
+## Phase 6: envファイルの書き換え
+
+[env/](env/) ディレクトリ内のファイルをプロジェクトに合わせて書き換えてください。
+
+設定値の意味については、[env/README.ja.md](env/README.ja.md) を参照してください。
+
+## Phase 7: リポジトリの初期化
+
+ここまでの手順を完了したら、ファーストプッシュ後にリポジトリの初期化を行います。
+
+### GitHubテンプレートから始めた場合
+
+```sh
+git add -A
+git commit -m "Initial commit: setup boilerplate for $REPO"
+git push origin main
+make setup-repo
+```
+
+### Git Cloneから始めた場合
+
+```sh
+git remote set-url origin ${ORG}/${REPO}
+git add -A
+git commit -m "Initial commit: setup boilerplate for $REPO"
+git push -u origin main
+make setup-repo
+```
+
+## Phase 8: デプロイ設定の作成
+
+このboilerplateでは、各社・各個人のクラウド環境やオンプレ環境に合わせて柔軟にデプロイできるよう、特定のクラウドプロバイダやデプロイ方法に依存しない構成を採用しています。
+
+そのため、デプロイ設定には具体的なデプロイ先が反映されていません。プロジェクトのデプロイ先に合わせて、必要な設定を追加してください。
+
+デプロイCI/CD: [.github/workflows/deploy-app.yaml](.github/workflows/deploy-app.yaml) を完成させてください。
+
+## Phase 9: 認証機の作成
+
+このboilerplateには、認証機能の実装例として、JWTを使用したサンプルコードが含まれています。プロジェクトの要件に合わせて、認証機能を実装してください。
+
+usecaseの[Authenticator](internal/usecase/boundary/auth/authenticator.go)インターフェースを実装する形で、認証機能を作成します。
+
+実装は [internal/infrastructure/auth/README.ja.md](internal/infrastructure/auth/README.ja.md) を参照してください。
+
+実装例(local): [internal/infrastructure/auth/local/auth_local.go](internal/infrastructure/auth/local/auth_local.go)
+
+実装が完了したら、[認証のDIモジュール](internal/di/module/core/auth.go) を編集して、認証機能をアプリケーションに組み込んでください。
+
+## Phase 10: 認証用デバッグAPIの削除
+
+認証用のデバッグAPIはセキュリティ上のリスクがあるため、必要に応じて削除してください。
+
+セットアップのタイミングでの削除は必須ではないですが、本番にリリースする前には必ず削除してください。
+
+```sh
+make setup-remove-debug-handlers # 認証周りのデバッグハンドラーを削除します。必要に応じて実行してください。
+```
+
+## Phase 11: サンプルAPIの削除
+
+このboilerplateには、サンプルAPIが含まれています。プロジェクトの要件に合わせて、サンプルAPIを削除してください。
+
+AI駆動開発を活用する場合は、サンプルAPIを残しておくと、AIがコードの構造や実装例を理解しやすくなります。必要に応じて、サンプルAPIをリファクタリングして、プロジェクトの要件に近づけることもできます。
+
+### 削除手順
+
+1. [openapi.yaml](openapi/openapi.yaml) のサンプルAPI定義の削除
+    - `サンプルAPI用のパス` の下に書かれているPath定義を削除し、そのリンク先のyamlファイルも削除してください。
+    - `サンプルAPI用のパラメーター定義` の下に書かれているParameter定義を削除し、そのリンク先のyamlファイルも削除してください。
+    - `サンプルAPI用の型定義` の下に書かれているSchema定義を削除し、そのリンク先のyamlファイルも回帰的に削除してください。
+2. サンプルAPIのControllerとUsecaseの削除
+    1. `make gen-api` でコードを再生成して、サンプルAPIのControllerコードを削除してください。
+    2. サンプルAPIが参照している、Usecaseファイルとそのテストファイルを削除してください。
+        - mockファイルも削除してください。
+    3. [internal/integration](internal/integration/) でエラーを起こしているファイルがあれば、そのファイルも削除してください。
+    4. サンプルAPIの生成コードがないことで影響を出しているハンドラファイルおよびテストファイルを削除してください。
+    5. この時、Infra層で参照エラー(QueryServiceやCommandServiceのインターフェースエラー)が出る場合は、これらのインターフェースからサンプルAPIで使っているファイルとそのテストコードを削除してください。
+3. サンプルAPIのInfraコードの削除
+    1. `make db-test-migrate-down` と `make db-local-migrate-down` を実行して、DBをクリーンな状態にする。
+    2. `dml` にある実行SQLを削除する。
+        - [database/dml/repository](database/dml/repository) の配下のディレクトリを削除してください。
+        - [database/dml/query_service](database/dml/query_service) の配下のディレクトリを削除してください。
+        - [database/dml/command_service](database/dml/command_service) の配下のディレクトリを削除してください。
+    3. `make gen-query` を実行して、SQLCのコードを再生成して、サンプル用のSQLCコードを削除する。
+    4. サンプル用のInfraコードがエラーになるので、そのコードとそのテストコードを削除する。
+4. サンプルAPIのドメインコードの削除。
+    - [internal/domain/](internal/domain/) の配下のサンプルAPIで使っているコードとそのテストコードを削除してください。このディレクトリの配下のディレクトリはサンプルAPIのドメインコードのみなので、配下のディレクトリごと削除しても構いません。
