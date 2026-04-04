@@ -41,7 +41,10 @@ function parseArgs(argv) {
 function updateControllerModule(content) {
   const lines = content.split("\n")
   const filtered = lines.filter(line => {
-    if (line === '\t"boilerplate-go/internal/controller/handler/debug/cookie"') {
+    const normalized = line.trim().replace(/^"|"$/g, "")
+
+    // Remove debug handler import regardless of module name
+    if (normalized.endsWith("/internal/controller/handler/debug/cookie")) {
       return false
     }
 
