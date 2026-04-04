@@ -3,7 +3,7 @@ get:
   tags:
     - metrics
   security:
-    - basicAuth: []
+    - BasicAuth: []
   summary: サーバーのメトリクス取得
   description: サーバーのメトリクス情報を取得するためのエンドポイントです。
   responses:
