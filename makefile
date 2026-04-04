@@ -39,6 +39,8 @@ include .makefiles/openapi/gen.mk
 # SQL関連
 include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk
+# ツール関連
+include .makefiles/tools/version.mk
 
 # 一括実行系ファイル
 # GitHub関連
