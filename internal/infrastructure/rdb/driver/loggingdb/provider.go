@@ -1,7 +1,7 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
-// Package loggingdriver は、ログ付きのDB接続を提供します。
-package loggingdriver
+// Package loggingdb は、ログ付きのDB接続を提供します。
+package loggingdb
 
 import (
 	"context"

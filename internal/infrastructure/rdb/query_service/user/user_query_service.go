@@ -4,7 +4,7 @@ package user
 import (
 	"context"
 
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdriver"
+	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
 	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc"
 	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
@@ -13,12 +13,12 @@ import (
 )
 
 type service struct {
-	db     loggingdriver.DBProvider
+	db     loggingdb.DBProvider
 	tracer observability.LayerTracer
 }
 
 func New(
-	db loggingdriver.DBProvider,
+	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
 ) query.UserQueryService {
 	return &service{
