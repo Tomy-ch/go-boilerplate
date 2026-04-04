@@ -102,6 +102,7 @@ git add -A
 git commit -m "Initial commit: setup boilerplate for $REPO"
 git push origin main
 make setup-repo
+make branch-minor
 ```
 
 ### When starting from Git Clone
@@ -112,6 +113,7 @@ git add -A
 git commit -m "Initial commit: setup boilerplate for $REPO"
 git push -u origin main
 make setup-repo
+make branch-minor
 ```
 
 ## Phase 8: Create Deployment Configuration
