@@ -98,7 +98,7 @@ setup-repo:
 
 setup-replace-module:
 	@if [ -z "$(OLD_MODULE)" ] || [ -z "$(NEW_MODULE)" ]; then \
-		echo "❌ OLD_MODULE と NEW_MODULE を指定してください。例: make setup-replace-module OLD_MODULE=boilerplate-go NEW_MODULE=example-api"; \
+		echo "❌ OLD_MODULE と NEW_MODULE を指定してください。例: make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=example-api"; \
 		exit 1; \
 	fi
 	@docker compose run --rm node_tool_runner node scripts/setup/replace-module.cjs $(OLD_MODULE) $(NEW_MODULE) $(SETUP_DRY_RUN_FLAG)
