@@ -43,10 +43,10 @@ Calls `cmd/main.go job` within the `development` profile network.
 
 Example:
 
-+++sh
+```sh
 make job NAME=sample-job
 make job NAME=batch-import ARGS="--target=local --dry-run"
-+++
+```
 
 ## `.makefiles/database` group
 
@@ -89,11 +89,11 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 
 Example:
 
-+++sh
+```sh
 make new-migrate-create_users_table
 make db-migrate-up DB=local
 make db-migrate-up-10 DB=local
-+++
+```
 
 ### DB seed related
 
@@ -134,9 +134,9 @@ make db-migrate-up-10 DB=local
 
 Example:
 
-+++sh
+```sh
 make merge-dml-core type="repository" work-dir="/app"
-+++
+```
 
 ## `.makefiles/sql` group
 
