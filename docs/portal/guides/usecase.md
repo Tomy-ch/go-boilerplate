@@ -585,7 +585,7 @@ package user
 import (
     "context"
 
-    "boilerplate-go/internal/observability"
+    "go-boilerplate/internal/observability"
     // Import packages required for the implementation
 )
 

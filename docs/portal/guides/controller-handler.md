@@ -599,7 +599,7 @@ package users
 import (
     "context"
 
-    "boilerplate-go/internal/observability"
+    "go-boilerplate/internal/observability"
     // import required packages
 
     "github.com/labstack/echo/v4"
