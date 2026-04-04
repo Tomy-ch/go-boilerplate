@@ -21,18 +21,25 @@ setup-repo:
 	@make gh-login
 	@echo "✅ ghコマンドのログインが完了しました。"
 
+	@echo "🔧 タグの初期化を開始します..."
+	@TAGS=$$(git tag); \
+	if [ -n "$$TAGS" ]; then \
+		for tag in $$TAGS; do \
+			git tag -d $$tag; \
+			git push origin :refs/tags/$$tag || true; \
+		done; \
+		echo "🧹 すべてのタグを削除しました。"; \
+	else \
+		echo "🟡 削除対象のタグが存在しません。"; \
+	fi
+	@echo "✅ タグの初期化を終了します。"
+
 	@echo "🔧 v0.0.0のタグ打ちを開始します..."
 	@git tag -a v0.0.0 -m "Initial boilerplate tag"
 	@git push origin v0.0.0
 	@echo "✅ v0.0.0のタグ打ちが完了しました。"
 
 	@echo "🔧 ブランチ作成を開始します..."
-	@if git show-ref --verify --quiet refs/heads/release/v0.1.0; then \
-		echo "🟡 ブランチ 【release/v0.1.0】 は既に存在します。作成処理をスキップします。"; \
-	else \
-		git branch release/v0.1.0; \
-	fi
-
 	@if git show-ref --verify --quiet refs/heads/develop; then \
 		echo "🟡 ブランチ 【develop】 は既に存在します。作成処理をスキップします。"; \
 	else \
@@ -51,15 +58,21 @@ setup-repo:
 		git branch production; \
 	fi
 
-	@git push origin release/v0.1.0 develop staging production
+	@git push origin develop staging production
 	@echo "✅ ブランチの作成を終了します。"
 
 	@echo "🔧 デフォルトブランチの設定を開始します..."
 	@REPO=$$(gh repo view --json name,owner -q '.owner.login + "/" + .name'); \
-		gh api -X PATCH repos/$$REPO -f default_branch=release/v0.1.0
+		gh api -X PATCH repos/$$REPO -f default_branch=production
 
 	@git fetch --prune
-	@git checkout release/v0.1.0
+	@git checkout production
+	@ORIGINAL_BRANCH=$$(git branch --show-current); \
+	git checkout production; \
+	if echo $$ORIGINAL_BRANCH | grep -q "release/"; then \
+		git branch -D $$ORIGINAL_BRANCH; \
+		git push origin --delete $$ORIGINAL_BRANCH || true; \
+	fi
 	@echo "✅ デフォルトブランチの設定を終了します。"
 
 	@echo "🔧 ルールセットの適用を開始します..."
@@ -71,7 +84,17 @@ setup-repo:
 	@make create-default-labels
 	@echo "✅ ラベルの初期化を終了します。"
 
-	@echo "✅ Initialization complete. Default branch: release/v0.1.0"
+	@echo "🔧 リリースノートの初期化を開始します..."
+	@if [ -d ".github/release" ]; then \
+		find .github/release -type f ! -name "v0.0.0.md" -delete; \
+		echo "🧹 v0.0.0.md 以外のリリースノートを削除しました。"; \
+	else \
+		echo "🟡 .github/release ディレクトリが存在しないためスキップします。"; \
+	fi
+	@echo "✅ リリースノートの初期化を終了します。"
+
+	@git remote remove upstream || true
+	@echo "✅ Initialization complete. Default branch: production"
 
 setup-replace-module:
 	@if [ -z "$(OLD_MODULE)" ] || [ -z "$(NEW_MODULE)" ]; then \
