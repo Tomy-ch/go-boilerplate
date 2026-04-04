@@ -169,3 +169,16 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
     4. サンプル用のInfraコードがエラーになるので、そのコードとそのテストコードを削除する。
 4. サンプルAPIのドメインコードの削除。
     - [internal/domain/](internal/domain/) の配下のサンプルAPIで使っているコードとそのテストコードを削除してください。このディレクトリの配下のディレクトリはサンプルAPIのドメインコードのみなので、配下のディレクトリごと削除しても構いません。
+
+## Phase Extra: IPレート制限について
+
+このプロジェクトでは、`インメモリのIPレート制限` をサンプル実装として提供しています。
+
+しかし、この方式は、複数インスタンスでの運用や、インスタンスの再起動が頻繁に発生する環境では適していません。
+
+不要な場合は下記を削除してください。
+
+- [internal/di/server/server.go](../../../internal/di/server/server.go) の RateLimitModule の `security.RateLimitModule(),` の行
+- [internal/di/server/extension/security/rate_limit_di.go](../../../internal/di/server/extension/security/rate_limit_di.go) ファイル全体
+- [internal/di/server/extension/security/rate_limit_di_test.go](../../../internal/di/server/extension/security/rate_limit_di_test.go) ファイル全体
+- [internal/controller/httpstack/ratelimit/](../../../internal/controller/httpstack/ratelimit/) ディレクトリ全体
