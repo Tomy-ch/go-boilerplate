@@ -8,7 +8,10 @@ For details of Make commands, refer to [Make Target List](.makefiles/README.md).
 
 Install the tools required for VSCode development.
 
+The versions are listed in `tools.yaml` as the versions that have been verified to work. Change these versions as necessary.
+
 ```sh
+make sync-tools
 make install-tools
 make activate-tools
 ```
