@@ -1,5 +1,12 @@
 ## リポジトリの初期化
 .PHONY: setup-repo ## リポジトリの初期化
+.PHONY: setup-replace-module ## node_tool_runnerでGoモジュール名の一括置換を実行
+.PHONY: setup-replace-app-metadata ## node_tool_runnerでAPP_NAMEやOpenAPIタイトルの置換を実行
+.PHONY: setup-replace-repository-reference ## node_tool_runnerでリポジトリ参照の置換を実行
+.PHONY: setup-replace-license-copyright ## node_tool_runnerでLICENSEの著作権表示更新を実行
+.PHONY: setup-remove-debug-handlers ## node_tool_runnerでdebugハンドラ一式の削除を実行
+
+SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
 
 setup-repo:
 	@echo "🔧 設定を確認中..."
@@ -65,3 +72,42 @@ setup-repo:
 	@echo "✅ ラベルの初期化を終了します。"
 
 	@echo "✅ Initialization complete. Default branch: release/v0.1.0"
+
+setup-replace-module:
+	@if [ -z "$(OLD_MODULE)" ] || [ -z "$(NEW_MODULE)" ]; then \
+		echo "❌ OLD_MODULE と NEW_MODULE を指定してください。例: make setup-replace-module OLD_MODULE=boilerplate-go NEW_MODULE=example-api"; \
+		exit 1; \
+	fi
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-module.cjs $(OLD_MODULE) $(NEW_MODULE) $(SETUP_DRY_RUN_FLAG)
+
+setup-replace-app-metadata:
+	@if [ -z "$(APP_NAME)" ] || [ -z "$(OPENAPI_TITLE)" ] || [ -z "$(COPILOT_TITLE)" ]; then \
+		echo "❌ APP_NAME, OPENAPI_TITLE, COPILOT_TITLE を指定してください。"; \
+		echo "例: make setup-replace-app-metadata APP_NAME='Example API' OPENAPI_TITLE='Example API with Onion Architecture' COPILOT_TITLE='example-api Copilot Instructions'"; \
+		exit 1; \
+	fi
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-app-metadata.cjs \
+		--app-name "$(APP_NAME)" \
+		--openapi-title "$(OPENAPI_TITLE)" \
+		--copilot-title "$(COPILOT_TITLE)" \
+		$(SETUP_DRY_RUN_FLAG)
+
+setup-replace-repository-reference:
+	@if [ -z "$(REPOSITORY)" ]; then \
+		echo "❌ REPOSITORY を指定してください。例: make setup-replace-repository-reference REPOSITORY=example-org/example-api"; \
+		exit 1; \
+	fi
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-repository-reference.cjs $(REPOSITORY) $(SETUP_DRY_RUN_FLAG)
+
+setup-replace-license-copyright:
+	@if [ -z "$(COPYRIGHT_HOLDER)" ]; then \
+		echo "❌ COPYRIGHT_HOLDER を指定してください。例: make setup-replace-license-copyright COPYRIGHT_HOLDER='Example Inc.' COPYRIGHT_YEAR=2026"; \
+		exit 1; \
+	fi
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-license-copyright.cjs \
+		--holder "$(COPYRIGHT_HOLDER)" \
+		$(if $(COPYRIGHT_YEAR),--year $(COPYRIGHT_YEAR),) \
+		$(SETUP_DRY_RUN_FLAG)
+
+setup-remove-debug-handlers:
+	@docker compose run --rm node_tool_runner node scripts/setup/remove-debug-handlers.cjs $(SETUP_DRY_RUN_FLAG)
