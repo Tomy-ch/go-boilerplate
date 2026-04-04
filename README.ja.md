@@ -25,6 +25,7 @@ git clone <https://github.com/Tomy-ch/go-boilerplate.git>
 cd go-boilerplate
 
 make install-tools
+make lh-install
 make tidy-lib
 make serve
 make tools
