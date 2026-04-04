@@ -119,3 +119,9 @@ Branch naming convention:
 
 - `feature/<issue>-short-description`
 - `bugfix/<issue>-short-description`
+
+## Language Rule
+
+All outputs, including pull request reviews, comments, and suggestions, MUST be written in Japanese.
+
+Do NOT output English unless explicitly requested by the user.
