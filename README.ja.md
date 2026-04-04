@@ -77,7 +77,7 @@ curl <http://localhost:8080/health>
 
 開発を開始する前に、必ず以下のセットアップ手順を実行してください。
 
-[セットアップ手順はこちら](./docs/setup.md)
+[セットアップ手順はこちら](./setup.ja.md)
 
 ## この Boilerplate の目的
 
