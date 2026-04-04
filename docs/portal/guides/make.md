@@ -291,3 +291,11 @@ This is an initial setup command when launching a new repository as a boilerplat
 | `make tag-patch` | Creates a tag with incremented patch version and creates a GitHub Release. | Uses `.github/release/<version>.md` for release notes. |
 | `make tag-minor` | Creates a tag with incremented minor version and creates a GitHub Release. | Based on the latest tag. |
 | `make tag-major` | Creates a tag with incremented major version and creates a GitHub Release. | Based on the latest tag. |
+
+## `.makefiles/tools` group
+
+### Tool version management related
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make sync-tools` | Synchronizes tool versions across related files based on `tools.yaml`. | Uses `replace-tools-version.cjs` to update version notations in Dockerfile, installation scripts, etc. |

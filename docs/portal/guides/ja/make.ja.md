@@ -291,3 +291,11 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | `make tag-patch` | patch バージョンを 1 つ進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準とし、リリースノートには `.github/release/<version>.md` を使用します。 |
 | `make tag-minor` | minor バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。 |
 | `make tag-major` | major バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。 |
+
+## `.makefiles/tools` 系
+
+### ツールバージョン管理関連
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make sync-tools` | `tools.yaml` に記載されたツールのバージョンをもとに、関連ファイルのバージョン表記を一括置換します。 | `replace-tools-version.cjs` を使用して、Dockerfile やインストールスクリプトなどのバージョン表記を更新します。 |
