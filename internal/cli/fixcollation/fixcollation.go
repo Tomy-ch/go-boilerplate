@@ -44,10 +44,12 @@ func runFixCollation(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to init logger: %w", err)
 	}
 
+	// 想定外の DB への実行を避けるため、許可済みのローカル向け DB 名だけを受け付けます。
 	if targetDB == "" || targetDB != "local" && targetDB != "test" {
 		return fmt.Errorf("invalid database name: %s", targetDB)
 	}
 
+	// アプリ設定から接続先 DSN を組み立て、psql 実行に流用します。
 	cfg, err := config.SetUpConfig()
 	if err != nil {
 		logger.CallerSkip(callerSkipCount).Error("failed to load config", logging.Error("config", err))
@@ -59,6 +61,7 @@ func runFixCollation(_ *cobra.Command, _ []string) error {
 	ctx := context.Background()
 
 	runPSQL := func(sql string) error {
+		// SQL はコード側で固定しており、1文ずつ停止条件付きで実行します。
 		// #nosec G204 -- dbURL from config, sql controlled by code
 		cmd := exec.CommandContext(ctx, psqlCommand, dbURL, "-v", "ON_ERROR_STOP=1", "-c", sql)
 		cmd.Dir = workDir
@@ -76,7 +79,7 @@ func runFixCollation(_ *cobra.Command, _ []string) error {
 		fmt.Sprintf("ALTER DATABASE %s REFRESH COLLATION VERSION;", targetDB),
 	}
 
-	// 照合順序修正SQLを順次実行
+	// 依存順序があるため、照合順序修正 SQL は並列ではなく順番に流します。
 	for _, sql := range sqlStatements {
 		if err := runPSQL(sql); err != nil {
 			logger.CallerSkip(callerSkipCount).Named("fixcollation").Error("psql command failed",
