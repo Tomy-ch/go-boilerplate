@@ -28,6 +28,45 @@ The structure is intentionally strict to ensure:
 
 Do not introduce new architectural patterns unless explicitly instructed.
 
+## Instruction Priority
+
+Follow instructions in this order:
+
+1. AGENTS.md (this file)
+2. docs/rules.md
+3. docs/architecture.md
+4. User instructions
+
+If conflicts occur, follow AGENTS.md.
+
+## Task Execution Protocol
+
+Before implementing any change, AI agents MUST:
+
+1. Identify change type (API / DB / Business Logic)
+2. Follow the corresponding Change Type Guidelines
+3. Locate related code using the defined search flow
+4. Verify no existing implementation already exists
+
+## Pre-Implementation Checklist
+
+Before writing code, AI must confirm:
+
+- [ ] OpenAPI is defined (for API changes)
+- [ ] SQL is defined (for DB changes)
+- [ ] Existing similar implementation does not exist
+- [ ] Layer boundaries are respected
+
+## Forbidden Shortcuts
+
+AI agents MUST NOT:
+
+- Call infrastructure directly from handler
+- Put business logic in handler
+- Skip OpenAPI definition for new APIs
+- Modify generated files
+- Introduce new patterns without instruction
+
 ## Architecture Documentation
 
 This repository contains structured architecture documentation under `docs/`.
