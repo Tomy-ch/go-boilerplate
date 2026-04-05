@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: docker/server/Dockerfile
-      target: local
+      target: tooling
     ports:
       - "8080:8080"   # APIポート
       - "2345:2345"   # デバッグ(dlv)ポート

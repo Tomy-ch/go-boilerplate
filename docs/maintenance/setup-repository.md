@@ -115,6 +115,8 @@ Therefore, deployment settings do not include a specific deployment target. Add 
 
 Deployment CI/CD: Complete [.github/workflows/deploy-app.yaml](.github/workflows/deploy-app.yaml).
 
+`Note: Please modify this section according to your environment` indicates sections that need to be modified according to your environment.
+
 ## Phase 9: Implement Authentication
 
 This boilerplate includes sample code using JWT as an example implementation of authentication. Implement authentication according to your project requirements.

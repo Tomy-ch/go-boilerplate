@@ -39,7 +39,7 @@ function printUsage() {
 
 補足:
   Go モジュール名は go-boilerplate のような単純なプロジェクト名を想定しています。
-  docs 配下と生成物 (*.gen.go, *.sql.go, *_mock.go, openapi/openapi.gen.yaml) は対象外です。`)
+  docs 配下と生成物 (*.gen.go, *.sql.go, openapi/openapi.gen.yaml) は対象外です。`)
 }
 
 function ensureSimpleModuleName(value, flagName) {

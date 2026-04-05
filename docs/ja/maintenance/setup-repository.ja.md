@@ -118,6 +118,8 @@ make branch-minor
 
 デプロイCI/CD: [.github/workflows/deploy-app.yaml](.github/workflows/deploy-app.yaml) を完成させてください。
 
+`Note: Please modify this section according to your environment` と書かれている箇所が、環境に合わせて変更が必要な箇所になります。
+
 ## Phase 9: 認証機の作成
 
 このboilerplateには、認証機能の実装例として、JWTを使用したサンプルコードが含まれています。プロジェクトの要件に合わせて、認証機能を実装してください。
