@@ -94,15 +94,23 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 		log := logger.Named("dbSeedRun.Exec")
 		if err != nil {
 			var pgErr *pgconn.PgError
-			if xerrors.As(err, &pgErr) && pgErr.Code != relationDoesNotExistCode {
-				log.Error(
-					"failed to exec seed file",
-					logging.String("file", f),
-					logging.Error("db.Exec", err),
-				)
+			if xerrors.As(err, &pgErr) {
+				if pgErr.Code == relationDoesNotExistCode {
+					log.Warn(
+						"table does not exist, skipping seed",
+						logging.String("file", f),
+						logging.Error("db.Exec", err),
+					)
+				} else {
+					log.Error(
+						"failed to exec seed file",
+						logging.String("file", f),
+						logging.Error("db.Exec", err),
+					)
+				}
 			} else {
-				log.Warn(
-					"table does not exist, skipping seed",
+				log.Error(
+					"failed to exec seed file (non-postgres error)",
 					logging.String("file", f),
 					logging.Error("db.Exec", err),
 				)
