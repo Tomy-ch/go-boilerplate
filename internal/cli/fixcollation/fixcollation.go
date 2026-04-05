@@ -44,6 +44,10 @@ func runFixCollation(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to init logger: %w", err)
 	}
 
+	if targetDB == "" || targetDB != "local" && targetDB != "test" {
+		return fmt.Errorf("invalid database name: %s", targetDB)
+	}
+
 	cfg, err := config.SetUpConfig()
 	if err != nil {
 		logger.CallerSkip(callerSkipCount).Error("failed to load config", logging.Error("config", err))
