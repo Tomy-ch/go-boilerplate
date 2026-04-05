@@ -333,6 +333,24 @@
       ]
     },
     {
+      "title": "Deployment (English)",
+      "items": [
+        {
+          "name": "Github Page",
+          "path": "../deployment/github-page.md"
+        }
+      ]
+    },
+    {
+      "title": "Deployment (Japanese)",
+      "items": [
+        {
+          "name": "Github Page",
+          "path": "../ja/deployment/github-page.ja.md"
+        }
+      ]
+    },
+    {
       "title": "Er Diagram",
       "items": [
         {
@@ -353,8 +371,8 @@
           "path": "../maintenance/go-upgrade.md"
         },
         {
-          "name": "Setup",
-          "path": "../maintenance/setup.md"
+          "name": "Setup Repository",
+          "path": "../maintenance/setup-repository.md"
         },
         {
           "name": "Versions Generator",
@@ -374,8 +392,8 @@
           "path": "../ja/maintenance/go-upgrade.ja.md"
         },
         {
-          "name": "Setup",
-          "path": "../ja/maintenance/setup.ja.md"
+          "name": "Setup Repository",
+          "path": "../ja/maintenance/setup-repository.ja.md"
         },
         {
           "name": "Versions Generator",
