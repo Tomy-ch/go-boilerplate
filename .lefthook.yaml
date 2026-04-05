@@ -1,0 +1,13 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      run: make lint
+    test:
+      run: make test
+    sql-lint:
+      run: make sql-lint
+    migration-check-version:
+      run: make check-migration-up-version check-migration-down-version
+    migration-check-gap:
+      run: make check-migration-up-gap check-migration-down-gap

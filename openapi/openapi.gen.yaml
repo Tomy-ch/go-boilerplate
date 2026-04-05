@@ -1,0 +1,987 @@
+openapi: 3.0.3
+info:
+  title: Boilerplate Go with Onion Architecture, Echo and SQLC
+  termsOfService: https://github.com/Tomy-ch/go-boilerplate-echo-oapi-sqlc
+  contact:
+    name: TomyC258460
+    url: https://x.com/TomyC258460
+  version: 0.1.0
+  description: |
+    This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
+    It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
+
+    The project is structured around domain-driven principles, with clean separation between interfaces,
+    use cases, domain entities, and infrastructure. All handlers are generated from the OpenAPI specification
+    using oapi-codegen, and strict typing is enforced across the system.
+
+    This API is intended as a production-ready boilerplate that balances performance,
+    flexibility, and developer experience.
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server (replace with actual URL)
+  - url: https://staging.api.example.com
+    description: Staging server (replace with actual URL)
+  - url: https://development.api.example.com
+    description: Versioned API endpoint (replace with actual URL)
+paths:
+  /health:
+    get:
+      operationId: GetHealth
+      tags:
+        - health
+      summary: サーバーのヘルスチェック
+      description: サーバーが正常に稼働しているかを確認するためのECSやALB向けのヘルスチェックエンドポイントです。
+      responses:
+        '200':
+          description: サーバーは正常に稼働しています。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /healthz:
+    get:
+      operationId: GetHealthz
+      tags:
+        - healthz
+      summary: サーバーのヘルスチェック
+      description: サーバーが正常に稼働しているかを確認するためのEKS向けのヘルスチェックエンドポイントです。
+      responses:
+        '200':
+          description: サーバーは正常に稼働しています。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /metrics:
+    get:
+      operationId: GetMetrics
+      tags:
+        - metrics
+      security:
+        - BasicAuth: []
+      summary: サーバーのメトリクス取得
+      description: サーバーのメトリクス情報を取得するためのエンドポイントです。
+      responses:
+        '200':
+          description: サーバーは正常に稼働しています。
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: メトリクス情報を含むプレーンテキスト
+  /ready:
+    get:
+      operationId: GetReady
+      tags:
+        - ready
+      summary: サーバー全体のレディネスチェック
+      description: サーバー全体がリクエストを受け付ける準備ができているかを確認するためのレディネスチェックエンドポイントです。
+      responses:
+        '200':
+          description: サーバーはリクエストを受け付ける準備ができています。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+  /version:
+    get:
+      operationId: GetVersion
+      tags:
+        - version
+      summary: サーバーのバージョン情報を取得します。
+      description: サーバーのバージョン情報を取得するためのエンドポイントです。
+      responses:
+        '200':
+          description: サーバーのバージョン情報を返します。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+  /_internal/types/error-response:
+    get:
+      summary: （内部用）ErrorResponse型生成用エンドポイント
+      description: |
+        このエンドポイントは Goコード生成のためだけに存在します。 実際には実装・公開されません。
+      tags:
+        - internal/types/error-response
+      operationId: GenerateErrorSchema
+      responses:
+        '200':
+          description: このレスポンスの型を生成するためです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/users:
+    get:
+      operationId: GetUsers
+      tags:
+        - v1/users
+      summary: ユーザー一覧の取得
+      description: ユーザーの一覧を取得します。ページネーションを指定できます。
+      parameters:
+        - $ref: '#/components/parameters/ActiveParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: 取得に成功したユーザー一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersResponse'
+        '401':
+          description: ユーザー一覧の取得には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザー一覧の取得には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: PostUsers
+      tags:
+        - v1/users
+      summary: ユーザーの作成
+      description: 新しいユーザーを作成します。必要な情報をリクエストボディに含めてください。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsersPostRequest'
+      responses:
+        '201':
+          description: ユーザーの作成に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: リクエストが不正です。必要な情報が不足している場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの作成には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの作成には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/users/{user_id}:
+    get:
+      operationId: GetUsersDetail
+      tags:
+        - v1/users/detail
+      summary: 単一ユーザーの取得
+      description: 指定されたUUIDに該当するユーザーの詳細情報を取得します。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: ユーザーの取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの取得には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの取得には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      operationId: PutUsersDetail
+      tags:
+        - v1/users/detail
+      summary: 単一ユーザーの更新
+      description: 指定されたUUIDに該当するユーザーの情報を更新します。必要な情報をリクエストボディに含めてください。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPutRequest'
+      responses:
+        '200':
+          description: ユーザーの更新に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: リクエストが不正です。必要な情報が不足している場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの更新には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの更新には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      operationId: PatchUsersDetail
+      tags:
+        - v1/users/detail
+      summary: 単一ユーザーの部分更新
+      description: 指定されたUUIDに該当するユーザーの情報を部分的に更新します。必要な情報をリクエストボディに含めてください。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPatchRequest'
+      responses:
+        '200':
+          description: ユーザーの部分更新に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: リクエストが不正です。必要な情報が不足している場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの更新には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの更新には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: DeleteUsersDetail
+      tags:
+        - v1/users/detail
+      summary: 単一ユーザーの削除
+      description: 指定されたUUIDに該当するユーザーを削除します。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '204':
+          description: ユーザーの削除に成功しました
+        '400':
+          description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: ユーザーの削除には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーの削除には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/users/search:
+    get:
+      operationId: GetUsersSearch
+      tags:
+        - v1/users/search
+      summary: ユーザー一覧の取得
+      description: 検索条件に基づいてユーザーの一覧を取得します。ページネーションを指定できます。
+      parameters:
+        - $ref: '#/components/parameters/KeywordParam'
+        - $ref: '#/components/parameters/ActiveParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: 検索条件に基づいて取得したユーザー一覧
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersSearchResponse'
+        '401':
+          description: ユーザー一覧の取得には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザー一覧の取得には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /debug/cookie:
+    get:
+      operationId: GetDebugCookie
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - request cookie確認（Cookieヘッダと解析結果を返す）
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebugCookieInspectResponse'
+    post:
+      operationId: PostDebugCookie
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - issue Set-Cookie (rewrite確認用)
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DebugIssueCookieRequest'
+      responses:
+        '204':
+          description: No Content
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+    delete:
+      operationId: DeleteDebugCookie
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - clear cookie
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+            default: __Host-access_token
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+            default: /
+      responses:
+        '204':
+          description: No Content
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+  /debug/cookie/copy:
+    get:
+      operationId: GetDebugCookieRawCopy
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - io.Copy / ReadFrom 経路確認
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        サーバ側で io.Copy を使ってレスポンスボディを書き出します。
+        SecurityCookie MW による Set-Cookie rewrite と、ReadFrom 経路でも壊れないことを確認できます。
+      responses:
+        '200':
+          description: OK
+          headers:
+            Set-Cookie:
+              description: (debug) issued cookie (MWでrewriteされる想定)
+              schema:
+                type: string
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                sample:
+                  value: |
+                    hello-cookie
+                    hello-cookie
+  /debug/cookie/stream:
+    get:
+      operationId: GetDebugCookieRawStream
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - Flush 経路確認（SSE風）
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        text/event-stream を返し、サーバ側で複数回 Flush() を呼びます。
+        SecurityCookie MW による Set-Cookie の rewrite と、Flush 経路で壊れないことを確認できます。
+      responses:
+        '200':
+          description: OK (SSE stream)
+          headers:
+            Set-Cookie:
+              description: (debug) issued cookie (MWでrewriteされる想定)
+              schema:
+                type: string
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              examples:
+                ping:
+                  value: |
+                    data: ping
+  /debug/cookie/ws:
+    get:
+      operationId: GetDebugCookieRawWs
+      tags:
+        - debug/cookie
+      summary: |
+        Debug - WebSocket / Hijack 経路確認
+        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+      description: |
+        WebSocket に Upgrade します（内部で Hijack が関与する実装を想定）。
+        OpenAPI 3.0 では WebSocket を厳密に表現できないため、101 と説明で表します。
+        動作確認は wscat 等で行ってください。
+      responses:
+        '101':
+          description: Switching Protocols (WebSocket)
+          headers:
+            Upgrade:
+              schema:
+                type: string
+                example: websocket
+            Connection:
+              schema:
+                type: string
+                example: Upgrade
+            Sec-WebSocket-Accept:
+              schema:
+                type: string
+        '400':
+          description: Bad Request (Upgrade 失敗)
+components:
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: ページ番号（1から始まる）
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+        example: 1
+    PerPageParam:
+      name: per_page
+      in: query
+      description: 1ページあたりの取得件数
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+        example: 10
+    KeywordParam:
+      name: keyword
+      in: query
+      description: 全文検索キーワード
+      required: false
+      schema:
+        type: string
+        example: example keyword
+    ActiveParam:
+      name: active
+      in: query
+      description: 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない
+      required: false
+      schema:
+        type: boolean
+        example: true
+    UserIdParam:
+      name: user_id
+      in: path
+      required: true
+      description: ユーザーのUUID
+      schema:
+        type: string
+        format: uuid
+        example: 123e4567-e89b-12d3-a456-426614174000
+  securitySchemes:
+    BearerAuth:
+      type: http
+      description: 認証にBearerトークンを使用することを示します。
+      scheme: bearer
+      bearerFormat: JWT
+    BasicAuth:
+      type: http
+      description: 認証にBasic認証を使用することを示します。
+      scheme: basic
+  schemas:
+    ErrorResponse:
+      type: object
+      description: エラーレスポンスの共通スキーマ
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          description: 機械的に処理可能なエラーコード
+          example: EXAMPLE_ERROR
+        message:
+          type: string
+          description: 人間が読めるエラーメッセージ
+          example: 定義されたエラーメッセージ
+        request_id:
+          type: string
+          description: リクエストID
+          example: abcdefghijklmnopqrstuvwxyz
+        details:
+          type: array
+          description: エラーの詳細情報(任意)
+          items:
+            type: string
+          example:
+            - エラーの詳細の文章1
+            - エラーの詳細の文章2
+    ResponseHealth:
+      $ref: '#/components/schemas/HealthResponse'
+    ResponseReady:
+      $ref: '#/components/schemas/ReadyResponse'
+    ResponseVersion:
+      $ref: '#/components/schemas/VersionResponse'
+    UserBaseInputRequest:
+      description: ユーザー情報の基本入力スキーマ
+      additionalProperties: false
+      properties:
+        firstName:
+          description: 苗字
+          type: string
+          example: Alice
+          maxLength: 50
+        lastName:
+          description: 名前
+          type: string
+          example: Smith
+          maxLength: 50
+        email:
+          description: メールアドレス
+          type: string
+          format: email
+          example: alice.smith@example.com
+        password:
+          description: パスワード
+          type: string
+          format: password
+          minLength: 8
+          example: P@ssw0rd!
+        phone:
+          description: 電話番号
+          type: string
+          pattern: ^\+?[0-9]{10,15}$
+          example: '09012345678'
+        postalCode:
+          description: 郵便番号
+          type: string
+          pattern: ^[0-9]{3}-[0-9]{4}$
+          example: 150-0041
+        prefecture:
+          description: 都道府県
+          type: string
+          example: 東京都
+          maxLength: 100
+        city:
+          description: 市区町村
+          type: string
+          example: Shibuya
+          maxLength: 100
+        street:
+          description: 丁目・番地
+          type: string
+          example: 1-2-3 Jinnan
+          maxLength: 200
+        building:
+          description: 建物名・部屋番号
+          type: string
+          example: Shibuya Building 101
+          maxLength: 200
+          nullable: true
+    UserResponse:
+      type: object
+      description: ユーザー情報の基本レスポンススキーマ
+      required:
+        - firstName
+        - lastName
+        - phone
+        - email
+        - postalCode
+        - prefecture
+        - city
+        - street
+        - deletedAt
+      properties:
+        firstName:
+          description: 苗字
+          type: string
+          example: John
+          maxLength: 50
+        lastName:
+          description: 名前
+          type: string
+          example: Doe
+          maxLength: 50
+        email:
+          type: string
+          description: メールアドレス
+          format: email
+          example: john.doe@example.com
+        phone:
+          type: string
+          description: 電話番号
+          pattern: ^\+?[0-9]{10,15}$
+          example: '09012345678'
+        postalCode:
+          description: 郵便番号
+          type: string
+          pattern: ^[0-9]{3}-[0-9]{4}$
+          example: 150-0041
+        prefecture:
+          description: 都道府県
+          type: string
+          example: Tokyo
+          maxLength: 100
+        city:
+          description: 市区町村
+          type: string
+          example: Shibuya
+          maxLength: 100
+        street:
+          description: 丁目・番地
+          type: string
+          example: 1-2-3 Jinnan
+          maxLength: 200
+        building:
+          description: 建物名・部屋番号
+          type: string
+          example: Shibuya Building 101
+          maxLength: 200
+        deletedAt:
+          description: ユーザーが削除された日時。削除されていない場合はnull。
+          type: string
+          format: date-time
+          nullable: true
+    UsersSearchResponse:
+      description: ユーザー検索のレスポンススキーマ
+      allOf:
+        - type: object
+          required:
+            - users
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/UsersSearchResponseItem'
+        - $ref: '#/components/schemas/PaginationMetadataResponse'
+    UserSearchResponseItem:
+      $ref: '#/components/schemas/UsersSearchResponseItem'
+    ResponseV1User:
+      $ref: '#/components/schemas/UserResponse'
+    ResponseV1Users:
+      $ref: '#/components/schemas/UsersResponse'
+    RequestPostV1Users:
+      $ref: '#/components/schemas/UsersPostRequest'
+    RequestPutV1User:
+      $ref: '#/components/schemas/UserPutRequest'
+    RequestPatchV1User:
+      $ref: '#/components/schemas/UserPatchRequest'
+    DebugIssueCookieRequest:
+      additionalProperties: false
+      description: |
+        Debug - issue Set-Cookie request schema
+        このリクエストは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      properties:
+        setCookie:
+          type: string
+          description: Raw Set-Cookie header value
+          example: __Host-access_token=rawtoken; Path=/hoge; Domain=example.com; SameSite=None
+      required:
+        - setCookie
+    DebugCookieInspectResponse:
+      description: |
+        Debug - request cookie確認（Cookieヘッダと解析結果を返す）
+        このレスポンスは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+      additionalProperties: false
+      properties:
+        rawCookieHeader:
+          type: string
+        cookies:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - rawCookieHeader
+        - cookies
+    HealthResponse:
+      type: object
+      description: サーバーのヘルスチェック用のレスポンスです。
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: サーバーの現在のステータスを示します。
+          example: ok
+    ReadyResponse:
+      type: object
+      description: サーバーのレディネスチェック用のレスポンスです。
+      required:
+        - status
+        - applicationTime
+        - dbResponsedAt
+        - dbLatencyMs
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+            - unhealthy
+          description: サーバーのレディネス状態
+          example: ok
+        applicationTime:
+          type: string
+          format: date-time
+          description: アプリケーションサーバーの現在時刻
+          example: '2024-06-01T12:00:01Z'
+        dbResponsedAt:
+          type: string
+          format: date-time
+          description: データベースが最後に正常に応答した日時
+          example: '2024-06-01T12:00:00Z'
+        dbLatencyMs:
+          type: integer
+          format: int64
+          description: データベース応答までの時間（ミリ秒）
+          example: 8
+    VersionResponse:
+      type: object
+      description: サーバーのバージョン情報用のレスポンスです。
+      required:
+        - version
+        - revision
+        - buildDate
+        - environment
+        - service
+      properties:
+        version:
+          type: string
+          description: アプリケーションのバージョン
+        revision:
+          type: string
+          description: アプリケーションのリビジョン
+        buildDate:
+          type: string
+          format: date-time
+          description: アプリケーションのビルド日時
+        environment:
+          type: string
+          description: 実行環境
+        service:
+          type: string
+          description: サービス名
+    PaginationMetadataResponse:
+      type: object
+      required:
+        - total
+        - limit
+        - offset
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: 全件数
+          example: 100
+        limit:
+          type: integer
+          description: 1ページあたりの件数
+          example: 10
+        offset:
+          type: integer
+          description: 現在のオフセット
+          example: 0
+    UsersResponse:
+      description: ユーザー情報のリストを返すレスポンスです。
+      allOf:
+        - type: object
+          required:
+            - users
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserResponse'
+        - $ref: '#/components/schemas/PaginationMetadataResponse'
+    UsersPostRequest:
+      description: ユーザー情報の新規作成
+      allOf:
+        - $ref: '#/components/schemas/UserBaseInputRequest'
+        - properties:
+            password:
+              type: string
+              description: ユーザーのパスワード
+              example: password123
+          required:
+            - firstName
+            - lastName
+            - email
+            - password
+            - phone
+            - prefecture
+            - city
+            - street
+            - postalCode
+            - building
+    UserPatchRequest:
+      description: ユーザー情報の部分更新
+      allOf:
+        - $ref: '#/components/schemas/UserBaseInputRequest'
+    UserPutRequest:
+      description: ユーザー情報の更新
+      allOf:
+        - $ref: '#/components/schemas/UserPatchRequest'
+        - required:
+            - firstName
+            - lastName
+            - email
+            - password
+            - postalCode
+            - phone
+            - prefecture
+            - city
+            - street
+            - building
+    UsersSearchResponseItem:
+      description: 検索条件に基づいて取得したユーザー情報
+      allOf:
+        - $ref: '#/components/schemas/UserResponse'
+        - type: object
+          required:
+            - registeredAt
+          properties:
+            registeredAt:
+              description: 登録日時
+              type: string
+              format: date-time

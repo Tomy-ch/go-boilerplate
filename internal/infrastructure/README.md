@@ -1,0 +1,195 @@
+# Infrastructure Layer (`internal/infrastructure`) Guide
+
+## Role
+
+The Infrastructure layer is responsible for **implementing access to external technologies (DB, external APIs, authentication, security, etc.)**.
+
+This layer has the following responsibilities.
+
+- Implementation of external I/O (RDB / API / authentication / system)
+- Implementation of interfaces defined by the Domain
+- Encapsulation of technical details (connection, retry, drivers, logging, etc.)
+- Error normalization
+- Provision of Observability (logging / tracing)
+
+Upper layers (Domain / Usecase) **must not be aware of Infrastructure implementation details at all.**
+
+## Position in Onion Architecture
+
+```mermaid
+flowchart TB
+    Infra["Infrastructure"]
+    Usecase["Usecase"]
+    Domain["Domain"]
+
+    Infra --> Usecase --> Domain
+```
+
+- Domain / Usecase define abstractions only
+- Infrastructure provides concrete implementations
+
+## Dependencies
+
+```mermaid
+flowchart LR
+    Infra["Infrastructure"]
+    Domain["Domain（interface）"]
+    Usecase["Usecase"]
+
+    Infra --> Domain
+    Infra --> Usecase
+```
+
+- Infrastructure depends on Domain
+- Domain / Usecase must not depend on Infrastructure
+
+## Relationship with Usecase
+
+- Transaction boundaries are managed by the Usecase layer
+- Infrastructure must not start transactions
+- Transactions are propagated via `context.Context`
+
+```mermaid
+flowchart TB
+    UC["Usecase（Tx start）"]
+    Repo["Repository / QueryService"]
+    Driver["driver（use Tx）"]
+
+    UC --> Repo --> Driver
+```
+
+## Error Handling
+
+The Infrastructure layer must not return external technology errors as-is,  
+but must **convert them into application-wide errors**.
+
+Examples:
+
+- PostgreSQL errors → pgerror.NormalizeError
+- External API errors → converted to apperror
+
+## Observability
+
+The Infrastructure layer provides the following observability.
+
+- SQL / external I/O log output
+- Tracing using OpenTelemetry
+- Execution time measurement (slow query)
+
+Mainly implemented using wrappers such as loggingdb.
+
+## Prohibited Practices
+
+The following must not be done in the Infrastructure layer.
+
+- Implementation of business logic
+- Branching based on Domain rules
+- Decision making of Usecase
+- Introducing HTTP / framework-dependent code
+- Starting transactions
+
+## Implementation Rules
+
+- Use sqlc for SQL execution
+- Do not write search logic in Repository (use QueryService)
+- Do not use driver directly; use it via loggingdb
+- Always propagate context
+- Always normalize external errors
+
+## Directory Structure
+
+```mermaid
+flowchart TB
+    Root["internal/infrastructure"]
+    Auth["auth/"]
+    RDB["rdb/"]
+    Sec["security/"]
+    Sys["system/"]
+
+    Root --> Auth
+    Root --> RDB
+    Root --> Sec
+    Root --> Sys
+```
+
+## Subsystems
+
+### Authentication Access Implementation
+
+- Token validation
+- Retrieval of authentication information
+
+→ Refer to [auth/README.md](./auth/README.md)
+
+### RDB Access Implementation
+
+- Repository / QueryService
+- Type-safe SQL execution using sqlc
+- Transaction management using driver
+- Logging / tracing using loggingdb
+- PostgreSQL error normalization
+
+→ Refer to [rdb/README.md](./rdb/README.md)
+
+### Security Access Implementation
+
+- Encryption / hashing
+- Token generation
+
+→ Refer to [security/README.md](./security/README.md)
+
+### System Access Implementation
+
+- clock (time management)
+- ID generation
+- System utilities
+
+→ Refer to [system/README.md](./system/README.md)
+
+## Test Strategy
+
+- Integration Test using real DB
+- State isolation using transaction rollback
+- Use testkit
+
+```mermaid
+flowchart TB
+    DB["real DB"]
+    Rollback["rollback"]
+    Parallel["parallel execution"]
+    Serial["Tx is serialized"]
+
+    DB --> Rollback --> Parallel --> Serial
+```
+
+## Design Principles Summary
+
+### 1. Encapsulation of Technical Details
+
+DB / API / authentication / security  
+→ encapsulated in Infrastructure
+
+### 2. Dependency Inversion
+
+Domain defines interfaces  
+Infrastructure implements them
+
+### 3. Separation of Responsibilities
+
+```txt
+Persistence → Repository  
+Query       → QueryService
+```
+
+### 4. Transaction Management
+
+Usecase manages transactions  
+Infrastructure does not participate
+
+### 5. Unified Error Handling
+
+External errors → application errors
+
+### 6. Observability
+
+logging / tracing / metrics

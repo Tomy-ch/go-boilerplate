@@ -1,0 +1,170 @@
+name: migration-check
+
+on:
+  pull_request:
+    paths:
+      - 'database/migrations/**'
+      - '.github/workflows/migration-check.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  migration-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run migration checks
+        id: migration
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+
+          RESULT_FILE=/tmp/migration_result.txt
+          echo "" > $RESULT_FILE
+
+          run_check () {
+            CMD=$1
+            NAME=$2
+
+            echo "▶ $NAME" >> $RESULT_FILE
+            $CMD >> $RESULT_FILE 2>&1
+            CODE=$?
+
+            if [ $CODE -ne 0 ]; then
+              echo "❌ $NAME failed" >> $RESULT_FILE
+              FAIL=1
+            else
+              echo "✅ $NAME passed" >> $RESULT_FILE
+            fi
+
+            echo "" >> $RESULT_FILE
+          }
+
+          FAIL=0
+
+          run_check "make check-migration-up-version" "duplicate check (up)"
+          run_check "make check-migration-down-version" "duplicate check (down)"
+          run_check "make check-migration-up-gap" "gap check (up)"
+          run_check "make check-migration-down-gap" "gap check (down)"
+
+          echo "▶ pair check" >> $RESULT_FILE
+
+          UP=$(ls database/migrations/*.up.sql | xargs -n1 basename | cut -d'_' -f1 | sort)
+          DOWN=$(ls database/migrations/*.down.sql | xargs -n1 basename | cut -d'_' -f1 | sort)
+
+          DIFF=$(diff <(echo "$UP") <(echo "$DOWN"))
+
+          if [ -n "$DIFF" ]; then
+            echo "❌ up/down mismatch detected" >> $RESULT_FILE
+            echo "$DIFF" >> $RESULT_FILE
+            FAIL=1
+          else
+            echo "✅ up/down pair check passed" >> $RESULT_FILE
+          fi
+
+          if [ $FAIL -ne 0 ]; then
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment migration result on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const marker = '<!-- migration-check-result -->';
+            const status = '${{ steps.migration.outputs.status }}';
+
+            const result = (() => {
+              try { return fs.readFileSync('/tmp/migration_result.txt', 'utf8').trim(); }
+              catch { return '(log not found)'; }
+            })();
+
+            const updatedAtJST = new Date().toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+
+            const headSha =
+              (context.payload.pull_request?.head?.sha)
+              || process.env.GITHUB_SHA
+              || context.sha;
+
+            const shortSha = headSha.slice(0, 7);
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${headSha}`;
+
+            let body;
+
+            if (status === 'success') {
+              body = [
+                marker,
+                '## ✅ Migration checks passed',
+                '',
+                `🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
+                '',
+                'All migration validations passed.',
+                '',
+                `🕒 UpdatedAt: ${updatedAtJST} (JST)`
+              ].join('\n');
+            } else {
+              body = [
+                marker,
+                '## ❌ Migration check failed',
+                '',
+                `🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
+                '',
+                '```',
+                result,
+                '```',
+                '',
+                `🕒 UpdatedAt: ${updatedAtJST} (JST)`
+              ].join('\n');
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            const existing = comments
+              .filter(c => (c.body || '').includes(marker))
+              .sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }
+
+      - name: Fail job if migration check failed
+        if: steps.migration.outputs.status != 'success'
+        run: exit 1

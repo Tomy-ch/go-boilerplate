@@ -1,0 +1,412 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    # Enabled by Default
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+    # Disabled by Default
+    - asciicheck # ASCII以外の文字を変数名などで使用しているかをチェックします
+    - bidichk # バイディレクショナルテキストのチェックをします
+    - contextcheck # context.Contextの伝播が破棄されていないかをチェックします
+    - decorder # constやvarなどの宣言順序をチェックします
+    - depguard # 外部ライブラリの使用を制限します
+    - dupl # 重複コードの検出を行います
+    - errorlint # エラー処理のベストプラクティスをチェックします
+    - exptostd # 標準ライブラリの使用を推奨します
+    - forbidigo # 識別子の使用禁止ルールを設定します
+    - funcorder # 構造体に関連する関数・メソッドの配置順序をチェックします
+    - funlen # 関数の長さを制限して、冗長性と複雑さを減らします
+    - gocheckcompilerdirectives # // go:ディレクティブのチェックを行います
+    - gocognit # 人間の理解難度を測る指標として、関数・メソッドの認知的複雑度を算出します
+    - gocritic # Goコードの高級な静的解析を行います
+    - gocyclo # 関数単位での複雑度を計算します
+    - gosec # セキュリティ上の脆弱性を検出します
+    - inamedparam # インターフェースのメソッド定義において「名前なしパラメータ」が使われていないかを検出します
+    - interfacebloat # 1つのインターフェースにメソッドが多すぎる場合に警告を出します
+    - lll # 行の長さを制限します
+    - makezero # make()でのスライス初期化に関するバグを防ぐためのチェックを行います
+    - misspell # スペルミスを検出します
+    - mnd # マジックナンバーの使用を検出します
+    - musttag # Marshal/Unmarshalする際に、エクスポート対象フィールドにタグがついていないことを検出します
+    - nestif # ネストされたif文の深さを制限します
+    - nilnesserr # 正しいエラーが返されているかを検出します
+    - noctx # context.Contextを使用していない非推奨なコードを検出します
+    - nolintlint # nolintコメントの使用をチェックします
+    - nonamedreturns # 名前付きリターン値を全部検出して警告します
+    - prealloc # スライスの事前割り当てを推奨します
+    - predeclared # 予約語の使用をチェックします
+    - recvcheck # 関数のレシーバーが統一的に使用されているかをチェックします
+    - revive # Goコードの静的解析を行うツールで、特にコードの品質とスタイルに焦点を当てています
+    - rowserrcheck # sql系のインスタンスで、行の取得やエラー処理が正しく行われているかをチェックします
+    - spancheck # OpenTelemetryのSpanの使用をチェックします
+    - sqlclosecheck # SQLの接続やトランザクションのクローズ処理をチェックします
+    - testifylint # Testifyのアサーションやモックの使用をチェックします
+    - unparam # 使用されていない関数のパラメータを検出します
+    - usestdlibvars # 標準ライブラリの変数を使用しているかをチェックします
+
+  settings:
+    decorder:
+      dec-order:
+        - "const"
+        - "var"
+        - "type"
+        - "func"
+      ignore-underscore-vars: false
+      disable-dec-order-check: false
+      disable-init-func-first-check: false
+    depguard:
+      # 外部ライブラリがシステムの根幹に関わることを避けるために、pkgディレクトリで薄いラッパー作成し使用することを推奨します。
+      rules:
+        only_the_original_error_is_permitted:
+          files:
+            - "**/*.go"
+            - "!**/pkg/xerrors/**.go" # pkg/xerrors配下ではアプリケーション全体で使用するエラーラッパーを実装するため許可します
+          list-mode: lax
+          deny:
+            - pkg: github.com/cockroachdb/errors
+              desc: "スタックトレース用として導入したライブラリです。
+                代わりに pkg/xerrors を使用してください。"
+        only_the_original_uuid_is_permitted:
+          files:
+            - "**/*.go"
+            - "!**/pkg/uuid/**.go" # pkg/uuid配下ではアプリケーション全体で使用するuuidライブラリのラッパーを実装するため許可します
+            - "!**/internal/infrastructure/rdb/conv/**.go" # conv配下ではORMの型変換のためuuidライブラリの使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: github.com/google/uuid
+              desc: "uuid作成用として導入したライブラリです。
+                代わりに pkg/uuid を使用してください。"
+        # アプリケーションの健全性を保つためのルール
+        reject_dangerous_os: # os系のライブラリの使用を禁止します
+          files:
+            - "**/*.go"
+            - "!**/cmd/**.go" # アプリケーションのエントリポイントでは、終了制御を行うためosの使用を許可します
+            - "!**/internal/cli/**.go" # CLIを扱う箇所では、ファイル操作などが必要なためosの使用を許可します
+            - "!**/internal/config/**.go" # システムの環境変数を扱う箇所では、ブートストラップの環境変数を取得するためにosの使用を許可します
+            - "!**/scripts/**.go" # スクリプトを扱う箇所では、ファイル操作などが必要なためosの使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: os
+              desc: "configとcli、scriptsディレクトリ以外でのos系のライブラリの使用は破壊的な副作用を招くため禁止です。"
+        restrict_the_use_of_cli: # cliパッケージの使用を限定します
+          files:
+            - "**/*.go"
+            - "!**/cmd/**.go" # アプリケーションのエントリポイントではcli化ライブラリの使用を許可します
+            - "!**/internal/cli/**.go" # CLIを扱う箇所ではcli化ライブラリの使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: github.com/spf13/cobra
+              desc: "CLI化ライブラリの使用は制限されています。
+                可能な限り、CLI化ライブラリを追加で使用しない実装を心がけてください。"
+        restrict_the_use_of_di_container: # DIコンテナの使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/di/**.go" # DIコンテナを扱う箇所では使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.uber.org/fx
+              desc: "DIコンテナライブラリの使用は制限されています。
+                可能な限り、DIコンテナを追加で使用しない実装を心がけてください。"
+        restrict_the_use_of_zap_logger: # zapロガーの使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/logging/**.go" # loggingパッケージではロガーの初期化を行うため使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.uber.org/zap
+              desc: "zapロガーライブラリの使用はlogging/のみに制限されています。
+                可能な限り、ロギングライブラリを追加で使用しない実装を心がけてください。"
+        restrict_the_use_of_observability: # オブザーバビリティ関連パッケージの使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/observability/**.go" # オブザーバビリティの初期化箇所では使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.opentelemetry.io/otel
+              desc: "オブザーバビリティ関連ライブラリの使用は制限されています。
+                可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
+        independent_apperror: # apperrorパッケージが責務の実装層にも依存しないことを保証します
+          files:
+            - "**/pkg/apperror/**.go"
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/domain/
+              desc: "apperrorパッケージは他のdomain層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "apperrorパッケージは他のusecase層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "apperrorパッケージは他のcontroller層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "apperrorパッケージは他のinfrastructure層に依存してはいけません。"
+        independent_cli: # cliパッケージが責務の実装層にも依存しないことを保証します
+          files:
+            - "**/internal/cli/**.go"
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/domain/
+              desc: "cliパッケージは他のdomain層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "cliパッケージは他のusecase層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "cliパッケージは他のcontroller層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/infrastructure/(?!.*driver)
+              desc: "cliパッケージは他のinfrastructure層に依存してはいけません。ただし、driver配下のものは、コマンド実装のために必要な場合があるため例外とします。"
+        independent_config: # configパッケージが責務の実装層にも依存しないことを保証します
+          files:
+            - "**/internal/config/**.go"
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/domain/
+              desc: "configパッケージはdomain層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "configパッケージはusecase層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "configパッケージはcontroller層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "configパッケージは他のinfrastructure層に依存してはいけません。"
+        independent_logging: # loggingパッケージが責務の実装層にも依存しないことを保証します
+          files:
+            - "**/pkg/logging/**.go"
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/domain/
+              desc: "loggingパッケージは他のdomain層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "loggingパッケージは他のusecase層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "loggingパッケージは他のcontroller層に依存してはいけません。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "loggingパッケージは他のinfrastructure層に依存してはいけません。"
+        independent_pkg: # pkgディレクトリが他の内部パッケージに依存しないことを保証します
+          files:
+            - "**/pkg/**.go"
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/
+              desc: "pkgディレクトリはinternalディレクトリから独立している必要があります。
+                internalディレクトリを参照することは禁止です。"
+            - pkg: go-boilerplate/pkg/
+              desc: "pkgディレクトリは他のpkgディレクトリから独立している必要があります。
+                他のpkgディレクトリを参照することは禁止です。"
+        # 責務の侵食崩壊を防ぐためのルール
+        # 特定のライブラリの禁止設定は、.golangci-full.yamlで行っています。
+        #
+        # domain層では外部ライブラリの直接使用を全面的に禁止し、pkg経由での使用を強く推奨します。
+        # 緩める場合はそのライブラリが陳腐化しにくいか、メンテナンスコストが低いかかつ必要性が高いかを考慮してください。
+        # 例： Decimal系のライブラリなど
+        maintain_a_sound_domain:
+          files:
+            - "**/internal/domain/**.go"
+          list-mode: lax
+          deny:
+            - pkg: net/http
+              desc: "Domain層でhttpパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: github.com/labstack/echo/v4
+              desc: "Domain層でechoパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: database/sql
+              desc: "Domain層でdatabase/sqlパッケージを直接使用しないでください。
+                infrastructure層にて処理して、コンストラクタに受け渡してください。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "domain層でusecase層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "domain層でcontroller層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "domain層でinfrastructure層を参照することは禁止です。"
+        # usecase層では外界とのやり取りのライブラリの使用を禁止します。
+        # それ以外のライブラリの利用は許可されます。
+        # ただし、外部ライブラリの直接使用は避け、pkg経由での使用を強く推奨します。
+        maintain_a_sound_usecase:
+          files:
+            - "**/internal/usecase/**.go"
+          list-mode: lax
+          deny:
+            - pkg: net/http
+              desc: "Usecase層でhttpパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: github.com/labstack/echo/v4
+              desc: "Usecase層でechoパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "usecase層でcontroller層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "usecase層でinfrastructure層を参照することは禁止です。"
+        # controller層では、主にHTTPリクエストを扱うライブラリの使用を許可します。
+        # ただし、永続化を行うライブラリの使用は禁止します。(主にdatabase/sqlなど)
+        maintain_a_sound_controller:
+          files:
+            - "**/internal/controller/**.go"
+          list-mode: lax
+          deny:
+            - pkg: database/sql
+              desc: "Controller層で永続化を行うライブラリを直接使用しないでください。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "controller層の責務は入出力境界です。infrastructure層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/domain/
+              desc: "controller層の責務は入出力境界です。domain層の情報にアクセスすることは禁止です。
+                出力する値は必ずDTOなどを介して受け渡してください。"
+        # infrastructure層では、主に永続化を行うライブラリの使用を許可します。
+        # ただし、HTTPリクエストを扱うライブラリの使用は禁止します。(主にnet/httpなど)
+        maintain_a_sound_infrastructure:
+          files:
+            - "**/internal/infrastructure/**.go"
+          list-mode: lax
+          deny:
+            - pkg: net/http
+              desc: "Domain層でhttpパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: github.com/labstack/echo/v4
+              desc: "Domain層でechoパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "infrastructure層でcontroller層を参照することは禁止です。"
+        # diコンテナのcontroller層の設定ファイルでは、internal/controller/handler配下で定義されたもののみをimport可能とします。
+        configure_only_the_controller_layer:
+          files:
+            - "**/internal/di/controller.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - go-boilerplate/internal/controller/handler/
+            - go.uber.org/fx
+          deny:
+            - pkg: ".*"
+              desc: "controller用DIでは internal/controller/handler 配下のみ import 可能です"
+        # diコンテナのinfrastructure層の設定ファイルでは、internal/infrastructure/配下で定義されたもののみをimport可能とします。
+        configure_only_the_infrastructure_layer:
+          files:
+            - "**/internal/di/infrastructure.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - go-boilerplate/internal/infrastructure/
+            - go.uber.org/fx
+          deny:
+            - pkg: ".*"
+              desc: "infrastructure用DIでは internal/infrastructure 配下のみ import 可能です"
+        # diコンテナのusecase層の設定ファイルでは、internal/usecase/配下で定義されたもののみをimport可能とします。
+        configure_only_the_usecase_layer:
+          files:
+            - "**/internal/di/usecase.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - go-boilerplate/internal/usecase/
+            - go.uber.org/fx
+          deny:
+            - pkg: ".*"
+              desc: "usecase用DIでは internal/usecase 配下のみ import 可能です"
+    dupl:
+      # 重複コードの検出を行います。
+      # 約300トークン以上の重複を検出します。
+      threshold: 300
+    forbidigo:
+      forbid:
+        - pattern: '^print(ln)?$'
+          msg: "禁止：printやprintlnを使わないでください"
+        - pattern: '^fmt\.Print.*$'
+          msg: "禁止：本番用コードにfmt.Print*を残さないでください。
+                ログ出力にはzap.Loggerを使用してください"
+        - pattern: '^spew\.Dump$'
+          msg: "禁止：spew.Dumpは禁止されています"
+      analyze-types: true
+    funcorder:
+      constructor: true
+      struct-method: true
+      alphabetical: false
+    funlen:
+      # 関数の長さを制限して、冗長性と複雑さを減らします。
+      # 関数内の行数チェックは無効にします。
+      lines: -1
+      # 関数内のステートメント数を制限します。
+      statements: 50
+    gocognit:
+      min-complexity: 20
+    lll:
+      line-length: 150
+    makezero:
+      always: false
+    misspell:
+      locale: UK
+      ignore-rules:
+        - "importas"
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    testifylint:
+      enable-all: true
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - []
+            - []
+            - [{ skipPackageNameChecks: true }]
+    usestdlibvars:
+      http-method: true        # HTTPメソッド文字列の検出（"GET" → http.MethodGet）
+      http-status-code: true   # ステータスコードの検出（500 → http.StatusInternalServerError）
+      time-date-month: true    # time.Month(1) の検出
+      time-weekday: true       # time.Weekday(1) の検出
+      time-layout: true        # time レイアウト文字列の検出
+      crypto-hash: true        # crypto.Hash の検出
+      default-rpc-path: true   # rpc.DefaultPath の検出
+      sql-isolation-level: true # sql.IsolationLevel の検出
+      tls-signature-scheme: true # tls.SignatureScheme の検出
+      constant-kind: true      # 定数の種類（Kind）を検出
+      time-month: true         # time.Month の検出
+
+  exclusions:
+    presets:
+      - comments
+    paths:
+      - vendor
+    rules:
+      - path: (.+)_test\.go
+        linters:
+          - lll
+
+run:
+  timeout: "3m"
+  issues-exit-code: 1
+  tests: true
+  allow-parallel-runners: true
+  allow-serial-runners: true
+  relative-path-mode: wd
+  concurrency: 4
+
+formatters:
+  enable:
+    - goimports
+    - gofumpt
+    - gofmt
+    - golines
+    - swaggo
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
+    goimports:
+      local-prefixes:
+        - "go-boilerplate"
+    gofumpt:
+      module-path: "go-boilerplate"
+      extra-rules: true
+    golines:
+      max-len: 150
+      tab-len: 4
+      shorten-comments: false
+      reformat-tags: true
+      chain-split-dots: true
+  exclusions:
+    paths:
+      - ".*\\.gen\\.go$"
+      - ".*\\.mock\\.go$"
+      - ".*mock_.*\\.go$"

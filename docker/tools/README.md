@@ -1,0 +1,72 @@
+# Toolsコンテナ
+
+このコンテナは、Goプロジェクトにおける**生成・バンドル用**のnodeとgoのコンテナを提供します。
+
+各種ツールでの生成は、docker-composeを通じて行います。
+
+## ツールを追加したら（重要）
+
+[versions_generator.ja.md](../../docs/ja/maintenance/versions_generator.ja.md)を参照し、生成ツールのバージョン情報を記録するスクリプトを修正してください。
+
+## 利用目的
+
+- `redocly/cli`: OpenAPIのYAMLスキーマのバンドル（`$ref` 解決）とOpenAPIドキュメントのHTML出力
+- `oapi-codegen`: Goコードの自動生成（Echoサーバ/型定義など）
+- `mockgen`: Goのinterfaceに基づくMock生成
+
+## 構成
+
+```text
+# openapi-builder (Nodeベース)
+- redocly/cli
+
+# go-generator (Goベース)
+- oapi-codegen
+- mockgen
+```
+
+## 利用方法
+
+```bash
+make gen
+```
+
+`go:generate` ディレクティブに従い、`oapi-codegen`や`mockgen`が実行されます。
+
+## 追加方法
+
+新しいコードの生成ツールを追加する場合は、以下の手順に従ってください。
+
+1. 必要なツールをDockerfileにインストール
+2. `docker-compose.yaml`に新しいサービスを追加
+   1. `profiles`セクションに`generate`を追加
+   2. 実行したいコマンドを`command`に指定
+3. (必要であれば)`Makefile`に新しいターゲットを追加
+   1. 実行がciのみなどで良い場合であれば、`--rm`を用いた一時コンテナ実行を設定
+
+## 生成されるディレクトリ構成
+
+```text
+openapi/
+├── api.yaml                  # メインのOpenAPI定義
+├── components/               # $refで参照されるスキーマ群
+├── openapi.gen.yaml          # swagger-cliでバンドルされた出力
+└── docs/
+    └── index.html            # Redocで生成されたHTML
+```
+
+## 注意
+
+- ツールの実行はDocker上で行いますが、その際のワーキングディレクトリは`app/`を採用しています。
+  書き換える場合、`docker-compose.yaml`の`volumes`セクションの他、生成時に参照されるパスも適切に変更する必要があります。
+  対象となるツールは以下の通りです。
+  - oapi-codegen
+  - sqlc
+- OpenAPI スキーマの`$ref`解決やドキュメント生成は`openapi/`配下が前提です。
+- `go generate`に必要なコメントが`internal/interface/handler/...`や`test/...`に記述されている必要があります。
+
+## 関連ツール公式
+
+- [Redocly CLI](https://github.com/Redocly/redocly-cli)
+- [oapi-codegen](https://github.com/deepmap/oapi-codegen)
+- [mockgen (uber/mock)](https://github.com/uber-go/mock)

@@ -1,0 +1,63 @@
+type: object
+description: ユーザー情報の基本レスポンススキーマ
+required:
+  - firstName
+  - lastName
+  - phone
+  - email
+  - postalCode
+  - prefecture
+  - city
+  - street
+  - deletedAt
+properties:
+  firstName:
+    description: 苗字
+    type: string
+    example: "John"
+    maxLength: 50
+  lastName:
+    description: 名前
+    type: string
+    example: "Doe"
+    maxLength: 50
+  email:
+    type: string
+    description: メールアドレス
+    format: email
+    example: "john.doe@example.com"
+  phone:
+    type: string
+    description: 電話番号
+    pattern: '^\+?[0-9]{10,15}$'
+    example: "09012345678"
+  postalCode:
+    description: 郵便番号
+    type: string
+    pattern: '^[0-9]{3}-[0-9]{4}$'
+    example: "150-0041"
+  prefecture:
+    description: 都道府県
+    type: string
+    example: "Tokyo"
+    maxLength: 100
+  city:
+    description: 市区町村
+    type: string
+    example: "Shibuya"
+    maxLength: 100
+  street:
+    description: 丁目・番地
+    type: string
+    example: "1-2-3 Jinnan"
+    maxLength: 200
+  building:
+    description: 建物名・部屋番号
+    type: string
+    example: "Shibuya Building 101"
+    maxLength: 200
+  deletedAt:
+    description: ユーザーが削除された日時。削除されていない場合はnull。
+    type: string
+    format: date-time
+    nullable: true

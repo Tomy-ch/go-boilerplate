@@ -1,0 +1,33 @@
+[sqlfluff]
+dialect = postgres
+templater = jinja
+max_line_length = 500
+; 現時点で次の公式報告があり、並列実行を有効にすると `resource_tracker: leaked semaphore` の警告や異常終了の恐れがあるので、processes = 1 とする。
+; Related official references:
+; - intermittent ResourceTracker called reentrantly for resource cleanup in tests:
+;   https://github.com/python/cpython/issues/131788
+; - backports to 3.13 & 3.14 break running programs on Python version upgrade (multiprocessing) :
+;   https://github.com/python/cpython/issues/142206
+processes = 1
+sql_file_exts = .sql,.sql.j2,.dml,.ddl
+
+[sqlfluff:templater:jinja]
+ignore_template_errors = True
+
+[sqlfluff:indentation]
+implicit_indents = allow
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = upper
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = upper
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = upper
+
+; カラム名やテーブル名に予約語を使用している場合の警告を無視する設定
+[sqlfluff:rules:references.keywords]
+ignore_words = name

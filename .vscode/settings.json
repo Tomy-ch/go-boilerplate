@@ -1,0 +1,98 @@
+{
+  "go.alternateTools": {
+    "golangci-lint": "${HOME}/go/bin/golangci-lint",
+    "gopls": "gopls",
+    "gofumpt": "gofumpt",
+    "gotests": "${HOME}/go/bin/gotests",
+    "impl": "${HOME}/go/bin/impl"
+  },
+
+  "go.lintTool": "golangci-lint-v2",
+  "go.lintOnSave": "package",
+  "go.useLanguageServer": true,
+
+  "gopls": {
+    "usePlaceholders": true,
+    "formatting.gofumpt": true,
+    "completeUnimported": true,
+    "matcher": "Fuzzy",
+    "staticcheck": true,
+    "analyses": {
+      "nilness": true,
+      "unusedparams": true,
+      "unusedvariable": true,
+      "shadow": true
+    },
+    "build.directoryFilters": [
+      "-node_modules",
+      "-vendor",
+      "-dist",
+      "-tmp"
+    ]
+  },
+
+  "material-icon-theme.folders.associations": {
+    "testkit": "test",
+    "actions": "gh-workflows",
+    "internal": "private",
+    "apperror": "error",
+    "ctxhelper": "context",
+    "httpstack": "middleware",
+    "di": "interceptor",
+    "domain": "core",
+    "infrastructure": "connection",
+    "rdb": "database",
+    "conv": "tools",
+    "driver": "connection",
+    "integration": "test",
+    "observability": "meta",
+    "usecase": "tasks",
+    "support": "tools",
+    "tx": "taskfile",
+    "openapi": "api",
+    "paths": "routes",
+    "xerrors": "error",
+  },
+
+  "[go]": {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+		"editor.guides.indentation": true,
+    "editor.formatOnSave": true
+  },
+	"[markdown]": {
+		"editor.tabSize": 2,
+		"editor.formatOnSave": true,
+		"editor.formatOnPaste": true
+	},
+  "[javascriptreact]": {
+    "editor.tabSize": 2,
+		"editor.formatOnSave": true,
+		"editor.formatOnPaste": true
+  },
+  "[javascript]": {
+    "editor.tabSize": 2,
+		"editor.formatOnSave": true,
+		"editor.formatOnPaste": true
+  },
+
+  "makefile.configureOnOpen": false,
+  "editor.suggestSelection": "first",
+  "files.watcherExclude": {
+    "**/vendor/**": true,
+    "**/.git/**": true,
+    "**/dist/**": true
+  },
+  "search.exclude": {
+    "**/vendor": true,
+    "**/.git/**": true
+  },
+  "json.schemaDownload.enable": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.markdownlint": "always"
+  },
+  "json.schemaDownload.trustedDomains": {
+    "https://raw.githubusercontent.com": true
+  }
+}

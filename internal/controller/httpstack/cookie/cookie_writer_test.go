@@ -1,0 +1,303 @@
+package cookie
+
+import (
+	"bufio"
+	"bytes"
+	"io"
+	"net"
+	"net/http"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+// fakeOrig はテスト用の簡易 ResponseWriter 実装です。
+type fakeOrig struct {
+	header    http.Header
+	wroteCode int
+	body      bytes.Buffer
+	flushed   bool
+	pushed    bool
+}
+
+// nonHijackWriter は Hijack を公開しないラッパーで、元の ResponseWriter を透過します。
+type nonHijackWriter struct{ rw http.ResponseWriter }
+
+func newFakeOrig() *fakeOrig {
+	return &fakeOrig{header: make(http.Header)}
+}
+
+func (f *fakeOrig) Header() http.Header                      { return f.header }
+func (f *fakeOrig) WriteHeader(code int)                     { f.wroteCode = code }
+func (f *fakeOrig) Write(p []byte) (int, error)              { return f.body.Write(p) }
+func (f *fakeOrig) Flush()                                   { f.flushed = true }
+func (f *fakeOrig) Push(_ string, _ *http.PushOptions) error { f.pushed = true; return nil }
+func (f *fakeOrig) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	c1, c2 := net.Pipe()
+	rw := bufio.NewReadWriter(bufio.NewReader(c2), bufio.NewWriter(c2))
+	return c1, rw, nil
+}
+func (f *fakeOrig) ReadFrom(r io.Reader) (int64, error) { return io.Copy(&f.body, r) }
+
+func (n *nonHijackWriter) Header() http.Header         { return n.rw.Header() }
+func (n *nonHijackWriter) Write(p []byte) (int, error) { return n.rw.Write(p) }
+func (n *nonHijackWriter) WriteHeader(code int)        { n.rw.WriteHeader(code) }
+
+func Test_cookieRewriteWriter_Header(t *testing.T) {
+	t.Parallel()
+	t.Run("Header: w.Header() で内部ヘッダに値を設定できる", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		h := w.Header()
+		h.Add("X-Test", "v")
+		require.Equal(t, "v", w.hdr.Get("X-Test"))
+	})
+}
+
+func Test_cookieRewriteWriter_WriteHeader(t *testing.T) {
+	t.Parallel()
+	t.Run("WriteHeader: Set-Cookie を書き換えてヘッダを転送する", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		// force HttpOnly via cfg
+		b := true
+		cfg := &SecurityCookie{applyToAll: true, forceHTTPOnly: &b}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		w.Header().Add("Set-Cookie", "id=1; Path=/")
+		w.Header().Add("X", "h")
+
+		w.WriteHeader(http.StatusCreated)
+
+		require.Equal(t, 201, orig.wroteCode)
+		require.Equal(t, "h", orig.Header().Get("X"))
+		sc := orig.Header()["Set-Cookie"]
+		require.Len(t, sc, 1)
+		require.Contains(t, sc[0], "HttpOnly")
+	})
+
+	t.Run("WriteHeader: 既にヘッダ書き込み済みなら無視される", func(t *testing.T) {
+		t.Parallel()
+		orig2 := newFakeOrig()
+		cfg2 := &SecurityCookie{applyToAll: true}
+		w2 := newCookieRewriteWriter(orig2, cfg2)
+		// 先にフラグを立てる
+		w2.wroteHdr = true
+		w2.hdr.Add("X-Should-Not", "v")
+		// orig2 の状態は変わらないはず
+		w2.WriteHeader(http.StatusNoContent)
+		require.Equal(t, 0, orig2.wroteCode)
+		require.Empty(t, orig2.Header().Get("X-Should-Not"))
+	})
+}
+
+func Test_cookieRewriteWriter_Write(t *testing.T) {
+	t.Parallel()
+	t.Run("Write: WriteHeader を呼んでボディを書き込む", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{applyToAll: true}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		n, err := w.Write([]byte("hello"))
+		require.NoError(t, err)
+		require.Equal(t, 5, n)
+		require.Equal(t, http.StatusOK, orig.wroteCode)
+		require.Equal(t, "hello", orig.body.String())
+	})
+}
+
+func Test_cookieRewriteWriter_Flush(t *testing.T) {
+	t.Parallel()
+	t.Run("Flush: Flusher を呼び WriteHeader を経由する", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		w.Flush()
+		require.True(t, orig.flushed)
+		require.Equal(t, http.StatusOK, orig.wroteCode)
+	})
+}
+
+func Test_cookieRewriteWriter_Hijack(t *testing.T) {
+	t.Parallel()
+	t.Run("Hijack: orig が Hijacker を実装している場合は透過される", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{applyToAll: true, forceHTTPOnly: nil}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		w.hdr.Add("Set-Cookie", "id=1; Path=/")
+		conn, rw, err := w.Hijack()
+		require.NoError(t, err)
+		require.NotNil(t, conn)
+		require.NotNil(t, rw)
+		// hijack 確定で wroteHdr が立っている
+		require.True(t, w.wroteHdr)
+		// header 上で書き換え済みの Set-Cookie が存在する
+		sc := w.hdr.Values("Set-Cookie")
+		require.GreaterOrEqual(t, len(sc), 1)
+		// cleanup
+		err = conn.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("Hijack: orig が Hijacker を実装していない場合はエラー", func(t *testing.T) {
+		t.Parallel()
+		wrapper := &nonHijackWriter{rw: newFakeOrig()}
+		var orig http.ResponseWriter = wrapper
+		w := newCookieRewriteWriter(orig, &SecurityCookie{})
+		_, _, err := w.Hijack()
+		require.Error(t, err)
+	})
+
+	t.Run("Hijack: 既に wroteHdr が true の場合は rewrite をスキップして Hijack が通る", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{applyToAll: true}
+		w := newCookieRewriteWriter(orig, cfg)
+		w.hdr.Add("Set-Cookie", "NoEquals")
+		// 先に書き込み済みフラグを立てる
+		w.wroteHdr = true
+		conn, rw, err := w.Hijack()
+		require.NoError(t, err)
+		require.NotNil(t, conn)
+		require.NotNil(t, rw)
+		// hdr は変更されていない（rewrite をスキップ）
+		require.Equal(t, []string{"NoEquals"}, w.hdr.Values("Set-Cookie"))
+		err = conn.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("Hijack: Rewrite が失敗したら元の raw を hdr に残す", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{applyToAll: true}
+		w := newCookieRewriteWriter(orig, cfg)
+		// malformed cookie causes RewriteSetCookie to return ""
+		w.hdr.Add("Set-Cookie", "NoEquals")
+
+		conn, rw, err := w.Hijack()
+		require.NoError(t, err)
+		require.NotNil(t, conn)
+		require.NotNil(t, rw)
+		// hdr に元の raw が残っている
+		require.Equal(t, []string{"NoEquals"}, w.hdr.Values("Set-Cookie"))
+		err = conn.Close()
+		require.NoError(t, err)
+	})
+}
+
+func Test_cookieRewriteWriter_Push(t *testing.T) {
+	t.Parallel()
+	t.Run("Push: orig が Pusher を実装している場合は透過する", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{applyToAll: true}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		// orig は Pusher を実装しているので成功する
+		err := w.Push("/a", &http.PushOptions{})
+		require.NoError(t, err)
+	})
+
+	t.Run("Push: orig が Pusher を実装していない場合は ErrNotSupported を返す", func(t *testing.T) {
+		t.Parallel()
+		wrapper := &nonHijackWriter{rw: newFakeOrig()}
+		var orig http.ResponseWriter = wrapper
+		w := newCookieRewriteWriter(orig, &SecurityCookie{})
+		err := w.Push("/p", &http.PushOptions{})
+		require.ErrorIs(t, err, http.ErrNotSupported)
+	})
+}
+
+func Test_cookieRewriteWriter_ReadFrom(t *testing.T) {
+	t.Parallel()
+	t.Run("ReadFrom: orig が ReaderFrom を実装している場合は透過して読み取る", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{applyToAll: true}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		r := strings.NewReader("payload")
+		n, err := w.ReadFrom(r)
+		require.NoError(t, err)
+		require.Equal(t, int64(7), n)
+		require.Equal(t, "payload", orig.body.String())
+	})
+
+	t.Run("ReadFrom: orig が ReaderFrom を実装していない場合は io.Copy 経由で書き込まれる", func(t *testing.T) {
+		t.Parallel()
+		wrapper := &nonHijackWriter{rw: newFakeOrig()}
+		var orig http.ResponseWriter = wrapper
+		w := newCookieRewriteWriter(orig, &SecurityCookie{applyToAll: true})
+
+		r := strings.NewReader("xyz")
+		n, err := w.ReadFrom(r)
+		require.NoError(t, err)
+		require.Positive(t, n)
+		// underlying fakeOrig should have received the written body
+		// wrapper.rw is newFakeOrig()
+		// assert by type assertion
+		if f, ok := wrapper.rw.(*fakeOrig); ok {
+			require.Equal(t, "xyz", f.body.String())
+		} else {
+			t.Fatalf("unexpected wrapper inner type")
+		}
+	})
+}
+
+func Test_cookieRewriteWriter_Unwrap(t *testing.T) {
+	t.Parallel()
+	t.Run("Unwrap: 内側の ResponseWriter を返す", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{}
+		w := newCookieRewriteWriter(orig, cfg)
+		require.Equal(t, orig, w.Unwrap())
+	})
+}
+
+func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
+	t.Parallel()
+	t.Run("flushHeadersWithRewrite: Set-Cookie を書き換えて元ヘッダを転送する（Secure 付与）", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		// force Secure via cfg
+		b := true
+		cfg := &SecurityCookie{applyToAll: true, forceSecure: &b}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		w.hdr.Add("X-Test", "v")
+		w.hdr.Add("Set-Cookie", "id=1; Path=/")
+
+		w.flushHeadersWithRewrite()
+
+		// non Set-Cookie headers are copied
+		require.Equal(t, "v", orig.Header().Get("X-Test"))
+		// Set-Cookie は書き換えられて追加される
+		sc := orig.Header()["Set-Cookie"]
+		require.Len(t, sc, 1)
+		require.Contains(t, sc[0], "Secure")
+	})
+
+	t.Run("flushHeadersWithRewrite: Rewrite に失敗したら元の raw を使う", func(t *testing.T) {
+		t.Parallel()
+		orig := newFakeOrig()
+		cfg := &SecurityCookie{applyToAll: true}
+		w := newCookieRewriteWriter(orig, cfg)
+
+		// malformed cookie (no '=') causes RewriteSetCookie -> ""
+		w.hdr.Add("Set-Cookie", "NoEquals")
+		w.flushHeadersWithRewrite()
+
+		sc := orig.Header()["Set-Cookie"]
+		require.Equal(t, []string{"NoEquals"}, sc)
+	})
+}

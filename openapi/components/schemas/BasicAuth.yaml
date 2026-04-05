@@ -1,0 +1,3 @@
+type: http
+description: 認証にBasic認証を使用することを示します。
+scheme: basic

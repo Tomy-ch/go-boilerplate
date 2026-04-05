@@ -1,0 +1,11 @@
+description: ユーザー検索のレスポンススキーマ
+allOf:
+- type: object
+  required:
+    - users
+  properties:
+    users:
+      type: array
+      items:
+        $ref: './UsersSearchResponseItem.yaml'
+- $ref: '../../schemas/PaginationMetadataResponse.yaml'

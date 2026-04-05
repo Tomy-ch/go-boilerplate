@@ -1,0 +1,39 @@
+name: Deploy Docs Portal
+
+on:
+  push:
+    branches:
+      - production
+    paths:
+      - "docs/**"
+      - "scripts/gen-docs-json.cjs"
+      - "scripts/gen-portal-docs.cjs"
+      - ".github/workflows/deploy-docs.yaml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

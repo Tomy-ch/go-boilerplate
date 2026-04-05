@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Server",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "port": 2345,
+      "host": "127.0.0.1",
+    },
+    {
+      "name": "Debug Server (use ENV=ci)",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/main.go",
+      "args": ["serve"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "ENV": "ci"
+      }
+    }
+  ]
+}

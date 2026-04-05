@@ -1,0 +1,136 @@
+services:
+# -------------------------------------
+# 開発環境のサービス
+# -------------------------------------
+  api_server:
+    build:
+      context: .
+      dockerfile: docker/server/Dockerfile
+      target: tooling
+    ports:
+      - "8080:8080"   # APIポート
+      - "2345:2345"   # デバッグ(dlv)ポート
+      - "6060:6060"   # メトリクス(pprof)ポート
+    volumes:
+      - .:/app
+    tty: true
+    stdin_open: true
+    working_dir: /app
+    depends_on:
+      - database
+    profiles:
+      - development
+
+  database: # PostgreSQLデータベース
+    image: postgres:18.3-bookworm
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql
+      - ./docker/database/sql:/docker-entrypoint-initdb.d:ro
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres-password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    user: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres", "-d", "local"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - database
+      - tools
+
+# -------------------------------------
+# 補助サービス
+# -------------------------------------
+
+  docs_viewer: # 開発用ドキュメントビューア
+    build:
+      context: .
+      dockerfile: docker/document/Dockerfile
+      target: document_viewer
+    ports:
+      - "8082:80"
+    volumes:
+      - ./docs/portal:/usr/share/nginx/html:ro
+    profiles:
+      - tools
+
+  sql_editor:
+    image: sosedoff/pgweb:latest
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres-password@database:5432/local?sslmode=disable
+    depends_on:
+      - database
+    profiles:
+      - tools
+
+  er_diagram_generator: # ER図生成ツール
+    image: schemaspy/schemaspy:latest
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "5433:3000"
+    volumes:
+      - ./docker/database/schemaspy/schemaspy.properties:/schemaspy.properties
+      - ./docs/er-diagram:/output
+    profiles:
+      - generate
+
+# -------------------------------------
+# ツールランナー
+# -------------------------------------
+
+  go_tool_runner: # Goベースツールボックス
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+      target: go_tools
+    user: root
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ""
+    profiles:
+      - generate
+
+  node_tool_runner: # Node.jsベースのツールボックス
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+      target: node_tools
+    user: root
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ""
+    profiles:
+      - generate
+
+  python_tool_runner: # Pythonベースのツールボックス
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+      target: python_tools
+    user: root
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ""
+    profiles:
+      - generate
+
+volumes:
+  pg_data:
+    external: false

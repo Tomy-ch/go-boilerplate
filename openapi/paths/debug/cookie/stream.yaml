@@ -1,0 +1,26 @@
+get:
+  operationId: GetDebugCookieRawStream
+  tags:
+    - debug/cookie
+  summary: |
+    Debug - Flush 経路確認（SSE風）
+    このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
+  description: |
+    text/event-stream を返し、サーバ側で複数回 Flush() を呼びます。
+    SecurityCookie MW による Set-Cookie の rewrite と、Flush 経路で壊れないことを確認できます。
+  responses:
+    "200":
+      description: OK (SSE stream)
+      headers:
+        Set-Cookie:
+          description: (debug) issued cookie (MWでrewriteされる想定)
+          schema:
+            type: string
+      content:
+        text/event-stream:
+          schema:
+            type: string
+          examples:
+            ping:
+              value: |
+                data: ping

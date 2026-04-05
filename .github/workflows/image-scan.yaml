@@ -1,0 +1,311 @@
+name: Docker Image Scan Workflow
+
+on:
+  pull_request:
+    branches:
+      - production
+      - staging
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Prepare vendor
+        run: |
+          go mod tidy
+          go mod vendor
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Define image tag
+        id: meta
+        run: |
+          IMAGE="local/${GITHUB_REPOSITORY#*/}/app:${GITHUB_SHA::7}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./docker/server/Dockerfile
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.image }}
+          target: runtime
+          push: false
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.image }}
+          format: spdx-json
+          output-file: sbom-spdx.json
+          artifact-name: sbom-spdx.json
+          upload-artifact: true
+
+      - name: Summarize SBOM (Markdown)
+        run: |
+          set -euo pipefail
+          FILE=sbom-spdx.json
+          if [ ! -f "$FILE" ]; then
+            echo "SBOM not found: $FILE" >&2
+            exit 1
+          fi
+          NAME=$(jq -r '.name // "unknown"' "$FILE")
+          CREATED=$(jq -r '.creationInfo.created // "unknown"' "$FILE")
+          TOTAL_PKGS=$(jq -r '.packages | length' "$FILE")
+          DIGEST=$(jq -r '[.packages[] | select(.primaryPackagePurpose=="CONTAINER") | .checksums[]? | select(.algorithm=="SHA256") | .checksumValue][0] // "unknown"' "$FILE")
+          DISTRO=$(jq -r '[.packages[]?.externalRefs[]? | select(.referenceType=="purl") | .referenceLocator | capture("distro=(?<distro>[^&]+)").distro] | .[0] // "unknown"' "$FILE")
+          GOVERSION=$(jq -r '(.packages[] | select(.name=="stdlib") | .versionInfo) // "unknown"' "$FILE")
+          # Top 50 Go modules with versions
+          jq -r '
+            [ .packages[]
+              | select(.name|type=="string")
+              | select((.name|startswith("github.com/") or startswith("golang.org/") or startswith("go.uber.org/") or startswith("github.com/oapi-codegen/")))
+              | {n:.name, v:(.versionInfo // "UNKNOWN")} ]
+            | sort_by(.n)
+            | .[0:50]
+            | map("- `" + .n + "@" + .v + "`")
+            | join("\n")
+          ' "$FILE" > _gomods.md
+          # Declared licenses histogram (top 25)
+          jq -r '
+            [ .packages[] | .licenseDeclared? | select(. != null and . != "NOASSERTION") ]
+            | reduce .[] as $l ({}; .[$l] = ( .[$l] // 0 ) + 1)
+            | to_entries | sort_by(-.value) | .[0:25]
+            | map("- " + .key + ": " + (.value|tostring))
+            | if length>0 then . else ["- (none)"] end
+            | join("\n")
+          ' "$FILE" > _licenses.md
+          cat > sbom-summary.md << MD
+          ## SBOM Summary (SPDX)
+          **Image**: ${NAME}
+          - Created: ${CREATED}
+          - Image Digest (SHA256): \`${DIGEST}\`
+          - Distro: ${DISTRO}
+          - Total Packages: ${TOTAL_PKGS}
+          - Go Toolchain: ${GOVERSION}
+          ### Key Go Modules (top 50)
+          $(cat _gomods.md)
+          ### Declared Licenses (top 25)
+          $(cat _licenses.md)
+          MD
+          echo "Generated sbom-summary.md" && wc -c sbom-summary.md
+
+      - name: Comment SBOM Summary on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const marker = '<!-- sbom-summary-spdx -->';
+            const path = 'sbom-summary.md';
+
+            const updatedAtJST = new Date().toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+
+            const headSha =
+              (context.payload.pull_request?.head?.sha)
+              || process.env.GITHUB_SHA
+              || context.sha;
+            const shortSha = headSha.slice(0, 7);
+
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${headSha}`;
+
+            // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
+            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
+            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
+
+            if (!fs.existsSync(path)) {
+              core.setFailed('sbom-summary.md not found');
+              process.exit(1);
+            }
+
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('Not a PR context');
+              process.exit(1);
+            }
+
+            // sbom-summary.md を読み込んで、先頭にマーカーを付与（同一コメント検出用）
+            const summary = fs.readFileSync(path, 'utf8').trimEnd();
+            const body = [
+              marker,
+              summary,
+              '',
+              commitLine,
+              '',
+              updatedLine,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c => (c.body || '').includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body,
+              });
+            }
+
+      - name: Upload SBOM summary artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-summary.md
+          path: sbom-summary.md
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ steps.meta.outputs.image }}
+          format: table
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          output: trivy-image-scan.txt
+      - name: Upload Trivy report artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-image-scan.txt
+          path: trivy-image-scan.txt
+
+      - name: Comment Trivy result on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const marker = '<!-- trivy-image-scan -->';
+            const path = 'trivy-image-scan.txt';
+
+            const updatedAtJST = new Date().toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+
+            const headSha =
+              (context.payload.pull_request?.head?.sha)
+              || process.env.GITHUB_SHA
+              || context.sha;
+            const shortSha = headSha.slice(0, 7);
+
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${headSha}`;
+
+            const pr = context.payload.pull_request?.number;
+            if (!pr) {
+              core.setFailed('Not a PR context');
+              process.exit(1);
+            }
+
+            if (!fs.existsSync(path)) {
+              core.setFailed(`${path} not found`);
+              process.exit(1);
+            }
+
+            const read = fs.readFileSync(path, 'utf8').trimEnd();
+
+            const trimLog = (txt) => {
+              const MAX = 45000; // コメント上限対策（安全側）
+              if (txt.length <= MAX) return txt;
+              return txt.slice(0, MAX) + '\n... (truncated)';
+            };
+
+            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
+            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
+
+            const body = [
+              marker,
+              '## Trivy Image Scan (table)',
+              '',
+              commitLine,
+              updatedLine,
+              '',
+              '<details><summary>Image Scan Results</summary>',
+              '',
+              '```',
+              trimLog(read),
+              '```',
+              '',
+              '</details>',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c => (c.body || '').includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body,
+              });
+            }

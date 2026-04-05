@@ -1,0 +1,16 @@
+get:
+  operationId: GetMetrics
+  tags:
+    - metrics
+  security:
+    - BasicAuth: []
+  summary: サーバーのメトリクス取得
+  description: サーバーのメトリクス情報を取得するためのエンドポイントです。
+  responses:
+    '200':
+      description: サーバーは正常に稼働しています。
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: メトリクス情報を含むプレーンテキスト

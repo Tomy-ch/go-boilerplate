@@ -1,0 +1,14 @@
+[
+  { "name": "bug", "description": "バグ・不具合", "color": "d73a4a" },
+  { "name": "feature", "description": "機能追加の提案や要望", "color": "0e8a16" },
+  { "name": "triage", "description": "初期分類中（要確認）", "color": "d93f0b" },
+  { "name": "enhancement", "description": "既存機能の改善", "color": "c5def5" },
+  { "name": "question", "description": "質問・ディスカッション用", "color": "d876e3" },
+  { "name": "documentation", "description": "ドキュメント修正・改善", "color": "0075ca" },
+  { "name": "refactor", "description": "内部実装のリファクタリング", "color": "fbca04" },
+  { "name": "chore", "description": "その他雑務（CI調整など）", "color": "cfd3d7" },
+  { "name": "test", "description": "テストコード関連", "color": "e4e669" },
+  { "name": "security", "description": "セキュリティ関連", "color": "5fafe6" },
+  { "name": "wontfix", "description": "対応なし", "color": "ffffff" },
+  { "name": "release", "description": "リリース用のラベル", "color": "c5def5" }
+]
