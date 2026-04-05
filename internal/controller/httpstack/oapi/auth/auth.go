@@ -34,6 +34,9 @@ func NewAuthenticator(
 		if err != nil {
 			return ErrUnauthorizedInvalidToken
 		}
+		if authn == nil {
+			return ErrUnauthorizedTokenNotProvided
+		}
 
 		//nolint:contextcheck // ecのContext内部のものにアクセスするため
 		ctxhelper.SetAuthnToEcho(ec, *authn)
