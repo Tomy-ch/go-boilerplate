@@ -42,7 +42,7 @@ var (
 type generator struct {
 	logger          logging.Logger
 	callerSkipCount int
-	permmission     os.FileMode
+	permission      os.FileMode
 
 	workDir       string
 	schemaRelPath string
@@ -56,7 +56,7 @@ func newGenerator(logger logging.Logger) *generator {
 	return &generator{
 		logger:          logger,
 		callerSkipCount: 1,
-		permmission:     schemaFilePerm,
+		permission:      schemaFilePerm,
 		workDir:         workDir,
 		schemaRelPath:   "database/gen/schema.gen.sql",
 		dumpCommand:     dumpCommand,
@@ -184,7 +184,7 @@ func (g *generator) sanitizeSchemaInPlace() error {
 	}
 
 	//nolint:gosec // safe: path comes from trusted CLI input
-	if err := os.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permmission); err != nil {
+	if err := os.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permission); err != nil {
 		return fmt.Errorf("write sanitised schema: %w", err)
 	}
 
