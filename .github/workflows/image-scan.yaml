@@ -51,7 +51,7 @@ jobs:
           file: ./docker/server/Dockerfile
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.image }}
-          target: prd
+          target: runtime
           push: false
           load: true
           cache-from: type=gha
