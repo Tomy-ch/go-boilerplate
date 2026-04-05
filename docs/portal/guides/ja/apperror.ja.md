@@ -1,0 +1,192 @@
+# app error
+
+[English](README.md) | 日本語
+
+`apperror` パッケージは、層に依存しない「アプリケーション共通のエラー分類」を定義します。
+
+このパッケージは **Domain / Usecase / Controller / Infrastructure のすべての層から参照可能**であり、
+アプリケーション内で発生するエラーを **プロトコル非依存の形で分類するための基底エラー**を提供します。
+
+HTTP ステータスコードや API レスポンス形式はここでは扱いません。
+それらは **Controller 層で変換されます。**
+
+## 基本方針
+
+- Domain / Usecase / Controller / Infra のいずれからも参照可能
+- 定義するのは **アプリケーション共通の基底エラーカテゴリのみ**
+- HTTP ステータスやレスポンス形式は持たない
+- `xerrors.Is` / `xerrors.As` による判定を前提に設計
+
+例
+
+- `ErrInvalidArgument`
+- `ErrNotFound`
+- `ErrConflict`
+
+## 利用ルール
+
+エラーを返す際は **必ず apperror の基底カテゴリをラップすること**を推奨します。
+
+理由
+
+- `xerrors.Is` によるエラー分類が可能になる
+- Controller 層で HTTP ステータスへ変換できる
+- 元エラーをログ / トレースで保持できる
+
+## エラーラップの推奨パターン
+
+エラーは **必ず基底エラーをラップして返す**ことを推奨します。
+
+```go
+// Wrap domain error with app error category
+if err != nil {
+    return xerrors.Wrap(apperror.ErrConflict, "failed to create user")
+}
+```
+
+Controller 層では `xerrors.Is` を使って判定します。
+
+```go
+// Map app error to HTTP status
+if xerrors.Is(err, apperror.ErrNotFound) {
+    return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
+}
+```
+
+## Infra エラーの変換
+
+Infrastructure 層では **外部依存のエラーを apperror に変換する**ことを推奨します。
+
+理由
+
+- DB / 外部 API のエラーをアプリケーション語彙へ変換するため
+- 上位層が DB 依存のエラーを知る必要をなくすため
+
+例
+
+```go
+// Translate database error to application error
+if xerrors.As(err, &sql.ErrNoRows) {
+    switch pgErr.Code {
+        case "23505": // ユニーク制約違反
+            return xerrors.Wrap(apperror.ErrConflict, err.Error())
+    default:
+        return xerrors.Wrap(apperror.ErrInternal, err.Error())
+    }
+}
+```
+
+通常この変換は
+
+- Repository
+- Infra Adapter
+
+で行います。
+
+## HTTP エラー変換（Controller 層）
+
+`apperror` パッケージは **HTTP を知りません。**
+
+HTTP ステータスコードへの変換は **Controller 層の責務**です。
+
+このプロジェクトでは Controller の `errorhandler` ミドルウェアで
+次の2段階変換を行います。
+
+```mermaid
+flowchart TB
+    AppErr["apperror"]
+    HTTP["HTTP Status"]
+    Meta["Error Meta (status / code / message)"]
+
+    AppErr --> HTTP --> Meta
+```
+
+例
+
+```go
+case xerrors.Is(err, apperror.ErrNotFound):
+    return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
+```
+
+`lookupErrorMetaByHTTPStatus` は
+
+- HTTP Status
+- Error Code
+- Message
+
+を持つ **HTTP エラーメタ情報**を返します。
+
+これにより
+
+- Domain / Usecase は HTTP 非依存
+- エラーメッセージを Controller で一元管理
+- API 仕様変更時に Domain を変更しなくてよい
+
+という利点があります。
+
+## Job / CLI でのエラー扱い
+
+`apperror` は HTTP だけでなく **Job / CLI Controller** でも利用できます。
+
+Job 実行では通常
+
+- エラーをログ出力
+- Exit code を Runner が決定
+
+という形になります。
+
+```mermaid
+flowchart TB
+    UC["Usecase"]
+    Return["return apperror.ErrUnavailable"]
+    Controller["Job Controller"]
+    Log["log error"]
+    Runner["Job Runner"]
+    Exit["exit code decision"]
+
+    UC --> Return --> Controller
+    Controller --> Log --> Runner --> Exit
+```
+
+## 新しいエラーカテゴリを追加する場合
+
+新しいエラーカテゴリは **安易に追加しない**ことを推奨します。
+
+判断基準
+
+```mermaid
+flowchart TB
+    OK["OK"]
+    OK1["複数のユースケースで発生する"]
+    OK2["アプリケーション全体で共通概念"]
+
+    NG["NG"]
+    NG1["特定ユースケースだけで使う"]
+    NG2["HTTP ステータスの都合だけで追加"]
+
+    OK --> OK1
+    OK --> OK2
+    NG --> NG1
+    NG --> NG2
+```
+
+追加する場合は README に次を記載してください。
+
+- 背景
+- 利用シーン
+- HTTP ステータス対応
+
+## 対応表
+
+| app error 定義 | 意味 / 使い所 | HTTP Status |
+| -------------- | ----------- | ----------- |
+| `ErrInvalidArgument` | 不正な引数（構文的には正しいが意味が不正） | 400 Bad Request |
+| `ErrUnauthenticated` | 認証失敗（未ログインなど） | 401 Unauthorized |
+| `ErrPermissionDenied` | 権限不足 | 403 Forbidden |
+| `ErrNotFound` | 対象が存在しない | 404 Not Found |
+| `ErrConflict` | 競合（ユニーク制約違反・同時更新衝突など） | 409 Conflict |
+| `ErrValidation` | ドメイン/ユースケースの検証失敗 | 422 Unprocessable Entity |
+| `ErrTooManyRequests` | リクエストが多すぎる場合 | 429 Too Many Requests |
+| `ErrInternal` | 想定外の内部エラー | 500 Internal Server Error |
+| `ErrUnimplemented` | 未実装 / 非サポート機能 | 501 Not Implemented |
+| `ErrUnavailable` | 一時的な利用不可（外部依存障害など） | 503 Service Unavailable |

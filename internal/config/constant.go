@@ -1,0 +1,26 @@
+package config
+
+const (
+	// EnvLocal はローカル開発環境を表します。
+	EnvLocal = "local"
+	// EnvCI はCI環境を表します。
+	EnvCI = "ci"
+	// EnvTest はテスト環境を表します。
+	EnvTest = "test"
+	// EnvDevelopment は開発環境を表します。
+	EnvDevelopment = "development"
+	// EnvStaging はステージング環境を表します。
+	EnvStaging = "staging"
+	// EnvProduction は本番環境を表します。
+	EnvProduction = "production"
+
+	// DevelopmentMode は開発環境モードを表します。
+	DevelopmentMode = "development"
+	// ProductionMode は本番環境モードを表します。
+	ProductionMode = "production"
+
+	// MinPort は許可される最小ポート番号を表します。
+	MinPort = 1
+	// MaxPort は許可される最大ポート番号を表します。
+	MaxPort = 65535
+)

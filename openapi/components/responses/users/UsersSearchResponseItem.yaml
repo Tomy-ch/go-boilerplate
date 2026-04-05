@@ -1,0 +1,11 @@
+description: 検索条件に基づいて取得したユーザー情報
+allOf:
+  - $ref: '../../schemas/UserResponse.yaml'
+  - type: object
+    required:
+      - registeredAt
+    properties:
+      registeredAt:
+        description: 登録日時
+        type: string
+        format: date-time

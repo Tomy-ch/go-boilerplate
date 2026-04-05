@@ -1,0 +1,7 @@
+{
+  "name": "docs-tools",
+  "type": "module",
+  "dependencies": {
+    "js-yaml": "^4.1.1"
+  }
+}

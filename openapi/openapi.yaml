@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: Boilerplate Go with Onion Architecture, Echo and SQLC
+  termsOfService: https://github.com/Tomy-ch/go-boilerplate-echo-oapi-sqlc
+  contact:
+    name: TomyC258460
+    url: https://x.com/TomyC258460
+  version: 0.1.0
+  description: |
+    This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
+    It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
+
+    The project is structured around domain-driven principles, with clean separation between interfaces,
+    use cases, domain entities, and infrastructure. All handlers are generated from the OpenAPI specification
+    using oapi-codegen, and strict typing is enforced across the system.
+
+    This API is intended as a production-ready boilerplate that balances performance,
+    flexibility, and developer experience.
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server (replace with actual URL)
+  - url: https://staging.api.example.com
+    description: Staging server (replace with actual URL)
+  - url: https://development.api.example.com
+    description: Versioned API endpoint (replace with actual URL)
+paths:
+  # Operation handlers
+  /health:
+    $ref: './paths/health/health.yaml'
+  /healthz:
+    $ref: './paths/healthz/healthz.yaml'
+  /metrics:
+    $ref: './paths/metrics/metrics.yaml'
+  /ready:
+    $ref: './paths/ready/ready.yaml'
+  /version:
+    $ref: './paths/version/version.yaml'
+  # For error type generation
+  /_internal/types/error-response:
+    $ref: './paths/internal/types/error_response.yaml'
+  # サンプルAPI用のパス
+  /v1/users:
+    $ref: './paths/v1/users.yaml'
+  /v1/users/{user_id}:
+    $ref: './paths/v1/users/user_id.yaml'
+  /v1/users/search:
+    $ref: './paths/v1/users/search/search.yaml'
+  # デバッグ用のパス(サービスを作成する際には必ず削除してください)
+  /debug/cookie:
+    $ref: './paths/debug/cookie.yaml'
+  /debug/cookie/copy:
+    $ref: './paths/debug/cookie/copy.yaml'
+  /debug/cookie/stream:
+    $ref: './paths/debug/cookie/stream.yaml'
+  /debug/cookie/ws:
+    $ref: './paths/debug/cookie/ws.yaml'
+components:
+  parameters:
+    PageParam:
+      $ref: './components/parameters/pagination/PageParam.yaml'
+    PerPageParam:
+      $ref: './components/parameters/pagination/PerPageParam.yaml'
+    # サンプルAPI用のパラメーター定義
+    KeywordParam:
+      $ref: './components/parameters/search/KeywordParam.yaml'
+    ActiveParam:
+      $ref: './components/parameters/search/ActiveParam.yaml'
+    UserIdParam:
+      $ref: './components/parameters/user/UserIdParam.yaml'
+  securitySchemes:
+    BearerAuth:
+      $ref: './components/schemas/BearerAuth.yaml'
+    BasicAuth:
+      $ref: './components/schemas/BasicAuth.yaml'
+  schemas:
+    ErrorResponse:
+      $ref: './components/schemas/ErrorResponse.yaml'
+    ResponseHealth:
+      $ref: './components/responses/health-check/HealthResponse.yaml'
+    ResponseReady:
+      $ref: './components/responses/health-check/ReadyResponse.yaml'
+    ResponseVersion:
+      $ref: './components/responses/version/VersionResponse.yaml'
+    # サンプルAPI用の型定義
+    UserBaseInputRequest:
+      $ref: './components/schemas/UserBaseInputRequest.yaml'
+    UserResponse:
+      $ref: './components/schemas/UserResponse.yaml'
+    UsersSearchResponse:
+      $ref: './components/responses/users/UsersSearchResponse.yaml'
+    UserSearchResponseItem:
+      $ref: './components/responses/users/UsersSearchResponseItem.yaml'
+    ResponseV1User:
+      $ref: './components/schemas/UserResponse.yaml'
+    ResponseV1Users:
+      $ref: './components/responses/users/UsersResponse.yaml'
+    RequestPostV1Users:
+      $ref: './components/requests/users/UsersPostRequest.yaml'
+    RequestPutV1User:
+      $ref: './components/requests/users/UserPutRequest.yaml'
+    RequestPatchV1User:
+      $ref: './components/requests/users/UserPatchRequest.yaml'
+    # デバッグ用の型定義(サービスを作成する際には必ず削除してください)
+    DebugIssueCookieRequest:
+      $ref: './components/requests/debug/DebugIssueCookieRequest.yaml'
+    DebugCookieInspectResponse:
+      $ref: './components/responses/debug/DebugCookieInspectResponse.yaml'

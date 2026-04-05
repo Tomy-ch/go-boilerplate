@@ -1,0 +1,147 @@
+name: Generated Go Artifacts Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/gen-go-artifacts-check.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.makefiles/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-go-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      ENV: ci
+    steps:
+      - name: Fetch & Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run Go generators
+        run: make gen-go-code
+
+      - name: Detect generated changes (file list)
+        id: gen_diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          files="$(git diff --name-only)"
+          if [ -n "$files" ]; then
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
+            printf "%s\n" "$files" > /tmp/changed_files.txt
+          else
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
+            : > /tmp/changed_files.txt
+          fi
+
+      - name: Comment changed files on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const marker = '<!-- generated-go-artifacts-filelist -->';
+            const hasDiff = ('${{ steps.gen_diff.outputs.has_diff }}' === 'true');
+
+            let files = [];
+            if (hasDiff) {
+              try {
+                const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
+                files = raw ? raw.split('\n').filter(Boolean) : [];
+              } catch (e) {
+                files = ['(Failed to read changed_files.txt)'];
+              }
+            }
+
+            const updatedAtJST = new Date().toLocaleString('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+
+            const headSha =
+              (context.payload.pull_request?.head?.sha)
+              || process.env.GITHUB_SHA
+              || context.sha;
+            const shortSha = headSha.slice(0, 7);
+
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const commitUrl = `${repoUrl}/commit/${headSha}`;
+
+            // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
+            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
+            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
+
+            const body = hasDiff
+              ? [
+                  marker,
+                  '## 🧾 Differences in Go generated output have been detected (list of modified files)',
+                  '',
+                  commitLine,
+                  '',
+                  ...(files.length ? files.map(f => `- \`${f}\``) : ['(no changed files)']),
+                  '',
+                  'Please run `make gen-go-code` (or `make gen`) locally and commit the changes.',
+                  '',
+                  updatedLine,
+                ].join('\n')
+              : [
+                  marker,
+                  '## ✅ No differences in Go generated output were detected',
+                  '',
+                  commitLine,
+                  '',
+                  'No differences in Go generated output were detected.',
+                  '',
+                  updatedLine,
+                ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find(c => (c.body || '').includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }
+
+      - name: Fail if diff exists
+        if: steps.gen_diff.outputs.has_diff == 'true'
+        run: exit 1

@@ -1,0 +1,143 @@
+overview:
+  # English
+  - src: README.md
+    dst: docs/portal/guides/overview.md
+  # Japanese
+  - src: README.ja.md
+    dst: docs/portal/guides/ja/overview.ja.md
+
+make_commands:
+  # English
+  - src: .makefiles/README.md
+    dst: docs/portal/guides/make.md
+  # Japanese
+  - src: .makefiles/README.ja.md
+    dst: docs/portal/guides/ja/make.ja.md
+
+environment_variables:
+  # English
+  - src: env/README.md
+    dst: docs/portal/guides/environment-variables.md
+  # Japanese
+  - src: env/README.ja.md
+    dst: docs/portal/guides/ja/environment-variables.ja.md
+
+controller:
+  # English
+  - src: internal/controller/README.md
+    dst: docs/portal/guides/controller.md
+  - src: internal/controller/handler/README.md
+    dst: docs/portal/guides/controller-handler.md
+  - src: internal/controller/job/README.md
+    dst: docs/portal/guides/controller-job.md
+  # Japanese
+  - src: internal/controller/README.ja.md
+    dst: docs/portal/guides/ja/controller.ja.md
+  - src: internal/controller/handler/README.ja.md
+    dst: docs/portal/guides/ja/controller-handler.ja.md
+  - src: internal/controller/job/README.ja.md
+    dst: docs/portal/guides/ja/controller-job.ja.md
+
+domain:
+  # English
+  - src: internal/domain/README.md
+    dst: docs/portal/guides/domain.md
+  # Japanese
+  - src: internal/domain/README.ja.md
+    dst: docs/portal/guides/ja/domain.ja.md
+
+usecase:
+  # English
+  - src: internal/usecase/README.md
+    dst: docs/portal/guides/usecase.md
+  # Japanese
+  - src: internal/usecase/README.ja.md
+    dst: docs/portal/guides/ja/usecase.ja.md
+
+infrastructure:
+  # English
+  - src: internal/infrastructure/README.md
+    dst: docs/portal/guides/infrastructure.md
+  - src: internal/infrastructure/auth/README.md
+    dst: docs/portal/guides/infrastructure-auth.md
+  - src: internal/infrastructure/rdb/repository/README.md
+    dst: docs/portal/guides/infrastructure-rdb-repository.md
+  - src: internal/infrastructure/rdb/query_service/README.md
+    dst: docs/portal/guides/infrastructure-rdb-query-service.md
+  # Japanese
+  - src: internal/infrastructure/README.ja.md
+    dst: docs/portal/guides/ja/infrastructure.ja.md
+  - src: internal/infrastructure/auth/README.ja.md
+    dst: docs/portal/guides/ja/infrastructure-auth.ja.md
+  - src: internal/infrastructure/rdb/repository/README.ja.md
+    dst: docs/portal/guides/ja/infrastructure-rdb-repository.ja.md
+  - src: internal/infrastructure/rdb/query_service/README.ja.md
+    dst: docs/portal/guides/ja/infrastructure-rdb-query-service.ja.md
+
+database:
+  # English
+  - src: database/dml/README.md
+    dst: docs/portal/guides/sqlc-query-guide.md
+  - src: SQLC_README.md
+    dst: docs/portal/guides/sqlc-settings.md
+  # Japanese
+  - src: database/dml/README.ja.md
+    dst: docs/portal/guides/ja/sqlc-query-guide.ja.md
+  - src: SQLC_README.ja.md
+    dst: docs/portal/guides/ja/sqlc-settings.ja.md
+
+cross-cutting:
+  # English
+  - src: internal/apperror/README.md
+    dst: docs/portal/guides/apperror.md
+  - src: internal/config/README.md
+    dst: docs/portal/guides/config.md
+  - src: internal/di/README.md
+    dst: docs/portal/guides/di.md
+  - src: internal/logging/README.md
+    dst: docs/portal/guides/logging.md
+  - src: internal/observability/README.md
+    dst: docs/portal/guides/observability.md
+  - src: internal/system/README.md
+    dst: docs/portal/guides/system.md
+  # Japanese
+  - src: internal/apperror/README.ja.md
+    dst: docs/portal/guides/ja/apperror.ja.md
+  - src: internal/config/README.ja.md
+    dst: docs/portal/guides/ja/config.ja.md
+  - src: internal/di/README.ja.md
+    dst: docs/portal/guides/ja/di.ja.md
+  - src: internal/logging/README.ja.md
+    dst: docs/portal/guides/ja/logging.ja.md
+  - src: internal/observability/README.ja.md
+    dst: docs/portal/guides/ja/observability.ja.md
+  - src: internal/system/README.ja.md
+    dst: docs/portal/guides/ja/system.ja.md
+
+context-helper:
+  # English
+  - src: internal/controller/ctxhelper/README.md
+    dst: docs/portal/guides/how-to-use-context-helper.md
+  - src: scripts/genctxkey/README.md
+    dst: docs/portal/guides/how-to-generate-ctxhelper.md
+  # Japanese
+  - src: internal/controller/ctxhelper/README.ja.md
+    dst: docs/portal/guides/ja/how-to-use-context-helper.ja.md
+  - src: scripts/genctxkey/README.ja.md
+    dst: docs/portal/guides/ja/how-to-generate-ctxhelper.ja.md
+
+integration:
+  # English
+  - src: internal/integration/README.md
+    dst: docs/portal/guides/integration.md
+  # Japanese
+  - src: internal/integration/README.ja.md
+    dst: docs/portal/guides/ja/integration.ja.md
+
+external:
+  # English
+  - src: openapi/README.md
+    dst: docs/portal/guides/openapi.md
+  # Japanese
+  - src: openapi/README.ja.md
+    dst: docs/portal/guides/ja/openapi.ja.md

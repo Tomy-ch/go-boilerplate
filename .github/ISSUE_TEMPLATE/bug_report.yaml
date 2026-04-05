@@ -1,0 +1,65 @@
+name: バグ報告(Bug Report)
+description: 問題を報告するためのテンプレートです
+title: "[Bug] "
+labels: ["triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        以下のガイドに従って情報を提供してください。
+
+  - type: input
+    id: summary
+    attributes:
+      label: 簡潔な概要
+      description: 起きている事象を短く説明してください
+      placeholder: '例: アプリが起動しない'
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: 再現手順
+      description: 手順を1,2,3…の順で記述してください
+      placeholder: |
+        1. 起動する  
+        2. ボタンを押す  
+        3. エラーが発生する
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: 期待される動作
+      description: 本来期待される動作を記述してください
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: 実際の動作
+      description: 実際に起きていることを詳細に記述してください
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Boilerplateのバージョン
+      description: 使用しているBoilerplateのバージョンを記述してください
+      placeholder: '例: v1.0.0'
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: ログ出力
+      description: 関連するログがあれば貼ってください
+      render: shell
+    validations:
+      required: false

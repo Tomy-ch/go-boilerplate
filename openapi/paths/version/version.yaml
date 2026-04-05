@@ -1,0 +1,13 @@
+get:
+  operationId: GetVersion
+  tags:
+    - version
+  summary: サーバーのバージョン情報を取得します。
+  description: サーバーのバージョン情報を取得するためのエンドポイントです。
+  responses:
+    '200':
+      description: サーバーのバージョン情報を返します。
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/version/VersionResponse.yaml'

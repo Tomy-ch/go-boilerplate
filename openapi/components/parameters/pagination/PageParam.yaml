@@ -1,0 +1,9 @@
+name: page
+in: query
+description: ページ番号（1から始まる）
+required: false
+schema:
+  type: integer
+  minimum: 1
+  default: 1
+  example: 1

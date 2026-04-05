@@ -1,0 +1,10 @@
+additionalProperties: false
+description: |
+  Debug - issue Set-Cookie request schema
+  このリクエストは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
+properties:
+  setCookie:
+    type: string
+    description: Raw Set-Cookie header value
+    example: "__Host-access_token=rawtoken; Path=/hoge; Domain=example.com; SameSite=None"
+required: [setCookie]

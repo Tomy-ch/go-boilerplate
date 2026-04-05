@@ -1,0 +1,273 @@
+package user
+
+import (
+	"context"
+	"testing"
+
+	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/user/search/query"
+	"go-boilerplate/pkg/ptr"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	loggingDB := testkit.NewTestLoggingProvider(t)
+	tf := observability.NewNoopTracerFactory(t)
+	expected := &service{
+		tracer: tf.Infra(),
+		db:     loggingDB,
+	}
+	actual := New(loggingDB, tf)
+	require.Equal(t, expected, actual)
+}
+
+func Test_service_FindByFilter(t *testing.T) {
+	t.Parallel()
+
+	loggingDB := testkit.NewTestLoggingProvider(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+
+	repo := &service{
+		tracer: lt,
+		db:     loggingDB,
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キーワードにマッチするユーザーが取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("activeがnilの場合、全てのユーザーが対象になる", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+
+				firstName1 := "Grace"
+				lastName1 := "Lee"
+				firstName2 := "Charlie"
+				lastName2 := "Davis"
+
+				keywords := []string{firstName1, firstName2}
+				limit := int32(10)
+				offset := int32(0)
+
+				expectedLength := 2
+
+				actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+					Keywords: keywords,
+					Active:   nil,
+				}, limit, offset)
+				require.NoError(t, err)
+
+				require.Len(t, actual, expectedLength)
+				require.Equal(t, firstName1, actual[0].FirstName)
+				require.Equal(t, lastName1, actual[0].LastName)
+				require.Equal(t, firstName2, actual[1].FirstName)
+				require.Equal(t, lastName2, actual[1].LastName)
+			})
+
+			t.Run("activeがtrueの場合、アクティブなユーザーが対象になる", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+
+				firstName := "Grace"
+				lastName := "Lee"
+
+				keywords := []string{firstName}
+				limit := int32(10)
+				offset := int32(0)
+
+				expectedLength := 1
+
+				actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+					Keywords: keywords,
+					Active:   ptr.To(true),
+				}, limit, offset)
+				require.NoError(t, err)
+
+				require.Len(t, actual, expectedLength)
+				require.Equal(t, firstName, actual[0].FirstName)
+				require.Equal(t, lastName, actual[0].LastName)
+			})
+
+			t.Run("activeがfalseの場合、削除されたユーザーが対象になる", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+
+				firstName := "Charlie"
+				lastName := "Davis"
+
+				keywords := []string{firstName}
+				limit := int32(10)
+				offset := int32(0)
+
+				expectedLength := 1
+
+				actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+					Keywords: keywords,
+					Active:   ptr.To(false),
+				}, limit, offset)
+				require.NoError(t, err)
+
+				require.Len(t, actual, expectedLength)
+				require.Equal(t, firstName, actual[0].FirstName)
+				require.Equal(t, lastName, actual[0].LastName)
+			})
+		})
+
+		t.Run("keywordsが空の場合、全件取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+			limit := int32(20)
+			offset := int32(0)
+
+			expectedLength := 10
+
+			actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   nil,
+			}, limit, offset)
+			require.NoError(t, err)
+
+			require.Len(t, actual, expectedLength)
+		})
+
+		t.Run("keywordsが空かつactive=trueの場合、アクティブのみ取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+			limit := int32(20)
+			offset := int32(0)
+			active := true
+
+			expectedLength := 8
+
+			actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   &active,
+			}, limit, offset)
+			require.NoError(t, err)
+
+			require.Len(t, actual, expectedLength)
+		})
+
+		t.Run("keywordsが空かつactive=falseの場合、削除済みのみ取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+			limit := int32(20)
+			offset := int32(0)
+			active := false
+
+			expectedLength := 2
+
+			actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   &active,
+			}, limit, offset)
+			require.NoError(t, err)
+
+			require.Len(t, actual, expectedLength)
+		})
+	})
+}
+
+func Test_service_CountByFilter(t *testing.T) {
+	t.Parallel()
+
+	loggingDB := testkit.NewTestLoggingProvider(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+
+	repo := &service{
+		tracer: lt,
+		db:     loggingDB,
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("activeがnilかつ、keywordsが空の場合、全ユーザーが対象になる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+
+			expectedCount := int64(10)
+
+			actual, err := repo.CountByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   nil,
+			})
+			require.NoError(t, err)
+			require.Equal(t, expectedCount, actual)
+		})
+
+		t.Run("activeがtrueかつ、keywordsが空の場合、アクティブなユーザーが対象になる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+			active := true
+
+			expectedCount := int64(8)
+
+			actual, err := repo.CountByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   &active,
+			})
+			require.NoError(t, err)
+			require.Equal(t, expectedCount, actual)
+		})
+
+		t.Run("activeがfalseかつ、keywordsが空の場合、削除されたユーザーが対象になる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{}
+			active := false
+
+			expectedCount := int64(2)
+
+			actual, err := repo.CountByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   &active,
+			})
+			require.NoError(t, err)
+			require.Equal(t, expectedCount, actual)
+		})
+
+		t.Run("Keywordsにマッチするユーザーの総件数が取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			keywords := []string{"Grace"}
+
+			expectedCount := int64(1)
+
+			actual, err := repo.CountByFilter(ctx, &query.UserSearchFilter{
+				Keywords: keywords,
+				Active:   nil,
+			})
+			require.NoError(t, err)
+			require.Equal(t, expectedCount, actual)
+		})
+	})
+}

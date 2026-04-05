@@ -1,0 +1,27 @@
+type: object
+description: エラーレスポンスの共通スキーマ
+required:
+  - code
+  - message
+  - request_id
+properties:
+  code:
+    type: string
+    description: 機械的に処理可能なエラーコード
+    example: "EXAMPLE_ERROR"
+  message:
+    type: string
+    description: 人間が読めるエラーメッセージ
+    example: "定義されたエラーメッセージ"
+  request_id:
+    type: string
+    description: リクエストID
+    example: "abcdefghijklmnopqrstuvwxyz"
+  details:
+    type: array
+    description: エラーの詳細情報(任意)
+    items:
+      type: string
+    example:
+      - "エラーの詳細の文章1"
+      - "エラーの詳細の文章2"
