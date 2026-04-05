@@ -44,8 +44,12 @@ RUN addgroup -S app && adduser -S app -G app
 USER app
 
 COPY --from=builder --chown=app:app /app/bin/server /app/server
-COPY --from=builder --chown=app:app /app/env /env
+COPY --from=builder --chown=app:app /app/env/.env.dev /env/.env.dev
+COPY --from=builder --chown=app:app /app/env/.env.stg /env/.env.stg
+COPY --from=builder --chown=app:app /app/env/.env.prd /env/.env.prd
 COPY --from=builder --chown=app:app /app/database/migrations /database/migrations
+
+ENV ENV=prd
 
 CMD ["/app/server", "serve"]
 
