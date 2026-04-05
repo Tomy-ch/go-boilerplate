@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/httpstack/oapi/auth"
 	"go-boilerplate/internal/infrastructure/auth/local"
@@ -27,15 +29,15 @@ func AuthnModule() fx.Option {
 func provideAuthenticator(
 	appCfg *config.ApplicationConfig,
 	logger logging.Logger,
-) authbd.Authenticator {
+) (authbd.Authenticator, error) {
 	switch appCfg.Env() {
 	case config.EnvLocal, config.EnvCI, config.EnvTest:
-		return local.New()
+		return local.New(), nil
 	default:
 		logger.CallerSkip(callerSkipCount).Error(
 			"No authenticator configured for the current environment",
 			logging.String("env", string(appCfg.Env())),
 		)
-		return nil
+		return nil, fmt.Errorf("no authenticator configured for environment: %s", appCfg.Env())
 	}
 }

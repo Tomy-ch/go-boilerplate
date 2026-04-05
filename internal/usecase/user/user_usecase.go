@@ -123,7 +123,7 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Pagi
 			Building:   u.Building(),
 			DeletedAt:  u.DeletedAt(),
 		}
-		if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
+		if p, ok := prefectureMap[u.PrefectureID()]; ok {
 			dtos[i].PrefectureName = p.Name()
 		}
 	}

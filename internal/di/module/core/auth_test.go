@@ -41,7 +41,8 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg.SetApplicationEnv(t, config.EnvLocal)
 		logger := logging.NewTestLogger(t)
 
-		authenticator := provideAuthenticator(appCfg, logger)
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.NoError(t, err)
 
 		la := local.New()
 		require.Equal(t, la, authenticator)
@@ -53,7 +54,8 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg.SetApplicationEnv(t, config.EnvCI)
 		logger := logging.NewTestLogger(t)
 
-		authenticator := provideAuthenticator(appCfg, logger)
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.NoError(t, err)
 
 		la := local.New()
 		require.Equal(t, la, authenticator)
@@ -65,7 +67,8 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg.SetApplicationEnv(t, config.EnvTest)
 		logger := logging.NewTestLogger(t)
 
-		authenticator := provideAuthenticator(appCfg, logger)
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.NoError(t, err)
 
 		la := local.New()
 		require.Equal(t, la, authenticator)
@@ -77,8 +80,8 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg.SetApplicationEnv(t, config.EnvProduction)
 		logger := logging.NewTestLogger(t)
 
-		authenticator := provideAuthenticator(appCfg, logger)
-		// 本番用 Authenticator は未実装のため nil になる想定
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.Error(t, err)
 		require.Nil(t, authenticator)
 	})
 }

@@ -37,11 +37,13 @@ func NewCommand() *cobra.Command {
 
 // runJobExec は、指定されたジョブを実行します。
 func runJobExec(ctx context.Context, name string, args []string) error {
+	// DI 経由でジョブランナーを取得し、開始関数と停止関数を受け取ります。
 	start, stop := di.RunJob()
 
 	done := start(ctx, name, args)
 
 	if timeOut <= 0 {
+		// タイムアウト未指定時は、ジョブ完了を待ってから停止処理だけ確実に流します。
 		err := <-done
 		stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
 		defer cancel()
@@ -55,14 +57,17 @@ func runJobExec(ctx context.Context, name string, args []string) error {
 
 	select {
 	case err := <-done:
+		// 正常終了時は、停止専用の短い context を作って後始末を行います。
 		stopCtx, timeoutCancel := context.WithTimeout(ctx, stopTimeout)
 		defer timeoutCancel()
 		_ = stop(stopCtx)
 		return err
 	case <-waitCtx.Done():
+		// タイムアウト時は待機用 context 自体が終了しているため、そのまま停止へ渡します。
 		_ = stop(waitCtx)
 		return waitCtx.Err()
 	case <-ctx.Done():
+		// 親 context のキャンセル時も、停止猶予だけを与えてジョブを終了させます。
 		stopCtx, timeoutCancel := context.WithTimeout(ctx, stopTimeout)
 		defer timeoutCancel()
 		_ = stop(stopCtx)

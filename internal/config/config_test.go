@@ -160,6 +160,16 @@ func Test_validateConfig(t *testing.T) {
 			require.Error(t, err)
 		})
 
+		t.Run("DBコネクション設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.DBConnection.MinConns = cfg.DBConnection.MaxConns + 1 // MinConnsがMaxConnsを超える
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.Error(t, err)
+		})
+
 		t.Run("セキュリティ設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
@@ -168,6 +178,18 @@ func Test_validateConfig(t *testing.T) {
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
 			require.Error(t, err)
+		})
+
+		t.Run("認証設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			// CookieNameとHeaderNameの両方が空
+			cfg.Auth.CookieName = ""
+			cfg.Auth.HeaderName = ""
+
+			actual, err := validateConfig(cfg)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, ErrAuthConfigMissing)
 		})
 
 		t.Run("IPレートリミット設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
@@ -414,6 +436,30 @@ func Test_validateSecurityConfig(t *testing.T) {
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
+		})
+	})
+}
+
+func Test_validateAuthConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		cfg := mockLoader(t)
+		err := validateAuthConfig(cfg.Auth)
+		require.NoError(t, err)
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("CookieNameとHeaderNameの両方が空の場合、エラーが返されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			// CookieNameとHeaderNameの両方が空
+			cfg.Auth.CookieName = ""
+			cfg.Auth.HeaderName = ""
+
+			err := validateAuthConfig(cfg.Auth)
+			require.ErrorIs(t, err, ErrAuthConfigMissing)
 		})
 	})
 }

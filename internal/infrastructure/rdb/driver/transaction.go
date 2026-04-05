@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/tx"
 

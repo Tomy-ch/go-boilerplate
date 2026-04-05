@@ -66,7 +66,7 @@ func TestNewAuthenticator(t *testing.T) {
 		require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
 	})
 
-	t.Run("authExtractor が nil を返すとパニックする(現状の実装)", func(t *testing.T) {
+	t.Run("認証情報が取得できない場合は ErrUnauthorizedTokenNotProvided を返す", func(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		ac := config.NewAuthConfig(cfg)
 
@@ -85,7 +85,32 @@ func TestNewAuthenticator(t *testing.T) {
 		req = req.WithContext(ctxWithEcho)
 		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-		require.Panics(t, func() { _ = fn(context.Background(), in) })
+		err := fn(context.Background(), in)
+		require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
+	})
+
+	t.Run("Authenticate が nil, nil を返す場合は ErrUnauthorizedTokenNotProvided を返す", func(t *testing.T) {
+		cfg := config.MockConfigForTest(t)
+		ac := config.NewAuthConfig(cfg)
+
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+		m := mock_auth.NewMockAuthenticator(ctrl)
+		m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, nil)
+
+		fn := NewAuthenticator(ac, m)
+
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
+		rec := httptest.NewRecorder()
+		e := echo.New()
+		echoCtx := e.NewContext(req, rec)
+		ctxWithEcho := ctxhelper.SetEchoContext(req.Context(), echoCtx)
+		req = req.WithContext(ctxWithEcho)
+		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
+
+		err := fn(context.Background(), in)
+		require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
 	})
 
 	t.Run("正常系: トークン抽出 -> Authenticate 呼出し -> Echo に Authn セット", func(t *testing.T) {

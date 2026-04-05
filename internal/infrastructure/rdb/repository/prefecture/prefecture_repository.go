@@ -6,7 +6,7 @@ import (
 
 	"go-boilerplate/internal/domain/prefecture"
 	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
-	"go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"

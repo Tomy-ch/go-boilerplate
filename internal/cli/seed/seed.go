@@ -49,6 +49,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 		panic("failed to create logger: " + err.Error())
 	}
 
+	// seed 実行時の設定を組み立て、必要であれば投入先 DB 名を上書きします。
 	cfg, err := newConfigForSeed(logger)
 	if err != nil {
 		return err
@@ -74,44 +75,17 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
+	// CLI の処理では親 context が渡ってこないため、ここで seed 実行用の context を生成します。
 	ctx := context.Background()
 
 	var readFilesErr error
+	// seed ファイル名の昇順で固定し、投入順序を安定させます。
 	sort.Strings(files)
 	for _, f := range files {
-		//nolint:gosec // safe: seeds folder only contains project‑owned SQL files
-		data, err := os.ReadFile(f)
+		err = execSeedFile(ctx, db, logger, f)
 		if err != nil {
-			logger.Named("dbSeedRun.os.ReadFile").Error(
-				"failed to read seed file",
-				logging.String("file", f),
-				logging.Error("os.ReadFile", err),
-			)
+			// 読み込み失敗は最後に呼び出し元へ返しつつ、他ファイルの投入は継続します。
 			readFilesErr = err
-			continue
-		}
-		_, err = db.Exec(ctx, string(data))
-		log := logger.Named("dbSeedRun.Exec")
-		if err != nil {
-			var pgErr *pgconn.PgError
-			if xerrors.As(err, &pgErr) &&
-				pgErr.Code != relationDoesNotExistCode {
-				log.Error(
-					"failed to exec seed file",
-					logging.String("file", f),
-					logging.Error("db.Exec", err),
-				)
-			}
-			log.Warn(
-				"table does not exist, skipping seed",
-				logging.String("file", f),
-				logging.Error("db.Exec", err),
-			)
-		} else {
-			log.Info(
-				"seed file executed successfully",
-				logging.String("file", f),
-			)
 		}
 	}
 	if readFilesErr != nil {
@@ -122,6 +96,61 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// execSeedFile は、1つの seed ファイルの読み込みと SQL 実行を担当します。
+func execSeedFile(ctx context.Context, db driver.DatabaseDriver, logger logging.Logger, filePath string) error {
+	//nolint:gosec // safe: seeds folder only contains project-owned SQL files
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		logger.Named("dbSeedRun.os.ReadFile").Error(
+			"failed to read seed file",
+			logging.String("file", filePath),
+			logging.Error("os.ReadFile", err),
+		)
+		return err
+	}
+
+	_, err = db.Exec(ctx, string(data))
+	// 実行エラーは種別ごとにログレベルを変え、処理継続可否は呼び出し元ではなくここで吸収します。
+	logSeedExecResult(logger, filePath, err)
+
+	return nil
+}
+
+// logSeedExecResult は、seed 実行結果を PostgreSQL 固有エラーの種類に応じて記録します。
+func logSeedExecResult(logger logging.Logger, filePath string, err error) {
+	log := logger.Named("dbSeedRun.Exec")
+	if err == nil {
+		log.Info(
+			"seed file executed successfully",
+			logging.String("file", filePath),
+		)
+		return
+	}
+
+	var pgErr *pgconn.PgError
+	// seed 対象テーブルが未作成の環境では警告に留め、他の seed 実行を継続します。
+	if xerrors.As(err, &pgErr) && pgErr.Code == relationDoesNotExistCode {
+		log.Warn(
+			"table does not exist, skipping seed",
+			logging.String("file", filePath),
+			logging.Error("db.Exec", err),
+		)
+		return
+	}
+
+	message := "failed to exec seed file"
+	if !xerrors.As(err, &pgErr) {
+		message = "failed to exec seed file (non-postgres error)"
+	}
+
+	log.Error(
+		message,
+		logging.String("file", filePath),
+		logging.Error("db.Exec", err),
+	)
+}
+
+// newConfigForSeed は seed 用の設定を読み込み、CLI オプションの DB 名上書きを反映します。
 func newConfigForSeed(logger logging.Logger) (*config.Config, error) {
 	err := config.Load()
 	if err != nil {
