@@ -1,7 +1,7 @@
 name: Application Deployment Workflow
 
 on:
-  pull_request:
+  push:
     branches:
       - production
       - staging
@@ -136,6 +136,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Define environment
         run: |
