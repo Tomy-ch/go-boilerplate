@@ -96,6 +96,11 @@ var (
 		"failed to parse CIDR: %w",
 		errInvalidConfig,
 	)
+	// ErrAuthConfigMissing は、認証設定が不足していることに関するエラーを表します。
+	ErrAuthConfigMissing = fmt.Errorf(
+		"invalid auth config, either cookie name or header name must be provided: %w",
+		errInvalidConfig,
+	)
 	// ErrInvalidIPRateLimitRequests は、無効なIPレートリミットのリクエスト数に関するエラーを表します。
 	ErrInvalidIPRateLimitRequests = fmt.Errorf(
 		"invalid IP rate limit requests, must be greater than 0: %w",
