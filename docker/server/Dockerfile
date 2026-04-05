@@ -21,14 +21,9 @@ RUN apk add --no-cache \
   tzdata
 
 COPY go.mod go.sum ./
-
-RUN go mod tidy
-
 COPY vendor/ ./vendor/
 
 COPY . .
-
-RUN go list -mod=vendor all
 
 RUN go build -mod=vendor -trimpath \
   -ldflags="-s -w \
@@ -38,12 +33,10 @@ RUN go build -mod=vendor -trimpath \
   -o /app/bin/server ./cmd/main.go
 
 # ------------------------------
-# 本番用
+# 実行用コンテナ: アプリケーションのサーバとして常駐起動する用途
 # ------------------------------
 # NOTE: 本番利用時にはダイジェストを指定することを推奨
-FROM alpine:3.23 AS prd
-
-ENV ENV=prd
+FROM alpine:3.23 AS runtime
 
 RUN apk add --no-cache ca-certificates tzdata
 
@@ -51,17 +44,23 @@ RUN addgroup -S app && adduser -S app -G app
 USER app
 
 COPY --from=builder --chown=app:app /app/bin/server /app/server
-COPY --from=builder --chown=app:app /app/env/.env.prd /env/.env.prd
+COPY --from=builder --chown=app:app /app/env /env
 COPY --from=builder --chown=app:app /app/database/migrations /database/migrations
-COPY --from=builder --chown=app:app /app/scripts/entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /entrypoint.sh
-CMD ["/entrypoint.sh"]
+CMD ["/app/server", "serve"]
+
+# ------------------------------
+# マイグレーション用コンテナ: デプロイ前に1回だけ実行されるジョブ用途
+# サーバとして常駐させてはいけない
+# ------------------------------
+FROM runtime AS migration
+
+CMD ["/app/server", "migrate-up"]
 
 # ------------------------------
 # ローカル環境
 # ------------------------------
-FROM golang:1.26.1-alpine AS local
+FROM golang:1.26.1-alpine AS tooling
 
 # ビルドなどに必要なパッケージをインストール
 RUN apk add --no-cache \
