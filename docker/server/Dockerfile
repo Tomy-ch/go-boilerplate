@@ -44,10 +44,11 @@ RUN addgroup -S app && adduser -S app -G app
 USER app
 
 COPY --from=builder --chown=app:app /app/bin/server /app/server
-COPY --from=builder --chown=app:app /app/env/.env.dev /env/.env.dev
-COPY --from=builder --chown=app:app /app/env/.env.stg /env/.env.stg
-COPY --from=builder --chown=app:app /app/env/.env.prd /env/.env.prd
-COPY --from=builder --chown=app:app /app/database/migrations /database/migrations
+COPY --from=builder --chown=app:app /app/env/.env.dev /app/env/.env.dev
+COPY --from=builder --chown=app:app /app/env/.env.stg /app/env/.env.stg
+COPY --from=builder --chown=app:app /app/env/.env.prd /app/env/.env.prd
+
+WORKDIR /app
 
 ENV ENV=prd
 
@@ -58,6 +59,12 @@ CMD ["/app/server", "serve"]
 # サーバとして常駐させてはいけない
 # ------------------------------
 FROM runtime AS migration
+
+COPY --from=builder --chown=app:app /app/database/migrations /app/database/migrations
+
+WORKDIR /app
+
+ENV ENV=prd
 
 CMD ["/app/server", "migrate-up"]
 
