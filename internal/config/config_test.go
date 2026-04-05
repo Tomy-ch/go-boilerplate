@@ -458,8 +458,7 @@ func Test_validateAuthConfig(t *testing.T) {
 			cfg.Auth.CookieName = ""
 			cfg.Auth.HeaderName = ""
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateAuthConfig(cfg.Auth)
 			require.ErrorIs(t, err, ErrAuthConfigMissing)
 		})
 	})
