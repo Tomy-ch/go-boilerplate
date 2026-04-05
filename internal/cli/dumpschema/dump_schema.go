@@ -93,6 +93,7 @@ func generateDumpSchema(_ *cobra.Command, _ []string) error {
 
 	gen := newGenerator(logger)
 
+	// アプリ設定から接続先 DSN を組み立て、ダンプ対象 DB を決定します。
 	cfg, err := config.SetUpConfig()
 	if err != nil {
 		logger.CallerSkip(gen.callerSkipCount).Named("gensqlc.SetUpConfig").Error("failed to load config",
@@ -105,6 +106,7 @@ func generateDumpSchema(_ *cobra.Command, _ []string) error {
 	dbURL := driver.DSNString(dbCfg)
 
 	ctx := context.Background()
+	// まず生の schema を出力し、その後 sqlc が扱いやすい形に整形します。
 	if err = gen.dumpSchema(ctx, dbURL); err != nil {
 		return err
 	}
@@ -119,6 +121,7 @@ func generateDumpSchema(_ *cobra.Command, _ []string) error {
 func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 	schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
 
+	// pg_dump の出力先を先に開いて、標準出力をそのまま schema.gen.sql に流します。
 	f, err := os.Create(schemaAbs) // #nosec G304
 	if err != nil {
 		return fmt.Errorf("failed to create schema file: %w", err)
@@ -134,6 +137,7 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 
 	args := append([]string{dbURL}, g.dumpArgs...)
 
+	// dump オプションは generator が保持しており、実行時は DB URL だけを先頭に差し込みます。
 	cmd := exec.CommandContext(ctx, g.dumpCommand, args...) // #nosec G204
 	cmd.Dir = g.workDir
 	cmd.Stdout = f
@@ -170,6 +174,7 @@ func (g *generator) sanitizeSchemaInPlace() error {
 	lines := strings.Split(string(b), "\n")
 	out := make([]string, 0, len(lines))
 	for _, ln := range lines {
+		// pg_dump 由来のメタ情報や psql メタコマンドは sqlc 不要のため除去します。
 		trim := strings.TrimSpace(ln)
 		for _, prefix := range trimPrefixes {
 			if strings.HasPrefix(trim, prefix) {
