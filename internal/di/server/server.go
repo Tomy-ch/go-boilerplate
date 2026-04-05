@@ -40,7 +40,6 @@ func MiddlewareModule() fx.Option {
 		// Middleware Modules
 		decoration.BannerModule(),
 		decoration.DefaultPortModule(),
-		decoration.DefaultPortModule(),
 		inbound.IPExtractorModule(),
 		inbound.URIModule(),
 		inbound.OpenAPIModule(),
