@@ -2,7 +2,7 @@
 package skipper
 
 import (
-	"boilerplate-go/internal/controller/httpstack/ops"
+	"go-boilerplate/internal/controller/httpstack/ops"
 
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"

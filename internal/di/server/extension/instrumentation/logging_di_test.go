@@ -3,7 +3,7 @@ package instrumentation
 import (
 	"testing"
 
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/require"
 )

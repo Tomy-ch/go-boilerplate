@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/internal/controller/error/response/gen"
-	"boilerplate-go/pkg/ptr"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/error/response/gen"
+	"go-boilerplate/pkg/ptr"
 
 	"github.com/stretchr/testify/require"
 )

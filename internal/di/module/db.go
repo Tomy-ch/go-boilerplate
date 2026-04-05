@@ -1,10 +1,10 @@
 package module
 
 import (
-	"boilerplate-go/internal/di/server/hook"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
-	"boilerplate-go/internal/infrastructure/rdb/metrics"
+	"go-boilerplate/internal/di/server/hook"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/metrics"
 
 	"go.uber.org/fx"
 )

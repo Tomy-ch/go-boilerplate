@@ -7,10 +7,10 @@ package search
 import (
 	"context"
 
-	"boilerplate-go/internal/controller/handler/v1/users/search/gen"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/tools/paging"
-	search "boilerplate-go/internal/usecase/user/search"
+	"go-boilerplate/internal/controller/handler/v1/users/search/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/tools/paging"
+	search "go-boilerplate/internal/usecase/user/search"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"

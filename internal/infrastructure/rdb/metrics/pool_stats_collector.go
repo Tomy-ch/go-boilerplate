@@ -2,8 +2,8 @@
 package metrics
 
 import (
-	"boilerplate-go/internal/infrastructure/rdb/driver"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/prometheus/client_golang/prometheus"
 )

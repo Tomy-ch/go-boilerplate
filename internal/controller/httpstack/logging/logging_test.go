@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/controller/handler/testkit/testspan"
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/controller/handler/testkit/testspan"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

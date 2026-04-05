@@ -2,7 +2,7 @@
 package ipextractor
 
 import (
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
 )

@@ -10,8 +10,8 @@
 package mock_healthcheck
 
 import (
-	healthcheck "boilerplate-go/internal/usecase/healthcheck"
 	context "context"
+	healthcheck "go-boilerplate/internal/usecase/healthcheck"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

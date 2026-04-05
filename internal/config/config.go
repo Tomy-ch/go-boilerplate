@@ -128,6 +128,10 @@ func validateConfig(cfg Loader) (*validatedConfig, error) {
 		return nil, err
 	}
 
+	if err := validateAuthConfig(cfg.Auth); err != nil {
+		return nil, err
+	}
+
 	if err := validateIPRateLimitConfig(cfg.IPRateLimit); err != nil {
 		return nil, err
 	}
@@ -221,6 +225,14 @@ func validateSecurityConfig(secCfg Security) (*net.IPNet, error) {
 	}
 
 	return cidr, nil
+}
+
+// validateAuthConfig は、認証設定を検証します。
+func validateAuthConfig(authCfg Auth) error {
+	if authCfg.CookieName == "" && authCfg.HeaderName == "" {
+		return ErrAuthConfigMissing
+	}
+	return nil
 }
 
 // validateIPRateLimitConfig は、IPレートリミット設定を検証します。

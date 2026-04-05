@@ -3,9 +3,9 @@ package job
 import (
 	"testing"
 
-	"boilerplate-go/internal/usecase/boundary/job"
-	mock_job "boilerplate-go/internal/usecase/boundary/job/mock"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/usecase/boundary/job"
+	mock_job "go-boilerplate/internal/usecase/boundary/job/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

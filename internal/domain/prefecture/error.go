@@ -1,8 +1,8 @@
 package prefecture
 
 import (
-	"boilerplate-go/internal/apperror"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/pkg/xerrors"
 )
 
 var (

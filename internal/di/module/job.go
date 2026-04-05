@@ -1,10 +1,10 @@
 package module
 
 import (
-	"boilerplate-go/internal/controller/job"
-	"boilerplate-go/internal/controller/job/usercount"
-	dijob "boilerplate-go/internal/di/job"
-	"boilerplate-go/internal/di/job/hook"
+	"go-boilerplate/internal/controller/job"
+	"go-boilerplate/internal/controller/job/usercount"
+	dijob "go-boilerplate/internal/di/job"
+	"go-boilerplate/internal/di/job/hook"
 
 	"go.uber.org/fx"
 )

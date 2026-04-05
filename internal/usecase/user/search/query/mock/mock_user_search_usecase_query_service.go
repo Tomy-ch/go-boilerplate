@@ -10,8 +10,8 @@
 package mock_query
 
 import (
-	query "boilerplate-go/internal/usecase/user/search/query"
 	context "context"
+	query "go-boilerplate/internal/usecase/user/search/query"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

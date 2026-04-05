@@ -3,7 +3,7 @@ package observability
 import (
 	"testing"
 
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"

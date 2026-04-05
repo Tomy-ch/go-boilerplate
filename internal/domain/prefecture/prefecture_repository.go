@@ -4,7 +4,7 @@ package prefecture
 import (
 	"context"
 
-	"boilerplate-go/pkg/uuid"
+	"go-boilerplate/pkg/uuid"
 )
 
 type Repository interface {

@@ -46,16 +46,12 @@ body:
     validations:
       required: true
 
-  - type: dropdown
+  - type: input
     id: version
     attributes:
-      label: バージョン
-      description: 使用しているソフトウェアのバージョンを選択してください
-      options:
-        - "1.0.0"
-        - "1.1.0"
-        - "1.2.0 (最新)"
-      default: 2
+      label: Boilerplateのバージョン
+      description: 使用しているBoilerplateのバージョンを記述してください
+      placeholder: '例: v1.0.0'
     validations:
       required: false
 

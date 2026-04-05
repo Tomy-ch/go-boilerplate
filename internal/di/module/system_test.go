@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
-	"boilerplate-go/internal/system"
+	"go-boilerplate/internal/system"
 )
 
 func TestSystemModule_ProvidesBuildInfo(t *testing.T) {

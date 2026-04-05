@@ -4,10 +4,10 @@ package di
 import (
 	"context"
 
-	"boilerplate-go/internal/di/lifecycle"
-	"boilerplate-go/internal/di/module"
-	"boilerplate-go/internal/di/module/core"
-	"boilerplate-go/internal/di/server"
+	"go-boilerplate/internal/di/lifecycle"
+	"go-boilerplate/internal/di/module"
+	"go-boilerplate/internal/di/module/core"
+	"go-boilerplate/internal/di/server"
 
 	"go.uber.org/fx"
 )

@@ -5,14 +5,14 @@ package main
 import (
 	"os"
 
-	"boilerplate-go/internal/cli"
-	"boilerplate-go/internal/system"
+	"go-boilerplate/internal/cli"
+	"go-boilerplate/internal/system"
 
 	"github.com/spf13/cobra"
 )
 
 func main() {
-	const applicationName = "boilerplate-go"
+	const applicationName = "go-boilerplate"
 
 	c := &cobra.Command{
 		Use:   applicationName,

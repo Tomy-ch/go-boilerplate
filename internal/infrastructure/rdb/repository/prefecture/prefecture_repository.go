@@ -4,12 +4,12 @@ package prefecture
 import (
 	"context"
 
-	"boilerplate-go/internal/domain/prefecture"
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
-	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/pkg/uuid"
+	"go-boilerplate/internal/domain/prefecture"
+	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/uuid"
 )
 
 type repository struct {

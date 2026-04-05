@@ -10,8 +10,8 @@
 package mock_user
 
 import (
-	user "boilerplate-go/internal/domain/user"
 	context "context"
+	user "go-boilerplate/internal/domain/user"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

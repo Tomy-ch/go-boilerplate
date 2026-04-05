@@ -6,10 +6,10 @@ package search
 import (
 	"context"
 
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/tools/paging"
-	"boilerplate-go/internal/usecase/tools/search"
-	"boilerplate-go/internal/usecase/user/search/query"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/internal/usecase/tools/search"
+	"go-boilerplate/internal/usecase/user/search/query"
 )
 
 // SearchParams は、ユーザー検索のパラメータを表します。

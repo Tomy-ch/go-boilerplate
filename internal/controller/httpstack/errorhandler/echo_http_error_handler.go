@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"boilerplate-go/internal/controller/error/response"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/controller/error/response"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 )

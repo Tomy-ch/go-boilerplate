@@ -1,7 +1,7 @@
 package module
 
 import (
-	"boilerplate-go/internal/system"
+	"go-boilerplate/internal/system"
 
 	"go.uber.org/fx"
 )

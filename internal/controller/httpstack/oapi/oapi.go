@@ -2,7 +2,7 @@
 package oapi
 
 import (
-	"boilerplate-go/internal/controller/ctxhelper"
+	"go-boilerplate/internal/controller/ctxhelper"
 
 	echomw "github.com/labstack/echo/v4/middleware"
 	oapimw "github.com/oapi-codegen/echo-middleware"

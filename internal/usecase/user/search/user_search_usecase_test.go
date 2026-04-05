@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/testkit"
-	"boilerplate-go/internal/usecase/tools/paging"
-	"boilerplate-go/internal/usecase/user/search/query"
-	mock_query "boilerplate-go/internal/usecase/user/search/query/mock"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/testkit"
+	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/internal/usecase/user/search/query"
+	mock_query "go-boilerplate/internal/usecase/user/search/query/mock"
 
-	"boilerplate-go/pkg/ptr"
+	"go-boilerplate/pkg/ptr"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

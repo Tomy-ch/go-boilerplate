@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/debug/cookie/gen"
+	"go-boilerplate/internal/controller/handler/debug/cookie/gen"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"

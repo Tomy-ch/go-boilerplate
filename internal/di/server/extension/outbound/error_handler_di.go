@@ -2,10 +2,10 @@
 package outbound
 
 import (
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/errorhandler"
-	"boilerplate-go/internal/di/server/extension"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/errorhandler"
+	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"

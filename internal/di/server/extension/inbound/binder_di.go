@@ -1,8 +1,8 @@
 package inbound
 
 import (
-	"boilerplate-go/internal/controller/httpstack/binder"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/controller/httpstack/binder"
+	"go-boilerplate/internal/di/server/extension"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"

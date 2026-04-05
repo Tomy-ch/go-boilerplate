@@ -1,8 +1,8 @@
 package migrate
 
 import (
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 
@@ -38,6 +38,7 @@ func migrateUpRun(_ *cobra.Command, _ []string) error {
 		panic("failed to create logger: " + err.Error())
 	}
 
+	// CLI オプションを反映した migrate インスタンスを組み立てます。
 	m, err := buildMigrateInstance(targetDatabase)
 	if err != nil {
 		logger.Named("migrateUpRun.buildMigrateInstance").Error("failed to create migrate instance",
@@ -47,7 +48,7 @@ func migrateUpRun(_ *cobra.Command, _ []string) error {
 	}
 
 	if targetVersion == 0 {
-		// 引数なしなら全てのマイグレーションをアップ
+		// バージョン未指定なら、未適用の migration を最後まで進めます。
 		logger.Named("migrateUpRun").Info("running full migration up")
 		if err := executeMigrateFullUp(m); err != nil {
 			logger.Named("migrateUpRun.executeMigrateFullUp").Error("migration failed",
@@ -56,7 +57,7 @@ func migrateUpRun(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	} else {
-		// 引数がある場合は指定されたバージョンまでアップグレード
+		// バージョン指定時は、現在位置から指定回数分だけ段階的に Up を進めます。
 		logger.Named("migrateUpRun").Info("running migration up to version", logging.Int("steps", targetVersion))
 		if err := m.Steps(targetVersion); err != nil {
 			logger.Named("migrateUpRun.migrateUpSteps").Error("migration to version failed",
@@ -72,6 +73,7 @@ func migrateUpRun(_ *cobra.Command, _ []string) error {
 
 // executeMigrateFullUp は、マイグレーションを全てアップグレードします。
 func executeMigrateFullUp(m *migrate.Migrate) error {
+	// 既に最新であれば ErrNoChange になるため、成功扱いとして握りつぶします。
 	if err := m.Up(); err != nil && !xerrors.Is(err, migrate.ErrNoChange) {
 		return err
 	}

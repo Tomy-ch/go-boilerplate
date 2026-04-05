@@ -5,7 +5,7 @@ package ctxhelper
 import (
 	"context"
 
-	auth "boilerplate-go/internal/usecase/boundary/auth"
+	auth "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/labstack/echo/v4"
 )

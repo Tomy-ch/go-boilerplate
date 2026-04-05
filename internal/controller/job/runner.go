@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sort"
 
-	"boilerplate-go/internal/usecase/boundary/job"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/internal/usecase/boundary/job"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // runner は、ジョブの実行を管理する構造体です。

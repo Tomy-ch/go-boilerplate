@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"boilerplate-go/internal/apperror"
+	"go-boilerplate/internal/apperror"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -94,6 +94,11 @@ var (
 	// ErrFailedToParseCIDR は、CIDRのパースに失敗したことを示すエラーです。
 	ErrFailedToParseCIDR = fmt.Errorf(
 		"failed to parse CIDR: %w",
+		errInvalidConfig,
+	)
+	// ErrAuthConfigMissing は、認証設定が不足していることに関するエラーを表します。
+	ErrAuthConfigMissing = fmt.Errorf(
+		"invalid auth config, either cookie name or header name must be provided: %w",
 		errInvalidConfig,
 	)
 	// ErrInvalidIPRateLimitRequests は、無効なIPレートリミットのリクエスト数に関するエラーを表します。

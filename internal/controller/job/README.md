@@ -491,7 +491,7 @@ package usercount
 import (
     "context"
 
-    "boilerplate-go/internal/observability"
+    "go-boilerplate/internal/observability"
     // Import packages used in the implementation
 )
 

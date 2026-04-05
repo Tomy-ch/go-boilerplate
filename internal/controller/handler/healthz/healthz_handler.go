@@ -7,8 +7,8 @@ package healthz
 import (
 	"context"
 
-	"boilerplate-go/internal/controller/handler/healthz/gen"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/controller/handler/healthz/gen"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 )

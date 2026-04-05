@@ -7,9 +7,9 @@ package ready
 import (
 	"context"
 
-	"boilerplate-go/internal/controller/handler/ready/gen"
-	"boilerplate-go/internal/observability"
-	healthcheckuc "boilerplate-go/internal/usecase/healthcheck"
+	"go-boilerplate/internal/controller/handler/ready/gen"
+	"go-boilerplate/internal/observability"
+	healthcheckuc "go-boilerplate/internal/usecase/healthcheck"
 
 	"github.com/labstack/echo/v4"
 )

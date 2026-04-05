@@ -4,9 +4,9 @@ package prefecture
 import (
 	"fmt"
 
-	"boilerplate-go/pkg/stringkit"
-	"boilerplate-go/pkg/uuid"
-	"boilerplate-go/pkg/xerrors"
+	"go-boilerplate/pkg/stringkit"
+	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (

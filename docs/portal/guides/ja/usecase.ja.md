@@ -705,7 +705,7 @@ package user
 import (
     "context"
 
-    "boilerplate-go/internal/observability"
+    "go-boilerplate/internal/observability"
     // それぞれ実装で使うパッケージをimport
 )
 

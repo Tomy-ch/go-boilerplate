@@ -25,7 +25,7 @@ ctxkeyを追加する場合は、以下のように `generate.go` に定義を�
 外部型を使用する場合：
 
 ```go
-//go:generate go run ../../../scripts/genctxkey --name Authn --type "auth.Authn" --import boilerplate-go/internal/usecase/boundary/auth --out .
+//go:generate go run ../../../scripts/genctxkey --name Authn --type "auth.Authn" --import go-boilerplate/internal/usecase/boundary/auth --out .
 ```
 
 その後、以下を実行します。
@@ -50,7 +50,7 @@ make gen-go-code
 
 ```bash
 --type "auth.Authn"
---import boilerplate-go/internal/usecase/boundary/auth
+--import go-boilerplate/internal/usecase/boundary/auth
 ```
 
 - `--type` は Go の型式で指定

@@ -4,8 +4,8 @@ package migrate
 import (
 	"os"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 
 	"github.com/golang-migrate/migrate/v4"
 )
@@ -24,6 +24,7 @@ var (
 
 // buildMigrateInstance は、マイグレーションインスタンスを生成します。
 func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
+	// まず通常の設定を読み込み、必要に応じて対象 DB 名だけ CLI 引数で差し替えます。
 	err := config.Load()
 	if err != nil {
 		return nil, err
@@ -41,5 +42,6 @@ func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
 
+	// ファイルシステム上の migration 群と、実行先 DB の DSN を結び付けて migrate を生成します。
 	return migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
 }

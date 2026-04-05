@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	mock_lifecycle "boilerplate-go/internal/di/lifecycle/mock"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/config"
+	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
+	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

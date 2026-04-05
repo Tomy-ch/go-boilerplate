@@ -3,7 +3,7 @@ package observability
 import (
 	"context"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"go.opentelemetry.io/otel/trace"
 )

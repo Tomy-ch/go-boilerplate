@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 )
 
 func TestMiddleware(t *testing.T) {

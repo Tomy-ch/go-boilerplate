@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/ratelimit"
-	"boilerplate-go/internal/di/lifecycle"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/ratelimit"
+	"go-boilerplate/internal/di/lifecycle"
+	"go-boilerplate/internal/logging"
 )
 
 const ratelimitCallerSkip = 3

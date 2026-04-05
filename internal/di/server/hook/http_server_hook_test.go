@@ -5,11 +5,11 @@ import (
 	"net"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/server"
-	mock_lifecycle "boilerplate-go/internal/di/lifecycle/mock"
-	"boilerplate-go/internal/di/server/extension"
-	mock_logging "boilerplate-go/internal/logging/mock"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/server"
+	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
+	"go-boilerplate/internal/di/server/extension"
+	mock_logging "go-boilerplate/internal/logging/mock"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

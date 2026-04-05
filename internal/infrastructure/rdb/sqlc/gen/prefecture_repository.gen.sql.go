@@ -8,7 +8,7 @@ package gen
 import (
 	"context"
 
-	uuid "boilerplate-go/pkg/uuid"
+	uuid "go-boilerplate/pkg/uuid"
 )
 
 const getPrefectureDomainByID = `-- name: GetPrefectureDomainByID :one

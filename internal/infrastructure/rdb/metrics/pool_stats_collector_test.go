@@ -3,7 +3,7 @@ package metrics
 import (
 	"testing"
 
-	"boilerplate-go/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/infrastructure/rdb/testkit"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"

@@ -4,11 +4,11 @@ package usercount
 import (
 	"context"
 
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/boundary/job"
-	"boilerplate-go/internal/usecase/user"
-	"boilerplate-go/pkg/ptr"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/job"
+	"go-boilerplate/internal/usecase/user"
+	"go-boilerplate/pkg/ptr"
 )
 
 const jobName = "user-count"

@@ -7,7 +7,7 @@ package gen
 import (
 	"time"
 
-	uuid "boilerplate-go/pkg/uuid"
+	uuid "go-boilerplate/pkg/uuid"
 )
 
 // 都道府県

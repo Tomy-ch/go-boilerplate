@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/infrastructure/auth/local"
-	"boilerplate-go/internal/logging"
-	authbd "boilerplate-go/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/auth/local"
+	"go-boilerplate/internal/logging"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
@@ -41,7 +41,8 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg.SetApplicationEnv(t, config.EnvLocal)
 		logger := logging.NewTestLogger(t)
 
-		authenticator := provideAuthenticator(appCfg, logger)
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.NoError(t, err)
 
 		la := local.New()
 		require.Equal(t, la, authenticator)
@@ -53,7 +54,8 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg.SetApplicationEnv(t, config.EnvCI)
 		logger := logging.NewTestLogger(t)
 
-		authenticator := provideAuthenticator(appCfg, logger)
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.NoError(t, err)
 
 		la := local.New()
 		require.Equal(t, la, authenticator)
@@ -65,7 +67,8 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg.SetApplicationEnv(t, config.EnvTest)
 		logger := logging.NewTestLogger(t)
 
-		authenticator := provideAuthenticator(appCfg, logger)
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.NoError(t, err)
 
 		la := local.New()
 		require.Equal(t, la, authenticator)
@@ -77,8 +80,8 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg.SetApplicationEnv(t, config.EnvProduction)
 		logger := logging.NewTestLogger(t)
 
-		authenticator := provideAuthenticator(appCfg, logger)
-		// 本番用 Authenticator は未実装のため nil になる想定
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.Error(t, err)
 		require.Nil(t, authenticator)
 	})
 }

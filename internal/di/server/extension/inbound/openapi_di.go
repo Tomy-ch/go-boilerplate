@@ -2,8 +2,8 @@
 package inbound
 
 import (
-	"boilerplate-go/internal/controller/httpstack/oapi"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/controller/httpstack/oapi"
+	"go-boilerplate/internal/di/server/extension"
 
 	echomw "github.com/labstack/echo/v4/middleware"
 

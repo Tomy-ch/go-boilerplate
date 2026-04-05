@@ -152,7 +152,7 @@ function generateSections() {
 }
 
 const docsJson = {
-  title: "boilerplate-go Documentation",
+  title: "go-boilerplate Documentation",
   subtitle: "This document portal provides access to the repository implementation, test results, E-R diagrams, and more.",
   sections: generateSections()
 }

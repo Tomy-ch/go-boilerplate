@@ -10,10 +10,10 @@
 package mock_search
 
 import (
-	paging "boilerplate-go/internal/usecase/tools/paging"
-	search "boilerplate-go/internal/usecase/user/search"
-	query "boilerplate-go/internal/usecase/user/search/query"
 	context "context"
+	paging "go-boilerplate/internal/usecase/tools/paging"
+	search "go-boilerplate/internal/usecase/user/search"
+	query "go-boilerplate/internal/usecase/user/search/query"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

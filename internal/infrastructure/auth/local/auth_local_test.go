@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	authbd "boilerplate-go/internal/usecase/boundary/auth"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 )
 
 func TestNew(t *testing.T) {

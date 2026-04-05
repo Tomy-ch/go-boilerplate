@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"boilerplate-go/pkg/ptr"
+	"go-boilerplate/pkg/ptr"
 
 	"github.com/stretchr/testify/require"
 )

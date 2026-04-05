@@ -8,11 +8,11 @@ import (
 	"go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
 
-	"boilerplate-go/internal/di/lifecycle"
-	mock_lifecycle "boilerplate-go/internal/di/lifecycle/mock"
-	"boilerplate-go/internal/logging"
-	mock_logging "boilerplate-go/internal/logging/mock"
-	"boilerplate-go/internal/observability"
+	"go-boilerplate/internal/di/lifecycle"
+	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
+	"go-boilerplate/internal/logging"
+	mock_logging "go-boilerplate/internal/logging/mock"
+	"go-boilerplate/internal/observability"
 )
 
 func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {

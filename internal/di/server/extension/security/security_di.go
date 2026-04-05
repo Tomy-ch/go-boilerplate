@@ -2,9 +2,9 @@
 package security
 
 import (
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/security"
-	"boilerplate-go/internal/di/server/extension"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/security"
+	"go-boilerplate/internal/di/server/extension"
 
 	"go.uber.org/fx"
 )

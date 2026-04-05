@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	auth "boilerplate-go/internal/usecase/boundary/auth"
+	auth "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

@@ -5,11 +5,11 @@ import (
 	"context"
 	"time"
 
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
-	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/healthcheck/query"
+	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/healthcheck/query"
 )
 
 type systemQuery struct {

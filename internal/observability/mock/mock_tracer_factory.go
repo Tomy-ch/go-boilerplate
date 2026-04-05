@@ -10,7 +10,7 @@
 package mock_observability
 
 import (
-	observability "boilerplate-go/internal/observability"
+	observability "go-boilerplate/internal/observability"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

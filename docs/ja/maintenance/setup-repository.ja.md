@@ -21,12 +21,8 @@ make activate-tools
 ローカルで起動してみて、問題なく動作することを確認してください。
 
 ```sh
-# サーバー起動
 make serve
-# 開発補助ツール起動
 make tools
-
-# 開発とテスト用のDBの初期化
 make db-init
 ```
 
@@ -37,11 +33,9 @@ make db-init
 ORGとREPOは適宜置き換えてください。派生設定は気になる箇所のみ変更してください。
 
 ```sh
-# ===== 一括設定 =====
 export ORG=<your-org/git-user-name>
 export REPO=<your-repo>
 
-# ===== 派生設定 =====
 export MODULE=${REPO}
 export APP_NAME=${REPO}
 export OPENAPI_TITLE=${REPO}
@@ -49,11 +43,12 @@ export COPILOT_TITLE=${REPO}
 export COPYRIGHT_HOLDER=${ORG}
 export COPYRIGHT_YEAR=$(date +%Y)
 
-# ===== 実行 =====
-make setup-replace-module OLD_MODULE=boilerplate-go NEW_MODULE=$MODULE
+make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=$MODULE
 make setup-replace-repository-reference REPOSITORY=$ORG/$REPO
 make setup-replace-app-metadata APP_NAME=$APP_NAME OPENAPI_TITLE="$OPENAPI_TITLE" COPILOT_TITLE="$COPILOT_TITLE"
 make setup-replace-license-copyright COPYRIGHT_HOLDER="$COPYRIGHT_HOLDER" COPYRIGHT_YEAR=$COPYRIGHT_YEAR
+make gen-api
+make gen-sqlc
 make tidy-lib
 ```
 
@@ -62,13 +57,9 @@ make tidy-lib
 テストと静的解析、コード生成、ヘルスチェックなど、基本的な機能が問題なく動作することを確認してください。
 
 ```sh
-# テスト
 make test
-# 静的解析
 make lint
-# コード生成
 make gen
-# ヘルスチェック
 curl http://localhost:8080/health
 curl http://localhost:8080/ready
 ```
@@ -127,6 +118,8 @@ make branch-minor
 
 デプロイCI/CD: [.github/workflows/deploy-app.yaml](.github/workflows/deploy-app.yaml) を完成させてください。
 
+`Note: Please modify this section according to your environment` と書かれている箇所が、環境に合わせて変更が必要な箇所になります。
+
 ## Phase 9: 認証機の作成
 
 このboilerplateには、認証機能の実装例として、JWTを使用したサンプルコードが含まれています。プロジェクトの要件に合わせて、認証機能を実装してください。
@@ -146,7 +139,7 @@ usecaseの[Authenticator](internal/usecase/boundary/auth/authenticator.go)イン
 セットアップのタイミングでの削除は必須ではないですが、本番にリリースする前には必ず削除してください。
 
 ```sh
-make setup-remove-debug-handlers # 認証周りのデバッグハンドラーを削除します。必要に応じて実行してください。
+make setup-remove-debug-handlers
 ```
 
 ## Phase 11: サンプルAPIの削除
@@ -178,3 +171,16 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
     4. サンプル用のInfraコードがエラーになるので、そのコードとそのテストコードを削除する。
 4. サンプルAPIのドメインコードの削除。
     - [internal/domain/](internal/domain/) の配下のサンプルAPIで使っているコードとそのテストコードを削除してください。このディレクトリの配下のディレクトリはサンプルAPIのドメインコードのみなので、配下のディレクトリごと削除しても構いません。
+
+## Phase Extra: IPレート制限について
+
+このプロジェクトでは、`インメモリのIPレート制限` をサンプル実装として提供しています。
+
+しかし、この方式は、複数インスタンスでの運用や、インスタンスの再起動が頻繁に発生する環境では適していません。
+
+不要な場合は下記を削除してください。
+
+- [internal/di/server/server.go](../../../internal/di/server/server.go) の RateLimitModule の `security.RateLimitModule(),` の行
+- [internal/di/server/extension/security/rate_limit_di.go](../../../internal/di/server/extension/security/rate_limit_di.go) ファイル全体
+- [internal/di/server/extension/security/rate_limit_di_test.go](../../../internal/di/server/extension/security/rate_limit_di_test.go) ファイル全体
+- [internal/controller/httpstack/ratelimit/](../../../internal/controller/httpstack/ratelimit/) ディレクトリ全体

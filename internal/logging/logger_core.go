@@ -4,7 +4,7 @@ package logging
 import (
 	"fmt"
 
-	"boilerplate-go/internal/config"
+	"go-boilerplate/internal/config"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

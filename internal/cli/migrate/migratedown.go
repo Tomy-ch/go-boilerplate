@@ -3,8 +3,8 @@ package migrate
 import (
 	"errors"
 
-	"boilerplate-go/internal/logging"
-	"boilerplate-go/pkg/safecast"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/safecast"
 
 	"github.com/spf13/cobra"
 
@@ -40,29 +40,33 @@ func migrateDownRun(_ *cobra.Command, _ []string) error {
 		panic("failed to create logger: " + err.Error())
 	}
 
+	// CLI オプションを反映した migrate インスタンスを組み立てます。
 	m, err := buildMigrateInstance(targetDatabase)
 	if err != nil {
 		logger.Named("migrateDownRun.buildMigrateInstance").Error("failed to create migrate instance",
 			logging.Error("buildMigrateInstance", err),
 		)
+		return err
 	}
 
 	if targetVersion == 0 {
-		// 引数なしなら全てのマイグレーションをダウングレード
+		// バージョン未指定なら、現在適用済みの migration を最後まで巻き戻します。
 		logger.Named("migrateDownRun").Info("running full migration down")
 		err := executeMigrateFullDown(m)
 		if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 			logger.Named("migrateDownRun.executeMigrateFullDown").Error("down migration failed",
 				logging.Error("executeMigrateFullDown", err),
 			)
+			return err
 		}
 	} else {
-		// 引数がある場合は指定されたバージョンまでダウングレード
+		// golang-migrate の Steps は、負数を渡すとその回数だけ Down を進めます。
 		logger.Named("migrateDownRun").Info("running migrate down steps", logging.Int("steps", targetVersion))
 		if err := m.Steps(int(-targetVersion)); err != nil {
 			logger.Named("migrateDownRun.migrateDownSteps").Error("down migration steps failed",
 				logging.Error("migrateDownSteps", err),
 			)
+			return err
 		}
 	}
 
@@ -72,6 +76,7 @@ func migrateDownRun(_ *cobra.Command, _ []string) error {
 
 // executeMigrateFullDown は、マイグレーションを全てダウングレードして、DBを初期状態に戻します。
 func executeMigrateFullDown(m *migrate.Migrate) error {
+	// dirty 状態のままでは Down できないため、現在バージョンで整合を取り直してから巻き戻します。
 	v, dirty, err := m.Version()
 	if err != nil && !errors.Is(err, migrate.ErrNilVersion) {
 		return err

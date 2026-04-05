@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"testing"
 
-	"boilerplate-go/internal/controller/handler/ready"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/healthcheck"
-	mock_healthcheck "boilerplate-go/internal/usecase/healthcheck/mock"
+	"go-boilerplate/internal/controller/handler/ready"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/healthcheck"
+	mock_healthcheck "go-boilerplate/internal/usecase/healthcheck/mock"
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/mock/gomock"

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/ctxhelper"
-	authbd "boilerplate-go/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/ctxhelper"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
@@ -33,6 +33,9 @@ func NewAuthenticator(
 		authn, err := authExtractor(ctx, req, authCfg, authenticator)
 		if err != nil {
 			return ErrUnauthorizedInvalidToken
+		}
+		if authn == nil {
+			return ErrUnauthorizedTokenNotProvided
 		}
 
 		//nolint:contextcheck // ecのContext内部のものにアクセスするため

@@ -4,12 +4,12 @@ package user
 import (
 	"context"
 
-	"boilerplate-go/internal/infrastructure/rdb/driver/loggingdb"
-	"boilerplate-go/internal/infrastructure/rdb/postgres/pgerror"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc"
-	"boilerplate-go/internal/infrastructure/rdb/sqlc/gen"
-	"boilerplate-go/internal/observability"
-	"boilerplate-go/internal/usecase/user/search/query"
+	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/pgerror"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
+	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/user/search/query"
 )
 
 type service struct {
@@ -91,7 +91,7 @@ func fetchSearchAll(
 			DeletedAt:      row.Users.DeletedAt,
 		}
 	}
-	return results, err
+	return results, nil
 }
 
 // fetchSearchActive は、アクティブなユーザーを検索します。
@@ -118,7 +118,7 @@ func fetchSearchActive(
 			DeletedAt:      row.Users.DeletedAt,
 		}
 	}
-	return results, err
+	return results, nil
 }
 
 // fetchSearchDeleted は、削除されたユーザーを検索します。
@@ -145,7 +145,7 @@ func fetchSearchDeleted(
 			DeletedAt:      row.Users.DeletedAt,
 		}
 	}
-	return results, err
+	return results, nil
 }
 
 // CountByFilter は、キーワード検索でユーザーの総件数を返します。

@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/logging"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/logging"
 
-	"boilerplate-go/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 
 	"github.com/stretchr/testify/require"
 )

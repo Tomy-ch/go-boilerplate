@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"boilerplate-go/internal/controller/ctxhelper"
-	"boilerplate-go/internal/usecase/boundary/auth"
-	"boilerplate-go/pkg/uuid"
+	"go-boilerplate/internal/controller/ctxhelper"
+	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"

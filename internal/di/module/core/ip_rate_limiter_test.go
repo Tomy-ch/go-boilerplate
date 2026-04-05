@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
-	"boilerplate-go/internal/config"
-	"boilerplate-go/internal/controller/httpstack/ratelimit"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/ratelimit"
 )
 
 func TestIPRateLimiterModule_ProvidesIPRateLimiter(t *testing.T) {

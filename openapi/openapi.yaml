@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Boilerplate Go with Onion Architecture, Echo and SQLC
-  termsOfService: https://github.com/Tomy-ch/boilerplate-go-echo-oapi-sqlc
+  termsOfService: https://github.com/Tomy-ch/go-boilerplate-echo-oapi-sqlc
   contact:
     name: TomyC258460
     url: https://x.com/TomyC258460
