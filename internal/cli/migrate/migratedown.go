@@ -45,6 +45,7 @@ func migrateDownRun(_ *cobra.Command, _ []string) error {
 		logger.Named("migrateDownRun.buildMigrateInstance").Error("failed to create migrate instance",
 			logging.Error("buildMigrateInstance", err),
 		)
+		return err
 	}
 
 	if targetVersion == 0 {
@@ -55,6 +56,7 @@ func migrateDownRun(_ *cobra.Command, _ []string) error {
 			logger.Named("migrateDownRun.executeMigrateFullDown").Error("down migration failed",
 				logging.Error("executeMigrateFullDown", err),
 			)
+			return err
 		}
 	} else {
 		// 引数がある場合は指定されたバージョンまでダウングレード
@@ -63,6 +65,7 @@ func migrateDownRun(_ *cobra.Command, _ []string) error {
 			logger.Named("migrateDownRun.migrateDownSteps").Error("down migration steps failed",
 				logging.Error("migrateDownSteps", err),
 			)
+			return err
 		}
 	}
 
