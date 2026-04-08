@@ -13,6 +13,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/docs` : Portal / Tool information documentation generation
 - `.makefiles/gen` : Batch execution of various generation processes
 - `.makefiles/github` : GitHub initialization / Release / Labels / Rule configuration
+- `.makefiles/tools` : Development tool version management
 
 Targets are broadly divided into two types.
 
@@ -258,7 +259,7 @@ Performs the following in order.
 
 - `gh` login
 - Create and push initial tag `v0.0.0`
-- Create branches `release/v0.1.0` / `develop` / `staging` / `production`
+- Create branches `develop` / `staging` / `production`
 - Set GitHub default branch
 - Apply branch rule set
 - Initialize labels
