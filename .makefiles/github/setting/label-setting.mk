@@ -11,10 +11,15 @@ delete-all-labels:
 
 create-default-labels:
 	@echo "🏷 ラベルを作成します..."
-	@jq -c '.[]' .github/settings/labels.json | while read -r label; do \
+	@existing_labels="$$(gh label list --limit 1000 --json name -q '.[].name')" || exit $$?; \
+	jq -c '.[]' .github/settings/labels.json | while read -r label; do \
 		name=$$(echo $$label | jq -r .name); \
 		desc=$$(echo $$label | jq -r .description); \
 		color=$$(echo $$label | jq -r .color); \
-		echo "🔸 create label: $$name"; \
-		gh label create "$$name" --description "$$desc" --color "$$color" || echo "⚠️ $$name already exists"; \
+		if printf '%s\n' "$$existing_labels" | grep -Fx -- "$$name" >/dev/null; then \
+			echo "⚠️ $$name already exists"; \
+		else \
+			echo "🔸 create label: $$name"; \
+			gh label create "$$name" --description "$$desc" --color "$$color" || exit $$?; \
+		fi; \
 	done
