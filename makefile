@@ -1,3 +1,6 @@
+# Makefile
+.DEFAULT_GOAL := help
+
 # 変数定義
 # 環境（local / test / prd など）。未指定なら local
 ENV ?= local
