@@ -18,6 +18,7 @@ define do-release-tag
 		echo "✅ タグを打ちました $(2) on production HEAD"; \
 	else \
 		echo "❌ .github/release/$(2).md が存在しません。タグとリリースをスキップしました。"; \
+		exit 1; \
 	fi
 endef
 
