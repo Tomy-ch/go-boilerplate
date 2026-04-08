@@ -29,16 +29,31 @@ endef
 .PHONY: tag-major ## リリースタグ(vX+1.0.0)を作成
 
 tag-patch:
-	@V=$(call get-latest-version); \
+	@git fetch --tags origin; \
+	V=$(call get-latest-version); \
+	if [ -z "$$V" ]; then \
+		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
+		exit 1; \
+	fi; \
 	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V patch); \
 	$(call do-release-tag,$$V,$$NEXT)
 
 tag-minor:
-	@V=$(call get-latest-version); \
+	@git fetch --tags origin; \
+	V=$(call get-latest-version); \
+	if [ -z "$$V" ]; then \
+		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
+		exit 1; \
+	fi; \
 	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V minor); \
 	$(call do-release-tag,$$V,$$NEXT)
 
 tag-major:
-	@V=$(call get-latest-version); \
+	@git fetch --tags origin; \
+	V=$(call get-latest-version); \
+	if [ -z "$$V" ]; then \
+		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
+		exit 1; \
+	fi; \
 	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V major); \
 	$(call do-release-tag,$$V,$$NEXT)
