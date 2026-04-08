@@ -16,6 +16,12 @@ define do-generate-from-branch
 		echo "❌ ブランチ【 $$BRANCH_NAME 】は既に存在します。処理を中止します。"; \
 		exit 1; \
 	fi; \
+	STATUS=$$(git status --porcelain); \
+	if [ -n "$$STATUS" ]; then \
+		echo "❌ 作業ツリーに未コミットの変更があります。変更をコミットまたは退避してから再実行してください。"; \
+		git status --short; \
+		exit 1; \
+	fi; \
 	git fetch origin $$BASE_BRANCH; \
 	git checkout -b $$BRANCH_NAME origin/$$BASE_BRANCH; \
 	git push origin $$BRANCH_NAME; \
