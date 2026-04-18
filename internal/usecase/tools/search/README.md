@@ -1,48 +1,36 @@
-# search ユーティリティ
+# search
 
-概要: 検索キーワード文字列をトークンに分割し、正規化・重複排除・上限設定を行うユーティリティ群。
+English | [日本語](README.ja.md)
 
-## 役割
+Provides utilities for tokenizing search keyword strings — splitting, normalizing, deduplicating, and limiting token count.
 
-`internal/usecase/support/search` パッケージは、ユーザーからの検索キーワードを安全かつ一貫した形でアプリケーション内の検索処理に渡すための補助関数を提供します。具体的には、文字列をトークンに分割（`_` と空白で分割）、各トークンの前後空白除去、空トークン除外、順序を保持した重複排除、最大トークン数の制限を行います（実装は `search.go`）。
+## Public API
 
-## 必要度
+|Function / Constant|Description|
+|---|---|
+|`ParseSearchTokens(keyword *string, maxTokens int)`|Tokenize keyword string with normalization|
+|`DefaultMaxTokens`|Default max token count (30)|
+|`MaxKeywordLength`|Maximum keyword length in runes (1024)|
 
-### 本番運用での必須度
+## Processing Steps
 
-- 必須度: 本番運用で推奨
+1. Truncate keyword to `MaxKeywordLength` runes
+2. Split by `_` and whitespace
+3. Trim each token
+4. Drop empty tokens
+5. Deduplicate (preserve order, first occurrence wins)
+6. Limit to `maxTokens`
 
-- 理由: このユーティリティは検索機能の前処理を担います。アプリケーションが検索機能を提供している場合、入力のばらつき（不要な空白や重複トークン）による検索結果の品質低下を防ぐために導入が望ましく、運用時に安定した検索挙動を保つのに有用です。検索機能を使わないサービスでは不要です。
+## Behavior
 
-### 開発/テスト運用での必須度
+- `keyword` nil or empty → returns `[]string{}`
+- `maxTokens` ≤ 0 → uses `DefaultMaxTokens` (30)
+- No case normalization or Unicode normalization (NFKC/NFC) is performed
 
-- 必須度: 開発/テスト運用で必須
+## Usage
 
-- 理由: 単体テストや統合テストで検索関連の振る舞いを再現・検証する際、トークン化ロジックがあることで入力整形の期待値を明確にできるため、開発/テスト環境では必須です。
-
-### 無効化した場合の影響
-
-- 検索クエリの前処理が行われなくなるため、以下の影響が考えられます。
-  - 空白やアンダースコアを含むキーワードが意図どおりに分割されず、検索ヒット率が低下する。
-  - 同一トークンが重複して残ることで、重複処理前提のスコアリングや検索最適化が正しく動作しない場合がある。
-  - 最大トークン数の制限が無くなると、極端に長いクエリがパフォーマンスに悪影響を与える可能性がある。
-
-## 注意点
-
-- 実装上の挙動（`search.go` に基づく重要ポイント）:
-  - 分割ルール: アンダースコア（`_`）と Unicode の空白文字で分割する。
-  - トリム: 各トークンの前後の空白は除去する。
-  - 空トークン: 空文字は削除される。
-  - 重複排除: 元の順序を保持したまま重複を取り除く（先に出現したトークンを優先）。
-  - トークン上限: デフォルトで最大 `10` トークン（`defaultMaxTokens`）。関数呼び出し時に `maxTokens <= 0` を渡すとデフォルトが使われる。
-  - 正規化の範囲: 現状はトークンの小文字化や Unicode 正規化（NFKC/NFC 等）は行わない。ケースインセンシティブ検索やより高度な正規化が必要な場合は、呼び出し元で追加処理するかユーティリティを拡張してください。
-
-- ファイル/シンボル:
-  - 実装ファイル: `internal/usecase/support/search/search.go`
-  - 主要関数: `ParseSearchTokens(keyword string, maxTokens int) []string`
-
-## 例
-
-- 入力: `"  foo_bar  foo  baz_qux   "` → 出力: `[]string{"foo","bar","baz","qux"}`（最大数に到達しない場合）
-
-必要であれば、トークンの小文字化や Unicode 正規化の追加実装、既存ロジックに対するユニットテストの追加を提案します。
+```go
+kw := "foo_bar baz  foo"
+tokens := search.ParseSearchTokens(&kw, 10)
+// tokens == []string{"foo", "bar", "baz"}
+```
