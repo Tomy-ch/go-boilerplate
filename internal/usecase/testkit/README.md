@@ -1,5 +1,7 @@
 # `testkit` Package
 
+English | [日本語](README.ja.md)
+
 Overview: This package provides helpers to support testing in the Usecase layer. This directory contains utilities such as test error generation and mocked transaction managers that are frequently required in Usecase unit tests.
 
 ## Main Features Provided
