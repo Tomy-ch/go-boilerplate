@@ -210,6 +210,14 @@ docker:
   - src: docker/README.ja.md
     dst: docs/portal/guides/ja/docker.ja.md
 
+ci:
+  # English
+  - src: .github/workflows/README.md
+    dst: docs/portal/guides/ci-workflows.md
+  # Japanese
+  - src: .github/workflows/README.ja.md
+    dst: docs/portal/guides/ja/ci-workflows.ja.md
+
 external:
   # English
   - src: openapi/README.md
