@@ -8,7 +8,7 @@
 
 |ターゲット|ベースイメージ|含まれるツール|
 |---|---|---|
-|`go_tools`|`golang:1.26.1-alpine`|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tools`|`golang:1.26.2-alpine`|oapi-codegen, mockgen, sqlc, migrate|
 |`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 

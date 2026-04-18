@@ -50,10 +50,10 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 
 |ターゲット|用途|ベースイメージ|
 |---|---|---|
-|`builder`|Goバイナリのビルド|`golang:1.26.1-alpine`|
+|`builder`|Goバイナリのビルド|`golang:1.26.2-alpine`|
 |`runtime`|本番実行用コンテナ|`alpine:3.23`|
 |`migration`|マイグレーション実行用コンテナ|`runtime` を継承|
-|`tooling`|ローカル開発環境|`golang:1.26.1-alpine`|
+|`tooling`|ローカル開発環境|`golang:1.26.2-alpine`|
 
 ### runtime
 
@@ -79,7 +79,7 @@ docker-compose.yaml で定義されるサービスと、対応する Dockerfile 
 
 |ステージ|ベース|含まれるツール|
 |---|---|---|
-|`go_tools`|`golang:1.26.1-alpine`|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tools`|`golang:1.26.2-alpine`|oapi-codegen, mockgen, sqlc, migrate|
 |`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 
