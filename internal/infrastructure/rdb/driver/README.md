@@ -200,25 +200,38 @@ Use this to obtain `DBTX`.
 
 This allows transparent switching between `Tx` and `DB`.
 
-## Necessity
+## DSN Helpers (config.go)
 
-### Production
+Utilities for building DB connection DSNs.
 
-Required
+|Function|Description|
+|---|---|
+|`DSN(dbCfg)`|Build base connection URL|
+|`DSNWithTimeZone(dbCfg, osCfg)`|Build connection URL with timezone|
+|`DSNString(dbCfg)`|String version of `DSN`|
+|`DSNWithTimeZoneString(dbCfg, osCfg)`|String version of `DSNWithTimeZone`|
 
-Reason:
+## NewTransactionManager
 
-- DB connection management
-- Transaction boundaries
-- sqlc query execution
+```go
+func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager
+```
 
-All depend on this layer.
+Constructor that implements `tx.Manager` (`internal/usecase/boundary/tx`) for the Usecase layer.
 
-### Development / Testing
+## loggingdb Subdirectory
 
-Recommended
+`loggingdb/` is a **decorator that adds logging + tracing to SQL execution**.
 
-Reason:
+|Type / Function|Description|
+|---|---|
+|`DBProvider`|Interface for creating logged DBTX|
+|`NewLoggingDBProvider`|Create `DBProvider` (receives DB / Config / Logger / Tracer)|
+|`NewLoggingDB(ctx)`|Wrap `DBTX` to add logging and spans to Exec / Query / QueryRow|
 
-- `DatabaseDriver` is an interface
-- Enables testing with mocks
+Features:
+
+- Structured logging for SQL start / end
+- Slow query detection (Warn level when `SlowQueryWarnThreshold` is exceeded)
+- Query argument masking via `ObservabilityConfig.MaskedDBQueryArgs()`
+- OpenTelemetry span attached to each query

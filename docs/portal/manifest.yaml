@@ -76,6 +76,10 @@ infrastructure:
     dst: docs/portal/guides/infrastructure-rdb-repository.md
   - src: internal/infrastructure/rdb/query_service/README.md
     dst: docs/portal/guides/infrastructure-rdb-query-service.md
+  - src: internal/infrastructure/rdb/driver/README.md
+    dst: docs/portal/guides/infrastructure-rdb-driver.md
+  - src: internal/infrastructure/rdb/driver/loggingdb/README.md
+    dst: docs/portal/guides/infrastructure-rdb-driver-loggingdb.md
   # Japanese
   - src: internal/infrastructure/README.ja.md
     dst: docs/portal/guides/ja/infrastructure.ja.md
@@ -85,6 +89,10 @@ infrastructure:
     dst: docs/portal/guides/ja/infrastructure-rdb-repository.ja.md
   - src: internal/infrastructure/rdb/query_service/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb-query-service.ja.md
+  - src: internal/infrastructure/rdb/driver/README.ja.md
+    dst: docs/portal/guides/ja/infrastructure-rdb-driver.ja.md
+  - src: internal/infrastructure/rdb/driver/loggingdb/README.ja.md
+    dst: docs/portal/guides/ja/infrastructure-rdb-driver-loggingdb.ja.md
 
 database:
   # English

@@ -227,25 +227,38 @@ driver.New(ctx, db)
 
 これにより`Tx`と`DB`を透過的に切り替えることができます。
 
-## 必要度
+## DSN ヘルパー（config.go）
 
-### 本番運用
+DB 接続用の DSN を組み立てるユーティリティです。
 
-必須
+|関数|説明|
+|---|---|
+|`DSN(dbCfg)`|基本の接続 URL を生成|
+|`DSNWithTimeZone(dbCfg, osCfg)`|タイムゾーン付き接続 URL を生成|
+|`DSNString(dbCfg)`|`DSN` の文字列版|
+|`DSNWithTimeZoneString(dbCfg, osCfg)`|`DSNWithTimeZone` の文字列版|
 
-理由
+## NewTransactionManager
 
-- DB 接続管理
-- トランザクション境界
-- sqlc クエリ実行
+```go
+func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager
+```
 
-のすべてがこのレイヤに依存しているためです。
+Usecase 層の `tx.Manager`（`internal/usecase/boundary/tx`）を実装するコンストラクタです。
 
-### 開発 / テスト
+## loggingdb サブディレクトリ
 
-推奨
+`loggingdb/` は **SQL 実行にログ + トレーシングを付加するデコレータ**です。
 
-理由
+|型 / 関数|説明|
+|---|---|
+|`DBProvider`|ログ付き DBTX を生成するインターフェース|
+|`NewLoggingDBProvider`|`DBProvider` を生成（DB / Config / Logger / Tracer を受け取る）|
+|`NewLoggingDB(ctx)`|`DBTX` をラップし、Exec / Query / QueryRow にログとスパンを付加|
 
-- `DatabaseDriver` が interface のため
-- mock を使ったテストが可能
+特徴：
+
+- SQL の開始 / 終了を構造化ログで出力
+- スロークエリ検出（`SlowQueryWarnThreshold` 超過時に Warn レベル）
+- `ObservabilityConfig.MaskedDBQueryArgs()` によるクエリ引数のマスキング
+- 各クエリに OpenTelemetry span を付与
