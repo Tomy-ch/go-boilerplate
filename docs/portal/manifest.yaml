@@ -136,10 +136,26 @@ di:
     dst: docs/portal/guides/di-module.md
   - src: internal/di/module/core/README.md
     dst: docs/portal/guides/di-module-core.md
+  - src: internal/di/server/README.md
+    dst: docs/portal/guides/di-server.md
   - src: internal/di/server/extension/README.md
     dst: docs/portal/guides/di-server-extension.md
+  - src: internal/di/server/extension/decoration/README.md
+    dst: docs/portal/guides/di-server-extension-decoration.md
+  - src: internal/di/server/extension/inbound/README.md
+    dst: docs/portal/guides/di-server-extension-inbound.md
+  - src: internal/di/server/extension/instrumentation/README.md
+    dst: docs/portal/guides/di-server-extension-instrumentation.md
+  - src: internal/di/server/extension/nonprod/README.md
+    dst: docs/portal/guides/di-server-extension-nonprod.md
+  - src: internal/di/server/extension/outbound/README.md
+    dst: docs/portal/guides/di-server-extension-outbound.md
+  - src: internal/di/server/extension/security/README.md
+    dst: docs/portal/guides/di-server-extension-security.md
   - src: internal/di/server/hook/README.md
     dst: docs/portal/guides/di-server-hook.md
+  - src: internal/di/shutdowner/README.md
+    dst: docs/portal/guides/di-shutdowner.md
   # Japanese
   - src: internal/di/README.ja.md
     dst: docs/portal/guides/ja/di.ja.md
@@ -155,8 +171,22 @@ di:
     dst: docs/portal/guides/ja/di-module-core.ja.md
   - src: internal/di/server/extension/README.ja.md
     dst: docs/portal/guides/ja/di-server-extension.ja.md
+  - src: internal/di/server/extension/decoration/README.ja.md
+    dst: docs/portal/guides/ja/di-server-extension-decoration.ja.md
+  - src: internal/di/server/extension/inbound/README.ja.md
+    dst: docs/portal/guides/ja/di-server-extension-inbound.ja.md
+  - src: internal/di/server/extension/instrumentation/README.ja.md
+    dst: docs/portal/guides/ja/di-server-extension-instrumentation.ja.md
+  - src: internal/di/server/extension/nonprod/README.ja.md
+    dst: docs/portal/guides/ja/di-server-extension-nonprod.ja.md
+  - src: internal/di/server/extension/outbound/README.ja.md
+    dst: docs/portal/guides/ja/di-server-extension-outbound.ja.md
+  - src: internal/di/server/extension/security/README.ja.md
+    dst: docs/portal/guides/ja/di-server-extension-security.ja.md
   - src: internal/di/server/hook/README.ja.md
     dst: docs/portal/guides/ja/di-server-hook.ja.md
+  - src: internal/di/shutdowner/README.ja.md
+    dst: docs/portal/guides/ja/di-shutdowner.ja.md
 
 context-helper:
   # English
