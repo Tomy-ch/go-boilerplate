@@ -16,6 +16,91 @@ Design points:
 - Missing required values are detected in `validateConfig()`, and startup failure (explicit error return) is triggered to prevent running in an invalid state.
 - Testing helpers and mocks (`config_testing_mock.go`, `config_testing_setter.go`) are provided to allow substituting environment variables and verifying the behavior of `New()` in test environments.
 
+## Public API
+
+### Initialization
+
+|Function|Description|
+|---|---|
+|`SetUpConfig()`|Load `.env` files and initialize `Config` in one step|
+|`New()`|Create `Config` from environment variables (assumes `Load()` has been called)|
+|`Load()`|Load `.env` files and set environment variables|
+
+### SubConfig List
+
+SubConfigs are created from `Config` for each component. All follow the `New*Config(cfg *Config)` signature.
+
+|Type|Constructor|Description|
+|---|---|---|
+|`OperationSystemConfig`|`NewOperationSystemConfig`|Timezone|
+|`ApplicationConfig`|`NewApplicationConfig`|Execution mode, environment identifier, app name|
+|`ServerConfig`|`NewServerConfig`|Host, port, timeouts|
+|`MetricsConfig`|`NewMetricsConfig`|Metrics endpoint authentication|
+|`ObservabilityConfig`|`NewObservabilityConfig`|Tracing enablement, DB query masking|
+|`DatabaseConfig`|`NewDatabaseConfig`|DB connection info|
+|`DBConnectionConfig`|`NewDBConnectionConfig`|Connection pool settings|
+|`SecurityConfig`|`NewSecurityConfig`|CORS, HSTS, CIDR|
+|`SecureCookieConfig`|`NewSecureCookieConfig`|Cookie security attributes|
+|`AuthConfig`|`NewAuthConfig`|Auth header / cookie name|
+|`IPRateLimitConfig`|`NewIPRateLimitConfig`|IP rate limit settings|
+
+### Utilities
+
+|Function|Description|
+|---|---|
+|`NewTimeLocation(osCfg)`|Create `*time.Location` from `OperationSystemConfig` timezone|
+
+### Execution Mode
+
+|Type|Constant|Description|
+|---|---|---|
+|`ExecutionMode`|`ExecutionModeServer`|Server mode|
+||`ExecutionModeJob`|Job mode|
+
+### Environment / Mode Constants
+
+|Constant|Value|Description|
+|---|---|---|
+|`EnvLocal`|`local`|Local development|
+|`EnvCI`|`ci`|CI environment|
+|`EnvTest`|`test`|Test environment|
+|`EnvDevelopment`|`development`|Development environment|
+|`EnvStaging`|`staging`|Staging environment|
+|`EnvProduction`|`production`|Production environment|
+|`DevelopmentMode`|`development`|Development mode|
+|`ProductionMode`|`production`|Production mode|
+|`MinPort`|`1`|Minimum allowed port number|
+|`MaxPort`|`65535`|Maximum allowed port number|
+
+### Validation Errors
+
+Errors detected by `validateConfig()`. All wrap `apperror.ErrInvalidArgument`.
+
+|Error|Description|
+|---|---|
+|`ErrInvalidAppMode`|Invalid application mode|
+|`ErrInvalidPortRange`|Port number out of range|
+|`ErrEmptyAllowedOrigins`|Allowed origins is empty|
+|`ErrInvalidBcryptCost`|Bcrypt cost out of range|
+|`ErrHTTPOnlyAllowedForLocalhost`|HTTP only allowed for localhost|
+|`ErrFailedToParseConfig`|Failed to parse environment variables|
+|`ErrInvalidReadHeaderTimeout`|Invalid ReadHeaderTimeout|
+|`ErrInvalidReadTimeout`|Invalid ReadTimeout|
+|`ErrInvalidWriteTimeout`|Invalid WriteTimeout|
+|`ErrInvalidIdleTimeout`|Invalid IdleTimeout|
+|`ErrReadHeaderTimeoutExceedsReadTimeout`|ReadHeaderTimeout exceeds ReadTimeout|
+|`ErrInvalidDBPortRange`|DB port number out of range|
+|`ErrInvalidDBPingTimeout`|Invalid DB ping timeout|
+|`ErrInvalidSlowQueryWarnThreshold`|Invalid slow query threshold|
+|`ErrInvalidExceedMaxConns`|Min connections exceeds max connections|
+|`ErrFailedToParseCIDR`|Failed to parse CIDR|
+|`ErrAuthConfigMissing`|Auth config (cookie name or header name) not set|
+|`ErrInvalidIPRateLimitRequests`|Invalid rate limit requests|
+|`ErrInvalidIPRateLimitPer`|Invalid rate limit period|
+|`ErrInvalidIPRateLimitBurst`|Invalid rate limit burst|
+|`ErrInvalidIPRateLimitTTL`|Invalid rate limit TTL|
+|`ErrInvalidIPRateLimitCleanupInterval`|Invalid rate limit cleanup interval|
+
 ## Config Loading Flow
 
 The configuration loading flow at application startup is as follows.
@@ -248,6 +333,36 @@ Points:
 - Follow project naming conventions for field names and struct names.
 - After adding a provider to DI, register the component that receives that type (e.g., AWS client factory) in the DI container.
 - Missing additions or type mismatches will cause build errors, so verify with `go build` and `go test ./...`.
+
+## Test Support
+
+### Test Helpers
+
+|Function|File|Description|
+|---|---|---|
+|`MockConfigForTest(t)`|`config_testing_mock.go`|Create a test `*Config` with default values for all fields|
+|`NewTestLocation(t)`|`test_kit.go`|Create a test timezone `*time.Location`|
+|`EnsureRepoRootAndEnv(t, env)`|`test_kit.go`|Move to repo root and set ENV environment variable|
+
+### Test Setters
+
+Methods defined in `config_testing_setter.go` allow temporarily modifying SubConfig values during tests. Values are automatically restored via `t.Cleanup`.
+
+**Do not use in production code.**
+
+|Method|Target SubConfig|
+|---|---|
+|`SetApplicationMode`|`ApplicationConfig`|
+|`SetApplicationEnv`|`ApplicationConfig`|
+|`SetServerPort`|`ServerConfig`|
+|`SetObservabilityMaskedDBQueryArgs`|`ObservabilityConfig`|
+|`SetDatabaseHost`|`DatabaseConfig`|
+|`SetDatabaseName`|`DatabaseConfig`|
+|`SetMaxConns`|`DBConnectionConfig`|
+|`SetCIDR`|`SecurityConfig`|
+|`SetCleanupInterval`|`IPRateLimitConfig`|
+|`SetHeaderName`|`AuthConfig`|
+|`SetAllowedHeaderBearer`|`AuthConfig`|
 
 ## Notes
 
