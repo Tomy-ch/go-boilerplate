@@ -1,35 +1,13 @@
-# `recovery` パッケージ
+# recovery
 
-概要: Echo の `panic` から安全に復帰させるためのミドルウェア設定を提供します。環境に応じてスタックサイズやログ出力の有無を切り替え、本番ではスタック出力を抑える設定を返します。
+English | [日本語](README.ja.md)
 
-## 役割
+Panic recovery middleware with structured logging.
 
-`recovery` は `middleware.RecoverWithConfig` 用の設定をアプリケーション環境に合わせて生成します。リカバリ時にはログ（エラーとスタック）を出力し、リクエスト情報やトレース情報を付与します。
+## Public API
 
-主要ファイル:
+|Function|Description|
+|---|---|
+|`Middleware(z, lf, appCfg)`|Return Echo middleware that catches panics and logs with request context and stack trace|
 
-- `recover.go` : ミドルウェア設定の生成、ログ出力関数の組み立て、開発/本番別の設定（`developmentConfig` / `productionConfig`）。
-- `recover_test.go` : 挙動を検証する単体テスト。
-
-## 必要度
-
-### 本番運用での必須度
-
-- 必須度: 本番運用で推奨（多くの場合必須）
-
-理由: 本番環境でのパニックはプロセスのクラッシュや予期せぬサービス停止につながるため、確実にリカバリして適切にログを残すことは運用上重要です。本番ではスタックの詳細出力を抑制する設定が適切です。
-
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で推奨
-
-理由: 開発環境ではスタックトレースを詳細に出力することでデバッグを容易にするため、開発設定を利用することが望ましいです。
-
-### 無効化した場合の影響
-
-リカバリミドルウェアを適用しないと、ハンドラ内の `panic` が上位に伝播してプロセスをクラッシュさせる可能性があります。サービスの可用性やログの一貫性に重大な影響を与えます。
-
-## 注意点
-
-- ログにはスタックや内部情報が含まれるため、本番環境では出力を抑制する設定になっています。必要に応じて `newRecoverConfig` や `newRecoverLogErrorFunc` をカスタマイズしてください。
-- `recover` と `logging` / `observability` ミドルウェアを組み合わせることで、パニック時の情報をトレースやログに一貫して送れます。
+Stack size: 4KB (production), 10KB (development).
