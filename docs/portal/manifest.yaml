@@ -169,6 +169,8 @@ di:
     dst: docs/portal/guides/ja/di-module.ja.md
   - src: internal/di/module/core/README.ja.md
     dst: docs/portal/guides/ja/di-module-core.ja.md
+  - src: internal/di/server/README.ja.md
+    dst: docs/portal/guides/ja/di-server.ja.md
   - src: internal/di/server/extension/README.ja.md
     dst: docs/portal/guides/ja/di-server-extension.ja.md
   - src: internal/di/server/extension/decoration/README.ja.md
