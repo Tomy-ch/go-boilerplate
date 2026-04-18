@@ -138,6 +138,14 @@ context-helper:
   - src: scripts/genctxkey/README.ja.md
     dst: docs/portal/guides/ja/how-to-generate-ctxhelper.ja.md
 
+cli:
+  # English
+  - src: internal/cli/README.md
+    dst: docs/portal/guides/cli.md
+  # Japanese
+  - src: internal/cli/README.ja.md
+    dst: docs/portal/guides/ja/cli.ja.md
+
 integration:
   # English
   - src: internal/integration/README.md
