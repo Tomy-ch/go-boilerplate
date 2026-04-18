@@ -104,11 +104,15 @@ infrastructure:
 
 database:
   # English
+  - src: database/README.md
+    dst: docs/portal/guides/database.md
   - src: database/dml/README.md
     dst: docs/portal/guides/sqlc-query-guide.md
   - src: SQLC_README.md
     dst: docs/portal/guides/sqlc-settings.md
   # Japanese
+  - src: database/README.ja.md
+    dst: docs/portal/guides/ja/database.ja.md
   - src: database/dml/README.ja.md
     dst: docs/portal/guides/ja/sqlc-query-guide.ja.md
   - src: SQLC_README.ja.md
