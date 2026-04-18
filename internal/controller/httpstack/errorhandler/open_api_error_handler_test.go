@@ -31,7 +31,7 @@ func Test_normalizeOpenAPIError(t *testing.T) {
 		require.Equal(t, reqErr, actual.Internal)
 	})
 
-	t.Run("SecurityRequirementsErrorの場合、Unauthorisedが返る", func(t *testing.T) {
+	t.Run("SecurityRequirementsErrorの場合、Unauthorizedが返る", func(t *testing.T) {
 		t.Parallel()
 
 		secErr := &openapi3filter.SecurityRequirementsError{}

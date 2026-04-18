@@ -190,10 +190,10 @@ func (g *generator) sanitizeSchemaInPlace() error {
 
 	//nolint:gosec // safe: path comes from trusted CLI input
 	if err := os.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permission); err != nil {
-		return fmt.Errorf("write sanitised schema: %w", err)
+		return fmt.Errorf("write sanitized schema: %w", err)
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.sanitizeSchemaInPlace").Info("schema sanitised for sqlc",
+	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",
 		logging.String("schema", g.schemaRelPath),
 	)
 	return nil
