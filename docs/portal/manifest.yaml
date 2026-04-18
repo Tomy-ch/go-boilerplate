@@ -210,9 +210,17 @@ docker:
   # English
   - src: docker/README.md
     dst: docs/portal/guides/docker.md
+  - src: docker/server/README.md
+    dst: docs/portal/guides/docker-server.md
+  - src: docker/tools/README.md
+    dst: docs/portal/guides/docker-tools.md
   # Japanese
   - src: docker/README.ja.md
     dst: docs/portal/guides/ja/docker.ja.md
+  - src: docker/server/README.ja.md
+    dst: docs/portal/guides/ja/docker-server.ja.md
+  - src: docker/tools/README.ja.md
+    dst: docs/portal/guides/ja/docker-tools.ja.md
 
 ci:
   # English
