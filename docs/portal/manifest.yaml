@@ -126,11 +126,15 @@ di:
   # English
   - src: internal/di/README.md
     dst: docs/portal/guides/di.md
+  - src: internal/di/job/README.md
+    dst: docs/portal/guides/di-job.md
   - src: internal/di/job/hook/README.md
     dst: docs/portal/guides/di-job-hook.md
   # Japanese
   - src: internal/di/README.ja.md
     dst: docs/portal/guides/ja/di.ja.md
+  - src: internal/di/job/README.ja.md
+    dst: docs/portal/guides/ja/di-job.ja.md
   - src: internal/di/job/hook/README.ja.md
     dst: docs/portal/guides/ja/di-job-hook.ja.md
 
