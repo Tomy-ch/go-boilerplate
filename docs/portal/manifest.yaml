@@ -106,6 +106,8 @@ cross-cutting:
     dst: docs/portal/guides/config.md
   - src: internal/di/README.md
     dst: docs/portal/guides/di.md
+  - src: internal/di/job/hook/README.md
+    dst: docs/portal/guides/di-job-hook.md
   - src: internal/logging/README.md
     dst: docs/portal/guides/logging.md
   - src: internal/observability/README.md
@@ -119,6 +121,8 @@ cross-cutting:
     dst: docs/portal/guides/ja/config.ja.md
   - src: internal/di/README.ja.md
     dst: docs/portal/guides/ja/di.ja.md
+  - src: internal/di/job/hook/README.ja.md
+    dst: docs/portal/guides/ja/di-job-hook.ja.md
   - src: internal/logging/README.ja.md
     dst: docs/portal/guides/ja/logging.ja.md
   - src: internal/observability/README.ja.md
