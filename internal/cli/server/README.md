@@ -1,32 +1,29 @@
-# Serve
+# serve
 
-概要: このディレクトリは、アプリケーションのサーバーを起動するためのコマンドを提供します。
+English | [日本語](README.ja.md)
 
-`serve` コマンドを使用して、アプリケーションのエントリーポイントを実行します。
+Starts the HTTP server and begins accepting requests.
 
-## 役割
+## Command
 
-- アプリケーションのサーバーを起動し、リクエストを処理する。
-- 必要なミドルウェアやハンドラーを設定し、エンドポイントをバインドします。
+```
+serve
+```
 
-## 必要度
+## Flags
 
-### 本番運用での必須度
+| Flag | Default | Description |
+|------|---------|-------------|
+| *(none)* | | |
 
-- 必須度: 本番運用で必須
-  - 理由: サーバーの起動は本番環境でのアプリケーション運用に不可欠です。
+## Usage
 
-### 開発/テスト運用での必須度
+```bash
+./server serve
+```
 
-- 必須度: 開発/テスト運用で必須
-  - 理由: 開発中やテスト中にサーバーを起動して動作確認を行う必要があるため。
+## Notes
 
-### 無効化した場合の影響
-
-- サーバーが起動しないため、アプリケーションがリクエストを受け付けることができなくなります。
-
-## 注意点
-
-- サーバーのデフォルトポートは `:8080` に設定されています。必要に応じて変更してください。
-- データベース接続が必要な場合、設定ファイルで正しい接続情報を指定してください。
-- 本番環境では、適切なミドルウェア（例: ロギング、セキュリティ）を有効にすることを推奨します。
+- Default listening port is `:8080`. Change it via configuration as needed.
+- Ensure database connection settings are correctly configured before starting.
+- Enable appropriate middleware (logging, security, etc.) for production deployments.

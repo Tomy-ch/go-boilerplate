@@ -1,56 +1,34 @@
-# Migrate
+# migrate-up / migrate-down
 
-概要: このディレクトリは、データベースのマイグレーション操作を管理するためのコマンドを提供します。
+English | [日本語](README.ja.md)
 
-`migrate-up` と `migrate-down` の2つの主要なコマンドを含みます。
+Manages database schema migrations. `migrate-up` applies pending migrations; `migrate-down` rolls back the last migration.
 
-## 役割
+## Commands
 
-- データベースのスキーマを最新の状態に更新する (`migrate-up`)
-- 必要に応じてスキーマを以前の状態に戻す (`migrate-down`)
+```
+migrate-up
+migrate-down
+```
 
-## 必要度
+## Flags
 
-### 本番運用での必須度
+| Flag | Default | Description |
+|------|---------|-------------|
+| *(none)* | | |
 
-- 必須度: 本番運用で必須
-  - 理由: データベーススキーマの管理は本番環境でのアプリケーションの安定性に直結するため。
+## Usage
 
-### 開発/テスト運用での必須度
+```bash
+# Apply all pending migrations
+./server migrate-up
 
-- 必須度: 開発/テスト運用で必須
-  - 理由: 開発中やテスト中にスキーマを頻繁に変更する必要があるため。
+# Roll back the last migration
+./server migrate-down
+```
 
-## MigrateUpの必要度
+## Notes
 
-### MigrateUpの本番運用での必須度
-
-- 必須度: 本番運用で必須
-  - 理由: 新しい機能や修正を反映するために、スキーマの更新が必要です。
-
-### MigrateUpの開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で必須
-  - 理由: 開発中の変更を反映し、テスト環境での動作確認を行うため。
-
-## MigrateDownの必要度
-
-### MigrateDownの本番運用での必須度
-
-- 必須度: 開発/テスト運用で任意
-  - 理由: 通常、本番環境ではスキーマを戻す操作は推奨されません。ただし、緊急時には必要になる場合があります。
-
-### MigrateDownの開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で必須
-  - 理由: 開発中やテスト中にスキーマを以前の状態に戻す必要があるため。
-
-### 無効化した場合の影響
-
-- スキーマの更新やロールバックができなくなり、アプリケーションの動作に支障をきたす可能性があります。
-
-## 注意点
-
-- `migrate-up` と `migrate-down` の操作は慎重に行ってください。
-- 本番環境での `migrate-down` は、データ損失のリスクがあるため、十分な検証とバックアップを行った上で実行してください。
-- マイグレーションファイルのパスは `database/migrations` に固定されています。
+- Migration files are located in `database/migrations`.
+- **Use `migrate-down` with caution in production** -- it can cause data loss. Always back up the database first.
+- Never modify existing migration files; always create a new one.

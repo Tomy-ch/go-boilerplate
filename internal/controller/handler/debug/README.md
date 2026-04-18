@@ -1,9 +1,5 @@
-# Debug Endpoints
+# debug
 
-このディレクトリには、デバッグ用のエンドポイントが含まれています。
+English | [日本語](README.ja.md)
 
-これらのエンドポイントは、boilerplateを作成する際の動作確認用であり、実際のサービスを構築する際には不要です。
-
-また、本番での利用を想定しない実装となっているので、セキュリティリスクを避けるためにも、デバッグエンドポイントは本番環境から削除することが重要です。
-
-現状でも残している理由としては、各種ミドルウェアやインフラの設定が正しく動作しているかをテンプレートで複製した先で確認しやすくするためです。
+Debug endpoints for boilerplate verification. **Must be removed in production.** These endpoints exist to verify middleware and infrastructure configuration when cloning the template.

@@ -1,55 +1,36 @@
-# QueryServiceついて
+# QueryService DML
 
-## 概要
+English | [日本語](README.ja.md)
 
-QueryServiceは、アプリケーションの読み取り専用クエリを集約する層です。
+Read-only SQL for search and list optimization, bypassing the domain layer.
 
-database/dml/query_service/<category> 配下に配置された SQL ファイルをもとに、sqlc により型安全な Go コードを自動生成します。
+## Purpose
 
-クエリサービスは、ドメイン層を経由しないため乱用はアーキテクチャの崩壊を招く可能性がありますが、読み取り専用の高速化や責務の分離を目的としています。
+- Provide optimized read-only queries with JOINs, aggregation, and filtering at the SQL level.
+- Separate read concerns from write operations and transaction management.
+- Generate type-safe Go code via sqlc for compile-time parameter and scan validation.
 
-## 役割と非役割
+## Infrastructure Mapping
 
-役割：読み取り専用のユースケース。DTO/ViewModelを返し、JOIN・集計・非正規化・キャッシュ・検索エンジン等で参照最適化を行う。
+Implementation: `internal/infrastructure/rdb/query_service/`
 
-非役割：状態変更、集約の不変条件の維持、ビジネス仕様の定義（**必要ならDomainの純関数を呼ぶ**）。
-
-## 目的
-
-- 読み取り専用の高速化
-ドメイン層で必要な集計・結合・フィルタリングを、SQLレベルで最適化して提供します。
-- 責務の分離
-書き込み用のDMLやトランザクション処理とは分離し、参照専用のクエリ群として管理します。
-- 型安全なアクセス
-SQLC の生成物により、プレースホルダやスキャンの型ミスをコンパイル時に防止します。
-
-## ディレクトリ構成
+## Directory Structure
 
 ```text
-database/dml/query_service/
-  ├── user/
-  │    ├── select_active_users.sql
-  │    └── ...
-  ├── product/
-  │    ├── list_published_products.sql
-  │    └── ...
-  └── ...
+query_service/
+├── user/
+│   ├── select_active_users.sql
+│   └── ...
+└── ...
 ```
 
-## 運用ルール
+## Naming Convention
 
-- ファイル名
-  - クエリの意図が分かる動詞＋対象名で命名します。
-  - 意味で命名：
-    - OK: ListUsersPublished
-    - NG：GetAllWithPublished（Infra先行の命名）
-  - 部分インデックスやマテビューは積極利用します。
-- SQLの記述
-  - -- name: コメントで関数名を明示します。
-  - 必要に応じてパラメータや返却カラムの型をコメントに記載します。
-- 生成
-  - gen-query-qsコマンドで対象カテゴリの SQLC コードを生成します。
-- パフォーマンス
-  - N+1禁止：QueryService内で必要な関連は一括取得します。
-  - ページング：LIMIT/OFFSETデフォ。大規模は Keyset も検討します。
-  - インデックス：クエリ追加時は必ず計画確認（EXPLAIN ANALYZE）し ADR に添付します。
+- Files: verb + target (e.g., `list_published_products.sql`)
+- `-- name:` annotation required on all queries
+
+## Code Generation
+
+```sh
+make gen-query
+```
