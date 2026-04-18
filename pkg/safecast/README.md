@@ -1,32 +1,16 @@
 # safecast
 
-概要: `safecast` ディレクトリは、型変換を安全に行うためのユーティリティ関数を提供します。
+English | [日本語](README.ja.md)
 
-## 役割
+Provides safe type conversion with overflow detection.
 
-このディレクトリは、型変換時に発生する可能性のあるオーバーフローやエラーを防ぐための関数を提供します。
+## Public API
 
-これにより、予期しない動作やクラッシュを防ぎ、アプリケーションの信頼性を向上させます。
+|Function / Variable|Description|
+|---|---|
+|`UintToInt(x uint) (int, error)`|Safe conversion from `uint` to `int`|
+|`ErrOverflow`|Error returned when overflow occurs|
 
-## 必要度
+## Notes
 
-### 本番運用での必須度
-
-- 必須度: 本番運用で推奨
-  - 理由: 型変換時のエラーを防ぐことで、アプリケーションの安定性を向上させるために役立ちます。ただし、必須ではありません。
-
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で推奨
-  - 理由: 開発やテスト環境での型変換エラーを早期に検出し、デバッグを容易にするために役立ちます。
-
-### 無効化した場合の影響
-
-このディレクトリの機能が無効化されると、型変換時にオーバーフローや予期しないエラーが発生する可能性があり、アプリケーションの動作に悪影響を及ぼす可能性があります。
-
-## 注意点
-
-- 現在提供されている関数:
-  - `UintToInt`: `uint` を `int` に安全に変換します。
-- オーバーフローが発生した場合、エラーを返すため、エラーハンドリングを適切に行う必要があります。
-- テストコードでは、正常系と異常系の両方を十分に検証しています。
+Returns `ErrOverflow` when the value exceeds `math.MaxInt`.
