@@ -1,70 +1,68 @@
-# OpenAPI パラメータ設計ポリシー
+# OpenAPI Parameters
 
-このドキュメントは、OpenAPI の `parameters` セクションにおける設計方針を定義します。
+English | [日本語](README.ja.md)
 
-クエリパラメータ・パスパラメータを再利用性と読みやすさを両立して定義することを目的としています。
+`openapi/components/parameters/` stores **reusable OpenAPI parameter definitions** organized by concern.
 
-## パラメータの種類と目的
-
-| 用途 | 定義場所 | 例 |
-| --- | ------- | -- |
-| クエリパラメータ | `in: query` | `?page=1&per_page=10` |
-| パスパラメータ | `in: path` | `/users/{user_id}` |
-
-## ディレクトリと命名ポリシー
-
-### ファイル構造の例
+## Directory Structure
 
 ```text
-components/
-└── parameters/
-    ├── pagination.yaml
-    ├── user.yaml
+parameters/
+├── pagination/         # Pagination parameters (shared across endpoints)
+│   ├── PageParam.yaml
+│   └── PerPageParam.yaml
+├── search/             # Search parameters (shared across endpoints)
+│   ├── KeywordParam.yaml
+│   └── ActiveParam.yaml
+└── user/               # User-specific parameters (sample)
+    └── UserIdParam.yaml
 ```
 
-### 命名規則
+> `user/` is a **sample implementation**. When building your own service, use it as a reference and replace or remove as needed.
 
-| 要素 | 規則 | 例 |
-| --- | ---- | -- |
-| ファイル名 | PascalCase | `Pagination.yaml`, `User.yaml` |
-| 定義名 | PascalCase | `PageParam`, `UserIdParam` |
-| `$ref` | パス + fragment | `#/components/parameters/UserIdParam` |
+## Available Parameters
 
-## 統合パラメータファイルの使用
+### pagination
 
-複数のパラメータをまとめて管理したい場合、1ファイルに統合する方法を推奨します。
+|File|Parameter|Type|Description|
+|---|---|---|---|
+|`PageParam.yaml`|`page` (query)|integer|Page number (1-based, default: 1)|
+|`PerPageParam.yaml`|`per_page` (query)|integer|Items per page (default: 10, max: 100)|
 
-### 例：PageParam.yaml
+### search
 
-```yaml
-name: page
-in: query
-description: ページ番号（1以上）
-required: false
-schema:
-  type: integer
-  minimum: 1
-  example: 1
-```
+|File|Parameter|Type|Description|
+|---|---|---|---|
+|`KeywordParam.yaml`|`keyword` (query)|string|Full-text search keyword|
+|`ActiveParam.yaml`|`active` (query)|boolean|Filter by active state (true/false/omit for all)|
 
-## 再利用の方法
+### user (sample)
 
-YAML 内では `$ref` を使用して共通パラメータを再利用します：
+|File|Parameter|Type|Description|
+|---|---|---|---|
+|`UserIdParam.yaml`|`user_id` (path)|string (uuid)|User UUID|
+
+## Usage
+
+Reference parameters in endpoint definitions using `$ref`:
 
 ```yaml
 parameters:
-  - $ref: '../../components/parameters/pagination.yaml'
-  - $ref: '../../components/parameters/user.yaml'
+  - $ref: '../components/parameters/pagination/PageParam.yaml'
+  - $ref: '../components/parameters/pagination/PerPageParam.yaml'
+  - $ref: '../components/parameters/search/KeywordParam.yaml'
 ```
 
-## 注意点
+## Naming Convention
 
-- `in: path` のパラメータは `required: true` を必ず指定してください
-- `in: query` のパラメータには必要に応じて `minimum`, `maximum`, `nullable` などを活用してください
-- `description` と `example` は必ず記述して可読性・自動ドキュメント性を高めましょう
+|Element|Convention|Example|
+|---|---|---|
+|Directory|lowercase by concern|`pagination/`, `search/`, `user/`|
+|File name|PascalCase + `Param`|`PageParam.yaml`, `UserIdParam.yaml`|
 
-## 結論
+## Rules
 
-- パラメータ定義は、**責務単位でファイル分割 or 統合しやすい構造で整理**
-- `$ref` 参照は **常にフラグメント付きで一貫性を確保**
-- 仕様とドキュメントがブレない形でパラメータ設計を行い、**長期的な保守性を高める**
+- `in: path` parameters must always set `required: true`
+- Include `description` and `example` on all parameters for documentation quality
+- Use `minimum`, `maximum`, `default` where appropriate for query parameters
+- One parameter per file for maximum reusability

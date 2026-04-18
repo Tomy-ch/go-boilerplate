@@ -234,6 +234,18 @@ external:
   # English
   - src: openapi/README.md
     dst: docs/portal/guides/openapi.md
+  - src: openapi/paths/README.md
+    dst: docs/portal/guides/openapi-paths.md
+  - src: openapi/components/schemas/README.md
+    dst: docs/portal/guides/openapi-schemas.md
+  - src: openapi/components/parameters/README.md
+    dst: docs/portal/guides/openapi-parameters.md
   # Japanese
   - src: openapi/README.ja.md
     dst: docs/portal/guides/ja/openapi.ja.md
+  - src: openapi/paths/README.ja.md
+    dst: docs/portal/guides/ja/openapi-paths.ja.md
+  - src: openapi/components/schemas/README.ja.md
+    dst: docs/portal/guides/ja/openapi-schemas.ja.md
+  - src: openapi/components/parameters/README.ja.md
+    dst: docs/portal/guides/ja/openapi-parameters.ja.md
