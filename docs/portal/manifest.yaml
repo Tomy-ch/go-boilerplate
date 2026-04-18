@@ -142,6 +142,14 @@ pkg:
   - src: pkg/README.ja.md
     dst: docs/portal/guides/ja/pkg.ja.md
 
+docker:
+  # English
+  - src: docker/README.md
+    dst: docs/portal/guides/docker.md
+  # Japanese
+  - src: docker/README.ja.md
+    dst: docs/portal/guides/ja/docker.ja.md
+
 external:
   # English
   - src: openapi/README.md
