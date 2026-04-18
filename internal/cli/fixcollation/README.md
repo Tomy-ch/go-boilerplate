@@ -6,15 +6,15 @@ Fixes PostgreSQL collation version mismatch by running `REINDEX DATABASE` and `A
 
 ## Command
 
-```
+```text
 fix-collation [flags]
 ```
 
 ## Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--database` | `local` | Target database name |
+|Flag|Default|Description|
+|---|---|---|
+|`--database`|`local`|Target database name|
 
 ## Usage
 

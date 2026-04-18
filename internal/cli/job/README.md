@@ -6,15 +6,15 @@ Runs a registered job by name via the CLI. The job executes synchronously and bl
 
 ## Command
 
-```
+```text
 job <job-name> [args...] [flags]
 ```
 
 ## Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--timeout` | *(none / unlimited)* | Maximum execution duration (e.g. `30s`, `5m`) |
+|Flag|Default|Description|
+|---|---|---|
+|`--timeout`|*(none / unlimited)*|Maximum execution duration (e.g. `30s`, `5m`)|
 
 ## Usage
 

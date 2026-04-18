@@ -6,15 +6,15 @@ Dumps the database schema using `pg_dump` and sanitizes the output for sqlc cons
 
 ## Command
 
-```
+```text
 dump-schema [flags]
 ```
 
 ## Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--work-dir` | `/app` | Working directory (project root) |
+|Flag|Default|Description|
+|---|---|---|
+|`--work-dir`|`/app`|Working directory (project root)|
 
 ## Usage
 

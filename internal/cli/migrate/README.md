@@ -6,16 +6,16 @@ Manages database schema migrations. `migrate-up` applies pending migrations; `mi
 
 ## Commands
 
-```
+```text
 migrate-up
 migrate-down
 ```
 
 ## Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| *(none)* | | |
+|Flag|Default|Description|
+|---|---|---|
+|*(none)*|||
 
 ## Usage
 

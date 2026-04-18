@@ -6,15 +6,15 @@ Inserts seed data into the database for development and testing purposes.
 
 ## Command
 
-```
+```text
 db-seed
 ```
 
 ## Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| *(none)* | | |
+|Flag|Default|Description|
+|---|---|---|
+|*(none)*|||
 
 ## Usage
 

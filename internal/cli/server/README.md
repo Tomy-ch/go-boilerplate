@@ -6,15 +6,15 @@ Starts the HTTP server and begins accepting requests.
 
 ## Command
 
-```
+```text
 serve
 ```
 
 ## Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| *(none)* | | |
+|Flag|Default|Description|
+|---|---|---|
+|*(none)*|||
 
 ## Usage
 

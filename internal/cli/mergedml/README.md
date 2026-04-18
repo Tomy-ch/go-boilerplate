@@ -6,16 +6,16 @@ Merges multiple DML SQL files under `database/dml/<type>/<category>/` into singl
 
 ## Command
 
-```
+```text
 merge-dml --type <type> [flags]
 ```
 
 ## Flags
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--type` | *(required)* | Target DML type (e.g. `repository`, `query_service`) |
-| `--work-dir` | `/app` | Working directory (project root) |
+|Flag|Default|Description|
+|---|---|---|
+|`--type`|*(required)*|Target DML type (e.g. `repository`, `query_service`)|
+|`--work-dir`|`/app`|Working directory (project root)|
 
 ## Usage
 
