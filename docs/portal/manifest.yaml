@@ -30,6 +30,8 @@ controller:
     dst: docs/portal/guides/controller-handler.md
   - src: internal/controller/job/README.md
     dst: docs/portal/guides/controller-job.md
+  - src: internal/controller/error/response/README.md
+    dst: docs/portal/guides/controller-error-response.md
   # Japanese
   - src: internal/controller/README.ja.md
     dst: docs/portal/guides/ja/controller.ja.md
@@ -37,6 +39,8 @@ controller:
     dst: docs/portal/guides/ja/controller-handler.ja.md
   - src: internal/controller/job/README.ja.md
     dst: docs/portal/guides/ja/controller-job.ja.md
+  - src: internal/controller/error/response/README.ja.md
+    dst: docs/portal/guides/ja/controller-error-response.ja.md
 
 domain:
   # English

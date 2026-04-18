@@ -1,71 +1,90 @@
 # error response
 
-このディレクトリは、HTTPエラーレスポンスの生成と管理を行います。
+English | [日本語](README.ja.md)
 
-## 役割
+This package handles the generation and management of HTTP error responses.
 
-- **統一フォーマットの提供**: APIで返すエラーレスポンスを一貫した構造で返すことで、クライアント側の取り扱いを簡単にします。
-- **ハンドラ/ミドルウェアからの再利用**: 各エンドポイントのハンドラやミドルウェアは、`error_response`の公開関数を呼び出してエラーを返す想定です。
-- **型安全なレスポンス**: `gen/` サブディレクトリにある自動生成型（`type.gen.go`）を用いて、OpenAPIに沿った型でレスポンスを組み立てます。
-- **実装ファイル**: 実際のロジックは `error_response.go` と `http_error.go` に分かれて実装されています。テストは `error_response_test.go` と `http_error_test.go` にあります。
+## Role
 
-## エラーレスポンスの構造とJSON例
+- **Unified format**: Returns error responses from the API in a consistent structure, simplifying client-side handling
+- **Reusable from handlers / middleware**: Endpoint handlers and middleware call public functions to return errors
+- **Type-safe responses**: Responses are built using types from `gen/type.gen.go` (auto-generated from OpenAPI)
 
-エラーレスポンスは、クライアントが処理しやすいように次のフィールドを持つ構造体で返します（実装での名称や大文字小文字は生成コードに依存します）。
+## File Structure
 
-### HTTPレスポンスのエラー時のJSON
+|File|Role|
+|---|---|
+|`error_response.go`|Response assembly, public functions|
+|`http_error.go`|Error code / message constants, apperror → HTTP mapping|
+|`gen/type.gen.go`|Type definitions auto-generated from OpenAPI (do not edit)|
+
+## Error Response Structure
 
 ```json
 {
   "Code": "INTERNAL_ERROR",
-  "Details": [
-    "具体的な内部エラーの説明（開発向け、またはトラブルシュート用）"
-  ],
-  "Message": "サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。",
+  "Details": ["Specific error description"],
+  "Message": "An unexpected error occurred on the server. Please try again later.",
   "RequestID": "123e4567-e89b-12d3-a456-426614174000"
 }
 ```
 
-- `Code`: アプリケーションレベルのエラー識別子（例: `NOT_FOUND`, `INVALID_INPUT`, `INTERNAL_ERROR`）。
-- `Details`: 内部ログやデバッグ用の追加情報。公開して良いもののみを含めること。
-- `Message`: エンドユーザー向けの分かりやすい文言。
-- `RequestID`: リクエスト追跡用のユニークID。ログと突き合わせて調査に使います。
+|Field|Description|
+|---|---|
+|`Code`|Application-level error identifier|
+|`Details`|Additional information for debugging (only publicly safe information)|
+|`Message`|User-friendly message for end users|
+|`RequestID`|Unique ID for request tracing|
 
-実装上、HTTPのステータスコード（例: 400, 404, 500）はレスポンスヘッダとして返し、詳細な内部エラー情報（スタックトレース等）はログにのみ書き出す方針になっています。
+HTTP status codes are returned in the response header, and internal information such as stack traces is output only to logs.
 
-## 設定変更方法
+## Public Functions
 
-- **エラーレスポンスロジックの修正**: `internal/controller/error/response/error_response.go` を編集します。ここに、レスポンス組み立て、`RequestID` の付与、`Details` の扱いを定義しています。
-- **エラーコード／メッセージの管理**: `internal/controller/error/response/http_error.go` に標準定義（`const`）があります。ここで `Code` とデフォルト `Message` の対応を編集してください。
-- **型定義の更新**: `openapi` 仕様を更新した場合は、`gen/` 内の自動生成コードを再生成してください（プロジェクトの生成手順に従うこと）。
+|Function|Description|
+|---|---|
+|`NewHTTPErrorFromAppError`|Generate HTTP error response from `apperror`|
+|`NewHTTPErrorFromStatus`|Generate error response from HTTP status code|
+|`NewInternalErrorResponse`|Generate 500 Internal Server Error response|
 
-例: 既存のエラーコードに `BAD_GATEWAY` を追加したいときは、`http_error.go` に定数と既定メッセージを追加し、必要なら `error_response.go` のマッピングにルールを追加します。
+## Error Code and HTTP Status Mapping
 
-## 必要度
+### apperror → HTTP Mapping
 
-### 本番運用での必須度
+|apperror|HTTP Status|Error Code|
+|---|---|---|
+|`ErrInvalidArgument`|400 Bad Request|`BAD_REQUEST`|
+|`ErrUnauthenticated`|401 Unauthorized|`UNAUTHORIZED`|
+|`ErrPermissionDenied`|403 Forbidden|`ACCESS_DENIED`|
+|`ErrNotFound`|404 Not Found|`NOT_FOUND`|
+|`ErrConflict`|409 Conflict|`RESOURCE_CONFLICT`|
+|`ErrValidation`|422 Unprocessable Entity|`VALIDATION_FAILED`|
+|`ErrTooManyRequests`|429 Too Many Requests|`TOO_MANY_REQUESTS`|
+|`ErrUnimplemented`|501 Not Implemented|`NOT_AVAILABLE`|
+|`ErrUnavailable`|503 Service Unavailable|`NOT_AVAILABLE`|
+|Other|500 Internal Server Error|`INTERNAL_ERROR`|
 
-- **必須度**: 本番運用で必須
-- **理由**: 一貫したエラーレスポンスはクライアントの再試行、UI 表示、監視アラート連携を容易にします。特に `RequestID` による追跡は障害対応で有用です。
+### Error Code List
 
-### 開発/テスト運用での必須度
+|Code|Default Message|
+|---|---|
+|`BAD_REQUEST`|入力内容に誤りがあります。再度ご確認ください。|
+|`UNAUTHORIZED`|ログインが必要です。ログインして再度お試しください。|
+|`ACCESS_DENIED`|この操作を行う権限がありません。|
+|`NOT_FOUND`|お探しの情報が見つかりませんでした。|
+|`RESOURCE_CONFLICT`|既に同じ情報が登録されています。|
+|`VALIDATION_FAILED`|入力内容の検証に失敗しました。修正して再度お試しください。|
+|`TOO_MANY_REQUESTS`|リクエストが多すぎます。しばらくしてから再度お試しください。|
+|`INTERNAL_ERROR`|サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。|
+|`NOT_AVAILABLE`|現在この機能はご利用いただけません。しばらくしてから再度お試しください。|
 
-- **必須度**: 開発/テスト運用で必須
-- **理由**: 自動テストや統合テストの期待値が安定し、エラー処理の回帰を検知できます。テスト用のモックや異常系の検証も容易になります。
+## Configuration Changes
 
-### 無効化した場合の影響
+- **Modify response logic**: Edit `error_response.go`
+- **Add error codes / messages**: Add constants and mapping to `http_error.go`
+- **Update type definitions**: After updating the OpenAPI spec, regenerate with `make gen-api`
 
-- エラーレスポンスが統一されないと、クライアント実装の複雑化、誤ったエラーハンドリング、監視やSLA違反の原因になります。
-- `RequestID` を付与しないと、ログとクライアント報告の突き合わせが困難になります。
+## Notes
 
-## 代替手段
-
-- **各ハンドラで個別に生成**: より柔軟だが、コード重複と不整合が発生しやすい。
-- **フレームワーク共通のエラー中間層**: 既にミドルウェア層で共通化している場合は、そこへ委譲する選択肢もあります。ただし、本ディレクトリの型情報（OpenAPI由来）を利用できなくなる点に注意してください。
-
-## 注意点
-
-- **内部情報の漏洩に注意**: `Details` にスタックトレースや機密情報を直接入れてクライアントへ返さないこと。ログには詳細を書くが、レスポンスはユーザーフレンドリーにする。
-- **エラーコードとHTTPステータスの整合性**: `http_error.go` の定義を編集する際は、対応する HTTP ステータスコードが適切か確認してください。
-- **テストの追加**: `error_response_test.go` と `http_error_test.go` にケースを追加して、期待する JSON フィールドや `RequestID` の付与、HTTP ステータスのマッピングを検証してください。
-- **ロギング/観測**: 例外発生時は必ず `RequestID` をログに含めること。トレーシングやメトリクス収集と組み合わせると効果的です。
+- Do not include stack traces or sensitive information in `Details`. Internal information should only be output to logs
+- Maintain consistency between error codes and HTTP status codes
+- Do not manually edit files under `gen/`
