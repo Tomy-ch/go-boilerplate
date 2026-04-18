@@ -62,9 +62,13 @@ usecase:
   # English
   - src: internal/usecase/README.md
     dst: docs/portal/guides/usecase.md
+  - src: internal/usecase/boundary/README.md
+    dst: docs/portal/guides/usecase-boundary.md
   # Japanese
   - src: internal/usecase/README.ja.md
     dst: docs/portal/guides/ja/usecase.ja.md
+  - src: internal/usecase/boundary/README.ja.md
+    dst: docs/portal/guides/ja/usecase-boundary.ja.md
 
 infrastructure:
   # English
