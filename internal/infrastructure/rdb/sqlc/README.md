@@ -30,9 +30,29 @@ The main purposes are as follows:
 
 - Pattern generation for LIKE / ILIKE searches
 - PostgreSQL LIKE escaping
-- Conversion to sqlc Enum types
 
 These are used as **Infrastructure-layer utilities**.
+
+## Directory Structure
+
+```text
+internal/infrastructure/rdb/sqlc/
+├── like.go         # LIKE search helpers
+└── gen/            # sqlc auto-generated code (do not edit)
+    ├── desc.go     # Package description
+    ├── *.sql.go    # Query execution code (auto-generated)
+    └── *.gen.go    # Type definitions (auto-generated)
+```
+
+## Public API
+
+|Function / Constant|File|Description|
+|---|---|---|
+|`DefaultLikeEscapeChar`|`like.go`|Default escape character (`\\`)|
+|`EscapeForLike(s, esc)`|`like.go`|Escape LIKE special characters (`%`, `_`, escape char)|
+|`WrapPrefixLikePattern(token)`|`like.go`|Generate prefix match pattern (`token%`)|
+|`WrapSuffixLikePattern(token)`|`like.go`|Generate suffix match pattern (`%token`)|
+|`WrapContainsLikePattern(escaped)`|`like.go`|Generate partial match pattern (`%escaped%`)|
 
 ## LIKE Search Helpers
 
