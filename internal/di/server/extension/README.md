@@ -1,52 +1,98 @@
 # extension
 
-概要: このディレクトリは、Echo サーバーに対して **ミドルウェア・サーバー設定（Configurator）・拡張機能の適用を統一的に管理するための拡張レイヤー** を提供します。
-Uber FX の DI を利用し、`middlewares.pre`、`middlewares.use`、`server.configurators` の 3 系統をグループ化してサーバーに適用します。
+English | [日本語](README.ja.md)
 
-## 役割
+An **extension layer that centrally manages the application of middleware and configurators** to the Echo server.
 
-- Pre / Use ミドルウェアの優先度付き適用
-- Priority の重複検出による安全性の担保
-- Echo インスタンスへの設定関数（Configurator）の一括適用
-- DI 経由のサーバー拡張ポイントとして、外部から追加拡張を受け付ける仕組みの提供
+Uses Uber FX DI groups to extend the server through three channels: `middlewares.pre`, `middlewares.use`, and `server.configurators`.
 
-このディレクトリは「**HTTP スタックの拡張ポイントを一元管理するための制御層**」です。
+## How It Works
 
-## 必要度
+```mermaid
+flowchart TB
+    subgraph "DI Groups"
+        Pre["middlewares.pre"]
+        Use["middlewares.use"]
+        Cfg["server.configurators"]
+    end
 
-### 本番運用での必須度
+    Pre --> Sort["Sort by Priority"]
+    Use --> Sort
+    Sort --> Apply["ApplyExtends()"]
+    Cfg --> Apply
+    Apply --> Echo["echo.Echo"]
+```
 
-- 必須度: **本番運用で必須**
+- **Pre middleware**: Executed before routing (`e.Pre()`)
+- **Use middleware**: Executed after routing (`e.Use()`)
+- **Configurator**: Configuration applied to Echo instance (banner, port, debug mode, etc.)
+- Duplicate priorities are automatically detected and cause an error
 
-理由:
+## Public API
 
-- 本番環境では、ミドルウェア適用順序の安全性（Priority 重複検知）と一括制御が求められるため
-- ロギング / セキュリティ / 観測 / CORS 等の本番必須ミドルウェアを安定的に適用できるため
-- DI による拡張管理は、運用上のミス（ミドルウェア未設定や順序バグ）を防止するために必須
+|Type / Function|Description|
+|---|---|
+|`ServerExtends`|`fx.In` struct receiving all three groups|
+|`ApplyExtends()`|Apply Pre / Use / Configurators in bulk|
+|`PreMiddleware`|Pre middleware (Name + Priority + Middleware)|
+|`PreMiddlewareOut`|fx output wrapper for Pre middleware|
+|`UseMiddleware`|Use middleware (Name + Priority + Middleware)|
+|`UseMiddlewareOut`|fx output wrapper for Use middleware|
+|`SrvCfg`|`func(*echo.Echo)` configurator function type|
+|`ServeCfgOut`|fx output wrapper for Configurator|
 
-### 開発/テスト運用での必須度
+## Subdirectory List
 
-- 必須度: **開発/テスト運用で推奨**
+### decoration (Server Decoration)
 
-理由:
+|Module|Type|Description|
+|---|---|---|
+|`BannerModule()`|Configurator|Hide banner in production|
+|`DefaultPortModule()`|Configurator|Hide port display in production|
 
-- ミドルウェアの追加・削除が容易になり、開発効率が向上する
-- Priority 競合の早期検出により、テスト環境での不具合発生を防止できる
-- ローカル開発でも設定関数（Configurator）を通じて Echo の挙動を統一できる
+### inbound (Request Receiving)
 
-## 無効化した場合の影響
+|Module|Type|Description|
+|---|---|---|
+|`BinderModule()`|Configurator|Request body binder|
+|`IPExtractorModule()`|Configurator|Client IP extraction|
+|`OpenAPIModule()`|Use|OpenAPI validation|
+|`URIModule()`|Pre|Remove trailing slashes|
 
-- ミドルウェア適用順序が乱れ、意図しないセキュリティ低下・ログ欠落・O11y 劣化が起こる
-- DI によるミドルウェア統制が効かず、コードのどこで何が適用されているかが不明確になる
-- Priority の重複検査が行われないため、ロード順序バグが検出されず本番で事故につながる
-- Configurator の適用漏れによる Echo 動作不整合が発生する可能性がある
-→ **結果として、HTTP スタック全体の一貫性が失われる**
+### instrumentation (Instrumentation)
 
-## 注意点
+|Module|Type|Description|
+|---|---|---|
+|`RequestIDModule()`|Use|X-Request-ID generation|
+|`LoggingModule()`|Use|HTTP request / response logging|
+|`ObservabilityModule()`|Use|OpenTelemetry tracing|
 
-- Pre と Use のミドルウェアは **必ず Priority を付けて定義する必要があります**
-- Priority の重複は自動検出されますが、意図しない優先度競合を避けるため
-  「各カテゴリごとに Priority 管理表を持つ」ことを推奨します
-- Configurator は副作用を伴うため、**Echo インスタンスの状態変化を意図した処理のみ**を書くこと
-- ミドルウェア実装は controller 層の責務であり、**domain や usecase に依存しないようにすること**
-- fx.In / fx.Out による DI グループ化を理解していない場合、追加拡張時に混乱が起きやすいため注意
+### outbound (Response Output)
+
+|Module|Type|Description|
+|---|---|---|
+|`ErrorHandlerModule()`|Configurator|Unified error handler|
+|`ForceJSONModule()`|Use|Force Content-Type to JSON|
+|`RecoveryModule()`|Use|Catch panics and log|
+
+### security (Security)
+
+|Module|Type|Description|
+|---|---|---|
+|`Module()`|Use|Security headers (HSTS, etc.)|
+|`CORSModule()`|Use|CORS configuration|
+|`CookieModule()`|Use|Cookie security attributes|
+|`RateLimitModule()`|Use|IP rate limiting|
+
+### nonprod (Non-production)
+
+|Module|Type|Description|
+|---|---|---|
+|`DebugModeModule()`|Configurator|Enable debug mode in development|
+
+## Notes
+
+- Pre / Use middleware must always be defined with a Priority
+- Duplicate priorities are automatically detected, but maintaining a priority management table per category is recommended
+- Configurators should only contain processing that intentionally changes Echo instance state
+- Middleware implementation belongs to `internal/controller/httpstack`; this layer only handles DI registration

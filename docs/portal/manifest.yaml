@@ -136,6 +136,8 @@ di:
     dst: docs/portal/guides/di-module.md
   - src: internal/di/module/core/README.md
     dst: docs/portal/guides/di-module-core.md
+  - src: internal/di/server/extension/README.md
+    dst: docs/portal/guides/di-server-extension.md
   # Japanese
   - src: internal/di/README.ja.md
     dst: docs/portal/guides/ja/di.ja.md
@@ -149,6 +151,8 @@ di:
     dst: docs/portal/guides/ja/di-module.ja.md
   - src: internal/di/module/core/README.ja.md
     dst: docs/portal/guides/ja/di-module-core.ja.md
+  - src: internal/di/server/extension/README.ja.md
+    dst: docs/portal/guides/ja/di-server-extension.ja.md
 
 context-helper:
   # English
