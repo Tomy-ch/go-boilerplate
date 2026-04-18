@@ -130,6 +130,8 @@ di:
     dst: docs/portal/guides/di-job.md
   - src: internal/di/job/hook/README.md
     dst: docs/portal/guides/di-job-hook.md
+  - src: internal/di/lifecycle/README.md
+    dst: docs/portal/guides/di-lifecycle.md
   # Japanese
   - src: internal/di/README.ja.md
     dst: docs/portal/guides/ja/di.ja.md
@@ -137,6 +139,8 @@ di:
     dst: docs/portal/guides/ja/di-job.ja.md
   - src: internal/di/job/hook/README.ja.md
     dst: docs/portal/guides/ja/di-job-hook.ja.md
+  - src: internal/di/lifecycle/README.ja.md
+    dst: docs/portal/guides/ja/di-lifecycle.ja.md
 
 context-helper:
   # English
