@@ -1,19 +1,46 @@
 # server
 
-概要:
-`server` ディレクトリは、アプリケーションの **HTTP サーバー本体（Echo）を初期化し、DI ライフサイクルに統合するためのコントローラ層** です。
-`NewAppServer` による Echo インスタンス生成、および `ServeHTTP` による起動・停止登録を担い、
-extension 配下で適用されたミドルウェア・サーバー設定を最終的に反映した **完成された HTTP サーバー** を起動します。
+English | [日本語](README.ja.md)
 
-## 役割
+`server` is the package that **initializes the HTTP server (Echo) and integrates it with the DI lifecycle**.
 
-- Echo インスタンスの生成 (`NewAppServer`)
-- DI ライフサイクル（fx / lifecycle.Registrar）へサーバー起動処理を登録
-- サーバー起動 (`Start`) と停止 (`Shutdown`) の制御関数を提供
-- ServerConfig / ApplicationConfig / SecurityConfig に基づくサーバー実行設定の適用
-- extension（middleware, security, logging, observability など）が反映された完全なサーバーを起動する
+It starts a fully configured HTTP server with middleware and server settings applied by extensions.
 
-このディレクトリは **「最終的な HTTP サーバーの起動ポイント」** の責務を持ちます。
+## Role
+
+- Echo instance creation (`NewAppServer`)
+- Register server start/shutdown with the DI lifecycle (fx / lifecycle.Registrar)
+- Provide Echo context parameter extraction utilities
+
+This package **does not define middleware directly**. Middleware application is handled by `internal/controller/httpstack` and `internal/di/server/extension`.
+
+## Public API
+
+### NewAppServer
+
+Creates an Echo instance and configures server timeouts.
+
+```go
+func NewAppServer(srvCfg *config.ServerConfig) *echo.Echo
+```
+
+Configured settings:
+
+|Setting|Description|
+|---|---|
+|`ReadHeaderTimeout`|Header read timeout|
+|`ReadTimeout`|Request read timeout|
+|`WriteTimeout`|Response write timeout|
+|`IdleTimeout`|KeepAlive timeout|
+
+### Echo Utilities
+
+Helpers to extract request parameters from Echo context. Primarily used by the logging middleware.
+
+|Function|Description|
+|---|---|
+|`ExtractPathParams`|Extract path parameters as `map[string]string` from Echo context|
+|`ExtractQueryParams`|Extract query parameters as `map[string][]string` from Echo context|
 
 ## 必要度
 

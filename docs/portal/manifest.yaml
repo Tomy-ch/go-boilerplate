@@ -34,6 +34,8 @@ controller:
     dst: docs/portal/guides/controller-error-response.md
   - src: internal/controller/httpstack/README.md
     dst: docs/portal/guides/controller-httpstack.md
+  - src: internal/controller/server/README.md
+    dst: docs/portal/guides/controller-server.md
   # Japanese
   - src: internal/controller/README.ja.md
     dst: docs/portal/guides/ja/controller.ja.md
@@ -45,6 +47,8 @@ controller:
     dst: docs/portal/guides/ja/controller-error-response.ja.md
   - src: internal/controller/httpstack/README.ja.md
     dst: docs/portal/guides/ja/controller-httpstack.ja.md
+  - src: internal/controller/server/README.ja.md
+    dst: docs/portal/guides/ja/controller-server.ja.md
 
 domain:
   # English
