@@ -134,6 +134,14 @@ integration:
   - src: internal/integration/README.ja.md
     dst: docs/portal/guides/ja/integration.ja.md
 
+pkg:
+  # English
+  - src: pkg/README.md
+    dst: docs/portal/guides/pkg.md
+  # Japanese
+  - src: pkg/README.ja.md
+    dst: docs/portal/guides/ja/pkg.ja.md
+
 external:
   # English
   - src: openapi/README.md
