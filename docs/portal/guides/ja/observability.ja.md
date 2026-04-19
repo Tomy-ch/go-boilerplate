@@ -40,7 +40,7 @@ LayerTracer --> ApplicationCode
 |`TracerProvider`|OpenTelemetry のトレーサープロバイダ|
 |`TracerFactory`|レイヤー別トレーサ生成|
 |`LayerTracer`|span生成 + observabilityログ|
-|`helper.go`|span / trace helper|
+|`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
 |`caller.go`|呼び出し元関数名取得|
 |`test_kit.go`|テスト用 tracer|
 
@@ -103,20 +103,33 @@ infraTracer := tf.Infra()
 - traceID / spanID ログ出力
 - span名の自動生成
 
-#### span生成
+#### Start
 
 ```go
 ctx, end := tracer.Start(ctx)
 defer end()
 ```
 
-span名は `layer.package.function` のルールで生成されます。
+span名は `layer.package.function` のルールで自動生成されます。
 
 例
 
 - `usecase.user.CreateUser`
 - `controller.user.GetUsers`
 - `infrastructure.user.FindByID`
+
+#### StartWithSuffix
+
+span名に追加の接尾辞を付与して span を開始します。
+
+```go
+ctx, end := tracer.StartWithSuffix(ctx, "detail")
+defer end()
+```
+
+生成される span名: `usecase.user.CreateUser.detail`
+
+同一関数内で複数の span を区別したい場合に使用します。
 
 ### 4. Span Helper (RunWithSpan)
 
@@ -142,6 +155,40 @@ ctx, result, err := observability.RunWithSpan(
 - span開始
 - span終了
 - observabilityログ出力
+
+### 5. ShouldLogWithSpan
+
+o11yモードが有効かつ、現在の Context に有効な Span が存在するかを判定します。
+
+```go
+if observability.ShouldLogWithSpan(ctx, obsCfg) {
+    // span 前提のログ出力
+}
+```
+
+`config.ObservabilityConfig` の `Enabled()` と、Context 内の Span の有効性を組み合わせて判定します。
+
+### 6. BuildSpanName
+
+レイヤー名・パッケージ名・関数名からスパン名を構築するヘルパーです。
+
+```go
+name := observability.BuildSpanName("usecase", "user", "CreateUser")
+// => "usecase.user.CreateUser"
+```
+
+### 7. Span Event 定数
+
+span のライフサイクルイベントを表す定数です。
+
+```go
+const (
+    SpanEventStart = "start"
+    SpanEventEnd   = "end"
+)
+```
+
+ログ出力時の `event_type` フィールドに使用されます。
 
 ## Span Logging
 
@@ -251,6 +298,18 @@ lt := observability.NewMockUsecaseLayerTracer(t)
 |`NewMockUsecaseLayerTracer`|Usecase用|
 |`NewMockInfraLayerTracer`|Infra用|
 |`NewNoopLayerTracer`|汎用|
+|`NewStubSpanContext`|有効な Span を持つ Context 生成|
+
+### StubSpanContext
+
+テストで有効な `trace.Span` を含む Context が必要な場合に使用します。
+
+```go
+ctx, cleanup := observability.NewStubSpanContext(t)
+defer cleanup()
+```
+
+実際の `sdktrace.TracerProvider` を使用して有効な span を生成するため、`ShouldLogWithSpan` のテスト等で利用できます。
 
 ## 設計ポリシー
 

@@ -66,7 +66,6 @@ setup-repo:
 		gh api -X PATCH repos/$$REPO -f default_branch=production
 
 	@git fetch --prune
-	@git checkout production
 	@ORIGINAL_BRANCH=$$(git branch --show-current); \
 	git checkout production; \
 	if echo $$ORIGINAL_BRANCH | grep -q "release/"; then \

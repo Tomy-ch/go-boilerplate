@@ -16,6 +16,91 @@
 - 必須値の欠落は `validateConfig()` で検出し、起動失敗（明示的なエラー返却）させることで不正な状態で稼働しないようにしています。
 - テスト用のヘルパーやモック（`config_testing_mock.go`, `config_testing_setter.go`）を用意しており、テスト環境で環境変数を差し替えて `New()` の挙動を検証できます。
 
+## 公開 API
+
+### 初期化
+
+|関数|説明|
+|---|---|
+|`SetUpConfig()`|`.env` ファイルの読み込みと `Config` の初期化を一括で行う|
+|`New()`|環境変数から `Config` を生成（`Load()` 済みの前提）|
+|`Load()`|`.env` ファイルを読み込み、環境変数をセット|
+
+### SubConfig 一覧
+
+`Config` から各コンポーネント向けに分割された SubConfig を生成します。すべて `New*Config(cfg *Config)` のシグネチャです。
+
+|型|コンストラクタ|説明|
+|---|---|---|
+|`OperationSystemConfig`|`NewOperationSystemConfig`|タイムゾーン|
+|`ApplicationConfig`|`NewApplicationConfig`|実行モード、環境識別子、アプリ名|
+|`ServerConfig`|`NewServerConfig`|ホスト、ポート、タイムアウト|
+|`MetricsConfig`|`NewMetricsConfig`|メトリクスエンドポイント認証|
+|`ObservabilityConfig`|`NewObservabilityConfig`|トレース有効化、DBクエリマスク|
+|`DatabaseConfig`|`NewDatabaseConfig`|DB接続情報|
+|`DBConnectionConfig`|`NewDBConnectionConfig`|コネクションプール設定|
+|`SecurityConfig`|`NewSecurityConfig`|CORS、HSTS、CIDR|
+|`SecureCookieConfig`|`NewSecureCookieConfig`|Cookie セキュリティ属性|
+|`AuthConfig`|`NewAuthConfig`|認証ヘッダー / Cookie 名|
+|`IPRateLimitConfig`|`NewIPRateLimitConfig`|IPレートリミット設定|
+
+### ユーティリティ
+
+|関数|説明|
+|---|---|
+|`NewTimeLocation(osCfg)`|`OperationSystemConfig` のタイムゾーンから `*time.Location` を生成|
+
+### 実行モード
+
+|型|定数|説明|
+|---|---|---|
+|`ExecutionMode`|`ExecutionModeServer`|サーバーモード|
+||`ExecutionModeJob`|ジョブモード|
+
+### 環境 / モード定数
+
+|定数|値|説明|
+|---|---|---|
+|`EnvLocal`|`local`|ローカル開発環境|
+|`EnvCI`|`ci`|CI 環境|
+|`EnvTest`|`test`|テスト環境|
+|`EnvDevelopment`|`development`|開発環境|
+|`EnvStaging`|`staging`|ステージング環境|
+|`EnvProduction`|`production`|本番環境|
+|`DevelopmentMode`|`development`|開発モード|
+|`ProductionMode`|`production`|本番モード|
+|`MinPort`|`1`|許可される最小ポート番号|
+|`MaxPort`|`65535`|許可される最大ポート番号|
+
+### バリデーションエラー
+
+`validateConfig()` で検出されるエラーです。すべて `apperror.ErrInvalidArgument` をラップしています。
+
+|エラー|説明|
+|---|---|
+|`ErrInvalidAppMode`|無効なアプリケーションモード|
+|`ErrInvalidPortRange`|ポート番号が範囲外|
+|`ErrEmptyAllowedOrigins`|許可オリジンが空|
+|`ErrInvalidBcryptCost`|bcrypt コストが範囲外|
+|`ErrHTTPOnlyAllowedForLocalhost`|HTTP のみの場合 localhost 以外は不可|
+|`ErrFailedToParseConfig`|環境変数のパース失敗|
+|`ErrInvalidReadHeaderTimeout`|ReadHeaderTimeout が不正|
+|`ErrInvalidReadTimeout`|ReadTimeout が不正|
+|`ErrInvalidWriteTimeout`|WriteTimeout が不正|
+|`ErrInvalidIdleTimeout`|IdleTimeout が不正|
+|`ErrReadHeaderTimeoutExceedsReadTimeout`|ReadHeaderTimeout が ReadTimeout を超過|
+|`ErrInvalidDBPortRange`|DB ポート番号が範囲外|
+|`ErrInvalidDBPingTimeout`|DB Ping タイムアウトが不正|
+|`ErrInvalidSlowQueryWarnThreshold`|スロークエリ閾値が不正|
+|`ErrInvalidExceedMaxConns`|最小接続数が最大接続数を超過|
+|`ErrFailedToParseCIDR`|CIDR のパース失敗|
+|`ErrAuthConfigMissing`|認証設定（Cookie名 or ヘッダー名）が未設定|
+|`ErrInvalidIPRateLimitRequests`|レートリミットのリクエスト数が不正|
+|`ErrInvalidIPRateLimitPer`|レートリミットの期間が不正|
+|`ErrInvalidIPRateLimitBurst`|レートリミットのバーストが不正|
+|`ErrInvalidIPRateLimitTTL`|レートリミットの TTL が不正|
+|`ErrInvalidIPRateLimitCleanupInterval`|レートリミットのクリーンアップ間隔が不正|
+
 ## Config Loading フロー
 
 アプリケーション起動時の設定読み込みの流れは次の通りです。
@@ -249,6 +334,36 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 - フィールド名や構造体名はプロジェクトの命名規則に従ってください。
 - DI に provider を追加したら、その型を受け取るコンポーネント（例: AWS クライアントの factory）を DI コンテナに登録してください。
 - 追加漏れや型の不一致があるとビルド時にエラーになるため、`go build` や `go test ./...` で確認してください。
+
+## テストサポート
+
+### テストヘルパー
+
+|関数|ファイル|説明|
+|---|---|---|
+|`MockConfigForTest(t)`|`config_testing_mock.go`|全項目にデフォルト値を設定したテスト用 `*Config` を生成|
+|`NewTestLocation(t)`|`test_kit.go`|テスト用タイムゾーン `*time.Location` を生成|
+|`EnsureRepoRootAndEnv(t, env)`|`test_kit.go`|リポジトリルートに移動し、ENV 環境変数を設定|
+
+### テスト用 Setter
+
+`config_testing_setter.go` に定義されたメソッドで、テスト中に SubConfig の値を一時的に変更できます。`t.Cleanup` で自動的に元の値に戻ります。
+
+**本番コードでは使用しないでください。**
+
+|メソッド|対象 SubConfig|
+|---|---|
+|`SetApplicationMode`|`ApplicationConfig`|
+|`SetApplicationEnv`|`ApplicationConfig`|
+|`SetServerPort`|`ServerConfig`|
+|`SetObservabilityMaskedDBQueryArgs`|`ObservabilityConfig`|
+|`SetDatabaseHost`|`DatabaseConfig`|
+|`SetDatabaseName`|`DatabaseConfig`|
+|`SetMaxConns`|`DBConnectionConfig`|
+|`SetCIDR`|`SecurityConfig`|
+|`SetCleanupInterval`|`IPRateLimitConfig`|
+|`SetHeaderName`|`AuthConfig`|
+|`SetAllowedHeaderBearer`|`AuthConfig`|
 
 ## 注意点
 

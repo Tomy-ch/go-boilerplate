@@ -1,68 +1,26 @@
 # instrumentation
 
-概要: `instrumentation` は **HTTP レイヤーにおける可観測性（Observability）と ID 付与（RequestID）を提供するミドルウェア DI モジュール群** をまとめたディレクトリです。
-Tracing / Logging / Metrics といった O11y の基盤となる **リクエスト識別子の生成** と **トレース連携ミドルウェア** を提供します。
+English | [日本語](README.ja.md)
 
-本番・開発を問わず「API の挙動を正しく観測できる状態」を維持するための中心的な拡張レイヤーです。
+`instrumentation` is a directory that groups **DI middleware modules for HTTP layer observability and request identification**.
 
-## 役割
+It provides the foundation for Tracing / Logging / Metrics through **request identifier generation** and **trace integration middleware**.
 
-### **1. RequestID ミドルウェア**
+## Modules
 
-- リクエスト単位の一意な ID（Request ID）を生成
-- ログ / トレース / エラーレスポンスと相関させるための識別子を付与
-- Echo のコンテキストにセットし下層で利用可能にする
+|Module|Type|Priority|Description|
+|---|---|---|---|
+|`RequestIDModule()`|Use|1|Generate unique Request ID per request|
+|`LoggingModule()`|Use|—|Structured HTTP request/response logging|
+|`ObservabilityModule()`|Use|2|OpenTelemetry tracing integration|
 
-### **2. Observability ミドルウェア**
+## Priority Order
 
-- OpenTelemetry を利用したトレースの開始・終了を自動化
-- span 名の生成やコンテキストへの埋め込みを担当
-- アプリケーション設定に応じて O11y を有効化 / 無効化
+RequestID (Priority 1) → Observability (Priority 2) ensures **ID assignment occurs before trace start**.
 
-これにより、API の可視性・デバッグ容易性・障害解析能力が大幅に向上します。
+## Notes
 
-## 必要度
-
-### 本番運用での必須度
-
-- 必須度: **本番運用で必須**
-
-理由:
-
-- RequestID がないとログ相関が困難になり障害分析が不可能になる
-- トレースがないと distributed tracing（分散トレース）が機能しない
-- Observability は SLA / モニタリング / アラート設計の基礎となるため必須
-- リクエスト識別と span 管理が行われないと、大規模運用での障害原因特定が困難
-
-### 開発/テスト運用での必須度
-
-- 必須度: **開発/テスト運用で推奨**
-
-理由:
-
-- ローカルやステージングでも RequestID によるログ相関が便利
-- Observability により API の内部挙動や遅延要因を把握できる
-- インテグレーションテストで O11y が有効だと、問題検出が早くなる
-- 本番と同一の可観測性パイプラインを持つことで「環境差異のない動作確認」が可能
-
-## 無効化した場合の影響
-
-- ログとリクエストの紐付けが不可能になり、障害解析が著しく困難
-- 分散トレーシングが機能せず、マイクロサービスや外部連携の可視性が低下
-- API の遅延 / エラーの根本原因を特定できなくなる
-- Observability を前提とした O11y ダッシュボード・メトリクスが正常に動作しない
-- 監視・分析機能に大きな欠陥が生まれ、運用コストが跳ね上がる
-
-**→ 本番環境では絶対に無効化してはいけない領域です。**
-
-## 注意点
-
-- `RequestID` と `Observability` は **UseMiddleware（Use）系で優先度付きで適用**されます
-- RequestID の Priority は 1、Observability は 2 として設定されており、
-  **ID 付与 → トレース開始** の順になるよう設計されています
-- Observability は `ApplicationConfig` に依存するため、
-  **本番/非本番で挙動が変わる可能性がある** 点に注意
-- 可観測性の責務は controller 層までに留め、
-  **domain / usecase に O11y が漏れない設計**を維持すること
-- ミドルウェア追加や優先度変更を行う際は、
-  他の UseMiddleware との Priority 衝突に注意すること
+- RequestID and Observability are applied as **UseMiddleware with Priority**
+- Observability depends on `ApplicationConfig` — **behavior may differ between production and non-production**
+- Observability responsibility stays within the controller layer — **must not leak into domain/usecase**
+- When adding middleware or changing priorities, watch for Priority conflicts with other UseMiddleware

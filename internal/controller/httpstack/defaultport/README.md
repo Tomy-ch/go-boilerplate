@@ -1,34 +1,11 @@
-# `defaultport` パッケージ
+# defaultport
 
-概要: Echo サーバ起動時にポート番号の表示有無を制御するユーティリティパッケージです。アプリケーション設定に基づいて、起動ログにポート番号を表示するかどうかを切り替えます。
+English | [日本語](README.ja.md)
 
-## 役割
+Controls port number display visibility based on environment.
 
-`defaultport` は `ApplicationConfig` の環境情報を参照し、`echo.Echo` の `HidePort` フラグを設定します。これにより、本番環境で起動時にポート番号をログへ出力しないようにできます。
+## Public API
 
-主要ファイル:
-
-- `default_port.go` : `New(e *echo.Echo, appCfg *config.ApplicationConfig)` により `e.HidePort` を設定する実装。
-- `default_port_test.go` : 挙動を検証する単体テスト。
-
-## 必要度
-
-### 本番運用での必須度
-
-- 必須度: 本番環境で推奨
-
-理由: ログにポート番号などの環境情報を出力しないことで、攻撃者に有益な情報を与えないようにできます。自動で非表示にする仕組みを組み込んでおくことを推奨します。
-
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で推奨
-
-理由: 開発環境ではローカルのポート番号を表示して起動確認を行うことが多いため、環境に応じて表示/非表示を切り替えられると便利です。
-
-### 無効化した場合の影響
-
-このパッケージを利用せずに `HidePort` を設定しない場合、Echo のデフォルト表示（ポート情報の表示）が残ります。多くの場合は視認性の違いのみですが、本番ログにポート情報を残したくない場合は `New` を呼び出してください。
-
-## 注意点
-
-- 本番環境でポート番号をログに出力しないことを確認したい場合は、`ApplicationConfig` の `IsProductionMode()` の実装を確認してください。
+|Function|Description|
+|---|---|
+|`New(e, appCfg)`|Hide port number display in production mode|

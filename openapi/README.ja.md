@@ -1,204 +1,122 @@
 # OpenAPI ガイド（`openapi/`）
 
-このディレクトリには、本プロジェクトで使用する **OpenAPI定義** が格納されています。
+[English](README.md) | 日本語
 
-本プロジェクトでは以下を前提としています。
+このディレクトリには、本プロジェクトで使用する **OpenAPI 定義**が格納されています。
 
-- redocly による分割構成
+- Redocly による分割構成
 - oapi-codegen による Go コード生成
-- Onion Architecture に準拠した境界設計
-
-## 目的
-
-この構成の目的は以下です。
-
-- API仕様の明確化（Single Source of Truth）
-- 型安全なコード生成
-- レイヤー分離の強制（Controller境界の固定）
-- チーム開発での変更影響範囲の最小化
+- オニオンアーキテクチャに準拠した境界設計
 
 ## ディレクトリ構成
 
-```txt
-    openapi/
-    ├── openapi.yaml          # エントリーポイント（分割参照）
-    ├── openapi.gen.yaml      # bundle後ファイル（生成用）
-    ├── paths/                # エンドポイント定義
-    ├── components/
-    │   ├── schemas/          # データ構造
-    │   ├── requests/         # リクエスト意味付け
-    │   ├── responses/        # レスポンス意味付け
-    │   └── parameters/       # パラメータ
-    └── README.md
+```text
+openapi/
+├── openapi.yaml              # エントリーポイント（分割ファイル参照）
+├── openapi.gen.yaml          # バンドル済みファイル（生成物、コード生成用）
+├── paths/                    # エンドポイント定義
+├── components/
+│   ├── schemas/              # データ構造（リクエスト / レスポンス / セキュリティ）
+│   ├── parameters/           # クエリ・パスパラメータ
+│   ├── requests/             # リクエストのセマンティクス（content / required）
+│   └── responses/            # レスポンスのセマンティクス（status / description）
+├── parameter-guide.md        # パラメータ定義リファレンス
+└── secure-uuid.md            # UUID 公開のセキュリティ評価
 ```
 
 ## ファイルの役割
 
-### openapi.yaml
-
-- 分割されたOpenAPI定義のエントリーポイント
-- `$ref` により各ファイルを参照
-
-### openapi.gen.yaml
-
-- redocly 等で bundle された単一ファイル
-- **oapi-codegen の入力として使用**
-
-## 設計方針
-
-### 1. 分割構成（redocly前提）
-
-- エンドポイントは `paths/`
-- データ構造は `components/schemas/`
-- リクエスト/レスポンスは分離
-
-### 2. スキーマと意味の分離
-
-|種別|役割|
-|------|------|
-|schemas|データ構造|
-|requests|入力の意味|
-|responses|出力の意味|
-
-例：
-
-- `UserBaseInput` → 構造
-- `UsersPostRequest` → 「作成」の意味
-
-### 3. `$ref` は相対パスで統一
-
-禁止：`#/components/...`
-
-推奨：`../../components/schemas/User.yaml`
-
-理由：
-
-- redocly / swagger-cli 互換性
-- 分割構造との整合性
-
-### 4. 1ファイル1責務
-
-- schema → 1ファイル1構造体
-- parameter → 1ファイル1定義
-- path → 1エンドポイント単位
-
-## API設計ポリシー
-
-### REST設計（Google API Design Guide準拠）
-
-- リソースは複数形
-
-例：`/users`
-
-- CRUDはHTTPメソッドで表現
-
-- `GET /users`
-- `POST /users`
-- `PATCH /users/{id}`
-
-- 非CRUDは action サフィックス
-
-例：`POST /users/{id}:deactivate`
-
-### バージョニング
-
-- URLで管理
-
-例：`/v1/users`
-
-- 破壊的変更時
-
-破壊的変更時は ` /v2/... ` を新設
-
-## セキュリティポリシー
-
-### 認証
-
-- JWT（BearerAuth）を使用
-- 書き込み系APIは必須
-
-### 認可
-
-- `sub` を元にリソース所有者を判定
-- Usecase または Middleware で検証
-
-### ID設計
-
-- UUID を使用
-- IDOR対策必須
+|ファイル|役割|
+|---|---|
+|`openapi.yaml`|エントリーポイント — `$ref` で分割ファイルを参照|
+|`openapi.gen.yaml`|Redocly でバンドルされた単一ファイル — **oapi-codegen の入力**（編集禁止）|
 
 ## コード生成
 
-Goコード生成：
-
-`make go-gen`
+```bash
+make gen-api    # OpenAPI バンドル + Go コード生成
+```
 
 生成内容：
 
-- Handler interface
-- Request/Response 型
-- Router binding
+- ハンドラインターフェース（`gen/server.gen.go`）
+- リクエスト / レスポンス型（`gen/type.gen.go`）
+- バリデーション仕様（`gen/validate.gen.go`）
 
 ## アーキテクチャ上の位置
 
 ```mermaid
 flowchart TB
-    OpenAPI --> Controller["Controller（oapi-codegen）"] --> Usecase --> Domain
+    OpenAPI["OpenAPI（契約）"] --> Controller["Controller（oapi-codegen）"] --> Usecase --> Domain
 ```
 
-OpenAPI は **Controller境界の契約**です。
+OpenAPI は **Controller 境界の契約**を定義します。入出力形式と HTTP セマンティクスを規定し、Controller が OpenAPI 型とアプリケーション DTO の間を変換します。
 
-## Controllerとの関係
+## 設計方針
 
-OpenAPIは以下を定義します。
+### 1. 分割構成（Redocly）
 
-- 入力形式（Request）
-- 出力形式（Response）
-- HTTP仕様（status / header）
+- エンドポイント → `paths/`
+- データ構造 → `components/schemas/`
+- パラメータ → `components/parameters/`
 
-Controllerの責務：
+### 2. `$ref` は相対パスで統一
 
-```mermaid
-flowchart TB
-    Req["HTTP Request"] --> DTO1["DTO"] --> UC["Usecase"] --> DTO2["DTO"] --> Res["OpenAPI Response"]
+```yaml
+# 推奨
+$ref: '../components/schemas/UserResponse.yaml'
+
+# 禁止
+$ref: '#/components/schemas/UserResponse'
 ```
+
+理由: Redocly バンドルとの互換性。
+
+### 3. 1ファイル = 1責務
+
+- schema → 1ファイル1構造体
+- parameter → 1ファイル1定義
+- path → 1エンドポイント単位
+
+### 4. 実装との分離
+
+|レイヤー|OpenAPI を知るか|
+|---|---|
+|Controller|はい — OpenAPI 型 ↔ DTO を変換|
+|Usecase|いいえ — DTO のみ受け渡し|
+|Domain|いいえ — Entity と Value Object を使用|
+
+## API 設計ポリシー
+
+### REST 設計（Google API Design Guide 準拠）
+
+- リソースは複数形: `/users`
+- CRUD は HTTP メソッドで表現: `GET`, `POST`, `PATCH`, `DELETE`
+- 非 CRUD アクション: `POST /users/{id}:deactivate`
+
+### バージョニング
+
+URL パスバージョニング: `/v1/users`
+
+破壊的変更 → `/v1/` と並行して `/v2/` を新設
+
+### セキュリティ
+
+- 認証エンドポイントには JWT（BearerAuth）を使用
+- リソース所有権は Usecase / Middleware で `sub` クレームにより検証
+- UUID を公開識別子として使用 — セキュリティ評価は `secure-uuid.md` を参照
+- IDOR 対策必須
 
 ## 禁止事項
 
-- OpenAPIにビジネスロジックを持たせない
-- schemaを直接inlineで書かない
-- 同じ構造を重複定義しない
-- DB構造を露出しない
+- OpenAPI 定義にビジネスロジックを含めない
+- パス定義内でスキーマをインライン定義しない
+- ファイル間で構造を重複定義しない
+- DB カラム構造を API スキーマに露出しない
+- OpenAPI 生成型を Usecase に渡さない — DTO に変換する
 
-## 実装との整合ルール
+## サブディレクトリのドキュメント
 
-### Usecaseとの関係
-
-- OpenAPI型はUsecaseに渡さない
-- DTOに変換する
-
-### Domainとの関係
-
-- DomainはOpenAPIを知らない
-- VO / Entity に変換する
-
-## PATCH設計
-
-- optional field を許容
-- 共通schemaを利用
-
-例：
-
-```mermaid
-flowchart TB
-    Base["UserBaseInput"] --> Patch["UserPatchRequest"]
-```
-
-## Debug APIについて
-
-以下は開発用です：
-
-- `/debug/cookie`
-- `/debug/cookie/*`
-
-本番では削除してください。
+- [paths/README.ja.md](paths/README.ja.md) — エンドポイント定義とバージョニング
+- [components/schemas/README.ja.md](components/schemas/README.ja.md) — スキーマ設計ポリシー
+- [components/parameters/README.ja.md](components/parameters/README.ja.md) — パラメータ規約

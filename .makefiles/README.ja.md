@@ -13,6 +13,7 @@ Make ターゲットは主に以下の単位で整理されています。
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
 - `.makefiles/gen` : 各種生成処理の一括実行
 - `.makefiles/github` : GitHub 初期設定 / リリース / ラベル / ルール設定
+- `.makefiles/tools` : 開発ツールのバージョン管理
 
 また、ターゲットは大きく 2 種類に分かれます。
 
@@ -258,7 +259,7 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 
 - `gh` ログイン
 - 初期タグ `v0.0.0` の作成と push
-- `release/v0.1.0` / `develop` / `staging` / `production` ブランチの作成
+- `develop` / `staging` / `production` ブランチの作成
 - GitHub デフォルトブランチの設定
 - ブランチルールセット適用
 - ラベル初期化

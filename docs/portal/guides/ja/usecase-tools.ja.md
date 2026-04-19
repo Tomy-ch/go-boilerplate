@@ -1,0 +1,18 @@
+# tools
+
+[English](README.md) | 日本語
+
+`internal/usecase/tools` は、**Usecase 層で再利用される小さなユーティリティ群**を格納するディレクトリです。
+
+## サブディレクトリ
+
+|パッケージ|説明|詳細|
+|---|---|---|
+|`paging/`|ページネーション（page/perPage → limit/offset 変換）|[README](paging/README.ja.md)|
+|`search/`|検索キーワードのトークン化（分割、重複排除、上限制限）|[README](search/README.ja.md)|
+
+## 設計方針
+
+- 複数の Usecase から共通利用されるユーティリティ
+- ビジネスロジックを含まない — 機械的な変換のみ
+- Infrastructure 依存なし

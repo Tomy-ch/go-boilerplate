@@ -15,6 +15,30 @@ English | [日本語](README.ja.md)
 
 Delegate "business logic", "DB access", and "domain model operations" to Usecase / Domain / Infra, and keep the Controller thin.
 
+The `usercount/` directory is a sample implementation. When building an actual service, use it as a reference and remove it if unnecessary.
+
+## Public API
+
+### Runner
+
+Manages job registration and execution.
+
+|Function / Method|Description|
+|---|---|
+|`NewRunner(jobs []job.Job)`|Create Runner from job list (duplicate names cause error)|
+|`Run(ctx, jobName, args)`|Execute the specified job|
+|`Names()`|Return list of registered job names|
+
+### State
+
+Holds job execution state in a thread-safe manner.
+
+|Function / Method|Description|
+|---|---|
+|`NewState()`|Create a new State|
+|`Set(name, args, done)`|Set job state|
+|`Snapshot()`|Get snapshot of current state|
+
 ## Architecture
 
 ### Processing Flow When Running a Job

@@ -56,7 +56,7 @@ services:
     ports:
       - "8082:80"
     volumes:
-      - ./docs/portal:/usr/share/nginx/html:ro
+      - ./docs:/usr/share/nginx/html:ro
     profiles:
       - tools
 

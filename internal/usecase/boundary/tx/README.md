@@ -1,31 +1,28 @@
-# Tx Manager
+# tx
 
-概要: このモジュールは、トランザクション管理を行うための機能を提供します。トランザクション内での操作を簡素化し、エラー処理を一元化します。
+English | [日本語](README.ja.md)
 
-## 役割
+Provides a `Manager` interface for transaction boundary management and a generic helper for returning values from transactions.
 
-- トランザクションの開始、コミット、ロールバックを管理します。
-- トランザクション内で値を取得するためのヘルパー関数の`DoWithResult`を提供します。
+## Public API
 
-## 必要度
+|Type / Function|Description|
+|---|---|
+|`Manager`|`Do(ctx, fn)` — execute `fn` within a transaction (commit on success, rollback on error)|
+|`DoWithResult[T](ctx, m, fn)`|Generic helper to return a value from within a transaction|
 
-### 本番運用での必須度
+## Design Intent
 
-- 必須度: 本番運用で必須
-  - 理由: トランザクション管理は、データの整合性を保つために不可欠です。本番環境では特に重要です。
+- Make Usecase aware of "the existence of transactions" without exposing DB details
+- Completely hide DB driver dependencies (pgx, sql.Tx, etc.)
+- Transaction boundaries are a Usecase responsibility — Infrastructure does not start transactions
 
-### 開発/テスト運用での必須度
+## Implementation
 
-- 必須度: 開発/テスト運用で必須
-  - 理由: 開発環境やテスト環境でトランザクションを使用することで、データの一貫性を確認しやすくなります。
+`internal/infrastructure/rdb/driver/` provides the concrete implementation using pgx transactions.
 
-### 無効化した場合の影響
+## Notes
 
-- トランザクションが適切に管理されなくなり、データの整合性が失われる可能性があります。
-- エラー処理が複雑化し、コードの保守性が低下します。
-
-## 注意点
-
-- トランザクション内での操作は、必ず`Manager`インターフェースを通じて行ってください。
-- `DoWithResult`を使用する際は、ジェネリクスを正しく設定してください。
-- トランザクションのスコープを明確にし、不要なロックや競合を避けるように設計してください。
+- `Manager.Do` supports nested calls — reuses existing transaction if one exists in context
+- `DoWithResult` wraps `Manager.Do` to extract a typed return value
+- Transaction scope should be kept minimal to avoid unnecessary locks

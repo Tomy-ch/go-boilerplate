@@ -1,35 +1,37 @@
 # paging
 
-概要: `paging` ディレクトリは、ページング処理を簡潔に行うための共通構造体とロジックを提供します。
+English | [日本語](README.ja.md)
 
-## 役割
+Provides common pagination structures and logic for converting 1-based page/perPage parameters into limit/offset values.
 
-このディレクトリは、ページ番号や1ページあたりの件数を基に、データ取得の上限やオフセットを計算する機能を提供します。
+## Public API
 
-これにより、データベースクエリやAPIレスポンスでの効率的なページングが可能になります。
+|Function / Method|Description|
+|---|---|
+|`NewPagingFrom1Based(page, perPage *int)`|Create `Paging` from 1-based page number and per-page count|
+|`Limit()` / `Limit32()`|Return the retrieval limit (int / int32)|
+|`Offset()` / `Offset32()`|Return the offset (int / int32)|
 
-## 必要度
+## Constants
 
-### 本番運用での必須度
+|Constant|Value|Description|
+|---|---|---|
+|`defaultPerPage`|50|Default items per page|
+|`maxPerPage`|200|Maximum items per page|
+|`minPage`|1|Minimum page number|
+|`maxPage`|10,000|Maximum page number|
 
-- 必須度: 本番運用で推奨
-  - 理由: ページング処理は、大量のデータを扱うアプリケーションにおいて、効率的なデータ取得とパフォーマンス向上のために不可欠です。
+## Behavior
 
-### 開発/テスト運用での必須度
+- `perPage` ≤ 0 or nil → uses `defaultPerPage` (50)
+- `perPage` > `maxPerPage` → clamped to `maxPerPage` (200)
+- `page` ≤ 0 or nil → uses `minPage` (1)
+- `page` > `maxPage` → returns `apperror.ErrInvalidArgument`
+- `Limit32()` / `Offset32()` clamp values for safe int32 conversion
 
-- 必須度: 開発/テスト運用で推奨
-  - 理由: 開発やテスト環境でも、ページング処理の検証やデータ取得の効率化が必要です。
+## Usage
 
-### 無効化した場合の影響
-
-ページング処理が無効化されると、大量のデータを一度に取得する必要が生じ、アプリケーションのパフォーマンスが著しく低下する可能性があります。
-
-また、クライアント側でのデータ処理負荷が増加します。
-
-## 注意点
-
-- 基底の値は下記の通りです。変更する場合は、`paging.go` 内の定数を修正してください。
-  - デフォルトの1ページあたりの件数 (`defaultPerPage`) は50
-  - 最大値 (`maxPerPage`) は200
-  - ページ番号は1から始まり、最大値 (`maxPage`) は10,000
-- 入力値が範囲外の場合、デフォルト値や最大値が適用されます。
+```go
+pg, err := paging.NewPagingFrom1Based(ptr.To(2), ptr.To(20))
+// pg.Limit() == 20, pg.Offset() == 20
+```

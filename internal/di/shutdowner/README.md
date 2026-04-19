@@ -1,32 +1,25 @@
-# shutdowner DI ラッパー
+# shutdowner DI Wrapper
 
-概要: このパッケージは `go.uber.org/fx` の `fx.Shutdowner` を抽象化したインターフェース `Shutdowner` を提供します。DI コンテナから取得した `fx.Shutdowner` をラップしてアプリケーションコードやテストから利用しやすくする目的です。
+English | [日本語](README.ja.md)
 
-## 役割
+This package provides a `Shutdowner` interface that abstracts `fx.Shutdowner` from `go.uber.org/fx`. It wraps the `fx.Shutdowner` obtained from the DI container to make it easier to use from application code and tests.
 
-- `Shutdowner` インターフェースを提供し、`Shutdown(...fx.ShutdownOption) error` を抽象化します。
-- `NewShutdowner(sd fx.Shutdowner) Shutdowner` により、実際の `fx.Shutdowner` をラップする具象インスタンスを生成します。
-- `//go:generate` によるモック生成を想定しており、`mock/` に自動生成のモックが存在します。
+## Public API
 
-## 必要度
+|Type / Function|Description|
+|---|---|
+|`Shutdowner`|Interface abstracting `Shutdown(...fx.ShutdownOption) error`|
+|`NewShutdowner(sd fx.Shutdowner)`|Create a concrete instance wrapping `fx.Shutdowner`|
+|`Module()`|Return an `fx.Module` that registers `Shutdowner` in the DI container|
 
-### 本番運用での必須度
+## Why Abstract?
 
-- 必須度: 本番運用で推奨
+- Using `fx.Shutdowner` directly couples application code to the fx framework
+- The `Shutdowner` interface allows easy mock injection in tests
+- Keeps the fx dependency confined to the DI layer
 
-- 理由: アプリケーションの安全なシャットダウンを DI 層からトリガーするための抽象を提供します。直接 `fx.Shutdowner` を用いるよりもインターフェース経由で扱うことでテストやモックが容易になります。
+## Notes
 
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/検証で推奨
-
-- 理由: シャットダウンの振る舞いや依存の差し替えを行いやすくするため、開発や検証環境での利用が推奨されます。
-
-### 無効化した場合の影響
-
-- このパッケージを利用しない場合は、直接 `fx.Shutdowner` を利用するか、別の抽象化を用意する必要があります。テストでのシャットダウン振る舞いの差し替えが難しくなります。
-
-## 注意点
-
-- ラッパー自体は極めて薄く、単に `fx.Shutdowner` を保持して `Shutdown` を呼ぶだけです。振る舞いのカスタマイズは基本的に不要で、必要がある場合は呼び出し側でオプションを設定してください。
-- `Shutdown` はプロセス停止やクリーンアップをトリガーするため、呼び出し側で副作用に注意してください。
+- The wrapper is extremely thin — it simply holds `fx.Shutdowner` and delegates `Shutdown` calls
+- `Shutdown` triggers process stop and cleanup, so callers should be aware of side effects
+- `mock/` contains auto-generated mocks via `mockgen`

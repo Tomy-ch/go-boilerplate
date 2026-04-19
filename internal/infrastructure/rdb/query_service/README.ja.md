@@ -2,12 +2,65 @@
 
 [English](README.md) | 日本語
 
+## オニオンアーキテクチャにおける Query Service の位置づけ
+
+オニオンアーキテクチャでは、永続化の抽象は Domain 層の **Repository interface** として定義されます。Repository は Aggregate 単位の CRUD を担い、Domain の不変条件を守ります。
+
+一方、Query Service（QS）は **この原則に対する意図的な例外**です。
+
+```mermaid
+flowchart TB
+    subgraph "Domain 層"
+        RepoIF["Repository interface"]
+    end
+    subgraph "Usecase 層"
+        QSIF["QueryService interface"]
+    end
+    subgraph "Infrastructure 層"
+        RepoImpl["Repository 実装"]
+        QSImpl["QueryService 実装"]
+    end
+
+    RepoImpl -. implements .-> RepoIF
+    QSImpl -. implements .-> QSIF
+```
+
+### なぜ QS の interface を Domain ではなく Usecase に置くのか
+
+|観点|Repository|Query Service|
+|---|---|---|
+|関心事|Aggregate の永続化|ユースケース固有の検索|
+|粒度|Aggregate 単位|画面 / API レスポンス単位|
+|返却型|Domain Entity|DTO（表示用の射影）|
+|不変条件|Domain が保証|関与しない|
+|interface 配置|Domain 層|Usecase 層|
+
+QS が返すのは **Aggregate の完全な再構成ではなく、ユースケースが必要とする射影（projection）** です。これは Domain の関心事ではなく Usecase の関心事であるため、interface は Usecase 層（`internal/usecase/<aggregate>/query`）に配置します。
+
+### CQRS との関係
+
+QS の導入は **軽量 CQRS（Command Query Responsibility Segregation）** のアプローチです。
+
+- **Command（書き込み）**: Repository を経由し、Domain Entity の不変条件を守る
+- **Query（読み取り）**: QS を経由し、パフォーマンス最適化された検索クエリを直接実行
+
+完全な CQRS（別 DB / イベントソーシング）ではなく、**同一 DB 上で読み書きの責務を分離する実用的な設計**です。
+
+### QS を採用する判断基準
+
+以下に該当する場合、Repository ではなく QS を検討します。
+
+- 複数テーブルの JOIN が必要な検索
+- ページネーション付きの一覧取得
+- 全文検索やキーワード検索
+- 集計・グルーピングが必要なクエリ
+- Aggregate の完全な再構成が不要な読み取り
+
+逆に、ID による単一取得や件数カウントなどの単純なクエリは Repository に留めて構いません。
+
 ## 役割
 
 Query Service は **検索・一覧取得などの読み取り専用クエリーを提供する層**です。
-
-Repository が **Aggregate 永続化の抽象**であるのに対して、  
-Query Service は **検索用途の専用クエリー**を提供します。
 
 ```mermaid
 flowchart TB
@@ -17,7 +70,7 @@ flowchart TB
 Query Service の責務は次の通りです。
 
 1. SQL検索の実行
-2. Row → Domain 変換
+2. Row → Domain Entity / DTO 変換
 3. DBエラー正規化
 
 Query Service は **ビジネスロジックを持ちません。**

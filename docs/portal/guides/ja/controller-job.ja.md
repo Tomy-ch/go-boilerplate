@@ -15,6 +15,30 @@ internal/controller/job は、CLI（Cobra）から起動される **バッチ/�
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
 
+配下の `usercount/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
+
+## 公開 API
+
+### Runner
+
+ジョブの登録と実行を管理します。
+
+|関数 / メソッド|説明|
+|---|---|
+|`NewRunner(jobs []job.Job)`|Job 一覧から Runner を生成（重複名はエラー）|
+|`Run(ctx, jobName, args)`|指定されたジョブを実行|
+|`Names()`|登録済みジョブ名の一覧を返す|
+
+### State
+
+ジョブの実行状態をスレッドセーフに保持します。
+
+|関数 / メソッド|説明|
+|---|---|
+|`NewState()`|新しい State を生成|
+|`Set(name, args, done)`|ジョブの状態を設定|
+|`Snapshot()`|現在の状態のスナップショットを取得|
+
 ## アーキテクチャ
 
 ### ジョブ実行時の処理フロー
