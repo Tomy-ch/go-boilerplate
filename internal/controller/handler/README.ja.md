@@ -716,6 +716,64 @@ Controller テストでは次を扱いません。
 
 これらは **Usecase / Domain / Infrastructure テストの責務**です。
 
+## テストキット（testkit）
+
+`testkit/` 配下には、Controller テストで共通利用するヘルパーパッケージが格納されています。
+
+|パッケージ|説明|
+|---|---|
+|`testassert`|JSON レスポンスの検証、Echo ルーターのパス・メソッド検証|
+|`testauth`|テスト用の認証情報をコンテキストに設定|
+|`testecho`|Echo テスト用のビルダークライアント（リクエスト構築・送信）|
+|`testspan`|Echo コンテキストにテスト用 span を埋め込み|
+
+### testassert
+
+|関数|説明|
+|---|---|
+|`AssertJSONEqual[T]`|HTTPレスポンスのステータスコードとJSONボディを検証|
+|`AssertEchoRouterMethods`|登録されたルートのHTTPメソッドを検証|
+|`AssertEchoRouterPath`|登録されたルートのパスを検証|
+
+### testauth
+
+|関数|説明|
+|---|---|
+|`MakeAvailableAuthn`|テスト用コンテキストに認証情報（subject）を設定|
+
+### testecho
+
+テスト用のHTTPリクエストをビルダーパターンで構築します。
+
+```go
+rec := testecho.NewEchoTestClient(t, e).
+    Method(http.MethodGet).
+    RequestURL("/v1/users?page=1&per_page=10").
+    AuthBearer("test-token").
+    Serve()
+```
+
+|メソッド|説明|
+|---|---|
+|`NewEchoTestClient`|テスト用クライアントを生成（エラーハンドラ自動設定）|
+|`Method`|HTTPメソッドを設定|
+|`RoutePattern`|ルートパターンを設定（例: `/users/:id`）|
+|`RequestURL`|実際のリクエストURLを設定|
+|`JSONBody`|JSON形式のリクエストボディを設定|
+|`RawBody`|生のリクエストボディを設定|
+|`Header`|リクエストヘッダーを設定|
+|`AuthBearer`|Bearer トークンを設定|
+|`PathParams`|パスパラメータを設定|
+|`QueryParams`|クエリパラメータを設定|
+|`Build`|Request / ResponseRecorder / echo.Context を返す|
+|`Serve`|Echo にリクエストを送信し ResponseRecorder を返す|
+
+### testspan
+
+|関数|説明|
+|---|---|
+|`StartTestSpanForEcho`|echo.Context にテスト用 span を埋め込み、終了関数を返す|
+
 ## Example
 
 ## 参考スニペット

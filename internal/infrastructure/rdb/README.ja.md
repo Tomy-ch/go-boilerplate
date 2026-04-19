@@ -41,23 +41,23 @@ flowchart TB
 |Component|役割|
 |---|---|
 |sqlc|SQL から生成された型安全なクエリ実行コード|
-|conv|nullable 型と Go 型の変換|
 |pgerror|PostgreSQL エラー → アプリケーションエラー変換|
+|metrics|コネクションプール統計の Prometheus メトリクス|
+|system_query|システム運用クエリ（ヘルスチェック等）|
 |testkit|RDB テストユーティリティ（実DB + rollback）|
 
 ## ディレクトリ構成
 
 ```txt
 internal/infrastructure/rdb
-
  ├ repository/        Repository 実装
  ├ query_service/     QueryService 実装
+ ├ system_query/      システム運用クエリ（ヘルスチェック等）
  ├ driver/            DB 接続 / トランザクション
  │   └ loggingdb/     SQL logging / tracing wrapper
  ├ sqlc/              sqlc 生成コード + SQL helper
- ├ conv/              nullable 型変換
- ├ postgres/
- │   └ pgerror/       PostgreSQL エラー正規化
+ ├ pgerror/           PostgreSQL エラー正規化
+ ├ metrics/           コネクションプール Prometheus メトリクス
  └ testkit/           RDB テストユーティリティ
 ```
 
@@ -104,7 +104,6 @@ QueryService は検索用途に特化します。
 
 - sqlc 生成コード
 - LIKE 検索 helper
-- Enum / 状態変換 helper
 
 などを提供します。
 
@@ -112,23 +111,7 @@ QueryService は検索用途に特化します。
 
 詳細は以下を参照してください。
 
-[sqlc ディレクトリの README](sqlc/README.md)
-
-## conv
-
-`conv` は **nullable 型と Go ポインタ型の変換ユーティリティ**です。
-
-```mermaid
-flowchart LR
-    A["sql.NullString"] <--> B["*string"]
-    C["sql.NullTime"] <--> D["*time.Time"]
-```
-
-Repository / QueryService 実装で利用されます。
-
-詳細は以下を参照してください。
-
-[conv ディレクトリの README](conv/README.md)
+[sqlc ディレクトリの README](sqlc/README.ja.md)
 
 ## driver
 
@@ -172,7 +155,7 @@ flowchart TB
 
 ## PostgreSQL エラー正規化
 
-`postgres/pgerror` は **PostgreSQL 固有エラーをアプリケーションエラーへ変換するレイヤー**です。
+`pgerror` は **PostgreSQL 固有エラーをアプリケーションエラーへ変換するレイヤー**です。
 
 Repository / QueryService は
 
@@ -186,7 +169,7 @@ pgerror.NormalizeError(err)
 
 ```mermaid
 flowchart TB
-    A["sql.ErrNoRows"] -->|→| B["ErrNotFound"]
+    A["pgx.ErrNoRows"] -->|→| B["ErrNotFound"]
     C["unique violation"] -->|→| D["ErrConflict"]
     E["connection error"] -->|→| F["ErrUnavailable"]
     G["others"] -->|→| H["ErrInternal"]
@@ -194,7 +177,27 @@ flowchart TB
 
 詳細は以下を参照してください。
 
-[pgerror ディレクトリの README](postgres/pgerror/README.md)
+[pgerror ディレクトリの README](pgerror/README.ja.md)
+
+## metrics
+
+`metrics` は **pgxpool コネクションプールの統計情報を Prometheus メトリクスとして公開する**パッケージです。
+
+Gauge（接続数）と Counter（取得回数・破棄回数等）を提供します。
+
+詳細は以下を参照してください。
+
+[metrics ディレクトリの README](metrics/README.ja.md)
+
+## system_query
+
+`system_query` は **システム運用向けの DB クエリ**（ヘルスチェック等）を提供する層です。
+
+Repository / QueryService とは異なり、ビジネスドメインに属さない運用・監視目的のクエリを担当します。
+
+詳細は以下を参照してください。
+
+[system_query ディレクトリの README](system_query/README.ja.md)
 
 ## testkit
 

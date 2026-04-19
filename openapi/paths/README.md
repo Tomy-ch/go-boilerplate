@@ -1,35 +1,98 @@
-# OpenAPI Paths ガイドライン
+# OpenAPI Paths
 
-このディレクトリには、各APIエンドポイントのルーティング定義が格納されています。
+English | [日本語](README.ja.md)
 
-ファイルはリソース単位およびバージョン単位で分割されており、OpenAPI仕様に基づいた定義を記述します。
+`openapi/paths/` stores **API endpoint route definitions** organized by resource and version.
 
-**ここでのみ、#ポインターは利用しないでください。**
-
-## ディレクトリ構成と対象ファイル
+## Directory Structure
 
 ```text
 paths/
-├── healthz.yaml
-├── v1/
-│   └── users.yaml
-│   └── users/
-│       └── user_id.yaml
+├── health/             # Health check endpoint
+│   └── health.yaml
+├── healthz/            # Kubernetes health check endpoint
+│   └── healthz.yaml
+├── ready/              # Readiness check endpoint
+│   └── ready.yaml
+├── version/            # Version info endpoint
+│   └── version.yaml
+├── metrics/            # Prometheus metrics endpoint (Basic auth)
+│   └── metrics.yaml
+├── internal/           # Internal types (error response schema for oapi-codegen)
+│   └── types/
+│       └── error_response.yaml
+└── v1/                 # Versioned API (sample)
+    ├── users.yaml
+    └── users/
+        ├── user_id.yaml
+        └── search/
+            └── search.yaml
 ```
 
-## 命名・運用ルール
+## Endpoint Categories
 
-| 要素 | 命名規則 / 構造 |
-| ------------- | ------------------------------------- |
-| ファイル名 | snake_case（例: `user_id.yaml`） |
-| フォルダ構造 | `/v1/<resource>/<resource>.yaml` |
-| operationId | `{HTTPメソッド}{リソース名}` 形式 |
-| tags | `v1/users`, `healthz` など分類用に統一 |
-| pathの指定 | `/` をエスケープして記述する |
+### Operational Endpoints
 
-## ベストプラクティス
+Infrastructure endpoints for monitoring and orchestration. These are not part of the business API and are excluded from OpenAPI validation and authentication via the `Skipper`.
 
-- 定義の中では `$ref` を活用し、schemas, requestBodies, parameters, responses を分離します。
-- path ごとのファイルは**責務ごとに**明確に分けます（一覧と詳細で分割）。
-- `components` ディレクトリと相互参照しやすいよう命名を揃えます。
-- 各APIのレスポンスやリクエストボディは、**明確なスキーマ定義**を行い、再利用性を高めます。
+|Path|File|Description|
+|---|---|---|
+|`/health`|`health/health.yaml`|Health check|
+|`/healthz`|`healthz/healthz.yaml`|Kubernetes liveness probe|
+|`/ready`|`ready/ready.yaml`|Readiness probe|
+|`/version`|`version/version.yaml`|Build version / revision / date|
+|`/metrics`|`metrics/metrics.yaml`|Prometheus metrics (Basic auth protected)|
+
+### Versioned API (`v1/`)
+
+Business API endpoints following a **URL versioning strategy**.
+
+```text
+/v1/users          → users.yaml
+/v1/users/{user_id} → users/user_id.yaml
+/v1/users/search   → users/search/search.yaml
+```
+
+> `v1/` contents are **sample implementations**. Replace with your own resources when building a service.
+
+#### Versioning Strategy
+
+This project recommends **URL path versioning** (`/v1/`, `/v2/`, etc.):
+
+- Clear and explicit in URLs and documentation
+- Allows parallel operation of multiple API versions
+- Breaking changes are introduced in a new version prefix
+- Non-breaking additions can be made within the current version
+
+When introducing breaking changes, create a new `v2/` directory alongside `v1/`.
+
+### Internal Types
+
+`internal/types/error_response.yaml` defines the error response type used by `oapi-codegen` for type generation. This is not a public API endpoint.
+
+## Naming and Structure Rules
+
+|Element|Convention|Example|
+|---|---|---|
+|File name|snake_case|`user_id.yaml`, `search.yaml`|
+|Directory structure|`/<version>/<resource>/`|`v1/users/`|
+|operationId|`{HTTPMethod}{Resource}`|`getUsers`, `postUsers`|
+|tags|Path-based grouping|`v1/users`, `health`|
+
+## Path-to-Handler Mapping
+
+Path definitions correspond to handler implementations:
+
+```text
+paths/v1/users.yaml           → handler/v1/users/
+paths/v1/users/user_id.yaml   → handler/v1/users/detail/
+paths/v1/users/search/        → handler/v1/users/search/
+```
+
+## Rules
+
+- Use `$ref` to reference schemas, parameters, and responses — do not define inline
+- Split path files by responsibility (list vs. detail vs. search)
+- Do not use `#/` fragment pointers in this directory
+- Align naming with `components/` for easy cross-referencing
+- Each path file should define a single route

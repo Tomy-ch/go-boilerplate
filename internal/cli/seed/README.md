@@ -1,32 +1,30 @@
-# Seed
+# db-seed
 
-概要: このディレクトリは、データベースに開発データを投入するためのコマンドを提供します。
+English | [日本語](README.ja.md)
 
-`db-seed` コマンドを使用して、シードファイルを実行します。
+Inserts seed data into the database for development and testing purposes.
 
-## 役割
+## Command
 
-- データベースに開発データを投入する。
-- テーブルが存在しない場合は、該当するシードファイルの実行をスキップします。
+```text
+db-seed
+```
 
-## 必要度
+## Flags
 
-### 本番運用での必須度
+|Flag|Default|Description|
+|---|---|---|
+|*(none)*|||
 
-- 必須度: 不要
-  - 理由: 本番環境では通常、開発データの投入は行われないため、シードデータの投入は不要です。ただし、初期データが必要な場合は手動で投入することがあります。
+## Usage
 
-### 開発/テスト運用での必須度
+```bash
+./server db-seed
+```
 
-- 必須度: 開発/テスト運用で必須
-  - 理由: 開発環境やテスト環境では、テストデータの投入が頻繁に必要となるため。
+## Notes
 
-### 無効化した場合の影響
-
-- 開発環境で初期データが投入されないため、アプリケーションの動作確認やテストが正しく行えなくなる可能性があります。
-
-## 注意点
-
-- シードファイルは `database/seed` ディレクトリに配置してください。
-- シードファイルが存在しないテーブルに対しては、エラーをスキップしますが、ログに警告が記録されます。
-- 本番環境での使用時には、投入するデータの内容を十分に確認してください。
+- **Not intended for production use.** Use only in development and test environments.
+- Seed files are loaded from the `database/seed` directory.
+- If a target table does not exist, the corresponding seed file is skipped and a warning is logged.
+- Always verify seed data contents before running against shared environments.

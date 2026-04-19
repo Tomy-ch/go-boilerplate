@@ -1,0 +1,36 @@
+# QueryService DML
+
+[English](README.md) | 日本語
+
+検索・一覧取得の最適化を目的とした読み取り専用SQLを管理します。
+
+## 目的
+
+- JOIN・集計・フィルタリングをSQLレベルで最適化し、高速な読み取り専用クエリを提供します。
+- 書き込み処理やトランザクション管理から参照処理を分離します。
+- sqlc によるコード生成で、パラメータやスキャンの型をコンパイル時に検証します。
+
+## インフラストラクチャマッピング
+
+実装: `internal/infrastructure/rdb/query_service/`
+
+## ディレクトリ構成
+
+```text
+query_service/
+├── user/
+│   ├── select_active_users.sql
+│   └── ...
+└── ...
+```
+
+## 命名規則
+
+- ファイル名: 動詞 + 対象名（例: `list_published_products.sql`）
+- 全てのクエリに `-- name:` アノテーションが必須
+
+## コード生成
+
+```sh
+make gen-query
+```

@@ -1,28 +1,21 @@
-# Clockモジュール
+# clock
 
-概要: このモジュールは、クロック関連の機能を提供します。現在の時刻を取得するための操作を簡素化し、エラー処理を一元化します。
+English | [日本語](README.ja.md)
 
-## 役割
+Provides a `Clock` interface for retrieving the current time.
 
-- 現在の時刻を取得します。
-- クロック関連の操作を一元化するためのヘルパー関数を提供します。
+```go
+type Clock interface {
+    Now() time.Time
+}
+```
 
-## 必要度
+## Why Abstract?
 
-### 本番運用での必須度
+- Ensure testability of time-dependent logic (TTL, expiration, scheduling)
+- Prevent Domain / Usecase from depending directly on `time.Now()`
+- Allow mock substitution in tests for deterministic behavior
 
-- 必須度: 本番運用で推奨
-  - 理由: 本番環境で現在の時刻をモックすることで、テストの安定性が向上し、開発効率が上がります。
+## Implementation
 
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で推奨
-  - 理由: 開発環境やテスト環境で現在の時刻をモックすることで、テストの安定性が向上し、開発効率が上がります。
-
-### 無効化した場合の影響
-
-- 現在の時刻を取得するための操作が分散し、テストや開発環境でのモックが困難になります。
-
-## 注意点
-
-- なし
+`internal/infrastructure/system/` provides the concrete implementation that calls `time.Now()`.

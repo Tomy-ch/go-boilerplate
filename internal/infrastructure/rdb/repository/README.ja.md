@@ -2,6 +2,50 @@
 
 [English](README.md) | 日本語
 
+## オニオンアーキテクチャにおける Repository の位置づけ
+
+オニオンアーキテクチャにおいて、Repository は **依存性逆転の原則（DIP）を体現する中心的なパターン**です。
+
+```mermaid
+flowchart TB
+    subgraph "Domain 層（内側）"
+        RepoIF["Repository interface"]
+        Entity["Domain Entity"]
+    end
+    subgraph "Infrastructure 層（外側）"
+        RepoImpl["Repository 実装"]
+        Sqlc["sqlc"]
+        DB["PostgreSQL"]
+    end
+
+    RepoImpl -. implements .-> RepoIF
+    RepoImpl --> Sqlc --> DB
+    RepoImpl --> Entity
+```
+
+### Repository の核心的な役割
+
+|原則|Repository での実現|
+|---|---|
+|依存性逆転|Domain が interface を定義し、Infrastructure が実装する|
+|Aggregate 境界の保護|永続化の単位は Aggregate 単位で行う|
+|Domain の純粋性維持|Domain は DB / SQL / フレームワークを知らない|
+|不変条件の検証|Domain constructor 経由でのみ Entity を再構成する|
+
+### QueryService との責務分担
+
+Repository は **Aggregate の永続化（CRUD）** を担います。検索・一覧取得などの読み取り専用クエリは [QueryService](../query_service/README.ja.md) に分離します。
+
+|観点|Repository|QueryService|
+|---|---|---|
+|目的|Aggregate の永続化|ユースケース固有の検索|
+|interface 配置|Domain 層|Usecase 層|
+|返却型|Domain Entity|DTO（表示用の射影）|
+|不変条件|Domain constructor で保証|関与しない|
+|トランザクション|Usecase が制御（`tx.Manager`）|原則 読み取り専用|
+
+この分離により、Repository は Aggregate の整合性に集中でき、検索パフォーマンスの最適化は QS に委ねることができます。
+
 ## 役割
 
 Repository は **Domain の永続化抽象（Repository Interface）を Infrastructure で実装する層**です。

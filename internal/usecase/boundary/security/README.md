@@ -1,31 +1,27 @@
-# Securityモジュール
+# security
 
-概要: このモジュールは、セキュリティ関連の機能を提供します。パスワードのハッシュ化や比較など、セキュリティを確保するための操作を簡素化し、エラー処理を一元化します。
+English | [日本語](README.ja.md)
 
-## 役割
+Provides an `Encrypter` interface for password hashing and comparison.
 
-- パスワードのハッシュ化と比較を管理します。
-- セキュリティ関連の操作を一元化するためのヘルパー関数を提供します。
+```go
+type Encrypter interface {
+    Hash(password string) (string, error)
+    Compare(hash, password string) (bool, error)
+}
+```
 
-## 必要度
+## Design Intent
 
-### 本番運用での必須度
+- Hide cryptographic algorithm details (bcrypt, argon2, etc.) from Usecase
+- Enable algorithm replacement without affecting business logic
+- Allow mock substitution in tests
 
-- 必須度: 本番運用で必須
-  - 理由: パスワードのハッシュ化は、ユーザーのパスワードを安全に保存するために不可欠です。本番環境では特に重要です。
+## Implementation
 
-### 開発/テスト運用での必須度
+`internal/infrastructure/security/` provides a bcrypt-based implementation.
 
-- 必須度: 開発/テスト運用で推奨
-  - 理由: 開発環境やテスト環境でパスワードのハッシュ化と比較を行うことで、セキュリティを確認しやすくなります。
+## Notes
 
-### 無効化した場合の影響
-
-- パスワードが平文で保存され、セキュリティリスクが高まります。
-- エラー処理が複雑化し、コードの保守性が低下します。
-
-## 注意点
-
-- セキュリティ関連の操作は、適切なエラー処理を行うことが重要です。
-- パスワードのハッシュ化には、適切なコストを設定することが推奨されます。コストが高すぎるとパフォーマンスに影響を与える可能性がありますが、低すぎるとセキュリティが弱くなります。
-- セキュリティ関連の機能は、常に最新のベストプラクティスに従うことが重要です。定期的なレビューと更新が推奨されます。
+- `Compare` returns `(false, nil)` for mismatched passwords — mismatch is not an error
+- bcrypt cost is configured via `config.SecurityConfig.BcryptCost()`

@@ -1,23 +1,56 @@
-# DI モジュール (`internal/di/module`)
+# DI Module (`internal/di/module`)
 
-概要: アプリケーションのドメイン層・インフラ層・設定などを `fx` ベースで束ねる DI モジュール群を配置するディレクトリです。各ファイルはアプリ起動時に注入されるコンポーネント（設定、コントローラ、DB、ロギング、オブザーバビリティ、ユースケース等）を `fx.Provide`／`fx.Invoke` するためのエントリ役割を持ちます。
+English | [日本語](README.ja.md)
 
-## 役割
+A directory containing **DI module groups** that wire up each application layer using `fx`.
 
-- 各レイヤごとの DI 提供を集約し、アプリケーションの起動時に必要な依存関係を組み立てます。
+Each file exposes a function returning `fx.Option` to register the necessary components in the DI container at application startup.
 
-## 必要度
+## Module List
 
-- **本番運用での必須度**: 本番運用で必須。
-  - 理由: アプリケーションコンポーネントの初期化や依存関係解決は DI モジュールを通じて行われるため、モジュールを無効化すると正常に起動しない・必須コンポーネントが注入されない可能性があります。
-- **開発/テスト運用での必須度**: 開発/テスト運用で推奨。
-  - 理由: テストや開発でも DI を用いた初期化を行うことで本番と近い環境で検証でき、結合テストの信頼性が向上します。
+|Function|File|Provided Components|
+|---|---|---|
+|`ConfigModule()`|`config.go`|Config (`*Config` + all SubConfig providers + `*time.Location`)|
+|`ControllerModule()`|`controller.go`|HTTP handler registration (`fx.Invoke` to run `BindHandler`)|
+|`DatabaseModule()`|`db.go`|DB connection (`*pgxpool.Pool`) + repositories / query services|
+|`InfrastructureModule()`|`infrastructure.go`|Infrastructure layer implementations (auth, etc.)|
+|`JobModule()`|`job.go`|Job registration (`group:"jobs"`) + Runner + State + Hook|
+|`LoggingModule()`|`logging.go`|Logger + LogFieldBuilder|
+|`ObservabilityModule()`|`observability.go`|TracerProvider + TracerFactory|
+|`SystemModule()`|`system.go`|BuildInfo (version / revision / build date)|
+|`UsecaseModule()`|`usecase.go`|Usecase implementation registration|
 
-### 無効化した場合の影響
+### Subdirectories
 
-- モジュールを無効化すると、そのモジュールが提供するコンポーネント（例: DB 接続、ログ設定、コントローラやユースケース）が注入されず、アプリやテストが正しく動作しなくなります。特に `config` / `db` / `logging` 系は起動/停止や接続に関わるため影響が大きいです。
+|Directory|Description|Details|
+|---|---|---|
+|`core/`|DI modules for HTTP stack common components (auth, rate limiting, etc.)|[README](core/README.md)|
 
-## 注意点
+## Architecture
 
-- 各モジュールは `fx` のライフサイクル制約に依存します。初期化や終了処理は `fx.App` の Start/Stop で実行されることを前提としています。
-- モジュール内で副作用（外部接続の確立、ファイル書き込み等）を行う場合は、テスト時にモックやフェイクを注入できる設計にしておくとテストが容易になります。
+```mermaid
+flowchart TB
+    subgraph "fx.App"
+        ConfigModule --> LoggingModule
+        ConfigModule --> DatabaseModule
+        ConfigModule --> ObservabilityModule
+        LoggingModule --> ObservabilityModule
+        ObservabilityModule --> ControllerModule
+        DatabaseModule --> InfrastructureModule
+        InfrastructureModule --> UsecaseModule
+        UsecaseModule --> ControllerModule
+        UsecaseModule --> JobModule
+    end
+```
+
+## Design Policy
+
+- Each module corresponds to a layer boundary (config / logging / db / infra / usecase / controller / job)
+- Inter-module dependencies are automatically resolved by fx
+- Adding a module is as simple as creating a new file and adding it to the app's root module
+
+## Notes
+
+- Each module depends on the `fx.App` Start / Stop lifecycle
+- Disabling a module will prevent its components from being injected, causing the app to fail to start
+- Tests verify that each module can be correctly assembled using `fx.ValidateApp`

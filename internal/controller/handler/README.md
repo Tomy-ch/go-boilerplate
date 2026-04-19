@@ -586,6 +586,64 @@ tf := observability.NewNoopTracerFactory(t)
 - Transaction control
 - Usecase internal logic
 
+## Test Kit (testkit)
+
+`testkit/` contains shared helper packages used in Controller tests.
+
+|Package|Description|
+|---|---|
+|`testassert`|JSON response validation, Echo router path / method verification|
+|`testauth`|Set authentication information in test context|
+|`testecho`|Builder client for Echo tests (request construction and execution)|
+|`testspan`|Embed test span into Echo context|
+
+### testassert
+
+|Function|Description|
+|---|---|
+|`AssertJSONEqual[T]`|Verify HTTP response status code and JSON body|
+|`AssertEchoRouterMethods`|Verify registered route HTTP methods|
+|`AssertEchoRouterPath`|Verify registered route paths|
+
+### testauth
+
+|Function|Description|
+|---|---|
+|`MakeAvailableAuthn`|Set authentication information (subject) in test context|
+
+### testecho
+
+Build test HTTP requests using a builder pattern.
+
+```go
+rec := testecho.NewEchoTestClient(t, e).
+    Method(http.MethodGet).
+    RequestURL("/v1/users?page=1&per_page=10").
+    AuthBearer("test-token").
+    Serve()
+```
+
+|Method|Description|
+|---|---|
+|`NewEchoTestClient`|Create test client (auto-configures error handler)|
+|`Method`|Set HTTP method|
+|`RoutePattern`|Set route pattern (e.g., `/users/:id`)|
+|`RequestURL`|Set actual request URL|
+|`JSONBody`|Set JSON request body|
+|`RawBody`|Set raw request body|
+|`Header`|Set request header|
+|`AuthBearer`|Set Bearer token|
+|`PathParams`|Set path parameters|
+|`QueryParams`|Set query parameters|
+|`Build`|Return Request / ResponseRecorder / echo.Context|
+|`Serve`|Send request to Echo and return ResponseRecorder|
+
+### testspan
+
+|Function|Description|
+|---|---|
+|`StartTestSpanForEcho`|Embed test span into echo.Context and return end function|
+
 ## Example
 
 ## Reference Snippet

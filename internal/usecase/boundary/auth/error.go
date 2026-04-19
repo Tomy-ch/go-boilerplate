@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	ErrUnauthorizedSubjectMissing = xerrors.Wrap(apperror.ErrUnauthenticated, "unauthorised: subject missing")
+	ErrUnauthorizedSubjectMissing = xerrors.Wrap(apperror.ErrUnauthenticated, "unauthorized: subject missing")
 	ErrInvalidIDMissing           = xerrors.Wrap(apperror.ErrValidation, "invalid id: missing")
 	ErrArgumentTokenMissing       = xerrors.Wrap(apperror.ErrInvalidArgument, "argument token missing")
 )

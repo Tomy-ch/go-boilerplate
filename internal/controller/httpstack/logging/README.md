@@ -1,41 +1,14 @@
-# `logging` パッケージ
+# logging
 
-概要: HTTP リクエスト/レスポンスのログ出力を行う Echo ミドルウェアを提供します。リクエスト受信時と処理後にそれぞれログを出力し、トレース情報やパス/クエリパラメータ、ステータス・レイテンシなどをログフィールドとして付与します。
+English | [日本語](README.ja.md)
 
-## 役割
+HTTP request/response structured logging middleware with trace context.
 
-主な役割は以下です。
+## Public API
 
-- リクエスト受信時にリクエスト情報を `http.request` ロガーで出力する。
-- レスポンス送信後にステータス・レイテンシ等を `http.response` ロガーで出力する。
-- `logging.LogFieldBuilder` を利用して一貫したログフィールドを生成する。
+|Function / Constant|Description|
+|---|---|
+|`Middleware(logger, lf)`|Return Echo middleware that logs requests and responses with trace IDs, latency, and params|
+|`MinStatusError`|Minimum HTTP status code treated as error (500)|
 
-主要ファイル:
-
-- `logging.go` : ミドルウェアの実装（`Middleware(logger, lf)`）。内部で `buildRequestLogFields` / `buildResponseLogFields` を用いてフィールドを生成する。
-- `constant.go` : ログでの閾値など定数を定義（例: `MinStatusError`）。
-- `logging_test.go` : 挙動を検証する単体テスト。
-
-## 必要度
-
-### 本番運用での必須度
-
-- 必須度: 本番運用で必須
-
-理由: リクエスト/レスポンスの詳細ログは運用・障害対応、監査に不可欠です。トレースID やパス・クエリ情報を含めた統一的なログ出力は、問題解析を大幅に容易にします。
-
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で必須
-
-理由: 開発中もログは重要なフィードバックを提供します。ローカル開発でもリクエストの流れや応答状況を把握できるようミドルウェアを有効にしておくことを推奨します。
-
-### 無効化した場合の影響
-
-ミドルウェアを無効化すると、リクエスト/レスポンスの標準的なログが出力されなくなり、障害時の解析やトラフィック観測が困難になります。監査要件がある場合は特に注意が必要です。
-
-## 注意点
-
-- レスポンスの `After` フックでレスポンスログを出力するため、ハンドラが `panic` する等で `After` が呼ばれないケースに注意してください（別途 `recover` ミドルウェア等と組み合わせることを推奨します）。
-- 出力されるログにはパス・クエリパラメータが含まれます。個人情報や機密情報が含まれる可能性がある場合は、フィルタリングを組み込むか、`LogFieldBuilder` 側でマスキングしてください。
-- `MinStatusError` 等の定数はログレベル判定などで使われます。必要に応じて調整してください。
+Skips ops endpoints (`/health`, `/metrics`, etc.).

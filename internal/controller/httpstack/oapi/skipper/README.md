@@ -1,32 +1,29 @@
-# skipper (OAPI ミドルウェア用 Skipper)
+# oapi/skipper
 
-概要: `skipper` パッケージは、OpenAPI ミドルウェア（oapi ミドルウェア）で特定のパスを検証や処理から除外するための `Skipper` 関数を提供します。主にメトリクスやヘルスチェックなど、OpenAPI 仕様に含めないべきエンドポイントをミドルウェアの対象外にする用途で使います。
+English | [日本語](README.ja.md)
 
-## 役割
+Skipper function that bypasses OpenAPI validation for operational endpoints.
 
-- 指定したパス（例: `/metrics`, `/health`, `/healthz`, `/ready`, `/version`）を oapi ミドルウェアのスキップ対象として扱う `echomw.Skipper` を生成します。
-- ミドルウェアの前提となるルーティングやバリデーションを迂回することで、軽量なヘルス監視やメトリクス収集を実現します。
+## Public API
 
-## 必要度
+|Function|Description|
+|---|---|
+|`New()`|Return `echomw.Skipper` that skips validation for ops paths|
 
-### 本番運用での必須度
+## Skipped Paths
 
-- 必須度: 開発/運用で推奨
+- `/metrics`
+- `/health`
+- `/healthz`
+- `/ready`
+- `/version`
 
-理由: 多くの本番サービスではヘルスチェックやメトリクスを高速かつ低レイテンシで提供する必要があり、これらを OpenAPI 検証の対象にすると無駄なコストや誤検知が発生します。スキッパーで明示的に除外することを推奨します。
+Uses `ops.IsOpsPath()` internally. These endpoints typically do not have OpenAPI definitions and should not be validated or authenticated.
 
-### 開発/テスト運用での必須度
+## Why Skip?
 
-- 必須度: 開発/テスト運用で推奨
+Ops endpoints are infrastructure-level and:
 
-理由: ローカル開発や CI でもヘルスやメトリクスを素早く確認できるようにするため、同様にスキップ設定が有用です。
-
-### 無効化した場合の影響
-
-- 無効化すると、ヘルスチェックやメトリクスへのリクエストも OpenAPI 検証や他のミドルウェア処理を受けるため、想定外のバリデーションエラーや処理遅延が発生する可能性があります。
-
-## 注意点
-
-- スキップ対象のパスは実装でハードコードされています。必要に応じてパスの追加や環境依存の切り替えを行ってください。
-- セキュリティ的に重要なエンドポイントを誤ってスキップしないように注意してください。スキップ対象は可視化とレビューを行って管理することを推奨します。
-- Skipper 実装は単純なパス比較で判定しています。より高度な要件（メソッドやヘッダ条件での判定、正規表現マッチなど）が必要な場合は実装を拡張してください。
+- Have no OpenAPI schema definitions
+- Must remain accessible without authentication (health checks by load balancers)
+- Should not trigger validation errors in logs

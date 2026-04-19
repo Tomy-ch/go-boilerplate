@@ -1,64 +1,48 @@
 # CLI
 
-概要: このディレクトリは、アプリケーションのコマンドラインインターフェース (CLI) を提供します。
+English | [日本語](README.ja.md)
 
-データベースのマイグレーションやシード、サーバーの起動など、さまざまな操作を実行するためのコマンドを定義しています。
+`internal/cli` provides a **Cobra-based command-line interface** for the application.
 
-## 役割
+It defines commands required for application operations such as server startup, database migration, seeding, and job execution.
 
-- アプリケーションの操作を簡略化するためのCLIコマンドを提供します。
-- データベースのマイグレーション (アップ/ダウン) やシードデータの投入、サーバーの起動などをサポートします。
+## Command List
 
-## 必要度
+|Command|Package|Description|
+|---|---|---|
+|`serve`|`server/`|Start HTTP server and metrics server|
+|`migrate-up`|`migrate/`|Upgrade DDL (`--version` / `--database` options)|
+|`migrate-down`|`migrate/`|Downgrade DDL (`--version` / `--database` options)|
+|`db-seed`|`seed/`|Insert initial data into database|
+|`job`|`job/`|Execute a registered job (`job <job-name> [args...]`)|
+|`fix-collation`|`fixcollation/`|Fix PostgreSQL collation version mismatch|
+|`dump-schema`|`dumpschema/`|Dump and format DB schema|
+|`merge-dml`|`mergedml/`|Merge DML directory SQL files by type|
 
-### 本番運用での必須度
+## Structure
 
-- 必須度: 本番運用で推奨
-  - 理由: 本番環境では、データベースの管理やサーバーの起動に必要なため推奨されますが、必須ではありません。
+```text
+internal/cli/
+├── cli.go              # RegisterCommands (subcommand registration)
+├── server/             # serve command + metrics server
+├── migrate/            # migrate-up / migrate-down
+├── seed/               # db-seed
+├── job/                # job <name>
+├── fixcollation/       # fix-collation
+├── dumpschema/         # dump-schema
+└── mergedml/           # merge-dml
+```
 
-### 開発/テスト運用での必須度
+`RegisterCommands` in `cli.go` registers all subcommands to the Cobra root command.
 
-- 必須度: 開発/テスト運用で必須
-  - 理由: 開発やテスト環境では、データベースのマイグレーションやシードデータの投入が頻繁に行われるため必須です。
+## Design Policy
 
-### `serve` コマンドの必須度
+- Each command is isolated as one package = one command
+- The CLI layer does not contain business logic (calls Usecase via DI)
+- Adding a new command only requires adding it to `RegisterCommands` in `cli.go`
 
-- 本番運用での必須度: 1
-  - 理由: サーバーの起動に必要不可欠なため。
+## Notes
 
-- 開発/テスト運用での必須度: 1
-  - 理由: 開発やテスト環境でサーバーを起動するために必要です。
-
-### `migrate-up` コマンドの必須度
-
-- 本番運用での必須度: 2
-  - 理由: 本番環境でのデータベーススキーマの更新に推奨されますが、頻繁には使用されません。
-
-- 開発/テスト運用での必須度: 1
-  - 理由: 開発やテスト環境でのスキーマ更新に必須です。
-
-### `migrate-down` コマンドの必須度
-
-- 本番運用での必須度: 3
-  - 理由: 本番環境での使用は推奨されませんが、必要に応じて使用可能です。
-
-- 開発/テスト運用での必須度: 1
-  - 理由: 開発やテスト環境でのスキーマロールバックに必須です。
-
-### `db-seed` コマンドの必須度
-
-- 本番運用での必須度: 3
-  - 理由: 本番環境での使用は推奨されませんが、初期データ投入が必要な場合に使用可能です。
-
-- 開発/テスト運用での必須度: 1
-  - 理由: 開発やテスト環境での初期データ投入に必須です。
-
-### 無効化した場合の影響
-
-- CLIが無効化されると、データベースのマイグレーションやシードデータの投入、サーバーの起動が手動で行われる必要があり、作業効率が大幅に低下します。
-
-## 注意点
-
-- 各コマンドの引数やオプションを正確に指定する必要があります。
-- データベースのマイグレーションやシード操作は、実行前にバックアップを取ることを推奨します。
-- サーバー起動時の設定 (例: ポート番号) は、環境変数や設定ファイルで適切に管理してください。
+- Backup is recommended before running migration or seed operations
+- Server startup settings are managed via environment variables (see `internal/config`)
+- This directory is infrastructure-level; AI agents should not modify it unless explicitly instructed

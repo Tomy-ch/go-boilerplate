@@ -334,7 +334,7 @@ linters:
     makezero:
       always: false
     misspell:
-      locale: UK
+      locale: US
       ignore-rules:
         - "importas"
     nolintlint:

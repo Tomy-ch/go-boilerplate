@@ -1,8 +1,44 @@
-# SQLC Best Practices
+# database/dml
 
 English | [日本語](README.ja.md)
 
-This is a minimal reference summarizing only commonly used patterns for **PostgreSQL + Go** assuming code generation with `sqlc`.
+`database/dml` stores **SQL source files for sqlc code generation**.
+
+SQL files placed here are converted to Go code (`internal/infrastructure/rdb/sqlc/gen/`) via `make gen-query`.
+
+## Directory Structure
+
+```text
+database/dml/
+├── repository/       # Aggregate persistence DML (CRUD)
+│   ├── user/
+│   └── prefecture/
+├── query_service/    # Search-specific DML (read optimization)
+│   └── user/
+├── command_service/  # Command-specific DML (future extension)
+└── system_query/     # System operational queries (health check, etc.)
+    └── health_check/
+```
+
+## Subdirectory Mapping to Onion Architecture
+
+|Directory|Infrastructure Implementation|Interface Placement|Purpose|
+|---|---|---|---|
+|`repository/`|`internal/infrastructure/rdb/repository/`|Domain layer|Aggregate CRUD|
+|`query_service/`|`internal/infrastructure/rdb/query_service/`|Usecase layer|Usecase-specific search|
+|`command_service/`|(future extension)|Usecase layer|Write-only commands|
+|`system_query/`|`internal/infrastructure/rdb/system_query/`|Usecase layer|System operational queries|
+
+## SQL File Placement Rules
+
+- 1 aggregate = 1 directory (e.g., `repository/user/`)
+- Each query must have `-- name: QueryName :type` annotation
+- Parameters must be named with `sqlc.arg()` or `@param`
+- Generated code must not be manually edited
+
+## sqlc Best Practices
+
+A summary of commonly used patterns for **PostgreSQL + Go** with `sqlc` code generation.
 
 ## 1. `-- name:` and Execution Type
 

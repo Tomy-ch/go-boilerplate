@@ -1,23 +1,29 @@
-# core モジュール
+# core module
 
-概要: 入力検証や共通バリデータを初期化して DI コンテキストに提供するためのモジュールです。アプリケーション全体で再利用されるバリデーションルールやユーティリティを集約します。
+English | [日本語](README.ja.md)
 
-## 役割
+`internal/di/module/core` provides **DI module groups for core components** commonly used in the HTTP stack.
 
-- 入力検証（バリデーション）のための共通コンポーネントを初期化し、`fx` を通じてアプリケーションに提供します。カスタム検証ルールの登録や、バリデータの設定（タグ、ローカライズ等）を行います。
+Each module returns an `fx.Option` that registers the corresponding component in the DI container.
 
-## 必要度
+## Module List
 
-- **本番運用での必須度**: 推奨。
-  - 理由: 不正な入力を早期に弾くことで、ビジネスロジックの保護や想定外のエラーを減らすため、バリデーションは重要ですが、アプリ自体の起動には必須ではないケースもあります。
-- **開発/テスト運用での必須度**: 推奨。
-  - 理由: テスト時にバリデーションを有効にしておくことで、受け入れ条件や入力フォーマットの検証が確実になります。
+|Function|File|Provided Component|
+|---|---|---|
+|`AuthnModule()`|`auth.go`|Authentication (Authenticator + Auth controller)|
+|`BasicAuthModule()`|`basicauth.go`|Basic auth validator for metrics endpoint|
+|`IPRateLimiterModule()`|`ip_rate_limiter.go`|IP-based rate limiter|
+|`SecurityCookieModule()`|`security_cookie.go`|Cookie security attribute configuration|
+|`SkipperModule()`|`skipper.go`|Skip OpenAPI validation for ops endpoints|
+|`ValidatorModule()`|`validator.go`|OpenAPI schema validator|
 
-### 無効化した場合の影響
+## Design Policy
 
-- バリデーションを提供しない／無効化すると、各ハンドラやユースケースで個別に入力チェックを行う必要があり、重複実装やバグの温床になります。誤った入力によるランタイムエラーや不正データの流入リスクが高まります。
+- Each module is isolated as one file = one module
+- Internal implementation simply wraps constructors from `internal/controller/httpstack` etc. with `fx.Provide`
+- Does not contain business logic
 
-## 注意点
+## Notes
 
-- バリデータ実装はスレッドセーフである必要があります。初期化時にカスタムルールや翻訳を登録する場合、アプリ起動時に一度だけ行うようにしてください。
-- テストでは、グローバル設定やローカライズの影響で期待と異なる挙動になる場合があります。必要に応じてテスト用に独立したバリデータインスタンスを作ることを検討してください。
+- Adding or removing modules requires updating references from the parent module in `internal/di/module`
+- Tests verify that each module correctly provides its component

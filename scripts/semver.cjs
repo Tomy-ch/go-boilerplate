@@ -9,6 +9,10 @@ if (!version) {
 }
 
 const v = version.replace(/^v/, "");
+if (!/^\d+\.\d+\.\d+$/.test(v)) {
+  console.error("version must be in the format vX.Y.Z");
+  process.exit(1);
+}
 let [major, minor, patch] = v.split(".").map(Number);
 
 switch (type) {

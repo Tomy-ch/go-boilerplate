@@ -1,58 +1,66 @@
-# server DI モジュール
+# server DI Module
 
-概要:  
-このディレクトリは、**Echo サーバーの初期化・起動・DI 管理を担うサーバーモジュール層**です。  
-`ServeModule` を中心に、アプリケーションの HTTP サーバー立ち上げ・ライフサイクル管理を提供し、  
-`extension` 下の各拡張（middleware / configurator / observability / security など）と連動して  
-**HTTP スタック全体のエントリーポイント**として機能します。
+English | [日本語](README.ja.md)
 
-## 役割
+This directory is the **server module layer responsible for Echo server initialization, startup, and DI management**.
 
-- Echo サーバーの生成 (`NewAppServer`)
-- HTTP サーバーの起動 (`ServeHTTP`)
-- Uber FX による DI 統合（httpstack で構築された拡張を集約）
-- サーバー起動・停止のライフサイクル管理
-- controller / handler 層が利用する HTTP 基盤を提供
+Built around three `fx.Module` functions, it provides HTTP server creation, middleware aggregation, and lifecycle hook registration.
 
-このディレクトリは **「HTTP サーバーそのものを動かすためのコア層」** です。
+## Structure
 
-## 必要度
+```text
+internal/di/server/
+├── server.go       # Module / HookModule / MiddlewareModule
+├── extension/      # Middleware and configurator DI registration
+└── hook/           # Server lifecycle hooks (HTTP start/stop, DB close, rate limit cleanup)
+```
 
-### 本番運用での必須度
+## Public API
 
-- 必須度: **本番運用で必須**
+|Function|Description|
+|---|---|
+|`Module()`|Provide `*echo.Echo` via `server.NewAppServer`|
+|`HookModule()`|Register server lifecycle hooks (HTTP start/stop, rate limit cleanup)|
+|`MiddlewareModule()`|Aggregate all HTTP stack middleware and configurators|
 
-理由:  
+### MiddlewareModule Composition
 
-- サーバーの起動はアプリケーションの根幹であるため必須  
-- 拡張ミドルウェア（セキュリティ / ロギング / CORS / Observability）が本番で正しく適用されるため  
-- fx ライフサイクルと連携し、適切な shutdown / cleanup が保証されるため  
+`MiddlewareModule()` aggregates the following sub-modules:
 
-### 開発/テスト運用での必須度
+|Category|Modules|
+|---|---|
+|decoration|`BannerModule`, `DefaultPortModule`|
+|inbound|`IPExtractorModule`, `URIModule`, `OpenAPIModule`|
+|outbound|`ErrorHandlerModule`, `ForceJSONModule`, `RecoveryModule`|
+|security|`Module`, `CORSModule`, `CookieModule`, `RateLimitModule`|
+|instrumentation|`RequestIDModule`, `LoggingModule`, `ObservabilityModule`|
+|nonprod|`DebugModeModule`|
 
-- 必須度: **開発/テスト運用で必須**
+Additionally, `extension.ApplyExtends` is provided to apply all collected middleware and configurators to the Echo instance.
 
-理由:  
+## Application Startup Order
 
-- ローカル環境でも Echo サーバーを実際に動かし動作確認するため  
-- E2E / integration テストで HTTP サーバーが必要  
-- 拡張ミドルウェアの動作確認（CORS / エラー変換 / リクエスト整形など）に不可欠  
+```mermaid
+flowchart LR
+    Module["Module()"] --> MiddlewareModule["MiddlewareModule()"]
+    MiddlewareModule --> HookModule["HookModule()"]
+    HookModule --> Start["Server Start"]
+```
 
-## 無効化した場合の影響
+1. `Module()` — Create Echo instance
+2. `MiddlewareModule()` — Apply all middleware and configurators
+3. `HookModule()` — Register start/stop hooks (server starts here)
 
-- HTTP サーバーが起動しなくなる  
-- ミドルウェアや拡張機能（requestid, logging, cors, security）の適用が不可能  
-- controller / router 層が機能しなくなり、REST API 全体が動作不能  
-- fx のライフサイクル管理が正しく行われず、安全な shutdown が保証されない
+## Subdirectories
 
-**実質的にアプリケーションは動作不能となるため、無効化は不可能です。**
+|Directory|Description|Details|
+|---|---|---|
+|`extension/`|Middleware and configurator DI registration with Priority management|[README](extension/README.md)|
+|`hook/`|Server lifecycle hooks (HTTP, DB close, rate limit cleanup)|[README](hook/README.md)|
 
-## 注意点
+## Notes
 
-- `ServeModule` は必ず DI の最終層として読み込む必要があります  
-  → ミドルウェアや configurator を適用した後でサーバーを起動するため  
-- `ServeHTTP` はブロッキングするため、fx のライフサイクル外で直接呼び出さないこと  
-- `app.NewAppServer` は副作用がある処理であるため、domain/usecase から参照しないこと  
-- サーバー設定は `controller/server` 層に寄せ、**domain と infra へ漏れない構成**を保つこと  
-- extension 配下の設定（security / inbound / outbound / instrumentation）は  
-  **HTTPStackModule → ServeModule の順** で適用される
+- `Module()` must be loaded before `MiddlewareModule()` — Echo instance is required for middleware application
+- `HookModule()` must be loaded last — server starts after middleware and configurators are applied
+- `NewAppServer` has side effects and must not be referenced from domain/usecase
+- Extensions are applied in the order **MiddlewareModule → HookModule**

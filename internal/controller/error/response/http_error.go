@@ -11,7 +11,7 @@ const (
 	// codeBadRequest は、リクエストに不正または不足がある場合に使用されるエラーコードです。
 	codeBadRequest = "BAD_REQUEST"
 	// codeUnauthorized は、認証されていないアクセスに対して使用されるエラーコードです。
-	codeUnauthorized = "UNAUTHORISED"
+	codeUnauthorized = "UNAUTHORIZED"
 	// codeAccessDenied は、アクセス権限がない操作を試みた場合に使用されるエラーコードです。
 	codeAccessDenied = "ACCESS_DENIED"
 	// codeNotFound は、指定されたリソースが存在しない場合に使用されるエラーコードです。
