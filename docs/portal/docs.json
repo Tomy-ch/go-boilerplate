@@ -64,12 +64,24 @@
           "path": "./guides/controller.md"
         },
         {
+          "name": "Controller Error Response",
+          "path": "./guides/controller-error-response.md"
+        },
+        {
           "name": "Controller Handler",
           "path": "./guides/controller-handler.md"
         },
         {
+          "name": "Controller Httpstack",
+          "path": "./guides/controller-httpstack.md"
+        },
+        {
           "name": "Controller Job",
           "path": "./guides/controller-job.md"
+        },
+        {
+          "name": "Controller Server",
+          "path": "./guides/controller-server.md"
         }
       ]
     },
@@ -81,12 +93,24 @@
           "path": "./guides/ja/controller.ja.md"
         },
         {
+          "name": "Controller Error Response",
+          "path": "./guides/ja/controller-error-response.ja.md"
+        },
+        {
           "name": "Controller Handler",
           "path": "./guides/ja/controller-handler.ja.md"
         },
         {
+          "name": "Controller Httpstack",
+          "path": "./guides/ja/controller-httpstack.ja.md"
+        },
+        {
           "name": "Controller Job",
           "path": "./guides/ja/controller-job.ja.md"
+        },
+        {
+          "name": "Controller Server",
+          "path": "./guides/ja/controller-server.ja.md"
         }
       ]
     },
@@ -114,6 +138,14 @@
         {
           "name": "Usecase",
           "path": "./guides/usecase.md"
+        },
+        {
+          "name": "Usecase Boundary",
+          "path": "./guides/usecase-boundary.md"
+        },
+        {
+          "name": "Usecase Tools",
+          "path": "./guides/usecase-tools.md"
         }
       ]
     },
@@ -123,6 +155,14 @@
         {
           "name": "Usecase",
           "path": "./guides/ja/usecase.ja.md"
+        },
+        {
+          "name": "Usecase Boundary",
+          "path": "./guides/ja/usecase-boundary.ja.md"
+        },
+        {
+          "name": "Usecase Tools",
+          "path": "./guides/ja/usecase-tools.ja.md"
         }
       ]
     },
@@ -136,6 +176,14 @@
         {
           "name": "Infrastructure Auth",
           "path": "./guides/infrastructure-auth.md"
+        },
+        {
+          "name": "Infrastructure Rdb Driver",
+          "path": "./guides/infrastructure-rdb-driver.md"
+        },
+        {
+          "name": "Infrastructure Rdb Driver Loggingdb",
+          "path": "./guides/infrastructure-rdb-driver-loggingdb.md"
         },
         {
           "name": "Infrastructure Rdb Query Service",
@@ -159,6 +207,14 @@
           "path": "./guides/ja/infrastructure-auth.ja.md"
         },
         {
+          "name": "Infrastructure Rdb Driver",
+          "path": "./guides/ja/infrastructure-rdb-driver.ja.md"
+        },
+        {
+          "name": "Infrastructure Rdb Driver Loggingdb",
+          "path": "./guides/ja/infrastructure-rdb-driver-loggingdb.ja.md"
+        },
+        {
           "name": "Infrastructure Rdb Query Service",
           "path": "./guides/ja/infrastructure-rdb-query-service.ja.md"
         },
@@ -172,6 +228,10 @@
       "title": "Database (English)",
       "items": [
         {
+          "name": "Database",
+          "path": "./guides/database.md"
+        },
+        {
           "name": "Sqlc Query Guide",
           "path": "./guides/sqlc-query-guide.md"
         },
@@ -184,6 +244,10 @@
     {
       "title": "Database (Japanese)",
       "items": [
+        {
+          "name": "Database",
+          "path": "./guides/ja/database.ja.md"
+        },
         {
           "name": "Sqlc Query Guide",
           "path": "./guides/ja/sqlc-query-guide.ja.md"
@@ -204,10 +268,6 @@
         {
           "name": "Config",
           "path": "./guides/config.md"
-        },
-        {
-          "name": "Di",
-          "path": "./guides/di.md"
         },
         {
           "name": "Logging",
@@ -235,10 +295,6 @@
           "path": "./guides/ja/config.ja.md"
         },
         {
-          "name": "Di",
-          "path": "./guides/ja/di.ja.md"
-        },
-        {
           "name": "Logging",
           "path": "./guides/ja/logging.ja.md"
         },
@@ -249,6 +305,64 @@
         {
           "name": "System",
           "path": "./guides/ja/system.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Di (English)",
+      "items": [
+        {
+          "name": "Di",
+          "path": "./guides/di.md"
+        },
+        {
+          "name": "Di Job",
+          "path": "./guides/di-job.md"
+        },
+        {
+          "name": "Di Module",
+          "path": "./guides/di-module.md"
+        },
+        {
+          "name": "Di Module Core",
+          "path": "./guides/di-module-core.md"
+        },
+        {
+          "name": "Di Server",
+          "path": "./guides/di-server.md"
+        },
+        {
+          "name": "Di Server Extension",
+          "path": "./guides/di-server-extension.md"
+        }
+      ]
+    },
+    {
+      "title": "Di (Japanese)",
+      "items": [
+        {
+          "name": "Di",
+          "path": "./guides/ja/di.ja.md"
+        },
+        {
+          "name": "Di Job",
+          "path": "./guides/ja/di-job.ja.md"
+        },
+        {
+          "name": "Di Module",
+          "path": "./guides/ja/di-module.ja.md"
+        },
+        {
+          "name": "Di Module Core",
+          "path": "./guides/ja/di-module-core.ja.md"
+        },
+        {
+          "name": "Di Server",
+          "path": "./guides/ja/di-server.ja.md"
+        },
+        {
+          "name": "Di Server Extension",
+          "path": "./guides/ja/di-server-extension.ja.md"
         }
       ]
     },
@@ -279,6 +393,24 @@
       ]
     },
     {
+      "title": "Cli (English)",
+      "items": [
+        {
+          "name": "Cli",
+          "path": "./guides/cli.md"
+        }
+      ]
+    },
+    {
+      "title": "Cli (Japanese)",
+      "items": [
+        {
+          "name": "Cli",
+          "path": "./guides/ja/cli.ja.md"
+        }
+      ]
+    },
+    {
       "title": "Integration (English)",
       "items": [
         {
@@ -297,11 +429,111 @@
       ]
     },
     {
+      "title": "Pkg (English)",
+      "items": [
+        {
+          "name": "Pkg",
+          "path": "./guides/pkg.md"
+        }
+      ]
+    },
+    {
+      "title": "Pkg (Japanese)",
+      "items": [
+        {
+          "name": "Pkg",
+          "path": "./guides/ja/pkg.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Docker (English)",
+      "items": [
+        {
+          "name": "Docker",
+          "path": "./guides/docker.md"
+        },
+        {
+          "name": "Docker Server",
+          "path": "./guides/docker-server.md"
+        },
+        {
+          "name": "Docker Tools",
+          "path": "./guides/docker-tools.md"
+        }
+      ]
+    },
+    {
+      "title": "Docker (Japanese)",
+      "items": [
+        {
+          "name": "Docker",
+          "path": "./guides/ja/docker.ja.md"
+        },
+        {
+          "name": "Docker Server",
+          "path": "./guides/ja/docker-server.ja.md"
+        },
+        {
+          "name": "Docker Tools",
+          "path": "./guides/ja/docker-tools.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Scripts (English)",
+      "items": [
+        {
+          "name": "Scripts",
+          "path": "./guides/scripts.md"
+        }
+      ]
+    },
+    {
+      "title": "Scripts (Japanese)",
+      "items": [
+        {
+          "name": "Scripts",
+          "path": "./guides/ja/scripts.ja.md"
+        }
+      ]
+    },
+    {
+      "title": "Ci (English)",
+      "items": [
+        {
+          "name": "Ci Workflows",
+          "path": "./guides/ci-workflows.md"
+        }
+      ]
+    },
+    {
+      "title": "Ci (Japanese)",
+      "items": [
+        {
+          "name": "Ci Workflows",
+          "path": "./guides/ja/ci-workflows.ja.md"
+        }
+      ]
+    },
+    {
       "title": "External (English)",
       "items": [
         {
           "name": "Openapi",
           "path": "./guides/openapi.md"
+        },
+        {
+          "name": "Openapi Parameters",
+          "path": "./guides/openapi-parameters.md"
+        },
+        {
+          "name": "Openapi Paths",
+          "path": "./guides/openapi-paths.md"
+        },
+        {
+          "name": "Openapi Schemas",
+          "path": "./guides/openapi-schemas.md"
         }
       ]
     },
@@ -311,6 +543,18 @@
         {
           "name": "Openapi",
           "path": "./guides/ja/openapi.ja.md"
+        },
+        {
+          "name": "Openapi Parameters",
+          "path": "./guides/ja/openapi-parameters.ja.md"
+        },
+        {
+          "name": "Openapi Paths",
+          "path": "./guides/ja/openapi-paths.ja.md"
+        },
+        {
+          "name": "Openapi Schemas",
+          "path": "./guides/ja/openapi-schemas.ja.md"
         }
       ]
     },
@@ -347,15 +591,6 @@
         {
           "name": "Github Page",
           "path": "../ja/deployment/github-page.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Er Diagram",
-      "items": [
-        {
-          "name": "Er Diagram",
-          "path": "../er-diagram/index.html"
         }
       ]
     },

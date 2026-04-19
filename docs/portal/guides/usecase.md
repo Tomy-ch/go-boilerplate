@@ -1,6 +1,6 @@
 # Usecase Layer (`internal/usecase`) Guide
 
-English | [日本語](README_ja.md)
+English | [日本語](README.ja.md)
 
 ## Role in Onion Architecture
 
