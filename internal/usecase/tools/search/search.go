@@ -29,8 +29,8 @@ func ParseSearchTokens(keyword *string, maxTokens int) []string {
 	}
 
 	raw := splitIntoTerms(k)
-	normalised := trimAndDropEmpty(raw)
-	unique := dedupePreserveOrder(normalised)
+	normalized := trimAndDropEmpty(raw)
+	unique := dedupePreserveOrder(normalized)
 
 	return limit(unique, maxTokens)
 }

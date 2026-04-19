@@ -2,6 +2,50 @@
 
 English | [日本語](README.ja.md)
 
+## Position of Repository in Onion Architecture
+
+In Onion Architecture, Repository is the **central pattern that embodies the Dependency Inversion Principle (DIP)**.
+
+```mermaid
+flowchart TB
+    subgraph "Domain Layer (inner)"
+        RepoIF["Repository interface"]
+        Entity["Domain Entity"]
+    end
+    subgraph "Infrastructure Layer (outer)"
+        RepoImpl["Repository impl"]
+        Sqlc["sqlc"]
+        DB["PostgreSQL"]
+    end
+
+    RepoImpl -. implements .-> RepoIF
+    RepoImpl --> Sqlc --> DB
+    RepoImpl --> Entity
+```
+
+### Core Role of Repository
+
+|Principle|How Repository Achieves It|
+|---|---|
+|Dependency Inversion|Domain defines the interface, Infrastructure implements it|
+|Aggregate Boundary Protection|Persistence is performed per Aggregate unit|
+|Domain Purity|Domain has no knowledge of DB / SQL / frameworks|
+|Invariant Validation|Entities are reconstructed only through Domain constructors|
+
+### Responsibility Split with QueryService
+
+Repository handles **Aggregate persistence (CRUD)**. Read-only queries for search and list retrieval are separated into [QueryService](../query_service/README.md).
+
+|Aspect|Repository|QueryService|
+|---|---|---|
+|Purpose|Aggregate persistence|Usecase-specific search|
+|Interface placement|Domain layer|Usecase layer|
+|Return type|Domain Entity|DTO (display projection)|
+|Invariants|Guaranteed by Domain constructor|Not involved|
+|Transactions|Controlled by Usecase (`tx.Manager`)|Principally read-only|
+
+This separation allows Repository to focus on Aggregate integrity while delegating search performance optimization to QS.
+
 ## Role
 
 Repository is the layer that **implements the Domain persistence abstraction (Repository Interface) in Infrastructure**.

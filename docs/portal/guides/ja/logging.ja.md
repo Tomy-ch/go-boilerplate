@@ -51,8 +51,11 @@ type Logger interface {
 
     Named(name string) Logger
     CallerSkip(skip int) Logger
+    ConvertFields(fields []*Field) []zap.Field
 }
 ```
+
+`ConvertFields` は `*Field` スライスを `zap.Field` スライスに変換します。主にフレームワーク連携など、内部的に zap.Field が必要な場面で使用します。
 
 この設計により
 
@@ -68,6 +71,15 @@ Logger はアプリケーションの実行モードに応じて生成されま�
 
 ```go
 logger, err := logging.New(appCfg)
+```
+
+`New` は `config.ApplicationConfig` のモードに応じて適切なロガーを選択します。
+
+個別に生成する場合は以下の関数も利用できます。
+
+```go
+logger, err := logging.NewProductionLogger()
+logger, err := logging.NewDevelopmentLogger()
 ```
 
 内部では次のロガーが使用されます。
@@ -111,7 +123,10 @@ logger.Info(
 |Int64|int64|
 |Float64|float64|
 |Bool|bool|
+|Time|time.Time（RFC3339Nano文字列に変換）|
+|DurationMs|time.Duration（ミリ秒単位のfloat64に変換）|
 |Error|error|
+|Stacktrace|error（スタックトレース文字列に変換）|
 |Any|any|
 
 この設計の目的
@@ -126,13 +141,21 @@ HTTP / SQL / Observability 用のログフィールド生成をまとめたコ�
 
 ```go
 type LogFieldBuilder interface {
-    BuildHTTPRequestFields(...)
-    BuildHTTPResponseFields(...)
-    BuildSQLStartFields(...)
-    BuildSQLEndFields(...)
-    BuildObservabilityFields(...)
+    BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field
+    BuildHTTPResponseFields(resp HTTPResponseLogInput) []*Field
+    BuildSQLStartFields(sql SQLFieldsStartInput) []*Field
+    BuildSQLEndFields(sql SQLFieldsEndInput) []*Field
+    BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field
 }
 ```
+
+生成
+
+```go
+lf := logging.NewLogFields(obsCfg, osCfg)
+```
+
+`config.ObservabilityConfig` と `config.OperationSystemConfig` を受け取り、trace/span フィールドの付与やタイムゾーン情報の付与を制御します。
 
 用途
 
@@ -141,6 +164,20 @@ type LogFieldBuilder interface {
 - trace/spanログ
 
 などの **構造化ログを自動生成**します。
+
+### 入力構造体
+
+各 Build メソッドは専用の入力構造体を受け取ります。
+
+|構造体|用途|主なフィールド|
+|---|---|---|
+|`HTTPRequestLogInput`|HTTPリクエストログ|Method, Path, URI, RemoteIP, Host, Scheme, Proto, UserAgent, ContentType, ContentLength, PathParams, QueryParams|
+|`HTTPResponseLogInput`|HTTPレスポンスログ|Method, Path, URI, Status, Latency, RequestID|
+|`SQLFieldsStartInput`|SQL開始ログ|Layer, PkgName, FuncName, SpanName|
+|`SQLFieldsEndInput`|SQL終了ログ|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
+|`ObservabilityFieldsInput`|Observabilityログ|Layer, PkgName, FuncName, SpanName, EventType, Latency|
+
+すべての入力構造体は `EventAt`（イベント発生時刻）と `TraceID` / `SpanID` / `ParentSpanID`（トレース情報）を共通で持ちます。
 
 ## HTTP Logging
 
@@ -248,6 +285,74 @@ trace / span 情報は logging 層で統合します。
 ### 4 テスト容易性
 
 Logger は interface のため `mockgen` でモック生成可能です。
+
+## ログキー定数
+
+`const.go` で定義されるログキーの一覧です。
+
+### HTTP系
+
+|定数|キー|
+|---|---|
+|`EventTypeKey`|`event_type`|
+|`EventTypeStart`|`start`|
+|`EventTypeEnd`|`end`|
+|`EventAtKey`|`event_at`|
+|`EventTzKey`|`event_tz`|
+|`StatusKey`|`status`|
+|`MethodKey`|`method`|
+|`URIKey`|`uri`|
+|`PathKey`|`path`|
+|`QueryParamsKey`|`query_params`|
+|`PathParamsKey`|`path_params`|
+|`UserAgentKey`|`user_agent`|
+|`HostKey`|`host`|
+|`SchemeKey`|`scheme`|
+|`ProtoKey`|`proto`|
+|`RemoteIPKey`|`remote_ip`|
+|`ContentTypeKey`|`content_type`|
+|`ContentLengthKey`|`content_length`|
+|`LatencyKey`|`latency_ms`|
+|`RequestIDKey`|`request_id`|
+
+### エラー系
+
+|定数|キー|
+|---|---|
+|`ErrorCodeKey`|`error_code`|
+|`ErrorMessageKey`|`error_message`|
+|`ErrorDetails`|`error_details`|
+|`InternalErrorKey`|`internal_error`|
+|`InternalStackTraceKey`|`internal_stacktrace`|
+
+### クエリ系
+
+|定数|キー|
+|---|---|
+|`RawQueryKey`|`raw_query`|
+|`QueryCompactKey`|`query_compact`|
+|`QueryArgsCountKey`|`args_count`|
+
+### Job系
+
+|定数|キー|
+|---|---|
+|`JobNameKey`|`job_name`|
+|`JobArgsKey`|`job_args`|
+|`JobErrorKey`|`job_error`|
+|`JobResultKey`|`job_result`|
+
+### 可観測系
+
+|定数|キー|
+|---|---|
+|`TraceIDKey`|`trace_id`|
+|`SpanIDKey`|`span_id`|
+|`ParentSpanIDKey`|`parent_span_id`|
+|`SpanNameKey`|`span_name`|
+|`LayerKey`|`layer`|
+|`PackageKey`|`package`|
+|`FunctionKey`|`function`|
 
 ## セキュリティ注意点
 

@@ -1,50 +1,20 @@
 # nonprod
 
-概要:  
-`nonprod` は **非本番環境（development / staging / local）専用のサーバー拡張機能を DI として提供するレイヤー** です。  
-本番環境では無効化されるべき挙動（Echo のデバッグモードなど）を、環境設定に基づいて安全に適用するためのモジュール群をまとめています。
+English | [日本語](README.ja.md)
 
-## 役割
+`nonprod` is a layer that provides **non-production environment-only server extensions** (development / staging / local) via DI.
 
-- **デバッグモード (Echo.Debug) の制御**
-- 非本番環境でのみ有効になるサーバー設定を安全に適用
-- 本番環境への漏れ込みを防ぐためのガードレイヤー
-- `ApplicationConfig` を基準に環境別サーバー挙動を切り替える
+It groups modules that safely apply behaviors (such as Echo debug mode) that should be disabled in production, based on environment settings.
 
-## 必要度
+## Modules
 
-### 本番運用での必須度
+|Module|Type|Description|
+|---|---|---|
+|`DebugModeModule()`|Configurator|Enable Echo debug mode in non-production environments only|
 
-- 必須度: **不要（本番では絶対に無効化すべき）**
+## Notes
 
-理由:  
-
-- Echo のデバッグモードは詳細なエラー出力や内部情報を返す可能性があり、本番環境で動作させることは危険  
-- セキュリティ上の観点から、本番でのデバッグ挙動は情報漏洩の原因になる  
-- 本番環境では安定性・堅牢性を優先するため、開発者向け機能を含めない必要がある
-
-### 開発/テスト運用での必須度
-
-- 必須度: **開発/テスト運用で必須**
-
-理由:  
-
-- デバッグモードにより Echo の挙動やエラーを把握しやすくなる  
-- ローカル開発でのルーティング・ミドルウェア動作確認に便利  
-- ステージング環境で一時的なデバッグが必要な場合にも利用可能（ただし慎重に）
-
-## 無効化した場合の影響
-
-- ローカル開発でデバッグ情報が得られず、調査効率が低下する  
-- 非本番でのログ・エラー内容の把握に時間がかかる  
-- デバッグ表示がないため、Echo の内部エラーやハンドラ不整合の発見が遅れる可能性
-
-**→ 非本番では有効化する方が開発効率が大きく向上します。**
-
-## 注意点
-
-- **必ず ApplicationConfig を参照し、本番環境では動かないようにすること**
-- Debug モードはあくまで「非本番専用」であり、本番に漏れるとセキュリティリスクとなる  
-- ServeCfg（サーバー設定）は Echo インスタンスに直接副作用を与えるため、  
-  **domain/usecase 層には依存させないこと**
-- 非本番向け設定を追加したい場合は、この `nonprod` ディレクトリにモジュールを拡張することが推奨
+- **Must always reference ApplicationConfig and ensure it does not run in production**
+- Debug mode is "non-production only" — leaking to production creates a security risk
+- ServeCfg applies side effects directly to the Echo instance — **must not depend on domain/usecase**
+- To add non-production settings, extend this `nonprod` directory with new modules

@@ -1,32 +1,30 @@
-# UUID
+# uuid
 
-概要: このディレクトリは、UUID の生成および操作を行うための機能を提供します。
+English | [日本語](README.ja.md)
 
-Google の `uuid` パッケージをラップして、アプリケーションでのライブラリの差し替えを容易にすることを目的としています。
+UUID value object wrapping `github.com/google/uuid`. Generates UUIDv7 and supports database integration.
 
-## 役割
+## Public API
 
-- UUID の生成、解析、比較、およびポインタ操作を提供します。
-- テスト用の決定論的な UUID 生成機能を含みます。
+|Function / Method|Description|
+|---|---|
+|`New()`|Generate UUIDv7|
+|`Parse(s)`|Parse UUID from string|
+|`NewTestFromSalt(t, salt)`|Generate deterministic UUID for testing|
+|`String()`|Return string representation|
+|`Bytes()`|Return underlying `[16]byte`|
+|`ToPrimitive()`|Convert to `google/uuid.UUID`|
+|`IsNil()`|Check if zero value|
+|`Equal(v)`|Compare UUIDs|
+|`ToPtr()`|Get pointer to UUID|
+|`EqualPtr(v)`|Compare via pointer|
+|`Scan(src)` / `Value()`|`sql.Scanner` / `driver.Valuer` for DB integration|
 
-## 必要度
+## Wraps
 
-### 本番運用での必須度
+`github.com/google/uuid`
 
-- 必須度: 本番運用で必須
-  - 理由: 一意の識別子を生成するために UUID は不可欠です。特に分散システムやデータベースでの一意性を保証するために使用されます。
+## Notes
 
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で必須
-  - 理由: テスト環境では、決定論的な UUID を生成することで、再現性のあるテストを実現します。
-
-### 無効化した場合の影響
-
-- UUID の生成ができなくなるため、アプリケーションの一意性を保証する機能が失われます。
-- テスト環境での再現性が低下します。
-
-## 注意点
-
-- UUID の生成には Google の `uuid` パッケージを使用しています。バージョン管理に注意してください。
-- テスト用の `NewTestFromSalt` 関数は、本番環境での使用を想定していません。
+- `NewTestFromSalt` is for testing only — do not use in production
+- sqlc override aligns DB UUID with this type, eliminating manual conversion

@@ -45,8 +45,8 @@ const replacements = [
         value: `dlv@${tools.dlv}`,
       },
       {
-        regex: /lefthook@[\w\.\-]+/,
-        value: `lefthook@${tools.lefthook}`,
+        regex: /lefthook\/v2@[\w\.\-]+/,
+        value: `lefthook/v2@${tools.lefthook}`,
       },
       {
         regex: /golangci-lint@[\w\.\-]+/,
@@ -82,8 +82,8 @@ const replacements = [
         value: `dlv@${tools.dlv}`,
       },
       {
-        regex: /lefthook@[\w\.\-]+/,
-        value: `lefthook@${tools.lefthook}`,
+        regex: /lefthook\/v2@[\w\.\-]+/,
+        value: `lefthook/v2@${tools.lefthook}`,
       },
       {
         regex: /golangci-lint@[\w\.\-]+/,

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILES=$(find .makefiles -name '*.mk')
+FILES=$(find .makefiles -name '*.mk' | sort)
 
 echo "📦 Makeターゲット一覧"
 echo "-------------------------------------------"

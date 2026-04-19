@@ -29,7 +29,7 @@ Primary responsibilities:
 
 - Convert PostgreSQL SQLSTATE into `apperror`
 - Determine database connectivity errors
-- Convert `sql.ErrNoRows` into `NotFound`
+- Convert `pgx.ErrNoRows` into `NotFound`
 - Standardize error contracts between Infrastructure and Usecase layers
 
 This enables **separating DB implementation-dependent error handling from application code**.
@@ -72,13 +72,13 @@ PostgreSQL errors that do not match these cases are converted into `Internal` er
 
 ## Special Handling
 
-### sql.ErrNoRows
+### pgx.ErrNoRows
 
-`sql.ErrNoRows` is not a PostgreSQL SQLSTATE, so it is handled specially.
+`pgx.ErrNoRows` is not a PostgreSQL SQLSTATE, so it is handled specially.
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["NotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["NotFound"]
 ```
 
 This allows the Repository layer to handle `NotFound` errors simply by:
@@ -99,8 +99,7 @@ The following errors are treated as connectivity failures.
 
 - context.DeadlineExceeded
 - net.Error (timeout)
-- driver.ErrBadConn
-- PostgreSQL SQLSTATE 08XXX
+- PostgreSQL SQLSTATE 08XXX (connection exception)
 
 This determination can be used for recovery processing such as:
 

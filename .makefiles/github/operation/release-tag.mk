@@ -1,4 +1,4 @@
-get-latest-version = $(shell git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1)
+GET_LATEST_VERSION_CMD := git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1
 
 define do-release-tag
 	echo "🔄 productionブランチの最新を取得中..."; \
@@ -18,6 +18,7 @@ define do-release-tag
 		echo "✅ タグを打ちました $(2) on production HEAD"; \
 	else \
 		echo "❌ .github/release/$(2).md が存在しません。タグとリリースをスキップしました。"; \
+		exit 1; \
 	fi
 endef
 
@@ -28,16 +29,31 @@ endef
 .PHONY: tag-major ## リリースタグ(vX+1.0.0)を作成
 
 tag-patch:
-	@V=$(call get-latest-version); \
+	@git fetch --tags origin; \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
+	if [ -z "$$V" ]; then \
+		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
+		exit 1; \
+	fi; \
 	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V patch); \
 	$(call do-release-tag,$$V,$$NEXT)
 
 tag-minor:
-	@V=$(call get-latest-version); \
+	@git fetch --tags origin; \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
+	if [ -z "$$V" ]; then \
+		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
+		exit 1; \
+	fi; \
 	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V minor); \
 	$(call do-release-tag,$$V,$$NEXT)
 
 tag-major:
-	@V=$(call get-latest-version); \
+	@git fetch --tags origin; \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
+	if [ -z "$$V" ]; then \
+		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
+		exit 1; \
+	fi; \
 	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V major); \
 	$(call do-release-tag,$$V,$$NEXT)

@@ -30,9 +30,29 @@
 
 - LIKE / ILIKE 検索用パターン生成
 - PostgreSQL LIKE エスケープ
-- sqlc Enum 型への変換
 
 これらは **Infrastructure 層のユーティリティ**として利用されます。
+
+## ディレクトリ構成
+
+```text
+internal/infrastructure/rdb/sqlc/
+├── like.go         # LIKE 検索ヘルパー
+└── gen/            # sqlc 自動生成コード（編集禁止）
+    ├── desc.go     # パッケージ記述
+    ├── *.sql.go    # クエリ実行コード（自動生成）
+    └── *.gen.go    # 型定義（自動生成）
+```
+
+## 公開 API
+
+|関数 / 定数|ファイル|説明|
+|---|---|---|
+|`DefaultLikeEscapeChar`|`like.go`|デフォルトのエスケープ文字（`\\`）|
+|`EscapeForLike(s, esc)`|`like.go`|LIKE の特殊文字（`%`, `_`, エスケープ文字）をエスケープ|
+|`WrapPrefixLikePattern(token)`|`like.go`|前方一致パターン生成（`token%`）|
+|`WrapSuffixLikePattern(token)`|`like.go`|後方一致パターン生成（`%token`）|
+|`WrapContainsLikePattern(escaped)`|`like.go`|部分一致パターン生成（`%escaped%`）|
 
 ## LIKE 検索ヘルパー
 

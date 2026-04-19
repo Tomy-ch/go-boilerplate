@@ -75,7 +75,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			require.Equal(t, expected, actual)
 		})
 
-		t.Run("ErrUnauthenticatedの場合、unauthorisedが返される", func(t *testing.T) {
+		t.Run("ErrUnauthenticatedの場合、unauthorizedが返される", func(t *testing.T) {
 			expected := httpErrorMeta{
 				Status:  http.StatusUnauthorized,
 				Code:    codeUnauthorized,

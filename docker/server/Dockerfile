@@ -2,7 +2,7 @@
 # ビルド用
 # ------------------------------
 # NOTE: 本番利用時にはダイジェストを指定することを推奨
-FROM golang:1.26.1-alpine AS builder
+FROM golang:1.26.2-alpine AS builder
 
 WORKDIR /app
 
@@ -71,7 +71,7 @@ CMD ["/app/server", "migrate-up"]
 # ------------------------------
 # ローカル環境
 # ------------------------------
-FROM golang:1.26.1-alpine AS tooling
+FROM golang:1.26.2-alpine AS tooling
 
 # ビルドなどに必要なパッケージをインストール
 RUN apk add --no-cache \

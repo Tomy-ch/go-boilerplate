@@ -41,23 +41,23 @@ The following exist as supporting components.
 |Component|Role|
 |---|---|
 |sqlc|Type-safe query execution code generated from SQL|
-|conv|Conversion between nullable types and Go types|
 |pgerror|PostgreSQL error → application error conversion|
+|metrics|Connection pool statistics as Prometheus metrics|
+|system_query|System operational queries (health check, etc.)|
 |testkit|RDB test utilities (real DB + rollback)|
 
 ## Directory Structure
 
 ```txt
 internal/infrastructure/rdb
-
  ├ repository/        Repository implementation
  ├ query_service/     QueryService implementation
+ ├ system_query/      System operational queries (health check, etc.)
  ├ driver/            DB connection / transaction
  │   └ loggingdb/     SQL logging / tracing wrapper
  ├ sqlc/              sqlc generated code + SQL helper
- ├ conv/              nullable type conversion
- ├ postgres/
- │   └ pgerror/       PostgreSQL error normalization
+ ├ pgerror/           PostgreSQL error normalization
+ ├ metrics/           Connection pool Prometheus metrics
  └ testkit/           RDB test utilities
 ```
 
@@ -104,7 +104,6 @@ In this directory:
 
 - sqlc generated code
 - LIKE search helper
-- Enum / state conversion helper
 
 are provided.
 
@@ -115,22 +114,6 @@ Generated code is placed at:
 See details below.
 
 [sqlc directory README](sqlc/README.md)
-
-## conv
-
-`conv` is a **utility for converting between nullable types and Go pointer types**.
-
-```mermaid
-flowchart LR
-    A["sql.NullString"] <--> B["*string"]
-    C["sql.NullTime"] <--> D["*time.Time"]
-```
-
-Used in Repository / QueryService implementations.
-
-See details below.
-
-[conv directory README](conv/README.md)
 
 ## driver
 
@@ -174,7 +157,7 @@ See details below.
 
 ## PostgreSQL Error Normalization
 
-`postgres/pgerror` is a **layer that converts PostgreSQL-specific errors into application errors**.
+`pgerror` is a **layer that converts PostgreSQL-specific errors into application errors**.
 
 Repository / QueryService use:
 
@@ -188,7 +171,7 @@ Main conversions
 
 ```mermaid
 flowchart TB
-    A["sql.ErrNoRows"] -->|→| B["ErrNotFound"]
+    A["pgx.ErrNoRows"] -->|→| B["ErrNotFound"]
     C["unique violation"] -->|→| D["ErrConflict"]
     E["connection error"] -->|→| F["ErrUnavailable"]
     G["others"] -->|→| H["ErrInternal"]
@@ -196,7 +179,27 @@ flowchart TB
 
 See details below.
 
-[pgerror directory README](postgres/pgerror/README.md)
+[pgerror directory README](pgerror/README.md)
+
+## metrics
+
+`metrics` is a package that **exposes pgxpool connection pool statistics as Prometheus metrics**.
+
+Provides Gauge (connection counts) and Counter (acquire counts, destroy counts, etc.).
+
+See details below.
+
+[metrics directory README](metrics/README.md)
+
+## system_query
+
+`system_query` is a layer that provides **system-operational DB queries** (health check, etc.).
+
+Unlike Repository / QueryService, it handles operational and monitoring queries that do not belong to the business domain.
+
+See details below.
+
+[system_query directory README](system_query/README.md)
 
 ## testkit
 

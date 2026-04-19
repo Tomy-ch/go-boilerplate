@@ -1,35 +1,11 @@
-# `debugmode` パッケージ
+# debugmode
 
-概要: Echo のデバッグフラグをアプリケーション設定に基づいて切り替える小さなユーティリティパッケージです。開発時に Echo の詳細なログやスタックトレースなどのデバッグ情報を有効化します。
+English | [日本語](README.ja.md)
 
-## 役割
+Enables Echo debug mode in development environments only.
 
-`debugmode` は、`ApplicationConfig` の環境情報（開発/本番）を参照して `echo.Echo` の `Debug` フラグを設定します。起動時に `debugmode.New(e, appCfg)` を呼ぶことで、アプリケーション全体のデバッグモードを一元管理できます。
+## Public API
 
-主要ファイル:
-
-- `debugmode.go` : `New(e *echo.Echo, appCfg *config.ApplicationConfig)` により `e.Debug` を設定する実装。
-- `debugmode_test.go` : 挙動を検証する単体テスト。
-
-## 必要度
-
-### 本番運用での必須度
-
-- 必須度: 本番運用で不要（本番では無効化推奨）
-
-理由: 本番環境では詳細なデバッグ情報を出力するとセキュリティやログ量の観点で問題になるため、`Debug` は通常オフにします。パッケージ自体は環境に応じて自動で切り替えるため存在していても安全です。
-
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で推奨
-
-理由: 開発中やローカルでのデバッグ時には `echo` のデバッグ出力を有効にすることで、問題の早期発見やデバッグが容易になります。
-
-### 無効化した場合の影響
-
-このパッケージを呼び出さない場合、`echo.Echo` の `Debug` はデフォルト値（`false`）になります。開発環境でデバッグ情報を見たい場合は、手動で `e.Debug = true` を設定する必要があります。
-
-## 注意点
-
-- 本番環境で `Debug` を有効にしないように `ApplicationConfig` の設定を確認してください。
-- デバッグ出力はログに多くの情報を含むため、機密情報が含まれないよう注意してください。
+|Function|Description|
+|---|---|
+|`New(e, appCfg)`|Enable Echo debug mode if environment is development|

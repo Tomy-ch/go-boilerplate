@@ -30,6 +30,12 @@ controller:
     dst: docs/portal/guides/controller-handler.md
   - src: internal/controller/job/README.md
     dst: docs/portal/guides/controller-job.md
+  - src: internal/controller/error/response/README.md
+    dst: docs/portal/guides/controller-error-response.md
+  - src: internal/controller/httpstack/README.md
+    dst: docs/portal/guides/controller-httpstack.md
+  - src: internal/controller/server/README.md
+    dst: docs/portal/guides/controller-server.md
   # Japanese
   - src: internal/controller/README.ja.md
     dst: docs/portal/guides/ja/controller.ja.md
@@ -37,6 +43,12 @@ controller:
     dst: docs/portal/guides/ja/controller-handler.ja.md
   - src: internal/controller/job/README.ja.md
     dst: docs/portal/guides/ja/controller-job.ja.md
+  - src: internal/controller/error/response/README.ja.md
+    dst: docs/portal/guides/ja/controller-error-response.ja.md
+  - src: internal/controller/httpstack/README.ja.md
+    dst: docs/portal/guides/ja/controller-httpstack.ja.md
+  - src: internal/controller/server/README.ja.md
+    dst: docs/portal/guides/ja/controller-server.ja.md
 
 domain:
   # English
@@ -50,9 +62,17 @@ usecase:
   # English
   - src: internal/usecase/README.md
     dst: docs/portal/guides/usecase.md
+  - src: internal/usecase/boundary/README.md
+    dst: docs/portal/guides/usecase-boundary.md
+  - src: internal/usecase/tools/README.md
+    dst: docs/portal/guides/usecase-tools.md
   # Japanese
   - src: internal/usecase/README.ja.md
     dst: docs/portal/guides/ja/usecase.ja.md
+  - src: internal/usecase/boundary/README.ja.md
+    dst: docs/portal/guides/ja/usecase-boundary.ja.md
+  - src: internal/usecase/tools/README.ja.md
+    dst: docs/portal/guides/ja/usecase-tools.ja.md
 
 infrastructure:
   # English
@@ -64,6 +84,10 @@ infrastructure:
     dst: docs/portal/guides/infrastructure-rdb-repository.md
   - src: internal/infrastructure/rdb/query_service/README.md
     dst: docs/portal/guides/infrastructure-rdb-query-service.md
+  - src: internal/infrastructure/rdb/driver/README.md
+    dst: docs/portal/guides/infrastructure-rdb-driver.md
+  - src: internal/infrastructure/rdb/driver/loggingdb/README.md
+    dst: docs/portal/guides/infrastructure-rdb-driver-loggingdb.md
   # Japanese
   - src: internal/infrastructure/README.ja.md
     dst: docs/portal/guides/ja/infrastructure.ja.md
@@ -73,14 +97,22 @@ infrastructure:
     dst: docs/portal/guides/ja/infrastructure-rdb-repository.ja.md
   - src: internal/infrastructure/rdb/query_service/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb-query-service.ja.md
+  - src: internal/infrastructure/rdb/driver/README.ja.md
+    dst: docs/portal/guides/ja/infrastructure-rdb-driver.ja.md
+  - src: internal/infrastructure/rdb/driver/loggingdb/README.ja.md
+    dst: docs/portal/guides/ja/infrastructure-rdb-driver-loggingdb.ja.md
 
 database:
   # English
+  - src: database/README.md
+    dst: docs/portal/guides/database.md
   - src: database/dml/README.md
     dst: docs/portal/guides/sqlc-query-guide.md
   - src: SQLC_README.md
     dst: docs/portal/guides/sqlc-settings.md
   # Japanese
+  - src: database/README.ja.md
+    dst: docs/portal/guides/ja/database.ja.md
   - src: database/dml/README.ja.md
     dst: docs/portal/guides/ja/sqlc-query-guide.ja.md
   - src: SQLC_README.ja.md
@@ -92,8 +124,6 @@ cross-cutting:
     dst: docs/portal/guides/apperror.md
   - src: internal/config/README.md
     dst: docs/portal/guides/config.md
-  - src: internal/di/README.md
-    dst: docs/portal/guides/di.md
   - src: internal/logging/README.md
     dst: docs/portal/guides/logging.md
   - src: internal/observability/README.md
@@ -105,14 +135,40 @@ cross-cutting:
     dst: docs/portal/guides/ja/apperror.ja.md
   - src: internal/config/README.ja.md
     dst: docs/portal/guides/ja/config.ja.md
-  - src: internal/di/README.ja.md
-    dst: docs/portal/guides/ja/di.ja.md
   - src: internal/logging/README.ja.md
     dst: docs/portal/guides/ja/logging.ja.md
   - src: internal/observability/README.ja.md
     dst: docs/portal/guides/ja/observability.ja.md
   - src: internal/system/README.ja.md
     dst: docs/portal/guides/ja/system.ja.md
+
+di:
+  # English
+  - src: internal/di/README.md
+    dst: docs/portal/guides/di.md
+  - src: internal/di/job/README.md
+    dst: docs/portal/guides/di-job.md
+  - src: internal/di/module/README.md
+    dst: docs/portal/guides/di-module.md
+  - src: internal/di/module/core/README.md
+    dst: docs/portal/guides/di-module-core.md
+  - src: internal/di/server/README.md
+    dst: docs/portal/guides/di-server.md
+  - src: internal/di/server/extension/README.md
+    dst: docs/portal/guides/di-server-extension.md
+  # Japanese
+  - src: internal/di/README.ja.md
+    dst: docs/portal/guides/ja/di.ja.md
+  - src: internal/di/job/README.ja.md
+    dst: docs/portal/guides/ja/di-job.ja.md
+  - src: internal/di/module/README.ja.md
+    dst: docs/portal/guides/ja/di-module.ja.md
+  - src: internal/di/module/core/README.ja.md
+    dst: docs/portal/guides/ja/di-module-core.ja.md
+  - src: internal/di/server/README.ja.md
+    dst: docs/portal/guides/ja/di-server.ja.md
+  - src: internal/di/server/extension/README.ja.md
+    dst: docs/portal/guides/ja/di-server-extension.ja.md
 
 context-helper:
   # English
@@ -126,6 +182,14 @@ context-helper:
   - src: scripts/genctxkey/README.ja.md
     dst: docs/portal/guides/ja/how-to-generate-ctxhelper.ja.md
 
+cli:
+  # English
+  - src: internal/cli/README.md
+    dst: docs/portal/guides/cli.md
+  # Japanese
+  - src: internal/cli/README.ja.md
+    dst: docs/portal/guides/ja/cli.ja.md
+
 integration:
   # English
   - src: internal/integration/README.md
@@ -134,10 +198,62 @@ integration:
   - src: internal/integration/README.ja.md
     dst: docs/portal/guides/ja/integration.ja.md
 
+pkg:
+  # English
+  - src: pkg/README.md
+    dst: docs/portal/guides/pkg.md
+  # Japanese
+  - src: pkg/README.ja.md
+    dst: docs/portal/guides/ja/pkg.ja.md
+
+docker:
+  # English
+  - src: docker/README.md
+    dst: docs/portal/guides/docker.md
+  - src: docker/server/README.md
+    dst: docs/portal/guides/docker-server.md
+  - src: docker/tools/README.md
+    dst: docs/portal/guides/docker-tools.md
+  # Japanese
+  - src: docker/README.ja.md
+    dst: docs/portal/guides/ja/docker.ja.md
+  - src: docker/server/README.ja.md
+    dst: docs/portal/guides/ja/docker-server.ja.md
+  - src: docker/tools/README.ja.md
+    dst: docs/portal/guides/ja/docker-tools.ja.md
+
+scripts:
+  # English
+  - src: scripts/README.md
+    dst: docs/portal/guides/scripts.md
+  # Japanese
+  - src: scripts/README.ja.md
+    dst: docs/portal/guides/ja/scripts.ja.md
+
+ci:
+  # English
+  - src: .github/workflows/README.md
+    dst: docs/portal/guides/ci-workflows.md
+  # Japanese
+  - src: .github/workflows/README.ja.md
+    dst: docs/portal/guides/ja/ci-workflows.ja.md
+
 external:
   # English
   - src: openapi/README.md
     dst: docs/portal/guides/openapi.md
+  - src: openapi/paths/README.md
+    dst: docs/portal/guides/openapi-paths.md
+  - src: openapi/components/schemas/README.md
+    dst: docs/portal/guides/openapi-schemas.md
+  - src: openapi/components/parameters/README.md
+    dst: docs/portal/guides/openapi-parameters.md
   # Japanese
   - src: openapi/README.ja.md
     dst: docs/portal/guides/ja/openapi.ja.md
+  - src: openapi/paths/README.ja.md
+    dst: docs/portal/guides/ja/openapi-paths.ja.md
+  - src: openapi/components/schemas/README.ja.md
+    dst: docs/portal/guides/ja/openapi-schemas.ja.md
+  - src: openapi/components/parameters/README.ja.md
+    dst: docs/portal/guides/ja/openapi-parameters.ja.md

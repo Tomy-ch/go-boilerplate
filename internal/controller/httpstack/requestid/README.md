@@ -1,38 +1,12 @@
-# `requestid` パッケージ
+# requestid
 
-概要: Echo 用のリクエスト ID ミドルウェアをラップしたパッケージです。リクエストごとに一意な ID を生成してレスポンスヘッダに設定し、ログやトレースと紐付けるためのユーティリティを提供します。
+English | [日本語](README.ja.md)
 
-## 役割
+Generates unique X-Request-ID header for each request.
 
-`requestid` は以下を提供します。
+## Public API
 
-- `Middleware()` : `middleware.RequestID()` を返し、Echo ミドルウェアとしてリクエスト ID を生成・設定します。
-- `GetRequestIDFromResponse(c echo.Context)` : レスポンスのヘッダから `X-Request-ID` を取得するヘルパー関数。
-
-主要ファイル:
-
-- `request_id.go` : ミドルウェアとヘルパー関数を実装。
-- `request_id_test.go` : 動作を検証する単体テスト。
-
-## 必要度
-
-### 本番運用での必須度
-
-- 必須度: 本番運用で推奨
-
-理由: リクエスト ID は分散トレーシング、ログ相関、障害解析において非常に有用です。必須ではないものの、導入を強く推奨します。
-
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で推奨
-
-理由: 開発時でもログやテストでリクエストを特定しやすいため、利便性が高いです。
-
-### 無効化した場合の影響
-
-ミドルウェアを使わない場合、リクエスト ID が自動的に付与されず、ログやトレースの相関が難しくなります。手動で ID を管理する必要が出てくる場合があります。
-
-## 注意点
-
-- リクエスト ID の形式や生成方法を変更したい場合、`Middleware()` の実装を置き換えてください。
-- リバースプロキシやロードバランサが既に `X-Request-ID` を付与している場合は、上書きの扱いに注意してください（既存ヘッダを尊重する実装にする等）。
+|Function|Description|
+|---|---|
+|`Middleware()`|Return Echo middleware that generates X-Request-ID|
+|`GetRequestIDFromResponse(c)`|Extract Request ID from response headers|

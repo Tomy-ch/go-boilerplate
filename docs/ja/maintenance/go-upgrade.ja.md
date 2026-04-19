@@ -40,10 +40,10 @@ https://go.dev/doc/devel/release
 .go-version
 ```
 
-例
+このファイルの内容を更新してください。
 
 ```text
-1.26.1
+1.26.2
 ```
 
 ## 3. ローカル Go 環境の更新
@@ -53,8 +53,7 @@ https://go.dev/doc/devel/release
 ### goenv を使用する場合
 
 ```sh
-goenv install 1.26.1
-goenv local 1.26.1
+make go-update
 ```
 
 確認
@@ -100,7 +99,7 @@ GitHub Actions の Go version を更新します。
 ## 5. `go.mod` の Go version 更新
 
 ```sh
-go mod edit -go=1.26.1
+go mod edit -go=1.26.2
 ```
 
 ## 6. 依存関係と vendor の更新
@@ -143,7 +142,7 @@ Dockerfile の Go version を更新します。
 例
 
 ```dockerfile
-FROM golang:1.26.1
+FROM golang:1.26.2
 ```
 
 ## 9. Docker コンテナ再ビルド

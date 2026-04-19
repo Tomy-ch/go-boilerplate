@@ -1,34 +1,12 @@
-# `ipextractor` パッケージ
+# ipextractor
 
-概要: クライアントの IP アドレスを抽出するための `echo.IPExtractor` を環境設定に応じて生成・設定するユーティリティです。ロードバランサやプロキシ配下で動作する本番環境向けに X-Forwarded-For ヘッダを利用した抽出を行い、開発環境では直接抽出します。
+English | [日本語](README.ja.md)
 
-## 役割
+Configures client IP extraction strategy based on environment.
 
-`ipextractor` は `ApplicationConfig` と `SecurityConfig` を参照して、適切な IP 抽出ロジックを生成します。`New(e, appCfg, secCfg)` を呼ぶと `e.IPExtractor` に生成した抽出器を設定します。
+## Public API
 
-主要ファイル:
-
-- `ip_extractor.go` : `New` と `NewIPExtractor` の実装。環境に応じて `echo.ExtractIPFromXFFHeader`（信頼する CIDR 範囲付き）か `echo.ExtractIPDirect` を返します。
-- `ip_extractor_test.go` : 挙動を検証するテスト。
-
-## 必要度
-
-### 本番運用での必須度
-
-- 必須度: 本番運用で必須
-
-理由: 本番環境ではロードバランサやリバースプロキシが存在することが多く、`X-Forwarded-For` ヘッダを正しく扱わないとクライアント IP が誤検出されます。信頼するプロキシ CIDR を設定して正しく抽出することが重要です。
-
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で推奨
-
-理由: ローカルでは直接接続されるため `ExtractIPDirect` を使うのが簡単ですが、開発環境でも本番に近い挙動を確認したい場合は本番方式を選ぶこともできます。設定に応じて振る舞いが切り替わるためテストも容易です。
-
-### 無効化した場合の影響
-
-このパッケージを利用せずに `e.IPExtractor` を設定しない場合、Echo のデフォルトの抽出方法が使われます。プロキシ環境では誤ったクライアント IP を取得する恐れがあり、ログやレート制限、セキュリティ制御に影響を与える可能性があります。
-
-## 注意点
-
-- `SecurityConfig.CIDR()` に正しい信頼するプロキシの CIDR リストを設定してください。誤った CIDR 設定は攻撃者による IP 偽装を許してしまう可能性があります。
+|Function|Description|
+|---|---|
+|`New(e, appCfg, secCfg)`|Set IP extractor on Echo instance|
+|`NewIPExtractor(appCfg, secCfg)`|Return `echo.IPExtractor` — X-Forwarded-For with CIDR trust in production, direct extraction in development|

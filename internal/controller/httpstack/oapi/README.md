@@ -1,40 +1,65 @@
-# oapi (OpenAPI / Echo 統合)
+# oapi
 
-概要: OpenAPI 仕様を元に Echo ハンドラを組み込み、リクエスト／レスポンスの検証や認可連携、エラー変換などを行うレイヤーです。生成されたバリデータやハンドラ群とアプリケーションの依存関係（`Authenticator`、ユースケースハンドラ等）をつなぎます。
+English | [日本語](README.ja.md)
 
-## 役割
+`oapi` is the **OpenAPI integration layer** that provides request validation and authentication for the Echo HTTP stack.
 
-- OpenAPI で定義されたパスに対する HTTP ハンドラの登録と初期化。
-- リクエストの入力検証（`validator` サブパッケージ）とレスポンスの整形／検証を行う。
-- 認証情報の抽出とコンテキスト格納（`auth` サブパッケージ）を担当し、ユースケース層へ `Authn` を伝搬する。
-- 内部のエラーを HTTP レスポンスへ適切にマッピングする（エラー型 → ステータスコード／ボディ変換）。
+This package is the entry point that wires together schema validation, authentication, and route skipping into a single Echo middleware.
 
-## 必要度
+## Architecture
 
-### 本番運用での必須度
+```mermaid
+flowchart TB
+    Request["HTTP Request"]
+    Skipper{"Skipper"}
+    Validate["OpenAPI Schema Validation"]
+    Auth["Authentication (auth/)"]
+    Authn["Authn → Echo Context"]
+    Handler["Handler"]
 
-- 必須度: 本番運用で推奨
+    Request --> Skipper
+    Skipper -- skip --> Handler
+    Skipper -- validate --> Validate
+    Validate --> Auth
+    Auth --> Authn --> Handler
+```
 
-理由: OpenAPI に準拠した入力検証やエラー変換は API の堅牢性と一貫性を保つため重要です。本パッケージが提供する機能により、仕様外の入力や不正なリクエストを早期に検出できます。
+1. **Skipper** checks if the request is an ops endpoint — if so, validation is bypassed
+2. **Validator** validates the request against the OpenAPI spec (path, params, body, content-type)
+3. **Auth** extracts the token, authenticates via boundary `Authenticator`, and stores `Authn` in Echo context
+4. Handler receives a validated, authenticated request
 
-### 開発/テスト運用での必須度
+## Public API
 
-- 必須度: 開発/テスト運用で推奨
+|Function|Description|
+|---|---|
+|`Middleware(spec, skipper, authFunc)`|Return Echo middleware combining validation + authentication|
 
-理由: ローカルや CI での検証を厳密に行うことで、API 仕様との乖離を早期に検出できます。生成されたバリデータやハンドラを使うことでテストの期待値を明確にできます。
+### Key Implementation Detail
 
-### 無効化した場合の影響
+Before delegating to the oapi-codegen validator, the middleware injects the Echo context into `request.Context()` via `ctxhelper.SetEchoContext`. This allows the authentication function (which receives a plain `context.Context`) to access the Echo context and store `Authn`.
 
-- 入力検証やエラーハンドリングが無効になるため、仕様外のリクエストがユースケース層へ渡り、想定外のパニックや不正な状態を招く可能性があります。
-- ルーティングやハンドラ登録の責務を別実装で担保しない限り、API エンドポイントが利用できなくなります。
+## Subpackages
 
-## 注意点
+|Package|Description|Details|
+|---|---|---|
+|`auth/`|Token authentication from Cookie / Header|[README](auth/README.md)|
+|`skipper/`|Skip validation for ops endpoints|[README](skipper/README.md)|
+|`validator/`|Load and provide OpenAPI schema|[README](validator/README.md)|
 
-- `validator` サブパッケージは生成コード（`gen/validate.gen.go` 等）に依存します。OpenAPI 仕様やコード生成フローを変更した場合は、生成物の再作成を忘れないでください。
-- 認証連携 (`auth` サブパッケージ) はアプリケーションが提供する `Authenticator` 実装に依存します。テスト／ローカル用の簡易 `Authenticator` と本番用の実装を DI で差し替えることを想定してください（例: `internal/di/module/auth.go`）。
-- 入力検証の挙動（厳格さ、フォーマットチェック、追加プロパティの扱いなど）は生成されたバリデータの設定に依存します。仕様変更や互換性の影響範囲を確認してください。
+## Dependencies
 
-## 実装ノート
+|Package|Role|
+|---|---|
+|`kin-openapi/openapi3`|OpenAPI 3.x schema model|
+|`kin-openapi/openapi3filter`|Request validation and auth filter|
+|`oapi-codegen/echo-middleware`|Echo adapter for OpenAPI validation|
+|`ctxhelper`|Echo context injection/extraction|
+|`boundary/auth`|Authentication interface and `Authn` value object|
 
-- `auth` サブパッケージはリクエストから認証情報を抽出し、`Authn` をコンテキストへ格納します。ユースケース層はコンテキストから `Authn` を取得してアクセス制御を行います。
-- エラー変換は `error.go` にまとめられ、内部のドメインエラーやユースケースエラーを適切な HTTP 応答へマッピングします。
+## Notes
+
+- OpenAPI validation covers path parameters, query parameters, request body, and content-type
+- Authentication is only triggered for endpoints with `security` defined in the OpenAPI spec
+- The `Skipper` ensures ops endpoints are never validated or authenticated
+- All errors from this layer are caught by `errorhandler` and converted to appropriate HTTP responses
