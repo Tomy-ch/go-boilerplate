@@ -6,7 +6,7 @@ import "go-boilerplate/pkg/xerrors"
 var (
 	// 引数が無効な場合に使用します。400 Bad Request に対応します。
 	ErrInvalidArgument = xerrors.New("invalid argument")
-	// 認証に失敗した場合に使用します。401 Unauthorised に対応します。
+	// 認証に失敗した場合に使用します。401 Unauthorized に対応します。
 	ErrUnauthenticated = xerrors.New("unauthenticated")
 	// 権限がない場合に使用します。403 Forbidden に対応します。
 	ErrPermissionDenied = xerrors.New("permission denied")

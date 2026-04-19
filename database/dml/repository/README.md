@@ -1,40 +1,40 @@
-# RepositorySQLについて
+# Repository DML
 
-## 概要
+English | [日本語](README.ja.md)
 
-database/dml/repository/ 配下は、ドメイン層のエンティティ操作に必要な SQL を管理します。
-sqlc により型安全な Go コードを自動生成し、リポジトリ層で利用します。
+SQL for Aggregate persistence (CRUD operations on domain entities).
 
-## 目的
+## Purpose
 
-- エンティティ永続化のための DML 集約
-  INSERT / UPDATE / DELETE / SELECT など、ドメインモデルを永続化・取得するためのクエリを集約します。
-- 責務の明確化
-- Domain: ビジネスロジック・整合性維持
-- このディレクトリ: DB とのやり取りのみ
-  → ビジネスロジックを含めないシンプルな SQL。
-- 型安全なリポジトリ実装
-  SQLC の生成コードにより、パラメータや戻り値の型をコンパイル時に保証します。
+- Centralize INSERT / UPDATE / DELETE / SELECT queries for persisting and retrieving domain models.
+- Keep SQL simple and free of business logic -- aggregation and complex joins belong in QueryService.
+- Provide type-safe repository implementations via sqlc code generation.
 
-## ディレクトリ構成
+## Infrastructure Mapping
+
+Implementation: `internal/infrastructure/rdb/repository/`
+
+## Directory Structure
 
 ```text
-database/dml/repository/
-  ├── user/
-  │    ├── insert_user.sql
-  │    └── select_user_by_id.sql
-  ├── product/
-  │    ├── insert_product.sql
-  │    └── ...
-  └── ...
+repository/
+├── user/
+│   ├── insert_user.sql
+│   ├── select_user_by_id.sql
+│   └── ...
+├── prefecture/
+│   ├── ...
+│   └── ...
+└── ...
 ```
 
-## 運用ルール
+## Naming Convention
 
-- 命名規則
-  動詞＋対象名＋条件（例: select_user_by_id.sql）。
-- SQLの記述
-- -- name: コメントで生成関数名を明示。
-- 複雑な条件や結合は最小限に抑える（集計はQS側で行う）。
-- 生成方法
-  gen-query-repo コマンドで対象カテゴリの SQLC コードを生成。
+- Files: verb + target (e.g., `select_user_by_id.sql`)
+- `-- name:` annotation required on all queries
+
+## Code Generation
+
+```sh
+make gen-query
+```

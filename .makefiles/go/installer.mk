@@ -13,7 +13,7 @@ install-tools:
 	go install github.com/cweill/gotests/...@latest
 	go install github.com/josharian/impl@latest
 	go install github.com/go-delve/delve/cmd/dlv@latest
-	go install github.com/evilmartians/lefthook@latest
+	go install github.com/evilmartians/lefthook/v2@latest
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	@if command -v goenv >/dev/null 2>&1; then \
 		echo "goenv is installed. Running 'goenv rehash'..."; \

@@ -1,50 +1,39 @@
-# SystemQueryについて
+# SystemQuery DML
 
-## 概要
+English | [日本語](README.ja.md)
 
-system_queryは、アプリケーションのシステム関連クエリを集約する層です。
+System operational queries for health checks, metrics collection, and infrastructure monitoring.
 
-database/dml/system_query/<category> 配下に配置された SQL ファイルをもとに、sqlc により型安全な Go コードを自動生成します。
+## Purpose
 
-システムクエリの目的は、システムの健全性チェックやメトリクス収集など、アプリケーションの運用に関わるクエリを提供することです。
+- Provide queries for system health verification and operational metrics.
+- Separate system-level concerns from application business logic.
+- Generate type-safe Go code via sqlc for compile-time parameter and scan validation.
 
-## 役割と非役割
+## Infrastructure Mapping
 
-役割：システムの健全性チェックやメトリクス収集のためのクエリ提供。
+Implementation: `internal/infrastructure/rdb/system_query/`
 
-非役割：アプリケーションのビジネスロジックやドメイン操作。
-
-## 目的
-
-- システム由来の情報の提供
-システムの健全性チェックやメトリクス収集のためのクエリを提供します。
-- 責務の分離
-システム関連のクエリを他のビジネスロジックから分離し、管理しやすくします。
-- 型安全なアクセス
-SQLCの生成物により、プレースホルダやスキャンの型ミスをコンパイル時に防止します。
-
-## ディレクトリ構成
+## Directory Structure
 
 ```text
-database/dml/system_query/
-  ├── health_check/
-  │    ├── select_system_health.sql
-  │    └── ...
-  ├── metrics/
-  │    ├── select_system_metrics.sql
-  │    └── ...
-  └── ...
+system_query/
+├── health_check/
+│   ├── select_system_health.sql
+│   └── ...
+├── metrics/
+│   ├── select_system_metrics.sql
+│   └── ...
+└── ...
 ```
 
-## 運用ルール
+## Naming Convention
 
-- ファイル名
-  - クエリの意図が分かる動詞＋対象名で命名します。
-  - 意味で命名：
-    - OK: SystemHealth
-    - NG： GetSystemInfo（Infra先行の命名）
-- SQLの記述
-  - -- name: コメントで関数名を明示します。
-  - 必要に応じてパラメータや返却カラムの型をコメントに記載します。
-- 生成
-  - gen-query-sysqコマンドで対象カテゴリの SQLC コードを生成します。
+- Files: verb + target (e.g., `select_system_health.sql`)
+- `-- name:` annotation required on all queries
+
+## Code Generation
+
+```sh
+make gen-query
+```

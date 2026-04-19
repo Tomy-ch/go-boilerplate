@@ -1,45 +1,120 @@
-# `errorhandler` パッケージ
+# errorhandler
 
-概要: Echo ハンドラー向けの HTTP エラーハンドリングと正規化処理を提供するパッケージです。OpenAPI エラー、Echo の `HTTPError`、アプリケーション定義のエラーなどを統一的に扱い、JSON のエラーレスポンスを返すとともにログ出力やオブザーバビリティ向けの情報を付与します。
+English | [日本語](README.ja.md)
 
-## 役割
+Unified HTTP error handler that normalizes errors from Echo, OpenAPI validation, and application-level errors into consistent JSON responses with structured logging.
 
-主な役割は以下です。
+## Architecture
 
-- エラーを正規化して `response.HTTPErrorResponse` を生成する（`normalizeOpenAPIError`、`normalizeEchoHTTPError`、`normalizeHTTPError`）。
-- Echo の `HTTPErrorHandler` を生成して `e.HTTPErrorHandler` に設定する（`New` / `NewHTTPErrorHandler`）。
-- 正規化したエラーを JSON でクライアントに返却し、オブザーバビリティ/ロギング要件に従ってログを出力する。
+```mermaid
+flowchart TB
+    Error["Error raised"]
+    Guard{"Already handled?"}
+    Normalize["normalizeHTTPError"]
+    TypeCheck{"Error type?"}
+    AppErr["HTTPErrorResponse (apperror)"]
+    EchoErr["echo.HTTPError"]
+    OAPICheck{"OpenAPI error?"}
+    OAPIErr["RequestError / SecurityError / ResponseError"]
+    EchoNorm["normalizeEchoHTTPError"]
+    Fallback["NewHTTPErrorFromAppError (fallback)"]
+    AddReqID["Attach RequestID"]
+    Write["Write JSON response"]
+    Log["Log with structured fields"]
 
-主要ファイル:
+    Error --> Guard
+    Guard -- yes --> return
+    Guard -- no --> Normalize
+    Normalize --> TypeCheck
+    TypeCheck -- HTTPErrorResponse --> AppErr --> AddReqID
+    TypeCheck -- echo.HTTPError --> EchoErr --> OAPICheck
+    OAPICheck -- yes --> OAPIErr --> AddReqID
+    OAPICheck -- no --> EchoNorm --> AddReqID
+    TypeCheck -- other --> Fallback --> AddReqID
+    AddReqID --> Write --> Log
+```
 
-- `http_error_handler.go` : ハンドラ生成、エラー正規化の統合、レスポンス書き込み、ログ出力。
-- `echo_http_error_handler.go` : Echo の `HTTPError` を正規化する補助関数。
-- `open_api_error_handler.go` : OpenAPI（kin-openapi）のエラーを正規化する補助関数。
-- 各種 `*_test.go` : 動作を検証する単体テスト。
+## Public API
 
-## 必要度
+|Function|Description|
+|---|---|
+|`New(e, log, lf, obsCfg)`|Set unified error handler on Echo instance (`e.HTTPErrorHandler`)|
+|`NewHTTPErrorHandler(logger, lf, obsCfg)`|Return `echo.HTTPErrorHandler` that normalizes all error types|
 
-### 本番運用での必須度
+## Error Normalization
 
-- 必須度: 本番運用で必須
+The handler processes errors in the following priority:
 
-理由: エラー応答の一貫性、リクエストID の付与、詳細なサーバエラーの内部情報をログに残すなど、運用時のトラブルシュートとセキュリティの観点から本番環境での適切なエラーハンドリングは必須です。
+### 1. `response.HTTPErrorResponse` (Application Error)
 
-### 開発/テスト運用での必須度
+Errors already wrapped by `response.NewHTTPErrorFromAppError()` in handlers.
 
-- 必須度: 開発/テスト運用で必須
+- If HTTP status is valid (400-599): use as-is, attach RequestID
+- If HTTP status is invalid: re-normalize via `NewHTTPErrorFromAppError(internal)`
 
-理由: 開発段階でもエラーの一貫した表現とログ出力はデバッグ効率に寄与するため、同様に設定しておくことを推奨します。
+### 2. `echo.HTTPError` (Echo / OpenAPI Error)
 
-### 無効化した場合の影響
+First checks for OpenAPI-specific errors inside the Echo error:
 
-このパッケージを設定しないと、Echo のデフォルトのエラーハンドラが使用されます。結果として:
+|OpenAPI Error Type|HTTP Status|
+|---|---|
+|`openapi3filter.RequestError`|400 Bad Request|
+|`openapi3filter.SecurityRequirementsError`|401 Unauthorized|
+|`openapi3filter.ResponseError`|500 Internal Server Error|
 
-- レスポンスのエラーフォーマットが不統一になる。
-- リクエストID やトレース情報が含まれないエラーログになり、障害解析が難しくなる。
+If not an OpenAPI error, normalizes as a standard Echo HTTP error using the status code.
 
-## 注意点
+### 3. Fallback
 
-- `response.HTTPErrorResponse` の構造と `Application` レベルのエラー設計に依存しています。エラーフォーマットを変更する場合は合わせて更新してください。
-- OpenAPI の検証エラー（kin-openapi）を正規化する処理があるため、OpenAPI ミドルウェアと組み合わせて使うと効果的です。
-- ログには内部エラーのスタックトレースなど機密になりうる情報が含まれる可能性があるため、本番環境のログ保持・公開設定に注意してください。
+Any unrecognized error is passed to `response.NewHTTPErrorFromAppError()` which maps `apperror` types to HTTP status codes.
+
+## Response Format
+
+All errors are returned as JSON using `response.HTTPErrorResponse`:
+
+```json
+{
+  "Code": "BAD_REQUEST",
+  "Message": "...",
+  "Details": ["..."],
+  "RequestID": "..."
+}
+```
+
+- `RequestID` is always attached (extracted via `requestid.GetRequestIDFromResponse`)
+- `Details` and `Internal` error are included when available
+- `Internal` error and stack trace are logged but **not returned to the client**
+
+## Logging
+
+Error logging is controlled by `ObservabilityConfig.TargetStatusCodeSet()`:
+
+- Only status codes in the configured set are logged
+- **5xx**: Logged at `Error` level (`errorhandler.server_error`)
+- **4xx**: Logged at `Warn` level (`errorhandler.client_error`)
+
+Log fields include:
+
+- HTTP status, error code, error message, RequestID
+- Request details (method, path, URI, remote IP, host, user agent, etc.)
+- Query and path parameters
+- Trace ID / Span ID (if observability is enabled)
+- Internal error message and stack trace (for debugging)
+
+## Re-entrance Guard
+
+The handler sets `errHandlerKey` on the Echo context to prevent infinite recursion if an error occurs during error response writing.
+
+## File Structure
+
+|File|Responsibility|
+|---|---|
+|`http_error_handler.go`|Main handler, normalization dispatcher, logging|
+|`echo_http_error_handler.go`|Normalize `echo.HTTPError` to `HTTPErrorResponse`|
+|`open_api_error_handler.go`|Normalize OpenAPI validation errors to `HTTPErrorResponse`|
+
+## Notes
+
+- If writing the error response fails, a fallback `500` status is returned with the write error logged
+- Error responses use `response.HTTPErrorResponse` from `controller/error/response/` — see that package for the error code and message mapping
+- This handler replaces Echo's default error handler entirely

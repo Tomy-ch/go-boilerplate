@@ -1,17 +1,43 @@
-# security Package
+# security
 
-Overview: This package provides security-related functionality, including encryption.
+English | [日本語](README.ja.md)
 
-It implements `BcryptHasher` to perform password hashing and comparison.
+`internal/infrastructure/security` provides **security-related infrastructure implementations** such as password hashing.
 
-## Main Features Provided
+## Architectural Position
 
-- `NewBcryptHasher()` function: Generates a `BcryptHasher` for hashing passwords.
-- `Hash(password string) (string, error)` method: Hashes a password.
-- `Compare(hash, password string) (bool, error)` method: Compares a hashed password with a plaintext password.
+```mermaid
+flowchart TB
+    subgraph "Usecase Layer"
+        IF["security.Encrypter interface"]
+    end
+    subgraph "Infrastructure Layer"
+        Impl["bcrypter impl"]
+    end
 
-## Usage
+    Impl -. implements .-> IF
+```
 
-Implement an appropriate `BcryptHasher` for each environment or service to ensure application security.
+Implements the `security.Encrypter` interface (`internal/usecase/boundary/security`) in the Infrastructure layer. Usecase / Domain do not depend on bcrypt implementation details.
 
-To integrate into the system, add the implementation to `security` in `internal/di/module/infrastructure.go`.
+## Public API
+
+|Function / Method|Description|
+|---|---|
+|`NewBcryptHasher(secCfg)`|Create `security.Encrypter` using `BcryptCost` from `config.SecurityConfig`|
+|`Hash(password)`|Hash a password with bcrypt|
+|`Compare(hash, password)`|Compare hash with plaintext password (mismatch returns `false, nil`)|
+
+## Design Policy
+
+- bcrypt cost is externalized via `config.SecurityConfig.BcryptCost()`
+- Password mismatch absorbs `bcrypt.ErrMismatchedHashAndPassword` and returns `false, nil` (not treated as an error)
+- Other errors (invalid cost, etc.) are returned as-is
+
+## DI Registration
+
+Register in the `security` module of `internal/di/module/infrastructure.go`.
+
+```go
+fx.Provide(security.NewBcryptHasher)
+```

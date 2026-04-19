@@ -2,12 +2,65 @@
 
 English | [日本語](README.ja.md)
 
+## Position of Query Service in Onion Architecture
+
+In Onion Architecture, persistence abstractions are defined as **Repository interfaces** in the Domain layer. Repository handles per-Aggregate CRUD and guards Domain invariants.
+
+Query Service (QS), on the other hand, is an **intentional exception to this principle**.
+
+```mermaid
+flowchart TB
+    subgraph "Domain Layer"
+        RepoIF["Repository interface"]
+    end
+    subgraph "Usecase Layer"
+        QSIF["QueryService interface"]
+    end
+    subgraph "Infrastructure Layer"
+        RepoImpl["Repository impl"]
+        QSImpl["QueryService impl"]
+    end
+
+    RepoImpl -. implements .-> RepoIF
+    QSImpl -. implements .-> QSIF
+```
+
+### Why QS Interface Lives in Usecase, Not Domain
+
+|Aspect|Repository|Query Service|
+|---|---|---|
+|Concern|Aggregate persistence|Usecase-specific search|
+|Granularity|Per Aggregate|Per screen / API response|
+|Return type|Domain Entity|DTO (display projection)|
+|Invariants|Guaranteed by Domain|Not involved|
+|Interface placement|Domain layer|Usecase layer|
+
+QS returns **projections that a usecase needs, not complete Aggregate reconstructions**. This is a Usecase concern, not a Domain concern, so the interface is placed in the Usecase layer (`internal/usecase/<aggregate>/query`).
+
+### Relationship to CQRS
+
+Introducing QS is a **lightweight CQRS (Command Query Responsibility Segregation)** approach.
+
+- **Command (write)**: Goes through Repository, guarding Domain Entity invariants
+- **Query (read)**: Goes through QS, executing performance-optimized search queries directly
+
+This is not full CQRS (separate DB / event sourcing), but a **practical design that separates read/write responsibilities on the same DB**.
+
+### When to Use QS Over Repository
+
+Consider QS instead of Repository when:
+
+- Searches requiring multi-table JOINs
+- Paginated list retrieval
+- Full-text or keyword search
+- Queries requiring aggregation or grouping
+- Reads that don't need full Aggregate reconstruction
+
+Conversely, simple queries like single retrieval by ID or count can remain in Repository.
+
 ## Role
 
 Query Service is a layer that provides **read-only queries such as search and list retrieval**.
-
-While Repository is an **abstraction for Aggregate persistence**,  
-Query Service provides **dedicated queries for search use cases**.
 
 ```mermaid
 flowchart TB
@@ -17,7 +70,7 @@ flowchart TB
 The responsibilities of Query Service are as follows:
 
 1. Execute SQL search
-2. Convert Row → Domain
+2. Convert Row → Domain Entity / DTO
 3. Normalize DB errors
 
 Query Service **does not contain business logic.**

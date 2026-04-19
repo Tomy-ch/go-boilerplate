@@ -29,7 +29,7 @@ pgerror は **DB driver が返すエラーをアプリケーション共通エ�
 
 - PostgreSQL SQLSTATE を `apperror` へ変換
 - DB 接続不可エラーの判定
-- `sql.ErrNoRows` を `NotFound` へ変換
+- `pgx.ErrNoRows` を `NotFound` へ変換
 - Infrastructure → Usecase 間のエラー仕様を統一
 
 これにより **DB 実装依存のエラー判定をアプリケーションコードから分離**できます。
@@ -72,13 +72,13 @@ flowchart TB
 
 ## 特別処理
 
-### sql.ErrNoRows
+### pgx.ErrNoRows
 
-`sql.ErrNoRows` は PostgreSQL SQLSTATE ではないため特別扱いされます。
+`pgx.ErrNoRows` は PostgreSQL SQLSTATE ではないため特別扱いされます。
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["NotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["NotFound"]
 ```
 
 これにより Repository 層は
@@ -101,8 +101,7 @@ func IsUnavailable(err error) bool
 
 - context.DeadlineExceeded
 - net.Error (timeout)
-- driver.ErrBadConn
-- PostgreSQL SQLSTATE 08XXX
+- PostgreSQL SQLSTATE 08XXX（接続例外）
 
 この判定は
 

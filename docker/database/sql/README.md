@@ -1,30 +1,41 @@
-# Database 初期化用 SQL
+# Database Initialization SQL
 
-このディレクトリ（`docker/database/sql/`）には、データベース環境を初期化するために使う SQL ファイルを置きます。主にローカルや CI の環境作成時に実行され、データベース作成や拡張機能の有効化など、マイグレーション以前に必要なセットアップを行います。
+English | [日本語](README.ja.md)
 
-## 目的の例
+`docker/database/sql/` stores SQL files for **initializing the database environment**.
 
-- テスト用 / ローカル用のデータベース作成（例: `001-create-local-db.sql`）
-- 必要な Postgres 拡張の有効化（例: `003-init-extensions-local-db.sql`）
+These files are executed on PostgreSQL container startup via `docker-entrypoint-initdb.d` and perform setup required **before** migrations (database creation, extension installation, etc.).
 
-## 重要なルール
+## Current Files
 
-- DDL（テーブル定義、スキーマ変更等のマイグレーション）はここに置かず、マイグレーション管理ツール（`migrations/` ディレクトリ）で扱ってください。
-- 恒久的な DML（本番データの初期投入など）も原則ここには含めません。必要なシードは `database/seed/` 等に分けるか、専用のシード手順で管理してください。
+|File|Description|
+|---|---|
+|`001-create-local-db.sql`|Create the local development database|
+|`002-create-test-db.sql`|Create the test database|
+|`003-init-extensions-local-db.sql`|Enable extensions for the local database|
+|`004-init-extensions-test-db.sql`|Enable extensions for the test database|
 
-## ファイル命名と実行順序
+## Execution Order
 
-- ファイル名の先頭に 3 桁などの連番プレフィックスを付けてください（例: `001-...`, `002-...`）。プレフィックスの昇順で実行されます。
-- プレフィックス以外の命名は自由ですが、内容が分かりやすいサフィックスや説明を付けると運用しやすくなります（例: `003-init-extensions-local-db.sql`）。
+Files are executed in **ascending order of their numeric prefix** (e.g., `001-...`, `002-...`).
 
-## 実行の注意点
+Execution is handled automatically by PostgreSQL's `docker-entrypoint-initdb.d` mechanism on first container startup.
 
-- 実行順序に依存関係がある場合は、プレフィックス順で整列させてください。
-- スクリプトは再実行可能（idempotent）にしておくことが望ましいです。既に存在するオブジェクトを作成しようとして失敗しないように `IF NOT EXISTS` などを利用してください。
-  - 基本的にはDockerコンテナ起動時に一度だけ実行されることを想定していますが、再実行の安全性を確保することでトラブルシューティングが容易になります。
+## What Belongs Here
 
-## 注意
+- Database creation (`CREATE DATABASE`)
+- PostgreSQL extension setup (`CREATE EXTENSION`)
+- Roles and permissions required for local/CI environments
 
-- CI・本番環境への直接適用は例外を除いて避け、環境ごとの運用ポリシーに従ってください。
-  - 仮に CI で使う場合は、所属チームのルールに従い適切に管理してください。
-- ここに置くのは「環境初期化に必要な最小限」の SQL のみとし、スキーマ変更は必ずマイグレーションで管理してください。
+## What Does NOT Belong Here
+
+- **DDL (table definitions, schema changes)** → `database/migrations/`
+- **DML (data manipulation, queries)** → `database/dml/`
+- **Seed data (test/dev initial data)** → `database/seed/`
+
+## Rules
+
+- Use 3-digit numeric prefixes for ordering (e.g., `001-...`, `002-...`)
+- Make scripts **idempotent** where possible (`IF NOT EXISTS`) — scripts run on first startup but idempotency helps troubleshooting
+- Do not apply directly to CI/production without following team policies
+- Keep files to the **minimum required for environment initialization**

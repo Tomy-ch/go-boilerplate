@@ -77,7 +77,7 @@ Example response:
 
 Before starting development, make sure to follow the setup steps.
 
-[See Setup Instructions](./docs/maintenance/setup.md)
+[See Setup Instructions](./docs/maintenance/setup-repository.md)
 
 ## Why This Boilerplate Exists
 

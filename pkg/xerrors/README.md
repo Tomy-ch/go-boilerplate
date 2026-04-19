@@ -1,33 +1,24 @@
-# XErrors
+# xerrors
 
-概要: このディレクトリは、エラーハンドリングのためのユーティリティを提供します。
-スタックトレースを持つ外部ライブラリを `xerrors` パッケージでラップし、エラーの生成、ラップ、比較、型変換を簡素化します。
+English | [日本語](README.ja.md)
 
-## 役割
+Wraps `github.com/cockroachdb/errors` to provide error operations with stack traces.
 
-- エラーの生成 (`New`)。
-- エラーのラップ (`Wrap`)。
-- エラーの比較 (`Is`)。
-- エラーの型変換 (`As`)。
+## Public API
 
-## 必要度
+|Function|Description|
+|---|---|
+|`New(msg)`|Create a new error with stack trace|
+|`Wrap(err, msg)`|Wrap an existing error with message and stack trace|
+|`Is(err, target)`|Check error identity (supports wrapped chains)|
+|`As(err, target)`|Type-assert an error (supports wrapped chains)|
+|`StackTrace(err)`|Get formatted stack trace string|
 
-### 本番運用での必須度
+## Wraps
 
-- 必須度: 本番運用で必須
-  - 理由: エラーハンドリングは、アプリケーションの安定性とデバッグの容易さに直結するため、必須です。
+`github.com/cockroachdb/errors`
 
-### 開発/テスト運用での必須度
+## Notes
 
-- 必須度: 開発/テスト運用で必須
-  - 理由: 開発中やテスト中にエラーの詳細を把握し、適切に処理するために必要です。
-
-### 無効化した場合の影響
-
-- エラーの詳細な情報が失われ、デバッグやトラブルシューティングが困難になります。
-- エラーのラップや比較ができなくなるため、エラーハンドリングの一貫性が損なわれます。
-
-## 注意点
-
-- 外部ライブラリの `errors` パッケージに依存しているため、バージョン管理に注意してください。
-- エラーのラップや比較を適切に行うことで、エラーの原因を特定しやすくなります。
+- All errors created via this package carry stack traces
+- Use `Is` / `As` instead of direct `errors.Is` / `errors.As` for consistency

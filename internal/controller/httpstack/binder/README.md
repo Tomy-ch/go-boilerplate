@@ -1,34 +1,12 @@
-# `binder` パッケージ
+# binder
 
-概要: Echo の `Bind()` 挙動を制御するための小さなユーティリティパッケージです。デフォルトのバインダ実装をラップ/提供し、アプリ起動時に Echo の `Binder` を設定します。
+English | [日本語](README.ja.md)
 
-## 役割
+Initializes Echo's request body binder.
 
-`binder` は、HTTP リクエストボディやパス/クエリパラメータを構造体にバインドする際に使用される `echo.Binder` を生成して Echo インスタンスに設定します。
+## Public API
 
-主要ファイル:
-
-- `binder.go` : `New(e *echo.Echo)` と `NewBinder()` を提供し、Echo にバインダを設定する実装。
-- `binder_test.go` : 実装の単体テスト。
-
-## 必要度
-
-### 本番運用での必須度
-
-- 必須度: 本番運用で推奨
-
-理由: バインディングの挙動を明示的に管理することで、入力検証や変換の一貫性を保ちやすくなります。デフォルトの `echo.DefaultBinder` をそのまま使う場合でも、起動コードで明示的に設定しておくことは望ましいです。
-
-### 開発/テスト運用での必須度
-
-- 必須度: 開発/テスト運用で推奨
-
-理由: テスト時にバインディングの挙動を差し替えたり、カスタム処理を追加したりする際にエントリポイントがあると便利です。
-
-### 無効化した場合の影響
-
-このパッケージを呼び出さない場合、Echo の既定のバインダが使用されます。機能的な問題は通常発生しませんが、将来的にカスタムバインダを導入する際の拡張ポイントが失われます。
-
-## 注意点
-
-- カスタムバインダを導入する場合は `NewBinder()` の実装を変更してください。
+|Function|Description|
+|---|---|
+|`New(e)`|Set binder on Echo instance|
+|`NewBinder()`|Return a new `echo.Binder` (default implementation)|

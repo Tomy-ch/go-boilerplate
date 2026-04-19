@@ -85,7 +85,7 @@ func TestNormalizePgError(t *testing.T) {
 
 	t.Run("直列化失敗", func(t *testing.T) {
 		t.Parallel()
-		got := NormalizeError(&pgconn.PgError{Code: "40001", Message: "serialisation failure"})
+		got := NormalizeError(&pgconn.PgError{Code: "40001", Message: "serialization failure"})
 		require.Error(t, got)
 		require.ErrorIs(t, got, apperror.ErrUnavailable)
 	})
