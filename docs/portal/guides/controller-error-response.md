@@ -1,0 +1,90 @@
+# error response
+
+English | [日本語](README.ja.md)
+
+This package handles the generation and management of HTTP error responses.
+
+## Role
+
+- **Unified format**: Returns error responses from the API in a consistent structure, simplifying client-side handling
+- **Reusable from handlers / middleware**: Endpoint handlers and middleware call public functions to return errors
+- **Type-safe responses**: Responses are built using types from `gen/type.gen.go` (auto-generated from OpenAPI)
+
+## File Structure
+
+|File|Role|
+|---|---|
+|`error_response.go`|Response assembly, public functions|
+|`http_error.go`|Error code / message constants, apperror → HTTP mapping|
+|`gen/type.gen.go`|Type definitions auto-generated from OpenAPI (do not edit)|
+
+## Error Response Structure
+
+```json
+{
+  "Code": "INTERNAL_ERROR",
+  "Details": ["Specific error description"],
+  "Message": "An unexpected error occurred on the server. Please try again later.",
+  "RequestID": "123e4567-e89b-12d3-a456-426614174000"
+}
+```
+
+|Field|Description|
+|---|---|
+|`Code`|Application-level error identifier|
+|`Details`|Additional information for debugging (only publicly safe information)|
+|`Message`|User-friendly message for end users|
+|`RequestID`|Unique ID for request tracing|
+
+HTTP status codes are returned in the response header, and internal information such as stack traces is output only to logs.
+
+## Public Functions
+
+|Function|Description|
+|---|---|
+|`NewHTTPErrorFromAppError`|Generate HTTP error response from `apperror`|
+|`NewHTTPErrorFromStatus`|Generate error response from HTTP status code|
+|`NewInternalErrorResponse`|Generate 500 Internal Server Error response|
+
+## Error Code and HTTP Status Mapping
+
+### apperror → HTTP Mapping
+
+|apperror|HTTP Status|Error Code|
+|---|---|---|
+|`ErrInvalidArgument`|400 Bad Request|`BAD_REQUEST`|
+|`ErrUnauthenticated`|401 Unauthorized|`UNAUTHORIZED`|
+|`ErrPermissionDenied`|403 Forbidden|`ACCESS_DENIED`|
+|`ErrNotFound`|404 Not Found|`NOT_FOUND`|
+|`ErrConflict`|409 Conflict|`RESOURCE_CONFLICT`|
+|`ErrValidation`|422 Unprocessable Entity|`VALIDATION_FAILED`|
+|`ErrTooManyRequests`|429 Too Many Requests|`TOO_MANY_REQUESTS`|
+|`ErrUnimplemented`|501 Not Implemented|`NOT_AVAILABLE`|
+|`ErrUnavailable`|503 Service Unavailable|`NOT_AVAILABLE`|
+|Other|500 Internal Server Error|`INTERNAL_ERROR`|
+
+### Error Code List
+
+|Code|Default Message|
+|---|---|
+|`BAD_REQUEST`|入力内容に誤りがあります。再度ご確認ください。|
+|`UNAUTHORIZED`|ログインが必要です。ログインして再度お試しください。|
+|`ACCESS_DENIED`|この操作を行う権限がありません。|
+|`NOT_FOUND`|お探しの情報が見つかりませんでした。|
+|`RESOURCE_CONFLICT`|既に同じ情報が登録されています。|
+|`VALIDATION_FAILED`|入力内容の検証に失敗しました。修正して再度お試しください。|
+|`TOO_MANY_REQUESTS`|リクエストが多すぎます。しばらくしてから再度お試しください。|
+|`INTERNAL_ERROR`|サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。|
+|`NOT_AVAILABLE`|現在この機能はご利用いただけません。しばらくしてから再度お試しください。|
+
+## Configuration Changes
+
+- **Modify response logic**: Edit `error_response.go`
+- **Add error codes / messages**: Add constants and mapping to `http_error.go`
+- **Update type definitions**: After updating the OpenAPI spec, regenerate with `make gen-api`
+
+## Notes
+
+- Do not include stack traces or sensitive information in `Details`. Internal information should only be output to logs
+- Maintain consistency between error codes and HTTP status codes
+- Do not manually edit files under `gen/`

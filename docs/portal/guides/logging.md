@@ -51,8 +51,11 @@ type Logger interface {
 
     Named(name string) Logger
     CallerSkip(skip int) Logger
+    ConvertFields(fields []*Field) []zap.Field
 }
 ```
+
+`ConvertFields` converts a `*Field` slice to a `zap.Field` slice. Primarily used for framework integration where `zap.Field` is required internally.
 
 This design provides:
 
@@ -66,6 +69,15 @@ Logger is created according to the application runtime mode.
 
 ```go
 logger, err := logging.New(appCfg)
+```
+
+`New` selects the appropriate logger based on the mode of `config.ApplicationConfig`.
+
+You can also create loggers individually:
+
+```go
+logger, err := logging.NewProductionLogger()
+logger, err := logging.NewDevelopmentLogger()
 ```
 
 Internally, the following loggers are used.
@@ -109,7 +121,10 @@ Supported types
 |Int64|int64|
 |Float64|float64|
 |Bool|bool|
+|Time|time.Time (converted to RFC3339Nano string)|
+|DurationMs|time.Duration (converted to float64 in milliseconds)|
 |Error|error|
+|Stacktrace|error (converted to stack trace string)|
 |Any|any|
 
 Purpose of this design
@@ -124,13 +139,21 @@ A component that consolidates log field generation for HTTP / SQL / Observabilit
 
 ```go
 type LogFieldBuilder interface {
-    BuildHTTPRequestFields(...)
-    BuildHTTPResponseFields(...)
-    BuildSQLStartFields(...)
-    BuildSQLEndFields(...)
-    BuildObservabilityFields(...)
+    BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field
+    BuildHTTPResponseFields(resp HTTPResponseLogInput) []*Field
+    BuildSQLStartFields(sql SQLFieldsStartInput) []*Field
+    BuildSQLEndFields(sql SQLFieldsEndInput) []*Field
+    BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field
 }
 ```
+
+Creation
+
+```go
+lf := logging.NewLogFields(obsCfg, osCfg)
+```
+
+Accepts `config.ObservabilityConfig` and `config.OperationSystemConfig` to control trace/span field attachment and timezone information.
 
 Use cases
 
@@ -139,6 +162,20 @@ Use cases
 - trace/span logs
 
 Automatically generates **structured logs**.
+
+### Input Structs
+
+Each Build method receives a dedicated input struct.
+
+|Struct|Use|Key Fields|
+|---|---|---|
+|`HTTPRequestLogInput`|HTTP request log|Method, Path, URI, RemoteIP, Host, Scheme, Proto, UserAgent, ContentType, ContentLength, PathParams, QueryParams|
+|`HTTPResponseLogInput`|HTTP response log|Method, Path, URI, Status, Latency, RequestID|
+|`SQLFieldsStartInput`|SQL start log|Layer, PkgName, FuncName, SpanName|
+|`SQLFieldsEndInput`|SQL end log|Layer, PkgName, FuncName, SpanName, Latency, Query, Args, Err|
+|`ObservabilityFieldsInput`|Observability log|Layer, PkgName, FuncName, SpanName, EventType, Latency|
+
+All input structs share `EventAt` (event timestamp) and `TraceID` / `SpanID` / `ParentSpanID` (trace information) as common fields.
 
 ## HTTP Logging
 
@@ -244,6 +281,74 @@ trace / span information is integrated at the logging layer.
 ### 4 Testability
 
 Since Logger is an interface, it can be mocked using `mockgen`.
+
+## Log Key Constants
+
+Log keys defined in `const.go`.
+
+### HTTP
+
+|Constant|Key|
+|---|---|
+|`EventTypeKey`|`event_type`|
+|`EventTypeStart`|`start`|
+|`EventTypeEnd`|`end`|
+|`EventAtKey`|`event_at`|
+|`EventTzKey`|`event_tz`|
+|`StatusKey`|`status`|
+|`MethodKey`|`method`|
+|`URIKey`|`uri`|
+|`PathKey`|`path`|
+|`QueryParamsKey`|`query_params`|
+|`PathParamsKey`|`path_params`|
+|`UserAgentKey`|`user_agent`|
+|`HostKey`|`host`|
+|`SchemeKey`|`scheme`|
+|`ProtoKey`|`proto`|
+|`RemoteIPKey`|`remote_ip`|
+|`ContentTypeKey`|`content_type`|
+|`ContentLengthKey`|`content_length`|
+|`LatencyKey`|`latency_ms`|
+|`RequestIDKey`|`request_id`|
+
+### Error
+
+|Constant|Key|
+|---|---|
+|`ErrorCodeKey`|`error_code`|
+|`ErrorMessageKey`|`error_message`|
+|`ErrorDetails`|`error_details`|
+|`InternalErrorKey`|`internal_error`|
+|`InternalStackTraceKey`|`internal_stacktrace`|
+
+### Query
+
+|Constant|Key|
+|---|---|
+|`RawQueryKey`|`raw_query`|
+|`QueryCompactKey`|`query_compact`|
+|`QueryArgsCountKey`|`args_count`|
+
+### Job
+
+|Constant|Key|
+|---|---|
+|`JobNameKey`|`job_name`|
+|`JobArgsKey`|`job_args`|
+|`JobErrorKey`|`job_error`|
+|`JobResultKey`|`job_result`|
+
+### Observability
+
+|Constant|Key|
+|---|---|
+|`TraceIDKey`|`trace_id`|
+|`SpanIDKey`|`span_id`|
+|`ParentSpanIDKey`|`parent_span_id`|
+|`SpanNameKey`|`span_name`|
+|`LayerKey`|`layer`|
+|`PackageKey`|`package`|
+|`FunctionKey`|`function`|
 
 ## Security Considerations
 

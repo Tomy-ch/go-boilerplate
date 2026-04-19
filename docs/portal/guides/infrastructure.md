@@ -1,5 +1,7 @@
 # Infrastructure Layer (`internal/infrastructure`) Guide
 
+English | [日本語](README.ja.md)
+
 ## Role
 
 The Infrastructure layer is responsible for **implementing access to external technologies (DB, external APIs, authentication, security, etc.)**.
@@ -112,39 +114,14 @@ flowchart TB
     Root --> Sys
 ```
 
-## Subsystems
+## Subdirectories
 
-### Authentication Access Implementation
-
-- Token validation
-- Retrieval of authentication information
-
-→ Refer to [auth/README.md](./auth/README.md)
-
-### RDB Access Implementation
-
-- Repository / QueryService
-- Type-safe SQL execution using sqlc
-- Transaction management using driver
-- Logging / tracing using loggingdb
-- PostgreSQL error normalization
-
-→ Refer to [rdb/README.md](./rdb/README.md)
-
-### Security Access Implementation
-
-- Encryption / hashing
-- Token generation
-
-→ Refer to [security/README.md](./security/README.md)
-
-### System Access Implementation
-
-- clock (time management)
-- ID generation
-- System utilities
-
-→ Refer to [system/README.md](./system/README.md)
+|Directory|Description|Interface Placement|Details|
+|---|---|---|---|
+|`auth/`|Authentication infrastructure (environment-specific Authenticator impl)|Usecase boundary|[README](auth/README.md)|
+|`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
+|`security/`|Password hashing (bcrypt)|Usecase boundary|[README](security/README.md)|
+|`system/`|System-dependent operations (time retrieval, etc.)|Usecase boundary|[README](system/README.md)|
 
 ## Test Strategy
 

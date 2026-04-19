@@ -135,7 +135,7 @@
 				
 				<option value="file39">go-boilerplate/internal/controller/httpstack/logging/logging.go (100.0%)</option>
 				
-				<option value="file40">go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go (97.1%)</option>
+				<option value="file40">go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go (97.2%)</option>
 				
 				<option value="file41">go-boilerplate/internal/controller/httpstack/oapi/oapi.go (100.0%)</option>
 				
@@ -281,7 +281,7 @@
 				
 				<option value="file112">go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go (97.1%)</option>
 				
-				<option value="file113">go-boilerplate/internal/infrastructure/rdb/postgres/pgerror/pgerror.go (100.0%)</option>
+				<option value="file113">go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go (100.0%)</option>
 				
 				<option value="file114">go-boilerplate/internal/infrastructure/rdb/query_service/user/user_query_service.go (88.9%)</option>
 				
@@ -490,25 +490,29 @@ func New() (*Config, error) <span class="cov4" title="10">{
 }
 
 // validateConfig は、ConfigLoaderの内容を検証します。
-func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov6" title="37">{
+func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov6" title="39">{
         if err := validateApplicationConfig(cfg.App); err != nil </span><span class="cov2" title="3">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="34">if err := validateServerConfig(cfg.Server); err != nil </span><span class="cov3" title="7">{
+        <span class="cov6" title="36">if err := validateServerConfig(cfg.Server); err != nil </span><span class="cov3" title="7">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="27">if err := validateDatabaseConfig(cfg.Database); err != nil </span><span class="cov3" title="5">{
+        <span class="cov5" title="29">if err := validateDatabaseConfig(cfg.Database); err != nil </span><span class="cov3" title="5">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="22">if err := validateDBConnectionConfig(cfg.DBConnection); err != nil </span><span class="cov1" title="1">{
+        <span class="cov5" title="24">if err := validateDBConnectionConfig(cfg.DBConnection); err != nil </span><span class="cov1" title="2">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="21">cidr, err := validateSecurityConfig(cfg.Security)
+        <span class="cov5" title="22">cidr, err := validateSecurityConfig(cfg.Security)
         if err != nil </span><span class="cov3" title="6">{
+                return nil, err
+        }</span>
+
+        <span class="cov4" title="16">if err := validateAuthConfig(cfg.Auth); err != nil </span><span class="cov1" title="1">{
                 return nil, err
         }</span>
 
@@ -522,75 +526,75 @@ func validateConfig(cfg Loader) (*validatedConfig, error) <span class="cov6" tit
 }
 
 // validateApplicationConfig は、アプリケーション設定を検証します。
-func validateApplicationConfig(appCfg Application) error <span class="cov6" title="38">{
+func validateApplicationConfig(appCfg Application) error <span class="cov6" title="40">{
         if appCfg.Mode != DevelopmentMode &amp;&amp; appCfg.Mode != ProductionMode </span><span class="cov2" title="3">{
                 return ErrInvalidAppMode
         }</span>
-        <span class="cov5" title="35">return nil</span>
+        <span class="cov6" title="37">return nil</span>
 }
 
 // validateServerConfig は、サーバー設定を検証します。
-func validateServerConfig(srvCfg Server) error <span class="cov5" title="35">{
+func validateServerConfig(srvCfg Server) error <span class="cov6" title="37">{
         if srvCfg.Port &lt; MinPort || MaxPort &lt; srvCfg.Port </span><span class="cov1" title="1">{
                 return ErrInvalidPortRange
         }</span>
 
-        <span class="cov5" title="34">if srvCfg.ReadHeaderTimeout &lt;= 0 </span><span class="cov1" title="2">{
+        <span class="cov6" title="36">if srvCfg.ReadHeaderTimeout &lt;= 0 </span><span class="cov1" title="2">{
                 return ErrInvalidReadHeaderTimeout
         }</span>
 
-        <span class="cov5" title="32">if srvCfg.ReadTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="34">if srvCfg.ReadTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidReadTimeout
         }</span>
 
-        <span class="cov5" title="31">if srvCfg.WriteTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="33">if srvCfg.WriteTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidWriteTimeout
         }</span>
 
-        <span class="cov5" title="30">if srvCfg.IdleTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="32">if srvCfg.IdleTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidIdleTimeout
         }</span>
 
-        <span class="cov5" title="29">if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout </span><span class="cov1" title="1">{
+        <span class="cov5" title="31">if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout </span><span class="cov1" title="1">{
                 return ErrReadHeaderTimeoutExceedsReadTimeout
         }</span>
-        <span class="cov5" title="28">return nil</span>
+        <span class="cov5" title="30">return nil</span>
 }
 
 // validateDatabaseConfig は、データベース設定を検証します。
-func validateDatabaseConfig(dbCfg Database) error <span class="cov5" title="28">{
+func validateDatabaseConfig(dbCfg Database) error <span class="cov5" title="30">{
         if dbCfg.Port &lt; MinPort || MaxPort &lt; dbCfg.Port </span><span class="cov1" title="2">{
                 return ErrInvalidDBPortRange
         }</span>
-        <span class="cov5" title="26">if dbCfg.PingTimeout &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov5" title="28">if dbCfg.PingTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidDBPingTimeout
         }</span>
-        <span class="cov5" title="25">if dbCfg.SlowQueryWarnThreshold &lt; 0 </span><span class="cov1" title="2">{
+        <span class="cov5" title="27">if dbCfg.SlowQueryWarnThreshold &lt; 0 </span><span class="cov1" title="2">{
                 return ErrInvalidSlowQueryWarnThreshold
+        }</span>
+        <span class="cov5" title="25">return nil</span>
+}
+
+// validateDBConnectionConfig は、データベース接続設定を検証します。
+func validateDBConnectionConfig(dbConnCfg DBConnection) error <span class="cov5" title="25">{
+        if dbConnCfg.MinConns &gt; dbConnCfg.MaxConns </span><span class="cov1" title="2">{
+                return ErrInvalidExceedMaxConns
         }</span>
         <span class="cov5" title="23">return nil</span>
 }
 
-// validateDBConnectionConfig は、データベース接続設定を検証します。
-func validateDBConnectionConfig(dbConnCfg DBConnection) error <span class="cov5" title="23">{
-        if dbConnCfg.MinConns &gt; dbConnCfg.MaxConns </span><span class="cov1" title="1">{
-                return ErrInvalidExceedMaxConns
-        }</span>
-        <span class="cov5" title="22">return nil</span>
-}
-
 // validateSecurityConfig は、セキュリティ設定を検証します。
-func validateSecurityConfig(secCfg Security) (*net.IPNet, error) <span class="cov5" title="22">{
+func validateSecurityConfig(secCfg Security) (*net.IPNet, error) <span class="cov5" title="23">{
         if len(secCfg.AllowedOrigins) == 0 </span><span class="cov1" title="1">{
                 return nil, ErrEmptyAllowedOrigins
         }</span>
 
-        <span class="cov5" title="21">if secCfg.BcryptCost &lt; bcrypt.MinCost || bcrypt.MaxCost &lt; secCfg.BcryptCost </span><span class="cov1" title="2">{
+        <span class="cov5" title="22">if secCfg.BcryptCost &lt; bcrypt.MinCost || bcrypt.MaxCost &lt; secCfg.BcryptCost </span><span class="cov1" title="2">{
                 return nil, ErrInvalidBcryptCost
         }</span>
 
-        <span class="cov5" title="19">for _, origin := range secCfg.AllowedOrigins </span><span class="cov6" title="37">{
-                if strings.HasPrefix(origin, "http://") </span><span class="cov5" title="26">{
+        <span class="cov5" title="20">for _, origin := range secCfg.AllowedOrigins </span><span class="cov6" title="39">{
+                if strings.HasPrefix(origin, "http://") </span><span class="cov5" title="27">{
                         parsedURL, err := url.Parse(origin)
                         if err != nil ||
                                 (parsedURL.Hostname() != "localhost" &amp;&amp; parsedURL.Hostname() != "127.0.0.1") </span><span class="cov1" title="1">{
@@ -599,12 +603,20 @@ func validateSecurityConfig(secCfg Security) (*net.IPNet, error) <span class="co
                 }
         }
 
-        <span class="cov5" title="18">_, cidr, err := net.ParseCIDR(secCfg.CIDR)
+        <span class="cov5" title="19">_, cidr, err := net.ParseCIDR(secCfg.CIDR)
         if err != nil </span><span class="cov1" title="2">{
                 return nil, fmt.Errorf("%w : %w", ErrFailedToParseCIDR, err)
         }</span>
 
-        <span class="cov4" title="16">return cidr, nil</span>
+        <span class="cov4" title="17">return cidr, nil</span>
+}
+
+// validateAuthConfig は、認証設定を検証します。
+func validateAuthConfig(authCfg Auth) error <span class="cov5" title="18">{
+        if authCfg.CookieName == "" &amp;&amp; authCfg.HeaderName == "" </span><span class="cov1" title="2">{
+                return ErrAuthConfigMissing
+        }</span>
+        <span class="cov4" title="16">return nil</span>
 }
 
 // validateIPRateLimitConfig は、IPレートリミット設定を検証します。
@@ -768,7 +780,7 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="304">{
+func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="305">{
         t.Helper()
         return &amp;Config{
                 os: OperationSystemConfig{
@@ -850,7 +862,7 @@ func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="304">{
 }</span>
 
 // mockLoader は、テスト用のLoaderを返します。
-func mockLoader(t testing.TB) Loader <span class="cov6" title="36">{
+func mockLoader(t testing.TB) Loader <span class="cov6" title="40">{
         t.Helper()
 
         return Loader{
@@ -1269,7 +1281,7 @@ func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov6" tit
 // Env は、サーバーの環境を返します。
 //
 // 例: "local", "development", "staging", "production" など。
-func (a *ApplicationConfig) Env() string <span class="cov5" title="18">{ return a.env }</span>
+func (a *ApplicationConfig) Env() string <span class="cov5" title="19">{ return a.env }</span>
 
 // Mode は、アプリケーションの環境を返します。
 //
@@ -1435,10 +1447,10 @@ func (s *SecureCookieConfig) SameSite() string <span class="cov3" title="5">{ re
 func (s *SecureCookieConfig) Domain() string <span class="cov3" title="5">{ return s.domain }</span>
 
 // NewAuthConfig は、認証の設定を返します。
-func NewAuthConfig(cfg *Config) *AuthConfig <span class="cov5" title="15">{ return &amp;cfg.auth }</span>
+func NewAuthConfig(cfg *Config) *AuthConfig <span class="cov5" title="16">{ return &amp;cfg.auth }</span>
 
 // CookieName は、認証に使用するCookie名を返します。
-func (a *AuthConfig) CookieName() string <span class="cov6" title="32">{ return a.cookieName }</span>
+func (a *AuthConfig) CookieName() string <span class="cov6" title="35">{ return a.cookieName }</span>
 
 // HeaderName は、認証に使用するヘッダー名を返します。
 func (a *AuthConfig) HeaderName() string <span class="cov5" title="22">{ return a.headerName }</span>
@@ -1612,13 +1624,13 @@ var echocontextKey = echocontextKeyType{}
 
 // --- std lib context ---
 
-func SetEchoContext(ctx context.Context, val echo.Context) context.Context <span class="cov9" title="6">{
+func SetEchoContext(ctx context.Context, val echo.Context) context.Context <span class="cov9" title="7">{
         return context.WithValue(ctx, echocontextKey, val)
 }</span>
 
-func GetEchoContext(ctx context.Context) (echo.Context, bool) <span class="cov10" title="7">{
+func GetEchoContext(ctx context.Context) (echo.Context, bool) <span class="cov10" title="8">{
         val := ctx.Value(echocontextKey)
-        if v, ok := val.(echo.Context); ok </span><span class="cov8" title="5">{
+        if v, ok := val.(echo.Context); ok </span><span class="cov8" title="6">{
                 return v, true
         }</span>
         <span class="cov4" title="2">return *new(echo.Context), false</span>
@@ -1725,7 +1737,7 @@ const (
         // codeBadRequest は、リクエストに不正または不足がある場合に使用されるエラーコードです。
         codeBadRequest = "BAD_REQUEST"
         // codeUnauthorized は、認証されていないアクセスに対して使用されるエラーコードです。
-        codeUnauthorized = "UNAUTHORISED"
+        codeUnauthorized = "UNAUTHORIZED"
         // codeAccessDenied は、アクセス権限がない操作を試みた場合に使用されるエラーコードです。
         codeAccessDenied = "ACCESS_DENIED"
         // codeNotFound は、指定されたリソースが存在しない場合に使用されるエラーコードです。
@@ -3774,8 +3786,8 @@ const prefixBearer = "Bearer "
 func NewAuthenticator(
         authCfg *config.AuthConfig,
         authenticator authbd.Authenticator,
-) openapi3filter.AuthenticationFunc <span class="cov5" title="4">{
-        return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error </span><span class="cov5" title="4">{
+) openapi3filter.AuthenticationFunc <span class="cov6" title="5">{
+        return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error </span><span class="cov6" title="5">{
                 req := input.RequestValidationInput.Request
 
                 //nolint:contextcheck // inputのContext内部のものにアクセスするため
@@ -3784,13 +3796,16 @@ func NewAuthenticator(
                         return ErrUnauthorizedEchoContextNotFound
                 }</span>
 
-                <span class="cov4" title="3">authn, err := authExtractor(ctx, req, authCfg, authenticator)
+                <span class="cov5" title="4">authn, err := authExtractor(ctx, req, authCfg, authenticator)
                 if err != nil </span><span class="cov1" title="1">{
                         return ErrUnauthorizedInvalidToken
                 }</span>
+                <span class="cov4" title="3">if authn == nil </span><span class="cov3" title="2">{
+                        return ErrUnauthorizedTokenNotProvided
+                }</span>
 
                 //nolint:contextcheck // ecのContext内部のものにアクセスするため
-                <span class="cov3" title="2">ctxhelper.SetAuthnToEcho(ec, *authn)
+                <span class="cov1" title="1">ctxhelper.SetAuthnToEcho(ec, *authn)
                 return nil</span>
         }
 }
@@ -3801,31 +3816,31 @@ func authExtractor(
         req *http.Request,
         authCfg *config.AuthConfig,
         authenticator authbd.Authenticator,
-) (*authbd.Authn, error) <span class="cov7" title="6">{
+) (*authbd.Authn, error) <span class="cov7" title="7">{
         token := extractToken(req, authCfg)
         if token == "" </span><span class="cov3" title="2">{
                 return nil, nil
         }</span>
 
-        <span class="cov5" title="4">cred, err := authbd.NewCredential(token)
+        <span class="cov6" title="5">cred, err := authbd.NewCredential(token)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="4">authn, err := authenticator.Authenticate(ctx, cred)
+        <span class="cov6" title="5">authn, err := authenticator.Authenticate(ctx, cred)
         if err != nil </span><span class="cov3" title="2">{
                 return nil, ErrUnauthorizedInvalidToken
         }</span>
 
-        <span class="cov3" title="2">return authn, nil</span>
+        <span class="cov4" title="3">return authn, nil</span>
 }
 
 // extractToken は、認証トークンを抽出します。
-func extractToken(r *http.Request, authCfg *config.AuthConfig) string <span class="cov10" title="13">{
+func extractToken(r *http.Request, authCfg *config.AuthConfig) string <span class="cov10" title="14">{
         // extract from Cookie
-        if authCfg.CookieName() != "" </span><span class="cov10" title="13">{
-                if ck, err := r.Cookie(authCfg.CookieName()); err == nil &amp;&amp; ck != nil </span><span class="cov6" title="5">{
-                        if v := strings.TrimSpace(ck.Value); v != "" </span><span class="cov6" title="5">{
+        if authCfg.CookieName() != "" </span><span class="cov10" title="14">{
+                if ck, err := r.Cookie(authCfg.CookieName()); err == nil &amp;&amp; ck != nil </span><span class="cov7" title="6">{
+                        if v := strings.TrimSpace(ck.Value); v != "" </span><span class="cov7" title="6">{
                                 return v
                         }</span>
                 }
@@ -4802,6 +4817,8 @@ func ControllerModule() fx.Option <span class="cov10" title="2">{
 		<pre class="file" id="file64" style="display: none">package core
 
 import (
+        "fmt"
+
         "go-boilerplate/internal/config"
         "go-boilerplate/internal/controller/httpstack/oapi/auth"
         "go-boilerplate/internal/infrastructure/auth/local"
@@ -4828,16 +4845,16 @@ func AuthnModule() fx.Option <span class="cov4" title="2">{
 func provideAuthenticator(
         appCfg *config.ApplicationConfig,
         logger logging.Logger,
-) authbd.Authenticator <span class="cov10" title="5">{
+) (authbd.Authenticator, error) <span class="cov10" title="5">{
         switch appCfg.Env() </span>{
         case config.EnvLocal, config.EnvCI, config.EnvTest:<span class="cov8" title="4">
-                return local.New()</span>
+                return local.New(), nil</span>
         default:<span class="cov1" title="1">
                 logger.CallerSkip(callerSkipCount).Error(
                         "No authenticator configured for the current environment",
                         logging.String("env", string(appCfg.Env())),
                 )
-                return nil</span>
+                return nil, fmt.Errorf("no authenticator configured for environment: %s", appCfg.Env())</span>
         }
 }
 </pre>
@@ -5227,7 +5244,7 @@ import (
 )
 
 // DefaultPortModule は、ポート設定を制御するためのモジュールです。
-func DefaultPortModule() fx.Option <span class="cov10" title="7">{
+func DefaultPortModule() fx.Option <span class="cov10" title="4">{
         return fx.Module("server.port",
                 fx.Provide(
                         provideDefaultPortServeConfig,
@@ -6238,7 +6255,6 @@ func MiddlewareModule() fx.Option <span class="cov10" title="3">{
                 // Middleware Modules
                 decoration.BannerModule(),
                 decoration.DefaultPortModule(),
-                decoration.DefaultPortModule(),
                 inbound.IPExtractorModule(),
                 inbound.URIModule(),
                 inbound.OpenAPIModule(),
@@ -7046,7 +7062,7 @@ import (
         "time"
 
         "go-boilerplate/internal/config"
-        "go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+        "go-boilerplate/internal/infrastructure/rdb/pgerror"
         "go-boilerplate/internal/logging"
         "go-boilerplate/internal/usecase/boundary/tx"
 
@@ -7371,7 +7387,7 @@ import (
         "context"
 
         "go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
-        "go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+        "go-boilerplate/internal/infrastructure/rdb/pgerror"
         "go-boilerplate/internal/infrastructure/rdb/sqlc"
         "go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
         "go-boilerplate/internal/observability"
@@ -7457,7 +7473,7 @@ func fetchSearchAll(
                         DeletedAt:      row.Users.DeletedAt,
                 }
         }</span>
-        <span class="cov3" title="2">return results, err</span>
+        <span class="cov3" title="2">return results, nil</span>
 }
 
 // fetchSearchActive は、アクティブなユーザーを検索します。
@@ -7484,7 +7500,7 @@ func fetchSearchActive(
                         DeletedAt:      row.Users.DeletedAt,
                 }
         }</span>
-        <span class="cov3" title="2">return results, err</span>
+        <span class="cov3" title="2">return results, nil</span>
 }
 
 // fetchSearchDeleted は、削除されたユーザーを検索します。
@@ -7511,7 +7527,7 @@ func fetchSearchDeleted(
                         DeletedAt:      row.Users.DeletedAt,
                 }
         }</span>
-        <span class="cov3" title="2">return results, err</span>
+        <span class="cov3" title="2">return results, nil</span>
 }
 
 // CountByFilter は、キーワード検索でユーザーの総件数を返します。
@@ -7562,7 +7578,7 @@ import (
 
         "go-boilerplate/internal/domain/prefecture"
         "go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
-        "go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+        "go-boilerplate/internal/infrastructure/rdb/pgerror"
         "go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
         "go-boilerplate/internal/observability"
         "go-boilerplate/pkg/uuid"
@@ -7655,7 +7671,7 @@ import (
 
         "go-boilerplate/internal/domain/user"
         "go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
-        "go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+        "go-boilerplate/internal/infrastructure/rdb/pgerror"
         "go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
         "go-boilerplate/internal/observability"
 )
@@ -7909,7 +7925,7 @@ import (
         "time"
 
         "go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
-        "go-boilerplate/internal/infrastructure/rdb/postgres/pgerror"
+        "go-boilerplate/internal/infrastructure/rdb/pgerror"
         "go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
         "go-boilerplate/internal/observability"
         "go-boilerplate/internal/usecase/healthcheck/query"
@@ -9357,12 +9373,12 @@ type Credential struct {
 
 func NewCredential(
         accessToken string,
-) (*Credential, error) <span class="cov10" title="9">{
+) (*Credential, error) <span class="cov10" title="10">{
         if accessToken == "" </span><span class="cov1" title="1">{
                 return nil, ErrArgumentTokenMissing
         }</span>
 
-        <span class="cov9" title="8">return &amp;Credential{
+        <span class="cov9" title="9">return &amp;Credential{
                 accessToken: accessToken,
         }, nil</span>
 }
@@ -9618,8 +9634,8 @@ func ParseSearchTokens(keyword *string, maxTokens int) []string <span class="cov
         }</span>
 
         <span class="cov3" title="9">raw := splitIntoTerms(k)
-        normalised := trimAndDropEmpty(raw)
-        unique := dedupePreserveOrder(normalised)
+        normalized := trimAndDropEmpty(raw)
+        unique := dedupePreserveOrder(normalized)
 
         return limit(unique, maxTokens)</span>
 }
@@ -9865,7 +9881,7 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Pagi
                         Building:   u.Building(),
                         DeletedAt:  u.DeletedAt(),
                 }
-                if p, ok := prefectureMap[us[i].PrefectureID()]; ok </span><span class="cov1" title="1">{
+                if p, ok := prefectureMap[u.PrefectureID()]; ok </span><span class="cov1" title="1">{
                         dtos[i].PrefectureName = p.Name()
                 }</span>
         }
@@ -10375,7 +10391,7 @@ func New(msg string) error <span class="cov10" title="672">{
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
-func Wrap(err error, msg string) error <span class="cov8" title="283">{
+func Wrap(err error, msg string) error <span class="cov8" title="286">{
         return errors.Wrap(err, msg)
 }</span>
 

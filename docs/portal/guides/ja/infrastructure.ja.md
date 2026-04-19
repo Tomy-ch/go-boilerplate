@@ -1,5 +1,7 @@
 # インフラ層（`internal/infrastructure`）ガイド
 
+[English](README.md) | 日本語
+
 ## 役割
 
 Infrastructure 層は、**外部技術（DB・外部API・認証・セキュリティ等）へのアクセス実装**を担う層です。
@@ -112,39 +114,14 @@ flowchart TB
     Root --> Sys
 ```
 
-## 各サブシステム
+## サブディレクトリ
 
-### 認証アクセス実装
-
-- トークン検証
-- 認証情報の取得
-
-→ [auth/README.ja.md](./auth/README.ja.md) を参照
-
-### RDBアクセス実装
-
-- Repository / QueryService
-- sqlc による型安全な SQL 実行
-- driver によるトランザクション管理
-- loggingdb によるログ / トレース
-- PostgreSQL エラー正規化
-
-→ [rdb/README.ja.md](./rdb/README.ja.md) を参照
-
-### セキュリティアクセス実装
-
-- 暗号化 / ハッシュ
-- トークン生成
-
-→ [security/README.ja.md](./security/README.ja.md) を参照
-
-### システムアクセス実装
-
-- clock（時刻管理）
-- ID生成
-- システムユーティリティ
-
-→ [system/README.ja.md](./system/README.ja.md) を参照
+|ディレクトリ|説明|interface 配置|詳細|
+|---|---|---|---|
+|`auth/`|認証基盤（環境別 Authenticator 実装）|Usecase boundary|[README](auth/README.ja.md)|
+|`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
+|`security/`|パスワードハッシュ化（bcrypt）|Usecase boundary|[README](security/README.ja.md)|
+|`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
 
 ## テスト戦略
 

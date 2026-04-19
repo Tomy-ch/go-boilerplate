@@ -1,8 +1,44 @@
-# SQLC ベストプラクティス
+# database/dml
 
 [English](README.md) | 日本語
 
-`sqlc` でのコード生成を前提に、**PostgreSQL + Go** でよく使う記法だけを最小限まとめたメモです。
+`database/dml` は **sqlc によるコード生成の元となる SQL ファイル**を格納するディレクトリです。
+
+ここに配置された SQL は `make gen-query` で Go コード（`internal/infrastructure/rdb/sqlc/gen/`）に変換されます。
+
+## ディレクトリ構成
+
+```text
+database/dml/
+├── repository/       # Aggregate 永続化用 DML（CRUD）
+│   ├── user/
+│   └── prefecture/
+├── query_service/    # 検索専用 DML（読み取り最適化）
+│   └── user/
+├── command_service/  # コマンド専用 DML（将来拡張用）
+└── system_query/     # システム運用クエリ（ヘルスチェック等）
+    └── health_check/
+```
+
+## サブディレクトリとオニオンアーキテクチャの対応
+
+|ディレクトリ|Infrastructure 実装先|interface 配置|用途|
+|---|---|---|---|
+|`repository/`|`internal/infrastructure/rdb/repository/`|Domain 層|Aggregate の CRUD|
+|`query_service/`|`internal/infrastructure/rdb/query_service/`|Usecase 層|ユースケース固有の検索|
+|`command_service/`|（将来拡張）|Usecase 層|書き込み専用コマンド|
+|`system_query/`|`internal/infrastructure/rdb/system_query/`|Usecase 層|システム運用クエリ|
+
+## SQL ファイルの配置ルール
+
+- 1集約 = 1ディレクトリ（例: `repository/user/`）
+- ファイル内の各クエリには `-- name: QueryName :type` を必ず付ける
+- パラメータは `sqlc.arg()` または `@param` で命名する
+- 生成コードは手動編集禁止
+
+## sqlc ベストプラクティス
+
+`sqlc` でのコード生成を前提に、**PostgreSQL + Go** でよく使う記法をまとめます。
 
 ## 1. `-- name:` と実行種別
 
