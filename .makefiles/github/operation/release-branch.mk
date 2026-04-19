@@ -1,9 +1,6 @@
-get-latest-version = $(shell git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1)
+GET_LATEST_VERSION_CMD := git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1
 
 define do-generate-from-branch
-	echo "🔄 最新のタグを取得中..."; \
-	git fetch --tags origin; \
-	echo "✅ 最新のタグを取得完了"; \
 	LATEST=$(1); \
 	NEXT=$(2); \
 	BASE_BRANCH=$(3); \
@@ -38,7 +35,10 @@ endef
 .PHONY: branch-major ## releaseブランチ(vX+1.0.0)を作成して、デフォルトブランチに設定(現在のタグ基準)
 
 hotfix-patch:
-	@V=$(call get-latest-version); \
+	@echo "🔄 最新のタグを取得中..."; \
+	git fetch --tags origin; \
+	echo "✅ 最新のタグを取得完了"; \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
 	if [ -z "$$V" ]; then \
 		echo "❌ 最新のリリースタグを取得できませんでした。初期タグ作成が必要です。"; \
 		echo "➡️ 先に make release-tag などで初期タグを作成してから再実行してください。"; \
@@ -48,7 +48,10 @@ hotfix-patch:
 	$(call do-generate-from-branch,$$V,$$NEXT,production,hotfix)
 
 branch-patch:
-	@V=$(call get-latest-version); \
+	@echo "🔄 最新のタグを取得中..."; \
+	git fetch --tags origin; \
+	echo "✅ 最新のタグを取得完了"; \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
 	if [ -z "$$V" ]; then \
 		echo "❌ 最新のリリースタグを取得できませんでした。初期タグ作成が必要です。"; \
 		echo "➡️ 先に make release-tag などで初期タグを作成してから再実行してください。"; \
@@ -58,7 +61,10 @@ branch-patch:
 	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
 
 branch-minor:
-	@V=$(call get-latest-version); \
+	@echo "🔄 最新のタグを取得中..."; \
+	git fetch --tags origin; \
+	echo "✅ 最新のタグを取得完了"; \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
 	if [ -z "$$V" ]; then \
 		echo "❌ 最新のリリースタグを取得できませんでした。初期タグ作成が必要です。"; \
 		echo "➡️ 先に make release-tag などで初期タグを作成してから再実行してください。"; \
@@ -68,7 +74,10 @@ branch-minor:
 	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
 
 branch-major:
-	@V=$(call get-latest-version); \
+	@echo "🔄 最新のタグを取得中..."; \
+	git fetch --tags origin; \
+	echo "✅ 最新のタグを取得完了"; \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
 	if [ -z "$$V" ]; then \
 		echo "❌ 最新のリリースタグを取得できませんでした。初期タグ作成が必要です。"; \
 		echo "➡️ 先に make release-tag などで初期タグを作成してから再実行してください。"; \

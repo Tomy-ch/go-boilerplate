@@ -1,4 +1,4 @@
-get-latest-version = $(shell git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1)
+GET_LATEST_VERSION_CMD := git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1
 
 define do-release-tag
 	echo "🔄 productionブランチの最新を取得中..."; \
@@ -30,7 +30,7 @@ endef
 
 tag-patch:
 	@git fetch --tags origin; \
-	V=$(call get-latest-version); \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
 	if [ -z "$$V" ]; then \
 		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
 		exit 1; \
@@ -40,7 +40,7 @@ tag-patch:
 
 tag-minor:
 	@git fetch --tags origin; \
-	V=$(call get-latest-version); \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
 	if [ -z "$$V" ]; then \
 		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
 		exit 1; \
@@ -50,7 +50,7 @@ tag-minor:
 
 tag-major:
 	@git fetch --tags origin; \
-	V=$(call get-latest-version); \
+	V=$$(${GET_LATEST_VERSION_CMD}); \
 	if [ -z "$$V" ]; then \
 		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
 		exit 1; \
