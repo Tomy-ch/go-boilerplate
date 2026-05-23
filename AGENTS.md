@@ -148,6 +148,30 @@ AI agents are allowed to modify code only in the following directories unless ex
 
 Do NOT modify other top-level directories (e.g., `cmd/`, `docker/`, `scripts/`, `docs/`, `vendor/`, `makefile`, etc.) unless the user explicitly requests it.
 
+AI coding agent configurations are also outside the allowed scope. AI agents must NOT create, modify, or delete the following files/directories unless the user explicitly requests it:
+
+- Claude Code: `.claude/` (including `.claude/skills/`, `.claude/settings.json`, `.claude/settings.local.json`, etc.)
+- OpenAI Codex CLI: `.codex/`
+- Cursor: `.cursor/` (including `.cursor/rules/*.mdc`), `.cursorrules`
+- GitHub Copilot: `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`
+- Gemini CLI / Code Assist: `.gemini/`, `GEMINI.md`
+
+The shared `AGENTS.md` convention applies to multiple agents (Codex, Claude Code, etc.) and is already covered by the Protected Documentation section below.
+
+#### Exception: Skill Execution
+
+When the user invokes a skill (e.g., Claude Code's `/<skill-name>` via `.claude/skills/`, or equivalent mechanisms in other agents), the invocation itself counts as an **explicit user instruction**. While the skill is running, the AI Modification Scope restrictions above are relaxed for any files/directories the skill needs to touch in order to complete its defined procedure.
+
+Conditions:
+
+- The relaxation applies **only for the duration of the skill execution**, and only to the scope the skill explicitly defines.
+- The skill's own `SKILL.md` instructions still govern. If the skill instructs the AI to confirm before touching a specific path, that confirmation step must still be honored.
+- Hard-protected items remain protected even during skill execution:
+  - `AGENTS.md` (Protected Documentation)
+  - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `docs/`)
+  - Anything listed under `permissions.deny` in `.claude/settings.json`
+- Skills must not be used as a loophole to bypass the spirit of these rules. If a skill's procedure would touch a sensitive area (e.g., `docker/`, `.github/workflows/`), the skill itself should explicitly document this so the user is aware when invoking it.
+
 ### internal/
 
 Core application code.
