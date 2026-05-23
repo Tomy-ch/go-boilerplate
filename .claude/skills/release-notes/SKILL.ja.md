@@ -106,7 +106,7 @@ git log --no-merges --pretty=format:'%h%n%s%n%b%n---' <FROM_TAG>..HEAD
 
 ### 3. コミットを分類する
 
-各非マージコミットの subject を確認し、バケットに振り分ける。このリポジトリで使われている英語／日本語スタイルのプレフィックス（`Feat:` / `Fix:` / `Refactor:` / `Docs:` / `Chore:` / `Test:` / `feat:` / `fix:` など）に両対応する:
+各非マージコミットの subject を確認し、バケットに振り分ける。このリポジトリで使われている英語／日本語スタイルのプレフィックス（`Feat:` / `Fix:` / `Refactor:` / `Docs:` / `Chore:` / `Test:` など）に両対応する:
 
 | バケット | 出力先セクション |
 | --- | --- |

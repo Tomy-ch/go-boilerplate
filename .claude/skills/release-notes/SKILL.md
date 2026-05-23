@@ -108,7 +108,7 @@ git log --no-merges --pretty=format:'%h%n%s%n%b%n---' <FROM_TAG>..HEAD
 
 ### 3. Categorize Commits
 
-Inspect each non-merge commit subject and bucket it. Match both English and Japanese-style prefixes used in this repo (`Feat:`, `Fix:`, `Refactor:`, `Docs:`, `Chore:`, `Test:`, `feat:`, `fix:`, etc.):
+Inspect each non-merge commit subject and bucket it. Match both English and Japanese-style prefixes used in this repo (`Feat:`, `Fix:`, `Refactor:`, `Docs:`, `Chore:`, `Test:`, etc.):
 
 | Bucket | Section in the output |
 | --- | --- |
