@@ -149,18 +149,18 @@ FROM golang:1.26.1
 
 ## 9. Rebuild Docker containers
 
-In this project, Docker build can be executed with the following commands.
+Because the Go base image tag changes with this upgrade, use the clean (`--no-cache --pull`) variants so the new image is actually pulled and rebuilt.
 
 Server containers
 
 ```sh
-make serve-build
+make serve-build-clean
 ```
 
 Tool containers
 
 ```sh
-make tools-rebuild
+make tools-build-clean
 ```
 
 ## 10. Re-run code generation
@@ -199,8 +199,8 @@ make install-tools
 make gen
 make test
 make lint
-make serve-build
-make tools-rebuild
+make serve-build-clean
+make tools-build-clean
 ```
 
 ## Upgrade Checklist

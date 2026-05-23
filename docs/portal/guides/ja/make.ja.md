@@ -29,9 +29,11 @@ Make ターゲットは主に以下の単位で整理されています。
 | コマンド | 説明 | 主な用途 |
 | --- | --- | --- |
 | `make serve` | `development` プロファイルの Docker Compose サービスをバックグラウンドで起動します。 | 通常のローカル開発開始 |
-| `make serve-build` | Docker イメージを再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
+| `make serve-build` | Docker イメージをキャッシュを利用して再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
+| `make serve-build-clean` | `--no-cache --pull` でクリーンビルドしたうえで開発環境を起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
 | `make tools` | `tools` プロファイルの開発支援ツール群を起動します。 | 開発ツール利用時 |
-| `make tools-rebuild` | 開発用ツールコンテナを `--no-cache --pull` 付きで再構築します。 | ツールコンテナ更新時 |
+| `make tools-build` | 開発用ツールコンテナをキャッシュを利用してビルドします（起動はしません）。 | ツールコンテナの Dockerfile や依存変更の反映 |
+| `make tools-build-clean` | 開発用ツールコンテナを `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールコンテナの base image 更新の取り込み |
 | `make smoke` | `smoke` プロファイルの `smoke_server` をビルド付きで起動します。 | Smoke Test 環境の確認 |
 
 #### `make job NAME=<job名> ARGS="<引数>"`
