@@ -10,6 +10,8 @@ Install the tools required for VSCode development.
 
 The versions are listed in `tools.yaml` as the versions that have been verified to work. Change these versions as necessary.
 
+`make sync-tools` rewrites the `@latest` references in the Dockerfiles and the local installer (`.makefiles/go/installer.mk`) to the versions declared in `tools.yaml`. The boilerplate ships with `@latest` for template-development convenience, but **pinning is strongly recommended once you localize the project** so the CI environment and every developer environment install the same tool versions reproducibly.
+
 ```sh
 make sync-tools
 make install-tools
