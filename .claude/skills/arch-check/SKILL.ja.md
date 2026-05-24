@@ -30,13 +30,13 @@ description: Go ソースファイルに対し、本プロジェクトのオニ�
 
 | Source | 目的 |
 | --- | --- |
-| `CLAUDE.md`（「Layer Rules (Strict)」「Forbidden Shortcuts」「Core Architecture」節）| 最上位のアーキ制約 |
+| `CLAUDE.md`（「Layer Rules (Strict)」「Forbidden Shortcuts」「Core Architecture」節） | 最上位のアーキ制約 |
 | `internal/domain/README.md` | domain 層のルール（純粋性、許容 import、値型 vs interface） |
 | `internal/usecase/README.md` | usecase の責務と境界 |
 | `internal/controller/README.md` | controller (handler) の責務と禁止パターン |
 | `internal/infrastructure/README.md` | infrastructure 実装側の制約 |
 | `pkg/README.md` | shared utility の純粋性（`internal/` 依存禁止） |
-| `.golangci.yaml`（`depguard:` 節）| lint で既に強制されている内容を把握。**重複検査はしない** |
+| `.golangci.yaml`（`depguard:` 節） | lint で既に強制されている内容を把握。**重複検査はしない** |
 
 スコープに含まれる各レイヤーで、より深い階層に README がある場合（例: `internal/controller/handler/README.md`）はそれも読み込みます。親レイヤーのルールを上書き／補強していることがあります。
 
@@ -110,7 +110,7 @@ make lint 2>&1 | tee /tmp/arch-check-lint.out
 | `internal/controller/` | controller |
 | `internal/infrastructure/` | infrastructure |
 | `pkg/` | pkg |
-| その他の `internal/`（cli/, system/, di/, config/ 等）| infrastructure-adjacent。CLAUDE.md のガイダンスを直接適用 |
+| その他の `internal/`（cli/, system/, di/, config/ 等） | infrastructure-adjacent。CLAUDE.md のガイダンスを直接適用 |
 
 各ファイルについて:
 
