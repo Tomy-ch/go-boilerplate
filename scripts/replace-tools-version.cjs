@@ -31,6 +31,10 @@ const replacements = [
         regex: /@redocly\/cli@[\w\.\-]+/,
         value: `@redocly/cli@${tools.redocly}`,
       },
+      {
+        regex: /markdownlint-cli2@[\w\.\-]+/,
+        value: `markdownlint-cli2@${tools["markdownlint-cli2"]}`,
+      },
     ],
   },
   {
