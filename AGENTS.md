@@ -168,8 +168,17 @@ Conditions:
 - The skill's own `SKILL.md` instructions still govern. If the skill instructs the AI to confirm before touching a specific path, that confirmation step must still be honored.
 - Hard-protected items remain protected even during skill execution:
   - `AGENTS.md` (Protected Documentation)
-  - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `docs/`)
+  - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`)
+  - Generated content under `docs/`:
+    - `docs/openapi/**` (redocly build output)
+    - `docs/coverage/**` (test coverage report)
+    - `docs/db-schema/**` (SchemaSpy output)
+    - `docs/meta/**` (`make gen-tools-meta` output)
+    - `docs/portal/docs.json` (`make gen-docs-json` output)
+    - `docs/portal/guides/**` (`make gen-portal-docs` output — cleaned and regenerated on every run)
   - Anything listed under `permissions.deny` in `.claude/settings.json`
+
+  Canonical Markdown sources under `docs/` (`docs/architecture.md`, `docs/rules.md`, `docs/decisions.md`, `docs/development-flow.md`, `docs/maintenance/**/*.md`, `docs/ja/**/*.md`, `docs/portal/manifest.yaml`, etc.) are NOT generated and remain editable during skill execution per the skill's defined scope (e.g., `sync-readme`, `canonicalize-doc`, `release-notes`).
 - Skills must not be used as a loophole to bypass the spirit of these rules. If a skill's procedure would touch a sensitive area (e.g., `docker/`, `.github/workflows/`), the skill itself should explicitly document this so the user is aware when invoking it.
 
 ### internal/
@@ -522,7 +531,15 @@ Finally, run `make lint` to check for any errors.
 - `**/**.sql.go`
 - `*_mock.go`
 - `**/openapi.gen.yaml`
-- `docs/`
+- Generated content under `docs/`:
+  - `docs/openapi/**` (redocly build output)
+  - `docs/coverage/**` (test coverage report)
+  - `docs/db-schema/**` (SchemaSpy output)
+  - `docs/meta/**` (`make gen-tools-meta` output)
+  - `docs/portal/docs.json` (`make gen-docs-json` output)
+  - `docs/portal/guides/**` (`make gen-portal-docs` output)
+
+Canonical Markdown under `docs/` (architecture.md, rules.md, decisions.md, development-flow.md, maintenance/, ja/, etc.) is NOT generated and may be edited via the appropriate documentation skills.
 
 ## Testing Instructions
 
