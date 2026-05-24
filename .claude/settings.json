@@ -29,6 +29,7 @@
       "Bash(basename *)",
       "Bash(dirname *)",
       "Bash(ps *)",
+      "Bash(mkdir *)",
       "Bash(true)",
 
       "Bash(git status *)",
