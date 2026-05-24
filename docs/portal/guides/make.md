@@ -8,6 +8,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/app` : Application startup / Job execution
 - `.makefiles/database` : DB initialization / Migration / Seed / DML / Schema
 - `.makefiles/sql` : SQL Lint / Fix
+- `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
 - `.makefiles/docs` : Portal / Tool information documentation generation
@@ -170,6 +171,17 @@ Targets include Migration / DML / Seed SQL.
 | `make sql-fix-dml-ci` | Executes `sqlfluff fix` on `database/dml/`. | CI target |
 | `make sql-fix-seed-ci` | Executes `sqlfluff fix` on `database/seed/`. | CI target |
 
+## `.makefiles/markdown` group
+
+This group handles linting and auto-fixing of Markdown files.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make md-lint` | Lints Markdown files. | Invokes `make md-lint-ci` inside the `node_tool_runner` container. |
+| `make md-fix` | Auto-fixes Markdown files. | Invokes `make md-fix-ci` inside the `node_tool_runner` container. |
+| `make md-lint-ci` | Lints `**/*.md` directly with `markdownlint-cli2`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
+| `make md-fix-ci` | Fixes `**/*.md` directly with `markdownlint-cli2 --fix`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
+
 ## `.makefiles/openapi` group
 
 | Command | Description | Notes |
@@ -222,7 +234,6 @@ Targets include Migration / DML / Seed SQL.
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make gen-tools-meta` | Outputs version information of generation tools. | Used when updating metadata of Go / Node.js / Python toolchains. |
 | `make gen-portal-docs` | Generates Portal documentation. | None |
 | `make gen-docs-json` | Generates Portal documentation link JSON. | None |
 | `make gen-portal-docs-ci` | Generates Portal documentation directly via Node.js script. | CI target |
@@ -234,7 +245,7 @@ Targets include Migration / DML / Seed SQL.
 | --- | --- | --- |
 | `make gen` | Executes all code and documentation generation in batch. | Executes `gen-api` → `gen-query` → `gen-docs`. |
 | `make gen-api` | Executes API-related generation in batch. | Executes `gen-bundle-oapi` →  `gen-api-docs` → `gen-go-code`. |
-| `make gen-docs` | Executes documentation-related generation in batch. | Executes `gen-api-docs`, `gen-tools-meta`, `gen-portal-docs`, `gen-docs-json`. |
+| `make gen-docs` | Executes documentation-related generation in batch. | Executes `gen-api-docs`, `gen-portal-docs`, `gen-docs-json`. |
 | `make gen-all-docs` | Executes all documentation generation processes. | Executes `gen-docs`, `gen-db-schema`, `gen-test-repo`. |
 | `make gen-query` | Executes SQLC code generation in batch. | Executes `dump-schema` → `merge-dml` → `gen-sqlc` → `fmt`. |
 | `make gen-query-repo` | Executes SQLC code generation for Repository. | Executes `dump-schema` → `merge-dml-repo` → `gen-sqlc`. |

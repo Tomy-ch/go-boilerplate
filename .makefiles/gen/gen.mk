@@ -22,7 +22,6 @@ gen-api:
 
 gen-docs:
 	@make gen-api-docs
-	@make gen-tools-meta
 	@make gen-portal-docs
 	@make gen-docs-json
 

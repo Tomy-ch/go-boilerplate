@@ -18,7 +18,6 @@
 |Generated Go Artifacts|`gen-go-artifacts-check.yaml`|生成済み Go コードとコミット済み成果物の一致検証|
 |Generated DB Artifacts|`gen-db-artifacts-check.yaml`|生成済み sqlc コードとコミット済み成果物の一致検証|
 |Generated OpenAPI Artifacts|`gen-oapi-artifacts-check.yaml`|OpenAPI バンドルとドキュメントの一致検証|
-|Generator Versions|`gen-versions-check.yaml`|生成ツールのバージョン同期検証|
 |Application Boot|`app-di-startup-check.yaml`|DB 付きでアプリケーションが正常に起動するか検証|
 
 ### セキュリティ（Pull Request）
