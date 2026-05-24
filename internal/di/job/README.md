@@ -2,7 +2,9 @@
 
 English | [日本語](README.ja.md)
 
-This directory provides DI (dependency injection) components related to job execution. Specifically, it provides a provider that assembles a `Runner` from registered jobs, a `State` for holding execution targets and completion channels, and a mechanism to register lifecycle hooks that execute registered jobs at application startup.
+## Role
+
+This directory is the DI seam between the application's job framework and `fx`. It collects all `job.Job` providers registered with the `group:"jobs"` tag, assembles them into a `Runner`, maintains the `State` that the CLI uses to specify "which job, with which args, and where to signal completion", and wires the startup lifecycle hook that actually invokes the requested job. Upper-layer code (`internal/controller/job`, `cmd/`, individual job implementations) depends on the abstractions here; this package contains all of the fx-specific glue so that the rest of the code stays framework-agnostic.
 
 ## Structure
 
@@ -10,6 +12,25 @@ This directory provides DI (dependency injection) components related to job exec
 internal/di/job/
 ├── runner.go   # Runner DI provider
 └── hook/       # Lifecycle hook (job execution at startup)
+```
+
+## Architecture
+
+```mermaid
+flowchart TB
+    FxGroup["fx group:&quot;jobs&quot;"]
+    RunnerIn["RunnerIn (fx.In)"]
+    ProvideRunner["ProvideRunner"]
+    Runner["job.Runner"]
+    Hook["RegisterJobHooks"]
+    State["job.State"]
+    Execute["runner.Run()"]
+    Shutdown["Shutdown"]
+
+    FxGroup --> RunnerIn --> ProvideRunner --> Runner
+    State --> Hook
+    Runner --> Hook
+    Hook --> Execute --> Shutdown
 ```
 
 ## Public API

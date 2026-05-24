@@ -2,7 +2,11 @@
 
 English | [日本語](SQLC_README.ja.md)
 
-This section summarizes the main `sqlc.yaml` (`version: "2"`) options that **affect generated Go code**.  
+## Overview
+
+This document is a cheat sheet for the `sqlc.yaml` (`version: "2"`) options that materially change the shape of generated Go code in this project. It exists alongside the official sqlc docs because we have specific opinions on which options to use (and avoid) — for example, why we deliberately do NOT emit `json` tags from sqlc, and why we wrap nullable types in pointers. Use this as the first stop before editing `sqlc.yaml`; cross-reference the official sqlc docs only for option details not covered here.
+
+This section summarizes the main `sqlc.yaml` (`version: "2"`) options that **affect generated Go code**.
 (Examples assume PostgreSQL + Go, focusing on keys under `gen.go`)
 
 ## Minimal Configuration (Base)
@@ -218,3 +222,10 @@ Controls JSON tag casing (e.g., camelCase, snake_case).
 - **For JSON serialization** → `emit_json_tags: true`
 - **For pointer-based NULL handling** → `emit_pointers_for_null_types: true` (verify output)
 - **For explicit prepared statements** → `emit_prepared_queries: true` (usually unnecessary with pgx/v5)
+
+## Notes
+
+- Always regenerate via `make gen-query` (which runs sqlc inside `docker/tools/`) so the toolchain version is locked.
+- Generated files (`*.sql.go`) are committed to the repo; CI (`gen-db-artifacts-check.yaml`) verifies that the committed output matches a fresh regeneration. Drift here blocks merge.
+- Avoid hand-editing generated files — changes will be overwritten on the next `make gen-query`. If a change is needed, edit `sqlc.yaml` or the source SQL and regenerate.
+- When introducing a new sqlc option that affects code shape (e.g., `emit_*`), update this document so the rationale stays discoverable.

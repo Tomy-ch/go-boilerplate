@@ -4,6 +4,10 @@
 
 プロジェクトの**コード生成・バンドル用ツールコンテナ**を定義する Dockerfile です。マルチステージビルドにより Go / Node.js / Python のツール環境を提供します。
 
+## 役割
+
+`docker/tools/Dockerfile` はビルドで必要となるすべてのコード生成・lint ツール（oapi-codegen / mockgen / sqlc / migrate / redocly-cli / js-yaml / sqlfluff）を、言語ごとに隔離したランナーイメージにパッケージングします。開発者と CI はこれらのコンテナを `make` ターゲット（`make gen-api` / `make gen-query` / `make sql-lint` 等）経由で起動するため、誰も Go / Node / Python ツールチェインをローカルにインストールする必要がありません。マシン間でツールバージョンが再現可能になり、生成物が既知のツールチェインに固定されます。
+
 ## ビルドターゲット
 
 |ターゲット|ベースイメージ|含まれるツール|

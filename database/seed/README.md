@@ -4,7 +4,7 @@ English | [日本語](README.ja.md)
 
 `database/seed` stores **transactional data (seed data) for non-production environments** (local / CI / staging).
 
-## Purpose
+## Role
 
 Used to insert **initial data** needed to verify application behavior in development, test, and demo environments.
 
@@ -26,7 +26,7 @@ Or via CLI:
 ./server db-seed
 ```
 
-## File Naming Convention
+## Naming Convention
 
 ```text
 {6-digit sequence}_{description}.sql
