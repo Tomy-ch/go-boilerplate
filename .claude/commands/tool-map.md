@@ -1,7 +1,7 @@
 ---
 description: Inventory every command / skill / agent registered under this project's `.claude/` directory and produce an inventory table plus a dependency map (Mermaid). Reads frontmatter and bodies, extracts cross-references, and renders the report inline or to a file. Read-only by default; writes only when `--output=file` is chosen.
 argument-hint: [--lang=en|ja] [--output=inline|file] [--output-path=<path>] [--include=commands,skills,agents]
-allowed-tools: Bash(ls:*), Bash(find:*), Bash(test:*), Read, Write, AskUserQuestion
+allowed-tools: Bash(ls:*), Bash(find:*), Bash(test:*), Bash(make md-fix:*), Bash(make md-lint:*), Read, Write, AskUserQuestion
 ---
 
 # Tool Map
@@ -145,6 +145,29 @@ A short prose section calling out:
 - `inline`: include the full report in the response and stop.
 - `file`: write the report to `--output-path` and respond with a short confirmation (one-line summary + the file path). Do NOT also duplicate the full report in the response.
 
+## Step 7. Verify with Markdown Lint (only when `--output=file`)
+
+When `--output=file`, after writing the report run:
+
+```sh
+make md-fix
+make md-lint
+```
+
+`make md-fix` runs `markdownlint-cli2 --fix` on the entire repository to auto-fix common issues (blank-line placement around headings / lists / code blocks, trailing whitespace, file-final newline, etc.). `make md-lint` then verifies that the result is clean against `.markdownlint.yaml`.
+
+If `make md-lint` reports remaining errors:
+
+1. Read the lint output.
+2. Fix the violations manually (rules that auto-fix cannot resolve, e.g., heading hierarchy, duplicate headings, bare URLs).
+3. Re-run `make md-fix` then `make md-lint` until clean.
+
+Do NOT report the command as complete until `make md-lint` exits cleanly.
+
+`make md-fix` operates on the entire repository, so it may modify Markdown files unrelated to the report. List any such files when reporting completion so the user can review the broader change set.
+
+When `--output=inline`, skip this step (no file was written).
+
 ## Constraints
 
 - This command is **read-only by default**. Writes are only allowed when the user explicitly chose `--output=file`, and only to the confirmed output path.
@@ -164,4 +187,5 @@ Before reporting completion, confirm:
 - [ ] Dependencies detected per the documented rules (self-refs excluded; broken edges recorded)
 - [ ] Report contains Summary, Inventory Tables, Dependency Graph (Mermaid), Notes
 - [ ] Standalone entries appear as isolated nodes in the graph
-- [ ] If `--output=file`, the file was written and no other path was modified
+- [ ] If `--output=file`, the file was written and `make md-lint` exits cleanly
+- [ ] If `--output=file`, no other path outside the confirmed output (and `make md-fix` side effects) was modified

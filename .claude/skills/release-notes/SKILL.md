@@ -185,12 +185,32 @@ Before calling `Write`, present the proposed content to the user (either inline 
 
 Only proceed with `Write` after the user confirms.
 
-### 6. Final Verification
+### 6. Verify with Markdown Lint
 
-After writing:
+After writing, run:
+
+```sh
+make md-fix
+make md-lint
+```
+
+`make md-fix` runs `markdownlint-cli2 --fix` on the entire repository to auto-fix common issues (blank-line placement around headings / lists / code blocks, trailing whitespace, file-final newline, etc.). `make md-lint` then verifies that the result is clean against `.markdownlint.yaml`.
+
+If `make md-lint` reports remaining errors:
+
+1. Read the lint output.
+2. Fix the violations manually (rules that auto-fix cannot resolve, e.g., heading hierarchy, duplicate headings, bare URLs).
+3. Re-run `make md-fix` then `make md-lint` until clean.
+
+Do NOT report the skill as complete until `make md-lint` exits cleanly.
+
+`make md-fix` operates on the entire repository, so it may modify Markdown files unrelated to this release note. List any such files when reporting completion so the user can review the broader change set.
+
+### 7. Final Verification
+
+After writing and lint:
 
 - Confirm the file exists at `.github/release/<NEW_VERSION>.md`.
-- Run a markdown lint check if available in the repo (e.g., `make lint` if it covers markdown); otherwise skip.
 - Do NOT stage, commit, or push the file. Inform the user that the file has been created and let them handle git operations per AGENTS.md rules.
 
 ## Checklist
@@ -205,6 +225,7 @@ Confirm the following before reporting completion:
 - [ ] Release note drafted in Japanese, matching the canonical format
 - [ ] Preview confirmed by the user
 - [ ] `.github/release/<NEW_VERSION>.md` written
+- [ ] `make md-lint` exits cleanly
 - [ ] User informed that no git operations were performed
 
 ## Notes

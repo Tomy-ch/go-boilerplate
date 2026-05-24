@@ -57,19 +57,19 @@ Apply these rules when producing each side of the pair.
 ### SKILL files (`.claude/skills/<name>/`)
 
 - `SKILL.md` (canonical, English):
-    - MUST include YAML frontmatter with `name` and `description` fields.
-    - `description` should be in English and written to maximize skill-selection accuracy.
-    - Include a one-line pointer near the top: `A Japanese reference translation of this skill is available at SKILL.ja.md in the same directory (not loaded as a skill; for human reference only).`
+  - MUST include YAML frontmatter with `name` and `description` fields.
+  - `description` should be in English and written to maximize skill-selection accuracy.
+  - Include a one-line pointer near the top: `A Japanese reference translation of this skill is available at SKILL.ja.md in the same directory (not loaded as a skill; for human reference only).`
 - `SKILL.ja.md` (translation, Japanese):
-    - MUST NOT include YAML frontmatter (frontmatter would risk being misinterpreted by tooling; only `SKILL.md` is loaded as a skill, but keeping it absent removes any ambiguity).
-    - MUST begin with a blockquote header in Japanese stating that it is a translation, that direct edits are forbidden, and that updates flow from `SKILL.md`.
+  - MUST NOT include YAML frontmatter (frontmatter would risk being misinterpreted by tooling; only `SKILL.md` is loaded as a skill, but keeping it absent removes any ambiguity).
+  - MUST begin with a blockquote header in Japanese stating that it is a translation, that direct edits are forbidden, and that updates flow from `SKILL.md`.
 
 ### README and generic docs
 
 - `README.md` / `README.ja.md` (co-located in the same directory):
-    - No frontmatter requirements.
-    - The translation file should begin with a short note that it is a translation of the canonical file.
-    - The canonical file may optionally link to the translation (`See [README.ja.md](README.ja.md) for the Japanese version.`).
+  - No frontmatter requirements.
+  - The translation file should begin with a short note that it is a translation of the canonical file.
+  - The canonical file may optionally link to the translation (`See [README.ja.md](README.ja.md) for the Japanese version.`).
 
 ### `docs/**` parallel-tree docs
 
@@ -102,13 +102,13 @@ Read the confirmed source file in full. If the direction is `sync-both`, read bo
 ### 2. Determine the output path
 
 - `canonical-from-translation`:
-    - `foo.ja.md` → `foo.md` in the same directory.
-    - `docs/ja/<path>/<name>.ja.md` → `docs/<path>/<name>.md`.
+  - `foo.ja.md` → `foo.md` in the same directory.
+  - `docs/ja/<path>/<name>.ja.md` → `docs/<path>/<name>.md`.
 - `translation-from-canonical`:
-    - `foo.md` → `foo.ja.md` in the same directory.
-    - `docs/<path>/<name>.md` → `docs/ja/<path>/<name>.ja.md`.
+  - `foo.md` → `foo.ja.md` in the same directory.
+  - `docs/<path>/<name>.md` → `docs/ja/<path>/<name>.ja.md`.
 - `sync-both`:
-    - Rewrite the non-source-of-truth side.
+  - Rewrite the non-source-of-truth side.
 
 ### 3. Translate (or sync)
 
@@ -134,6 +134,27 @@ Read the confirmed source file in full. If the direction is `sync-both`, read bo
 - Confirm code blocks are byte-identical (except where prose was translated inside them).
 - Report any sections that could not be cleanly mapped and ask the user how to resolve them.
 
+### 7. Verify with Markdown Lint
+
+After writing the produced file (and the synced side in `sync-both` mode), run:
+
+```sh
+make md-fix
+make md-lint
+```
+
+`make md-fix` runs `markdownlint-cli2 --fix` on the entire repository to auto-fix common issues (blank-line placement around headings / lists / code blocks, trailing whitespace, file-final newline, etc.). `make md-lint` then verifies that the result is clean against `.markdownlint.yaml`.
+
+If `make md-lint` reports remaining errors:
+
+1. Read the lint output.
+2. Fix the violations manually (rules that auto-fix cannot resolve, e.g., heading hierarchy, duplicate headings, bare URLs).
+3. Re-run `make md-fix` then `make md-lint` until clean.
+
+Do NOT report the skill as complete until `make md-lint` exits cleanly.
+
+`make md-fix` operates on the entire repository, so it may modify Markdown files unrelated to the confirmed pair. List any such files when reporting completion so the user can review the broader change set.
+
 ## Checklist
 
 Confirm the following before reporting completion:
@@ -145,6 +166,7 @@ Confirm the following before reporting completion:
 - [ ] Frontmatter rules applied correctly (canonical SKILL has it; translation SKILL does not)
 - [ ] Translation sync-note header present in `*.ja.md` SKILL files
 - [ ] Section structure and code blocks match 1:1
+- [ ] `make md-lint` exits cleanly
 - [ ] No unintended files modified outside the confirmed pair
 
 ## Notes
