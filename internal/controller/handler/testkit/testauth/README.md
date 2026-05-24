@@ -1,15 +1,17 @@
-# `testauth` パッケージ
+# testauth
 
-`testauth` パッケージは、通常 MW で設定される認証情報をテストコード内で簡単に設定するためのユーティリティを提供します。
+English | [日本語](README.ja.md)
 
-## 使い方
+Provides utilities for setting authentication context inside test code that is normally populated by middleware.
 
-`MakeAvailableAuthn` 関数を使用して、テストコンテキストに認証情報を設定します。
+## Usage
+
+Use the `MakeAvailableAuthn` function to attach authentication context to a test context.
 
 ```go
   ctx := context.Background()
-  ctx = testauth.MakeAvailableAuthn(t, ctx, userID.String()) // ここで認証情報を設定
+  ctx = testauth.MakeAvailableAuthn(t, ctx, userID.String()) // set auth context here
   ctrl := gomock.NewController(t)
 ```
 
-この関数は、指定されたユーザーIDを持つ認証情報をコンテキストに追加し、コントローラーで認証情報を利用できるようにします。
+This function attaches an authentication context carrying the given user ID, making it available to controllers under test.
