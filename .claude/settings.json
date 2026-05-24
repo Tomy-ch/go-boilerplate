@@ -102,7 +102,6 @@
       "Bash(rm -rf *)",
       "Bash(rm -fr *)",
       "Bash(sudo *)",
-      "Bash(git push *)",
       "Bash(git reset *)",
       "Bash(git rebase *)",
       "Bash(git checkout *)",
