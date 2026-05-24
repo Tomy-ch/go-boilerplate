@@ -1273,7 +1273,7 @@ type IPRateLimitConfig struct {
 func NewOperationSystemConfig(cfg *Config) *OperationSystemConfig <span class="cov9" title="202">{ return &amp;cfg.os }</span>
 
 // TimeZone は、OSのタイムゾーンを返します。
-func (o *OperationSystemConfig) TimeZone() string <span class="cov10" title="334">{ return o.timezone }</span>
+func (o *OperationSystemConfig) TimeZone() string <span class="cov10" title="333">{ return o.timezone }</span>
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
 func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov6" title="41">{ return &amp;cfg.app }</span>
@@ -6183,7 +6183,7 @@ func (h *rateLimitCleanupHook) onStart(startCtx context.Context) error <span cla
                                 )
                                 return</span>
 
-                        case &lt;-stopCh:<span class="cov4" title="2">
+                        case &lt;-stopCh:<span class="cov1" title="1">
                                 h.logger.CallerSkip(ratelimitCallerSkip).Named("ratelimit.Hooks").Info(
                                         "RateLimiter cleanup stopped",
                                         logging.String(logging.EventTypeKey, logging.EventTypeEnd),
@@ -8194,7 +8194,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key, v string) *Field <span class="cov10" title="2479">{
+func String(key, v string) *Field <span class="cov10" title="2477">{
         return &amp;Field{
                 key:         key,
                 kind:        fieldString,
@@ -8248,7 +8248,7 @@ func Bool(key string, v bool) *Field <span class="cov2" title="5">{
 }</span>
 
 // Time は、時間のログフィールドを作成します。
-func Time(key string, v time.Time) *Field <span class="cov7" title="300">{
+func Time(key string, v time.Time) *Field <span class="cov7" title="299">{
         return &amp;Field{
                 key:         key,
                 kind:        fieldString,
