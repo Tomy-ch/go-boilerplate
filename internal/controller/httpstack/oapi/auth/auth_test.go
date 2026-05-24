@@ -59,6 +59,7 @@ func TestNewAuthenticator(t *testing.T) {
 
 		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
 		in.RequestValidationInput.Request = req
 
@@ -101,6 +102,7 @@ func TestNewAuthenticator(t *testing.T) {
 		fn := NewAuthenticator(ac, m)
 
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
 		rec := httptest.NewRecorder()
 		e := echo.New()
@@ -128,6 +130,7 @@ func TestNewAuthenticator(t *testing.T) {
 		// リクエストと Echo コンテキストを作成し、request.Context に Echo コンテキストを格納する
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "user123"})
 		rec := httptest.NewRecorder()
 		e := echo.New()
@@ -170,6 +173,7 @@ func Test_authExtractor(t *testing.T) {
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		// cookie からトークンを取る想定
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
 
 		authn, err := authExtractor(context.Background(), req, ac, m)
@@ -187,6 +191,7 @@ func Test_authExtractor(t *testing.T) {
 		m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
 
 		got, err := authExtractor(context.Background(), req, ac, m)
@@ -204,6 +209,7 @@ func Test_extractToken(t *testing.T) {
 
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "cookieTok"})
 		tok := extractToken(req, ac)
 		require.Equal(t, "cookieTok", tok)
