@@ -8,10 +8,10 @@
 
 |ターゲット|ベースイメージ|用途|
 |---|---|---|
-|`builder`|`golang:1.26.2-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
+|`builder`|`golang:1.26.3-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
 |`runtime`|`alpine:3.23`|本番実行用コンテナ（非 root ユーザー `app`）|
 |`migration`|`runtime` を継承|マイグレーション実行用コンテナ（`migrate-up` コマンド）|
-|`tooling`|`golang:1.26.2-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
+|`tooling`|`golang:1.26.3-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
 
 ## runtime
 

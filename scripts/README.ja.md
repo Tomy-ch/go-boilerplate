@@ -10,7 +10,6 @@
 scripts/
 ├── gen-docs-json.cjs           # ポータルナビゲーション用 docs.json の生成
 ├── gen-portal-docs.cjs         # manifest.yaml に基づくドキュメントのポータルへのコピー
-├── gen_tools_version.sh        # 生成ツールのバージョン記録
 ├── replace-tools-version.cjs   # tools.yaml からツールバージョンを置換
 ├── semver.cjs                  # セマンティックバージョニングヘルパー（patch/minor/major）
 ├── make_help.sh                # Make ターゲットのヘルプ出力生成
@@ -37,7 +36,6 @@ scripts/
 
 |スクリプト|説明|実行元|
 |---|---|---|
-|`gen_tools_version.sh`|生成ツール（Go, Node, sqlc 等）のバージョンを記録|`make gen-versions`|
 |`replace-tools-version.cjs`|`tools.yaml` から Dockerfile / 設定ファイルのツールバージョンを置換|`make replace-versions`|
 |`semver.cjs`|セマンティックバージョンのバンプ（patch / minor / major）|リリースワークフロー|
 

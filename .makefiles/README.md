@@ -234,7 +234,6 @@ This group handles linting and auto-fixing of Markdown files.
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make gen-tools-meta` | Outputs version information of generation tools. | Used when updating metadata of Go / Node.js / Python toolchains. |
 | `make gen-portal-docs` | Generates Portal documentation. | None |
 | `make gen-docs-json` | Generates Portal documentation link JSON. | None |
 | `make gen-portal-docs-ci` | Generates Portal documentation directly via Node.js script. | CI target |
@@ -246,7 +245,7 @@ This group handles linting and auto-fixing of Markdown files.
 | --- | --- | --- |
 | `make gen` | Executes all code and documentation generation in batch. | Executes `gen-api` → `gen-query` → `gen-docs`. |
 | `make gen-api` | Executes API-related generation in batch. | Executes `gen-bundle-oapi` →  `gen-api-docs` → `gen-go-code`. |
-| `make gen-docs` | Executes documentation-related generation in batch. | Executes `gen-api-docs`, `gen-tools-meta`, `gen-portal-docs`, `gen-docs-json`. |
+| `make gen-docs` | Executes documentation-related generation in batch. | Executes `gen-api-docs`, `gen-portal-docs`, `gen-docs-json`. |
 | `make gen-all-docs` | Executes all documentation generation processes. | Executes `gen-docs`, `gen-db-schema`, `gen-test-repo`. |
 | `make gen-query` | Executes SQLC code generation in batch. | Executes `dump-schema` → `merge-dml` → `gen-sqlc` → `fmt`. |
 | `make gen-query-repo` | Executes SQLC code generation for Repository. | Executes `dump-schema` → `merge-dml-repo` → `gen-sqlc`. |

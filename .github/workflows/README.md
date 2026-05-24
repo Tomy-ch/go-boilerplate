@@ -18,7 +18,6 @@ This directory contains GitHub Actions workflow definitions for CI/CD.
 |Generated Go Artifacts|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|
 |Generated DB Artifacts|`gen-db-artifacts-check.yaml`|Verify generated sqlc code matches committed artifacts|
 |Generated OpenAPI Artifacts|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
-|Generator Versions|`gen-versions-check.yaml`|Verify generator tool versions are in sync|
 |Application Boot|`app-di-startup-check.yaml`|Verify application starts successfully with DB|
 
 ### Security (Pull Request)

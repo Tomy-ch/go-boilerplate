@@ -608,10 +608,6 @@
         {
           "name": "Setup Repository",
           "path": "../maintenance/setup-repository.md"
-        },
-        {
-          "name": "Versions Generator",
-          "path": "../maintenance/versions-generator.md"
         }
       ]
     },
@@ -629,10 +625,6 @@
         {
           "name": "Setup Repository",
           "path": "../ja/maintenance/setup-repository.ja.md"
-        },
-        {
-          "name": "Versions Generator",
-          "path": "../ja/maintenance/versions-generator.ja.md"
         }
       ]
     },

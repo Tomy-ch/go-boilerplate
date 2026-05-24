@@ -10,7 +10,6 @@ English | [日本語](README.ja.md)
 scripts/
 ├── gen-docs-json.cjs           # Generate docs.json for portal navigation
 ├── gen-portal-docs.cjs         # Copy docs to portal based on manifest.yaml
-├── gen_tools_version.sh        # Record generator tool versions
 ├── replace-tools-version.cjs   # Replace tool versions from tools.yaml
 ├── semver.cjs                  # Semantic versioning helper (patch/minor/major)
 ├── make_help.sh                # Generate Make target help output
@@ -37,7 +36,6 @@ scripts/
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`gen_tools_version.sh`|Record versions of generator tools (Go, Node, sqlc, etc.)|`make gen-versions`|
 |`replace-tools-version.cjs`|Replace tool versions in Dockerfiles/configs from `tools.yaml`|`make replace-versions`|
 |`semver.cjs`|Bump semantic version (patch/minor/major)|Release workflow|
 

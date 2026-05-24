@@ -50,10 +50,10 @@ The Dockerfile for the application server. Provides the following targets via mu
 
 |Target|Purpose|Base Image|
 |---|---|---|
-|`builder`|Go binary build|`golang:1.26.2-alpine`|
+|`builder`|Go binary build|`golang:1.26.3-alpine`|
 |`runtime`|Production runtime container|`alpine:3.23`|
 |`migration`|Migration execution container|Inherits `runtime`|
-|`tooling`|Local development environment|`golang:1.26.2-alpine`|
+|`tooling`|Local development environment|`golang:1.26.3-alpine`|
 
 ### runtime
 
@@ -79,11 +79,9 @@ Tool containers for code generation and bundling. Split into three stages.
 
 |Stage|Base|Included Tools|
 |---|---|---|
-|`go_tools`|`golang:1.26.2-alpine`|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tools`|`golang:1.26.3-alpine`|oapi-codegen, mockgen, sqlc, migrate|
 |`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
-
-When adding a new tool, update the version recording script. See `docs/maintenance/versions-generator.md` for details.
 
 ## document
 
