@@ -8,6 +8,7 @@ Make ターゲットは主に以下の単位で整理されています。
 - `.makefiles/app` : アプリケーション起動・Job 実行
 - `.makefiles/database` : DB 初期化 / マイグレーション / シード / DML / スキーマ
 - `.makefiles/sql` : SQL Lint / Fix
+- `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/openapi` : OpenAPI バンドル / API ドキュメント生成
 - `.makefiles/go` : Go コード生成 / フォーマット / Lint / テスト / ツール管理
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
@@ -29,9 +30,11 @@ Make ターゲットは主に以下の単位で整理されています。
 | コマンド | 説明 | 主な用途 |
 | --- | --- | --- |
 | `make serve` | `development` プロファイルの Docker Compose サービスをバックグラウンドで起動します。 | 通常のローカル開発開始 |
-| `make serve-build` | Docker イメージを再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
+| `make serve-build` | Docker イメージをキャッシュを利用して再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
+| `make serve-build-clean` | `--no-cache --pull` でクリーンビルドしたうえで開発環境を起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
 | `make tools` | `tools` プロファイルの開発支援ツール群を起動します。 | 開発ツール利用時 |
-| `make tools-rebuild` | 開発用ツールコンテナを `--no-cache --pull` 付きで再構築します。 | ツールコンテナ更新時 |
+| `make tools-build` | 開発用ツールコンテナをキャッシュを利用してビルドします（起動はしません）。 | ツールコンテナの Dockerfile や依存変更の反映 |
+| `make tools-build-clean` | 開発用ツールコンテナを `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールコンテナの base image 更新の取り込み |
 | `make smoke` | `smoke` プロファイルの `smoke_server` をビルド付きで起動します。 | Smoke Test 環境の確認 |
 
 #### `make job NAME=<job名> ARGS="<引数>"`
@@ -167,6 +170,17 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | `make sql-fix-migrations-ci` | `database/migrations/` に対して `sqlfluff fix` を実行します。 | CI 用ターゲットです。 |
 | `make sql-fix-dml-ci` | `database/dml/` に対して `sqlfluff fix` を実行します。 | CI 用ターゲットです。 |
 | `make sql-fix-seed-ci` | `database/seed/` に対して `sqlfluff fix` を実行します。 | CI 用ターゲットです。 |
+
+## `.makefiles/markdown` 系
+
+Markdown ファイルに対する Lint と自動修正を扱うターゲット群です。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make md-lint` | Markdown ファイルの Lint を実行します。 | `node_tool_runner` コンテナ内で `make md-lint-ci` を呼び出します。 |
+| `make md-fix` | Markdown ファイルの Lint 自動修正を実行します。 | `node_tool_runner` コンテナ内で `make md-fix-ci` を呼び出します。 |
+| `make md-lint-ci` | `markdownlint-cli2` で `**/*.md` を直接 Lint します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
+| `make md-fix-ci` | `markdownlint-cli2 --fix` で `**/*.md` を直接修正します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
 
 ## `.makefiles/openapi` 系
 

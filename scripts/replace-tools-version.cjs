@@ -27,9 +27,13 @@ const replacements = [
         regex: /sqlfluff\[jinja\](==[\w\.\-]+)?/,
         value: `sqlfluff[jinja]==${tools.sqlfluff}`,
       },
-	  {
+      {
         regex: /@redocly\/cli@[\w\.\-]+/,
         value: `@redocly/cli@${tools.redocly}`,
+      },
+      {
+        regex: /markdownlint-cli2@[\w\.\-]+/,
+        value: `markdownlint-cli2@${tools["markdownlint-cli2"]}`,
       },
     ],
   },

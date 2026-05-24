@@ -8,6 +8,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/app` : Application startup / Job execution
 - `.makefiles/database` : DB initialization / Migration / Seed / DML / Schema
 - `.makefiles/sql` : SQL Lint / Fix
+- `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
 - `.makefiles/docs` : Portal / Tool information documentation generation
@@ -29,9 +30,11 @@ This is a group of targets related to application development environment startu
 | Command | Description | Main Use |
 | --- | --- | --- |
 | `make serve` | Starts Docker Compose services with the `development` profile in the background. | Start normal local development |
-| `make serve-build` | Rebuilds Docker images and then starts the development environment. | Reflect Dockerfile or dependency changes |
+| `make serve-build` | Rebuilds Docker images (cache enabled) and then starts the development environment. | Reflect Dockerfile or dependency changes |
+| `make serve-build-clean` | Cleanly rebuilds Docker images with `--no-cache --pull` and then starts the development environment. | Pick up base image updates (e.g., Go version upgrade) |
 | `make tools` | Starts development support tools with the `tools` profile. | When using development tools |
-| `make tools-rebuild` | Rebuilds development tool containers with `--no-cache --pull`. | When updating tool containers |
+| `make tools-build` | Builds development tool containers (cache enabled, no startup). | When updating tool container Dockerfile or dependencies |
+| `make tools-build-clean` | Cleanly builds development tool containers with `--no-cache --pull` (no startup). | Pick up base image updates for tool containers |
 | `make smoke` | Starts `smoke_server` with build under the `smoke` profile. | Verify Smoke Test environment |
 
 #### `make job NAME=<job_name> ARGS="<arguments>"`
@@ -167,6 +170,17 @@ Targets include Migration / DML / Seed SQL.
 | `make sql-fix-migrations-ci` | Executes `sqlfluff fix` on `database/migrations/`. | CI target |
 | `make sql-fix-dml-ci` | Executes `sqlfluff fix` on `database/dml/`. | CI target |
 | `make sql-fix-seed-ci` | Executes `sqlfluff fix` on `database/seed/`. | CI target |
+
+## `.makefiles/markdown` group
+
+This group handles linting and auto-fixing of Markdown files.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make md-lint` | Lints Markdown files. | Invokes `make md-lint-ci` inside the `node_tool_runner` container. |
+| `make md-fix` | Auto-fixes Markdown files. | Invokes `make md-fix-ci` inside the `node_tool_runner` container. |
+| `make md-lint-ci` | Lints `**/*.md` directly with `markdownlint-cli2`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
+| `make md-fix-ci` | Fixes `**/*.md` directly with `markdownlint-cli2 --fix`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
 
 ## `.makefiles/openapi` group
 

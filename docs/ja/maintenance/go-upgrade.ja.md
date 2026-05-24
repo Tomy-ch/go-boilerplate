@@ -147,18 +147,18 @@ FROM golang:1.26.2
 
 ## 9. Docker コンテナ再ビルド
 
-このプロジェクトでは Docker build を以下のコマンドで実行できます。
+Go バージョンアップでは base image タグが変わるため、新しいイメージを確実に pull・再ビルドできるよう `-clean`（`--no-cache --pull`）バリアントを使います。
 
 サーバー系コンテナ
 
 ```sh
-make serve-build
+make serve-build-clean
 ```
 
 ツール系コンテナ
 
 ```sh
-make tools-rebuild
+make tools-build-clean
 ```
 
 ## 10. Code generation の再実行
@@ -197,8 +197,8 @@ make install-tools
 make gen
 make test
 make lint
-make serve-build
-make tools-rebuild
+make serve-build-clean
+make tools-build-clean
 ```
 
 ## Upgrade Checklist

@@ -61,7 +61,7 @@ func TestV1Users_Integration(t *testing.T) {
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
 			CreateUser(gomock.Any(), gomock.Any()).
-			Return(user.MutableFields{}, nil)
+			Return(user.MutableFields{Email: "new@example.com"}, nil)
 
 		v1users.BindHandler(e, tf, mockApp)
 

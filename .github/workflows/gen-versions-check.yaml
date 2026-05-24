@@ -143,7 +143,7 @@ jobs:
                   '',
                   '**Action required:**',
                   '',
-                  '- Run `make tools-rebuild` locally to rebuild tool containers.',
+                  '- Run `make tools-build-clean` locally to rebuild tool containers.',
                   '- Run `make gen` or `make gen-tools-meta` to regenerate artifacts.',
                   '- Commit the updated files.',
                   '',

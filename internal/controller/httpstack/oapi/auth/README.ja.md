@@ -43,7 +43,7 @@ flowchart TB
 
 1. **Cookie** — `AuthConfig.CookieName()` が設定されている場合、まず Cookie から抽出
 2. **Header** — Cookie が空 / 未設定で `AuthConfig.HeaderName()` が設定されている場合、ヘッダーから抽出
-3. **Bearer プレフィックス** — `AllowedHeaderBearer` が true でヘッダーが `Authorization` の場合、`Bearer ` プレフィックスを除去
+3. **Bearer プレフィックス** — `AllowedHeaderBearer` が true でヘッダーが `Authorization` の場合、`Bearer` プレフィックス（末尾のスペース込み）を除去
 4. どちらからもトークンが取得できない場合は `ErrUnauthorizedTokenNotProvided` を返す
 
 ### 認証ステップ
