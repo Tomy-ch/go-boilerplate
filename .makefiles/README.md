@@ -8,6 +8,7 @@ Make targets are mainly organized into the following units.
 - `.makefiles/app` : Application startup / Job execution
 - `.makefiles/database` : DB initialization / Migration / Seed / DML / Schema
 - `.makefiles/sql` : SQL Lint / Fix
+- `.makefiles/markdown` : Markdown Lint / Fix
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
 - `.makefiles/docs` : Portal / Tool information documentation generation
@@ -169,6 +170,17 @@ Targets include Migration / DML / Seed SQL.
 | `make sql-fix-migrations-ci` | Executes `sqlfluff fix` on `database/migrations/`. | CI target |
 | `make sql-fix-dml-ci` | Executes `sqlfluff fix` on `database/dml/`. | CI target |
 | `make sql-fix-seed-ci` | Executes `sqlfluff fix` on `database/seed/`. | CI target |
+
+## `.makefiles/markdown` group
+
+This group handles linting and auto-fixing of Markdown files.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make md-lint` | Lints Markdown files. | Invokes `make md-lint-ci` inside the `node_tool_runner` container. |
+| `make md-fix` | Auto-fixes Markdown files. | Invokes `make md-fix-ci` inside the `node_tool_runner` container. |
+| `make md-lint-ci` | Lints `**/*.md` directly with `markdownlint-cli2`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
+| `make md-fix-ci` | Fixes `**/*.md` directly with `markdownlint-cli2 --fix`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
 
 ## `.makefiles/openapi` group
 
