@@ -1,7 +1,7 @@
 # ------------------------------
 # Go (builder) - ここでだけ go install する
 # ------------------------------
-FROM golang:1.26.2-alpine AS go_tools_builder
+FROM golang:1.26.3-alpine AS go_tools_builder
 
 ENV CGO_ENABLED=0 \
     GOBIN=/out
@@ -23,7 +23,7 @@ RUN rm -rf /go/pkg/mod /root/.cache/go-build
 # ------------------------------
 # Go
 # ------------------------------
-FROM golang:1.26.2-alpine AS go_tools
+FROM golang:1.26.3-alpine AS go_tools
 
 RUN apk add --no-cache bash make postgresql-client
 
