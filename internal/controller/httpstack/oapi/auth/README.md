@@ -43,7 +43,7 @@ flowchart TB
 
 1. **Cookie** — If `AuthConfig.CookieName()` is set, try extracting from the named cookie first
 2. **Header** — If cookie is empty/missing and `AuthConfig.HeaderName()` is set, extract from header
-3. **Bearer prefix** — If `AllowedHeaderBearer` is true and header is `Authorization`, strip `Bearer ` prefix
+3. **Bearer prefix** — If `AllowedHeaderBearer` is true and header is `Authorization`, strip the `Bearer` prefix (including the trailing space)
 4. If neither source provides a token, return `ErrUnauthorizedTokenNotProvided`
 
 ### Authentication Steps
