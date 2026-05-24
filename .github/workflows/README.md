@@ -2,7 +2,16 @@
 
 English | [日本語](README.ja.md)
 
-This directory contains GitHub Actions workflow definitions for CI/CD.
+This directory contains GitHub Actions workflow definitions for CI/CD. Workflows are grouped by purpose: pull-request gates (lint / test / security scans), push-triggered deployments, and documentation regeneration on release branches.
+
+## Trigger Strategy
+
+| Group | When it runs | What it does |
+| --- | --- | --- |
+| CI Checks | every pull request | Block merge if lint / test / generated-artifact consistency fails |
+| Security | every PR (and push to default) | Surface vulnerabilities in code, dependencies, images, and Go runtime |
+| Deployment | push to `production` / `staging` / `develop` | Build artifacts, run migration, deploy app or docs portal |
+| Documentation | push to `release/*` | Regenerate OpenAPI / ER / portal docs and open an auto-sync PR |
 
 ## Workflow List
 
@@ -41,3 +50,10 @@ This directory contains GitHub Actions workflow definitions for CI/CD.
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
 |Auto-generate Docs PR|`auto-generate-docs.yaml`|push to release/* branches|Auto-generate OpenAPI docs, ER diagrams, portal docs|
+
+## Notes
+
+- `auto-generate-docs.yaml` opens an auto-PR whose branch is named `auto/docs-update/<base>-<run-id>`; the workflow skips itself on that branch to avoid recursion.
+- All deployment workflows require their target branch (`production` / `staging` / `develop`) to be branch-protected; merges must flow through PR review.
+- Security scans run on every PR; if a high-severity CodeQL or Trivy finding appears, the corresponding branch-protection rule blocks merge.
+- The `Detect changes` step in `auto-generate-docs.yaml` excludes coverage HTML and SchemaSpy timestamp churn so cosmetic regenerations do not open noise PRs.
