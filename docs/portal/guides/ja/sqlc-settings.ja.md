@@ -1,8 +1,12 @@
-# Goコード生成に影響する `sqlc.yaml` の主なオプション（sqlc v1.30.0 / PostgreSQL）
+# Goコード生成に影響する `sqlc.yaml` の主なオプション（sqlc / PostgreSQL — バージョンは `tools.yaml` に固定）
 
 [English](SQLC_README.md) | 日本語
 
-このセクションでは、`sqlc.yaml`（`version: "2"`）において **Goコードの生成結果に影響する**主な設定をまとめます。  
+## 概要
+
+本ドキュメントは、本プロジェクトで生成される Go コードの形に実質的な影響を与える `sqlc.yaml`（`version: "2"`）オプションのチートシートです。sqlc 公式ドキュメントと並行して用意する理由は、本プロジェクト独自の判断（例: なぜ `json` タグを生成しないか、なぜ nullable をポインタで包むか）を残すためです。`sqlc.yaml` を編集する前にまずここを読み、本書でカバーされていない詳細は公式ドキュメントを当たってください。
+
+このセクションでは、`sqlc.yaml`（`version: "2"`）において **Goコードの生成結果に影響する**主な設定をまとめます。
 （例は PostgreSQL + Go を前提。`gen.go` 配下のキーを中心に記載）
 
 ## 最小構成（ベース）
@@ -199,3 +203,10 @@ JSONタグのケース（camel/snake等）を指定します。
 - **構造体に json を付与したい** → `emit_json_tags: true`
 - **NULL表現をポインタ寄りにしたい** → `emit_pointers_for_null_types: true`（生成結果を確認）
 - **preparedを明示したい** → `emit_prepared_queries: true`（pgx/v5 なら基本は不要）
+
+## 補足
+
+- 再生成は必ず `make gen-query`（`docker/tools/` 経由で sqlc を実行）で行い、ツールチェインバージョンを固定する
+- 生成ファイル（`*.sql.go`）はリポジトリにコミットされており、CI（`gen-db-artifacts-check.yaml`）が「コミット内容 = 再生成結果」を検証。drift があればマージブロック
+- 生成ファイルを手で編集しない — 次の `make gen-query` で上書きされる。変更が必要なら `sqlc.yaml` か元の SQL を編集して再生成する
+- Go コード形に影響する新しい sqlc オプション（例: `emit_*` 系）を採用する際は、本ドキュメントにも理由を追記して情報を散在させないこと

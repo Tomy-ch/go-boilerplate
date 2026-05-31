@@ -6,6 +6,10 @@ A directory of **common HTTP middleware** registered when starting the Echo serv
 
 Each sub-package is split into small responsibilities and combined during application startup.
 
+## Role
+
+`httpstack` is the catalog of Echo middleware and server-configuration helpers used across the application. Each sub-package owns one concern (request ID, logging, recovery, CORS, security headers, rate limiting, etc.) and exposes a thin `Middleware(...)` or `New(...)` constructor. Middleware is intentionally registered elsewhere (`internal/di/server/extension`) so that this directory stays free of fx and Echo-instance dependencies, keeping each unit independently testable and reusable.
+
 ## Design Policy
 
 - Each feature is implemented in small units, selected and combined as needed
@@ -89,3 +93,9 @@ Do not register middleware directly within `httpstack`. This can cause dependenc
 |Port display|Shown|Hidden|
 |IP extraction|Direct|X-Forwarded-For + CIDR|
 |Recovery stack|10KB (full)|4KB (limited)|
+
+## Notes
+
+- Add new middleware as its own sub-package; do not stuff multiple concerns into one package.
+- Each middleware should be safe to combine in any order, but registration order in `internal/di/server/extension` does matter for `recovery` (should wrap the rest) and `requestid` (should run first so all downstream logs carry the ID).
+- Do NOT call `e.Use(...)` from inside this directory — keeping registration out of `httpstack` is what allows the same middleware to be reused in tests with `testkit/testecho`.
