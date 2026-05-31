@@ -31,6 +31,7 @@
       "Bash(dirname *)",
       "Bash(ps *)",
       "Bash(mkdir *)",
+      "Bash(mkdir -p *)",
       "Bash(sort *)",
       "Bash(uniq *)",
       "Bash(cut *)",
