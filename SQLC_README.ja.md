@@ -1,4 +1,4 @@
-# Goコード生成に影響する `sqlc.yaml` の主なオプション（sqlc v1.30.0 / PostgreSQL）
+# Goコード生成に影響する `sqlc.yaml` の主なオプション（sqlc / PostgreSQL — バージョンは `tools.yaml` に固定）
 
 [English](SQLC_README.md) | 日本語
 
