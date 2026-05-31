@@ -1,8 +1,3 @@
----
-name: portal-manifest-sync
-description: `docs/portal/manifest.yaml` をディスク上の `README.md` / `README.ja.md` 実体と照合する。manifest は **キュレートされた読み物リスト** として扱い、ディスクの完全な反映ではない。レポート前に 3 つの品質ゲートを通す: (1) **pair_drift プリフライト** — sibling 翻訳が欠落していれば `canonicalize-doc` への chain による解消を提案、(2) **API ドキュメント除外** — `.claude/skills/readme-review/SKILL.md` の N1（Pure API reference）基準を適用し、godoc 領域の README を候補から外す、(3) **manual-worthiness 判定** — 各 uncurated に対し `readme-review` の P1〜P7 / N2〜N4 + 閾値を適用し、`manual-worthy` / `borderline` / `not-yet-manual-grade` / `out-of-scope-for-portal` の 4 クラスに分類。判定基準は本スキルに重複定義せず、`readme-review` SKILL.md を single source of truth として実行時に参照する。書き込みは `docs/portal/manifest.yaml` のみ、`docs/portal/guides/**` には触れない。
----
-
 > このファイルは `SKILL.md`（canonical / 英語）の日本語参考訳です。スキルとしては読み込まれません（参考用）。
 
 # Portal Manifest Sync

@@ -1,8 +1,3 @@
----
-name: readme-review
-description: 単一の README（canonical 英語版）をレビューし、portal（`docs/portal/manifest.yaml`）に載せる「manual-worthy（マニュアル価値）」を満たしているかを判定する。評価基準は現在の manifest 登録エントリのパターンから導出（Role / Design Intent / Rules / Architecture diagram / Navigation / Notes / 散文量）。強み・ギャップ・具体的な補強提案・最終分類（manual-worthy / borderline / not-yet-manual-grade / out-of-scope-for-portal）のスコアカードを出力する。read-only。README や manifest を編集しない。manual-worthy 判定時は `portal-manifest-sync`（curation flow）への chain を推奨するのみで、追加自体は本スキルでは行わない。
----
-
 > このファイルは `SKILL.md`（canonical / 英語）の日本語参考訳です。スキルとしては読み込まれません（参考用）。
 
 # Readme Review

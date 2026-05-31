@@ -1,8 +1,3 @@
----
-name: new-env
-description: 新規環境変数をプロジェクトに end-to-end で追加し、型付き config 構造体・環境別 env サンプル・ドキュメントを同期更新する。`internal/config/envspec.go`（Loader フィールド）、`internal/config/model.go`（Config 構造体 + private フィールド）、`internal/config/config.go`（`New()` マッピング + getter）、`internal/config/config_testing_mock.go`（expected 値 + mock setter）、`env/.env.{local,ci,dev,stg,prd}`（および必要なら `.env`）の環境別値、`env/README.{md,ja.md}`（該当サブシステム表の行）を編集する。サブシステム（envPrefix → struct）、Go 型マッピング、命名規約は実行時に `envspec.go` / `model.go` から導出。サブシステムリストはハードコードしない。変数名・型・説明（英 + 和）・required/default・環境別値は `AskUserQuestion` で確認してから書く。`config_testing_setter.go` は自動追加しない（ファイルが意図的に追加を制限しているため）。明示要求時のみ追加。最後に `make fix` + `make test` で検証する。
----
-
 > このファイルは `SKILL.md`（canonical / 英語）の日本語参考訳です。スキルとしては読み込まれません（参考用）。
 
 # New Env
