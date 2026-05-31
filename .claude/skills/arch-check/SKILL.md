@@ -1,212 +1,168 @@
 ---
 name: arch-check
-description: Audit Go source files for architectural compliance against the project's onion-architecture rules. Reads `CLAUDE.md` and each touched layer's canonical README (`internal/domain/README.md`, `internal/usecase/README.md`, `internal/controller/README.md`, `internal/infrastructure/README.md`, `pkg/README.md`) as the source of truth at runtime — the skill itself hardcodes no layer rules. Runs `make lint` to surface depguard-covered violations, then performs supplementary semantic checks for rules depguard cannot express (direct stdlib/library use in domain, `pkg/` depending on `internal/`, handler bloat heuristics, layer-boundary nuances stated only in READMEs). Confirms scope with the user via `AskUserQuestion` (changed files vs full repo) before reading. Reports violations grouped by layer, each citing the source-of-truth document.
+description: Integrator skill for architectural compliance checks. Confirms scope via `AskUserQuestion` (changed files vs full repo), detects which layers are touched, then chains only the relevant per-layer skills (`arch-check-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) in parallel-friendly order, passing scope context so each child skips its own scope question. Aggregates findings into a single Japanese report grouped by layer. Each per-layer skill enforces its own README rules + lean A conventions (controller / infra have additional convention enforcement since they're scaffold-derived, not spec-driven). Read-only orchestration — all writing is delegated to per-layer skills (which themselves are read-only).
 ---
 
 # Arch Check
 
-This skill audits Go source files for architectural compliance against the project's onion-architecture rules. It treats `CLAUDE.md` and each layer's canonical README as the **source of truth at runtime** — the skill itself hardcodes no rule list. When the READMEs evolve, the skill's behavior evolves with them.
+Integrator for layer-scoped architectural compliance checks. Chains 1〜5 per-layer skills based on scope.
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
 
 ## When to Use
 
-Use this skill when:
+- About to commit / push and want comprehensive layer-compliance check across all touched layers.
+- Reviewing a feature branch that touches multiple layers.
+- CI gate before merge.
 
-- About to commit/push and want a layer-compliance check beyond what `make lint` covers.
-- Reviewing a feature branch and want to verify it respects the onion rules end-to-end.
-- After a refactor that crosses layers (e.g., moving logic between usecase and domain).
-- Investigating a suspected layer violation surfaced by code review.
+Use the per-layer skill directly (`arch-check-<layer>`) when you only care about one layer.
 
 Do NOT use this skill for:
 
-- Pure style / formatting issues — use `make fix` and `make lint`.
-- General code review — use `/review` or `/ultrareview`.
-- Discovering new files / sync drift — use `sync-readme`.
+- Style / formatting — `make fix` / `make lint`.
+- General code review — `/review` / `/ultrareview`.
+- Spec validation — `verify-spec`.
 
-## Source of Truth (read every run)
+## Per-Layer Skills Chained
 
-The skill reads the following at the start of each run. It does NOT cache rules between runs.
+| Skill | Layer | Lean A enforcement |
+| --- | --- | --- |
+| `arch-check-domain` | `internal/domain/**` | entity ↔ SQL カラム soft 対応（method 形式 / VO ラップは逸脱許容、suggestion のみ） |
+| `arch-check-usecase` | `internal/usecase/**` | thin orchestrator + boundary 利用 + tx 境界 |
+| `arch-check-controller` | `internal/controller/**` | handler pure template + operationId ↔ method 一致 |
+| `arch-check-infra` | `internal/infrastructure/**` | Repository pure template + sqlc gen soft 対応（multi-query / switch dispatch / JOIN 許容）+ pgerror 利用 |
+| `arch-check-pkg` | `pkg/**` | `internal/` 依存禁止 + framework 非依存 |
 
-| Source | Purpose |
-| --- | --- |
-| `CLAUDE.md` (sections: "Layer Rules (Strict)", "Forbidden Shortcuts", "Core Architecture") | Top-level architectural constraints |
-| `internal/domain/README.md` | Domain layer rules (purity, allowed imports, value vs. interface conventions) |
-| `internal/usecase/README.md` | Usecase responsibilities and boundaries |
-| `internal/controller/README.md` | Controller (handler) responsibilities and forbidden patterns |
-| `internal/infrastructure/README.md` | Infrastructure implementation constraints |
-| `pkg/README.md` | Shared utility purity (no `internal/` deps) |
-| `.golangci.yaml` (`depguard:` section) | Inventory what is already enforced by lint — do not duplicate |
+## First Step: Confirm Scope + TODO opt
 
-For each touched layer, also read the nearest sub-package README if one exists (e.g., `internal/controller/handler/README.md`) — those often refine the parent layer's rules.
+This skill **MUST call `AskUserQuestion` immediately after invocation** with 2 questions (batched).
 
-## First Step: Confirm Scope
+Default-detect scope by checking branch vs base (`gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'`):
 
-This skill **MUST call `AskUserQuestion` immediately after invocation** to confirm scope.
-
-Default-detect by checking:
-
-- Current branch vs. `origin/<default>` (use `gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'`) — if there are unmerged commits, propose **"changed files only"** as the default.
-- If on `main` / `release/*` / no diff vs. base — propose **"full repo"** as the default.
-
-Question text (Japanese):
-
-- 「どのスコープでアーキ検査を実行しますか？」
-- Options:
-  - 「変更ファイルのみ（ベースブランチとの diff）」
-  - 「指定パッケージのみ」（テキストでパス指定）
-  - 「リポジトリ全体」
-  - 「キャンセル」
-
-Do NOT read any Go files or run lint before scope is confirmed.
-
-## Step 1. Resolve Scope to a File List
-
-Translate the chosen scope to a concrete file list.
-
-```sh
-# Changed files only
-BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
-git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$' || true
-
-# Specific package
-find <pkg-path> -name '*.go' -not -name '*.gen.go' -not -name '*.sql.go' -not -name '*_mock.go' -not -name '*_test.go'
-
-# Full repo
-git ls-files '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$'
-```
-
-Exclusions (always):
-
-- Generated files: `*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`
-- Vendored: `vendor/**`
-- Test files (`*_test.go`) for now — testing rules are out of scope (covered by `make test` conventions documented separately)
-
-If the resolved file list is empty, tell the user there is nothing to audit and stop.
-
-## Step 2. Lint Baseline
-
-Run lint and capture output:
-
-```sh
-make lint 2>&1 | tee /tmp/arch-check-lint.out
-```
-
-Parse the output for:
-
-- `depguard` violations (these are already authoritative layer-boundary checks)
-- Any other linter findings that surface architectural concerns (`forbidigo`, `gosec` etc.)
-
-If `make lint` fails for unrelated reasons (compile error, lint config error), abort and report verbatim. Do not continue to Step 3 — semantic checks on non-compiling code are unreliable.
-
-## Step 3. Semantic Checks (Skill-Defined)
-
-For each Go file in scope, perform semantic checks the linters cannot express. Rules are derived **at runtime** from the source-of-truth documents read in the preceding "Source of Truth" section — do not hardcode rule lists in this skill.
-
-For each file, determine its layer from its path:
-
-| Path prefix | Layer |
-| --- | --- |
-| `internal/domain/` | domain |
-| `internal/usecase/` | usecase |
-| `internal/controller/` | controller |
-| `internal/infrastructure/` | infrastructure |
-| `pkg/` | pkg |
-| (other `internal/`) | infrastructure-adjacent (cli/, system/, di/, config/, etc. — apply CLAUDE.md guidance directly) |
-
-Then for each file:
-
-1. Extract the `import (...)` block.
-2. For each imported package, evaluate it against the rules stated in the file's layer README and CLAUDE.md.
-3. Note any import that the README explicitly forbids or implicitly disallows by the layer's responsibility statement.
-4. For controller files: additionally inspect handler function bodies for signs of business logic that should live in usecase (heuristic: handler function exceeds ~30 lines, contains repository-style queries, or directly performs work attributed to usecase by the controller README). Treat these as **suggestions**, not hard violations.
-5. For domain files: confirm any `time` / `context` use is consistent with the domain README's stated convention (the project may permit `time.Time` as a value type while forbidding `time.Now()` calls — defer to the README's wording, not a hardcoded list).
-
-The skill must NOT invent rules not derivable from the source-of-truth docs. If a check feels ambiguous, surface it as a "needs human judgment" item rather than a violation.
-
-## Step 4. Report
-
-Group findings by layer, then by file. For each finding, include:
-
-- **Layer**: domain / usecase / controller / infrastructure / pkg
-- **File:line** (line if locatable)
-- **Severity**: `violation` (clear conflict with stated rule) / `suggestion` (heuristic match, may be false positive)
-- **Source of truth**: which document and which line/section justifies the call
-- **Suggested remediation**: a one-line hint, only if obvious; otherwise omit
-
-Output template (Japanese):
+- 未マージのコミットあり → 「変更ファイルのみ」を既定
+- main / release/* / no diff → 「リポジトリ全体」を既定
 
 ```text
-アーキテクチャ検査結果（スコープ: <scope description>）
+質問 1: どのスコープでアーキ検査を実行しますか？
+選択肢:
+  - 変更ファイルのみ（ベースブランチとの diff、touched layer のみ chain）
+  - リポジトリ全体（5 layer skill 全部 chain）
+  - 特定 layer のみ（layer を続けて指定）
+  - キャンセル
+
+質問 2: suggestion 検出箇所に TODO hand-off コメントを追加しますか？
+選択肢:
+  - 追加する（既定） — 各 per-layer skill が逸脱位置に `// TODO:` を書き込む（人間に解決を委ねる）
+  - 追加しない（read-only） — レポートのみ、コード一切触らない
+```
+
+TODO opt は domain / controller / infra の per-layer skill に伝播。usecase / pkg は violation 中心なので TODO 書き込み対象外（opt 関係なく read-only）。
+
+## Step 1. Resolve Scope to Layers
+
+For "changed files" mode:
+
+```sh
+BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$' || true
+```
+
+Map to layers by path prefix:
+
+| Path prefix | Skill to chain |
+| --- | --- |
+| `internal/domain/` | `arch-check-domain` |
+| `internal/usecase/` | `arch-check-usecase` |
+| `internal/controller/` | `arch-check-controller` |
+| `internal/infrastructure/` | `arch-check-infra` |
+| `pkg/` | `arch-check-pkg` |
+
+Other `internal/` paths (cli / system / di / config 等) → 報告のみ、専用 layer skill 無し（CLAUDE.md guidance を直接適用）。
+
+For "full repo" mode: chain all 5 skills.
+
+For "specific layer" mode: ask user which layer(s), then chain only those.
+
+If no layers detected (changed files mode with no Go changes) → exit cleanly with message.
+
+## Step 2. Chain Per-Layer Skills
+
+For each layer in scope, invoke its skill via `Skill` tool, passing the scope + TODO opt context so child skips its own `AskUserQuestion`:
+
+- `arch-check-domain` （scope = changed-domain-files, TODO opt = yes/no）
+- ... etc.
+
+Per-layer skills run sequentially (lint output reused across them via `/tmp/arch-check-*.out`) or in parallel if independent. Sequential is simpler for output aggregation.
+
+Each child returns its findings + TODO add count; collect them with layer label.
+
+## Step 3. Aggregate Report
+
+Combine all per-layer findings into a single Japanese report:
+
+```text
+arch-check 統合結果（スコープ: <scope>）
 
 [lint baseline]
   make lint: OK / FAIL (<n>件)
-    - <violation summary if any>
 
-[domain] <n>件
-  internal/domain/foo/bar.go:12
-    violation: "go.uber.org/zap" を直接 import している
-    source: internal/domain/README.md L42 "domain 層は logging framework を直接利用しない"
-    remediation: pkg/ または usecase 側で wrap し、interface 経由で受け取る
+[domain] violations: N, suggestions: K
+  internal/domain/foo/bar.go:12 ...
 
-[controller] <n>件
-  internal/controller/handler/.../baz_handler.go:88
-    suggestion: handler 関数が 45 行ある（README で "lightweight" と規定）
-    source: internal/controller/handler/README.md L21 "handler は軽量に保つ"
-    remediation: business logic を usecase に移すことを検討
+[usecase] violations: N, suggestions: K
+  ...
 
-総計: violations <n>, suggestions <m>
+[controller] violations: N, suggestions: K (lean A)
+  ...
+
+[infra] violations: N, suggestions: K (lean A)
+  ...
+
+[pkg] violations: N, suggestions: K
+  ...
+
+総計: violations <sum>, suggestions <sum>
+TODO hand-off: 追加 <sum> 件, スキップ <sum> 件（既存コメント）
 ```
 
-If there are zero findings, report it explicitly:
+If all clean:
 
 ```text
-アーキテクチャ検査結果（スコープ: <scope description>）
-違反は検出されませんでした。
+arch-check 統合結果（スコープ: <scope>）
+全 layer で違反は検出されませんでした（チェック済み: <layer list>）。
 ```
 
-## Step 5. Closing
+## Step 4. Closing
 
-- The skill does NOT auto-fix violations. Always defer to the user.
-- If chained from `/commit`, exit with a non-zero status when there is at least one `violation` (not `suggestion`). When run standalone, status is informational only.
-- Do not push, commit, or modify files.
+- 統合 skill 自体は read-only（child も read-only）
+- `/commit` から chain 時は violations > 0 で non-zero status
+- 単独実行時は情報的、exit 0
+- 自動修正なし
 
 ## AI Modification Scope
 
-This skill is read-only by default. It reads:
+統合 skill 自体は何も書かない。read scope / write scope は per-layer skill に委譲:
 
-- `CLAUDE.md`, the layer READMEs, `.golangci.yaml`, all `*.go` files in scope.
-- Runs `make lint` (which may write `/tmp/arch-check-lint.out`).
-
-The skill MUST NOT:
-
-- Modify any source file, README, or configuration.
-- Stage or commit changes.
-- Push to remotes.
-
-If the user explicitly asks for an auto-fix after the report, the skill exits and recommends running a separate skill or manual edit. This skill's contract is "audit only".
+- 読み込み: 各 layer の README + 関連ファイル
+- 書き込み: user opt 時のみ、`internal/<layer>/**/*.go` の suggestion 位置への `// TODO:` hand-off コメント追加（per-layer skill が実施、integrator 経由でも child の制約に従う）
 
 ## Constraints
 
-- ❌ Hardcode layer rules in the skill — always read from READMEs / CLAUDE.md at runtime
-- ❌ Duplicate checks already covered by depguard / `make lint`
-- ❌ Modify any file
-- ❌ Skip the scope-confirmation `AskUserQuestion`
-- ❌ Treat heuristic findings (handler bloat) as hard violations
-- ✅ Japanese output for user-facing messages
-- ✅ Cite the source-of-truth document + line/section for each finding
-- ✅ Exclude generated and vendored files
-- ✅ Re-read READMEs on every invocation (no rule caching)
+- ❌ ソースファイルを直接読まない（per-layer skill 任せ）
+- ❌ Skip scope + TODO opt `AskUserQuestion`
+- ❌ Heuristic findings (handler bloat 等) を hard violation 扱い（child skill が `suggestion` ラベル付け、integrator は respect）
+- ❌ Modify any file directly（per-layer skill 経由の TODO 書き込みのみ、user opt 時）
+- ✅ Japanese aggregated report
+- ✅ Chain only touched layers (changed-files mode で効率化)
+- ✅ Per-layer skill が独立 standalone 動作可能であることを維持
+- ✅ TODO opt を child に propagate
 
 ## Checklist
 
-Before reporting completion, confirm:
-
-- [ ] Scope was confirmed via `AskUserQuestion`
-- [ ] CLAUDE.md and the relevant layer READMEs were read this run
-- [ ] `make lint` was executed and its result was reflected in the report
-- [ ] Generated and vendored files were excluded from the scope
-- [ ] Each violation cites a source-of-truth document
-- [ ] Heuristic findings are labeled `suggestion`, not `violation`
-- [ ] No files were modified, staged, or committed
-- [ ] Report is in Japanese
+- [ ] Scope + TODO opt confirmed via `AskUserQuestion`
+- [ ] Layer detection from changed files / full repo
+- [ ] Touched layers の per-layer skill を chain
+- [ ] 各 child skill が自身の README + lean A 規則を適用
+- [ ] Aggregated Japanese report 出力
+- [ ] No file modifications by integrator itself (child skills may add TODO comments per opt)
+- [ ] No commit / push
