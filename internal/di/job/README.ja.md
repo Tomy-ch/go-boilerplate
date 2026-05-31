@@ -20,7 +20,7 @@ internal/di/job/
 
 ```mermaid
 flowchart TB
-    FxGroup["fx group:#quot;jobs#quot;"]
+    FxGroup["fx group:'jobs'"]
     RunnerIn["RunnerIn (fx.In)"]
     ProvideRunner["ProvideRunner"]
     Runner["job.Runner"]
