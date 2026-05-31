@@ -99,6 +99,32 @@ brew upgrade go
 go version
 ```
 
+### IDE / エディタ統合（VSCode + mise）
+
+VSCode を Dock / Spotlight から起動した場合、shell の初期化処理（mise を
+activate している箇所）が実行されないため、Go 拡張がシステム `PATH` から
+古い `go` バイナリを拾ってしまうことがあります。プロジェクトの `.go-version`
+と editor を同期させるには、以下のいずれかを実施します:
+
+1. **[mise VSCode 拡張](https://marketplace.visualstudio.com/items?itemName=hverlin.mise-vscode) をインストール（推奨）** —
+   VSCode 内部でプロジェクトの mise 環境を自動 activate。
+   `.vscode/extensions.json` の recommended extensions に登録済み。
+2. **mise が active なターミナルから VSCode を起動する** —
+   `code /path/to/repo` で shell の環境を継承。
+3. **VSCode の User Settings で `go.alternateTools.go` を mise shim に設定** —
+
+   ```json
+   "go.alternateTools": {
+     "go": "${env:HOME}/.local/share/mise/shims/go"
+   }
+   ```
+
+   この設定は **User Settings** に書くこと（プロジェクト `.vscode/settings.json`
+   に書くと、goenv 等を使うチームメンバーが壊れます）。
+
+設定後 VSCode を再起動し、**コマンドパレット → Go: Locate Configured Go Tools**
+で active な `go` バイナリが `mise current` の結果と一致することを確認してください。
+
 ## 4. CI の Go version 更新
 
 GitHub Actions の Go version を更新します。

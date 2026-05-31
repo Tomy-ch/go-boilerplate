@@ -98,6 +98,34 @@ Verification
 go version
 ```
 
+### IDE / Editor Integration (VSCode + mise)
+
+When VSCode is launched from Dock / Spotlight, the shell init (where mise is
+activated) is not applied, so the Go extension may pick up a stale `go` binary
+from the system `PATH`. Use one of the following to keep the editor in sync
+with the project's `.go-version`:
+
+1. **Install the [mise VSCode extension](https://marketplace.visualstudio.com/items?itemName=hverlin.mise-vscode) (recommended)** —
+   activates the project's mise environment automatically inside VSCode.
+   Already listed in `.vscode/extensions.json` as a recommended extension.
+2. **Launch VSCode from a terminal where mise is active** —
+   `code /path/to/repo` inherits the shell environment.
+3. **Set `go.alternateTools.go` to the mise shim in your VSCode User Settings** —
+
+   ```json
+   "go.alternateTools": {
+     "go": "${env:HOME}/.local/share/mise/shims/go"
+   }
+   ```
+
+   Apply this in **User Settings**, not project `.vscode/settings.json`,
+   because team members using goenv or other version managers should not be
+   forced to a mise-specific path.
+
+After applying any of the above, restart VSCode and confirm via
+**Command Palette → Go: Locate Configured Go Tools** that the active Go binary
+matches `mise current`.
+
 ## 4. Update Go version in CI
 
 Update the Go version in GitHub Actions.

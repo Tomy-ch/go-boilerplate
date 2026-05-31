@@ -8,6 +8,12 @@ For details of Make commands, refer to [Make Target List](.makefiles/README.md).
 
 Install the tools required for VSCode development.
 
+Before running the commands below, set up the Go version manager and IDE
+integration as described in
+[docs/maintenance/go-upgrade.md § 3. Update Local Go Environment](go-upgrade.md#3-update-local-go-environment)
+(mise recommended; `make go-update` reads `.go-version` and installs the
+pinned Go).
+
 The versions are listed in `tools.yaml` as the versions that have been verified to work. Change these versions as necessary.
 
 `make sync-tools` rewrites the `@latest` references in the Dockerfiles and the local installer (`.makefiles/go/installer.mk`) to the versions declared in `tools.yaml`. The boilerplate ships with `@latest` for template-development convenience, but **pinning is strongly recommended once you localize the project** so the CI environment and every developer environment install the same tool versions reproducibly.
