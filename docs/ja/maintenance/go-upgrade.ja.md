@@ -48,9 +48,18 @@ https://go.dev/doc/devel/release
 
 ## 3. ローカル Go 環境の更新
 
-このプロジェクトでは **goenv の利用を推奨しています（必須ではありません）**。
+このプロジェクトでは **mise の利用を推奨しています（必須ではありません）**。
+mise は `.go-version` を自動認識するため、追加の設定ファイルは不要です。
+goenv を継続利用しているチームメンバー向けに、goenv ベースの手順も代替として
+記載しています。
 
-### goenv を使用する場合
+### mise を使用する場合（推奨）
+
+```sh
+mise install
+```
+
+または `make` 経由:
 
 ```sh
 make go-update
@@ -62,7 +71,20 @@ make go-update
 go version
 ```
 
-### goenv を使用しない場合
+### goenv を使用する場合（代替手順）
+
+```sh
+goenv install 1.26.1
+goenv local 1.26.1
+```
+
+確認
+
+```sh
+go version
+```
+
+### バージョンマネージャーを使用しない場合
 
 Homebrew を利用している場合
 

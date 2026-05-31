@@ -72,7 +72,14 @@ Items to review:
 
 ### 3. Update the Local Go Environment
 
-When using goenv:
+When using mise (recommended):
+
+```sh
+mise install
+go version
+```
+
+When using goenv (alternative):
 
 ```sh
 goenv install <TARGET_VERSION>

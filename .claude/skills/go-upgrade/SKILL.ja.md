@@ -69,7 +69,14 @@
 
 ### 3. ローカル Go 環境の更新
 
-goenv を使用している場合:
+mise を使用している場合（推奨）:
+
+```sh
+mise install
+go version
+```
+
+goenv を使用している場合（代替手順）:
 
 ```sh
 goenv install <TARGET_VERSION>

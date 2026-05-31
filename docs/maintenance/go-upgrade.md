@@ -48,9 +48,29 @@ Example
 
 ## 3. Update Local Go Environment
 
-This project **recommends using goenv (not mandatory)**.
+This project **recommends using mise (not mandatory)**. mise reads `.go-version`
+automatically, so no additional config file is needed. For team members still
+using goenv, the goenv-based procedure is kept as an alternative below.
 
-### When using goenv
+### When using mise (recommended)
+
+```sh
+mise install
+```
+
+Or via `make`:
+
+```sh
+make go-update
+```
+
+Verification
+
+```sh
+go version
+```
+
+### When using goenv (alternative)
 
 ```sh
 goenv install 1.26.1
@@ -63,7 +83,7 @@ Verification
 go version
 ```
 
-### When not using goenv
+### When not using a version manager
 
 If using Homebrew
 
