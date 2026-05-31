@@ -4,6 +4,10 @@ English | [日本語](README.ja.md)
 
 This Dockerfile defines the application server images. It uses multi-stage builds to provide targets for production, migration, and local development.
 
+## Role
+
+`docker/server/Dockerfile` is the single source of truth for every server-side container the project ships. One Dockerfile produces four targets (`builder` / `runtime` / `migration` / `tooling`) so that production deploys, schema migration jobs, and local hot-reload development all stay aligned on the same base layers and Go toolchain version. Keeping these in one place avoids drift between "what runs in production" and "what runs on a developer's laptop" while letting each target add only what it needs (e.g., dev tools live only in `tooling`).
+
 ## Build Targets
 
 |Target|Base Image|Purpose|

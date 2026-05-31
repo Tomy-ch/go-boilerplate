@@ -2,7 +2,10 @@
 
 English | [日本語](README.ja.md)
 
-This document explains the roles of `make` commands available in this repository.
+## Role
+
+`.makefiles/` is the central registry for every `make` target used by the project. Each `.mk` file groups related targets by area (application / database / sql / go / openapi / docs / github / tools). The top-level `makefile` simply `include`s them, so adding a new target means dropping it into the right group file — no top-level edits required.
+
 Make targets are mainly organized into the following units.
 
 - `.makefiles/app` : Application startup / Job execution
@@ -16,10 +19,19 @@ Make targets are mainly organized into the following units.
 - `.makefiles/github` : GitHub initialization / Release / Labels / Rule configuration
 - `.makefiles/tools` : Development tool version management
 
-Targets are broadly divided into two types.
+## Conventions
 
-- Normal targets: Developer commands executed via Docker containers
-- `-ci` targets: Low-level commands for CI or direct execution
+- Target names use dash-separated lower case (`make new-migrate-<name>`, `make gen-api`).
+- Targets are split into two flavors:
+  - **Normal targets**: invoked by developers locally; run inside Docker containers for reproducibility.
+  - **`-ci` targets**: low-level commands intended to run on bare metal (CI runners, or developers who already have the tool installed).
+- Every target should be `.PHONY` and self-documenting via a trailing `##` comment so `make help` can pick it up.
+
+## Notes
+
+- Adding a new `.mk` file under a group is enough — `makefile` already `include`s all known groups.
+- Prefer `make new-migrate-<name>` (and similar helpers) over manual file creation; the helpers enforce naming conventions and number sequences.
+- For one-off operational commands (`make setup-repo`, etc.) keep them under `.makefiles/github/operation/` so they stay separate from developer-facing targets.
 
 ## `.makefiles/app` group
 

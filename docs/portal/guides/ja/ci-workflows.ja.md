@@ -2,7 +2,16 @@
 
 [English](README.md) | 日本語
 
-このディレクトリには CI/CD 用の GitHub Actions ワークフロー定義を格納しています。
+このディレクトリには CI/CD 用の GitHub Actions ワークフロー定義を格納しています。ワークフローは目的別にグルーピングされており、PR ゲート（lint / test / セキュリティスキャン）、push 起点のデプロイ、リリースブランチ起点のドキュメント再生成という構成です。
+
+## トリガー戦略
+
+| グループ | 発火タイミング | 目的 |
+| --- | --- | --- |
+| CI チェック | 全 PR | lint / test / 生成物整合性が失敗したらマージブロック |
+| セキュリティ | 全 PR（および default ブランチ push） | コード / 依存 / イメージ / Go ランタイムの脆弱性を surface |
+| デプロイ | `production` / `staging` / `develop` への push | 成果物ビルド、マイグレーション実行、アプリ / docs portal をデプロイ |
+| ドキュメント | `release/*` への push | OpenAPI / ER / portal ドキュメントを再生成し auto-sync PR を作成 |
 
 ## ワークフロー一覧
 
@@ -41,3 +50,10 @@
 |ワークフロー|ファイル|トリガー|説明|
 |---|---|---|---|
 |Auto-generate Docs PR|`auto-generate-docs.yaml`|release/* への push|OpenAPI ドキュメント、ER 図、ポータルドキュメントを自動生成|
+
+## 補足
+
+- `auto-generate-docs.yaml` は `auto/docs-update/<base>-<run-id>` というブランチ名で auto-PR を作成。再帰実行を避けるため自己ブランチでは workflow をスキップ
+- デプロイ系 workflow の target ブランチ（`production` / `staging` / `develop`）はすべてブランチ保護を有効化。マージは必ず PR レビュー経由
+- セキュリティスキャンは全 PR で実行。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
+- `auto-generate-docs.yaml` の `Detect changes` ステップはカバレッジ HTML / SchemaSpy のタイムスタンプ揺れを除外し、無意味な PR が発火しないよう設計
