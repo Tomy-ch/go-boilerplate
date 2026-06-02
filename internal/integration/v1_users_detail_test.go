@@ -74,6 +74,8 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 		actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, nil)
 		require.Equal(t, http.StatusOK, actual.StatusCode)
+		// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
+		AssertJSONResponse(t, detailgen.UserResponse{}, actual)
 	})
 
 	t.Run("PATCH /v1/users/{user_id} のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
@@ -95,6 +97,8 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 		actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, nil)
 		require.Equal(t, http.StatusOK, actual.StatusCode)
+		// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
+		AssertJSONResponse(t, detailgen.UserResponse{}, actual)
 	})
 
 	t.Run("DELETE /v1/users/{user_id} のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
