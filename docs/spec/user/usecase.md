@@ -92,7 +92,12 @@ methods:
     - name: RawPassword
       type: string
 - name: PatchParamsDTO
-  description: PATCH（部分更新）の入力。指定フィールドのみ更新（nil は据え置き）。password は含めない。
+  description: |
+    PATCH（部分更新）の入力。指定フィールドのみ更新し、nil（未指定）は据え置き。password は含めない。
+    PATCH は「部分マージ」セマンティクスを採用し、**フィールドのクリア（null 設定）は提供しない**。
+    送信が省略でも null でも同じ nil として扱い「据え置き」となる（生成リクエスト型が `*string` で
+    未指定と null を区別できないため、JSON Merge Patch 的な区別は持たない）。
+    フィールドを空/クリアしたい場合は **PUT（全更新、building は null 指定可）** を使う。
   fields:
     - name: FirstName
       type: "*string"
@@ -111,7 +116,7 @@ methods:
     - name: Street
       type: "*string"
     - name: Building
-      type: "*string"   # nullable かつ optional
+      type: "*string"   # nullable だが、未指定/null とも nil=据え置き扱い。クリアは PUT を使う
 ```
 
 ## Dependencies
@@ -233,7 +238,7 @@ steps:
   - トランザクション内で
       - user_repository.FindByID で対象を取得（存在しなければ NotFound 伝播）
       - PrefectureName が指定されていれば prefecture_repository.FindByName で都道府県解決、未指定なら現在の prefectureID を据え置き
-      - 各フィールドは provided なら新値、nil なら現在値（getter）をマージしてフルセットを構築
+      - 各フィールドは provided なら新値、nil なら現在値（getter）をマージしてフルセットを構築（未指定/null とも nil=据え置き。フィールドのクリアは PATCH では提供せず PUT を使う）
       - user.UpdateProfile でマージ後のフルセット + updatedAt を置換（password は更新しない）
       - user_repository.Update で永続化
   - MutableFields へ変換して返す

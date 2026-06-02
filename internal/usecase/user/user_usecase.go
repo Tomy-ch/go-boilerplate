@@ -322,7 +322,8 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParam
 	return toMutableFields(userEntity, pftDomain.Name()), nil
 }
 
-// UpdateUserPartially は、ユーザーを部分更新するユースケースです（PATCH、password は更新しない）。
+// UpdateUserPartially は、ユーザーを部分更新するユースケースです（PATCH）。
+// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは PUT を使う）。password は更新しない。
 func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
