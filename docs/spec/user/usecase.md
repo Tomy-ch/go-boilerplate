@@ -1,6 +1,6 @@
 # User — Usecase Spec
 
-> 既存実装（`internal/usecase/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの GetUser / UpdateUser / PatchUser / DeleteUser を追記したもの。
+> 既存実装（`internal/usecase/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの GetUser / UpdateUser / UpdateUserPartially / DeleteUser を追記したもの。
 > 追記分は scaffold の入力となる目標仕様。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一。PATCH では password を更新しない（PUT のみ更新）。
 
 ## Overview
