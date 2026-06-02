@@ -13,6 +13,7 @@ import (
 	context "context"
 	paging "go-boilerplate/internal/usecase/tools/paging"
 	user "go-boilerplate/internal/usecase/user"
+	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -72,6 +73,35 @@ func (mr *MockUsecaseMockRecorder) CreateUser(ctx, dto any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUsecase)(nil).CreateUser), ctx, dto)
 }
 
+// DeleteUser mocks base method.
+func (m *MockUsecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUser", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteUser indicates an expected call of DeleteUser.
+func (mr *MockUsecaseMockRecorder) DeleteUser(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockUsecase)(nil).DeleteUser), ctx, id)
+}
+
+// GetUser mocks base method.
+func (m *MockUsecase) GetUser(ctx context.Context, id uuid.UUID) (user.MutableFields, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUser", ctx, id)
+	ret0, _ := ret[0].(user.MutableFields)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUser indicates an expected call of GetUser.
+func (mr *MockUsecaseMockRecorder) GetUser(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockUsecase)(nil).GetUser), ctx, id)
+}
+
 // ListUsers mocks base method.
 func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]user.MutableFields, error) {
 	m.ctrl.T.Helper()
@@ -85,4 +115,34 @@ func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.
 func (mr *MockUsecaseMockRecorder) ListUsers(ctx, active, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsers", reflect.TypeOf((*MockUsecase)(nil).ListUsers), ctx, active, page)
+}
+
+// UpdateUser mocks base method.
+func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.UpdateParamsDTO) (user.MutableFields, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUser", ctx, id, dto)
+	ret0, _ := ret[0].(user.MutableFields)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUser indicates an expected call of UpdateUser.
+func (mr *MockUsecaseMockRecorder) UpdateUser(ctx, id, dto any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockUsecase)(nil).UpdateUser), ctx, id, dto)
+}
+
+// UpdateUserPartially mocks base method.
+func (m *MockUsecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *user.PatchParamsDTO) (user.MutableFields, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserPartially", ctx, id, dto)
+	ret0, _ := ret[0].(user.MutableFields)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUserPartially indicates an expected call of UpdateUserPartially.
+func (mr *MockUsecaseMockRecorder) UpdateUserPartially(ctx, id, dto any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserPartially", reflect.TypeOf((*MockUsecase)(nil).UpdateUserPartially), ctx, id, dto)
 }

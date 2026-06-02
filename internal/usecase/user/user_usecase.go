@@ -39,6 +39,33 @@ type CreateParamsDTO struct {
 	MutableFields
 }
 
+// UpdateParamsDTO は、ユーザー全更新（PUT）に必要なパラメータを表します。全フィールド必須で password も更新します。
+type UpdateParamsDTO struct {
+	FirstName      string
+	LastName       string
+	Email          string
+	Phone          string
+	PostalCode     string
+	PrefectureName string
+	City           string
+	Street         string
+	Building       *string
+	RawPassword    string
+}
+
+// PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
+type PatchParamsDTO struct {
+	FirstName      *string
+	LastName       *string
+	Email          *string
+	Phone          *string
+	PostalCode     *string
+	PrefectureName *string
+	City           *string
+	Street         *string
+	Building       *string
+}
+
 // usecase は、ユーザーに関するユースケースを提供します。
 type usecase struct {
 	tracer    observability.LayerTracer
@@ -57,6 +84,14 @@ type Usecase interface {
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
 	// CountUsers は、ユーザーの総件数を返します。
 	CountUsers(ctx context.Context, active *bool) (int64, error)
+	// GetUser は、IDから単一ユーザーを取得します。
+	GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error)
+	// UpdateUser は、ユーザーを全更新します（パスワードも更新）。
+	UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParamsDTO) (MutableFields, error)
+	// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
+	UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error)
+	// DeleteUser は、ユーザーを論理削除します。
+	DeleteUser(ctx context.Context, id uuid.UUID) error
 }
 
 // New は、ユーザーに関するユースケースを初期化します。
@@ -207,4 +242,199 @@ func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 	return u.userRepo.CountByActive(ctx, active)
+}
+
+// GetUser は、IDから単一ユーザーを取得するユースケースです。
+func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	userEntity, err := u.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return MutableFields{}, err
+	}
+
+	pftDomain, err := u.pftRepo.FindByID(ctx, userEntity.PrefectureID())
+	if err != nil {
+		return MutableFields{}, err
+	}
+
+	return toMutableFields(userEntity, pftDomain.Name()), nil
+}
+
+// UpdateUser は、ユーザーを全更新するユースケースです（PUT、パスワードも更新）。
+func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParamsDTO) (MutableFields, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	now := u.clock.Now()
+	rawPassword, err := user.NewRawPassword(dto.RawPassword)
+	if err != nil {
+		return MutableFields{}, err
+	}
+
+	passwordHash, err := u.encrypter.Hash(rawPassword.Value())
+	if err != nil {
+		return MutableFields{}, err
+	}
+
+	var (
+		userEntity *user.User
+		pftDomain  *prefecture.Prefecture
+	)
+	err = u.txm.Do(ctx, func(ctx context.Context) error {
+		var err error
+		userEntity, err = u.userRepo.FindByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
+		if err != nil {
+			return err
+		}
+
+		if err = userEntity.UpdateProfile(
+			dto.FirstName,
+			dto.LastName,
+			dto.Email,
+			dto.Phone,
+			pftDomain.ID(),
+			dto.PostalCode,
+			dto.City,
+			dto.Street,
+			dto.Building,
+			now,
+		); err != nil {
+			return err
+		}
+
+		if err = userEntity.ChangePassword(passwordHash, now); err != nil {
+			return err
+		}
+
+		return u.userRepo.Update(ctx, userEntity)
+	})
+	if err != nil {
+		return MutableFields{}, err
+	}
+
+	return toMutableFields(userEntity, pftDomain.Name()), nil
+}
+
+// UpdateUserPartially は、ユーザーを部分更新するユースケースです（PATCH、password は更新しない）。
+func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	now := u.clock.Now()
+
+	var (
+		userEntity *user.User
+		pftName    string
+	)
+	err := u.txm.Do(ctx, func(ctx context.Context) error {
+		var err error
+		userEntity, err = u.userRepo.FindByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		// 都道府県: 指定があれば名前解決、なければ現在の prefecture を取得（レスポンス名の解決も兼ねる）
+		prefectureID := userEntity.PrefectureID()
+		var pftDomain *prefecture.Prefecture
+		if dto.PrefectureName != nil {
+			pftDomain, err = u.pftRepo.FindByName(ctx, *dto.PrefectureName)
+		} else {
+			pftDomain, err = u.pftRepo.FindByID(ctx, prefectureID)
+		}
+		if err != nil {
+			return err
+		}
+		prefectureID = pftDomain.ID()
+		pftName = pftDomain.Name()
+
+		// provided なフィールドのみ現在値に上書きしたフルセットを構築
+		building := userEntity.Building()
+		if dto.Building != nil {
+			building = dto.Building
+		}
+
+		return updateProfileThenSave(ctx, u.userRepo, userEntity,
+			derefOr(dto.FirstName, userEntity.FirstName()),
+			derefOr(dto.LastName, userEntity.LastName()),
+			derefOr(dto.Email, userEntity.Email()),
+			derefOr(dto.Phone, userEntity.Phone()),
+			prefectureID,
+			derefOr(dto.PostalCode, userEntity.PostalCode()),
+			derefOr(dto.City, userEntity.City()),
+			derefOr(dto.Street, userEntity.Street()),
+			building,
+			now,
+		)
+	})
+	if err != nil {
+		return MutableFields{}, err
+	}
+
+	return toMutableFields(userEntity, pftName), nil
+}
+
+// DeleteUser は、ユーザーを論理削除するユースケースです（DELETE）。
+func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	now := u.clock.Now()
+	return u.txm.Do(ctx, func(ctx context.Context) error {
+		userEntity, err := u.userRepo.FindByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if err = userEntity.MarkAsDeleted(now); err != nil {
+			return err
+		}
+		return u.userRepo.Update(ctx, userEntity)
+	})
+}
+
+// updateProfileThenSave は、entity.UpdateProfile を適用してから Update で永続化します。
+func updateProfileThenSave(
+	ctx context.Context, repo user.Repository, userEntity *user.User,
+	firstName, lastName, email, phone string,
+	prefectureID uuid.UUID,
+	postalCode, city, street string,
+	building *string,
+	now time.Time,
+) error {
+	if err := userEntity.UpdateProfile(
+		firstName, lastName, email, phone, prefectureID, postalCode, city, street, building, now,
+	); err != nil {
+		return err
+	}
+	return repo.Update(ctx, userEntity)
+}
+
+// toMutableFields は、ユーザーエンティティと都道府県名から DTO を構築します。
+func toMutableFields(u *user.User, prefectureName string) MutableFields {
+	return MutableFields{
+		FirstName:      u.FirstName(),
+		LastName:       u.LastName(),
+		Email:          u.Email(),
+		Phone:          u.Phone(),
+		PostalCode:     u.PostalCode(),
+		PrefectureName: prefectureName,
+		City:           u.City(),
+		Street:         u.Street(),
+		Building:       u.Building(),
+		DeletedAt:      u.DeletedAt(),
+	}
+}
+
+// derefOr は、p が非 nil ならその値、nil なら current を返します（PATCH のマージ用）。
+func derefOr(p *string, current string) string {
+	if p != nil {
+		return *p
+	}
+	return current
 }
