@@ -75,7 +75,7 @@ ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 
 -- === source: database/dml/repository/user/update_user.sql ===
--- name: UpdateUser :exec
+-- name: UpdateUser :execrows
 UPDATE users
 SET
     first_name = sqlc.arg('first_name'),

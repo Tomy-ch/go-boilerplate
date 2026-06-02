@@ -1,4 +1,4 @@
--- name: UpdateUser :exec
+-- name: UpdateUser :execrows
 UPDATE users
 SET
     first_name = sqlc.arg('first_name'),

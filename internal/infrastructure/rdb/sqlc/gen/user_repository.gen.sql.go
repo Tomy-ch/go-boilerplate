@@ -380,7 +380,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListU
 	return items, nil
 }
 
-const updateUser = `-- name: UpdateUser :exec
+const updateUser = `-- name: UpdateUser :execrows
 UPDATE users
 SET
     first_name = $1,
@@ -431,8 +431,8 @@ type UpdateUserParams struct {
 //	    updated_at = $11,
 //	    deleted_at = $12
 //	WHERE id = $13
-func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) error {
-	_, err := q.db.Exec(ctx, updateUser,
+func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateUser,
 		arg.FirstName,
 		arg.LastName,
 		arg.PasswordHash,
@@ -447,5 +447,8 @@ func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) error {
 		arg.DeletedAt,
 		arg.ID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

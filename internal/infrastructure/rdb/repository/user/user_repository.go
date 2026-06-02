@@ -4,12 +4,14 @@ package user
 import (
 	"context"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 type repository struct {
@@ -222,7 +224,7 @@ func (r *repository) Update(ctx context.Context, u *user.User) error {
 	defer endSpan()
 
 	db := gen.New(r.db.NewLoggingDB(ctx))
-	err := db.UpdateUser(ctx, &gen.UpdateUserParams{
+	rows, err := db.UpdateUser(ctx, &gen.UpdateUserParams{
 		FirstName:    u.FirstName(),
 		LastName:     u.LastName(),
 		PasswordHash: u.PasswordHash(),
@@ -239,6 +241,10 @@ func (r *repository) Update(ctx context.Context, u *user.User) error {
 	})
 	if err != nil {
 		return pgerror.NormalizeError(err)
+	}
+	// 影響行数 0 = 対象が存在しない。サイレント成功を避け NotFound を返す。
+	if rows == 0 {
+		return xerrors.Wrap(apperror.ErrNotFound, "user not found for update")
 	}
 	return nil
 }

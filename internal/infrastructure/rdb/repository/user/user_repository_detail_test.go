@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
@@ -104,6 +105,25 @@ func Test_repository_Update(t *testing.T) {
 
 			err = repo.Update(ctx, target)
 			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+	})
+
+	t.Run("異常系_存在しないIDのUpdateはErrNotFoundを返す", func(t *testing.T) {
+		txm.WithinTx(func(ctx context.Context) {
+			prefID, err := uuid.Parse("a03aaec4-3bd6-4bfb-8e47-2fbfa026d344") // シード済み都道府県
+			require.NoError(t, err)
+			now := time.Now()
+
+			// DB に存在しない ID のエンティティ
+			u, err := user.New(
+				uuid.NewTestFromSalt(t, "missing-update"),
+				"X", "Y", "hashed_password", "missing-update@example.com", "09000000000",
+				prefID, "City", "Street", nil, "100-0001", now, now, nil,
+			)
+			require.NoError(t, err)
+
+			err = repo.Update(ctx, u)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
 	})
 }
