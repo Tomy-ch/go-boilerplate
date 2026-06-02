@@ -23,4 +23,7 @@ var (
 	ErrInvalidDeletedAt      = xerrors.Wrap(errInvalid, "deleted at failed")
 
 	ErrInvalidRawPassword = xerrors.Wrap(apperror.ErrValidation, "invalid raw password")
+
+	// ErrAlreadyDeleted は、既に論理削除済みのユーザーを再度削除しようとした場合のエラーです。
+	ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
 )

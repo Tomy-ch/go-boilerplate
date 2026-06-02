@@ -12,6 +12,7 @@ package mock_user
 import (
 	context "context"
 	user "go-boilerplate/internal/domain/user"
+	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -83,4 +84,33 @@ func (m *MockRepository) FindByActive(ctx context.Context, active *bool, limit, 
 func (mr *MockRepositoryMockRecorder) FindByActive(ctx, active, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByActive", reflect.TypeOf((*MockRepository)(nil).FindByActive), ctx, active, limit, offset)
+}
+
+// FindByID mocks base method.
+func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", ctx, id)
+	ret0, _ := ret[0].(*user.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByID indicates an expected call of FindByID.
+func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockRepository)(nil).FindByID), ctx, id)
+}
+
+// Update mocks base method.
+func (m *MockRepository) Update(ctx context.Context, arg1 *user.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockRepositoryMockRecorder) Update(ctx, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRepository)(nil).Update), ctx, arg1)
 }
