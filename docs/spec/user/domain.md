@@ -1,6 +1,7 @@
 # User — Domain Spec
 
-> 既存実装（`internal/domain/user`）を spec 化したもの。手書き実装から逆生成した現状仕様であり、未実装機能（更新 / 論理削除など）は含まない。
+> 既存実装（`internal/domain/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの更新・論理削除を追記したもの。
+> 追記分は scaffold の入力となる目標仕様（FindByID / Update + UpdateProfile / ChangePassword / MarkAsDeleted）。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一する方針。
 
 ## Overview
 
@@ -85,11 +86,32 @@ fields:
 ## Behavior Methods
 
 ```yaml
-# 現状、状態遷移メソッドは未実装（getter のみ）。
-# 以下は単純フィールド getter ではない派生メソッド。
+# 派生メソッド（単純フィールド getter ではない）
 - name: FullName
   signature: FullName() string
   description: firstName + " " + lastName を連結したフルネームを返す派生値。
+
+# 状態遷移メソッド（更新・論理削除エンドポイント向け。追記分）
+- name: UpdateProfile
+  signature: |
+    UpdateProfile(firstName, lastName, email, phone string, prefectureID uuid.UUID,
+                  postalCode, city, street string, building *string, updatedAt time.Time) error
+  description: |
+    プロフィール（氏名・連絡先・住所・都道府県ID）と updatedAt を一括で置き換える。
+    各フィールドは New と同じ不変条件で検証する（長さ範囲 / prefectureID 非 nil /
+    building は非 nil 時のみ検証 / updatedAt >= createdAt）。パスワードは変更しない。
+    PUT は全フィールド指定、PATCH は load した現在値に provided フィールドをマージした
+    フルセットを渡して呼ぶ（usecase 側でマージ）。
+- name: ChangePassword
+  signature: ChangePassword(passwordHash string, updatedAt time.Time) error
+  description: |
+    パスワードハッシュと updatedAt を置き換える。passwordHash は New と同じ長さ範囲で検証。
+    PUT のみ使用（PATCH では password を更新しない）。
+- name: MarkAsDeleted
+  signature: MarkAsDeleted(deletedAt time.Time) error
+  description: |
+    論理削除。deletedAt を設定する（deletedAt >= createdAt かつ >= updatedAt を検証）。
+    既に削除済み（deletedAt != nil）の場合は ErrAlreadyDeleted を返す。
 ```
 
 ## Value Objects
@@ -118,4 +140,16 @@ fields:
 - name: CountByActive
   signature: CountByActive(ctx context.Context, active *bool) (int64, error)
   behavior: アクティブ状態（active）に基づきユーザーの総件数を返す。
+# 詳細系エンドポイント向け（追記分）
+- name: FindByID
+  signature: FindByID(ctx context.Context, id uuid.UUID) (*User, error)
+  behavior: |
+    ID から単一ユーザーを取得する。存在しない場合は apperror.ErrNotFound に
+    正規化されたエラーを返す（infra の pgerror.NormalizeError 経由）。
+- name: Update
+  signature: Update(ctx context.Context, user *User) error
+  behavior: |
+    ID をキーに mutable フィールド（氏名・連絡先・住所・prefectureID・passwordHash）と
+    updatedAt / deletedAt を更新する。PUT / PATCH / DELETE（論理削除）すべてが
+    load → ドメインメソッドで変更 → 本メソッドで永続化、という共通経路で利用する。
 ```

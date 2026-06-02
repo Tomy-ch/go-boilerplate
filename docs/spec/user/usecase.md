@@ -1,6 +1,7 @@
 # User — Usecase Spec
 
-> 既存実装（`internal/usecase/user`）を spec 化したもの。手書き実装から逆生成した現状仕様であり、未実装機能（取得詳細 / 更新 / 部分更新 / 削除）は含まない。
+> 既存実装（`internal/usecase/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの GetUser / UpdateUser / PatchUser / DeleteUser を追記したもの。
+> 追記分は scaffold の入力となる目標仕様。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一。PATCH では password を更新しない（PUT のみ更新）。
 
 ## Overview
 
@@ -20,6 +21,15 @@ methods:
     signature: CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
   - name: CountUsers
     signature: CountUsers(ctx context.Context, active *bool) (int64, error)
+  # 詳細系エンドポイント向け（追記分）
+  - name: GetUser
+    signature: GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error)
+  - name: UpdateUser
+    signature: UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParamsDTO) (MutableFields, error)
+  - name: UpdateUserPartially
+    signature: UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error)
+  - name: DeleteUser
+    signature: DeleteUser(ctx context.Context, id uuid.UUID) error
 ```
 
 ## DTOs
@@ -57,6 +67,51 @@ methods:
       type: string
     - name: MutableFields
       type: MutableFields   # embedded
+# 詳細系エンドポイント向け（追記分）
+- name: UpdateParamsDTO
+  description: PUT（全更新）の入力。全フィールド必須で password も更新する。
+  fields:
+    - name: FirstName
+      type: string
+    - name: LastName
+      type: string
+    - name: Email
+      type: string
+    - name: Phone
+      type: string
+    - name: PostalCode
+      type: string
+    - name: PrefectureName
+      type: string
+    - name: City
+      type: string
+    - name: Street
+      type: string
+    - name: Building
+      type: "*string"
+    - name: RawPassword
+      type: string
+- name: PatchParamsDTO
+  description: PATCH（部分更新）の入力。指定フィールドのみ更新（nil は据え置き）。password は含めない。
+  fields:
+    - name: FirstName
+      type: "*string"
+    - name: LastName
+      type: "*string"
+    - name: Email
+      type: "*string"
+    - name: Phone
+      type: "*string"
+    - name: PostalCode
+      type: "*string"
+    - name: PrefectureName
+      type: "*string"
+    - name: City
+      type: "*string"
+    - name: Street
+      type: "*string"
+    - name: Building
+      type: "*string"   # nullable かつ optional
 ```
 
 ## Dependencies
@@ -123,4 +178,92 @@ calls:
   - user_repository.CountByActive
 errors:
   - userRepo のエラーをそのまま伝播
+```
+
+### GetUser
+
+```yaml
+tx_required: false
+steps:
+  - user_repository.FindByID で単一ユーザーを取得（存在しなければ NotFound 伝播）
+  - prefecture_repository.FindByID で都道府県名を解決
+  - MutableFields へ変換して返す（PrefectureName を埋める）
+calls:
+  - user_repository.FindByID
+  - prefecture_repository.FindByID
+errors:
+  - FindByID の NotFound をそのまま伝播
+```
+
+### UpdateUser
+
+```yaml
+tx_required: true
+steps:
+  - clock.Now で現在時刻を取得
+  - user.NewRawPassword で平文パスワードを検証
+  - encrypter.Hash でパスワードハッシュを生成
+  - トランザクション内で
+      - user_repository.FindByID で対象を取得（存在しなければ NotFound 伝播）
+      - prefecture_repository.FindByName で都道府県を名前解決
+      - user.UpdateProfile で全プロフィールフィールド + updatedAt を置換
+      - user.ChangePassword でパスワードハッシュ + updatedAt を置換
+      - user_repository.Update で永続化
+  - MutableFields へ変換して返す
+calls:
+  - clock.Now
+  - user.NewRawPassword
+  - encrypter.Hash
+  - tx_manager.Do
+  - user_repository.FindByID
+  - prefecture_repository.FindByName
+  - user.UpdateProfile
+  - user.ChangePassword
+  - user_repository.Update
+errors:
+  - NewRawPassword / Hash / FindByID(NotFound) / FindByName / UpdateProfile / ChangePassword / Update を伝播
+```
+
+### UpdateUserPartially
+
+```yaml
+tx_required: true
+steps:
+  - clock.Now で現在時刻を取得
+  - トランザクション内で
+      - user_repository.FindByID で対象を取得（存在しなければ NotFound 伝播）
+      - PrefectureName が指定されていれば prefecture_repository.FindByName で都道府県解決、未指定なら現在の prefectureID を据え置き
+      - 各フィールドは provided なら新値、nil なら現在値（getter）をマージしてフルセットを構築
+      - user.UpdateProfile でマージ後のフルセット + updatedAt を置換（password は更新しない）
+      - user_repository.Update で永続化
+  - MutableFields へ変換して返す
+calls:
+  - clock.Now
+  - tx_manager.Do
+  - user_repository.FindByID
+  - prefecture_repository.FindByName
+  - user.UpdateProfile
+  - user_repository.Update
+errors:
+  - FindByID(NotFound) / FindByName / UpdateProfile / Update を伝播
+```
+
+### DeleteUser
+
+```yaml
+tx_required: true
+steps:
+  - clock.Now で現在時刻を取得
+  - トランザクション内で
+      - user_repository.FindByID で対象を取得（存在しなければ NotFound 伝播）
+      - user.MarkAsDeleted で deletedAt を設定（既に削除済みなら ErrAlreadyDeleted）
+      - user_repository.Update で永続化（論理削除）
+calls:
+  - clock.Now
+  - tx_manager.Do
+  - user_repository.FindByID
+  - user.MarkAsDeleted
+  - user_repository.Update
+errors:
+  - FindByID(NotFound) / MarkAsDeleted(ErrAlreadyDeleted) / Update を伝播
 ```
