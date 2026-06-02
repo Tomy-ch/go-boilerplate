@@ -152,12 +152,17 @@ func Test_usecase_UpdateUser(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		expectedErr := xerrors.New("hash failed")
+		u := newActiveUser(t, id, prefID, now)
 		clock := mock_clock.NewMockClock(ctrl)
 		clock.EXPECT().Now().Return(now)
 		encrypter := mock_security.NewMockEncrypter(ctrl)
 		encrypter.EXPECT().Hash("valid_password").Return("", expectedErr)
+		userRepo := mock_user.NewMockRepository(ctrl)
+		userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+		pftRepo := mock_prefecture.NewMockRepository(ctrl)
+		pftRepo.EXPECT().FindByName(gomock.Any(), prefName).Return(pft, nil)
 
-		uc := &usecase{tracer: lt, clock: clock, encrypter: encrypter}
+		uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo, pftRepo: pftRepo}
 		_, err := uc.UpdateUser(ctx, id, newUpdateDTO(prefName))
 		require.ErrorIs(t, err, expectedErr)
 	})
@@ -168,8 +173,7 @@ func Test_usecase_UpdateUser(t *testing.T) {
 		expectedErr := xerrors.New("not found")
 		clock := mock_clock.NewMockClock(ctrl)
 		clock.EXPECT().Now().Return(now)
-		encrypter := mock_security.NewMockEncrypter(ctrl)
-		encrypter.EXPECT().Hash("valid_password").Return("new_hashed", nil)
+		encrypter := mock_security.NewMockEncrypter(ctrl) // Hash は存在確認後なので呼ばれない
 		userRepo := mock_user.NewMockRepository(ctrl)
 		userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
@@ -205,8 +209,7 @@ func Test_usecase_UpdateUser(t *testing.T) {
 		u := newActiveUser(t, id, prefID, now)
 		clock := mock_clock.NewMockClock(ctrl)
 		clock.EXPECT().Now().Return(now)
-		encrypter := mock_security.NewMockEncrypter(ctrl)
-		encrypter.EXPECT().Hash("valid_password").Return("new_hashed", nil)
+		encrypter := mock_security.NewMockEncrypter(ctrl) // Hash は都道府県解決後なので呼ばれない
 		userRepo := mock_user.NewMockRepository(ctrl)
 		userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 		pftRepo := mock_prefecture.NewMockRepository(ctrl)

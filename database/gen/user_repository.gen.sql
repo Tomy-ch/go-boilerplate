@@ -51,7 +51,8 @@ INSERT INTO users (
 -- name: GetUserByID :one
 SELECT sqlc.embed(u)
 FROM users AS u
-WHERE u.id = sqlc.arg('user_id_param');
+WHERE u.id = sqlc.arg('user_id_param')
+  AND u.deleted_at IS NULL;
 
 -- === source: database/dml/repository/user/select_users.sql ===
 -- name: ListUsers :many
@@ -90,4 +91,5 @@ SET
     postal_code = sqlc.arg('postal_code'),
     updated_at = sqlc.arg('updated_at'),
     deleted_at = sqlc.arg('deleted_at')
-WHERE id = sqlc.arg('id');
+WHERE id = sqlc.arg('id')
+  AND deleted_at IS NULL;

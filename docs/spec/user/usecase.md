@@ -2,6 +2,7 @@
 
 > 既存実装（`internal/usecase/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの GetUser / UpdateUser / UpdateUserPartially / DeleteUser を追記したもの。
 > 追記分は scaffold の入力となる目標仕様。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一。PATCH では password を更新しない（PUT のみ更新）。
+> 論理削除済みユーザーは detail 系（GET / PUT / PATCH / DELETE）の対象外とし、`FindByID` / `Update` の SQL で `deleted_at IS NULL` をフィルタする。これにより削除済みへの取得・更新・再削除はすべて `NotFound`（404）に統一される（GET で削除済みを返したり、更新でエラー種別がぶれることを防ぐ）。
 
 ## Overview
 
@@ -190,7 +191,7 @@ errors:
 ```yaml
 tx_required: false
 steps:
-  - user_repository.FindByID で単一ユーザーを取得（存在しなければ NotFound 伝播）
+  - user_repository.FindByID で単一ユーザーを取得（存在しない / 論理削除済みなら NotFound 伝播）
   - prefecture_repository.FindByID で都道府県名を解決
   - MutableFields へ変換して返す（PrefectureName を埋める）
 calls:
@@ -207,10 +208,10 @@ tx_required: true
 steps:
   - clock.Now で現在時刻を取得
   - user.NewRawPassword で平文パスワードを検証
-  - encrypter.Hash でパスワードハッシュを生成
   - トランザクション内で
-      - user_repository.FindByID で対象を取得（存在しなければ NotFound 伝播）
+      - user_repository.FindByID で対象を取得（存在しない / 論理削除済みなら NotFound 伝播）
       - prefecture_repository.FindByName で都道府県を名前解決
+      - encrypter.Hash でパスワードハッシュを生成（存在確認・都道府県解決後に計算し、無駄な bcrypt / DoS を避ける）
       - user.UpdateProfile で全プロフィールフィールド + updatedAt を置換
       - user.ChangePassword でパスワードハッシュ + updatedAt を置換
       - user_repository.Update で永続化
@@ -218,15 +219,15 @@ steps:
 calls:
   - clock.Now
   - user.NewRawPassword
-  - encrypter.Hash
   - tx_manager.Do
   - user_repository.FindByID
   - prefecture_repository.FindByName
+  - encrypter.Hash
   - user.UpdateProfile
   - user.ChangePassword
   - user_repository.Update
 errors:
-  - NewRawPassword / Hash / FindByID(NotFound) / FindByName / UpdateProfile / ChangePassword / Update を伝播
+  - NewRawPassword / FindByID(NotFound) / FindByName / Hash / UpdateProfile / ChangePassword / Update を伝播
 ```
 
 ### UpdateUserPartially
@@ -236,7 +237,7 @@ tx_required: true
 steps:
   - clock.Now で現在時刻を取得
   - トランザクション内で
-      - user_repository.FindByID で対象を取得（存在しなければ NotFound 伝播）
+      - user_repository.FindByID で対象を取得（存在しない / 論理削除済みなら NotFound 伝播）
       - PrefectureName が指定されていれば prefecture_repository.FindByName で都道府県解決、未指定なら現在の prefectureID を据え置き
       - 各フィールドは provided なら新値、nil なら現在値（getter）をマージしてフルセットを構築（未指定/null とも nil=据え置き。フィールドのクリアは PATCH では提供せず PUT を使う）
       - user.UpdateProfile でマージ後のフルセット + updatedAt を置換（password は更新しない）
@@ -260,8 +261,8 @@ tx_required: true
 steps:
   - clock.Now で現在時刻を取得
   - トランザクション内で
-      - user_repository.FindByID で対象を取得（存在しなければ NotFound 伝播）
-      - user.MarkAsDeleted で deletedAt を設定（既に削除済みなら ErrAlreadyDeleted）
+      - user_repository.FindByID で対象を取得（存在しない / 論理削除済みなら NotFound 伝播。FindByID が deleted_at IS NULL でフィルタするため、削除済みへの再 DELETE は NotFound になる）
+      - user.MarkAsDeleted で deletedAt を設定（ドメイン不変条件として既削除なら ErrAlreadyDeleted を返すが、FindByID フィルタにより通常経路では到達しない防御的チェック）
       - user_repository.Update で永続化（論理削除）
 calls:
   - clock.Now

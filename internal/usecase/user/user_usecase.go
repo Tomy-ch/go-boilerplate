@@ -273,11 +273,6 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParam
 		return MutableFields{}, err
 	}
 
-	passwordHash, err := u.encrypter.Hash(rawPassword.Value())
-	if err != nil {
-		return MutableFields{}, err
-	}
-
 	var (
 		userEntity *user.User
 		pftDomain  *prefecture.Prefecture
@@ -290,6 +285,11 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParam
 		}
 
 		pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
+		if err != nil {
+			return err
+		}
+
+		passwordHash, err := u.encrypter.Hash(rawPassword.Value())
 		if err != nil {
 			return err
 		}

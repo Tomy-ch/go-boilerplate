@@ -78,16 +78,16 @@ func Test_repository_Update(t *testing.T) {
 		})
 	})
 
-	t.Run("正常系_論理削除（deletedAt設定）が永続化される", func(t *testing.T) {
+	t.Run("正常系_論理削除すると以降FindByIDの対象外になる", func(t *testing.T) {
 		txm.WithinTx(func(ctx context.Context) {
 			u, err := repo.FindByID(ctx, firstID)
 			require.NoError(t, err)
 			require.NoError(t, u.MarkAsDeleted(time.Now()))
 			require.NoError(t, repo.Update(ctx, u))
 
-			got, err := repo.FindByID(ctx, firstID)
-			require.NoError(t, err)
-			require.NotNil(t, got.DeletedAt())
+			// FindByID / Update は deleted_at IS NULL でフィルタするため、削除後は NotFound
+			_, err = repo.FindByID(ctx, firstID)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
 	})
 

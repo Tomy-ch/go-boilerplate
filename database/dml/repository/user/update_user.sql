@@ -13,4 +13,5 @@ SET
     postal_code = sqlc.arg('postal_code'),
     updated_at = sqlc.arg('updated_at'),
     deleted_at = sqlc.arg('deleted_at')
-WHERE id = sqlc.arg('id');
+WHERE id = sqlc.arg('id')
+  AND deleted_at IS NULL;
