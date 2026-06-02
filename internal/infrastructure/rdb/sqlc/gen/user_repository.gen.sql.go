@@ -379,3 +379,73 @@ func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListU
 	}
 	return items, nil
 }
+
+const updateUser = `-- name: UpdateUser :exec
+UPDATE users
+SET
+    first_name = $1,
+    last_name = $2,
+    password_hash = $3,
+    email = $4,
+    phone = $5,
+    prefecture_id = $6,
+    city = $7,
+    street = $8,
+    building = $9,
+    postal_code = $10,
+    updated_at = $11,
+    deleted_at = $12
+WHERE id = $13
+`
+
+type UpdateUserParams struct {
+	FirstName    string
+	LastName     string
+	PasswordHash string
+	Email        string
+	Phone        string
+	PrefectureID uuid.UUID
+	City         string
+	Street       string
+	Building     *string
+	PostalCode   string
+	UpdatedAt    time.Time
+	DeletedAt    *time.Time
+	ID           uuid.UUID
+}
+
+// === source: database/dml/repository/user/update_user.sql ===
+//
+//	UPDATE users
+//	SET
+//	    first_name = $1,
+//	    last_name = $2,
+//	    password_hash = $3,
+//	    email = $4,
+//	    phone = $5,
+//	    prefecture_id = $6,
+//	    city = $7,
+//	    street = $8,
+//	    building = $9,
+//	    postal_code = $10,
+//	    updated_at = $11,
+//	    deleted_at = $12
+//	WHERE id = $13
+func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) error {
+	_, err := q.db.Exec(ctx, updateUser,
+		arg.FirstName,
+		arg.LastName,
+		arg.PasswordHash,
+		arg.Email,
+		arg.Phone,
+		arg.PrefectureID,
+		arg.City,
+		arg.Street,
+		arg.Building,
+		arg.PostalCode,
+		arg.UpdatedAt,
+		arg.DeletedAt,
+		arg.ID,
+	)
+	return err
+}
