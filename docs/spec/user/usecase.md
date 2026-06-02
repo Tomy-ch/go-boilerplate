@@ -70,28 +70,12 @@ methods:
       type: MutableFields   # embedded
 # 詳細系エンドポイント向け（追記分）
 - name: UpdateParamsDTO
-  description: PUT（全更新）の入力。全フィールド必須で password も更新する。
+  description: PUT（全更新）の入力。全フィールド必須で password も更新する。CreateParamsDTO と同様に MutableFields を埋め込む（DeletedAt は更新入力では未使用）。
   fields:
-    - name: FirstName
-      type: string
-    - name: LastName
-      type: string
-    - name: Email
-      type: string
-    - name: Phone
-      type: string
-    - name: PostalCode
-      type: string
-    - name: PrefectureName
-      type: string
-    - name: City
-      type: string
-    - name: Street
-      type: string
-    - name: Building
-      type: "*string"
     - name: RawPassword
       type: string
+    - name: MutableFields
+      type: MutableFields   # embedded（FirstName / LastName / Email / Phone / PostalCode / PrefectureName / City / Street / Building）
 - name: PatchParamsDTO
   description: |
     PATCH（部分更新）の入力。指定フィールドのみ更新し、nil（未指定）は据え置き。password は含めない。

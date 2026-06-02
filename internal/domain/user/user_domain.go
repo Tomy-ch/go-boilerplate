@@ -180,7 +180,7 @@ func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error {
 // 既に削除済みの場合は ErrAlreadyDeleted を返します。
 func (u *User) MarkAsDeleted(deletedAt time.Time) error {
 	if u.deletedAt != nil {
-		return xerrors.Wrap(ErrAlreadyDeleted, "user is already deleted")
+		return ErrAlreadyDeleted
 	}
 	if deletedAt.Before(u.createdAt) {
 		return xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to createdAt")

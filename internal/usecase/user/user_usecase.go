@@ -14,6 +14,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/security"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 )
 
@@ -41,16 +42,9 @@ type CreateParamsDTO struct {
 
 // UpdateParamsDTO は、ユーザー全更新（PUT）に必要なパラメータを表します。全フィールド必須で password も更新します。
 type UpdateParamsDTO struct {
-	FirstName      string
-	LastName       string
-	Email          string
-	Phone          string
-	PostalCode     string
-	PrefectureName string
-	City           string
-	Street         string
-	Building       *string
-	RawPassword    string
+	RawPassword string
+
+	MutableFields
 }
 
 // PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
@@ -147,20 +141,11 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Pagi
 
 	dtos := make([]MutableFields, len(us))
 	for i, u := range us {
-		dtos[i] = MutableFields{
-			FirstName:  u.FirstName(),
-			LastName:   u.LastName(),
-			Email:      u.Email(),
-			Phone:      u.Phone(),
-			PostalCode: u.PostalCode(),
-			City:       u.City(),
-			Street:     u.Street(),
-			Building:   u.Building(),
-			DeletedAt:  u.DeletedAt(),
-		}
+		prefectureName := ""
 		if p, ok := prefectureMap[u.PrefectureID()]; ok {
-			dtos[i].PrefectureName = p.Name()
+			prefectureName = p.Name()
 		}
+		dtos[i] = toMutableFields(u, prefectureName)
 	}
 
 	return dtos, nil
@@ -223,18 +208,7 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 		return MutableFields{}, err
 	}
 
-	return MutableFields{
-		FirstName:      userEntity.FirstName(),
-		LastName:       userEntity.LastName(),
-		Email:          userEntity.Email(),
-		Phone:          userEntity.Phone(),
-		PostalCode:     userEntity.PostalCode(),
-		PrefectureName: pftDomain.Name(),
-		City:           userEntity.City(),
-		Street:         userEntity.Street(),
-		Building:       userEntity.Building(),
-		DeletedAt:      userEntity.DeletedAt(),
-	}, nil
+	return toMutableFields(userEntity, pftDomain.Name()), nil
 }
 
 // CountUsers は、ユーザーの総件数を返すユースケースです。
@@ -361,18 +335,21 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *Pa
 			building = dto.Building
 		}
 
-		return updateProfileThenSave(ctx, u.userRepo, userEntity,
-			derefOr(dto.FirstName, userEntity.FirstName()),
-			derefOr(dto.LastName, userEntity.LastName()),
-			derefOr(dto.Email, userEntity.Email()),
-			derefOr(dto.Phone, userEntity.Phone()),
+		if err = userEntity.UpdateProfile(
+			ptr.Deref(dto.FirstName, userEntity.FirstName()),
+			ptr.Deref(dto.LastName, userEntity.LastName()),
+			ptr.Deref(dto.Email, userEntity.Email()),
+			ptr.Deref(dto.Phone, userEntity.Phone()),
 			prefectureID,
-			derefOr(dto.PostalCode, userEntity.PostalCode()),
-			derefOr(dto.City, userEntity.City()),
-			derefOr(dto.Street, userEntity.Street()),
+			ptr.Deref(dto.PostalCode, userEntity.PostalCode()),
+			ptr.Deref(dto.City, userEntity.City()),
+			ptr.Deref(dto.Street, userEntity.Street()),
 			building,
 			now,
-		)
+		); err != nil {
+			return err
+		}
+		return u.userRepo.Update(ctx, userEntity)
 	})
 	if err != nil {
 		return MutableFields{}, err
@@ -399,23 +376,6 @@ func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-// updateProfileThenSave は、entity.UpdateProfile を適用してから Update で永続化します。
-func updateProfileThenSave(
-	ctx context.Context, repo user.Repository, userEntity *user.User,
-	firstName, lastName, email, phone string,
-	prefectureID uuid.UUID,
-	postalCode, city, street string,
-	building *string,
-	now time.Time,
-) error {
-	if err := userEntity.UpdateProfile(
-		firstName, lastName, email, phone, prefectureID, postalCode, city, street, building, now,
-	); err != nil {
-		return err
-	}
-	return repo.Update(ctx, userEntity)
-}
-
 // toMutableFields は、ユーザーエンティティと都道府県名から DTO を構築します。
 func toMutableFields(u *user.User, prefectureName string) MutableFields {
 	return MutableFields{
@@ -430,12 +390,4 @@ func toMutableFields(u *user.User, prefectureName string) MutableFields {
 		Building:       u.Building(),
 		DeletedAt:      u.DeletedAt(),
 	}
-}
-
-// derefOr は、p が非 nil ならその値、nil なら current を返します（PATCH のマージ用）。
-func derefOr(p *string, current string) string {
-	if p != nil {
-		return *p
-	}
-	return current
 }

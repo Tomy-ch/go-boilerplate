@@ -55,6 +55,26 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 	}
 }
 
+// rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。
+func rowToUser(u gen.Users) (*user.User, error) {
+	return user.New(
+		u.ID,
+		u.FirstName,
+		u.LastName,
+		u.PasswordHash,
+		u.Email,
+		u.Phone,
+		u.PrefectureID,
+		u.City,
+		u.Street,
+		u.Building,
+		u.PostalCode,
+		u.CreatedAt,
+		u.UpdatedAt,
+		u.DeletedAt,
+	)
+}
+
 // fetchListUsersRows は、ユーザーの情報を取得します。
 func fetchListUsersRows(
 	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
@@ -66,26 +86,11 @@ func fetchListUsersRows(
 
 	users := make(user.Users, len(rows))
 	for i, row := range rows {
-		user, err := user.New(
-			row.Users.ID,
-			row.Users.FirstName,
-			row.Users.LastName,
-			row.Users.PasswordHash,
-			row.Users.Email,
-			row.Users.Phone,
-			row.Users.PrefectureID,
-			row.Users.City,
-			row.Users.Street,
-			row.Users.Building,
-			row.Users.PostalCode,
-			row.Users.CreatedAt,
-			row.Users.UpdatedAt,
-			row.Users.DeletedAt,
-		)
+		u, err := rowToUser(row.Users)
 		if err != nil {
 			return nil, err
 		}
-		users[i] = user
+		users[i] = u
 	}
 	return users, nil
 }
@@ -101,26 +106,11 @@ func fetchListUsersRowsByActive(
 
 	users := make(user.Users, len(rows))
 	for i, row := range rows {
-		user, err := user.New(
-			row.Users.ID,
-			row.Users.FirstName,
-			row.Users.LastName,
-			row.Users.PasswordHash,
-			row.Users.Email,
-			row.Users.Phone,
-			row.Users.PrefectureID,
-			row.Users.City,
-			row.Users.Street,
-			row.Users.Building,
-			row.Users.PostalCode,
-			row.Users.CreatedAt,
-			row.Users.UpdatedAt,
-			row.Users.DeletedAt,
-		)
+		u, err := rowToUser(row.Users)
 		if err != nil {
 			return nil, err
 		}
-		users[i] = user
+		users[i] = u
 	}
 	return users, nil
 }
@@ -136,26 +126,11 @@ func fetchListUsersRowsByDeleted(
 
 	users := make(user.Users, len(rows))
 	for i, row := range rows {
-		user, err := user.New(
-			row.Users.ID,
-			row.Users.FirstName,
-			row.Users.LastName,
-			row.Users.PasswordHash,
-			row.Users.Email,
-			row.Users.Phone,
-			row.Users.PrefectureID,
-			row.Users.City,
-			row.Users.Street,
-			row.Users.Building,
-			row.Users.PostalCode,
-			row.Users.CreatedAt,
-			row.Users.UpdatedAt,
-			row.Users.DeletedAt,
-		)
+		u, err := rowToUser(row.Users)
 		if err != nil {
 			return nil, err
 		}
-		users[i] = user
+		users[i] = u
 	}
 	return users, nil
 }
@@ -198,22 +173,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, er
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	return user.New(
-		row.Users.ID,
-		row.Users.FirstName,
-		row.Users.LastName,
-		row.Users.PasswordHash,
-		row.Users.Email,
-		row.Users.Phone,
-		row.Users.PrefectureID,
-		row.Users.City,
-		row.Users.Street,
-		row.Users.Building,
-		row.Users.PostalCode,
-		row.Users.CreatedAt,
-		row.Users.UpdatedAt,
-		row.Users.DeletedAt,
-	)
+	return rowToUser(row.Users)
 }
 
 // Update は、ユーザーの mutable フィールドと updatedAt / deletedAt を更新します。

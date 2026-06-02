@@ -12,3 +12,11 @@ func Copy[T any](v *T) *T {
 	c := *v
 	return &c
 }
+
+// Deref は、p が非 nil ならその指す値を、nil なら fallback を返します。
+func Deref[T any](p *T, fallback T) T {
+	if p != nil {
+		return *p
+	}
+	return fallback
+}

@@ -33,9 +33,12 @@ func newActiveUser(t *testing.T, id, prefID uuid.UUID, ts time.Time) *user.User 
 
 func newUpdateDTO(prefName string) *UpdateParamsDTO {
 	return &UpdateParamsDTO{
-		FirstName: "Jane", LastName: "Smith", Email: "jane@example.com", Phone: "0987654321",
-		PostalCode: "200-0002", PrefectureName: prefName, City: "Minato", Street: "4-5-6",
-		Building: ptr.To("Tower"), RawPassword: "valid_password",
+		RawPassword: "valid_password",
+		MutableFields: MutableFields{
+			FirstName: "Jane", LastName: "Smith", Email: "jane@example.com", Phone: "0987654321",
+			PostalCode: "200-0002", PrefectureName: prefName, City: "Minato", Street: "4-5-6",
+			Building: ptr.To("Tower"),
+		},
 	}
 }
 

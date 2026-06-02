@@ -51,16 +51,18 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 	id := conv.UUID(request.UserId)
 
 	dto := &user.UpdateParamsDTO{
-		FirstName:      request.Body.FirstName,
-		LastName:       request.Body.LastName,
-		Email:          string(request.Body.Email),
-		Phone:          request.Body.Phone,
-		PostalCode:     request.Body.PostalCode,
-		PrefectureName: request.Body.Prefecture,
-		City:           request.Body.City,
-		Street:         request.Body.Street,
-		Building:       request.Body.Building,
-		RawPassword:    request.Body.Password,
+		RawPassword: request.Body.Password,
+		MutableFields: user.MutableFields{
+			FirstName:      request.Body.FirstName,
+			LastName:       request.Body.LastName,
+			Email:          string(request.Body.Email),
+			Phone:          request.Body.Phone,
+			PostalCode:     request.Body.PostalCode,
+			PrefectureName: request.Body.Prefecture,
+			City:           request.Body.City,
+			Street:         request.Body.Street,
+			Building:       request.Body.Building,
+		},
 	}
 
 	res, err := s.uc.UpdateUser(ctx, id, dto)

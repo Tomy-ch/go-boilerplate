@@ -65,6 +65,31 @@ func TestTo(t *testing.T) {
 	})
 }
 
+func TestDeref(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_ポインタが非nilの場合_その値を返す", func(t *testing.T) {
+		t.Parallel()
+		v := "value"
+		actual := Deref(&v, "fallback")
+		require.Equal(t, "value", actual)
+	})
+
+	t.Run("正常系_ポインタがnilの場合_fallbackを返す", func(t *testing.T) {
+		t.Parallel()
+		var v *string
+		actual := Deref(v, "fallback")
+		require.Equal(t, "fallback", actual)
+	})
+
+	t.Run("正常系_ゼロ値を指すポインタはfallbackではなくゼロ値を返す", func(t *testing.T) {
+		t.Parallel()
+		v := 0
+		actual := Deref(&v, 99)
+		require.Equal(t, 0, actual)
+	})
+}
+
 func TestCopy(t *testing.T) {
 	t.Parallel()
 
