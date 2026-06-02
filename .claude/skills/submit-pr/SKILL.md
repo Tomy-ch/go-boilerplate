@@ -106,7 +106,7 @@ Fill each template section in Japanese:
 
 - **概要**: 1–3 sentences summarizing the PR's intent. Use commit messages as the primary source.
 - **変更内容**: Bullet list grouped by area (API / DB / 内部ロジック / テスト / ドキュメント など). Reference changed files and commit titles. Group meaningfully — do not paste a raw file list.
-- **動作確認方法**: Concrete verification steps. Adapt to what actually changed: `make serve` + curl for API changes, `make migrate` for migrations, `make test` for logic, etc.
+- **動作確認方法**: Concrete verification steps. Adapt to what actually changed: `make serve` + curl for API changes, `make db-local-migrate-up` for migrations, `make test` for logic, etc.
 
 If the branch name encodes an issue number, append `closes #N` at the bottom of the body (or fold it into 概要 if natural).
 

@@ -31,10 +31,14 @@
 | 2 | spec format 有効 + cross-layer 参照整合 | verify-spec (Step 2) |
 | 3 | OpenAPI YAML 書き込み済み + `make gen-api` で `internal/controller/handler/<path>/gen/` 生成済み | scaffold-controller 前提 |
 | 4 | `database/dml/...` 配下に SQL ファイル書き込み済み + `make gen-query` で新 repository 用の sqlc gen ファイル生成済み | scaffold-infra-db 前提 |
-| 5 | マイグレーション適用済み（DB スキーマが新 SQL と一致） | 手動（`make db-migrate-up`） |
+| 5 | DB 起動中 + migrate + seed 済み（DB スキーマが新 SQL と一致） | 手動: `make serve` で環境起動 → `make db-init` |
 | 6 | usecase spec が依存する boundary interface が `internal/usecase/boundary/` 配下に存在 | scaffold-usecase 前提 |
 
 前提未充足時は該当 child skill が surface、本 skill が chain 中断。
+
+> **環境に関する注記（前提 3〜5）:** `make gen-query` は `pg_dump` で稼働中の DB スキーマをダンプするため、**DB が起動している必要がある**（未起動だと `make gen-query` / `make test` が `could not translate host name "database"` で失敗する）。環境は**生 `docker compose` ではなく専用 make ターゲット**で起動すること: `make serve`（development プロファイル、`database` サービス含む）→ **`make db-init`**（local/test 両 DB を migrate **かつ seed**。テストは seed 前提のため、`db-*-migrate-up` 単体では不十分）→ その後に `make gen-query` / `make gen-api`。
+>
+> **ツールチェーンに関する注記（最終 `make fix` / `make test`）:** `make fix` や `make lint` が**ツールのバージョン不整合**（例: `golangci-lint` の "you are using a configuration file for golangci-lint v2 with golangci-lint v1"）で失敗した場合は回避策を取らず、`make install-tools` でローカルのツールを `tools.yaml` 固定バージョンに揃えてから再実行する（`tools.yaml` 自体を変更した場合は先に `make sync-tools`）。`PATH` の手動書き換えやバージョン指定バイナリの直叩きで代替しないこと。
 
 ## 最初のステップ: feature 確認
 

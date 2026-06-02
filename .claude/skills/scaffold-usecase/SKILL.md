@@ -163,6 +163,8 @@ Confirm `internal/usecase/<package>` coverage line. Target 100% per project conv
 
 On failure: TODO + FB summary; no auto-rollback.
 
+> **DI verification (runtime):** `go build` / `make test` do NOT construct the Fx graph — a missing provider, an unregistered `New`, or a mismatched constructor signature only fails at **app startup**, not at compile/test time. After the DI registration (`fx.Provide(<package>.New)`), confirm the app actually boots: with `make serve` running, `air` rebuilds on save — verify the `api_server` logs reach `[Fx] RUNNING` ("http server started") with no Fx `provide` / `invoke` errors. Fresh-env caveat: the container builds in **vendor mode**, so run `make tidy-lib` (generates `vendor/`) first — otherwise it fails with `inconsistent vendoring` before Fx even runs.
+
 ## Step 7. Closing
 
 ```text
