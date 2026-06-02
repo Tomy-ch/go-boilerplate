@@ -119,6 +119,8 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, u.deletedAt)
 		require.Equal(t, deletedAt, *u.deletedAt)
+		// 論理削除時に updatedAt も削除時刻へ追従する
+		require.Equal(t, deletedAt, u.updatedAt)
 	})
 
 	t.Run("異常系_既に削除済みの場合_ErrAlreadyDeletedを返す", func(t *testing.T) {

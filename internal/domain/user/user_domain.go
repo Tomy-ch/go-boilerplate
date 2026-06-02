@@ -190,6 +190,8 @@ func (u *User) MarkAsDeleted(deletedAt time.Time) error {
 	}
 
 	u.deletedAt = ptr.Copy(&deletedAt)
+	// 論理削除も更新操作のため、updatedAt を削除時刻（usecase が clock から取得した現在時刻）に追従させる。
+	u.updatedAt = deletedAt
 	return nil
 }
 
