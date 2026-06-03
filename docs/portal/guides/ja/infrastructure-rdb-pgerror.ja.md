@@ -51,6 +51,12 @@ flowchart TB
 
 この関数は **Infrastructure 層から Usecase 層へ返すエラーの唯一の正規化ポイント**として使用することが推奨されます。
 
+影響行数を返す書き込み系クエリ（sqlc `:execrows`）には `NormalizeExecResult` を使います。これは `NormalizeError` をエラーに適用したうえで、**影響行数 0 を `apperror.ErrNotFound` として扱い**、存在しない行への `UPDATE` / `DELETE` がサイレント成功せずに NotFound で失敗するようにします。この「0 件判定」は各 repository に inline せず、`NormalizeError` と同じここに集約し、全書き込み経路で共有します。
+
+```go
+func NormalizeExecResult(affected int64, err error) error
+```
+
 ## SQLSTATE マッピング
 
 以下の PostgreSQL SQLSTATE がアプリケーションエラーへ変換されます。

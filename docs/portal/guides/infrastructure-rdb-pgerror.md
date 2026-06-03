@@ -51,6 +51,12 @@ flowchart TB
 
 This function is recommended to be used as the **single normalization point for errors returned from the Infrastructure layer to the Usecase layer**.
 
+For write queries that return an affected-row count (sqlc `:execrows`), use `NormalizeExecResult` instead — it applies `NormalizeError` to the error and additionally treats **0 affected rows as `apperror.ErrNotFound`**, so `UPDATE` / `DELETE` against a non-existent row fails loudly rather than succeeding silently. Keep this 0-rows judgment here (next to `NormalizeError`), not inlined in each repository, so every write path shares it.
+
+```go
+func NormalizeExecResult(affected int64, err error) error
+```
+
 ## SQLSTATE Mapping
 
 The following PostgreSQL SQLSTATE values are converted into application errors.

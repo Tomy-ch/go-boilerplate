@@ -241,6 +241,22 @@ Handler --> Usecase
 - 入出力の型（パラメータ・ボディ・レスポンス）は生成物を使用し、**Usecase の DTO と明確に分離**。  
 - スキーマ変更は **OpenAPI → 再生成 → 実装調整**の一方向。生成物は**編集禁止**。
 
+### パスパラメータの型変換（UUID）
+
+`uuid` 型のパス/クエリパラメータは oapi-codegen の `openapi_types.UUID`（例: 生成された `UserIdParam`）として渡される。usecase に渡す前に、**controller 専用の境界ヘルパー `internal/controller/conv` 経由**でドメイン側の `pkg/uuid.UUID` へ変換する。**生成 UUID 型を usecase / domain に持ち込まない**こと:
+
+```go
+id := conv.UUID(request.UserId)
+dto, err := s.uc.GetUser(ctx, id)
+```
+
+なぜ `pkg/uuid` のコンバータではなく `conv` か:
+
+- UUID パスパラメータの形式は echo のバインド層で検証済み（不正な UUID はハンドラ到達**前**に 400 で弾かれる）。よってこの時点の値は必ず有効で変換は失敗しない → `conv.UUID` はエラーを返さない。
+- `conv` は既存の検証済み `uuid.Parse` を再利用する。`pkg/uuid` に byte レベルのコンストラクタは**あえて追加しない** — public な検証バイパス入口は方針が形骸化し、各層で乱用されるため。
+- OpenAPI 生成型を import するのは controller 層のみなので、変換を `internal/controller/conv` に集約すれば用途が境界に限定される（usecase / domain からは到達不能）。
+- `conv` 内部では到達不能な parse 失敗を `panic` で不変条件アサートする。万一発火したら、それは握り潰すべき通常エラーではなく前提が壊れた致命的バグ。panic は string 入力の内部ヘルパー経由で単体テストするためカバレッジも完全。
+
 ### 生成コードポリシー
 
 `gen/` 配下は `oapi-codegen` による **自動生成コード** です。

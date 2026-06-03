@@ -6,27 +6,31 @@
 
 ## ディレクトリ構成
 
+ディレクトリ構成は **URL パスをミラー**します（業界標準 / Redocly 分割スタイル）。ファイル位置が URL と 1:1 対応します。子を持たないパスはフラットな `<segment>.yaml`、自身がエンドポイントかつ子を持つパスは `<segment>.yaml`（自身）と `<segment>/`（子ディレクトリ）を併存させます。
+
 ```text
 paths/
-├── health/             # ヘルスチェックエンドポイント
-│   └── health.yaml
-├── healthz/            # Kubernetes ヘルスチェックエンドポイント
-│   └── healthz.yaml
-├── ready/              # レディネスチェックエンドポイント
-│   └── ready.yaml
-├── version/            # バージョン情報エンドポイント
-│   └── version.yaml
-├── metrics/            # Prometheus メトリクスエンドポイント（Basic 認証）
-│   └── metrics.yaml
-├── internal/           # 内部型（oapi-codegen 用エラーレスポンススキーマ）
+├── health.yaml             # /health
+├── healthz.yaml            # /healthz
+├── ready.yaml              # /ready
+├── version.yaml            # /version
+├── metrics.yaml            # /metrics（Basic 認証）
+├── internal/               # 内部型（oapi-codegen 用エラーレスポンススキーマ）
 │   └── types/
 │       └── error_response.yaml
-└── v1/                 # バージョニングされた API（サンプル）
-    ├── users.yaml
+├── debug/                  # デバッグ用（実サービスでは削除）
+│   ├── cookie.yaml         # /debug/cookie   ← エンドポイント＋子あり
+│   └── cookie/
+│       ├── copy.yaml       # /debug/cookie/copy
+│       ├── stream.yaml     # /debug/cookie/stream
+│       └── ws.yaml         # /debug/cookie/ws
+└── v1/                     # バージョニングされた API（サンプル）
+    ├── users.yaml          # /v1/users       ← エンドポイント＋子あり
     └── users/
-        ├── user_id.yaml
-        └── search/
-            └── search.yaml
+        ├── user_id.yaml    # /v1/users/{user_id}
+        ├── search.yaml     # /v1/users/search
+        └── me/             # /v1/users/me/...（プレフィックスのみ）
+            └── password.yaml  # /v1/users/me/password
 ```
 
 ## エンドポイントのカテゴリ
@@ -37,20 +41,21 @@ paths/
 
 |パス|ファイル|説明|
 |---|---|---|
-|`/health`|`health/health.yaml`|ヘルスチェック|
-|`/healthz`|`healthz/healthz.yaml`|Kubernetes liveness probe|
-|`/ready`|`ready/ready.yaml`|レディネスプローブ|
-|`/version`|`version/version.yaml`|ビルドバージョン / リビジョン / 日時|
-|`/metrics`|`metrics/metrics.yaml`|Prometheus メトリクス（Basic 認証保護）|
+|`/health`|`health.yaml`|ヘルスチェック|
+|`/healthz`|`healthz.yaml`|Kubernetes liveness probe|
+|`/ready`|`ready.yaml`|レディネスプローブ|
+|`/version`|`version.yaml`|ビルドバージョン / リビジョン / 日時|
+|`/metrics`|`metrics.yaml`|Prometheus メトリクス（Basic 認証保護）|
 
 ### バージョニング API（`v1/`）
 
 **URL バージョニング戦略**に従うビジネス API エンドポイントです。
 
 ```text
-/v1/users          → users.yaml
-/v1/users/{user_id} → users/user_id.yaml
-/v1/users/search   → users/search/search.yaml
+/v1/users             → users.yaml
+/v1/users/{user_id}   → users/user_id.yaml
+/v1/users/me/password → users/me/password.yaml
+/v1/users/search      → users/search.yaml
 ```
 
 > `v1/` の内容は**サンプル実装**です。サービス構築時には独自のリソースに置き換えてください。
@@ -75,7 +80,9 @@ paths/
 |要素|規則|例|
 |---|---|---|
 |ファイル名|snake_case|`user_id.yaml`, `search.yaml`|
-|ディレクトリ構造|`/<version>/<resource>/`|`v1/users/`|
+|ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/users/me/password` → `v1/users/me/password.yaml`|
+|leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`users.yaml` ＋ `users/`|
+|パスパラメータ|snake_case ファイル名（波括弧なし）|`{user_id}` → `user_id.yaml`|
 |operationId|`{HTTPメソッド}{リソース名}`|`getUsers`, `postUsers`|
 |tags|パスベースのグルーピング|`v1/users`, `health`|
 
@@ -84,9 +91,10 @@ paths/
 パス定義はハンドラ実装と対応します：
 
 ```text
-paths/v1/users.yaml           → handler/v1/users/
-paths/v1/users/user_id.yaml   → handler/v1/users/detail/
-paths/v1/users/search/        → handler/v1/users/search/
+paths/v1/users.yaml             → handler/v1/users/
+paths/v1/users/user_id.yaml     → handler/v1/users/detail/
+paths/v1/users/me/password.yaml → handler/v1/users/detail/
+paths/v1/users/search.yaml      → handler/v1/users/search/
 ```
 
 ## ルール
