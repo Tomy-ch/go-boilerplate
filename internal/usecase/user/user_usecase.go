@@ -40,11 +40,6 @@ type CreateParamsDTO struct {
 	MutableFields
 }
 
-// UpdateParamsDTO は、ユーザー全更新（PUT）に必要なパラメータを表します。全フィールド必須（password は別エンドポイントで変更）。
-type UpdateParamsDTO struct {
-	MutableFields
-}
-
 // PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
 type PatchParamsDTO struct {
 	FirstName      *string
@@ -79,7 +74,7 @@ type Usecase interface {
 	// GetUser は、IDから単一ユーザーを取得します。
 	GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error)
 	// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
-	UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParamsDTO) (MutableFields, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFields) (MutableFields, error)
 	// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
 	UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error)
 	// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。
@@ -237,7 +232,7 @@ func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (MutableFields, err
 }
 
 // UpdateUser は、ユーザーのプロフィールを全更新するユースケースです（PUT、パスワードは含みません）。
-func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParamsDTO) (MutableFields, error) {
+func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFields) (MutableFields, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
@@ -289,6 +284,10 @@ func (u *usecase) ChangePassword(ctx context.Context, id uuid.UUID, currentPassw
 	defer endSpan()
 
 	now := u.clock.Now()
+	// 現パスワードも newPassword と同じ長さ制約で検証する（bcrypt の 72 バイト切り詰めを避け、入力の対称性を保つ）。
+	if _, err := user.NewRawPassword(currentPassword); err != nil {
+		return err
+	}
 	rawNew, err := user.NewRawPassword(newPassword)
 	if err != nil {
 		return err

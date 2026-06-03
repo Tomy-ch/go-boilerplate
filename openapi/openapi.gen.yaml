@@ -422,7 +422,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: 認証が必要、または現在のパスワードが一致しません。
+          description: パスワードの変更には認証が必要です。
           content:
             application/json:
               schema:
@@ -435,6 +435,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 現在のパスワードが一致しません。
           content:
             application/json:
               schema:

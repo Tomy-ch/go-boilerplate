@@ -31,13 +31,11 @@ func newActiveUser(t *testing.T, id, prefID uuid.UUID, ts time.Time) *user.User 
 	return u
 }
 
-func newUpdateDTO(prefName string) *UpdateParamsDTO {
-	return &UpdateParamsDTO{
-		MutableFields: MutableFields{
-			FirstName: "Jane", LastName: "Smith", Email: "jane@example.com", Phone: "0987654321",
-			PostalCode: "200-0002", PrefectureName: prefName, City: "Minato", Street: "4-5-6",
-			Building: ptr.To("Tower"),
-		},
+func newUpdateDTO(prefName string) *MutableFields {
+	return &MutableFields{
+		FirstName: "Jane", LastName: "Smith", Email: "jane@example.com", Phone: "0987654321",
+		PostalCode: "200-0002", PrefectureName: prefName, City: "Minato", Street: "4-5-6",
+		Building: ptr.To("Tower"),
 	}
 }
 
@@ -235,6 +233,17 @@ func Test_usecase_ChangePassword(t *testing.T) {
 		uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
 		err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
 		require.NoError(t, err)
+	})
+
+	t.Run("異常系_現パスワードの検証エラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		clock := mock_clock.NewMockClock(ctrl)
+		clock.EXPECT().Now().Return(now)
+
+		uc := &usecase{tracer: lt, clock: clock}
+		err := uc.ChangePassword(ctx, id, "short", newPassword)
+		require.ErrorIs(t, err, user.ErrInvalidRawPassword)
 	})
 
 	t.Run("異常系_新パスワードの検証エラー", func(t *testing.T) {

@@ -26,7 +26,7 @@ methods:
   - name: GetUser
     signature: GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error)
   - name: UpdateUser
-    signature: UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParamsDTO) (MutableFields, error)
+    signature: UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFields) (MutableFields, error)
   - name: UpdateUserPartially
     signature: UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error)
   - name: ChangePassword
@@ -71,11 +71,8 @@ methods:
     - name: MutableFields
       type: MutableFields   # embedded
 # 詳細系エンドポイント向け（追記分）
-- name: UpdateParamsDTO
-  description: PUT（プロフィール全更新）の入力。全フィールド必須（password は含めず、変更は ChangePassword で行う）。MutableFields を埋め込む（DeletedAt は更新入力では未使用）。
-  fields:
-    - name: MutableFields
-      type: MutableFields   # embedded（FirstName / LastName / Email / Phone / PostalCode / PrefectureName / City / Street / Building）
+# UpdateUser（PUT・プロフィール全更新）は専用 DTO を設けず MutableFields をそのまま入力に使う
+# （password は含めず、変更は ChangePassword で行う。DeletedAt は更新入力では未使用）。
 - name: PatchParamsDTO
   description: |
     PATCH（部分更新）の入力。指定フィールドのみ更新し、nil（未指定）は据え置き。password は含めない。
@@ -214,10 +211,10 @@ errors:
 tx_required: true
 steps:
   - clock.Now で現在時刻を取得
-  - user.NewRawPassword で新パスワードを検証
+  - user.NewRawPassword で現パスワード・新パスワードを検証（長さ制約。現パスワードも検証し bcrypt の 72 バイト切り詰めを防ぐ）
   - トランザクション内で
       - user_repository.FindByID で対象を取得（存在しない / 論理削除済みなら NotFound 伝播）
-      - encrypter.Compare で現パスワードと保存済みハッシュを照合（不一致なら ErrCurrentPasswordMismatch=401）
+      - encrypter.Compare で現パスワードと保存済みハッシュを照合（不一致なら ErrCurrentPasswordMismatch=422。authn=401/権限=403 ではなく、整形済みリクエストの意味的検証失敗として扱う）
       - encrypter.Hash で新パスワードのハッシュを生成
       - user.ChangePassword でパスワードハッシュ + updatedAt を置換
       - user_repository.Update で永続化
@@ -231,7 +228,7 @@ calls:
   - user.ChangePassword
   - user_repository.Update
 errors:
-  - NewRawPassword / FindByID(NotFound) / Compare / ErrCurrentPasswordMismatch / Hash / ChangePassword / Update を伝播
+  - NewRawPassword(現/新) / FindByID(NotFound) / Compare / ErrCurrentPasswordMismatch(422) / Hash / ChangePassword / Update を伝播
 ```
 
 ### UpdateUserPartially

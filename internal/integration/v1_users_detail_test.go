@@ -61,7 +61,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
-			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateParamsDTO{})).
+			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
 			Return(user.MutableFields{FirstName: "First", Email: "put@example.com"}, nil)
 
 		detail.BindHandler(e, tf, mockApp)

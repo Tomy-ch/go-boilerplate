@@ -113,7 +113,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 		expectedDTO := user.MutableFields{FirstName: "First", LastName: "Last", Email: "put@example.com", PrefectureName: "Tokyo"}
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
-			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateParamsDTO{})).
+			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
 			Return(expectedDTO, nil)
 
 		s := &server{tracer: lt, uc: mockApp}
@@ -133,7 +133,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
-			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateParamsDTO{})).
+			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
 			Return(user.MutableFields{}, apperror.ErrInternal)
 
 		s := &server{tracer: lt, uc: mockApp}

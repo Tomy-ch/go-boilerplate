@@ -620,6 +620,20 @@ func (response PutUsersPassword404JSONResponse) VisitPutUsersPasswordResponse(w 
 	return err
 }
 
+type PutUsersPassword422JSONResponse ErrorResponse
+
+func (response PutUsersPassword422JSONResponse) VisitPutUsersPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PutUsersPassword500JSONResponse ErrorResponse
 
 func (response PutUsersPassword500JSONResponse) VisitPutUsersPasswordResponse(w http.ResponseWriter) error {

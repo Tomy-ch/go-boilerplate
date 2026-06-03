@@ -132,7 +132,7 @@ func (mr *MockUsecaseMockRecorder) ListUsers(ctx, active, page any) *gomock.Call
 }
 
 // UpdateUser mocks base method.
-func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.UpdateParamsDTO) (user.MutableFields, error) {
+func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.MutableFields) (user.MutableFields, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateUser", ctx, id, dto)
 	ret0, _ := ret[0].(user.MutableFields)
