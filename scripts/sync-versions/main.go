@@ -1,17 +1,5 @@
-// scripts/sync-versions は mise.toml [tools] の go / node / python を SSOT として、
-// 以下のファイルへ伝播する Go 製の小さなツールです。
-//
-//   - go.mod                    `go X.Y.Z` directive
-//   - docker/server/Dockerfile  `FROM golang:X.Y.Z-alpine`
-//   - docker/tools/Dockerfile   `FROM golang:X.Y.Z-alpine`
-//     `FROM node:X.Y-alpine`
-//     `FROM python:X.Y.Z-slim`
-//
-// 設計:
-//   - mise.toml は `[tools]` table 配下の `go` / `node` / `python` のみを参照する
-//     行ベース parser を自前で持つ（外部依存ゼロ、production binary への影響なし）。
-//   - 各 rule の事前 validate を全て通してから書き出すため partial state を残さない。
-//   - 期待マッチ数（expectedCount）未満の rule が1つでもあれば、一切書かずに非ゼロ終了。
+// 不変条件: 全 rule の事前 validate を通してから初めて書き出す。期待マッチ数を
+// 満たさない rule が1つでもあれば一切書かずに非ゼロ終了し、partial state を残さない。
 package main
 
 import (
@@ -26,12 +14,10 @@ import (
 )
 
 const (
-	// filePerm は既存設定ファイルと同じ 0o644 で上書きする。
 	filePerm fs.FileMode = 0o644
-	// fromRegexpGroups は FROM タグ書き換え regex が持つ capture group 数 + 1（全体マッチ含む）。
+	// fromRegexpGroups は FROM タグ書き換え regex の capture group 数 + 1（全体マッチ含む）。
 	fromRegexpGroups = 3
-	// 各ファイル内に出現する image 参照の期待件数（drift 検出の下限）。
-	// 値は現実装の出現箇所数に合わせており、件数が下回ると abort する。
+	// drift 検出の下限件数。現実装の出現箇所数に揃えており、下回ると abort する。
 	serverDockerfileGolangCount = 3
 	toolsDockerfileGolangCount  = 2
 	dockerReadmeGolangCount     = 3
@@ -42,27 +28,22 @@ var (
 	miseSectionRe = regexp.MustCompile(`^\[([^\]]+)\]`)
 	miseKeyRe     = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]+)"`)
 	goModRe       = regexp.MustCompile(`(?m)^go \d+(?:\.\d+){0,2}$`)
-	// Dockerfile の `FROM ...` 行用。`(?m)^[^#]*?` で行頭にアンカーしつつ `#` で始まる
-	// コメント行を除外する（コメントアウトされた FROM 行を誤って書き換えないため）。
+	// `(?m)^[^#]*?` でコメント行（先頭 `#`）を除外する。
 	golangFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+golang:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
 	nodeFromRe   = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
 	pythonFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
-	// docker/**/README.md の Markdown テーブル内 image 参照用。バッククォートで括られた
-	// `golang:X.Y.Z-alpine` 等にマッチする。バッククォートを capture group に含めることで
-	// 置換時にも保持する。
+	// バッククォートを capture に含めることで置換後も保持する。
 	golangImageRe = regexp.MustCompile("(`golang:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	nodeImageRe   = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	pythonImageRe = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 )
 
-// runtimeVersions は mise.toml [tools] から抽出した3ランタイムのバージョン文字列。
 type runtimeVersions struct {
 	Go     string
 	Node   string
 	Python string
 }
 
-// rule はあるファイルの正規表現マッチ箇所を一つの version で置換する単位。
 type rule struct {
 	label         string
 	file          string
@@ -72,7 +53,7 @@ type rule struct {
 	expectedCount int
 }
 
-// fileState は同一ファイルへの複数 rule を1回の書き出しにまとめるための中間状態。
+// 同一ファイルへの複数 rule を1回の書き出しにまとめるための中間状態。
 type fileState struct {
 	original string
 	current  string
@@ -111,8 +92,8 @@ func main() {
 	}
 }
 
-// parseMiseTOML は mise.toml の [tools] table 配下の go/node/python キーだけを抽出する
-// 用途特化の最小 parser。完全な TOML 仕様には準拠しない。
+// 用途特化の最小 parser。完全な TOML 仕様には準拠せず、[tools] table 配下の
+// go / node / python キーだけを抽出する。
 func parseMiseTOML(path string) (runtimeVersions, error) {
 	var v runtimeVersions
 	f, err := os.Open(path) //nolint:gosec // path is constructed from cwd + literal filename
@@ -161,7 +142,6 @@ func printSource(v runtimeVersions) {
 	log.Printf("  python = %s", emptyAs(v.Python, "(unset)"))
 }
 
-// dockerfileRule は Dockerfile 内の `FROM <image>:X.Y.Z-<suffix>` 行に対する rule を構築する。
 func dockerfileRule(file, label string, re *regexp.Regexp, version string, count int) rule {
 	return rule{
 		label:         label,
@@ -173,8 +153,6 @@ func dockerfileRule(file, label string, re *regexp.Regexp, version string, count
 	}
 }
 
-// readmeRule は docker/**/README.md 内のバッククォート括り `image:X.Y.Z-<suffix>` 参照に対する
-// rule を構築する。
 func readmeRule(file, label string, re *regexp.Regexp, version string, count int) rule {
 	return rule{
 		label:         label,
@@ -196,7 +174,6 @@ func buildRules(v runtimeVersions) []rule {
 			replace:       func(string) string { return "go " + v.Go },
 			expectedCount: 1,
 		},
-		// Dockerfile 内 FROM 行
 		dockerfileRule("docker/server/Dockerfile",
 			"docker/server/Dockerfile (golang base)", golangFromRe, v.Go, serverDockerfileGolangCount),
 		dockerfileRule("docker/tools/Dockerfile",
@@ -205,7 +182,6 @@ func buildRules(v runtimeVersions) []rule {
 			"docker/tools/Dockerfile (node base)", nodeFromRe, v.Node, 1),
 		dockerfileRule("docker/tools/Dockerfile",
 			"docker/tools/Dockerfile (python base)", pythonFromRe, v.Python, 1),
-		// docker/**/README.md 内 image 参照（バッククォート括り）
 		readmeRule("docker/README.md",
 			"docker/README.md (golang image)", golangImageRe, v.Go, dockerReadmeGolangCount),
 		readmeRule("docker/README.md",
@@ -247,7 +223,6 @@ func fromReplacer(re *regexp.Regexp, version string) func(string) string {
 	}
 }
 
-// validateRules は version 未設定と file 不在を事前検査する。
 func validateRules(rules []rule, root string) []string {
 	var errs []string
 	for _, r := range rules {
@@ -265,8 +240,6 @@ func validateRules(rules []rule, root string) []string {
 	return errs
 }
 
-// computeChanges は実書き出しを行わずに、各 file の最終内容を計算する。
-// 期待マッチ数未満の rule があれば該当 rule のエラーを返す。
 func computeChanges(rules []rule, root string) (map[string]*fileState, []string) {
 	states := map[string]*fileState{}
 	var errs []string
@@ -294,7 +267,6 @@ func computeChanges(rules []rule, root string) (map[string]*fileState, []string)
 	return states, errs
 }
 
-// writeChanges は事前 validate を通過した状態を file 単位で1回ずつ書き出す。
 func writeChanges(states map[string]*fileState, root string) error {
 	anyChange := false
 	for file, st := range states {

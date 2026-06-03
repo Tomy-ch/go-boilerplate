@@ -74,8 +74,7 @@ CMD ["/app/server", "migrate-up"]
 # ------------------------------
 FROM golang:1.26.3-alpine AS tooling_builder
 
-# CGO_ENABLED=0: `go:` backend で install されるツールがあった場合も静的バイナリにする
-# （docker/tools/Dockerfile go_tools_builder と対称）
+# CGO_ENABLED=0: `go:` backend のツールを静的バイナリにする（go_tools_builder と対称）
 ENV CGO_ENABLED=0
 
 RUN apk add --no-cache bash ca-certificates curl git

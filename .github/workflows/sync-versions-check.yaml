@@ -1,9 +1,5 @@
 name: Sync Versions Check
 
-# mise.toml を SSOT として go.mod / Dockerfile / docker/**/README.md へ
-# バージョン伝播するスクリプト（scripts/sync-versions）の実行漏れを検出する。
-# mise.toml を編集したのに make sync-versions を流し忘れているケースをガードする。
-
 on:
   pull_request:
     paths:
