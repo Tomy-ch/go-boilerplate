@@ -8,17 +8,13 @@ Makeコマンド詳細は [Makeターゲット一覧](.makefiles/README.ja.md) �
 
 VSCode開発で必要なツールをインストールします。
 
-下記コマンドを実行する前に、Go バージョンマネージャ + IDE 連携を
-[docs/ja/maintenance/go-upgrade.ja.md § 3. ローカル Go 環境の更新](go-upgrade.ja.md#3-ローカル-go-環境の更新)
-に従ってセットアップしてください（mise 推奨。`make go-update` で `.go-version`
-記載のバージョンをインストール）。
+下記コマンドを実行する前に、mise をインストールしてください。
+詳細は [docs/ja/maintenance/go-upgrade.ja.md § 3. ローカル Go 環境の更新](go-upgrade.ja.md#3-ローカル-go-環境の更新)
+を参照（`make go-update` で `mise.toml` 記載の Go ランタイムをインストールします）。
 
-バージョンについては動作確認しているバージョンを `tools.yaml` に記載しています。必要に応じてこのバージョンを変更してください。
-
-`make sync-tools` は Dockerfile やローカルインストーラ (`.makefiles/go/installer.mk`) に含まれる `@latest` 表記を `tools.yaml` に宣言したバージョンへ書き換えます。本ボイラープレートはテンプレート開発の利便性のために `@latest` で出荷されていますが、**プロジェクトをローカライズしたあとは pin 化（バージョン固定）を強く推奨します**。CI と開発者の各環境で同じバージョンのツールが再現的にインストールされるようにするためです。
+その他のツール（golangci-lint / sqlc / oapi-codegen / mockgen / dlv / lefthook / ...）のバージョンは [`mise.toml`](../../../mise.toml) を SSOT として管理しています。Dockerfile・ローカルインストーラ (`.makefiles/go/installer.mk`)・CI ワークフローはすべて同じ `mise.toml` を参照し、各環境で必要なものだけを `mise install <tool>` で個別取得します。
 
 ```sh
-make sync-tools
 make install-tools
 make activate-tools
 ```

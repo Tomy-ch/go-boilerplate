@@ -1,4 +1,4 @@
-# sqlc.yaml Options Affecting Go Code Generation (sqlc / PostgreSQL — pinned version in `tools.yaml`)
+# sqlc.yaml Options Affecting Go Code Generation (sqlc / PostgreSQL — pinned version in `mise.toml`)
 
 English | [日本語](SQLC_README.ja.md)
 
