@@ -28,7 +28,7 @@ install-tools:
 	@echo "✅ Go tools installed successfully."
 
 activate-tools:
-	lefthook install
+	@$(shell mise which lefthook 2>/dev/null || command -v lefthook 2>/dev/null || echo lefthook) install
 
 sync-versions:
 	@go run ./scripts/sync-versions
