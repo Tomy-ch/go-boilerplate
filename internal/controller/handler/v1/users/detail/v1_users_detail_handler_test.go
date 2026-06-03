@@ -7,12 +7,12 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
+	"go-boilerplate/internal/controller/handler/testkit/testuuid"
 	"go-boilerplate/internal/controller/handler/v1/users/detail/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/ptr"
-	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
@@ -21,14 +21,6 @@ import (
 )
 
 const targetPath = "/v1/users/:user_id"
-
-// newReqUUID は、リクエスト用の openapi UUID（生成型）を1件作ります。
-func newReqUUID(t *testing.T) types.UUID {
-	t.Helper()
-	id, err := uuid.New()
-	require.NoError(t, err)
-	return id.ToPrimitive()
-}
 
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
@@ -70,7 +62,7 @@ func Test_server_GetUsersDetail(t *testing.T) {
 		mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(expectedDTO, nil)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.GetUsersDetail(ctx, gen.GetUsersDetailRequestObject{UserId: newReqUUID(t)})
+		resp, err := s.GetUsersDetail(ctx, gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.GetUsersDetail200JSONResponse)
@@ -90,7 +82,7 @@ func Test_server_GetUsersDetail(t *testing.T) {
 		mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user.MutableFields{}, apperror.ErrNotFound)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.GetUsersDetail(ctx, gen.GetUsersDetailRequestObject{UserId: newReqUUID(t)})
+		resp, err := s.GetUsersDetail(ctx, gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrNotFound)
 	})
@@ -118,7 +110,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 			Return(expectedDTO, nil)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PutUsersDetail(ctx, gen.PutUsersDetailRequestObject{UserId: newReqUUID(t), Body: body})
+		resp, err := s.PutUsersDetail(ctx, gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.PutUsersDetail200JSONResponse)
@@ -138,7 +130,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 			Return(user.MutableFields{}, apperror.ErrInternal)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PutUsersDetail(ctx, gen.PutUsersDetailRequestObject{UserId: newReqUUID(t), Body: body})
+		resp, err := s.PutUsersDetail(ctx, gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrInternal)
 	})
@@ -165,7 +157,7 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 			Return(expectedDTO, nil)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: newReqUUID(t), Body: body})
+		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.PatchUsersDetail200JSONResponse)
@@ -188,7 +180,7 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 			Return(user.MutableFields{FirstName: "OnlyName"}, nil)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: newReqUUID(t), Body: noEmailBody})
+		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: noEmailBody})
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.PatchUsersDetail200JSONResponse)
@@ -208,7 +200,7 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 			Return(user.MutableFields{}, apperror.ErrInternal)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: newReqUUID(t), Body: body})
+		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrInternal)
 	})
@@ -227,7 +219,7 @@ func Test_server_DeleteUsersDetail(t *testing.T) {
 		mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: newReqUUID(t)})
+		resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 		require.NoError(t, err)
 
 		_, ok := resp.(gen.DeleteUsersDetail204Response)
@@ -244,7 +236,7 @@ func Test_server_DeleteUsersDetail(t *testing.T) {
 		mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(apperror.ErrNotFound)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: newReqUUID(t)})
+		resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrNotFound)
 	})
