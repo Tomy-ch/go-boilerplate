@@ -1,41 +1,34 @@
 ## Go言語のツールインストーラー
-.PHONY: go-update ## .go-version に記載された Go バージョンをインストール（mise 優先 / goenv フォールバック）
-.PHONY: install-tools ## goツールのインストール
+.PHONY: go-update ## mise.toml に記載された Go バージョンをインストール
+.PHONY: install-tools ## host 開発用の Go ツール一式を mise.toml のバージョンでインストール
 .PHONY: activate-tools ## lefthookのインストールを実行
+.PHONY: sync-versions ## mise.toml の go/node/python を go.mod と Dockerfile FROM へ反映
 
 go-update:
-	@if command -v mise >/dev/null 2>&1; then \
-		echo "Installing Go via mise..."; \
-		mise install; \
-	elif command -v goenv >/dev/null 2>&1; then \
-		echo "mise not found. Falling back to goenv (see docs/maintenance/go-upgrade.md for migration)..."; \
-		anyenv update; \
-		goenv install "$$(cat .go-version)"; \
-	else \
-		echo "Neither mise nor goenv is installed. See docs/maintenance/go-upgrade.md for setup instructions."; \
+	@if ! command -v mise >/dev/null 2>&1; then \
+		echo "❌ mise が見つかりません。docs/maintenance/go-upgrade.md を参照してセットアップしてください。"; \
 		exit 1; \
 	fi
+	@echo "🔄 mise で Go ランタイムをインストールします..."
+	@mise install go
 
 install-tools:
-	@echo "Installing Go tools..."
-	go install golang.org/x/tools/gopls@latest
-	go install github.com/cweill/gotests/...@latest
-	go install github.com/josharian/impl@latest
-	go install github.com/go-delve/delve/cmd/dlv@latest
-	go install github.com/evilmartians/lefthook/v2@latest
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	@if command -v mise >/dev/null 2>&1; then \
-		echo "mise is installed. Running 'mise reshim'..."; \
-		mise reshim; \
-	elif command -v goenv >/dev/null 2>&1; then \
-		echo "goenv is installed. Running 'goenv rehash'..."; \
-		goenv rehash; \
-	else \
-		echo "Neither mise nor goenv detected. Skipping shim regeneration."; \
+	@if ! command -v mise >/dev/null 2>&1; then \
+		echo "❌ mise が見つかりません。docs/maintenance/go-upgrade.md を参照してセットアップしてください。"; \
+		exit 1; \
 	fi
-	@grep -Fxq 'export PATH="$$HOME/go/bin:$$PATH"' $$HOME/.zprofile || \
-		echo 'export PATH="$$HOME/go/bin:$$PATH"' >> $$HOME/.zprofile
-	@echo "Go tools installed successfully."
+	@echo "🔄 host 用 Go ツール群を mise.toml のバージョンでインストールします..."
+	@mise install aqua:golang.org/x/tools/gopls
+	@mise install go:github.com/cweill/gotests/gotests
+	@mise install go:github.com/josharian/impl
+	@mise install aqua:go-delve/delve
+	@mise install lefthook
+	@mise install golangci-lint
+	@mise reshim
+	@echo "✅ Go tools installed successfully."
 
 activate-tools:
 	lefthook install
+
+sync-versions:
+	@go run ./scripts/sync-versions

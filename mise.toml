@@ -1,2 +1,45 @@
-[settings]
-idiomatic_version_file_enable_tools = ["go"]
+# プロジェクト全体で使うランタイム / ツールのバージョンをここに一元管理する。
+# 各環境（host / docker / CI）は必要なものだけを `mise install <tool>` で個別取得する。
+#
+# Go ランタイムは `make sync-versions` で `go.mod` の go directive と
+# 各 Dockerfile の `FROM golang:X.Y.Z-alpine` タグへ伝播する。
+# CI の `actions/setup-go` は `go-version-file: go.mod` でこれを読む。
+#
+# 各ツールは「mise 標準レジストリで短い名前が解決できる場合は短い名前」、
+# 解決できない場合は `aqua:` / `go:` / `npm:` / `pipx:` を明示。
+[tools]
+# 言語ランタイム
+# 注: ここに書いた version を `make sync-versions` が以下に伝播する。
+#       go     -> go.mod (`go X.Y.Z` directive) + docker/{server,tools}/Dockerfile (FROM golang:X.Y.Z-alpine)
+#       node   -> docker/tools/Dockerfile (FROM node:X.Y-alpine)
+#       python -> docker/tools/Dockerfile (FROM python:X.Y.Z-slim)
+#     mise install で host にも入れられるが、各 Dockerfile では公式 base image を採用しているため
+#     mise.toml 側を SSOT、Dockerfile FROM タグは sync によって追従する形になる。
+go = "1.26.3"
+node = "24.14"
+python = "3.14.2"
+
+# Go ベース（標準レジストリで解決可）
+oapi-codegen = "2.7.0"
+sqlc = "1.31.1"
+golangci-lint = "2.12.2"
+lefthook = "2.1.8"
+air = "1.65.3"
+golines = "0.13.0"
+gofumpt = "0.10.0"
+
+# Go ベース（標準レジストリで解決不可なので backend 明示）
+"aqua:golang-migrate/migrate" = "4.19.1"
+"go:go.uber.org/mock/mockgen" = "0.6.0"
+"aqua:go-delve/delve" = "1.26.3"
+"aqua:golang/vuln/govulncheck" = "1.3.0"
+"go:github.com/cweill/gotests/gotests" = "1.9.0"
+"aqua:golang.org/x/tools/gopls" = "0.22.0"
+"go:github.com/josharian/impl" = "1.5.0"
+
+# Node ベース
+"npm:@redocly/cli" = "2.31.4"
+"npm:markdownlint-cli2" = "0.22.1"
+
+# Python ベース
+"pipx:sqlfluff" = "4.2.1"
