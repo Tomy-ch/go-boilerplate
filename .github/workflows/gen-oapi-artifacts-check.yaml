@@ -52,6 +52,37 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
+      # DEBUG: local reproduction で no-op になる diff の原因を CI で特定するための一時 step
+      - name: DEBUG dump diff details
+        if: steps.gen_diff.outputs.has_diff == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::diff --stat"
+          git diff --stat
+          echo "::endgroup::"
+
+          echo "::group::tool versions"
+          docker compose run --rm node_tool_runner sh -c "node --version && redocly --version" || true
+          echo "::endgroup::"
+
+          for f in $(git diff --name-only); do
+            echo "::group::file: $f"
+            committed_size=$(git show "HEAD:$f" 2>/dev/null | wc -c | tr -d ' ' || echo "?")
+            regen_size=$(wc -c <"$f" | tr -d ' ' || echo "?")
+            committed_md5=$(git show "HEAD:$f" 2>/dev/null | md5sum | cut -d' ' -f1 || echo "?")
+            regen_md5=$(md5sum "$f" | cut -d' ' -f1 || echo "?")
+            echo "size      : committed=$committed_size  regen=$regen_size"
+            echo "md5       : committed=$committed_md5  regen=$regen_md5"
+            echo "---first 5 lines (committed)---"
+            git show "HEAD:$f" 2>/dev/null | head -5 || true
+            echo "---first 5 lines (regen)---"
+            head -5 "$f" || true
+            echo "---diff (capped, --no-color)---"
+            git --no-pager diff --no-color -U0 -- "$f" | head -120 || true
+            echo "::endgroup::"
+          done
+
       - name: Comment generated status on PR (diff/no-diff)
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v8
