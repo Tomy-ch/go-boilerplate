@@ -205,6 +205,8 @@ paths:
         - v1/users/detail
       summary: 単一ユーザーの取得
       description: 指定されたUUIDに該当するユーザーの詳細情報を取得します。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       responses:
@@ -250,6 +252,8 @@ paths:
         - v1/users/detail
       summary: 単一ユーザーの更新
       description: 指定されたUUIDに該当するユーザーの情報を更新します。必要な情報をリクエストボディに含めてください。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       requestBody:
@@ -301,6 +305,8 @@ paths:
         - v1/users/detail
       summary: 単一ユーザーの部分更新
       description: 指定されたUUIDに該当するユーザーの情報を部分的に更新します。必要な情報をリクエストボディに含めてください。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       requestBody:
@@ -352,6 +358,8 @@ paths:
         - v1/users/detail
       summary: 単一ユーザーの削除
       description: 指定されたUUIDに該当するユーザーを削除します。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       responses:
@@ -377,6 +385,54 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/users/me/password:
+    put:
+      operationId: PutUsersMePassword
+      tags:
+        - v1/users/detail
+      summary: 認証ユーザー自身のパスワード変更
+      description: 認証中のユーザー自身のパスワードを変更します。現在のパスワードを照合し、一致した場合のみ更新します。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPasswordPutRequest'
+      responses:
+        '204':
+          description: パスワードの変更に成功しました
+        '400':
+          description: リクエストが不正です。必要な情報が不足している場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: パスワードの変更には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 認証ユーザーに該当するアカウントが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 現在のパスワードが一致しません。
           content:
             application/json:
               schema:
@@ -664,8 +720,11 @@ components:
     ResponseVersion:
       $ref: '#/components/schemas/VersionResponse'
     UserBaseInputRequest:
-      description: ユーザー情報の基本入力スキーマ
-      additionalProperties: false
+      description: |
+        ユーザー情報の基本入力スキーマ。
+        allOf 継承（POST が password を兄弟スキーマで追加）と additionalProperties:false は
+        JSON Schema 上で非互換（基底側が兄弟の追加プロパティを拒否する）ため、
+        additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
       properties:
         firstName:
           description: 苗字
@@ -682,12 +741,6 @@ components:
           type: string
           format: email
           example: alice.smith@example.com
-        password:
-          description: パスワード
-          type: string
-          format: password
-          minLength: 8
-          example: P@ssw0rd!
         phone:
           description: 電話番号
           type: string
@@ -940,9 +993,11 @@ components:
         - $ref: '#/components/schemas/UserBaseInputRequest'
         - properties:
             password:
-              type: string
               description: ユーザーのパスワード
-              example: password123
+              type: string
+              format: password
+              minLength: 8
+              example: P@ssw0rd!
           required:
             - firstName
             - lastName
@@ -966,13 +1021,31 @@ components:
             - firstName
             - lastName
             - email
-            - password
             - postalCode
             - phone
             - prefecture
             - city
             - street
             - building
+    UserPasswordPutRequest:
+      description: ユーザーのパスワード変更（現パスワード照合あり）
+      additionalProperties: false
+      properties:
+        currentPassword:
+          description: 現在のパスワード（照合用）
+          type: string
+          format: password
+          minLength: 8
+          example: P@ssw0rd!
+        newPassword:
+          description: 新しいパスワード
+          type: string
+          format: password
+          minLength: 8
+          example: N3wP@ssw0rd!
+      required:
+        - currentPassword
+        - newPassword
     UsersSearchResponseItem:
       description: 検索条件に基づいて取得したユーザー情報
       allOf:

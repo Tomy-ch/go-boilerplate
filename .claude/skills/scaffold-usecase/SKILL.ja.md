@@ -156,6 +156,8 @@ make test
 
 失敗時: TODO + FB summary、自動 rollback なし。
 
+> **DI 検証（runtime）:** `go build` / `make test` は Fx グラフを構築しない — provider 欠落・`New` の未登録・コンストラクタのシグネチャ不整合は、コンパイル/テストではなく**アプリ起動時**に初めて失敗する。DI 登録（`fx.Provide(<package>.New)`）後はアプリが実際に起動するか確認する: `make serve` 稼働中なら保存で `air` が再ビルドするので、`api_server` のログが `[Fx] RUNNING`（"http server started"）に到達し、Fx の `provide` / `invoke` エラーが無いことを確認する。新規環境の注意: コンテナは **vendor モード**でビルドするため先に `make tidy-lib`（`vendor/` 生成）を実行する — 未生成だと Fx 実行前に `inconsistent vendoring` で失敗する。
+
 ## Step 7. クロージング
 
 ```text

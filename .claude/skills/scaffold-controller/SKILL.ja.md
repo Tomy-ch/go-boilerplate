@@ -175,12 +175,25 @@ make test
 
 handler package coverage 確認。handler test は 100% target（project 規約）。失敗時は surface + TODO + FB。
 
-## Step 7. クロージング
+> **DI 検証（runtime）:** `go build` / `make test` は Fx グラフを構築しない — provider 欠落・`BindHandler` の未登録・コンストラクタのシグネチャ不整合は、コンパイル/テストではなく**アプリ起動時**に初めて失敗する。DI 登録（`fx.Invoke(<pkg>.BindHandler)`）後はアプリが実際に起動するか確認する: `make serve` 稼働中なら保存で `air` が再ビルドするので、`api_server` のログが `[Fx] RUNNING`（"http server started"）に到達し、Fx の `provide` / `invoke` エラーが無いことを確認する。新規環境の注意: コンテナは **vendor モード**でビルドするため先に `make tidy-lib`（`vendor/` 生成）を実行する — 未生成だと Fx 実行前に `inconsistent vendoring` で失敗する。
+
+## Step 7. integration テストを chain
+
+handler がコンパイル可能で `make test` が通ったら、最終ステップとして `scaffold-integration-test`（`Skill` ツール経由）を呼ぶ。feature 名 + handler パッケージパス + usecase パッケージを context で渡し、子側の identity `AskUserQuestion` を省略させる。これにより feature の HTTP 境界テスト `internal/integration/<feature>_test.go`（Router → Middleware → Handler → Presenter、usecase は mock）が生成される。
+
+- `internal/integration/<feature>_test.go` が既存なら `scaffold-integration-test` は中断（手動編集に委ねる）— surface してクロージングへ進む
+- `scaffold-integration-test` 内の失敗は handler を rollback しない。FB を surface し、ユーザー判断に委ねる
+- 本スキル自体が `scaffold-endpoint` から chain された場合、integration テストはここで透過的に生成される（`scaffold-endpoint` 側に別途配線は不要）
+
+## Step 8. クロージング
 
 ```text
 <Feature> controller 層を生成しました。<N> ファイル作成 + DI 1 行追加、make test OK、coverage <X>%。
-全層が揃いました — feature の動作確認は `make serve` + curl 等で実機テストできます。
+HTTP 境界 integration テストも internal/integration/<feature>_test.go に生成しました（scaffold-integration-test）。
+全層が揃いました — `make serve` + curl での実機ランタイム確認に進めます。
 ```
+
+> **ランタイム curl 確認の位置づけ:** 認証（`security:`）・DI 配線・実 DB を通した curl + o11y の確認は、全層が揃う `scaffold-endpoint` の Runtime Verification（Step 3.5）が正式な実施場所。controller を**単独**で scaffold した場合も、下位層（usecase / domain / infra）と DI が既に存在していれば同様に curl 確認できる。下位層が未整備のうちは curl しても Fx が組み上がらず失敗するため、curl は全層が揃ってから行う。
 
 commit しない。
 
@@ -227,5 +240,6 @@ commit しない。
 - [ ] テストファイル書き込み (testkit/testecho + testkit/testassert)
 - [ ] `internal/di/module/controller.go` 更新（新 `BindHandler` を `fx.Invoke(...)` 内に追加）
 - [ ] `make fix` + `make test` 実行; coverage 報告（or 失敗を TODO + FB surface）
+- [ ] `scaffold-integration-test` を最終ステップで chain（既存時 skip / 失敗を surface、rollback なし）
 - [ ] commit / push なし
 - [ ] 最終サマリ日本語
