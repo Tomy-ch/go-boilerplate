@@ -38,14 +38,14 @@ var (
 	pythonImageRe = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 )
 
-// mise.toml [tools] から抽出した go / node / python のバージョン文字列。
+// runtimeVersions は mise.toml [tools] から抽出した go / node / python のバージョン文字列。
 type runtimeVersions struct {
 	Go     string
 	Node   string
 	Python string
 }
 
-// ファイル内の regex マッチ箇所を 1 つの version で置換する単位。
+// rule はファイル内の regex マッチ箇所を 1 つの version で置換する単位。
 type rule struct {
 	label         string
 	file          string
@@ -55,7 +55,7 @@ type rule struct {
 	expectedCount int
 }
 
-// 同一ファイルに複数 rule を順次適用する間の中間状態。
+// fileState は同一ファイルに複数 rule を順次適用する間の中間状態。
 type fileState struct {
 	original string
 	current  string
@@ -94,8 +94,8 @@ func main() {
 	}
 }
 
-// 用途特化の最小 parser。完全な TOML 仕様には準拠せず、[tools] table 配下の
-// go / node / python キーだけを抽出する。
+// parseMiseTOML は mise.toml の [tools] table 配下の go / node / python キーを抽出する。
+// 完全な TOML 仕様には準拠しない用途特化の最小 parser。
 func parseMiseTOML(path string) (runtimeVersions, error) {
 	var v runtimeVersions
 	f, err := os.Open(path) //nolint:gosec // path is constructed from cwd + literal filename
@@ -215,7 +215,7 @@ func buildRules(v runtimeVersions) []rule {
 	}
 }
 
-// 2 capture group regex の version 部分だけ置換し、prefix / suffix を保持する replace 関数を返す。
+// fromReplacer は 2 capture group regex の version 部分だけを置換し、prefix / suffix を保持する replace 関数を返す。
 func fromReplacer(re *regexp.Regexp, version string) func(string) string {
 	return func(match string) string {
 		sub := re.FindStringSubmatch(match)
@@ -226,7 +226,7 @@ func fromReplacer(re *regexp.Regexp, version string) func(string) string {
 	}
 }
 
-// version 未設定の rule とファイル不在の rule をエラーリストで返す。
+// validateRules は version 未設定の rule とファイル不在の rule をエラーリストで返す。
 func validateRules(rules []rule, root string) []string {
 	var errs []string
 	for _, r := range rules {
@@ -244,7 +244,7 @@ func validateRules(rules []rule, root string) []string {
 	return errs
 }
 
-// 各 file の最終内容を計算する（書き出しは行わない）。期待マッチ数未満の rule があればエラーを返す。
+// computeChanges は各 file の最終内容を計算する（書き出しは行わない）。期待マッチ数未満の rule があればエラーを返す。
 func computeChanges(rules []rule, root string) (map[string]*fileState, []string) {
 	states := map[string]*fileState{}
 	var errs []string
@@ -272,7 +272,7 @@ func computeChanges(rules []rule, root string) (map[string]*fileState, []string)
 	return states, errs
 }
 
-// 各 file を 1 回ずつ書き出す。変更が無いファイルは skip する。
+// writeChanges は各 file を 1 回ずつ書き出す。変更が無いファイルは skip する。
 func writeChanges(states map[string]*fileState, root string) error {
 	anyChange := false
 	for file, st := range states {
