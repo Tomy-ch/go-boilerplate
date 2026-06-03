@@ -18,7 +18,7 @@ install-tools:
 		exit 1; \
 	fi
 	@echo "🔄 host 用 Go ツール群を mise.toml のバージョンでインストールします..."
-	@mise install aqua:golang.org/x/tools/gopls
+	@mise install go:golang.org/x/tools/gopls
 	@mise install go:github.com/cweill/gotests/gotests
 	@mise install go:github.com/josharian/impl
 	@mise install aqua:go-delve/delve
