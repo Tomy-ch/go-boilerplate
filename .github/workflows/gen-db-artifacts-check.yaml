@@ -54,10 +54,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          install: false
+
       - name: Install sqlc
-        run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+        run: mise install sqlc
       - name: Setup DB (wait & init)
         uses: ./.github/actions/setup-postgres
         with:
