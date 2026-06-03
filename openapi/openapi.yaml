@@ -31,15 +31,15 @@ servers:
 paths:
   # Operation handlers
   /health:
-    $ref: './paths/health/health.yaml'
+    $ref: './paths/health.yaml'
   /healthz:
-    $ref: './paths/healthz/healthz.yaml'
+    $ref: './paths/healthz.yaml'
   /metrics:
-    $ref: './paths/metrics/metrics.yaml'
+    $ref: './paths/metrics.yaml'
   /ready:
-    $ref: './paths/ready/ready.yaml'
+    $ref: './paths/ready.yaml'
   /version:
-    $ref: './paths/version/version.yaml'
+    $ref: './paths/version.yaml'
   # For error type generation
   /_internal/types/error-response:
     $ref: './paths/internal/types/error_response.yaml'
@@ -51,7 +51,7 @@ paths:
   /v1/users/me/password:
     $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
-    $ref: './paths/v1/users/search/search.yaml'
+    $ref: './paths/v1/users/search.yaml'
   # デバッグ用のパス(サービスを作成する際には必ず削除してください)
   /debug/cookie:
     $ref: './paths/debug/cookie.yaml'

@@ -10,4 +10,4 @@ get:
       content:
         application/json:
           schema:
-            $ref: '../../components/responses/health-check/HealthResponse.yaml'
+            $ref: '../components/responses/health-check/HealthResponse.yaml'
