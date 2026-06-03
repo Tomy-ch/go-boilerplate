@@ -123,6 +123,8 @@ Steps:
    - the mutation **actually took effect** (re-read / re-auth with the new state), not merely a 2xx.
 3. **Read the o11y logs once** for a single request: confirm the trace spans the full stack (controller → usecase → infra) and the emitted SQL is what you expect. After this one capture, further re-checks can rely on o11y instead of re-curling.
 
+Shared-schema impact: if the change edits a **shared** OpenAPI component (e.g. a `components/schemas/*` or `components/requests/*` referenced by more than one operation), the runtime check must cover **every** endpoint that references it — not just the new/changed one. Grep the spec for `$ref`s to the edited file and curl each consumer. A shared-schema edit can silently break sibling endpoints the mocked tests never exercise (e.g. removing a property from a base used via `allOf`, or `additionalProperties: false` rejecting a sibling's property → `POST` create breaks while the new endpoint looks fine).
+
 Destructive guard: if a curl mutates data and the only way to restore the prior state is `make db-init` (or equivalent), **confirm with the user before running it** (per `CLAUDE.md`). Clean up any rows you created for verification.
 
 If any check fails, surface TODO + FB and stop (do NOT commit).
