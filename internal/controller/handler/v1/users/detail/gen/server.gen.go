@@ -49,6 +49,8 @@ func (w *ServerInterfaceWrapper) DeleteUsersDetail(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
 
+	ctx.Set(string(BearerAuthScopes), []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.DeleteUsersDetail(ctx, userId)
 	return err
@@ -64,6 +66,8 @@ func (w *ServerInterfaceWrapper) GetUsersDetail(ctx echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
+
+	ctx.Set(string(BearerAuthScopes), []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetUsersDetail(ctx, userId)
@@ -81,6 +85,8 @@ func (w *ServerInterfaceWrapper) PatchUsersDetail(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
 
+	ctx.Set(string(BearerAuthScopes), []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PatchUsersDetail(ctx, userId)
 	return err
@@ -97,6 +103,8 @@ func (w *ServerInterfaceWrapper) PutUsersDetail(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
 
+	ctx.Set(string(BearerAuthScopes), []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PutUsersDetail(ctx, userId)
 	return err
@@ -112,6 +120,8 @@ func (w *ServerInterfaceWrapper) PutUsersPassword(ctx echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
 	}
+
+	ctx.Set(string(BearerAuthScopes), []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PutUsersPassword(ctx, userId)

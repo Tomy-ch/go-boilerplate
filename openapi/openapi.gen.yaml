@@ -205,6 +205,8 @@ paths:
         - v1/users/detail
       summary: 単一ユーザーの取得
       description: 指定されたUUIDに該当するユーザーの詳細情報を取得します。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       responses:
@@ -250,6 +252,8 @@ paths:
         - v1/users/detail
       summary: 単一ユーザーの更新
       description: 指定されたUUIDに該当するユーザーの情報を更新します。必要な情報をリクエストボディに含めてください。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       requestBody:
@@ -301,6 +305,8 @@ paths:
         - v1/users/detail
       summary: 単一ユーザーの部分更新
       description: 指定されたUUIDに該当するユーザーの情報を部分的に更新します。必要な情報をリクエストボディに含めてください。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       requestBody:
@@ -352,6 +358,8 @@ paths:
         - v1/users/detail
       summary: 単一ユーザーの削除
       description: 指定されたUUIDに該当するユーザーを削除します。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       responses:
@@ -394,6 +402,8 @@ paths:
         - v1/users/detail
       summary: ユーザーのパスワード変更
       description: 指定されたUUIDに該当するユーザーのパスワードを変更します。現在のパスワードを照合し、一致した場合のみ更新します。
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/UserIdParam'
       requestBody:

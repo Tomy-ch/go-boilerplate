@@ -9,6 +9,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
+)
+
 // ErrorResponse エラーレスポンスの共通スキーマ
 type ErrorResponse struct {
 	// Code 機械的に処理可能なエラーコード
