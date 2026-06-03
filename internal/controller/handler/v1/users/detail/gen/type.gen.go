@@ -28,7 +28,10 @@ type ErrorResponse struct {
 	RequestId string `json:"request_id"`
 }
 
-// UserBaseInputRequest ユーザー情報の基本入力スキーマ
+// UserBaseInputRequest ユーザー情報の基本入力スキーマ。
+// allOf 継承（POST が password を兄弟スキーマで追加）と additionalProperties:false は
+// JSON Schema 上で非互換（基底側が兄弟の追加プロパティを拒否する）ため、
+// additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
 type UserBaseInputRequest struct {
 	// Building 建物名・部屋番号
 	Building *string `json:"building,omitempty"`
@@ -67,7 +70,10 @@ type UserPasswordPutRequest struct {
 	NewPassword string `json:"newPassword"`
 }
 
-// UserPatchRequest ユーザー情報の基本入力スキーマ
+// UserPatchRequest ユーザー情報の基本入力スキーマ。
+// allOf 継承（POST が password を兄弟スキーマで追加）と additionalProperties:false は
+// JSON Schema 上で非互換（基底側が兄弟の追加プロパティを拒否する）ため、
+// additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
 type UserPatchRequest = UserBaseInputRequest
 
 // UserPutRequest defines model for UserPutRequest.

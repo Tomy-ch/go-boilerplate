@@ -40,7 +40,10 @@ type PaginationMetadataResponse struct {
 	Total int64 `json:"total"`
 }
 
-// UserBaseInputRequest ユーザー情報の基本入力スキーマ
+// UserBaseInputRequest ユーザー情報の基本入力スキーマ。
+// allOf 継承（POST が password を兄弟スキーマで追加）と additionalProperties:false は
+// JSON Schema 上で非互換（基底側が兄弟の追加プロパティを拒否する）ため、
+// additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
 type UserBaseInputRequest struct {
 	// Building 建物名・部屋番号
 	Building *string `json:"building,omitempty"`

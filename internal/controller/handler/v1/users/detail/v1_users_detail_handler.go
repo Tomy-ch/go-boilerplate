@@ -43,7 +43,7 @@ func (s *server) GetUsersDetail(ctx context.Context, request gen.GetUsersDetailR
 	return gen.GetUsersDetail200JSONResponse(toUserResponse(dto)), nil
 }
 
-// PutUsersDetail は、指定されたUUIDに該当するユーザーの情報を全て更新します（パスワードを含む）。
+// PutUsersDetail は、指定されたUUIDに該当するユーザーのプロフィールを全て更新します（パスワードは含みません）。
 func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailRequestObject) (gen.PutUsersDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

@@ -236,7 +236,7 @@ func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (MutableFields, err
 	return toMutableFields(userEntity, pftDomain.Name()), nil
 }
 
-// UpdateUser は、ユーザーを全更新するユースケースです（PUT、パスワードも更新）。
+// UpdateUser は、ユーザーのプロフィールを全更新するユースケースです（PUT、パスワードは含みません）。
 func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParamsDTO) (MutableFields, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
