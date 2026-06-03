@@ -168,6 +168,7 @@ const getUserByID = `-- name: GetUserByID :one
 SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 WHERE u.id = $1
+    AND u.deleted_at IS NULL
 `
 
 type GetUserByIDRow struct {
@@ -179,6 +180,7 @@ type GetUserByIDRow struct {
 //	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	WHERE u.id = $1
+//	    AND u.deleted_at IS NULL
 func (q *Queries) GetUserByID(ctx context.Context, userIDParam uuid.UUID) (*GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, userIDParam)
 	var i GetUserByIDRow
@@ -378,4 +380,79 @@ func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListU
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUser = `-- name: UpdateUser :execrows
+UPDATE users
+SET
+    first_name = $1,
+    last_name = $2,
+    password_hash = $3,
+    email = $4,
+    phone = $5,
+    prefecture_id = $6,
+    city = $7,
+    street = $8,
+    building = $9,
+    postal_code = $10,
+    updated_at = $11,
+    deleted_at = $12
+WHERE id = $13
+    AND deleted_at IS NULL
+`
+
+type UpdateUserParams struct {
+	FirstName    string
+	LastName     string
+	PasswordHash string
+	Email        string
+	Phone        string
+	PrefectureID uuid.UUID
+	City         string
+	Street       string
+	Building     *string
+	PostalCode   string
+	UpdatedAt    time.Time
+	DeletedAt    *time.Time
+	ID           uuid.UUID
+}
+
+// === source: database/dml/repository/user/update_user.sql ===
+//
+//	UPDATE users
+//	SET
+//	    first_name = $1,
+//	    last_name = $2,
+//	    password_hash = $3,
+//	    email = $4,
+//	    phone = $5,
+//	    prefecture_id = $6,
+//	    city = $7,
+//	    street = $8,
+//	    building = $9,
+//	    postal_code = $10,
+//	    updated_at = $11,
+//	    deleted_at = $12
+//	WHERE id = $13
+//	    AND deleted_at IS NULL
+func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateUser,
+		arg.FirstName,
+		arg.LastName,
+		arg.PasswordHash,
+		arg.Email,
+		arg.Phone,
+		arg.PrefectureID,
+		arg.City,
+		arg.Street,
+		arg.Building,
+		arg.PostalCode,
+		arg.UpdatedAt,
+		arg.DeletedAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

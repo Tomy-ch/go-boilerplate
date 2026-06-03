@@ -59,6 +59,10 @@ The skill verifies before any write:
 
 If any precondition fails, abort with corrective guidance (`/scaffold-domain`, `make gen-query`, manual cleanup).
 
+> **Environment note:** `make gen-query` dumps the live DB schema via `pg_dump`, so the database must be running first. Use the dedicated make targets — **not raw `docker compose`** — to prepare it: `make serve` (starts the development profile incl. the `database` service) → **`make db-init`** → `make gen-query`. `make db-init` migrates **and seeds** both the local and test DBs in one shot; the integration-style tests this skill writes (`make test`) also need the running, **seeded** test DB, so `db-init` (not a bare `db-*-migrate-up`) is the correct setup.
+>
+> **Toolchain note:** if the final `make fix` / `make test` (or `make lint`) fails on a tool version mismatch (e.g. `golangci-lint` v1-vs-v2 config error), realign the local toolchain with `make install-tools` (`make sync-tools` first if `tools.yaml` changed) rather than hand-editing `PATH` — then re-run.
+
 ## First Step: Resolve Identity
 
 This skill **MUST call `AskUserQuestion` immediately after invocation** (unless invoked from `scaffold-endpoint` with the aggregate name in context):
@@ -167,6 +171,8 @@ make test
 ```
 
 Confirm Repository package coverage. Infra layer targets ≥85%. On failure: TODO + FB; no auto-rollback.
+
+> **DI verification (runtime):** `go build` / `make test` do NOT construct the Fx graph — a missing provider, an unregistered `New`, or a mismatched constructor signature only fails at **app startup**, not at compile/test time. After the DI registration (`fx.Provide(<aggregate>.New)`), confirm the app actually boots: with `make serve` running, `air` rebuilds on save — verify the `api_server` logs reach `[Fx] RUNNING` ("http server started") with no Fx `provide` / `invoke` errors. Fresh-env caveat: the container builds in **vendor mode**, so run `make tidy-lib` (generates `vendor/`) first — otherwise it fails with `inconsistent vendoring` before Fx even runs.
 
 ## Step 7. Closing
 

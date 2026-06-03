@@ -10,6 +10,7 @@
 |---|---|
 |`To[T](v T) *T`|値からポインタを生成|
 |`Copy[T](v *T) *T`|ポインタのコピー（nil 入力時は nil を返す）|
+|`Deref[T](p *T, fallback T) T`|ポインタの参照外し（nil の場合は fallback を返す）|
 
 ## 注意点
 

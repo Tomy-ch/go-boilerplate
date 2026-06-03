@@ -169,6 +169,11 @@ Forbidden:
 - Convert to DTO in Controller
 - Domain must not know OpenAPI types
 
+### Boundary Type Conversion
+
+- Convert framework / generated types (e.g. OpenAPI `openapi_types.UUID`) to domain types **only in the layer that owns those types**. For HTTP this is the Controller, via the dedicated helper `internal/controller/conv`. Because other layers must not import generated / framework types, this confines the conversion to the boundary by dependency direction.
+- Do **not** add public, validation-bypassing constructors to shared packages (`pkg/`) just to make a boundary conversion convenient. Such bypass entry points erode the intended-use policy over time and get misused across the codebase — reuse the existing validated constructors (`New` / `Parse`).
+
 ## Infrastructure Type Leakage Prohibition
 
 - Do not pass sqlc generated types to Usecase / Domain
@@ -202,6 +207,22 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 - Transactions must be started only in the Usecase layer
 - Infrastructure / Repository must not start transactions
+
+## Error Handling Rules
+
+- Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
+- Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
+- Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
+
+## Testing & Definition of Done
+
+- Co-locate tests with each layer's implementation and verify them **per layer** — write that layer's tests and run `make test` (with coverage) before moving on. Do not batch all testing into a final step; deferred tests hide coverage gaps until late.
+- A change is "done" only when it is **tested and meets the coverage bar** (new / modified packages > 90%, handlers ~100%), not when it merely compiles. `go build` success is **not** a completion signal.
+- "Compiles ≠ done" also applies to wiring: verify the DI graph at **runtime** (the app boots and reaches `[Fx] RUNNING`), not by build / unit tests alone.
+- Intentionally unreachable defensive branches (an impossible `switch` default, a `panic` guarding a precondition that cannot fail, a hard-to-force infrastructure error path) are acceptable as uncovered lines — keep them as assertions instead of contorting tests to reach them.
+- The test environment assumes `make db-init` has been run: it migrates **and seeds** both the local and test DBs. After `make serve`, run `make db-init` first — a bare `db-*-migrate-up` (no seed) makes DB-backed tests fail.
+- Beyond mocked unit / integration tests, smoke-test new endpoints against the live app (`make serve`) with `curl`: mocks do not exercise the real DI graph, DB, or end-to-end wiring. Treat the structured observability logs (`docker compose logs api_server` — per-layer spans + the actual SQL emitted by the logging DB driver) as the durable verification evidence; read them to re-confirm instead of re-running the request.
+- Destructive runtime verification (`POST` / `PUT` / `PATCH` / `DELETE` against the dev DB) must be confirmed with the user beforehand when there is no non-destructive alternative; restore afterward with `make db-init`.
 
 ## AI Agent Rules
 

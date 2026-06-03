@@ -6,27 +6,31 @@ English | [日本語](README.ja.md)
 
 ## Directory Structure
 
+The directory layout **mirrors the URL path** (industry-standard / Redocly split style): the file location corresponds 1:1 to the URL. A path with no children is a flat `<segment>.yaml`; a path that itself is an endpoint **and** has children is a `<segment>.yaml` file sitting beside a `<segment>/` directory for those children.
+
 ```text
 paths/
-├── health/             # Health check endpoint
-│   └── health.yaml
-├── healthz/            # Kubernetes health check endpoint
-│   └── healthz.yaml
-├── ready/              # Readiness check endpoint
-│   └── ready.yaml
-├── version/            # Version info endpoint
-│   └── version.yaml
-├── metrics/            # Prometheus metrics endpoint (Basic auth)
-│   └── metrics.yaml
-├── internal/           # Internal types (error response schema for oapi-codegen)
+├── health.yaml             # /health
+├── healthz.yaml            # /healthz
+├── ready.yaml              # /ready
+├── version.yaml            # /version
+├── metrics.yaml            # /metrics (Basic auth)
+├── internal/               # Internal types (error response schema for oapi-codegen)
 │   └── types/
 │       └── error_response.yaml
-└── v1/                 # Versioned API (sample)
-    ├── users.yaml
+├── debug/                  # Debug endpoints (remove in real services)
+│   ├── cookie.yaml         # /debug/cookie   ← endpoint + has children
+│   └── cookie/
+│       ├── copy.yaml       # /debug/cookie/copy
+│       ├── stream.yaml     # /debug/cookie/stream
+│       └── ws.yaml         # /debug/cookie/ws
+└── v1/                     # Versioned API (sample)
+    ├── users.yaml          # /v1/users       ← endpoint + has children
     └── users/
-        ├── user_id.yaml
-        └── search/
-            └── search.yaml
+        ├── user_id.yaml    # /v1/users/{user_id}
+        ├── search.yaml     # /v1/users/search
+        └── me/             # /v1/users/me/... (prefix only)
+            └── password.yaml  # /v1/users/me/password
 ```
 
 ## Endpoint Categories
@@ -37,20 +41,21 @@ Infrastructure endpoints for monitoring and orchestration. These are not part of
 
 |Path|File|Description|
 |---|---|---|
-|`/health`|`health/health.yaml`|Health check|
-|`/healthz`|`healthz/healthz.yaml`|Kubernetes liveness probe|
-|`/ready`|`ready/ready.yaml`|Readiness probe|
-|`/version`|`version/version.yaml`|Build version / revision / date|
-|`/metrics`|`metrics/metrics.yaml`|Prometheus metrics (Basic auth protected)|
+|`/health`|`health.yaml`|Health check|
+|`/healthz`|`healthz.yaml`|Kubernetes liveness probe|
+|`/ready`|`ready.yaml`|Readiness probe|
+|`/version`|`version.yaml`|Build version / revision / date|
+|`/metrics`|`metrics.yaml`|Prometheus metrics (Basic auth protected)|
 
 ### Versioned API (`v1/`)
 
 Business API endpoints following a **URL versioning strategy**.
 
 ```text
-/v1/users          → users.yaml
-/v1/users/{user_id} → users/user_id.yaml
-/v1/users/search   → users/search/search.yaml
+/v1/users             → users.yaml
+/v1/users/{user_id}   → users/user_id.yaml
+/v1/users/me/password → users/me/password.yaml
+/v1/users/search      → users/search.yaml
 ```
 
 > `v1/` contents are **sample implementations**. Replace with your own resources when building a service.
@@ -75,7 +80,9 @@ When introducing breaking changes, create a new `v2/` directory alongside `v1/`.
 |Element|Convention|Example|
 |---|---|---|
 |File name|snake_case|`user_id.yaml`, `search.yaml`|
-|Directory structure|`/<version>/<resource>/`|`v1/users/`|
+|Directory layout|Mirror the URL path (one file per path item)|`/v1/users/me/password` → `v1/users/me/password.yaml`|
+|Leaf vs. parent|Leaf = flat `<segment>.yaml`; endpoint-with-children = `<segment>.yaml` beside `<segment>/`|`users.yaml` + `users/`|
+|Path parameter|snake_case file name (no braces)|`{user_id}` → `user_id.yaml`|
 |operationId|`{HTTPMethod}{Resource}`|`getUsers`, `postUsers`|
 |tags|Path-based grouping|`v1/users`, `health`|
 
@@ -84,9 +91,10 @@ When introducing breaking changes, create a new `v2/` directory alongside `v1/`.
 Path definitions correspond to handler implementations:
 
 ```text
-paths/v1/users.yaml           → handler/v1/users/
-paths/v1/users/user_id.yaml   → handler/v1/users/detail/
-paths/v1/users/search/        → handler/v1/users/search/
+paths/v1/users.yaml             → handler/v1/users/
+paths/v1/users/user_id.yaml     → handler/v1/users/detail/
+paths/v1/users/me/password.yaml → handler/v1/users/detail/
+paths/v1/users/search.yaml      → handler/v1/users/search/
 ```
 
 ## Rules

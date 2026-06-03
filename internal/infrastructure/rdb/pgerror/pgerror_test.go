@@ -192,3 +192,24 @@ func Test_isPgConnectionError(t *testing.T) {
 		require.False(t, got)
 	})
 }
+
+func TestNormalizeExecResult(t *testing.T) {
+	t.Parallel()
+
+	t.Run("影響行数が1以上かつerrorなしの場合、nilを返す", func(t *testing.T) {
+		t.Parallel()
+		require.NoError(t, NormalizeExecResult(1, nil))
+	})
+
+	t.Run("影響行数が0かつerrorなしの場合、ErrNotFoundを返す", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeExecResult(0, nil)
+		require.ErrorIs(t, got, apperror.ErrNotFound)
+	})
+
+	t.Run("errorがある場合、NormalizeErrorに委譲する", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeExecResult(0, &pgconn.PgError{Code: "23505"})
+		require.ErrorIs(t, got, apperror.ErrConflict)
+	})
+}

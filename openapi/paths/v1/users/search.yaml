@@ -5,32 +5,32 @@ get:
   summary: ユーザー一覧の取得
   description: 検索条件に基づいてユーザーの一覧を取得します。ページネーションを指定できます。
   parameters:
-    - $ref: '../../../../components/parameters/search/KeywordParam.yaml'
-    - $ref: '../../../../components/parameters/search/ActiveParam.yaml'
-    - $ref: '../../../../components/parameters/pagination/PageParam.yaml'
-    - $ref: '../../../../components/parameters/pagination/PerPageParam.yaml'
+    - $ref: '../../../components/parameters/search/KeywordParam.yaml'
+    - $ref: '../../../components/parameters/search/ActiveParam.yaml'
+    - $ref: '../../../components/parameters/pagination/PageParam.yaml'
+    - $ref: '../../../components/parameters/pagination/PerPageParam.yaml'
   responses:
     '200':
       description: 検索条件に基づいて取得したユーザー一覧
       content:
         application/json:
           schema:
-            $ref: '../../../../components/responses/users/UsersSearchResponse.yaml'
+            $ref: '../../../components/responses/users/UsersSearchResponse.yaml'
     '401':
       description: ユーザー一覧の取得には認証が必要です。
       content:
         application/json:
           schema:
-            $ref: '../../../../components/schemas/ErrorResponse.yaml'
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
     '403':
       description: ユーザー一覧の取得には権限が必要です。
       content:
         application/json:
           schema:
-            $ref: '../../../../components/schemas/ErrorResponse.yaml'
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
     '500':
       description: サーバーエラーが発生しました。
       content:
         application/json:
           schema:
-            $ref: '../../../../components/schemas/ErrorResponse.yaml'
+            $ref: '../../../components/schemas/ErrorResponse.yaml'
