@@ -10,8 +10,8 @@
 scripts/
 ├── gen-docs-json.cjs           # ポータルナビゲーション用 docs.json の生成
 ├── gen-portal-docs.cjs         # manifest.yaml に基づくドキュメントのポータルへのコピー
-├── replace-tools-version.cjs   # tools.yaml からツールバージョンを置換
 ├── semver.cjs                  # セマンティックバージョニングヘルパー（patch/minor/major）
+├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile FROM へ反映（Go 実装）
 ├── make_help.sh                # Make ターゲットのヘルプ出力生成
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
 └── setup/                     # プロジェクト初期設定スクリプト
@@ -32,12 +32,14 @@ scripts/
 |`gen-portal-docs.cjs`|`manifest.yaml` に基づきソースドキュメントをポータルの `guides/` にコピー|`make gen-docs`|
 |`gen-docs-json.cjs`|ポータルアプリ用のナビゲーション `docs.json` を生成|`make gen-docs`|
 
-### バージョニングとツール
+### バージョニング
 
 |スクリプト|説明|実行元|
 |---|---|---|
-|`replace-tools-version.cjs`|`tools.yaml` から Dockerfile / 設定ファイルのツールバージョンを置換|`make replace-versions`|
 |`semver.cjs`|セマンティックバージョンのバンプ（patch / minor / major）|リリースワークフロー|
+|`sync-versions/`|Go 実装の sync ツール。`mise.toml` の `[tools]` table を行ベース parser で解析し（外部依存ゼロ）、`go` / `node` / `python` を `go.mod` の `go` directive と `docker/*/Dockerfile` の `FROM golang:` / `FROM node:` / `FROM python:` 行へ反映する。version 存在・ファイル存在・期待マッチ数の事前 validate を全 rule で通してからファイル単位 atomic に書き出すため、partial state にならない。|`make sync-versions`|
+
+その他のツールのバージョンは [`mise.toml`](../mise.toml) を SSOT として管理しています。各環境（host / docker / CI）は必要なものだけ `mise install <tool>` で個別に取得するため、sync スクリプトは不要です。
 
 ### Makefile サポート
 

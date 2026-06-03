@@ -17,7 +17,6 @@ Make ターゲットは主に以下の単位で整理されています。
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
 - `.makefiles/gen` : 各種生成処理の一括実行
 - `.makefiles/github` : GitHub 初期設定 / リリース / ラベル / ルール設定
-- `.makefiles/tools` : 開発ツールのバージョン管理
 
 ## 命名規約
 
@@ -238,8 +237,8 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make go-update` | `anyenv update` を実行し、`.go-version` に記載された Go バージョンを `goenv` でインストールします。 | なし |
-| `make install-tools` | Go 開発で利用するツールをインストールします。 | `gopls`、`gotests`、`impl`、`goplay`、`dlv`、`lefthook`、`golangci-lint` などを導入します。 |
+| `make go-update` | `mise.toml` に記載された Go ランタイムを mise でインストールします。詳細は `docs/maintenance/go-upgrade.md` を参照。 | mise が必須 |
+| `make install-tools` | host 開発用の Go ツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint` を導入します。 |
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 
 ## `.makefiles/docs` 系
@@ -317,11 +316,3 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 | `make tag-patch` | patch バージョンを 1 つ進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準とし、リリースノートには `.github/release/<version>.md` を使用します。 |
 | `make tag-minor` | minor バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。 |
 | `make tag-major` | major バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。 |
-
-## `.makefiles/tools` 系
-
-### ツールバージョン管理関連
-
-| コマンド | 説明 | 補足 |
-| --- | --- | --- |
-| `make sync-tools` | `tools.yaml` に記載されたツールのバージョンをもとに、関連ファイルのバージョン表記を一括置換します。 | `replace-tools-version.cjs` を使用して、Dockerfile やインストールスクリプトなどのバージョン表記を更新します。 |

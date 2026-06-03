@@ -17,7 +17,6 @@ Make targets are mainly organized into the following units.
 - `.makefiles/docs` : Portal / Tool information documentation generation
 - `.makefiles/gen` : Batch execution of various generation processes
 - `.makefiles/github` : GitHub initialization / Release / Labels / Rule configuration
-- `.makefiles/tools` : Development tool version management
 
 ## Conventions
 
@@ -238,8 +237,8 @@ This group handles linting and auto-fixing of Markdown files.
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make go-update` | Executes `anyenv update` and installs Go version from `.go-version` via `goenv`. | None |
-| `make install-tools` | Installs tools used in Go development. | Installs `gopls`, `gotests`, `impl`, `goplay`, `dlv`, `lefthook`, `golangci-lint`, etc. |
+| `make go-update` | Installs the Go runtime pinned in `mise.toml` via mise. See `docs/maintenance/go-upgrade.md`. | mise required |
+| `make install-tools` | Installs host development Go tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`. |
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 
 ## `.makefiles/docs` group
@@ -317,11 +316,3 @@ This is an initial setup command when launching a new repository as a boilerplat
 | `make tag-patch` | Creates a tag with incremented patch version and creates a GitHub Release. | Uses `.github/release/<version>.md` for release notes. |
 | `make tag-minor` | Creates a tag with incremented minor version and creates a GitHub Release. | Based on the latest tag. |
 | `make tag-major` | Creates a tag with incremented major version and creates a GitHub Release. | Based on the latest tag. |
-
-## `.makefiles/tools` group
-
-### Tool version management related
-
-| Command | Description | Notes |
-| --- | --- | --- |
-| `make sync-tools` | Synchronizes tool versions across related files based on `tools.yaml`. | Uses `replace-tools-version.cjs` to update version notations in Dockerfile, installation scripts, etc. |

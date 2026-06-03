@@ -1,6 +1,7 @@
 {
 	"recommendations": [
 		"golang.go",
+		"hverlin.mise-vscode",
 		"hbenl.vscode-test-explorer",
 		"premparihar.gotestexplorer",
 		"mtxr.sqltools",

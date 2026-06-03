@@ -69,6 +69,42 @@ ENV ENV=prd
 CMD ["/app/server", "migrate-up"]
 
 # ------------------------------
+# 開発用ツールビルダー：mise.toml のバージョン pin で開発用 Go ツール一式を install し、
+# バイナリだけを /out に抽出する。最終 tooling ステージに mise 本体を残さないための中継。
+# ------------------------------
+FROM golang:1.26.3-alpine AS tooling_builder
+
+# CGO_ENABLED=0: `go:` backend のツールを静的バイナリにする（go_tools_builder と対称）
+ENV CGO_ENABLED=0
+
+RUN apk add --no-cache bash ca-certificates curl git
+
+ENV MISE_DATA_DIR=/root/.local/share/mise \
+    MISE_CONFIG_DIR=/root/.config/mise \
+    PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
+RUN curl -fsSL https://mise.run | sh \
+    && /root/.local/bin/mise --version
+
+WORKDIR /app
+COPY mise.toml ./
+RUN mise trust mise.toml
+
+RUN mise install air \
+  && mise install aqua:go-delve/delve \
+  && mise install golines \
+  && mise install gofumpt \
+  && mise install golangci-lint \
+  && mise install lefthook
+
+RUN mkdir /out \
+  && cp "$(mise which air)" /out/ \
+  && cp "$(mise which dlv)" /out/ \
+  && cp "$(mise which golines)" /out/ \
+  && cp "$(mise which gofumpt)" /out/ \
+  && cp "$(mise which golangci-lint)" /out/ \
+  && cp "$(mise which lefthook)" /out/
+
+# ------------------------------
 # ローカル環境
 # ------------------------------
 FROM golang:1.26.3-alpine AS tooling
@@ -86,19 +122,9 @@ RUN apk add --no-cache \
   tzdata \
   make
 
-# Goのモジュール
-# NOTE: バージョンを固定してCI環境と同じ環境を構築してください。
-#       @latestは開発初期の利便性のために使用しています。
-RUN go install github.com/air-verse/air@latest \
-  && go install github.com/go-delve/delve/cmd/dlv@latest \
-  && go install github.com/segmentio/golines@latest \
-  && go install mvdan.cc/gofumpt@latest \
-  && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+# tooling_builder から開発用 Go ツールのバイナリだけを取り込む（mise 本体や install キャッシュは含まない）
+COPY --from=tooling_builder /out/ /usr/local/bin/
 
-# go installでインストールしたバイナリのパスを通す
-ENV PATH="/go/bin:$PATH"
-
-# 作業ディレクトリ(/app)を設定
 WORKDIR /app
 
 # コンテナ起動時に実行するコマンドを設定

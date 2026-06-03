@@ -238,7 +238,7 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make go-update` | `anyenv update` を実行し、`.go-version` に記載された Go バージョンを `goenv` でインストールします。 | なし |
+| `make go-update` | `.go-version` に記載された Go バージョンをインストールします。`mise` があれば優先、無ければ `goenv`（`anyenv update` 含む）にフォールバックします。詳細は `docs/maintenance/go-upgrade.md` を参照。 | なし |
 | `make install-tools` | Go 開発で利用するツールをインストールします。 | `gopls`、`gotests`、`impl`、`goplay`、`dlv`、`lefthook`、`golangci-lint` などを導入します。 |
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 

@@ -8,14 +8,36 @@ For details of Make commands, refer to [Make Target List](.makefiles/README.md).
 
 Install the tools required for VSCode development.
 
-The versions are listed in `tools.yaml` as the versions that have been verified to work. Change these versions as necessary.
+### 1.1. Install mise and activate it in your shell
 
-`make sync-tools` rewrites the `@latest` references in the Dockerfiles and the local installer (`.makefiles/go/installer.mk`) to the versions declared in `tools.yaml`. The boilerplate ships with `@latest` for template-development convenience, but **pinning is strongly recommended once you localize the project** so the CI environment and every developer environment install the same tool versions reproducibly.
+This project requires [mise](https://mise.jdx.dev) as the tool / runtime version manager. Install it via the [official installation guide](https://mise.jdx.dev/getting-started.html), then **activate it in your shell init** — this is mandatory, not optional. The repository's Make targets resolve `golangci-lint`, `lefthook`, etc. through mise's shims, and the shims are only on `PATH` after activation:
 
 ```sh
-make sync-tools
-make install-tools
-make activate-tools
+# zsh
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
+
+# bash
+echo 'eval "$(mise activate bash)"' >> ~/.bashrc
+
+# then reload (or open a new terminal)
+exec $SHELL
+```
+
+Verify activation with:
+
+```sh
+mise --version
+which mise
+```
+
+### 1.2. Install the Go runtime and project tools
+
+All tool versions (golangci-lint / sqlc / oapi-codegen / mockgen / dlv / lefthook / ...) are pinned in [`mise.toml`](../../mise.toml) as the single source of truth. The Dockerfiles, the local installer (`.makefiles/go/installer.mk`), and the CI workflows all install only what they need via `mise install <tool>` against the same `mise.toml`.
+
+```sh
+make go-update       # installs the pinned Go runtime
+make install-tools   # installs gopls / gotests / impl / dlv / lefthook / golangci-lint
+make activate-tools  # runs `lefthook install` to wire git hooks
 ```
 
 ## Phase 2: Local Startup Verification

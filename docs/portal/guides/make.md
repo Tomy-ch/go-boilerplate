@@ -238,7 +238,7 @@ This group handles linting and auto-fixing of Markdown files.
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make go-update` | Executes `anyenv update` and installs Go version from `.go-version` via `goenv`. | None |
+| `make go-update` | Installs the Go version listed in `.go-version`. Uses `mise` if available; falls back to `goenv` (with `anyenv update`). See `docs/maintenance/go-upgrade.md`. | None |
 | `make install-tools` | Installs tools used in Go development. | Installs `gopls`, `gotests`, `impl`, `goplay`, `dlv`, `lefthook`, `golangci-lint`, etc. |
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 
