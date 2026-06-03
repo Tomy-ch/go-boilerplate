@@ -11,7 +11,7 @@ scripts/
 ├── gen-docs-json.cjs           # Generate docs.json for portal navigation
 ├── gen-portal-docs.cjs         # Copy docs to portal based on manifest.yaml
 ├── semver.cjs                  # Semantic versioning helper (patch/minor/major)
-├── sync-versions.cjs           # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM
+├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
 ├── make_help.sh                # Generate Make target help output
 ├── genctxkey/                  # Context key code generator (Go)
 └── setup/                     # Initial project setup scripts
@@ -37,7 +37,7 @@ scripts/
 |Script|Description|Invoked By|
 |---|---|---|
 |`semver.cjs`|Bump semantic version (patch/minor/major)|Release workflow|
-|`sync-versions.cjs`|Parse `mise.toml` `[tools]` and propagate `go` / `node` / `python` versions to `go.mod` (`go` directive) + `docker/*/Dockerfile` `FROM golang:` / `FROM node:` / `FROM python:` lines. Uses real TOML parsing (`smol-toml`) and pre-validates all rules before any file is written, so failures never leave a partial state.|`make sync-versions`|
+|`sync-versions/`|Go-based sync utility. Parses `mise.toml` `[tools]` (table-scoped, no external deps) and propagates `go` / `node` / `python` versions to `go.mod` (`go` directive) + `docker/*/Dockerfile` `FROM golang:` / `FROM node:` / `FROM python:` lines. Pre-validates all rules (version present, file exists, expected match count) and writes per file atomically, so failures never leave a partial state.|`make sync-versions`|
 
 All other tool versions are managed by [`mise.toml`](../mise.toml) as the single source of truth. Each environment (host / docker / CI) installs only what it needs via `mise install <tool>` — no sync script required for those.
 
