@@ -58,6 +58,7 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install sqlc
         run: mise install sqlc
