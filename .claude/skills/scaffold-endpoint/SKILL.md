@@ -104,6 +104,29 @@ This confirms the cross-layer integration (handler → usecase → domain → in
 
 If `make test` fails at this final step (rare — child skills already ran their own), surface the failure with TODO + FB and stop.
 
+## Step 3.5. Runtime Verification (curl + o11y)
+
+`make test` (Step 3) uses **mocked usecases/repositories**, so it does NOT construct the real Fx graph, run the HTTP middleware (auth / OpenAPI validation), or touch the DB. A whole class of bugs only surfaces at runtime: a missing `security:` declaration (endpoint reachable without auth), an unregistered/mis-wired `BindHandler`, a DI provider mismatch, or a SQL filter that behaves differently against a real DB. **This is the correct place to curl** — all layers + DI now exist. Per-layer skills cannot do this (their lower layers / DI may be absent, so the app would not even boot).
+
+Preconditions:
+
+- `make serve` is running and the `api_server` log reached `[Fx] RUNNING` (the DI boot check from `scaffold-controller`).
+- `make db-init` has run (seeds local + test DB — the canonical setup).
+
+Steps:
+
+1. **Pick or create a target in a known state.** If the operation needs an existing row, use a seeded id or create one first via the create endpoint. For credential/state-sensitive checks (e.g. password change), create a row whose plaintext/state you control (a `psql` insert with a known bcrypt hash is acceptable for local verification).
+2. **curl the new endpoint(s)** (auth header for local: `Authorization: Bearer debug:<subject>`) and assert:
+   - the route is reachable — a non-404-from-router response proves the handler is registered and DI is wired;
+   - the happy path returns the expected status/body;
+   - the key error paths: NotFound (404), validation (400/422), and — **if the operation declares `security:`** — no-token ⇒ 401 (verify the endpoint is actually protected);
+   - the mutation **actually took effect** (re-read / re-auth with the new state), not merely a 2xx.
+3. **Read the o11y logs once** for a single request: confirm the trace spans the full stack (controller → usecase → infra) and the emitted SQL is what you expect. After this one capture, further re-checks can rely on o11y instead of re-curling.
+
+Destructive guard: if a curl mutates data and the only way to restore the prior state is `make db-init` (or equivalent), **confirm with the user before running it** (per `CLAUDE.md`). Clean up any rows you created for verification.
+
+If any check fails, surface TODO + FB and stop (do NOT commit).
+
 ## Step 4. Closing
 
 Print a Japanese summary:
@@ -117,9 +140,9 @@ scaffold-endpoint 完了（feature: <feature>）。
   ✓ scaffold-usecase: <N> ファイル作成、coverage 100%
   ✓ scaffold-controller: <N> ファイル作成、coverage 100%
   ✓ make test: 全体 OK
+  ✓ ランタイム動作確認: curl 到達 / 認証 / 主要異常系 / o11y トレース OK
 
 次のアクション:
-  - 動作確認: make serve + curl
   - /commit で 4 層 + DI 変更をコミット
   - /submit-pr で PR 作成
 ```
@@ -143,6 +166,8 @@ This skill itself writes no files. All scope is delegated to child skills, each 
 - ✅ Run child skills in the documented dependency order (domain → infra-db → usecase → controller)
 - ✅ Surface a consolidated final report covering all 5 chained steps + the final `make test`
 - ✅ Let each child skill ask its own confirmation per layer (human-in-the-loop on judgment-heavy steps)
+- ✅ Run the runtime curl + o11y verification (Step 3.5) — `make test` alone does not exercise DI / middleware / DB
+- ✅ Confirm with the user before any destructive curl whose only restore path is `make db-init`
 
 ## Checklist
 
@@ -155,6 +180,7 @@ Before reporting completion, confirm:
 - [ ] `scaffold-usecase` ran successfully (or failed and chain halted)
 - [ ] `scaffold-controller` ran successfully (or failed and chain halted)
 - [ ] Final `make fix` + `make test` run after all child skills
+- [ ] Runtime verification (Step 3.5): curl reachability / auth / key error paths / o11y trace confirmed
 - [ ] Consolidated Japanese summary with per-layer file counts and coverage
 - [ ] No commits / pushes
 - [ ] On any child failure, this skill did NOT auto-rollback already-written files

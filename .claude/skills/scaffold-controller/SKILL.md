@@ -195,8 +195,10 @@ Once the handler compiles and `make test` passes, invoke `scaffold-integration-t
 ```text
 <Feature> controller 層を生成しました。<N> ファイル作成 + DI 1 行追加、make test OK、coverage <X>%。
 HTTP 境界 integration テストも internal/integration/<feature>_test.go に生成しました（scaffold-integration-test）。
-全層が揃いました — feature の動作確認は `make serve` + curl 等で実機テストできます。
+全層が揃いました — `make serve` + curl での実機ランタイム確認に進めます。
 ```
+
+> **ランタイム curl 確認の位置づけ:** 認証（`security:`）・DI 配線・実 DB を通した curl + o11y の確認は、全層が揃う `scaffold-endpoint` の Runtime Verification（Step 3.5）が正式な実施場所。controller を**単独**で scaffold した場合も、下位層（usecase / domain / infra）と DI が既に存在していれば同様に curl 確認できる。下位層が未整備のうちは curl しても Fx が組み上がらず失敗するため、curl は全層が揃ってから行う。
 
 Do NOT commit.
 

@@ -98,6 +98,29 @@ cross-layer 統合（handler → usecase → domain → infra）が全体とし�
 
 最終ステップで `make test` 失敗時（child が自身でテスト済みなのでまれ）は TODO + FB で surface して停止。
 
+## Step 3.5. ランタイム動作確認（curl + o11y）
+
+Step 3 の `make test` は **usecase / repository をモック**するため、実際の Fx グラフ・HTTP ミドルウェア（認証 / OpenAPI バリデーション）・DB を通らない。実機でしか出ないバグ群がある: `security:` 宣言漏れ（認証なしで到達）、`BindHandler` の未登録 / 配線ミス、DI provider 不整合、実 DB での SQL フィルタ挙動差など。**curl はここでやるのが正しい** — 全層 + DI がここで初めて揃う。per-layer スキルでは不可（下位層 / DI が無く起動すらしない）。
+
+前提:
+
+- `make serve` 稼働中で `api_server` ログが `[Fx] RUNNING` 到達（`scaffold-controller` の DI 起動確認）。
+- `make db-init` 実行済み（local + test を seed する正準セットアップ）。
+
+手順:
+
+1. **既知状態の対象を用意する。** 既存行が要るなら seed 済み id を使うか、作成エンドポイントで先に作る。資格情報 / 状態依存の確認（例: パスワード変更）は、平文 / 状態を自分が把握する行を作る（ローカル検証なら既知 bcrypt ハッシュの `psql` insert でも可）。
+2. **新エンドポイントを curl**（ローカル認証は `Authorization: Bearer debug:<subject>`）し、以下を確認:
+   - ルート到達 — ルータ 404 でない応答 = ハンドラ登録 / DI 配線 OK の証拠；
+   - 正常系が期待どおりの status / body；
+   - 主要異常系: NotFound (404)、バリデーション (400/422)、**`security:` 宣言があるなら** no-token ⇒ 401（保護が効いているか）；
+   - 変更が**実際に反映**されたか（新状態で再取得 / 再認証）。2xx だけで満足しない。
+3. **o11y ログを 1 回確認**: 1 リクエスト分のトレースが全層（controller → usecase → infra）を貫き、発行 SQL が想定どおりかを見る。この 1 回の確認後は、再確認を curl ではなく o11y に頼れる。
+
+破壊的ガード: curl がデータを変更し、元に戻す手段が `make db-init`（等）しかない場合は、**実行前にユーザー確認**（`CLAUDE.md` 準拠）。検証用に作成した行は後始末する。
+
+いずれか失敗時は TODO + FB を surface して停止（コミットしない）。
+
 ## Step 4. クロージング
 
 日本語サマリ:
@@ -111,9 +134,9 @@ scaffold-endpoint 完了（feature: <feature>）。
   ✓ scaffold-usecase: <N> ファイル作成、coverage 100%
   ✓ scaffold-controller: <N> ファイル作成、coverage 100%
   ✓ make test: 全体 OK
+  ✓ ランタイム動作確認: curl 到達 / 認証 / 主要異常系 / o11y トレース OK
 
 次のアクション:
-  - 動作確認: make serve + curl
   - /commit で 4 層 + DI 変更をコミット
   - /submit-pr で PR 作成
 ```
@@ -137,6 +160,8 @@ commit しない。push しない。
 - ✅ 依存順序（domain → infra-db → usecase → controller）で child 起動
 - ✅ 5 chained step + 最終 `make test` を統合した最終レポートを surface
 - ✅ 各 child skill が自身の確認 layer ごとに取る（judgment-heavy step で human-in-the-loop）
+- ✅ ランタイム curl + o11y 確認（Step 3.5）を実施 — `make test` だけでは DI / ミドルウェア / DB を通らない
+- ✅ 元に戻す手段が `make db-init` しかない破壊的 curl は実行前にユーザー確認
 
 ## チェックリスト
 
@@ -147,6 +172,7 @@ commit しない。push しない。
 - [ ] `scaffold-usecase` 成功実行（または失敗時 chain 停止）
 - [ ] `scaffold-controller` 成功実行（または失敗時 chain 停止）
 - [ ] 全 child 成功後に最終 `make fix` + `make test` 実行
+- [ ] ランタイム動作確認（Step 3.5）: curl 到達 / 認証 / 主要異常系 / o11y トレースを確認
 - [ ] layer ごとのファイル数 + カバレッジを含む統合日本語サマリ
 - [ ] commit / push なし
 - [ ] child 失敗時に書き込み済みファイルの自動 rollback をしていない
