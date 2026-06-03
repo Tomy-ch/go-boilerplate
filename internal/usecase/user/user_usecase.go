@@ -40,10 +40,8 @@ type CreateParamsDTO struct {
 	MutableFields
 }
 
-// UpdateParamsDTO は、ユーザー全更新（PUT）に必要なパラメータを表します。全フィールド必須で password も更新します。
+// UpdateParamsDTO は、ユーザー全更新（PUT）に必要なパラメータを表します。全フィールド必須（password は別エンドポイントで変更）。
 type UpdateParamsDTO struct {
-	RawPassword string
-
 	MutableFields
 }
 
@@ -80,10 +78,12 @@ type Usecase interface {
 	CountUsers(ctx context.Context, active *bool) (int64, error)
 	// GetUser は、IDから単一ユーザーを取得します。
 	GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error)
-	// UpdateUser は、ユーザーを全更新します（パスワードも更新）。
+	// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
 	UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParamsDTO) (MutableFields, error)
 	// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
 	UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error)
+	// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。
+	ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error
 	// DeleteUser は、ユーザーを論理削除します。
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 }
@@ -242,16 +242,12 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParam
 	defer endSpan()
 
 	now := u.clock.Now()
-	rawPassword, err := user.NewRawPassword(dto.RawPassword)
-	if err != nil {
-		return MutableFields{}, err
-	}
 
 	var (
 		userEntity *user.User
 		pftDomain  *prefecture.Prefecture
 	)
-	err = u.txm.Do(ctx, func(ctx context.Context) error {
+	err := u.txm.Do(ctx, func(ctx context.Context) error {
 		var err error
 		userEntity, err = u.userRepo.FindByID(ctx, id)
 		if err != nil {
@@ -259,11 +255,6 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParam
 		}
 
 		pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
-		if err != nil {
-			return err
-		}
-
-		passwordHash, err := u.encrypter.Hash(rawPassword.Value())
 		if err != nil {
 			return err
 		}
@@ -283,10 +274,6 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParam
 			return err
 		}
 
-		if err = userEntity.ChangePassword(passwordHash, now); err != nil {
-			return err
-		}
-
 		return u.userRepo.Update(ctx, userEntity)
 	})
 	if err != nil {
@@ -294,6 +281,44 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateParam
 	}
 
 	return toMutableFields(userEntity, pftDomain.Name()), nil
+}
+
+// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更するユースケースです。
+func (u *usecase) ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	now := u.clock.Now()
+	rawNew, err := user.NewRawPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	return u.txm.Do(ctx, func(ctx context.Context) error {
+		userEntity, err := u.userRepo.FindByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		matched, err := u.encrypter.Compare(userEntity.PasswordHash(), currentPassword)
+		if err != nil {
+			return err
+		}
+		if !matched {
+			return user.ErrCurrentPasswordMismatch
+		}
+
+		newHash, err := u.encrypter.Hash(rawNew.Value())
+		if err != nil {
+			return err
+		}
+
+		if err = userEntity.ChangePassword(newHash, now); err != nil {
+			return err
+		}
+
+		return u.userRepo.Update(ctx, userEntity)
+	})
 }
 
 // UpdateUserPartially は、ユーザーを部分更新するユースケースです（PATCH）。

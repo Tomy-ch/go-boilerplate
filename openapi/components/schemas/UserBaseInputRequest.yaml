@@ -16,12 +16,6 @@ properties:
     type: string
     format: email
     example: "alice.smith@example.com"
-  password:
-    description: パスワード
-    type: string
-    format: password
-    minLength: 8
-    example: "P@ssw0rd!"
   phone:
     description: 電話番号
     type: string

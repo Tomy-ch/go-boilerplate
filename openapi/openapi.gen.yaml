@@ -387,6 +387,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/users/{user_id}/password:
+    put:
+      operationId: PutUsersPassword
+      tags:
+        - v1/users/detail
+      summary: ユーザーのパスワード変更
+      description: 指定されたUUIDに該当するユーザーのパスワードを変更します。現在のパスワードを照合し、一致した場合のみ更新します。
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPasswordPutRequest'
+      responses:
+        '204':
+          description: パスワードの変更に成功しました
+        '400':
+          description: リクエストが不正です。必要な情報が不足している場合に返されます。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 認証が必要、または現在のパスワードが一致しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: パスワードの変更には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 指定されたUUIDに該当するユーザーが存在しません。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/users/search:
     get:
       operationId: GetUsersSearch
@@ -682,12 +730,6 @@ components:
           type: string
           format: email
           example: alice.smith@example.com
-        password:
-          description: パスワード
-          type: string
-          format: password
-          minLength: 8
-          example: P@ssw0rd!
         phone:
           description: 電話番号
           type: string
@@ -940,9 +982,11 @@ components:
         - $ref: '#/components/schemas/UserBaseInputRequest'
         - properties:
             password:
-              type: string
               description: ユーザーのパスワード
-              example: password123
+              type: string
+              format: password
+              minLength: 8
+              example: P@ssw0rd!
           required:
             - firstName
             - lastName
@@ -966,13 +1010,31 @@ components:
             - firstName
             - lastName
             - email
-            - password
             - postalCode
             - phone
             - prefecture
             - city
             - street
             - building
+    UserPasswordPutRequest:
+      description: ユーザーのパスワード変更（現パスワード照合あり）
+      additionalProperties: false
+      properties:
+        currentPassword:
+          description: 現在のパスワード（照合用）
+          type: string
+          format: password
+          minLength: 8
+          example: P@ssw0rd!
+        newPassword:
+          description: 新しいパスワード
+          type: string
+          format: password
+          minLength: 8
+          example: N3wP@ssw0rd!
+      required:
+        - currentPassword
+        - newPassword
     UsersSearchResponseItem:
       description: 検索条件に基づいて取得したユーザー情報
       allOf:

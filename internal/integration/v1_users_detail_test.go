@@ -69,7 +69,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 		body := &detailgen.PutUsersDetailJSONRequestBody{
 			FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
 			Phone: "09000000000", PostalCode: "123-4567", Prefecture: "Tokyo",
-			City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"), Password: "secretpw",
+			City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
 		}
 
 		actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, nil)
@@ -99,6 +99,28 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 		require.Equal(t, http.StatusOK, actual.StatusCode)
 		// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
 		AssertJSONResponse(t, detailgen.UserResponse{}, actual)
+	})
+
+	t.Run("PUT /v1/users/{user_id}/password のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
+		t.Parallel()
+		e := echo.New()
+		ctrl := gomock.NewController(t)
+		tf := observability.NewNoopTracerFactory(t)
+
+		mockApp := mock_user.NewMockUsecase(ctrl)
+		mockApp.EXPECT().
+			ChangePassword(gomock.Any(), gomock.Any(), "current_password", "new_valid_password").
+			Return(nil)
+
+		detail.BindHandler(e, tf, mockApp)
+
+		body := &detailgen.PutUsersPasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
+			CurrentPassword: "current_password",
+			NewPassword:     "new_valid_password",
+		}
+
+		actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath+"/password", body, nil)
+		require.Equal(t, http.StatusNoContent, actual.StatusCode)
 	})
 
 	t.Run("DELETE /v1/users/{user_id} のエンドポイントが正常に動作することを確認する", func(t *testing.T) {

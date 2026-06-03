@@ -28,6 +28,9 @@ type ServerInterface interface {
 	// 単一ユーザーの更新
 	// (PUT /v1/users/{user_id})
 	PutUsersDetail(ctx echo.Context, userId UserIdParam) error
+	// ユーザーのパスワード変更
+	// (PUT /v1/users/{user_id}/password)
+	PutUsersPassword(ctx echo.Context, userId UserIdParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -99,6 +102,22 @@ func (w *ServerInterfaceWrapper) PutUsersDetail(ctx echo.Context) error {
 	return err
 }
 
+// PutUsersPassword converts echo context to params.
+func (w *ServerInterfaceWrapper) PutUsersPassword(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "user_id" -------------
+	var userId UserIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "user_id", ctx.Param("user_id"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PutUsersPassword(ctx, userId)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -150,6 +169,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/users/:user_id", wrapper.GetUsersDetail, options.OperationMiddlewares["GetUsersDetail"]...)
 	router.PATCH(options.BaseURL+"/v1/users/:user_id", wrapper.PatchUsersDetail, options.OperationMiddlewares["PatchUsersDetail"]...)
 	router.PUT(options.BaseURL+"/v1/users/:user_id", wrapper.PutUsersDetail, options.OperationMiddlewares["PutUsersDetail"]...)
+	router.PUT(options.BaseURL+"/v1/users/:user_id/password", wrapper.PutUsersPassword, options.OperationMiddlewares["PutUsersPassword"]...)
 
 }
 
@@ -517,6 +537,93 @@ func (response PutUsersDetail500JSONResponse) VisitPutUsersDetailResponse(w http
 	return err
 }
 
+type PutUsersPasswordRequestObject struct {
+	UserId UserIdParam `json:"user_id"`
+	Body   *PutUsersPasswordJSONRequestBody
+}
+
+type PutUsersPasswordResponseObject interface {
+	VisitPutUsersPasswordResponse(w http.ResponseWriter) error
+}
+
+type PutUsersPassword204Response struct {
+}
+
+func (response PutUsersPassword204Response) VisitPutUsersPasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type PutUsersPassword400JSONResponse ErrorResponse
+
+func (response PutUsersPassword400JSONResponse) VisitPutUsersPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutUsersPassword401JSONResponse ErrorResponse
+
+func (response PutUsersPassword401JSONResponse) VisitPutUsersPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutUsersPassword403JSONResponse ErrorResponse
+
+func (response PutUsersPassword403JSONResponse) VisitPutUsersPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutUsersPassword404JSONResponse ErrorResponse
+
+func (response PutUsersPassword404JSONResponse) VisitPutUsersPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PutUsersPassword500JSONResponse ErrorResponse
+
+func (response PutUsersPassword500JSONResponse) VisitPutUsersPasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// 単一ユーザーの削除
@@ -531,6 +638,9 @@ type StrictServerInterface interface {
 	// 単一ユーザーの更新
 	// (PUT /v1/users/{user_id})
 	PutUsersDetail(ctx context.Context, request PutUsersDetailRequestObject) (PutUsersDetailResponseObject, error)
+	// ユーザーのパスワード変更
+	// (PUT /v1/users/{user_id}/password)
+	PutUsersPassword(ctx context.Context, request PutUsersPasswordRequestObject) (PutUsersPasswordResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
@@ -651,6 +761,37 @@ func (sh *strictHandler) PutUsersDetail(ctx echo.Context, userId UserIdParam) er
 		return err
 	} else if validResponse, ok := response.(PutUsersDetailResponseObject); ok {
 		return validResponse.VisitPutUsersDetailResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PutUsersPassword operation middleware
+func (sh *strictHandler) PutUsersPassword(ctx echo.Context, userId UserIdParam) error {
+	var request PutUsersPasswordRequestObject
+
+	request.UserId = userId
+
+	var body PutUsersPasswordJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PutUsersPassword(ctx.Request().Context(), request.(PutUsersPasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PutUsersPassword")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PutUsersPasswordResponseObject); ok {
+		return validResponse.VisitPutUsersPasswordResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

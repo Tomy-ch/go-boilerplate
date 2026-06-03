@@ -26,4 +26,7 @@ var (
 
 	// ErrAlreadyDeleted は、既に論理削除済みのユーザーを再度削除しようとした場合のエラーです。
 	ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
+
+	// ErrCurrentPasswordMismatch は、パスワード変更時に現在のパスワードが一致しない場合のエラーです。
+	ErrCurrentPasswordMismatch = xerrors.Wrap(apperror.ErrUnauthenticated, "current password does not match")
 )

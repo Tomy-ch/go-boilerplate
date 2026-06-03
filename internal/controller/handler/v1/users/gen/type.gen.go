@@ -57,9 +57,6 @@ type UserBaseInputRequest struct {
 	// LastName 名前
 	LastName *string `json:"lastName,omitempty"`
 
-	// Password パスワード
-	Password *string `json:"password,omitempty"`
-
 	// Phone 電話番号
 	Phone *string `json:"phone,omitempty"`
 

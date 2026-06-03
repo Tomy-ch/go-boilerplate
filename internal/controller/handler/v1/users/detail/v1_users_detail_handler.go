@@ -51,7 +51,6 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 	id := conv.UUID(request.UserId)
 
 	dto := &user.UpdateParamsDTO{
-		RawPassword: request.Body.Password,
 		MutableFields: user.MutableFields{
 			FirstName:      request.Body.FirstName,
 			LastName:       request.Body.LastName,
@@ -98,6 +97,20 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 	}
 
 	return gen.PatchUsersDetail200JSONResponse(toUserResponse(res)), nil
+}
+
+// PutUsersPassword は、指定されたUUIDに該当するユーザーのパスワードを変更します（現パスワード照合あり）。
+func (s *server) PutUsersPassword(ctx context.Context, request gen.PutUsersPasswordRequestObject) (gen.PutUsersPasswordResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	id := conv.UUID(request.UserId)
+
+	if err := s.uc.ChangePassword(ctx, id, request.Body.CurrentPassword, request.Body.NewPassword); err != nil {
+		return nil, err
+	}
+
+	return gen.PutUsersPassword204Response{}, nil
 }
 
 // DeleteUsersDetail は、指定されたUUIDに該当するユーザーを論理削除します。

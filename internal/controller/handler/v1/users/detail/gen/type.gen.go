@@ -41,9 +41,6 @@ type UserBaseInputRequest struct {
 	// LastName 名前
 	LastName *string `json:"lastName,omitempty"`
 
-	// Password パスワード
-	Password *string `json:"password,omitempty"`
-
 	// Phone 電話番号
 	Phone *string `json:"phone,omitempty"`
 
@@ -55,6 +52,15 @@ type UserBaseInputRequest struct {
 
 	// Street 丁目・番地
 	Street *string `json:"street,omitempty"`
+}
+
+// UserPasswordPutRequest ユーザーのパスワード変更（現パスワード照合あり）
+type UserPasswordPutRequest struct {
+	// CurrentPassword 現在のパスワード（照合用）
+	CurrentPassword string `json:"currentPassword"`
+
+	// NewPassword 新しいパスワード
+	NewPassword string `json:"newPassword"`
 }
 
 // UserPatchRequest ユーザー情報の基本入力スキーマ
@@ -76,9 +82,6 @@ type UserPutRequest struct {
 
 	// LastName 名前
 	LastName string `json:"lastName"`
-
-	// Password パスワード
-	Password string `json:"password"`
 
 	// Phone 電話番号
 	Phone string `json:"phone"`
@@ -140,3 +143,6 @@ type PatchUsersDetailJSONRequestBody = UserPatchRequest
 
 // PutUsersDetailJSONRequestBody defines body for PutUsersDetail for application/json ContentType.
 type PutUsersDetailJSONRequestBody = UserPutRequest
+
+// PutUsersPasswordJSONRequestBody defines body for PutUsersPassword for application/json ContentType.
+type PutUsersPasswordJSONRequestBody = UserPasswordPutRequest

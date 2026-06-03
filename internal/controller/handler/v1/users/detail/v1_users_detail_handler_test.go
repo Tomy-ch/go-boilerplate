@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/handler/testkit/testuuid"
 	"go-boilerplate/internal/controller/handler/v1/users/detail/gen"
 	"go-boilerplate/internal/observability"
@@ -33,15 +32,23 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp)
 
-	expectedMethods := []string{
-		http.MethodGet,
-		http.MethodPut,
-		http.MethodPatch,
-		http.MethodDelete,
+	got := make(map[string]bool, len(e.Routes()))
+	for _, r := range e.Routes() {
+		got[r.Method+" "+r.Path] = true
 	}
 
-	testassert.AssertEchoRouterPath(t, targetPath, e.Routes())
-	testassert.AssertEchoRouterMethods(t, expectedMethods, e.Routes())
+	expected := []string{
+		http.MethodGet + " " + targetPath,
+		http.MethodPut + " " + targetPath,
+		http.MethodPatch + " " + targetPath,
+		http.MethodDelete + " " + targetPath,
+		http.MethodPut + " " + targetPath + "/password",
+	}
+
+	require.Len(t, e.Routes(), len(expected))
+	for _, route := range expected {
+		require.Contains(t, got, route)
+	}
 }
 
 func Test_server_GetUsersDetail(t *testing.T) {
@@ -94,7 +101,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 	body := &gen.PutUsersDetailJSONRequestBody{
 		FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
 		Phone: "09000000000", PostalCode: "123-4567", Prefecture: "Tokyo",
-		City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"), Password: "secretpw",
+		City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
 	}
 
 	t.Run("正常系_全更新が成功する場合_更新後のユーザーが返る", func(t *testing.T) {
@@ -203,6 +210,51 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrInternal)
+	})
+}
+
+func Test_server_PutUsersPassword(t *testing.T) {
+	t.Parallel()
+
+	body := &gen.PutUsersPasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
+		CurrentPassword: "current_password",
+		NewPassword:     "new_valid_password",
+	}
+
+	t.Run("正常系_パスワード変更が成功する場合_204が返る", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+		lt := observability.NewMockControllerLayerTracer(t)
+
+		mockApp := mock_user.NewMockUsecase(ctrl)
+		mockApp.EXPECT().
+			ChangePassword(gomock.Any(), gomock.Any(), "current_password", "new_valid_password").
+			Return(nil)
+
+		s := &server{tracer: lt, uc: mockApp}
+		resp, err := s.PutUsersPassword(ctx, gen.PutUsersPasswordRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+		require.NoError(t, err)
+
+		_, ok := resp.(gen.PutUsersPassword204Response)
+		require.True(t, ok)
+	})
+
+	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+		lt := observability.NewMockControllerLayerTracer(t)
+
+		mockApp := mock_user.NewMockUsecase(ctrl)
+		mockApp.EXPECT().
+			ChangePassword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(apperror.ErrUnauthenticated)
+
+		s := &server{tracer: lt, uc: mockApp}
+		resp, err := s.PutUsersPassword(ctx, gen.PutUsersPasswordRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+		require.Nil(t, resp)
+		require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 	})
 }
 
