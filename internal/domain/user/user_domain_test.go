@@ -963,14 +963,14 @@ func TestUser_UpdateProfile(t *testing.T) {
 		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 	})
 
-	t.Run("異常系_削除済みユーザーでupdatedAtがdeletedAtより後の場合_エラーを返す", func(t *testing.T) {
+	t.Run("異常系_論理削除済みユーザーは更新できない", func(t *testing.T) {
 		t.Parallel()
 		u, base := newValidUser(t)
 		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
 
 		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
 			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(2*time.Hour))
-		require.ErrorIs(t, err, ErrInvalidDeletedAt)
+		require.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 }
 
@@ -1002,6 +1002,15 @@ func TestUser_ChangePassword(t *testing.T) {
 
 		err := u.ChangePassword("new_hashed_password", base.Add(-time.Hour))
 		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+	})
+
+	t.Run("異常系_論理削除済みユーザーはパスワード変更できない", func(t *testing.T) {
+		t.Parallel()
+		u, base := newValidUser(t)
+		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+
+		err := u.ChangePassword("new_hashed_password", base.Add(2*time.Hour))
+		require.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 }
 

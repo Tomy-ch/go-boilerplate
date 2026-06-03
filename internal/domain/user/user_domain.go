@@ -142,6 +142,9 @@ func (u *User) UpdateProfile(
 	building *string,
 	updatedAt time.Time,
 ) error {
+	if err := u.ensureNotDeleted(); err != nil {
+		return err
+	}
 	if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
 		return err
 	}
@@ -164,6 +167,9 @@ func (u *User) UpdateProfile(
 
 // ChangePassword は、パスワードハッシュと更新日時を置き換えます。
 func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error {
+	if err := u.ensureNotDeleted(); err != nil {
+		return err
+	}
 	if err := validatePasswordHash(passwordHash); err != nil {
 		return err
 	}
@@ -179,8 +185,8 @@ func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error {
 // MarkAsDeleted は、ユーザーを論理削除します（deletedAt を設定）。
 // 既に削除済みの場合は ErrAlreadyDeleted を返します。
 func (u *User) MarkAsDeleted(deletedAt time.Time) error {
-	if u.deletedAt != nil {
-		return ErrAlreadyDeleted
+	if err := u.ensureNotDeleted(); err != nil {
+		return err
 	}
 	if deletedAt.Before(u.createdAt) {
 		return xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to createdAt")
@@ -195,13 +201,18 @@ func (u *User) MarkAsDeleted(deletedAt time.Time) error {
 	return nil
 }
 
-// ensureUpdatedAt は、更新日時が不変条件（createdAt 以降、かつ deletedAt 以前）を満たすか検証します。
+// ensureNotDeleted は、論理削除済みユーザーへの変更操作を拒否します（削除済みは不変）。
+func (u *User) ensureNotDeleted() error {
+	if u.deletedAt != nil {
+		return ErrAlreadyDeleted
+	}
+	return nil
+}
+
+// ensureUpdatedAt は、更新日時が createdAt 以降であることを検証します。
 func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 	if updatedAt.Before(u.createdAt) {
 		return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
-	}
-	if u.deletedAt != nil && u.deletedAt.Before(updatedAt) {
-		return xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to updatedAt")
 	}
 	return nil
 }
