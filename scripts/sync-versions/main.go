@@ -30,17 +30,29 @@ const (
 	filePerm fs.FileMode = 0o644
 	// fromRegexpGroups は FROM タグ書き換え regex が持つ capture group 数 + 1（全体マッチ含む）。
 	fromRegexpGroups = 3
-	// minServerGolangStages は docker/server/Dockerfile 内の `FROM golang:` 行の最低期待数。
-	minServerGolangStages = 2
+	// 各ファイル内に出現する image 参照の期待件数（drift 検出の下限）。
+	// 値は現実装の出現箇所数に合わせており、件数が下回ると abort する。
+	serverDockerfileGolangCount = 3
+	toolsDockerfileGolangCount  = 2
+	dockerReadmeGolangCount     = 3
+	serverReadmeGolangCount     = 2
 )
 
 var (
 	miseSectionRe = regexp.MustCompile(`^\[([^\]]+)\]`)
 	miseKeyRe     = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]+)"`)
 	goModRe       = regexp.MustCompile(`(?m)^go \d+(?:\.\d+){0,2}$`)
-	golangFromRe  = regexp.MustCompile(`(FROM\s+golang:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
-	nodeFromRe    = regexp.MustCompile(`(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
-	pythonFromRe  = regexp.MustCompile(`(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	// Dockerfile の `FROM ...` 行用。`(?m)^[^#]*?` で行頭にアンカーしつつ `#` で始まる
+	// コメント行を除外する（コメントアウトされた FROM 行を誤って書き換えないため）。
+	golangFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+golang:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	nodeFromRe   = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	pythonFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	// docker/**/README.md の Markdown テーブル内 image 参照用。バッククォートで括られた
+	// `golang:X.Y.Z-alpine` 等にマッチする。バッククォートを capture group に含めることで
+	// 置換時にも保持する。
+	golangImageRe = regexp.MustCompile("(`golang:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	nodeImageRe   = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	pythonImageRe = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 )
 
 // runtimeVersions は mise.toml [tools] から抽出した3ランタイムのバージョン文字列。
@@ -149,6 +161,31 @@ func printSource(v runtimeVersions) {
 	log.Printf("  python = %s", emptyAs(v.Python, "(unset)"))
 }
 
+// dockerfileRule は Dockerfile 内の `FROM <image>:X.Y.Z-<suffix>` 行に対する rule を構築する。
+func dockerfileRule(file, label string, re *regexp.Regexp, version string, count int) rule {
+	return rule{
+		label:         label,
+		file:          file,
+		re:            re,
+		version:       version,
+		replace:       fromReplacer(re, version),
+		expectedCount: count,
+	}
+}
+
+// readmeRule は docker/**/README.md 内のバッククォート括り `image:X.Y.Z-<suffix>` 参照に対する
+// rule を構築する。
+func readmeRule(file, label string, re *regexp.Regexp, version string, count int) rule {
+	return rule{
+		label:         label,
+		file:          file,
+		re:            re,
+		version:       version,
+		replace:       fromReplacer(re, version),
+		expectedCount: count,
+	}
+}
+
 func buildRules(v runtimeVersions) []rule {
 	return []rule{
 		{
@@ -159,38 +196,44 @@ func buildRules(v runtimeVersions) []rule {
 			replace:       func(string) string { return "go " + v.Go },
 			expectedCount: 1,
 		},
-		{
-			label:         "docker/server/Dockerfile (golang base)",
-			file:          "docker/server/Dockerfile",
-			re:            golangFromRe,
-			version:       v.Go,
-			replace:       fromReplacer(golangFromRe, v.Go),
-			expectedCount: minServerGolangStages,
-		},
-		{
-			label:         "docker/tools/Dockerfile (golang base)",
-			file:          "docker/tools/Dockerfile",
-			re:            golangFromRe,
-			version:       v.Go,
-			replace:       fromReplacer(golangFromRe, v.Go),
-			expectedCount: 1,
-		},
-		{
-			label:         "docker/tools/Dockerfile (node base)",
-			file:          "docker/tools/Dockerfile",
-			re:            nodeFromRe,
-			version:       v.Node,
-			replace:       fromReplacer(nodeFromRe, v.Node),
-			expectedCount: 1,
-		},
-		{
-			label:         "docker/tools/Dockerfile (python base)",
-			file:          "docker/tools/Dockerfile",
-			re:            pythonFromRe,
-			version:       v.Python,
-			replace:       fromReplacer(pythonFromRe, v.Python),
-			expectedCount: 1,
-		},
+		// Dockerfile 内 FROM 行
+		dockerfileRule("docker/server/Dockerfile",
+			"docker/server/Dockerfile (golang base)", golangFromRe, v.Go, serverDockerfileGolangCount),
+		dockerfileRule("docker/tools/Dockerfile",
+			"docker/tools/Dockerfile (golang base)", golangFromRe, v.Go, toolsDockerfileGolangCount),
+		dockerfileRule("docker/tools/Dockerfile",
+			"docker/tools/Dockerfile (node base)", nodeFromRe, v.Node, 1),
+		dockerfileRule("docker/tools/Dockerfile",
+			"docker/tools/Dockerfile (python base)", pythonFromRe, v.Python, 1),
+		// docker/**/README.md 内 image 参照（バッククォート括り）
+		readmeRule("docker/README.md",
+			"docker/README.md (golang image)", golangImageRe, v.Go, dockerReadmeGolangCount),
+		readmeRule("docker/README.md",
+			"docker/README.md (node image)", nodeImageRe, v.Node, 1),
+		readmeRule("docker/README.md",
+			"docker/README.md (python image)", pythonImageRe, v.Python, 1),
+		readmeRule("docker/README.ja.md",
+			"docker/README.ja.md (golang image)", golangImageRe, v.Go, dockerReadmeGolangCount),
+		readmeRule("docker/README.ja.md",
+			"docker/README.ja.md (node image)", nodeImageRe, v.Node, 1),
+		readmeRule("docker/README.ja.md",
+			"docker/README.ja.md (python image)", pythonImageRe, v.Python, 1),
+		readmeRule("docker/server/README.md",
+			"docker/server/README.md (golang image)", golangImageRe, v.Go, serverReadmeGolangCount),
+		readmeRule("docker/server/README.ja.md",
+			"docker/server/README.ja.md (golang image)", golangImageRe, v.Go, serverReadmeGolangCount),
+		readmeRule("docker/tools/README.md",
+			"docker/tools/README.md (golang image)", golangImageRe, v.Go, 1),
+		readmeRule("docker/tools/README.md",
+			"docker/tools/README.md (node image)", nodeImageRe, v.Node, 1),
+		readmeRule("docker/tools/README.md",
+			"docker/tools/README.md (python image)", pythonImageRe, v.Python, 1),
+		readmeRule("docker/tools/README.ja.md",
+			"docker/tools/README.ja.md (golang image)", golangImageRe, v.Go, 1),
+		readmeRule("docker/tools/README.ja.md",
+			"docker/tools/README.ja.md (node image)", nodeImageRe, v.Node, 1),
+		readmeRule("docker/tools/README.ja.md",
+			"docker/tools/README.ja.md (python image)", pythonImageRe, v.Python, 1),
 	}
 }
 
