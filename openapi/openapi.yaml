@@ -48,8 +48,8 @@ paths:
     $ref: './paths/v1/users.yaml'
   /v1/users/{user_id}:
     $ref: './paths/v1/users/user_id.yaml'
-  /v1/users/{user_id}/password:
-    $ref: './paths/v1/users/user_id/password.yaml'
+  /v1/users/me/password:
+    $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search/search.yaml'
   # デバッグ用のパス(サービスを作成する際には必ず削除してください)

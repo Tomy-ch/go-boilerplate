@@ -7,14 +7,20 @@ package detail
 import (
 	"context"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/detail/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
 )
+
+// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
+var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
@@ -97,18 +103,25 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 	return gen.PatchUsersDetail200JSONResponse(toUserResponse(res)), nil
 }
 
-// PutUsersPassword は、指定されたUUIDに該当するユーザーのパスワードを変更します（現パスワード照合あり）。
-func (s *server) PutUsersPassword(ctx context.Context, request gen.PutUsersPasswordRequestObject) (gen.PutUsersPasswordResponseObject, error) {
+// PutUsersMePassword は、認証ユーザー自身のパスワードを変更します（現パスワード照合あり）。
+func (s *server) PutUsersMePassword(ctx context.Context, request gen.PutUsersMePasswordRequestObject) (gen.PutUsersMePasswordResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	id := conv.UUID(request.UserId)
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+	id, err := authn.ID()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+	}
 
 	if err := s.uc.ChangePassword(ctx, id, request.Body.CurrentPassword, request.Body.NewPassword); err != nil {
 		return nil, err
 	}
 
-	return gen.PutUsersPassword204Response{}, nil
+	return gen.PutUsersMePassword204Response{}, nil
 }
 
 // DeleteUsersDetail は、指定されたUUIDに該当するユーザーを論理削除します。

@@ -148,11 +148,11 @@ type basicAuthContextKey string
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
 
+// PutUsersMePasswordJSONRequestBody defines body for PutUsersMePassword for application/json ContentType.
+type PutUsersMePasswordJSONRequestBody = UserPasswordPutRequest
+
 // PatchUsersDetailJSONRequestBody defines body for PatchUsersDetail for application/json ContentType.
 type PatchUsersDetailJSONRequestBody = UserPatchRequest
 
 // PutUsersDetailJSONRequestBody defines body for PutUsersDetail for application/json ContentType.
 type PutUsersDetailJSONRequestBody = UserPutRequest
-
-// PutUsersPasswordJSONRequestBody defines body for PutUsersPassword for application/json ContentType.
-type PutUsersPasswordJSONRequestBody = UserPasswordPutRequest

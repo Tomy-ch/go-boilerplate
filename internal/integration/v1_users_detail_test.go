@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
@@ -101,25 +102,27 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 		AssertJSONResponse(t, detailgen.UserResponse{}, actual)
 	})
 
-	t.Run("PUT /v1/users/{user_id}/password のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
+	t.Run("PUT /v1/users/me/password のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
 		t.Parallel()
 		e := echo.New()
 		ctrl := gomock.NewController(t)
 		tf := observability.NewNoopTracerFactory(t)
 
+		uid := uuid.NewTestFromSalt(t, "me-password")
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
-			ChangePassword(gomock.Any(), gomock.Any(), "current_password", "new_valid_password").
+			ChangePassword(gomock.Any(), uid, "current_password", "new_valid_password").
 			Return(nil)
 
 		detail.BindHandler(e, tf, mockApp)
+		headers := MakeAvailableUserID(t, e, uid)
 
-		body := &detailgen.PutUsersPasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
+		body := &detailgen.PutUsersMePasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
 			CurrentPassword: "current_password",
 			NewPassword:     "new_valid_password",
 		}
 
-		actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath+"/password", body, nil)
+		actual := StartServer(t, e).DoJSON(http.MethodPut, "/v1/users/me/password", body, headers)
 		require.Equal(t, http.StatusNoContent, actual.StatusCode)
 	})
 

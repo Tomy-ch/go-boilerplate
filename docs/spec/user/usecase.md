@@ -1,7 +1,7 @@
 # User — Usecase Spec
 
-> 既存実装（`internal/usecase/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete / PutUsersPassword）向けの GetUser / UpdateUser / UpdateUserPartially / ChangePassword / DeleteUser を追記したもの。
-> 追記分は scaffold の入力となる目標仕様。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一。プロフィール更新系（PUT / PATCH）は password を扱わず、パスワード変更は専用の ChangePassword（PUT /v1/users/{user_id}/password）で現パスワード照合のうえ行う。
+> 既存実装（`internal/usecase/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete / PutUsersMePassword）向けの GetUser / UpdateUser / UpdateUserPartially / ChangePassword / DeleteUser を追記したもの。
+> 追記分は scaffold の入力となる目標仕様。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一。プロフィール更新系（PUT / PATCH）は password を扱わず、パスワード変更は自己変更専用の ChangePassword（PUT /v1/users/me/password、認証トークンの本人に束縛し現パスワード照合のうえ行う）で実施する。
 > 論理削除済みユーザーは detail 系（GET / PUT / PATCH / DELETE）の対象外とし、`FindByID` / `Update` の SQL で `deleted_at IS NULL` をフィルタする。これにより削除済みへの取得・更新・再削除はすべて `NotFound`（404）に統一される（GET で削除済みを返したり、更新でエラー種別がぶれることを防ぐ）。
 
 ## Overview

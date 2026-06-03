@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/handler/testkit/testauth"
 	"go-boilerplate/internal/controller/handler/testkit/testuuid"
 	"go-boilerplate/internal/controller/handler/v1/users/detail/gen"
 	"go-boilerplate/internal/observability"
@@ -42,7 +43,7 @@ func TestBindHandler(t *testing.T) {
 		http.MethodPut + " " + targetPath,
 		http.MethodPatch + " " + targetPath,
 		http.MethodDelete + " " + targetPath,
-		http.MethodPut + " " + targetPath + "/password",
+		http.MethodPut + " /v1/users/me/password",
 	}
 
 	require.Len(t, e.Routes(), len(expected))
@@ -213,19 +214,20 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 	})
 }
 
-func Test_server_PutUsersPassword(t *testing.T) {
+func Test_server_PutUsersMePassword(t *testing.T) {
 	t.Parallel()
 
-	body := &gen.PutUsersPasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
+	const subject = "11111111-1111-1111-1111-111111111111"
+	body := &gen.PutUsersMePasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
 		CurrentPassword: "current_password",
 		NewPassword:     "new_valid_password",
 	}
 
-	t.Run("正常系_パスワード変更が成功する場合_204が返る", func(t *testing.T) {
+	t.Run("正常系_認証ユーザーのパスワード変更が成功する場合_204が返る", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
 		ctrl := gomock.NewController(t)
 		lt := observability.NewMockControllerLayerTracer(t)
+		ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
 
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
@@ -233,28 +235,51 @@ func Test_server_PutUsersPassword(t *testing.T) {
 			Return(nil)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PutUsersPassword(ctx, gen.PutUsersPasswordRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
 		require.NoError(t, err)
 
-		_, ok := resp.(gen.PutUsersPassword204Response)
+		_, ok := resp.(gen.PutUsersMePassword204Response)
 		require.True(t, ok)
+	})
+
+	t.Run("異常系_認証情報がない場合_エラーが返る", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		lt := observability.NewMockControllerLayerTracer(t)
+
+		s := &server{tracer: lt, uc: mock_user.NewMockUsecase(ctrl)}
+		resp, err := s.PutUsersMePassword(context.Background(), gen.PutUsersMePasswordRequestObject{Body: body})
+		require.Nil(t, resp)
+		require.ErrorIs(t, err, ErrUnauthenticatedUser)
+	})
+
+	t.Run("異常系_認証subjectが不正でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		lt := observability.NewMockControllerLayerTracer(t)
+		ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
+
+		s := &server{tracer: lt, uc: mock_user.NewMockUsecase(ctrl)}
+		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
+		require.Nil(t, resp)
+		require.Error(t, err)
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
 		ctrl := gomock.NewController(t)
 		lt := observability.NewMockControllerLayerTracer(t)
+		ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
 
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
 			ChangePassword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(apperror.ErrUnauthenticated)
+			Return(apperror.ErrValidation)
 
 		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PutUsersPassword(ctx, gen.PutUsersPasswordRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
 		require.Nil(t, resp)
-		require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		require.ErrorIs(t, err, apperror.ErrValidation)
 	})
 }
 
