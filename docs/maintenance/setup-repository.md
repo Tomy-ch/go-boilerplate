@@ -8,15 +8,36 @@ For details of Make commands, refer to [Make Target List](.makefiles/README.md).
 
 Install the tools required for VSCode development.
 
-Before running the commands below, install mise as described in
-[docs/maintenance/go-upgrade.md § 3. Update Local Go Environment](go-upgrade.md#3-update-local-go-environment).
-`make go-update` reads `mise.toml` and installs the pinned Go runtime.
+### 1.1. Install mise and activate it in your shell
 
-All other tool versions (golangci-lint / sqlc / oapi-codegen / mockgen / dlv / lefthook / ...) are pinned in [`mise.toml`](../../mise.toml) as the single source of truth. The Dockerfiles, the local installer (`.makefiles/go/installer.mk`), and the CI workflows all install only what they need via `mise install <tool>` against the same `mise.toml`.
+This project requires [mise](https://mise.jdx.dev) as the tool / runtime version manager. Install it via the [official installation guide](https://mise.jdx.dev/getting-started.html), then **activate it in your shell init** — this is mandatory, not optional. The repository's Make targets resolve `golangci-lint`, `lefthook`, etc. through mise's shims, and the shims are only on `PATH` after activation:
 
 ```sh
-make install-tools
-make activate-tools
+# zsh
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
+
+# bash
+echo 'eval "$(mise activate bash)"' >> ~/.bashrc
+
+# then reload (or open a new terminal)
+exec $SHELL
+```
+
+Verify activation with:
+
+```sh
+mise --version
+which mise
+```
+
+### 1.2. Install the Go runtime and project tools
+
+All tool versions (golangci-lint / sqlc / oapi-codegen / mockgen / dlv / lefthook / ...) are pinned in [`mise.toml`](../../mise.toml) as the single source of truth. The Dockerfiles, the local installer (`.makefiles/go/installer.mk`), and the CI workflows all install only what they need via `mise install <tool>` against the same `mise.toml`.
+
+```sh
+make go-update       # installs the pinned Go runtime
+make install-tools   # installs gopls / gotests / impl / dlv / lefthook / golangci-lint
+make activate-tools  # runs `lefthook install` to wire git hooks
 ```
 
 ## Phase 2: Local Startup Verification
