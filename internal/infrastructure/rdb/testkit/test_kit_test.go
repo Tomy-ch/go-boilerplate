@@ -15,19 +15,29 @@ import (
 func TestNewTestDB(t *testing.T) {
 	t.Parallel()
 	db := NewTestDB(t)
-	require.NotNil(t, db)
+	// 返る DB が生きている（接続可能）ことを検証する。
+	require.NoError(t, db.Ping(context.Background()))
 }
 
 func TestNewTestLoggingProvider(t *testing.T) {
 	t.Parallel()
 	provider := NewTestLoggingProvider(t)
-	require.NotNil(t, provider)
+	// provider が必要な依存を結線して返すことを検証する。
+	require.NotNil(t, provider.Logger())
+	require.NotNil(t, provider.LogFields())
+	require.NotNil(t, provider.DBConfig())
+	require.NotNil(t, provider.ObservabilityConfig())
+	require.NotNil(t, provider.LayerTracer())
+	require.NotNil(t, provider.NewLoggingDB(context.Background()))
 }
 
 func TestNewTestTransactionManager(t *testing.T) {
 	t.Parallel()
-	actual := NewTestTransactionManager(t)
-	require.NotNil(t, actual)
+	runner := NewTestTransactionManager(t)
+	// 公開 API 経由で WithinTx がコールバックを実行する（実トランザクションを開始しロールバックする）ことを検証する。
+	ran := false
+	runner.WithinTx(func(context.Context) { ran = true })
+	require.True(t, ran)
 }
 
 func Test_testTxManager_Do(t *testing.T) {
