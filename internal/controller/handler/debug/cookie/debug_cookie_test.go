@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,9 +36,9 @@ func TestBindHandler(t *testing.T) {
 
 	actualRoutes := e.Routes()
 	for _, r := range actualRoutes {
-		require.Contains(t, r.Path, expectedPathPrefix)
+		assert.Contains(t, r.Path, expectedPathPrefix)
 	}
-	require.Len(t, actualRoutes, len(expectedMethods))
+	assert.Len(t, actualRoutes, len(expectedMethods))
 
 	actualMethods := make([]string, len(actualRoutes))
 
@@ -45,9 +46,9 @@ func TestBindHandler(t *testing.T) {
 		actualMethods[i] = r.Method
 	}
 
-	require.Len(t, actualMethods, len(expectedMethods))
+	assert.Len(t, actualMethods, len(expectedMethods))
 	for _, method := range expectedMethods {
-		require.Contains(t, actualMethods, method)
+		assert.Contains(t, actualMethods, method)
 	}
 }
 
@@ -73,7 +74,7 @@ func Test_server_GetDebugCookie(t *testing.T) {
 			err := h.GetDebugCookie(c)
 			require.NoError(t, err)
 
-			require.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, http.StatusOK, rec.Code)
 
 			var actual gen.DebugCookieInspectResponse
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
@@ -105,14 +106,14 @@ func Test_server_GetDebugCookie(t *testing.T) {
 			err := h.GetDebugCookie(c)
 			require.NoError(t, err)
 
-			require.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, http.StatusOK, rec.Code)
 
 			var actual gen.DebugCookieInspectResponse
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
 
-			require.Equal(t, cookieVal, actual.RawCookieHeader)
-			require.Equal(t, cookieHostAccessTokenValue, actual.Cookies[cookieHostAccessTokenKey])
-			require.Equal(t, cookieThemeValue, actual.Cookies[cookieThemeKey])
+			assert.Equal(t, cookieVal, actual.RawCookieHeader)
+			assert.Equal(t, cookieHostAccessTokenValue, actual.Cookies[cookieHostAccessTokenKey])
+			assert.Equal(t, cookieThemeValue, actual.Cookies[cookieThemeKey])
 		})
 	})
 }
@@ -141,12 +142,12 @@ func Test_server_PostDebugCookie(t *testing.T) {
 			err := h.PostDebugCookie(c)
 			require.NoError(t, err)
 
-			require.Equal(t, http.StatusNoContent, rec.Code)
+			assert.Equal(t, http.StatusNoContent, rec.Code)
 
 			// Echo/httptest の場合、複数 Set-Cookie に備えて Values で確認する
 			cookies := rec.Header().Values("Set-Cookie")
-			require.Len(t, cookies, 1)
-			require.Equal(t, setCookie, cookies[0])
+			assert.Len(t, cookies, 1)
+			assert.Equal(t, setCookie, cookies[0])
 		})
 	})
 
@@ -191,11 +192,11 @@ func Test_server_DeleteDebugCookie(t *testing.T) {
 			err := h.DeleteDebugCookie(c, gen.DeleteDebugCookieParams{})
 			require.NoError(t, err)
 
-			require.Equal(t, http.StatusNoContent, rec.Code)
+			assert.Equal(t, http.StatusNoContent, rec.Code)
 
 			cookies := rec.Header().Values("Set-Cookie")
-			require.Len(t, cookies, 1)
-			require.Equal(t, "__Host-access_token=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT", cookies[0])
+			assert.Len(t, cookies, 1)
+			assert.Equal(t, "__Host-access_token=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT", cookies[0])
 		})
 
 		t.Run("name/path指定の場合は指定値で削除Cookieを返す", func(t *testing.T) {
@@ -217,11 +218,11 @@ func Test_server_DeleteDebugCookie(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			require.Equal(t, http.StatusNoContent, rec.Code)
+			assert.Equal(t, http.StatusNoContent, rec.Code)
 
 			cookies := rec.Header().Values("Set-Cookie")
-			require.Len(t, cookies, 1)
-			require.Equal(t, name+"=; Path="+p+"; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT", cookies[0])
+			assert.Len(t, cookies, 1)
+			assert.Equal(t, name+"=; Path="+p+"; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT", cookies[0])
 		})
 	})
 }
@@ -247,15 +248,15 @@ func Test_server_GetDebugCookieRawCopy(t *testing.T) {
 			err := h.GetDebugCookieRawCopy(c)
 			require.NoError(t, err)
 
-			require.Equal(t, http.StatusOK, rec.Code)
-			require.Equal(t, "text/plain; charset=utf-8", rec.Header().Get(echo.HeaderContentType))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "text/plain; charset=utf-8", rec.Header().Get(echo.HeaderContentType))
 
 			cookies := rec.Header().Values("Set-Cookie")
-			require.Len(t, cookies, 1)
-			require.Equal(t, rawSetCookieSample, cookies[0])
+			assert.Len(t, cookies, 1)
+			assert.Equal(t, rawSetCookieSample, cookies[0])
 
 			// ボディが書き込まれていること（先頭だけ確認）
-			require.True(t, strings.HasPrefix(rec.Body.String(), "hello-cookie\n"))
+			assert.True(t, strings.HasPrefix(rec.Body.String(), "hello-cookie\n"))
 		})
 	})
 }
@@ -281,12 +282,12 @@ func Test_server_GetDebugCookieRawStream(t *testing.T) {
 			err := h.GetDebugCookieRawStream(c)
 			require.NoError(t, err)
 
-			require.Equal(t, http.StatusOK, rec.Code)
-			require.Equal(t, "text/event-stream", rec.Header().Get(echo.HeaderContentType))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "text/event-stream", rec.Header().Get(echo.HeaderContentType))
 
 			cookies := rec.Header().Values("Set-Cookie")
-			require.Len(t, cookies, 1)
-			require.Equal(t, rawSetCookieSample, cookies[0])
+			assert.Len(t, cookies, 1)
+			assert.Equal(t, rawSetCookieSample, cookies[0])
 
 			// ボディが書き込まれていること（pingが3回）
 			body := rec.Body.String()
@@ -323,12 +324,12 @@ func Test_server_GetDebugCookieRawWs(t *testing.T) {
 			t.Cleanup(func() { _ = conn.Close() })
 
 			// Upgrade 成功（101）
-			require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
+			assert.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
 
 			// Set-Cookie が返っている（※ MW rewrite はこのテストでは通らない前提）
 			setCookies := resp.Header.Values("Set-Cookie")
 			require.NotEmpty(t, setCookies)
-			require.Contains(t, setCookies, rawSetCookieSample)
+			assert.Contains(t, setCookies, rawSetCookieSample)
 
 			// echo back 動作（送ったものが返る）
 			want := []byte("hello")
@@ -336,8 +337,8 @@ func Test_server_GetDebugCookieRawWs(t *testing.T) {
 
 			mt, got, err := conn.ReadMessage()
 			require.NoError(t, err)
-			require.Equal(t, websocket.TextMessage, mt)
-			require.Equal(t, want, got)
+			assert.Equal(t, websocket.TextMessage, mt)
+			assert.Equal(t, want, got)
 		})
 	})
 }

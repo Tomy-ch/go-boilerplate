@@ -3,6 +3,7 @@ package ptr
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +18,7 @@ func TestTo(t *testing.T) {
 			v := 42
 			actual := To(v)
 			require.NotNil(t, actual)
-			require.Equal(t, v, *actual)
+			assert.Equal(t, v, *actual)
 		})
 
 		t.Run("string型", func(t *testing.T) {
@@ -25,7 +26,7 @@ func TestTo(t *testing.T) {
 			v := "hello"
 			actual := To(v)
 			require.NotNil(t, actual)
-			require.Equal(t, v, *actual)
+			assert.Equal(t, v, *actual)
 		})
 
 		t.Run("bool型", func(t *testing.T) {
@@ -33,7 +34,7 @@ func TestTo(t *testing.T) {
 			v := true
 			actual := To(v)
 			require.NotNil(t, actual)
-			require.Equal(t, v, *actual)
+			assert.Equal(t, v, *actual)
 		})
 
 		t.Run("float64型", func(t *testing.T) {
@@ -49,7 +50,7 @@ func TestTo(t *testing.T) {
 			v := [3]int{1, 2, 3}
 			actual := To(v)
 			require.NotNil(t, actual)
-			require.Equal(t, v, *actual)
+			assert.Equal(t, v, *actual)
 		})
 
 		t.Run("struct型", func(t *testing.T) {
@@ -60,7 +61,7 @@ func TestTo(t *testing.T) {
 			v := example{Field: "test"}
 			actual := To(v)
 			require.NotNil(t, actual)
-			require.Equal(t, v, *actual)
+			assert.Equal(t, v, *actual)
 		})
 	})
 }
@@ -72,21 +73,21 @@ func TestDeref(t *testing.T) {
 		t.Parallel()
 		v := "value"
 		actual := Deref(&v, "fallback")
-		require.Equal(t, "value", actual)
+		assert.Equal(t, "value", actual)
 	})
 
 	t.Run("正常系_ポインタがnilの場合_fallbackを返す", func(t *testing.T) {
 		t.Parallel()
 		var v *string
 		actual := Deref(v, "fallback")
-		require.Equal(t, "fallback", actual)
+		assert.Equal(t, "fallback", actual)
 	})
 
 	t.Run("正常系_ゼロ値を指すポインタはfallbackではなくゼロ値を返す", func(t *testing.T) {
 		t.Parallel()
 		v := 0
 		actual := Deref(&v, 99)
-		require.Equal(t, 0, actual)
+		assert.Equal(t, 0, actual)
 	})
 }
 
@@ -103,7 +104,7 @@ func TestCopy(t *testing.T) {
 		v := &example{Field: "test"}
 		actual := Copy(v)
 		require.NotNil(t, actual)
-		require.Equal(t, *v, *actual)
+		assert.Equal(t, *v, *actual)
 
 		// ポインタが異なることを確認
 		require.NotSame(t, v, actual)

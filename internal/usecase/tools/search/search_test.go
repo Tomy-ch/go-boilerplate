@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/pkg/ptr"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,7 @@ func TestParseSearchTokens(t *testing.T) {
 			input := ptr.To("foo bar_baz  qux foo")
 			actual := ParseSearchTokens(input, 10)
 			expected := []string{"foo", "bar", "baz", "qux"}
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("maxTokensで切り詰められる", func(t *testing.T) {
@@ -28,7 +29,7 @@ func TestParseSearchTokens(t *testing.T) {
 			input := ptr.To("a b c d e")
 			actual := ParseSearchTokens(input, 3)
 			expected := []string{"a", "b", "c"}
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("maxTokensが0以下ならデフォルトが使われる", func(t *testing.T) {
@@ -39,8 +40,8 @@ func TestParseSearchTokens(t *testing.T) {
 			}
 			input := ptr.To(strings.Join(parts, " "))
 			actual := ParseSearchTokens(input, 0)
-			require.Len(t, actual, DefaultMaxTokens)
-			require.Equal(t, parts[:DefaultMaxTokens], actual)
+			assert.Len(t, actual, DefaultMaxTokens)
+			assert.Equal(t, parts[:DefaultMaxTokens], actual)
 		})
 
 		t.Run("空文字列は空配列を返す", func(t *testing.T) {
@@ -64,7 +65,7 @@ func TestParseSearchTokens(t *testing.T) {
 			input := ptr.To("foo__  _  bar")
 			actual := ParseSearchTokens(input, 10)
 			expected := []string{"foo", "bar"}
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("MaxKeywordLengthを超える場合は切り詰められる", func(t *testing.T) {
@@ -77,9 +78,9 @@ func TestParseSearchTokens(t *testing.T) {
 			actual := ParseSearchTokens(input, 10)
 
 			// 1トークンで、長さがMaxKeywordLengthに切り詰められていること
-			require.Len(t, actual, 1)
-			require.Len(t, actual[0], MaxKeywordLength)
-			require.Equal(t, strings.Repeat("a", MaxKeywordLength), actual[0])
+			assert.Len(t, actual, 1)
+			assert.Len(t, actual[0], MaxKeywordLength)
+			assert.Equal(t, strings.Repeat("a", MaxKeywordLength), actual[0])
 		})
 	})
 }
@@ -90,19 +91,19 @@ func TestSplitIntoTerms(t *testing.T) {
 	t.Run("アンダースコアで分割", func(t *testing.T) {
 		t.Parallel()
 		actual := splitIntoTerms("a_b_c")
-		require.Equal(t, []string{"a", "b", "c"}, actual)
+		assert.Equal(t, []string{"a", "b", "c"}, actual)
 	})
 
 	t.Run("空白で分割", func(t *testing.T) {
 		t.Parallel()
 		actual := splitIntoTerms("a b\tc\n d")
-		require.Equal(t, []string{"a", "b", "c", "d"}, actual)
+		assert.Equal(t, []string{"a", "b", "c", "d"}, actual)
 	})
 
 	t.Run("連続する区切り文字は無視される", func(t *testing.T) {
 		t.Parallel()
 		actual := splitIntoTerms("a__  _b")
-		require.Equal(t, []string{"a", "b"}, actual)
+		assert.Equal(t, []string{"a", "b"}, actual)
 	})
 }
 
@@ -113,7 +114,7 @@ func TestTrimAndDropEmpty(t *testing.T) {
 		t.Parallel()
 		in := []string{" a ", "", "  ", "b"}
 		actual := trimAndDropEmpty(in)
-		require.Equal(t, []string{"a", "b"}, actual)
+		assert.Equal(t, []string{"a", "b"}, actual)
 	})
 
 	t.Run("空入力は空出力", func(t *testing.T) {
@@ -130,14 +131,14 @@ func TestDedupePreserveOrder(t *testing.T) {
 		t.Parallel()
 		in := []string{"a", "b", "a", "c", "b"}
 		actual := dedupePreserveOrder(in)
-		require.Equal(t, []string{"a", "b", "c"}, actual)
+		assert.Equal(t, []string{"a", "b", "c"}, actual)
 	})
 
 	t.Run("重複なしはそのまま返る", func(t *testing.T) {
 		t.Parallel()
 		in := []string{"x", "y", "z"}
 		actual := dedupePreserveOrder(in)
-		require.Equal(t, in, actual)
+		assert.Equal(t, in, actual)
 	})
 }
 
@@ -148,13 +149,13 @@ func TestLimit(t *testing.T) {
 		t.Parallel()
 		in := []string{"a", "b"}
 		actual := limit(in, 5)
-		require.Equal(t, in, actual)
+		assert.Equal(t, in, actual)
 	})
 
 	t.Run("要素数が上限を超える", func(t *testing.T) {
 		t.Parallel()
 		in := []string{"a", "b", "c", "d"}
 		actual := limit(in, 2)
-		require.Equal(t, []string{"a", "b"}, actual)
+		assert.Equal(t, []string{"a", "b"}, actual)
 	})
 }

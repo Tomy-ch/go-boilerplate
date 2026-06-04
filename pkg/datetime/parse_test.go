@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +18,7 @@ func TestParseRFC3339(t *testing.T) {
 		got, err := ParseRFC3339(input)
 		require.NoError(t, err)
 
-		require.True(t, got.Equal(want))
+		assert.True(t, got.Equal(want))
 	})
 
 	t.Run("不正なフォーマット", func(t *testing.T) {
@@ -40,7 +41,7 @@ func TestParseRFC3339UTC(t *testing.T) {
 		got, err := ParseRFC3339UTC(input)
 		require.NoError(t, err)
 
-		require.True(t, got.Equal(want))
+		assert.True(t, got.Equal(want))
 	})
 	t.Run("不正なフォーマット", func(t *testing.T) {
 		t.Parallel()
@@ -62,7 +63,7 @@ func TestParseRFC3339Nano(t *testing.T) {
 		got, err := ParseRFC3339Nano(input)
 		require.NoError(t, err)
 
-		require.True(t, got.Equal(want))
+		assert.True(t, got.Equal(want))
 	})
 
 	t.Run("ナノ秒なしはエラーになる", func(t *testing.T) {
@@ -86,7 +87,7 @@ func TestParseISO8601(t *testing.T) {
 		got, err := ParseISO8601(input)
 		require.NoError(t, err)
 
-		require.True(t, got.Equal(want))
+		assert.True(t, got.Equal(want))
 	})
 
 	t.Run("自然文形式はエラーになる", func(t *testing.T) {
@@ -109,7 +110,7 @@ func TestParseDateTime(t *testing.T) {
 		got, err := ParseDateTime(input)
 		require.NoError(t, err)
 
-		require.True(t, got.Equal(want))
+		assert.True(t, got.Equal(want))
 	})
 
 	t.Run("日付のみはエラーになる", func(t *testing.T) {
@@ -132,7 +133,7 @@ func TestParseDateOnly(t *testing.T) {
 		got, err := ParseDateOnly(input)
 		require.NoError(t, err)
 
-		require.True(t, got.Equal(want))
+		assert.True(t, got.Equal(want))
 	})
 
 	t.Run("時刻付きはエラーになる", func(t *testing.T) {
@@ -157,7 +158,7 @@ func TestParseCustomLayout(t *testing.T) {
 		got, err := ParseCustomLayout(layout, input)
 		require.NoError(t, err)
 
-		require.True(t, got.Equal(want))
+		assert.True(t, got.Equal(want))
 	})
 
 	t.Run("カスタムレイアウトに合わない形式はエラー", func(t *testing.T) {

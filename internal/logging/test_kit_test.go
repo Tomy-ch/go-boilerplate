@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,5 +33,5 @@ func TestNewTestLogFieldBuilder(t *testing.T) {
 		obsCfg: obsCfg,
 		osCfg:  osCfg,
 	}
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -20,7 +20,7 @@ func Test_logger_CallerSkip(t *testing.T) {
 		log: log.WithOptions(zap.AddCallerSkip(skip)),
 	}
 	actual := baseLogger.CallerSkip(skip)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_logger_Named(t *testing.T) {
@@ -34,7 +34,7 @@ func Test_logger_Named(t *testing.T) {
 		log: log.Named(name),
 	}
 	actual := baseLogger.Named(name)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_logger_ConvertFields(t *testing.T) {
@@ -74,7 +74,7 @@ func Test_logger_ConvertFields(t *testing.T) {
 		zap.Any("key7", expectedAny),
 	}
 	actual := l.ConvertFields(fields)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_logger_Debug(t *testing.T) {
@@ -90,9 +90,9 @@ func Test_logger_Debug(t *testing.T) {
 	l.Debug("debug message", String("key", "value"))
 
 	out := buf.String()
-	require.Contains(t, out, "debug message")
-	require.Contains(t, out, "key")
-	require.Contains(t, out, "value")
+	assert.Contains(t, out, "debug message")
+	assert.Contains(t, out, "key")
+	assert.Contains(t, out, "value")
 }
 
 func Test_logger_Info(t *testing.T) {
@@ -108,9 +108,9 @@ func Test_logger_Info(t *testing.T) {
 	l.Info("info message", String("key", "value"))
 
 	out := buf.String()
-	require.Contains(t, out, "info message")
-	require.Contains(t, out, "key")
-	require.Contains(t, out, "value")
+	assert.Contains(t, out, "info message")
+	assert.Contains(t, out, "key")
+	assert.Contains(t, out, "value")
 }
 
 func Test_logger_Warn(t *testing.T) {
@@ -126,9 +126,9 @@ func Test_logger_Warn(t *testing.T) {
 	l.Warn("warn message", String("key", "value"))
 
 	out := buf.String()
-	require.Contains(t, out, "warn message")
-	require.Contains(t, out, "key")
-	require.Contains(t, out, "value")
+	assert.Contains(t, out, "warn message")
+	assert.Contains(t, out, "key")
+	assert.Contains(t, out, "value")
 }
 
 func Test_logger_Error(t *testing.T) {
@@ -144,7 +144,7 @@ func Test_logger_Error(t *testing.T) {
 	l.Error("error message", String("key", "value"))
 
 	out := buf.String()
-	require.Contains(t, out, "error message")
-	require.Contains(t, out, "key")
-	require.Contains(t, out, "value")
+	assert.Contains(t, out, "error message")
+	assert.Contains(t, out, "key")
+	assert.Contains(t, out, "value")
 }

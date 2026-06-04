@@ -17,6 +17,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -64,8 +65,8 @@ func Test_usecase_GetUser(t *testing.T) {
 		uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
 		got, err := uc.GetUser(ctx, id)
 		require.NoError(t, err)
-		require.Equal(t, "Tokyo", got.PrefectureName)
-		require.Equal(t, "john@example.com", got.Email)
+		assert.Equal(t, "Tokyo", got.PrefectureName)
+		assert.Equal(t, "john@example.com", got.Email)
 	})
 
 	t.Run("異常系_ユーザー取得でエラー", func(t *testing.T) {
@@ -128,8 +129,8 @@ func Test_usecase_UpdateUser(t *testing.T) {
 		uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
 		got, err := uc.UpdateUser(ctx, id, newUpdateDTO(prefName))
 		require.NoError(t, err)
-		require.Equal(t, "Jane", got.FirstName)
-		require.Equal(t, prefName, got.PrefectureName)
+		assert.Equal(t, "Jane", got.FirstName)
+		assert.Equal(t, prefName, got.PrefectureName)
 	})
 
 	t.Run("異常系_対象ユーザーが存在しない", func(t *testing.T) {
@@ -389,9 +390,9 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 		dto := &PatchParamsDTO{FirstName: ptr.To("Patched"), PrefectureName: ptr.To("Osaka"), Building: ptr.To("NewTower")}
 		got, err := uc.UpdateUserPartially(ctx, id, dto)
 		require.NoError(t, err)
-		require.Equal(t, "Patched", got.FirstName)
-		require.Equal(t, "Osaka", got.PrefectureName)
-		require.Equal(t, "NewTower", *got.Building)
+		assert.Equal(t, "Patched", got.FirstName)
+		assert.Equal(t, "Osaka", got.PrefectureName)
+		assert.Equal(t, "NewTower", *got.Building)
 	})
 
 	t.Run("正常系_都道府県指定なしは現在値を据え置く", func(t *testing.T) {
@@ -411,7 +412,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 		dto := &PatchParamsDTO{LastName: ptr.To("OnlyLast")}
 		got, err := uc.UpdateUserPartially(ctx, id, dto)
 		require.NoError(t, err)
-		require.Equal(t, "OnlyLast", got.LastName)
+		assert.Equal(t, "OnlyLast", got.LastName)
 	})
 
 	t.Run("異常系_対象ユーザーが存在しない", func(t *testing.T) {

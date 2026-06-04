@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/di/shutdowner"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
@@ -43,5 +44,5 @@ func Test_provideJobs_AnnotatesIntoJobsGroup(t *testing.T) {
 	require.NoError(t, app.Start(context.Background()))
 	defer func() { require.NoError(t, app.Stop(context.Background())) }()
 
-	require.Len(t, jobs, 2)
+	assert.Len(t, jobs, 2)
 }

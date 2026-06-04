@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +20,7 @@ func TestNewTestLocation(t *testing.T) {
 	require.NoError(t, err)
 
 	actual := NewTestLocation(t)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestEnsureRepoRootAndEnv_ChangesDirAndRestores(t *testing.T) {
@@ -56,7 +57,7 @@ func TestEnsureRepoRootAndEnv_ChangesDirAndRestores(t *testing.T) {
 		require.FileExists(t, filepath.Join(cwd, "go.mod"))
 
 		// ENV が設定されていること
-		require.Equal(t, TestingEnvValue, os.Getenv(envKey))
+		assert.Equal(t, TestingEnvValue, os.Getenv(envKey))
 	})
 
 	t.Run("go.mod が見つからない場合は cwd を変更せず ENV を設定する", func(t *testing.T) {
@@ -68,15 +69,15 @@ func TestEnsureRepoRootAndEnv_ChangesDirAndRestores(t *testing.T) {
 		cwd, inErr := os.Getwd()
 		require.NoError(t, inErr)
 		// go.mod が見つからないため cwd は変更されない
-		require.Equal(t, tmp, cwd)
+		assert.Equal(t, tmp, cwd)
 
 		// ただし ENV は設定される
-		require.Equal(t, TestingEnvValue, os.Getenv(envKey))
+		assert.Equal(t, TestingEnvValue, os.Getenv(envKey))
 	})
 
 	// 復元されていることを確認
 	cwdAfter, err := os.Getwd()
 	require.NoError(t, err)
-	require.Equal(t, orig, cwdAfter)
-	require.Equal(t, prevEnv, os.Getenv(envKey))
+	assert.Equal(t, orig, cwdAfter)
+	assert.Equal(t, prevEnv, os.Getenv(envKey))
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"go-boilerplate/internal/controller/ctxhelper"
+	"github.com/stretchr/testify/assert"
 
-	"github.com/stretchr/testify/require"
+	"go-boilerplate/internal/controller/ctxhelper"
 )
 
 func TestMakeAvailableAuthn(t *testing.T) {
@@ -17,6 +17,6 @@ func TestMakeAvailableAuthn(t *testing.T) {
 	authCtx := MakeAvailableAuthn(ctx, t, subject)
 
 	authn, ok := ctxhelper.GetAuthn(authCtx)
-	require.True(t, ok)
-	require.Equal(t, subject, authn.Subject())
+	assert.True(t, ok)
+	assert.Equal(t, subject, authn.Subject())
 }

@@ -10,6 +10,7 @@ import (
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
@@ -64,11 +65,11 @@ func TestRunJob(t *testing.T) {
 		// start は err を送ってチャンネルを閉じる
 		err := <-done
 		require.Error(t, err)
-		require.Equal(t, context.Canceled, err)
+		assert.Equal(t, context.Canceled, err)
 
 		// チャンネルが閉じられていることを検証
 		_, ok := <-done
-		require.False(t, ok)
+		assert.False(t, ok)
 
 		_ = stop(context.Background())
 	})
@@ -90,7 +91,7 @@ func TestRunJob(t *testing.T) {
 
 		err := stop(ctx)
 		require.Error(t, err)
-		require.Equal(t, context.Canceled, err)
+		assert.Equal(t, context.Canceled, err)
 	})
 
 	t.Run("start: 存在しないジョブ名で start すると runner の unknown job エラーが done チャンネルに流れることを期待する", func(t *testing.T) {
@@ -103,11 +104,11 @@ func TestRunJob(t *testing.T) {
 
 		err := <-done
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "unknown job: no-such-job")
+		assert.Contains(t, err.Error(), "unknown job: no-such-job")
 
 		// チャンネルが閉じられていることを検証
 		_, ok := <-done
-		require.False(t, ok)
+		assert.False(t, ok)
 
 		_ = stop(context.Background())
 	})

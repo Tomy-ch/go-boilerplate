@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,7 +32,7 @@ func TestNewBasicAuthValidator(t *testing.T) {
 
 		ok, err := validator(mtc.UserName(), mtc.Password(), c)
 		require.NoError(t, err)
-		require.True(t, ok)
+		assert.True(t, ok)
 	})
 
 	t.Run("invalid credentials", func(t *testing.T) {
@@ -44,7 +45,7 @@ func TestNewBasicAuthValidator(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		ok, err := validator("bad", "bad", c)
-		require.False(t, ok)
+		assert.False(t, ok)
 		require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 	})
 }

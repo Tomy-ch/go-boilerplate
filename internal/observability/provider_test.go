@@ -6,6 +6,7 @@ import (
 
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -29,10 +30,10 @@ func Test_TracerProvider(t *testing.T) {
 
 		require.NotNil(t, tp)
 		_, ok := tp.(*sdktrace.TracerProvider)
-		require.True(t, ok)
+		assert.True(t, ok)
 
 		gp := otel.GetTracerProvider()
-		require.Equal(t, tp, gp)
+		assert.Equal(t, tp, gp)
 
 		require.NotNil(t, shutdownFunc)
 		// 正常系: コンテキストが有効ならエラーは返らない

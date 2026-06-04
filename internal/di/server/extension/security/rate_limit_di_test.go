@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,6 +16,6 @@ func TestRateLimitMiddleware(t *testing.T) {
 	ipCfg := config.NewIPRateLimitConfig(cfg)
 
 	out := RateLimitMiddleware(nil, ipCfg)
-	require.Equal(t, rateLimitPriority, out.Middleware.Priority)
+	assert.Equal(t, rateLimitPriority, out.Middleware.Priority)
 	require.NotNil(t, out.Middleware.Middleware)
 }

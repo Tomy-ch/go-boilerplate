@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -39,7 +40,7 @@ func TestMiddleware_Integration(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	require.NotNil(t, rec)
-	require.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestTracerProvider(t *testing.T) {

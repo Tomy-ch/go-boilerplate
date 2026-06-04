@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -121,8 +122,8 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 		l := log{c: c, lf: lf, traceCtx: &observability.TraceContext{}}
 		fields := l.buildResponseLogFields(150 * time.Millisecond)
 
-		require.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
-		require.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
+		assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
+		assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
 	})
 
 	t.Run("スパンありはtrace/spanが含まれるレスポンスログフィールドセットを返す", func(t *testing.T) {
@@ -141,7 +142,7 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 		l := log{c: cWithSpan, lf: lf, traceCtx: tc}
 		fields := l.buildResponseLogFields(20 * time.Millisecond)
 
-		require.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
-		require.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
+		assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
+		assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
 	})
 }

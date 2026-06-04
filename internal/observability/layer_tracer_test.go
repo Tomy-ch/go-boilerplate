@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -16,8 +17,8 @@ func TestLayerTracer_makeSpanName(t *testing.T) {
 	t.Parallel()
 
 	lt := LayerTracer{layer: "usecase", pkgName: "mypkg", funcName: "Do"}
-	require.Equal(t, "usecase.mypkg.Do", lt.makeSpanName(""))
-	require.Equal(t, "usecase.mypkg.Do.Optional", lt.makeSpanName("Optional"))
+	assert.Equal(t, "usecase.mypkg.Do", lt.makeSpanName(""))
+	assert.Equal(t, "usecase.mypkg.Do.Optional", lt.makeSpanName("Optional"))
 }
 
 func Test_LayerTracer_Start(t *testing.T) {
@@ -142,7 +143,7 @@ func TestRunWithSpan(t *testing.T) {
 				return "ok", nil
 			})
 		require.NoError(t, err)
-		require.Equal(t, "ok", v)
+		assert.Equal(t, "ok", v)
 		require.NotNil(t, ctx)
 	})
 
@@ -186,13 +187,13 @@ func Test_makeSpanName(t *testing.T) {
 	t.Run("optionalName が空の場合", func(t *testing.T) {
 		t.Parallel()
 
-		require.Equal(t, expected, lt.makeSpanName(""))
+		assert.Equal(t, expected, lt.makeSpanName(""))
 	})
 
 	t.Run("optionalName が指定された場合", func(t *testing.T) {
 		t.Parallel()
 
-		require.Equal(t, expected+delimiter+optionalName, lt.makeSpanName(optionalName))
+		assert.Equal(t, expected+delimiter+optionalName, lt.makeSpanName(optionalName))
 	})
 }
 

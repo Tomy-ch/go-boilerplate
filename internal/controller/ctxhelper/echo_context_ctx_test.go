@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,8 +28,8 @@ func TestSetEchoContext(t *testing.T) {
 	val := ctx.Value(echocontextKey)
 	require.NotNil(t, val)
 	v, ok := val.(echo.Context)
-	require.True(t, ok)
-	require.Equal(t, c, v)
+	assert.True(t, ok)
+	assert.Equal(t, c, v)
 }
 
 func TestGetEchoContext(t *testing.T) {
@@ -45,16 +46,16 @@ func TestGetEchoContext(t *testing.T) {
 		ctx = SetEchoContext(ctx, c)
 
 		val, ok := GetEchoContext(ctx)
-		require.True(t, ok)
-		require.Equal(t, c, val)
+		assert.True(t, ok)
+		assert.Equal(t, c, val)
 	})
 
 	t.Run("standard context - no value", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		val, ok := GetEchoContext(ctx)
-		require.False(t, ok)
-		require.Equal(t, *new(echo.Context), val)
+		assert.False(t, ok)
+		assert.Equal(t, *new(echo.Context), val)
 	})
 }
 
@@ -77,8 +78,8 @@ func TestSetEchoContextToEcho(t *testing.T) {
 		SetEchoContextToEcho(c, c2)
 		val, ok := GetEchoContextFromEcho(c)
 
-		require.True(t, ok)
-		require.Equal(t, c2, val)
+		assert.True(t, ok)
+		assert.Equal(t, c2, val)
 	})
 
 	t.Run("echo context - no value", func(t *testing.T) {
@@ -90,7 +91,7 @@ func TestSetEchoContextToEcho(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		val, ok := GetEchoContextFromEcho(c)
-		require.False(t, ok)
-		require.Equal(t, *new(echo.Context), val)
+		assert.False(t, ok)
+		assert.Equal(t, *new(echo.Context), val)
 	})
 }

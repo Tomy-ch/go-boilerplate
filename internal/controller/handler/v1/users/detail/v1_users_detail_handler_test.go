@@ -16,6 +16,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -46,9 +47,9 @@ func TestBindHandler(t *testing.T) {
 		http.MethodPut + " /v1/users/me/password",
 	}
 
-	require.Len(t, e.Routes(), len(expected))
+	assert.Len(t, e.Routes(), len(expected))
 	for _, route := range expected {
-		require.Contains(t, got, route)
+		assert.Contains(t, got, route)
 	}
 }
 
@@ -74,10 +75,10 @@ func Test_server_GetUsersDetail(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.GetUsersDetail200JSONResponse)
-		require.True(t, ok)
-		require.Equal(t, expectedDTO.FirstName, actual.FirstName)
-		require.Equal(t, types.Email(expectedDTO.Email), actual.Email)
-		require.Equal(t, expectedDTO.PrefectureName, actual.Prefecture)
+		assert.True(t, ok)
+		assert.Equal(t, expectedDTO.FirstName, actual.FirstName)
+		assert.Equal(t, types.Email(expectedDTO.Email), actual.Email)
+		assert.Equal(t, expectedDTO.PrefectureName, actual.Prefecture)
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
@@ -122,8 +123,8 @@ func Test_server_PutUsersDetail(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.PutUsersDetail200JSONResponse)
-		require.True(t, ok)
-		require.Equal(t, expectedDTO.FirstName, actual.FirstName)
+		assert.True(t, ok)
+		assert.Equal(t, expectedDTO.FirstName, actual.FirstName)
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
@@ -169,8 +170,8 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.PatchUsersDetail200JSONResponse)
-		require.True(t, ok)
-		require.Equal(t, expectedDTO.FirstName, actual.FirstName)
+		assert.True(t, ok)
+		assert.Equal(t, expectedDTO.FirstName, actual.FirstName)
 	})
 
 	t.Run("正常系_Email未指定の場合も部分更新できる", func(t *testing.T) {
@@ -192,8 +193,8 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.PatchUsersDetail200JSONResponse)
-		require.True(t, ok)
-		require.Equal(t, "OnlyName", actual.FirstName)
+		assert.True(t, ok)
+		assert.Equal(t, "OnlyName", actual.FirstName)
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
@@ -239,7 +240,7 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 		require.NoError(t, err)
 
 		_, ok := resp.(gen.PutUsersMePassword204Response)
-		require.True(t, ok)
+		assert.True(t, ok)
 	})
 
 	t.Run("異常系_認証情報がない場合_エラーが返る", func(t *testing.T) {
@@ -300,7 +301,7 @@ func Test_server_DeleteUsersDetail(t *testing.T) {
 		require.NoError(t, err)
 
 		_, ok := resp.(gen.DeleteUsersDetail204Response)
-		require.True(t, ok)
+		assert.True(t, ok)
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {

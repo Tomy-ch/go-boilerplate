@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigTestingSetters(t *testing.T) {
@@ -14,66 +14,66 @@ func TestConfigTestingSetters(t *testing.T) {
 	t.Run("SetAppMode", func(t *testing.T) {
 		expected := "test-mode"
 		cfg.app.SetApplicationMode(t, expected)
-		require.Equal(t, expected, cfg.app.Mode())
+		assert.Equal(t, expected, cfg.app.Mode())
 	})
 
 	t.Run("SetAppEnv", func(t *testing.T) {
 		expected := "test-env"
 		cfg.app.SetApplicationEnv(t, expected)
-		require.Equal(t, expected, cfg.app.Env())
+		assert.Equal(t, expected, cfg.app.Env())
 	})
 
 	t.Run("SetServerPort", func(t *testing.T) {
 		expected := 8081
 		cfg.server.SetServerPort(t, expected)
-		require.Equal(t, expected, cfg.server.Port())
+		assert.Equal(t, expected, cfg.server.Port())
 	})
 
 	t.Run("SetObservabilityMaskedDBQueryArgs", func(t *testing.T) {
 		expected := true
 		cfg.observability.SetObservabilityMaskedDBQueryArgs(t, expected)
-		require.Equal(t, expected, cfg.observability.MaskedDBQueryArgs())
+		assert.Equal(t, expected, cfg.observability.MaskedDBQueryArgs())
 	})
 
 	t.Run("SetDatabaseHost", func(t *testing.T) {
 		expected := "test-host"
 		cfg.database.SetDatabaseHost(t, expected)
-		require.Equal(t, expected, cfg.database.Host())
+		assert.Equal(t, expected, cfg.database.Host())
 	})
 
 	t.Run("SetDatabaseName", func(t *testing.T) {
 		expected := "test-name"
 		cfg.database.SetDatabaseName(t, expected)
-		require.Equal(t, expected, cfg.database.DBName())
+		assert.Equal(t, expected, cfg.database.DBName())
 	})
 
 	t.Run("SetMaxConns", func(t *testing.T) {
 		expected := int32(20)
 		cfg.dbconnection.SetMaxConns(t, expected)
-		require.Equal(t, expected, cfg.dbconnection.MaxConns())
+		assert.Equal(t, expected, cfg.dbconnection.MaxConns())
 	})
 
 	t.Run("SetCIDR", func(t *testing.T) {
 		_, testCIDR, _ := net.ParseCIDR("192.168.1.0/24")
 		cfg.security.SetCIDR(t, testCIDR)
-		require.Equal(t, testCIDR, cfg.security.CIDR())
+		assert.Equal(t, testCIDR, cfg.security.CIDR())
 	})
 
 	t.Run("SetCleanupInterval", func(t *testing.T) {
 		expected := 10 * time.Millisecond
 		cfg.ipRateLimit.SetCleanupInterval(t, expected)
-		require.Equal(t, expected, cfg.ipRateLimit.CleanupInterval())
+		assert.Equal(t, expected, cfg.ipRateLimit.CleanupInterval())
 	})
 
 	t.Run("SetHeaderName", func(t *testing.T) {
 		expected := "X-TEST-AUTH"
 		cfg.auth.SetHeaderName(t, expected)
-		require.Equal(t, expected, cfg.auth.HeaderName())
+		assert.Equal(t, expected, cfg.auth.HeaderName())
 	})
 
 	t.Run("SetAllowedHeaderBearer", func(t *testing.T) {
 		expected := true
 		cfg.auth.SetAllowedHeaderBearer(t, expected)
-		require.Equal(t, expected, cfg.auth.AllowedHeaderBearer())
+		assert.Equal(t, expected, cfg.auth.AllowedHeaderBearer())
 	})
 }

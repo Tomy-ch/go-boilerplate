@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -37,7 +38,7 @@ func TestNewLoggingDBProvider(t *testing.T) {
 	}
 
 	provider := NewLoggingDBProvider(db, dbCfg, obsCfg, l, lf, tracer)
-	require.Equal(t, expected, provider)
+	assert.Equal(t, expected, provider)
 }
 
 func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
@@ -59,8 +60,8 @@ func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 
 	require.IsType(t, &dbWithLogging{}, loggingDB)
 	dwl := loggingDB.(*dbWithLogging)
-	require.Equal(t, ctx, dwl.ctx)
-	require.Equal(t, provider, dwl.provider)
+	assert.Equal(t, ctx, dwl.ctx)
+	assert.Equal(t, provider, dwl.provider)
 }
 
 func Test_provider_Logger(t *testing.T) {
@@ -75,7 +76,7 @@ func Test_provider_Logger(t *testing.T) {
 		l:  l,
 	}
 
-	require.Equal(t, l, provider.Logger())
+	assert.Equal(t, l, provider.Logger())
 }
 
 func Test_provider_LogFields(t *testing.T) {
@@ -90,7 +91,7 @@ func Test_provider_LogFields(t *testing.T) {
 		lf: lf,
 	}
 
-	require.Equal(t, lf, provider.LogFields())
+	assert.Equal(t, lf, provider.LogFields())
 }
 
 func Test_provider_DBConfig(t *testing.T) {
@@ -106,7 +107,7 @@ func Test_provider_DBConfig(t *testing.T) {
 		dbCfg: dbCfg,
 	}
 
-	require.Equal(t, dbCfg, provider.DBConfig())
+	assert.Equal(t, dbCfg, provider.DBConfig())
 }
 
 func Test_provider_LayerTracer(t *testing.T) {
@@ -120,5 +121,5 @@ func Test_provider_LayerTracer(t *testing.T) {
 		tracer: expectedTracer,
 	}
 
-	require.Equal(t, expectedTracer, provider.LayerTracer())
+	assert.Equal(t, expectedTracer, provider.LayerTracer())
 }

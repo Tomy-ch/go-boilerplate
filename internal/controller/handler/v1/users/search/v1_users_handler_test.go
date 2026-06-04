@@ -18,6 +18,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -153,9 +154,9 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			require.NoError(t, err)
 
 			actual, ok := resp.(gen.GetUsersSearch200JSONResponse)
-			require.True(t, ok)
+			assert.True(t, ok)
 
-			require.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
+			assert.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
 		})
 
 		t.Run("単一ユーザーが存在する場合、検索結果が返る", func(t *testing.T) {
@@ -215,9 +216,9 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			require.NoError(t, err)
 
 			actual, ok := resp.(gen.GetUsersSearch200JSONResponse)
-			require.True(t, ok)
+			assert.True(t, ok)
 
-			require.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
+			assert.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
 		})
 	})
 

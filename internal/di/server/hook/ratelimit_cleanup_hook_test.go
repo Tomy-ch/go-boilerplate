@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
@@ -86,7 +87,7 @@ func Test_newRateLimitCleanupHook(t *testing.T) {
 	}
 
 	actual := newRateLimitCleanupHook(rl, mockLogger, osCfg, ipCfg)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_rateLimitCleanupHook_Register(t *testing.T) {

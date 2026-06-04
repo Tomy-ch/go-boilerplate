@@ -9,6 +9,7 @@ import (
 
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +38,7 @@ func TestNewTestTransactionManager(t *testing.T) {
 	// 公開 API 経由で WithinTx がコールバックを実行する（実トランザクションを開始しロールバックする）ことを検証する。
 	ran := false
 	runner.WithinTx(func(context.Context) { ran = true })
-	require.True(t, ran)
+	assert.True(t, ran)
 }
 
 func Test_testTxManager_Do(t *testing.T) {

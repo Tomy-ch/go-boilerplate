@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
@@ -26,7 +26,7 @@ func TestShouldLogWithSpan(t *testing.T) {
 		defer func() { sp.End(); _ = tp.Shutdown(context.Background()) }()
 
 		got := ShouldLogWithSpan(ctx, obsCfg)
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("オブザーバビリティ有効だがスパン無し -> false", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestShouldLogWithSpan(t *testing.T) {
 
 		ctx := context.Background()
 		got := ShouldLogWithSpan(ctx, obsCfg)
-		require.False(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("オブザーバビリティ無効だがスパンあり -> false", func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestShouldLogWithSpan(t *testing.T) {
 		defer func() { sp.End(); _ = tp.Shutdown(context.Background()) }()
 
 		got := ShouldLogWithSpan(ctx, obsCfg)
-		require.False(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("オブザーバビリティ無効かつスパン無し -> false", func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestShouldLogWithSpan(t *testing.T) {
 		obsCfg := &config.ObservabilityConfig{}
 		ctx := context.Background()
 		got := ShouldLogWithSpan(ctx, obsCfg)
-		require.False(t, got)
+		assert.False(t, got)
 	})
 }
 
@@ -73,7 +73,7 @@ func TestBuildSpanName(t *testing.T) {
 
 	expected := "layer.mypkg.MyFunc"
 	actual := BuildSpanName(layer, pkgName, funcName)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestExtractTraceContext(t *testing.T) {
@@ -82,7 +82,7 @@ func TestExtractTraceContext(t *testing.T) {
 
 		ctx := context.Background()
 		actual := ExtractTraceContext(ctx)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("Contextにスパン情報がある場合、正しいTraceContextが返る", func(t *testing.T) {
@@ -90,14 +90,14 @@ func TestExtractTraceContext(t *testing.T) {
 		defer end()
 
 		span := trace.SpanFromContext(ctx).SpanContext()
-		require.True(t, span.IsValid())
+		assert.True(t, span.IsValid())
 
 		expected := &TraceContext{
 			traceID: span.TraceID().String(),
 			spanID:  span.SpanID().String(),
 		}
 		actual := ExtractTraceContext(ctx)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -123,11 +123,11 @@ func TestStartSpanWithParent(t *testing.T) {
 	defer end()
 
 	childSpan := trace.SpanFromContext(childCtx)
-	require.True(t, childSpan.SpanContext().IsValid())
+	assert.True(t, childSpan.SpanContext().IsValid())
 
-	require.Equal(t, parentSpan.SpanContext().TraceID().String(), tc.TraceID())
-	require.Equal(t, parentSpan.SpanContext().SpanID().String(), tc.ParentSpanID())
-	require.Equal(t, childSpan.SpanContext().SpanID().String(), tc.SpanID())
+	assert.Equal(t, parentSpan.SpanContext().TraceID().String(), tc.TraceID())
+	assert.Equal(t, parentSpan.SpanContext().SpanID().String(), tc.ParentSpanID())
+	assert.Equal(t, childSpan.SpanContext().SpanID().String(), tc.SpanID())
 }
 
 func TestTraceContext_IDs(t *testing.T) {
@@ -140,6 +140,6 @@ func TestTraceContext_IDs(t *testing.T) {
 		spanID:  spanID,
 	}
 
-	require.Equal(t, traceID, tc.TraceID())
-	require.Equal(t, spanID, tc.SpanID())
+	assert.Equal(t, traceID, tc.TraceID())
+	assert.Equal(t, spanID, tc.SpanID())
 }

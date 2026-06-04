@@ -11,6 +11,7 @@ import (
 	mock_ratelimit "go-boilerplate/internal/controller/httpstack/ratelimit/mock"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -40,8 +41,8 @@ func Test_Middleware(t *testing.T) {
 
 		err := h(c)
 		require.NoError(t, err)
-		require.True(t, called)
-		require.Equal(t, http.StatusOK, rec.Code)
+		assert.True(t, called)
+		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
 	t.Run("IPRateLimiterのEnabledがtrueの場合、次のハンドラがそのまま呼ばれる", func(t *testing.T) {
@@ -68,7 +69,7 @@ func Test_Middleware(t *testing.T) {
 			})
 			err := h(c)
 			require.NoError(t, err)
-			require.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, http.StatusOK, rec.Code)
 		})
 
 		t.Run("許可されるケースの場合、次のハンドラが呼ばれる", func(t *testing.T) {
@@ -89,7 +90,7 @@ func Test_Middleware(t *testing.T) {
 			})
 			err := h(c)
 			require.NoError(t, err)
-			require.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, http.StatusOK, rec.Code)
 		})
 
 		t.Run("拒否されるケースの場合、429が返される", func(t *testing.T) {
@@ -110,7 +111,7 @@ func Test_Middleware(t *testing.T) {
 			})
 			err := h(c)
 			require.ErrorIs(t, err, apperror.ErrTooManyRequests)
-			require.Equal(t, "1", rec.Header().Get("Retry-After"))
+			assert.Equal(t, "1", rec.Header().Get("Retry-After"))
 		})
 	})
 }

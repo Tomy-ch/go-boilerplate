@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
@@ -21,7 +22,7 @@ func TestNew(t *testing.T) {
 			},
 		}
 		actual := New()
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -37,8 +38,8 @@ func Test_authenticator_Authenticate(t *testing.T) {
 
 		authn, err := authenticator.Authenticate(ctx, cred)
 		require.NoError(t, err)
-		require.Equal(t, "some-subject", authn.Subject())
-		require.Equal(t, authbd.ProviderMock, authn.Provider())
+		assert.Equal(t, "some-subject", authn.Subject())
+		assert.Equal(t, authbd.ProviderMock, authn.Provider())
 	})
 
 	t.Run("トークン文字列が prefix を含まない場合はエラーになる", func(t *testing.T) {
@@ -67,7 +68,7 @@ func Test_authenticator_resolveSubject(t *testing.T) {
 		}
 
 		subject := authenticator.resolveSubject("debug:example-subject")
-		require.Equal(t, "example-subject", subject)
+		assert.Equal(t, "example-subject", subject)
 	})
 
 	t.Run("prefix を含まないトークン文字列の場合、空文字が返される", func(t *testing.T) {

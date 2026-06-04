@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -92,7 +93,7 @@ func TestNewConfig(t *testing.T) {
 			actual, err := New()
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -551,5 +552,5 @@ func Test_buildStatusCodeSet(t *testing.T) {
 	}
 
 	actual := buildStatusCodeSet(codes)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }

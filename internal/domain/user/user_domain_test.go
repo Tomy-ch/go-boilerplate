@@ -93,7 +93,7 @@ func TestNew(t *testing.T) {
 			)
 
 			assert.Nil(t, actual)
-			assert.ErrorIs(t, err, ErrInvalidID)
+			require.ErrorIs(t, err, ErrInvalidID)
 		})
 
 		t.Run("firstNameが範囲外の場合、エラーを返す", func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidFirstName)
+				require.ErrorIs(t, err, ErrInvalidFirstName)
 			})
 
 			t.Run("firstNameの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -140,7 +140,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidFirstName)
+				require.ErrorIs(t, err, ErrInvalidFirstName)
 			})
 		})
 
@@ -167,7 +167,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidLastName)
+				require.ErrorIs(t, err, ErrInvalidLastName)
 			})
 
 			t.Run("lastNameの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -190,7 +190,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidLastName)
+				require.ErrorIs(t, err, ErrInvalidLastName)
 			})
 		})
 		t.Run("passwordが範囲外の場合、エラーを返す", func(t *testing.T) {
@@ -216,7 +216,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidPasswordHash)
+				require.ErrorIs(t, err, ErrInvalidPasswordHash)
 			})
 
 			t.Run("passwordの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -239,7 +239,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidPasswordHash)
+				require.ErrorIs(t, err, ErrInvalidPasswordHash)
 			})
 		})
 
@@ -266,7 +266,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidEmail)
+				require.ErrorIs(t, err, ErrInvalidEmail)
 			})
 
 			t.Run("emailの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -289,7 +289,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidEmail)
+				require.ErrorIs(t, err, ErrInvalidEmail)
 			})
 		})
 
@@ -316,7 +316,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidPhone)
+				require.ErrorIs(t, err, ErrInvalidPhone)
 			})
 
 			t.Run("phoneの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -339,7 +339,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidPhone)
+				require.ErrorIs(t, err, ErrInvalidPhone)
 			})
 		})
 
@@ -366,7 +366,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidCity)
+				require.ErrorIs(t, err, ErrInvalidCity)
 			})
 
 			t.Run("cityの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -389,7 +389,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidCity)
+				require.ErrorIs(t, err, ErrInvalidCity)
 			})
 		})
 
@@ -416,7 +416,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidStreet)
+				require.ErrorIs(t, err, ErrInvalidStreet)
 			})
 
 			t.Run("streetの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -439,7 +439,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidStreet)
+				require.ErrorIs(t, err, ErrInvalidStreet)
 			})
 		})
 
@@ -466,7 +466,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidBuilding)
+				require.ErrorIs(t, err, ErrInvalidBuilding)
 			})
 
 			t.Run("buildingの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -489,7 +489,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidBuilding)
+				require.ErrorIs(t, err, ErrInvalidBuilding)
 			})
 		})
 
@@ -516,7 +516,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidPostalCode)
+				require.ErrorIs(t, err, ErrInvalidPostalCode)
 			})
 
 			t.Run("postalCodeの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -539,7 +539,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidPostalCode)
+				require.ErrorIs(t, err, ErrInvalidPostalCode)
 			})
 		})
 
@@ -563,7 +563,7 @@ func TestNew(t *testing.T) {
 			)
 
 			assert.Nil(t, actual)
-			assert.ErrorIs(t, err, ErrInvalidPrefectureID)
+			require.ErrorIs(t, err, ErrInvalidPrefectureID)
 		})
 
 		t.Run("updatedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {
@@ -586,7 +586,7 @@ func TestNew(t *testing.T) {
 			)
 
 			assert.Nil(t, actual)
-			assert.ErrorIs(t, err, ErrInvalidUpdatedAt)
+			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 		})
 
 		t.Run("deletedAtが不正な場合、エラーを返す", func(t *testing.T) {
@@ -612,7 +612,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidDeletedAt)
+				require.ErrorIs(t, err, ErrInvalidDeletedAt)
 			})
 
 			t.Run("deletedAtがupdatedAtより前の場合、エラーを返す", func(t *testing.T) {
@@ -635,7 +635,7 @@ func TestNew(t *testing.T) {
 				)
 
 				assert.Nil(t, actual)
-				assert.ErrorIs(t, err, ErrInvalidDeletedAt)
+				require.ErrorIs(t, err, ErrInvalidDeletedAt)
 			})
 		})
 	})
@@ -953,7 +953,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 		err := u.UpdateProfile("", "Smith", "jane@example.com", "0987654321",
 			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(time.Hour))
-		assert.ErrorIs(t, err, ErrInvalidFirstName)
+		require.ErrorIs(t, err, ErrInvalidFirstName)
 	})
 
 	t.Run("異常系_updatedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
@@ -962,7 +962,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
 			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(-time.Hour))
-		assert.ErrorIs(t, err, ErrInvalidUpdatedAt)
+		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 	})
 
 	t.Run("異常系_論理削除済みユーザーは更新できない", func(t *testing.T) {
@@ -972,7 +972,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
 			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(2*time.Hour))
-		assert.ErrorIs(t, err, ErrAlreadyDeleted)
+		require.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 }
 
@@ -995,7 +995,7 @@ func TestUser_ChangePassword(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.ChangePassword("", base.Add(time.Hour))
-		assert.ErrorIs(t, err, ErrInvalidPasswordHash)
+		require.ErrorIs(t, err, ErrInvalidPasswordHash)
 	})
 
 	t.Run("異常系_updatedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
@@ -1003,7 +1003,7 @@ func TestUser_ChangePassword(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.ChangePassword("new_hashed_password", base.Add(-time.Hour))
-		assert.ErrorIs(t, err, ErrInvalidUpdatedAt)
+		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 	})
 
 	t.Run("異常系_論理削除済みユーザーはパスワード変更できない", func(t *testing.T) {
@@ -1012,7 +1012,7 @@ func TestUser_ChangePassword(t *testing.T) {
 		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
 
 		err := u.ChangePassword("new_hashed_password", base.Add(2*time.Hour))
-		assert.ErrorIs(t, err, ErrAlreadyDeleted)
+		require.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 }
 
@@ -1038,7 +1038,7 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
 
 		err := u.MarkAsDeleted(base.Add(2 * time.Hour))
-		assert.ErrorIs(t, err, ErrAlreadyDeleted)
+		require.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 
 	t.Run("異常系_deletedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
@@ -1046,7 +1046,7 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.MarkAsDeleted(base.Add(-time.Hour))
-		assert.ErrorIs(t, err, ErrInvalidDeletedAt)
+		require.ErrorIs(t, err, ErrInvalidDeletedAt)
 	})
 
 	t.Run("異常系_deletedAtがupdatedAtより前の場合_エラーを返す", func(t *testing.T) {
@@ -1062,6 +1062,6 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		require.NoError(t, err)
 
 		err = u.MarkAsDeleted(base.Add(time.Hour))
-		assert.ErrorIs(t, err, ErrInvalidDeletedAt)
+		require.ErrorIs(t, err, ErrInvalidDeletedAt)
 	})
 }
