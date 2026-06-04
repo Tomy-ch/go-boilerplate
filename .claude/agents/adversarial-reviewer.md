@@ -37,7 +37,7 @@ The orchestrator gives you:
 
 Return findings in **Japanese** (per repo language rules). Use this structure per finding; if you find nothing real in your lens, say so explicitly rather than inventing issues.
 
-```
+```text
 ## <lens> レビュー結果
 
 ### [重大度] 短いタイトル
