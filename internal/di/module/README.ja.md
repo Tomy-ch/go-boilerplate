@@ -24,7 +24,7 @@
 
 |ディレクトリ|説明|詳細|
 |---|---|---|
-|`core/`|HTTP スタック共通コンポーネント（認証、レートリミット等）の DI モジュール群|[README](core/README.ja.md)|
+|`core/`|HTTP スタック共通コンポーネント（認証等）の DI モジュール群|[README](core/README.ja.md)|
 
 ## アーキテクチャ
 

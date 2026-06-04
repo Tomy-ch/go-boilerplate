@@ -10,7 +10,6 @@
 |---|---|---|---|
 |`RegisterHTTPServerHooks`|Echo サーバー起動|Graceful Shutdown|HTTP サーバーのライフサイクル管理|
 |`RegisterDBCloseHooks`|—|DB 接続クローズ|シャットダウン時に DB コネクションを安全に閉じる|
-|`RegisterRateLimitHooks`|クリーンアップ開始|クリーンアップ停止|IP レートリミッターの期限切れエントリを定期削除|
 
 ## フロー
 
@@ -18,17 +17,14 @@
 flowchart TB
     subgraph "Start フック"
         HTTP["Echo サーバー起動（goroutine）"]
-        RL["レートリミット Cleanup Ticker 開始"]
     end
 
     subgraph "Stop フック"
         Shutdown["e.Shutdown()"]
         DBClose["db.Close()"]
-        RLStop["Cleanup Ticker 停止"]
     end
 
     HTTP --> Shutdown
-    RL --> RLStop
     DBClose
 ```
 
@@ -46,21 +42,12 @@ HTTP サーバーの起動・停止を `lifecycle.Registrar` に登録します�
 
 - **Stop**: `db.Close()` を呼び出し、エラーがあればログに出力
 
-## RegisterRateLimitHooks
-
-IP レートリミッターの定期クリーンアップを管理します。
-
-- `ipCfg.Enabled()` が `false` の場合は何も登録しない
-- **Start**: `time.NewTicker(ipCfg.CleanupInterval())` でクリーンアップループを goroutine で開始
-- **Stop**: `stopCh` を close してループを安全に終了
-
 ## DI 登録例
 
 ```go
 fx.Invoke(
     hook.RegisterHTTPServerHooks,
     hook.RegisterDBCloseHooks,
-    hook.RegisterRateLimitHooks,
 )
 ```
 
@@ -68,4 +55,3 @@ fx.Invoke(
 
 - `RegisterHTTPServerHooks` は `AppliedServerExtends` トークンに依存するため、extension 適用後に実行される
 - HTTP サーバーは goroutine で起動するため、起動失敗はログに出力されるが Start フック自体はエラーを返さない
-- レートリミットのクリーンアップ間隔は `config.IPRateLimitConfig` で制御される

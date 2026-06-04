@@ -30,7 +30,7 @@ internal/controller/
 |`handler/`|HTTP リクエストを受け取り Usecase へ委譲するハンドラ|[README](handler/README.ja.md)|
 |`job/`|CLI から起動されるジョブのコントローラ|[README](job/README.ja.md)|
 |`server/`|Echo インスタンスの初期化と DI ライフサイクルへの統合|[README](server/README.ja.md)|
-|`httpstack/`|ミドルウェア群（CORS, セキュリティ, ログ, 認証, レートリミット等）|[README](httpstack/README.ja.md)|
+|`httpstack/`|ミドルウェア群（CORS, セキュリティ, ログ, 認証等）|[README](httpstack/README.ja.md)|
 |`error/response/`|統一的な HTTP エラーレスポンスの生成と apperror マッピング|[README](error/response/README.ja.md)|
 |`ctxhelper/`|Echo コンテキストへの値の設定・取得ヘルパー|[README](ctxhelper/README.ja.md)|
 

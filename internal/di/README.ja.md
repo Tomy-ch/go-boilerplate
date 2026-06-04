@@ -205,7 +205,6 @@ reg.RegisterStop(stopFunc)
 例
 
 - HTTP Server 起動
-- RateLimit Cleanup
 - Job Runner
 
 ### 外部フレームワークの隔離
