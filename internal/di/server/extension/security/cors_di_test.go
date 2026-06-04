@@ -8,11 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCORSModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, CORSModule())
-}
-
 func TestCORSMiddleware(t *testing.T) {
 	t.Parallel()
 

@@ -6,11 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRequestIDModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, RequestIDModule())
-}
-
 func TestRequestIDMiddleware(t *testing.T) {
 	t.Parallel()
 

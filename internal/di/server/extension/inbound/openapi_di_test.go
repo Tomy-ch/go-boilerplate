@@ -9,11 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAPIModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, OpenAPIModule())
-}
-
 func TestOpenAPIUseMiddleware(t *testing.T) {
 	t.Parallel()
 

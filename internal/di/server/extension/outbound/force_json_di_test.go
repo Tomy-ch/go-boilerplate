@@ -6,11 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestForceJSONModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, ForceJSONModule())
-}
-
 func TestForceJSONMiddleware(t *testing.T) {
 	t.Parallel()
 

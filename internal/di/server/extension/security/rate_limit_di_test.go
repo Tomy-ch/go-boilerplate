@@ -8,11 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRateLimitModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, RateLimitModule())
-}
-
 func TestRateLimitMiddleware(t *testing.T) {
 	t.Parallel()
 

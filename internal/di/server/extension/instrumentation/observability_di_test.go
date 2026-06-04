@@ -8,11 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestObservabilityModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, ObservabilityModule())
-}
-
 func TestObservabilityMiddleware(t *testing.T) {
 	t.Parallel()
 

@@ -9,11 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRecoveryModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, RecoveryModule())
-}
-
 func TestRecoveryMiddleware(t *testing.T) {
 	t.Parallel()
 

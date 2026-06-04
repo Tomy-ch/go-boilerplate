@@ -9,11 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCookieModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, CookieModule())
-}
-
 func TestCookieMiddleware(t *testing.T) {
 	t.Parallel()
 

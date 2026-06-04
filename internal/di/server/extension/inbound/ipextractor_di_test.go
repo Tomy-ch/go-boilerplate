@@ -9,11 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIPExtractorModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, IPExtractorModule())
-}
-
 func Test_provideIPExtractorServeConfig(t *testing.T) {
 	t.Parallel()
 

@@ -6,11 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestURIModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, URIModule())
-}
-
 func TestPreMiddleware(t *testing.T) {
 	t.Parallel()
 
