@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,20 +54,20 @@ func TestNew(t *testing.T) {
 			)
 
 			require.NoError(t, err)
-			require.Equal(t, id, actual.id)
-			require.Equal(t, firstName, actual.firstName)
-			require.Equal(t, lastName, actual.lastName)
-			require.Equal(t, passwordHash, actual.passwordHash)
-			require.Equal(t, email, actual.email)
-			require.Equal(t, phone, actual.phone)
-			require.Equal(t, prefectureID, actual.prefectureID)
-			require.Equal(t, city, actual.city)
-			require.Equal(t, street, actual.street)
-			require.Equal(t, *building, *actual.building)
-			require.Equal(t, postalCode, actual.postalCode)
-			require.Equal(t, createdAt, actual.createdAt)
-			require.Equal(t, updatedAt, actual.updatedAt)
-			require.Equal(t, *deletedAt, *actual.deletedAt)
+			assert.Equal(t, id, actual.id)
+			assert.Equal(t, firstName, actual.firstName)
+			assert.Equal(t, lastName, actual.lastName)
+			assert.Equal(t, passwordHash, actual.passwordHash)
+			assert.Equal(t, email, actual.email)
+			assert.Equal(t, phone, actual.phone)
+			assert.Equal(t, prefectureID, actual.prefectureID)
+			assert.Equal(t, city, actual.city)
+			assert.Equal(t, street, actual.street)
+			assert.Equal(t, *building, *actual.building)
+			assert.Equal(t, postalCode, actual.postalCode)
+			assert.Equal(t, createdAt, actual.createdAt)
+			assert.Equal(t, updatedAt, actual.updatedAt)
+			assert.Equal(t, *deletedAt, *actual.deletedAt)
 		})
 	})
 
@@ -91,8 +92,8 @@ func TestNew(t *testing.T) {
 				deletedAt,
 			)
 
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidID)
+			assert.Nil(t, actual)
+			assert.ErrorIs(t, err, ErrInvalidID)
 		})
 
 		t.Run("firstNameが範囲外の場合、エラーを返す", func(t *testing.T) {
@@ -116,8 +117,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidFirstName)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidFirstName)
 			})
 
 			t.Run("firstNameの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -138,8 +139,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidFirstName)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidFirstName)
 			})
 		})
 
@@ -165,8 +166,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidLastName)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidLastName)
 			})
 
 			t.Run("lastNameの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -188,8 +189,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidLastName)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidLastName)
 			})
 		})
 		t.Run("passwordが範囲外の場合、エラーを返す", func(t *testing.T) {
@@ -214,8 +215,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPasswordHash)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidPasswordHash)
 			})
 
 			t.Run("passwordの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -237,8 +238,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPasswordHash)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidPasswordHash)
 			})
 		})
 
@@ -264,8 +265,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidEmail)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidEmail)
 			})
 
 			t.Run("emailの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -287,8 +288,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidEmail)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidEmail)
 			})
 		})
 
@@ -314,8 +315,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPhone)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidPhone)
 			})
 
 			t.Run("phoneの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -337,8 +338,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPhone)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidPhone)
 			})
 		})
 
@@ -364,8 +365,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidCity)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidCity)
 			})
 
 			t.Run("cityの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -387,8 +388,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidCity)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidCity)
 			})
 		})
 
@@ -414,8 +415,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidStreet)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidStreet)
 			})
 
 			t.Run("streetの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -437,8 +438,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidStreet)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidStreet)
 			})
 		})
 
@@ -464,8 +465,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidBuilding)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidBuilding)
 			})
 
 			t.Run("buildingの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -487,8 +488,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidBuilding)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidBuilding)
 			})
 		})
 
@@ -514,8 +515,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPostalCode)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidPostalCode)
 			})
 
 			t.Run("postalCodeの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
@@ -537,8 +538,8 @@ func TestNew(t *testing.T) {
 					deletedAt,
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidPostalCode)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidPostalCode)
 			})
 		})
 
@@ -561,8 +562,8 @@ func TestNew(t *testing.T) {
 				deletedAt,
 			)
 
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidPrefectureID)
+			assert.Nil(t, actual)
+			assert.ErrorIs(t, err, ErrInvalidPrefectureID)
 		})
 
 		t.Run("updatedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {
@@ -584,8 +585,8 @@ func TestNew(t *testing.T) {
 				deletedAt,
 			)
 
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+			assert.Nil(t, actual)
+			assert.ErrorIs(t, err, ErrInvalidUpdatedAt)
 		})
 
 		t.Run("deletedAtが不正な場合、エラーを返す", func(t *testing.T) {
@@ -610,8 +611,8 @@ func TestNew(t *testing.T) {
 					ptr.To(createdAt.Add(-time.Minute)),
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidDeletedAt)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidDeletedAt)
 			})
 
 			t.Run("deletedAtがupdatedAtより前の場合、エラーを返す", func(t *testing.T) {
@@ -633,8 +634,8 @@ func TestNew(t *testing.T) {
 					ptr.To(updatedAt.Add(-time.Minute)),
 				)
 
-				require.Nil(t, actual)
-				require.ErrorIs(t, err, ErrInvalidDeletedAt)
+				assert.Nil(t, actual)
+				assert.ErrorIs(t, err, ErrInvalidDeletedAt)
 			})
 		})
 	})
@@ -682,7 +683,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.ID()
-		require.Equal(t, expected.id, actual)
+		assert.Equal(t, expected.id, actual)
 	})
 
 	t.Run("FirstNameメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -690,7 +691,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.FirstName()
-		require.Equal(t, expected.firstName, actual)
+		assert.Equal(t, expected.firstName, actual)
 	})
 
 	t.Run("LastNameメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -698,7 +699,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.LastName()
-		require.Equal(t, expected.lastName, actual)
+		assert.Equal(t, expected.lastName, actual)
 	})
 
 	t.Run("PasswordHashメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -706,7 +707,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.PasswordHash()
-		require.Equal(t, expected.passwordHash, actual)
+		assert.Equal(t, expected.passwordHash, actual)
 	})
 
 	t.Run("Emailメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -714,7 +715,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.Email()
-		require.Equal(t, expected.email, actual)
+		assert.Equal(t, expected.email, actual)
 	})
 
 	t.Run("Phoneメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -722,7 +723,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.Phone()
-		require.Equal(t, expected.phone, actual)
+		assert.Equal(t, expected.phone, actual)
 	})
 
 	t.Run("PrefectureIDメソッドが保存した文字列をuuid.UUIDに変換した値を返す", func(t *testing.T) {
@@ -730,7 +731,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.PrefectureID()
-		require.Equal(t, expected.prefectureID, actual)
+		assert.Equal(t, expected.prefectureID, actual)
 	})
 
 	t.Run("Cityメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -738,7 +739,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.City()
-		require.Equal(t, expected.city, actual)
+		assert.Equal(t, expected.city, actual)
 	})
 
 	t.Run("Streetメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -746,7 +747,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.Street()
-		require.Equal(t, expected.street, actual)
+		assert.Equal(t, expected.street, actual)
 	})
 
 	t.Run("Buildingメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -754,7 +755,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.Building()
-		require.Equal(t, expected.building, actual)
+		assert.Equal(t, expected.building, actual)
 	})
 
 	t.Run("PostalCodeメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -762,7 +763,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.PostalCode()
-		require.Equal(t, expected.postalCode, actual)
+		assert.Equal(t, expected.postalCode, actual)
 	})
 
 	t.Run("DeletedAtメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -770,7 +771,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.DeletedAt()
-		require.Equal(t, expected.deletedAt, actual)
+		assert.Equal(t, expected.deletedAt, actual)
 	})
 
 	t.Run("CreatedAtメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -778,7 +779,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.CreatedAt()
-		require.Equal(t, expected.createdAt, actual)
+		assert.Equal(t, expected.createdAt, actual)
 	})
 
 	t.Run("UpdatedAtメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -786,7 +787,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.UpdatedAt()
-		require.Equal(t, expected.updatedAt, actual)
+		assert.Equal(t, expected.updatedAt, actual)
 	})
 
 	t.Run("FullNameメソッドが保存した正しい値を返す", func(t *testing.T) {
@@ -794,7 +795,7 @@ func TestEntity_Accessors(t *testing.T) {
 
 		expected := expected
 		actual := expected.FullName()
-		require.Equal(t, expected.firstName+" "+expected.lastName, actual)
+		assert.Equal(t, expected.firstName+" "+expected.lastName, actual)
 	})
 }
 
@@ -816,8 +817,9 @@ func TestImmutableAccessors(t *testing.T) {
 	createdAt := baseTime
 	updatedAt := baseTime.Add(time.Hour)
 	deletedAt := ptr.To(updatedAt.Add(time.Minute))
+	// 共有ポインタ building / deletedAt を直接 mutate して不変性を検証するため、
+	// 同じポインタを読む deletedAt ブロックと並列実行すると -race で競合する。意図的に直列化する。
 	t.Run("buildingのポインタの場合", func(t *testing.T) {
-		t.Parallel()
 		user, err := New(
 			id,
 			firstName,
@@ -844,8 +846,8 @@ func TestImmutableAccessors(t *testing.T) {
 			// buildingの値を変更
 			*building = "Building B"
 
-			require.NotEqual(t, *building, *user.Building())
-			require.Equal(t, original, *user.Building())
+			assert.NotEqual(t, *building, *user.Building())
+			assert.Equal(t, original, *user.Building())
 		})
 
 		t.Run("Buildingメソッドの返り値のポインタを変更しても、ユーザーのbuildingが変更されていないことを確認する", func(t *testing.T) {
@@ -857,13 +859,13 @@ func TestImmutableAccessors(t *testing.T) {
 			actualBuilding := user.Building()
 			*actualBuilding = "Building B"
 
-			require.NotEqual(t, *actualBuilding, *user.Building())
-			require.Equal(t, original, *user.Building())
+			assert.NotEqual(t, *actualBuilding, *user.Building())
+			assert.Equal(t, original, *user.Building())
 		})
 	})
 
+	// building ブロックと同じ共有ポインタを mutate するため、同様に直列実行する。
 	t.Run("deletedAtのポインタの場合", func(t *testing.T) {
-		t.Parallel()
 		user, err := New(
 			id,
 			firstName,
@@ -890,8 +892,8 @@ func TestImmutableAccessors(t *testing.T) {
 			// deletedAtの値を変更
 			*deletedAt = time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-			require.NotEqual(t, *deletedAt, *user.DeletedAt())
-			require.Equal(t, original, *user.DeletedAt())
+			assert.NotEqual(t, *deletedAt, *user.DeletedAt())
+			assert.Equal(t, original, *user.DeletedAt())
 		})
 		t.Run("DeletedAtメソッドの返り値のポインタを変更しても、ユーザーのdeletedAtが変更されていないことを確認する", func(t *testing.T) {
 			t.Parallel()
@@ -902,8 +904,8 @@ func TestImmutableAccessors(t *testing.T) {
 			actualDeletedAt := user.DeletedAt()
 			*actualDeletedAt = time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-			require.NotEqual(t, *actualDeletedAt, *user.DeletedAt())
-			require.Equal(t, original, *user.DeletedAt())
+			assert.NotEqual(t, *actualDeletedAt, *user.DeletedAt())
+			assert.Equal(t, original, *user.DeletedAt())
 		})
 	})
 }
@@ -937,12 +939,12 @@ func TestUser_UpdateProfile(t *testing.T) {
 			newPrefID, "200-0002", "Minato", "4-5-6", ptr.To("Tower"), newUpdatedAt)
 		require.NoError(t, err)
 
-		require.Equal(t, "Jane", u.firstName)
-		require.Equal(t, "Smith", u.lastName)
-		require.Equal(t, "jane@example.com", u.email)
-		require.Equal(t, newPrefID, u.prefectureID)
-		require.Equal(t, "Minato", u.city)
-		require.Equal(t, newUpdatedAt, u.updatedAt)
+		assert.Equal(t, "Jane", u.firstName)
+		assert.Equal(t, "Smith", u.lastName)
+		assert.Equal(t, "jane@example.com", u.email)
+		assert.Equal(t, newPrefID, u.prefectureID)
+		assert.Equal(t, "Minato", u.city)
+		assert.Equal(t, newUpdatedAt, u.updatedAt)
 	})
 
 	t.Run("異常系_プロフィールフィールドが不正な場合_エラーを返す", func(t *testing.T) {
@@ -951,7 +953,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 		err := u.UpdateProfile("", "Smith", "jane@example.com", "0987654321",
 			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(time.Hour))
-		require.ErrorIs(t, err, ErrInvalidFirstName)
+		assert.ErrorIs(t, err, ErrInvalidFirstName)
 	})
 
 	t.Run("異常系_updatedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
@@ -960,7 +962,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
 			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(-time.Hour))
-		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+		assert.ErrorIs(t, err, ErrInvalidUpdatedAt)
 	})
 
 	t.Run("異常系_論理削除済みユーザーは更新できない", func(t *testing.T) {
@@ -970,7 +972,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
 			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(2*time.Hour))
-		require.ErrorIs(t, err, ErrAlreadyDeleted)
+		assert.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 }
 
@@ -984,8 +986,8 @@ func TestUser_ChangePassword(t *testing.T) {
 
 		err := u.ChangePassword("new_hashed_password", newUpdatedAt)
 		require.NoError(t, err)
-		require.Equal(t, "new_hashed_password", u.passwordHash)
-		require.Equal(t, newUpdatedAt, u.updatedAt)
+		assert.Equal(t, "new_hashed_password", u.passwordHash)
+		assert.Equal(t, newUpdatedAt, u.updatedAt)
 	})
 
 	t.Run("異常系_パスワードハッシュが不正な場合_エラーを返す", func(t *testing.T) {
@@ -993,7 +995,7 @@ func TestUser_ChangePassword(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.ChangePassword("", base.Add(time.Hour))
-		require.ErrorIs(t, err, ErrInvalidPasswordHash)
+		assert.ErrorIs(t, err, ErrInvalidPasswordHash)
 	})
 
 	t.Run("異常系_updatedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
@@ -1001,7 +1003,7 @@ func TestUser_ChangePassword(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.ChangePassword("new_hashed_password", base.Add(-time.Hour))
-		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+		assert.ErrorIs(t, err, ErrInvalidUpdatedAt)
 	})
 
 	t.Run("異常系_論理削除済みユーザーはパスワード変更できない", func(t *testing.T) {
@@ -1010,7 +1012,7 @@ func TestUser_ChangePassword(t *testing.T) {
 		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
 
 		err := u.ChangePassword("new_hashed_password", base.Add(2*time.Hour))
-		require.ErrorIs(t, err, ErrAlreadyDeleted)
+		assert.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 }
 
@@ -1025,9 +1027,9 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		err := u.MarkAsDeleted(deletedAt)
 		require.NoError(t, err)
 		require.NotNil(t, u.deletedAt)
-		require.Equal(t, deletedAt, *u.deletedAt)
+		assert.Equal(t, deletedAt, *u.deletedAt)
 		// 論理削除時に updatedAt も削除時刻へ追従する
-		require.Equal(t, deletedAt, u.updatedAt)
+		assert.Equal(t, deletedAt, u.updatedAt)
 	})
 
 	t.Run("異常系_既に削除済みの場合_ErrAlreadyDeletedを返す", func(t *testing.T) {
@@ -1036,7 +1038,7 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
 
 		err := u.MarkAsDeleted(base.Add(2 * time.Hour))
-		require.ErrorIs(t, err, ErrAlreadyDeleted)
+		assert.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 
 	t.Run("異常系_deletedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
@@ -1044,7 +1046,7 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.MarkAsDeleted(base.Add(-time.Hour))
-		require.ErrorIs(t, err, ErrInvalidDeletedAt)
+		assert.ErrorIs(t, err, ErrInvalidDeletedAt)
 	})
 
 	t.Run("異常系_deletedAtがupdatedAtより前の場合_エラーを返す", func(t *testing.T) {
@@ -1060,6 +1062,6 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 		require.NoError(t, err)
 
 		err = u.MarkAsDeleted(base.Add(time.Hour))
-		require.ErrorIs(t, err, ErrInvalidDeletedAt)
+		assert.ErrorIs(t, err, ErrInvalidDeletedAt)
 	})
 }
