@@ -104,19 +104,6 @@ var (
 	expectedAuthCookieName          = "auth_token"
 	expectedAuthHeaderName          = "Authorization"
 	expectedAuthAllowedHeaderBearer = true
-	// ip rate limit
-	expectedIPRateLimitEnabled              = true
-	expectedIPRateLimitRequests             = 100
-	expectedIPRateLimitPerCount             = 1
-	expectedIPRateLimitPer                  = time.Duration(expectedIPRateLimitPerCount) * time.Minute
-	expectedIPRateLimitPerStr               = fmt.Sprintf("%dm", expectedIPRateLimitPerCount)
-	expectedIPRateLimitBurst                = 20
-	expectedIPRateLimitTTLCount             = 60
-	expectedIPRateLimitTTLStr               = fmt.Sprintf("%ds", expectedIPRateLimitTTLCount)
-	expectedIPRateLimitTTL                  = time.Duration(expectedIPRateLimitTTLCount) * time.Second
-	expectedIPRateLimitCleanupIntervalCount = 120
-	expectedIPRateLimitCleanupIntervalStr   = fmt.Sprintf("%ds", expectedIPRateLimitCleanupIntervalCount)
-	expectedIPRateLimitCleanupInterval      = time.Duration(expectedIPRateLimitCleanupIntervalCount) * time.Second
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -189,14 +176,6 @@ func MockConfigForTest(t testing.TB) *Config {
 			cookieName:          expectedAuthCookieName,
 			headerName:          expectedAuthHeaderName,
 			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
-		},
-		ipRateLimit: IPRateLimitConfig{
-			enabled:         expectedIPRateLimitEnabled,
-			requests:        expectedIPRateLimitRequests,
-			per:             expectedIPRateLimitPer,
-			burst:           expectedIPRateLimitBurst,
-			ttl:             expectedIPRateLimitTTL,
-			cleanupInterval: expectedIPRateLimitCleanupInterval,
 		},
 	}
 }
@@ -271,19 +250,11 @@ func mockLoader(t testing.TB) Loader {
 			HeaderName:          expectedAuthHeaderName,
 			AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 		},
-		IPRateLimit: IPRateLimit{
-			Enabled:         expectedIPRateLimitEnabled,
-			Requests:        expectedIPRateLimitRequests,
-			Per:             expectedIPRateLimitPer,
-			Burst:           expectedIPRateLimitBurst,
-			TTL:             expectedIPRateLimitTTL,
-			CleanupInterval: expectedIPRateLimitCleanupInterval,
-		},
 	}
 }
 
 // setEnvVarsForTesting は、テスト用の環境変数を設定します。
-func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function is only used
+func setEnvVarsForTesting(t *testing.T) {
 	//  for testing and setting environment variables, so the complexity is acceptable.
 	t.Helper()
 	// OS
@@ -342,11 +313,4 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // safe: This function
 	t.Setenv("AUTH_COOKIE_NAME", expectedAuthCookieName)
 	t.Setenv("AUTH_HEADER_NAME", expectedAuthHeaderName)
 	t.Setenv("AUTH_ALLOWED_HEADER_BEARER", strconv.FormatBool(expectedAuthAllowedHeaderBearer))
-	// IPRateLimit
-	t.Setenv("IP_RATE_LIMITER_ENABLED", strconv.FormatBool(expectedIPRateLimitEnabled))
-	t.Setenv("IP_RATE_LIMITER_REQUESTS", strconv.Itoa(expectedIPRateLimitRequests))
-	t.Setenv("IP_RATE_LIMITER_PER", expectedIPRateLimitPerStr)
-	t.Setenv("IP_RATE_LIMITER_BURST", strconv.Itoa(expectedIPRateLimitBurst))
-	t.Setenv("IP_RATE_LIMITER_TTL", expectedIPRateLimitTTLStr)
-	t.Setenv("IP_RATE_LIMITER_CLEANUP_INTERVAL", expectedIPRateLimitCleanupIntervalStr)
 }

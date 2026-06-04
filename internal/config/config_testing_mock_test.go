@@ -79,14 +79,6 @@ func TestMockConfigForTest(t *testing.T) {
 			headerName:          expectedAuthHeaderName,
 			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 		},
-		ipRateLimit: IPRateLimitConfig{
-			enabled:         expectedIPRateLimitEnabled,
-			requests:        expectedIPRateLimitRequests,
-			per:             expectedIPRateLimitPer,
-			burst:           expectedIPRateLimitBurst,
-			ttl:             expectedIPRateLimitTTL,
-			cleanupInterval: expectedIPRateLimitCleanupInterval,
-		},
 	}
 
 	actual := MockConfigForTest(t)
@@ -162,14 +154,6 @@ func Test_mockLoader(t *testing.T) {
 			HeaderName:          expectedAuthHeaderName,
 			AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 		},
-		IPRateLimit: IPRateLimit{
-			Enabled:         expectedIPRateLimitEnabled,
-			Requests:        expectedIPRateLimitRequests,
-			Per:             expectedIPRateLimitPer,
-			Burst:           expectedIPRateLimitBurst,
-			TTL:             expectedIPRateLimitTTL,
-			CleanupInterval: expectedIPRateLimitCleanupInterval,
-		},
 	}
 
 	actual := mockLoader(t)
@@ -177,7 +161,7 @@ func Test_mockLoader(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func Test_setEnv(t *testing.T) { //nolint:funlen // safe: This function is only used
+func Test_setEnv(t *testing.T) {
 	//  for testing and setting environment variables, so the complexity is acceptable.
 	setEnvVarsForTesting(t)
 	// OS
@@ -235,11 +219,4 @@ func Test_setEnv(t *testing.T) { //nolint:funlen // safe: This function is only 
 	assert.Equal(t, expectedAuthCookieName, os.Getenv("AUTH_COOKIE_NAME"))
 	assert.Equal(t, expectedAuthHeaderName, os.Getenv("AUTH_HEADER_NAME"))
 	assert.Equal(t, strconv.FormatBool(expectedAuthAllowedHeaderBearer), os.Getenv("AUTH_ALLOWED_HEADER_BEARER"))
-	// IPRateLimit
-	assert.Equal(t, strconv.FormatBool(expectedIPRateLimitEnabled), os.Getenv("IP_RATE_LIMITER_ENABLED"))
-	assert.Equal(t, strconv.Itoa(expectedIPRateLimitRequests), os.Getenv("IP_RATE_LIMITER_REQUESTS"))
-	assert.Equal(t, expectedIPRateLimitPerStr, os.Getenv("IP_RATE_LIMITER_PER"))
-	assert.Equal(t, strconv.Itoa(expectedIPRateLimitBurst), os.Getenv("IP_RATE_LIMITER_BURST"))
-	assert.Equal(t, expectedIPRateLimitTTLStr, os.Getenv("IP_RATE_LIMITER_TTL"))
-	assert.Equal(t, expectedIPRateLimitCleanupIntervalStr, os.Getenv("IP_RATE_LIMITER_CLEANUP_INTERVAL"))
 }

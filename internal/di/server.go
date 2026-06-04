@@ -33,7 +33,6 @@ func applicationCoreOptions() []fx.Option {
 		// Config Module
 		module.ConfigModule(),
 		// Core Module
-		core.IPRateLimiterModule(),
 		core.ValidatorModule(),
 		core.SecurityCookieModule(),
 		core.AuthnModule(),
