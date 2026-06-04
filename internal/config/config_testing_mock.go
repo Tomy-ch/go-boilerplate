@@ -255,7 +255,6 @@ func mockLoader(t testing.TB) Loader {
 
 // setEnvVarsForTesting は、テスト用の環境変数を設定します。
 func setEnvVarsForTesting(t *testing.T) {
-	//  for testing and setting environment variables, so the complexity is acceptable.
 	t.Helper()
 	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
