@@ -201,6 +201,26 @@ PR を更新しました: <url>
 追加コミット数: N
 ```
 
+## Step 8. Post-PR Review (confirm)
+
+After the PR URL is reported, **always ask the user whether to run a review** — do not skip this, and do not auto-run a review. Use `AskUserQuestion`:
+
+- Question: 「PR を作成/更新しました。コードレビューを実行しますか？」
+- Options (offer the ones that apply):
+  - 「`/local-review` を実行」 — local diff, different-model adversarial review (strong on auth / IDOR / DI / SQL / shared-schema gaps that mocked tests miss)
+  - 「`/code-review <PR#>` を実行」 — PR-based review (can post inline comments with `--comment`)
+  - 「ultrareview を案内」 — cloud multi-agent review; **user-triggered and billed**, so the skill cannot launch it — only surface the command for the user to run
+  - 「レビューしない」
+
+### Depth by change type
+
+Scale the recommended depth to what changed (if a full Go / JS source review is 10):
+
+- **Behavior-affecting code** (`internal/**`, `pkg/**` `.go`, SQL, OpenAPI) → full depth (10); recommend a review by default.
+- **Docs / tooling-dominant changes** (`docs/**`, `*.md`, `.claude/**`, `AGENTS.md`, CI config — no production behavior change) → shallower is acceptable (~7–8/10). Still ask, but note the lower ROI so the user can decide quickly.
+
+Judge the dominant nature of the diff (changed file paths / commit prefixes) to pick the default recommendation, but the user's choice always wins.
+
 ## Constraints
 
 - ❌ Push to protected branches (`production` / `develop` / `staging` / `release/*`)
@@ -227,4 +247,5 @@ Before reporting completion, confirm:
 - [ ] (推奨) push 前に `/local-review` の実行を確認した（非ブロッキング）
 - [ ] User confirmation was obtained before the push (mandatory for update path per `CLAUDE.md`)
 - [ ] PR URL was reported to the user
+- [ ] (必須) PR 作成/更新後にレビュー実行可否を確認した（深さは変更種別でスケール）
 - [ ] No `--force` was used
