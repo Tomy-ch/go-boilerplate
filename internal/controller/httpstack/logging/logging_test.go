@@ -103,16 +103,21 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	e := echo.New()
-	ctx := context.Background()
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/resp", nil)
-	req.RemoteAddr = "5.6.7.8:9000"
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	// 各サブテストは並列実行されるため、共有の echo.Context を使うと Response() の
+	// ステータス/ヘッダ書き込みが競合する。サブテストごとに専用の Context を生成する。
+	newContext := func() echo.Context {
+		e := echo.New()
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/resp", nil)
+		req.RemoteAddr = "5.6.7.8:9000"
+		rec := httptest.NewRecorder()
+		return e.NewContext(req, rec)
+	}
 
 	t.Run("スパンなしはtrace/spanは含まれないレスポンスログフィールドセットを返す", func(t *testing.T) {
 		t.Parallel()
 
+		c := newContext()
 		expectedStatus := http.StatusCreated
 		expectedRequestID := "req-123"
 
@@ -129,6 +134,7 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 	t.Run("スパンありはtrace/spanが含まれるレスポンスログフィールドセットを返す", func(t *testing.T) {
 		t.Parallel()
 
+		c := newContext()
 		expectedStatus := http.StatusAccepted
 		expectedRequestID := "req-accepted"
 
