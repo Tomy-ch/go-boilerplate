@@ -593,14 +593,16 @@ Example:
 
 ### 4. Assertion Rules
 
-- Use `require` for preconditions and fatal checks.
-- Use `assert` for value verification.
+- Use `require` for preconditions, fatal checks, and **all error assertions** (`NoError` / `Error` / `ErrorIs` / `ErrorContains`). The `testifylint` `require-error` rule enforces this, so `assert.ErrorIs` etc. fail lint.
+- Use `assert` for terminal value verification (`Equal` / `Len` / `Contains` / `True` / `False` / `Empty` など) that does not guard subsequent code, so a single run surfaces all mismatches at once. Keep `require` for a check that guards later code (e.g. `require.NotNil` before dereferencing).
+- Generated test files must follow this convention via their generator template (e.g. `scripts/genctxkey`), never by hand-editing the generated output.
 
 Example:
 
 ```go
-    require.NoError(t, err)
-    assert.Equal(t, expected, actual)
+    require.NoError(t, err)            // 前提（失敗で以降無意味）
+    require.ErrorIs(t, err, ErrX)      // エラー系は require（testifylint require-error）
+    assert.Equal(t, expected, actual)  // 終端の値検証は assert
 ```
 
 ### 5. Coverage Requirement
