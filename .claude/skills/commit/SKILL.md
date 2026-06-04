@@ -1,4 +1,5 @@
 ---
+name: commit
 description: Analyze the current working-tree changes (staged + unstaged), group them into appropriately-scoped commits with the project's prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert), and execute each commit in Japanese after user approval. Commits are made with `git commit --no-verify` to skip lefthook during the split; after all commits succeed, the command runs the lefthook-defined commands directly plus `make fix` as a final verification gate (lefthook itself is bypassed because it skips checks when nothing is staged). Respects CLAUDE.md's git rules (no direct commits to protected branches, no force-push, no auto-push after PR amend, Co-Authored-By footer, HEREDOC commit messages).
 argument-hint: [--dry-run] [--scope=staged|all]
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git reset:*), Bash(make fix:*), Bash(make lint:*), Bash(make test:*), Bash(make sql-lint:*), Bash(make check-migration-up-version:*), Bash(make check-migration-down-version:*), Bash(make check-migration-up-gap:*), Bash(make check-migration-down-gap:*), Read, AskUserQuestion
@@ -168,7 +169,7 @@ git commit --no-verify -m "$(cat <<'EOF'
 
 <Optional body: what changed and why>
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -178,7 +179,7 @@ EOF
 - **Title**: `<Prefix>: <Japanese title>`, aim for 50 characters or fewer.
 - **Body**: Optional. If present, leave one blank line after the title and wrap around 72 characters. Prefer "why" over "what".
 - **Language**: Japanese (per the output rule in `CLAUDE.md`).
-- **`Co-Authored-By` footer**: Required. Use `Claude Opus 4.7 (1M context) <noreply@anthropic.com>`.
+- **`Co-Authored-By` footer**: Required. Use `Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
 - **HEREDOC**: Required (keeps the title + blank line + body + footer layout intact).
 - **`--no-verify`**: Required for every commit produced by this command. This is an explicit, command-scoped carve-out from the project-wide rule; the rationale is documented in Step 4 (lefthook is run once manually before push, not N times during the split).
 - **Never use `-a`, `git add -A`, or `git add .`.** Always stage files by name (avoids sweeping in `.env` or credentials).
