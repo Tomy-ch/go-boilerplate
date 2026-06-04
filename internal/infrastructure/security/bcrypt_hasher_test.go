@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,7 @@ func TestBcryptHasher_Hash(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEmpty(t, hash)
-	require.NotEqual(t, "password", hash)
+	assert.NotEqual(t, "password", hash)
 }
 
 func TestBcryptHasher_Compare(t *testing.T) {
@@ -39,7 +40,7 @@ func TestBcryptHasher_Compare(t *testing.T) {
 	ok, err := hasher.Compare(hash, password)
 
 	require.NoError(t, err)
-	require.True(t, ok)
+	assert.True(t, ok)
 }
 
 func TestBcryptHasher_Compare_Mismatch(t *testing.T) {
@@ -56,5 +57,5 @@ func TestBcryptHasher_Compare_Mismatch(t *testing.T) {
 	ok, err := hasher.Compare(hash, "wrong-password")
 
 	require.NoError(t, err)
-	require.False(t, ok)
+	assert.False(t, ok)
 }

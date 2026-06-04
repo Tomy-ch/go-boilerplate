@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +23,7 @@ func TestNew(t *testing.T) {
 		db:     loggingDB,
 	}
 	actual := New(loggingDB, tf)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestFindByName(t *testing.T) {
@@ -60,7 +61,7 @@ func TestFindByName(t *testing.T) {
 
 				actual, err := repo.FindByName(ctx, expectedName)
 				require.NoError(t, err)
-				require.Equal(t, expected, actual)
+				assert.Equal(t, expected, actual)
 			})
 		})
 	})
@@ -102,7 +103,7 @@ func TestFindByID(t *testing.T) {
 				require.NoError(t, err)
 				actual, err := repo.FindByID(ctx, expectedID)
 				require.NoError(t, err)
-				require.Equal(t, expected, actual)
+				assert.Equal(t, expected, actual)
 			})
 		})
 	})
@@ -162,7 +163,7 @@ func TestFindByIDs(t *testing.T) {
 
 				actual, err := repo.FindByIDs(ctx, ids)
 				require.NoError(t, err)
-				require.Equal(t, expected, actual)
+				assert.Equal(t, expected, actual)
 			})
 		})
 	})

@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,7 +33,7 @@ func Test_repository_FindByID(t *testing.T) {
 		txm.WithinTx(func(ctx context.Context) {
 			got, err := repo.FindByID(ctx, seededID)
 			require.NoError(t, err)
-			require.Equal(t, seededID, got.ID())
+			assert.Equal(t, seededID, got.ID())
 		})
 	})
 
@@ -74,7 +75,7 @@ func Test_repository_Update(t *testing.T) {
 
 			got, err := repo.FindByID(ctx, firstID)
 			require.NoError(t, err)
-			require.Equal(t, "UpdatedFirst", got.FirstName())
+			assert.Equal(t, "UpdatedFirst", got.FirstName())
 		})
 	})
 

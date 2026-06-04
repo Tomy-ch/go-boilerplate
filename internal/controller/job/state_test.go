@@ -3,6 +3,7 @@ package job
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,9 +36,9 @@ func TestState(t *testing.T) {
 
 		// Snapshotは同じ値を返すことを確認する
 		gotName, gotArgs, gotDone := s.Snapshot()
-		require.Equal(t, name, gotName)
-		require.Equal(t, args, gotArgs)
-		require.Equal(t, doneCh, gotDone)
+		assert.Equal(t, name, gotName)
+		assert.Equal(t, args, gotArgs)
+		assert.Equal(t, doneCh, gotDone)
 
 		// チャネルが使用可能であることを確認する
 		select {

@@ -3,6 +3,7 @@ package cookie
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,40 +13,40 @@ func Test_parseSetCookie(t *testing.T) {
 	t.Run("空文字は失敗する", func(t *testing.T) {
 		t.Parallel()
 		_, _, _, ok := parseSetCookie("")
-		require.False(t, ok)
+		assert.False(t, ok)
 	})
 
 	t.Run("イコール無しは失敗する", func(t *testing.T) {
 		t.Parallel()
 		_, _, _, ok := parseSetCookie("NoEquals")
-		require.False(t, ok)
+		assert.False(t, ok)
 	})
 
 	t.Run("通常のCookieを解析できる", func(t *testing.T) {
 		t.Parallel()
 		raw := "sessionid=abc123; HttpOnly; Path=/; Domain=example.com; SameSite=Strict; Max-Age=3600"
 		name, value, attrs, ok := parseSetCookie(raw)
-		require.True(t, ok)
-		require.Equal(t, "sessionid", name)
-		require.Equal(t, "abc123", value)
+		assert.True(t, ok)
+		assert.Equal(t, "sessionid", name)
+		assert.Equal(t, "abc123", value)
 		require.NotNil(t, attrs)
-		require.Equal(t, []string{"httponly", "path", "domain", "samesite", "max-age"}, attrs.order)
+		assert.Equal(t, []string{"httponly", "path", "domain", "samesite", "max-age"}, attrs.order)
 		require.Empty(t, attrs.kv["httponly"])
-		require.Equal(t, "/", attrs.kv["path"])
-		require.Equal(t, "example.com", attrs.kv["domain"])
-		require.Equal(t, "Strict", attrs.kv["samesite"])
-		require.Equal(t, "3600", attrs.kv["max-age"])
+		assert.Equal(t, "/", attrs.kv["path"])
+		assert.Equal(t, "example.com", attrs.kv["domain"])
+		assert.Equal(t, "Strict", attrs.kv["samesite"])
+		assert.Equal(t, "3600", attrs.kv["max-age"])
 	})
 
 	t.Run("重複属性は最後の値が反映される", func(t *testing.T) {
 		t.Parallel()
 		raw := "id=1; Path=/first; Path=/second; Secure"
 		name, value, attrs, ok := parseSetCookie(raw)
-		require.True(t, ok)
-		require.Equal(t, "id", name)
-		require.Equal(t, "1", value)
-		require.Equal(t, []string{"path", "secure"}, attrs.order)
-		require.Equal(t, "/second", attrs.kv["path"])
+		assert.True(t, ok)
+		assert.Equal(t, "id", name)
+		assert.Equal(t, "1", value)
+		assert.Equal(t, []string{"path", "secure"}, attrs.order)
+		assert.Equal(t, "/second", attrs.kv["path"])
 		require.Empty(t, attrs.kv["secure"])
 	})
 
@@ -53,11 +54,11 @@ func Test_parseSetCookie(t *testing.T) {
 		t.Parallel()
 		raw := "id=1;  ; Path=/; HttpOnly"
 		name, value, attrs, ok := parseSetCookie(raw)
-		require.True(t, ok)
-		require.Equal(t, "id", name)
-		require.Equal(t, "1", value)
-		require.Equal(t, []string{"path", "httponly"}, attrs.order)
-		require.Equal(t, "/", attrs.kv["path"])
+		assert.True(t, ok)
+		assert.Equal(t, "id", name)
+		assert.Equal(t, "1", value)
+		assert.Equal(t, []string{"path", "httponly"}, attrs.order)
+		assert.Equal(t, "/", attrs.kv["path"])
 		require.Empty(t, attrs.kv["httponly"])
 	})
 }
@@ -68,25 +69,25 @@ func Test_splitAttr(t *testing.T) {
 	t.Run("等号なしはフラグ扱い", func(t *testing.T) {
 		t.Parallel()
 		k, v, isKV := splitAttr("HttpOnly")
-		require.Equal(t, "HttpOnly", k)
+		assert.Equal(t, "HttpOnly", k)
 		require.Empty(t, v)
-		require.False(t, isKV)
+		assert.False(t, isKV)
 	})
 
 	t.Run("等号ありは分割される", func(t *testing.T) {
 		t.Parallel()
 		k, v, isKV := splitAttr("Key=Value")
-		require.Equal(t, "Key", k)
-		require.Equal(t, "Value", v)
-		require.True(t, isKV)
+		assert.Equal(t, "Key", k)
+		assert.Equal(t, "Value", v)
+		assert.True(t, isKV)
 	})
 
 	t.Run("先頭が等号でも値が取れる", func(t *testing.T) {
 		t.Parallel()
 		k, v, isKV := splitAttr("=value")
 		require.Empty(t, k)
-		require.Equal(t, "value", v)
-		require.True(t, isKV)
+		assert.Equal(t, "value", v)
+		assert.True(t, isKV)
 	})
 }
 
@@ -98,19 +99,19 @@ func Test_setBoolAttr(t *testing.T) {
 		attrs := &cookieAttrs{order: []string{}, kv: map[string]string{}}
 
 		setBoolAttr(attrs, "Secure", true)
-		require.Equal(t, []string{"secure"}, attrs.order)
+		assert.Equal(t, []string{"secure"}, attrs.order)
 		v, ok := attrs.kv["secure"]
-		require.True(t, ok)
+		assert.True(t, ok)
 		require.Empty(t, v)
 
 		// 再度オンにしても重複しない
 		setBoolAttr(attrs, "secure", true)
-		require.Len(t, attrs.order, 1)
+		assert.Len(t, attrs.order, 1)
 
 		// オフにすると削除される
 		setBoolAttr(attrs, "SECURE", false)
 		_, ok = attrs.kv["secure"]
-		require.False(t, ok)
+		assert.False(t, ok)
 		require.Empty(t, attrs.order)
 	})
 }
@@ -123,13 +124,13 @@ func Test_setKVAttr(t *testing.T) {
 		attrs := &cookieAttrs{order: []string{}, kv: map[string]string{}}
 
 		setKVAttr(attrs, "Path", "/home")
-		require.Equal(t, []string{"path"}, attrs.order)
-		require.Equal(t, "/home", attrs.kv["path"])
+		assert.Equal(t, []string{"path"}, attrs.order)
+		assert.Equal(t, "/home", attrs.kv["path"])
 
 		// 更新
 		setKVAttr(attrs, "path", "/home2")
-		require.Len(t, attrs.order, 1)
-		require.Equal(t, "/home2", attrs.kv["path"])
+		assert.Len(t, attrs.order, 1)
+		assert.Equal(t, "/home2", attrs.kv["path"])
 	})
 }
 
@@ -141,13 +142,13 @@ func Test_delAttr(t *testing.T) {
 		attrs := &cookieAttrs{order: []string{"a", "b", "c"}, kv: map[string]string{"a": "1", "b": "2", "c": "3"}}
 
 		delAttr(attrs, "b")
-		require.Equal(t, []string{"a", "c"}, attrs.order)
+		assert.Equal(t, []string{"a", "c"}, attrs.order)
 		_, ok := attrs.kv["b"]
-		require.False(t, ok)
+		assert.False(t, ok)
 
 		// 存在しないキーの削除は影響がない
 		delAttr(attrs, "z")
-		require.Equal(t, []string{"a", "c"}, attrs.order)
+		assert.Equal(t, []string{"a", "c"}, attrs.order)
 	})
 }
 
@@ -161,14 +162,14 @@ func Test_buildSetCookie(t *testing.T) {
 			kv:    map[string]string{"httponly": "", "path": "/", "domain": "example.com", "somespecial": "v"},
 		}
 		s := buildSetCookie("id", "1", attrs)
-		require.Equal(t, "id=1; HttpOnly; Path=/; Domain=example.com; somespecial=v", s)
+		assert.Equal(t, "id=1; HttpOnly; Path=/; Domain=example.com; somespecial=v", s)
 	})
 
 	t.Run("kvに存在しないorderは無視される", func(t *testing.T) {
 		t.Parallel()
 		attrs := &cookieAttrs{order: []string{"a", "b"}, kv: map[string]string{"a": "va"}}
 		s := buildSetCookie("k", "v", attrs)
-		require.Equal(t, "k=v; a=va", s)
+		assert.Equal(t, "k=v; a=va", s)
 	})
 }
 
@@ -194,7 +195,7 @@ func Test_canonicalAttrKey(t *testing.T) {
 		c := c
 		t.Run(c.in, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, c.want, canonicalAttrKey(c.in))
+			assert.Equal(t, c.want, canonicalAttrKey(c.in))
 		})
 	}
 }

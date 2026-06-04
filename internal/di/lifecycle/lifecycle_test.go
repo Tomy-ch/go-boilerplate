@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
@@ -26,7 +27,7 @@ func Test_RegisterStartExecutesOnAppStart(t *testing.T) {
 	require.NoError(t, app.Start(context.Background()))
 	defer func() { _ = app.Stop(context.Background()) }()
 
-	require.True(t, started)
+	assert.True(t, started)
 }
 
 func Test_RegisterShutdownExecutesOnAppStop(t *testing.T) {
@@ -48,5 +49,5 @@ func Test_RegisterShutdownExecutesOnAppStop(t *testing.T) {
 	require.NoError(t, app.Start(context.Background()))
 	require.NoError(t, app.Stop(context.Background()))
 
-	require.True(t, stopped)
+	assert.True(t, stopped)
 }

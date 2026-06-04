@@ -3,6 +3,7 @@ package job
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
@@ -25,7 +26,7 @@ func TestProvideRunner(t *testing.T) {
 		r, err := ProvideRunner(in)
 		require.NoError(t, err)
 		require.NotNil(t, r)
-		require.Len(t, r.Names(), 1)
+		assert.Len(t, r.Names(), 1)
 	})
 
 	t.Run("異常系: 同一名ジョブがあるとエラー", func(t *testing.T) {

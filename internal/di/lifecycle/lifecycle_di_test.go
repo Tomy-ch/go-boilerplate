@@ -4,26 +4,29 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
 
-func Test_ModuleProvidesRegistrar(t *testing.T) {
+func Test_ModuleProvidesWorkingRegistrar(t *testing.T) {
 	t.Parallel()
 
-	var got Registrar
+	// Module() が提供する Registrar に登録した start/stop が、app の起動/停止で実際に発火することを検証する。
+	var started, stopped bool
 
 	app := fx.New(
 		Module(),
 		fx.Invoke(func(r Registrar) {
-			got = r
+			r.RegisterStart(func(context.Context) error { started = true; return nil })
+			r.RegisterStop(func(context.Context) error { stopped = true; return nil })
 		}),
+		fx.NopLogger,
 	)
 
-	require.NotNil(t, app)
-	// Start the app so fx.Invoke runs and provides the Registrar
 	require.NoError(t, app.Start(context.Background()))
-	defer func() { _ = app.Stop(context.Background()) }()
+	assert.True(t, started, "Module が提供する Registrar の start フックが発火すること")
 
-	require.NotNil(t, got)
+	require.NoError(t, app.Stop(context.Background()))
+	assert.True(t, stopped, "Module が提供する Registrar の stop フックが発火すること")
 }

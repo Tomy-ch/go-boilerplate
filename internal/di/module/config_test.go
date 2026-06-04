@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
@@ -44,14 +45,14 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 		defer func() { require.NoError(t, app.Stop(context.Background())) }()
 
 		// fx で注入された結果が SetUpConfig を通して得られる値と一致することを確認
-		require.Equal(t, config.NewOperationSystemConfig(cfg).TimeZone(), osCfg.TimeZone())
-		require.Equal(t, config.NewApplicationConfig(cfg).Env(), appCfg.Env())
-		require.Equal(t, config.NewServerConfig(cfg).Port(), serverCfg.Port())
-		require.Equal(t, config.NewMetricsConfig(cfg).Port(), metricsCfg.Port())
-		require.Equal(t, config.NewObservabilityConfig(cfg).Enabled(), obsCfg.Enabled())
-		require.Equal(t, config.NewDatabaseConfig(cfg).Driver(), dbCfg.Driver())
-		require.Equal(t, config.NewDBConnectionConfig(cfg).MaxConns(), dbConnCfg.MaxConns())
-		require.Equal(t, config.NewSecurityConfig(cfg).AllowedOrigins(), secCfg.AllowedOrigins())
-		require.Equal(t, config.NewIPRateLimitConfig(cfg).Enabled(), ipCfg.Enabled())
+		assert.Equal(t, config.NewOperationSystemConfig(cfg).TimeZone(), osCfg.TimeZone())
+		assert.Equal(t, config.NewApplicationConfig(cfg).Env(), appCfg.Env())
+		assert.Equal(t, config.NewServerConfig(cfg).Port(), serverCfg.Port())
+		assert.Equal(t, config.NewMetricsConfig(cfg).Port(), metricsCfg.Port())
+		assert.Equal(t, config.NewObservabilityConfig(cfg).Enabled(), obsCfg.Enabled())
+		assert.Equal(t, config.NewDatabaseConfig(cfg).Driver(), dbCfg.Driver())
+		assert.Equal(t, config.NewDBConnectionConfig(cfg).MaxConns(), dbConnCfg.MaxConns())
+		assert.Equal(t, config.NewSecurityConfig(cfg).AllowedOrigins(), secCfg.AllowedOrigins())
+		assert.Equal(t, config.NewIPRateLimitConfig(cfg).Enabled(), ipCfg.Enabled())
 	})
 }

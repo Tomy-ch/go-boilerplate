@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -138,37 +139,37 @@ func TestIsUnavailable(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(nil)
-		require.False(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("コンテキスト期限切れ", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(context.DeadlineExceeded)
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("ネットワークエラー", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(mockNetError{})
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("Postgres接続エラー", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(&pgconn.PgError{Code: "08003"})
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("Postgres非接続エラー", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(&pgconn.PgError{Code: "23505"})
-		require.False(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("その他のエラー", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(errors.New("other"))
-		require.False(t, got)
+		assert.False(t, got)
 	})
 }
 
@@ -177,19 +178,19 @@ func Test_isPgConnectionError(t *testing.T) {
 	t.Run("Postgres接続エラー", func(t *testing.T) {
 		t.Parallel()
 		got := isPgConnectionError(&pgconn.PgError{Code: "08006"})
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("Postgres非接続エラー", func(t *testing.T) {
 		t.Parallel()
 		got := isPgConnectionError(&pgconn.PgError{Code: "23505"})
-		require.False(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("その他のエラー", func(t *testing.T) {
 		t.Parallel()
 		got := isPgConnectionError(errors.New("other"))
-		require.False(t, got)
+		assert.False(t, got)
 	})
 }
 

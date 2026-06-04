@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/pkg/datetime"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -88,9 +89,9 @@ func TestGetVersion(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.GetVersion200JSONResponse)
-		require.True(t, ok)
+		assert.True(t, ok)
 
-		require.Equal(t, expectedResponse, gen.VersionResponse(actual))
+		assert.Equal(t, expectedResponse, gen.VersionResponse(actual))
 	})
 
 	t.Run("異常系: ビルド日時のパースに失敗", func(t *testing.T) {

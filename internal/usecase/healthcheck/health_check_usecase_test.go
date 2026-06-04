@@ -11,6 +11,7 @@ import (
 	mock_query "go-boilerplate/internal/usecase/healthcheck/query/mock"
 	"go-boilerplate/internal/usecase/testkit"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -30,7 +31,7 @@ func TestNew(t *testing.T) {
 	}
 	actual := New(sysQuery, tf, clock)
 
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_usecase_CheckHealth(t *testing.T) {
@@ -64,8 +65,8 @@ func Test_usecase_CheckHealth(t *testing.T) {
 
 			result, err := u.CheckHealth(ctx)
 			require.NoError(t, err)
-			require.Equal(t, Ok, result.Status)
-			require.Equal(t, now, result.ApplicationTime)
+			assert.Equal(t, Ok, result.Status)
+			assert.Equal(t, now, result.ApplicationTime)
 		})
 	})
 
@@ -104,10 +105,10 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			}
 
 			actualResult, actualErr := u.CheckHealth(ctx)
-			require.Equal(t, expectedErr, actualErr)
-			require.Equal(t, expectedResult.Status, actualResult.Status)
-			require.Equal(t, expectedResult.ApplicationTime, actualResult.ApplicationTime)
-			require.Equal(t, expectedResult.DBHealthCheck, actualResult.DBHealthCheck)
+			assert.Equal(t, expectedErr, actualErr)
+			assert.Equal(t, expectedResult.Status, actualResult.Status)
+			assert.Equal(t, expectedResult.ApplicationTime, actualResult.ApplicationTime)
+			assert.Equal(t, expectedResult.DBHealthCheck, actualResult.DBHealthCheck)
 		})
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +34,7 @@ func TestPoolStatsCollector_Describe(t *testing.T) {
 	}
 
 	// Gaugeのメトリクスが5つ、Counterのメトリクスが8つ、合計13個のDescが生成されることを確認します。
-	require.Len(t, descs, 13)
+	assert.Len(t, descs, 13)
 }
 
 func TestPoolStatsCollector_Collect(t *testing.T) {
@@ -52,7 +53,7 @@ func TestPoolStatsCollector_Collect(t *testing.T) {
 	}
 
 	// Gaugeのメトリクスが5つ、Counterのメトリクスが8つ、合計13個のMetricが生成されることを確認します。
-	require.Len(t, metrics, 13)
+	assert.Len(t, metrics, 13)
 }
 
 func TestRegisterPoolStatsCollector(t *testing.T) {

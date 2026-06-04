@@ -3,6 +3,7 @@ package auth
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +23,7 @@ func TestNewCredential(t *testing.T) {
 			cred, err := NewCredential("test-access-token")
 			require.NoError(t, err)
 
-			require.Equal(t, expected, cred)
+			assert.Equal(t, expected, cred)
 		})
 	})
 
@@ -46,5 +47,5 @@ func TestCredential_AccessToken(t *testing.T) {
 	cred, err := NewCredential("test-access-token")
 	require.NoError(t, err)
 
-	require.Equal(t, "test-access-token", cred.AccessToken())
+	assert.Equal(t, "test-access-token", cred.AccessToken())
 }

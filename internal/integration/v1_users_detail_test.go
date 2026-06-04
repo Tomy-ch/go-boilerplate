@@ -14,7 +14,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
 
@@ -50,7 +50,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 		}
 
 		actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, nil)
-		require.Equal(t, http.StatusOK, actual.StatusCode)
+		assert.Equal(t, http.StatusOK, actual.StatusCode)
 		AssertJSONResponse(t, expected, actual)
 	})
 
@@ -74,7 +74,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 		}
 
 		actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, nil)
-		require.Equal(t, http.StatusOK, actual.StatusCode)
+		assert.Equal(t, http.StatusOK, actual.StatusCode)
 		// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
 		AssertJSONResponse(t, detailgen.UserResponse{}, actual)
 	})
@@ -97,7 +97,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 		}
 
 		actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, nil)
-		require.Equal(t, http.StatusOK, actual.StatusCode)
+		assert.Equal(t, http.StatusOK, actual.StatusCode)
 		// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
 		AssertJSONResponse(t, detailgen.UserResponse{}, actual)
 	})
@@ -123,7 +123,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 		}
 
 		actual := StartServer(t, e).DoJSON(http.MethodPut, "/v1/users/me/password", body, headers)
-		require.Equal(t, http.StatusNoContent, actual.StatusCode)
+		assert.Equal(t, http.StatusNoContent, actual.StatusCode)
 	})
 
 	t.Run("DELETE /v1/users/{user_id} のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
@@ -138,6 +138,6 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 		detail.BindHandler(e, tf, mockApp)
 
 		actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, nil)
-		require.Equal(t, http.StatusNoContent, actual.StatusCode)
+		assert.Equal(t, http.StatusNoContent, actual.StatusCode)
 	})
 }

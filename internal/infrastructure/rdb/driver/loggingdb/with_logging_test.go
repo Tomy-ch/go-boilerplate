@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/observability"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -48,7 +49,7 @@ func Test_dbWithLogging_Exec(t *testing.T) {
 	res, err := dwl.Exec(context.Background(), "INSERT INTO users (name) VALUES ($1)", "alice")
 	require.NoError(t, err)
 
-	require.Equal(t, pgconn.CommandTag{}, res)
+	assert.Equal(t, pgconn.CommandTag{}, res)
 }
 
 func Test_dbWithLogging_Query(t *testing.T) {

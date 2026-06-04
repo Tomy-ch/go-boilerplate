@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +22,7 @@ func TestNew(t *testing.T) {
 	}
 	actual := New(loggingDB, tf)
 
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
@@ -46,7 +47,7 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				res, err := s.CheckDBHealth(ctx)
 				require.NoError(t, err)
-				require.True(t, res.Ready)
+				assert.True(t, res.Ready)
 				require.Positive(t, res.Latency.Microseconds())
 				require.NotZero(t, res.ResponsedAt)
 			})

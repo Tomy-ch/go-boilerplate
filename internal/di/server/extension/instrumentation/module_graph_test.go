@@ -1,0 +1,34 @@
+package instrumentation
+
+import (
+	"testing"
+
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/di/server/extension/testkit"
+	"go-boilerplate/internal/logging"
+
+	"go.uber.org/fx"
+)
+
+func TestLoggingModule_ProvidesUseMiddleware(t *testing.T) {
+	t.Parallel()
+	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
+		LoggingModule(),
+		fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
+		fx.Provide(func() logging.LogFieldBuilder { return logging.NewTestLogFieldBuilder(t) }),
+	)
+}
+
+func TestObservabilityModule_ProvidesUseMiddleware(t *testing.T) {
+	t.Parallel()
+	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use",
+		ObservabilityModule(),
+		fx.Supply(config.NewApplicationConfig(config.MockConfigForTest(t))),
+	)
+}
+
+func TestRequestIDModule_ProvidesUseMiddleware(t *testing.T) {
+	t.Parallel()
+	testkit.RequireProvidesOne[extension.UseMiddleware](t, "middlewares.use", RequestIDModule())
+}

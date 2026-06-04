@@ -9,7 +9,7 @@ import (
 	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBindHandler_BasicAuth(t *testing.T) {
@@ -32,10 +32,10 @@ func TestBindHandler_BasicAuth(t *testing.T) {
 	req.SetBasicAuth(mtc.UserName(), mtc.Password())
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code)
 
 	req2 := httptest.NewRequestWithContext(ctx, http.MethodGet, "/metrics", nil)
 	rec2 := httptest.NewRecorder()
 	e.ServeHTTP(rec2, req2)
-	require.Equal(t, http.StatusUnauthorized, rec2.Code)
+	assert.Equal(t, http.StatusUnauthorized, rec2.Code)
 }

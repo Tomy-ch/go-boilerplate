@@ -5,9 +5,9 @@ import (
 	"net/url"
 	"testing"
 
-	"go-boilerplate/internal/config"
+	"github.com/stretchr/testify/assert"
 
-	"github.com/stretchr/testify/require"
+	"go-boilerplate/internal/config"
 )
 
 func TestDSN(t *testing.T) {
@@ -23,7 +23,7 @@ func TestDSN(t *testing.T) {
 	}
 
 	actual := DSN(dbCfg)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestDSNWithTimeZone(t *testing.T) {
@@ -42,7 +42,7 @@ func TestDSNWithTimeZone(t *testing.T) {
 	}
 
 	actual := DSNWithTimeZone(dbCfg, osCfg)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestDSNString(t *testing.T) {
@@ -59,7 +59,7 @@ func TestDSNString(t *testing.T) {
 	expected := urlCfg.String()
 
 	actual := DSNString(dbCfg)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestDSNWithTimeZoneString(t *testing.T) {
@@ -79,5 +79,5 @@ func TestDSNWithTimeZoneString(t *testing.T) {
 	expected := urlCfg.String()
 
 	actual := DSNWithTimeZoneString(dbCfg, osCfg)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }

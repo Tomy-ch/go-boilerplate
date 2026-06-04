@@ -56,7 +56,7 @@ func TestApplyPreMiddlewares(t *testing.T) {
 
 		// Pre ミドルウェアで積まれたヘッダの順序を確認
 		vals := rec.Header()["X-Order"]
-		require.Equal(t, []string{"A", "B"}, vals)
+		assert.Equal(t, []string{"A", "B"}, vals)
 	})
 
 	t.Run("returns error when priorities conflict", func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestApplyPreMiddlewares(t *testing.T) {
 		err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
 		require.Error(t, err)
 		// エラーメッセージの一部まで見ておきたい場合
-		require.Contains(t, err.Error(), "priority")
+		assert.Contains(t, err.Error(), "priority")
 	})
 }
 
@@ -125,7 +125,7 @@ func TestServerExtends(t *testing.T) {
 
 			vals := rec.Header()["X-Order"]
 			// expect sorted by Priority ascending: A then B
-			require.Equal(t, []string{"A", "B"}, vals)
+			assert.Equal(t, []string{"A", "B"}, vals)
 		})
 
 		t.Run("拡張機能が適用されること", func(t *testing.T) {
@@ -147,8 +147,8 @@ func TestServerExtends(t *testing.T) {
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
 
-			require.Equal(t, http.StatusNoContent, rec.Code)
-			require.Equal(t, "yes", rec.Header().Get("X-Cfg"))
+			assert.Equal(t, http.StatusNoContent, rec.Code)
+			assert.Equal(t, "yes", rec.Header().Get("X-Cfg"))
 		})
 
 		t.Run("拡張機能が統合的に適用されること", func(t *testing.T) {
@@ -188,9 +188,9 @@ func TestServerExtends(t *testing.T) {
 			rec := httptest.NewRecorder()
 			e.ServeHTTP(rec, req)
 
-			require.Equal(t, http.StatusOK, rec.Code)
-			require.Equal(t, "ok", rec.Header().Get("X-Pre"))
-			require.Equal(t, "1", rec.Header().Get("X-Order"))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "ok", rec.Header().Get("X-Pre"))
+			assert.Equal(t, "1", rec.Header().Get("X-Order"))
 		})
 	})
 
@@ -209,7 +209,7 @@ func TestServerExtends(t *testing.T) {
 
 			err := ApplyUseMiddlewares(e, logging.NewTestLogger(t), dup)
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "priority")
+			assert.Contains(t, err.Error(), "priority")
 		})
 
 		t.Run("PreMiddlewareに、Priorityの重複があるとエラーになること", func(t *testing.T) {
@@ -287,9 +287,9 @@ func TestApplyExtends(t *testing.T) {
 		rec := httptest.NewRecorder()
 		e.ServeHTTP(rec, req)
 
-		require.Equal(t, http.StatusOK, rec.Code)
-		require.Equal(t, "ok", rec.Header().Get("X-Pre"))
-		require.Equal(t, "1", rec.Header().Get("X-Use"))
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "ok", rec.Header().Get("X-Pre"))
+		assert.Equal(t, "1", rec.Header().Get("X-Use"))
 	})
 
 	t.Run("Priorityの重複があるとエラーになること", func(t *testing.T) {
@@ -337,7 +337,7 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ok", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func Test_validateUseMiddlewarePriorityConflicts(t *testing.T) {
@@ -399,9 +399,9 @@ func TestExtractPriorityConflicts(t *testing.T) {
 
 		got := extractPriorityConflicts(input)
 
-		require.Len(t, got, 1)
-		require.Contains(t, got[0], "priority=1")
-		require.Contains(t, got[0], "[A B]") // names の出力
+		assert.Len(t, got, 1)
+		assert.Contains(t, got[0], "priority=1")
+		assert.Contains(t, got[0], "[A B]") // names の出力
 	})
 
 	t.Run("複数のpriorityが重複している場合は複数返す", func(t *testing.T) {
@@ -415,14 +415,14 @@ func TestExtractPriorityConflicts(t *testing.T) {
 
 		got := extractPriorityConflicts(input)
 
-		require.Len(t, got, 2)
-		require.Contains(t, got[0], "priority=")
-		require.Contains(t, got[1], "priority=")
+		assert.Len(t, got, 2)
+		assert.Contains(t, got[0], "priority=")
+		assert.Contains(t, got[1], "priority=")
 
 		// priority=1 が含まれていること
-		require.True(t, containsSubstring(got, "priority=1"))
+		assert.True(t, containsSubstring(got, "priority=1"))
 		// priority=3 が含まれていること
-		require.True(t, containsSubstring(got, "priority=3"))
+		assert.True(t, containsSubstring(got, "priority=3"))
 	})
 
 	t.Run("names が3つ以上の場合でも正しくフォーマットされる", func(t *testing.T) {
@@ -433,9 +433,9 @@ func TestExtractPriorityConflicts(t *testing.T) {
 		}
 
 		got := extractPriorityConflicts(input)
-		require.Len(t, got, 1)
-		require.Contains(t, got[0], "priority=5")
-		require.Contains(t, got[0], "[A B C]")
+		assert.Len(t, got, 1)
+		assert.Contains(t, got[0], "priority=5")
+		assert.Contains(t, got[0], "[A B C]")
 	})
 }
 
