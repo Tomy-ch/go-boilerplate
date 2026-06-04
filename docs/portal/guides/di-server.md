@@ -20,7 +20,7 @@ internal/di/server/
 |Function|Description|
 |---|---|
 |`Module()`|Provide `*echo.Echo` via `server.NewAppServer`|
-|`HookModule()`|Register server lifecycle hooks (HTTP start/stop, DB close)|
+|`HookModule()`|Register server lifecycle hooks (HTTP start/stop)|
 |`MiddlewareModule()`|Aggregate all HTTP stack middleware and configurators|
 
 ### MiddlewareModule Composition

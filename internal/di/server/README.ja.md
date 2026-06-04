@@ -20,7 +20,7 @@ internal/di/server/
 |関数|説明|
 |---|---|
 |`Module()`|`server.NewAppServer` で `*echo.Echo` を提供|
-|`HookModule()`|サーバーライフサイクルフックを登録（HTTP 起動/停止、DB クローズ）|
+|`HookModule()`|サーバーライフサイクルフックを登録（HTTP 起動/停止）|
 |`MiddlewareModule()`|HTTP スタック全体のミドルウェア・Configurator を集約|
 
 ### MiddlewareModule の構成
