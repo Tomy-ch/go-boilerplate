@@ -7,13 +7,14 @@ import (
 	config "go-boilerplate/internal/config"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/fx"
 )
 
 func TestNewJobCore(t *testing.T) {
 	t.Parallel()
 
-	jobApp := NewJobCore()
-	require.NotNil(t, jobApp)
+	// ジョブ用 fx グラフの結線が欠落なく成立することを検証する（コンストラクタの実体実行は伴わない）。
+	require.NoError(t, fx.ValidateApp(NewJobCore(), fx.NopLogger))
 }
 
 func TestRunJob(t *testing.T) {

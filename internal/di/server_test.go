@@ -5,24 +5,79 @@ import (
 	"testing"
 	"time"
 
+	config "go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
+	gomock "go.uber.org/mock/gomock"
 )
 
-func Test_NewApplicationCore_ReturnsApp(t *testing.T) {
+func Test_NewApplicationCore_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
-	app := NewApplicationCore()
-	require.NotNil(t, app)
+	// ValidateApp は依存グラフの結線（型の充足）を検証する。ハンドラ・ユースケース・
+	// リポジトリを追加した際に結線漏れがあればここで検出される。NopLogger は構成検証時の
+	// config 実行ログを抑制するだけで、検証結果（戻り値）には影響しない。
+	opts := append(applicationCoreOptions(), fx.NopLogger)
+	require.NoError(t, fx.ValidateApp(opts...))
+}
+
+func Test_NewApplicationCore_BootsWithMockedDB(t *testing.T) {
+	// 実 DB とポート衝突を避けつつ、全コンストラクタの実行とライフサイクル(OnStart/OnStop)を検証する。
+	// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避し、サーバポートは 0（エフェメラル）にする。
+	// EnsureRepoRootAndEnv が cwd を変更するため t.Parallel() は付けない。
+	config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
+
+	ctrl := gomock.NewController(t)
+	mockDB := mock_driver.NewMockDatabaseDriver(ctrl)
+
+	var closeCalled bool
+	mockDB.EXPECT().Close().DoAndReturn(func() error { closeCalled = true; return nil }).AnyTimes()
+	mockDB.EXPECT().Stats().Return(&pgxpool.Stat{}).AnyTimes()
+	mockDB.EXPECT().Ping(gomock.Any()).Return(nil).AnyTimes()
+
+	app := NewApplicationCore(
+		fx.Replace(fx.Annotate(mockDB, fx.As(new(driver.DatabaseDriver)))),
+		fx.Decorate(func(s *config.ServerConfig) *config.ServerConfig {
+			s.SetServerPort(t, 0)
+			return s
+		}),
+		fx.NopLogger,
+	)
+
+	start, stop := NewApplicationServer(app)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	require.NoError(t, start(ctx))
+
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer stopCancel()
+	require.NoError(t, stop(stopCtx))
+
+	// Close が呼ばれた＝モックがグラフに組み込まれ、実 DB(NewDB の Ping)が使われていないことの証左。
+	assert.True(t, closeCalled, "db close hook がモックドライバの Close を呼ぶこと")
 }
 
 func Test_NewApplicationServer_WrapsAppStartStop(t *testing.T) {
 	t.Parallel()
 
-	app := fx.New()
-	defer func() {
-		_ = app.Stop(context.Background())
-	}()
+	// ライフサイクルフックの発火有無で、ラッパーが実際に app.Start / app.Stop を駆動したことを検証する。
+	// 空アプリだと start/stop が常に nil を返し、駆動していなくても通ってしまうため。
+	var started, stopped bool
+	app := fx.New(
+		fx.Invoke(func(lc fx.Lifecycle) {
+			lc.Append(fx.Hook{
+				OnStart: func(context.Context) error { started = true; return nil },
+				OnStop:  func(context.Context) error { stopped = true; return nil },
+			})
+		}),
+		fx.NopLogger,
+	)
 
 	start, stop := NewApplicationServer(app)
 	require.NotNil(t, start)
@@ -31,8 +86,10 @@ func Test_NewApplicationServer_WrapsAppStartStop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	require.NoError(t, start(ctx))
+	assert.True(t, started, "start ラッパーが app.Start を呼びライフサイクルが起動すること")
 
 	stopCtx, stopCancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer stopCancel()
 	require.NoError(t, stop(stopCtx))
+	assert.True(t, stopped, "stop ラッパーが app.Stop を呼びライフサイクルが停止すること")
 }
