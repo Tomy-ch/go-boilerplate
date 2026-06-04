@@ -151,7 +151,7 @@ Do NOT modify other top-level directories (e.g., `cmd/`, `docker/`, `scripts/`, 
 AI coding agent configurations are also outside the allowed scope. AI agents must NOT create, modify, or delete the following files/directories unless the user explicitly requests it:
 
 - Claude Code: `.claude/` (including `.claude/skills/`, `.claude/settings.json`, `.claude/settings.local.json`, etc.)
-- OpenAI Codex CLI: `.codex/`
+- OpenAI Codex CLI: `.agents/skills/` (repo-scoped Agent Skills; global config / prompts live in `~/.codex/`, outside the repo, and Codex's project instructions are `AGENTS.md` itself)
 - Cursor: `.cursor/` (including `.cursor/rules/*.mdc`), `.cursorrules`
 - GitHub Copilot: `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`
 - Gemini CLI / Code Assist: `.gemini/`, `GEMINI.md`
@@ -444,6 +444,16 @@ Business Logic Change:
 
 3. After amending an existing pull request branch, do NOT push changes automatically.
 After making changes to an existing PR branch locally, ask the user before pushing. This lets the user review the updated commits on their machine first. Only push automatically if the user’s instructions explicitly include performing the push.
+
+### Commit / PR Execution
+
+Commits and pull-request creation/updates MUST follow this repository's defined workflow:
+
+- Split changes into appropriately scoped commits using the prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert).
+- Skip pre-commit hooks during the split, then run the equivalent verification (lint / test / sql-lint / migration checks) once after all commits succeed.
+- Add the `Co-Authored-By` footer, never commit directly to protected branches, and confirm with the user before pushing to an existing PR branch.
+
+If your agent provides a dedicated command or skill that implements this workflow, prefer it over performing the steps manually. Keep the concrete command/skill names in your own agent's configuration rather than here (for example: Claude Code under `.claude/`, Gemini CLI under `.gemini/commands/`, Codex under `.agents/skills/`; note that Codex also reads this `AGENTS.md` directly as its project instructions), so that other agents do not attempt to invoke commands they do not have.
 
 ### Branch Naming
 
