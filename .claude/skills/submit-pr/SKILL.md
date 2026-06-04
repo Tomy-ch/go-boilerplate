@@ -112,6 +112,12 @@ If the branch name encodes an issue number, append `closes #N` at the bottom of 
 
 ## Step 4. Confirm with the User
 
+Before the push confirmation, surface a **non-blocking** reminder that an independent, different-model review is recommended before the change leaves the local machine:
+
+> 推奨: push 前に `/local-review`（実装者とは別モデルの独立・敵対的レビュー）を実行しましたか？ 未実行なら一度回すと、モックテストでは出ない不具合（認証/IDOR・DI/SQL・共有スキーマ波及など）を PR 前に拾えます。
+
+This is a recommendation only — never block the push on it, and never auto-run the review. If the user has already reviewed or declines, continue.
+
 Display the resolved title, base branch, push command, and full body.
 
 ### Create path
@@ -218,6 +224,7 @@ Before reporting completion, confirm:
 - [ ] PR template was read and reflected in the body
 - [ ] Title and body are Japanese
 - [ ] Title ≤ 70 characters
+- [ ] (推奨) push 前に `/local-review` の実行を確認した（非ブロッキング）
 - [ ] User confirmation was obtained before the push (mandatory for update path per `CLAUDE.md`)
 - [ ] PR URL was reported to the user
 - [ ] No `--force` was used
