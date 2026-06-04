@@ -29,7 +29,7 @@ You are **read-only**. Use `Bash` only for read-only inspection. Never edit, wri
 
 Return a single verdict in **Japanese**:
 
-```
+```text
 判定: CONFIRMED | PLAUSIBLE | REFUTED
 理由: 自分でコードを読んで導いた結論（finder の主張ではなく、根拠となるコード/経路を引用）
 （CONFIRMED の場合）再現経路: どの入力/呼び出しで破綻するか
