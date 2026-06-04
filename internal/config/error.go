@@ -101,29 +101,4 @@ var (
 		"invalid auth config, either cookie name or header name must be provided: %w",
 		errInvalidConfig,
 	)
-	// ErrInvalidIPRateLimitRequests は、無効なIPレートリミットのリクエスト数に関するエラーを表します。
-	ErrInvalidIPRateLimitRequests = fmt.Errorf(
-		"invalid IP rate limit requests, must be greater than 0: %w",
-		errInvalidConfig,
-	)
-	// ErrInvalidIPRateLimitPer は、無効なIPレートリミットの期間に関するエラーを表します。
-	ErrInvalidIPRateLimitPer = fmt.Errorf(
-		"invalid IP rate limit per, must be greater than 0: %w",
-		errInvalidConfig,
-	)
-	// ErrInvalidIPRateLimitBurst は、無効なIPレートリミットのバーストに関するエラーを表します。
-	ErrInvalidIPRateLimitBurst = fmt.Errorf(
-		"invalid IP rate limit burst, must be greater than or equal to 0: %w",
-		errInvalidConfig,
-	)
-	// ErrInvalidIPRateLimitTTL は、無効なIPレートリミットのTTLに関するエラーを表します。
-	ErrInvalidIPRateLimitTTL = fmt.Errorf(
-		"invalid IP rate limit TTL, must be greater than 0: %w",
-		errInvalidConfig,
-	)
-	// ErrInvalidIPRateLimitCleanupInterval は、無効なIPレートリミットのクリーンアップ間隔に関するエラーを表します。
-	ErrInvalidIPRateLimitCleanupInterval = fmt.Errorf(
-		"invalid IP rate limit cleanup interval, must be greater than 0: %w",
-		errInvalidConfig,
-	)
 )

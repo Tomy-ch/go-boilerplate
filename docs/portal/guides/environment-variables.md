@@ -119,17 +119,6 @@ This directory is the canonical reference for every environment variable read by
 |AUTH_HEADER_NAME|Header name|string|Authorization||
 |AUTH_ALLOWED_HEADER_BEARER|Allow Bearer|bool|true||
 
-### IP Rate Limiter
-
-|Variable Name|Description|Type|Example|Notes|
-|---|---|---|---|---|
-|IP_RATE_LIMITER_ENABLED|Enable|bool|true||
-|IP_RATE_LIMITER_REQUESTS|Allowed requests|int|60||
-|IP_RATE_LIMITER_PER|Period|duration|1m||
-|IP_RATE_LIMITER_BURST|Burst|int|10||
-|IP_RATE_LIMITER_TTL|Retention time|duration|10m||
-|IP_RATE_LIMITER_CLEANUP_INTERVAL|Cleanup interval|duration|1m||
-
 ## Notes
 
 - The Example column shows values appropriate for local development. Production values typically differ for any Secret / CIDR / Cookie-domain / origin entries.

@@ -8,7 +8,7 @@ Each sub-package is split into small responsibilities and combined during applic
 
 ## Role
 
-`httpstack` is the catalog of Echo middleware and server-configuration helpers used across the application. Each sub-package owns one concern (request ID, logging, recovery, CORS, security headers, rate limiting, etc.) and exposes a thin `Middleware(...)` or `New(...)` constructor. Middleware is intentionally registered elsewhere (`internal/di/server/extension`) so that this directory stays free of fx and Echo-instance dependencies, keeping each unit independently testable and reusable.
+`httpstack` is the catalog of Echo middleware and server-configuration helpers used across the application. Each sub-package owns one concern (request ID, logging, recovery, CORS, security headers, etc.) and exposes a thin `Middleware(...)` or `New(...)` constructor. Middleware is intentionally registered elsewhere (`internal/di/server/extension`) so that this directory stays free of fx and Echo-instance dependencies, keeping each unit independently testable and reusable.
 
 ## Design Policy
 
@@ -40,7 +40,6 @@ Each sub-package is split into small responsibilities and combined during applic
 |`forcejson`|`Middleware`|Force response Content-Type to JSON|
 |`uri`|`Middleware`|Remove trailing slashes|
 |`observability`|`Middleware`|OpenTelemetry tracing integration|
-|`ratelimit`|`Middleware`|IP-based rate limiting (token bucket)|
 
 ### Error Handling
 

@@ -12,7 +12,7 @@ Built around three `fx.Module` functions, it provides HTTP server creation, midd
 internal/di/server/
 ├── server.go       # Module / HookModule / MiddlewareModule
 ├── extension/      # Middleware and configurator DI registration
-└── hook/           # Server lifecycle hooks (HTTP start/stop, DB close, rate limit cleanup)
+└── hook/           # Server lifecycle hooks (HTTP start/stop, DB close)
 ```
 
 ## Public API
@@ -20,7 +20,7 @@ internal/di/server/
 |Function|Description|
 |---|---|
 |`Module()`|Provide `*echo.Echo` via `server.NewAppServer`|
-|`HookModule()`|Register server lifecycle hooks (HTTP start/stop, rate limit cleanup)|
+|`HookModule()`|Register server lifecycle hooks (HTTP start/stop)|
 |`MiddlewareModule()`|Aggregate all HTTP stack middleware and configurators|
 
 ### MiddlewareModule Composition
@@ -32,7 +32,7 @@ internal/di/server/
 |decoration|`BannerModule`, `DefaultPortModule`|
 |inbound|`IPExtractorModule`, `URIModule`, `OpenAPIModule`|
 |outbound|`ErrorHandlerModule`, `ForceJSONModule`, `RecoveryModule`|
-|security|`Module`, `CORSModule`, `CookieModule`, `RateLimitModule`|
+|security|`Module`, `CORSModule`, `CookieModule`|
 |instrumentation|`RequestIDModule`, `LoggingModule`, `ObservabilityModule`|
 |nonprod|`DebugModeModule`|
 
@@ -56,7 +56,7 @@ flowchart LR
 |Directory|Description|Details|
 |---|---|---|
 |`extension/`|Middleware and configurator DI registration with Priority management|[README](extension/README.md)|
-|`hook/`|Server lifecycle hooks (HTTP, DB close, rate limit cleanup)|[README](hook/README.md)|
+|`hook/`|Server lifecycle hooks (HTTP, DB close)|[README](hook/README.md)|
 
 ## Notes
 

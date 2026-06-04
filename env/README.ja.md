@@ -119,17 +119,6 @@
 |AUTH_HEADER_NAME|ヘッダ名|string|Authorization||
 |AUTH_ALLOWED_HEADER_BEARER|Bearer許可|bool|true||
 
-### IP Rate Limiter
-
-|変数名|説明|型|例|備考|
-|---|---|---|---|---|
-|IP_RATE_LIMITER_ENABLED|有効化|bool|true||
-|IP_RATE_LIMITER_REQUESTS|許可リクエスト数|int|60||
-|IP_RATE_LIMITER_PER|期間|duration|1m||
-|IP_RATE_LIMITER_BURST|バースト|int|10||
-|IP_RATE_LIMITER_TTL|保持時間|duration|10m||
-|IP_RATE_LIMITER_CLEANUP_INTERVAL|クリーン間隔|duration|1m||
-
 ## 補足
 
 - 例欄の値はローカル開発向け。本番では Secret / CIDR / Cookie ドメイン / origin 等は基本的に別の値になります

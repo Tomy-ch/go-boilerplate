@@ -29,7 +29,6 @@ func HookModule() fx.Option {
 	return fx.Module("server.hook",
 		fx.Invoke(
 			hook.RegisterHTTPServerHooks,
-			hook.RegisterRateLimitHooks,
 		),
 	)
 }
@@ -49,7 +48,6 @@ func MiddlewareModule() fx.Option {
 		security.Module(),
 		security.CORSModule(),
 		security.CookieModule(),
-		security.RateLimitModule(),
 		instrumentation.RequestIDModule(),
 		instrumentation.LoggingModule(),
 		instrumentation.ObservabilityModule(),

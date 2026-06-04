@@ -12,7 +12,6 @@
 |---|---|---|
 |`AuthnModule()`|`auth.go`|認証（Authenticator + Auth コントローラ）|
 |`BasicAuthModule()`|`basicauth.go`|メトリクスエンドポイント用 Basic 認証バリデータ|
-|`IPRateLimiterModule()`|`ip_rate_limiter.go`|IP ベースのレートリミッター|
 |`SecurityCookieModule()`|`security_cookie.go`|Cookie セキュリティ属性の設定|
 |`SkipperModule()`|`skipper.go`|OpenAPI バリデーションの ops エンドポイントスキップ|
 |`ValidatorModule()`|`validator.go`|OpenAPI スキーマバリデータ|

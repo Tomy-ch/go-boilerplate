@@ -13,7 +13,6 @@ type Loader struct {
 	Security      Security        `envPrefix:"SECURITY_"`
 	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
 	Auth          Auth            `envPrefix:"AUTH_"`
-	IPRateLimit   IPRateLimit     `envPrefix:"IP_RATE_LIMITER_"`
 }
 
 type OperationSystem struct {
@@ -90,13 +89,4 @@ type Auth struct {
 	CookieName          string `env:"COOKIE_NAME,required"`
 	HeaderName          string `env:"HEADER_NAME,required"`
 	AllowedHeaderBearer bool   `env:"ALLOWED_HEADER_BEARER,required"`
-}
-
-type IPRateLimit struct {
-	Enabled         bool          `env:"ENABLED,required"`
-	Requests        int           `env:"REQUESTS,required"`
-	Per             time.Duration `env:"PER,required"`
-	Burst           int           `env:"BURST,required"`
-	TTL             time.Duration `env:"TTL,required"`
-	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL,required"`
 }

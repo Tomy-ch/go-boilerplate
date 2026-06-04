@@ -42,7 +42,6 @@
 |`SecurityConfig`|`NewSecurityConfig`|CORS、HSTS、CIDR|
 |`SecureCookieConfig`|`NewSecureCookieConfig`|Cookie セキュリティ属性|
 |`AuthConfig`|`NewAuthConfig`|認証ヘッダー / Cookie 名|
-|`IPRateLimitConfig`|`NewIPRateLimitConfig`|IPレートリミット設定|
 
 ### ユーティリティ
 
@@ -95,11 +94,6 @@
 |`ErrInvalidExceedMaxConns`|最小接続数が最大接続数を超過|
 |`ErrFailedToParseCIDR`|CIDR のパース失敗|
 |`ErrAuthConfigMissing`|認証設定（Cookie名 or ヘッダー名）が未設定|
-|`ErrInvalidIPRateLimitRequests`|レートリミットのリクエスト数が不正|
-|`ErrInvalidIPRateLimitPer`|レートリミットの期間が不正|
-|`ErrInvalidIPRateLimitBurst`|レートリミットのバーストが不正|
-|`ErrInvalidIPRateLimitTTL`|レートリミットの TTL が不正|
-|`ErrInvalidIPRateLimitCleanupInterval`|レートリミットのクリーンアップ間隔が不正|
 
 ## Config Loading フロー
 
@@ -361,7 +355,6 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |`SetDatabaseName`|`DatabaseConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
-|`SetCleanupInterval`|`IPRateLimitConfig`|
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
 

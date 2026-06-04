@@ -29,7 +29,6 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 			dbCfg      *config.DatabaseConfig
 			dbConnCfg  *config.DBConnectionConfig
 			secCfg     *config.SecurityConfig
-			ipCfg      *config.IPRateLimitConfig
 			loc        *time.Location
 		)
 
@@ -37,7 +36,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 			fx.Provide(func() testing.TB { return t }),
 			// テスト対象: 実装側のモジュール
 			ConfigModule(),
-			fx.Populate(&osCfg, &appCfg, &serverCfg, &dbCfg, &dbConnCfg, &metricsCfg, &obsCfg, &secCfg, &ipCfg, &loc),
+			fx.Populate(&osCfg, &appCfg, &serverCfg, &dbCfg, &dbConnCfg, &metricsCfg, &obsCfg, &secCfg, &loc),
 			fx.NopLogger,
 		)
 
@@ -53,6 +52,5 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 		assert.Equal(t, config.NewDatabaseConfig(cfg).Driver(), dbCfg.Driver())
 		assert.Equal(t, config.NewDBConnectionConfig(cfg).MaxConns(), dbConnCfg.MaxConns())
 		assert.Equal(t, config.NewSecurityConfig(cfg).AllowedOrigins(), secCfg.AllowedOrigins())
-		assert.Equal(t, config.NewIPRateLimitConfig(cfg).Enabled(), ipCfg.Enabled())
 	})
 }

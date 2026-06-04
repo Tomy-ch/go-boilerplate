@@ -12,7 +12,6 @@ Each module returns an `fx.Option` that registers the corresponding component in
 |---|---|---|
 |`AuthnModule()`|`auth.go`|Authentication (Authenticator + Auth controller)|
 |`BasicAuthModule()`|`basicauth.go`|Basic auth validator for metrics endpoint|
-|`IPRateLimiterModule()`|`ip_rate_limiter.go`|IP-based rate limiter|
 |`SecurityCookieModule()`|`security_cookie.go`|Cookie security attribute configuration|
 |`SkipperModule()`|`skipper.go`|Skip OpenAPI validation for ops endpoints|
 |`ValidatorModule()`|`validator.go`|OpenAPI schema validator|

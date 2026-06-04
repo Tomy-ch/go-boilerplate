@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestConstructor(t *testing.T) {
@@ -76,12 +75,6 @@ func TestConstructor(t *testing.T) {
 		t.Parallel()
 		authCfg := NewAuthConfig(cfg)
 		assert.Equal(t, &cfg.auth, authCfg)
-	})
-
-	t.Run("NewIPRateLimitConfig", func(t *testing.T) {
-		t.Parallel()
-		ipRateLimitCfg := NewIPRateLimitConfig(cfg)
-		assert.Equal(t, &cfg.ipRateLimit, ipRateLimitCfg)
 	})
 }
 
@@ -372,41 +365,6 @@ func TestGetterMethods(t *testing.T) {
 			assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
 		})
 	})
-
-	t.Run("IPRateLimit", func(t *testing.T) {
-		t.Parallel()
-		ipRateLimit := cfg.ipRateLimit
-
-		t.Run("Enabled", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, expectedIPRateLimitEnabled, ipRateLimit.Enabled())
-		})
-
-		t.Run("Requests", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, expectedIPRateLimitRequests, ipRateLimit.Requests())
-		})
-
-		t.Run("Per", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, expectedIPRateLimitPer, ipRateLimit.Per())
-		})
-
-		t.Run("Burst", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, expectedIPRateLimitBurst, ipRateLimit.Burst())
-		})
-
-		t.Run("TTL", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, expectedIPRateLimitTTL, ipRateLimit.TTL())
-		})
-
-		t.Run("CleanupInterval", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, expectedIPRateLimitCleanupInterval, ipRateLimit.CleanupInterval())
-		})
-	})
 }
 
 func Test_ApplicationConfig_IsProductionMode(t *testing.T) {
@@ -440,21 +398,5 @@ func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
 		cfg := Config{}
 		cfg.app.mode = ProductionMode
 		assert.False(t, cfg.app.IsDevelopmentMode())
-	})
-}
-
-func Test_IPRateLimitConfig_Limit(t *testing.T) {
-	t.Parallel()
-
-	cfg := MockConfigForTest(t)
-	ipRateLimitCfg := cfg.ipRateLimit
-
-	t.Run("Limit", func(t *testing.T) {
-		t.Parallel()
-		delta := float64(0.0001)
-		expected := float64(expectedIPRateLimitRequests) / expectedIPRateLimitPer.Seconds()
-		actual := ipRateLimitCfg.Limit()
-
-		require.InEpsilon(t, expected, actual, delta)
 	})
 }

@@ -10,7 +10,6 @@ English | [日本語](README.ja.md)
 |---|---|---|---|
 |`RegisterHTTPServerHooks`|Start Echo server|Graceful Shutdown|HTTP server lifecycle management|
 |`RegisterDBCloseHooks`|—|Close DB connection|Safely close DB connection on shutdown|
-|`RegisterRateLimitHooks`|Start cleanup|Stop cleanup|Periodically remove expired IP rate limiter entries|
 
 ## Flow
 
@@ -18,17 +17,14 @@ English | [日本語](README.ja.md)
 flowchart TB
     subgraph "Start Hooks"
         HTTP["Echo server start (goroutine)"]
-        RL["Rate limit Cleanup Ticker start"]
     end
 
     subgraph "Stop Hooks"
         Shutdown["e.Shutdown()"]
         DBClose["db.Close()"]
-        RLStop["Cleanup Ticker stop"]
     end
 
     HTTP --> Shutdown
-    RL --> RLStop
     DBClose
 ```
 
@@ -46,21 +42,12 @@ Registers a hook to close the database connection on shutdown.
 
 - **Stop**: Calls `db.Close()` and logs any errors
 
-## RegisterRateLimitHooks
-
-Manages periodic cleanup of the IP rate limiter.
-
-- If `ipCfg.Enabled()` is `false`, nothing is registered
-- **Start**: Starts a cleanup loop in a goroutine using `time.NewTicker(ipCfg.CleanupInterval())`
-- **Stop**: Closes `stopCh` to safely terminate the loop
-
 ## DI Registration Example
 
 ```go
 fx.Invoke(
     hook.RegisterHTTPServerHooks,
     hook.RegisterDBCloseHooks,
-    hook.RegisterRateLimitHooks,
 )
 ```
 
@@ -68,4 +55,3 @@ fx.Invoke(
 
 - `RegisterHTTPServerHooks` depends on the `AppliedServerExtends` token, so it executes after extension application
 - The HTTP server starts in a goroutine; startup failures are logged but the Start hook itself does not return an error
-- Rate limit cleanup interval is controlled by `config.IPRateLimitConfig`
