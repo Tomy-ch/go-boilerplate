@@ -450,7 +450,7 @@ After making changes to an existing PR branch locally, ask the user before pushi
 Commits and pull-request creation/updates MUST follow this repository's defined workflow:
 
 - Split changes into appropriately scoped commits using the prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert).
-- Skip pre-commit hooks during the split, then run the equivalent verification (lint / test / sql-lint / migration checks) once after all commits succeed.
+- Batch the checks rather than skipping them: bypass the pre-commit hooks on each individual commit during the split, then run the equivalent verification (lint / test / sql-lint / migration checks) once after all commits succeed. Verification is not skipped — it runs once at the end instead of on every commit.
 - Add the `Co-Authored-By` footer, never commit directly to protected branches, and confirm with the user before pushing to an existing PR branch.
 
 If your agent provides a dedicated command or skill that implements this workflow, prefer it over performing the steps manually. Keep the concrete command/skill names in your own agent's configuration rather than here (for example: Claude Code under `.claude/`, Gemini CLI under `.gemini/commands/`, Codex under `.agents/skills/`; note that Codex also reads this `AGENTS.md` directly as its project instructions), so that other agents do not attempt to invoke commands they do not have.
