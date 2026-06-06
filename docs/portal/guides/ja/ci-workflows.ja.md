@@ -9,7 +9,7 @@
 | グループ | 発火タイミング | 目的 |
 | --- | --- | --- |
 | CI チェック | 全 PR | lint / test / 生成物整合性が失敗したらマージブロック |
-| セキュリティ | 全 PR（および default ブランチ push） | コード / 依存 / イメージ / Go ランタイムの脆弱性を surface |
+| セキュリティ | 全 PR + 週次スケジュール（Trivy） | コード / 依存 / イメージ / Go ランタイムの脆弱性を surface |
 | デプロイ | `production` / `staging` / `develop` への push | 成果物ビルド、マイグレーション実行、アプリ / docs portal をデプロイ |
 | ドキュメント | `release/*` への push | OpenAPI / ER / portal ドキュメントを再生成し auto-sync PR を作成 |
 
@@ -34,7 +34,8 @@
 |ワークフロー|ファイル|説明|
 |---|---|---|
 |Code Security Scan|`code-ql.yaml`|CodeQL によるセキュリティ脆弱性分析|
-|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy による OS / ライブラリ脆弱性スキャン|
+|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy によるライブラリ脆弱性スキャン(開発者向け)|
+|Release Dependency Vulnerability Scan|`trivy-release-gate.yaml`|develop/staging/production 向け PR での Trivy 依存スキャン|
 |Docker Image Scan|`image-scan.yaml`|Docker イメージビルド + SBOM 生成 + Trivy スキャン|
 |Go Vulnerability Analysis|`vulnerability-check.yaml`|govulncheck による Go パッケージ脆弱性検出|
 
@@ -55,5 +56,5 @@
 
 - `auto-generate-docs.yaml` は `auto/docs-update/<base>-<run-id>` というブランチ名で auto-PR を作成。再帰実行を避けるため自己ブランチでは workflow をスキップ
 - デプロイ系 workflow の target ブランチ（`production` / `staging` / `develop`）はすべてブランチ保護を有効化。マージは必ず PR レビュー経由
-- セキュリティスキャンは全 PR で実行。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
+- セキュリティスキャンは全 PR で実行（Trivy の FS / image スキャンは新規公表 CVE 検知のため週次 `schedule` でも実行）。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
 - `auto-generate-docs.yaml` の `Detect changes` ステップはカバレッジ HTML / SchemaSpy のタイムスタンプ揺れを除外し、無意味な PR が発火しないよう設計
