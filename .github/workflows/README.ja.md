@@ -29,7 +29,7 @@
 |Generated OpenAPI Artifacts|`gen-oapi-artifacts-check.yaml`|OpenAPI バンドルとドキュメントの一致検証|
 |Application Boot|`app-di-startup-check.yaml`|DB 付きでアプリケーションが正常に起動するか検証|
 
-### セキュリティ（Pull Request）
+### セキュリティ
 
 |ワークフロー|ファイル|説明|
 |---|---|---|

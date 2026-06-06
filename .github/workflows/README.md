@@ -29,7 +29,7 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |Generated OpenAPI Artifacts|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
 |Application Boot|`app-di-startup-check.yaml`|Verify application starts successfully with DB|
 
-### Security (Pull Request)
+### Security
 
 |Workflow|File|Description|
 |---|---|---|
