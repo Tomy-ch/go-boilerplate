@@ -1,14 +1,11 @@
-name: Dependency Vulnerability Scan Workflow
+name: Release Dependency Vulnerability Scan Workflow
 
 on:
   pull_request:
-    paths:
-      - '.github/workflows/trivy-fs.yaml'
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-  schedule:
-    - cron: '0 0 * * 1'
+    branches:
+      - develop
+      - staging
+      - production
   workflow_dispatch:
 
 permissions:
@@ -22,40 +19,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  trivy-fs:
+  trivy-fs-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Trivy FS scan (JSON)
+      - name: Trivy FS scan (JSON, include unfixed)
         uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: fs
           scanners: 'vuln'
           format: json
-          ignore-unfixed: true
+          ignore-unfixed: false
           vuln-type: 'library'
           severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-fs.json
+          output: trivy-fs-release.json
 
       - name: Create Trivy summary (Markdown)
         id: summarize
         run: |
           set -euo pipefail
-          
+
           # total vulnerability count
           COUNT=$(jq '
             .Results
             | map(.Vulnerabilities // [])
             | flatten
             | length
-          ' trivy-fs.json)
-          
+          ' trivy-fs-release.json)
+
+          # unfixed count
+          UNFIXED=$(jq '
+            .Results
+            | map(.Vulnerabilities // [])
+            | flatten
+            | map(select((.FixedVersion // "") == ""))
+            | length
+          ' trivy-fs-release.json)
+
           echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+          echo "unfixed=${UNFIXED}" >> "$GITHUB_OUTPUT"
 
           if [ "$COUNT" -eq 0 ]; then
-            echo "No vulnerabilities found." > trivy-fs-summary.md
+            echo "No vulnerabilities found." > trivy-fs-release-summary.md
             exit 0
           fi
 
@@ -67,19 +74,19 @@ jobs:
             | sort_by(.Severity) | reverse
             | .[]
             | "- [\(.Severity)] \(.PkgName // "unknown") `\(.InstalledVersion // "?")` → `\(.FixedVersion // "none")` (\(.VulnerabilityID))"
-          ' trivy-fs.json > trivy-fs-summary.md
+          ' trivy-fs-release.json > trivy-fs-release-summary.md
 
         shell: bash
 
-      - name: Upload Trivy FS report
+      - name: Upload Trivy FS release report
         uses: actions/upload-artifact@v7
         with:
-          name: trivy-fs
+          name: trivy-fs-release
           path: |
-            trivy-fs.json
-            trivy-fs-summary.md
+            trivy-fs-release.json
+            trivy-fs-release-summary.md
 
-      - name: Comment Trivy FS result on PR
+      - name: Comment Trivy FS release result on PR
         if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v8
         with:
@@ -87,8 +94,9 @@ jobs:
           script: |
             const fs = require('fs');
 
-            const marker = '<!-- trivy-fs-result -->';
+            const marker = '<!-- trivy-fs-release-result -->';
             const count = Number('${{ steps.summarize.outputs.count }}' || '0');
+            const unfixed = Number('${{ steps.summarize.outputs.unfixed }}' || '0');
 
             const updatedAtJST = new Date().toLocaleString('ja-JP', {
               timeZone: 'Asia/Tokyo',
@@ -121,16 +129,17 @@ jobs:
             };
 
             const title = (count === 0)
-              ? '✅ Trivy FS: PASS (no vulnerabilities)'
-              : `🚨 Trivy FS: FOUND (${count})`;
+              ? '✅ Release Dependency Scan: PASS (no vulnerabilities)'
+              : `🚨 Release Dependency Scan: FOUND (${count})`;
 
-            const summary = read('trivy-fs-summary.md');
+            const summary = read('trivy-fs-release-summary.md');
 
             const body = [
               marker,
               `## ${title}`,
               '',
               `- Total vulnerabilities: **${count}**`,
+              `- Unfixed (no patch): **${unfixed}**`,
               `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
               `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
               '',
@@ -165,20 +174,3 @@ jobs:
                 body,
               });
             }
-
-      - name: Trivy FS scan (SARIF)
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          scan-type: fs
-          scanners: 'vuln'
-          format: sarif
-          ignore-unfixed: true
-          vuln-type: 'library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-fs.sarif
-
-      - name: Upload Trivy FS SARIF to code scanning
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-fs.sarif
-          category: trivy-fs

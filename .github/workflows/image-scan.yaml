@@ -6,6 +6,8 @@ on:
       - production
       - staging
       - develop
+  schedule:
+    - cron: '0 0 * * 1'
   workflow_dispatch:
 
 concurrency:
@@ -206,11 +208,30 @@ jobs:
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
+          scanners: 'vuln'
           format: table
-          ignore-unfixed: true
+          ignore-unfixed: false
           vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL,HIGH,MEDIUM'
           output: trivy-image-scan.txt
+
+      - name: Trivy image scan (SARIF)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ steps.meta.outputs.image }}
+          scanners: 'vuln'
+          format: sarif
+          ignore-unfixed: false
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          output: trivy-image-scan.sarif
+
+      - name: Upload Trivy image SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-image-scan.sarif
+          category: trivy-image
+
       - name: Upload Trivy report artifact
         uses: actions/upload-artifact@v7
         with:
@@ -309,3 +330,15 @@ jobs:
                 body,
               });
             }
+
+      - name: Trivy image scan (gate - fixable CRITICAL/HIGH)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ steps.meta.outputs.image }}
+          scanners: 'vuln'
+          format: table
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'

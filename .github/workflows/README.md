@@ -34,7 +34,8 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |Workflow|File|Description|
 |---|---|---|
 |Code Security Scan|`code-ql.yaml`|CodeQL analysis for security vulnerabilities|
-|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy filesystem scan for OS/library vulnerabilities|
+|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy filesystem scan for library vulnerabilities (developer-facing)|
+|Release Dependency Vulnerability Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
 |Docker Image Scan|`image-scan.yaml`|Build image, generate SBOM, run Trivy scan|
 |Go Vulnerability Analysis|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
 

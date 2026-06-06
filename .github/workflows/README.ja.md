@@ -34,7 +34,8 @@
 |ワークフロー|ファイル|説明|
 |---|---|---|
 |Code Security Scan|`code-ql.yaml`|CodeQL によるセキュリティ脆弱性分析|
-|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy による OS / ライブラリ脆弱性スキャン|
+|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy によるライブラリ脆弱性スキャン(開発者向け)|
+|Release Dependency Vulnerability Scan|`trivy-release-gate.yaml`|develop/staging/production 向け PR での Trivy 依存スキャン|
 |Docker Image Scan|`image-scan.yaml`|Docker イメージビルド + SBOM 生成 + Trivy スキャン|
 |Go Vulnerability Analysis|`vulnerability-check.yaml`|govulncheck による Go パッケージ脆弱性検出|
 
