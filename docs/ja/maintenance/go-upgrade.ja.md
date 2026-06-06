@@ -121,6 +121,27 @@ make tidy-lib
 - `go mod tidy`
 - `go mod vendor`
 
+## 5.5. （任意）Go モジュール依存の更新
+
+Go ランタイムのアップグレードは依存ライブラリをまとめて更新する好機でもあります。このステップは任意で、更新の有無とレベルを選びます。
+
+- **マイナー含む最新** — `go get -u ./...` で全 direct/indirect 依存を同一メジャー内の最新マイナー/パッチへ更新。
+- **パッチのみ** — `go get -u=patch ./...` で現行マイナー内に留める（最も安全）。
+- **スキップ** — 依存は触らない（Go directive の更新のみ）。
+
+`go get -u` は仕様上メジャーを跨がないため、メジャー更新は別途の意図的な作業とします。
+
+更新する場合:
+
+```sh
+go get -u ./...        # または: go get -u=patch ./...
+make tidy-lib          # go mod tidy + go mod vendor を再実行
+```
+
+実行後は `go.mod` の差分を確認し、`go` directive はアップグレード後のバージョンのまま維持、意図しない `toolchain` 行が追加されていないことを確認します。以降の再ビルド / gen / test / lint で、ランタイム更新と依存更新をまとめて検証します。
+
+本リポジトリは（実 DB を使う infrastructure テストを含む）厚い test + lint を備えており、グリーンならマイナー/パッチ更新は高い信頼度を持ちますが、保証ではありません。DB ドライバ・OpenTelemetry・Web フレームワーク等のランタイム挙動が効くコア依存は、グリーンでも CHANGELOG に目を通してください。
+
 ## 6. Go tools の再インストール
 
 Go ランタイムを更新した場合、以前のランタイムでビルドされたツールは再ビルドが望ましいです。mise で再 install します。
@@ -213,6 +234,7 @@ Go version を更新する際は以下を確認してください。
 - [ ] `make sync-versions` 実行（`go.mod` の go directive + Dockerfile FROM 再生成）
 - [ ] `make go-update` 実行（host 上の Go install）し `go version` で確認
 - [ ] `make tidy-lib` 実行
+- [ ] （任意）Go モジュール依存を更新するか判断。更新する場合は `go get -u[=patch] ./...` + `make tidy-lib` 実行（`go` directive は据え置き）
 - [ ] `make install-tools` 実行
 - [ ] Docker コンテナ再ビルド（`make serve-build-clean`, `make tools-build-clean`）
 - [ ] code generation 再実行

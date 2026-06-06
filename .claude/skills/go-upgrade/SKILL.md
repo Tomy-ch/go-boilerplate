@@ -1,6 +1,6 @@
 ---
 name: go-upgrade
-description: Upgrade the Go version used by this project. Follows the procedure in `docs/maintenance/go-upgrade.md` and updates `mise.toml`, runs `make sync-versions` to propagate the new version to `go.mod` and the relevant Dockerfile / README files, then rebuilds dependencies, tooling, and generated code and verifies with tests and lint. The target version is confirmed with the user at execution time.
+description: Upgrade the Go version used by this project. Follows the procedure in `docs/maintenance/go-upgrade.md` and updates `mise.toml`, runs `make sync-versions` to propagate the new version to `go.mod` and the relevant Dockerfile / README files, then rebuilds dependencies, tooling, and generated code and verifies with tests and lint. The target version is confirmed with the user at execution time, and the skill also offers an optional Go module dependency update (latest minor / patch-only / skip) as part of the same upgrade.
 ---
 
 # Go Version Upgrade Procedure
@@ -115,6 +115,29 @@ make tidy-lib
 
 (Internally runs `go mod tidy` and `go mod vendor`.)
 
+### 5.5. (Optional) Update Go Module Dependencies
+
+A Go runtime upgrade is a natural point to also refresh the module dependencies. **Ask the user whether to update**, then act on the answer.
+
+This step **MUST call `AskUserQuestion`** to confirm the update level. Offer:
+
+- **Latest minor (`go get -u ./...`)** — update all direct/indirect deps to the latest minor/patch within the same major. Picks up new features; small risk of behavior changes.
+- **Patch only (`go get -u=patch ./...`)** — stay within the current minor; safest.
+- **Skip** — leave dependencies untouched (Go directive bump only).
+
+Never bump a major version automatically (`go get -u` stays within the current major by design); major upgrades are a separate, deliberate task.
+
+If the user chooses to update:
+
+```sh
+go get -u ./...        # or: go get -u=patch ./...
+make tidy-lib          # re-run go mod tidy + go mod vendor
+```
+
+After running, **review the `go.mod` diff**: the `go` directive must remain at `<TARGET_VERSION>` and no unintended `toolchain` line should be added by a dependency. The subsequent rebuild / gen / test / lint steps then verify the runtime bump and the dependency update together.
+
+Note: this repository has a thick test + lint suite (including real-DB infrastructure tests), so a green run gives high confidence for minor/patch updates — but it is not a guarantee. For runtime-sensitive core deps (DB driver, OpenTelemetry, web framework), skim their CHANGELOG even when green.
+
 ### 6. Reinstall Go Tools
 
 ```sh
@@ -185,6 +208,7 @@ Confirm the following before reporting completion:
 - [ ] `make sync-versions` executed (propagates to go.mod / Dockerfile / docker/**/README.md)
 - [ ] Local Go updated via `make go-update` (user task)
 - [ ] `make tidy-lib` executed
+- [ ] (Optional) Go module dependency update confirmed with the user via `AskUserQuestion`; if chosen, executed (`go get -u[=patch] ./...` + `make tidy-lib`) with the `go` directive left at `<TARGET_VERSION>`
 - [ ] `make install-tools` executed
 - [ ] Docker containers rebuilt
 - [ ] Code generation re-run
