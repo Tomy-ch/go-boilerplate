@@ -1,12 +1,25 @@
 name: Code Security Scan Workflow
 
 on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/code-ql.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
   pull_request:
     paths:
       - '.github/workflows/code-ql.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
+  schedule:
+    - cron: '0 0 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -25,6 +38,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
