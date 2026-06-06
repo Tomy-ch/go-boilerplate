@@ -12,6 +12,7 @@ Make ターゲットは主に以下の単位で整理されています。
 - `.makefiles/database` : DB 初期化 / マイグレーション / シード / DML / スキーマ
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
+- `.makefiles/security` : Trivy 依存脆弱性スキャン
 - `.makefiles/openapi` : OpenAPI バンドル / API ドキュメント生成
 - `.makefiles/go` : Go コード生成 / フォーマット / Lint / テスト / ツール管理
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
@@ -192,6 +193,15 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 | `make md-fix` | Markdown ファイルの Lint 自動修正を実行します。 | `node_tool_runner` コンテナ内で `make md-fix-ci` を呼び出します。 |
 | `make md-lint-ci` | `markdownlint-cli2` で `**/*.md` を直接 Lint します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
 | `make md-fix-ci` | `markdownlint-cli2 --fix` で `**/*.md` を直接修正します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
+
+## `.makefiles/security` 系
+
+CI のセキュリティ指摘をローカルで再現するための Trivy 依存スキャンです。image スキャンは CI 専用（`image-scan.yaml`）です。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make trivy-fs` | ライブラリ依存を Trivy fs でスキャンします。 | `go_tool_runner` コンテナ内で `make trivy-fs-ci` を呼び出します。 |
+| `make trivy-fs-ci` | `trivy fs` を直接実行します。 | CI 用ターゲット。CI と揃えるため `vendor/` を除外します。 |
 
 ## `.makefiles/openapi` 系
 
