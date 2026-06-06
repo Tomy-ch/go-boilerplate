@@ -15,6 +15,6 @@ pre-commit:
 pre-push:
   commands:
     gen-go-check:
-      run: make gen-bundle-oapi gen-go-code && git diff --exit-code -- '*.gen.go' '*_mock.go' openapi/openapi.gen.yaml
+      run: make gen-bundle-oapi gen-go-code && git diff --exit-code -- '*.gen.go' '*/mock/mock_*.go' '*_mock.go' openapi/openapi.gen.yaml
     tidy-check:
       run: go mod tidy && git diff --exit-code go.mod go.sum
