@@ -1,8 +1,8 @@
 ---
 name: commit
-description: Analyze the current working-tree changes (staged + unstaged), group them into appropriately-scoped commits with the project's prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert), and execute each commit in Japanese after user approval. Commits are made with `git commit --no-verify` to skip lefthook during the split; after all commits succeed, the command runs the lefthook-defined commands directly plus `make fix` as a final verification gate (lefthook itself is bypassed because it skips checks when nothing is staged). Respects CLAUDE.md's git rules (no direct commits to protected branches, no force-push, no auto-push after PR amend, Co-Authored-By footer, HEREDOC commit messages).
+description: Analyze the current working-tree changes (staged + unstaged), group them into appropriately-scoped commits with the project's prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert), and execute each commit in Japanese after user approval. Pre-flight also checks whether the current branch's PR is already merged and, if so, recommends cutting a fresh branch from the base before committing. Commits are made with `git commit --no-verify` to skip lefthook during the split; after all commits succeed, the command runs the lefthook-defined commands directly plus `make fix` as a final verification gate (lefthook itself is bypassed because it skips checks when nothing is staged). Respects CLAUDE.md's git rules (no direct commits to protected branches, no force-push, no auto-push after PR amend, Co-Authored-By footer, HEREDOC commit messages).
 argument-hint: [--dry-run] [--scope=staged|all]
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git reset:*), Bash(make fix:*), Bash(make lint:*), Bash(make test:*), Bash(make sql-lint:*), Bash(make check-migration-up-version:*), Bash(make check-migration-down-version:*), Bash(make check-migration-up-gap:*), Bash(make check-migration-down-gap:*), Read, AskUserQuestion
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git reset:*), Bash(git fetch:*), Bash(git switch:*), Bash(gh pr view:*), Bash(make fix:*), Bash(make lint:*), Bash(make test:*), Bash(make sql-lint:*), Bash(make check-migration-up-version:*), Bash(make check-migration-down-version:*), Bash(make check-migration-up-gap:*), Bash(make check-migration-down-gap:*), Read, AskUserQuestion
 ---
 
 # Commit
@@ -45,6 +45,34 @@ Bail out (do not commit) if any of the following:
 - Current branch matches `^(production|develop|staging|release/.+)$`. Per `CLAUDE.md` git rules, never commit to protected branches. Inform the user and ask them to create a feature branch first (e.g., `feature/<issue-or-topic>`).
 - Both staged and unstaged porcelain outputs are empty. Tell the user there is nothing to commit and stop.
 - Any of `MERGE_HEAD` / `CHERRY_PICK_HEAD` / `REBASE_HEAD` is set. The repository is mid-operation; ask the user to resolve that first.
+
+### Merged-PR check (recommend a fresh branch when the current branch's PR is already merged)
+
+After the branch passes the protected-branch bail-out, check whether the current branch already has an associated pull request that has been **merged**. Adding new commits onto a branch whose PR is already merged is almost always unintended — the commits would pile up on a dead branch that no longer flows into its base, and a later `submit-pr` would try to reopen / update a merged PR.
+
+Run (gh CLI; degrade gracefully when `gh` is missing, unauthenticated, or there is no remote — in that case skip this check and continue):
+
+```sh
+gh pr view --json number,state,mergedAt,baseRefName,headRefName,url 2>/dev/null
+```
+
+Interpret the result:
+
+- **No PR found, or `gh` unavailable** → continue normally (no action).
+- **`state` is `OPEN`** → normal "existing PR branch" case. Continue; Step 7 already enforces the ask-before-push rule for PR branches.
+- **`state` is `MERGED`** (or `mergedAt` is non-null) → STOP before committing and use `AskUserQuestion` to recommend cutting a new branch from the (latest) base:
+  - Question: 「現在のブランチ `<headRefName>` は PR #`<number>` が既にマージ済みです。このままコミットすると、base に流れない死んだブランチに積み増しになります。新しいブランチを切って作業しますか？」
+  - Options:
+    - 「新しいブランチを切る（推奨）」 — propose a branch name derived from the pending change (e.g. `feature/<topic>`), confirm it, then refresh the base and switch:
+
+      ```sh
+      git fetch origin <baseRefName>
+      git switch -c <new-branch> origin/<baseRefName>
+      ```
+
+      The uncommitted working-tree changes carry over to the new branch; continue the normal flow (Step 2 onward) on it. **Exception:** under `--dry-run`, do not switch branches — only surface the warning and the recommended command, then proceed with the dry-run proposal.
+    - 「このブランチのまま続ける」 — the user accepts committing on the merged branch; continue on the current branch.
+- **`state` is `CLOSED`** (closed without merge) → not blocked, but note it to the user once (the branch's PR was closed) and continue.
 
 Read `.lefthook.yaml` (if present) and extract the list of `pre-commit:` command entries. The list is used in two places: (a) displayed in Step 4 so the user knows what is being skipped during the split, and (b) executed directly in Step 6 as the post-commit verification gate. If `.lefthook.yaml` is absent, note that and continue (Step 6 will fall back to running only `make fix`).
 
@@ -279,6 +307,7 @@ If the user passes `--no-verify` to `/commit` itself (a future-compatible flag),
 - ✅ Stage only the files in the current group
 - ✅ `make fix` once at Step 0 before inspection
 - ✅ Capture `ORIGINAL_HEAD` at Step 1 for safe rollback
+- ✅ At Step 1, detect a current branch whose PR is already merged (`gh pr view`) and recommend cutting a fresh branch from the base before committing (degrade gracefully when `gh` is unavailable)
 - ✅ On failure, propose `git reset --mixed <ORIGINAL_HEAD>` via `AskUserQuestion`
 - ✅ Step 6 runs each lefthook-defined command + `make fix` directly (never `lefthook run pre-commit`)
 - ❌ Do NOT invoke `lefthook run pre-commit` — it skips commands when nothing is staged, which is the post-commit state
@@ -290,6 +319,7 @@ Before reporting completion, confirm:
 - [ ] `make fix` ran successfully at Step 0
 - [ ] `ORIGINAL_HEAD` captured before any commit
 - [ ] Commits were made on a non-protected branch
+- [ ] Checked whether the current branch's PR is already merged; if so, recommended cutting a fresh branch (and acted on the user's choice)
 - [ ] Repository was not mid-merge / mid-rebase / mid-cherry-pick
 - [ ] The user approved the proposed grouping (unless `--dry-run`)
 - [ ] Lefthook skip notice was shown to the user with the dynamic command list

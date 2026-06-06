@@ -117,6 +117,27 @@ This task executes the following.
 - `go mod tidy`
 - `go mod vendor`
 
+## 5.5. (Optional) Update Go module dependencies
+
+A Go runtime upgrade is a natural point to also refresh the module dependencies. This step is optional — decide whether to update, and at which level:
+
+- **Latest minor** — `go get -u ./...` updates all direct/indirect deps to the latest minor/patch within the same major.
+- **Patch only** — `go get -u=patch ./...` stays within the current minor (safest).
+- **Skip** — leave dependencies untouched (Go directive bump only).
+
+`go get -u` never crosses a major version, so major upgrades remain a separate, deliberate task.
+
+If updating:
+
+```sh
+go get -u ./...        # or: go get -u=patch ./...
+make tidy-lib          # re-run go mod tidy + go mod vendor
+```
+
+Then review the `go.mod` diff: keep the `go` directive at the upgraded version and make sure no unintended `toolchain` line was added. The later rebuild / gen / test / lint steps verify the runtime bump and the dependency update together.
+
+This repository has a thick test + lint suite (including real-DB infrastructure tests), so a green run gives high confidence for minor/patch updates — but it is not a guarantee. For runtime-sensitive core deps (DB driver, OpenTelemetry, web framework), skim their CHANGELOG even when green.
+
 ## 6. Reinstall Go tools
 
 When the Go runtime is updated, Go tools built against the previous runtime should be rebuilt. Reinstall them via mise:
@@ -205,6 +226,7 @@ When updating the Go version, check the following.
 - [ ] Run `make sync-versions` (regenerates `go.mod` go directive + Dockerfile FROM)
 - [ ] Run `make go-update` (installs Go on host) and confirm `go version`
 - [ ] Run `make tidy-lib`
+- [ ] (Optional) Decide whether to update Go module dependencies; if yes, run `go get -u[=patch] ./...` + `make tidy-lib` (keep the `go` directive unchanged)
 - [ ] Run `make install-tools`
 - [ ] Rebuild Docker containers (`make serve-build-clean`, `make tools-build-clean`)
 - [ ] Re-run code generation

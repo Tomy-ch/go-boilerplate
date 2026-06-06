@@ -15,7 +15,7 @@
 #       python -> docker/tools/Dockerfile (FROM python:X.Y.Z-slim)
 #     mise install で host にも入れられるが、各 Dockerfile では公式 base image を採用しているため
 #     mise.toml 側を SSOT、Dockerfile FROM タグは sync によって追従する形になる。
-go = "1.26.3"
+go = "1.26.4"
 node = "24.14"
 python = "3.14.2"
 
