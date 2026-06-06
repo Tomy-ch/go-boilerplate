@@ -22,13 +22,15 @@ RUN mise trust mise.toml
 RUN mise install aqua:golang-migrate/migrate \
     && mise install go:go.uber.org/mock/mockgen \
     && mise install oapi-codegen \
-    && mise install sqlc
+    && mise install sqlc \
+    && mise install aqua:aquasecurity/trivy
 
 RUN mkdir /out \
     && cp "$(mise which migrate)" /out/ \
     && cp "$(mise which mockgen)" /out/ \
     && cp "$(mise which oapi-codegen)" /out/ \
-    && cp "$(mise which sqlc)" /out/
+    && cp "$(mise which sqlc)" /out/ \
+    && cp "$(mise which trivy)" /out/
 
 # ------------------------------
 # Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc を mise.toml のバージョンで提供
