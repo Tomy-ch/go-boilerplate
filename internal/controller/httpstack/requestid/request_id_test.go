@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +25,7 @@ func Test_getRequestID(t *testing.T) {
 		c.Response().Header().Set(echo.HeaderXRequestID, expected)
 
 		actual := GetRequestIDFromResponse(c)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("X-Request-ID が設定されていない場合", func(t *testing.T) {

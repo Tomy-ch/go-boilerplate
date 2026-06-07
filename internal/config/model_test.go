@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConstructor(t *testing.T) {
@@ -14,73 +14,67 @@ func TestConstructor(t *testing.T) {
 	t.Run("NewOSConfig", func(t *testing.T) {
 		t.Parallel()
 		osCfg := NewOperationSystemConfig(cfg)
-		require.Equal(t, &cfg.os, osCfg)
+		assert.Equal(t, &cfg.os, osCfg)
 	})
 
 	t.Run("NewServerConfig", func(t *testing.T) {
 		t.Parallel()
 		serverCfg := NewServerConfig(cfg)
-		require.Equal(t, &cfg.server, serverCfg)
+		assert.Equal(t, &cfg.server, serverCfg)
 	})
 
 	t.Run("NewMetricsConfig", func(t *testing.T) {
 		t.Parallel()
 		metricsCfg := NewMetricsConfig(cfg)
-		require.Equal(t, &cfg.metrics, metricsCfg)
+		assert.Equal(t, &cfg.metrics, metricsCfg)
 	})
 
 	t.Run("NewObservabilityConfig", func(t *testing.T) {
 		t.Parallel()
 		observabilityCfg := NewObservabilityConfig(cfg)
-		require.Equal(t, &cfg.observability, observabilityCfg)
+		assert.Equal(t, &cfg.observability, observabilityCfg)
 	})
 
 	t.Run("NewObservabilityConfig", func(t *testing.T) {
 		t.Parallel()
 		observabilityCfg := NewObservabilityConfig(cfg)
-		require.Equal(t, &cfg.observability, observabilityCfg)
+		assert.Equal(t, &cfg.observability, observabilityCfg)
 	})
 
 	t.Run("NewApplicationConfig", func(t *testing.T) {
 		t.Parallel()
 		appCfg := NewApplicationConfig(cfg)
-		require.Equal(t, &cfg.app, appCfg)
+		assert.Equal(t, &cfg.app, appCfg)
 	})
 
 	t.Run("NewDatabaseConfig", func(t *testing.T) {
 		t.Parallel()
 		dbCfg := NewDatabaseConfig(cfg)
-		require.Equal(t, &cfg.database, dbCfg)
+		assert.Equal(t, &cfg.database, dbCfg)
 	})
 
 	t.Run("NewDBConnectionConfig", func(t *testing.T) {
 		t.Parallel()
 		dbConnCfg := NewDBConnectionConfig(cfg)
-		require.Equal(t, &cfg.dbconnection, dbConnCfg)
+		assert.Equal(t, &cfg.dbconnection, dbConnCfg)
 	})
 
 	t.Run("NewSecurityConfig", func(t *testing.T) {
 		t.Parallel()
 		securityCfg := NewSecurityConfig(cfg)
-		require.Equal(t, &cfg.security, securityCfg)
+		assert.Equal(t, &cfg.security, securityCfg)
 	})
 
 	t.Run("NewSecureCookieConfig", func(t *testing.T) {
 		t.Parallel()
 		secureCookieCfg := NewSecureCookieConfig(cfg)
-		require.Equal(t, &cfg.secureCookie, secureCookieCfg)
+		assert.Equal(t, &cfg.secureCookie, secureCookieCfg)
 	})
 
 	t.Run("NewAuthConfig", func(t *testing.T) {
 		t.Parallel()
 		authCfg := NewAuthConfig(cfg)
-		require.Equal(t, &cfg.auth, authCfg)
-	})
-
-	t.Run("NewIPRateLimitConfig", func(t *testing.T) {
-		t.Parallel()
-		ipRateLimitCfg := NewIPRateLimitConfig(cfg)
-		require.Equal(t, &cfg.ipRateLimit, ipRateLimitCfg)
+		assert.Equal(t, &cfg.auth, authCfg)
 	})
 }
 
@@ -94,7 +88,7 @@ func TestGetterMethods(t *testing.T) {
 		os := cfg.os
 		t.Run("TimeZone", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedOSTimeZone, os.TimeZone())
+			assert.Equal(t, expectedOSTimeZone, os.TimeZone())
 		})
 	})
 
@@ -103,32 +97,32 @@ func TestGetterMethods(t *testing.T) {
 		server := cfg.server
 		t.Run("Host", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerHost, server.Host())
+			assert.Equal(t, expectedServerHost, server.Host())
 		})
 
 		t.Run("Port", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerPort, server.Port())
+			assert.Equal(t, expectedServerPort, server.Port())
 		})
 
 		t.Run("ReadHeaderTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerReadHeaderTimeout, server.ReadHeaderTimeout())
+			assert.Equal(t, expectedServerReadHeaderTimeout, server.ReadHeaderTimeout())
 		})
 
 		t.Run("ReadTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerReadTimeout, server.ReadTimeout())
+			assert.Equal(t, expectedServerReadTimeout, server.ReadTimeout())
 		})
 
 		t.Run("WriteTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerWriteTimeout, server.WriteTimeout())
+			assert.Equal(t, expectedServerWriteTimeout, server.WriteTimeout())
 		})
 
 		t.Run("IdleTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
+			assert.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
 		})
 	})
 
@@ -138,22 +132,22 @@ func TestGetterMethods(t *testing.T) {
 
 		t.Run("Host", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedMetricsHost, metrics.Host())
+			assert.Equal(t, expectedMetricsHost, metrics.Host())
 		})
 
 		t.Run("Port", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedMetricsPort, metrics.Port())
+			assert.Equal(t, expectedMetricsPort, metrics.Port())
 		})
 
 		t.Run("UserName", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedMetricsUserName, metrics.UserName())
+			assert.Equal(t, expectedMetricsUserName, metrics.UserName())
 		})
 
 		t.Run("Password", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedMetricsPassword, metrics.Password())
+			assert.Equal(t, expectedMetricsPassword, metrics.Password())
 		})
 	})
 
@@ -163,22 +157,22 @@ func TestGetterMethods(t *testing.T) {
 
 		t.Run("Enabled", func(t *testing.T) {
 			t.Parallel()
-			require.True(t, observability.Enabled())
+			assert.True(t, observability.Enabled())
 		})
 
 		t.Run("MaskedDBQueryArgs", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
+			assert.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
 		})
 
 		t.Run("TargetStatusCodes", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedObservabilityTargetStatusCodes, observability.TargetStatusCodes())
+			assert.Equal(t, expectedObservabilityTargetStatusCodes, observability.TargetStatusCodes())
 		})
 
 		t.Run("TargetStatusCodeSet", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedObservabilityTargetStatusCodeSet, observability.TargetStatusCodeSet())
+			assert.Equal(t, expectedObservabilityTargetStatusCodeSet, observability.TargetStatusCodeSet())
 		})
 	})
 
@@ -187,22 +181,22 @@ func TestGetterMethods(t *testing.T) {
 		app := cfg.app
 		t.Run("Env", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedApplicationEnv, app.Env())
+			assert.Equal(t, expectedApplicationEnv, app.Env())
 		})
 
 		t.Run("Name", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedApplicationName, app.Name())
+			assert.Equal(t, expectedApplicationName, app.Name())
 		})
 
 		t.Run("Mode", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedApplicationMode, app.Mode())
+			assert.Equal(t, expectedApplicationMode, app.Mode())
 		})
 
 		t.Run("ShutdownTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
+			assert.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
 		})
 	})
 
@@ -211,47 +205,47 @@ func TestGetterMethods(t *testing.T) {
 		database := cfg.database
 		t.Run("Driver", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBDriver, database.Driver())
+			assert.Equal(t, expectedDBDriver, database.Driver())
 		})
 
 		t.Run("Host", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBHost, database.Host())
+			assert.Equal(t, expectedDBHost, database.Host())
 		})
 
 		t.Run("Port", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBPort, database.Port())
+			assert.Equal(t, expectedDBPort, database.Port())
 		})
 
 		t.Run("User", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBUser, database.User())
+			assert.Equal(t, expectedDBUser, database.User())
 		})
 
 		t.Run("Password", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBPassword, database.Password())
+			assert.Equal(t, expectedDBPassword, database.Password())
 		})
 
 		t.Run("DBName", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBName, database.DBName())
+			assert.Equal(t, expectedDBName, database.DBName())
 		})
 
 		t.Run("SSLMode", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBSSLMode, database.SSLMode())
+			assert.Equal(t, expectedDBSSLMode, database.SSLMode())
 		})
 
 		t.Run("PingTimeout", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBPingTimeout, database.PingTimeout())
+			assert.Equal(t, expectedDBPingTimeout, database.PingTimeout())
 		})
 
 		t.Run("SlowQueryWarnThreshold", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
+			assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
 		})
 	})
 
@@ -260,22 +254,22 @@ func TestGetterMethods(t *testing.T) {
 		connection := cfg.dbconnection
 		t.Run("MaxConns", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
+			assert.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
 		})
 
 		t.Run("MinConns", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
+			assert.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
 		})
 
 		t.Run("MaxLifetime", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxLifetime, connection.MaxLifetime())
+			assert.Equal(t, expectedDBMaxLifetime, connection.MaxLifetime())
 		})
 
 		t.Run("MaxIdleTime", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedDBMaxIdleTime, connection.MaxIdleTime())
+			assert.Equal(t, expectedDBMaxIdleTime, connection.MaxIdleTime())
 		})
 	})
 
@@ -284,7 +278,7 @@ func TestGetterMethods(t *testing.T) {
 		security := cfg.security
 		t.Run("AllowedOrigins", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(
+			assert.Equal(
 				t,
 				strings.Split(expectedAllowedOrigins, ","),
 				security.AllowedOrigins(),
@@ -293,42 +287,42 @@ func TestGetterMethods(t *testing.T) {
 
 		t.Run("CIDR", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedCIDR, security.CIDR())
+			assert.Equal(t, expectedCIDR, security.CIDR())
 		})
 
 		t.Run("ContentTypeNosniff", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedContentTypeNosniff, security.ContentTypeNosniff())
+			assert.Equal(t, expectedContentTypeNosniff, security.ContentTypeNosniff())
 		})
 
 		t.Run("XFrameOptions", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedXFrameOptions, security.XFrameOptions())
+			assert.Equal(t, expectedXFrameOptions, security.XFrameOptions())
 		})
 
 		t.Run("HSTSMaxAge", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedHSTSMaxAge, security.HSTSMaxAge())
+			assert.Equal(t, expectedHSTSMaxAge, security.HSTSMaxAge())
 		})
 
 		t.Run("HSTSExcludeSubdomains", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedHSTSExcludeSubdomains, security.HSTSExcludeSubdomains())
+			assert.Equal(t, expectedHSTSExcludeSubdomains, security.HSTSExcludeSubdomains())
 		})
 
 		t.Run("HSTSPreloadEnabled", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedHSTSPreloadEnabled, security.HSTSPreloadEnabled())
+			assert.Equal(t, expectedHSTSPreloadEnabled, security.HSTSPreloadEnabled())
 		})
 
 		t.Run("ReferrerPolicy", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
+			assert.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
 		})
 
 		t.Run("BcryptCost", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedBcryptCost, security.BcryptCost())
+			assert.Equal(t, expectedBcryptCost, security.BcryptCost())
 		})
 	})
 
@@ -338,17 +332,17 @@ func TestGetterMethods(t *testing.T) {
 
 		t.Run("Secure", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedSecureCookieSecure, secureCookie.Secure())
+			assert.Equal(t, expectedSecureCookieSecure, secureCookie.Secure())
 		})
 
 		t.Run("SameSite", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
+			assert.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
 		})
 
 		t.Run("Domain", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
+			assert.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
 		})
 	})
 
@@ -358,52 +352,17 @@ func TestGetterMethods(t *testing.T) {
 
 		t.Run("CookieName", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedAuthCookieName, auth.CookieName())
+			assert.Equal(t, expectedAuthCookieName, auth.CookieName())
 		})
 
 		t.Run("HeaderName", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedAuthHeaderName, auth.HeaderName())
+			assert.Equal(t, expectedAuthHeaderName, auth.HeaderName())
 		})
 
 		t.Run("AllowedHeaderBearer", func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
-		})
-	})
-
-	t.Run("IPRateLimit", func(t *testing.T) {
-		t.Parallel()
-		ipRateLimit := cfg.ipRateLimit
-
-		t.Run("Enabled", func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, expectedIPRateLimitEnabled, ipRateLimit.Enabled())
-		})
-
-		t.Run("Requests", func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, expectedIPRateLimitRequests, ipRateLimit.Requests())
-		})
-
-		t.Run("Per", func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, expectedIPRateLimitPer, ipRateLimit.Per())
-		})
-
-		t.Run("Burst", func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, expectedIPRateLimitBurst, ipRateLimit.Burst())
-		})
-
-		t.Run("TTL", func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, expectedIPRateLimitTTL, ipRateLimit.TTL())
-		})
-
-		t.Run("CleanupInterval", func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, expectedIPRateLimitCleanupInterval, ipRateLimit.CleanupInterval())
+			assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
 		})
 	})
 }
@@ -414,14 +373,14 @@ func Test_ApplicationConfig_IsProductionMode(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.app.mode = ProductionMode
-		require.True(t, cfg.app.IsProductionMode())
+		assert.True(t, cfg.app.IsProductionMode())
 	})
 
 	t.Run("開発環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.app.mode = DevelopmentMode
-		require.False(t, cfg.app.IsProductionMode())
+		assert.False(t, cfg.app.IsProductionMode())
 	})
 }
 
@@ -431,29 +390,13 @@ func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.app.mode = DevelopmentMode
-		require.True(t, cfg.app.IsDevelopmentMode())
+		assert.True(t, cfg.app.IsDevelopmentMode())
 	})
 
 	t.Run("本番環境モードの場合", func(t *testing.T) {
 		t.Parallel()
 		cfg := Config{}
 		cfg.app.mode = ProductionMode
-		require.False(t, cfg.app.IsDevelopmentMode())
-	})
-}
-
-func Test_IPRateLimitConfig_Limit(t *testing.T) {
-	t.Parallel()
-
-	cfg := MockConfigForTest(t)
-	ipRateLimitCfg := cfg.ipRateLimit
-
-	t.Run("Limit", func(t *testing.T) {
-		t.Parallel()
-		delta := float64(0.0001)
-		expected := float64(expectedIPRateLimitRequests) / expectedIPRateLimitPer.Seconds()
-		actual := ipRateLimitCfg.Limit()
-
-		require.InEpsilon(t, expected, actual, delta)
+		assert.False(t, cfg.app.IsDevelopmentMode())
 	})
 }

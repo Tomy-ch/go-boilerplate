@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,8 +117,8 @@ func AssertJSONResponse[T any](t *testing.T, _ T, actualResponse *http.Response)
 	resBody, err := io.ReadAll(actualResponse.Body)
 	require.NoError(t, err)
 
-	require.Equal(t, http.StatusOK, actualResponse.StatusCode)
-	require.Contains(t, "application/json", actualResponse.Header.Get(echo.HeaderContentType))
+	assert.Equal(t, http.StatusOK, actualResponse.StatusCode)
+	assert.Contains(t, "application/json", actualResponse.Header.Get(echo.HeaderContentType))
 
 	var actualObj T
 	require.NoError(t, json.Unmarshal(resBody, &actualObj), "返却された型が期待された型と一致しません。第二引数が期待される型であることを確認してください。")

@@ -4,14 +4,18 @@
 
 アプリケーションサーバーの Docker イメージを定義する Dockerfile です。マルチステージビルドにより、本番・マイグレーション・ローカル開発の各ターゲットを提供します。
 
+## 役割
+
+`docker/server/Dockerfile` はこのプロジェクトで使用するサーバーサイドコンテナすべての single source of truth です。1 つの Dockerfile から 4 ターゲット（`builder` / `runtime` / `migration` / `tooling`）を生成することで、本番デプロイ、スキーママイグレーションジョブ、ローカル開発のホットリロード環境が同じベースレイヤーと Go ツールチェインバージョンに揃った状態を保ちます。本番と開発者ローカルの drift を回避しつつ、各ターゲットは必要なものだけを追加する設計（例: 開発ツールは `tooling` にのみ含める）です。
+
 ## ビルドターゲット
 
 |ターゲット|ベースイメージ|用途|
 |---|---|---|
-|`builder`|`golang:1.26.2-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
+|`builder`|`golang:1.26.4-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
 |`runtime`|`alpine:3.23`|本番実行用コンテナ（非 root ユーザー `app`）|
 |`migration`|`runtime` を継承|マイグレーション実行用コンテナ（`migrate-up` コマンド）|
-|`tooling`|`golang:1.26.2-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
+|`tooling`|`golang:1.26.4-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
 
 ## runtime
 

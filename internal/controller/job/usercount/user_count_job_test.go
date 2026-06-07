@@ -8,6 +8,7 @@ import (
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -31,7 +32,7 @@ func Test_jobImpl_Name(t *testing.T) {
 	job := &jobImpl{}
 	actual := job.Name()
 
-	require.Equal(t, jobName, actual)
+	assert.Equal(t, jobName, actual)
 }
 
 func Test_jobImpl_Execute(t *testing.T) {
@@ -123,7 +124,7 @@ func Test_jobImpl_Execute(t *testing.T) {
 			}
 
 			err := job.Execute(ctx, []string{})
-			require.Equal(t, assertError, err)
+			assert.Equal(t, assertError, err)
 		})
 	})
 }

@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,19 +23,19 @@ func TestNewSecurityCookie(t *testing.T) {
 		out := sec.RewriteSetCookie("a=1")
 		// 解析して属性を確認する
 		name, _, attrs, ok := parseSetCookie(out)
-		require.True(t, ok)
-		require.Equal(t, "a", name)
+		assert.True(t, ok)
+		assert.Equal(t, "a", name)
 		// hasHTTPOnly はデフォルトで有効 (constructorで ptr.To(true) が入るため)
 		_, hasHTTPOnly := attrs.kv["httponly"]
-		require.True(t, hasHTTPOnly)
+		assert.True(t, hasHTTPOnly)
 		// SameSite は Strict になる
 		v, hasSameSite := attrs.kv["samesite"]
-		require.True(t, hasSameSite)
-		require.Equal(t, "Strict", v)
+		assert.True(t, hasSameSite)
+		assert.Equal(t, "Strict", v)
 		// Domain は MockConfigForTest の値が反映される
 		dv, hasDomain := attrs.kv["domain"]
-		require.True(t, hasDomain)
-		require.Equal(t, "localhost", dv)
+		assert.True(t, hasDomain)
+		assert.Equal(t, "localhost", dv)
 	})
 }
 
@@ -53,7 +54,7 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 		sec := &SecurityCookie{applyToAll: false, cookieNames: map[string]struct{}{"foo": {}}}
 		raw := "bar=1; Domain=example.com"
 		res := sec.RewriteSetCookie(raw)
-		require.Equal(t, raw, res)
+		assert.Equal(t, raw, res)
 	})
 
 	t.Run("skipCookieNames に含まれると元の raw を返す", func(t *testing.T) {
@@ -61,7 +62,7 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 		sec := &SecurityCookie{applyToAll: true, skipCookieNames: map[string]struct{}{"s": {}}}
 		raw := "s=1; Path=/"
 		res := sec.RewriteSetCookie(raw)
-		require.Equal(t, raw, res)
+		assert.Equal(t, raw, res)
 	})
 
 	t.Run("forceSecure の true/false が反映される", func(t *testing.T) {
@@ -73,9 +74,9 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 			sec := &SecurityCookie{applyToAll: true, forceSecure: &v}
 			out := sec.RewriteSetCookie("x=1")
 			_, _, attrs, ok := parseSetCookie(out)
-			require.True(t, ok)
+			assert.True(t, ok)
 			_, has := attrs.kv["secure"]
-			require.True(t, has)
+			assert.True(t, has)
 		})
 		// false の時
 		t.Run("false", func(t *testing.T) {
@@ -85,9 +86,9 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 			sec := &SecurityCookie{applyToAll: true, forceSecure: &v}
 			out := sec.RewriteSetCookie("x=1; Secure")
 			_, _, attrs, ok := parseSetCookie(out)
-			require.True(t, ok)
+			assert.True(t, ok)
 			_, has := attrs.kv["secure"]
-			require.False(t, has)
+			assert.False(t, has)
 		})
 	})
 
@@ -97,9 +98,9 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 		sec := &SecurityCookie{applyToAll: true, forceHTTPOnly: &v}
 		out := sec.RewriteSetCookie("y=1")
 		_, _, attrs, ok := parseSetCookie(out)
-		require.True(t, ok)
+		assert.True(t, ok)
 		_, has := attrs.kv["httponly"]
-		require.True(t, has)
+		assert.True(t, has)
 	})
 
 	t.Run("forceSameSite=None -> Secure が付与される (enforceSecureWhenSameSiteNone)", func(t *testing.T) {
@@ -107,12 +108,12 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 		sec := &SecurityCookie{applyToAll: true, forceSameSite: "None", enforceSecureWhenSameSiteNone: true}
 		out := sec.RewriteSetCookie("z=1")
 		_, _, attrs, ok := parseSetCookie(out)
-		require.True(t, ok)
+		assert.True(t, ok)
 		v, has := attrs.kv["samesite"]
-		require.True(t, has)
-		require.Equal(t, "None", v)
+		assert.True(t, has)
+		assert.Equal(t, "None", v)
 		_, hasSecure := attrs.kv["secure"]
-		require.True(t, hasSecure)
+		assert.True(t, hasSecure)
 	})
 
 	t.Run("forcePath/forceDomain/forceMaxAge が反映される", func(t *testing.T) {
@@ -121,16 +122,16 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 		sec := &SecurityCookie{applyToAll: true, forcePath: "/ok", forceDomain: "d.example", forceMaxAge: &ma}
 		out := sec.RewriteSetCookie("p=1")
 		_, _, attrs, ok := parseSetCookie(out)
-		require.True(t, ok)
+		assert.True(t, ok)
 		pv, ph := attrs.kv["path"]
-		require.True(t, ph)
-		require.Equal(t, "/ok", pv)
+		assert.True(t, ph)
+		assert.Equal(t, "/ok", pv)
 		dv, dh := attrs.kv["domain"]
-		require.True(t, dh)
-		require.Equal(t, "d.example", dv)
+		assert.True(t, dh)
+		assert.Equal(t, "d.example", dv)
 		mv, mh := attrs.kv["max-age"]
-		require.True(t, mh)
-		require.Equal(t, "3600", mv)
+		assert.True(t, mh)
+		assert.Equal(t, "3600", mv)
 	})
 
 	t.Run("__Secure- prefix は Secure を強制する", func(t *testing.T) {
@@ -138,9 +139,9 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 		sec := &SecurityCookie{applyToAll: true}
 		out := sec.RewriteSetCookie("__Secure-a=1")
 		_, _, attrs, ok := parseSetCookie(out)
-		require.True(t, ok)
+		assert.True(t, ok)
 		_, has := attrs.kv["secure"]
-		require.True(t, has)
+		assert.True(t, has)
 	})
 
 	t.Run("__Host- prefix は Secure + Path=/ + Domain 削除 を行う", func(t *testing.T) {
@@ -149,16 +150,16 @@ func Test_SecurityCookie_RewriteSetCookie(t *testing.T) {
 		raw := "__Host-cookie=1; Domain=example.com; Path=/foo"
 		out := sec.RewriteSetCookie(raw)
 		_, _, attrs, ok := parseSetCookie(out)
-		require.True(t, ok)
+		assert.True(t, ok)
 		// secure
 		_, hasSecure := attrs.kv["secure"]
-		require.True(t, hasSecure)
+		assert.True(t, hasSecure)
 		// path は / に置き換わる
 		pv, hasPath := attrs.kv["path"]
-		require.True(t, hasPath)
-		require.Equal(t, "/", pv)
+		assert.True(t, hasPath)
+		assert.Equal(t, "/", pv)
 		// domain は削除されている
 		_, hasDomain := attrs.kv["domain"]
-		require.False(t, hasDomain)
+		assert.False(t, hasDomain)
 	})
 }

@@ -3,7 +3,7 @@ package ops
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsOpsPath(t *testing.T) {
@@ -59,7 +59,7 @@ func TestIsOpsPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := IsOpsPath(tt.path)
-			require.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

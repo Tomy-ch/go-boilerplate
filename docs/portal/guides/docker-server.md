@@ -4,14 +4,18 @@ English | [日本語](README.ja.md)
 
 This Dockerfile defines the application server images. It uses multi-stage builds to provide targets for production, migration, and local development.
 
+## Role
+
+`docker/server/Dockerfile` is the single source of truth for every server-side container the project ships. One Dockerfile produces four targets (`builder` / `runtime` / `migration` / `tooling`) so that production deploys, schema migration jobs, and local hot-reload development all stay aligned on the same base layers and Go toolchain version. Keeping these in one place avoids drift between "what runs in production" and "what runs on a developer's laptop" while letting each target add only what it needs (e.g., dev tools live only in `tooling`).
+
 ## Build Targets
 
 |Target|Base Image|Purpose|
 |---|---|---|
-|`builder`|`golang:1.26.2-alpine`|Build the Go binary with `ldflags` (version/revision/build date)|
+|`builder`|`golang:1.26.4-alpine`|Build the Go binary with `ldflags` (version/revision/build date)|
 |`runtime`|`alpine:3.23`|Production runtime container (non-root `app` user)|
 |`migration`|Inherits `runtime`|Migration execution container (`migrate-up` command)|
-|`tooling`|`golang:1.26.2-alpine`|Local development environment (hot reload + debugging)|
+|`tooling`|`golang:1.26.4-alpine`|Local development environment (hot reload + debugging)|
 
 ## runtime
 

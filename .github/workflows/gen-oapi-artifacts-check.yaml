@@ -52,6 +52,25 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
+      # PR の source（openapi/ 配下）が触られているかを判定する。
+      # 触られている場合は「make gen-api を忘れた」可能性が高く、触られていない
+      # 場合は generator 側のドリフト（非決定的出力 / 依存更新）の可能性が高い。
+      - name: Detect source modifications in this PR
+        id: source_mod
+        if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
+          changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
+          if echo "$changed" | grep -qE '^openapi/'; then
+            echo "source_modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "source_modified=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Comment generated status on PR (diff/no-diff)
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v8
@@ -64,6 +83,7 @@ jobs:
 
             const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
             const files = raw ? raw.split('\n').filter(Boolean) : [];
+            const sourceModified = '${{ steps.source_mod.outputs.source_modified }}' === 'true';
 
             const updatedAtJST = new Date().toLocaleString('ja-JP', {
               timeZone: 'Asia/Tokyo',
@@ -88,15 +108,21 @@ jobs:
 
             let body;
             if (files.length > 0) {
+              const title = sourceModified
+                ? '## 🧾 Differences in OpenAPI generated output have been detected (list of modified files)'
+                : '## ⚠️ OpenAPI 生成物のドリフトを検知（本 PR で `openapi/` 配下は触られていません）';
+              const action = sourceModified
+                ? 'Please run `make gen-api` locally and commit the changes.'
+                : '本 PR では `openapi/` 配下が変更されていないため、generator 側のドリフト（非決定的出力 / 依存バージョン差 / base 側の古い生成物 等）の可能性があります。`make gen-api` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。';
               body = [
                 marker,
-                '## 🧾 Differences in OpenAPI generated output have been detected (list of modified files)',
+                title,
                 '',
                 commitLine,
                 '',
                 ...files.map(f => `- \`${f}\``),
                 '',
-                'Please run `make gen-api` locally and commit the changes.',
+                action,
                 '',
                 updatedLine,
               ].join('\n');

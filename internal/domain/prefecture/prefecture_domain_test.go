@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/pkg/uuid"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,9 +32,9 @@ func TestNew(t *testing.T) {
 
 			actual, err := New(expectedUUID, expectedName, expectedCode)
 			require.NoError(t, err)
-			require.Equal(t, expected.id, actual.id)
-			require.Equal(t, expected.name, actual.name)
-			require.Equal(t, expected.code, actual.code)
+			assert.Equal(t, expected.id, actual.id)
+			assert.Equal(t, expected.name, actual.name)
+			assert.Equal(t, expected.code, actual.code)
 		})
 	})
 
@@ -108,18 +109,18 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("IDメソッドは正しいIDを返す", func(t *testing.T) {
 		t.Parallel()
 
-		require.Equal(t, id, prefecture.ID())
+		assert.Equal(t, id, prefecture.ID())
 	})
 
 	t.Run("Nameメソッドは正しい名前を返す", func(t *testing.T) {
 		t.Parallel()
 
-		require.Equal(t, name, prefecture.Name())
+		assert.Equal(t, name, prefecture.Name())
 	})
 
 	t.Run("Codeメソッドは正しいコードを返す", func(t *testing.T) {
 		t.Parallel()
 
-		require.Equal(t, code, prefecture.Code())
+		assert.Equal(t, code, prefecture.Code())
 	})
 }

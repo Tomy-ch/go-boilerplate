@@ -2,23 +2,36 @@
 
 [English](README.md) | 日本語
 
-このドキュメントでは、本リポジトリで利用できる `make` コマンドの役割を説明します。
+## 役割
+
+`.makefiles/` はプロジェクトで使用するすべての `make` ターゲットの中央レジストリです。各 `.mk` ファイルは関連ターゲットを領域別（application / database / sql / go / openapi / docs / github / tools）にグルーピング。トップレベルの `makefile` はそれらを `include` するだけなので、新規ターゲット追加は該当グループファイルへの追記だけで完結し、トップレベル編集は不要です。
+
 Make ターゲットは主に以下の単位で整理されています。
 
 - `.makefiles/app` : アプリケーション起動・Job 実行
 - `.makefiles/database` : DB 初期化 / マイグレーション / シード / DML / スキーマ
 - `.makefiles/sql` : SQL Lint / Fix
+- `.makefiles/markdown` : Markdown Lint / Fix
+- `.makefiles/security` : Trivy 依存脆弱性スキャン
 - `.makefiles/openapi` : OpenAPI バンドル / API ドキュメント生成
 - `.makefiles/go` : Go コード生成 / フォーマット / Lint / テスト / ツール管理
 - `.makefiles/docs` : Portal / ツール情報などのドキュメント生成
 - `.makefiles/gen` : 各種生成処理の一括実行
 - `.makefiles/github` : GitHub 初期設定 / リリース / ラベル / ルール設定
-- `.makefiles/tools` : 開発ツールのバージョン管理
 
-また、ターゲットは大きく 2 種類に分かれます。
+## 命名規約
 
-- 通常ターゲット: Docker コンテナ経由で実行する開発者向けコマンド
-- `-ci` ターゲット: CI や直接実行向けの低レベルコマンド
+- ターゲット名はハイフン区切りの小文字（`make new-migrate-<name>`、`make gen-api`）
+- ターゲットは 2 種類:
+  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行
+  - **`-ci` ターゲット**: CI ランナー、またはツールをローカルインストール済みの開発者向け低レベルコマンド
+- すべて `.PHONY` 指定し、末尾 `##` コメントで `make help` 出力に載せること
+
+## 補足
+
+- 新規 `.mk` ファイルは該当グループ配下に追加すれば OK。`makefile` 側で既に `include` 済み
+- ファイル直接作成より `make new-migrate-<name>` 等のヘルパーを優先（命名規約と番号採番を自動化）
+- 一回限りの運用コマンド（`make setup-repo` 等）は `.makefiles/github/operation/` 配下に置き、開発者向けターゲットと分離する
 
 ## `.makefiles/app` 系
 
@@ -29,9 +42,11 @@ Make ターゲットは主に以下の単位で整理されています。
 | コマンド | 説明 | 主な用途 |
 | --- | --- | --- |
 | `make serve` | `development` プロファイルの Docker Compose サービスをバックグラウンドで起動します。 | 通常のローカル開発開始 |
-| `make serve-build` | Docker イメージを再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
+| `make serve-build` | Docker イメージをキャッシュを利用して再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
+| `make serve-build-clean` | `--no-cache --pull` でクリーンビルドしたうえで開発環境を起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
 | `make tools` | `tools` プロファイルの開発支援ツール群を起動します。 | 開発ツール利用時 |
-| `make tools-rebuild` | 開発用ツールコンテナを `--no-cache --pull` 付きで再構築します。 | ツールコンテナ更新時 |
+| `make tools-build` | 開発用ツールコンテナをキャッシュを利用してビルドします（起動はしません）。 | ツールコンテナの Dockerfile や依存変更の反映 |
+| `make tools-build-clean` | 開発用ツールコンテナを `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールコンテナの base image 更新の取り込み |
 | `make smoke` | `smoke` プロファイルの `smoke_server` をビルド付きで起動します。 | Smoke Test 環境の確認 |
 
 #### `make job NAME=<job名> ARGS="<引数>"`
@@ -168,6 +183,26 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | `make sql-fix-dml-ci` | `database/dml/` に対して `sqlfluff fix` を実行します。 | CI 用ターゲットです。 |
 | `make sql-fix-seed-ci` | `database/seed/` に対して `sqlfluff fix` を実行します。 | CI 用ターゲットです。 |
 
+## `.makefiles/markdown` 系
+
+Markdown ファイルに対する Lint と自動修正を扱うターゲット群です。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make md-lint` | Markdown ファイルの Lint を実行します。 | `node_tool_runner` コンテナ内で `make md-lint-ci` を呼び出します。 |
+| `make md-fix` | Markdown ファイルの Lint 自動修正を実行します。 | `node_tool_runner` コンテナ内で `make md-fix-ci` を呼び出します。 |
+| `make md-lint-ci` | `markdownlint-cli2` で `**/*.md` を直接 Lint します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
+| `make md-fix-ci` | `markdownlint-cli2 --fix` で `**/*.md` を直接修正します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
+
+## `.makefiles/security` 系
+
+CI のセキュリティ指摘をローカルで再現するための Trivy 依存スキャンです。image スキャンは CI 専用（`image-scan.yaml`）です。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make trivy-fs` | ライブラリ依存を Trivy fs でスキャンします。 | `go_tool_runner` コンテナ内で `make trivy-fs-ci` を呼び出します。 |
+| `make trivy-fs-ci` | `trivy fs` を直接実行します。 | CI 用ターゲット。CI と揃えるため `vendor/` を除外します。 |
+
 ## `.makefiles/openapi` 系
 
 | コマンド | 説明 | 補足 |
@@ -212,15 +247,14 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make go-update` | `anyenv update` を実行し、`.go-version` に記載された Go バージョンを `goenv` でインストールします。 | なし |
-| `make install-tools` | Go 開発で利用するツールをインストールします。 | `gopls`、`gotests`、`impl`、`goplay`、`dlv`、`lefthook`、`golangci-lint` などを導入します。 |
+| `make go-update` | `mise.toml` に記載された Go ランタイムを mise でインストールします。詳細は `docs/maintenance/go-upgrade.md` を参照。 | mise が必須 |
+| `make install-tools` | host 開発用の Go ツール群を mise でインストールします（バージョンは `mise.toml` から解決）。 | `gopls`、`gotests`、`impl`、`dlv`、`lefthook`、`golangci-lint` を導入します。 |
 | `make activate-tools` | `lefthook install` を実行し、Git フックをセットアップします。 | なし |
 
 ## `.makefiles/docs` 系
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make gen-tools-meta` | 生成系ツールのバージョン情報を出力します。 | Go / Node.js / Python の各ツール群のメタ情報を更新したいときに使用します。 |
 | `make gen-portal-docs` | Portal 用ドキュメントを生成します。 | なし |
 | `make gen-docs-json` | Portal 用ドキュメントリンク JSON を生成します。 | なし |
 | `make gen-portal-docs-ci` | Node.js スクリプトで Portal 用ドキュメントを直接生成します。 | CI 用ターゲットです。 |
@@ -232,7 +266,7 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | --- | --- | --- |
 | `make gen` | 各種コード・ドキュメント生成をまとめて実行します。 | `gen-api` → `gen-query` → `gen-docs` を順に実行します。 |
 | `make gen-api` | API 関連の生成処理をまとめて実行します。 | `gen-bundle-oapi` →  `gen-api-docs` → `gen-go-code` を実行します。 |
-| `make gen-docs` | ドキュメント関連の生成処理をまとめて実行します。 | `gen-api-docs`、`gen-tools-meta`、`gen-portal-docs`、`gen-docs-json` を実行します。 |
+| `make gen-docs` | ドキュメント関連の生成処理をまとめて実行します。 | `gen-api-docs`、`gen-portal-docs`、`gen-docs-json` を実行します。 |
 | `make gen-all-docs` | すべてのドキュメント生成処理を実行します。 | `gen-docs`、`gen-db-schema`、`gen-test-repo` を実行します。 |
 | `make gen-query` | SQLC コード生成をまとめて実行します。 | `dump-schema` → `merge-dml` → `gen-sqlc` → `fmt` を順に実行します。 |
 | `make gen-query-repo` | Repository 用 SQLC コード生成を実行します。 | `dump-schema` → `merge-dml-repo` → `gen-sqlc` を実行します。 |
@@ -292,11 +326,3 @@ SQL ファイルに対する静的検査と自動修正を扱うターゲット�
 | `make tag-patch` | patch バージョンを 1 つ進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準とし、リリースノートには `.github/release/<version>.md` を使用します。 |
 | `make tag-minor` | minor バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。 |
 | `make tag-major` | major バージョンを進めたタグを作成し、GitHub Release を作成します。 | 現在の最新タグを基準にします。 |
-
-## `.makefiles/tools` 系
-
-### ツールバージョン管理関連
-
-| コマンド | 説明 | 補足 |
-| --- | --- | --- |
-| `make sync-tools` | `tools.yaml` に記載されたツールのバージョンをもとに、関連ファイルのバージョン表記を一括置換します。 | `replace-tools-version.cjs` を使用して、Dockerfile やインストールスクリプトなどのバージョン表記を更新します。 |

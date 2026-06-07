@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,12 +33,12 @@ func TestNew(t *testing.T) {
 
 		ctx := withTx(context.Background(), tx)
 		conn := New(ctx, db)
-		require.Equal(t, tx, conn)
+		assert.Equal(t, tx, conn)
 	})
 
 	t.Run("トランザクションが存在しない場合", func(t *testing.T) {
 		ctx := context.Background()
 		conn := New(ctx, db)
-		require.Equal(t, db, conn)
+		assert.Equal(t, db, conn)
 	})
 }

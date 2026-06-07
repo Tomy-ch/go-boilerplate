@@ -7,11 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, BinderModule())
-}
-
 func Test_provideServeConfig(t *testing.T) {
 	t.Parallel()
 

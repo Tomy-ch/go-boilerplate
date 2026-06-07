@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,8 +25,8 @@ func TestEchoTestClient_BuildAndServe(t *testing.T) {
 			PathParams([]EchoTestParam{{Name: "id", Value: "123"}})
 
 		_, _, c := client.Build()
-		require.Equal(t, "/users/:id", c.Path())
-		require.Equal(t, "123", c.Param("id"))
+		assert.Equal(t, "/users/:id", c.Path())
+		assert.Equal(t, "123", c.Param("id"))
 	})
 
 	t.Run("RequestURLでリクエストを構築できる", func(t *testing.T) {
@@ -34,7 +35,7 @@ func TestEchoTestClient_BuildAndServe(t *testing.T) {
 			RequestURL("/users/456")
 
 		_, _, c := client.Build()
-		require.Equal(t, "/users/456", c.Request().URL.Path)
+		assert.Equal(t, "/users/456", c.Request().URL.Path)
 	})
 
 	t.Run("Serveでレスポンスが取得できる", func(t *testing.T) {
@@ -43,8 +44,8 @@ func TestEchoTestClient_BuildAndServe(t *testing.T) {
 			RequestURL("/users/789")
 
 		rec := client.Serve()
-		require.Equal(t, http.StatusOK, rec.Code)
-		require.Equal(t, "user:789", rec.Body.String())
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "user:789", rec.Body.String())
 	})
 }
 
@@ -59,7 +60,7 @@ func TestEchoTestClient_JSONBody(t *testing.T) {
 			JSONBody(map[string]string{"foo": "bar"})
 
 		_, _, c := client.Build()
-		require.Equal(t, "application/json", c.Request().Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", c.Request().Header.Get("Content-Type"))
 	})
 }
 
@@ -74,7 +75,7 @@ func TestEchoTestClient_HeaderAndAuthBearer(t *testing.T) {
 			Header("X-Test", "value")
 
 		_, _, c := client.Build()
-		require.Equal(t, "value", c.Request().Header.Get("X-Test"))
+		assert.Equal(t, "value", c.Request().Header.Get("X-Test"))
 	})
 
 	t.Run("AuthBearerでAuthorizationヘッダーが設定できる", func(t *testing.T) {
@@ -85,7 +86,7 @@ func TestEchoTestClient_HeaderAndAuthBearer(t *testing.T) {
 			AuthBearer(token)
 
 		_, _, c := client.Build()
-		require.Equal(t, "Bearer "+token, c.Request().Header.Get("Authorization"))
+		assert.Equal(t, "Bearer "+token, c.Request().Header.Get("Authorization"))
 	})
 }
 
@@ -100,7 +101,7 @@ func TestEchoTestClient_QueryParams(t *testing.T) {
 			QueryParams([]EchoTestParam{{Name: "foo", Value: "bar"}})
 
 		_, _, c := client.Build()
-		require.Equal(t, "bar", c.QueryParam("foo"))
+		assert.Equal(t, "bar", c.QueryParam("foo"))
 	})
 }
 
@@ -117,7 +118,7 @@ func TestEchoTestClient_RawBody(t *testing.T) {
 			RawBody(strings.NewReader(body), contentType)
 
 		_, _, c := client.Build()
-		require.Equal(t, contentType, c.Request().Header.Get("Content-Type"))
+		assert.Equal(t, contentType, c.Request().Header.Get("Content-Type"))
 	})
 
 	t.Run("RawBodyでContent-Typeが空の場合、Content-Typeは設定されない", func(t *testing.T) {

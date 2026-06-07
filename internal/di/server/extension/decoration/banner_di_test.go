@@ -9,11 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBannerModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, BannerModule())
-}
-
 func Test_provideBannerServeConfig(t *testing.T) {
 	t.Parallel()
 

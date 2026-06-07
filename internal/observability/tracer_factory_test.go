@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/logging"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 )
@@ -22,7 +23,7 @@ func TestNewTracerFactory(t *testing.T) {
 			lf:  lf,
 		}
 		actual := NewTracerFactory(provided, log, lf)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -101,7 +102,7 @@ func Test_tracerFactory_newLayerTracer(t *testing.T) {
 		pkgName := "pkg"
 		actual := actualTF.newLayerTracer(layer, pkgName)
 		require.NotNil(t, actual)
-		require.Equal(t, layer, actual.layer)
-		require.Equal(t, pkgName, actual.pkgName)
+		assert.Equal(t, layer, actual.layer)
+		assert.Equal(t, pkgName, actual.pkgName)
 	})
 }

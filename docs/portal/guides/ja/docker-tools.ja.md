@@ -4,11 +4,15 @@
 
 プロジェクトの**コード生成・バンドル用ツールコンテナ**を定義する Dockerfile です。マルチステージビルドにより Go / Node.js / Python のツール環境を提供します。
 
+## 役割
+
+`docker/tools/Dockerfile` はビルドで必要となるすべてのコード生成・lint ツール（oapi-codegen / mockgen / sqlc / migrate / redocly-cli / js-yaml / sqlfluff）を、言語ごとに隔離したランナーイメージにパッケージングします。開発者と CI はこれらのコンテナを `make` ターゲット（`make gen-api` / `make gen-query` / `make sql-lint` 等）経由で起動するため、誰も Go / Node / Python ツールチェインをローカルにインストールする必要がありません。マシン間でツールバージョンが再現可能になり、生成物が既知のツールチェインに固定されます。
+
 ## ビルドターゲット
 
 |ターゲット|ベースイメージ|含まれるツール|
 |---|---|---|
-|`go_tools`|`golang:1.26.2-alpine`|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate|
 |`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 
@@ -63,7 +67,6 @@ make gen-query  # sqlc コード生成
 1. 適切な Dockerfile ステージにツールをインストール
 2. `docker-compose.yaml` に `profiles: [generate]` で新しいサービスを追加
 3. 必要に応じて Makefile ターゲットを追加
-4. **バージョン記録スクリプトを更新する** — `docs/ja/maintenance/versions_generator.ja.md` を参照
 
 ## 注意点
 

@@ -2,7 +2,16 @@
 
 English | [日本語](README.ja.md)
 
-This directory contains GitHub Actions workflow definitions for CI/CD.
+This directory contains GitHub Actions workflow definitions for CI/CD. Workflows are grouped by purpose: pull-request gates (lint / test / security scans), push-triggered deployments, and documentation regeneration on release branches.
+
+## Trigger Strategy
+
+| Group | When it runs | What it does |
+| --- | --- | --- |
+| CI Checks | every pull request | Block merge if lint / test / generated-artifact consistency fails |
+| Security | every PR + weekly schedule (Trivy / CodeQL) + push baseline (CodeQL) | Surface vulnerabilities in code, dependencies, images, and Go runtime |
+| Deployment | push to `production` / `staging` / `develop` | Build artifacts, run migration, deploy app or docs portal |
+| Documentation | push to `release/*` | Regenerate OpenAPI / ER / portal docs and open an auto-sync PR |
 
 ## Workflow List
 
@@ -18,15 +27,15 @@ This directory contains GitHub Actions workflow definitions for CI/CD.
 |Generated Go Artifacts|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|
 |Generated DB Artifacts|`gen-db-artifacts-check.yaml`|Verify generated sqlc code matches committed artifacts|
 |Generated OpenAPI Artifacts|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
-|Generator Versions|`gen-versions-check.yaml`|Verify generator tool versions are in sync|
 |Application Boot|`app-di-startup-check.yaml`|Verify application starts successfully with DB|
 
-### Security (Pull Request)
+### Security
 
 |Workflow|File|Description|
 |---|---|---|
 |Code Security Scan|`code-ql.yaml`|CodeQL analysis for security vulnerabilities|
-|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy filesystem scan for OS/library vulnerabilities|
+|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy filesystem scan for library vulnerabilities (developer-facing)|
+|Release Dependency Vulnerability Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
 |Docker Image Scan|`image-scan.yaml`|Build image, generate SBOM, run Trivy scan|
 |Go Vulnerability Analysis|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
 
@@ -42,3 +51,10 @@ This directory contains GitHub Actions workflow definitions for CI/CD.
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
 |Auto-generate Docs PR|`auto-generate-docs.yaml`|push to release/* branches|Auto-generate OpenAPI docs, ER diagrams, portal docs|
+
+## Notes
+
+- `auto-generate-docs.yaml` opens an auto-PR whose branch is named `auto/docs-update/<base>-<run-id>`; the workflow skips itself on that branch to avoid recursion.
+- All deployment workflows require their target branch (`production` / `staging` / `develop`) to be branch-protected; merges must flow through PR review.
+- Security scans run on every PR (Trivy FS / image and CodeQL also run weekly via `schedule` to catch newly disclosed CVEs / queries; CodeQL additionally runs on push to `release/*` and the deploy branches to keep a code-scanning baseline); if a high-severity CodeQL or Trivy finding appears, the corresponding branch-protection rule blocks merge.
+- The `Detect changes` step in `auto-generate-docs.yaml` excludes coverage HTML and SchemaSpy timestamp churn so cosmetic regenerations do not open noise PRs.

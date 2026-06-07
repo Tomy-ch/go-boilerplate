@@ -32,44 +32,43 @@ Go programming language
 https://go.dev/doc/devel/release
 ```
 
-## 2. `.go-version` を更新
+## 2. `mise.toml` を更新し sync を実行
 
-このプロジェクトでは Go バージョンを `.go-version` で管理しています。
+このプロジェクトでは Go バージョンを含む全ツールのバージョンを `mise.toml` を SSOT として管理しています。
+Go ランタイムは `actions/setup-go` や `golang:X.Y.Z-alpine` base image との互換のために
+いくつかのファイルへ複製する必要があり、`make sync-versions` でこの伝播を行います。
 
-```text
-.go-version
+```toml
+# mise.toml
+[tools]
+go = "1.26.3"
+# ...
 ```
 
-このファイルの内容を更新してください。
+そのあと sync を実行します。
 
-```text
-1.26.2
+```sh
+make sync-versions
 ```
+
+これにより `mise.toml` の go 値が以下のファイルに反映されます。
+
+- `go.mod` ― `go X.Y.Z` directive（CI の `actions/setup-go` が `go-version-file: go.mod` で読む）
+- `docker/server/Dockerfile` ― `FROM golang:X.Y.Z-alpine` の行（builder + tooling）
+- `docker/tools/Dockerfile` ― `FROM golang:X.Y.Z-alpine` の行（go_tools）
+
+生成された差分は `mise.toml` の bump と一緒にコミットしてください。
 
 ## 3. ローカル Go 環境の更新
 
-このプロジェクトでは **goenv の利用を推奨しています（必須ではありません）**。
-
-### goenv を使用する場合
+このプロジェクトではツール管理に **mise が必須** です。同じ mise でローカルの Go ランタイムも管理します。
+ステップ 2 のあと、pin された Go をインストールします。
 
 ```sh
 make go-update
 ```
 
-確認
-
-```sh
-go version
-```
-
-### goenv を使用しない場合
-
-Homebrew を利用している場合
-
-```sh
-brew update
-brew upgrade go
-```
+内部では `mise install go` が走り、`mise.toml` の go 値を読みます。
 
 確認
 
@@ -77,32 +76,39 @@ brew upgrade go
 go version
 ```
 
-## 4. CI の Go version 更新
+### IDE / エディタ統合（VSCode + mise）
 
-GitHub Actions の Go version を更新します。
+VSCode を Dock / Spotlight から起動した場合、shell の初期化処理（mise を
+activate している箇所）が実行されないため、Go 拡張がシステム `PATH` から
+古い `go` バイナリを拾ってしまうことがあります。プロジェクトの `mise.toml`
+と editor を同期させるには、以下のいずれかを実施します:
 
-対象ディレクトリ
+1. **[mise VSCode 拡張](https://marketplace.visualstudio.com/items?itemName=hverlin.mise-vscode) をインストール（推奨）** —
+   VSCode 内部でプロジェクトの mise 環境を自動 activate。
+   `.vscode/extensions.json` の recommended extensions に登録済み。
+2. **mise が active なターミナルから VSCode を起動する** —
+   `code /path/to/repo` で shell の環境を継承。
+3. **VSCode の User Settings で `go.alternateTools.go` を mise shim に設定** —
 
-```text
-.github/workflows
-```
+   ```json
+   "go.alternateTools": {
+     "go": "${env:HOME}/.local/share/mise/shims/go"
+   }
+   ```
 
-例
+   この設定は **User Settings** に書くこと（プロジェクト `.vscode/settings.json`
+   ではなく、プロジェクトのポータビリティ維持のため）。
 
-```yaml
-- uses: actions/setup-go@v6
-  with:
-    go-version-file: go.mod
-    cache: true
-```
+設定後 VSCode を再起動し、**コマンドパレット → Go: Locate Configured Go Tools**
+で active な `go` バイナリが `mise current` の結果と一致することを確認してください。
 
-## 5. `go.mod` の Go version 更新
+## 4. CI は `go.mod` を自動参照
 
-```sh
-go mod edit -go=1.26.2
-```
+GitHub Actions の workflow は `actions/setup-go` の `go-version-file: go.mod` を使用しています。
+ステップ 2 の `make sync-versions` が `go.mod` の `go` directive も書き換えるため、
+workflow 自体の編集も `go mod edit -go=X.Y.Z` の手動実行も不要です。
 
-## 6. 依存関係と vendor の更新
+## 5. 依存関係と vendor の更新
 
 このプロジェクトでは依存関係の整理に **Makefile タスク `tidy-lib`** を使用します。
 
@@ -115,53 +121,71 @@ make tidy-lib
 - `go mod tidy`
 - `go mod vendor`
 
-## 7. Go tools の再インストール
+## 5.5. （任意）Go モジュール依存の更新
 
-Go version を更新した場合、Go tools は古い Go version でビルドされたバイナリのままになります。
+Go ランタイムのアップグレードは依存ライブラリをまとめて更新する好機でもあります。このステップは任意で、更新の有無とレベルを選びます。
 
-そのためツールを再インストールしてください。
+- **マイナー含む最新** — `go get -u ./...` で全 direct/indirect 依存を同一メジャー内の最新マイナー/パッチへ更新。
+- **パッチのみ** — `go get -u=patch ./...` で現行マイナー内に留める（最も安全）。
+- **スキップ** — 依存は触らない（Go directive の更新のみ）。
+
+`go get -u` は仕様上メジャーを跨がないため、メジャー更新は別途の意図的な作業とします。
+
+更新する場合:
+
+```sh
+go get -u ./...        # または: go get -u=patch ./...
+make tidy-lib          # go mod tidy + go mod vendor を再実行
+```
+
+実行後は `go.mod` の差分を確認し、`go` directive はアップグレード後のバージョンのまま維持、意図しない `toolchain` 行が追加されていないことを確認します。以降の再ビルド / gen / test / lint で、ランタイム更新と依存更新をまとめて検証します。
+
+本リポジトリは（実 DB を使う infrastructure テストを含む）厚い test + lint を備えており、グリーンならマイナー/パッチ更新は高い信頼度を持ちますが、保証ではありません。DB ドライバ・OpenTelemetry・Web フレームワーク等のランタイム挙動が効くコア依存は、グリーンでも CHANGELOG に目を通してください。
+
+## 6. Go tools の再インストール
+
+Go ランタイムを更新した場合、以前のランタイムでビルドされたツールは再ビルドが望ましいです。mise で再 install します。
 
 ```sh
 make install-tools
 ```
 
-インストールされる主なツール
+インストールされる主なツール（バージョンは `mise.toml` で pin）
 
 - gopls
 - golangci-lint
-- delve
+- delve (dlv)
 - lefthook
 - gotests
 - impl
-- goplay
 
-## 8. Docker イメージの更新
+## 7. Docker イメージは sync で自動反映
 
-Dockerfile の Go version を更新します。
+`docker/server/Dockerfile` と `docker/tools/Dockerfile` は Go ランタイムが必要なステージで
+`FROM golang:X.Y.Z-alpine` を使っています。ステップ 2 の `make sync-versions` がこの
+`FROM` 行を自動で書き換えるため、Dockerfile を手動で編集する必要はありません。
 
-例
+Dockerfile 内の Go 以外のツール（air / dlv / golangci-lint 等）も `mise install <tool>` で導入されており、
+バージョンは `mise.toml` から解決されます。
 
-```dockerfile
-FROM golang:1.26.2
-```
+## 8. Docker コンテナ再ビルド
 
-## 9. Docker コンテナ再ビルド
-
-このプロジェクトでは Docker build を以下のコマンドで実行できます。
+Go base image のタグが変わるとレイヤキャッシュが失効するため、新しい `golang:` イメージを確実に
+pull するために `-clean`（`--no-cache --pull`）バリアントを使います。
 
 サーバー系コンテナ
 
 ```sh
-make serve-build
+make serve-build-clean
 ```
 
 ツール系コンテナ
 
 ```sh
-make tools-rebuild
+make tools-build-clean
 ```
 
-## 10. Code generation の再実行
+## 9. Code generation の再実行
 
 Go version の変更により生成コードが変わる可能性があります。
 
@@ -169,7 +193,7 @@ Go version の変更により生成コードが変わる可能性があります
 make gen
 ```
 
-## 11. テスト実行
+## 10. テスト実行
 
 ```sh
 make test
@@ -181,13 +205,13 @@ make test
 go test ./...
 ```
 
-## 12. Lint 実行
+## 11. Lint 実行
 
 ```sh
 make lint
 ```
 
-## 13. 最終確認
+## 12. 最終確認
 
 以下のコマンドがすべて成功することを確認してください。
 
@@ -197,8 +221,8 @@ make install-tools
 make gen
 make test
 make lint
-make serve-build
-make tools-rebuild
+make serve-build-clean
+make tools-build-clean
 ```
 
 ## Upgrade Checklist
@@ -206,14 +230,13 @@ make tools-rebuild
 Go version を更新する際は以下を確認してください。
 
 - [ ] Release Notes 確認
-- [ ] `.go-version` 更新
-- [ ] ローカル Go 更新
-- [ ] CI Go version 更新
-- [ ] `go.mod` Go version 更新
+- [ ] `mise.toml` の `go = "..."` 更新
+- [ ] `make sync-versions` 実行（`go.mod` の go directive + Dockerfile FROM 再生成）
+- [ ] `make go-update` 実行（host 上の Go install）し `go version` で確認
 - [ ] `make tidy-lib` 実行
+- [ ] （任意）Go モジュール依存を更新するか判断。更新する場合は `go get -u[=patch] ./...` + `make tidy-lib` 実行（`go` directive は据え置き）
 - [ ] `make install-tools` 実行
-- [ ] Dockerfile 更新
-- [ ] Docker コンテナ再ビルド
+- [ ] Docker コンテナ再ビルド（`make serve-build-clean`, `make tools-build-clean`）
 - [ ] code generation 再実行
 - [ ] test 実行
 - [ ] lint 実行

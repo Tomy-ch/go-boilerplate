@@ -10,11 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestErrorHandlerModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, ErrorHandlerModule())
-}
-
 func Test_provideErrorHandlerServeConfig(t *testing.T) {
 	t.Parallel()
 

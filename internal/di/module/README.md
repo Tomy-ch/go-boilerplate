@@ -24,7 +24,7 @@ Each file exposes a function returning `fx.Option` to register the necessary com
 
 |Directory|Description|Details|
 |---|---|---|
-|`core/`|DI modules for HTTP stack common components (auth, rate limiting, etc.)|[README](core/README.md)|
+|`core/`|DI modules for HTTP stack common components (auth, etc.)|[README](core/README.md)|
 
 ## Architecture
 

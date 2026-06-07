@@ -20,6 +20,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -45,7 +46,7 @@ func TestNew(t *testing.T) {
 	}
 	actual := New(tf, mockTxManager, clock, encrypter, userRepo, pftRepo)
 
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_usecase_ListUsers(t *testing.T) {
@@ -120,7 +121,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			actual, err := uc.ListUsers(ctx, nil, p)
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -252,7 +253,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			actual, err := uc.CreateUser(ctx, createDTO)
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -275,7 +276,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			require.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, MutableFields{}, actual)
 			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
 		})
 
@@ -299,7 +300,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			require.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, MutableFields{}, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -330,7 +331,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			require.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, MutableFields{}, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -360,7 +361,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			require.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, MutableFields{}, actual)
 			require.ErrorIs(t, err, user.ErrInvalidFirstName)
 		})
 
@@ -397,7 +398,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			require.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, MutableFields{}, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 	})
@@ -429,7 +430,7 @@ func Test_usecase_CountUsers(t *testing.T) {
 
 		actualCount, err := u.CountUsers(ctx, active)
 		require.NoError(t, err)
-		require.Equal(t, expectedCount, actualCount)
+		assert.Equal(t, expectedCount, actualCount)
 	})
 }
 

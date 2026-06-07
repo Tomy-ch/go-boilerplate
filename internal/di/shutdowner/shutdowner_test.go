@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
@@ -34,7 +35,7 @@ func Test_Shutdowner_Shutdown(t *testing.T) {
 
 		err := shutdowner.Shutdown()
 		require.NoError(t, err)
-		require.True(t, called)
+		assert.True(t, called)
 	})
 
 	t.Run("Shutdownがfx.ShutdownerのShutdownのエラーを返す", func(t *testing.T) {

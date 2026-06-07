@@ -5,6 +5,10 @@ on:
     paths:
       - '.github/workflows/trivy-fs.yaml'
       - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+  schedule:
+    - cron: '0 0 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -28,9 +32,10 @@ jobs:
         uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: fs
+          scanners: 'vuln'
           format: json
           ignore-unfixed: true
-          vuln-type: 'os,library'
+          vuln-type: 'library'
           severity: 'CRITICAL,HIGH,MEDIUM'
           output: trivy-fs.json
 
@@ -160,3 +165,23 @@ jobs:
                 body,
               });
             }
+
+      - name: Trivy FS scan (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: fs
+          scanners: 'vuln'
+          format: sarif
+          ignore-unfixed: true
+          vuln-type: 'library'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          output: trivy-fs.sarif
+
+      - name: Upload Trivy FS SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs

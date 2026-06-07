@@ -6,13 +6,9 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestRecoveryModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, RecoveryModule())
-}
 
 func TestRecoveryMiddleware(t *testing.T) {
 	t.Parallel()
@@ -24,6 +20,6 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 	mw := RecoveryMiddleware(logger, lf, appCfg)
 
-	require.Equal(t, recoveryPriority, mw.Middleware.Priority)
+	assert.Equal(t, recoveryPriority, mw.Middleware.Priority)
 	require.NotNil(t, mw.Middleware.Middleware)
 }

@@ -1,0 +1,13 @@
+get:
+  operationId: GetHealth
+  tags:
+    - health
+  summary: サーバーのヘルスチェック
+  description: サーバーが正常に稼働しているかを確認するためのECSやALB向けのヘルスチェックエンドポイントです。
+  responses:
+    '200':
+      description: サーバーは正常に稼働しています。
+      content:
+        application/json:
+          schema:
+            $ref: '../components/responses/health-check/HealthResponse.yaml'

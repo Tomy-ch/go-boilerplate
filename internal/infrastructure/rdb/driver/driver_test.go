@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,7 +71,7 @@ func TestNewDB(t *testing.T) {
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "failed to parse DB config")
+			assert.Contains(t, err.Error(), "failed to parse DB config")
 			require.Nil(t, db)
 		})
 
@@ -86,7 +87,7 @@ func TestNewDB(t *testing.T) {
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 			require.Error(t, err)
 			require.Nil(t, db)
-			require.Contains(t, err.Error(), "failed to create DB connection pool")
+			assert.Contains(t, err.Error(), "failed to create DB connection pool")
 		})
 
 		t.Run("Pingに失敗する", func(t *testing.T) {
@@ -100,7 +101,7 @@ func TestNewDB(t *testing.T) {
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
 			require.Error(t, err)
 			require.Nil(t, db)
-			require.Contains(t, err.Error(), "failed to ping DB")
+			assert.Contains(t, err.Error(), "failed to ping DB")
 		})
 	})
 }

@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/logging"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
@@ -45,7 +46,7 @@ func Test_provideAuthenticator(t *testing.T) {
 		require.NoError(t, err)
 
 		la := local.New()
-		require.Equal(t, la, authenticator)
+		assert.Equal(t, la, authenticator)
 	})
 
 	t.Run("CI環境では local.Authenticator が提供される", func(t *testing.T) {
@@ -58,7 +59,7 @@ func Test_provideAuthenticator(t *testing.T) {
 		require.NoError(t, err)
 
 		la := local.New()
-		require.Equal(t, la, authenticator)
+		assert.Equal(t, la, authenticator)
 	})
 
 	t.Run("テスト環境では local.Authenticator が提供される", func(t *testing.T) {
@@ -71,7 +72,7 @@ func Test_provideAuthenticator(t *testing.T) {
 		require.NoError(t, err)
 
 		la := local.New()
-		require.Equal(t, la, authenticator)
+		assert.Equal(t, la, authenticator)
 	})
 
 	t.Run("その他の環境では本番用 Authenticator が提供される", func(t *testing.T) {

@@ -32,30 +32,40 @@ Example
 <https://go.dev/doc/devel/release>
 ```
 
-## 2. Update `.go-version`
+## 2. Update `mise.toml` (SSOT) and run sync
 
-This project manages the Go version using `.go-version`.
+This project pins the Go version (along with all other tool versions) in `mise.toml` as the single source of truth. The Go runtime version specifically needs to be mirrored to several files for compatibility with `actions/setup-go` and the `golang:` Docker base image. The `make sync-versions` target handles this propagation.
 
-```text
-.go-version
+```toml
+# mise.toml
+[tools]
+go = "1.26.3"
+# ...
 ```
 
-Example
+Then run the sync target:
 
-```text
-1.26.1
+```sh
+make sync-versions
 ```
+
+This updates the following files automatically from `mise.toml`:
+
+- `go.mod` — `go X.Y.Z` directive (read by `actions/setup-go` in CI workflows via `go-version-file: go.mod`)
+- `docker/server/Dockerfile` — `FROM golang:X.Y.Z-alpine` lines (builder + tooling stages)
+- `docker/tools/Dockerfile` — `FROM golang:X.Y.Z-alpine` lines (go_tools stage)
+
+Commit the resulting changes together with the `mise.toml` bump.
 
 ## 3. Update Local Go Environment
 
-This project **recommends using goenv (not mandatory)**.
-
-### When using goenv
+This project **requires mise** as the version manager for tools, and the same mise installation can manage the Go runtime locally. After step 2, install the pinned Go runtime:
 
 ```sh
-goenv install 1.26.1
-goenv local 1.26.1
+make go-update
 ```
+
+Internally this runs `mise install go`, which reads the `go` value from `mise.toml`.
 
 Verification
 
@@ -63,48 +73,38 @@ Verification
 go version
 ```
 
-### When not using goenv
+### IDE / Editor Integration (VSCode + mise)
 
-If using Homebrew
+When VSCode is launched from Dock / Spotlight, the shell init (where mise is
+activated) is not applied, so the Go extension may pick up a stale `go` binary
+from the system `PATH`. Use one of the following to keep the editor in sync
+with `mise.toml`:
 
-```sh
-brew update
-brew upgrade go
-```
+1. **Install the [mise VSCode extension](https://marketplace.visualstudio.com/items?itemName=hverlin.mise-vscode) (recommended)** —
+   activates the project's mise environment automatically inside VSCode.
+   Already listed in `.vscode/extensions.json` as a recommended extension.
+2. **Launch VSCode from a terminal where mise is active** —
+   `code /path/to/repo` inherits the shell environment.
+3. **Set `go.alternateTools.go` to the mise shim in your VSCode User Settings** —
 
-Verification
+   ```json
+   "go.alternateTools": {
+     "go": "${env:HOME}/.local/share/mise/shims/go"
+   }
+   ```
 
-```sh
-go version
-```
+   Apply this in **User Settings**, not project `.vscode/settings.json`,
+   to keep the project portable.
 
-## 4. Update Go version in CI
+After applying any of the above, restart VSCode and confirm via
+**Command Palette → Go: Locate Configured Go Tools** that the active Go binary
+matches `mise current`.
 
-Update the Go version in GitHub Actions.
+## 4. CI uses `go.mod` automatically
 
-Target directory
+GitHub Actions workflows use `actions/setup-go` with `go-version-file: go.mod`. Because step 2's `make sync-versions` already rewrote `go.mod`'s `go` directive from `mise.toml`, no manual workflow edit and no separate `go mod edit -go=...` is required.
 
-```text
-.github/workflows
-```
-
-Example
-
-```yaml
-
-- uses: actions/setup-go@v6
-  with:
-    go-version-file: go.mod
-    cache: true
-```
-
-## 5. Update Go version in `go.mod`
-
-```sh
-go mod edit -go=1.26.1
-```
-
-## 6. Update dependencies and vendor
+## 5. Update dependencies and vendor
 
 This project uses **Makefile task `tidy-lib`** for dependency management.
 
@@ -117,53 +117,67 @@ This task executes the following.
 - `go mod tidy`
 - `go mod vendor`
 
-## 7. Reinstall Go tools
+## 5.5. (Optional) Update Go module dependencies
 
-When the Go version is updated, Go tools remain as binaries built with the old Go version.
+A Go runtime upgrade is a natural point to also refresh the module dependencies. This step is optional — decide whether to update, and at which level:
 
-Therefore, reinstall the tools.
+- **Latest minor** — `go get -u ./...` updates all direct/indirect deps to the latest minor/patch within the same major.
+- **Patch only** — `go get -u=patch ./...` stays within the current minor (safest).
+- **Skip** — leave dependencies untouched (Go directive bump only).
+
+`go get -u` never crosses a major version, so major upgrades remain a separate, deliberate task.
+
+If updating:
+
+```sh
+go get -u ./...        # or: go get -u=patch ./...
+make tidy-lib          # re-run go mod tidy + go mod vendor
+```
+
+Then review the `go.mod` diff: keep the `go` directive at the upgraded version and make sure no unintended `toolchain` line was added. The later rebuild / gen / test / lint steps verify the runtime bump and the dependency update together.
+
+This repository has a thick test + lint suite (including real-DB infrastructure tests), so a green run gives high confidence for minor/patch updates — but it is not a guarantee. For runtime-sensitive core deps (DB driver, OpenTelemetry, web framework), skim their CHANGELOG even when green.
+
+## 6. Reinstall Go tools
+
+When the Go runtime is updated, Go tools built against the previous runtime should be rebuilt. Reinstall them via mise:
 
 ```sh
 make install-tools
 ```
 
-Main tools installed
+Main tools installed (versions pinned in `mise.toml`):
 
 - gopls
 - golangci-lint
-- delve
+- delve (dlv)
 - lefthook
 - gotests
 - impl
-- goplay
 
-## 8. Update Docker image
+## 7. Docker images pick up the new Go base via sync
 
-Update the Go version in the Dockerfile.
+`docker/server/Dockerfile` and `docker/tools/Dockerfile` both use `FROM golang:X.Y.Z-alpine` as the base for stages that need the Go runtime. Step 2's `make sync-versions` already rewrote these `FROM` lines. No manual Dockerfile edit is needed for a Go bump.
 
-Example
+The non-Go tools (air, dlv, golangci-lint, etc.) inside these Dockerfiles continue to be installed via `mise install <tool>`, so their versions are also driven by `mise.toml`.
 
-```dockerfile
-FROM golang:1.26.1
-```
+## 8. Rebuild Docker containers
 
-## 9. Rebuild Docker containers
-
-In this project, Docker build can be executed with the following commands.
+Bumping the Go base image invalidates layers in the Dockerfile. Use the clean (`--no-cache --pull`) variants so the new `golang:` image is actually pulled.
 
 Server containers
 
 ```sh
-make serve-build
+make serve-build-clean
 ```
 
 Tool containers
 
 ```sh
-make tools-rebuild
+make tools-build-clean
 ```
 
-## 10. Re-run code generation
+## 9. Re-run code generation
 
 Generated code may change due to Go version changes.
 
@@ -171,7 +185,7 @@ Generated code may change due to Go version changes.
 make gen
 ```
 
-## 11. Run tests
+## 10. Run tests
 
 ```sh
 make test
@@ -183,13 +197,13 @@ or
 go test ./...
 ```
 
-## 12. Run lint
+## 11. Run lint
 
 ```sh
 make lint
 ```
 
-## 13. Final check
+## 12. Final check
 
 Ensure that all of the following commands succeed.
 
@@ -199,8 +213,8 @@ make install-tools
 make gen
 make test
 make lint
-make serve-build
-make tools-rebuild
+make serve-build-clean
+make tools-build-clean
 ```
 
 ## Upgrade Checklist
@@ -208,14 +222,13 @@ make tools-rebuild
 When updating the Go version, check the following.
 
 - [ ] Check Release Notes
-- [ ] Update `.go-version`
-- [ ] Update local Go
-- [ ] Update CI Go version
-- [ ] Update `go.mod` Go version
+- [ ] Update `mise.toml` (`go = "..."`)
+- [ ] Run `make sync-versions` (regenerates `go.mod` go directive + Dockerfile FROM)
+- [ ] Run `make go-update` (installs Go on host) and confirm `go version`
 - [ ] Run `make tidy-lib`
+- [ ] (Optional) Decide whether to update Go module dependencies; if yes, run `go get -u[=patch] ./...` + `make tidy-lib` (keep the `go` directive unchanged)
 - [ ] Run `make install-tools`
-- [ ] Update Dockerfile
-- [ ] Rebuild Docker containers
+- [ ] Rebuild Docker containers (`make serve-build-clean`, `make tools-build-clean`)
 - [ ] Re-run code generation
 - [ ] Run test
 - [ ] Run lint

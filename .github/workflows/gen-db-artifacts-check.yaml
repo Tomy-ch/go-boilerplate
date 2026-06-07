@@ -54,10 +54,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install sqlc
-        run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+        run: mise install sqlc
       - name: Setup DB (wait & init)
         uses: ./.github/actions/setup-postgres
         with:
@@ -90,6 +94,23 @@ jobs:
             echo "has_diff=false" >> "$GITHUB_OUTPUT"
             : > /tmp/changed_files.txt
           fi
+      # PR の source（database/**/*.sql / docker/db/**/*.sql）が触られているかを判定。
+      # 触られていない場合は generator 側（sqlc）のドリフトの可能性が高い。
+      - name: Detect source modifications in this PR
+        id: source_mod
+        if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
+          changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
+          if echo "$changed" | grep -qE '^(database|docker/db)/.*\.sql$'; then
+            echo "source_modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "source_modified=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Comment changed files on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v8
@@ -100,6 +121,7 @@ jobs:
             const marker = '<!-- generated-artifacts-filelist -->';
 
             const hasDiff = ('${{ steps.gen_diff.outputs.has_diff }}' === 'true');
+            const sourceModified = '${{ steps.source_mod.outputs.source_modified }}' === 'true';
 
             let files = [];
             if (hasDiff) {
@@ -134,16 +156,22 @@ jobs:
             const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
             const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
+            const diffTitle = sourceModified
+              ? '## 🧾 Differences in database output have been detected (list of modified files)'
+              : '## ⚠️ DB 生成物のドリフトを検知（本 PR で `database/` / `docker/db/` 配下の `.sql` は触られていません）';
+            const diffAction = sourceModified
+              ? 'Please run the database generation command locally (e.g., `make gen` / `make gen-query`) and commit the changes.'
+              : '本 PR では SQL source が変更されていないため、generator 側（sqlc バージョン差 / base 側の古い生成物 等）のドリフトの可能性があります。`make gen-query` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。';
             const body = hasDiff
               ? [
                   marker,
-                  '## 🧾 Differences in database output have been detected (list of modified files)',
+                  diffTitle,
                   '',
                   commitLine,
                   '',
                   ...(files.length ? files.map(f => `- \`${f}\``) : ['(no changed files)']),
                   '',
-                  'Please run the database generation command locally (e.g., `make gen` / `make gen-query`) and commit the changes.',
+                  diffAction,
                   '',
                   updatedLine,
                 ].join('\n')

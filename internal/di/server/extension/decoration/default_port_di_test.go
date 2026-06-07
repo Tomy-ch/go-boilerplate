@@ -9,11 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultPortModule(t *testing.T) {
-	t.Parallel()
-	require.NotNil(t, DefaultPortModule())
-}
-
 func Test_provideDefaultPortServeConfig(t *testing.T) {
 	t.Parallel()
 

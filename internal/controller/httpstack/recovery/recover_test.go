@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,7 +81,7 @@ func Test_newRecoverConfig(t *testing.T) {
 
 		expected := developmentConfig()
 		actual := newRecoverConfig(logger, appCfg)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("本番モードの場合、productionConfigを返す", func(t *testing.T) {
@@ -91,7 +92,7 @@ func Test_newRecoverConfig(t *testing.T) {
 
 		expected := productionConfig()
 		actual := newRecoverConfig(logger, appCfg)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("不明なモードの場合、warningを出してproductionConfigを返す", func(t *testing.T) {
@@ -102,7 +103,7 @@ func Test_newRecoverConfig(t *testing.T) {
 
 		expected := productionConfig()
 		actual := newRecoverConfig(logger, appCfg)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -117,7 +118,7 @@ func TestDevelopmentConfig(t *testing.T) {
 
 	actual := developmentConfig()
 
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestProductionConfig(t *testing.T) {
@@ -130,5 +131,5 @@ func TestProductionConfig(t *testing.T) {
 	}
 
 	actual := productionConfig()
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }

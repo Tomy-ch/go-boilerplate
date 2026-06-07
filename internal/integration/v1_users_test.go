@@ -14,6 +14,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -61,7 +62,7 @@ func TestV1Users_Integration(t *testing.T) {
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().
 			CreateUser(gomock.Any(), gomock.Any()).
-			Return(user.MutableFields{}, nil)
+			Return(user.MutableFields{Email: "new@example.com"}, nil)
 
 		v1users.BindHandler(e, tf, mockApp)
 
@@ -84,6 +85,6 @@ func TestV1Users_Integration(t *testing.T) {
 		require.NoError(t, err)
 		headers := MakeAvailableUserID(t, e, uuid)
 		actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, headers)
-		require.Equal(t, http.StatusCreated, actual.StatusCode)
+		assert.Equal(t, http.StatusCreated, actual.StatusCode)
 	})
 }

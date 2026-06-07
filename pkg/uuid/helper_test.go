@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	guuid "github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFromGoogle(t *testing.T) {
 	g := guuid.New()
 	u := fromGoogle(g)
-	require.Equal(t, g.String(), u.String())
+	assert.Equal(t, g.String(), u.String())
 }
 
 func TestToGoogle(t *testing.T) {
@@ -18,5 +19,5 @@ func TestToGoogle(t *testing.T) {
 	require.NoError(t, err)
 
 	g := toGoogle(uuid)
-	require.Equal(t, uuid.String(), g.String())
+	assert.Equal(t, uuid.String(), g.String())
 }

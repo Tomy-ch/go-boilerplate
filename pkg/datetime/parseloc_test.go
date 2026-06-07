@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +20,7 @@ func TestParseRFC3339InLocation(t *testing.T) {
 
 		got, err := ParseRFC3339InLocation(input, loc)
 		require.NoError(t, err)
-		require.Equal(t, want, got)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("不正なフォーマット", func(t *testing.T) {
@@ -43,7 +44,7 @@ func TestParseRFC3339UTCInLocation(t *testing.T) {
 
 		got, err := ParseRFC3339UTCInLocation(input, loc)
 		require.NoError(t, err)
-		require.Equal(t, want, got)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("不正なフォーマット", func(t *testing.T) {
@@ -67,7 +68,7 @@ func TestParseRFC3339NanoInLocation(t *testing.T) {
 
 		got, err := ParseRFC3339NanoInLocation(input, loc)
 		require.NoError(t, err)
-		require.Equal(t, want, got)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("ナノ秒なしはエラーになる", func(t *testing.T) {
@@ -92,7 +93,7 @@ func TestParseISO8601InLocation(t *testing.T) {
 
 		got, err := ParseISO8601InLocation(input, loc)
 		require.NoError(t, err)
-		require.Equal(t, want, got)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("不正なフォーマット", func(t *testing.T) {
@@ -116,7 +117,7 @@ func TestParseDateTimeInLocation(t *testing.T) {
 
 		got, err := ParseDateTimeInLocation(input, loc)
 		require.NoError(t, err)
-		require.Equal(t, want, got)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("不正なフォーマット", func(t *testing.T) {
@@ -140,7 +141,7 @@ func TestParseDateOnlyInLocation(t *testing.T) {
 
 		got, err := ParseDateOnlyInLocation(input, loc)
 		require.NoError(t, err)
-		require.Equal(t, want, got)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("不正なフォーマット", func(t *testing.T) {
@@ -165,7 +166,7 @@ func TestParseCustomLayoutInLocation(t *testing.T) {
 
 		got, err := ParseCustomLayoutInLocation(layout, input, loc)
 		require.NoError(t, err)
-		require.Equal(t, want, got)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("不正なフォーマット", func(t *testing.T) {
