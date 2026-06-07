@@ -162,7 +162,9 @@ func (g *generator) buildCategorySQLFile( //nolint:gocognit // SQL生成ロジ�
 	category string,
 	targetType string,
 ) error {
-	dmlDir := filepath.Join(g.dmlRootDir, targetType, category)
+	// 入力走査も workDir 起点で統一する。CWD 起点だと CWD != workDir のとき走査結果が 0 件になり、
+	// 「入力なし」分岐に入って workDir 配下の生成物を誤って削除してしまうため。
+	dmlDir := filepath.Join(g.workDir, g.dmlRootDir, targetType, category)
 
 	// 1) 対象.sqlを収集
 	var files []string
@@ -187,16 +189,16 @@ func (g *generator) buildCategorySQLFile( //nolint:gocognit // SQL生成ロジ�
 
 	// 3) 出力ファイル（カテゴリごとに1本）
 	outName := fmt.Sprintf("%s_%s.gen.sql", category, targetType) // 例: prefecture_repository.sql
-	dstPath := filepath.Join(g.genRootDir, outName)
+	// 出力先も workDir 起点で統一し、相対/絶対の二系統を排除する。
+	dstPath := filepath.Join(g.workDir, g.genRootDir, outName)
 
 	if len(files) == 0 {
 		// 「カテゴリは存在するが SQL が空」の場合は、生成物を消すのが最新状態とみなします。
-		if err := g.ensureUnderDir(filepath.Join(g.workDir, dstPath)); err != nil {
+		if err := g.ensureUnderDir(dstPath); err != nil {
 			return err
 		}
 
-		abs := filepath.Join(g.workDir, dstPath)
-		if err := os.Remove(abs); err != nil && !os.IsNotExist(err) {
+		if err := os.Remove(dstPath); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 
