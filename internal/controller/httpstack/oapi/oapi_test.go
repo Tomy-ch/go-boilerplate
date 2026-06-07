@@ -10,7 +10,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -30,6 +30,6 @@ func TestMiddleware(t *testing.T) {
 	_ = handler(c)
 
 	got, ok := ctxhelper.GetEchoContext(c.Request().Context())
-	require.True(t, ok)
-	require.Equal(t, c, got)
+	assert.True(t, ok)
+	assert.Equal(t, c, got)
 }

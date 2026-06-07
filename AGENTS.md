@@ -148,6 +148,38 @@ AI agents are allowed to modify code only in the following directories unless ex
 
 Do NOT modify other top-level directories (e.g., `cmd/`, `docker/`, `scripts/`, `docs/`, `vendor/`, `makefile`, etc.) unless the user explicitly requests it.
 
+AI coding agent configurations are also outside the allowed scope. AI agents must NOT create, modify, or delete the following files/directories unless the user explicitly requests it:
+
+- Claude Code: `.claude/` (including `.claude/skills/`, `.claude/settings.json`, `.claude/settings.local.json`, etc.)
+- OpenAI Codex CLI: `.agents/skills/` (repo-scoped Agent Skills; global config / prompts live in `~/.codex/`, outside the repo, and Codex's project instructions are `AGENTS.md` itself)
+- Cursor: `.cursor/` (including `.cursor/rules/*.mdc`), `.cursorrules`
+- GitHub Copilot: `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`
+- Gemini CLI / Code Assist: `.gemini/`, `GEMINI.md`
+
+The shared `AGENTS.md` convention applies to multiple agents (Codex, Claude Code, etc.) and is already covered by the Protected Documentation section below.
+
+#### Exception: Skill Execution
+
+When the user invokes a skill (e.g., Claude Code's `/<skill-name>` via `.claude/skills/`, or equivalent mechanisms in other agents), the invocation itself counts as an **explicit user instruction**. While the skill is running, the AI Modification Scope restrictions above are relaxed for any files/directories the skill needs to touch in order to complete its defined procedure.
+
+Conditions:
+
+- The relaxation applies **only for the duration of the skill execution**, and only to the scope the skill explicitly defines.
+- The skill's own `SKILL.md` instructions still govern. If the skill instructs the AI to confirm before touching a specific path, that confirmation step must still be honored.
+- Hard-protected items remain protected even during skill execution:
+  - `AGENTS.md` (Protected Documentation)
+  - Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`)
+  - Generated content under `docs/`:
+    - `docs/openapi/**` (redocly build output)
+    - `docs/coverage/**` (test coverage report)
+    - `docs/db-schema/**` (SchemaSpy output)
+    - `docs/portal/docs.json` (`make gen-docs-json` output)
+    - `docs/portal/guides/**` (`make gen-portal-docs` output — cleaned and regenerated on every run)
+  - Anything listed under `permissions.deny` in `.claude/settings.json`
+
+  Canonical Markdown sources under `docs/` (`docs/architecture.md`, `docs/rules.md`, `docs/decisions.md`, `docs/development-flow.md`, `docs/maintenance/**/*.md`, `docs/ja/**/*.md`, `docs/portal/manifest.yaml`, etc.) are NOT generated and remain editable during skill execution per the skill's defined scope (e.g., `sync-readme`, `canonicalize-doc`, `release-notes`).
+- Skills must not be used as a loophole to bypass the spirit of these rules. If a skill's procedure would touch a sensitive area (e.g., `docker/`, `.github/workflows/`), the skill itself should explicitly document this so the user is aware when invoking it.
+
 ### internal/
 
 Core application code.
@@ -413,6 +445,16 @@ Business Logic Change:
 3. After amending an existing pull request branch, do NOT push changes automatically.
 After making changes to an existing PR branch locally, ask the user before pushing. This lets the user review the updated commits on their machine first. Only push automatically if the user’s instructions explicitly include performing the push.
 
+### Commit / PR Execution
+
+Commits and pull-request creation/updates MUST follow this repository's defined workflow:
+
+- Split changes into appropriately scoped commits using the prefix convention (Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert).
+- Batch the checks rather than skipping them: bypass the pre-commit hooks on each individual commit during the split, then run the equivalent verification (lint / test / sql-lint / migration checks) once after all commits succeed. Verification is not skipped — it runs once at the end instead of on every commit.
+- Add the `Co-Authored-By` footer, never commit directly to protected branches, and confirm with the user before pushing to an existing PR branch.
+
+If your agent provides a dedicated command or skill that implements this workflow, prefer it over performing the steps manually. Keep the concrete command/skill names in your own agent's configuration rather than here (for example: Claude Code under `.claude/`, Gemini CLI under `.gemini/commands/`, Codex under `.agents/skills/`; note that Codex also reads this `AGENTS.md` directly as its project instructions), so that other agents do not attempt to invoke commands they do not have.
+
 ### Branch Naming
 
 - If an issue number is provided, include it in the branch name.
@@ -498,7 +540,14 @@ Finally, run `make lint` to check for any errors.
 - `**/**.sql.go`
 - `*_mock.go`
 - `**/openapi.gen.yaml`
-- `docs/`
+- Generated content under `docs/`:
+  - `docs/openapi/**` (redocly build output)
+  - `docs/coverage/**` (test coverage report)
+  - `docs/db-schema/**` (SchemaSpy output)
+  - `docs/portal/docs.json` (`make gen-docs-json` output)
+  - `docs/portal/guides/**` (`make gen-portal-docs` output)
+
+Canonical Markdown under `docs/` (architecture.md, rules.md, decisions.md, development-flow.md, maintenance/, ja/, etc.) is NOT generated and may be edited via the appropriate documentation skills.
 
 ## Testing Instructions
 
@@ -544,14 +593,16 @@ Example:
 
 ### 4. Assertion Rules
 
-- Use `require` for preconditions and fatal checks.
-- Use `assert` for value verification.
+- Use `require` for preconditions, fatal checks, and **all error assertions** (`NoError` / `Error` / `ErrorIs` / `ErrorContains`). The `testifylint` `require-error` rule enforces this, so `assert.ErrorIs` etc. fail lint.
+- Use `assert` for terminal value verification (`Equal` / `Len` / `Contains` / `True` / `False` / `Empty` など) that does not guard subsequent code, so a single run surfaces all mismatches at once. Keep `require` for a check that guards later code (e.g. `require.NotNil` before dereferencing).
+- Generated test files must follow this convention via their generator template (e.g. `scripts/genctxkey`), never by hand-editing the generated output.
 
 Example:
 
 ```go
-    require.NoError(t, err)
-    assert.Equal(t, expected, actual)
+    require.NoError(t, err)            // 前提（失敗で以降無意味）
+    require.ErrorIs(t, err, ErrX)      // エラー系は require（testifylint require-error）
+    assert.Equal(t, expected, actual)  // 終端の値検証は assert
 ```
 
 ### 5. Coverage Requirement

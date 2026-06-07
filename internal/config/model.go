@@ -16,7 +16,6 @@ type Config struct {
 	security      SecurityConfig
 	secureCookie  SecureCookieConfig
 	auth          AuthConfig
-	ipRateLimit   IPRateLimitConfig
 }
 
 type OperationSystemConfig struct {
@@ -94,15 +93,6 @@ type AuthConfig struct {
 	cookieName          string
 	headerName          string
 	allowedHeaderBearer bool
-}
-
-type IPRateLimitConfig struct {
-	enabled         bool
-	requests        int
-	per             time.Duration
-	burst           int
-	ttl             time.Duration
-	cleanupInterval time.Duration
 }
 
 // NewOperationSystemConfig は、OSの設定を返します。
@@ -293,29 +283,3 @@ func (a *AuthConfig) HeaderName() string { return a.headerName }
 
 // AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
 func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
-
-// NewIPRateLimitConfig は、IPレートリミットの設定を返します。
-func NewIPRateLimitConfig(cfg *Config) *IPRateLimitConfig { return &cfg.ipRateLimit }
-
-// Enabled は、IPレートリミットが有効かどうかを返します。
-func (i *IPRateLimitConfig) Enabled() bool { return i.enabled }
-
-// Requests は、IPレートリミットのリクエスト数を返します。
-func (i *IPRateLimitConfig) Requests() int { return i.requests }
-
-// Per は、IPレートリミットの期間を返します。
-func (i *IPRateLimitConfig) Per() time.Duration { return i.per }
-
-// Burst は、IPレートリミットのバースト数を返します。
-func (i *IPRateLimitConfig) Burst() int { return i.burst }
-
-// TTL は、IPレートリミットのエントリの有効期限を返します。
-func (i *IPRateLimitConfig) TTL() time.Duration { return i.ttl }
-
-// CleanupInterval は、IPレートリミットのエントリのクリーンアップ間隔を返します。
-func (i *IPRateLimitConfig) CleanupInterval() time.Duration { return i.cleanupInterval }
-
-// Limit は、IPレートリミットの制限値を返します。
-func (i *IPRateLimitConfig) Limit() float64 {
-	return float64(i.requests) / i.per.Seconds()
-}

@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/pkg/ptr"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewHTTPErrorFromAppError(t *testing.T) {
@@ -34,7 +34,7 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 
 			actual := NewHTTPErrorFromAppError(err, details...)
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("detailsがない場合、detailsは表示されないエラー構造体が返る", func(t *testing.T) {
@@ -50,7 +50,7 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 
 			actual := NewHTTPErrorFromAppError(err)
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -77,7 +77,7 @@ func TestNewHTTPErrorFromStatus(t *testing.T) {
 				HTTPStatus: httpStatus,
 			}
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("詳細が渡された場合、Detailsにセットされる", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestNewHTTPErrorFromStatus(t *testing.T) {
 				HTTPStatus: httpStatus,
 			}
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -119,7 +119,7 @@ func TestNewHTTPErrorFromStatus(t *testing.T) {
 				HTTPStatus: http.StatusInternalServerError,
 			}
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -140,7 +140,7 @@ func TestNewInternalErrorResponse(t *testing.T) {
 
 		actual := NewInternalErrorResponse()
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -165,7 +165,7 @@ func TestHTTPErrorResponse_Error(t *testing.T) {
 
 			actual := httpError.Error()
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("内部エラーがある場合、内部エラーの内容も表示される", func(t *testing.T) {
@@ -183,7 +183,7 @@ func TestHTTPErrorResponse_Error(t *testing.T) {
 			expected := internalErr.Error()
 			actual := httpError.Error()
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -214,7 +214,7 @@ func Test_newHTTPErrorFromMeta(t *testing.T) {
 				HTTPStatus: 400,
 			}
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("詳細が1つある場合、Detailsにその値が入る", func(t *testing.T) {
@@ -238,7 +238,7 @@ func Test_newHTTPErrorFromMeta(t *testing.T) {
 				HTTPStatus: 422,
 			}
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("詳細が複数ある場合、Detailsに全て入る", func(t *testing.T) {
@@ -262,7 +262,7 @@ func Test_newHTTPErrorFromMeta(t *testing.T) {
 				HTTPStatus: 500,
 			}
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -285,7 +285,7 @@ func Test_newHTTPErrorFromMeta(t *testing.T) {
 				HTTPStatus: 0,
 			}
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("詳細に空文字を渡した場合、Detailsポインタが生成され空文字を含む", func(t *testing.T) {
@@ -309,7 +309,7 @@ func Test_newHTTPErrorFromMeta(t *testing.T) {
 				HTTPStatus: 409,
 			}
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }

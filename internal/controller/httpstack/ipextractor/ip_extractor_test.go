@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,8 +41,8 @@ func TestNewIPExtractor(t *testing.T) {
 		secCfg := config.NewSecurityConfig(cfg)
 		secCfg.SetCIDR(t, parsedCIDR)
 
-		require.Equal(t, config.ProductionMode, appCfg.Mode())
-		require.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
+		assert.Equal(t, config.ProductionMode, appCfg.Mode())
+		assert.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
 		actual := NewIPExtractor(appCfg, secCfg)
 		require.NotNil(t, actual)
 	})
@@ -56,8 +57,8 @@ func TestNewIPExtractor(t *testing.T) {
 		secCfg := config.NewSecurityConfig(cfg)
 		secCfg.SetCIDR(t, parsedCIDR)
 
-		require.Equal(t, config.DevelopmentMode, appCfg.Mode())
-		require.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
+		assert.Equal(t, config.DevelopmentMode, appCfg.Mode())
+		assert.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
 		actual := NewIPExtractor(appCfg, secCfg)
 		require.NotNil(t, actual)
 	})

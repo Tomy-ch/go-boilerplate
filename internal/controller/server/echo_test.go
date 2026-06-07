@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,9 +36,9 @@ func Test_ExtractPathParams(t *testing.T) {
 		c.SetParamValues("123", "abc")
 
 		got := ExtractPathParams(c)
-		require.Len(t, got, 2)
-		require.Equal(t, "123", got["user_id"])
-		require.Equal(t, "abc", got["book_id"])
+		assert.Len(t, got, 2)
+		assert.Equal(t, "123", got["user_id"])
+		assert.Equal(t, "abc", got["book_id"])
 	})
 }
 
@@ -68,15 +69,15 @@ func Test_ExtractQueryParams(t *testing.T) {
 
 		got := ExtractQueryParams(c)
 		require.NotNil(t, got)
-		require.Equal(t, []string{"1", "2"}, got["foo"])
-		require.Equal(t, []string{"x"}, got["bar"])
+		assert.Equal(t, []string{"1", "2"}, got["foo"])
+		assert.Equal(t, []string{"x"}, got["bar"])
 
 		// 返されたマップは独立コピーであることを確認（元の URL 値を変更しても影響しない）
 		// 元の values にアクセス
 		orig := c.Request().URL.Query()
 		orig.Set("foo", "9")
 		// got は以前の値のまま
-		require.Equal(t, []string{"1", "2"}, got["foo"])
+		assert.Equal(t, []string{"1", "2"}, got["foo"])
 	})
 }
 
@@ -97,10 +98,10 @@ func Test_cloneValues(t *testing.T) {
 		v.Add("a", "2")
 
 		cp := cloneValues(v)
-		require.Equal(t, []string{"1", "2"}, cp["a"])
+		assert.Equal(t, []string{"1", "2"}, cp["a"])
 
 		// 元を変更してもコピーに影響しない
 		v.Set("a", "9")
-		require.Equal(t, []string{"1", "2"}, cp["a"])
+		assert.Equal(t, []string{"1", "2"}, cp["a"])
 	})
 }

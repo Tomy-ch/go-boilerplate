@@ -3,7 +3,7 @@ package stringkit
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRuneCount(t *testing.T) {
@@ -13,7 +13,7 @@ func TestRuneCount(t *testing.T) {
 			expected := 5
 
 			actual := RuneCount(input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("文字列が日本語の場合、文字数を正しくカウントする", func(t *testing.T) {
@@ -21,7 +21,7 @@ func TestRuneCount(t *testing.T) {
 			expected := 5
 
 			actual := RuneCount(input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("文字列が空の場合、文字数が0になる", func(t *testing.T) {
@@ -29,7 +29,7 @@ func TestRuneCount(t *testing.T) {
 			expected := 0
 
 			actual := RuneCount(input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("文字列が絵文字の場合、文字数を正しくカウントする", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestRuneCount(t *testing.T) {
 			expected := 2
 
 			actual := RuneCount(input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -51,7 +51,7 @@ func TestInRange(t *testing.T) {
 			expected := true
 
 			actual := InRange(input, minBound, maxBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -63,7 +63,7 @@ func TestInRange(t *testing.T) {
 			expected := false
 
 			actual := InRange(input, minBound, maxBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -76,7 +76,7 @@ func TestMaxOrLess(t *testing.T) {
 			expected := true
 
 			actual := MaxOrLess(input, maxBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -87,7 +87,7 @@ func TestMaxOrLess(t *testing.T) {
 			expected := false
 
 			actual := MaxOrLess(input, maxBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -100,7 +100,7 @@ func TestMinOrMore(t *testing.T) {
 			expected := true
 
 			actual := MinOrMore(input, minBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -111,7 +111,7 @@ func TestMinOrMore(t *testing.T) {
 			expected := false
 
 			actual := MinOrMore(input, minBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -125,7 +125,7 @@ func TestStrictInRange(t *testing.T) {
 			expected := true
 
 			actual := StrictInRange(input, minBound, maxBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -137,7 +137,7 @@ func TestStrictInRange(t *testing.T) {
 			expected := false
 
 			actual := StrictInRange(input, minBound, maxBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -150,7 +150,7 @@ func TestLessThanMax(t *testing.T) {
 			expected := true
 
 			actual := LessThanMax(input, maxBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -161,7 +161,7 @@ func TestLessThanMax(t *testing.T) {
 			expected := false
 
 			actual := LessThanMax(input, maxBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -174,7 +174,7 @@ func TestGreaterThanMin(t *testing.T) {
 			expected := true
 
 			actual := GreaterThanMin(input, minBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -185,7 +185,7 @@ func TestGreaterThanMin(t *testing.T) {
 			expected := false
 
 			actual := GreaterThanMin(input, minBound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }

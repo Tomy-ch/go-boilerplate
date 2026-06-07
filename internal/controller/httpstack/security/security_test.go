@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,12 +16,12 @@ func TestBuildSecureConfig(t *testing.T) {
 
 	scfg := buildSecureConfig(secCfg)
 
-	require.Equal(t, secCfg.ContentTypeNosniff(), scfg.ContentTypeNosniff)
-	require.Equal(t, secCfg.ReferrerPolicy(), scfg.ReferrerPolicy)
-	require.Equal(t, secCfg.XFrameOptions(), scfg.XFrameOptions)
-	require.Equal(t, int(secCfg.HSTSMaxAge().Seconds()), scfg.HSTSMaxAge)
-	require.Equal(t, secCfg.HSTSExcludeSubdomains(), scfg.HSTSExcludeSubdomains)
-	require.Equal(t, secCfg.HSTSPreloadEnabled(), scfg.HSTSPreloadEnabled)
+	assert.Equal(t, secCfg.ContentTypeNosniff(), scfg.ContentTypeNosniff)
+	assert.Equal(t, secCfg.ReferrerPolicy(), scfg.ReferrerPolicy)
+	assert.Equal(t, secCfg.XFrameOptions(), scfg.XFrameOptions)
+	assert.Equal(t, int(secCfg.HSTSMaxAge().Seconds()), scfg.HSTSMaxAge)
+	assert.Equal(t, secCfg.HSTSExcludeSubdomains(), scfg.HSTSExcludeSubdomains)
+	assert.Equal(t, secCfg.HSTSPreloadEnabled(), scfg.HSTSPreloadEnabled)
 }
 
 func TestMiddleware(t *testing.T) {

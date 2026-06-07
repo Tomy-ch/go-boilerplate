@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/controller/handler/metrics"
 	"go-boilerplate/internal/controller/handler/ready"
 	"go-boilerplate/internal/controller/handler/v1/users"
+	"go-boilerplate/internal/controller/handler/v1/users/detail"
 	"go-boilerplate/internal/controller/handler/v1/users/search"
 	"go-boilerplate/internal/controller/handler/version"
 
@@ -24,6 +25,7 @@ func ControllerModule() fx.Option {
 			metrics.BindHandler,
 			// サンプルのハンドラー
 			users.BindHandler,
+			detail.BindHandler,
 			search.BindHandler,
 			// デバッグ用のハンドラー（サービスを作成する際には必ず削除してください）
 			cookie.BindHandler,

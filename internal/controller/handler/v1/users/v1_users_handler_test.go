@@ -18,6 +18,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -111,9 +112,9 @@ func Test_server_GetUsers(t *testing.T) {
 			require.NoError(t, err)
 
 			actual, ok := resp.(gen.GetUsers200JSONResponse)
-			require.True(t, ok)
+			assert.True(t, ok)
 
-			require.Equal(t, expectedResponse, gen.UsersResponse(actual))
+			assert.Equal(t, expectedResponse, gen.UsersResponse(actual))
 		})
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
@@ -150,9 +151,9 @@ func Test_server_GetUsers(t *testing.T) {
 			require.NoError(t, err)
 
 			actual, ok := resp.(gen.GetUsers200JSONResponse)
-			require.True(t, ok)
+			assert.True(t, ok)
 
-			require.Equal(t, expectedResponse, gen.UsersResponse(actual))
+			assert.Equal(t, expectedResponse, gen.UsersResponse(actual))
 		})
 	})
 
@@ -280,13 +281,13 @@ func Test_server_PostUsers(t *testing.T) {
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.PostUsers201JSONResponse)
-		require.True(t, ok)
+		assert.True(t, ok)
 
 		got := gen.UserResponse(actual)
-		require.Equal(t, expectedDTO.FirstName, got.FirstName)
-		require.Equal(t, expectedDTO.LastName, got.LastName)
-		require.Equal(t, types.Email(expectedDTO.Email), got.Email)
-		require.Equal(t, expectedDTO.Phone, got.Phone)
+		assert.Equal(t, expectedDTO.FirstName, got.FirstName)
+		assert.Equal(t, expectedDTO.LastName, got.LastName)
+		assert.Equal(t, types.Email(expectedDTO.Email), got.Email)
+		assert.Equal(t, expectedDTO.Phone, got.Phone)
 	})
 
 	t.Run("異常系", func(t *testing.T) {

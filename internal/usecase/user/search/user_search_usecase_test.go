@@ -13,6 +13,7 @@ import (
 
 	"go-boilerplate/pkg/ptr"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -30,7 +31,7 @@ func TestNew(t *testing.T) {
 	}
 	actual := New(tf, userQS)
 
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_usecase_ListUsersByKeyword(t *testing.T) {
@@ -86,7 +87,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 			actual, err := qs.ListUsersByKeyword(ctx, filter, p)
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -174,7 +175,7 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 
 			actualCount, err := u.CountUsersByKeyword(ctx, filter)
 			require.NoError(t, err)
-			require.Equal(t, expectedCount, actualCount)
+			assert.Equal(t, expectedCount, actualCount)
 		})
 	})
 
@@ -216,7 +217,7 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 
 			actualCount, err := u.CountUsersByKeyword(ctx, filter)
 			require.ErrorIs(t, err, expectedErr)
-			require.Equal(t, int64(0), actualCount)
+			assert.Equal(t, int64(0), actualCount)
 		})
 	})
 }

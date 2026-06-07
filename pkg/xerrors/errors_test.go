@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,8 +27,8 @@ func TestWrap(t *testing.T) {
 	baseErr := errors.New("base error")
 	actual := Wrap(baseErr, warpStr)
 	require.Error(t, actual)
-	require.Contains(t, actual.Error(), warpStr)
-	require.Contains(t, actual.Error(), baseErr.Error())
+	assert.Contains(t, actual.Error(), warpStr)
+	assert.Contains(t, actual.Error(), baseErr.Error())
 }
 
 func TestIs(t *testing.T) {
@@ -37,13 +38,13 @@ func TestIs(t *testing.T) {
 	t.Run("Is が true を返すケース", func(t *testing.T) {
 		t.Parallel()
 		wrappedErr := Wrap(baseErr, "wrapped error")
-		require.True(t, Is(wrappedErr, baseErr))
+		assert.True(t, Is(wrappedErr, baseErr))
 	})
 
 	t.Run("Is が false を返すケース", func(t *testing.T) {
 		t.Parallel()
 		anotherErr := errors.New("another error")
-		require.False(t, Is(baseErr, anotherErr))
+		assert.False(t, Is(baseErr, anotherErr))
 	})
 }
 
@@ -57,14 +58,14 @@ func TestAs(t *testing.T) {
 	t.Run("As が true を返すケース", func(t *testing.T) {
 		t.Parallel()
 
-		require.True(t, As(wrappedErr, &extractedErr))
-		require.Equal(t, targetErr, extractedErr)
+		assert.True(t, As(wrappedErr, &extractedErr))
+		assert.Equal(t, targetErr, extractedErr)
 	})
 
 	t.Run("As が false を返すケース", func(t *testing.T) {
 		t.Parallel()
 		err := errors.New("not-custom")
-		require.False(t, As(err, &extractedErr))
+		assert.False(t, As(err, &extractedErr))
 	})
 }
 
@@ -81,6 +82,6 @@ func TestStackTrace(t *testing.T) {
 		err := New("stack-msg")
 		st := StackTrace(err)
 		require.NotEmpty(t, st)
-		require.Contains(t, st, "stack-msg")
+		assert.Contains(t, st, "stack-msg")
 	})
 }

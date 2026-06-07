@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -79,20 +80,12 @@ func TestNewConfig(t *testing.T) {
 					headerName:          expectedAuthHeaderName,
 					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 				},
-				ipRateLimit: IPRateLimitConfig{
-					enabled:         expectedIPRateLimitEnabled,
-					requests:        expectedIPRateLimitRequests,
-					per:             expectedIPRateLimitPer,
-					burst:           expectedIPRateLimitBurst,
-					ttl:             expectedIPRateLimitTTL,
-					cleanupInterval: expectedIPRateLimitCleanupInterval,
-				},
 			}
 
 			actual, err := New()
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -190,16 +183,6 @@ func Test_validateConfig(t *testing.T) {
 			actual, err := validateConfig(cfg)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, ErrAuthConfigMissing)
-		})
-
-		t.Run("IPレートリミット設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.IPRateLimit.Per = 0 // 無効なPer
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.Error(t, err)
 		})
 	})
 }
@@ -464,82 +447,6 @@ func Test_validateAuthConfig(t *testing.T) {
 	})
 }
 
-func Test_validateIPRateLimitConfig(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("IPレートリミットが無効な場合、エラーが発生しないこと", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.IPRateLimit.Enabled = false // IPレートリミット無効
-
-			err := validateIPRateLimitConfig(cfg.IPRateLimit)
-			require.NoError(t, err)
-		})
-
-		t.Run("IPレートリミットが有効な場合、エラーが発生しないこと", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.IPRateLimit.Enabled = true // IPレートリミット有効
-
-			err := validateIPRateLimitConfig(cfg.IPRateLimit)
-			require.NoError(t, err)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Run("無効なリクエスト数", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.IPRateLimit.Requests = 0 // 無効なリクエスト数
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidIPRateLimitRequests)
-		})
-
-		t.Run("無効なPer", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.IPRateLimit.Per = 0 // 無効なPer
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidIPRateLimitPer)
-		})
-
-		t.Run("無効なバースト", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.IPRateLimit.Burst = -1 // 無効なバースト
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidIPRateLimitBurst)
-		})
-
-		t.Run("無効なTTL", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.IPRateLimit.TTL = 0 // 無効なTTL
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidIPRateLimitTTL)
-		})
-
-		t.Run("無効なクリーンアップ間隔", func(t *testing.T) {
-			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.IPRateLimit.CleanupInterval = 0 // 無効なクリーンアップ間隔
-
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
-			require.ErrorIs(t, err, ErrInvalidIPRateLimitCleanupInterval)
-		})
-	})
-}
-
 func Test_buildStatusCodeSet(t *testing.T) {
 	t.Parallel()
 
@@ -551,5 +458,5 @@ func Test_buildStatusCodeSet(t *testing.T) {
 	}
 
 	actual := buildStatusCodeSet(codes)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }

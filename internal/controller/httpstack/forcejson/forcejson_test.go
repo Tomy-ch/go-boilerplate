@@ -7,21 +7,22 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_isBlacklistedContentType(t *testing.T) {
 	t.Run("何も設定されていない場合はtrueを返す", func(t *testing.T) {
-		require.True(t, isBlacklistedContentType(""))
+		assert.True(t, isBlacklistedContentType(""))
 	})
 	t.Run("text/htmlの場合はtrueを返す", func(t *testing.T) {
-		require.True(t, isBlacklistedContentType(echo.MIMETextHTML))
+		assert.True(t, isBlacklistedContentType(echo.MIMETextHTML))
 	})
 	t.Run("application/jsonの場合はfalseを返す", func(t *testing.T) {
-		require.False(t, isBlacklistedContentType(echo.MIMEApplicationJSON))
+		assert.False(t, isBlacklistedContentType(echo.MIMEApplicationJSON))
 	})
 	t.Run("application/xmlの場合はfalseを返す", func(t *testing.T) {
-		require.False(t, isBlacklistedContentType(echo.MIMEApplicationXML))
+		assert.False(t, isBlacklistedContentType(echo.MIMEApplicationXML))
 	})
 }
 
@@ -31,7 +32,7 @@ func Test_jsonContentTypeWithCharset(t *testing.T) {
 	t.Run("application/json; charset=UTF-8 を返す", func(t *testing.T) {
 		expected := echo.MIMEApplicationJSON + "; " + charsetUTF8
 		actual := jsonContentTypeWithCharset()
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -53,7 +54,7 @@ func Test_ensureJSONContentType(t *testing.T) {
 		ensureJSONContentType(c)
 
 		got := c.Response().Header().Get(echo.HeaderContentType)
-		require.Equal(t, jsonContentTypeWithCharset(), got)
+		assert.Equal(t, jsonContentTypeWithCharset(), got)
 	})
 
 	t.Run("text/html の場合は強制される", func(t *testing.T) {
@@ -64,7 +65,7 @@ func Test_ensureJSONContentType(t *testing.T) {
 		ensureJSONContentType(c)
 
 		got := c.Response().Header().Get(echo.HeaderContentType)
-		require.Equal(t, jsonContentTypeWithCharset(), got)
+		assert.Equal(t, jsonContentTypeWithCharset(), got)
 	})
 
 	t.Run("text/html; charset が付与されていても強制される", func(t *testing.T) {
@@ -75,7 +76,7 @@ func Test_ensureJSONContentType(t *testing.T) {
 		ensureJSONContentType(c)
 
 		got := c.Response().Header().Get(echo.HeaderContentType)
-		require.Equal(t, jsonContentTypeWithCharset(), got)
+		assert.Equal(t, jsonContentTypeWithCharset(), got)
 	})
 
 	t.Run("application/json の場合は変更されない", func(t *testing.T) {
@@ -87,7 +88,7 @@ func Test_ensureJSONContentType(t *testing.T) {
 		ensureJSONContentType(c)
 
 		got := c.Response().Header().Get(echo.HeaderContentType)
-		require.Equal(t, orig, got)
+		assert.Equal(t, orig, got)
 	})
 }
 
@@ -117,7 +118,7 @@ func Test_forceJSONContentTypeMiddleware(t *testing.T) {
 		e.ServeHTTP(rec, req)
 
 		got := rec.Header().Get(echo.HeaderContentType)
-		require.Equal(t, jsonContentTypeWithCharset(), got)
+		assert.Equal(t, jsonContentTypeWithCharset(), got)
 	})
 
 	t.Run("text/html の場合は強制される", func(t *testing.T) {
@@ -138,7 +139,7 @@ func Test_forceJSONContentTypeMiddleware(t *testing.T) {
 		e.ServeHTTP(rec, req)
 
 		got := rec.Header().Get(echo.HeaderContentType)
-		require.Equal(t, jsonContentTypeWithCharset(), got)
+		assert.Equal(t, jsonContentTypeWithCharset(), got)
 	})
 
 	t.Run("application/json の場合は変更されない", func(t *testing.T) {
@@ -159,6 +160,6 @@ func Test_forceJSONContentTypeMiddleware(t *testing.T) {
 		e.ServeHTTP(rec, req)
 
 		got := rec.Header().Get(echo.HeaderContentType)
-		require.Equal(t, echo.MIMEApplicationJSON, got)
+		assert.Equal(t, echo.MIMEApplicationJSON, got)
 	})
 }

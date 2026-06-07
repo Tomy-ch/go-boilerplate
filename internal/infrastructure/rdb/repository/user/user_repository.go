@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/pkg/uuid"
 )
 
 type repository struct {
@@ -54,6 +55,26 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 	}
 }
 
+// rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。
+func rowToUser(u gen.Users) (*user.User, error) {
+	return user.New(
+		u.ID,
+		u.FirstName,
+		u.LastName,
+		u.PasswordHash,
+		u.Email,
+		u.Phone,
+		u.PrefectureID,
+		u.City,
+		u.Street,
+		u.Building,
+		u.PostalCode,
+		u.CreatedAt,
+		u.UpdatedAt,
+		u.DeletedAt,
+	)
+}
+
 // fetchListUsersRows は、ユーザーの情報を取得します。
 func fetchListUsersRows(
 	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
@@ -65,26 +86,11 @@ func fetchListUsersRows(
 
 	users := make(user.Users, len(rows))
 	for i, row := range rows {
-		user, err := user.New(
-			row.Users.ID,
-			row.Users.FirstName,
-			row.Users.LastName,
-			row.Users.PasswordHash,
-			row.Users.Email,
-			row.Users.Phone,
-			row.Users.PrefectureID,
-			row.Users.City,
-			row.Users.Street,
-			row.Users.Building,
-			row.Users.PostalCode,
-			row.Users.CreatedAt,
-			row.Users.UpdatedAt,
-			row.Users.DeletedAt,
-		)
+		u, err := rowToUser(row.Users)
 		if err != nil {
 			return nil, err
 		}
-		users[i] = user
+		users[i] = u
 	}
 	return users, nil
 }
@@ -100,26 +106,11 @@ func fetchListUsersRowsByActive(
 
 	users := make(user.Users, len(rows))
 	for i, row := range rows {
-		user, err := user.New(
-			row.Users.ID,
-			row.Users.FirstName,
-			row.Users.LastName,
-			row.Users.PasswordHash,
-			row.Users.Email,
-			row.Users.Phone,
-			row.Users.PrefectureID,
-			row.Users.City,
-			row.Users.Street,
-			row.Users.Building,
-			row.Users.PostalCode,
-			row.Users.CreatedAt,
-			row.Users.UpdatedAt,
-			row.Users.DeletedAt,
-		)
+		u, err := rowToUser(row.Users)
 		if err != nil {
 			return nil, err
 		}
-		users[i] = user
+		users[i] = u
 	}
 	return users, nil
 }
@@ -135,26 +126,11 @@ func fetchListUsersRowsByDeleted(
 
 	users := make(user.Users, len(rows))
 	for i, row := range rows {
-		user, err := user.New(
-			row.Users.ID,
-			row.Users.FirstName,
-			row.Users.LastName,
-			row.Users.PasswordHash,
-			row.Users.Email,
-			row.Users.Phone,
-			row.Users.PrefectureID,
-			row.Users.City,
-			row.Users.Street,
-			row.Users.Building,
-			row.Users.PostalCode,
-			row.Users.CreatedAt,
-			row.Users.UpdatedAt,
-			row.Users.DeletedAt,
-		)
+		u, err := rowToUser(row.Users)
 		if err != nil {
 			return nil, err
 		}
-		users[i] = user
+		users[i] = u
 	}
 	return users, nil
 }
@@ -184,6 +160,45 @@ func (r *repository) Create(ctx context.Context, user *user.User) error {
 		return pgerror.NormalizeError(err)
 	}
 	return nil
+}
+
+// FindByID は、IDから単一ユーザーを取得します。存在しない場合は NotFound に正規化したエラーを返します。
+func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(r.db.NewLoggingDB(ctx))
+	row, err := db.GetUserByID(ctx, id)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return rowToUser(row.Users)
+}
+
+// Update は、ユーザーの mutable フィールドと updatedAt / deletedAt を更新します。
+func (r *repository) Update(ctx context.Context, u *user.User) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(r.db.NewLoggingDB(ctx))
+	rows, err := db.UpdateUser(ctx, &gen.UpdateUserParams{
+		FirstName:    u.FirstName(),
+		LastName:     u.LastName(),
+		PasswordHash: u.PasswordHash(),
+		Email:        u.Email(),
+		Phone:        u.Phone(),
+		PrefectureID: u.PrefectureID(),
+		City:         u.City(),
+		Street:       u.Street(),
+		Building:     u.Building(),
+		PostalCode:   u.PostalCode(),
+		UpdatedAt:    u.UpdatedAt(),
+		DeletedAt:    u.DeletedAt(),
+		ID:           u.ID(),
+	})
+	// エラー正規化と「影響行数 0 → NotFound」判定は pgerror に集約
+	return pgerror.NormalizeExecResult(rows, err)
 }
 
 // CountByActive は、アクティブ状態に基づいてユーザーの総件数を返します。

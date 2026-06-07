@@ -10,4 +10,4 @@ Identifies operational/infrastructure endpoints.
 |---|---|
 |`IsOpsPath(path)`|Return true if path is `/metrics`, `/health`, `/healthz`, `/ready`, or `/version`|
 
-Used by logging and rate limiting middleware to skip ops endpoints.
+Used by logging middleware to skip ops endpoints.

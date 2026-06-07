@@ -7,6 +7,7 @@ import (
 	mock_job "go-boilerplate/internal/usecase/boundary/job/mock"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -27,7 +28,7 @@ func Test_NewRunner(t *testing.T) {
 			runner, err := NewRunner([]job.Job{job1})
 
 			require.NoError(t, err)
-			require.Len(t, runner.Names(), 1)
+			assert.Len(t, runner.Names(), 1)
 		})
 
 		t.Run("ジョブが複数登録された場合、ランナーが正常に生成される", func(t *testing.T) {
@@ -39,7 +40,7 @@ func Test_NewRunner(t *testing.T) {
 			runner, err := NewRunner([]job.Job{job1, job2})
 
 			require.NoError(t, err)
-			require.Len(t, runner.Names(), 2)
+			assert.Len(t, runner.Names(), 2)
 		})
 	})
 
@@ -139,7 +140,7 @@ func Test_runner_Names(t *testing.T) {
 			require.NoError(t, err)
 
 			names := runner.Names()
-			require.ElementsMatch(t, []string{jobName}, names)
+			assert.ElementsMatch(t, []string{jobName}, names)
 		})
 	})
 }

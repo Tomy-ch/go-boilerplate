@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,7 @@ func TestNewRawPassword(t *testing.T) {
 
 			actual, err := NewRawPassword(expected)
 			require.NoError(t, err)
-			require.Equal(t, expected, actual.Value())
+			assert.Equal(t, expected, actual.Value())
 		})
 	})
 
@@ -29,7 +30,7 @@ func TestNewRawPassword(t *testing.T) {
 			invalidPassword := strings.Repeat("a", MinRawPasswordLength-1)
 
 			actual, err := NewRawPassword(invalidPassword)
-			require.Empty(t, actual)
+			assert.Empty(t, actual)
 			require.ErrorIs(t, err, ErrInvalidRawPassword)
 		})
 
@@ -39,7 +40,7 @@ func TestNewRawPassword(t *testing.T) {
 			invalidPassword := strings.Repeat("a", MaxRawPasswordLength+1)
 
 			actual, err := NewRawPassword(invalidPassword)
-			require.Empty(t, actual)
+			assert.Empty(t, actual)
 			require.ErrorIs(t, err, ErrInvalidRawPassword)
 		})
 	})

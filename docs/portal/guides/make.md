@@ -2,23 +2,36 @@
 
 English | [日本語](README.ja.md)
 
-This document explains the roles of `make` commands available in this repository.
+## Role
+
+`.makefiles/` is the central registry for every `make` target used by the project. Each `.mk` file groups related targets by area (application / database / sql / go / openapi / docs / github / tools). The top-level `makefile` simply `include`s them, so adding a new target means dropping it into the right group file — no top-level edits required.
+
 Make targets are mainly organized into the following units.
 
 - `.makefiles/app` : Application startup / Job execution
 - `.makefiles/database` : DB initialization / Migration / Seed / DML / Schema
 - `.makefiles/sql` : SQL Lint / Fix
+- `.makefiles/markdown` : Markdown Lint / Fix
+- `.makefiles/security` : Trivy dependency vulnerability scan
 - `.makefiles/openapi` : OpenAPI bundle / API documentation generation
 - `.makefiles/go` : Go code generation / Format / Lint / Test / Tool management
 - `.makefiles/docs` : Portal / Tool information documentation generation
 - `.makefiles/gen` : Batch execution of various generation processes
 - `.makefiles/github` : GitHub initialization / Release / Labels / Rule configuration
-- `.makefiles/tools` : Development tool version management
 
-Targets are broadly divided into two types.
+## Conventions
 
-- Normal targets: Developer commands executed via Docker containers
-- `-ci` targets: Low-level commands for CI or direct execution
+- Target names use dash-separated lower case (`make new-migrate-<name>`, `make gen-api`).
+- Targets are split into two flavors:
+  - **Normal targets**: invoked by developers locally; run inside Docker containers for reproducibility.
+  - **`-ci` targets**: low-level commands intended to run on bare metal (CI runners, or developers who already have the tool installed).
+- Every target should be `.PHONY` and self-documenting via a trailing `##` comment so `make help` can pick it up.
+
+## Notes
+
+- Adding a new `.mk` file under a group is enough — `makefile` already `include`s all known groups.
+- Prefer `make new-migrate-<name>` (and similar helpers) over manual file creation; the helpers enforce naming conventions and number sequences.
+- For one-off operational commands (`make setup-repo`, etc.) keep them under `.makefiles/github/operation/` so they stay separate from developer-facing targets.
 
 ## `.makefiles/app` group
 
@@ -29,9 +42,11 @@ This is a group of targets related to application development environment startu
 | Command | Description | Main Use |
 | --- | --- | --- |
 | `make serve` | Starts Docker Compose services with the `development` profile in the background. | Start normal local development |
-| `make serve-build` | Rebuilds Docker images and then starts the development environment. | Reflect Dockerfile or dependency changes |
+| `make serve-build` | Rebuilds Docker images (cache enabled) and then starts the development environment. | Reflect Dockerfile or dependency changes |
+| `make serve-build-clean` | Cleanly rebuilds Docker images with `--no-cache --pull` and then starts the development environment. | Pick up base image updates (e.g., Go version upgrade) |
 | `make tools` | Starts development support tools with the `tools` profile. | When using development tools |
-| `make tools-rebuild` | Rebuilds development tool containers with `--no-cache --pull`. | When updating tool containers |
+| `make tools-build` | Builds development tool containers (cache enabled, no startup). | When updating tool container Dockerfile or dependencies |
+| `make tools-build-clean` | Cleanly builds development tool containers with `--no-cache --pull` (no startup). | Pick up base image updates for tool containers |
 | `make smoke` | Starts `smoke_server` with build under the `smoke` profile. | Verify Smoke Test environment |
 
 #### `make job NAME=<job_name> ARGS="<arguments>"`
@@ -168,6 +183,26 @@ Targets include Migration / DML / Seed SQL.
 | `make sql-fix-dml-ci` | Executes `sqlfluff fix` on `database/dml/`. | CI target |
 | `make sql-fix-seed-ci` | Executes `sqlfluff fix` on `database/seed/`. | CI target |
 
+## `.makefiles/markdown` group
+
+This group handles linting and auto-fixing of Markdown files.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make md-lint` | Lints Markdown files. | Invokes `make md-lint-ci` inside the `node_tool_runner` container. |
+| `make md-fix` | Auto-fixes Markdown files. | Invokes `make md-fix-ci` inside the `node_tool_runner` container. |
+| `make md-lint-ci` | Lints `**/*.md` directly with `markdownlint-cli2`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
+| `make md-fix-ci` | Fixes `**/*.md` directly with `markdownlint-cli2 --fix`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
+
+## `.makefiles/security` group
+
+This group runs a local Trivy dependency scan, mainly to reproduce a CI security finding on the developer's machine. Image scanning is CI-only (`image-scan.yaml`).
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make trivy-fs` | Scans library dependencies with Trivy fs. | Invokes `make trivy-fs-ci` inside the `go_tool_runner` container. |
+| `make trivy-fs-ci` | Runs `trivy fs` directly. | CI target. Skips `vendor/` to match CI. |
+
 ## `.makefiles/openapi` group
 
 | Command | Description | Notes |
@@ -212,15 +247,14 @@ Targets include Migration / DML / Seed SQL.
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make go-update` | Executes `anyenv update` and installs Go version from `.go-version` via `goenv`. | None |
-| `make install-tools` | Installs tools used in Go development. | Installs `gopls`, `gotests`, `impl`, `goplay`, `dlv`, `lefthook`, `golangci-lint`, etc. |
+| `make go-update` | Installs the Go runtime pinned in `mise.toml` via mise. See `docs/maintenance/go-upgrade.md`. | mise required |
+| `make install-tools` | Installs host development Go tools via mise (versions from `mise.toml`). | Installs `gopls`, `gotests`, `impl`, `dlv`, `lefthook`, `golangci-lint`. |
 | `make activate-tools` | Executes `lefthook install` to set up Git hooks. | None |
 
 ## `.makefiles/docs` group
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make gen-tools-meta` | Outputs version information of generation tools. | Used when updating metadata of Go / Node.js / Python toolchains. |
 | `make gen-portal-docs` | Generates Portal documentation. | None |
 | `make gen-docs-json` | Generates Portal documentation link JSON. | None |
 | `make gen-portal-docs-ci` | Generates Portal documentation directly via Node.js script. | CI target |
@@ -232,7 +266,7 @@ Targets include Migration / DML / Seed SQL.
 | --- | --- | --- |
 | `make gen` | Executes all code and documentation generation in batch. | Executes `gen-api` → `gen-query` → `gen-docs`. |
 | `make gen-api` | Executes API-related generation in batch. | Executes `gen-bundle-oapi` →  `gen-api-docs` → `gen-go-code`. |
-| `make gen-docs` | Executes documentation-related generation in batch. | Executes `gen-api-docs`, `gen-tools-meta`, `gen-portal-docs`, `gen-docs-json`. |
+| `make gen-docs` | Executes documentation-related generation in batch. | Executes `gen-api-docs`, `gen-portal-docs`, `gen-docs-json`. |
 | `make gen-all-docs` | Executes all documentation generation processes. | Executes `gen-docs`, `gen-db-schema`, `gen-test-repo`. |
 | `make gen-query` | Executes SQLC code generation in batch. | Executes `dump-schema` → `merge-dml` → `gen-sqlc` → `fmt`. |
 | `make gen-query-repo` | Executes SQLC code generation for Repository. | Executes `dump-schema` → `merge-dml-repo` → `gen-sqlc`. |
@@ -292,11 +326,3 @@ This is an initial setup command when launching a new repository as a boilerplat
 | `make tag-patch` | Creates a tag with incremented patch version and creates a GitHub Release. | Uses `.github/release/<version>.md` for release notes. |
 | `make tag-minor` | Creates a tag with incremented minor version and creates a GitHub Release. | Based on the latest tag. |
 | `make tag-major` | Creates a tag with incremented major version and creates a GitHub Release. | Based on the latest tag. |
-
-## `.makefiles/tools` group
-
-### Tool version management related
-
-| Command | Description | Notes |
-| --- | --- | --- |
-| `make sync-tools` | Synchronizes tool versions across related files based on `tools.yaml`. | Uses `replace-tools-version.cjs` to update version notations in Dockerfile, installation scripts, etc. |

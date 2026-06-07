@@ -1,5 +1,8 @@
-description: ユーザー情報の基本入力スキーマ
-additionalProperties: false
+description: |
+  ユーザー情報の基本入力スキーマ。
+  allOf 継承（POST が password を兄弟スキーマで追加）と additionalProperties:false は
+  JSON Schema 上で非互換（基底側が兄弟の追加プロパティを拒否する）ため、
+  additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
 properties:
   firstName:
     description: 苗字
@@ -16,12 +19,6 @@ properties:
     type: string
     format: email
     example: "alice.smith@example.com"
-  password:
-    description: パスワード
-    type: string
-    format: password
-    minLength: 8
-    example: "P@ssw0rd!"
   phone:
     description: 電話番号
     type: string

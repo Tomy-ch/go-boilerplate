@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/usecase/user/search/query"
 	"go-boilerplate/pkg/ptr"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +23,7 @@ func TestNew(t *testing.T) {
 		db:     loggingDB,
 	}
 	actual := New(loggingDB, tf)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_service_FindByFilter(t *testing.T) {
@@ -64,11 +65,11 @@ func Test_service_FindByFilter(t *testing.T) {
 				}, limit, offset)
 				require.NoError(t, err)
 
-				require.Len(t, actual, expectedLength)
-				require.Equal(t, firstName1, actual[0].FirstName)
-				require.Equal(t, lastName1, actual[0].LastName)
-				require.Equal(t, firstName2, actual[1].FirstName)
-				require.Equal(t, lastName2, actual[1].LastName)
+				assert.Len(t, actual, expectedLength)
+				assert.Equal(t, firstName1, actual[0].FirstName)
+				assert.Equal(t, lastName1, actual[0].LastName)
+				assert.Equal(t, firstName2, actual[1].FirstName)
+				assert.Equal(t, lastName2, actual[1].LastName)
 			})
 
 			t.Run("activeがtrueの場合、アクティブなユーザーが対象になる", func(t *testing.T) {
@@ -91,9 +92,9 @@ func Test_service_FindByFilter(t *testing.T) {
 				}, limit, offset)
 				require.NoError(t, err)
 
-				require.Len(t, actual, expectedLength)
-				require.Equal(t, firstName, actual[0].FirstName)
-				require.Equal(t, lastName, actual[0].LastName)
+				assert.Len(t, actual, expectedLength)
+				assert.Equal(t, firstName, actual[0].FirstName)
+				assert.Equal(t, lastName, actual[0].LastName)
 			})
 
 			t.Run("activeがfalseの場合、削除されたユーザーが対象になる", func(t *testing.T) {
@@ -116,9 +117,9 @@ func Test_service_FindByFilter(t *testing.T) {
 				}, limit, offset)
 				require.NoError(t, err)
 
-				require.Len(t, actual, expectedLength)
-				require.Equal(t, firstName, actual[0].FirstName)
-				require.Equal(t, lastName, actual[0].LastName)
+				assert.Len(t, actual, expectedLength)
+				assert.Equal(t, firstName, actual[0].FirstName)
+				assert.Equal(t, lastName, actual[0].LastName)
 			})
 		})
 
@@ -139,7 +140,7 @@ func Test_service_FindByFilter(t *testing.T) {
 			}, limit, offset)
 			require.NoError(t, err)
 
-			require.Len(t, actual, expectedLength)
+			assert.Len(t, actual, expectedLength)
 		})
 
 		t.Run("keywordsが空かつactive=trueの場合、アクティブのみ取得できる", func(t *testing.T) {
@@ -160,7 +161,7 @@ func Test_service_FindByFilter(t *testing.T) {
 			}, limit, offset)
 			require.NoError(t, err)
 
-			require.Len(t, actual, expectedLength)
+			assert.Len(t, actual, expectedLength)
 		})
 
 		t.Run("keywordsが空かつactive=falseの場合、削除済みのみ取得できる", func(t *testing.T) {
@@ -181,7 +182,7 @@ func Test_service_FindByFilter(t *testing.T) {
 			}, limit, offset)
 			require.NoError(t, err)
 
-			require.Len(t, actual, expectedLength)
+			assert.Len(t, actual, expectedLength)
 		})
 	})
 }
@@ -214,7 +215,7 @@ func Test_service_CountByFilter(t *testing.T) {
 				Active:   nil,
 			})
 			require.NoError(t, err)
-			require.Equal(t, expectedCount, actual)
+			assert.Equal(t, expectedCount, actual)
 		})
 
 		t.Run("activeがtrueかつ、keywordsが空の場合、アクティブなユーザーが対象になる", func(t *testing.T) {
@@ -232,7 +233,7 @@ func Test_service_CountByFilter(t *testing.T) {
 				Active:   &active,
 			})
 			require.NoError(t, err)
-			require.Equal(t, expectedCount, actual)
+			assert.Equal(t, expectedCount, actual)
 		})
 
 		t.Run("activeがfalseかつ、keywordsが空の場合、削除されたユーザーが対象になる", func(t *testing.T) {
@@ -250,7 +251,7 @@ func Test_service_CountByFilter(t *testing.T) {
 				Active:   &active,
 			})
 			require.NoError(t, err)
-			require.Equal(t, expectedCount, actual)
+			assert.Equal(t, expectedCount, actual)
 		})
 
 		t.Run("Keywordsにマッチするユーザーの総件数が取得できる", func(t *testing.T) {
@@ -267,7 +268,7 @@ func Test_service_CountByFilter(t *testing.T) {
 				Active:   nil,
 			})
 			require.NoError(t, err)
-			require.Equal(t, expectedCount, actual)
+			assert.Equal(t, expectedCount, actual)
 		})
 	})
 }

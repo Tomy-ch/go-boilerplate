@@ -199,7 +199,6 @@ reg.RegisterStop(stopFunc)
 Examples:
 
 - HTTP Server startup
-- RateLimit Cleanup
 - Job Runner
 
 ### Isolate external frameworks

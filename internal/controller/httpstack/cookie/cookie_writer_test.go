@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,7 +55,7 @@ func Test_cookieRewriteWriter_Header(t *testing.T) {
 
 		h := w.Header()
 		h.Add("X-Test", "v")
-		require.Equal(t, "v", w.hdr.Get("X-Test"))
+		assert.Equal(t, "v", w.hdr.Get("X-Test"))
 	})
 }
 
@@ -73,11 +74,11 @@ func Test_cookieRewriteWriter_WriteHeader(t *testing.T) {
 
 		w.WriteHeader(http.StatusCreated)
 
-		require.Equal(t, 201, orig.wroteCode)
-		require.Equal(t, "h", orig.Header().Get("X"))
+		assert.Equal(t, 201, orig.wroteCode)
+		assert.Equal(t, "h", orig.Header().Get("X"))
 		sc := orig.Header()["Set-Cookie"]
-		require.Len(t, sc, 1)
-		require.Contains(t, sc[0], "HttpOnly")
+		assert.Len(t, sc, 1)
+		assert.Contains(t, sc[0], "HttpOnly")
 	})
 
 	t.Run("WriteHeader: 既にヘッダ書き込み済みなら無視される", func(t *testing.T) {
@@ -90,7 +91,7 @@ func Test_cookieRewriteWriter_WriteHeader(t *testing.T) {
 		w2.hdr.Add("X-Should-Not", "v")
 		// orig2 の状態は変わらないはず
 		w2.WriteHeader(http.StatusNoContent)
-		require.Equal(t, 0, orig2.wroteCode)
+		assert.Equal(t, 0, orig2.wroteCode)
 		require.Empty(t, orig2.Header().Get("X-Should-Not"))
 	})
 }
@@ -105,9 +106,9 @@ func Test_cookieRewriteWriter_Write(t *testing.T) {
 
 		n, err := w.Write([]byte("hello"))
 		require.NoError(t, err)
-		require.Equal(t, 5, n)
-		require.Equal(t, http.StatusOK, orig.wroteCode)
-		require.Equal(t, "hello", orig.body.String())
+		assert.Equal(t, 5, n)
+		assert.Equal(t, http.StatusOK, orig.wroteCode)
+		assert.Equal(t, "hello", orig.body.String())
 	})
 }
 
@@ -120,8 +121,8 @@ func Test_cookieRewriteWriter_Flush(t *testing.T) {
 		w := newCookieRewriteWriter(orig, cfg)
 
 		w.Flush()
-		require.True(t, orig.flushed)
-		require.Equal(t, http.StatusOK, orig.wroteCode)
+		assert.True(t, orig.flushed)
+		assert.Equal(t, http.StatusOK, orig.wroteCode)
 	})
 }
 
@@ -139,7 +140,7 @@ func Test_cookieRewriteWriter_Hijack(t *testing.T) {
 		require.NotNil(t, conn)
 		require.NotNil(t, rw)
 		// hijack 確定で wroteHdr が立っている
-		require.True(t, w.wroteHdr)
+		assert.True(t, w.wroteHdr)
 		// header 上で書き換え済みの Set-Cookie が存在する
 		sc := w.hdr.Values("Set-Cookie")
 		require.GreaterOrEqual(t, len(sc), 1)
@@ -170,7 +171,7 @@ func Test_cookieRewriteWriter_Hijack(t *testing.T) {
 		require.NotNil(t, conn)
 		require.NotNil(t, rw)
 		// hdr は変更されていない（rewrite をスキップ）
-		require.Equal(t, []string{"NoEquals"}, w.hdr.Values("Set-Cookie"))
+		assert.Equal(t, []string{"NoEquals"}, w.hdr.Values("Set-Cookie"))
 		err = conn.Close()
 		require.NoError(t, err)
 	})
@@ -188,7 +189,7 @@ func Test_cookieRewriteWriter_Hijack(t *testing.T) {
 		require.NotNil(t, conn)
 		require.NotNil(t, rw)
 		// hdr に元の raw が残っている
-		require.Equal(t, []string{"NoEquals"}, w.hdr.Values("Set-Cookie"))
+		assert.Equal(t, []string{"NoEquals"}, w.hdr.Values("Set-Cookie"))
 		err = conn.Close()
 		require.NoError(t, err)
 	})
@@ -228,8 +229,8 @@ func Test_cookieRewriteWriter_ReadFrom(t *testing.T) {
 		r := strings.NewReader("payload")
 		n, err := w.ReadFrom(r)
 		require.NoError(t, err)
-		require.Equal(t, int64(7), n)
-		require.Equal(t, "payload", orig.body.String())
+		assert.Equal(t, int64(7), n)
+		assert.Equal(t, "payload", orig.body.String())
 	})
 
 	t.Run("ReadFrom: orig が ReaderFrom を実装していない場合は io.Copy 経由で書き込まれる", func(t *testing.T) {
@@ -246,7 +247,7 @@ func Test_cookieRewriteWriter_ReadFrom(t *testing.T) {
 		// wrapper.rw is newFakeOrig()
 		// assert by type assertion
 		if f, ok := wrapper.rw.(*fakeOrig); ok {
-			require.Equal(t, "xyz", f.body.String())
+			assert.Equal(t, "xyz", f.body.String())
 		} else {
 			t.Fatalf("unexpected wrapper inner type")
 		}
@@ -260,7 +261,7 @@ func Test_cookieRewriteWriter_Unwrap(t *testing.T) {
 		orig := newFakeOrig()
 		cfg := &SecurityCookie{}
 		w := newCookieRewriteWriter(orig, cfg)
-		require.Equal(t, orig, w.Unwrap())
+		assert.Equal(t, orig, w.Unwrap())
 	})
 }
 
@@ -280,11 +281,11 @@ func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
 		w.flushHeadersWithRewrite()
 
 		// non Set-Cookie headers are copied
-		require.Equal(t, "v", orig.Header().Get("X-Test"))
+		assert.Equal(t, "v", orig.Header().Get("X-Test"))
 		// Set-Cookie は書き換えられて追加される
 		sc := orig.Header()["Set-Cookie"]
-		require.Len(t, sc, 1)
-		require.Contains(t, sc[0], "Secure")
+		assert.Len(t, sc, 1)
+		assert.Contains(t, sc[0], "Secure")
 	})
 
 	t.Run("flushHeadersWithRewrite: Rewrite に失敗したら元の raw を使う", func(t *testing.T) {
@@ -298,6 +299,6 @@ func Test_cookieRewriteWriter_flushHeadersWithRewrite(t *testing.T) {
 		w.flushHeadersWithRewrite()
 
 		sc := orig.Header()["Set-Cookie"]
-		require.Equal(t, []string{"NoEquals"}, sc)
+		assert.Equal(t, []string{"NoEquals"}, sc)
 	})
 }

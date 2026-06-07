@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -138,37 +139,37 @@ func TestIsUnavailable(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(nil)
-		require.False(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("コンテキスト期限切れ", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(context.DeadlineExceeded)
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("ネットワークエラー", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(mockNetError{})
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("Postgres接続エラー", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(&pgconn.PgError{Code: "08003"})
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("Postgres非接続エラー", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(&pgconn.PgError{Code: "23505"})
-		require.False(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("その他のエラー", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(errors.New("other"))
-		require.False(t, got)
+		assert.False(t, got)
 	})
 }
 
@@ -177,18 +178,39 @@ func Test_isPgConnectionError(t *testing.T) {
 	t.Run("Postgres接続エラー", func(t *testing.T) {
 		t.Parallel()
 		got := isPgConnectionError(&pgconn.PgError{Code: "08006"})
-		require.True(t, got)
+		assert.True(t, got)
 	})
 
 	t.Run("Postgres非接続エラー", func(t *testing.T) {
 		t.Parallel()
 		got := isPgConnectionError(&pgconn.PgError{Code: "23505"})
-		require.False(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("その他のエラー", func(t *testing.T) {
 		t.Parallel()
 		got := isPgConnectionError(errors.New("other"))
-		require.False(t, got)
+		assert.False(t, got)
+	})
+}
+
+func TestNormalizeExecResult(t *testing.T) {
+	t.Parallel()
+
+	t.Run("影響行数が1以上かつerrorなしの場合、nilを返す", func(t *testing.T) {
+		t.Parallel()
+		require.NoError(t, NormalizeExecResult(1, nil))
+	})
+
+	t.Run("影響行数が0かつerrorなしの場合、ErrNotFoundを返す", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeExecResult(0, nil)
+		require.ErrorIs(t, got, apperror.ErrNotFound)
+	})
+
+	t.Run("errorがある場合、NormalizeErrorに委譲する", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeExecResult(0, &pgconn.PgError{Code: "23505"})
+		require.ErrorIs(t, got, apperror.ErrConflict)
 	})
 }

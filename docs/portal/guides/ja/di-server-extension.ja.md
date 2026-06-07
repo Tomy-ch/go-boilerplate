@@ -82,7 +82,6 @@ flowchart TB
 |`Module()`|Use|セキュリティヘッダ（HSTS 等）|
 |`CORSModule()`|Use|CORS 設定|
 |`CookieModule()`|Use|Cookie セキュリティ属性|
-|`RateLimitModule()`|Use|IP レートリミット|
 
 ### nonprod（非本番）
 

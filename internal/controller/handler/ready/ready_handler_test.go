@@ -16,6 +16,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -88,9 +89,9 @@ func TestGetReady(t *testing.T) {
 			require.NoError(t, err)
 
 			actual, ok := resp.(gen.GetReady200JSONResponse)
-			require.True(t, ok)
+			assert.True(t, ok)
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 

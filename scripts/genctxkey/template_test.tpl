@@ -13,7 +13,7 @@ import (
 	{{- end}}
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSet{{.NameCamel}}(t *testing.T) {
@@ -24,8 +24,8 @@ func TestSet{{.NameCamel}}(t *testing.T) {
 
 	val := ctx.Value({{.NameLower}}Key)
 	v, ok := val.({{.Type}})
-	require.True(t, ok)
-	require.Equal(t, {{.TestSuccessValue}}, v)
+	assert.True(t, ok)
+	assert.Equal(t, {{.TestSuccessValue}}, v)
 }
 
 func TestGet{{.NameCamel}}(t *testing.T) {
@@ -37,16 +37,16 @@ func TestGet{{.NameCamel}}(t *testing.T) {
 		ctx = Set{{.NameCamel}}(ctx, {{.TestSuccessValue}})
 
 		val, ok := Get{{.NameCamel}}(ctx)
-		require.True(t, ok)
-		require.Equal(t, {{.TestSuccessValue}}, val)
+		assert.True(t, ok)
+		assert.Equal(t, {{.TestSuccessValue}}, val)
 	})
 
 	t.Run("standard context - no value", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		val, ok := Get{{.NameCamel}}(ctx)
-		require.False(t, ok)
-		require.Equal(t, {{.TestFailValue}}, val)
+		assert.False(t, ok)
+		assert.Equal(t, {{.TestFailValue}}, val)
 	})
 }
 
@@ -64,8 +64,8 @@ func TestSet{{.NameCamel}}ToEcho(t *testing.T) {
 		Set{{.NameCamel}}ToEcho(c, {{.TestSuccessValue}})
 		val, ok := Get{{.NameCamel}}FromEcho(c)
 
-		require.True(t, ok)
-		require.Equal(t, {{.TestSuccessValue}}, val)
+		assert.True(t, ok)
+		assert.Equal(t, {{.TestSuccessValue}}, val)
 	})
 
 	t.Run("echo context - no value", func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestSet{{.NameCamel}}ToEcho(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		val, ok := Get{{.NameCamel}}FromEcho(c)
-		require.False(t, ok)
-		require.Equal(t, {{.TestFailValue}}, val)
+		assert.False(t, ok)
+		assert.Equal(t, {{.TestFailValue}}, val)
 	})
 }

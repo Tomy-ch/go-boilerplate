@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"testing"
 
-	"go-boilerplate/internal/apperror"
+	"github.com/stretchr/testify/assert"
 
-	"github.com/stretchr/testify/require"
+	"go-boilerplate/internal/apperror"
 )
 
 func TestLookupErrorMetaByHTTPStatus(t *testing.T) {
@@ -27,7 +27,7 @@ func TestLookupErrorMetaByHTTPStatus(t *testing.T) {
 
 			actual := lookupErrorMetaByHTTPStatus(httpStatus)
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("未知のステータスコードの場合、内部サーバーエラーとして扱う", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestLookupErrorMetaByHTTPStatus(t *testing.T) {
 
 			actual := lookupErrorMetaByHTTPStatus(httpStatus)
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -61,7 +61,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrInvalidArgument)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ErrValidationの場合、UnprocessableEntityが返される", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrValidation)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ErrUnauthenticatedの場合、unauthorizedが返される", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrUnauthenticated)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ErrPermissionDeniedの場合、Forbiddenが返される", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrPermissionDenied)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ErrNotFoundの場合、NotFoundが返される", func(t *testing.T) {
@@ -105,7 +105,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrNotFound)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ErrConflictの場合、Conflictが返される", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrConflict)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ErrUnavailableの場合、ServiceUnavailableが返される", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrUnavailable)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ErrUnimplementedの場合、NotImplementedが返される", func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrUnimplemented)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ErrTooManyRequestsの場合、TooManyRequestsが返される", func(t *testing.T) {
@@ -149,7 +149,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(apperror.ErrTooManyRequests)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -164,7 +164,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(errors.New("unknown error"))
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("nilエラーの場合、InternalServerErrorが返される", func(t *testing.T) {
@@ -175,7 +175,7 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			}
 
 			actual := lookupErrorMetaByAppError(nil)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }

@@ -11,7 +11,7 @@ import (
 	auth "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSetAuthn(t *testing.T) {
@@ -22,8 +22,8 @@ func TestSetAuthn(t *testing.T) {
 
 	val := ctx.Value(authnKey)
 	v, ok := val.(auth.Authn)
-	require.True(t, ok)
-	require.Equal(t, *new(auth.Authn), v)
+	assert.True(t, ok)
+	assert.Equal(t, *new(auth.Authn), v)
 }
 
 func TestGetAuthn(t *testing.T) {
@@ -35,16 +35,16 @@ func TestGetAuthn(t *testing.T) {
 		ctx = SetAuthn(ctx, *new(auth.Authn))
 
 		val, ok := GetAuthn(ctx)
-		require.True(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		assert.True(t, ok)
+		assert.Equal(t, *new(auth.Authn), val)
 	})
 
 	t.Run("standard context - no value", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		val, ok := GetAuthn(ctx)
-		require.False(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		assert.False(t, ok)
+		assert.Equal(t, *new(auth.Authn), val)
 	})
 }
 
@@ -62,8 +62,8 @@ func TestSetAuthnToEcho(t *testing.T) {
 		SetAuthnToEcho(c, *new(auth.Authn))
 		val, ok := GetAuthnFromEcho(c)
 
-		require.True(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		assert.True(t, ok)
+		assert.Equal(t, *new(auth.Authn), val)
 	})
 
 	t.Run("echo context - no value", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestSetAuthnToEcho(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		val, ok := GetAuthnFromEcho(c)
-		require.False(t, ok)
-		require.Equal(t, *new(auth.Authn), val)
+		assert.False(t, ok)
+		assert.Equal(t, *new(auth.Authn), val)
 	})
 }
