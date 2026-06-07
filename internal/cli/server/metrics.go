@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/logging"
 )
 
 const (
@@ -37,11 +38,18 @@ func MetricsServer(mtcCfg *config.MetricsConfig) *http.Server {
 func NewMetricsServer(mtcCfg *config.MetricsConfig) (func(), func(ctx context.Context)) {
 	metricsSrv := MetricsServer(mtcCfg)
 
+	logger, err := logging.NewProductionLogger()
+	if err != nil {
+		panic("failed to create logger: " + err.Error())
+	}
+
 	start := func() {
 		// メインのアプリ起動をブロックしないよう、補助サーバーは別 goroutine で待ち受けます。
 		go func() {
 			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				panic(fmt.Errorf("metrics server error: %w", err))
+				// 補助サーバー（開発用 pprof）の bind 失敗等でアプリ本体を巻き込まないよう、
+				// goroutine 内では panic せずログ記録に留めます（本体 HTTP サーバーと同方針）。
+				logger.Named("metrics.ListenAndServe").Error("metrics server error", logging.Error("listen", err))
 			}
 		}()
 	}
