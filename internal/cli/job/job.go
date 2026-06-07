@@ -63,8 +63,11 @@ func runJobExec(ctx context.Context, name string, args []string) error {
 		_ = stop(stopCtx)
 		return err
 	case <-waitCtx.Done():
-		// タイムアウト時は待機用 context 自体が終了しているため、そのまま停止へ渡します。
-		_ = stop(waitCtx)
+		// タイムアウト時も親 ctx は生きているため、他経路と同様に停止専用の短い context を
+		// 作り直して後始末に猶予を与えます（期限切れの waitCtx を渡すと後始末が即時打ち切られる）。
+		stopCtx, timeoutCancel := context.WithTimeout(ctx, stopTimeout)
+		defer timeoutCancel()
+		_ = stop(stopCtx)
 		return waitCtx.Err()
 	case <-ctx.Done():
 		// 親 context のキャンセル時も、停止猶予だけを与えてジョブを終了させます。
