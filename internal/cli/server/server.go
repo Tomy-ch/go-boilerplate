@@ -40,18 +40,13 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	)
 	defer stop()
 
-	// 停止処理は無期限に待たず、設定されたタイムアウト内で完了させます。
-	stopCtx, cancel := context.WithTimeout(
-		context.Background(),
-		appCfg.ShutdownTimeout(),
-	)
-	defer cancel()
-
 	// メトリクス用の補助サーバーは開発向けのため、本番環境では起動しません。
+	// 停止関数はシャットダウン段で再利用するため、関数スコープで保持します。
+	var stopMetrics func(context.Context)
 	if !appCfg.IsProductionMode() {
-		startMetrics, stopMetrics := NewMetricsServer(mtcCfg)
+		startMetrics, endMetrics := NewMetricsServer(mtcCfg)
 		startMetrics()
-		defer stopMetrics(stopCtx)
+		stopMetrics = endMetrics
 	}
 
 	// DI コンテナ経由でアプリ本体を組み立て、HTTP サーバーを起動します。
@@ -63,6 +58,19 @@ func serveRun(_ *cobra.Command, _ []string) error {
 
 	// 終了シグナルを受け取るまで待機し、その後グレースフルシャットダウンを行います。
 	<-ctx.Done()
+
+	// 停止処理は無期限に待たず、シャットダウン開始時点から設定タイムアウト内で完了させます。
+	// タイムアウトを起動直後ではなくこの時点で計測することで、稼働時間に消費されないようにします。
+	stopCtx, cancel := context.WithTimeout(
+		context.Background(),
+		appCfg.ShutdownTimeout(),
+	)
+	defer cancel()
+
+	// メトリクスサーバーとアプリ本体を、同じシャットダウン用 context で順に停止します。
+	if stopMetrics != nil {
+		stopMetrics(stopCtx)
+	}
 
 	return stopApp(stopCtx)
 }
