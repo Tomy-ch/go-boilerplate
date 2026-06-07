@@ -4,11 +4,15 @@ English | [日本語](README.ja.md)
 
 This Dockerfile provides **code generation and bundling tool containers** for the project. It uses multi-stage builds to offer Go, Node.js, and Python tool environments.
 
+## Role
+
+`docker/tools/Dockerfile` packages every code-generation / linting tool the build needs (oapi-codegen, mockgen, sqlc, migrate, redocly-cli, js-yaml, sqlfluff) into language-isolated runner images. Developers and CI invoke these containers from `make` targets (`make gen-api`, `make gen-query`, `make sql-lint`, etc.) so nobody has to install Go, Node, or Python toolchains locally. This keeps tool versions reproducible across machines and locks generated output to a known toolchain set.
+
 ## Build Targets
 
 |Target|Base Image|Included Tools|
 |---|---|---|
-|`go_tools`|`golang:1.26.2-alpine`|oapi-codegen, mockgen, sqlc, migrate|
+|`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate|
 |`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 
@@ -63,7 +67,6 @@ make gen-query  # sqlc code generation
 1. Install the tool in the appropriate Dockerfile stage
 2. Add a new service in `docker-compose.yaml` with `profiles: [generate]`
 3. Add a Makefile target if needed
-4. **Update the version recording script** — see `docs/maintenance/versions-generator.md`
 
 ## Notes
 

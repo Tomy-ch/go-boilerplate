@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-このディレクトリは、HTTP レイヤーにおける **セキュリティ関連ミドルウェア**（CORS・セキュリティヘッダ・Cookie 設定・IP レートリミット）を DI 経由で Echo に組み込むための fx モジュール群を提供します。
+このディレクトリは、HTTP レイヤーにおける **セキュリティ関連ミドルウェア**（CORS・セキュリティヘッダ・Cookie 設定）を DI 経由で Echo に組み込むための fx モジュール群を提供します。
 
 ## モジュール一覧
 
@@ -11,7 +11,6 @@
 |`Module()`|Use|セキュリティヘッダ（HSTS, X-Frame-Options, Content-Type-Options, Referrer-Policy）|
 |`CORSModule()`|Use|CORS 設定（AllowOrigins / AllowMethods / AllowHeaders）|
 |`CookieModule()`|Use|Cookie セキュリティ属性（Secure / HttpOnly / SameSite）|
-|`RateLimitModule()`|Use|IP ベースのリクエストレートリミット|
 
 ## 注意点
 

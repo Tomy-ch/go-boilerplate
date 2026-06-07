@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewSkipper(t *testing.T) {
@@ -35,7 +35,7 @@ func TestNewSkipper(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			got := sk(c)
-			require.Equal(t, tc.want, got)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }

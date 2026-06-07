@@ -1,0 +1,13 @@
+get:
+  operationId: GetReady
+  tags:
+    - ready
+  summary: サーバー全体のレディネスチェック
+  description: サーバー全体がリクエストを受け付ける準備ができているかを確認するためのレディネスチェックエンドポイントです。
+  responses:
+    '200':
+      description: サーバーはリクエストを受け付ける準備ができています。
+      content:
+        application/json:
+          schema:
+            $ref: '../components/responses/health-check/ReadyResponse.yaml'

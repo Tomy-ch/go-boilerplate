@@ -3,7 +3,7 @@ package stringkit
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestErrorMsgInRange(t *testing.T) {
@@ -15,7 +15,7 @@ func TestErrorMsgInRange(t *testing.T) {
 			expected := "length must be between 3 and 5 characters (got 5)"
 
 			actual := ErrorMsgInRange(lowerBound, upperBound, input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -28,7 +28,7 @@ func TestErrorMsgMaxOrLess(t *testing.T) {
 			expected := "length must be less than or equal to 4 characters (got 5)"
 
 			actual := ErrorMsgMaxOrLess(upperBound, input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -41,7 +41,7 @@ func TestErrorMsgMinOrMore(t *testing.T) {
 			expected := "length must be greater than or equal to 6 characters (got 5)"
 
 			actual := ErrorMsgMinOrMore(lowerBound, input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -55,7 +55,7 @@ func TestErrorMsgStrictInRange(t *testing.T) {
 			expected := "length must be greater than 3 and less than 5 characters (got 5)"
 
 			actual := ErrorMsgStrictInRange(lowerBound, upperBound, input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -68,7 +68,7 @@ func TestErrorMsgLessThanMax(t *testing.T) {
 			expected := "length must be less than 4 characters (got 5)"
 
 			actual := ErrorMsgLessThanMax(upperBound, input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }
@@ -81,7 +81,7 @@ func TestErrorMsgGreaterThanMin(t *testing.T) {
 			expected := "length must be greater than 6 characters (got 5)"
 
 			actual := ErrorMsgGreaterThanMin(lowerBound, input)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 }

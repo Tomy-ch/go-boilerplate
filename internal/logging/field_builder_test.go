@@ -7,6 +7,7 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -84,7 +85,7 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 		}
 
 		actual := lf.BuildHTTPRequestFields(exampleInput)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("trace_idとspan_idが存在する場合、trace_idとspan_idのフィールドが追加される", func(t *testing.T) {
@@ -119,7 +120,7 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 		}
 
 		actual := lf.BuildHTTPRequestFields(input)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -162,7 +163,7 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 		}
 
 		actual := lf.BuildHTTPResponseFields(exampleInput)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("trace_idとspan_idが存在する場合、trace_idとspan_idのフィールドが追加される", func(t *testing.T) {
@@ -192,7 +193,7 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 		}
 
 		actual := lf.BuildHTTPResponseFields(input)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -233,7 +234,7 @@ func TestLogFields_BuildSQLStartFields(t *testing.T) {
 		}
 
 		actual := lf.BuildSQLStartFields(s)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("trace/spanが無い場合", func(t *testing.T) {
@@ -258,7 +259,7 @@ func TestLogFields_BuildSQLStartFields(t *testing.T) {
 		}
 
 		actual := lf.BuildSQLStartFields(s)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -304,7 +305,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 		}
 
 		actual := lf.BuildSQLEndFields(s)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("引数/エラー/trace有りのケース", func(t *testing.T) {
@@ -344,7 +345,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 		}
 
 		actual := lf.BuildSQLEndFields(s)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -384,7 +385,7 @@ func TestLogFields_BuildObservabilityFields(t *testing.T) {
 		}
 
 		actual := lf.BuildObservabilityFields(obs)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("trace/span がある場合は追加される", func(t *testing.T) {
@@ -415,7 +416,7 @@ func TestLogFields_BuildObservabilityFields(t *testing.T) {
 		}
 
 		actual := lf.BuildObservabilityFields(obs)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }
 
@@ -433,14 +434,14 @@ func Test_appendTraceSpanFields(t *testing.T) {
 			t.Parallel()
 			base := []*Field{String("a", "b")}
 			got := impl.appendTraceSpanFields(base, "", "", "")
-			require.Equal(t, base, got)
+			assert.Equal(t, base, got)
 		})
 
 		t.Run("parentSpanIDのみ有る場合", func(t *testing.T) {
 			t.Parallel()
 			base := []*Field{String("a", "b")}
 			got := impl.appendTraceSpanFields(base, "", "", "c")
-			require.Equal(t, base, got)
+			assert.Equal(t, base, got)
 		})
 	})
 
@@ -455,7 +456,7 @@ func Test_appendTraceSpanFields(t *testing.T) {
 				String(TraceIDKey, "t-1"),
 				String(SpanIDKey, "s-1"),
 			}
-			require.Equal(t, expected, got)
+			assert.Equal(t, expected, got)
 		})
 		t.Run("parentSpanIDもある場合", func(t *testing.T) {
 			base := []*Field{String("a", "b")}
@@ -466,7 +467,7 @@ func Test_appendTraceSpanFields(t *testing.T) {
 				String(SpanIDKey, "s-1"),
 				String(ParentSpanIDKey, "p-1"),
 			}
-			require.Equal(t, expected, got)
+			assert.Equal(t, expected, got)
 		})
 	})
 }
@@ -483,7 +484,7 @@ func Test_buildCompactQuery(t *testing.T) {
 		t.Parallel()
 		q := "SELECT  a,\n\t b  FROM\n table\tWHERE  x = 1"
 		got := impl.buildCompactQuery(q)
-		require.Equal(t, "SELECT a, b FROM table WHERE x = 1", got)
+		assert.Equal(t, "SELECT a, b FROM table WHERE x = 1", got)
 	})
 
 	t.Run("空文字は空を返す", func(t *testing.T) {

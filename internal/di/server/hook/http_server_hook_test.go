@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/di/server/extension"
 	mock_logging "go-boilerplate/internal/logging/mock"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -115,7 +116,7 @@ func Test_newStartServerFunc(t *testing.T) {
 
 		err = fn(context.Background())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to listen on port")
+		assert.Contains(t, err.Error(), "failed to listen on port")
 	})
 }
 

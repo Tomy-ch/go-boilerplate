@@ -466,6 +466,11 @@ baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
 t.Parallel()
 ```
 
+Exception: the immutable guarantee test mutates a shared constructor-input
+pointer (e.g. `building` / `deletedAt`) to prove the entity copied it. Running
+those blocks in parallel races on the shared pointer under `go test -race`, so
+keep the mutating blocks serial (omit `t.Parallel()` on them).
+
 #### Fail Fast
 
 ```go

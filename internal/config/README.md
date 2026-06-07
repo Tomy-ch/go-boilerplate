@@ -42,7 +42,6 @@ SubConfigs are created from `Config` for each component. All follow the `New*Con
 |`SecurityConfig`|`NewSecurityConfig`|CORS, HSTS, CIDR|
 |`SecureCookieConfig`|`NewSecureCookieConfig`|Cookie security attributes|
 |`AuthConfig`|`NewAuthConfig`|Auth header / cookie name|
-|`IPRateLimitConfig`|`NewIPRateLimitConfig`|IP rate limit settings|
 
 ### Utilities
 
@@ -95,11 +94,6 @@ Errors detected by `validateConfig()`. All wrap `apperror.ErrInvalidArgument`.
 |`ErrInvalidExceedMaxConns`|Min connections exceeds max connections|
 |`ErrFailedToParseCIDR`|Failed to parse CIDR|
 |`ErrAuthConfigMissing`|Auth config (cookie name or header name) not set|
-|`ErrInvalidIPRateLimitRequests`|Invalid rate limit requests|
-|`ErrInvalidIPRateLimitPer`|Invalid rate limit period|
-|`ErrInvalidIPRateLimitBurst`|Invalid rate limit burst|
-|`ErrInvalidIPRateLimitTTL`|Invalid rate limit TTL|
-|`ErrInvalidIPRateLimitCleanupInterval`|Invalid rate limit cleanup interval|
 
 ## Config Loading Flow
 
@@ -360,7 +354,6 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |`SetDatabaseName`|`DatabaseConfig`|
 |`SetMaxConns`|`DBConnectionConfig`|
 |`SetCIDR`|`SecurityConfig`|
-|`SetCleanupInterval`|`IPRateLimitConfig`|
 |`SetHeaderName`|`AuthConfig`|
 |`SetAllowedHeaderBearer`|`AuthConfig`|
 

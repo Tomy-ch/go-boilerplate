@@ -3,7 +3,7 @@ package system
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewBuildInfo(t *testing.T) {
@@ -17,7 +17,7 @@ func TestNewBuildInfo(t *testing.T) {
 
 	bi := NewBuildInfo()
 
-	require.Equal(t, expected, bi)
+	assert.Equal(t, expected, bi)
 }
 
 func TestBuildInfoMethods(t *testing.T) {
@@ -33,7 +33,7 @@ func TestBuildInfoMethods(t *testing.T) {
 		buildDate: expectedBuildDate,
 	}
 
-	require.Equal(t, expectedVersion, actual.Version())
-	require.Equal(t, expectedRevision, actual.Revision())
-	require.Equal(t, expectedBuildDate, actual.BuildDate())
+	assert.Equal(t, expectedVersion, actual.Version())
+	assert.Equal(t, expectedRevision, actual.Revision())
+	assert.Equal(t, expectedBuildDate, actual.BuildDate())
 }

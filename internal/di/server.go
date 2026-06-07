@@ -25,15 +25,14 @@ func NewApplicationServer(app *fx.App) (func(context.Context) error, func(contex
 	return start, stop
 }
 
-// NewApplicationCore は、アプリケーションの fx.App インスタンスを作成します。
-func NewApplicationCore() *fx.App {
-	return fx.New(
+// applicationCoreOptions は、アプリケーションコアを構成する fx.Option 群を返します。
+func applicationCoreOptions() []fx.Option {
+	return []fx.Option{
 		// Lifecycle Module
 		lifecycle.Module(),
 		// Config Module
 		module.ConfigModule(),
 		// Core Module
-		core.IPRateLimiterModule(),
 		core.ValidatorModule(),
 		core.SecurityCookieModule(),
 		core.AuthnModule(),
@@ -52,5 +51,11 @@ func NewApplicationCore() *fx.App {
 		// Server Module
 		server.Module(),
 		server.HookModule(),
-	)
+	}
+}
+
+// NewApplicationCore は、アプリケーションの fx.App インスタンスを作成します。
+// extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）ための seam で、本番呼び出しでは渡しません。
+func NewApplicationCore(extra ...fx.Option) *fx.App {
+	return fx.New(append(applicationCoreOptions(), extra...)...)
 }

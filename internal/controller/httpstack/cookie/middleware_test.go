@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go-boilerplate/internal/config"
@@ -60,7 +61,7 @@ func Test_secureCookieMiddleware_RewritesSetCookie(t *testing.T) {
 		}
 	}
 
-	require.True(t, foundSameSite, "SameSite must be present in rewritten Set-Cookie")
-	require.True(t, foundDomain, "Domain must be present in rewritten Set-Cookie")
-	require.True(t, foundSecure, "Secure flag must be present in rewritten Set-Cookie")
+	assert.True(t, foundSameSite, "SameSite must be present in rewritten Set-Cookie")
+	assert.True(t, foundDomain, "Domain must be present in rewritten Set-Cookie")
+	assert.True(t, foundSecure, "Secure flag must be present in rewritten Set-Cookie")
 }

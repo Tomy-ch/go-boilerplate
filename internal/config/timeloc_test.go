@@ -3,6 +3,7 @@ package config
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +17,7 @@ func TestNewTimeLocation(t *testing.T) {
 
 		loc, err := NewTimeLocation(osCfg)
 		require.NoError(t, err)
-		require.Equal(t, "Asia/Tokyo", loc.String())
+		assert.Equal(t, "Asia/Tokyo", loc.String())
 	})
 
 	t.Run("無効なタイムゾーンの場合、エラーが返ること", func(t *testing.T) {

@@ -177,7 +177,7 @@ When adding, document the following in README:
 | `ErrNotFound` | Target does not exist | 404 Not Found |
 | `ErrConflict` | Conflict (unique constraint violation, concurrent update conflict, etc.) | 409 Conflict |
 | `ErrValidation` | Domain / Usecase validation failure | 422 Unprocessable Entity |
-| `ErrTooManyRequests` | Too many requests | 429 Too Many Requests |
+| `ErrTooManyRequests` | Too many requests (request throttling, upstream API throttling propagation, etc.) | 429 Too Many Requests |
 | `ErrInternal` | Unexpected internal error | 500 Internal Server Error |
 | `ErrUnimplemented` | Not implemented / unsupported feature | 501 Not Implemented |
 | `ErrUnavailable` | Temporary unavailability (external dependency failure, etc.) | 503 Service Unavailable |

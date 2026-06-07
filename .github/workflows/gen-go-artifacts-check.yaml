@@ -49,6 +49,25 @@ jobs:
             : > /tmp/changed_files.txt
           fi
 
+      # PR の source（`.go` 配下、ただし *.gen.go / *_mock.go 等の生成物は除外）が
+      # 触られているかを判定。触られていない場合は generator 側ドリフトの可能性が高い。
+      - name: Detect source modifications in this PR
+        id: source_mod
+        if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
+          changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
+          # 生成物自身は source から除外
+          if echo "$changed" | grep -E '\.go$' | grep -vE '\.gen\.go$|_mock\.go$|/mock_.+\.go$' | grep -q .; then
+            echo "source_modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "source_modified=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Comment changed files on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v8
@@ -59,6 +78,7 @@ jobs:
 
             const marker = '<!-- generated-go-artifacts-filelist -->';
             const hasDiff = ('${{ steps.gen_diff.outputs.has_diff }}' === 'true');
+            const sourceModified = '${{ steps.source_mod.outputs.source_modified }}' === 'true';
 
             let files = [];
             if (hasDiff) {
@@ -93,16 +113,22 @@ jobs:
             const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
             const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
+            const diffTitle = sourceModified
+              ? '## 🧾 Differences in Go generated output have been detected (list of modified files)'
+              : '## ⚠️ Go 生成物のドリフトを検知（本 PR で `.go` source は触られていません）';
+            const diffAction = sourceModified
+              ? 'Please run `make gen-go-code` (or `make gen`) locally and commit the changes.'
+              : '本 PR では `.go` source が変更されていないため、generator 側のドリフト（mockgen / oapi-codegen の依存バージョン差 / base 側の古い生成物 等）の可能性があります。`make gen-go-code` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。';
             const body = hasDiff
               ? [
                   marker,
-                  '## 🧾 Differences in Go generated output have been detected (list of modified files)',
+                  diffTitle,
                   '',
                   commitLine,
                   '',
                   ...(files.length ? files.map(f => `- \`${f}\``) : ['(no changed files)']),
                   '',
-                  'Please run `make gen-go-code` (or `make gen`) locally and commit the changes.',
+                  diffAction,
                   '',
                   updatedLine,
                 ].join('\n')

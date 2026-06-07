@@ -8,12 +8,36 @@ Makeコマンド詳細は [Makeターゲット一覧](.makefiles/README.ja.md) �
 
 VSCode開発で必要なツールをインストールします。
 
-バージョンについては動作確認しているバージョンを `tools.yaml` に記載しています。必要に応じてこのバージョンを変更してください。
+### 1.1. mise のインストールとシェル activate
+
+このプロジェクトは [mise](https://mise.jdx.dev) をツール / ランタイムバージョンマネージャとして必須利用します。[公式インストール手順](https://mise.jdx.dev/getting-started.html) で mise をインストールしたあと、**shell init に mise activate を仕込むことが必須です**（任意ではありません）。Make ターゲットは `golangci-lint` / `lefthook` 等を mise の shim 経由で解決しており、activate しない限り shim が `PATH` に載らないためです:
 
 ```sh
-make sync-tools
-make install-tools
-make activate-tools
+# zsh
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
+
+# bash
+echo 'eval "$(mise activate bash)"' >> ~/.bashrc
+
+# shell を再起動 (or 新しいターミナルを開く)
+exec $SHELL
+```
+
+確認:
+
+```sh
+mise --version
+which mise
+```
+
+### 1.2. Go ランタイムとプロジェクトツールのインストール
+
+全ツール（golangci-lint / sqlc / oapi-codegen / mockgen / dlv / lefthook / ...）のバージョンは [`mise.toml`](../../../mise.toml) を SSOT として管理しています。Dockerfile・ローカルインストーラ (`.makefiles/go/installer.mk`)・CI ワークフローはすべて同じ `mise.toml` を参照し、各環境で必要なものだけを `mise install <tool>` で個別取得します。
+
+```sh
+make go-update       # Go ランタイムを mise.toml 記載の pin でインストール
+make install-tools   # gopls / gotests / impl / dlv / lefthook / golangci-lint をインストール
+make activate-tools  # `lefthook install` で git hooks を有効化
 ```
 
 ## Phase 2: ローカル起動確認
@@ -171,16 +195,3 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
     4. サンプル用のInfraコードがエラーになるので、そのコードとそのテストコードを削除する。
 4. サンプルAPIのドメインコードの削除。
     - [internal/domain/](internal/domain/) の配下のサンプルAPIで使っているコードとそのテストコードを削除してください。このディレクトリの配下のディレクトリはサンプルAPIのドメインコードのみなので、配下のディレクトリごと削除しても構いません。
-
-## Phase Extra: IPレート制限について
-
-このプロジェクトでは、`インメモリのIPレート制限` をサンプル実装として提供しています。
-
-しかし、この方式は、複数インスタンスでの運用や、インスタンスの再起動が頻繁に発生する環境では適していません。
-
-不要な場合は下記を削除してください。
-
-- [internal/di/server/server.go](../../../internal/di/server/server.go) の RateLimitModule の `security.RateLimitModule(),` の行
-- [internal/di/server/extension/security/rate_limit_di.go](../../../internal/di/server/extension/security/rate_limit_di.go) ファイル全体
-- [internal/di/server/extension/security/rate_limit_di_test.go](../../../internal/di/server/extension/security/rate_limit_di_test.go) ファイル全体
-- [internal/controller/httpstack/ratelimit/](../../../internal/controller/httpstack/ratelimit/) ディレクトリ全体

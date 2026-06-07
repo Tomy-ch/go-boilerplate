@@ -1,0 +1,220 @@
+> **このファイルは `SKILL.md` の日本語訳です。**
+> 直接編集しないでください。内容の変更が必要な場合は canonical な `SKILL.md`（英語版）を更新し、その後この日本語訳を同期してください。
+> Claude Code のスキルとしては `SKILL.md` のみが読み込まれます。このファイルはスキル本体ではなく、レビューや学習用の翻訳ドキュメントです。
+
+# Go バージョンアップグレード手順
+
+このスキルは Go のバージョンを任意のバージョンへアップグレードするための作業手順を定義する。
+
+正式な手順書は以下を参照すること。
+
+- `docs/maintenance/go-upgrade.md`
+
+## 最初に行うこと: 対象バージョンの確認
+
+このスキルでは、**スキル起動直後に必ず `AskUserQuestion` で対象バージョンを確認する**。
+スキル引数や直近メッセージにバージョンらしき文字列があっても、それを採用して即実行に進んではならない（誤指定を防ぐため、明示的な確認を必須とする）。
+
+手順:
+
+1. `mise.toml` の `[tools]` 配下の `go = "X.Y.Z"` を読んで現行バージョンを把握する。
+2. **必ず** `AskUserQuestion` を呼び出して以下を確認する。
+    - 質問: 「アップグレード先の Go バージョンを指定してください（例: `1.26.3`）」
+    - 補足として、現行バージョン（`mise.toml` の `[tools] go` の値）を提示する。
+    - スキル引数や直近メッセージにバージョン候補がある場合は、それを質問文に「候補: `X.Y.Z`」として併記し、ユーザーに確定させる。
+3. 受け取った回答が `X.Y.Z` 形式であることを軽く検証し、以下の手順内で `<TARGET_VERSION>` として使用する。
+
+確認が取れるまで、ファイル更新やコマンド実行は行わないこと。
+
+## 前提
+
+- 対象バージョン: `<TARGET_VERSION>`（上記で確認した値）
+- 直接 `production` / `develop` / `staging` / `release/*` ブランチで作業しないこと（AGENTS.md の Git ルール参照）
+- 作業ブランチを `release/*` の最新から切ること（例: `feature/go-upgrade-<TARGET_VERSION>`）
+
+## AI Modification Scope について
+
+このスキルは AGENTS.md の "Exception: Skill Execution" 節に基づき、スキル実行中に限り通常の AI Modification Scope の縛りを解放する。具体的には以下のパスへの変更がスキル実行中に許可される:
+
+- `mise.toml`（`[tools]` 配下の `go` エントリ）
+- `go.mod`, `go.sum`, `vendor/`（`make tidy-lib` が再生成）
+- `docker/**/Dockerfile`（`make sync-versions` が自動書き換え）
+- `docker/**/README.md` / `README.ja.md`（`make sync-versions` が自動書き換え）
+
+ただし以下は引き続き保護対象（スキル実行中でも変更不可）:
+
+- `AGENTS.md` / `CLAUDE.md`
+- 生成ファイル（`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `docs/` の生成物）
+
+## 実行ステップ
+
+`docs/maintenance/go-upgrade.md` のステップに対応する形で以下を実施する。コマンド・ファイル内に現れる `<TARGET_VERSION>` は、ユーザーが指定したバージョンに置換すること。
+
+### 1. リリースノートの確認
+
+<https://go.dev/doc/devel/release> で `<TARGET_VERSION>` のリリースノートを確認する。
+
+確認観点:
+
+- 言語仕様の変更
+- 標準ライブラリの破壊的変更
+- `go vet` の挙動変更
+- ツールチェインの変更
+
+### 2. `mise.toml` の更新
+
+`mise.toml` の `[tools]` 配下にある `go` エントリを編集する:
+
+```toml
+[tools]
+go = "<TARGET_VERSION>"
+# （その他のエントリは触らない）
+```
+
+`mise.toml` は Go ランタイムバージョン（および全ツールバージョン）の SSOT。下流ファイル群は次のステップで自動再生成される。
+
+### 3. `make sync-versions` で伝播
+
+```sh
+make sync-versions
+```
+
+`scripts/sync-versions`（Go 実装）が走り、以下のファイルを一括書き換える:
+
+- `go.mod` — `go X.Y.Z` directive
+- `docker/server/Dockerfile` — `FROM golang:X.Y.Z-alpine` 行
+- `docker/tools/Dockerfile` — `FROM golang:X.Y.Z-alpine`（および他ランタイムの `FROM node:` / `FROM python:`）
+- `docker/README.md` / `docker/README.ja.md` — テーブルセル内 `golang:X.Y.Z-alpine`
+- `docker/server/README.md` / `docker/server/README.ja.md` — 同上
+- `docker/tools/README.md` / `docker/tools/README.ja.md` — 同上
+
+スキルは `mise.toml` 編集後に必ずこのコマンドを自分で実行すること。`go.mod` / Dockerfile / README の手編集は不要。
+
+### 4. ローカル Go 環境の更新
+
+```sh
+make go-update
+```
+
+内部で `mise install go` が走り、`mise.toml` の `go` エントリを読む。確認:
+
+```sh
+go version
+```
+
+ローカル環境の更新はユーザー作業となるため、AI エージェントは `mise install` を実行せずユーザーに依頼すること（`go version` が `<TARGET_VERSION>` と一致することの確認も依頼する）。
+
+### 5. 依存関係と vendor の更新
+
+```sh
+make tidy-lib
+```
+
+（内部で `go mod tidy` と `go mod vendor` を実行）
+
+### 5.5. （任意）Go モジュール依存の更新
+
+Go ランタイムのアップグレードは依存ライブラリをまとめて更新する好機でもある。**更新するかをユーザーに確認**し、回答に従って実行する。
+
+このステップでは **必ず `AskUserQuestion` を呼び出して**更新レベルを確認する。選択肢:
+
+- **マイナー含む最新（`go get -u ./...`）** — 全 direct/indirect 依存を同一メジャー内の最新マイナー/パッチへ更新。新機能を取り込むが、挙動変化の小さなリスクあり。
+- **パッチのみ（`go get -u=patch ./...`）** — 現行マイナー内に留める。最も安全。
+- **スキップ** — 依存は触らない（Go directive の更新のみ）。
+
+メジャーバージョンは自動で上げない（`go get -u` は仕様上メジャーを跨がない）。メジャー更新は別途の意図的な作業とする。
+
+ユーザーが更新を選んだ場合:
+
+```sh
+go get -u ./...        # または: go get -u=patch ./...
+make tidy-lib          # go mod tidy + go mod vendor を再実行
+```
+
+実行後は **`go.mod` の差分を確認**すること。`go` directive は `<TARGET_VERSION>` のまま維持し、依存により意図しない `toolchain` 行が追加されていないことを確かめる。以降の再ビルド / gen / test / lint で、ランタイム更新と依存更新をまとめて検証する。
+
+補足: 本リポジトリは（実 DB を使う infrastructure テストを含む）厚い test + lint を備えており、グリーンならマイナー/パッチ更新は高い信頼度を持つ。ただし保証ではない。DB ドライバ・OpenTelemetry・Web フレームワークのようなランタイム挙動が効くコア依存は、グリーンでも CHANGELOG に目を通すこと。
+
+### 6. Go ツールの再インストール
+
+```sh
+make install-tools
+```
+
+### 7. CI 自動検知の確認
+
+`.github/workflows` 配下の workflow は `actions/setup-go` の `go-version-file: go.mod` を使用している。ステップ 3 で `go.mod` が書き換わるため、workflow 側の編集は不要。
+
+もし Go バージョンを文字列リテラルで直接書いている workflow ファイルがあれば、それは `<TARGET_VERSION>` に手で揃えること。
+
+### 8. Dockerfile / README 同期確認
+
+ステップ 3 で Dockerfile の `FROM` タグおよび `docker/**/README.md` の image 参照は書き換え済み。手動編集は不要。
+
+### 9. Docker コンテナの再ビルド
+
+Go バージョンアップでは base image タグが変わるため、新しいイメージを確実に pull・再ビルドできるよう `-clean`（`--no-cache --pull`）バリアントを使う:
+
+```sh
+make serve-build-clean
+make tools-build-clean
+```
+
+### 10. コード生成の再実行
+
+```sh
+make gen
+```
+
+### 11. テストの実行
+
+```sh
+make test
+```
+
+### 12. lint の実行
+
+```sh
+make lint
+```
+
+### 13. 最終確認
+
+以下が全て成功することを確認する。
+
+```sh
+make sync-versions
+make tidy-lib
+make install-tools
+make gen
+make test
+make lint
+make serve-build-clean
+make tools-build-clean
+```
+
+`make sync-versions` を最後にも入れているのは、作業中に `mise.toml` と下流ファイルの drift が残っていた場合に検知するため。
+
+## チェックリスト
+
+完了報告時に以下を確認すること。
+
+- [ ] 対象バージョン `<TARGET_VERSION>` を `AskUserQuestion` でユーザーに確認済み
+- [ ] リリースノート確認
+- [ ] `mise.toml` の `[tools] go` を `<TARGET_VERSION>` に更新
+- [ ] `make sync-versions` 実行（go.mod / Dockerfile / docker/**/README.md へ伝播）
+- [ ] ローカル Go の更新（`make go-update`、ユーザー作業）
+- [ ] `make tidy-lib` 実行
+- [ ] （任意）Go モジュール依存の更新を `AskUserQuestion` でユーザーに確認。実施する場合は `go get -u[=patch] ./...` + `make tidy-lib` を実行し、`go` directive は `<TARGET_VERSION>` のまま維持
+- [ ] `make install-tools` 実行
+- [ ] Docker コンテナの再ビルド
+- [ ] コード生成の再実行
+- [ ] テスト実行
+- [ ] lint 実行
+
+## 注意事項
+
+- `go.mod` / Dockerfile / `docker/**/README.md` を手動編集しないこと — これらは `make sync-versions` の管轄。`mise.toml` を編集してから sync を再実行する。
+- 生成コード（`**/*.gen.go`、`*.sql.go`、`*_mock.go` など）は手動で編集しないこと
+- コミットは作業ブランチで行い、`production` / `develop` / `staging` / `release/*` への直接コミットは禁止
+- PR への push は明示的にユーザーから指示があった場合のみ実行すること

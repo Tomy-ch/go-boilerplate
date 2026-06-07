@@ -5,14 +5,19 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewTestLogger(t *testing.T) {
 	t.Parallel()
 
-	actual := NewTestLogger(t)
-	require.NotNil(t, actual)
+	lg := NewTestLogger(t)
+
+	// 返る Logger が実際に使えること（メソッドチェーンと出力で panic しない）を検証する。
+	require.NotPanics(t, func() {
+		lg.Named("test").CallerSkip(1).Info("message", String("key", "value"))
+	})
 }
 
 func TestNewTestLogFieldBuilder(t *testing.T) {
@@ -28,5 +33,5 @@ func TestNewTestLogFieldBuilder(t *testing.T) {
 		obsCfg: obsCfg,
 		osCfg:  osCfg,
 	}
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }

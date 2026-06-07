@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-This directory provides fx module groups for incorporating **HTTP layer security middleware** (CORS, security headers, Cookie settings, IP rate limiting) into Echo via DI.
+This directory provides fx module groups for incorporating **HTTP layer security middleware** (CORS, security headers, Cookie settings) into Echo via DI.
 
 These are applied with unified Priority to the controller layer's middleware pipeline.
 
@@ -13,7 +13,6 @@ These are applied with unified Priority to the controller layer's middleware pip
 |`Module()`|Use|Security headers (HSTS, X-Frame-Options, Content-Type-Options, Referrer-Policy)|
 |`CORSModule()`|Use|CORS configuration (AllowOrigins / AllowMethods / AllowHeaders)|
 |`CookieModule()`|Use|Cookie security attributes (Secure / HttpOnly / SameSite)|
-|`RateLimitModule()`|Use|IP-based request rate limiting|
 
 ## Notes
 

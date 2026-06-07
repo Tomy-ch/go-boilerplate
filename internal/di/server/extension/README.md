@@ -82,7 +82,6 @@ flowchart TB
 |`Module()`|Use|Security headers (HSTS, etc.)|
 |`CORSModule()`|Use|CORS configuration|
 |`CookieModule()`|Use|Cookie security attributes|
-|`RateLimitModule()`|Use|IP rate limiting|
 
 ### nonprod (Non-production)
 

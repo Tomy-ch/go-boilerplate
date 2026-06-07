@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -51,6 +52,6 @@ func Test_buildCORSConfig(t *testing.T) {
 
 		actual := buildCORSConfig(allowedOrigins)
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }

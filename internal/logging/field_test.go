@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +22,7 @@ func TestString(t *testing.T) {
 	}
 
 	actual := String(expectedKey, expectedString)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestStrings(t *testing.T) {
@@ -36,7 +37,7 @@ func TestStrings(t *testing.T) {
 	}
 
 	actual := Strings(expectedKey, expectedStrings)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestInt(t *testing.T) {
@@ -51,7 +52,7 @@ func TestInt(t *testing.T) {
 	}
 
 	actual := Int(expectedKey, expectedInt)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestInt64(t *testing.T) {
@@ -66,7 +67,7 @@ func TestInt64(t *testing.T) {
 	}
 
 	actual := Int64(expectedKey, expectedInt64)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestFloat64(t *testing.T) {
@@ -81,7 +82,7 @@ func TestFloat64(t *testing.T) {
 	}
 
 	actual := Float64(expectedKey, expectedFloat64)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestBool(t *testing.T) {
@@ -96,7 +97,7 @@ func TestBool(t *testing.T) {
 	}
 
 	actual := Bool(expectedKey, expectedBool)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestTime(t *testing.T) {
@@ -111,7 +112,7 @@ func TestTime(t *testing.T) {
 	}
 
 	actual := Time(expectedKey, expectedTime)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestDurationMs(t *testing.T) {
@@ -126,7 +127,7 @@ func TestDurationMs(t *testing.T) {
 	}
 
 	actual := DurationMs(expectedKey, expectedDuration)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestError(t *testing.T) {
@@ -141,7 +142,7 @@ func TestError(t *testing.T) {
 	}
 
 	actual := Error(expectedKey, expectedError)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestStacktrace(t *testing.T) {
@@ -156,7 +157,7 @@ func TestStacktrace(t *testing.T) {
 	}
 
 	actual := Stacktrace(expectedKey, expectedError)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func TestAny(t *testing.T) {
@@ -171,7 +172,7 @@ func TestAny(t *testing.T) {
 	}
 
 	actual := Any(expectedKey, expectedAny)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_latencyMs(t *testing.T) {

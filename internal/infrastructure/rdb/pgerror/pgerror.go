@@ -47,6 +47,19 @@ func NormalizeError(err error) error {
 	return xerrors.Wrap(apperror.ErrInternal, err.Error())
 }
 
+// NormalizeExecResult は、影響行数を返す書き込み系（sqlc `:execrows`）の結果を正規化します。
+// エラーは NormalizeError と同じ規則で変換し、エラーが無くても影響行数が 0 の場合は
+// 対象が存在しないとみなして ErrNotFound を返します（UPDATE / DELETE のサイレント成功を防ぐ）。
+func NormalizeExecResult(affected int64, err error) error {
+	if err != nil {
+		return NormalizeError(err)
+	}
+	if affected == 0 {
+		return xerrors.Wrap(apperror.ErrNotFound, "no rows affected")
+	}
+	return nil
+}
+
 // IsUnavailable は、与えられたエラーがデータベースの接続不可エラーであるかを判定します。
 func IsUnavailable(err error) bool {
 	if err == nil {

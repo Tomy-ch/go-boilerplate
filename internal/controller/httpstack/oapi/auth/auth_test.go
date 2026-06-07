@@ -14,6 +14,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -59,6 +60,7 @@ func TestNewAuthenticator(t *testing.T) {
 
 		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
 		in.RequestValidationInput.Request = req
 
@@ -101,6 +103,7 @@ func TestNewAuthenticator(t *testing.T) {
 		fn := NewAuthenticator(ac, m)
 
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
 		rec := httptest.NewRecorder()
 		e := echo.New()
@@ -128,6 +131,7 @@ func TestNewAuthenticator(t *testing.T) {
 		// リクエストと Echo コンテキストを作成し、request.Context に Echo コンテキストを格納する
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "user123"})
 		rec := httptest.NewRecorder()
 		e := echo.New()
@@ -143,8 +147,8 @@ func TestNewAuthenticator(t *testing.T) {
 
 		// echoCtx に Authn がセットされていることを確認
 		got, ok := ctxhelper.GetAuthnFromEcho(echoCtx)
-		require.True(t, ok)
-		require.Equal(t, want.Subject(), got.Subject())
+		assert.True(t, ok)
+		assert.Equal(t, want.Subject(), got.Subject())
 	})
 }
 
@@ -170,6 +174,7 @@ func Test_authExtractor(t *testing.T) {
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		// cookie からトークンを取る想定
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
 
 		authn, err := authExtractor(context.Background(), req, ac, m)
@@ -187,12 +192,13 @@ func Test_authExtractor(t *testing.T) {
 		m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
 
 		got, err := authExtractor(context.Background(), req, ac, m)
 		require.NoError(t, err)
 		require.NotNil(t, got)
-		require.Equal(t, want.Subject(), got.Subject())
+		assert.Equal(t, want.Subject(), got.Subject())
 	})
 }
 
@@ -204,9 +210,10 @@ func Test_extractToken(t *testing.T) {
 
 		ctx := context.Background()
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "cookieTok"})
 		tok := extractToken(req, ac)
-		require.Equal(t, "cookieTok", tok)
+		assert.Equal(t, "cookieTok", tok)
 	})
 
 	t.Run("Header: Bearer 形式の場合抽出される", func(t *testing.T) {
@@ -215,7 +222,7 @@ func Test_extractToken(t *testing.T) {
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		req.Header.Set(ac.HeaderName(), "Bearer abcdef")
 		tok := extractToken(req, ac)
-		require.Equal(t, "abcdef", tok)
+		assert.Equal(t, "abcdef", tok)
 	})
 
 	t.Run("CookieNameがあるが、HeaderNameが空文字列の場合は空を返す", func(t *testing.T) {
@@ -247,7 +254,7 @@ func Test_extractToken(t *testing.T) {
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		req.Header.Set("X-API-KEY", "apikey-123")
 		tok := extractToken(req, ac)
-		require.Equal(t, "apikey-123", tok)
+		assert.Equal(t, "apikey-123", tok)
 	})
 
 	t.Run("Authorization ヘッダかつ AllowedHeaderBearer=false の場合は raw を返す", func(t *testing.T) {
@@ -258,7 +265,7 @@ func Test_extractToken(t *testing.T) {
 		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		req.Header.Set(ac.HeaderName(), "Bearer secret")
 		tok := extractToken(req, ac)
-		require.Equal(t, "Bearer secret", tok)
+		assert.Equal(t, "Bearer secret", tok)
 	})
 
 	t.Run("Header が空文字列なら空を返す", func(t *testing.T) {

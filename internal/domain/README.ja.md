@@ -468,6 +468,11 @@ baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
 t.Parallel()
 ```
 
+例外: 不変性保証テストは、エンティティが値をコピーしたことを検証するために
+共有のコンストラクタ入力ポインタ（例: `building` / `deletedAt`）を直接 mutate する。
+このブロックを並列実行すると `go test -race` で共有ポインタ上の競合になるため、
+mutate するブロックは直列にする（`t.Parallel()` を付けない）。
+
 #### Fail Fast
 
 ```go

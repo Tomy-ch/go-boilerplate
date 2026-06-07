@@ -3,17 +3,51 @@ package di
 import (
 	"context"
 	"testing"
+	"time"
 
 	config "go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/fx"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestNewJobCore(t *testing.T) {
 	t.Parallel()
 
-	jobApp := NewJobCore()
-	require.NotNil(t, jobApp)
+	// ジョブ用 fx グラフの結線が欠落なく成立することを検証する（コンストラクタの実体実行は伴わない）。
+	require.NoError(t, fx.ValidateApp(NewJobCore(), fx.NopLogger))
+}
+
+func TestNewJobCore_BootsWithMockedDB(t *testing.T) {
+	// 実 DB を避けつつ、ジョブ用 fx グラフの全コンストラクタ実行とライフサイクル(OnStart/OnStop)を検証する。
+	// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避する（ジョブは HTTP サーバを起動しないためポート上書きは不要）。
+	// EnsureRepoRootAndEnv が cwd を変更するため t.Parallel() は付けない。
+	config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
+
+	ctrl := gomock.NewController(t)
+	mockDB := mock_driver.NewMockDatabaseDriver(ctrl)
+	mockDB.EXPECT().Close().Return(nil).AnyTimes()
+	mockDB.EXPECT().Stats().Return(&pgxpool.Stat{}).AnyTimes()
+	mockDB.EXPECT().Ping(gomock.Any()).Return(nil).AnyTimes()
+
+	app := fx.New(
+		NewJobCore(),
+		fx.Replace(fx.Annotate(mockDB, fx.As(new(driver.DatabaseDriver)))),
+		fx.NopLogger,
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	require.NoError(t, app.Start(ctx))
+
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer stopCancel()
+	require.NoError(t, app.Stop(stopCtx))
 }
 
 func TestRunJob(t *testing.T) {
@@ -31,11 +65,11 @@ func TestRunJob(t *testing.T) {
 		// start は err を送ってチャンネルを閉じる
 		err := <-done
 		require.Error(t, err)
-		require.Equal(t, context.Canceled, err)
+		assert.Equal(t, context.Canceled, err)
 
 		// チャンネルが閉じられていることを検証
 		_, ok := <-done
-		require.False(t, ok)
+		assert.False(t, ok)
 
 		_ = stop(context.Background())
 	})
@@ -57,7 +91,7 @@ func TestRunJob(t *testing.T) {
 
 		err := stop(ctx)
 		require.Error(t, err)
-		require.Equal(t, context.Canceled, err)
+		assert.Equal(t, context.Canceled, err)
 	})
 
 	t.Run("start: 存在しないジョブ名で start すると runner の unknown job エラーが done チャンネルに流れることを期待する", func(t *testing.T) {
@@ -70,11 +104,11 @@ func TestRunJob(t *testing.T) {
 
 		err := <-done
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "unknown job: no-such-job")
+		assert.Contains(t, err.Error(), "unknown job: no-such-job")
 
 		// チャンネルが閉じられていることを検証
 		_, ok := <-done
-		require.False(t, ok)
+		assert.False(t, ok)
 
 		_ = stop(context.Background())
 	})

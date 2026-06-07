@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,7 +47,7 @@ func TestGetHealth(t *testing.T) {
 	require.NoError(t, err)
 
 	actual, ok := resp.(gen.GetHealth200JSONResponse)
-	require.True(t, ok)
+	assert.True(t, ok)
 
-	require.Equal(t, expectedResponse, gen.HealthResponse(actual))
+	assert.Equal(t, expectedResponse, gen.HealthResponse(actual))
 }

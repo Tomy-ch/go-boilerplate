@@ -42,8 +42,10 @@ include .makefiles/openapi/gen.mk
 # SQL関連
 include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk
-# ツール関連
-include .makefiles/tools/version.mk
+# Markdown関連
+include .makefiles/markdown/lint.mk
+# セキュリティ関連
+include .makefiles/security/trivy.mk
 
 # 一括実行系ファイル
 # GitHub関連

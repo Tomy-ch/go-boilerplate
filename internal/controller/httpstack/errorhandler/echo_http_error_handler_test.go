@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/controller/error/response"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,13 +40,13 @@ func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
 		require.NotNil(t, actual)
 
 		expectedBase := response.NewHTTPErrorFromStatus(http.StatusForbidden)
-		require.Equal(t, expectedBase.Code, actual.Code)
-		require.Equal(t, expectedBase.Message, actual.Message)
-		require.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
+		assert.Equal(t, expectedBase.Code, actual.Code)
+		assert.Equal(t, expectedBase.Message, actual.Message)
+		assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
 		require.Nil(t, actual.Details)
 		require.Error(t, actual.Internal)
-		require.Contains(t, actual.Internal.Error(), "inner failure")
-		require.Contains(t, actual.Internal.Error(), "echo HTTP error")
+		assert.Contains(t, actual.Internal.Error(), "inner failure")
+		assert.Contains(t, actual.Internal.Error(), "echo HTTP error")
 	})
 
 	t.Run("正常系: detailsを渡した場合、Detailsにセットされる", func(t *testing.T) {
@@ -58,12 +59,12 @@ func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
 		require.NotNil(t, actual)
 
 		expectedBase := response.NewHTTPErrorFromStatus(http.StatusConflict)
-		require.Equal(t, expectedBase.Code, actual.Code)
-		require.Equal(t, expectedBase.Message, actual.Message)
-		require.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
+		assert.Equal(t, expectedBase.Code, actual.Code)
+		assert.Equal(t, expectedBase.Message, actual.Message)
+		assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
 		require.NotNil(t, actual.Details)
-		require.Equal(t, []string{"d1", "d2"}, *actual.Details)
+		assert.Equal(t, []string{"d1", "d2"}, *actual.Details)
 		require.Error(t, actual.Internal)
-		require.Contains(t, actual.Internal.Error(), "inner2")
+		assert.Contains(t, actual.Internal.Error(), "inner2")
 	})
 }

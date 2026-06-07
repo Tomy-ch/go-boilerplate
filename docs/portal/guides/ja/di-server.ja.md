@@ -12,7 +12,7 @@ Echo サーバーの初期化・起動・DI 管理を担う **サーバーモジ
 internal/di/server/
 ├── server.go       # Module / HookModule / MiddlewareModule
 ├── extension/      # ミドルウェア・Configurator の DI 登録
-└── hook/           # サーバーライフサイクルフック（HTTP 起動/停止、DB クローズ、レートリミット）
+└── hook/           # サーバーライフサイクルフック（HTTP 起動/停止、DB クローズ）
 ```
 
 ## 公開 API
@@ -20,7 +20,7 @@ internal/di/server/
 |関数|説明|
 |---|---|
 |`Module()`|`server.NewAppServer` で `*echo.Echo` を提供|
-|`HookModule()`|サーバーライフサイクルフックを登録（HTTP 起動/停止、レートリミットクリーンアップ）|
+|`HookModule()`|サーバーライフサイクルフックを登録（HTTP 起動/停止）|
 |`MiddlewareModule()`|HTTP スタック全体のミドルウェア・Configurator を集約|
 
 ### MiddlewareModule の構成
@@ -32,7 +32,7 @@ internal/di/server/
 |decoration|`BannerModule`, `DefaultPortModule`|
 |inbound|`IPExtractorModule`, `URIModule`, `OpenAPIModule`|
 |outbound|`ErrorHandlerModule`, `ForceJSONModule`, `RecoveryModule`|
-|security|`Module`, `CORSModule`, `CookieModule`, `RateLimitModule`|
+|security|`Module`, `CORSModule`, `CookieModule`|
 |instrumentation|`RequestIDModule`, `LoggingModule`, `ObservabilityModule`|
 |nonprod|`DebugModeModule`|
 
@@ -56,7 +56,7 @@ flowchart LR
 |ディレクトリ|説明|詳細|
 |---|---|---|
 |`extension/`|Priority 管理付きのミドルウェア・Configurator DI 登録|[README](extension/README.ja.md)|
-|`hook/`|サーバーライフサイクルフック（HTTP、DB クローズ、レートリミット）|[README](hook/README.ja.md)|
+|`hook/`|サーバーライフサイクルフック（HTTP、DB クローズ）|[README](hook/README.ja.md)|
 
 ## 注意点
 

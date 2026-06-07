@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +23,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ページ番号が1未満の場合、1として扱われる", func(t *testing.T) {
@@ -34,7 +35,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("件数が0以下の場合、デフォルト値が使用される", func(t *testing.T) {
@@ -46,7 +47,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("件数が最大値を超える場合、最大値が使用される", func(t *testing.T) {
@@ -58,7 +59,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ページ番号が3ページで1ページあたりの件数が50の場合、オフセットは100になる", func(t *testing.T) {
@@ -72,7 +73,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ページ番号が最大値の場合、正しいオフセットが計算される", func(t *testing.T) {
@@ -86,7 +87,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("件数が最大値の場合、正しいリミットが設定される", func(t *testing.T) {
@@ -99,7 +100,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ページ番号が負の値で、件数が負の値の場合、デフォルト値が使用される", func(t *testing.T) {
@@ -112,7 +113,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -141,7 +142,7 @@ func TestPage_Getters(t *testing.T) {
 		actual := page.Limit()
 		expected := 100
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("Offsetが正しい値を返す", func(t *testing.T) {
@@ -153,7 +154,7 @@ func TestPage_Getters(t *testing.T) {
 		actual := page.Offset()
 		expected := 200
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("Limit32が正しい値を返す", func(t *testing.T) {
@@ -165,7 +166,7 @@ func TestPage_Getters(t *testing.T) {
 		actual := page.Limit32()
 		expected := int32(100)
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("Limit32がmaxPerPageを超える場合はクランプされる", func(t *testing.T) {
@@ -177,7 +178,7 @@ func TestPage_Getters(t *testing.T) {
 		actual := page.Limit32()
 		expected := int32(maxPerPage)
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("Offset32が正しい値を返す", func(t *testing.T) {
@@ -189,7 +190,7 @@ func TestPage_Getters(t *testing.T) {
 		actual := page.Offset32()
 		expected := int32(200)
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("Offset32が最大値を超える場合はクランプされる", func(t *testing.T) {
@@ -201,6 +202,6 @@ func TestPage_Getters(t *testing.T) {
 		actual := page.Offset32()
 		expected := int32(maxPage * maxPerPage)
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 }

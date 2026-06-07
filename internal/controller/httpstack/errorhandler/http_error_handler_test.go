@@ -18,6 +18,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,17 +67,17 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 
 	handler(fmt.Errorf("some error"), c)
 
-	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 
 	// レスポンスボディが gen.ErrorResponse の構造を持つこと
 	_, ok := got["code"].(string)
-	require.True(t, ok)
+	assert.True(t, ok)
 
 	_, ok = got["request_id"].(string)
-	require.True(t, ok)
+	assert.True(t, ok)
 }
 
 func Test_writeErrorResponse(t *testing.T) {
@@ -100,14 +101,14 @@ func Test_writeErrorResponse(t *testing.T) {
 	err := writeErrorResponse(c, he)
 	require.NoError(t, err)
 
-	require.Equal(t, he.HTTPStatus, rec.Code)
+	assert.Equal(t, he.HTTPStatus, rec.Code)
 
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 
-	require.Equal(t, he.Code, got["code"])
-	require.Equal(t, he.Message, got["message"])
-	require.Equal(t, he.RequestId, got["request_id"])
+	assert.Equal(t, he.Code, got["code"])
+	assert.Equal(t, he.Message, got["message"])
+	assert.Equal(t, he.RequestId, got["request_id"])
 }
 
 func Test_handleHTTPError(t *testing.T) {
@@ -134,7 +135,7 @@ func Test_handleHTTPError(t *testing.T) {
 		handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
 
 		// JSON が書き込まれ、ステータスは内部サーバーエラー (おおむね 500) であること
-		require.Equal(t, http.StatusInternalServerError, rec.Code)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
 	t.Run("書き込み失敗時: エラーログ出力と500セット", func(t *testing.T) {
@@ -170,7 +171,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 
 		actual := normalizeHTTPError(expectedInternal, expectedRequestID)
 
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("Echo.HTTPError の Internal に OpenAPI エラーがある場合、OpenAPI ハンドラ経由で正規化される", func(t *testing.T) {
@@ -185,7 +186,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			expected := response.NewHTTPErrorFromStatus(http.StatusBadRequest)
 			expected.RequestId = expectedRequestID
 			expected.Internal = echoErr
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("API定義書のエラー構造でステータスがエラー範囲外なら内部サーバーエラー扱い", func(t *testing.T) {
@@ -201,7 +202,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			unknownError.HTTPStatus = http.StatusContinue
 			actual := normalizeHTTPError(&unknownError, expectedRequestID)
 
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("SecurityRequirementsError -> 401", func(t *testing.T) {
@@ -213,7 +214,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			expected := response.NewHTTPErrorFromStatus(http.StatusUnauthorized)
 			expected.RequestId = expectedRequestID
 			expected.Internal = echoErr
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("ResponseError -> 500", func(t *testing.T) {
@@ -225,7 +226,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			expected := response.NewHTTPErrorFromStatus(http.StatusInternalServerError)
 			expected.RequestId = expectedRequestID
 			expected.Internal = echoErr
-			require.Equal(t, expected, actual)
+			assert.Equal(t, expected, actual)
 		})
 	})
 
@@ -245,7 +246,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 
 		actual := normalizeHTTPError(he, expectedRequestID)
 		he.RequestId = expectedRequestID
-		require.Equal(t, he, actual)
+		assert.Equal(t, he, actual)
 	})
 
 	t.Run("echo.HTTPError の場合 (エラー範囲) はステータスに基づくレスポンスを返す", func(t *testing.T) {
@@ -257,7 +258,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		expected.RequestId = expectedRequestID
 
 		actual := normalizeHTTPError(echoErr, expectedRequestID)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("echo.HTTPError の場合 (非エラー範囲) は内部エラーとして扱われる", func(t *testing.T) {
@@ -270,7 +271,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		expected.Internal = echoErr
 
 		actual := normalizeHTTPError(echoErr, expectedRequestID)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("nil エラーは内部サーバーエラーを返す", func(t *testing.T) {
@@ -279,7 +280,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		actual := normalizeHTTPError(nil, expectedRequestID)
 		expected := response.NewHTTPErrorFromAppError(nil)
 		expected.RequestId = expectedRequestID
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("その他の通常のエラーは内部サーバーエラーを返す", func(t *testing.T) {
@@ -289,7 +290,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		expected.RequestId = expectedRequestID
 
 		actual := normalizeHTTPError(expectedInternal, expectedRequestID)
-		require.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
 	})
 
 	t.Run("echo.HTTPError の Internal に通常エラーがある場合、statusベースで返却され Internal は非nil", func(t *testing.T) {
@@ -302,8 +303,8 @@ func Test_normalizeHTTPError(t *testing.T) {
 		expected := response.NewHTTPErrorFromStatus(echoErr.Code)
 		expected.RequestId = expectedRequestID
 
-		require.Equal(t, expected.HTTPStatus, actual.HTTPStatus)
-		require.Equal(t, expected.RequestId, actual.RequestId)
+		assert.Equal(t, expected.HTTPStatus, actual.HTTPStatus)
+		assert.Equal(t, expected.RequestId, actual.RequestId)
 		require.Error(t, actual.Internal)
 	})
 }
@@ -384,11 +385,11 @@ func Test_isErrorStatus(t *testing.T) {
 
 		t.Run("400", func(t *testing.T) {
 			t.Parallel()
-			require.True(t, isErrorStatus(400))
+			assert.True(t, isErrorStatus(400))
 		})
 		t.Run("599", func(t *testing.T) {
 			t.Parallel()
-			require.True(t, isErrorStatus(599))
+			assert.True(t, isErrorStatus(599))
 		})
 	})
 
@@ -397,11 +398,11 @@ func Test_isErrorStatus(t *testing.T) {
 
 		t.Run("399", func(t *testing.T) {
 			t.Parallel()
-			require.False(t, isErrorStatus(399))
+			assert.False(t, isErrorStatus(399))
 		})
 		t.Run("600", func(t *testing.T) {
 			t.Parallel()
-			require.False(t, isErrorStatus(600))
+			assert.False(t, isErrorStatus(600))
 		})
 	})
 }
@@ -432,10 +433,10 @@ func Test_httpErrorField(t *testing.T) {
 		fields := httpErrorField(c, lf, he)
 
 		require.GreaterOrEqual(t, len(fields), 4)
-		require.Contains(t, fields, logging.Int(logging.StatusKey, he.HTTPStatus))
-		require.Contains(t, fields, logging.String(logging.ErrorCodeKey, he.Code))
-		require.Contains(t, fields, logging.String(logging.ErrorMessageKey, he.Message))
-		require.Contains(t, fields, logging.String(logging.RequestIDKey, he.RequestId))
+		assert.Contains(t, fields, logging.Int(logging.StatusKey, he.HTTPStatus))
+		assert.Contains(t, fields, logging.String(logging.ErrorCodeKey, he.Code))
+		assert.Contains(t, fields, logging.String(logging.ErrorMessageKey, he.Message))
+		assert.Contains(t, fields, logging.String(logging.RequestIDKey, he.RequestId))
 	})
 
 	t.Run("DetailsとInternalがある場合、内部情報フィールドが含まれる", func(t *testing.T) {
@@ -457,10 +458,10 @@ func Test_httpErrorField(t *testing.T) {
 		fields := httpErrorField(c, lf, he)
 
 		// Details フィールド
-		require.Contains(t, fields, logging.Strings(logging.ErrorDetails, details))
+		assert.Contains(t, fields, logging.Strings(logging.ErrorDetails, details))
 
 		// Internal error と stacktrace
-		require.Contains(t, fields, logging.String(logging.InternalErrorKey, he.Internal.Error()))
-		require.Contains(t, fields, logging.String(logging.InternalStackTraceKey, xerrors.StackTrace(he.Internal)))
+		assert.Contains(t, fields, logging.String(logging.InternalErrorKey, he.Internal.Error()))
+		assert.Contains(t, fields, logging.String(logging.InternalStackTraceKey, xerrors.StackTrace(he.Internal)))
 	})
 }

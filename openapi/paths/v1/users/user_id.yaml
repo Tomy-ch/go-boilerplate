@@ -4,6 +4,8 @@ get:
     - v1/users/detail
   summary: 単一ユーザーの取得
   description: 指定されたUUIDに該当するユーザーの詳細情報を取得します。
+  security:
+    - BearerAuth: []
   parameters:
     - $ref: '../../../components/parameters/user/UserIdParam.yaml'
   responses:
@@ -49,6 +51,8 @@ put:
     - v1/users/detail
   summary: 単一ユーザーの更新
   description: 指定されたUUIDに該当するユーザーの情報を更新します。必要な情報をリクエストボディに含めてください。
+  security:
+    - BearerAuth: []
   parameters:
   - $ref: '../../../components/parameters/user/UserIdParam.yaml'
   requestBody:
@@ -100,6 +104,8 @@ patch:
     - v1/users/detail
   summary: 単一ユーザーの部分更新
   description: 指定されたUUIDに該当するユーザーの情報を部分的に更新します。必要な情報をリクエストボディに含めてください。
+  security:
+    - BearerAuth: []
   parameters:
     - $ref: '../../../components/parameters/user/UserIdParam.yaml'
   requestBody:
@@ -151,6 +157,8 @@ delete:
     - v1/users/detail
   summary: 単一ユーザーの削除
   description: 指定されたUUIDに該当するユーザーを削除します。
+  security:
+    - BearerAuth: []
   parameters:
     - $ref: '../../../components/parameters/user/UserIdParam.yaml'
   responses:

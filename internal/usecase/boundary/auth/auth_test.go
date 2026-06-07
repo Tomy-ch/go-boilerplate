@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/pkg/uuid"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +36,7 @@ func TestNew(t *testing.T) {
 
 			authn, err := New(subject, provider, scopes, claims)
 			require.NoError(t, err)
-			require.Equal(t, expected, authn)
+			assert.Equal(t, expected, authn)
 		})
 
 		t.Run("subjectをuuidとして解釈できない場合、uuidはnilになる", func(t *testing.T) {
@@ -51,7 +52,7 @@ func TestNew(t *testing.T) {
 
 			authn, err := New(subject, provider, scopes, claims)
 			require.NoError(t, err)
-			require.Equal(t, expected, authn)
+			assert.Equal(t, expected, authn)
 		})
 	})
 
@@ -81,7 +82,7 @@ func TestAuthn_Subject(t *testing.T) {
 		authn, err := New(subject, ProviderMock, []string{}, map[string]any{})
 		require.NoError(t, err)
 
-		require.Equal(t, subject, authn.Subject())
+		assert.Equal(t, subject, authn.Subject())
 	})
 }
 
@@ -94,7 +95,7 @@ func TestAuthn_HasID(t *testing.T) {
 		authn, err := New(subject, ProviderMock, []string{}, map[string]any{})
 		require.NoError(t, err)
 
-		require.True(t, authn.HasID())
+		assert.True(t, authn.HasID())
 	})
 
 	t.Run("HasIDはUUIDとして解釈できなかった場合にfalseを返す", func(t *testing.T) {
@@ -103,7 +104,7 @@ func TestAuthn_HasID(t *testing.T) {
 		authn, err := New(subject, ProviderMock, []string{}, map[string]any{})
 		require.NoError(t, err)
 
-		require.False(t, authn.HasID())
+		assert.False(t, authn.HasID())
 	})
 }
 
@@ -121,7 +122,7 @@ func TestAuthn_ID(t *testing.T) {
 
 		id, err := authn.ID()
 		require.NoError(t, err)
-		require.Equal(t, expectedID, id)
+		assert.Equal(t, expectedID, id)
 	})
 
 	t.Run("IDはUUIDとして解釈できなかった場合にエラーを返す", func(t *testing.T) {
@@ -133,7 +134,7 @@ func TestAuthn_ID(t *testing.T) {
 
 		id, err := authn.ID()
 		require.ErrorIs(t, err, ErrInvalidIDMissing)
-		require.Equal(t, uuid.UUID{}, id)
+		assert.Equal(t, uuid.UUID{}, id)
 	})
 }
 
@@ -146,7 +147,7 @@ func TestAuthn_Provider(t *testing.T) {
 		authn, err := New("test-subject", provider, []string{}, map[string]any{})
 		require.NoError(t, err)
 
-		require.Equal(t, provider, authn.Provider())
+		assert.Equal(t, provider, authn.Provider())
 	})
 }
 
@@ -159,7 +160,7 @@ func TestAuthn_Scopes(t *testing.T) {
 		authn, err := New("test-subject", ProviderMock, scopes, map[string]any{})
 		require.NoError(t, err)
 
-		require.Equal(t, scopes, authn.Scopes())
+		assert.Equal(t, scopes, authn.Scopes())
 	})
 }
 
@@ -172,6 +173,6 @@ func TestAuthn_Claims(t *testing.T) {
 		authn, err := New("test-subject", ProviderMock, []string{}, claims)
 		require.NoError(t, err)
 
-		require.Equal(t, claims, authn.Claims())
+		assert.Equal(t, claims, authn.Claims())
 	})
 }

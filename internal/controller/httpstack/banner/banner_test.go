@@ -6,7 +6,7 @@ import (
 	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNew(t *testing.T) {
@@ -18,7 +18,7 @@ func TestNew(t *testing.T) {
 		cfg.SetApplicationMode(t, config.ProductionMode)
 
 		New(e, cfg)
-		require.True(t, e.HideBanner)
+		assert.True(t, e.HideBanner)
 	})
 
 	t.Run("開発モードの場合、バナーは表示される", func(t *testing.T) {
@@ -28,6 +28,6 @@ func TestNew(t *testing.T) {
 		cfg.SetApplicationMode(t, config.DevelopmentMode)
 
 		New(e, cfg)
-		require.False(t, e.HideBanner)
+		assert.False(t, e.HideBanner)
 	})
 }

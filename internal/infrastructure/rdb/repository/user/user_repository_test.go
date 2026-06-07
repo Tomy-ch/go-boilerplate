@@ -14,6 +14,7 @@ import (
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +28,7 @@ func TestNew(t *testing.T) {
 		db:     loggingDB,
 	}
 	actual := New(loggingDB, tf)
-	require.Equal(t, expected, actual)
+	assert.Equal(t, expected, actual)
 }
 
 func Test_repository_FindByActive(t *testing.T) {
@@ -69,8 +70,8 @@ func Test_repository_FindByActive(t *testing.T) {
 					actualFirst := actual[0]
 					actualLast := actual[len(actual)-1]
 
-					require.Equal(t, firstUserID, actualFirst.ID())
-					require.Equal(t, lastUserID, actualLast.ID())
+					assert.Equal(t, firstUserID, actualFirst.ID())
+					assert.Equal(t, lastUserID, actualLast.ID())
 				})
 			})
 
@@ -85,9 +86,9 @@ func Test_repository_FindByActive(t *testing.T) {
 
 					actual, err := repo.FindByActive(ctx, nil, limit, offset)
 					require.NoError(t, err)
-					require.Len(t, actual, expectedLength)
+					assert.Len(t, actual, expectedLength)
 
-					require.Equal(t, firstUserID, actual[0].ID())
+					assert.Equal(t, firstUserID, actual[0].ID())
 				})
 			})
 
@@ -103,7 +104,7 @@ func Test_repository_FindByActive(t *testing.T) {
 
 					actual := all[len(all)-1]
 
-					require.Equal(t, lastUserID, actual.ID())
+					assert.Equal(t, lastUserID, actual.ID())
 				})
 			})
 
@@ -136,8 +137,8 @@ func Test_repository_FindByActive(t *testing.T) {
 					actualFirst := actual[0]
 					actualLast := actual[len(actual)-1]
 
-					require.Equal(t, firstUserID, actualFirst.ID())
-					require.Equal(t, lastUserID, actualLast.ID())
+					assert.Equal(t, firstUserID, actualFirst.ID())
+					assert.Equal(t, lastUserID, actualLast.ID())
 				})
 			})
 		})
@@ -164,8 +165,8 @@ func Test_repository_FindByActive(t *testing.T) {
 					actualFirst := actual[0]
 					actualLast := actual[len(actual)-1]
 
-					require.Equal(t, firstUserID, actualFirst.ID())
-					require.Equal(t, lastUserID, actualLast.ID())
+					assert.Equal(t, firstUserID, actualFirst.ID())
+					assert.Equal(t, lastUserID, actualLast.ID())
 				})
 			})
 		})
@@ -335,7 +336,7 @@ func Test_repository_CreateUser(t *testing.T) {
 
 				user, err := gen.New(driver.New(ctx, db)).GetUserByID(ctx, userEntity.ID())
 				require.NoError(t, err)
-				require.Equal(t, userEntity.ID(), user.Users.ID)
+				assert.Equal(t, userEntity.ID(), user.Users.ID)
 			})
 		})
 	})
@@ -398,7 +399,7 @@ func Test_repository_CountByActive(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, ptr.To(true))
 				require.NoError(t, err)
-				require.Equal(t, int64(8), got)
+				assert.Equal(t, int64(8), got)
 			})
 		})
 		t.Run("active=falseの場合、非アクティブなユーザーの件数が取得できる", func(t *testing.T) {
@@ -406,7 +407,7 @@ func Test_repository_CountByActive(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, ptr.To(false))
 				require.NoError(t, err)
-				require.Equal(t, int64(2), got)
+				assert.Equal(t, int64(2), got)
 			})
 		})
 		t.Run("active=nilの場合、全ユーザーの件数が取得できる", func(t *testing.T) {
@@ -414,7 +415,7 @@ func Test_repository_CountByActive(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := repo.CountByActive(ctx, nil)
 				require.NoError(t, err)
-				require.Equal(t, int64(10), got)
+				assert.Equal(t, int64(10), got)
 			})
 		})
 	})

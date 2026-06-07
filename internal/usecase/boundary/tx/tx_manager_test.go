@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,8 +62,8 @@ func TestDoWithResult(t *testing.T) {
 			})
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
-			require.True(t, m.called)
+			assert.Equal(t, expected, actual)
+			assert.True(t, m.called)
 		})
 	})
 
@@ -79,8 +80,8 @@ func TestDoWithResult(t *testing.T) {
 			})
 
 			require.Error(t, err)
-			require.Equal(t, expected, actual)
-			require.True(t, m.called)
+			assert.Equal(t, expected, actual)
+			assert.True(t, m.called)
 		})
 
 		t.Run("fnは成功したがManager側でエラー（例: コミット失敗）", func(t *testing.T) {
@@ -94,7 +95,7 @@ func TestDoWithResult(t *testing.T) {
 
 			require.Error(t, err)
 			require.Empty(t, actual)
-			require.True(t, m.called)
+			assert.True(t, m.called)
 		})
 
 		t.Run("正常系: contextの値がfnに伝搬される", func(t *testing.T) {
@@ -111,8 +112,8 @@ func TestDoWithResult(t *testing.T) {
 			})
 
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
-			require.True(t, m.called)
+			assert.Equal(t, expected, actual)
+			assert.True(t, m.called)
 		})
 
 		t.Run("panicをManagerがrecoverした場合はエラーとゼロ値を返す", func(t *testing.T) {

@@ -51,7 +51,8 @@ INSERT INTO users (
 -- name: GetUserByID :one
 SELECT sqlc.embed(u)
 FROM users AS u
-WHERE u.id = sqlc.arg('user_id_param');
+WHERE u.id = sqlc.arg('user_id_param')
+    AND u.deleted_at IS NULL;
 
 -- === source: database/dml/repository/user/select_users.sql ===
 -- name: ListUsers :many
@@ -73,3 +74,22 @@ FROM users AS u
 WHERE u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
+
+-- === source: database/dml/repository/user/update_user.sql ===
+-- name: UpdateUser :execrows
+UPDATE users
+SET
+    first_name = sqlc.arg('first_name'),
+    last_name = sqlc.arg('last_name'),
+    password_hash = sqlc.arg('password_hash'),
+    email = sqlc.arg('email'),
+    phone = sqlc.arg('phone'),
+    prefecture_id = sqlc.arg('prefecture_id'),
+    city = sqlc.arg('city'),
+    street = sqlc.arg('street'),
+    building = sqlc.arg('building'),
+    postal_code = sqlc.arg('postal_code'),
+    updated_at = sqlc.arg('updated_at'),
+    deleted_at = sqlc.arg('deleted_at')
+WHERE id = sqlc.arg('id')
+    AND deleted_at IS NULL;
