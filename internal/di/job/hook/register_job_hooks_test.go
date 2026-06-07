@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
@@ -109,5 +110,62 @@ func TestRegisterJobHooks(t *testing.T) {
 
 		// ゴルーチンが実行される時間を与える（Shutdown 呼び出しは ctrl.Finish で gomock が検証）
 		time.Sleep(50 * time.Millisecond)
+	})
+
+	t.Run("起動contextがキャンセル済みでもジョブのcontextは中断されず実行される", func(t *testing.T) {
+		t.Parallel()
+
+		ctrl := gomock.NewController(t)
+
+		var startFn func(context.Context) error
+
+		reg := mock_lifecycle.NewMockRegistrar(ctrl)
+		sd := mock_shutdowner.NewMockShutdowner(ctrl)
+		runner := mock_job.NewMockRunner(ctrl)
+		logger := mock_logging.NewMockLogger(ctrl)
+
+		dummy := func(context.Context) error { return nil }
+		reg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
+			startFn = args[0].(func(context.Context) error)
+		}).Times(1)
+
+		doneCh := make(chan error, 1)
+		state := mock_job.NewMockState(ctrl)
+		state.EXPECT().Snapshot().Return("job-x", []string{}, doneCh).Times(1)
+
+		// runner が受け取る context が、起動 ctx のキャンセルに巻き込まれていないこと（Err() == nil）を確認する。
+		// context.WithoutCancel が無い（= 起動 ctx を直接渡す）回帰が起きると、ここで context.Canceled になる。
+		var jobCtxErr error
+		runner.EXPECT().Run(gomock.Any(), "job-x", gomock.Any()).DoAndReturn(
+			func(ctx context.Context, _ string, _ []string) error {
+				jobCtxErr = ctx.Err()
+				return nil
+			}).Times(1)
+
+		sd.EXPECT().Shutdown().Return(nil).Times(1)
+
+		cfg := config.MockConfigForTest(t)
+		osCfg := config.NewOperationSystemConfig(cfg)
+
+		RegisterJobHooks(reg, sd, runner, logger, osCfg, state)
+
+		require.NotNil(t, startFn)
+
+		// 起動 ctx を「キャンセル済み」にしてからフックを実行する。
+		// fx の OnStart が完了して startCtx がキャンセルされた後でも、detached なジョブ本体は
+		// 走り続けなければならない（WithoutCancel による切り離しの検証）。
+		startCtx, cancel := context.WithCancel(context.Background())
+		cancel()
+		require.NoError(t, startFn(startCtx))
+
+		select {
+		case v := <-doneCh:
+			require.NoError(t, v)
+		case <-time.After(200 * time.Millisecond):
+			t.Fatalf("did not receive done value")
+		}
+
+		// ジョブ本体の context は起動 ctx のキャンセルに巻き込まれていないこと。
+		assert.NoError(t, jobCtxErr)
 	})
 }
