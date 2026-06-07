@@ -51,7 +51,7 @@ type generator struct {
 	dumpArgs    []string
 }
 
-// newGenerator は、gensqlc用のジェネレーターインスタンスを生成します。
+// newGenerator は、dump-schema 用のジェネレーターインスタンスを生成します。
 func newGenerator(logger logging.Logger) *generator {
 	return &generator{
 		logger:          logger,
@@ -64,7 +64,7 @@ func newGenerator(logger logging.Logger) *generator {
 	}
 }
 
-// NewCommand は、sqlc generate コマンドを生成します。
+// NewCommand は、dump-schema コマンドを生成します。
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dump-schema",
@@ -96,7 +96,7 @@ func generateDumpSchema(_ *cobra.Command, _ []string) error {
 	// アプリ設定から接続先 DSN を組み立て、ダンプ対象 DB を決定します。
 	cfg, err := config.SetUpConfig()
 	if err != nil {
-		logger.CallerSkip(gen.callerSkipCount).Named("gensqlc.SetUpConfig").Error("failed to load config",
+		logger.CallerSkip(gen.callerSkipCount).Named("dumpschema.SetUpConfig").Error("failed to load config",
 			logging.Error("config", err),
 		)
 		return err
@@ -128,7 +128,7 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 	}
 	defer func() {
 		if closeErr := f.Close(); closeErr != nil {
-			g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Warn("failed to close schema file",
+			g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("failed to close schema file",
 				logging.String("schema", g.schemaRelPath),
 				logging.Error("close", closeErr),
 			)
@@ -143,19 +143,19 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 	cmd.Stdout = f
 	cmd.Stderr = os.Stderr
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Info("start pg_dump schema",
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("start pg_dump schema",
 		logging.String("out", g.schemaRelPath),
 	)
 
 	if err := cmd.Run(); err != nil {
-		g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Warn("pg_dump failed (schema file may be partial)",
+		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed (schema file may be partial)",
 			logging.String("out", g.schemaRelPath),
 			logging.Error("pg_dump", err),
 		)
 		return fmt.Errorf("pg_dump failed: %w", err)
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Info("pg_dump schema completed",
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("pg_dump schema completed",
 		logging.String("out", g.schemaRelPath),
 	)
 
@@ -193,7 +193,7 @@ func (g *generator) sanitizeSchemaInPlace() error {
 		return fmt.Errorf("write sanitized schema: %w", err)
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",
 		logging.String("schema", g.schemaRelPath),
 	)
 	return nil
