@@ -84,7 +84,7 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 	for _, f := range files {
 		err = execSeedFile(ctx, db, logger, f)
 		if err != nil {
-			// 読み込み失敗は最後に呼び出し元へ返しつつ、他ファイルの投入は継続します。
+			// 読み込み・実行いずれの失敗も呼び出し元へ返しつつ、他ファイルの投入は継続します。
 			readFilesErr = err
 		}
 	}
@@ -110,36 +110,38 @@ func execSeedFile(ctx context.Context, db driver.DatabaseDriver, logger logging.
 	}
 
 	_, err = db.Exec(ctx, string(data))
-	// 実行エラーは種別ごとにログレベルを変え、処理継続可否は呼び出し元ではなくここで吸収します。
-	logSeedExecResult(logger, filePath, err)
-
-	return nil
+	// 実行結果を種別ごとに記録し、スキップ可能（テーブル未作成）かどうかを判定して返します。
+	// 本物の実行エラーは握り潰さず呼び出し元へ伝播させ、コマンドの exit code に反映させます。
+	return handleSeedExecResult(logger, filePath, err)
 }
 
-// logSeedExecResult は、seed 実行結果を PostgreSQL 固有エラーの種類に応じて記録します。
-func logSeedExecResult(logger logging.Logger, filePath string, err error) {
+// handleSeedExecResult は、seed 実行結果を PostgreSQL 固有エラーの種類に応じて記録し、
+// スキップ可能なケース（成功・対象テーブル未作成）では nil を、それ以外の実行エラーでは
+// そのエラーを返します。
+func handleSeedExecResult(logger logging.Logger, filePath string, err error) error {
 	log := logger.Named("dbSeedRun.Exec")
 	if err == nil {
 		log.Info(
 			"seed file executed successfully",
 			logging.String("file", filePath),
 		)
-		return
+		return nil
 	}
 
 	var pgErr *pgconn.PgError
-	// seed 対象テーブルが未作成の環境では警告に留め、他の seed 実行を継続します。
-	if xerrors.As(err, &pgErr) && pgErr.Code == relationDoesNotExistCode {
+	isPgErr := xerrors.As(err, &pgErr)
+	// seed 対象テーブルが未作成の環境では警告に留め、他の seed 実行を継続します（スキップ扱い）。
+	if isPgErr && pgErr.Code == relationDoesNotExistCode {
 		log.Warn(
 			"table does not exist, skipping seed",
 			logging.String("file", filePath),
 			logging.Error("db.Exec", err),
 		)
-		return
+		return nil
 	}
 
 	message := "failed to exec seed file"
-	if !xerrors.As(err, &pgErr) {
+	if !isPgErr {
 		message = "failed to exec seed file (non-postgres error)"
 	}
 
@@ -148,6 +150,7 @@ func logSeedExecResult(logger logging.Logger, filePath string, err error) {
 		logging.String("file", filePath),
 		logging.Error("db.Exec", err),
 	)
+	return err
 }
 
 // newConfigForSeed は seed 用の設定を読み込み、CLI オプションの DB 名上書きを反映します。
