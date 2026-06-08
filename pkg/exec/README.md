@@ -1,8 +1,8 @@
-# cliexec
+# exec
 
 English | [日本語](README.ja.md)
 
-Shared external-process execution wrapper for CLI commands. Lets callers depend on an interface instead of `os/exec` directly so the orchestration logic is unit-testable.
+Provides a thin wrapper around external process execution so callers depend on an interface instead of `os/exec` directly.
 
 ## Public API
 
@@ -12,7 +12,12 @@ Shared external-process execution wrapper for CLI commands. Lets callers depend 
 |`OS`|`Runner` implementation backed by `os/exec`|
 |`Runner.Output(ctx, dir, name, args) ([]byte, error)`|Run a command in `dir`, return stdout; stderr goes to `os.Stderr`|
 
+## Wraps
+
+- `os/exec.CommandContext`
+
 ## Notes
 
-- Lives under `internal/cli` because `os` / `os/exec` usage is only permitted there (and in `cmd` / `config` / `scripts`) by depguard.
+- Uses `os` / `os/exec`, so depguard's `reject_dangerous_os` is relaxed for this package (`!**/pkg/exec/**.go`).
+- Must NOT be imported from the domain / usecase layers (enforced by depguard); process execution belongs to outer layers.
 - Inject `Runner` to test; production wires `OS{}`. A generated mock lives under `mock/`.

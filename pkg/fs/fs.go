@@ -1,6 +1,6 @@
-// Package clifs は、CLI コマンド共通のファイルシステム操作ラッパーを提供します。
+// Package fs は、ファイルシステム操作の薄いラッパーを提供します。
 // os への直接依存を一点に集約し、利用側はインターフェース経由で差し替え可能にします。
-package clifs
+package fs
 
 import (
 	"os"

@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go-boilerplate/internal/cli/cliexec"
-	"go-boilerplate/internal/cli/clifs"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/exec"
+	"go-boilerplate/pkg/fs"
 
 	"github.com/spf13/cobra"
 )
@@ -49,8 +49,8 @@ type generator struct {
 	dumpCommand string
 	dumpArgs    []string
 
-	fs     clifs.FS
-	runner cliexec.Runner
+	fs     fs.FS
+	runner exec.Runner
 }
 
 // newGenerator は、dump-schema 用のジェネレーターインスタンスを生成します。
@@ -63,8 +63,8 @@ func newGenerator(logger logging.Logger, workDir string) *generator {
 		schemaRelPath:   "database/gen/schema.gen.sql",
 		dumpCommand:     dumpCommand,
 		dumpArgs:        dumpSubArgs,
-		fs:              clifs.OS{},
-		runner:          cliexec.OS{},
+		fs:              fs.OS{},
+		runner:          exec.OS{},
 	}
 }
 

@@ -1,6 +1,6 @@
-// Package cliexec は、CLI コマンド共通の外部プロセス実行ラッパーを提供します。
+// Package exec は、外部プロセス実行の薄いラッパーを提供します。
 // os/exec への直接依存を一点に集約し、利用側はインターフェース経由で差し替え可能にします。
-package cliexec
+package exec
 
 import (
 	"bytes"

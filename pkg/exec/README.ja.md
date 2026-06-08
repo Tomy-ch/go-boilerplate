@@ -1,8 +1,8 @@
-# cliexec
+# exec
 
 [English](README.md) | 日本語
 
-CLI コマンド共通の外部プロセス実行ラッパー。利用側が `os/exec` に直接依存せずインターフェース経由で扱えるようにし、オーケストレーションをユニットテスト可能にします。
+外部プロセス実行の薄いラッパーを提供し、利用側が `os/exec` に直接依存せずインターフェース経由で扱えるようにします。
 
 ## 公開 API
 
@@ -12,7 +12,12 @@ CLI コマンド共通の外部プロセス実行ラッパー。利用側が `os
 |`OS`|`os/exec` を用いた `Runner` 実装|
 |`Runner.Output(ctx, dir, name, args) ([]byte, error)`|`dir` をカレントにコマンドを実行し標準出力を返す（標準エラーは `os.Stderr` へ）|
 
+## ラップ対象
+
+- `os/exec.CommandContext`
+
 ## 注意点
 
-- `os` / `os/exec` の使用は depguard により `cmd` / `internal/cli` / `internal/config` / `scripts` のみ許可されるため、本パッケージは `internal/cli` 配下に置いています。
+- `os` / `os/exec` を使用するため、本パッケージは depguard の `reject_dangerous_os` を緩和しています（`!**/pkg/exec/**.go`）。
+- domain / usecase 層からの import は禁止（depguard で強制）。プロセス実行は外側の層の責務です。
 - `Runner` を注入してテストし、プロダクションは `OS{}` を結線します。生成モックは `mock/` 配下。

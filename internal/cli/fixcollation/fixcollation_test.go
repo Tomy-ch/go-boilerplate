@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	mock_cliexec "go-boilerplate/internal/cli/cliexec/mock"
 	"go-boilerplate/internal/logging"
+	mock_exec "go-boilerplate/pkg/exec/mock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +46,7 @@ func TestFixCollation(t *testing.T) {
 	t.Run("正常系_REINDEXとALTERを順に実行する", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		runner := mock_cliexec.NewMockRunner(ctrl)
+		runner := mock_exec.NewMockRunner(ctrl)
 
 		// 2 文（REINDEX → ALTER）が psql 経由で実行されること。
 		runner.EXPECT().Output(gomock.Any(), workDir, psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
@@ -58,7 +58,7 @@ func TestFixCollation(t *testing.T) {
 	t.Run("異常系_psql失敗時はエラーを返し後続を実行しない", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		runner := mock_cliexec.NewMockRunner(ctrl)
+		runner := mock_exec.NewMockRunner(ctrl)
 
 		// 1 文目で失敗 → 2 文目は実行されない（Times(1)）。
 		runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("psql failed")).Times(1)

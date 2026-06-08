@@ -1,8 +1,8 @@
-# clifs
+# fs
 
 [English](README.md) | 日本語
 
-CLI コマンド共通のファイルシステム操作ラッパー。利用側が `os` に直接依存せずインターフェース経由で扱えるようにし、オーケストレーションをユニットテスト可能にします。
+ファイルシステム操作の薄いラッパーを提供し、利用側が `os` に直接依存せずインターフェース経由で扱えるようにします。
 
 ## 公開 API
 
@@ -14,7 +14,13 @@ CLI コマンド共通のファイルシステム操作ラッパー。利用側�
 |`FS.WriteFile(name, data, perm) error`|ファイル書き込み|
 |`FS.Glob(pattern) ([]string, error)`|glob マッチ|
 
+## ラップ対象
+
+- `os.ReadFile` / `os.WriteFile`
+- `path/filepath.Glob`
+
 ## 注意点
 
-- `os` の使用は depguard により `cmd` / `internal/cli` / `internal/config` / `scripts` のみ許可されるため、本パッケージは `internal/cli` 配下に置いています。
+- `os` を使用するため、本パッケージは depguard の `reject_dangerous_os` を緩和しています（`!**/pkg/fs/**.go`）。
+- domain / usecase 層からの import は禁止（depguard で強制）。ファイル I/O は外側の層の責務です。
 - `FS` を注入してテストし、プロダクションは `OS{}` を結線します。生成モックは `mock/` 配下。

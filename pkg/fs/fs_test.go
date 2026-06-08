@@ -1,11 +1,9 @@
-package clifs_test
+package fs
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"go-boilerplate/internal/cli/clifs"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +13,7 @@ func TestOS_WriteFileAndReadFile(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "sample.txt")
-	sut := clifs.OS{}
+	sut := OS{}
 
 	require.NoError(t, sut.WriteFile(path, []byte("hello"), 0o600))
 
@@ -29,7 +27,7 @@ func TestOS_ReadFile_NotExist(t *testing.T) {
 
 	t.Run("異常系_存在しないファイルはエラー", func(t *testing.T) {
 		t.Parallel()
-		_, err := clifs.OS{}.ReadFile(filepath.Join(t.TempDir(), "not-exist"))
+		_, err := OS{}.ReadFile(filepath.Join(t.TempDir(), "not-exist"))
 		require.Error(t, err)
 	})
 }
@@ -42,7 +40,7 @@ func TestOS_Glob(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.sql"), []byte("x"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "c.txt"), []byte("x"), 0o600))
 
-	got, err := clifs.OS{}.Glob(filepath.Join(dir, "*.sql"))
+	got, err := OS{}.Glob(filepath.Join(dir, "*.sql"))
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
 }

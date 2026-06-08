@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	mock_clifs "go-boilerplate/internal/cli/clifs/mock"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/logging"
+	mock_fs "go-boilerplate/pkg/fs/mock"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +54,7 @@ func TestExecSeedFile(t *testing.T) {
 	t.Run("正常系_読み込みと実行に成功するとnilを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fsys := mock_clifs.NewMockFS(ctrl)
+		fsys := mock_fs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
 		fsys.EXPECT().ReadFile(path).Return([]byte("SELECT 1;"), nil)
 		db.EXPECT().Exec(gomock.Any(), "SELECT 1;").Return(pgconn.CommandTag{}, nil)
@@ -65,7 +65,7 @@ func TestExecSeedFile(t *testing.T) {
 	t.Run("異常系_ファイル読み込み失敗はエラーを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fsys := mock_clifs.NewMockFS(ctrl)
+		fsys := mock_fs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
 		fsys.EXPECT().ReadFile(path).Return(nil, errors.New("read failed"))
 
@@ -76,7 +76,7 @@ func TestExecSeedFile(t *testing.T) {
 	t.Run("異常系_実SQLエラーは握り潰さず伝播する", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fsys := mock_clifs.NewMockFS(ctrl)
+		fsys := mock_fs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
 		execErr := &pgconn.PgError{Code: "23505"} // unique_violation
 		fsys.EXPECT().ReadFile(path).Return([]byte("INSERT ..."), nil)
@@ -89,7 +89,7 @@ func TestExecSeedFile(t *testing.T) {
 	t.Run("正常系_対象テーブル未作成はスキップしてnilを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fsys := mock_clifs.NewMockFS(ctrl)
+		fsys := mock_fs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
 		fsys.EXPECT().ReadFile(path).Return([]byte("SELECT 1;"), nil)
 		db.EXPECT().Exec(gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, &pgconn.PgError{Code: relationDoesNotExistCode})
@@ -104,7 +104,7 @@ func TestRunSeeds(t *testing.T) {
 	t.Run("正常系_全ファイル成功時はnilを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fsys := mock_clifs.NewMockFS(ctrl)
+		fsys := mock_fs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
 		fsys.EXPECT().ReadFile("a.sql").Return([]byte("SELECT 1;"), nil)
 		fsys.EXPECT().ReadFile("b.sql").Return([]byte("SELECT 2;"), nil)
@@ -117,7 +117,7 @@ func TestRunSeeds(t *testing.T) {
 	t.Run("異常系_1ファイルが失敗しても全件継続しエラーを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fsys := mock_clifs.NewMockFS(ctrl)
+		fsys := mock_fs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
 		execErr := &pgconn.PgError{Code: "23505"}
 		fsys.EXPECT().ReadFile("a.sql").Return([]byte("SELECT a;"), nil)

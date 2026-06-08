@@ -90,6 +90,8 @@ linters:
             - "!**/internal/cli/**.go" # CLIを扱う箇所では、ファイル操作などが必要なためosの使用を許可します
             - "!**/internal/config/**.go" # システムの環境変数を扱う箇所では、ブートストラップの環境変数を取得するためにosの使用を許可します
             - "!**/scripts/**.go" # スクリプトを扱う箇所では、ファイル操作などが必要なためosの使用を許可します
+            - "!**/pkg/fs/**.go" # ファイルシステム操作の薄いラッパーのため os の使用を許可します
+            - "!**/pkg/exec/**.go" # 外部プロセス実行の薄いラッパーのため os/exec の使用を許可します
           list-mode: lax
           deny:
             - pkg: os
@@ -220,8 +222,10 @@ linters:
               desc: "domain層でcontroller層を参照することは禁止です。"
             - pkg: go-boilerplate/internal/infrastructure/
               desc: "domain層でinfrastructure層を参照することは禁止です。"
-            - pkg: go-boilerplate/internal/cli/
-              desc: "domain層で cli（driving adapter）層を参照することは禁止です。"
+            - pkg: go-boilerplate/pkg/fs
+              desc: "domain層でファイルシステム I/O を行わないでください。FS アクセスは外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/exec
+              desc: "domain層で外部プロセス実行を行わないでください。プロセス実行は外側の層の責務です。"
         # usecase層では外界とのやり取りのライブラリの使用を禁止します。
         # それ以外のライブラリの利用は許可されます。
         # ただし、外部ライブラリの直接使用は避け、pkg経由での使用を強く推奨します。
@@ -240,8 +244,10 @@ linters:
               desc: "usecase層でcontroller層を参照することは禁止です。"
             - pkg: go-boilerplate/internal/infrastructure/
               desc: "usecase層でinfrastructure層を参照することは禁止です。"
-            - pkg: go-boilerplate/internal/cli/
-              desc: "usecase層で cli（driving adapter）層を参照することは禁止です。"
+            - pkg: go-boilerplate/pkg/fs
+              desc: "usecase層でファイルシステム I/O を行わないでください。FS アクセスは外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/exec
+              desc: "usecase層で外部プロセス実行を行わないでください。プロセス実行は外側の層の責務です。"
         # controller層では、主にHTTPリクエストを扱うライブラリの使用を許可します。
         # ただし、永続化を行うライブラリの使用は禁止します。(主にdatabase/sqlなど)
         maintain_a_sound_controller:

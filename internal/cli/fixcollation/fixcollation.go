@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 
-	"go-boilerplate/internal/cli/cliexec"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/exec"
 
 	"github.com/spf13/cobra"
 )
@@ -57,7 +57,7 @@ func runFixCollation(ctx context.Context, database string) error {
 	}
 	dbURL := driver.DSNString(config.NewDatabaseConfig(cfg))
 
-	return fixCollation(ctx, cliexec.OS{}, logger, dbURL, database)
+	return fixCollation(ctx, exec.OS{}, logger, dbURL, database)
 }
 
 // validateDatabaseName は、許可済みのローカル向け DB 名のみを受け付けます。
@@ -69,7 +69,7 @@ func validateDatabaseName(name string) error {
 }
 
 // fixCollation は、collation mismatch 修正 SQL を psql 経由で順に実行します。
-func fixCollation(ctx context.Context, runner cliexec.Runner, logger logging.Logger, dbURL, database string) error {
+func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger, dbURL, database string) error {
 	logger.CallerSkip(callerSkipCount).Named("fixcollation").Info("start collation fix",
 		logging.String("database", database),
 	)

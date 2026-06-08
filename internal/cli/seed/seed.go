@@ -6,10 +6,10 @@ import (
 	"os"
 	"sort"
 
-	"go-boilerplate/internal/cli/clifs"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/fs"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -71,7 +71,7 @@ func dbSeedRun(database string) error {
 		}
 	}()
 
-	fsys := clifs.OS{}
+	fsys := fs.OS{}
 	files, err := fsys.Glob(seedFilePlace + "/*.sql")
 	if err != nil {
 		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error("globSeedFiles", err))
@@ -85,7 +85,7 @@ func dbSeedRun(database string) error {
 
 // runSeeds は、seed ファイル群を昇順で順次実行します。実行エラーは握り潰さず呼び出し元へ返しつつ、
 // 他ファイルの投入は継続します（テーブル未作成のスキップは execSeedFile 側で吸収）。
-func runSeeds(ctx context.Context, fsys clifs.FS, db driver.DatabaseDriver, logger logging.Logger, files []string) error {
+func runSeeds(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, logger logging.Logger, files []string) error {
 	var seedErr error
 	// seed ファイル名の昇順で固定し、投入順序を安定させます。
 	sort.Strings(files)
@@ -103,7 +103,7 @@ func runSeeds(ctx context.Context, fsys clifs.FS, db driver.DatabaseDriver, logg
 }
 
 // execSeedFile は、1つの seed ファイルの読み込みと SQL 実行を担当します。
-func execSeedFile(ctx context.Context, fsys clifs.FS, db driver.DatabaseDriver, logger logging.Logger, filePath string) error {
+func execSeedFile(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, logger logging.Logger, filePath string) error {
 	data, err := fsys.ReadFile(filePath)
 	if err != nil {
 		logger.Named("dbSeedRun.os.ReadFile").Error(
