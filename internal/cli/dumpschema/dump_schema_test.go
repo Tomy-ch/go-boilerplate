@@ -1,92 +1,29 @@
 package dumpschema
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
+	mock_dumpschema "go-boilerplate/internal/cli/dumpschema/mock"
 	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-// nopWriteCloser は io.Writer を io.WriteCloser に変換するテスト用ラッパです。
-type nopWriteCloser struct {
-	io.Writer
-	closeErr error
-}
+const testWorkDir = "/work"
 
-// fakeFS は fileSystem のフェイク実装。実ファイルシステムに一切触れません。
-type fakeFS struct {
-	createBuf *bytes.Buffer // Create が返す書き込み先（pg_dump 出力の捕捉用）
-	createErr error
-	closeErr  error
-
-	readData []byte
-	readErr  error
-
-	written     []byte // WriteFile に渡された内容
-	writtenPerm os.FileMode
-	writeErr    error
-	writeCalled bool
-}
-
-// fakeRunner は commandRunner のフェイク実装。pg_dump を実行しません。
-type fakeRunner struct {
-	output []byte // stdout へ書き込む内容
-	err    error
-	called bool
-}
-
-func (n nopWriteCloser) Close() error { return n.closeErr }
-
-func (f *fakeFS) Create(string) (io.WriteCloser, error) {
-	if f.createErr != nil {
-		return nil, f.createErr
-	}
-	f.createBuf = &bytes.Buffer{}
-	return nopWriteCloser{Writer: f.createBuf, closeErr: f.closeErr}, nil
-}
-
-func (f *fakeFS) ReadFile(string) ([]byte, error) {
-	if f.readErr != nil {
-		return nil, f.readErr
-	}
-	return f.readData, nil
-}
-
-func (f *fakeFS) WriteFile(_ string, data []byte, perm os.FileMode) error {
-	f.writeCalled = true
-	if f.writeErr != nil {
-		return f.writeErr
-	}
-	f.written = data
-	f.writtenPerm = perm
-	return nil
-}
-
-func (r *fakeRunner) Run(_ context.Context, _, _ string, _ []string, stdout io.Writer) error {
-	r.called = true
-	if r.err != nil {
-		return r.err
-	}
-	if r.output != nil {
-		_, _ = stdout.Write(r.output)
-	}
-	return nil
-}
-
-func newTestGenerator(t *testing.T, fs fileSystem, runner commandRunner) *generator {
+func newTestGenerator(t *testing.T, fs FileSystem, runner CommandRunner) *generator {
 	t.Helper()
 	return &generator{
 		logger:          logging.NewTestLogger(t),
 		callerSkipCount: 1,
 		permission:      schemaFilePerm,
-		workDir:         "/work",
+		workDir:         testWorkDir,
 		schemaRelPath:   "database/gen/schema.gen.sql",
 		dumpCommand:     dumpCommand,
 		dumpArgs:        dumpSubArgs,
@@ -98,48 +35,59 @@ func newTestGenerator(t *testing.T, fs fileSystem, runner commandRunner) *genera
 func TestGenerator_dumpSchema(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_pg_dumpの出力が作成ファイルへ書き込まれる", func(t *testing.T) {
+	schemaAbs := filepath.Join(testWorkDir, "database/gen/schema.gen.sql")
+
+	t.Run("正常系_pg_dumpの出力がschemaファイルへ書き込まれる", func(t *testing.T) {
 		t.Parallel()
-		fs := &fakeFS{}
-		runner := &fakeRunner{output: []byte("CREATE TABLE users (id int);\n")}
+		ctrl := gomock.NewController(t)
+		fs := mock_dumpschema.NewMockFileSystem(ctrl)
+		runner := mock_dumpschema.NewMockCommandRunner(ctrl)
+
+		out := []byte("CREATE TABLE users (id int);\n")
+		runner.EXPECT().Run(gomock.Any(), testWorkDir, "pg_dump", gomock.Any()).Return(out, nil)
+		fs.EXPECT().WriteFile(schemaAbs, out, os.FileMode(schemaFilePerm)).Return(nil)
 
 		g := newTestGenerator(t, fs, runner)
 		require.NoError(t, g.dumpSchema(context.Background(), "postgres://dsn"))
-
-		assert.True(t, runner.called, "runner が呼ばれること")
-		require.NotNil(t, fs.createBuf)
-		assert.Contains(t, fs.createBuf.String(), "CREATE TABLE users (id int);")
 	})
 
-	t.Run("異常系_出力ファイル作成に失敗するとエラー", func(t *testing.T) {
+	t.Run("異常系_pg_dump失敗時はWriteFileを呼ばずエラー", func(t *testing.T) {
 		t.Parallel()
-		fs := &fakeFS{createErr: errors.New("create failed")}
-		runner := &fakeRunner{}
+		ctrl := gomock.NewController(t)
+		fs := mock_dumpschema.NewMockFileSystem(ctrl)
+		runner := mock_dumpschema.NewMockCommandRunner(ctrl)
+
+		runner.EXPECT().Run(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("pg_dump failed"))
+		// fs.WriteFile は EXPECT しない（呼ばれたら gomock が失敗させる）。
 
 		g := newTestGenerator(t, fs, runner)
-		err := g.dumpSchema(context.Background(), "postgres://dsn")
-
-		require.Error(t, err)
-		assert.False(t, runner.called, "作成失敗時は runner を呼ばないこと")
+		require.Error(t, g.dumpSchema(context.Background(), "postgres://dsn"))
 	})
 
-	t.Run("異常系_pg_dump実行に失敗するとエラー", func(t *testing.T) {
+	t.Run("異常系_書き込み失敗時はエラー", func(t *testing.T) {
 		t.Parallel()
-		fs := &fakeFS{}
-		runner := &fakeRunner{err: errors.New("pg_dump failed")}
+		ctrl := gomock.NewController(t)
+		fs := mock_dumpschema.NewMockFileSystem(ctrl)
+		runner := mock_dumpschema.NewMockCommandRunner(ctrl)
+
+		runner.EXPECT().Run(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("x"), nil)
+		fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("write failed"))
 
 		g := newTestGenerator(t, fs, runner)
-		err := g.dumpSchema(context.Background(), "postgres://dsn")
-
-		require.Error(t, err)
+		require.Error(t, g.dumpSchema(context.Background(), "postgres://dsn"))
 	})
 }
 
 func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 	t.Parallel()
 
+	schemaAbs := filepath.Join(testWorkDir, "database/gen/schema.gen.sql")
+
 	t.Run("正常系_メタコマンドとバージョンコメントと空行を除去しDDLは残す", func(t *testing.T) {
 		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_dumpschema.NewMockFileSystem(ctrl)
+
 		input := "" +
 			"\\connect mydb\n" +
 			"-- Dumped from database version 14.1\n" +
@@ -148,40 +96,48 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 			"CREATE TABLE users (id int);\n" +
 			"\n" +
 			"CREATE TABLE items (id int);\n"
-		fs := &fakeFS{readData: []byte(input)}
+		fs.EXPECT().ReadFile(schemaAbs).Return([]byte(input), nil)
 
-		g := newTestGenerator(t, fs, &fakeRunner{})
+		var written []byte
+		fs.EXPECT().WriteFile(schemaAbs, gomock.Any(), os.FileMode(schemaFilePerm)).DoAndReturn(
+			func(_ string, data []byte, _ os.FileMode) error {
+				written = data
+				return nil
+			})
+
+		g := newTestGenerator(t, fs, mock_dumpschema.NewMockCommandRunner(ctrl))
 		require.NoError(t, g.sanitizeSchemaInPlace())
 
-		require.True(t, fs.writeCalled, "整形結果が書き戻されること")
-		got := string(fs.written)
+		got := string(written)
 		assert.Contains(t, got, "CREATE TABLE users (id int);")
 		assert.Contains(t, got, "CREATE TABLE items (id int);")
 		assert.NotContains(t, got, "\\connect")
 		assert.NotContains(t, got, "Dumped from database version")
 		assert.NotContains(t, got, "Dumped by pg_dump version")
-		assert.Equal(t, os.FileMode(schemaFilePerm), fs.writtenPerm)
 	})
 
 	t.Run("異常系_読み込み失敗時はエラーで書き込まない", func(t *testing.T) {
 		t.Parallel()
-		fs := &fakeFS{readErr: errors.New("read failed")}
+		ctrl := gomock.NewController(t)
+		fs := mock_dumpschema.NewMockFileSystem(ctrl)
 
-		g := newTestGenerator(t, fs, &fakeRunner{})
-		err := g.sanitizeSchemaInPlace()
+		fs.EXPECT().ReadFile(gomock.Any()).Return(nil, errors.New("read failed"))
+		// WriteFile は呼ばれない。
 
-		require.Error(t, err)
-		assert.False(t, fs.writeCalled, "読み込み失敗時は書き込まないこと")
+		g := newTestGenerator(t, fs, mock_dumpschema.NewMockCommandRunner(ctrl))
+		require.Error(t, g.sanitizeSchemaInPlace())
 	})
 
 	t.Run("異常系_書き込み失敗時はエラー", func(t *testing.T) {
 		t.Parallel()
-		fs := &fakeFS{readData: []byte("CREATE TABLE x (id int);\n"), writeErr: errors.New("write failed")}
+		ctrl := gomock.NewController(t)
+		fs := mock_dumpschema.NewMockFileSystem(ctrl)
 
-		g := newTestGenerator(t, fs, &fakeRunner{})
-		err := g.sanitizeSchemaInPlace()
+		fs.EXPECT().ReadFile(gomock.Any()).Return([]byte("CREATE TABLE x (id int);\n"), nil)
+		fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("write failed"))
 
-		require.Error(t, err)
+		g := newTestGenerator(t, fs, mock_dumpschema.NewMockCommandRunner(ctrl))
+		require.Error(t, g.sanitizeSchemaInPlace())
 	})
 }
 

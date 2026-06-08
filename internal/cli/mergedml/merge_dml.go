@@ -2,6 +2,7 @@
 package mergedml
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 )
+
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
 const (
 	// ▼ チューニング用定数群(値の由来や背景は README に記載)
@@ -34,14 +37,23 @@ const (
 	// minSQLCConcurrency:
 	//   並列の下限。I/O待ちが多いので1だと非効率なので最低2を確保。
 	minSQLCConcurrency = 2
+
+	// genFilePerm は、生成する SQL ファイルのパーミッションです。
+	genFilePerm = 0o644
 )
 
-var (
-	// targetType は、SQLC生成の対象タイプ(repository|query_service)を表します。
-	targetType string
-	// workDir は、作業ディレクトリのパスを表します。
-	workDir string
-)
+// FileSystem は merge-dml が必要とするファイル操作を抽象化します。
+type FileSystem interface {
+	ListSubDirNames(base string) ([]string, error)    // base 直下のサブディレクトリ名（昇順）
+	ListGenFileNames(genDir string) ([]string, error) // genDir 直下のファイル名（非ディレクトリ）
+	FindSQLFiles(dir string) ([]string, error)        // dir 配下の .sql ファイルパス（昇順）
+	ReadFile(name string) ([]byte, error)
+	WriteFile(name string, data []byte, perm os.FileMode) error
+	Remove(name string) error
+}
+
+// osFileSystem は os パッケージを用いた FileSystem の実装です。
+type osFileSystem struct{}
 
 type generator struct {
 	logger          logging.Logger
@@ -51,10 +63,74 @@ type generator struct {
 	dmlRootDir string
 	genRootDir string
 	sqlcCfg    string
+
+	fs FileSystem
 }
 
-// newGenerator は、gensqlc用のジェネレーターインスタンスを生成します。
-func newGenerator(logger logging.Logger) *generator {
+func (osFileSystem) ListSubDirNames(base string) ([]string, error) {
+	ents, err := os.ReadDir(base)
+	if err != nil {
+		return nil, err
+	}
+	dirs := make([]string, 0, len(ents))
+	for _, e := range ents {
+		if e.IsDir() {
+			dirs = append(dirs, e.Name())
+		}
+	}
+	sort.Strings(dirs)
+	return dirs, nil
+}
+
+func (osFileSystem) ListGenFileNames(genDir string) ([]string, error) {
+	ents, err := os.ReadDir(genDir)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(ents))
+	for _, e := range ents {
+		if !e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	return names, nil
+}
+
+func (osFileSystem) FindSQLFiles(dir string) ([]string, error) {
+	var files []string
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) == ".sql" {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+func (osFileSystem) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name) //nolint:gosec // src は固定ルート配下で検証済み・ユーザー入力由来ではない
+}
+
+func (osFileSystem) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm)
+}
+
+func (osFileSystem) Remove(name string) error {
+	return os.Remove(name)
+}
+
+// newGenerator は、merge-dml 用のジェネレーターインスタンスを生成します。
+func newGenerator(logger logging.Logger, workDir string) *generator {
 	return &generator{
 		logger:          logger,
 		callerSkipCount: 1,
@@ -62,18 +138,26 @@ func newGenerator(logger logging.Logger) *generator {
 		dmlRootDir:      "database/dml/",
 		genRootDir:      "database/gen/",
 		sqlcCfg:         "sqlc.yaml",
+		fs:              osFileSystem{},
 	}
 }
 
-// NewCommand は、sqlc generate コマンドを生成します。
+// NewCommand は、merge-dml コマンドを生成します。
 func NewCommand() *cobra.Command {
+	var (
+		targetType string
+		workDir    string
+	)
+
 	cmd := &cobra.Command{
 		Use:   "merge-dml",
 		Short: "DMLディレクトリ(database/dml/<repository/query_service/command_service>)のsqlファイルを対象にして、<type>ごとにマージします。",
 		Long: "指定されたタイプ(repository|query_service|command_service)のDMLディレクトリ内の全サブディレクトリを走査し、\n" +
 			"各カテゴリごとにSQLファイルを連結して1つのSQLファイルにまとめます。\n" +
 			"生成されるファイルは database/gen/ 配下に <category>_<type>.gen.sql という名前で保存されます。",
-		RunE: mergeDMLRun,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return mergeDMLRun(cmd.Context(), targetType, workDir)
+		},
 	}
 
 	cmd.Flags().StringVar(&targetType, "type", "", "filter TYPE (repository|query_service|command_service)")
@@ -84,18 +168,18 @@ func NewCommand() *cobra.Command {
 }
 
 // mergeDMLRun は、DMLファイルをマージして、カテゴリごとに単一ファイルにまとめます。
-func mergeDMLRun(_ *cobra.Command, _ []string) error {
+func mergeDMLRun(ctx context.Context, targetType, workDir string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
 		return fmt.Errorf("failed to create logger: %w", err)
 	}
 
-	gen := newGenerator(logger)
+	gen := newGenerator(logger, workDir)
 
 	// type 配下のカテゴリ一覧を取得し、カテゴリ単位でマージ対象を決定します。
-	categories, err := listDirs(gen.dmlTypeRootAbs(targetType))
+	categories, err := gen.fs.ListSubDirNames(gen.dmlTypeRootAbs(targetType))
 	if err != nil {
-		logger.CallerSkip(gen.callerSkipCount).Named("gensqlc.listDirs").Error("failed to list directories",
+		logger.CallerSkip(gen.callerSkipCount).Named("mergedml.listDirs").Error("failed to list directories",
 			logging.Error("os.ReadDir", err),
 		)
 		return err
@@ -118,7 +202,7 @@ func mergeDMLRun(_ *cobra.Command, _ []string) error {
 	}
 
 	// カテゴリごとの生成は独立しているため並列化しつつ、同時実行数は semaphore で抑制します。
-	eg, egCtx := errgroup.WithContext(context.Background())
+	eg, egCtx := errgroup.WithContext(ctx)
 	sem := semaphore.NewWeighted(int64(resolveConcurrencyConst()))
 
 	for _, category := range categories {
@@ -134,7 +218,7 @@ func mergeDMLRun(_ *cobra.Command, _ []string) error {
 	}
 
 	if err := eg.Wait(); err != nil {
-		gen.logger.CallerSkip(gen.callerSkipCount).Named("gensqlc.buildMergedQueries").Error("failed to build merged sql files",
+		gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.buildMergedQueries").Error("failed to build merged sql files",
 			logging.Error("errgroup.Wait", err),
 		)
 		return err
@@ -158,37 +242,17 @@ func (g *generator) dmlTypeRootAbs(targetType string) string {
 }
 
 // buildCategorySQLFile は、指定されたカテゴリのSQLファイルを連結して1つのSQLファイルにまとめます。
-func (g *generator) buildCategorySQLFile( //nolint:gocognit // SQL生成ロジックのため分岐が多くなる設計
-	category string,
-	targetType string,
-) error {
+func (g *generator) buildCategorySQLFile(category, targetType string) error {
 	// 入力走査も workDir 起点で統一する。CWD 起点だと CWD != workDir のとき走査結果が 0 件になり、
 	// 「入力なし」分岐に入って workDir 配下の生成物を誤って削除してしまうため。
 	dmlDir := filepath.Join(g.workDir, g.dmlRootDir, targetType, category)
 
-	// 1) 対象.sqlを収集
-	var files []string
-	if err := filepath.WalkDir(dmlDir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		if filepath.Ext(path) != ".sql" {
-			return nil
-		}
-		files = append(files, path)
-		return nil
-	}); err != nil {
+	files, err := g.fs.FindSQLFiles(dmlDir)
+	if err != nil {
 		return err
 	}
 
-	// 2) 安定化のためソート（生成差分がブレない）
-	sort.Strings(files)
-
-	// 3) 出力ファイル（カテゴリごとに1本）
-	outName := fmt.Sprintf("%s_%s.gen.sql", category, targetType) // 例: prefecture_repository.sql
+	outName := fmt.Sprintf("%s_%s.gen.sql", category, targetType) // 例: prefecture_repository.gen.sql
 	// 出力先も workDir 起点で統一し、相対/絶対の二系統を排除する。
 	dstPath := filepath.Join(g.workDir, g.genRootDir, outName)
 
@@ -198,7 +262,7 @@ func (g *generator) buildCategorySQLFile( //nolint:gocognit // SQL生成ロジ�
 			return err
 		}
 
-		if err := os.Remove(dstPath); err != nil && !os.IsNotExist(err) {
+		if err := g.fs.Remove(dstPath); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 
@@ -211,56 +275,37 @@ func (g *generator) buildCategorySQLFile( //nolint:gocognit // SQL生成ロジ�
 		return nil
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.buildCategorySQLFile").Info("build merged sql for sqlc",
+	g.logger.CallerSkip(g.callerSkipCount).Named("mergedml.buildCategorySQLFile").Info("build merged sql for sqlc",
 		logging.String("category", category),
 		logging.String("type", targetType),
 		logging.String("dst", dstPath),
 		logging.Int("files", len(files)),
 	)
 
-	// 4) 連結して書き出し（上書きOK）
-	// 出力先が必ず database/gen 配下であることを確認してからファイルを作成します。
+	// 出力先が必ず database/gen 配下であることを確認してから書き出します。
 	if err := g.ensureUnderDir(dstPath); err != nil {
 		return err
 	}
 
-	// #nosec G304 -- dst is verified under a fixed root directory and does not originate from user input
-	out, err := os.Create(dstPath)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := out.Close(); closeErr != nil {
-			g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.buildCategorySQLFile").Warn("failed to close output sql file",
-				logging.String("dst", dstPath),
-				logging.Error("close", closeErr),
-			)
-		}
-	}()
-
+	// 連結結果はメモリ上に構築し、成功時のみ一括書き込みします（部分生成物を残さない）。
+	var buf bytes.Buffer
 	for _, fpath := range files {
 		// 由来が分かるように見出しを入れる（sqlcはSQLコメントなら無害）
-		_, _ = fmt.Fprintf(out, "\n-- === source: %s ===\n", filepath.ToSlash(fpath))
+		_, _ = fmt.Fprintf(&buf, "\n-- === source: %s ===\n", filepath.ToSlash(fpath))
 
-		// #nosec G304 -- src is verified under a fixed root directory and does not originate from user input
-		b, err := os.ReadFile(fpath)
+		b, err := g.fs.ReadFile(fpath)
 		if err != nil {
 			return err
 		}
-
-		if _, err := out.Write(b); err != nil {
-			return err
-		}
+		buf.Write(b)
 
 		// ファイル末尾に改行が無いケースでも連結が壊れないように
 		if len(b) > 0 && b[len(b)-1] != '\n' {
-			if _, err := out.Write([]byte("\n")); err != nil {
-				return err
-			}
+			buf.WriteByte('\n')
 		}
 	}
 
-	return out.Sync()
+	return g.fs.WriteFile(dstPath, buf.Bytes(), genFilePerm)
 }
 
 // ensureUnderDir は path が baseDir 配下かを検証します。
@@ -285,22 +330,6 @@ func (g *generator) ensureUnderDir(path string) error {
 		return fmt.Errorf("path is outside of baseDir: path=%s base=%s", absPath, absBase)
 	}
 	return nil
-}
-
-// listDirs は、指定されたディレクトリ内のサブディレクトリをリストします。
-func listDirs(base string) ([]string, error) {
-	ents, err := os.ReadDir(base)
-	if err != nil {
-		return nil, err
-	}
-	subDirs := make([]string, 0, len(ents))
-	for _, e := range ents {
-		if e.IsDir() {
-			subDirs = append(subDirs, e.Name())
-		}
-	}
-	sort.Strings(subDirs)
-	return subDirs, nil
 }
 
 // resolveConcurrencyConst は、SQLCの同時実行数を解決します。
@@ -333,20 +362,14 @@ func (g *generator) cleanupStaleGeneratedFiles(categories []string, targetType s
 	}
 
 	genAbs := filepath.Join(g.workDir, g.genRootDir) // /app/database/gen
-	ents, err := os.ReadDir(genAbs)
+	names, err := g.fs.ListGenFileNames(genAbs)
 	if err != nil {
 		return err
 	}
 
 	suffix := fmt.Sprintf("_%s.gen.sql", targetType)
 
-	for _, e := range ents {
-		if e.IsDir() {
-			continue
-		}
-
-		name := e.Name()
-
+	for _, name := range names {
 		// 今回対象の type と無関係な生成物は触らず、そのまま残します。
 		if !strings.HasSuffix(name, suffix) {
 			continue
@@ -364,7 +387,7 @@ func (g *generator) cleanupStaleGeneratedFiles(categories []string, targetType s
 			return err
 		}
 
-		if err := os.Remove(full); err != nil {
+		if err := g.fs.Remove(full); err != nil {
 			return err
 		}
 

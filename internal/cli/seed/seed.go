@@ -17,6 +17,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+
 const (
 	// seedFilePlace は、シードファイルの場所を定義します。
 	seedFilePlace = "database/seed"
@@ -25,32 +27,52 @@ const (
 	relationDoesNotExistCode = "42P01"
 )
 
-var targetDBintoSeed string
+// FileSystem は db-seed が必要とするファイル操作を抽象化します。
+type FileSystem interface {
+	Glob(pattern string) ([]string, error)
+	ReadFile(name string) ([]byte, error)
+}
+
+// osFileSystem は os パッケージを用いた FileSystem の実装です。
+type osFileSystem struct{}
+
+func (osFileSystem) Glob(pattern string) ([]string, error) {
+	return filepath.Glob(pattern)
+}
+
+func (osFileSystem) ReadFile(name string) ([]byte, error) {
+	//nolint:gosec // safe: seeds folder only contains project-owned SQL files
+	return os.ReadFile(name)
+}
 
 // NewDBSeedCommand は、データベースに初期データを投入するためのコマンドを生成します。
 func NewDBSeedCommand() *cobra.Command {
+	var database string
+
 	cmd := &cobra.Command{
 		Use:   "db-seed",
 		Short: "データベースに初期データを投入します。",
 		Long: "このコマンドは、データベースに初期データを投入するためのコマンドです。\n" +
 			"--database フラグを指定すると、対象のデータベース（例: local, test）を指定して投入を行います。",
-		RunE: dbSeedRun,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return dbSeedRun(database)
+		},
 	}
 
-	cmd.Flags().StringVar(&targetDBintoSeed, "database", "", "filter DATABASE (e.g. local)")
+	cmd.Flags().StringVar(&database, "database", "", "filter DATABASE (e.g. local)")
 
 	return cmd
 }
 
-// dbSeedRun は、データベースに初期データを投入するための実行関数です。
-func dbSeedRun(_ *cobra.Command, _ []string) error {
+// dbSeedRun は、設定と DB 接続を組み立て、seed ファイル群の投入を runSeeds へ委譲する薄い殻です。
+func dbSeedRun(database string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
 		panic("failed to create logger: " + err.Error())
 	}
 
 	// seed 実行時の設定を組み立て、必要であれば投入先 DB 名を上書きします。
-	cfg, err := newConfigForSeed(logger)
+	cfg, err := newConfigForSeed(logger, database)
 	if err != nil {
 		return err
 	}
@@ -69,7 +91,8 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 		}
 	}()
 
-	files, err := filepath.Glob(seedFilePlace + "/*.sql")
+	fs := osFileSystem{}
+	files, err := fs.Glob(seedFilePlace + "/*.sql")
 	if err != nil {
 		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error("globSeedFiles", err))
 		return err
@@ -77,19 +100,23 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 
 	// CLI の処理では親 context が渡ってこないため、ここで seed 実行用の context を生成します。
 	ctx := context.Background()
+	return runSeeds(ctx, fs, db, logger, files)
+}
 
-	var readFilesErr error
+// runSeeds は、seed ファイル群を昇順で順次実行します。実行エラーは握り潰さず呼び出し元へ返しつつ、
+// 他ファイルの投入は継続します（テーブル未作成のスキップは execSeedFile 側で吸収）。
+func runSeeds(ctx context.Context, fs FileSystem, db driver.DatabaseDriver, logger logging.Logger, files []string) error {
+	var seedErr error
 	// seed ファイル名の昇順で固定し、投入順序を安定させます。
 	sort.Strings(files)
 	for _, f := range files {
-		err = execSeedFile(ctx, db, logger, f)
-		if err != nil {
+		if err := execSeedFile(ctx, fs, db, logger, f); err != nil {
 			// 読み込み・実行いずれの失敗も呼び出し元へ返しつつ、他ファイルの投入は継続します。
-			readFilesErr = err
+			seedErr = err
 		}
 	}
-	if readFilesErr != nil {
-		return readFilesErr
+	if seedErr != nil {
+		return seedErr
 	}
 	logger.Named("dbSeedRun").Info("✅ seeding completed")
 
@@ -97,9 +124,8 @@ func dbSeedRun(_ *cobra.Command, _ []string) error {
 }
 
 // execSeedFile は、1つの seed ファイルの読み込みと SQL 実行を担当します。
-func execSeedFile(ctx context.Context, db driver.DatabaseDriver, logger logging.Logger, filePath string) error {
-	//nolint:gosec // safe: seeds folder only contains project-owned SQL files
-	data, err := os.ReadFile(filePath)
+func execSeedFile(ctx context.Context, fs FileSystem, db driver.DatabaseDriver, logger logging.Logger, filePath string) error {
+	data, err := fs.ReadFile(filePath)
 	if err != nil {
 		logger.Named("dbSeedRun.os.ReadFile").Error(
 			"failed to read seed file",
@@ -154,14 +180,14 @@ func handleSeedExecResult(logger logging.Logger, filePath string, err error) err
 }
 
 // newConfigForSeed は seed 用の設定を読み込み、CLI オプションの DB 名上書きを反映します。
-func newConfigForSeed(logger logging.Logger) (*config.Config, error) {
+func newConfigForSeed(logger logging.Logger, database string) (*config.Config, error) {
 	err := config.Load()
 	if err != nil {
 		logger.Named("dbSeedRun.configLoad").Error("failed to load config", logging.Error("configLoad", err))
 		return nil, err
 	}
-	if targetDBintoSeed != "" {
-		err = os.Setenv("DB_NAME", targetDBintoSeed)
+	if database != "" {
+		err = os.Setenv("DB_NAME", database)
 		if err != nil {
 			logger.Named("dbSeedRun.setenv").Error("failed to set DB_NAME env", logging.Error("setenv", err))
 			return nil, err

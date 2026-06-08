@@ -2,9 +2,9 @@
 package dumpschema
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +16,8 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
 const schemaFilePerm = 0o644 // rw-r--r--
 
@@ -38,23 +40,21 @@ var (
 	}
 )
 
-// fileSystem は dump-schema が必要とするファイル操作を抽象化します。
-// テストでフェイクを注入し、実ファイルシステムに触れずに分岐を検証できるようにします。
-type fileSystem interface {
-	Create(name string) (io.WriteCloser, error)
+// FileSystem は dump-schema が必要とするファイル操作を抽象化します。
+type FileSystem interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte, perm os.FileMode) error
 }
 
-// commandRunner は外部コマンド（pg_dump）の実行を抽象化します。
-type commandRunner interface {
-	Run(ctx context.Context, dir, name string, args []string, stdout io.Writer) error
+// CommandRunner は外部コマンド（pg_dump）の実行を抽象化し、標準出力を返します。
+type CommandRunner interface {
+	Run(ctx context.Context, dir, name string, args []string) ([]byte, error)
 }
 
-// osFileSystem は os パッケージを用いた fileSystem の実装です。
+// osFileSystem は os パッケージを用いた FileSystem の実装です。
 type osFileSystem struct{}
 
-// execCommandRunner は os/exec を用いた commandRunner の実装です。
+// execCommandRunner は os/exec を用いた CommandRunner の実装です。
 type execCommandRunner struct{}
 
 type generator struct {
@@ -68,12 +68,8 @@ type generator struct {
 	dumpCommand string
 	dumpArgs    []string
 
-	fs     fileSystem
-	runner commandRunner
-}
-
-func (osFileSystem) Create(name string) (io.WriteCloser, error) {
-	return os.Create(name) //nolint:gosec // path は信頼された CLI フラグ由来の固定パス
+	fs     FileSystem
+	runner CommandRunner
 }
 
 func (osFileSystem) ReadFile(name string) ([]byte, error) {
@@ -84,12 +80,16 @@ func (osFileSystem) WriteFile(name string, data []byte, perm os.FileMode) error 
 	return os.WriteFile(name, data, perm)
 }
 
-func (execCommandRunner) Run(ctx context.Context, dir, name string, args []string, stdout io.Writer) error {
+func (execCommandRunner) Run(ctx context.Context, dir, name string, args []string) ([]byte, error) {
+	var buf bytes.Buffer
 	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // name/args は信頼された CLI 設定由来
 	cmd.Dir = dir
-	cmd.Stdout = stdout
+	cmd.Stdout = &buf
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // newGenerator は、dump-schema 用のジェネレーターインスタンスを生成します。
@@ -109,7 +109,6 @@ func newGenerator(logger logging.Logger, workDir string) *generator {
 
 // NewCommand は、dump-schema コマンドを生成します。
 func NewCommand() *cobra.Command {
-	// フラグはパッケージグローバルにせずローカルに束縛し、コマンドの並列テスト安全性を保ちます。
 	var workDir string
 
 	cmd := &cobra.Command{
@@ -162,34 +161,24 @@ func runDumpSchema(ctx context.Context, workDir string) error {
 
 // dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
 func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
-	schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
-
-	// pg_dump の出力先を先に開いて、標準出力をそのまま schema.gen.sql に流します。
-	f, err := g.fs.Create(schemaAbs)
-	if err != nil {
-		return fmt.Errorf("failed to create schema file: %w", err)
-	}
-	defer func() {
-		if closeErr := f.Close(); closeErr != nil {
-			g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("failed to close schema file",
-				logging.String("schema", g.schemaRelPath),
-				logging.Error("close", closeErr),
-			)
-		}
-	}()
-
 	args := append([]string{dbURL}, g.dumpArgs...)
 
 	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("start pg_dump schema",
 		logging.String("out", g.schemaRelPath),
 	)
 
-	if err := g.runner.Run(ctx, g.workDir, g.dumpCommand, args, f); err != nil {
-		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed (schema file may be partial)",
+	out, err := g.runner.Run(ctx, g.workDir, g.dumpCommand, args)
+	if err != nil {
+		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed",
 			logging.String("out", g.schemaRelPath),
 			logging.Error("pg_dump", err),
 		)
 		return fmt.Errorf("pg_dump failed: %w", err)
+	}
+
+	schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
+	if err := g.fs.WriteFile(schemaAbs, out, g.permission); err != nil {
+		return fmt.Errorf("failed to write schema file: %w", err)
 	}
 
 	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("pg_dump schema completed",
