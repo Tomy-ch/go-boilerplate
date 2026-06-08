@@ -49,13 +49,6 @@
 |---|---|
 |`NewTimeLocation(osCfg)`|`OperationSystemConfig` のタイムゾーンから `*time.Location` を生成|
 
-### 実行モード
-
-|型|定数|説明|
-|---|---|---|
-|`ExecutionMode`|`ExecutionModeServer`|サーバーモード|
-||`ExecutionModeJob`|ジョブモード|
-
 ### 環境 / モード定数
 
 |定数|値|説明|

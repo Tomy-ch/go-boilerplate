@@ -49,13 +49,6 @@ SubConfigs are created from `Config` for each component. All follow the `New*Con
 |---|---|
 |`NewTimeLocation(osCfg)`|Create `*time.Location` from `OperationSystemConfig` timezone|
 
-### Execution Mode
-
-|Type|Constant|Description|
-|---|---|---|
-|`ExecutionMode`|`ExecutionModeServer`|Server mode|
-||`ExecutionModeJob`|Job mode|
-
 ### Environment / Mode Constants
 
 |Constant|Value|Description|
