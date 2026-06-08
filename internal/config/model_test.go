@@ -13,68 +13,68 @@ func TestConstructor(t *testing.T) {
 
 	t.Run("NewOSConfig", func(t *testing.T) {
 		t.Parallel()
-		osCfg := NewOperationSystemConfig(cfg)
-		assert.Equal(t, &cfg.os, osCfg)
+		osCfg := NewOperatingSystemConfig(cfg)
+		assert.Same(t, &cfg.os, osCfg)
 	})
 
 	t.Run("NewServerConfig", func(t *testing.T) {
 		t.Parallel()
 		serverCfg := NewServerConfig(cfg)
-		assert.Equal(t, &cfg.server, serverCfg)
+		assert.Same(t, &cfg.server, serverCfg)
 	})
 
 	t.Run("NewMetricsConfig", func(t *testing.T) {
 		t.Parallel()
 		metricsCfg := NewMetricsConfig(cfg)
-		assert.Equal(t, &cfg.metrics, metricsCfg)
+		assert.Same(t, &cfg.metrics, metricsCfg)
 	})
 
 	t.Run("NewObservabilityConfig", func(t *testing.T) {
 		t.Parallel()
 		observabilityCfg := NewObservabilityConfig(cfg)
-		assert.Equal(t, &cfg.observability, observabilityCfg)
+		assert.Same(t, &cfg.observability, observabilityCfg)
 	})
 
 	t.Run("NewObservabilityConfig", func(t *testing.T) {
 		t.Parallel()
 		observabilityCfg := NewObservabilityConfig(cfg)
-		assert.Equal(t, &cfg.observability, observabilityCfg)
+		assert.Same(t, &cfg.observability, observabilityCfg)
 	})
 
 	t.Run("NewApplicationConfig", func(t *testing.T) {
 		t.Parallel()
 		appCfg := NewApplicationConfig(cfg)
-		assert.Equal(t, &cfg.app, appCfg)
+		assert.Same(t, &cfg.app, appCfg)
 	})
 
 	t.Run("NewDatabaseConfig", func(t *testing.T) {
 		t.Parallel()
 		dbCfg := NewDatabaseConfig(cfg)
-		assert.Equal(t, &cfg.database, dbCfg)
+		assert.Same(t, &cfg.database, dbCfg)
 	})
 
 	t.Run("NewDBConnectionConfig", func(t *testing.T) {
 		t.Parallel()
 		dbConnCfg := NewDBConnectionConfig(cfg)
-		assert.Equal(t, &cfg.dbconnection, dbConnCfg)
+		assert.Same(t, &cfg.dbconnection, dbConnCfg)
 	})
 
 	t.Run("NewSecurityConfig", func(t *testing.T) {
 		t.Parallel()
 		securityCfg := NewSecurityConfig(cfg)
-		assert.Equal(t, &cfg.security, securityCfg)
+		assert.Same(t, &cfg.security, securityCfg)
 	})
 
 	t.Run("NewSecureCookieConfig", func(t *testing.T) {
 		t.Parallel()
 		secureCookieCfg := NewSecureCookieConfig(cfg)
-		assert.Equal(t, &cfg.secureCookie, secureCookieCfg)
+		assert.Same(t, &cfg.secureCookie, secureCookieCfg)
 	})
 
 	t.Run("NewAuthConfig", func(t *testing.T) {
 		t.Parallel()
 		authCfg := NewAuthConfig(cfg)
-		assert.Equal(t, &cfg.auth, authCfg)
+		assert.Same(t, &cfg.auth, authCfg)
 	})
 }
 
@@ -163,11 +163,6 @@ func TestGetterMethods(t *testing.T) {
 		t.Run("MaskedDBQueryArgs", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
-		})
-
-		t.Run("TargetStatusCodes", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, expectedObservabilityTargetStatusCodes, observability.TargetStatusCodes())
 		})
 
 		t.Run("TargetStatusCodeSet", func(t *testing.T) {
@@ -398,5 +393,23 @@ func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
 		cfg := Config{}
 		cfg.app.mode = ProductionMode
 		assert.False(t, cfg.app.IsDevelopmentMode())
+	})
+}
+
+func TestSecurityConfig_CIDR(t *testing.T) {
+	t.Parallel()
+	t.Run("cidrがnilの場合_nilを返す", func(t *testing.T) {
+		t.Parallel()
+		s := &SecurityConfig{}
+		assert.Nil(t, s.CIDR())
+	})
+}
+
+func TestSecureCookieConfig_Secure(t *testing.T) {
+	t.Parallel()
+	t.Run("secureがnilの場合_nilを返す", func(t *testing.T) {
+		t.Parallel()
+		s := &SecureCookieConfig{}
+		assert.Nil(t, s.Secure())
 	})
 }

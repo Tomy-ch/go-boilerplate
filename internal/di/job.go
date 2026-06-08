@@ -26,7 +26,7 @@ type (
 type JobDeps struct {
 	State  job.State
 	Logger logging.Logger
-	OSCfg  *config.OperationSystemConfig
+	OSCfg  *config.OperatingSystemConfig
 }
 
 // NewJobCore は、ジョブの fx.App インスタンスを作成します。
@@ -55,7 +55,7 @@ func RunJob() (StartFunc, StopFunc) {
 	var (
 		state  job.State
 		logger logging.Logger
-		osCfg  *config.OperationSystemConfig
+		osCfg  *config.OperatingSystemConfig
 	)
 
 	app := fx.New(

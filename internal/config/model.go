@@ -6,7 +6,7 @@ import (
 )
 
 type Config struct {
-	os            OperationSystemConfig
+	os            OperatingSystemConfig
 	app           ApplicationConfig
 	server        ServerConfig
 	metrics       MetricsConfig
@@ -18,7 +18,7 @@ type Config struct {
 	auth          AuthConfig
 }
 
-type OperationSystemConfig struct {
+type OperatingSystemConfig struct {
 	timezone string
 }
 
@@ -48,7 +48,6 @@ type MetricsConfig struct {
 type ObservabilityConfig struct {
 	enabled             bool
 	maskedDBQueryArgs   bool
-	targetStatusCodes   []int
 	targetStatusCodeSet map[int]bool
 }
 
@@ -95,24 +94,19 @@ type AuthConfig struct {
 	allowedHeaderBearer bool
 }
 
-// NewOperationSystemConfig は、OSの設定を返します。
-func NewOperationSystemConfig(cfg *Config) *OperationSystemConfig { return &cfg.os }
+// NewOperatingSystemConfig は、OSの設定を返します。
+func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig { return &cfg.os }
 
 // TimeZone は、OSのタイムゾーンを返します。
-func (o *OperationSystemConfig) TimeZone() string { return o.timezone }
+func (o *OperatingSystemConfig) TimeZone() string { return o.timezone }
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
 func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &cfg.app }
 
-// Env は、サーバーの環境を返します。
-//
-// 例: "local", "development", "staging", "production" など。
+// Env は、デプロイ環境ラベルを返します（自由値）。例: "local" / "staging" / "production"。
 func (a *ApplicationConfig) Env() string { return a.env }
 
-// Mode は、アプリケーションの環境を返します。
-//
-// この環境変数はアプリケーションがどのモードで動作しているかを示します。
-// 例: "development", "production" など。
+// Mode は、アプリの動作モードを返します（"development" / "production" のみ。挙動切替に使用。Env とは別軸）。
 func (a *ApplicationConfig) Mode() string { return a.mode }
 
 // Name は、アプリケーションの名前を返します。
@@ -176,10 +170,8 @@ func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
 // MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。
 func (o *ObservabilityConfig) MaskedDBQueryArgs() bool { return o.maskedDBQueryArgs }
 
-// TargetStatusCodes は、可観測モードで監視対象となるHTTPステータスコードのリストを返します。
-func (o *ObservabilityConfig) TargetStatusCodes() []int { return o.targetStatusCodes }
-
 // TargetStatusCodeSet は、可観測モードで監視対象となるHTTPステータスコードのセットを返します。
+// 返り値はホットパスで参照される共有マップのため変更してはいけません（read-only）。
 func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool { return o.targetStatusCodeSet }
 
 // NewDatabaseConfig は、データベースの設定を返します。
@@ -234,10 +226,20 @@ func (c *DBConnectionConfig) MaxIdleTime() time.Duration { return c.maxIdleTime 
 func NewSecurityConfig(cfg *Config) *SecurityConfig { return &cfg.security }
 
 // AllowedOrigins は、CORSを許可するオリジンのリストを返します。
-func (s *SecurityConfig) AllowedOrigins() []string { return s.allowedOrigins }
+func (s *SecurityConfig) AllowedOrigins() []string {
+	return append([]string(nil), s.allowedOrigins...)
+}
 
 // CIDR は、セキュリティ設定で使用されるCIDRを返します。
-func (s *SecurityConfig) CIDR() *net.IPNet { return s.cidr }
+func (s *SecurityConfig) CIDR() *net.IPNet {
+	if s.cidr == nil {
+		return nil
+	}
+	return &net.IPNet{
+		IP:   append(net.IP(nil), s.cidr.IP...),
+		Mask: append(net.IPMask(nil), s.cidr.Mask...),
+	}
+}
 
 // ContentTypeNosniff は、X-Content-Type-Optionsヘッダーの値を返します。
 func (s *SecurityConfig) ContentTypeNosniff() string { return s.contentTypeNosniff }
@@ -264,7 +266,13 @@ func (s *SecurityConfig) BcryptCost() int { return s.bcryptCost }
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }
 
 // Secure は、Secure属性の強制設定を返します。
-func (s *SecureCookieConfig) Secure() *bool { return s.secure }
+func (s *SecureCookieConfig) Secure() *bool {
+	if s.secure == nil {
+		return nil
+	}
+	v := *s.secure
+	return &v
+}
 
 // SameSite は、SameSite属性の強制設定を返します。
 func (s *SecureCookieConfig) SameSite() string { return s.sameSite }

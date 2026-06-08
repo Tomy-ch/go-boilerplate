@@ -69,6 +69,16 @@ func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string) {
 	t.Cleanup(func() { d.name = prev })
 }
 
+// SetMetricsPort は、テスト用にメトリクスサーバーのポートを設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (m *MetricsConfig) SetMetricsPort(t testing.TB, port int) {
+	t.Helper()
+	prev := m.Port()
+	m.port = port
+	t.Cleanup(func() { m.port = prev })
+}
+
 // SetMaxConns は、テスト用にDB接続の最大オープン数を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。

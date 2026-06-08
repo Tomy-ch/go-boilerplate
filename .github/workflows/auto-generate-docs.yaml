@@ -70,10 +70,10 @@ jobs:
         run: make gen-api-docs
 
       - name: Migrate
-        run: go run cmd/main.go migrate-up --database ${{ env.DB }}
+        run: go run ./cmd/ migrate-up --database ${{ env.DB }}
 
       - name: Seed Database
-        run: go run cmd/main.go db-seed --database ${{ env.DB }}
+        run: go run ./cmd/ db-seed --database ${{ env.DB }}
 
       - name: Generate Test Repo Docs
         run: make gen-test-repo

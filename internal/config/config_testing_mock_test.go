@@ -12,7 +12,7 @@ import (
 func TestMockConfigForTest(t *testing.T) {
 	t.Parallel()
 	expected := &Config{
-		os: OperationSystemConfig{
+		os: OperatingSystemConfig{
 			timezone: expectedOSTimeZone,
 		},
 		app: ApplicationConfig{
@@ -38,7 +38,6 @@ func TestMockConfigForTest(t *testing.T) {
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
 			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
-			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
 		database: DatabaseConfig{
@@ -89,7 +88,7 @@ func TestMockConfigForTest(t *testing.T) {
 func Test_mockLoader(t *testing.T) {
 	t.Parallel()
 	expected := Loader{
-		OS: OperationSystem{
+		OS: OperatingSystem{
 			Timezone: expectedOSTimeZone,
 		},
 		App: Application{
@@ -162,12 +161,13 @@ func Test_mockLoader(t *testing.T) {
 }
 
 func Test_setEnv(t *testing.T) {
-	//  for testing and setting environment variables, so the complexity is acceptable.
+	// setEnvVarsForTesting が t.Setenv を使うため、本テストは t.Parallel() を付けられない。
 	setEnvVarsForTesting(t)
 	// OS
 	assert.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
 	// Application
 	assert.Equal(t, expectedApplicationEnv, os.Getenv("APP_ENV"))
+	assert.Equal(t, expectedApplicationName, os.Getenv("APP_NAME"))
 	assert.Equal(t, expectedApplicationMode, os.Getenv("APP_MODE"))
 	assert.Equal(t, expectedAppShutdownTimeoutStr, os.Getenv("APP_SHUTDOWN_TIMEOUT"))
 	// Server

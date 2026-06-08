@@ -148,6 +148,8 @@ AI agents are allowed to modify code only in the following directories unless ex
 
 Do NOT modify other top-level directories (e.g., `cmd/`, `docker/`, `scripts/`, `docs/`, `vendor/`, `makefile`, etc.) unless the user explicitly requests it.
 
+Exception for CLI commands: each CLI subcommand is a thin shell file `cmd/<command>.go` (Cobra definition + real-dependency wiring) paired with its testable core under `internal/cli/<command>/` (see the `cli/` section). Adding or modifying a CLI command necessarily edits the matching `cmd/<command>.go` shell, and that is in-scope as part of the command task — the restriction above is about not arbitrarily restructuring `cmd/` (entrypoint/build wiring), not about blocking command additions.
+
 AI coding agent configurations are also outside the allowed scope. AI agents must NOT create, modify, or delete the following files/directories unless the user explicitly requests it:
 
 - Claude Code: `.claude/` (including `.claude/skills/`, `.claude/settings.json`, `.claude/settings.local.json`, etc.)
@@ -337,10 +339,23 @@ Integration-level components and helpers.
 
 ### cli/
 
-CLI entrypoints and Cobra command definitions.
+Pure, testable core logic for CLI commands. This directory must NOT depend on Cobra or
+infrastructure wiring (config loading, DB/DI construction, OS signals, process spawning).
 
-This directory is infrastructure-level and should not contain business logic.
-AI agents should not modify this directory unless explicitly instructed.
+Each `internal/cli/<command>` package exposes dependency-injected entry points
+(e.g. `RunDump`, `RunFix`, `RunMerge`, `MigrateUpRun`/`MigrateDownRun`, `RunDBSeed`,
+`RunServer`) that operate on interfaces (filesystem, external process, DB driver, migrator)
+and are unit-tested for branch coverage. Keeping this layer free of Cobra and real
+dependencies is what makes it unit-testable.
+
+The Cobra command definitions and the composition root that wires the real dependencies
+(`config.SetUpConfig`, `driver.NewDB`, the DI container, signal handling, golang-migrate
+instance creation) live in `cmd/` (package `main`), not here. `cmd/` is the humble
+boundary and is excluded from unit-test coverage; this `cli/` core is included and is
+expected to meet the coverage requirement.
+
+This directory is still not the place for feature business logic — that belongs in the
+domain/usecase layers.
 
 ### system/
 

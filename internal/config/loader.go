@@ -3,23 +3,32 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/joho/godotenv"
 )
+
+const envDir = "env"
 
 // Load は、環境変数を読み込む関数です。
 func Load() error {
 	env := os.Getenv("ENV")
 
 	if env == "" {
-		if err := godotenv.Load("env/.env"); err != nil {
-			return fmt.Errorf("env/.env load failed : %w", err)
+		base := filepath.Join(envDir, ".env")
+		if err := godotenv.Load(base); err != nil {
+			return fmt.Errorf("%s load failed : %w", base, err)
 		}
 		env = os.Getenv("ENV")
 	}
 
-	if err := godotenv.Load(fmt.Sprintf("env/.env.%s", env)); err != nil {
-		return fmt.Errorf("env/.env.%s load failed : %w", env, err)
+	if env == "" {
+		return ErrEnvNotResolved
+	}
+
+	path := filepath.Join(envDir, ".env."+env)
+	if err := godotenv.Load(path); err != nil {
+		return fmt.Errorf("%s load failed : %w", path, err)
 	}
 	return nil
 }

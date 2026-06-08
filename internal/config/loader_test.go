@@ -15,14 +15,12 @@ func TestLoad_WithEnvSet(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("ENV が設定されていない場合、Load はエラーを返す", func(t *testing.T) {
+	t.Run("env/.env は存在するが ENV が空のため ErrEnvNotResolved を返す", func(t *testing.T) {
 		EnsureRepoRootAndEnv(t, TestingEnvValue)
 		t.Setenv(envKey, "")
 
 		err := Load()
-		require.Error(t, err)
-		// リポジトリファイルによっては、エラーが env/.env または env/.env.<空ファイル> を報告する場合があります
-		assert.Contains(t, err.Error(), "env/.env")
+		require.ErrorIs(t, err, ErrEnvNotResolved)
 	})
 
 	t.Run("デフォルトの .env ファイルが存在しない場合、Load はエラーを返す", func(t *testing.T) {
@@ -33,5 +31,16 @@ func TestLoad_WithEnvSet(t *testing.T) {
 		err := Load()
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "env/.env")
+	})
+
+	t.Run("ENV に対応する .env.<env> が存在しない場合、Load はエラーを返す", func(t *testing.T) {
+		EnsureRepoRootAndEnv(t, TestingEnvValue)
+		// ENV が非空のため base(.env) 読み込みはスキップされ、直接 .env.<env> を
+		// 読みに行く。存在しない env を指定してロード失敗分岐を通す。
+		t.Setenv(envKey, "nonexistent_env")
+
+		err := Load()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), ".env.nonexistent_env")
 	})
 }

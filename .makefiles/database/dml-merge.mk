@@ -48,4 +48,4 @@ merge-dml-ci-sysq:
 merge-dml-ci-cs:
 	make merge-dml-ci-core type="command_service" work-dir=$(work-dir)
 merge-dml-ci-core:
-	go run cmd/main.go merge-dml --type=$(type) --work-dir=$(work-dir)
+	go run ./cmd/ merge-dml --type=$(type) --work-dir=$(work-dir)

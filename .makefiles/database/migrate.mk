@@ -30,24 +30,24 @@ endef
 .PHONY: check-migration-up-gap ## マイグレーションファイルのバージョンのバージョンギャップをチェックします
 .PHONY: check-migration-down-gap ## マイグレーションファイルのバージョンのバージョンギャップをチェックします
 .PHONY: db-migrate-up ## 全てのマイグレーションを最新まで適用
-.PHONY: db-migrate-up-% ## 指定したバージョンまでのマイグレーションを適用
+.PHONY: db-migrate-up-% ## 指定した段数だけマイグレーションを適用
 .PHONY: db-migrate-down ## 全てのマイグレーションを初期状態までダウングレード
-.PHONY: db-migrate-down-% ## 指定したバージョンまでのマイグレーションをダウングレード
+.PHONY: db-migrate-down-% ## 指定した段数だけマイグレーションをダウングレード
 # -----LocalDBに対してのMigrateエイリアス-----
 .PHONY: db-local-migrate-up ## localDB: 全てのマイグレーションを最新まで適用
-.PHONY: db-local-migrate-up-% ## localDB: 指定したバージョンまでのマイグレーションを適用
+.PHONY: db-local-migrate-up-% ## localDB: 指定した段数だけマイグレーションを適用
 .PHONY: db-local-migrate-down ## localDB: 全てのマイグレーションを初期状態までダウングレード
-.PHONY: db-local-migrate-down-% ## localDB: 指定したバージョンまでのマイグレーションをダウングレード
+.PHONY: db-local-migrate-down-% ## localDB: 指定した段数だけマイグレーションをダウングレード
 # -----TestDBに対してのMigrateエイリアス-----
 .PHONY: db-test-migrate-up ## testDB: 全てのマイグレーションを最新まで適用
-.PHONY: db-test-migrate-up-% ## testDB: 指定したバージョンまでのマイグレーションを適用
+.PHONY: db-test-migrate-up-% ## testDB: 指定した段数だけマイグレーションを適用
 .PHONY: db-test-migrate-down ## testDB: 全てのマイグレーションを初期状態までダウングレード
-.PHONY: db-test-migrate-down-% ## testDB: 指定したバージョンまでのマイグレーションをダウングレード
+.PHONY: db-test-migrate-down-% ## testDB: 指定した段数だけマイグレーションをダウングレード
 # -----CI用ターゲット-----
 .PHONY: db-migrate-ci-up ## 全てのマイグレーションを最新まで適用（CI用）
-.PHONY: db-migrate-ci-up-% ## 指定したバージョンまでのマイグレーションを適用（CI用）
+.PHONY: db-migrate-ci-up-% ## 指定した段数だけマイグレーションを適用（CI用）
 .PHONY: db-migrate-ci-down ## 全てのマイグレーションを初期状態までダウングレード（CI用）
-.PHONY: db-migrate-ci-down-% ## 指定したバージョンまでのマイグレーションをダウングレード（CI用）
+.PHONY: db-migrate-ci-down-% ## 指定した段数だけマイグレーションをダウングレード（CI用）
 
 # -----migrateターゲット-----
 new-migrate-%:
@@ -77,7 +77,7 @@ check-migration-down-gap:
 # 汎用ターゲット（DB可変）
 # 使い方:
 #   make db-migrate-up DB=test
-#   make db-migrate-up-123 DB=prd
+#   make db-migrate-up-2 DB=prd   # 現在位置から 2 段だけ適用（相対ステップ数）
 #   make db-migrate-down DB=local
 #   make db-seed DB=test
 # -------------------------------
@@ -87,10 +87,10 @@ db-migrate-up:
 	@echo "✅ 完了：全マイグレーション適用されました。 (database=$(DB))"
 
 db-migrate-up-%:
-	@version=$*; \
-	echo "🧱 マイグレーション: バージョン $$version 版までアップグレードします... (database=$(DB))"; \
-	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$version DB=$(DB); \
-	echo "✅ 完了：バージョン $$version まで適用されました。 (database=$(DB))"
+	@steps=$*; \
+	echo "🧱 マイグレーション: 現在位置から $$steps 段アップグレードします... (database=$(DB))"; \
+	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$steps DB=$(DB); \
+	echo "✅ 完了：$$steps 段適用されました。 (database=$(DB))"
 
 db-migrate-down:
 	@echo "💥 マイグレーション: 初期状態までダウングレードします... (database=$(DB))"
@@ -98,10 +98,10 @@ db-migrate-down:
 	@echo "✅ 完了：全マイグレーションダウングレードされました。 (database=$(DB))"
 
 db-migrate-down-%:
-	@version=$*; \
-	echo "💥 マイグレーション: バージョン $$version までダウングレードします... (database=$(DB))"; \
-	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$version DB=$(DB); \
-	echo "✅ 完了：バージョン $$version までダウングレードされました。 (database=$(DB))"
+	@steps=$*; \
+	echo "💥 マイグレーション: 現在位置から $$steps 段ダウングレードします... (database=$(DB))"; \
+	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$steps DB=$(DB); \
+	echo "✅ 完了：$$steps 段ダウングレードされました。 (database=$(DB))"
 
 # -----LocalDBに対してのMigrateエイリアス-----
 # 例: make db-local-migrate-up, make db-local-seed
@@ -135,13 +135,13 @@ db-test-migrate-down-%: db-migrate-down-%
 
 # -----CI用ターゲット-----
 db-migrate-ci-up:
-	go run cmd/main.go migrate-up --database $(DB)
+	go run ./cmd/ migrate-up --database $(DB)
 
 db-migrate-ci-up-%:
-	go run cmd/main.go migrate-up --database $(DB) --version $*
+	go run ./cmd/ migrate-up --database $(DB) --steps $*
 
 db-migrate-ci-down-%:
-	go run cmd/main.go migrate-down --database $(DB) --version $*
+	go run ./cmd/ migrate-down --database $(DB) --steps $*
 
 db-migrate-ci-down:
-	go run cmd/main.go migrate-down --database $(DB)
+	go run ./cmd/ migrate-down --database $(DB)

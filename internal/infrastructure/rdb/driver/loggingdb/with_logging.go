@@ -89,7 +89,7 @@ func (dwl *dbWithLogging) QueryRow(ctx context.Context, query string, args ...an
 }
 
 // buildSQLStartLogFields は、SQLクエリの開始ログ出力用フィールドを構築します。
-func (dwl *dbWithLogging) buildSQLStartLogFields(tc observability.TraceContext, funcName string) []*logging.Field {
+func (dwl *dbWithLogging) buildSQLStartLogFields(tc *observability.TraceContext, funcName string) []*logging.Field {
 	sqlIn := logging.SQLFieldsStartInput{
 		Layer:    layer,
 		PkgName:  pkg,
@@ -107,7 +107,7 @@ func (dwl *dbWithLogging) buildSQLStartLogFields(tc observability.TraceContext, 
 
 // buildSQLEndLogFields は、SQLクエリの終了ログ出力用フィールドを構築します。
 func (dwl *dbWithLogging) buildSQLEndLogFields(
-	tc observability.TraceContext, funcName, query string, duration time.Duration, args []any, err error,
+	tc *observability.TraceContext, funcName, query string, duration time.Duration, args []any, err error,
 ) []*logging.Field {
 	logArgs := args
 	if dwl.provider.ObservabilityConfig().MaskedDBQueryArgs() {

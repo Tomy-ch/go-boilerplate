@@ -39,7 +39,7 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 	appCfg := config.NewApplicationConfig(cfg)
 	secCfg := config.NewSecurityConfig(cfg)
 	srvCfg := config.NewServerConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	e := server.NewAppServer(srvCfg)
 
@@ -75,7 +75,7 @@ func Test_newStartServerFunc(t *testing.T) {
 		appCfg := config.NewApplicationConfig(cfg)
 		secCfg := config.NewSecurityConfig(cfg)
 		srvCfg := config.NewServerConfig(cfg)
-		osCfg := config.NewOperationSystemConfig(cfg)
+		osCfg := config.NewOperatingSystemConfig(cfg)
 		srvCfg.SetServerPort(t, port)
 
 		e := server.NewAppServer(srvCfg)
@@ -108,7 +108,7 @@ func Test_newStartServerFunc(t *testing.T) {
 		appCfg := config.NewApplicationConfig(cfg)
 		secCfg := config.NewSecurityConfig(cfg)
 		srvCfg := config.NewServerConfig(cfg)
-		osCfg := config.NewOperationSystemConfig(cfg)
+		osCfg := config.NewOperatingSystemConfig(cfg)
 		srvCfg.SetServerPort(t, port)
 
 		e := server.NewAppServer(srvCfg)
@@ -133,7 +133,7 @@ func Test_newStopServerFunc(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	srvCfg := config.NewServerConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	e := server.NewAppServer(srvCfg)
 	fn := newStopServerFunc(e, mockLogger, osCfg)

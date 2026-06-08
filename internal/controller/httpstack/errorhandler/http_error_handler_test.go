@@ -458,7 +458,7 @@ func Test_httpErrorField(t *testing.T) {
 		fields := httpErrorField(c, lf, he)
 
 		// Details フィールド
-		assert.Contains(t, fields, logging.Strings(logging.ErrorDetails, details))
+		assert.Contains(t, fields, logging.Strings(logging.ErrorDetailsKey, details))
 
 		// Internal error と stacktrace
 		assert.Contains(t, fields, logging.String(logging.InternalErrorKey, he.Internal.Error()))

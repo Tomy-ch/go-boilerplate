@@ -15,7 +15,10 @@ migrate-down
 
 |フラグ|デフォルト|説明|
 |---|---|---|
-|*(なし)*|||
+|`--steps`|`0`|現在位置からの相対的な適用段数。`0` で全件、正の整数でその段数だけ適用します。負値は拒否されます。|
+|`--database`|`""`|対象データベース名（例: `local`, `test`）。空の場合は設定値の既定 DB を使用します。|
+
+`--steps` は**相対的な段数**であり、絶対的なターゲットバージョンではありません。例えば `migrate-up --steps 2` は現在位置から 2 段進め、`migrate-down --steps 2` は 2 段巻き戻します。
 
 ## 使い方
 
@@ -23,8 +26,17 @@ migrate-down
 # 未適用のマイグレーションをすべて適用
 ./server migrate-up
 
-# 直前のマイグレーションをロールバック
+# 次の 2 段だけ適用
+./server migrate-up --steps 2
+
+# すべてのマイグレーションをロールバック
 ./server migrate-down
+
+# 直近 2 段をロールバック
+./server migrate-down --steps 2
+
+# 対象データベースを指定
+./server migrate-up --database test
 ```
 
 ## 注意点

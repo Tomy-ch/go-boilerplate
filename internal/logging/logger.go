@@ -83,7 +83,11 @@ func (l *logger) ConvertFields(fs []*Field) []zap.Field {
 			zfs = append(zfs, zap.Bool(f.key, f.boolValue))
 		case fieldError:
 			zfs = append(zfs, zap.Error(f.errorValue))
+		case fieldAny:
+			zfs = append(zfs, zap.Any(f.key, f.anyValue))
 		default:
+			// fieldUnknown（ゼロ値）や将来追加され case 漏れした kind が
+			// 到達する位置。バグ検知の余地を残しつつ zap.Any で安全に出力する。
 			zfs = append(zfs, zap.Any(f.key, f.anyValue))
 		}
 	}

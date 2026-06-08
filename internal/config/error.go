@@ -13,7 +13,7 @@ var (
 	errInvalidConfig = fmt.Errorf("config error: %w", apperror.ErrInvalidArgument)
 	// ErrInvalidAppMode は、無効なアプリケーションモードに関するエラーを表します。
 	ErrInvalidAppMode = fmt.Errorf(
-		"invalid app mode, must which be one of %s or %s: %w",
+		"invalid app mode, must be one of %s or %s: %w",
 		DevelopmentMode,
 		ProductionMode,
 		errInvalidConfig,
@@ -27,7 +27,7 @@ var (
 	)
 	// ErrEmptyAllowedOrigins は、許可されたオリジンが空であってはならないことを示すエラーです。
 	ErrEmptyAllowedOrigins = fmt.Errorf("allowed origins must not be empty: %w", errInvalidConfig)
-	//
+	// ErrInvalidBcryptCost は、無効な bcrypt コストに関するエラーを表します。
 	ErrInvalidBcryptCost = fmt.Errorf(
 		"invalid bcrypt cost, must be between %d and %d: %w",
 		bcrypt.MinCost,
@@ -37,6 +37,11 @@ var (
 	// ErrHTTPOnlyAllowedForLocalhost は、HTTPのみのローカルホストにアクセス可能にするためのエラーを表します。
 	ErrHTTPOnlyAllowedForLocalhost = fmt.Errorf(
 		"http only localhost is allowed: %w",
+		errInvalidConfig,
+	)
+	// ErrEnvNotResolved は、env/.env 読み込み後も ENV が解決できなかったことを示すエラーです。
+	ErrEnvNotResolved = fmt.Errorf(
+		"ENV is not set after loading env/.env: %w",
 		errInvalidConfig,
 	)
 	// ErrFailedToParseConfig は、環境変数のパースに失敗したことを示すエラーです。

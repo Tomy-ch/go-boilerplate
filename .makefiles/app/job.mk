@@ -4,5 +4,5 @@
 .PHONY: job
 job:
 	@echo "🏃 Jobを実行します: $(NAME) $(ARGS)"
-	@docker compose --profile development run --rm api_server go run ./cmd/main.go job $(NAME) $(ARGS)
+	@docker compose --profile development run --rm api_server go run ./cmd/ job $(NAME) $(ARGS)
 	@echo "✅ Jobが完了しました。"

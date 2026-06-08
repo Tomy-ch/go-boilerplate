@@ -13,26 +13,20 @@ import (
 func NewTestLocation(t *testing.T) *time.Location {
 	t.Helper()
 	cfg := MockConfigForTest(t)
-	osCfg := NewOperationSystemConfig(cfg)
+	osCfg := NewOperatingSystemConfig(cfg)
 
-	loc, err := time.LoadLocation(osCfg.TimeZone())
+	loc, err := NewTimeLocation(osCfg)
 	require.NoError(t, err)
 	return loc
 }
 
-// EnsureRepoRootAndEnv moves working directory to repository root (where go.mod exists)
-// if found, registers a cleanup to restore the original working directory, and
-// sets the `ENV` environment variable for the test using `t.Setenv`.
+// EnsureRepoRootAndEnv は、go.mod のあるリポジトリルートへ作業ディレクトリを移動し（見つかった場合）、
+// 併せてテスト用の ENV を t.Setenv で設定します。作業ディレクトリの復元は t.Chdir が自動で行います。
 func EnsureRepoRootAndEnv(t *testing.T, env string) {
 	t.Helper()
 
 	orig, err := os.Getwd()
 	require.NoError(t, err)
-	// Ensure we restore the original working directory even if `t.Chdir` is
-	// not available (older Go) or if an early return occurs.
-	t.Cleanup(func() {
-		_ = os.Chdir(orig)
-	})
 
 	// find repo root by locating go.mod upwards
 	p := orig

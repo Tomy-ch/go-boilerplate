@@ -5,7 +5,6 @@ package observability
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"go-boilerplate/internal/logging"
@@ -80,7 +79,7 @@ func RunWithSpan[T any](
 	pkg, funcName string,
 	fn func(ctx context.Context) (T, error),
 ) (context.Context, T, error) {
-	spanName := fmt.Sprintf("%s.%s.%s", layer, pkg, funcName)
+	spanName := BuildSpanName(string(layer), pkg, funcName)
 
 	tc, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName)
 	start := time.Now()
@@ -117,7 +116,7 @@ func RunWithSpan[T any](
 
 // makeSpanName は、LayerTracer の情報をもとに完全なspan名を生成します。
 func (lt LayerTracer) makeSpanName(optionalName string) string {
-	fullName := string(lt.layer) + delimiter + lt.pkgName + delimiter + lt.funcName
+	fullName := BuildSpanName(string(lt.layer), lt.pkgName, lt.funcName)
 	if optionalName != "" {
 		fullName += delimiter + optionalName
 	}

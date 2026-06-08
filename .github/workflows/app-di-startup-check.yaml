@@ -54,7 +54,7 @@ jobs:
       - name: Start server
         run: |
           # 例: cobra で `serve` コマンドがある前提
-          go run cmd/main.go serve &
+          go run ./cmd/ serve &
           echo $! > server.pid
 
       - name: Wait for /ready endpoint

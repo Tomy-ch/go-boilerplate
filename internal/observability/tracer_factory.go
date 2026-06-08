@@ -10,7 +10,7 @@ import (
 )
 
 type TracerFactory interface {
-	// Controller は、コントローラー層用のトレーサーを返します。pkg はパッケージ名。
+	// Controller は、コントローラー層用のトレーサーを返します。
 	Controller() LayerTracer
 	// Usecase は、ユースケース層用のトレーサーを返します。
 	Usecase() LayerTracer
@@ -32,6 +32,9 @@ func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.Lo
 		lf:  lf,
 	}
 }
+
+// Controller/Usecase/Infra は本体をインライン重複させている。getCallerFullName のスキップ段数(2)が
+// 呼び出し階層に依存するため、共通ヘルパへ括り出すと pkg 解決が 1 段ずれて壊れる。
 
 // Controller は Controller 層用のトレーサーを返します。
 func (t *tracerFactory) Controller() LayerTracer {

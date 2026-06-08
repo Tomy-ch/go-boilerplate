@@ -28,4 +28,4 @@ dump-schema:
 
 # ----CI用ターゲット-----
 dump-schema-ci:
-	go run cmd/main.go dump-schema --work-dir=$(work-dir)
+	go run ./cmd/ dump-schema --work-dir=$(work-dir)
