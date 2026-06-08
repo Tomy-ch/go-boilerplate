@@ -289,6 +289,7 @@ func Test_validateDatabaseConfig(t *testing.T) {
 			t.Parallel()
 
 			t.Run("ポート番号がMinPort未満の場合", func(t *testing.T) {
+				t.Parallel()
 				cfg := mockLoader(t)
 				cfg.Database.Port = MinPort - 1 // 無効なデータベースポート番号
 
@@ -297,6 +298,7 @@ func Test_validateDatabaseConfig(t *testing.T) {
 			})
 
 			t.Run("ポート番号がMaxPortを超えている場合", func(t *testing.T) {
+				t.Parallel()
 				cfg := mockLoader(t)
 				cfg.Database.Port = MaxPort + 1 // 無効なデータベースポート番号
 
@@ -362,6 +364,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 			t.Parallel()
 
 			t.Run("BcryptCostがbcrypt.MinCost未満の場合", func(t *testing.T) {
+				t.Parallel()
 				cfg := mockLoader(t)
 				cfg.Security.BcryptCost = bcrypt.MinCost - 1 // 無効なBcryptCost
 
@@ -370,6 +373,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 			})
 
 			t.Run("BcryptCostがbcrypt.MaxCostを超えている場合", func(t *testing.T) {
+				t.Parallel()
 				cfg := mockLoader(t)
 				cfg.Security.BcryptCost = bcrypt.MaxCost + 1 // 無効なBcryptCost
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigTestingSetters(t *testing.T) {
@@ -53,7 +54,8 @@ func TestConfigTestingSetters(t *testing.T) {
 	})
 
 	t.Run("SetCIDR", func(t *testing.T) {
-		_, testCIDR, _ := net.ParseCIDR("192.168.1.0/24")
+		_, testCIDR, err := net.ParseCIDR("192.168.1.0/24")
+		require.NoError(t, err)
 		cfg.security.SetCIDR(t, testCIDR)
 		assert.Equal(t, testCIDR, cfg.security.CIDR())
 	})

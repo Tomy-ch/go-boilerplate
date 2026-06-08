@@ -17,7 +17,7 @@ func TestNewTimeLocation(t *testing.T) {
 
 		loc, err := NewTimeLocation(osCfg)
 		require.NoError(t, err)
-		assert.Equal(t, "Asia/Tokyo", loc.String())
+		assert.Equal(t, expectedOSTimeZone, loc.String())
 	})
 
 	t.Run("無効なタイムゾーンの場合、エラーが返ること", func(t *testing.T) {

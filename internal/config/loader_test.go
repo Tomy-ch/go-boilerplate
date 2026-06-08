@@ -15,7 +15,7 @@ func TestLoad_WithEnvSet(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("ENV が設定されていない場合、Load はエラーを返す", func(t *testing.T) {
+	t.Run("env/.env は存在するが ENV が空のため ErrEnvNotResolved を返す", func(t *testing.T) {
 		EnsureRepoRootAndEnv(t, TestingEnvValue)
 		t.Setenv(envKey, "")
 

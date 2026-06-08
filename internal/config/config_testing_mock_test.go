@@ -162,7 +162,7 @@ func Test_mockLoader(t *testing.T) {
 }
 
 func Test_setEnv(t *testing.T) {
-	//  for testing and setting environment variables, so the complexity is acceptable.
+	// setEnvVarsForTesting が t.Setenv を使うため、本テストは t.Parallel() を付けられない。
 	setEnvVarsForTesting(t)
 	// OS
 	assert.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
