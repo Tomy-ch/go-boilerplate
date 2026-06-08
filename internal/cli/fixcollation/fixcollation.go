@@ -42,7 +42,6 @@ func validateDatabaseName(name string) error {
 
 // fixCollation は、collation mismatch 修正 SQL を psql 経由で順に実行します。
 func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger, dbURL, database string) error {
-	// 名前付きロガーは一度生成して使い回す（Named の付け忘れを構造的に防ぐ）。
 	log := logger.CallerSkip(callerSkipCount).Named("fixcollation")
 	log.Info("start collation fix", logging.String("database", database))
 

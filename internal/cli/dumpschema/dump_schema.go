@@ -112,9 +112,8 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL string) error {
 	return nil
 }
 
-// sanitizeSchemaInPlace は、schema.sql を sqlc が読み込みやすい形へ整形します。
-// 具体的には、pg_dump 由来のメタ情報行・psql メタコマンド行（trimPrefixes 一致）に加え、
-// 空白のみの行・元から空行だった行も併せて除去します（空行除去まで含むのは意図的）。
+// sanitizeSchemaInPlace は、schema.sql を sqlc 向けに整形します。
+// trimPrefixes 一致のメタ行に加え、空行（空白のみ・元から空）も除去します（空行除去まで含むのは意図的）。
 func (g *Generator) sanitizeSchemaInPlace() error {
 	srcAbs := filepath.Join(g.workDir, g.schemaRelPath)
 

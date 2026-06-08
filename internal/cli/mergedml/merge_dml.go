@@ -304,9 +304,7 @@ func resolveConcurrencyConst() int {
 	return resolveConcurrency(runtime.NumCPU())
 }
 
-// resolveConcurrency は、与えられた CPU 数を [minSQLCConcurrency, maxSQLCConcurrency] にクランプして
-// 同時実行数を解決します（resolveConcurrencyConst の純粋本体）。下限は実行時値（numCPU）に適用するため、
-// CPU 数が下限未満の環境でも最低 minSQLCConcurrency を保証します。
+// resolveConcurrency は、CPU 数を [minSQLCConcurrency, maxSQLCConcurrency] にクランプして同時実行数を返します。
 func resolveConcurrency(numCPU int) int {
 	n := numCPU
 	if n > maxSQLCConcurrency {

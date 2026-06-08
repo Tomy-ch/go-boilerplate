@@ -44,9 +44,7 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func
 		}()
 	}
 	end := func(ctx context.Context) {
-		// 停止時は呼び出し元から渡された context に従ってグレースフルシャットダウンします。
-		// 補助サーバー（開発用 pprof/metrics）の停止失敗でアプリ本体を巻き込まないよう、panic せず
-		// ログ記録に留めます（start 側の goroutine と同方針）。
+		// 停止失敗でアプリ本体を巻き込まないよう、panic せずログに留める（start 側の goroutine と同方針）。
 		if err := metricsSrv.Shutdown(ctx); err != nil {
 			logger.Named("metrics.Shutdown").Error("metrics server shutdown error", logging.Error("shutdown", err))
 		}
