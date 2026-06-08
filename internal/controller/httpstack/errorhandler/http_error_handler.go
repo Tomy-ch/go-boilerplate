@@ -152,7 +152,7 @@ func httpErrorField(
 	}
 	fields = append(fields, lf.BuildHTTPRequestFields(reqIn)...)
 	if he.Details != nil {
-		fields = append(fields, logging.Strings(logging.ErrorDetails, *he.Details))
+		fields = append(fields, logging.Strings(logging.ErrorDetailsKey, *he.Details))
 	}
 	if he.Internal != nil {
 		additionalFields := []*logging.Field{
