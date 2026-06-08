@@ -4,6 +4,7 @@ package dumpschema
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,15 +22,13 @@ const schemaFilePerm = 0o644 // rw-r--r--
 var (
 	// dumpCommand は、スキーマダンプに使用するコマンド名を表します。
 	dumpCommand = "pg_dump"
-	// dumpDatabaseCommand は、スキーマダンプのためのコマンドフォーマット文字列を表します。
+	// dumpSubArgs は、pg_dump に渡す固定オプション引数列を表します。
 	dumpSubArgs = []string{
 		"--schema-only",
 		"--no-owner",
 		"--no-privileges",
 		"--format=plain",
 	}
-	// workDir は、作業ディレクトリのパスを表します。
-	workDir string
 
 	// trimPrefixes は、スキーマファイルから除去する行の接頭辞を表します。
 	trimPrefixes = []string{
@@ -38,6 +37,25 @@ var (
 		"-- Dumped by pg_dump version",
 	}
 )
+
+// fileSystem は dump-schema が必要とするファイル操作を抽象化します。
+// テストでフェイクを注入し、実ファイルシステムに触れずに分岐を検証できるようにします。
+type fileSystem interface {
+	Create(name string) (io.WriteCloser, error)
+	ReadFile(name string) ([]byte, error)
+	WriteFile(name string, data []byte, perm os.FileMode) error
+}
+
+// commandRunner は外部コマンド（pg_dump）の実行を抽象化します。
+type commandRunner interface {
+	Run(ctx context.Context, dir, name string, args []string, stdout io.Writer) error
+}
+
+// osFileSystem は os パッケージを用いた fileSystem の実装です。
+type osFileSystem struct{}
+
+// execCommandRunner は os/exec を用いた commandRunner の実装です。
+type execCommandRunner struct{}
 
 type generator struct {
 	logger          logging.Logger
@@ -49,10 +67,33 @@ type generator struct {
 
 	dumpCommand string
 	dumpArgs    []string
+
+	fs     fileSystem
+	runner commandRunner
+}
+
+func (osFileSystem) Create(name string) (io.WriteCloser, error) {
+	return os.Create(name) //nolint:gosec // path は信頼された CLI フラグ由来の固定パス
+}
+
+func (osFileSystem) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name) //nolint:gosec // path は信頼された CLI フラグ由来の固定パス
+}
+
+func (osFileSystem) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm)
+}
+
+func (execCommandRunner) Run(ctx context.Context, dir, name string, args []string, stdout io.Writer) error {
+	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // name/args は信頼された CLI 設定由来
+	cmd.Dir = dir
+	cmd.Stdout = stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // newGenerator は、dump-schema 用のジェネレーターインスタンスを生成します。
-func newGenerator(logger logging.Logger) *generator {
+func newGenerator(logger logging.Logger, workDir string) *generator {
 	return &generator{
 		logger:          logger,
 		callerSkipCount: 1,
@@ -61,18 +102,25 @@ func newGenerator(logger logging.Logger) *generator {
 		schemaRelPath:   "database/gen/schema.gen.sql",
 		dumpCommand:     dumpCommand,
 		dumpArgs:        dumpSubArgs,
+		fs:              osFileSystem{},
+		runner:          execCommandRunner{},
 	}
 }
 
 // NewCommand は、dump-schema コマンドを生成します。
 func NewCommand() *cobra.Command {
+	// フラグはパッケージグローバルにせずローカルに束縛し、コマンドの並列テスト安全性を保ちます。
+	var workDir string
+
 	cmd := &cobra.Command{
 		Use:   "dump-schema",
 		Short: "databaseに接続してスキーマをダンプして読み込みやすい形に整形します。",
 		Long: "ファイルで定義されたdumpコマンドを実行してDBスキーマをダンプし、\n" +
 			"メタコマンドの行を除去してsqlcで読み込みやすい形に整形します。\n" +
-			"dumpコマンドを変更したい場合は、dumpCommandおよびdumpArgs変数を修正してください。",
-		RunE: generateDumpSchema,
+			"dumpコマンドを変更したい場合は、dumpCommandおよびdumpSubArgs変数を修正してください。",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runDumpSchema(cmd.Context(), workDir)
+		},
 	}
 
 	cmd.Flags().StringVar(&workDir, "work-dir", "/app", "working directory path")
@@ -80,18 +128,18 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-// generateDumpSchema は、DBスキーマをダンプし整形します。
+// runDumpSchema は、設定を読み込み、DBスキーマのダンプと整形を実行する薄い殻です。
 //
 // 手順:
-//  1. ダンプコマンド を実行してスキーマをダンプ
+//  1. ダンプコマンドを実行してスキーマをダンプ
 //  2. スキーマファイル内のメタコマンド行を除去
-func generateDumpSchema(_ *cobra.Command, _ []string) error {
+func runDumpSchema(ctx context.Context, workDir string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
 		panic("failed to create logger: " + err.Error())
 	}
 
-	gen := newGenerator(logger)
+	gen := newGenerator(logger, workDir)
 
 	// アプリ設定から接続先 DSN を組み立て、ダンプ対象 DB を決定します。
 	cfg, err := config.SetUpConfig()
@@ -105,16 +153,11 @@ func generateDumpSchema(_ *cobra.Command, _ []string) error {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	dbURL := driver.DSNString(dbCfg)
 
-	ctx := context.Background()
 	// まず生の schema を出力し、その後 sqlc が扱いやすい形に整形します。
 	if err = gen.dumpSchema(ctx, dbURL); err != nil {
 		return err
 	}
-	if err := gen.sanitizeSchemaInPlace(); err != nil {
-		return err
-	}
-
-	return nil
+	return gen.sanitizeSchemaInPlace()
 }
 
 // dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
@@ -122,7 +165,7 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 	schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
 
 	// pg_dump の出力先を先に開いて、標準出力をそのまま schema.gen.sql に流します。
-	f, err := os.Create(schemaAbs) // #nosec G304
+	f, err := g.fs.Create(schemaAbs)
 	if err != nil {
 		return fmt.Errorf("failed to create schema file: %w", err)
 	}
@@ -137,17 +180,11 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 
 	args := append([]string{dbURL}, g.dumpArgs...)
 
-	// dump オプションは generator が保持しており、実行時は DB URL だけを先頭に差し込みます。
-	cmd := exec.CommandContext(ctx, g.dumpCommand, args...) // #nosec G204
-	cmd.Dir = g.workDir
-	cmd.Stdout = f
-	cmd.Stderr = os.Stderr
-
 	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("start pg_dump schema",
 		logging.String("out", g.schemaRelPath),
 	)
 
-	if err := cmd.Run(); err != nil {
+	if err := g.runner.Run(ctx, g.workDir, g.dumpCommand, args, f); err != nil {
 		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed (schema file may be partial)",
 			logging.String("out", g.schemaRelPath),
 			logging.Error("pg_dump", err),
@@ -166,7 +203,7 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 func (g *generator) sanitizeSchemaInPlace() error {
 	srcAbs := filepath.Join(g.workDir, g.schemaRelPath)
 
-	b, err := os.ReadFile(srcAbs) // #nosec G304
+	b, err := g.fs.ReadFile(srcAbs)
 	if err != nil {
 		return fmt.Errorf("read schema: %w", err)
 	}
@@ -188,8 +225,7 @@ func (g *generator) sanitizeSchemaInPlace() error {
 		out = append(out, ln)
 	}
 
-	//nolint:gosec // safe: path comes from trusted CLI input
-	if err := os.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permission); err != nil {
+	if err := g.fs.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permission); err != nil {
 		return fmt.Errorf("write sanitized schema: %w", err)
 	}
 
