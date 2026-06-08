@@ -19,6 +19,7 @@ func TestNewConfig(t *testing.T) {
 				},
 				app: ApplicationConfig{
 					env:             expectedApplicationEnv,
+					name:            expectedApplicationName,
 					mode:            expectedApplicationMode,
 					shutdownTimeout: expectedAppShutdownTimeout,
 				},
@@ -202,8 +203,7 @@ func Test_validateApplicationConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.App.Mode = "invalid_mode" // 無効なアプリケーションモード
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateApplicationConfig(cfg.App)
 			require.ErrorIs(t, err, ErrInvalidAppMode)
 		})
 	})
@@ -224,8 +224,7 @@ func Test_validateServerConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Server.Port = MaxPort + 1 // 無効なポート番号
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateServerConfig(cfg.Server)
 			require.ErrorIs(t, err, ErrInvalidPortRange)
 		})
 
@@ -234,8 +233,7 @@ func Test_validateServerConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Server.ReadHeaderTimeout = 0 // 無効なReadHeaderTimeout
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateServerConfig(cfg.Server)
 			require.ErrorIs(t, err, ErrInvalidReadHeaderTimeout)
 		})
 
@@ -244,8 +242,7 @@ func Test_validateServerConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Server.ReadTimeout = 0 // 無効なReadTimeout
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateServerConfig(cfg.Server)
 			require.ErrorIs(t, err, ErrInvalidReadTimeout)
 		})
 
@@ -254,8 +251,7 @@ func Test_validateServerConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Server.WriteTimeout = 0 // 無効なWriteTimeout
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateServerConfig(cfg.Server)
 			require.ErrorIs(t, err, ErrInvalidWriteTimeout)
 		})
 
@@ -264,8 +260,7 @@ func Test_validateServerConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Server.IdleTimeout = 0 // 無効なIdleTimeout
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateServerConfig(cfg.Server)
 			require.ErrorIs(t, err, ErrInvalidIdleTimeout)
 		})
 
@@ -274,8 +269,7 @@ func Test_validateServerConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Server.ReadHeaderTimeout = cfg.Server.ReadTimeout + cfg.Server.ReadTimeout
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateServerConfig(cfg.Server)
 			require.ErrorIs(t, err, ErrReadHeaderTimeoutExceedsReadTimeout)
 		})
 	})
@@ -298,8 +292,7 @@ func Test_validateDatabaseConfig(t *testing.T) {
 				cfg := mockLoader(t)
 				cfg.Database.Port = MinPort - 1 // 無効なデータベースポート番号
 
-				actual, err := validateConfig(cfg)
-				require.Nil(t, actual)
+				err := validateDatabaseConfig(cfg.Database)
 				require.ErrorIs(t, err, ErrInvalidDBPortRange)
 			})
 
@@ -307,8 +300,7 @@ func Test_validateDatabaseConfig(t *testing.T) {
 				cfg := mockLoader(t)
 				cfg.Database.Port = MaxPort + 1 // 無効なデータベースポート番号
 
-				actual, err := validateConfig(cfg)
-				require.Nil(t, actual)
+				err := validateDatabaseConfig(cfg.Database)
 				require.ErrorIs(t, err, ErrInvalidDBPortRange)
 			})
 		})
@@ -318,8 +310,7 @@ func Test_validateDatabaseConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Database.PingTimeout = 0 // 無効なデータベースPingタイムアウト
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateDatabaseConfig(cfg.Database)
 			require.ErrorIs(t, err, ErrInvalidDBPingTimeout)
 		})
 
@@ -328,8 +319,7 @@ func Test_validateDatabaseConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Database.SlowQueryWarnThreshold = -1 // 無効なスロークエリ警告閾値
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateDatabaseConfig(cfg.Database)
 			require.ErrorIs(t, err, ErrInvalidSlowQueryWarnThreshold)
 		})
 	})
@@ -351,8 +341,7 @@ func Test_validateDBConnectionConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.DBConnection.MinConns = cfg.DBConnection.MaxConns + 1 // MinConnsがMaxConnsを超える
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			err := validateDBConnectionConfig(cfg.DBConnection)
 			require.ErrorIs(t, err, ErrInvalidExceedMaxConns)
 		})
 	})
@@ -376,8 +365,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 				cfg := mockLoader(t)
 				cfg.Security.BcryptCost = bcrypt.MinCost - 1 // 無効なBcryptCost
 
-				actual, err := validateConfig(cfg)
-				require.Nil(t, actual)
+				_, err := validateSecurityConfig(cfg.Security)
 				require.ErrorIs(t, err, ErrInvalidBcryptCost)
 			})
 
@@ -385,8 +373,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 				cfg := mockLoader(t)
 				cfg.Security.BcryptCost = bcrypt.MaxCost + 1 // 無効なBcryptCost
 
-				actual, err := validateConfig(cfg)
-				require.Nil(t, actual)
+				_, err := validateSecurityConfig(cfg.Security)
 				require.ErrorIs(t, err, ErrInvalidBcryptCost)
 			})
 		})
@@ -396,8 +383,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{} // 空のAllowedOrigins
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			_, err := validateSecurityConfig(cfg.Security)
 			require.ErrorIs(t, err, ErrEmptyAllowedOrigins)
 		})
 
@@ -406,8 +392,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{"http://example.com"} // localhost以外のHTTP
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			_, err := validateSecurityConfig(cfg.Security)
 			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
 		})
 
@@ -416,8 +401,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Security.CIDR = "invalid_cidr" // 無効なCIDR
 
-			actual, err := validateConfig(cfg)
-			require.Nil(t, actual)
+			_, err := validateSecurityConfig(cfg.Security)
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
 		})
 	})

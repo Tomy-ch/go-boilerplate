@@ -168,6 +168,7 @@ func Test_setEnv(t *testing.T) {
 	assert.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
 	// Application
 	assert.Equal(t, expectedApplicationEnv, os.Getenv("APP_ENV"))
+	assert.Equal(t, expectedApplicationName, os.Getenv("APP_NAME"))
 	assert.Equal(t, expectedApplicationMode, os.Getenv("APP_MODE"))
 	assert.Equal(t, expectedAppShutdownTimeoutStr, os.Getenv("APP_SHUTDOWN_TIMEOUT"))
 	// Server

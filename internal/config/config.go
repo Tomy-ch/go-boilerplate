@@ -33,6 +33,7 @@ func New() (*Config, error) {
 		},
 		app: ApplicationConfig{
 			env:             cfg.App.Env,
+			name:            cfg.App.Name,
 			mode:            cfg.App.Mode,
 			shutdownTimeout: cfg.App.ShutdownTimeout,
 		},
