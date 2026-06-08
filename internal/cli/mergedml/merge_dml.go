@@ -345,7 +345,12 @@ func (g *generator) ensureUnderDir(path string) error {
 //
 // Docker/CIで全コア占有を避けるため、固定上限を設けています。
 func resolveConcurrencyConst() int {
-	maxAllowed := runtime.NumCPU()
+	return resolveConcurrency(runtime.NumCPU())
+}
+
+// resolveConcurrency は、与えられた CPU 数から SQLC の同時実行数を解決します（resolveConcurrencyConst の純粋本体）。
+func resolveConcurrency(numCPU int) int {
+	maxAllowed := numCPU
 	if maxAllowed > maxSQLCConcurrency {
 		maxAllowed = maxSQLCConcurrency
 	}

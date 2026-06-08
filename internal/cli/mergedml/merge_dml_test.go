@@ -238,6 +238,30 @@ func TestResolveConcurrencyConst(t *testing.T) {
 	assert.LessOrEqual(t, got, maxSQLCConcurrency)
 }
 
+func TestResolveConcurrency(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		numCPU int
+		want   int
+	}{
+		// CPU 数が上限定数を下回る場合は、その CPU 数が同時実行数の上限になる。
+		{name: "正常系_CPU数が上限未満なら上限はCPU数に丸められる", numCPU: 2, want: 2},
+		// CPU 数が上限定数ちょうどなら、設定値(sqlcDBConcurrency)を採用する。
+		{name: "正常系_CPU数が上限と同じなら設定値を採用する", numCPU: maxSQLCConcurrency, want: sqlcDBConcurrency},
+		// CPU 数が上限定数を超えても、上限定数で頭打ちにして設定値を採用する。
+		{name: "正常系_CPU数が上限超過でも上限定数で頭打ちにする", numCPU: maxSQLCConcurrency + 8, want: sqlcDBConcurrency},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, resolveConcurrency(tt.numCPU))
+		})
+	}
+}
+
 func TestNewGenerator(t *testing.T) {
 	t.Parallel()
 
@@ -343,6 +367,22 @@ func TestRunMerge(t *testing.T) {
 
 		g := newTestGenerator(t, fs)
 		require.Error(t, runMerge(context.Background(), g, targetType))
+	})
+
+	t.Run("異常系_ctxキャンセル済みならセマフォ取得に失敗しエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		// カテゴリは存在するが、ctx が先にキャンセルされているため sem.Acquire が失敗し、
+		// 各カテゴリの走査(FindSQLFiles)へは進まない。
+		fs.EXPECT().ListSubDirNames(typeRoot).Return([]string{"user"}, nil)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, runMerge(ctx, g, targetType))
 	})
 
 	t.Run("異常系_マージ成功後のcleanupに失敗するとエラー", func(t *testing.T) {
