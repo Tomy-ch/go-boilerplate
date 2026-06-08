@@ -22,7 +22,7 @@ func TestMetricsServer(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	mtcCfg := config.NewMetricsConfig(cfg)
 
-	srv := MetricsServer(mtcCfg)
+	srv := metricsServer(mtcCfg)
 	require.NotNil(t, srv)
 	// Addr が host:port 形式で組み立てられること。
 	assert.Equal(t, mtcCfg.Host()+":"+strconv.Itoa(mtcCfg.Port()), srv.Addr)

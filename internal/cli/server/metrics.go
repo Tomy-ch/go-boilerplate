@@ -19,8 +19,8 @@ const (
 	idleTimeout       = 60 * time.Second
 )
 
-// MetricsServer は、メトリクスサーバーを生成します。
-func MetricsServer(mtcCfg *config.MetricsConfig) *http.Server {
+// metricsServer は、メトリクス/pprof（DefaultServeMux）を公開する補助 HTTP サーバーを生成します。
+func metricsServer(mtcCfg *config.MetricsConfig) *http.Server {
 	return &http.Server{
 		// pprof / metrics は DefaultServeMux に登録される前提で補助サーバーとして公開します。
 		Addr:              mtcCfg.Host() + ":" + strconv.Itoa(mtcCfg.Port()),
@@ -34,7 +34,7 @@ func MetricsServer(mtcCfg *config.MetricsConfig) *http.Server {
 
 // NewMetricsServer は、メトリクスサーバーの開始および終了関数を生成します。
 func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func(), func(ctx context.Context)) {
-	metricsSrv := MetricsServer(mtcCfg)
+	metricsSrv := metricsServer(mtcCfg)
 
 	start := func() {
 		go func() {
