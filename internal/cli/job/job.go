@@ -1,7 +1,4 @@
 // Package job は、ジョブ実行のオーケストレーション（タイムアウト分岐・停止処理）のコアロジックを提供します。
-//
-// Cobra コマンド定義と DI(ジョブランナー取得) の結線は cmd 層が担います。本パッケージは注入された
-// start/stop（または provide 関数）に対して純粋に動作し、単体テスト可能です。
 package job
 
 import (
@@ -52,14 +49,10 @@ func runJob(
 		gracefulStop(ctx, stop)
 		return err
 	case <-waitCtx.Done():
-		// タイムアウト時も親 ctx は生きているため、停止専用 context を作り直して後始末に猶予を与えます
-		// （期限切れの waitCtx を渡すと後始末が即時打ち切られる）。
+		// waitCtx は ctx の子。タイムアウト(DeadlineExceeded)・親キャンセル(Canceled)の両方で発火する。
+		// 停止は期限切れの waitCtx ではなく専用 context を作り直して猶予を与える。
 		gracefulStop(ctx, stop)
 		return waitCtx.Err()
-	case <-ctx.Done():
-		// 親 context のキャンセル時も、停止処理だけは流してジョブを終了させます。
-		gracefulStop(ctx, stop)
-		return ctx.Err()
 	}
 }
 
