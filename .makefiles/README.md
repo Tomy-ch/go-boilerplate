@@ -229,7 +229,7 @@ This group handles linting and auto-fixing of Markdown files.
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make test` | Executes tests for CI. | Runs `go test` on packages excluding `gen` / `cli` / `cmd` / `mock` / `apperror` / `scripts`. |
+| `make test` | Executes tests for CI. | Runs `go test` on packages excluding `gen` / `cmd` / `mock` / `apperror` / `scripts` (the `internal/cli` core is now included). |
 | `make gen-test-repo` | Executes tests and generates HTML coverage report. | Output is `docs/coverage/index.html`. |
 | `make test-cover-ci` | Executes tests with coverage. | CI target, outputs `coverage.out`. |
 

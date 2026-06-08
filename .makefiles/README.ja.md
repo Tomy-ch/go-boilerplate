@@ -229,7 +229,7 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make test` | CI 用のテストを実行します。 | `gen` / `cli` / `cmd` / `mock` / `apperror` / `scripts` を除外したパッケージ群に対して `go test` を実行します。 |
+| `make test` | CI 用のテストを実行します。 | `gen` / `cmd` / `mock` / `apperror` / `scripts` を除外したパッケージ群に対して `go test` を実行します（`internal/cli` コアは計測対象に含まれます）。 |
 | `make gen-test-repo` | テストを実行し、HTML カバレッジレポートを生成します。 | 出力先は `docs/coverage/index.html` です。 |
 | `make test-cover-ci` | カバレッジ付きでテストを実行します。 | CI 用ターゲットで、`coverage.out` を出力します。 |
 
