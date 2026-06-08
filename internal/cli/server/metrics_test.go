@@ -32,14 +32,34 @@ func TestMetricsServer(t *testing.T) {
 func TestNewMetricsServer(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	mtcCfg := config.NewMetricsConfig(cfg)
+	t.Run("正常系_起動から停止までのライフサイクルがpanicせず完了する", func(t *testing.T) {
+		t.Parallel()
 
-	start, end := NewMetricsServer(mtcCfg)
-	require.NotNil(t, start)
-	require.NotNil(t, end)
+		cfg := config.MockConfigForTest(t)
+		mtcCfg := config.NewMetricsConfig(cfg)
+		// 固定ポートの bind 衝突を避けるため、エフェメラルポート(:0)で待ち受けさせる。
+		mtcCfg.SetMetricsPort(t, 0)
 
-	// 起動していないサーバーへの Shutdown はエラーにならず、panic しないこと
-	// （goroutine 内 panic 廃止の方針に沿う）。
-	assert.NotPanics(t, func() { end(context.Background()) })
+		start, end := NewMetricsServer(mtcCfg)
+		require.NotNil(t, start)
+		require.NotNil(t, end)
+
+		assert.NotPanics(t, func() {
+			start()
+			end(context.Background())
+		})
+	})
+
+	t.Run("正常系_起動していないサーバーへの停止でもpanicしない", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := config.MockConfigForTest(t)
+		mtcCfg := config.NewMetricsConfig(cfg)
+
+		_, end := NewMetricsServer(mtcCfg)
+
+		// 起動していないサーバーへの Shutdown はエラーにならず、panic しないこと
+		// （goroutine 内 panic 廃止の方針に沿う）。
+		assert.NotPanics(t, func() { end(context.Background()) })
+	})
 }

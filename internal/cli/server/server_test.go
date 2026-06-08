@@ -21,6 +21,46 @@ func TestNewServeCommand(t *testing.T) {
 	assert.NotNil(t, cmd.RunE)
 }
 
+func TestResolveMetricsStop(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_非本番モードはメトリクスを起動し停止関数を返す", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := config.MockConfigForTest(t)
+		appCfg := config.NewApplicationConfig(cfg)
+		appCfg.SetApplicationMode(t, config.DevelopmentMode)
+
+		started := false
+		stopFn := func(_ context.Context) {}
+		newMetrics := func() (func(), func(context.Context)) {
+			return func() { started = true }, stopFn
+		}
+
+		stop := resolveMetricsStop(appCfg, newMetrics)
+		require.NotNil(t, stop, "非本番では停止関数が返ること")
+		assert.True(t, started, "メトリクスサーバーが起動されること")
+	})
+
+	t.Run("正常系_本番モードはメトリクスを起動せずnilを返す", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := config.MockConfigForTest(t)
+		appCfg := config.NewApplicationConfig(cfg)
+		appCfg.SetApplicationMode(t, config.ProductionMode)
+
+		called := false
+		newMetrics := func() (func(), func(context.Context)) {
+			called = true
+			return func() {}, func(_ context.Context) {}
+		}
+
+		stop := resolveMetricsStop(appCfg, newMetrics)
+		assert.Nil(t, stop, "本番では停止関数は nil であること")
+		assert.False(t, called, "本番ではメトリクス生成自体を呼ばないこと")
+	})
+}
+
 func TestRunServer(t *testing.T) {
 	t.Parallel()
 

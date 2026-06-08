@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/logging"
 	mock_fs "go-boilerplate/pkg/fs/mock"
@@ -136,4 +137,65 @@ func TestNewDBSeedCommand(t *testing.T) {
 	cmd := NewDBSeedCommand()
 	assert.Equal(t, "db-seed", cmd.Use)
 	assert.NotNil(t, cmd.Flags().Lookup("database"))
+}
+
+func TestRunDBSeed(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_DB接続後にseedファイルを列挙し投入する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fsys := mock_fs.NewMockFS(ctrl)
+		db := mock_driver.NewMockDatabaseDriver(ctrl)
+
+		fsys.EXPECT().Glob(seedFilePlace+"/*.sql").Return([]string{"a.sql"}, nil)
+		fsys.EXPECT().ReadFile("a.sql").Return([]byte("SELECT 1;"), nil)
+		db.EXPECT().Exec(gomock.Any(), "SELECT 1;").Return(pgconn.CommandTag{}, nil)
+		db.EXPECT().Close().Return(nil)
+
+		openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) { return db, nil }
+		err := runDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+		require.NoError(t, err)
+	})
+
+	t.Run("異常系_DB接続に失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fsys := mock_fs.NewMockFS(ctrl)
+
+		openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) {
+			return nil, errors.New("open failed")
+		}
+		err := runDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+		require.Error(t, err)
+	})
+
+	t.Run("異常系_seedファイルの列挙に失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fsys := mock_fs.NewMockFS(ctrl)
+		db := mock_driver.NewMockDatabaseDriver(ctrl)
+
+		fsys.EXPECT().Glob(seedFilePlace+"/*.sql").Return(nil, errors.New("glob failed"))
+		// 接続は確立済みのため Close は必ず呼ばれる。
+		db.EXPECT().Close().Return(nil)
+
+		openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) { return db, nil }
+		err := runDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+		require.Error(t, err)
+	})
+
+	t.Run("正常系_Closeが失敗してもログのみで投入結果を優先する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fsys := mock_fs.NewMockFS(ctrl)
+		db := mock_driver.NewMockDatabaseDriver(ctrl)
+
+		fsys.EXPECT().Glob(seedFilePlace+"/*.sql").Return([]string{}, nil)
+		db.EXPECT().Close().Return(errors.New("close failed"))
+
+		openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) { return db, nil }
+		err := runDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+		require.NoError(t, err)
+	})
 }

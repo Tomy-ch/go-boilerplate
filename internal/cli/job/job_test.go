@@ -126,3 +126,24 @@ func TestRunJob(t *testing.T) {
 		assert.True(t, stop.called)
 	})
 }
+
+func TestRunJobWith(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_provideで取得したstart/stopをrunJobへ渡し結果を返す", func(t *testing.T) {
+		t.Parallel()
+
+		done := make(chan error, 1)
+		done <- nil
+		stop := &recordingStop{}
+
+		provide := func() (di.StartFunc, di.StopFunc) {
+			return makeStart(done), stop.fn()
+		}
+
+		err := runJobWith(context.Background(), "j", nil, 0, provide)
+
+		require.NoError(t, err)
+		assert.True(t, stop.called, "provide 由来の停止処理が呼ばれること")
+	})
+}

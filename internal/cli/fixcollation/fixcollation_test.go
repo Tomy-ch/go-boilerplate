@@ -77,3 +77,43 @@ func TestNewCommand(t *testing.T) {
 	require.NotNil(t, f)
 	assert.Equal(t, "local", f.DefValue)
 }
+
+func TestRunFix(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_検証通過後にDSNを解決しcollation修正を実行する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		runner := mock_exec.NewMockRunner(ctrl)
+		runner.EXPECT().Output(gomock.Any(), workDir, psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
+
+		loadDSN := func() (string, error) { return "postgres://dsn", nil }
+		err := runFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
+		require.NoError(t, err)
+	})
+
+	t.Run("異常系_不正なDB名はDSN解決前に弾く", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		runner := mock_exec.NewMockRunner(ctrl)
+
+		called := false
+		loadDSN := func() (string, error) {
+			called = true
+			return "", nil
+		}
+		err := runFix(context.Background(), runner, logging.NewTestLogger(t), "production", loadDSN)
+		require.Error(t, err)
+		assert.False(t, called)
+	})
+
+	t.Run("異常系_DSN解決に失敗すると修正せずエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		runner := mock_exec.NewMockRunner(ctrl)
+
+		loadDSN := func() (string, error) { return "", errors.New("config failed") }
+		err := runFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
+		require.Error(t, err)
+	})
+}

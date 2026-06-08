@@ -1,6 +1,7 @@
 package mergedml
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -88,6 +89,57 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 		g := newTestGenerator(t, fs)
 		require.Error(t, g.buildCategorySQLFile("user", "repository"))
 	})
+
+	t.Run("異常系_連結中のReadFileに失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		f1 := filepath.Join(dmlDir, "001.sql")
+		fs.EXPECT().FindSQLFiles(dmlDir).Return([]string{f1}, nil)
+		fs.EXPECT().ReadFile(f1).Return(nil, errors.New("read failed"))
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, g.buildCategorySQLFile("user", "repository"))
+	})
+
+	t.Run("異常系_連結結果の書き出しに失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		f1 := filepath.Join(dmlDir, "001.sql")
+		fs.EXPECT().FindSQLFiles(dmlDir).Return([]string{f1}, nil)
+		fs.EXPECT().ReadFile(f1).Return([]byte("SELECT 1;"), nil)
+		fs.EXPECT().WriteFile(dstPath, gomock.Any(), os.FileMode(genFilePerm)).Return(errors.New("write failed"))
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, g.buildCategorySQLFile("user", "repository"))
+	})
+
+	t.Run("正常系_SQLが空で生成物が未存在ならNotExistを無視する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, nil)
+		fs.EXPECT().Remove(dstPath).Return(os.ErrNotExist)
+
+		g := newTestGenerator(t, fs)
+		require.NoError(t, g.buildCategorySQLFile("user", "repository"))
+	})
+
+	t.Run("異常系_SQLが空でRemoveがNotExist以外で失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		fs.EXPECT().FindSQLFiles(dmlDir).Return(nil, nil)
+		fs.EXPECT().Remove(dstPath).Return(errors.New("remove failed"))
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, g.buildCategorySQLFile("user", "repository"))
+	})
 }
 
 func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
@@ -139,6 +191,18 @@ func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
 		g := newTestGenerator(t, fs)
 		require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
 	})
+
+	t.Run("異常系_stale削除に失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"old_repository.gen.sql"}, nil)
+		fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(errors.New("remove failed"))
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+	})
 }
 
 func TestGenerator_ensureUnderDir(t *testing.T) {
@@ -183,4 +247,213 @@ func TestNewGenerator(t *testing.T) {
 	assert.Equal(t, "database/gen/", g.genRootDir)
 	assert.Equal(t, 1, g.callerSkipCount)
 	assert.NotNil(t, g.fs)
+}
+
+func TestNewCommand(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewCommand()
+	require.NotNil(t, cmd)
+	assert.Equal(t, "merge-dml", cmd.Use)
+
+	typeFlag := cmd.Flags().Lookup("type")
+	require.NotNil(t, typeFlag)
+
+	workDir := cmd.Flags().Lookup("work-dir")
+	require.NotNil(t, workDir)
+	assert.Equal(t, "/app", workDir.DefValue)
+
+	// --type は必須指定（未指定はバリデーションで弾かれること）。
+	require.Error(t, cmd.ValidateRequiredFlags())
+	require.NoError(t, cmd.Flags().Set("type", "repository"))
+	require.NoError(t, cmd.ValidateRequiredFlags())
+}
+
+func TestRunMerge(t *testing.T) {
+	t.Parallel()
+
+	const targetType = "repository"
+	typeRoot := filepath.Join(testWorkDir, "database/dml/", targetType)
+	genAbs := filepath.Join(testWorkDir, "database/gen/")
+
+	t.Run("正常系_カテゴリを並列マージしstaleを掃除する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		userDir := filepath.Join(testWorkDir, "database/dml/", targetType, "user")
+		userSQL := filepath.Join(userDir, "001.sql")
+		dst := filepath.Join(genAbs, "user_repository.gen.sql")
+
+		fs.EXPECT().ListSubDirNames(typeRoot).Return([]string{"user"}, nil)
+		fs.EXPECT().FindSQLFiles(userDir).Return([]string{userSQL}, nil)
+		fs.EXPECT().ReadFile(userSQL).Return([]byte("SELECT 1;"), nil)
+		fs.EXPECT().WriteFile(dst, gomock.Any(), os.FileMode(genFilePerm)).Return(nil)
+		fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"user_repository.gen.sql"}, nil)
+
+		g := newTestGenerator(t, fs)
+		require.NoError(t, runMerge(context.Background(), g, targetType))
+	})
+
+	t.Run("正常系_カテゴリ0件のときはcleanupのみ実行する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, nil)
+		// 0件でも同 type の stale は全消し対象になる。
+		fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"old_repository.gen.sql"}, nil)
+		fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(nil)
+
+		g := newTestGenerator(t, fs)
+		require.NoError(t, runMerge(context.Background(), g, targetType))
+	})
+
+	t.Run("異常系_カテゴリ一覧の取得に失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, errors.New("read dir failed"))
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, runMerge(context.Background(), g, targetType))
+	})
+
+	t.Run("異常系_カテゴリ0件かつcleanupに失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, nil)
+		fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("list failed"))
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, runMerge(context.Background(), g, targetType))
+	})
+
+	t.Run("異常系_カテゴリのマージに失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		userDir := filepath.Join(testWorkDir, "database/dml/", targetType, "user")
+		fs.EXPECT().ListSubDirNames(typeRoot).Return([]string{"user"}, nil)
+		fs.EXPECT().FindSQLFiles(userDir).Return(nil, errors.New("walk failed"))
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, runMerge(context.Background(), g, targetType))
+	})
+
+	t.Run("異常系_マージ成功後のcleanupに失敗するとエラー", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		fs := mock_mergedml.NewMockFileSystem(ctrl)
+
+		userDir := filepath.Join(testWorkDir, "database/dml/", targetType, "user")
+		userSQL := filepath.Join(userDir, "001.sql")
+		dst := filepath.Join(genAbs, "user_repository.gen.sql")
+
+		fs.EXPECT().ListSubDirNames(typeRoot).Return([]string{"user"}, nil)
+		fs.EXPECT().FindSQLFiles(userDir).Return([]string{userSQL}, nil)
+		fs.EXPECT().ReadFile(userSQL).Return([]byte("SELECT 1;"), nil)
+		fs.EXPECT().WriteFile(dst, gomock.Any(), os.FileMode(genFilePerm)).Return(nil)
+		fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("list failed"))
+
+		g := newTestGenerator(t, fs)
+		require.Error(t, runMerge(context.Background(), g, targetType))
+	})
+}
+
+func TestOSFileSystem(t *testing.T) {
+	t.Parallel()
+
+	var sut osFileSystem
+
+	t.Run("ListSubDirNames_サブディレクトリ名を昇順で返しファイルは除外する", func(t *testing.T) {
+		t.Parallel()
+		base := t.TempDir()
+		require.NoError(t, os.Mkdir(filepath.Join(base, "b"), 0o750))
+		require.NoError(t, os.Mkdir(filepath.Join(base, "a"), 0o750))
+		require.NoError(t, os.WriteFile(filepath.Join(base, "file.txt"), []byte("x"), 0o600))
+
+		dirs, err := sut.ListSubDirNames(base)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"a", "b"}, dirs)
+	})
+
+	t.Run("ListSubDirNames_存在しないディレクトリはエラー", func(t *testing.T) {
+		t.Parallel()
+		_, err := sut.ListSubDirNames(filepath.Join(t.TempDir(), "missing"))
+		require.Error(t, err)
+	})
+
+	t.Run("ListGenFileNames_ファイル名のみ返しディレクトリは除外する", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "a.sql"), []byte("x"), 0o600))
+		require.NoError(t, os.Mkdir(filepath.Join(dir, "sub"), 0o750))
+
+		names, err := sut.ListGenFileNames(dir)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"a.sql"}, names)
+	})
+
+	t.Run("ListGenFileNames_存在しないディレクトリはエラー", func(t *testing.T) {
+		t.Parallel()
+		_, err := sut.ListGenFileNames(filepath.Join(t.TempDir(), "missing"))
+		require.Error(t, err)
+	})
+
+	t.Run("FindSQLFiles_配下のsqlのみ昇順で返す", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		sub := filepath.Join(root, "sub")
+		require.NoError(t, os.Mkdir(sub, 0o750))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "b.sql"), []byte("x"), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(sub, "a.sql"), []byte("x"), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "note.txt"), []byte("x"), 0o600))
+
+		files, err := sut.FindSQLFiles(root)
+		require.NoError(t, err)
+		// フルパス文字列の昇順（"…/b.sql" < "…/sub/a.sql"）で返ること。
+		assert.Equal(t, []string{filepath.Join(root, "b.sql"), filepath.Join(sub, "a.sql")}, files)
+	})
+
+	t.Run("FindSQLFiles_存在しないルートはエラー", func(t *testing.T) {
+		t.Parallel()
+		_, err := sut.FindSQLFiles(filepath.Join(t.TempDir(), "missing"))
+		require.Error(t, err)
+	})
+
+	t.Run("ReadFile_WriteFile_往復で同じ内容を読み書きできる", func(t *testing.T) {
+		t.Parallel()
+		p := filepath.Join(t.TempDir(), "x.sql")
+		require.NoError(t, sut.WriteFile(p, []byte("SELECT 1;"), 0o600))
+
+		b, err := sut.ReadFile(p)
+		require.NoError(t, err)
+		assert.Equal(t, "SELECT 1;", string(b))
+	})
+
+	t.Run("ReadFile_存在しないファイルはエラー", func(t *testing.T) {
+		t.Parallel()
+		_, err := sut.ReadFile(filepath.Join(t.TempDir(), "missing.sql"))
+		require.Error(t, err)
+	})
+
+	t.Run("Remove_ファイルを削除できる", func(t *testing.T) {
+		t.Parallel()
+		p := filepath.Join(t.TempDir(), "x.sql")
+		require.NoError(t, os.WriteFile(p, []byte("x"), 0o600))
+		require.NoError(t, sut.Remove(p))
+
+		_, err := os.Stat(p)
+		require.Error(t, err)
+	})
+
+	t.Run("Remove_存在しないファイルはエラー", func(t *testing.T) {
+		t.Parallel()
+		require.Error(t, sut.Remove(filepath.Join(t.TempDir(), "missing.sql")))
+	})
 }
