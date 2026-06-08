@@ -78,7 +78,7 @@ func TestBuildSpanName(t *testing.T) {
 
 func TestExtractTraceContext(t *testing.T) {
 	t.Run("Contextにスパン情報がない場合、空のTraceContextが返る", func(t *testing.T) {
-		expected := TraceContext{}
+		expected := &TraceContext{}
 
 		ctx := context.Background()
 		actual := ExtractTraceContext(ctx)
@@ -92,7 +92,7 @@ func TestExtractTraceContext(t *testing.T) {
 		span := trace.SpanFromContext(ctx).SpanContext()
 		assert.True(t, span.IsValid())
 
-		expected := TraceContext{
+		expected := &TraceContext{
 			traceID: span.TraceID().String(),
 			spanID:  span.SpanID().String(),
 		}

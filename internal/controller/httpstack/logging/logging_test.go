@@ -124,7 +124,7 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 		c.Response().Status = expectedStatus
 		c.Response().Header().Set("X-Request-Id", expectedRequestID)
 
-		l := log{c: c, lf: lf, traceCtx: observability.TraceContext{}}
+		l := log{c: c, lf: lf, traceCtx: &observability.TraceContext{}}
 		fields := l.buildResponseLogFields(150 * time.Millisecond)
 
 		assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))

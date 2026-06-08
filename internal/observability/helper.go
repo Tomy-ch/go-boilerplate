@@ -32,13 +32,13 @@ func BuildSpanName(layer, pkgName, funcName string) string {
 }
 
 // ExtractTraceContext は、現在の span から traceID/spanID を抽出して返します（parentSpanID は設定しません）。
-func ExtractTraceContext(ctx context.Context) TraceContext {
+func ExtractTraceContext(ctx context.Context) *TraceContext {
 	span := trace.SpanFromContext(ctx)
 	if !span.SpanContext().IsValid() {
-		return TraceContext{}
+		return &TraceContext{}
 	}
 	spanCtx := span.SpanContext()
-	return TraceContext{
+	return &TraceContext{
 		traceID: spanCtx.TraceID().String(),
 		spanID:  spanCtx.SpanID().String(),
 	}
@@ -50,13 +50,13 @@ func StartSpanWithParent(
 	tracer LayerTracer,
 	name string,
 	opts ...trace.SpanStartOption,
-) (TraceContext, context.Context, func()) {
+) (*TraceContext, context.Context, func()) {
 	parentSC := trace.SpanFromContext(ctx).SpanContext()
 
 	childCtx, span := tracer.tracer.Start(ctx, name, opts...)
 	childSC := span.SpanContext()
 
-	tc := TraceContext{
+	tc := &TraceContext{
 		traceID: childSC.TraceID().String(),
 		spanID:  childSC.SpanID().String(),
 	}
@@ -70,16 +70,16 @@ func StartSpanWithParent(
 }
 
 // TraceID は、TraceContext から TraceID を取得します。
-func (tc TraceContext) TraceID() string {
+func (tc *TraceContext) TraceID() string {
 	return tc.traceID
 }
 
 // SpanID は、TraceContext から SpanID を取得します。
-func (tc TraceContext) SpanID() string {
+func (tc *TraceContext) SpanID() string {
 	return tc.spanID
 }
 
 // ParentSpanID は、TraceContext から ParentSpanID を取得します。
-func (tc TraceContext) ParentSpanID() string {
+func (tc *TraceContext) ParentSpanID() string {
 	return tc.parentSpanID
 }

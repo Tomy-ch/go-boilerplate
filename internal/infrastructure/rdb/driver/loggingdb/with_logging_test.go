@@ -120,7 +120,7 @@ func Test_dbWithLogging_buildSQLStartLogFields(t *testing.T) {
 
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	tc := observability.TraceContext{}
+	tc := &observability.TraceContext{}
 	funcName := "TestBuildSQLLogFields"
 
 	dwl := &dbWithLogging{
@@ -143,7 +143,7 @@ func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 
 		lf := logging.NewTestLogFieldBuilder(t)
 
-		tc := observability.TraceContext{}
+		tc := &observability.TraceContext{}
 		funcName := "TestBuildSQLLogFields"
 		query := "SELECT * FROM users WHERE id = $1"
 		args := []any{123}
@@ -165,7 +165,7 @@ func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 		obsCfg := config.NewObservabilityConfig(cfg)
 		lf := logging.NewTestLogFieldBuilder(t)
 
-		tc := observability.TraceContext{}
+		tc := &observability.TraceContext{}
 		funcName := "TestBuildSQLLogFields"
 		query := "SELECT 1"
 		expectedDuration := time.Duration(100 * time.Millisecond)
