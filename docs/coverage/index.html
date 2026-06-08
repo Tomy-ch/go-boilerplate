@@ -5331,7 +5331,7 @@ func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddlewar
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="29">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="23">{
                 return mws[i].Priority &lt; mws[j].Priority
         }</span>)
 
@@ -5988,7 +5988,7 @@ func newStartServerFunc(
                 }</span>
                 <span class="cov5" title="2">e.Listener = ln
 
-                go func() </span><span class="cov1" title="1">{
+                go func() </span><span class="cov5" title="2">{
                         if err := e.Start(""); err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
                                 log.Named("server.Start").Error("failed to start http server", logging.Error("e.Start", err))
                         }</span>
@@ -10548,7 +10548,7 @@ func Wrap(err error, msg string) error <span class="cov9" title="355">{
 }</span>
 
 // Is は、エラーが特定のターゲットエラーと一致するかを判定します。
-func Is(err, target error) bool <span class="cov8" title="171">{
+func Is(err, target error) bool <span class="cov8" title="172">{
         return errors.Is(err, target)
 }</span>
 
