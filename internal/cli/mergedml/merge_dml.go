@@ -20,21 +20,14 @@ import (
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
 const (
-	// ▼ チューニング用定数群(値の由来や背景は README に記載)
-
-	// sqlcDBConcurrency:
-	//   sqlc生成ジョブ(DBイントロスペクション＋コード出力)の並列数。
-	sqlcDBConcurrency = 4
+	// ▼ カテゴリ単位のファイル連結ジョブの並列数チューニング定数（値の由来は README に記載）
 
 	// maxSQLCConcurrency:
-	//   占有してよい並列の上限。
-	//   runtime.NumCPU()と組み合わせてDockerのCPUを極端に占有しないようにする。
+	//   占有してよい並列の上限。runtime.NumCPU() と組み合わせて Docker の CPU を極端に占有しないようにする。
 	maxSQLCConcurrency = 4
 
-	// ▼ ここから下は基本固定
-
 	// minSQLCConcurrency:
-	//   並列の下限。I/O待ちが多いので1だと非効率なので最低2を確保。
+	//   並列の下限。I/O 待ちが多く 1 だと非効率なので最低 2 を確保する。
 	minSQLCConcurrency = 2
 
 	// genFilePerm は、生成する SQL ファイルのパーミッションです。
@@ -311,21 +304,18 @@ func resolveConcurrencyConst() int {
 	return resolveConcurrency(runtime.NumCPU())
 }
 
-// resolveConcurrency は、与えられた CPU 数から SQLC の同時実行数を解決します（resolveConcurrencyConst の純粋本体）。
+// resolveConcurrency は、与えられた CPU 数を [minSQLCConcurrency, maxSQLCConcurrency] にクランプして
+// 同時実行数を解決します（resolveConcurrencyConst の純粋本体）。下限は実行時値（numCPU）に適用するため、
+// CPU 数が下限未満の環境でも最低 minSQLCConcurrency を保証します。
 func resolveConcurrency(numCPU int) int {
-	maxAllowed := numCPU
-	if maxAllowed > maxSQLCConcurrency {
-		maxAllowed = maxSQLCConcurrency
+	n := numCPU
+	if n > maxSQLCConcurrency {
+		n = maxSQLCConcurrency
 	}
-
-	switch {
-	case sqlcDBConcurrency > maxAllowed:
-		return maxAllowed
-	case sqlcDBConcurrency < minSQLCConcurrency:
-		return minSQLCConcurrency
-	default:
-		return sqlcDBConcurrency
+	if n < minSQLCConcurrency {
+		n = minSQLCConcurrency
 	}
+	return n
 }
 
 func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {

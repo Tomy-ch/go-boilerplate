@@ -246,12 +246,16 @@ func TestResolveConcurrency(t *testing.T) {
 		numCPU int
 		want   int
 	}{
-		// CPU 数が上限定数を下回る場合は、その CPU 数が同時実行数の上限になる。
-		{name: "正常系_CPU数が上限未満なら上限はCPU数に丸められる", numCPU: 2, want: 2},
-		// CPU 数が上限定数ちょうどなら、設定値(sqlcDBConcurrency)を採用する。
-		{name: "正常系_CPU数が上限と同じなら設定値を採用する", numCPU: maxSQLCConcurrency, want: sqlcDBConcurrency},
-		// CPU 数が上限定数を超えても、上限定数で頭打ちにして設定値を採用する。
-		{name: "正常系_CPU数が上限超過でも上限定数で頭打ちにする", numCPU: maxSQLCConcurrency + 8, want: sqlcDBConcurrency},
+		// CPU 数が下限未満でも下限 minSQLCConcurrency を保証する（実行時値へクランプ）。
+		{name: "正常系_CPU数が下限未満なら下限まで引き上げる", numCPU: 1, want: minSQLCConcurrency},
+		// CPU 数が下限ちょうどならそのまま。
+		{name: "正常系_CPU数が下限と同じならそのまま", numCPU: minSQLCConcurrency, want: minSQLCConcurrency},
+		// 下限と上限の間ならその CPU 数を採用する。
+		{name: "正常系_CPU数が下限と上限の間ならそのCPU数を採用する", numCPU: maxSQLCConcurrency - 1, want: maxSQLCConcurrency - 1},
+		// CPU 数が上限ちょうどなら上限。
+		{name: "正常系_CPU数が上限と同じなら上限を採用する", numCPU: maxSQLCConcurrency, want: maxSQLCConcurrency},
+		// CPU 数が上限超過なら上限で頭打ちにする。
+		{name: "正常系_CPU数が上限超過でも上限で頭打ちにする", numCPU: maxSQLCConcurrency + 8, want: maxSQLCConcurrency},
 	}
 	for _, tt := range tests {
 		tt := tt

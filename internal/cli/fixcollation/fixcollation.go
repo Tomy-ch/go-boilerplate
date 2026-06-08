@@ -32,17 +32,19 @@ func RunFix(ctx context.Context, runner exec.Runner, logger logging.Logger, data
 
 // validateDatabaseName は、許可済みのローカル向け DB 名のみを受け付けます。
 func validateDatabaseName(name string) error {
-	if name == "" || name != "local" && name != "test" {
+	switch name {
+	case "local", "test":
+		return nil
+	default:
 		return fmt.Errorf("invalid database name: %s", name)
 	}
-	return nil
 }
 
 // fixCollation は、collation mismatch 修正 SQL を psql 経由で順に実行します。
 func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger, dbURL, database string) error {
-	logger.CallerSkip(callerSkipCount).Named("fixcollation").Info("start collation fix",
-		logging.String("database", database),
-	)
+	// 名前付きロガーは一度生成して使い回す（Named の付け忘れを構造的に防ぐ）。
+	log := logger.CallerSkip(callerSkipCount).Named("fixcollation")
+	log.Info("start collation fix", logging.String("database", database))
 
 	sqlStatements := []string{
 		fmt.Sprintf("REINDEX DATABASE %s;", database),
@@ -53,7 +55,7 @@ func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger
 	for _, sql := range sqlStatements {
 		args := []string{dbURL, "-v", "ON_ERROR_STOP=1", "-c", sql}
 		if _, err := runner.Output(ctx, workDir, psqlCommand, args); err != nil {
-			logger.CallerSkip(callerSkipCount).Named("fixcollation").Error("psql command failed",
+			log.Error("psql command failed",
 				logging.String("database", database),
 				logging.String("sql", sql),
 				logging.Error("psql", err),
@@ -62,8 +64,6 @@ func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger
 		}
 	}
 
-	logger.CallerSkip(callerSkipCount).Named("fixcollation").Info("collation fix completed successfully",
-		logging.String("database", database),
-	)
+	log.Info("collation fix completed successfully", logging.String("database", database))
 	return nil
 }

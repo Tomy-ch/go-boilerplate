@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	climigrate "go-boilerplate/internal/cli/migrate"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -81,7 +83,7 @@ func newMigrateDownCommand() *cobra.Command {
 // buildMigrateInstance は、設定を読み込み golang-migrate のインスタンスを生成します。
 func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	if err := config.Load(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 	if database != "" {
 		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保つ。
@@ -93,14 +95,14 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	}
 	cfg, err := config.New()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to build config: %w", err)
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
 
 	m, err := migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create migrate instance: %w", err)
 	}
 	return m, nil
 }
