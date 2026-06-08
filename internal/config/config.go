@@ -11,10 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type validatedConfig struct {
-	cidr *net.IPNet
-}
-
 // New は、アプリケーションの設定を初期化します。
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[Loader]()
@@ -22,7 +18,11 @@ func New() (*Config, error) {
 		return nil, fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
 	}
 
-	v, err := validateConfig(cfg)
+	if err := validateConfig(cfg); err != nil {
+		return nil, err
+	}
+
+	cidr, err := parseCIDR(cfg.Security.CIDR)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func New() (*Config, error) {
 		},
 		security: SecurityConfig{
 			allowedOrigins:        cfg.Security.AllowedOrigins,
-			cidr:                  v.cidr,
+			cidr:                  cidr,
 			contentTypeNosniff:    cfg.Security.ContentTypeNosniff,
 			xFrameOptions:         cfg.Security.XFrameOptions,
 			hstsMaxAge:            cfg.Security.HSTSMaxAge,
@@ -98,35 +98,32 @@ func New() (*Config, error) {
 }
 
 // validateConfig は、ConfigLoaderの内容を検証します。
-func validateConfig(cfg Loader) (*validatedConfig, error) {
+func validateConfig(cfg Loader) error {
 	if err := validateApplicationConfig(cfg.App); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := validateServerConfig(cfg.Server); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := validateDatabaseConfig(cfg.Database); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := validateDBConnectionConfig(cfg.DBConnection); err != nil {
-		return nil, err
+		return err
 	}
 
-	cidr, err := validateSecurityConfig(cfg.Security)
-	if err != nil {
-		return nil, err
+	if err := validateSecurityConfig(cfg.Security); err != nil {
+		return err
 	}
 
 	if err := validateAuthConfig(cfg.Auth); err != nil {
-		return nil, err
+		return err
 	}
 
-	return &validatedConfig{
-		cidr: cidr,
-	}, nil
+	return nil
 }
 
 // validateApplicationConfig は、アプリケーション設定を検証します。
@@ -196,32 +193,40 @@ func validateDBConnectionConfig(dbConnCfg DBConnection) error {
 }
 
 // validateSecurityConfig は、セキュリティ設定を検証します。
-func validateSecurityConfig(secCfg Security) (*net.IPNet, error) {
+func validateSecurityConfig(secCfg Security) error {
 	if len(secCfg.AllowedOrigins) == 0 {
-		return nil, ErrEmptyAllowedOrigins
+		return ErrEmptyAllowedOrigins
 	}
 
 	if secCfg.BcryptCost < bcrypt.MinCost || bcrypt.MaxCost < secCfg.BcryptCost {
-		return nil, ErrInvalidBcryptCost
+		return ErrInvalidBcryptCost
 	}
 
 	for _, origin := range secCfg.AllowedOrigins {
 		parsedURL, err := url.Parse(origin)
 		if err != nil {
-			return nil, ErrHTTPOnlyAllowedForLocalhost
+			return ErrHTTPOnlyAllowedForLocalhost
 		}
 		// スキームは url.Parse で小文字正規化されるが、念のため EqualFold で大小無視判定する。
 		if strings.EqualFold(parsedURL.Scheme, "http") &&
 			parsedURL.Hostname() != "localhost" && parsedURL.Hostname() != "127.0.0.1" {
-			return nil, ErrHTTPOnlyAllowedForLocalhost
+			return ErrHTTPOnlyAllowedForLocalhost
 		}
 	}
 
-	_, cidr, err := net.ParseCIDR(secCfg.CIDR)
+	if _, err := parseCIDR(secCfg.CIDR); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// parseCIDR は、CIDR 文字列を *net.IPNet へ解析します。
+func parseCIDR(s string) (*net.IPNet, error) {
+	_, cidr, err := net.ParseCIDR(s)
 	if err != nil {
 		return nil, fmt.Errorf("%w : %w", ErrFailedToParseCIDR, err)
 	}
-
 	return cidr, nil
 }
 
