@@ -20,7 +20,8 @@ type TraceContext struct {
 	parentSpanID string
 }
 
-// ShouldLogWithSpan は、o11yモードとSpanの有無から、「このログを span 前提で出してよいか」を判定します。
+// ShouldLogWithSpan は、o11y モードと Span の有無から span 前提ログを出してよいか判定する公開ヘルパです。
+// span 前提ログを足す際の拡張ポイントとして提供しており、現状は本番未結線（利用例は README 参照）。
 func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool {
 	return obsCfg.Enabled() && trace.SpanFromContext(ctx).SpanContext().IsValid()
 }
@@ -31,13 +32,13 @@ func BuildSpanName(layer, pkgName, funcName string) string {
 }
 
 // ExtractTraceContext は、現在の span から traceID/spanID を抽出して返します（parentSpanID は設定しません）。
-func ExtractTraceContext(ctx context.Context) *TraceContext {
+func ExtractTraceContext(ctx context.Context) TraceContext {
 	span := trace.SpanFromContext(ctx)
 	if !span.SpanContext().IsValid() {
-		return &TraceContext{}
+		return TraceContext{}
 	}
 	spanCtx := span.SpanContext()
-	return &TraceContext{
+	return TraceContext{
 		traceID: spanCtx.TraceID().String(),
 		spanID:  spanCtx.SpanID().String(),
 	}
@@ -69,16 +70,16 @@ func StartSpanWithParent(
 }
 
 // TraceID は、TraceContext から TraceID を取得します。
-func (tc *TraceContext) TraceID() string {
+func (tc TraceContext) TraceID() string {
 	return tc.traceID
 }
 
 // SpanID は、TraceContext から SpanID を取得します。
-func (tc *TraceContext) SpanID() string {
+func (tc TraceContext) SpanID() string {
 	return tc.spanID
 }
 
 // ParentSpanID は、TraceContext から ParentSpanID を取得します。
-func (tc *TraceContext) ParentSpanID() string {
+func (tc TraceContext) ParentSpanID() string {
 	return tc.parentSpanID
 }

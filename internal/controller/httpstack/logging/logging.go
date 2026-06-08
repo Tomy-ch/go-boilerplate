@@ -16,7 +16,7 @@ import (
 type log struct {
 	c        echo.Context
 	lf       logging.LogFieldBuilder
-	traceCtx *observability.TraceContext
+	traceCtx observability.TraceContext
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
