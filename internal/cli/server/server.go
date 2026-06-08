@@ -60,7 +60,6 @@ func serveRun(_ *cobra.Command, _ []string) error {
 // runServer は、アプリ本体を起動し、ctx のキャンセル（終了シグナル）を受けてから
 // グレースフルシャットダウンを行います。停止用 context のタイムアウトは「停止開始時点」から
 // 計測することで稼働時間に消費されないようにしています。
-// 起動・停止・メトリクス停止を引数で受け取ることで、DI/実 DB に依存せず単体テスト可能にしています。
 func runServer(
 	ctx context.Context,
 	shutdownTimeout time.Duration,

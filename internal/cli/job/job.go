@@ -14,7 +14,6 @@ const stopTimeout = 30 * time.Second
 
 // NewCommand は job コマンドを生成します。
 func NewCommand() *cobra.Command {
-	// フラグはパッケージグローバルにせずローカルに束縛し、コマンドの並列テスト安全性を保ちます。
 	var timeout time.Duration
 
 	cmd := &cobra.Command{
@@ -33,15 +32,13 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-// runJobExec は、DI 経由でジョブランナーを取得し、オーケストレーションを runJob へ委譲する薄い殻です。
-// DI 取得という配線のみを担い、分岐ロジックは持ちません（テストは runJob 側で行います）。
+// runJobExec は、DI 経由でジョブランナーを取得し、オーケストレーションを runJob へ委譲します。
 func runJobExec(ctx context.Context, name string, args []string, timeout time.Duration) error {
 	start, stop := di.RunJob()
 	return runJob(ctx, name, args, timeout, start, stop)
 }
 
 // runJob は、ジョブ実行のオーケストレーション（タイムアウト分岐と停止処理）を行います。
-// start / stop を引数で受け取ることで、DI や実依存なしに全分岐を単体テストできます。
 func runJob(
 	ctx context.Context,
 	name string,
@@ -80,7 +77,6 @@ func runJob(
 }
 
 // gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop）を実行します。
-// 4 つの停止経路で同一の定型を共有し、片方だけ直し忘れる不整合を構造的に防ぎます。
 func gracefulStop(ctx context.Context, stop di.StopFunc) {
 	stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
 	defer cancel()
