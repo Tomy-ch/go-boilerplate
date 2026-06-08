@@ -32,9 +32,20 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-// runJobExec は、DI 経由でジョブランナーを取得し、オーケストレーションを runJob へ委譲します。
+// runJobExec は、DI 経由でジョブランナーを取得し、オーケストレーションを runJob へ委譲する薄い殻です。
 func runJobExec(ctx context.Context, name string, args []string, timeout time.Duration) error {
-	start, stop := di.RunJob()
+	return runJobWith(ctx, name, args, timeout, di.RunJob)
+}
+
+// runJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。
+func runJobWith(
+	ctx context.Context,
+	name string,
+	args []string,
+	timeout time.Duration,
+	provide func() (di.StartFunc, di.StopFunc),
+) error {
+	start, stop := provide()
 	return runJob(ctx, name, args, timeout, start, stop)
 }
 

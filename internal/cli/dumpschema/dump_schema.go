@@ -101,20 +101,34 @@ func runDumpSchema(ctx context.Context, workDir string) error {
 
 	gen := newGenerator(logger, workDir)
 
-	// アプリ設定から接続先 DSN を組み立て、ダンプ対象 DB を決定します。
-	cfg, err := config.SetUpConfig()
+	// アプリ設定から接続先 DSN を組み立てる処理は実依存に閉じ込め、整形手順は runDump へ委譲します。
+	loadDSN := func() (string, error) {
+		cfg, cerr := config.SetUpConfig()
+		if cerr != nil {
+			logger.CallerSkip(gen.callerSkipCount).Named("dumpschema.SetUpConfig").Error("failed to load config",
+				logging.Error("config", cerr),
+			)
+			return "", cerr
+		}
+		return driver.DSNString(config.NewDatabaseConfig(cfg)), nil
+	}
+
+	return runDump(ctx, gen, loadDSN)
+}
+
+// runDump は、DSN 解決・スキーマダンプ・整形のオーケストレーションを行います。
+//
+// 手順:
+//  1. ダンプコマンドを実行してスキーマをダンプ
+//  2. スキーマファイル内のメタコマンド行を除去
+func runDump(ctx context.Context, gen *generator, loadDSN func() (string, error)) error {
+	dbURL, err := loadDSN()
 	if err != nil {
-		logger.CallerSkip(gen.callerSkipCount).Named("dumpschema.SetUpConfig").Error("failed to load config",
-			logging.Error("config", err),
-		)
 		return err
 	}
 
-	dbCfg := config.NewDatabaseConfig(cfg)
-	dbURL := driver.DSNString(dbCfg)
-
 	// まず生の schema を出力し、その後 sqlc が扱いやすい形に整形します。
-	if err = gen.dumpSchema(ctx, dbURL); err != nil {
+	if err := gen.dumpSchema(ctx, dbURL); err != nil {
 		return err
 	}
 	return gen.sanitizeSchemaInPlace()

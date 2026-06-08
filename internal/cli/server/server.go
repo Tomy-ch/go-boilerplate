@@ -43,18 +43,26 @@ func serveRun(_ *cobra.Command, _ []string) error {
 
 	// メトリクス用の補助サーバーは開発向けのため、本番環境では起動しません。
 	// 停止関数はシャットダウン段で再利用するため、関数スコープで保持します。
-	var stopMetrics func(context.Context)
-	if !appCfg.IsProductionMode() {
-		startMetrics, endMetrics := NewMetricsServer(mtcCfg)
-		startMetrics()
-		stopMetrics = endMetrics
-	}
+	stopMetrics := resolveMetricsStop(appCfg, func() (func(), func(context.Context)) {
+		return NewMetricsServer(mtcCfg)
+	})
 
 	// DI コンテナ経由でアプリ本体を組み立て、HTTP サーバーを起動します。
 	app := server.NewApplicationCore()
 	startApp, stopApp := server.NewApplicationServer(app)
 
 	return runServer(ctx, appCfg.ShutdownTimeout(), startApp, stopApp, stopMetrics)
+}
+
+// resolveMetricsStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。
+// 本番モードでは起動せず nil を返します（呼び出し側は nil を「停止不要」として扱います）。
+func resolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) {
+	if appCfg.IsProductionMode() {
+		return nil
+	}
+	startMetrics, stopMetrics := newMetrics()
+	startMetrics()
+	return stopMetrics
 }
 
 // runServer は、アプリ本体を起動し、ctx のキャンセル（終了シグナル）を受けてから

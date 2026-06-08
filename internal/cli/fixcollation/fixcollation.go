@@ -38,26 +38,39 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-// runFixCollation は、設定と DSN を組み立て、collation 修正を fixCollation へ委譲する薄い殻です。
+// runFixCollation は、ロガーと実依存を組み立て、collation 修正を runFix へ委譲する薄い殻です。
 func runFixCollation(ctx context.Context, database string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
 		return fmt.Errorf("failed to init logger: %w", err)
 	}
 
+	// アプリ設定から DSN を組み立てる処理は実依存に閉じ込めます。
+	loadDSN := func() (string, error) {
+		cfg, cerr := config.SetUpConfig()
+		if cerr != nil {
+			logger.CallerSkip(callerSkipCount).Error("failed to load config", logging.Error("config", cerr))
+			return "", cerr
+		}
+		return driver.DSNString(config.NewDatabaseConfig(cfg)), nil
+	}
+
+	return runFix(ctx, exec.OS{}, logger, database, loadDSN)
+}
+
+// runFix は、DB 名の検証・DSN 解決・collation 修正のオーケストレーションを行います。
+func runFix(ctx context.Context, runner exec.Runner, logger logging.Logger, database string, loadDSN func() (string, error)) error {
 	// 想定外の DB への実行を避けるため、許可済みのローカル向け DB 名だけを受け付けます。
 	if err := validateDatabaseName(database); err != nil {
 		return err
 	}
 
-	cfg, err := config.SetUpConfig()
+	dbURL, err := loadDSN()
 	if err != nil {
-		logger.CallerSkip(callerSkipCount).Error("failed to load config", logging.Error("config", err))
 		return err
 	}
-	dbURL := driver.DSNString(config.NewDatabaseConfig(cfg))
 
-	return fixCollation(ctx, exec.OS{}, logger, dbURL, database)
+	return fixCollation(ctx, runner, logger, dbURL, database)
 }
 
 // validateDatabaseName は、許可済みのローカル向け DB 名のみを受け付けます。

@@ -167,7 +167,7 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-// mergeDMLRun は、DMLファイルをマージして、カテゴリごとに単一ファイルにまとめます。
+// mergeDMLRun は、ロガーとジェネレーターを実依存で組み立て、マージ処理を runMerge へ委譲する薄い殻です。
 func mergeDMLRun(ctx context.Context, targetType, workDir string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
@@ -175,6 +175,12 @@ func mergeDMLRun(ctx context.Context, targetType, workDir string) error {
 	}
 
 	gen := newGenerator(logger, workDir)
+	return runMerge(ctx, gen, targetType)
+}
+
+// runMerge は、DMLファイルをマージして、カテゴリごとに単一ファイルにまとめます。
+func runMerge(ctx context.Context, gen *generator, targetType string) error {
+	logger := gen.logger
 
 	// type 配下のカテゴリ一覧を取得し、カテゴリ単位でマージ対象を決定します。
 	categories, err := gen.fs.ListSubDirNames(gen.dmlTypeRootAbs(targetType))

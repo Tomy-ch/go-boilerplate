@@ -44,23 +44,38 @@ func NewDBSeedCommand() *cobra.Command {
 	return cmd
 }
 
-// dbSeedRun は、設定と DB 接続を組み立て、seed ファイル群の投入を runSeeds へ委譲する薄い殻です。
+// dbSeedRun は、ロガーと実依存（FS・DB 接続）を組み立て、seed 投入を runDBSeed へ委譲する薄い殻です。
 func dbSeedRun(database string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
 		panic("failed to create logger: " + err.Error())
 	}
 
+	return runDBSeed(logger, fs.OS{}, database, openSeedDB)
+}
+
+// openSeedDB は、seed 用設定を読み込み DB 接続を確立する実依存の口です。
+func openSeedDB(logger logging.Logger, database string) (driver.DatabaseDriver, error) {
 	// seed 実行時の設定を組み立て、必要であれば投入先 DB 名を上書きします。
 	cfg, err := newConfigForSeed(logger, database)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
+	return driver.NewDB(dbCfg, osCfg, dbConnCfg)
+}
+
+// runDBSeed は、DB 接続の取得・seed ファイル列挙・投入のオーケストレーションを行います。
+func runDBSeed(
+	logger logging.Logger,
+	fsys fs.FS,
+	database string,
+	openDB func(logging.Logger, string) (driver.DatabaseDriver, error),
+) error {
+	db, err := openDB(logger, database)
 	if err != nil {
 		logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error("dbOpen", err))
 		return err
@@ -71,7 +86,6 @@ func dbSeedRun(database string) error {
 		}
 	}()
 
-	fsys := fs.OS{}
 	files, err := fsys.Glob(seedFilePlace + "/*.sql")
 	if err != nil {
 		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error("globSeedFiles", err))
