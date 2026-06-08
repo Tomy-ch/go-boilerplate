@@ -148,6 +148,8 @@ AI agents are allowed to modify code only in the following directories unless ex
 
 Do NOT modify other top-level directories (e.g., `cmd/`, `docker/`, `scripts/`, `docs/`, `vendor/`, `makefile`, etc.) unless the user explicitly requests it.
 
+Exception for CLI commands: each CLI subcommand is a thin shell file `cmd/<command>.go` (Cobra definition + real-dependency wiring) paired with its testable core under `internal/cli/<command>/` (see the `cli/` section). Adding or modifying a CLI command necessarily edits the matching `cmd/<command>.go` shell, and that is in-scope as part of the command task — the restriction above is about not arbitrarily restructuring `cmd/` (entrypoint/build wiring), not about blocking command additions.
+
 AI coding agent configurations are also outside the allowed scope. AI agents must NOT create, modify, or delete the following files/directories unless the user explicitly requests it:
 
 - Claude Code: `.claude/` (including `.claude/skills/`, `.claude/settings.json`, `.claude/settings.local.json`, etc.)
