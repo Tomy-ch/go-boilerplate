@@ -86,21 +86,21 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 | `make check-migration-up-gap` | Checks sequence gaps in `up` migrations. | None |
 | `make check-migration-down-gap` | Checks sequence gaps in `down` migrations. | None |
 | `make db-migrate-up DB=<database>` | Applies all migrations to the specified DB up to the latest. | Example: `make db-migrate-up DB=local` |
-| `make db-migrate-up-<version> DB=<database>` | Applies migrations up to a specific version. | Example: `make db-migrate-up-10 DB=local` |
+| `make db-migrate-up-<steps> DB=<database>` | Applies the given number of migrations relative to the current position. | Example: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | Downgrades all migrations to the initial state. | None |
-| `make db-migrate-down-<version> DB=<database>` | Downgrades to a specific version. | None |
+| `make db-migrate-down-<steps> DB=<database>` | Rolls back the given number of migrations. | None |
 | `make db-local-migrate-up` | Applies all migrations to LocalDB. | Alias for `db-migrate-up` with `DB=local`. |
-| `make db-local-migrate-up-<version>` | Applies migrations up to a specific version on LocalDB. | None |
+| `make db-local-migrate-up-<steps>` | Applies the given number of migrations on LocalDB. | None |
 | `make db-local-migrate-down` | Downgrades LocalDB to initial state. | Alias for `db-migrate-down` with `DB=local`. |
-| `make db-local-migrate-down-<version>` | Downgrades LocalDB to a specific version. | None |
+| `make db-local-migrate-down-<steps>` | Rolls back the given number of migrations on LocalDB. | None |
 | `make db-test-migrate-up` | Applies all migrations to TestDB. | Alias for `db-migrate-up` with `DB=test`. |
-| `make db-test-migrate-up-<version>` | Applies migrations up to a specific version on TestDB. | None |
+| `make db-test-migrate-up-<steps>` | Applies the given number of migrations on TestDB. | None |
 | `make db-test-migrate-down` | Downgrades TestDB to initial state. | Alias for `db-migrate-down` with `DB=test`. |
-| `make db-test-migrate-down-<version>` | Downgrades TestDB to a specific version. | None |
+| `make db-test-migrate-down-<steps>` | Rolls back the given number of migrations on TestDB. | None |
 | `make db-migrate-ci-up DB=<database>` | Executes `cmd/main.go migrate-up` directly without Docker. | CI target |
-| `make db-migrate-ci-up-<version> DB=<database>` | Executes `migrate-up` to a specific version without Docker. | CI target |
+| `make db-migrate-ci-up-<steps> DB=<database>` | Executes `migrate-up` for the given number of steps without Docker. | CI target |
 | `make db-migrate-ci-down DB=<database>` | Executes `cmd/main.go migrate-down` directly without Docker. | CI target |
-| `make db-migrate-ci-down-<version> DB=<database>` | Executes `migrate-down` to a specific version without Docker. | CI target |
+| `make db-migrate-ci-down-<steps> DB=<database>` | Executes `migrate-down` for the given number of steps without Docker. | CI target |
 
 Example:
 

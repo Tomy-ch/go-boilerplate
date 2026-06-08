@@ -86,21 +86,21 @@ DB 操作全般を扱うターゲット群です。
 | `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | なし |
 | `make check-migration-down-gap` | `down` 側マイグレーションの連番ギャップをチェックします。 | なし |
 | `make db-migrate-up DB=<database>` | 指定した DB に対して、全マイグレーションを最新まで適用します。 | 例: `make db-migrate-up DB=local` |
-| `make db-migrate-up-<version> DB=<database>` | 指定した DB に対して、特定バージョンまでマイグレーションを適用します。 | 例: `make db-migrate-up-10 DB=local` |
+| `make db-migrate-up-<steps> DB=<database>` | 指定した DB に対して、現在位置から指定段数だけマイグレーションを適用します。 | 例: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | 指定した DB に対して、全マイグレーションを初期状態までダウングレードします。 | なし |
-| `make db-migrate-down-<version> DB=<database>` | 指定した DB に対して、特定バージョンまでダウングレードします。 | なし |
+| `make db-migrate-down-<steps> DB=<database>` | 指定した DB に対して、指定段数だけダウングレードします。 | なし |
 | `make db-local-migrate-up` | LocalDB に対して全マイグレーションを最新まで適用します。 | `DB=local` を指定した `db-migrate-up` のエイリアスです。 |
-| `make db-local-migrate-up-<version>` | LocalDB に対して特定バージョンまでマイグレーションを適用します。 | なし |
+| `make db-local-migrate-up-<steps>` | LocalDB に対して指定段数だけマイグレーションを適用します。 | なし |
 | `make db-local-migrate-down` | LocalDB を初期状態までダウングレードします。 | `DB=local` を指定した `db-migrate-down` のエイリアスです。 |
-| `make db-local-migrate-down-<version>` | LocalDB を特定バージョンまでダウングレードします。 | なし |
+| `make db-local-migrate-down-<steps>` | LocalDB を指定段数だけダウングレードします。 | なし |
 | `make db-test-migrate-up` | TestDB に対して全マイグレーションを最新まで適用します。 | `DB=test` を指定した `db-migrate-up` のエイリアスです。 |
-| `make db-test-migrate-up-<version>` | TestDB に対して特定バージョンまでマイグレーションを適用します。 | なし |
+| `make db-test-migrate-up-<steps>` | TestDB に対して指定段数だけマイグレーションを適用します。 | なし |
 | `make db-test-migrate-down` | TestDB を初期状態までダウングレードします。 | `DB=test` を指定した `db-migrate-down` のエイリアスです。 |
-| `make db-test-migrate-down-<version>` | TestDB を特定バージョンまでダウングレードします。 | なし |
+| `make db-test-migrate-down-<steps>` | TestDB を指定段数だけダウングレードします。 | なし |
 | `make db-migrate-ci-up DB=<database>` | Docker を介さず、直接 `cmd/main.go migrate-up` を実行します。 | CI 用ターゲットです。 |
-| `make db-migrate-ci-up-<version> DB=<database>` | Docker を介さず、指定バージョンまで `migrate-up` を実行します。 | CI 用ターゲットです。 |
+| `make db-migrate-ci-up-<steps> DB=<database>` | Docker を介さず、指定段数だけ `migrate-up` を実行します。 | CI 用ターゲットです。 |
 | `make db-migrate-ci-down DB=<database>` | Docker を介さず、直接 `cmd/main.go migrate-down` を実行します。 | CI 用ターゲットです。 |
-| `make db-migrate-ci-down-<version> DB=<database>` | Docker を介さず、指定バージョンまで `migrate-down` を実行します。 | CI 用ターゲットです。 |
+| `make db-migrate-ci-down-<steps> DB=<database>` | Docker を介さず、指定段数だけ `migrate-down` を実行します。 | CI 用ターゲットです。 |
 
 例:
 
