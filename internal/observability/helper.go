@@ -30,7 +30,7 @@ func BuildSpanName(layer, pkgName, funcName string) string {
 	return layer + delimiter + pkgName + delimiter + funcName
 }
 
-// ExtractTraceContext は、Context からトレース情報を抽出して返します。
+// ExtractTraceContext は、現在の span から traceID/spanID を抽出して返します（parentSpanID は設定しません）。
 func ExtractTraceContext(ctx context.Context) *TraceContext {
 	span := trace.SpanFromContext(ctx)
 	if !span.SpanContext().IsValid() {
