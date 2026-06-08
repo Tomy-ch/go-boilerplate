@@ -96,6 +96,67 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 	})
 }
 
+func TestGenerator_cleanupStaleGeneratedFiles(t *testing.T) {
+	t.Parallel()
+
+	// genDir は workDir 配下に database/gen を作り、与えたファイル群を配置するヘルパ。
+	setup := func(t *testing.T, files ...string) (*generator, string) {
+		t.Helper()
+		work := t.TempDir()
+		genDir := filepath.Join(work, "database/gen")
+		require.NoError(t, os.MkdirAll(genDir, 0o750))
+		for _, name := range files {
+			require.NoError(t, os.WriteFile(filepath.Join(genDir, name), []byte("-- x"), 0o600))
+		}
+		return newTestGenerator(t, work), genDir
+	}
+
+	exists := func(t *testing.T, genDir, name string) bool {
+		t.Helper()
+		_, err := os.Stat(filepath.Join(genDir, name))
+		return err == nil
+	}
+
+	t.Run("正常系_keep対象は残し同typeのstaleのみ削除し他typeは触らない", func(t *testing.T) {
+		t.Parallel()
+		g, genDir := setup(t,
+			"user_repository.gen.sql",   // keep（今回の生成対象）
+			"old_repository.gen.sql",    // stale（同 type・keep外）→削除
+			"foo_query_service.gen.sql", // 別 type →非対象で温存
+		)
+
+		require.NoError(t, g.cleanupStaleGeneratedFiles([]string{"user"}, "repository"))
+
+		assert.True(t, exists(t, genDir, "user_repository.gen.sql"), "keep 対象は残る")
+		assert.False(t, exists(t, genDir, "old_repository.gen.sql"), "同 type の stale は削除される")
+		assert.True(t, exists(t, genDir, "foo_query_service.gen.sql"), "別 type の生成物は触らない")
+	})
+
+	t.Run("正常系_カテゴリ0件のとき同typeの生成物を全削除し他typeは温存する", func(t *testing.T) {
+		t.Parallel()
+		g, genDir := setup(t,
+			"a_repository.gen.sql",
+			"b_repository.gen.sql",
+			"x_query_service.gen.sql",
+		)
+
+		// categories が空＝このフローでは「全 stale 削除（同 type 全消し）」になる破壊的経路。
+		require.NoError(t, g.cleanupStaleGeneratedFiles(nil, "repository"))
+
+		assert.False(t, exists(t, genDir, "a_repository.gen.sql"))
+		assert.False(t, exists(t, genDir, "b_repository.gen.sql"))
+		assert.True(t, exists(t, genDir, "x_query_service.gen.sql"), "別 type は全消し対象外")
+	})
+
+	t.Run("異常系_genディレクトリが存在しない場合はエラー", func(t *testing.T) {
+		t.Parallel()
+		// gen ディレクトリを作らない workDir を渡すと os.ReadDir が失敗する。
+		g := newTestGenerator(t, t.TempDir())
+		err := g.cleanupStaleGeneratedFiles([]string{"user"}, "repository")
+		require.Error(t, err)
+	})
+}
+
 func TestGenerator_ensureUnderDir(t *testing.T) {
 	t.Parallel()
 
