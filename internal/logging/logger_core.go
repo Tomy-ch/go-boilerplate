@@ -31,11 +31,7 @@ func NewProductionLogger() (Logger, error) {
 		},
 	}
 
-	core, err := cfg.Build(
-		zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel),
-	)
-
-	return &logger{log: core}, err
+	return buildLogger(cfg, zapcore.ErrorLevel)
 }
 
 // NewDevelopmentLogger は、開発環境用のZapロガーを生成します。
@@ -58,11 +54,23 @@ func NewDevelopmentLogger() (Logger, error) {
 			EncodeCaller:  zapcore.ShortCallerEncoder,
 		},
 	}
-	core, err := cfg.Build(
-		zap.AddCaller(), zap.AddStacktrace(zapcore.WarnLevel),
-	)
 
-	return &logger{log: core}, err
+	return buildLogger(cfg, zapcore.WarnLevel)
+}
+
+// buildLogger は、zap.Config から Logger を構築する共通処理です。
+// Build 失敗時は zap が nil の *zap.Logger を返すため、それを包んだ
+// Logger（中身 nil）を返すと初回ログ出力で nil 参照 panic になる。
+// よってエラー時は Logger を返さず、nil とエラーのみを返す。
+func buildLogger(cfg zap.Config, stacktraceLevel zapcore.Level) (Logger, error) {
+	zl, err := cfg.Build(
+		zap.AddCaller(), zap.AddStacktrace(stacktraceLevel),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &logger{log: zl}, nil
 }
 
 // New は、指定された設定に基づいて新しいZapロガーを生成します。
