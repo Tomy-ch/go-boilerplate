@@ -1,62 +1,19 @@
-// Package server は、サーバーを起動するためのコマンドを提供するためのパッケージです。
+// Package server は、サーバー起動・グレースフルシャットダウンのコアロジックを提供します。
+//
+// Cobra コマンド定義と実依存（config / シグナル / DI アプリ生成）の結線は cmd 層が担います。本パッケージは
+// 注入された start/stop 関数・メトリクス生成関数に対して純粋に動作し、単体テスト可能です。
 package server
 
 import (
 	"context"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"go-boilerplate/internal/config"
-	server "go-boilerplate/internal/di"
-
-	"github.com/spf13/cobra"
 )
 
-// NewServeCommand は、サーバーを起動するためのコマンドを生成します。
-func NewServeCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "serve",
-		Short: "サーバーを起動します。",
-		Long:  "このコマンドは、アプリケーションのサーバーを起動します。",
-		RunE:  serveRun,
-	}
-}
-
-// serveRun は、サーバーを起動するための実行関数です。
-func serveRun(_ *cobra.Command, _ []string) error {
-	// サーバー起動に必要な設定をまとめて読み込みます。
-	cfg, err := config.SetUpConfig()
-	if err != nil {
-		return err
-	}
-	appCfg := config.NewApplicationConfig(cfg)
-	mtcCfg := config.NewMetricsConfig(cfg)
-
-	// SIGINT / SIGTERM を受け取ったら、アプリ全体の停止処理へ移行します。
-	ctx, stop := signal.NotifyContext(
-		context.Background(),
-		syscall.SIGINT,
-		syscall.SIGTERM,
-	)
-	defer stop()
-
-	// メトリクス用の補助サーバーは開発向けのため、本番環境では起動しません。
-	// 停止関数はシャットダウン段で再利用するため、関数スコープで保持します。
-	stopMetrics := resolveMetricsStop(appCfg, func() (func(), func(context.Context)) {
-		return NewMetricsServer(mtcCfg)
-	})
-
-	// DI コンテナ経由でアプリ本体を組み立て、HTTP サーバーを起動します。
-	app := server.NewApplicationCore()
-	startApp, stopApp := server.NewApplicationServer(app)
-
-	return runServer(ctx, appCfg.ShutdownTimeout(), startApp, stopApp, stopMetrics)
-}
-
-// resolveMetricsStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。
+// ResolveMetricsStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。
 // 本番モードでは起動せず nil を返します（呼び出し側は nil を「停止不要」として扱います）。
-func resolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) {
+func ResolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) {
 	if appCfg.IsProductionMode() {
 		return nil
 	}
@@ -65,10 +22,10 @@ func resolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (fun
 	return stopMetrics
 }
 
-// runServer は、アプリ本体を起動し、ctx のキャンセル（終了シグナル）を受けてから
+// RunServer は, アプリ本体を起動し、ctx のキャンセル（終了シグナル）を受けてから
 // グレースフルシャットダウンを行います。停止用 context のタイムアウトは「停止開始時点」から
 // 計測することで稼働時間に消費されないようにしています。
-func runServer(
+func RunServer(
 	ctx context.Context,
 	shutdownTimeout time.Duration,
 	startApp func(context.Context) error,

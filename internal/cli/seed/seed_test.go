@@ -11,7 +11,6 @@ import (
 	mock_fs "go-boilerplate/pkg/fs/mock"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -131,14 +130,6 @@ func TestRunSeeds(t *testing.T) {
 	})
 }
 
-func TestNewDBSeedCommand(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewDBSeedCommand()
-	assert.Equal(t, "db-seed", cmd.Use)
-	assert.NotNil(t, cmd.Flags().Lookup("database"))
-}
-
 func TestRunDBSeed(t *testing.T) {
 	t.Parallel()
 
@@ -154,7 +145,7 @@ func TestRunDBSeed(t *testing.T) {
 		db.EXPECT().Close().Return(nil)
 
 		openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) { return db, nil }
-		err := runDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+		err := RunDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
 		require.NoError(t, err)
 	})
 
@@ -166,7 +157,7 @@ func TestRunDBSeed(t *testing.T) {
 		openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) {
 			return nil, errors.New("open failed")
 		}
-		err := runDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+		err := RunDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
 		require.Error(t, err)
 	})
 
@@ -181,7 +172,7 @@ func TestRunDBSeed(t *testing.T) {
 		db.EXPECT().Close().Return(nil)
 
 		openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) { return db, nil }
-		err := runDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+		err := RunDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
 		require.Error(t, err)
 	})
 
@@ -195,7 +186,7 @@ func TestRunDBSeed(t *testing.T) {
 		db.EXPECT().Close().Return(errors.New("close failed"))
 
 		openDB := func(_ logging.Logger, _ string) (driver.DatabaseDriver, error) { return db, nil }
-		err := runDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
+		err := RunDBSeed(logging.NewTestLogger(t), fsys, "local", openDB)
 		require.NoError(t, err)
 	})
 }

@@ -7,42 +7,11 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/safecast"
 
-	"github.com/spf13/cobra"
-
 	"github.com/golang-migrate/migrate/v4"
-	// postgres driver for golang-migrate (required for runtime registration)
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// NewMigrateDownCommand は、DBのマイグレーションを下げるためのコマンドを生成します。
-func NewMigrateDownCommand() *cobra.Command {
-	var (
-		steps    int
-		database string
-	)
-
-	cmd := &cobra.Command{
-		Use:   "migrate-down",
-		Short: "database/migrations のDDLをダウングレードします（--steps / --database指定可）。",
-		Long: `database/migrations ディレクトリに存在するDDLマイグレーションを適用します。
-
---steps を指定しない場合（0）は、適用済みのマイグレーションを全て Down します。
---steps に正の整数を指定すると、現在位置からその段数だけ Down します。
---database フラグを指定すると、対象のデータベース（例: local, test）に対して Down を行います。`,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return migrateDownRun(steps, database, buildMigrateInstance)
-		},
-	}
-
-	cmd.Flags().IntVar(&steps, "steps", 0, "現在位置から Down する段数（0 で全件、正の整数のみ）")
-	cmd.Flags().StringVar(&database, "database", "", "対象データベース（例: local）")
-
-	return cmd
-}
-
-// migrateDownRun は、マイグレーションをダウングレードするための実行関数です。
-func migrateDownRun(steps int, database string, newMigrator migratorFactory) error {
+// MigrateDownRun は、マイグレーションをダウングレードするための実行関数です。
+func MigrateDownRun(steps int, database string, newMigrator MigratorFactory) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
 		panic("failed to create logger: " + err.Error())
@@ -89,7 +58,7 @@ func migrateDownRun(steps int, database string, newMigrator migratorFactory) err
 }
 
 // executeMigrateDownSteps は、現在位置から steps 段だけ Down します。無変更（ErrNoChange）は成功扱いです。
-func executeMigrateDownSteps(m migrator, steps int) error {
+func executeMigrateDownSteps(m Migrator, steps int) error {
 	// golang-migrate の Steps は負数を渡すとその段数だけ Down するため、検証済みの正値を反転します。
 	if err := m.Steps(-steps); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return err
@@ -98,7 +67,7 @@ func executeMigrateDownSteps(m migrator, steps int) error {
 }
 
 // executeMigrateFullDown は、マイグレーションを全てダウングレードして、DBを初期状態に戻します。
-func executeMigrateFullDown(m migrator) error {
+func executeMigrateFullDown(m Migrator) error {
 	// dirty 状態のままでは Down できないため、現在バージョンで整合を取り直してから巻き戻します。
 	v, dirty, err := m.Version()
 	if err != nil && !errors.Is(err, migrate.ErrNilVersion) {

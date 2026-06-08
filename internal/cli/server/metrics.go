@@ -46,11 +46,7 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig) (func(), func(ctx context.Co
 	start := func() {
 		// メインのアプリ起動をブロックしないよう、補助サーバーは別 goroutine で待ち受けます。
 		go func() {
-			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				// 補助サーバー（開発用 pprof）の bind 失敗等でアプリ本体を巻き込まないよう、
-				// goroutine 内では panic せずログ記録に留めます（本体 HTTP サーバーと同方針）。
-				logger.Named("metrics.ListenAndServe").Error("metrics server error", logging.Error("listen", err))
-			}
+			logListenError(logger, metricsSrv.ListenAndServe())
 		}()
 	}
 	end := func(ctx context.Context) {
@@ -60,4 +56,12 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig) (func(), func(ctx context.Co
 		}
 	}
 	return start, end
+}
+
+// logListenError は、補助サーバーの ListenAndServe 戻り値を判定し、正常停止(ErrServerClosed)以外の
+// エラーのみをログ記録します。bind 失敗等でアプリ本体を巻き込まないよう、panic せずログに留めます。
+func logListenError(logger logging.Logger, err error) {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Named("metrics.ListenAndServe").Error("metrics server error", logging.Error("listen", err))
+	}
 }

@@ -68,16 +68,6 @@ func TestFixCollation(t *testing.T) {
 	})
 }
 
-func TestNewCommand(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewCommand()
-	assert.Equal(t, "fix-collation", cmd.Use)
-	f := cmd.Flags().Lookup("database")
-	require.NotNil(t, f)
-	assert.Equal(t, "local", f.DefValue)
-}
-
 func TestRunFix(t *testing.T) {
 	t.Parallel()
 
@@ -88,7 +78,7 @@ func TestRunFix(t *testing.T) {
 		runner.EXPECT().Output(gomock.Any(), workDir, psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
 
 		loadDSN := func() (string, error) { return "postgres://dsn", nil }
-		err := runFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
+		err := RunFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
 		require.NoError(t, err)
 	})
 
@@ -102,7 +92,7 @@ func TestRunFix(t *testing.T) {
 			called = true
 			return "", nil
 		}
-		err := runFix(context.Background(), runner, logging.NewTestLogger(t), "production", loadDSN)
+		err := RunFix(context.Background(), runner, logging.NewTestLogger(t), "production", loadDSN)
 		require.Error(t, err)
 		assert.False(t, called)
 	})
@@ -113,7 +103,7 @@ func TestRunFix(t *testing.T) {
 		runner := mock_exec.NewMockRunner(ctrl)
 
 		loadDSN := func() (string, error) { return "", errors.New("config failed") }
-		err := runFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
+		err := RunFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
 		require.Error(t, err)
 	})
 }

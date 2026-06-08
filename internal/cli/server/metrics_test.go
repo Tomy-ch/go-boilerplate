@@ -2,11 +2,13 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,6 +29,25 @@ func TestMetricsServer(t *testing.T) {
 	// タイムアウトが固定値で設定されること。
 	assert.Equal(t, readHeaderTimeout, srv.ReadHeaderTimeout)
 	assert.Equal(t, writeTimeout, srv.WriteTimeout)
+}
+
+func TestLogListenError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系_nilは何もログしない", func(t *testing.T) {
+		t.Parallel()
+		assert.NotPanics(t, func() { logListenError(logging.NewTestLogger(t), nil) })
+	})
+
+	t.Run("正常系_ErrServerClosedは正常停止としてログしない", func(t *testing.T) {
+		t.Parallel()
+		assert.NotPanics(t, func() { logListenError(logging.NewTestLogger(t), http.ErrServerClosed) })
+	})
+
+	t.Run("異常系_それ以外のエラーはログ記録する", func(t *testing.T) {
+		t.Parallel()
+		assert.NotPanics(t, func() { logListenError(logging.NewTestLogger(t), errors.New("bind failed")) })
+	})
 }
 
 func TestNewMetricsServer(t *testing.T) {

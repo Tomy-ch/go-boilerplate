@@ -15,32 +15,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// Mockmigrator is a mock of migrator interface.
-type Mockmigrator struct {
+// MockMigrator is a mock of Migrator interface.
+type MockMigrator struct {
 	ctrl     *gomock.Controller
-	recorder *MockmigratorMockRecorder
+	recorder *MockMigratorMockRecorder
 	isgomock struct{}
 }
 
-// MockmigratorMockRecorder is the mock recorder for Mockmigrator.
-type MockmigratorMockRecorder struct {
-	mock *Mockmigrator
+// MockMigratorMockRecorder is the mock recorder for MockMigrator.
+type MockMigratorMockRecorder struct {
+	mock *MockMigrator
 }
 
-// NewMockmigrator creates a new mock instance.
-func NewMockmigrator(ctrl *gomock.Controller) *Mockmigrator {
-	mock := &Mockmigrator{ctrl: ctrl}
-	mock.recorder = &MockmigratorMockRecorder{mock}
+// NewMockMigrator creates a new mock instance.
+func NewMockMigrator(ctrl *gomock.Controller) *MockMigrator {
+	mock := &MockMigrator{ctrl: ctrl}
+	mock.recorder = &MockMigratorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *Mockmigrator) EXPECT() *MockmigratorMockRecorder {
+func (m *MockMigrator) EXPECT() *MockMigratorMockRecorder {
 	return m.recorder
 }
 
 // Down mocks base method.
-func (m *Mockmigrator) Down() error {
+func (m *MockMigrator) Down() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Down")
 	ret0, _ := ret[0].(error)
@@ -48,13 +48,13 @@ func (m *Mockmigrator) Down() error {
 }
 
 // Down indicates an expected call of Down.
-func (mr *MockmigratorMockRecorder) Down() *gomock.Call {
+func (mr *MockMigratorMockRecorder) Down() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Down", reflect.TypeOf((*Mockmigrator)(nil).Down))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Down", reflect.TypeOf((*MockMigrator)(nil).Down))
 }
 
 // Force mocks base method.
-func (m *Mockmigrator) Force(version int) error {
+func (m *MockMigrator) Force(version int) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Force", version)
 	ret0, _ := ret[0].(error)
@@ -62,13 +62,13 @@ func (m *Mockmigrator) Force(version int) error {
 }
 
 // Force indicates an expected call of Force.
-func (mr *MockmigratorMockRecorder) Force(version any) *gomock.Call {
+func (mr *MockMigratorMockRecorder) Force(version any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Force", reflect.TypeOf((*Mockmigrator)(nil).Force), version)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Force", reflect.TypeOf((*MockMigrator)(nil).Force), version)
 }
 
 // Steps mocks base method.
-func (m *Mockmigrator) Steps(n int) error {
+func (m *MockMigrator) Steps(n int) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Steps", n)
 	ret0, _ := ret[0].(error)
@@ -76,13 +76,13 @@ func (m *Mockmigrator) Steps(n int) error {
 }
 
 // Steps indicates an expected call of Steps.
-func (mr *MockmigratorMockRecorder) Steps(n any) *gomock.Call {
+func (mr *MockMigratorMockRecorder) Steps(n any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Steps", reflect.TypeOf((*Mockmigrator)(nil).Steps), n)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Steps", reflect.TypeOf((*MockMigrator)(nil).Steps), n)
 }
 
 // Up mocks base method.
-func (m *Mockmigrator) Up() error {
+func (m *MockMigrator) Up() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Up")
 	ret0, _ := ret[0].(error)
@@ -90,13 +90,13 @@ func (m *Mockmigrator) Up() error {
 }
 
 // Up indicates an expected call of Up.
-func (mr *MockmigratorMockRecorder) Up() *gomock.Call {
+func (mr *MockMigratorMockRecorder) Up() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Up", reflect.TypeOf((*Mockmigrator)(nil).Up))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Up", reflect.TypeOf((*MockMigrator)(nil).Up))
 }
 
 // Version mocks base method.
-func (m *Mockmigrator) Version() (uint, bool, error) {
+func (m *MockMigrator) Version() (uint, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Version")
 	ret0, _ := ret[0].(uint)
@@ -106,7 +106,7 @@ func (m *Mockmigrator) Version() (uint, bool, error) {
 }
 
 // Version indicates an expected call of Version.
-func (mr *MockmigratorMockRecorder) Version() *gomock.Call {
+func (mr *MockMigratorMockRecorder) Version() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*Mockmigrator)(nil).Version))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*MockMigrator)(nil).Version))
 }

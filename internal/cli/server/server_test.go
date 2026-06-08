@@ -12,15 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewServeCommand(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewServeCommand()
-	require.NotNil(t, cmd)
-	assert.Equal(t, "serve", cmd.Use)
-	assert.NotNil(t, cmd.RunE)
-}
-
 func TestResolveMetricsStop(t *testing.T) {
 	t.Parallel()
 
@@ -37,7 +28,7 @@ func TestResolveMetricsStop(t *testing.T) {
 			return func() { started = true }, stopFn
 		}
 
-		stop := resolveMetricsStop(appCfg, newMetrics)
+		stop := ResolveMetricsStop(appCfg, newMetrics)
 		require.NotNil(t, stop, "非本番では停止関数が返ること")
 		assert.True(t, started, "メトリクスサーバーが起動されること")
 	})
@@ -55,7 +46,7 @@ func TestResolveMetricsStop(t *testing.T) {
 			return func() {}, func(_ context.Context) {}
 		}
 
-		stop := resolveMetricsStop(appCfg, newMetrics)
+		stop := ResolveMetricsStop(appCfg, newMetrics)
 		assert.Nil(t, stop, "本番では停止関数は nil であること")
 		assert.False(t, called, "本番ではメトリクス生成自体を呼ばないこと")
 	})
@@ -74,7 +65,7 @@ func TestRunServer(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		var startCalled bool
-		//nolint:unparam // runServer のシグネチャ func(context.Context) error に合わせる必要がある
+		//nolint:unparam // RunServer のシグネチャ func(context.Context) error に合わせる必要がある
 		start := func(context.Context) error {
 			startCalled = true
 			return nil
@@ -94,7 +85,7 @@ func TestRunServer(t *testing.T) {
 			stopHasDeadline bool
 			stopCtx         context.Context
 		)
-		//nolint:unparam // runServer のシグネチャ func(context.Context) error に合わせる必要がある
+		//nolint:unparam // RunServer のシグネチャ func(context.Context) error に合わせる必要がある
 		stop := func(c context.Context) error {
 			stopCtx = c
 			stopDeadline, stopHasDeadline = c.Deadline()
@@ -103,7 +94,7 @@ func TestRunServer(t *testing.T) {
 
 		errCh := make(chan error, 1)
 		go func() {
-			errCh <- runServer(ctx, shutdownTimeout, start, stop, stopMetrics)
+			errCh <- RunServer(ctx, shutdownTimeout, start, stop, stopMetrics)
 		}()
 
 		// 起動から一定時間「稼働」させてからシグナル受信相当のキャンセルを行う。
@@ -134,7 +125,7 @@ func TestRunServer(t *testing.T) {
 		start := func(context.Context) error { return nil }
 		stop := func(context.Context) error { return nil }
 
-		require.NoError(t, runServer(ctx, shutdownTimeout, start, stop, nil))
+		require.NoError(t, RunServer(ctx, shutdownTimeout, start, stop, nil))
 	})
 
 	t.Run("異常系_起動失敗時は停止処理を行わずエラーを返す", func(t *testing.T) {
@@ -149,7 +140,7 @@ func TestRunServer(t *testing.T) {
 			return nil
 		}
 
-		err := runServer(context.Background(), shutdownTimeout, start, stop, nil)
+		err := RunServer(context.Background(), shutdownTimeout, start, stop, nil)
 		require.ErrorIs(t, err, startErr)
 		assert.False(t, stopCalled, "起動失敗時は stopApp を呼ばないこと")
 	})

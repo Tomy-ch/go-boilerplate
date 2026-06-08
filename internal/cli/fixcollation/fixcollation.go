@@ -1,16 +1,15 @@
-// Package fixcollation は、PostgreSQL の照合順序不整合を修正するコマンドを提供します。
+// Package fixcollation は、PostgreSQL の照合順序不整合を修正するコアロジックを提供します。
+//
+// Cobra コマンド定義と実依存（config/DSN）の結線は cmd 層が担います。本パッケージは注入された
+// exec.Runner / DSN 解決関数に対して純粋に動作し、単体テスト可能です。
 package fixcollation
 
 import (
 	"context"
 	"fmt"
 
-	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/exec"
-
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -19,47 +18,8 @@ const (
 	callerSkipCount = 1
 )
 
-// NewCommand は fix-collation コマンドを生成します。
-func NewCommand() *cobra.Command {
-	var database string
-
-	cmd := &cobra.Command{
-		Use:   "fix-collation",
-		Short: "PostgreSQL の照合順序 (collation) バージョン不一致を修正します",
-		Long: "PostgreSQL の照合順序バージョンが OS のライブラリと異なる場合に発生する mismatch を修正します。\n" +
-			"具体的には REINDEX DATABASE と ALTER DATABASE ... REFRESH COLLATION VERSION を実行します。",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runFixCollation(cmd.Context(), database)
-		},
-	}
-
-	cmd.Flags().StringVar(&database, "database", "local", "対象データベース名（例: local）")
-
-	return cmd
-}
-
-// runFixCollation は、ロガーと実依存を組み立て、collation 修正を runFix へ委譲する薄い殻です。
-func runFixCollation(ctx context.Context, database string) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		return fmt.Errorf("failed to init logger: %w", err)
-	}
-
-	// アプリ設定から DSN を組み立てる処理は実依存に閉じ込めます。
-	loadDSN := func() (string, error) {
-		cfg, cerr := config.SetUpConfig()
-		if cerr != nil {
-			logger.CallerSkip(callerSkipCount).Error("failed to load config", logging.Error("config", cerr))
-			return "", cerr
-		}
-		return driver.DSNString(config.NewDatabaseConfig(cfg)), nil
-	}
-
-	return runFix(ctx, exec.OS{}, logger, database, loadDSN)
-}
-
-// runFix は、DB 名の検証・DSN 解決・collation 修正のオーケストレーションを行います。
-func runFix(ctx context.Context, runner exec.Runner, logger logging.Logger, database string, loadDSN func() (string, error)) error {
+// RunFix は、DB 名の検証・DSN 解決・collation 修正のオーケストレーションを行います。
+func RunFix(ctx context.Context, runner exec.Runner, logger logging.Logger, database string, loadDSN func() (string, error)) error {
 	// 想定外の DB への実行を避けるため、許可済みのローカル向け DB 名だけを受け付けます。
 	if err := validateDatabaseName(database); err != nil {
 		return err

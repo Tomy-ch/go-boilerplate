@@ -18,9 +18,9 @@ import (
 
 const testWorkDir = "/work"
 
-func newTestGenerator(t *testing.T, fs FileSystem) *generator {
+func newTestGenerator(t *testing.T, fs FileSystem) *Generator {
 	t.Helper()
-	return &generator{
+	return &Generator{
 		logger:          logging.NewTestLogger(t),
 		callerSkipCount: 1,
 		workDir:         testWorkDir,
@@ -265,32 +265,12 @@ func TestResolveConcurrency(t *testing.T) {
 func TestNewGenerator(t *testing.T) {
 	t.Parallel()
 
-	g := newGenerator(logging.NewTestLogger(t), "/custom")
+	g := NewGenerator(logging.NewTestLogger(t), "/custom")
 	assert.Equal(t, "/custom", g.workDir)
 	assert.Equal(t, "database/dml/", g.dmlRootDir)
 	assert.Equal(t, "database/gen/", g.genRootDir)
 	assert.Equal(t, 1, g.callerSkipCount)
 	assert.NotNil(t, g.fs)
-}
-
-func TestNewCommand(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewCommand()
-	require.NotNil(t, cmd)
-	assert.Equal(t, "merge-dml", cmd.Use)
-
-	typeFlag := cmd.Flags().Lookup("type")
-	require.NotNil(t, typeFlag)
-
-	workDir := cmd.Flags().Lookup("work-dir")
-	require.NotNil(t, workDir)
-	assert.Equal(t, "/app", workDir.DefValue)
-
-	// --type は必須指定（未指定はバリデーションで弾かれること）。
-	require.Error(t, cmd.ValidateRequiredFlags())
-	require.NoError(t, cmd.Flags().Set("type", "repository"))
-	require.NoError(t, cmd.ValidateRequiredFlags())
 }
 
 func TestRunMerge(t *testing.T) {
@@ -316,7 +296,7 @@ func TestRunMerge(t *testing.T) {
 		fs.EXPECT().ListGenFileNames(genAbs).Return([]string{"user_repository.gen.sql"}, nil)
 
 		g := newTestGenerator(t, fs)
-		require.NoError(t, runMerge(context.Background(), g, targetType))
+		require.NoError(t, RunMerge(context.Background(), g, targetType))
 	})
 
 	t.Run("正常系_カテゴリ0件のときはcleanupのみ実行する", func(t *testing.T) {
@@ -330,7 +310,7 @@ func TestRunMerge(t *testing.T) {
 		fs.EXPECT().Remove(filepath.Join(genAbs, "old_repository.gen.sql")).Return(nil)
 
 		g := newTestGenerator(t, fs)
-		require.NoError(t, runMerge(context.Background(), g, targetType))
+		require.NoError(t, RunMerge(context.Background(), g, targetType))
 	})
 
 	t.Run("異常系_カテゴリ一覧の取得に失敗するとエラー", func(t *testing.T) {
@@ -341,7 +321,7 @@ func TestRunMerge(t *testing.T) {
 		fs.EXPECT().ListSubDirNames(typeRoot).Return(nil, errors.New("read dir failed"))
 
 		g := newTestGenerator(t, fs)
-		require.Error(t, runMerge(context.Background(), g, targetType))
+		require.Error(t, RunMerge(context.Background(), g, targetType))
 	})
 
 	t.Run("異常系_カテゴリ0件かつcleanupに失敗するとエラー", func(t *testing.T) {
@@ -353,7 +333,7 @@ func TestRunMerge(t *testing.T) {
 		fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("list failed"))
 
 		g := newTestGenerator(t, fs)
-		require.Error(t, runMerge(context.Background(), g, targetType))
+		require.Error(t, RunMerge(context.Background(), g, targetType))
 	})
 
 	t.Run("異常系_カテゴリのマージに失敗するとエラー", func(t *testing.T) {
@@ -366,7 +346,7 @@ func TestRunMerge(t *testing.T) {
 		fs.EXPECT().FindSQLFiles(userDir).Return(nil, errors.New("walk failed"))
 
 		g := newTestGenerator(t, fs)
-		require.Error(t, runMerge(context.Background(), g, targetType))
+		require.Error(t, RunMerge(context.Background(), g, targetType))
 	})
 
 	t.Run("異常系_ctxキャンセル済みならセマフォ取得に失敗しエラー", func(t *testing.T) {
@@ -382,7 +362,7 @@ func TestRunMerge(t *testing.T) {
 		cancel()
 
 		g := newTestGenerator(t, fs)
-		require.Error(t, runMerge(ctx, g, targetType))
+		require.Error(t, RunMerge(ctx, g, targetType))
 	})
 
 	t.Run("異常系_マージ成功後のcleanupに失敗するとエラー", func(t *testing.T) {
@@ -401,7 +381,7 @@ func TestRunMerge(t *testing.T) {
 		fs.EXPECT().ListGenFileNames(genAbs).Return(nil, errors.New("list failed"))
 
 		g := newTestGenerator(t, fs)
-		require.Error(t, runMerge(context.Background(), g, targetType))
+		require.Error(t, RunMerge(context.Background(), g, targetType))
 	})
 }
 

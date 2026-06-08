@@ -19,23 +19,6 @@ type recordingStop struct {
 	deadline    time.Time
 }
 
-func TestNewCommand(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewCommand()
-	require.NotNil(t, cmd)
-	assert.Equal(t, "job", cmd.Use)
-
-	// timeout フラグが既定値 0 で登録されていること。
-	f := cmd.Flags().Lookup("timeout")
-	require.NotNil(t, f)
-	assert.Equal(t, "0s", f.DefValue)
-
-	// 引数なしの実行は MinimumNArgs(1) により拒否されること。
-	require.Error(t, cmd.Args(cmd, []string{}))
-	require.NoError(t, cmd.Args(cmd, []string{"usercount"}))
-}
-
 // makeStart は、固定の done チャネルを返すフェイクの開始関数を生成します。
 func makeStart(done <-chan error) di.StartFunc {
 	return func(_ context.Context, _ string, _ []string) <-chan error {
@@ -141,7 +124,7 @@ func TestRunJobWith(t *testing.T) {
 			return makeStart(done), stop.fn()
 		}
 
-		err := runJobWith(context.Background(), "j", nil, 0, provide)
+		err := RunJobWith(context.Background(), "j", nil, 0, provide)
 
 		require.NoError(t, err)
 		assert.True(t, stop.called, "provide 由来の停止処理が呼ばれること")

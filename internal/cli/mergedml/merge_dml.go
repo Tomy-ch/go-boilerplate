@@ -13,7 +13,6 @@ import (
 
 	"go-boilerplate/internal/logging"
 
-	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 )
@@ -55,7 +54,7 @@ type FileSystem interface {
 // osFileSystem は os パッケージを用いた FileSystem の実装です。
 type osFileSystem struct{}
 
-type generator struct {
+type Generator struct {
 	logger          logging.Logger
 	callerSkipCount int
 
@@ -129,9 +128,9 @@ func (osFileSystem) Remove(name string) error {
 	return os.Remove(name)
 }
 
-// newGenerator は、merge-dml 用のジェネレーターインスタンスを生成します。
-func newGenerator(logger logging.Logger, workDir string) *generator {
-	return &generator{
+// NewGenerator は、merge-dml 用のジェネレーターインスタンスを生成します。
+func NewGenerator(logger logging.Logger, workDir string) *Generator {
+	return &Generator{
 		logger:          logger,
 		callerSkipCount: 1,
 		workDir:         workDir,
@@ -142,44 +141,8 @@ func newGenerator(logger logging.Logger, workDir string) *generator {
 	}
 }
 
-// NewCommand は、merge-dml コマンドを生成します。
-func NewCommand() *cobra.Command {
-	var (
-		targetType string
-		workDir    string
-	)
-
-	cmd := &cobra.Command{
-		Use:   "merge-dml",
-		Short: "DMLディレクトリ(database/dml/<repository/query_service/command_service>)のsqlファイルを対象にして、<type>ごとにマージします。",
-		Long: "指定されたタイプ(repository|query_service|command_service)のDMLディレクトリ内の全サブディレクトリを走査し、\n" +
-			"各カテゴリごとにSQLファイルを連結して1つのSQLファイルにまとめます。\n" +
-			"生成されるファイルは database/gen/ 配下に <category>_<type>.gen.sql という名前で保存されます。",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return mergeDMLRun(cmd.Context(), targetType, workDir)
-		},
-	}
-
-	cmd.Flags().StringVar(&targetType, "type", "", "filter TYPE (repository|query_service|command_service)")
-	_ = cmd.MarkFlagRequired("type")
-	cmd.Flags().StringVar(&workDir, "work-dir", "/app", "working directory path")
-
-	return cmd
-}
-
-// mergeDMLRun は、ロガーとジェネレーターを実依存で組み立て、マージ処理を runMerge へ委譲する薄い殻です。
-func mergeDMLRun(ctx context.Context, targetType, workDir string) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		return fmt.Errorf("failed to create logger: %w", err)
-	}
-
-	gen := newGenerator(logger, workDir)
-	return runMerge(ctx, gen, targetType)
-}
-
-// runMerge は、DMLファイルをマージして、カテゴリごとに単一ファイルにまとめます。
-func runMerge(ctx context.Context, gen *generator, targetType string) error {
+// RunMerge は、DMLファイルをマージして、カテゴリごとに単一ファイルにまとめます。
+func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 	logger := gen.logger
 
 	// type 配下のカテゴリ一覧を取得し、カテゴリ単位でマージ対象を決定します。
@@ -243,12 +206,12 @@ func runMerge(ctx context.Context, gen *generator, targetType string) error {
 }
 
 // dmlTypeRootAbs は、指定されたタイプのDMLルートディレクトリの絶対パスを返します。
-func (g *generator) dmlTypeRootAbs(targetType string) string {
+func (g *Generator) dmlTypeRootAbs(targetType string) string {
 	return filepath.Join(g.workDir, g.dmlRootDir, targetType)
 }
 
 // buildCategorySQLFile は、指定されたカテゴリのSQLファイルを連結して1つのSQLファイルにまとめます。
-func (g *generator) buildCategorySQLFile(category, targetType string) error {
+func (g *Generator) buildCategorySQLFile(category, targetType string) error {
 	// 入力走査も workDir 起点で統一する。CWD 起点だと CWD != workDir のとき走査結果が 0 件になり、
 	// 「入力なし」分岐に入って workDir 配下の生成物を誤って削除してしまうため。
 	dmlDir := filepath.Join(g.workDir, g.dmlRootDir, targetType, category)
@@ -315,7 +278,7 @@ func (g *generator) buildCategorySQLFile(category, targetType string) error {
 }
 
 // ensureUnderDir は path が baseDir 配下かを検証します。
-func (g *generator) ensureUnderDir(path string) error {
+func (g *Generator) ensureUnderDir(path string) error {
 	// 誤ったパス解決や path traversal により、想定外の場所を操作しないようにします。
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -365,7 +328,7 @@ func resolveConcurrency(numCPU int) int {
 	}
 }
 
-func (g *generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {
+func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {
 	// 今回の入力から再生成されるファイル名だけを keep 対象として記録します。
 	keep := make(map[string]struct{}, len(categories))
 	for _, cat := range categories {

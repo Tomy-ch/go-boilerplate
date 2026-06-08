@@ -17,51 +17,14 @@ import (
 // errBoom は、テスト用の任意の失敗を表すセンチネルエラーです。
 var errBoom = errors.New("boom")
 
-// factoryReturning は、常に与えた migrator を返す migratorFactory を生成します。
-func factoryReturning(m migrator) migratorFactory {
-	return func(_ string) (migrator, error) { return m, nil }
+// factoryReturning は、常に与えた Migrator を返す MigratorFactory を生成します。
+func factoryReturning(m Migrator) MigratorFactory {
+	return func(_ string) (Migrator, error) { return m, nil }
 }
 
-// factoryFailing は、常にエラーを返す migratorFactory を生成します。
-func factoryFailing(err error) migratorFactory {
-	return func(_ string) (migrator, error) { return nil, err }
-}
-
-func TestNewMigrateUpCommand(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewMigrateUpCommand()
-	require.NotNil(t, cmd)
-	assert.Equal(t, "migrate-up", cmd.Use)
-
-	steps := cmd.Flags().Lookup("steps")
-	require.NotNil(t, steps)
-	assert.Equal(t, "0", steps.DefValue)
-
-	database := cmd.Flags().Lookup("database")
-	require.NotNil(t, database)
-	assert.Empty(t, database.DefValue)
-
-	// 旧 --version フラグは廃止され存在しないこと。
-	assert.Nil(t, cmd.Flags().Lookup("version"))
-}
-
-func TestNewMigrateDownCommand(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewMigrateDownCommand()
-	require.NotNil(t, cmd)
-	assert.Equal(t, "migrate-down", cmd.Use)
-
-	steps := cmd.Flags().Lookup("steps")
-	require.NotNil(t, steps)
-	assert.Equal(t, "0", steps.DefValue)
-
-	database := cmd.Flags().Lookup("database")
-	require.NotNil(t, database)
-	assert.Empty(t, database.DefValue)
-
-	assert.Nil(t, cmd.Flags().Lookup("version"))
+// factoryFailing は、常にエラーを返す MigratorFactory を生成します。
+func factoryFailing(err error) MigratorFactory {
+	return func(_ string) (Migrator, error) { return nil, err }
 }
 
 func TestMigrateUpRun(t *testing.T) {
@@ -71,12 +34,12 @@ func TestMigrateUpRun(t *testing.T) {
 		t.Parallel()
 
 		called := false
-		factory := func(_ string) (migrator, error) {
+		factory := func(_ string) (Migrator, error) {
 			called = true
 			return nil, nil
 		}
 
-		err := migrateUpRun(-1, "", factory)
+		err := MigrateUpRun(-1, "", factory)
 		require.Error(t, err)
 		assert.False(t, called)
 	})
@@ -84,7 +47,7 @@ func TestMigrateUpRun(t *testing.T) {
 	t.Run("異常系_migratorの生成に失敗した場合はそのエラーを返す", func(t *testing.T) {
 		t.Parallel()
 
-		err := migrateUpRun(0, "", factoryFailing(errBoom))
+		err := MigrateUpRun(0, "", factoryFailing(errBoom))
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -92,10 +55,10 @@ func TestMigrateUpRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Up().Return(nil)
 
-		err := migrateUpRun(0, "", factoryReturning(m))
+		err := MigrateUpRun(0, "", factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -103,10 +66,10 @@ func TestMigrateUpRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Up().Return(migrate.ErrNoChange)
 
-		err := migrateUpRun(0, "", factoryReturning(m))
+		err := MigrateUpRun(0, "", factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -114,10 +77,10 @@ func TestMigrateUpRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Up().Return(errBoom)
 
-		err := migrateUpRun(0, "", factoryReturning(m))
+		err := MigrateUpRun(0, "", factoryReturning(m))
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -125,10 +88,10 @@ func TestMigrateUpRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(2).Return(nil)
 
-		err := migrateUpRun(2, "", factoryReturning(m))
+		err := MigrateUpRun(2, "", factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -136,10 +99,10 @@ func TestMigrateUpRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(1).Return(migrate.ErrNoChange)
 
-		err := migrateUpRun(1, "", factoryReturning(m))
+		err := MigrateUpRun(1, "", factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -147,10 +110,10 @@ func TestMigrateUpRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(3).Return(errBoom)
 
-		err := migrateUpRun(3, "", factoryReturning(m))
+		err := MigrateUpRun(3, "", factoryReturning(m))
 		require.ErrorIs(t, err, errBoom)
 	})
 }
@@ -162,12 +125,12 @@ func TestMigrateDownRun(t *testing.T) {
 		t.Parallel()
 
 		called := false
-		factory := func(_ string) (migrator, error) {
+		factory := func(_ string) (Migrator, error) {
 			called = true
 			return nil, nil
 		}
 
-		err := migrateDownRun(-2, "", factory)
+		err := MigrateDownRun(-2, "", factory)
 		require.Error(t, err)
 		assert.False(t, called)
 	})
@@ -175,7 +138,7 @@ func TestMigrateDownRun(t *testing.T) {
 	t.Run("異常系_migratorの生成に失敗した場合はそのエラーを返す", func(t *testing.T) {
 		t.Parallel()
 
-		err := migrateDownRun(0, "", factoryFailing(errBoom))
+		err := MigrateDownRun(0, "", factoryFailing(errBoom))
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -183,11 +146,11 @@ func TestMigrateDownRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Version().Return(uint(3), false, nil)
 		m.EXPECT().Down().Return(nil)
 
-		err := migrateDownRun(0, "", factoryReturning(m))
+		err := MigrateDownRun(0, "", factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -195,11 +158,11 @@ func TestMigrateDownRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Version().Return(uint(3), false, nil)
 		m.EXPECT().Down().Return(errBoom)
 
-		err := migrateDownRun(0, "", factoryReturning(m))
+		err := MigrateDownRun(0, "", factoryReturning(m))
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -207,10 +170,10 @@ func TestMigrateDownRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(-2).Return(nil)
 
-		err := migrateDownRun(2, "", factoryReturning(m))
+		err := MigrateDownRun(2, "", factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -218,10 +181,10 @@ func TestMigrateDownRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(-1).Return(migrate.ErrNoChange)
 
-		err := migrateDownRun(1, "", factoryReturning(m))
+		err := MigrateDownRun(1, "", factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -229,10 +192,10 @@ func TestMigrateDownRun(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(-3).Return(errBoom)
 
-		err := migrateDownRun(3, "", factoryReturning(m))
+		err := MigrateDownRun(3, "", factoryReturning(m))
 		require.ErrorIs(t, err, errBoom)
 	})
 }
@@ -244,7 +207,7 @@ func TestExecuteMigrateFullDown(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Version().Return(uint(0), false, migrate.ErrNilVersion)
 		m.EXPECT().Down().Return(nil)
 
@@ -255,7 +218,7 @@ func TestExecuteMigrateFullDown(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Version().Return(uint(0), false, errBoom)
 
 		require.ErrorIs(t, executeMigrateFullDown(m), errBoom)
@@ -265,7 +228,7 @@ func TestExecuteMigrateFullDown(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Version().Return(uint(5), true, nil)
 		m.EXPECT().Force(5).Return(nil)
 		m.EXPECT().Down().Return(nil)
@@ -277,7 +240,7 @@ func TestExecuteMigrateFullDown(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Version().Return(uint(5), true, nil)
 		m.EXPECT().Force(5).Return(errBoom)
 
@@ -288,7 +251,7 @@ func TestExecuteMigrateFullDown(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		// MaxInt を超える uint は safecast でオーバーフロー検出され、Force/Down へ進まない。
 		m.EXPECT().Version().Return(uint(math.MaxUint64), true, nil)
 
@@ -299,7 +262,7 @@ func TestExecuteMigrateFullDown(t *testing.T) {
 		t.Parallel()
 
 		ctrl := gomock.NewController(t)
-		m := mock_migrate.NewMockmigrator(ctrl)
+		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Version().Return(uint(2), false, nil)
 		m.EXPECT().Down().Return(migrate.ErrNoChange)
 
@@ -317,7 +280,7 @@ func TestOverrideEnv(t *testing.T) {
 
 		t.Setenv(existingKey, "original")
 
-		restoreExisting := overrideEnv(existingKey, "changed")
+		restoreExisting := OverrideEnv(existingKey, "changed")
 		v, ok := os.LookupEnv(existingKey)
 		require.True(t, ok)
 		assert.Equal(t, "changed", v)
@@ -326,7 +289,7 @@ func TestOverrideEnv(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, "original", v)
 
-		restoreAbsent := overrideEnv(absentKey, "temp")
+		restoreAbsent := OverrideEnv(absentKey, "temp")
 		v, ok = os.LookupEnv(absentKey)
 		require.True(t, ok)
 		assert.Equal(t, "temp", v)

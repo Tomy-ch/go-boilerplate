@@ -1,4 +1,7 @@
-// Package job は、ジョブを管理・実行するためのコマンドを提供するためのパッケージです。
+// Package job は、ジョブ実行のオーケストレーション（タイムアウト分岐・停止処理）のコアロジックを提供します。
+//
+// Cobra コマンド定義と DI(ジョブランナー取得) の結線は cmd 層が担います。本パッケージは注入された
+// start/stop（または provide 関数）に対して純粋に動作し、単体テスト可能です。
 package job
 
 import (
@@ -6,39 +9,12 @@ import (
 	"time"
 
 	"go-boilerplate/internal/di"
-
-	"github.com/spf13/cobra"
 )
 
 const stopTimeout = 30 * time.Second
 
-// NewCommand は job コマンドを生成します。
-func NewCommand() *cobra.Command {
-	var timeout time.Duration
-
-	cmd := &cobra.Command{
-		Use:   "job",
-		Short: "job <job-name> [args...] コマンドは、指定されたジョブを実行します。",
-		Long: "job <job-name> [args...] コマンドは、指定されたジョブを実行します。ジョブ名と引数を指定して実行してください。\n" +
-			"例: job usercount --timeout 30s",
-		Args: cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runJobExec(cmd.Context(), args[0], args[1:], timeout)
-		},
-	}
-
-	cmd.Flags().DurationVar(&timeout, "timeout", 0, "job execution timeout duration (e.g., 30s, 1m)")
-
-	return cmd
-}
-
-// runJobExec は、DI 経由でジョブランナーを取得し、オーケストレーションを runJob へ委譲する薄い殻です。
-func runJobExec(ctx context.Context, name string, args []string, timeout time.Duration) error {
-	return runJobWith(ctx, name, args, timeout, di.RunJob)
-}
-
-// runJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。
-func runJobWith(
+// RunJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。
+func RunJobWith(
 	ctx context.Context,
 	name string,
 	args []string,

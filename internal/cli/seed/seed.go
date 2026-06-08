@@ -1,20 +1,19 @@
-// Package seed は、データベースの初期データ投入に関するコマンドを提供するためのパッケージです。
+// Package seed は、データベース初期データ投入のコアロジックを提供します。
+//
+// Cobra コマンド定義と実依存（config / DB 接続生成）の結線は cmd 層が担います。本パッケージは
+// 注入された fs.FS / driver.DatabaseDriver / openDB 関数に対して純粋に動作し、単体テスト可能です。
 package seed
 
 import (
 	"context"
-	"os"
 	"sort"
 
-	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/fs"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5/pgconn"
-
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -25,51 +24,8 @@ const (
 	relationDoesNotExistCode = "42P01"
 )
 
-// NewDBSeedCommand は、データベースに初期データを投入するためのコマンドを生成します。
-func NewDBSeedCommand() *cobra.Command {
-	var database string
-
-	cmd := &cobra.Command{
-		Use:   "db-seed",
-		Short: "データベースに初期データを投入します。",
-		Long: "このコマンドは、データベースに初期データを投入するためのコマンドです。\n" +
-			"--database フラグを指定すると、対象のデータベース（例: local, test）を指定して投入を行います。",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return dbSeedRun(database)
-		},
-	}
-
-	cmd.Flags().StringVar(&database, "database", "", "filter DATABASE (e.g. local)")
-
-	return cmd
-}
-
-// dbSeedRun は、ロガーと実依存（FS・DB 接続）を組み立て、seed 投入を runDBSeed へ委譲する薄い殻です。
-func dbSeedRun(database string) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		panic("failed to create logger: " + err.Error())
-	}
-
-	return runDBSeed(logger, fs.OS{}, database, openSeedDB)
-}
-
-// openSeedDB は、seed 用設定を読み込み DB 接続を確立する実依存の口です。
-func openSeedDB(logger logging.Logger, database string) (driver.DatabaseDriver, error) {
-	// seed 実行時の設定を組み立て、必要であれば投入先 DB 名を上書きします。
-	cfg, err := newConfigForSeed(logger, database)
-	if err != nil {
-		return nil, err
-	}
-	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
-	dbConnCfg := config.NewDBConnectionConfig(cfg)
-
-	return driver.NewDB(dbCfg, osCfg, dbConnCfg)
-}
-
-// runDBSeed は、DB 接続の取得・seed ファイル列挙・投入のオーケストレーションを行います。
-func runDBSeed(
+// RunDBSeed は、DB 接続の取得・seed ファイル列挙・投入のオーケストレーションを行います。
+func RunDBSeed(
 	logger logging.Logger,
 	fsys fs.FS,
 	database string,
@@ -169,26 +125,4 @@ func handleSeedExecResult(logger logging.Logger, filePath string, err error) err
 		logging.Error("db.Exec", err),
 	)
 	return err
-}
-
-// newConfigForSeed は seed 用の設定を読み込み、CLI オプションの DB 名上書きを反映します。
-func newConfigForSeed(logger logging.Logger, database string) (*config.Config, error) {
-	err := config.Load()
-	if err != nil {
-		logger.Named("dbSeedRun.configLoad").Error("failed to load config", logging.Error("configLoad", err))
-		return nil, err
-	}
-	if database != "" {
-		err = os.Setenv("DB_NAME", database)
-		if err != nil {
-			logger.Named("dbSeedRun.setenv").Error("failed to set DB_NAME env", logging.Error("setenv", err))
-			return nil, err
-		}
-	}
-	cfg, err := config.New()
-	if err != nil {
-		logger.Named("dbSeedRun.configNew").Error("failed to load config", logging.Error("configNew", err))
-		return nil, err
-	}
-	return cfg, nil
 }

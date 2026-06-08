@@ -6,42 +6,11 @@ import (
 
 	"go-boilerplate/internal/logging"
 
-	"github.com/spf13/cobra"
-
 	"github.com/golang-migrate/migrate/v4"
-	// postgres driver for golang-migrate (required for runtime registration)
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// NewMigrateUpCommand は、DBのマイグレーションを上げるためのコマンドを生成します。
-func NewMigrateUpCommand() *cobra.Command {
-	var (
-		steps    int
-		database string
-	)
-
-	cmd := &cobra.Command{
-		Use:   "migrate-up",
-		Short: "database/migrations のDDLをアップグレードします（--steps / --database指定可）。",
-		Long: `database/migrations ディレクトリに存在するDDLマイグレーションを適用します。
-
---steps を指定しない場合（0）は、未適用のマイグレーションを全て Up します。
---steps に正の整数を指定すると、現在位置からその段数だけ Up します。
---database フラグを指定すると、対象のデータベース（例: local, test）に対して Up を行います。`,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return migrateUpRun(steps, database, buildMigrateInstance)
-		},
-	}
-
-	cmd.Flags().IntVar(&steps, "steps", 0, "現在位置から Up する段数（0 で全件、正の整数のみ）")
-	cmd.Flags().StringVar(&database, "database", "", "対象データベース（例: local）")
-
-	return cmd
-}
-
-// migrateUpRun は、マイグレーションをアップグレードするための実行関数です。
-func migrateUpRun(steps int, database string, newMigrator migratorFactory) error {
+// MigrateUpRun は、マイグレーションをアップグレードするための実行関数です。
+func MigrateUpRun(steps int, database string, newMigrator MigratorFactory) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
 		panic("failed to create logger: " + err.Error())
@@ -81,7 +50,7 @@ func migrateUpRun(steps int, database string, newMigrator migratorFactory) error
 }
 
 // executeMigrateUp は、steps が 0 なら全件、正なら段数指定で Up します。無変更（ErrNoChange）は成功扱いです。
-func executeMigrateUp(m migrator, steps int) error {
+func executeMigrateUp(m Migrator, steps int) error {
 	var err error
 	if steps == 0 {
 		err = m.Up()

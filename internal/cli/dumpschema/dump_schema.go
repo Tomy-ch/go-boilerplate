@@ -1,4 +1,7 @@
-// Package dumpschema は、DBスキーマをダンプして整形する機能を提供します。
+// Package dumpschema は、DBスキーマをダンプして整形するコアロジックを提供します。
+//
+// Cobra コマンド定義と実依存（config/外部プロセス）の結線は cmd 層が担います。本パッケージは
+// 注入された fs.FS / exec.Runner / DSN 解決関数に対して純粋に動作し、単体テスト可能です。
 package dumpschema
 
 import (
@@ -8,13 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/exec"
 	"go-boilerplate/pkg/fs"
-
-	"github.com/spf13/cobra"
 )
 
 const schemaFilePerm = 0o644 // rw-r--r--
@@ -38,7 +37,8 @@ var (
 	}
 )
 
-type generator struct {
+// Generator は、スキーマダンプと整形に必要な依存と設定を保持します。
+type Generator struct {
 	logger          logging.Logger
 	callerSkipCount int
 	permission      os.FileMode
@@ -53,9 +53,9 @@ type generator struct {
 	runner exec.Runner
 }
 
-// newGenerator は、dump-schema 用のジェネレーターインスタンスを生成します。
-func newGenerator(logger logging.Logger, workDir string) *generator {
-	return &generator{
+// NewGenerator は、dump-schema 用のジェネレーターインスタンスを生成します。
+func NewGenerator(logger logging.Logger, workDir string) *Generator {
+	return &Generator{
 		logger:          logger,
 		callerSkipCount: 1,
 		permission:      schemaFilePerm,
@@ -68,60 +68,12 @@ func newGenerator(logger logging.Logger, workDir string) *generator {
 	}
 }
 
-// NewCommand は、dump-schema コマンドを生成します。
-func NewCommand() *cobra.Command {
-	var workDir string
-
-	cmd := &cobra.Command{
-		Use:   "dump-schema",
-		Short: "databaseに接続してスキーマをダンプして読み込みやすい形に整形します。",
-		Long: "ファイルで定義されたdumpコマンドを実行してDBスキーマをダンプし、\n" +
-			"メタコマンドの行を除去してsqlcで読み込みやすい形に整形します。\n" +
-			"dumpコマンドを変更したい場合は、dumpCommandおよびdumpSubArgs変数を修正してください。",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runDumpSchema(cmd.Context(), workDir)
-		},
-	}
-
-	cmd.Flags().StringVar(&workDir, "work-dir", "/app", "working directory path")
-
-	return cmd
-}
-
-// runDumpSchema は、設定を読み込み、DBスキーマのダンプと整形を実行する薄い殻です。
+// RunDump は、DSN 解決・スキーマダンプ・整形のオーケストレーションを行います。
 //
 // 手順:
 //  1. ダンプコマンドを実行してスキーマをダンプ
 //  2. スキーマファイル内のメタコマンド行を除去
-func runDumpSchema(ctx context.Context, workDir string) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		panic("failed to create logger: " + err.Error())
-	}
-
-	gen := newGenerator(logger, workDir)
-
-	// アプリ設定から接続先 DSN を組み立てる処理は実依存に閉じ込め、整形手順は runDump へ委譲します。
-	loadDSN := func() (string, error) {
-		cfg, cerr := config.SetUpConfig()
-		if cerr != nil {
-			logger.CallerSkip(gen.callerSkipCount).Named("dumpschema.SetUpConfig").Error("failed to load config",
-				logging.Error("config", cerr),
-			)
-			return "", cerr
-		}
-		return driver.DSNString(config.NewDatabaseConfig(cfg)), nil
-	}
-
-	return runDump(ctx, gen, loadDSN)
-}
-
-// runDump は、DSN 解決・スキーマダンプ・整形のオーケストレーションを行います。
-//
-// 手順:
-//  1. ダンプコマンドを実行してスキーマをダンプ
-//  2. スキーマファイル内のメタコマンド行を除去
-func runDump(ctx context.Context, gen *generator, loadDSN func() (string, error)) error {
+func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, error)) error {
 	dbURL, err := loadDSN()
 	if err != nil {
 		return err
@@ -135,7 +87,7 @@ func runDump(ctx context.Context, gen *generator, loadDSN func() (string, error)
 }
 
 // dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
-func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
+func (g *Generator) dumpSchema(ctx context.Context, dbURL string) error {
 	args := append([]string{dbURL}, g.dumpArgs...)
 
 	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("start pg_dump schema",
@@ -164,7 +116,7 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 }
 
 // sanitizeSchemaInPlace は、schema.sql 内の psqlメタコマンド行を除去します。
-func (g *generator) sanitizeSchemaInPlace() error {
+func (g *Generator) sanitizeSchemaInPlace() error {
 	srcAbs := filepath.Join(g.workDir, g.schemaRelPath)
 
 	b, err := g.fs.ReadFile(srcAbs)

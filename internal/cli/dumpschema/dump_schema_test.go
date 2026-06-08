@@ -18,9 +18,9 @@ import (
 
 const testWorkDir = "/work"
 
-func newTestGenerator(t *testing.T, fs *mock_fs.MockFS, runner *mock_exec.MockRunner) *generator {
+func newTestGenerator(t *testing.T, fs *mock_fs.MockFS, runner *mock_exec.MockRunner) *Generator {
 	t.Helper()
-	return &generator{
+	return &Generator{
 		logger:          logging.NewTestLogger(t),
 		callerSkipCount: 1,
 		permission:      schemaFilePerm,
@@ -143,7 +143,7 @@ func TestGenerator_sanitizeSchemaInPlace(t *testing.T) {
 func TestNewGenerator(t *testing.T) {
 	t.Parallel()
 
-	g := newGenerator(logging.NewTestLogger(t), "/app")
+	g := NewGenerator(logging.NewTestLogger(t), "/app")
 	assert.Equal(t, "/app", g.workDir)
 	assert.Equal(t, "database/gen/schema.gen.sql", g.schemaRelPath)
 	assert.Equal(t, "pg_dump", g.dumpCommand)
@@ -151,18 +151,6 @@ func TestNewGenerator(t *testing.T) {
 	assert.Equal(t, os.FileMode(schemaFilePerm), g.permission)
 	assert.NotNil(t, g.fs)
 	assert.NotNil(t, g.runner)
-}
-
-func TestNewCommand(t *testing.T) {
-	t.Parallel()
-
-	cmd := NewCommand()
-	require.NotNil(t, cmd)
-	assert.Equal(t, "dump-schema", cmd.Use)
-
-	workDir := cmd.Flags().Lookup("work-dir")
-	require.NotNil(t, workDir)
-	assert.Equal(t, "/app", workDir.DefValue)
 }
 
 func TestRunDump(t *testing.T) {
@@ -185,7 +173,7 @@ func TestRunDump(t *testing.T) {
 
 		g := newTestGenerator(t, fs, runner)
 		loadDSN := func() (string, error) { return "postgres://dsn", nil }
-		require.NoError(t, runDump(context.Background(), g, loadDSN))
+		require.NoError(t, RunDump(context.Background(), g, loadDSN))
 	})
 
 	t.Run("異常系_DSN解決に失敗するとダンプせずエラー", func(t *testing.T) {
@@ -196,7 +184,7 @@ func TestRunDump(t *testing.T) {
 
 		g := newTestGenerator(t, fs, runner)
 		loadDSN := func() (string, error) { return "", errors.New("config failed") }
-		require.Error(t, runDump(context.Background(), g, loadDSN))
+		require.Error(t, RunDump(context.Background(), g, loadDSN))
 	})
 
 	t.Run("異常系_ダンプに失敗すると整形せずエラー", func(t *testing.T) {
@@ -209,6 +197,6 @@ func TestRunDump(t *testing.T) {
 
 		g := newTestGenerator(t, fs, runner)
 		loadDSN := func() (string, error) { return "postgres://dsn", nil }
-		require.Error(t, runDump(context.Background(), g, loadDSN))
+		require.Error(t, RunDump(context.Background(), g, loadDSN))
 	})
 }
