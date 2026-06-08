@@ -44,7 +44,6 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	)
 	defer stop()
 
-	// 本番モードでない場合のみメトリクス補助サーバーを起動する（判定はコア側）。
 	stopMetrics := server.ResolveMetricsStop(appCfg, func() (func(), func(context.Context)) {
 		return server.NewMetricsServer(mtcCfg, logger)
 	})

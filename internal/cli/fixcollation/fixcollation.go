@@ -17,7 +17,6 @@ const (
 
 // RunFix は、DB 名の検証・DSN 解決・collation 修正のオーケストレーションを行います。
 func RunFix(ctx context.Context, runner exec.Runner, logger logging.Logger, database string, loadDSN func() (string, error)) error {
-	// 想定外の DB への実行を避けるため、許可済みのローカル向け DB 名だけを受け付けます。
 	if err := validateDatabaseName(database); err != nil {
 		return err
 	}

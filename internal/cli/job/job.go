@@ -38,7 +38,6 @@ func runJob(
 	done := start(ctx, name, args)
 
 	if timeout <= 0 {
-		// タイムアウト未指定時は、ジョブ完了を待ってから停止処理だけ確実に流します。
 		err := <-done
 		gracefulStop(ctx, stop)
 		return err
@@ -49,7 +48,6 @@ func runJob(
 
 	select {
 	case err := <-done:
-		// 正常終了。
 		gracefulStop(ctx, stop)
 		return err
 	case <-waitCtx.Done():

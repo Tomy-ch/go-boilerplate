@@ -16,9 +16,7 @@ import (
 const schemaFilePerm = 0o644 // rw-r--r--
 
 var (
-	// dumpCommand は、スキーマダンプに使用するコマンド名を表します。
 	dumpCommand = "pg_dump"
-	// dumpSubArgs は、pg_dump に渡す固定オプション引数列を表します。
 	dumpSubArgs = []string{
 		"--schema-only",
 		"--no-owner",
@@ -26,7 +24,6 @@ var (
 		"--format=plain",
 	}
 
-	// trimPrefixes は、スキーマファイルから除去する行の接頭辞を表します。
 	trimPrefixes = []string{
 		`\`,
 		"-- Dumped from database version",
@@ -76,7 +73,6 @@ func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, error)
 		return err
 	}
 
-	// まず生の schema を出力し、その後 sqlc が扱いやすい形に整形します。
 	if err := gen.dumpSchema(ctx, dbURL); err != nil {
 		return err
 	}
@@ -125,7 +121,6 @@ func (g *Generator) sanitizeSchemaInPlace() error {
 	lines := strings.Split(string(b), "\n")
 	out := make([]string, 0, len(lines))
 	for _, ln := range lines {
-		// pg_dump 由来のメタ情報や psql メタコマンドは sqlc 不要のため除去します。
 		trim := strings.TrimSpace(ln)
 		for _, prefix := range trimPrefixes {
 			if strings.HasPrefix(trim, prefix) {

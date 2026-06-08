@@ -17,7 +17,6 @@ func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator
 		return err
 	}
 
-	// CLI オプションを反映した migrate インスタンスを組み立てます。
 	m, err := newMigrator(database)
 	if err != nil {
 		logger.Named("migrateUpRun.buildMigrateInstance").Error("failed to create migrate instance",
@@ -27,10 +26,8 @@ func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator
 	}
 
 	if steps == 0 {
-		// 段数未指定なら、未適用の migration を最後まで進めます。
 		logger.Named("migrateUpRun").Info("running full migration up")
 	} else {
-		// 段数指定時は、現在位置から指定段数分だけ Up を進めます。
 		logger.Named("migrateUpRun").Info("running migration up steps", logging.Int("steps", steps))
 	}
 	if err := executeMigrateUp(m, steps); err != nil {

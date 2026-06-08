@@ -86,7 +86,6 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 	if database != "" {
-		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保つ。
 		restore, err := envutil.Override("DB_NAME", database)
 		if err != nil {
 			return nil, err

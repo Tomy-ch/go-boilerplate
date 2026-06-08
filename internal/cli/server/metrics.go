@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	// 補助サーバーでも過度な接続保持を避けるため、HTTP サーバーの各種タイムアウトを固定します。
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 10 * time.Second
 	writeTimeout      = 10 * time.Second
@@ -38,7 +37,6 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func
 	metricsSrv := MetricsServer(mtcCfg)
 
 	start := func() {
-		// メインのアプリ起動をブロックしないよう、補助サーバーは別 goroutine で待ち受けます。
 		go func() {
 			logListenError(logger, metricsSrv.ListenAndServe())
 		}()

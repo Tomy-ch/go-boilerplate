@@ -60,7 +60,6 @@ func newConfigForSeed(logger logging.Logger, database string) (*config.Config, e
 		return nil, err
 	}
 	if database != "" {
-		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保つ。
 		restore, oerr := envutil.Override("DB_NAME", database)
 		if oerr != nil {
 			logger.Named("dbSeedRun.setenv").Error("failed to override DB_NAME env", logging.Error("setenv", oerr))

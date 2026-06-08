@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	// seedFilePlace は、シードファイルの場所を定義します。
 	seedFilePlace = "database/seed"
 
 	// PostgreSQLのエラーコード: 指定のオブジェクトが存在しない場合のコード
@@ -46,7 +45,6 @@ func RunDBSeed(
 		return err
 	}
 
-	// CLI の処理では親 context が渡ってこないため、ここで seed 実行用の context を生成します。
 	ctx := context.Background()
 	return runSeeds(ctx, fsys, db, logger, files)
 }
@@ -55,7 +53,6 @@ func RunDBSeed(
 // 他ファイルの投入は継続します（テーブル未作成のスキップは execSeedFile 側で吸収）。
 func runSeeds(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, logger logging.Logger, files []string) error {
 	var seedErr error
-	// seed ファイル名の昇順で固定し、投入順序を安定させます。
 	sort.Strings(files)
 	for _, f := range files {
 		if err := execSeedFile(ctx, fsys, db, logger, f); err != nil {
@@ -83,7 +80,6 @@ func execSeedFile(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, log
 	}
 
 	_, err = db.Exec(ctx, string(data))
-	// 本物の実行エラーは握り潰さず呼び出し元へ伝播させ、テーブル未作成のみスキップ扱いにします。
 	return handleSeedExecResult(logger, filePath, err)
 }
 

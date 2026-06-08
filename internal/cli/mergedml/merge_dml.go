@@ -30,7 +30,6 @@ const (
 	//   並列の下限。I/O 待ちが多く 1 だと非効率なので最低 2 を確保する。
 	minSQLCConcurrency = 2
 
-	// genFilePerm は、生成する SQL ファイルのパーミッションです。
 	genFilePerm = 0o644
 )
 
@@ -138,7 +137,6 @@ func NewGenerator(logger logging.Logger, workDir string) *Generator {
 func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 	logger := gen.logger
 
-	// type 配下のカテゴリ一覧を取得し、カテゴリ単位でマージ対象を決定します。
 	categories, err := gen.fs.ListSubDirNames(gen.dmlTypeRootAbs(targetType))
 	if err != nil {
 		logger.CallerSkip(gen.callerSkipCount).Named("mergedml.listDirs").Error("failed to list directories",
@@ -163,7 +161,6 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 		return nil
 	}
 
-	// カテゴリごとの生成は独立しているため並列化しつつ、同時実行数は semaphore で抑制します。
 	eg, egCtx := errgroup.WithContext(ctx)
 	sem := semaphore.NewWeighted(int64(resolveConcurrencyConst()))
 
@@ -186,7 +183,6 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 		return err
 	}
 
-	// 今回生成されなかった旧ファイルを削除し、database/gen 配下を最新の入力状態に合わせます。
 	if err := gen.cleanupStaleGeneratedFiles(categories, targetType); err != nil {
 		gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Error(
 			"failed to cleanup stale generated sql files",
@@ -244,7 +240,6 @@ func (g *Generator) buildCategorySQLFile(category, targetType string) error {
 		logging.Int("files", len(files)),
 	)
 
-	// 出力先が必ず database/gen 配下であることを確認してから書き出します。
 	if err := g.ensureUnderDir(dstPath); err != nil {
 		return err
 	}
@@ -317,7 +312,6 @@ func resolveConcurrency(numCPU int) int {
 }
 
 func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {
-	// 今回の入力から再生成されるファイル名だけを keep 対象として記録します。
 	keep := make(map[string]struct{}, len(categories))
 	for _, cat := range categories {
 		keep[fmt.Sprintf("%s_%s.gen.sql", cat, targetType)] = struct{}{}
@@ -332,19 +326,16 @@ func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType s
 	suffix := fmt.Sprintf("_%s.gen.sql", targetType)
 
 	for _, name := range names {
-		// 今回対象の type と無関係な生成物は触らず、そのまま残します。
 		if !strings.HasSuffix(name, suffix) {
 			continue
 		}
 
-		// 今回も生成されるファイルは最新扱いなので削除しません。
 		if _, ok := keep[name]; ok {
 			continue
 		}
 
 		full := filepath.Join(genAbs, name)
 
-		// 念のため、genRootDir配下であることを確認
 		if err := g.ensureUnderDir(full); err != nil {
 			return err
 		}

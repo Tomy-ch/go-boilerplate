@@ -19,7 +19,6 @@ func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrat
 		return err
 	}
 
-	// CLI オプションを反映した migrate インスタンスを組み立てます。
 	m, err := newMigrator(database)
 	if err != nil {
 		logger.Named("migrateDownRun.buildMigrateInstance").Error("failed to create migrate instance",
@@ -29,7 +28,6 @@ func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrat
 	}
 
 	if steps == 0 {
-		// 段数未指定なら、現在適用済みの migration を最後まで巻き戻します。
 		logger.Named("migrateDownRun").Info("running full migration down")
 		if err := executeMigrateFullDown(m); err != nil {
 			logger.Named("migrateDownRun.executeMigrateFullDown").Error("down migration failed",
@@ -38,7 +36,6 @@ func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrat
 			return err
 		}
 	} else {
-		// 段数指定時は、現在位置から指定段数分だけ Down を進めます。
 		logger.Named("migrateDownRun").Info("running migration down steps", logging.Int("steps", steps))
 		if err := executeMigrateDownSteps(m, steps); err != nil {
 			logger.Named("migrateDownRun.executeMigrateDownSteps").Error("down migration steps failed",
