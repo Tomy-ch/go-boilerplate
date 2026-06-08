@@ -177,9 +177,12 @@ func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
 func (o *ObservabilityConfig) MaskedDBQueryArgs() bool { return o.maskedDBQueryArgs }
 
 // TargetStatusCodes は、可観測モードで監視対象となるHTTPステータスコードのリストを返します。
-func (o *ObservabilityConfig) TargetStatusCodes() []int { return o.targetStatusCodes }
+func (o *ObservabilityConfig) TargetStatusCodes() []int {
+	return append([]int(nil), o.targetStatusCodes...)
+}
 
 // TargetStatusCodeSet は、可観測モードで監視対象となるHTTPステータスコードのセットを返します。
+// 返り値はホットパスで参照される共有マップのため変更してはいけません（read-only）。
 func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool { return o.targetStatusCodeSet }
 
 // NewDatabaseConfig は、データベースの設定を返します。
@@ -234,10 +237,20 @@ func (c *DBConnectionConfig) MaxIdleTime() time.Duration { return c.maxIdleTime 
 func NewSecurityConfig(cfg *Config) *SecurityConfig { return &cfg.security }
 
 // AllowedOrigins は、CORSを許可するオリジンのリストを返します。
-func (s *SecurityConfig) AllowedOrigins() []string { return s.allowedOrigins }
+func (s *SecurityConfig) AllowedOrigins() []string {
+	return append([]string(nil), s.allowedOrigins...)
+}
 
 // CIDR は、セキュリティ設定で使用されるCIDRを返します。
-func (s *SecurityConfig) CIDR() *net.IPNet { return s.cidr }
+func (s *SecurityConfig) CIDR() *net.IPNet {
+	if s.cidr == nil {
+		return nil
+	}
+	return &net.IPNet{
+		IP:   append(net.IP(nil), s.cidr.IP...),
+		Mask: append(net.IPMask(nil), s.cidr.Mask...),
+	}
+}
 
 // ContentTypeNosniff は、X-Content-Type-Optionsヘッダーの値を返します。
 func (s *SecurityConfig) ContentTypeNosniff() string { return s.contentTypeNosniff }
@@ -264,7 +277,13 @@ func (s *SecurityConfig) BcryptCost() int { return s.bcryptCost }
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }
 
 // Secure は、Secure属性の強制設定を返します。
-func (s *SecureCookieConfig) Secure() *bool { return s.secure }
+func (s *SecureCookieConfig) Secure() *bool {
+	if s.secure == nil {
+		return nil
+	}
+	v := *s.secure
+	return &v
+}
 
 // SameSite は、SameSite属性の強制設定を返します。
 func (s *SecureCookieConfig) SameSite() string { return s.sameSite }

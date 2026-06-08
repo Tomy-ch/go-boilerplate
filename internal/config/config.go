@@ -199,12 +199,14 @@ func validateSecurityConfig(secCfg Security) (*net.IPNet, error) {
 	}
 
 	for _, origin := range secCfg.AllowedOrigins {
-		if strings.HasPrefix(origin, "http://") {
-			parsedURL, err := url.Parse(origin)
-			if err != nil ||
-				(parsedURL.Hostname() != "localhost" && parsedURL.Hostname() != "127.0.0.1") {
-				return nil, ErrHTTPOnlyAllowedForLocalhost
-			}
+		parsedURL, err := url.Parse(origin)
+		if err != nil {
+			return nil, ErrHTTPOnlyAllowedForLocalhost
+		}
+		// スキームは url.Parse で小文字正規化されるが、念のため EqualFold で大小無視判定する。
+		if strings.EqualFold(parsedURL.Scheme, "http") &&
+			parsedURL.Hostname() != "localhost" && parsedURL.Hostname() != "127.0.0.1" {
+			return nil, ErrHTTPOnlyAllowedForLocalhost
 		}
 	}
 

@@ -20,9 +20,7 @@ func TestLoad_WithEnvSet(t *testing.T) {
 		t.Setenv(envKey, "")
 
 		err := Load()
-		require.Error(t, err)
-		// リポジトリファイルによっては、エラーが env/.env または env/.env.<空ファイル> を報告する場合があります
-		assert.Contains(t, err.Error(), "env/.env")
+		require.ErrorIs(t, err, ErrEnvNotResolved)
 	})
 
 	t.Run("デフォルトの .env ファイルが存在しない場合、Load はエラーを返す", func(t *testing.T) {

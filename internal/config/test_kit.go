@@ -28,11 +28,6 @@ func EnsureRepoRootAndEnv(t *testing.T, env string) {
 
 	orig, err := os.Getwd()
 	require.NoError(t, err)
-	// Ensure we restore the original working directory even if `t.Chdir` is
-	// not available (older Go) or if an early return occurs.
-	t.Cleanup(func() {
-		_ = os.Chdir(orig)
-	})
 
 	// find repo root by locating go.mod upwards
 	p := orig
