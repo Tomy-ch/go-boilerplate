@@ -1,7 +1,4 @@
 // Package seed は、データベース初期データ投入のコアロジックを提供します。
-//
-// Cobra コマンド定義と実依存（config / DB 接続生成）の結線は cmd 層が担います。本パッケージは
-// 注入された fs.FS / driver.DatabaseDriver / openDB 関数に対して純粋に動作し、単体テスト可能です。
 package seed
 
 import (

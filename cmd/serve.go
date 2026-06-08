@@ -24,7 +24,6 @@ func newServeCommand() *cobra.Command {
 
 // serveRun は、設定読込・シグナル・DI アプリ生成を結線し、server.RunServer へ委譲する薄い殻です。
 func serveRun(_ *cobra.Command, _ []string) error {
-	// サーバー起動に必要な設定をまとめて読み込みます。
 	cfg, err := config.SetUpConfig()
 	if err != nil {
 		return err
@@ -32,7 +31,6 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	appCfg := config.NewApplicationConfig(cfg)
 	mtcCfg := config.NewMetricsConfig(cfg)
 
-	// SIGINT / SIGTERM を受け取ったら、アプリ全体の停止処理へ移行します。
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
 		syscall.SIGINT,
@@ -40,12 +38,11 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	)
 	defer stop()
 
-	// メトリクス用の補助サーバーは開発向けのため、本番環境では起動しません（判定はコア側）。
+	// 本番モードでない場合のみメトリクス補助サーバーを起動する（判定はコア側）。
 	stopMetrics := server.ResolveMetricsStop(appCfg, func() (func(), func(context.Context)) {
 		return server.NewMetricsServer(mtcCfg)
 	})
 
-	// DI コンテナ経由でアプリ本体を組み立て、HTTP サーバーを起動します。
 	app := di.NewApplicationCore()
 	startApp, stopApp := di.NewApplicationServer(app)
 

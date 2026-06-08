@@ -70,12 +70,11 @@ func newMigrateDownCommand() *cobra.Command {
 
 // buildMigrateInstance は、設定を読み込み golang-migrate のインスタンスを生成します。
 func buildMigrateInstance(database string) (climigrate.Migrator, error) {
-	// まず通常の設定を読み込み、必要に応じて対象 DB 名だけ CLI 引数で差し替えます。
 	if err := config.Load(); err != nil {
 		return nil, err
 	}
 	if database != "" {
-		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保ちます。
+		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保つ。
 		restore := climigrate.OverrideEnv("DB_NAME", database)
 		defer restore()
 	}
@@ -86,7 +85,6 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperationSystemConfig(cfg)
 
-	// ファイルシステム上の migration 群と、実行先 DB の DSN を結び付けて migrate を生成します。
 	m, err := migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
 		return nil, err

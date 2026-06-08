@@ -1,8 +1,4 @@
-// Package migrate は、データベースマイグレーションのコアロジック（適用段数の分岐・無変更許容・
-// dirty 復旧など）を提供します。
-//
-// Cobra コマンド定義と実依存（config / golang-migrate インスタンス生成）の結線は cmd 層が担います。
-// 本パッケージは注入された Migrator / MigratorFactory に対して純粋に動作し、単体テスト可能です。
+// Package migrate は、データベースマイグレーションのコアロジック（適用段数の分岐・無変更許容・dirty 復旧）を提供します。
 package migrate
 
 import (

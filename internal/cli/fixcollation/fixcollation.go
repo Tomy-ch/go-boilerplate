@@ -1,7 +1,4 @@
 // Package fixcollation は、PostgreSQL の照合順序不整合を修正するコアロジックを提供します。
-//
-// Cobra コマンド定義と実依存（config/DSN）の結線は cmd 層が担います。本パッケージは注入された
-// exec.Runner / DSN 解決関数に対して純粋に動作し、単体テスト可能です。
 package fixcollation
 
 import (

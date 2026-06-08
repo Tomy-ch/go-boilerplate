@@ -1,7 +1,4 @@
-// Package dumpschema は、DBスキーマをダンプして整形するコアロジックを提供します。
-//
-// Cobra コマンド定義と実依存（config/外部プロセス）の結線は cmd 層が担います。本パッケージは
-// 注入された fs.FS / exec.Runner / DSN 解決関数に対して純粋に動作し、単体テスト可能です。
+// Package dumpschema は、DBスキーマのダンプと整形のコアロジックを提供します。
 package dumpschema
 
 import (
