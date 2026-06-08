@@ -391,6 +391,16 @@ func Test_validateSecurityConfig(t *testing.T) {
 			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
 		})
 
+		t.Run("オリジンのURLパースに失敗した場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			// 制御文字を含む URL は url.Parse がエラーを返す。
+			cfg.Security.AllowedOrigins = []string{"http://example.com/\x7f"}
+
+			err := validateSecurityConfig(cfg.Security)
+			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
+		})
+
 		t.Run("CIDRのパースに失敗した場合", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)

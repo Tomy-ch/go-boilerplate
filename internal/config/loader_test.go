@@ -32,4 +32,15 @@ func TestLoad_WithEnvSet(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "env/.env")
 	})
+
+	t.Run("ENV に対応する .env.<env> が存在しない場合、Load はエラーを返す", func(t *testing.T) {
+		EnsureRepoRootAndEnv(t, TestingEnvValue)
+		// ENV が非空のため base(.env) 読み込みはスキップされ、直接 .env.<env> を
+		// 読みに行く。存在しない env を指定してロード失敗分岐を通す。
+		t.Setenv(envKey, "nonexistent_env")
+
+		err := Load()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), ".env.nonexistent_env")
+	})
 }

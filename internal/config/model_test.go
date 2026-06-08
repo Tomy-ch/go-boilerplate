@@ -395,3 +395,21 @@ func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
 		assert.False(t, cfg.app.IsDevelopmentMode())
 	})
 }
+
+func TestSecurityConfig_CIDR(t *testing.T) {
+	t.Parallel()
+	t.Run("cidrがnilの場合_nilを返す", func(t *testing.T) {
+		t.Parallel()
+		s := &SecurityConfig{}
+		assert.Nil(t, s.CIDR())
+	})
+}
+
+func TestSecureCookieConfig_Secure(t *testing.T) {
+	t.Parallel()
+	t.Run("secureがnilの場合_nilを返す", func(t *testing.T) {
+		t.Parallel()
+		s := &SecureCookieConfig{}
+		assert.Nil(t, s.Secure())
+	})
+}
