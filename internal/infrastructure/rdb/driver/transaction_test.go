@@ -15,7 +15,7 @@ func TestNewTransactionManager(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 	testLogger := logging.NewTestLogger(t)
 
 	db, err := NewDB(dbCfg, osCfg, dbConnCfg)
@@ -32,7 +32,7 @@ func TestTxManager_Do(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
 	testLogger := logging.NewTestLogger(t)

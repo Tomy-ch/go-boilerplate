@@ -19,7 +19,7 @@ func RegisterJobHooks(
 	sd shutdowner.Shutdowner,
 	runner job.Runner,
 	logger logging.Logger,
-	osCfg *config.OperationSystemConfig,
+	osCfg *config.OperatingSystemConfig,
 	state job.State,
 ) {
 	reg.RegisterStart(func(startCtx context.Context) error {

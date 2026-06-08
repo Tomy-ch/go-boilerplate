@@ -13,7 +13,7 @@ import (
 func NewTestLocation(t *testing.T) *time.Location {
 	t.Helper()
 	cfg := MockConfigForTest(t)
-	osCfg := NewOperationSystemConfig(cfg)
+	osCfg := NewOperatingSystemConfig(cfg)
 
 	loc, err := NewTimeLocation(osCfg)
 	require.NoError(t, err)

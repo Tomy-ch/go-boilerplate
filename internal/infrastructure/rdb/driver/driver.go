@@ -27,7 +27,7 @@ type dbDriver struct{ pool *pgxpool.Pool }
 
 // NewDB は Postgres のDB接続を初期化して返します。
 func NewDB(
-	dbCfg *config.DatabaseConfig, osCfg *config.OperationSystemConfig, dbConnCfg *config.DBConnectionConfig,
+	dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig,
 ) (DatabaseDriver, error) {
 	poolCfg, err := pgxpool.ParseConfig(DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {

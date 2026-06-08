@@ -14,7 +14,7 @@ func TestNewConfig(t *testing.T) {
 		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) {
 			setEnvVarsForTesting(t)
 			expected := &Config{
-				os: OperationSystemConfig{
+				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
 				},
 				app: ApplicationConfig{

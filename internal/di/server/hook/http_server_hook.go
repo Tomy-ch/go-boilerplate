@@ -27,7 +27,7 @@ func RegisterHTTPServerHooks(
 	appCfg *config.ApplicationConfig,
 	secCfg *config.SecurityConfig,
 	srvCfg *config.ServerConfig,
-	osCfg *config.OperationSystemConfig,
+	osCfg *config.OperatingSystemConfig,
 	// 下記はサーバー機能の拡張が適用されたことを示すトークン
 	_ *extension.AppliedServerExtends,
 ) {
@@ -42,7 +42,7 @@ func newStartServerFunc(
 	log logging.Logger,
 	secCfg *config.SecurityConfig,
 	appCfg *config.ApplicationConfig,
-	osCfg *config.OperationSystemConfig,
+	osCfg *config.OperatingSystemConfig,
 ) func(context.Context) error {
 	return func(ctx context.Context) error {
 		addr := srvCfg.Port()
@@ -75,7 +75,7 @@ func newStartServerFunc(
 
 // newStopServerFunc は、HTTPサーバーを停止する関数を生成します。
 func newStopServerFunc(
-	e *echo.Echo, log logging.Logger, osCfg *config.OperationSystemConfig,
+	e *echo.Echo, log logging.Logger, osCfg *config.OperatingSystemConfig,
 ) func(context.Context) error {
 	return func(ctx context.Context) error {
 		log.Named("server.Stop").CallerSkip(serverCallerSkip).Info(

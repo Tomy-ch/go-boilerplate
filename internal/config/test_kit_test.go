@@ -14,7 +14,7 @@ func TestNewTestLocation(t *testing.T) {
 	t.Parallel()
 
 	cfg := MockConfigForTest(t)
-	osCfg := NewOperationSystemConfig(cfg)
+	osCfg := NewOperatingSystemConfig(cfg)
 
 	expected, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)

@@ -97,7 +97,7 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 		return nil, fmt.Errorf("failed to build config: %w", err)
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	m, err := migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {

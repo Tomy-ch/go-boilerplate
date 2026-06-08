@@ -18,7 +18,7 @@ type LogFieldBuilder interface {
 
 type logFieldBuilder struct {
 	obsCfg *config.ObservabilityConfig
-	osCfg  *config.OperationSystemConfig
+	osCfg  *config.OperatingSystemConfig
 }
 
 // HTTPRequestLogInput は、HTTPリクエストのログ出力用の入力情報をまとめた構造体です。
@@ -114,7 +114,7 @@ type ObservabilityFieldsInput struct {
 // NewLogFields は、ログフィールド生成用のLogFieldsインスタンスを生成します。
 func NewLogFields(
 	obsCfg *config.ObservabilityConfig,
-	osCfg *config.OperationSystemConfig,
+	osCfg *config.OperatingSystemConfig,
 ) LogFieldBuilder {
 	return &logFieldBuilder{
 		obsCfg: obsCfg,

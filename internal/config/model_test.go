@@ -13,7 +13,7 @@ func TestConstructor(t *testing.T) {
 
 	t.Run("NewOSConfig", func(t *testing.T) {
 		t.Parallel()
-		osCfg := NewOperationSystemConfig(cfg)
+		osCfg := NewOperatingSystemConfig(cfg)
 		assert.Same(t, &cfg.os, osCfg)
 	})
 

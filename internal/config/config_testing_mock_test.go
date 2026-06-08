@@ -12,7 +12,7 @@ import (
 func TestMockConfigForTest(t *testing.T) {
 	t.Parallel()
 	expected := &Config{
-		os: OperationSystemConfig{
+		os: OperatingSystemConfig{
 			timezone: expectedOSTimeZone,
 		},
 		app: ApplicationConfig{
@@ -88,7 +88,7 @@ func TestMockConfigForTest(t *testing.T) {
 func Test_mockLoader(t *testing.T) {
 	t.Parallel()
 	expected := Loader{
-		OS: OperationSystem{
+		OS: OperatingSystem{
 			Timezone: expectedOSTimeZone,
 		},
 		App: Application{

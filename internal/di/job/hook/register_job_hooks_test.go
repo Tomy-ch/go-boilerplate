@@ -53,7 +53,7 @@ func TestRegisterJobHooks(t *testing.T) {
 		runner.EXPECT().Run(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 		cfg := config.MockConfigForTest(t)
-		osCfg := config.NewOperationSystemConfig(cfg)
+		osCfg := config.NewOperatingSystemConfig(cfg)
 
 		RegisterJobHooks(reg, sd, runner, logger, osCfg, state)
 
@@ -93,7 +93,7 @@ func TestRegisterJobHooks(t *testing.T) {
 		sd.EXPECT().Shutdown().Return(nil).Times(1)
 
 		cfg := config.MockConfigForTest(t)
-		osCfg := config.NewOperationSystemConfig(cfg)
+		osCfg := config.NewOperatingSystemConfig(cfg)
 
 		RegisterJobHooks(reg, sd, runner, logger, osCfg, state)
 
@@ -145,7 +145,7 @@ func TestRegisterJobHooks(t *testing.T) {
 		sd.EXPECT().Shutdown().Return(nil).Times(1)
 
 		cfg := config.MockConfigForTest(t)
-		osCfg := config.NewOperationSystemConfig(cfg)
+		osCfg := config.NewOperatingSystemConfig(cfg)
 
 		RegisterJobHooks(reg, sd, runner, logger, osCfg, state)
 

@@ -14,7 +14,7 @@ func ConfigModule() fx.Option {
 			config.SetUpConfig,
 		),
 		fx.Provide(
-			config.NewOperationSystemConfig,
+			config.NewOperatingSystemConfig,
 			config.NewApplicationConfig,
 			config.NewServerConfig,
 			config.NewDatabaseConfig,

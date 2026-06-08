@@ -47,7 +47,7 @@ func openSeedDB(logger logging.Logger, database string) (driver.DatabaseDriver, 
 		return nil, err
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 	return driver.NewDB(dbCfg, osCfg, dbConnCfg)

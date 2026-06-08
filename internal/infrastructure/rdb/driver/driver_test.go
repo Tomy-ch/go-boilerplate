@@ -21,7 +21,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			dbCfg := config.NewDatabaseConfig(cfg)
 			dbCfg.SetDatabaseHost(t, "localhost")
-			osCfg := config.NewOperationSystemConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
@@ -66,7 +66,7 @@ func TestNewDB(t *testing.T) {
 			dbCfg := config.NewDatabaseConfig(cfg)
 			// 無効なホストを設定して、DSNのパースに失敗させる
 			dbCfg.SetDatabaseHost(t, "://invalid-host")
-			osCfg := config.NewOperationSystemConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)
@@ -79,7 +79,7 @@ func TestNewDB(t *testing.T) {
 			t.Parallel()
 			cfg := config.MockConfigForTest(t)
 			dbCfg := config.NewDatabaseConfig(cfg)
-			osCfg := config.NewOperationSystemConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 			// 無効な値を設定して、コネクションプールの作成に失敗させる
 			dbConnCfg.SetMaxConns(t, -1)
@@ -95,7 +95,7 @@ func TestNewDB(t *testing.T) {
 			cfg := config.MockConfigForTest(t)
 			dbCfg := config.NewDatabaseConfig(cfg)
 			dbCfg.SetDatabaseName(t, "nonexistentdb")
-			osCfg := config.NewOperationSystemConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
 			dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 			db, err := NewDB(dbCfg, osCfg, dbConnCfg)

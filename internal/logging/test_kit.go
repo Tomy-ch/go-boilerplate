@@ -19,7 +19,7 @@ func NewTestLogFieldBuilder(t *testing.T) LogFieldBuilder {
 	t.Helper()
 
 	cfg := config.MockConfigForTest(t)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	return NewLogFields(obsCfg, osCfg)
 }

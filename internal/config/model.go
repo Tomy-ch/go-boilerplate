@@ -6,7 +6,7 @@ import (
 )
 
 type Config struct {
-	os            OperationSystemConfig
+	os            OperatingSystemConfig
 	app           ApplicationConfig
 	server        ServerConfig
 	metrics       MetricsConfig
@@ -18,7 +18,7 @@ type Config struct {
 	auth          AuthConfig
 }
 
-type OperationSystemConfig struct {
+type OperatingSystemConfig struct {
 	timezone string
 }
 
@@ -94,11 +94,11 @@ type AuthConfig struct {
 	allowedHeaderBearer bool
 }
 
-// NewOperationSystemConfig は、OSの設定を返します。
-func NewOperationSystemConfig(cfg *Config) *OperationSystemConfig { return &cfg.os }
+// NewOperatingSystemConfig は、OSの設定を返します。
+func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig { return &cfg.os }
 
 // TimeZone は、OSのタイムゾーンを返します。
-func (o *OperationSystemConfig) TimeZone() string { return o.timezone }
+func (o *OperatingSystemConfig) TimeZone() string { return o.timezone }
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
 func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &cfg.app }

@@ -16,7 +16,7 @@ func TestNewLogFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 	require.NotNil(t, lf)
@@ -27,7 +27,7 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -129,7 +129,7 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -202,7 +202,7 @@ func TestLogFields_BuildSQLStartFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -268,7 +268,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -354,7 +354,7 @@ func TestLogFields_BuildObservabilityFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -425,7 +425,7 @@ func Test_appendTraceSpanFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
 
 	t.Run("trace/spanが無い場合", func(t *testing.T) {
@@ -477,7 +477,7 @@ func Test_buildCompactQuery(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
 
 	t.Run("改行/タブ/余白を詰める", func(t *testing.T) {

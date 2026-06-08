@@ -109,7 +109,7 @@ func getTestDB(t *testing.T) driver.DatabaseDriver {
 	dbOnce.Do(func() {
 		cfg := config.MockConfigForTest(t)
 		dbCfg := config.NewDatabaseConfig(cfg)
-		osCfg := config.NewOperationSystemConfig(cfg)
+		osCfg := config.NewOperatingSystemConfig(cfg)
 		dbConnCfg := config.NewDBConnectionConfig(cfg)
 
 		testDB, initErr = driver.NewDB(dbCfg, osCfg, dbConnCfg)

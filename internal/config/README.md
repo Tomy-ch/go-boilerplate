@@ -32,7 +32,7 @@ SubConfigs are created from `Config` for each component. All follow the `New*Con
 
 |Type|Constructor|Description|
 |---|---|---|
-|`OperationSystemConfig`|`NewOperationSystemConfig`|Timezone|
+|`OperatingSystemConfig`|`NewOperatingSystemConfig`|Timezone|
 |`ApplicationConfig`|`NewApplicationConfig`|Execution mode, environment identifier, app name|
 |`ServerConfig`|`NewServerConfig`|Host, port, timeouts|
 |`MetricsConfig`|`NewMetricsConfig`|Metrics endpoint authentication|
@@ -47,7 +47,7 @@ SubConfigs are created from `Config` for each component. All follow the `New*Con
 
 |Function|Description|
 |---|---|
-|`NewTimeLocation(osCfg)`|Create `*time.Location` from `OperationSystemConfig` timezone|
+|`NewTimeLocation(osCfg)`|Create `*time.Location` from `OperatingSystemConfig` timezone|
 
 ### Environment / Mode Constants
 

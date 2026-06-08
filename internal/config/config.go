@@ -28,7 +28,7 @@ func New() (*Config, error) {
 	}
 
 	return &Config{
-		os: OperationSystemConfig{
+		os: OperatingSystemConfig{
 			timezone: cfg.OS.Timezone,
 		},
 		app: ApplicationConfig{
