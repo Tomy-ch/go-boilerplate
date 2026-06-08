@@ -15,25 +15,30 @@ const (
 	migrateFilePlace = "database/migrations"
 )
 
-var (
-	// マイグレーションのターゲットバージョン
-	targetVersion int
-	// マイグレーションのターゲットデータベース
-	targetDatabase string
-)
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+
+// migrator は、golang-migrate の操作を抽象化し、テストでモック差し替え可能にします。
+type migrator interface {
+	Up() error
+	Down() error
+	Steps(n int) error
+	Version() (version uint, dirty bool, err error)
+	Force(version int) error
+}
+
+// migratorFactory は、対象 DB 名から migrator を生成する関数型です。
+type migratorFactory func(database string) (migrator, error)
 
 // buildMigrateInstance は、マイグレーションインスタンスを生成します。
-func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
+func buildMigrateInstance(database string) (migrator, error) {
 	// まず通常の設定を読み込み、必要に応じて対象 DB 名だけ CLI 引数で差し替えます。
-	err := config.Load()
-	if err != nil {
+	if err := config.Load(); err != nil {
 		return nil, err
 	}
-	if tgtDB != "" {
-		err = os.Setenv("DB_NAME", tgtDB)
-		if err != nil {
-			return nil, err
-		}
+	if database != "" {
+		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保ちます。
+		restore := overrideEnv("DB_NAME", database)
+		defer restore()
 	}
 	cfg, err := config.New()
 	if err != nil {
@@ -43,5 +48,22 @@ func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
 	osCfg := config.NewOperationSystemConfig(cfg)
 
 	// ファイルシステム上の migration 群と、実行先 DB の DSN を結び付けて migrate を生成します。
-	return migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
+	m, err := migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// overrideEnv は、環境変数を一時的に上書きし、元の状態へ戻す復元関数を返します。
+func overrideEnv(key, value string) func() {
+	prev, existed := os.LookupEnv(key)
+	_ = os.Setenv(key, value)
+	return func() {
+		if existed {
+			_ = os.Setenv(key, prev)
+			return
+		}
+		_ = os.Unsetenv(key)
+	}
 }
