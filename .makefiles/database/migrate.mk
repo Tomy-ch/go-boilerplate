@@ -135,13 +135,13 @@ db-test-migrate-down-%: db-migrate-down-%
 
 # -----CI用ターゲット-----
 db-migrate-ci-up:
-	go run cmd/main.go migrate-up --database $(DB)
+	go run ./cmd/ migrate-up --database $(DB)
 
 db-migrate-ci-up-%:
-	go run cmd/main.go migrate-up --database $(DB) --steps $*
+	go run ./cmd/ migrate-up --database $(DB) --steps $*
 
 db-migrate-ci-down-%:
-	go run cmd/main.go migrate-down --database $(DB) --steps $*
+	go run ./cmd/ migrate-down --database $(DB) --steps $*
 
 db-migrate-ci-down:
-	go run cmd/main.go migrate-down --database $(DB)
+	go run ./cmd/ migrate-down --database $(DB)
