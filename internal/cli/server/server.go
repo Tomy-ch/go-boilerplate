@@ -5,6 +5,7 @@ import (
 	"context"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"go-boilerplate/internal/config"
 	server "go-boilerplate/internal/di"
@@ -52,7 +53,22 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	// DI コンテナ経由でアプリ本体を組み立て、HTTP サーバーを起動します。
 	app := server.NewApplicationCore()
 	startApp, stopApp := server.NewApplicationServer(app)
-	if err = startApp(ctx); err != nil {
+
+	return runServer(ctx, appCfg.ShutdownTimeout(), startApp, stopApp, stopMetrics)
+}
+
+// runServer は、アプリ本体を起動し、ctx のキャンセル（終了シグナル）を受けてから
+// グレースフルシャットダウンを行います。停止用 context のタイムアウトは「停止開始時点」から
+// 計測することで稼働時間に消費されないようにしています。
+// 起動・停止・メトリクス停止を引数で受け取ることで、DI/実 DB に依存せず単体テスト可能にしています。
+func runServer(
+	ctx context.Context,
+	shutdownTimeout time.Duration,
+	startApp func(context.Context) error,
+	stopApp func(context.Context) error,
+	stopMetrics func(context.Context),
+) error {
+	if err := startApp(ctx); err != nil {
 		return err
 	}
 
@@ -61,16 +77,15 @@ func serveRun(_ *cobra.Command, _ []string) error {
 
 	// 停止処理は無期限に待たず、シャットダウン開始時点から設定タイムアウト内で完了させます。
 	// タイムアウトを起動直後ではなくこの時点で計測することで、稼働時間に消費されないようにします。
-	stopCtx, cancel := context.WithTimeout(
-		context.Background(),
-		appCfg.ShutdownTimeout(),
-	)
+	stopCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	// メトリクスサーバーとアプリ本体を、同じシャットダウン用 context で順に停止します。
+	// 停止用 context は ctx を継承しない（ctx は既にキャンセル済みのため、継承すると即時に
+	// 期限切れになり停止猶予が無くなる）。これは意図した設計なので contextcheck を抑制する。
 	if stopMetrics != nil {
-		stopMetrics(stopCtx)
+		stopMetrics(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
 	}
 
-	return stopApp(stopCtx)
+	return stopApp(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
 }
