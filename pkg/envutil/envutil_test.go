@@ -17,7 +17,8 @@ func TestOverride(t *testing.T) {
 
 		t.Setenv(existingKey, "original")
 
-		restoreExisting := Override(existingKey, "changed")
+		restoreExisting, err := Override(existingKey, "changed")
+		require.NoError(t, err)
 		v, ok := os.LookupEnv(existingKey)
 		require.True(t, ok)
 		assert.Equal(t, "changed", v)
@@ -26,12 +27,22 @@ func TestOverride(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, "original", v)
 
-		restoreAbsent := Override(absentKey, "temp")
+		restoreAbsent, err := Override(absentKey, "temp")
+		require.NoError(t, err)
 		v, ok = os.LookupEnv(absentKey)
 		require.True(t, ok)
 		assert.Equal(t, "temp", v)
 		restoreAbsent()
 		_, ok = os.LookupEnv(absentKey)
+		assert.False(t, ok)
+	})
+
+	t.Run("異常系_不正なキーはエラーを返し副作用を残さない", func(t *testing.T) {
+		// キーに '=' を含むと os.Setenv は失敗する。
+		restore, err := Override("BAD=KEY", "x")
+		require.Error(t, err)
+		require.NotNil(t, restore) // 復元関数は no-op でも非 nil を返す
+		_, ok := os.LookupEnv("BAD=KEY")
 		assert.False(t, ok)
 	})
 }

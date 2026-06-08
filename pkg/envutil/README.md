@@ -8,12 +8,15 @@ Small utilities for working with environment variables.
 
 |Function|Description|
 |---|---|
-|`Override(key, value string) func()`|Temporarily set an env var and return a restore function. The restore reverts to the previous value if it existed, otherwise unsets the key.|
+|`Override(key, value string) (func(), error)`|Temporarily set an env var and return a restore function. Returns an error (leaving no side effect) if the set fails, e.g. an invalid key. The restore reverts to the previous value if it existed, otherwise unsets the key (best-effort, intended for `defer`).|
 
 ## Usage
 
 ```go
-restore := envutil.Override("DB_NAME", "test")
+restore, err := envutil.Override("DB_NAME", "test")
+if err != nil {
+    return err
+}
 defer restore()
 // ... read config while DB_NAME is "test" ...
 ```

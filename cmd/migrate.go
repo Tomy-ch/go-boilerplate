@@ -85,7 +85,10 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	}
 	if database != "" {
 		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保つ。
-		restore := envutil.Override("DB_NAME", database)
+		restore, err := envutil.Override("DB_NAME", database)
+		if err != nil {
+			return nil, err
+		}
 		defer restore()
 	}
 	cfg, err := config.New()

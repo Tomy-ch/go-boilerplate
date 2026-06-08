@@ -8,12 +8,15 @@
 
 |関数|説明|
 |---|---|
-|`Override(key, value string) func()`|環境変数を一時的に設定し、復元関数を返します。復元時は、元値が存在した場合はその値へ、存在しなかった場合は Unset へ戻します。|
+|`Override(key, value string) (func(), error)`|環境変数を一時的に設定し、復元関数を返します。設定に失敗した場合（不正なキー等）は副作用を残さずエラーを返します。復元時は、元値が存在した場合はその値へ、存在しなかった場合は Unset へ戻します（`defer` 実行のため best-effort）。|
 
 ## 使い方
 
 ```go
-restore := envutil.Override("DB_NAME", "test")
+restore, err := envutil.Override("DB_NAME", "test")
+if err != nil {
+    return err
+}
 defer restore()
 // ... DB_NAME が "test" の間に設定を読み込む ...
 ```
