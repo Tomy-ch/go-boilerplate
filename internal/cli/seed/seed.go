@@ -4,9 +4,9 @@ package seed
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"sort"
 
+	"go-boilerplate/internal/cli/clifs"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
@@ -17,8 +17,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
-
 const (
 	// seedFilePlace は、シードファイルの場所を定義します。
 	seedFilePlace = "database/seed"
@@ -26,24 +24,6 @@ const (
 	// PostgreSQLのエラーコード: 指定のオブジェクトが存在しない場合のコード
 	relationDoesNotExistCode = "42P01"
 )
-
-// FileSystem は db-seed が必要とするファイル操作を抽象化します。
-type FileSystem interface {
-	Glob(pattern string) ([]string, error)
-	ReadFile(name string) ([]byte, error)
-}
-
-// osFileSystem は os パッケージを用いた FileSystem の実装です。
-type osFileSystem struct{}
-
-func (osFileSystem) Glob(pattern string) ([]string, error) {
-	return filepath.Glob(pattern)
-}
-
-func (osFileSystem) ReadFile(name string) ([]byte, error) {
-	//nolint:gosec // safe: seeds folder only contains project-owned SQL files
-	return os.ReadFile(name)
-}
 
 // NewDBSeedCommand は、データベースに初期データを投入するためのコマンドを生成します。
 func NewDBSeedCommand() *cobra.Command {
@@ -91,8 +71,8 @@ func dbSeedRun(database string) error {
 		}
 	}()
 
-	fs := osFileSystem{}
-	files, err := fs.Glob(seedFilePlace + "/*.sql")
+	fsys := clifs.OS{}
+	files, err := fsys.Glob(seedFilePlace + "/*.sql")
 	if err != nil {
 		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error("globSeedFiles", err))
 		return err
@@ -100,18 +80,17 @@ func dbSeedRun(database string) error {
 
 	// CLI の処理では親 context が渡ってこないため、ここで seed 実行用の context を生成します。
 	ctx := context.Background()
-	return runSeeds(ctx, fs, db, logger, files)
+	return runSeeds(ctx, fsys, db, logger, files)
 }
 
 // runSeeds は、seed ファイル群を昇順で順次実行します。実行エラーは握り潰さず呼び出し元へ返しつつ、
 // 他ファイルの投入は継続します（テーブル未作成のスキップは execSeedFile 側で吸収）。
-func runSeeds(ctx context.Context, fs FileSystem, db driver.DatabaseDriver, logger logging.Logger, files []string) error {
+func runSeeds(ctx context.Context, fsys clifs.FS, db driver.DatabaseDriver, logger logging.Logger, files []string) error {
 	var seedErr error
 	// seed ファイル名の昇順で固定し、投入順序を安定させます。
 	sort.Strings(files)
 	for _, f := range files {
-		if err := execSeedFile(ctx, fs, db, logger, f); err != nil {
-			// 読み込み・実行いずれの失敗も呼び出し元へ返しつつ、他ファイルの投入は継続します。
+		if err := execSeedFile(ctx, fsys, db, logger, f); err != nil {
 			seedErr = err
 		}
 	}
@@ -124,8 +103,8 @@ func runSeeds(ctx context.Context, fs FileSystem, db driver.DatabaseDriver, logg
 }
 
 // execSeedFile は、1つの seed ファイルの読み込みと SQL 実行を担当します。
-func execSeedFile(ctx context.Context, fs FileSystem, db driver.DatabaseDriver, logger logging.Logger, filePath string) error {
-	data, err := fs.ReadFile(filePath)
+func execSeedFile(ctx context.Context, fsys clifs.FS, db driver.DatabaseDriver, logger logging.Logger, filePath string) error {
+	data, err := fsys.ReadFile(filePath)
 	if err != nil {
 		logger.Named("dbSeedRun.os.ReadFile").Error(
 			"failed to read seed file",
@@ -136,8 +115,7 @@ func execSeedFile(ctx context.Context, fs FileSystem, db driver.DatabaseDriver, 
 	}
 
 	_, err = db.Exec(ctx, string(data))
-	// 実行結果を種別ごとに記録し、スキップ可能（テーブル未作成）かどうかを判定して返します。
-	// 本物の実行エラーは握り潰さず呼び出し元へ伝播させ、コマンドの exit code に反映させます。
+	// 本物の実行エラーは握り潰さず呼び出し元へ伝播させ、テーブル未作成のみスキップ扱いにします。
 	return handleSeedExecResult(logger, filePath, err)
 }
 

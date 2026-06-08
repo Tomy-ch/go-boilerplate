@@ -4,9 +4,8 @@ package fixcollation
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 
+	"go-boilerplate/internal/cli/cliexec"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
@@ -20,70 +19,72 @@ const (
 	callerSkipCount = 1
 )
 
-var targetDB string
-
 // NewCommand は fix-collation コマンドを生成します。
 func NewCommand() *cobra.Command {
+	var database string
+
 	cmd := &cobra.Command{
 		Use:   "fix-collation",
 		Short: "PostgreSQL の照合順序 (collation) バージョン不一致を修正します",
 		Long: "PostgreSQL の照合順序バージョンが OS のライブラリと異なる場合に発生する mismatch を修正します。\n" +
 			"具体的には REINDEX DATABASE と ALTER DATABASE ... REFRESH COLLATION VERSION を実行します。",
-		RunE: runFixCollation,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runFixCollation(cmd.Context(), database)
+		},
 	}
 
-	cmd.Flags().StringVar(&targetDB, "database", "local", "対象データベース名（例: local）")
+	cmd.Flags().StringVar(&database, "database", "local", "対象データベース名（例: local）")
 
 	return cmd
 }
 
-// runFixCollation は、実際に collation mismatch 修正 SQL を実行します。
-func runFixCollation(_ *cobra.Command, _ []string) error {
+// runFixCollation は、設定と DSN を組み立て、collation 修正を fixCollation へ委譲する薄い殻です。
+func runFixCollation(ctx context.Context, database string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
 		return fmt.Errorf("failed to init logger: %w", err)
 	}
 
 	// 想定外の DB への実行を避けるため、許可済みのローカル向け DB 名だけを受け付けます。
-	if targetDB == "" || targetDB != "local" && targetDB != "test" {
-		return fmt.Errorf("invalid database name: %s", targetDB)
+	if err := validateDatabaseName(database); err != nil {
+		return err
 	}
 
-	// アプリ設定から接続先 DSN を組み立て、psql 実行に流用します。
 	cfg, err := config.SetUpConfig()
 	if err != nil {
 		logger.CallerSkip(callerSkipCount).Error("failed to load config", logging.Error("config", err))
 		return err
 	}
-	dbCfg := config.NewDatabaseConfig(cfg)
-	dbURL := driver.DSNString(dbCfg)
+	dbURL := driver.DSNString(config.NewDatabaseConfig(cfg))
 
-	ctx := context.Background()
+	return fixCollation(ctx, cliexec.OS{}, logger, dbURL, database)
+}
 
-	runPSQL := func(sql string) error {
-		// SQL はコード側で固定しており、1文ずつ停止条件付きで実行します。
-		// #nosec G204 -- dbURL from config, sql controlled by code
-		cmd := exec.CommandContext(ctx, psqlCommand, dbURL, "-v", "ON_ERROR_STOP=1", "-c", sql)
-		cmd.Dir = workDir
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return cmd.Run()
+// validateDatabaseName は、許可済みのローカル向け DB 名のみを受け付けます。
+func validateDatabaseName(name string) error {
+	if name == "" || name != "local" && name != "test" {
+		return fmt.Errorf("invalid database name: %s", name)
 	}
+	return nil
+}
 
+// fixCollation は、collation mismatch 修正 SQL を psql 経由で順に実行します。
+func fixCollation(ctx context.Context, runner cliexec.Runner, logger logging.Logger, dbURL, database string) error {
 	logger.CallerSkip(callerSkipCount).Named("fixcollation").Info("start collation fix",
-		logging.String("database", targetDB),
+		logging.String("database", database),
 	)
 
 	sqlStatements := []string{
-		fmt.Sprintf("REINDEX DATABASE %s;", targetDB),
-		fmt.Sprintf("ALTER DATABASE %s REFRESH COLLATION VERSION;", targetDB),
+		fmt.Sprintf("REINDEX DATABASE %s;", database),
+		fmt.Sprintf("ALTER DATABASE %s REFRESH COLLATION VERSION;", database),
 	}
 
 	// 依存順序があるため、照合順序修正 SQL は並列ではなく順番に流します。
 	for _, sql := range sqlStatements {
-		if err := runPSQL(sql); err != nil {
+		args := []string{dbURL, "-v", "ON_ERROR_STOP=1", "-c", sql}
+		if _, err := runner.Output(ctx, workDir, psqlCommand, args); err != nil {
 			logger.CallerSkip(callerSkipCount).Named("fixcollation").Error("psql command failed",
-				logging.String("database", targetDB),
+				logging.String("database", database),
 				logging.String("sql", sql),
 				logging.Error("psql", err),
 			)
@@ -92,7 +93,7 @@ func runFixCollation(_ *cobra.Command, _ []string) error {
 	}
 
 	logger.CallerSkip(callerSkipCount).Named("fixcollation").Info("collation fix completed successfully",
-		logging.String("database", targetDB),
+		logging.String("database", database),
 	)
 	return nil
 }

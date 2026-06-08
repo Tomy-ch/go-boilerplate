@@ -2,22 +2,20 @@
 package dumpschema
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"go-boilerplate/internal/cli/cliexec"
+	"go-boilerplate/internal/cli/clifs"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
 
 	"github.com/spf13/cobra"
 )
-
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
 const schemaFilePerm = 0o644 // rw-r--r--
 
@@ -40,23 +38,6 @@ var (
 	}
 )
 
-// FileSystem は dump-schema が必要とするファイル操作を抽象化します。
-type FileSystem interface {
-	ReadFile(name string) ([]byte, error)
-	WriteFile(name string, data []byte, perm os.FileMode) error
-}
-
-// CommandRunner は外部コマンド（pg_dump）の実行を抽象化し、標準出力を返します。
-type CommandRunner interface {
-	Run(ctx context.Context, dir, name string, args []string) ([]byte, error)
-}
-
-// osFileSystem は os パッケージを用いた FileSystem の実装です。
-type osFileSystem struct{}
-
-// execCommandRunner は os/exec を用いた CommandRunner の実装です。
-type execCommandRunner struct{}
-
 type generator struct {
 	logger          logging.Logger
 	callerSkipCount int
@@ -68,28 +49,8 @@ type generator struct {
 	dumpCommand string
 	dumpArgs    []string
 
-	fs     FileSystem
-	runner CommandRunner
-}
-
-func (osFileSystem) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name) //nolint:gosec // path は信頼された CLI フラグ由来の固定パス
-}
-
-func (osFileSystem) WriteFile(name string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(name, data, perm)
-}
-
-func (execCommandRunner) Run(ctx context.Context, dir, name string, args []string) ([]byte, error) {
-	var buf bytes.Buffer
-	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // name/args は信頼された CLI 設定由来
-	cmd.Dir = dir
-	cmd.Stdout = &buf
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	fs     clifs.FS
+	runner cliexec.Runner
 }
 
 // newGenerator は、dump-schema 用のジェネレーターインスタンスを生成します。
@@ -102,8 +63,8 @@ func newGenerator(logger logging.Logger, workDir string) *generator {
 		schemaRelPath:   "database/gen/schema.gen.sql",
 		dumpCommand:     dumpCommand,
 		dumpArgs:        dumpSubArgs,
-		fs:              osFileSystem{},
-		runner:          execCommandRunner{},
+		fs:              clifs.OS{},
+		runner:          cliexec.OS{},
 	}
 }
 
@@ -167,7 +128,7 @@ func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
 		logging.String("out", g.schemaRelPath),
 	)
 
-	out, err := g.runner.Run(ctx, g.workDir, g.dumpCommand, args)
+	out, err := g.runner.Output(ctx, g.workDir, g.dumpCommand, args)
 	if err != nil {
 		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed",
 			logging.String("out", g.schemaRelPath),

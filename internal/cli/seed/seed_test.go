@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	mock_seed "go-boilerplate/internal/cli/seed/mock"
+	mock_clifs "go-boilerplate/internal/cli/clifs/mock"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/logging"
 
@@ -54,48 +54,47 @@ func TestExecSeedFile(t *testing.T) {
 	t.Run("正常系_読み込みと実行に成功するとnilを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fs := mock_seed.NewMockFileSystem(ctrl)
+		fsys := mock_clifs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
-		fs.EXPECT().ReadFile(path).Return([]byte("SELECT 1;"), nil)
+		fsys.EXPECT().ReadFile(path).Return([]byte("SELECT 1;"), nil)
 		db.EXPECT().Exec(gomock.Any(), "SELECT 1;").Return(pgconn.CommandTag{}, nil)
 
-		require.NoError(t, execSeedFile(context.Background(), fs, db, logging.NewTestLogger(t), path))
+		require.NoError(t, execSeedFile(context.Background(), fsys, db, logging.NewTestLogger(t), path))
 	})
 
 	t.Run("異常系_ファイル読み込み失敗はエラーを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fs := mock_seed.NewMockFileSystem(ctrl)
+		fsys := mock_clifs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
-		fs.EXPECT().ReadFile(path).Return(nil, errors.New("read failed"))
-		// Exec は呼ばれない。
+		fsys.EXPECT().ReadFile(path).Return(nil, errors.New("read failed"))
 
-		err := execSeedFile(context.Background(), fs, db, logging.NewTestLogger(t), path)
+		err := execSeedFile(context.Background(), fsys, db, logging.NewTestLogger(t), path)
 		require.Error(t, err)
 	})
 
 	t.Run("異常系_実SQLエラーは握り潰さず伝播する", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fs := mock_seed.NewMockFileSystem(ctrl)
+		fsys := mock_clifs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
 		execErr := &pgconn.PgError{Code: "23505"} // unique_violation
-		fs.EXPECT().ReadFile(path).Return([]byte("INSERT ..."), nil)
+		fsys.EXPECT().ReadFile(path).Return([]byte("INSERT ..."), nil)
 		db.EXPECT().Exec(gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, execErr)
 
-		err := execSeedFile(context.Background(), fs, db, logging.NewTestLogger(t), path)
+		err := execSeedFile(context.Background(), fsys, db, logging.NewTestLogger(t), path)
 		require.ErrorIs(t, err, execErr)
 	})
 
 	t.Run("正常系_対象テーブル未作成はスキップしてnilを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fs := mock_seed.NewMockFileSystem(ctrl)
+		fsys := mock_clifs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
-		fs.EXPECT().ReadFile(path).Return([]byte("SELECT 1;"), nil)
+		fsys.EXPECT().ReadFile(path).Return([]byte("SELECT 1;"), nil)
 		db.EXPECT().Exec(gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, &pgconn.PgError{Code: relationDoesNotExistCode})
 
-		require.NoError(t, execSeedFile(context.Background(), fs, db, logging.NewTestLogger(t), path))
+		require.NoError(t, execSeedFile(context.Background(), fsys, db, logging.NewTestLogger(t), path))
 	})
 }
 
@@ -105,29 +104,28 @@ func TestRunSeeds(t *testing.T) {
 	t.Run("正常系_全ファイル成功時はnilを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fs := mock_seed.NewMockFileSystem(ctrl)
+		fsys := mock_clifs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
-		fs.EXPECT().ReadFile("a.sql").Return([]byte("SELECT 1;"), nil)
-		fs.EXPECT().ReadFile("b.sql").Return([]byte("SELECT 2;"), nil)
+		fsys.EXPECT().ReadFile("a.sql").Return([]byte("SELECT 1;"), nil)
+		fsys.EXPECT().ReadFile("b.sql").Return([]byte("SELECT 2;"), nil)
 		db.EXPECT().Exec(gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, nil).Times(2)
 
-		err := runSeeds(context.Background(), fs, db, logging.NewTestLogger(t), []string{"b.sql", "a.sql"})
+		err := runSeeds(context.Background(), fsys, db, logging.NewTestLogger(t), []string{"b.sql", "a.sql"})
 		require.NoError(t, err)
 	})
 
 	t.Run("異常系_1ファイルが失敗しても全件継続しエラーを返す", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
-		fs := mock_seed.NewMockFileSystem(ctrl)
+		fsys := mock_clifs.NewMockFS(ctrl)
 		db := mock_driver.NewMockDatabaseDriver(ctrl)
 		execErr := &pgconn.PgError{Code: "23505"}
-		fs.EXPECT().ReadFile("a.sql").Return([]byte("SELECT a;"), nil)
-		fs.EXPECT().ReadFile("b.sql").Return([]byte("SELECT b;"), nil)
-		// 2 ファイルとも Exec される（継続）。a が失敗。
+		fsys.EXPECT().ReadFile("a.sql").Return([]byte("SELECT a;"), nil)
+		fsys.EXPECT().ReadFile("b.sql").Return([]byte("SELECT b;"), nil)
 		db.EXPECT().Exec(gomock.Any(), "SELECT a;").Return(pgconn.CommandTag{}, execErr)
 		db.EXPECT().Exec(gomock.Any(), "SELECT b;").Return(pgconn.CommandTag{}, nil)
 
-		err := runSeeds(context.Background(), fs, db, logging.NewTestLogger(t), []string{"a.sql", "b.sql"})
+		err := runSeeds(context.Background(), fsys, db, logging.NewTestLogger(t), []string{"a.sql", "b.sql"})
 		require.ErrorIs(t, err, execErr)
 	})
 }

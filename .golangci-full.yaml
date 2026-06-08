@@ -220,6 +220,8 @@ linters:
               desc: "domain層でcontroller層を参照することは禁止です。"
             - pkg: go-boilerplate/internal/infrastructure/
               desc: "domain層でinfrastructure層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/cli/
+              desc: "domain層で cli（driving adapter）層を参照することは禁止です。"
         # usecase層では外界とのやり取りのライブラリの使用を禁止します。
         # それ以外のライブラリの利用は許可されます。
         # ただし、外部ライブラリの直接使用は避け、pkg経由での使用を強く推奨します。
@@ -238,6 +240,8 @@ linters:
               desc: "usecase層でcontroller層を参照することは禁止です。"
             - pkg: go-boilerplate/internal/infrastructure/
               desc: "usecase層でinfrastructure層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/cli/
+              desc: "usecase層で cli（driving adapter）層を参照することは禁止です。"
         # controller層では、主にHTTPリクエストを扱うライブラリの使用を許可します。
         # ただし、永続化を行うライブラリの使用は禁止します。(主にdatabase/sqlなど)
         maintain_a_sound_controller:
