@@ -49,9 +49,9 @@ func TestFixCollation(t *testing.T) {
 		runner := mock_exec.NewMockRunner(ctrl)
 
 		// 2 文（REINDEX → ALTER）が psql 経由で実行されること。
-		runner.EXPECT().Output(gomock.Any(), workDir, psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
+		runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
 
-		err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), "postgres://dsn", "local")
+		err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), "postgres://dsn", "pw", "local")
 		require.NoError(t, err)
 	})
 
@@ -61,9 +61,9 @@ func TestFixCollation(t *testing.T) {
 		runner := mock_exec.NewMockRunner(ctrl)
 
 		// 1 文目で失敗 → 2 文目は実行されない（Times(1)）。
-		runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("psql failed")).Times(1)
+		runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("psql failed")).Times(1)
 
-		err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), "postgres://dsn", "local")
+		err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), "postgres://dsn", "pw", "local")
 		require.Error(t, err)
 	})
 }
@@ -75,9 +75,9 @@ func TestRunFix(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		runner := mock_exec.NewMockRunner(ctrl)
-		runner.EXPECT().Output(gomock.Any(), workDir, psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
+		runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).Return(nil, nil).Times(2)
 
-		loadDSN := func() (string, error) { return "postgres://dsn", nil }
+		loadDSN := func() (string, string, error) { return "postgres://dsn", "pw", nil }
 		err := RunFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
 		require.NoError(t, err)
 	})
@@ -88,9 +88,9 @@ func TestRunFix(t *testing.T) {
 		runner := mock_exec.NewMockRunner(ctrl)
 
 		called := false
-		loadDSN := func() (string, error) {
+		loadDSN := func() (string, string, error) {
 			called = true
-			return "", nil
+			return "", "", nil
 		}
 		err := RunFix(context.Background(), runner, logging.NewTestLogger(t), "production", loadDSN)
 		require.Error(t, err)
@@ -102,7 +102,7 @@ func TestRunFix(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		runner := mock_exec.NewMockRunner(ctrl)
 
-		loadDSN := func() (string, error) { return "", errors.New("config failed") }
+		loadDSN := func() (string, string, error) { return "", "", errors.New("config failed") }
 		err := RunFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
 		require.Error(t, err)
 	})

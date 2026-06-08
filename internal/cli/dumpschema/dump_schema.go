@@ -67,27 +67,28 @@ func NewGenerator(logger logging.Logger, workDir string) *Generator {
 // 手順:
 //  1. ダンプコマンドを実行してスキーマをダンプ
 //  2. スキーマファイル内のメタコマンド行を除去
-func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, error)) error {
-	dbURL, err := loadDSN()
+func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string, error)) error {
+	dbURL, password, err := loadDSN()
 	if err != nil {
 		return err
 	}
 
-	if err := gen.dumpSchema(ctx, dbURL); err != nil {
+	if err := gen.dumpSchema(ctx, dbURL, password); err != nil {
 		return err
 	}
 	return gen.sanitizeSchemaInPlace()
 }
 
 // dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
-func (g *Generator) dumpSchema(ctx context.Context, dbURL string) error {
+func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) error {
 	args := append([]string{dbURL}, g.dumpArgs...)
+	env := []string{"PGPASSWORD=" + password}
 
 	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("start pg_dump schema",
 		logging.String("out", g.schemaRelPath),
 	)
 
-	out, err := g.runner.Output(ctx, g.workDir, g.dumpCommand, args)
+	out, err := g.runner.Output(ctx, g.workDir, env, g.dumpCommand, args)
 	if err != nil {
 		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed",
 			logging.String("out", g.schemaRelPath),

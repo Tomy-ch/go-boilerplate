@@ -40,13 +40,14 @@ func runDumpSchema(ctx context.Context, workDir string) error {
 
 	gen := dumpschema.NewGenerator(logger, workDir)
 
-	loadDSN := func() (string, error) {
+	loadDSN := func() (string, string, error) {
 		cfg, cerr := config.SetUpConfig()
 		if cerr != nil {
 			logger.Named("dumpschema.SetUpConfig").Error("failed to load config", logging.Error("config", cerr))
-			return "", cerr
+			return "", "", cerr
 		}
-		return driver.DSNString(config.NewDatabaseConfig(cfg)), nil
+		dbCfg := config.NewDatabaseConfig(cfg)
+		return driver.DSNStringWithoutPassword(dbCfg), dbCfg.Password(), nil
 	}
 
 	return dumpschema.RunDump(ctx, gen, loadDSN)

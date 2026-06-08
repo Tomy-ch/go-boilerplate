@@ -39,13 +39,14 @@ func runFixCollation(ctx context.Context, database string) error {
 		return fmt.Errorf("failed to init logger: %w", err)
 	}
 
-	loadDSN := func() (string, error) {
+	loadDSN := func() (string, string, error) {
 		cfg, cerr := config.SetUpConfig()
 		if cerr != nil {
 			logger.Error("failed to load config", logging.Error("config", cerr))
-			return "", cerr
+			return "", "", cerr
 		}
-		return driver.DSNString(config.NewDatabaseConfig(cfg)), nil
+		dbCfg := config.NewDatabaseConfig(cfg)
+		return driver.DSNStringWithoutPassword(dbCfg), dbCfg.Password(), nil
 	}
 
 	return fixcollation.RunFix(ctx, exec.OS{}, logger, database, loadDSN)

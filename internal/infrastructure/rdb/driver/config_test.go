@@ -62,6 +62,25 @@ func TestDSNString(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestDSNStringWithoutPassword(t *testing.T) {
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+
+	urlCfg := &url.URL{
+		Scheme:   "postgres",
+		User:     url.User(dbCfg.User()),
+		Host:     fmt.Sprintf("%s:%d", dbCfg.Host(), dbCfg.Port()),
+		Path:     dbCfg.DBName(),
+		RawQuery: fmt.Sprintf("sslmode=%s", dbCfg.SSLMode()),
+	}
+	expected := urlCfg.String()
+
+	actual := DSNStringWithoutPassword(dbCfg)
+	assert.Equal(t, expected, actual)
+	// パスワードが含まれないこと。
+	assert.NotContains(t, actual, dbCfg.Password())
+}
+
 func TestDSNWithTimeZoneString(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)

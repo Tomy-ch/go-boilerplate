@@ -10,7 +10,7 @@ Provides a thin wrapper around external process execution so callers depend on a
 |---|---|
 |`Runner`|Interface abstracting command execution|
 |`OS`|`Runner` implementation backed by `os/exec`|
-|`Runner.Output(ctx, dir, name, args) ([]byte, error)`|Run a command in `dir`, return stdout; stderr goes to `os.Stderr`|
+|`Runner.Output(ctx, dir, env, name, args) ([]byte, error)`|Run a command in `dir`, return stdout; stderr goes to `os.Stderr`|
 
 ## Wraps
 

@@ -41,16 +41,16 @@ func (m *MockRunner) EXPECT() *MockRunnerMockRecorder {
 }
 
 // Output mocks base method.
-func (m *MockRunner) Output(ctx context.Context, dir, name string, args []string) ([]byte, error) {
+func (m *MockRunner) Output(ctx context.Context, dir string, env []string, name string, args []string) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Output", ctx, dir, name, args)
+	ret := m.ctrl.Call(m, "Output", ctx, dir, env, name, args)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Output indicates an expected call of Output.
-func (mr *MockRunnerMockRecorder) Output(ctx, dir, name, args any) *gomock.Call {
+func (mr *MockRunnerMockRecorder) Output(ctx, dir, env, name, args any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Output", reflect.TypeOf((*MockRunner)(nil).Output), ctx, dir, name, args)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Output", reflect.TypeOf((*MockRunner)(nil).Output), ctx, dir, env, name, args)
 }

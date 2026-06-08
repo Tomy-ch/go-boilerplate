@@ -45,11 +45,11 @@ func TestGenerator_dumpSchema(t *testing.T) {
 		runner := mock_exec.NewMockRunner(ctrl)
 
 		out := []byte("CREATE TABLE users (id int);\n")
-		runner.EXPECT().Output(gomock.Any(), testWorkDir, "pg_dump", gomock.Any()).Return(out, nil)
+		runner.EXPECT().Output(gomock.Any(), testWorkDir, gomock.Any(), "pg_dump", gomock.Any()).Return(out, nil)
 		fs.EXPECT().WriteFile(schemaAbs, out, os.FileMode(schemaFilePerm)).Return(nil)
 
 		g := newTestGenerator(t, fs, runner)
-		require.NoError(t, g.dumpSchema(context.Background(), "postgres://dsn"))
+		require.NoError(t, g.dumpSchema(context.Background(), "postgres://dsn", "pw"))
 	})
 
 	t.Run("異常系_pg_dump失敗時はWriteFileを呼ばずエラー", func(t *testing.T) {
@@ -58,10 +58,10 @@ func TestGenerator_dumpSchema(t *testing.T) {
 		fs := mock_fs.NewMockFS(ctrl)
 		runner := mock_exec.NewMockRunner(ctrl)
 
-		runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("pg_dump failed"))
+		runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("pg_dump failed"))
 
 		g := newTestGenerator(t, fs, runner)
-		require.Error(t, g.dumpSchema(context.Background(), "postgres://dsn"))
+		require.Error(t, g.dumpSchema(context.Background(), "postgres://dsn", "pw"))
 	})
 
 	t.Run("異常系_書き込み失敗時はエラー", func(t *testing.T) {
@@ -70,11 +70,11 @@ func TestGenerator_dumpSchema(t *testing.T) {
 		fs := mock_fs.NewMockFS(ctrl)
 		runner := mock_exec.NewMockRunner(ctrl)
 
-		runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("x"), nil)
+		runner.EXPECT().Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("x"), nil)
 		fs.EXPECT().WriteFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("write failed"))
 
 		g := newTestGenerator(t, fs, runner)
-		require.Error(t, g.dumpSchema(context.Background(), "postgres://dsn"))
+		require.Error(t, g.dumpSchema(context.Background(), "postgres://dsn", "pw"))
 	})
 }
 
@@ -165,14 +165,14 @@ func TestRunDump(t *testing.T) {
 		runner := mock_exec.NewMockRunner(ctrl)
 
 		dumped := []byte("CREATE TABLE users (id int);\n")
-		runner.EXPECT().Output(gomock.Any(), testWorkDir, "pg_dump", gomock.Any()).Return(dumped, nil)
+		runner.EXPECT().Output(gomock.Any(), testWorkDir, gomock.Any(), "pg_dump", gomock.Any()).Return(dumped, nil)
 		fs.EXPECT().WriteFile(schemaAbs, dumped, os.FileMode(schemaFilePerm)).Return(nil)
 		// sanitize 経路: ReadFile → WriteFile。
 		fs.EXPECT().ReadFile(schemaAbs).Return(dumped, nil)
 		fs.EXPECT().WriteFile(schemaAbs, gomock.Any(), os.FileMode(schemaFilePerm)).Return(nil)
 
 		g := newTestGenerator(t, fs, runner)
-		loadDSN := func() (string, error) { return "postgres://dsn", nil }
+		loadDSN := func() (string, string, error) { return "postgres://dsn", "pw", nil }
 		require.NoError(t, RunDump(context.Background(), g, loadDSN))
 	})
 
@@ -183,7 +183,7 @@ func TestRunDump(t *testing.T) {
 		runner := mock_exec.NewMockRunner(ctrl)
 
 		g := newTestGenerator(t, fs, runner)
-		loadDSN := func() (string, error) { return "", errors.New("config failed") }
+		loadDSN := func() (string, string, error) { return "", "", errors.New("config failed") }
 		require.Error(t, RunDump(context.Background(), g, loadDSN))
 	})
 
@@ -193,10 +193,10 @@ func TestRunDump(t *testing.T) {
 		fs := mock_fs.NewMockFS(ctrl)
 		runner := mock_exec.NewMockRunner(ctrl)
 
-		runner.EXPECT().Output(gomock.Any(), testWorkDir, "pg_dump", gomock.Any()).Return(nil, errors.New("pg_dump failed"))
+		runner.EXPECT().Output(gomock.Any(), testWorkDir, gomock.Any(), "pg_dump", gomock.Any()).Return(nil, errors.New("pg_dump failed"))
 
 		g := newTestGenerator(t, fs, runner)
-		loadDSN := func() (string, error) { return "postgres://dsn", nil }
+		loadDSN := func() (string, string, error) { return "postgres://dsn", "pw", nil }
 		require.Error(t, RunDump(context.Background(), g, loadDSN))
 	})
 }
