@@ -48,7 +48,6 @@ type MetricsConfig struct {
 type ObservabilityConfig struct {
 	enabled             bool
 	maskedDBQueryArgs   bool
-	targetStatusCodes   []int
 	targetStatusCodeSet map[int]bool
 }
 
@@ -170,11 +169,6 @@ func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
 
 // MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。
 func (o *ObservabilityConfig) MaskedDBQueryArgs() bool { return o.maskedDBQueryArgs }
-
-// TargetStatusCodes は、可観測モードで監視対象となるHTTPステータスコードのリストを返します。
-func (o *ObservabilityConfig) TargetStatusCodes() []int {
-	return append([]int(nil), o.targetStatusCodes...)
-}
 
 // TargetStatusCodeSet は、可観測モードで監視対象となるHTTPステータスコードのセットを返します。
 // 返り値はホットパスで参照される共有マップのため変更してはいけません（read-only）。

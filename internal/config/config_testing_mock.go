@@ -136,7 +136,6 @@ func MockConfigForTest(t testing.TB) *Config {
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
 			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
-			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
 		database: DatabaseConfig{

@@ -165,11 +165,6 @@ func TestGetterMethods(t *testing.T) {
 			assert.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
 		})
 
-		t.Run("TargetStatusCodes", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, expectedObservabilityTargetStatusCodes, observability.TargetStatusCodes())
-		})
-
 		t.Run("TargetStatusCodeSet", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, expectedObservabilityTargetStatusCodeSet, observability.TargetStatusCodeSet())

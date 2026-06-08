@@ -54,7 +54,6 @@ func New() (*Config, error) {
 		observability: ObservabilityConfig{
 			enabled:             cfg.Observability.Enabled,
 			maskedDBQueryArgs:   cfg.Observability.MaskedDBQueryArgs,
-			targetStatusCodes:   cfg.Observability.TargetStatusCodes,
 			targetStatusCodeSet: buildStatusCodeSet(cfg.Observability.TargetStatusCodes),
 		},
 		database: DatabaseConfig{
