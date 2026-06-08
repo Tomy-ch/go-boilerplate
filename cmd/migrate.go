@@ -4,6 +4,8 @@ import (
 	climigrate "go-boilerplate/internal/cli/migrate"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/envutil"
 
 	"github.com/spf13/cobra"
 
@@ -32,7 +34,11 @@ func newMigrateUpCommand() *cobra.Command {
 --steps に正の整数を指定すると、現在位置からその段数だけ Up します。
 --database フラグを指定すると、対象のデータベース（例: local, test）に対して Up を行います。`,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return climigrate.MigrateUpRun(steps, database, buildMigrateInstance)
+			logger, err := logging.NewProductionLogger()
+			if err != nil {
+				return err
+			}
+			return climigrate.MigrateUpRun(steps, database, logger, buildMigrateInstance)
 		},
 	}
 
@@ -58,7 +64,11 @@ func newMigrateDownCommand() *cobra.Command {
 --steps に正の整数を指定すると、現在位置からその段数だけ Down します。
 --database フラグを指定すると、対象のデータベース（例: local, test）に対して Down を行います。`,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return climigrate.MigrateDownRun(steps, database, buildMigrateInstance)
+			logger, err := logging.NewProductionLogger()
+			if err != nil {
+				return err
+			}
+			return climigrate.MigrateDownRun(steps, database, logger, buildMigrateInstance)
 		},
 	}
 
@@ -75,7 +85,7 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	}
 	if database != "" {
 		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保つ。
-		restore := climigrate.OverrideEnv("DB_NAME", database)
+		restore := envutil.Override("DB_NAME", database)
 		defer restore()
 	}
 	cfg, err := config.New()

@@ -1,12 +1,11 @@
 package main
 
 import (
-	"os"
-
 	"go-boilerplate/internal/cli/seed"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/envutil"
 	"go-boilerplate/pkg/fs"
 
 	"github.com/spf13/cobra"
@@ -61,10 +60,9 @@ func newConfigForSeed(logger logging.Logger, database string) (*config.Config, e
 		return nil, err
 	}
 	if database != "" {
-		if err := os.Setenv("DB_NAME", database); err != nil {
-			logger.Named("dbSeedRun.setenv").Error("failed to set DB_NAME env", logging.Error("setenv", err))
-			return nil, err
-		}
+		// config.New() が読み取る間だけ DB_NAME を差し替え、読み取り後は元値へ復元して冪等性を保つ。
+		restore := envutil.Override("DB_NAME", database)
+		defer restore()
 	}
 	cfg, err := config.New()
 	if err != nil {

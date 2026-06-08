@@ -11,12 +11,7 @@ import (
 )
 
 // MigrateDownRun は、マイグレーションをダウングレードするための実行関数です。
-func MigrateDownRun(steps int, database string, newMigrator MigratorFactory) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		panic("failed to create logger: " + err.Error())
-	}
-
+func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
 	if steps < 0 {
 		// 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。
 		err := fmt.Errorf("steps must be zero or positive, got %d", steps)

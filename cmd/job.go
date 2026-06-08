@@ -20,7 +20,10 @@ func newJobCommand() *cobra.Command {
 			"例: job usercount --timeout 30s",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return job.RunJobWith(cmd.Context(), args[0], args[1:], timeout, di.RunJob)
+			return job.RunJobWith(cmd.Context(), args[0], args[1:], timeout, func() (job.StartFunc, job.StopFunc) {
+				start, stop := di.RunJob()
+				return job.StartFunc(start), job.StopFunc(stop)
+			})
 		},
 	}
 

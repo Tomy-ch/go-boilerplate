@@ -3,10 +3,10 @@ package migrate
 import (
 	"errors"
 	"math"
-	"os"
 	"testing"
 
 	mock_migrate "go-boilerplate/internal/cli/migrate/mock"
+	"go-boilerplate/internal/logging"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +39,7 @@ func TestMigrateUpRun(t *testing.T) {
 			return nil, nil
 		}
 
-		err := MigrateUpRun(-1, "", factory)
+		err := MigrateUpRun(-1, "", logging.NewTestLogger(t), factory)
 		require.Error(t, err)
 		assert.False(t, called)
 	})
@@ -47,7 +47,7 @@ func TestMigrateUpRun(t *testing.T) {
 	t.Run("異常系_migratorの生成に失敗した場合はそのエラーを返す", func(t *testing.T) {
 		t.Parallel()
 
-		err := MigrateUpRun(0, "", factoryFailing(errBoom))
+		err := MigrateUpRun(0, "", logging.NewTestLogger(t), factoryFailing(errBoom))
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -58,7 +58,7 @@ func TestMigrateUpRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Up().Return(nil)
 
-		err := MigrateUpRun(0, "", factoryReturning(m))
+		err := MigrateUpRun(0, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -69,7 +69,7 @@ func TestMigrateUpRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Up().Return(migrate.ErrNoChange)
 
-		err := MigrateUpRun(0, "", factoryReturning(m))
+		err := MigrateUpRun(0, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -80,7 +80,7 @@ func TestMigrateUpRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Up().Return(errBoom)
 
-		err := MigrateUpRun(0, "", factoryReturning(m))
+		err := MigrateUpRun(0, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -91,7 +91,7 @@ func TestMigrateUpRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(2).Return(nil)
 
-		err := MigrateUpRun(2, "", factoryReturning(m))
+		err := MigrateUpRun(2, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -102,7 +102,7 @@ func TestMigrateUpRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(1).Return(migrate.ErrNoChange)
 
-		err := MigrateUpRun(1, "", factoryReturning(m))
+		err := MigrateUpRun(1, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -113,7 +113,7 @@ func TestMigrateUpRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(3).Return(errBoom)
 
-		err := MigrateUpRun(3, "", factoryReturning(m))
+		err := MigrateUpRun(3, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.ErrorIs(t, err, errBoom)
 	})
 }
@@ -130,7 +130,7 @@ func TestMigrateDownRun(t *testing.T) {
 			return nil, nil
 		}
 
-		err := MigrateDownRun(-2, "", factory)
+		err := MigrateDownRun(-2, "", logging.NewTestLogger(t), factory)
 		require.Error(t, err)
 		assert.False(t, called)
 	})
@@ -138,7 +138,7 @@ func TestMigrateDownRun(t *testing.T) {
 	t.Run("異常系_migratorの生成に失敗した場合はそのエラーを返す", func(t *testing.T) {
 		t.Parallel()
 
-		err := MigrateDownRun(0, "", factoryFailing(errBoom))
+		err := MigrateDownRun(0, "", logging.NewTestLogger(t), factoryFailing(errBoom))
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -150,7 +150,7 @@ func TestMigrateDownRun(t *testing.T) {
 		m.EXPECT().Version().Return(uint(3), false, nil)
 		m.EXPECT().Down().Return(nil)
 
-		err := MigrateDownRun(0, "", factoryReturning(m))
+		err := MigrateDownRun(0, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -162,7 +162,7 @@ func TestMigrateDownRun(t *testing.T) {
 		m.EXPECT().Version().Return(uint(3), false, nil)
 		m.EXPECT().Down().Return(errBoom)
 
-		err := MigrateDownRun(0, "", factoryReturning(m))
+		err := MigrateDownRun(0, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -173,7 +173,7 @@ func TestMigrateDownRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(-2).Return(nil)
 
-		err := MigrateDownRun(2, "", factoryReturning(m))
+		err := MigrateDownRun(2, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -184,7 +184,7 @@ func TestMigrateDownRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(-1).Return(migrate.ErrNoChange)
 
-		err := MigrateDownRun(1, "", factoryReturning(m))
+		err := MigrateDownRun(1, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.NoError(t, err)
 	})
 
@@ -195,7 +195,7 @@ func TestMigrateDownRun(t *testing.T) {
 		m := mock_migrate.NewMockMigrator(ctrl)
 		m.EXPECT().Steps(-3).Return(errBoom)
 
-		err := MigrateDownRun(3, "", factoryReturning(m))
+		err := MigrateDownRun(3, "", logging.NewTestLogger(t), factoryReturning(m))
 		require.ErrorIs(t, err, errBoom)
 	})
 }
@@ -267,34 +267,5 @@ func TestExecuteMigrateFullDown(t *testing.T) {
 		m.EXPECT().Down().Return(migrate.ErrNoChange)
 
 		require.NoError(t, executeMigrateFullDown(m))
-	})
-}
-
-func TestOverrideEnv(t *testing.T) {
-	// 環境変数を触るため、この関数は t.Parallel を使わない。
-
-	t.Run("正常系_既存値は復元され未設定値はUnsetされる", func(t *testing.T) {
-		// 環境変数を触るため、このサブテストは並行化しない。
-		const existingKey = "TEST_OVERRIDE_EXISTING"
-		const absentKey = "TEST_OVERRIDE_ABSENT"
-
-		t.Setenv(existingKey, "original")
-
-		restoreExisting := OverrideEnv(existingKey, "changed")
-		v, ok := os.LookupEnv(existingKey)
-		require.True(t, ok)
-		assert.Equal(t, "changed", v)
-		restoreExisting()
-		v, ok = os.LookupEnv(existingKey)
-		require.True(t, ok)
-		assert.Equal(t, "original", v)
-
-		restoreAbsent := OverrideEnv(absentKey, "temp")
-		v, ok = os.LookupEnv(absentKey)
-		require.True(t, ok)
-		assert.Equal(t, "temp", v)
-		restoreAbsent()
-		_, ok = os.LookupEnv(absentKey)
-		assert.False(t, ok)
 	})
 }

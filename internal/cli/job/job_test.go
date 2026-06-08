@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"go-boilerplate/internal/di"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,13 +18,13 @@ type recordingStop struct {
 }
 
 // makeStart は、固定の done チャネルを返すフェイクの開始関数を生成します。
-func makeStart(done <-chan error) di.StartFunc {
+func makeStart(done <-chan error) StartFunc {
 	return func(_ context.Context, _ string, _ []string) <-chan error {
 		return done
 	}
 }
 
-func (r *recordingStop) fn() di.StopFunc {
+func (r *recordingStop) fn() StopFunc {
 	return func(c context.Context) error {
 		r.called = true
 		r.deadline, r.hasDeadline = c.Deadline()
@@ -120,7 +118,7 @@ func TestRunJobWith(t *testing.T) {
 		done <- nil
 		stop := &recordingStop{}
 
-		provide := func() (di.StartFunc, di.StopFunc) {
+		provide := func() (StartFunc, StopFunc) {
 			return makeStart(done), stop.fn()
 		}
 

@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/cli/server"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/di"
+	"go-boilerplate/internal/logging"
 
 	"github.com/spf13/cobra"
 )
@@ -31,6 +32,11 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	appCfg := config.NewApplicationConfig(cfg)
 	mtcCfg := config.NewMetricsConfig(cfg)
 
+	logger, err := logging.NewProductionLogger()
+	if err != nil {
+		return err
+	}
+
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
 		syscall.SIGINT,
@@ -40,7 +46,7 @@ func serveRun(_ *cobra.Command, _ []string) error {
 
 	// 本番モードでない場合のみメトリクス補助サーバーを起動する（判定はコア側）。
 	stopMetrics := server.ResolveMetricsStop(appCfg, func() (func(), func(context.Context)) {
-		return server.NewMetricsServer(mtcCfg)
+		return server.NewMetricsServer(mtcCfg, logger)
 	})
 
 	app := di.NewApplicationCore()

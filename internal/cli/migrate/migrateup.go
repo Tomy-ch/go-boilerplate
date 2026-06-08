@@ -10,12 +10,7 @@ import (
 )
 
 // MigrateUpRun は、マイグレーションをアップグレードするための実行関数です。
-func MigrateUpRun(steps int, database string, newMigrator MigratorFactory) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		panic("failed to create logger: " + err.Error())
-	}
-
+func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
 	if steps < 0 {
 		err := fmt.Errorf("steps must be zero or positive, got %d", steps)
 		logger.Named("migrateUpRun").Error("invalid steps", logging.Error("validateSteps", err))

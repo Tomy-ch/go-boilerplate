@@ -35,13 +35,8 @@ func MetricsServer(mtcCfg *config.MetricsConfig) *http.Server {
 }
 
 // NewMetricsServer は、メトリクスサーバーの開始および終了関数を生成します。
-func NewMetricsServer(mtcCfg *config.MetricsConfig) (func(), func(ctx context.Context)) {
+func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func(), func(ctx context.Context)) {
 	metricsSrv := MetricsServer(mtcCfg)
-
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		panic("failed to create logger: " + err.Error())
-	}
 
 	start := func() {
 		// メインのアプリ起動をブロックしないよう、補助サーバーは別 goroutine で待ち受けます。
