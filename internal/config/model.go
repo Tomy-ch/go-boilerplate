@@ -104,15 +104,10 @@ func (o *OperationSystemConfig) TimeZone() string { return o.timezone }
 // NewApplicationConfig は、アプリケーションの設定を返します。
 func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &cfg.app }
 
-// Env は、サーバーの環境を返します。
-//
-// 例: "local", "development", "staging", "production" など。
+// Env は、デプロイ環境ラベルを返します（自由値）。例: "local" / "staging" / "production"。
 func (a *ApplicationConfig) Env() string { return a.env }
 
-// Mode は、アプリケーションの環境を返します。
-//
-// この環境変数はアプリケーションがどのモードで動作しているかを示します。
-// 例: "development", "production" など。
+// Mode は、アプリの動作モードを返します（"development" / "production" のみ。挙動切替に使用。Env とは別軸）。
 func (a *ApplicationConfig) Mode() string { return a.mode }
 
 // Name は、アプリケーションの名前を返します。

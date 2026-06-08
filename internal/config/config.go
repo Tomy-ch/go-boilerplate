@@ -138,10 +138,18 @@ func validateApplicationConfig(appCfg Application) error {
 	return nil
 }
 
+// validatePortRange は、ポート番号が許容範囲内かを検証します。
+func validatePortRange(port int, outOfRangeErr error) error {
+	if port < MinPort || MaxPort < port {
+		return outOfRangeErr
+	}
+	return nil
+}
+
 // validateServerConfig は、サーバー設定を検証します。
 func validateServerConfig(srvCfg Server) error {
-	if srvCfg.Port < MinPort || MaxPort < srvCfg.Port {
-		return ErrInvalidPortRange
+	if err := validatePortRange(srvCfg.Port, ErrInvalidPortRange); err != nil {
+		return err
 	}
 
 	if srvCfg.ReadHeaderTimeout <= 0 {
@@ -168,8 +176,8 @@ func validateServerConfig(srvCfg Server) error {
 
 // validateDatabaseConfig は、データベース設定を検証します。
 func validateDatabaseConfig(dbCfg Database) error {
-	if dbCfg.Port < MinPort || MaxPort < dbCfg.Port {
-		return ErrInvalidDBPortRange
+	if err := validatePortRange(dbCfg.Port, ErrInvalidDBPortRange); err != nil {
+		return err
 	}
 	if dbCfg.PingTimeout <= 0 {
 		return ErrInvalidDBPingTimeout
