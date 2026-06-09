@@ -110,6 +110,28 @@ func Test_BuildHTTPRequestLogInput(t *testing.T) {
 	assert.False(t, got.EventAt.IsZero())
 }
 
+func Test_Recovered(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	newCtx := func() echo.Context {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		return e.NewContext(req, httptest.NewRecorder())
+	}
+
+	t.Run("未設定なら false", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsRecovered(newCtx()))
+	})
+
+	t.Run("MarkRecovered 後は true", func(t *testing.T) {
+		t.Parallel()
+		c := newCtx()
+		MarkRecovered(c)
+		assert.True(t, IsRecovered(c))
+	})
+}
+
 func Test_cloneValues(t *testing.T) {
 	t.Parallel()
 

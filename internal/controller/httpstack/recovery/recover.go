@@ -52,7 +52,9 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 		}
 		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
 		logger.Named("middleware.recover").Error("panic recovered", fields...)
-		return nil
+		// ログ済みを記録し err を返す（echo が c.Error で 500 を返す。二重ログは IsRecovered で抑止）。
+		server.MarkRecovered(c)
+		return err
 	}
 }
 

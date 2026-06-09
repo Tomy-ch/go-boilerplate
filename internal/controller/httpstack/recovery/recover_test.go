@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/errorhandler"
+	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v4"
@@ -37,7 +39,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 
 	e := echo.New()
 
-	t.Run("RemoteAddrがある場合、関数はnilを返しpanicしない", func(t *testing.T) {
+	t.Run("RemoteAddrがある場合、元errを返しリカバリ済みを記録する", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -47,12 +49,14 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
+		inErr := fmt.Errorf("boom")
 		f := newRecoverLogErrorFunc(logger, lf)
-		err := f(c, fmt.Errorf("boom"), []byte("stack"))
-		require.NoError(t, err)
+		err := f(c, inErr, []byte("stack"))
+		require.ErrorIs(t, err, inErr)
+		assert.True(t, server.IsRecovered(c))
 	})
 
-	t.Run("X-Real-Ipヘッダがある場合、関数はnilを返しpanicしない", func(t *testing.T) {
+	t.Run("X-Real-Ipヘッダがある場合、元errを返しリカバリ済みを記録する", func(t *testing.T) {
 		t.Parallel()
 
 		ctx := context.Background()
@@ -62,9 +66,11 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
+		inErr := fmt.Errorf("boom2")
 		f := newRecoverLogErrorFunc(logger, lf)
-		err := f(c, fmt.Errorf("boom2"), []byte("stack2"))
-		require.NoError(t, err)
+		err := f(c, inErr, []byte("stack2"))
+		require.ErrorIs(t, err, inErr)
+		assert.True(t, server.IsRecovered(c))
 	})
 }
 
@@ -95,6 +101,32 @@ func TestMiddleware_realPanic(t *testing.T) {
 	stackStr, ok := cm[logging.InternalStackTraceKey].(string)
 	require.True(t, ok)
 	assert.Contains(t, stackStr, "goroutine")
+}
+
+func TestMiddleware_panicReturns500WithSingleLog(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.MockConfigForTest(t)
+	appCfg := config.NewApplicationConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewTestLogFieldBuilder(t)
+	obsLogger, observed := logging.NewObservedTestLogger(t)
+
+	e := echo.New()
+	errorhandler.New(e, obsLogger, lf, obsCfg)
+	e.Use(Middleware(obsLogger, lf, appCfg))
+	e.GET("/panic", func(_ echo.Context) error { panic("boom-panic") })
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
+	e.ServeHTTP(rec, req)
+
+	// パニックでも 200 空ではなく 500 が返る。
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	// ログは middleware.recover の 1 件のみ（エラーハンドラの重複ログは出ない）。
+	assert.Equal(t, 1, observed.Len())
+	assert.Equal(t, 1, observed.FilterMessage("panic recovered").Len())
+	assert.Equal(t, 0, observed.FilterMessage("errorhandler.server_error").Len())
 }
 
 func Test_newRecoverConfig(t *testing.T) {

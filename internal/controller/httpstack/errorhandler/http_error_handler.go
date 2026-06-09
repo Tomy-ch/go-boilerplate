@@ -57,7 +57,10 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
 		}
 	}
 
-	logHTTPError(c, logger, lf, obsCfg, resp)
+	// リカバリ済みのパニックは middleware.recover が既にログ済みのため、二重ログを抑止する（500 応答は返す）。
+	if !server.IsRecovered(c) {
+		logHTTPError(c, logger, lf, obsCfg, resp)
+	}
 }
 
 // writeErrorResponse は、エラーレスポンスをクライアントに書き込みます。
