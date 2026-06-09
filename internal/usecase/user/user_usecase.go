@@ -260,10 +260,10 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFiel
 			dto.Email,
 			dto.Phone,
 			pftDomain.ID(),
-			dto.PostalCode,
 			dto.City,
 			dto.Street,
 			dto.Building,
+			dto.PostalCode,
 			now,
 		); err != nil {
 			return err
@@ -365,10 +365,10 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *Pa
 			ptr.Deref(dto.Email, userEntity.Email()),
 			ptr.Deref(dto.Phone, userEntity.Phone()),
 			prefectureID,
-			ptr.Deref(dto.PostalCode, userEntity.PostalCode()),
 			ptr.Deref(dto.City, userEntity.City()),
 			ptr.Deref(dto.Street, userEntity.Street()),
 			building,
+			ptr.Deref(dto.PostalCode, userEntity.PostalCode()),
 			now,
 		); err != nil {
 			return err

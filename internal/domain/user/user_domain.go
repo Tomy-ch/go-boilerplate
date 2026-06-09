@@ -62,12 +62,10 @@ func New(
 		return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
 	}
 
-	if deletedAt != nil && deletedAt.Before(createdAt) {
-		return nil, xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to createdAt")
-	}
-
-	if deletedAt != nil && deletedAt.Before(updatedAt) {
-		return nil, xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to updatedAt")
+	if deletedAt != nil {
+		if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil {
+			return nil, err
+		}
 	}
 
 	return &User{
@@ -138,8 +136,9 @@ func (u *User) FullName() string { return u.firstName + " " + u.lastName }
 func (u *User) UpdateProfile(
 	firstName, lastName, email, phone string,
 	prefectureID uuid.UUID,
-	postalCode, city, street string,
+	city, street string,
 	building *string,
+	postalCode string,
 	updatedAt time.Time,
 ) error {
 	if err := u.ensureNotDeleted(); err != nil {
@@ -188,14 +187,11 @@ func (u *User) MarkAsDeleted(deletedAt time.Time) error {
 	if err := u.ensureNotDeleted(); err != nil {
 		return err
 	}
-	if deletedAt.Before(u.createdAt) {
-		return xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to createdAt")
-	}
-	if deletedAt.Before(u.updatedAt) {
-		return xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to updatedAt")
+	if err := validateDeletedAt(deletedAt, u.createdAt, u.updatedAt); err != nil {
+		return err
 	}
 
-	u.deletedAt = ptr.Copy(&deletedAt)
+	u.deletedAt = &deletedAt
 	// 論理削除も更新操作のため、updatedAt を削除時刻（usecase が clock から取得した現在時刻）に追従させる。
 	u.updatedAt = deletedAt
 	return nil
@@ -209,10 +205,24 @@ func (u *User) ensureNotDeleted() error {
 	return nil
 }
 
-// ensureUpdatedAt は、更新日時が createdAt 以降であることを検証します。
+// ensureUpdatedAt は、更新日時が createdAt 以降かつ現在の updatedAt 以降（単調非減少）であることを検証します。
 func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
 	if updatedAt.Before(u.createdAt) {
 		return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
+	}
+	if updatedAt.Before(u.updatedAt) {
+		return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to current updatedAt")
+	}
+	return nil
+}
+
+// validateDeletedAt は、削除日時が createdAt / updatedAt 以降であることを検証します。
+func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error {
+	if deletedAt.Before(createdAt) {
+		return xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to createdAt")
+	}
+	if deletedAt.Before(updatedAt) {
+		return xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to updatedAt")
 	}
 	return nil
 }
@@ -259,7 +269,7 @@ func validateProfileFields(
 
 // validatePasswordHash は、パスワードハッシュの不変条件を検証します。
 func validatePasswordHash(passwordHash string) error {
-	if ok, msg := stringkit.ValidateInRange(passwordHash, minLength, maxPasswordLength); !ok {
+	if ok, msg := stringkit.ValidateInRange(passwordHash, minLength, maxPasswordHashLength); !ok {
 		return xerrors.Wrap(ErrInvalidPasswordHash, msg)
 	}
 	return nil

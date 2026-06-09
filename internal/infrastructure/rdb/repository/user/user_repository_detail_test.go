@@ -69,7 +69,7 @@ func Test_repository_Update(t *testing.T) {
 			require.NoError(t, err)
 
 			err = u.UpdateProfile("UpdatedFirst", u.LastName(), u.Email(), u.Phone(),
-				u.PrefectureID(), u.PostalCode(), u.City(), u.Street(), u.Building(), time.Now())
+				u.PrefectureID(), u.City(), u.Street(), u.Building(), u.PostalCode(), time.Now())
 			require.NoError(t, err)
 			require.NoError(t, repo.Update(ctx, u))
 
@@ -101,7 +101,7 @@ func Test_repository_Update(t *testing.T) {
 
 			// 別ユーザーのメールアドレスへ更新 → unique 制約違反
 			err = target.UpdateProfile(target.FirstName(), target.LastName(), other.Email(), target.Phone(),
-				target.PrefectureID(), target.PostalCode(), target.City(), target.Street(), target.Building(), time.Now())
+				target.PrefectureID(), target.City(), target.Street(), target.Building(), target.PostalCode(), time.Now())
 			require.NoError(t, err)
 
 			err = repo.Update(ctx, target)
