@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type log struct {
+type requestLog struct {
 	c        echo.Context
 	lf       logging.LogFieldBuilder
 	traceCtx *observability.TraceContext
@@ -34,20 +34,25 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 
 			start := time.Now()
 
-			l := log{
+			l := requestLog{
 				c:        c,
 				lf:       lf,
 				traceCtx: observability.ExtractTraceContext(c.Request().Context()),
 			}
 
-			reqFields := l.buildRequestLogFields()
+			reqFields := l.buildRequestLogFields(start)
 			logger.Named("http.request").Info("request received", reqFields...)
 
 			c.Response().After(func() {
 				latency := time.Since(start)
 
 				fields := l.buildResponseLogFields(latency)
-				logger.Named("http.response").Info("request handled", fields...)
+				resLogger := logger.Named("http.response")
+				if c.Response().Status >= MinStatusError {
+					resLogger.Error("request handled", fields...)
+				} else {
+					resLogger.Info("request handled", fields...)
+				}
 			})
 
 			return next(c)
@@ -56,10 +61,10 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 }
 
 // buildRequestLogFields は、リクエストの情報を含むFieldのスライスを生成します。
-func (l log) buildRequestLogFields() []*logging.Field {
+func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field {
 	req := l.c.Request()
 	reqIn := logging.HTTPRequestLogInput{
-		EventAt:       time.Now(),
+		EventAt:       start,
 		Method:        req.Method,
 		URI:           req.RequestURI,
 		Path:          req.URL.Path,
@@ -79,8 +84,8 @@ func (l log) buildRequestLogFields() []*logging.Field {
 	return l.lf.BuildHTTPRequestFields(reqIn)
 }
 
-// buildResponseLogFields は、リクエストの情報を含むFieldのスライスを生成します。
-func (l log) buildResponseLogFields(latency time.Duration) []*logging.Field {
+// buildResponseLogFields は、レスポンスの情報を含むFieldのスライスを生成します。
+func (l requestLog) buildResponseLogFields(latency time.Duration) []*logging.Field {
 	req := l.c.Request()
 	res := l.c.Response()
 	resIn := logging.HTTPResponseLogInput{

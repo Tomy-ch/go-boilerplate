@@ -68,9 +68,29 @@ func Test_loggingMiddleware(t *testing.T) {
 		handler := loggingMiddleware(logger, lf)(next)
 		require.NoError(t, handler(c))
 	})
+
+	t.Run("5xxレスポンスではErrorレベルで出力される", func(t *testing.T) {
+		lf := logging.NewTestLogFieldBuilder(t)
+
+		next := func(c echo.Context) error {
+			return c.String(http.StatusInternalServerError, "err")
+		}
+
+		logger := logging.NewTestLogger(t)
+
+		e := echo.New()
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/mw", nil)
+		req.RemoteAddr = "203.0.113.5:45678"
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler := loggingMiddleware(logger, lf)(next)
+		require.NoError(t, handler(c))
+	})
 }
 
-func Test_log_buildRequestLogFields(t *testing.T) {
+func Test_requestLog_buildRequestLogFields(t *testing.T) {
 	t.Parallel()
 
 	lf := logging.NewTestLogFieldBuilder(t)
@@ -92,13 +112,13 @@ func Test_log_buildRequestLogFields(t *testing.T) {
 		defer end()
 
 		tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
-		l := log{c: cWithSpan, lf: lf, traceCtx: tc}
-		fields := l.buildRequestLogFields()
+		l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
+		fields := l.buildRequestLogFields(time.Now())
 		require.NotEmpty(t, fields)
 	})
 }
 
-func Test_log_buildResponseLogFields(t *testing.T) {
+func Test_requestLog_buildResponseLogFields(t *testing.T) {
 	t.Parallel()
 
 	lf := logging.NewTestLogFieldBuilder(t)
@@ -124,7 +144,7 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 		c.Response().Status = expectedStatus
 		c.Response().Header().Set("X-Request-Id", expectedRequestID)
 
-		l := log{c: c, lf: lf, traceCtx: &observability.TraceContext{}}
+		l := requestLog{c: c, lf: lf, traceCtx: &observability.TraceContext{}}
 		fields := l.buildResponseLogFields(150 * time.Millisecond)
 
 		assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
@@ -145,7 +165,7 @@ func Test_log_buildResponseLogFields(t *testing.T) {
 		cWithSpan.Response().Header().Set("X-Request-Id", expectedRequestID)
 
 		tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
-		l := log{c: cWithSpan, lf: lf, traceCtx: tc}
+		l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
 		fields := l.buildResponseLogFields(20 * time.Millisecond)
 
 		assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
