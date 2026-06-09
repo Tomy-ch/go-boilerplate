@@ -3,7 +3,6 @@ package uuid
 
 import (
 	"database/sql/driver"
-	"testing"
 
 	"github.com/google/uuid"
 )
@@ -18,17 +17,6 @@ func New() (UUID, error) {
 		return UUID{}, err
 	}
 	return fromGoogle(g), nil
-}
-
-// NewTestFromSalt はテスト専用の決定論UUID生成関数です。
-//
-// 本番利用は想定していません。
-// v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
-func NewTestFromSalt(t testing.TB, salt string) UUID {
-	t.Helper()
-	ns := uuid.NameSpaceURL
-	g := uuid.NewSHA1(ns, []byte(salt))
-	return fromGoogle(g)
 }
 
 // String は、UUIDを文字列に変換します。
@@ -67,7 +55,7 @@ func (u *UUID) Scan(src any) error {
 	if err := g.Scan(src); err != nil {
 		return err
 	}
-	u.b = g
+	*u = fromGoogle(g)
 	return nil
 }
 
