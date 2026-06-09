@@ -3,12 +3,14 @@ package usercount
 
 import (
 	"context"
+	"fmt"
 
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/job"
 	"go-boilerplate/internal/usecase/user"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const jobName = "user-count"
@@ -43,12 +45,24 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 	defer endSpan()
 
 	var active *bool
+	filter := "all"
 	for _, a := range args {
+		// 相反・重複するフィルタ指定は、後勝ちで黙殺せずエラーにする。
 		switch a {
 		case "--active-only":
+			if active != nil {
+				return xerrors.New(fmt.Sprintf("conflicting filter flag: %s", a))
+			}
 			active = ptr.To(true)
+			filter = "active"
 		case "--inactive-only":
+			if active != nil {
+				return xerrors.New(fmt.Sprintf("conflicting filter flag: %s", a))
+			}
 			active = ptr.To(false)
+			filter = "inactive"
+		default:
+			return xerrors.New(fmt.Sprintf("unknown flag: %s", a))
 		}
 	}
 	count, err := u.usecase.CountUsers(ctx, active)
@@ -58,6 +72,7 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 	u.logging.Named(jobName).Info(
 		"Result: total user count",
 		logging.Int64(logging.JobResultKey, count),
+		logging.String("filter", filter),
 	)
 	return nil
 }
