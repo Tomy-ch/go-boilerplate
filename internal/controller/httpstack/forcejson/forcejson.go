@@ -12,8 +12,7 @@ import (
 func Middleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// ヘッダ確定(WriteHeader)直前に補正する。next 後にヘッダを変更しても、
-			// ボディ書込で commit 済みのレスポンスには反映されないため Before フックで介入する。
+			// next 後では commit 済みで反映されないため、WriteHeader 直前(Before)に補正する。
 			c.Response().Before(func() {
 				ensureJSONContentType(c)
 			})

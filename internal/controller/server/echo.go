@@ -10,9 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// BuildHTTPRequestLogInput は、EchoコンテキストからHTTPリクエストのログ入力を組み立てます。
-// エラーハンドラ・リカバリのように「エラー発生時点(time.Now)・解決済みパス(c.Path)・実IP(c.RealIP)」で
-// ログを取りたい経路の共通生成点です（正常系の逐次ログは開始時刻起点のため対象外）。
+// BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
 func BuildHTTPRequestLogInput(c echo.Context) logging.HTTPRequestLogInput {
 	req := c.Request()
 	traceCtx := observability.ExtractTraceContext(req.Context())

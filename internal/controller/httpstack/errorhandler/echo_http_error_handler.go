@@ -16,8 +16,7 @@ func normalizeEchoHTTPError(err error, details ...string) *response.HTTPErrorRes
 		return nil
 	}
 
-	// nil になり得る ehe.Internal ではなく、常に非 nil の err をラップして文脈を保持する
-	// （ehe.Internal が nil のとき Wrap(nil) は nil を返し、診断情報が失われるため）。
+	// ehe.Internal は nil になり得る（Wrap(nil)=nil で文脈喪失）ため、常に非 nil の err をラップする。
 	internal := xerrors.Wrap(err, "echo HTTP error")
 	return response.NewHTTPErrorFromStatus(ehe.Code, internal, details...)
 }
