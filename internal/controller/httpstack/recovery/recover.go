@@ -47,9 +47,9 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 	return func(c echo.Context, err error, stack []byte) error {
 		reqIn := server.BuildHTTPRequestLogInput(c)
 		recoverFields := []*logging.Field{
-			logging.Error("error", err),
-			// stack は文字列として出力する（Any+[]byte は zap.Binary=Base64 になり可読性を失うため）。
-			logging.String("stack", string(stack)),
+			logging.Error(logging.InternalErrorKey, err),
+			// ランタイムスタック([]byte)は文字列で出力する（Any+[]byte は zap.Binary=Base64 で不可読）。
+			logging.String(logging.InternalStackTraceKey, string(stack)),
 		}
 		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
 		logger.Named("middleware.recover").Error("panic recovered", fields...)

@@ -84,7 +84,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		entries := observed.FilterMessage("panic recovered").All()
 		require.Len(t, entries, 1)
 		// Any+[]byte なら zap.Binary（[]byte/Base64）になり文字列一致しない＝退行検知。
-		assert.Equal(t, "goroutine 1 [running]:\nmain.f()", entries[0].ContextMap()["stack"])
+		assert.Equal(t, "goroutine 1 [running]:\nmain.f()", entries[0].ContextMap()[logging.InternalStackTraceKey])
 	})
 }
 
