@@ -121,7 +121,8 @@ func (h *server) GetDebugCookieRawWs(ctx echo.Context) error {
 	// ここで内部的に Hijack 相当の経路が走る想定
 	conn, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), respHdr)
 	if err != nil {
-		return err
+		// Upgrade 失敗時は gorilla が応答済みのため echo へ伝播しない（二重書き込み回避）。
+		return nil
 	}
 	defer func() { _ = conn.Close() }()
 

@@ -23,33 +23,22 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e)
 
-	expectedMethods := []string{
-		http.MethodGet,
-		http.MethodGet,
-		http.MethodGet,
-		http.MethodGet,
-		http.MethodPost,
-		http.MethodDelete,
+	type route struct{ method, path string }
+	expected := []route{
+		{http.MethodGet, "/debug/cookie"},
+		{http.MethodPost, "/debug/cookie"},
+		{http.MethodDelete, "/debug/cookie"},
+		{http.MethodGet, "/debug/cookie/copy"},
+		{http.MethodGet, "/debug/cookie/stream"},
+		{http.MethodGet, "/debug/cookie/ws"},
 	}
 
-	expectedPathPrefix := "/debug/cookie"
-
-	actualRoutes := e.Routes()
-	for _, r := range actualRoutes {
-		assert.Contains(t, r.Path, expectedPathPrefix)
-	}
-	assert.Len(t, actualRoutes, len(expectedMethods))
-
-	actualMethods := make([]string, len(actualRoutes))
-
-	for i, r := range actualRoutes {
-		actualMethods[i] = r.Method
+	actual := make([]route, 0, len(e.Routes()))
+	for _, r := range e.Routes() {
+		actual = append(actual, route{r.Method, r.Path})
 	}
 
-	assert.Len(t, actualMethods, len(expectedMethods))
-	for _, method := range expectedMethods {
-		assert.Contains(t, actualMethods, method)
-	}
+	assert.ElementsMatch(t, expected, actual)
 }
 
 func Test_server_GetDebugCookie(t *testing.T) {
@@ -79,8 +68,8 @@ func Test_server_GetDebugCookie(t *testing.T) {
 			var actual gen.DebugCookieInspectResponse
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
 
-			require.Empty(t, actual.RawCookieHeader)
-			require.Empty(t, actual.Cookies)
+			assert.Empty(t, actual.RawCookieHeader)
+			assert.Empty(t, actual.Cookies)
 		})
 
 		t.Run("Cookieがある場合はRawとMapの両方が返る", func(t *testing.T) {
@@ -167,6 +156,7 @@ func Test_server_PostDebugCookie(t *testing.T) {
 			h := &server{}
 			err := h.PostDebugCookie(c)
 			require.Error(t, err)
+			assert.Empty(t, rec.Header().Values("Set-Cookie"))
 		})
 	})
 }
@@ -291,7 +281,7 @@ func Test_server_GetDebugCookieRawStream(t *testing.T) {
 
 			// ボディが書き込まれていること（pingが3回）
 			body := rec.Body.String()
-			require.GreaterOrEqual(t, strings.Count(body, "data: ping\n\n"), 3)
+			assert.GreaterOrEqual(t, strings.Count(body, "data: ping\n\n"), 3)
 		})
 	})
 }
