@@ -29,7 +29,7 @@ func Middleware(
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
-			req = req.WithContext(ctxhelper.SetEchoContext(req.Context(), c))
+			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 			c.SetRequest(req)
 
 			return oapiValidator(next)(c)

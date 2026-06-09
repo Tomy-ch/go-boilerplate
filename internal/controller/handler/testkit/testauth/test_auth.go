@@ -24,5 +24,7 @@ func MakeAvailableAuthn(ctx context.Context, t *testing.T, subject string) conte
 	)
 	require.NoError(t, err)
 
-	return ctxhelper.SetAuthn(ctx, *authn)
+	ctx = ctxhelper.WithAuthn(ctx)
+	require.True(t, ctxhelper.SetAuthn(ctx, *authn))
+	return ctx
 }
