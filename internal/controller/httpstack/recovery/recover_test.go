@@ -67,30 +67,35 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("stack は可読な文字列として出力される", func(t *testing.T) {
-		t.Parallel()
+}
 
-		obsLogger, observed := logging.NewObservedTestLogger(t)
+func TestMiddleware_realPanic(t *testing.T) {
+	t.Parallel()
 
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/panic", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+	cfg := config.MockConfigForTest(t)
+	appCfg := config.NewApplicationConfig(cfg)
+	lf := logging.NewTestLogFieldBuilder(t)
+	obsLogger, observed := logging.NewObservedTestLogger(t)
 
-		stack := []byte("goroutine 1 [running]:\nmain.f()")
-		f := newRecoverLogErrorFunc(obsLogger, lf)
-		err := f(c, fmt.Errorf("boom"), stack)
-		require.NoError(t, err)
+	e := echo.New()
+	e.Use(Middleware(obsLogger, lf, appCfg))
+	e.GET("/panic", func(_ echo.Context) error { panic("boom-panic") })
 
-		entries := observed.FilterMessage("panic recovered").All()
-		require.Len(t, entries, 1)
-		cm := entries[0].ContextMap()
-		stackField := cm[logging.InternalStackTraceKey]
-		// Base64 化(Any+[]byte)の退行検知＝string 型であること。
-		assert.IsType(t, "", stackField)
-		assert.Equal(t, string(stack), stackField)
-		assert.Equal(t, "boom", cm[logging.InternalErrorKey])
-	})
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
+	e.ServeHTTP(httptest.NewRecorder(), req)
+
+	entries := observed.FilterMessage("panic recovered").All()
+	require.Len(t, entries, 1)
+	cm := entries[0].ContextMap()
+
+	errStr, ok := cm[logging.InternalErrorKey].(string)
+	require.True(t, ok)
+	assert.Contains(t, errStr, "boom-panic")
+
+	// 実ランタイムスタックが可読文字列(Base64 でない)で出力されること。
+	stackStr, ok := cm[logging.InternalStackTraceKey].(string)
+	require.True(t, ok)
+	assert.Contains(t, stackStr, "goroutine")
 }
 
 func Test_newRecoverConfig(t *testing.T) {
