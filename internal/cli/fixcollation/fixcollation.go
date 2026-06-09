@@ -59,7 +59,7 @@ func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger
 			log.Error("psql command failed",
 				logging.String("database", database),
 				logging.String("sql", sql),
-				logging.Error("psql", err),
+				logging.Error(logging.ErrorKey, err),
 			)
 			return fmt.Errorf("psql command failed: %w", err)
 		}

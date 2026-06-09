@@ -56,7 +56,7 @@ func newStartServerFunc(
 
 		go func() {
 			if err := e.Start(""); err != nil && !xerrors.Is(err, http.ErrServerClosed) {
-				log.Named("server.Start").Error("failed to start http server", logging.Error("e.Start", err))
+				log.Named("server.Start").Error("failed to start http server", logging.Error(logging.ErrorKey, err))
 			}
 		}()
 		log.Named("server.Start").CallerSkip(serverCallerSkip).Info(

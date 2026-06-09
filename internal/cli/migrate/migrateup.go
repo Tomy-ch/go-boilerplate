@@ -13,14 +13,14 @@ import (
 func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
 	if steps < 0 {
 		err := fmt.Errorf("steps must be zero or positive, got %d", steps)
-		logger.Named("migrateUpRun").Error("invalid steps", logging.Error("validateSteps", err))
+		logger.Named("migrateUpRun").Error("invalid steps", logging.Error(logging.ErrorKey, err))
 		return err
 	}
 
 	m, err := newMigrator(database)
 	if err != nil {
 		logger.Named("migrateUpRun.buildMigrateInstance").Error("failed to create migrate instance",
-			logging.Error("buildMigrateInstance", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
@@ -32,7 +32,7 @@ func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator
 	}
 	if err := executeMigrateUp(m, steps); err != nil {
 		logger.Named("migrateUpRun.executeMigrateUp").Error("migration failed",
-			logging.Error("executeMigrateUp", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}

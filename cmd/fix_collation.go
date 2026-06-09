@@ -42,7 +42,7 @@ func runFixCollation(ctx context.Context, database string) error {
 	loadDSN := func() (string, string, error) {
 		cfg, cerr := config.SetUpConfig()
 		if cerr != nil {
-			logger.Error("failed to load config", logging.Error("config", cerr))
+			logger.Error("failed to load config", logging.Error(logging.ErrorKey, cerr))
 			return "", "", cerr
 		}
 		dbCfg := config.NewDatabaseConfig(cfg)

@@ -2,6 +2,7 @@ package logging
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,7 +50,7 @@ func Test_logger_ConvertFields(t *testing.T) {
 	expectedInt64 := int64(100)
 	expectedFloat64 := 3.14
 	expectedBool := true
-	expectedError := error(nil)
+	expectedError := errors.New("boom")
 	expectedAny := "value7"
 
 	fields := []*Field{
@@ -70,7 +71,7 @@ func Test_logger_ConvertFields(t *testing.T) {
 		zap.Int64("key3", expectedInt64),
 		zap.Float64("key4", expectedFloat64),
 		zap.Bool("key5", expectedBool),
-		zap.Error(expectedError),
+		zap.NamedError("key6", expectedError),
 		zap.Any("key7", expectedAny),
 	}
 	actual := l.ConvertFields(fields)

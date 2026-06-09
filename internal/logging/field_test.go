@@ -13,7 +13,7 @@ import (
 func TestString(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedString := "string"
 	expected := &Field{
 		key:         expectedKey,
@@ -28,7 +28,7 @@ func TestString(t *testing.T) {
 func TestStrings(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedStrings := []string{"one", "two", "three"}
 	expected := &Field{
 		key:          expectedKey,
@@ -43,7 +43,7 @@ func TestStrings(t *testing.T) {
 func TestInt(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedInt := 42
 	expected := &Field{
 		key:      expectedKey,
@@ -58,7 +58,7 @@ func TestInt(t *testing.T) {
 func TestInt64(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	var expectedInt64 int64 = 4200000000
 	expected := &Field{
 		key:        expectedKey,
@@ -73,7 +73,7 @@ func TestInt64(t *testing.T) {
 func TestFloat64(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedFloat64 := 3.14159
 	expected := &Field{
 		key:          expectedKey,
@@ -88,7 +88,7 @@ func TestFloat64(t *testing.T) {
 func TestBool(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedBool := true
 	expected := &Field{
 		key:       expectedKey,
@@ -103,7 +103,7 @@ func TestBool(t *testing.T) {
 func TestTime(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedTime := time.Date(2024, time.January, 2, 15, 4, 5, 0, time.UTC)
 	expected := &Field{
 		key:         expectedKey,
@@ -118,7 +118,7 @@ func TestTime(t *testing.T) {
 func TestDurationMs(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedDuration := 1500 * time.Millisecond
 	expected := &Field{
 		key:          expectedKey,
@@ -133,7 +133,7 @@ func TestDurationMs(t *testing.T) {
 func TestError(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedError := xerrors.New("something went wrong")
 	expected := &Field{
 		key:        expectedKey,
@@ -148,7 +148,7 @@ func TestError(t *testing.T) {
 func TestStacktrace(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedError := xerrors.New("something went wrong")
 	expected := &Field{
 		key:         expectedKey,
@@ -163,7 +163,7 @@ func TestStacktrace(t *testing.T) {
 func TestAny(t *testing.T) {
 	t.Parallel()
 
-	expectedKey := "key"
+	const expectedKey = "key"
 	expectedAny := map[string]int{"one": 1, "two": 2}
 	expected := &Field{
 		key:      expectedKey,

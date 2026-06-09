@@ -50,6 +50,10 @@ const (
 
 	// エラー系ログのキー
 
+	// ErrorKey は、エラーを表すログフィールドのキーです。
+	ErrorKey = "error"
+	// OriginalErrorKey は、別のエラー処理中に併記する元エラーを表すログフィールドのキーです。
+	OriginalErrorKey = "original_error"
 	// ErrorCodeKey は、エラーコードを表すログフィールドのキーです。
 	ErrorCodeKey = "error_code"
 	// ErrorMessageKey は、エラーメッセージを表すログフィールドのキーです。

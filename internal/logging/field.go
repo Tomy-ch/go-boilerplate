@@ -18,6 +18,8 @@ const (
 	fieldAny
 )
 
+type fieldKey string
+
 // fieldKind は、フィールドの種類を表します。
 type fieldKind int
 
@@ -37,99 +39,99 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key, v string) *Field {
+func String(key fieldKey, v string) *Field {
 	return &Field{
-		key:         key,
+		key:         string(key),
 		kind:        fieldString,
 		stringValue: v,
 	}
 }
 
 // Int は、整数のログフィールドを作成します。
-func Int(key string, v int) *Field {
+func Int(key fieldKey, v int) *Field {
 	return &Field{
-		key:      key,
+		key:      string(key),
 		kind:     fieldInt,
 		intValue: v,
 	}
 }
 
 // Strings は、文字列のスライスのログフィールドを作成します。
-func Strings(key string, v []string) *Field {
+func Strings(key fieldKey, v []string) *Field {
 	return &Field{
-		key:          key,
+		key:          string(key),
 		kind:         fieldStrings,
 		stringsValue: v,
 	}
 }
 
 // Int64 は、64ビット整数のログフィールドを作成します。
-func Int64(key string, v int64) *Field {
+func Int64(key fieldKey, v int64) *Field {
 	return &Field{
-		key:        key,
+		key:        string(key),
 		kind:       fieldInt64,
 		int64Value: v,
 	}
 }
 
 // Float64 は、64ビット浮動小数点数のログフィールドを作成します。
-func Float64(key string, v float64) *Field {
+func Float64(key fieldKey, v float64) *Field {
 	return &Field{
-		key:          key,
+		key:          string(key),
 		kind:         fieldFloat64,
 		float64Value: v,
 	}
 }
 
 // Bool は、真偽値のログフィールドを作成します。
-func Bool(key string, v bool) *Field {
+func Bool(key fieldKey, v bool) *Field {
 	return &Field{
-		key:       key,
+		key:       string(key),
 		kind:      fieldBool,
 		boolValue: v,
 	}
 }
 
 // Time は、時間のログフィールドを作成します。
-func Time(key string, v time.Time) *Field {
+func Time(key fieldKey, v time.Time) *Field {
 	return &Field{
-		key:         key,
+		key:         string(key),
 		kind:        fieldString,
 		stringValue: v.Format(time.RFC3339Nano),
 	}
 }
 
 // DurationMs は、時間間隔のログフィールドをミリ秒単位で作成します。
-func DurationMs(key string, v time.Duration) *Field {
+func DurationMs(key fieldKey, v time.Duration) *Field {
 	return &Field{
-		key:          key,
+		key:          string(key),
 		kind:         fieldFloat64,
 		float64Value: latencyMs(v),
 	}
 }
 
 // Error は、エラーのログフィールドを作成します。
-func Error(key string, err error) *Field {
+func Error(key fieldKey, err error) *Field {
 	return &Field{
-		key:        key,
+		key:        string(key),
 		kind:       fieldError,
 		errorValue: err,
 	}
 }
 
 // Stacktrace は、エラースタックトレースのログフィールドを作成します。
-func Stacktrace(key string, err error) *Field {
+func Stacktrace(key fieldKey, err error) *Field {
 	return &Field{
-		key:         key,
+		key:         string(key),
 		kind:        fieldString,
 		stringValue: xerrors.StackTrace(err),
 	}
 }
 
 // Any は、任意の型のログフィールドを作成します。
-func Any(key string, v any) *Field {
+func Any(key fieldKey, v any) *Field {
 	return &Field{
-		key:      key,
+		key:      string(key),
 		kind:     fieldAny,
 		anyValue: v,
 	}

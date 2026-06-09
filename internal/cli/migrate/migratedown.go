@@ -15,14 +15,14 @@ func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrat
 	if steps < 0 {
 		// 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。
 		err := fmt.Errorf("steps must be zero or positive, got %d", steps)
-		logger.Named("migrateDownRun").Error("invalid steps", logging.Error("validateSteps", err))
+		logger.Named("migrateDownRun").Error("invalid steps", logging.Error(logging.ErrorKey, err))
 		return err
 	}
 
 	m, err := newMigrator(database)
 	if err != nil {
 		logger.Named("migrateDownRun.buildMigrateInstance").Error("failed to create migrate instance",
-			logging.Error("buildMigrateInstance", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
@@ -31,7 +31,7 @@ func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrat
 		logger.Named("migrateDownRun").Info("running full migration down")
 		if err := executeMigrateFullDown(m); err != nil {
 			logger.Named("migrateDownRun.executeMigrateFullDown").Error("down migration failed",
-				logging.Error("executeMigrateFullDown", err),
+				logging.Error(logging.ErrorKey, err),
 			)
 			return err
 		}
@@ -39,7 +39,7 @@ func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrat
 		logger.Named("migrateDownRun").Info("running migration down steps", logging.Int("steps", steps))
 		if err := executeMigrateDownSteps(m, steps); err != nil {
 			logger.Named("migrateDownRun.executeMigrateDownSteps").Error("down migration steps failed",
-				logging.Error("executeMigrateDownSteps", err),
+				logging.Error(logging.ErrorKey, err),
 			)
 			return err
 		}
