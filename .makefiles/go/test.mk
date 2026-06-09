@@ -5,7 +5,7 @@
 
 test:
 	@TGT_PKGS="$$(go list ./... | grep -Ev '/(gen|cmd|mock|apperror|scripts)(/|$$)')"; \
-	go test $$TGT_PKGS -cover -count=1
+	go test $$TGT_PKGS -cover
 
 gen-test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
