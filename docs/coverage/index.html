@@ -379,9 +379,13 @@
 				
 				<option value="file161">go-boilerplate/pkg/uuid/helper.go (100.0%)</option>
 				
-				<option value="file162">go-boilerplate/pkg/uuid/uuid.go (96.0%)</option>
+				<option value="file162">go-boilerplate/pkg/uuid/test_kit.go (100.0%)</option>
 				
-				<option value="file163">go-boilerplate/pkg/xerrors/errors.go (100.0%)</option>
+				<option value="file163">go-boilerplate/pkg/uuid/uuid.go (95.2%)</option>
+				
+				<option value="file164">go-boilerplate/pkg/xerrors/errors.go (100.0%)</option>
+				
+				<option value="file165">go-boilerplate/pkg/xerrors/std_errors.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -3880,7 +3884,7 @@ func (s *server) GetVersion(ctx context.Context, _ gen.GetVersionRequestObject) 
         _, endSpan := s.tracer.Start(ctx)
         defer endSpan()
 
-        buildDate, err := datetime.ParseRFC3339UTCInLocation(s.buildInfo.BuildDate(), s.loc)
+        buildDate, err := datetime.ParseRFC3339UTCToLocation(s.buildInfo.BuildDate(), s.loc)
         if err != nil </span><span class="cov1" title="1">{
                 return nil, xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
         }</span>
@@ -6429,7 +6433,7 @@ func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddlewar
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="29">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="22">{
                 return mws[i].Priority &lt; mws[j].Priority
         }</span>)
 
@@ -7086,7 +7090,7 @@ func newStartServerFunc(
                 }</span>
                 <span class="cov5" title="2">e.Listener = ln
 
-                go func() </span><span class="cov5" title="2">{
+                go func() </span><span class="cov1" title="1">{
                         if err := e.Start(""); err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
                                 log.Named("server.Start").Error("failed to start http server", logging.Error("e.Start", err))
                         }</span>
@@ -7254,11 +7258,8 @@ func New(
         if id.IsNil() </span><span class="cov1" title="1">{
                 return nil, xerrors.Wrap(ErrInvalidID, "id is required")
         }</span>
-        <span class="cov9" title="19">if !stringkit.InRange(name, MinPrefectureNameLength, MaxPrefectureNameLength) </span><span class="cov3" title="2">{
-                return nil, xerrors.Wrap(
-                        ErrInvalidPrefectureName,
-                        stringkit.ErrorMsgInRange(MinPrefectureNameLength, MaxPrefectureNameLength, name),
-                )
+        <span class="cov9" title="19">if ok, msg := stringkit.ValidateInRange(name, MinPrefectureNameLength, MaxPrefectureNameLength); !ok </span><span class="cov3" title="2">{
+                return nil, xerrors.Wrap(ErrInvalidPrefectureName, msg)
         }</span>
         <span class="cov9" title="17">if code &lt; MinCode || MaxCode &lt; code </span><span class="cov3" title="2">{
                 return nil, xerrors.Wrap(
@@ -7540,40 +7541,42 @@ func validateProfileFields(
         building *string,
         postalCode string,
 ) error <span class="cov10" title="106">{
-        if !stringkit.InRange(firstName, minLength, maxFirstNameLength) </span><span class="cov4" title="6">{
-                return xerrors.Wrap(ErrInvalidFirstName, stringkit.ErrorMsgInRange(minLength, maxFirstNameLength, firstName))
+        if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok </span><span class="cov4" title="6">{
+                return xerrors.Wrap(ErrInvalidFirstName, msg)
         }</span>
-        <span class="cov9" title="100">if !stringkit.InRange(lastName, minLength, maxLastNameLength) </span><span class="cov4" title="5">{
-                return xerrors.Wrap(ErrInvalidLastName, stringkit.ErrorMsgInRange(minLength, maxLastNameLength, lastName))
+        <span class="cov9" title="100">if ok, msg := stringkit.ValidateInRange(lastName, minLength, maxLastNameLength); !ok </span><span class="cov4" title="5">{
+                return xerrors.Wrap(ErrInvalidLastName, msg)
         }</span>
-        <span class="cov9" title="95">if !stringkit.InRange(email, minLength, maxEmailLength) </span><span class="cov2" title="2">{
-                return xerrors.Wrap(ErrInvalidEmail, stringkit.ErrorMsgInRange(minLength, maxEmailLength, email))
+        <span class="cov9" title="95">if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok </span><span class="cov2" title="2">{
+                return xerrors.Wrap(ErrInvalidEmail, msg)
         }</span>
-        <span class="cov9" title="93">if !stringkit.InRange(phone, minLength, maxPhoneLength) </span><span class="cov2" title="2">{
-                return xerrors.Wrap(ErrInvalidPhone, stringkit.ErrorMsgInRange(minLength, maxPhoneLength, phone))
+        <span class="cov9" title="93">if ok, msg := stringkit.ValidateInRange(phone, minLength, maxPhoneLength); !ok </span><span class="cov2" title="2">{
+                return xerrors.Wrap(ErrInvalidPhone, msg)
         }</span>
         <span class="cov9" title="91">if prefectureID.IsNil() </span><span class="cov1" title="1">{
                 return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
         }</span>
-        <span class="cov9" title="90">if !stringkit.InRange(city, minLength, maxCityLength) </span><span class="cov2" title="2">{
-                return xerrors.Wrap(ErrInvalidCity, stringkit.ErrorMsgInRange(minLength, maxCityLength, city))
+        <span class="cov9" title="90">if ok, msg := stringkit.ValidateInRange(city, minLength, maxCityLength); !ok </span><span class="cov2" title="2">{
+                return xerrors.Wrap(ErrInvalidCity, msg)
         }</span>
-        <span class="cov9" title="88">if !stringkit.InRange(street, minLength, maxStreetLength) </span><span class="cov2" title="2">{
-                return xerrors.Wrap(ErrInvalidStreet, stringkit.ErrorMsgInRange(minLength, maxStreetLength, street))
+        <span class="cov9" title="88">if ok, msg := stringkit.ValidateInRange(street, minLength, maxStreetLength); !ok </span><span class="cov2" title="2">{
+                return xerrors.Wrap(ErrInvalidStreet, msg)
         }</span>
-        <span class="cov9" title="86">if building != nil &amp;&amp; !stringkit.InRange(*building, minLength, maxBuildingLength) </span><span class="cov2" title="2">{
-                return xerrors.Wrap(ErrInvalidBuilding, stringkit.ErrorMsgInRange(minLength, maxBuildingLength, *building))
-        }</span>
-        <span class="cov9" title="84">if !stringkit.InRange(postalCode, minLength, maxPostalCodeLength) </span><span class="cov2" title="2">{
-                return xerrors.Wrap(ErrInvalidPostalCode, stringkit.ErrorMsgInRange(minLength, maxPostalCodeLength, postalCode))
+        <span class="cov9" title="86">if building != nil </span><span class="cov9" title="74">{
+                if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok </span><span class="cov2" title="2">{
+                        return xerrors.Wrap(ErrInvalidBuilding, msg)
+                }</span>
+        }
+        <span class="cov9" title="84">if ok, msg := stringkit.ValidateInRange(postalCode, minLength, maxPostalCodeLength); !ok </span><span class="cov2" title="2">{
+                return xerrors.Wrap(ErrInvalidPostalCode, msg)
         }</span>
         <span class="cov9" title="82">return nil</span>
 }
 
 // validatePasswordHash は、パスワードハッシュの不変条件を検証します。
 func validatePasswordHash(passwordHash string) error <span class="cov9" title="80">{
-        if !stringkit.InRange(passwordHash, minLength, maxPasswordLength) </span><span class="cov3" title="4">{
-                return xerrors.Wrap(ErrInvalidPasswordHash, stringkit.ErrorMsgInRange(minLength, maxPasswordLength, passwordHash))
+        if ok, msg := stringkit.ValidateInRange(passwordHash, minLength, maxPasswordLength); !ok </span><span class="cov3" title="4">{
+                return xerrors.Wrap(ErrInvalidPasswordHash, msg)
         }</span>
         <span class="cov9" title="76">return nil</span>
 }
@@ -11234,32 +11237,33 @@ import (
         "time"
 )
 
-// ParseRFC3339 は、RFC3339形式の日時文字列のレイアウトを定義します。
+// ParseRFC3339 は、RFC3339形式の日時文字列を解析します。
 func ParseRFC3339(s string) (time.Time, error) <span class="cov4" title="4">{
         return ParseCustomLayout(time.RFC3339, s)
 }</span>
 
-// ParseRFC3339UTC は、RFC3339形式の日時文字列のレイアウトを定義します（UTCタイムゾーン固定）。
+// ParseRFC3339UTC は、末尾が Z（UTC 表記）の RFC3339 文字列のみを解析します。
+// レイアウト末尾はリテラル Z 固定のため、オフセット付き入力（例 +09:00）は受理しません。
 func ParseRFC3339UTC(s string) (time.Time, error) <span class="cov6" title="8">{
         return ParseCustomLayout("2006-01-02T15:04:05Z", s)
 }</span>
 
-// ParseRFC3339Nano は、RFC3339Nano形式の日時文字列のレイアウトを定義します。
+// ParseRFC3339Nano は、RFC3339Nano形式の日時文字列を解析します。
 func ParseRFC3339Nano(s string) (time.Time, error) <span class="cov4" title="4">{
         return ParseCustomLayout(time.RFC3339Nano, s)
 }</span>
 
-// ParseISO8601 は、ISO8601形式の日時文字列のレイアウトを定義します。
+// ParseISO8601 は、ISO8601形式の日時文字列を解析します。
 func ParseISO8601(s string) (time.Time, error) <span class="cov4" title="4">{
         return ParseCustomLayout("2006-01-02T15:04:05Z0700", s)
 }</span>
 
-// ParseDateTime は、日付と時刻の日時文字列のレイアウトを定義します。
+// ParseDateTime は、日付と時刻（YYYY-MM-DD HH:MM:SS）の日時文字列を解析します。
 func ParseDateTime(s string) (time.Time, error) <span class="cov4" title="4">{
         return ParseCustomLayout(time.DateTime, s)
 }</span>
 
-// ParseDateOnly は、日付のみの日時文字列のレイアウトを定義します。
+// ParseDateOnly は、日付のみ（YYYY-MM-DD）の日時文字列を解析します。
 func ParseDateOnly(s string) (time.Time, error) <span class="cov4" title="4">{
         return ParseCustomLayout(time.DateOnly, s)
 }</span>
@@ -11272,69 +11276,59 @@ func ParseCustomLayout(layout, s string) (time.Time, error) <span class="cov10" 
 		
 		<pre class="file" id="file152" style="display: none">package datetime
 
-import "time"
+import (
+        "errors"
+        "time"
+)
 
-// ParseRFC3339InLocation は、指定されたロケーションでRFC3339形式の日時文字列を解析します。
-func ParseRFC3339InLocation(s string, loc *time.Location) (time.Time, error) <span class="cov4" title="2">{
-        t, err := ParseRFC3339(s)
-        if err != nil </span><span class="cov1" title="1">{
+// toLocation は、parse で得た時刻を loc のタイムゾーンへ変換して返す共通ヘルパです。
+// loc が nil の場合、time.Time.In の panic を避けてエラーを返します。
+func toLocation(loc *time.Location, parse func() (time.Time, error)) (time.Time, error) <span class="cov10" title="19">{
+        if loc == nil </span><span class="cov1" title="1">{
+                return time.Time{}, errors.New("datetime: loc must not be nil")
+        }</span>
+
+        <span class="cov9" title="18">t, err := parse()
+        if err != nil </span><span class="cov7" title="8">{
                 return time.Time{}, err
         }</span>
-        <span class="cov1" title="1">return t.In(loc), nil</span>
+
+        <span class="cov8" title="10">return t.In(loc), nil</span>
 }
 
-// ParseRFC3339UTCInLocation は、指定されたロケーションでRFC3339UTC形式の日時文字列を解析します。
-func ParseRFC3339UTCInLocation(s string, loc *time.Location) (time.Time, error) <span class="cov10" title="6">{
-        t, err := ParseRFC3339UTC(s)
-        if err != nil </span><span class="cov4" title="2">{
-                return time.Time{}, err
-        }</span>
-        <span class="cov7" title="4">return t.In(loc), nil</span>
+// ParseRFC3339ToLocation は、RFC3339形式の日時文字列を解析し loc のタイムゾーンへ変換します。
+func ParseRFC3339ToLocation(s string, loc *time.Location) (time.Time, error) <span class="cov3" title="2">{
+        return toLocation(loc, func() (time.Time, error) </span><span class="cov3" title="2">{ return ParseRFC3339(s) }</span>)
 }
 
-// ParseRFC3339NanoInLocation は、指定されたロケーションでRFC3339Nano形式の日時文字列を解析します。
-func ParseRFC3339NanoInLocation(s string, loc *time.Location) (time.Time, error) <span class="cov4" title="2">{
-        t, err := ParseRFC3339Nano(s)
-        if err != nil </span><span class="cov1" title="1">{
-                return time.Time{}, err
-        }</span>
-        <span class="cov1" title="1">return t.In(loc), nil</span>
+// ParseRFC3339UTCToLocation は、RFC3339UTC形式の日時文字列を解析し loc のタイムゾーンへ変換します。
+func ParseRFC3339UTCToLocation(s string, loc *time.Location) (time.Time, error) <span class="cov6" title="6">{
+        return toLocation(loc, func() (time.Time, error) </span><span class="cov6" title="6">{ return ParseRFC3339UTC(s) }</span>)
 }
 
-// ParseISO8601InLocation は、指定されたロケーションでISO8601形式の日時文字列を解析します。
-func ParseISO8601InLocation(s string, loc *time.Location) (time.Time, error) <span class="cov4" title="2">{
-        t, err := ParseISO8601(s)
-        if err != nil </span><span class="cov1" title="1">{
-                return time.Time{}, err
-        }</span>
-        <span class="cov1" title="1">return t.In(loc), nil</span>
+// ParseRFC3339NanoToLocation は、RFC3339Nano形式の日時文字列を解析し loc のタイムゾーンへ変換します。
+func ParseRFC3339NanoToLocation(s string, loc *time.Location) (time.Time, error) <span class="cov3" title="2">{
+        return toLocation(loc, func() (time.Time, error) </span><span class="cov3" title="2">{ return ParseRFC3339Nano(s) }</span>)
 }
 
-// ParseDateTimeInLocation は、指定されたロケーションで日付と時刻の日時文字列を解析します。
-func ParseDateTimeInLocation(s string, loc *time.Location) (time.Time, error) <span class="cov4" title="2">{
-        t, err := ParseDateTime(s)
-        if err != nil </span><span class="cov1" title="1">{
-                return time.Time{}, err
-        }</span>
-        <span class="cov1" title="1">return t.In(loc), nil</span>
+// ParseISO8601ToLocation は、ISO8601形式の日時文字列を解析し loc のタイムゾーンへ変換します。
+func ParseISO8601ToLocation(s string, loc *time.Location) (time.Time, error) <span class="cov3" title="2">{
+        return toLocation(loc, func() (time.Time, error) </span><span class="cov3" title="2">{ return ParseISO8601(s) }</span>)
 }
 
-// ParseDateOnlyInLocation は、指定されたロケーションで日付のみの日時文字列を解析します。
-func ParseDateOnlyInLocation(s string, loc *time.Location) (time.Time, error) <span class="cov4" title="2">{
-        t, err := ParseDateOnly(s)
-        if err != nil </span><span class="cov1" title="1">{
-                return time.Time{}, err
-        }</span>
-        <span class="cov1" title="1">return t.In(loc), nil</span>
+// ParseDateTimeToLocation は、日付と時刻の日時文字列を解析し loc のタイムゾーンへ変換します。
+func ParseDateTimeToLocation(s string, loc *time.Location) (time.Time, error) <span class="cov3" title="2">{
+        return toLocation(loc, func() (time.Time, error) </span><span class="cov3" title="2">{ return ParseDateTime(s) }</span>)
 }
 
-// ParseCustomLayoutInLocation は、指定されたロケーションでカスタムレイアウトの日時文字列を解析します。
-func ParseCustomLayoutInLocation(layout, s string, loc *time.Location) (time.Time, error) <span class="cov4" title="2">{
-        t, err := ParseCustomLayout(layout, s)
-        if err != nil </span><span class="cov1" title="1">{
-                return time.Time{}, err
-        }</span>
-        <span class="cov1" title="1">return t.In(loc), nil</span>
+// ParseDateOnlyToLocation は、日付のみの日時文字列を解析し loc のタイムゾーンへ変換します。
+func ParseDateOnlyToLocation(s string, loc *time.Location) (time.Time, error) <span class="cov4" title="3">{
+        return toLocation(loc, func() (time.Time, error) </span><span class="cov3" title="2">{ return ParseDateOnly(s) }</span>)
+}
+
+// ParseCustomLayoutToLocation は、カスタムレイアウトの日時文字列を解析し loc のタイムゾーンへ変換します。
+func ParseCustomLayoutToLocation(layout, s string, loc *time.Location) (time.Time, error) <span class="cov3" title="2">{
+        return toLocation(loc, func() (time.Time, error) </span><span class="cov3" title="2">{ return ParseCustomLayout(layout, s) }</span>)
 }
 </pre>
 		
@@ -11421,7 +11415,7 @@ import (
         "strings"
 )
 
-const undefined = "unknown"
+const unknown = "unknown"
 
 // splitFuncName は、runtime.Func のフルネームを
 // 「パッケージ/レシーバ部」と「メソッド名」に分解します。
@@ -11429,23 +11423,23 @@ const undefined = "unknown"
 //
 //        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser"
 //          → lhs: "user.(*UserUsecase)", rhs: "GetUser"
-func splitFuncName(full string) (string, string) <span class="cov10" title="306">{
+func splitFuncName(full string) (string, string) <span class="cov10" title="308">{
         if full == "" </span><span class="cov2" title="3">{
-                return undefined, ""
+                return unknown, ""
         }</span>
 
         // パス部分を除去: internal/usecase/user.(*UserUsecase).GetUser
-        <span class="cov9" title="303">if idx := strings.LastIndex(full, "/"); idx &gt;= 0 &amp;&amp; idx+1 &lt; len(full) </span><span class="cov9" title="301">{
+        <span class="cov9" title="305">if idx := strings.LastIndex(full, "/"); idx &gt;= 0 </span><span class="cov9" title="302">{
                 full = full[idx+1:]
         }</span>
 
         // 最後の "." で分割: lhs = "user.(*UserUsecase)", rhs = "GetUser"
-        <span class="cov9" title="303">if idx := strings.LastIndex(full, "."); idx &gt;= 0 &amp;&amp; idx+1 &lt; len(full) </span><span class="cov9" title="300">{
+        <span class="cov9" title="305">if idx := strings.LastIndex(full, "."); idx &gt;= 0 </span><span class="cov9" title="301">{
                 return full[:idx], full[idx+1:]
         }</span>
 
         // "." が見つからない場合は全部を lhs とみなす
-        <span class="cov2" title="3">return full, ""</span>
+        <span class="cov3" title="4">return full, ""</span>
 }
 
 // ExtractFunctionName は、runtime.Func のフルネームから span 名として使いやすい
@@ -11457,27 +11451,31 @@ func splitFuncName(full string) (string, string) <span class="cov10" title="306"
 func ExtractFunctionName(full string) string <span class="cov8" title="140">{
         _, fn := splitFuncName(full)
         if fn == "" </span><span class="cov2" title="2">{
-                return undefined
+                return unknown
         }</span>
         <span class="cov8" title="138">return fn</span>
 }
 
 // ExtractPackageName は、runtime.Func のフルネームからパッケージ名を抽出します。
+// パッケージ名は lhs の先頭セグメント（最初の "." より前）なので、ポインタ／値
+// レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できる。
 // 例:
 //
-//        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser"
-//          → "user"
-func ExtractPackageName(full string) string <span class="cov8" title="162">{
-        lhs, _ := splitFuncName(full)
-        if lhs == undefined </span><span class="cov1" title="1">{
-                return undefined
+//        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser" → "user"
+//        "github.com/org/proj/internal/usecase/user.UserUsecase.GetUser"    → "user"
+func ExtractPackageName(full string) string <span class="cov9" title="164">{
+        lhs, fn := splitFuncName(full)
+        // 分割できない（"." が無い）入力は抽出不能として ExtractFunctionName と
+        // 同様に unknown へ正規化する。
+        if lhs == unknown || fn == "" </span><span class="cov2" title="2">{
+                return unknown
         }</span>
 
-        <span class="cov8" title="161">if idx := strings.Index(lhs, "("); idx &gt;= 0 </span><span class="cov1" title="1">{
-                lhs = strings.TrimSuffix(lhs[:idx], ".")
+        <span class="cov8" title="162">if idx := strings.Index(lhs, "."); idx &gt;= 0 </span><span class="cov4" title="11">{
+                return lhs[:idx]
         }</span>
 
-        <span class="cov8" title="161">return lhs</span>
+        <span class="cov8" title="151">return lhs</span>
 }
 </pre>
 		
@@ -11521,7 +11519,8 @@ package ptr
 // To は、引数として渡された値のポインタを返します。
 func To[T any](v T) *T <span class="cov9" title="185">{ return &amp;v }</span>
 
-// Copy は、引数として渡されたポインタをコピーして返します。
+// Copy は、ポインタの指す値をシャローコピーした新しいポインタを返します（nil 入力時は nil）。
+// T が参照型フィールド（スライス・マップ・ポインタ等）を含む場合、その参照先は複製元と共有されます。
 func Copy[T any](v *T) *T <span class="cov10" title="201">{
         if v == nil </span><span class="cov8" title="91">{
                 return nil
@@ -11553,7 +11552,7 @@ func UintToInt(x uint) (int, error) <span class="cov10" title="7">{
         const maxInt = math.MaxInt
         if x &gt; maxInt </span><span class="cov6" title="3">{
                 return 0, fmt.Errorf(
-                        "overflow: %d &gt; MaxInt(%d): %w", x, maxInt, ErrOverflow,
+                        "uint %d exceeds MaxInt(%d): %w", x, maxInt, ErrOverflow,
                 )
         }</span>
         <span class="cov7" title="4">return int(x), nil</span>
@@ -11573,40 +11572,49 @@ const (
         errMsgGreaterThanMin = "length must be greater than %d characters (got %d)"
 )
 
-// ErrorMsgInRange は、文字数が lowerBound ～ upperBound の範囲外であった場合に返すエラーメッセージを生成します。
-func ErrorMsgInRange(lowerBound, upperBound int, got string) string <span class="cov10" title="30">{
+// ValidateInRange は 文字数が minLen～maxLen 内かを判定し、範囲外なら理由メッセージを返します。
+func ValidateInRange(s string, minLen, maxLen int) (bool, string) <span class="cov10" title="831">{
+        n := RuneCount(s)
+        if minLen &lt;= n &amp;&amp; n &lt;= maxLen </span><span class="cov9" title="801">{
+                return true, ""
+        }</span>
+        <span class="cov5" title="30">return false, fmt.Sprintf(errMsgInRange, minLen, maxLen, n)</span>
+}
+
+// ErrorMsgInRange は、文字数が minLen ～ maxLen の範囲外であった場合に返すエラーメッセージを生成します。
+func ErrorMsgInRange(minLen, maxLen int, got string) string <span class="cov1" title="1">{
         n := RuneCount(got)
-        return fmt.Sprintf(errMsgInRange, lowerBound, upperBound, n)
+        return fmt.Sprintf(errMsgInRange, minLen, maxLen, n)
 }</span>
 
-// ErrorMsgMaxOrLess は、文字数が upperBound を超えた場合に返すエラーメッセージを生成します。
-func ErrorMsgMaxOrLess(upperBound int, got string) string <span class="cov1" title="1">{
+// ErrorMsgMaxOrLess は、文字数が maxLen を超えた場合に返すエラーメッセージを生成します。
+func ErrorMsgMaxOrLess(maxLen int, got string) string <span class="cov1" title="1">{
         n := RuneCount(got)
-        return fmt.Sprintf(errMsgMaxOrLess, upperBound, n)
+        return fmt.Sprintf(errMsgMaxOrLess, maxLen, n)
 }</span>
 
-// ErrorMsgMinOrMore は、文字数が lowerBound 未満であった場合に返すエラーメッセージを生成します。
-func ErrorMsgMinOrMore(lowerBound int, got string) string <span class="cov1" title="1">{
+// ErrorMsgMinOrMore は、文字数が minLen 未満であった場合に返すエラーメッセージを生成します。
+func ErrorMsgMinOrMore(minLen int, got string) string <span class="cov1" title="1">{
         n := RuneCount(got)
-        return fmt.Sprintf(errMsgMinOrMore, lowerBound, n)
+        return fmt.Sprintf(errMsgMinOrMore, minLen, n)
 }</span>
 
-// ErrorMsgStrictInRange は、文字数が lowerBound &lt; len &lt; upperBound の範囲に収まらなかった場合に返すエラーメッセージを生成します。
-func ErrorMsgStrictInRange(lowerBound, upperBound int, got string) string <span class="cov1" title="1">{
+// ErrorMsgStrictInRange は、文字数が minLen &lt; 文字数 &lt; maxLen の範囲に収まらなかった場合に返すエラーメッセージを生成します。
+func ErrorMsgStrictInRange(minLen, maxLen int, got string) string <span class="cov1" title="1">{
         n := RuneCount(got)
-        return fmt.Sprintf(errMsgStrictInRange, lowerBound, upperBound, n)
+        return fmt.Sprintf(errMsgStrictInRange, minLen, maxLen, n)
 }</span>
 
-// ErrorMsgLessThanMax は、文字数が upperBound 以上だった場合に返すエラーメッセージを生成します。
-func ErrorMsgLessThanMax(upperBound int, got string) string <span class="cov1" title="1">{
+// ErrorMsgLessThanMax は、文字数が maxLen 以上だった場合に返すエラーメッセージを生成します。
+func ErrorMsgLessThanMax(maxLen int, got string) string <span class="cov1" title="1">{
         n := RuneCount(got)
-        return fmt.Sprintf(errMsgLessThanMax, upperBound, n)
+        return fmt.Sprintf(errMsgLessThanMax, maxLen, n)
 }</span>
 
-// ErrorMsgGreaterThanMin は、文字数が lowerBound 以下だった場合に返すエラーメッセージを生成します。
-func ErrorMsgGreaterThanMin(lowerBound int, got string) string <span class="cov1" title="1">{
+// ErrorMsgGreaterThanMin は、文字数が minLen 以下だった場合に返すエラーメッセージを生成します。
+func ErrorMsgGreaterThanMin(minLen int, got string) string <span class="cov1" title="1">{
         n := RuneCount(got)
-        return fmt.Sprintf(errMsgGreaterThanMin, lowerBound, n)
+        return fmt.Sprintf(errMsgGreaterThanMin, minLen, n)
 }</span>
 </pre>
 		
@@ -11618,40 +11626,40 @@ import (
 )
 
 // RuneCount は UTF-8 文字列の文字数を返します。
-func RuneCount(s string) int <span class="cov10" title="906">{
+func RuneCount(s string) int <span class="cov10" title="879">{
         return utf8.RuneCountInString(s)
 }</span>
 
-// InRange は minLBound &lt;= len &lt;= maxLBound のとき true
-func InRange(s string, minLBound, maxLBound int) bool <span class="cov9" title="857">{
+// InRange は minLen &lt;= 文字数 &lt;= maxLen のとき true
+func InRange(s string, minLen, maxLen int) bool <span class="cov5" title="28">{
         n := RuneCount(s)
-        return minLBound &lt;= n &amp;&amp; n &lt;= maxLBound
+        return minLen &lt;= n &amp;&amp; n &lt;= maxLen
 }</span>
 
-// MaxOrLess は len &lt;= maxLBound のとき true
-func MaxOrLess(s string, maxLBound int) bool <span class="cov1" title="2">{
-        return RuneCount(s) &lt;= maxLBound
+// MaxOrLess は 文字数 &lt;= maxLen のとき true
+func MaxOrLess(s string, maxLen int) bool <span class="cov1" title="2">{
+        return RuneCount(s) &lt;= maxLen
 }</span>
 
-// MinOrMore は len &gt;= minLBound のとき true
-func MinOrMore(s string, minLBound int) bool <span class="cov1" title="2">{
-        return RuneCount(s) &gt;= minLBound
+// MinOrMore は 文字数 &gt;= minLen のとき true
+func MinOrMore(s string, minLen int) bool <span class="cov1" title="2">{
+        return RuneCount(s) &gt;= minLen
 }</span>
 
-// StrictInRange は minLBound &lt; len &lt; maxLBound のとき true
-func StrictInRange(s string, minLBound, maxLBound int) bool <span class="cov1" title="2">{
+// StrictInRange は minLen &lt; 文字数 &lt; maxLen のとき true
+func StrictInRange(s string, minLen, maxLen int) bool <span class="cov1" title="2">{
         n := RuneCount(s)
-        return minLBound &lt; n &amp;&amp; n &lt; maxLBound
+        return minLen &lt; n &amp;&amp; n &lt; maxLen
 }</span>
 
-// LessThanMax は len &lt; maxLBound のとき true
-func LessThanMax(s string, maxLBound int) bool <span class="cov1" title="2">{
-        return RuneCount(s) &lt; maxLBound
+// LessThanMax は 文字数 &lt; maxLen のとき true
+func LessThanMax(s string, maxLen int) bool <span class="cov1" title="2">{
+        return RuneCount(s) &lt; maxLen
 }</span>
 
-// GreaterThanMin は len &gt; minLBound のとき true
-func GreaterThanMin(s string, minLBound int) bool <span class="cov1" title="2">{
-        return RuneCount(s) &gt; minLBound
+// GreaterThanMin は 文字数 &gt; minLen のとき true
+func GreaterThanMin(s string, minLen int) bool <span class="cov1" title="2">{
+        return RuneCount(s) &gt; minLen
 }</span>
 </pre>
 		
@@ -11661,25 +11669,40 @@ import (
         guuid "github.com/google/uuid"
 )
 
-func fromGoogle(g guuid.UUID) UUID <span class="cov10" title="124">{
-        var u UUID
-        copy(u.b[:], g[:])
-        return u
+func fromGoogle(g guuid.UUID) UUID <span class="cov10" title="282">{
+        return UUID{b: g}
 }</span>
 
-func toGoogle(u UUID) guuid.UUID <span class="cov8" title="59">{
-        var g guuid.UUID
-        copy(g[:], u.b[:])
-        return g
+func toGoogle(u UUID) guuid.UUID <span class="cov7" title="59">{
+        return guuid.UUID(u.b)
 }</span>
 </pre>
 		
-		<pre class="file" id="file162" style="display: none">// Package uuid は、UUIDを生成および操作するための機能を提供します。
+		<pre class="file" id="file162" style="display: none">package uuid
+
+import (
+        "testing"
+
+        "github.com/google/uuid"
+)
+
+// NewTestFromSalt はテスト専用の決定論UUID生成関数です。
+//
+// 本番利用は想定していません。
+// v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
+func NewTestFromSalt(t testing.TB, salt string) UUID <span class="cov10" title="50">{
+        t.Helper()
+        ns := uuid.NameSpaceURL
+        g := uuid.NewSHA1(ns, []byte(salt))
+        return fromGoogle(g)
+}</span>
+</pre>
+		
+		<pre class="file" id="file163" style="display: none">// Package uuid は、UUIDを生成および操作するための機能を提供します。
 package uuid
 
 import (
         "database/sql/driver"
-        "testing"
 
         "github.com/google/uuid"
 )
@@ -11695,17 +11718,6 @@ func New() (UUID, error) <span class="cov6" title="29">{
         }</span>
         <span class="cov6" title="29">return fromGoogle(g), nil</span>
 }
-
-// NewTestFromSalt はテスト専用の決定論UUID生成関数です。
-//
-// 本番利用は想定していません。
-// v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
-func NewTestFromSalt(t testing.TB, salt string) UUID <span class="cov7" title="50">{
-        t.Helper()
-        ns := uuid.NameSpaceURL
-        g := uuid.NewSHA1(ns, []byte(salt))
-        return fromGoogle(g)
-}</span>
 
 // String は、UUIDを文字列に変換します。
 func (u UUID) String() string <span class="cov5" title="18">{ return toGoogle(u).String() }</span>
@@ -11743,7 +11755,7 @@ func (u *UUID) Scan(src any) error <span class="cov9" title="159">{
         if err := g.Scan(src); err != nil </span><span class="cov1" title="1">{
                 return err
         }</span>
-        <span class="cov9" title="158">u.b = g
+        <span class="cov9" title="158">*u = fromGoogle(g)
         return nil</span>
 }
 
@@ -11753,7 +11765,7 @@ func (u UUID) Value() (driver.Value, error) <span class="cov6" title="25">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file163" style="display: none">package xerrors
+		<pre class="file" id="file164" style="display: none">package xerrors
 
 import (
         "fmt"
@@ -11762,13 +11774,13 @@ import (
 )
 
 // New は、新しいエラーを生成します。
-func New(msg string) error <span class="cov10" title="745">{
+func New(msg string) error <span class="cov10" title="747">{
         return errors.New(msg)
 }</span>
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
-func Wrap(err error, msg string) error <span class="cov8" title="355">{
+func Wrap(err error, msg string) error <span class="cov8" title="357">{
         return errors.Wrap(err, msg)
 }</span>
 
@@ -11778,17 +11790,48 @@ func Is(err, target error) bool <span class="cov8" title="172">{
 }</span>
 
 // As は、エラーが特定のターゲット型に変換可能かを判定します。
-func As(err error, target any) bool <span class="cov6" title="40">{
+func As(err error, target any) bool <span class="cov6" title="41">{
         return errors.As(err, target)
 }</span>
 
-// StackTrace は、エラーのスタックトレースを文字列として取得します。
-func StackTrace(err error) string <span class="cov3" title="8">{
-        if err == nil </span><span class="cov1" title="1">{
+// StackTrace は、エラーの詳細表現（メッセージとスタックトレースを含む）を文字列で返します。
+func StackTrace(err error) string <span class="cov4" title="10">{
+        if err == nil </span><span class="cov1" title="2">{
                 return ""
         }</span>
-        <span class="cov3" title="7">return fmt.Sprintf("%+v", err)</span>
+        <span class="cov3" title="8">return fmt.Sprintf("%+v", err)</span>
 }
+</pre>
+		
+		<pre class="file" id="file165" style="display: none">package xerrors
+
+// stdErrors は、Errors を cockroachdb/errors ベースで実装する標準実装です。
+type stdErrors struct{}
+
+// NewErrors は、Errors の標準実装を返します。
+func NewErrors() Errors <span class="cov1" title="1">{
+        return stdErrors{}
+}</span>
+
+func (stdErrors) New(msg string) error <span class="cov10" title="2">{
+        return New(msg)
+}</span>
+
+func (stdErrors) Wrap(err error, msg string) error <span class="cov10" title="2">{
+        return Wrap(err, msg)
+}</span>
+
+func (stdErrors) Is(err, target error) bool <span class="cov1" title="1">{
+        return Is(err, target)
+}</span>
+
+func (stdErrors) As(err error, target any) bool <span class="cov1" title="1">{
+        return As(err, target)
+}</span>
+
+func (stdErrors) StackTrace(err error) string <span class="cov10" title="2">{
+        return StackTrace(err)
+}</span>
 </pre>
 		
 		</div>
