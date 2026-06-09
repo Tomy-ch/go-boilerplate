@@ -1,6 +1,6 @@
 ---
 name: scaffold-test
-description: Generate a Go unit test file for an existing function / method in this repository, following the canonical pattern abstractly extracted from `internal/domain/user/user_domain_test.go`. Hardcodes no test viewpoints and no layer-specific viewpoint seeds — reads `CLAUDE.md` Testing Instructions + the target layer's README `Test Strategy` / `Testing strategy` section + sibling test files in the same package at runtime, then invokes a test-perspective subagent that derives the viewpoint set from the README's Test Strategy sub-sections (so the skill stays in sync as READMEs evolve; per the project's README > Code > SKILL priority). For layers where the README intentionally has no Test Strategy section (notably `pkg/**`, which is pure framework-agnostic utilities whose tests reduce to standard Go input-output + edge-case + nil/zero handling), viewpoints are derived from sibling tests + `CLAUDE.md` and this is treated as the layer's normal mode (no warning surfaced). For layers where Test Strategy is expected but absent (e.g. a future layer added without strategy docs), the fallback is surfaced to the user as a documentation gap. One `TestXxx` per function or method is the rule; bundling multiple subjects into one main case requires explicit per-invocation user confirmation via `AskUserQuestion`. Generated tests always use `t.Parallel()` at every nesting level (with documented exceptions for shared-mutable race scenarios per `TestImmutableAccessors`), `t.Run` per subcase, Japanese case names, `require` for error assertions / `assert` for terminal value checks (per `CLAUDE.md` testifylint require-error rule), and existing generated mocks under `*/mock/` (never custom hand-written mocks). Outermost `t.Run` groups are `正常系` / `異常系`. Table-driven `for`-loop tests are not produced by default — only when the user explicitly judges them more readable. Standalone-callable; designed to be chainable from `scaffold-domain` / `scaffold-usecase` / `scaffold-controller` / `scaffold-infra-db` (receives target file + layer + viewpoints to skip its own First Step + Step 2 questions). Read-only on implementation code (never edits or rewrites the subject under test).
+description: Generate a Go unit test file for an existing function / method in this repository, following the canonical pattern abstractly extracted from `internal/domain/user/user_domain_test.go`. Hardcodes no test viewpoints and no layer-specific viewpoint seeds — reads `CLAUDE.md` Testing Instructions + the target layer's README `Test Strategy` / `Testing strategy` section + sibling test files in the same package at runtime, then invokes a test-perspective subagent that derives the viewpoint set from the README's Test Strategy sub-sections (so the skill stays in sync as READMEs evolve; per the project's README > Code > SKILL priority). For layers where the README intentionally has no Test Strategy section (notably `pkg/**`, which is pure framework-agnostic utilities whose tests reduce to standard Go input-output + edge-case + nil/zero handling), viewpoints are derived from sibling tests + `CLAUDE.md` and this is treated as the layer's normal mode (no warning surfaced). For layers where Test Strategy is expected but absent (e.g. a future layer added without strategy docs), the fallback is surfaced to the user as a documentation gap. One `TestXxx` per function or method is the rule; bundling multiple subjects into one main case requires explicit per-invocation user confirmation via `AskUserQuestion`. Generated tests always use `t.Parallel()` at every nesting level (with documented exceptions for shared-mutable race scenarios per `TestImmutableAccessors`), `t.Run` per subcase, Japanese case names, `require` for error assertions / `assert` for terminal value checks (per `CLAUDE.md` testifylint require-error rule), and existing generated mocks under `*/mock/` (never custom hand-written mocks). Outermost `t.Run` groups are the literal strings `正常系` / `異常系` (NOT the `正常系_xxx` prefix form), and sub-case names inside those groups carry no `正常系_` / `異常系_` prefix. Table-driven `for`-loop tests are not produced by default — only when the user explicitly judges them more readable. Standalone-callable; designed to be chainable from `scaffold-domain` / `scaffold-usecase` / `scaffold-controller` / `scaffold-infra-db` (receives target file + layer + viewpoints to skip its own First Step + Step 2 questions). Read-only on implementation code (never edits or rewrites the subject under test).
 ---
 
 # Scaffold Test
@@ -115,12 +115,28 @@ Apply these hard rules to map viewpoints to a concrete test file outline:
    - Question: 「`<funcA>` / `<funcB>` / ... を 1 つの TestXxx にまとめる構成案ですが、原則は 1 関数 = 1 TestXxx です。束ねますか？」
    - Options: 「束ねる（理由を 1 行で）」 / 「別々に作る（推奨）」.
    - On 「束ねる」, prompt for a one-line rationale and record it as a Go comment above the bundled `TestXxx`.
-3. **Outermost two `t.Run` groups are `正常系` and `異常系`.** Both groups call `t.Parallel()` immediately inside. Nested sub-groups for finer categorization (e.g. `t.Run("firstNameが範囲外の場合、エラーを返す", ...)`) are encouraged when readable.
+3. **Outermost two `t.Run` groups MUST be the literal strings `正常系` and `異常系` — nothing else.**
+   - Use `t.Run("正常系", ...)` and `t.Run("異常系", ...)` exactly. The group names are the literal two characters, not a prefix.
+   - **Forbidden pattern**: `t.Run("正常系_ユーザーが存在する場合", ...)` at the top level. The `正常系_` / `異常系_` prefix on individual case names is explicitly NOT the project convention — it conflates the group axis (正常系 / 異常系) with the case description axis (what this specific case does).
+   - **Correct pattern**:
+     ```go
+     t.Run("正常系", func(t *testing.T) {
+         t.Parallel()
+         t.Run("ユーザーが存在する場合エンティティを返す", func(t *testing.T) { ... })
+         t.Run("ユーザーが論理削除済みの場合は除外する", func(t *testing.T) { ... })
+     })
+     t.Run("異常系", func(t *testing.T) {
+         t.Parallel()
+         t.Run("IDがゼロ値の場合エラーを返す", func(t *testing.T) { ... })
+     })
+     ```
+   - Both groups call `t.Parallel()` immediately inside. Nested sub-groups for finer categorization (e.g. `t.Run("firstNameが範囲外の場合、エラーを返す", ...)`) are encouraged when readable, and live INSIDE the relevant 正常系 / 異常系 group.
+   - Each `TestXxx` has at most one `正常系` block and at most one `異常系` block. If only happy cases exist, omit the `異常系` block (and vice versa); do NOT create an empty group.
 4. **Every `t.Run` calls `t.Parallel()` as its first statement.** Exception: a block that mutates a pointer shared with another sibling block (e.g. `TestImmutableAccessors`'s `building` vs `deletedAt` blocks) keeps its outer `t.Run` serial; the comment above the block MUST explain why (`-race` would catch the violation). Inner cases inside that serial block still call `t.Parallel()`.
 5. **Table-driven `for`-loop tests are not generated by default.** Use sequential `t.Run` siblings instead — that is the pattern in `user_domain_test.go`. If a viewpoint genuinely benefits from table form (e.g. a long list of `(input, expected)` pairs whose code body is identical), invoke `AskUserQuestion`:
    - Question: 「`<case>` は table-driven (`for _, tc := range ...`) で書く方が可読性が高そうですが、原則は逐次 `t.Run` です。table 形式にしますか？」
    - Options: 「逐次 `t.Run` で（推奨）」 / 「table-driven で書く」.
-6. **Case names are Japanese.** Outermost: `正常系` / `異常系`. Sub-case: free-form Japanese sentence describing the input class and the expected outcome (`「<input class>の場合、<outcome>」`). The case name reads as a complete sentence.
+6. **Case names are Japanese, and sub-case names carry NO `正常系_` / `異常系_` prefix.** Outermost groups: literally `正常系` / `異常系`. Sub-cases inside those groups: free-form Japanese sentence describing the input class and the expected outcome (`「<input class>の場合、<outcome>」`). The case name reads as a complete sentence. Since the sub-case already lives under a 正常系 / 異常系 group, adding `正常系_` / `異常系_` to the case name itself is redundant and forbidden — it produces `正常系 > 正常系_xxx` paths in `go test` output, which is double-labelling. Strip the prefix from the case description.
 7. **`require` vs `assert` per `CLAUDE.md`**:
    - `require.NoError` / `require.Error` / `require.ErrorIs` / `require.ErrorContains` — every error-related assertion (the testifylint `require-error` rule rejects `assert.ErrorIs`).
    - `require.Not<Nil>` only when guarding a subsequent dereference.
@@ -236,9 +252,11 @@ In chained mode, this skill skips:
 - ❌ Skipping `t.Parallel()` without a documented `-race` reason.
 - ❌ Skipping `t.Run` for any subcase.
 - ❌ English case names (Japanese per `CLAUDE.md`).
+- ❌ Outer `t.Run("正常系_xxx", ...)` / `t.Run("異常系_xxx", ...)` prefix form. Use literal `正常系` / `異常系` as the outer group name and put the case description in the inner `t.Run`.
+- ❌ Sub-case names that include the `正常系_` / `異常系_` prefix (they live under the group already).
 - ✅ `t.Parallel()` at every nesting level (with documented exceptions).
 - ✅ `t.Run` per subcase.
-- ✅ Japanese case names; outermost `正常系` / `異常系`.
+- ✅ Japanese case names; outermost groups are the literal strings `正常系` / `異常系`; inner sub-case names are free-form Japanese sentences without `正常系_` / `異常系_` prefix.
 - ✅ `require` for errors, `assert` for terminal values.
 - ✅ Generated mocks from `*/mock/` only.
 - ✅ Deterministic fixtures (fixed `baseTime`, `uuid.NewTestFromSalt(t, ...)`).
@@ -252,7 +270,7 @@ Before reporting completion, confirm:
 - [ ] Layer README + `CLAUDE.md` Testing Instructions + sibling tests were read in Step 1.
 - [ ] Test-perspective subagent ran in Step 2 (or `viewpoints` was supplied by the parent).
 - [ ] Each produced `TestXxx` matches exactly one subject — or the multi-subject exception was confirmed via `AskUserQuestion` with a recorded rationale.
-- [ ] Outermost `t.Run` groups are `正常系` / `異常系`.
+- [ ] Outermost `t.Run` group names are the literal strings `正常系` / `異常系`, NOT the `正常系_xxx` / `異常系_xxx` prefix form. Inner sub-case names contain no `正常系_` / `異常系_` prefix.
 - [ ] Every `t.Run` has `t.Parallel()` as its first statement, or carries a comment explaining the `-race` exception.
 - [ ] No `for`-loop tables produced, unless the exception was confirmed via `AskUserQuestion`.
 - [ ] All error assertions use `require.*`, all terminal value checks use `assert.*`.
