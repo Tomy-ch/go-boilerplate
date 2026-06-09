@@ -37,8 +37,6 @@ func ParseDateOnly(s string) (time.Time, error) {
 }
 
 // ParseCustomLayout は、カスタムレイアウトの日時文字列を解析します。
-// 本パッケージの名前付きラッパ（ParseRFC3339 等）が共通で通す解析窓口であり、
-// 将来の共通エラーラップ等の拡張点も兼ねる（現状は time.Parse の素通し）。
 func ParseCustomLayout(layout, s string) (time.Time, error) {
 	return time.Parse(layout, s)
 }
