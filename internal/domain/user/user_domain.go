@@ -225,40 +225,42 @@ func validateProfileFields(
 	building *string,
 	postalCode string,
 ) error {
-	if !stringkit.InRange(firstName, minLength, maxFirstNameLength) {
-		return xerrors.Wrap(ErrInvalidFirstName, stringkit.ErrorMsgInRange(minLength, maxFirstNameLength, firstName))
+	if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
+		return xerrors.Wrap(ErrInvalidFirstName, msg)
 	}
-	if !stringkit.InRange(lastName, minLength, maxLastNameLength) {
-		return xerrors.Wrap(ErrInvalidLastName, stringkit.ErrorMsgInRange(minLength, maxLastNameLength, lastName))
+	if ok, msg := stringkit.ValidateInRange(lastName, minLength, maxLastNameLength); !ok {
+		return xerrors.Wrap(ErrInvalidLastName, msg)
 	}
-	if !stringkit.InRange(email, minLength, maxEmailLength) {
-		return xerrors.Wrap(ErrInvalidEmail, stringkit.ErrorMsgInRange(minLength, maxEmailLength, email))
+	if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok {
+		return xerrors.Wrap(ErrInvalidEmail, msg)
 	}
-	if !stringkit.InRange(phone, minLength, maxPhoneLength) {
-		return xerrors.Wrap(ErrInvalidPhone, stringkit.ErrorMsgInRange(minLength, maxPhoneLength, phone))
+	if ok, msg := stringkit.ValidateInRange(phone, minLength, maxPhoneLength); !ok {
+		return xerrors.Wrap(ErrInvalidPhone, msg)
 	}
 	if prefectureID.IsNil() {
 		return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
 	}
-	if !stringkit.InRange(city, minLength, maxCityLength) {
-		return xerrors.Wrap(ErrInvalidCity, stringkit.ErrorMsgInRange(minLength, maxCityLength, city))
+	if ok, msg := stringkit.ValidateInRange(city, minLength, maxCityLength); !ok {
+		return xerrors.Wrap(ErrInvalidCity, msg)
 	}
-	if !stringkit.InRange(street, minLength, maxStreetLength) {
-		return xerrors.Wrap(ErrInvalidStreet, stringkit.ErrorMsgInRange(minLength, maxStreetLength, street))
+	if ok, msg := stringkit.ValidateInRange(street, minLength, maxStreetLength); !ok {
+		return xerrors.Wrap(ErrInvalidStreet, msg)
 	}
-	if building != nil && !stringkit.InRange(*building, minLength, maxBuildingLength) {
-		return xerrors.Wrap(ErrInvalidBuilding, stringkit.ErrorMsgInRange(minLength, maxBuildingLength, *building))
+	if building != nil {
+		if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok {
+			return xerrors.Wrap(ErrInvalidBuilding, msg)
+		}
 	}
-	if !stringkit.InRange(postalCode, minLength, maxPostalCodeLength) {
-		return xerrors.Wrap(ErrInvalidPostalCode, stringkit.ErrorMsgInRange(minLength, maxPostalCodeLength, postalCode))
+	if ok, msg := stringkit.ValidateInRange(postalCode, minLength, maxPostalCodeLength); !ok {
+		return xerrors.Wrap(ErrInvalidPostalCode, msg)
 	}
 	return nil
 }
 
 // validatePasswordHash は、パスワードハッシュの不変条件を検証します。
 func validatePasswordHash(passwordHash string) error {
-	if !stringkit.InRange(passwordHash, minLength, maxPasswordLength) {
-		return xerrors.Wrap(ErrInvalidPasswordHash, stringkit.ErrorMsgInRange(minLength, maxPasswordLength, passwordHash))
+	if ok, msg := stringkit.ValidateInRange(passwordHash, minLength, maxPasswordLength); !ok {
+		return xerrors.Wrap(ErrInvalidPasswordHash, msg)
 	}
 	return nil
 }

@@ -33,11 +33,8 @@ func New(
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
-	if !stringkit.InRange(name, MinPrefectureNameLength, MaxPrefectureNameLength) {
-		return nil, xerrors.Wrap(
-			ErrInvalidPrefectureName,
-			stringkit.ErrorMsgInRange(MinPrefectureNameLength, MaxPrefectureNameLength, name),
-		)
+	if ok, msg := stringkit.ValidateInRange(name, MinPrefectureNameLength, MaxPrefectureNameLength); !ok {
+		return nil, xerrors.Wrap(ErrInvalidPrefectureName, msg)
 	}
 	if code < MinCode || MaxCode < code {
 		return nil, xerrors.Wrap(
