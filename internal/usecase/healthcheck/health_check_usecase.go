@@ -54,10 +54,7 @@ func (u *usecase) CheckHealth(ctx context.Context) (DTO, error) {
 	applTime := u.clock.Now()
 	dbHealth, err := u.dbSystemQuery.CheckDBHealth(ctx)
 	if err != nil {
-		return DTO{
-			Status:          Unhealthy,
-			ApplicationTime: applTime,
-		}, err
+		return DTO{}, err
 	}
 
 	return DTO{
