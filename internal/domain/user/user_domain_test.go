@@ -225,7 +225,7 @@ func TestNew(t *testing.T) {
 					id,
 					firstName,
 					lastName,
-					strings.Repeat("a", maxPasswordLength+1),
+					strings.Repeat("a", maxPasswordHashLength+1),
 					email,
 					phone,
 					prefectureID,
@@ -925,6 +925,21 @@ func newValidUser(t *testing.T) (*User, time.Time) {
 	return u, base
 }
 
+// newUserWithUpdatedAt は、createdAt=base・updatedAt=base+offset のユーザーを生成します（単調性検証用）。
+func newUserWithUpdatedAt(t *testing.T, offset time.Duration) (*User, time.Time) {
+	t.Helper()
+	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	u, err := New(
+		uuid.NewTestFromSalt(t, "user"),
+		"John", "Doe", "hashed_password", "john@example.com", "1234567890",
+		uuid.NewTestFromSalt(t, "prefecture"),
+		"Shibuya", "1-2-3", ptr.To("Building A"), "150-0001",
+		base, base.Add(offset), nil,
+	)
+	require.NoError(t, err)
+	return u, base
+}
+
 func TestUser_UpdateProfile(t *testing.T) {
 	t.Parallel()
 
@@ -936,7 +951,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 		newUpdatedAt := base.Add(time.Hour)
 
 		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "200-0002", "Minato", "4-5-6", ptr.To("Tower"), newUpdatedAt)
+			newPrefID, "Minato", "4-5-6", ptr.To("Tower"), "200-0002", newUpdatedAt)
 		require.NoError(t, err)
 
 		assert.Equal(t, "Jane", u.firstName)
@@ -952,7 +967,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.UpdateProfile("", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(time.Hour))
+			newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
 		require.ErrorIs(t, err, ErrInvalidFirstName)
 	})
 
@@ -961,7 +976,17 @@ func TestUser_UpdateProfile(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(-time.Hour))
+			newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(-time.Hour))
+		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+	})
+
+	t.Run("異常系_updatedAtが現在のupdatedAtより前の場合_エラーを返す", func(t *testing.T) {
+		t.Parallel()
+		u, base := newUserWithUpdatedAt(t, 2*time.Hour)
+
+		// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される
+		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
+			newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
 		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 	})
 
@@ -971,7 +996,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
 
 		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "200-0002", "Minato", "4-5-6", nil, base.Add(2*time.Hour))
+			newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(2*time.Hour))
 		require.ErrorIs(t, err, ErrAlreadyDeleted)
 	})
 }
@@ -1003,6 +1028,15 @@ func TestUser_ChangePassword(t *testing.T) {
 		u, base := newValidUser(t)
 
 		err := u.ChangePassword("new_hashed_password", base.Add(-time.Hour))
+		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+	})
+
+	t.Run("異常系_updatedAtが現在のupdatedAtより前の場合_エラーを返す", func(t *testing.T) {
+		t.Parallel()
+		u, base := newUserWithUpdatedAt(t, 2*time.Hour)
+
+		// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される
+		err := u.ChangePassword("new_hashed_password", base.Add(time.Hour))
 		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 	})
 
