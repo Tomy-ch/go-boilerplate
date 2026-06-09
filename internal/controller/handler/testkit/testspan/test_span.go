@@ -19,9 +19,9 @@ func StartTestSpanForEcho(
 
 	req := c.Request()
 
-	ctx, span := observability.NewStubSpanContext(t)
+	ctx, endSpan := observability.NewStubSpanContext(t)
 	req = req.WithContext(ctx)
 	c.SetRequest(req)
 
-	return c, span
+	return c, endSpan
 }
