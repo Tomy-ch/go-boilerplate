@@ -15,27 +15,26 @@ func Test_ExtractPathParams(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	ctx := context.Background()
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/users/123/books/abc", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	newCtx := func() echo.Context {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/users/123/books/abc", nil)
+		return e.NewContext(req, httptest.NewRecorder())
+	}
 
 	t.Run("パスパラメータがない場合は空マップを返す", func(t *testing.T) {
 		t.Parallel()
-		// 新しいコンテキストでは ParamNames 未設定 -> 空
-		got := ExtractPathParams(c)
+		got := ExtractPathParams(newCtx())
 		require.NotNil(t, got)
 		require.Empty(t, got)
 	})
 
 	t.Run("パスパラメータがある場合は全て抽出される", func(t *testing.T) {
 		t.Parallel()
-		// 名前と値をセット
+		c := newCtx()
 		c.SetParamNames("user_id", "book_id")
 		c.SetParamValues("123", "abc")
 
 		got := ExtractPathParams(c)
-		assert.Len(t, got, 2)
+		require.Len(t, got, 2)
 		assert.Equal(t, "123", got["user_id"])
 		assert.Equal(t, "abc", got["book_id"])
 	})
