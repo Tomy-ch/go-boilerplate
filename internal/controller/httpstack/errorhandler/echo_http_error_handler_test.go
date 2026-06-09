@@ -39,7 +39,7 @@ func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
 		actual := normalizeEchoHTTPError(ehe)
 		require.NotNil(t, actual)
 
-		expectedBase := response.NewHTTPErrorFromStatus(http.StatusForbidden)
+		expectedBase := response.NewHTTPErrorFromStatus(http.StatusForbidden, nil)
 		assert.Equal(t, expectedBase.Code, actual.Code)
 		assert.Equal(t, expectedBase.Message, actual.Message)
 		assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
@@ -58,7 +58,7 @@ func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
 		actual := normalizeEchoHTTPError(ehe, "d1", "d2")
 		require.NotNil(t, actual)
 
-		expectedBase := response.NewHTTPErrorFromStatus(http.StatusConflict)
+		expectedBase := response.NewHTTPErrorFromStatus(http.StatusConflict, nil)
 		assert.Equal(t, expectedBase.Code, actual.Code)
 		assert.Equal(t, expectedBase.Message, actual.Message)
 		assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)

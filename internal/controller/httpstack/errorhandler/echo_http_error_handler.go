@@ -17,8 +17,6 @@ func normalizeEchoHTTPError(err error, details ...string) *response.HTTPErrorRes
 		return nil
 	}
 
-	resErr := response.NewHTTPErrorFromStatus(ehe.Code, details...)
-	resErr.Internal = xerrors.Wrap(ehe.Internal, fmt.Sprintf("echo HTTP error: %v", err))
-
-	return resErr
+	internal := xerrors.Wrap(ehe.Internal, fmt.Sprintf("echo HTTP error: %v", err))
+	return response.NewHTTPErrorFromStatus(ehe.Code, internal, details...)
 }

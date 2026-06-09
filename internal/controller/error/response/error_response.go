@@ -28,21 +28,18 @@ func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 }
 
 // NewHTTPErrorFromStatus は、指定されたHTTPステータスコードに対応するHTTPエラーレスポンスを生成します。
-func NewHTTPErrorFromStatus(httpStatus int, details ...string) *HTTPErrorResponse {
+// err はログ出力用の元エラーとして Internal に格納されます（不要なら nil）。
+func NewHTTPErrorFromStatus(httpStatus int, err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByHTTPStatus(httpStatus)
 
-	return newHTTPErrorFromMeta(meta, details...)
+	res := newHTTPErrorFromMeta(meta, details...)
+	res.Internal = err
+	return res
 }
 
 // NewInternalErrorResponse は、内部サーバーエラーのエラーレスポンスを生成します。
 func NewInternalErrorResponse() *HTTPErrorResponse {
-	return &HTTPErrorResponse{
-		ErrorResponse: gen.ErrorResponse{
-			Code:    codeInternalError,
-			Message: errorMessageInternalError,
-		},
-		HTTPStatus: http.StatusInternalServerError,
-	}
+	return NewHTTPErrorFromStatus(http.StatusInternalServerError, nil)
 }
 
 // Error メソッドは、HTTPエラーレスポンスの文字列表現を返します。

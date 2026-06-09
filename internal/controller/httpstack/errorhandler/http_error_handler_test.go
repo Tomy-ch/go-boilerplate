@@ -183,7 +183,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			echoErr := &echo.HTTPError{Code: http.StatusBadRequest, Internal: reqErr}
 
 			actual := normalizeHTTPError(echoErr, expectedRequestID)
-			expected := response.NewHTTPErrorFromStatus(http.StatusBadRequest)
+			expected := response.NewHTTPErrorFromStatus(http.StatusBadRequest, nil)
 			expected.RequestId = expectedRequestID
 			expected.Internal = echoErr
 			assert.Equal(t, expected, actual)
@@ -211,7 +211,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			echoErr := &echo.HTTPError{Code: http.StatusUnauthorized, Internal: secErr}
 
 			actual := normalizeHTTPError(echoErr, expectedRequestID)
-			expected := response.NewHTTPErrorFromStatus(http.StatusUnauthorized)
+			expected := response.NewHTTPErrorFromStatus(http.StatusUnauthorized, nil)
 			expected.RequestId = expectedRequestID
 			expected.Internal = echoErr
 			assert.Equal(t, expected, actual)
@@ -223,7 +223,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 			echoErr := &echo.HTTPError{Code: http.StatusInternalServerError, Internal: respErr}
 
 			actual := normalizeHTTPError(echoErr, expectedRequestID)
-			expected := response.NewHTTPErrorFromStatus(http.StatusInternalServerError)
+			expected := response.NewHTTPErrorFromStatus(http.StatusInternalServerError, nil)
 			expected.RequestId = expectedRequestID
 			expected.Internal = echoErr
 			assert.Equal(t, expected, actual)
@@ -254,7 +254,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 
 		echoErr := &echo.HTTPError{Code: http.StatusForbidden}
 
-		expected := response.NewHTTPErrorFromStatus(echoErr.Code)
+		expected := response.NewHTTPErrorFromStatus(echoErr.Code, nil)
 		expected.RequestId = expectedRequestID
 
 		actual := normalizeHTTPError(echoErr, expectedRequestID)
@@ -266,7 +266,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 
 		echoErr := &echo.HTTPError{Code: http.StatusContinue}
 
-		expected := response.NewHTTPErrorFromStatus(echoErr.Code)
+		expected := response.NewHTTPErrorFromStatus(echoErr.Code, nil)
 		expected.RequestId = expectedRequestID
 		expected.Internal = echoErr
 
@@ -300,7 +300,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		echoErr := &echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
 
 		actual := normalizeHTTPError(echoErr, expectedRequestID)
-		expected := response.NewHTTPErrorFromStatus(echoErr.Code)
+		expected := response.NewHTTPErrorFromStatus(echoErr.Code, nil)
 		expected.RequestId = expectedRequestID
 
 		assert.Equal(t, expected.HTTPStatus, actual.HTTPStatus)
