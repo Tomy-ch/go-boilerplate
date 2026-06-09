@@ -178,3 +178,16 @@ func TestParseCustomLayoutInLocation(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestInLocation_NilLocation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("locがnilの場合はpanicせずエラーを返す", func(t *testing.T) {
+		t.Parallel()
+
+		empty, err := ParseDateOnlyInLocation("2025-12-05", nil)
+		require.Empty(t, empty)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "loc must not be nil")
+	})
+}
