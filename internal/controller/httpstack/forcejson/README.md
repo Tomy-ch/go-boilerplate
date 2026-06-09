@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-Forces response Content-Type to `application/json; charset=UTF-8`.
+Forces response Content-Type to `application/json`.
 
 ## Public API
 

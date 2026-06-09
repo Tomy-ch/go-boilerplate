@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-レスポンスの Content-Type を `application/json; charset=UTF-8` に強制します。
+レスポンスの Content-Type を `application/json` に強制します。
 
 ## 公開 API
 
