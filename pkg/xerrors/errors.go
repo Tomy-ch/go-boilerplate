@@ -27,7 +27,7 @@ func As(err error, target any) bool {
 	return errors.As(err, target)
 }
 
-// StackTrace は、エラーのスタックトレースを文字列として取得します。
+// StackTrace は、エラーの詳細表現（メッセージとスタックトレースを含む）を文字列で返します。
 func StackTrace(err error) string {
 	if err == nil {
 		return ""
