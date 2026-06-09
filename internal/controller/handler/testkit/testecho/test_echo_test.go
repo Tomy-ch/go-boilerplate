@@ -1,6 +1,7 @@
 package testecho
 
 import (
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -10,16 +11,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEchoTestClient_BuildAndServe(t *testing.T) {
+func newEchoWithUserRoute() *echo.Echo {
 	e := echo.New()
 	e.GET("/users/:id", func(c echo.Context) error {
-		id := c.Param("id")
-		return c.String(http.StatusOK, "user:"+id)
+		return c.String(http.StatusOK, "user:"+c.Param("id"))
 	})
+	return e
+}
 
+func TestEchoTestClient_BuildAndServe(t *testing.T) {
 	t.Parallel()
+
 	t.Run("RoutePatternとPathParamsでリクエストを構築できる", func(t *testing.T) {
-		client := NewEchoTestClient(t, e).
+		t.Parallel()
+		client := NewEchoTestClient(t, newEchoWithUserRoute()).
 			Method(http.MethodGet).
 			RoutePattern("/users/:id").
 			PathParams([]EchoTestParam{{Name: "id", Value: "123"}})
@@ -30,7 +35,8 @@ func TestEchoTestClient_BuildAndServe(t *testing.T) {
 	})
 
 	t.Run("RequestURLでリクエストを構築できる", func(t *testing.T) {
-		client := NewEchoTestClient(t, e).
+		t.Parallel()
+		client := NewEchoTestClient(t, newEchoWithUserRoute()).
 			Method(http.MethodGet).
 			RequestURL("/users/456")
 
@@ -39,7 +45,8 @@ func TestEchoTestClient_BuildAndServe(t *testing.T) {
 	})
 
 	t.Run("Serveでレスポンスが取得できる", func(t *testing.T) {
-		client := NewEchoTestClient(t, e).
+		t.Parallel()
+		client := NewEchoTestClient(t, newEchoWithUserRoute()).
 			Method(http.MethodGet).
 			RequestURL("/users/789")
 
@@ -50,26 +57,30 @@ func TestEchoTestClient_BuildAndServe(t *testing.T) {
 }
 
 func TestEchoTestClient_JSONBody(t *testing.T) {
-	e := echo.New()
 	t.Parallel()
 
-	t.Run("JSONBodyでContent-Typeがapplication/jsonになる", func(t *testing.T) {
-		client := NewEchoTestClient(t, e).
+	t.Run("JSONBodyでContent-Typeとボディが設定される", func(t *testing.T) {
+		t.Parallel()
+		client := NewEchoTestClient(t, echo.New()).
 			Method(http.MethodPost).
 			RoutePattern("/test").
 			JSONBody(map[string]string{"foo": "bar"})
 
 		_, _, c := client.Build()
 		assert.Equal(t, "application/json", c.Request().Header.Get("Content-Type"))
+
+		got, err := io.ReadAll(c.Request().Body)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"foo":"bar"}`, string(got))
 	})
 }
 
 func TestEchoTestClient_HeaderAndAuthBearer(t *testing.T) {
-	e := echo.New()
 	t.Parallel()
 
 	t.Run("Headerで任意のヘッダーが設定できる", func(t *testing.T) {
-		client := NewEchoTestClient(t, e).
+		t.Parallel()
+		client := NewEchoTestClient(t, echo.New()).
 			Method(http.MethodGet).
 			RoutePattern("/test").
 			Header("X-Test", "value")
@@ -79,8 +90,9 @@ func TestEchoTestClient_HeaderAndAuthBearer(t *testing.T) {
 	})
 
 	t.Run("AuthBearerでAuthorizationヘッダーが設定できる", func(t *testing.T) {
+		t.Parallel()
 		token := "abc.def.ghi"
-		client := NewEchoTestClient(t, e).
+		client := NewEchoTestClient(t, echo.New()).
 			Method(http.MethodGet).
 			RoutePattern("/test").
 			AuthBearer(token)
@@ -91,11 +103,11 @@ func TestEchoTestClient_HeaderAndAuthBearer(t *testing.T) {
 }
 
 func TestEchoTestClient_QueryParams(t *testing.T) {
-	e := echo.New()
 	t.Parallel()
 
 	t.Run("QueryParamsでクエリパラメータが設定できる", func(t *testing.T) {
-		client := NewEchoTestClient(t, e).
+		t.Parallel()
+		client := NewEchoTestClient(t, echo.New()).
 			Method(http.MethodGet).
 			RoutePattern("/test").
 			QueryParams([]EchoTestParam{{Name: "foo", Value: "bar"}})
@@ -106,29 +118,33 @@ func TestEchoTestClient_QueryParams(t *testing.T) {
 }
 
 func TestEchoTestClient_RawBody(t *testing.T) {
-	e := echo.New()
 	t.Parallel()
 
-	t.Run("RawBodyでContent-Typeが指定通りになる", func(t *testing.T) {
+	t.Run("RawBodyでContent-Typeとボディが指定通りになる", func(t *testing.T) {
+		t.Parallel()
 		body := "raw-body-content"
 		contentType := "text/plain"
-		client := NewEchoTestClient(t, e).
+		client := NewEchoTestClient(t, echo.New()).
 			Method(http.MethodPost).
 			RoutePattern("/test").
 			RawBody(strings.NewReader(body), contentType)
 
 		_, _, c := client.Build()
 		assert.Equal(t, contentType, c.Request().Header.Get("Content-Type"))
+
+		got, err := io.ReadAll(c.Request().Body)
+		require.NoError(t, err)
+		assert.Equal(t, body, string(got))
 	})
 
 	t.Run("RawBodyでContent-Typeが空の場合、Content-Typeは設定されない", func(t *testing.T) {
-		body := "raw-body-content"
-		client := NewEchoTestClient(t, e).
+		t.Parallel()
+		client := NewEchoTestClient(t, echo.New()).
 			Method(http.MethodPost).
 			RoutePattern("/test").
-			RawBody(strings.NewReader(body), "")
+			RawBody(strings.NewReader("raw-body-content"), "")
 
 		_, _, c := client.Build()
-		require.Empty(t, c.Request().Header.Get("Content-Type"))
+		assert.Empty(t, c.Request().Header.Get("Content-Type"))
 	})
 }
