@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime/types"
@@ -23,14 +24,34 @@ import (
 
 const targetPath = "/v1/users/:user_id"
 
+func newServer(t *testing.T) (*server, *mock_user.MockUsecase) {
+	t.Helper()
+	mockApp := mock_user.NewMockUsecase(gomock.NewController(t))
+	return &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockApp}, mockApp
+}
+
+// wantUserResponse は、本番 toUserResponse とは独立な検証用オラクル（フィールド取り違え検出）。
+func wantUserResponse(dto user.MutableFields) gen.UserResponse {
+	return gen.UserResponse{
+		FirstName:  dto.FirstName,
+		LastName:   dto.LastName,
+		Email:      types.Email(dto.Email),
+		Phone:      dto.Phone,
+		PostalCode: dto.PostalCode,
+		Prefecture: dto.PrefectureName,
+		City:       dto.City,
+		Street:     dto.Street,
+		Building:   dto.Building,
+		DeletedAt:  dto.DeletedAt,
+	}
+}
+
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	ctrl := gomock.NewController(t)
 	tf := observability.NewNoopTracerFactory(t)
-
-	mockApp := mock_user.NewMockUsecase(ctrl)
+	mockApp := mock_user.NewMockUsecase(gomock.NewController(t))
 
 	BindHandler(e, tf, mockApp)
 
@@ -56,42 +77,30 @@ func TestBindHandler(t *testing.T) {
 func Test_server_GetUsersDetail(t *testing.T) {
 	t.Parallel()
 
-	expectedDTO := user.MutableFields{
+	dto := user.MutableFields{
 		FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890",
-		PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3",
+		PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3", Building: ptr.To("B1"),
 	}
 
 	t.Run("正常系_ユーザーが存在する場合_詳細が取得できる", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
+		s, mockApp := newServer(t)
+		mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(dto, nil)
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(expectedDTO, nil)
-
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.GetUsersDetail(ctx, gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+		resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 		require.NoError(t, err)
 
 		actual, ok := resp.(gen.GetUsersDetail200JSONResponse)
-		assert.True(t, ok)
-		assert.Equal(t, expectedDTO.FirstName, actual.FirstName)
-		assert.Equal(t, types.Email(expectedDTO.Email), actual.Email)
-		assert.Equal(t, expectedDTO.PrefectureName, actual.Prefecture)
+		require.True(t, ok)
+		assert.Equal(t, wantUserResponse(dto), gen.UserResponse(actual))
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
-
-		mockApp := mock_user.NewMockUsecase(ctrl)
+		s, mockApp := newServer(t)
 		mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user.MutableFields{}, apperror.ErrNotFound)
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.GetUsersDetail(ctx, gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+		resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrNotFound)
 	})
@@ -106,40 +115,43 @@ func Test_server_PutUsersDetail(t *testing.T) {
 		City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
 	}
 
-	t.Run("正常系_全更新が成功する場合_更新後のユーザーが返る", func(t *testing.T) {
+	t.Run("正常系_全更新が成功する場合_リクエストがDTOへ詰め替えられ更新後のユーザーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
+		returned := user.MutableFields{
+			FirstName: "First", LastName: "Last", Email: "put@example.com", Phone: "09000000000",
+			PostalCode: "123-4567", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
+		}
 
-		expectedDTO := user.MutableFields{FirstName: "First", LastName: "Last", Email: "put@example.com", PrefectureName: "Tokyo"}
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
-			Return(expectedDTO, nil)
+		var got *user.MutableFields
+		s, mockApp := newServer(t)
+		mockApp.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.MutableFields) (user.MutableFields, error) {
+				got = p
+				return returned, nil
+			})
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PutUsersDetail(ctx, gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+		resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.NoError(t, err)
 
+		wantDTO := &user.MutableFields{
+			FirstName: body.FirstName, LastName: body.LastName, Email: string(body.Email), Phone: body.Phone,
+			PostalCode: body.PostalCode, PrefectureName: body.Prefecture, City: body.City, Street: body.Street, Building: body.Building,
+		}
+		assert.Equal(t, wantDTO, got)
+
 		actual, ok := resp.(gen.PutUsersDetail200JSONResponse)
-		assert.True(t, ok)
-		assert.Equal(t, expectedDTO.FirstName, actual.FirstName)
+		require.True(t, ok)
+		assert.Equal(t, wantUserResponse(returned), gen.UserResponse(actual))
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
-
-		mockApp := mock_user.NewMockUsecase(ctrl)
+		s, mockApp := newServer(t)
 		mockApp.EXPECT().
 			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
 			Return(user.MutableFields{}, apperror.ErrInternal)
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PutUsersDetail(ctx, gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+		resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrInternal)
 	})
@@ -153,63 +165,62 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 		Email:     (*types.Email)(ptr.To("patch@example.com")),
 	}
 
-	t.Run("正常系_部分更新が成功する場合_更新後のユーザーが返る", func(t *testing.T) {
+	t.Run("正常系_部分更新が成功する場合_リクエストがDTOへ詰め替えられ更新後のユーザーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
+		returned := user.MutableFields{FirstName: "Patched", Email: "patch@example.com"}
 
-		expectedDTO := user.MutableFields{FirstName: "Patched", Email: "patch@example.com"}
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
-			Return(expectedDTO, nil)
+		var got *user.PatchParamsDTO
+		s, mockApp := newServer(t)
+		mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.MutableFields, error) {
+				got = p
+				return returned, nil
+			})
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+		resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.NoError(t, err)
 
+		wantDTO := &user.PatchParamsDTO{
+			FirstName: body.FirstName,
+			Email:     ptr.To("patch@example.com"),
+		}
+		assert.Equal(t, wantDTO, got)
+
 		actual, ok := resp.(gen.PatchUsersDetail200JSONResponse)
-		assert.True(t, ok)
-		assert.Equal(t, expectedDTO.FirstName, actual.FirstName)
+		require.True(t, ok)
+		assert.Equal(t, wantUserResponse(returned), gen.UserResponse(actual))
 	})
 
-	t.Run("正常系_Email未指定の場合も部分更新できる", func(t *testing.T) {
+	t.Run("正常系_Email未指定の場合はEmailがnilでDTOへ詰め替えられる", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
-
-		// Email を含まない部分更新（emailToStringPtr の nil 経路）
 		noEmailBody := &gen.PatchUsersDetailJSONRequestBody{FirstName: ptr.To("OnlyName")}
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
-			Return(user.MutableFields{FirstName: "OnlyName"}, nil)
+		var got *user.PatchParamsDTO
+		s, mockApp := newServer(t)
+		mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.MutableFields, error) {
+				got = p
+				return user.MutableFields{FirstName: "OnlyName"}, nil
+			})
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: noEmailBody})
+		resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: noEmailBody})
 		require.NoError(t, err)
 
-		actual, ok := resp.(gen.PatchUsersDetail200JSONResponse)
-		assert.True(t, ok)
-		assert.Equal(t, "OnlyName", actual.FirstName)
+		assert.Equal(t, ptr.To("OnlyName"), got.FirstName)
+		assert.Nil(t, got.Email)
+
+		_, ok := resp.(gen.PatchUsersDetail200JSONResponse)
+		require.True(t, ok)
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
-
-		mockApp := mock_user.NewMockUsecase(ctrl)
+		s, mockApp := newServer(t)
 		mockApp.EXPECT().
 			UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
 			Return(user.MutableFields{}, apperror.ErrInternal)
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PatchUsersDetail(ctx, gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+		resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrInternal)
 	})
@@ -226,16 +237,12 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 
 	t.Run("正常系_認証ユーザーのパスワード変更が成功する場合_204が返る", func(t *testing.T) {
 		t.Parallel()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
 		ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
-
-		mockApp := mock_user.NewMockUsecase(ctrl)
+		s, mockApp := newServer(t)
 		mockApp.EXPECT().
 			ChangePassword(gomock.Any(), gomock.Any(), "current_password", "new_valid_password").
 			Return(nil)
 
-		s := &server{tracer: lt, uc: mockApp}
 		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
 		require.NoError(t, err)
 
@@ -245,10 +252,7 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 
 	t.Run("異常系_認証情報がない場合_エラーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
-
-		s := &server{tracer: lt, uc: mock_user.NewMockUsecase(ctrl)}
+		s, _ := newServer(t)
 		resp, err := s.PutUsersMePassword(context.Background(), gen.PutUsersMePasswordRequestObject{Body: body})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, ErrUnauthenticatedUser)
@@ -256,28 +260,21 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 
 	t.Run("異常系_認証subjectが不正でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
 		ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
-
-		s := &server{tracer: lt, uc: mock_user.NewMockUsecase(ctrl)}
+		s, _ := newServer(t)
 		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
 		require.Nil(t, resp)
-		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to get user ID from authenticator")
 	})
 
 	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 		t.Parallel()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
 		ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
-
-		mockApp := mock_user.NewMockUsecase(ctrl)
+		s, mockApp := newServer(t)
 		mockApp.EXPECT().
 			ChangePassword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(apperror.ErrValidation)
 
-		s := &server{tracer: lt, uc: mockApp}
 		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, apperror.ErrValidation)
@@ -287,35 +284,31 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 func Test_server_DeleteUsersDetail(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_削除が成功する場合_204が返る", func(t *testing.T) {
-		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
+	cases := []struct {
+		name      string
+		returnErr error
+		wantErr   error
+	}{
+		{name: "正常系_削除が成功する場合_204が返る", returnErr: nil, wantErr: nil},
+		{name: "異常系_Usecaseがエラーを返す場合_エラーが返る", returnErr: apperror.ErrNotFound, wantErr: apperror.ErrNotFound},
+	}
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(tc.returnErr)
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
-		require.NoError(t, err)
+			resp, err := s.DeleteUsersDetail(context.Background(), gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 
-		_, ok := resp.(gen.DeleteUsersDetail204Response)
-		assert.True(t, ok)
-	})
-
-	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
-		t.Parallel()
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
-
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(apperror.ErrNotFound)
-
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
-		require.Nil(t, resp)
-		require.ErrorIs(t, err, apperror.ErrNotFound)
-	})
+			if tc.wantErr != nil {
+				require.Nil(t, resp)
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			_, ok := resp.(gen.DeleteUsersDetail204Response)
+			assert.True(t, ok)
+		})
+	}
 }
