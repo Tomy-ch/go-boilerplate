@@ -12,7 +12,7 @@ func UintToInt(x uint) (int, error) {
 	const maxInt = math.MaxInt
 	if x > maxInt {
 		return 0, fmt.Errorf(
-			"overflow: %d > MaxInt(%d): %w", x, maxInt, ErrOverflow,
+			"uint %d exceeds MaxInt(%d): %w", x, maxInt, ErrOverflow,
 		)
 	}
 	return int(x), nil
