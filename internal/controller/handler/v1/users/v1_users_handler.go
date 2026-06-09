@@ -56,18 +56,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 
 	users := make([]gen.UserResponse, len(dtos))
 	for i, dto := range dtos {
-		users[i] = gen.UserResponse{
-			FirstName:  dto.FirstName,
-			LastName:   dto.LastName,
-			Email:      types.Email(dto.Email),
-			Phone:      dto.Phone,
-			PostalCode: dto.PostalCode,
-			Prefecture: dto.PrefectureName,
-			City:       dto.City,
-			Street:     dto.Street,
-			Building:   dto.Building,
-			DeletedAt:  dto.DeletedAt,
-		}
+		users[i] = toUserResponse(dto)
 	}
 
 	res := gen.UsersResponse{
@@ -94,25 +83,33 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
 	}
 
-	createPrams := &user.CreateParamsDTO{}
-	createPrams.UserID = userID
-	createPrams.FirstName = request.Body.FirstName
-	createPrams.LastName = request.Body.LastName
-	createPrams.Email = string(request.Body.Email)
-	createPrams.Phone = request.Body.Phone
-	createPrams.PostalCode = request.Body.PostalCode
-	createPrams.PrefectureName = request.Body.Prefecture
-	createPrams.City = request.Body.City
-	createPrams.Street = request.Body.Street
-	createPrams.Building = request.Body.Building
-	createPrams.RawPassword = request.Body.Password
+	createParams := &user.CreateParamsDTO{
+		UserID:      userID,
+		RawPassword: request.Body.Password,
+		MutableFields: user.MutableFields{
+			FirstName:      request.Body.FirstName,
+			LastName:       request.Body.LastName,
+			Email:          string(request.Body.Email),
+			Phone:          request.Body.Phone,
+			PostalCode:     request.Body.PostalCode,
+			PrefectureName: request.Body.Prefecture,
+			City:           request.Body.City,
+			Street:         request.Body.Street,
+			Building:       request.Body.Building,
+		},
+	}
 
-	dto, err := s.uc.CreateUser(ctx, createPrams)
+	dto, err := s.uc.CreateUser(ctx, createParams)
 	if err != nil {
 		return nil, err
 	}
 
-	res := gen.UserResponse{
+	return gen.PostUsers201JSONResponse(toUserResponse(dto)), nil
+}
+
+// toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。
+func toUserResponse(dto user.MutableFields) gen.UserResponse {
+	return gen.UserResponse{
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
 		Email:      types.Email(dto.Email),
@@ -124,6 +121,4 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 		Building:   dto.Building,
 		DeletedAt:  dto.DeletedAt,
 	}
-
-	return gen.PostUsers201JSONResponse(res), nil
 }
