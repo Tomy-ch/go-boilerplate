@@ -77,14 +77,18 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
+		stack := []byte("goroutine 1 [running]:\nmain.f()")
 		f := newRecoverLogErrorFunc(obsLogger, lf)
-		err := f(c, fmt.Errorf("boom"), []byte("goroutine 1 [running]:\nmain.f()"))
+		err := f(c, fmt.Errorf("boom"), stack)
 		require.NoError(t, err)
 
 		entries := observed.FilterMessage("panic recovered").All()
 		require.Len(t, entries, 1)
 		cm := entries[0].ContextMap()
-		assert.Equal(t, "goroutine 1 [running]:\nmain.f()", cm[logging.InternalStackTraceKey])
+		stackField := cm[logging.InternalStackTraceKey]
+		// Base64 化(Any+[]byte)の退行検知＝string 型であること。
+		assert.IsType(t, "", stackField)
+		assert.Equal(t, string(stack), stackField)
 		assert.Equal(t, "boom", cm[logging.InternalErrorKey])
 	})
 }
