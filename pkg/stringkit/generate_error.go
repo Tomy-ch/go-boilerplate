@@ -11,7 +11,7 @@ const (
 	errMsgGreaterThanMin = "length must be greater than %d characters (got %d)"
 )
 
-// ValidateInRange は 文字数が minLen～maxLen 内かを判定し、(ok, 範囲外なら理由メッセージ) を返します（文字数計算は1回）。
+// ValidateInRange は 文字数が minLen～maxLen 内かを判定し、範囲外なら理由メッセージを返します。
 func ValidateInRange(s string, minLen, maxLen int) (bool, string) {
 	n := RuneCount(s)
 	if minLen <= n && n <= maxLen {
