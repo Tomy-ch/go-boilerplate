@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/controller/handler/debug/cookie/gen"
+	"go-boilerplate/pkg/ptr"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -169,51 +170,46 @@ func Test_server_DeleteDebugCookie(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("name/path未指定の場合はデフォルトで削除Cookieを返す", func(t *testing.T) {
-			t.Parallel()
+		cases := []struct {
+			name       string
+			params     gen.DeleteDebugCookieParams
+			query      string
+			wantCookie string
+		}{
+			{
+				name:       "name/path未指定の場合はデフォルトで削除Cookieを返す",
+				params:     gen.DeleteDebugCookieParams{},
+				wantCookie: "__Host-access_token=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+			},
+			{
+				name:       "name/path指定の場合は指定値で削除Cookieを返す",
+				params:     gen.DeleteDebugCookieParams{Name: ptr.To("__Host-session"), Path: ptr.To("/hoge")},
+				query:      "?name=__Host-session&path=/hoge",
+				wantCookie: "__Host-session=; Path=/hoge; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+			},
+		}
 
-			e := echo.New()
-			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, path, nil)
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 
-			h := &server{}
-			err := h.DeleteDebugCookie(c, gen.DeleteDebugCookieParams{})
-			require.NoError(t, err)
+				e := echo.New()
+				ctx := context.Background()
+				req := httptest.NewRequestWithContext(ctx, http.MethodDelete, path+tc.query, nil)
+				rec := httptest.NewRecorder()
+				c := e.NewContext(req, rec)
 
-			assert.Equal(t, http.StatusNoContent, rec.Code)
+				h := &server{}
+				err := h.DeleteDebugCookie(c, tc.params)
+				require.NoError(t, err)
 
-			cookies := rec.Header().Values("Set-Cookie")
-			assert.Len(t, cookies, 1)
-			assert.Equal(t, "__Host-access_token=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT", cookies[0])
-		})
+				assert.Equal(t, http.StatusNoContent, rec.Code)
 
-		t.Run("name/path指定の場合は指定値で削除Cookieを返す", func(t *testing.T) {
-			t.Parallel()
-
-			name := "__Host-session"
-			p := "/hoge"
-
-			e := echo.New()
-			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, path+"?name="+name+"&path="+p, nil)
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-
-			h := &server{}
-			err := h.DeleteDebugCookie(c, gen.DeleteDebugCookieParams{
-				Name: &name,
-				Path: &p,
+				cookies := rec.Header().Values("Set-Cookie")
+				assert.Len(t, cookies, 1)
+				assert.Equal(t, tc.wantCookie, cookies[0])
 			})
-			require.NoError(t, err)
-
-			assert.Equal(t, http.StatusNoContent, rec.Code)
-
-			cookies := rec.Header().Values("Set-Cookie")
-			assert.Len(t, cookies, 1)
-			assert.Equal(t, name+"=; Path="+p+"; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT", cookies[0])
-		})
+		}
 	})
 }
 

@@ -48,7 +48,7 @@ func (h *server) GetDebugCookie(ctx echo.Context) error {
 func (h *server) PostDebugCookie(ctx echo.Context) error {
 	var body gen.DebugIssueCookieRequest
 	if err := ctx.Bind(&body); err != nil {
-		return err
+		return fmt.Errorf("debug cookie bind: %w", err)
 	}
 
 	ctx.Response().Header().Add("Set-Cookie", body.SetCookie)
@@ -84,8 +84,10 @@ func (h *server) GetDebugCookieRawCopy(ctx echo.Context) error {
 	// ReadFrom/io.Copy 経路（壊れない＋Set-Cookie rewrite を確認）
 	repeat := 1024
 	src := strings.NewReader(strings.Repeat("hello-cookie\n", repeat))
-	_, err := io.Copy(ctx.Response().Writer, src)
-	return err
+	if _, err := io.Copy(ctx.Response().Writer, src); err != nil {
+		return fmt.Errorf("debug cookie raw copy: %w", err)
+	}
+	return nil
 }
 
 // GetDebugCookieRawStream は、SSE風のストリームレスポンスを返すエンドポイントです。
