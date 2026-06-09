@@ -47,7 +47,8 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 	return func(c echo.Context, err error, stack []byte) error {
 		reqIn := server.BuildHTTPRequestLogInput(c)
 		recoverFields := []*logging.Field{
-			logging.Error(logging.InternalErrorKey, err),
+			// logging.Error は zap.Error 経由で key が "error" 固定になり internal_error にならないため String を使う。
+			logging.String(logging.InternalErrorKey, err.Error()),
 			// ランタイムスタック([]byte)は文字列で出力する（Any+[]byte は zap.Binary=Base64 で不可読）。
 			logging.String(logging.InternalStackTraceKey, string(stack)),
 		}

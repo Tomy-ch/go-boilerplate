@@ -83,8 +83,11 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 
 		entries := observed.FilterMessage("panic recovered").All()
 		require.Len(t, entries, 1)
+		cm := entries[0].ContextMap()
 		// Any+[]byte なら zap.Binary（[]byte/Base64）になり文字列一致しない＝退行検知。
-		assert.Equal(t, "goroutine 1 [running]:\nmain.f()", entries[0].ContextMap()[logging.InternalStackTraceKey])
+		assert.Equal(t, "goroutine 1 [running]:\nmain.f()", cm[logging.InternalStackTraceKey])
+		// エラーは internal_error キーで出力される（logging.Error だと zap.Error で "error" 固定になる）。
+		assert.Equal(t, "boom", cm[logging.InternalErrorKey])
 	})
 }
 
