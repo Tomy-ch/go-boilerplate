@@ -39,7 +39,7 @@ func TestNewAuthenticator(t *testing.T) {
 		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 		err := fn(context.Background(), in)
-		require.ErrorIs(t, err, ErrUnauthorizedAuthnSlotNotFound)
+		require.ErrorIs(t, err, ErrAuthnSlotNotFound)
 	})
 
 	t.Run("authenticator がエラーを返すと ErrUnauthorizedInvalidToken を返す", func(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Middleware は、認証情報を抽出するミドルウェアを返します。
+// Middleware は、OpenAPI スキーマに基づくリクエストバリデーション（認証は authFunc 経由）を行うミドルウェアを返します。
 func Middleware(
 	spec *openapi3.T,
 	skipper echomw.Skipper,
