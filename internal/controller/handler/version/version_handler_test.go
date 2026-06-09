@@ -74,7 +74,7 @@ func TestGetVersion(t *testing.T) {
 			loc:       loc,
 		}
 
-		buildDate, err := datetime.ParseRFC3339UTCInLocation(bi.BuildDate(), loc)
+		buildDate, err := datetime.ParseRFC3339UTCToLocation(bi.BuildDate(), loc)
 		require.NoError(t, err)
 
 		expectedResponse := gen.VersionResponse{

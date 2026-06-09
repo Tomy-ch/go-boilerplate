@@ -46,7 +46,7 @@ func (s *server) GetVersion(ctx context.Context, _ gen.GetVersionRequestObject) 
 	_, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	buildDate, err := datetime.ParseRFC3339UTCInLocation(s.buildInfo.BuildDate(), s.loc)
+	buildDate, err := datetime.ParseRFC3339UTCToLocation(s.buildInfo.BuildDate(), s.loc)
 	if err != nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
 	}
