@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseRFC3339InLocation(t *testing.T) {
+func TestParseRFC3339ToLocation(t *testing.T) {
 	t.Parallel()
 
 	loc, err := time.LoadLocation("Asia/Tokyo")
@@ -18,7 +18,7 @@ func TestParseRFC3339InLocation(t *testing.T) {
 		input := "2025-12-05T09:30:00Z"
 		want := time.Date(2025, time.December, 5, 18, 30, 0, 0, loc)
 
-		got, err := ParseRFC3339InLocation(input, loc)
+		got, err := ParseRFC3339ToLocation(input, loc)
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -26,13 +26,13 @@ func TestParseRFC3339InLocation(t *testing.T) {
 	t.Run("不正なフォーマット", func(t *testing.T) {
 		input := "2025/12/05 09:30:00"
 
-		empty, err := ParseRFC3339InLocation(input, loc)
+		empty, err := ParseRFC3339ToLocation(input, loc)
 		require.Empty(t, empty)
 		require.Error(t, err)
 	})
 }
 
-func TestParseRFC3339UTCInLocation(t *testing.T) {
+func TestParseRFC3339UTCToLocation(t *testing.T) {
 	t.Parallel()
 
 	loc, err := time.LoadLocation("Asia/Tokyo")
@@ -42,7 +42,7 @@ func TestParseRFC3339UTCInLocation(t *testing.T) {
 		input := "2025-12-05T09:30:00Z"
 		want := time.Date(2025, time.December, 5, 18, 30, 0, 0, loc)
 
-		got, err := ParseRFC3339UTCInLocation(input, loc)
+		got, err := ParseRFC3339UTCToLocation(input, loc)
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -50,13 +50,13 @@ func TestParseRFC3339UTCInLocation(t *testing.T) {
 	t.Run("不正なフォーマット", func(t *testing.T) {
 		input := "2025/12/05 09:30:00Z"
 
-		empty, err := ParseRFC3339UTCInLocation(input, loc)
+		empty, err := ParseRFC3339UTCToLocation(input, loc)
 		require.Empty(t, empty)
 		require.Error(t, err)
 	})
 }
 
-func TestParseRFC3339NanoInLocation(t *testing.T) {
+func TestParseRFC3339NanoToLocation(t *testing.T) {
 	t.Parallel()
 
 	loc, err := time.LoadLocation("Asia/Tokyo")
@@ -66,7 +66,7 @@ func TestParseRFC3339NanoInLocation(t *testing.T) {
 		input := "2025-12-05T09:30:00.123456789Z"
 		want := time.Date(2025, time.December, 5, 18, 30, 0, 123456789, loc)
 
-		got, err := ParseRFC3339NanoInLocation(input, loc)
+		got, err := ParseRFC3339NanoToLocation(input, loc)
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -74,13 +74,13 @@ func TestParseRFC3339NanoInLocation(t *testing.T) {
 	t.Run("ナノ秒なしはエラーになる", func(t *testing.T) {
 		input := "2025-12-05T09:30:00"
 
-		empty, err := ParseRFC3339NanoInLocation(input, loc)
+		empty, err := ParseRFC3339NanoToLocation(input, loc)
 		require.Empty(t, empty)
 		require.Error(t, err)
 	})
 }
 
-func TestParseISO8601InLocation(t *testing.T) {
+func TestParseISO8601ToLocation(t *testing.T) {
 	t.Parallel()
 
 	loc, err := time.LoadLocation("Asia/Tokyo")
@@ -91,7 +91,7 @@ func TestParseISO8601InLocation(t *testing.T) {
 		input := "2025-12-05T09:30:00Z"
 		want := time.Date(2025, time.December, 5, 18, 30, 0, 0, loc)
 
-		got, err := ParseISO8601InLocation(input, loc)
+		got, err := ParseISO8601ToLocation(input, loc)
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -99,13 +99,13 @@ func TestParseISO8601InLocation(t *testing.T) {
 	t.Run("不正なフォーマット", func(t *testing.T) {
 		input := "2025/12/05 09:30:00"
 
-		empty, err := ParseISO8601InLocation(input, loc)
+		empty, err := ParseISO8601ToLocation(input, loc)
 		require.Empty(t, empty)
 		require.Error(t, err)
 	})
 }
 
-func TestParseDateTimeInLocation(t *testing.T) {
+func TestParseDateTimeToLocation(t *testing.T) {
 	t.Parallel()
 
 	loc, err := time.LoadLocation("Asia/Tokyo")
@@ -115,7 +115,7 @@ func TestParseDateTimeInLocation(t *testing.T) {
 		input := "2025-12-05 09:30:00"
 		want := time.Date(2025, time.December, 5, 18, 30, 0, 0, loc)
 
-		got, err := ParseDateTimeInLocation(input, loc)
+		got, err := ParseDateTimeToLocation(input, loc)
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -123,13 +123,13 @@ func TestParseDateTimeInLocation(t *testing.T) {
 	t.Run("不正なフォーマット", func(t *testing.T) {
 		input := "2025/12/05T09:30:00"
 
-		empty, err := ParseDateTimeInLocation(input, loc)
+		empty, err := ParseDateTimeToLocation(input, loc)
 		require.Empty(t, empty)
 		require.Error(t, err)
 	})
 }
 
-func TestParseDateOnlyInLocation(t *testing.T) {
+func TestParseDateOnlyToLocation(t *testing.T) {
 	t.Parallel()
 
 	loc, err := time.LoadLocation("Asia/Tokyo")
@@ -139,7 +139,7 @@ func TestParseDateOnlyInLocation(t *testing.T) {
 		input := "2025-12-05"
 		want := time.Date(2025, time.December, 5, 9, 0, 0, 0, loc)
 
-		got, err := ParseDateOnlyInLocation(input, loc)
+		got, err := ParseDateOnlyToLocation(input, loc)
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -147,13 +147,13 @@ func TestParseDateOnlyInLocation(t *testing.T) {
 	t.Run("不正なフォーマット", func(t *testing.T) {
 		input := "2025/12/05"
 
-		empty, err := ParseDateOnlyInLocation(input, loc)
+		empty, err := ParseDateOnlyToLocation(input, loc)
 		require.Empty(t, empty)
 		require.Error(t, err)
 	})
 }
 
-func TestParseCustomLayoutInLocation(t *testing.T) {
+func TestParseCustomLayoutToLocation(t *testing.T) {
 	t.Parallel()
 
 	loc, err := time.LoadLocation("Asia/Tokyo")
@@ -164,7 +164,7 @@ func TestParseCustomLayoutInLocation(t *testing.T) {
 		input := "2025/12/05 09:30"
 		want := time.Date(2025, time.December, 5, 18, 30, 0, 0, loc)
 
-		got, err := ParseCustomLayoutInLocation(layout, input, loc)
+		got, err := ParseCustomLayoutToLocation(layout, input, loc)
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -173,8 +173,21 @@ func TestParseCustomLayoutInLocation(t *testing.T) {
 		input := "2025/12/05 09:30:00"
 		layout := "02-Jan-2006 15:04:05"
 
-		empty, err := ParseCustomLayoutInLocation(layout, input, loc)
+		empty, err := ParseCustomLayoutToLocation(layout, input, loc)
 		require.Empty(t, empty)
 		require.Error(t, err)
+	})
+}
+
+func TestToLocation_NilLocation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("locがnilの場合はpanicせずエラーを返す", func(t *testing.T) {
+		t.Parallel()
+
+		empty, err := ParseDateOnlyToLocation("2025-12-05", nil)
+		require.Empty(t, empty)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "loc must not be nil")
 	})
 }

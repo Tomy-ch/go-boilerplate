@@ -64,6 +64,12 @@ func TestExtractPackageName(t *testing.T) {
 		assert.Equal(t, "user", ExtractPackageName(full))
 	})
 
+	t.Run("パッケージ名を抽出できる (値レシーバ)", func(t *testing.T) {
+		t.Parallel()
+		full := "github.com/org/proj/internal/usecase/user.UserUsecase.GetUser"
+		assert.Equal(t, "user", ExtractPackageName(full))
+	})
+
 	t.Run("パッケージ名を抽出できる (通常のケース)", func(t *testing.T) {
 		t.Parallel()
 		full := "github.com/org/proj/pkg.Func"
@@ -73,5 +79,10 @@ func TestExtractPackageName(t *testing.T) {
 	t.Run("空文字は unknown を返す", func(t *testing.T) {
 		t.Parallel()
 		assert.Equal(t, "unknown", ExtractPackageName(""))
+	})
+
+	t.Run("ドットの無い不正入力は unknown を返す", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "unknown", ExtractPackageName("no_dot_here"))
 	})
 }
