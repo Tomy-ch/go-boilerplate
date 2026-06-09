@@ -66,6 +66,26 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		err := f(c, fmt.Errorf("boom2"), []byte("stack2"))
 		require.NoError(t, err)
 	})
+
+	t.Run("stack は可読な文字列として出力される", func(t *testing.T) {
+		t.Parallel()
+
+		obsLogger, observed := logging.NewObservedTestLogger(t)
+
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/panic", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		f := newRecoverLogErrorFunc(obsLogger, lf)
+		err := f(c, fmt.Errorf("boom"), []byte("goroutine 1 [running]:\nmain.f()"))
+		require.NoError(t, err)
+
+		entries := observed.FilterMessage("panic recovered").All()
+		require.Len(t, entries, 1)
+		// Any+[]byte なら zap.Binary（[]byte/Base64）になり文字列一致しない＝退行検知。
+		assert.Equal(t, "goroutine 1 [running]:\nmain.f()", entries[0].ContextMap()["stack"])
+	})
 }
 
 func Test_newRecoverConfig(t *testing.T) {

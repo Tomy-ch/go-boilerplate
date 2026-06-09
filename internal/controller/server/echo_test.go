@@ -102,6 +102,7 @@ func Test_BuildHTTPRequestLogInput(t *testing.T) {
 	assert.Equal(t, "/users/:id", got.Path)
 	assert.Equal(t, "/users/123?q=v", got.URI)
 	assert.Equal(t, "example.com", got.Host)
+	assert.Equal(t, "http", got.Scheme)
 	assert.Equal(t, "test-agent", got.UserAgent)
 	assert.Equal(t, echo.MIMEApplicationJSON, got.ContentType)
 	assert.Equal(t, map[string]string{"id": "123"}, got.PathParams)

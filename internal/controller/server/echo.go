@@ -23,7 +23,7 @@ func BuildHTTPRequestLogInput(c echo.Context) logging.HTTPRequestLogInput {
 		URI:           req.RequestURI,
 		RemoteIP:      c.RealIP(),
 		Host:          req.Host,
-		Scheme:        req.URL.Scheme,
+		Scheme:        c.Scheme(),
 		Proto:         req.Proto,
 		UserAgent:     req.UserAgent(),
 		ContentType:   req.Header.Get(echo.HeaderContentType),
