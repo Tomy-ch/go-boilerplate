@@ -11,7 +11,7 @@ type RawPassword struct {
 	value string
 }
 
-// NewRawPassword は、パスワードの検証と生成を行います。
+// NewRawPassword は、与えられた文字列を検証し、有効な場合に RawPassword を構築します。
 func NewRawPassword(v string) (RawPassword, error) {
 	if !stringkit.InRange(v, MinRawPasswordLength, MaxRawPasswordLength) {
 		return RawPassword{}, xerrors.Wrap(
@@ -25,3 +25,9 @@ func NewRawPassword(v string) (RawPassword, error) {
 func (p RawPassword) Value() string {
 	return p.value
 }
+
+// String は、平文パスワードが fmt 経由で露出しないよう秘匿した文字列を返します。
+func (p RawPassword) String() string { return "[REDACTED]" }
+
+// GoString は、%#v 経由でも平文パスワードが露出しないよう秘匿した文字列を返します。
+func (p RawPassword) GoString() string { return "[REDACTED]" }
