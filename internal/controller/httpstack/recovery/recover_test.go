@@ -187,10 +187,34 @@ func TestProductionConfig(t *testing.T) {
 	expected := middleware.RecoverConfig{
 		StackSize:         4 << 10,
 		DisableStackAll:   true,
-		DisablePrintStack: true,
+		DisablePrintStack: false,
 		LogLevel:          log.ERROR,
 	}
 
 	actual := productionConfig()
 	assert.Equal(t, expected, actual)
+}
+
+func TestProductionConfig_capturesStack(t *testing.T) {
+	t.Parallel()
+
+	lf := logging.NewTestLogFieldBuilder(t)
+	obsLogger, observed := logging.NewObservedTestLogger(t)
+
+	cnf := productionConfig()
+	cnf.LogErrorFunc = newRecoverLogErrorFunc(obsLogger, lf)
+
+	e := echo.New()
+	e.Use(middleware.RecoverWithConfig(cnf))
+	e.GET("/panic", func(_ echo.Context) error { panic("prod-panic") })
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
+	e.ServeHTTP(httptest.NewRecorder(), req)
+
+	entries := observed.FilterMessage("panic recovered").All()
+	require.Len(t, entries, 1)
+	stackStr, ok := entries[0].ContextMap()[logging.InternalStackTraceKey].(string)
+	require.True(t, ok)
+	// 本番設定(DisablePrintStack=false)でも runtime スタックが捕捉される。
+	assert.Contains(t, stackStr, "goroutine")
 }

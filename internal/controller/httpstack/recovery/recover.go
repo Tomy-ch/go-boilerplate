@@ -71,9 +71,11 @@ func developmentConfig() middleware.RecoverConfig {
 // productionConfig は、本番環境用のリカバリミドルウェアの設定を返します。
 func productionConfig() middleware.RecoverConfig {
 	return middleware.RecoverConfig{
-		StackSize:         productionStackSize,
+		StackSize: productionStackSize,
+		// DisableStackAll=true で他 goroutine は除外しつつ、当該 goroutine のスタックは捕捉する
+		// （DisablePrintStack=true だと echo が runtime.Stack 自体を行わず LogErrorFunc に空が渡る）。
 		DisableStackAll:   true,
-		DisablePrintStack: true,
+		DisablePrintStack: false,
 		LogLevel:          log.ERROR,
 	}
 }
