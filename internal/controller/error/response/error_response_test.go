@@ -112,24 +112,6 @@ func TestNewHTTPErrorFromStatus(t *testing.T) {
 	}
 }
 
-func TestNewInternalErrorResponse(t *testing.T) {
-	t.Parallel()
-
-	t.Run("内部サーバーエラーのエラーレスポンスが生成される", func(t *testing.T) {
-		t.Parallel()
-
-		expected := &HTTPErrorResponse{
-			ErrorResponse: gen.ErrorResponse{
-				Code:    codeInternalError,
-				Message: errorMessageInternalError,
-			},
-			HTTPStatus: http.StatusInternalServerError,
-		}
-
-		assert.Equal(t, expected, NewInternalErrorResponse())
-	})
-}
-
 func TestHTTPErrorResponse_Error(t *testing.T) {
 	t.Parallel()
 

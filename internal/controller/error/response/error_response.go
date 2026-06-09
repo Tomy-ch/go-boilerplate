@@ -5,7 +5,6 @@ package response
 
 import (
 	"fmt"
-	"net/http"
 
 	"go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/pkg/ptr"
@@ -28,18 +27,13 @@ func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 }
 
 // NewHTTPErrorFromStatus は、指定されたHTTPステータスコードに対応するHTTPエラーレスポンスを生成します。
-// err はログ出力用の元エラーとして Internal に格納されます（不要なら nil）。
+// err はログ出力用の元エラーとして Internal に格納されます。
 func NewHTTPErrorFromStatus(httpStatus int, err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByHTTPStatus(httpStatus)
 
 	res := newHTTPErrorFromMeta(meta, details...)
 	res.Internal = err
 	return res
-}
-
-// NewInternalErrorResponse は、内部サーバーエラーのエラーレスポンスを生成します。
-func NewInternalErrorResponse() *HTTPErrorResponse {
-	return NewHTTPErrorFromStatus(http.StatusInternalServerError, nil)
 }
 
 // Error メソッドは、HTTPエラーレスポンスの文字列表現を返します。
