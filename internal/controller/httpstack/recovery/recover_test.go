@@ -66,7 +66,6 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 		err := f(c, fmt.Errorf("boom2"), []byte("stack2"))
 		require.NoError(t, err)
 	})
-
 }
 
 func TestMiddleware_realPanic(t *testing.T) {
