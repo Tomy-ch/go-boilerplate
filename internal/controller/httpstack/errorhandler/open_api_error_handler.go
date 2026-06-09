@@ -13,11 +13,11 @@ import (
 func normalizeOpenAPIError(err error, details ...string) *response.HTTPErrorResponse {
 	var (
 		reqErr  *openapi3filter.RequestError
-		respErr *openapi3filter.ResponseError
 		secErr  *openapi3filter.SecurityRequirementsError
-	)
+		respErr *openapi3filter.ResponseError
 
-	var resErr *response.HTTPErrorResponse
+		resErr *response.HTTPErrorResponse
+	)
 
 	switch {
 	case errors.As(err, &reqErr):

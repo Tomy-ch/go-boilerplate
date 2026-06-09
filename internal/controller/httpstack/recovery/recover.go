@@ -2,12 +2,9 @@
 package recovery
 
 import (
-	"time"
-
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -48,25 +45,7 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 // newRecoverLogErrorFunc は、リカバリミドルウェアのログ出力関数を生成します。
 func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c echo.Context, err error, stack []byte) error {
 	return func(c echo.Context, err error, stack []byte) error {
-		req := c.Request()
-		traceCtx := observability.ExtractTraceContext(req.Context())
-		reqIn := logging.HTTPRequestLogInput{
-			EventAt:       time.Now(),
-			Method:        req.Method,
-			Path:          c.Path(),
-			URI:           req.RequestURI,
-			RemoteIP:      c.RealIP(),
-			Host:          req.Host,
-			Scheme:        req.URL.Scheme,
-			Proto:         req.Proto,
-			UserAgent:     req.UserAgent(),
-			ContentType:   req.Header.Get(echo.HeaderContentType),
-			ContentLength: req.ContentLength,
-			QueryParams:   server.ExtractQueryParams(c),
-			PathParams:    server.ExtractPathParams(c),
-			TraceID:       traceCtx.TraceID(),
-			SpanID:        traceCtx.SpanID(),
-		}
+		reqIn := server.BuildHTTPRequestLogInput(c)
 		recoverFields := []*logging.Field{
 			logging.Error("error", err),
 			logging.Any("stack", stack),

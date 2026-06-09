@@ -81,6 +81,34 @@ func Test_ExtractQueryParams(t *testing.T) {
 	})
 }
 
+func Test_BuildHTTPRequestLogInput(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/users/123?q=v", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set("User-Agent", "test-agent")
+	req.Host = "example.com"
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetPath("/users/:id")
+	c.SetParamNames("id")
+	c.SetParamValues("123")
+
+	got := BuildHTTPRequestLogInput(c)
+
+	assert.Equal(t, http.MethodPost, got.Method)
+	assert.Equal(t, "/users/:id", got.Path)
+	assert.Equal(t, "/users/123?q=v", got.URI)
+	assert.Equal(t, "example.com", got.Host)
+	assert.Equal(t, "test-agent", got.UserAgent)
+	assert.Equal(t, echo.MIMEApplicationJSON, got.ContentType)
+	assert.Equal(t, map[string]string{"id": "123"}, got.PathParams)
+	assert.Equal(t, []string{"v"}, got.QueryParams["q"])
+	assert.False(t, got.EventAt.IsZero())
+}
+
 func Test_cloneValues(t *testing.T) {
 	t.Parallel()
 
