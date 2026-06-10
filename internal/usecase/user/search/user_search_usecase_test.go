@@ -254,3 +254,80 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 		})
 	})
 }
+
+func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	page := 1
+	perPage := 100
+	p, err := paging.NewPagingFrom1Based(&page, &perPage)
+	require.NoError(t, err)
+
+	active := ptr.To(true)
+	keyword := "Grace Lee"
+	keywords := strings.Split(keyword, " ")
+	searchFilter := &query.UserSearchFilter{Active: active, Keywords: keywords}
+	filter := &SearchParams{Keyword: ptr.To(keyword), Active: active}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("一覧と総件数をまとめて取得できること", func(t *testing.T) {
+			t.Parallel()
+
+			results := query.UserSearchResults{
+				{FirstName: "Grace", LastName: "Lee", Email: "grace.lee@example.com"},
+			}
+
+			ctrl := gomock.NewController(t)
+			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
+			userQS.EXPECT().FindByFilter(gomock.Any(), searchFilter, p.Limit32(), p.Offset32()).Return(results, nil)
+			userQS.EXPECT().CountByFilter(gomock.Any(), searchFilter).Return(int64(1), nil)
+
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), userQS: userQS}
+
+			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
+			require.NoError(t, err)
+			assert.Equal(t, &UserSearchListView{Items: results, Total: 1}, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("一覧取得でエラーが発生した場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+
+			ctrl := gomock.NewController(t)
+			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
+			userQS.EXPECT().FindByFilter(gomock.Any(), searchFilter, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
+
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), userQS: userQS}
+
+			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("総件数取得でエラーが発生した場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+
+			results := query.UserSearchResults{
+				{FirstName: "Grace", LastName: "Lee"},
+			}
+
+			ctrl := gomock.NewController(t)
+			userQS := mock_query.NewMockUserSearchQueryService(ctrl)
+			userQS.EXPECT().FindByFilter(gomock.Any(), searchFilter, p.Limit32(), p.Offset32()).Return(results, nil)
+			userQS.EXPECT().CountByFilter(gomock.Any(), searchFilter).Return(int64(0), expectedErr)
+
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), userQS: userQS}
+
+			actual, err := u.ListUsersByKeywordWithTotal(ctx, filter, p)
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+	})
+}

@@ -449,6 +449,85 @@ func Test_usecase_Create(t *testing.T) {
 	})
 }
 
+func Test_usecase_ListUsersWithTotal(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	lt := observability.NewMockUsecaseLayerTracer(t)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+
+	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	userDomain, err := user.New(
+		uuid.NewTestFromSalt(t, "user_domain"),
+		"first_name", "last_name", "password", "email_address", "phone_number",
+		prefectureID, "city_name", "town_address", nil, "p_code", now, now, nil,
+	)
+	require.NoError(t, err)
+	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
+	require.NoError(t, err)
+
+	page := 1
+	perPage := 100
+	p, err := paging.NewPagingFrom1Based(&page, &perPage)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("一覧と総件数をまとめて取得できる", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(1), nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			require.NoError(t, err)
+			assert.Len(t, actual.Items, 1)
+			assert.Equal(t, int64(1), actual.Total)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("一覧取得でエラーが発生した場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+			ctrl := gomock.NewController(t)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
+			uc := &usecase{tracer: lt, userRepo: userRepo}
+
+			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("総件数取得でエラーが発生した場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+			ctrl := gomock.NewController(t)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(0), expectedErr)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+	})
+}
+
 func Test_usecase_CountUsers(t *testing.T) {
 	t.Parallel()
 

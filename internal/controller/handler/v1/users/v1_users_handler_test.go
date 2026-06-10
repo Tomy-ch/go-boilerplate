@@ -112,11 +112,8 @@ func Test_server_GetUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
-				Return(dtos, nil)
-			mockApp.EXPECT().
-				CountUsers(gomock.Any(), mockParams.Params.Active).
-				Return(total, nil)
+				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPaging).
+				Return(&user.UserListView{Items: dtos, Total: total}, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsers(ctx, mockParams)
@@ -167,49 +164,21 @@ func Test_server_GetUsers(t *testing.T) {
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("ListUsersがエラーを返す場合", func(t *testing.T) {
-				t.Parallel()
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockControllerLayerTracer(t)
 
-				ctx := context.Background()
-				ctrl := gomock.NewController(t)
-				lt := observability.NewMockControllerLayerTracer(t)
+			expectedError := apperror.ErrInternal
 
-				expectedError := apperror.ErrInternal
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPaging).
+				Return(nil, expectedError)
 
-				mockApp := mock_user.NewMockUsecase(ctrl)
-				mockApp.EXPECT().
-					ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
-					Return(nil, expectedError)
-
-				s := &server{tracer: lt, uc: mockApp}
-				resp, err := s.GetUsers(ctx, mockParams)
-				require.Nil(t, resp)
-				require.ErrorIs(t, err, expectedError)
-			})
-
-			t.Run("CountUsersがエラーを返す場合", func(t *testing.T) {
-				t.Parallel()
-
-				ctx := context.Background()
-				ctrl := gomock.NewController(t)
-				lt := observability.NewMockControllerLayerTracer(t)
-
-				expectedError := apperror.ErrInternal
-
-				mockDTO := []user.UserView{expectedDTO1, expectedDTO2}
-				mockApp := mock_user.NewMockUsecase(ctrl)
-				mockApp.EXPECT().
-					ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
-					Return(mockDTO, nil)
-				mockApp.EXPECT().
-					CountUsers(gomock.Any(), mockParams.Params.Active).
-					Return(int64(0), expectedError)
-
-				s := &server{tracer: lt, uc: mockApp}
-				resp, err := s.GetUsers(ctx, mockParams)
-				require.Nil(t, resp)
-				require.ErrorIs(t, err, expectedError)
-			})
+			s := &server{tracer: lt, uc: mockApp}
+			resp, err := s.GetUsers(ctx, mockParams)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, expectedError)
 		})
 	})
 }

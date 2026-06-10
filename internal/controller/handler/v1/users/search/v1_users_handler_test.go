@@ -103,12 +103,11 @@ func Test_server_GetUsersSearch(t *testing.T) {
 
 			var gotFilter *usecase_search.SearchParams
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
-				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Paging) (query.UserSearchResults, error) {
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPaging).
+				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Paging) (*usecase_search.UserSearchListView, error) {
 					gotFilter = f
-					return dtos, nil
+					return &usecase_search.UserSearchListView{Items: dtos, Total: total}, nil
 				})
-			mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.Any()).Return(total, nil)
 
 			resp, err := s.GetUsersSearch(context.Background(), mockParams)
 			require.NoError(t, err)
@@ -162,26 +161,12 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
-		t.Run("ListUsersByKeywordがエラーを返す場合、エラーが返る", func(t *testing.T) {
+		t.Run("ListUsersByKeywordWithTotalがエラーを返す場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
-				Return(query.UserSearchResults{}, apperror.ErrInternal)
-
-			resp, err := s.GetUsersSearch(context.Background(), mockParams)
-			require.Nil(t, resp)
-			require.ErrorIs(t, err, apperror.ErrInternal)
-		})
-
-		t.Run("CountUsersByKeywordがエラーを返す場合、エラーが返る", func(t *testing.T) {
-			t.Parallel()
-
-			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
-				Return(query.UserSearchResults{}, nil)
-			mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.Any()).
-				Return(int64(0), apperror.ErrInternal)
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPaging).
+				Return(nil, apperror.ErrInternal)
 
 			resp, err := s.GetUsersSearch(context.Background(), mockParams)
 			require.Nil(t, resp)

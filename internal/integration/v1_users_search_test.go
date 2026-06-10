@@ -8,6 +8,7 @@ import (
 	searchhandler "go-boilerplate/internal/controller/handler/v1/users/search"
 	"go-boilerplate/internal/controller/handler/v1/users/search/gen"
 	"go-boilerplate/internal/observability"
+	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_search "go-boilerplate/internal/usecase/user/search/mock"
 	"go-boilerplate/internal/usecase/user/search/query"
 
@@ -46,11 +47,8 @@ func TestV1UsersSearch_Integration(t *testing.T) {
 
 			mockApp := mock_search.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				CountUsersByKeyword(gomock.Any(), gomock.Any()).
-				Return(int64(1), nil)
-			mockApp.EXPECT().
-				ListUsersByKeyword(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(expectedDTO, nil)
+				ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&usecase_search.UserSearchListView{Items: expectedDTO, Total: 1}, nil)
 
 			searchhandler.BindHandler(e, tf, mockApp)
 
