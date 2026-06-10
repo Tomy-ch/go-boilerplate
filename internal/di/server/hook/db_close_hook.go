@@ -16,10 +16,6 @@ func RegisterDBCloseHooks(
 ) {
 	reg.RegisterStop(func(_ context.Context) error {
 		logger.Named("db.CloseHook").Info("Closing database connection")
-		if err := db.Close(); err != nil {
-			logger.Named("db.CloseHook").Error("failed to close database", logging.Error(logging.ErrorKey, err))
-			return err
-		}
-		return nil
+		return db.Close()
 	})
 }
