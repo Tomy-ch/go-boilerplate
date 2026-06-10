@@ -24,12 +24,6 @@ jobs:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
       - name: Run OpenAPI Bundle
         run: make gen-bundle-oapi
 
@@ -112,8 +106,8 @@ jobs:
                 ? '## 🧾 Differences in OpenAPI generated output have been detected (list of modified files)'
                 : '## ⚠️ OpenAPI 生成物のドリフトを検知（本 PR で `openapi/` 配下は触られていません）';
               const action = sourceModified
-                ? 'Please run `make gen-api` locally and commit the changes.'
-                : '本 PR では `openapi/` 配下が変更されていないため、generator 側のドリフト（非決定的出力 / 依存バージョン差 / base 側の古い生成物 等）の可能性があります。`make gen-api` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。';
+                ? 'Please run `make gen-bundle-oapi && make gen-api-docs` locally and commit the changes.'
+                : '本 PR では `openapi/` 配下が変更されていないため、generator 側のドリフト（非決定的出力 / 依存バージョン差 / base 側の古い生成物 等）の可能性があります。`make gen-bundle-oapi && make gen-api-docs` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。';
               body = [
                 marker,
                 title,
@@ -139,7 +133,7 @@ jobs:
               ].join('\n');
             }
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
