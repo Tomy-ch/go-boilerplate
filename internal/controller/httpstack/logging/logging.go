@@ -70,7 +70,7 @@ func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field {
 		Path:          req.URL.Path,
 		RemoteIP:      req.RemoteAddr,
 		Host:          req.Host,
-		Scheme:        req.URL.Scheme,
+		Scheme:        l.c.Scheme(),
 		Proto:         req.Proto,
 		UserAgent:     req.UserAgent(),
 		ContentType:   req.Header.Get(echo.HeaderContentType),
