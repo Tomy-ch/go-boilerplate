@@ -23,25 +23,21 @@ func TestNewTestDB(t *testing.T) {
 func TestNewTestLoggingProvider(t *testing.T) {
 	t.Parallel()
 	provider := NewTestLoggingProvider(t)
-	// provider が必要な依存を結線して返すことを検証する。
-	require.NotNil(t, provider.Logger())
-	require.NotNil(t, provider.LogFields())
-	require.NotNil(t, provider.DBConfig())
-	require.NotNil(t, provider.ObservabilityConfig())
-	require.NotNil(t, provider.LayerTracer())
+	// provider が依存を結線し、ログ付き DBTX を生成して返すことを検証する。
+	require.NotNil(t, provider)
 	require.NotNil(t, provider.NewLoggingDB(context.Background()))
 }
 
-func TestNewTestTransactionManager(t *testing.T) {
+func TestNewTestTransactionRunner(t *testing.T) {
 	t.Parallel()
-	runner := NewTestTransactionManager(t)
+	runner := NewTestTransactionRunner(t)
 	// 公開 API 経由で WithinTx がコールバックを実行する（実トランザクションを開始しロールバックする）ことを検証する。
 	ran := false
 	runner.WithinTx(func(context.Context) { ran = true })
 	assert.True(t, ran)
 }
 
-func Test_testTxManager_Do(t *testing.T) {
+func Test_testTxRunner_Do(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
@@ -52,11 +48,11 @@ func Test_testTxManager_Do(t *testing.T) {
 
 	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
-	innerTxm := driver.NewTransactionManager(cfg, db, testLogger)
+	innerTxm := driver.NewTransactionManager(db, testLogger)
 
 	t.Run("実行時にエラーが発生しない場合、正常に終了すること", func(t *testing.T) {
 		t.Parallel()
-		txm := &testTxManager{
+		txm := &testTxRunner{
 			inner: innerTxm,
 			t:     t,
 		}

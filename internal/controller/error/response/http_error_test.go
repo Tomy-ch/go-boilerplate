@@ -79,6 +79,12 @@ func TestLookupErrorMetaByAppError(t *testing.T) {
 			assert.Equal(t, want, lookupErrorMetaByAppError(apperror.ErrConflict))
 		})
 
+		t.Run("ErrCanceledの場合、ClientClosedRequest(499)が返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: statusClientClosedRequest, Code: codeClientClosedRequest, Message: errorMessageClientClosedRequest}
+			assert.Equal(t, want, lookupErrorMetaByAppError(apperror.ErrCanceled))
+		})
+
 		t.Run("ErrUnavailableの場合、ServiceUnavailableが返される", func(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusServiceUnavailable, Code: codeServiceUnavailable, Message: errorMessageServiceUnavailable}

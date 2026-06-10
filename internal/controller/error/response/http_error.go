@@ -22,6 +22,8 @@ const (
 	codeValidationFailed = "VALIDATION_FAILED"
 	// codeTooManyRequests は、リクエストが多すぎる場合に使用されるエラーコードです。
 	codeTooManyRequests = "TOO_MANY_REQUESTS"
+	// codeClientClosedRequest は、クライアントがリクエストをキャンセル/切断した場合に使用されるエラーコードです。
+	codeClientClosedRequest = "CLIENT_CLOSED_REQUEST"
 	// codeInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーコードです。
 	codeInternalError = "INTERNAL_ERROR"
 	// codeNotImplemented は、機能が未実装の場合に使用されるエラーコードです。
@@ -29,6 +31,9 @@ const (
 	// codeServiceUnavailable は、サービスが一時的に利用不可な場合に使用されるエラーコードです。
 	codeServiceUnavailable = "SERVICE_UNAVAILABLE"
 )
+
+// statusClientClosedRequest は、クライアント切断時の非標準ステータス(499, nginx 由来)です。net/http に定数が無いため定義します。
+const statusClientClosedRequest = 499
 
 const (
 	// errorMessageBadRequest は、リクエストの内容に誤りがあることを示すエラーメッセージです。
@@ -45,6 +50,8 @@ const (
 	errorMessageValidationFailed = "入力内容の検証に失敗しました。修正して再度お試しください。"
 	// errorMessageTooManyRequests は、リクエストが多すぎる場合に使用されるエラーメッセージです。
 	errorMessageTooManyRequests = "リクエストが多すぎます。しばらくしてから再度お試しください。"
+	// errorMessageClientClosedRequest は、クライアントがリクエストをキャンセル/切断した場合に使用されるエラーメッセージです。
+	errorMessageClientClosedRequest = "リクエストがキャンセルされました。"
 	// errorMessageInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーメッセージです。
 	errorMessageInternalError = "サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。"
 	// errorMessageNotImplemented は、機能が未実装の場合に使用されるエラーメッセージです。
@@ -88,6 +95,11 @@ var errorMeta = map[int]httpErrorMeta{
 		Status:  http.StatusTooManyRequests,
 		Code:    codeTooManyRequests,
 		Message: errorMessageTooManyRequests,
+	},
+	statusClientClosedRequest: {
+		Status:  statusClientClosedRequest,
+		Code:    codeClientClosedRequest,
+		Message: errorMessageClientClosedRequest,
 	},
 	http.StatusInternalServerError: {
 		Status:  http.StatusInternalServerError,
@@ -136,6 +148,8 @@ func lookupErrorMetaByAppError(err error) httpErrorMeta {
 		return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
 	case xerrors.Is(err, apperror.ErrConflict): // 409
 		return lookupErrorMetaByHTTPStatus(http.StatusConflict)
+	case xerrors.Is(err, apperror.ErrCanceled): // 499
+		return lookupErrorMetaByHTTPStatus(statusClientClosedRequest)
 	case xerrors.Is(err, apperror.ErrUnavailable): // 503
 		return lookupErrorMetaByHTTPStatus(http.StatusServiceUnavailable)
 	case xerrors.Is(err, apperror.ErrUnimplemented): // 501

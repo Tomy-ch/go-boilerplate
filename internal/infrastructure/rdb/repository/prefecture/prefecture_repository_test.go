@@ -32,7 +32,7 @@ func TestFindByName(t *testing.T) {
 	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
@@ -73,7 +73,7 @@ func TestFindByID(t *testing.T) {
 	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
@@ -115,7 +115,7 @@ func TestFindByIDs(t *testing.T) {
 	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
