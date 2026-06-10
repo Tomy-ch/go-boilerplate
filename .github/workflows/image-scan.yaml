@@ -119,6 +119,7 @@ jobs:
 
       - name: Comment SBOM Summary on PR
         if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -168,6 +169,7 @@ jobs:
 
       - name: Comment Trivy result on PR
         if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

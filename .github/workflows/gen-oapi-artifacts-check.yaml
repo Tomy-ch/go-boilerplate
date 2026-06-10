@@ -72,6 +72,7 @@ jobs:
 
       - name: Comment generated status on PR (diff/no-diff)
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

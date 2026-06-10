@@ -114,6 +114,7 @@ jobs:
           fi
       - name: Comment changed files on PR
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
