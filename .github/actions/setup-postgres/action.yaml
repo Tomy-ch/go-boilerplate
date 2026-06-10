@@ -89,6 +89,8 @@ runs:
         MAX_ATTEMPTS: ${{ inputs.max_attempts }}
         SLEEP_SECONDS: ${{ inputs.sleep_seconds }}
       run: |
+        command -v pg_isready >/dev/null 2>&1 && command -v psql >/dev/null 2>&1 \
+          || { echo "psql client not found; set install_psql=true"; exit 1; }
         echo "Waiting for Postgres... host=${HOST} port=${PORT} db=${DB}"
         for i in $(seq 1 "${MAX_ATTEMPTS}"); do
           if pg_isready -h "${HOST}" -p "${PORT}" -U "${PGUSER}" -d "${DB}"; then
