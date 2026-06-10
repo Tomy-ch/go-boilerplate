@@ -7,10 +7,6 @@ on:
       - staging
       - develop
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
   packages: write
@@ -23,10 +19,22 @@ jobs:
       deployments: write
       packages: write
       id-token: write
+    concurrency:
+      group: ${{ github.workflow }}-build-${{ github.ref }}-${{ matrix.target }}
+      cancel-in-progress: true
+    strategy:
+      matrix:
+        include:
+          - target: runtime
+            suffix: ""
+          - target: migration
+            suffix: "-migration"
 
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -40,28 +48,10 @@ jobs:
           VERSION=$(git describe --tags --abbrev=0 --first-parent 2>/dev/null || echo "none")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get revision (commit SHA)
-        id: meta_revision
-        run: |
-          echo "revision=${GITHUB_SHA}" >> $GITHUB_OUTPUT
-
       - name: Get build date
         id: meta_date
         run: |
           echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
-
-      - name: Generate image tags
-        id: meta_tags
-        run: |
-          VERSION="${{ steps.meta_version.outputs.version }}"
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          if [[ "$VERSION" == "none" ]]; then
-            IMAGE_TAG=$SHORT_SHA
-          else
-            IMAGE_TAG=${VERSION}-${SHORT_SHA}
-          fi
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Define registry
         id: meta_registry
@@ -69,6 +59,25 @@ jobs:
           echo "Note: Please modify this section according to your environment"
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "registry=ghcr.io/$OWNER" >> $GITHUB_OUTPUT
+
+      - name: Generate image tags
+        id: meta_tags
+        env:
+          VERSION: ${{ steps.meta_version.outputs.version }}
+          REGISTRY: ${{ steps.meta_registry.outputs.registry }}
+          SUFFIX: ${{ matrix.suffix }}
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          DELIM="EOF_$(openssl rand -hex 8)"
+          {
+            echo "tags<<${DELIM}"
+            echo "${REGISTRY}/app:${SHORT_SHA}${SUFFIX}"
+            if [[ "$VERSION" != "none" ]]; then
+              echo "${REGISTRY}/app:${VERSION}-${SHORT_SHA}${SUFFIX}"
+              echo "${REGISTRY}/app:${VERSION}${SUFFIX}"
+            fi
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -81,61 +90,36 @@ jobs:
 
       - name: Generate vendor
         run: |
-          go mod tidy
           go mod vendor
 
-      - name: Build and push Runtime image
+      - name: Build and push image (${{ matrix.target }})
         uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/server/Dockerfile
-          target: runtime
+          target: ${{ matrix.target }}
           push: true
-          tags: |
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_tags.outputs.short_sha }}
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_tags.outputs.image_tag }}
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_version.outputs.version }}
+          tags: ${{ steps.meta_tags.outputs.tags }}
           build-args: |
             VERSION=${{ steps.meta_version.outputs.version }}
-            REVISION=${{ steps.meta_revision.outputs.revision }}
+            REVISION=${{ github.sha }}
             BUILD_DATE=${{ steps.meta_date.outputs.build_date }}
           labels: |
             org.opencontainers.image.version=${{ steps.meta_version.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.meta_revision.outputs.revision }}
+            org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.meta_date.outputs.build_date }}
             org.opencontainers.image.source=${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-
-      - name: Build and push Migration image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/server/Dockerfile
-          target: migration
-          push: true
-          tags: |
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_tags.outputs.short_sha }}-migration
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_tags.outputs.image_tag }}-migration
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_version.outputs.version }}-migration
-          build-args: |
-            VERSION=${{ steps.meta_version.outputs.version }}
-            REVISION=${{ steps.meta_revision.outputs.revision }}
-            BUILD_DATE=${{ steps.meta_date.outputs.build_date }}
-          labels: |
-            org.opencontainers.image.version=${{ steps.meta_version.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.meta_revision.outputs.revision }}
-            org.opencontainers.image.created=${{ steps.meta_date.outputs.build_date }}
-            org.opencontainers.image.source=${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
           provenance: false
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
+    concurrency:
+      group: ${{ github.workflow }}-deploy-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write

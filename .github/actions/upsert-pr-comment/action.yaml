@@ -1,0 +1,116 @@
+name: Upsert PR comment
+description: マーカーで既存コメントを検出し update / create する（PR コメントの upsert）
+
+inputs:
+  github-token:
+    required: true
+    description: コメント投稿に使う GITHUB_TOKEN
+  marker:
+    required: true
+    description: 同一コメント検出用の HTML コメントマーカー
+  body-file:
+    required: true
+    description: 本文として読み込むファイルパス
+  title:
+    required: false
+    default: ""
+    description: 本文先頭へ付与する見出し（任意）
+  details-summary:
+    required: false
+    default: ""
+    description: 指定時は本文をコードブロック付き details で畳む際の summary 文言
+  max-length:
+    required: false
+    default: "45000"
+    description: 本文の最大文字数（超過分は truncate）
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@v8
+      env:
+        MARKER: ${{ inputs.marker }}
+        BODY_FILE: ${{ inputs.body-file }}
+        TITLE: ${{ inputs.title }}
+        DETAILS_SUMMARY: ${{ inputs.details-summary }}
+        MAX_LENGTH: ${{ inputs.max-length }}
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+
+          const marker = process.env.MARKER;
+          const bodyFile = process.env.BODY_FILE;
+          const title = process.env.TITLE || '';
+          const detailsSummary = process.env.DETAILS_SUMMARY || '';
+          const maxLength = Number(process.env.MAX_LENGTH || '45000');
+
+          const pr = context.payload.pull_request?.number;
+          if (!pr) {
+            core.setFailed('Not a PR context');
+            return;
+          }
+          if (!fs.existsSync(bodyFile)) {
+            core.setFailed(`${bodyFile} not found`);
+            return;
+          }
+
+          let content = fs.readFileSync(bodyFile, 'utf8').trimEnd();
+          if (content.length > maxLength) {
+            content = content.slice(0, maxLength) + '\n... (truncated)';
+          }
+
+          const updatedAtJST = new Date().toLocaleString('ja-JP', {
+            timeZone: 'Asia/Tokyo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+
+          const headSha =
+            (context.payload.pull_request?.head?.sha)
+            || process.env.GITHUB_SHA
+            || context.sha;
+          const shortSha = headSha.slice(0, 7);
+
+          const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+          const commitUrl = `${repoUrl}/commit/${headSha}`;
+          const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
+          const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
+
+          const main = detailsSummary
+            ? [`<details><summary>${detailsSummary}</summary>`, '', '```', content, '```', '', '</details>'].join('\n')
+            : content;
+
+          const parts = [marker];
+          if (title) parts.push(title, '');
+          parts.push(main, '', commitLine, '', updatedLine);
+          const body = parts.join('\n');
+
+          const comments = await github.paginate(github.rest.issues.listComments, {
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: pr,
+            per_page: 100,
+          });
+
+          const existing = comments.find(c => (c.body || '').includes(marker));
+
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body,
+            });
+          }

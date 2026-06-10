@@ -6,14 +6,16 @@ on:
       - production
     paths:
       - "docs/**"
-      - "scripts/gen-docs-json.cjs"
-      - "scripts/gen-portal-docs.cjs"
       - ".github/workflows/deploy-docs.yaml"
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -32,6 +34,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Deploy to GitHub Pages
