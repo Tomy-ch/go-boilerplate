@@ -68,14 +68,15 @@ jobs:
           SUFFIX: ${{ matrix.suffix }}
         run: |
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          DELIM="EOF_$(openssl rand -hex 8)"
           {
-            echo "tags<<EOF"
+            echo "tags<<${DELIM}"
             echo "${REGISTRY}/app:${SHORT_SHA}${SUFFIX}"
             if [[ "$VERSION" != "none" ]]; then
               echo "${REGISTRY}/app:${VERSION}-${SHORT_SHA}${SUFFIX}"
               echo "${REGISTRY}/app:${VERSION}${SUFFIX}"
             fi
-            echo "EOF"
+            echo "${DELIM}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -108,8 +109,8 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.meta_date.outputs.build_date }}
             org.opencontainers.image.source=${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
           provenance: false
 
   deploy:
