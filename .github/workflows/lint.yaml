@@ -52,7 +52,6 @@ jobs:
         shell: bash
         run: |
           set +e
-          mkdir -p /tmp
 
           golangci-lint run --config=.golangci-full.yaml \
             --output.text.print-issued-lines=true \
@@ -142,7 +141,7 @@ jobs:
               '</details>',
             ].join('\n');
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
