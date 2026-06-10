@@ -4,15 +4,15 @@ English | [日本語](README.ja.md)
 
 ctxhelper is a "boundary layer that controls the usage of context".
 
-This package provides helper functions for manipulating `context.Context` and the context of the Echo framework.
+This package provides helper functions for carrying request-scoped values on `context.Context`.
 
 ## Implementation Method
 
-The code in this package must not be implemented manually, and is created through code generation.
-
-For details on the generation mechanism, refer to the following:
+Simple value keys are created through code generation. For details on the generation mechanism, refer to the following:
 
 - `scripts/genctxkey/README.md`
+
+The `Authn` helpers (`authn.go`) are hand-written: since the OpenAPI `AuthenticationFunc` cannot propagate context forward, `Authn` is carried through a mutable slot installed by the middleware before authentication.
 
 ## Usage
 
@@ -78,5 +78,4 @@ Files with `.gen.go` in this directory are automatically generated code.
 - manual editing is prohibited in principle
 - make changes through `scripts/genctxkey`
 
-As an exception, minor fixes for dependency resolution (such as import adjustments) are allowed,  
-but it is recommended to implement permanent fixes on the generator side.
+Hand-written helpers (such as `authn.go`) are edited directly.

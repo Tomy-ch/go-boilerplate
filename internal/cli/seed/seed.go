@@ -30,18 +30,18 @@ func RunDBSeed(
 ) error {
 	db, err := openDB(logger, database)
 	if err != nil {
-		logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error("dbOpen", err))
+		logger.Named("dbSeedRun.dbOpen").Error("failed to open database connection", logging.Error(logging.ErrorKey, err))
 		return err
 	}
 	defer func() {
 		if cerr := db.Close(); cerr != nil {
-			logger.Named("dbSeedRun.dbClose").Error("failed to close database connection", logging.Error("dbClose", cerr))
+			logger.Named("dbSeedRun.dbClose").Error("failed to close database connection", logging.Error(logging.ErrorKey, cerr))
 		}
 	}()
 
 	files, err := fsys.Glob(seedFilePlace + "/*.sql")
 	if err != nil {
-		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error("globSeedFiles", err))
+		logger.Named("dbSeedRun.globSeedFiles").Error("failed to glob seed files", logging.Error(logging.ErrorKey, err))
 		return err
 	}
 
@@ -74,7 +74,7 @@ func execSeedFile(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, log
 		logger.Named("dbSeedRun.os.ReadFile").Error(
 			"failed to read seed file",
 			logging.String("file", filePath),
-			logging.Error("os.ReadFile", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
@@ -103,7 +103,7 @@ func handleSeedExecResult(logger logging.Logger, filePath string, err error) err
 		log.Warn(
 			"table does not exist, skipping seed",
 			logging.String("file", filePath),
-			logging.Error("db.Exec", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return nil
 	}
@@ -116,7 +116,7 @@ func handleSeedExecResult(logger logging.Logger, filePath string, err error) err
 	log.Error(
 		message,
 		logging.String("file", filePath),
-		logging.Error("db.Exec", err),
+		logging.Error(logging.ErrorKey, err),
 	)
 	return err
 }

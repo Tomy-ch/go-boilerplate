@@ -49,7 +49,7 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 			defer cancel()
 			if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
 				t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
-					"Failed to rollback transaction on panic", logging.Error("rollback transaction", pgErr),
+					"Failed to rollback transaction on panic", logging.Error(logging.ErrorKey, pgErr),
 				)
 			}
 			panic(p)
@@ -64,8 +64,8 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 		if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
 			t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
 				"Failed to rollback transaction",
-				logging.Error("rollback transaction", pgErr),
-				logging.Error("original error", err),
+				logging.Error(logging.ErrorKey, pgErr),
+				logging.Error(logging.OriginalErrorKey, err),
 			)
 		}
 		return err

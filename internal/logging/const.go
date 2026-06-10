@@ -50,6 +50,10 @@ const (
 
 	// エラー系ログのキー
 
+	// ErrorKey は、エラーを表すログフィールドのキーです。
+	ErrorKey = "error"
+	// OriginalErrorKey は、別のエラー処理中に併記する元エラーを表すログフィールドのキーです。
+	OriginalErrorKey = "original_error"
 	// ErrorCodeKey は、エラーコードを表すログフィールドのキーです。
 	ErrorCodeKey = "error_code"
 	// ErrorMessageKey は、エラーメッセージを表すログフィールドのキーです。
@@ -80,6 +84,8 @@ const (
 	JobErrorKey = "job_error"
 	// JobResultKey は、ジョブ結果を表すログフィールドのキーです。
 	JobResultKey = "job_result"
+	// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。
+	FilterKey = "filter"
 
 	// 可観測系ログのキー
 

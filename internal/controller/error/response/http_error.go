@@ -24,29 +24,33 @@ const (
 	codeTooManyRequests = "TOO_MANY_REQUESTS"
 	// codeInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーコードです。
 	codeInternalError = "INTERNAL_ERROR"
-	// codeNotAvailable は、機能が未実装または一時的に利用不可な場合に使用されるエラーコードです。
-	codeNotAvailable = "NOT_AVAILABLE"
+	// codeNotImplemented は、機能が未実装の場合に使用されるエラーコードです。
+	codeNotImplemented = "NOT_IMPLEMENTED"
+	// codeServiceUnavailable は、サービスが一時的に利用不可な場合に使用されるエラーコードです。
+	codeServiceUnavailable = "SERVICE_UNAVAILABLE"
 )
 
 const (
-	// errorBadRequest は、リクエストの内容に誤りがあることを示すエラーコードです。
+	// errorMessageBadRequest は、リクエストの内容に誤りがあることを示すエラーメッセージです。
 	errorMessageBadRequest = "入力内容に誤りがあります。再度ご確認ください。"
-	// errorUnauthorized は、認証が必要な操作に対して認証されていない場合に使用されるエラーコードです。
+	// errorMessageUnauthorized は、認証が必要な操作に対して認証されていない場合に使用されるエラーメッセージです。
 	errorMessageUnauthorized = "ログインが必要です。ログインして再度お試しください。"
-	// errorAccessDenied は、アクセス権限がない操作を試みた場合に使用されるエラーコードです。
+	// errorMessageAccessDenied は、アクセス権限がない操作を試みた場合に使用されるエラーメッセージです。
 	errorMessageAccessDenied = "この操作を行う権限がありません。"
-	// errorNotFound は、指定されたリソースが存在しない場合に使用されるエラーコードです。
+	// errorMessageNotFound は、指定されたリソースが存在しない場合に使用されるエラーメッセージです。
 	errorMessageNotFound = "お探しの情報が見つかりませんでした。"
-	// errorResourceConflict は、既に存在するリソースとの競合が発生した場合に使用されるエラーコードです。
+	// errorMessageResourceConflict は、既に存在するリソースとの競合が発生した場合に使用されるエラーメッセージです。
 	errorMessageResourceConflict = "既に同じ情報が登録されています。"
-	// errorMessageValidationFailed は、入力値の検証に失敗した場合のメッセージです。
+	// errorMessageValidationFailed は、入力値の検証に失敗した場合のエラーメッセージです。
 	errorMessageValidationFailed = "入力内容の検証に失敗しました。修正して再度お試しください。"
-	// errorMessageTooManyRequests は、リクエストが多すぎる場合に使用されるエラーコードです。
+	// errorMessageTooManyRequests は、リクエストが多すぎる場合に使用されるエラーメッセージです。
 	errorMessageTooManyRequests = "リクエストが多すぎます。しばらくしてから再度お試しください。"
-	// errorInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーコードです。
+	// errorMessageInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーメッセージです。
 	errorMessageInternalError = "サーバーで予期しないエラーが発生しました。時間をおいて再度お試しください。"
-	// errorNotAvailable は、機能が未実装または一時的に利用不可な場合に使用されるエラーコードです。
-	errorMessageNotAvailable = "現在この機能はご利用いただけません。しばらくしてから再度お試しください。"
+	// errorMessageNotImplemented は、機能が未実装の場合に使用されるエラーメッセージです。
+	errorMessageNotImplemented = "この機能は提供されていません。"
+	// errorMessageServiceUnavailable は、サービスが一時的に利用不可な場合に使用されるエラーメッセージです。
+	errorMessageServiceUnavailable = "現在この機能はご利用いただけません。しばらくしてから再度お試しください。"
 )
 
 var errorMeta = map[int]httpErrorMeta{
@@ -92,13 +96,13 @@ var errorMeta = map[int]httpErrorMeta{
 	},
 	http.StatusNotImplemented: {
 		Status:  http.StatusNotImplemented,
-		Code:    codeNotAvailable,
-		Message: errorMessageNotAvailable,
+		Code:    codeNotImplemented,
+		Message: errorMessageNotImplemented,
 	},
 	http.StatusServiceUnavailable: {
 		Status:  http.StatusServiceUnavailable,
-		Code:    codeNotAvailable,
-		Message: errorMessageNotAvailable,
+		Code:    codeServiceUnavailable,
+		Message: errorMessageServiceUnavailable,
 	},
 }
 
@@ -114,11 +118,7 @@ func lookupErrorMetaByHTTPStatus(status int) httpErrorMeta {
 	if meta, ok := errorMeta[status]; ok {
 		return meta
 	}
-	return httpErrorMeta{
-		Status:  http.StatusInternalServerError,
-		Code:    codeInternalError,
-		Message: errorMessageInternalError,
-	}
+	return errorMeta[http.StatusInternalServerError]
 }
 
 // lookupErrorMetaByAppError は、アプリケーションエラーに対応するエラーメタデータを取得します。
@@ -142,6 +142,8 @@ func lookupErrorMetaByAppError(err error) httpErrorMeta {
 		return lookupErrorMetaByHTTPStatus(http.StatusNotImplemented)
 	case xerrors.Is(err, apperror.ErrTooManyRequests): // 429
 		return lookupErrorMetaByHTTPStatus(http.StatusTooManyRequests)
+	case xerrors.Is(err, apperror.ErrInternal): // 500
+		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)
 	default:
 		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)
 	}

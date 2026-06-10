@@ -104,7 +104,8 @@ func TestRunJob(t *testing.T) {
 
 		err := <-done
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unknown job: no-such-job")
+		assert.Contains(t, err.Error(), "unknown job")
+		assert.Contains(t, err.Error(), "no-such-job")
 
 		// チャンネルが閉じられていることを検証
 		_, ok := <-done

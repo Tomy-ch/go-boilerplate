@@ -92,7 +92,7 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 	if err != nil {
 		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed",
 			logging.String("out", g.schemaRelPath),
-			logging.Error("pg_dump", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return fmt.Errorf("pg_dump failed: %w", err)
 	}

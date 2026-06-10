@@ -40,6 +40,9 @@ func (u UUID) ToPtr() *UUID { return &u }
 // EqualPtr は、ポインタを介してUUIDが等しいかどうかを判定します。
 func (u UUID) EqualPtr(v *UUID) bool { return v != nil && u.b == v.b }
 
+// FromPrimitive は、github.com/google/uuid の uuid.UUID からドメインの UUID を生成します。
+func FromPrimitive(g uuid.UUID) UUID { return fromGoogle(g) }
+
 // Parse は、文字列からUUIDを解析します。解析に失敗した場合はエラーを返します。
 func Parse(s string) (UUID, error) {
 	g, err := uuid.Parse(s)

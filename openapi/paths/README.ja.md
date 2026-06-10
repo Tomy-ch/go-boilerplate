@@ -18,12 +18,6 @@ paths/
 ├── internal/               # 内部型（oapi-codegen 用エラーレスポンススキーマ）
 │   └── types/
 │       └── error_response.yaml
-├── debug/                  # デバッグ用（実サービスでは削除）
-│   ├── cookie.yaml         # /debug/cookie   ← エンドポイント＋子あり
-│   └── cookie/
-│       ├── copy.yaml       # /debug/cookie/copy
-│       ├── stream.yaml     # /debug/cookie/stream
-│       └── ws.yaml         # /debug/cookie/ws
 └── v1/                     # バージョニングされた API（サンプル）
     ├── users.yaml          # /v1/users       ← エンドポイント＋子あり
     └── users/

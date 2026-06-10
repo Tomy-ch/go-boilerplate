@@ -22,7 +22,7 @@ func Test_normalizeOpenAPIError(t *testing.T) {
 		actual := normalizeOpenAPIError(reqErr)
 		require.NotNil(t, actual)
 
-		expected := response.NewHTTPErrorFromStatus(400)
+		expected := response.NewHTTPErrorFromStatus(400, nil)
 		assert.Equal(t, expected.Code, actual.Code)
 		assert.Equal(t, expected.Message, actual.Message)
 		assert.Equal(t, expected.HTTPStatus, actual.HTTPStatus)
@@ -40,7 +40,7 @@ func Test_normalizeOpenAPIError(t *testing.T) {
 		actual := normalizeOpenAPIError(secErr)
 		require.NotNil(t, actual)
 
-		expected := response.NewHTTPErrorFromStatus(401)
+		expected := response.NewHTTPErrorFromStatus(401, nil)
 		assert.Equal(t, expected.Code, actual.Code)
 		assert.Equal(t, expected.Message, actual.Message)
 		assert.Equal(t, expected.HTTPStatus, actual.HTTPStatus)
@@ -56,7 +56,7 @@ func Test_normalizeOpenAPIError(t *testing.T) {
 		actual := normalizeOpenAPIError(respErr)
 		require.NotNil(t, actual)
 
-		expected := response.NewHTTPErrorFromStatus(500)
+		expected := response.NewHTTPErrorFromStatus(500, nil)
 		assert.Equal(t, expected.Code, actual.Code)
 		assert.Equal(t, expected.Message, actual.Message)
 		assert.Equal(t, expected.HTTPStatus, actual.HTTPStatus)

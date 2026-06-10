@@ -11,23 +11,24 @@ import (
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	t.Run("本番モードの場合、バナーは非表示にする", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		cfg := &config.ApplicationConfig{}
-		cfg.SetApplicationMode(t, config.ProductionMode)
 
-		New(e, cfg)
-		assert.True(t, e.HideBanner)
-	})
+	cases := []struct {
+		name     string
+		mode     string
+		wantHide bool
+	}{
+		{name: "本番モードの場合、バナーは非表示にする", mode: config.ProductionMode, wantHide: true},
+		{name: "開発モードの場合、バナーは表示される", mode: config.DevelopmentMode, wantHide: false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			cfg := &config.ApplicationConfig{}
+			cfg.SetApplicationMode(t, tt.mode)
 
-	t.Run("開発モードの場合、バナーは表示される", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		cfg := &config.ApplicationConfig{}
-		cfg.SetApplicationMode(t, config.DevelopmentMode)
-
-		New(e, cfg)
-		assert.False(t, e.HideBanner)
-	})
+			New(e, cfg)
+			assert.Equal(t, tt.wantHide, e.HideBanner)
+		})
+	}
 }

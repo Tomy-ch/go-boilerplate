@@ -13,7 +13,6 @@ import (
 	mock_auth "go-boilerplate/internal/usecase/boundary/auth/mock"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -22,22 +21,25 @@ import (
 func TestNewAuthenticator(t *testing.T) {
 	t.Parallel()
 
-	t.Run("エコーコンテキストがない場合はエラー", func(t *testing.T) {
+	t.Run("Authnスロットが未仕込みの場合はエラー", func(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		ac := config.NewAuthConfig(cfg)
 
 		ctrl := gomock.NewController(t)
 		m := mock_auth.NewMockAuthenticator(ctrl)
-		ctx := context.Background()
+		want, _ := authbd.New("user123", "mock", nil, nil)
+		m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 
 		fn := NewAuthenticator(ac, m)
 
-		// リクエストに Echo コンテキストがセットされていない
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		// 認証は成功するが WithAuthn を呼んでいない＝スロット未仕込み
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
+		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "user123"})
 		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 		err := fn(context.Background(), in)
-		require.ErrorIs(t, err, ErrUnauthorizedEchoContextNotFound)
+		require.ErrorIs(t, err, ErrAuthnSlotNotFound)
 	})
 
 	t.Run("authenticator がエラーを返すと ErrUnauthorizedInvalidToken を返す", func(t *testing.T) {
@@ -45,24 +47,15 @@ func TestNewAuthenticator(t *testing.T) {
 		ac := config.NewAuthConfig(cfg)
 
 		ctrl := gomock.NewController(t)
-		ctx := context.Background()
 		m := mock_auth.NewMockAuthenticator(ctrl)
 		m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, errors.New("bad"))
 
 		fn := NewAuthenticator(ac, m)
 
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		e := echo.New()
-		echoCtx := e.NewContext(req, rec)
-		ctxWithEcho := ctxhelper.SetEchoContext(req.Context(), echoCtx)
-		req = req.WithContext(ctxWithEcho)
-
-		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
-
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
-		in.RequestValidationInput.Request = req
+		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 		err := fn(context.Background(), in)
 		require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
@@ -73,18 +66,12 @@ func TestNewAuthenticator(t *testing.T) {
 		ac := config.NewAuthConfig(cfg)
 
 		ctrl := gomock.NewController(t)
-		ctx := context.Background()
 		m := mock_auth.NewMockAuthenticator(ctrl)
 
 		fn := NewAuthenticator(ac, m)
 
-		// echo context はあるが token は与えない -> authExtractor は nil,nil を返す
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		e := echo.New()
-		echoCtx := e.NewContext(req, rec)
-		ctxWithEcho := ctxhelper.SetEchoContext(req.Context(), echoCtx)
-		req = req.WithContext(ctxWithEcho)
+		// token を与えない -> authExtractor は nil,nil を返す
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 		err := fn(context.Background(), in)
@@ -96,31 +83,24 @@ func TestNewAuthenticator(t *testing.T) {
 		ac := config.NewAuthConfig(cfg)
 
 		ctrl := gomock.NewController(t)
-		ctx := context.Background()
 		m := mock_auth.NewMockAuthenticator(ctrl)
 		m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 		fn := NewAuthenticator(ac, m)
 
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "tok"})
-		rec := httptest.NewRecorder()
-		e := echo.New()
-		echoCtx := e.NewContext(req, rec)
-		ctxWithEcho := ctxhelper.SetEchoContext(req.Context(), echoCtx)
-		req = req.WithContext(ctxWithEcho)
 		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 		err := fn(context.Background(), in)
 		require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
 	})
 
-	t.Run("正常系: トークン抽出 -> Authenticate 呼出し -> Echo に Authn セット", func(t *testing.T) {
+	t.Run("正常系: トークン抽出 -> Authenticate 呼出し -> スロットに Authn セット", func(t *testing.T) {
 		cfg := config.MockConfigForTest(t)
 		ac := config.NewAuthConfig(cfg)
 
-		// mock authenticator: return expected Authn
 		ctrl := gomock.NewController(t)
 		m := mock_auth.NewMockAuthenticator(ctrl)
 		want, _ := authbd.New("user123", "mock", nil, nil)
@@ -128,25 +108,19 @@ func TestNewAuthenticator(t *testing.T) {
 
 		fn := NewAuthenticator(ac, m)
 
-		// リクエストと Echo コンテキストを作成し、request.Context に Echo コンテキストを格納する
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 		//nolint:gosec // G124: テスト用のリクエストクッキー。Secure/HttpOnly/SameSite はサーバが Set-Cookie で付与する属性で、リクエスト側のクッキーには適用されないため対応不要
 		req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "user123"})
-		rec := httptest.NewRecorder()
-		e := echo.New()
-		echoCtx := e.NewContext(req, rec)
-		// リクエストのコンテキストに echo.Context をセット
-		ctxWithEcho := ctxhelper.SetEchoContext(req.Context(), echoCtx)
-		req = req.WithContext(ctxWithEcho)
+		// 認証前に Authn スロットを仕込む（oapi.Middleware 相当）
+		req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 
 		in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
 		err := fn(context.Background(), in)
 		require.NoError(t, err)
 
-		// echoCtx に Authn がセットされていることを確認
-		got, ok := ctxhelper.GetAuthnFromEcho(echoCtx)
+		// スロットに Authn がセットされていることを確認
+		got, ok := ctxhelper.GetAuthn(req.Context())
 		assert.True(t, ok)
 		assert.Equal(t, want.Subject(), got.Subject())
 	})

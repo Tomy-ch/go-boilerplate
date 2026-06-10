@@ -24,22 +24,19 @@ func NewAuthenticator(
 	return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 		req := input.RequestValidationInput.Request
 
-		//nolint:contextcheck // inputのContext内部のものにアクセスするため
-		ec, ok := ctxhelper.GetEchoContext(req.Context())
-		if !ok {
-			return ErrUnauthorizedEchoContextNotFound
-		}
-
+		// エラー変換は authExtractor に一本化。
 		authn, err := authExtractor(ctx, req, authCfg, authenticator)
 		if err != nil {
-			return ErrUnauthorizedInvalidToken
+			return err
 		}
 		if authn == nil {
 			return ErrUnauthorizedTokenNotProvided
 		}
 
-		//nolint:contextcheck // ecのContext内部のものにアクセスするため
-		ctxhelper.SetAuthnToEcho(ec, *authn)
+		//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
+		if !ctxhelper.SetAuthn(req.Context(), *authn) {
+			return ErrAuthnSlotNotFound
+		}
 		return nil
 	}
 }

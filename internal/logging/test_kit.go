@@ -5,13 +5,24 @@ import (
 
 	"go-boilerplate/internal/config"
 
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap/zaptest/observer"
 )
 
 // NewTestLogger は、テスト用のLoggerインスタンスを生成します。
 func NewTestLogger(t *testing.T) Logger {
 	t.Helper()
 	return &logger{log: zaptest.NewLogger(t)}
+}
+
+// NewObservedTestLogger は、出力を捕捉できるテスト用 Logger と観測ログを返します。
+// ログレベル・出力有無を検証したいテストで使用します。
+func NewObservedTestLogger(t *testing.T) (Logger, *observer.ObservedLogs) {
+	t.Helper()
+	core, observed := observer.New(zapcore.DebugLevel)
+	return &logger{log: zap.New(core)}, observed
 }
 
 // NewTestLogFieldBuilder は、テスト用のLogFieldBuilderインスタンスを生成します。

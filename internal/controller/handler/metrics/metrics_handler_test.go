@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/basicauth"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -17,25 +18,34 @@ func TestBindHandler_BasicAuth(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	mtc := config.NewMetricsConfig(cfg)
-	validator := func(username, password string, _ echo.Context) (bool, error) {
-		if username == mtc.UserName() && password == mtc.Password() {
-			return true, nil
-		}
-		return false, nil
+
+	tests := []struct {
+		name     string
+		user     string
+		pass     string
+		withAuth bool
+		want     int
+	}{
+		{name: "正常系_正しい認証情報で200", user: mtc.UserName(), pass: mtc.Password(), withAuth: true, want: http.StatusOK},
+		{name: "異常系_認証情報なしで401", withAuth: false, want: http.StatusUnauthorized},
+		{name: "異常系_不正な認証情報で401", user: "wrong-user", pass: "wrong-pass", withAuth: true, want: http.StatusUnauthorized},
 	}
 
-	e := echo.New()
-	BindHandler(e, validator)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	ctx := context.Background()
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/metrics", nil)
-	req.SetBasicAuth(mtc.UserName(), mtc.Password())
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusOK, rec.Code)
+			e := echo.New()
+			BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
 
-	req2 := httptest.NewRequestWithContext(ctx, http.MethodGet, "/metrics", nil)
-	rec2 := httptest.NewRecorder()
-	e.ServeHTTP(rec2, req2)
-	assert.Equal(t, http.StatusUnauthorized, rec2.Code)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", nil)
+			if tt.withAuth {
+				req.SetBasicAuth(tt.user, tt.pass)
+			}
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tt.want, rec.Code)
+		})
+	}
 }

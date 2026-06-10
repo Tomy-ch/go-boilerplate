@@ -56,20 +56,20 @@ func openSeedDB(logger logging.Logger, database string) (driver.DatabaseDriver, 
 // newConfigForSeed は seed 用の設定を読み込み、CLI オプションの DB 名上書きを反映します。
 func newConfigForSeed(logger logging.Logger, database string) (*config.Config, error) {
 	if err := config.Load(); err != nil {
-		logger.Named("dbSeedRun.configLoad").Error("failed to load config", logging.Error("configLoad", err))
+		logger.Named("dbSeedRun.configLoad").Error("failed to load config", logging.Error(logging.ErrorKey, err))
 		return nil, err
 	}
 	if database != "" {
 		restore, oerr := envutil.Override("DB_NAME", database)
 		if oerr != nil {
-			logger.Named("dbSeedRun.setenv").Error("failed to override DB_NAME env", logging.Error("setenv", oerr))
+			logger.Named("dbSeedRun.setenv").Error("failed to override DB_NAME env", logging.Error(logging.ErrorKey, oerr))
 			return nil, oerr
 		}
 		defer restore()
 	}
 	cfg, err := config.New()
 	if err != nil {
-		logger.Named("dbSeedRun.configNew").Error("failed to load config", logging.Error("configNew", err))
+		logger.Named("dbSeedRun.configNew").Error("failed to load config", logging.Error(logging.ErrorKey, err))
 		return nil, err
 	}
 	return cfg, nil

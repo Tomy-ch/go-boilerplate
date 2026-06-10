@@ -41,6 +41,7 @@ func (s *server) GetUsersDetail(ctx context.Context, request gen.GetUsersDetailR
 
 	id := conv.UUID(request.UserId)
 
+	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
 	dto, err := s.uc.GetUser(ctx, id)
 	if err != nil {
 		return nil, err
@@ -59,7 +60,7 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 	dto := &user.MutableFields{
 		FirstName:      request.Body.FirstName,
 		LastName:       request.Body.LastName,
-		Email:          string(request.Body.Email),
+		Email:          conv.Email(request.Body.Email),
 		Phone:          request.Body.Phone,
 		PostalCode:     request.Body.PostalCode,
 		PrefectureName: request.Body.Prefecture,
@@ -68,6 +69,7 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 		Building:       request.Body.Building,
 	}
 
+	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
 	res, err := s.uc.UpdateUser(ctx, id, dto)
 	if err != nil {
 		return nil, err
@@ -86,7 +88,7 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 	dto := &user.PatchParamsDTO{
 		FirstName:      request.Body.FirstName,
 		LastName:       request.Body.LastName,
-		Email:          emailToStringPtr(request.Body.Email),
+		Email:          conv.EmailPtr(request.Body.Email),
 		Phone:          request.Body.Phone,
 		PostalCode:     request.Body.PostalCode,
 		PrefectureName: request.Body.Prefecture,
@@ -95,6 +97,7 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 		Building:       request.Body.Building,
 	}
 
+	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
 	res, err := s.uc.UpdateUserPartially(ctx, id, dto)
 	if err != nil {
 		return nil, err
@@ -131,6 +134,7 @@ func (s *server) DeleteUsersDetail(ctx context.Context, request gen.DeleteUsersD
 
 	id := conv.UUID(request.UserId)
 
+	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
 	if err := s.uc.DeleteUser(ctx, id); err != nil {
 		return nil, err
 	}
@@ -152,13 +156,4 @@ func toUserResponse(dto user.MutableFields) gen.UserResponse {
 		Building:   dto.Building,
 		DeletedAt:  dto.DeletedAt,
 	}
-}
-
-// emailToStringPtr は、PATCH リクエストの任意 Email を文字列ポインタへ変換します。
-func emailToStringPtr(e *types.Email) *string {
-	if e == nil {
-		return nil
-	}
-	s := string(*e)
-	return &s
 }

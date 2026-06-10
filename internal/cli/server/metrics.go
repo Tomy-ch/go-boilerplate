@@ -44,7 +44,7 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func
 	end := func(ctx context.Context) {
 		// 停止失敗でアプリ本体を巻き込まないよう、panic せずログに留める（start 側の goroutine と同方針）。
 		if err := metricsSrv.Shutdown(ctx); err != nil {
-			logger.Named("metrics.Shutdown").Error("metrics server shutdown error", logging.Error("shutdown", err))
+			logger.Named("metrics.Shutdown").Error("metrics server shutdown error", logging.Error(logging.ErrorKey, err))
 		}
 	}
 	return start, end
@@ -54,6 +54,6 @@ func NewMetricsServer(mtcCfg *config.MetricsConfig, logger logging.Logger) (func
 // エラーのみをログ記録します。bind 失敗等でアプリ本体を巻き込まないよう、panic せずログに留めます。
 func logListenError(logger logging.Logger, err error) {
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Named("metrics.ListenAndServe").Error("metrics server error", logging.Error("listen", err))
+		logger.Named("metrics.ListenAndServe").Error("metrics server error", logging.Error(logging.ErrorKey, err))
 	}
 }

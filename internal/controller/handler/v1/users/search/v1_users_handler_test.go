@@ -25,27 +25,40 @@ import (
 
 const targetPath = "/v1/users/search"
 
+func newServer(t *testing.T) (*server, *mock_query.MockUsecase) {
+	t.Helper()
+	mockApp := mock_query.NewMockUsecase(gomock.NewController(t))
+	return &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockApp}, mockApp
+}
+
+// wantSearchItem は、本番の変換とは独立な検証用オラクル（フィールド取り違え検出）。
+func wantSearchItem(r *query.UserSearchResult) gen.UsersSearchResponseItem {
+	return gen.UsersSearchResponseItem{
+		FirstName:    r.FirstName,
+		LastName:     r.LastName,
+		Email:        types.Email(r.Email),
+		Phone:        r.Phone,
+		PostalCode:   r.PostalCode,
+		Prefecture:   r.PrefectureName,
+		City:         r.City,
+		Street:       r.Street,
+		Building:     r.Building,
+		RegisteredAt: r.RegisteredAt,
+		DeletedAt:    r.DeletedAt,
+	}
+}
+
 func TestBindHandler(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	ctrl := gomock.NewController(t)
 	tf := observability.NewNoopTracerFactory(t)
-
-	mockApp := mock_query.NewMockUsecase(ctrl)
+	mockApp := mock_query.NewMockUsecase(gomock.NewController(t))
 
 	BindHandler(e, tf, mockApp)
 
-	expectedMethods := []string{
-		http.MethodGet,
-	}
-
-	testassert.AssertEchoRouterPath(
-		t, targetPath, e.Routes(),
-	)
-	testassert.AssertEchoRouterMethods(
-		t, expectedMethods, e.Routes(),
-	)
+	testassert.AssertEchoRouterPath(t, targetPath, e.Routes())
+	testassert.AssertEchoRouterMethods(t, []string{http.MethodGet}, e.Routes())
 }
 
 func Test_server_GetUsersSearch(t *testing.T) {
@@ -53,7 +66,6 @@ func Test_server_GetUsersSearch(t *testing.T) {
 
 	expectedPage := 1
 	expectedPerPage := 10
-	expectedTotal := int64(2)
 
 	t1 := time.Now().UTC()
 	t2 := t1.Add(time.Hour)
@@ -61,165 +73,82 @@ func Test_server_GetUsersSearch(t *testing.T) {
 	mockPaging, err := paging.NewPagingFrom1Based(ptr.To(expectedPage), ptr.To(expectedPerPage))
 	require.NoError(t, err)
 
+	// Keyword/Active を設定し、ハンドラの filter 詰め替えを検証可能にする。
 	mockParams := gen.GetUsersSearchRequestObject{
 		Params: gen.GetUsersSearchParams{
 			Page:    ptr.To(expectedPage),
 			PerPage: ptr.To(expectedPerPage),
+			Keyword: ptr.To("alice"),
+			Active:  ptr.To(true),
 		},
 	}
+	wantFilter := &usecase_search.SearchParams{Keyword: ptr.To("alice"), Active: ptr.To(true)}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("複数ユーザーが存在する場合、検索結果が返る", func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.Background()
-			ctrl := gomock.NewController(t)
-			lt := observability.NewMockControllerLayerTracer(t)
-
-			expectedResponse := gen.UsersSearchResponse{
-				Users: []gen.UsersSearchResponseItem{
-					{
-						FirstName:    "F1",
-						LastName:     "L1",
-						Email:        types.Email("u1@example.com"),
-						Phone:        "090-0000-0001",
-						PostalCode:   "123-0001",
-						Prefecture:   "Tokyo",
-						City:         "Shibuya",
-						Street:       "1-1-1",
-						Building:     ptr.To("B1"),
-						RegisteredAt: t1,
-						DeletedAt:    nil,
+		cases := []struct {
+			name  string
+			dtos  query.UserSearchResults
+			total int64
+		}{
+			{
+				name: "複数ユーザーが存在する場合、検索結果が返る",
+				dtos: query.UserSearchResults{
+					&query.UserSearchResult{
+						FirstName: "F1", LastName: "L1", Email: "u1@example.com", Phone: "090-0000-0001",
+						PostalCode: "123-0001", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1",
+						Building: ptr.To("B1"), RegisteredAt: t1,
 					},
-					{
-						FirstName:    "F2",
-						LastName:     "L2",
-						Email:        types.Email("u2@example.com"),
-						Phone:        "090-0000-0002",
-						PostalCode:   "123-0002",
-						Prefecture:   "Osaka",
-						City:         "Kita",
-						Street:       "2-2-2",
-						Building:     nil,
+					&query.UserSearchResult{
+						FirstName: "F2", LastName: "L2", Email: "u2@example.com", Phone: "090-0000-0002",
+						PostalCode: "123-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2-2",
 						RegisteredAt: t2,
-						DeletedAt:    nil,
 					},
 				},
-				Limit:  mockPaging.Limit(),
-				Offset: mockPaging.Offset(),
-				Total:  expectedTotal,
-			}
+				total: 2,
+			},
+			{
+				name:  "0件の場合、空の検索結果が返る",
+				dtos:  query.UserSearchResults{},
+				total: 0,
+			},
+		}
 
-			mockDTO := query.UserSearchResults{
-				&query.UserSearchResult{
-					FirstName:      "F1",
-					LastName:       "L1",
-					Email:          "u1@example.com",
-					Phone:          "090-0000-0001",
-					PostalCode:     "123-0001",
-					PrefectureName: "Tokyo",
-					City:           "Shibuya",
-					Street:         "1-1-1",
-					Building:       ptr.To("B1"),
-					RegisteredAt:   t1,
-					DeletedAt:      nil,
-				},
-				&query.UserSearchResult{
-					FirstName:      "F2",
-					LastName:       "L2",
-					Email:          "u2@example.com",
-					Phone:          "090-0000-0002",
-					PostalCode:     "123-0002",
-					PrefectureName: "Osaka",
-					City:           "Kita",
-					Street:         "2-2-2",
-					Building:       nil,
-					RegisteredAt:   t2,
-					DeletedAt:      nil,
-				},
-			}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 
-			mockApp := mock_query.NewMockUsecase(ctrl)
-			mockApp.EXPECT().ListUsersByKeyword(
-				gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging,
-			).Return(mockDTO, nil)
-			mockApp.EXPECT().CountUsersByKeyword(
-				gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}),
-			).Return(expectedTotal, nil)
+				wantUsers := make([]gen.UsersSearchResponseItem, len(tc.dtos))
+				for i, d := range tc.dtos {
+					wantUsers[i] = wantSearchItem(d)
+				}
+				expectedResponse := gen.UsersSearchResponse{
+					Users:  wantUsers,
+					Limit:  mockPaging.Limit(),
+					Offset: mockPaging.Offset(),
+					Total:  tc.total,
+				}
 
-			s := &server{tracer: lt, uc: mockApp}
-			resp, err := s.GetUsersSearch(ctx, mockParams)
-			require.NoError(t, err)
+				var gotFilter *usecase_search.SearchParams
+				s, mockApp := newServer(t)
+				mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
+					DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Paging) (query.UserSearchResults, error) {
+						gotFilter = f
+						return tc.dtos, nil
+					})
+				mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.Any()).Return(tc.total, nil)
 
-			actual, ok := resp.(gen.GetUsersSearch200JSONResponse)
-			assert.True(t, ok)
+				resp, err := s.GetUsersSearch(context.Background(), mockParams)
+				require.NoError(t, err)
 
-			assert.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
-		})
+				assert.Equal(t, wantFilter, gotFilter)
 
-		t.Run("単一ユーザーが存在する場合、検索結果が返る", func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.Background()
-			ctrl := gomock.NewController(t)
-			lt := observability.NewMockControllerLayerTracer(t)
-
-			expectedResponse := gen.UsersSearchResponse{
-				Users: []gen.UsersSearchResponseItem{
-					{
-						FirstName:    "F1",
-						LastName:     "L1",
-						Email:        types.Email("u1@example.com"),
-						Phone:        "090-0000-0001",
-						PostalCode:   "123-0001",
-						Prefecture:   "Tokyo",
-						City:         "Shibuya",
-						Street:       "1-1-1",
-						Building:     ptr.To("B1"),
-						RegisteredAt: t1,
-						DeletedAt:    nil,
-					},
-				},
-				Limit:  mockPaging.Limit(),
-				Offset: mockPaging.Offset(),
-				Total:  expectedTotal,
-			}
-
-			mockDTO := query.UserSearchResults{
-				&query.UserSearchResult{
-					FirstName:      "F1",
-					LastName:       "L1",
-					Email:          "u1@example.com",
-					Phone:          "090-0000-0001",
-					PostalCode:     "123-0001",
-					PrefectureName: "Tokyo",
-					City:           "Shibuya",
-					Street:         "1-1-1",
-					Building:       ptr.To("B1"),
-					RegisteredAt:   t1,
-					DeletedAt:      nil,
-				},
-			}
-
-			mockApp := mock_query.NewMockUsecase(ctrl)
-			mockApp.EXPECT().ListUsersByKeyword(
-				gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging,
-			).Return(mockDTO, nil)
-			mockApp.EXPECT().CountUsersByKeyword(
-				gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}),
-			).Return(expectedTotal, nil)
-
-			s := &server{tracer: lt, uc: mockApp}
-			resp, err := s.GetUsersSearch(ctx, mockParams)
-			require.NoError(t, err)
-
-			actual, ok := resp.(gen.GetUsersSearch200JSONResponse)
-			assert.True(t, ok)
-
-			assert.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
-		})
+				actual, ok := resp.(gen.GetUsersSearch200JSONResponse)
+				require.True(t, ok)
+				assert.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
+			})
+		}
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -228,74 +157,44 @@ func Test_server_GetUsersSearch(t *testing.T) {
 		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
-			ctrl := gomock.NewController(t)
-			lt := observability.NewMockControllerLayerTracer(t)
-
-			invalidPage := 1_000_000
 			invalidParams := gen.GetUsersSearchRequestObject{
 				Params: gen.GetUsersSearchParams{
-					Page:    ptr.To(invalidPage),
+					Page:    ptr.To(1_000_000), // paging.maxPage 超過
 					PerPage: ptr.To(expectedPerPage),
 				},
 			}
 
-			mockApp := mock_query.NewMockUsecase(ctrl)
-
-			s := &server{tracer: lt, uc: mockApp}
-			resp, err := s.GetUsersSearch(ctx, invalidParams)
+			s, _ := newServer(t)
+			resp, err := s.GetUsersSearch(context.Background(), invalidParams)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
-		t.Run("Usecaseがエラーを返す場合、エラーが返る", func(t *testing.T) {
-			t.Parallel()
+		errCases := []struct {
+			name     string
+			listErr  error
+			countErr error
+		}{
+			{name: "ListUsersByKeywordがエラーを返す場合", listErr: apperror.ErrInternal},
+			{name: "CountUsersByKeywordがエラーを返す場合", countErr: apperror.ErrInternal},
+		}
 
-			t.Run("ListUsersByKeywordがエラーを返す場合", func(t *testing.T) {
+		for _, tc := range errCases {
+			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				ctx := context.Background()
-				ctrl := gomock.NewController(t)
-				lt := observability.NewMockControllerLayerTracer(t)
-
-				expectedErr := apperror.ErrInternal
-
-				mockApp := mock_query.NewMockUsecase(ctrl)
-				mockApp.EXPECT().ListUsersByKeyword(
-					gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging,
-				).Return(nil, expectedErr)
-
-				s := &server{tracer: lt, uc: mockApp}
-				resp, err := s.GetUsersSearch(ctx, mockParams)
-				require.Nil(t, resp)
-				require.ErrorIs(t, err, expectedErr)
-			})
-
-			t.Run("CountUsersByKeywordがエラーを返す場合", func(t *testing.T) {
-				t.Parallel()
-
-				ctx := context.Background()
-				ctrl := gomock.NewController(t)
-				lt := observability.NewMockControllerLayerTracer(t)
-
-				expectedErr := apperror.ErrInternal
-
-				mockDTO := query.UserSearchResults{
-					&query.UserSearchResult{FirstName: "F1"},
+				s, mockApp := newServer(t)
+				mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
+					Return(query.UserSearchResults{}, tc.listErr)
+				if tc.listErr == nil {
+					mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.Any()).
+						Return(int64(0), tc.countErr)
 				}
-				mockApp := mock_query.NewMockUsecase(ctrl)
-				mockApp.EXPECT().ListUsersByKeyword(
-					gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}), mockPaging,
-				).Return(mockDTO, nil)
-				mockApp.EXPECT().CountUsersByKeyword(
-					gomock.Any(), gomock.AssignableToTypeOf(&usecase_search.SearchParams{}),
-				).Return(int64(0), expectedErr)
 
-				s := &server{tracer: lt, uc: mockApp}
-				resp, err := s.GetUsersSearch(ctx, mockParams)
+				resp, err := s.GetUsersSearch(context.Background(), mockParams)
 				require.Nil(t, resp)
-				require.ErrorIs(t, err, expectedErr)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
-		})
+		}
 	})
 }

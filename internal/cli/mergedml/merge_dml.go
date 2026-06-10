@@ -140,7 +140,7 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 	categories, err := gen.fs.ListSubDirNames(gen.dmlTypeRootAbs(targetType))
 	if err != nil {
 		logger.CallerSkip(gen.callerSkipCount).Named("mergedml.listDirs").Error("failed to list directories",
-			logging.Error("os.ReadDir", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
@@ -154,7 +154,7 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 		if err := gen.cleanupStaleGeneratedFiles(nil, targetType); err != nil {
 			logger.CallerSkip(gen.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Error(
 				"failed to cleanup stale generated sql files",
-				logging.Error("cleanup", err),
+				logging.Error(logging.ErrorKey, err),
 			)
 			return err
 		}
@@ -178,7 +178,7 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 
 	if err := eg.Wait(); err != nil {
 		gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.buildMergedQueries").Error("failed to build merged sql files",
-			logging.Error("errgroup.Wait", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
@@ -186,7 +186,7 @@ func RunMerge(ctx context.Context, gen *Generator, targetType string) error {
 	if err := gen.cleanupStaleGeneratedFiles(categories, targetType); err != nil {
 		gen.logger.CallerSkip(gen.callerSkipCount).Named("mergedml.cleanupStaleGeneratedFiles").Error(
 			"failed to cleanup stale generated sql files",
-			logging.Error("cleanup", err),
+			logging.Error(logging.ErrorKey, err),
 		)
 		return err
 	}
