@@ -22,7 +22,7 @@ func TestReady_Integration(t *testing.T) {
 		tf := observability.NewNoopTracerFactory(t)
 
 		mockApp := mock_healthcheck.NewMockUsecase(ctrl)
-		mockApp.EXPECT().CheckHealth(gomock.Any()).Return(healthcheck.DTO{}, nil)
+		mockApp.EXPECT().CheckHealth(gomock.Any()).Return(&healthcheck.DTO{}, nil)
 
 		ready.BindHandler(e, tf, mockApp)
 		actual := StartServer(t, e).DoJSON(http.MethodGet, "/ready", nil, nil)
