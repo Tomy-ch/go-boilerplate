@@ -7,23 +7,23 @@ inputs:
     required: false
     default: "18"
   host:
-    required: false
     description: Postgres host address
+    required: false
     default: localhost
   port:
-    required: false
     description: Postgres port
+    required: false
     default: "5432"
   user:
-    required: false
     description: Postgres user
+    required: false
     default: postgres
   db:
-    required: true
     description: Postgres database name
-  password:
     required: true
+  password:
     description: Postgres password
+    required: true
   init_sql:
     required: false
     description: Path to SQL file to initialize the database
@@ -66,16 +66,11 @@ runs:
         sudo apt-get install -y "postgresql-client-${PG_VERSION}"
         echo "/usr/lib/postgresql/${PG_VERSION}/bin" >> "$GITHUB_PATH"
 
-    - name: Postgres Client Version
+    - name: Print client versions
       if: ${{ inputs.install_psql == 'true' }}
       shell: bash
       run: |
         psql --version
-
-    - name: PG_DUMP Version
-      if: ${{ inputs.install_psql == 'true' }}
-      shell: bash
-      run: |
         pg_dump --version
 
     - name: Wait for database
@@ -97,7 +92,7 @@ runs:
             echo "Postgres is ready."
             exit 0
           fi
-          sleep "${SLEEP_SECONDS}"
+          [ "$i" -lt "${MAX_ATTEMPTS}" ] && sleep "${SLEEP_SECONDS}"
         done
         echo "Postgres did not become ready in time."
         exit 1
