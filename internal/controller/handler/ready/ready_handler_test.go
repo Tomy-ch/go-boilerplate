@@ -60,7 +60,7 @@ func TestGetReady(t *testing.T) {
 
 		uc := mock_healthcheckuc.NewMockUsecase(ctrl)
 		uc.EXPECT().CheckHealth(gomock.Any()).Return(
-			healthcheckuc.DTO{
+			&healthcheckuc.DTO{
 				Status:          healthcheckuc.Ok,
 				ApplicationTime: appTime,
 				DBHealthCheck: query.DBHealth{
@@ -98,7 +98,7 @@ func TestGetReady(t *testing.T) {
 
 		uc := mock_healthcheckuc.NewMockUsecase(ctrl)
 		uc.EXPECT().CheckHealth(gomock.Any()).Return(
-			healthcheckuc.DTO{},
+			nil,
 			expectedErr,
 		)
 		s := &server{

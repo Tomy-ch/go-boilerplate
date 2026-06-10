@@ -96,7 +96,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 
 			actualResult, actualErr := u.CheckHealth(ctx)
 			assert.Equal(t, expectedErr, actualErr)
-			assert.Equal(t, DTO{}, actualResult)
+			assert.Nil(t, actualResult)
 		})
 	})
 }
