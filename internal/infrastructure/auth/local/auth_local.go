@@ -19,8 +19,6 @@ var ErrLocalMockAuthenticatorInvalidToken = xerrors.Wrap(apperror.ErrUnauthentic
 // authenticator は local 開発用の Authenticator です。
 // - verify はしません（ローカル専用）。
 // - token の文字列から Subject を決め、Authn を返します。
-//
-// provider/prefix は固定値（ProviderMock / localPrefix）のため可変設定は持たない。
 type authenticator struct{}
 
 // New は local 用 Authenticator のコンストラクタです。
@@ -29,7 +27,7 @@ func New() authbd.Authenticator {
 }
 
 // Authenticate は与えられた認証情報を基に認証を行い、認証結果を返します。
-// cred は非 nil 前提だが、公開境界の実装として nil でも panic させず無効トークン扱いにする。
+// cred が nil の場合は無効トークンとして扱います。
 func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential) (*authbd.Authn, error) {
 	if cred == nil {
 		return nil, ErrLocalMockAuthenticatorInvalidToken

@@ -7,7 +7,7 @@ import (
 	"go-boilerplate/internal/config"
 )
 
-// buildDSN は、sslmode と追加クエリパラメータを一度の Encode で確定して接続URLを組み立てます。
+// buildDSN は、sslmode と追加クエリパラメータから接続URLを組み立てます。
 func buildDSN(dbCfg *config.DatabaseConfig, extra url.Values) *url.URL {
 	q := url.Values{}
 	q.Set("sslmode", dbCfg.SSLMode())

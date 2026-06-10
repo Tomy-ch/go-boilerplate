@@ -23,7 +23,7 @@ type DatabaseDriver interface {
 	Stats() *pgxpool.Stat
 }
 
-// dbDriver は pgxpool.Pool への薄いアダプタで、モック差込みや loggingdb ラッパのシームになります。
+// dbDriver は pgxpool.Pool への薄いアダプタです。
 type dbDriver struct{ pool *pgxpool.Pool }
 
 // NewDB は Postgres のDB接続を初期化して返します。
@@ -77,7 +77,7 @@ func (d *dbDriver) Ping(ctx context.Context) error {
 	return d.pool.Ping(ctx)
 }
 
-// Close は pool を閉じます。常に nil を返すのは fx OnStop / seed のシグネチャ適合のための意図的な設計です。
+// Close は pool を閉じます。
 func (d *dbDriver) Close() error {
 	d.pool.Close()
 	return nil

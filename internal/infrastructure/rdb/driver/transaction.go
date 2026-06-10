@@ -38,7 +38,6 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 
 	tx, err := t.db.Begin(ctx)
 	if err != nil {
-		// Commit と同様、txManager 自身が発行する DB 操作のエラーはアプリエラー語彙へ正規化する。
 		return pgerror.NormalizeError(err)
 	}
 	defer func(ctx context.Context) {
@@ -62,8 +61,7 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	return nil
 }
 
-// rollback はロールバックし、失敗時に fields を併記してログを残す。
-// 呼び出し元 ctx がキャンセル済みでも後始末を完了させるため WithoutCancel で切り離す。
+// rollback はロールバックし、失敗時に fields を併記してログを残します。
 func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.Field) {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 	defer cancel()

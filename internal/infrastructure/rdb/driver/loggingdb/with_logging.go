@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	// callSkip は呼び出し元 repository 層を caller に記録するための段数（ヘルパ→メソッド→sqlc gen→repository）。
+	// callSkip は caller に記録する呼び出し元（repository 層）までの段数。
 	callSkip = 4
 	layer    = "infrastructure"
 	pkg      = "driver"
@@ -83,7 +83,6 @@ func (dwl *dbWithLogging) QueryRow(ctx context.Context, query string, args ...an
 	row := dwl.db.QueryRow(ctx, query, args...)
 	duration := time.Since(start)
 
-	// pgx の QueryRow はエラーを Scan 時まで遅延するため本層では捕捉できず、Error ログは出ない（slow-query の Warn のみ）。
 	fields := dwl.buildSQLEndLogFields(tc, queryRowFunc, spanName, query, duration, args, nil)
 	dwl.logQueryResult(sqlQuerySingle, duration, fields, nil)
 	return row
@@ -94,7 +93,7 @@ func (dwl *dbWithLogging) logger() logging.Logger {
 	return dwl.provider.l.Named(layer).CallerSkip(callSkip)
 }
 
-// logQueryStart は終了側 logQueryResult とフレーム段数を揃えるためのヘルパ（callSkip の対称化）。
+// logQueryStart は、SQLクエリの開始ログを出力します。
 func (dwl *dbWithLogging) logQueryStart(tc *observability.TraceContext, funcName, spanName, msg string) {
 	fields := dwl.buildSQLStartLogFields(tc, funcName, spanName)
 	dwl.logger().Info(msg, fields...)

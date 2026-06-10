@@ -47,8 +47,7 @@ func Test_dbWithLogging_Exec(t *testing.T) {
 	assert.Equal(t, pgconn.CommandTag{}, res)
 }
 
-// Test_dbWithLogging_callerSkip は、開始ログと終了ログが同一の呼び出し元（repository 層相当）を
-// caller に記録することを検証する回帰テスト（フレーム段差で終了ログがずれる退行を捕捉する）。
+// Test_dbWithLogging_callerSkip は、開始ログと終了ログが同一の呼び出し元を caller に記録することを検証します。
 func Test_dbWithLogging_callerSkip(t *testing.T) {
 	t.Parallel()
 
@@ -69,7 +68,7 @@ func Test_dbWithLogging_callerSkip(t *testing.T) {
 		provider: &provider{l: lg, lf: lf, dbCfg: dbCfg, obsCfg: obsCfg, tracer: noopLayerTracer},
 	}
 
-	// repository → sqlc gen → Exec の呼び出し段数を再現する（callSkip は repository 層を指す前提で校正）。
+	// repository → sqlc gen → Exec の呼び出し段数を再現する。
 	sqlcGen := func() {
 		_, err := dwl.Exec(context.Background(), "INSERT INTO users (name) VALUES ($1)", "alice")
 		require.NoError(t, err)
