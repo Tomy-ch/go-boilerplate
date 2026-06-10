@@ -19,11 +19,11 @@ define do-generate-from-branch
 		git status --short; \
 		exit 1; \
 	fi; \
-	git fetch origin $$BASE_BRANCH; \
-	git checkout -b $$BRANCH_NAME origin/$$BASE_BRANCH; \
-	git push origin $$BRANCH_NAME; \
-	echo "⚙️ GitHub上のデフォルトブランチを $$BRANCH_NAME に設定します。"; \
-	gh repo edit --default-branch $$BRANCH_NAME; \
+	git fetch origin $$BASE_BRANCH && \
+	git checkout -b $$BRANCH_NAME origin/$$BASE_BRANCH && \
+	git push origin $$BRANCH_NAME && \
+	echo "⚙️ GitHub上のデフォルトブランチを $$BRANCH_NAME に設定します。" && \
+	gh repo edit --default-branch $$BRANCH_NAME && \
 	echo "✅ デフォルトブランチを $$BRANCH_NAME に切り替えて、プッシュしました。"
 endef
 
