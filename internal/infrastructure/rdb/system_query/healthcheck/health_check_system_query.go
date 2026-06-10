@@ -42,7 +42,7 @@ func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)
 
 	return query.DBHealth{
 		Ready:       true,
-		ResponsedAt: respondedAt,
+		RespondedAt: respondedAt,
 		Latency:     respondedAt.Sub(start),
 	}, nil
 }

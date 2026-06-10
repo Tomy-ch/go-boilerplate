@@ -30,13 +30,22 @@ func TestNewCredential(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("accessToken が空文字の場合、ErrArgumentTokenMissing エラーになる", func(t *testing.T) {
+		t.Run("accessToken が空文字の場合、ErrTokenMissing エラーになる", func(t *testing.T) {
 			t.Parallel()
 
 			cred, err := NewCredential("")
 
 			require.Nil(t, cred)
-			require.ErrorIs(t, err, ErrArgumentTokenMissing)
+			require.ErrorIs(t, err, ErrTokenMissing)
+		})
+
+		t.Run("accessToken が空白のみの場合、ErrTokenMissing エラーになる", func(t *testing.T) {
+			t.Parallel()
+
+			cred, err := NewCredential("   ")
+
+			require.Nil(t, cred)
+			require.ErrorIs(t, err, ErrTokenMissing)
 		})
 	})
 }

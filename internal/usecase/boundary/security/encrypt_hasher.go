@@ -1,10 +1,10 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
-// Package security は、セキュリティ関連のドメインを提供します。
+// Package security は、ユースケースが必要とするパスワードのハッシュ化・比較機能のインターフェース（境界）を提供します。
 package security
 
-// Encrypter は、パスワードをハッシュ化および比較するためのインターフェースです。
-type Encrypter interface {
+// Hasher は、パスワードをハッシュ化および比較するためのインターフェースです。
+type Hasher interface {
 	// Hash は、パスワードをハッシュ化します。ハッシュ化に失敗した場合はエラーを返します。
 	Hash(password string) (string, error)
 	// Compare は、ハッシュとパスワードを比較します。比較に失敗した場合はエラーを返します。

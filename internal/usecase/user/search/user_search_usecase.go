@@ -6,10 +6,12 @@ package search
 import (
 	"context"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/tools/search"
 	"go-boilerplate/internal/usecase/user/search/query"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // SearchParams は、ユーザー検索のパラメータを表します。
@@ -18,10 +20,10 @@ type SearchParams struct {
 	Active  *bool
 }
 
-// usecase は、ユーザー検索を提供するクエリサービスを提供します。
+// usecase は、Usecase インターフェースの実装です。
 type usecase struct {
 	tracer observability.LayerTracer
-	userQS query.UserQueryService
+	userQS query.UserSearchQueryService
 }
 
 // Usecase は、ユーザーに関するユースケースを定義します。
@@ -35,7 +37,7 @@ type Usecase interface {
 // New は、ユーザーに関するユースケースを初期化します。
 func New(
 	tf observability.TracerFactory,
-	userQueryService query.UserQueryService,
+	userQueryService query.UserSearchQueryService,
 ) Usecase {
 	return &usecase{
 		tracer: tf.Usecase(),
@@ -45,26 +47,32 @@ func New(
 
 // ListUsersByKeyword は、ユーザー一覧を取得するユースケースです。
 func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error) {
+	if filter == nil || page == nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "filter and page must not be nil")
+	}
+
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	keywords := search.ParseSearchTokens(filter.Keyword, search.DefaultMaxTokens)
-	searchFilter := &query.UserSearchFilter{
-		Active:   filter.Active,
-		Keywords: keywords,
-	}
-	return u.userQS.FindByFilter(ctx, searchFilter, page.Limit32(), page.Offset32())
+	return u.userQS.FindByFilter(ctx, u.toFilter(filter), page.Limit32(), page.Offset32())
 }
 
 // CountUsersByKeyword は、キーワードに基づいてユーザーの総件数を返すユースケースです。
 func (u *usecase) CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error) {
+	if filter == nil {
+		return 0, xerrors.Wrap(apperror.ErrInvalidArgument, "filter must not be nil")
+	}
+
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	keywords := search.ParseSearchTokens(filter.Keyword, search.DefaultMaxTokens)
-	searchFilter := &query.UserSearchFilter{
-		Active:   filter.Active,
-		Keywords: keywords,
+	return u.userQS.CountByFilter(ctx, u.toFilter(filter))
+}
+
+// toFilter は、SearchParams から検索フィルタを構築します。
+func (u *usecase) toFilter(p *SearchParams) *query.UserSearchFilter {
+	return &query.UserSearchFilter{
+		Active:   p.Active,
+		Keywords: search.ParseSearchTokens(p.Keyword, search.DefaultMaxTokens),
 	}
-	return u.userQS.CountByFilter(ctx, searchFilter)
 }

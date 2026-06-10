@@ -26,7 +26,7 @@ import (
 const targetPath = "/v1/users"
 
 // wantUserResponse は、本番 toUserResponse とは独立な検証用オラクル（フィールド取り違え検出）。
-func wantUserResponse(dto user.MutableFields) gen.UserResponse {
+func wantUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
@@ -71,11 +71,11 @@ func Test_server_GetUsers(t *testing.T) {
 	expectedPage := 1
 	expectedPerPage := 10
 
-	expectedDTO1 := user.MutableFields{
+	expectedDTO1 := user.UserView{
 		FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890",
 		PostalCode: "100-0001", PrefectureName: "Tokyo", City: "Chiyoda", Street: "1-1", Building: ptr.To("B1"),
 	}
-	expectedDTO2 := user.MutableFields{
+	expectedDTO2 := user.UserView{
 		FirstName: "User2", LastName: "Two", Email: "user2@example.com", Phone: "0987654321",
 		PostalCode: "200-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2", Building: ptr.To("B2"),
 	}
@@ -93,7 +93,7 @@ func Test_server_GetUsers(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		exec := func(t *testing.T, dtos []user.MutableFields, total int64) {
+		exec := func(t *testing.T, dtos []user.UserView, total int64) {
 			t.Helper()
 			ctx := context.Background()
 			ctrl := gomock.NewController(t)
@@ -130,12 +130,12 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("複数のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			exec(t, []user.MutableFields{expectedDTO1, expectedDTO2}, 2)
+			exec(t, []user.UserView{expectedDTO1, expectedDTO2}, 2)
 		})
 
 		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
 			t.Parallel()
-			exec(t, []user.MutableFields{expectedDTO1}, 1)
+			exec(t, []user.UserView{expectedDTO1}, 1)
 		})
 	})
 
@@ -196,7 +196,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 				expectedError := apperror.ErrInternal
 
-				mockDTO := []user.MutableFields{expectedDTO1, expectedDTO2}
+				mockDTO := []user.UserView{expectedDTO1, expectedDTO2}
 				mockApp := mock_user.NewMockUsecase(ctrl)
 				mockApp.EXPECT().
 					ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
@@ -243,7 +243,18 @@ func Test_server_PostUsers(t *testing.T) {
 			},
 		}
 
-		expectedDTO := user.MutableFields{
+		wantParams := user.UpdateProfileParams{
+			FirstName:      req.Body.FirstName,
+			LastName:       req.Body.LastName,
+			Email:          string(req.Body.Email),
+			Phone:          req.Body.Phone,
+			PostalCode:     req.Body.PostalCode,
+			PrefectureName: req.Body.Prefecture,
+			City:           req.Body.City,
+			Street:         req.Body.Street,
+			Building:       req.Body.Building,
+		}
+		wantView := user.UserView{
 			FirstName:      req.Body.FirstName,
 			LastName:       req.Body.LastName,
 			Email:          string(req.Body.Email),
@@ -259,9 +270,9 @@ func Test_server_PostUsers(t *testing.T) {
 		var gotParams *user.CreateParamsDTO
 		mockApp := mock_user.NewMockUsecase(ctrl)
 		mockApp.EXPECT().CreateUser(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, p *user.CreateParamsDTO) (user.MutableFields, error) {
+			DoAndReturn(func(_ context.Context, p *user.CreateParamsDTO) (user.UserView, error) {
 				gotParams = p
-				return expectedDTO, nil
+				return wantView, nil
 			})
 
 		s := &server{tracer: lt, uc: mockApp}
@@ -269,16 +280,16 @@ func Test_server_PostUsers(t *testing.T) {
 		require.NoError(t, err)
 
 		expectedParams := &user.CreateParamsDTO{
-			UserID:        userID,
-			RawPassword:   req.Body.Password,
-			MutableFields: expectedDTO,
+			UserID:              userID,
+			RawPassword:         req.Body.Password,
+			UpdateProfileParams: wantParams,
 		}
 		assert.Equal(t, expectedParams, gotParams)
 
 		actual, ok := resp.(gen.PostUsers201JSONResponse)
 		require.True(t, ok)
 
-		assert.Equal(t, wantUserResponse(expectedDTO), gen.UserResponse(actual))
+		assert.Equal(t, wantUserResponse(wantView), gen.UserResponse(actual))
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -353,7 +364,7 @@ func Test_server_PostUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			expectedErr := apperror.ErrInternal
-			mockApp.EXPECT().CreateUser(gomock.Any(), gomock.AssignableToTypeOf(&user.CreateParamsDTO{})).Return(user.MutableFields{}, expectedErr)
+			mockApp.EXPECT().CreateUser(gomock.Any(), gomock.AssignableToTypeOf(&user.CreateParamsDTO{})).Return(user.UserView{}, expectedErr)
 
 			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.PostUsers(ctx, req)

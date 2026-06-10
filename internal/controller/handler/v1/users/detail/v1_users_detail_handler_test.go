@@ -31,7 +31,7 @@ func newServer(t *testing.T) (*server, *mock_user.MockUsecase) {
 }
 
 // wantUserResponse は、本番 toUserResponse とは独立な検証用オラクル（フィールド取り違え検出）。
-func wantUserResponse(dto user.MutableFields) gen.UserResponse {
+func wantUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
@@ -77,7 +77,7 @@ func TestBindHandler(t *testing.T) {
 func Test_server_GetUsersDetail(t *testing.T) {
 	t.Parallel()
 
-	dto := user.MutableFields{
+	dto := user.UserView{
 		FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890",
 		PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3", Building: ptr.To("B1"),
 	}
@@ -105,7 +105,7 @@ func Test_server_GetUsersDetail(t *testing.T) {
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user.MutableFields{}, apperror.ErrNotFound)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user.UserView{}, apperror.ErrNotFound)
 
 			resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 			require.Nil(t, resp)
@@ -128,15 +128,15 @@ func Test_server_PutUsersDetail(t *testing.T) {
 
 		t.Run("全更新が成功する場合_リクエストがDTOへ詰め替えられ更新後のユーザーが返る", func(t *testing.T) {
 			t.Parallel()
-			returned := user.MutableFields{
+			returned := user.UserView{
 				FirstName: "First", LastName: "Last", Email: "put@example.com", Phone: "09000000000",
 				PostalCode: "123-4567", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
 			}
 
-			var got *user.MutableFields
+			var got *user.UpdateProfileParams
 			s, mockApp := newServer(t)
 			mockApp.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.MutableFields) (user.MutableFields, error) {
+				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.UpdateProfileParams) (user.UserView, error) {
 					got = p
 					return returned, nil
 				})
@@ -144,7 +144,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 			resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 			require.NoError(t, err)
 
-			wantDTO := &user.MutableFields{
+			wantDTO := &user.UpdateProfileParams{
 				FirstName: body.FirstName, LastName: body.LastName, Email: string(body.Email), Phone: body.Phone,
 				PostalCode: body.PostalCode, PrefectureName: body.Prefecture, City: body.City, Street: body.Street, Building: body.Building,
 			}
@@ -163,8 +163,8 @@ func Test_server_PutUsersDetail(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
 			mockApp.EXPECT().
-				UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
-				Return(user.MutableFields{}, apperror.ErrInternal)
+				UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
+				Return(user.UserView{}, apperror.ErrInternal)
 
 			resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 			require.Nil(t, resp)
@@ -186,12 +186,12 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 
 		t.Run("部分更新が成功する場合_リクエストがDTOへ詰め替えられ更新後のユーザーが返る", func(t *testing.T) {
 			t.Parallel()
-			returned := user.MutableFields{FirstName: "Patched", Email: "patch@example.com"}
+			returned := user.UserView{FirstName: "Patched", Email: "patch@example.com"}
 
 			var got *user.PatchParamsDTO
 			s, mockApp := newServer(t)
 			mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.MutableFields, error) {
+				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.UserView, error) {
 					got = p
 					return returned, nil
 				})
@@ -217,9 +217,9 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 			var got *user.PatchParamsDTO
 			s, mockApp := newServer(t)
 			mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.MutableFields, error) {
+				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.UserView, error) {
 					got = p
-					return user.MutableFields{FirstName: "OnlyName"}, nil
+					return user.UserView{FirstName: "OnlyName"}, nil
 				})
 
 			resp, err := s.PatchUsersDetail(
@@ -244,7 +244,7 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 			s, mockApp := newServer(t)
 			mockApp.EXPECT().
 				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
-				Return(user.MutableFields{}, apperror.ErrInternal)
+				Return(user.UserView{}, apperror.ErrInternal)
 
 			resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
 			require.Nil(t, resp)

@@ -13,8 +13,7 @@ import (
 )
 
 // ExpectedDBError は、データベースエラーを表すテスト用のエラーを生成します。
-func ExpectedDBError(t *testing.T) error {
-	t.Helper()
+func ExpectedDBError() error {
 	return xerrors.New("database error")
 }
 

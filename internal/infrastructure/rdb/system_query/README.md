@@ -40,14 +40,14 @@ func New(provider loggingdb.DBProvider, tf observability.TracerFactory) query.DB
 
 |Method|Description|
 |---|---|
-|`CheckDBHealth(ctx)`|Execute `SELECT 1` against DB, return `DBHealth` (Ready / ResponsedAt / Latency)|
+|`CheckDBHealth(ctx)`|Execute `SELECT 1` against DB, return `DBHealth` (Ready / RespondedAt / Latency)|
 
 Return type:
 
 ```go
 type DBHealth struct {
     Ready       bool
-    ResponsedAt time.Time
+    RespondedAt time.Time
     Latency     time.Duration
 }
 ```

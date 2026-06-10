@@ -22,7 +22,7 @@ import (
 func TestV1Users_Integration(t *testing.T) {
 	t.Parallel()
 
-	expectedDTO := user.MutableFields{FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890"}
+	expectedDTO := user.UserView{FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890"}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -40,7 +40,7 @@ func TestV1Users_Integration(t *testing.T) {
 				Return(int64(1), nil)
 			mockApp.EXPECT().
 				ListUsers(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return([]user.MutableFields{expectedDTO}, nil)
+				Return([]user.UserView{expectedDTO}, nil)
 
 			v1users.BindHandler(e, tf, mockApp)
 
@@ -69,7 +69,7 @@ func TestV1Users_Integration(t *testing.T) {
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
 				CreateUser(gomock.Any(), gomock.Any()).
-				Return(user.MutableFields{Email: "new@example.com"}, nil)
+				Return(user.UserView{Email: "new@example.com"}, nil)
 
 			v1users.BindHandler(e, tf, mockApp)
 

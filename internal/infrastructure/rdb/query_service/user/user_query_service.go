@@ -20,7 +20,7 @@ type service struct {
 func New(
 	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
-) query.UserQueryService {
+) query.UserSearchQueryService {
 	return &service{
 		db:     db,
 		tracer: tf.Infra(),

@@ -73,10 +73,10 @@ func (mr *MockUsecaseMockRecorder) CountUsers(ctx, active any) *gomock.Call {
 }
 
 // CreateUser mocks base method.
-func (m *MockUsecase) CreateUser(ctx context.Context, dto *user.CreateParamsDTO) (user.MutableFields, error) {
+func (m *MockUsecase) CreateUser(ctx context.Context, dto *user.CreateParamsDTO) (user.UserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUser", ctx, dto)
-	ret0, _ := ret[0].(user.MutableFields)
+	ret0, _ := ret[0].(user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -102,10 +102,10 @@ func (mr *MockUsecaseMockRecorder) DeleteUser(ctx, id any) *gomock.Call {
 }
 
 // GetUser mocks base method.
-func (m *MockUsecase) GetUser(ctx context.Context, id uuid.UUID) (user.MutableFields, error) {
+func (m *MockUsecase) GetUser(ctx context.Context, id uuid.UUID) (user.UserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUser", ctx, id)
-	ret0, _ := ret[0].(user.MutableFields)
+	ret0, _ := ret[0].(user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -117,10 +117,10 @@ func (mr *MockUsecaseMockRecorder) GetUser(ctx, id any) *gomock.Call {
 }
 
 // ListUsers mocks base method.
-func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]user.MutableFields, error) {
+func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]user.UserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsers", ctx, active, page)
-	ret0, _ := ret[0].([]user.MutableFields)
+	ret0, _ := ret[0].([]user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -132,10 +132,10 @@ func (mr *MockUsecaseMockRecorder) ListUsers(ctx, active, page any) *gomock.Call
 }
 
 // UpdateUser mocks base method.
-func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.MutableFields) (user.MutableFields, error) {
+func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.UpdateProfileParams) (user.UserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateUser", ctx, id, dto)
-	ret0, _ := ret[0].(user.MutableFields)
+	ret0, _ := ret[0].(user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -147,10 +147,10 @@ func (mr *MockUsecaseMockRecorder) UpdateUser(ctx, id, dto any) *gomock.Call {
 }
 
 // UpdateUserPartially mocks base method.
-func (m *MockUsecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *user.PatchParamsDTO) (user.MutableFields, error) {
+func (m *MockUsecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *user.PatchParamsDTO) (user.UserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateUserPartially", ctx, id, dto)
-	ret0, _ := ret[0].(user.MutableFields)
+	ret0, _ := ret[0].(user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

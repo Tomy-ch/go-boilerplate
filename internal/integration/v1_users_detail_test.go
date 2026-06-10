@@ -32,7 +32,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			expectedDTO := user.MutableFields{
+			expectedDTO := user.UserView{
 				FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "09000000000",
 				PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3",
 			}
@@ -65,8 +65,8 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
-				Return(user.MutableFields{FirstName: "First", Email: "put@example.com"}, nil)
+				UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
+				Return(user.UserView{FirstName: "First", Email: "put@example.com"}, nil)
 
 			detail.BindHandler(e, tf, mockApp)
 
@@ -91,7 +91,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
 				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
-				Return(user.MutableFields{FirstName: "Patched", Email: "patch@example.com"}, nil)
+				Return(user.UserView{FirstName: "Patched", Email: "patch@example.com"}, nil)
 
 			detail.BindHandler(e, tf, mockApp)
 

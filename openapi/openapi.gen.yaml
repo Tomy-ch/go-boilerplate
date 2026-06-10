@@ -730,7 +730,7 @@ components:
       required:
         - status
         - applicationTime
-        - dbResponsedAt
+        - dbRespondedAt
         - dbLatencyMs
       properties:
         status:
@@ -746,7 +746,7 @@ components:
           format: date-time
           description: アプリケーションサーバーの現在時刻
           example: '2024-06-01T12:00:01Z'
-        dbResponsedAt:
+        dbRespondedAt:
           type: string
           format: date-time
           description: データベースが最後に正常に応答した日時

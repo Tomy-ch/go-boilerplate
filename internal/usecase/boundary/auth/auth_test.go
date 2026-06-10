@@ -68,7 +68,7 @@ func TestNew(t *testing.T) {
 
 			authn, err := New(subject, provider, scopes, claims)
 			require.Nil(t, authn)
-			require.ErrorIs(t, err, ErrUnauthorizedSubjectMissing)
+			require.ErrorIs(t, err, ErrUnauthenticatedSubjectMissing)
 		})
 	})
 }
@@ -133,7 +133,7 @@ func TestAuthn_ID(t *testing.T) {
 		require.NoError(t, err)
 
 		id, err := authn.ID()
-		require.ErrorIs(t, err, ErrInvalidIDMissing)
+		require.ErrorIs(t, err, ErrSubjectNotUUID)
 		assert.Equal(t, uuid.UUID{}, id)
 	})
 }
@@ -162,6 +162,19 @@ func TestAuthn_Scopes(t *testing.T) {
 
 		assert.Equal(t, scopes, authn.Scopes())
 	})
+
+	t.Run("元のscopesや戻り値を変更しても内部状態は不変", func(t *testing.T) {
+		t.Parallel()
+		scopes := []string{"scope1", "scope2"}
+		authn, err := New("test-subject", ProviderMock, scopes, map[string]any{})
+		require.NoError(t, err)
+
+		scopes[0] = "mutated"
+		got := authn.Scopes()
+		got[0] = "mutated-too"
+
+		assert.Equal(t, []string{"scope1", "scope2"}, authn.Scopes())
+	})
 }
 
 func TestAuthn_Claims(t *testing.T) {
@@ -174,5 +187,18 @@ func TestAuthn_Claims(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, claims, authn.Claims())
+	})
+
+	t.Run("元のclaimsや戻り値を変更しても内部状態は不変", func(t *testing.T) {
+		t.Parallel()
+		claims := map[string]any{"role": "user"}
+		authn, err := New("test-subject", ProviderMock, []string{}, claims)
+		require.NoError(t, err)
+
+		claims["role"] = "admin"
+		got := authn.Claims()
+		got["role"] = "root"
+
+		assert.Equal(t, map[string]any{"role": "user"}, authn.Claims())
 	})
 }
