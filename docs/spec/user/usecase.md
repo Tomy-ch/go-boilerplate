@@ -6,9 +6,9 @@
 
 ## Overview
 
-ユーザーユースケースは、ユーザー一覧取得・作成・件数取得を提供するアプリケーションサービス。ドメインの `user.Repository` と `prefecture.Repository` をオーケストレーションし、ドメインエンティティを外側に晒さず DTO（`MutableFields`）へ変換して返す。
+ユーザーユースケースは、ユーザー一覧取得・作成・件数取得を提供するアプリケーションサービス。ドメインの `user.Repository` と `prefecture.Repository` をオーケストレーションし、ドメインエンティティを外側に晒さず DTO（出力 `UserView` / 更新入力 `UpdateProfileParams`）へ変換して返す。
 
-都道府県は ID 参照のみを保持する設計のため、一覧・作成ともに `prefecture.Repository` から都道府県名を解決して DTO に詰める。作成時はトランザクション境界内で都道府県解決・エンティティ生成・永続化を行う。パスワードは `RawPassword` で検証後、`security.Encrypter` でハッシュ化してからエンティティに渡す。
+都道府県は ID 参照のみを保持する設計のため、一覧・作成ともに `prefecture.Repository` から都道府県名を解決して DTO に詰める。作成時はトランザクション境界内で都道府県解決・エンティティ生成・永続化を行う。パスワードは `RawPassword` で検証後、`security.Hasher` でハッシュ化してからエンティティに渡す。
 
 ## Interface
 
@@ -17,18 +17,18 @@ package: internal/usecase/user
 name: Usecase
 methods:
   - name: ListUsers
-    signature: ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]MutableFields, error)
+    signature: ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error)
   - name: CreateUser
-    signature: CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+    signature: CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
   - name: CountUsers
     signature: CountUsers(ctx context.Context, active *bool) (int64, error)
   # 詳細系エンドポイント向け（追記分）
   - name: GetUser
-    signature: GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error)
+    signature: GetUser(ctx context.Context, id uuid.UUID) (UserView, error)
   - name: UpdateUser
-    signature: UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFields) (MutableFields, error)
+    signature: UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
   - name: UpdateUserPartially
-    signature: UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error)
+    signature: UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
   - name: ChangePassword
     signature: ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error
   - name: DeleteUser
@@ -38,8 +38,8 @@ methods:
 ## DTOs
 
 ```yaml
-- name: MutableFields
-  description: ユーザー取得結果の DTO。
+- name: UserView
+  description: ユーザー取得結果の出力 DTO。
   fields:
     - name: FirstName
       type: string
@@ -61,18 +61,39 @@ methods:
       type: "*string"
     - name: DeletedAt
       type: "*time.Time"
+- name: UpdateProfileParams
+  description: ユーザープロフィール更新の入力（可変フィールド）。出力専用の DeletedAt は含まない。
+  fields:
+    - name: FirstName
+      type: string
+    - name: LastName
+      type: string
+    - name: Email
+      type: string
+    - name: Phone
+      type: string
+    - name: PostalCode
+      type: string
+    - name: PrefectureName
+      type: string
+    - name: City
+      type: string
+    - name: Street
+      type: string
+    - name: Building
+      type: "*string"
 - name: CreateParamsDTO
-  description: ユーザー作成に必要なパラメータ。MutableFields を埋め込む。
+  description: ユーザー作成に必要なパラメータ。UpdateProfileParams を埋め込む。
   fields:
     - name: UserID
       type: uuid.UUID
     - name: RawPassword
       type: string
-    - name: MutableFields
-      type: MutableFields   # embedded
+    - name: UpdateProfileParams
+      type: UpdateProfileParams   # embedded
 # 詳細系エンドポイント向け（追記分）
-# UpdateUser（PUT・プロフィール全更新）は専用 DTO を設けず MutableFields をそのまま入力に使う
-# （password は含めず、変更は ChangePassword で行う。DeletedAt は更新入力では未使用）。
+# UpdateUser（PUT・プロフィール全更新）は入力に UpdateProfileParams、出力に UserView を使う
+# （password は含めず、変更は ChangePassword で行う。DeletedAt は出力専用で更新入力には持たせない）。
 - name: PatchParamsDTO
   description: |
     PATCH（部分更新）の入力。指定フィールドのみ更新し、nil（未指定）は据え置き。password は含めない。
@@ -107,7 +128,7 @@ methods:
 - tracer            # observability.TracerFactory -> LayerTracer（メソッドごとに span）
 - tx_manager        # boundary/tx.Manager
 - clock             # boundary/clock.Clock
-- encrypter         # boundary/security.Encrypter
+- encrypter         # boundary/security.Hasher
 - user_repository   # domain/user.Repository
 - prefecture_repository  # domain/prefecture.Repository
 ```
@@ -122,12 +143,12 @@ steps:
   - userRepo.FindByActive で active / ページング条件に基づきユーザー一覧を取得
   - 取得した各ユーザーの prefectureID を集約し、pftRepo.FindByIDs で都道府県をまとめて解決（N+1 回避、子 span で計測）
   - prefectureID -> Prefecture のマップを構築
-  - 各ユーザーを MutableFields へ変換し、都道府県名を埋める
+  - 各ユーザーを UserView へ変換し、都道府県名を埋める
 calls:
   - user_repository.FindByActive
   - prefecture_repository.FindByIDs
 errors:
-  - userRepo / pftRepo のエラーをそのまま伝播
+  - userRepo / pftRepo のエラーを伝播。ユーザーが参照する都道府県を FindByIDs で解決できない場合は参照整合性破れとして ErrInternal(500)
 ```
 
 ### CreateUser
@@ -142,7 +163,7 @@ steps:
       - pftRepo.FindByName で都道府県を名前解決
       - user.New でエンティティ生成（不変条件検証）
       - userRepo.Create で永続化
-  - 生成したエンティティと都道府県名から MutableFields を構築して返す
+  - 生成したエンティティと都道府県名から UserView を構築して返す
 calls:
   - clock.Now
   - user.NewRawPassword
@@ -174,12 +195,12 @@ tx_required: false
 steps:
   - user_repository.FindByID で単一ユーザーを取得（存在しない / 論理削除済みなら NotFound 伝播）
   - prefecture_repository.FindByID で都道府県名を解決
-  - MutableFields へ変換して返す（PrefectureName を埋める）
+  - UserView へ変換して返す（PrefectureName を埋める）
 calls:
   - user_repository.FindByID
   - prefecture_repository.FindByID
 errors:
-  - FindByID の NotFound をそのまま伝播
+  - user FindByID の NotFound は伝播（404）。prefecture FindByID の NotFound は参照整合性破れとして ErrInternal(500)、その他は伝播
 ```
 
 ### UpdateUser
@@ -193,7 +214,7 @@ steps:
       - prefecture_repository.FindByName で都道府県を名前解決
       - user.UpdateProfile で全プロフィールフィールド + updatedAt を置換（password は対象外）
       - user_repository.Update で永続化
-  - MutableFields へ変換して返す
+  - UserView へ変換して返す
 calls:
   - clock.Now
   - tx_manager.Do
@@ -239,11 +260,11 @@ steps:
   - clock.Now で現在時刻を取得
   - トランザクション内で
       - user_repository.FindByID で対象を取得（存在しない / 論理削除済みなら NotFound 伝播）
-      - PrefectureName が指定されていれば prefecture_repository.FindByName で都道府県解決、未指定なら現在の prefectureID を据え置き
+      - PrefectureName が指定されていれば prefecture_repository.FindByName で都道府県解決（入力エラーは伝播）、未指定なら prefecture_repository.FindByID で現在の都道府県を解決（レスポンス名用。未解決は参照整合性破れ）
       - 各フィールドは provided なら新値、nil なら現在値（getter）をマージしてフルセットを構築（未指定/null とも nil=据え置き。フィールドのクリアは PATCH では提供せず PUT を使う）
       - user.UpdateProfile でマージ後のフルセット + updatedAt を置換（password は更新しない）
       - user_repository.Update で永続化
-  - MutableFields へ変換して返す
+  - UserView へ変換して返す
 calls:
   - clock.Now
   - tx_manager.Do
@@ -252,7 +273,7 @@ calls:
   - user.UpdateProfile
   - user_repository.Update
 errors:
-  - FindByID(NotFound) / FindByName / UpdateProfile / Update を伝播
+  - user FindByID(NotFound) / FindByName / UpdateProfile / Update を伝播。指定なし時に現在の都道府県(FindByID)が NotFound なら ErrInternal(500)
 ```
 
 ### DeleteUser
