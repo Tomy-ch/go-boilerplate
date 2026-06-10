@@ -57,7 +57,7 @@
 				
 				<option value="file0">go-boilerplate/internal/cli/dumpschema/dump_schema.go (100.0%)</option>
 				
-				<option value="file1">go-boilerplate/internal/cli/fixcollation/fixcollation.go (100.0%)</option>
+				<option value="file1">go-boilerplate/internal/cli/fixcollation/fix_collation.go (100.0%)</option>
 				
 				<option value="file2">go-boilerplate/internal/cli/job/job.go (100.0%)</option>
 				
@@ -475,20 +475,20 @@ func NewGenerator(logger logging.Logger, workDir string) *Generator <span class=
 // 手順:
 //  1. ダンプコマンドを実行してスキーマをダンプ
 //  2. スキーマファイル内のメタコマンド行を除去
-func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string, error)) error <span class="cov3" title="3">{
+func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string, error)) error <span class="cov4" title="4">{
         dbURL, password, err := loadDSN()
         if err != nil </span><span class="cov1" title="1">{
                 return err
         }</span>
 
-        <span class="cov2" title="2">if err := gen.dumpSchema(ctx, dbURL, password); err != nil </span><span class="cov1" title="1">{
+        <span class="cov3" title="3">if err := gen.dumpSchema(ctx, dbURL, password); err != nil </span><span class="cov1" title="1">{
                 return err
         }</span>
-        <span class="cov1" title="1">return gen.sanitizeSchemaInPlace()</span>
+        <span class="cov2" title="2">return gen.sanitizeSchemaInPlace()</span>
 }
 
 // dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
-func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) error <span class="cov5" title="5">{
+func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) error <span class="cov5" title="6">{
         args := append([]string{dbURL}, g.dumpArgs...)
         env := []string{"PGPASSWORD=" + password}
 
@@ -505,12 +505,12 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
                 return fmt.Errorf("pg_dump failed: %w", err)
         }</span>
 
-        <span class="cov3" title="3">schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
+        <span class="cov4" title="4">schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
         if err := g.fs.WriteFile(schemaAbs, out, g.permission); err != nil </span><span class="cov1" title="1">{
                 return fmt.Errorf("failed to write schema file: %w", err)
         }</span>
 
-        <span class="cov2" title="2">g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("pg_dump schema completed",
+        <span class="cov3" title="3">g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("pg_dump schema completed",
                 logging.String("out", g.schemaRelPath),
         )
 
@@ -519,11 +519,11 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 
 // sanitizeSchemaInPlace は、schema.sql を sqlc 向けに整形します。
 // trimPrefixes 一致のメタ行に加え、空行（空白のみ・元から空）も除去します（空行除去まで含むのは意図的）。
-func (g *Generator) sanitizeSchemaInPlace() error <span class="cov4" title="4">{
+func (g *Generator) sanitizeSchemaInPlace() error <span class="cov5" title="5">{
         srcAbs := filepath.Join(g.workDir, g.schemaRelPath)
 
         b, err := g.fs.ReadFile(srcAbs)
-        if err != nil </span><span class="cov1" title="1">{
+        if err != nil </span><span class="cov2" title="2">{
                 return fmt.Errorf("read schema: %w", err)
         }</span>
 
@@ -598,7 +598,7 @@ func validateDatabaseName(name string) error <span class="cov10" title="7">{
 
 // fixCollation は、collation mismatch 修正 SQL を psql 経由で順に実行します。
 // パスワードは引数に載せず PGPASSWORD で渡します。
-func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger, dbURL, password, database string) error <span class="cov6" title="3">{
+func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger, dbURL, password, database string) error <span class="cov7" title="4">{
         log := logger.CallerSkip(callerSkipCount).Named("fixcollation")
         log.Info("start collation fix", logging.String("database", database))
 
@@ -609,9 +609,9 @@ func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger
 
         env := []string{"PGPASSWORD=" + password}
         // 依存順序があるため、照合順序修正 SQL は並列ではなく順番に流します。
-        for _, sql := range sqlStatements </span><span class="cov8" title="5">{
+        for _, sql := range sqlStatements </span><span class="cov10" title="7">{
                 args := []string{dbURL, "-v", "ON_ERROR_STOP=1", "-c", sql}
-                if _, err := runner.Output(ctx, workDir, env, psqlCommand, args); err != nil </span><span class="cov1" title="1">{
+                if _, err := runner.Output(ctx, workDir, env, psqlCommand, args); err != nil </span><span class="cov4" title="2">{
                         log.Error("psql command failed",
                                 logging.String("database", database),
                                 logging.String("sql", sql),
@@ -662,7 +662,7 @@ func runJob(
         timeout time.Duration,
         start StartFunc,
         stop StopFunc,
-) error <span class="cov10" title="6">{
+) error <span class="cov10" title="7">{
         done := start(ctx, name, args)
 
         if timeout &lt;= 0 </span><span class="cov6" title="3">{
@@ -671,11 +671,11 @@ func runJob(
                 return err
         }</span>
 
-        <span class="cov6" title="3">waitCtx, cancel := context.WithTimeout(ctx, timeout)
+        <span class="cov7" title="4">waitCtx, cancel := context.WithTimeout(ctx, timeout)
         defer cancel()
 
         select </span>{
-        case err := &lt;-done:<span class="cov1" title="1">
+        case err := &lt;-done:<span class="cov4" title="2">
                 gracefulStop(ctx, stop)
                 return err</span>
         case &lt;-waitCtx.Done():<span class="cov4" title="2">
@@ -687,7 +687,7 @@ func runJob(
 }
 
 // gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop）を実行します。
-func gracefulStop(ctx context.Context, stop StopFunc) <span class="cov10" title="6">{
+func gracefulStop(ctx context.Context, stop StopFunc) <span class="cov10" title="7">{
         stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
         defer cancel()
         _ = stop(stopCtx)
@@ -1064,7 +1064,7 @@ import (
 )
 
 // MigrateDownRun は、マイグレーションをダウングレードするための実行関数です。
-func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error <span class="cov9" title="7">{
+func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error <span class="cov8" title="7">{
         if steps &lt; 0 </span><span class="cov1" title="1">{
                 // 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。
                 err := fmt.Errorf("steps must be zero or positive, got %d", steps)
@@ -1080,7 +1080,7 @@ func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrat
                 return err
         }</span>
 
-        <span class="cov7" title="5">if steps == 0 </span><span class="cov4" title="2">{
+        <span class="cov7" title="5">if steps == 0 </span><span class="cov3" title="2">{
                 logger.Named("migrateDownRun").Info("running full migration down")
                 if err := executeMigrateFullDown(m); err != nil </span><span class="cov1" title="1">{
                         logger.Named("migrateDownRun.executeMigrateFullDown").Error("down migration failed",
@@ -1108,29 +1108,29 @@ func executeMigrateDownSteps(m Migrator, steps int) error <span class="cov5" tit
         if err := m.Steps(-steps); err != nil &amp;&amp; !errors.Is(err, migrate.ErrNoChange) </span><span class="cov1" title="1">{
                 return err
         }</span>
-        <span class="cov4" title="2">return nil</span>
+        <span class="cov3" title="2">return nil</span>
 }
 
 // executeMigrateFullDown は、マイグレーションを全てダウングレードして、DBを初期状態に戻します。
-func executeMigrateFullDown(m Migrator) error <span class="cov10" title="8">{
+func executeMigrateFullDown(m Migrator) error <span class="cov10" title="9">{
         // dirty 状態のままでは Down できないため、現在バージョンで整合を取り直してから巻き戻します。
         v, dirty, err := m.Version()
         if err != nil &amp;&amp; !errors.Is(err, migrate.ErrNilVersion) </span><span class="cov1" title="1">{
                 return err
         }</span>
-        <span class="cov9" title="7">if dirty </span><span class="cov5" title="3">{
+        <span class="cov9" title="8">if dirty </span><span class="cov6" title="4">{
                 safeValue, err := safecast.UintToInt(v)
                 if err != nil </span><span class="cov1" title="1">{
                         return err
                 }</span>
-                <span class="cov4" title="2">if err := m.Force(safeValue); err != nil </span><span class="cov1" title="1">{
+                <span class="cov5" title="3">if err := m.Force(safeValue); err != nil </span><span class="cov1" title="1">{
                         return err
                 }</span>
         }
-        <span class="cov7" title="5">if err := m.Down(); err != nil &amp;&amp; !errors.Is(err, migrate.ErrNoChange) </span><span class="cov1" title="1">{
+        <span class="cov8" title="6">if err := m.Down(); err != nil &amp;&amp; !errors.Is(err, migrate.ErrNoChange) </span><span class="cov1" title="1">{
                 return err
         }</span>
-        <span class="cov7" title="4">return nil</span>
+        <span class="cov7" title="5">return nil</span>
 }
 </pre>
 		
@@ -1390,7 +1390,7 @@ import (
 
 // ResolveMetricsStop は、本番モードでない場合のみ補助メトリクスサーバーを起動し、その停止関数を返します。
 // 本番モードでは起動せず nil を返します（呼び出し側は nil を「停止不要」として扱います）。
-func ResolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) <span class="cov6" title="2">{
+func ResolveMetricsStop(appCfg *config.ApplicationConfig, newMetrics func() (func(), func(context.Context))) func(context.Context) <span class="cov5" title="2">{
         if appCfg.IsProductionMode() </span><span class="cov1" title="1">{
                 return nil
         }</span>
@@ -1408,12 +1408,12 @@ func RunServer(
         startApp func(context.Context) error,
         stopApp func(context.Context) error,
         stopMetrics func(context.Context),
-) error <span class="cov10" title="3">{
+) error <span class="cov10" title="4">{
         if err := startApp(ctx); err != nil </span><span class="cov1" title="1">{
                 return err
         }</span>
 
-        <span class="cov6" title="2">&lt;-ctx.Done()
+        <span class="cov8" title="3">&lt;-ctx.Done()
 
         // 停止処理は無期限に待たず、シャットダウン開始時点から設定タイムアウト内で完了させます。
         // タイムアウトを起動直後ではなくこの時点で計測することで、稼働時間に消費されないようにします。
@@ -1427,7 +1427,7 @@ func RunServer(
                 stopMetrics(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
         }</span>
 
-        <span class="cov6" title="2">return stopApp(stopCtx)</span> //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
+        <span class="cov8" title="3">return stopApp(stopCtx)</span> //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
 }
 </pre>
 		
@@ -1789,7 +1789,7 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="335">{
+func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="341">{
         t.Helper()
         return &amp;Config{
                 os: OperatingSystemConfig{
@@ -2137,7 +2137,7 @@ func Load() error <span class="cov10" title="14">{
         if env == "" </span><span class="cov4" title="3">{
                 base := filepath.Join(envDir, ".env")
                 if err := godotenv.Load(base); err != nil </span><span class="cov3" title="2">{
-                        return fmt.Errorf("%s load failed : %w", base, err)
+                        return fmt.Errorf("%w : %w", ErrFailedToLoadDefaultEnvFile, err)
                 }</span>
                 <span class="cov1" title="1">env = os.Getenv("ENV")</span>
         }
@@ -2148,7 +2148,7 @@ func Load() error <span class="cov10" title="14">{
 
         <span class="cov9" title="11">path := filepath.Join(envDir, ".env."+env)
         if err := godotenv.Load(path); err != nil </span><span class="cov1" title="1">{
-                return fmt.Errorf("%s load failed : %w", path, err)
+                return fmt.Errorf("%w : %w", ErrFailedToLoadEnvFile, err)
         }</span>
         <span class="cov8" title="10">return nil</span>
 }
@@ -6255,7 +6255,7 @@ func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddlewar
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="26">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="17">{
                 return mws[i].Priority &lt; mws[j].Priority
         }</span>)
 
@@ -6912,7 +6912,7 @@ func newStartServerFunc(
                 }</span>
                 <span class="cov5" title="2">e.Listener = ln
 
-                go func() </span><span class="cov1" title="1">{
+                go func() </span><span class="cov5" title="2">{
                         if err := e.Start(""); err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
                                 log.Named("server.Start").Error("failed to start http server", logging.Error(logging.ErrorKey, err))
                         }</span>
@@ -9077,7 +9077,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key fieldKey, v string) *Field <span class="cov10" title="3789">{
+func String(key fieldKey, v string) *Field <span class="cov10" title="3794">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -9149,7 +9149,7 @@ func DurationMs(key fieldKey, v time.Duration) *Field <span class="cov6" title="
 }</span>
 
 // Error は、エラーのログフィールドを作成します。
-func Error(key fieldKey, err error) *Field <span class="cov4" title="35">{
+func Error(key fieldKey, err error) *Field <span class="cov4" title="36">{
         return &amp;Field{
                 key:        string(key),
                 kind:       fieldError,
@@ -9482,14 +9482,14 @@ type logger struct {
 }
 
 // Named は、新しい名前付きの Logger を返す。
-func (l *logger) Named(name string) Logger <span class="cov7" title="525">{
+func (l *logger) Named(name string) Logger <span class="cov7" title="528">{
         return &amp;logger{
                 log: l.log.Named(name),
         }
 }</span>
 
 // CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
-func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="463">{
+func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="466">{
         return &amp;logger{
                 log: l.log.WithOptions(zap.AddCallerSkip(skip)),
         }
@@ -9501,7 +9501,7 @@ func (l *logger) Debug(msg string, fields ...*Field) <span class="cov1" title="1
 }</span>
 
 // Info は情報レベルのログを出力する。
-func (l *logger) Info(msg string, fields ...*Field) <span class="cov7" title="491">{
+func (l *logger) Info(msg string, fields ...*Field) <span class="cov7" title="494">{
         l.log.Info(msg, l.ConvertFields(fields)...)
 }</span>
 
@@ -9511,17 +9511,17 @@ func (l *logger) Warn(msg string, fields ...*Field) <span class="cov3" title="7"
 }</span>
 
 // Error はエラーレベルのログを出力する。
-func (l *logger) Error(msg string, fields ...*Field) <span class="cov4" title="40">{
+func (l *logger) Error(msg string, fields ...*Field) <span class="cov4" title="41">{
         l.log.Error(msg, l.ConvertFields(fields)...)
 }</span>
 
 // ConvertFields は Field のスライスを zap.Field のスライスに変換する。
-func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title="540">{
+func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title="544">{
         zfs := make([]zap.Field, 0, len(fs))
 
-        for _, f := range fs </span><span class="cov10" title="4291">{
+        for _, f := range fs </span><span class="cov10" title="4297">{
                 switch f.kind </span>{
-                case fieldString:<span class="cov9" title="3917">
+                case fieldString:<span class="cov9" title="3922">
                         zfs = append(zfs, zap.String(f.key, f.stringValue))</span>
                 case fieldStrings:<span class="cov2" title="5">
                         zfs = append(zfs, zap.Strings(f.key, f.stringsValue))</span>
@@ -9533,7 +9533,7 @@ func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title
                         zfs = append(zfs, zap.Float64(f.key, f.float64Value))</span>
                 case fieldBool:<span class="cov1" title="1">
                         zfs = append(zfs, zap.Bool(f.key, f.boolValue))</span>
-                case fieldError:<span class="cov4" title="31">
+                case fieldError:<span class="cov4" title="32">
                         zfs = append(zfs, zap.NamedError(f.key, f.errorValue))</span>
                 case fieldAny:<span class="cov4" title="29">
                         zfs = append(zfs, zap.Any(f.key, f.anyValue))</span>
@@ -9544,7 +9544,7 @@ func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title
                 }
         }
 
-        <span class="cov7" title="540">return zfs</span>
+        <span class="cov7" title="544">return zfs</span>
 }
 </pre>
 		
@@ -9649,7 +9649,7 @@ import (
 )
 
 // NewTestLogger は、テスト用のLoggerインスタンスを生成します。
-func NewTestLogger(t *testing.T) Logger <span class="cov10" title="268">{
+func NewTestLogger(t *testing.T) Logger <span class="cov10" title="270">{
         t.Helper()
         return &amp;logger{log: zaptest.NewLogger(t)}
 }</span>
@@ -11397,14 +11397,14 @@ import (
 
 // UintToInt は、uintをintに安全に変換します。
 // オーバーフローが発生する場合はエラーを返します。
-func UintToInt(x uint) (int, error) <span class="cov10" title="7">{
+func UintToInt(x uint) (int, error) <span class="cov10" title="8">{
         const maxInt = math.MaxInt
-        if x &gt; maxInt </span><span class="cov6" title="3">{
+        if x &gt; maxInt </span><span class="cov5" title="3">{
                 return 0, fmt.Errorf(
                         "uint %d exceeds MaxInt(%d): %w", x, maxInt, ErrOverflow,
                 )
         }</span>
-        <span class="cov7" title="4">return int(x), nil</span>
+        <span class="cov7" title="5">return int(x), nil</span>
 }
 </pre>
 		
@@ -11626,23 +11626,23 @@ import (
 )
 
 // New は、新しいエラーを生成します。
-func New(msg string) error <span class="cov10" title="753">{
+func New(msg string) error <span class="cov9" title="753">{
         return errors.New(msg)
 }</span>
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
-func Wrap(err error, msg string) error <span class="cov8" title="359">{
+func Wrap(err error, msg string) error <span class="cov10" title="1619">{
         return errors.Wrap(err, msg)
 }</span>
 
 // Is は、エラーが特定のターゲットエラーと一致するかを判定します。
-func Is(err, target error) bool <span class="cov8" title="243">{
+func Is(err, target error) bool <span class="cov7" title="244">{
         return errors.Is(err, target)
 }</span>
 
 // As は、エラーが特定のターゲット型に変換可能かを判定します。
-func As(err error, target any) bool <span class="cov6" title="47">{
+func As(err error, target any) bool <span class="cov5" title="47">{
         return errors.As(err, target)
 }</span>
 
@@ -11651,7 +11651,7 @@ func StackTrace(err error) string <span class="cov4" title="12">{
         if err == nil </span><span class="cov1" title="2">{
                 return ""
         }</span>
-        <span class="cov4" title="10">return fmt.Sprintf("%+v", err)</span>
+        <span class="cov3" title="10">return fmt.Sprintf("%+v", err)</span>
 }
 </pre>
 		
