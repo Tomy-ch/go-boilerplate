@@ -5,147 +5,102 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 const namespace = "pgxpool"
 
+// poolStatsMetric は、1 メトリクスの説明・型・統計値の取り出し方をまとめた定義です。
+type poolStatsMetric struct {
+	desc      *prometheus.Desc
+	valueType prometheus.ValueType
+	value     func(stats *pgxpool.Stat) float64
+}
+
 type PoolStatsCollector struct {
-	db driver.DatabaseDriver
-
-	acquiredConns     *prometheus.Desc
-	idleConns         *prometheus.Desc
-	totalConns        *prometheus.Desc
-	constructingConns *prometheus.Desc
-	maxConns          *prometheus.Desc
-
-	acquireCount            *prometheus.Desc
-	acquireDuration         *prometheus.Desc
-	canceledAcquireCount    *prometheus.Desc
-	emptyAcquireCount       *prometheus.Desc
-	newConnsCount           *prometheus.Desc
-	maxLifetimeDestroyCount *prometheus.Desc
-	maxIdleDestroyCount     *prometheus.Desc
-	emptyAcquireWaitTime    *prometheus.Desc
+	db      driver.DatabaseDriver
+	metrics []poolStatsMetric
 }
 
 // New は、PoolStatsCollectorを初期化して返します。
 func New(db driver.DatabaseDriver) *PoolStatsCollector {
+	gauge := func(name, help string, value func(*pgxpool.Stat) float64) poolStatsMetric {
+		return poolStatsMetric{
+			desc:      prometheus.NewDesc(prometheus.BuildFQName(namespace, "", name), help, nil, nil),
+			valueType: prometheus.GaugeValue,
+			value:     value,
+		}
+	}
+	counter := func(name, help string, value func(*pgxpool.Stat) float64) poolStatsMetric {
+		return poolStatsMetric{
+			desc:      prometheus.NewDesc(prometheus.BuildFQName(namespace, "", name), help, nil, nil),
+			valueType: prometheus.CounterValue,
+			value:     value,
+		}
+	}
+
 	return &PoolStatsCollector{
 		db: db,
+		metrics: []poolStatsMetric{
+			gauge("acquired_conns", "Number of currently acquired connections in the pool.",
+				func(s *pgxpool.Stat) float64 { return float64(s.AcquiredConns()) }),
+			gauge("idle_conns", "Number of currently idle connections in the pool.",
+				func(s *pgxpool.Stat) float64 { return float64(s.IdleConns()) }),
+			gauge("total_conns", "Total number of connections currently in the pool.",
+				func(s *pgxpool.Stat) float64 { return float64(s.TotalConns()) }),
+			gauge("constructing_conns", "Number of connections currently being constructed.",
+				func(s *pgxpool.Stat) float64 { return float64(s.ConstructingConns()) }),
+			gauge("max_conns", "Maximum number of connections allowed in the pool.",
+				func(s *pgxpool.Stat) float64 { return float64(s.MaxConns()) }),
 
-		// Gauges
-		acquiredConns: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "acquired_conns"),
-			"Number of currently acquired connections in the pool.",
-			nil, nil,
-		),
-		idleConns: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "idle_conns"),
-			"Number of currently idle connections in the pool.",
-			nil, nil,
-		),
-		totalConns: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "total_conns"),
-			"Total number of connections currently in the pool.",
-			nil, nil,
-		),
-		constructingConns: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "constructing_conns"),
-			"Number of connections currently being constructed.",
-			nil, nil,
-		),
-		maxConns: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "max_conns"),
-			"Maximum number of connections allowed in the pool.",
-			nil, nil,
-		),
-
-		// Counters
-		acquireCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "acquire_count_total"),
-			"Total number of successful connection acquires from the pool.",
-			nil, nil,
-		),
-		acquireDuration: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "acquire_duration_seconds_total"),
-			"Total duration of all successful connection acquires.",
-			nil, nil,
-		),
-		canceledAcquireCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "canceled_acquire_count_total"),
-			"Total number of  canceled connection acquires.",
-			nil, nil,
-		),
-		emptyAcquireCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "empty_acquire_count_total"),
-			"Total number of acquires that had to create a new connection because the pool was empty.",
-			nil, nil,
-		),
-		newConnsCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "new_conns_count_total"),
-			"Total number of new connections created.",
-			nil, nil,
-		),
-		maxLifetimeDestroyCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "max_lifetime_destroy_count_total"),
-			"Total number of connections destroyed due to max lifetime.",
-			nil, nil,
-		),
-		maxIdleDestroyCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "max_idle_destroy_count_total"),
-			"Total number of connections destroyed due to max idle time.",
-			nil, nil,
-		),
-		emptyAcquireWaitTime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "empty_acquire_wait_time_seconds_total"),
-			"Total duration of all acquires that had to wait for a connection because the pool was empty.",
-			nil, nil,
-		),
+			counter("acquire_count_total", "Total number of successful connection acquires from the pool.",
+				func(s *pgxpool.Stat) float64 { return float64(s.AcquireCount()) }),
+			counter("acquire_duration_seconds_total", "Total duration of all successful connection acquires.",
+				func(s *pgxpool.Stat) float64 { return s.AcquireDuration().Seconds() }),
+			counter("canceled_acquire_count_total", "Total number of canceled connection acquires.",
+				func(s *pgxpool.Stat) float64 { return float64(s.CanceledAcquireCount()) }),
+			counter("empty_acquire_count_total", "Total number of acquires that had to create a new connection because the pool was empty.",
+				func(s *pgxpool.Stat) float64 { return float64(s.EmptyAcquireCount()) }),
+			counter("new_conns_count_total", "Total number of new connections created.",
+				func(s *pgxpool.Stat) float64 { return float64(s.NewConnsCount()) }),
+			counter("max_lifetime_destroy_count_total", "Total number of connections destroyed due to max lifetime.",
+				func(s *pgxpool.Stat) float64 { return float64(s.MaxLifetimeDestroyCount()) }),
+			counter("max_idle_destroy_count_total", "Total number of connections destroyed due to max idle time.",
+				func(s *pgxpool.Stat) float64 { return float64(s.MaxIdleDestroyCount()) }),
+			counter(
+				"empty_acquire_wait_time_seconds_total",
+				"Total duration of all acquires that had to wait for a connection because the pool was empty.",
+				func(s *pgxpool.Stat) float64 { return s.EmptyAcquireWaitTime().Seconds() },
+			),
+		},
 	}
 }
 
 // Describe は、PoolStatsCollectorのメトリクスの説明をPrometheusに提供します。
 func (c *PoolStatsCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.acquiredConns
-	ch <- c.idleConns
-	ch <- c.totalConns
-	ch <- c.constructingConns
-	ch <- c.maxConns
-
-	ch <- c.acquireCount
-	ch <- c.acquireDuration
-	ch <- c.canceledAcquireCount
-	ch <- c.emptyAcquireCount
-	ch <- c.newConnsCount
-	ch <- c.maxLifetimeDestroyCount
-	ch <- c.maxIdleDestroyCount
-	ch <- c.emptyAcquireWaitTime
+	for _, m := range c.metrics {
+		ch <- m.desc
+	}
 }
 
 // Collect は、PoolStatsCollectorのメトリクスを収集してPrometheusに提供します。
 func (c *PoolStatsCollector) Collect(ch chan<- prometheus.Metric) {
 	stats := c.db.Stats()
-
-	ch <- prometheus.MustNewConstMetric(c.acquiredConns, prometheus.GaugeValue, float64(stats.AcquiredConns()))
-	ch <- prometheus.MustNewConstMetric(c.idleConns, prometheus.GaugeValue, float64(stats.IdleConns()))
-	ch <- prometheus.MustNewConstMetric(c.totalConns, prometheus.GaugeValue, float64(stats.TotalConns()))
-	ch <- prometheus.MustNewConstMetric(c.constructingConns, prometheus.GaugeValue, float64(stats.ConstructingConns()))
-	ch <- prometheus.MustNewConstMetric(c.maxConns, prometheus.GaugeValue, float64(stats.MaxConns()))
-
-	ch <- prometheus.MustNewConstMetric(c.acquireCount, prometheus.CounterValue, float64(stats.AcquireCount()))
-	ch <- prometheus.MustNewConstMetric(c.acquireDuration, prometheus.CounterValue, stats.AcquireDuration().Seconds())
-	ch <- prometheus.MustNewConstMetric(c.canceledAcquireCount, prometheus.CounterValue, float64(stats.CanceledAcquireCount()))
-	ch <- prometheus.MustNewConstMetric(c.emptyAcquireCount, prometheus.CounterValue, float64(stats.EmptyAcquireCount()))
-	ch <- prometheus.MustNewConstMetric(c.newConnsCount, prometheus.CounterValue, float64(stats.NewConnsCount()))
-	ch <- prometheus.MustNewConstMetric(c.maxLifetimeDestroyCount, prometheus.CounterValue, float64(stats.MaxLifetimeDestroyCount()))
-	ch <- prometheus.MustNewConstMetric(c.maxIdleDestroyCount, prometheus.CounterValue, float64(stats.MaxIdleDestroyCount()))
-	ch <- prometheus.MustNewConstMetric(c.emptyAcquireWaitTime, prometheus.CounterValue, stats.EmptyAcquireWaitTime().Seconds())
+	for _, m := range c.metrics {
+		ch <- prometheus.MustNewConstMetric(m.desc, m.valueType, m.value(stats))
+	}
 }
 
-// RegisterPoolStatsCollector は、PoolStatsCollectorをPrometheusのレジストリに登録します。
-func RegisterPoolStatsCollector(c *PoolStatsCollector) error {
-	err := prometheus.Register(c)
+// NewRegisterer は、既定の Prometheus レジストリを Registerer として返します。
+func NewRegisterer() prometheus.Registerer {
+	return prometheus.DefaultRegisterer
+}
+
+// RegisterPoolStatsCollector は、PoolStatsCollectorを指定レジストリに登録します。
+// 既に登録済みの場合はエラーを返さず無視します。
+func RegisterPoolStatsCollector(reg prometheus.Registerer, c *PoolStatsCollector) error {
+	err := reg.Register(c)
 	if err != nil {
 		var alreadyRegisteredErr prometheus.AlreadyRegisteredError
 		if xerrors.As(err, &alreadyRegisteredErr) {

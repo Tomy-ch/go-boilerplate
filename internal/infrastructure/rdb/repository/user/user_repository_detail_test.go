@@ -21,7 +21,7 @@ func Test_repository_FindByID(t *testing.T) {
 	loggingDB := testkit.NewTestLoggingProvider(t)
 	_ = testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{tracer: lt, db: loggingDB}
 
@@ -53,7 +53,7 @@ func Test_repository_Update(t *testing.T) {
 	loggingDB := testkit.NewTestLoggingProvider(t)
 	_ = testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{tracer: lt, db: loggingDB}
 

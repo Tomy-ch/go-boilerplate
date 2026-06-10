@@ -23,6 +23,7 @@ type DatabaseDriver interface {
 	Stats() *pgxpool.Stat
 }
 
+// dbDriver は pgxpool.Pool への薄いアダプタです。
 type dbDriver struct{ pool *pgxpool.Pool }
 
 // NewDB は Postgres のDB接続を初期化して返します。
@@ -56,38 +57,32 @@ func NewDB(
 	return &dbDriver{pool: pool}, nil
 }
 
-// Exec は、DB.Execを呼び出します。
 func (d *dbDriver) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	return d.pool.Exec(ctx, sql, args...)
 }
 
-// Query は、DB.Queryを呼び出します。
 func (d *dbDriver) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	return d.pool.Query(ctx, sql, args...)
 }
 
-// QueryRow は、DB.QueryRowを呼び出します。
 func (d *dbDriver) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	return d.pool.QueryRow(ctx, sql, args...)
 }
 
-// Begin は、DB.Beginを呼び出します。
 func (d *dbDriver) Begin(ctx context.Context) (pgx.Tx, error) {
 	return d.pool.Begin(ctx)
 }
 
-// Ping は、DB.Pingを呼び出します。
 func (d *dbDriver) Ping(ctx context.Context) error {
 	return d.pool.Ping(ctx)
 }
 
-// Close は、DB.Closeを呼び出します。
+// Close は pool を閉じます。
 func (d *dbDriver) Close() error {
 	d.pool.Close()
 	return nil
 }
 
-// Stats は、DB.Statsを呼び出します。
 func (d *dbDriver) Stats() *pgxpool.Stat {
 	return d.pool.Stat()
 }

@@ -545,7 +545,7 @@ db, provider := testkit.NewTestDBWithLoggingProvider(t)
 各テストは **トランザクション内で実行されます**。
 
 ```go
-txm := testkit.NewTestTransactionManager(t)
+txm := testkit.NewTestTransactionRunner(t)
 
 txm.WithinTx(func(ctx context.Context) {
     // test logic
@@ -573,7 +573,7 @@ flowchart TB
 
 Repository テストでは `t.Parallel()` を使用してテスト自体は並列実行できます。
 
-ただし、`testkit.NewTestTransactionManager(t)` が提供するトランザクションマネージャは
+ただし、`testkit.NewTestTransactionRunner(t)` が提供するトランザクションマネージャは
 内部でトランザクション実行を **直列化**します。
 
 そのため実行モデルは次のようになります。

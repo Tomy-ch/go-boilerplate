@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/tx"
@@ -19,15 +18,13 @@ const (
 
 // txManager は、トランザクションの管理を行います。
 type txManager struct {
-	cfg    *config.Config
 	db     DatabaseDriver
 	logger logging.Logger
 }
 
 // NewTransactionManager は、トランザクションマネージャを初期化します。
-func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager {
+func NewTransactionManager(db DatabaseDriver, logger logging.Logger) tx.Manager {
 	return &txManager{
-		cfg:    cfg,
 		db:     db,
 		logger: logger,
 	}
@@ -41,41 +38,50 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 
 	tx, err := t.db.Begin(ctx)
 	if err != nil {
-		return err
+		return pgerror.NormalizeError(err)
 	}
+
+	completed := false
 	defer func(ctx context.Context) {
+		if completed {
+			return
+		}
 		if p := recover(); p != nil {
-			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
-			defer cancel()
-			if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
-				t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
-					"Failed to rollback transaction on panic", logging.Error(logging.ErrorKey, pgErr),
-				)
-			}
+			t.rollback(ctx, tx, logging.Any("panic", p))
 			panic(p)
 		}
+		// fn が runtime.Goexit（testify の FailNow 等）で中断した場合の後始末。
+		t.rollback(ctx, tx)
 	}(ctx)
 
 	ctx = withTx(ctx, tx)
 
 	if err := fn(ctx); err != nil {
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
-		defer cancel()
-		if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
-			t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
-				"Failed to rollback transaction",
-				logging.Error(logging.ErrorKey, pgErr),
-				logging.Error(logging.OriginalErrorKey, err),
-			)
-		}
+		t.rollback(ctx, tx, logging.Error(logging.OriginalErrorKey, err))
+		completed = true
 		return err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		completed = true
 		return pgerror.NormalizeError(err)
 	}
 
+	completed = true
 	return nil
+}
+
+// rollback はロールバックし、失敗時に fields を併記してログを残します。
+func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.Field) {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+	defer cancel()
+
+	if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
+		logFields := append([]*logging.Field{logging.Error(logging.ErrorKey, pgErr)}, fields...)
+		t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
+			"Failed to rollback transaction", logFields...,
+		)
+	}
 }
 
 // withTx は、context.Contextにトランザクションを設定します。

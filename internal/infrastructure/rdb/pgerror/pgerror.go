@@ -14,11 +14,31 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+// sqlstateToAppError は、PostgreSQL の SQLSTATE をアプリケーションエラーへ対応付けます。
+// 対応表は README の SQLSTATE 表を正とします。
+var sqlstateToAppError = map[string]error{
+	"23505": apperror.ErrConflict,
+	"23503": apperror.ErrInvalidArgument,
+	"23502": apperror.ErrInvalidArgument,
+	"23514": apperror.ErrInvalidArgument,
+	"22001": apperror.ErrInvalidArgument,
+	"22P02": apperror.ErrInvalidArgument,
+	"42501": apperror.ErrPermissionDenied,
+	"40001": apperror.ErrUnavailable,
+	"40P01": apperror.ErrUnavailable,
+	"57014": apperror.ErrUnavailable,
+}
+
 // NormalizeError は、PostgreSQLのエラーをアプリケーション固有のエラーに変換します。
 // Infrastructure層から返されるPostgreSQLエラーを一貫した形で処理するために使用します。
+// 既に正規化済みの apperror はそのまま返します。
 func NormalizeError(err error) error {
 	if err == nil {
 		return nil
+	}
+
+	if apperror.IsAppError(err) {
+		return err
 	}
 
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -27,23 +47,19 @@ func NormalizeError(err error) error {
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
-		switch pgErr.Code {
-		case "23505": // ユニーク制約違反
-			return xerrors.Wrap(apperror.ErrConflict, err.Error())
-		case "23503", "23502", "23514", "22001", "22P02":
-			// 外部キー制約違反 / NOT NULL制約違反 / チェック制約違反 / 文字数超過 / 型変換エラー
-			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
-		case "42501": // 権限不足
-			return xerrors.Wrap(apperror.ErrPermissionDenied, err.Error())
-		case "40001", "40P01": // 直列化失敗 / トランザクションのデッドロック(リトライ可能)
-			return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
-		case "57014": // クエリのキャンセル
-			return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+		if appErr, ok := sqlstateToAppError[pgErr.Code]; ok {
+			return xerrors.Wrap(appErr, err.Error())
 		}
 	}
-	if IsUnavailable(err) { // 接続関連エラー
+
+	if errors.Is(err, context.Canceled) {
+		return xerrors.Wrap(apperror.ErrCanceled, err.Error())
+	}
+
+	if IsUnavailable(err) {
 		return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
 	}
+
 	return xerrors.Wrap(apperror.ErrInternal, err.Error())
 }
 
@@ -66,18 +82,15 @@ func IsUnavailable(err error) bool {
 		return false
 	}
 
-	// context のタイムアウト
 	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 
-	// ネットワーク／ドライバ系
 	var ne net.Error
-	if errors.As(err, &ne) && ne.Timeout() {
+	if errors.As(err, &ne) {
 		return true
 	}
 
-	// PostgreSQL の connection exception (SQLSTATE 08XXX)
 	return isPgConnectionError(err)
 }
 

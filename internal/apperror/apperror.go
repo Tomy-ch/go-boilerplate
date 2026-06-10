@@ -18,6 +18,8 @@ var (
 	ErrValidation = xerrors.New("validation error")
 	// リクエストが多すぎる場合に使用します。
 	ErrTooManyRequests = xerrors.New("too many requests")
+	// クライアントがリクエストをキャンセル/切断した場合に使用します。
+	ErrCanceled = xerrors.New("request canceled")
 	// サーバ内部で予期しないエラーが発生した場合に使用します。
 	ErrInternal = xerrors.New("internal error")
 	// 実装されていない操作が呼び出された場合に使用します。
@@ -25,3 +27,28 @@ var (
 	// 一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。
 	ErrUnavailable = xerrors.New("service unavailable")
 )
+
+// appErrors は、定義済みの全 apperror センチネルです。
+var appErrors = []error{
+	ErrInvalidArgument,
+	ErrUnauthenticated,
+	ErrPermissionDenied,
+	ErrNotFound,
+	ErrConflict,
+	ErrValidation,
+	ErrTooManyRequests,
+	ErrCanceled,
+	ErrInternal,
+	ErrUnimplemented,
+	ErrUnavailable,
+}
+
+// IsAppError は、err がいずれかの apperror センチネルに該当するかを返します。
+func IsAppError(err error) bool {
+	for _, sentinel := range appErrors {
+		if xerrors.Is(err, sentinel) {
+			return true
+		}
+	}
+	return false
+}

@@ -56,42 +56,44 @@ func TestPoolStatsCollector_Collect(t *testing.T) {
 	assert.Len(t, metrics, 13)
 }
 
-func TestRegisterPoolStatsCollector(t *testing.T) {
-	t.Run("正常系", func(t *testing.T) {
-		t.Run("初回登録", func(t *testing.T) {
-			reg := prometheus.NewRegistry()
-			orig := prometheus.DefaultRegisterer
-			prometheus.DefaultRegisterer = reg
-			t.Cleanup(func() {
-				prometheus.DefaultRegisterer = orig
-			})
+func TestNewRegisterer(t *testing.T) {
+	t.Parallel()
 
+	assert.Equal(t, prometheus.DefaultRegisterer, NewRegisterer())
+}
+
+func TestRegisterPoolStatsCollector(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("初回登録", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
 			db := testkit.NewTestDB(t)
 			collector := New(db)
 
-			err := RegisterPoolStatsCollector(collector)
+			err := RegisterPoolStatsCollector(reg, collector)
 			require.NoError(t, err)
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Run("重複登録", func(t *testing.T) {
-			reg := prometheus.NewRegistry()
-			orig := prometheus.DefaultRegisterer
-			prometheus.DefaultRegisterer = reg
-			t.Cleanup(func() {
-				prometheus.DefaultRegisterer = orig
-			})
+		t.Parallel()
 
+		t.Run("重複登録の場合はエラーを返さず無視する", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
 			db := testkit.NewTestDB(t)
 			collector := New(db)
 
-			// 1回目登録
-			err := RegisterPoolStatsCollector(collector)
+			err := RegisterPoolStatsCollector(reg, collector)
 			require.NoError(t, err)
 
-			// 2回目登録（duplicate）
-			err = RegisterPoolStatsCollector(collector)
+			err = RegisterPoolStatsCollector(reg, collector)
 			require.NoError(t, err)
 		})
 	})
