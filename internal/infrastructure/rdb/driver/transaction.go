@@ -41,17 +41,12 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 
 	tx, err := t.db.Begin(ctx)
 	if err != nil {
-		return err
+		// Commit と同様、txManager 自身が発行する DB 操作のエラーはアプリエラー語彙へ正規化する。
+		return pgerror.NormalizeError(err)
 	}
 	defer func(ctx context.Context) {
 		if p := recover(); p != nil {
-			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
-			defer cancel()
-			if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
-				t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
-					"Failed to rollback transaction on panic", logging.Error(logging.ErrorKey, pgErr),
-				)
-			}
+			t.rollback(ctx, tx, logging.Any("panic", p))
 			panic(p)
 		}
 	}(ctx)
@@ -59,15 +54,7 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	ctx = withTx(ctx, tx)
 
 	if err := fn(ctx); err != nil {
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
-		defer cancel()
-		if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
-			t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
-				"Failed to rollback transaction",
-				logging.Error(logging.ErrorKey, pgErr),
-				logging.Error(logging.OriginalErrorKey, err),
-			)
-		}
+		t.rollback(ctx, tx, logging.Error(logging.OriginalErrorKey, err))
 		return err
 	}
 
@@ -76,6 +63,20 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	}
 
 	return nil
+}
+
+// rollback は、トランザクションをロールバックし、失敗時に fields を併記してログを残します。
+// 呼び出し元 context がキャンセル済みでも後始末を完了させるため WithoutCancel で切り離す。
+func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.Field) {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+	defer cancel()
+
+	if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
+		logFields := append([]*logging.Field{logging.Error(logging.ErrorKey, pgErr)}, fields...)
+		t.logger.CallerSkip(callerSkipCount).Named("TransactionManager").Error(
+			"Failed to rollback transaction", logFields...,
+		)
+	}
 }
 
 // withTx は、context.Contextにトランザクションを設定します。

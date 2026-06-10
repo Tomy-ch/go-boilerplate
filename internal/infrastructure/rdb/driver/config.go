@@ -24,10 +24,10 @@ func DSN(dbCfg *config.DatabaseConfig) *url.URL {
 }
 
 // DSNWithTimeZone は、データベースの接続URLを返します。タイムゾーン情報をクエリパラメータに追加します。
-func DSNWithTimeZone(db *config.DatabaseConfig, os *config.OperatingSystemConfig) *url.URL {
-	u := DSN(db)
+func DSNWithTimeZone(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig) *url.URL {
+	u := DSN(dbCfg)
 	q := u.Query()
-	q.Set("timezone", os.TimeZone())
+	q.Set("timezone", osCfg.TimeZone())
 	u.RawQuery = q.Encode()
 	return u
 }
@@ -46,6 +46,6 @@ func DSNStringWithoutPassword(dbCfg *config.DatabaseConfig) string {
 }
 
 // DSNWithTimeZoneString は、DSNWithTimeZoneを文字列形式で返します。
-func DSNWithTimeZoneString(db *config.DatabaseConfig, os *config.OperatingSystemConfig) string {
-	return DSNWithTimeZone(db, os).String()
+func DSNWithTimeZoneString(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig) string {
+	return DSNWithTimeZone(dbCfg, osCfg).String()
 }
