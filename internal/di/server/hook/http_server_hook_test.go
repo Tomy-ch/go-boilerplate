@@ -80,7 +80,7 @@ func Test_newStartServerFunc(t *testing.T) {
 
 		e := server.NewAppServer(srvCfg)
 
-		fn := newStartServerFunc(e, srvCfg, mockLogger, secCfg, appCfg, osCfg)
+		fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
 		err = fn(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, e.Listener)
@@ -112,7 +112,7 @@ func Test_newStartServerFunc(t *testing.T) {
 		srvCfg.SetServerPort(t, port)
 
 		e := server.NewAppServer(srvCfg)
-		fn := newStartServerFunc(e, srvCfg, mockLogger, secCfg, appCfg, osCfg)
+		fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
 
 		err = fn(context.Background())
 		require.Error(t, err)
