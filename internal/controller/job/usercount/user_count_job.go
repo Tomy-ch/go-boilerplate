@@ -72,7 +72,7 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 	u.logging.Named(jobName).Info(
 		"Result: total user count",
 		logging.Int64(logging.JobResultKey, count),
-		logging.String("filter", filter),
+		logging.String(logging.FilterKey, filter),
 	)
 	return nil
 }
