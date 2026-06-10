@@ -12,7 +12,7 @@ import (
 	"go.uber.org/fx"
 )
 
-const validatorUsePriority = 6
+const openapiUsePriority = 6
 
 // OpenAPIModule は、OpenAPIバリデーションのミドルウェアを提供するfxモジュールを返します。
 func OpenAPIModule() fx.Option {
@@ -32,7 +32,7 @@ func OpenAPIMiddleware(
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
 			Name:       "openapi",
-			Priority:   validatorUsePriority,
+			Priority:   openapiUsePriority,
 			Middleware: oapi.Middleware(spec, skipper, authFunc),
 		},
 	}

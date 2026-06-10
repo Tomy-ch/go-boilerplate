@@ -22,20 +22,19 @@ type lifecycleRegistrar struct {
 	lc fx.Lifecycle
 }
 
-// NewLifecycleRegistrar は、fx.Lifecycleを使用してLifecycleRegistrarを提供します。
+// NewLifecycleRegistrar は、fx.Lifecycle を用いて Registrar の実装を提供します。
 func NewLifecycleRegistrar(lc fx.Lifecycle) Registrar {
 	return lifecycleRegistrar{lc: lc}
 }
 
-func (r lifecycleRegistrar) RegisterStart(fn func(ctx context.Context) error) {
+func (r lifecycleRegistrar) RegisterStart(start func(ctx context.Context) error) {
 	r.lc.Append(fx.Hook{
-		OnStart: fn,
+		OnStart: start,
 	})
 }
 
-// RegisterStop は、fx.Lifecycleにシャットダウンフックを登録します。
-func (r lifecycleRegistrar) RegisterStop(fn func(ctx context.Context) error) {
+func (r lifecycleRegistrar) RegisterStop(stop func(ctx context.Context) error) {
 	r.lc.Append(fx.Hook{
-		OnStop: fn,
+		OnStop: stop,
 	})
 }

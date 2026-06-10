@@ -9,7 +9,7 @@ import (
 
 const forceJSONPriority = 7
 
-// ForceJSONModule は、JOINの強制制御のミドルウェアを提供するfxモジュールを返します。
+// ForceJSONModule は、レスポンスの Content-Type を application/json に強制するミドルウェアを提供するfxモジュールを返します。
 func ForceJSONModule() fx.Option {
 	return fx.Module("mw.forcejson",
 		fx.Provide(
@@ -18,7 +18,7 @@ func ForceJSONModule() fx.Option {
 	)
 }
 
-// ForceJSONMiddleware は、JOINの強制制御ミドルウェアを提供します。
+// ForceJSONMiddleware は、Content-Type を application/json に強制するミドルウェアを提供します。
 func ForceJSONMiddleware() extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
