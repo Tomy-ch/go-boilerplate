@@ -23,12 +23,8 @@ func TestNewTestDB(t *testing.T) {
 func TestNewTestLoggingProvider(t *testing.T) {
 	t.Parallel()
 	provider := NewTestLoggingProvider(t)
-	// provider が必要な依存を結線して返すことを検証する。
-	require.NotNil(t, provider.Logger())
-	require.NotNil(t, provider.LogFields())
-	require.NotNil(t, provider.DBConfig())
-	require.NotNil(t, provider.ObservabilityConfig())
-	require.NotNil(t, provider.LayerTracer())
+	// provider が依存を結線し、ログ付き DBTX を生成して返すことを検証する。
+	require.NotNil(t, provider)
 	require.NotNil(t, provider.NewLoggingDB(context.Background()))
 }
 

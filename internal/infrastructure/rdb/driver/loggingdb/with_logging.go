@@ -30,21 +30,17 @@ const (
 )
 
 // dbWithLogging は DBTX をラップしてログを出してから実処理へ委譲する。
+// 協力者（logger・log fields・config・tracer）は具象 provider のフィールドから直接引く。
 type dbWithLogging struct {
 	db       driver.DBTX
-	provider DBProvider
-}
-
-// logger は、SQL ログ用に layer 名と callSkip を設定したロガーを返します。
-func (dwl *dbWithLogging) logger() logging.Logger {
-	return dwl.provider.Logger().Named(layer).CallerSkip(callSkip)
+	provider *provider
 }
 
 func (dwl *dbWithLogging) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	start := time.Now()
 
 	spanName := observability.BuildSpanName(layer, pkg, execFunc)
-	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), spanName)
+	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.tracer, spanName)
 	defer end()
 
 	dwl.logQueryStart(tc, execFunc, spanName, sqlExec)
@@ -61,7 +57,7 @@ func (dwl *dbWithLogging) Query(ctx context.Context, sql string, args ...any) (p
 	start := time.Now()
 
 	spanName := observability.BuildSpanName(layer, pkg, queryFunc)
-	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), spanName)
+	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.tracer, spanName)
 	defer end()
 
 	dwl.logQueryStart(tc, queryFunc, spanName, sqlQuery)
@@ -82,7 +78,7 @@ func (dwl *dbWithLogging) QueryRow(ctx context.Context, query string, args ...an
 	start := time.Now()
 
 	spanName := observability.BuildSpanName(layer, pkg, queryRowFunc)
-	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.LayerTracer(), spanName)
+	tc, _, end := observability.StartSpanWithParent(ctx, dwl.provider.tracer, spanName)
 	defer end()
 
 	dwl.logQueryStart(tc, queryRowFunc, spanName, sqlQuerySingle)
@@ -95,6 +91,11 @@ func (dwl *dbWithLogging) QueryRow(ctx context.Context, query string, args ...an
 	fields := dwl.buildSQLEndLogFields(tc, queryRowFunc, spanName, query, duration, args, nil)
 	dwl.logQueryResult(sqlQuerySingle, duration, fields, nil)
 	return row
+}
+
+// logger は、SQL ログ用に layer 名と callSkip を設定したロガーを返します。
+func (dwl *dbWithLogging) logger() logging.Logger {
+	return dwl.provider.l.Named(layer).CallerSkip(callSkip)
 }
 
 // logQueryStart は、SQLクエリの開始ログを出力します。
@@ -118,7 +119,7 @@ func (dwl *dbWithLogging) buildSQLStartLogFields(tc *observability.TraceContext,
 		SpanID:       tc.SpanID(),
 		ParentSpanID: tc.ParentSpanID(),
 	}
-	return dwl.provider.LogFields().BuildSQLStartFields(sqlIn)
+	return dwl.provider.lf.BuildSQLStartFields(sqlIn)
 }
 
 // buildSQLEndLogFields は、SQLクエリの終了ログ出力用フィールドを構築します。
@@ -126,7 +127,7 @@ func (dwl *dbWithLogging) buildSQLEndLogFields(
 	tc *observability.TraceContext, funcName, spanName, query string, duration time.Duration, args []any, err error,
 ) []*logging.Field {
 	logArgs := args
-	if dwl.provider.ObservabilityConfig().MaskedDBQueryArgs() {
+	if dwl.provider.obsCfg.MaskedDBQueryArgs() {
 		logArgs = nil
 	}
 
@@ -146,7 +147,7 @@ func (dwl *dbWithLogging) buildSQLEndLogFields(
 		SpanID:       tc.SpanID(),
 		ParentSpanID: tc.ParentSpanID(),
 	}
-	return dwl.provider.LogFields().BuildSQLEndFields(sqlIn)
+	return dwl.provider.lf.BuildSQLEndFields(sqlIn)
 }
 
 // logQueryResult は、SQLクエリの実行結果をログ出力します。
@@ -154,7 +155,7 @@ func (dwl *dbWithLogging) logQueryResult(
 	msg string, duration time.Duration, fields []*logging.Field, err error,
 ) {
 	logger := dwl.logger()
-	threshold := dwl.provider.DBConfig().SlowQueryWarnThreshold()
+	threshold := dwl.provider.dbCfg.SlowQueryWarnThreshold()
 	switch {
 	case err != nil:
 		logger.Error(msg, fields...)
