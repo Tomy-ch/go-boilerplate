@@ -41,6 +41,8 @@ Echo コンテキストからリクエストパラメータを抽出するヘル
 |---|---|
 |`ExtractPathParams`|Echo コンテキストからパスパラメータを `map[string]string` で抽出|
 |`ExtractQueryParams`|Echo コンテキストからクエリパラメータを `map[string][]string` で抽出|
+|`BuildHTTPRequestLogInput`|Echo コンテキストから `logging.HTTPRequestLogInput` を生成（エラーハンドラ / リカバリのログ経路で共用）|
+|`MarkRecovered` / `IsRecovered`|パニックが上流で復旧済みかを記録 / 参照し、エラーハンドラの二重ログを抑止|
 
 ## 注意点
 

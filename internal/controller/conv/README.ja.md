@@ -13,6 +13,8 @@ OpenAPI 生成型（`github.com/oapi-codegen/runtime/types`）を controller よ
 |関数|説明|
 |---|---|
 |`UUID(p openapi_types.UUID) uuid.UUID`|生成 UUID（path / query パラメータ）をドメイン `uuid.UUID` へ変換|
+|`Email(e openapi_types.Email) string`|生成 Email を `string` へ変換|
+|`EmailPtr(e *openapi_types.Email) *string`|任意の生成 Email を `*string` へ変換（nil は nil のまま）|
 
 ## 注意点
 
