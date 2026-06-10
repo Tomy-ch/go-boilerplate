@@ -58,7 +58,7 @@ type usecase struct {
 	tracer    observability.LayerTracer
 	txm       tx.Manager
 	clock     clock.Clock
-	encrypter security.Encrypter
+	encrypter security.Hasher
 	userRepo  user.Repository
 	pftRepo   prefecture.Repository
 }
@@ -88,7 +88,7 @@ func New(
 	tf observability.TracerFactory,
 	txm tx.Manager,
 	clock clock.Clock,
-	encrypter security.Encrypter,
+	encrypter security.Hasher,
 	userRepo user.Repository,
 	prefectureRepo prefecture.Repository,
 ) Usecase {

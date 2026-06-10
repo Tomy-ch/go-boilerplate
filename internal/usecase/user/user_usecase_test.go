@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 	tf := observability.NewNoopTracerFactory(t)
 	mockTxManager := mock_tx.NewMockManager(ctrl)
 	clock := mock_clock.NewMockClock(ctrl)
-	encrypter := mock_security.NewMockEncrypter(ctrl)
+	encrypter := mock_security.NewMockHasher(ctrl)
 	userRepo := mock_user.NewMockRepository(ctrl)
 	pftRepo := mock_prefecture.NewMockRepository(ctrl)
 
@@ -229,7 +229,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().Create(
@@ -290,7 +290,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("", expectedErr)
 
 			uc := &usecase{
@@ -314,7 +314,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(
@@ -344,7 +344,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(
@@ -375,7 +375,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().Create(
