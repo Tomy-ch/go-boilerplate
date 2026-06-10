@@ -93,51 +93,50 @@ func Test_server_GetUsers(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := []struct {
-			name  string
-			dtos  []user.MutableFields
-			total int64
-		}{
-			{name: "複数のユーザーが存在する場合、ユーザー情報のリストが取得できる", dtos: []user.MutableFields{expectedDTO1, expectedDTO2}, total: 2},
-			{name: "単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", dtos: []user.MutableFields{expectedDTO1}, total: 1},
+		exec := func(t *testing.T, dtos []user.MutableFields, total int64) {
+			t.Helper()
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockControllerLayerTracer(t)
+
+			wantUsers := make([]gen.UserResponse, len(dtos))
+			for i, d := range dtos {
+				wantUsers[i] = wantUserResponse(d)
+			}
+			expectedResponse := gen.UsersResponse{
+				Users:  wantUsers,
+				Limit:  mockPaging.Limit(),
+				Offset: mockPaging.Offset(),
+				Total:  total,
+			}
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
+				Return(dtos, nil)
+			mockApp.EXPECT().
+				CountUsers(gomock.Any(), mockParams.Params.Active).
+				Return(total, nil)
+
+			s := &server{tracer: lt, uc: mockApp}
+			resp, err := s.GetUsers(ctx, mockParams)
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.GetUsers200JSONResponse)
+			require.True(t, ok)
+
+			assert.Equal(t, expectedResponse, gen.UsersResponse(actual))
 		}
 
-		for _, tc := range cases {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
-				ctx := context.Background()
-				ctrl := gomock.NewController(t)
-				lt := observability.NewMockControllerLayerTracer(t)
+		t.Run("複数のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
+			t.Parallel()
+			exec(t, []user.MutableFields{expectedDTO1, expectedDTO2}, 2)
+		})
 
-				wantUsers := make([]gen.UserResponse, len(tc.dtos))
-				for i, d := range tc.dtos {
-					wantUsers[i] = wantUserResponse(d)
-				}
-				expectedResponse := gen.UsersResponse{
-					Users:  wantUsers,
-					Limit:  mockPaging.Limit(),
-					Offset: mockPaging.Offset(),
-					Total:  tc.total,
-				}
-
-				mockApp := mock_user.NewMockUsecase(ctrl)
-				mockApp.EXPECT().
-					ListUsers(gomock.Any(), mockParams.Params.Active, mockPaging).
-					Return(tc.dtos, nil)
-				mockApp.EXPECT().
-					CountUsers(gomock.Any(), mockParams.Params.Active).
-					Return(tc.total, nil)
-
-				s := &server{tracer: lt, uc: mockApp}
-				resp, err := s.GetUsers(ctx, mockParams)
-				require.NoError(t, err)
-
-				actual, ok := resp.(gen.GetUsers200JSONResponse)
-				require.True(t, ok)
-
-				assert.Equal(t, expectedResponse, gen.UsersResponse(actual))
-			})
-		}
+		t.Run("単一のユーザーが存在する場合、ユーザー情報のリストが取得できる", func(t *testing.T) {
+			t.Parallel()
+			exec(t, []user.MutableFields{expectedDTO1}, 1)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

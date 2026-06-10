@@ -35,22 +35,26 @@ func TestBindHandler(t *testing.T) {
 func TestGetHealth(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_ステータスokを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-		s := &server{
-			tracer: observability.NewMockControllerLayerTracer(t),
-		}
+		t.Run("ステータスokを返す", func(t *testing.T) {
+			t.Parallel()
 
-		expectedResponse := gen.HealthResponse{Status: "ok"}
+			ctx := context.Background()
+			s := &server{
+				tracer: observability.NewMockControllerLayerTracer(t),
+			}
 
-		resp, err := s.GetHealth(ctx, gen.GetHealthRequestObject{})
-		require.NoError(t, err)
+			expectedResponse := gen.HealthResponse{Status: "ok"}
 
-		actual, ok := resp.(gen.GetHealth200JSONResponse)
-		require.True(t, ok)
+			resp, err := s.GetHealth(ctx, gen.GetHealthRequestObject{})
+			require.NoError(t, err)
 
-		assert.Equal(t, expectedResponse, gen.HealthResponse(actual))
+			actual, ok := resp.(gen.GetHealth200JSONResponse)
+			require.True(t, ok)
+
+			assert.Equal(t, expectedResponse, gen.HealthResponse(actual))
+		})
 	})
 }

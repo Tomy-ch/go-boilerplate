@@ -945,157 +945,181 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 	newPrefID := uuid.NewTestFromSalt(t, "prefecture2")
 
-	t.Run("正常系_全フィールドと更新日時が置き換わる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		u, base := newValidUser(t)
-		newUpdatedAt := base.Add(time.Hour)
 
-		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "Minato", "4-5-6", ptr.To("Tower"), "200-0002", newUpdatedAt)
-		require.NoError(t, err)
+		t.Run("全フィールドと更新日時が置き換わる", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+			newUpdatedAt := base.Add(time.Hour)
 
-		assert.Equal(t, "Jane", u.firstName)
-		assert.Equal(t, "Smith", u.lastName)
-		assert.Equal(t, "jane@example.com", u.email)
-		assert.Equal(t, newPrefID, u.prefectureID)
-		assert.Equal(t, "Minato", u.city)
-		assert.Equal(t, newUpdatedAt, u.updatedAt)
+			err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
+				newPrefID, "Minato", "4-5-6", ptr.To("Tower"), "200-0002", newUpdatedAt)
+			require.NoError(t, err)
+
+			assert.Equal(t, "Jane", u.firstName)
+			assert.Equal(t, "Smith", u.lastName)
+			assert.Equal(t, "jane@example.com", u.email)
+			assert.Equal(t, newPrefID, u.prefectureID)
+			assert.Equal(t, "Minato", u.city)
+			assert.Equal(t, newUpdatedAt, u.updatedAt)
+		})
 	})
 
-	t.Run("異常系_プロフィールフィールドが不正な場合_エラーを返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		u, base := newValidUser(t)
 
-		err := u.UpdateProfile("", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
-		require.ErrorIs(t, err, ErrInvalidFirstName)
-	})
+		t.Run("プロフィールフィールドが不正な場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
 
-	t.Run("異常系_updatedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
-		t.Parallel()
-		u, base := newValidUser(t)
+			err := u.UpdateProfile("", "Smith", "jane@example.com", "0987654321",
+				newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
+			require.ErrorIs(t, err, ErrInvalidFirstName)
+		})
 
-		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(-time.Hour))
-		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-	})
+		t.Run("updatedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
 
-	t.Run("異常系_updatedAtが現在のupdatedAtより前の場合_エラーを返す", func(t *testing.T) {
-		t.Parallel()
-		u, base := newUserWithUpdatedAt(t, 2*time.Hour)
+			err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
+				newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(-time.Hour))
+			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+		})
 
-		// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される
-		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
-		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-	})
+		t.Run("updatedAtが現在のupdatedAtより前の場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			u, base := newUserWithUpdatedAt(t, 2*time.Hour)
 
-	t.Run("異常系_論理削除済みユーザーは更新できない", func(t *testing.T) {
-		t.Parallel()
-		u, base := newValidUser(t)
-		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+			// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される
+			err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
+				newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(time.Hour))
+			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+		})
 
-		err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
-			newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(2*time.Hour))
-		require.ErrorIs(t, err, ErrAlreadyDeleted)
+		t.Run("論理削除済みユーザーは更新できない", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+
+			err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
+				newPrefID, "Minato", "4-5-6", nil, "200-0002", base.Add(2*time.Hour))
+			require.ErrorIs(t, err, ErrAlreadyDeleted)
+		})
 	})
 }
 
 func TestUser_ChangePassword(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_パスワードハッシュと更新日時が置き換わる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		u, base := newValidUser(t)
-		newUpdatedAt := base.Add(time.Hour)
 
-		err := u.ChangePassword("new_hashed_password", newUpdatedAt)
-		require.NoError(t, err)
-		assert.Equal(t, "new_hashed_password", u.passwordHash)
-		assert.Equal(t, newUpdatedAt, u.updatedAt)
+		t.Run("パスワードハッシュと更新日時が置き換わる", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+			newUpdatedAt := base.Add(time.Hour)
+
+			err := u.ChangePassword("new_hashed_password", newUpdatedAt)
+			require.NoError(t, err)
+			assert.Equal(t, "new_hashed_password", u.passwordHash)
+			assert.Equal(t, newUpdatedAt, u.updatedAt)
+		})
 	})
 
-	t.Run("異常系_パスワードハッシュが不正な場合_エラーを返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		u, base := newValidUser(t)
 
-		err := u.ChangePassword("", base.Add(time.Hour))
-		require.ErrorIs(t, err, ErrInvalidPasswordHash)
-	})
+		t.Run("パスワードハッシュが不正な場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
 
-	t.Run("異常系_updatedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
-		t.Parallel()
-		u, base := newValidUser(t)
+			err := u.ChangePassword("", base.Add(time.Hour))
+			require.ErrorIs(t, err, ErrInvalidPasswordHash)
+		})
 
-		err := u.ChangePassword("new_hashed_password", base.Add(-time.Hour))
-		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-	})
+		t.Run("updatedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
 
-	t.Run("異常系_updatedAtが現在のupdatedAtより前の場合_エラーを返す", func(t *testing.T) {
-		t.Parallel()
-		u, base := newUserWithUpdatedAt(t, 2*time.Hour)
+			err := u.ChangePassword("new_hashed_password", base.Add(-time.Hour))
+			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+		})
 
-		// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される
-		err := u.ChangePassword("new_hashed_password", base.Add(time.Hour))
-		require.ErrorIs(t, err, ErrInvalidUpdatedAt)
-	})
+		t.Run("updatedAtが現在のupdatedAtより前の場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			u, base := newUserWithUpdatedAt(t, 2*time.Hour)
 
-	t.Run("異常系_論理削除済みユーザーはパスワード変更できない", func(t *testing.T) {
-		t.Parallel()
-		u, base := newValidUser(t)
-		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+			// createdAt 以降だが現在の updatedAt(base+2h) より前の時刻は単調性違反で拒否される
+			err := u.ChangePassword("new_hashed_password", base.Add(time.Hour))
+			require.ErrorIs(t, err, ErrInvalidUpdatedAt)
+		})
 
-		err := u.ChangePassword("new_hashed_password", base.Add(2*time.Hour))
-		require.ErrorIs(t, err, ErrAlreadyDeleted)
+		t.Run("論理削除済みユーザーはパスワード変更できない", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
+
+			err := u.ChangePassword("new_hashed_password", base.Add(2*time.Hour))
+			require.ErrorIs(t, err, ErrAlreadyDeleted)
+		})
 	})
 }
 
 func TestUser_MarkAsDeleted(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_deletedAtが設定される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		u, base := newValidUser(t)
-		deletedAt := base.Add(time.Hour)
 
-		err := u.MarkAsDeleted(deletedAt)
-		require.NoError(t, err)
-		require.NotNil(t, u.deletedAt)
-		assert.Equal(t, deletedAt, *u.deletedAt)
-		// 論理削除時に updatedAt も削除時刻へ追従する
-		assert.Equal(t, deletedAt, u.updatedAt)
+		t.Run("deletedAtが設定される", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+			deletedAt := base.Add(time.Hour)
+
+			err := u.MarkAsDeleted(deletedAt)
+			require.NoError(t, err)
+			require.NotNil(t, u.deletedAt)
+			assert.Equal(t, deletedAt, *u.deletedAt)
+			// 論理削除時に updatedAt も削除時刻へ追従する
+			assert.Equal(t, deletedAt, u.updatedAt)
+		})
 	})
 
-	t.Run("異常系_既に削除済みの場合_ErrAlreadyDeletedを返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		u, base := newValidUser(t)
-		require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
 
-		err := u.MarkAsDeleted(base.Add(2 * time.Hour))
-		require.ErrorIs(t, err, ErrAlreadyDeleted)
-	})
+		t.Run("既に削除済みの場合、ErrAlreadyDeletedを返す", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
+			require.NoError(t, u.MarkAsDeleted(base.Add(time.Hour)))
 
-	t.Run("異常系_deletedAtがcreatedAtより前の場合_エラーを返す", func(t *testing.T) {
-		t.Parallel()
-		u, base := newValidUser(t)
+			err := u.MarkAsDeleted(base.Add(2 * time.Hour))
+			require.ErrorIs(t, err, ErrAlreadyDeleted)
+		})
 
-		err := u.MarkAsDeleted(base.Add(-time.Hour))
-		require.ErrorIs(t, err, ErrInvalidDeletedAt)
-	})
+		t.Run("deletedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			u, base := newValidUser(t)
 
-	t.Run("異常系_deletedAtがupdatedAtより前の場合_エラーを返す", func(t *testing.T) {
-		t.Parallel()
-		base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
-		u, err := New(
-			uuid.NewTestFromSalt(t, "user"),
-			"John", "Doe", "hashed_password", "john@example.com", "1234567890",
-			uuid.NewTestFromSalt(t, "prefecture"),
-			"Shibuya", "1-2-3", ptr.To("Building A"), "150-0001",
-			base, base.Add(2*time.Hour), nil,
-		)
-		require.NoError(t, err)
+			err := u.MarkAsDeleted(base.Add(-time.Hour))
+			require.ErrorIs(t, err, ErrInvalidDeletedAt)
+		})
 
-		err = u.MarkAsDeleted(base.Add(time.Hour))
-		require.ErrorIs(t, err, ErrInvalidDeletedAt)
+		t.Run("deletedAtがupdatedAtより前の場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+			base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+			u, err := New(
+				uuid.NewTestFromSalt(t, "user"),
+				"John", "Doe", "hashed_password", "john@example.com", "1234567890",
+				uuid.NewTestFromSalt(t, "prefecture"),
+				"Shibuya", "1-2-3", ptr.To("Building A"), "150-0001",
+				base, base.Add(2*time.Hour), nil,
+			)
+			require.NoError(t, err)
+
+			err = u.MarkAsDeleted(base.Add(time.Hour))
+			require.ErrorIs(t, err, ErrInvalidDeletedAt)
+		})
 	})
 }

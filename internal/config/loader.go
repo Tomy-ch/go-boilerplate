@@ -17,7 +17,7 @@ func Load() error {
 	if env == "" {
 		base := filepath.Join(envDir, ".env")
 		if err := godotenv.Load(base); err != nil {
-			return fmt.Errorf("%s load failed : %w", base, err)
+			return fmt.Errorf("%w : %w", ErrFailedToLoadDefaultEnvFile, err)
 		}
 		env = os.Getenv("ENV")
 	}
@@ -28,7 +28,7 @@ func Load() error {
 
 	path := filepath.Join(envDir, ".env."+env)
 	if err := godotenv.Load(path); err != nil {
-		return fmt.Errorf("%s load failed : %w", path, err)
+		return fmt.Errorf("%w : %w", ErrFailedToLoadEnvFile, err)
 	}
 	return nil
 }

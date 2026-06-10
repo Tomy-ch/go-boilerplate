@@ -16,23 +16,39 @@ func TestNewBasicAuthValidator(t *testing.T) {
 	mtc := config.NewMetricsConfig(cfg)
 	validator := NewBasicAuthValidator(mtc)
 
-	cases := []struct {
-		name     string
-		username string
-		password string
-		wantOK   bool
-	}{
-		{"正常系_ユーザー名とパスワードが一致する場合", mtc.UserName(), mtc.Password(), true},
-		{"異常系_両方とも不一致の場合", "wrong-user", "wrong-password", false},
-		{"異常系_ユーザー名のみ一致しパスワードが不一致の場合", mtc.UserName(), "wrong-password", false},
-		{"異常系_パスワードのみ一致しユーザー名が不一致の場合", "wrong-user", mtc.Password(), false},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ユーザー名とパスワードが一致する場合、trueを返す", func(t *testing.T) {
 			t.Parallel()
-			ok, err := validator(tt.username, tt.password, nil)
+			ok, err := validator(mtc.UserName(), mtc.Password(), nil)
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantOK, ok)
+			assert.True(t, ok)
 		})
-	}
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("両方とも不一致の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			ok, err := validator("wrong-user", "wrong-password", nil)
+			require.NoError(t, err)
+			assert.False(t, ok)
+		})
+
+		t.Run("ユーザー名のみ一致しパスワードが不一致の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			ok, err := validator(mtc.UserName(), "wrong-password", nil)
+			require.NoError(t, err)
+			assert.False(t, ok)
+		})
+
+		t.Run("パスワードのみ一致しユーザー名が不一致の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			ok, err := validator("wrong-user", mtc.Password(), nil)
+			require.NoError(t, err)
+			assert.False(t, ok)
+		})
+	})
 }
