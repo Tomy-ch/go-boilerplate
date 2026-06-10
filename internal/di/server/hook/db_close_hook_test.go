@@ -64,6 +64,7 @@ func TestRegisterDBCloseHooks_CloseError(t *testing.T) {
 	namedMock.EXPECT().Info("Closing database connection")
 	wantErr := errors.New("close failed")
 	db.EXPECT().Close().Return(wantErr)
+	namedMock.EXPECT().Error("failed to close database", gomock.Any()).Times(1)
 
 	require.ErrorIs(t, closeFn(context.Background()), wantErr)
 }

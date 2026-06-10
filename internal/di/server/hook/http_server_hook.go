@@ -76,11 +76,13 @@ func newStopServerFunc(
 	e *echo.Echo, log logging.Logger, osCfg *config.OperatingSystemConfig,
 ) func(context.Context) error {
 	return func(ctx context.Context) error {
-		log.Named("server.Stop").CallerSkip(serverCallerSkip).Info(
-			"http stopping",
-			lifecycleEventFields(logging.EventTypeEnd, osCfg.TimeZone())...,
-		)
-		return e.Shutdown(ctx)
+		l := log.Named("server.Stop").CallerSkip(serverCallerSkip)
+		l.Info("http stopping", lifecycleEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
+		if err := e.Shutdown(ctx); err != nil {
+			l.Error("failed to shutdown http server", logging.Error(logging.ErrorKey, err))
+			return err
+		}
+		return nil
 	}
 }
 
