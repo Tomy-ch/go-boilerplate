@@ -176,7 +176,8 @@ func Test_dbWithLogging_buildSQLStartLogFields(t *testing.T) {
 		},
 	}
 
-	actual := dwl.buildSQLStartLogFields(tc, funcName)
+	spanName := observability.BuildSpanName(layer, pkg, funcName)
+	actual := dwl.buildSQLStartLogFields(tc, funcName, spanName)
 	require.NotEmpty(t, actual)
 }
 
@@ -202,7 +203,8 @@ func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 			},
 		}
 
-		fields := dwl.buildSQLEndLogFields(tc, funcName, query, time.Second, args, nil)
+		spanName := observability.BuildSpanName(layer, pkg, funcName)
+		fields := dwl.buildSQLEndLogFields(tc, funcName, spanName, query, time.Second, args, nil)
 
 		require.NotEmpty(t, fields)
 	})
@@ -224,7 +226,8 @@ func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 			},
 		}
 
-		actual := dwl.buildSQLEndLogFields(tc, funcName, query, expectedDuration, nil, nil)
+		spanName := observability.BuildSpanName(layer, pkg, funcName)
+		actual := dwl.buildSQLEndLogFields(tc, funcName, spanName, query, expectedDuration, nil, nil)
 		require.NotEmpty(t, actual)
 	})
 }
