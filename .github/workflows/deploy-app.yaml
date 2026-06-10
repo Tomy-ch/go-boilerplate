@@ -27,6 +27,9 @@ jobs:
     steps:
       - name: Fetch & Checkout repository
         uses: actions/checkout@v6
+        with:
+          # git describe --tags でリリースバージョンを採るためタグと全履歴を取得
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v6
