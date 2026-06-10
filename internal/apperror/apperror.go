@@ -4,24 +4,24 @@ package apperror
 import "go-boilerplate/pkg/xerrors"
 
 var (
-	// 引数が無効な場合に使用します。400 Bad Request に対応します。
+	// 引数が無効な場合に使用します。
 	ErrInvalidArgument = xerrors.New("invalid argument")
-	// 認証に失敗した場合に使用します。401 Unauthorized に対応します。
+	// 認証に失敗した場合に使用します。
 	ErrUnauthenticated = xerrors.New("unauthenticated")
-	// 権限がない場合に使用します。403 Forbidden に対応します。
+	// 権限がない場合に使用します。
 	ErrPermissionDenied = xerrors.New("permission denied")
-	// 対象が見つからない場合に使用します。404 Not Found に対応します。
+	// 対象が見つからない場合に使用します。
 	ErrNotFound = xerrors.New("not found")
-	// 競合が発生した場合に使用します。409 Conflict に対応します。
+	// 競合が発生した場合に使用します。
 	ErrConflict = xerrors.New("conflict")
-	// 検証が失敗した場合に使用します。422 Unprocessable Entity に対応します。
+	// 検証が失敗した場合に使用します。
 	ErrValidation = xerrors.New("validation error")
-	// リクエストが多すぎる場合に使用します。429 Too Many Requests に対応します。
+	// リクエストが多すぎる場合に使用します。
 	ErrTooManyRequests = xerrors.New("too many requests")
-	// サーバ内部で予期しないエラーが発生した場合に使用します。500 Internal Server Error に対応します。
+	// サーバ内部で予期しないエラーが発生した場合に使用します。
 	ErrInternal = xerrors.New("internal error")
-	// 実装されていない操作が呼び出された場合に使用します。501 Not Implemented に対応します。
+	// 実装されていない操作が呼び出された場合に使用します。
 	ErrUnimplemented = xerrors.New("unimplemented")
-	// 一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。503 Service Unavailable に対応します。
+	// 一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。
 	ErrUnavailable = xerrors.New("service unavailable")
 )
