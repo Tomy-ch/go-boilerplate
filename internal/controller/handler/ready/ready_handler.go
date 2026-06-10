@@ -41,6 +41,6 @@ func (s *server) GetReady(
 		Status:          gen.ReadyResponseStatus(res.Status),
 		ApplicationTime: res.ApplicationTime,
 		DbLatencyMs:     res.DBHealthCheck.Latency.Milliseconds(),
-		DbResponsedAt:   res.DBHealthCheck.ResponsedAt,
+		DbRespondedAt:   res.DBHealthCheck.RespondedAt,
 	}), nil
 }

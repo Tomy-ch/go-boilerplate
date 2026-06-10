@@ -51,7 +51,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{
 				Ready:       true,
 				Latency:     1000,
-				ResponsedAt: now,
+				RespondedAt: now,
 			}, nil).Times(1)
 
 			mockClock := mock_clock.NewMockClock(ctrl)

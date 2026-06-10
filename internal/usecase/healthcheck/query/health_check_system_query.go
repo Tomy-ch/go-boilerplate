@@ -15,6 +15,6 @@ type DBSystemQuery interface {
 // DBHealth は、データベースの健全性情報を表します。
 type DBHealth struct {
 	Ready       bool
-	ResponsedAt time.Time
+	RespondedAt time.Time
 	Latency     time.Duration
 }

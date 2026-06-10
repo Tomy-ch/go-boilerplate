@@ -36,7 +36,7 @@ methods:
   fields:
     - name: Ready
       type: bool
-    - name: ResponsedAt
+    - name: RespondedAt
       type: time.Time
     - name: Latency
       type: time.Duration

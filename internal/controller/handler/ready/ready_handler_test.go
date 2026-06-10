@@ -68,7 +68,7 @@ func TestGetReady(t *testing.T) {
 					ApplicationTime: appTime,
 					DBHealthCheck: query.DBHealth{
 						Latency:     1500 * time.Microsecond,
-						ResponsedAt: dbResAt,
+						RespondedAt: dbResAt,
 					},
 				}, nil)
 
@@ -87,7 +87,7 @@ func TestGetReady(t *testing.T) {
 				Status:          gen.Ok,
 				ApplicationTime: appTime,
 				DbLatencyMs:     1,
-				DbResponsedAt:   dbResAt,
+				DbRespondedAt:   dbResAt,
 			})
 			assert.Equal(t, expected, actual)
 		})
