@@ -29,8 +29,12 @@ const (
 // dbWithLogging は DBTX をラップしてログを出してから実処理へ委譲する。
 type dbWithLogging struct {
 	db       driver.DBTX
-	ctx      context.Context
 	provider DBProvider
+}
+
+// logger は、SQL ログ用に layer 名と callSkip を設定したロガーを返します。
+func (dwl *dbWithLogging) logger() logging.Logger {
+	return dwl.provider.Logger().Named(layer).CallerSkip(callSkip)
 }
 
 func (dwl *dbWithLogging) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
@@ -40,7 +44,7 @@ func (dwl *dbWithLogging) Exec(ctx context.Context, sql string, args ...any) (pg
 	defer end()
 
 	fields := dwl.buildSQLStartLogFields(tc, execFunc)
-	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlExec, fields...)
+	dwl.logger().Info(sqlExec, fields...)
 
 	res, err := dwl.db.Exec(ctx, sql, args...)
 	duration := time.Since(start)
@@ -57,7 +61,7 @@ func (dwl *dbWithLogging) Query(ctx context.Context, sql string, args ...any) (p
 	defer end()
 
 	fields := dwl.buildSQLStartLogFields(tc, queryFunc)
-	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlQuery, fields...)
+	dwl.logger().Info(sqlQuery, fields...)
 
 	rows, err := dwl.db.Query(ctx, sql, args...) //nolint:sqlclosecheck // ownership transferred to caller; closed in sqlc layer
 	duration := time.Since(start)
@@ -78,11 +82,13 @@ func (dwl *dbWithLogging) QueryRow(ctx context.Context, query string, args ...an
 	defer end()
 
 	fields := dwl.buildSQLStartLogFields(tc, queryRowFunc)
-	dwl.provider.Logger().Named(layer).CallerSkip(callSkip).Info(sqlQuerySingle, fields...)
+	dwl.logger().Info(sqlQuerySingle, fields...)
 
 	row := dwl.db.QueryRow(ctx, query, args...)
 	duration := time.Since(start)
 
+	// pgx の QueryRow はエラーを Scan 時まで遅延するため、本層では err を捕捉できず常に nil を渡す。
+	// QueryRow 経由の DB エラーは Error レベルでは記録されない（slow-query の Warn のみ機能する）。
 	fields = dwl.buildSQLEndLogFields(tc, queryRowFunc, query, duration, args, nil)
 	dwl.logQueryResult(sqlQuerySingle, duration, fields, nil)
 	return row
@@ -137,7 +143,7 @@ func (dwl *dbWithLogging) buildSQLEndLogFields(
 func (dwl *dbWithLogging) logQueryResult(
 	msg string, duration time.Duration, fields []*logging.Field, err error,
 ) {
-	logger := dwl.provider.Logger().Named(layer).CallerSkip(callSkip)
+	logger := dwl.logger()
 	threshold := dwl.provider.DBConfig().SlowQueryWarnThreshold()
 	switch {
 	case err != nil:

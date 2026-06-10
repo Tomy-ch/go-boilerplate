@@ -60,7 +60,6 @@ func TestLoggingDBProvider_NewLoggingDB(t *testing.T) {
 
 	require.IsType(t, &dbWithLogging{}, loggingDB)
 	dwl := loggingDB.(*dbWithLogging)
-	assert.Equal(t, ctx, dwl.ctx)
 	assert.Equal(t, provider, dwl.provider)
 }
 

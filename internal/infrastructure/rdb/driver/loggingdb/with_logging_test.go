@@ -44,7 +44,7 @@ func Test_dbWithLogging_Exec(t *testing.T) {
 	mp.EXPECT().ObservabilityConfig().Return(obsCfg).AnyTimes()
 	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
-	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
+	dwl := &dbWithLogging{db: dbtx, provider: mp}
 
 	res, err := dwl.Exec(context.Background(), "INSERT INTO users (name) VALUES ($1)", "alice")
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func Test_dbWithLogging_Query(t *testing.T) {
 	mp.EXPECT().ObservabilityConfig().Return(obsCfg).AnyTimes()
 	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
-	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
+	dwl := &dbWithLogging{db: dbtx, provider: mp}
 
 	rows, err := dwl.Query(context.Background(), "SELECT 1")
 	require.NoError(t, err)
@@ -109,7 +109,7 @@ func Test_dbWithLogging_QueryRow(t *testing.T) {
 	mp.EXPECT().ObservabilityConfig().Return(obsCfg).AnyTimes()
 	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
 
-	dwl := &dbWithLogging{db: dbtx, ctx: context.Background(), provider: mp}
+	dwl := &dbWithLogging{db: dbtx, provider: mp}
 
 	row := dwl.QueryRow(context.Background(), "SELECT $1", 1)
 	require.Nil(t, row)

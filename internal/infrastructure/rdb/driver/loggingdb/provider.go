@@ -31,7 +31,7 @@ type provider struct {
 	tracer observability.LayerTracer
 }
 
-// NewLoggingDBProvider は、DBTXProviderの新しいインスタンスを生成します。
+// NewLoggingDBProvider は、DBProviderの新しいインスタンスを生成します。
 func NewLoggingDBProvider(
 	db driver.DatabaseDriver,
 	dbCfg *config.DatabaseConfig,
@@ -54,7 +54,6 @@ func NewLoggingDBProvider(
 func (p *provider) NewLoggingDB(ctx context.Context) driver.DBTX {
 	return &dbWithLogging{
 		db:       driver.New(ctx, p.db),
-		ctx:      ctx,
 		provider: p,
 	}
 }
