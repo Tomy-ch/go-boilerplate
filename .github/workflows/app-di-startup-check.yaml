@@ -51,7 +51,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # コンパイルと実行を分離し、ビルド失敗を即時に顕在化させる
       - name: Build server
         run: go build -o ./bin/server ./cmd/
 

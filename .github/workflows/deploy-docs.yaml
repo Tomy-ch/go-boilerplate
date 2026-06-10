@@ -15,7 +15,6 @@ permissions:
   pages: write
   id-token: write
 
-# Pages デプロイは追い越し防止のため直列化（公式テンプレート準拠・キャンセルしない）
 concurrency:
   group: "pages"
   cancel-in-progress: false
