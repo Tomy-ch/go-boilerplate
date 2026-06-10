@@ -75,10 +75,10 @@ flowchart TD
     A --> B --> C --> D
 ```
 
-### NewTestTransactionManager
+### NewTestTransactionRunner
 
 ```go
-func NewTestTransactionManager(t *testing.T) TransactionRunner
+func NewTestTransactionRunner(t *testing.T) TransactionRunner
 ```
 
 テスト用トランザクションマネージャーを生成します。
@@ -211,7 +211,7 @@ var (
 ### トランザクションを利用したテスト
 
 ```go
-txm := testkit.NewTestTransactionManager(t)
+txm := testkit.NewTestTransactionRunner(t)
 
 txm.WithinTx(func(ctx context.Context) {
     repo.Create(ctx, ...)
