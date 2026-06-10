@@ -57,6 +57,8 @@ Usecaseは以下のみを担当します。
 - Domain / Repository の協調
 - DTO変換
 
+オーケストレーションには、Controller のために **複数の読み取りを1操作へ合成する**ことも含みます。例: ページング一覧のエンドポイントは `{ Items, Total }` を返す単一メソッドを公開し、handler に一覧と件数を別々に呼ばせて束ねさせません。
+
 ## アプリケーションサービス層の設計方針
 
 プロジェクトの Usecase は **Application Service Pattern** を採用しています。
