@@ -96,7 +96,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 		t.Run("キーワードでの検索時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			page := 1
 			perPage := 100
@@ -195,7 +195,7 @@ func Test_usecase_CountUsersByKeyword(t *testing.T) {
 				userQS: userQS,
 			}
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			active := ptr.To(true)
 			keyword := "Grace Lee"

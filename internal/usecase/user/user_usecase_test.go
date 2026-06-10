@@ -132,7 +132,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			page := 1
 			perPage := 100
@@ -154,7 +154,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 		t.Run("都道府県取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			page := 1
 			perPage := 100
@@ -308,7 +308,7 @@ func Test_usecase_Create(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 
@@ -369,7 +369,7 @@ func Test_usecase_Create(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 

@@ -80,7 +80,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{}, expectedErr).Times(1)
