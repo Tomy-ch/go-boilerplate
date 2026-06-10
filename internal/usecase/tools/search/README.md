@@ -2,24 +2,22 @@
 
 English | [日本語](README.ja.md)
 
-Provides utilities for tokenizing search keyword strings — splitting, normalizing, deduplicating, and limiting token count.
+Provides utilities for tokenizing search keyword strings — splitting, deduplicating, and limiting token count.
 
 ## Public API
 
 |Function / Constant|Description|
 |---|---|
-|`ParseSearchTokens(keyword *string, maxTokens int)`|Tokenize keyword string with normalization|
+|`ParseSearchTokens(keyword *string, maxTokens int)`|Tokenize keyword string (split, dedupe, limit)|
 |`DefaultMaxTokens`|Default max token count (30)|
 |`MaxKeywordLength`|Maximum keyword length in runes (1024)|
 
 ## Processing Steps
 
 1. Truncate keyword to `MaxKeywordLength` runes
-2. Split by `_` and whitespace
-3. Trim each token
-4. Drop empty tokens
-5. Deduplicate (preserve order, first occurrence wins)
-6. Limit to `maxTokens`
+2. Split by `_` and whitespace (`FieldsFunc` yields non-empty, whitespace-free tokens)
+3. Deduplicate (preserve order, first occurrence wins)
+4. Limit to `maxTokens`
 
 ## Behavior
 
