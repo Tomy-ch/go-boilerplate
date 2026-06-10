@@ -83,13 +83,15 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         continue-on-error: true
         uses: actions/github-script@v8
+        env:
+          COUNT: ${{ steps.summarize.outputs.count }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
 
             const marker = '<!-- trivy-fs-result -->';
-            const count = Number('${{ steps.summarize.outputs.count }}' || '0');
+            const count = Number(process.env.COUNT || '0');
 
             const updatedAtJST = new Date().toLocaleString('ja-JP', {
               timeZone: 'Asia/Tokyo',
