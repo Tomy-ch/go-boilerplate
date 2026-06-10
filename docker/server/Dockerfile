@@ -16,13 +16,6 @@ ARG VERSION=dev
 ARG REVISION=none
 ARG BUILD_DATE=2024-12-31T21:00:00Z
 
-RUN apk add --no-cache \
-  ca-certificates \
-  tzdata
-
-COPY go.mod go.sum ./
-COPY vendor/ ./vendor/
-
 COPY . .
 
 RUN go build -mod=vendor -trimpath \
@@ -30,7 +23,7 @@ RUN go build -mod=vendor -trimpath \
     -X 'go-boilerplate/internal/system.Version=${VERSION}' \
     -X 'go-boilerplate/internal/system.Revision=${REVISION}' \
     -X 'go-boilerplate/internal/system.BuildDate=${BUILD_DATE}'" \
-  -o /app/bin/server ./cmd/main.go
+  -o /app/bin/server ./cmd/
 
 # ------------------------------
 # 実行用コンテナ: アプリケーションのサーバとして常駐起動する用途
@@ -61,10 +54,6 @@ CMD ["/app/server", "serve"]
 FROM runtime AS migration
 
 COPY --from=builder --chown=app:app /app/database/migrations /app/database/migrations
-
-WORKDIR /app
-
-ENV ENV=prd
 
 CMD ["/app/server", "migrate-up"]
 
