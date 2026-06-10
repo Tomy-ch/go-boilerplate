@@ -25,3 +25,27 @@ var (
 	// 一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。
 	ErrUnavailable = xerrors.New("service unavailable")
 )
+
+// appErrors は、定義済みの全 apperror センチネルです。
+var appErrors = []error{
+	ErrInvalidArgument,
+	ErrUnauthenticated,
+	ErrPermissionDenied,
+	ErrNotFound,
+	ErrConflict,
+	ErrValidation,
+	ErrTooManyRequests,
+	ErrInternal,
+	ErrUnimplemented,
+	ErrUnavailable,
+}
+
+// IsAppError は、err がいずれかの apperror センチネルに該当するかを返します。
+func IsAppError(err error) bool {
+	for _, sentinel := range appErrors {
+		if xerrors.Is(err, sentinel) {
+			return true
+		}
+	}
+	return false
+}
