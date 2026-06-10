@@ -25,6 +25,14 @@ func NewObservedTestLogger(t *testing.T) (Logger, *observer.ObservedLogs) {
 	return &logger{log: zap.New(core)}, observed
 }
 
+// NewObservedTestLoggerWithCaller は、caller 情報付きで出力を捕捉できるテスト用 Logger を返します。
+// CallerSkip による発生源帰属（どのフレームを caller として記録するか）を検証したいテストで使用します。
+func NewObservedTestLoggerWithCaller(t *testing.T) (Logger, *observer.ObservedLogs) {
+	t.Helper()
+	core, observed := observer.New(zapcore.DebugLevel)
+	return &logger{log: zap.New(core, zap.AddCaller())}, observed
+}
+
 // NewTestLogFieldBuilder は、テスト用のLogFieldBuilderインスタンスを生成します。
 func NewTestLogFieldBuilder(t *testing.T) LogFieldBuilder {
 	t.Helper()

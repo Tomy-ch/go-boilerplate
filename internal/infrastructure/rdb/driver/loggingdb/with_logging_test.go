@@ -52,6 +52,53 @@ func Test_dbWithLogging_Exec(t *testing.T) {
 	assert.Equal(t, pgconn.CommandTag{}, res)
 }
 
+// Test_dbWithLogging_callerSkip は、開始ログと終了ログが同一の呼び出し元（repository 層相当）を
+// caller として記録することを検証する回帰テスト。開始ログがインライン・終了ログがヘルパ経由だと
+// フレーム段数がずれ、終了ログの caller が呼び出し元より浅い位置（sqlc gen 相当）を指してしまう。
+func Test_dbWithLogging_callerSkip(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewTestLogFieldBuilder(t)
+	lg, observed := logging.NewObservedTestLoggerWithCaller(t)
+	noopLayerTracer := observability.NewNoopLayerTracer(t)
+
+	ctrl := gomock.NewController(t)
+
+	md := mock_driver.NewMockDBTX(ctrl)
+	md.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(pgconn.CommandTag{}, nil)
+
+	mp := mock_loggingdb.NewMockDBProvider(ctrl)
+	mp.EXPECT().LogFields().Return(lf).AnyTimes()
+	mp.EXPECT().Logger().Return(lg).AnyTimes()
+	mp.EXPECT().DBConfig().Return(dbCfg).AnyTimes()
+	mp.EXPECT().ObservabilityConfig().Return(obsCfg).AnyTimes()
+	mp.EXPECT().LayerTracer().Return(noopLayerTracer).AnyTimes()
+
+	dwl := &dbWithLogging{db: md, provider: mp}
+
+	// repository → sqlc gen → Exec の呼び出し段数を再現する（callSkip は repository 層を指す前提で校正）。
+	sqlcGen := func() {
+		_, err := dwl.Exec(context.Background(), "INSERT INTO users (name) VALUES ($1)", "alice")
+		require.NoError(t, err)
+	}
+	repository := func() { sqlcGen() }
+	repository()
+
+	entries := observed.All()
+	require.Len(t, entries, 2) // 開始ログ + 終了ログ
+
+	startCaller := entries[0].Caller
+	endCaller := entries[1].Caller
+	require.True(t, startCaller.Defined)
+	require.True(t, endCaller.Defined)
+	// 開始・終了とも同一の呼び出し元（repository 層相当＝本テストファイル）を指すこと。
+	assert.Equal(t, startCaller.TrimmedPath(), endCaller.TrimmedPath())
+	assert.Contains(t, startCaller.TrimmedPath(), "with_logging_test.go")
+}
+
 func Test_dbWithLogging_Query(t *testing.T) {
 	t.Parallel()
 
