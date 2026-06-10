@@ -40,24 +40,34 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	if err != nil {
 		return pgerror.NormalizeError(err)
 	}
+
+	completed := false
 	defer func(ctx context.Context) {
+		if completed {
+			return
+		}
 		if p := recover(); p != nil {
 			t.rollback(ctx, tx, logging.Any("panic", p))
 			panic(p)
 		}
+		// fn が runtime.Goexit（testify の FailNow 等）で中断した場合の後始末。
+		t.rollback(ctx, tx)
 	}(ctx)
 
 	ctx = withTx(ctx, tx)
 
 	if err := fn(ctx); err != nil {
 		t.rollback(ctx, tx, logging.Error(logging.OriginalErrorKey, err))
+		completed = true
 		return err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		completed = true
 		return pgerror.NormalizeError(err)
 	}
 
+	completed = true
 	return nil
 }
 

@@ -3,7 +3,9 @@ package driver
 import (
 	"context"
 	"errors"
+	"runtime"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
@@ -96,4 +98,39 @@ func TestTxManager_Do(t *testing.T) {
 			require.NoError(t, err)
 		})
 	})
+}
+
+func TestTxManager_Do_Goexit(t *testing.T) {
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	dbConnCfg := config.NewDBConnectionConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
+	dbCfg.SetDatabaseHost(t, "localhost")
+	testLogger := logging.NewTestLogger(t)
+
+	db, err := NewDB(dbCfg, osCfg, dbConnCfg)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, db.Close())
+	})
+
+	manager := NewTransactionManager(db, testLogger)
+
+	// fn が runtime.Goexit（testify の FailNow と同じ中断）で抜けても
+	// ロールバックされ、取得済み接続がプールへ返却される（リークしない）こと。
+	before := db.Stats().AcquiredConns()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = manager.Do(context.Background(), func(_ context.Context) error {
+			runtime.Goexit()
+			return nil
+		})
+	}()
+	<-done
+
+	require.Eventually(t, func() bool {
+		return db.Stats().AcquiredConns() <= before
+	}, 2*time.Second, 10*time.Millisecond)
 }

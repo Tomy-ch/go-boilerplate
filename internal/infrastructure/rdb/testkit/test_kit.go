@@ -33,13 +33,13 @@ type TransactionRunner interface {
 	WithinTx(fn func(ctx context.Context))
 }
 
-// testTxManager はテスト用のトランザクションマネージャーを表します。
-type testTxManager struct {
+// testTxRunner はテスト用のトランザクションランナーを表します。
+type testTxRunner struct {
 	inner tx.Manager
 	t     *testing.T
 }
 
-// NewTestDB は、テスト用のデータベースドライバーを生成します。
+// NewTestDB は、テスト用の共有データベースドライバー（シングルトン）を取得します。
 func NewTestDB(t *testing.T) driver.DatabaseDriver {
 	t.Helper()
 	return getTestDB(t)
@@ -60,19 +60,19 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
 	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
 }
 
-// NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
-func NewTestTransactionManager(t *testing.T) TransactionRunner {
+// NewTestTransactionRunner は、テスト用のトランザクションランナーを生成します。
+func NewTestTransactionRunner(t *testing.T) TransactionRunner {
 	t.Helper()
 	testLogger := logging.NewTestLogger(t)
 
 	innerTxm := driver.NewTransactionManager(getTestDB(t), testLogger)
 
-	txm := &testTxManager{
+	runner := &testTxRunner{
 		inner: innerTxm,
 		t:     t,
 	}
 
-	return txm
+	return runner
 }
 
 // WithinTx は、テスト用のトランザクションマネージャーでトランザクションを開始し、引数で渡されたfnを実行し、最後にロールバックします。
@@ -82,7 +82,7 @@ func NewTestTransactionManager(t *testing.T) TransactionRunner {
 //	txm.WithinTx(func(ctx context.Context) {
 //	  // トランザクション内の処理
 //	})
-func (t *testTxManager) WithinTx(fn func(ctx context.Context)) {
+func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 	t.t.Helper()
 
 	txLock.Lock()
@@ -101,7 +101,7 @@ func (t *testTxManager) WithinTx(fn func(ctx context.Context)) {
 	require.NoError(t.t, err)
 }
 
-// getTestDB は、テスト用のデータベースドライバーを生成します。シングルトンパターンで実装されており、複数回呼び出されても同じインスタンスを返します。
+// getTestDB は、テスト用の共有データベースドライバーを返します（初回呼び出し時のみ生成）。
 func getTestDB(t *testing.T) driver.DatabaseDriver {
 	t.Helper()
 

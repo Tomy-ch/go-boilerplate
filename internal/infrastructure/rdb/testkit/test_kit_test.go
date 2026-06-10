@@ -28,16 +28,16 @@ func TestNewTestLoggingProvider(t *testing.T) {
 	require.NotNil(t, provider.NewLoggingDB(context.Background()))
 }
 
-func TestNewTestTransactionManager(t *testing.T) {
+func TestNewTestTransactionRunner(t *testing.T) {
 	t.Parallel()
-	runner := NewTestTransactionManager(t)
+	runner := NewTestTransactionRunner(t)
 	// 公開 API 経由で WithinTx がコールバックを実行する（実トランザクションを開始しロールバックする）ことを検証する。
 	ran := false
 	runner.WithinTx(func(context.Context) { ran = true })
 	assert.True(t, ran)
 }
 
-func Test_testTxManager_Do(t *testing.T) {
+func Test_testTxRunner_Do(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
@@ -52,7 +52,7 @@ func Test_testTxManager_Do(t *testing.T) {
 
 	t.Run("実行時にエラーが発生しない場合、正常に終了すること", func(t *testing.T) {
 		t.Parallel()
-		txm := &testTxManager{
+		txm := &testTxRunner{
 			inner: innerTxm,
 			t:     t,
 		}
