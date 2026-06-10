@@ -525,6 +525,14 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 			require.ErrorIs(t, err, expectedErr)
 			require.Nil(t, actual)
 		})
+
+		t.Run("page が nil の場合、ErrInvalidArgument が返る", func(t *testing.T) {
+			t.Parallel()
+			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
+			actual, err := uc.ListUsersWithTotal(ctx, nil, nil)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			require.Nil(t, actual)
+		})
 	})
 }
 

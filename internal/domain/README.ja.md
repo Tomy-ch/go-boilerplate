@@ -347,6 +347,7 @@ internal/infrastructure/persistence/postgres/
 - `FindByActive`
 - `FindByXXX`
 - `CountByXXX`
+- `Create` / `Update`（集約の永続化＝write。論理削除は `deletedAt` を更新する `Update`）
 
 想定：
 
@@ -703,7 +704,7 @@ func New(
         id:        id,
         building:  ptr.Copy(building),
         deletedAt: ptr.Copy(deletedAt),
-        // firstName / lastName / 連絡先 / 住所 / 監査時刻 …
+        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も引数から設定（例示のため省略）
     }, nil
 }
 

@@ -329,5 +329,13 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 			require.ErrorIs(t, err, expectedErr)
 			require.Nil(t, actual)
 		})
+
+		t.Run("filter が nil の場合、ErrInvalidArgument が返る", func(t *testing.T) {
+			t.Parallel()
+			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
+			actual, err := u.ListUsersByKeywordWithTotal(ctx, nil, p)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			require.Nil(t, actual)
+		})
 	})
 }

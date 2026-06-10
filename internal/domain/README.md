@@ -345,6 +345,7 @@ Mapping to Domain is done by `sqlc`.
 - `FindByActive`
 - `FindByXXX`
 - `CountByXXX`
+- `Create` / `Update` (aggregate persistence — writes; logical delete is an `Update` of `deletedAt`)
 
 Assumed operations:
 
@@ -701,7 +702,7 @@ func New(
         id:        id,
         building:  ptr.Copy(building),
         deletedAt: ptr.Copy(deletedAt),
-        // firstName / lastName / 連絡先 / 住所 / 監査時刻 …
+        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も引数から設定（例示のため省略）
     }, nil
 }
 
