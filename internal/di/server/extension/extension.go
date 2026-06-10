@@ -3,6 +3,7 @@ package extension
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -38,8 +39,8 @@ type ServeCfgOut struct {
 	SrvCfg SrvCfg `group:"server.configurators"`
 }
 
-// PreMiddleware は、Use ミドルウェアとその適用順序を表します。
-type PreMiddleware struct {
+// MiddlewareEntry は、ミドルウェアとその適用順序を表します。
+type MiddlewareEntry struct {
 	// Name は、ミドルウェアの名前です（ログ出力用）
 	Name string
 	// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
@@ -47,21 +48,17 @@ type PreMiddleware struct {
 	// Middleware は、適用対象の Echo ミドルウェアです。
 	Middleware echo.MiddlewareFunc
 }
+
+// PreMiddleware は、Pre ミドルウェアエントリです。
+type PreMiddleware = MiddlewareEntry
+
+// UseMiddleware は、Use ミドルウェアエントリです。
+type UseMiddleware = MiddlewareEntry
 
 // PreMiddlewareOut は、fx の group 出力用のラッパーです。
 type PreMiddlewareOut struct {
 	fx.Out
 	Middleware PreMiddleware `group:"middlewares.pre"`
-}
-
-// UseMiddleware は、Use ミドルウェアとその適用順序を表します。
-type UseMiddleware struct {
-	// Name は、ミドルウェアの名前です（ログ出力用）
-	Name string
-	// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
-	Priority int
-	// Middleware は、適用対象の Echo ミドルウェアです。
-	Middleware echo.MiddlewareFunc
 }
 
 // UseMiddlewareOut は、fx の group 出力用のラッパーです。
@@ -84,58 +81,44 @@ func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*
 
 // ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
 func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddleware) error {
-	if err := validatePreMiddlewarePriorityConflicts(mws); err != nil {
-		return err
-	}
-
-	logger.Named("ApplyPreMiddlewares").CallerSkip(callerSkip).Info(
-		"Applying pre middleware",
-		logging.Int("count", len(mws)),
-	)
-
-	sort.Slice(mws, func(i, j int) bool {
-		return mws[i].Priority < mws[j].Priority
-	})
-
-	for _, mw := range mws {
-		logger.Named("ApplyPreMiddlewares").CallerSkip(callerSkip).Info(
-			"Applying pre middleware",
-			logging.Int("priority", mw.Priority),
-			logging.String("middleware", mw.Name),
-		)
-		e.Pre(mw.Middleware)
-	}
-	return nil
+	return applyMiddlewares(logger, "pre", mws, e.Pre)
 }
 
 // ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
 func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddleware) error {
-	if err := validateUseMiddlewarePriorityConflicts(mws); err != nil {
+	return applyMiddlewares(logger, "use", mws, e.Use)
+}
+
+// applyMiddlewares は、kind 種別のミドルウェアを優先度順に apply で適用します。
+func applyMiddlewares(logger logging.Logger, kind string, mws []MiddlewareEntry, apply func(...echo.MiddlewareFunc)) error {
+	if err := validatePriorityConflicts(kind, mws); err != nil {
 		return err
 	}
 
-	logger.Named("ApplyUseMiddlewares").CallerSkip(callerSkip).Info(
-		"Applying use middleware",
+	log := logger.Named("ApplyMiddlewares").CallerSkip(callerSkip)
+	log.Info(
+		fmt.Sprintf("Applying %s middleware", kind),
 		logging.Int("count", len(mws)),
 	)
 
-	sort.Slice(mws, func(i, j int) bool {
-		return mws[i].Priority < mws[j].Priority
+	sorted := slices.Clone(mws)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Priority < sorted[j].Priority
 	})
 
-	for _, mw := range mws {
-		logger.Named("ApplyUseMiddlewares").CallerSkip(callerSkip).Info(
-			"Applying use middleware",
+	for _, mw := range sorted {
+		log.Info(
+			fmt.Sprintf("Applying %s middleware", kind),
 			logging.Int("priority", mw.Priority),
 			logging.String("middleware", mw.Name),
 		)
-		e.Use(mw.Middleware)
+		apply(mw.Middleware)
 	}
 	return nil
 }
 
-// validateUseMiddlewarePriorityConflicts は、Priority の重複がないか検証します。
-func validateUseMiddlewarePriorityConflicts(mws []UseMiddleware) error {
+// validatePriorityConflicts は、kind 種別のミドルウェアに Priority の重複がないか検証します。
+func validatePriorityConflicts(kind string, mws []MiddlewareEntry) error {
 	byPriority := make(map[int][]string)
 
 	for _, mw := range mws {
@@ -145,27 +128,8 @@ func validateUseMiddlewarePriorityConflicts(mws []UseMiddleware) error {
 	conflicts := extractPriorityConflicts(byPriority)
 
 	if len(conflicts) > 0 {
-		return xerrors.New(fmt.Sprintf("duplicate use middleware priorities: %s",
-			strings.Join(conflicts, "; "),
-		))
-	}
-
-	return nil
-}
-
-// validatePreMiddlewarePriorityConflicts は、Priority の重複がないか検証します。
-func validatePreMiddlewarePriorityConflicts(mws []PreMiddleware) error {
-	byPriority := make(map[int][]string)
-
-	for _, mw := range mws {
-		byPriority[mw.Priority] = append(byPriority[mw.Priority], mw.Name)
-	}
-
-	conflicts := extractPriorityConflicts(byPriority)
-
-	if len(conflicts) > 0 {
-		return xerrors.New(fmt.Sprintf("duplicate use middleware priorities: %s",
-			strings.Join(conflicts, "; "),
+		return xerrors.New(fmt.Sprintf("duplicate %s middleware priorities: %s",
+			kind, strings.Join(conflicts, "; "),
 		))
 	}
 
@@ -173,11 +137,17 @@ func validatePreMiddlewarePriorityConflicts(mws []PreMiddleware) error {
 }
 
 // extractPriorityConflicts は、priority ごとに名前が重複しているものを抽出して返します。
-// 戻り値は conflict 表現の文字列スライス。
+// 戻り値は priority 昇順の conflict 表現の文字列スライス。
 func extractPriorityConflicts(byPriority map[int][]string) []string {
-	var conflicts []string
+	priorities := make([]int, 0, len(byPriority))
+	for p := range byPriority {
+		priorities = append(priorities, p)
+	}
+	sort.Ints(priorities)
 
-	for p, names := range byPriority {
+	var conflicts []string
+	for _, p := range priorities {
+		names := byPriority[p]
 		if len(names) > 1 {
 			conflicts = append(conflicts,
 				fmt.Sprintf("priority=%d: %v", p, names),

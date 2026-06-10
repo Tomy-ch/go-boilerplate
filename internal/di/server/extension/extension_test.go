@@ -340,7 +340,7 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
-func Test_validateUseMiddlewarePriorityConflicts(t *testing.T) {
+func Test_validatePriorityConflicts(t *testing.T) {
 	t.Parallel()
 
 	t.Run("priority がユニークならエラーなし", func(t *testing.T) {
@@ -352,7 +352,7 @@ func Test_validateUseMiddlewarePriorityConflicts(t *testing.T) {
 			{Name: "C", Priority: 30},
 		}
 
-		err := validateUseMiddlewarePriorityConflicts(mws)
+		err := validatePriorityConflicts("use", mws)
 		require.NoError(t, err)
 	})
 
@@ -365,11 +365,28 @@ func Test_validateUseMiddlewarePriorityConflicts(t *testing.T) {
 			{Name: "C", Priority: 20},
 		}
 
-		err := validateUseMiddlewarePriorityConflicts(mws)
+		err := validatePriorityConflicts("use", mws)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "priority=20")
 		assert.Contains(t, err.Error(), "B")
 		assert.Contains(t, err.Error(), "C")
+	})
+
+	t.Run("kind 種別がエラー文言へ反映されること", func(t *testing.T) {
+		t.Parallel()
+
+		mws := []MiddlewareEntry{
+			{Name: "A", Priority: 1},
+			{Name: "B", Priority: 1},
+		}
+
+		preErr := validatePriorityConflicts("pre", mws)
+		require.Error(t, preErr)
+		assert.Contains(t, preErr.Error(), "duplicate pre middleware priorities")
+
+		useErr := validatePriorityConflicts("use", mws)
+		require.Error(t, useErr)
+		assert.Contains(t, useErr.Error(), "duplicate use middleware priorities")
 	})
 }
 
