@@ -234,7 +234,9 @@ Defines core business concepts and contracts.
 - Domain services
 - Repository interfaces
 - No framework or infrastructure dependencies allowed
-- Only use shared utilities defined under `pkg/` when external libraries are required
+- Only use shared utilities defined under `pkg/` when external libraries are required.
+  The sole permitted `internal/` dependency is `internal/apperror` (the application-wide,
+  framework-agnostic error taxonomy — a cross-cutting kernel with no I/O, framework, or infrastructure)
   - If time or randomness is required, it must be abstracted via domain interfaces and implemented in outer layers.
 - Constructors must not instantiate external dependencies
 - Business logic must remain deterministic and side-effect free
