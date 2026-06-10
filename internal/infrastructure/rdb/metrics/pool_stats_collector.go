@@ -92,9 +92,15 @@ func (c *PoolStatsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-// RegisterPoolStatsCollector は、PoolStatsCollectorをPrometheusのレジストリに登録します。
-func RegisterPoolStatsCollector(c *PoolStatsCollector) error {
-	err := prometheus.Register(c)
+// NewRegisterer は、既定の Prometheus レジストリを Registerer として返します。
+func NewRegisterer() prometheus.Registerer {
+	return prometheus.DefaultRegisterer
+}
+
+// RegisterPoolStatsCollector は、PoolStatsCollectorを指定レジストリに登録します。
+// 既に登録済みの場合はエラーを返さず無視します。
+func RegisterPoolStatsCollector(reg prometheus.Registerer, c *PoolStatsCollector) error {
+	err := reg.Register(c)
 	if err != nil {
 		var alreadyRegisteredErr prometheus.AlreadyRegisteredError
 		if xerrors.As(err, &alreadyRegisteredErr) {
