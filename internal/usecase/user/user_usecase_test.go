@@ -179,7 +179,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 			require.ErrorIs(t, err, expectedErr)
 		})
 
-		t.Run("ユーザーの都道府県が解決できない場合、ErrNotFound が返される", func(t *testing.T) {
+		t.Run("ユーザーの都道府県が解決できない場合、ErrInternal が返される", func(t *testing.T) {
 			t.Parallel()
 
 			page := 1
@@ -201,7 +201,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			actual, err := uc.ListUsers(ctx, nil, p)
 			require.Nil(t, actual)
-			require.ErrorIs(t, err, apperror.ErrNotFound)
+			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
 		t.Run("page が nil の場合、ErrInvalidArgument が返される", func(t *testing.T) {

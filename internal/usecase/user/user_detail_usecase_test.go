@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
 	"go-boilerplate/internal/domain/user"
@@ -96,6 +97,21 @@ func Test_usecase_GetUser(t *testing.T) {
 		uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
 		_, err := uc.GetUser(ctx, id)
 		require.ErrorIs(t, err, expectedErr)
+	})
+
+	t.Run("異常系_ユーザーの都道府県が NotFound の場合は参照整合性破れとして ErrInternal", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		u := newActiveUser(t, id, prefID, now)
+
+		userRepo := mock_user.NewMockRepository(ctrl)
+		userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+		pftRepo := mock_prefecture.NewMockRepository(ctrl)
+		pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, apperror.ErrNotFound)
+
+		uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+		_, err := uc.GetUser(ctx, id)
+		require.ErrorIs(t, err, apperror.ErrInternal)
 	})
 }
 
@@ -443,6 +459,39 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 
 		uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
 		_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{PrefectureName: ptr.To("Unknown")})
+		require.ErrorIs(t, err, expectedErr)
+	})
+
+	t.Run("異常系_指定なしで現在の都道府県が NotFound の場合は ErrInternal", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		u := newActiveUser(t, id, prefID, now)
+		clock := mock_clock.NewMockClock(ctrl)
+		clock.EXPECT().Now().Return(now)
+		userRepo := mock_user.NewMockRepository(ctrl)
+		userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+		pftRepo := mock_prefecture.NewMockRepository(ctrl)
+		pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, apperror.ErrNotFound)
+
+		uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
+		_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: ptr.To("X")})
+		require.ErrorIs(t, err, apperror.ErrInternal)
+	})
+
+	t.Run("異常系_指定なしで現在の都道府県取得が汎用エラーの場合は伝播", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		expectedErr := xerrors.New("db error")
+		u := newActiveUser(t, id, prefID, now)
+		clock := mock_clock.NewMockClock(ctrl)
+		clock.EXPECT().Now().Return(now)
+		userRepo := mock_user.NewMockRepository(ctrl)
+		userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+		pftRepo := mock_prefecture.NewMockRepository(ctrl)
+		pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, expectedErr)
+
+		uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
+		_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: ptr.To("X")})
 		require.ErrorIs(t, err, expectedErr)
 	})
 

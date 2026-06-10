@@ -5,6 +5,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go-boilerplate/internal/apperror"
@@ -19,6 +20,9 @@ import (
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
+
+// 既存ユーザーが参照する prefecture を解決できない参照整合性破れ（サーバ側データ不整合）を表します。
+var errOrphanPrefecture = xerrors.Wrap(apperror.ErrInternal, "prefecture not found for user")
 
 // UserView は、ユーザー取得結果の出力 DTO を表します。
 type UserView struct {
@@ -157,7 +161,7 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Pagi
 	for i, ue := range us {
 		p, ok := prefectureMap[ue.PrefectureID()]
 		if !ok {
-			return nil, xerrors.Wrap(apperror.ErrNotFound, "prefecture not found for user")
+			return nil, errOrphanPrefecture
 		}
 		dtos[i] = toUserView(ue, p.Name())
 	}
@@ -240,6 +244,9 @@ func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
 
 	pftDomain, err := u.pftRepo.FindByID(ctx, userEntity.PrefectureID())
 	if err != nil {
+		if errors.Is(err, apperror.ErrNotFound) {
+			return UserView{}, errOrphanPrefecture
+		}
 		return UserView{}, err
 	}
 
@@ -355,14 +362,8 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *Pa
 			return err
 		}
 
-		// 都道府県: 指定があれば名前解決、なければ現在の prefecture を取得（レスポンス名の解決も兼ねる）
 		prefectureID := userEntity.PrefectureID()
-		var pftDomain *prefecture.Prefecture
-		if dto.PrefectureName != nil {
-			pftDomain, err = u.pftRepo.FindByName(ctx, *dto.PrefectureName)
-		} else {
-			pftDomain, err = u.pftRepo.FindByID(ctx, prefectureID)
-		}
+		pftDomain, err := u.resolvePatchPrefecture(ctx, dto.PrefectureName, prefectureID)
 		if err != nil {
 			return err
 		}
@@ -414,6 +415,22 @@ func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		}
 		return u.userRepo.Update(ctx, userEntity)
 	})
+}
+
+// resolvePatchPrefecture は、PATCH の都道府県を解決します。
+// 名前指定があれば名前で解決（入力エラーは伝播）、なければ既存 ID で解決します（未解決は参照整合性破れ）。
+func (u *usecase) resolvePatchPrefecture(ctx context.Context, name *string, currentID uuid.UUID) (*prefecture.Prefecture, error) {
+	if name != nil {
+		return u.pftRepo.FindByName(ctx, *name)
+	}
+	pftDomain, err := u.pftRepo.FindByID(ctx, currentID)
+	if errors.Is(err, apperror.ErrNotFound) {
+		return nil, errOrphanPrefecture
+	}
+	if err != nil {
+		return nil, err
+	}
+	return pftDomain, nil
 }
 
 // toUserView は、ユーザーエンティティと都道府県名から DTO を構築します。
