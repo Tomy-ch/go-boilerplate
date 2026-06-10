@@ -263,9 +263,9 @@
 				
 				<option value="file103">go-boilerplate/internal/di/server/extension/testkit/testkit.go (100.0%)</option>
 				
-				<option value="file104">go-boilerplate/internal/di/server/hook/db_close_hook.go (66.7%)</option>
+				<option value="file104">go-boilerplate/internal/di/server/hook/db_close_hook.go (100.0%)</option>
 				
-				<option value="file105">go-boilerplate/internal/di/server/hook/http_server_hook.go (94.1%)</option>
+				<option value="file105">go-boilerplate/internal/di/server/hook/http_server_hook.go (95.7%)</option>
 				
 				<option value="file106">go-boilerplate/internal/di/server/server.go (100.0%)</option>
 				
@@ -1789,7 +1789,7 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="337">{
+func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="338">{
         t.Helper()
         return &amp;Config{
                 os: OperatingSystemConfig{
@@ -2251,10 +2251,10 @@ type AuthConfig struct {
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
-func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig <span class="cov8" title="234">{ return &amp;cfg.os }</span>
+func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig <span class="cov8" title="235">{ return &amp;cfg.os }</span>
 
 // TimeZone は、OSのタイムゾーンを返します。
-func (o *OperatingSystemConfig) TimeZone() string <span class="cov10" title="491">{ return o.timezone }</span>
+func (o *OperatingSystemConfig) TimeZone() string <span class="cov10" title="492">{ return o.timezone }</span>
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
 func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov6" title="52">{ return &amp;cfg.app }</span>
@@ -2282,7 +2282,7 @@ func (a *ApplicationConfig) IsDevelopmentMode() bool <span class="cov5" title="3
 }</span>
 
 // NewServerConfig は、サーバーの設定を返します。
-func NewServerConfig(cfg *Config) *ServerConfig <span class="cov4" title="9">{ return &amp;cfg.server }</span>
+func NewServerConfig(cfg *Config) *ServerConfig <span class="cov4" title="10">{ return &amp;cfg.server }</span>
 
 // Host は、サーバーがリッスンするホスト名を返します。
 func (s *ServerConfig) Host() string <span class="cov1" title="1">{ return s.host }</span>
@@ -2291,16 +2291,16 @@ func (s *ServerConfig) Host() string <span class="cov1" title="1">{ return s.hos
 func (s *ServerConfig) Port() int <span class="cov4" title="11">{ return s.port }</span>
 
 // ReadHeaderTimeout は、サーバーのヘッダー読み取りタイムアウトを返します。
-func (s *ServerConfig) ReadHeaderTimeout() time.Duration <span class="cov4" title="8">{ return s.readHeaderTimeout }</span>
+func (s *ServerConfig) ReadHeaderTimeout() time.Duration <span class="cov4" title="9">{ return s.readHeaderTimeout }</span>
 
 // ReadTimeout は、サーバーの読み取りタイムアウトを返します。
-func (s *ServerConfig) ReadTimeout() time.Duration <span class="cov4" title="8">{ return s.readTimeout }</span>
+func (s *ServerConfig) ReadTimeout() time.Duration <span class="cov4" title="9">{ return s.readTimeout }</span>
 
 // WriteTimeout は、サーバーの書き込みタイムアウトを返します。
-func (s *ServerConfig) WriteTimeout() time.Duration <span class="cov4" title="8">{ return s.writeTimeout }</span>
+func (s *ServerConfig) WriteTimeout() time.Duration <span class="cov4" title="9">{ return s.writeTimeout }</span>
 
 // IdleTimeout は、サーバーのアイドルタイムアウトを返します。
-func (s *ServerConfig) IdleTimeout() time.Duration <span class="cov4" title="8">{ return s.idleTimeout }</span>
+func (s *ServerConfig) IdleTimeout() time.Duration <span class="cov4" title="9">{ return s.idleTimeout }</span>
 
 // NewMetricsConfig は、メトリクスの設定を返します。
 func NewMetricsConfig(cfg *Config) *MetricsConfig <span class="cov4" title="10">{ return &amp;cfg.metrics }</span>
@@ -5306,7 +5306,7 @@ import (
 )
 
 // NewAppServer は、サーバーインスタンスを作成します。
-func NewAppServer(srvCfg *config.ServerConfig) *echo.Echo <span class="cov10" title="6">{
+func NewAppServer(srvCfg *config.ServerConfig) *echo.Echo <span class="cov10" title="7">{
         e := echo.New()
         e.Server.ReadHeaderTimeout = srvCfg.ReadHeaderTimeout()
         e.Server.ReadTimeout = srvCfg.ReadTimeout()
@@ -5404,12 +5404,6 @@ type (
         StopFunc func(ctx context.Context) error
 )
 
-type JobDeps struct {
-        State  job.State
-        Logger logging.Logger
-        OSCfg  *config.OperatingSystemConfig
-}
-
 // NewJobCore は、ジョブの fx.App インスタンスを作成します。
 func NewJobCore() fx.Option <span class="cov10" title="6">{
         return fx.Options(
@@ -5431,7 +5425,7 @@ func NewJobCore() fx.Option <span class="cov10" title="6">{
         )
 }</span>
 
-// RunJob は、指定されたコンテキストとタイムアウトでジョブランナーを実行します。
+// RunJob は、ジョブ実行用の開始関数・停止関数を生成して返します。context／タイムアウトの制御は返した関数の呼出側が担います。
 func RunJob() (StartFunc, StopFunc) <span class="cov7" title="4">{
         var (
                 state  job.State
@@ -5445,59 +5439,56 @@ func RunJob() (StartFunc, StopFunc) <span class="cov7" title="4">{
         )
 
         start := func(ctx context.Context, name string, args []string) &lt;-chan error </span><span class="cov4" title="2">{
+                l := logger.Named("job.RunJob").CallerSkip(callSkip)
                 done := make(chan error, 1)
                 state.Set(name, args, done)
 
                 if err := app.Start(ctx); err != nil </span><span class="cov1" title="1">{
-                        logger.Named("job.RunJob").CallerSkip(callSkip).Error(
-                                "failed to start job application",
-                                logging.String(logging.EventTypeKey, logging.EventTypeStart),
-                                logging.Time(logging.EventAtKey, time.Now()),
-                                logging.String(logging.EventTzKey, osCfg.TimeZone()),
+                        fields := append(jobEventFields(logging.EventTypeStart, osCfg.TimeZone()),
                                 logging.String(logging.JobNameKey, name),
                                 logging.Strings(logging.JobArgsKey, args),
                                 logging.Error(logging.JobErrorKey, err),
                         )
+                        l.Error("failed to start job application", fields...)
                         done &lt;- err
                         close(done)
                         return done
                 }</span>
 
-                <span class="cov1" title="1">logger.Named("job.RunJob").CallerSkip(callSkip).Info(
-                        "job started",
-                        logging.String(logging.EventTypeKey, logging.EventTypeStart),
-                        logging.Time(logging.EventAtKey, time.Now()),
-                        logging.String(logging.EventTzKey, osCfg.TimeZone()),
+                <span class="cov1" title="1">fields := append(jobEventFields(logging.EventTypeStart, osCfg.TimeZone()),
                         logging.String(logging.JobNameKey, name),
                         logging.Strings(logging.JobArgsKey, args),
                 )
+                l.Info("job started", fields...)
 
                 return done</span>
         }
 
         <span class="cov7" title="4">stop := func(ctx context.Context) error </span><span class="cov7" title="4">{
+                l := logger.Named("job.RunJob").CallerSkip(callSkip)
                 if err := app.Stop(ctx); err != nil </span><span class="cov1" title="1">{
-                        logger.Named("job.RunJob").CallerSkip(callSkip).Error(
-                                "failed to stop job application",
-                                logging.String(logging.EventTypeKey, logging.EventTypeEnd),
-                                logging.Time(logging.EventAtKey, time.Now()),
-                                logging.String(logging.EventTzKey, osCfg.TimeZone()),
+                        fields := append(jobEventFields(logging.EventTypeEnd, osCfg.TimeZone()),
                                 logging.Error(logging.JobErrorKey, err),
                         )
+                        l.Error("failed to stop job application", fields...)
                         return err
                 }</span>
 
-                <span class="cov6" title="3">logger.Named("job.RunJob").CallerSkip(callSkip).Info(
-                        "job application finished",
-                        logging.String(logging.EventTypeKey, logging.EventTypeEnd),
-                        logging.Time(logging.EventAtKey, time.Now()),
-                        logging.String(logging.EventTzKey, osCfg.TimeZone()),
-                )
+                <span class="cov6" title="3">l.Info("job application finished", jobEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
                 return nil</span>
         }
 
         <span class="cov7" title="4">return start, stop</span>
 }
+
+// jobEventFields は、ジョブ起動／停止ログ共通のイベントフィールド（種別・発生時刻・TZ）を返します。
+func jobEventFields(eventType, tz string) []*logging.Field <span class="cov10" title="6">{
+        return []*logging.Field{
+                logging.String(logging.EventTypeKey, eventType),
+                logging.Time(logging.EventAtKey, time.Now()),
+                logging.String(logging.EventTzKey, tz),
+        }
+}</span>
 </pre>
 		
 		<pre class="file" id="file67" style="display: none">// Package hook は、ジョブのライフサイクルフックを提供します。
@@ -5613,21 +5604,20 @@ type lifecycleRegistrar struct {
         lc fx.Lifecycle
 }
 
-// NewLifecycleRegistrar は、fx.Lifecycleを使用してLifecycleRegistrarを提供します。
+// NewLifecycleRegistrar は、fx.Lifecycle を用いて Registrar の実装を提供します。
 func NewLifecycleRegistrar(lc fx.Lifecycle) Registrar <span class="cov8" title="10">{
         return lifecycleRegistrar{lc: lc}
 }</span>
 
-func (r lifecycleRegistrar) RegisterStart(fn func(ctx context.Context) error) <span class="cov7" title="8">{
+func (r lifecycleRegistrar) RegisterStart(start func(ctx context.Context) error) <span class="cov7" title="8">{
         r.lc.Append(fx.Hook{
-                OnStart: fn,
+                OnStart: start,
         })
 }</span>
 
-// RegisterStop は、fx.Lifecycleにシャットダウンフックを登録します。
-func (r lifecycleRegistrar) RegisterStop(fn func(ctx context.Context) error) <span class="cov10" title="17">{
+func (r lifecycleRegistrar) RegisterStop(stop func(ctx context.Context) error) <span class="cov10" title="17">{
         r.lc.Append(fx.Hook{
-                OnStop: fn,
+                OnStop: stop,
         })
 }</span>
 </pre>
@@ -5646,7 +5636,7 @@ func Module() fx.Option <span class="cov10" title="14">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file71" style="display: none">// Package module は、DIでの設定関連の依存関係を提供します。
+		<pre class="file" id="file71" style="display: none">// Package module は、各レイヤの fx.Module（依存関係定義）を提供します。
 package module
 
 import (
@@ -5728,6 +5718,7 @@ import (
         "go.uber.org/fx"
 )
 
+// callerSkipCount は、ロギングラッパーが追加するフレーム数を補正するためのスキップ数です。
 const callerSkipCount = 1
 
 // AuthnModule は、認証関連の依存関係を提供するfxモジュールを返します。
@@ -5741,18 +5732,16 @@ func AuthnModule() fx.Option <span class="cov7" title="4">{
 }</span>
 
 // provideAuthenticator は、Authenticator のコンストラクタを提供します。
-func provideAuthenticator(
-        appCfg *config.ApplicationConfig,
-        logger logging.Logger,
-) (authbd.Authenticator, error) <span class="cov10" title="6">{
+func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logger) (authbd.Authenticator, error) <span class="cov10" title="6">{
         switch appCfg.Env() </span>{
         case config.EnvLocal, config.EnvCI, config.EnvTest:<span class="cov9" title="5">
                 return local.New(), nil</span>
         default:<span class="cov1" title="1">
-                logger.CallerSkip(callerSkipCount).Error(
+                logger.Named("core.authn").CallerSkip(callerSkipCount).Error(
                         "No authenticator configured for the current environment",
                         logging.String("env", string(appCfg.Env())),
                 )
+
                 return nil, fmt.Errorf("no authenticator configured for environment: %s", appCfg.Env())</span>
         }
 }
@@ -5974,6 +5963,7 @@ import (
         "go.uber.org/fx"
 )
 
+// ObservabilityModule は、オブザーバビリティ（トレーシング）関連の依存関係を提供するfx.Moduleです。
 func ObservabilityModule() fx.Option <span class="cov10" title="13">{
         return fx.Module("observability",
                 fx.Provide(
@@ -6039,14 +6029,14 @@ import (
         "go.uber.org/fx"
 )
 
-// NewApplicationServer は、サーバー関連の依存関係を提供するfx.Moduleです。
+// NewApplicationServer は、組み立て済みの fx.App を受け取り、その起動／停止を行う lifecycle 関数（start, stop）を返します。
 func NewApplicationServer(app *fx.App) (func(context.Context) error, func(context.Context) error) <span class="cov10" title="2">{
         start := func(ctx context.Context) error </span><span class="cov10" title="2">{
                 return app.Start(ctx)
         }</span>
 
-        <span class="cov10" title="2">stop := func(stopCtx context.Context) error </span><span class="cov10" title="2">{
-                return app.Stop(stopCtx)
+        <span class="cov10" title="2">stop := func(ctx context.Context) error </span><span class="cov10" title="2">{
+                return app.Stop(ctx)
         }</span>
 
         <span class="cov10" title="2">return start, stop</span>
@@ -6070,12 +6060,12 @@ func applicationCoreOptions() []fx.Option <span class="cov10" title="2">{
                 module.ObservabilityModule(),
                 module.DatabaseModule(),
                 module.SystemModule(),
-                server.MiddlewareModule(),
                 // DDD Modules
                 module.InfrastructureModule(),
                 module.UsecaseModule(),
                 module.ControllerModule(),
                 // Server Module
+                server.MiddlewareModule(),
                 server.Module(),
                 server.HookModule(),
         }
@@ -6189,8 +6179,18 @@ type ServeCfgOut struct {
         SrvCfg SrvCfg `group:"server.configurators"`
 }
 
-// PreMiddleware は、Use ミドルウェアとその適用順序を表します。
+// PreMiddleware は、Pre ミドルウェアとその適用順序を表します。
 type PreMiddleware struct {
+        // Name は、ミドルウェアの名前です（ログ出力用）
+        Name string
+        // Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
+        Priority int
+        // Middleware は、適用対象の Echo ミドルウェアです。
+        Middleware echo.MiddlewareFunc
+}
+
+// UseMiddleware は、Use ミドルウェアとその適用順序を表します。
+type UseMiddleware struct {
         // Name は、ミドルウェアの名前です（ログ出力用）
         Name string
         // Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
@@ -6205,24 +6205,21 @@ type PreMiddlewareOut struct {
         Middleware PreMiddleware `group:"middlewares.pre"`
 }
 
-// UseMiddleware は、Use ミドルウェアとその適用順序を表します。
-type UseMiddleware struct {
-        // Name は、ミドルウェアの名前です（ログ出力用）
-        Name string
-        // Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
-        Priority int
-        // Middleware は、適用対象の Echo ミドルウェアです。
-        Middleware echo.MiddlewareFunc
-}
-
 // UseMiddlewareOut は、fx の group 出力用のラッパーです。
 type UseMiddlewareOut struct {
         fx.Out
         Middleware UseMiddleware `group:"middlewares.use"`
 }
 
+// middlewareEntry は、Pre/Use 共通の適用処理が扱う内部表現です。
+type middlewareEntry struct {
+        name       string
+        priority   int
+        middleware echo.MiddlewareFunc
+}
+
 // ApplyExtends は、サーバー拡張を適用します。
-func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*AppliedServerExtends, error) <span class="cov5" title="5">{
+func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*AppliedServerExtends, error) <span class="cov4" title="5">{
         if err := ApplyPreMiddlewares(e, logger, extends.PreList); err != nil </span><span class="cov1" title="1">{
                 return nil, err
         }</span>
@@ -6235,111 +6232,91 @@ func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*
 
 // ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
 func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddleware) error <span class="cov6" title="8">{
-        if err := validatePreMiddlewarePriorityConflicts(mws); err != nil </span><span class="cov2" title="2">{
-                return err
+        entries := make([]middlewareEntry, len(mws))
+        for i, mw := range mws </span><span class="cov6" title="9">{
+                entries[i] = middlewareEntry{name: mw.Name, priority: mw.Priority, middleware: mw.Middleware}
         }</span>
-
-        <span class="cov5" title="6">logger.Named("ApplyPreMiddlewares").CallerSkip(callerSkip).Info(
-                "Applying pre middleware",
-                logging.Int("count", len(mws)),
-        )
-
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov1" title="1">{
-                return mws[i].Priority &lt; mws[j].Priority
-        }</span>)
-
-        <span class="cov5" title="6">for _, mw := range mws </span><span class="cov5" title="5">{
-                logger.Named("ApplyPreMiddlewares").CallerSkip(callerSkip).Info(
-                        "Applying pre middleware",
-                        logging.Int("priority", mw.Priority),
-                        logging.String("middleware", mw.Name),
-                )
-                e.Pre(mw.Middleware)
-        }</span>
-        <span class="cov5" title="6">return nil</span>
+        <span class="cov6" title="8">return applyMiddlewares(logger, "pre", entries, e.Pre)</span>
 }
 
 // ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
 func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddleware) error <span class="cov5" title="7">{
-        if err := validateUseMiddlewarePriorityConflicts(mws); err != nil </span><span class="cov2" title="2">{
+        entries := make([]middlewareEntry, len(mws))
+        for i, mw := range mws </span><span class="cov8" title="17">{
+                entries[i] = middlewareEntry{name: mw.Name, priority: mw.Priority, middleware: mw.Middleware}
+        }</span>
+        <span class="cov5" title="7">return applyMiddlewares(logger, "use", entries, e.Use)</span>
+}
+
+// applyMiddlewares は、kind 種別のミドルウェアを優先度順に apply で適用します。
+func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry, apply func(...echo.MiddlewareFunc)) error <span class="cov7" title="15">{
+        if err := validatePriorityConflicts(kind, mws); err != nil </span><span class="cov4" title="4">{
                 return err
         }</span>
 
-        <span class="cov5" title="5">logger.Named("ApplyUseMiddlewares").CallerSkip(callerSkip).Info(
-                "Applying use middleware",
+        <span class="cov6" title="11">log := logger.Named("ApplyMiddlewares").CallerSkip(callerSkip)
+        log.Info(
+                fmt.Sprintf("Applying %s middleware", kind),
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="26">{
-                return mws[i].Priority &lt; mws[j].Priority
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="30">{
+                return mws[i].priority &lt; mws[j].priority
         }</span>)
 
-        <span class="cov5" title="5">for _, mw := range mws </span><span class="cov7" title="13">{
-                logger.Named("ApplyUseMiddlewares").CallerSkip(callerSkip).Info(
-                        "Applying use middleware",
-                        logging.Int("priority", mw.Priority),
-                        logging.String("middleware", mw.Name),
+        <span class="cov6" title="11">for _, mw := range mws </span><span class="cov8" title="18">{
+                log.Info(
+                        fmt.Sprintf("Applying %s middleware", kind),
+                        logging.Int("priority", mw.priority),
+                        logging.String("middleware", mw.name),
                 )
-                e.Use(mw.Middleware)
+                apply(mw.middleware)
         }</span>
-        <span class="cov5" title="5">return nil</span>
+        <span class="cov6" title="11">return nil</span>
 }
 
-// validateUseMiddlewarePriorityConflicts は、Priority の重複がないか検証します。
-func validateUseMiddlewarePriorityConflicts(mws []UseMiddleware) error <span class="cov6" title="9">{
+// validatePriorityConflicts は、kind 種別のミドルウェアに Priority の重複がないか検証します。
+func validatePriorityConflicts(kind string, mws []middlewareEntry) error <span class="cov8" title="19">{
         byPriority := make(map[int][]string)
 
-        for _, mw := range mws </span><span class="cov8" title="23">{
-                byPriority[mw.Priority] = append(byPriority[mw.Priority], mw.Name)
+        for _, mw := range mws </span><span class="cov9" title="36">{
+                byPriority[mw.priority] = append(byPriority[mw.priority], mw.name)
         }</span>
 
-        <span class="cov6" title="9">conflicts := extractPriorityConflicts(byPriority)
+        <span class="cov8" title="19">conflicts := extractPriorityConflicts(byPriority)
 
-        if len(conflicts) &gt; 0 </span><span class="cov3" title="3">{
-                return xerrors.New(fmt.Sprintf("duplicate use middleware priorities: %s",
-                        strings.Join(conflicts, "; "),
+        if len(conflicts) &gt; 0 </span><span class="cov5" title="7">{
+                return xerrors.New(fmt.Sprintf("duplicate %s middleware priorities: %s",
+                        kind, strings.Join(conflicts, "; "),
                 ))
         }</span>
 
-        <span class="cov5" title="6">return nil</span>
-}
-
-// validatePreMiddlewarePriorityConflicts は、Priority の重複がないか検証します。
-func validatePreMiddlewarePriorityConflicts(mws []PreMiddleware) error <span class="cov6" title="8">{
-        byPriority := make(map[int][]string)
-
-        for _, mw := range mws </span><span class="cov6" title="9">{
-                byPriority[mw.Priority] = append(byPriority[mw.Priority], mw.Name)
-        }</span>
-
-        <span class="cov6" title="8">conflicts := extractPriorityConflicts(byPriority)
-
-        if len(conflicts) &gt; 0 </span><span class="cov2" title="2">{
-                return xerrors.New(fmt.Sprintf("duplicate use middleware priorities: %s",
-                        strings.Join(conflicts, "; "),
-                ))
-        }</span>
-
-        <span class="cov5" title="6">return nil</span>
+        <span class="cov7" title="12">return nil</span>
 }
 
 // extractPriorityConflicts は、priority ごとに名前が重複しているものを抽出して返します。
-// 戻り値は conflict 表現の文字列スライス。
-func extractPriorityConflicts(byPriority map[int][]string) []string <span class="cov8" title="21">{
-        var conflicts []string
+// 戻り値は priority 昇順の conflict 表現の文字列スライス。
+func extractPriorityConflicts(byPriority map[int][]string) []string <span class="cov8" title="23">{
+        priorities := make([]int, 0, len(byPriority))
+        for p := range byPriority </span><span class="cov10" title="38">{
+                priorities = append(priorities, p)
+        }</span>
+        <span class="cov8" title="23">sort.Ints(priorities)
 
-        for p, names := range byPriority </span><span class="cov10" title="36">{
-                if len(names) &gt; 1 </span><span class="cov6" title="9">{
+        var conflicts []string
+        for _, p := range priorities </span><span class="cov10" title="38">{
+                names := byPriority[p]
+                if len(names) &gt; 1 </span><span class="cov6" title="11">{
                         conflicts = append(conflicts,
                                 fmt.Sprintf("priority=%d: %v", p, names),
                         )
                 }</span>
         }
-        <span class="cov8" title="21">return conflicts</span>
+        <span class="cov8" title="23">return conflicts</span>
 }
 
 // ApplyConfigurators は、Echoに対して設定関数を適用します。
-func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) <span class="cov5" title="5">{
+func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg) <span class="cov4" title="5">{
         logger.Named("ApplyConfigurators").CallerSkip(callerSkip).Info(
                 "Applying server configurator",
                 logging.Int("count", len(cfgs)),
@@ -6425,7 +6402,7 @@ import (
         "go.uber.org/fx"
 )
 
-const validatorUsePriority = 6
+const openapiUsePriority = 6
 
 // OpenAPIModule は、OpenAPIバリデーションのミドルウェアを提供するfxモジュールを返します。
 func OpenAPIModule() fx.Option <span class="cov10" title="6">{
@@ -6445,7 +6422,7 @@ func OpenAPIMiddleware(
         return extension.UseMiddlewareOut{
                 Middleware: extension.UseMiddleware{
                         Name:       "openapi",
-                        Priority:   validatorUsePriority,
+                        Priority:   openapiUsePriority,
                         Middleware: oapi.Middleware(spec, skipper, authFunc),
                 },
         }
@@ -6472,7 +6449,7 @@ func URIModule() fx.Option <span class="cov10" title="6">{
         )
 }</span>
 
-// URIPreMiddleware は、バリデーションミドルウェアを提供します。
+// URIPreMiddleware は、URI 末尾スラッシュ除去ミドルウェアを Pre ミドルウェアとして提供します。
 func URIPreMiddleware() extension.PreMiddlewareOut <span class="cov6" title="3">{
         return extension.PreMiddlewareOut{
                 Middleware: extension.PreMiddleware{
@@ -6659,7 +6636,7 @@ import (
 
 const forceJSONPriority = 7
 
-// ForceJSONModule は、JOINの強制制御のミドルウェアを提供するfxモジュールを返します。
+// ForceJSONModule は、レスポンスの Content-Type を application/json に強制するミドルウェアを提供するfxモジュールを返します。
 func ForceJSONModule() fx.Option <span class="cov10" title="6">{
         return fx.Module("mw.forcejson",
                 fx.Provide(
@@ -6668,7 +6645,7 @@ func ForceJSONModule() fx.Option <span class="cov10" title="6">{
         )
 }</span>
 
-// ForceJSONMiddleware は、JOINの強制制御ミドルウェアを提供します。
+// ForceJSONMiddleware は、Content-Type を application/json に強制するミドルウェアを提供します。
 func ForceJSONMiddleware() extension.UseMiddlewareOut <span class="cov6" title="3">{
         return extension.UseMiddlewareOut{
                 Middleware: extension.UseMiddleware{
@@ -6786,7 +6763,7 @@ package security
 
 import (
         "go-boilerplate/internal/config"
-        "go-boilerplate/internal/controller/httpstack/security"
+        httpsecurity "go-boilerplate/internal/controller/httpstack/security"
         "go-boilerplate/internal/di/server/extension"
 
         "go.uber.org/fx"
@@ -6809,7 +6786,7 @@ func Middleware(secCfg *config.SecurityConfig) extension.UseMiddlewareOut <span 
                 Middleware: extension.UseMiddleware{
                         Name:       "security",
                         Priority:   securityPriority,
-                        Middleware: security.Middleware(secCfg),
+                        Middleware: httpsecurity.Middleware(secCfg),
                 },
         }
 }</span>
@@ -6859,11 +6836,12 @@ func RegisterDBCloseHooks(
         reg lifecycle.Registrar,
         db driver.DatabaseDriver,
         logger logging.Logger,
-) <span class="cov10" title="9">{
-        reg.RegisterStop(func(_ context.Context) error </span><span class="cov8" title="6">{
-                logger.Named("db.CloseHook").Info("Closing database connection")
-                if err := db.Close(); err != nil </span><span class="cov0" title="0">{
-                        logger.Named("db.CloseHook").Error("failed to close database", logging.Error(logging.ErrorKey, err))
+) <span class="cov10" title="10">{
+        reg.RegisterStop(func(_ context.Context) error </span><span class="cov8" title="7">{
+                l := logger.Named("db.CloseHook")
+                l.Info("Closing database connection")
+                if err := db.Close(); err != nil </span><span class="cov1" title="1">{
+                        l.Error("failed to close database", logging.Error(logging.ErrorKey, err))
                         return err
                 }</span>
                 <span class="cov8" title="6">return nil</span>
@@ -6890,9 +6868,10 @@ import (
         "github.com/labstack/echo/v4"
 )
 
+// serverCallerSkip は、fx ライフサイクル経由のクロージャ呼び出しで挟まるフレームを飛ばしログの caller を実呼び出し位置へ合わせる段数です。
 const serverCallerSkip = 3
 
-// RegisterHTTPServerHooks は、HTTPサーバーを起動します。
+// RegisterHTTPServerHooks は、HTTPサーバーの起動・停止フックをライフサイクルに登録します。
 func RegisterHTTPServerHooks(
         e *echo.Echo,
         reg lifecycle.Registrar,
@@ -6903,45 +6882,42 @@ func RegisterHTTPServerHooks(
         osCfg *config.OperatingSystemConfig,
         // 下記はサーバー機能の拡張が適用されたことを示すトークン
         _ *extension.AppliedServerExtends,
-) <span class="cov5" title="2">{
-        reg.RegisterStart(newStartServerFunc(e, srvCfg, log, secCfg, appCfg, osCfg))
+) <span class="cov4" title="2">{
+        reg.RegisterStart(newStartServerFunc(e, log, appCfg, secCfg, srvCfg, osCfg))
         reg.RegisterStop(newStopServerFunc(e, log, osCfg))
 }</span>
 
 // newStartServerFunc は、HTTPサーバーを起動する関数を生成します。
 func newStartServerFunc(
         e *echo.Echo,
-        srvCfg *config.ServerConfig,
         log logging.Logger,
-        secCfg *config.SecurityConfig,
         appCfg *config.ApplicationConfig,
+        secCfg *config.SecurityConfig,
+        srvCfg *config.ServerConfig,
         osCfg *config.OperatingSystemConfig,
-) func(context.Context) error <span class="cov10" title="4">{
-        return func(ctx context.Context) error </span><span class="cov8" title="3">{
-                addr := srvCfg.Port()
+) func(context.Context) error <span class="cov8" title="4">{
+        return func(ctx context.Context) error </span><span class="cov7" title="3">{
+                port := srvCfg.Port()
 
                 lc := &amp;net.ListenConfig{}
-                ln, err := lc.Listen(ctx, "tcp", ":"+strconv.Itoa(addr))
+                ln, err := lc.Listen(ctx, "tcp", ":"+strconv.Itoa(port))
                 if err != nil </span><span class="cov1" title="1">{
-                        return fmt.Errorf("failed to listen on port %d: %w", addr, err)
+                        return fmt.Errorf("failed to listen on port %d: %w", port, err)
                 }</span>
-                <span class="cov5" title="2">e.Listener = ln
+                <span class="cov4" title="2">e.Listener = ln
 
-                go func() </span><span class="cov1" title="1">{
+                go func() </span><span class="cov4" title="2">{
                         if err := e.Start(""); err != nil &amp;&amp; !xerrors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
                                 log.Named("server.Start").Error("failed to start http server", logging.Error(logging.ErrorKey, err))
                         }</span>
                 }()
-                <span class="cov5" title="2">log.Named("server.Start").CallerSkip(serverCallerSkip).Info(
-                        "http started",
-                        logging.String(logging.EventTypeKey, logging.EventTypeStart),
-                        logging.Time(logging.EventAtKey, time.Now()),
-                        logging.String(logging.EventTzKey, osCfg.TimeZone()),
-                        logging.String("port", strconv.Itoa(addr)),
+                <span class="cov4" title="2">fields := append(lifecycleEventFields(logging.EventTypeStart, osCfg.TimeZone()),
+                        logging.String("port", strconv.Itoa(port)),
                         logging.Strings("allowed_origins", secCfg.AllowedOrigins()),
                         logging.String("cidr", secCfg.CIDR().IP.String()),
                         logging.String("mode", appCfg.Mode()),
                 )
+                log.Named("server.Start").CallerSkip(serverCallerSkip).Info("http started", fields...)
                 return nil</span>
         }
 }
@@ -6949,17 +6925,26 @@ func newStartServerFunc(
 // newStopServerFunc は、HTTPサーバーを停止する関数を生成します。
 func newStopServerFunc(
         e *echo.Echo, log logging.Logger, osCfg *config.OperatingSystemConfig,
-) func(context.Context) error <span class="cov8" title="3">{
-        return func(ctx context.Context) error </span><span class="cov5" title="2">{
-                log.Named("server.Stop").CallerSkip(serverCallerSkip).Info(
-                        "http stopping",
-                        logging.String(logging.EventTypeKey, logging.EventTypeEnd),
-                        logging.Time(logging.EventAtKey, time.Now()),
-                        logging.String(logging.EventTzKey, osCfg.TimeZone()),
-                )
-                return e.Shutdown(ctx)
-        }</span>
+) func(context.Context) error <span class="cov8" title="4">{
+        return func(ctx context.Context) error </span><span class="cov7" title="3">{
+                l := log.Named("server.Stop").CallerSkip(serverCallerSkip)
+                l.Info("http stopping", lifecycleEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
+                if err := e.Shutdown(ctx); err != nil </span><span class="cov1" title="1">{
+                        l.Error("failed to shutdown http server", logging.Error(logging.ErrorKey, err))
+                        return err
+                }</span>
+                <span class="cov4" title="2">return nil</span>
+        }
 }
+
+// lifecycleEventFields は、起動／停止ログ共通のイベントフィールド（種別・発生時刻・TZ）を返します。
+func lifecycleEventFields(eventType, tz string) []*logging.Field <span class="cov10" title="5">{
+        return []*logging.Field{
+                logging.String(logging.EventTypeKey, eventType),
+                logging.Time(logging.EventAtKey, time.Now()),
+                logging.String(logging.EventTzKey, tz),
+        }
+}</span>
 </pre>
 		
 		<pre class="file" id="file106" style="display: none">// Package server は、Echoサーバーの初期化と設定を提供します。
@@ -6999,7 +6984,7 @@ func HookModule() fx.Option <span class="cov10" title="5">{
 
 // MiddlewareModule は、HTTP スタック関連の依存関係を提供するfx.Moduleです。
 func MiddlewareModule() fx.Option <span class="cov10" title="5">{
-        return fx.Module("httpstack",
+        return fx.Module("server.httpstack",
                 // Middleware Modules
                 decoration.BannerModule(),
                 decoration.DefaultPortModule(),
@@ -7025,7 +7010,7 @@ func MiddlewareModule() fx.Option <span class="cov10" title="5">{
 		
 		<pre class="file" id="file107" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
-// Package shutdowner は、Fxライブラリのインターフェースを提供します。
+// Package shutdowner は、fx.Shutdowner を抽象化し、上位層を fx 依存から切り離すための薄いラッパを提供します。
 //
 // このパッケージは、uber.org/fx ライブラリをラップし、テストやモックの作成を容易にします。
 package shutdowner
@@ -7033,16 +7018,20 @@ package shutdowner
 import "go.uber.org/fx"
 
 type Shutdowner interface {
-        Shutdown(opt ...fx.ShutdownOption) error
+        Shutdown() error
 }
 
 type shutdowner struct {
-        fx.Shutdowner
+        sd fx.Shutdowner
 }
 
 // NewShutdowner は、新しい Shutdowner インスタンスを生成します。
 func NewShutdowner(sd fx.Shutdowner) Shutdowner <span class="cov10" title="8">{
-        return &amp;shutdowner{Shutdowner: sd}
+        return &amp;shutdowner{sd: sd}
+}</span>
+
+func (s *shutdowner) Shutdown() error <span class="cov7" title="5">{
+        return s.sd.Shutdown()
 }</span>
 </pre>
 		
@@ -8994,7 +8983,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key fieldKey, v string) *Field <span class="cov10" title="3892">{
+func String(key fieldKey, v string) *Field <span class="cov10" title="3894">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -9048,7 +9037,7 @@ func Bool(key fieldKey, v bool) *Field <span class="cov1" title="2">{
 }</span>
 
 // Time は、時間のログフィールドを作成します。
-func Time(key fieldKey, v time.Time) *Field <span class="cov7" title="455">{
+func Time(key fieldKey, v time.Time) *Field <span class="cov7" title="456">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -9066,7 +9055,7 @@ func DurationMs(key fieldKey, v time.Duration) *Field <span class="cov6" title="
 }</span>
 
 // Error は、エラーのログフィールドを作成します。
-func Error(key fieldKey, err error) *Field <span class="cov5" title="65">{
+func Error(key fieldKey, err error) *Field <span class="cov5" title="67">{
         return &amp;Field{
                 key:        string(key),
                 kind:       fieldError,
@@ -9399,14 +9388,14 @@ type logger struct {
 }
 
 // Named は、新しい名前付きの Logger を返す。
-func (l *logger) Named(name string) Logger <span class="cov7" title="540">{
+func (l *logger) Named(name string) Logger <span class="cov7" title="523">{
         return &amp;logger{
                 log: l.log.Named(name),
         }
 }</span>
 
 // CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
-func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="478">{
+func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="460">{
         return &amp;logger{
                 log: l.log.WithOptions(zap.AddCallerSkip(skip)),
         }
@@ -11581,7 +11570,7 @@ import (
 )
 
 // New は、新しいエラーを生成します。
-func New(msg string) error <span class="cov9" title="824">{
+func New(msg string) error <span class="cov9" title="826">{
         return errors.New(msg)
 }</span>
 
@@ -11592,7 +11581,7 @@ func Wrap(err error, msg string) error <span class="cov10" title="1634">{
 }</span>
 
 // Is は、エラーが特定のターゲットエラーと一致するかを判定します。
-func Is(err, target error) bool <span class="cov8" title="538">{
+func Is(err, target error) bool <span class="cov8" title="539">{
         return errors.Is(err, target)
 }</span>
 
