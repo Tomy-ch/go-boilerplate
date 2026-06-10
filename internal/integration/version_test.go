@@ -18,20 +18,26 @@ import (
 func TestVersionIntegration(t *testing.T) {
 	t.Parallel()
 
-	t.Run("GET /versionのエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		e := echo.New()
-		tf := observability.NewNoopTracerFactory(t)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-		bi := system.NewBuildInfo()
-		cfg := config.MockConfigForTest(t)
-		appCfg := config.NewApplicationConfig(cfg)
-		osCfg := config.NewOperatingSystemConfig(cfg)
+		t.Run("GET /versionがVersionResponseを返す", func(t *testing.T) {
+			t.Parallel()
 
-		loc, err := time.LoadLocation(osCfg.TimeZone())
-		require.NoError(t, err)
+			e := echo.New()
+			tf := observability.NewNoopTracerFactory(t)
 
-		version.BindHandler(e, tf, loc, bi, appCfg)
-		actual := StartServer(t, e).DoJSON(http.MethodGet, "/version", nil, nil)
-		AssertJSONResponse(t, gen.VersionResponse{}, actual)
+			bi := system.NewBuildInfo()
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
+
+			loc, err := time.LoadLocation(osCfg.TimeZone())
+			require.NoError(t, err)
+
+			version.BindHandler(e, tf, loc, bi, appCfg)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/version", nil, nil)
+			AssertJSONResponse(t, gen.VersionResponse{}, actual)
+		})
 	})
 }

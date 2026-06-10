@@ -19,33 +19,40 @@ func TestBindHandler_BasicAuth(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	mtc := config.NewMetricsConfig(cfg)
 
-	tests := []struct {
-		name     string
-		user     string
-		pass     string
-		withAuth bool
-		want     int
-	}{
-		{name: "正常系_正しい認証情報で200", user: mtc.UserName(), pass: mtc.Password(), withAuth: true, want: http.StatusOK},
-		{name: "異常系_認証情報なしで401", withAuth: false, want: http.StatusUnauthorized},
-		{name: "異常系_不正な認証情報で401", user: "wrong-user", pass: "wrong-pass", withAuth: true, want: http.StatusUnauthorized},
+	exec := func(t *testing.T, withAuth bool, user, pass string) int {
+		t.Helper()
+		e := echo.New()
+		BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
+
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", nil)
+		if withAuth {
+			req.SetBasicAuth(user, pass)
+		}
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		return rec.Code
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("正しい認証情報で200を返す", func(t *testing.T) {
 			t.Parallel()
-
-			e := echo.New()
-			BindHandler(e, basicauth.NewBasicAuthValidator(mtc))
-
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", nil)
-			if tt.withAuth {
-				req.SetBasicAuth(tt.user, tt.pass)
-			}
-			rec := httptest.NewRecorder()
-			e.ServeHTTP(rec, req)
-
-			assert.Equal(t, tt.want, rec.Code)
+			assert.Equal(t, http.StatusOK, exec(t, true, mtc.UserName(), mtc.Password()))
 		})
-	}
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("認証情報なしで401を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, http.StatusUnauthorized, exec(t, false, "", ""))
+		})
+
+		t.Run("不正な認証情報で401を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, http.StatusUnauthorized, exec(t, true, "wrong-user", "wrong-pass"))
+		})
+	})
 }

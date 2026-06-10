@@ -15,25 +15,39 @@ import (
 func Test_shouldForceJSON(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		ct   string
-		want bool
-	}{
-		{name: "未設定(空)はtrue", ct: "", want: true},
-		{name: "text/htmlはtrue", ct: echo.MIMETextHTML, want: true},
-		{name: "text/html;charset付きでもtrue", ct: echo.MIMETextHTML + "; charset=iso-8859-1", want: true},
-		{name: "application/jsonはfalse", ct: echo.MIMEApplicationJSON, want: false},
-		{name: "application/xmlはfalse", ct: echo.MIMEApplicationXML, want: false},
-		{name: "text/plainはfalse", ct: echo.MIMETextPlain, want: false},
-	}
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run("未設定(空)の場合、trueを返す", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.want, shouldForceJSON(tt.ct))
+			assert.True(t, shouldForceJSON(""))
 		})
-	}
+
+		t.Run("text/htmlの場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, shouldForceJSON(echo.MIMETextHTML))
+		})
+
+		t.Run("text/html;charset付きでもtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, shouldForceJSON(echo.MIMETextHTML+"; charset=iso-8859-1"))
+		})
+
+		t.Run("application/jsonの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, shouldForceJSON(echo.MIMEApplicationJSON))
+		})
+
+		t.Run("application/xmlの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, shouldForceJSON(echo.MIMEApplicationXML))
+		})
+
+		t.Run("text/plainの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, shouldForceJSON(echo.MIMETextPlain))
+		})
+	})
 }
 
 func Test_ensureJSONContentType(t *testing.T) {
@@ -47,43 +61,54 @@ func Test_ensureJSONContentType(t *testing.T) {
 		return e.NewContext(req, rec)
 	}
 
-	t.Run("ヘッダが空の場合は強制される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		c := newCtx()
 
-		ensureJSONContentType(c)
+		t.Run("ヘッダが空の場合は強制される", func(t *testing.T) {
+			t.Parallel()
+			c := newCtx()
 
-		got := c.Response().Header().Get(echo.HeaderContentType)
-		assert.Equal(t, echo.MIMEApplicationJSON, got)
-	})
+			ensureJSONContentType(c)
 
-	t.Run("text/html の場合は強制される", func(t *testing.T) {
-		t.Parallel()
-		c := newCtx()
+			got := c.Response().Header().Get(echo.HeaderContentType)
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
 
-		c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTML)
-		ensureJSONContentType(c)
+		t.Run("text/htmlの場合は強制される", func(t *testing.T) {
+			t.Parallel()
+			c := newCtx()
 
-		got := c.Response().Header().Get(echo.HeaderContentType)
-		assert.Equal(t, echo.MIMEApplicationJSON, got)
-	})
+			c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTML)
+			ensureJSONContentType(c)
 
-	t.Run("application/json の場合は変更されない", func(t *testing.T) {
-		t.Parallel()
-		c := newCtx()
+			got := c.Response().Header().Get(echo.HeaderContentType)
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
 
-		c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		ensureJSONContentType(c)
+		t.Run("application/jsonの場合は変更されない", func(t *testing.T) {
+			t.Parallel()
+			c := newCtx()
 
-		got := c.Response().Header().Get(echo.HeaderContentType)
-		assert.Equal(t, echo.MIMEApplicationJSON, got)
+			c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			ensureJSONContentType(c)
+
+			got := c.Response().Header().Get(echo.HeaderContentType)
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
 	})
 }
 
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	require.NotNil(t, Middleware())
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非nilのミドルウェアを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NotNil(t, Middleware())
+		})
+	})
 }
 
 // TestMiddleware_overWire は、実 HTTP 経路（commit 済みレスポンス）でも Content-Type が
@@ -92,53 +117,50 @@ func TestMiddleware(t *testing.T) {
 func TestMiddleware_overWire(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name    string
-		handler echo.HandlerFunc
-		wantCT  string
-	}{
-		{
-			name:    "HTMLボディは application/json へ上書きされる",
-			handler: func(c echo.Context) error { return c.HTML(http.StatusOK, "<p>hi</p>") },
-			wantCT:  echo.MIMEApplicationJSON,
-		},
-		{
-			name:    "Content-Type未設定のボディも application/json へ上書きされる",
-			handler: func(c echo.Context) error { return c.Blob(http.StatusOK, "", []byte("x")) },
-			wantCT:  echo.MIMEApplicationJSON,
-		},
-		{
-			name:    "application/json は変更されない",
-			handler: func(c echo.Context) error { return c.JSON(http.StatusOK, map[string]string{"k": "v"}) },
-			wantCT:  echo.MIMEApplicationJSON,
-		},
-		{
-			name:    "text/plain は変更されない",
-			handler: func(c echo.Context) error { return c.String(http.StatusOK, "plain") },
-			wantCT:  echo.MIMETextPlainCharsetUTF8,
-		},
+	exec := func(t *testing.T, handler echo.HandlerFunc) string {
+		t.Helper()
+		e := echo.New()
+		e.Use(Middleware())
+		e.GET("/t", handler)
+
+		srv := httptest.NewServer(e)
+		t.Cleanup(srv.Close)
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+"/t", nil)
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = resp.Body.Close() })
+		_, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		return resp.Header.Get(echo.HeaderContentType)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("HTMLボディはapplication/jsonへ上書きされる", func(t *testing.T) {
 			t.Parallel()
-
-			e := echo.New()
-			e.Use(Middleware())
-			e.GET("/t", tt.handler)
-
-			srv := httptest.NewServer(e)
-			defer srv.Close()
-
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+"/t", nil)
-			require.NoError(t, err)
-			resp, err := http.DefaultClient.Do(req)
-			require.NoError(t, err)
-			defer func() { _ = resp.Body.Close() }()
-			_, err = io.ReadAll(resp.Body)
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.wantCT, resp.Header.Get(echo.HeaderContentType))
+			got := exec(t, func(c echo.Context) error { return c.HTML(http.StatusOK, "<p>hi</p>") })
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
 		})
-	}
+
+		t.Run("Content-Type未設定のボディもapplication/jsonへ上書きされる", func(t *testing.T) {
+			t.Parallel()
+			got := exec(t, func(c echo.Context) error { return c.Blob(http.StatusOK, "", []byte("x")) })
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
+
+		t.Run("application/jsonは変更されない", func(t *testing.T) {
+			t.Parallel()
+			got := exec(t, func(c echo.Context) error { return c.JSON(http.StatusOK, map[string]string{"k": "v"}) })
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
+
+		t.Run("text/plainは変更されない", func(t *testing.T) {
+			t.Parallel()
+			got := exec(t, func(c echo.Context) error { return c.String(http.StatusOK, "plain") })
+			assert.Equal(t, echo.MIMETextPlainCharsetUTF8, got)
+		})
+	})
 }

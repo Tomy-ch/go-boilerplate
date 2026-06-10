@@ -17,159 +17,186 @@ func TestLayerTracer_makeSpanName(t *testing.T) {
 	t.Parallel()
 
 	lt := LayerTracer{layer: "usecase", pkgName: "mypkg", funcName: "Do"}
-	assert.Equal(t, "usecase.mypkg.Do", lt.makeSpanName(""))
-	assert.Equal(t, "usecase.mypkg.Do.Optional", lt.makeSpanName("Optional"))
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("optionalName無しはlayer.pkg.funcのみを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "usecase.mypkg.Do", lt.makeSpanName(""))
+		})
+
+		t.Run("optionalNameありはlayer.pkg.func.optionalを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "usecase.mypkg.Do.Optional", lt.makeSpanName("Optional"))
+		})
+	})
 }
 
 func Test_LayerTracer_Start(t *testing.T) {
 	t.Parallel()
 
-	t.Run("funcName が既に設定されている場合", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		tracer, shutdown := newTestTracer(t)
-		defer shutdown()
+		t.Run("funcNameが既に設定されている場合、その値でspanを開始する", func(t *testing.T) {
+			t.Parallel()
 
-		logger := logging.NewTestLogger(t)
-		lf := logging.NewTestLogFieldBuilder(t)
+			tracer, shutdown := newTestTracer(t)
+			defer shutdown()
 
-		lt := LayerTracer{
-			log: logger, tracer: tracer, lf: lf,
-			layer: "usecase", pkgName: "pkg", funcName: "Fn",
-		}
-		ctx := context.Background()
-		ctx, end := lt.Start(ctx)
-		end()
-		require.NotNil(t, ctx)
-	})
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
 
-	t.Run("funcName が空の場合 getCallerFullName によって設定される", func(t *testing.T) {
-		t.Parallel()
+			lt := LayerTracer{
+				log: logger, tracer: tracer, lf: lf,
+				layer: "usecase", pkgName: "pkg", funcName: "Fn",
+			}
+			ctx := context.Background()
+			ctx, end := lt.Start(ctx)
+			end()
+			require.NotNil(t, ctx)
+		})
 
-		tracer, shutdown := newTestTracer(t)
-		defer shutdown()
+		t.Run("funcNameが空の場合、getCallerFullNameによって設定される", func(t *testing.T) {
+			t.Parallel()
 
-		logger := logging.NewTestLogger(t)
-		lf := logging.NewTestLogFieldBuilder(t)
+			tracer, shutdown := newTestTracer(t)
+			defer shutdown()
 
-		lt := LayerTracer{
-			log: logger, tracer: tracer, lf: lf,
-			layer: "usecase", pkgName: "pkg", funcName: "",
-		}
-		ctx := context.Background()
-		ctx, end := lt.Start(ctx)
-		end()
-		require.NotNil(t, ctx)
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
+
+			lt := LayerTracer{
+				log: logger, tracer: tracer, lf: lf,
+				layer: "usecase", pkgName: "pkg", funcName: "",
+			}
+			ctx := context.Background()
+			ctx, end := lt.Start(ctx)
+			end()
+			require.NotNil(t, ctx)
+		})
 	})
 }
 
 func Test_LayerTracer_StartWithSuffix(t *testing.T) {
 	t.Parallel()
 
-	t.Run("funcName が空の場合 getCallerFullName によって設定される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		tracer, shutdown := newTestTracer(t)
-		defer shutdown()
+		t.Run("funcNameが空の場合、getCallerFullNameによって設定される", func(t *testing.T) {
+			t.Parallel()
 
-		logger := logging.NewTestLogger(t)
-		lf := logging.NewTestLogFieldBuilder(t)
+			tracer, shutdown := newTestTracer(t)
+			defer shutdown()
 
-		lt := LayerTracer{
-			log: logger, tracer: tracer, lf: lf,
-			layer: "controller", pkgName: "p", funcName: "",
-		}
-		ctx, end := lt.StartWithSuffix(context.Background(), "DB")
-		end()
-		require.NotNil(t, ctx)
-	})
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
 
-	t.Run("optionalName を指定した場合", func(t *testing.T) {
-		t.Parallel()
+			lt := LayerTracer{
+				log: logger, tracer: tracer, lf: lf,
+				layer: "controller", pkgName: "p", funcName: "",
+			}
+			ctx, end := lt.StartWithSuffix(context.Background(), "DB")
+			end()
+			require.NotNil(t, ctx)
+		})
 
-		tracer, shutdown := newTestTracer(t)
-		defer shutdown()
+		t.Run("optionalNameを指定した場合、span名にサフィックスが付与される", func(t *testing.T) {
+			t.Parallel()
 
-		logger := logging.NewTestLogger(t)
-		lf := logging.NewTestLogFieldBuilder(t)
+			tracer, shutdown := newTestTracer(t)
+			defer shutdown()
 
-		lt := LayerTracer{
-			log: logger, tracer: tracer, lf: lf,
-			layer: "controller", pkgName: "p", funcName: "F",
-		}
-		ctx, end := lt.StartWithSuffix(context.Background(), "DB")
-		end()
-		require.NotNil(t, ctx)
-	})
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
 
-	t.Run("optionalName が空の場合", func(t *testing.T) {
-		t.Parallel()
+			lt := LayerTracer{
+				log: logger, tracer: tracer, lf: lf,
+				layer: "controller", pkgName: "p", funcName: "F",
+			}
+			ctx, end := lt.StartWithSuffix(context.Background(), "DB")
+			end()
+			require.NotNil(t, ctx)
+		})
 
-		tracer, shutdown := newTestTracer(t)
-		defer shutdown()
+		t.Run("optionalNameが空の場合、サフィックス無しでspanを開始する", func(t *testing.T) {
+			t.Parallel()
 
-		logger := logging.NewTestLogger(t)
-		lf := logging.NewTestLogFieldBuilder(t)
+			tracer, shutdown := newTestTracer(t)
+			defer shutdown()
 
-		lt := LayerTracer{
-			log: logger, tracer: tracer, lf: lf,
-			layer: "controller", pkgName: "p", funcName: "F",
-		}
-		ctx, end := lt.StartWithSuffix(context.Background(), "")
-		end()
-		require.NotNil(t, ctx)
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
+
+			lt := LayerTracer{
+				log: logger, tracer: tracer, lf: lf,
+				layer: "controller", pkgName: "p", funcName: "F",
+			}
+			ctx, end := lt.StartWithSuffix(context.Background(), "")
+			end()
+			require.NotNil(t, ctx)
+		})
 	})
 }
 
 func TestRunWithSpan(t *testing.T) {
 	t.Parallel()
 
-	t.Run("成功時は値を返しログにstart/endが出る", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		tracer, shutdown := newTestTracer(t)
-		defer shutdown()
+		t.Run("成功時は値を返しログにstart/endが出る", func(t *testing.T) {
+			t.Parallel()
 
-		logger := logging.NewTestLogger(t)
-		lf := logging.NewTestLogFieldBuilder(t)
+			tracer, shutdown := newTestTracer(t)
+			defer shutdown()
 
-		lt := LayerTracer{
-			log: logger, tracer: tracer, lf: lf,
-		}
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
 
-		ctx, v, err := RunWithSpan(
-			context.Background(), lt, Usecase, "pkg", "Func",
-			func(_ context.Context) (string, error) {
-				return "ok", nil
-			})
-		require.NoError(t, err)
-		assert.Equal(t, "ok", v)
-		require.NotNil(t, ctx)
+			lt := LayerTracer{
+				log: logger, tracer: tracer, lf: lf,
+			}
+
+			ctx, v, err := RunWithSpan(
+				context.Background(), lt, Usecase, "pkg", "Func",
+				func(_ context.Context) (string, error) {
+					return "ok", nil
+				})
+			require.NoError(t, err)
+			assert.Equal(t, "ok", v)
+			require.NotNil(t, ctx)
+		})
 	})
 
-	t.Run("エラー時はゼロ値とエラーを返しログはendを含む", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		tracer, shutdown := newTestTracer(t)
-		defer shutdown()
+		t.Run("コールバックがエラーを返した場合、ゼロ値とエラーを返す", func(t *testing.T) {
+			t.Parallel()
 
-		logger := logging.NewTestLogger(t)
-		lf := logging.NewTestLogFieldBuilder(t)
+			tracer, shutdown := newTestTracer(t)
+			defer shutdown()
 
-		lt := LayerTracer{
-			log: logger, tracer: tracer, lf: lf,
-		}
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
 
-		ctx, v, err := RunWithSpan(
-			context.Background(), lt, Usecase, "pkg", "Func",
-			func(_ context.Context) (string, error) {
-				return "", xerrors.New("failure")
-			})
+			lt := LayerTracer{
+				log: logger, tracer: tracer, lf: lf,
+			}
 
-		require.Error(t, err)
+			ctx, v, err := RunWithSpan(
+				context.Background(), lt, Usecase, "pkg", "Func",
+				func(_ context.Context) (string, error) {
+					return "", xerrors.New("failure")
+				})
 
-		require.Empty(t, v)
-		require.NotNil(t, ctx)
+			require.Error(t, err)
+			assert.Empty(t, v)
+			require.NotNil(t, ctx)
+		})
 	})
 }
 
@@ -184,41 +211,46 @@ func Test_makeSpanName(t *testing.T) {
 
 	lt := LayerTracer{layer: layerName(expectedLayer), pkgName: expectedPkgName, funcName: expectedFuncName}
 
-	t.Run("optionalName が空の場合", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		assert.Equal(t, expected, lt.makeSpanName(""))
-	})
+		t.Run("optionalNameが空の場合、layer.pkg.funcのみを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expected, lt.makeSpanName(""))
+		})
 
-	t.Run("optionalName が指定された場合", func(t *testing.T) {
-		t.Parallel()
-
-		assert.Equal(t, expected+delimiter+optionalName, lt.makeSpanName(optionalName))
+		t.Run("optionalNameが指定された場合、layer.pkg.func.optionalを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expected+delimiter+optionalName, lt.makeSpanName(optionalName))
+		})
 	})
 }
 
 func Test_startSpan(t *testing.T) {
 	t.Parallel()
 
-	expectedLayer := Usecase
-	expectedPkgName := "pkg"
-	expectedFuncName := "func"
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	tracer, shutdown := newTestTracer(t)
-	defer shutdown()
+		t.Run("LayerTracerの設定でspanContextと終了関数を返す", func(t *testing.T) {
+			t.Parallel()
 
-	logger := logging.NewTestLogger(t)
-	lf := logging.NewTestLogFieldBuilder(t)
+			tracer, shutdown := newTestTracer(t)
+			defer shutdown()
 
-	lt := LayerTracer{
-		log: logger, tracer: tracer, lf: lf,
-		layer: expectedLayer, pkgName: expectedPkgName, funcName: expectedFuncName,
-	}
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
 
-	ctx := context.Background()
-	spanCtx, end := lt.startSpan(ctx, "optional")
-	end()
-	require.NotNil(t, spanCtx)
+			lt := LayerTracer{
+				log: logger, tracer: tracer, lf: lf,
+				layer: Usecase, pkgName: "pkg", funcName: "func",
+			}
+
+			spanCtx, end := lt.startSpan(context.Background(), "optional")
+			end()
+			require.NotNil(t, spanCtx)
+		})
+	})
 }
 
 func newTestTracer(t *testing.T) (trace.Tracer, func()) {

@@ -82,27 +82,35 @@ func Test_server_GetUsersDetail(t *testing.T) {
 		PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3", Building: ptr.To("B1"),
 	}
 
-	t.Run("正常系_ユーザーが存在する場合_詳細が取得できる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(dto, nil)
 
-		resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
-		require.NoError(t, err)
+		t.Run("ユーザーが存在する場合_詳細が取得できる", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(dto, nil)
 
-		actual, ok := resp.(gen.GetUsersDetail200JSONResponse)
-		require.True(t, ok)
-		assert.Equal(t, wantUserResponse(dto), gen.UserResponse(actual))
+			resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.GetUsersDetail200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, wantUserResponse(dto), gen.UserResponse(actual))
+		})
 	})
 
-	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user.MutableFields{}, apperror.ErrNotFound)
 
-		resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
-		require.Nil(t, resp)
-		require.ErrorIs(t, err, apperror.ErrNotFound)
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user.MutableFields{}, apperror.ErrNotFound)
+
+			resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
 	})
 }
 
@@ -115,45 +123,53 @@ func Test_server_PutUsersDetail(t *testing.T) {
 		City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
 	}
 
-	t.Run("正常系_全更新が成功する場合_リクエストがDTOへ詰め替えられ更新後のユーザーが返る", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		returned := user.MutableFields{
-			FirstName: "First", LastName: "Last", Email: "put@example.com", Phone: "09000000000",
-			PostalCode: "123-4567", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
-		}
 
-		var got *user.MutableFields
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.MutableFields) (user.MutableFields, error) {
-				got = p
-				return returned, nil
-			})
+		t.Run("全更新が成功する場合_リクエストがDTOへ詰め替えられ更新後のユーザーが返る", func(t *testing.T) {
+			t.Parallel()
+			returned := user.MutableFields{
+				FirstName: "First", LastName: "Last", Email: "put@example.com", Phone: "09000000000",
+				PostalCode: "123-4567", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
+			}
 
-		resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
-		require.NoError(t, err)
+			var got *user.MutableFields
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.MutableFields) (user.MutableFields, error) {
+					got = p
+					return returned, nil
+				})
 
-		wantDTO := &user.MutableFields{
-			FirstName: body.FirstName, LastName: body.LastName, Email: string(body.Email), Phone: body.Phone,
-			PostalCode: body.PostalCode, PrefectureName: body.Prefecture, City: body.City, Street: body.Street, Building: body.Building,
-		}
-		assert.Equal(t, wantDTO, got)
+			resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			require.NoError(t, err)
 
-		actual, ok := resp.(gen.PutUsersDetail200JSONResponse)
-		require.True(t, ok)
-		assert.Equal(t, wantUserResponse(returned), gen.UserResponse(actual))
+			wantDTO := &user.MutableFields{
+				FirstName: body.FirstName, LastName: body.LastName, Email: string(body.Email), Phone: body.Phone,
+				PostalCode: body.PostalCode, PrefectureName: body.Prefecture, City: body.City, Street: body.Street, Building: body.Building,
+			}
+			assert.Equal(t, wantDTO, got)
+
+			actual, ok := resp.(gen.PutUsersDetail200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, wantUserResponse(returned), gen.UserResponse(actual))
+		})
 	})
 
-	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().
-			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
-			Return(user.MutableFields{}, apperror.ErrInternal)
 
-		resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
-		require.Nil(t, resp)
-		require.ErrorIs(t, err, apperror.ErrInternal)
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().
+				UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
+				Return(user.MutableFields{}, apperror.ErrInternal)
+
+			resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
 	})
 }
 
@@ -165,64 +181,75 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 		Email:     (*types.Email)(ptr.To("patch@example.com")),
 	}
 
-	t.Run("正常系_部分更新が成功する場合_リクエストがDTOへ詰め替えられ更新後のユーザーが返る", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		returned := user.MutableFields{FirstName: "Patched", Email: "patch@example.com"}
 
-		var got *user.PatchParamsDTO
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.MutableFields, error) {
-				got = p
-				return returned, nil
-			})
+		t.Run("部分更新が成功する場合_リクエストがDTOへ詰め替えられ更新後のユーザーが返る", func(t *testing.T) {
+			t.Parallel()
+			returned := user.MutableFields{FirstName: "Patched", Email: "patch@example.com"}
 
-		resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
-		require.NoError(t, err)
+			var got *user.PatchParamsDTO
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.MutableFields, error) {
+					got = p
+					return returned, nil
+				})
 
-		wantDTO := &user.PatchParamsDTO{
-			FirstName: body.FirstName,
-			Email:     ptr.To("patch@example.com"),
-		}
-		assert.Equal(t, wantDTO, got)
+			resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			require.NoError(t, err)
 
-		actual, ok := resp.(gen.PatchUsersDetail200JSONResponse)
-		require.True(t, ok)
-		assert.Equal(t, wantUserResponse(returned), gen.UserResponse(actual))
+			wantDTO := &user.PatchParamsDTO{
+				FirstName: body.FirstName,
+				Email:     ptr.To("patch@example.com"),
+			}
+			assert.Equal(t, wantDTO, got)
+
+			actual, ok := resp.(gen.PatchUsersDetail200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, wantUserResponse(returned), gen.UserResponse(actual))
+		})
+
+		t.Run("Email未指定の場合はEmailがnilでDTOへ詰め替えられる", func(t *testing.T) {
+			t.Parallel()
+			noEmailBody := &gen.PatchUsersDetailJSONRequestBody{FirstName: ptr.To("OnlyName")}
+
+			var got *user.PatchParamsDTO
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.MutableFields, error) {
+					got = p
+					return user.MutableFields{FirstName: "OnlyName"}, nil
+				})
+
+			resp, err := s.PatchUsersDetail(
+				context.Background(),
+				gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: noEmailBody},
+			)
+			require.NoError(t, err)
+
+			assert.Equal(t, ptr.To("OnlyName"), got.FirstName)
+			assert.Nil(t, got.Email)
+
+			_, ok := resp.(gen.PatchUsersDetail200JSONResponse)
+			require.True(t, ok)
+		})
 	})
 
-	t.Run("正常系_Email未指定の場合はEmailがnilでDTOへ詰め替えられる", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		noEmailBody := &gen.PatchUsersDetailJSONRequestBody{FirstName: ptr.To("OnlyName")}
 
-		var got *user.PatchParamsDTO
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.MutableFields, error) {
-				got = p
-				return user.MutableFields{FirstName: "OnlyName"}, nil
-			})
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().
+				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
+				Return(user.MutableFields{}, apperror.ErrInternal)
 
-		resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: noEmailBody})
-		require.NoError(t, err)
-
-		assert.Equal(t, ptr.To("OnlyName"), got.FirstName)
-		assert.Nil(t, got.Email)
-
-		_, ok := resp.(gen.PatchUsersDetail200JSONResponse)
-		require.True(t, ok)
-	})
-
-	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
-		t.Parallel()
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().
-			UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
-			Return(user.MutableFields{}, apperror.ErrInternal)
-
-		resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
-		require.Nil(t, resp)
-		require.ErrorIs(t, err, apperror.ErrInternal)
+			resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
 	})
 }
 
@@ -235,80 +262,89 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 		NewPassword:     "new_valid_password",
 	}
 
-	t.Run("正常系_認証ユーザーのパスワード変更が成功する場合_204が返る", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().
-			ChangePassword(gomock.Any(), gomock.Any(), "current_password", "new_valid_password").
-			Return(nil)
 
-		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-		require.NoError(t, err)
+		t.Run("認証ユーザーのパスワード変更が成功する場合_204が返る", func(t *testing.T) {
+			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().
+				ChangePassword(gomock.Any(), gomock.Any(), "current_password", "new_valid_password").
+				Return(nil)
 
-		_, ok := resp.(gen.PutUsersMePassword204Response)
-		assert.True(t, ok)
+			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
+			require.NoError(t, err)
+
+			_, ok := resp.(gen.PutUsersMePassword204Response)
+			assert.True(t, ok)
+		})
 	})
 
-	t.Run("異常系_認証情報がない場合_エラーが返る", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		s, _ := newServer(t)
-		resp, err := s.PutUsersMePassword(context.Background(), gen.PutUsersMePasswordRequestObject{Body: body})
-		require.Nil(t, resp)
-		require.ErrorIs(t, err, ErrUnauthenticatedUser)
-	})
 
-	t.Run("異常系_認証subjectが不正でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
-		t.Parallel()
-		ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
-		s, _ := newServer(t)
-		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-		require.Nil(t, resp)
-		require.ErrorContains(t, err, "failed to get user ID from authenticator")
-	})
+		t.Run("認証情報がない場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+			resp, err := s.PutUsersMePassword(context.Background(), gen.PutUsersMePasswordRequestObject{Body: body})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
 
-	t.Run("異常系_Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
-		t.Parallel()
-		ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
-		s, mockApp := newServer(t)
-		mockApp.EXPECT().
-			ChangePassword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(apperror.ErrValidation)
+		t.Run("認証subjectが不正でID取得に失敗する場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, "invalid-subject")
+			s, _ := newServer(t)
+			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
+			require.Nil(t, resp)
+			require.ErrorContains(t, err, "failed to get user ID from authenticator")
+		})
 
-		resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
-		require.Nil(t, resp)
-		require.ErrorIs(t, err, apperror.ErrValidation)
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().
+				ChangePassword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(apperror.ErrValidation)
+
+			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrValidation)
+		})
 	})
 }
 
 func Test_server_DeleteUsersDetail(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name      string
-		returnErr error
-		wantErr   error
-	}{
-		{name: "正常系_削除が成功する場合_204が返る", returnErr: nil, wantErr: nil},
-		{name: "異常系_Usecaseがエラーを返す場合_エラーが返る", returnErr: apperror.ErrNotFound, wantErr: apperror.ErrNotFound},
-	}
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run("削除が成功する場合_204が返る", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(tc.returnErr)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
 
 			resp, err := s.DeleteUsersDetail(context.Background(), gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
-
-			if tc.wantErr != nil {
-				require.Nil(t, resp)
-				require.ErrorIs(t, err, tc.wantErr)
-				return
-			}
 			require.NoError(t, err)
 			_, ok := resp.(gen.DeleteUsersDetail204Response)
 			assert.True(t, ok)
 		})
-	}
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(apperror.ErrNotFound)
+
+			resp, err := s.DeleteUsersDetail(context.Background(), gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+	})
 }
