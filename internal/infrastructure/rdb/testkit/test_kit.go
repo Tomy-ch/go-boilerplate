@@ -63,10 +63,9 @@ func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
 // NewTestTransactionManager は、テスト用のトランザクションマネージャーを生成します。
 func NewTestTransactionManager(t *testing.T) TransactionRunner {
 	t.Helper()
-	cfg := config.MockConfigForTest(t)
 	testLogger := logging.NewTestLogger(t)
 
-	innerTxm := driver.NewTransactionManager(cfg, getTestDB(t), testLogger)
+	innerTxm := driver.NewTransactionManager(getTestDB(t), testLogger)
 
 	txm := &testTxManager{
 		inner: innerTxm,

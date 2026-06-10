@@ -24,7 +24,7 @@ func TestNewTransactionManager(t *testing.T) {
 		require.NoError(t, db.Close())
 	})
 
-	manager := NewTransactionManager(cfg, db, testLogger)
+	manager := NewTransactionManager(db, testLogger)
 	require.NotNil(t, manager)
 }
 
@@ -43,7 +43,7 @@ func TestTxManager_Do(t *testing.T) {
 		require.NoError(t, db.Close())
 	})
 
-	manager := NewTransactionManager(cfg, db, testLogger)
+	manager := NewTransactionManager(db, testLogger)
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 

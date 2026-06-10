@@ -52,7 +52,7 @@ func Test_testTxManager_Do(t *testing.T) {
 
 	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
-	innerTxm := driver.NewTransactionManager(cfg, db, testLogger)
+	innerTxm := driver.NewTransactionManager(db, testLogger)
 
 	t.Run("実行時にエラーが発生しない場合、正常に終了すること", func(t *testing.T) {
 		t.Parallel()

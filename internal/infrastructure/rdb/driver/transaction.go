@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/tx"
@@ -19,15 +18,13 @@ const (
 
 // txManager は、トランザクションの管理を行います。
 type txManager struct {
-	cfg    *config.Config
 	db     DatabaseDriver
 	logger logging.Logger
 }
 
 // NewTransactionManager は、トランザクションマネージャを初期化します。
-func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager {
+func NewTransactionManager(db DatabaseDriver, logger logging.Logger) tx.Manager {
 	return &txManager{
-		cfg:    cfg,
 		db:     db,
 		logger: logger,
 	}
