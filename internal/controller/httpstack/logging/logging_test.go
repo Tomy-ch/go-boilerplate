@@ -19,74 +19,88 @@ import (
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	logger := logging.NewTestLogger(t)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	lf := logging.NewTestLogFieldBuilder(t)
+		t.Run("非nilのミドルウェアを返す", func(t *testing.T) {
+			t.Parallel()
 
-	require.NotNil(t, Middleware(logger, lf))
+			logger := logging.NewTestLogger(t)
+			lf := logging.NewTestLogFieldBuilder(t)
+
+			require.NotNil(t, Middleware(logger, lf))
+		})
+	})
 }
 
 func Test_loggingMiddleware(t *testing.T) {
 	t.Parallel()
 
-	t.Run("非運用系APIではログが出力される", func(t *testing.T) {
-		lf := logging.NewTestLogFieldBuilder(t)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-		next := func(c echo.Context) error {
-			return c.String(http.StatusOK, "ok")
-		}
+		t.Run("非運用系APIではログが出力される", func(t *testing.T) {
+			t.Parallel()
+			lf := logging.NewTestLogFieldBuilder(t)
 
-		logger := logging.NewTestLogger(t)
+			next := func(c echo.Context) error {
+				return c.String(http.StatusOK, "ok")
+			}
 
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/mw", nil)
-		req.RemoteAddr = "203.0.113.5:45678"
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+			logger := logging.NewTestLogger(t)
 
-		handler := loggingMiddleware(logger, lf)(next)
-		require.NoError(t, handler(c))
-	})
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/mw", nil)
+			req.RemoteAddr = "203.0.113.5:45678"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-	t.Run("運用系APIではログが出力されない", func(t *testing.T) {
-		lf := logging.NewTestLogFieldBuilder(t)
+			handler := loggingMiddleware(logger, lf)(next)
+			require.NoError(t, handler(c))
+		})
 
-		next := func(c echo.Context) error {
-			return c.String(http.StatusOK, "ok")
-		}
+		t.Run("運用系APIではログが出力されない", func(t *testing.T) {
+			t.Parallel()
+			lf := logging.NewTestLogFieldBuilder(t)
 
-		logger := logging.NewTestLogger(t)
+			next := func(c echo.Context) error {
+				return c.String(http.StatusOK, "ok")
+			}
 
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/health", nil)
-		req.RemoteAddr = "203.0.113.5:45678"
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+			logger := logging.NewTestLogger(t)
 
-		handler := loggingMiddleware(logger, lf)(next)
-		require.NoError(t, handler(c))
-	})
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/health", nil)
+			req.RemoteAddr = "203.0.113.5:45678"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-	t.Run("5xxレスポンスではErrorレベルで出力される", func(t *testing.T) {
-		lf := logging.NewTestLogFieldBuilder(t)
+			handler := loggingMiddleware(logger, lf)(next)
+			require.NoError(t, handler(c))
+		})
 
-		next := func(c echo.Context) error {
-			return c.String(http.StatusInternalServerError, "err")
-		}
+		t.Run("5xxレスポンスではErrorレベルで出力される", func(t *testing.T) {
+			t.Parallel()
+			lf := logging.NewTestLogFieldBuilder(t)
 
-		logger := logging.NewTestLogger(t)
+			next := func(c echo.Context) error {
+				return c.String(http.StatusInternalServerError, "err")
+			}
 
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/mw", nil)
-		req.RemoteAddr = "203.0.113.5:45678"
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+			logger := logging.NewTestLogger(t)
 
-		handler := loggingMiddleware(logger, lf)(next)
-		require.NoError(t, handler(c))
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/mw", nil)
+			req.RemoteAddr = "203.0.113.5:45678"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			handler := loggingMiddleware(logger, lf)(next)
+			require.NoError(t, handler(c))
+		})
 	})
 }
 
@@ -104,17 +118,20 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	t.Run("スパンありはtrace/spanが含まれるリクエストログフィールドセットを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// リクエストコンテキストにテストスパンを埋め込む
-		cWithSpan, end := testspan.StartTestSpanForEcho(t, c)
-		defer end()
+		t.Run("スパンありはtrace/spanが含まれるリクエストログフィールドセットを返す", func(t *testing.T) {
+			t.Parallel()
 
-		tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
-		l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
-		fields := l.buildRequestLogFields(time.Now())
-		require.NotEmpty(t, fields)
+			cWithSpan, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
+			l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
+			fields := l.buildRequestLogFields(time.Now())
+			require.NotEmpty(t, fields)
+		})
 	})
 }
 
@@ -134,41 +151,45 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 		return e.NewContext(req, rec)
 	}
 
-	t.Run("スパンなしはtrace/spanは含まれないレスポンスログフィールドセットを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		c := newContext()
-		expectedStatus := http.StatusCreated
-		expectedRequestID := "req-123"
+		t.Run("スパンなしはtrace/spanは含まれないレスポンスログフィールドセットを返す", func(t *testing.T) {
+			t.Parallel()
 
-		c.Response().Status = expectedStatus
-		c.Response().Header().Set("X-Request-Id", expectedRequestID)
+			c := newContext()
+			expectedStatus := http.StatusCreated
+			expectedRequestID := "req-123"
 
-		l := requestLog{c: c, lf: lf, traceCtx: &observability.TraceContext{}}
-		fields := l.buildResponseLogFields(150 * time.Millisecond)
+			c.Response().Status = expectedStatus
+			c.Response().Header().Set("X-Request-Id", expectedRequestID)
 
-		assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
-		assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
-	})
+			l := requestLog{c: c, lf: lf, traceCtx: &observability.TraceContext{}}
+			fields := l.buildResponseLogFields(150 * time.Millisecond)
 
-	t.Run("スパンありはtrace/spanが含まれるレスポンスログフィールドセットを返す", func(t *testing.T) {
-		t.Parallel()
+			assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
+			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
+		})
 
-		c := newContext()
-		expectedStatus := http.StatusAccepted
-		expectedRequestID := "req-accepted"
+		t.Run("スパンありはtrace/spanが含まれるレスポンスログフィールドセットを返す", func(t *testing.T) {
+			t.Parallel()
 
-		cWithSpan, end := testspan.StartTestSpanForEcho(t, c)
-		defer end()
+			c := newContext()
+			expectedStatus := http.StatusAccepted
+			expectedRequestID := "req-accepted"
 
-		cWithSpan.Response().Status = expectedStatus
-		cWithSpan.Response().Header().Set("X-Request-Id", expectedRequestID)
+			cWithSpan, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
 
-		tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
-		l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
-		fields := l.buildResponseLogFields(20 * time.Millisecond)
+			cWithSpan.Response().Status = expectedStatus
+			cWithSpan.Response().Header().Set("X-Request-Id", expectedRequestID)
 
-		assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
-		assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
+			tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
+			l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
+			fields := l.buildResponseLogFields(20 * time.Millisecond)
+
+			assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
+			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
+		})
 	})
 }

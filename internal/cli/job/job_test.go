@@ -35,96 +35,123 @@ func (r *recordingStop) fn() StopFunc {
 func TestRunJob(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_タイムアウト未指定でジョブ完了時はその結果を返し停止する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		done := make(chan error, 1)
-		done <- nil
-		stop := &recordingStop{}
+		t.Run("タイムアウト未指定でジョブ完了時はその結果を返し停止する", func(t *testing.T) {
+			t.Parallel()
 
-		err := runJob(context.Background(), "j", nil, 0, makeStart(done), stop.fn())
+			done := make(chan error, 1)
+			done <- nil
+			stop := &recordingStop{}
 
-		require.NoError(t, err)
-		assert.True(t, stop.called, "停止処理が呼ばれること")
+			err := runJob(context.Background(), "j", nil, 0, makeStart(done), stop.fn())
+
+			require.NoError(t, err)
+			assert.True(t, stop.called, "停止処理が呼ばれること")
+		})
+
+		t.Run("タイムアウト指定でも期限内に完了すればジョブ結果を返す", func(t *testing.T) {
+			t.Parallel()
+
+			done := make(chan error, 1)
+			done <- nil
+			stop := &recordingStop{}
+
+			err := runJob(context.Background(), "j", nil, 10*time.Second, makeStart(done), stop.fn())
+
+			require.NoError(t, err)
+			assert.True(t, stop.called)
+		})
 	})
 
-	t.Run("異常系_タイムアウト未指定でジョブがエラーを返すとそのエラーを返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+		t.Run("タイムアウト未指定でジョブがエラーを返すとそのエラーを返す", func(t *testing.T) {
+			t.Parallel()
 
-		jobErr := errors.New("job failed")
-		done := make(chan error, 1)
-		done <- jobErr
-		stop := &recordingStop{}
+			jobErr := errors.New("job failed")
+			done := make(chan error, 1)
+			done <- jobErr
+			stop := &recordingStop{}
 
-		err := runJob(context.Background(), "j", nil, 0, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 0, makeStart(done), stop.fn())
 
-		require.ErrorIs(t, err, jobErr)
-		assert.True(t, stop.called)
-	})
+			require.ErrorIs(t, err, jobErr)
+			assert.True(t, stop.called)
+		})
 
-	t.Run("正常系_タイムアウト指定でも期限内に完了すればジョブ結果を返す", func(t *testing.T) {
-		t.Parallel()
+		t.Run("タイムアウト指定でも期限内にジョブがエラー完了すればそのエラーを返す", func(t *testing.T) {
+			t.Parallel()
 
-		done := make(chan error, 1)
-		done <- nil
-		stop := &recordingStop{}
+			// timeout > 0 だが期限到達前に done<-jobErr が届くケース（select の done arm 経路）。
+			jobErr := errors.New("job failed")
+			done := make(chan error, 1)
+			done <- jobErr
+			stop := &recordingStop{}
 
-		err := runJob(context.Background(), "j", nil, 10*time.Second, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 10*time.Second, makeStart(done), stop.fn())
 
-		require.NoError(t, err)
-		assert.True(t, stop.called)
-	})
+			require.ErrorIs(t, err, jobErr)
+			assert.True(t, stop.called)
+		})
 
-	t.Run("異常系_タイムアウト発火時はDeadlineExceededを返し停止に新しい猶予を与える", func(t *testing.T) {
-		t.Parallel()
+		t.Run("タイムアウト発火時はDeadlineExceededを返し停止に新しい猶予を与える", func(t *testing.T) {
+			t.Parallel()
 
-		// 完了通知が来ない done を渡し、短いタイムアウトを発火させる。
-		done := make(chan error) // 送信されない
-		stop := &recordingStop{}
+			// 完了通知が来ない done を渡し、短いタイムアウトを発火させる。
+			done := make(chan error) // 送信されない
+			stop := &recordingStop{}
 
-		err := runJob(context.Background(), "j", nil, 20*time.Millisecond, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 20*time.Millisecond, makeStart(done), stop.fn())
 
-		require.ErrorIs(t, err, context.DeadlineExceeded)
-		assert.True(t, stop.called)
-		// 停止用 context は期限切れの waitCtx ではなく、停止開始時点から作り直された猶予を持つこと
-		// （4a10247 の回帰防止）。残り時間が十分大きいことで「新しい猶予」を確認する。
-		require.True(t, stop.hasDeadline)
-		assert.Greater(t, time.Until(stop.deadline), 20*time.Second)
-	})
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+			assert.True(t, stop.called)
+			// 停止用 context は期限切れの waitCtx ではなく、停止開始時点から作り直された猶予を持つこと
+			// （4a10247 の回帰防止）。stopTimeout 定数を基準に「ライブ時刻ではなく定数 ÷ 2 を超える猶予」
+			// として固定し、 stopTimeout の値変更にも追随する。
+			require.True(t, stop.hasDeadline)
+			assert.Greater(t, time.Until(stop.deadline), stopTimeout/2)
+		})
 
-	t.Run("異常系_親contextキャンセル時はそのエラーを返し停止処理を流す", func(t *testing.T) {
-		t.Parallel()
+		t.Run("親contextキャンセル時はそのエラーを返し停止処理を流す", func(t *testing.T) {
+			t.Parallel()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		done := make(chan error) // 送信されない
-		stop := &recordingStop{}
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan error) // 送信されない
+			stop := &recordingStop{}
 
-		cancel() // 親をキャンセル済みにしてから実行する
+			cancel() // 親をキャンセル済みにしてから実行する
 
-		err := runJob(ctx, "j", nil, 10*time.Second, makeStart(done), stop.fn())
+			err := runJob(ctx, "j", nil, 10*time.Second, makeStart(done), stop.fn())
 
-		require.ErrorIs(t, err, context.Canceled)
-		assert.True(t, stop.called)
+			require.ErrorIs(t, err, context.Canceled)
+			assert.True(t, stop.called)
+		})
 	})
 }
 
 func TestRunJobWith(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_provideで取得したstart/stopをrunJobへ渡し結果を返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		done := make(chan error, 1)
-		done <- nil
-		stop := &recordingStop{}
+		t.Run("正常系_provideで取得したstart/stopをrunJobへ渡し結果を返す", func(t *testing.T) {
+			t.Parallel()
 
-		provide := func() (StartFunc, StopFunc) {
-			return makeStart(done), stop.fn()
-		}
+			done := make(chan error, 1)
+			done <- nil
+			stop := &recordingStop{}
 
-		err := RunJobWith(context.Background(), "j", nil, 0, provide)
+			provide := func() (StartFunc, StopFunc) {
+				return makeStart(done), stop.fn()
+			}
 
-		require.NoError(t, err)
-		assert.True(t, stop.called, "provide 由来の停止処理が呼ばれること")
+			err := RunJobWith(context.Background(), "j", nil, 0, provide)
+
+			require.NoError(t, err)
+			assert.True(t, stop.called, "provide 由来の停止処理が呼ばれること")
+		})
 	})
 }

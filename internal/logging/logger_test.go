@@ -13,139 +13,179 @@ import (
 func Test_logger_CallerSkip(t *testing.T) {
 	t.Parallel()
 
-	log := zap.NewNop()
-	baseLogger := &logger{log: log}
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	skip := 3
-	expected := &logger{
-		log: log.WithOptions(zap.AddCallerSkip(skip)),
-	}
-	actual := baseLogger.CallerSkip(skip)
-	assert.Equal(t, expected, actual)
+		t.Run("AddCallerSkipオプション適用済みのLoggerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			log := zap.NewNop()
+			baseLogger := &logger{log: log}
+
+			skip := 3
+			expected := &logger{
+				log: log.WithOptions(zap.AddCallerSkip(skip)),
+			}
+			actual := baseLogger.CallerSkip(skip)
+			assert.Equal(t, expected, actual)
+		})
+	})
 }
 
 func Test_logger_Named(t *testing.T) {
 	t.Parallel()
 
-	log := zap.NewNop()
-	baseLogger := &logger{log: log}
-	name := "testLogger"
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	expected := &logger{
-		log: log.Named(name),
-	}
-	actual := baseLogger.Named(name)
-	assert.Equal(t, expected, actual)
+		t.Run("Named適用済みのLoggerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			log := zap.NewNop()
+			baseLogger := &logger{log: log}
+			name := "testLogger"
+
+			expected := &logger{
+				log: log.Named(name),
+			}
+			actual := baseLogger.Named(name)
+			assert.Equal(t, expected, actual)
+		})
+	})
 }
 
 func Test_logger_ConvertFields(t *testing.T) {
 	t.Parallel()
 
-	log := zap.NewNop()
-	l := &logger{log: log}
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	expectedString := "value1"
-	expectedStrings := []string{"one", "two", "three"}
-	expectedInt := 42
-	expectedInt64 := int64(100)
-	expectedFloat64 := 3.14
-	expectedBool := true
-	expectedError := errors.New("boom")
-	expectedAny := "value7"
+		t.Run("各Fieldコンストラクタが対応するzap.Fieldへ変換される", func(t *testing.T) {
+			t.Parallel()
 
-	fields := []*Field{
-		String("key1", expectedString),
-		Strings("key1s", expectedStrings),
-		Int("key2", expectedInt),
-		Int64("key3", expectedInt64),
-		Float64("key4", expectedFloat64),
-		Bool("key5", expectedBool),
-		Error("key6", expectedError),
-		Any("key7", expectedAny),
-	}
+			log := zap.NewNop()
+			l := &logger{log: log}
 
-	expected := []zap.Field{
-		zap.String("key1", expectedString),
-		zap.Strings("key1s", expectedStrings),
-		zap.Int("key2", expectedInt),
-		zap.Int64("key3", expectedInt64),
-		zap.Float64("key4", expectedFloat64),
-		zap.Bool("key5", expectedBool),
-		zap.NamedError("key6", expectedError),
-		zap.Any("key7", expectedAny),
-	}
-	actual := l.ConvertFields(fields)
-	assert.Equal(t, expected, actual)
+			expectedString := "value1"
+			expectedStrings := []string{"one", "two", "three"}
+			expectedInt := 42
+			expectedInt64 := int64(100)
+			expectedFloat64 := 3.14
+			expectedBool := true
+			expectedError := errors.New("boom")
+			expectedAny := "value7"
+
+			fields := []*Field{
+				String("key1", expectedString),
+				Strings("key1s", expectedStrings),
+				Int("key2", expectedInt),
+				Int64("key3", expectedInt64),
+				Float64("key4", expectedFloat64),
+				Bool("key5", expectedBool),
+				Error("key6", expectedError),
+				Any("key7", expectedAny),
+			}
+
+			expected := []zap.Field{
+				zap.String("key1", expectedString),
+				zap.Strings("key1s", expectedStrings),
+				zap.Int("key2", expectedInt),
+				zap.Int64("key3", expectedInt64),
+				zap.Float64("key4", expectedFloat64),
+				zap.Bool("key5", expectedBool),
+				zap.NamedError("key6", expectedError),
+				zap.Any("key7", expectedAny),
+			}
+			actual := l.ConvertFields(fields)
+			assert.Equal(t, expected, actual)
+		})
+	})
+}
+
+// newBufLogger は、書き込み内容を検証可能なバッファ付き logger を生成する。
+func newBufLogger() (*logger, *bytes.Buffer) {
+	var buf bytes.Buffer
+	enc := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+	core := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
+	return &logger{log: zap.New(core)}, &buf
 }
 
 func Test_logger_Debug(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	enc := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	core := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
-	zlog := zap.New(core)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	l := &logger{log: zlog}
+		t.Run("Debugレベルでメッセージとフィールドが出力される", func(t *testing.T) {
+			t.Parallel()
 
-	l.Debug("debug message", String("key", "value"))
+			l, buf := newBufLogger()
+			l.Debug("debug message", String("key", "value"))
 
-	out := buf.String()
-	assert.Contains(t, out, "debug message")
-	assert.Contains(t, out, "key")
-	assert.Contains(t, out, "value")
+			out := buf.String()
+			assert.Contains(t, out, "debug message")
+			assert.Contains(t, out, "key")
+			assert.Contains(t, out, "value")
+		})
+	})
 }
 
 func Test_logger_Info(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	enc := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	core := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
-	zlog := zap.New(core)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	l := &logger{log: zlog}
+		t.Run("Infoレベルでメッセージとフィールドが出力される", func(t *testing.T) {
+			t.Parallel()
 
-	l.Info("info message", String("key", "value"))
+			l, buf := newBufLogger()
+			l.Info("info message", String("key", "value"))
 
-	out := buf.String()
-	assert.Contains(t, out, "info message")
-	assert.Contains(t, out, "key")
-	assert.Contains(t, out, "value")
+			out := buf.String()
+			assert.Contains(t, out, "info message")
+			assert.Contains(t, out, "key")
+			assert.Contains(t, out, "value")
+		})
+	})
 }
 
 func Test_logger_Warn(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	enc := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	core := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
-	zlog := zap.New(core)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	l := &logger{log: zlog}
+		t.Run("Warnレベルでメッセージとフィールドが出力される", func(t *testing.T) {
+			t.Parallel()
 
-	l.Warn("warn message", String("key", "value"))
+			l, buf := newBufLogger()
+			l.Warn("warn message", String("key", "value"))
 
-	out := buf.String()
-	assert.Contains(t, out, "warn message")
-	assert.Contains(t, out, "key")
-	assert.Contains(t, out, "value")
+			out := buf.String()
+			assert.Contains(t, out, "warn message")
+			assert.Contains(t, out, "key")
+			assert.Contains(t, out, "value")
+		})
+	})
 }
 
 func Test_logger_Error(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	enc := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	core := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
-	zlog := zap.New(core)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	l := &logger{log: zlog}
+		t.Run("Errorレベルでメッセージとフィールドが出力される", func(t *testing.T) {
+			t.Parallel()
 
-	l.Error("error message", String("key", "value"))
+			l, buf := newBufLogger()
+			l.Error("error message", String("key", "value"))
 
-	out := buf.String()
-	assert.Contains(t, out, "error message")
-	assert.Contains(t, out, "key")
-	assert.Contains(t, out, "value")
+			out := buf.String()
+			assert.Contains(t, out, "error message")
+			assert.Contains(t, out, "key")
+			assert.Contains(t, out, "value")
+		})
+	})
 }

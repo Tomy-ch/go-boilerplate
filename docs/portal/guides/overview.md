@@ -32,6 +32,15 @@ This project requires the following tools to be installed before running:
 - GitHub CLI is used for interacting with GitHub workflows and automation (optional but recommended).
 - Visual Studio Code is recommended for development, especially with Go and OpenAPI extensions.
 
+### Supported Platforms
+
+This project assumes a **Unix-like development environment**. The tooling (`make`, `mise`, `lefthook`, Docker bind-mount performance, etc.) depends on POSIX shells and Linux file paths.
+
+- **macOS / Linux** — supported as primary development environments.
+- **Windows** — please use **WSL2 + the Remote-WSL VSCode extension**. Running natively on Windows is **not supported**: `make`, the `mise` shim layout, and `lefthook`'s POSIX hooks all assume a Unix shell, and Docker I/O is significantly slower without the WSL2 filesystem.
+
+Inside WSL2 the project behaves identically to Linux, including the `.vscode/settings.json` paths that reference `~/.local/share/mise/shims/`.
+
 ## Quick Start
 
 Run the project locally in a few commands.

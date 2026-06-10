@@ -3,44 +3,43 @@ package config
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoad_WithEnvSet(t *testing.T) {
-	t.Run("ENV が設定されている場合、Load はエラーなく成功する", func(t *testing.T) {
-		EnsureRepoRootAndEnv(t, TestingEnvValue)
+func TestLoad(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("ENV が設定されている場合、Load はエラーなく成功する", func(t *testing.T) {
+			EnsureRepoRootAndEnv(t, TestingEnvValue)
 
-		err := Load()
-		require.NoError(t, err)
+			err := Load()
+			require.NoError(t, err)
+		})
 	})
 
-	t.Run("env/.env は存在するが ENV が空のため ErrEnvNotResolved を返す", func(t *testing.T) {
-		EnsureRepoRootAndEnv(t, TestingEnvValue)
-		t.Setenv(envKey, "")
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("デフォルトの .env ファイルが存在しない場合、ErrFailedToLoadDefaultEnvFile を返す", func(t *testing.T) {
+			tmp := t.TempDir()
+			t.Chdir(tmp)
+			t.Setenv(envKey, "")
 
-		err := Load()
-		require.ErrorIs(t, err, ErrEnvNotResolved)
-	})
+			err := Load()
+			require.ErrorIs(t, err, ErrFailedToLoadDefaultEnvFile)
+		})
 
-	t.Run("デフォルトの .env ファイルが存在しない場合、Load はエラーを返す", func(t *testing.T) {
-		tmp := t.TempDir()
-		t.Chdir(tmp)
-		t.Setenv(envKey, "")
+		t.Run("env/.env は存在するが ENV が空のため ErrEnvNotResolved を返す", func(t *testing.T) {
+			EnsureRepoRootAndEnv(t, TestingEnvValue)
+			t.Setenv(envKey, "")
 
-		err := Load()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "env/.env")
-	})
+			err := Load()
+			require.ErrorIs(t, err, ErrEnvNotResolved)
+		})
 
-	t.Run("ENV に対応する .env.<env> が存在しない場合、Load はエラーを返す", func(t *testing.T) {
-		EnsureRepoRootAndEnv(t, TestingEnvValue)
-		// ENV が非空のため base(.env) 読み込みはスキップされ、直接 .env.<env> を
-		// 読みに行く。存在しない env を指定してロード失敗分岐を通す。
-		t.Setenv(envKey, "nonexistent_env")
+		t.Run("ENV に対応する .env.<env> が存在しない場合、ErrFailedToLoadEnvFile を返す", func(t *testing.T) {
+			EnsureRepoRootAndEnv(t, TestingEnvValue)
+			t.Setenv(envKey, "nonexistent_env")
 
-		err := Load()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), ".env.nonexistent_env")
+			err := Load()
+			require.ErrorIs(t, err, ErrFailedToLoadEnvFile)
+		})
 	})
 }

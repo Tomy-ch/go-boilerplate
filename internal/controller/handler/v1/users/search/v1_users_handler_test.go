@@ -87,74 +87,66 @@ func Test_server_GetUsersSearch(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := []struct {
-			name  string
-			dtos  query.UserSearchResults
-			total int64
-		}{
-			{
-				name: "複数ユーザーが存在する場合、検索結果が返る",
-				dtos: query.UserSearchResults{
-					&query.UserSearchResult{
-						FirstName: "F1", LastName: "L1", Email: "u1@example.com", Phone: "090-0000-0001",
-						PostalCode: "123-0001", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1",
-						Building: ptr.To("B1"), RegisteredAt: t1,
-					},
-					&query.UserSearchResult{
-						FirstName: "F2", LastName: "L2", Email: "u2@example.com", Phone: "090-0000-0002",
-						PostalCode: "123-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2-2",
-						RegisteredAt: t2,
-					},
+		exec := func(t *testing.T, dtos query.UserSearchResults, total int64) {
+			t.Helper()
+
+			wantUsers := make([]gen.UsersSearchResponseItem, len(dtos))
+			for i, d := range dtos {
+				wantUsers[i] = wantSearchItem(d)
+			}
+			expectedResponse := gen.UsersSearchResponse{
+				Users:  wantUsers,
+				Limit:  mockPaging.Limit(),
+				Offset: mockPaging.Offset(),
+				Total:  total,
+			}
+
+			var gotFilter *usecase_search.SearchParams
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
+				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Paging) (query.UserSearchResults, error) {
+					gotFilter = f
+					return dtos, nil
+				})
+			mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.Any()).Return(total, nil)
+
+			resp, err := s.GetUsersSearch(context.Background(), mockParams)
+			require.NoError(t, err)
+
+			assert.Equal(t, wantFilter, gotFilter)
+
+			actual, ok := resp.(gen.GetUsersSearch200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
+		}
+
+		t.Run("複数ユーザーが存在する場合、検索結果が返る", func(t *testing.T) {
+			t.Parallel()
+			dtos := query.UserSearchResults{
+				&query.UserSearchResult{
+					FirstName: "F1", LastName: "L1", Email: "u1@example.com", Phone: "090-0000-0001",
+					PostalCode: "123-0001", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1",
+					Building: ptr.To("B1"), RegisteredAt: t1,
 				},
-				total: 2,
-			},
-			{
-				name:  "0件の場合、空の検索結果が返る",
-				dtos:  query.UserSearchResults{},
-				total: 0,
-			},
-		}
+				&query.UserSearchResult{
+					FirstName: "F2", LastName: "L2", Email: "u2@example.com", Phone: "090-0000-0002",
+					PostalCode: "123-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2-2",
+					RegisteredAt: t2,
+				},
+			}
+			exec(t, dtos, 2)
+		})
 
-		for _, tc := range cases {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
-
-				wantUsers := make([]gen.UsersSearchResponseItem, len(tc.dtos))
-				for i, d := range tc.dtos {
-					wantUsers[i] = wantSearchItem(d)
-				}
-				expectedResponse := gen.UsersSearchResponse{
-					Users:  wantUsers,
-					Limit:  mockPaging.Limit(),
-					Offset: mockPaging.Offset(),
-					Total:  tc.total,
-				}
-
-				var gotFilter *usecase_search.SearchParams
-				s, mockApp := newServer(t)
-				mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
-					DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Paging) (query.UserSearchResults, error) {
-						gotFilter = f
-						return tc.dtos, nil
-					})
-				mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.Any()).Return(tc.total, nil)
-
-				resp, err := s.GetUsersSearch(context.Background(), mockParams)
-				require.NoError(t, err)
-
-				assert.Equal(t, wantFilter, gotFilter)
-
-				actual, ok := resp.(gen.GetUsersSearch200JSONResponse)
-				require.True(t, ok)
-				assert.Equal(t, expectedResponse, gen.UsersSearchResponse(actual))
-			})
-		}
+		t.Run("0件の場合、空の検索結果が返る", func(t *testing.T) {
+			t.Parallel()
+			exec(t, query.UserSearchResults{}, 0)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
+		t.Run("ページング処理が失敗した場合、ErrInvalidArgumentが返る", func(t *testing.T) {
 			t.Parallel()
 
 			invalidParams := gen.GetUsersSearchRequestObject{
@@ -170,31 +162,30 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
-		errCases := []struct {
-			name     string
-			listErr  error
-			countErr error
-		}{
-			{name: "ListUsersByKeywordがエラーを返す場合", listErr: apperror.ErrInternal},
-			{name: "CountUsersByKeywordがエラーを返す場合", countErr: apperror.ErrInternal},
-		}
+		t.Run("ListUsersByKeywordがエラーを返す場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
 
-		for _, tc := range errCases {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
+				Return(query.UserSearchResults{}, apperror.ErrInternal)
 
-				s, mockApp := newServer(t)
-				mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
-					Return(query.UserSearchResults{}, tc.listErr)
-				if tc.listErr == nil {
-					mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.Any()).
-						Return(int64(0), tc.countErr)
-				}
+			resp, err := s.GetUsersSearch(context.Background(), mockParams)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
 
-				resp, err := s.GetUsersSearch(context.Background(), mockParams)
-				require.Nil(t, resp)
-				require.ErrorIs(t, err, apperror.ErrInternal)
-			})
-		}
+		t.Run("CountUsersByKeywordがエラーを返す場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().ListUsersByKeyword(gomock.Any(), gomock.Any(), mockPaging).
+				Return(query.UserSearchResults{}, nil)
+			mockApp.EXPECT().CountUsersByKeyword(gomock.Any(), gomock.Any()).
+				Return(int64(0), apperror.ErrInternal)
+
+			resp, err := s.GetUsersSearch(context.Background(), mockParams)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
 	})
 }

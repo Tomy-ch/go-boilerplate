@@ -14,13 +14,20 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	e := &echo.Echo{}
-	cfg := config.MockConfigForTest(t)
-	appCfg := config.NewApplicationConfig(cfg)
-	secCfg := config.NewSecurityConfig(cfg)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	New(e, appCfg, secCfg)
-	require.NotNil(t, e.IPExtractor)
+		t.Run("Echoに非nilのIPExtractorが設定される", func(t *testing.T) {
+			t.Parallel()
+			e := &echo.Echo{}
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			secCfg := config.NewSecurityConfig(cfg)
+
+			New(e, appCfg, secCfg)
+			require.NotNil(t, e.IPExtractor)
+		})
+	})
 }
 
 func TestNewIPExtractor(t *testing.T) {
@@ -30,41 +37,45 @@ func TestNewIPExtractor(t *testing.T) {
 	_, parsedCIDR, err := net.ParseCIDR(cidr)
 	require.NoError(t, err)
 
-	t.Run("本番モードの場合", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		cfg := config.MockConfigForTest(t)
+		t.Run("本番モードの場合、非nilのextractorを返す", func(t *testing.T) {
+			t.Parallel()
 
-		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetApplicationMode(t, config.ProductionMode)
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			appCfg.SetApplicationMode(t, config.ProductionMode)
 
-		secCfg := config.NewSecurityConfig(cfg)
-		secCfg.SetCIDR(t, parsedCIDR)
+			secCfg := config.NewSecurityConfig(cfg)
+			secCfg.SetCIDR(t, parsedCIDR)
 
-		assert.Equal(t, config.ProductionMode, appCfg.Mode())
-		assert.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
-		actual := NewIPExtractor(appCfg, secCfg)
-		require.NotNil(t, actual)
-	})
+			assert.Equal(t, config.ProductionMode, appCfg.Mode())
+			assert.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
+			actual := NewIPExtractor(appCfg, secCfg)
+			require.NotNil(t, actual)
+		})
 
-	t.Run("開発モードの場合", func(t *testing.T) {
-		t.Parallel()
+		t.Run("開発モードの場合、非nilのextractorを返す", func(t *testing.T) {
+			t.Parallel()
 
-		cfg := config.MockConfigForTest(t)
-		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetApplicationMode(t, config.DevelopmentMode)
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			appCfg.SetApplicationMode(t, config.DevelopmentMode)
 
-		secCfg := config.NewSecurityConfig(cfg)
-		secCfg.SetCIDR(t, parsedCIDR)
+			secCfg := config.NewSecurityConfig(cfg)
+			secCfg.SetCIDR(t, parsedCIDR)
 
-		assert.Equal(t, config.DevelopmentMode, appCfg.Mode())
-		assert.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
-		actual := NewIPExtractor(appCfg, secCfg)
-		require.NotNil(t, actual)
-	})
+			assert.Equal(t, config.DevelopmentMode, appCfg.Mode())
+			assert.Equal(t, parsedCIDR.String(), secCfg.CIDR().String())
+			actual := NewIPExtractor(appCfg, secCfg)
+			require.NotNil(t, actual)
+		})
 
-	t.Run("開発モードがない場合", func(t *testing.T) {
-		extractor := NewIPExtractor(&config.ApplicationConfig{}, &config.SecurityConfig{})
-		require.NotNil(t, extractor)
+		t.Run("モード未設定でも非nilのextractorを返す", func(t *testing.T) {
+			t.Parallel()
+			extractor := NewIPExtractor(&config.ApplicationConfig{}, &config.SecurityConfig{})
+			require.NotNil(t, extractor)
+		})
 	})
 }

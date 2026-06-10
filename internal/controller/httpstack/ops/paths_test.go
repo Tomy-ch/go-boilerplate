@@ -7,59 +7,49 @@ import (
 )
 
 func TestIsOpsPath(t *testing.T) {
-	tests := []struct {
-		name string
-		path string
-		want bool
-	}{
-		{
-			name: "metrics path",
-			path: "/metrics",
-			want: true,
-		},
-		{
-			name: "health path",
-			path: "/health",
-			want: true,
-		},
-		{
-			name: "healthz path",
-			path: "/healthz",
-			want: true,
-		},
-		{
-			name: "ready path",
-			path: "/ready",
-			want: true,
-		},
-		{
-			name: "version path",
-			path: "/version",
-			want: true,
-		},
-		{
-			name: "non-ops path",
-			path: "/non-ops",
-			want: false,
-		},
-		{
-			name: "root path",
-			path: "/",
-			want: false,
-		},
-		{
-			name: "ops path with trailing slash",
-			path: "/metrics/",
-			want: true,
-		},
-	}
+	t.Parallel()
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("/metricsはtrueを返す", func(t *testing.T) {
 			t.Parallel()
-			got := IsOpsPath(tt.path)
-			assert.Equal(t, tt.want, got)
+			assert.True(t, IsOpsPath("/metrics"))
 		})
-	}
+
+		t.Run("/healthはtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsOpsPath("/health"))
+		})
+
+		t.Run("/healthzはtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsOpsPath("/healthz"))
+		})
+
+		t.Run("/readyはtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsOpsPath("/ready"))
+		})
+
+		t.Run("/versionはtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsOpsPath("/version"))
+		})
+
+		t.Run("末尾スラッシュ付きの運用系パスでもtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, IsOpsPath("/metrics/"))
+		})
+
+		t.Run("非運用系パスはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsOpsPath("/non-ops"))
+		})
+
+		t.Run("ルートパスはfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsOpsPath("/"))
+		})
+	})
 }
