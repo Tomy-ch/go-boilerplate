@@ -52,6 +52,10 @@ func NormalizeError(err error) error {
 		}
 	}
 
+	if errors.Is(err, context.Canceled) {
+		return xerrors.Wrap(apperror.ErrCanceled, err.Error())
+	}
+
 	if IsUnavailable(err) {
 		return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
 	}
@@ -78,7 +82,7 @@ func IsUnavailable(err error) bool {
 		return false
 	}
 
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 

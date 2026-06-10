@@ -41,11 +41,11 @@ func TestNormalizePgError(t *testing.T) {
 		require.ErrorIs(t, got, apperror.ErrUnavailable)
 	})
 
-	t.Run("contextがキャンセルされた場合", func(t *testing.T) {
+	t.Run("contextがキャンセルされた場合はクライアント起因として ErrCanceled", func(t *testing.T) {
 		t.Parallel()
 		got := NormalizeError(context.Canceled)
 		require.Error(t, got)
-		require.ErrorIs(t, got, apperror.ErrUnavailable)
+		require.ErrorIs(t, got, apperror.ErrCanceled)
 	})
 
 	t.Run("既に正規化済みのapperrorは分類を保持して素通しする", func(t *testing.T) {
@@ -170,10 +170,10 @@ func TestIsUnavailable(t *testing.T) {
 		assert.True(t, got)
 	})
 
-	t.Run("コンテキストキャンセル", func(t *testing.T) {
+	t.Run("コンテキストキャンセルはクライアント起因なので接続不可ではない", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(context.Canceled)
-		assert.True(t, got)
+		assert.False(t, got)
 	})
 
 	t.Run("ネットワークエラー(タイムアウト)", func(t *testing.T) {

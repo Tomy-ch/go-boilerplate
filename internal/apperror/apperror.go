@@ -18,6 +18,8 @@ var (
 	ErrValidation = xerrors.New("validation error")
 	// リクエストが多すぎる場合に使用します。
 	ErrTooManyRequests = xerrors.New("too many requests")
+	// クライアントがリクエストをキャンセル/切断した場合に使用します。
+	ErrCanceled = xerrors.New("request canceled")
 	// サーバ内部で予期しないエラーが発生した場合に使用します。
 	ErrInternal = xerrors.New("internal error")
 	// 実装されていない操作が呼び出された場合に使用します。
@@ -35,6 +37,7 @@ var appErrors = []error{
 	ErrConflict,
 	ErrValidation,
 	ErrTooManyRequests,
+	ErrCanceled,
 	ErrInternal,
 	ErrUnimplemented,
 	ErrUnavailable,
