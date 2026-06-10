@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/app-di-startup-check.yaml'
-      - 'cmd/server/**.go'
+      - 'cmd/**.go'
       - 'internal/**.go'
       - 'go.mod'
       - 'go.sum'
@@ -51,10 +51,13 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # コンパイルと実行を分離し、ビルド失敗を即時に顕在化させる
+      - name: Build server
+        run: go build -o ./bin/server ./cmd/
+
       - name: Start server
         run: |
-          # 例: cobra で `serve` コマンドがある前提
-          go run ./cmd/ serve &
+          ./bin/server serve > server.log 2>&1 &
           echo $! > server.pid
 
       - name: Wait for /ready endpoint
@@ -71,8 +74,8 @@ jobs:
           done
 
           echo "Readiness check failed"
-          echo "Server logs (if any):"
-          # fx を zap で標準出力に出していればログがここに出る
+          echo "Server logs:"
+          cat server.log || true
           exit 1
 
       - name: Stop server
