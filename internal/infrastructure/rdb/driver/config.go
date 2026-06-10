@@ -7,29 +7,33 @@ import (
 	"go-boilerplate/internal/config"
 )
 
-// DSN は、データベースの接続URLを返します。
-func DSN(dbCfg *config.DatabaseConfig) *url.URL {
-	u := &url.URL{
-		Scheme: "postgres",
-		User:   url.UserPassword(dbCfg.User(), dbCfg.Password()),
-		Host:   fmt.Sprintf("%s:%d", dbCfg.Host(), dbCfg.Port()),
-		Path:   dbCfg.DBName(),
+// buildDSN は、sslmode と追加クエリパラメータを一度の Encode で確定して接続URLを組み立てます。
+func buildDSN(dbCfg *config.DatabaseConfig, extra url.Values) *url.URL {
+	q := url.Values{}
+	q.Set("sslmode", dbCfg.SSLMode())
+	for key, values := range extra {
+		for _, v := range values {
+			q.Set(key, v)
+		}
 	}
 
-	q := u.Query()
-	q.Set("sslmode", dbCfg.SSLMode())
-	u.RawQuery = q.Encode()
+	return &url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(dbCfg.User(), dbCfg.Password()),
+		Host:     fmt.Sprintf("%s:%d", dbCfg.Host(), dbCfg.Port()),
+		Path:     dbCfg.DBName(),
+		RawQuery: q.Encode(),
+	}
+}
 
-	return u
+// DSN は、データベースの接続URLを返します。
+func DSN(dbCfg *config.DatabaseConfig) *url.URL {
+	return buildDSN(dbCfg, nil)
 }
 
 // DSNWithTimeZone は、データベースの接続URLを返します。タイムゾーン情報をクエリパラメータに追加します。
 func DSNWithTimeZone(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig) *url.URL {
-	u := DSN(dbCfg)
-	q := u.Query()
-	q.Set("timezone", osCfg.TimeZone())
-	u.RawQuery = q.Encode()
-	return u
+	return buildDSN(dbCfg, url.Values{"timezone": {osCfg.TimeZone()}})
 }
 
 // DSNString は、DSNを文字列形式で返します。
