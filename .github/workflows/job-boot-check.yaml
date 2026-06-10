@@ -5,9 +5,9 @@ on:
     paths:
       - '.github/workflows/job-boot-check.yaml'
       - 'cmd/**.go'
-      - 'internal/cli/job/**.go'
-      - 'internal/di/**.go'
-      - 'internal/controller/job/**.go'
+      - 'internal/**.go'
+      - 'env/.env.ci'
+      - 'env/.env'
       - 'go.mod'
       - 'go.sum'
   workflow_dispatch:
