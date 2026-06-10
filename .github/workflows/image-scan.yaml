@@ -35,7 +35,6 @@ jobs:
 
       - name: Prepare vendor
         run: |
-          go mod tidy
           go mod vendor
 
       - name: Set up Docker Buildx

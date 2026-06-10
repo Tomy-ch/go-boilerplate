@@ -84,7 +84,6 @@ jobs:
 
       - name: Generate vendor
         run: |
-          go mod tidy
           go mod vendor
 
       - name: Build and push Runtime image
