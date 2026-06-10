@@ -40,7 +40,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          files="$(git diff --name-only)"
+          # 未追跡（新規生成）ファイルも検知するため index に取り込んでから差分を取る
+          git add -A
+          files="$(git diff --cached --name-only)"
           if [ -n "$files" ]; then
             echo "has_diff=true" >> "$GITHUB_OUTPUT"
             printf "%s\n" "$files" > /tmp/changed_files.txt
