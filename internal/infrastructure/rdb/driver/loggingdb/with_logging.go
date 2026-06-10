@@ -30,7 +30,6 @@ const (
 )
 
 // dbWithLogging は DBTX をラップしてログを出してから実処理へ委譲する。
-// 協力者（logger・log fields・config・tracer）は具象 provider のフィールドから直接引く。
 type dbWithLogging struct {
 	db       driver.DBTX
 	provider *provider

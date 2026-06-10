@@ -20,8 +20,7 @@ var ErrLocalMockAuthenticatorInvalidToken = xerrors.Wrap(apperror.ErrUnauthentic
 // - verify はしません（ローカル専用）。
 // - token の文字列から Subject を決め、Authn を返します。
 //
-// provider は常に authbd.ProviderMock、Subject 抽出 prefix は常に localPrefix で固定のため、
-// 可変設定は持たない。将来 prefix/provider を可変にする要求が出た時点で New(opts...) を導入する。
+// provider/prefix は固定値（ProviderMock / localPrefix）のため可変設定は持たない。
 type authenticator struct{}
 
 // New は local 用 Authenticator のコンストラクタです。
@@ -36,7 +35,6 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 		return nil, ErrLocalMockAuthenticatorInvalidToken
 	}
 
-	// resolveSubject は空文字 or トリム済み非空文字へ正規化するため、ここでの再トリムは不要。
 	sub := a.resolveSubject(cred.AccessToken())
 	if sub == "" {
 		return nil, ErrLocalMockAuthenticatorInvalidToken
