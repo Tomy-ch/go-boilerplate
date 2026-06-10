@@ -8,7 +8,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
 )
 
 const (
@@ -64,7 +63,6 @@ func developmentConfig() middleware.RecoverConfig {
 		StackSize:         developmentStackSize,
 		DisableStackAll:   false,
 		DisablePrintStack: false,
-		LogLevel:          log.DEBUG,
 	}
 }
 
@@ -76,6 +74,5 @@ func productionConfig() middleware.RecoverConfig {
 		// （DisablePrintStack=true だと echo が runtime.Stack 自体を行わず LogErrorFunc に空が渡る）。
 		DisableStackAll:   true,
 		DisablePrintStack: false,
-		LogLevel:          log.ERROR,
 	}
 }

@@ -14,7 +14,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -174,7 +173,6 @@ func TestDevelopmentConfig(t *testing.T) {
 		StackSize:         10 << 10,
 		DisableStackAll:   false,
 		DisablePrintStack: false,
-		LogLevel:          log.DEBUG,
 	}
 
 	actual := developmentConfig()
@@ -188,7 +186,6 @@ func TestProductionConfig(t *testing.T) {
 		StackSize:         4 << 10,
 		DisableStackAll:   true,
 		DisablePrintStack: false,
-		LogLevel:          log.ERROR,
 	}
 
 	actual := productionConfig()
