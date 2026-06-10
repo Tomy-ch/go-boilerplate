@@ -38,11 +38,11 @@ func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error)
 	if err != nil {
 		return query.DBHealth{}, pgerror.NormalizeError(err)
 	}
-	latency := time.Since(start)
+	respondedAt := time.Now()
 
 	return query.DBHealth{
 		Ready:       true,
-		ResponsedAt: time.Now(),
-		Latency:     latency,
+		ResponsedAt: respondedAt,
+		Latency:     respondedAt.Sub(start),
 	}, nil
 }
