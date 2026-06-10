@@ -29,46 +29,19 @@ jobs:
       - name: Build python tool container
         run: docker compose build python_tool_runner
 
-      - name: Run SQL lint on migrations
-        id: lint_migrations
+      - name: Run SQL lint
+        id: lint
         shell: bash
-        continue-on-error: true
         run: |
           set +e
-          make sql-lint-migrations 2>&1 | tee /tmp/sqlfluff_migrations.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-
-      - name: Run SQL lint on DML
-        id: lint_dml
-        shell: bash
-        continue-on-error: true
-        run: |
-          set +e
-          make sql-lint-dml 2>&1 | tee /tmp/sqlfluff_dml.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-
-      - name: Run SQL lint on seed
-        id: lint_seed
-        shell: bash
-        continue-on-error: true
-        run: |
-          set +e
-          make sql-lint-seed 2>&1 | tee /tmp/sqlfluff_seed.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-
-      - name: Summarize result
-        id: summary
-        shell: bash
-        run: |
-          m=${{ steps.lint_migrations.outputs.exit_code }}
-          d=${{ steps.lint_dml.outputs.exit_code }}
-          s=${{ steps.lint_seed.outputs.exit_code }}
-
-          if [ "$m" = "0" ] && [ "$d" = "0" ] && [ "$s" = "0" ]; then
-            echo "status=success" >> "$GITHUB_OUTPUT"
-          else
-            echo "status=failure" >> "$GITHUB_OUTPUT"
-          fi
+          status=success
+          for cat in migrations dml seed; do
+            make "sql-lint-${cat}" 2>&1 | tee "/tmp/sqlfluff_${cat}.log"
+            code=${PIPESTATUS[0]}
+            echo "exit_code_${cat}=${code}" >> "$GITHUB_OUTPUT"
+            [ "$code" = "0" ] || status=failure
+          done
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
 
       - name: Comment SQL lint result on PR
         if: github.event_name == 'pull_request'
@@ -80,11 +53,12 @@ jobs:
             const fs = require('fs');
 
             const marker = '<!-- sql-lint-result -->';
-            const status = '${{ steps.summary.outputs.status }}';
-
-            const codeM = '${{ steps.lint_migrations.outputs.exit_code }}';
-            const codeD = '${{ steps.lint_dml.outputs.exit_code }}';
-            const codeS = '${{ steps.lint_seed.outputs.exit_code }}';
+            const status = '${{ steps.lint.outputs.status }}';
+            const categories = [
+              { name: 'migrations', code: '${{ steps.lint.outputs.exit_code_migrations }}' },
+              { name: 'dml', code: '${{ steps.lint.outputs.exit_code_dml }}' },
+              { name: 'seed', code: '${{ steps.lint.outputs.exit_code_seed }}' },
+            ];
 
             const updatedAtJST = new Date().toLocaleString('ja-JP', {
               timeZone: 'Asia/Tokyo',
@@ -119,43 +93,33 @@ jobs:
               ? '✅ SQL lint: PASS'
               : '❌ SQL lint: FAIL';
 
-            const line = (name, code) => (code === '0' ? `- ✅ ${name}` : `- ❌ ${name}のディレクトリのsqlをローカルで修正して、差分をコミットしてください。`);
+            const line = (c) => c.code === '0'
+              ? `- ✅ ${c.name}`
+              : `- ❌ ${c.name}のディレクトリのsqlをローカルで修正して、差分をコミットしてください。`;
             const icon = (code) => (code === '0' ? '✅' : '🚨');
+            const details = (c) => [
+              `<details><summary> ${icon(c.code)} ${c.name} log</summary>`,
+              '',
+              '```text',
+              trimLog(read(`/tmp/sqlfluff_${c.name}.log`)),
+              '```',
+              '</details>',
+              '',
+            ];
 
             const body = [
               marker,
               `## ${title}`,
               '',
-              line('migrations', codeM),
-              line('dml', codeD),
-              line('seed', codeS),
+              ...categories.map(line),
               '',
               `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
               `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
               '',
-              `<details><summary> ${icon(codeM)} migrations log</summary>`,
-              '',
-              '```text',
-              trimLog(read('/tmp/sqlfluff_migrations.log')),
-              '```',
-              '</details>',
-              '',
-              `<details><summary> ${icon(codeD)} dml log</summary>`,
-              '',
-              '```text',
-              trimLog(read('/tmp/sqlfluff_dml.log')),
-              '```',
-              '</details>',
-              '',
-              `<details><summary> ${icon(codeS)} seed log</summary>`,
-              '',
-              '```text',
-              trimLog(read('/tmp/sqlfluff_seed.log')),
-              '```',
-              '</details>',
+              ...categories.flatMap(details),
             ].join('\n');
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
@@ -180,5 +144,5 @@ jobs:
             }
 
       - name: Fail if any lint failed
-        if: steps.summary.outputs.status != 'success'
+        if: steps.lint.outputs.status != 'success'
         run: exit 1
