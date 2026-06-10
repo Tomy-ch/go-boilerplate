@@ -3,7 +3,6 @@ package extension
 
 import (
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 
@@ -39,8 +38,8 @@ type ServeCfgOut struct {
 	SrvCfg SrvCfg `group:"server.configurators"`
 }
 
-// MiddlewareEntry は、ミドルウェアとその適用順序を表します。
-type MiddlewareEntry struct {
+// PreMiddleware は、Pre ミドルウェアとその適用順序を表します。
+type PreMiddleware struct {
 	// Name は、ミドルウェアの名前です（ログ出力用）
 	Name string
 	// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
@@ -49,11 +48,15 @@ type MiddlewareEntry struct {
 	Middleware echo.MiddlewareFunc
 }
 
-// PreMiddleware は、Pre ミドルウェアエントリです。
-type PreMiddleware = MiddlewareEntry
-
-// UseMiddleware は、Use ミドルウェアエントリです。
-type UseMiddleware = MiddlewareEntry
+// UseMiddleware は、Use ミドルウェアとその適用順序を表します。
+type UseMiddleware struct {
+	// Name は、ミドルウェアの名前です（ログ出力用）
+	Name string
+	// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）
+	Priority int
+	// Middleware は、適用対象の Echo ミドルウェアです。
+	Middleware echo.MiddlewareFunc
+}
 
 // PreMiddlewareOut は、fx の group 出力用のラッパーです。
 type PreMiddlewareOut struct {
@@ -65,6 +68,13 @@ type PreMiddlewareOut struct {
 type UseMiddlewareOut struct {
 	fx.Out
 	Middleware UseMiddleware `group:"middlewares.use"`
+}
+
+// middlewareEntry は、Pre/Use 共通の適用処理が扱う内部表現です。
+type middlewareEntry struct {
+	name       string
+	priority   int
+	middleware echo.MiddlewareFunc
 }
 
 // ApplyExtends は、サーバー拡張を適用します。
@@ -81,16 +91,24 @@ func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*
 
 // ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
 func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddleware) error {
-	return applyMiddlewares(logger, "pre", mws, e.Pre)
+	entries := make([]middlewareEntry, len(mws))
+	for i, mw := range mws {
+		entries[i] = middlewareEntry{name: mw.Name, priority: mw.Priority, middleware: mw.Middleware}
+	}
+	return applyMiddlewares(logger, "pre", entries, e.Pre)
 }
 
 // ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
 func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddleware) error {
-	return applyMiddlewares(logger, "use", mws, e.Use)
+	entries := make([]middlewareEntry, len(mws))
+	for i, mw := range mws {
+		entries[i] = middlewareEntry{name: mw.Name, priority: mw.Priority, middleware: mw.Middleware}
+	}
+	return applyMiddlewares(logger, "use", entries, e.Use)
 }
 
 // applyMiddlewares は、kind 種別のミドルウェアを優先度順に apply で適用します。
-func applyMiddlewares(logger logging.Logger, kind string, mws []MiddlewareEntry, apply func(...echo.MiddlewareFunc)) error {
+func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry, apply func(...echo.MiddlewareFunc)) error {
 	if err := validatePriorityConflicts(kind, mws); err != nil {
 		return err
 	}
@@ -101,28 +119,27 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []MiddlewareEntry,
 		logging.Int("count", len(mws)),
 	)
 
-	sorted := slices.Clone(mws)
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i].Priority < sorted[j].Priority
+	sort.Slice(mws, func(i, j int) bool {
+		return mws[i].priority < mws[j].priority
 	})
 
-	for _, mw := range sorted {
+	for _, mw := range mws {
 		log.Info(
 			fmt.Sprintf("Applying %s middleware", kind),
-			logging.Int("priority", mw.Priority),
-			logging.String("middleware", mw.Name),
+			logging.Int("priority", mw.priority),
+			logging.String("middleware", mw.name),
 		)
-		apply(mw.Middleware)
+		apply(mw.middleware)
 	}
 	return nil
 }
 
 // validatePriorityConflicts は、kind 種別のミドルウェアに Priority の重複がないか検証します。
-func validatePriorityConflicts(kind string, mws []MiddlewareEntry) error {
+func validatePriorityConflicts(kind string, mws []middlewareEntry) error {
 	byPriority := make(map[int][]string)
 
 	for _, mw := range mws {
-		byPriority[mw.Priority] = append(byPriority[mw.Priority], mw.Name)
+		byPriority[mw.priority] = append(byPriority[mw.priority], mw.name)
 	}
 
 	conflicts := extractPriorityConflicts(byPriority)

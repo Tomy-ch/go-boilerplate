@@ -346,10 +346,10 @@ func Test_validatePriorityConflicts(t *testing.T) {
 	t.Run("priority がユニークならエラーなし", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []UseMiddleware{
-			{Name: "A", Priority: 10},
-			{Name: "B", Priority: 20},
-			{Name: "C", Priority: 30},
+		mws := []middlewareEntry{
+			{name: "A", priority: 10},
+			{name: "B", priority: 20},
+			{name: "C", priority: 30},
 		}
 
 		err := validatePriorityConflicts("use", mws)
@@ -359,10 +359,10 @@ func Test_validatePriorityConflicts(t *testing.T) {
 	t.Run("同じ priority が複数あればエラー", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []UseMiddleware{
-			{Name: "A", Priority: 10},
-			{Name: "B", Priority: 20},
-			{Name: "C", Priority: 20},
+		mws := []middlewareEntry{
+			{name: "A", priority: 10},
+			{name: "B", priority: 20},
+			{name: "C", priority: 20},
 		}
 
 		err := validatePriorityConflicts("use", mws)
@@ -375,9 +375,9 @@ func Test_validatePriorityConflicts(t *testing.T) {
 	t.Run("kind 種別がエラー文言へ反映されること", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []MiddlewareEntry{
-			{Name: "A", Priority: 1},
-			{Name: "B", Priority: 1},
+		mws := []middlewareEntry{
+			{name: "A", priority: 1},
+			{name: "B", priority: 1},
 		}
 
 		preErr := validatePriorityConflicts("pre", mws)
