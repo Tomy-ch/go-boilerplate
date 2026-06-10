@@ -48,8 +48,7 @@ func Test_dbWithLogging_Exec(t *testing.T) {
 }
 
 // Test_dbWithLogging_callerSkip は、開始ログと終了ログが同一の呼び出し元（repository 層相当）を
-// caller として記録することを検証する回帰テスト。開始ログがインライン・終了ログがヘルパ経由だと
-// フレーム段数がずれ、終了ログの caller が呼び出し元より浅い位置（sqlc gen 相当）を指してしまう。
+// caller に記録することを検証する回帰テスト（フレーム段差で終了ログがずれる退行を捕捉する）。
 func Test_dbWithLogging_callerSkip(t *testing.T) {
 	t.Parallel()
 

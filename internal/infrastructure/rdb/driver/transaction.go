@@ -62,8 +62,8 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	return nil
 }
 
-// rollback は、トランザクションをロールバックし、失敗時に fields を併記してログを残します。
-// 呼び出し元 context がキャンセル済みでも後始末を完了させるため WithoutCancel で切り離す。
+// rollback はロールバックし、失敗時に fields を併記してログを残す。
+// 呼び出し元 ctx がキャンセル済みでも後始末を完了させるため WithoutCancel で切り離す。
 func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.Field) {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 	defer cancel()
