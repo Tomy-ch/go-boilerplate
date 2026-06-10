@@ -57,7 +57,7 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 
 	id := conv.UUID(request.UserId)
 
-	dto := &user.MutableFields{
+	dto := &user.UpdateProfileParams{
 		FirstName:      request.Body.FirstName,
 		LastName:       request.Body.LastName,
 		Email:          conv.Email(request.Body.Email),
@@ -143,7 +143,7 @@ func (s *server) DeleteUsersDetail(ctx context.Context, request gen.DeleteUsersD
 }
 
 // toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。
-func toUserResponse(dto user.MutableFields) gen.UserResponse {
+func toUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,

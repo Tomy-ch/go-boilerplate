@@ -86,7 +86,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	createParams := &user.CreateParamsDTO{
 		UserID:      userID,
 		RawPassword: request.Body.Password,
-		MutableFields: user.MutableFields{
+		UpdateProfileParams: user.UpdateProfileParams{
 			FirstName:      request.Body.FirstName,
 			LastName:       request.Body.LastName,
 			Email:          string(request.Body.Email),
@@ -108,7 +108,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 }
 
 // toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。
-func toUserResponse(dto user.MutableFields) gen.UserResponse {
+func toUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,

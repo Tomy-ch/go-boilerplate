@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
 	"go-boilerplate/internal/domain/user"
@@ -91,7 +92,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		expected := []MutableFields{
+		expected := []UserView{
 			{
 				FirstName:      userDomain.FirstName(),
 				LastName:       userDomain.LastName(),
@@ -177,6 +178,40 @@ func Test_usecase_ListUsers(t *testing.T) {
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
+
+		t.Run("ユーザーの都道府県が解決できない場合、ErrNotFound が返される", func(t *testing.T) {
+			t.Parallel()
+
+			page := 1
+			perPage := 100
+			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			require.NoError(t, err)
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
+			uc := &usecase{
+				tracer:   lt,
+				userRepo: userRepo,
+				pftRepo:  pftRepo,
+			}
+
+			actual, err := uc.ListUsers(ctx, nil, p)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+
+		t.Run("page が nil の場合、ErrInvalidArgument が返される", func(t *testing.T) {
+			t.Parallel()
+
+			uc := &usecase{tracer: lt}
+			actual, err := uc.ListUsers(ctx, nil, nil)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
 	})
 }
 
@@ -225,7 +260,17 @@ func Test_usecase_Create(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
-			expected := createDTO.MutableFields
+			expected := UserView{
+				FirstName:      createDTO.FirstName,
+				LastName:       createDTO.LastName,
+				Email:          createDTO.Email,
+				Phone:          createDTO.Phone,
+				PostalCode:     createDTO.PostalCode,
+				PrefectureName: createDTO.PrefectureName,
+				City:           createDTO.City,
+				Street:         createDTO.Street,
+				Building:       createDTO.Building,
+			}
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
@@ -276,7 +321,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
 		})
 
@@ -300,7 +345,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -331,7 +376,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -361,7 +406,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, user.ErrInvalidFirstName)
 		})
 
@@ -398,7 +443,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 	})
@@ -439,7 +484,7 @@ func newCreateDTO(u *user.User, pName string) *CreateParamsDTO {
 	return &CreateParamsDTO{
 		UserID:      u.ID(),
 		RawPassword: "password",
-		MutableFields: MutableFields{
+		UpdateProfileParams: UpdateProfileParams{
 			FirstName:      u.FirstName(),
 			LastName:       u.LastName(),
 			Email:          u.Email(),

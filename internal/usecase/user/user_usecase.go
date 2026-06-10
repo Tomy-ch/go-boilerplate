@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
@@ -16,10 +17,11 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
-// MutableFields は、ユーザー取得結果のDTOを表します。
-type MutableFields struct {
+// UserView は、ユーザー取得結果の出力 DTO を表します。
+type UserView struct {
 	FirstName      string
 	LastName       string
 	Email          string
@@ -32,12 +34,25 @@ type MutableFields struct {
 	DeletedAt      *time.Time
 }
 
+// UpdateProfileParams は、ユーザープロフィール更新の入力（可変フィールド）を表します。
+type UpdateProfileParams struct {
+	FirstName      string
+	LastName       string
+	Email          string
+	Phone          string
+	PostalCode     string
+	PrefectureName string
+	City           string
+	Street         string
+	Building       *string
+}
+
 // CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
 type CreateParamsDTO struct {
 	UserID      uuid.UUID
 	RawPassword string
 
-	MutableFields
+	UpdateProfileParams
 }
 
 // PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
@@ -66,17 +81,17 @@ type usecase struct {
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
 	// ListUsers は、ユーザー一覧を取得します。
-	ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]MutableFields, error)
+	ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error)
 	// CreateUser は、ユーザーを作成します。
-	CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+	CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
 	// CountUsers は、ユーザーの総件数を返します。
 	CountUsers(ctx context.Context, active *bool) (int64, error)
 	// GetUser は、IDから単一ユーザーを取得します。
-	GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error)
+	GetUser(ctx context.Context, id uuid.UUID) (UserView, error)
 	// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
-	UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFields) (MutableFields, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
 	// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
-	UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error)
+	UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
 	// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。
 	ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error
 	// DeleteUser は、ユーザーを論理削除します。
@@ -102,7 +117,11 @@ func New(
 	}
 }
 
-func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]MutableFields, error) {
+func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error) {
+	if page == nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "page must not be nil")
+	}
+
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
@@ -114,8 +133,8 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Pagi
 	_, prefectureMap, err := observability.RunWithSpan(
 		ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) {
 			pids := make([]uuid.UUID, len(us))
-			for i, u := range us {
-				pids[i] = u.PrefectureID()
+			for i, ue := range us {
+				pids[i] = ue.PrefectureID()
 			}
 
 			ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
@@ -134,44 +153,44 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Pagi
 		return nil, err
 	}
 
-	dtos := make([]MutableFields, len(us))
-	for i, u := range us {
-		prefectureName := ""
-		if p, ok := prefectureMap[u.PrefectureID()]; ok {
-			prefectureName = p.Name()
+	dtos := make([]UserView, len(us))
+	for i, ue := range us {
+		p, ok := prefectureMap[ue.PrefectureID()]
+		if !ok {
+			return nil, xerrors.Wrap(apperror.ErrNotFound, "prefecture not found for user")
 		}
-		dtos[i] = toMutableFields(u, prefectureName)
+		dtos[i] = toUserView(ue, p.Name())
 	}
 
 	return dtos, nil
 }
 
 // CreateUser は、ユーザーを作成するユースケースです。
-func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error) {
+func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
 	now := u.clock.Now()
 	rawPassword, err := user.NewRawPassword(dto.RawPassword)
 	if err != nil {
-		return MutableFields{}, err
+		return UserView{}, err
 	}
 
 	passwordHash, err := u.encrypter.Hash(rawPassword.Value())
 	if err != nil {
-		return MutableFields{}, err
+		return UserView{}, err
 	}
 
 	var (
 		userEntity *user.User
-		pftDomain  *prefecture.Prefecture
+		pftName    string
 	)
 	err = u.txm.Do(ctx, func(ctx context.Context) error {
-		var err error
-		pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
+		pftDomain, err := u.pftRepo.FindByName(ctx, dto.PrefectureName)
 		if err != nil {
 			return err
 		}
+		pftName = pftDomain.Name()
 
 		userEntity, err = user.New(
 			dto.UserID,
@@ -193,17 +212,13 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
 			return err
 		}
 
-		err = u.userRepo.Create(ctx, userEntity)
-		if err != nil {
-			return err
-		}
-		return nil
+		return u.userRepo.Create(ctx, userEntity)
 	})
 	if err != nil {
-		return MutableFields{}, err
+		return UserView{}, err
 	}
 
-	return toMutableFields(userEntity, pftDomain.Name()), nil
+	return toUserView(userEntity, pftName), nil
 }
 
 // CountUsers は、ユーザーの総件数を返すユースケースです。
@@ -214,25 +229,25 @@ func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 }
 
 // GetUser は、IDから単一ユーザーを取得するユースケースです。
-func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (MutableFields, error) {
+func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
 	userEntity, err := u.userRepo.FindByID(ctx, id)
 	if err != nil {
-		return MutableFields{}, err
+		return UserView{}, err
 	}
 
 	pftDomain, err := u.pftRepo.FindByID(ctx, userEntity.PrefectureID())
 	if err != nil {
-		return MutableFields{}, err
+		return UserView{}, err
 	}
 
-	return toMutableFields(userEntity, pftDomain.Name()), nil
+	return toUserView(userEntity, pftDomain.Name()), nil
 }
 
 // UpdateUser は、ユーザーのプロフィールを全更新するユースケースです（PUT、パスワードは含みません）。
-func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFields) (MutableFields, error) {
+func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
@@ -240,7 +255,7 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFiel
 
 	var (
 		userEntity *user.User
-		pftDomain  *prefecture.Prefecture
+		pftName    string
 	)
 	err := u.txm.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -249,10 +264,11 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFiel
 			return err
 		}
 
-		pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
+		pftDomain, err := u.pftRepo.FindByName(ctx, dto.PrefectureName)
 		if err != nil {
 			return err
 		}
+		pftName = pftDomain.Name()
 
 		if err = userEntity.UpdateProfile(
 			dto.FirstName,
@@ -272,10 +288,10 @@ func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *MutableFiel
 		return u.userRepo.Update(ctx, userEntity)
 	})
 	if err != nil {
-		return MutableFields{}, err
+		return UserView{}, err
 	}
 
-	return toMutableFields(userEntity, pftDomain.Name()), nil
+	return toUserView(userEntity, pftName), nil
 }
 
 // ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更するユースケースです。
@@ -322,7 +338,7 @@ func (u *usecase) ChangePassword(ctx context.Context, id uuid.UUID, currentPassw
 
 // UpdateUserPartially は、ユーザーを部分更新するユースケースです（PATCH）。
 // 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは PUT を使う）。password は更新しない。
-func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (MutableFields, error) {
+func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
@@ -376,10 +392,10 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *Pa
 		return u.userRepo.Update(ctx, userEntity)
 	})
 	if err != nil {
-		return MutableFields{}, err
+		return UserView{}, err
 	}
 
-	return toMutableFields(userEntity, pftName), nil
+	return toUserView(userEntity, pftName), nil
 }
 
 // DeleteUser は、ユーザーを論理削除するユースケースです（DELETE）。
@@ -400,9 +416,9 @@ func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-// toMutableFields は、ユーザーエンティティと都道府県名から DTO を構築します。
-func toMutableFields(u *user.User, prefectureName string) MutableFields {
-	return MutableFields{
+// toUserView は、ユーザーエンティティと都道府県名から DTO を構築します。
+func toUserView(u *user.User, prefectureName string) UserView {
+	return UserView{
 		FirstName:      u.FirstName(),
 		LastName:       u.LastName(),
 		Email:          u.Email(),
