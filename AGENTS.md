@@ -246,7 +246,7 @@ Domain layer must not:
 - Access environment variables
 - Perform I/O
 - Use logging frameworks
-- Use context.Context
+- Use context.Context in domain logic (Repository interface signatures may declare it for propagation only)
 - Use database clients
 - Import infrastructure packages
 - Depend on time, randomness, or system state directly
