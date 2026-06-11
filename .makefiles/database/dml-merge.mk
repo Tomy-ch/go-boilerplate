@@ -16,10 +16,7 @@
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 merge-dml:
-	make merge-dml-repo
-	make merge-dml-qs
-	make merge-dml-sysq
-	make merge-dml-cs
+	@docker compose run --rm go_tool_runner make merge-dml-ci work-dir=/app
 merge-dml-repo:
 	make merge-dml-core type="repository" work-dir="/app"
 merge-dml-qs:

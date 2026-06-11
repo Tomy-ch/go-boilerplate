@@ -7,6 +7,9 @@
 .PHONY: dump-schema-ci ## スキーマのダンプを実行（CI用）
 
 # -----Dockerコンテナ内で実行するターゲット-----
+# 注: gen-db-schema(ローカル) と gen-db-schema-ci(CI) は同名だが別処理・別出力。
+#   ローカル = er_diagram_generator(compose) → docs/er-diagram
+#   CI       = schemaspy(raw docker)        → docs/db-schema
 gen-db-schema:
 	@echo "🔄 スキーマの更新を実行します..."
 	docker compose run --rm er_diagram_generator

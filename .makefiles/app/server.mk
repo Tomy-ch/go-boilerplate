@@ -5,7 +5,6 @@
 .PHONY: tools ## 開発ツールの起動
 .PHONY: tools-build ## 開発ツールコンテナをビルドする（キャッシュ利用・起動はしない）
 .PHONY: tools-build-clean ## 開発ツールコンテナをクリーンビルドする（--no-cache --pull・起動はしない）
-.PHONY: smoke ## Smoke Test環境の起動
 
 serve:
 	@echo "🔄 開発環境を起動します。"
@@ -37,8 +36,3 @@ tools-build-clean:
 	@echo "🧹 開発ツールコンテナをクリーンビルドします（--no-cache --pull）。"
 	@docker compose build --no-cache --pull go_tool_runner node_tool_runner python_tool_runner
 	@echo "✅ 開発ツールコンテナのクリーンビルドが完了しました。"
-
-smoke:
-	@echo "🔄 Smoke Test環境を起動します。"
-	@docker compose --profile smoke up --build -d smoke_server
-	@echo "✅ Smoke Test環境の起動が完了しました。"

@@ -25,10 +25,10 @@ endef
 ## DBマイグレーション関連のコマンド群
 # -----Migrateターゲット-----
 .PHONY: new-migrate-% ## 新しいマイグレーションファイルを生成します
-.PHONY: check-migration-up-version ## マイグレーションファイルのバージョン重複をチェックします
-.PHONY: check-migration-down-version ## マイグレーションファイルのバージョン重複をチェックします
-.PHONY: check-migration-up-gap ## マイグレーションファイルのバージョンのバージョンギャップをチェックします
-.PHONY: check-migration-down-gap ## マイグレーションファイルのバージョンのバージョンギャップをチェックします
+.PHONY: check-migration-up-version ## up マイグレーションのバージョン重複をチェックします
+.PHONY: check-migration-down-version ## down マイグレーションのバージョン重複をチェックします
+.PHONY: check-migration-up-gap ## up マイグレーションのバージョンギャップをチェックします
+.PHONY: check-migration-down-gap ## down マイグレーションのバージョンギャップをチェックします
 .PHONY: db-migrate-up ## 全てのマイグレーションを最新まで適用
 .PHONY: db-migrate-up-% ## 指定した段数だけマイグレーションを適用
 .PHONY: db-migrate-down ## 全てのマイグレーションを初期状態までダウングレード
@@ -59,7 +59,7 @@ new-migrate-%:
 		exit 1; \
 	fi && \
 	docker compose run --rm go_tool_runner migrate create -ext sql -dir database/migrations -seq "$$file_name"
-	@echo "✅ 新しいマイグレーションファイルが生成されました: database/migrations/$$file_name.up-down.sql"
+	@echo "✅ 新しいマイグレーションファイルを生成しました: database/migrations/<連番>_$*.up.sql / .down.sql"
 
 check-migration-up-version:
 	$(call check_duplicate,up)
@@ -87,9 +87,9 @@ db-migrate-up:
 	@echo "✅ 完了：全マイグレーション適用されました。 (database=$(DB))"
 
 db-migrate-up-%:
-	@steps=$*; \
-	echo "🧱 マイグレーション: 現在位置から $$steps 段アップグレードします... (database=$(DB))"; \
-	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$steps DB=$(DB); \
+	@steps=$* && \
+	echo "🧱 マイグレーション: 現在位置から $$steps 段アップグレードします... (database=$(DB))" && \
+	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$steps DB=$(DB) && \
 	echo "✅ 完了：$$steps 段適用されました。 (database=$(DB))"
 
 db-migrate-down:
@@ -98,9 +98,9 @@ db-migrate-down:
 	@echo "✅ 完了：全マイグレーションダウングレードされました。 (database=$(DB))"
 
 db-migrate-down-%:
-	@steps=$*; \
-	echo "💥 マイグレーション: 現在位置から $$steps 段ダウングレードします... (database=$(DB))"; \
-	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$steps DB=$(DB); \
+	@steps=$* && \
+	echo "💥 マイグレーション: 現在位置から $$steps 段ダウングレードします... (database=$(DB))" && \
+	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$steps DB=$(DB) && \
 	echo "✅ 完了：$$steps 段ダウングレードされました。 (database=$(DB))"
 
 # -----LocalDBに対してのMigrateエイリアス-----

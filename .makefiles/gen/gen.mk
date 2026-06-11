@@ -21,11 +21,11 @@ gen-api:
 	@make gen-go-code
 
 gen-docs:
-	@make gen-api-docs
 	@make gen-portal-docs
 	@make gen-docs-json
 
 gen-all-docs:
+	@make gen-api-docs
 	@make gen-docs
 	@make gen-db-schema
 	@make gen-test-repo
@@ -43,6 +43,7 @@ gen-query-repo:
 	@make dump-schema
 	@make merge-dml-repo
 	@make gen-sqlc
+	@make fmt
 	@echo "✅ ドメイン用のSQLCコード生成が完了しました。"
 
 gen-query-qs:
@@ -50,6 +51,7 @@ gen-query-qs:
 	@make dump-schema
 	@make merge-dml-qs
 	@make gen-sqlc
+	@make fmt
 	@echo "✅ クエリサービス用のSQLCコード生成が完了しました。"
 
 gen-query-sysq:
@@ -57,4 +59,5 @@ gen-query-sysq:
 	@make dump-schema
 	@make merge-dml-sysq
 	@make gen-sqlc
+	@make fmt
 	@echo "✅ システムクエリ用のSQLCコード生成が完了しました。"

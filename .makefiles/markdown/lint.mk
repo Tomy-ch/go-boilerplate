@@ -14,8 +14,10 @@ md-fix:
 	@docker compose run --rm node_tool_runner make md-fix-ci
 
 # -----CI内で実行するコマンド群-----
+MD_GLOBS := "**/*.md" "#vendor/**" "#node_modules/**" "#.git/**" "#docs/portal/guides/**" "#docs/coverage/**" "#docs/db-schema/**" "#AGENTS.md"
+
 md-lint-ci:
-	markdownlint-cli2 "**/*.md" "#vendor/**" "#node_modules/**" "#.git/**"
+	markdownlint-cli2 $(MD_GLOBS)
 
 md-fix-ci:
-	markdownlint-cli2 --fix "**/*.md" "#vendor/**" "#node_modules/**" "#.git/**"
+	markdownlint-cli2 --fix $(MD_GLOBS)
