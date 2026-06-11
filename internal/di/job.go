@@ -55,6 +55,8 @@ func RunJob() (StartFunc, StopFunc) {
 	app := fx.New(
 		NewJobCore(),
 		fx.Populate(&state, &logger, &osCfg),
+		// fx 自身のライフサイクルログを構造化ロガーへ流す（既定の ConsoleLogger を置換）。
+		fx.WithLogger(NewFxEventLogger),
 	)
 
 	start := func(ctx context.Context, name string, args []string) <-chan error {
