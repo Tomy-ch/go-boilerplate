@@ -2254,7 +2254,7 @@ type AuthConfig struct {
 func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig <span class="cov8" title="239">{ return &amp;cfg.os }</span>
 
 // TimeZone は、OSのタイムゾーンを返します。
-func (o *OperatingSystemConfig) TimeZone() string <span class="cov10" title="528">{ return o.timezone }</span>
+func (o *OperatingSystemConfig) TimeZone() string <span class="cov10" title="529">{ return o.timezone }</span>
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
 func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov6" title="52">{ return &amp;cfg.app }</span>
@@ -2321,7 +2321,7 @@ func (m *MetricsConfig) Password() string <span class="cov4" title="10">{ return
 func NewObservabilityConfig(cfg *Config) *ObservabilityConfig <span class="cov8" title="239">{ return &amp;cfg.observability }</span>
 
 // Enabled は、可観測モードが有効かどうかを返します。
-func (o *ObservabilityConfig) Enabled() bool <span class="cov9" title="479">{ return o.enabled }</span>
+func (o *ObservabilityConfig) Enabled() bool <span class="cov9" title="480">{ return o.enabled }</span>
 
 // MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。
 func (o *ObservabilityConfig) MaskedDBQueryArgs() bool <span class="cov6" title="52">{ return o.maskedDBQueryArgs }</span>
@@ -4440,7 +4440,7 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
 
         if !c.Response().Committed </span><span class="cov6" title="6">{
                 if writeErr := writeErrorResponse(c, resp); writeErr != nil </span><span class="cov1" title="1">{
-                        reqIn := server.BuildHTTPRequestLogInput(c)
+                        reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError)
                         writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}
                         fields := append(lf.BuildHTTPRequestFields(reqIn), writeErrFields...)
                         logger.Named("errorhandler.handleHTTPError").Error("failed to write error response", fields...)
@@ -4513,7 +4513,7 @@ func httpErrorField(
                 logging.String(logging.ErrorMessageKey, he.Message),
                 logging.String(logging.RequestIDKey, he.RequestId),
         }
-        fields = append(fields, lf.BuildHTTPRequestFields(server.BuildHTTPRequestLogInput(c))...)
+        fields = append(fields, lf.BuildHTTPRequestFields(server.BuildHTTPRequestLogInput(c, logging.EventTypeError))...)
         if he.Details != nil </span><span class="cov1" title="1">{
                 fields = append(fields, logging.Strings(logging.ErrorDetailsKey, *he.Details))
         }</span>
@@ -4720,6 +4720,7 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field <span class="cov6" title="3">{
         req := l.c.Request()
         reqIn := logging.HTTPRequestLogInput{
+                EventType:     logging.EventTypeStart,
                 EventAt:       start,
                 Method:        req.Method,
                 URI:           req.RequestURI,
@@ -5014,7 +5015,7 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 // newRecoverLogErrorFunc は、リカバリミドルウェアのログ出力関数を生成します。
 func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c echo.Context, err error, stack []byte) error <span class="cov10" title="9">{
         return func(c echo.Context, err error, stack []byte) error </span><span class="cov7" title="5">{
-                reqIn := server.BuildHTTPRequestLogInput(c)
+                reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic)
                 recoverFields := []*logging.Field{
                         logging.String(logging.InternalErrorKey, err.Error()),
                         logging.String(logging.InternalStackTraceKey, string(stack)),
@@ -5331,10 +5332,12 @@ func IsRecovered(c echo.Context) bool <span class="cov7" title="9">{
 }</span>
 
 // BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
-func BuildHTTPRequestLogInput(c echo.Context) logging.HTTPRequestLogInput <span class="cov9" title="15">{
+// eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
+func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequestLogInput <span class="cov9" title="15">{
         req := c.Request()
         traceCtx := observability.ExtractTraceContext(req.Context())
         return logging.HTTPRequestLogInput{
+                EventType:     eventType,
                 EventAt:       time.Now(),
                 Method:        req.Method,
                 Path:          c.Path(),
@@ -6250,7 +6253,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="32">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="27">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -8973,7 +8976,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key fieldKey, v string) *Field <span class="cov10" title="4182">{
+func String(key fieldKey, v string) *Field <span class="cov10" title="4194">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -9000,7 +9003,7 @@ func Strings(key fieldKey, v []string) *Field <span class="cov3" title="10">{
 }</span>
 
 // Int64 は、64ビット整数のログフィールドを作成します。
-func Int64(key fieldKey, v int64) *Field <span class="cov4" title="26">{
+func Int64(key fieldKey, v int64) *Field <span class="cov4" title="27">{
         return &amp;Field{
                 key:        string(key),
                 kind:       fieldInt64,
@@ -9027,7 +9030,7 @@ func Bool(key fieldKey, v bool) *Field <span class="cov1" title="2">{
 }</span>
 
 // Time は、時間のログフィールドを作成します。
-func Time(key fieldKey, v time.Time) *Field <span class="cov7" title="492">{
+func Time(key fieldKey, v time.Time) *Field <span class="cov7" title="493">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -9063,7 +9066,7 @@ func Stacktrace(key fieldKey, err error) *Field <span class="cov1" title="1">{
 }</span>
 
 // Any は、任意の型のログフィールドを作成します。
-func Any(key fieldKey, v any) *Field <span class="cov5" title="45">{
+func Any(key fieldKey, v any) *Field <span class="cov5" title="47">{
         return &amp;Field{
                 key:      string(key),
                 kind:     fieldAny,
@@ -9102,7 +9105,9 @@ type logFieldBuilder struct {
 
 // HTTPRequestLogInput は、HTTPリクエストのログ出力用の入力情報をまとめた構造体です。
 type HTTPRequestLogInput struct {
-        EventAt time.Time
+        // EventType は、イベント種別（start/error/panic）を表す。
+        EventType string
+        EventAt   time.Time
 
         Method   string
         Path     string
@@ -9202,8 +9207,8 @@ func NewLogFields(
 }</span>
 
 // BuildHTTPRequestFields は、HTTPリクエストの情報を含むFieldのスライスを生成します。
-func (l *logFieldBuilder) BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field <span class="cov5" title="19">{
-        fields := append(l.buildEventHeader(EventTypeStart, req.EventAt),
+func (l *logFieldBuilder) BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field <span class="cov5" title="20">{
+        fields := append(l.buildEventHeader(req.EventType, req.EventAt),
                 String(MethodKey, req.Method),
                 String(PathKey, req.Path),
                 String(URIKey, req.URI),
@@ -9298,7 +9303,7 @@ func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput)
 
 // buildEventHeader は、全イベントログ共通の先頭フィールド
 // （イベント種別・発生時刻・タイムゾーン）を構築する。
-func (l *logFieldBuilder) buildEventHeader(eventType string, at time.Time) []*Field <span class="cov9" title="468">{
+func (l *logFieldBuilder) buildEventHeader(eventType string, at time.Time) []*Field <span class="cov9" title="469">{
         return []*Field{
                 String(EventTypeKey, eventType),
                 Time(EventAtKey, at),
@@ -9312,8 +9317,8 @@ func (l *logFieldBuilder) appendTraceSpanFields(
         traceID string,
         spanID string,
         parentSpanID string,
-) []*Field <span class="cov10" title="472">{
-        if !l.obsCfg.Enabled() || traceID == "" || spanID == "" </span><span class="cov5" title="24">{
+) []*Field <span class="cov10" title="473">{
+        if !l.obsCfg.Enabled() || traceID == "" || spanID == "" </span><span class="cov5" title="25">{
                 return fields
         }</span>
 
@@ -9369,8 +9374,6 @@ type Logger interface {
         Named(name string) Logger
         // CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
         CallerSkip(skip int) Logger
-        // ConvertFields は Field のスライスを zap.Field のスライスに変換する。
-        ConvertFields(fields []*Field) []zap.Field
 }
 
 type logger struct {
@@ -9393,26 +9396,26 @@ func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="496">{
 
 // Debug はデバッグレベルのログを出力する。
 func (l *logger) Debug(msg string, fields ...*Field) <span class="cov1" title="1">{
-        l.log.Debug(msg, l.ConvertFields(fields)...)
+        l.log.Debug(msg, l.convertFields(fields)...)
 }</span>
 
 // Info は情報レベルのログを出力する。
 func (l *logger) Info(msg string, fields ...*Field) <span class="cov7" title="542">{
-        l.log.Info(msg, l.ConvertFields(fields)...)
+        l.log.Info(msg, l.convertFields(fields)...)
 }</span>
 
 // Warn は警告レベルのログを出力する。
 func (l *logger) Warn(msg string, fields ...*Field) <span class="cov3" title="7">{
-        l.log.Warn(msg, l.ConvertFields(fields)...)
+        l.log.Warn(msg, l.convertFields(fields)...)
 }</span>
 
 // Error はエラーレベルのログを出力する。
 func (l *logger) Error(msg string, fields ...*Field) <span class="cov4" title="41">{
-        l.log.Error(msg, l.ConvertFields(fields)...)
+        l.log.Error(msg, l.convertFields(fields)...)
 }</span>
 
-// ConvertFields は Field のスライスを zap.Field のスライスに変換する。
-func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title="592">{
+// convertFields は Field のスライスを zap.Field のスライスに変換する。
+func (l *logger) convertFields(fs []*Field) []zap.Field <span class="cov7" title="592">{
         zfs := make([]zap.Field, 0, len(fs))
 
         for _, f := range fs </span><span class="cov10" title="4756">{
