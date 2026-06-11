@@ -12,8 +12,8 @@ Each file exposes a function returning `fx.Option` to register the necessary com
 |---|---|---|
 |`ConfigModule()`|`config.go`|Config (`*Config` + all SubConfig providers + `*time.Location`)|
 |`ControllerModule()`|`controller.go`|HTTP handler registration (`fx.Invoke` to run `BindHandler`)|
-|`DatabaseModule()`|`db.go`|DB connection (`*pgxpool.Pool`) + repositories / query services|
-|`InfrastructureModule()`|`infrastructure.go`|Infrastructure layer implementations (auth, etc.)|
+|`DatabaseModule()`|`db.go`|DB connection (`*pgxpool.Pool`) + driver / transaction manager / metrics|
+|`InfrastructureModule()`|`infrastructure.go`|Repositories / query services / system query + Clock / password hasher|
 |`JobModule()`|`job.go`|Job registration (`group:"jobs"`) + Runner + State + Hook|
 |`LoggingModule()`|`logging.go`|Logger + LogFieldBuilder|
 |`ObservabilityModule()`|`observability.go`|TracerProvider + TracerFactory|

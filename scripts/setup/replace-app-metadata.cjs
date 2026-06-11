@@ -76,7 +76,7 @@ function replaceEnvAppName(content, appName) {
     return null
   }
 
-  return content.replace(pattern, `APP_NAME=${appName}`)
+  return content.replace(pattern, () => `APP_NAME=${appName}`)
 }
 
 function replaceOpenapiTitle(content, title) {
@@ -86,7 +86,7 @@ function replaceOpenapiTitle(content, title) {
     return null
   }
 
-  return content.replace(pattern, `  title: ${title}`)
+  return content.replace(pattern, () => `  title: ${title}`)
 }
 
 function replaceCopilotTitle(content, title) {
@@ -96,7 +96,7 @@ function replaceCopilotTitle(content, title) {
     return null
   }
 
-  return content.replace(pattern, `# ${title}`)
+  return content.replace(pattern, () => `# ${title}`)
 }
 
 function main() {

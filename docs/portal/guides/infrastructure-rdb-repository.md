@@ -535,7 +535,7 @@ This function provides:
 Each test is executed **within a transaction**.
 
 ```go
-txm := testkit.NewTestTransactionManager(t)
+txm := testkit.NewTestTransactionRunner(t)
 
 txm.WithinTx(func(ctx context.Context) {
     // test logic
@@ -563,7 +563,7 @@ This ensures:
 
 Repository tests can use `t.Parallel()` to execute tests in parallel.
 
-However, the transaction manager provided by `testkit.NewTestTransactionManager(t)`  
+However, the transaction manager provided by `testkit.NewTestTransactionRunner(t)`  
 **serializes transaction execution** internally.
 
 Therefore, the execution model is as follows.

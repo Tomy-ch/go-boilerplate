@@ -8,4 +8,4 @@ Echo 用の OpenTelemetry トレーシングミドルウェアです。
 
 |関数|説明|
 |---|---|
-|`Middleware(appCfg)`|OpenTelemetry 計装を統合する Echo ミドルウェアを返す|
+|`Middleware(serviceName)`|OpenTelemetry 計装を統合する Echo ミドルウェアを返す|

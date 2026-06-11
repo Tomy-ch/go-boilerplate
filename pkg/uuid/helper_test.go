@@ -9,15 +9,33 @@ import (
 )
 
 func TestFromGoogle(t *testing.T) {
-	g := guuid.New()
-	u := fromGoogle(g)
-	assert.Equal(t, g.String(), u.String())
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("google.UUIDから同値のUUIDへ変換する", func(t *testing.T) {
+			t.Parallel()
+			g := guuid.New()
+			u := fromGoogle(g)
+			assert.Equal(t, g.String(), u.String())
+		})
+	})
 }
 
 func TestToGoogle(t *testing.T) {
-	uuid, err := New()
-	require.NoError(t, err)
+	t.Parallel()
 
-	g := toGoogle(uuid)
-	assert.Equal(t, uuid.String(), g.String())
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("UUIDから同値のgoogle.UUIDへ変換する", func(t *testing.T) {
+			t.Parallel()
+			uuid, err := New()
+			require.NoError(t, err)
+
+			g := toGoogle(uuid)
+			assert.Equal(t, uuid.String(), g.String())
+		})
+	})
 }

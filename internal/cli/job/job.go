@@ -1,76 +1,66 @@
-// Package job は、ジョブを管理・実行するためのコマンドを提供するためのパッケージです。
+// Package job は、ジョブ実行のオーケストレーション（タイムアウト分岐・停止処理）のコアロジックを提供します。
 package job
 
 import (
 	"context"
 	"time"
-
-	"go-boilerplate/internal/di"
-
-	"github.com/spf13/cobra"
 )
 
 const stopTimeout = 30 * time.Second
 
-// timeOut は、ジョブ実行のタイムアウト時間を表します。
-var timeOut time.Duration
+// StartFunc は、ジョブの開始関数の型です（DI から取得した開始関数を注入します）。
+type StartFunc func(ctx context.Context, name string, args []string) <-chan error
 
-// NewCommand は job コマンドを生成します。
-func NewCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "job",
-		Short: "job <job-name> [args...] コマンドは、指定されたジョブを実行します。",
-		Long: "job <job-name> [args...] コマンドは、指定されたジョブを実行します。ジョブ名と引数を指定して実行してください。\n" +
-			"例: job usercount --timeout 30s",
-		Args: cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			jobName := args[0]
-			jobArgs := args[1:]
-			return runJobExec(cmd.Context(), jobName, jobArgs)
-		},
-	}
+// StopFunc は、ジョブの停止関数の型です（DI から取得した停止関数を注入します）。
+type StopFunc func(ctx context.Context) error
 
-	cmd.Flags().DurationVar(&timeOut, "timeout", 0, "job execution timeout duration (e.g., 30s, 1m)")
-
-	return cmd
+// RunJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。
+func RunJobWith(
+	ctx context.Context,
+	name string,
+	args []string,
+	timeout time.Duration,
+	provide func() (StartFunc, StopFunc),
+) error {
+	start, stop := provide()
+	return runJob(ctx, name, args, timeout, start, stop)
 }
 
-// runJobExec は、指定されたジョブを実行します。
-func runJobExec(ctx context.Context, name string, args []string) error {
-	// DI 経由でジョブランナーを取得し、開始関数と停止関数を受け取ります。
-	start, stop := di.RunJob()
-
+// runJob は、ジョブ実行のオーケストレーション（タイムアウト分岐と停止処理）を行います。
+func runJob(
+	ctx context.Context,
+	name string,
+	args []string,
+	timeout time.Duration,
+	start StartFunc,
+	stop StopFunc,
+) error {
 	done := start(ctx, name, args)
 
-	if timeOut <= 0 {
-		// タイムアウト未指定時は、ジョブ完了を待ってから停止処理だけ確実に流します。
+	if timeout <= 0 {
 		err := <-done
-		stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
-		defer cancel()
-
-		_ = stop(stopCtx)
+		gracefulStop(ctx, stop)
 		return err
 	}
 
-	waitCtx, cancel := context.WithTimeout(ctx, timeOut)
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	select {
 	case err := <-done:
-		// 正常終了時は、停止専用の短い context を作って後始末を行います。
-		stopCtx, timeoutCancel := context.WithTimeout(ctx, stopTimeout)
-		defer timeoutCancel()
-		_ = stop(stopCtx)
+		gracefulStop(ctx, stop)
 		return err
 	case <-waitCtx.Done():
-		// タイムアウト時は待機用 context 自体が終了しているため、そのまま停止へ渡します。
-		_ = stop(waitCtx)
+		// waitCtx は ctx の子。タイムアウト(DeadlineExceeded)・親キャンセル(Canceled)の両方で発火する。
+		// 停止は期限切れの waitCtx ではなく専用 context を作り直して猶予を与える。
+		gracefulStop(ctx, stop)
 		return waitCtx.Err()
-	case <-ctx.Done():
-		// 親 context のキャンセル時も、停止猶予だけを与えてジョブを終了させます。
-		stopCtx, timeoutCancel := context.WithTimeout(ctx, stopTimeout)
-		defer timeoutCancel()
-		_ = stop(stopCtx)
-		return ctx.Err()
 	}
+}
+
+// gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop）を実行します。
+func gracefulStop(ctx context.Context, stop StopFunc) {
+	stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
+	defer cancel()
+	_ = stop(stopCtx)
 }

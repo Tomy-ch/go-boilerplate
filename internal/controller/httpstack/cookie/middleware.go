@@ -14,11 +14,9 @@ func secureCookieMiddleware(cfg *SecurityCookie) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			res := c.Response()
-			orig := res.Writer
 
-			w := newCookieRewriteWriter(orig, cfg)
-			res.Writer = w
-			defer func() { res.Writer = orig }()
+			// next 後に Writer を復元しない（エラー経路の Set-Cookie も書き換え対象にするため。後始末は echo の Context Reset が担う）。
+			res.Writer = newCookieRewriteWriter(res.Writer, cfg)
 
 			return next(c)
 		}

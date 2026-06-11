@@ -13,69 +13,56 @@ import (
 func TestNewTestLocation(t *testing.T) {
 	t.Parallel()
 
-	cfg := MockConfigForTest(t)
-	osCfg := NewOperationSystemConfig(cfg)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	expected, err := time.LoadLocation(osCfg.TimeZone())
-	require.NoError(t, err)
+		t.Run("MockConfig のタイムゾーンに対応するロケーションが返ること", func(t *testing.T) {
+			t.Parallel()
 
-	actual := NewTestLocation(t)
-	assert.Equal(t, expected, actual)
+			cfg := MockConfigForTest(t)
+			osCfg := NewOperatingSystemConfig(cfg)
+
+			expected, err := time.LoadLocation(osCfg.TimeZone())
+			require.NoError(t, err)
+
+			actual := NewTestLocation(t)
+			assert.Equal(t, expected, actual)
+		})
+	})
 }
 
-func TestEnsureRepoRootAndEnv_ChangesDirAndRestores(t *testing.T) {
-	// 親のカレントディレクトリを保持
+func TestEnsureRepoRootAndEnv(t *testing.T) {
+	// t.Setenv / t.Chdir でプロセス状態を書き換えるため Parallel は使用しない。
 	orig, err := os.Getwd()
 	require.NoError(t, err)
-
-	// サブテスト内で一時的にリポジトリ内のサブディレクトリを作成して
-	// EnsureRepoRootAndEnv がリポジトリルートに移動すること、その後に復元されることを確認する。
 	prevEnv := os.Getenv(envKey)
 
-	t.Run("go.mod を持つリポジトリルートに移動し ENV を設定する", func(t *testing.T) {
-		// リポジトリルートを探す
-		repoRoot := ""
-		p := orig
-		for {
-			if _, inErr := os.Stat(filepath.Join(p, "go.mod")); inErr == nil {
-				repoRoot = p
-				break
-			}
-			parent := filepath.Dir(p)
-			if parent == p {
-				break
-			}
-			p = parent
-		}
-		require.NotEmpty(t, repoRoot)
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("go.mod が見つかる場合、リポジトリルートに移動し ENV を設定する", func(t *testing.T) {
+			EnsureRepoRootAndEnv(t, TestingEnvValue)
 
-		EnsureRepoRootAndEnv(t, TestingEnvValue)
-
-		cwd, inErr := os.Getwd()
-		require.NoError(t, inErr)
-		// 呼び出し先のカレントディレクトリが go.mod を持つルートであること
-		require.FileExists(t, filepath.Join(cwd, "go.mod"))
-
-		// ENV が設定されていること
-		assert.Equal(t, TestingEnvValue, os.Getenv(envKey))
+			cwd, inErr := os.Getwd()
+			require.NoError(t, inErr)
+			assert.FileExists(t, filepath.Join(cwd, "go.mod"))
+			assert.Equal(t, TestingEnvValue, os.Getenv(envKey))
+		})
 	})
 
-	t.Run("go.mod が見つからない場合は cwd を変更せず ENV を設定する", func(t *testing.T) {
-		tmp := t.TempDir()
-		t.Chdir(tmp)
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("go.mod が見つからない場合、cwd は変更されず ENV のみ設定される", func(t *testing.T) {
+			tmp := t.TempDir()
+			t.Chdir(tmp)
 
-		EnsureRepoRootAndEnv(t, TestingEnvValue)
+			EnsureRepoRootAndEnv(t, TestingEnvValue)
 
-		cwd, inErr := os.Getwd()
-		require.NoError(t, inErr)
-		// go.mod が見つからないため cwd は変更されない
-		assert.Equal(t, tmp, cwd)
-
-		// ただし ENV は設定される
-		assert.Equal(t, TestingEnvValue, os.Getenv(envKey))
+			cwd, inErr := os.Getwd()
+			require.NoError(t, inErr)
+			assert.Equal(t, tmp, cwd)
+			assert.Equal(t, TestingEnvValue, os.Getenv(envKey))
+		})
 	})
 
-	// 復元されていることを確認
+	// サブテスト終了時に t.Setenv / t.Chdir がクリーンアップされ、副作用が漏れないこと。
 	cwdAfter, err := os.Getwd()
 	require.NoError(t, err)
 	assert.Equal(t, orig, cwdAfter)

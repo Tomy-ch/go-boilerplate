@@ -12,4 +12,4 @@ fix-collation:
 
 # ----CI用ターゲット-----
 fix-collation-ci:
-	go run cmd/main.go fix-collation
+	go run ./cmd/ fix-collation

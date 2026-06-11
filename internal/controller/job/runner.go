@@ -10,6 +10,13 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+var (
+	// ErrDuplicateJob は、同名のジョブが重複登録された場合のエラーです。
+	ErrDuplicateJob = xerrors.New("duplicate job")
+	// ErrUnknownJob は、未登録のジョブ名が指定された場合のエラーです。
+	ErrUnknownJob = xerrors.New("unknown job")
+)
+
 // runner は、ジョブの実行を管理する構造体です。
 type runner struct {
 	registry map[string]job.Job
@@ -21,7 +28,7 @@ func NewRunner(jobs []job.Job) (job.Runner, error) {
 	for _, j := range jobs {
 		name := j.Name()
 		if _, exists := m[name]; exists {
-			return nil, xerrors.New("duplicate job: " + name)
+			return nil, xerrors.Wrap(ErrDuplicateJob, name)
 		}
 		m[name] = j
 	}
@@ -32,7 +39,7 @@ func NewRunner(jobs []job.Job) (job.Runner, error) {
 func (r *runner) Run(ctx context.Context, jobName string, args []string) error {
 	j, ok := r.registry[jobName]
 	if !ok {
-		return xerrors.New(fmt.Sprintf("unknown job: %s (available: %v)", jobName, r.Names()))
+		return xerrors.Wrap(ErrUnknownJob, fmt.Sprintf("%s (available: %v)", jobName, r.Names()))
 	}
 	return j.Execute(ctx, args)
 }

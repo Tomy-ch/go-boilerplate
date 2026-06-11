@@ -155,12 +155,14 @@ Examples:
 
 ## Repository / QueryService Rules
 
-- Repository handles only Aggregate persistence
-- Search and list retrieval must be implemented in QueryService
+- Repository handles Aggregate persistence and simple reads of a single Aggregate
+  (fetch by ID, and simple filter / list / count by the Aggregate's own attributes).
+- QueryService handles reads that cross Aggregates or require high query complexity
+  (multi-table joins, aggregation, keyword/full-text search, dedicated read models) -- CQRS read side.
 
 Forbidden:
 
-- Writing search logic in Repository
+- Writing cross-Aggregate or aggregation/join queries in Repository
 - Writing domain logic in QueryService
 
 ## DTO / Type Boundary Rules

@@ -1,7 +1,7 @@
 package logging
 
 const (
-	// HTTPレスポンス系ログのキー
+	// イベント共通系ログのフィールド（キーおよび値。HTTP/Job 等で共用）
 
 	// EventTypeKey は、イベントタイプを表すログフィールドのキーです。
 	EventTypeKey = "event_type"
@@ -50,12 +50,16 @@ const (
 
 	// エラー系ログのキー
 
+	// ErrorKey は、エラーを表すログフィールドのキーです。
+	ErrorKey = "error"
+	// OriginalErrorKey は、別のエラー処理中に併記する元エラーを表すログフィールドのキーです。
+	OriginalErrorKey = "original_error"
 	// ErrorCodeKey は、エラーコードを表すログフィールドのキーです。
 	ErrorCodeKey = "error_code"
 	// ErrorMessageKey は、エラーメッセージを表すログフィールドのキーです。
 	ErrorMessageKey = "error_message"
-	// ErrorDetails は、エラー詳細を表すログフィールドのキーです。
-	ErrorDetails = "error_details"
+	// ErrorDetailsKey は、エラー詳細を表すログフィールドのキーです。
+	ErrorDetailsKey = "error_details"
 	// InternalErrorKey は、内部エラーを表すログフィールドのキーです。
 	InternalErrorKey = "internal_error"
 	// InternalStackTraceKey は、内部エラーのスタックトレースを表すログフィールドのキーです。
@@ -80,6 +84,8 @@ const (
 	JobErrorKey = "job_error"
 	// JobResultKey は、ジョブ結果を表すログフィールドのキーです。
 	JobResultKey = "job_result"
+	// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。
+	FilterKey = "filter"
 
 	// 可観測系ログのキー
 

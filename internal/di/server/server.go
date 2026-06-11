@@ -35,7 +35,7 @@ func HookModule() fx.Option {
 
 // MiddlewareModule は、HTTP スタック関連の依存関係を提供するfx.Moduleです。
 func MiddlewareModule() fx.Option {
-	return fx.Module("httpstack",
+	return fx.Module("server.httpstack",
 		// Middleware Modules
 		decoration.BannerModule(),
 		decoration.DefaultPortModule(),

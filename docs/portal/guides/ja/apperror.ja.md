@@ -187,6 +187,7 @@ flowchart TB
 | `ErrConflict` | 競合（ユニーク制約違反・同時更新衝突など） | 409 Conflict |
 | `ErrValidation` | ドメイン/ユースケースの検証失敗 | 422 Unprocessable Entity |
 | `ErrTooManyRequests` | リクエスト過多（流量制限・外部 API のスロットリング応答の伝播など） | 429 Too Many Requests |
+| `ErrCanceled` | クライアントがリクエストをキャンセル/切断 | 499 Client Closed Request |
 | `ErrInternal` | 想定外の内部エラー | 500 Internal Server Error |
 | `ErrUnimplemented` | 未実装 / 非サポート機能 | 501 Not Implemented |
 | `ErrUnavailable` | 一時的な利用不可（外部依存障害など） | 503 Service Unavailable |

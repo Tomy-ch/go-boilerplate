@@ -11,7 +11,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// TracerProvider は、OpenTelemetryのトレーサープロバイダーを初期化して、
+// TracerProvider は、OpenTelemetry のトレーサープロバイダーを初期化し、otel.SetTracerProvider で
+// グローバル登録したうえで、シャットダウン時に Shutdown を呼ぶフックを Registrar へ登録して返します。
+// Exporter / SpanProcessor は未配線（最小構成）のため、span を実際に送出するには利用側で
+// WithBatcher 等を追加してください。
 func TracerProvider(reg lifecycle.Registrar) trace.TracerProvider {
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(resource.Default()),

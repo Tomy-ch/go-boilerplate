@@ -13,24 +13,22 @@ import (
 func normalizeOpenAPIError(err error, details ...string) *response.HTTPErrorResponse {
 	var (
 		reqErr  *openapi3filter.RequestError
-		respErr *openapi3filter.ResponseError
 		secErr  *openapi3filter.SecurityRequirementsError
-	)
+		respErr *openapi3filter.ResponseError
 
-	var resErr *response.HTTPErrorResponse
+		resErr *response.HTTPErrorResponse
+	)
 
 	switch {
 	case errors.As(err, &reqErr):
-		resErr = response.NewHTTPErrorFromStatus(http.StatusBadRequest, details...)
+		resErr = response.NewHTTPErrorFromStatus(http.StatusBadRequest, err, details...)
 	case errors.As(err, &secErr):
-		resErr = response.NewHTTPErrorFromStatus(http.StatusUnauthorized, details...)
+		resErr = response.NewHTTPErrorFromStatus(http.StatusUnauthorized, err, details...)
 	case errors.As(err, &respErr):
-		resErr = response.NewHTTPErrorFromStatus(http.StatusInternalServerError, details...)
+		resErr = response.NewHTTPErrorFromStatus(http.StatusInternalServerError, err, details...)
 	default:
 		return nil
 	}
-
-	resErr.Internal = err
 
 	return resErr
 }

@@ -14,11 +14,6 @@ import (
 
 type DBProvider interface {
 	NewLoggingDB(ctx context.Context) driver.DBTX
-	Logger() logging.Logger
-	LogFields() logging.LogFieldBuilder
-	DBConfig() *config.DatabaseConfig
-	ObservabilityConfig() *config.ObservabilityConfig
-	LayerTracer() observability.LayerTracer
 }
 
 // provider は、ログ付きDB接続を提供します。
@@ -31,7 +26,7 @@ type provider struct {
 	tracer observability.LayerTracer
 }
 
-// NewLoggingDBProvider は、DBTXProviderの新しいインスタンスを生成します。
+// NewLoggingDBProvider は、DBProviderの新しいインスタンスを生成します。
 func NewLoggingDBProvider(
 	db driver.DatabaseDriver,
 	dbCfg *config.DatabaseConfig,
@@ -54,32 +49,6 @@ func NewLoggingDBProvider(
 func (p *provider) NewLoggingDB(ctx context.Context) driver.DBTX {
 	return &dbWithLogging{
 		db:       driver.New(ctx, p.db),
-		ctx:      ctx,
 		provider: p,
 	}
-}
-
-// Logger は、ロガーを返します。
-func (p *provider) Logger() logging.Logger {
-	return p.l
-}
-
-// LogFields は、ログフィールドのビルダーを返します。
-func (p *provider) LogFields() logging.LogFieldBuilder {
-	return p.lf
-}
-
-// DBConfig は、データベース設定を返します。
-func (p *provider) DBConfig() *config.DatabaseConfig {
-	return p.dbCfg
-}
-
-// ObservabilityConfig は、観測可能性設定を返します。
-func (p *provider) ObservabilityConfig() *config.ObservabilityConfig {
-	return p.obsCfg
-}
-
-// LayerTracer は、レイヤートレーサーを返します。
-func (p *provider) LayerTracer() observability.LayerTracer {
-	return p.tracer
 }

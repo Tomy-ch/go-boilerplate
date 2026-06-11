@@ -13,6 +13,21 @@ English | [日本語](README.ja.md)
 
 Helpers used by only one feature should be placed within that feature's package.
 
+### `pkg/` vs application-wide cross-cutting concerns
+
+"Referenced from multiple locations" alone is **not** sufficient. `pkg/` is for
+**context-independent, generic utilities** — code that could be lifted into any
+project unchanged and carries no knowledge of this application's domain or system
+decisions (e.g. `xerrors`, `uuid`, `ptr`, `stringkit`).
+
+Concerns that are cross-cutting but **specific to this application/system** — the
+application-wide error taxonomy (`internal/apperror`), logging (`internal/logging`),
+observability (`internal/observability`), configuration (`internal/config`) — do
+**not** belong in `pkg/` even though they are used across layers. They encode this
+system's choices (error semantics, frameworks such as zap / otel) and therefore live
+under `internal/` as cross-cutting concerns. The domain layer may depend on
+`internal/apperror` as the one permitted such kernel.
+
 ### Constraints
 
 - Must not contain business logic

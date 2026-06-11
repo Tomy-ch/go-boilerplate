@@ -81,7 +81,7 @@ function main() {
 
     return original.replace(
       pattern,
-      `Copyright (c) ${options.year} ${options.holder}`
+      () => `Copyright (c) ${options.year} ${options.holder}`
     )
   }, options.dryRun)
 

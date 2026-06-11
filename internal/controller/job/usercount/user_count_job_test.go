@@ -126,5 +126,37 @@ func Test_jobImpl_Execute(t *testing.T) {
 			err := job.Execute(ctx, []string{})
 			assert.Equal(t, assertError, err)
 		})
+
+		t.Run("未知のフラグが指定された場合、CountUsersを呼ばずにエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+			// CountUsers は呼ばれない（EXPECT 未設定）
+			mockApp := mock_user.NewMockUsecase(ctrl)
+
+			job := &jobImpl{
+				logging: logging,
+				tracer:  tf.Controller(),
+				usecase: mockApp,
+			}
+
+			err := job.Execute(ctx, []string{"--actve-only"})
+			require.Error(t, err)
+		})
+
+		t.Run("相反するフィルタフラグが同時指定された場合、CountUsersを呼ばずにエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+			// CountUsers は呼ばれない（EXPECT 未設定）
+			mockApp := mock_user.NewMockUsecase(ctrl)
+
+			job := &jobImpl{
+				logging: logging,
+				tracer:  tf.Controller(),
+				usecase: mockApp,
+			}
+
+			err := job.Execute(ctx, []string{"--active-only", "--inactive-only"})
+			require.Error(t, err)
+		})
 	})
 }

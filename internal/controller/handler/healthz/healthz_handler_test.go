@@ -3,6 +3,7 @@ package healthz
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"go-boilerplate/internal/controller/handler/healthz/gen"
@@ -49,7 +50,21 @@ func TestGetHealthz(t *testing.T) {
 	require.NoError(t, err)
 
 	actual, ok := resp.(gen.GetHealthz200JSONResponse)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	assert.Equal(t, expectedResponse, gen.HealthResponse(actual))
+}
+
+func TestGetHealthz_OverHTTP(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	tf := observability.NewNoopTracerFactory(t)
+	BindHandler(e, tf)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, targetPath, nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	testassert.AssertJSONEqual(t, http.StatusOK, gen.HealthResponse{Status: "ok"}, rec)
 }

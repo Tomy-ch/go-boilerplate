@@ -62,10 +62,10 @@ jobs:
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
       - name: Initialize Database Table
-        run: go run cmd/main.go migrate-up --database ${{ env.DB }}
+        run: go run ./cmd/ migrate-up --database ${{ env.DB }}
 
       - name: Seed Database
-        run: go run cmd/main.go db-seed --database ${{ env.DB }}
+        run: go run ./cmd/ db-seed --database ${{ env.DB }}
 
       - name: Run Tests with Coverage
         run: make test-cover-ci

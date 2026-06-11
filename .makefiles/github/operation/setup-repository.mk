@@ -9,6 +9,7 @@
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
 
 setup-repo:
+	@if [ -n "$(DRY_RUN)" ]; then echo "❌ setup-repo は DRY_RUN 未対応です（ローカル/リモートを破壊的に変更します）。DRY_RUN を外して実行してください。"; exit 1; fi
 	@echo "🔧 設定を確認中..."
 
 	@if git rev-parse --verify refs/tags/v0.0.0 >/dev/null 2>&1; then \

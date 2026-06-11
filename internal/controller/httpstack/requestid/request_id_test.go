@@ -14,34 +14,46 @@ import (
 func Test_getRequestID(t *testing.T) {
 	t.Parallel()
 
-	expected := "test-request-id"
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	t.Run("X-Request-ID が設定されている場合", func(t *testing.T) {
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-		c.Response().Header().Set(echo.HeaderXRequestID, expected)
+		t.Run("X-Request-IDが設定されている場合、設定値を返す", func(t *testing.T) {
+			t.Parallel()
+			expected := "test-request-id"
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c.Response().Header().Set(echo.HeaderXRequestID, expected)
 
-		actual := GetRequestIDFromResponse(c)
-		assert.Equal(t, expected, actual)
-	})
+			actual := GetRequestIDFromResponse(c)
+			assert.Equal(t, expected, actual)
+		})
 
-	t.Run("X-Request-ID が設定されていない場合", func(t *testing.T) {
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+		t.Run("X-Request-IDが設定されていない場合、空文字を返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-		id := GetRequestIDFromResponse(c)
-		require.Empty(t, id)
+			id := GetRequestIDFromResponse(c)
+			assert.Empty(t, id)
+		})
 	})
 }
 
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	require.NotNil(t, Middleware())
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非nilのミドルウェアを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NotNil(t, Middleware())
+		})
+	})
 }

@@ -4,22 +4,33 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	e := echo.New()
-	expectedType := &echo.DefaultBinder{}
-	New(e)
-	require.NotNil(t, e.Binder)
-	require.IsType(t, expectedType, e.Binder)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Echoに既定Binderが設定される", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			New(e)
+			assert.IsType(t, &echo.DefaultBinder{}, e.Binder)
+		})
+	})
 }
 
 func TestNewBinder(t *testing.T) {
 	t.Parallel()
-	expectedType := &echo.DefaultBinder{}
-	actual := NewBinder()
-	require.NotNil(t, actual)
-	require.IsType(t, expectedType, actual)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("既定Binderを生成する", func(t *testing.T) {
+			t.Parallel()
+			assert.IsType(t, &echo.DefaultBinder{}, NewBinder())
+		})
+	})
 }

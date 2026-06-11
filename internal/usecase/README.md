@@ -56,6 +56,8 @@ Usecase only handles:
 - Domain / Repository coordination
 - DTO transformation
 
+Orchestration includes **composing multiple reads into one operation** for the Controller: e.g. a paginated list endpoint exposes a single method returning `{ Items, Total }`, rather than letting the handler call list and count separately and combine them.
+
 ## Application Service Design Policy
 
 This repository adopts the **Application Service Pattern** for Usecases.

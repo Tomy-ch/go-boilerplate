@@ -107,23 +107,6 @@ func TestSplitIntoTerms(t *testing.T) {
 	})
 }
 
-func TestTrimAndDropEmpty(t *testing.T) {
-	t.Parallel()
-
-	t.Run("前後空白を削除し空要素を排除", func(t *testing.T) {
-		t.Parallel()
-		in := []string{" a ", "", "  ", "b"}
-		actual := trimAndDropEmpty(in)
-		assert.Equal(t, []string{"a", "b"}, actual)
-	})
-
-	t.Run("空入力は空出力", func(t *testing.T) {
-		t.Parallel()
-		actual := trimAndDropEmpty([]string{})
-		require.Empty(t, actual)
-	})
-}
-
 func TestDedupePreserveOrder(t *testing.T) {
 	t.Parallel()
 

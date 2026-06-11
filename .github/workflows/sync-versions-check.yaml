@@ -50,7 +50,7 @@ jobs:
           fi
           echo "status=drift" >> "$GITHUB_OUTPUT"
           {
-            echo "mise.toml の変更が以下のファイルへ伝播していません。"
+            echo "mise.toml を正とした各ファイルへの同期に差分があります（mise.toml 更新の未反映、または下流ファイルの不整合な編集が原因）。"
             echo ""
             echo "ローカルで \`make sync-versions\` を実行してコミットしてください。"
             echo ""
@@ -74,7 +74,7 @@ jobs:
               fs.readFileSync('/tmp/sync-versions-drift.md', 'utf8'),
             ].join('\n');
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,

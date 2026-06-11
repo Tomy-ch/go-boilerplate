@@ -75,6 +75,19 @@ func rowToUser(u gen.Users) (*user.User, error) {
 	)
 }
 
+// rowsToUsers は、行スライスをドメインエンティティ列へ変換します。
+func rowsToUsers[T any](rows []T, extract func(T) gen.Users) (user.Users, error) {
+	users := make(user.Users, len(rows))
+	for i, row := range rows {
+		u, err := rowToUser(extract(row))
+		if err != nil {
+			return nil, err
+		}
+		users[i] = u
+	}
+	return users, nil
+}
+
 // fetchListUsersRows は、ユーザーの情報を取得します。
 func fetchListUsersRows(
 	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
@@ -83,16 +96,7 @@ func fetchListUsersRows(
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
-
-	users := make(user.Users, len(rows))
-	for i, row := range rows {
-		u, err := rowToUser(row.Users)
-		if err != nil {
-			return nil, err
-		}
-		users[i] = u
-	}
-	return users, nil
+	return rowsToUsers(rows, func(r *gen.ListUsersRow) gen.Users { return r.Users })
 }
 
 // fetchListUsersRowsByActive は、アクティブ状態に基づいてユーザーの情報を取得します。
@@ -103,16 +107,7 @@ func fetchListUsersRowsByActive(
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
-
-	users := make(user.Users, len(rows))
-	for i, row := range rows {
-		u, err := rowToUser(row.Users)
-		if err != nil {
-			return nil, err
-		}
-		users[i] = u
-	}
-	return users, nil
+	return rowsToUsers(rows, func(r *gen.ListActiveUsersRow) gen.Users { return r.Users })
 }
 
 // fetchListUsersRowsByDeleted は、削除されたユーザーの情報を取得します。
@@ -123,38 +118,29 @@ func fetchListUsersRowsByDeleted(
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
-
-	users := make(user.Users, len(rows))
-	for i, row := range rows {
-		u, err := rowToUser(row.Users)
-		if err != nil {
-			return nil, err
-		}
-		users[i] = u
-	}
-	return users, nil
+	return rowsToUsers(rows, func(r *gen.ListDeletedUsersRow) gen.Users { return r.Users })
 }
 
 // Create は、ユーザーを作成します。
-func (r *repository) Create(ctx context.Context, user *user.User) error {
+func (r *repository) Create(ctx context.Context, u *user.User) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(r.db.NewLoggingDB(ctx))
 	err := db.CreateUser(ctx, &gen.CreateUserParams{
-		ID:           user.ID(),
-		FirstName:    user.FirstName(),
-		LastName:     user.LastName(),
-		PasswordHash: user.PasswordHash(),
-		Email:        user.Email(),
-		Phone:        user.Phone(),
-		PrefectureID: user.PrefectureID(),
-		City:         user.City(),
-		Street:       user.Street(),
-		Building:     user.Building(),
-		PostalCode:   user.PostalCode(),
-		CreatedAt:    user.CreatedAt(),
-		UpdatedAt:    user.UpdatedAt(),
+		ID:           u.ID(),
+		FirstName:    u.FirstName(),
+		LastName:     u.LastName(),
+		PasswordHash: u.PasswordHash(),
+		Email:        u.Email(),
+		Phone:        u.Phone(),
+		PrefectureID: u.PrefectureID(),
+		City:         u.City(),
+		Street:       u.Street(),
+		Building:     u.Building(),
+		PostalCode:   u.PostalCode(),
+		CreatedAt:    u.CreatedAt(),
+		UpdatedAt:    u.UpdatedAt(),
 	})
 	if err != nil {
 		return pgerror.NormalizeError(err)

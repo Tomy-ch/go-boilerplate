@@ -32,7 +32,7 @@
 
 |型|コンストラクタ|説明|
 |---|---|---|
-|`OperationSystemConfig`|`NewOperationSystemConfig`|タイムゾーン|
+|`OperatingSystemConfig`|`NewOperatingSystemConfig`|タイムゾーン|
 |`ApplicationConfig`|`NewApplicationConfig`|実行モード、環境識別子、アプリ名|
 |`ServerConfig`|`NewServerConfig`|ホスト、ポート、タイムアウト|
 |`MetricsConfig`|`NewMetricsConfig`|メトリクスエンドポイント認証|
@@ -47,14 +47,7 @@
 
 |関数|説明|
 |---|---|
-|`NewTimeLocation(osCfg)`|`OperationSystemConfig` のタイムゾーンから `*time.Location` を生成|
-
-### 実行モード
-
-|型|定数|説明|
-|---|---|---|
-|`ExecutionMode`|`ExecutionModeServer`|サーバーモード|
-||`ExecutionModeJob`|ジョブモード|
+|`NewTimeLocation(osCfg)`|`OperatingSystemConfig` のタイムゾーンから `*time.Location` を生成|
 
 ### 環境 / モード定数
 

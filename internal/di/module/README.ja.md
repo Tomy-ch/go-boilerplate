@@ -12,8 +12,8 @@
 |---|---|---|
 |`ConfigModule()`|`config.go`|設定（`*Config` + 全 SubConfig プロバイダー + `*time.Location`）|
 |`ControllerModule()`|`controller.go`|HTTP ハンドラの登録（`fx.Invoke` で `BindHandler` を実行）|
-|`DatabaseModule()`|`db.go`|DB 接続（`*pgxpool.Pool`）+ リポジトリ / クエリサービス|
-|`InfrastructureModule()`|`infrastructure.go`|インフラ層の実装（認証等）|
+|`DatabaseModule()`|`db.go`|DB 接続（`*pgxpool.Pool`）+ ドライバ / トランザクションマネージャ / メトリクス|
+|`InfrastructureModule()`|`infrastructure.go`|リポジトリ / クエリサービス / system query + Clock / パスワードハッシュ|
 |`JobModule()`|`job.go`|ジョブ登録（`group:"jobs"`）+ Runner + State + Hook|
 |`LoggingModule()`|`logging.go`|Logger + LogFieldBuilder|
 |`ObservabilityModule()`|`observability.go`|TracerProvider + TracerFactory|

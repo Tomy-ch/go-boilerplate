@@ -1,1 +1,1 @@
-SQLC_OUT := /app/internal/infrastructure/rdb/sqlc/gen
+SQLC_OUT := internal/infrastructure/rdb/sqlc/gen

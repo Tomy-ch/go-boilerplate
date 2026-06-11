@@ -64,7 +64,7 @@ jobs:
             .Results
             | map(.Vulnerabilities // [])
             | flatten
-            | sort_by(.Severity) | reverse
+            | sort_by({CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3,UNKNOWN:4}[.Severity] // 5)
             | .[]
             | "- [\(.Severity)] \(.PkgName // "unknown") `\(.InstalledVersion // "?")` → `\(.FixedVersion // "none")` (\(.VulnerabilityID))"
           ' trivy-fs.json > trivy-fs-summary.md
@@ -81,14 +81,17 @@ jobs:
 
       - name: Comment Trivy FS result on PR
         if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
         uses: actions/github-script@v8
+        env:
+          COUNT: ${{ steps.summarize.outputs.count }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
 
             const marker = '<!-- trivy-fs-result -->';
-            const count = Number('${{ steps.summarize.outputs.count }}' || '0');
+            const count = Number(process.env.COUNT || '0');
 
             const updatedAtJST = new Date().toLocaleString('ja-JP', {
               timeZone: 'Asia/Tokyo',
@@ -141,7 +144,7 @@ jobs:
               '</details>',
             ].join('\n');
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,

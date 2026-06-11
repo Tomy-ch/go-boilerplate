@@ -1,6 +1,6 @@
 [sqlfluff]
 dialect = postgres
-templater = jinja
+templater = raw
 max_line_length = 150
 ; 現時点で次の公式報告があり、並列実行を有効にすると `resource_tracker: leaked semaphore` の警告や異常終了の恐れがあるので、processes = 1 とする。
 ; Related official references:
@@ -9,10 +9,7 @@ max_line_length = 150
 ; - backports to 3.13 & 3.14 break running programs on Python version upgrade (multiprocessing) :
 ;   https://github.com/python/cpython/issues/142206
 processes = 1
-sql_file_exts = .sql,.sql.j2,.dml,.ddl
-
-[sqlfluff:templater:jinja]
-ignore_template_errors = True
+sql_file_exts = .sql
 
 [sqlfluff:indentation]
 implicit_indents = allow

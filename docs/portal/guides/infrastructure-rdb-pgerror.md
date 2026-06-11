@@ -104,8 +104,10 @@ func IsUnavailable(err error) bool
 The following errors are treated as connectivity failures.
 
 - context.DeadlineExceeded
-- net.Error (timeout)
+- net.Error (timeout, connection refused, DNS failure, etc.)
 - PostgreSQL SQLSTATE 08XXX (connection exception)
+
+Note: context.Canceled (client cancellation / disconnect) is NOT a connectivity failure. It is classified as a client error (`apperror.ErrCanceled`, HTTP 499 Client Closed Request).
 
 This determination can be used for recovery processing such as:
 

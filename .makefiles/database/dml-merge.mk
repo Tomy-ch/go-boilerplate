@@ -16,10 +16,7 @@
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 merge-dml:
-	make merge-dml-repo
-	make merge-dml-qs
-	make merge-dml-sysq
-	make merge-dml-cs
+	@docker compose run --rm go_tool_runner make merge-dml-ci work-dir=/app
 merge-dml-repo:
 	make merge-dml-core type="repository" work-dir="/app"
 merge-dml-qs:
@@ -48,4 +45,4 @@ merge-dml-ci-sysq:
 merge-dml-ci-cs:
 	make merge-dml-ci-core type="command_service" work-dir=$(work-dir)
 merge-dml-ci-core:
-	go run cmd/main.go merge-dml --type=$(type) --work-dir=$(work-dir)
+	go run ./cmd/ merge-dml --type=$(type) --work-dir=$(work-dir)

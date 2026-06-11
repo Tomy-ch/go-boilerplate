@@ -1,6 +1,6 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
-// Package clock は、クロック関連のドメインを提供します。
+// Package clock は、現在時刻の取得を抽象化するバウンダリインターフェースを提供します。
 package clock
 
 import "time"

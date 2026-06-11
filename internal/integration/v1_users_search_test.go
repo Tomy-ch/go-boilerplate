@@ -8,6 +8,7 @@ import (
 	searchhandler "go-boilerplate/internal/controller/handler/v1/users/search"
 	"go-boilerplate/internal/controller/handler/v1/users/search/gen"
 	"go-boilerplate/internal/observability"
+	usecase_search "go-boilerplate/internal/usecase/user/search"
 	mock_search "go-boilerplate/internal/usecase/user/search/mock"
 	"go-boilerplate/internal/usecase/user/search/query"
 
@@ -34,22 +35,25 @@ func TestV1UsersSearch_Integration(t *testing.T) {
 		},
 	}
 
-	t.Run("GET /v1/users/searchのエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-		mockApp := mock_search.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			CountUsersByKeyword(gomock.Any(), gomock.Any()).
-			Return(int64(1), nil)
-		mockApp.EXPECT().
-			ListUsersByKeyword(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(expectedDTO, nil)
+		t.Run("GET /v1/users/searchがUsersSearchResponseを返す", func(t *testing.T) {
+			t.Parallel()
 
-		searchhandler.BindHandler(e, tf, mockApp)
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
 
-		actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/search", nil, nil)
-		AssertJSONResponse(t, gen.UsersSearchResponse{}, actual)
+			mockApp := mock_search.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&usecase_search.UserSearchListView{Items: expectedDTO, Total: 1}, nil)
+
+			searchhandler.BindHandler(e, tf, mockApp)
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users/search", nil, nil)
+			AssertJSONResponse(t, gen.UsersSearchResponse{}, actual)
+		})
 	})
 }

@@ -20,7 +20,8 @@ type TraceContext struct {
 	parentSpanID string
 }
 
-// ShouldLogWithSpan は、o11yモードとSpanの有無から、「このログを span 前提で出してよいか」を判定します。
+// ShouldLogWithSpan は、o11y モードと Span の有無から span 前提ログを出してよいか判定する公開ヘルパです。
+// span 前提ログを足す際の拡張ポイントとして提供しており、現状は本番未結線（利用例は README 参照）。
 func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool {
 	return obsCfg.Enabled() && trace.SpanFromContext(ctx).SpanContext().IsValid()
 }
@@ -30,7 +31,7 @@ func BuildSpanName(layer, pkgName, funcName string) string {
 	return layer + delimiter + pkgName + delimiter + funcName
 }
 
-// ExtractTraceContext は、Context からトレース情報を抽出して返します。
+// ExtractTraceContext は、現在の span から traceID/spanID を抽出して返します（parentSpanID は設定しません）。
 func ExtractTraceContext(ctx context.Context) *TraceContext {
 	span := trace.SpanFromContext(ctx)
 	if !span.SpanContext().IsValid() {
@@ -49,13 +50,13 @@ func StartSpanWithParent(
 	tracer LayerTracer,
 	name string,
 	opts ...trace.SpanStartOption,
-) (TraceContext, context.Context, func()) {
+) (*TraceContext, context.Context, func()) {
 	parentSC := trace.SpanFromContext(ctx).SpanContext()
 
 	childCtx, span := tracer.tracer.Start(ctx, name, opts...)
 	childSC := span.SpanContext()
 
-	tc := TraceContext{
+	tc := &TraceContext{
 		traceID: childSC.TraceID().String(),
 		spanID:  childSC.SpanID().String(),
 	}

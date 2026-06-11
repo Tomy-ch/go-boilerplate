@@ -14,7 +14,7 @@ func TestNew(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 	dbCfg.SetDatabaseHost(t, "localhost")
 
 	db, err := NewDB(dbCfg, osCfg, dbConnCfg)

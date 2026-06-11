@@ -10,34 +10,34 @@ func RuneCount(s string) int {
 	return utf8.RuneCountInString(s)
 }
 
-// InRange は minLBound <= len <= maxLBound のとき true
-func InRange(s string, minLBound, maxLBound int) bool {
+// InRange は minLen <= 文字数 <= maxLen のとき true
+func InRange(s string, minLen, maxLen int) bool {
 	n := RuneCount(s)
-	return minLBound <= n && n <= maxLBound
+	return minLen <= n && n <= maxLen
 }
 
-// MaxOrLess は len <= maxLBound のとき true
-func MaxOrLess(s string, maxLBound int) bool {
-	return RuneCount(s) <= maxLBound
+// MaxOrLess は 文字数 <= maxLen のとき true
+func MaxOrLess(s string, maxLen int) bool {
+	return RuneCount(s) <= maxLen
 }
 
-// MinOrMore は len >= minLBound のとき true
-func MinOrMore(s string, minLBound int) bool {
-	return RuneCount(s) >= minLBound
+// MinOrMore は 文字数 >= minLen のとき true
+func MinOrMore(s string, minLen int) bool {
+	return RuneCount(s) >= minLen
 }
 
-// StrictInRange は minLBound < len < maxLBound のとき true
-func StrictInRange(s string, minLBound, maxLBound int) bool {
+// StrictInRange は minLen < 文字数 < maxLen のとき true
+func StrictInRange(s string, minLen, maxLen int) bool {
 	n := RuneCount(s)
-	return minLBound < n && n < maxLBound
+	return minLen < n && n < maxLen
 }
 
-// LessThanMax は len < maxLBound のとき true
-func LessThanMax(s string, maxLBound int) bool {
-	return RuneCount(s) < maxLBound
+// LessThanMax は 文字数 < maxLen のとき true
+func LessThanMax(s string, maxLen int) bool {
+	return RuneCount(s) < maxLen
 }
 
-// GreaterThanMin は len > minLBound のとき true
-func GreaterThanMin(s string, minLBound int) bool {
-	return RuneCount(s) > minLBound
+// GreaterThanMin は 文字数 > minLen のとき true
+func GreaterThanMin(s string, minLen int) bool {
+	return RuneCount(s) > minLen
 }

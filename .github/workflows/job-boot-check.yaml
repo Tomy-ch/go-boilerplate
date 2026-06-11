@@ -5,9 +5,9 @@ on:
     paths:
       - '.github/workflows/job-boot-check.yaml'
       - 'cmd/**.go'
-      - 'internal/cli/job/**.go'
-      - 'internal/di/**.go'
-      - 'internal/controller/job/**.go'
+      - 'internal/**.go'
+      - 'env/.env.ci'
+      - 'env/.env'
       - 'go.mod'
       - 'go.sum'
   workflow_dispatch:
@@ -60,7 +60,7 @@ jobs:
         run: |
           set -uo pipefail
           set +e
-          output="$(go run cmd/main.go job __ci_boot_check_no_such_job__ 2>&1)"
+          output="$(go run ./cmd/ job __ci_boot_check_no_such_job__ 2>&1)"
           code=$?
           set -e
 

@@ -16,13 +16,6 @@ ARG VERSION=dev
 ARG REVISION=none
 ARG BUILD_DATE=2024-12-31T21:00:00Z
 
-RUN apk add --no-cache \
-  ca-certificates \
-  tzdata
-
-COPY go.mod go.sum ./
-COPY vendor/ ./vendor/
-
 COPY . .
 
 RUN go build -mod=vendor -trimpath \
@@ -30,7 +23,7 @@ RUN go build -mod=vendor -trimpath \
     -X 'go-boilerplate/internal/system.Version=${VERSION}' \
     -X 'go-boilerplate/internal/system.Revision=${REVISION}' \
     -X 'go-boilerplate/internal/system.BuildDate=${BUILD_DATE}'" \
-  -o /app/bin/server ./cmd/main.go
+  -o /app/bin/server ./cmd/
 
 # ------------------------------
 # 実行用コンテナ: アプリケーションのサーバとして常駐起動する用途
@@ -38,19 +31,22 @@ RUN go build -mod=vendor -trimpath \
 # NOTE: 本番利用時にはダイジェストを指定することを推奨
 FROM alpine:3.23 AS runtime
 
+# デプロイ対象環境（prd/stg/dev）。当該 env ファイルのみ焼き込み、ENV として固定する。
+ARG APP_ENV=prd
+
+RUN apk upgrade --no-cache
+
 RUN apk add --no-cache ca-certificates tzdata
 
 RUN addgroup -S app && adduser -S app -G app
 USER app
 
 COPY --from=builder --chown=app:app /app/bin/server /app/server
-COPY --from=builder --chown=app:app /app/env/.env.dev /app/env/.env.dev
-COPY --from=builder --chown=app:app /app/env/.env.stg /app/env/.env.stg
-COPY --from=builder --chown=app:app /app/env/.env.prd /app/env/.env.prd
+COPY --from=builder --chown=app:app /app/env/.env.${APP_ENV} /app/env/.env.${APP_ENV}
 
 WORKDIR /app
 
-ENV ENV=prd
+ENV ENV=${APP_ENV}
 
 CMD ["/app/server", "serve"]
 
@@ -61,10 +57,6 @@ CMD ["/app/server", "serve"]
 FROM runtime AS migration
 
 COPY --from=builder --chown=app:app /app/database/migrations /app/database/migrations
-
-WORKDIR /app
-
-ENV ENV=prd
 
 CMD ["/app/server", "migrate-up"]
 
@@ -82,7 +74,7 @@ RUN apk add --no-cache bash ca-certificates curl git
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app

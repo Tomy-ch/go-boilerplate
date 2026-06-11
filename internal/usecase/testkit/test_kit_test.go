@@ -13,7 +13,7 @@ import (
 func TestExpectedDBError(t *testing.T) {
 	t.Parallel()
 
-	actual := ExpectedDBError(t)
+	actual := ExpectedDBError()
 	require.Error(t, actual)
 }
 

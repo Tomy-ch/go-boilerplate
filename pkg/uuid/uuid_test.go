@@ -49,6 +49,14 @@ func TestToPrimitive(t *testing.T) {
 	assert.Equal(t, toGoogle(uuid), primitive)
 }
 
+func TestFromPrimitive(t *testing.T) {
+	t.Parallel()
+	uuid, err := New()
+	require.NoError(t, err)
+	got := FromPrimitive(uuid.ToPrimitive())
+	assert.Equal(t, uuid, got)
+}
+
 func TestString(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()

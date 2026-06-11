@@ -15,32 +15,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockEncrypter is a mock of Encrypter interface.
-type MockEncrypter struct {
+// MockHasher is a mock of Hasher interface.
+type MockHasher struct {
 	ctrl     *gomock.Controller
-	recorder *MockEncrypterMockRecorder
+	recorder *MockHasherMockRecorder
 	isgomock struct{}
 }
 
-// MockEncrypterMockRecorder is the mock recorder for MockEncrypter.
-type MockEncrypterMockRecorder struct {
-	mock *MockEncrypter
+// MockHasherMockRecorder is the mock recorder for MockHasher.
+type MockHasherMockRecorder struct {
+	mock *MockHasher
 }
 
-// NewMockEncrypter creates a new mock instance.
-func NewMockEncrypter(ctrl *gomock.Controller) *MockEncrypter {
-	mock := &MockEncrypter{ctrl: ctrl}
-	mock.recorder = &MockEncrypterMockRecorder{mock}
+// NewMockHasher creates a new mock instance.
+func NewMockHasher(ctrl *gomock.Controller) *MockHasher {
+	mock := &MockHasher{ctrl: ctrl}
+	mock.recorder = &MockHasherMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockEncrypter) EXPECT() *MockEncrypterMockRecorder {
+func (m *MockHasher) EXPECT() *MockHasherMockRecorder {
 	return m.recorder
 }
 
 // Compare mocks base method.
-func (m *MockEncrypter) Compare(hash, password string) (bool, error) {
+func (m *MockHasher) Compare(hash, password string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Compare", hash, password)
 	ret0, _ := ret[0].(bool)
@@ -49,13 +49,13 @@ func (m *MockEncrypter) Compare(hash, password string) (bool, error) {
 }
 
 // Compare indicates an expected call of Compare.
-func (mr *MockEncrypterMockRecorder) Compare(hash, password any) *gomock.Call {
+func (mr *MockHasherMockRecorder) Compare(hash, password any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Compare", reflect.TypeOf((*MockEncrypter)(nil).Compare), hash, password)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Compare", reflect.TypeOf((*MockHasher)(nil).Compare), hash, password)
 }
 
 // Hash mocks base method.
-func (m *MockEncrypter) Hash(password string) (string, error) {
+func (m *MockHasher) Hash(password string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Hash", password)
 	ret0, _ := ret[0].(string)
@@ -64,7 +64,7 @@ func (m *MockEncrypter) Hash(password string) (string, error) {
 }
 
 // Hash indicates an expected call of Hash.
-func (mr *MockEncrypterMockRecorder) Hash(password any) *gomock.Call {
+func (mr *MockHasherMockRecorder) Hash(password any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hash", reflect.TypeOf((*MockEncrypter)(nil).Hash), password)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hash", reflect.TypeOf((*MockHasher)(nil).Hash), password)
 }

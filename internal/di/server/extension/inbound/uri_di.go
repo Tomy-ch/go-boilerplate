@@ -18,7 +18,7 @@ func URIModule() fx.Option {
 	)
 }
 
-// URIPreMiddleware は、バリデーションミドルウェアを提供します。
+// URIPreMiddleware は、URI 末尾スラッシュ除去ミドルウェアを Pre ミドルウェアとして提供します。
 func URIPreMiddleware() extension.PreMiddlewareOut {
 	return extension.PreMiddlewareOut{
 		Middleware: extension.PreMiddleware{

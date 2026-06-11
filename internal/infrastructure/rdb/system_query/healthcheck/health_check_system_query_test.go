@@ -31,7 +31,7 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	s := &systemQuery{
 		tracer: lt,
@@ -49,7 +49,7 @@ func Test_healthCheckSystemQuery_GetDBHealth(t *testing.T) {
 				require.NoError(t, err)
 				assert.True(t, res.Ready)
 				require.Positive(t, res.Latency.Microseconds())
-				require.NotZero(t, res.ResponsedAt)
+				require.NotZero(t, res.RespondedAt)
 			})
 		})
 	})
