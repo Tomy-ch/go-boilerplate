@@ -29,6 +29,8 @@ The Controller is the **input/output boundary of the application**.
 
 "Business logic", "DB access", and "domain model operations" are delegated to Usecase / Domain / Infra, keeping Controller thin.
 
+A handler delegates to a **single Usecase operation** per action and only shapes its result. Composing multiple Usecase calls (e.g. fetching a list and its total count separately and combining them) is application orchestration and belongs in the Usecase layer — the Usecase exposes one method returning the composed result (e.g. `{ Items, Total }`).
+
 ## What is Presenter
 
 Presenter is the conversion process from `Usecase DTO → OpenAPI response type`.
