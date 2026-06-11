@@ -34,6 +34,8 @@ FROM alpine:3.23 AS runtime
 # デプロイ対象環境（prd/stg/dev）。当該 env ファイルのみ焼き込み、ENV として固定する。
 ARG APP_ENV=prd
 
+RUN apk upgrade --no-cache
+
 RUN apk add --no-cache ca-certificates tzdata
 
 RUN addgroup -S app && adduser -S app -G app
