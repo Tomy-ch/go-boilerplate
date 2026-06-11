@@ -23,7 +23,9 @@ type logFieldBuilder struct {
 
 // HTTPRequestLogInput は、HTTPリクエストのログ出力用の入力情報をまとめた構造体です。
 type HTTPRequestLogInput struct {
-	EventAt time.Time
+	// EventType は、イベント種別（start/error/panic）を表す。
+	EventType string
+	EventAt   time.Time
 
 	Method   string
 	Path     string
@@ -124,7 +126,7 @@ func NewLogFields(
 
 // BuildHTTPRequestFields は、HTTPリクエストの情報を含むFieldのスライスを生成します。
 func (l *logFieldBuilder) BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field {
-	fields := append(l.buildEventHeader(EventTypeStart, req.EventAt),
+	fields := append(l.buildEventHeader(req.EventType, req.EventAt),
 		String(MethodKey, req.Method),
 		String(PathKey, req.Path),
 		String(URIKey, req.URI),

@@ -14,7 +14,6 @@ import (
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
-	zap "go.uber.org/zap"
 )
 
 // MockLogger is a mock of Logger interface.
@@ -53,20 +52,6 @@ func (m *MockLogger) CallerSkip(skip int) logging.Logger {
 func (mr *MockLoggerMockRecorder) CallerSkip(skip any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CallerSkip", reflect.TypeOf((*MockLogger)(nil).CallerSkip), skip)
-}
-
-// ConvertFields mocks base method.
-func (m *MockLogger) ConvertFields(fields []*logging.Field) []zap.Field {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConvertFields", fields)
-	ret0, _ := ret[0].([]zap.Field)
-	return ret0
-}
-
-// ConvertFields indicates an expected call of ConvertFields.
-func (mr *MockLoggerMockRecorder) ConvertFields(fields any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConvertFields", reflect.TypeOf((*MockLogger)(nil).ConvertFields), fields)
 }
 
 // Debug mocks base method.

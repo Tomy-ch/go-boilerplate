@@ -45,7 +45,7 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
 
 	if !c.Response().Committed {
 		if writeErr := writeErrorResponse(c, resp); writeErr != nil {
-			reqIn := server.BuildHTTPRequestLogInput(c)
+			reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError)
 			writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}
 			fields := append(lf.BuildHTTPRequestFields(reqIn), writeErrFields...)
 			logger.Named("errorhandler.handleHTTPError").Error("failed to write error response", fields...)
@@ -118,7 +118,7 @@ func httpErrorField(
 		logging.String(logging.ErrorMessageKey, he.Message),
 		logging.String(logging.RequestIDKey, he.RequestId),
 	}
-	fields = append(fields, lf.BuildHTTPRequestFields(server.BuildHTTPRequestLogInput(c))...)
+	fields = append(fields, lf.BuildHTTPRequestFields(server.BuildHTTPRequestLogInput(c, logging.EventTypeError))...)
 	if he.Details != nil {
 		fields = append(fields, logging.Strings(logging.ErrorDetailsKey, *he.Details))
 	}
