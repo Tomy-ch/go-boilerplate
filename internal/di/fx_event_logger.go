@@ -7,8 +7,7 @@ import (
 )
 
 // fxEventLogger は fx イベントを構造化ロガーへ流す fxevent.Logger 実装。
-// エラーと起動／停止の節目のみ記録し冗長な成功イベントは無視する。logging 層を
-// フレームワーク非依存（depguard）に保つため fx を扱える di 層に置く。
+// エラーと起動／停止の節目のみ記録し、冗長な成功イベントは無視する。
 type fxEventLogger struct {
 	logger logging.Logger
 }

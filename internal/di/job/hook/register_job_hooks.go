@@ -29,7 +29,7 @@ func RegisterJobHooks(
 }
 
 // runJobAndShutdown は、スナップショットしたジョブを実行し done に結果を送って停止を要求する。
-// goroutine 本体を名前付き関数に切り出し、テストから同期的に直接呼べるようにしている。
+// ジョブ未設定時（done==nil）はログ出力のみ行って停止する。
 func runJobAndShutdown(
 	startCtx context.Context,
 	sd shutdowner.Shutdowner,
