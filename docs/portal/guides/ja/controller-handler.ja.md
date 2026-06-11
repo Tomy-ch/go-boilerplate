@@ -29,6 +29,8 @@ internal/controller/handler は、CLI（Cobra）から起動される **サー�
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
 
+handler は 1 アクションにつき **単一の Usecase 操作へ委譲**し、その結果を整形するだけにします。複数の Usecase 呼び出しを合成する（例: 一覧と総件数を別々に取得して handler で束ねる）のはアプリケーションのオーケストレーションであり Usecase 層の責務です。Usecase は合成済みの結果（例: `{ Items, Total }`）を返す単一メソッドを公開します。
+
 ## Presenter とは
 
 Presenterとは`Usecase DTO → OpenAPIレスポンス型`への変換処理です。

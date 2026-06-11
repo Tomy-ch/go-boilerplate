@@ -1789,7 +1789,7 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="338">{
+func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="342">{
         t.Helper()
         return &amp;Config{
                 os: OperatingSystemConfig{
@@ -2251,10 +2251,10 @@ type AuthConfig struct {
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
-func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig <span class="cov8" title="235">{ return &amp;cfg.os }</span>
+func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig <span class="cov8" title="239">{ return &amp;cfg.os }</span>
 
 // TimeZone は、OSのタイムゾーンを返します。
-func (o *OperatingSystemConfig) TimeZone() string <span class="cov10" title="492">{ return o.timezone }</span>
+func (o *OperatingSystemConfig) TimeZone() string <span class="cov10" title="528">{ return o.timezone }</span>
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
 func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov6" title="52">{ return &amp;cfg.app }</span>
@@ -2269,7 +2269,7 @@ func (a *ApplicationConfig) Mode() string <span class="cov5" title="25">{ return
 func (a *ApplicationConfig) Name() string <span class="cov3" title="7">{ return a.name }</span>
 
 // ShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。
-func (a *ApplicationConfig) ShutdownTimeout() time.Duration <span class="cov2" title="2">{ return a.shutdownTimeout }</span>
+func (a *ApplicationConfig) ShutdownTimeout() time.Duration <span class="cov1" title="2">{ return a.shutdownTimeout }</span>
 
 // IsProductionMode は、アプリケーションが本番環境モードかどうかを返します。
 func (a *ApplicationConfig) IsProductionMode() bool <span class="cov5" title="24">{
@@ -2309,7 +2309,7 @@ func NewMetricsConfig(cfg *Config) *MetricsConfig <span class="cov4" title="10">
 func (m *MetricsConfig) Host() string <span class="cov3" title="5">{ return m.host }</span>
 
 // Port は、メトリクスサーバーがリッスンするポート番号を返します。
-func (m *MetricsConfig) Port() int <span class="cov4" title="8">{ return m.port }</span>
+func (m *MetricsConfig) Port() int <span class="cov3" title="8">{ return m.port }</span>
 
 // UserName は、メトリクスサーバーの認証に使用するユーザー名を返します。
 func (m *MetricsConfig) UserName() string <span class="cov4" title="10">{ return m.userName }</span>
@@ -2318,17 +2318,17 @@ func (m *MetricsConfig) UserName() string <span class="cov4" title="10">{ return
 func (m *MetricsConfig) Password() string <span class="cov4" title="10">{ return m.password }</span>
 
 // NewObservabilityConfig は、可観測の設定を返します。
-func NewObservabilityConfig(cfg *Config) *ObservabilityConfig <span class="cov8" title="235">{ return &amp;cfg.observability }</span>
+func NewObservabilityConfig(cfg *Config) *ObservabilityConfig <span class="cov8" title="239">{ return &amp;cfg.observability }</span>
 
 // Enabled は、可観測モードが有効かどうかを返します。
-func (o *ObservabilityConfig) Enabled() bool <span class="cov9" title="443">{ return o.enabled }</span>
+func (o *ObservabilityConfig) Enabled() bool <span class="cov9" title="479">{ return o.enabled }</span>
 
 // MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。
 func (o *ObservabilityConfig) MaskedDBQueryArgs() bool <span class="cov6" title="52">{ return o.maskedDBQueryArgs }</span>
 
 // TargetStatusCodeSet は、可観測モードで監視対象となるHTTPステータスコードのセットを返します。
 // 返り値はホットパスで参照される共有マップのため変更してはいけません（read-only）。
-func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool <span class="cov4" title="8">{ return o.targetStatusCodeSet }</span>
+func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool <span class="cov3" title="8">{ return o.targetStatusCodeSet }</span>
 
 // NewDatabaseConfig は、データベースの設定を返します。
 func NewDatabaseConfig(cfg *Config) *DatabaseConfig <span class="cov6" title="52">{ return &amp;cfg.database }</span>
@@ -2343,7 +2343,7 @@ func (d *DatabaseConfig) Host() string <span class="cov6" title="38">{ return d.
 func (d *DatabaseConfig) Port() int <span class="cov5" title="31">{ return d.port }</span>
 
 // User は、データベースのユーザー名を返します。
-func (d *DatabaseConfig) User() string <span class="cov6" title="32">{ return d.user }</span>
+func (d *DatabaseConfig) User() string <span class="cov5" title="32">{ return d.user }</span>
 
 // Password は、データベースのパスワードを返します。
 func (d *DatabaseConfig) Password() string <span class="cov5" title="31">{ return d.password }</span>
@@ -2388,7 +2388,7 @@ func (s *SecurityConfig) AllowedOrigins() []string <span class="cov4" title="10"
 
 // CIDR は、セキュリティ設定で使用されるCIDRを返します。
 func (s *SecurityConfig) CIDR() *net.IPNet <span class="cov4" title="12">{
-        if s.cidr == nil </span><span class="cov2" title="2">{
+        if s.cidr == nil </span><span class="cov1" title="2">{
                 return nil
         }</span>
         <span class="cov4" title="10">return &amp;net.IPNet{
@@ -2422,7 +2422,7 @@ func (s *SecurityConfig) BcryptCost() int <span class="cov4" title="12">{ return
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig <span class="cov3" title="7">{ return &amp;cfg.secureCookie }</span>
 
 // Secure は、Secure属性の強制設定を返します。
-func (s *SecureCookieConfig) Secure() *bool <span class="cov4" title="8">{
+func (s *SecureCookieConfig) Secure() *bool <span class="cov3" title="8">{
         if s.secure == nil </span><span class="cov1" title="1">{
                 return nil
         }</span>
@@ -3506,7 +3506,7 @@ type server struct {
         uc     search.Usecase
 }
 
-func BindHandler(e *echo.Echo, tf observability.TracerFactory, us search.Usecase) <span class="cov6" title="3">{
+func BindHandler(e *echo.Echo, tf observability.TracerFactory, us search.Usecase) <span class="cov7" title="3">{
         gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
                 tracer: tf.Controller(),
                 uc:     us,
@@ -3514,7 +3514,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, us search.Usecase
 }</span>
 
 // GetUsersSearch は、検索条件に基づいてユーザーの一覧を取得します。
-func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchRequestObject) (gen.GetUsersSearchResponseObject, error) <span class="cov10" title="6">{
+func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchRequestObject) (gen.GetUsersSearchResponseObject, error) <span class="cov10" title="5">{
         ctx, endSpan := s.tracer.Start(ctx)
         defer endSpan()
 
@@ -3523,22 +3523,17 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
                 return nil, err
         }</span>
 
-        <span class="cov9" title="5">filter := &amp;search.SearchParams{
+        <span class="cov8" title="4">filter := &amp;search.SearchParams{
                 Keyword: request.Params.Keyword,
                 Active:  request.Params.Active,
         }
-        dtos, err := s.uc.ListUsersByKeyword(ctx, filter, page)
+        list, err := s.uc.ListUsersByKeywordWithTotal(ctx, filter, page)
         if err != nil </span><span class="cov1" title="1">{
                 return nil, err
         }</span>
 
-        <span class="cov7" title="4">total, err := s.uc.CountUsersByKeyword(ctx, filter)
-        if err != nil </span><span class="cov1" title="1">{
-                return nil, err
-        }</span>
-
-        <span class="cov6" title="3">users := make([]gen.UsersSearchResponseItem, len(dtos))
-        for i, dto := range dtos </span><span class="cov6" title="3">{
+        <span class="cov7" title="3">users := make([]gen.UsersSearchResponseItem, len(list.Items))
+        for i, dto := range list.Items </span><span class="cov7" title="3">{
                 users[i] = gen.UsersSearchResponseItem{
                         FirstName:    dto.FirstName,
                         LastName:     dto.LastName,
@@ -3554,9 +3549,9 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
                 }
         }</span>
 
-        <span class="cov6" title="3">return gen.GetUsersSearch200JSONResponse(gen.UsersSearchResponse{
+        <span class="cov7" title="3">return gen.GetUsersSearch200JSONResponse(gen.UsersSearchResponse{
                 Users:  users,
-                Total:  total,
+                Total:  list.Total,
                 Limit:  page.Limit(),
                 Offset: page.Offset(),
         }), nil</span>
@@ -3599,7 +3594,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) 
 }</span>
 
 // GetUsers は、ユーザー一覧を取得します。
-func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) <span class="cov10" title="6">{
+func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) <span class="cov9" title="5">{
         ctx, endSpan := s.tracer.Start(ctx)
         defer endSpan()
 
@@ -3609,24 +3604,19 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
                 return nil, err
         }</span>
 
-        <span class="cov9" title="5">dtos, err := s.uc.ListUsers(ctx, request.Params.Active, page)
+        <span class="cov7" title="4">list, err := s.uc.ListUsersWithTotal(ctx, request.Params.Active, page)
         if err != nil </span><span class="cov1" title="1">{
                 return nil, err
         }</span>
 
-        <span class="cov7" title="4">total, err := s.uc.CountUsers(ctx, request.Params.Active)
-        if err != nil </span><span class="cov1" title="1">{
-                return nil, err
-        }</span>
-
-        <span class="cov6" title="3">users := make([]gen.UserResponse, len(dtos))
-        for i, dto := range dtos </span><span class="cov7" title="4">{
+        <span class="cov6" title="3">users := make([]gen.UserResponse, len(list.Items))
+        for i, dto := range list.Items </span><span class="cov7" title="4">{
                 users[i] = toUserResponse(dto)
         }</span>
 
         <span class="cov6" title="3">res := gen.UsersResponse{
                 Users:  users,
-                Total:  total,
+                Total:  list.Total,
                 Limit:  page.Limit(),
                 Offset: page.Offset(),
         }
@@ -6260,7 +6250,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="30">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="27">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -7080,21 +7070,21 @@ func New(
         id uuid.UUID,
         name string,
         code int,
-) (*Prefecture, error) <span class="cov10" title="20">{
+) (*Prefecture, error) <span class="cov10" title="21">{
         if id.IsNil() </span><span class="cov1" title="1">{
                 return nil, xerrors.Wrap(ErrInvalidID, "id is required")
         }</span>
-        <span class="cov9" title="19">if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok </span><span class="cov3" title="2">{
+        <span class="cov9" title="20">if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok </span><span class="cov3" title="2">{
                 return nil, xerrors.Wrap(ErrInvalidName, msg)
         }</span>
-        <span class="cov9" title="17">if code &lt; minCode || maxCode &lt; code </span><span class="cov3" title="2">{
+        <span class="cov9" title="18">if code &lt; minCode || maxCode &lt; code </span><span class="cov3" title="2">{
                 return nil, xerrors.Wrap(
                         ErrInvalidCode,
                         fmt.Sprintf("code must be between %d and %d, got %d", minCode, maxCode, code),
                 )
         }</span>
 
-        <span class="cov9" title="15">return &amp;Prefecture{
+        <span class="cov9" title="16">return &amp;Prefecture{
                 id:   id,
                 name: name,
                 code: code,
@@ -7102,10 +7092,10 @@ func New(
 }
 
 // ID は、都道府県のIDを返します。
-func (p *Prefecture) ID() uuid.UUID <span class="cov8" title="11">{ return p.id }</span>
+func (p *Prefecture) ID() uuid.UUID <span class="cov8" title="13">{ return p.id }</span>
 
 // Name は、都道府県名を返します。
-func (p *Prefecture) Name() string <span class="cov8" title="13">{ return p.name }</span>
+func (p *Prefecture) Name() string <span class="cov9" title="15">{ return p.name }</span>
 
 // Code は、都道府県コードを返します。
 func (p *Prefecture) Code() int <span class="cov1" title="1">{ return p.code }</span>
@@ -7193,30 +7183,30 @@ func New(
         createdAt time.Time,
         updatedAt time.Time,
         deletedAt *time.Time,
-) (*User, error) <span class="cov9" title="101">{
+) (*User, error) <span class="cov9" title="102">{
         if id.IsNil() </span><span class="cov1" title="1">{
                 return nil, xerrors.Wrap(ErrInvalidID, "id is required")
         }</span>
 
-        <span class="cov9" title="100">if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil </span><span class="cov6" title="21">{
+        <span class="cov9" title="101">if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil </span><span class="cov6" title="21">{
                 return nil, err
         }</span>
 
-        <span class="cov9" title="79">if err := validatePasswordHash(passwordHash); err != nil </span><span class="cov2" title="2">{
+        <span class="cov9" title="80">if err := validatePasswordHash(passwordHash); err != nil </span><span class="cov2" title="2">{
                 return nil, err
         }</span>
 
-        <span class="cov9" title="77">if updatedAt.Before(createdAt) </span><span class="cov1" title="1">{
+        <span class="cov9" title="78">if updatedAt.Before(createdAt) </span><span class="cov1" title="1">{
                 return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
         }</span>
 
-        <span class="cov9" title="76">if deletedAt != nil </span><span class="cov5" title="11">{
+        <span class="cov9" title="77">if deletedAt != nil </span><span class="cov5" title="11">{
                 if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil </span><span class="cov2" title="2">{
                         return nil, err
                 }</span>
         }
 
-        <span class="cov9" title="74">return &amp;User{
+        <span class="cov9" title="75">return &amp;User{
                 id:           id,
                 firstName:    firstName,
                 lastName:     lastName,
@@ -7238,37 +7228,37 @@ func New(
 func (u *User) ID() uuid.UUID <span class="cov7" title="24">{ return u.id }</span>
 
 // FirstName は、ユーザーの名前を返します。
-func (u *User) FirstName() string <span class="cov7" title="25">{ return u.firstName }</span>
+func (u *User) FirstName() string <span class="cov7" title="27">{ return u.firstName }</span>
 
 // LastName は、ユーザーの名字を返します。
-func (u *User) LastName() string <span class="cov7" title="25">{ return u.lastName }</span>
+func (u *User) LastName() string <span class="cov7" title="27">{ return u.lastName }</span>
 
 // PasswordHash は、ユーザーのパスワードハッシュを返します。
 func (u *User) PasswordHash() string <span class="cov5" title="13">{ return u.passwordHash }</span>
 
 // Email は、ユーザーのメールアドレスを返します。
-func (u *User) Email() string <span class="cov7" title="25">{ return u.email }</span>
+func (u *User) Email() string <span class="cov7" title="27">{ return u.email }</span>
 
 // Phone は、ユーザーの電話番号を返します。
-func (u *User) Phone() string <span class="cov7" title="25">{ return u.phone }</span>
+func (u *User) Phone() string <span class="cov7" title="27">{ return u.phone }</span>
 
 // PrefectureID は、ユーザーの都道府県IDを返します。
-func (u *User) PrefectureID() uuid.UUID <span class="cov6" title="23">{ return u.prefectureID }</span>
+func (u *User) PrefectureID() uuid.UUID <span class="cov7" title="27">{ return u.prefectureID }</span>
 
 // City は、ユーザーの市区町村名を返します。
-func (u *User) City() string <span class="cov7" title="25">{ return u.city }</span>
+func (u *User) City() string <span class="cov7" title="27">{ return u.city }</span>
 
 // Street は、ユーザーの番地を返します。
-func (u *User) Street() string <span class="cov7" title="25">{ return u.street }</span>
+func (u *User) Street() string <span class="cov7" title="27">{ return u.street }</span>
 
 // Building は、ユーザーの建物名を返します。
-func (u *User) Building() *string <span class="cov7" title="31">{ return ptr.Copy(u.building) }</span>
+func (u *User) Building() *string <span class="cov7" title="33">{ return ptr.Copy(u.building) }</span>
 
 // PostalCode は、ユーザーの郵便番号を返します。
-func (u *User) PostalCode() string <span class="cov7" title="25">{ return u.postalCode }</span>
+func (u *User) PostalCode() string <span class="cov7" title="27">{ return u.postalCode }</span>
 
 // DeletedAt は、ユーザーの削除日時を返します。
-func (u *User) DeletedAt() *time.Time <span class="cov6" title="17">{ return ptr.Copy(u.deletedAt) }</span>
+func (u *User) DeletedAt() *time.Time <span class="cov6" title="19">{ return ptr.Copy(u.deletedAt) }</span>
 
 // CreatedAt は、ユーザーの作成日時を返します。
 func (u *User) CreatedAt() time.Time <span class="cov3" title="3">{ return u.createdAt }</span>
@@ -7382,45 +7372,45 @@ func validateProfileFields(
         city, street string,
         building *string,
         postalCode string,
-) error <span class="cov10" title="112">{
+) error <span class="cov10" title="113">{
         if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok </span><span class="cov4" title="6">{
                 return xerrors.Wrap(ErrInvalidFirstName, msg)
         }</span>
-        <span class="cov9" title="106">if ok, msg := stringkit.ValidateInRange(lastName, minLength, maxLastNameLength); !ok </span><span class="cov4" title="5">{
+        <span class="cov9" title="107">if ok, msg := stringkit.ValidateInRange(lastName, minLength, maxLastNameLength); !ok </span><span class="cov4" title="5">{
                 return xerrors.Wrap(ErrInvalidLastName, msg)
         }</span>
-        <span class="cov9" title="101">if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok </span><span class="cov2" title="2">{
+        <span class="cov9" title="102">if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok </span><span class="cov2" title="2">{
                 return xerrors.Wrap(ErrInvalidEmail, msg)
         }</span>
-        <span class="cov9" title="99">if ok, msg := stringkit.ValidateInRange(phone, minLength, maxPhoneLength); !ok </span><span class="cov2" title="2">{
+        <span class="cov9" title="100">if ok, msg := stringkit.ValidateInRange(phone, minLength, maxPhoneLength); !ok </span><span class="cov2" title="2">{
                 return xerrors.Wrap(ErrInvalidPhone, msg)
         }</span>
-        <span class="cov9" title="97">if prefectureID.IsNil() </span><span class="cov1" title="1">{
+        <span class="cov9" title="98">if prefectureID.IsNil() </span><span class="cov1" title="1">{
                 return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
         }</span>
-        <span class="cov9" title="96">if ok, msg := stringkit.ValidateInRange(city, minLength, maxCityLength); !ok </span><span class="cov2" title="2">{
+        <span class="cov9" title="97">if ok, msg := stringkit.ValidateInRange(city, minLength, maxCityLength); !ok </span><span class="cov2" title="2">{
                 return xerrors.Wrap(ErrInvalidCity, msg)
         }</span>
-        <span class="cov9" title="94">if ok, msg := stringkit.ValidateInRange(street, minLength, maxStreetLength); !ok </span><span class="cov2" title="2">{
+        <span class="cov9" title="95">if ok, msg := stringkit.ValidateInRange(street, minLength, maxStreetLength); !ok </span><span class="cov2" title="2">{
                 return xerrors.Wrap(ErrInvalidStreet, msg)
         }</span>
-        <span class="cov9" title="92">if building != nil </span><span class="cov9" title="79">{
+        <span class="cov9" title="93">if building != nil </span><span class="cov9" title="79">{
                 if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok </span><span class="cov2" title="2">{
                         return xerrors.Wrap(ErrInvalidBuilding, msg)
                 }</span>
         }
-        <span class="cov9" title="90">if ok, msg := stringkit.ValidateInRange(postalCode, minLength, maxPostalCodeLength); !ok </span><span class="cov2" title="2">{
+        <span class="cov9" title="91">if ok, msg := stringkit.ValidateInRange(postalCode, minLength, maxPostalCodeLength); !ok </span><span class="cov2" title="2">{
                 return xerrors.Wrap(ErrInvalidPostalCode, msg)
         }</span>
-        <span class="cov9" title="88">return nil</span>
+        <span class="cov9" title="89">return nil</span>
 }
 
 // validatePasswordHash は、パスワードハッシュの不変条件を検証します。
-func validatePasswordHash(passwordHash string) error <span class="cov9" title="86">{
+func validatePasswordHash(passwordHash string) error <span class="cov9" title="87">{
         if ok, msg := stringkit.ValidateInRange(passwordHash, minLength, maxPasswordHashLength); !ok </span><span class="cov3" title="4">{
                 return xerrors.Wrap(ErrInvalidPasswordHash, msg)
         }</span>
-        <span class="cov9" title="82">return nil</span>
+        <span class="cov9" title="83">return nil</span>
 }
 </pre>
 		
@@ -8983,7 +8973,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key fieldKey, v string) *Field <span class="cov10" title="3894">{
+func String(key fieldKey, v string) *Field <span class="cov10" title="4182">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -9037,7 +9027,7 @@ func Bool(key fieldKey, v bool) *Field <span class="cov1" title="2">{
 }</span>
 
 // Time は、時間のログフィールドを作成します。
-func Time(key fieldKey, v time.Time) *Field <span class="cov7" title="456">{
+func Time(key fieldKey, v time.Time) *Field <span class="cov7" title="492">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -9046,7 +9036,7 @@ func Time(key fieldKey, v time.Time) *Field <span class="cov7" title="456">{
 }</span>
 
 // DurationMs は、時間間隔のログフィールドをミリ秒単位で作成します。
-func DurationMs(key fieldKey, v time.Duration) *Field <span class="cov6" title="211">{
+func DurationMs(key fieldKey, v time.Duration) *Field <span class="cov6" title="229">{
         return &amp;Field{
                 key:          string(key),
                 kind:         fieldFloat64,
@@ -9082,7 +9072,7 @@ func Any(key fieldKey, v any) *Field <span class="cov5" title="45">{
 }</span>
 
 // latencyMs は、latency をミリ秒単位の float64 に変換します。
-func latencyMs(latency time.Duration) float64 <span class="cov6" title="212">{
+func latencyMs(latency time.Duration) float64 <span class="cov6" title="230">{
         return float64(latency) / float64(time.Millisecond)
 }</span>
 </pre>
@@ -9204,7 +9194,7 @@ type ObservabilityFieldsInput struct {
 func NewLogFields(
         obsCfg *config.ObservabilityConfig,
         osCfg *config.OperatingSystemConfig,
-) LogFieldBuilder <span class="cov8" title="197">{
+) LogFieldBuilder <span class="cov8" title="201">{
         return &amp;logFieldBuilder{
                 obsCfg: obsCfg,
                 osCfg:  osCfg,
@@ -9289,7 +9279,7 @@ func (l *logFieldBuilder) BuildSQLEndFields(sql SQLFieldsEndInput) []*Field <spa
 }
 
 // BuildObservabilityFields は、オブザーバビリティ用のログフィールドを生成します。
-func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field <span class="cov9" title="308">{
+func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput) []*Field <span class="cov9" title="344">{
         fields := append(l.buildEventHeader(obs.EventType, obs.EventAt),
                 String(SpanNameKey, obs.SpanName),
                 String(LayerKey, obs.Layer),
@@ -9297,18 +9287,18 @@ func (l *logFieldBuilder) BuildObservabilityFields(obs ObservabilityFieldsInput)
                 String(FunctionKey, obs.FuncName),
         )
 
-        if obs.Latency &gt; 0 </span><span class="cov8" title="154">{
+        if obs.Latency &gt; 0 </span><span class="cov8" title="172">{
                 fields = append(fields,
                         DurationMs(LatencyKey, obs.Latency),
                 )
         }</span>
 
-        <span class="cov9" title="308">return l.appendTraceSpanFields(fields, obs.TraceID, obs.SpanID, obs.ParentSpanID)</span>
+        <span class="cov9" title="344">return l.appendTraceSpanFields(fields, obs.TraceID, obs.SpanID, obs.ParentSpanID)</span>
 }
 
 // buildEventHeader は、全イベントログ共通の先頭フィールド
 // （イベント種別・発生時刻・タイムゾーン）を構築する。
-func (l *logFieldBuilder) buildEventHeader(eventType string, at time.Time) []*Field <span class="cov9" title="432">{
+func (l *logFieldBuilder) buildEventHeader(eventType string, at time.Time) []*Field <span class="cov9" title="468">{
         return []*Field{
                 String(EventTypeKey, eventType),
                 Time(EventAtKey, at),
@@ -9322,17 +9312,17 @@ func (l *logFieldBuilder) appendTraceSpanFields(
         traceID string,
         spanID string,
         parentSpanID string,
-) []*Field <span class="cov10" title="436">{
+) []*Field <span class="cov10" title="472">{
         if !l.obsCfg.Enabled() || traceID == "" || spanID == "" </span><span class="cov5" title="24">{
                 return fields
         }</span>
 
-        <span class="cov9" title="412">fields = append(fields,
+        <span class="cov9" title="448">fields = append(fields,
                 String(TraceIDKey, traceID),
                 String(SpanIDKey, spanID),
         )
 
-        if parentSpanID == "" </span><span class="cov9" title="410">{
+        if parentSpanID == "" </span><span class="cov9" title="446">{
                 return fields
         }</span>
 
@@ -9388,14 +9378,14 @@ type logger struct {
 }
 
 // Named は、新しい名前付きの Logger を返す。
-func (l *logger) Named(name string) Logger <span class="cov7" title="523">{
+func (l *logger) Named(name string) Logger <span class="cov7" title="559">{
         return &amp;logger{
                 log: l.log.Named(name),
         }
 }</span>
 
 // CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
-func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="460">{
+func (l *logger) CallerSkip(skip int) Logger <span class="cov7" title="496">{
         return &amp;logger{
                 log: l.log.WithOptions(zap.AddCallerSkip(skip)),
         }
@@ -9407,7 +9397,7 @@ func (l *logger) Debug(msg string, fields ...*Field) <span class="cov1" title="1
 }</span>
 
 // Info は情報レベルのログを出力する。
-func (l *logger) Info(msg string, fields ...*Field) <span class="cov7" title="506">{
+func (l *logger) Info(msg string, fields ...*Field) <span class="cov7" title="542">{
         l.log.Info(msg, l.ConvertFields(fields)...)
 }</span>
 
@@ -9422,12 +9412,12 @@ func (l *logger) Error(msg string, fields ...*Field) <span class="cov4" title="4
 }</span>
 
 // ConvertFields は Field のスライスを zap.Field のスライスに変換する。
-func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title="556">{
+func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title="592">{
         zfs := make([]zap.Field, 0, len(fs))
 
-        for _, f := range fs </span><span class="cov10" title="4414">{
+        for _, f := range fs </span><span class="cov10" title="4756">{
                 switch f.kind </span>{
-                case fieldString:<span class="cov9" title="4032">
+                case fieldString:<span class="cov9" title="4356">
                         zfs = append(zfs, zap.String(f.key, f.stringValue))</span>
                 case fieldStrings:<span class="cov2" title="5">
                         zfs = append(zfs, zap.Strings(f.key, f.stringsValue))</span>
@@ -9435,7 +9425,7 @@ func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title
                         zfs = append(zfs, zap.Int(f.key, f.intValue))</span>
                 case fieldInt64:<span class="cov4" title="18">
                         zfs = append(zfs, zap.Int64(f.key, f.int64Value))</span>
-                case fieldFloat64:<span class="cov6" title="202">
+                case fieldFloat64:<span class="cov6" title="220">
                         zfs = append(zfs, zap.Float64(f.key, f.float64Value))</span>
                 case fieldBool:<span class="cov1" title="1">
                         zfs = append(zfs, zap.Bool(f.key, f.boolValue))</span>
@@ -9450,7 +9440,7 @@ func (l *logger) ConvertFields(fs []*Field) []zap.Field <span class="cov7" title
                 }
         }
 
-        <span class="cov7" title="556">return zfs</span>
+        <span class="cov7" title="592">return zfs</span>
 }
 </pre>
 		
@@ -9555,7 +9545,7 @@ import (
 )
 
 // NewTestLogger は、テスト用のLoggerインスタンスを生成します。
-func NewTestLogger(t *testing.T) Logger <span class="cov10" title="274">{
+func NewTestLogger(t *testing.T) Logger <span class="cov10" title="278">{
         t.Helper()
         return &amp;logger{log: zaptest.NewLogger(t)}
 }</span>
@@ -9577,7 +9567,7 @@ func NewObservedTestLoggerWithCaller(t *testing.T) (Logger, *observer.ObservedLo
 }</span>
 
 // NewTestLogFieldBuilder は、テスト用のLogFieldBuilderインスタンスを生成します。
-func NewTestLogFieldBuilder(t *testing.T) LogFieldBuilder <span class="cov9" title="182">{
+func NewTestLogFieldBuilder(t *testing.T) LogFieldBuilder <span class="cov9" title="186">{
         t.Helper()
 
         cfg := config.MockConfigForTest(t)
@@ -9596,16 +9586,16 @@ import "runtime"
 const skipCallerFramesForLayerTracer = 2
 
 // getCallerFullName は、本関数の直接呼び出し元のフル関数名を返す（取得失敗時は空文字）。
-func getCallerFullName() string <span class="cov10" title="312">{
+func getCallerFullName() string <span class="cov10" title="332">{
         pc, _, _, ok := runtime.Caller(skipCallerFramesForLayerTracer)
         if !ok </span><span class="cov0" title="0">{
                 return ""
         }</span>
-        <span class="cov10" title="312">fn := runtime.FuncForPC(pc)
+        <span class="cov10" title="332">fn := runtime.FuncForPC(pc)
         if fn == nil </span><span class="cov0" title="0">{
                 return ""
         }</span>
-        <span class="cov10" title="312">return fn.Name()</span>
+        <span class="cov10" title="332">return fn.Name()</span>
 }
 </pre>
 		
@@ -9638,7 +9628,7 @@ func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) 
 }</span>
 
 // BuildSpanName は、レイヤー名、パッケージ名、関数名からスパン名を構築します。
-func BuildSpanName(layer, pkgName, funcName string) string <span class="cov9" title="207">{
+func BuildSpanName(layer, pkgName, funcName string) string <span class="cov9" title="225">{
         return layer + delimiter + pkgName + delimiter + funcName
 }</span>
 
@@ -9661,7 +9651,7 @@ func StartSpanWithParent(
         tracer LayerTracer,
         name string,
         opts ...trace.SpanStartOption,
-) (*TraceContext, context.Context, func()) <span class="cov9" title="200">{
+) (*TraceContext, context.Context, func()) <span class="cov9" title="218">{
         parentSC := trace.SpanFromContext(ctx).SpanContext()
 
         childCtx, span := tracer.tracer.Start(ctx, name, opts...)
@@ -9676,22 +9666,22 @@ func StartSpanWithParent(
                 tc.parentSpanID = parentSC.SpanID().String()
         }</span>
 
-        <span class="cov9" title="200">end := func() </span><span class="cov9" title="200">{ span.End() }</span>
-        <span class="cov9" title="200">return tc, childCtx, end</span>
+        <span class="cov9" title="218">end := func() </span><span class="cov9" title="218">{ span.End() }</span>
+        <span class="cov9" title="218">return tc, childCtx, end</span>
 }
 
 // TraceID は、TraceContext から TraceID を取得します。
-func (tc *TraceContext) TraceID() string <span class="cov10" title="273">{
+func (tc *TraceContext) TraceID() string <span class="cov10" title="291">{
         return tc.traceID
 }</span>
 
 // SpanID は、TraceContext から SpanID を取得します。
-func (tc *TraceContext) SpanID() string <span class="cov10" title="273">{
+func (tc *TraceContext) SpanID() string <span class="cov10" title="291">{
         return tc.spanID
 }</span>
 
 // ParentSpanID は、TraceContext から ParentSpanID を取得します。
-func (tc *TraceContext) ParentSpanID() string <span class="cov9" title="249">{
+func (tc *TraceContext) ParentSpanID() string <span class="cov9" title="267">{
         return tc.parentSpanID
 }</span>
 </pre>
@@ -9736,13 +9726,13 @@ type LayerTracer struct {
 func (lt LayerTracer) Start(
         ctx context.Context,
         opts ...trace.SpanStartOption,
-) (context.Context, func()) <span class="cov8" title="144">{
-        if lt.funcName == "" </span><span class="cov8" title="143">{
+) (context.Context, func()) <span class="cov8" title="160">{
+        if lt.funcName == "" </span><span class="cov8" title="159">{
                 full := getCallerFullName()
                 lt.funcName = fnmeta.ExtractFunctionName(full)
         }</span>
 
-        <span class="cov8" title="144">return lt.startSpan(ctx, "", opts...)</span>
+        <span class="cov8" title="160">return lt.startSpan(ctx, "", opts...)</span>
 }
 
 // StartWithSuffix は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
@@ -9776,7 +9766,7 @@ func RunWithSpan[T any](
         layer layerName,
         pkg, funcName string,
         fn func(ctx context.Context) (T, error),
-) (context.Context, T, error) <span class="cov3" title="5">{
+) (context.Context, T, error) <span class="cov4" title="7">{
         spanName := BuildSpanName(string(layer), pkg, funcName)
 
         tc, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName)
@@ -9795,7 +9785,7 @@ func RunWithSpan[T any](
 
         lt.logSpanEvent(callSkip, obsIn)
 
-        defer func() </span><span class="cov3" title="5">{
+        defer func() </span><span class="cov4" title="7">{
                 event := SpanEventEnd
                 obsIn.EventType = event
                 obsIn.Latency = time.Since(start)
@@ -9803,22 +9793,22 @@ func RunWithSpan[T any](
                 end()
         }</span>()
 
-        <span class="cov3" title="5">v, err := fn(childCtx)
+        <span class="cov4" title="7">v, err := fn(childCtx)
         if err != nil </span><span class="cov2" title="2">{
                 var zero T
                 return childCtx, zero, err
         }</span>
 
-        <span class="cov2" title="3">return childCtx, v, nil</span>
+        <span class="cov3" title="5">return childCtx, v, nil</span>
 }
 
 // makeSpanName は、LayerTracer の情報をもとに完全なspan名を生成します。
-func (lt LayerTracer) makeSpanName(optionalName string) string <span class="cov8" title="152">{
+func (lt LayerTracer) makeSpanName(optionalName string) string <span class="cov8" title="168">{
         fullName := BuildSpanName(string(lt.layer), lt.pkgName, lt.funcName)
         if optionalName != "" </span><span class="cov3" title="5">{
                 fullName += delimiter + optionalName
         }</span>
-        <span class="cov8" title="152">return fullName</span>
+        <span class="cov8" title="168">return fullName</span>
 }
 
 // startSpan は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
@@ -9832,7 +9822,7 @@ func (lt LayerTracer) startSpan(
         parentCtx context.Context,
         optionalName string,
         opts ...trace.SpanStartOption,
-) (context.Context, func()) <span class="cov8" title="148">{
+) (context.Context, func()) <span class="cov8" title="164">{
         spanName := lt.makeSpanName(optionalName)
         tc, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName, opts...)
 
@@ -9852,7 +9842,7 @@ func (lt LayerTracer) startSpan(
         obsIn.EventType = SpanEventStart
         lt.logSpanEvent(callSkip+1, obsIn)
 
-        endSpan := func() </span><span class="cov8" title="148">{
+        endSpan := func() </span><span class="cov8" title="164">{
                 obsIn.EventType = SpanEventEnd
                 obsIn.Latency = time.Since(startTime)
 
@@ -9861,11 +9851,11 @@ func (lt LayerTracer) startSpan(
                 end()
         }</span>
 
-        <span class="cov8" title="148">return childCtx, endSpan</span>
+        <span class="cov8" title="164">return childCtx, endSpan</span>
 }
 
 // logSpanEvent は、指定された観測可能性フィールドを使用してログを記録します。
-func (lt LayerTracer) logSpanEvent(callerSkip int, obs logging.ObservabilityFieldsInput) <span class="cov10" title="306">{
+func (lt LayerTracer) logSpanEvent(callerSkip int, obs logging.ObservabilityFieldsInput) <span class="cov10" title="342">{
         lt.log.Named(obs.Layer).CallerSkip(callerSkip).Info(
                 obs.SpanName+delimiter+obs.EventType,
                 lt.lf.BuildObservabilityFields(obs)...,
@@ -9926,7 +9916,7 @@ const (
 )
 
 // NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
-func NewNoopTracerFactory(t *testing.T) TracerFactory <span class="cov10" title="112">{
+func NewNoopTracerFactory(t *testing.T) TracerFactory <span class="cov10" title="116">{
         t.Helper()
         lf := logging.NewTestLogFieldBuilder(t)
 
@@ -9936,14 +9926,14 @@ func NewNoopTracerFactory(t *testing.T) TracerFactory <span class="cov10" title=
 }</span>
 
 // NewMockControllerLayerTracer は、テスト用のコントローラーレイヤートレーサーを生成します。
-func NewMockControllerLayerTracer(t *testing.T) LayerTracer <span class="cov7" title="34">{
+func NewMockControllerLayerTracer(t *testing.T) LayerTracer <span class="cov7" title="32">{
         t.Helper()
         tf := NewNoopTracerFactory(t)
         return tf.Controller()
 }</span>
 
 // NewMockUsecaseLayerTracer は、テスト用のユースケースレイヤートレーサーを生成します。
-func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer <span class="cov5" title="13">{
+func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer <span class="cov5" title="14">{
         t.Helper()
         tf := NewNoopTracerFactory(t)
         return tf.Usecase()
@@ -10013,7 +10003,7 @@ type tracerFactory struct {
 }
 
 // NewTracerFactory は、TracerFactory を初期化して返します。
-func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.LogFieldBuilder) TracerFactory <span class="cov9" title="120">{
+func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.LogFieldBuilder) TracerFactory <span class="cov9" title="124">{
         return &amp;tracerFactory{
                 tp:  tp,
                 log: log,
@@ -10025,7 +10015,7 @@ func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.Lo
 // 呼び出し階層に依存するため、共通ヘルパへ括り出すと pkg 解決が 1 段ずれて壊れる。
 
 // Controller は Controller 層用のトレーサーを返します。
-func (t *tracerFactory) Controller() LayerTracer <span class="cov8" title="74">{
+func (t *tracerFactory) Controller() LayerTracer <span class="cov8" title="72">{
         full := getCallerFullName()
         pkg := fnmeta.ExtractPackageName(full)
 
@@ -10033,7 +10023,7 @@ func (t *tracerFactory) Controller() LayerTracer <span class="cov8" title="74">{
 }</span>
 
 // Usecase は Usecase 層用のトレーサーを返します。
-func (t *tracerFactory) Usecase() LayerTracer <span class="cov7" title="34">{
+func (t *tracerFactory) Usecase() LayerTracer <span class="cov7" title="40">{
         full := getCallerFullName()
         pkg := fnmeta.ExtractPackageName(full)
 
@@ -10049,7 +10039,7 @@ func (t *tracerFactory) Infra() LayerTracer <span class="cov8" title="59">{
 }</span>
 
 // newLayerTracer は LayerTracer を初期化して返します。
-func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTracer <span class="cov10" title="168">{
+func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTracer <span class="cov10" title="172">{
         return LayerTracer{
                 log:     t.log,
                 lf:      t.lf,
@@ -10325,7 +10315,7 @@ import (
 )
 
 // ExpectedDBError は、データベースエラーを表すテスト用のエラーを生成します。
-func ExpectedDBError() error <span class="cov6" title="8">{
+func ExpectedDBError() error <span class="cov7" title="12">{
         return xerrors.New("database error")
 }</span>
 
@@ -10403,24 +10393,24 @@ func NewPagingFrom1Based(page, perPage *int) (*Paging, error) <span class="cov10
 func (p Paging) Limit() int <span class="cov7" title="11">{ return p.limit }</span>
 
 // Limit32 は、ページの取得上限をint32型で返します。
-func (p Paging) Limit32() int32 <span class="cov7" title="14">{
+func (p Paging) Limit32() int32 <span class="cov9" title="26">{
         limit := p.limit
         if limit &gt; maxPerPage </span><span class="cov1" title="1">{
                 limit = maxPerPage
         }</span>
-        <span class="cov7" title="14">return int32(limit)</span>
+        <span class="cov9" title="26">return int32(limit)</span>
 }
 
 // Offset は、ページのオフセットを返します。
 func (p Paging) Offset() int <span class="cov7" title="11">{ return p.offset }</span>
 
 // Offset32 は、ページのオフセットをint32型で返します。
-func (p Paging) Offset32() int32 <span class="cov7" title="14">{
+func (p Paging) Offset32() int32 <span class="cov9" title="26">{
         offset := p.offset
         if offset &gt; maxOffset </span><span class="cov1" title="1">{
                 offset = maxOffset
         }</span>
-        <span class="cov7" title="14">return int32(offset)</span>
+        <span class="cov9" title="26">return int32(offset)</span>
 }
 </pre>
 		
@@ -10440,51 +10430,51 @@ const (
 )
 
 // ParseSearchTokens は、キーワード文字列をトークンに分割し、重複排除、上限設定を行います。
-func ParseSearchTokens(keyword *string, maxTokens int) []string <span class="cov3" title="11">{
+func ParseSearchTokens(keyword *string, maxTokens int) []string <span class="cov4" title="16">{
         if keyword == nil || *keyword == "" </span><span class="cov1" title="2">{
                 return []string{}
         }</span>
-        <span class="cov3" title="9">if maxTokens &lt;= 0 </span><span class="cov1" title="1">{
+        <span class="cov4" title="14">if maxTokens &lt;= 0 </span><span class="cov1" title="1">{
                 maxTokens = DefaultMaxTokens
         }</span>
 
-        <span class="cov3" title="9">k := *keyword
+        <span class="cov4" title="14">k := *keyword
         rs := []rune(k)
         if len(rs) &gt; MaxKeywordLength </span><span class="cov1" title="1">{
                 k = string(rs[:MaxKeywordLength])
         }</span>
 
-        <span class="cov3" title="9">raw := splitIntoTerms(k)
+        <span class="cov4" title="14">raw := splitIntoTerms(k)
         unique := dedupePreserveOrder(raw)
 
         return limit(unique, maxTokens)</span>
 }
 
 // splitIntoTerms は、キーワード文字列を '_' または空白で分割します。
-func splitIntoTerms(keyword string) []string <span class="cov4" title="12">{
-        return strings.FieldsFunc(keyword, func(r rune) bool </span><span class="cov10" title="1681">{
+func splitIntoTerms(keyword string) []string <span class="cov4" title="17">{
+        return strings.FieldsFunc(keyword, func(r rune) bool </span><span class="cov10" title="1726">{
                 return r == '_' || unicode.IsSpace(r)
         }</span>)
 }
 
 // dedupePreserveOrder は、配列の要素の重複を排除し、元の順序を保持します。
-func dedupePreserveOrder(ss []string) []string <span class="cov3" title="11">{
+func dedupePreserveOrder(ss []string) []string <span class="cov4" title="16">{
         seen := make(map[string]struct{}, len(ss))
         out := make([]string, 0, len(ss))
 
-        for _, t := range ss </span><span class="cov5" title="61">{
+        for _, t := range ss </span><span class="cov6" title="71">{
                 if _, ok := seen[t]; ok </span><span class="cov2" title="3">{
                         continue</span>
                 }
-                <span class="cov5" title="58">seen[t] = struct{}{}
+                <span class="cov6" title="68">seen[t] = struct{}{}
                 out = append(out, t)</span>
         }
-        <span class="cov3" title="11">return out</span>
+        <span class="cov4" title="16">return out</span>
 }
 
 // limit は、配列の要素数を上限までに制限します。
-func limit(ss []string, maxVal int) []string <span class="cov3" title="11">{
-        if len(ss) &lt;= maxVal </span><span class="cov3" title="8">{
+func limit(ss []string, maxVal int) []string <span class="cov4" title="16">{
+        if len(ss) &lt;= maxVal </span><span class="cov4" title="13">{
                 return ss
         }</span>
         <span class="cov2" title="3">return ss[:maxVal]</span>
@@ -10513,6 +10503,12 @@ type SearchParams struct {
         Active  *bool
 }
 
+// UserSearchListView は、検索結果（ページ分の一覧と総件数）を表します。
+type UserSearchListView struct {
+        Items query.UserSearchResults
+        Total int64
+}
+
 // usecase は、Usecase インターフェースの実装です。
 type usecase struct {
         tracer observability.LayerTracer
@@ -10525,13 +10521,15 @@ type Usecase interface {
         ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error)
         // CountUsersByKeyword は、キーワードに基づいてユーザーの総件数を返します。
         CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error)
+        // ListUsersByKeywordWithTotal は、検索一覧と総件数をまとめて取得します。
+        ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Paging) (*UserSearchListView, error)
 }
 
 // New は、ユーザーに関するユースケースを初期化します。
 func New(
         tf observability.TracerFactory,
         userQueryService query.UserSearchQueryService,
-) Usecase <span class="cov5" title="2">{
+) Usecase <span class="cov3" title="2">{
         return &amp;usecase{
                 tracer: tf.Usecase(),
                 userQS: userQueryService,
@@ -10539,31 +10537,47 @@ func New(
 }</span>
 
 // ListUsersByKeyword は、ユーザー一覧を取得するユースケースです。
-func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error) <span class="cov10" title="4">{
-        if filter == nil || page == nil </span><span class="cov5" title="2">{
+func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error) <span class="cov9" title="8">{
+        if filter == nil || page == nil </span><span class="cov5" title="3">{
                 return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "filter and page must not be nil")
         }</span>
 
-        <span class="cov5" title="2">ctx, endSpan := u.tracer.Start(ctx)
+        <span class="cov7" title="5">ctx, endSpan := u.tracer.Start(ctx)
         defer endSpan()
 
         return u.userQS.FindByFilter(ctx, u.toFilter(filter), page.Limit32(), page.Offset32())</span>
 }
 
 // CountUsersByKeyword は、キーワードに基づいてユーザーの総件数を返すユースケースです。
-func (u *usecase) CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error) <span class="cov8" title="3">{
+func (u *usecase) CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error) <span class="cov7" title="5">{
         if filter == nil </span><span class="cov1" title="1">{
                 return 0, xerrors.Wrap(apperror.ErrInvalidArgument, "filter must not be nil")
         }</span>
 
-        <span class="cov5" title="2">ctx, endSpan := u.tracer.Start(ctx)
+        <span class="cov6" title="4">ctx, endSpan := u.tracer.Start(ctx)
         defer endSpan()
 
         return u.userQS.CountByFilter(ctx, u.toFilter(filter))</span>
 }
 
+// ListUsersByKeywordWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
+func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Paging) (*UserSearchListView, error) <span class="cov6" title="4">{
+        ctx, endSpan := u.tracer.Start(ctx)
+        defer endSpan()
+
+        items, err := u.ListUsersByKeyword(ctx, filter, page)
+        if err != nil </span><span class="cov3" title="2">{
+                return nil, err
+        }</span>
+        <span class="cov3" title="2">total, err := u.CountUsersByKeyword(ctx, filter)
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov1" title="1">return &amp;UserSearchListView{Items: items, Total: total}, nil</span>
+}
+
 // toFilter は、SearchParams から検索フィルタを構築します。
-func (u *usecase) toFilter(p *SearchParams) *query.UserSearchFilter <span class="cov10" title="4">{
+func (u *usecase) toFilter(p *SearchParams) *query.UserSearchFilter <span class="cov10" title="9">{
         return &amp;query.UserSearchFilter{
                 Active:   p.Active,
                 Keywords: search.ParseSearchTokens(p.Keyword, search.DefaultMaxTokens),
@@ -10609,6 +10623,12 @@ type UserView struct {
         Street         string
         Building       *string
         DeletedAt      *time.Time
+}
+
+// UserListView は、一覧取得結果（ページ分の一覧と総件数）を表します。
+type UserListView struct {
+        Items []UserView
+        Total int64
 }
 
 // UpdateProfileParams は、ユーザープロフィール更新の入力（可変フィールド）を表します。
@@ -10659,6 +10679,8 @@ type usecase struct {
 type Usecase interface {
         // ListUsers は、ユーザー一覧を取得します。
         ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error)
+        // ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
+        ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error)
         // CreateUser は、ユーザーを作成します。
         CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
         // CountUsers は、ユーザーの総件数を返します。
@@ -10694,52 +10716,52 @@ func New(
         }
 }</span>
 
-func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error) <span class="cov7" title="5">{
-        if page == nil </span><span class="cov1" title="1">{
+func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error) <span class="cov10" title="9">{
+        if page == nil </span><span class="cov3" title="2">{
                 return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "page must not be nil")
         }</span>
 
-        <span class="cov6" title="4">ctx, endSpan := u.tracer.Start(ctx)
+        <span class="cov8" title="7">ctx, endSpan := u.tracer.Start(ctx)
         defer endSpan()
 
         us, err := u.userRepo.FindByActive(ctx, active, page.Limit32(), page.Offset32())
-        if err != nil </span><span class="cov1" title="1">{
+        if err != nil </span><span class="cov3" title="2">{
                 return nil, err
         }</span>
 
-        <span class="cov5" title="3">_, prefectureMap, err := observability.RunWithSpan(
-                ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) </span><span class="cov5" title="3">{
+        <span class="cov7" title="5">_, prefectureMap, err := observability.RunWithSpan(
+                ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) </span><span class="cov7" title="5">{
                         pids := make([]uuid.UUID, len(us))
-                        for i, ue := range us </span><span class="cov5" title="3">{
+                        for i, ue := range us </span><span class="cov7" title="5">{
                                 pids[i] = ue.PrefectureID()
                         }</span>
 
-                        <span class="cov5" title="3">ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
+                        <span class="cov7" title="5">ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
                         if pftErr != nil </span><span class="cov1" title="1">{
                                 return nil, pftErr
                         }</span>
 
-                        <span class="cov3" title="2">prefectureMap := make(map[uuid.UUID]*prefecture.Prefecture, len(ps))
-                        for _, p := range ps </span><span class="cov1" title="1">{
+                        <span class="cov6" title="4">prefectureMap := make(map[uuid.UUID]*prefecture.Prefecture, len(ps))
+                        for _, p := range ps </span><span class="cov5" title="3">{
                                 prefectureMap[p.ID()] = p
                         }</span>
 
-                        <span class="cov3" title="2">return prefectureMap, nil</span>
+                        <span class="cov6" title="4">return prefectureMap, nil</span>
                 })
-        <span class="cov5" title="3">if err != nil </span><span class="cov1" title="1">{
+        <span class="cov7" title="5">if err != nil </span><span class="cov1" title="1">{
                 return nil, err
         }</span>
 
-        <span class="cov3" title="2">dtos := make([]UserView, len(us))
-        for i, ue := range us </span><span class="cov3" title="2">{
+        <span class="cov6" title="4">dtos := make([]UserView, len(us))
+        for i, ue := range us </span><span class="cov6" title="4">{
                 p, ok := prefectureMap[ue.PrefectureID()]
                 if !ok </span><span class="cov1" title="1">{
                         return nil, errOrphanPrefecture
                 }</span>
-                <span class="cov1" title="1">dtos[i] = toUserView(ue, p.Name())</span>
+                <span class="cov5" title="3">dtos[i] = toUserView(ue, p.Name())</span>
         }
 
-        <span class="cov1" title="1">return dtos, nil</span>
+        <span class="cov5" title="3">return dtos, nil</span>
 }
 
 // CreateUser は、ユーザーを作成するユースケースです。
@@ -10799,11 +10821,27 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserVie
 }
 
 // CountUsers は、ユーザーの総件数を返すユースケースです。
-func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) <span class="cov1" title="1">{
+func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) <span class="cov5" title="3">{
         ctx, endSpan := u.tracer.Start(ctx)
         defer endSpan()
         return u.userRepo.CountByActive(ctx, active)
 }</span>
+
+// ListUsersWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
+func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error) <span class="cov6" title="4">{
+        ctx, endSpan := u.tracer.Start(ctx)
+        defer endSpan()
+
+        items, err := u.ListUsers(ctx, active, page)
+        if err != nil </span><span class="cov3" title="2">{
+                return nil, err
+        }</span>
+        <span class="cov3" title="2">total, err := u.CountUsers(ctx, active)
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov1" title="1">return &amp;UserListView{Items: items, Total: total}, nil</span>
+}
 
 // GetUser は、IDから単一ユーザーを取得するユースケースです。
 func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) <span class="cov6" title="4">{
@@ -11007,7 +11045,7 @@ func (u *usecase) resolvePatchPrefecture(ctx context.Context, name *string, curr
 }
 
 // toUserView は、ユーザーエンティティと都道府県名から DTO を構築します。
-func toUserView(u *user.User, prefectureName string) UserView <span class="cov8" title="6">{
+func toUserView(u *user.User, prefectureName string) UserView <span class="cov9" title="8">{
         return UserView{
                 FirstName:      u.FirstName(),
                 LastName:       u.LastName(),
@@ -11216,18 +11254,18 @@ const unknown = "unknown"
 //
 //        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser"
 //          → lhs: "user.(*UserUsecase)", rhs: "GetUser"
-func splitFuncName(full string) (string, string) <span class="cov10" title="323">{
+func splitFuncName(full string) (string, string) <span class="cov10" title="343">{
         if full == "" </span><span class="cov2" title="3">{
                 return unknown, ""
         }</span>
 
         // パス部分を除去: internal/usecase/user.(*UserUsecase).GetUser
-        <span class="cov9" title="320">if idx := strings.LastIndex(full, "/"); idx &gt;= 0 </span><span class="cov9" title="317">{
+        <span class="cov9" title="340">if idx := strings.LastIndex(full, "/"); idx &gt;= 0 </span><span class="cov9" title="337">{
                 full = full[idx+1:]
         }</span>
 
         // 最後の "." で分割: lhs = "user.(*UserUsecase)", rhs = "GetUser"
-        <span class="cov9" title="320">if idx := strings.LastIndex(full, "."); idx &gt;= 0 </span><span class="cov9" title="316">{
+        <span class="cov9" title="340">if idx := strings.LastIndex(full, "."); idx &gt;= 0 </span><span class="cov9" title="336">{
                 return full[:idx], full[idx+1:]
         }</span>
 
@@ -11241,12 +11279,12 @@ func splitFuncName(full string) (string, string) <span class="cov10" title="323"
 //
 //        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser"
 //          → "GetUser"
-func ExtractFunctionName(full string) string <span class="cov8" title="147">{
+func ExtractFunctionName(full string) string <span class="cov8" title="163">{
         _, fn := splitFuncName(full)
         if fn == "" </span><span class="cov2" title="2">{
                 return unknown
         }</span>
-        <span class="cov8" title="145">return fn</span>
+        <span class="cov8" title="161">return fn</span>
 }
 
 // ExtractPackageName は、runtime.Func のフルネームからパッケージ名を抽出します。
@@ -11256,7 +11294,7 @@ func ExtractFunctionName(full string) string <span class="cov8" title="147">{
 //
 //        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser" → "user"
 //        "github.com/org/proj/internal/usecase/user.UserUsecase.GetUser"    → "user"
-func ExtractPackageName(full string) string <span class="cov9" title="172">{
+func ExtractPackageName(full string) string <span class="cov8" title="176">{
         lhs, fn := splitFuncName(full)
         // 分割できない（"." が無い）入力は抽出不能として ExtractFunctionName と
         // 同様に unknown へ正規化する。
@@ -11264,11 +11302,11 @@ func ExtractPackageName(full string) string <span class="cov9" title="172">{
                 return unknown
         }</span>
 
-        <span class="cov9" title="170">if idx := strings.Index(lhs, "."); idx &gt;= 0 </span><span class="cov5" title="16">{
+        <span class="cov8" title="174">if idx := strings.Index(lhs, "."); idx &gt;= 0 </span><span class="cov5" title="21">{
                 return lhs[:idx]
         }</span>
 
-        <span class="cov8" title="154">return lhs</span>
+        <span class="cov8" title="153">return lhs</span>
 }
 </pre>
 		
@@ -11310,12 +11348,12 @@ func (OS) Glob(pattern string) ([]string, error) <span class="cov1" title="1">{
 package ptr
 
 // To は、引数として渡された値のポインタを返します。
-func To[T any](v T) *T <span class="cov10" title="253">{ return &amp;v }</span>
+func To[T any](v T) *T <span class="cov10" title="255">{ return &amp;v }</span>
 
 // Copy は、ポインタの指す値をシャローコピーした新しいポインタを返します（nil 入力時は nil）。
 // T が参照型フィールド（スライス・マップ・ポインタ等）を含む場合、その参照先は複製元と共有されます。
-func Copy[T any](v *T) *T <span class="cov9" title="205">{
-        if v == nil </span><span class="cov8" title="96">{
+func Copy[T any](v *T) *T <span class="cov9" title="211">{
+        if v == nil </span><span class="cov8" title="102">{
                 return nil
         }</span>
         <span class="cov8" title="109">c := *v
@@ -11366,9 +11404,9 @@ const (
 )
 
 // ValidateInRange は 文字数が minLen～maxLen 内かを判定し、範囲外なら理由メッセージを返します。
-func ValidateInRange(s string, minLen, maxLen int) (bool, string) <span class="cov10" title="884">{
+func ValidateInRange(s string, minLen, maxLen int) (bool, string) <span class="cov10" title="893">{
         n := RuneCount(s)
-        if minLen &lt;= n &amp;&amp; n &lt;= maxLen </span><span class="cov9" title="854">{
+        if minLen &lt;= n &amp;&amp; n &lt;= maxLen </span><span class="cov9" title="863">{
                 return true, ""
         }</span>
         <span class="cov5" title="30">return false, fmt.Sprintf(errMsgInRange, minLen, maxLen, n)</span>
@@ -11419,7 +11457,7 @@ import (
 )
 
 // RuneCount は UTF-8 文字列の文字数を返します。
-func RuneCount(s string) int <span class="cov10" title="933">{
+func RuneCount(s string) int <span class="cov10" title="942">{
         return utf8.RuneCountInString(s)
 }</span>
 
@@ -11462,7 +11500,7 @@ import (
         guuid "github.com/google/uuid"
 )
 
-func fromGoogle(g guuid.UUID) UUID <span class="cov10" title="286">{
+func fromGoogle(g guuid.UUID) UUID <span class="cov10" title="288">{
         return UUID{b: g}
 }</span>
 
@@ -11483,7 +11521,7 @@ import (
 //
 // 本番利用は想定していません。
 // v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
-func NewTestFromSalt(t testing.TB, salt string) UUID <span class="cov10" title="54">{
+func NewTestFromSalt(t testing.TB, salt string) UUID <span class="cov10" title="56">{
         t.Helper()
         ns := uuid.NameSpaceURL
         g := uuid.NewSHA1(ns, []byte(salt))
@@ -11522,7 +11560,7 @@ func (u UUID) Bytes() [16]byte <span class="cov2" title="2">{ return u.b }</span
 func (u UUID) ToPrimitive() uuid.UUID <span class="cov5" title="15">{ return toGoogle(u) }</span>
 
 // IsNil は、UUIDが全てゼロであるかどうかを判定します。
-func (u UUID) IsNil() bool <span class="cov10" title="220">{ return u.b == [16]byte{} }</span>
+func (u UUID) IsNil() bool <span class="cov10" title="223">{ return u.b == [16]byte{} }</span>
 
 // Equal は、引数のUUIDと等しいかどうかを判定します。
 func (u UUID) Equal(v UUID) bool <span class="cov3" title="4">{ return u.b == v.b }</span>
@@ -11570,13 +11608,13 @@ import (
 )
 
 // New は、新しいエラーを生成します。
-func New(msg string) error <span class="cov9" title="826">{
+func New(msg string) error <span class="cov9" title="830">{
         return errors.New(msg)
 }</span>
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
-func Wrap(err error, msg string) error <span class="cov10" title="1634">{
+func Wrap(err error, msg string) error <span class="cov10" title="1636">{
         return errors.Wrap(err, msg)
 }</span>
 
