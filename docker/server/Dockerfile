@@ -31,19 +31,20 @@ RUN go build -mod=vendor -trimpath \
 # NOTE: 本番利用時にはダイジェストを指定することを推奨
 FROM alpine:3.23 AS runtime
 
+# デプロイ対象環境（prd/stg/dev）。当該 env ファイルのみ焼き込み、ENV として固定する。
+ARG APP_ENV=prd
+
 RUN apk add --no-cache ca-certificates tzdata
 
 RUN addgroup -S app && adduser -S app -G app
 USER app
 
 COPY --from=builder --chown=app:app /app/bin/server /app/server
-COPY --from=builder --chown=app:app /app/env/.env.dev /app/env/.env.dev
-COPY --from=builder --chown=app:app /app/env/.env.stg /app/env/.env.stg
-COPY --from=builder --chown=app:app /app/env/.env.prd /app/env/.env.prd
+COPY --from=builder --chown=app:app /app/env/.env.${APP_ENV} /app/env/.env.${APP_ENV}
 
 WORKDIR /app
 
-ENV ENV=prd
+ENV ENV=${APP_ENV}
 
 CMD ["/app/server", "serve"]
 
