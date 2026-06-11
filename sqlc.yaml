@@ -29,14 +29,17 @@ sql:
         output_querier_file_name: querier.gen.go
         output_copyfrom_file_name: copyfrom.gen.go
         overrides:
-          - db_type: "pg_catalog.numeric"
-            go_type: github.com/shopspring/decimal.Decimal
-          - db_type: "pg_catalog.numeric"
-            go_type:
-              import: github.com/shopspring/decimal
-              type: Decimal
-              pointer: true
-            nullable: true
+          # numeric/decimal 列を扱う場合の推奨型（shopspring/decimal）。
+          # 利用時はコメントを外し go.mod に github.com/shopspring/decimal を追加すること
+          # （未追加のまま有効化すると numeric 列生成時にビルドが壊れる）。
+          # - db_type: "pg_catalog.numeric"
+          #   go_type: github.com/shopspring/decimal.Decimal
+          # - db_type: "pg_catalog.numeric"
+          #   go_type:
+          #     import: github.com/shopspring/decimal
+          #     type: Decimal
+          #     pointer: true
+          #   nullable: true
           - db_type: uuid
             go_type:
               import: go-boilerplate/pkg/uuid
