@@ -20,7 +20,8 @@ func TestNewJobCore(t *testing.T) {
 	t.Parallel()
 
 	// ジョブ用 fx グラフの結線が欠落なく成立することを検証する（コンストラクタの実体実行は伴わない）。
-	require.NoError(t, fx.ValidateApp(NewJobCore(), fx.NopLogger))
+	// 本番と同じ fx.WithLogger(NewFxEventLogger) を渡し、ロガー構成子の依存解決も併せて検証する。
+	require.NoError(t, fx.ValidateApp(NewJobCore(), fx.WithLogger(NewFxEventLogger)))
 }
 
 func TestNewJobCore_BootsWithMockedDB(t *testing.T) {

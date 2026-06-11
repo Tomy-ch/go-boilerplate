@@ -41,10 +41,16 @@ func TestFxEventLogger_LogEvent(t *testing.T) {
 		{"Supply失敗はErrorで記録される", &fxevent.Supplied{TypeName: "T", Err: boom}, "fx supply failed", "error"},
 		{"Provide失敗はErrorで記録される", &fxevent.Provided{ConstructorName: "ctor", Err: boom}, "fx provide failed", "error"},
 		{"Invoke失敗はErrorで記録される", &fxevent.Invoked{FunctionName: "f", Err: boom}, "fx invoke failed", "error"},
+		{"Replace失敗はErrorで記録される", &fxevent.Replaced{Err: boom}, "fx replace failed", "error"},
+		{"Decorate失敗はErrorで記録される", &fxevent.Decorated{DecoratorName: "dec", Err: boom}, "fx decorate failed", "error"},
+		{"LoggerInitialized失敗はErrorで記録される", &fxevent.LoggerInitialized{Err: boom}, "fx logger initialization failed", "error"},
 		{"Started失敗はErrorで記録される", &fxevent.Started{Err: boom}, "fx application failed to start", "error"},
 		{"Started成功はInfoで記録される", &fxevent.Started{}, "fx application started", "info"},
 		{"Stopped失敗はErrorで記録される", &fxevent.Stopped{Err: boom}, "fx application failed to stop", "error"},
-		{"RolledBackはErrorで記録される", &fxevent.RolledBack{Err: boom}, "fx start rolled back", "error"},
+		{"Stopped成功はInfoで記録される", &fxevent.Stopped{}, "fx application stopped", "info"},
+		{"RollingBackは起動失敗をErrorで記録する", &fxevent.RollingBack{StartErr: boom}, "fx start failed, rolling back", "error"},
+		{"RolledBack失敗はErrorで記録される", &fxevent.RolledBack{Err: boom}, "fx rollback failed", "error"},
+		{"RolledBack成功(Err nil)は無視される", &fxevent.RolledBack{}, "", ""},
 		{"対象外イベントは無視される", &fxevent.Invoking{FunctionName: "f"}, "", ""},
 	}
 

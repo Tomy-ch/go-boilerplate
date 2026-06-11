@@ -26,42 +26,23 @@ func NewFxEventLogger(logger logging.Logger) fxevent.Logger {
 func (f *fxEventLogger) LogEvent(event fxevent.Event) {
 	switch e := event.(type) {
 	case *fxevent.OnStartExecuted:
-		if e.Err != nil {
-			f.logger.Error("fx OnStart hook failed",
-				logging.String("callee", e.FunctionName),
-				logging.String("caller", e.CallerName),
-				logging.Error(logging.ErrorKey, e.Err),
-			)
-		}
+		f.errorIf(e.Err, "fx OnStart hook failed",
+			logging.String("callee", e.FunctionName), logging.String("caller", e.CallerName))
 	case *fxevent.OnStopExecuted:
-		if e.Err != nil {
-			f.logger.Error("fx OnStop hook failed",
-				logging.String("callee", e.FunctionName),
-				logging.String("caller", e.CallerName),
-				logging.Error(logging.ErrorKey, e.Err),
-			)
-		}
+		f.errorIf(e.Err, "fx OnStop hook failed",
+			logging.String("callee", e.FunctionName), logging.String("caller", e.CallerName))
 	case *fxevent.Supplied:
-		if e.Err != nil {
-			f.logger.Error("fx supply failed",
-				logging.String("type", e.TypeName),
-				logging.Error(logging.ErrorKey, e.Err),
-			)
-		}
+		f.errorIf(e.Err, "fx supply failed", logging.String("type", e.TypeName))
 	case *fxevent.Provided:
-		if e.Err != nil {
-			f.logger.Error("fx provide failed",
-				logging.String("constructor", e.ConstructorName),
-				logging.Error(logging.ErrorKey, e.Err),
-			)
-		}
+		f.errorIf(e.Err, "fx provide failed", logging.String("constructor", e.ConstructorName))
 	case *fxevent.Invoked:
-		if e.Err != nil {
-			f.logger.Error("fx invoke failed",
-				logging.String("function", e.FunctionName),
-				logging.Error(logging.ErrorKey, e.Err),
-			)
-		}
+		f.errorIf(e.Err, "fx invoke failed", logging.String("function", e.FunctionName))
+	case *fxevent.Replaced:
+		f.errorIf(e.Err, "fx replace failed")
+	case *fxevent.Decorated:
+		f.errorIf(e.Err, "fx decorate failed", logging.String("decorator", e.DecoratorName))
+	case *fxevent.LoggerInitialized:
+		f.errorIf(e.Err, "fx logger initialization failed")
 	case *fxevent.Started:
 		if e.Err != nil {
 			f.logger.Error("fx application failed to start", logging.Error(logging.ErrorKey, e.Err))
@@ -71,8 +52,20 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) {
 	case *fxevent.Stopped:
 		if e.Err != nil {
 			f.logger.Error("fx application failed to stop", logging.Error(logging.ErrorKey, e.Err))
+		} else {
+			f.logger.Info("fx application stopped")
 		}
+	case *fxevent.RollingBack:
+		f.logger.Error("fx start failed, rolling back", logging.Error(logging.ErrorKey, e.StartErr))
 	case *fxevent.RolledBack:
-		f.logger.Error("fx start rolled back", logging.Error(logging.ErrorKey, e.Err))
+		f.errorIf(e.Err, "fx rollback failed")
 	}
+}
+
+// errorIf は、err が非 nil のときのみ Error ログを出力する（イベント種別ごとの nil ガードを集約）。
+func (f *fxEventLogger) errorIf(err error, msg string, fields ...*logging.Field) {
+	if err == nil {
+		return
+	}
+	f.logger.Error(msg, append(fields, logging.Error(logging.ErrorKey, err))...)
 }
