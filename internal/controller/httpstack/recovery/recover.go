@@ -44,7 +44,7 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 // newRecoverLogErrorFunc は、リカバリミドルウェアのログ出力関数を生成します。
 func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c echo.Context, err error, stack []byte) error {
 	return func(c echo.Context, err error, stack []byte) error {
-		reqIn := server.BuildHTTPRequestLogInput(c)
+		reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic)
 		recoverFields := []*logging.Field{
 			logging.String(logging.InternalErrorKey, err.Error()),
 			logging.String(logging.InternalStackTraceKey, string(stack)),

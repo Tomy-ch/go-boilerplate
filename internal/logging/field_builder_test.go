@@ -54,7 +54,8 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 		URI:      "/api/v1/example?key3=value3&key4=value4a&key4=value4b",
 		RemoteIP: "192.168.1.1",
 
-		EventAt: time.Now(),
+		EventType: EventTypeStart,
+		EventAt:   time.Now(),
 
 		Host:          "example.com",
 		Scheme:        "https",
@@ -131,6 +132,16 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 
 			actual := lf.BuildHTTPRequestFields(input)
 			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("指定したイベント種別がevent_typeに反映される", func(t *testing.T) {
+			t.Parallel()
+
+			input := exampleInput
+			input.EventType = EventTypePanic
+
+			actual := lf.BuildHTTPRequestFields(input)
+			assert.Contains(t, actual, String(EventTypeKey, EventTypePanic))
 		})
 	})
 }

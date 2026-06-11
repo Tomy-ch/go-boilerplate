@@ -9,6 +9,10 @@ const (
 	EventTypeStart = "start"
 	// EventTypeEnd は、終了イベントを表すイベントタイプの値です。
 	EventTypeEnd = "end"
+	// EventTypeError は、エラー応答イベントを表すイベントタイプの値です。
+	EventTypeError = "error"
+	// EventTypePanic は、パニック復旧イベントを表すイベントタイプの値です。
+	EventTypePanic = "panic"
 	// EventAtKey は、イベント発生時刻を表すログフィールドのキーです。
 	EventAtKey = "event_at"
 	// EventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。
