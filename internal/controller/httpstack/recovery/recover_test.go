@@ -105,6 +105,8 @@ func TestMiddleware_realPanic(t *testing.T) {
 			require.Len(t, entries, 1)
 			cm := entries[0].ContextMap()
 
+			assert.Equal(t, logging.EventTypePanic, cm[logging.EventTypeKey])
+
 			errStr, ok := cm[logging.InternalErrorKey].(string)
 			require.True(t, ok)
 			assert.Contains(t, errStr, "boom-panic")

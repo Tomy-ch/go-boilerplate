@@ -54,7 +54,7 @@ func Test_logger_Named(t *testing.T) {
 	})
 }
 
-func Test_logger_ConvertFields(t *testing.T) {
+func Test_logger_convertFields(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

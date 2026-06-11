@@ -24,7 +24,6 @@ type logFieldBuilder struct {
 // HTTPRequestLogInput は、HTTPリクエストのログ出力用の入力情報をまとめた構造体です。
 type HTTPRequestLogInput struct {
 	// EventType は、イベント種別（start/error/panic）を表す。
-	// リクエスト開始は start、エラー応答は error、パニック復旧は panic を指定する。
 	EventType string
 	EventAt   time.Time
 
