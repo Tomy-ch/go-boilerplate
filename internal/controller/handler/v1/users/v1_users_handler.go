@@ -44,24 +44,19 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 		return nil, err
 	}
 
-	dtos, err := s.uc.ListUsers(ctx, request.Params.Active, page)
+	list, err := s.uc.ListUsersWithTotal(ctx, request.Params.Active, page)
 	if err != nil {
 		return nil, err
 	}
 
-	total, err := s.uc.CountUsers(ctx, request.Params.Active)
-	if err != nil {
-		return nil, err
-	}
-
-	users := make([]gen.UserResponse, len(dtos))
-	for i, dto := range dtos {
+	users := make([]gen.UserResponse, len(list.Items))
+	for i, dto := range list.Items {
 		users[i] = toUserResponse(dto)
 	}
 
 	res := gen.UsersResponse{
 		Users:  users,
-		Total:  total,
+		Total:  list.Total,
 		Limit:  page.Limit(),
 		Offset: page.Offset(),
 	}

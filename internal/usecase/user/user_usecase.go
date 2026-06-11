@@ -38,6 +38,12 @@ type UserView struct {
 	DeletedAt      *time.Time
 }
 
+// UserListView は、一覧取得結果（ページ分の一覧と総件数）を表します。
+type UserListView struct {
+	Items []UserView
+	Total int64
+}
+
 // UpdateProfileParams は、ユーザープロフィール更新の入力（可変フィールド）を表します。
 type UpdateProfileParams struct {
 	FirstName      string
@@ -86,6 +92,8 @@ type usecase struct {
 type Usecase interface {
 	// ListUsers は、ユーザー一覧を取得します。
 	ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error)
+	// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
+	ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error)
 	// CreateUser は、ユーザーを作成します。
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
 	// CountUsers は、ユーザーの総件数を返します。
@@ -230,6 +238,22 @@ func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 	return u.userRepo.CountByActive(ctx, active)
+}
+
+// ListUsersWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
+func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	items, err := u.ListUsers(ctx, active, page)
+	if err != nil {
+		return nil, err
+	}
+	total, err := u.CountUsers(ctx, active)
+	if err != nil {
+		return nil, err
+	}
+	return &UserListView{Items: items, Total: total}, nil
 }
 
 // GetUser は、IDから単一ユーザーを取得するユースケースです。

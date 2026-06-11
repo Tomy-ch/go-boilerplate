@@ -36,11 +36,8 @@ func TestV1Users_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				CountUsers(gomock.Any(), gomock.Any()).
-				Return(int64(1), nil)
-			mockApp.EXPECT().
-				ListUsers(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return([]user.UserView{expectedDTO}, nil)
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&user.UserListView{Items: []user.UserView{expectedDTO}, Total: 1}, nil)
 
 			v1users.BindHandler(e, tf, mockApp)
 

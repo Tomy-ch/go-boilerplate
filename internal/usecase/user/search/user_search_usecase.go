@@ -20,6 +20,12 @@ type SearchParams struct {
 	Active  *bool
 }
 
+// UserSearchListView は、検索結果（ページ分の一覧と総件数）を表します。
+type UserSearchListView struct {
+	Items query.UserSearchResults
+	Total int64
+}
+
 // usecase は、Usecase インターフェースの実装です。
 type usecase struct {
 	tracer observability.LayerTracer
@@ -32,6 +38,8 @@ type Usecase interface {
 	ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error)
 	// CountUsersByKeyword は、キーワードに基づいてユーザーの総件数を返します。
 	CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error)
+	// ListUsersByKeywordWithTotal は、検索一覧と総件数をまとめて取得します。
+	ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Paging) (*UserSearchListView, error)
 }
 
 // New は、ユーザーに関するユースケースを初期化します。
@@ -67,6 +75,22 @@ func (u *usecase) CountUsersByKeyword(ctx context.Context, filter *SearchParams)
 	defer endSpan()
 
 	return u.userQS.CountByFilter(ctx, u.toFilter(filter))
+}
+
+// ListUsersByKeywordWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
+func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Paging) (*UserSearchListView, error) {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	items, err := u.ListUsersByKeyword(ctx, filter, page)
+	if err != nil {
+		return nil, err
+	}
+	total, err := u.CountUsersByKeyword(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	return &UserSearchListView{Items: items, Total: total}, nil
 }
 
 // toFilter は、SearchParams から検索フィルタを構築します。
