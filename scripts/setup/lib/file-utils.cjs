@@ -51,6 +51,7 @@ function listFilesRecursive(dirPath, options = {}, files = []) {
   const excludedDirectories = options.excludedDirectories ?? new Set()
   const shouldIncludeFile = options.shouldIncludeFile ?? (() => true)
   const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   for (const entry of entries) {
     const entryPath = path.join(dirPath, entry.name)

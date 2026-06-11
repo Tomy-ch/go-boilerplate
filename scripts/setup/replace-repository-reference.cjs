@@ -37,26 +37,26 @@ function updateReadme(content, repository) {
   const repoName = repository.split("/")[1]
 
   return content
-    .replace(/^# .*/m, `# ${repoName}`)
+    .replace(/^# .*/m, () => `# ${repoName}`)
     .replace(
       /https:\/\/img\.shields\.io\/github\/go-mod\/go-version\/[^\s)]+/g,
-      `https://img.shields.io/github/go-mod/go-version/${repository}`
+      () => `https://img.shields.io/github/go-mod/go-version/${repository}`
     )
     .replace(
       /https:\/\/img\.shields\.io\/github\/license\/[^\s)]+/g,
-      `https://img.shields.io/github/license/${repository}`
+      () => `https://img.shields.io/github/license/${repository}`
     )
     .replace(
       /https:\/\/github\.com\/[^/\s>]+\/[^/\s>]+\.git/g,
-      `https://github.com/${repository}.git`
+      () => `https://github.com/${repository}.git`
     )
-    .replace(/^cd .*/m, `cd ${repoName}`)
+    .replace(/^cd .*/m, () => `cd ${repoName}`)
 }
 
 function updateOpenapi(content, repository) {
   return content.replace(
     /^  termsOfService: https:\/\/github\.com\/.*$/m,
-    `  termsOfService: https://github.com/${repository}`
+    () => `  termsOfService: https://github.com/${repository}`
   )
 }
 

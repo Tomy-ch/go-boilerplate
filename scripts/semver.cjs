@@ -9,8 +9,8 @@ if (!version) {
 }
 
 const v = version.replace(/^v/, "");
-if (!/^\d+\.\d+\.\d+$/.test(v)) {
-  console.error("version must be in the format vX.Y.Z");
+if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(v)) {
+  console.error("version must be in the format X.Y.Z (optional leading 'v')");
   process.exit(1);
 }
 let [major, minor, patch] = v.split(".").map(Number);

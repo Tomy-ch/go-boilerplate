@@ -1,5 +1,5 @@
 function ensureRepositoryReference(value) {
-  if (!/^[^/\s]+\/[^/\s]+$/.test(value)) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(value)) {
     throw new Error("リポジトリ参照は <owner>/<repo> 形式で指定してください。")
   }
 }
