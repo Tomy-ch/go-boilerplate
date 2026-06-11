@@ -3,7 +3,6 @@ package dumpschema
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/exec"
 	"go-boilerplate/pkg/fs"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const schemaFilePerm = 0o644 // rw-r--r--
@@ -94,12 +94,12 @@ func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) erro
 			logging.String("out", g.schemaRelPath),
 			logging.Error(logging.ErrorKey, err),
 		)
-		return fmt.Errorf("pg_dump failed: %w", err)
+		return xerrors.Wrap(err, "pg_dump failed")
 	}
 
 	schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
 	if err := g.fs.WriteFile(schemaAbs, out, g.permission); err != nil {
-		return fmt.Errorf("failed to write schema file: %w", err)
+		return xerrors.Wrap(err, "failed to write schema file")
 	}
 
 	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("pg_dump schema completed",
@@ -116,7 +116,7 @@ func (g *Generator) sanitizeSchemaInPlace() error {
 
 	b, err := g.fs.ReadFile(srcAbs)
 	if err != nil {
-		return fmt.Errorf("read schema: %w", err)
+		return xerrors.Wrap(err, "read schema")
 	}
 
 	lines := strings.Split(string(b), "\n")
@@ -136,7 +136,7 @@ func (g *Generator) sanitizeSchemaInPlace() error {
 	}
 
 	if err := g.fs.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permission); err != nil {
-		return fmt.Errorf("write sanitized schema: %w", err)
+		return xerrors.Wrap(err, "write sanitized schema")
 	}
 
 	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",

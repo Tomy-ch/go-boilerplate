@@ -7,6 +7,7 @@ import (
 
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/exec"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -61,7 +62,7 @@ func fixCollation(ctx context.Context, runner exec.Runner, logger logging.Logger
 				logging.String("sql", sql),
 				logging.Error(logging.ErrorKey, err),
 			)
-			return fmt.Errorf("psql command failed: %w", err)
+			return xerrors.Wrap(err, "psql command failed")
 		}
 	}
 
