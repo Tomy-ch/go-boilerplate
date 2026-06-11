@@ -69,9 +69,12 @@ func RunJob() (StartFunc, StopFunc) {
 				logging.Error(logging.JobErrorKey, err),
 			)
 			l.Error("failed to start job application", fields...)
-			done <- err
-			close(done)
-			return done
+			// 共有 done は hook goroutine の単独所有のため触れず、起動失敗は専用チャネルで返す
+			// （done を触ると hook 側と二重 close／送信になり得る）。
+			failCh := make(chan error, 1)
+			failCh <- err
+			close(failCh)
+			return failCh
 		}
 
 		fields := append(jobEventFields(logging.EventTypeStart, osCfg.TimeZone()),
