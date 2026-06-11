@@ -96,7 +96,7 @@ func Test_logger_ConvertFields(t *testing.T) {
 				zap.NamedError("key6", expectedError),
 				zap.Any("key7", expectedAny),
 			}
-			actual := l.ConvertFields(fields)
+			actual := l.convertFields(fields)
 			assert.Equal(t, expected, actual)
 		})
 	})
