@@ -9,7 +9,7 @@ max_line_length = 500
 ; - backports to 3.13 & 3.14 break running programs on Python version upgrade (multiprocessing) :
 ;   https://github.com/python/cpython/issues/142206
 processes = 1
-sql_file_exts = .sql,.sql.j2,.dml,.ddl
+sql_file_exts = .sql
 
 [sqlfluff:templater:jinja]
 ignore_template_errors = True

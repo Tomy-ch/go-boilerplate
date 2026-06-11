@@ -10,10 +10,7 @@ exclude_rules = RF03,AL03,RF02
 ; - backports to 3.13 & 3.14 break running programs on Python version upgrade (multiprocessing) :
 ;   https://github.com/python/cpython/issues/142206
 processes = 1
-sql_file_exts = .sql,.sql.j2,.dml,.ddl
-
-[sqlfluff:templater:jinja]
-ignore_template_errors = True
+sql_file_exts = .sql
 
 [sqlfluff:indentation]
 implicit_indents = allow
@@ -37,6 +34,4 @@ ignore_words = name
 [sqlfluff:templater:placeholder]
 param_regex = @(?P<param_name>[A-Za-z_][A-Za-z0-9_]*)
 
-limit_param = 100
-offset_param = 0
 ids_param = '{00000000-0000-0000-0000-000000000000}'
