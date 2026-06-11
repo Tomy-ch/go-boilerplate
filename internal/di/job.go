@@ -55,7 +55,6 @@ func RunJob() (StartFunc, StopFunc) {
 	app := fx.New(
 		NewJobCore(),
 		fx.Populate(&state, &logger, &osCfg),
-		// fx 自身のライフサイクルログを構造化ロガーへ流す（既定の ConsoleLogger を置換）。
 		fx.WithLogger(NewFxEventLogger),
 	)
 
@@ -71,8 +70,7 @@ func RunJob() (StartFunc, StopFunc) {
 				logging.Error(logging.JobErrorKey, err),
 			)
 			l.Error("failed to start job application", fields...)
-			// 共有 done は hook goroutine の単独所有のため触れず、起動失敗は専用チャネルで返す
-			// （done を触ると hook 側と二重 close／送信になり得る）。
+			// 共有 done に触れると hook goroutine と二重 close／送信になり得るため、専用チャネルで返す。
 			failCh := make(chan error, 1)
 			failCh <- err
 			close(failCh)

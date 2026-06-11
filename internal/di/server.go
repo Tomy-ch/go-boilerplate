@@ -57,7 +57,6 @@ func applicationCoreOptions() []fx.Option {
 // NewApplicationCore は、アプリケーションの fx.App インスタンスを作成します。
 // extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）ための seam で、本番呼び出しでは渡しません。
 func NewApplicationCore(extra ...fx.Option) *fx.App {
-	// fx 自身のライフサイクルログを構造化ロガーへ流す（既定の ConsoleLogger を置換）。
 	opts := append(applicationCoreOptions(), fx.WithLogger(NewFxEventLogger))
 	return fx.New(append(opts, extra...)...)
 }

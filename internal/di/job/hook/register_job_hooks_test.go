@@ -99,7 +99,6 @@ func TestRunJobAndShutdown(t *testing.T) {
 			sd.EXPECT().Shutdown().Return(nil).Times(1)
 
 			osCfg := config.NewOperatingSystemConfig(config.MockConfigForTest(t))
-			// 直接同期呼び出し。戻った時点で done に結果が入りクローズ済み。
 			runJobAndShutdown(context.Background(), sd, runner, logger, osCfg, state)
 
 			require.NoError(t, <-doneCh)

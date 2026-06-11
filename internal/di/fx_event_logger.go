@@ -6,13 +6,9 @@ import (
 	"go.uber.org/fx/fxevent"
 )
 
-// fxEventLogger は、fx のライフサイクルイベントを本プロジェクトの構造化ロガーへ流す
-// fxevent.Logger 実装です。fx.WithLogger に渡すことで、既定の ConsoleLogger
-// （非構造化・stderr）を置換します。
-//
-// エラーと起動／停止の節目のみ記録し、冗長な Provided／Supplied／Invoking 等の
-// 成功イベントは無視してログノイズを抑えます。fx を扱える di 層に置くことで、
-// logging 層をフレームワーク非依存（depguard）に保ったまま構造化を実現します。
+// fxEventLogger は fx イベントを構造化ロガーへ流す fxevent.Logger 実装。
+// エラーと起動／停止の節目のみ記録し冗長な成功イベントは無視する。logging 層を
+// フレームワーク非依存（depguard）に保つため fx を扱える di 層に置く。
 type fxEventLogger struct {
 	logger logging.Logger
 }
@@ -22,7 +18,6 @@ func NewFxEventLogger(logger logging.Logger) fxevent.Logger {
 	return &fxEventLogger{logger: logger.Named("fx")}
 }
 
-// LogEvent は、fx のライフサイクルイベントを構造化ログへ変換します。
 func (f *fxEventLogger) LogEvent(event fxevent.Event) {
 	switch e := event.(type) {
 	case *fxevent.OnStartExecuted:
@@ -62,7 +57,6 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) {
 	}
 }
 
-// errorIf は、err が非 nil のときのみ Error ログを出力する（イベント種別ごとの nil ガードを集約）。
 func (f *fxEventLogger) errorIf(err error, msg string, fields ...*logging.Field) {
 	if err == nil {
 		return
