@@ -12,7 +12,7 @@ RUN apk add --no-cache bash ca-certificates curl git
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
@@ -74,7 +74,7 @@ RUN apk add --no-cache \
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
@@ -118,7 +118,7 @@ RUN apt-get update \
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH" \
     MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise
-RUN curl -fsSL https://mise.run | sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
