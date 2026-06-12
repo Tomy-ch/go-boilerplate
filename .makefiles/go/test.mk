@@ -1,14 +1,19 @@
 ## Go言語のテスト関連のコマンド群
-.PHONY: test ## CI用のテスト実行
+.PHONY: test ## CI用のテスト実行（キャッシュ無効）
+.PHONY: test-cached ## ローカル用テスト実行（キャッシュ有効・pre-commit向け）
 .PHONY: gen-test-repo ## テストの実行とテストレポートの生成
 .PHONY: test-cover-ci ## CI用のカバレッジ付きテスト実行
 
-# カバレッジ対象外パッケージ（test / gen-test-repo / test-cover-ci で共有）
+# カバレッジ対象外パッケージ（test / test-cached / gen-test-repo / test-cover-ci で共有）
 GO_TEST_EXCLUDE := /(gen|cmd|mock|apperror|scripts)(/|$$)
 
 test:
 	@TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
 	go test $$TGT_PKGS -cover -count=1
+
+test-cached:
+	@TGT_PKGS="$$(go list ./... | grep -Ev '$(GO_TEST_EXCLUDE)')"; \
+	go test $$TGT_PKGS -cover
 
 gen-test-repo:
 	@echo "🔄 テストを実行し、レポートを生成します..."
