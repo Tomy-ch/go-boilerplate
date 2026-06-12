@@ -1,6 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const yaml = require("js-yaml")
+const { z } = require("zod")
 
 const MANIFEST = "docs/portal/manifest.yaml"
 const OUT_ROOT = "docs/portal/guides"
@@ -11,32 +12,31 @@ if (!fs.existsSync(MANIFEST)) {
   process.exit(1)
 }
 
-const manifest = yaml.load(fs.readFileSync(MANIFEST, "utf8"))
+// manifest はグループ名をキーに、{ src, dst } の配列を値とするオブジェクト
+const ManifestSchema = z.record(
+  z.string(),
+  z.array(z.object({ src: z.string(), dst: z.string() }))
+)
 
 // --- validate manifest shape ---
-if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) {
-  console.error(`❌ manifest はグループ名をキーとするオブジェクトである必要があります: ${MANIFEST}`)
+const parsed = ManifestSchema.safeParse(yaml.load(fs.readFileSync(MANIFEST, "utf8")))
+if (!parsed.success) {
+  console.error(`❌ manifest の形式が不正です（${MANIFEST}）:`)
+  for (const issue of parsed.error.issues) {
+    console.error(`  - ${issue.path.join(".") || "(root)"}: ${issue.message}`)
+  }
   process.exit(1)
 }
+const manifest = parsed.data
 
 const outRootAbs = path.resolve(OUT_ROOT)
 
+// dst は出力ディレクトリ配下に限定する（パス逸脱で guides 外へ書き込まない）
 for (const [group, items] of Object.entries(manifest)) {
-  if (!Array.isArray(items)) {
-    console.error(`❌ [${group}] は配列である必要があります`)
-    process.exit(1)
-  }
-
-  for (const item of items) {
-    if (!item || typeof item.src !== "string" || typeof item.dst !== "string") {
-      console.error(`❌ [${group}] の各エントリは文字列の src / dst を持つ必要があります: ${JSON.stringify(item)}`)
-      process.exit(1)
-    }
-
-    // dst は出力ディレクトリ配下に限定する（パス逸脱で guides 外へ書き込まない）
-    const dstAbs = path.resolve(item.dst)
+  for (const { dst } of items) {
+    const dstAbs = path.resolve(dst)
     if (dstAbs !== outRootAbs && !dstAbs.startsWith(outRootAbs + path.sep)) {
-      console.error(`❌ [${group}] dst が出力ディレクトリ(${OUT_ROOT})の外を指しています: ${item.dst}`)
+      console.error(`❌ [${group}] dst が出力ディレクトリ(${OUT_ROOT})の外を指しています: ${dst}`)
       process.exit(1)
     }
   }
