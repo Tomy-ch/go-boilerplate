@@ -15,8 +15,7 @@ function title(str) {
     .replace(/\b\w/g, c => c.toUpperCase())
 }
 
-// ディレクトリ直下の .md からセクションを構築する（ファイル名順）。
-// 対象が存在しない / md が無ければ null を返す。
+// ディレクトリ直下の .md からセクションを構築する
 function mdSection(sectionTitle, dirPath, pathPrefix) {
   if (!fs.existsSync(dirPath)) {
     return null
@@ -116,7 +115,7 @@ function generateSections() {
     }
   }
 
-  // root-level markdown (architecture.md など): manifest には載せず常に Architecture 節として surface する
+  // root-level markdown（architecture.md 等）を Architecture 節として追加する
   const rootEn = mdSection("Architecture (English)", docsDir, "../")
   if (rootEn) {
     sections.push(rootEn)

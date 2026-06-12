@@ -90,12 +90,9 @@ RUN mise install npm:@redocly/cli \
     && mise install npm:markdownlint-cli2 \
     && rm -rf /root/.cache /root/.npm
 
-# scripts が in-tree（/app/scripts/node_modules）で解決できるよう scripts 配下へ install する。
-# 実行時は compose の匿名ボリュームで /app/scripts/node_modules を保持し、.:/app バインドマウントの
-# shadow を防ぐ（package.json は docker/tools が SSOT で、ここへ COPY して npm ci する）。
+# scripts の依存を in-tree（/app/scripts/node_modules）へ install する
 WORKDIR /app/scripts
 COPY docker/tools/package.json docker/tools/package-lock.json ./
-# npm ci は lockfile に厳密一致してインストールする。/root/.npm 再生成分はその場で掃除（python ステージと対称）
 RUN npm ci \
     && npm cache clean --force \
     && rm -rf /root/.npm

@@ -33,7 +33,7 @@ export function updateAbsoluteFile(filePath, transformer, dryRun) {
   return toRelativePath(filePath)
 }
 
-// options.shouldIncludeFile はエントリの**フルパス**を受け取る（listChildFiles の predicate は basename を受け取る点に注意）。
+// shouldIncludeFile はエントリのフルパスを受け取る
 export function listFilesRecursive(dirPath, options = {}, files = []) {
   const excludedDirectories = options.excludedDirectories ?? new Set()
   const shouldIncludeFile = options.shouldIncludeFile ?? (() => true)
@@ -60,7 +60,7 @@ export function listFilesRecursive(dirPath, options = {}, files = []) {
   return files
 }
 
-// predicate はエントリの**ファイル名(basename)**を受け取る（listFilesRecursive の shouldIncludeFile はフルパスを受け取る点に注意）。
+// predicate はエントリのファイル名(basename)を受け取る
 export function listChildFiles(relativeDir, predicate = () => true) {
   const dirPath = toAbsolutePath(relativeDir)
 

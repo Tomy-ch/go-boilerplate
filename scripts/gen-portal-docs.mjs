@@ -31,7 +31,7 @@ const manifest = parsed.data
 
 const outRootAbs = path.resolve(OUT_ROOT)
 
-// dst は出力ディレクトリ配下に限定する（パス逸脱で guides 外へ書き込まない）
+// dst は出力ディレクトリ配下に限定する（パストラバーサル防止）
 for (const [group, items] of Object.entries(manifest)) {
   for (const { dst } of items) {
     const dstAbs = path.resolve(dst)
@@ -42,7 +42,7 @@ for (const [group, items] of Object.entries(manifest)) {
   }
 }
 
-// --- preflight: manifest が参照する src は全て実在する必要がある（出力を消す前に検証） ---
+// --- preflight: src の実在チェック（clean 前に検証） ---
 const missing = []
 
 for (const [group, items] of Object.entries(manifest)) {
