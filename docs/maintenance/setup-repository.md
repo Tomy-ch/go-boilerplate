@@ -153,17 +153,7 @@ Implementation example (local): [internal/infrastructure/auth/local/auth_local.g
 
 After implementation, edit the [authentication DI module](internal/di/module/core/auth.go) to integrate authentication into the application.
 
-## Phase 10: Remove Authentication Debug APIs
-
-Authentication debug APIs pose security risks, so remove them as necessary.
-
-It is not mandatory to remove them during setup, but you MUST remove them before releasing to production.
-
-```sh
-make setup-remove-debug-handlers
-```
-
-## Phase 11: Remove Sample APIs
+## Phase 10: Remove Sample APIs
 
 This boilerplate includes sample APIs. Remove them according to your project requirements.
 
