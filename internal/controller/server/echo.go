@@ -23,10 +23,12 @@ func IsRecovered(c echo.Context) bool {
 }
 
 // BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
-func BuildHTTPRequestLogInput(c echo.Context) logging.HTTPRequestLogInput {
+// eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
+func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequestLogInput {
 	req := c.Request()
 	traceCtx := observability.ExtractTraceContext(req.Context())
 	return logging.HTTPRequestLogInput{
+		EventType:     eventType,
 		EventAt:       time.Now(),
 		Method:        req.Method,
 		Path:          c.Path(),

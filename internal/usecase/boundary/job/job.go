@@ -26,6 +26,8 @@ type Runner interface {
 // State は、ジョブの状態を管理するインターフェースです。
 type State interface {
 	// Set は、ジョブの状態を設定します。
+	// done はバッファ付き（cap≥1）であること。受け手（Snapshot 側）は単一の
+	// 完了通知をブロックせずに送れる前提で done への送信・close を所有する。
 	Set(name string, args []string, done chan error)
 	// Snapshot は、現在のジョブの状態をスナップショットとして取得します。
 	Snapshot() (string, []string, chan error)

@@ -21,8 +21,6 @@ type Logger interface {
 	Named(name string) Logger
 	// CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。
 	CallerSkip(skip int) Logger
-	// ConvertFields は Field のスライスを zap.Field のスライスに変換する。
-	ConvertFields(fields []*Field) []zap.Field
 }
 
 type logger struct {
@@ -45,26 +43,26 @@ func (l *logger) CallerSkip(skip int) Logger {
 
 // Debug はデバッグレベルのログを出力する。
 func (l *logger) Debug(msg string, fields ...*Field) {
-	l.log.Debug(msg, l.ConvertFields(fields)...)
+	l.log.Debug(msg, l.convertFields(fields)...)
 }
 
 // Info は情報レベルのログを出力する。
 func (l *logger) Info(msg string, fields ...*Field) {
-	l.log.Info(msg, l.ConvertFields(fields)...)
+	l.log.Info(msg, l.convertFields(fields)...)
 }
 
 // Warn は警告レベルのログを出力する。
 func (l *logger) Warn(msg string, fields ...*Field) {
-	l.log.Warn(msg, l.ConvertFields(fields)...)
+	l.log.Warn(msg, l.convertFields(fields)...)
 }
 
 // Error はエラーレベルのログを出力する。
 func (l *logger) Error(msg string, fields ...*Field) {
-	l.log.Error(msg, l.ConvertFields(fields)...)
+	l.log.Error(msg, l.convertFields(fields)...)
 }
 
-// ConvertFields は Field のスライスを zap.Field のスライスに変換する。
-func (l *logger) ConvertFields(fs []*Field) []zap.Field {
+// convertFields は Field のスライスを zap.Field のスライスに変換する。
+func (l *logger) convertFields(fs []*Field) []zap.Field {
 	zfs := make([]zap.Field, 0, len(fs))
 
 	for _, f := range fs {

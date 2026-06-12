@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"go-boilerplate/internal/cli/fixcollation"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/exec"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 )
@@ -36,7 +36,7 @@ func newFixCollationCommand() *cobra.Command {
 func runFixCollation(ctx context.Context, database string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
-		return fmt.Errorf("failed to init logger: %w", err)
+		return xerrors.Wrap(err, "failed to init logger")
 	}
 
 	loadDSN := func() (string, string, error) {

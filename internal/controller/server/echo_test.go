@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go-boilerplate/internal/logging"
+
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -100,8 +102,9 @@ func Test_BuildHTTPRequestLogInput(t *testing.T) {
 			c.SetParamNames("id")
 			c.SetParamValues("123")
 
-			got := BuildHTTPRequestLogInput(c)
+			got := BuildHTTPRequestLogInput(c, logging.EventTypeError)
 
+			assert.Equal(t, logging.EventTypeError, got.EventType)
 			assert.Equal(t, http.MethodPost, got.Method)
 			assert.Equal(t, "/users/:id", got.Path)
 			assert.Equal(t, "/users/123?q=v", got.URI)

@@ -86,6 +86,8 @@ services:
 
 # -------------------------------------
 # ツールランナー
+# user: root は必須。mise を /root 配下に配置しており、非 root では mise/各ツールを解決できないため。
+# bind mount 経由の生成物は root 所有になるが、pkg/*/mock 等と同様に容認している。
 # -------------------------------------
 
   go_tool_runner: # Goベースツールボックス
@@ -113,6 +115,8 @@ services:
     stdin_open: true
     volumes:
       - .:/app
+      # node_modules を匿名ボリュームで保持（バインドマウントの shadow 回避）
+      - /app/scripts/node_modules
     working_dir: /app
     entrypoint: ""
     profiles:

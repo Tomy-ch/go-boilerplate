@@ -55,6 +55,7 @@ func RunJob() (StartFunc, StopFunc) {
 	app := fx.New(
 		NewJobCore(),
 		fx.Populate(&state, &logger, &osCfg),
+		fx.WithLogger(NewFxEventLogger),
 	)
 
 	start := func(ctx context.Context, name string, args []string) <-chan error {
@@ -69,9 +70,11 @@ func RunJob() (StartFunc, StopFunc) {
 				logging.Error(logging.JobErrorKey, err),
 			)
 			l.Error("failed to start job application", fields...)
-			done <- err
-			close(done)
-			return done
+			// 共有 done に触れると hook goroutine と二重 close／送信になり得るため、専用チャネルで返す。
+			failCh := make(chan error, 1)
+			failCh <- err
+			close(failCh)
+			return failCh
 		}
 
 		fields := append(jobEventFields(logging.EventTypeStart, osCfg.TimeZone()),

@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"go-boilerplate/internal/cli/mergedml"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 )
@@ -39,7 +39,7 @@ func newMergeDMLCommand() *cobra.Command {
 func mergeDMLRun(ctx context.Context, targetType, workDir string) error {
 	logger, err := logging.NewProductionLogger()
 	if err != nil {
-		return fmt.Errorf("failed to create logger: %w", err)
+		return xerrors.Wrap(err, "failed to create logger")
 	}
 
 	gen := mergedml.NewGenerator(logger, workDir)

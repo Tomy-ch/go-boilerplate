@@ -64,6 +64,7 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field {
 	req := l.c.Request()
 	reqIn := logging.HTTPRequestLogInput{
+		EventType:     logging.EventTypeStart,
 		EventAt:       start,
 		Method:        req.Method,
 		URI:           req.RequestURI,

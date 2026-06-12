@@ -45,9 +45,8 @@ This is a group of targets related to application development environment startu
 | `make serve-build` | Rebuilds Docker images (cache enabled) and then starts the development environment. | Reflect Dockerfile or dependency changes |
 | `make serve-build-clean` | Cleanly rebuilds Docker images with `--no-cache --pull` and then starts the development environment. | Pick up base image updates (e.g., Go version upgrade) |
 | `make tools` | Starts development support tools with the `tools` profile. | When using development tools |
-| `make tools-build` | Builds development tool containers (cache enabled, no startup). | When updating tool container Dockerfile or dependencies |
-| `make tools-build-clean` | Cleanly builds development tool containers with `--no-cache --pull` (no startup). | Pick up base image updates for tool containers |
-| `make smoke` | Starts `smoke_server` with build under the `smoke` profile. | Verify Smoke Test environment |
+| `make tool-runners-build` | Builds the on-demand tool runner images (go/node/python, cache enabled, no startup). | When updating tool runner Dockerfile or dependencies |
+| `make tool-runners-build-clean` | Cleanly builds the tool runner images with `--no-cache --pull` (no startup). | Pick up base image updates for tool runners |
 
 #### `make job NAME=<job_name> ARGS="<arguments>"`
 
@@ -308,7 +307,6 @@ This is an initial setup command when launching a new repository as a boilerplat
 | `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | Replaces application name and OpenAPI title in batch. | Reflected in README and OpenAPI definitions. |
 | `make setup-replace-repository-reference REPOSITORY=<org/repo>` | Replaces repository references (GitHub URLs, etc.) in batch. | Updates links in README and documentation. |
 | `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | Updates LICENSE copyright notation. | Year is optional. |
-| `make setup-remove-debug-handlers` | Removes debug handler set. | Used to remove unnecessary code for production use. |
 
 ### Release branch related
 

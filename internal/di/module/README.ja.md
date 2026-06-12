@@ -48,6 +48,7 @@ flowchart TB
 - 各モジュールはレイヤの境界に対応（config / logging / db / infra / usecase / controller / job）
 - モジュール間の依存は fx が自動解決する
 - モジュールの追加は新しいファイルを作成し、アプリのルートモジュールに追加するだけ
+- `InfrastructureModule()` は各プロバイダを入れ子の `fx.Module` サブモジュール（`repository` / `query_service` / `system_query` / `clock` / `security`）に意図的にまとめており、fx の依存グラフをコンポーネント単位で読みやすく保つ。clock サブモジュールは `SystemModule()` の `system` ラベルとの衝突を避けるため `system` ではなく `clock` と命名している。
 
 ## 注意点
 

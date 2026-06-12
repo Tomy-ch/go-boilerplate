@@ -15,8 +15,8 @@ gen-portal-docs:
 	@echo "✅ Portal用のドキュメントの生成が完了しました。"
 
 gen-docs-json-ci:
-	node scripts/gen-docs-json.cjs
+	node scripts/gen-docs-json.mjs
 
 gen-portal-docs-ci:
-	node scripts/gen-portal-docs.cjs
+	node scripts/gen-portal-docs.mjs
 

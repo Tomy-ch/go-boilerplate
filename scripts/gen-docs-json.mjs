@@ -1,7 +1,9 @@
-const fs = require("fs")
-const path = require("path")
-const yaml = require("js-yaml")
+import fs from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+import yaml from "js-yaml"
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const docsDir = path.join(__dirname, "..", "docs")
 const portalDir = path.join(docsDir, "portal")
 
@@ -11,6 +13,26 @@ function title(str) {
     .replace(".ja", "")
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// ディレクトリ直下の .md からセクションを構築する
+function mdSection(sectionTitle, dirPath, pathPrefix) {
+  if (!fs.existsSync(dirPath)) {
+    return null
+  }
+
+  const files = fs.readdirSync(dirPath)
+    .filter(f => f.endsWith(".md"))
+    .sort((a, b) => a.localeCompare(b))
+
+  if (!files.length) {
+    return null
+  }
+
+  return {
+    title: sectionTitle,
+    items: files.map(f => ({ name: title(f), path: `${pathPrefix}${f}` }))
+  }
 }
 
 function generateSections() {
@@ -81,72 +103,28 @@ function generateSections() {
       continue
     }
 
-    // ② Markdown fallback (EN)
-    const mdFiles = fs.readdirSync(dirPath)
-      .filter(f => f.endsWith(".md"))
-      .sort((a, b) => a.localeCompare(b))
-
-    if (mdFiles.length) {
-      sections.push({
-        title: `${title(dir)} (English)`,
-        items: mdFiles.map(f => ({
-          name: title(f),
-          path: `../${dir}/${f}`
-        }))
-      })
+    // ② Markdown (EN + JA)
+    const en = mdSection(`${title(dir)} (English)`, dirPath, `../${dir}/`)
+    if (en) {
+      sections.push(en)
     }
 
-    const jaDirPath = path.join(docsDir, "ja", dir)
-
-    if (fs.existsSync(jaDirPath)) {
-      const jaFiles = fs.readdirSync(jaDirPath)
-        .filter(f => f.endsWith(".md"))
-        .sort((a, b) => a.localeCompare(b))
-
-      if (jaFiles.length) {
-        sections.push({
-          title: `${title(dir)} (Japanese)`,
-          items: jaFiles.map(f => ({
-            name: title(f),
-            path: `../ja/${dir}/${f}`
-          }))
-        })
-      }
+    const ja = mdSection(`${title(dir)} (Japanese)`, path.join(docsDir, "ja", dir), `../ja/${dir}/`)
+    if (ja) {
+      sections.push(ja)
     }
   }
 
-  // fallback: add root-level markdown files (if manifest not used or incomplete)
-  const rootFiles = fs.readdirSync(docsDir)
-    .filter(f => f.endsWith(".md"))
-    .sort((a, b) => a.localeCompare(b))
-
-  if (rootFiles.length) {
-    sections.push({
-      title: "Architecture (English)",
-      items: rootFiles.map(f => ({
-        name: title(f),
-        path: `../${f}`
-      }))
-    })
+  // root-level markdown（architecture.md 等）を Architecture 節として追加する
+  const rootEn = mdSection("Architecture (English)", docsDir, "../")
+  if (rootEn) {
+    sections.push(rootEn)
   }
 
-    const jaRootDir = path.join(docsDir, "ja")
-
-    if (fs.existsSync(jaRootDir)) {
-      const jaRootFiles = fs.readdirSync(jaRootDir)
-        .filter(f => f.endsWith(".md"))
-        .sort((a, b) => a.localeCompare(b))
-
-      if (jaRootFiles.length) {
-        sections.push({
-          title: "Architecture (Japanese)",
-          items: jaRootFiles.map(f => ({
-            name: title(f),
-            path: `../ja/${f}`
-          }))
-        })
-      }
-    }
+  const rootJa = mdSection("Architecture (Japanese)", path.join(docsDir, "ja"), "../ja/")
+  if (rootJa) {
+    sections.push(rootJa)
+  }
 
   return sections
 }

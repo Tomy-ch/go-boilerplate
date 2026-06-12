@@ -10,54 +10,54 @@
 
 gen:
 	@echo "🔄 各種ドキュメントやコードの生成します..."
-	@make gen-api
-	@make gen-query
-	@make gen-docs
+	@$(MAKE) gen-api
+	@$(MAKE) gen-query
+	@$(MAKE) gen-docs
 	@echo "✅ 各種ドキュメントやコードの生成が完了しました。"
 
 gen-api:
-	@make gen-bundle-oapi
-	@make gen-api-docs
-	@make gen-go-code
+	@$(MAKE) gen-bundle-oapi
+	@$(MAKE) gen-api-docs
+	@$(MAKE) gen-go-code
 
 gen-docs:
-	@make gen-portal-docs
-	@make gen-docs-json
+	@$(MAKE) gen-portal-docs
+	@$(MAKE) gen-docs-json
 
 gen-all-docs:
-	@make gen-api-docs
-	@make gen-docs
-	@make gen-db-schema
-	@make gen-test-repo
+	@$(MAKE) gen-api-docs
+	@$(MAKE) gen-docs
+	@$(MAKE) gen-db-schema
+	@$(MAKE) gen-test-repo
 
 gen-query:
 	@echo "🔄 SQLCのコードを生成します..."
-	@make dump-schema
-	@make merge-dml
-	@make gen-sqlc
-	@make fmt
+	@$(MAKE) dump-schema
+	@$(MAKE) merge-dml
+	@$(MAKE) gen-sqlc
+	@$(MAKE) fmt
 	@echo "✅ SQLCのコード生成が完了しました。"
 
 gen-query-repo:
 	@echo "🔄 ドメイン用のSQLCコードを生成します..."
-	@make dump-schema
-	@make merge-dml-repo
-	@make gen-sqlc
-	@make fmt
+	@$(MAKE) dump-schema
+	@$(MAKE) merge-dml-repo
+	@$(MAKE) gen-sqlc
+	@$(MAKE) fmt
 	@echo "✅ ドメイン用のSQLCコード生成が完了しました。"
 
 gen-query-qs:
 	@echo "🔄 クエリサービス用のSQLCコードを生成します..."
-	@make dump-schema
-	@make merge-dml-qs
-	@make gen-sqlc
-	@make fmt
+	@$(MAKE) dump-schema
+	@$(MAKE) merge-dml-qs
+	@$(MAKE) gen-sqlc
+	@$(MAKE) fmt
 	@echo "✅ クエリサービス用のSQLCコード生成が完了しました。"
 
 gen-query-sysq:
 	@echo "🔄 システムクエリ用のSQLCコードを生成します..."
-	@make dump-schema
-	@make merge-dml-sysq
-	@make gen-sqlc
-	@make fmt
+	@$(MAKE) dump-schema
+	@$(MAKE) merge-dml-sysq
+	@$(MAKE) gen-sqlc
+	@$(MAKE) fmt
 	@echo "✅ システムクエリ用のSQLCコード生成が完了しました。"

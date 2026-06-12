@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
-
 	climigrate "go-boilerplate/internal/cli/migrate"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/envutil"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 
@@ -83,25 +82,25 @@ func newMigrateDownCommand() *cobra.Command {
 // buildMigrateInstance は、設定を読み込み golang-migrate のインスタンスを生成します。
 func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	if err := config.Load(); err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+		return nil, xerrors.Wrap(err, "failed to load config")
 	}
 	if database != "" {
 		restore, err := envutil.Override("DB_NAME", database)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Wrap(err, "failed to override DB_NAME env var")
 		}
 		defer restore()
 	}
 	cfg, err := config.New()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build config: %w", err)
+		return nil, xerrors.Wrap(err, "failed to build config")
 	}
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	m, err := migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create migrate instance: %w", err)
+		return nil, xerrors.Wrap(err, "failed to create migrate instance")
 	}
 	return m, nil
 }
