@@ -15,56 +15,60 @@ import (
 func Test_normalizeEchoHTTPError_Specific(t *testing.T) {
 	t.Parallel()
 
-	t.Run("非EchoHTTPErrorの場合、nilが返る", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		actual := normalizeEchoHTTPError(fmt.Errorf("just an error"))
-		require.Nil(t, actual)
+		t.Run("EchoHTTPErrorでステータス範囲内の場合、NewHTTPErrorFromStatusベースのレスポンスが返る", func(t *testing.T) {
+			t.Parallel()
+
+			inner := fmt.Errorf("inner failure")
+			ehe := &echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
+
+			actual := normalizeEchoHTTPError(ehe)
+			require.NotNil(t, actual)
+
+			expectedBase := response.NewHTTPErrorFromStatus(http.StatusForbidden, nil)
+			assert.Equal(t, expectedBase.Code, actual.Code)
+			assert.Equal(t, expectedBase.Message, actual.Message)
+			assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
+			assert.Nil(t, actual.Details)
+			require.Error(t, actual.Internal)
+			assert.Contains(t, actual.Internal.Error(), "inner failure")
+			assert.Contains(t, actual.Internal.Error(), "echo HTTP error")
+		})
+
+		t.Run("detailsを渡した場合、Detailsにセットされる", func(t *testing.T) {
+			t.Parallel()
+
+			inner := fmt.Errorf("inner2")
+			ehe := &echo.HTTPError{Code: http.StatusConflict, Internal: inner}
+
+			actual := normalizeEchoHTTPError(ehe, "d1", "d2")
+			require.NotNil(t, actual)
+
+			expectedBase := response.NewHTTPErrorFromStatus(http.StatusConflict, nil)
+			assert.Equal(t, expectedBase.Code, actual.Code)
+			assert.Equal(t, expectedBase.Message, actual.Message)
+			assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
+			require.NotNil(t, actual.Details)
+			assert.Equal(t, []string{"d1", "d2"}, *actual.Details)
+			require.Error(t, actual.Internal)
+			assert.Contains(t, actual.Internal.Error(), "inner2")
+		})
 	})
 
-	t.Run("EchoHTTPErrorだがステータス範囲外の場合、nilが返る", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		ehe := &echo.HTTPError{Code: http.StatusContinue}
-		actual := normalizeEchoHTTPError(ehe)
-		require.Nil(t, actual)
-	})
+		t.Run("非EchoHTTPErrorの場合、nilが返る", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, normalizeEchoHTTPError(fmt.Errorf("just an error")))
+		})
 
-	t.Run("正常系: EchoHTTPErrorでステータス範囲内の場合、NewHTTPErrorFromStatusベースのレスポンスが返る", func(t *testing.T) {
-		t.Parallel()
-
-		inner := fmt.Errorf("inner failure")
-		ehe := &echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
-
-		actual := normalizeEchoHTTPError(ehe)
-		require.NotNil(t, actual)
-
-		expectedBase := response.NewHTTPErrorFromStatus(http.StatusForbidden)
-		assert.Equal(t, expectedBase.Code, actual.Code)
-		assert.Equal(t, expectedBase.Message, actual.Message)
-		assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
-		require.Nil(t, actual.Details)
-		require.Error(t, actual.Internal)
-		assert.Contains(t, actual.Internal.Error(), "inner failure")
-		assert.Contains(t, actual.Internal.Error(), "echo HTTP error")
-	})
-
-	t.Run("正常系: detailsを渡した場合、Detailsにセットされる", func(t *testing.T) {
-		t.Parallel()
-
-		inner := fmt.Errorf("inner2")
-		ehe := &echo.HTTPError{Code: http.StatusConflict, Internal: inner}
-
-		actual := normalizeEchoHTTPError(ehe, "d1", "d2")
-		require.NotNil(t, actual)
-
-		expectedBase := response.NewHTTPErrorFromStatus(http.StatusConflict)
-		assert.Equal(t, expectedBase.Code, actual.Code)
-		assert.Equal(t, expectedBase.Message, actual.Message)
-		assert.Equal(t, expectedBase.HTTPStatus, actual.HTTPStatus)
-		require.NotNil(t, actual.Details)
-		assert.Equal(t, []string{"d1", "d2"}, *actual.Details)
-		require.Error(t, actual.Internal)
-		assert.Contains(t, actual.Internal.Error(), "inner2")
+		t.Run("EchoHTTPErrorだがステータス範囲外の場合、nilが返る", func(t *testing.T) {
+			t.Parallel()
+			ehe := &echo.HTTPError{Code: http.StatusContinue}
+			assert.Nil(t, normalizeEchoHTTPError(ehe))
+		})
 	})
 }

@@ -49,25 +49,25 @@ func TestNew(t *testing.T) {
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
 
-		t.Run("無効な都道府県名の場合、ErrInvalidPrefectureNameエラーが返される", func(t *testing.T) {
+		t.Run("無効な都道府県名の場合、ErrInvalidNameエラーが返される", func(t *testing.T) {
 			t.Parallel()
 
 			t.Run("文字数が最小値未満の場合", func(t *testing.T) {
 				t.Parallel()
 
-				invalidName := strings.Repeat("字", MinPrefectureNameLength-1)
+				invalidName := strings.Repeat("字", minNameLength-1)
 				res, err := New(expectedUUID, invalidName, expectedCode)
 				require.Nil(t, res)
-				require.ErrorIs(t, err, ErrInvalidPrefectureName)
+				require.ErrorIs(t, err, ErrInvalidName)
 			})
 
 			t.Run("文字数が最大値超過の場合", func(t *testing.T) {
 				t.Parallel()
 
-				invalidName := strings.Repeat("字", MaxPrefectureNameLength+1)
+				invalidName := strings.Repeat("字", maxNameLength+1)
 				res, err := New(expectedUUID, invalidName, expectedCode)
 				require.Nil(t, res)
-				require.ErrorIs(t, err, ErrInvalidPrefectureName)
+				require.ErrorIs(t, err, ErrInvalidName)
 			})
 		})
 
@@ -77,7 +77,7 @@ func TestNew(t *testing.T) {
 			t.Run("コードが最小値未満の場合", func(t *testing.T) {
 				t.Parallel()
 
-				invalidCode := MinCode - 1
+				invalidCode := minCode - 1
 				res, err := New(expectedUUID, expectedName, invalidCode)
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidCode)
@@ -86,7 +86,7 @@ func TestNew(t *testing.T) {
 			t.Run("コードが最大値超過の場合", func(t *testing.T) {
 				t.Parallel()
 
-				invalidCode := MaxCode + 1
+				invalidCode := maxCode + 1
 				res, err := New(expectedUUID, expectedName, invalidCode)
 				require.Nil(t, res)
 				require.ErrorIs(t, err, ErrInvalidCode)

@@ -18,12 +18,6 @@ paths/
 ├── internal/               # Internal types (error response schema for oapi-codegen)
 │   └── types/
 │       └── error_response.yaml
-├── debug/                  # Debug endpoints (remove in real services)
-│   ├── cookie.yaml         # /debug/cookie   ← endpoint + has children
-│   └── cookie/
-│       ├── copy.yaml       # /debug/cookie/copy
-│       ├── stream.yaml     # /debug/cookie/stream
-│       └── ws.yaml         # /debug/cookie/ws
 └── v1/                     # Versioned API (sample)
     ├── users.yaml          # /v1/users       ← endpoint + has children
     └── users/

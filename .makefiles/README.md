@@ -45,9 +45,8 @@ This is a group of targets related to application development environment startu
 | `make serve-build` | Rebuilds Docker images (cache enabled) and then starts the development environment. | Reflect Dockerfile or dependency changes |
 | `make serve-build-clean` | Cleanly rebuilds Docker images with `--no-cache --pull` and then starts the development environment. | Pick up base image updates (e.g., Go version upgrade) |
 | `make tools` | Starts development support tools with the `tools` profile. | When using development tools |
-| `make tools-build` | Builds development tool containers (cache enabled, no startup). | When updating tool container Dockerfile or dependencies |
-| `make tools-build-clean` | Cleanly builds development tool containers with `--no-cache --pull` (no startup). | Pick up base image updates for tool containers |
-| `make smoke` | Starts `smoke_server` with build under the `smoke` profile. | Verify Smoke Test environment |
+| `make tool-runners-build` | Builds the on-demand tool runner images (go/node/python, cache enabled, no startup). | When updating tool runner Dockerfile or dependencies |
+| `make tool-runners-build-clean` | Cleanly builds the tool runner images with `--no-cache --pull` (no startup). | Pick up base image updates for tool runners |
 
 #### `make job NAME=<job_name> ARGS="<arguments>"`
 
@@ -87,21 +86,21 @@ Provides migration, seed insertion, DML merge, schema generation, DB initializat
 | `make check-migration-up-gap` | Checks sequence gaps in `up` migrations. | None |
 | `make check-migration-down-gap` | Checks sequence gaps in `down` migrations. | None |
 | `make db-migrate-up DB=<database>` | Applies all migrations to the specified DB up to the latest. | Example: `make db-migrate-up DB=local` |
-| `make db-migrate-up-<version> DB=<database>` | Applies migrations up to a specific version. | Example: `make db-migrate-up-10 DB=local` |
+| `make db-migrate-up-<steps> DB=<database>` | Applies the given number of migrations relative to the current position. | Example: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | Downgrades all migrations to the initial state. | None |
-| `make db-migrate-down-<version> DB=<database>` | Downgrades to a specific version. | None |
+| `make db-migrate-down-<steps> DB=<database>` | Rolls back the given number of migrations. | None |
 | `make db-local-migrate-up` | Applies all migrations to LocalDB. | Alias for `db-migrate-up` with `DB=local`. |
-| `make db-local-migrate-up-<version>` | Applies migrations up to a specific version on LocalDB. | None |
+| `make db-local-migrate-up-<steps>` | Applies the given number of migrations on LocalDB. | None |
 | `make db-local-migrate-down` | Downgrades LocalDB to initial state. | Alias for `db-migrate-down` with `DB=local`. |
-| `make db-local-migrate-down-<version>` | Downgrades LocalDB to a specific version. | None |
+| `make db-local-migrate-down-<steps>` | Rolls back the given number of migrations on LocalDB. | None |
 | `make db-test-migrate-up` | Applies all migrations to TestDB. | Alias for `db-migrate-up` with `DB=test`. |
-| `make db-test-migrate-up-<version>` | Applies migrations up to a specific version on TestDB. | None |
+| `make db-test-migrate-up-<steps>` | Applies the given number of migrations on TestDB. | None |
 | `make db-test-migrate-down` | Downgrades TestDB to initial state. | Alias for `db-migrate-down` with `DB=test`. |
-| `make db-test-migrate-down-<version>` | Downgrades TestDB to a specific version. | None |
+| `make db-test-migrate-down-<steps>` | Rolls back the given number of migrations on TestDB. | None |
 | `make db-migrate-ci-up DB=<database>` | Executes `cmd/main.go migrate-up` directly without Docker. | CI target |
-| `make db-migrate-ci-up-<version> DB=<database>` | Executes `migrate-up` to a specific version without Docker. | CI target |
+| `make db-migrate-ci-up-<steps> DB=<database>` | Executes `migrate-up` for the given number of steps without Docker. | CI target |
 | `make db-migrate-ci-down DB=<database>` | Executes `cmd/main.go migrate-down` directly without Docker. | CI target |
-| `make db-migrate-ci-down-<version> DB=<database>` | Executes `migrate-down` to a specific version without Docker. | CI target |
+| `make db-migrate-ci-down-<steps> DB=<database>` | Executes `migrate-down` for the given number of steps without Docker. | CI target |
 
 Example:
 
@@ -239,7 +238,7 @@ This group runs a local Trivy dependency scan, mainly to reproduce a CI security
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make test` | Executes tests for CI. | Runs `go test` on packages excluding `gen` / `cli` / `cmd` / `mock` / `apperror` / `scripts`. |
+| `make test` | Executes tests for CI. | Runs `go test` on packages excluding `gen` / `cmd` / `mock` / `apperror` / `scripts` (the `internal/cli` core is now included). |
 | `make gen-test-repo` | Executes tests and generates HTML coverage report. | Output is `docs/coverage/index.html`. |
 | `make test-cover-ci` | Executes tests with coverage. | CI target, outputs `coverage.out`. |
 
@@ -308,7 +307,6 @@ This is an initial setup command when launching a new repository as a boilerplat
 | `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | Replaces application name and OpenAPI title in batch. | Reflected in README and OpenAPI definitions. |
 | `make setup-replace-repository-reference REPOSITORY=<org/repo>` | Replaces repository references (GitHub URLs, etc.) in batch. | Updates links in README and documentation. |
 | `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | Updates LICENSE copyright notation. | Year is optional. |
-| `make setup-remove-debug-handlers` | Removes debug handler set. | Used to remove unnecessary code for production use. |
 
 ### Release branch related
 

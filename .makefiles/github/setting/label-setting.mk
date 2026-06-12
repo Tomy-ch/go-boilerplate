@@ -3,23 +3,24 @@
 .PHONY: delete-all-labels ## すべてのラベルを削除（既存ラベル含む）
 
 delete-all-labels:
-	@echo "🗑 既存のラベルを削除します..."
-	@gh label list --limit 1000 --json name -q '.[].name' | while read -r label; do \
+	@set -e; \
+	echo "🗑 既存のラベルを削除します..."; \
+	labels="$$(gh label list --limit 1000 --json name -q '.[].name')"; \
+	echo "$$labels" | while read -r label; do \
+		[ -z "$$label" ] && continue; \
 		echo "🔸 delete label: $$label"; \
 		gh label delete "$$label" --yes; \
 	done
 
 create-default-labels:
-	@echo "🏷 ラベルを作成します..."
-	@existing_labels="$$(gh label list --limit 1000 --json name -q '.[].name')" || exit $$?; \
-	jq -c '.[]' .github/settings/labels.json | while read -r label; do \
-		name=$$(echo $$label | jq -r .name); \
-		desc=$$(echo $$label | jq -r .description); \
-		color=$$(echo $$label | jq -r .color); \
-		if printf '%s\n' "$$existing_labels" | grep -Fx -- "$$name" >/dev/null; then \
-			echo "⚠️ $$name already exists"; \
-		else \
-			echo "🔸 create label: $$name"; \
-			gh label create "$$name" --description "$$desc" --color "$$color" || exit $$?; \
-		fi; \
+	@set -e; \
+	echo "🏷 ラベルを作成します..."; \
+	labels_json="$$(jq -c '.[]' .github/settings/labels.json)"; \
+	echo "$$labels_json" | while read -r label; do \
+		[ -z "$$label" ] && continue; \
+		name=$$(printf '%s' "$$label" | jq -r .name); \
+		desc=$$(printf '%s' "$$label" | jq -r .description); \
+		color=$$(printf '%s' "$$label" | jq -r .color); \
+		echo "🔸 upsert label: $$name"; \
+		gh label create "$$name" --description "$$desc" --color "$$color" --force; \
 	done

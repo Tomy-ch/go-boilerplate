@@ -12,8 +12,8 @@ Each file exposes a function returning `fx.Option` to register the necessary com
 |---|---|---|
 |`ConfigModule()`|`config.go`|Config (`*Config` + all SubConfig providers + `*time.Location`)|
 |`ControllerModule()`|`controller.go`|HTTP handler registration (`fx.Invoke` to run `BindHandler`)|
-|`DatabaseModule()`|`db.go`|DB connection (`*pgxpool.Pool`) + repositories / query services|
-|`InfrastructureModule()`|`infrastructure.go`|Infrastructure layer implementations (auth, etc.)|
+|`DatabaseModule()`|`db.go`|DB connection (`*pgxpool.Pool`) + driver / transaction manager / metrics|
+|`InfrastructureModule()`|`infrastructure.go`|Repositories / query services / system query + Clock / password hasher|
 |`JobModule()`|`job.go`|Job registration (`group:"jobs"`) + Runner + State + Hook|
 |`LoggingModule()`|`logging.go`|Logger + LogFieldBuilder|
 |`ObservabilityModule()`|`observability.go`|TracerProvider + TracerFactory|
@@ -48,6 +48,7 @@ flowchart TB
 - Each module corresponds to a layer boundary (config / logging / db / infra / usecase / controller / job)
 - Inter-module dependencies are automatically resolved by fx
 - Adding a module is as simple as creating a new file and adding it to the app's root module
+- `InfrastructureModule()` intentionally groups its providers into nested `fx.Module` submodules (`repository` / `query_service` / `system_query` / `clock` / `security`) so the fx dependency graph stays readable per component group. The clock submodule is named `clock` (not `system`) to avoid colliding with `SystemModule()`'s `system` label.
 
 ## Notes
 

@@ -2,7 +2,8 @@
 package basicauth
 
 import (
-	"go-boilerplate/internal/apperror"
+	"crypto/subtle"
+
 	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v4"
@@ -12,9 +13,8 @@ import (
 // NewBasicAuthValidator は、Basic認証のバリデータを返します。
 func NewBasicAuthValidator(mtcCfg *config.MetricsConfig) echomw.BasicAuthValidator {
 	return func(username, password string, _ echo.Context) (bool, error) {
-		if username == mtcCfg.UserName() && password == mtcCfg.Password() {
-			return true, nil
-		}
-		return false, apperror.ErrUnauthenticated
+		userOK := subtle.ConstantTimeCompare([]byte(username), []byte(mtcCfg.UserName())) == 1
+		passOK := subtle.ConstantTimeCompare([]byte(password), []byte(mtcCfg.Password())) == 1
+		return userOK && passOK, nil
 	}
 }

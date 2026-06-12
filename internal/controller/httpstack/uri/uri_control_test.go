@@ -14,42 +14,39 @@ import (
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		path     string
-		wantPath string
-	}{
-		{
-			name:     "末尾スラッシュがある場合_除去されて次のハンドラに渡る",
-			path:     "/foo/",
-			wantPath: "/foo",
-		},
-		{
-			name:     "末尾スラッシュが無い場合_パスはそのまま",
-			path:     "/foo",
-			wantPath: "/foo",
-		},
-	}
+	exec := func(t *testing.T, path string) (string, int) {
+		t.Helper()
+		e := echo.New()
+		ctx := context.Background()
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			e := echo.New()
-			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodGet, tt.path, nil)
-			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-
-			var seenPath string
-			handler := Middleware()(func(c echo.Context) error {
-				seenPath = c.Request().URL.Path
-				return c.NoContent(http.StatusOK)
-			})
-
-			require.NoError(t, handler(c))
-			assert.Equal(t, tt.wantPath, seenPath)
-			assert.Equal(t, http.StatusOK, rec.Code)
+		var seenPath string
+		handler := Middleware()(func(c echo.Context) error {
+			seenPath = c.Request().URL.Path
+			return c.NoContent(http.StatusOK)
 		})
+
+		require.NoError(t, handler(c))
+		return seenPath, rec.Code
 	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("末尾スラッシュがある場合、除去されて次のハンドラに渡る", func(t *testing.T) {
+			t.Parallel()
+			seenPath, status := exec(t, "/foo/")
+			assert.Equal(t, "/foo", seenPath)
+			assert.Equal(t, http.StatusOK, status)
+		})
+
+		t.Run("末尾スラッシュが無い場合、パスはそのまま渡る", func(t *testing.T) {
+			t.Parallel()
+			seenPath, status := exec(t, "/foo")
+			assert.Equal(t, "/foo", seenPath)
+			assert.Equal(t, http.StatusOK, status)
+		})
+	})
 }

@@ -2,6 +2,7 @@ package forcejson
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,28 +12,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_isBlacklistedContentType(t *testing.T) {
-	t.Run("何も設定されていない場合はtrueを返す", func(t *testing.T) {
-		assert.True(t, isBlacklistedContentType(""))
-	})
-	t.Run("text/htmlの場合はtrueを返す", func(t *testing.T) {
-		assert.True(t, isBlacklistedContentType(echo.MIMETextHTML))
-	})
-	t.Run("application/jsonの場合はfalseを返す", func(t *testing.T) {
-		assert.False(t, isBlacklistedContentType(echo.MIMEApplicationJSON))
-	})
-	t.Run("application/xmlの場合はfalseを返す", func(t *testing.T) {
-		assert.False(t, isBlacklistedContentType(echo.MIMEApplicationXML))
-	})
-}
-
-func Test_jsonContentTypeWithCharset(t *testing.T) {
+func Test_shouldForceJSON(t *testing.T) {
 	t.Parallel()
 
-	t.Run("application/json; charset=UTF-8 を返す", func(t *testing.T) {
-		expected := echo.MIMEApplicationJSON + "; " + charsetUTF8
-		actual := jsonContentTypeWithCharset()
-		assert.Equal(t, expected, actual)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未設定(空)の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, shouldForceJSON(""))
+		})
+
+		t.Run("text/htmlの場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, shouldForceJSON(echo.MIMETextHTML))
+		})
+
+		t.Run("text/html;charset付きでもtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, shouldForceJSON(echo.MIMETextHTML+"; charset=iso-8859-1"))
+		})
+
+		t.Run("application/jsonの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, shouldForceJSON(echo.MIMEApplicationJSON))
+		})
+
+		t.Run("application/xmlの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, shouldForceJSON(echo.MIMEApplicationXML))
+		})
+
+		t.Run("text/plainの場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, shouldForceJSON(echo.MIMETextPlain))
+		})
 	})
 }
 
@@ -47,119 +61,106 @@ func Test_ensureJSONContentType(t *testing.T) {
 		return e.NewContext(req, rec)
 	}
 
-	t.Run("ヘッダが空の場合は強制される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		c := newCtx()
 
-		ensureJSONContentType(c)
+		t.Run("ヘッダが空の場合は強制される", func(t *testing.T) {
+			t.Parallel()
+			c := newCtx()
 
-		got := c.Response().Header().Get(echo.HeaderContentType)
-		assert.Equal(t, jsonContentTypeWithCharset(), got)
-	})
+			ensureJSONContentType(c)
 
-	t.Run("text/html の場合は強制される", func(t *testing.T) {
-		t.Parallel()
-		c := newCtx()
+			got := c.Response().Header().Get(echo.HeaderContentType)
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
 
-		c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTML)
-		ensureJSONContentType(c)
+		t.Run("text/htmlの場合は強制される", func(t *testing.T) {
+			t.Parallel()
+			c := newCtx()
 
-		got := c.Response().Header().Get(echo.HeaderContentType)
-		assert.Equal(t, jsonContentTypeWithCharset(), got)
-	})
+			c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTML)
+			ensureJSONContentType(c)
 
-	t.Run("text/html; charset が付与されていても強制される", func(t *testing.T) {
-		t.Parallel()
-		c := newCtx()
+			got := c.Response().Header().Get(echo.HeaderContentType)
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
 
-		c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTML+"; charset=iso-8859-1")
-		ensureJSONContentType(c)
+		t.Run("application/jsonの場合は変更されない", func(t *testing.T) {
+			t.Parallel()
+			c := newCtx()
 
-		got := c.Response().Header().Get(echo.HeaderContentType)
-		assert.Equal(t, jsonContentTypeWithCharset(), got)
-	})
+			c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			ensureJSONContentType(c)
 
-	t.Run("application/json の場合は変更されない", func(t *testing.T) {
-		t.Parallel()
-		c := newCtx()
-
-		orig := echo.MIMEApplicationJSON
-		c.Response().Header().Set(echo.HeaderContentType, orig)
-		ensureJSONContentType(c)
-
-		got := c.Response().Header().Get(echo.HeaderContentType)
-		assert.Equal(t, orig, got)
+			got := c.Response().Header().Get(echo.HeaderContentType)
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
 	})
 }
 
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	require.NotNil(t, Middleware())
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非nilのミドルウェアを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NotNil(t, Middleware())
+		})
+	})
 }
 
-func Test_forceJSONContentTypeMiddleware(t *testing.T) {
+// TestMiddleware_overWire は、実 HTTP 経路（commit 済みレスポンス）でも Content-Type が
+// 上書きされることを検証する。recorder の生ヘッダマップでは commit 後の挙動を検出できないため
+// httptest.NewServer を用いてワイヤ上の最終ヘッダを確認する。
+func TestMiddleware_overWire(t *testing.T) {
 	t.Parallel()
 
-	t.Run("ヘッダが空の場合は強制される", func(t *testing.T) {
-		t.Parallel()
-
+	exec := func(t *testing.T, handler echo.HandlerFunc) string {
+		t.Helper()
 		e := echo.New()
 		e.Use(Middleware())
+		e.GET("/t", handler)
 
-		e.GET("/test-empty", func(c echo.Context) error {
-			c.Response().WriteHeader(http.StatusOK)
-			return nil
-		})
+		srv := httptest.NewServer(e)
+		t.Cleanup(srv.Close)
 
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test-empty", nil)
-		rec := httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+"/t", nil)
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = resp.Body.Close() })
+		_, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		return resp.Header.Get(echo.HeaderContentType)
+	}
 
-		got := rec.Header().Get(echo.HeaderContentType)
-		assert.Equal(t, jsonContentTypeWithCharset(), got)
-	})
-
-	t.Run("text/html の場合は強制される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		e := echo.New()
-		e.Use(Middleware())
-
-		e.GET("/test-html", func(c echo.Context) error {
-			c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTML)
-			c.Response().WriteHeader(http.StatusOK)
-			return nil
+		t.Run("HTMLボディはapplication/jsonへ上書きされる", func(t *testing.T) {
+			t.Parallel()
+			got := exec(t, func(c echo.Context) error { return c.HTML(http.StatusOK, "<p>hi</p>") })
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
 		})
 
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test-html", nil)
-		rec := httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
-
-		got := rec.Header().Get(echo.HeaderContentType)
-		assert.Equal(t, jsonContentTypeWithCharset(), got)
-	})
-
-	t.Run("application/json の場合は変更されない", func(t *testing.T) {
-		t.Parallel()
-
-		e := echo.New()
-		e.Use(Middleware())
-
-		e.GET("/test-json", func(c echo.Context) error {
-			c.Response().Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-			c.Response().WriteHeader(http.StatusOK)
-			return nil
+		t.Run("Content-Type未設定のボディもapplication/jsonへ上書きされる", func(t *testing.T) {
+			t.Parallel()
+			got := exec(t, func(c echo.Context) error { return c.Blob(http.StatusOK, "", []byte("x")) })
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
 		})
 
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test-json", nil)
-		rec := httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
+		t.Run("application/jsonは変更されない", func(t *testing.T) {
+			t.Parallel()
+			got := exec(t, func(c echo.Context) error { return c.JSON(http.StatusOK, map[string]string{"k": "v"}) })
+			assert.Equal(t, echo.MIMEApplicationJSON, got)
+		})
 
-		got := rec.Header().Get(echo.HeaderContentType)
-		assert.Equal(t, echo.MIMEApplicationJSON, got)
+		t.Run("text/plainは変更されない", func(t *testing.T) {
+			t.Parallel()
+			got := exec(t, func(c echo.Context) error { return c.String(http.StatusOK, "plain") })
+			assert.Equal(t, echo.MIMETextPlainCharsetUTF8, got)
+		})
 	})
 }

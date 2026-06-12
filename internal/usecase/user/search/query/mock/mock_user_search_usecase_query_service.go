@@ -17,32 +17,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockUserQueryService is a mock of UserQueryService interface.
-type MockUserQueryService struct {
+// MockUserSearchQueryService is a mock of UserSearchQueryService interface.
+type MockUserSearchQueryService struct {
 	ctrl     *gomock.Controller
-	recorder *MockUserQueryServiceMockRecorder
+	recorder *MockUserSearchQueryServiceMockRecorder
 	isgomock struct{}
 }
 
-// MockUserQueryServiceMockRecorder is the mock recorder for MockUserQueryService.
-type MockUserQueryServiceMockRecorder struct {
-	mock *MockUserQueryService
+// MockUserSearchQueryServiceMockRecorder is the mock recorder for MockUserSearchQueryService.
+type MockUserSearchQueryServiceMockRecorder struct {
+	mock *MockUserSearchQueryService
 }
 
-// NewMockUserQueryService creates a new mock instance.
-func NewMockUserQueryService(ctrl *gomock.Controller) *MockUserQueryService {
-	mock := &MockUserQueryService{ctrl: ctrl}
-	mock.recorder = &MockUserQueryServiceMockRecorder{mock}
+// NewMockUserSearchQueryService creates a new mock instance.
+func NewMockUserSearchQueryService(ctrl *gomock.Controller) *MockUserSearchQueryService {
+	mock := &MockUserSearchQueryService{ctrl: ctrl}
+	mock.recorder = &MockUserSearchQueryServiceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockUserQueryService) EXPECT() *MockUserQueryServiceMockRecorder {
+func (m *MockUserSearchQueryService) EXPECT() *MockUserSearchQueryServiceMockRecorder {
 	return m.recorder
 }
 
 // CountByFilter mocks base method.
-func (m *MockUserQueryService) CountByFilter(ctx context.Context, filter *query.UserSearchFilter) (int64, error) {
+func (m *MockUserSearchQueryService) CountByFilter(ctx context.Context, filter *query.UserSearchFilter) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CountByFilter", ctx, filter)
 	ret0, _ := ret[0].(int64)
@@ -51,13 +51,13 @@ func (m *MockUserQueryService) CountByFilter(ctx context.Context, filter *query.
 }
 
 // CountByFilter indicates an expected call of CountByFilter.
-func (mr *MockUserQueryServiceMockRecorder) CountByFilter(ctx, filter any) *gomock.Call {
+func (mr *MockUserSearchQueryServiceMockRecorder) CountByFilter(ctx, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByFilter", reflect.TypeOf((*MockUserQueryService)(nil).CountByFilter), ctx, filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountByFilter", reflect.TypeOf((*MockUserSearchQueryService)(nil).CountByFilter), ctx, filter)
 }
 
 // FindByFilter mocks base method.
-func (m *MockUserQueryService) FindByFilter(ctx context.Context, filter *query.UserSearchFilter, limit, offset int32) (query.UserSearchResults, error) {
+func (m *MockUserSearchQueryService) FindByFilter(ctx context.Context, filter *query.UserSearchFilter, limit, offset int32) (query.UserSearchResults, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindByFilter", ctx, filter, limit, offset)
 	ret0, _ := ret[0].(query.UserSearchResults)
@@ -66,7 +66,7 @@ func (m *MockUserQueryService) FindByFilter(ctx context.Context, filter *query.U
 }
 
 // FindByFilter indicates an expected call of FindByFilter.
-func (mr *MockUserQueryServiceMockRecorder) FindByFilter(ctx, filter, limit, offset any) *gomock.Call {
+func (mr *MockUserSearchQueryServiceMockRecorder) FindByFilter(ctx, filter, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByFilter", reflect.TypeOf((*MockUserQueryService)(nil).FindByFilter), ctx, filter, limit, offset)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByFilter", reflect.TypeOf((*MockUserSearchQueryService)(nil).FindByFilter), ctx, filter, limit, offset)
 }

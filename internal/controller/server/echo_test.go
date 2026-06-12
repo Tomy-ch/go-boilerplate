@@ -4,8 +4,9 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
+
+	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -16,29 +17,32 @@ func Test_ExtractPathParams(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	ctx := context.Background()
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/users/123/books/abc", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	newCtx := func() echo.Context {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/users/123/books/abc", nil)
+		return e.NewContext(req, httptest.NewRecorder())
+	}
 
-	t.Run("パスパラメータがない場合は空マップを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		// 新しいコンテキストでは ParamNames 未設定 -> 空
-		got := ExtractPathParams(c)
-		require.NotNil(t, got)
-		require.Empty(t, got)
-	})
 
-	t.Run("パスパラメータがある場合は全て抽出される", func(t *testing.T) {
-		t.Parallel()
-		// 名前と値をセット
-		c.SetParamNames("user_id", "book_id")
-		c.SetParamValues("123", "abc")
+		t.Run("パスパラメータがない場合は空マップを返す", func(t *testing.T) {
+			t.Parallel()
+			got := ExtractPathParams(newCtx())
+			require.NotNil(t, got)
+			assert.Empty(t, got)
+		})
 
-		got := ExtractPathParams(c)
-		assert.Len(t, got, 2)
-		assert.Equal(t, "123", got["user_id"])
-		assert.Equal(t, "abc", got["book_id"])
+		t.Run("パスパラメータがある場合は全て抽出される", func(t *testing.T) {
+			t.Parallel()
+			c := newCtx()
+			c.SetParamNames("user_id", "book_id")
+			c.SetParamValues("123", "abc")
+
+			got := ExtractPathParams(c)
+			require.Len(t, got, 2)
+			assert.Equal(t, "123", got["user_id"])
+			assert.Equal(t, "abc", got["book_id"])
+		})
 	})
 }
 
@@ -47,61 +51,96 @@ func Test_ExtractQueryParams(t *testing.T) {
 
 	e := echo.New()
 
-	t.Run("クエリが無い場合は空マップを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
-		got := ExtractQueryParams(c)
-		// 実装上は空の map を返すので長さが0であることを確認
-		require.NotNil(t, got)
-		require.Empty(t, got)
-	})
+		t.Run("クエリが無い場合は空マップを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-	t.Run("複数値クエリを正しくコピーして返す", func(t *testing.T) {
-		t.Parallel()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path?foo=1&foo=2&bar=x", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+			got := ExtractQueryParams(c)
+			require.NotNil(t, got)
+			assert.Empty(t, got)
+		})
 
-		got := ExtractQueryParams(c)
-		require.NotNil(t, got)
-		assert.Equal(t, []string{"1", "2"}, got["foo"])
-		assert.Equal(t, []string{"x"}, got["bar"])
+		t.Run("複数値クエリを正しくコピーして返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/path?foo=1&foo=2&bar=x", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-		// 返されたマップは独立コピーであることを確認（元の URL 値を変更しても影響しない）
-		// 元の values にアクセス
-		orig := c.Request().URL.Query()
-		orig.Set("foo", "9")
-		// got は以前の値のまま
-		assert.Equal(t, []string{"1", "2"}, got["foo"])
+			got := ExtractQueryParams(c)
+			require.NotNil(t, got)
+			assert.Equal(t, []string{"1", "2"}, got["foo"])
+			assert.Equal(t, []string{"x"}, got["bar"])
+		})
 	})
 }
 
-func Test_cloneValues(t *testing.T) {
+func Test_BuildHTTPRequestLogInput(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil を渡すと nil を返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		var v url.Values
-		got := cloneValues(v)
-		require.Nil(t, got)
+
+		t.Run("リクエストの全フィールドが入力構造体に詰め直される", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/users/123?q=v", nil)
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			req.Header.Set("User-Agent", "test-agent")
+			req.Host = "example.com"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c.SetPath("/users/:id")
+			c.SetParamNames("id")
+			c.SetParamValues("123")
+
+			got := BuildHTTPRequestLogInput(c, logging.EventTypeError)
+
+			assert.Equal(t, logging.EventTypeError, got.EventType)
+			assert.Equal(t, http.MethodPost, got.Method)
+			assert.Equal(t, "/users/:id", got.Path)
+			assert.Equal(t, "/users/123?q=v", got.URI)
+			assert.Equal(t, "example.com", got.Host)
+			assert.Equal(t, "http", got.Scheme)
+			assert.Equal(t, "test-agent", got.UserAgent)
+			assert.Equal(t, echo.MIMEApplicationJSON, got.ContentType)
+			assert.Equal(t, map[string]string{"id": "123"}, got.PathParams)
+			assert.Equal(t, []string{"v"}, got.QueryParams["q"])
+			assert.False(t, got.EventAt.IsZero())
+		})
 	})
+}
 
-	t.Run("コピーはディープコピーであること", func(t *testing.T) {
+func Test_Recovered(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	newCtx := func() echo.Context {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		return e.NewContext(req, httptest.NewRecorder())
+	}
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		v := url.Values{}
-		v.Add("a", "1")
-		v.Add("a", "2")
 
-		cp := cloneValues(v)
-		assert.Equal(t, []string{"1", "2"}, cp["a"])
+		t.Run("未設定ならfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, IsRecovered(newCtx()))
+		})
 
-		// 元を変更してもコピーに影響しない
-		v.Set("a", "9")
-		assert.Equal(t, []string{"1", "2"}, cp["a"])
+		t.Run("MarkRecovered後はtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			c := newCtx()
+			MarkRecovered(c)
+			assert.True(t, IsRecovered(c))
+		})
 	})
 }

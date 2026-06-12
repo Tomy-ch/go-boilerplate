@@ -23,121 +23,125 @@ const detailPath = "/v1/users/123e4567-e89b-12d3-a456-426614174000"
 func TestV1UsersDetail_Integration(t *testing.T) {
 	t.Parallel()
 
-	t.Run("GET /v1/users/{user_id} のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
 
-		expectedDTO := user.MutableFields{
-			FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "09000000000",
-			PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3",
-		}
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(expectedDTO, nil)
+		t.Run("GET /v1/users/{user_id}がUserResponseを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
 
-		detail.BindHandler(e, tf, mockApp)
+			expectedDTO := user.UserView{
+				FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "09000000000",
+				PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3",
+			}
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(expectedDTO, nil)
 
-		expected := detailgen.UserResponse{
-			FirstName:  expectedDTO.FirstName,
-			LastName:   expectedDTO.LastName,
-			Email:      types.Email(expectedDTO.Email),
-			Phone:      expectedDTO.Phone,
-			PostalCode: expectedDTO.PostalCode,
-			Prefecture: expectedDTO.PrefectureName,
-			City:       expectedDTO.City,
-			Street:     expectedDTO.Street,
-		}
+			detail.BindHandler(e, tf, mockApp)
 
-		actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, nil)
-		assert.Equal(t, http.StatusOK, actual.StatusCode)
-		AssertJSONResponse(t, expected, actual)
-	})
+			expected := detailgen.UserResponse{
+				FirstName:  expectedDTO.FirstName,
+				LastName:   expectedDTO.LastName,
+				Email:      types.Email(expectedDTO.Email),
+				Phone:      expectedDTO.Phone,
+				PostalCode: expectedDTO.PostalCode,
+				Prefecture: expectedDTO.PrefectureName,
+				City:       expectedDTO.City,
+				Street:     expectedDTO.Street,
+			}
 
-	t.Run("PUT /v1/users/{user_id} のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, nil)
+			assert.Equal(t, http.StatusOK, actual.StatusCode)
+			AssertJSONResponse(t, expected, actual)
+		})
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.MutableFields{})).
-			Return(user.MutableFields{FirstName: "First", Email: "put@example.com"}, nil)
+		t.Run("PUT /v1/users/{user_id}が更新後のUserResponseを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
 
-		detail.BindHandler(e, tf, mockApp)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
+				Return(user.UserView{FirstName: "First", Email: "put@example.com"}, nil)
 
-		body := &detailgen.PutUsersDetailJSONRequestBody{
-			FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
-			Phone: "09000000000", PostalCode: "123-4567", Prefecture: "Tokyo",
-			City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
-		}
+			detail.BindHandler(e, tf, mockApp)
 
-		actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, nil)
-		assert.Equal(t, http.StatusOK, actual.StatusCode)
-		// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
-		AssertJSONResponse(t, detailgen.UserResponse{}, actual)
-	})
+			body := &detailgen.PutUsersDetailJSONRequestBody{
+				FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
+				Phone: "09000000000", PostalCode: "123-4567", Prefecture: "Tokyo",
+				City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
+			}
 
-	t.Run("PATCH /v1/users/{user_id} のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
+			actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, nil)
+			assert.Equal(t, http.StatusOK, actual.StatusCode)
+			// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
+			AssertJSONResponse(t, detailgen.UserResponse{}, actual)
+		})
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
-			Return(user.MutableFields{FirstName: "Patched", Email: "patch@example.com"}, nil)
+		t.Run("PATCH /v1/users/{user_id}が部分更新後のUserResponseを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
 
-		detail.BindHandler(e, tf, mockApp)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
+				Return(user.UserView{FirstName: "Patched", Email: "patch@example.com"}, nil)
 
-		body := &detailgen.PatchUsersDetailJSONRequestBody{
-			FirstName: ptr.To("Patched"),
-		}
+			detail.BindHandler(e, tf, mockApp)
 
-		actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, nil)
-		assert.Equal(t, http.StatusOK, actual.StatusCode)
-		// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
-		AssertJSONResponse(t, detailgen.UserResponse{}, actual)
-	})
+			body := &detailgen.PatchUsersDetailJSONRequestBody{
+				FirstName: ptr.To("Patched"),
+			}
 
-	t.Run("PUT /v1/users/me/password のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
+			actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, nil)
+			assert.Equal(t, http.StatusOK, actual.StatusCode)
+			// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
+			AssertJSONResponse(t, detailgen.UserResponse{}, actual)
+		})
 
-		uid := uuid.NewTestFromSalt(t, "me-password")
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			ChangePassword(gomock.Any(), uid, "current_password", "new_valid_password").
-			Return(nil)
+		t.Run("PUT /v1/users/me/passwordがパスワード変更を行い204を返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
 
-		detail.BindHandler(e, tf, mockApp)
-		headers := MakeAvailableUserID(t, e, uid)
+			uid := uuid.NewTestFromSalt(t, "me-password")
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				ChangePassword(gomock.Any(), uid, "current_password", "new_valid_password").
+				Return(nil)
 
-		body := &detailgen.PutUsersMePasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
-			CurrentPassword: "current_password",
-			NewPassword:     "new_valid_password",
-		}
+			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uid)
 
-		actual := StartServer(t, e).DoJSON(http.MethodPut, "/v1/users/me/password", body, headers)
-		assert.Equal(t, http.StatusNoContent, actual.StatusCode)
-	})
+			body := &detailgen.PutUsersMePasswordJSONRequestBody{ //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
+				CurrentPassword: "current_password",
+				NewPassword:     "new_valid_password",
+			}
 
-	t.Run("DELETE /v1/users/{user_id} のエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		t.Parallel()
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
+			actual := StartServer(t, e).DoJSON(http.MethodPut, "/v1/users/me/password", body, headers)
+			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+		})
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
+		t.Run("DELETE /v1/users/{user_id}が削除を行い204を返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
 
-		detail.BindHandler(e, tf, mockApp)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
 
-		actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, nil)
-		assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+			detail.BindHandler(e, tf, mockApp)
+
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, nil)
+			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
+		})
 	})
 }

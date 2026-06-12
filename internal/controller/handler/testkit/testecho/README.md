@@ -8,7 +8,8 @@ Builder-pattern HTTP test client for Echo handler tests.
 
 |Method|Description|
 |---|---|
-|`NewEchoTestClient(t, e)`|Create test client (auto-configures error handler)|
+|`NewEchoTestClient(t, e)`|Create test client|
+|`WithAppErrorHandler()`|Install the production error handler (overwrites the Echo's `HTTPErrorHandler`)|
 |`Method(m)`|Set HTTP method|
 |`RoutePattern(p)`|Set route pattern (e.g. `/users/:id`)|
 |`RequestURL(u)`|Set actual request URL|

@@ -41,6 +41,8 @@ Helpers to extract request parameters from Echo context. Primarily used by the l
 |---|---|
 |`ExtractPathParams`|Extract path parameters as `map[string]string` from Echo context|
 |`ExtractQueryParams`|Extract query parameters as `map[string][]string` from Echo context|
+|`BuildHTTPRequestLogInput`|Build a `logging.HTTPRequestLogInput` from Echo context (shared by the error-handler / recovery log paths)|
+|`MarkRecovered` / `IsRecovered`|Mark / check that a panic was recovered upstream, so the error handler suppresses its duplicate log|
 
 ## Notes
 

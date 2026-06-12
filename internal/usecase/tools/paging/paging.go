@@ -17,6 +17,8 @@ const (
 	minPage = 1
 	// サーバが許容する最大ページ数
 	maxPage = 10_000
+	// int32 変換時のオフセット上限（int32 境界の防御）
+	maxOffset = maxPage * maxPerPage
 )
 
 type Paging struct {
@@ -24,10 +26,10 @@ type Paging struct {
 	offset int
 }
 
-// NewPagingFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算してPageを返します。
+// NewPagingFrom1Based は、ページ番号と1ページあたりの件数から取得上限とオフセットを計算して Paging を返します。
 //
 //	ページ番号が1未満の場合は1に、1ページあたりの件数が0以下の場合はデフォルト値を使用します。
-//	page[offsetの係数]は、最小値1：最大値はmaxPageまで許容します。
+//	page[offsetの係数]は最小値1で、maxPage を超える場合はエラーを返します。
 //	perPage[limit]は、0以下の場合はdefaultPerPage値：最大値をmaxPerPageまで許容します。
 func NewPagingFrom1Based(page, perPage *int) (*Paging, error) {
 	limit := defaultPerPage
@@ -56,7 +58,6 @@ func NewPagingFrom1Based(page, perPage *int) (*Paging, error) {
 func (p Paging) Limit() int { return p.limit }
 
 // Limit32 は、ページの取得上限をint32型で返します。
-// limit は1ページあたりの件数であり、安全のためmaxPerPageでクランプしてからint32へ変換します。
 func (p Paging) Limit32() int32 {
 	limit := p.limit
 	if limit > maxPerPage {
@@ -69,10 +70,8 @@ func (p Paging) Limit32() int32 {
 func (p Paging) Offset() int { return p.offset }
 
 // Offset32 は、ページのオフセットをint32型で返します。
-// offset が maxOffset を超える場合でも、maxOffset にクランプした上で int32 に変換することで安全性を担保します。
 func (p Paging) Offset32() int32 {
 	offset := p.offset
-	maxOffset := maxPage * maxPerPage
 	if offset > maxOffset {
 		offset = maxOffset
 	}

@@ -8,7 +8,8 @@ Echo ハンドラテスト用のビルダーパターン HTTP テストクライ
 
 |メソッド|説明|
 |---|---|
-|`NewEchoTestClient(t, e)`|テストクライアントを作成（エラーハンドラを自動設定）|
+|`NewEchoTestClient(t, e)`|テストクライアントを作成|
+|`WithAppErrorHandler()`|本番相当のエラーハンドラを設定（Echo の `HTTPErrorHandler` を上書き）|
 |`Method(m)`|HTTP メソッドを設定|
 |`RoutePattern(p)`|ルートパターンを設定（例: `/users/:id`）|
 |`RequestURL(u)`|実際のリクエスト URL を設定|

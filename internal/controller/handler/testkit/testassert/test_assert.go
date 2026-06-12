@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,14 +17,14 @@ func AssertJSONEqual[T any](
 ) {
 	t.Helper()
 
-	require.Equal(t, expectedCode, actualResponse.Code, "HTTPステータスコードが一致しません")
+	assert.Equal(t, expectedCode, actualResponse.Code, "HTTPステータスコードが一致しません")
 
 	var actual T
 	require.NoError(t, json.Unmarshal(actualResponse.Body.Bytes(), &actual), "JSONレスポンスのデシリアライズに失敗しました")
-	require.Equal(t, expectedResponse, actual, "JSONレスポンスの内容が一致しません")
+	assert.Equal(t, expectedResponse, actual, "JSONレスポンスの内容が一致しません")
 }
 
-// AssertEchoRouterMethods は、EchoのルートのHTTPメソッドが期待通りであることをアサートします。
+// AssertEchoRouterMethods は、EchoのルートのHTTPメソッド集合が期待通りであることをアサートします。
 func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute []*echo.Route) {
 	t.Helper()
 	actualMethods := make([]string, len(actualRoute))
@@ -31,16 +32,14 @@ func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute
 		actualMethods[i] = r.Method
 	}
 
-	require.Len(t, actualMethods, len(expectedMethods))
-	for _, method := range expectedMethods {
-		require.Contains(t, actualMethods, method)
-	}
+	assert.ElementsMatch(t, expectedMethods, actualMethods)
 }
 
 // AssertEchoRouterPath は、Echoのルートのパスが期待通りであることをアサートします。
 func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute []*echo.Route) {
 	t.Helper()
+	require.NotEmpty(t, actualRoute, "ルートが登録されていません")
 	for _, r := range actualRoute {
-		require.Equal(t, expectedPath, r.Path)
+		assert.Equal(t, expectedPath, r.Path)
 	}
 }

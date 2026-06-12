@@ -1,4 +1,4 @@
-// Package module は、DIでの設定関連の依存関係を提供します。
+// Package module は、各レイヤの fx.Module（依存関係定義）を提供します。
 package module
 
 import (
@@ -14,7 +14,7 @@ func ConfigModule() fx.Option {
 			config.SetUpConfig,
 		),
 		fx.Provide(
-			config.NewOperationSystemConfig,
+			config.NewOperatingSystemConfig,
 			config.NewApplicationConfig,
 			config.NewServerConfig,
 			config.NewDatabaseConfig,

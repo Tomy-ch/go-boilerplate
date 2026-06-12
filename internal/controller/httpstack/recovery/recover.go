@@ -2,16 +2,12 @@
 package recovery
 
 import (
-	"time"
-
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/internal/observability"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
 )
 
 const (
@@ -48,32 +44,16 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 // newRecoverLogErrorFunc は、リカバリミドルウェアのログ出力関数を生成します。
 func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c echo.Context, err error, stack []byte) error {
 	return func(c echo.Context, err error, stack []byte) error {
-		req := c.Request()
-		traceCtx := observability.ExtractTraceContext(req.Context())
-		reqIn := logging.HTTPRequestLogInput{
-			EventAt:       time.Now(),
-			Method:        req.Method,
-			Path:          c.Path(),
-			URI:           req.RequestURI,
-			RemoteIP:      c.RealIP(),
-			Host:          req.Host,
-			Scheme:        req.URL.Scheme,
-			Proto:         req.Proto,
-			UserAgent:     req.UserAgent(),
-			ContentType:   req.Header.Get(echo.HeaderContentType),
-			ContentLength: req.ContentLength,
-			QueryParams:   server.ExtractQueryParams(c),
-			PathParams:    server.ExtractPathParams(c),
-			TraceID:       traceCtx.TraceID(),
-			SpanID:        traceCtx.SpanID(),
-		}
+		reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic)
 		recoverFields := []*logging.Field{
-			logging.Error("error", err),
-			logging.Any("stack", stack),
+			logging.String(logging.InternalErrorKey, err.Error()),
+			logging.String(logging.InternalStackTraceKey, string(stack)),
 		}
 		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
 		logger.Named("middleware.recover").Error("panic recovered", fields...)
-		return nil
+		// ログ済みを記録し err を返す（echo が c.Error で 500 を返す。二重ログは IsRecovered で抑止）。
+		server.MarkRecovered(c)
+		return err
 	}
 }
 
@@ -83,16 +63,16 @@ func developmentConfig() middleware.RecoverConfig {
 		StackSize:         developmentStackSize,
 		DisableStackAll:   false,
 		DisablePrintStack: false,
-		LogLevel:          log.DEBUG,
 	}
 }
 
 // productionConfig は、本番環境用のリカバリミドルウェアの設定を返します。
 func productionConfig() middleware.RecoverConfig {
 	return middleware.RecoverConfig{
-		StackSize:         productionStackSize,
+		StackSize: productionStackSize,
+		// DisableStackAll=true で他 goroutine は除外しつつ、当該 goroutine のスタックは捕捉する
+		// （DisablePrintStack=true だと echo が runtime.Stack 自体を行わず LogErrorFunc に空が渡る）。
 		DisableStackAll:   true,
-		DisablePrintStack: true,
-		LogLevel:          log.ERROR,
+		DisablePrintStack: false,
 	}
 }

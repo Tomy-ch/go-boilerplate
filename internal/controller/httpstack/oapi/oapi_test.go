@@ -7,10 +7,12 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/controller/ctxhelper"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -29,7 +31,12 @@ func TestMiddleware(t *testing.T) {
 
 	_ = handler(c)
 
-	got, ok := ctxhelper.GetEchoContext(c.Request().Context())
+	// ミドルウェアが Authn スロットを仕込んでいることを確認（Set が成功し Get で読める）。
+	a, err := authbd.New("u1", authbd.ProviderMock, nil, nil)
+	require.NoError(t, err)
+	require.True(t, ctxhelper.SetAuthn(c.Request().Context(), *a))
+
+	got, ok := ctxhelper.GetAuthn(c.Request().Context())
 	assert.True(t, ok)
-	assert.Equal(t, c, got)
+	assert.Equal(t, a.Subject(), got.Subject())
 }

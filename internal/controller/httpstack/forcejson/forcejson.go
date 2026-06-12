@@ -7,46 +7,29 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const (
-	charsetUTF8 = "charset=UTF-8"
-)
-
-// Middleware は、特定のContent-Typeを強制的にapplication/jsonに設定します。
+// Middleware は、Content-Type が未設定または text/html の場合に
+// application/json へ強制するミドルウェアを返します。
 func Middleware() echo.MiddlewareFunc {
-	return forceJSONContentTypeMiddleware()
-}
-
-// forceJSONContentTypeMiddleware は、レスポンスのContent-Typeを強制的にapplication/jsonに設定するミドルウェアを返します。
-func forceJSONContentTypeMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if err := next(c); err != nil {
-				return err
-			}
-
-			ensureJSONContentType(c)
-
-			return nil
+			// next 後では commit 済みで反映されないため、WriteHeader 直前(Before)に補正する。
+			c.Response().Before(func() {
+				ensureJSONContentType(c)
+			})
+			return next(c)
 		}
 	}
 }
 
-// ensureJSONContentType は、レスポンスのContent-Typeがブラックリストに登録されている場合に、application/jsonに強制的に設定します。
+// ensureJSONContentType は、Content-Type が未設定または text/html の場合に application/json へ強制します。
 func ensureJSONContentType(c echo.Context) {
 	h := c.Response().Header()
-	ct := h.Get(echo.HeaderContentType)
-
-	if isBlacklistedContentType(ct) {
-		h.Set(echo.HeaderContentType, jsonContentTypeWithCharset())
+	if shouldForceJSON(h.Get(echo.HeaderContentType)) {
+		h.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	}
 }
 
-// jsonContentTypeWithCharset は、application/json;charset=UTF-8 を返します。
-func jsonContentTypeWithCharset() string {
-	return echo.MIMEApplicationJSON + "; " + charsetUTF8
-}
-
-// isBlacklistedContentType は、特定のContent-Typeがブラックリストに登録されているかどうかを判定します。
-func isBlacklistedContentType(ct string) bool {
+// shouldForceJSON は、Content-Type が未設定または text/html の場合に true を返します。
+func shouldForceJSON(ct string) bool {
 	return ct == "" || strings.HasPrefix(ct, echo.MIMETextHTML)
 }

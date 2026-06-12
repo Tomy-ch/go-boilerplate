@@ -45,9 +45,8 @@ Make ターゲットは主に以下の単位で整理されています。
 | `make serve-build` | Docker イメージをキャッシュを利用して再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
 | `make serve-build-clean` | `--no-cache --pull` でクリーンビルドしたうえで開発環境を起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
 | `make tools` | `tools` プロファイルの開発支援ツール群を起動します。 | 開発ツール利用時 |
-| `make tools-build` | 開発用ツールコンテナをキャッシュを利用してビルドします（起動はしません）。 | ツールコンテナの Dockerfile や依存変更の反映 |
-| `make tools-build-clean` | 開発用ツールコンテナを `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールコンテナの base image 更新の取り込み |
-| `make smoke` | `smoke` プロファイルの `smoke_server` をビルド付きで起動します。 | Smoke Test 環境の確認 |
+| `make tool-runners-build` | オンデマンド実行のツールランナー画像(go/node/python)をキャッシュ利用でビルドします（起動はしません）。 | ツールランナーの Dockerfile や依存変更の反映 |
+| `make tool-runners-build-clean` | ツールランナー画像を `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールランナーの base image 更新の取り込み |
 
 #### `make job NAME=<job名> ARGS="<引数>"`
 
@@ -87,21 +86,21 @@ DB 操作全般を扱うターゲット群です。
 | `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | なし |
 | `make check-migration-down-gap` | `down` 側マイグレーションの連番ギャップをチェックします。 | なし |
 | `make db-migrate-up DB=<database>` | 指定した DB に対して、全マイグレーションを最新まで適用します。 | 例: `make db-migrate-up DB=local` |
-| `make db-migrate-up-<version> DB=<database>` | 指定した DB に対して、特定バージョンまでマイグレーションを適用します。 | 例: `make db-migrate-up-10 DB=local` |
+| `make db-migrate-up-<steps> DB=<database>` | 指定した DB に対して、現在位置から指定段数だけマイグレーションを適用します。 | 例: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | 指定した DB に対して、全マイグレーションを初期状態までダウングレードします。 | なし |
-| `make db-migrate-down-<version> DB=<database>` | 指定した DB に対して、特定バージョンまでダウングレードします。 | なし |
+| `make db-migrate-down-<steps> DB=<database>` | 指定した DB に対して、指定段数だけダウングレードします。 | なし |
 | `make db-local-migrate-up` | LocalDB に対して全マイグレーションを最新まで適用します。 | `DB=local` を指定した `db-migrate-up` のエイリアスです。 |
-| `make db-local-migrate-up-<version>` | LocalDB に対して特定バージョンまでマイグレーションを適用します。 | なし |
+| `make db-local-migrate-up-<steps>` | LocalDB に対して指定段数だけマイグレーションを適用します。 | なし |
 | `make db-local-migrate-down` | LocalDB を初期状態までダウングレードします。 | `DB=local` を指定した `db-migrate-down` のエイリアスです。 |
-| `make db-local-migrate-down-<version>` | LocalDB を特定バージョンまでダウングレードします。 | なし |
+| `make db-local-migrate-down-<steps>` | LocalDB を指定段数だけダウングレードします。 | なし |
 | `make db-test-migrate-up` | TestDB に対して全マイグレーションを最新まで適用します。 | `DB=test` を指定した `db-migrate-up` のエイリアスです。 |
-| `make db-test-migrate-up-<version>` | TestDB に対して特定バージョンまでマイグレーションを適用します。 | なし |
+| `make db-test-migrate-up-<steps>` | TestDB に対して指定段数だけマイグレーションを適用します。 | なし |
 | `make db-test-migrate-down` | TestDB を初期状態までダウングレードします。 | `DB=test` を指定した `db-migrate-down` のエイリアスです。 |
-| `make db-test-migrate-down-<version>` | TestDB を特定バージョンまでダウングレードします。 | なし |
+| `make db-test-migrate-down-<steps>` | TestDB を指定段数だけダウングレードします。 | なし |
 | `make db-migrate-ci-up DB=<database>` | Docker を介さず、直接 `cmd/main.go migrate-up` を実行します。 | CI 用ターゲットです。 |
-| `make db-migrate-ci-up-<version> DB=<database>` | Docker を介さず、指定バージョンまで `migrate-up` を実行します。 | CI 用ターゲットです。 |
+| `make db-migrate-ci-up-<steps> DB=<database>` | Docker を介さず、指定段数だけ `migrate-up` を実行します。 | CI 用ターゲットです。 |
 | `make db-migrate-ci-down DB=<database>` | Docker を介さず、直接 `cmd/main.go migrate-down` を実行します。 | CI 用ターゲットです。 |
-| `make db-migrate-ci-down-<version> DB=<database>` | Docker を介さず、指定バージョンまで `migrate-down` を実行します。 | CI 用ターゲットです。 |
+| `make db-migrate-ci-down-<steps> DB=<database>` | Docker を介さず、指定段数だけ `migrate-down` を実行します。 | CI 用ターゲットです。 |
 
 例:
 
@@ -239,7 +238,7 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make test` | CI 用のテストを実行します。 | `gen` / `cli` / `cmd` / `mock` / `apperror` / `scripts` を除外したパッケージ群に対して `go test` を実行します。 |
+| `make test` | CI 用のテストを実行します。 | `gen` / `cmd` / `mock` / `apperror` / `scripts` を除外したパッケージ群に対して `go test` を実行します（`internal/cli` コアは計測対象に含まれます）。 |
 | `make gen-test-repo` | テストを実行し、HTML カバレッジレポートを生成します。 | 出力先は `docs/coverage/index.html` です。 |
 | `make test-cover-ci` | カバレッジ付きでテストを実行します。 | CI 用ターゲットで、`coverage.out` を出力します。 |
 
@@ -308,7 +307,6 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 | `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | アプリケーション名や OpenAPI タイトルなどのメタデータを一括置換します。 | README や OpenAPI 定義などに反映されます。 |
 | `make setup-replace-repository-reference REPOSITORY=<org/repo>` | リポジトリ参照（GitHub URL など）を一括置換します。 | README やドキュメント内のリンクを更新します。 |
 | `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | LICENSE の著作権表記を更新します。 | 年は省略可能です。 |
-| `make setup-remove-debug-handlers` | Debug 用ハンドラ一式を削除します。 | 本番利用時の不要コード削除に使用します。 |
 
 ### リリースブランチ関連
 

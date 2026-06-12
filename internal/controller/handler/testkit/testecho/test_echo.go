@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,11 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	errTargetUnset  = errors.New("RequestURL か RoutePattern のいずれかを設定してください")
+	errModeConflict = errors.New("RequestURL は RoutePattern/PathParams と併用できません")
 )
 
 type EchoTestParam struct {
@@ -38,10 +44,6 @@ type EchoTestClient struct {
 // NewEchoTestClient はテスト用のEchoクライアントを生成します。
 func NewEchoTestClient(t *testing.T, e *echo.Echo) *EchoTestClient {
 	t.Helper()
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	lf := logging.NewTestLogFieldBuilder(t)
-	errorhandler.New(e, logging.NewTestLogger(t), lf, obsCfg)
 	return &EchoTestClient{
 		t:       t,
 		e:       e,
@@ -49,132 +51,167 @@ func NewEchoTestClient(t *testing.T, e *echo.Echo) *EchoTestClient {
 	}
 }
 
+// WithAppErrorHandler は、本番相当のエラーハンドラを Echo に設定します。
+// 渡された Echo の HTTPErrorHandler を上書きする副作用を持ちます。
+func (c *EchoTestClient) WithAppErrorHandler() *EchoTestClient {
+	c.t.Helper()
+	cfg := config.MockConfigForTest(c.t)
+	obsCfg := config.NewObservabilityConfig(cfg)
+	lf := logging.NewTestLogFieldBuilder(c.t)
+	errorhandler.New(c.e, logging.NewTestLogger(c.t), lf, obsCfg)
+	return c
+}
+
 // Method はHTTPメソッドを設定します。
-func (b *EchoTestClient) Method(m string) *EchoTestClient {
-	b.t.Helper()
-	b.method = m
-	return b
+func (c *EchoTestClient) Method(m string) *EchoTestClient {
+	c.t.Helper()
+	c.method = m
+	return c
 }
 
 // RoutePattern はルートパターンを設定します。
 //
 // 例: /users/:id, /products/:id
-func (b *EchoTestClient) RoutePattern(p string) *EchoTestClient {
-	b.t.Helper()
-	b.routePattern = p
-	return b
+func (c *EchoTestClient) RoutePattern(p string) *EchoTestClient {
+	c.t.Helper()
+	c.routePattern = p
+	return c
 }
 
 // RequestURL は実際に叩くURLを設定します。
 // (パスパラメータやクエリパラメータを含めて指定することができます。)
 //
 // 例: /users/123?limit=10, /products/456?sort=asc
-func (b *EchoTestClient) RequestURL(u string) *EchoTestClient {
-	b.t.Helper()
-	b.requestURL = u
-	return b
+func (c *EchoTestClient) RequestURL(u string) *EchoTestClient {
+	c.t.Helper()
+	c.requestURL = u
+	return c
 }
 
 // JSONBody はJSON形式のリクエストボディを設定します。
-func (b *EchoTestClient) JSONBody(v any) *EchoTestClient {
-	b.t.Helper()
+func (c *EchoTestClient) JSONBody(v any) *EchoTestClient {
+	c.t.Helper()
 	data, err := json.Marshal(v)
-	require.NoError(b.t, err)
-	b.body = bytes.NewReader(data)
-	b.Header(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	return b
+	require.NoError(c.t, err)
+	c.body = bytes.NewReader(data)
+	c.Header(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	return c
 }
 
 // RawBody は生のリクエストボディを設定します。
 //
 // JSON形式は、 JSONBody() を使用してください。
-func (b *EchoTestClient) RawBody(r io.Reader, contentType string) *EchoTestClient {
-	b.t.Helper()
-	b.body = r
+func (c *EchoTestClient) RawBody(r io.Reader, contentType string) *EchoTestClient {
+	c.t.Helper()
+	c.body = r
 	if contentType != "" {
-		b.Header(echo.HeaderContentType, contentType)
+		c.Header(echo.HeaderContentType, contentType)
 	}
-	return b
+	return c
 }
 
 // Header はリクエストヘッダーを設定します。
-func (b *EchoTestClient) Header(k, v string) *EchoTestClient {
-	b.t.Helper()
-	b.headers.Set(k, v)
-	return b
+func (c *EchoTestClient) Header(k, v string) *EchoTestClient {
+	c.t.Helper()
+	c.headers.Set(k, v)
+	return c
 }
 
 // AuthBearer はBearerトークンを設定します。
-func (b *EchoTestClient) AuthBearer(token string) *EchoTestClient {
-	b.t.Helper()
-	return b.Header(echo.HeaderAuthorization, "Bearer "+token)
+func (c *EchoTestClient) AuthBearer(token string) *EchoTestClient {
+	c.t.Helper()
+	return c.Header(echo.HeaderAuthorization, "Bearer "+token)
 }
 
 // PathParams はパスパラメータを設定します。
-func (b *EchoTestClient) PathParams(params []EchoTestParam) *EchoTestClient {
-	b.t.Helper()
-	b.pathParams = params
-	return b
+func (c *EchoTestClient) PathParams(params []EchoTestParam) *EchoTestClient {
+	c.t.Helper()
+	c.pathParams = params
+	return c
 }
 
 // QueryParams はクエリパラメータを設定します。
-func (b *EchoTestClient) QueryParams(params []EchoTestParam) *EchoTestClient {
-	b.t.Helper()
-	b.queryParams = params
-	return b
+func (c *EchoTestClient) QueryParams(params []EchoTestParam) *EchoTestClient {
+	c.t.Helper()
+	c.queryParams = params
+	return c
 }
 
-// Build はテスト用のHTTPリクエストとレスポンスレコーダーを構築し、EchoTestClientの終端となります。
-func (b *EchoTestClient) Build() (*http.Request, *httptest.ResponseRecorder, echo.Context) {
-	b.t.Helper()
+// Build はテスト用のHTTPリクエストとレスポンスレコーダー、echo.Contextを構築します。
+//
+// requestURL モードではルータ解決により echo.Context のパスが設定されます。
+func (c *EchoTestClient) Build() (*http.Request, *httptest.ResponseRecorder, echo.Context) {
+	c.t.Helper()
 
-	var target string
+	req, rec := c.buildRequest()
+	ec := c.e.NewContext(req, rec)
+
+	if c.requestURL != "" {
+		c.e.Router().Find(c.method, req.URL.Path, ec)
+		return req, rec, ec
+	}
+
+	ec.SetPath(c.routePattern)
+	if len(c.pathParams) > 0 {
+		names := make([]string, len(c.pathParams))
+		values := make([]string, len(c.pathParams))
+		for i, p := range c.pathParams {
+			names[i], values[i] = p.Name, p.Value
+		}
+		ec.SetParamNames(names...)
+		ec.SetParamValues(values...)
+	}
+
+	return req, rec, ec
+}
+
+// Serve は、結合テスト用に起動したEchoインスタンスに対してリクエストを送信し、レスポンスを取得します。
+func (c *EchoTestClient) Serve() *httptest.ResponseRecorder {
+	c.t.Helper()
+	req, rec := c.buildRequest()
+	c.e.ServeHTTP(rec, req)
+	return rec
+}
+
+// resolveTarget はリクエスト先URLを決定し、モードの排他違反を検出します。
+//
+// requestURL モード(ルータ登録済みの Echo 前提)と routePattern/pathParams モードは排他です。
+func (c *EchoTestClient) resolveTarget() (string, error) {
 	switch {
-	case b.requestURL != "":
-		target = b.requestURL
-	case b.routePattern != "":
-		target = b.routePattern
+	case c.requestURL != "":
+		if c.routePattern != "" || len(c.pathParams) > 0 {
+			return "", errModeConflict
+		}
+		return c.requestURL, nil
+	case c.routePattern != "":
+		return c.routePattern, nil
 	default:
-		b.t.Fatal("requestURL か routePattern のいずれかを設定してください")
+		return "", errTargetUnset
+	}
+}
+
+// buildRequest はリクエストとレスポンスレコーダーを構築します。
+func (c *EchoTestClient) buildRequest() (*http.Request, *httptest.ResponseRecorder) {
+	c.t.Helper()
+
+	target, err := c.resolveTarget()
+	if err != nil {
+		c.t.Fatal(err)
 	}
 
 	ctx := context.Background()
-	req := httptest.NewRequestWithContext(ctx, b.method, target, b.body)
-	for k, vv := range b.headers {
+	req := httptest.NewRequestWithContext(ctx, c.method, target, c.body)
+	for k, vv := range c.headers {
 		for _, v := range vv {
 			req.Header.Add(k, v)
 		}
 	}
-	rec := httptest.NewRecorder()
-	c := b.e.NewContext(req, rec)
 
 	q := req.URL.Query()
-	for _, p := range b.queryParams {
+	for _, p := range c.queryParams {
 		q.Add(p.Name, p.Value)
 	}
 	req.URL.RawQuery = q.Encode()
 
-	if b.requestURL != "" {
-		b.e.Router().Find(b.method, req.URL.Path, c)
-	} else {
-		c.SetPath(b.routePattern)
-		if len(b.pathParams) > 0 {
-			names := make([]string, len(b.pathParams))
-			values := make([]string, len(b.pathParams))
-			for i, p := range b.pathParams {
-				names[i], values[i] = p.Name, p.Value
-			}
-			c.SetParamNames(names...)
-			c.SetParamValues(values...)
-		}
-	}
-
-	return req, rec, c
-}
-
-// Serve は、結合テスト用に起動したEchoインスタンスに対してリクエストを送信し、レスポンスを取得します。
-func (b *EchoTestClient) Serve() *httptest.ResponseRecorder {
-	req, rec, _ := b.Build()
-	b.e.ServeHTTP(rec, req)
-	return rec
+	return req, httptest.NewRecorder()
 }

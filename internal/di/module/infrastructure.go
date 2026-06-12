@@ -31,7 +31,7 @@ func InfrastructureModule() fx.Option {
 				healthcheck.New,
 			),
 		),
-		fx.Module("system",
+		fx.Module("clock",
 			fx.Provide(
 				system.NewClock,
 			),

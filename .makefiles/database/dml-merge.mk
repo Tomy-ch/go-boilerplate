@@ -16,18 +16,15 @@
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 merge-dml:
-	make merge-dml-repo
-	make merge-dml-qs
-	make merge-dml-sysq
-	make merge-dml-cs
+	@docker compose run --rm go_tool_runner make merge-dml-ci work-dir=/app
 merge-dml-repo:
-	make merge-dml-core type="repository" work-dir="/app"
+	$(MAKE) merge-dml-core type="repository" work-dir="/app"
 merge-dml-qs:
-	make merge-dml-core type="query_service" work-dir="/app"
+	$(MAKE) merge-dml-core type="query_service" work-dir="/app"
 merge-dml-sysq:
-	make merge-dml-core type="system_query" work-dir="/app"
+	$(MAKE) merge-dml-core type="system_query" work-dir="/app"
 merge-dml-cs:
-	make merge-dml-core type="command_service" work-dir="/app"
+	$(MAKE) merge-dml-core type="command_service" work-dir="/app"
 merge-dml-core:
 	@echo "🔄 DMLのマージを実行します... (type=$(type) work-dir=$(work-dir))"
 	@docker compose run --rm go_tool_runner make merge-dml-ci-core type="$(type)" work-dir="$(work-dir)"
@@ -35,17 +32,17 @@ merge-dml-core:
 
 # -----CI用ターゲット-----
 merge-dml-ci:
-	make merge-dml-ci-repo work-dir=$(work-dir)
-	make merge-dml-ci-qs work-dir=$(work-dir)
-	make merge-dml-ci-sysq work-dir=$(work-dir)
-	make merge-dml-ci-cs work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-repo work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-qs work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-sysq work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-cs work-dir=$(work-dir)
 merge-dml-ci-repo:
-	make merge-dml-ci-core type="repository" work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-core type="repository" work-dir=$(work-dir)
 merge-dml-ci-qs:
-	make merge-dml-ci-core type="query_service" work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-core type="query_service" work-dir=$(work-dir)
 merge-dml-ci-sysq:
-	make merge-dml-ci-core type="system_query" work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-core type="system_query" work-dir=$(work-dir)
 merge-dml-ci-cs:
-	make merge-dml-ci-core type="command_service" work-dir=$(work-dir)
+	$(MAKE) merge-dml-ci-core type="command_service" work-dir=$(work-dir)
 merge-dml-ci-core:
-	go run cmd/main.go merge-dml --type=$(type) --work-dir=$(work-dir)
+	go run ./cmd/ merge-dml --type=$(type) --work-dir=$(work-dir)

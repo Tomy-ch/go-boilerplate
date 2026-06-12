@@ -22,69 +22,74 @@ import (
 func TestV1Users_Integration(t *testing.T) {
 	t.Parallel()
 
-	expectedDTO := user.MutableFields{FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890"}
+	expectedDTO := user.UserView{FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890"}
 
-	t.Run("GET /v1/usersのエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			CountUsers(gomock.Any(), gomock.Any()).
-			Return(int64(1), nil)
-		mockApp.EXPECT().
-			ListUsers(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return([]user.MutableFields{expectedDTO}, nil)
+		t.Run("GET /v1/usersがユーザーリストを返す", func(t *testing.T) {
+			t.Parallel()
 
-		v1users.BindHandler(e, tf, mockApp)
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
 
-		expected := gen.UsersResponse{
-			Users: []gen.UserResponse{
-				{
-					FirstName: expectedDTO.FirstName,
-					LastName:  expectedDTO.LastName,
-					Email:     types.Email(expectedDTO.Email),
-					Phone:     expectedDTO.Phone,
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&user.UserListView{Items: []user.UserView{expectedDTO}, Total: 1}, nil)
+
+			v1users.BindHandler(e, tf, mockApp)
+
+			expected := gen.UsersResponse{
+				Users: []gen.UserResponse{
+					{
+						FirstName: expectedDTO.FirstName,
+						LastName:  expectedDTO.LastName,
+						Email:     types.Email(expectedDTO.Email),
+						Phone:     expectedDTO.Phone,
+					},
 				},
-			},
-		}
+			}
 
-		actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
-		AssertJSONResponse(t, expected, actual)
-	})
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
+			AssertJSONResponse(t, expected, actual)
+		})
 
-	t.Run("POST /v1/usersのエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
+		t.Run("POST /v1/usersがユーザー作成を行い201を返す", func(t *testing.T) {
+			t.Parallel()
 
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().
-			CreateUser(gomock.Any(), gomock.Any()).
-			Return(user.MutableFields{Email: "new@example.com"}, nil)
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
 
-		v1users.BindHandler(e, tf, mockApp)
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				CreateUser(gomock.Any(), gomock.Any()).
+				Return(user.UserView{Email: "new@example.com"}, nil)
 
-		req := gen.PostUsersRequestObject{
-			Body: &gen.PostUsersJSONRequestBody{
-				FirstName:  "First",
-				LastName:   "Last",
-				Email:      types.Email("new@example.com"),
-				Phone:      "09000000000",
-				PostalCode: "123-4567",
-				Prefecture: "Tokyo",
-				City:       "Shibuya",
-				Street:     "1-1-1",
-				Building:   ptr.To("Building"),
-				Password:   "secret",
-			},
-		}
+			v1users.BindHandler(e, tf, mockApp)
 
-		uuid, err := uuid.Parse("d1f64798-7321-242b-e4ff-115f6a0b7803")
-		require.NoError(t, err)
-		headers := MakeAvailableUserID(t, e, uuid)
-		actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, headers)
-		assert.Equal(t, http.StatusCreated, actual.StatusCode)
+			req := gen.PostUsersRequestObject{
+				Body: &gen.PostUsersJSONRequestBody{
+					FirstName:  "First",
+					LastName:   "Last",
+					Email:      types.Email("new@example.com"),
+					Phone:      "09000000000",
+					PostalCode: "123-4567",
+					Prefecture: "Tokyo",
+					City:       "Shibuya",
+					Street:     "1-1-1",
+					Building:   ptr.To("Building"),
+					Password:   "secret",
+				},
+			}
+
+			uuid, err := uuid.Parse("d1f64798-7321-242b-e4ff-115f6a0b7803")
+			require.NoError(t, err)
+			headers := MakeAvailableUserID(t, e, uuid)
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, headers)
+			assert.Equal(t, http.StatusCreated, actual.StatusCode)
+		})
 	})
 }

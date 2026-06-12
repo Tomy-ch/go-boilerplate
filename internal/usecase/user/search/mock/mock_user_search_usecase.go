@@ -72,3 +72,18 @@ func (mr *MockUsecaseMockRecorder) ListUsersByKeyword(ctx, filter, page any) *go
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersByKeyword", reflect.TypeOf((*MockUsecase)(nil).ListUsersByKeyword), ctx, filter, page)
 }
+
+// ListUsersByKeywordWithTotal mocks base method.
+func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *search.SearchParams, page *paging.Paging) (*search.UserSearchListView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListUsersByKeywordWithTotal", ctx, filter, page)
+	ret0, _ := ret[0].(*search.UserSearchListView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListUsersByKeywordWithTotal indicates an expected call of ListUsersByKeywordWithTotal.
+func (mr *MockUsecaseMockRecorder) ListUsersByKeywordWithTotal(ctx, filter, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUsersByKeywordWithTotal", reflect.TypeOf((*MockUsecase)(nil).ListUsersByKeywordWithTotal), ctx, filter, page)
+}

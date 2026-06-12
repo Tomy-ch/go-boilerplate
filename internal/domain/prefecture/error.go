@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	errInvalid               = xerrors.Wrap(apperror.ErrValidation, "invalid prefecture")
-	ErrInvalidID             = xerrors.Wrap(errInvalid, "id failed")
-	ErrInvalidPrefectureName = xerrors.Wrap(errInvalid, "prefecture name failed")
-	ErrInvalidCode           = xerrors.Wrap(errInvalid, "code failed")
+	errInvalid     = xerrors.Wrap(apperror.ErrValidation, "invalid prefecture")
+	ErrInvalidID   = xerrors.Wrap(errInvalid, "id failed")
+	ErrInvalidName = xerrors.Wrap(errInvalid, "name failed")
+	ErrInvalidCode = xerrors.Wrap(errInvalid, "code failed")
 )

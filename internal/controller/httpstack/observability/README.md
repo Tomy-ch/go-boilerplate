@@ -8,4 +8,4 @@ OpenTelemetry tracing middleware for Echo.
 
 |Function|Description|
 |---|---|
-|`Middleware(appCfg)`|Return Echo middleware that integrates OpenTelemetry instrumentation|
+|`Middleware(serviceName)`|Return Echo middleware that integrates OpenTelemetry instrumentation|

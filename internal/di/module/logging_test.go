@@ -23,7 +23,7 @@ func TestLoggingModule_ProvidesLoggerAndFields(t *testing.T) {
 			fx.Provide(
 				config.NewApplicationConfig,
 				config.NewObservabilityConfig,
-				config.NewOperationSystemConfig,
+				config.NewOperatingSystemConfig,
 			),
 			fx.Populate(&lg, &lf),
 			fx.NopLogger,

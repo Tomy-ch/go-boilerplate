@@ -155,12 +155,14 @@ Infrastructure コンポーネントは
 
 ## Repository / QueryService ルール
 
-- Repository は Aggregate 永続化のみを扱う
-- 検索・一覧取得は QueryService に実装する
+- Repository は Aggregate の永続化と、単一 Aggregate の単純な読み取りを扱う
+  （ID 取得、および Aggregate 自身の属性による単純なフィルタ・一覧・件数取得）。
+- QueryService は Aggregate を横断する読み取り、または高い検索複雑性を要する読み取りを扱う
+  （複数テーブル結合・集計・キーワード/全文検索・専用 read model）＝CQRS の読み取り側。
 
 禁止：
 
-- Repository に検索ロジックを書くこと
+- Repository に Aggregate 横断や集計・結合のクエリを書くこと
 - QueryService にドメインロジックを書くこと
 
 ## DTO / 型境界ルール

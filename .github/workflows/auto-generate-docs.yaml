@@ -70,10 +70,10 @@ jobs:
         run: make gen-api-docs
 
       - name: Migrate
-        run: go run cmd/main.go migrate-up --database ${{ env.DB }}
+        run: go run ./cmd/ migrate-up --database ${{ env.DB }}
 
       - name: Seed Database
-        run: go run cmd/main.go db-seed --database ${{ env.DB }}
+        run: go run ./cmd/ db-seed --database ${{ env.DB }}
 
       - name: Generate Test Repo Docs
         run: make gen-test-repo
@@ -96,9 +96,10 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
+          git add -A
           # ノイズ（カバレッジカウントの揺れ / SchemaSpy 生成日時）を除外して、
           # 意味のある生成物に差分があるかをまず判定する。
-          if ! git diff --quiet -- . \
+          if ! git diff --cached --quiet -- . \
             ':(exclude)docs/coverage/index.html' \
             ':(exclude)docs/db-schema/index.html' \
             ':(exclude)docs/db-schema/info-html.txt'
@@ -109,7 +110,7 @@ jobs:
 
           # 上記が無差分でも、coverage に差があり、かつ今回の push に .go の変更が含まれていれば
           # 意味のあるカバレッジ更新とみなして PR を作成する。
-          if ! git diff --quiet -- docs/coverage/index.html; then
+          if ! git diff --cached --quiet -- docs/coverage/index.html; then
             if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
               # 新規ブランチ作成等で前回 tip が取得できない場合は安全側で trigger する。
               echo "has_diff=true" >> $GITHUB_OUTPUT

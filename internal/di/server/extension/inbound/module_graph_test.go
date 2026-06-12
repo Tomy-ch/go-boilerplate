@@ -14,11 +14,6 @@ import (
 	"go.uber.org/fx"
 )
 
-func TestBinderModule_ProvidesServeConfig(t *testing.T) {
-	t.Parallel()
-	testkit.RequireProvidesOne[extension.SrvCfg](t, "server.configurators", BinderModule())
-}
-
 func TestIPExtractorModule_ProvidesServeConfig(t *testing.T) {
 	t.Parallel()
 	cfg := config.MockConfigForTest(t)

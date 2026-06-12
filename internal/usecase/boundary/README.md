@@ -43,7 +43,7 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |`auth`|`Authenticator`|Obtain auth info (`Authn`) from token|`internal/infrastructure/auth/`|
 |`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
-|`security`|`Encrypter`|Password hashing and comparison|`internal/infrastructure/security/`|
+|`security`|`Hasher`|Password hashing and comparison|`internal/infrastructure/security/`|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 
 ## Package Details
@@ -56,17 +56,17 @@ Provides interfaces and value objects for authentication.
 |---|---|
 |`Authenticator`|Interface to generate `Authn` from `Credential`|
 |`Authn`|Authentication result (subject / id / provider / scopes / claims)|
-|`New(subject, provider, scopes, claims)`|Create `Authn` (empty subject returns `ErrUnauthorizedSubjectMissing`)|
+|`New(subject, provider, scopes, claims)`|Create `Authn` (empty subject returns `ErrUnauthenticatedSubjectMissing`)|
 |`Credential`|Value object holding access token|
-|`NewCredential(accessToken)`|Create `Credential` (empty token returns `ErrArgumentTokenMissing`)|
+|`NewCredential(accessToken)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
 
 Errors:
 
 |Error|Description|
 |---|---|
-|`ErrUnauthorizedSubjectMissing`|Subject is empty|
-|`ErrInvalidIDMissing`|Subject cannot be parsed as UUID|
-|`ErrArgumentTokenMissing`|Access token is empty|
+|`ErrUnauthenticatedSubjectMissing`|Subject is empty|
+|`ErrSubjectNotUUID`|Subject cannot be parsed as UUID|
+|`ErrTokenMissing`|Access token is empty|
 
 ### clock
 
@@ -89,7 +89,7 @@ Abstraction to prevent Domain / Usecase from depending directly on `time.Now()`.
 ### security
 
 ```go
-type Encrypter interface {
+type Hasher interface {
     Hash(password string) (string, error)
     Compare(hash, password string) (bool, error)
 }

@@ -1,7 +1,6 @@
 package module
 
 import (
-	"go-boilerplate/internal/controller/handler/debug/cookie"
 	"go-boilerplate/internal/controller/handler/health"
 	"go-boilerplate/internal/controller/handler/healthz"
 	"go-boilerplate/internal/controller/handler/metrics"
@@ -27,8 +26,6 @@ func ControllerModule() fx.Option {
 			users.BindHandler,
 			detail.BindHandler,
 			search.BindHandler,
-			// デバッグ用のハンドラー（サービスを作成する際には必ず削除してください）
-			cookie.BindHandler,
 		),
 	)
 }

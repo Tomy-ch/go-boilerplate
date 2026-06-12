@@ -38,7 +38,7 @@ func Test_repository_FindByActive(t *testing.T) {
 	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
@@ -292,7 +292,7 @@ func Test_repository_CreateUser(t *testing.T) {
 	loggingDB := testkit.NewTestLoggingProvider(t)
 	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,
@@ -385,7 +385,7 @@ func Test_repository_CountByActive(t *testing.T) {
 	loggingDB := testkit.NewTestLoggingProvider(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
-	txm := testkit.NewTestTransactionManager(t)
+	txm := testkit.NewTestTransactionRunner(t)
 
 	repo := &repository{
 		tracer: lt,

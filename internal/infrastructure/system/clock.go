@@ -7,14 +7,14 @@ import (
 	"go-boilerplate/internal/usecase/boundary/clock"
 )
 
-type c struct{}
+type systemClock struct{}
 
 // NewClock は、clockを生成します。
 func NewClock() clock.Clock {
-	return &c{}
+	return &systemClock{}
 }
 
 // Now は、現在の時刻を返します。
-func (c *c) Now() time.Time {
+func (sc *systemClock) Now() time.Time {
 	return time.Now()
 }

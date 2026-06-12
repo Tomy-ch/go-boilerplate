@@ -19,11 +19,11 @@ define do-generate-from-branch
 		git status --short; \
 		exit 1; \
 	fi; \
-	git fetch origin $$BASE_BRANCH; \
-	git checkout -b $$BRANCH_NAME origin/$$BASE_BRANCH; \
-	git push origin $$BRANCH_NAME; \
-	echo "⚙️ GitHub上のデフォルトブランチを $$BRANCH_NAME に設定します。"; \
-	gh repo edit --default-branch $$BRANCH_NAME; \
+	git fetch origin $$BASE_BRANCH && \
+	git checkout -b $$BRANCH_NAME origin/$$BASE_BRANCH && \
+	git push origin $$BRANCH_NAME && \
+	echo "⚙️ GitHub上のデフォルトブランチを $$BRANCH_NAME に設定します。" && \
+	gh repo edit --default-branch $$BRANCH_NAME && \
 	echo "✅ デフォルトブランチを $$BRANCH_NAME に切り替えて、プッシュしました。"
 endef
 
@@ -44,7 +44,7 @@ hotfix-patch:
 		echo "➡️ 先に make release-tag などで初期タグを作成してから再実行してください。"; \
 		exit 1; \
 	fi; \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V patch); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.mjs $$V patch); \
 	$(call do-generate-from-branch,$$V,$$NEXT,production,hotfix)
 
 branch-patch:
@@ -57,7 +57,7 @@ branch-patch:
 		echo "➡️ 先に make release-tag などで初期タグを作成してから再実行してください。"; \
 		exit 1; \
 	fi; \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V patch); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.mjs $$V patch); \
 	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
 
 branch-minor:
@@ -70,7 +70,7 @@ branch-minor:
 		echo "➡️ 先に make release-tag などで初期タグを作成してから再実行してください。"; \
 		exit 1; \
 	fi; \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V minor); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.mjs $$V minor); \
 	$(call do-generate-from-branch,$$V,$$NEXT,production,release)
 
 branch-major:
@@ -83,5 +83,5 @@ branch-major:
 		echo "➡️ 先に make release-tag などで初期タグを作成してから再実行してください。"; \
 		exit 1; \
 	fi; \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V major); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.mjs $$V major); \
 	$(call do-generate-from-branch,$$V,$$NEXT,production,release)

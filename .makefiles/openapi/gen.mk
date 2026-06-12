@@ -18,4 +18,4 @@ gen-bundle-oapi-ci:
 	redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml
 
 gen-api-docs-ci:
-	redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html
+	redocly build-docs openapi/openapi.yaml --output docs/openapi/index.html

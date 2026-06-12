@@ -13,6 +13,8 @@ OpenAPI-generated types (`github.com/oapi-codegen/runtime/types`) must not leak 
 |Function|Description|
 |---|---|
 |`UUID(p openapi_types.UUID) uuid.UUID`|Convert a generated UUID (path/query param) into a domain `uuid.UUID`|
+|`Email(e openapi_types.Email) string`|Convert a generated Email into a `string`|
+|`EmailPtr(e *openapi_types.Email) *string`|Convert an optional generated Email into a `*string` (nil stays nil)|
 
 ## Notes
 

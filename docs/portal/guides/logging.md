@@ -153,7 +153,7 @@ Creation
 lf := logging.NewLogFields(obsCfg, osCfg)
 ```
 
-Accepts `config.ObservabilityConfig` and `config.OperationSystemConfig` to control trace/span field attachment and timezone information.
+Accepts `config.ObservabilityConfig` and `config.OperatingSystemConfig` to control trace/span field attachment and timezone information.
 
 Use cases
 

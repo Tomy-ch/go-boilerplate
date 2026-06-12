@@ -16,6 +16,6 @@ func TestOpenAPIUseMiddleware(t *testing.T) {
 	noopFn := func(context.Context, *openapi3filter.AuthenticationInput) error { return nil }
 
 	mw := OpenAPIMiddleware(&openapi3.T{}, nil, noopFn)
-	assert.Equal(t, validatorUsePriority, mw.Middleware.Priority)
+	assert.Equal(t, openapiUsePriority, mw.Middleware.Priority)
 	require.NotNil(t, mw.Middleware.Middleware)
 }

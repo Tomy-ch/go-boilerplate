@@ -3,7 +3,9 @@ package hook
 import (
 	"context"
 	"net"
+	"net/http"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/server"
@@ -11,6 +13,7 @@ import (
 	"go-boilerplate/internal/di/server/extension"
 	mock_logging "go-boilerplate/internal/logging/mock"
 
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -39,7 +42,7 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 	appCfg := config.NewApplicationConfig(cfg)
 	secCfg := config.NewSecurityConfig(cfg)
 	srvCfg := config.NewServerConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	e := server.NewAppServer(srvCfg)
 
@@ -75,12 +78,12 @@ func Test_newStartServerFunc(t *testing.T) {
 		appCfg := config.NewApplicationConfig(cfg)
 		secCfg := config.NewSecurityConfig(cfg)
 		srvCfg := config.NewServerConfig(cfg)
-		osCfg := config.NewOperationSystemConfig(cfg)
+		osCfg := config.NewOperatingSystemConfig(cfg)
 		srvCfg.SetServerPort(t, port)
 
 		e := server.NewAppServer(srvCfg)
 
-		fn := newStartServerFunc(e, srvCfg, mockLogger, secCfg, appCfg, osCfg)
+		fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
 		err = fn(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, e.Listener)
@@ -108,11 +111,11 @@ func Test_newStartServerFunc(t *testing.T) {
 		appCfg := config.NewApplicationConfig(cfg)
 		secCfg := config.NewSecurityConfig(cfg)
 		srvCfg := config.NewServerConfig(cfg)
-		osCfg := config.NewOperationSystemConfig(cfg)
+		osCfg := config.NewOperatingSystemConfig(cfg)
 		srvCfg.SetServerPort(t, port)
 
 		e := server.NewAppServer(srvCfg)
-		fn := newStartServerFunc(e, srvCfg, mockLogger, secCfg, appCfg, osCfg)
+		fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
 
 		err = fn(context.Background())
 		require.Error(t, err)
@@ -133,10 +136,62 @@ func Test_newStopServerFunc(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	srvCfg := config.NewServerConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	e := server.NewAppServer(srvCfg)
 	fn := newStopServerFunc(e, mockLogger, osCfg)
 
 	require.NoError(t, fn(context.Background()))
+}
+
+func Test_newStopServerFunc_ShutdownError(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+
+	mockLogger := mock_logging.NewMockLogger(ctrl)
+	mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
+	mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
+	mockLogger.EXPECT().Info("http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+	mockLogger.EXPECT().Error("failed to shutdown http server", gomock.Any()).Times(1)
+
+	cfg := config.MockConfigForTest(t)
+	srvCfg := config.NewServerConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
+
+	e := server.NewAppServer(srvCfg)
+
+	// ハンドラを処理中にして接続を active に保ち、Shutdown を idle 完了させない
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	e.GET("/block", func(c echo.Context) error {
+		close(entered)
+		<-release
+		return c.NoContent(http.StatusOK)
+	})
+
+	lc := &net.ListenConfig{}
+	ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	e.Listener = ln
+	go func() { _ = e.Start("") }()
+	t.Cleanup(func() { close(release) })
+
+	go func() {
+		req, rerr := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://"+ln.Addr().String()+"/block", nil)
+		if rerr != nil {
+			return
+		}
+		resp, gerr := http.DefaultClient.Do(req)
+		if gerr == nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	<-entered // リクエストが処理中＝接続が active になったことを保証
+
+	// 既に期限の切れた context で Shutdown → 処理中接続が残り context error を返す
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	fn := newStopServerFunc(e, mockLogger, osCfg)
+	require.Error(t, fn(ctx))
 }
