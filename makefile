@@ -53,5 +53,5 @@ include .makefiles/gen/gen.mk
 
 .PHONY: help
 help:
-	@bash scripts/make_help.sh
+	@node scripts/make_help.mjs
 

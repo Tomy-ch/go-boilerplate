@@ -12,7 +12,7 @@ scripts/
 ├── gen-portal-docs.mjs         # manifest.yaml に基づくドキュメントのポータルへのコピー
 ├── semver.mjs                  # セマンティックバージョニングヘルパー（patch/minor/major）
 ├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile FROM へ反映（Go 実装）
-├── make_help.sh                # Make ターゲットのヘルプ出力生成
+├── make_help.mjs                # Make ターゲットのヘルプ出力生成
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
 └── setup/                     # プロジェクト初期設定スクリプト
     ├── replace-module.mjs
@@ -44,7 +44,7 @@ scripts/
 
 |スクリプト|説明|実行元|
 |---|---|---|
-|`make_help.sh`|`.makefiles/*.mk` を解析してターゲット説明を表示|`make help`|
+|`make_help.mjs`|`.makefiles/*.mk` を解析してターゲット説明を表示|`make help`|
 
 ### コード生成
 

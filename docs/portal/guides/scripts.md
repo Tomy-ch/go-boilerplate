@@ -12,7 +12,7 @@ scripts/
 ├── gen-portal-docs.mjs         # Copy docs to portal based on manifest.yaml
 ├── semver.mjs                  # Semantic versioning helper (patch/minor/major)
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
-├── make_help.sh                # Generate Make target help output
+├── make_help.mjs                # Generate Make target help output
 ├── genctxkey/                  # Context key code generator (Go)
 └── setup/                     # Initial project setup scripts
     ├── replace-module.mjs
@@ -44,7 +44,7 @@ All other tool versions are managed by [`mise.toml`](../mise.toml) as the single
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`make_help.sh`|Parse `.makefiles/*.mk` and display target descriptions|`make help`|
+|`make_help.mjs`|Parse `.makefiles/*.mk` and display target descriptions|`make help`|
 
 ### Code Generation
 
