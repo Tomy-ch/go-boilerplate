@@ -6213,7 +6213,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="29">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="31">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
