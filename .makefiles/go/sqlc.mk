@@ -9,8 +9,8 @@
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 gen-sqlc:
-	@make remove-generated-sqlc
-	@make sqlc-generate
+	@$(MAKE) remove-generated-sqlc
+	@$(MAKE) sqlc-generate
 
 remove-generated-sqlc:
 	@docker compose run --rm go_tool_runner make remove-generated-sqlc-ci

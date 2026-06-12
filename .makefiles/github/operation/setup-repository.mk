@@ -4,7 +4,6 @@
 .PHONY: setup-replace-app-metadata ## node_tool_runnerでAPP_NAMEやOpenAPIタイトルの置換を実行
 .PHONY: setup-replace-repository-reference ## node_tool_runnerでリポジトリ参照の置換を実行
 .PHONY: setup-replace-license-copyright ## node_tool_runnerでLICENSEの著作権表示更新を実行
-.PHONY: setup-remove-debug-handlers ## node_tool_runnerでdebugハンドラ一式の削除を実行
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
 
@@ -19,7 +18,7 @@ setup-repo:
 	@echo "✅ 初期化を開始します"
 
 	@echo "🔧 ghコマンドのログインを開始します..."
-	@make gh-login
+	@$(MAKE) gh-login
 	@echo "✅ ghコマンドのログインが完了しました。"
 
 	@echo "🔧 タグの初期化を開始します..."
@@ -76,12 +75,12 @@ setup-repo:
 	@echo "✅ デフォルトブランチの設定を終了します。"
 
 	@echo "🔧 ルールセットの適用を開始します..."
-	@make apply-branch-protection
+	@$(MAKE) apply-branch-protection
 	@echo "✅ ルールセットの適用を終了します。"
 
 	@echo "🔧 ラベルの初期化を開始します..."
-	@make delete-all-labels
-	@make create-default-labels
+	@$(MAKE) delete-all-labels
+	@$(MAKE) create-default-labels
 	@echo "✅ ラベルの初期化を終了します。"
 
 	@echo "🔧 リリースノートの初期化を開始します..."
@@ -131,6 +130,3 @@ setup-replace-license-copyright:
 		--holder "$(COPYRIGHT_HOLDER)" \
 		$(if $(COPYRIGHT_YEAR),--year $(COPYRIGHT_YEAR),) \
 		$(SETUP_DRY_RUN_FLAG)
-
-setup-remove-debug-handlers:
-	@docker compose run --rm node_tool_runner node scripts/setup/remove-debug-handlers.cjs $(SETUP_DRY_RUN_FLAG)

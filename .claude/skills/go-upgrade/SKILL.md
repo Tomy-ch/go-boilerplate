@@ -160,7 +160,7 @@ Because the Go base image tag changes with this upgrade, use the clean (`--no-ca
 
 ```sh
 make serve-build-clean
-make tools-build-clean
+make tool-runners-build-clean
 ```
 
 ### 10. Re-run Code Generation
@@ -193,7 +193,7 @@ make gen
 make test
 make lint
 make serve-build-clean
-make tools-build-clean
+make tool-runners-build-clean
 ```
 
 `make sync-versions` is included so that any leftover drift between `mise.toml` and downstream files is caught before the work is reported as done.
