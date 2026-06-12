@@ -6,14 +6,20 @@ FROM golang:1.26.4-alpine AS builder
 
 WORKDIR /app
 
+# buildx の自動 platform ARG に追従する（--platform 指定時はその arch、未指定/classic builder では既定 linux/amd64）
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
 ENV GOPROXY=off \
     GOSUMDB=off \
     CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64
+    GOOS=${TARGETOS} \
+    GOARCH=${TARGETARCH}
 
 ARG VERSION=dev
 ARG REVISION=none
+# BUILD_DATE は --build-arg 未指定ビルド用の placeholder（本番デプロイは実 timestamp を注入）。
+# version handler が RFC3339 として厳格 parse し不正値は /version を 500 にするため、有効な RFC3339 を維持すること。
 ARG BUILD_DATE=2024-12-31T21:00:00Z
 
 COPY . .

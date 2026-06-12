@@ -1,3 +1,6 @@
+# mise 本体の固定バージョン（全ツールステージ共通。bump 時はここだけ変更する）
+ARG MISE_VERSION=v2026.6.0
+
 # ------------------------------
 # Go ツールビルダー：mise.toml のバージョン pin で Go 系ツール一式を install し、
 # バイナリだけを /out に抽出する。最終 go_tools ステージに mise 本体を残さないための中継。
@@ -9,10 +12,11 @@ ENV CGO_ENABLED=0
 
 RUN apk add --no-cache bash ca-certificates curl git
 
+ARG MISE_VERSION
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
@@ -71,10 +75,11 @@ RUN apk add --no-cache \
     git \
     make
 
+ARG MISE_VERSION
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
@@ -87,7 +92,10 @@ RUN mise install npm:@redocly/cli \
 
 WORKDIR /opt/tools
 COPY docker/tools/package.json ./
-RUN npm install
+# npm install が /root/.npm を再生成するため、その場でキャッシュも掃除する（python ステージと対称）
+RUN npm install \
+    && npm cache clean --force \
+    && rm -rf /root/.npm
 ENV NODE_PATH=/opt/tools/node_modules
 
 WORKDIR /app
@@ -115,10 +123,11 @@ RUN apt-get update \
         pipx \
     && rm -rf /var/lib/apt/lists/*
 
+ARG MISE_VERSION
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH" \
     MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise
-RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
