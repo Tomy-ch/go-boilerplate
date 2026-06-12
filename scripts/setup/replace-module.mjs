@@ -1,9 +1,6 @@
-const path = require("path")
-const { ROOT_DIR, parseCommonFlags, exitWithUsage } = require("./lib/runtime.cjs")
-const {
-  listFilesRecursive,
-  updateAbsoluteFile
-} = require("./lib/file-utils.cjs")
+import path from "node:path"
+import { ROOT_DIR, newSetupCommand } from "./lib/runtime.mjs"
+import { listFilesRecursive, updateAbsoluteFile } from "./lib/file-utils.mjs"
 
 const TARGET_EXTENSIONS = new Set([
   ".go",
@@ -14,6 +11,7 @@ const TARGET_EXTENSIONS = new Set([
   ".js",
   ".json",
   ".cjs",
+  ".mjs",
   ".html"
 ])
 const TARGET_BASENAMES = new Set(["Dockerfile"])
@@ -33,50 +31,12 @@ const EXCLUDED_BASENAME_PATTERNS = [
   /_mock\.go$/
 ]
 
-function printUsage() {
-  console.log(`使用方法:
-  node scripts/setup/replace-module.cjs <old-module> <new-module> [--dry-run]
-
-例:
-  node scripts/setup/replace-module.cjs go-boilerplate example-api
-  node scripts/setup/replace-module.cjs old-project new-project --dry-run
-
-補足:
-  Go モジュール名は go-boilerplate のような単純なプロジェクト名を想定しています。
-  docs 配下・scripts/setup・生成物 (*.gen.go, *.sql.go, mock ファイル, openapi/openapi.gen.yaml) は対象外です。
-  生成物は置換後に make gen-api で再生成してください。`)
-}
-
 function ensureSimpleModuleName(value, flagName) {
   if (!/^[A-Za-z0-9._-]+$/.test(value)) {
     throw new Error(
       `${flagName} は go-boilerplate のような単純なプロジェクト名で指定してください。`
     )
   }
-}
-
-function parseArgs(argv) {
-  const options = parseCommonFlags(argv)
-  const positionals = options.rest
-
-  if (options.help) {
-    return options
-  }
-
-  if (positionals.length !== 2) {
-    throw new Error("旧モジュール名と新モジュール名を指定してください。")
-  }
-
-  options.oldModule = positionals[0]
-  options.newModule = positionals[1]
-  ensureSimpleModuleName(options.oldModule, "旧モジュール名")
-  ensureSimpleModuleName(options.newModule, "新モジュール名")
-
-  if (options.oldModule === options.newModule) {
-    throw new Error("旧モジュール名と新モジュール名が同一です。")
-  }
-
-  return options
 }
 
 function shouldProcessFile(filePath) {
@@ -130,31 +90,13 @@ function replaceInFile(filePath, oldModule, newModule, dryRun) {
   return { relativePath, occurrences }
 }
 
-function main() {
-  let options
-
-  try {
-    options = parseArgs(process.argv.slice(2))
-  } catch (error) {
-    exitWithUsage(error, printUsage)
-  }
-
-  if (options.help) {
-    printUsage()
-    return
-  }
-
+function run(oldModule, newModule, dryRun) {
   const files = collectTargetFiles(ROOT_DIR)
   const changedFiles = []
   let replacementCount = 0
 
   for (const filePath of files) {
-    const result = replaceInFile(
-      filePath,
-      options.oldModule,
-      options.newModule,
-      options.dryRun
-    )
+    const result = replaceInFile(filePath, oldModule, newModule, dryRun)
 
     if (!result) {
       continue
@@ -170,7 +112,7 @@ function main() {
   }
 
   console.log(
-    `${options.dryRun ? "Dry Run" : "置換完了"}: ${changedFiles.length}ファイル / ${replacementCount}箇所`
+    `${dryRun ? "Dry Run" : "置換完了"}: ${changedFiles.length}ファイル / ${replacementCount}箇所`
   )
 
   for (const file of changedFiles) {
@@ -178,4 +120,31 @@ function main() {
   }
 }
 
-main()
+const program = newSetupCommand("replace-module")
+program
+  .description("Go モジュール名をプロジェクト全体で一括置換する")
+  .argument("<old-module>", "旧モジュール名（例: go-boilerplate）")
+  .argument("<new-module>", "新モジュール名（例: example-api）")
+  .addHelpText(
+    "after",
+    `
+補足:
+  Go モジュール名は go-boilerplate のような単純なプロジェクト名を想定しています。
+  docs 配下・scripts/setup・生成物 (*.gen.go, *.sql.go, mock ファイル, openapi/openapi.gen.yaml) は対象外です。
+  生成物は置換後に make gen-api で再生成してください。`
+  )
+  .action((oldModule, newModule, options) => {
+    try {
+      ensureSimpleModuleName(oldModule, "旧モジュール名")
+      ensureSimpleModuleName(newModule, "新モジュール名")
+
+      if (oldModule === newModule) {
+        throw new Error("旧モジュール名と新モジュール名が同一です。")
+      }
+    } catch (error) {
+      program.error(`エラー: ${error.message}`)
+    }
+
+    run(oldModule, newModule, options.dryRun)
+  })
+  .parse()

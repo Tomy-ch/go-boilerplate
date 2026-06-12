@@ -92,7 +92,7 @@ curl http://localhost:8080/ready
 
 1. [README.md](README.md), [README.ja.md](README.ja.md) の内容をプロジェクトに合わせて書き換えてください。
 2. [README.md](README.md) は英語で書かれているので、必要に応じて [README.ja.md](README.ja.md) を [README.md](README.md) に置換しても構いません。
-    - ただし、[gen-docs-json.cjs](scripts/gen-docs-json.cjs) やその生成元になる [manifest.yaml](docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
+    - ただし、[gen-docs-json.mjs](scripts/gen-docs-json.mjs) やその生成元になる [manifest.yaml](docs/portal/manifest.yaml) などのドキュメント生成スクリプトはREADME.mdを参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。
     - また、portal表示のReactも EnとJp切り替えを持つので、README.mdを日本語にする場合は、portal表示のReactも書き換える必要があります。
 3. [openapi.yaml](openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。
     - Infoセクション全体をプロジェクトに合わせて書き換えてください。

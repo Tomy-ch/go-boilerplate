@@ -115,6 +115,8 @@ services:
     stdin_open: true
     volumes:
       - .:/app
+      # node_modules を匿名ボリュームで保持（バインドマウントの shadow 回避）
+      - /app/scripts/node_modules
     working_dir: /app
     entrypoint: ""
     profiles:

@@ -35,7 +35,7 @@ tag-patch:
 		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
 		exit 1; \
 	fi; \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V patch); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.mjs $$V patch); \
 	$(call do-release-tag,$$V,$$NEXT)
 
 tag-minor:
@@ -45,7 +45,7 @@ tag-minor:
 		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
 		exit 1; \
 	fi; \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V minor); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.mjs $$V minor); \
 	$(call do-release-tag,$$V,$$NEXT)
 
 tag-major:
@@ -55,5 +55,5 @@ tag-major:
 		echo "❌ リリースタグが存在しません。先に初期タグ(v0.0.0)を作成してください。"; \
 		exit 1; \
 	fi; \
-	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.cjs $$V major); \
+	NEXT=$$(docker compose run --rm node_tool_runner node scripts/semver.mjs $$V major); \
 	$(call do-release-tag,$$V,$$NEXT)

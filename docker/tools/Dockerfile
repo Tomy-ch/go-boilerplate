@@ -90,13 +90,12 @@ RUN mise install npm:@redocly/cli \
     && mise install npm:markdownlint-cli2 \
     && rm -rf /root/.cache /root/.npm
 
-WORKDIR /opt/tools
-COPY docker/tools/package.json ./
-# npm install が /root/.npm を再生成するため、その場でキャッシュも掃除する（python ステージと対称）
-RUN npm install \
+# scripts の依存を in-tree（/app/scripts/node_modules）へ install する
+WORKDIR /app/scripts
+COPY docker/tools/package.json docker/tools/package-lock.json ./
+RUN npm ci \
     && npm cache clean --force \
     && rm -rf /root/.npm
-ENV NODE_PATH=/opt/tools/node_modules
 
 WORKDIR /app
 
