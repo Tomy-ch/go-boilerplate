@@ -37,7 +37,7 @@ type Param struct {
 	TestFailValue    string
 }
 
-func GenerateCtxKey(name, typ, importPath, importAlias, outDir string) error {
+func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string) error {
 	if name == "" || typ == "" {
 		return fmt.Errorf("name and type are required")
 	}
@@ -66,7 +66,7 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir string) error {
 
 	typeExpr := typ
 
-	success, fail := resolveTestValue(typeExpr, lower)
+	success, fail := resolveTestValue(typeExpr, lower, testValue)
 
 	p := Param{
 		NameLower:        lower,
@@ -235,7 +235,7 @@ func lastSegment(path string) string {
 	return parts[len(parts)-1]
 }
 
-func resolveTestValue(t, nameLower string) (string, string) {
+func resolveTestValue(t, nameLower, override string) (string, string) {
 	switch t {
 	case "string":
 		return `"test-` + nameLower + `"`, `""`
@@ -244,6 +244,12 @@ func resolveTestValue(t, nameLower string) (string, string) {
 	case "bool":
 		return "true", "false"
 	default:
-		return "*new(" + t + ")", "*new(" + t + ")"
+		// 任意型は意味ある success 値を自動合成できない。
+		// 呼び出し側が -test-value を渡せば success に採用し、未指定なら従来通り zero 値にフォールバックする。
+		fail := "*new(" + t + ")"
+		if override != "" {
+			return override, fail
+		}
+		return fail, fail
 	}
 }

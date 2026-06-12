@@ -1,23 +1,21 @@
 #!/bin/bash
-
-FILES=$(find .makefiles -name '*.mk' | sort)
+set -euo pipefail
 
 echo "📦 Makeターゲット一覧"
 echo "-------------------------------------------"
 
-for file in $FILES; do
-  current_category=""
+while IFS= read -r file; do
   while IFS= read -r line; do
     if [[ "$line" =~ ^##\ (.*) ]]; then
       # カテゴリ見出し行
-      current_category="${BASH_REMATCH[1]}"
       echo ""
-      echo "📂 $current_category"
+      echo "📂 ${BASH_REMATCH[1]}"
     elif [[ "$line" =~ ^\.PHONY:\ ([^[:space:]]+)[[:space:]]*##[[:space:]]*(.*)$ ]]; then
       # .PHONY 行（単一ターゲット + コメント付き）
-      target="${BASH_REMATCH[1]}"
-      comment="${BASH_REMATCH[2]}"
-      printf "🛠  %-24s %s\n" "$target" "$comment"
+      printf "🛠  %-24s %s\n" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+    elif [[ "$line" =~ ^\.PHONY: ]]; then
+      # 説明（## ...）が無い / 形式不一致の .PHONY 行は help に出ないため警告する
+      echo "⚠️  $file: 説明コメント(## ...)の無い .PHONY 行をスキップしました: $line" >&2
     fi
   done < "$file"
-done
+done < <(find .makefiles -name '*.mk' | sort)
