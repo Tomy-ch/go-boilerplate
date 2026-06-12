@@ -1,4 +1,4 @@
-const { parseCommonFlags, exitWithUsage } = require("./lib/runtime.cjs")
+const { newSetupCommand } = require("./lib/runtime.cjs")
 const {
   listChildFiles,
   updateAbsoluteFile,
@@ -8,62 +8,6 @@ const {
 const ENV_DIR = "env"
 const OPENAPI_FILE = "openapi/openapi.yaml"
 const COPILOT_INSTRUCTIONS_FILE = ".github/copilot-instructions.md"
-
-function printUsage() {
-  console.log(`使用方法:
-  node scripts/setup/replace-app-metadata.cjs --app-name <name> --openapi-title <title> --copilot-title <title> [--dry-run]
-
-例:
-  node scripts/setup/replace-app-metadata.cjs \\
-    --app-name "Example API" \\
-    --openapi-title "Example API with Onion Architecture" \\
-    --copilot-title "example-api Copilot Instructions"
-`)
-}
-
-function parseArgs(argv) {
-  const options = parseCommonFlags(argv)
-  const args = options.rest
-
-  for (let i = 0; i < args.length; i += 1) {
-    const arg = args[i]
-
-    if (arg === "--app-name" || arg === "--openapi-title" || arg === "--copilot-title") {
-      const value = args[i + 1]
-
-      if (!value || value.startsWith("--")) {
-        throw new Error(`${arg} の値を指定してください。`)
-      }
-
-      if (arg === "--app-name") {
-        options.appName = value
-      }
-
-      if (arg === "--openapi-title") {
-        options.openapiTitle = value
-      }
-
-      if (arg === "--copilot-title") {
-        options.copilotTitle = value
-      }
-
-      i += 1
-      continue
-    }
-
-    throw new Error(`不明な引数です: ${arg}`)
-  }
-
-  if (options.help) {
-    return options
-  }
-
-  if (!options.appName || !options.openapiTitle || !options.copilotTitle) {
-    throw new Error("--app-name, --openapi-title, --copilot-title は必須です。")
-  }
-
-  return options
-}
 
 function listEnvFiles() {
   return listChildFiles(ENV_DIR, name => name.startsWith(".env"))
@@ -99,20 +43,7 @@ function replaceCopilotTitle(content, title) {
   return content.replace(pattern, () => `# ${title}`)
 }
 
-function main() {
-  let options
-
-  try {
-    options = parseArgs(process.argv.slice(2))
-  } catch (error) {
-    exitWithUsage(error, printUsage)
-  }
-
-  if (options.help) {
-    printUsage()
-    return
-  }
-
+function run(options) {
   const changedFiles = []
 
   for (const envFile of listEnvFiles()) {
@@ -162,4 +93,13 @@ function main() {
   console.log("注意: OpenAPI の生成物を更新するには make gen-api を実行してください。")
 }
 
-main()
+const program = newSetupCommand("replace-app-metadata")
+program
+  .description("env ファイル・OpenAPI・Copilot 指示書のアプリ名/タイトルを置換する")
+  .requiredOption("--app-name <name>", "アプリケーション名（env の APP_NAME に反映）")
+  .requiredOption("--openapi-title <title>", "OpenAPI 仕様の title")
+  .requiredOption("--copilot-title <title>", "Copilot 指示書の先頭見出し")
+  .action(options => {
+    run(options)
+  })
+  .parse()

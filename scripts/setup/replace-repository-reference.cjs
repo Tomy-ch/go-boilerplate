@@ -1,37 +1,9 @@
-const { parseCommonFlags, exitWithUsage } = require("./lib/runtime.cjs")
+const { newSetupCommand } = require("./lib/runtime.cjs")
 const { updateFile } = require("./lib/file-utils.cjs")
 const { ensureRepositoryReference } = require("./lib/validators.cjs")
 
 const README_FILES = ["README.md", "README.ja.md"]
 const OPENAPI_FILE = "openapi/openapi.yaml"
-
-function printUsage() {
-  console.log(`使用方法:
-  node scripts/setup/replace-repository-reference.cjs <owner>/<repo> [--dry-run]
-
-例:
-  node scripts/setup/replace-repository-reference.cjs example-org/example-api
-  node scripts/setup/replace-repository-reference.cjs example-org/example-api --dry-run
-`)
-}
-
-function parseArgs(argv) {
-  const options = parseCommonFlags(argv)
-  const positionals = options.rest
-
-  if (options.help) {
-    return options
-  }
-
-  if (positionals.length !== 1) {
-    throw new Error("置換後のリポジトリ参照を <owner>/<repo> 形式で指定してください。")
-  }
-
-  options.repository = positionals[0]
-  ensureRepositoryReference(options.repository)
-
-  return options
-}
 
 function updateReadme(content, repository) {
   const repoName = repository.split("/")[1]
@@ -60,24 +32,11 @@ function updateOpenapi(content, repository) {
   )
 }
 
-function main() {
-  let options
-
-  try {
-    options = parseArgs(process.argv.slice(2))
-  } catch (error) {
-    exitWithUsage(error, printUsage)
-  }
-
-  if (options.help) {
-    printUsage()
-    return
-  }
-
+function run(repository, dryRun) {
   const changedFiles = []
 
   for (const file of README_FILES) {
-    const result = updateFile(file, content => updateReadme(content, options.repository), options.dryRun)
+    const result = updateFile(file, content => updateReadme(content, repository), dryRun)
 
     if (result) {
       changedFiles.push(result)
@@ -86,8 +45,8 @@ function main() {
 
   const openapiResult = updateFile(
     OPENAPI_FILE,
-    content => updateOpenapi(content, options.repository),
-    options.dryRun
+    content => updateOpenapi(content, repository),
+    dryRun
   )
 
   if (openapiResult) {
@@ -99,7 +58,7 @@ function main() {
     return
   }
 
-  console.log(`${options.dryRun ? "ドライラン" : "置換完了"}: ${changedFiles.length}ファイル`)
+  console.log(`${dryRun ? "ドライラン" : "置換完了"}: ${changedFiles.length}ファイル`)
 
   for (const file of changedFiles) {
     console.log(`- ${file}`)
@@ -109,4 +68,17 @@ function main() {
   console.log("注意: OpenAPI の生成物を更新するには make gen-api を実行してください。")
 }
 
-main()
+const program = newSetupCommand("replace-repository-reference")
+program
+  .description("README と OpenAPI の GitHub リポジトリ参照を <owner>/<repo> へ置換する")
+  .argument("<owner/repo>", "置換後のリポジトリ参照（例: example-org/example-api）")
+  .action((repository, options) => {
+    try {
+      ensureRepositoryReference(repository)
+    } catch (error) {
+      program.error(`エラー: ${error.message}`)
+    }
+
+    run(repository, options.dryRun)
+  })
+  .parse()

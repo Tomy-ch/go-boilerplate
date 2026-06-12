@@ -1,79 +1,11 @@
 const fs = require("fs")
-const { parseCommonFlags, exitWithUsage } = require("./lib/runtime.cjs")
+const { newSetupCommand } = require("./lib/runtime.cjs")
 const { toAbsolutePath, updateFile } = require("./lib/file-utils.cjs")
 const { ensureFourDigitYear } = require("./lib/validators.cjs")
 
 const LICENSE_FILE = "LICENSE"
 
-function printUsage() {
-  console.log(`使用方法:
-  node scripts/setup/replace-license-copyright.cjs --holder <name> [--year <yyyy>] [--dry-run]
-
-例:
-  node scripts/setup/replace-license-copyright.cjs --holder "Example Inc."
-  node scripts/setup/replace-license-copyright.cjs --holder "Example Inc." --year 2026 --dry-run
-`)
-}
-
-function parseArgs(argv) {
-  const options = {
-    ...parseCommonFlags(argv),
-    year: String(new Date().getFullYear())
-  }
-  const args = options.rest
-
-  for (let i = 0; i < args.length; i += 1) {
-    const arg = args[i]
-
-    if (arg === "--holder" || arg === "--year") {
-      const value = args[i + 1]
-
-      if (!value || value.startsWith("--")) {
-        throw new Error(`${arg} の値を指定してください。`)
-      }
-
-      if (arg === "--holder") {
-        options.holder = value
-      }
-
-      if (arg === "--year") {
-        options.year = value
-      }
-
-      i += 1
-      continue
-    }
-
-    throw new Error(`不明な引数です: ${arg}`)
-  }
-
-  if (options.help) {
-    return options
-  }
-
-  if (!options.holder) {
-    throw new Error("--holder は必須です。")
-  }
-
-  ensureFourDigitYear(options.year)
-
-  return options
-}
-
-function main() {
-  let options
-
-  try {
-    options = parseArgs(process.argv.slice(2))
-  } catch (error) {
-    exitWithUsage(error, printUsage)
-  }
-
-  if (options.help) {
-    printUsage()
-    return
-  }
-
+function run(holder, year, dryRun) {
   if (!fs.existsSync(toAbsolutePath(LICENSE_FILE))) {
     console.error(`✖ ${LICENSE_FILE} が見つかりません。`)
     process.exit(1)
@@ -85,19 +17,30 @@ function main() {
       throw new Error("LICENSE に著作権表示が見つかりませんでした。")
     }
 
-    return original.replace(
-      pattern,
-      () => `Copyright (c) ${options.year} ${options.holder}`
-    )
-  }, options.dryRun)
+    return original.replace(pattern, () => `Copyright (c) ${year} ${holder}`)
+  }, dryRun)
 
   if (!result) {
     console.log("既に最新のため変更はありません。")
     return
   }
 
-  console.log(`${options.dryRun ? "ドライラン" : "置換完了"}: LICENSE`)
-  console.log(`- Copyright (c) ${options.year} ${options.holder}`)
+  console.log(`${dryRun ? "ドライラン" : "置換完了"}: LICENSE`)
+  console.log(`- Copyright (c) ${year} ${holder}`)
 }
 
-main()
+const program = newSetupCommand("replace-license-copyright")
+program
+  .description("LICENSE の著作権表示（年・権利者）を更新する")
+  .requiredOption("--holder <name>", "著作権者名")
+  .option("--year <yyyy>", "著作権表示の年（既定: 現在の年）", String(new Date().getFullYear()))
+  .action(options => {
+    try {
+      ensureFourDigitYear(options.year)
+    } catch (error) {
+      program.error(`エラー: ${error.message}`)
+    }
+
+    run(options.holder, options.year, options.dryRun)
+  })
+  .parse()

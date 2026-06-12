@@ -1,44 +1,19 @@
 const path = require("path")
+const { Command } = require("commander")
 
 const ROOT_DIR = path.resolve(__dirname, "../../..")
 
-function parseCommonFlags(argv) {
-  const options = {
-    dryRun: false,
-    help: false,
-    rest: []
-  }
-
-  for (const arg of argv) {
-    if (arg === "--dry-run") {
-      options.dryRun = true
-      continue
-    }
-
-    if (arg === "--help" || arg === "-h") {
-      options.help = true
-      continue
-    }
-
-    options.rest.push(arg)
-  }
-
-  return options
-}
-
-/**
- * 使用方法を表示してプロセスを終了する（process.exit のため復帰しない）。
- * @returns {never}
- */
-function exitWithUsage(error, printUsage) {
-  console.error(`エラー: ${error.message}`)
-  console.error("")
-  printUsage()
-  process.exit(1)
+// --dry-run を共通で備えた commander Command を生成する（setup スクリプト共通）。
+// 引数/オプションの検証・usage 生成・未知オプション検出は commander に委ねる。
+function newSetupCommand(name) {
+  return new Command(name).option(
+    "--dry-run",
+    "実際には書き込まず、変更内容のみ表示する",
+    false
+  )
 }
 
 module.exports = {
   ROOT_DIR,
-  parseCommonFlags,
-  exitWithUsage
+  newSetupCommand,
 }
