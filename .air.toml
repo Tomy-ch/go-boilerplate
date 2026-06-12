@@ -55,8 +55,8 @@ tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力�
   # 実行中プロセスをSIGINTで終了（graceful shutdown向け）
   send_interrupt = true
 
-  # kill信号を送るまでの待機時間（ミリ秒）
-  kill_delay = 0
+  # SIGINT 送出後に強制 kill するまでの猶予（graceful shutdown 用。duration 文字列）
+  kill_delay = "2s"
 
   # ファイル変更がなくても一定間隔で再起動するか
   rerun = false

@@ -11,8 +11,11 @@
 # 言語ランタイム
 # 注: ここに書いた version を `make sync-versions` が以下に伝播する。
 #       go     -> go.mod (`go X.Y.Z` directive) + docker/{server,tools}/Dockerfile (FROM golang:X.Y.Z-alpine)
+#                 + docker/{,server/,tools/}README{,.ja}.md の golang image 記述
 #       node   -> docker/tools/Dockerfile (FROM node:X.Y-alpine)
+#                 + docker/{,tools/}README{,.ja}.md の node image 記述
 #       python -> docker/tools/Dockerfile (FROM python:X.Y.Z-slim)
+#                 + docker/{,tools/}README{,.ja}.md の python image 記述
 #     mise install で host にも入れられるが、各 Dockerfile では公式 base image を採用しているため
 #     mise.toml 側を SSOT、Dockerfile FROM タグは sync によって追従する形になる。
 go = "1.26.4"
