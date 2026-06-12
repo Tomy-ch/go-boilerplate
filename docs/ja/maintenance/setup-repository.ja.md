@@ -156,17 +156,7 @@ usecaseの[Authenticator](internal/usecase/boundary/auth/authenticator.go)イン
 
 実装が完了したら、[認証のDIモジュール](internal/di/module/core/auth.go) を編集して、認証機能をアプリケーションに組み込んでください。
 
-## Phase 10: 認証用デバッグAPIの削除
-
-認証用のデバッグAPIはセキュリティ上のリスクがあるため、必要に応じて削除してください。
-
-セットアップのタイミングでの削除は必須ではないですが、本番にリリースする前には必ず削除してください。
-
-```sh
-make setup-remove-debug-handlers
-```
-
-## Phase 11: サンプルAPIの削除
+## Phase 10: サンプルAPIの削除
 
 このboilerplateには、サンプルAPIが含まれています。プロジェクトの要件に合わせて、サンプルAPIを削除してください。
 

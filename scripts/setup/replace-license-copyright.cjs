@@ -1,5 +1,6 @@
+const fs = require("fs")
 const { parseCommonFlags, exitWithUsage } = require("./lib/runtime.cjs")
-const { updateFile } = require("./lib/file-utils.cjs")
+const { toAbsolutePath, updateFile } = require("./lib/file-utils.cjs")
 const { ensureFourDigitYear } = require("./lib/validators.cjs")
 
 const LICENSE_FILE = "LICENSE"
@@ -73,6 +74,11 @@ function main() {
     return
   }
 
+  if (!fs.existsSync(toAbsolutePath(LICENSE_FILE))) {
+    console.error(`✖ ${LICENSE_FILE} が見つかりません。`)
+    process.exit(1)
+  }
+
   const pattern = /^Copyright \(c\) .*/m
   const result = updateFile(LICENSE_FILE, original => {
     if (!pattern.test(original)) {
@@ -86,7 +92,7 @@ function main() {
   }, options.dryRun)
 
   if (!result) {
-    console.log("変更対象は見つかりませんでした。")
+    console.log("既に最新のため変更はありません。")
     return
   }
 

@@ -19,7 +19,6 @@ scripts/
     ├── replace-app-metadata.cjs
     ├── replace-license-copyright.cjs
     ├── replace-repository-reference.cjs
-    ├── remove-debug-handlers.cjs
     └── lib/                   # setup スクリプト共通ユーティリティ
 ```
 
@@ -65,7 +64,6 @@ scripts/
 |`replace-app-metadata.cjs`|env ファイルと OpenAPI 仕様のアプリ名・説明を置換|
 |`replace-license-copyright.cjs`|LICENSE の著作権者名と年を置換|
 |`replace-repository-reference.cjs`|README と OpenAPI の GitHub リポジトリ参照を置換|
-|`remove-debug-handlers.cjs`|デバッグエンドポイントを削除（handler、OpenAPI paths / requests / responses）|
 
 すべての setup スクリプトはプレビュー用の `--dry-run` をサポートしています。
 

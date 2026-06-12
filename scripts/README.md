@@ -19,7 +19,6 @@ scripts/
     ├── replace-app-metadata.cjs
     ├── replace-license-copyright.cjs
     ├── replace-repository-reference.cjs
-    ├── remove-debug-handlers.cjs
     └── lib/                   # Shared utilities for setup scripts
 ```
 
@@ -65,7 +64,6 @@ Scripts for configuring the boilerplate when creating a new project from this te
 |`replace-app-metadata.cjs`|Replace app name/description in env files and OpenAPI spec|
 |`replace-license-copyright.cjs`|Replace LICENSE copyright holder and year|
 |`replace-repository-reference.cjs`|Replace GitHub repository references in READMEs and OpenAPI|
-|`remove-debug-handlers.cjs`|Remove debug endpoints (handler, OpenAPI paths, requests, responses)|
 
 All setup scripts support `--dry-run` for preview.
 
