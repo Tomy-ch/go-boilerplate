@@ -2,7 +2,6 @@ package cookie
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -15,18 +14,16 @@ type cookieRewriteWriter struct {
 	orig http.ResponseWriter
 	cfg  *SecurityCookie
 
-	hdr        http.Header
-	wroteHdr   bool
-	statusCode int
+	hdr      http.Header
+	wroteHdr bool
 }
 
 // newCookieRewriteWriter は cookieRewriteWriter を構築します。
 func newCookieRewriteWriter(orig http.ResponseWriter, cfg *SecurityCookie) *cookieRewriteWriter {
 	return &cookieRewriteWriter{
-		orig:       orig,
-		cfg:        cfg,
-		hdr:        make(http.Header),
-		statusCode: http.StatusOK,
+		orig: orig,
+		cfg:  cfg,
+		hdr:  make(http.Header),
 	}
 }
 
@@ -41,7 +38,6 @@ func (w *cookieRewriteWriter) WriteHeader(code int) {
 		return
 	}
 	w.wroteHdr = true
-	w.statusCode = code
 
 	// Set-Cookie を書き換え
 	w.flushHeadersWithRewrite()
@@ -69,9 +65,9 @@ func (w *cookieRewriteWriter) Flush() {
 
 // Hijack はコネクションをハイジャックします。
 func (w *cookieRewriteWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	// WebSocket 等は WriteHeader を経由せずに Hijack されることがあるため、
-	// ここで Set-Cookie rewrite を “w.hdr 上で” 確定させる。
-	// （Upgrade 実装が w.Header() の内容を参照してハンドシェイクを書き出すケースに備える）
+	// WebSocket 等は WriteHeader を経由せずに Hijack されることがあるため、w.hdr 上で
+	// Set-Cookie rewrite を確定させる。これは w.Header() を参照するタイプの Upgrade 実装にのみ
+	// 効く防御であり、生バッファへ直書きする通常の hijack 経路では配線に出ない。
 	if !w.wroteHdr {
 		w.wroteHdr = true
 
@@ -79,12 +75,7 @@ func (w *cookieRewriteWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		if len(rawCookies) > 0 {
 			w.hdr.Del(headerSetCookie)
 			for _, raw := range rawCookies {
-				rewritten := w.cfg.RewriteSetCookie(raw)
-				if rewritten == "" {
-					// 失敗時に消すのは危険なので元を残す
-					rewritten = raw
-				}
-				w.hdr.Add(headerSetCookie, rewritten)
+				w.hdr.Add(headerSetCookie, w.rewriteOrKeep(raw))
 			}
 		}
 	}
@@ -92,7 +83,7 @@ func (w *cookieRewriteWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	// WebSocket などで http.Hijacker を透過する
 	h, ok := w.orig.(http.Hijacker)
 	if !ok {
-		return nil, nil, fmt.Errorf("hijack not supported")
+		return nil, nil, http.ErrNotSupported
 	}
 	return h.Hijack()
 }
@@ -126,6 +117,15 @@ func (w *cookieRewriteWriter) Unwrap() http.ResponseWriter {
 	return w.orig
 }
 
+// rewriteOrKeep は Set-Cookie を書き換え、失敗（空文字）時は元の raw を残します。
+// 失敗時に消すと Cookie 消失になるため、この不変条件を1箇所に集約します。
+func (w *cookieRewriteWriter) rewriteOrKeep(raw string) string {
+	if r := w.cfg.RewriteSetCookie(raw); r != "" {
+		return r
+	}
+	return raw
+}
+
 // flushHeadersWithRewrite はヘッダを書き込みます（Set-Cookie を書き換え）。
 func (w *cookieRewriteWriter) flushHeadersWithRewrite() {
 	for k, vv := range w.hdr {
@@ -138,14 +138,7 @@ func (w *cookieRewriteWriter) flushHeadersWithRewrite() {
 	}
 
 	// Set-Cookie を rewrite してから追加
-	rawCookies := w.hdr.Values(headerSetCookie)
-	for _, raw := range rawCookies {
-		rewritten := w.cfg.RewriteSetCookie(raw)
-		if rewritten == "" {
-			// 解析に失敗した等でも “消す” のは危険なので元を通す方が安全
-			w.orig.Header().Add(headerSetCookie, raw)
-			continue
-		}
-		w.orig.Header().Add(headerSetCookie, rewritten)
+	for _, raw := range w.hdr.Values(headerSetCookie) {
+		w.orig.Header().Add(headerSetCookie, w.rewriteOrKeep(raw))
 	}
 }

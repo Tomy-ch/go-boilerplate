@@ -25,7 +25,7 @@ func ObservabilityMiddleware(appCfg *config.ApplicationConfig) extension.UseMidd
 		Middleware: extension.UseMiddleware{
 			Name:       "observability",
 			Priority:   observabilityPriority,
-			Middleware: observability.Middleware(appCfg),
+			Middleware: observability.Middleware(appCfg.Name()),
 		},
 	}
 }

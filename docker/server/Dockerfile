@@ -6,22 +6,21 @@ FROM golang:1.26.4-alpine AS builder
 
 WORKDIR /app
 
+# buildx の自動 platform ARG に追従する（--platform 指定時はその arch、未指定/classic builder では既定 linux/amd64）
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
 ENV GOPROXY=off \
     GOSUMDB=off \
     CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64
+    GOOS=${TARGETOS} \
+    GOARCH=${TARGETARCH}
 
 ARG VERSION=dev
 ARG REVISION=none
+# BUILD_DATE は --build-arg 未指定ビルド用の placeholder（本番デプロイは実 timestamp を注入）。
+# version handler が RFC3339 として厳格 parse し不正値は /version を 500 にするため、有効な RFC3339 を維持すること。
 ARG BUILD_DATE=2024-12-31T21:00:00Z
-
-RUN apk add --no-cache \
-  ca-certificates \
-  tzdata
-
-COPY go.mod go.sum ./
-COPY vendor/ ./vendor/
 
 COPY . .
 
@@ -30,7 +29,7 @@ RUN go build -mod=vendor -trimpath \
     -X 'go-boilerplate/internal/system.Version=${VERSION}' \
     -X 'go-boilerplate/internal/system.Revision=${REVISION}' \
     -X 'go-boilerplate/internal/system.BuildDate=${BUILD_DATE}'" \
-  -o /app/bin/server ./cmd/main.go
+  -o /app/bin/server ./cmd/
 
 # ------------------------------
 # 実行用コンテナ: アプリケーションのサーバとして常駐起動する用途
@@ -38,19 +37,22 @@ RUN go build -mod=vendor -trimpath \
 # NOTE: 本番利用時にはダイジェストを指定することを推奨
 FROM alpine:3.23 AS runtime
 
+# デプロイ対象環境（prd/stg/dev）。当該 env ファイルのみ焼き込み、ENV として固定する。
+ARG APP_ENV=prd
+
+RUN apk upgrade --no-cache
+
 RUN apk add --no-cache ca-certificates tzdata
 
 RUN addgroup -S app && adduser -S app -G app
 USER app
 
 COPY --from=builder --chown=app:app /app/bin/server /app/server
-COPY --from=builder --chown=app:app /app/env/.env.dev /app/env/.env.dev
-COPY --from=builder --chown=app:app /app/env/.env.stg /app/env/.env.stg
-COPY --from=builder --chown=app:app /app/env/.env.prd /app/env/.env.prd
+COPY --from=builder --chown=app:app /app/env/.env.${APP_ENV} /app/env/.env.${APP_ENV}
 
 WORKDIR /app
 
-ENV ENV=prd
+ENV ENV=${APP_ENV}
 
 CMD ["/app/server", "serve"]
 
@@ -61,10 +63,6 @@ CMD ["/app/server", "serve"]
 FROM runtime AS migration
 
 COPY --from=builder --chown=app:app /app/database/migrations /app/database/migrations
-
-WORKDIR /app
-
-ENV ENV=prd
 
 CMD ["/app/server", "migrate-up"]
 
@@ -82,7 +80,7 @@ RUN apk add --no-cache bash ca-certificates curl git
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=v2026.6.0 sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app

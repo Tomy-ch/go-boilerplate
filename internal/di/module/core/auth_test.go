@@ -41,7 +41,6 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvLocal)
 		logger := logging.NewTestLogger(t)
-
 		authenticator, err := provideAuthenticator(appCfg, logger)
 		require.NoError(t, err)
 
@@ -54,7 +53,6 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvCI)
 		logger := logging.NewTestLogger(t)
-
 		authenticator, err := provideAuthenticator(appCfg, logger)
 		require.NoError(t, err)
 
@@ -67,7 +65,6 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvTest)
 		logger := logging.NewTestLogger(t)
-
 		authenticator, err := provideAuthenticator(appCfg, logger)
 		require.NoError(t, err)
 
@@ -80,7 +77,6 @@ func Test_provideAuthenticator(t *testing.T) {
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvProduction)
 		logger := logging.NewTestLogger(t)
-
 		authenticator, err := provideAuthenticator(appCfg, logger)
 		require.Error(t, err)
 		require.Nil(t, authenticator)

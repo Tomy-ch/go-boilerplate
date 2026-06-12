@@ -12,7 +12,6 @@ package mock_shutdowner
 import (
 	reflect "reflect"
 
-	fx "go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,19 +40,15 @@ func (m *MockShutdowner) EXPECT() *MockShutdownerMockRecorder {
 }
 
 // Shutdown mocks base method.
-func (m *MockShutdowner) Shutdown(opt ...fx.ShutdownOption) error {
+func (m *MockShutdowner) Shutdown() error {
 	m.ctrl.T.Helper()
-	varargs := []any{}
-	for _, a := range opt {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "Shutdown", varargs...)
+	ret := m.ctrl.Call(m, "Shutdown")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Shutdown indicates an expected call of Shutdown.
-func (mr *MockShutdownerMockRecorder) Shutdown(opt ...any) *gomock.Call {
+func (mr *MockShutdownerMockRecorder) Shutdown() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockShutdowner)(nil).Shutdown), opt...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockShutdowner)(nil).Shutdown))
 }

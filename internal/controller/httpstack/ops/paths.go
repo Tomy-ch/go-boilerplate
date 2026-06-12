@@ -5,9 +5,7 @@ import "strings"
 
 // IsOpsPath は運用系エンドポイント（ops endpoints）かどうかを判定します。
 func IsOpsPath(path string) bool {
-	if path != "/" {
-		path = strings.TrimRight(path, "/")
-	}
+	path = strings.TrimRight(path, "/")
 
 	switch path {
 	case "/metrics",

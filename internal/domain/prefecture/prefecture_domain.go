@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	MinPrefectureNameLength = 1
-	MaxPrefectureNameLength = 100
-	MinCode                 = 1
-	MaxCode                 = 47
+	minNameLength = 1
+	maxNameLength = 100
+	minCode       = 1
+	maxCode       = 47
 )
 
 type Prefectures []*Prefecture
@@ -33,16 +33,13 @@ func New(
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
-	if !stringkit.InRange(name, MinPrefectureNameLength, MaxPrefectureNameLength) {
-		return nil, xerrors.Wrap(
-			ErrInvalidPrefectureName,
-			stringkit.ErrorMsgInRange(MinPrefectureNameLength, MaxPrefectureNameLength, name),
-		)
+	if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok {
+		return nil, xerrors.Wrap(ErrInvalidName, msg)
 	}
-	if code < MinCode || MaxCode < code {
+	if code < minCode || maxCode < code {
 		return nil, xerrors.Wrap(
 			ErrInvalidCode,
-			fmt.Sprintf("code must be between %d and %d, got %d", MinCode, MaxCode, code),
+			fmt.Sprintf("code must be between %d and %d, got %d", minCode, maxCode, code),
 		)
 	}
 

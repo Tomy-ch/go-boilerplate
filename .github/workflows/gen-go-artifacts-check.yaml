@@ -17,6 +17,7 @@ concurrency:
 jobs:
   generate-go-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write
@@ -40,7 +41,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          files="$(git diff --name-only)"
+          git add -A
+          files="$(git diff --cached --name-only)"
           if [ -n "$files" ]; then
             echo "has_diff=true" >> "$GITHUB_OUTPUT"
             printf "%s\n" "$files" > /tmp/changed_files.txt
@@ -62,7 +64,7 @@ jobs:
           git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
           changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
           # 生成物自身は source から除外
-          if echo "$changed" | grep -E '\.go$' | grep -vE '\.gen\.go$|_mock\.go$|/mock_.+\.go$' | grep -q .; then
+          if echo "$changed" | grep -E '\.go$' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|/mock_.+\.go$' | grep -q .; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
           else
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
@@ -70,6 +72,7 @@ jobs:
 
       - name: Comment changed files on PR
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -143,7 +146,7 @@ jobs:
                   updatedLine,
                 ].join('\n');
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,

@@ -7,23 +7,23 @@ inputs:
     required: false
     default: "18"
   host:
-    required: false
     description: Postgres host address
+    required: false
     default: localhost
   port:
-    required: false
     description: Postgres port
+    required: false
     default: "5432"
   user:
-    required: false
     description: Postgres user
+    required: false
     default: postgres
   db:
-    required: true
     description: Postgres database name
-  password:
     required: true
+  password:
     description: Postgres password
+    required: true
   init_sql:
     required: false
     description: Path to SQL file to initialize the database
@@ -60,34 +60,39 @@ runs:
     - name: Install psql client(${{ inputs.pg_version }})
       if: ${{ inputs.install_psql == 'true' }}
       shell: bash
+      env:
+        PG_VERSION: ${{ inputs.pg_version }}
       run: |
-        sudo apt-get install -y postgresql-client-${{ inputs.pg_version }}
-        echo "/usr/lib/postgresql/${{ inputs.pg_version }}/bin" >> "$GITHUB_PATH"
+        sudo apt-get install -y "postgresql-client-${PG_VERSION}"
+        echo "/usr/lib/postgresql/${PG_VERSION}/bin" >> "$GITHUB_PATH"
 
-    - name: Postgres Client Version
+    - name: Print client versions
       if: ${{ inputs.install_psql == 'true' }}
       shell: bash
       run: |
         psql --version
-
-    - name: PG_DUMP Version
-      if: ${{ inputs.install_psql == 'true' }}
-      shell: bash
-      run: |
         pg_dump --version
 
     - name: Wait for database
       shell: bash
       env:
         PGPASSWORD: ${{ inputs.password }}
+        HOST: ${{ inputs.host }}
+        PORT: ${{ inputs.port }}
+        PGUSER: ${{ inputs.user }}
+        DB: ${{ inputs.db }}
+        MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+        SLEEP_SECONDS: ${{ inputs.sleep_seconds }}
       run: |
-        echo "Waiting for Postgres... host=${{ inputs.host }} port=${{ inputs.port }} db=${{ inputs.db }}"
-        for i in $(seq 1 ${{ inputs.max_attempts }}); do
-          if pg_isready -h "${{ inputs.host }}" -p "${{ inputs.port }}" -U "${{ inputs.user }}" -d "${{ inputs.db }}"; then
+        command -v pg_isready >/dev/null 2>&1 \
+          || { echo "pg_isready not found; set install_psql=true"; exit 1; }
+        echo "Waiting for Postgres... host=${HOST} port=${PORT} db=${DB}"
+        for i in $(seq 1 "${MAX_ATTEMPTS}"); do
+          if pg_isready -h "${HOST}" -p "${PORT}" -U "${PGUSER}" -d "${DB}"; then
             echo "Postgres is ready."
             exit 0
           fi
-          sleep "${{ inputs.sleep_seconds }}"
+          [ "$i" -lt "${MAX_ATTEMPTS}" ] && sleep "${SLEEP_SECONDS}"
         done
         echo "Postgres did not become ready in time."
         exit 1
@@ -97,8 +102,15 @@ runs:
       shell: bash
       env:
         PGPASSWORD: ${{ inputs.password }}
+        HOST: ${{ inputs.host }}
+        PORT: ${{ inputs.port }}
+        PGUSER: ${{ inputs.user }}
+        DB: ${{ inputs.db }}
+        INIT_SQL: ${{ inputs.init_sql }}
       run: |
-        test -f "${{ inputs.init_sql }}" || (echo "init_sql not found: ${{ inputs.init_sql }}" && exit 1)
-        psql -h "${{ inputs.host }}" -p "${{ inputs.port }}" -U "${{ inputs.user }}" -d "${{ inputs.db }}" \
+        command -v psql >/dev/null 2>&1 \
+          || { echo "psql not found; set install_psql=true"; exit 1; }
+        test -f "${INIT_SQL}" || { echo "init_sql not found: ${INIT_SQL}"; exit 1; }
+        psql -h "${HOST}" -p "${PORT}" -U "${PGUSER}" -d "${DB}" \
           -v ON_ERROR_STOP=1 \
-          -f "${{ inputs.init_sql }}"
+          -f "${INIT_SQL}"

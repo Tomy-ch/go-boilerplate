@@ -42,18 +42,13 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 		Keyword: request.Params.Keyword,
 		Active:  request.Params.Active,
 	}
-	dtos, err := s.uc.ListUsersByKeyword(ctx, filter, page)
+	list, err := s.uc.ListUsersByKeywordWithTotal(ctx, filter, page)
 	if err != nil {
 		return nil, err
 	}
 
-	total, err := s.uc.CountUsersByKeyword(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	users := make([]gen.UsersSearchResponseItem, len(dtos))
-	for i, dto := range dtos {
+	users := make([]gen.UsersSearchResponseItem, len(list.Items))
+	for i, dto := range list.Items {
 		users[i] = gen.UsersSearchResponseItem{
 			FirstName:    dto.FirstName,
 			LastName:     dto.LastName,
@@ -71,7 +66,7 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 
 	return gen.GetUsersSearch200JSONResponse(gen.UsersSearchResponse{
 		Users:  users,
-		Total:  total,
+		Total:  list.Total,
 		Limit:  page.Limit(),
 		Offset: page.Offset(),
 	}), nil

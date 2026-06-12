@@ -1,6 +1,6 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
 
-// Package shutdowner は、Fxライブラリのインターフェースを提供します。
+// Package shutdowner は、fx.Shutdowner を抽象化し、上位層を fx 依存から切り離すための薄いラッパを提供します。
 //
 // このパッケージは、uber.org/fx ライブラリをラップし、テストやモックの作成を容易にします。
 package shutdowner
@@ -8,14 +8,18 @@ package shutdowner
 import "go.uber.org/fx"
 
 type Shutdowner interface {
-	Shutdown(opt ...fx.ShutdownOption) error
+	Shutdown() error
 }
 
 type shutdowner struct {
-	fx.Shutdowner
+	sd fx.Shutdowner
 }
 
 // NewShutdowner は、新しい Shutdowner インスタンスを生成します。
 func NewShutdowner(sd fx.Shutdowner) Shutdowner {
-	return &shutdowner{Shutdowner: sd}
+	return &shutdowner{sd: sd}
+}
+
+func (s *shutdowner) Shutdown() error {
+	return s.sd.Shutdown()
 }

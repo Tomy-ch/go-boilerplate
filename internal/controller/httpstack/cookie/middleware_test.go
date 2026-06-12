@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -28,13 +27,12 @@ func Test_secureCookieMiddleware_RewritesSetCookie(t *testing.T) {
 	secCookie := NewSecurityCookie(secCfg)
 
 	e := echo.New()
-	ctx := context.Background()
-	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
 	next := func(c echo.Context) error {
-		// Add a Set-Cookie header that should be rewritten
+		// 書き換え対象となる Set-Cookie を付与する
 		c.Response().Header().Add("Set-Cookie", "sessionid=abc; Path=/; HttpOnly")
 		return c.String(http.StatusOK, "ok")
 	}
@@ -43,25 +41,27 @@ func Test_secureCookieMiddleware_RewritesSetCookie(t *testing.T) {
 	require.NoError(t, handler(c))
 
 	cookies := rec.Header().Values("Set-Cookie")
-	require.NotEmpty(t, cookies)
+	require.Len(t, cookies, 1)
+	// mock config 由来の値（SameSite=Strict / Domain=localhost / Secure）が反映される
+	assert.Contains(t, cookies[0], "SameSite=Strict")
+	assert.Contains(t, cookies[0], "Domain=localhost")
+	assert.Contains(t, cookies[0], "Secure")
+}
 
-	// Expect rewrite to include SameSite and Domain from mock config
-	foundSameSite := false
-	foundDomain := false
-	foundSecure := false
-	for _, raw := range cookies {
-		if strings.Contains(raw, "SameSite=") {
-			foundSameSite = true
-		}
-		if strings.Contains(raw, "Domain=") {
-			foundDomain = true
-		}
-		if strings.Contains(raw, "Secure") {
-			foundSecure = true
-		}
-	}
+func Test_secureCookieMiddleware_KeepsWrapperOnError(t *testing.T) {
+	t.Parallel()
 
-	assert.True(t, foundSameSite, "SameSite must be present in rewritten Set-Cookie")
-	assert.True(t, foundDomain, "Domain must be present in rewritten Set-Cookie")
-	assert.True(t, foundSecure, "Secure flag must be present in rewritten Set-Cookie")
+	e := echo.New()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	handler := secureCookieMiddleware(&SecurityCookie{applyToAll: true})(func(_ echo.Context) error {
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	})
+	require.Error(t, handler(c))
+
+	// next がエラーでも Writer は復元されない（エラー経路の Set-Cookie も書き換え対象にするため）
+	_, ok := c.Response().Writer.(*cookieRewriteWriter)
+	assert.True(t, ok)
 }

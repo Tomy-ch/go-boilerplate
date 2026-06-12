@@ -20,50 +20,70 @@ type service struct {
 func New(
 	db loggingdb.DBProvider,
 	tf observability.TracerFactory,
-) query.UserQueryService {
+) query.UserSearchQueryService {
 	return &service{
 		db:     db,
 		tracer: tf.Infra(),
 	}
 }
 
-// FindByKeyword は、キーワード検索でユーザーの情報を取得します。
+// buildLikeTokens は、キーワードを LIKE パターンへ変換します。空の場合は全件マッチの ["%"] を返します。
+func buildLikeTokens(keywords []string) []string {
+	if len(keywords) == 0 {
+		return []string{"%"}
+	}
+	tokens := make([]string, len(keywords))
+	for i, kw := range keywords {
+		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
+		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
+	}
+	return tokens
+}
+
+// toUserSearchResult は、sqlc の行から UserSearchResult を構築します。
+func toUserSearchResult(u gen.Users, prefectureName string) *query.UserSearchResult {
+	return &query.UserSearchResult{
+		FirstName:      u.FirstName,
+		LastName:       u.LastName,
+		Email:          u.Email,
+		Phone:          u.Phone,
+		PostalCode:     u.PostalCode,
+		PrefectureName: prefectureName,
+		City:           u.City,
+		Street:         u.Street,
+		Building:       u.Building,
+		RegisteredAt:   u.CreatedAt,
+		DeletedAt:      u.DeletedAt,
+	}
+}
+
+// FindByFilter は、キーワード検索でユーザーの情報を取得します。
 func (s *service) FindByFilter(ctx context.Context, filter *query.UserSearchFilter, limit, offset int32) (query.UserSearchResults, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	tokens := make([]string, len(filter.Keywords))
-	for i, kw := range filter.Keywords {
-		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
-		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
-	}
-	if len(tokens) == 0 {
-		tokens = []string{"%"}
-	}
-
+	tokens := buildLikeTokens(filter.Keywords)
 	db := gen.New(s.db.NewLoggingDB(ctx))
 
 	switch {
 	case filter.Active == nil:
 		return fetchSearchAll(ctx, db, &gen.SearchUsersParams{
 			PatternsParam: tokens,
-			LimitParam:    int32(limit),
-			OffsetParam:   int32(offset),
+			LimitParam:    limit,
+			OffsetParam:   offset,
 		})
 	case *filter.Active:
 		return fetchSearchActive(ctx, db, &gen.SearchActiveUsersParams{
 			PatternsParam: tokens,
-			LimitParam:    int32(limit),
-			OffsetParam:   int32(offset),
-		})
-	case !*filter.Active:
-		return fetchSearchDeleted(ctx, db, &gen.SearchDeletedUsersParams{
-			PatternsParam: tokens,
-			LimitParam:    int32(limit),
-			OffsetParam:   int32(offset),
+			LimitParam:    limit,
+			OffsetParam:   offset,
 		})
 	default:
-		panic("unreachable: invalid active")
+		return fetchSearchDeleted(ctx, db, &gen.SearchDeletedUsersParams{
+			PatternsParam: tokens,
+			LimitParam:    limit,
+			OffsetParam:   offset,
+		})
 	}
 }
 
@@ -77,19 +97,7 @@ func fetchSearchAll(
 	}
 	results := make(query.UserSearchResults, len(rows))
 	for i, row := range rows {
-		results[i] = &query.UserSearchResult{
-			FirstName:      row.Users.FirstName,
-			LastName:       row.Users.LastName,
-			Email:          row.Users.Email,
-			Phone:          row.Users.Phone,
-			PostalCode:     row.Users.PostalCode,
-			PrefectureName: row.PrefectureName,
-			City:           row.Users.City,
-			Street:         row.Users.Street,
-			Building:       row.Users.Building,
-			RegisteredAt:   row.Users.CreatedAt,
-			DeletedAt:      row.Users.DeletedAt,
-		}
+		results[i] = toUserSearchResult(row.Users, row.PrefectureName)
 	}
 	return results, nil
 }
@@ -104,19 +112,7 @@ func fetchSearchActive(
 	}
 	results := make(query.UserSearchResults, len(rows))
 	for i, row := range rows {
-		results[i] = &query.UserSearchResult{
-			FirstName:      row.Users.FirstName,
-			LastName:       row.Users.LastName,
-			Email:          row.Users.Email,
-			Phone:          row.Users.Phone,
-			PostalCode:     row.Users.PostalCode,
-			PrefectureName: row.PrefectureName,
-			City:           row.Users.City,
-			Street:         row.Users.Street,
-			Building:       row.Users.Building,
-			RegisteredAt:   row.Users.CreatedAt,
-			DeletedAt:      row.Users.DeletedAt,
-		}
+		results[i] = toUserSearchResult(row.Users, row.PrefectureName)
 	}
 	return results, nil
 }
@@ -131,19 +127,7 @@ func fetchSearchDeleted(
 	}
 	results := make(query.UserSearchResults, len(rows))
 	for i, row := range rows {
-		results[i] = &query.UserSearchResult{
-			FirstName:      row.Users.FirstName,
-			LastName:       row.Users.LastName,
-			Email:          row.Users.Email,
-			Phone:          row.Users.Phone,
-			PostalCode:     row.Users.PostalCode,
-			PrefectureName: row.PrefectureName,
-			City:           row.Users.City,
-			Street:         row.Users.Street,
-			Building:       row.Users.Building,
-			RegisteredAt:   row.Users.CreatedAt,
-			DeletedAt:      row.Users.DeletedAt,
-		}
+		results[i] = toUserSearchResult(row.Users, row.PrefectureName)
 	}
 	return results, nil
 }
@@ -153,15 +137,7 @@ func (s *service) CountByFilter(ctx context.Context, filter *query.UserSearchFil
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	tokens := make([]string, len(filter.Keywords))
-	for i, kw := range filter.Keywords {
-		escaped := sqlc.EscapeForLike(kw, sqlc.DefaultLikeEscapeChar)
-		tokens[i] = sqlc.WrapContainsLikePattern(escaped)
-	}
-	if len(tokens) == 0 {
-		tokens = []string{"%"}
-	}
-
+	tokens := buildLikeTokens(filter.Keywords)
 	db := gen.New(s.db.NewLoggingDB(ctx))
 
 	var (
@@ -174,10 +150,8 @@ func (s *service) CountByFilter(ctx context.Context, filter *query.UserSearchFil
 		count, err = db.CountSearchUsers(ctx, tokens)
 	case *filter.Active:
 		count, err = db.CountSearchActiveUsers(ctx, tokens)
-	case !*filter.Active:
-		count, err = db.CountSearchDeletedUsers(ctx, tokens)
 	default:
-		panic("unreachable: invalid active")
+		count, err = db.CountSearchDeletedUsers(ctx, tokens)
 	}
 
 	if err != nil {

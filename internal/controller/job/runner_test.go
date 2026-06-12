@@ -53,7 +53,7 @@ func Test_NewRunner(t *testing.T) {
 			res, err := NewRunner([]job.Job{job1, job1})
 
 			require.Nil(t, res)
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrDuplicateJob)
 		})
 	})
 }
@@ -99,7 +99,7 @@ func Test_runner_Run(t *testing.T) {
 			require.NoError(t, err)
 
 			err = runner.Run(t.Context(), unknownJobName, []string{})
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrUnknownJob)
 		})
 
 		t.Run("ジョブの実行に失敗すると、エラーが返される", func(t *testing.T) {

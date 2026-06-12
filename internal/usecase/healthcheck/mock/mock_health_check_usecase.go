@@ -42,10 +42,10 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 }
 
 // CheckHealth mocks base method.
-func (m *MockUsecase) CheckHealth(ctx context.Context) (healthcheck.DTO, error) {
+func (m *MockUsecase) CheckHealth(ctx context.Context) (*healthcheck.DTO, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckHealth", ctx)
-	ret0, _ := ret[0].(healthcheck.DTO)
+	ret0, _ := ret[0].(*healthcheck.DTO)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

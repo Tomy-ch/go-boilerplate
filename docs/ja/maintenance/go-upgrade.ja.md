@@ -182,7 +182,7 @@ make serve-build-clean
 ツール系コンテナ
 
 ```sh
-make tools-build-clean
+make tool-runners-build-clean
 ```
 
 ## 9. Code generation の再実行
@@ -222,7 +222,7 @@ make gen
 make test
 make lint
 make serve-build-clean
-make tools-build-clean
+make tool-runners-build-clean
 ```
 
 ## Upgrade Checklist
@@ -236,7 +236,7 @@ Go version を更新する際は以下を確認してください。
 - [ ] `make tidy-lib` 実行
 - [ ] （任意）Go モジュール依存を更新するか判断。更新する場合は `go get -u[=patch] ./...` + `make tidy-lib` 実行（`go` directive は据え置き）
 - [ ] `make install-tools` 実行
-- [ ] Docker コンテナ再ビルド（`make serve-build-clean`, `make tools-build-clean`）
+- [ ] Docker コンテナ再ビルド（`make serve-build-clean`, `make tool-runners-build-clean`）
 - [ ] code generation 再実行
 - [ ] test 実行
 - [ ] lint 実行

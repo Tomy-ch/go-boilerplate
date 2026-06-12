@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
 	"go-boilerplate/internal/domain/user"
@@ -32,7 +33,7 @@ func TestNew(t *testing.T) {
 	tf := observability.NewNoopTracerFactory(t)
 	mockTxManager := mock_tx.NewMockManager(ctrl)
 	clock := mock_clock.NewMockClock(ctrl)
-	encrypter := mock_security.NewMockEncrypter(ctrl)
+	encrypter := mock_security.NewMockHasher(ctrl)
 	userRepo := mock_user.NewMockRepository(ctrl)
 	pftRepo := mock_prefecture.NewMockRepository(ctrl)
 
@@ -91,7 +92,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		expected := []MutableFields{
+		expected := []UserView{
 			{
 				FirstName:      userDomain.FirstName(),
 				LastName:       userDomain.LastName(),
@@ -132,7 +133,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			page := 1
 			perPage := 100
@@ -154,7 +155,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 		t.Run("都道府県取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			page := 1
 			perPage := 100
@@ -176,6 +177,40 @@ func Test_usecase_ListUsers(t *testing.T) {
 			actual, err := uc.ListUsers(ctx, nil, p)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, expectedErr)
+		})
+
+		t.Run("ユーザーの都道府県が解決できない場合、ErrInternal が返される", func(t *testing.T) {
+			t.Parallel()
+
+			page := 1
+			perPage := 100
+			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			require.NoError(t, err)
+
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
+			uc := &usecase{
+				tracer:   lt,
+				userRepo: userRepo,
+				pftRepo:  pftRepo,
+			}
+
+			actual, err := uc.ListUsers(ctx, nil, p)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
+		t.Run("page が nil の場合、ErrInvalidArgument が返される", func(t *testing.T) {
+			t.Parallel()
+
+			uc := &usecase{tracer: lt}
+			actual, err := uc.ListUsers(ctx, nil, nil)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 	})
 }
@@ -225,11 +260,21 @@ func Test_usecase_Create(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
-			expected := createDTO.MutableFields
+			expected := UserView{
+				FirstName:      createDTO.FirstName,
+				LastName:       createDTO.LastName,
+				Email:          createDTO.Email,
+				Phone:          createDTO.Phone,
+				PostalCode:     createDTO.PostalCode,
+				PrefectureName: createDTO.PrefectureName,
+				City:           createDTO.City,
+				Street:         createDTO.Street,
+				Building:       createDTO.Building,
+			}
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().Create(
@@ -276,7 +321,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
 		})
 
@@ -290,7 +335,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("", expectedErr)
 
 			uc := &usecase{
@@ -300,7 +345,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -308,13 +353,13 @@ func Test_usecase_Create(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(
@@ -331,7 +376,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -344,7 +389,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(
@@ -361,7 +406,7 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, user.ErrInvalidFirstName)
 		})
 
@@ -369,13 +414,13 @@ func Test_usecase_Create(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 
 			clock := mock_clock.NewMockClock(ctrl)
 			clock.EXPECT().Now().Return(now)
-			encrypter := mock_security.NewMockEncrypter(ctrl)
+			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().Create(
@@ -398,8 +443,95 @@ func Test_usecase_Create(t *testing.T) {
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, MutableFields{}, actual)
+			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, expectedErr)
+		})
+	})
+}
+
+func Test_usecase_ListUsersWithTotal(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	lt := observability.NewMockUsecaseLayerTracer(t)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+
+	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	userDomain, err := user.New(
+		uuid.NewTestFromSalt(t, "user_domain"),
+		"first_name", "last_name", "password", "email_address", "phone_number",
+		prefectureID, "city_name", "town_address", nil, "p_code", now, now, nil,
+	)
+	require.NoError(t, err)
+	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
+	require.NoError(t, err)
+
+	page := 1
+	perPage := 100
+	p, err := paging.NewPagingFrom1Based(&page, &perPage)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("一覧と総件数をまとめて取得できる", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(1), nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			require.NoError(t, err)
+			assert.Len(t, actual.Items, 1)
+			assert.Equal(t, int64(1), actual.Total)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("一覧取得でエラーが発生した場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+			ctrl := gomock.NewController(t)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
+			uc := &usecase{tracer: lt, userRepo: userRepo}
+
+			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("総件数取得でエラーが発生した場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			expectedErr := testkit.ExpectedDBError()
+			ctrl := gomock.NewController(t)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(0), expectedErr)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			require.ErrorIs(t, err, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("page が nil の場合、ErrInvalidArgument が返る", func(t *testing.T) {
+			t.Parallel()
+			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
+			actual, err := uc.ListUsersWithTotal(ctx, nil, nil)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			require.Nil(t, actual)
 		})
 	})
 }
@@ -439,7 +571,7 @@ func newCreateDTO(u *user.User, pName string) *CreateParamsDTO {
 	return &CreateParamsDTO{
 		UserID:      u.ID(),
 		RawPassword: "password",
-		MutableFields: MutableFields{
+		UpdateProfileParams: UpdateProfileParams{
 			FirstName:      u.FirstName(),
 			LastName:       u.LastName(),
 			Email:          u.Email(),

@@ -9,7 +9,7 @@ Pointer manipulation utilities using generics.
 |Function|Description|
 |---|---|
 |`To[T](v T) *T`|Create a pointer from a value|
-|`Copy[T](v *T) *T`|Copy a pointer (returns nil if input is nil)|
+|`Copy[T](v *T) *T`|Shallow-copy the pointed-to value into a new pointer (returns nil if input is nil; reference-type fields are shared)|
 |`Deref[T](p *T, fallback T) T`|Dereference a pointer, or return fallback if nil|
 
 ## Notes

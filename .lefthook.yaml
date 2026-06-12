@@ -2,18 +2,31 @@ pre-commit:
   parallel: true
   commands:
     lint:
+      glob: "*.go"
       run: make lint
     test:
-      run: make test
+      glob: "*.go"
+      run: make test-cached
     sql-lint:
+      glob: "*.sql"
       run: make sql-lint
     migration-check-version:
+      glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
     migration-check-gap:
+      glob: "database/migrations/*.sql"
       run: make check-migration-up-gap check-migration-down-gap
+
+commit-msg:
+  commands:
+    commitlint:
+      # mise 管理の commitlint を解決して実行する
+      run: mise exec npm:@commitlint/cli -- commitlint --edit {1}
 
 pre-push:
   commands:
+    test:
+      run: make test
     gen-go-check:
       run: make gen-bundle-oapi gen-go-code && git diff --exit-code -- '*.gen.go' '*/mock/mock_*.go' '*_mock.go' openapi/openapi.gen.yaml
     tidy-check:

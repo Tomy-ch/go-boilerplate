@@ -5,13 +5,9 @@ import (
 )
 
 func fromGoogle(g guuid.UUID) UUID {
-	var u UUID
-	copy(u.b[:], g[:])
-	return u
+	return UUID{b: g}
 }
 
 func toGoogle(u UUID) guuid.UUID {
-	var g guuid.UUID
-	copy(g[:], u.b[:])
-	return g
+	return guuid.UUID(u.b)
 }

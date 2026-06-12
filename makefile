@@ -1,10 +1,6 @@
 # Makefile
 .DEFAULT_GOAL := help
 
-# 変数定義
-# 環境（local / test / prd など）。未指定なら local
-ENV ?= local
-
 # 依存されるファイル
 # DB関連
 include .makefiles/database/vars.mk
@@ -57,5 +53,5 @@ include .makefiles/gen/gen.mk
 
 .PHONY: help
 help:
-	@bash scripts/make_help.sh
+	@node scripts/make_help.mjs
 

@@ -110,7 +110,7 @@ var (
 func MockConfigForTest(t testing.TB) *Config {
 	t.Helper()
 	return &Config{
-		os: OperationSystemConfig{
+		os: OperatingSystemConfig{
 			timezone: expectedOSTimeZone,
 		},
 		app: ApplicationConfig{
@@ -136,7 +136,6 @@ func MockConfigForTest(t testing.TB) *Config {
 		observability: ObservabilityConfig{
 			enabled:             expectedObservabilityEnabled,
 			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
-			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
 		database: DatabaseConfig{
@@ -185,7 +184,7 @@ func mockLoader(t testing.TB) Loader {
 	t.Helper()
 
 	return Loader{
-		OS: OperationSystem{
+		OS: OperatingSystem{
 			Timezone: expectedOSTimeZone,
 		},
 		App: Application{

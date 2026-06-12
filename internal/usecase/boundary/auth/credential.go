@@ -1,5 +1,7 @@
 package auth
 
+import "strings"
+
 // Credential は認証情報（トークン）を表します。
 // 今回は access token のみ。将来 mTLS/DPoP 等が増えてもここを拡張すればOK。
 type Credential struct {
@@ -9,12 +11,13 @@ type Credential struct {
 func NewCredential(
 	accessToken string,
 ) (*Credential, error) {
-	if accessToken == "" {
-		return nil, ErrArgumentTokenMissing
+	trimmedToken := strings.TrimSpace(accessToken)
+	if trimmedToken == "" {
+		return nil, ErrTokenMissing
 	}
 
 	return &Credential{
-		accessToken: accessToken,
+		accessToken: trimmedToken,
 	}, nil
 }
 

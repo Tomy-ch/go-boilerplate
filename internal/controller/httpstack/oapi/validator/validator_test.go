@@ -7,15 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMiddleware(t *testing.T) {
-	t.Parallel()
-
-	validator, err := GetValidator()
-	require.NoError(t, err)
-
-	require.NotNil(t, Middleware(validator))
-}
-
 func TestGetValidator(t *testing.T) {
 	t.Parallel()
 

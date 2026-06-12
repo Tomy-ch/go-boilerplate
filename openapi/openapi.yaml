@@ -52,15 +52,6 @@ paths:
     $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
-  # デバッグ用のパス(サービスを作成する際には必ず削除してください)
-  /debug/cookie:
-    $ref: './paths/debug/cookie.yaml'
-  /debug/cookie/copy:
-    $ref: './paths/debug/cookie/copy.yaml'
-  /debug/cookie/stream:
-    $ref: './paths/debug/cookie/stream.yaml'
-  /debug/cookie/ws:
-    $ref: './paths/debug/cookie/ws.yaml'
 components:
   parameters:
     PageParam:
@@ -107,8 +98,3 @@ components:
       $ref: './components/requests/users/UserPutRequest.yaml'
     RequestPatchV1User:
       $ref: './components/requests/users/UserPatchRequest.yaml'
-    # デバッグ用の型定義(サービスを作成する際には必ず削除してください)
-    DebugIssueCookieRequest:
-      $ref: './components/requests/debug/DebugIssueCookieRequest.yaml'
-    DebugCookieInspectResponse:
-      $ref: './components/responses/debug/DebugCookieInspectResponse.yaml'

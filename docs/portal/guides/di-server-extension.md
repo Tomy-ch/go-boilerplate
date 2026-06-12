@@ -25,7 +25,7 @@ flowchart TB
 
 - **Pre middleware**: Executed before routing (`e.Pre()`)
 - **Use middleware**: Executed after routing (`e.Use()`)
-- **Configurator**: Configuration applied to Echo instance (banner, port, debug mode, etc.)
+- **Configurator**: Configuration applied to Echo instance (debug mode, etc.)
 - Duplicate priorities are automatically detected and cause an error
 
 ## Public API
@@ -43,18 +43,10 @@ flowchart TB
 
 ## Subdirectory List
 
-### decoration (Server Decoration)
-
-|Module|Type|Description|
-|---|---|---|
-|`BannerModule()`|Configurator|Hide banner in production|
-|`DefaultPortModule()`|Configurator|Hide port display in production|
-
 ### inbound (Request Receiving)
 
 |Module|Type|Description|
 |---|---|---|
-|`BinderModule()`|Configurator|Request body binder|
 |`IPExtractorModule()`|Configurator|Client IP extraction|
 |`OpenAPIModule()`|Use|OpenAPI validation|
 |`URIModule()`|Pre|Remove trailing slashes|

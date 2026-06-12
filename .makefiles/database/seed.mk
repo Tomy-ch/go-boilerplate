@@ -16,7 +16,7 @@ db-seed:
 
 # -----CI用ターゲット-----
 db-seed-ci:
-	go run cmd/main.go db-seed --database $(DB)
+	go run ./cmd/ db-seed --database $(DB)
 
 # -----LocalDBに対してのシードデータ投入エイリアス-----
 db-local-seed: DB=local

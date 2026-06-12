@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"go-boilerplate/internal/config"
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	"go-boilerplate/internal/observability"
 
@@ -19,20 +18,15 @@ import (
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	appCfg := config.NewApplicationConfig(cfg)
-	mw := Middleware(appCfg)
+	mw := Middleware("test-service")
 	require.NotNil(t, mw)
 }
 
 func TestMiddleware_Integration(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	appCfg := config.NewApplicationConfig(cfg)
-
 	e := echo.New()
-	e.Use(Middleware(appCfg))
+	e.Use(Middleware("test-service"))
 
 	ctx := context.Background()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)

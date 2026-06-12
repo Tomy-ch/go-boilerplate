@@ -36,8 +36,8 @@ type ReadyResponse struct {
 	// DbLatencyMs データベース応答までの時間（ミリ秒）
 	DbLatencyMs int64 `json:"dbLatencyMs"`
 
-	// DbResponsedAt データベースが最後に正常に応答した日時
-	DbResponsedAt time.Time `json:"dbResponsedAt"`
+	// DbRespondedAt データベースが最後に正常に応答した日時
+	DbRespondedAt time.Time `json:"dbRespondedAt"`
 
 	// Status サーバーのレディネス状態
 	Status ReadyResponseStatus `json:"status"`

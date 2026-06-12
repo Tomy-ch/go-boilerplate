@@ -155,7 +155,7 @@ type LogFieldBuilder interface {
 lf := logging.NewLogFields(obsCfg, osCfg)
 ```
 
-`config.ObservabilityConfig` と `config.OperationSystemConfig` を受け取り、trace/span フィールドの付与やタイムゾーン情報の付与を制御します。
+`config.ObservabilityConfig` と `config.OperatingSystemConfig` を受け取り、trace/span フィールドの付与やタイムゾーン情報の付与を制御します。
 
 用途
 

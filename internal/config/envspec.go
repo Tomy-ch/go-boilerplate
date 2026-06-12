@@ -3,7 +3,7 @@ package config
 import "time"
 
 type Loader struct {
-	OS            OperationSystem `envPrefix:"OS_"`
+	OS            OperatingSystem `envPrefix:"OS_"`
 	App           Application     `envPrefix:"APP_"`
 	Server        Server          `envPrefix:"SERVER_"`
 	Observability Observability   `envPrefix:"OBSERVABILITY_"`
@@ -15,7 +15,7 @@ type Loader struct {
 	Auth          Auth            `envPrefix:"AUTH_"`
 }
 
-type OperationSystem struct {
+type OperatingSystem struct {
 	Timezone string `env:"TZ" default:"Asia/Tokyo"`
 }
 

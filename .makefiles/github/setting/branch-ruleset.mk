@@ -4,27 +4,29 @@
 apply-branch-protection:
 	@set -e; \
 	REPO=$$(gh repo view --json name,owner -q '.owner.login + "/" + .name'); \
-	echo "🔧 Applying branch protection rules to $$REPO..."; \
+	echo "🔧 ブランチ保護ルールを $$REPO に適用します..."; \
+	RULESET_NAME=$$(jq -r .name .github/settings/branch-protection.json); \
+	EXISTING_ID=$$(gh api /repos/$$REPO/rulesets -q ".[] | select(.name==\"$$RULESET_NAME\") | .id" | head -n1); \
+	if [ -n "$$EXISTING_ID" ]; then \
+		METHOD=PUT; URL=/repos/$$REPO/rulesets/$$EXISTING_ID; \
+	else \
+		METHOD=POST; URL=/repos/$$REPO/rulesets; \
+	fi; \
 	RESPONSE=$$(mktemp); \
+	trap 'rm -f "$$RESPONSE"' EXIT; \
 	if ! gh api \
-		--method POST \
+		--method $$METHOD \
 		-H "Accept: application/vnd.github+json" \
 		-H "X-GitHub-Api-Version: 2022-11-28" \
-		/repos/$$REPO/rulesets \
+		"$$URL" \
 		--input .github/settings/branch-protection.json \
-		--verbose \
-		> $$RESPONSE 2>&1; then \
+		> "$$RESPONSE" 2>&1; then \
 			echo ""; \
-			echo "❌ gh api failed."; \
+			echo "❌ gh api の実行に失敗しました。"; \
 			echo "------ GitHub API Response ------"; \
-			cat $$RESPONSE; \
+			cat "$$RESPONSE"; \
 			echo "----------------------------------"; \
-			echo ""; \
-			echo "👉 Please check the error above."; \
-			echo "👉 If this is an API compatibility issue, please update GitHub CLI (gh) via your package manager."; \
-			echo ""; \
-			rm -f $$RESPONSE; \
+			echo "👉 上記レスポンスを確認してください（権限/認証は gh auth status、API 非互換は gh の更新を検討）。"; \
 			exit 1; \
 	fi; \
-	rm -f $$RESPONSE; \
 	echo "✅ ブランチルールを $$REPO に適用しました。"

@@ -15,7 +15,10 @@ migrate-down
 
 |Flag|Default|Description|
 |---|---|---|
-|*(none)*|||
+|`--steps`|`0`|Number of migrations to apply relative to the current position. `0` applies all; a positive integer applies that many steps. Negative values are rejected.|
+|`--database`|`""`|Target database name (e.g. `local`, `test`). When empty, the configured default is used.|
+
+`--steps` is a **relative step count**, not an absolute target version. For example `migrate-up --steps 2` advances two migrations from the current position; `migrate-down --steps 2` rolls back two.
 
 ## Usage
 
@@ -23,8 +26,17 @@ migrate-down
 # Apply all pending migrations
 ./server migrate-up
 
-# Roll back the last migration
+# Apply the next 2 migrations only
+./server migrate-up --steps 2
+
+# Roll back all migrations
 ./server migrate-down
+
+# Roll back the last 2 migrations
+./server migrate-down --steps 2
+
+# Target a specific database
+./server migrate-up --database test
 ```
 
 ## Notes

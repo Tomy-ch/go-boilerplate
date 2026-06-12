@@ -21,7 +21,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		var (
-			osCfg      *config.OperationSystemConfig
+			osCfg      *config.OperatingSystemConfig
 			appCfg     *config.ApplicationConfig
 			serverCfg  *config.ServerConfig
 			metricsCfg *config.MetricsConfig
@@ -44,7 +44,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 		defer func() { require.NoError(t, app.Stop(context.Background())) }()
 
 		// fx で注入された結果が SetUpConfig を通して得られる値と一致することを確認
-		assert.Equal(t, config.NewOperationSystemConfig(cfg).TimeZone(), osCfg.TimeZone())
+		assert.Equal(t, config.NewOperatingSystemConfig(cfg).TimeZone(), osCfg.TimeZone())
 		assert.Equal(t, config.NewApplicationConfig(cfg).Env(), appCfg.Env())
 		assert.Equal(t, config.NewServerConfig(cfg).Port(), serverCfg.Port())
 		assert.Equal(t, config.NewMetricsConfig(cfg).Port(), metricsCfg.Port())
