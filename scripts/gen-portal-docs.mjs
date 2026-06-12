@@ -1,7 +1,7 @@
-const fs = require("fs")
-const path = require("path")
-const yaml = require("js-yaml")
-const { z } = require("zod")
+import fs from "node:fs"
+import path from "node:path"
+import yaml from "js-yaml"
+import { z } from "zod"
 
 const MANIFEST = "docs/portal/manifest.yaml"
 const OUT_ROOT = "docs/portal/guides"

@@ -115,6 +115,8 @@ services:
     stdin_open: true
     volumes:
       - .:/app
+      # node_modules はバインドマウントで shadow されないよう匿名ボリュームでイメージ内実体を保持する
+      - /app/scripts/node_modules
     working_dir: /app
     entrypoint: ""
     profiles:

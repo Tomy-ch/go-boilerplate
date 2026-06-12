@@ -1,7 +1,9 @@
-const fs = require("fs")
-const path = require("path")
-const yaml = require("js-yaml")
+import fs from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+import yaml from "js-yaml"
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const docsDir = path.join(__dirname, "..", "docs")
 const portalDir = path.join(docsDir, "portal")
 

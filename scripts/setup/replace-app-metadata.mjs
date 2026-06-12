@@ -1,9 +1,9 @@
-const { newSetupCommand } = require("./lib/runtime.cjs")
-const {
+import { newSetupCommand } from "./lib/runtime.mjs"
+import {
   listChildFiles,
   updateAbsoluteFile,
   updateFile
-} = require("./lib/file-utils.cjs")
+} from "./lib/file-utils.mjs"
 
 const ENV_DIR = "env"
 const OPENAPI_FILE = "openapi/openapi.yaml"

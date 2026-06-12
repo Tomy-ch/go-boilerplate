@@ -1,9 +1,6 @@
-const path = require("path")
-const { ROOT_DIR, newSetupCommand } = require("./lib/runtime.cjs")
-const {
-  listFilesRecursive,
-  updateAbsoluteFile
-} = require("./lib/file-utils.cjs")
+import path from "node:path"
+import { ROOT_DIR, newSetupCommand } from "./lib/runtime.mjs"
+import { listFilesRecursive, updateAbsoluteFile } from "./lib/file-utils.mjs"
 
 const TARGET_EXTENSIONS = new Set([
   ".go",
@@ -14,6 +11,7 @@ const TARGET_EXTENSIONS = new Set([
   ".js",
   ".json",
   ".cjs",
+  ".mjs",
   ".html"
 ])
 const TARGET_BASENAMES = new Set(["Dockerfile"])

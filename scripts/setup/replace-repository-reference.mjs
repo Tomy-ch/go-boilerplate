@@ -1,6 +1,6 @@
-const { newSetupCommand } = require("./lib/runtime.cjs")
-const { updateFile } = require("./lib/file-utils.cjs")
-const { ensureRepositoryReference } = require("./lib/validators.cjs")
+import { newSetupCommand } from "./lib/runtime.mjs"
+import { updateFile } from "./lib/file-utils.mjs"
+import { ensureRepositoryReference } from "./lib/validators.mjs"
 
 const README_FILES = ["README.md", "README.ja.md"]
 const OPENAPI_FILE = "openapi/openapi.yaml"

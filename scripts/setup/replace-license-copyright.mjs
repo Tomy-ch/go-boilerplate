@@ -1,7 +1,7 @@
-const fs = require("fs")
-const { newSetupCommand } = require("./lib/runtime.cjs")
-const { toAbsolutePath, updateFile } = require("./lib/file-utils.cjs")
-const { ensureFourDigitYear } = require("./lib/validators.cjs")
+import fs from "node:fs"
+import { newSetupCommand } from "./lib/runtime.mjs"
+import { toAbsolutePath, updateFile } from "./lib/file-utils.mjs"
+import { ensureFourDigitYear } from "./lib/validators.mjs"
 
 const LICENSE_FILE = "LICENSE"
 
