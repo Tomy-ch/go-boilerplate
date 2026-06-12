@@ -33,20 +33,7 @@ function updateAbsoluteFile(filePath, transformer, dryRun) {
   return toRelativePath(filePath)
 }
 
-function removeTarget(relativePath, dryRun) {
-  const absolutePath = toAbsolutePath(relativePath)
-
-  if (!fs.existsSync(absolutePath)) {
-    return null
-  }
-
-  if (!dryRun) {
-    fs.rmSync(absolutePath, { recursive: true, force: true })
-  }
-
-  return relativePath
-}
-
+// options.shouldIncludeFile はエントリの**フルパス**を受け取る（listChildFiles の predicate は basename を受け取る点に注意）。
 function listFilesRecursive(dirPath, options = {}, files = []) {
   const excludedDirectories = options.excludedDirectories ?? new Set()
   const shouldIncludeFile = options.shouldIncludeFile ?? (() => true)
@@ -73,6 +60,7 @@ function listFilesRecursive(dirPath, options = {}, files = []) {
   return files
 }
 
+// predicate はエントリの**ファイル名(basename)**を受け取る（listFilesRecursive の shouldIncludeFile はフルパスを受け取る点に注意）。
 function listChildFiles(relativeDir, predicate = () => true) {
   const dirPath = toAbsolutePath(relativeDir)
 
@@ -82,17 +70,11 @@ function listChildFiles(relativeDir, predicate = () => true) {
     .sort((a, b) => a.localeCompare(b))
 }
 
-function countOccurrences(content, target) {
-  return content.split(target).length - 1
-}
-
 module.exports = {
   toAbsolutePath,
   toRelativePath,
   updateFile,
   updateAbsoluteFile,
-  removeTarget,
   listFilesRecursive,
-  listChildFiles,
-  countOccurrences
+  listChildFiles
 }

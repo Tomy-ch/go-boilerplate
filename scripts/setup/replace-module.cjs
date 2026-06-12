@@ -2,8 +2,7 @@ const path = require("path")
 const { ROOT_DIR, parseCommonFlags, exitWithUsage } = require("./lib/runtime.cjs")
 const {
   listFilesRecursive,
-  updateAbsoluteFile,
-  countOccurrences
+  updateAbsoluteFile
 } = require("./lib/file-utils.cjs")
 
 const TARGET_EXTENSIONS = new Set([
@@ -11,7 +10,6 @@ const TARGET_EXTENSIONS = new Set([
   ".yaml",
   ".yml",
   ".mod",
-  ".sum",
   ".md",
   ".js",
   ".json",
@@ -21,12 +19,18 @@ const TARGET_EXTENSIONS = new Set([
 const TARGET_BASENAMES = new Set(["Dockerfile"])
 const EXCLUDED_DIRECTORIES = new Set(["vendor", "tmp", "node_modules", ".git"])
 const EXCLUDED_PATH_PREFIXES = [
-  `docs${path.sep}`
+  `docs${path.sep}`,
+  `scripts${path.sep}setup${path.sep}`
 ]
 const EXCLUDED_PATH_SUFFIXES = [
   ".gen.go",
   ".sql.go",
   `${path.sep}openapi.gen.yaml`
+]
+// mockgen 生成物（make gen-api で再生成されるため対象外）
+const EXCLUDED_BASENAME_PATTERNS = [
+  /^mock_.*\.go$/,
+  /_mock\.go$/
 ]
 
 function printUsage() {
@@ -39,7 +43,8 @@ function printUsage() {
 
 補足:
   Go モジュール名は go-boilerplate のような単純なプロジェクト名を想定しています。
-  docs 配下と生成物 (*.gen.go, *.sql.go, openapi/openapi.gen.yaml) は対象外です。`)
+  docs 配下・scripts/setup・生成物 (*.gen.go, *.sql.go, mock ファイル, openapi/openapi.gen.yaml) は対象外です。
+  生成物は置換後に make gen-api で再生成してください。`)
 }
 
 function ensureSimpleModuleName(value, flagName) {
@@ -67,6 +72,10 @@ function parseArgs(argv) {
   ensureSimpleModuleName(options.oldModule, "旧モジュール名")
   ensureSimpleModuleName(options.newModule, "新モジュール名")
 
+  if (options.oldModule === options.newModule) {
+    throw new Error("旧モジュール名と新モジュール名が同一です。")
+  }
+
   return options
 }
 
@@ -83,6 +92,10 @@ function shouldProcessFile(filePath) {
     return false
   }
 
+  if (EXCLUDED_BASENAME_PATTERNS.some(pattern => pattern.test(baseName))) {
+    return false
+  }
+
   if (TARGET_BASENAMES.has(baseName)) {
     return true
   }
@@ -90,26 +103,24 @@ function shouldProcessFile(filePath) {
   return TARGET_EXTENSIONS.has(ext)
 }
 
-function collectTargetFiles(dirPath, files = []) {
-  return listFilesRecursive(
-    dirPath,
-    {
-      excludedDirectories: EXCLUDED_DIRECTORIES,
-      shouldIncludeFile: shouldProcessFile
-    },
-    files
-  )
+function collectTargetFiles(dirPath) {
+  return listFilesRecursive(dirPath, {
+    excludedDirectories: EXCLUDED_DIRECTORIES,
+    shouldIncludeFile: shouldProcessFile
+  })
 }
 
 function replaceInFile(filePath, oldModule, newModule, dryRun) {
   let occurrences = 0
   const relativePath = updateAbsoluteFile(filePath, original => {
-    if (!original.includes(oldModule)) {
+    const parts = original.split(oldModule)
+
+    if (parts.length === 1) {
       return null
     }
 
-    occurrences = countOccurrences(original, oldModule)
-    return original.split(oldModule).join(newModule)
+    occurrences = parts.length - 1
+    return parts.join(newModule)
   }, dryRun)
 
   if (!relativePath) {
@@ -131,11 +142,6 @@ function main() {
   if (options.help) {
     printUsage()
     return
-  }
-
-  if (options.oldModule === options.newModule) {
-    console.error("エラー: 旧モジュール名と新モジュール名が同一です。")
-    process.exit(1)
   }
 
   const files = collectTargetFiles(ROOT_DIR)

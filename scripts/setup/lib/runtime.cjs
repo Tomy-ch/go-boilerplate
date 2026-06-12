@@ -26,6 +26,10 @@ function parseCommonFlags(argv) {
   return options
 }
 
+/**
+ * 使用方法を表示してプロセスを終了する（process.exit のため復帰しない）。
+ * @returns {never}
+ */
 function exitWithUsage(error, printUsage) {
   console.error(`エラー: ${error.message}`)
   console.error("")
