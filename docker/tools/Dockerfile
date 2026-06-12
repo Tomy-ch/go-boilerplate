@@ -91,9 +91,9 @@ RUN mise install npm:@redocly/cli \
     && rm -rf /root/.cache /root/.npm
 
 WORKDIR /opt/tools
-COPY docker/tools/package.json ./
-# npm install が /root/.npm を再生成するため、その場でキャッシュも掃除する（python ステージと対称）
-RUN npm install \
+COPY docker/tools/package.json docker/tools/package-lock.json ./
+# npm ci は lockfile に厳密一致してインストールする。/root/.npm 再生成分はその場で掃除（python ステージと対称）
+RUN npm ci \
     && npm cache clean --force \
     && rm -rf /root/.npm
 ENV NODE_PATH=/opt/tools/node_modules

@@ -2,6 +2,8 @@
   "name": "docs-tools",
   "type": "module",
   "dependencies": {
-    "js-yaml": "4.1.1"
+    "commander": "15.0.0",
+    "js-yaml": "4.1.1",
+    "zod": "4.4.3"
   }
 }
