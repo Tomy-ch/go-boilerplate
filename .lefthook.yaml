@@ -19,8 +19,8 @@ pre-commit:
 
 commit-msg:
   commands:
-    prefix:
-      run: node scripts/validate-commit-msg.cjs {1}
+    commitlint:
+      run: commitlint --edit {1}
 
 pre-push:
   commands:

@@ -44,6 +44,8 @@ gofumpt = "0.10.0"
 # Node ベース
 "npm:@redocly/cli" = "2.31.4"
 "npm:markdownlint-cli2" = "0.22.1"
+# commit-msg フック（lefthook）でコミットメッセージ規約を検証する
+"npm:@commitlint/cli" = "21.0.2"
 
 # Python ベース
 "pipx:sqlfluff" = "4.2.1"
