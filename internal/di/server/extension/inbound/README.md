@@ -10,7 +10,6 @@ It centrally manages Binder / Validator / URI normalization / IP extraction exec
 
 |Module|Type|Description|
 |---|---|---|
-|`BinderModule()`|Configurator|Echo request body binder|
 |`URIModule()`|Pre|Remove trailing slashes from URIs|
 |`IPExtractorModule()`|Configurator|Client IP extraction (X-Forwarded-For / direct)|
 |`OpenAPIModule()`|Use|OpenAPI-based automatic request validation|

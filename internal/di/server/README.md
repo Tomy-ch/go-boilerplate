@@ -29,7 +29,6 @@ internal/di/server/
 
 |Category|Modules|
 |---|---|
-|decoration|`BannerModule`, `DefaultPortModule`|
 |inbound|`IPExtractorModule`, `URIModule`, `OpenAPIModule`|
 |outbound|`ErrorHandlerModule`, `ForceJSONModule`, `RecoveryModule`|
 |security|`Module`, `CORSModule`, `CookieModule`|
