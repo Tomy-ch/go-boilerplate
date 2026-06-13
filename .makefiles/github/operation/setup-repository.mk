@@ -4,6 +4,7 @@
 .PHONY: setup-replace-app-metadata ## node_tool_runnerでAPP_NAMEやOpenAPIタイトルの置換を実行
 .PHONY: setup-replace-repository-reference ## node_tool_runnerでリポジトリ参照の置換を実行
 .PHONY: setup-replace-license-copyright ## node_tool_runnerでLICENSEの著作権表示更新を実行
+.PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
 
@@ -130,3 +131,16 @@ setup-replace-license-copyright:
 		--holder "$(COPYRIGHT_HOLDER)" \
 		$(if $(COPYRIGHT_YEAR),--year $(COPYRIGHT_YEAR),) \
 		$(SETUP_DRY_RUN_FLAG)
+
+# サンプルAPIの削除はコンテナ内（node_tool_runner）で行い、削除後の再生成・整形・検証は
+# Go ツールチェーンが必要なためホスト側の make ターゲットを連鎖させる。
+# プレビューは DRY_RUN=1 を付ける（削除も再生成も行わない）。
+setup-remove-sample-api:
+	@docker compose run --rm node_tool_runner node scripts/setup/remove-sample-api.mjs $(SETUP_DRY_RUN_FLAG)
+	@if [ -n "$(DRY_RUN)" ]; then \
+		echo "🟡 DRY_RUN のため再生成・整形・検証はスキップしました。"; \
+	else \
+		echo "🔧 再生成・整形・検証を実行します..."; \
+		$(MAKE) gen-api gen-query fix lint; \
+		echo "✅ サンプルAPIの削除と再生成・検証が完了しました。"; \
+	fi
