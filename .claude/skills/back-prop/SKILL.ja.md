@@ -2,73 +2,125 @@
 
 # Back-Prop
 
-全 layer drift 検出 integrator。scope に応じて per-layer skill を chain。
+layer 横断の drift 検出の統合スキル。scope に応じて per-layer **read-only drift-detector サブエージェント**を並列 fan-out し、集約後に per-item 承認＋書込ループを integrator 自身が回す。
 
 ## 使うとき
 
-- multi-layer refactor 後、PR review 前
-- 定期 hygiene sweep（全 layer での未文書化 convention / skill 肥大 / README drift を一括検出）
-- layer 横断の新 convention 導入時（どこで既に追従済み / 未対応か把握）
+- 複数 layer の refactor 後、PR レビュー前
+- 定期的な衛生チェック（未文書化規約 / skill 肥大 / README drift を横断検出）
+- layer 横断の新規約を導入する時（どこで既に守られ / まだか確認）
 
-単一 layer のみのとき: `back-prop-<layer>` を直接使う。
+単一 layer のみは per-layer **skill**（`back-prop-<layer>`）を直接呼ぶ（対話 standalone フロー）。
 
-以下の用途には使いません: 実装コード修正 / 単一ファイルアーキ準拠（`arch-check`） / spec validation（`verify-spec`）。
+以下には使わない:
 
-## chain される per-layer skill
+- 実装コード修正（surface のみ、ここでは何もコードを書かない）
+- ファイル単位のアーキ適合性 — `arch-check`（TODO hand-off 付き）
+- spec validation — `verify-spec`
 
-| Skill | Layer | 備考 |
+## アーキテクチャ: 並列 detector サブエージェント + integrator 側承認
+
+検出は `.claude/agents/` 配下の **read-only ワーカーサブエージェント**（layer ごとに1つ）へ委譲。integrator は Agent tool（`subagent_type`）でこれらを並列起動する:
+
+| detector サブエージェント | layer | canonical doc |
 | --- | --- | --- |
-| `back-prop-domain` | `internal/domain/**` | README は Implementation notes / Aggregate Design / Testing strategy / Do / Don't 等で構成 |
-| `back-prop-usecase` | `internal/usecase/**` | README 末尾に Implementation Example あり |
-| `back-prop-controller` | `internal/controller/**` | handler README に reference snippet あり |
-| `back-prop-infra` | `internal/infrastructure/**` | 3-level READMEs（infra / rdb / pgerror）、完全 snippet 無し（sibling コードが de facto reference） |
-| `back-prop-pkg` | `pkg/**` | layer README + sub-package READMEs 必須 |
+| `drift-detector-domain` | `internal/domain/**` | `internal/domain/README.md` |
+| `drift-detector-usecase` | `internal/usecase/**` | `internal/usecase/README.md` + `boundary/README.md` |
+| `drift-detector-controller` | `internal/controller/**` | `internal/controller/README.md` + `handler/README.md`（reference snippet） |
+| `drift-detector-infra` | `internal/infrastructure/**` | infra / rdb / pgerror README（principles 主体、sibling code が de facto reference） |
+| `drift-detector-pkg` | `pkg/**` | `pkg/README.md` + 各 `pkg/<name>/README.md` |
 
-## 最初のステップ: スコープ + 検出種別確認
+これらは `back-prop-<layer>` skill のワーカー版。**厳密に read-only**: (A)(B)(C) findings を reasoning + 候補オプション付きで surface するが、**`AskUserQuestion` を呼ばず・書き込まない**。元の per-layer skill は承認＋書込ループを各 child 内に持っていたが、integrator フローではそのループを**この integrator に引き上げ**、集約後に**単一スレッドで**回す。これにより read-only detector 5つを書込競合ゼロで並列 fan-out できる。優先順位は **README > Code > SKILL**。
 
-`AskUserQuestion` 2 質問 batched（既定は git diff から自動推定）:
+## 最初のステップ: scope + 検出種別 確認
+
+`AskUserQuestion` を 2 質問 batched（既定は git diff で自動検出）:
 
 1. 質問: 「back-prop のスコープを選んでください」
-   - 選択肢: 「変更ファイルのみ（ベースブランチとの diff、touched layer のみ chain）」 / 「リポジトリ全体（5 layer 全部 chain）」 / 「特定 layer のみ（layer を続けて指定）」 / 「キャンセル」
+   - 選択肢: 「変更ファイルのみ（diff、touched layer のみ fan-out）」 / 「リポジトリ全体（5 layer 全部 fan-out）」 / 「特定 layer のみ」 / 「キャンセル」
 
 2. 質問: 「検出する drift 種別を選んでください（multi-select、既定 3 種類すべて）」
    - 選択肢: 「(A) README → Code drift」 / 「(B) Code → README undocumented pattern」 / 「(C) Skill ↔ README duplication」
 
-検出種別は全 chained child に伝搬。
+検出種別は全 detector に伝播。
 
-## Step 1. layer 解決
+## Step 1. scope を layer + ファイルリストに解決
 
-「変更ファイル」モード:
+「変更ファイルのみ」モード:
 
 ```sh
 BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
 git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$'
 ```
 
-path prefix → layer:
+path prefix で layer マッピングし、per-layer ファイルリストを保持（各 detector へ渡し git 再解決を防ぐ）:
 
-| Path prefix | Skill |
+| path prefix | detector サブエージェント |
 | --- | --- |
-| `internal/domain/` | `back-prop-domain` |
-| `internal/usecase/` | `back-prop-usecase` |
-| `internal/controller/` | `back-prop-controller` |
-| `internal/infrastructure/` | `back-prop-infra` |
-| `pkg/` | `back-prop-pkg` |
+| `internal/domain/` | `drift-detector-domain` |
+| `internal/usecase/` | `drift-detector-usecase` |
+| `internal/controller/` | `drift-detector-controller` |
+| `internal/infrastructure/` | `drift-detector-infra` |
+| `pkg/` | `drift-detector-pkg` |
 
-「リポジトリ全体」: 5 layer 全部 chain。「特定 layer」: user に指定を求める。
+「リポジトリ全体」: 5 detector 全部 fan-out。「特定 layer のみ」: layer を追加質問し該当のみ。changed-files で Go 変更なし → 明示メッセージで exit。
 
-## Step 2. per-layer skill chain
+## Step 2. detector サブエージェントを並列 fan-out
 
-scope 内 layer ごとに `back-prop-<layer>` を `Skill` tool で invoke（scope + 種別 context 渡し、child は自身の `AskUserQuestion` スキップ）。
+scope 内の各 layer について、その detector を **Agent tool** で起動。**1メッセージ内に複数 tool 呼び出し**を並べて並列実行。各 detector に渡す:
 
-各 child は独立に動作、**per-item の user 承認は child 内で実施**（AI が理由 + draft 提示 → user 確認 → README / Skill 書き込み）。
+- `scope` — `changed` or `full`
+- `files` — その layer の in-scope `.go` ファイル改行リスト（Step 1）
+- `baseRef` — base ブランチ（fallback）
+- `categories` — 選択された `A` / `B` / `C` の部分集合
 
-各 child の report 収集。
+各 detector の最終メッセージ**が** findings（日本語、各 finding に reasoning + 候補オプション）。layer ラベル付きで収集。
 
-## Step 3. 集約レポート（日本語）
+> 環境で `drift-detector-*` が利用不可（agent registry 無し）の場合、standalone な `back-prop-<layer>` **skill** を `Skill` tool で逐次 chain する fallback に切替 — これらは自前で承認ループを持つため、その path では integrator は Step 4 を実施しない。
+
+## Step 3. findings 集約（read-only チェックポイント）
+
+全 detector findings を layer + category 別の日本語サマリに集約し、決定前に全体像を提示:
 
 ```text
-back-prop 統合結果（scope: <X>, 種別: A/B/C）
+back-prop drift 検出結果（scope: <X>, 種別: A/B/C）
+
+[domain]     A <n> / B <m> / C <k>
+  ...（各 finding: rule・reasoning・options）
+[usecase]    ...
+[controller] ...
+[infra]      ...
+[pkg]        ...
+
+総 finding: <sum>。これから 1 件ずつ承認 / 棄却を確認します。
+```
+
+全 clean:
+
+```text
+back-prop drift 検出結果（scope: <X>, 種別: A/B/C）
+全 layer で drift は検出されませんでした（チェック済み: <layer list>）。
+```
+
+## Step 4. per-item 承認 + 書込（integrator 側、単一スレッド）
+
+detector は read-only。各 finding について **integrator** が決定を回す（単一スレッドなので書込競合なし）:
+
+1. detector が surface した候補オプションで `AskUserQuestion`（例: コード修正 / README 更新 / ルール緩和 / skill 簡略化 / 無視）。
+2. user が **doc / skill** 変更を承認した場合:
+   - 理由を明示 → draft を diff（変更前 / 変更後）で提示。
+   - 最終確認後、`Edit` / `Write` で書込 — 当該 layer の **canonical README** または関連 **skill `SKILL.md`** のみ（コードは決して触らない）。
+3. user が **コード修正**を選んだ場合: user の作業として surface（このスキルは実装コードを書かない）。
+4. 全 finding をループ。途中 abort 可。
+
+書込スコープ: layer README（`internal/<layer>/README.md` とサブ README）と skill `SKILL.md` のみ。実装コード・生成物・`AGENTS.md` は不可。
+
+書込後に `make md-lint`（必要なら `make md-fix` → `make md-lint`）で編集 Markdown を検証。
+
+## Step 5. クロージングレポート（日本語）
+
+```text
+back-prop 完了（scope: <X>, 種別: A/B/C）
 
 [domain]   findings <N>, README 更新 <X>, Skill 簡略化 <Y>, コード修正委任 <Z>, 無視 <W>
 [usecase]  ...
@@ -76,45 +128,44 @@ back-prop 統合結果（scope: <X>, 種別: A/B/C）
 [infra]    ...
 [pkg]      ...
 
-総 finding: <sum>, 書き込み: <sum>, コード修正委任: <sum>
+総 finding: <sum>, README/Skill 書き込み: <sum>, コード修正委任: <sum>
 最終 make md-lint OK
 ```
 
-全 clean 時:
-
-```text
-back-prop 統合結果（scope: <X>, 種別: A/B/C）
-全 layer で drift は検出されませんでした（チェック済み: <layer list>）。
-```
-
-## Step 4. クロージング
-
-- Integrator は何も書かない、すべて child skill 経由
-- 実装コードへの書き込みは child も含めて一切なし
-- README / Skill 書き込みは child 内で user 承認後
+- 検出は read-only detector サブエージェントに委譲。書込は integrator が per-item 承認後に単一スレッドで実施
+- 実装コードへの書込は一切なし（surface のみ、コード修正は user 作業）
+- commit / push なし
 
 ## AI 修正スコープ
 
-Integrator 自身は何も書かない。書き込みスコープは全 per-layer skill に委譲（各 child は自 layer の READMEs + skill SKILL.md のみ、per-item user 承認 + 理由明示済み）。
+- 読み込み: 各 layer の README + 実装 + 関連 skill 本体（detector サブエージェントが実施）
+- 書き込み: **integrator のみ**、user の per-item 承認 + 理由明示 + draft 提示の後に、layer README / 関連 skill `SKILL.md` へ。detector サブエージェントは一切書き込まない。
+- 触らない: 実装コード、生成物、`AGENTS.md`
 
 ## 制約事項
 
-- ❌ ソースファイル直接読まない（child 任せ）
+- ❌ detector を逐次起動（必ず1メッセージ内で複数 Agent 呼び出し＝並列）
 - ❌ scope + 種別 `AskUserQuestion` をスキップ
-- ❌ Integrator 自身による file 書き込み
-- ❌ child の per-item 承認をスキップさせない（integrator は children に context 渡すだけ）
+- ❌ detector に書き込み / `AskUserQuestion` をさせる（read-only surface 専用）
+- ❌ user 承認なしの README / skill 自動更新
+- ❌ 理由を述べずに draft を実行
+- ❌ 実装コードへの書き込み（surface のみ、修正は user）
+- ❌ recurring threshold 3 未満の (B) pattern を surface（detector 側で抑止、integrator も respect）
 - ✅ Japanese aggregated report
-- ✅ touched layer のみ chain（changed-files モード）
-- ✅ child が standalone 動作可能であることを維持
-- ✅ Categories propagation to all children
+- ✅ touched layer のみ fan-out（changed-files mode）
+- ✅ per-layer detector / skill が独立 standalone 動作可能であることを維持
+- ✅ Categories を全 detector に propagate
+- ✅ 書き込みは integrator 単一スレッドのみ（並列 detector は read-only）
+- ✅ README が canonical の前提（README > Code > SKILL）
 
 ## チェックリスト
 
-- [ ] Scope + 種別を `AskUserQuestion` で確認
-- [ ] Layer 検出（changed files / full repo / specific layer）
-- [ ] touched layer の back-prop-<layer> を chain
-- [ ] 各 child が自身の README + 実装 + skill を読み、(A)(B)(C) 検出
-- [ ] 各 child が per-item で reasoning + user 承認 + 書き込み
-- [ ] 集約 Japanese report 出力
-- [ ] Integrator 自身による file 書き込みなし
+- [ ] scope + 種別を `AskUserQuestion` で確認
+- [ ] layer + per-layer ファイルリスト解決（changed files / full repo / specific layer）
+- [ ] touched layer の `drift-detector-*` を **1メッセージ内で並列起動**（scope / files / baseRef / categories を渡す）
+- [ ] 各 detector が README + 実装 + skill を読み (A)(B)(C) を read-only 検出
+- [ ] 集約サマリ出力（決定前のチェックポイント）
+- [ ] integrator が per-item で reasoning + user 承認 + draft + 最終確認 + 書き込み（README / skill のみ）
+- [ ] 実装コードへの書き込みなし
+- [ ] 最終 make md-lint OK
 - [ ] commit / push なし

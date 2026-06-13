@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_driver.gen.go -package=mock_$GOPACKAGE
 
 // Package driver は、RDBの接続のための基盤的な機能を提供します。
 package driver
