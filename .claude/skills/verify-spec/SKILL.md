@@ -1,6 +1,6 @@
 ---
 name: verify-spec
-description: Integrator skill for spec validation. Confirms feature name via `AskUserQuestion` (or receives from `scaffold-endpoint`), detects which spec files exist under `docs/spec/<feature>/` (lean A: `domain.md` and/or `usecase.md`), then fans out the matching read-only `spec-validator-*` subagents (`spec-validator-domain` / `spec-validator-usecase`) IN PARALLEL via the Agent tool — passing the feature name + spec paths so each validator skips its own feature confirmation. Each validator handles format check, internal consistency, plus its specific cross-validation (entity ↔ SQL for domain; cross-spec refs + naming convention for usecase). Does NOT check OpenAPI operationId coverage — that violates dependency direction (usecase doesn't know about HTTP/OpenAPI); the OpenAPI ↔ usecase mapping is verified by `scaffold-controller` at scaffold time. Aggregates findings into a single Japanese report. Read-only orchestration — validators never touch spec or source files. When chained from `scaffold-endpoint`, aborts the downstream chain on `violation`; standalone exits 0 (informational). Standalone per-spec skills (`verify-spec-<layer>`) remain available for single-spec interactive runs.
+description: Integrator skill for spec validation. Confirms feature name via `AskUserQuestion` (or receives from `scaffold-endpoint`), detects which spec files exist under `docs/spec/<feature>/` (lean A: `domain.md` and/or `usecase.md`), then fans out the matching read-only `spec-validator-*` subagents (`spec-validator-domain` / `spec-validator-usecase`) IN PARALLEL via the Agent tool — passing the feature name + spec paths so each validator skips its own feature confirmation. Each validator handles format check, internal consistency, plus its specific cross-validation (entity ↔ SQL for domain; cross-spec refs + naming convention for usecase). Does NOT check OpenAPI operationId coverage — that violates dependency direction (usecase doesn't know about HTTP/OpenAPI); the OpenAPI ↔ usecase mapping is verified by `scaffold-controller` at scaffold time. Aggregates findings into a single Japanese report. Read-only orchestration — validators never touch spec or source files. When chained from `scaffold-endpoint`, aborts the downstream chain on `violation`; standalone exits 0 (informational). To validate a single spec, run this integrator — it fans out only the validator(s) for the spec file(s) that exist.
 ---
 
 # Verify Spec
@@ -15,7 +15,7 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 - Standalone after editing specs, to confirm all checks pass.
 - During spec authoring as a quick check.
 
-Use the per-spec **skill** directly (`verify-spec-domain` / `verify-spec-usecase`) when you only care about one spec and want the interactive standalone flow.
+To validate a single spec, run this integrator — it detects which of `domain.md` / `usecase.md` exist and fans out only the matching validator.
 
 Do NOT use for:
 
@@ -32,9 +32,9 @@ Validation is delegated to two **read-only worker subagents** under `.claude/age
 | `spec-validator-domain` | `docs/spec/<feature>/domain.md` | format + entity ↔ SQL soft + internal consistency |
 | `spec-validator-usecase` | `docs/spec/<feature>/usecase.md` | format + cross-spec to domain + 命名規約 + Workflow consistency |
 
-lean A 構成では controller.md / infra.md は存在しないため spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check-controller` / `arch-check-infra` が implementation 側で実施）。
+lean A 構成では controller.md / infra.md は存在しないため spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check`（controller / infra 監査）が implementation 側で実施）。
 
-The validators are the worker form of the `verify-spec-<layer>` skills and are **strictly read-only** (no auto-fix, no writes). The two validators read independently — `spec-validator-usecase` reads `domain.md` itself for cross-spec `calls:` resolution — so there is **no write dependency** between them and they can run in parallel (the old domain-first ordering was a read reference, not a barrier).
+The validators are the per-spec validation workers and are **strictly read-only** (no auto-fix, no writes). The two validators read independently — `spec-validator-usecase` reads `domain.md` itself for cross-spec `calls:` resolution — so there is **no write dependency** between them and they can run in parallel (the old domain-first ordering was a read reference, not a barrier).
 
 ## First Step: Confirm Target Feature
 
@@ -63,7 +63,7 @@ For the existing spec files, spawn the matching validators with the **Agent tool
 
 Each validator's final message **is** its findings (Japanese), ending in a machine-readable `SUMMARY violations=<v> suggestions=<s>` line. Collect them with their spec label and parse the SUMMARY counts.
 
-> If the `spec-validator-*` subagents are unavailable in the current environment (no agent registry), fall back to chaining the standalone `verify-spec-<layer>` **skills** sequentially via the `Skill` tool (domain first, since usecase references it).
+> If the `spec-validator-*` subagents cannot be spawned in the current environment, follow each `spec-validator-<layer>.md` procedure inline instead (domain first, since usecase references it).
 
 ## Step 3. Aggregate Report (Japanese)
 

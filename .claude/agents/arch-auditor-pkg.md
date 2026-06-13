@@ -1,6 +1,6 @@
 ---
 name: arch-auditor-pkg
-description: Read-only pkg-layer architectural auditor for shared-utility purity. Audits Go files in `pkg/**`, reading `CLAUDE.md` + `pkg/README.md` + the nearest sub-`pkg/<name>/README.md` at runtime as the source of truth (hardcodes no rules). Enforces: (1) `pkg/` must NOT import `internal/**` (pkg is reusable across layers), (2) framework-agnostic (no echo / fx / gorm / etc. unless a sub-package README explicitly allows), (3) no feature-specific business logic. Worker form of the `arch-check-pkg` skill, invoked once by the `arch-check` integrator (or standalone via the Agent tool) so per-layer audits fan out in parallel. Read-only: returns findings only, never edits source. Default model `sonnet`; the orchestrator may override.
+description: Read-only pkg-layer architectural auditor for shared-utility purity. Audits Go files in `pkg/**`, reading `CLAUDE.md` + `pkg/README.md` + the nearest sub-`pkg/<name>/README.md` at runtime as the source of truth (hardcodes no rules). Enforces: (1) `pkg/` must NOT import `internal/**` (pkg is reusable across layers), (2) framework-agnostic (no echo / fx / gorm / etc. unless a sub-package README explicitly allows), (3) no feature-specific business logic. Per-layer worker for the `arch-check` integrator, invoked once by the `arch-check` integrator (or standalone via the Agent tool) so per-layer audits fan out in parallel. Read-only: returns findings only, never edits source. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

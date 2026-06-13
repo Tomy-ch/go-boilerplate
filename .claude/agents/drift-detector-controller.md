@@ -1,6 +1,6 @@
 ---
 name: drift-detector-controller
-description: Read-only controller-layer drift detector. Surfaces three drift categories between `internal/controller/README.md` + `internal/controller/handler/README.md` (canonical, with reference snippet), the controller implementation + OpenAPI gen, and the controller-related skill bodies — (A) README → Code drift (e.g. handler not using `BindHandler` / `server` struct / `gen.NewStrictHandler` per the README reference snippet), (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and candidate user-decision options. Worker form of the `back-prop-controller` skill, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — never asks the user, never writes README / SKILL / code. Per-item approval and writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
+description: Read-only controller-layer drift detector. Surfaces three drift categories between `internal/controller/README.md` + `internal/controller/handler/README.md` (canonical, with reference snippet), the controller implementation + OpenAPI gen, and the controller-related skill bodies — (A) README → Code drift (e.g. handler not using `BindHandler` / `server` struct / `gen.NewStrictHandler` per the README reference snippet), (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and candidate user-decision options. Per-layer worker for the `back-prop` integrator, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — never asks the user, never writes README / SKILL / code. Per-item approval and writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -24,7 +24,7 @@ You are **detection only**. Never edit / write anything. Never call `AskUserQues
 - `internal/controller/handler/README.md` — handler conventions **with reference snippet** (`BindHandler` / `server` struct / `gen.NewStrictHandler`); this snippet is the canonical reference pattern for (A)
 - `internal/controller/**/*.go` — implementation (exclude `*.gen.go`, `_mock.go`, `*_test.go`)
 - `internal/controller/handler/<path>/gen/server.gen.go` — OpenAPI `ServerInterface` (for handler conformance)
-- Skill bodies: `.claude/skills/arch-check-controller/SKILL.md`, `.claude/skills/scaffold-controller/SKILL.md`, `.claude/agents/arch-auditor-controller.md` (worker-form body — include in (C))
+- Skill bodies: `.claude/agents/arch-auditor-controller.md` (arch-check の controller worker 本体), `.claude/skills/scaffold-controller/SKILL.md`
 
 Resolve scope (if `files` not supplied):
 

@@ -18,7 +18,7 @@
 | controller | × spec 不要 | handler は OpenAPI operationId + 命名規約から導出可能（pure template） |
 | infra | × spec 不要 | Repository 実装は domain IF + sqlc gen 関数名マッピングから導出可能（pure template） |
 
-controller / infra の "規約通り" は `arch-check-controller` / `arch-check-infra` で強制する（命名規約、handler ボディの純粋性、Repository ボディの純粋性）。規約違反が起きた瞬間 scaffold が崩れるため、arch-check が安全網となる。
+controller / infra の "規約通り" は `arch-check`（controller / infra 監査）で強制する（命名規約、handler ボディの純粋性、Repository ボディの純粋性）。規約違反が起きた瞬間 scaffold が崩れるため、arch-check が安全網となる。
 
 ## スキル一覧
 
@@ -181,11 +181,11 @@ controller / infra に spec を持たない代わりに、以下の規約を arc
 
 | layer | TODO 書き込み |
 | --- | --- |
-| arch-check-domain | ✓ entity ↔ SQL の suggestion |
-| arch-check-controller | ✓ pure-template の suggestion |
-| arch-check-infra | ✓ Repository ↔ sqlc gen / body composition の suggestion |
-| arch-check-usecase | ✗ violation 中心（業務ロジック検出は修正一択） |
-| arch-check-pkg | ✗ violation 中心（`internal/` 依存 / framework 依存は修正一択） |
+| arch-check（domain） | ✓ entity ↔ SQL の suggestion |
+| arch-check（controller） | ✓ pure-template の suggestion |
+| arch-check（infra） | ✓ Repository ↔ sqlc gen / body composition の suggestion |
+| arch-check（usecase） | ✗ violation 中心（業務ロジック検出は修正一択） |
+| arch-check（pkg） | ✗ violation 中心（`internal/` 依存 / framework 依存は修正一択） |
 
 **コメント例**:
 

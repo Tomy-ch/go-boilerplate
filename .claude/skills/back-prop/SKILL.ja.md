@@ -10,7 +10,7 @@ layer 横断の drift 検出の統合スキル。scope に応じて per-layer **
 - 定期的な衛生チェック（未文書化規約 / skill 肥大 / README drift を横断検出）
 - layer 横断の新規約を導入する時（どこで既に守られ / まだか確認）
 
-単一 layer のみは per-layer **skill**（`back-prop-<layer>`）を直接呼ぶ（対話 standalone フロー）。
+単一 layer だけ確認したい時はこの統合スキルを実行し、scope 質問で「特定 layer のみ」を選ぶ。
 
 以下には使わない:
 
@@ -30,7 +30,7 @@ layer 横断の drift 検出の統合スキル。scope に応じて per-layer **
 | `drift-detector-infra` | `internal/infrastructure/**` | infra / rdb / pgerror README（principles 主体、sibling code が de facto reference） |
 | `drift-detector-pkg` | `pkg/**` | `pkg/README.md` + 各 `pkg/<name>/README.md` |
 
-これらは `back-prop-<layer>` skill のワーカー版。**厳密に read-only**: (A)(B)(C) findings を reasoning + 候補オプション付きで surface するが、**`AskUserQuestion` を呼ばず・書き込まない**。元の per-layer skill は承認＋書込ループを各 child 内に持っていたが、integrator フローではそのループを**この integrator に引き上げ**、集約後に**単一スレッドで**回す。これにより read-only detector 5つを書込競合ゼロで並列 fan-out できる。優先順位は **README > Code > SKILL**。
+これらは層別の drift 検出ワーカー。**厳密に read-only**: (A)(B)(C) findings を reasoning + 候補オプション付きで surface するが、**`AskUserQuestion` を呼ばず・書き込まない**。承認＋書込ループは**この integrator が集約後に単一スレッドで**回す。これにより read-only detector 5つを書込競合ゼロで並列 fan-out できる。優先順位は **README > Code > SKILL**。
 
 ## 最初のステップ: scope + 検出種別 確認
 
@@ -76,7 +76,7 @@ scope 内の各 layer について、その detector を **Agent tool** で起�
 
 各 detector の最終メッセージ**が** findings（日本語、各 finding に reasoning + 候補オプション）。layer ラベル付きで収集。
 
-> 環境で `drift-detector-*` が利用不可（agent registry 無し）の場合、standalone な `back-prop-<layer>` **skill** を `Skill` tool で逐次 chain する fallback に切替 — これらは自前で承認ループを持つため、その path では integrator は Step 4 を実施しない。
+> `drift-detector-*` を起動できない環境では、各 `drift-detector-<layer>.md` の手順を本文がインラインで実行する — 承認＋書込（Step 4）は集約後に integrator が単一スレッドで行う。
 
 ## Step 3. findings 集約（read-only チェックポイント）
 

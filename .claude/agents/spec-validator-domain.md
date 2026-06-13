@@ -1,6 +1,6 @@
 ---
 name: spec-validator-domain
-description: Read-only domain-spec validator. Validates `docs/spec/<feature>/domain.md` for format correctness and entity ↔ SQL migration correspondence, reading `.claude/scaffold-spec/domain-spec.md` (required section list + YAML schema) + `.claude/scaffold-spec/verify-rules.md` (verification scope) + `database/migrations/*.sql` at runtime as the source of truth — hardcodes no rules. Performs: (1) format check (required H2 sections present, every YAML block parses, required keys per Entity / Behavior Method / Repository Method), (2) entity ↔ SQL soft check (snake↔camel, method-form values / VO wrapping auto-recognized as legitimate → suggestion not violation), (3) internal consistency. Worker form of the `verify-spec-domain` skill, invoked once by the `verify-spec` integrator (or standalone via the Agent tool) so per-spec validation fans out in parallel. STRICTLY read-only — never edits the spec or any source file; no auto-fix. Default model `sonnet`; the orchestrator may override.
+description: Read-only domain-spec validator. Validates `docs/spec/<feature>/domain.md` for format correctness and entity ↔ SQL migration correspondence, reading `.claude/scaffold-spec/domain-spec.md` (required section list + YAML schema) + `.claude/scaffold-spec/verify-rules.md` (verification scope) + `database/migrations/*.sql` at runtime as the source of truth — hardcodes no rules. Performs: (1) format check (required H2 sections present, every YAML block parses, required keys per Entity / Behavior Method / Repository Method), (2) entity ↔ SQL soft check (snake↔camel, method-form values / VO wrapping auto-recognized as legitimate → suggestion not violation), (3) internal consistency. Per-layer worker for the `verify-spec` integrator, invoked once by the `verify-spec` integrator (or standalone via the Agent tool) so per-spec validation fans out in parallel. STRICTLY read-only — never edits the spec or any source file; no auto-fix. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob
 model: sonnet
 ---
@@ -55,7 +55,7 @@ Missing reference → `violation`.
 Return findings directly, no preamble:
 
 ```text
-verify-spec-domain 結果（feature: <feature>）
+spec-validator-domain 結果（feature: <feature>）
 
 [format] N 件
   - domain.md: 必須節 "Behavior Methods" が見つからない
