@@ -5690,9 +5690,9 @@ import (
         "go-boilerplate/internal/controller/handler/healthz"
         "go-boilerplate/internal/controller/handler/metrics"
         "go-boilerplate/internal/controller/handler/ready"
-        "go-boilerplate/internal/controller/handler/v1/users"
-        "go-boilerplate/internal/controller/handler/v1/users/detail"
-        "go-boilerplate/internal/controller/handler/v1/users/search"
+        "go-boilerplate/internal/controller/handler/v1/users"        // sample-api:line
+        "go-boilerplate/internal/controller/handler/v1/users/detail" // sample-api:line
+        "go-boilerplate/internal/controller/handler/v1/users/search" // sample-api:line
         "go-boilerplate/internal/controller/handler/version"
 
         "go.uber.org/fx"
@@ -5707,10 +5707,12 @@ func ControllerModule() fx.Option <span class="cov10" title="3">{
                         ready.BindHandler,
                         version.BindHandler,
                         metrics.BindHandler,
+                        // sample-api:begin
                         // サンプルのハンドラー
                         users.BindHandler,
                         detail.BindHandler,
                         search.BindHandler,
+                        // sample-api:end
                 ),
         )
 }</span>
@@ -5865,9 +5867,9 @@ func DatabaseModule() fx.Option <span class="cov10" title="13">{
 		<pre class="file" id="file77" style="display: none">package module
 
 import (
-        userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user"
+        userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user" // sample-api:line
         "go-boilerplate/internal/infrastructure/rdb/repository/prefecture"
-        "go-boilerplate/internal/infrastructure/rdb/repository/user"
+        "go-boilerplate/internal/infrastructure/rdb/repository/user" // sample-api:line
         "go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck"
         "go-boilerplate/internal/infrastructure/security"
         "go-boilerplate/internal/infrastructure/system"
@@ -5880,16 +5882,20 @@ func InfrastructureModule() fx.Option <span class="cov10" title="12">{
         return fx.Module("infrastructure",
                 fx.Module("repository",
                         fx.Provide(
+                                // sample-api:begin
                                 // サンプルのリポジトリ
                                 user.New,
+                                // sample-api:end
                                 prefecture.New,
                         ),
                 ),
+                // sample-api:begin
                 fx.Module("query_service",
                         fx.Provide(
                                 userqs.New,
                         ),
                 ),
+                // sample-api:end
                 fx.Module("system_query",
                         fx.Provide(
                                 healthcheck.New,
@@ -5913,7 +5919,7 @@ func InfrastructureModule() fx.Option <span class="cov10" title="12">{
 
 import (
         "go-boilerplate/internal/controller/job"
-        "go-boilerplate/internal/controller/job/usercount"
+        "go-boilerplate/internal/controller/job/usercount" // sample-api:line
         dijob "go-boilerplate/internal/di/job"
         "go-boilerplate/internal/di/job/hook"
 
@@ -5924,7 +5930,7 @@ func JobModule() fx.Option <span class="cov8" title="7">{
         return fx.Module("job",
                 provideJobs(
                         // ここにジョブのコンストラクタを追加します。
-                        usercount.New,
+                        usercount.New, // sample-api:line
                 ),
                 fx.Provide(
                         dijob.ProvideRunner,
@@ -6009,8 +6015,8 @@ func SystemModule() fx.Option <span class="cov10" title="13">{
 
 import (
         "go-boilerplate/internal/usecase/healthcheck"
-        "go-boilerplate/internal/usecase/user"
-        "go-boilerplate/internal/usecase/user/search"
+        "go-boilerplate/internal/usecase/user"        // sample-api:line
+        "go-boilerplate/internal/usecase/user/search" // sample-api:line
 
         "go.uber.org/fx"
 )
@@ -6020,9 +6026,11 @@ func UsecaseModule() fx.Option <span class="cov10" title="11">{
         return fx.Module("usecase",
                 fx.Provide(
                         healthcheck.New,
+                        // sample-api:begin
                         // サンプルのユースケース
                         user.New,
                         search.New,
+                        // sample-api:end
                 ),
         )
 }</span>
@@ -6213,7 +6221,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="23">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="18">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
