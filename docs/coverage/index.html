@@ -704,7 +704,7 @@ import (
         "golang.org/x/sync/semaphore"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_merge_dml.gen.go -package=mock_$GOPACKAGE
 
 const (
         // ▼ カテゴリ単位のファイル連結ジョブの並列数チューニング定数（値の由来は README に記載）
@@ -5593,7 +5593,7 @@ func ProvideRunner(in RunnerIn) (job.Runner, error) <span class="cov10" title="7
 }</span>
 </pre>
 		
-		<pre class="file" id="file67" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file67" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_lifecycle.gen.go -package=mock_$GOPACKAGE
 
 // Package lifecycle は、アプリケーションのライフサイクル管理に関する機能を提供します。
 package lifecycle
@@ -6221,7 +6221,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="18">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="30">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -6937,7 +6937,7 @@ func MiddlewareModule() fx.Option <span class="cov10" title="5">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file102" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file102" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_shutdowner.gen.go -package=mock_$GOPACKAGE
 
 // Package shutdowner は、fx.Shutdowner を抽象化し、上位層を fx 依存から切り離すための薄いラッパを提供します。
 //
@@ -7471,7 +7471,7 @@ func DSNWithTimeZoneString(dbCfg *config.DatabaseConfig, osCfg *config.Operating
 }</span>
 </pre>
 		
-		<pre class="file" id="file109" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file109" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_connection.gen.go -package=mock_$GOPACKAGE
 package driver
 
 import (
@@ -7501,7 +7501,7 @@ func New(ctx context.Context, db DatabaseDriver) DBTX <span class="cov10" title=
 }
 </pre>
 		
-		<pre class="file" id="file110" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file110" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_driver.gen.go -package=mock_$GOPACKAGE
 
 // Package driver は、RDBの接続のための基盤的な機能を提供します。
 package driver
@@ -7591,7 +7591,7 @@ func (d *dbDriver) Stats() *pgxpool.Stat <span class="cov4" title="4">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file111" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file111" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_provider.gen.go -package=mock_$GOPACKAGE
 
 // Package loggingdb は、ログ付きのDB接続を提供します。
 package loggingdb
@@ -9016,7 +9016,7 @@ func latencyMs(latency time.Duration) float64 <span class="cov6" title="230">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file125" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file125" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_field_builder.gen.go -package=mock_$GOPACKAGE
 package logging
 
 import (
@@ -9287,7 +9287,7 @@ func (*logFieldBuilder) buildCompactQuery(q string) string <span class="cov6" ti
 }
 </pre>
 		
-		<pre class="file" id="file126" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file126" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_logger.gen.go -package=mock_$GOPACKAGE
 
 // Package logging は、アプリケーションのロギング機能を提供します。
 package logging
@@ -9625,7 +9625,7 @@ func (tc *TraceContext) ParentSpanID() string <span class="cov9" title="267">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file131" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file131" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_layer_tracer.gen.go -package=mock_$GOPACKAGE
 
 // Package observability は、可観測性に関連するユーティリティを提供します。
 package observability
@@ -9915,7 +9915,7 @@ func NewStubSpanContext(t *testing.T) (context.Context, func()) <span class="cov
 }
 </pre>
 		
-		<pre class="file" id="file134" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file134" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_tracer_factory.gen.go -package=mock_$GOPACKAGE
 
 package observability
 
@@ -9989,7 +9989,7 @@ func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTra
 }</span>
 </pre>
 		
-		<pre class="file" id="file135" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file135" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_buildinfo.gen.go -package=mock_$GOPACKAGE
 package system
 
 // BuildInfo は、アプリケーションのビルド情報を提供するインターフェースです。
@@ -10140,7 +10140,7 @@ func (c *Credential) AccessToken() string <span class="cov4" title="3">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file138" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file138" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_tx_manager.gen.go -package=mock_$GOPACKAGE
 
 // Package tx は、トランザクションの管理を提供します。
 package tx
@@ -10171,7 +10171,7 @@ func DoWithResult[T any](
 }
 </pre>
 		
-		<pre class="file" id="file139" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file139" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_health_check_usecase.gen.go -package=mock_$GOPACKAGE
 
 // Package healthcheck は、システムの健全性チェックに関するユースケースを提供します。
 package healthcheck
@@ -10420,7 +10420,7 @@ func limit(ss []string, maxVal int) []string <span class="cov4" title="16">{
 }
 </pre>
 		
-		<pre class="file" id="file143" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file143" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_user_search_usecase.gen.go -package=mock_$GOPACKAGE
 
 // Package search は、ユーザー検索に関するユースケースを提供します。
 package search
@@ -10524,7 +10524,7 @@ func (u *usecase) toFilter(p *SearchParams) *query.UserSearchFilter <span class=
 }</span>
 </pre>
 		
-		<pre class="file" id="file144" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+		<pre class="file" id="file144" style="display: none">//go:generate mockgen -source=$GOFILE -destination=mock/mock_user_usecase.gen.go -package=mock_$GOPACKAGE
 
 // Package user は、ユーザーに関するユースケースを提供します。
 package user
@@ -11149,7 +11149,7 @@ import (
         osexec "os/exec"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_exec.gen.go -package=mock_$GOPACKAGE
 
 // Runner は、外部コマンド実行を抽象化するインターフェースです。
 type Runner interface {
@@ -11258,7 +11258,7 @@ import (
         "path/filepath"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_fs.gen.go -package=mock_$GOPACKAGE
 
 // FS は、ファイルシステム操作を抽象化するインターフェースです。
 type FS interface {
