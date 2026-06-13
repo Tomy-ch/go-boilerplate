@@ -19,7 +19,8 @@ scripts/
     ├── replace-app-metadata.mjs
     ├── replace-license-copyright.mjs
     ├── replace-repository-reference.mjs
-    └── lib/                   # Shared utilities for setup scripts
+    ├── remove-sample-api.mjs  # Remove the sample API (user/product/order)
+    └── lib/                   # Shared utilities for setup scripts (incl. sample-api.mjs manifest)
 ```
 
 ## Script Categories
@@ -64,8 +65,11 @@ Scripts for configuring the boilerplate when creating a new project from this te
 |`replace-app-metadata.mjs`|Replace app name/description in env files and OpenAPI spec|
 |`replace-license-copyright.mjs`|Replace LICENSE copyright holder and year|
 |`replace-repository-reference.mjs`|Replace GitHub repository references in READMEs and OpenAPI|
+|`remove-sample-api.mjs`|Remove the sample API (`user`/`product`/`order`): deletes paths declared in `lib/sample-api.mjs` and strips `sample-api` marker blocks from the shared DI modules and `openapi.yaml`. Run via `make setup-remove-sample-api` to also regenerate/format/lint.|
 
 All setup scripts support `--dry-run` for preview.
+
+The deletion targets and markers for `remove-sample-api.mjs` are declared in [`lib/sample-api.mjs`](setup/lib/sample-api.mjs). The sample spans three domains (`user` is full-stack; `product`/`order` are DB stubs to be expanded), so expanding the sample only requires appending paths to the matching domain block and wrapping interleaved lines with `// sample-api:begin … :end` (or `// sample-api:line`).
 
 ## Notes
 
