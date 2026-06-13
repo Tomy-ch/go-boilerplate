@@ -1,4 +1,5 @@
 import fs from "node:fs"
+import path from "node:path"
 import { ROOT_DIR, newSetupCommand } from "./lib/runtime.mjs"
 import { toAbsolutePath, updateFile } from "./lib/file-utils.mjs"
 import {
@@ -11,6 +12,16 @@ import {
 // 再生成・整形・検証（make gen-api / gen-query / fix / lint）は Go ツールチェーンが要るため
 // ここでは行わず、ホスト側の make ターゲット（setup-remove-sample-api）が担当する。
 
+const ROOT_WITH_SEP = ROOT_DIR.endsWith(path.sep) ? ROOT_DIR : ROOT_DIR + path.sep
+
+// manifest の追記ミス（`..`・空文字・絶対パス）で ROOT_DIR 外や ROOT_DIR 自体を
+// rmSync しないための安全策。dry-run でも検証されるよう削除前に必ず通す。
+function assertWithinRoot(absolutePath, relativePath) {
+  if (absolutePath === ROOT_DIR || !absolutePath.startsWith(ROOT_WITH_SEP)) {
+    throw new Error(`削除対象が ROOT_DIR の外（または ROOT_DIR 自体）を指しています: "${relativePath}"`)
+  }
+}
+
 // 既に存在しないパスはスキップする（再実行や部分実装でも安全に動かすため）。
 function deletePaths(dryRun) {
   const deleted = []
@@ -19,6 +30,7 @@ function deletePaths(dryRun) {
   for (const [domain, def] of Object.entries(SAMPLE_DOMAINS)) {
     for (const relativePath of def.paths) {
       const absolutePath = toAbsolutePath(relativePath)
+      assertWithinRoot(absolutePath, relativePath)
 
       if (!fs.existsSync(absolutePath)) {
         missing.push(relativePath)
@@ -93,8 +105,10 @@ function run({ dryRun }) {
     console.log("   モード: dry-run（ファイルは変更しません）")
   }
 
-  const deletion = deletePaths(dryRun)
+  // マーカー除去を先に行う。マーカー不整合があればここで throw し、
+  // ファイル削除前に中断できる（削除済み・マーカー未除去の半端な状態を避ける）。
   const stripped = stripMarkerFiles(dryRun)
+  const deletion = deletePaths(dryRun)
   report(deletion, stripped, dryRun)
 
   const buildHint = `make ${BUILD_STEPS.join(" ")}`

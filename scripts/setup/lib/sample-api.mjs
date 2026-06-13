@@ -88,37 +88,42 @@ export const MARKER_FILES = [
 // 削除後に再生成・整形・検証するための make ターゲット（順番に実行）。
 export const BUILD_STEPS = ["gen-api", "gen-query", "fix", "lint"]
 
-const BLOCK_BEGIN = /sample-api:begin\b/
-const BLOCK_END = /sample-api:end\b/
-const LINE_MARKER = /sample-api:line\b/
+// マーカーはコメント（// または #）に書かれる前提。コメント記号を必須にして、
+// 文字列リテラルやドキュメント本文中の同一トークンを誤って拾わないようにする。
+const BLOCK_BEGIN = /(?:\/\/|#)\s*sample-api:begin\b/
+const BLOCK_END = /(?:\/\/|#)\s*sample-api:end\b/
+const LINE_MARKER = /(?:\/\/|#)\s*sample-api:line\b/
 
 // `sample-api:begin`〜`sample-api:end` で囲まれた行と、行末に `sample-api:line` を持つ行を除去する。
-// マーカー記号（// または #）に依存せずトークンの有無で判定する。
+// ネストにも対応するため depth カウンターで管理し、対応の取れないマーカーは throw する。
 export function stripSampleMarkers(content) {
   const lines = content.split("\n")
   const out = []
-  let inBlock = false
+  let depth = 0
   let removed = 0
 
   for (const line of lines) {
     if (BLOCK_BEGIN.test(line)) {
-      inBlock = true
+      depth++
       removed++
       continue
     }
     if (BLOCK_END.test(line)) {
-      inBlock = false
+      if (depth === 0) {
+        throw new Error("sample-api:end に対応する sample-api:begin が見つかりません。")
+      }
+      depth--
       removed++
       continue
     }
-    if (inBlock || LINE_MARKER.test(line)) {
+    if (depth > 0 || LINE_MARKER.test(line)) {
       removed++
       continue
     }
     out.push(line)
   }
 
-  if (inBlock) {
+  if (depth > 0) {
     throw new Error("sample-api:begin に対応する sample-api:end が見つかりません。")
   }
 
