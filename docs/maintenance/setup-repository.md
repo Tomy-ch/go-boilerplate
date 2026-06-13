@@ -163,17 +163,28 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
 
 Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-api.mjs](scripts/setup/lib/sample-api.mjs), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
 
+> **The DB container must be running** before you run this — the final `gen-query` step dumps the **live** schema with `pg_dump`, so a stopped DB fails with `connection refused`.
+
 ```bash
+# 0. Start the DB container (gen-query dumps the live schema)
+docker compose up -d database
+
 # Preview what will be removed (no changes are made)
 DRY_RUN=1 make setup-remove-sample-api
 
-# Remove, then regenerate / format / lint (runs make gen-api → gen-query → fix → lint)
+# Remove the sample (deletes files + strips markers, then gen-api → gen-query → fix → lint)
 make setup-remove-sample-api
+
+# Rebuild the DB from the now sample-free migrations and re-dump the schema,
+# so the dropped `users` table does not linger in models.gen.go
+make db-init-local db-init-test
+make gen-query
 ```
 
 Notes:
 
 - The base master data `prefecture` (migration `000001`, etc.) is **kept**.
+- `gen-query` regenerates Go models from a `pg_dump` of the **live** DB. If you skip the DB rebuild above, the still-present `users` table is re-dumped and a stale `Users` type is regenerated into `models.gen.go` — the rebuild + re-`gen-query` is what actually drops it.
 - Shared generated files (`*.gen.go`, `openapi.gen.yaml`, etc.) are not deleted directly — they are refreshed by the regeneration step.
 - The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-api.mjs`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
 

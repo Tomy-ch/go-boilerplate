@@ -166,17 +166,28 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
 
 自動コマンドを使用します。[scripts/setup/lib/sample-api.mjs](scripts/setup/lib/sample-api.mjs) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
 
+> 実行前に **DB コンテナが起動している必要があります** — 末尾の `gen-query` は `pg_dump` で**ライブ**スキーマをダンプするため、DB 停止状態では `connection refused` で失敗します。
+
 ```bash
+# 0. DB コンテナを起動（gen-query がライブスキーマをダンプするため）
+docker compose up -d database
+
 # 削除内容のプレビュー（変更は行いません）
 DRY_RUN=1 make setup-remove-sample-api
 
-# 削除して再生成・整形・Lint（make gen-api → gen-query → fix → lint を実行）
+# サンプル削除（ファイル削除＋マーカー除去 → gen-api → gen-query → fix → lint）
 make setup-remove-sample-api
+
+# サンプル削除後のマイグレーション集合で DB を再構築しスキーマを再ダンプ
+# （削除済みの users テーブルが models.gen.go に残らないようにする）
+make db-init-local db-init-test
+make gen-query
 ```
 
 補足:
 
 - 基盤マスタデータ `prefecture`（マイグレーション `000001` など）は**残します**。
+- `gen-query` は**ライブ** DB の `pg_dump` から Go モデルを再生成します。上記の DB 再構築を省くと、残存する `users` テーブルが再ダンプされ `models.gen.go` に古い `Users` 型が再生成されます。再構築＋再 `gen-query` が実際に型を消す手順です。
 - 共有生成物（`*.gen.go` / `openapi.gen.yaml` など）は直接削除せず、再生成ステップで更新されます。
 - サンプルは3ドメイン構成です。`user` はフルスタック、`product` / `order` は現状 DB スタブ（マイグレーション＋商品 seed）のみです。`product` / `order` を本格的な API に拡張したら、`sample-api.mjs` の該当ドメインブロックに新しいパスを追記し、共有ファイル内に混在するサンプル行を `// sample-api:begin` … `// sample-api:end`（または行末の `// sample-api:line`）で囲んでください。同じコマンドで自動的に削除対象に含まれます。
 
