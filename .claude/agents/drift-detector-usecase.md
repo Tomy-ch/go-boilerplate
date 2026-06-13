@@ -23,7 +23,7 @@ You are **detection only**. Never edit / write anything. Never call `AskUserQues
 - `internal/usecase/README.md` — canonical convention source (incl. Implementation Example at bottom)
 - `internal/usecase/boundary/README.md` — boundary IF conventions
 - `internal/usecase/**/*.go` — implementation (exclude `*.gen.go`, `_mock.go`, `*_test.go`)
-- Skill bodies: `.claude/skills/arch-check-usecase/SKILL.md`, `.claude/skills/scaffold-usecase/SKILL.md`, `.claude/skills/new-spec-usecase/SKILL.md`, `.claude/skills/verify-spec-usecase/SKILL.md`
+- Skill bodies: `.claude/skills/arch-check-usecase/SKILL.md`, `.claude/skills/scaffold-usecase/SKILL.md`, `.claude/skills/new-spec-usecase/SKILL.md`, `.claude/skills/verify-spec-usecase/SKILL.md`, `.claude/agents/arch-auditor-usecase.md` (worker-form body — include in (C))
 
 Resolve scope (if `files` not supplied):
 

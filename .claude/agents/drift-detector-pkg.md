@@ -23,7 +23,7 @@ You are **detection only**. Never edit / write anything. Never call `AskUserQues
 - `pkg/README.md` — layer rules (no `internal/` deps, framework-agnostic, no feature logic)
 - `pkg/<name>/README.md` — **mandatory** per sub-package, documenting Public API / Wraps / Notes
 - `pkg/**/*.go` — implementation (exclude `*.gen.go`, `_mock.go`, `*_test.go`)
-- Skill body: `.claude/skills/arch-check-pkg/SKILL.md`
+- Skill bodies: `.claude/skills/arch-check-pkg/SKILL.md`, `.claude/agents/arch-auditor-pkg.md` (worker-form body — include in (C))
 
 Resolve scope (if `files` not supplied):
 

@@ -24,7 +24,7 @@ You are **detection only**. Never edit / write anything. Never call `AskUserQues
 - `internal/controller/handler/README.md` — handler conventions **with reference snippet** (`BindHandler` / `server` struct / `gen.NewStrictHandler`); this snippet is the canonical reference pattern for (A)
 - `internal/controller/**/*.go` — implementation (exclude `*.gen.go`, `_mock.go`, `*_test.go`)
 - `internal/controller/handler/<path>/gen/server.gen.go` — OpenAPI `ServerInterface` (for handler conformance)
-- Skill bodies: `.claude/skills/arch-check-controller/SKILL.md`, `.claude/skills/scaffold-controller/SKILL.md`
+- Skill bodies: `.claude/skills/arch-check-controller/SKILL.md`, `.claude/skills/scaffold-controller/SKILL.md`, `.claude/agents/arch-auditor-controller.md` (worker-form body — include in (C))
 
 Resolve scope (if `files` not supplied):
 

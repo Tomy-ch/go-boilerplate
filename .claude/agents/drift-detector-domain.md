@@ -24,6 +24,7 @@ You are **detection only**. Never edit / write anything (no README updates, no S
 - `internal/domain/**/*.go` — implementation (exclude `*.gen.go`, `_mock.go`, `*_test.go`)
 - Skill bodies to cross-check rules against the README:
   - `.claude/skills/arch-check-domain/SKILL.md` (rule enumeration)
+  - `.claude/agents/arch-auditor-domain.md` (worker-form body of arch-check-domain — include in (C); note its "Common forbidden patterns" are README-derived examples, not duplications)
   - `.claude/skills/scaffold-domain/SKILL.md` (generation conventions)
   - `.claude/skills/new-spec-domain/SKILL.md`, `.claude/skills/verify-spec-domain/SKILL.md` (secondary)
 

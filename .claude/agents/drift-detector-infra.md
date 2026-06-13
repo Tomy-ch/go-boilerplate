@@ -24,7 +24,7 @@ You are **detection only**. Never edit / write anything. Never call `AskUserQues
 - `internal/infrastructure/rdb/README.md` — RDB conventions
 - `internal/infrastructure/rdb/pgerror/README.md` — error normalization conventions
 - `internal/infrastructure/**/*.go` — implementation (exclude `*.gen.go`, `*.sql.go`, `_mock.go`, `*_test.go`). Infra READMEs carry **no full reference snippet** — sibling Repository code is the de facto reference; infer the prevailing pattern from existing repositories when judging (A).
-- Skill bodies: `.claude/skills/arch-check-infra/SKILL.md`, `.claude/skills/scaffold-infra-db/SKILL.md`
+- Skill bodies: `.claude/skills/arch-check-infra/SKILL.md`, `.claude/skills/scaffold-infra-db/SKILL.md`, `.claude/agents/arch-auditor-infra.md` (worker-form body — include in (C))
 
 Resolve scope (if `files` not supplied):
 
