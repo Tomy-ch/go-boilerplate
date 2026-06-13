@@ -1,4 +1,4 @@
-name: Job Boot Verification
+name: Job Boot Check
 
 on:
   pull_request:

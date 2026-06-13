@@ -1,4 +1,4 @@
-name: Golang Lint Workflow
+name: Go Lint
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Fetch & Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
 
       - name: Setup Go

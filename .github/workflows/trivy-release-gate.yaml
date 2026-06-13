@@ -1,4 +1,4 @@
-name: Release Dependency Vulnerability Scan Workflow
+name: Release Dependency Scan
 
 on:
   pull_request:

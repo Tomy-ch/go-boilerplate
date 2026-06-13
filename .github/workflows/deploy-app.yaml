@@ -1,4 +1,4 @@
-name: Application Deployment Workflow
+name: Deploy App
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
             suffix: "-migration"
 
     steps:
-      - name: Fetch & Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
