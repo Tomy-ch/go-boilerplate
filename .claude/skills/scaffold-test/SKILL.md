@@ -216,6 +216,7 @@ Run, in order:
 
 1. `make fix` — formats the new test file. If any non-target file is reformatted, surface the diff to the user.
 2. `make test` — confirms the new tests pass and that the package's coverage stays at or above its prior level (and above the 90 % project threshold for new / modified packages, per `CLAUDE.md`).
+3. **Mutation-check the regression-critical cases.** For any case written to lock in a specific behavior or guard a known / just-fixed bug (not generic coverage cases), prove the test actually catches the regression: temporarily inject the regression into the **subject** (flip the condition, drop the guard, swap the field / arg), re-run just that test, confirm it **FAILs**, then revert the mutation. A test that still passes under the mutation protects nothing — strengthen the assertion until it fails. This is the difference between a real regression test and a tautology; do it on the regression-critical cases, not every case.
 
 If `make test` fails:
 
@@ -264,6 +265,7 @@ In chained mode, this skill skips:
 - ✅ Generated mocks from `*/mock/` only.
 - ✅ Deterministic fixtures (fixed `baseTime`, `uuid.NewTestFromSalt(t, ...)`).
 - ✅ `t.Helper()` on helper functions in the produced test file.
+- ✅ Mutation-check regression-critical cases (inject the regression into the subject, confirm the test FAILs, revert) — a case that stays green under the mutation is a tautology, not a guard.
 
 ## Checklist
 
