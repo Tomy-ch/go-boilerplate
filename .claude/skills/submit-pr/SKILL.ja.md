@@ -57,7 +57,7 @@ gh repo view --json defaultBranchRef -q '.defaultBranchRef.name'
 - **PR が存在するが state が `MERGED` / `CLOSED`** → `AskUserQuestion` でユーザーに確認:
   - 質問: 「このブランチには `<state>` 状態の PR #N があります。新規 PR を作成しますか？」
   - 選択肢: 「新規 PR を作成する」 / 「キャンセル」
-- **PR が存在しない** → "create" 経路。ベースブランチはリポジトリのデフォルトブランチ。
+- **PR が存在しない** → "create" 経路。ベースブランチは既定ではリポジトリのデフォルトブランチだが、本リポジトリの GitHub デフォルト（`defaultBranchRef`）は現行リリースより遅れているため、実際の対象は通常**最新の `release/v1.X.0`**。デフォルトより最新リリース系列を優先し、下記で確認する。
 
 "create" 経路で、ローカルに複数の `release/*` ブランチがある等、デフォルト以外を対象にしたい可能性がある場合は `AskUserQuestion` で確認:
 
@@ -146,6 +146,8 @@ git push -u origin <branch>
 # 2 回目以降
 git push
 ```
+
+`origin/release/*` から切ったブランチ（`commit` のマージ済み PR 復旧フロー）は upstream が**保護**ベースを指すため、素の `git push` は保護ブランチを対象にしてしまう。初回は必ず明示 refspec `git push -u origin <branch>` で upstream をフィーチャーブランチへ張り直す。それ以降のみ素の `git push` が安全。
 
 ユーザーから明示指示がない限り `--force` / `--force-with-lease` は使わない。
 
