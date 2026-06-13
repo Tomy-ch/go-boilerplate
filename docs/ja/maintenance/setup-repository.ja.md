@@ -164,6 +164,25 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
 
 ### 削除手順
 
+自動コマンドを使用します。[scripts/setup/lib/sample-api.mjs](scripts/setup/lib/sample-api.mjs) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
+
+```bash
+# 削除内容のプレビュー（変更は行いません）
+DRY_RUN=1 make setup-remove-sample-api
+
+# 削除して再生成・整形・Lint（make gen-api → gen-query → fix → lint を実行）
+make setup-remove-sample-api
+```
+
+補足:
+
+- 基盤マスタデータ `prefecture`（マイグレーション `000001` など）は**残します**。
+- 共有生成物（`*.gen.go` / `openapi.gen.yaml` など）は直接削除せず、再生成ステップで更新されます。
+- サンプルは3ドメイン構成です。`user` はフルスタック、`product` / `order` は現状 DB スタブ（マイグレーション＋商品 seed）のみです。`product` / `order` を本格的な API に拡張したら、`sample-api.mjs` の該当ドメインブロックに新しいパスを追記し、共有ファイル内に混在するサンプル行を `// sample-api:begin` … `// sample-api:end`（または行末の `// sample-api:line`）で囲んでください。同じコマンドで自動的に削除対象に含まれます。
+
+<details>
+<summary>手動手順（参考・現在は不要）</summary>
+
 1. [openapi.yaml](openapi/openapi.yaml) のサンプルAPI定義の削除
     - `サンプルAPI用のパス` の下に書かれているPath定義を削除し、そのリンク先のyamlファイルも削除してください。
     - `サンプルAPI用のパラメーター定義` の下に書かれているParameter定義を削除し、そのリンク先のyamlファイルも削除してください。
@@ -185,3 +204,5 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
     4. サンプル用のInfraコードがエラーになるので、そのコードとそのテストコードを削除する。
 4. サンプルAPIのドメインコードの削除。
     - [internal/domain/](internal/domain/) の配下のサンプルAPIで使っているコードとそのテストコードを削除してください。このディレクトリの配下のディレクトリはサンプルAPIのドメインコードのみなので、配下のディレクトリごと削除しても構いません。
+
+</details>

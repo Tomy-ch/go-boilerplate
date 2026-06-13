@@ -161,6 +161,25 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
 
 ### Removal Procedure
 
+Use the automated command. It deletes the sample API (`user` / `product` / `order`) declared in [scripts/setup/lib/sample-api.mjs](scripts/setup/lib/sample-api.mjs), strips the `sample-api` marker blocks from the shared files (4 DI modules + `openapi.yaml`), and then regenerates / formats / lints.
+
+```bash
+# Preview what will be removed (no changes are made)
+DRY_RUN=1 make setup-remove-sample-api
+
+# Remove, then regenerate / format / lint (runs make gen-api → gen-query → fix → lint)
+make setup-remove-sample-api
+```
+
+Notes:
+
+- The base master data `prefecture` (migration `000001`, etc.) is **kept**.
+- Shared generated files (`*.gen.go`, `openapi.gen.yaml`, etc.) are not deleted directly — they are refreshed by the regeneration step.
+- The sample is split into three domains: `user` is full-stack, while `product` / `order` currently exist only as DB stubs (migrations + product seeds). When you flesh `product` / `order` out into full APIs, append their new paths to the matching domain block in `sample-api.mjs`, and wrap any sample lines interleaved in the shared files with `// sample-api:begin` … `// sample-api:end` (or a trailing `// sample-api:line`). They are then covered by the same command automatically.
+
+<details>
+<summary>Manual procedure (reference — no longer required)</summary>
+
 1. Remove sample API definitions from [openapi.yaml](openapi/openapi.yaml)
     - Remove Path definitions under `サンプルAPI用のパス` and delete the referenced YAML files.
     - Remove Parameter definitions under `サンプルAPI用のパラメーター定義` and delete the referenced YAML files.
@@ -182,3 +201,5 @@ If you use AI-driven development, keeping sample APIs helps AI understand code s
     4. Remove sample Infra code and its test code that now cause errors.
 4. Remove sample API domain code
     - Delete code used by the sample API and its test code under [internal/domain/](internal/domain/). Since directories under this path contain only sample domain code, you may delete entire directories.
+
+</details>
