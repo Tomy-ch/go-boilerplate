@@ -2,7 +2,7 @@
 
 # Arch Check
 
-layer 別アーキ適合性チェックの統合スキル。scope に応じて 1〜5 の per-layer skill を chain。
+layer 別アーキ適合性チェックの統合スキル。scope に応じて 1〜5 の per-layer **read-only auditor サブエージェント**を並列 fan-out し、集約する。
 
 ## 使うとき
 
@@ -10,23 +10,27 @@ layer 別アーキ適合性チェックの統合スキル。scope に応じて 1
 - 複数 layer に跨る feature ブランチのレビュー
 - マージ前の CI gate
 
-単一 layer のみ気にする時は per-layer skill（`arch-check-<layer>`）を直接呼ぶ。
+単一 layer のみ気にする時は per-layer **skill**（`arch-check-<layer>`）を直接呼ぶ（対話 standalone フロー）。1+ layer に跨り並列 fan-out + 集約レポートが欲しい時はこの統合スキルを使う。
 
 以下の用途には使いません:
 
 - formatting / style — `make fix` / `make lint`
-- general code review — `/review` / `/ultrareview`
+- general code review — `/review` / `/ultrareview` / `local-review`
 - spec validation — `verify-spec`
 
-## chain される per-layer skill
+## アーキテクチャ: 並列 auditor サブエージェント
 
-| skill | layer | lean A 強制 |
+検出は `.claude/agents/` 配下の **read-only ワーカーサブエージェント**（layer ごとに1つ）へ委譲。統合スキルは Agent tool（`subagent_type`）でこれらを並列起動するため、per-layer 監査はもう逐次実行されない:
+
+| auditor サブエージェント | layer | lean A 強制 |
 | --- | --- | --- |
-| `arch-check-domain` | `internal/domain/**` | entity ↔ SQL カラム soft 対応（method 形式 / VO ラップは逸脱許容、suggestion のみ） |
-| `arch-check-usecase` | `internal/usecase/**` | thin orchestrator + boundary 利用 + tx 境界 |
-| `arch-check-controller` | `internal/controller/**` | handler pure template + operationId ↔ method 一致 |
-| `arch-check-infra` | `internal/infrastructure/**` | Repository pure template + sqlc gen soft 対応（multi-query / switch dispatch / JOIN 許容）+ pgerror 利用 |
-| `arch-check-pkg` | `pkg/**` | `internal/` 依存禁止 + framework 非依存 |
+| `arch-auditor-domain` | `internal/domain/**` | entity ↔ SQL カラム soft 対応（method 形式 / VO ラップは逸脱許容、suggestion のみ） |
+| `arch-auditor-usecase` | `internal/usecase/**` | thin orchestrator + boundary 利用 + tx 境界 |
+| `arch-auditor-controller` | `internal/controller/**` | handler pure template + operationId ↔ method 一致 |
+| `arch-auditor-infra` | `internal/infrastructure/**` | Repository pure template + sqlc gen soft 対応（multi-query / switch dispatch / JOIN 許容）+ pgerror 利用 |
+| `arch-auditor-pkg` | `pkg/**` | `internal/` 依存禁止 + framework 非依存 |
+
+これらの auditor は `arch-check-<layer>` skill のワーカー版。**厳密に read-only**（TODO 書き込みなし）なので、5並列実行してもソースへの同時書き込みが発生しない。ソース書き込み（TODO hand-off）は集約後に**この統合スキルが単一スレッドで**実施する。
 
 ## 最初のステップ: scope + TODO opt 確認
 
@@ -40,20 +44,20 @@ layer 別アーキ適合性チェックの統合スキル。scope に応じて 1
 ```text
 質問 1: どのスコープでアーキ検査を実行しますか？
 選択肢:
-  - 変更ファイルのみ（ベースブランチとの diff、touched layer のみ chain）
-  - リポジトリ全体（5 layer skill 全部 chain）
+  - 変更ファイルのみ（ベースブランチとの diff、touched layer のみ fan-out）
+  - リポジトリ全体（5 auditor 全部 fan-out）
   - 特定 layer のみ（layer を続けて指定）
   - キャンセル
 
 質問 2: suggestion 検出箇所に TODO hand-off コメントを追加しますか？
 選択肢:
-  - 追加する（既定） — 各 per-layer skill が逸脱位置に `// TODO:` を書き込む（人間に解決を委ねる）
+  - 追加する（既定） — 集約後に integrator が逸脱位置へ `// TODO:` を書き込む（人間に解決を委ねる）
   - 追加しない（read-only） — レポートのみ、コード一切触らない
 ```
 
-TODO opt は domain / controller / infra の per-layer skill に伝播。usecase / pkg は violation 中心なので TODO 書き込み対象外（opt 関係なく read-only）。
+TODO opt は domain / controller / infra の suggestion 検出にのみ適用。usecase / pkg は violation 中心なので TODO 書き込み対象外（opt 関係なく read-only）。
 
-## Step 1. scope を layer に解決
+## Step 1. scope を layer + ファイルリストに解決
 
 「変更ファイルのみ」モード:
 
@@ -62,38 +66,60 @@ BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || gh repo vi
 git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$' || true
 ```
 
-path prefix で layer マッピング:
+path prefix で layer マッピングし、**per-layer のファイルリストを保持**（各 auditor へ渡し、auditor が git を再解決しないようにする）:
 
-| path prefix | chain する skill |
+| path prefix | auditor サブエージェント |
 | --- | --- |
-| `internal/domain/` | `arch-check-domain` |
-| `internal/usecase/` | `arch-check-usecase` |
-| `internal/controller/` | `arch-check-controller` |
-| `internal/infrastructure/` | `arch-check-infra` |
-| `pkg/` | `arch-check-pkg` |
+| `internal/domain/` | `arch-auditor-domain` |
+| `internal/usecase/` | `arch-auditor-usecase` |
+| `internal/controller/` | `arch-auditor-controller` |
+| `internal/infrastructure/` | `arch-auditor-infra` |
+| `pkg/` | `arch-auditor-pkg` |
 
-その他 `internal/` パス（cli / system / di / config 等） → 報告のみ、専用 layer skill 無し（CLAUDE.md guidance を直接適用）。
+その他 `internal/` パス（cli / system / di / config 等） → 報告のみ、専用 auditor 無し（CLAUDE.md guidance を直接適用）。
 
-「リポジトリ全体」モード: 5 skill 全部 chain。
+「リポジトリ全体」モード: 5 auditor 全部 fan-out（各自が full-layer ファイルリストを解決、または `scope=full` を渡す）。
 
-「特定 layer のみ」モード: layer を user に追加質問、該当のみ chain。
+「特定 layer のみ」モード: layer を user に追加質問、該当のみ fan-out。
 
 layer 検出なし（changed-files で Go 変更無し） → 明示メッセージで exit。
 
-## Step 2. per-layer skill chain
+## Step 2. `make lint` を1回だけ実行（共有ベースライン）
 
-scope 内の各 layer について、`Skill` tool で起動、scope + TODO opt context を渡して child の `AskUserQuestion` をスキップ:
+`make lint` はリポジトリ全体を対象とするため1回だけ実行し、出力を全 auditor で共有する。各 auditor に再実行させない（N 並列で full-repo lint が重複するため）:
 
-- `arch-check-domain`（scope = changed-domain-files, TODO opt = yes/no）
-- ... 等
+```sh
+make lint 2>&1 | tee /tmp/arch-check-lint.out
+```
 
-per-layer skill は sequential 実行（lint output を `/tmp/arch-check-*.out` で再利用可）or 独立なら parallel。出力集約のため sequential 推奨。
+監査対象 layer と無関係な理由で lint が失敗したら、verbatim 出力を提示して停止（壊れたベースラインに対して auditor を fan-out しない）。
 
-各 child の findings + TODO 追加数を layer ラベル付きで収集。
+## Step 3. auditor サブエージェントを並列 fan-out
 
-## Step 3. 集約レポート
+scope 内の各 layer について、その auditor を **Agent tool** で起動。**1メッセージ内に複数 tool 呼び出し**を並べて並列実行する。各 auditor に渡す:
 
-全 per-layer findings を 1 つの日本語レポートに集約:
+- `scope` — `changed` or `full`
+- `files` — その layer の in-scope `.go` ファイル改行リスト（Step 1 で解決済み）
+- `baseRef` — base ブランチ（auditor が自前解決する場合の fallback）
+- `lintOutput` — `/tmp/arch-check-lint.out`（Step 2 の共有実行 — auditor はこれを filter、lint 再実行しない）
+
+例（概念 — 解決された layer 集合に合わせて調整）:
+
+```text
+Agent(subagent_type="arch-auditor-domain",     prompt=<domain の scope/files/baseRef/lintOutput>)
+Agent(subagent_type="arch-auditor-usecase",    prompt=<...usecase>)
+Agent(subagent_type="arch-auditor-controller", prompt=<...controller>)
+Agent(subagent_type="arch-auditor-infra",      prompt=<...infra>)
+Agent(subagent_type="arch-auditor-pkg",        prompt=<...pkg>)
+```
+
+各 auditor の最終メッセージ**が** findings（日本語・構造化）。layer ラベル付きで収集。「違反なし」を返した auditor は空セクション扱い。
+
+> 現在の環境で `arch-auditor-*` サブエージェントが利用不可（agent registry 無し）の場合、standalone な `arch-check-<layer>` **skill** を `Skill` tool で逐次 chain する fallback に切り替える — ただし `TODO 追加なし` を渡して integrator を唯一の writer に保ち、Step 5 を integrator 自身で実施する。
+
+## Step 4. 集約レポート
+
+全 auditor findings を 1 つの日本語レポートに集約:
 
 ```text
 arch-check 統合結果（スコープ: <scope>）
@@ -117,7 +143,6 @@ arch-check 統合結果（スコープ: <scope>）
   ...
 
 総計: violations <sum>, suggestions <sum>
-TODO hand-off: 追加 <sum> 件, スキップ <sum> 件（既存コメント）
 ```
 
 全 clean:
@@ -127,37 +152,57 @@ arch-check 統合結果（スコープ: <scope>）
 全 layer で違反は検出されませんでした（チェック済み: <layer list>）。
 ```
 
-## Step 4. クロージング
+## Step 5. TODO hand-off 挿入（integrator 側、opt-in）
 
-- 統合 skill 自体は read-only（child も read-only）
+auditor サブエージェントは read-only で一切書き込まない。Step 0 で「TODO 追加」を選んだ場合、**integrator** が今ここで `// TODO:` hand-off コメントを挿入する — 単一スレッドなので書き込み競合は発生しない。対象は **domain / controller / infra** の `suggestion` レベル findings のみ（usecase / pkg は対象外）:
+
+各 suggestion（`file:line`）について:
+
+1. ソースの逸脱位置を特定（struct field 行 / handler method 行 / Repository method 行）。
+2. 直上 3 行に既存コメントブロックがあれば **skip**（de-dup）。
+3. なければ逸脱直前に `// TODO:` コメントを挿入。検出内容と人間向けの解決オプションを記述。標準 `// TODO:` prefix のみ — AI 識別 prefix（`// TODO(arch-check):` 等）は禁止。
+
+コメントは AI の判断ではなく **hand-off baton**: 逸脱が意図的かを AI は判定しない。`violation` レベルには TODO を付けない（fix 必須、defer 不可）。追加 / skip 件数を報告:
+
+```text
+TODO hand-off: 追加 <sum> 件, スキップ <sum> 件（既存コメント）
+```
+
+「TODO 追加なし」を選んだ場合はこの Step を完全にスキップ（厳密 read-only 実行）。
+
+## Step 6. クロージング
+
+- 検出は read-only auditor サブエージェントに委譲。integrator の唯一の書き込みは opt-in 時の TODO hand-off コメントのみ
 - `/commit` から chain 時は violations > 0 で non-zero status
 - 単独実行時は情報的、exit 0
-- 自動修正なし
+- 自動修正なし（violation の自動 fix はしない）
 
 ## AI 修正スコープ
 
-統合 skill 自体は何も書かない。read scope / write scope は per-layer skill に委譲:
-
-- 読み込み: 各 layer の README + 関連ファイル
-- 書き込み: user opt 時のみ、`internal/<layer>/**/*.go` の suggestion 位置への `// TODO:` hand-off コメント追加（per-layer skill が実施、integrator 経由でも child の制約に従う）
+- 読み込み: 各 layer の README + 関連ファイル（auditor サブエージェントが実施）、`make lint`（integrator が1回実行、`/tmp/arch-check-lint.out`）
+- 書き込み: user opt 時のみ、`internal/{domain,controller,infrastructure}/**/*.go` の suggestion 位置への `// TODO:` hand-off コメント追加（**integrator が単一スレッドで実施**）。auditor サブエージェントは一切書き込まない。
 
 ## 制約事項
 
-- ❌ ソースファイルを直接読まない（per-layer skill 任せ）
+- ❌ auditor を逐次起動（必ず1メッセージ内で複数 Agent 呼び出し＝並列）
+- ❌ 各 auditor に `make lint` を再実行させる（共有 `lintOutput` を渡す）
 - ❌ scope + TODO opt `AskUserQuestion` をスキップ
-- ❌ heuristic findings (handler bloat 等) を hard violation 扱い（child skill が `suggestion` ラベル付け、integrator は respect）
-- ❌ ファイル変更を integrator 自身で実施（per-layer skill 経由の TODO 書き込みのみ、user opt 時）
+- ❌ heuristic findings (handler bloat 等) を hard violation 扱い（auditor が `suggestion` ラベル付け、integrator は respect）
+- ❌ violation 位置への TODO 書き込み（fix 必須、defer 不可）
+- ❌ TODO に AI 識別 prefix を使う（`// TODO:` のみ）
+- ❌ 既存コメントの上書き（3 行以内に既存あれば skip）
 - ✅ 日本語集約レポート
-- ✅ touched layer のみ chain（changed-files モードで効率化）
-- ✅ per-layer skill が独立 standalone 動作可能であることを維持
-- ✅ TODO opt を child に propagate
+- ✅ touched layer のみ fan-out（changed-files モードで効率化）
+- ✅ per-layer auditor / skill が独立 standalone 動作可能であることを維持
+- ✅ TODO 書き込みは integrator 単一スレッドのみ（並列 auditor は read-only）
 
 ## チェックリスト
 
 - [ ] scope + TODO opt を `AskUserQuestion` で確認
-- [ ] 変更ファイル or full repo で layer 検出
-- [ ] touched layer の per-layer skill を chain
-- [ ] 各 child skill が自身の README + lean A 規則を適用
+- [ ] 変更ファイル or full repo で layer + per-layer ファイルリスト解決
+- [ ] `make lint` を1回だけ実行し `/tmp/arch-check-lint.out` に保存
+- [ ] touched layer の `arch-auditor-*` を **1メッセージ内で並列起動**（scope / files / baseRef / lintOutput を渡す）
+- [ ] 各 auditor が自身の README + lean A 規則を適用（read-only）
 - [ ] 集約日本語レポート出力
-- [ ] integrator 自身のファイル変更なし（child skill が user opt 時に TODO コメント追加可能）
+- [ ] TODO hand-off は opt-in 時のみ integrator が単一スレッドで実施（domain / controller / infra の suggestion、既存コメントは skip）
 - [ ] commit / push なし
