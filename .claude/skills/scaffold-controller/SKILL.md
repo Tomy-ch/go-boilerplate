@@ -217,6 +217,7 @@ Remains protected:
 
 ## Constraints
 
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
 - ❌ Contain business logic in the handler (must be in usecase or domain)
 - ❌ Generate handler stubs for unmapped operationIds (halt with hand-off instead)
 - ❌ Auto-resolve mapping gaps (e.g., create dummy usecase methods)

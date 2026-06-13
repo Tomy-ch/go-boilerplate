@@ -114,6 +114,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
    - 使うのは `t.Run("正常系", ...)` と `t.Run("異常系", ...)` のみ。group name はリテラルの 2 文字であって、 case 名のプレフィックスではない。
    - **禁止パターン**: 最外殻に `t.Run("正常系_ユーザーが存在する場合", ...)` を書くこと。 `正常系_` / `異常系_` プレフィックスをサブケース名に付けるのも、 「グループ軸 (正常系/異常系)」と「ケース説明軸 (具体的に何を試すか)」を混同させる。
    - **正しい形**:
+
      ```go
      t.Run("正常系", func(t *testing.T) {
          t.Parallel()
@@ -125,6 +126,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
          t.Run("IDがゼロ値の場合エラーを返す", func(t *testing.T) { ... })
      })
      ```
+
    - 両 group の直後に `t.Parallel()` を呼ぶ。 さらに細分化のためのネストグループ（例: `t.Run("firstNameが範囲外の場合、エラーを返す", ...)`) は可読性が上がるなら推奨で、 正常系 / 異常系 group の **内側に** 置く。
    - 1 つの `TestXxx` には `正常系` group が最大 1 個、 `異常系` group が最大 1 個。 正常系のみで構成されるなら `異常系` group は作らない（逆も同様）。 空のグループは作らない。
 4. **全ての `t.Run` の冒頭で `t.Parallel()` を呼ぶ**。例外: sibling ブロックと共有しているポインタを mutate する場合（`TestImmutableAccessors` の `building` / `deletedAt` ブロック等）は外側の `t.Run` を逐次にする。**ブロック直上にコメント必須**（`-race` で検出される競合を意図的に避けている旨を書く）。内部 case は引き続き `t.Parallel()`。
@@ -237,6 +239,7 @@ chain モードでは以下をスキップ:
 
 ## 制約（サマリ）
 
+- ❌ 生成テストにコード言い換え／*なぜ*の説明コメントを足す — テストコメントは最小（振る舞いのみ）。ケースの意図は日本語 `t.Run` 名で表し、インラインコメントに書かない（godoc 以外で必須なのは `-race` 直列ブロック例外の理由コメントのみ）。
 - ❌ 同一関数 / メソッドに対する複数 `TestXxx`。
 - ❌ `AskUserQuestion` 承認なしの複数 subject 束ね（および rationale コメント無し）。
 - ❌ `AskUserQuestion` 承認なしの table-driven `for` ループ。
