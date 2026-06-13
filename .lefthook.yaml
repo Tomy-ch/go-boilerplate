@@ -10,6 +10,12 @@ pre-commit:
     sql-lint:
       glob: "*.sql"
       run: make sql-lint
+    actions-lint:
+      # go_tool_runner 経由で actionlint を実行する（GitHub Actions 定義の検証）
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/actions/**/*.{yml,yaml}"
+      run: make actions-lint
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
