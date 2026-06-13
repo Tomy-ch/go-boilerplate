@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_buildinfo.gen.go -package=mock_$GOPACKAGE
 package system
 
 // BuildInfo は、アプリケーションのビルド情報を提供するインターフェースです。

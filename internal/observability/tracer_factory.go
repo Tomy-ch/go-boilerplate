@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_tracer_factory.gen.go -package=mock_$GOPACKAGE
 
 package observability
 
