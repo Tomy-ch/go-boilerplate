@@ -10,7 +10,7 @@ layer 別アーキ適合性チェックの統合スキル。scope に応じて 1
 - 複数 layer に跨る feature ブランチのレビュー
 - マージ前の CI gate
 
-単一 layer のみ気にする時は per-layer **skill**（`arch-check-<layer>`）を直接呼ぶ（対話 standalone フロー）。1+ layer に跨り並列 fan-out + 集約レポートが欲しい時はこの統合スキルを使う。
+単一 layer だけ検査したい時はこの統合スキルを実行し、scope 質問で「特定 layer のみ」を選ぶ。1+ layer に跨り並列 fan-out + 集約レポートが欲しい時もこの統合スキルを使う。
 
 以下の用途には使いません:
 
@@ -30,7 +30,7 @@ layer 別アーキ適合性チェックの統合スキル。scope に応じて 1
 | `arch-auditor-infra` | `internal/infrastructure/**` | Repository pure template + sqlc gen soft 対応（multi-query / switch dispatch / JOIN 許容）+ pgerror 利用 |
 | `arch-auditor-pkg` | `pkg/**` | `internal/` 依存禁止 + framework 非依存 |
 
-これらの auditor は `arch-check-<layer>` skill のワーカー版。**厳密に read-only**（TODO 書き込みなし）なので、5並列実行してもソースへの同時書き込みが発生しない。ソース書き込み（TODO hand-off）は集約後に**この統合スキルが単一スレッドで**実施する。
+これらの auditor は層別の監査ワーカー。**厳密に read-only**（TODO 書き込みなし）なので、5並列実行してもソースへの同時書き込みが発生しない。ソース書き込み（TODO hand-off）は集約後に**この統合スキルが単一スレッドで**実施する。
 
 ## 最初のステップ: scope + TODO opt 確認
 
@@ -115,7 +115,7 @@ Agent(subagent_type="arch-auditor-pkg",        prompt=<...pkg>)
 
 各 auditor の最終メッセージ**が** findings（日本語・構造化）。layer ラベル付きで収集。「違反なし」を返した auditor は空セクション扱い。
 
-> 現在の環境で `arch-auditor-*` サブエージェントが利用不可（agent registry 無し）の場合、standalone な `arch-check-<layer>` **skill** を `Skill` tool で逐次 chain する fallback に切り替える — ただし `TODO 追加なし` を渡して integrator を唯一の writer に保ち、Step 5 を integrator 自身で実施する。
+> `arch-auditor-*` サブエージェントを起動できない環境では、各 `arch-auditor-<layer>.md` の手順を本文がインラインで実行する — TODO 書き込みは集約後に integrator が単一スレッドで行う。
 
 ## Step 4. 集約レポート
 

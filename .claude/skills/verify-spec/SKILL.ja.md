@@ -10,7 +10,7 @@ spec 検証の統合スキル。`docs/spec/<feature>/` 配下に存在する spe
 - spec 編集後の全 check 確認
 - spec 作成中のクイックチェック
 
-単一 spec のみ気にする時は per-spec **skill**（`verify-spec-domain` / `verify-spec-usecase`）を直接呼ぶ（対話 standalone フロー）。
+単一 spec だけ確認したい時はこの統合スキルを実行する — `domain.md` / `usecase.md` のうち存在するものを検出し、該当 validator のみ fan-out する。
 
 以下の用途には使いません:
 
@@ -27,9 +27,9 @@ spec 検証の統合スキル。`docs/spec/<feature>/` 配下に存在する spe
 | `spec-validator-domain` | `docs/spec/<feature>/domain.md` | format + entity ↔ SQL soft + 内部整合性 |
 | `spec-validator-usecase` | `docs/spec/<feature>/usecase.md` | format + cross-spec to domain + 命名規約 + Workflow 整合性 |
 
-lean A 構成では controller.md / infra.md は存在しないため spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check-controller` / `arch-check-infra` が implementation 側で実施）。
+lean A 構成では controller.md / infra.md は存在しないため spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check`（controller / infra 監査）が implementation 側で実施）。
 
-validator は `verify-spec-<layer>` skill のワーカー版で**厳密に read-only**（auto-fix なし・書込なし）。両 validator は独立に読む — `spec-validator-usecase` は cross-spec `calls:` 解決のため `domain.md` を自分で読む — ため**書込依存がなく並列実行可能**（旧来の domain 先行順序は read 参照であって barrier ではない）。
+validator は per-spec 検証ワーカーで**厳密に read-only**（auto-fix なし・書込なし）。両 validator は独立に読む — `spec-validator-usecase` は cross-spec `calls:` 解決のため `domain.md` を自分で読む — ため**書込依存がなく並列実行可能**（旧来の domain 先行順序は read 参照であって barrier ではない）。
 
 ## 最初のステップ: 対象 feature 確認
 
@@ -58,7 +58,7 @@ feature ディレクトリが無い or spec ファイル無い時は明確メッ
 
 各 validator の最終メッセージ**が** findings（日本語）で、末尾に機械可読な `SUMMARY violations=<v> suggestions=<s>` 行を持つ。spec ラベル付きで収集し SUMMARY をパース。
 
-> 環境で `spec-validator-*` が利用不可（agent registry 無し）の場合、standalone な `verify-spec-<layer>` **skill** を `Skill` tool で逐次 chain する fallback に切替（domain 先行、usecase が参照するため）。
+> `spec-validator-*` を起動できない環境では、各 `spec-validator-<layer>.md` の手順を本文がインラインで実行する（domain 先行、usecase が参照するため）。
 
 ## Step 3. 集約レポート（日本語）
 

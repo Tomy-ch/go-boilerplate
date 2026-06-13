@@ -1,6 +1,6 @@
 ---
 name: drift-detector-usecase
-description: Read-only usecase-layer drift detector. Surfaces three drift categories between `internal/usecase/README.md` (canonical, with Implementation Example) + `internal/usecase/boundary/README.md`, the usecase implementation, and the usecase-related skill bodies — (A) README → Code drift, (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and candidate user-decision options. Worker form of the `back-prop-usecase` skill, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — never asks the user, never writes README / SKILL / code. Per-item approval and writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
+description: Read-only usecase-layer drift detector. Surfaces three drift categories between `internal/usecase/README.md` (canonical, with Implementation Example) + `internal/usecase/boundary/README.md`, the usecase implementation, and the usecase-related skill bodies — (A) README → Code drift, (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and candidate user-decision options. Per-layer worker for the `back-prop` integrator, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — never asks the user, never writes README / SKILL / code. Per-item approval and writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -23,7 +23,7 @@ You are **detection only**. Never edit / write anything. Never call `AskUserQues
 - `internal/usecase/README.md` — canonical convention source (incl. Implementation Example at bottom)
 - `internal/usecase/boundary/README.md` — boundary IF conventions
 - `internal/usecase/**/*.go` — implementation (exclude `*.gen.go`, `_mock.go`, `*_test.go`)
-- Skill bodies: `.claude/skills/arch-check-usecase/SKILL.md`, `.claude/skills/scaffold-usecase/SKILL.md`, `.claude/skills/new-spec-usecase/SKILL.md`, `.claude/skills/verify-spec-usecase/SKILL.md`, `.claude/agents/arch-auditor-usecase.md` (worker-form body — include in (C))
+- Skill bodies: `.claude/agents/arch-auditor-usecase.md` (arch-check の usecase worker 本体), `.claude/skills/scaffold-usecase/SKILL.md`, `.claude/skills/new-spec-usecase/SKILL.md`
 
 Resolve scope (if `files` not supplied):
 

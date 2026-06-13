@@ -14,11 +14,11 @@ lean A では controller / infra に spec を持たないため、`verify-spec` 
 
 | skill | 担当 spec | 検査内容 |
 | --- | --- | --- |
-| `verify-spec-domain` | `domain.md` | format（節 / YAML パース）+ Entity フィールド ↔ `database/migrations/` の `CREATE TABLE` カラム突き合わせ + 内部整合性（Behavior / VO / Repository methods） |
-| `verify-spec-usecase` | `usecase.md` | format + cross-spec 参照（domain.md Repository / Behavior / boundary） + 命名規約（動詞接頭辞、Usecase interface 命名 — `internal/usecase/README.md` + sibling pkg 由来）+ Workflow 内部整合性（tx_required + boundary calls） |
+| `spec-validator-domain` | `domain.md` | format（節 / YAML パース）+ Entity フィールド ↔ `database/migrations/` の `CREATE TABLE` カラム突き合わせ + 内部整合性（Behavior / VO / Repository methods） |
+| `spec-validator-usecase` | `usecase.md` | format + cross-spec 参照（domain.md Repository / Behavior / boundary） + 命名規約（動詞接頭辞、Usecase interface 命名 — `internal/usecase/README.md` + sibling pkg 由来）+ Workflow 内部整合性（tx_required + boundary calls） |
 | `verify-spec` | 統合 | 存在する spec を検出して上記を chain |
 
-**依存方向に関する注意**: `verify-spec-usecase` は OpenAPI operationId カバレッジを **検査しない**。これは依存方向逆転（usecase は HTTP/OpenAPI を知らない、知るべきでない）になるため。OpenAPI ↔ usecase mapping の検証は **`scaffold-controller` の責務**（scaffold 時に「operationId に対応する usecase method があるか」を確認、無ければ scaffold 失敗で hand-off）。実装後の handler ↔ operationId 一致は `arch-check-controller` が担当。
+**依存方向に関する注意**: `spec-validator-usecase` は OpenAPI operationId カバレッジを **検査しない**。これは依存方向逆転（usecase は HTTP/OpenAPI を知らない、知るべきでない）になるため。OpenAPI ↔ usecase mapping の検証は **`scaffold-controller` の責務**（scaffold 時に「operationId に対応する usecase method があるか」を確認、無ければ scaffold 失敗で hand-off）。実装後の handler ↔ operationId 一致は `arch-check`（controller 監査）が担当。
 
 ## cross-spec 参照ルール（lean A）
 
@@ -32,8 +32,8 @@ lean A では controller / infra に spec を持たないため、`verify-spec` 
 
 | 派生元 | 検査 | 担当 skill |
 | --- | --- | --- |
-| `database/migrations/<latest>.sql` の `CREATE TABLE` | `domain.md` Entity フィールド名（snake_case → camelCase）+ Go 型マッピングが対応 | verify-spec-domain |
-| `internal/usecase/README.md` + sibling pkg | `usecase.md` Interface 命名規約（動詞接頭辞、Usecase interface 命名）に準拠 | verify-spec-usecase |
+| `database/migrations/<latest>.sql` の `CREATE TABLE` | `domain.md` Entity フィールド名（snake_case → camelCase）+ Go 型マッピングが対応 | spec-validator-domain |
+| `internal/usecase/README.md` + sibling pkg | `usecase.md` Interface 命名規約（動詞接頭辞、Usecase interface 命名）に準拠 | spec-validator-usecase |
 | OpenAPI gen (`internal/controller/handler/<path>/gen/server.gen.go`) | `ServerInterface` operationId ↔ usecase method の mapping 確立 | **scaffold-controller**（verify-spec ではなく、scaffold 時に検査。依存方向に整合） |
 | sqlc gen (`internal/infrastructure/rdb/sqlc/gen/*.gen.go`) | Repository method ↔ sqlc 関数の対応 | **scaffold-infra-db**（compile 時 catch も併用） |
 

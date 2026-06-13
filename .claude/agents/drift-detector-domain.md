@@ -1,6 +1,6 @@
 ---
 name: drift-detector-domain
-description: Read-only domain-layer drift detector. Surfaces three drift categories between `internal/domain/README.md` (canonical), domain implementation, and the domain-related skill bodies — (A) README → Code drift, (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and the candidate user-decision options. Worker form of the `back-prop-domain` skill, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — it never asks the user and never writes README / SKILL / code. Per-item approval and the README / SKILL writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
+description: Read-only domain-layer drift detector. Surfaces three drift categories between `internal/domain/README.md` (canonical), domain implementation, and the domain-related skill bodies — (A) README → Code drift, (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and the candidate user-decision options. Per-layer worker for the `back-prop` integrator, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — it never asks the user and never writes README / SKILL / code. Per-item approval and the README / SKILL writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -23,10 +23,9 @@ You are **detection only**. Never edit / write anything (no README updates, no S
 - `internal/domain/README.md` — canonical convention source (Implementation notes / Aggregate Design / Testing strategy / Do / Don't)
 - `internal/domain/**/*.go` — implementation (exclude `*.gen.go`, `_mock.go`, `*_test.go`)
 - Skill bodies to cross-check rules against the README:
-  - `.claude/skills/arch-check-domain/SKILL.md` (rule enumeration)
-  - `.claude/agents/arch-auditor-domain.md` (worker-form body of arch-check-domain — include in (C); note its "Common forbidden patterns" are README-derived examples, not duplications)
+  - `.claude/agents/arch-auditor-domain.md` (arch-check の domain worker 本体; rule enumeration — its "Common forbidden patterns" are README-derived examples, not duplications)
   - `.claude/skills/scaffold-domain/SKILL.md` (generation conventions)
-  - `.claude/skills/new-spec-domain/SKILL.md`, `.claude/skills/verify-spec-domain/SKILL.md` (secondary)
+  - `.claude/skills/new-spec-domain/SKILL.md` (secondary)
 
 Resolve scope (if `files` not supplied):
 
@@ -66,7 +65,7 @@ drift-detector-domain 結果（scope: <scope>, 種別: <A/B/C>）
 
 [C] Skill ↔ README duplication  K 件
   rule: "entity フィールドは unexport"
-  duplicated in: arch-check-domain/SKILL.md L82 / internal/domain/README.md L113
+  duplicated in: arch-auditor-domain.md L<n> / internal/domain/README.md L113
   reasoning: 同一ルールが skill で enumerate + README で記述。skill は README 参照に簡略化可能
   options: 1) skill 記述削除し README 参照のみ 2) skill 記述維持
 

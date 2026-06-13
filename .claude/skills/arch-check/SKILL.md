@@ -1,6 +1,6 @@
 ---
 name: arch-check
-description: Integrator skill for architectural compliance checks. Confirms scope + TODO opt via `AskUserQuestion` (changed files vs full repo), detects which layers are touched, resolves the file list and runs `make lint` ONCE, then fans out the relevant read-only `arch-auditor-*` subagents (`arch-auditor-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + the shared lint output so each auditor skips its own scope question and does not re-run lint. Aggregates findings into a single Japanese report grouped by layer. Each auditor enforces its own README rules + lean A conventions (controller / infra have additional convention enforcement since they're scaffold-derived, not spec-driven). Detection is delegated to the read-only auditor subagents; the integrator itself only writes the optional `// TODO:` hand-off comments (single-threaded, after aggregation) when the user opts in. Standalone per-layer skills (`arch-check-<layer>`) remain available for single-layer interactive runs.
+description: Integrator skill for architectural compliance checks. Confirms scope + TODO opt via `AskUserQuestion` (changed files vs full repo), detects which layers are touched, resolves the file list and runs `make lint` ONCE, then fans out the relevant read-only `arch-auditor-*` subagents (`arch-auditor-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + the shared lint output so each auditor skips its own scope question and does not re-run lint. Aggregates findings into a single Japanese report grouped by layer. Each auditor enforces its own README rules + lean A conventions (controller / infra have additional convention enforcement since they're scaffold-derived, not spec-driven). Detection is delegated to the read-only auditor subagents; the integrator itself only writes the optional `// TODO:` hand-off comments (single-threaded, after aggregation) when the user opts in. To audit a single layer, run this integrator and pick that layer in the scope question.
 ---
 
 # Arch Check
@@ -15,7 +15,7 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 - Reviewing a feature branch that touches multiple layers.
 - CI gate before merge.
 
-Use the per-layer **skill** directly (`arch-check-<layer>`) when you only care about one layer and want the interactive standalone flow. Use this integrator when 1+ layers are touched and you want parallel fan-out + a single aggregated report.
+To audit a single layer, run this integrator and pick that layer in the scope question (「特定 layer のみ」). Use it when 1+ layers are touched and you want parallel fan-out + a single aggregated report.
 
 Do NOT use this skill for:
 
@@ -35,7 +35,7 @@ Detection is delegated to five **read-only worker subagents** under `.claude/age
 | `arch-auditor-infra` | `internal/infrastructure/**` | Repository pure template + sqlc gen soft 対応（multi-query / switch dispatch / JOIN 許容）+ pgerror 利用 |
 | `arch-auditor-pkg` | `pkg/**` | `internal/` 依存禁止 + framework 非依存 |
 
-These auditors are the worker form of the `arch-check-<layer>` skills. They are **strictly read-only** (no TODO writes) so that running five in parallel never produces concurrent writes to source. Any source write (TODO hand-off) is performed by **this integrator**, single-threaded, after aggregation.
+These auditors are the per-layer audit workers. They are **strictly read-only** (no TODO writes) so that running five in parallel never produces concurrent writes to source. Any source write (TODO hand-off) is performed by **this integrator**, single-threaded, after aggregation.
 
 ## First Step: Confirm Scope + TODO opt
 
@@ -120,7 +120,7 @@ Agent(subagent_type="arch-auditor-pkg",        prompt=<...pkg>)
 
 Each auditor's final message **is** its findings (Japanese, structured). Collect them with their layer label. An auditor that returns "違反なし" contributes an empty section.
 
-> If the `arch-auditor-*` subagents are unavailable in the current environment (no agent registry), fall back to chaining the standalone `arch-check-<layer>` **skills** sequentially via the `Skill` tool — but pass `TODO 追加なし` so the integrator remains the sole writer, then perform Step 5 itself.
+> If the `arch-auditor-*` subagents cannot be spawned in the current environment, follow each `arch-auditor-<layer>.md` procedure inline instead — the integrator still performs the TODO write single-threaded afterward.
 
 ## Step 4. Aggregate Report
 

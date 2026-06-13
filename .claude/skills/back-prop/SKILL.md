@@ -1,6 +1,6 @@
 ---
 name: back-prop
-description: Integrator skill for drift detection across all layers. Confirms scope (changed files vs full repo) + detection categories (A/B/C, multi-select) once via `AskUserQuestion`, detects which layers are touched, resolves the per-layer file list, then fans out the relevant read-only `drift-detector-*` subagents (`drift-detector-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + categories so each detector skips its own scope question. Detectors are STRICTLY read-only and only surface findings (A: README→Code, B: Code→README undocumented pattern, C: Skill↔README duplication) with reasoning + candidate options. The integrator then runs the per-item user-approval loop itself (single-threaded) and performs the README / SKILL writes after explicit per-item confirmation. Does NOT modify implementation code — code fixes are surfaced and left to the user. Standalone per-layer skills (`back-prop-<layer>`) remain available for single-layer interactive runs. Recommended trigger: after multi-layer refactor or before major PR review, to confirm doc + skill remain in sync with code reality (priority README > Code > SKILL).
+description: Integrator skill for drift detection across all layers. Confirms scope (changed files vs full repo) + detection categories (A/B/C, multi-select) once via `AskUserQuestion`, detects which layers are touched, resolves the per-layer file list, then fans out the relevant read-only `drift-detector-*` subagents (`drift-detector-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + categories so each detector skips its own scope question. Detectors are STRICTLY read-only and only surface findings (A: README→Code, B: Code→README undocumented pattern, C: Skill↔README duplication) with reasoning + candidate options. The integrator then runs the per-item user-approval loop itself (single-threaded) and performs the README / SKILL writes after explicit per-item confirmation. Does NOT modify implementation code — code fixes are surfaced and left to the user. To check a single layer, run this integrator and pick that layer in the scope question. Recommended trigger: after multi-layer refactor or before major PR review, to confirm doc + skill remain in sync with code reality (priority README > Code > SKILL).
 ---
 
 # Back-Prop
@@ -15,7 +15,7 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 - Periodic hygiene sweep (catch undocumented conventions / skill bloat / README drift across all layers)
 - When introducing a new layer-wide convention (to see where it's already followed / not yet)
 
-Use a per-layer **skill** directly (`back-prop-<layer>`) when only one layer needs the interactive standalone flow.
+To check a single layer, run this integrator and pick that layer in the scope question (「特定 layer のみ」).
 
 Do NOT use for:
 
@@ -35,7 +35,7 @@ Detection is delegated to five **read-only worker subagents** under `.claude/age
 | `drift-detector-infra` | `internal/infrastructure/**` | infra / rdb / pgerror README（principles-focused、sibling code が de facto reference） |
 | `drift-detector-pkg` | `pkg/**` | `pkg/README.md` + 各 `pkg/<name>/README.md` |
 
-These detectors are the worker form of the `back-prop-<layer>` skills. They are **strictly read-only**: they surface (A)(B)(C) findings with reasoning + candidate options, but they **never call `AskUserQuestion` and never write**. The original per-layer skills embedded the approval + write loop inside each child; in the integrator flow that loop is **lifted into this integrator** and runs **single-threaded after aggregation**, so the five read-only detectors can fan out in parallel with zero write contention. Priority remains **README > Code > SKILL**.
+These detectors are the per-layer drift-detection workers. They are **strictly read-only**: they surface (A)(B)(C) findings with reasoning + candidate options, but they **never call `AskUserQuestion` and never write**. The approval + write loop runs in **this integrator**, **single-threaded after aggregation**, so the five read-only detectors can fan out in parallel with zero write contention. Priority remains **README > Code > SKILL**.
 
 ## First Step: Confirm Scope + Detection Categories
 
@@ -81,7 +81,7 @@ For each layer in scope, spawn its detector with the **Agent tool**, all in **a 
 
 Each detector's final message **is** its findings (Japanese, each with reasoning + candidate options). Collect them with their layer label.
 
-> If the `drift-detector-*` subagents are unavailable in the current environment (no agent registry), fall back to chaining the standalone `back-prop-<layer>` **skills** sequentially via the `Skill` tool — those embed their own per-item approval loop, so in that path the integrator does not run Step 4 itself.
+> If the `drift-detector-*` subagents cannot be spawned in the current environment, follow each `drift-detector-<layer>.md` procedure inline instead — the integrator still runs the per-item approval + write loop (Step 4) single-threaded afterward.
 
 ## Step 3. Aggregate Findings (read-only checkpoint)
 

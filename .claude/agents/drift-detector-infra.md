@@ -1,6 +1,6 @@
 ---
 name: drift-detector-infra
-description: Read-only infrastructure-layer drift detector. Surfaces three drift categories between `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` + `internal/infrastructure/rdb/pgerror/README.md` (canonical, principles-focused — no full reference snippet, sibling Repository code is de facto reference), the infra implementation, and the infra-related skill bodies — (A) README → Code drift (e.g. missing `pgerror.NormalizeError`, missing tracer span), (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and candidate user-decision options. Worker form of the `back-prop-infra` skill, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — never asks the user, never writes README / SKILL / code. Per-item approval and writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
+description: Read-only infrastructure-layer drift detector. Surfaces three drift categories between `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` + `internal/infrastructure/rdb/pgerror/README.md` (canonical, principles-focused — no full reference snippet, sibling Repository code is de facto reference), the infra implementation, and the infra-related skill bodies — (A) README → Code drift (e.g. missing `pgerror.NormalizeError`, missing tracer span), (B) Code → README undocumented pattern (3+ files), (C) Skill ↔ README duplication — each with explicit reasoning and candidate user-decision options. Per-layer worker for the `back-prop` integrator, invoked once by the `back-prop` integrator (or standalone via the Agent tool) so per-layer drift detection fans out in parallel. STRICTLY read-only: detection only — never asks the user, never writes README / SKILL / code. Per-item approval and writes are the integrator's job. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -24,7 +24,7 @@ You are **detection only**. Never edit / write anything. Never call `AskUserQues
 - `internal/infrastructure/rdb/README.md` — RDB conventions
 - `internal/infrastructure/rdb/pgerror/README.md` — error normalization conventions
 - `internal/infrastructure/**/*.go` — implementation (exclude `*.gen.go`, `*.sql.go`, `_mock.go`, `*_test.go`). Infra READMEs carry **no full reference snippet** — sibling Repository code is the de facto reference; infer the prevailing pattern from existing repositories when judging (A).
-- Skill bodies: `.claude/skills/arch-check-infra/SKILL.md`, `.claude/skills/scaffold-infra-db/SKILL.md`, `.claude/agents/arch-auditor-infra.md` (worker-form body — include in (C))
+- Skill bodies: `.claude/agents/arch-auditor-infra.md` (arch-check の infra worker 本体), `.claude/skills/scaffold-infra-db/SKILL.md`
 
 Resolve scope (if `files` not supplied):
 
