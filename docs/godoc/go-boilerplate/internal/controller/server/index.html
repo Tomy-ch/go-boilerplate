@@ -113,12 +113,6 @@
 				<dd><a href="#ExtractQueryParams">func ExtractQueryParams(c echo.Context) map[string][]string</a></dd>
 			
 				
-				<dd><a href="#IsRecovered">func IsRecovered(c echo.Context) bool</a></dd>
-			
-				
-				<dd><a href="#MarkRecovered">func MarkRecovered(c echo.Context)</a></dd>
-			
-				
 				<dd><a href="#NewAppServer">func NewAppServer(srvCfg *config.ServerConfig) *echo.Echo</a></dd>
 			
 			
@@ -150,7 +144,7 @@
 		
 			
 			
-			<h2 id="BuildHTTPRequestLogInput">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=940:1031#L17">BuildHTTPRequestLogInput</a>
+			<h2 id="BuildHTTPRequestLogInput">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=450:541#L4">BuildHTTPRequestLogInput</a>
 				<a class="permalink" href="#BuildHTTPRequestLogInput">¶</a>
 				
 				
@@ -165,7 +159,7 @@ eventType には呼び出し経路に応じたイベント種別（logging.Event
 		
 			
 			
-			</p><h2 id="ExtractPathParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=1795:1851#L41">ExtractPathParams</a>
+			</p><h2 id="ExtractPathParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=1305:1361#L28">ExtractPathParams</a>
 				<a class="permalink" href="#ExtractPathParams">¶</a>
 				
 				
@@ -179,41 +173,13 @@ eventType には呼び出し経路に応じたイベント種別（logging.Event
 		
 			
 			
-			</p><h2 id="ExtractQueryParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=2088:2147#L50">ExtractQueryParams</a>
+			</p><h2 id="ExtractQueryParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=1598:1657#L37">ExtractQueryParams</a>
 				<a class="permalink" href="#ExtractQueryParams">¶</a>
 				
 				
 			</h2>
 			<pre>func ExtractQueryParams(c echo.<a href="#Context">Context</a>) map[<a href="../../../../builtin/#string">string</a>][]<a href="../../../../builtin/#string">string</a></pre>
 			<p>ExtractQueryParams は、Echoコンテキストからクエリパラメータを抽出します。
-
-			
-			
-
-		
-			
-			
-			</p><h2 id="IsRecovered">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=536:573#L10">IsRecovered</a>
-				<a class="permalink" href="#IsRecovered">¶</a>
-				
-				
-			</h2>
-			<pre>func IsRecovered(c echo.<a href="#Context">Context</a>) <a href="../../../../builtin/#bool">bool</a></pre>
-			<p>IsRecovered は、パニックが上流で復旧・ログ済みかを返します（エラーハンドラの二重ログ抑止に使用）。
-
-			
-			
-
-		
-			
-			
-			</p><h2 id="MarkRecovered">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=321:355#L5">MarkRecovered</a>
-				<a class="permalink" href="#MarkRecovered">¶</a>
-				
-				
-			</h2>
-			<pre>func MarkRecovered(c echo.<a href="#Context">Context</a>)</pre>
-			<p>MarkRecovered は、パニックが上流で復旧・ログ済みであることを Echo コンテキストに記録します。
 
 			
 			

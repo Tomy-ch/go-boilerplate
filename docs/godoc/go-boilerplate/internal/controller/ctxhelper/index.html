@@ -107,7 +107,31 @@
 				<dd><a href="#GetAuthn">func GetAuthn(ctx context.Context) (auth.Authn, bool)</a></dd>
 			
 				
+				<dd><a href="#GetErrorHandled">func GetErrorHandled(ctx context.Context) (bool, bool)</a></dd>
+			
+				
+				<dd><a href="#GetErrorHandledFromEcho">func GetErrorHandledFromEcho(c echo.Context) (bool, bool)</a></dd>
+			
+				
+				<dd><a href="#GetRecovered">func GetRecovered(ctx context.Context) (bool, bool)</a></dd>
+			
+				
+				<dd><a href="#GetRecoveredFromEcho">func GetRecoveredFromEcho(c echo.Context) (bool, bool)</a></dd>
+			
+				
 				<dd><a href="#SetAuthn">func SetAuthn(ctx context.Context, authn auth.Authn) bool</a></dd>
+			
+				
+				<dd><a href="#SetErrorHandled">func SetErrorHandled(ctx context.Context, val bool) context.Context</a></dd>
+			
+				
+				<dd><a href="#SetErrorHandledToEcho">func SetErrorHandledToEcho(c echo.Context, val bool)</a></dd>
+			
+				
+				<dd><a href="#SetRecovered">func SetRecovered(ctx context.Context, val bool) context.Context</a></dd>
+			
+				
+				<dd><a href="#SetRecoveredToEcho">func SetRecoveredToEcho(c echo.Context, val bool)</a></dd>
 			
 				
 				<dd><a href="#WithAuthn">func WithAuthn(ctx context.Context) context.Context</a></dd>
@@ -126,7 +150,11 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html">authn.go</a>
 			
+				<a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html">errorhandled_ctx.gen.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/generate.go.html">generate.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html">recovered_ctx.gen.go</a>
 			
 			</span>
 			</p>
@@ -155,7 +183,59 @@
 		
 			
 			
-			</p><h2 id="SetAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=573:630#L13">SetAuthn</a>
+			</p><h2 id="GetErrorHandled">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html?s=354:408#L11">GetErrorHandled</a>
+				<a class="permalink" href="#GetErrorHandled">¶</a>
+				
+				
+			</h2>
+			<pre>func GetErrorHandled(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (<a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="GetErrorHandledFromEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html?s=747:804#L27">GetErrorHandledFromEcho</a>
+				<a class="permalink" href="#GetErrorHandledFromEcho">¶</a>
+				
+				
+			</h2>
+			<pre>func GetErrorHandledFromEcho(c echo.<a href="#Context">Context</a>) (<a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="GetRecovered">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html?s=339:390#L11">GetRecovered</a>
+				<a class="permalink" href="#GetRecovered">¶</a>
+				
+				
+			</h2>
+			<pre>func GetRecovered(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (<a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="GetRecoveredFromEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html?s=720:774#L27">GetRecoveredFromEcho</a>
+				<a class="permalink" href="#GetRecoveredFromEcho">¶</a>
+				
+				
+			</h2>
+			<pre>func GetRecoveredFromEcho(c echo.<a href="#Context">Context</a>) (<a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="SetAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=573:630#L13">SetAuthn</a>
 				<a class="permalink" href="#SetAuthn">¶</a>
 				
 				
@@ -169,7 +249,59 @@
 		
 			
 			
-			</p><h2 id="WithAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=353:404#L8">WithAuthn</a>
+			</p><h2 id="SetErrorHandled">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html?s=228:295#L7">SetErrorHandled</a>
+				<a class="permalink" href="#SetErrorHandled">¶</a>
+				
+				
+			</h2>
+			<pre>func SetErrorHandled(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, val <a href="../../../../builtin/#bool">bool</a>) <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a></pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="SetErrorHandledToEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/errorhandled_ctx.gen.go.html?s=593:645#L22">SetErrorHandledToEcho</a>
+				<a class="permalink" href="#SetErrorHandledToEcho">¶</a>
+				
+				
+			</h2>
+			<pre>func SetErrorHandledToEcho(c echo.<a href="#Context">Context</a>, val <a href="../../../../builtin/#bool">bool</a>)</pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="SetRecovered">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html?s=219:283#L7">SetRecovered</a>
+				<a class="permalink" href="#SetRecovered">¶</a>
+				
+				
+			</h2>
+			<pre>func SetRecovered(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, val <a href="../../../../builtin/#bool">bool</a>) <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a></pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="SetRecoveredToEcho">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/recovered_ctx.gen.go.html?s=572:621#L22">SetRecoveredToEcho</a>
+				<a class="permalink" href="#SetRecoveredToEcho">¶</a>
+				
+				
+			</h2>
+			<pre>func SetRecoveredToEcho(c echo.<a href="#Context">Context</a>, val <a href="../../../../builtin/#bool">bool</a>)</pre>
+			
+			
+			
+
+		
+			
+			
+			<h2 id="WithAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=353:404#L8">WithAuthn</a>
 				<a class="permalink" href="#WithAuthn">¶</a>
 				
 				
