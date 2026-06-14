@@ -13,8 +13,11 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,6 +34,7 @@ const (
 	repoSegments    = 2 // owner/repo
 	lsRemoteCols    = 2 // <sha>\t<refname>
 	lsRemoteTimeout = 30 * time.Second
+	hoursPerDay     = 24
 )
 
 var (
@@ -64,7 +68,10 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "resolve":
-		resolve(root, files)
+		fs := flag.NewFlagSet("resolve", flag.ExitOnError)
+		minAge := fs.Int("min-age-days", 0, "N 日未満のコミットは quarantine（0 で無効）")
+		_ = fs.Parse(os.Args[2:])
+		resolve(root, files, *minAge)
 	case "apply":
 		applyOrCheck(root, files, false)
 	case "check":
@@ -110,7 +117,40 @@ func targetFiles(root string) ([]string, error) {
 	return files, nil
 }
 
-func resolve(root string, files []string) {
+func resolve(root string, files []string, minAgeDays int) {
+	keys := collectKeys(files)
+	existing, _ := readLock(filepath.Join(root, lockFile)) // 無ければ空
+
+	ctx := context.Background()
+	lock := map[string]string{}
+	var notes []string
+	for k, r := range keys {
+		sha, err := resolveSHA(ctx, r.repo, r.tag)
+		if err != nil {
+			log.Fatalf("❌ resolve %s: %v", k, err)
+		}
+		use, note := quarantine(ctx, r.repo, r.tag, k, sha, minAgeDays, existing)
+		if note != "" {
+			notes = append(notes, note)
+		}
+		if use == "" {
+			continue
+		}
+		lock[k] = use
+		log.Printf("  %s -> %s", k, use)
+	}
+	sort.Strings(notes)
+	for _, n := range notes {
+		log.Printf("  ⚠️ %s", n)
+	}
+
+	if err := writeLock(filepath.Join(root, lockFile), lock); err != nil {
+		log.Fatalf("❌ write lockfile: %v", err)
+	}
+	log.Printf("✅ %s に %d 件を書き出しました", lockFile, len(lock))
+}
+
+func collectKeys(files []string) map[string]ref {
 	keys := map[string]ref{}
 	for _, f := range files {
 		data, err := os.ReadFile(f) //nolint:gosec // path from cwd glob
@@ -123,22 +163,88 @@ func resolve(root string, files []string) {
 			}
 		}
 	}
+	return keys
+}
 
-	ctx := context.Background()
-	lock := map[string]string{}
-	for k, r := range keys {
-		sha, err := resolveSHA(ctx, r.repo, r.tag)
-		if err != nil {
-			log.Fatalf("❌ resolve %s: %v", k, err)
+// quarantine は minAgeDays 未満の新しすぎる解決先を採用しない。第1戻り値 "" は skip（初回かつ新しすぎ）。
+func quarantine(ctx context.Context, repo, tag, key, candidate string, minAgeDays int, existing map[string]string) (string, string) {
+	if minAgeDays <= 0 {
+		return candidate, ""
+	}
+	age, err := refAgeDays(ctx, repo, tag, candidate)
+	if err != nil {
+		log.Fatalf("❌ age %s: %v", key, err)
+	}
+	if age >= minAgeDays {
+		return candidate, ""
+	}
+	if prev, ok := existing[key]; ok {
+		return prev, fmt.Sprintf("%s: 解決先が %d 日 (<%d) のため既存ピンを維持", key, age, minAgeDays)
+	}
+	return "", fmt.Sprintf("%s: 解決先が %d 日 (<%d)・既存ピン無しのため skip", key, age, minAgeDays)
+}
+
+// refAgeDays は解決先の経過日数を返す。タグに対応する Release があれば published_at（偽装困難）を、
+// 無ければ commit の committer date をフォールバックに使う。
+func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
+	var rel struct {
+		PublishedAt time.Time `json:"published_at"`
+	}
+	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+tag, &rel)
+	if err != nil {
+		return 0, err
+	}
+	if st == http.StatusOK && !rel.PublishedAt.IsZero() {
+		return daysSince(rel.PublishedAt), nil
+	}
+	if st != http.StatusOK && st != http.StatusNotFound {
+		return 0, fmt.Errorf("releases/tags/%s: %d", tag, st)
+	}
+
+	var commit struct {
+		Commit struct {
+			Committer struct {
+				Date time.Time `json:"date"`
+			} `json:"committer"`
+		} `json:"commit"`
+	}
+	st, err = githubGet(ctx, "https://api.github.com/repos/"+repo+"/commits/"+sha, &commit)
+	if err != nil {
+		return 0, err
+	}
+	if st != http.StatusOK {
+		return 0, fmt.Errorf("commits/%s: %d", sha, st)
+	}
+	return daysSince(commit.Commit.Committer.Date), nil
+}
+
+// githubGet は GitHub API を GET し、200 のとき out に JSON をデコードして HTTP ステータスを返す。
+func githubGet(ctx context.Context, url string, out any) (int, error) {
+	cctx, cancel := context.WithTimeout(ctx, lsRemoteTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(cctx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	if tok := os.Getenv("GITHUB_TOKEN"); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusOK {
+		if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+			return resp.StatusCode, err
 		}
-		lock[k] = sha
-		log.Printf("  %s -> %s", k, sha)
 	}
+	return resp.StatusCode, nil
+}
 
-	if err := writeLock(filepath.Join(root, lockFile), lock); err != nil {
-		log.Fatalf("❌ write lockfile: %v", err)
-	}
-	log.Printf("✅ %s に %d 件を書き出しました", lockFile, len(lock))
+func daysSince(t time.Time) int {
+	return int(time.Since(t).Hours() / hoursPerDay)
 }
 
 // rewritePins は lock を元に uses: を固定した内容と、lock 未登録の参照キー一覧を返す。
