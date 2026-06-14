@@ -103,7 +103,11 @@ OpenAPI エラーでない場合は、ステータスコードを使って標準
 
 ## 再入ガード
 
-エラーレスポンス書き込み中にエラーが発生した場合の無限再帰を防ぐため、Echo コンテキストに `errHandlerKey` を設定します。
+初回呼び出し時にハンドラは `ctxhelper.SetErrorHandledToEcho(c, true)` を呼び、以降の呼び出しは `ctxhelper.GetErrorHandledFromEcho(c)` の判定で早期 return します。これによりエラーレスポンス書き込み中に再度エラーが起きても無限再帰しません。フラグは Echo の内部ストアではなく `scripts/genctxkey` が生成する typed sentinel として request の context 側に保持されます。
+
+## リカバリミドルウェアとの連携
+
+上流の `recovery` ミドルウェアが既にパニックをログ済みの場合、同じコンテキストには `ctxhelper.SetRecoveredToEcho(c, true)` で `Recovered` sentinel が立っています。本ハンドラは `logHTTPError` を呼ぶ前に `ctxhelper.GetRecoveredFromEcho(c)` をチェックし、ログ二重出力を抑止します（500 レスポンス自体は返します）。
 
 ## ファイル構成
 
