@@ -1,19 +1,13 @@
 # actionlint 設定ファイル（雛形）
-# 公式ドキュメント: https://github.com/rhysd/actionlint/blob/main/docs/config.md
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
 #
-# actionlint が設定で制御できるのは以下の 2 項目のみ。
-# その他の lint ルール（式構文・glob・shellcheck 連携 等）は常に自動適用され、
-# 個別の ON/OFF はできない（ルール無効化を基本サポートしない設計）。
-#
-# 現状このリポジトリでは self-hosted runner も vars.* も未使用のため設定は不要。
-# このファイルは将来必要になったときのための雛形であり、有効な設定は持たない。
+# self-hosted runner も vars.* も未使用のため現状は不要。必要時に有効化する。
 
-# self-hosted runner のラベルを列挙すると "unknown runner label" の誤検知を防げる。
+# self-hosted runner のラベル（"unknown runner label" 誤検知の抑止）
 # self-hosted-runner:
 #   labels:
 #     - my-custom-runner
 
-# 許可する設定変数 (vars.*) を列挙すると未定義の vars.X 参照を検出できる。
-# 既定 (null) は任意の変数名を許可する。
+# 許可する vars.*（未定義の vars.X 参照を検出）
 # config-variables:
 #   - DEPLOY_ENV
