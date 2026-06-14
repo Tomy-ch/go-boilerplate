@@ -195,12 +195,23 @@ This group handles linting and auto-fixing of Markdown files.
 
 ## `.makefiles/security` group
 
-This group runs a local Trivy dependency scan, mainly to reproduce a CI security finding on the developer's machine. Image scanning is CI-only (`image-scan.yaml`).
+This group runs local security scans (Trivy dependency scan, gitleaks secret scan), mainly to reproduce a CI security finding on the developer's machine. Image scanning is CI-only (`image-scan.yaml`).
 
 | Command | Description | Notes |
 | --- | --- | --- |
 | `make trivy-fs` | Scans library dependencies with Trivy fs. | Invokes `make trivy-fs-ci` inside the `go_tool_runner` container. |
 | `make trivy-fs-ci` | Runs `trivy fs` directly. | CI target. Skips `vendor/` to match CI. |
+| `make secret-scan` | Scans the working tree for secrets with gitleaks. | Invokes `make secret-scan-ci` inside the `go_tool_runner` container. |
+| `make secret-scan-ci` | Runs `gitleaks dir . --redact` directly. | CI target. Generated files are allowlisted in `.gitleaks.toml`. |
+
+## `.makefiles/docker` group
+
+This group lints Dockerfiles with hadolint via the `go_tool_runner` container.
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make docker-lint` | Lints `docker/*/Dockerfile` with hadolint. | Invokes `make docker-lint-ci` inside the `go_tool_runner` container. |
+| `make docker-lint-ci` | Runs `hadolint docker/*/Dockerfile` directly. | CI target. Ignored rules are in `.hadolint.yaml`. |
 
 ## `.makefiles/openapi` group
 
@@ -241,6 +252,7 @@ This group runs a local Trivy dependency scan, mainly to reproduce a CI security
 | `make test` | Executes tests for CI. | Runs `go test` on packages excluding `gen` / `cmd` / `mock` / `apperror` / `scripts` (the `internal/cli` core is now included). |
 | `make gen-test-repo` | Executes tests and generates HTML coverage report. | Output is `docs/coverage/index.html`. |
 | `make test-cover-ci` | Executes tests with coverage. | CI target, outputs `coverage.out`. |
+| `make cover-gate` | Fails if total coverage is below the threshold. | CI gate. `COVERAGE_THRESHOLD` (default 90). Requires `coverage.out` (run `test-cover-ci` first). |
 
 ### Go tool installation related
 
@@ -273,6 +285,16 @@ This group runs a local Trivy dependency scan, mainly to reproduce a CI security
 | `make gen-query-sysq` | Executes SQLC code generation for System Query. | Executes `dump-schema` → `merge-dml-sysq` → `gen-sqlc`. |
 
 ## `.makefiles/github` group
+
+### GitHub Actions lint / pin related
+
+| Command | Description | Notes |
+| --- | --- | --- |
+| `make actions-lint` | Lints workflow / composite-action definitions with actionlint. | Invokes `make actions-lint-ci` inside the `go_tool_runner` container. |
+| `make actions-lint-ci` | Runs `actionlint` directly. | CI target. |
+| `make pin-actions-resolve` | Resolves each `uses:` tag to its commit SHA and updates the `.github/actions-pin.toml` lockfile. | Quarantines refs younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14; 0 disables). |
+| `make pin-actions-apply` | Pins `uses:` to `@<sha> # <tag>` from the lockfile. | None |
+| `make pin-actions-check` | Verifies `uses:` are pinned per the lockfile (no write). | CI / pre-commit gate. |
 
 ### GitHub configuration related
 
