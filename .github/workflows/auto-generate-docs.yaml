@@ -86,6 +86,9 @@ jobs:
           make gen-portal-docs
           make gen-docs-json
 
+      - name: Generate godoc
+        run: make gen-godoc
+
       - name: Fix permissions
         run: |
           sudo chown -R $USER:$USER docs
