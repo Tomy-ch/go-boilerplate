@@ -43,6 +43,8 @@ include .makefiles/sql/lint.mk
 include .makefiles/markdown/lint.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
+# Docker関連
+include .makefiles/docker/lint.mk
 
 # 一括実行系ファイル
 # GitHub関連

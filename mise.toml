@@ -19,6 +19,8 @@ lefthook = "2.1.8"
 air = "1.65.3"
 golines = "0.13.0"
 gofumpt = "0.10.0"
+# Dockerfile linter（Haskell 製、標準レジストリで解決可）
+hadolint = "2.14.0"
 
 # Go ベース（backend 明示）
 "aqua:golang-migrate/migrate" = "4.19.1"
