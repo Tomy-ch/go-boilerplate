@@ -32,7 +32,8 @@ RUN mise install aqua:golang-migrate/migrate \
     && mise install sqlc \
     && mise install aqua:aquasecurity/trivy \
     && mise install actionlint \
-    && mise install hadolint
+    && mise install hadolint \
+    && mise install gitleaks
 
 RUN mkdir /out \
     && cp "$(mise which migrate)" /out/ \
@@ -41,10 +42,11 @@ RUN mkdir /out \
     && cp "$(mise which sqlc)" /out/ \
     && cp "$(mise which trivy)" /out/ \
     && cp "$(mise which actionlint)" /out/ \
-    && cp "$(mise which hadolint)" /out/
+    && cp "$(mise which hadolint)" /out/ \
+    && cp "$(mise which gitleaks)" /out/
 
 # ------------------------------
-# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / hadolint を mise.toml のバージョンで提供
+# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / hadolint / gitleaks を mise.toml のバージョンで提供
 # Go ランタイムは golang 公式 base image を使用（mise.toml の go 値と `make sync-go-version` で同期）
 # ------------------------------
 FROM golang:1.26.4-alpine AS go_tools

@@ -20,6 +20,9 @@ pre-commit:
         - "docker/**/Dockerfile"
         - ".hadolint.yaml"
       run: make docker-lint
+    secret-scan:
+      # 秘密はどのファイルにも入りうるため glob で絞らず全コミットで実行する
+      run: make secret-scan
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
