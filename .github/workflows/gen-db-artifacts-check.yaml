@@ -57,6 +57,9 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@v2
         with:
+          # mise 本体のバージョンを固定（latest 追従だと未公開リリースを掴んで 404 になるため）。
+          # docker/tools/Dockerfile の MISE_VERSION と揃える。
+          version: 2026.6.0
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
