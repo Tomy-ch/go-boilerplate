@@ -214,18 +214,74 @@ func TestStacktrace(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("StackTrace文字列を保持するFieldを生成する", func(t *testing.T) {
+		t.Run("StackTraceを行配列として保持するFieldを生成する", func(t *testing.T) {
 			t.Parallel()
 
 			const expectedKey = "key"
 			expectedError := xerrors.New("something went wrong")
 			expected := &Field{
-				key:         expectedKey,
-				kind:        fieldString,
-				stringValue: xerrors.StackTrace(expectedError),
+				key:          expectedKey,
+				kind:         fieldStrings,
+				stringsValue: SplitStackLines(xerrors.StackTrace(expectedError)),
 			}
 
 			assert.Equal(t, expected, Stacktrace(expectedKey, expectedError))
+		})
+
+		t.Run("nilエラーの場合、空のFieldを生成する", func(t *testing.T) {
+			t.Parallel()
+
+			const expectedKey = "key"
+			expected := &Field{
+				key:          expectedKey,
+				kind:         fieldStrings,
+				stringsValue: nil,
+			}
+
+			assert.Equal(t, expected, Stacktrace(expectedKey, nil))
+		})
+	})
+}
+
+func TestSplitStackLines(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("複数行を改行で分割し各行の先頭タブを除いた行配列を返す", func(t *testing.T) {
+			t.Parallel()
+
+			input := "frame1\n\t/path/to/file.go:10\nframe2\n\t/path/to/other.go:20"
+			expected := []string{
+				"frame1",
+				"/path/to/file.go:10",
+				"frame2",
+				"/path/to/other.go:20",
+			}
+			assert.Equal(t, expected, SplitStackLines(input))
+		})
+
+		t.Run("先頭タブが複数連続していても全て除去される", func(t *testing.T) {
+			t.Parallel()
+
+			input := "frame1\n\t\t/path/to/file.go:10"
+			expected := []string{"frame1", "/path/to/file.go:10"}
+			assert.Equal(t, expected, SplitStackLines(input))
+		})
+
+		t.Run("末尾改行は分割結果から除去される", func(t *testing.T) {
+			t.Parallel()
+
+			input := "frame1\nframe2\n"
+			expected := []string{"frame1", "frame2"}
+			assert.Equal(t, expected, SplitStackLines(input))
+		})
+
+		t.Run("空文字列の場合、nilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, SplitStackLines(""))
 		})
 	})
 }

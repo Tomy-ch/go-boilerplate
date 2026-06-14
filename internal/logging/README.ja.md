@@ -126,7 +126,7 @@ logger.Info(
 |Time|time.Time（RFC3339Nano文字列に変換）|
 |DurationMs|time.Duration（ミリ秒単位のfloat64に変換）|
 |Error|error|
-|Stacktrace|error（スタックトレース文字列に変換）|
+|Stacktrace|error（スタックトレースを行配列 []string に変換）|
 |Any|any|
 
 この設計の目的

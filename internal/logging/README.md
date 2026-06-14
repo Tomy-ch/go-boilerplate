@@ -124,7 +124,7 @@ Supported types
 |Time|time.Time (converted to RFC3339Nano string)|
 |DurationMs|time.Duration (converted to float64 in milliseconds)|
 |Error|error|
-|Stacktrace|error (converted to stack trace string)|
+|Stacktrace|error (converted to stack trace lines as []string)|
 |Any|any|
 
 Purpose of this design

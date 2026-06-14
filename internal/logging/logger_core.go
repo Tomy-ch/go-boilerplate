@@ -62,9 +62,17 @@ func NewDevelopmentLogger() (Logger, error) {
 // Build 失敗時は zap が nil の *zap.Logger を返すため、それを包んだ
 // Logger（中身 nil）を返すと初回ログ出力で nil 参照 panic になる。
 // よってエラー時は Logger を返さず、nil とエラーのみを返す。
+//
+// stacktrace は zap デフォルトの単一文字列ではなく行配列で出力するため、
+// wrapStacktraceCore で Entry.Stack を []string に置き換えてエンコードする。
 func buildLogger(cfg zap.Config, stacktraceLevel zapcore.Level) (Logger, error) {
+	stacktraceKey := cfg.EncoderConfig.StacktraceKey
 	zl, err := cfg.Build(
-		zap.AddCaller(), zap.AddStacktrace(stacktraceLevel),
+		zap.AddCaller(),
+		zap.AddStacktrace(stacktraceLevel),
+		zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+			return wrapStacktraceCore(core, stacktraceKey)
+		}),
 	)
 	if err != nil {
 		return nil, err
