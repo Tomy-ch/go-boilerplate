@@ -8,6 +8,9 @@ node_modules/
 # ビルド済みのバイナリファイル
 tmp/
 
+# godoc の静的HTML生成物（make gen-godoc で再生成するためコミットしない）
+docs/godoc/
+
 # -----ファイル-----
 # ディレクトリの表示管理ファイル
 .DS_Store
