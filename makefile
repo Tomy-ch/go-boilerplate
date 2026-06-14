@@ -44,6 +44,7 @@ include .makefiles/sql/lint.mk
 include .makefiles/markdown/lint.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
+include .makefiles/security/gitleaks.mk
 # Docker関連
 include .makefiles/docker/lint.mk
 

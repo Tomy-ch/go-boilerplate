@@ -26,6 +26,9 @@ pre-commit:
         - ".github/actions/**/*.{yml,yaml}"
         - ".github/actions-pin.toml"
       run: make pin-actions-check
+    secret-scan:
+      # 秘密はどのファイルにも入りうるため glob で絞らず全コミットで実行する
+      run: make secret-scan
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
