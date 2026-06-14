@@ -72,3 +72,6 @@ jobs:
 
       - name: Report Test Coverage
         uses: k1LoW/octocov-action@v1
+
+      - name: Coverage gate
+        run: make cover-gate
