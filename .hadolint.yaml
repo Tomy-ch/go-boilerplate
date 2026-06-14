@@ -1,9 +1,5 @@
 # hadolint 設定
 # https://github.com/hadolint/hadolint#configure
-#
-# DL3018 (apk) / DL3008 (apt) のバージョン固定は意図的に無効化する。
-# base / ツールイメージのパッケージは alpine / debian リポジトリの流動性が高く、
-# 固定すると再現性より保守コストが上回るため。
 ignored:
-  - DL3018
-  - DL3008
+  - DL3018 # apk のバージョン固定: alpine リポジトリの流動性が高く、固定は保守コストが過大なため無効化
+  - DL3008 # apt のバージョン固定: debian リポジトリの流動性が高く、固定は保守コストが過大なため無効化
