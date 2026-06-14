@@ -270,6 +270,8 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make gen-docs-json` | Portal 用ドキュメントリンク JSON を生成します。 | なし |
 | `make gen-portal-docs-ci` | Node.js スクリプトで Portal 用ドキュメントを直接生成します。 | CI 用ターゲットです。 |
 | `make gen-docs-json-ci` | Node.js スクリプトで Portal 用 JSON を直接生成します。 | CI 用ターゲットです。 |
+| `make gen-godoc` | godoc の静的 HTML を `docs/godoc/` に生成します。 | なし |
+| `make gen-godoc-ci` | godoc-static を直接実行して静的 HTML を生成します。 | CI 用ターゲットです。 |
 
 ## `.makefiles/gen` 系
 
