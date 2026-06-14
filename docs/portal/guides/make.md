@@ -270,6 +270,8 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container.
 | `make gen-docs-json` | Generates Portal documentation link JSON. | None |
 | `make gen-portal-docs-ci` | Generates Portal documentation directly via Node.js script. | CI target |
 | `make gen-docs-json-ci` | Generates Portal JSON directly via Node.js script. | CI target |
+| `make gen-godoc` | Generates static godoc HTML into `docs/godoc/`. | None |
+| `make gen-godoc-ci` | Runs godoc-static directly to generate static HTML. | CI target |
 
 ## `.makefiles/gen` group
 
