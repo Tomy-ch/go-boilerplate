@@ -40,6 +40,7 @@ commit-msg:
       run: mise exec npm:@commitlint/cli -- commitlint --edit {1}
 
 pre-push:
+  parallel: true
   commands:
     secret-scan:
       run: make secret-scan
