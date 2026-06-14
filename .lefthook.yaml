@@ -15,6 +15,11 @@ pre-commit:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/actions/**/*.{yml,yaml}"
       run: make actions-lint
+    docker-lint:
+      glob:
+        - "docker/**/Dockerfile"
+        - ".hadolint.yaml"
+      run: make docker-lint
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
