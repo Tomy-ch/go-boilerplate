@@ -20,9 +20,12 @@ pre-commit:
         - "docker/**/Dockerfile"
         - ".hadolint.yaml"
       run: make docker-lint
-    secret-scan:
-      # 秘密はどのファイルにも入りうるため glob で絞らず全コミットで実行する
-      run: make secret-scan
+    pin-actions:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/actions/**/*.{yml,yaml}"
+        - ".github/actions-pin.toml"
+      run: make pin-actions-check
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
@@ -38,6 +41,8 @@ commit-msg:
 
 pre-push:
   commands:
+    secret-scan:
+      run: make secret-scan
     test:
       run: make test
     gen-go-check:
