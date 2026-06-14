@@ -174,7 +174,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			// 2 回目は errHandlerKey ガードで抑止されるため、ボディは二重に書かれない。
+			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
 			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
 			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
 

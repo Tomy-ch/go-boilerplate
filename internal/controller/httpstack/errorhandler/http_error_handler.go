@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/error/response"
 	"go-boilerplate/internal/controller/httpstack/requestid"
 	"go-boilerplate/internal/controller/server"
@@ -18,8 +19,6 @@ const (
 	lowerBoundHTTPStatus      = 400
 	upperBoundHTTPStatus      = 600
 	errorLevelBoundHTTPStatus = 500
-
-	errHandlerKey = "http_error_handler"
 )
 
 // New は、Echo に HTTP エラーハンドラを登録します（DI 配線用エントリ・戻り値なし）。
@@ -36,10 +35,10 @@ func NewHTTPErrorHandler(logger logging.Logger, lf logging.LogFieldBuilder, obsC
 
 // handleHTTPError は、HTTPエラーを処理し、適切なレスポンスをクライアントに返します。
 func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig, err error) {
-	if v, ok := c.Get(errHandlerKey).(bool); ok && v {
+	if handled, _ := ctxhelper.GetErrorHandledFromEcho(c); handled {
 		return
 	}
-	c.Set(errHandlerKey, true)
+	ctxhelper.SetErrorHandledToEcho(c, true)
 
 	resp := normalizeHTTPError(err, requestid.GetRequestIDFromResponse(c))
 
@@ -58,7 +57,7 @@ func handleHTTPError(c echo.Context, logger logging.Logger, lf logging.LogFieldB
 	}
 
 	// リカバリ済みのパニックは middleware.recover が既にログ済みのため、二重ログを抑止する（500 応答は返す）。
-	if !server.IsRecovered(c) {
+	if recovered, _ := ctxhelper.GetRecoveredFromEcho(c); !recovered {
 		logHTTPError(c, logger, lf, obsCfg, resp)
 	}
 }

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
-	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v4"
@@ -59,7 +59,8 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack"))
 			require.ErrorIs(t, err, inErr)
-			assert.True(t, server.IsRecovered(c))
+			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
+			assert.True(t, recovered)
 		})
 
 		t.Run("X-Real-Ipヘッダがある場合、元errを返しリカバリ済みを記録する", func(t *testing.T) {
@@ -75,7 +76,8 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack2"))
 			require.ErrorIs(t, err, inErr)
-			assert.True(t, server.IsRecovered(c))
+			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
+			assert.True(t, recovered)
 		})
 	})
 }
