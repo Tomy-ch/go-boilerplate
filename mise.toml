@@ -4,6 +4,8 @@
 #
 # go / node / python の version は `make sync-versions` が go.mod・各 Dockerfile の
 # FROM タグ・関連 README へ伝播する。短い名前で解決できないツールは backend を明示する。
+min_version = "2026.6.0"
+
 [tools]
 # 言語ランタイム
 go = "1.26.4"

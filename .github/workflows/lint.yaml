@@ -36,6 +36,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@v2
         with:
+          version: 2026.6.0
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
