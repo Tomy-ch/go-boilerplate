@@ -33,16 +33,19 @@ var (
 	nodeFromRe   = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
 	pythonFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
 	// バッククォートを capture に含めることで置換後も保持する。
-	golangImageRe = regexp.MustCompile("(`golang:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
-	nodeImageRe   = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
-	pythonImageRe = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	golangImageRe    = regexp.MustCompile("(`golang:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	nodeImageRe      = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	pythonImageRe    = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	miseDockerfileRe = regexp.MustCompile(`(MISE_VERSION=v)\d+(?:\.\d+){0,2}()`)
+	miseActionRe     = regexp.MustCompile(`(?m)^([ \t]+version: )\d+(?:\.\d+){0,2}([ \t]*)$`)
 )
 
-// runtimeVersions は mise.toml [tools] から抽出した go / node / python のバージョン文字列。
+// runtimeVersions は mise.toml から抽出したバージョン文字列。
 type runtimeVersions struct {
 	Go     string
 	Node   string
 	Python string
+	Mise   string
 }
 
 // rule はファイル内の regex マッチ箇所を 1 つの version で置換する単位。
@@ -115,11 +118,15 @@ func parseMiseTOML(path string) (runtimeVersions, error) {
 			currentSection = m[1]
 			continue
 		}
-		if currentSection != "tools" {
-			continue
-		}
 		m := miseKeyRe.FindStringSubmatch(line)
 		if m == nil {
+			continue
+		}
+		if currentSection == "" && m[1] == "min_version" {
+			v.Mise = m[2]
+			continue
+		}
+		if currentSection != "tools" {
 			continue
 		}
 		switch m[1] {
@@ -139,9 +146,10 @@ func parseMiseTOML(path string) (runtimeVersions, error) {
 
 func printSource(v runtimeVersions) {
 	log.Println("Source: mise.toml")
-	log.Printf("  go     = %s", emptyAs(v.Go, "(unset)"))
-	log.Printf("  node   = %s", emptyAs(v.Node, "(unset)"))
-	log.Printf("  python = %s", emptyAs(v.Python, "(unset)"))
+	log.Printf("  go          = %s", emptyAs(v.Go))
+	log.Printf("  node        = %s", emptyAs(v.Node))
+	log.Printf("  python      = %s", emptyAs(v.Python))
+	log.Printf("  min_version = %s", emptyAs(v.Mise))
 }
 
 func dockerfileRule(file, label string, re *regexp.Regexp, version string, count int) rule {
@@ -212,6 +220,16 @@ func buildRules(v runtimeVersions) []rule {
 			"docker/tools/README.ja.md (node image)", nodeImageRe, v.Node, 1),
 		readmeRule("docker/tools/README.ja.md",
 			"docker/tools/README.ja.md (python image)", pythonImageRe, v.Python, 1),
+		dockerfileRule("docker/tools/Dockerfile",
+			"docker/tools/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
+		dockerfileRule("docker/server/Dockerfile",
+			"docker/server/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
+		dockerfileRule(".github/workflows/lint.yaml",
+			"lint.yaml (mise-action version)", miseActionRe, v.Mise, 1),
+		dockerfileRule(".github/workflows/gen-db-artifacts-check.yaml",
+			"gen-db-artifacts-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
+		dockerfileRule(".github/workflows/vulnerability-check.yaml",
+			"vulnerability-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
 	}
 }
 
@@ -232,7 +250,7 @@ func validateRules(rules []rule, root string) []string {
 	for _, r := range rules {
 		if r.version == "" {
 			errs = append(errs, fmt.Sprintf(
-				"%s: mise.toml [tools] に対応する key が未設定", r.label))
+				"%s: mise.toml に対応する version が未設定", r.label))
 		}
 	}
 	for _, r := range rules {
@@ -305,9 +323,9 @@ func reportAndExit(title string, errs []string) {
 	os.Exit(1)
 }
 
-func emptyAs(s, fallback string) string {
+func emptyAs(s string) string {
 	if s == "" {
-		return fallback
+		return "(unset)"
 	}
 	return s
 }
