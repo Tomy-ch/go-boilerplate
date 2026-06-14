@@ -21,7 +21,7 @@ jobs:
     env:
       ENV: ci
     steps:
-      - name: Fetch & Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
 
       - name: Run OpenAPI Bundle
@@ -64,7 +64,7 @@ jobs:
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Comment generated status on PR (diff/no-diff)
+      - name: Comment generated artifacts result on PR
         if: github.event_name == 'pull_request'
         continue-on-error: true
         uses: actions/github-script@v8

@@ -1,4 +1,4 @@
-name: Docker Image Scan Workflow
+name: Image Scan
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Fetch & Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
 
       - name: Setup Go
@@ -117,7 +117,7 @@ jobs:
           MD
           echo "Generated sbom-summary.md" && wc -c sbom-summary.md
 
-      - name: Comment SBOM Summary on PR
+      - name: Comment SBOM result on PR
         if: ${{ github.event_name == 'pull_request' }}
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
@@ -167,7 +167,7 @@ jobs:
           name: trivy-image-scan.txt
           path: trivy-image-scan.txt
 
-      - name: Comment Trivy result on PR
+      - name: Comment Trivy image scan result on PR
         if: ${{ github.event_name == 'pull_request' }}
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment

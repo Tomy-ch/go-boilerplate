@@ -144,6 +144,6 @@ jobs:
               });
             }
 
-      - name: Fail if any lint failed
+      - name: Fail if SQL lint failed
         if: always() && steps.lint.outputs.status != 'success'
         run: exit 1

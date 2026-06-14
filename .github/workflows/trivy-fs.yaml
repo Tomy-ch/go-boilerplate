@@ -1,4 +1,4 @@
-name: Dependency Vulnerability Scan Workflow
+name: Dependency Scan
 
 on:
   pull_request:

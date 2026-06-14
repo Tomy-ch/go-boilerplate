@@ -27,7 +27,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Fetch & Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
 
       - name: Setup Go
@@ -59,7 +59,7 @@ jobs:
           } | tee /tmp/sync-versions-drift.md
           exit 1
 
-      - name: Comment drift on PR
+      - name: Comment sync-versions result on PR
         if: github.event_name == 'pull_request' && failure() && steps.drift.outputs.status == 'drift'
         uses: actions/github-script@v8
         with:

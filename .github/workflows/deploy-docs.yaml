@@ -1,4 +1,4 @@
-name: Deploy Docs Portal
+name: Deploy Docs
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Fetch & Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
 
       - name: Upload Pages artifact

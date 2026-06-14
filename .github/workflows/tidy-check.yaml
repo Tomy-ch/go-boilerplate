@@ -1,4 +1,4 @@
-name: Go Module Consistency Check Workflow
+name: Module Tidy Check
 
 on:
   pull_request:
@@ -56,7 +56,7 @@ jobs:
 
           exit 0
 
-      - name: Comment go mod tidy result on PR
+      - name: Comment tidy result on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v8
         with:

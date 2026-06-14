@@ -1,4 +1,4 @@
-name: migration-check
+name: Migration Check
 
 on:
   pull_request:
@@ -16,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
       - name: Run migration checks
         id: migration
@@ -115,7 +116,7 @@ jobs:
             if (status === 'success') {
               body = [
                 marker,
-                '## ✅ Migration checks passed',
+                '## ✅ Migration check passed',
                 '',
                 `🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
                 '',
@@ -165,6 +166,6 @@ jobs:
               });
             }
 
-      - name: Fail job if migration check failed
+      - name: Fail if migration check failed
         if: steps.migration.outputs.status != 'success'
         run: exit 1

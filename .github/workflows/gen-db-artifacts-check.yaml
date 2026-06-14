@@ -45,7 +45,7 @@ jobs:
           --health-start-period=20s
 
     steps:
-      - name: Fetch & Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
 
       - name: Setup Go
@@ -62,7 +62,7 @@ jobs:
 
       - name: Install sqlc
         run: mise install sqlc
-      - name: Setup DB (wait & init)
+      - name: Setup DB
         uses: ./.github/actions/setup-postgres
         with:
           db: ${{ env.DB }}
@@ -112,7 +112,7 @@ jobs:
           else
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Comment changed files on PR
+      - name: Comment generated artifacts result on PR
         if: github.event_name == 'pull_request'
         continue-on-error: true
         uses: actions/github-script@v8

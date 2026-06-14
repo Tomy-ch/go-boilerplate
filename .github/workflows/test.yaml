@@ -1,4 +1,4 @@
-name: Golang Test Workflow
+name: Go Test
 
 on:
   pull_request:
@@ -44,7 +44,7 @@ jobs:
           --health-retries=5
           --health-start-period=20s
     steps:
-      - name: Fetch & Checkout repository
+      - name: Checkout
         uses: actions/checkout@v6
 
       - name: Setup Go
@@ -53,7 +53,7 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup DB (wait & init)
+      - name: Setup DB
         uses: ./.github/actions/setup-postgres
         with:
           db: ${{ env.DB }}

@@ -1,4 +1,4 @@
-name: Auto-generate Docs Pull Request
+name: Auto-generate Docs
 
 on:
   push:

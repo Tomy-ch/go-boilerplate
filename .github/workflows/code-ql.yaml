@@ -1,4 +1,4 @@
-name: Code Security Scan Workflow
+name: CodeQL Scan
 
 on:
   push:

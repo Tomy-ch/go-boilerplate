@@ -1,4 +1,4 @@
-name: Application Boot Verification
+name: App Boot Check
 
 on:
   pull_request:
