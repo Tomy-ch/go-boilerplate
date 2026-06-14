@@ -9,6 +9,13 @@ import (
 // 行ごとの []string に変換して emit する zapcore.Core ラッパです。
 // Grafana / Loki などの JSON ビューアでは配列要素ごとに改行表示されるため、
 // 単一文字列のときに発生する \n のリテラル表示問題を避けられます。
+//
+// 前提: 本実装は単一の leaf Core をラップする用途のみを想定します。
+// Check は内側 Core の Check に委譲せず自身のみ登録するため、内側が Sampler や
+// 複数子の Tee の場合に Check フェーズの副作用（Sampler のカウンタ更新など）が
+// 失われます。現状の NewProductionLogger / NewDevelopmentLogger は Sampling を
+// 使わず Tee も組まないため到達しません。将来サンプリング等を導入する場合は
+// 本ラッパを Check/Write 二段階契約に沿って再設計してください。
 type stacktraceArrayCore struct {
 	zapcore.Core
 	key string

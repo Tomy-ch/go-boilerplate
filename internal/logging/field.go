@@ -132,13 +132,14 @@ func Stacktrace(key fieldKey, err error) *Field {
 }
 
 // SplitStackLines は、スタックトレース文字列を改行で分割し行配列に変換します。
-// 末尾の空行は除去し、空文字列入力では nil を返します。
+// 末尾の空行は除去し、空文字列または改行のみの入力では nil を返します。
 // 配列化により行境界が構造として表現されるため、`\t<file>:<line>` の先頭タブは除去します。
 func SplitStackLines(s string) []string {
-	if s == "" {
+	trimmed := strings.TrimRight(s, "\n")
+	if trimmed == "" {
 		return nil
 	}
-	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	lines := strings.Split(trimmed, "\n")
 	for i, line := range lines {
 		lines[i] = strings.TrimLeft(line, "\t")
 	}

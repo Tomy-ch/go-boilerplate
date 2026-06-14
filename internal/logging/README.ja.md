@@ -20,6 +20,7 @@
 internal/logging
 ├── logger.go
 ├── logger_core.go
+├── stacktrace_core.go
 ├── field.go
 ├── field_builder.go
 ├── const.go
@@ -33,6 +34,7 @@ internal/logging
 |---|---|
 |`logger.go`|アプリケーションが利用する Logger interface|
 |`logger_core.go`|zap.Logger の実装|
+|`stacktrace_core.go`|zap 自動付与の `Entry.Stack` を JSON 出力時に行配列へ変換する zapcore.Core ラッパ|
 |`field.go`|ログフィールドの型|
 |`field_builder.go`|HTTP / SQL / Observability ログフィールド生成|
 |`const.go`|ログキー定義|

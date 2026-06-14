@@ -20,6 +20,7 @@ The main purposes are as follows.
 internal/logging
 ├── logger.go
 ├── logger_core.go
+├── stacktrace_core.go
 ├── field.go
 ├── field_builder.go
 ├── const.go
@@ -33,6 +34,7 @@ The role of each file is as follows.
 |---|---|
 |`logger.go`|Logger interface used by application|
 |`logger_core.go`|Implementation of zap.Logger|
+|`stacktrace_core.go`|zapcore.Core wrapper that converts the auto-attached `Entry.Stack` into a line array for JSON output|
 |`field.go`|Type of log fields|
 |`field_builder.go`|Generation of HTTP / SQL / Observability log fields|
 |`const.go`|Log key definitions|
