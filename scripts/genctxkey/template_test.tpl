@@ -19,8 +19,9 @@ import (
 func TestSet{{.NameCamel}}(t *testing.T) {
 	t.Parallel()
 
-	base := context.Background()
-	ctx := context.WithValue(base, {{.NameLower}}Key, {{.TestSuccessValue}})
+	// Set{{.NameCamel}} が private な {{.NameLower}}Key で値を書き込むことを直接検証する
+	// （Get{{.NameCamel}} には依存しない / Set/Get のテストを独立にする）。
+	ctx := Set{{.NameCamel}}(context.Background(), {{.TestSuccessValue}})
 
 	val := ctx.Value({{.NameLower}}Key)
 	v, ok := val.({{.Type}})

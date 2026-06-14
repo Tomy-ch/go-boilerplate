@@ -15,8 +15,9 @@ import (
 func TestSetRecovered(t *testing.T) {
 	t.Parallel()
 
-	base := context.Background()
-	ctx := context.WithValue(base, recoveredKey, true)
+	// SetRecovered が private な recoveredKey で値を書き込むことを直接検証する
+	// （GetRecovered には依存しない / Set/Get のテストを独立にする）。
+	ctx := SetRecovered(context.Background(), true)
 
 	val := ctx.Value(recoveredKey)
 	v, ok := val.(bool)

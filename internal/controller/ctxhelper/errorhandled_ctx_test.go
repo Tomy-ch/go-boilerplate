@@ -15,8 +15,9 @@ import (
 func TestSetErrorHandled(t *testing.T) {
 	t.Parallel()
 
-	base := context.Background()
-	ctx := context.WithValue(base, errorhandledKey, true)
+	// SetErrorHandled が private な errorhandledKey で値を書き込むことを直接検証する
+	// （GetErrorHandled には依存しない / Set/Get のテストを独立にする）。
+	ctx := SetErrorHandled(context.Background(), true)
 
 	val := ctx.Value(errorhandledKey)
 	v, ok := val.(bool)
