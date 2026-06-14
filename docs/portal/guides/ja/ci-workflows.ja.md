@@ -19,8 +19,8 @@
 
 |ワークフロー|ファイル|説明|
 |---|---|---|
-|Go Lint|`lint.yaml`|golangci-lint による Go コードの静的解析|
-|Go Test|`test.yaml`|Go テスト実行とカバレッジレポート|
+|Go Lint|`go-lint.yaml`|golangci-lint による Go コードの静的解析|
+|Go Test|`go-test.yaml`|Go テスト実行とカバレッジレポート|
 |Module Tidy Check|`tidy-check.yaml`|go.mod / go.sum の整合性検証|
 |SQL Lint|`sql-lint.yaml`|sqlfluff による migration / DML / seed SQL の検証|
 |Actions Lint|`actions-lint.yaml`|actionlint による GitHub Actions 定義（ワークフロー / composite action）の検証（go_tool_runner 経由）|

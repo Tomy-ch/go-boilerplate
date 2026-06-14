@@ -19,8 +19,8 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 
 |Workflow|File|Description|
 |---|---|---|
-|Go Lint|`lint.yaml`|Run golangci-lint on Go code|
-|Go Test|`test.yaml`|Run Go tests with coverage reporting|
+|Go Lint|`go-lint.yaml`|Run golangci-lint on Go code|
+|Go Test|`go-test.yaml`|Run Go tests with coverage reporting|
 |Module Tidy Check|`tidy-check.yaml`|Verify go.mod / go.sum are tidied|
 |SQL Lint|`sql-lint.yaml`|Run sqlfluff on migration / DML / seed SQL files|
 |Actions Lint|`actions-lint.yaml`|Run actionlint on workflow / composite-action definitions (via go_tool_runner)|
