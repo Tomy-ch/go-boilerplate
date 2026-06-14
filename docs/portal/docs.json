@@ -731,6 +731,15 @@
       ]
     },
     {
+      "title": "Godoc",
+      "items": [
+        {
+          "name": "Godoc",
+          "path": "../godoc/index.html"
+        }
+      ]
+    },
+    {
       "title": "Maintenance (English)",
       "items": [
         {
