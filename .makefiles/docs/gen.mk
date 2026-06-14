@@ -41,5 +41,7 @@ gen-godoc-ci:
 		--exclude="$(GODOC_EXCLUDE)" \
 		--site-name="go-boilerplate godoc" \
 		--destination=$(GODOC_OUT) \
+		--zip="" \
 		.
-
+	# godoc-static が書き出すファイル一覧の mtime セル（CI 実行時刻ごとに変わり PR ノイズの原因）を空にして deterministic に
+	find $(GODOC_OUT) -name 'index.html' -exec sed -i -E 's|<td align="left">[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+ \+0000 UTC</td>|<td align="left"></td>|g' {} +
