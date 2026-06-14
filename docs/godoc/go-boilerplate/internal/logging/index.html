@@ -108,6 +108,9 @@
 			
 			
 			
+				
+				<dd><a href="#SplitStackLines">func SplitStackLines(s string) []string</a></dd>
+			
 			
 				
 				<dd><a href="#Field">type Field</a></dd>
@@ -227,6 +230,8 @@
 			
 				<a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html">logger_core.go</a>
 			
+				<a href="../../../src/go-boilerplate/internal/logging/stacktrace_core.go.html">stacktrace_core.go</a>
+			
 				<a href="../../../src/go-boilerplate/internal/logging/test_kit.go.html">test_kit.go</a>
 			
 			</span>
@@ -344,10 +349,26 @@
 		
 		
 		
+			
+			
+			<h2 id="SplitStackLines">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3386:3425#L127">SplitStackLines</a>
+				<a class="permalink" href="#SplitStackLines">¶</a>
+				
+				
+			</h2>
+			<pre>func SplitStackLines(s <a href="../../../builtin/#string">string</a>) []<a href="../../../builtin/#string">string</a></pre>
+			<p>SplitStackLines は、スタックトレース文字列を改行で分割し行配列に変換します。
+末尾の空行は除去し、空文字列または改行のみの入力では nil を返します。
+配列化により行境界が構造として表現されるため、`\t&lt;file&gt;:&lt;line&gt;` の先頭タブは除去します。
+
+			
+			
+
+		
 		
 			
 			
-			<h2 id="Field">type <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=365:577#L17">Field</a>
+			</p><h2 id="Field">type <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=376:588#L18">Field</a>
 				<a class="permalink" href="#Field">¶</a>
 				
 				
@@ -369,7 +390,7 @@
 
 			
 				
-				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2907:2943#L122">Any</a>
+				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3705:3741#L140">Any</a>
 					<a class="permalink" href="#Any">¶</a>
 					
 					
@@ -381,7 +402,7 @@
 				
 			
 				
-				</p><h3 id="Bool">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1735:1773#L77">Bool</a>
+				</p><h3 id="Bool">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1746:1784#L78">Bool</a>
 					<a class="permalink" href="#Bool">¶</a>
 					
 					
@@ -393,7 +414,7 @@
 				
 			
 				
-				</p><h3 id="DurationMs">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2193:2246#L95">DurationMs</a>
+				</p><h3 id="DurationMs">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2204:2257#L96">DurationMs</a>
 					<a class="permalink" href="#DurationMs">¶</a>
 					
 					
@@ -405,7 +426,7 @@
 				
 			
 				
-				</p><h3 id="Error">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2430:2472#L104">Error</a>
+				</p><h3 id="Error">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2441:2483#L105">Error</a>
 					<a class="permalink" href="#Error">¶</a>
 					
 					
@@ -417,7 +438,7 @@
 				
 			
 				
-				</p><h3 id="Float64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1519:1563#L68">Float64</a>
+				</p><h3 id="Float64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1530:1574#L69">Float64</a>
 					<a class="permalink" href="#Float64">¶</a>
 					
 					
@@ -429,7 +450,7 @@
 				
 			
 				
-				</p><h3 id="Int">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=856:892#L41">Int</a>
+				</p><h3 id="Int">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=867:903#L42">Int</a>
 					<a class="permalink" href="#Int">¶</a>
 					
 					
@@ -441,7 +462,7 @@
 				
 			
 				
-				</p><h3 id="Int64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1292:1332#L59">Int64</a>
+				</p><h3 id="Int64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1303:1343#L60">Int64</a>
 					<a class="permalink" href="#Int64">¶</a>
 					
 					
@@ -453,19 +474,21 @@
 				
 			
 				
-				</p><h3 id="Stacktrace">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2668:2715#L113">Stacktrace</a>
+				</p><h3 id="Stacktrace">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2855:2902#L116">Stacktrace</a>
 					<a class="permalink" href="#Stacktrace">¶</a>
 					
 					
 				</h3>
 				<pre>func Stacktrace(key fieldKey, err <a href="../../../builtin/#error">error</a>) *<a href="#Field">Field</a></pre>
 				<p>Stacktrace は、エラースタックトレースのログフィールドを作成します。
+JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよう、
+単一文字列ではなく行ごとに分割した []string を保持します。
 
 				
 				
 			
 				
-				</p><h3 id="String">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=650:692#L32">String</a>
+				</p><h3 id="String">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=661:703#L33">String</a>
 					<a class="permalink" href="#String">¶</a>
 					
 					
@@ -477,7 +500,7 @@
 				
 			
 				
-				</p><h3 id="Strings">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1066:1111#L50">Strings</a>
+				</p><h3 id="Strings">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1077:1122#L51">Strings</a>
 					<a class="permalink" href="#Strings">¶</a>
 					
 					
@@ -489,7 +512,7 @@
 				
 			
 				
-				</p><h3 id="Time">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1930:1973#L86">Time</a>
+				</p><h3 id="Time">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1941:1984#L87">Time</a>
 					<a class="permalink" href="#Time">¶</a>
 					
 					
@@ -675,7 +698,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=2365:2423#L67">New</a>
+				<h3 id="New">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=3050:3108#L79">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					

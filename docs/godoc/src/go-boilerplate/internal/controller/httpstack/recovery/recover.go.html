@@ -104,7 +104,7 @@
 <span id="L47" class="ln">    47  </span>		reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic)
 <span id="L48" class="ln">    48  </span>		recoverFields := []*logging.Field{
 <span id="L49" class="ln">    49  </span>			logging.String(logging.InternalErrorKey, err.Error()),
-<span id="L50" class="ln">    50  </span>			logging.String(logging.InternalStackTraceKey, string(stack)),
+<span id="L50" class="ln">    50  </span>			logging.Strings(logging.InternalStackTraceKey, logging.SplitStackLines(string(stack))),
 <span id="L51" class="ln">    51  </span>		}
 <span id="L52" class="ln">    52  </span>		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
 <span id="L53" class="ln">    53  </span>		logger.Named(&#34;middleware.recover&#34;).Error(&#34;panic recovered&#34;, fields...)
