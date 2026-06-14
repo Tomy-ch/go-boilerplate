@@ -64,8 +64,10 @@ jobs:
 
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Go lint: PASS (golangci-lint)" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Go lint: FAIL (golangci-lint)" >> "$GITHUB_OUTPUT"
           fi
 
           exit 0
@@ -73,97 +75,13 @@ jobs:
       - name: Comment Go lint result on PR
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        uses: actions/github-script@v8
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-
-            const marker = '<!-- golangci-lint-result -->';
-            const status = '${{ steps.golangci.outputs.status }}';
-            const code = '${{ steps.golangci.outputs.exit_code }}';
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-            const shortSha = headSha.slice(0, 7);
-
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            const read = (p) => {
-              try { return fs.readFileSync(p, 'utf8').trim(); }
-              catch (e) { return '(log not found)'; }
-            };
-
-            const trimLog = (txt) => {
-              const MAX = 45000;
-              if (txt.length <= MAX) return txt;
-              return txt.slice(0, MAX) + '\n... (truncated)';
-            };
-
-            const title = status === 'success'
-              ? '✅ Go lint: PASS (golangci-lint)'
-              : '❌ Go lint: FAIL (golangci-lint)';
-
-            const line = (code) =>
-              (code === '0')
-                ? '- ✅ golangci-lint has completed successfully.'
-                : '- ❌ Issues have been detected by golangci-lint. Please make the necessary corrections locally and commit the changes.';
-
-            const icon = (code) => (code === '0' ? '✅' : '🚨');
-
-            const body = [
-              marker,
-              `## ${title}`,
-              '',
-              line(code),
-              '',
-              `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
-              `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
-              '',
-              `<details><summary> ${icon(code)} golangci-lint log</summary>`,
-              '',
-              '```text',
-              trimLog(read('/tmp/golangci-lint.log')),
-              '```',
-              '</details>',
-            ].join('\n');
-
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-
-            const existing = comments.find(c => (c.body || '').includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body,
-              });
-            }
+          marker: '<!-- golangci-lint-result -->'
+          title: ${{ steps.golangci.outputs.title }}
+          body-file: /tmp/golangci-lint.log
+          details-summary: 'golangci-lint log'
 
       - name: Fail if golangci-lint failed
         if: always()
