@@ -1,0 +1,68 @@
+name: Actions Lint
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/actionlint.yaml'
+      - 'docker/tools/Dockerfile'
+      - 'mise.toml'
+      - '.makefiles/github/lint.mk'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actions-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build go tool runner
+        run: docker compose build go_tool_runner
+
+      - name: Run actionlint
+        id: actionlint
+        shell: bash
+        run: |
+          set +e
+
+          make actions-lint 2>&1 | tee /tmp/actionlint.log
+
+          code=${PIPESTATUS[0]}
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Actions lint: PASS (actionlint)" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Actions lint: FAIL (actionlint)" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      - name: Comment Actions lint result on PR
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- actions-lint-result -->'
+          title: ${{ steps.actionlint.outputs.title }}
+          body-file: /tmp/actionlint.log
+          details-summary: 'actionlint log'
+
+      - name: Fail if actionlint failed
+        if: always() && steps.actionlint.outputs.status != 'success'
+        run: exit 1

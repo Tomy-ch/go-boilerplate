@@ -27,17 +27,19 @@ RUN mise install aqua:golang-migrate/migrate \
     && mise install go:go.uber.org/mock/mockgen \
     && mise install oapi-codegen \
     && mise install sqlc \
-    && mise install aqua:aquasecurity/trivy
+    && mise install aqua:aquasecurity/trivy \
+    && mise install actionlint
 
 RUN mkdir /out \
     && cp "$(mise which migrate)" /out/ \
     && cp "$(mise which mockgen)" /out/ \
     && cp "$(mise which oapi-codegen)" /out/ \
     && cp "$(mise which sqlc)" /out/ \
-    && cp "$(mise which trivy)" /out/
+    && cp "$(mise which trivy)" /out/ \
+    && cp "$(mise which actionlint)" /out/
 
 # ------------------------------
-# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy を mise.toml のバージョンで提供
+# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint を mise.toml のバージョンで提供
 # Go ランタイムは golang 公式 base image を使用（mise.toml の go 値と `make sync-go-version` で同期）
 # ------------------------------
 FROM golang:1.26.4-alpine AS go_tools

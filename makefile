@@ -23,6 +23,7 @@ include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/setting/github.mk
 include .makefiles/github/setting/branch-ruleset.mk
 include .makefiles/github/setting/label-setting.mk
+include .makefiles/github/lint.mk
 # Go言語関連
 include .makefiles/go/fmt.mk
 include .makefiles/go/gen.mk
