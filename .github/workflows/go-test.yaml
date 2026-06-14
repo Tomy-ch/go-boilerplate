@@ -3,7 +3,7 @@ name: Go Test
 on:
   pull_request:
     paths:
-      - '.github/workflows/test.yaml'
+      - '.github/workflows/go-test.yaml'
       - '**/*.go'
       - 'go.mod'
       - 'go.sum'
@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  go-test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
