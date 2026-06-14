@@ -21,6 +21,8 @@ golines = "0.13.0"
 gofumpt = "0.10.0"
 # Dockerfile linter（Haskell 製、標準レジストリで解決可）
 hadolint = "2.14.0"
+# secret scanner（標準レジストリで解決可）
+gitleaks = "8.30.1"
 
 # Go ベース（backend 明示）
 "aqua:golang-migrate/migrate" = "4.19.1"
