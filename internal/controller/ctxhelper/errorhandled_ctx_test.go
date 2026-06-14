@@ -7,51 +7,47 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	{{- if .ImportPath}}
-
-	{{.ImportAlias}} "{{.ImportPath}}"
-	{{- end}}
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSet{{.NameCamel}}(t *testing.T) {
+func TestSetErrorHandled(t *testing.T) {
 	t.Parallel()
 
-	// Set{{.NameCamel}} が private な {{.NameLower}}Key で値を書き込むことを直接検証する
-	// （Get{{.NameCamel}} には依存しない / Set/Get のテストを独立にする）。
-	ctx := Set{{.NameCamel}}(context.Background(), {{.TestSuccessValue}})
+	// SetErrorHandled が private な errorhandledKey で値を書き込むことを直接検証する
+	// （GetErrorHandled には依存しない / Set/Get のテストを独立にする）。
+	ctx := SetErrorHandled(context.Background(), true)
 
-	val := ctx.Value({{.NameLower}}Key)
-	v, ok := val.({{.Type}})
+	val := ctx.Value(errorhandledKey)
+	v, ok := val.(bool)
 	assert.True(t, ok)
-	assert.Equal(t, {{.TestSuccessValue}}, v)
+	assert.Equal(t, true, v)
 }
 
-func TestGet{{.NameCamel}}(t *testing.T) {
+func TestGetErrorHandled(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系_標準コンテキストから取得できる", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		ctx = Set{{.NameCamel}}(ctx, {{.TestSuccessValue}})
+		ctx = SetErrorHandled(ctx, true)
 
-		val, ok := Get{{.NameCamel}}(ctx)
+		val, ok := GetErrorHandled(ctx)
 		assert.True(t, ok)
-		assert.Equal(t, {{.TestSuccessValue}}, val)
+		assert.Equal(t, true, val)
 	})
 
 	t.Run("異常系_値が無い場合はfalseを返す", func(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
-		val, ok := Get{{.NameCamel}}(ctx)
+		val, ok := GetErrorHandled(ctx)
 		assert.False(t, ok)
-		assert.Equal(t, {{.TestFailValue}}, val)
+		assert.Equal(t, false, val)
 	})
 }
 
-func TestSet{{.NameCamel}}ToEcho(t *testing.T) {
+func TestSetErrorHandledToEcho(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系_echoへ設定し取得できる", func(t *testing.T) {
@@ -62,11 +58,11 @@ func TestSet{{.NameCamel}}ToEcho(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		Set{{.NameCamel}}ToEcho(c, {{.TestSuccessValue}})
-		val, ok := Get{{.NameCamel}}FromEcho(c)
+		SetErrorHandledToEcho(c, true)
+		val, ok := GetErrorHandledFromEcho(c)
 
 		assert.True(t, ok)
-		assert.Equal(t, {{.TestSuccessValue}}, val)
+		assert.Equal(t, true, val)
 	})
 
 	t.Run("異常系_echoに値が無い場合はfalseを返す", func(t *testing.T) {
@@ -77,8 +73,8 @@ func TestSet{{.NameCamel}}ToEcho(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
-		val, ok := Get{{.NameCamel}}FromEcho(c)
+		val, ok := GetErrorHandledFromEcho(c)
 		assert.False(t, ok)
-		assert.Equal(t, {{.TestFailValue}}, val)
+		assert.Equal(t, false, val)
 	})
 }
