@@ -1,0 +1,337 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_prefecture
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/domain/prefecture/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_prefecture is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockRepository">type MockRepository</a></dd>
+				
+					
+					<dd>    <a href="#NewMockRepository">func NewMockRepository(ctrl *gomock.Controller) *MockRepository</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRepository.EXPECT">func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindByID">func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Prefecture, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindByIDs">func (m *MockRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) (prefecture.Prefectures, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindByName">func (m *MockRepository) FindByName(ctx context.Context, name string) (*prefecture.Prefecture, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockRepositoryMockRecorder">type MockRepositoryMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindByID">func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindByIDs">func (mr *MockRepositoryMockRecorder) FindByIDs(ctx, ids any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindByName">func (mr *MockRepositoryMockRecorder) FindByName(ctx, name any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html">mock_prefecture_repository.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockRepository">type <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=549:665#L12">MockRepository</a>
+				<a class="permalink" href="#MockRepository">¶</a>
+				
+				
+			</h2>
+			<p>MockRepository is a mock of Repository interface.
+
+			</p><pre>type MockRepository struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockRepository">func <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=854:917#L24">NewMockRepository</a>
+					<a class="permalink" href="#NewMockRepository">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockRepository(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockRepository">MockRepository</a></pre>
+				<p>NewMockRepository creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockRepository.EXPECT">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=1101:1162#L31">EXPECT</a>
+					<a class="permalink" href="#MockRepository.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) EXPECT() *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=1218:1318#L36">FindByID</a>
+					<a class="permalink" href="#MockRepository.FindByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/prefecture/">prefecture</a>.<a href="../../../../../go-boilerplate/internal/domain/prefecture/#Prefecture">Prefecture</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindByIDs">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=1789:1893#L51">FindByIDs</a>
+					<a class="permalink" href="#MockRepository.FindByIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindByIDs(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, ids []<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/domain/prefecture/">prefecture</a>.<a href="../../../../../go-boilerplate/internal/domain/prefecture/#Prefectures">Prefectures</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindByIDs mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindByName">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=2374:2475#L66">FindByName</a>
+					<a class="permalink" href="#MockRepository.FindByName">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindByName(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, name <a href="../../../../../builtin/#string">string</a>) (*<a href="../../../../../go-boilerplate/internal/domain/prefecture/">prefecture</a>.<a href="../../../../../go-boilerplate/internal/domain/prefecture/#Prefecture">Prefecture</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindByName mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRepositoryMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=738:802#L19">MockRepositoryMockRecorder</a>
+				<a class="permalink" href="#MockRepositoryMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockRepositoryMockRecorder is the mock recorder for MockRepository.
+
+			</p><pre>type MockRepositoryMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockRepositoryMockRecorder.FindByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=1529:1601#L45">FindByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindByID indicates an expected call of FindByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindByIDs">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=2108:2182#L60">FindByIDs</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindByIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindByIDs(ctx, ids <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindByIDs indicates an expected call of FindByIDs.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindByName">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.gen.go.html?s=2694:2770#L75">FindByName</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindByName">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindByName(ctx, name <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindByName indicates an expected call of FindByName.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer"><a href="../../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

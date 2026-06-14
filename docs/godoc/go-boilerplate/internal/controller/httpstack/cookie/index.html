@@ -1,0 +1,236 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>cookie - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package cookie
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/controller/httpstack/cookie&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package cookie は、セキュアなCookie設定を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#Middleware">func Middleware(cfg *SecurityCookie) echo.MiddlewareFunc</a></dd>
+			
+			
+				
+				<dd><a href="#SecurityCookie">type SecurityCookie</a></dd>
+				
+					
+					<dd>    <a href="#NewSecurityCookie">func NewSecurityCookie(p *config.SecureCookieConfig) *SecurityCookie</a></dd>
+				
+				
+					
+					<dd>    <a href="#SecurityCookie.RewriteSetCookie">func (cfg *SecurityCookie) RewriteSetCookie(raw string) string</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/cookie_parser.go.html">cookie_parser.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/cookie_writer.go.html">cookie_writer.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/middleware.go.html">middleware.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/secure_cookie.go.html">secure_cookie.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/middleware.go.html?s=107:163#L1">Middleware</a>
+				<a class="permalink" href="#Middleware">¶</a>
+				
+				
+			</h2>
+			<pre>func Middleware(cfg *<a href="#SecurityCookie">SecurityCookie</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
+			<p>Middleware は Echo 用 middleware です。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="SecurityCookie">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/secure_cookie.go.html?s=256:1594#L3">SecurityCookie</a>
+				<a class="permalink" href="#SecurityCookie">¶</a>
+				
+				
+			</h2>
+			<p>SecurityCookie は Set-Cookie を正規化するための設定です。
+
+			</p><pre>type SecurityCookie struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewSecurityCookie">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/secure_cookie.go.html?s=1673:1745#L37">NewSecurityCookie</a>
+					<a class="permalink" href="#NewSecurityCookie">¶</a>
+					
+					
+				</h3>
+				<pre>func NewSecurityCookie(
+    p *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#SecureCookieConfig">SecureCookieConfig</a>,
+) *<a href="#SecurityCookie">SecurityCookie</a></pre>
+				<p>NewSecurityCookie は、設定から SecurityCookie を構築します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="SecurityCookie.RewriteSetCookie">func (*SecurityCookie) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/secure_cookie.go.html?s=2942:3004#L75">RewriteSetCookie</a>
+					<a class="permalink" href="#SecurityCookie.RewriteSetCookie">¶</a>
+					
+					
+				</h3>
+				<pre>func (cfg *<a href="#SecurityCookie">SecurityCookie</a>) RewriteSetCookie(raw <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#string">string</a></pre>
+				<p>RewriteSetCookie は Set-Cookie ヘッダ値（1本）を cfg に基づいて上書きします。
+失敗時は空文字を返します（呼び出し側で元の raw を使う想定）。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer"><a href="../../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_tx
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/tx/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_tx is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockManager">type MockManager</a></dd>
+				
+					
+					<dd>    <a href="#NewMockManager">func NewMockManager(ctrl *gomock.Controller) *MockManager</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockManager.Do">func (m *MockManager) Do(ctx context.Context, fn func(context.Context) error) error</a></dd>
+				
+					
+					<dd>    <a href="#MockManager.EXPECT">func (m *MockManager) EXPECT() *MockManagerMockRecorder</a></dd>
+				
+			
+				
+				<dd><a href="#MockManagerMockRecorder">type MockManagerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockManagerMockRecorder.Do">func (mr *MockManagerMockRecorder) Do(ctx, fn any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/tx/mock/mock_tx_manager.gen.go.html">mock_tx_manager.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockManager">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/tx/mock/mock_tx_manager.gen.go.html?s=398:508#L10">MockManager</a>
+				<a class="permalink" href="#MockManager">¶</a>
+				
+				
+			</h2>
+			<p>MockManager is a mock of Manager interface.
+
+			</p><pre>type MockManager struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockManager">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/tx/mock/mock_tx_manager.gen.go.html?s=682:739#L22">NewMockManager</a>
+					<a class="permalink" href="#NewMockManager">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockManager(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockManager">MockManager</a></pre>
+				<p>NewMockManager creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockManager.Do">func (*MockManager) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/tx/mock/mock_tx_manager.gen.go.html?s=1022:1105#L34">Do</a>
+					<a class="permalink" href="#MockManager.Do">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockManager">MockManager</a>) Do(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, fn func(<a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) <a href="../../../../../../builtin/#error">error</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Do mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockManager.EXPECT">func (*MockManager) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/tx/mock/mock_tx_manager.gen.go.html?s=917:972#L29">EXPECT</a>
+					<a class="permalink" href="#MockManager.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockManager">MockManager</a>) EXPECT() *<a href="#MockManagerMockRecorder">MockManagerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockManagerMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/tx/mock/mock_tx_manager.gen.go.html?s=575:633#L17">MockManagerMockRecorder</a>
+				<a class="permalink" href="#MockManagerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockManagerMockRecorder is the mock recorder for MockManager.
+
+			</p><pre>type MockManagerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockManagerMockRecorder.Do">func (*MockManagerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/tx/mock/mock_tx_manager.gen.go.html?s=1248:1311#L42">Do</a>
+					<a class="permalink" href="#MockManagerMockRecorder.Do">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockManagerMockRecorder">MockManagerMockRecorder</a>) Do(ctx, fn <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Do indicates an expected call of Do.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer"><a href="../../../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

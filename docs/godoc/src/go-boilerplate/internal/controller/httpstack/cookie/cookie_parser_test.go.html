@@ -1,0 +1,346 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>cookie - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/controller">controller</a>/<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack">httpstack</a>/<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/cookie">cookie</a>/<span class="text-muted">cookie_parser_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/controller/httpstack/cookie">go-boilerplate/internal/controller/httpstack/cookie</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package cookie
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/ptr&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L10" class="ln">    10  </span>)
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span><span class="comment">// assertKV は、属性が値あり属性として want を保持することを検証します。</span>
+<span id="L13" class="ln">    13  </span>func assertKV(t *testing.T, attrs *cookieAttrs, key, want string) {
+<span id="L14" class="ln">    14  </span>	t.Helper()
+<span id="L15" class="ln">    15  </span>	v, ok := attrs.kv[key]
+<span id="L16" class="ln">    16  </span>	require.True(t, ok)
+<span id="L17" class="ln">    17  </span>	require.NotNil(t, v)
+<span id="L18" class="ln">    18  </span>	assert.Equal(t, want, *v)
+<span id="L19" class="ln">    19  </span>}
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// assertFlag は、属性がフラグ属性（値なし）として存在することを検証します。</span>
+<span id="L22" class="ln">    22  </span>func assertFlag(t *testing.T, attrs *cookieAttrs, key string) {
+<span id="L23" class="ln">    23  </span>	t.Helper()
+<span id="L24" class="ln">    24  </span>	v, ok := attrs.kv[key]
+<span id="L25" class="ln">    25  </span>	require.True(t, ok)
+<span id="L26" class="ln">    26  </span>	assert.Nil(t, v)
+<span id="L27" class="ln">    27  </span>}
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>func Test_parseSetCookie(t *testing.T) {
+<span id="L30" class="ln">    30  </span>	t.Parallel()
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L33" class="ln">    33  </span>		t.Parallel()
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>		t.Run(&#34;通常のCookieを解析できる&#34;, func(t *testing.T) {
+<span id="L36" class="ln">    36  </span>			t.Parallel()
+<span id="L37" class="ln">    37  </span>			raw := &#34;sessionid=abc123; HttpOnly; Path=/; Domain=example.com; SameSite=Strict; Max-Age=3600&#34;
+<span id="L38" class="ln">    38  </span>			name, value, attrs, ok := parseSetCookie(raw)
+<span id="L39" class="ln">    39  </span>			require.True(t, ok)
+<span id="L40" class="ln">    40  </span>			require.NotNil(t, attrs)
+<span id="L41" class="ln">    41  </span>			assert.Equal(t, &#34;sessionid&#34;, name)
+<span id="L42" class="ln">    42  </span>			assert.Equal(t, &#34;abc123&#34;, value)
+<span id="L43" class="ln">    43  </span>			assert.Equal(t, []string{&#34;httponly&#34;, &#34;path&#34;, &#34;domain&#34;, &#34;samesite&#34;, &#34;max-age&#34;}, attrs.order)
+<span id="L44" class="ln">    44  </span>			assertFlag(t, attrs, &#34;httponly&#34;)
+<span id="L45" class="ln">    45  </span>			assertKV(t, attrs, &#34;path&#34;, &#34;/&#34;)
+<span id="L46" class="ln">    46  </span>			assertKV(t, attrs, &#34;domain&#34;, &#34;example.com&#34;)
+<span id="L47" class="ln">    47  </span>			assertKV(t, attrs, &#34;samesite&#34;, &#34;Strict&#34;)
+<span id="L48" class="ln">    48  </span>			assertKV(t, attrs, &#34;max-age&#34;, &#34;3600&#34;)
+<span id="L49" class="ln">    49  </span>		})
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>		t.Run(&#34;重複属性は最後の値が反映される&#34;, func(t *testing.T) {
+<span id="L52" class="ln">    52  </span>			t.Parallel()
+<span id="L53" class="ln">    53  </span>			raw := &#34;id=1; Path=/first; Path=/second; Secure&#34;
+<span id="L54" class="ln">    54  </span>			name, value, attrs, ok := parseSetCookie(raw)
+<span id="L55" class="ln">    55  </span>			require.True(t, ok)
+<span id="L56" class="ln">    56  </span>			require.NotNil(t, attrs)
+<span id="L57" class="ln">    57  </span>			assert.Equal(t, &#34;id&#34;, name)
+<span id="L58" class="ln">    58  </span>			assert.Equal(t, &#34;1&#34;, value)
+<span id="L59" class="ln">    59  </span>			assert.Equal(t, []string{&#34;path&#34;, &#34;secure&#34;}, attrs.order)
+<span id="L60" class="ln">    60  </span>			assertKV(t, attrs, &#34;path&#34;, &#34;/second&#34;)
+<span id="L61" class="ln">    61  </span>			assertFlag(t, attrs, &#34;secure&#34;)
+<span id="L62" class="ln">    62  </span>		})
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>		t.Run(&#34;空の属性はスキップされる&#34;, func(t *testing.T) {
+<span id="L65" class="ln">    65  </span>			t.Parallel()
+<span id="L66" class="ln">    66  </span>			raw := &#34;id=1;  ; Path=/; HttpOnly&#34;
+<span id="L67" class="ln">    67  </span>			name, value, attrs, ok := parseSetCookie(raw)
+<span id="L68" class="ln">    68  </span>			require.True(t, ok)
+<span id="L69" class="ln">    69  </span>			require.NotNil(t, attrs)
+<span id="L70" class="ln">    70  </span>			assert.Equal(t, &#34;id&#34;, name)
+<span id="L71" class="ln">    71  </span>			assert.Equal(t, &#34;1&#34;, value)
+<span id="L72" class="ln">    72  </span>			assert.Equal(t, []string{&#34;path&#34;, &#34;httponly&#34;}, attrs.order)
+<span id="L73" class="ln">    73  </span>			assertKV(t, attrs, &#34;path&#34;, &#34;/&#34;)
+<span id="L74" class="ln">    74  </span>			assertFlag(t, attrs, &#34;httponly&#34;)
+<span id="L75" class="ln">    75  </span>		})
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span>		t.Run(&#34;空値KV属性はフラグと区別され=が保持される&#34;, func(t *testing.T) {
+<span id="L78" class="ln">    78  </span>			t.Parallel()
+<span id="L79" class="ln">    79  </span>			_, _, attrs, ok := parseSetCookie(&#34;id=1; Foo=; Bar&#34;)
+<span id="L80" class="ln">    80  </span>			require.True(t, ok)
+<span id="L81" class="ln">    81  </span>			require.NotNil(t, attrs)
+<span id="L82" class="ln">    82  </span>			assertKV(t, attrs, &#34;foo&#34;, &#34;&#34;)
+<span id="L83" class="ln">    83  </span>			assertFlag(t, attrs, &#34;bar&#34;)
+<span id="L84" class="ln">    84  </span>			assert.Equal(t, &#34;id=1; foo=; bar&#34;, buildSetCookie(&#34;id&#34;, &#34;1&#34;, attrs))
+<span id="L85" class="ln">    85  </span>		})
+<span id="L86" class="ln">    86  </span>	})
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L89" class="ln">    89  </span>		t.Parallel()
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span>		t.Run(&#34;空文字は失敗する&#34;, func(t *testing.T) {
+<span id="L92" class="ln">    92  </span>			t.Parallel()
+<span id="L93" class="ln">    93  </span>			_, _, _, ok := parseSetCookie(&#34;&#34;)
+<span id="L94" class="ln">    94  </span>			assert.False(t, ok)
+<span id="L95" class="ln">    95  </span>		})
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>		t.Run(&#34;イコール無しは失敗する&#34;, func(t *testing.T) {
+<span id="L98" class="ln">    98  </span>			t.Parallel()
+<span id="L99" class="ln">    99  </span>			_, _, _, ok := parseSetCookie(&#34;NoEquals&#34;)
+<span id="L100" class="ln">   100  </span>			assert.False(t, ok)
+<span id="L101" class="ln">   101  </span>		})
+<span id="L102" class="ln">   102  </span>	})
+<span id="L103" class="ln">   103  </span>}
+<span id="L104" class="ln">   104  </span>
+<span id="L105" class="ln">   105  </span>func Test_splitAttr(t *testing.T) {
+<span id="L106" class="ln">   106  </span>	t.Parallel()
+<span id="L107" class="ln">   107  </span>
+<span id="L108" class="ln">   108  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L109" class="ln">   109  </span>		t.Parallel()
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>		t.Run(&#34;等号なしはフラグ扱い&#34;, func(t *testing.T) {
+<span id="L112" class="ln">   112  </span>			t.Parallel()
+<span id="L113" class="ln">   113  </span>			k, v, isKV := splitAttr(&#34;HttpOnly&#34;)
+<span id="L114" class="ln">   114  </span>			assert.Equal(t, &#34;HttpOnly&#34;, k)
+<span id="L115" class="ln">   115  </span>			assert.Empty(t, v)
+<span id="L116" class="ln">   116  </span>			assert.False(t, isKV)
+<span id="L117" class="ln">   117  </span>		})
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>		t.Run(&#34;等号ありは分割される&#34;, func(t *testing.T) {
+<span id="L120" class="ln">   120  </span>			t.Parallel()
+<span id="L121" class="ln">   121  </span>			k, v, isKV := splitAttr(&#34;Key=Value&#34;)
+<span id="L122" class="ln">   122  </span>			assert.Equal(t, &#34;Key&#34;, k)
+<span id="L123" class="ln">   123  </span>			assert.Equal(t, &#34;Value&#34;, v)
+<span id="L124" class="ln">   124  </span>			assert.True(t, isKV)
+<span id="L125" class="ln">   125  </span>		})
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span>		t.Run(&#34;先頭が等号でも値が取れる&#34;, func(t *testing.T) {
+<span id="L128" class="ln">   128  </span>			t.Parallel()
+<span id="L129" class="ln">   129  </span>			k, v, isKV := splitAttr(&#34;=value&#34;)
+<span id="L130" class="ln">   130  </span>			assert.Empty(t, k)
+<span id="L131" class="ln">   131  </span>			assert.Equal(t, &#34;value&#34;, v)
+<span id="L132" class="ln">   132  </span>			assert.True(t, isKV)
+<span id="L133" class="ln">   133  </span>		})
+<span id="L134" class="ln">   134  </span>	})
+<span id="L135" class="ln">   135  </span>}
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>func Test_setBoolAttr(t *testing.T) {
+<span id="L138" class="ln">   138  </span>	t.Parallel()
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L141" class="ln">   141  </span>		t.Parallel()
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span>		t.Run(&#34;オンで追加、オフで削除される&#34;, func(t *testing.T) {
+<span id="L144" class="ln">   144  </span>			t.Parallel()
+<span id="L145" class="ln">   145  </span>			attrs := &amp;cookieAttrs{order: []string{}, kv: map[string]*string{}}
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>			setBoolAttr(attrs, &#34;Secure&#34;, true)
+<span id="L148" class="ln">   148  </span>			assert.Equal(t, []string{&#34;secure&#34;}, attrs.order)
+<span id="L149" class="ln">   149  </span>			assertFlag(t, attrs, &#34;secure&#34;)
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>			<span class="comment">// 再度オンにしても重複しない</span>
+<span id="L152" class="ln">   152  </span>			setBoolAttr(attrs, &#34;secure&#34;, true)
+<span id="L153" class="ln">   153  </span>			assert.Len(t, attrs.order, 1)
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span>			<span class="comment">// オフにすると削除される</span>
+<span id="L156" class="ln">   156  </span>			setBoolAttr(attrs, &#34;SECURE&#34;, false)
+<span id="L157" class="ln">   157  </span>			_, ok := attrs.kv[&#34;secure&#34;]
+<span id="L158" class="ln">   158  </span>			assert.False(t, ok)
+<span id="L159" class="ln">   159  </span>			assert.Empty(t, attrs.order)
+<span id="L160" class="ln">   160  </span>		})
+<span id="L161" class="ln">   161  </span>	})
+<span id="L162" class="ln">   162  </span>}
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span>func Test_setKVAttr(t *testing.T) {
+<span id="L165" class="ln">   165  </span>	t.Parallel()
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L168" class="ln">   168  </span>		t.Parallel()
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>		t.Run(&#34;値が設定され更新される&#34;, func(t *testing.T) {
+<span id="L171" class="ln">   171  </span>			t.Parallel()
+<span id="L172" class="ln">   172  </span>			attrs := &amp;cookieAttrs{order: []string{}, kv: map[string]*string{}}
+<span id="L173" class="ln">   173  </span>
+<span id="L174" class="ln">   174  </span>			setKVAttr(attrs, &#34;Path&#34;, &#34;/home&#34;)
+<span id="L175" class="ln">   175  </span>			assert.Equal(t, []string{&#34;path&#34;}, attrs.order)
+<span id="L176" class="ln">   176  </span>			assertKV(t, attrs, &#34;path&#34;, &#34;/home&#34;)
+<span id="L177" class="ln">   177  </span>
+<span id="L178" class="ln">   178  </span>			<span class="comment">// 更新</span>
+<span id="L179" class="ln">   179  </span>			setKVAttr(attrs, &#34;path&#34;, &#34;/home2&#34;)
+<span id="L180" class="ln">   180  </span>			assert.Len(t, attrs.order, 1)
+<span id="L181" class="ln">   181  </span>			assertKV(t, attrs, &#34;path&#34;, &#34;/home2&#34;)
+<span id="L182" class="ln">   182  </span>		})
+<span id="L183" class="ln">   183  </span>	})
+<span id="L184" class="ln">   184  </span>}
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>func Test_delAttr(t *testing.T) {
+<span id="L187" class="ln">   187  </span>	t.Parallel()
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L190" class="ln">   190  </span>		t.Parallel()
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>		t.Run(&#34;指定キーが削除され順序も保たれる&#34;, func(t *testing.T) {
+<span id="L193" class="ln">   193  </span>			t.Parallel()
+<span id="L194" class="ln">   194  </span>			attrs := &amp;cookieAttrs{order: []string{&#34;a&#34;, &#34;b&#34;, &#34;c&#34;}, kv: map[string]*string{&#34;a&#34;: ptr.To(&#34;1&#34;), &#34;b&#34;: ptr.To(&#34;2&#34;), &#34;c&#34;: ptr.To(&#34;3&#34;)}}
+<span id="L195" class="ln">   195  </span>
+<span id="L196" class="ln">   196  </span>			delAttr(attrs, &#34;b&#34;)
+<span id="L197" class="ln">   197  </span>			assert.Equal(t, []string{&#34;a&#34;, &#34;c&#34;}, attrs.order)
+<span id="L198" class="ln">   198  </span>			_, ok := attrs.kv[&#34;b&#34;]
+<span id="L199" class="ln">   199  </span>			assert.False(t, ok)
+<span id="L200" class="ln">   200  </span>
+<span id="L201" class="ln">   201  </span>			<span class="comment">// 存在しないキーの削除は影響がない</span>
+<span id="L202" class="ln">   202  </span>			delAttr(attrs, &#34;z&#34;)
+<span id="L203" class="ln">   203  </span>			assert.Equal(t, []string{&#34;a&#34;, &#34;c&#34;}, attrs.order)
+<span id="L204" class="ln">   204  </span>		})
+<span id="L205" class="ln">   205  </span>	})
+<span id="L206" class="ln">   206  </span>}
+<span id="L207" class="ln">   207  </span>
+<span id="L208" class="ln">   208  </span>func Test_buildSetCookie(t *testing.T) {
+<span id="L209" class="ln">   209  </span>	t.Parallel()
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L212" class="ln">   212  </span>		t.Parallel()
+<span id="L213" class="ln">   213  </span>
+<span id="L214" class="ln">   214  </span>		t.Run(&#34;属性の順序と正規化を反映する&#34;, func(t *testing.T) {
+<span id="L215" class="ln">   215  </span>			t.Parallel()
+<span id="L216" class="ln">   216  </span>			attrs := &amp;cookieAttrs{
+<span id="L217" class="ln">   217  </span>				order: []string{&#34;httponly&#34;, &#34;path&#34;, &#34;domain&#34;, &#34;somespecial&#34;},
+<span id="L218" class="ln">   218  </span>				kv:    map[string]*string{&#34;httponly&#34;: nil, &#34;path&#34;: ptr.To(&#34;/&#34;), &#34;domain&#34;: ptr.To(&#34;example.com&#34;), &#34;somespecial&#34;: ptr.To(&#34;v&#34;)},
+<span id="L219" class="ln">   219  </span>			}
+<span id="L220" class="ln">   220  </span>			s := buildSetCookie(&#34;id&#34;, &#34;1&#34;, attrs)
+<span id="L221" class="ln">   221  </span>			assert.Equal(t, &#34;id=1; HttpOnly; Path=/; Domain=example.com; somespecial=v&#34;, s)
+<span id="L222" class="ln">   222  </span>		})
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>		t.Run(&#34;kvに存在しないorderは無視される&#34;, func(t *testing.T) {
+<span id="L225" class="ln">   225  </span>			t.Parallel()
+<span id="L226" class="ln">   226  </span>			attrs := &amp;cookieAttrs{order: []string{&#34;a&#34;, &#34;b&#34;}, kv: map[string]*string{&#34;a&#34;: ptr.To(&#34;va&#34;)}}
+<span id="L227" class="ln">   227  </span>			s := buildSetCookie(&#34;k&#34;, &#34;v&#34;, attrs)
+<span id="L228" class="ln">   228  </span>			assert.Equal(t, &#34;k=v; a=va&#34;, s)
+<span id="L229" class="ln">   229  </span>		})
+<span id="L230" class="ln">   230  </span>	})
+<span id="L231" class="ln">   231  </span>}
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>func Test_canonicalAttrKey(t *testing.T) {
+<span id="L234" class="ln">   234  </span>	t.Parallel()
+<span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L237" class="ln">   237  </span>		t.Parallel()
+<span id="L238" class="ln">   238  </span>
+<span id="L239" class="ln">   239  </span>		t.Run(&#34;httponlyはHttpOnlyに正規化される&#34;, func(t *testing.T) {
+<span id="L240" class="ln">   240  </span>			t.Parallel()
+<span id="L241" class="ln">   241  </span>			assert.Equal(t, &#34;HttpOnly&#34;, canonicalAttrKey(&#34;httponly&#34;))
+<span id="L242" class="ln">   242  </span>		})
+<span id="L243" class="ln">   243  </span>
+<span id="L244" class="ln">   244  </span>		t.Run(&#34;samesiteはSameSiteに正規化される&#34;, func(t *testing.T) {
+<span id="L245" class="ln">   245  </span>			t.Parallel()
+<span id="L246" class="ln">   246  </span>			assert.Equal(t, &#34;SameSite&#34;, canonicalAttrKey(&#34;samesite&#34;))
+<span id="L247" class="ln">   247  </span>		})
+<span id="L248" class="ln">   248  </span>
+<span id="L249" class="ln">   249  </span>		t.Run(&#34;max-ageはMax-Ageに正規化される&#34;, func(t *testing.T) {
+<span id="L250" class="ln">   250  </span>			t.Parallel()
+<span id="L251" class="ln">   251  </span>			assert.Equal(t, &#34;Max-Age&#34;, canonicalAttrKey(&#34;max-age&#34;))
+<span id="L252" class="ln">   252  </span>		})
+<span id="L253" class="ln">   253  </span>
+<span id="L254" class="ln">   254  </span>		t.Run(&#34;secureはSecureに正規化される&#34;, func(t *testing.T) {
+<span id="L255" class="ln">   255  </span>			t.Parallel()
+<span id="L256" class="ln">   256  </span>			assert.Equal(t, &#34;Secure&#34;, canonicalAttrKey(&#34;secure&#34;))
+<span id="L257" class="ln">   257  </span>		})
+<span id="L258" class="ln">   258  </span>
+<span id="L259" class="ln">   259  </span>		t.Run(&#34;domainはDomainに正規化される&#34;, func(t *testing.T) {
+<span id="L260" class="ln">   260  </span>			t.Parallel()
+<span id="L261" class="ln">   261  </span>			assert.Equal(t, &#34;Domain&#34;, canonicalAttrKey(&#34;domain&#34;))
+<span id="L262" class="ln">   262  </span>		})
+<span id="L263" class="ln">   263  </span>
+<span id="L264" class="ln">   264  </span>		t.Run(&#34;pathはPathに正規化される&#34;, func(t *testing.T) {
+<span id="L265" class="ln">   265  </span>			t.Parallel()
+<span id="L266" class="ln">   266  </span>			assert.Equal(t, &#34;Path&#34;, canonicalAttrKey(&#34;path&#34;))
+<span id="L267" class="ln">   267  </span>		})
+<span id="L268" class="ln">   268  </span>
+<span id="L269" class="ln">   269  </span>		t.Run(&#34;expiresはExpiresに正規化される&#34;, func(t *testing.T) {
+<span id="L270" class="ln">   270  </span>			t.Parallel()
+<span id="L271" class="ln">   271  </span>			assert.Equal(t, &#34;Expires&#34;, canonicalAttrKey(&#34;expires&#34;))
+<span id="L272" class="ln">   272  </span>		})
+<span id="L273" class="ln">   273  </span>
+<span id="L274" class="ln">   274  </span>		t.Run(&#34;既知でない属性は元のまま返す&#34;, func(t *testing.T) {
+<span id="L275" class="ln">   275  </span>			t.Parallel()
+<span id="L276" class="ln">   276  </span>			assert.Equal(t, &#34;custom&#34;, canonicalAttrKey(&#34;custom&#34;))
+<span id="L277" class="ln">   277  </span>		})
+<span id="L278" class="ln">   278  </span>	})
+<span id="L279" class="ln">   279  </span>}
+<span id="L280" class="ln">   280  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/cookie_parser_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer"><a href="../../../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

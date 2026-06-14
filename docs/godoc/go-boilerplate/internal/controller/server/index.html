@@ -1,0 +1,253 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>server - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package server
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/controller/server&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package server は、サーバーインスタンスを初期化します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#BuildHTTPRequestLogInput">func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequestLogInput</a></dd>
+			
+				
+				<dd><a href="#ExtractPathParams">func ExtractPathParams(c echo.Context) map[string]string</a></dd>
+			
+				
+				<dd><a href="#ExtractQueryParams">func ExtractQueryParams(c echo.Context) map[string][]string</a></dd>
+			
+				
+				<dd><a href="#IsRecovered">func IsRecovered(c echo.Context) bool</a></dd>
+			
+				
+				<dd><a href="#MarkRecovered">func MarkRecovered(c echo.Context)</a></dd>
+			
+				
+				<dd><a href="#NewAppServer">func NewAppServer(srvCfg *config.ServerConfig) *echo.Echo</a></dd>
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/controller/server/app_server.go.html">app_server.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html">echo.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="BuildHTTPRequestLogInput">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=940:1031#L17">BuildHTTPRequestLogInput</a>
+				<a class="permalink" href="#BuildHTTPRequestLogInput">¶</a>
+				
+				
+			</h2>
+			<pre>func BuildHTTPRequestLogInput(c echo.<a href="#Context">Context</a>, eventType <a href="../../../../builtin/#string">string</a>) <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#HTTPRequestLogInput">HTTPRequestLogInput</a></pre>
+			<p>BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
+eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ExtractPathParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=1795:1851#L41">ExtractPathParams</a>
+				<a class="permalink" href="#ExtractPathParams">¶</a>
+				
+				
+			</h2>
+			<pre>func ExtractPathParams(c echo.<a href="#Context">Context</a>) map[<a href="../../../../builtin/#string">string</a>]<a href="../../../../builtin/#string">string</a></pre>
+			<p>ExtractPathParams は、Echoコンテキストからパスパラメータを抽出します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ExtractQueryParams">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=2088:2147#L50">ExtractQueryParams</a>
+				<a class="permalink" href="#ExtractQueryParams">¶</a>
+				
+				
+			</h2>
+			<pre>func ExtractQueryParams(c echo.<a href="#Context">Context</a>) map[<a href="../../../../builtin/#string">string</a>][]<a href="../../../../builtin/#string">string</a></pre>
+			<p>ExtractQueryParams は、Echoコンテキストからクエリパラメータを抽出します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="IsRecovered">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=536:573#L10">IsRecovered</a>
+				<a class="permalink" href="#IsRecovered">¶</a>
+				
+				
+			</h2>
+			<pre>func IsRecovered(c echo.<a href="#Context">Context</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+			<p>IsRecovered は、パニックが上流で復旧・ログ済みかを返します（エラーハンドラの二重ログ抑止に使用）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="MarkRecovered">func <a href="../../../../src/go-boilerplate/internal/controller/server/echo.go.html?s=321:355#L5">MarkRecovered</a>
+				<a class="permalink" href="#MarkRecovered">¶</a>
+				
+				
+			</h2>
+			<pre>func MarkRecovered(c echo.<a href="#Context">Context</a>)</pre>
+			<p>MarkRecovered は、パニックが上流で復旧・ログ済みであることを Echo コンテキストに記録します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewAppServer">func <a href="../../../../src/go-boilerplate/internal/controller/server/app_server.go.html?s=247:304#L1">NewAppServer</a>
+				<a class="permalink" href="#NewAppServer">¶</a>
+				
+				
+			</h2>
+			<pre>func NewAppServer(srvCfg *<a href="../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../go-boilerplate/internal/config/#ServerConfig">ServerConfig</a>) *echo.<a href="#Echo">Echo</a></pre>
+			<p>NewAppServer は、サーバーインスタンスを作成します。
+
+			
+			
+
+		
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer"><a href="../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>
