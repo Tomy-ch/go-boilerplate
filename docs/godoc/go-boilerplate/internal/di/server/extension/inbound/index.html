@@ -1,0 +1,241 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>inbound - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package inbound
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/di/server/extension/inbound&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package inbound は、サーバーのリクエストや入力時の拡張機能に関するDIモジュールを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#IPExtractorModule">func IPExtractorModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#OpenAPIMiddleware">func OpenAPIMiddleware(spec *openapi3.T, skipper echomw.Skipper, authFunc openapi3filter.AuthenticationFunc) extension.UseMiddlewareOut</a></dd>
+			
+				
+				<dd><a href="#OpenAPIModule">func OpenAPIModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#URIModule">func URIModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#URIPreMiddleware">func URIPreMiddleware() extension.PreMiddlewareOut</a></dd>
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/ipextractor_di.go.html">ipextractor_di.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/openapi_di.go.html">openapi_di.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/uri_di.go.html">uri_di.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="IPExtractorModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/ipextractor_di.go.html?s=297:331#L3">IPExtractorModule</a>
+				<a class="permalink" href="#IPExtractorModule">¶</a>
+				
+				
+			</h2>
+			<pre>func IPExtractorModule() <a href="../../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>IPExtractorModule は、IP Extractor モジュールを提供します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="OpenAPIMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/openapi_di.go.html?s=774:915#L17">OpenAPIMiddleware</a>
+				<a class="permalink" href="#OpenAPIMiddleware">¶</a>
+				
+				
+			</h2>
+			<pre>func OpenAPIMiddleware(
+    spec *<a href="../../../../../../github.com/getkin/kin-openapi/openapi3/">openapi3</a>.<a href="../../../../../../github.com/getkin/kin-openapi/openapi3/#T">T</a>,
+    skipper <a href="../../../../../../github.com/labstack/echo/v4/middleware/">echomw</a>.<a href="../../../../../../github.com/labstack/echo/v4/middleware/#Skipper">Skipper</a>,
+    authFunc <a href="../../../../../../github.com/getkin/kin-openapi/openapi3filter/">openapi3filter</a>.<a href="../../../../../../github.com/getkin/kin-openapi/openapi3filter/#AuthenticationFunc">AuthenticationFunc</a>,
+) <a href="../../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../../go-boilerplate/internal/di/server/extension/#UseMiddlewareOut">UseMiddlewareOut</a></pre>
+			<p>OpenAPIMiddleware は、バリデーションミドルウェアを提供します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="OpenAPIModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/openapi_di.go.html?s=574:604#L8">OpenAPIModule</a>
+				<a class="permalink" href="#OpenAPIModule">¶</a>
+				
+				
+			</h2>
+			<pre>func OpenAPIModule() <a href="../../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>OpenAPIModule は、OpenAPIバリデーションのミドルウェアを提供するfxモジュールを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="URIModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/uri_di.go.html?s=273:299#L3">URIModule</a>
+				<a class="permalink" href="#URIModule">¶</a>
+				
+				
+			</h2>
+			<pre>func URIModule() <a href="../../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>URIModule は、URI制御のミドルウェアを提供するfxモジュールを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="URIPreMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/uri_di.go.html?s=505:555#L12">URIPreMiddleware</a>
+				<a class="permalink" href="#URIPreMiddleware">¶</a>
+				
+				
+			</h2>
+			<pre>func URIPreMiddleware() <a href="../../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../../go-boilerplate/internal/di/server/extension/#PreMiddlewareOut">PreMiddlewareOut</a></pre>
+			<p>URIPreMiddleware は、URI 末尾スラッシュ除去ミドルウェアを Pre ミドルウェアとして提供します。
+
+			
+			
+
+		
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer"><a href="../../../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

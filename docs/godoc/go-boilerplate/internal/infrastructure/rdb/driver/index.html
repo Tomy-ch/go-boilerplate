@@ -1,0 +1,378 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>driver - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package driver
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package driver は、RDBの接続のための基盤的な機能を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#DSN">func DSN(dbCfg *config.DatabaseConfig) *url.URL</a></dd>
+			
+				
+				<dd><a href="#DSNString">func DSNString(dbCfg *config.DatabaseConfig) string</a></dd>
+			
+				
+				<dd><a href="#DSNStringWithoutPassword">func DSNStringWithoutPassword(dbCfg *config.DatabaseConfig) string</a></dd>
+			
+				
+				<dd><a href="#DSNWithTimeZone">func DSNWithTimeZone(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig) *url.URL</a></dd>
+			
+				
+				<dd><a href="#DSNWithTimeZoneString">func DSNWithTimeZoneString(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig) string</a></dd>
+			
+				
+				<dd><a href="#NewTransactionManager">func NewTransactionManager(db DatabaseDriver, logger logging.Logger) tx.Manager</a></dd>
+			
+			
+				
+				<dd><a href="#DBTX">type DBTX</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(ctx context.Context, db DatabaseDriver) DBTX</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DatabaseDriver">type DatabaseDriver</a></dd>
+				
+					
+					<dd>    <a href="#NewDB">func NewDB(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig) (DatabaseDriver, error)</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/config.go.html">config.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html">connection.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html">driver.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html">transaction.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="DSN">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/config.go.html?s=681:728#L20">DSN</a>
+				<a class="permalink" href="#DSN">¶</a>
+				
+				
+			</h2>
+			<pre>func DSN(dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>) *<a href="../../../../../net/url/">url</a>.<a href="../../../../../net/url/#URL">URL</a></pre>
+			<p>DSN は、データベースの接続URLを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="DSNString">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/config.go.html?s=1138:1189#L30">DSNString</a>
+				<a class="permalink" href="#DSNString">¶</a>
+				
+				
+			</h2>
+			<pre>func DSNString(dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>) <a href="../../../../../builtin/#string">string</a></pre>
+			<p>DSNString は、DSNを文字列形式で返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="DSNStringWithoutPassword">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/config.go.html?s=1433:1499#L36">DSNStringWithoutPassword</a>
+				<a class="permalink" href="#DSNStringWithoutPassword">¶</a>
+				
+				
+			</h2>
+			<pre>func DSNStringWithoutPassword(dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>) <a href="../../../../../builtin/#string">string</a></pre>
+			<p>DSNStringWithoutPassword は、パスワードを含まない接続URL文字列を返します。
+資格情報を引数に載せないため、パスワードは PGPASSWORD などで別途渡します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="DSNWithTimeZone">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/config.go.html?s=909:1005#L25">DSNWithTimeZone</a>
+				<a class="permalink" href="#DSNWithTimeZone">¶</a>
+				
+				
+			</h2>
+			<pre>func DSNWithTimeZone(dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>, osCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>) *<a href="../../../../../net/url/">url</a>.<a href="../../../../../net/url/#URL">URL</a></pre>
+			<p>DSNWithTimeZone は、データベースの接続URLを返します。タイムゾーン情報をクエリパラメータに追加します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="DSNWithTimeZoneString">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/config.go.html?s=1657:1757#L43">DSNWithTimeZoneString</a>
+				<a class="permalink" href="#DSNWithTimeZoneString">¶</a>
+				
+				
+			</h2>
+			<pre>func DSNWithTimeZoneString(dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>, osCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>) <a href="../../../../../builtin/#string">string</a></pre>
+			<p>DSNWithTimeZoneString は、DSNWithTimeZoneを文字列形式で返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewTransactionManager">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html?s=518:597#L16">NewTransactionManager</a>
+				<a class="permalink" href="#NewTransactionManager">¶</a>
+				
+				
+			</h2>
+			<pre>func NewTransactionManager(db <a href="#DatabaseDriver">DatabaseDriver</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a></pre>
+			<p>NewTransactionManager は、トランザクションマネージャを初期化します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="DBTX">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html?s=422:659#L5">DBTX</a>
+				<a class="permalink" href="#DBTX">¶</a>
+				
+				
+			</h2>
+			<p>DBTX は sqlc が要求する最小インターフェースです。
+
+			</p><pre>type DBTX interface {
+    Exec(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, sql <a href="../../../../../builtin/#string">string</a>, args ...<a href="../../../../../builtin/#any">any</a>) (<a href="../../../../../github.com/jackc/pgx/v5/pgconn/">pgconn</a>.<a href="../../../../../github.com/jackc/pgx/v5/pgconn/#CommandTag">CommandTag</a>, <a href="../../../../../builtin/#error">error</a>)
+    Query(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, sql <a href="../../../../../builtin/#string">string</a>, args ...<a href="../../../../../builtin/#any">any</a>) (pgx.<a href="#Rows">Rows</a>, <a href="../../../../../builtin/#error">error</a>)
+    QueryRow(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, sql <a href="../../../../../builtin/#string">string</a>, args ...<a href="../../../../../builtin/#any">any</a>) pgx.<a href="#Row">Row</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html?s=833:886#L12">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, db <a href="#DatabaseDriver">DatabaseDriver</a>) <a href="#DBTX">DBTX</a></pre>
+				<p>New は、context にトランザクションが在ればそれを、無ければ接続プールを DBTX として返します（新規接続は生成しません）。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="DatabaseDriver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=367:522#L7">DatabaseDriver</a>
+				<a class="permalink" href="#DatabaseDriver">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type DatabaseDriver interface {
+    <a href="#DBTX">DBTX</a>
+
+    Begin(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (pgx.<a href="#Tx">Tx</a>, <a href="../../../../../builtin/#error">error</a>)
+    Ping(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) <a href="../../../../../builtin/#error">error</a>
+    Close() <a href="../../../../../builtin/#error">error</a>
+    Stats() *<a href="../../../../../github.com/jackc/pgx/v5/pgxpool/">pgxpool</a>.<a href="../../../../../github.com/jackc/pgx/v5/pgxpool/#Stat">Stat</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=698:841#L20">NewDB</a>
+					<a class="permalink" href="#NewDB">¶</a>
+					
+					
+				</h3>
+				<pre>func NewDB(
+    dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>, osCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>, dbConnCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DBConnectionConfig">DBConnectionConfig</a>,
+) (<a href="#DatabaseDriver">DatabaseDriver</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>NewDB は Postgres のDB接続を初期化して返します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer"><a href="../../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

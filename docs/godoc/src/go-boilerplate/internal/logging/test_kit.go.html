@@ -1,0 +1,111 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>logging - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../src/go-boilerplate/internal/logging">logging</a>/<span class="text-muted">test_kit.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/internal/logging">go-boilerplate/internal/logging</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package logging
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go.uber.org/zap&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go.uber.org/zap/zapcore&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go.uber.org/zap/zaptest&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go.uber.org/zap/zaptest/observer&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span><span class="comment">// NewTestLogger は、テスト用のLoggerインスタンスを生成します。</span>
+<span id="L15" class="ln">    15  </span>func NewTestLogger(t *testing.T) Logger {
+<span id="L16" class="ln">    16  </span>	t.Helper()
+<span id="L17" class="ln">    17  </span>	return &amp;logger{log: zaptest.NewLogger(t)}
+<span id="L18" class="ln">    18  </span>}
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// NewObservedTestLogger は、出力を捕捉できるテスト用 Logger と観測ログを返します。</span>
+<span id="L21" class="ln">    21  </span><span class="comment">// ログレベル・出力有無を検証したいテストで使用します。</span>
+<span id="L22" class="ln">    22  </span>func NewObservedTestLogger(t *testing.T) (Logger, *observer.ObservedLogs) {
+<span id="L23" class="ln">    23  </span>	t.Helper()
+<span id="L24" class="ln">    24  </span>	core, observed := observer.New(zapcore.DebugLevel)
+<span id="L25" class="ln">    25  </span>	return &amp;logger{log: zap.New(core)}, observed
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// NewObservedTestLoggerWithCaller は、caller 情報付きで出力を捕捉できるテスト用 Logger と観測ログを返します。</span>
+<span id="L29" class="ln">    29  </span><span class="comment">// caller（発生源）を検証したいテストで使用します。</span>
+<span id="L30" class="ln">    30  </span>func NewObservedTestLoggerWithCaller(t *testing.T) (Logger, *observer.ObservedLogs) {
+<span id="L31" class="ln">    31  </span>	t.Helper()
+<span id="L32" class="ln">    32  </span>	core, observed := observer.New(zapcore.DebugLevel)
+<span id="L33" class="ln">    33  </span>	return &amp;logger{log: zap.New(core, zap.AddCaller())}, observed
+<span id="L34" class="ln">    34  </span>}
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span><span class="comment">// NewTestLogFieldBuilder は、テスト用のLogFieldBuilderインスタンスを生成します。</span>
+<span id="L37" class="ln">    37  </span>func NewTestLogFieldBuilder(t *testing.T) LogFieldBuilder {
+<span id="L38" class="ln">    38  </span>	t.Helper()
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>	cfg := config.MockConfigForTest(t)
+<span id="L41" class="ln">    41  </span>	osCfg := config.NewOperatingSystemConfig(cfg)
+<span id="L42" class="ln">    42  </span>	obsCfg := config.NewObservabilityConfig(cfg)
+<span id="L43" class="ln">    43  </span>	return NewLogFields(obsCfg, osCfg)
+<span id="L44" class="ln">    44  </span>}
+<span id="L45" class="ln">    45  </span>
+</pre><p><a href="../../../../src/go-boilerplate/internal/logging/test_kit.go.html?m=text">View as plain text</a></p>
+
+<div id="footer"><a href="../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

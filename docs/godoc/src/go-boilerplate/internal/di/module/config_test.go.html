@@ -1,0 +1,123 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>module - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/di">di</a>/<a href="../../../../../src/go-boilerplate/internal/di/module">module</a>/<span class="text-muted">config_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/di/module">go-boilerplate/internal/di/module</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package module
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go.uber.org/fx&#34;
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L13" class="ln">    13  </span>)
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span>func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
+<span id="L16" class="ln">    16  </span>	t.Run(&#34;ConfigModule を使って各コンポーネントが生成される&#34;, func(t *testing.T) {
+<span id="L17" class="ln">    17  </span>		<span class="comment">// テスト環境の .env を読み込むためリポジトリルートに移動し ENV を設定する</span>
+<span id="L18" class="ln">    18  </span>		config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>		cfg, err := config.SetUpConfig()
+<span id="L21" class="ln">    21  </span>		require.NoError(t, err)
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span>		var (
+<span id="L24" class="ln">    24  </span>			osCfg      *config.OperatingSystemConfig
+<span id="L25" class="ln">    25  </span>			appCfg     *config.ApplicationConfig
+<span id="L26" class="ln">    26  </span>			serverCfg  *config.ServerConfig
+<span id="L27" class="ln">    27  </span>			metricsCfg *config.MetricsConfig
+<span id="L28" class="ln">    28  </span>			obsCfg     *config.ObservabilityConfig
+<span id="L29" class="ln">    29  </span>			dbCfg      *config.DatabaseConfig
+<span id="L30" class="ln">    30  </span>			dbConnCfg  *config.DBConnectionConfig
+<span id="L31" class="ln">    31  </span>			secCfg     *config.SecurityConfig
+<span id="L32" class="ln">    32  </span>			loc        *time.Location
+<span id="L33" class="ln">    33  </span>		)
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>		app := fx.New(
+<span id="L36" class="ln">    36  </span>			fx.Provide(func() testing.TB { return t }),
+<span id="L37" class="ln">    37  </span>			<span class="comment">// テスト対象: 実装側のモジュール</span>
+<span id="L38" class="ln">    38  </span>			ConfigModule(),
+<span id="L39" class="ln">    39  </span>			fx.Populate(&amp;osCfg, &amp;appCfg, &amp;serverCfg, &amp;dbCfg, &amp;dbConnCfg, &amp;metricsCfg, &amp;obsCfg, &amp;secCfg, &amp;loc),
+<span id="L40" class="ln">    40  </span>			fx.NopLogger,
+<span id="L41" class="ln">    41  </span>		)
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>		require.NoError(t, app.Start(context.Background()))
+<span id="L44" class="ln">    44  </span>		defer func() { require.NoError(t, app.Stop(context.Background())) }()
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span>		<span class="comment">// fx で注入された結果が SetUpConfig を通して得られる値と一致することを確認</span>
+<span id="L47" class="ln">    47  </span>		assert.Equal(t, config.NewOperatingSystemConfig(cfg).TimeZone(), osCfg.TimeZone())
+<span id="L48" class="ln">    48  </span>		assert.Equal(t, config.NewApplicationConfig(cfg).Env(), appCfg.Env())
+<span id="L49" class="ln">    49  </span>		assert.Equal(t, config.NewServerConfig(cfg).Port(), serverCfg.Port())
+<span id="L50" class="ln">    50  </span>		assert.Equal(t, config.NewMetricsConfig(cfg).Port(), metricsCfg.Port())
+<span id="L51" class="ln">    51  </span>		assert.Equal(t, config.NewObservabilityConfig(cfg).Enabled(), obsCfg.Enabled())
+<span id="L52" class="ln">    52  </span>		assert.Equal(t, config.NewDatabaseConfig(cfg).Driver(), dbCfg.Driver())
+<span id="L53" class="ln">    53  </span>		assert.Equal(t, config.NewDBConnectionConfig(cfg).MaxConns(), dbConnCfg.MaxConns())
+<span id="L54" class="ln">    54  </span>		assert.Equal(t, config.NewSecurityConfig(cfg).AllowedOrigins(), secCfg.AllowedOrigins())
+<span id="L55" class="ln">    55  </span>	})
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/config_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer"><a href="../../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

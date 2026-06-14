@@ -1,0 +1,260 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>metrics - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package metrics
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/rdb/metrics&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package metrics は、RDBのコネクションプールの統計情報を収集するための機能を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#NewRegisterer">func NewRegisterer() prometheus.Registerer</a></dd>
+			
+				
+				<dd><a href="#RegisterPoolStatsCollector">func RegisterPoolStatsCollector(reg prometheus.Registerer, c *PoolStatsCollector) error</a></dd>
+			
+			
+				
+				<dd><a href="#PoolStatsCollector">type PoolStatsCollector</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(db driver.DatabaseDriver) *PoolStatsCollector</a></dd>
+				
+				
+					
+					<dd>    <a href="#PoolStatsCollector.Collect">func (c *PoolStatsCollector) Collect(ch chan&lt;- prometheus.Metric)</a></dd>
+				
+					
+					<dd>    <a href="#PoolStatsCollector.Describe">func (c *PoolStatsCollector) Describe(ch chan&lt;- *prometheus.Desc)</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html">pool_stats_collector.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="NewRegisterer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html?s=4348:4390#L86">NewRegisterer</a>
+				<a class="permalink" href="#NewRegisterer">¶</a>
+				
+				
+			</h2>
+			<pre>func NewRegisterer() <a href="../../../../../github.com/prometheus/client_golang/prometheus/">prometheus</a>.<a href="../../../../../github.com/prometheus/client_golang/prometheus/#Registerer">Registerer</a></pre>
+			<p>NewRegisterer は、既定の Prometheus レジストリを Registerer として返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RegisterPoolStatsCollector">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html?s=4606:4693#L92">RegisterPoolStatsCollector</a>
+				<a class="permalink" href="#RegisterPoolStatsCollector">¶</a>
+				
+				
+			</h2>
+			<pre>func RegisterPoolStatsCollector(reg <a href="../../../../../github.com/prometheus/client_golang/prometheus/">prometheus</a>.<a href="../../../../../github.com/prometheus/client_golang/prometheus/#Registerer">Registerer</a>, c *<a href="#PoolStatsCollector">PoolStatsCollector</a>) <a href="../../../../../builtin/#error">error</a></pre>
+			<p>RegisterPoolStatsCollector は、PoolStatsCollectorを指定レジストリに登録します。
+既に登録済みの場合はエラーを返さず無視します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="PoolStatsCollector">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html?s=608:700#L11">PoolStatsCollector</a>
+				<a class="permalink" href="#PoolStatsCollector">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type PoolStatsCollector struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html?s=767:821#L17">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(db <a href="../../../../../go-boilerplate/internal/infrastructure/rdb/driver/">driver</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/rdb/driver/#DatabaseDriver">DatabaseDriver</a>) *<a href="#PoolStatsCollector">PoolStatsCollector</a></pre>
+				<p>New は、PoolStatsCollectorを初期化して返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="PoolStatsCollector.Collect">func (*PoolStatsCollector) <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html?s=4046:4111#L78">Collect</a>
+					<a class="permalink" href="#PoolStatsCollector.Collect">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#PoolStatsCollector">PoolStatsCollector</a>) Collect(ch chan&lt;- <a href="../../../../../github.com/prometheus/client_golang/prometheus/">prometheus</a>.<a href="../../../../../github.com/prometheus/client_golang/prometheus/#Metric">Metric</a>)</pre>
+				<p>Collect は、PoolStatsCollectorのメトリクスを収集してPrometheusに提供します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="PoolStatsCollector.Describe">func (*PoolStatsCollector) <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html?s=3826:3891#L71">Describe</a>
+					<a class="permalink" href="#PoolStatsCollector.Describe">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#PoolStatsCollector">PoolStatsCollector</a>) Describe(ch chan&lt;- *<a href="../../../../../github.com/prometheus/client_golang/prometheus/">prometheus</a>.<a href="../../../../../github.com/prometheus/client_golang/prometheus/#Desc">Desc</a>)</pre>
+				<p>Describe は、PoolStatsCollectorのメトリクスの説明をPrometheusに提供します。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer"><a href="../../../../../docs.zip">Download docs.zip</a> to browse offline - Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>
