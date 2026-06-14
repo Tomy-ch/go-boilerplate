@@ -1,14 +1,13 @@
-name: Actions Lint
+name: Pin Actions Check
 
 on:
   pull_request:
     paths:
       - '.github/workflows/**'
       - '.github/actions/**'
-      - '.github/actionlint.yaml'
-      - 'docker/tools/Dockerfile'
-      - 'mise.toml'
-      - '.makefiles/github/lint.mk'
+      - '.github/actions-pin.toml'
+      - 'scripts/pin-actions/**'
+      - '.makefiles/github/pin.mk'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  actions-lint:
+  pin-actions-check:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,40 +28,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      - name: Build go tool runner
-        run: docker compose build go_tool_runner
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
-      - name: Run actionlint
-        id: actionlint
+      - name: Check actions are pinned
+        id: pin
         shell: bash
         run: |
           set +e
 
-          make actions-lint 2>&1 | tee /tmp/actionlint.log
+          make pin-actions-check 2>&1 | tee /tmp/pin-actions.log
 
           code=${PIPESTATUS[0]}
 
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
-            echo "title=## ✅ Actions lint: PASS (actionlint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Pin actions: PASS" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
-            echo "title=## ❌ Actions lint: FAIL (actionlint)" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Pin actions: FAIL" >> "$GITHUB_OUTPUT"
           fi
 
           exit 0
 
-      - name: Comment Actions lint result on PR
+      - name: Comment pin-actions result on PR
         if: github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          marker: '<!-- actions-lint-result -->'
-          title: ${{ steps.actionlint.outputs.title }}
-          body-file: /tmp/actionlint.log
-          details-summary: 'actionlint log'
+          marker: '<!-- pin-actions-result -->'
+          title: ${{ steps.pin.outputs.title }}
+          body-file: /tmp/pin-actions.log
+          details-summary: 'pin-actions log'
 
-      - name: Fail if actionlint failed
-        if: always() && steps.actionlint.outputs.status != 'success'
+      - name: Fail if not pinned
+        if: always() && steps.pin.outputs.status != 'success'
         run: exit 1

@@ -25,10 +25,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -38,7 +38,7 @@ jobs:
           go mod vendor
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
       - name: Define image tag
         id: meta
@@ -47,7 +47,7 @@ jobs:
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         with:
           context: .
           file: ./docker/server/Dockerfile
@@ -60,7 +60,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           image: ${{ steps.meta.outputs.image }}
           format: spdx-json
@@ -127,13 +127,13 @@ jobs:
           body-file: sbom-summary.md
 
       - name: Upload SBOM summary artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: sbom-summary.md
           path: sbom-summary.md
 
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
           scanners: 'vuln'
@@ -144,7 +144,7 @@ jobs:
           output: trivy-image-scan.txt
 
       - name: Trivy image scan (SARIF)
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
           scanners: 'vuln'
@@ -156,13 +156,13 @@ jobs:
 
       - name: Upload Trivy image SARIF to code scanning
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
           sarif_file: trivy-image-scan.sarif
           category: trivy-image
 
       - name: Upload Trivy report artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: trivy-image-scan.txt
           path: trivy-image-scan.txt
@@ -180,7 +180,7 @@ jobs:
 
       - name: Trivy image scan (gate - fixable CRITICAL/HIGH)
         if: ${{ github.event_name == 'pull_request' }}
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
           scanners: 'vuln'

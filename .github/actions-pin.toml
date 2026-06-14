@@ -1,0 +1,16 @@
+# GitHub Actions の pin 対象 SHA（SSOT）。
+# make pin-actions-resolve で解決・make pin-actions-apply で workflow へ反映する。
+"actions/checkout@v6" = "df4cb1c069e1874edd31b4311f1884172cec0e10"
+"actions/deploy-pages@v5" = "cd2ce8fcbc39b97be8ca5fce6e763baed58fa128"
+"actions/github-script@v8" = "ed597411d8f924073f98dfc5c65a23a2325f34cd"
+"actions/setup-go@v6" = "4a3601121dd01d1626a1e23e37211e3254c1c06c"
+"actions/upload-artifact@v7" = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+"actions/upload-pages-artifact@v4" = "7b1f4a764d45c48632c6b24a0339c27f5614fb0b"
+"anchore/sbom-action@v0" = "e22c389904149dbc22b58101806040fa8d37a610"
+"aquasecurity/trivy-action@0.35.0" = "57a97c7e7821a5776cebc9bb87c984fa69cba8f1"
+"docker/build-push-action@v7" = "f9f3042f7e2789586610d6e8b85c8f03e5195baf"
+"docker/setup-buildx-action@v4" = "d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5"
+"github/codeql-action@v4" = "8aad20d150bbac5944a9f9d289da16a4b0d87c1e"
+"jdx/mise-action@v2" = "c37c93293d6b742fc901e1406b8f764f6fb19dac"
+"k1LoW/octocov-action@v1" = "b3b6ee60482a667950f87553abf1df63217235d9"
+"peter-evans/create-pull-request@v6" = "c5a7806660adbe173f04e3e038b0ccdcd758773c"

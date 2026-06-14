@@ -20,6 +20,12 @@ pre-commit:
         - "docker/**/Dockerfile"
         - ".hadolint.yaml"
       run: make docker-lint
+    pin-actions:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/actions/**/*.{yml,yaml}"
+        - ".github/actions-pin.toml"
+      run: make pin-actions-check
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
