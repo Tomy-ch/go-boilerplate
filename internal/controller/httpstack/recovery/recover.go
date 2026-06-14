@@ -47,7 +47,7 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 		reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic)
 		recoverFields := []*logging.Field{
 			logging.String(logging.InternalErrorKey, err.Error()),
-			logging.String(logging.InternalStackTraceKey, string(stack)),
+			logging.Strings(logging.InternalStackTraceKey, logging.SplitStackLines(string(stack))),
 		}
 		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
 		logger.Named("middleware.recover").Error("panic recovered", fields...)

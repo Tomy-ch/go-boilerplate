@@ -125,7 +125,7 @@ func httpErrorField(
 	if he.Internal != nil {
 		additionalFields := []*logging.Field{
 			logging.String(logging.InternalErrorKey, he.Internal.Error()),
-			logging.String(logging.InternalStackTraceKey, xerrors.StackTrace(he.Internal)),
+			logging.Stacktrace(logging.InternalStackTraceKey, he.Internal),
 		}
 		fields = append(fields, additionalFields...)
 	}
