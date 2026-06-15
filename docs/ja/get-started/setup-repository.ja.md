@@ -1,6 +1,6 @@
 # リポジトリ複製後の作業リスト
 
-[English](setup.md) | 日本語
+[English](../../get-started/setup-repository.md) | 日本語
 
 Makeコマンド詳細は [Makeターゲット一覧](.makefiles/README.ja.md) を参照してください。
 
