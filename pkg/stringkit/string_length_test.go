@@ -7,8 +7,11 @@ import (
 )
 
 func TestRuneCount(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列が英字の場合、文字数を正しくカウントする", func(t *testing.T) {
+			t.Parallel()
 			input := "hello"
 			expected := 5
 
@@ -17,6 +20,7 @@ func TestRuneCount(t *testing.T) {
 		})
 
 		t.Run("文字列が日本語の場合、文字数を正しくカウントする", func(t *testing.T) {
+			t.Parallel()
 			input := "こんにちは"
 			expected := 5
 
@@ -25,6 +29,7 @@ func TestRuneCount(t *testing.T) {
 		})
 
 		t.Run("文字列が空の場合、文字数が0になる", func(t *testing.T) {
+			t.Parallel()
 			input := ""
 			expected := 0
 
@@ -33,6 +38,7 @@ func TestRuneCount(t *testing.T) {
 		})
 
 		t.Run("文字列が絵文字の場合、文字数を正しくカウントする", func(t *testing.T) {
+			t.Parallel()
 			input := "👋🌍"
 			expected := 2
 
@@ -43,8 +49,11 @@ func TestRuneCount(t *testing.T) {
 }
 
 func TestInRange(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが範囲内の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "hello"
 			minBound := 1
 			maxBound := 5
@@ -56,7 +65,9 @@ func TestInRange(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが範囲外の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "こんにちは"
 			minBound := 1
 			maxBound := 4
@@ -69,8 +80,11 @@ func TestInRange(t *testing.T) {
 }
 
 func TestMaxOrLess(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが最大値以下の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "hello"
 			maxBound := 5
 			expected := true
@@ -81,7 +95,9 @@ func TestMaxOrLess(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが最大値を超える場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "こんにちは"
 			maxBound := 4
 			expected := false
@@ -93,8 +109,11 @@ func TestMaxOrLess(t *testing.T) {
 }
 
 func TestMinOrMore(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが最小値以上の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "hello"
 			minBound := 5
 			expected := true
@@ -105,7 +124,9 @@ func TestMinOrMore(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが最小値未満の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "こんにちは"
 			minBound := 6
 			expected := false
@@ -117,8 +138,11 @@ func TestMinOrMore(t *testing.T) {
 }
 
 func TestStrictInRange(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが範囲内の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "hello"
 			minBound := 1
 			maxBound := 6
@@ -130,7 +154,9 @@ func TestStrictInRange(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが範囲外の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "こんにちは"
 			minBound := 1
 			maxBound := 5
@@ -143,8 +169,11 @@ func TestStrictInRange(t *testing.T) {
 }
 
 func TestLessThanMax(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが最大値未満の場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "hello"
 			maxBound := 6
 			expected := true
@@ -155,7 +184,9 @@ func TestLessThanMax(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが最大値以上の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "こんにちは"
 			maxBound := 5
 			expected := false
@@ -167,8 +198,11 @@ func TestLessThanMax(t *testing.T) {
 }
 
 func TestGreaterThanMin(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが最小値より大きい場合、trueを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "hello"
 			minBound := 4
 			expected := true
@@ -179,7 +213,9 @@ func TestGreaterThanMin(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが最小値以下の場合、falseを返す", func(t *testing.T) {
+			t.Parallel()
 			input := "こんにちは"
 			minBound := 6
 			expected := false
