@@ -6296,7 +6296,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="33">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="23">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -7062,13 +7062,6 @@ import (
         "go-boilerplate/pkg/stringkit"
         "go-boilerplate/pkg/uuid"
         "go-boilerplate/pkg/xerrors"
-)
-
-const (
-        minNameLength = 1
-        maxNameLength = 100
-        minCode       = 1
-        maxCode       = 47
 )
 
 type Prefectures []*Prefecture
@@ -8886,6 +8879,7 @@ func getTestDB(t *testing.T) driver.DatabaseDriver <span class="cov10" title="36
 package security
 
 import (
+        "go-boilerplate/internal/apperror"
         "go-boilerplate/internal/config"
         "go-boilerplate/internal/usecase/boundary/security"
         "go-boilerplate/pkg/xerrors"
@@ -8906,7 +8900,7 @@ func NewBcryptHasher(secCfg *config.SecurityConfig) security.Hasher <span class=
 func (b *bcrypter) Hash(password string) (string, error) <span class="cov6" title="4">{
         hash, err := bcrypt.GenerateFromPassword([]byte(password), b.cost)
         if err != nil </span><span class="cov1" title="1">{
-                return "", xerrors.Wrap(err, "bcrypt hash failed")
+                return "", xerrors.Wrap(apperror.ErrInternal, "bcrypt hash failed: "+err.Error())
         }</span>
         <span class="cov5" title="3">return string(hash), nil</span>
 }
@@ -8918,7 +8912,7 @@ func (b *bcrypter) Compare(hash, password string) (bool, error) <span class="cov
                 if xerrors.Is(err, bcrypt.ErrMismatchedHashAndPassword) </span><span class="cov1" title="1">{
                         return false, nil
                 }</span>
-                <span class="cov1" title="1">return false, xerrors.Wrap(err, "bcrypt compare failed")</span>
+                <span class="cov1" title="1">return false, xerrors.Wrap(apperror.ErrInternal, "bcrypt compare failed: "+err.Error())</span>
         }
         <span class="cov1" title="1">return true, nil</span>
 }
@@ -9088,7 +9082,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov6" title="219">{
+        for i, line := range lines </span><span class="cov6" title="267">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>

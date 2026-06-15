@@ -261,30 +261,11 @@ db := gen.New(r.db.NewLoggingDB(ctx))
 
 Repository は **DB接続状態を意識しない設計**になります。
 
-## driver の直接利用
-
-ロギングが不要な場合は、ロギングなしの DB アクセスを利用できます。
-
-```go
-db := gen.New(r.db.NewDB(ctx))
-```
-
-用途
-
-- 高頻度処理でログノイズを抑えたい場合
-- ロギング不要な単純処理
-- ベンチマークや最小経路の確認
-
-原則
-
-- 通常は `NewLoggingDB(ctx)` を使用する
-- 明確な理由がある場合のみ `NewDB(ctx)` を使用する
-
 ## エラー正規化
 
 PostgreSQL エラーは
 
-`internal/infrastructure/rdb/postgres/pgerror`
+`internal/infrastructure/rdb/pgerror`
 
 で `apperror` に変換します。
 
@@ -296,7 +277,7 @@ return pgerror.NormalizeError(err)
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["ErrNotFound"]
     Unique["unique violation"] --> Conflict["ErrConflict"]
     Conn["connection error"] --> Unavail["ErrUnavailable"]
     Others["others"] --> Internal["ErrInternal"]
@@ -462,12 +443,6 @@ Repository 実装は次の依存を持ちます。
   - DB / Tx の透過切り替え
   を提供します。
 
-- ロギングが不要な場合は、`r.db.NewDB(ctx)` を利用してロギングなしの DB アクセスを使用できます。
-  - 高頻度処理
-  - ベンチマーク
-  - ログノイズを避けたい処理
-  など、明確な理由がある場合のみ使います。
-
 - observability.TracerFactory は、LayerTracer を生成するためのファクトリです。
   - Repository では Infra レイヤー用 tracer を使用します
 
@@ -532,13 +507,14 @@ Repository テストは **Domain ロジックの検証を目的としません**
 Repository テストは `testkit` を使用して DB を初期化します。
 
 ```go
-db, provider := testkit.NewTestDBWithLoggingProvider(t)
+db := testkit.NewTestDB(t)
+provider := testkit.NewTestLoggingProvider(t)
 ```
 
-この関数は次を提供します。
+これらの関数は次を提供します。
 
-- テスト用 DB 接続
-- loggingdb.DBProvider
+- `NewTestDB`: テスト用 DB 接続（`driver.DatabaseDriver`）
+- `NewTestLoggingProvider`: `loggingdb.DBProvider`
 
 ### トランザクションテスト
 
@@ -634,7 +610,7 @@ DB エラーは `pgerror.NormalizeError` により `apperror` に変換されま
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["ErrNotFound"]
     Unique["unique violation"] --> Conflict["ErrConflict"]
     Conn["connection error"] --> Unavail["ErrUnavailable"]
     Others["others"] --> Internal["ErrInternal"]
