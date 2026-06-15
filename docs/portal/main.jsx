@@ -1,15 +1,28 @@
-// Component
-function Card({ name, path, onOpen }) {
+// ----------------
+// Hash routing
+// ----------------
+
+function parseHash() {
+  const raw = window.location.hash.replace(/^#\/?/, "")
+  return raw || ""
+}
+
+// ----------------
+// Components
+// ----------------
+
+function Card({ name, path, source, onOpen }) {
 
   const isMarkdown = path.endsWith(".md")
-  const isExternal = path.startsWith("http")
+  // markdown 以外 (HTML index / 外部 URL) は新タブで開く。
+  const opensInNewTab = !isMarkdown
 
   return (
     <a
       className={`card ${isMarkdown ? "card-md" : "card-link"}`}
       href={path}
-      target={isExternal ? "_blank" : undefined}
-      rel={isExternal ? "noopener noreferrer" : undefined}
+      target={opensInNewTab ? "_blank" : undefined}
+      rel={opensInNewTab ? "noopener noreferrer" : undefined}
       onClick={(e) => {
         if (isMarkdown) {
           e.preventDefault()
@@ -18,29 +31,119 @@ function Card({ name, path, onOpen }) {
       }}
     >
       <div className="card-title">{name}</div>
-      <div className="card-desc">{path}</div>
+      <div className="card-desc">{source || path}</div>
     </a>
   )
 }
 
-function Section({ title, items, onOpen }) {
+function CardGrid({ items, keyPrefix, onOpen }) {
   return (
-    <section className="section">
-      <h2>{title}</h2>
-      <div className="cards">
-        {(items || []).map((item) => (
-          <Card
-            key={`${title}-${item.name}-${item.path}`}
-            {...item}
-            onOpen={onOpen}
-          />
-        ))}
-      </div>
+    <div className="cards">
+      {items.map((item) => (
+        <Card
+          key={`${keyPrefix}-${item.name}-${item.path}`}
+          {...item}
+          onOpen={onOpen}
+        />
+      ))}
+    </div>
+  )
+}
+
+function Section({ slug, title, items, subgroups, onOpen }) {
+
+  // subgroups が有効ならサブグループ単位で表示。無ければ従来通り flat。
+  const useSubgroups = Array.isArray(subgroups) && subgroups.length > 0
+
+  if (!useSubgroups && (!items || !items.length)) return null
+
+  return (
+    <section className="section" id={slug ? `section-${slug}` : undefined}>
+      <h3 className="section-title">{title}</h3>
+      {useSubgroups ? (
+        subgroups
+          .filter((sg) => sg.items && sg.items.length > 0)
+          .map((sg) => (
+            <div key={sg.title} className="subgroup">
+              <h4 className="subgroup-title">{sg.title}</h4>
+              <CardGrid
+                items={sg.items}
+                keyPrefix={`${title}-${sg.title}`}
+                onOpen={onOpen}
+              />
+            </div>
+          ))
+      ) : (
+        <CardGrid items={items} keyPrefix={title} onOpen={onOpen} />
+      )}
     </section>
   )
 }
 
-function Search({ sections = [], onResult }) {
+function Sidebar({ groups, activeSlug, onSelectGroup, referenceLinks = [] }) {
+
+  return (
+    <aside className="sidebar">
+      <nav className="sidebar-nav">
+        {groups.map((group) => {
+          const isActive = group.slug === activeSlug
+          return (
+            <div key={group.slug} className="sidebar-group">
+              <button
+                type="button"
+                className={`sidebar-item ${isActive ? "active" : ""}`}
+                onClick={() => onSelectGroup(group.slug)}
+              >
+                {group.title}
+              </button>
+              {isActive ? (
+                <ul className="sidebar-sublist">
+                  {group.sections.map((section) => (
+                    <li key={section.slug}>
+                      <a
+                        href={`#/${group.slug}/${section.slug}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          const el = document.getElementById(`section-${section.slug}`)
+                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
+                        }}
+                      >
+                        {section.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          )
+        })}
+      </nav>
+
+      {referenceLinks.length ? (
+        <div className="sidebar-reference">
+          <div className="sidebar-reference-title">Reference</div>
+          <ul className="sidebar-reference-list">
+            {referenceLinks.map((link) => (
+              <li key={link.sectionId}>
+                <a
+                  className="sidebar-reference-link"
+                  href={link.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span>{link.title}</span>
+                  <span className="sidebar-reference-arrow" aria-hidden="true">↗</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </aside>
+  )
+}
+
+function Search({ allItems = [], onResult }) {
 
   const [query, setQuery] = React.useState("")
 
@@ -51,15 +154,8 @@ function Search({ sections = [], onResult }) {
       return
     }
 
-    const items = sections.flatMap((section) =>
-      (section.items || []).map((item) => ({
-        ...item,
-        sectionTitle: section.title,
-      }))
-    )
-
-    const fuse = new Fuse(items, {
-      keys: ["name", "sectionTitle", "path"],
+    const fuse = new Fuse(allItems, {
+      keys: ["name", "sectionTitle", "groupTitle", "source", "path"],
       threshold: 0.3,
     })
 
@@ -67,7 +163,7 @@ function Search({ sections = [], onResult }) {
 
     onResult(results)
 
-  }, [query, sections, onResult])
+  }, [query, allItems, onResult])
 
   return (
     <div className="search">
@@ -87,12 +183,11 @@ function MarkdownViewer({ html, onClose }) {
 
   React.useEffect(() => {
     if (!ref.current) return
-    // markdown内リンク無効化
+
+    // markdown 内リンクは無効化 (portal は閲覧専用)
     const links = ref.current.querySelectorAll("a")
     links.forEach(link => {
-      link.addEventListener("click", (e) => {
-        e.preventDefault()
-      })
+      link.addEventListener("click", (e) => e.preventDefault())
       link.style.pointerEvents = "none"
       link.style.color = "#6e7781"
       link.style.textDecoration = "none"
@@ -109,15 +204,12 @@ function MarkdownViewer({ html, onClose }) {
       parent.replaceWith(div)
     })
 
-	if (window.mermaid) {
+    if (window.mermaid) {
       mermaid.initialize({ startOnLoad: false })
       mermaid.run()
     }
 
-	// ----------------
     // Code highlight
-    // ----------------
-
     if (window.hljs) {
       hljs.highlightAll()
     }
@@ -127,94 +219,91 @@ function MarkdownViewer({ html, onClose }) {
 
   return (
     <div className="md-modal">
-
       <div className="md-backdrop" onClick={onClose}></div>
-
       <div className="md-dialog">
-
         <div className="md-toolbar">
           <button onClick={onClose}>Close</button>
         </div>
-
         <div
           ref={ref}
           className="md-content"
           dangerouslySetInnerHTML={{ __html: html }}
         />
-
       </div>
-
     </div>
   )
 }
 
-// Utils
+// ----------------
+// Lang filter
+// ----------------
 
-function normalizeSectionTitle(title) {
-  return title
-    .replace(" (English)", "")
-    .replace(" (Japanese)", "")
+function filterItemsByLang(items, lang) {
+  if (!items || !items.length) return []
+
+  const all = items.filter(i => i.lang === "all")
+  const en = items.filter(i => i.lang === "en")
+  const ja = items.filter(i => i.lang === "ja")
+
+  if (lang === "EN") return [...all, ...en]
+  if (ja.length) return [...all, ...ja]
+  return [...all, ...en]
 }
 
-function buildVisibleSections(allSections, lang) {
+function applyLangFilter(groups, lang) {
+  if (!Array.isArray(groups)) return []
 
-  if (!Array.isArray(allSections)) return []
+  return groups
+    .map((group) => ({
+      title: group.title,
+      slug: group.slug,
+      sections: (group.sections || [])
+        .map((section) => {
+          const filteredItems = filterItemsByLang(section.items, lang)
+          const filteredSubgroups = Array.isArray(section.subgroups)
+            ? section.subgroups
+                .map((sg) => ({
+                  title: sg.title,
+                  items: filterItemsByLang(sg.items, lang),
+                }))
+                .filter((sg) => sg.items.length > 0)
+            : null
+          return {
+            id: section.id,
+            slug: section.slug,
+            title: section.title,
+            items: filteredItems,
+            subgroups: filteredSubgroups,
+          }
+        })
+        .filter((section) => section.items.length > 0),
+    }))
+    .filter((group) => group.sections.length > 0)
+}
 
-  if (lang === "EN") {
-    return allSections.filter((section) => {
-      // English or non-language sections
-      return !section.title.includes("Japanese")
-    })
+// ----------------
+// Search corpus
+// ----------------
+
+function buildAllItems(groups) {
+  const items = []
+  for (const group of groups) {
+    for (const section of group.sections) {
+      for (const item of section.items) {
+        items.push({
+          ...item,
+          sectionTitle: section.title,
+          groupTitle: group.title,
+        })
+      }
+    }
   }
-
-  const jaSections = new Map()
-  const enSections = new Map()
-
-  allSections.forEach((section) => {
-
-    const base = normalizeSectionTitle(section.title)
-
-    if (section.title.includes("Japanese")) {
-      jaSections.set(base, section)
-      return
-    }
-
-    enSections.set(base, section)
-
-  })
-
-  const orderedBases = []
-
-  allSections.forEach((section) => {
-    const base = normalizeSectionTitle(section.title)
-    if (!orderedBases.includes(base)) {
-      orderedBases.push(base)
-    }
-  })
-
-  return orderedBases
-    .map((base) => {
-      // prefer JA if exists, else EN
-      return jaSections.get(base) || enSections.get(base)
-    })
-    .filter(Boolean)
+  return items
 }
 
-function sortSections(sections) {
-
-  return [...sections].sort((a, b) => {
-
-    const aGuide = a.title.toLowerCase().includes("guide")
-    const bGuide = b.title.toLowerCase().includes("guide")
-
-    if (aGuide && !bGuide) return -1
-    if (!aGuide && bGuide) return 1
-
-    return 0
-  })
-}
-
+// ----------------
 // Main App
+// ----------------
 
 function App() {
 
@@ -222,92 +311,87 @@ function App() {
   const [filtered, setFiltered] = React.useState(null)
   const [lang, setLang] = React.useState("EN")
   const [mdHtml, setMdHtml] = React.useState(null)
+  const [hashSlug, setHashSlug] = React.useState(() => parseHash())
 
   React.useEffect(() => {
-
     fetch("./docs.json")
       .then((res) => {
-        if (!res.ok) {
-          throw new Error(`failed to load docs.json: ${res.status}`)
-        }
+        if (!res.ok) throw new Error(`failed to load docs.json: ${res.status}`)
         return res.json()
       })
-      .then(setDocs)
-      .catch((err) => {
-        console.error(err)
+      .then((data) => {
+        setDocs(data)
+        // 初回ロード時、hash が空なら先頭グループへ
+        if (!parseHash() && Array.isArray(data.groups) && data.groups[0]) {
+          window.location.hash = `#/${data.groups[0].slug}`
+        }
       })
+      .catch((err) => console.error(err))
+  }, [])
 
+  React.useEffect(() => {
+    const onHashChange = () => setHashSlug(parseHash())
+    window.addEventListener("hashchange", onHashChange)
+    return () => window.removeEventListener("hashchange", onHashChange)
   }, [])
 
   function openMarkdown(path) {
-
     fetch(path)
       .then((res) => {
-        if (!res.ok) {
-          throw new Error(`failed to load markdown: ${res.status}`)
-        }
+        if (!res.ok) throw new Error(`failed to load markdown: ${res.status}`)
         return res.text()
       })
-      .then((md) => {
-        const html = marked.parse(md)
-        setMdHtml(html)
-      })
-      .catch((err) => {
-        console.error(err)
-      })
+      .then((md) => setMdHtml(marked.parse(md)))
+      .catch((err) => console.error(err))
   }
 
   if (!docs) {
     return <div className="loading">Loading...</div>
   }
 
-  const visibleSections = sortSections(
-    buildVisibleSections(docs.sections || [], lang)
-  )
+  // docs.json は v2 (groups) を期待。古い (sections) 形式が来た場合は単一 "All" グループに包む。
+  const rawGroups = Array.isArray(docs.groups)
+    ? docs.groups
+    : [{ title: "All", slug: "all", sections: docs.sections || [] }]
+
+  const visibleGroups = applyLangFilter(rawGroups, lang)
+  const allItems = buildAllItems(visibleGroups)
+
+  // hash の先頭 (group slug) を抽出
+  const requestedGroupSlug = hashSlug.split("/")[0] || ""
+  const activeGroup =
+    visibleGroups.find((g) => g.slug === requestedGroupSlug) ||
+    visibleGroups[0] ||
+    null
+  const activeSlug = activeGroup ? activeGroup.slug : ""
 
   return (
-    <div className="container">
+    <div className="layout">
 
       <header>
+        <div className="container header-inner">
+          <h1>{docs.title}</h1>
+          <p>{docs.subtitle}</p>
 
-        <h1>{docs.title}</h1>
-        <p>{docs.subtitle}</p>
-
-        <div className="toolbar">
-
-          <Search
-            sections={visibleSections}
-            onResult={setFiltered}
-          />
-
-          <div className="lang-toggle">
-
-            <button
-              type="button"
-              className={lang === "EN" ? "active" : ""}
-              onClick={() => {
-                setLang("EN")
-                setFiltered(null)
-              }}
-            >
-              EN
-            </button>
-
-            <button
-              type="button"
-              className={lang === "JA" ? "active" : ""}
-              onClick={() => {
-                setLang("JA")
-                setFiltered(null)
-              }}
-            >
-              JA
-            </button>
-
+          <div className="toolbar">
+            <Search
+              allItems={allItems}
+              onResult={setFiltered}
+            />
+            <div className="lang-toggle">
+              <button
+                type="button"
+                className={lang === "EN" ? "active" : ""}
+                onClick={() => { setLang("EN"); setFiltered(null) }}
+              >EN</button>
+              <button
+                type="button"
+                className={lang === "JA" ? "active" : ""}
+                onClick={() => { setLang("JA"); setFiltered(null) }}
+              >JA</button>
+            </div>
           </div>
-
         </div>
-
       </header>
 
       <MarkdownViewer
@@ -315,32 +399,59 @@ function App() {
         onClose={() => setMdHtml(null)}
       />
 
-      {filtered ? (
+      <div className="container body">
 
-        <Section
-          title="Search Results"
-          items={filtered}
-          onOpen={openMarkdown}
+        <Sidebar
+          groups={visibleGroups}
+          activeSlug={activeSlug}
+          referenceLinks={Array.isArray(docs.referenceLinks) ? docs.referenceLinks : []}
+          onSelectGroup={(slug) => {
+            setFiltered(null)
+            window.location.hash = `#/${slug}`
+            window.scrollTo(0, 0)
+          }}
         />
 
-      ) : (
+        <main className="content">
+          {filtered ? (
+            <div className="page">
+              <h2 className="page-title">Search Results</h2>
+              <Section
+                title={`${filtered.length} hit${filtered.length === 1 ? "" : "s"}`}
+                items={filtered}
+                onOpen={openMarkdown}
+              />
+            </div>
+          ) : activeGroup ? (
+            <div className="page">
+              <h2 className="page-title">{activeGroup.title}</h2>
+              <div className="page-body">
+                {activeGroup.sections.map((section) => (
+                  <Section
+                    key={section.slug}
+                    slug={section.slug}
+                    title={section.title}
+                    items={section.items}
+                    subgroups={section.subgroups}
+                    onOpen={openMarkdown}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="empty">No content available.</div>
+          )}
+        </main>
 
-        visibleSections.map((section) => (
-          <Section
-            key={section.title}
-            title={section.title}
-            items={section.items}
-            onOpen={openMarkdown}
-          />
-        ))
-
-      )}
+      </div>
 
     </div>
   )
 }
 
-// Render the app
+// ----------------
+// Render
+// ----------------
 
 ReactDOM
   .createRoot(document.getElementById("root"))

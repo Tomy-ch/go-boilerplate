@@ -1,878 +1,1924 @@
 {
   "title": "go-boilerplate Documentation",
   "subtitle": "This document portal provides access to the repository implementation, test results, E-R diagrams, and more.",
-  "sections": [
+  "groups": [
     {
-      "title": "Overview (English)",
-      "items": [
+      "title": "Get Started",
+      "slug": "get-started",
+      "sections": [
         {
-          "name": "Overview",
-          "path": "./guides/overview.md"
+          "id": "overview",
+          "title": "Overview",
+          "items": [
+            {
+              "name": "Overview",
+              "path": "./guides/overview.md",
+              "lang": "en",
+              "source": "README.md",
+              "guideId": "overview"
+            },
+            {
+              "name": "Overview",
+              "path": "./guides/ja/overview.ja.md",
+              "lang": "ja",
+              "source": "README.ja.md",
+              "guideId": "overview"
+            }
+          ],
+          "slug": "overview"
+        },
+        {
+          "id": "get-started",
+          "title": "Setup Repository",
+          "items": [
+            {
+              "name": "Setup Repository",
+              "path": "../get-started/setup-repository.md",
+              "lang": "en",
+              "source": "docs/get-started/setup-repository.md",
+              "guideId": "setup-repository"
+            },
+            {
+              "name": "Setup Repository",
+              "path": "../ja/get-started/setup-repository.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/get-started/setup-repository.ja.md",
+              "guideId": "setup-repository"
+            }
+          ],
+          "slug": "get-started"
+        },
+        {
+          "id": "make_commands",
+          "title": "Make Commands",
+          "items": [
+            {
+              "name": "Make",
+              "path": "./guides/make.md",
+              "lang": "en",
+              "source": ".makefiles/README.md",
+              "guideId": "make"
+            },
+            {
+              "name": "Make",
+              "path": "./guides/ja/make.ja.md",
+              "lang": "ja",
+              "source": ".makefiles/README.ja.md",
+              "guideId": "make"
+            }
+          ],
+          "slug": "make-commands"
+        },
+        {
+          "id": "environment_variables",
+          "title": "Environment Variables",
+          "items": [
+            {
+              "name": "Environment Variables",
+              "path": "./guides/environment-variables.md",
+              "lang": "en",
+              "source": "env/README.md",
+              "guideId": "environment-variables"
+            },
+            {
+              "name": "Environment Variables",
+              "path": "./guides/ja/environment-variables.ja.md",
+              "lang": "ja",
+              "source": "env/README.ja.md",
+              "guideId": "environment-variables"
+            }
+          ],
+          "slug": "environment-variables"
         }
       ]
     },
     {
-      "title": "Overview (Japanese)",
-      "items": [
+      "title": "Architecture",
+      "slug": "architecture",
+      "sections": [
         {
-          "name": "Overview",
-          "path": "./guides/ja/overview.ja.md"
+          "id": "architecture",
+          "title": "Architecture Docs",
+          "items": [
+            {
+              "name": "Architecture",
+              "path": "../architecture.md",
+              "lang": "en",
+              "source": "docs/architecture.md",
+              "guideId": "architecture"
+            },
+            {
+              "name": "Decisions",
+              "path": "../decisions.md",
+              "lang": "en",
+              "source": "docs/decisions.md",
+              "guideId": "decisions"
+            },
+            {
+              "name": "Development Flow",
+              "path": "../development-flow.md",
+              "lang": "en",
+              "source": "docs/development-flow.md",
+              "guideId": "development-flow"
+            },
+            {
+              "name": "Index",
+              "path": "../index.md",
+              "lang": "en",
+              "source": "docs/index.md",
+              "guideId": "index"
+            },
+            {
+              "name": "Rules",
+              "path": "../rules.md",
+              "lang": "en",
+              "source": "docs/rules.md",
+              "guideId": "rules"
+            },
+            {
+              "name": "Architecture",
+              "path": "../ja/architecture.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/architecture.ja.md",
+              "guideId": "architecture"
+            },
+            {
+              "name": "Decisions",
+              "path": "../ja/decisions.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/decisions.ja.md",
+              "guideId": "decisions"
+            },
+            {
+              "name": "Development Flow",
+              "path": "../ja/development-flow.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/development-flow.ja.md",
+              "guideId": "development-flow"
+            },
+            {
+              "name": "Index",
+              "path": "../ja/index.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/index.ja.md",
+              "guideId": "index"
+            },
+            {
+              "name": "Rules",
+              "path": "../ja/rules.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/rules.ja.md",
+              "guideId": "rules"
+            }
+          ],
+          "slug": "architecture"
+        },
+        {
+          "id": "project",
+          "title": "Project",
+          "items": [
+            {
+              "name": "Out Of Scope",
+              "path": "../project/out-of-scope.md",
+              "lang": "en",
+              "source": "docs/project/out-of-scope.md",
+              "guideId": "out-of-scope"
+            },
+            {
+              "name": "Policy",
+              "path": "../project/policy.md",
+              "lang": "en",
+              "source": "docs/project/policy.md",
+              "guideId": "policy"
+            },
+            {
+              "name": "Scope",
+              "path": "../project/scope.md",
+              "lang": "en",
+              "source": "docs/project/scope.md",
+              "guideId": "scope"
+            },
+            {
+              "name": "Versioning",
+              "path": "../project/versioning.md",
+              "lang": "en",
+              "source": "docs/project/versioning.md",
+              "guideId": "versioning"
+            },
+            {
+              "name": "Out Of Scope",
+              "path": "../ja/project/out-of-scope.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/project/out-of-scope.ja.md",
+              "guideId": "out-of-scope"
+            },
+            {
+              "name": "Policy",
+              "path": "../ja/project/policy.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/project/policy.ja.md",
+              "guideId": "policy"
+            },
+            {
+              "name": "Scope",
+              "path": "../ja/project/scope.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/project/scope.ja.md",
+              "guideId": "scope"
+            },
+            {
+              "name": "Versioning",
+              "path": "../ja/project/versioning.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/project/versioning.ja.md",
+              "guideId": "versioning"
+            }
+          ],
+          "slug": "project"
         }
       ]
     },
     {
-      "title": "Make Commands (English)",
-      "items": [
+      "title": "Application Layers",
+      "slug": "application-layers",
+      "sections": [
         {
-          "name": "Make",
-          "path": "./guides/make.md"
+          "id": "domain",
+          "title": "Domain",
+          "items": [
+            {
+              "name": "Domain",
+              "path": "./guides/domain.md",
+              "lang": "en",
+              "source": "internal/domain/README.md",
+              "guideId": "domain"
+            },
+            {
+              "name": "Domain",
+              "path": "./guides/ja/domain.ja.md",
+              "lang": "ja",
+              "source": "internal/domain/README.ja.md",
+              "guideId": "domain"
+            }
+          ],
+          "slug": "domain"
+        },
+        {
+          "id": "usecase",
+          "title": "Usecase",
+          "items": [
+            {
+              "name": "Usecase",
+              "path": "./guides/usecase.md",
+              "lang": "en",
+              "source": "internal/usecase/README.md",
+              "guideId": "usecase"
+            },
+            {
+              "name": "Usecase Boundary",
+              "path": "./guides/usecase-boundary.md",
+              "lang": "en",
+              "source": "internal/usecase/boundary/README.md",
+              "guideId": "usecase-boundary"
+            },
+            {
+              "name": "Usecase Boundary Clock",
+              "path": "./guides/usecase-boundary-clock.md",
+              "lang": "en",
+              "source": "internal/usecase/boundary/clock/README.md",
+              "guideId": "usecase-boundary-clock"
+            },
+            {
+              "name": "Usecase Tools",
+              "path": "./guides/usecase-tools.md",
+              "lang": "en",
+              "source": "internal/usecase/tools/README.md",
+              "guideId": "usecase-tools"
+            },
+            {
+              "name": "Usecase",
+              "path": "./guides/ja/usecase.ja.md",
+              "lang": "ja",
+              "source": "internal/usecase/README.ja.md",
+              "guideId": "usecase"
+            },
+            {
+              "name": "Usecase Boundary",
+              "path": "./guides/ja/usecase-boundary.ja.md",
+              "lang": "ja",
+              "source": "internal/usecase/boundary/README.ja.md",
+              "guideId": "usecase-boundary"
+            },
+            {
+              "name": "Usecase Boundary Clock",
+              "path": "./guides/ja/usecase-boundary-clock.ja.md",
+              "lang": "ja",
+              "source": "internal/usecase/boundary/clock/README.ja.md",
+              "guideId": "usecase-boundary-clock"
+            },
+            {
+              "name": "Usecase Tools",
+              "path": "./guides/ja/usecase-tools.ja.md",
+              "lang": "ja",
+              "source": "internal/usecase/tools/README.ja.md",
+              "guideId": "usecase-tools"
+            }
+          ],
+          "slug": "usecase"
+        },
+        {
+          "id": "controller",
+          "title": "Controller",
+          "items": [
+            {
+              "name": "Controller",
+              "path": "./guides/controller.md",
+              "lang": "en",
+              "source": "internal/controller/README.md",
+              "guideId": "controller"
+            },
+            {
+              "name": "Controller Error Response",
+              "path": "./guides/controller-error-response.md",
+              "lang": "en",
+              "source": "internal/controller/error/response/README.md",
+              "guideId": "controller-error-response"
+            },
+            {
+              "name": "Controller Handler",
+              "path": "./guides/controller-handler.md",
+              "lang": "en",
+              "source": "internal/controller/handler/README.md",
+              "guideId": "controller-handler"
+            },
+            {
+              "name": "Controller Httpstack",
+              "path": "./guides/controller-httpstack.md",
+              "lang": "en",
+              "source": "internal/controller/httpstack/README.md",
+              "guideId": "controller-httpstack"
+            },
+            {
+              "name": "Controller Httpstack Errorhandler",
+              "path": "./guides/controller-httpstack-errorhandler.md",
+              "lang": "en",
+              "source": "internal/controller/httpstack/errorhandler/README.md",
+              "guideId": "controller-httpstack-errorhandler"
+            },
+            {
+              "name": "Controller Httpstack Oapi",
+              "path": "./guides/controller-httpstack-oapi.md",
+              "lang": "en",
+              "source": "internal/controller/httpstack/oapi/README.md",
+              "guideId": "controller-httpstack-oapi"
+            },
+            {
+              "name": "Controller Httpstack Oapi Auth",
+              "path": "./guides/controller-httpstack-oapi-auth.md",
+              "lang": "en",
+              "source": "internal/controller/httpstack/oapi/auth/README.md",
+              "guideId": "controller-httpstack-oapi-auth"
+            },
+            {
+              "name": "Controller Httpstack Oapi Skipper",
+              "path": "./guides/controller-httpstack-oapi-skipper.md",
+              "lang": "en",
+              "source": "internal/controller/httpstack/oapi/skipper/README.md",
+              "guideId": "controller-httpstack-oapi-skipper"
+            },
+            {
+              "name": "Controller Job",
+              "path": "./guides/controller-job.md",
+              "lang": "en",
+              "source": "internal/controller/job/README.md",
+              "guideId": "controller-job"
+            },
+            {
+              "name": "Controller Server",
+              "path": "./guides/controller-server.md",
+              "lang": "en",
+              "source": "internal/controller/server/README.md",
+              "guideId": "controller-server"
+            },
+            {
+              "name": "Controller",
+              "path": "./guides/ja/controller.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/README.ja.md",
+              "guideId": "controller"
+            },
+            {
+              "name": "Controller Error Response",
+              "path": "./guides/ja/controller-error-response.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/error/response/README.ja.md",
+              "guideId": "controller-error-response"
+            },
+            {
+              "name": "Controller Handler",
+              "path": "./guides/ja/controller-handler.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/handler/README.ja.md",
+              "guideId": "controller-handler"
+            },
+            {
+              "name": "Controller Httpstack",
+              "path": "./guides/ja/controller-httpstack.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/httpstack/README.ja.md",
+              "guideId": "controller-httpstack"
+            },
+            {
+              "name": "Controller Httpstack Errorhandler",
+              "path": "./guides/ja/controller-httpstack-errorhandler.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/httpstack/errorhandler/README.ja.md",
+              "guideId": "controller-httpstack-errorhandler"
+            },
+            {
+              "name": "Controller Httpstack Oapi",
+              "path": "./guides/ja/controller-httpstack-oapi.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/httpstack/oapi/README.ja.md",
+              "guideId": "controller-httpstack-oapi"
+            },
+            {
+              "name": "Controller Httpstack Oapi Auth",
+              "path": "./guides/ja/controller-httpstack-oapi-auth.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/httpstack/oapi/auth/README.ja.md",
+              "guideId": "controller-httpstack-oapi-auth"
+            },
+            {
+              "name": "Controller Httpstack Oapi Skipper",
+              "path": "./guides/ja/controller-httpstack-oapi-skipper.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/httpstack/oapi/skipper/README.ja.md",
+              "guideId": "controller-httpstack-oapi-skipper"
+            },
+            {
+              "name": "Controller Job",
+              "path": "./guides/ja/controller-job.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/job/README.ja.md",
+              "guideId": "controller-job"
+            },
+            {
+              "name": "Controller Server",
+              "path": "./guides/ja/controller-server.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/server/README.ja.md",
+              "guideId": "controller-server"
+            }
+          ],
+          "subgroups": [
+            {
+              "title": "Layer Top",
+              "items": [
+                {
+                  "name": "Controller",
+                  "path": "./guides/controller.md",
+                  "lang": "en",
+                  "source": "internal/controller/README.md",
+                  "guideId": "controller"
+                },
+                {
+                  "name": "Controller",
+                  "path": "./guides/ja/controller.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/README.ja.md",
+                  "guideId": "controller"
+                }
+              ]
+            },
+            {
+              "title": "Server & Handler",
+              "items": [
+                {
+                  "name": "Controller Server",
+                  "path": "./guides/controller-server.md",
+                  "lang": "en",
+                  "source": "internal/controller/server/README.md",
+                  "guideId": "controller-server"
+                },
+                {
+                  "name": "Controller Server",
+                  "path": "./guides/ja/controller-server.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/server/README.ja.md",
+                  "guideId": "controller-server"
+                },
+                {
+                  "name": "Controller Handler",
+                  "path": "./guides/controller-handler.md",
+                  "lang": "en",
+                  "source": "internal/controller/handler/README.md",
+                  "guideId": "controller-handler"
+                },
+                {
+                  "name": "Controller Handler",
+                  "path": "./guides/ja/controller-handler.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/handler/README.ja.md",
+                  "guideId": "controller-handler"
+                },
+                {
+                  "name": "Controller Job",
+                  "path": "./guides/controller-job.md",
+                  "lang": "en",
+                  "source": "internal/controller/job/README.md",
+                  "guideId": "controller-job"
+                },
+                {
+                  "name": "Controller Job",
+                  "path": "./guides/ja/controller-job.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/job/README.ja.md",
+                  "guideId": "controller-job"
+                }
+              ]
+            },
+            {
+              "title": "HTTP Stack",
+              "items": [
+                {
+                  "name": "Controller Httpstack",
+                  "path": "./guides/controller-httpstack.md",
+                  "lang": "en",
+                  "source": "internal/controller/httpstack/README.md",
+                  "guideId": "controller-httpstack"
+                },
+                {
+                  "name": "Controller Httpstack",
+                  "path": "./guides/ja/controller-httpstack.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/httpstack/README.ja.md",
+                  "guideId": "controller-httpstack"
+                },
+                {
+                  "name": "Controller Httpstack Errorhandler",
+                  "path": "./guides/controller-httpstack-errorhandler.md",
+                  "lang": "en",
+                  "source": "internal/controller/httpstack/errorhandler/README.md",
+                  "guideId": "controller-httpstack-errorhandler"
+                },
+                {
+                  "name": "Controller Httpstack Errorhandler",
+                  "path": "./guides/ja/controller-httpstack-errorhandler.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/httpstack/errorhandler/README.ja.md",
+                  "guideId": "controller-httpstack-errorhandler"
+                },
+                {
+                  "name": "Controller Httpstack Oapi",
+                  "path": "./guides/controller-httpstack-oapi.md",
+                  "lang": "en",
+                  "source": "internal/controller/httpstack/oapi/README.md",
+                  "guideId": "controller-httpstack-oapi"
+                },
+                {
+                  "name": "Controller Httpstack Oapi",
+                  "path": "./guides/ja/controller-httpstack-oapi.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/httpstack/oapi/README.ja.md",
+                  "guideId": "controller-httpstack-oapi"
+                },
+                {
+                  "name": "Controller Httpstack Oapi Auth",
+                  "path": "./guides/controller-httpstack-oapi-auth.md",
+                  "lang": "en",
+                  "source": "internal/controller/httpstack/oapi/auth/README.md",
+                  "guideId": "controller-httpstack-oapi-auth"
+                },
+                {
+                  "name": "Controller Httpstack Oapi Auth",
+                  "path": "./guides/ja/controller-httpstack-oapi-auth.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/httpstack/oapi/auth/README.ja.md",
+                  "guideId": "controller-httpstack-oapi-auth"
+                },
+                {
+                  "name": "Controller Httpstack Oapi Skipper",
+                  "path": "./guides/controller-httpstack-oapi-skipper.md",
+                  "lang": "en",
+                  "source": "internal/controller/httpstack/oapi/skipper/README.md",
+                  "guideId": "controller-httpstack-oapi-skipper"
+                },
+                {
+                  "name": "Controller Httpstack Oapi Skipper",
+                  "path": "./guides/ja/controller-httpstack-oapi-skipper.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/httpstack/oapi/skipper/README.ja.md",
+                  "guideId": "controller-httpstack-oapi-skipper"
+                }
+              ]
+            },
+            {
+              "title": "Error Response",
+              "items": [
+                {
+                  "name": "Controller Error Response",
+                  "path": "./guides/controller-error-response.md",
+                  "lang": "en",
+                  "source": "internal/controller/error/response/README.md",
+                  "guideId": "controller-error-response"
+                },
+                {
+                  "name": "Controller Error Response",
+                  "path": "./guides/ja/controller-error-response.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/error/response/README.ja.md",
+                  "guideId": "controller-error-response"
+                }
+              ]
+            }
+          ],
+          "slug": "controller"
+        },
+        {
+          "id": "infrastructure",
+          "title": "Infrastructure",
+          "items": [
+            {
+              "name": "Infrastructure",
+              "path": "./guides/infrastructure.md",
+              "lang": "en",
+              "source": "internal/infrastructure/README.md",
+              "guideId": "infrastructure"
+            },
+            {
+              "name": "Infrastructure Auth",
+              "path": "./guides/infrastructure-auth.md",
+              "lang": "en",
+              "source": "internal/infrastructure/auth/README.md",
+              "guideId": "infrastructure-auth"
+            },
+            {
+              "name": "Infrastructure Rdb",
+              "path": "./guides/infrastructure-rdb.md",
+              "lang": "en",
+              "source": "internal/infrastructure/rdb/README.md",
+              "guideId": "infrastructure-rdb"
+            },
+            {
+              "name": "Infrastructure Rdb Driver",
+              "path": "./guides/infrastructure-rdb-driver.md",
+              "lang": "en",
+              "source": "internal/infrastructure/rdb/driver/README.md",
+              "guideId": "infrastructure-rdb-driver"
+            },
+            {
+              "name": "Infrastructure Rdb Driver Loggingdb",
+              "path": "./guides/infrastructure-rdb-driver-loggingdb.md",
+              "lang": "en",
+              "source": "internal/infrastructure/rdb/driver/loggingdb/README.md",
+              "guideId": "infrastructure-rdb-driver-loggingdb"
+            },
+            {
+              "name": "Infrastructure Rdb Pgerror",
+              "path": "./guides/infrastructure-rdb-pgerror.md",
+              "lang": "en",
+              "source": "internal/infrastructure/rdb/pgerror/README.md",
+              "guideId": "infrastructure-rdb-pgerror"
+            },
+            {
+              "name": "Infrastructure Rdb Query Service",
+              "path": "./guides/infrastructure-rdb-query-service.md",
+              "lang": "en",
+              "source": "internal/infrastructure/rdb/query_service/README.md",
+              "guideId": "infrastructure-rdb-query-service"
+            },
+            {
+              "name": "Infrastructure Rdb Repository",
+              "path": "./guides/infrastructure-rdb-repository.md",
+              "lang": "en",
+              "source": "internal/infrastructure/rdb/repository/README.md",
+              "guideId": "infrastructure-rdb-repository"
+            },
+            {
+              "name": "Infrastructure Rdb Sqlc",
+              "path": "./guides/infrastructure-rdb-sqlc.md",
+              "lang": "en",
+              "source": "internal/infrastructure/rdb/sqlc/README.md",
+              "guideId": "infrastructure-rdb-sqlc"
+            },
+            {
+              "name": "Infrastructure Rdb Testkit",
+              "path": "./guides/infrastructure-rdb-testkit.md",
+              "lang": "en",
+              "source": "internal/infrastructure/rdb/testkit/README.md",
+              "guideId": "infrastructure-rdb-testkit"
+            },
+            {
+              "name": "Infrastructure Security",
+              "path": "./guides/infrastructure-security.md",
+              "lang": "en",
+              "source": "internal/infrastructure/security/README.md",
+              "guideId": "infrastructure-security"
+            },
+            {
+              "name": "Infrastructure System",
+              "path": "./guides/infrastructure-system.md",
+              "lang": "en",
+              "source": "internal/infrastructure/system/README.md",
+              "guideId": "infrastructure-system"
+            },
+            {
+              "name": "Infrastructure",
+              "path": "./guides/ja/infrastructure.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/README.ja.md",
+              "guideId": "infrastructure"
+            },
+            {
+              "name": "Infrastructure Auth",
+              "path": "./guides/ja/infrastructure-auth.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/auth/README.ja.md",
+              "guideId": "infrastructure-auth"
+            },
+            {
+              "name": "Infrastructure Rdb",
+              "path": "./guides/ja/infrastructure-rdb.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/rdb/README.ja.md",
+              "guideId": "infrastructure-rdb"
+            },
+            {
+              "name": "Infrastructure Rdb Driver",
+              "path": "./guides/ja/infrastructure-rdb-driver.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/rdb/driver/README.ja.md",
+              "guideId": "infrastructure-rdb-driver"
+            },
+            {
+              "name": "Infrastructure Rdb Driver Loggingdb",
+              "path": "./guides/ja/infrastructure-rdb-driver-loggingdb.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/rdb/driver/loggingdb/README.ja.md",
+              "guideId": "infrastructure-rdb-driver-loggingdb"
+            },
+            {
+              "name": "Infrastructure Rdb Pgerror",
+              "path": "./guides/ja/infrastructure-rdb-pgerror.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/rdb/pgerror/README.ja.md",
+              "guideId": "infrastructure-rdb-pgerror"
+            },
+            {
+              "name": "Infrastructure Rdb Query Service",
+              "path": "./guides/ja/infrastructure-rdb-query-service.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/rdb/query_service/README.ja.md",
+              "guideId": "infrastructure-rdb-query-service"
+            },
+            {
+              "name": "Infrastructure Rdb Repository",
+              "path": "./guides/ja/infrastructure-rdb-repository.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/rdb/repository/README.ja.md",
+              "guideId": "infrastructure-rdb-repository"
+            },
+            {
+              "name": "Infrastructure Rdb Sqlc",
+              "path": "./guides/ja/infrastructure-rdb-sqlc.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/rdb/sqlc/README.ja.md",
+              "guideId": "infrastructure-rdb-sqlc"
+            },
+            {
+              "name": "Infrastructure Rdb Testkit",
+              "path": "./guides/ja/infrastructure-rdb-testkit.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/rdb/testkit/README.ja.md",
+              "guideId": "infrastructure-rdb-testkit"
+            },
+            {
+              "name": "Infrastructure Security",
+              "path": "./guides/ja/infrastructure-security.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/security/README.ja.md",
+              "guideId": "infrastructure-security"
+            },
+            {
+              "name": "Infrastructure System",
+              "path": "./guides/ja/infrastructure-system.ja.md",
+              "lang": "ja",
+              "source": "internal/infrastructure/system/README.ja.md",
+              "guideId": "infrastructure-system"
+            }
+          ],
+          "subgroups": [
+            {
+              "title": "Layer Top",
+              "items": [
+                {
+                  "name": "Infrastructure",
+                  "path": "./guides/infrastructure.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/README.md",
+                  "guideId": "infrastructure"
+                },
+                {
+                  "name": "Infrastructure",
+                  "path": "./guides/ja/infrastructure.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/README.ja.md",
+                  "guideId": "infrastructure"
+                }
+              ]
+            },
+            {
+              "title": "RDB",
+              "items": [
+                {
+                  "name": "Infrastructure Rdb",
+                  "path": "./guides/infrastructure-rdb.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/rdb/README.md",
+                  "guideId": "infrastructure-rdb"
+                },
+                {
+                  "name": "Infrastructure Rdb",
+                  "path": "./guides/ja/infrastructure-rdb.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/rdb/README.ja.md",
+                  "guideId": "infrastructure-rdb"
+                },
+                {
+                  "name": "Infrastructure Rdb Driver",
+                  "path": "./guides/infrastructure-rdb-driver.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/rdb/driver/README.md",
+                  "guideId": "infrastructure-rdb-driver"
+                },
+                {
+                  "name": "Infrastructure Rdb Driver",
+                  "path": "./guides/ja/infrastructure-rdb-driver.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/rdb/driver/README.ja.md",
+                  "guideId": "infrastructure-rdb-driver"
+                },
+                {
+                  "name": "Infrastructure Rdb Driver Loggingdb",
+                  "path": "./guides/infrastructure-rdb-driver-loggingdb.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/rdb/driver/loggingdb/README.md",
+                  "guideId": "infrastructure-rdb-driver-loggingdb"
+                },
+                {
+                  "name": "Infrastructure Rdb Driver Loggingdb",
+                  "path": "./guides/ja/infrastructure-rdb-driver-loggingdb.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/rdb/driver/loggingdb/README.ja.md",
+                  "guideId": "infrastructure-rdb-driver-loggingdb"
+                },
+                {
+                  "name": "Infrastructure Rdb Pgerror",
+                  "path": "./guides/infrastructure-rdb-pgerror.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/rdb/pgerror/README.md",
+                  "guideId": "infrastructure-rdb-pgerror"
+                },
+                {
+                  "name": "Infrastructure Rdb Pgerror",
+                  "path": "./guides/ja/infrastructure-rdb-pgerror.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/rdb/pgerror/README.ja.md",
+                  "guideId": "infrastructure-rdb-pgerror"
+                },
+                {
+                  "name": "Infrastructure Rdb Sqlc",
+                  "path": "./guides/infrastructure-rdb-sqlc.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/rdb/sqlc/README.md",
+                  "guideId": "infrastructure-rdb-sqlc"
+                },
+                {
+                  "name": "Infrastructure Rdb Sqlc",
+                  "path": "./guides/ja/infrastructure-rdb-sqlc.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/rdb/sqlc/README.ja.md",
+                  "guideId": "infrastructure-rdb-sqlc"
+                },
+                {
+                  "name": "Infrastructure Rdb Repository",
+                  "path": "./guides/infrastructure-rdb-repository.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/rdb/repository/README.md",
+                  "guideId": "infrastructure-rdb-repository"
+                },
+                {
+                  "name": "Infrastructure Rdb Repository",
+                  "path": "./guides/ja/infrastructure-rdb-repository.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/rdb/repository/README.ja.md",
+                  "guideId": "infrastructure-rdb-repository"
+                },
+                {
+                  "name": "Infrastructure Rdb Query Service",
+                  "path": "./guides/infrastructure-rdb-query-service.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/rdb/query_service/README.md",
+                  "guideId": "infrastructure-rdb-query-service"
+                },
+                {
+                  "name": "Infrastructure Rdb Query Service",
+                  "path": "./guides/ja/infrastructure-rdb-query-service.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/rdb/query_service/README.ja.md",
+                  "guideId": "infrastructure-rdb-query-service"
+                },
+                {
+                  "name": "Infrastructure Rdb Testkit",
+                  "path": "./guides/infrastructure-rdb-testkit.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/rdb/testkit/README.md",
+                  "guideId": "infrastructure-rdb-testkit"
+                },
+                {
+                  "name": "Infrastructure Rdb Testkit",
+                  "path": "./guides/ja/infrastructure-rdb-testkit.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/rdb/testkit/README.ja.md",
+                  "guideId": "infrastructure-rdb-testkit"
+                }
+              ]
+            },
+            {
+              "title": "Auth & Security",
+              "items": [
+                {
+                  "name": "Infrastructure Auth",
+                  "path": "./guides/infrastructure-auth.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/auth/README.md",
+                  "guideId": "infrastructure-auth"
+                },
+                {
+                  "name": "Infrastructure Auth",
+                  "path": "./guides/ja/infrastructure-auth.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/auth/README.ja.md",
+                  "guideId": "infrastructure-auth"
+                },
+                {
+                  "name": "Infrastructure Security",
+                  "path": "./guides/infrastructure-security.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/security/README.md",
+                  "guideId": "infrastructure-security"
+                },
+                {
+                  "name": "Infrastructure Security",
+                  "path": "./guides/ja/infrastructure-security.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/security/README.ja.md",
+                  "guideId": "infrastructure-security"
+                }
+              ]
+            },
+            {
+              "title": "System",
+              "items": [
+                {
+                  "name": "Infrastructure System",
+                  "path": "./guides/infrastructure-system.md",
+                  "lang": "en",
+                  "source": "internal/infrastructure/system/README.md",
+                  "guideId": "infrastructure-system"
+                },
+                {
+                  "name": "Infrastructure System",
+                  "path": "./guides/ja/infrastructure-system.ja.md",
+                  "lang": "ja",
+                  "source": "internal/infrastructure/system/README.ja.md",
+                  "guideId": "infrastructure-system"
+                }
+              ]
+            }
+          ],
+          "slug": "infrastructure"
         }
       ]
     },
     {
-      "title": "Make Commands (Japanese)",
-      "items": [
+      "title": "Wiring & Helpers",
+      "slug": "wiring-helpers",
+      "sections": [
         {
-          "name": "Make",
-          "path": "./guides/ja/make.ja.md"
+          "id": "di",
+          "title": "DI",
+          "items": [
+            {
+              "name": "Di",
+              "path": "./guides/di.md",
+              "lang": "en",
+              "source": "internal/di/README.md",
+              "guideId": "di"
+            },
+            {
+              "name": "Di Job",
+              "path": "./guides/di-job.md",
+              "lang": "en",
+              "source": "internal/di/job/README.md",
+              "guideId": "di-job"
+            },
+            {
+              "name": "Di Lifecycle",
+              "path": "./guides/di-lifecycle.md",
+              "lang": "en",
+              "source": "internal/di/lifecycle/README.md",
+              "guideId": "di-lifecycle"
+            },
+            {
+              "name": "Di Module",
+              "path": "./guides/di-module.md",
+              "lang": "en",
+              "source": "internal/di/module/README.md",
+              "guideId": "di-module"
+            },
+            {
+              "name": "Di Module Core",
+              "path": "./guides/di-module-core.md",
+              "lang": "en",
+              "source": "internal/di/module/core/README.md",
+              "guideId": "di-module-core"
+            },
+            {
+              "name": "Di Server",
+              "path": "./guides/di-server.md",
+              "lang": "en",
+              "source": "internal/di/server/README.md",
+              "guideId": "di-server"
+            },
+            {
+              "name": "Di Server Extension",
+              "path": "./guides/di-server-extension.md",
+              "lang": "en",
+              "source": "internal/di/server/extension/README.md",
+              "guideId": "di-server-extension"
+            },
+            {
+              "name": "Di Server Hook",
+              "path": "./guides/di-server-hook.md",
+              "lang": "en",
+              "source": "internal/di/server/hook/README.md",
+              "guideId": "di-server-hook"
+            },
+            {
+              "name": "Di Shutdowner",
+              "path": "./guides/di-shutdowner.md",
+              "lang": "en",
+              "source": "internal/di/shutdowner/README.md",
+              "guideId": "di-shutdowner"
+            },
+            {
+              "name": "Di",
+              "path": "./guides/ja/di.ja.md",
+              "lang": "ja",
+              "source": "internal/di/README.ja.md",
+              "guideId": "di"
+            },
+            {
+              "name": "Di Job",
+              "path": "./guides/ja/di-job.ja.md",
+              "lang": "ja",
+              "source": "internal/di/job/README.ja.md",
+              "guideId": "di-job"
+            },
+            {
+              "name": "Di Lifecycle",
+              "path": "./guides/ja/di-lifecycle.ja.md",
+              "lang": "ja",
+              "source": "internal/di/lifecycle/README.ja.md",
+              "guideId": "di-lifecycle"
+            },
+            {
+              "name": "Di Module",
+              "path": "./guides/ja/di-module.ja.md",
+              "lang": "ja",
+              "source": "internal/di/module/README.ja.md",
+              "guideId": "di-module"
+            },
+            {
+              "name": "Di Module Core",
+              "path": "./guides/ja/di-module-core.ja.md",
+              "lang": "ja",
+              "source": "internal/di/module/core/README.ja.md",
+              "guideId": "di-module-core"
+            },
+            {
+              "name": "Di Server",
+              "path": "./guides/ja/di-server.ja.md",
+              "lang": "ja",
+              "source": "internal/di/server/README.ja.md",
+              "guideId": "di-server"
+            },
+            {
+              "name": "Di Server Extension",
+              "path": "./guides/ja/di-server-extension.ja.md",
+              "lang": "ja",
+              "source": "internal/di/server/extension/README.ja.md",
+              "guideId": "di-server-extension"
+            },
+            {
+              "name": "Di Server Hook",
+              "path": "./guides/ja/di-server-hook.ja.md",
+              "lang": "ja",
+              "source": "internal/di/server/hook/README.ja.md",
+              "guideId": "di-server-hook"
+            },
+            {
+              "name": "Di Shutdowner",
+              "path": "./guides/ja/di-shutdowner.ja.md",
+              "lang": "ja",
+              "source": "internal/di/shutdowner/README.ja.md",
+              "guideId": "di-shutdowner"
+            }
+          ],
+          "subgroups": [
+            {
+              "title": "Layer Top",
+              "items": [
+                {
+                  "name": "Di",
+                  "path": "./guides/di.md",
+                  "lang": "en",
+                  "source": "internal/di/README.md",
+                  "guideId": "di"
+                },
+                {
+                  "name": "Di",
+                  "path": "./guides/ja/di.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/README.ja.md",
+                  "guideId": "di"
+                }
+              ]
+            },
+            {
+              "title": "Modules",
+              "items": [
+                {
+                  "name": "Di Module",
+                  "path": "./guides/di-module.md",
+                  "lang": "en",
+                  "source": "internal/di/module/README.md",
+                  "guideId": "di-module"
+                },
+                {
+                  "name": "Di Module",
+                  "path": "./guides/ja/di-module.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/module/README.ja.md",
+                  "guideId": "di-module"
+                },
+                {
+                  "name": "Di Module Core",
+                  "path": "./guides/di-module-core.md",
+                  "lang": "en",
+                  "source": "internal/di/module/core/README.md",
+                  "guideId": "di-module-core"
+                },
+                {
+                  "name": "Di Module Core",
+                  "path": "./guides/ja/di-module-core.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/module/core/README.ja.md",
+                  "guideId": "di-module-core"
+                }
+              ]
+            },
+            {
+              "title": "Server",
+              "items": [
+                {
+                  "name": "Di Server",
+                  "path": "./guides/di-server.md",
+                  "lang": "en",
+                  "source": "internal/di/server/README.md",
+                  "guideId": "di-server"
+                },
+                {
+                  "name": "Di Server",
+                  "path": "./guides/ja/di-server.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/server/README.ja.md",
+                  "guideId": "di-server"
+                },
+                {
+                  "name": "Di Server Extension",
+                  "path": "./guides/di-server-extension.md",
+                  "lang": "en",
+                  "source": "internal/di/server/extension/README.md",
+                  "guideId": "di-server-extension"
+                },
+                {
+                  "name": "Di Server Extension",
+                  "path": "./guides/ja/di-server-extension.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/server/extension/README.ja.md",
+                  "guideId": "di-server-extension"
+                },
+                {
+                  "name": "Di Server Hook",
+                  "path": "./guides/di-server-hook.md",
+                  "lang": "en",
+                  "source": "internal/di/server/hook/README.md",
+                  "guideId": "di-server-hook"
+                },
+                {
+                  "name": "Di Server Hook",
+                  "path": "./guides/ja/di-server-hook.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/server/hook/README.ja.md",
+                  "guideId": "di-server-hook"
+                }
+              ]
+            },
+            {
+              "title": "Lifecycle",
+              "items": [
+                {
+                  "name": "Di Lifecycle",
+                  "path": "./guides/di-lifecycle.md",
+                  "lang": "en",
+                  "source": "internal/di/lifecycle/README.md",
+                  "guideId": "di-lifecycle"
+                },
+                {
+                  "name": "Di Lifecycle",
+                  "path": "./guides/ja/di-lifecycle.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/lifecycle/README.ja.md",
+                  "guideId": "di-lifecycle"
+                },
+                {
+                  "name": "Di Shutdowner",
+                  "path": "./guides/di-shutdowner.md",
+                  "lang": "en",
+                  "source": "internal/di/shutdowner/README.md",
+                  "guideId": "di-shutdowner"
+                },
+                {
+                  "name": "Di Shutdowner",
+                  "path": "./guides/ja/di-shutdowner.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/shutdowner/README.ja.md",
+                  "guideId": "di-shutdowner"
+                }
+              ]
+            },
+            {
+              "title": "Job",
+              "items": [
+                {
+                  "name": "Di Job",
+                  "path": "./guides/di-job.md",
+                  "lang": "en",
+                  "source": "internal/di/job/README.md",
+                  "guideId": "di-job"
+                },
+                {
+                  "name": "Di Job",
+                  "path": "./guides/ja/di-job.ja.md",
+                  "lang": "ja",
+                  "source": "internal/di/job/README.ja.md",
+                  "guideId": "di-job"
+                }
+              ]
+            }
+          ],
+          "slug": "di"
+        },
+        {
+          "id": "context-helper",
+          "title": "Context Helper",
+          "items": [
+            {
+              "name": "How To Generate Ctxhelper",
+              "path": "./guides/how-to-generate-ctxhelper.md",
+              "lang": "en",
+              "source": "scripts/genctxkey/README.md",
+              "guideId": "how-to-generate-ctxhelper"
+            },
+            {
+              "name": "How To Use Context Helper",
+              "path": "./guides/how-to-use-context-helper.md",
+              "lang": "en",
+              "source": "internal/controller/ctxhelper/README.md",
+              "guideId": "how-to-use-context-helper"
+            },
+            {
+              "name": "How To Generate Ctxhelper",
+              "path": "./guides/ja/how-to-generate-ctxhelper.ja.md",
+              "lang": "ja",
+              "source": "scripts/genctxkey/README.ja.md",
+              "guideId": "how-to-generate-ctxhelper"
+            },
+            {
+              "name": "How To Use Context Helper",
+              "path": "./guides/ja/how-to-use-context-helper.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/ctxhelper/README.ja.md",
+              "guideId": "how-to-use-context-helper"
+            }
+          ],
+          "slug": "context-helper"
+        },
+        {
+          "id": "cli",
+          "title": "CLI",
+          "items": [
+            {
+              "name": "Cli",
+              "path": "./guides/cli.md",
+              "lang": "en",
+              "source": "internal/cli/README.md",
+              "guideId": "cli"
+            },
+            {
+              "name": "Cli",
+              "path": "./guides/ja/cli.ja.md",
+              "lang": "ja",
+              "source": "internal/cli/README.ja.md",
+              "guideId": "cli"
+            }
+          ],
+          "slug": "cli"
+        },
+        {
+          "id": "pkg",
+          "title": "pkg",
+          "items": [
+            {
+              "name": "Pkg",
+              "path": "./guides/pkg.md",
+              "lang": "en",
+              "source": "pkg/README.md",
+              "guideId": "pkg"
+            },
+            {
+              "name": "Pkg",
+              "path": "./guides/ja/pkg.ja.md",
+              "lang": "ja",
+              "source": "pkg/README.ja.md",
+              "guideId": "pkg"
+            }
+          ],
+          "slug": "pkg"
         }
       ]
     },
     {
-      "title": "Environment Variables (English)",
-      "items": [
+      "title": "Cross-Cutting",
+      "slug": "cross-cutting",
+      "sections": [
         {
-          "name": "Environment Variables",
-          "path": "./guides/environment-variables.md"
+          "id": "cross-cutting",
+          "title": "Cross-Cutting",
+          "items": [
+            {
+              "name": "Apperror",
+              "path": "./guides/apperror.md",
+              "lang": "en",
+              "source": "internal/apperror/README.md",
+              "guideId": "apperror"
+            },
+            {
+              "name": "Config",
+              "path": "./guides/config.md",
+              "lang": "en",
+              "source": "internal/config/README.md",
+              "guideId": "config"
+            },
+            {
+              "name": "Logging",
+              "path": "./guides/logging.md",
+              "lang": "en",
+              "source": "internal/logging/README.md",
+              "guideId": "logging"
+            },
+            {
+              "name": "Observability",
+              "path": "./guides/observability.md",
+              "lang": "en",
+              "source": "internal/observability/README.md",
+              "guideId": "observability"
+            },
+            {
+              "name": "System",
+              "path": "./guides/system.md",
+              "lang": "en",
+              "source": "internal/system/README.md",
+              "guideId": "system"
+            },
+            {
+              "name": "Apperror",
+              "path": "./guides/ja/apperror.ja.md",
+              "lang": "ja",
+              "source": "internal/apperror/README.ja.md",
+              "guideId": "apperror"
+            },
+            {
+              "name": "Config",
+              "path": "./guides/ja/config.ja.md",
+              "lang": "ja",
+              "source": "internal/config/README.ja.md",
+              "guideId": "config"
+            },
+            {
+              "name": "Logging",
+              "path": "./guides/ja/logging.ja.md",
+              "lang": "ja",
+              "source": "internal/logging/README.ja.md",
+              "guideId": "logging"
+            },
+            {
+              "name": "Observability",
+              "path": "./guides/ja/observability.ja.md",
+              "lang": "ja",
+              "source": "internal/observability/README.ja.md",
+              "guideId": "observability"
+            },
+            {
+              "name": "System",
+              "path": "./guides/ja/system.ja.md",
+              "lang": "ja",
+              "source": "internal/system/README.ja.md",
+              "guideId": "system"
+            }
+          ],
+          "slug": "cross-cutting"
+        },
+        {
+          "id": "integration",
+          "title": "Integration",
+          "items": [
+            {
+              "name": "Integration",
+              "path": "./guides/integration.md",
+              "lang": "en",
+              "source": "internal/integration/README.md",
+              "guideId": "integration"
+            },
+            {
+              "name": "Integration",
+              "path": "./guides/ja/integration.ja.md",
+              "lang": "ja",
+              "source": "internal/integration/README.ja.md",
+              "guideId": "integration"
+            }
+          ],
+          "slug": "integration"
         }
       ]
     },
     {
-      "title": "Environment Variables (Japanese)",
-      "items": [
+      "title": "Build / Operations",
+      "slug": "build-operations",
+      "sections": [
         {
-          "name": "Environment Variables",
-          "path": "./guides/ja/environment-variables.ja.md"
+          "id": "docker",
+          "title": "Docker",
+          "items": [
+            {
+              "name": "Docker",
+              "path": "./guides/docker.md",
+              "lang": "en",
+              "source": "docker/README.md",
+              "guideId": "docker"
+            },
+            {
+              "name": "Docker Database Sql",
+              "path": "./guides/docker-database-sql.md",
+              "lang": "en",
+              "source": "docker/database/sql/README.md",
+              "guideId": "docker-database-sql"
+            },
+            {
+              "name": "Docker Server",
+              "path": "./guides/docker-server.md",
+              "lang": "en",
+              "source": "docker/server/README.md",
+              "guideId": "docker-server"
+            },
+            {
+              "name": "Docker Tools",
+              "path": "./guides/docker-tools.md",
+              "lang": "en",
+              "source": "docker/tools/README.md",
+              "guideId": "docker-tools"
+            },
+            {
+              "name": "Docker",
+              "path": "./guides/ja/docker.ja.md",
+              "lang": "ja",
+              "source": "docker/README.ja.md",
+              "guideId": "docker"
+            },
+            {
+              "name": "Docker Database Sql",
+              "path": "./guides/ja/docker-database-sql.ja.md",
+              "lang": "ja",
+              "source": "docker/database/sql/README.ja.md",
+              "guideId": "docker-database-sql"
+            },
+            {
+              "name": "Docker Server",
+              "path": "./guides/ja/docker-server.ja.md",
+              "lang": "ja",
+              "source": "docker/server/README.ja.md",
+              "guideId": "docker-server"
+            },
+            {
+              "name": "Docker Tools",
+              "path": "./guides/ja/docker-tools.ja.md",
+              "lang": "ja",
+              "source": "docker/tools/README.ja.md",
+              "guideId": "docker-tools"
+            }
+          ],
+          "slug": "docker"
+        },
+        {
+          "id": "database",
+          "title": "Database",
+          "items": [
+            {
+              "name": "Database",
+              "path": "./guides/database.md",
+              "lang": "en",
+              "source": "database/README.md",
+              "guideId": "database"
+            },
+            {
+              "name": "Database Migrations",
+              "path": "./guides/database-migrations.md",
+              "lang": "en",
+              "source": "database/migrations/README.md",
+              "guideId": "database-migrations"
+            },
+            {
+              "name": "Database Seed",
+              "path": "./guides/database-seed.md",
+              "lang": "en",
+              "source": "database/seed/README.md",
+              "guideId": "database-seed"
+            },
+            {
+              "name": "Sqlc Query Guide",
+              "path": "./guides/sqlc-query-guide.md",
+              "lang": "en",
+              "source": "database/dml/README.md",
+              "guideId": "sqlc-query-guide"
+            },
+            {
+              "name": "Sqlc Settings",
+              "path": "./guides/sqlc-settings.md",
+              "lang": "en",
+              "source": "SQLC_README.md",
+              "guideId": "sqlc-settings"
+            },
+            {
+              "name": "Database",
+              "path": "./guides/ja/database.ja.md",
+              "lang": "ja",
+              "source": "database/README.ja.md",
+              "guideId": "database"
+            },
+            {
+              "name": "Database Migrations",
+              "path": "./guides/ja/database-migrations.ja.md",
+              "lang": "ja",
+              "source": "database/migrations/README.ja.md",
+              "guideId": "database-migrations"
+            },
+            {
+              "name": "Database Seed",
+              "path": "./guides/ja/database-seed.ja.md",
+              "lang": "ja",
+              "source": "database/seed/README.ja.md",
+              "guideId": "database-seed"
+            },
+            {
+              "name": "Sqlc Query Guide",
+              "path": "./guides/ja/sqlc-query-guide.ja.md",
+              "lang": "ja",
+              "source": "database/dml/README.ja.md",
+              "guideId": "sqlc-query-guide"
+            },
+            {
+              "name": "Sqlc Settings",
+              "path": "./guides/ja/sqlc-settings.ja.md",
+              "lang": "ja",
+              "source": "SQLC_README.ja.md",
+              "guideId": "sqlc-settings"
+            }
+          ],
+          "subgroups": [
+            {
+              "title": "Layer Top",
+              "items": [
+                {
+                  "name": "Database",
+                  "path": "./guides/database.md",
+                  "lang": "en",
+                  "source": "database/README.md",
+                  "guideId": "database"
+                },
+                {
+                  "name": "Database",
+                  "path": "./guides/ja/database.ja.md",
+                  "lang": "ja",
+                  "source": "database/README.ja.md",
+                  "guideId": "database"
+                }
+              ]
+            },
+            {
+              "title": "Migration (DDL)",
+              "items": [
+                {
+                  "name": "Database Migrations",
+                  "path": "./guides/database-migrations.md",
+                  "lang": "en",
+                  "source": "database/migrations/README.md",
+                  "guideId": "database-migrations"
+                },
+                {
+                  "name": "Database Migrations",
+                  "path": "./guides/ja/database-migrations.ja.md",
+                  "lang": "ja",
+                  "source": "database/migrations/README.ja.md",
+                  "guideId": "database-migrations"
+                }
+              ]
+            },
+            {
+              "title": "Query (DML)",
+              "items": [
+                {
+                  "name": "Sqlc Query Guide",
+                  "path": "./guides/sqlc-query-guide.md",
+                  "lang": "en",
+                  "source": "database/dml/README.md",
+                  "guideId": "sqlc-query-guide"
+                },
+                {
+                  "name": "Sqlc Query Guide",
+                  "path": "./guides/ja/sqlc-query-guide.ja.md",
+                  "lang": "ja",
+                  "source": "database/dml/README.ja.md",
+                  "guideId": "sqlc-query-guide"
+                },
+                {
+                  "name": "Sqlc Settings",
+                  "path": "./guides/sqlc-settings.md",
+                  "lang": "en",
+                  "source": "SQLC_README.md",
+                  "guideId": "sqlc-settings"
+                },
+                {
+                  "name": "Sqlc Settings",
+                  "path": "./guides/ja/sqlc-settings.ja.md",
+                  "lang": "ja",
+                  "source": "SQLC_README.ja.md",
+                  "guideId": "sqlc-settings"
+                }
+              ]
+            },
+            {
+              "title": "Seed",
+              "items": [
+                {
+                  "name": "Database Seed",
+                  "path": "./guides/database-seed.md",
+                  "lang": "en",
+                  "source": "database/seed/README.md",
+                  "guideId": "database-seed"
+                },
+                {
+                  "name": "Database Seed",
+                  "path": "./guides/ja/database-seed.ja.md",
+                  "lang": "ja",
+                  "source": "database/seed/README.ja.md",
+                  "guideId": "database-seed"
+                }
+              ]
+            }
+          ],
+          "slug": "database"
+        },
+        {
+          "id": "scripts",
+          "title": "Scripts",
+          "items": [
+            {
+              "name": "Scripts",
+              "path": "./guides/scripts.md",
+              "lang": "en",
+              "source": "scripts/README.md",
+              "guideId": "scripts"
+            },
+            {
+              "name": "Scripts",
+              "path": "./guides/ja/scripts.ja.md",
+              "lang": "ja",
+              "source": "scripts/README.ja.md",
+              "guideId": "scripts"
+            }
+          ],
+          "slug": "scripts"
+        },
+        {
+          "id": "ci",
+          "title": "CI Workflows",
+          "items": [
+            {
+              "name": "Ci Workflows",
+              "path": "./guides/ci-workflows.md",
+              "lang": "en",
+              "source": ".github/workflows/README.md",
+              "guideId": "ci-workflows"
+            },
+            {
+              "name": "Ci Workflows",
+              "path": "./guides/ja/ci-workflows.ja.md",
+              "lang": "ja",
+              "source": ".github/workflows/README.ja.md",
+              "guideId": "ci-workflows"
+            }
+          ],
+          "slug": "ci"
+        },
+        {
+          "id": "maintenance",
+          "title": "Maintenance",
+          "items": [
+            {
+              "name": "Docs Structure",
+              "path": "../maintenance/docs-structure.md",
+              "lang": "en",
+              "source": "docs/maintenance/docs-structure.md",
+              "guideId": "docs-structure"
+            },
+            {
+              "name": "Go Upgrade",
+              "path": "../maintenance/go-upgrade.md",
+              "lang": "en",
+              "source": "docs/maintenance/go-upgrade.md",
+              "guideId": "go-upgrade"
+            },
+            {
+              "name": "Portal Manifest",
+              "path": "../maintenance/portal-manifest.md",
+              "lang": "en",
+              "source": "docs/maintenance/portal-manifest.md",
+              "guideId": "portal-manifest"
+            },
+            {
+              "name": "Docs Structure",
+              "path": "../ja/maintenance/docs-structure.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/maintenance/docs-structure.ja.md",
+              "guideId": "docs-structure"
+            },
+            {
+              "name": "Go Upgrade",
+              "path": "../ja/maintenance/go-upgrade.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/maintenance/go-upgrade.ja.md",
+              "guideId": "go-upgrade"
+            },
+            {
+              "name": "Portal Manifest",
+              "path": "../ja/maintenance/portal-manifest.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/maintenance/portal-manifest.ja.md",
+              "guideId": "portal-manifest"
+            }
+          ],
+          "slug": "maintenance"
+        },
+        {
+          "id": "deployment",
+          "title": "Deployment",
+          "items": [
+            {
+              "name": "Github Page",
+              "path": "../deployment/github-page.md",
+              "lang": "en",
+              "source": "docs/deployment/github-page.md",
+              "guideId": "github-page"
+            },
+            {
+              "name": "Github Page",
+              "path": "../ja/deployment/github-page.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/deployment/github-page.ja.md",
+              "guideId": "github-page"
+            }
+          ],
+          "slug": "deployment"
         }
       ]
     },
     {
-      "title": "Controller (English)",
-      "items": [
+      "title": "API Contracts",
+      "slug": "api-contracts",
+      "sections": [
         {
-          "name": "Controller",
-          "path": "./guides/controller.md"
-        },
-        {
-          "name": "Controller Error Response",
-          "path": "./guides/controller-error-response.md"
-        },
-        {
-          "name": "Controller Handler",
-          "path": "./guides/controller-handler.md"
-        },
-        {
-          "name": "Controller Httpstack",
-          "path": "./guides/controller-httpstack.md"
-        },
-        {
-          "name": "Controller Httpstack Errorhandler",
-          "path": "./guides/controller-httpstack-errorhandler.md"
-        },
-        {
-          "name": "Controller Httpstack Oapi",
-          "path": "./guides/controller-httpstack-oapi.md"
-        },
-        {
-          "name": "Controller Httpstack Oapi Auth",
-          "path": "./guides/controller-httpstack-oapi-auth.md"
-        },
-        {
-          "name": "Controller Httpstack Oapi Skipper",
-          "path": "./guides/controller-httpstack-oapi-skipper.md"
-        },
-        {
-          "name": "Controller Job",
-          "path": "./guides/controller-job.md"
-        },
-        {
-          "name": "Controller Server",
-          "path": "./guides/controller-server.md"
+          "id": "external",
+          "title": "OpenAPI Sources",
+          "items": [
+            {
+              "name": "Openapi",
+              "path": "./guides/openapi.md",
+              "lang": "en",
+              "source": "openapi/README.md",
+              "guideId": "openapi"
+            },
+            {
+              "name": "Openapi Parameters",
+              "path": "./guides/openapi-parameters.md",
+              "lang": "en",
+              "source": "openapi/components/parameters/README.md",
+              "guideId": "openapi-parameters"
+            },
+            {
+              "name": "Openapi Paths",
+              "path": "./guides/openapi-paths.md",
+              "lang": "en",
+              "source": "openapi/paths/README.md",
+              "guideId": "openapi-paths"
+            },
+            {
+              "name": "Openapi Schemas",
+              "path": "./guides/openapi-schemas.md",
+              "lang": "en",
+              "source": "openapi/components/schemas/README.md",
+              "guideId": "openapi-schemas"
+            },
+            {
+              "name": "Openapi",
+              "path": "./guides/ja/openapi.ja.md",
+              "lang": "ja",
+              "source": "openapi/README.ja.md",
+              "guideId": "openapi"
+            },
+            {
+              "name": "Openapi Parameters",
+              "path": "./guides/ja/openapi-parameters.ja.md",
+              "lang": "ja",
+              "source": "openapi/components/parameters/README.ja.md",
+              "guideId": "openapi-parameters"
+            },
+            {
+              "name": "Openapi Paths",
+              "path": "./guides/ja/openapi-paths.ja.md",
+              "lang": "ja",
+              "source": "openapi/paths/README.ja.md",
+              "guideId": "openapi-paths"
+            },
+            {
+              "name": "Openapi Schemas",
+              "path": "./guides/ja/openapi-schemas.ja.md",
+              "lang": "ja",
+              "source": "openapi/components/schemas/README.ja.md",
+              "guideId": "openapi-schemas"
+            }
+          ],
+          "slug": "external"
         }
       ]
+    }
+  ],
+  "referenceLinks": [
+    {
+      "sectionId": "openapi",
+      "title": "OpenAPI Reference",
+      "path": "../openapi/index.html",
+      "source": "docs/openapi/index.html"
     },
     {
-      "title": "Controller (Japanese)",
-      "items": [
-        {
-          "name": "Controller",
-          "path": "./guides/ja/controller.ja.md"
-        },
-        {
-          "name": "Controller Error Response",
-          "path": "./guides/ja/controller-error-response.ja.md"
-        },
-        {
-          "name": "Controller Handler",
-          "path": "./guides/ja/controller-handler.ja.md"
-        },
-        {
-          "name": "Controller Httpstack",
-          "path": "./guides/ja/controller-httpstack.ja.md"
-        },
-        {
-          "name": "Controller Httpstack Errorhandler",
-          "path": "./guides/ja/controller-httpstack-errorhandler.ja.md"
-        },
-        {
-          "name": "Controller Httpstack Oapi",
-          "path": "./guides/ja/controller-httpstack-oapi.ja.md"
-        },
-        {
-          "name": "Controller Httpstack Oapi Auth",
-          "path": "./guides/ja/controller-httpstack-oapi-auth.ja.md"
-        },
-        {
-          "name": "Controller Httpstack Oapi Skipper",
-          "path": "./guides/ja/controller-httpstack-oapi-skipper.ja.md"
-        },
-        {
-          "name": "Controller Job",
-          "path": "./guides/ja/controller-job.ja.md"
-        },
-        {
-          "name": "Controller Server",
-          "path": "./guides/ja/controller-server.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Domain (English)",
-      "items": [
-        {
-          "name": "Domain",
-          "path": "./guides/domain.md"
-        }
-      ]
-    },
-    {
-      "title": "Domain (Japanese)",
-      "items": [
-        {
-          "name": "Domain",
-          "path": "./guides/ja/domain.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Usecase (English)",
-      "items": [
-        {
-          "name": "Usecase",
-          "path": "./guides/usecase.md"
-        },
-        {
-          "name": "Usecase Boundary",
-          "path": "./guides/usecase-boundary.md"
-        },
-        {
-          "name": "Usecase Boundary Clock",
-          "path": "./guides/usecase-boundary-clock.md"
-        },
-        {
-          "name": "Usecase Tools",
-          "path": "./guides/usecase-tools.md"
-        }
-      ]
-    },
-    {
-      "title": "Usecase (Japanese)",
-      "items": [
-        {
-          "name": "Usecase",
-          "path": "./guides/ja/usecase.ja.md"
-        },
-        {
-          "name": "Usecase Boundary",
-          "path": "./guides/ja/usecase-boundary.ja.md"
-        },
-        {
-          "name": "Usecase Boundary Clock",
-          "path": "./guides/ja/usecase-boundary-clock.ja.md"
-        },
-        {
-          "name": "Usecase Tools",
-          "path": "./guides/ja/usecase-tools.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Infrastructure (English)",
-      "items": [
-        {
-          "name": "Infrastructure",
-          "path": "./guides/infrastructure.md"
-        },
-        {
-          "name": "Infrastructure Auth",
-          "path": "./guides/infrastructure-auth.md"
-        },
-        {
-          "name": "Infrastructure Rdb",
-          "path": "./guides/infrastructure-rdb.md"
-        },
-        {
-          "name": "Infrastructure Rdb Driver",
-          "path": "./guides/infrastructure-rdb-driver.md"
-        },
-        {
-          "name": "Infrastructure Rdb Driver Loggingdb",
-          "path": "./guides/infrastructure-rdb-driver-loggingdb.md"
-        },
-        {
-          "name": "Infrastructure Rdb Pgerror",
-          "path": "./guides/infrastructure-rdb-pgerror.md"
-        },
-        {
-          "name": "Infrastructure Rdb Query Service",
-          "path": "./guides/infrastructure-rdb-query-service.md"
-        },
-        {
-          "name": "Infrastructure Rdb Repository",
-          "path": "./guides/infrastructure-rdb-repository.md"
-        },
-        {
-          "name": "Infrastructure Rdb Sqlc",
-          "path": "./guides/infrastructure-rdb-sqlc.md"
-        },
-        {
-          "name": "Infrastructure Rdb Testkit",
-          "path": "./guides/infrastructure-rdb-testkit.md"
-        },
-        {
-          "name": "Infrastructure Security",
-          "path": "./guides/infrastructure-security.md"
-        },
-        {
-          "name": "Infrastructure System",
-          "path": "./guides/infrastructure-system.md"
-        }
-      ]
-    },
-    {
-      "title": "Infrastructure (Japanese)",
-      "items": [
-        {
-          "name": "Infrastructure",
-          "path": "./guides/ja/infrastructure.ja.md"
-        },
-        {
-          "name": "Infrastructure Auth",
-          "path": "./guides/ja/infrastructure-auth.ja.md"
-        },
-        {
-          "name": "Infrastructure Rdb",
-          "path": "./guides/ja/infrastructure-rdb.ja.md"
-        },
-        {
-          "name": "Infrastructure Rdb Driver",
-          "path": "./guides/ja/infrastructure-rdb-driver.ja.md"
-        },
-        {
-          "name": "Infrastructure Rdb Driver Loggingdb",
-          "path": "./guides/ja/infrastructure-rdb-driver-loggingdb.ja.md"
-        },
-        {
-          "name": "Infrastructure Rdb Pgerror",
-          "path": "./guides/ja/infrastructure-rdb-pgerror.ja.md"
-        },
-        {
-          "name": "Infrastructure Rdb Query Service",
-          "path": "./guides/ja/infrastructure-rdb-query-service.ja.md"
-        },
-        {
-          "name": "Infrastructure Rdb Repository",
-          "path": "./guides/ja/infrastructure-rdb-repository.ja.md"
-        },
-        {
-          "name": "Infrastructure Rdb Sqlc",
-          "path": "./guides/ja/infrastructure-rdb-sqlc.ja.md"
-        },
-        {
-          "name": "Infrastructure Rdb Testkit",
-          "path": "./guides/ja/infrastructure-rdb-testkit.ja.md"
-        },
-        {
-          "name": "Infrastructure Security",
-          "path": "./guides/ja/infrastructure-security.ja.md"
-        },
-        {
-          "name": "Infrastructure System",
-          "path": "./guides/ja/infrastructure-system.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Database (English)",
-      "items": [
-        {
-          "name": "Database",
-          "path": "./guides/database.md"
-        },
-        {
-          "name": "Database Migrations",
-          "path": "./guides/database-migrations.md"
-        },
-        {
-          "name": "Database Seed",
-          "path": "./guides/database-seed.md"
-        },
-        {
-          "name": "Sqlc Query Guide",
-          "path": "./guides/sqlc-query-guide.md"
-        },
-        {
-          "name": "Sqlc Settings",
-          "path": "./guides/sqlc-settings.md"
-        }
-      ]
-    },
-    {
-      "title": "Database (Japanese)",
-      "items": [
-        {
-          "name": "Database",
-          "path": "./guides/ja/database.ja.md"
-        },
-        {
-          "name": "Database Migrations",
-          "path": "./guides/ja/database-migrations.ja.md"
-        },
-        {
-          "name": "Database Seed",
-          "path": "./guides/ja/database-seed.ja.md"
-        },
-        {
-          "name": "Sqlc Query Guide",
-          "path": "./guides/ja/sqlc-query-guide.ja.md"
-        },
-        {
-          "name": "Sqlc Settings",
-          "path": "./guides/ja/sqlc-settings.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Cross Cutting (English)",
-      "items": [
-        {
-          "name": "Apperror",
-          "path": "./guides/apperror.md"
-        },
-        {
-          "name": "Config",
-          "path": "./guides/config.md"
-        },
-        {
-          "name": "Logging",
-          "path": "./guides/logging.md"
-        },
-        {
-          "name": "Observability",
-          "path": "./guides/observability.md"
-        },
-        {
-          "name": "System",
-          "path": "./guides/system.md"
-        }
-      ]
-    },
-    {
-      "title": "Cross Cutting (Japanese)",
-      "items": [
-        {
-          "name": "Apperror",
-          "path": "./guides/ja/apperror.ja.md"
-        },
-        {
-          "name": "Config",
-          "path": "./guides/ja/config.ja.md"
-        },
-        {
-          "name": "Logging",
-          "path": "./guides/ja/logging.ja.md"
-        },
-        {
-          "name": "Observability",
-          "path": "./guides/ja/observability.ja.md"
-        },
-        {
-          "name": "System",
-          "path": "./guides/ja/system.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Di (English)",
-      "items": [
-        {
-          "name": "Di",
-          "path": "./guides/di.md"
-        },
-        {
-          "name": "Di Job",
-          "path": "./guides/di-job.md"
-        },
-        {
-          "name": "Di Lifecycle",
-          "path": "./guides/di-lifecycle.md"
-        },
-        {
-          "name": "Di Module",
-          "path": "./guides/di-module.md"
-        },
-        {
-          "name": "Di Module Core",
-          "path": "./guides/di-module-core.md"
-        },
-        {
-          "name": "Di Server",
-          "path": "./guides/di-server.md"
-        },
-        {
-          "name": "Di Server Extension",
-          "path": "./guides/di-server-extension.md"
-        },
-        {
-          "name": "Di Server Hook",
-          "path": "./guides/di-server-hook.md"
-        },
-        {
-          "name": "Di Shutdowner",
-          "path": "./guides/di-shutdowner.md"
-        }
-      ]
-    },
-    {
-      "title": "Di (Japanese)",
-      "items": [
-        {
-          "name": "Di",
-          "path": "./guides/ja/di.ja.md"
-        },
-        {
-          "name": "Di Job",
-          "path": "./guides/ja/di-job.ja.md"
-        },
-        {
-          "name": "Di Lifecycle",
-          "path": "./guides/ja/di-lifecycle.ja.md"
-        },
-        {
-          "name": "Di Module",
-          "path": "./guides/ja/di-module.ja.md"
-        },
-        {
-          "name": "Di Module Core",
-          "path": "./guides/ja/di-module-core.ja.md"
-        },
-        {
-          "name": "Di Server",
-          "path": "./guides/ja/di-server.ja.md"
-        },
-        {
-          "name": "Di Server Extension",
-          "path": "./guides/ja/di-server-extension.ja.md"
-        },
-        {
-          "name": "Di Server Hook",
-          "path": "./guides/ja/di-server-hook.ja.md"
-        },
-        {
-          "name": "Di Shutdowner",
-          "path": "./guides/ja/di-shutdowner.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Context Helper (English)",
-      "items": [
-        {
-          "name": "How To Generate Ctxhelper",
-          "path": "./guides/how-to-generate-ctxhelper.md"
-        },
-        {
-          "name": "How To Use Context Helper",
-          "path": "./guides/how-to-use-context-helper.md"
-        }
-      ]
-    },
-    {
-      "title": "Context Helper (Japanese)",
-      "items": [
-        {
-          "name": "How To Generate Ctxhelper",
-          "path": "./guides/ja/how-to-generate-ctxhelper.ja.md"
-        },
-        {
-          "name": "How To Use Context Helper",
-          "path": "./guides/ja/how-to-use-context-helper.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Cli (English)",
-      "items": [
-        {
-          "name": "Cli",
-          "path": "./guides/cli.md"
-        }
-      ]
-    },
-    {
-      "title": "Cli (Japanese)",
-      "items": [
-        {
-          "name": "Cli",
-          "path": "./guides/ja/cli.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Integration (English)",
-      "items": [
-        {
-          "name": "Integration",
-          "path": "./guides/integration.md"
-        }
-      ]
-    },
-    {
-      "title": "Integration (Japanese)",
-      "items": [
-        {
-          "name": "Integration",
-          "path": "./guides/ja/integration.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Pkg (English)",
-      "items": [
-        {
-          "name": "Pkg",
-          "path": "./guides/pkg.md"
-        }
-      ]
-    },
-    {
-      "title": "Pkg (Japanese)",
-      "items": [
-        {
-          "name": "Pkg",
-          "path": "./guides/ja/pkg.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Docker (English)",
-      "items": [
-        {
-          "name": "Docker",
-          "path": "./guides/docker.md"
-        },
-        {
-          "name": "Docker Database Sql",
-          "path": "./guides/docker-database-sql.md"
-        },
-        {
-          "name": "Docker Server",
-          "path": "./guides/docker-server.md"
-        },
-        {
-          "name": "Docker Tools",
-          "path": "./guides/docker-tools.md"
-        }
-      ]
-    },
-    {
-      "title": "Docker (Japanese)",
-      "items": [
-        {
-          "name": "Docker",
-          "path": "./guides/ja/docker.ja.md"
-        },
-        {
-          "name": "Docker Database Sql",
-          "path": "./guides/ja/docker-database-sql.ja.md"
-        },
-        {
-          "name": "Docker Server",
-          "path": "./guides/ja/docker-server.ja.md"
-        },
-        {
-          "name": "Docker Tools",
-          "path": "./guides/ja/docker-tools.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Scripts (English)",
-      "items": [
-        {
-          "name": "Scripts",
-          "path": "./guides/scripts.md"
-        }
-      ]
-    },
-    {
-      "title": "Scripts (Japanese)",
-      "items": [
-        {
-          "name": "Scripts",
-          "path": "./guides/ja/scripts.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Ci (English)",
-      "items": [
-        {
-          "name": "Ci Workflows",
-          "path": "./guides/ci-workflows.md"
-        }
-      ]
-    },
-    {
-      "title": "Ci (Japanese)",
-      "items": [
-        {
-          "name": "Ci Workflows",
-          "path": "./guides/ja/ci-workflows.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "External (English)",
-      "items": [
-        {
-          "name": "Openapi",
-          "path": "./guides/openapi.md"
-        },
-        {
-          "name": "Openapi Parameters",
-          "path": "./guides/openapi-parameters.md"
-        },
-        {
-          "name": "Openapi Paths",
-          "path": "./guides/openapi-paths.md"
-        },
-        {
-          "name": "Openapi Schemas",
-          "path": "./guides/openapi-schemas.md"
-        }
-      ]
-    },
-    {
-      "title": "External (Japanese)",
-      "items": [
-        {
-          "name": "Openapi",
-          "path": "./guides/ja/openapi.ja.md"
-        },
-        {
-          "name": "Openapi Parameters",
-          "path": "./guides/ja/openapi-parameters.ja.md"
-        },
-        {
-          "name": "Openapi Paths",
-          "path": "./guides/ja/openapi-paths.ja.md"
-        },
-        {
-          "name": "Openapi Schemas",
-          "path": "./guides/ja/openapi-schemas.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Coverage",
-      "items": [
-        {
-          "name": "Coverage",
-          "path": "../coverage/index.html"
-        }
-      ]
-    },
-    {
-      "title": "Db Schema",
-      "items": [
-        {
-          "name": "Db Schema",
-          "path": "../db-schema/index.html"
-        }
-      ]
-    },
-    {
-      "title": "Deployment (English)",
-      "items": [
-        {
-          "name": "Github Page",
-          "path": "../deployment/github-page.md"
-        }
-      ]
-    },
-    {
-      "title": "Deployment (Japanese)",
-      "items": [
-        {
-          "name": "Github Page",
-          "path": "../ja/deployment/github-page.ja.md"
-        }
-      ]
-    },
-    {
+      "sectionId": "godoc",
       "title": "Godoc",
-      "items": [
-        {
-          "name": "Godoc",
-          "path": "../godoc/index.html"
-        }
-      ]
+      "path": "../godoc/index.html",
+      "source": "docs/godoc/index.html"
     },
     {
-      "title": "Maintenance (English)",
-      "items": [
-        {
-          "name": "Docs Structure",
-          "path": "../maintenance/docs-structure.md"
-        },
-        {
-          "name": "Go Upgrade",
-          "path": "../maintenance/go-upgrade.md"
-        },
-        {
-          "name": "Setup Repository",
-          "path": "../maintenance/setup-repository.md"
-        }
-      ]
+      "sectionId": "db-schema",
+      "title": "DB Schema",
+      "path": "../db-schema/index.html",
+      "source": "docs/db-schema/index.html"
     },
     {
-      "title": "Maintenance (Japanese)",
-      "items": [
-        {
-          "name": "Docs Structure",
-          "path": "../ja/maintenance/docs-structure.ja.md"
-        },
-        {
-          "name": "Go Upgrade",
-          "path": "../ja/maintenance/go-upgrade.ja.md"
-        },
-        {
-          "name": "Setup Repository",
-          "path": "../ja/maintenance/setup-repository.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Openapi",
-      "items": [
-        {
-          "name": "Openapi",
-          "path": "../openapi/index.html"
-        }
-      ]
-    },
-    {
-      "title": "Project (English)",
-      "items": [
-        {
-          "name": "Out Of Scope",
-          "path": "../project/out-of-scope.md"
-        },
-        {
-          "name": "Policy",
-          "path": "../project/policy.md"
-        },
-        {
-          "name": "Scope",
-          "path": "../project/scope.md"
-        },
-        {
-          "name": "Versioning",
-          "path": "../project/versioning.md"
-        }
-      ]
-    },
-    {
-      "title": "Project (Japanese)",
-      "items": [
-        {
-          "name": "Out Of Scope",
-          "path": "../ja/project/out-of-scope.ja.md"
-        },
-        {
-          "name": "Policy",
-          "path": "../ja/project/policy.ja.md"
-        },
-        {
-          "name": "Scope",
-          "path": "../ja/project/scope.ja.md"
-        },
-        {
-          "name": "Versioning",
-          "path": "../ja/project/versioning.ja.md"
-        }
-      ]
-    },
-    {
-      "title": "Architecture (English)",
-      "items": [
-        {
-          "name": "Architecture",
-          "path": "../architecture.md"
-        },
-        {
-          "name": "Decisions",
-          "path": "../decisions.md"
-        },
-        {
-          "name": "Development Flow",
-          "path": "../development-flow.md"
-        },
-        {
-          "name": "Index",
-          "path": "../index.md"
-        },
-        {
-          "name": "Rules",
-          "path": "../rules.md"
-        }
-      ]
-    },
-    {
-      "title": "Architecture (Japanese)",
-      "items": [
-        {
-          "name": "Architecture",
-          "path": "../ja/architecture.ja.md"
-        },
-        {
-          "name": "Decisions",
-          "path": "../ja/decisions.ja.md"
-        },
-        {
-          "name": "Development Flow",
-          "path": "../ja/development-flow.ja.md"
-        },
-        {
-          "name": "Index",
-          "path": "../ja/index.ja.md"
-        },
-        {
-          "name": "Rules",
-          "path": "../ja/rules.ja.md"
-        }
-      ]
+      "sectionId": "coverage",
+      "title": "Coverage Report",
+      "path": "../coverage/index.html",
+      "source": "docs/coverage/index.html"
     }
   ]
 }
