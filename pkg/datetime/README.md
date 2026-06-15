@@ -16,7 +16,7 @@ Provides date/time parsing utilities supporting multiple formats with timezone a
 |`ParseDateOnly(s)`|Parse date-only format|
 |`ParseCustomLayout(layout, s)`|Parse with arbitrary layout|
 
-All functions have `InLocation` variants for parsing with a specified timezone.
+All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for parsing with a specified timezone.
 
 ## Wraps
 

@@ -1826,6 +1826,24 @@
       ]
     },
     {
+      "title": "Tutorial (English)",
+      "items": [
+        {
+          "name": "Build User Feature",
+          "path": "../tutorial/build-user-feature.md"
+        }
+      ]
+    },
+    {
+      "title": "Tutorial (Japanese)",
+      "items": [
+        {
+          "name": "Build User Feature",
+          "path": "../ja/tutorial/build-user-feature.ja.md"
+        }
+      ]
+    },
+    {
       "title": "API Contracts",
       "slug": "api-contracts",
       "sections": [
