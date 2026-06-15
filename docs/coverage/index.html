@@ -2315,7 +2315,7 @@ func (m *MetricsConfig) UserName() string <span class="cov4" title="10">{ return
 func (m *MetricsConfig) Password() string <span class="cov4" title="10">{ return m.password }</span>
 
 // NewObservabilityConfig は、可観測の設定を返します。
-func NewObservabilityConfig(cfg *Config) *ObservabilityConfig <span class="cov8" title="239">{ return &amp;cfg.observability }</span>
+func NewObservabilityConfig(cfg *Config) *ObservabilityConfig <span class="cov8" title="238">{ return &amp;cfg.observability }</span>
 
 // Enabled は、可観測モードが有効かどうかを返します。
 func (o *ObservabilityConfig) Enabled() bool <span class="cov9" title="480">{ return o.enabled }</span>
@@ -6296,7 +6296,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="20">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="33">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -9088,7 +9088,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov7" title="300">{
+        for i, line := range lines </span><span class="cov6" title="219">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>

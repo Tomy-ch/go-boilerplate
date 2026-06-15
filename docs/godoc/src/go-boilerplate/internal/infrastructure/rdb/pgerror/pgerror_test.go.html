@@ -215,7 +215,7 @@
 <span id="L158" class="ln">   158  </span>
 <span id="L159" class="ln">   159  </span>func TestIsUnavailable(t *testing.T) {
 <span id="L160" class="ln">   160  </span>	t.Parallel()
-<span id="L161" class="ln">   161  </span>	t.Run(&#34;nil&#34;, func(t *testing.T) {
+<span id="L161" class="ln">   161  </span>	t.Run(&#34;nilの場合は接続不可ではない&#34;, func(t *testing.T) {
 <span id="L162" class="ln">   162  </span>		t.Parallel()
 <span id="L163" class="ln">   163  </span>		got := IsUnavailable(nil)
 <span id="L164" class="ln">   164  </span>		assert.False(t, got)

@@ -66,19 +66,19 @@
 <span id="L9" class="ln">     9  </span>func TestWrapLikePatterns(t *testing.T) {
 <span id="L10" class="ln">    10  </span>	t.Parallel()
 <span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>	t.Run(&#34;WrapPrefixLikePattern&#34;, func(t *testing.T) {
+<span id="L12" class="ln">    12  </span>	t.Run(&#34;前方一致のLIKEパターンに変換する&#34;, func(t *testing.T) {
 <span id="L13" class="ln">    13  </span>		t.Parallel()
 <span id="L14" class="ln">    14  </span>		got := WrapPrefixLikePattern(&#34;hoge&#34;)
 <span id="L15" class="ln">    15  </span>		assert.Equal(t, &#34;hoge%&#34;, got)
 <span id="L16" class="ln">    16  </span>	})
 <span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>	t.Run(&#34;WrapSuffixLikePattern&#34;, func(t *testing.T) {
+<span id="L18" class="ln">    18  </span>	t.Run(&#34;後方一致のLIKEパターンに変換する&#34;, func(t *testing.T) {
 <span id="L19" class="ln">    19  </span>		t.Parallel()
 <span id="L20" class="ln">    20  </span>		got := WrapSuffixLikePattern(&#34;hoge&#34;)
 <span id="L21" class="ln">    21  </span>		assert.Equal(t, &#34;%hoge&#34;, got)
 <span id="L22" class="ln">    22  </span>	})
 <span id="L23" class="ln">    23  </span>
-<span id="L24" class="ln">    24  </span>	t.Run(&#34;WrapContainsLikePattern&#34;, func(t *testing.T) {
+<span id="L24" class="ln">    24  </span>	t.Run(&#34;部分一致のLIKEパターンに変換する&#34;, func(t *testing.T) {
 <span id="L25" class="ln">    25  </span>		t.Parallel()
 <span id="L26" class="ln">    26  </span>		got := WrapContainsLikePattern(&#34;hoge&#34;)
 <span id="L27" class="ln">    27  </span>		assert.Equal(t, &#34;%hoge%&#34;, got)
