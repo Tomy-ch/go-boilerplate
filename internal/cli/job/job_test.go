@@ -137,7 +137,7 @@ func TestRunJobWith(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("正常系_provideで取得したstart/stopをrunJobへ渡し結果を返す", func(t *testing.T) {
+		t.Run("provideで取得したstart/stopをrunJobへ渡し結果を返す", func(t *testing.T) {
 			t.Parallel()
 
 			done := make(chan error, 1)

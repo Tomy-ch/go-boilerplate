@@ -28,53 +28,65 @@ func TestSetRecovered(t *testing.T) {
 func TestGetRecovered(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_標準コンテキストから取得できる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctx = SetRecovered(ctx, true)
+		t.Run("標準コンテキストから取得できる", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			ctx = SetRecovered(ctx, true)
 
-		val, ok := GetRecovered(ctx)
-		assert.True(t, ok)
-		assert.Equal(t, true, val)
+			val, ok := GetRecovered(ctx)
+			assert.True(t, ok)
+			assert.Equal(t, true, val)
+		})
 	})
 
-	t.Run("異常系_値が無い場合はfalseを返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		val, ok := GetRecovered(ctx)
-		assert.False(t, ok)
-		assert.Equal(t, false, val)
+		t.Run("値が無い場合はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			val, ok := GetRecovered(ctx)
+			assert.False(t, ok)
+			assert.Equal(t, false, val)
+		})
 	})
 }
 
 func TestSetRecoveredToEcho(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_echoへ設定し取得できる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+		t.Run("echoへ設定し取得できる", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-		SetRecoveredToEcho(c, true)
-		val, ok := GetRecoveredFromEcho(c)
+			SetRecoveredToEcho(c, true)
+			val, ok := GetRecoveredFromEcho(c)
 
-		assert.True(t, ok)
-		assert.Equal(t, true, val)
+			assert.True(t, ok)
+			assert.Equal(t, true, val)
+		})
 	})
 
-	t.Run("異常系_echoに値が無い場合はfalseを返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+		t.Run("echoに値が無い場合はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-		val, ok := GetRecoveredFromEcho(c)
-		assert.False(t, ok)
-		assert.Equal(t, false, val)
+			val, ok := GetRecoveredFromEcho(c)
+			assert.False(t, ok)
+			assert.Equal(t, false, val)
+		})
 	})
 }
