@@ -5,7 +5,7 @@
 meta:
   groups:
     - title: Get Started
-      sections: [overview, get-started, make_commands, environment_variables]
+      sections: [overview, get-started, make_commands, environment_variables, tutorial]
     - title: Architecture
       sections: [architecture, project]
     - title: Application Layers

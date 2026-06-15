@@ -89,6 +89,27 @@
               "guideId": "environment-variables"
             }
           ]
+        },
+        {
+          "id": "tutorial",
+          "slug": "tutorial",
+          "title": "Tutorial",
+          "items": [
+            {
+              "name": "Build User Feature",
+              "path": "../tutorial/build-user-feature.md",
+              "lang": "en",
+              "source": "docs/tutorial/build-user-feature.md",
+              "guideId": "build-user-feature"
+            },
+            {
+              "name": "Build User Feature",
+              "path": "../ja/tutorial/build-user-feature.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/tutorial/build-user-feature.ja.md",
+              "guideId": "build-user-feature"
+            }
+          ]
         }
       ]
     },
@@ -1822,24 +1843,6 @@
               "guideId": "github-page"
             }
           ]
-        }
-      ]
-    },
-    {
-      "title": "Tutorial (English)",
-      "items": [
-        {
-          "name": "Build User Feature",
-          "path": "../tutorial/build-user-feature.md"
-        }
-      ]
-    },
-    {
-      "title": "Tutorial (Japanese)",
-      "items": [
-        {
-          "name": "Build User Feature",
-          "path": "../ja/tutorial/build-user-feature.ja.md"
         }
       ]
     },
