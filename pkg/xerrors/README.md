@@ -13,6 +13,11 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 |`Is(err, target)`|Check error identity (supports wrapped chains)|
 |`As(err, target)`|Type-assert an error (supports wrapped chains)|
 |`StackTrace(err)`|Get formatted stack trace string|
+|`NewErrors()`|Return an `Errors` implementation (for DI / mocking)|
+
+The package-level functions above are also exposed through the `Errors` interface
+(`New` / `Wrap` / `Is` / `As` / `StackTrace`), which confines the dependency on
+`cockroachdb/errors` to a single contract and makes it injectable / mockable.
 
 ## Wraps
 

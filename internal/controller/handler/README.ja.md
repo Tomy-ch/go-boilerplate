@@ -24,7 +24,7 @@ internal/controller/handler は、CLI（Cobra）から起動される **サー�
   - 送信用の **DTO/VO** に詰め替えて渡す
   - Usecaseから返却されたDTO→OpenAPI型への詰め替え
 - エラーは[apperrorで定義されているマップピング](../../apperror/README.ja.md)で apperrorのエラーを統一マッピングして返却される。
-- ページングは`paging.NewPageFrom1Based()` に渡して正規化。
+- ページングは`paging.NewPagingFrom1Based()` に渡して正規化。
 - リクエストID/ロギングなどはミドルウェア（Echo + Zap）で実施。
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
@@ -455,7 +455,7 @@ type server struct {
 
 #### ページング
 
-- Controller: `page & per_page`を受け取り、`usecase.NewPagingFrom1Based()`でhttpを意味（Paging）へ変換。
+- Controller: `page & per_page`を受け取り、`paging.NewPagingFrom1Based()`でhttpを意味（Paging）へ変換。
 - Usecase: `Paging`を受け、方針（上限・既定）を一元管理。
 
 #### エラーマッピング

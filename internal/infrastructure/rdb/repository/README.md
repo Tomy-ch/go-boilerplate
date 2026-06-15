@@ -259,30 +259,11 @@ db := gen.New(r.db.NewLoggingDB(ctx))
 
 Repository is designed to **not be aware of DB connection state**.
 
-## Direct use of driver
-
-If logging is unnecessary, DB access without logging can be used.
-
-```go
-db := gen.New(r.db.NewDB(ctx))
-```
-
-Use cases
-
-- When reducing log noise in high-frequency processing
-- Simple processing that does not require logging
-- Benchmarking or checking minimal path
-
-Principle
-
-- Normally use `NewLoggingDB(ctx)`
-- Use `NewDB(ctx)` only when there is a clear reason
-
 ## Error normalization
 
 PostgreSQL errors are converted into `apperror` in:
 
-`internal/infrastructure/rdb/postgres/pgerror`
+`internal/infrastructure/rdb/pgerror`
 
 ```go
 return pgerror.NormalizeError(err)
@@ -292,7 +273,7 @@ Main conversions
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["ErrNotFound"]
     Unique["unique violation"] --> Conflict["ErrConflict"]
     Conn["connection error"] --> Unavail["ErrUnavailable"]
     Others["others"] --> Internal["ErrInternal"]
@@ -452,12 +433,6 @@ Repository implementation has the following dependencies.
   - transparent DB / Tx switching
   are provided.
 
-- If logging is unnecessary, use `r.db.NewDB(ctx)` to access DB without logging.
-  - high-frequency processing
-  - benchmarking
-  - cases where log noise should be avoided
-  use only when there is a clear reason.
-
 - observability.TracerFactory is a factory to generate LayerTracer.
   - Repository uses tracer for Infra layer
 
@@ -522,13 +497,14 @@ Repository tests **do not aim to verify Domain logic**.
 Repository tests initialize DB using `testkit`.
 
 ```go
-db, provider := testkit.NewTestDBWithLoggingProvider(t)
+db := testkit.NewTestDB(t)
+provider := testkit.NewTestLoggingProvider(t)
 ```
 
-This function provides:
+These functions provide:
 
-- test DB connection
-- loggingdb.DBProvider
+- `NewTestDB`: test DB connection (`driver.DatabaseDriver`)
+- `NewTestLoggingProvider`: `loggingdb.DBProvider`
 
 ### Transaction tests
 
@@ -621,7 +597,7 @@ Example
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["ErrNotFound"]
     Unique["unique violation"] --> Conflict["ErrConflict"]
     Conn["connection error"] --> Unavail["ErrUnavailable"]
     Others["others"] --> Internal["ErrInternal"]
