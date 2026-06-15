@@ -27,11 +27,11 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Fetch & Checkout repository
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -59,40 +59,11 @@ jobs:
           } | tee /tmp/sync-versions-drift.md
           exit 1
 
-      - name: Comment drift on PR
+      - name: Comment sync-versions result on PR
         if: github.event_name == 'pull_request' && failure() && steps.drift.outputs.status == 'drift'
-        uses: actions/github-script@v8
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- sync-versions-drift -->';
-            const body = [
-              marker,
-              '## ❌ sync-versions: drift detected',
-              '',
-              fs.readFileSync('/tmp/sync-versions-drift.md', 'utf8'),
-            ].join('\n');
-
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-            const existing = comments.find(c => (c.body || '').includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body,
-              });
-            }
+          marker: '<!-- sync-versions-drift -->'
+          title: '## ❌ sync-versions: drift detected'
+          body-file: /tmp/sync-versions-drift.md

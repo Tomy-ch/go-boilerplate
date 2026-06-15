@@ -60,7 +60,7 @@ Branch on the result:
 - **PR exists but state is `MERGED` / `CLOSED`** → ask the user via `AskUserQuestion`:
   - Question: 「このブランチには `<state>` 状態の PR #N があります。新規 PR を作成しますか？」
   - Options: 「新規 PR を作成する」 / 「キャンセル」
-- **No PR exists** → "create" path. Base branch defaults to the repo's default branch.
+- **No PR exists** → "create" path. Base branch defaults to the repo's default branch — but in this repo the GitHub default (`defaultBranchRef`) lags behind the active release line, so the real target is usually the **latest `release/v1.X.0`**, not the default. Prefer the latest release line and confirm it below.
 
 For the "create" path, if multiple `release/*` branches exist locally and the user may want a non-default target, confirm via `AskUserQuestion`:
 
@@ -149,6 +149,8 @@ git push -u origin <branch>
 # Subsequent push
 git push
 ```
+
+A branch cut from `origin/release/*` (the merged-PR recovery flow in `commit`) has its upstream pointing at that **protected** base, so a bare `git push` would target the protected branch. Always do the first push with the explicit refspec `git push -u origin <branch>` to repoint the upstream at the feature branch; only after that is a bare `git push` safe.
 
 Never use `--force` or `--force-with-lease` unless the user has explicitly requested it.
 

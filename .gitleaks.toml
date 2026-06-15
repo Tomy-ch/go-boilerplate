@@ -1,0 +1,14 @@
+# gitleaks 設定
+# https://github.com/gitleaks/gitleaks#configuration
+[extend]
+useDefault = true
+
+[allowlist]
+description = "生成ファイルは機械生成で秘密の置き場所ではないため除外する"
+paths = [
+  '''.*\.gen\.go$''',
+  '''.*\.sql\.go$''',
+  '''.*_mock\.go$''',
+  '''.*/mock_.*\.go$''',
+  '''openapi/openapi\.gen\.yaml$''',
+]

@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_health_check_usecase.gen.go -package=mock_$GOPACKAGE
 
 // Package healthcheck は、システムの健全性チェックに関するユースケースを提供します。
 package healthcheck

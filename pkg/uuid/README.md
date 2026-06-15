@@ -14,6 +14,7 @@ UUID value object wrapping `github.com/google/uuid`. Generates UUIDv7 and suppor
 |`String()`|Return string representation|
 |`Bytes()`|Return underlying `[16]byte`|
 |`ToPrimitive()`|Convert to `google/uuid.UUID`|
+|`FromPrimitive(g)`|Convert from `google/uuid.UUID`|
 |`IsNil()`|Check if zero value|
 |`Equal(v)`|Compare UUIDs|
 |`ToPtr()`|Get pointer to UUID|

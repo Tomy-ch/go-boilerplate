@@ -9,19 +9,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const recoveredCtxKey = "server.recovered"
-
-// MarkRecovered は、パニックが上流で復旧・ログ済みであることを Echo コンテキストに記録します。
-func MarkRecovered(c echo.Context) {
-	c.Set(recoveredCtxKey, true)
-}
-
-// IsRecovered は、パニックが上流で復旧・ログ済みかを返します（エラーハンドラの二重ログ抑止に使用）。
-func IsRecovered(c echo.Context) bool {
-	v, ok := c.Get(recoveredCtxKey).(bool)
-	return ok && v
-}
-
 // BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
 // eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
 func BuildHTTPRequestLogInput(c echo.Context, eventType string) logging.HTTPRequestLogInput {

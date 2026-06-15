@@ -1,0 +1,388 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>uuid - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package uuid
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/pkg/uuid&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package uuid は、UUIDを生成および操作するための機能を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#UUID">type UUID</a></dd>
+				
+					
+					<dd>    <a href="#FromPrimitive">func FromPrimitive(g uuid.UUID) UUID</a></dd>
+				
+					
+					<dd>    <a href="#New">func New() (UUID, error)</a></dd>
+				
+					
+					<dd>    <a href="#NewTestFromSalt">func NewTestFromSalt(t testing.TB, salt string) UUID</a></dd>
+				
+					
+					<dd>    <a href="#Parse">func Parse(s string) (UUID, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#UUID.Bytes">func (u UUID) Bytes() [16]byte</a></dd>
+				
+					
+					<dd>    <a href="#UUID.Equal">func (u UUID) Equal(v UUID) bool</a></dd>
+				
+					
+					<dd>    <a href="#UUID.EqualPtr">func (u UUID) EqualPtr(v *UUID) bool</a></dd>
+				
+					
+					<dd>    <a href="#UUID.IsNil">func (u UUID) IsNil() bool</a></dd>
+				
+					
+					<dd>    <a href="#UUID.Scan">func (u *UUID) Scan(src any) error</a></dd>
+				
+					
+					<dd>    <a href="#UUID.String">func (u UUID) String() string</a></dd>
+				
+					
+					<dd>    <a href="#UUID.ToPrimitive">func (u UUID) ToPrimitive() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#UUID.ToPtr">func (u UUID) ToPtr() *UUID</a></dd>
+				
+					
+					<dd>    <a href="#UUID.Value">func (u UUID) Value() (driver.Value, error)</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/pkg/uuid/helper.go.html">helper.go</a>
+			
+				<a href="../../../src/go-boilerplate/pkg/uuid/test_kit.go.html">test_kit.go</a>
+			
+				<a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html">uuid.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="UUID">type <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=299:329#L1">UUID</a>
+				<a class="permalink" href="#UUID">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type UUID struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="FromPrimitive">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1558:1594#L34">FromPrimitive</a>
+					<a class="permalink" href="#FromPrimitive">¶</a>
+					
+					
+				</h3>
+				<pre>func FromPrimitive(g <a href="../../../github.com/google/uuid/">uuid</a>.<a href="../../../github.com/google/uuid/#UUID">UUID</a>) <a href="#UUID">UUID</a></pre>
+				<p>FromPrimitive は、github.com/google/uuid の uuid.UUID からドメインの UUID を生成します。
+
+				
+				
+			
+				
+				</p><h3 id="New">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=427:451#L4">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New() (<a href="#UUID">UUID</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>New は、uuidを生成します。生成に失敗した場合はエラーを返します。
+
+				
+				
+			
+				
+				</p><h3 id="NewTestFromSalt">func <a href="../../../src/go-boilerplate/pkg/uuid/test_kit.go.html?s=265:317#L3">NewTestFromSalt</a>
+					<a class="permalink" href="#NewTestFromSalt">¶</a>
+					
+					
+				</h3>
+				<pre>func NewTestFromSalt(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, salt <a href="../../../builtin/#string">string</a>) <a href="#UUID">UUID</a></pre>
+				<p>NewTestFromSalt はテスト専用の決定論UUID生成関数です。
+</p><p>本番利用は想定していません。
+v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
+
+				
+				
+			
+				
+				</p><h3 id="Parse">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1734:1768#L37">Parse</a>
+					<a class="permalink" href="#Parse">¶</a>
+					
+					
+				</h3>
+				<pre>func Parse(s <a href="../../../builtin/#string">string</a>) (<a href="#UUID">UUID</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>Parse は、文字列からUUIDを解析します。解析に失敗した場合はエラーを返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="UUID.Bytes">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=725:755#L16">Bytes</a>
+					<a class="permalink" href="#UUID.Bytes">¶</a>
+					
+					
+				</h3>
+				<pre>func (u <a href="#UUID">UUID</a>) Bytes() [16]<a href="../../../builtin/#byte">byte</a></pre>
+				<p>Bytes は、UUIDをバイト配列に変換します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="UUID.Equal">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1133:1165#L25">Equal</a>
+					<a class="permalink" href="#UUID.Equal">¶</a>
+					
+					
+				</h3>
+				<pre>func (u <a href="#UUID">UUID</a>) Equal(v <a href="#UUID">UUID</a>) <a href="../../../builtin/#bool">bool</a></pre>
+				<p>Equal は、引数のUUIDと等しいかどうかを判定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="UUID.EqualPtr">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1377:1413#L31">EqualPtr</a>
+					<a class="permalink" href="#UUID.EqualPtr">¶</a>
+					
+					
+				</h3>
+				<pre>func (u <a href="#UUID">UUID</a>) EqualPtr(v *<a href="#UUID">UUID</a>) <a href="../../../builtin/#bool">bool</a></pre>
+				<p>EqualPtr は、ポインタを介してUUIDが等しいかどうかを判定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="UUID.IsNil">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1002:1028#L22">IsNil</a>
+					<a class="permalink" href="#UUID.IsNil">¶</a>
+					
+					
+				</h3>
+				<pre>func (u <a href="#UUID">UUID</a>) IsNil() <a href="../../../builtin/#bool">bool</a></pre>
+				<p>IsNil は、UUIDが全てゼロであるかどうかを判定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="UUID.Scan">func (*UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=2000:2034#L46">Scan</a>
+					<a class="permalink" href="#UUID.Scan">¶</a>
+					
+					
+				</h3>
+				<pre>func (u *<a href="#UUID">UUID</a>) Scan(src <a href="../../../builtin/#any">any</a>) <a href="../../../builtin/#error">error</a></pre>
+				<p>Scan は、データベースからUUIDをスキャンします。スキャンに失敗した場合はエラーを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="UUID.String">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=603:632#L13">String</a>
+					<a class="permalink" href="#UUID.String">¶</a>
+					
+					
+				</h3>
+				<pre>func (u <a href="#UUID">UUID</a>) String() <a href="../../../builtin/#string">string</a></pre>
+				<p>String は、UUIDを文字列に変換します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="UUID.ToPrimitive">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=863:900#L19">ToPrimitive</a>
+					<a class="permalink" href="#UUID.ToPrimitive">¶</a>
+					
+					
+				</h3>
+				<pre>func (u <a href="#UUID">UUID</a>) ToPrimitive() <a href="../../../github.com/google/uuid/">uuid</a>.<a href="../../../github.com/google/uuid/#UUID">UUID</a></pre>
+				<p>ToPrimitive は、UUIDから github.com/google/uuid の uuid.UUID を生成します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="UUID.ToPtr">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1242:1269#L28">ToPtr</a>
+					<a class="permalink" href="#UUID.ToPtr">¶</a>
+					
+					
+				</h3>
+				<pre>func (u <a href="#UUID">UUID</a>) ToPtr() *<a href="#UUID">UUID</a></pre>
+				<p>ToPtr は、UUIDのポインタを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="UUID.Value">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=2288:2331#L56">Value</a>
+					<a class="permalink" href="#UUID.Value">¶</a>
+					
+					
+				</h3>
+				<pre>func (u <a href="#UUID">UUID</a>) Value() (<a href="../../../database/sql/driver/">driver</a>.<a href="../../../database/sql/driver/#Value">Value</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>Value は、UUIDをデータベースに保存するための値に変換します。変換に失敗した場合はエラーを返します。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

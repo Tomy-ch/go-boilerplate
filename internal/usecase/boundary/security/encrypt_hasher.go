@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_encrypt_hasher.gen.go -package=mock_$GOPACKAGE
 
 // Package security は、ユースケースが必要とするパスワードのハッシュ化・比較機能のインターフェース（境界）を提供します。
 package security

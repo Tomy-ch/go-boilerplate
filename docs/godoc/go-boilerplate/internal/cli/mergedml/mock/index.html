@@ -1,0 +1,433 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_mergedml
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/cli/mergedml/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_mergedml is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockFileSystem">type MockFileSystem</a></dd>
+				
+					
+					<dd>    <a href="#NewMockFileSystem">func NewMockFileSystem(ctrl *gomock.Controller) *MockFileSystem</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockFileSystem.EXPECT">func (m *MockFileSystem) EXPECT() *MockFileSystemMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystem.FindSQLFiles">func (m *MockFileSystem) FindSQLFiles(dir string) ([]string, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystem.ListGenFileNames">func (m *MockFileSystem) ListGenFileNames(genDir string) ([]string, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystem.ListSubDirNames">func (m *MockFileSystem) ListSubDirNames(base string) ([]string, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystem.ReadFile">func (m *MockFileSystem) ReadFile(name string) ([]byte, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystem.Remove">func (m *MockFileSystem) Remove(name string) error</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystem.WriteFile">func (m *MockFileSystem) WriteFile(name string, data []byte, perm os.FileMode) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockFileSystemMockRecorder">type MockFileSystemMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockFileSystemMockRecorder.FindSQLFiles">func (mr *MockFileSystemMockRecorder) FindSQLFiles(dir any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystemMockRecorder.ListGenFileNames">func (mr *MockFileSystemMockRecorder) ListGenFileNames(genDir any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystemMockRecorder.ListSubDirNames">func (mr *MockFileSystemMockRecorder) ListSubDirNames(base any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystemMockRecorder.ReadFile">func (mr *MockFileSystemMockRecorder) ReadFile(name any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystemMockRecorder.Remove">func (mr *MockFileSystemMockRecorder) Remove(name any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockFileSystemMockRecorder.WriteFile">func (mr *MockFileSystemMockRecorder) WriteFile(name, data, perm any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html">mock_merge_dml.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockFileSystem">type <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=409:525#L10">MockFileSystem</a>
+				<a class="permalink" href="#MockFileSystem">¶</a>
+				
+				
+			</h2>
+			<p>MockFileSystem is a mock of FileSystem interface.
+
+			</p><pre>type MockFileSystem struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockFileSystem">func <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=714:777#L22">NewMockFileSystem</a>
+					<a class="permalink" href="#NewMockFileSystem">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockFileSystem(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockFileSystem">MockFileSystem</a></pre>
+				<p>NewMockFileSystem creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockFileSystem.EXPECT">func (*MockFileSystem) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=961:1022#L29">EXPECT</a>
+					<a class="permalink" href="#MockFileSystem.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFileSystem">MockFileSystem</a>) EXPECT() *<a href="#MockFileSystemMockRecorder">MockFileSystemMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystem.FindSQLFiles">func (*MockFileSystem) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=1082:1149#L34">FindSQLFiles</a>
+					<a class="permalink" href="#MockFileSystem.FindSQLFiles">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFileSystem">MockFileSystem</a>) FindSQLFiles(dir <a href="../../../../../builtin/#string">string</a>) ([]<a href="../../../../../builtin/#string">string</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindSQLFiles mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystem.ListGenFileNames">func (*MockFileSystem) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=1625:1699#L49">ListGenFileNames</a>
+					<a class="permalink" href="#MockFileSystem.ListGenFileNames">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFileSystem">MockFileSystem</a>) ListGenFileNames(genDir <a href="../../../../../builtin/#string">string</a>) ([]<a href="../../../../../builtin/#string">string</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ListGenFileNames mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystem.ListSubDirNames">func (*MockFileSystem) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=2207:2278#L64">ListSubDirNames</a>
+					<a class="permalink" href="#MockFileSystem.ListSubDirNames">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFileSystem">MockFileSystem</a>) ListSubDirNames(base <a href="../../../../../builtin/#string">string</a>) ([]<a href="../../../../../builtin/#string">string</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ListSubDirNames mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystem.ReadFile">func (*MockFileSystem) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=2767:2829#L79">ReadFile</a>
+					<a class="permalink" href="#MockFileSystem.ReadFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFileSystem">MockFileSystem</a>) ReadFile(name <a href="../../../../../builtin/#string">string</a>) ([]<a href="../../../../../builtin/#byte">byte</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ReadFile mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystem.Remove">func (*MockFileSystem) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=3272:3322#L94">Remove</a>
+					<a class="permalink" href="#MockFileSystem.Remove">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFileSystem">MockFileSystem</a>) Remove(name <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>Remove mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystem.WriteFile">func (*MockFileSystem) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=3722:3806#L108">WriteFile</a>
+					<a class="permalink" href="#MockFileSystem.WriteFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFileSystem">MockFileSystem</a>) WriteFile(name <a href="../../../../../builtin/#string">string</a>, data []<a href="../../../../../builtin/#byte">byte</a>, perm <a href="../../../../../os/">os</a>.<a href="../../../../../os/#FileMode">FileMode</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>WriteFile mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockFileSystemMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=598:662#L17">MockFileSystemMockRecorder</a>
+				<a class="permalink" href="#MockFileSystemMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockFileSystemMockRecorder is the mock recorder for MockFileSystem.
+
+			</p><pre>type MockFileSystemMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockFileSystemMockRecorder.FindSQLFiles">func (*MockFileSystemMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=1354:1426#L43">FindSQLFiles</a>
+					<a class="permalink" href="#MockFileSystemMockRecorder.FindSQLFiles">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFileSystemMockRecorder">MockFileSystemMockRecorder</a>) FindSQLFiles(dir <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindSQLFiles indicates an expected call of FindSQLFiles.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystemMockRecorder.ListGenFileNames">func (*MockFileSystemMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=1919:1998#L58">ListGenFileNames</a>
+					<a class="permalink" href="#MockFileSystemMockRecorder.ListGenFileNames">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFileSystemMockRecorder">MockFileSystemMockRecorder</a>) ListGenFileNames(genDir <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ListGenFileNames indicates an expected call of ListGenFileNames.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystemMockRecorder.ListSubDirNames">func (*MockFileSystemMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=2493:2569#L73">ListSubDirNames</a>
+					<a class="permalink" href="#MockFileSystemMockRecorder.ListSubDirNames">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFileSystemMockRecorder">MockFileSystemMockRecorder</a>) ListSubDirNames(base <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ListSubDirNames indicates an expected call of ListSubDirNames.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystemMockRecorder.ReadFile">func (*MockFileSystemMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=3021:3090#L88">ReadFile</a>
+					<a class="permalink" href="#MockFileSystemMockRecorder.ReadFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFileSystemMockRecorder">MockFileSystemMockRecorder</a>) ReadFile(name <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ReadFile indicates an expected call of ReadFile.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystemMockRecorder.Remove">func (*MockFileSystemMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=3474:3541#L102">Remove</a>
+					<a class="permalink" href="#MockFileSystemMockRecorder.Remove">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFileSystemMockRecorder">MockFileSystemMockRecorder</a>) Remove(name <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Remove indicates an expected call of Remove.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFileSystemMockRecorder.WriteFile">func (*MockFileSystemMockRecorder) <a href="../../../../../src/go-boilerplate/internal/cli/mergedml/mock/mock_merge_dml.gen.go.html?s=3979:4061#L116">WriteFile</a>
+					<a class="permalink" href="#MockFileSystemMockRecorder.WriteFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFileSystemMockRecorder">MockFileSystemMockRecorder</a>) WriteFile(name, data, perm <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>WriteFile indicates an expected call of WriteFile.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

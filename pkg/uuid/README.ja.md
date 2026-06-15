@@ -14,6 +14,7 @@
 |`String()`|文字列表現を返す|
 |`Bytes()`|`[16]byte` を返す|
 |`ToPrimitive()`|`google/uuid.UUID` に変換|
+|`FromPrimitive(g)`|`google/uuid.UUID` から変換|
 |`IsNil()`|ゼロ値か判定|
 |`Equal(v)`|UUID の比較|
 |`ToPtr()`|UUID のポインタを取得|

@@ -1,0 +1,499 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>extension - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package extension
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/di/server/extension&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package extension は、サーバー拡張機能の適用に関するユーティリティを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#ApplyConfigurators">func ApplyConfigurators(e *echo.Echo, logger logging.Logger, cfgs []SrvCfg)</a></dd>
+			
+				
+				<dd><a href="#ApplyPreMiddlewares">func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddleware) error</a></dd>
+			
+				
+				<dd><a href="#ApplyUseMiddlewares">func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddleware) error</a></dd>
+			
+			
+				
+				<dd><a href="#AppliedServerExtends">type AppliedServerExtends</a></dd>
+				
+					
+					<dd>    <a href="#ApplyExtends">func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*AppliedServerExtends, error)</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PreMiddleware">type PreMiddleware</a></dd>
+				
+				
+			
+				
+				<dd><a href="#PreMiddlewareOut">type PreMiddlewareOut</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ServeCfgOut">type ServeCfgOut</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ServerExtends">type ServerExtends</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SrvCfg">type SrvCfg</a></dd>
+				
+				
+			
+				
+				<dd><a href="#UseMiddleware">type UseMiddleware</a></dd>
+				
+				
+			
+				
+				<dd><a href="#UseMiddlewareOut">type UseMiddlewareOut</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html">extension.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="ApplyConfigurators">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=5931:6006#L168">ApplyConfigurators</a>
+				<a class="permalink" href="#ApplyConfigurators">¶</a>
+				
+				
+			</h2>
+			<pre>func ApplyConfigurators(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, cfgs []<a href="#SrvCfg">SrvCfg</a>)</pre>
+			<p>ApplyConfigurators は、Echoに対して設定関数を適用します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ApplyPreMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=3182:3270#L83">ApplyPreMiddlewares</a>
+				<a class="permalink" href="#ApplyPreMiddlewares">¶</a>
+				
+				
+			</h2>
+			<pre>func ApplyPreMiddlewares(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, mws []<a href="#PreMiddleware">PreMiddleware</a>) <a href="../../../../../builtin/#error">error</a></pre>
+			<p>ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ApplyUseMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=3594:3682#L92">ApplyUseMiddlewares</a>
+				<a class="permalink" href="#ApplyUseMiddlewares">¶</a>
+				
+				
+			</h2>
+			<pre>func ApplyUseMiddlewares(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, mws []<a href="#UseMiddleware">UseMiddleware</a>) <a href="../../../../../builtin/#error">error</a></pre>
+			<p>ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="AppliedServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=971:1005#L20">AppliedServerExtends</a>
+				<a class="permalink" href="#AppliedServerExtends">¶</a>
+				
+				
+			</h2>
+			<p>AppliedServerExtends は、サーバー拡張が適用されたことを示すトークンです。
+
+			</p><pre>type AppliedServerExtends struct{}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="ApplyExtends">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2704:2812#L71">ApplyExtends</a>
+					<a class="permalink" href="#ApplyExtends">¶</a>
+					
+					
+				</h3>
+				<pre>func ApplyExtends(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, extends <a href="#ServerExtends">ServerExtends</a>) (*<a href="#AppliedServerExtends">AppliedServerExtends</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ApplyExtends は、サーバー拡張を適用します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="PreMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1358:1696#L32">PreMiddleware</a>
+				<a class="permalink" href="#PreMiddleware">¶</a>
+				
+				
+			</h2>
+			<p>PreMiddleware は、Pre ミドルウェアとその適用順序を表します。
+
+			</p><pre>type PreMiddleware struct {
+<span id="PreMiddleware.Name"></span>    <span class="comment">// Name は、ミドルウェアの名前です（ログ出力用）</span>
+    Name <a href="../../../../../builtin/#string">string</a>
+<span id="PreMiddleware.Priority"></span>    <span class="comment">// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）</span>
+    Priority <a href="../../../../../builtin/#int">int</a>
+<span id="PreMiddleware.Middleware"></span>    <span class="comment">// Middleware は、適用対象の Echo ミドルウェアです。</span>
+    Middleware echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PreMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2196:2288#L52">PreMiddlewareOut</a>
+				<a class="permalink" href="#PreMiddlewareOut">¶</a>
+				
+				
+			</h2>
+			<p>PreMiddlewareOut は、fx の group 出力用のラッパーです。
+
+			</p><pre>type PreMiddlewareOut struct {
+    <a href="../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../go.uber.org/fx/#Out">Out</a>
+<span id="PreMiddlewareOut.Middleware"></span>    Middleware <a href="#PreMiddleware">PreMiddleware</a> `group:&#34;middlewares.pre&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ServeCfgOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1190:1271#L26">ServeCfgOut</a>
+				<a class="permalink" href="#ServeCfgOut">¶</a>
+				
+				
+			</h2>
+			<p>ServeCfgOut は、サーバーの設定の出力時に使用される構造体です。
+
+			</p><pre>type ServeCfgOut struct {
+    <a href="../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../go.uber.org/fx/#Out">Out</a>
+<span id="ServeCfgOut.SrvCfg"></span>    SrvCfg <a href="#SrvCfg">SrvCfg</a> `group:&#34;server.configurators&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=379:866#L9">ServerExtends</a>
+				<a class="permalink" href="#ServerExtends">¶</a>
+				
+				
+			</h2>
+			<p>ServerExtends は、サーバーの拡張機能を表します。
+
+			</p><pre>type ServerExtends struct {
+    <a href="../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../go.uber.org/fx/#In">In</a>
+<span id="ServerExtends.PreList"></span>    <span class="comment">// PreList は、Preミドルウェアとして適用されるミドルウェアのリストです。</span>
+    PreList []<a href="#PreMiddleware">PreMiddleware</a> `group:&#34;middlewares.pre&#34;`
+<span id="ServerExtends.UseList"></span>    <span class="comment">// UseList は、Useミドルウェアとして適用されるミドルウェアのリストです。</span>
+    UseList []<a href="#UseMiddleware">UseMiddleware</a> `group:&#34;middlewares.use&#34;`
+<span id="ServerExtends.CfgList"></span>    <span class="comment">// CfgList は、サーバーに副作用で適用される設定関数のリストです。</span>
+    CfgList []<a href="#SrvCfg">SrvCfg</a> `group:&#34;server.configurators&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SrvCfg">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1069:1097#L23">SrvCfg</a>
+				<a class="permalink" href="#SrvCfg">¶</a>
+				
+				
+			</h2>
+			<p>SrvCfg は、サーバーの設定関数を表します。
+
+			</p><pre>type SrvCfg func(*echo.<a href="#Echo">Echo</a>)</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UseMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1783:2121#L42">UseMiddleware</a>
+				<a class="permalink" href="#UseMiddleware">¶</a>
+				
+				
+			</h2>
+			<p>UseMiddleware は、Use ミドルウェアとその適用順序を表します。
+
+			</p><pre>type UseMiddleware struct {
+<span id="UseMiddleware.Name"></span>    <span class="comment">// Name は、ミドルウェアの名前です（ログ出力用）</span>
+    Name <a href="../../../../../builtin/#string">string</a>
+<span id="UseMiddleware.Priority"></span>    <span class="comment">// Priority は、ミドルウェアの適用順序を表します（小さい方が先に適用される）</span>
+    Priority <a href="../../../../../builtin/#int">int</a>
+<span id="UseMiddleware.Middleware"></span>    <span class="comment">// Middleware は、適用対象の Echo ミドルウェアです。</span>
+    Middleware echo.<a href="#MiddlewareFunc">MiddlewareFunc</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UseMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2363:2455#L58">UseMiddlewareOut</a>
+				<a class="permalink" href="#UseMiddlewareOut">¶</a>
+				
+				
+			</h2>
+			<p>UseMiddlewareOut は、fx の group 出力用のラッパーです。
+
+			</p><pre>type UseMiddlewareOut struct {
+    <a href="../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../go.uber.org/fx/#Out">Out</a>
+<span id="UseMiddlewareOut.Middleware"></span>    Middleware <a href="#UseMiddleware">UseMiddleware</a> `group:&#34;middlewares.use&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

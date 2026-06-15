@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_layer_tracer.gen.go -package=mock_$GOPACKAGE
 
 // Package observability は、可観測性に関連するユーティリティを提供します。
 package observability

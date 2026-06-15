@@ -1,0 +1,657 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_driver
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/rdb/driver/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_driver is a generated GoMock package.
+</p><p>Package mock_driver is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockDBTX">type MockDBTX</a></dd>
+				
+					
+					<dd>    <a href="#NewMockDBTX">func NewMockDBTX(ctrl *gomock.Controller) *MockDBTX</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockDBTX.EXPECT">func (m *MockDBTX) EXPECT() *MockDBTXMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockDBTX.Exec">func (m *MockDBTX) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockDBTX.Query">func (m *MockDBTX) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockDBTX.QueryRow">func (m *MockDBTX) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row</a></dd>
+				
+			
+				
+				<dd><a href="#MockDBTXMockRecorder">type MockDBTXMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockDBTXMockRecorder.Exec">func (mr *MockDBTXMockRecorder) Exec(ctx, sql any, args ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDBTXMockRecorder.Query">func (mr *MockDBTXMockRecorder) Query(ctx, sql any, args ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDBTXMockRecorder.QueryRow">func (mr *MockDBTXMockRecorder) QueryRow(ctx, sql any, args ...any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockDatabaseDriver">type MockDatabaseDriver</a></dd>
+				
+					
+					<dd>    <a href="#NewMockDatabaseDriver">func NewMockDatabaseDriver(ctrl *gomock.Controller) *MockDatabaseDriver</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockDatabaseDriver.Begin">func (m *MockDatabaseDriver) Begin(ctx context.Context) (pgx.Tx, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriver.Close">func (m *MockDatabaseDriver) Close() error</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriver.EXPECT">func (m *MockDatabaseDriver) EXPECT() *MockDatabaseDriverMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriver.Exec">func (m *MockDatabaseDriver) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriver.Ping">func (m *MockDatabaseDriver) Ping(ctx context.Context) error</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriver.Query">func (m *MockDatabaseDriver) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriver.QueryRow">func (m *MockDatabaseDriver) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriver.Stats">func (m *MockDatabaseDriver) Stats() *pgxpool.Stat</a></dd>
+				
+			
+				
+				<dd><a href="#MockDatabaseDriverMockRecorder">type MockDatabaseDriverMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockDatabaseDriverMockRecorder.Begin">func (mr *MockDatabaseDriverMockRecorder) Begin(ctx any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriverMockRecorder.Close">func (mr *MockDatabaseDriverMockRecorder) Close() *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriverMockRecorder.Exec">func (mr *MockDatabaseDriverMockRecorder) Exec(ctx, sql any, args ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriverMockRecorder.Ping">func (mr *MockDatabaseDriverMockRecorder) Ping(ctx any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriverMockRecorder.Query">func (mr *MockDatabaseDriverMockRecorder) Query(ctx, sql any, args ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriverMockRecorder.QueryRow">func (mr *MockDatabaseDriverMockRecorder) QueryRow(ctx, sql any, args ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockDatabaseDriverMockRecorder.Stats">func (mr *MockDatabaseDriverMockRecorder) Stats() *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html">mock_connection.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html">mock_driver.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockDBTX">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=476:580#L12">MockDBTX</a>
+				<a class="permalink" href="#MockDBTX">¶</a>
+				
+				
+			</h2>
+			<p>MockDBTX is a mock of DBTX interface.
+
+			</p><pre>type MockDBTX struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockDBTX">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=739:790#L24">NewMockDBTX</a>
+					<a class="permalink" href="#NewMockDBTX">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockDBTX(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockDBTX">MockDBTX</a></pre>
+				<p>NewMockDBTX creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockDBTX.EXPECT">func (*MockDBTX) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=962:1011#L31">EXPECT</a>
+					<a class="permalink" href="#MockDBTX.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDBTX">MockDBTX</a>) EXPECT() *<a href="#MockDBTXMockRecorder">MockDBTXMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBTX.Exec">func (*MockDBTX) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=1063:1159#L36">Exec</a>
+					<a class="permalink" href="#MockDBTX.Exec">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDBTX">MockDBTX</a>) Exec(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, sql <a href="../../../../../../builtin/#string">string</a>, args ...<a href="../../../../../../builtin/#any">any</a>) (<a href="../../../../../../github.com/jackc/pgx/v5/pgconn/">pgconn</a>.<a href="../../../../../../github.com/jackc/pgx/v5/pgconn/#CommandTag">CommandTag</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Exec mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBTX.Query">func (*MockDBTX) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=1738:1826#L56">Query</a>
+					<a class="permalink" href="#MockDBTX.Query">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDBTX">MockDBTX</a>) Query(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, sql <a href="../../../../../../builtin/#string">string</a>, args ...<a href="../../../../../../builtin/#any">any</a>) (<a href="../../../../../../github.com/jackc/pgx/v5/">pgx</a>.<a href="../../../../../../github.com/jackc/pgx/v5/#Rows">Rows</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Query mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBTX.QueryRow">func (*MockDBTX) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=2405:2486#L76">QueryRow</a>
+					<a class="permalink" href="#MockDBTX.QueryRow">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDBTX">MockDBTX</a>) QueryRow(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, sql <a href="../../../../../../builtin/#string">string</a>, args ...<a href="../../../../../../builtin/#any">any</a>) <a href="../../../../../../github.com/jackc/pgx/v5/">pgx</a>.<a href="../../../../../../github.com/jackc/pgx/v5/#Row">Row</a></pre>
+				<p>QueryRow mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockDBTXMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=641:693#L19">MockDBTXMockRecorder</a>
+				<a class="permalink" href="#MockDBTXMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockDBTXMockRecorder is the mock recorder for MockDBTX.
+
+			</p><pre>type MockDBTXMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockDBTXMockRecorder.Exec">func (*MockDBTXMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=1444:1520#L49">Exec</a>
+					<a class="permalink" href="#MockDBTXMockRecorder.Exec">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDBTXMockRecorder">MockDBTXMockRecorder</a>) Exec(ctx, sql <a href="../../../../../../builtin/#any">any</a>, args ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Exec indicates an expected call of Exec.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBTXMockRecorder.Query">func (*MockDBTXMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=2105:2182#L69">Query</a>
+					<a class="permalink" href="#MockDBTXMockRecorder.Query">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDBTXMockRecorder">MockDBTXMockRecorder</a>) Query(ctx, sql <a href="../../../../../../builtin/#any">any</a>, args ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Query indicates an expected call of Query.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDBTXMockRecorder.QueryRow">func (*MockDBTXMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.gen.go.html?s=2740:2820#L88">QueryRow</a>
+					<a class="permalink" href="#MockDBTXMockRecorder.QueryRow">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDBTXMockRecorder">MockDBTXMockRecorder</a>) QueryRow(ctx, sql <a href="../../../../../../builtin/#any">any</a>, args ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>QueryRow indicates an expected call of QueryRow.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockDatabaseDriver">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=527:651#L13">MockDatabaseDriver</a>
+				<a class="permalink" href="#MockDatabaseDriver">¶</a>
+				
+				
+			</h2>
+			<p>MockDatabaseDriver is a mock of DatabaseDriver interface.
+
+			</p><pre>type MockDatabaseDriver struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockDatabaseDriver">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=860:931#L25">NewMockDatabaseDriver</a>
+					<a class="permalink" href="#NewMockDatabaseDriver">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockDatabaseDriver(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockDatabaseDriver">MockDatabaseDriver</a></pre>
+				<p>NewMockDatabaseDriver creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockDatabaseDriver.Begin">func (*MockDatabaseDriver) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=1245:1316#L37">Begin</a>
+					<a class="permalink" href="#MockDatabaseDriver.Begin">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDatabaseDriver">MockDatabaseDriver</a>) Begin(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) (<a href="../../../../../../github.com/jackc/pgx/v5/">pgx</a>.<a href="../../../../../../github.com/jackc/pgx/v5/#Tx">Tx</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Begin mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriver.Close">func (*MockDatabaseDriver) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=1745:1787#L52">Close</a>
+					<a class="permalink" href="#MockDatabaseDriver.Close">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDatabaseDriver">MockDatabaseDriver</a>) Close() <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Close mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriver.EXPECT">func (*MockDatabaseDriver) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=1123:1192#L32">EXPECT</a>
+					<a class="permalink" href="#MockDatabaseDriver.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDatabaseDriver">MockDatabaseDriver</a>) EXPECT() *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriver.Exec">func (*MockDatabaseDriver) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=2164:2270#L66">Exec</a>
+					<a class="permalink" href="#MockDatabaseDriver.Exec">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDatabaseDriver">MockDatabaseDriver</a>) Exec(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, sql <a href="../../../../../../builtin/#string">string</a>, args ...<a href="../../../../../../builtin/#any">any</a>) (<a href="../../../../../../github.com/jackc/pgx/v5/pgconn/">pgconn</a>.<a href="../../../../../../github.com/jackc/pgx/v5/pgconn/#CommandTag">CommandTag</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Exec mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriver.Ping">func (*MockDatabaseDriver) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=2868:2928#L86">Ping</a>
+					<a class="permalink" href="#MockDatabaseDriver.Ping">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDatabaseDriver">MockDatabaseDriver</a>) Ping(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Ping mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriver.Query">func (*MockDatabaseDriver) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=3317:3415#L100">Query</a>
+					<a class="permalink" href="#MockDatabaseDriver.Query">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDatabaseDriver">MockDatabaseDriver</a>) Query(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, sql <a href="../../../../../../builtin/#string">string</a>, args ...<a href="../../../../../../builtin/#any">any</a>) (<a href="../../../../../../github.com/jackc/pgx/v5/">pgx</a>.<a href="../../../../../../github.com/jackc/pgx/v5/#Rows">Rows</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Query mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriver.QueryRow">func (*MockDatabaseDriver) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=4014:4105#L120">QueryRow</a>
+					<a class="permalink" href="#MockDatabaseDriver.QueryRow">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDatabaseDriver">MockDatabaseDriver</a>) QueryRow(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, sql <a href="../../../../../../builtin/#string">string</a>, args ...<a href="../../../../../../builtin/#any">any</a>) <a href="../../../../../../github.com/jackc/pgx/v5/">pgx</a>.<a href="../../../../../../github.com/jackc/pgx/v5/#Row">Row</a></pre>
+				<p>QueryRow mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriver.Stats">func (*MockDatabaseDriver) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=4685:4735#L139">Stats</a>
+					<a class="permalink" href="#MockDatabaseDriver.Stats">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockDatabaseDriver">MockDatabaseDriver</a>) Stats() *<a href="../../../../../../github.com/jackc/pgx/v5/pgxpool/">pgxpool</a>.<a href="../../../../../../github.com/jackc/pgx/v5/pgxpool/#Stat">Stat</a></pre>
+				<p>Stats mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockDatabaseDriverMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=732:804#L20">MockDatabaseDriverMockRecorder</a>
+				<a class="permalink" href="#MockDatabaseDriverMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockDatabaseDriverMockRecorder is the mock recorder for MockDatabaseDriver.
+
+			</p><pre>type MockDatabaseDriverMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockDatabaseDriverMockRecorder.Begin">func (*MockDatabaseDriverMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=1498:1567#L46">Begin</a>
+					<a class="permalink" href="#MockDatabaseDriverMockRecorder.Begin">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a>) Begin(ctx <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Begin indicates an expected call of Begin.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriverMockRecorder.Close">func (*MockDatabaseDriverMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=1930:1992#L60">Close</a>
+					<a class="permalink" href="#MockDatabaseDriverMockRecorder.Close">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a>) Close() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Close indicates an expected call of Close.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriverMockRecorder.Exec">func (*MockDatabaseDriverMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=2555:2641#L79">Exec</a>
+					<a class="permalink" href="#MockDatabaseDriverMockRecorder.Exec">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a>) Exec(ctx, sql <a href="../../../../../../builtin/#any">any</a>, args ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Exec indicates an expected call of Exec.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriverMockRecorder.Ping">func (*MockDatabaseDriverMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=3073:3141#L94">Ping</a>
+					<a class="permalink" href="#MockDatabaseDriverMockRecorder.Ping">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a>) Ping(ctx <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Ping indicates an expected call of Ping.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriverMockRecorder.Query">func (*MockDatabaseDriverMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=3694:3781#L113">Query</a>
+					<a class="permalink" href="#MockDatabaseDriverMockRecorder.Query">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a>) Query(ctx, sql <a href="../../../../../../builtin/#any">any</a>, args ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Query indicates an expected call of Query.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriverMockRecorder.QueryRow">func (*MockDatabaseDriverMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=4359:4449#L132">QueryRow</a>
+					<a class="permalink" href="#MockDatabaseDriverMockRecorder.QueryRow">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a>) QueryRow(ctx, sql <a href="../../../../../../builtin/#any">any</a>, args ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>QueryRow indicates an expected call of QueryRow.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockDatabaseDriverMockRecorder.Stats">func (*MockDatabaseDriverMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.gen.go.html?s=4886:4948#L147">Stats</a>
+					<a class="permalink" href="#MockDatabaseDriverMockRecorder.Stats">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a>) Stats() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Stats indicates an expected call of Stats.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

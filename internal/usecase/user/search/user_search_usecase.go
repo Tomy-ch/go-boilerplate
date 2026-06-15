@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_user_search_usecase.gen.go -package=mock_$GOPACKAGE
 
 // Package search は、ユーザー検索に関するユースケースを提供します。
 package search

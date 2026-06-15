@@ -13,6 +13,11 @@ English | [日本語](README.ja.md)
 
 Helpers used by only one feature should be placed within that feature's package.
 
+Packages that perform external I/O (e.g. `exec`, `fs`, `xerrors`) follow a common
+shape: define an **interface** for the capability, provide a concrete implementation
+(`OS{}` / `stdErrors{}` etc.) that wires the real dependency, and add a
+`//go:generate mockgen` directive so callers can inject a mock in tests.
+
 ### `pkg/` vs application-wide cross-cutting concerns
 
 "Referenced from multiple locations" alone is **not** sufficient. `pkg/` is for
@@ -40,7 +45,10 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 |Package|Summary|Wraps|
 |---|---|---|
 |`datetime`|Date/time parsing|Standard library `time`|
+|`envutil`|Environment variable override (test helper)|Standard library `os`|
+|`exec`|External command execution (interface + mock)|Standard library `os/exec`|
 |`fnmeta`|Function / package name extraction|Standard library `runtime`|
+|`fs`|Filesystem operations (interface + mock)|Standard library `os`|
 |`ptr`|Pointer operations|None|
 |`safecast`|Type conversion with overflow detection|None|
 |`stringkit`|String length validation|None|
@@ -65,7 +73,24 @@ Key functions
 |`ParseDateOnly`|Parse date-only format|
 |`ParseCustomLayout`|Parse with an arbitrary layout|
 
-All functions have `InLocation` variants for parsing with a specified timezone.
+All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for parsing with a specified timezone.
+
+### envutil
+
+Temporarily overrides an environment variable and returns a restore function (mainly for tests / config loading).
+
+|Function|Description|
+|---|---|
+|`Override(key, value)`|Set an env var and return a `func()` that restores the previous state|
+
+### exec
+
+Abstracts external command execution behind an interface so callers can inject a mock in tests. Production wires the `OS{}` implementation.
+
+|Symbol|Description|
+|---|---|
+|`Runner` (interface)|`Output(ctx, dir, env, name, args)` — run a command and return stdout|
+|`OS` (struct)|`os/exec`-based implementation of `Runner`|
 
 ### fnmeta
 
@@ -78,6 +103,15 @@ Primarily used for span name generation in `internal/observability`.
 |`ExtractFunctionName`|Extract method name from full function name|
 |`ExtractPackageName`|Extract package name from full function name|
 
+### fs
+
+Abstracts filesystem operations behind an interface so callers can inject a mock in tests. Production wires the `OS{}` implementation.
+
+|Symbol|Description|
+|---|---|
+|`FS` (interface)|`ReadFile` / `WriteFile` / `Glob`|
+|`OS` (struct)|`os`-based implementation of `FS`|
+
 ### ptr
 
 Pointer manipulation utilities using generics.
@@ -86,6 +120,7 @@ Pointer manipulation utilities using generics.
 |---|---|
 |`To[T]`|Create a pointer from a value|
 |`Copy[T]`|Copy a pointer (nil-safe)|
+|`Deref[T]`|Dereference a pointer, returning a fallback when nil|
 
 ### safecast
 

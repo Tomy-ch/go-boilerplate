@@ -24,11 +24,11 @@ jobs:
     env:
       ENV: ci
     steps:
-      - name: Fetch & Checkout repository
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -70,106 +70,41 @@ jobs:
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Comment changed files on PR
+      - name: Build PR comment body
+        id: comment
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/gen-go-comment.md
+          if [ "${{ steps.gen_diff.outputs.has_diff }}" != "true" ]; then
+            echo "title=## ✅ No differences in Go generated output were detected" >> "$GITHUB_OUTPUT"
+            echo "No differences in Go generated output were detected." > "$out"
+            exit 0
+          fi
+          if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
+            echo "title=## 🧾 Differences in Go generated output have been detected" >> "$GITHUB_OUTPUT"
+            printf '%s\n' '`make gen-go-code`（または `make gen`）をローカルで実行し、変更をコミットしてください。' > "$out"
+          else
+            echo "title=## ⚠️ Go 生成物のドリフトを検知（.go source 未変更）" >> "$GITHUB_OUTPUT"
+            printf '%s\n' '本 PR では `.go` source が変更されていないため、generator 側のドリフト（mockgen / oapi-codegen の依存バージョン差・base 側の古い生成物 等）の可能性があります。`make gen-go-code` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
+          fi
+          {
+            echo ""
+            while IFS= read -r f; do
+              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
+            done < /tmp/changed_files.txt
+          } >> "$out"
+
+      - name: Comment generated artifacts result on PR
         if: github.event_name == 'pull_request'
         continue-on-error: true
-        uses: actions/github-script@v8
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-
-            const marker = '<!-- generated-go-artifacts-filelist -->';
-            const hasDiff = ('${{ steps.gen_diff.outputs.has_diff }}' === 'true');
-            const sourceModified = '${{ steps.source_mod.outputs.source_modified }}' === 'true';
-
-            let files = [];
-            if (hasDiff) {
-              try {
-                const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
-                files = raw ? raw.split('\n').filter(Boolean) : [];
-              } catch (e) {
-                files = ['(Failed to read changed_files.txt)'];
-              }
-            }
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-            const shortSha = headSha.slice(0, 7);
-
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
-            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
-            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
-
-            const diffTitle = sourceModified
-              ? '## 🧾 Differences in Go generated output have been detected (list of modified files)'
-              : '## ⚠️ Go 生成物のドリフトを検知（本 PR で `.go` source は触られていません）';
-            const diffAction = sourceModified
-              ? 'Please run `make gen-go-code` (or `make gen`) locally and commit the changes.'
-              : '本 PR では `.go` source が変更されていないため、generator 側のドリフト（mockgen / oapi-codegen の依存バージョン差 / base 側の古い生成物 等）の可能性があります。`make gen-go-code` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。';
-            const body = hasDiff
-              ? [
-                  marker,
-                  diffTitle,
-                  '',
-                  commitLine,
-                  '',
-                  ...(files.length ? files.map(f => `- \`${f}\``) : ['(no changed files)']),
-                  '',
-                  diffAction,
-                  '',
-                  updatedLine,
-                ].join('\n')
-              : [
-                  marker,
-                  '## ✅ No differences in Go generated output were detected',
-                  '',
-                  commitLine,
-                  '',
-                  'No differences in Go generated output were detected.',
-                  '',
-                  updatedLine,
-                ].join('\n');
-
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-
-            const existing = comments.find(c => (c.body || '').includes(marker));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body,
-              });
-            }
+          marker: '<!-- generated-go-artifacts-filelist -->'
+          title: ${{ steps.comment.outputs.title }}
+          body-file: /tmp/gen-go-comment.md
 
       - name: Fail if diff exists
         if: steps.gen_diff.outputs.has_diff == 'true'

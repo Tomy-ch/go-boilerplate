@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
-	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v4"
@@ -59,7 +59,8 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack"))
 			require.ErrorIs(t, err, inErr)
-			assert.True(t, server.IsRecovered(c))
+			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
+			assert.True(t, recovered)
 		})
 
 		t.Run("X-Real-Ipヘッダがある場合、元errを返しリカバリ済みを記録する", func(t *testing.T) {
@@ -75,7 +76,8 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack2"))
 			require.ErrorIs(t, err, inErr)
-			assert.True(t, server.IsRecovered(c))
+			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
+			assert.True(t, recovered)
 		})
 	})
 }
@@ -111,10 +113,14 @@ func TestMiddleware_realPanic(t *testing.T) {
 			require.True(t, ok)
 			assert.Contains(t, errStr, "boom-panic")
 
-			// 実ランタイムスタックが可読文字列(Base64 でない)で出力されること。
-			stackStr, ok := cm[logging.InternalStackTraceKey].(string)
+			// 実ランタイムスタックが行配列で出力されること（Grafana 表示用に []string 化済み）。
+			// zap observer は []any として保持するため、要素ごとに string にアサートする。
+			stackLines, ok := cm[logging.InternalStackTraceKey].([]any)
 			require.True(t, ok)
-			assert.Contains(t, stackStr, "goroutine")
+			require.NotEmpty(t, stackLines)
+			first, ok := stackLines[0].(string)
+			require.True(t, ok)
+			assert.Contains(t, first, "goroutine")
 		})
 	})
 }
@@ -260,10 +266,13 @@ func TestProductionConfig_capturesStack(t *testing.T) {
 
 			entries := observed.FilterMessage("panic recovered").All()
 			require.Len(t, entries, 1)
-			stackStr, ok := entries[0].ContextMap()[logging.InternalStackTraceKey].(string)
+			stackLines, ok := entries[0].ContextMap()[logging.InternalStackTraceKey].([]any)
+			require.True(t, ok)
+			require.NotEmpty(t, stackLines)
+			first, ok := stackLines[0].(string)
 			require.True(t, ok)
 			// 本番設定(DisablePrintStack=false)でも runtime スタックが捕捉される。
-			assert.Contains(t, stackStr, "goroutine")
+			assert.Contains(t, first, "goroutine")
 		})
 	})
 }

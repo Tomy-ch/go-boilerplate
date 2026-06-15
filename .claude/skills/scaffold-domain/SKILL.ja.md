@@ -169,6 +169,7 @@ commit しない。次の scaffold skill を起動しない。
 
 ## 制約事項
 
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。
 - ❌ spec に無いフィールド / メソッド / error / constant を発明
 - ❌ layer 規約をハードコード — 必ず `internal/domain/README.md` + 既存 aggregate を template に
 - ❌ test 観点 subagent (Step 2) をスキップ

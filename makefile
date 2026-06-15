@@ -23,6 +23,8 @@ include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/setting/github.mk
 include .makefiles/github/setting/branch-ruleset.mk
 include .makefiles/github/setting/label-setting.mk
+include .makefiles/github/lint.mk
+include .makefiles/github/pin.mk
 # Go言語関連
 include .makefiles/go/fmt.mk
 include .makefiles/go/gen.mk
@@ -42,6 +44,9 @@ include .makefiles/sql/lint.mk
 include .makefiles/markdown/lint.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
+include .makefiles/security/gitleaks.mk
+# Docker関連
+include .makefiles/docker/lint.mk
 
 # 一括実行系ファイル
 # GitHub関連

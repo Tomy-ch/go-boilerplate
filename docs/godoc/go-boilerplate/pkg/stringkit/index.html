@@ -1,0 +1,388 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>stringkit - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package stringkit
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/pkg/stringkit&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package stringkit は、文字列の長さを検証するための関数を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#ErrorMsgGreaterThanMin">func ErrorMsgGreaterThanMin(minLen int, got string) string</a></dd>
+			
+				
+				<dd><a href="#ErrorMsgInRange">func ErrorMsgInRange(minLen, maxLen int, got string) string</a></dd>
+			
+				
+				<dd><a href="#ErrorMsgLessThanMax">func ErrorMsgLessThanMax(maxLen int, got string) string</a></dd>
+			
+				
+				<dd><a href="#ErrorMsgMaxOrLess">func ErrorMsgMaxOrLess(maxLen int, got string) string</a></dd>
+			
+				
+				<dd><a href="#ErrorMsgMinOrMore">func ErrorMsgMinOrMore(minLen int, got string) string</a></dd>
+			
+				
+				<dd><a href="#ErrorMsgStrictInRange">func ErrorMsgStrictInRange(minLen, maxLen int, got string) string</a></dd>
+			
+				
+				<dd><a href="#GreaterThanMin">func GreaterThanMin(s string, minLen int) bool</a></dd>
+			
+				
+				<dd><a href="#InRange">func InRange(s string, minLen, maxLen int) bool</a></dd>
+			
+				
+				<dd><a href="#LessThanMax">func LessThanMax(s string, maxLen int) bool</a></dd>
+			
+				
+				<dd><a href="#MaxOrLess">func MaxOrLess(s string, maxLen int) bool</a></dd>
+			
+				
+				<dd><a href="#MinOrMore">func MinOrMore(s string, minLen int) bool</a></dd>
+			
+				
+				<dd><a href="#RuneCount">func RuneCount(s string) int</a></dd>
+			
+				
+				<dd><a href="#StrictInRange">func StrictInRange(s string, minLen, maxLen int) bool</a></dd>
+			
+				
+				<dd><a href="#ValidateInRange">func ValidateInRange(s string, minLen, maxLen int) (bool, string)</a></dd>
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html">generate_error.go</a>
+			
+				<a href="../../../src/go-boilerplate/pkg/stringkit/string_length.go.html">string_length.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="ErrorMsgGreaterThanMin">func <a href="../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html?s=2362:2420#L44">ErrorMsgGreaterThanMin</a>
+				<a class="permalink" href="#ErrorMsgGreaterThanMin">¶</a>
+				
+				
+			</h2>
+			<pre>func ErrorMsgGreaterThanMin(minLen <a href="../../../builtin/#int">int</a>, got <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
+			<p>ErrorMsgGreaterThanMin は、文字数が minLen 以下だった場合に返すエラーメッセージを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ErrorMsgInRange">func <a href="../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html?s=1017:1076#L14">ErrorMsgInRange</a>
+				<a class="permalink" href="#ErrorMsgInRange">¶</a>
+				
+				
+			</h2>
+			<pre>func ErrorMsgInRange(minLen, maxLen <a href="../../../builtin/#int">int</a>, got <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
+			<p>ErrorMsgInRange は、文字数が minLen ～ maxLen の範囲外であった場合に返すエラーメッセージを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ErrorMsgLessThanMax">func <a href="../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html?s=2102:2157#L38">ErrorMsgLessThanMax</a>
+				<a class="permalink" href="#ErrorMsgLessThanMax">¶</a>
+				
+				
+			</h2>
+			<pre>func ErrorMsgLessThanMax(maxLen <a href="../../../builtin/#int">int</a>, got <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
+			<p>ErrorMsgLessThanMax は、文字数が maxLen 以上だった場合に返すエラーメッセージを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ErrorMsgMaxOrLess">func <a href="../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html?s=1277:1330#L20">ErrorMsgMaxOrLess</a>
+				<a class="permalink" href="#ErrorMsgMaxOrLess">¶</a>
+				
+				
+			</h2>
+			<pre>func ErrorMsgMaxOrLess(maxLen <a href="../../../builtin/#int">int</a>, got <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
+			<p>ErrorMsgMaxOrLess は、文字数が maxLen を超えた場合に返すエラーメッセージを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ErrorMsgMinOrMore">func <a href="../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html?s=1531:1584#L26">ErrorMsgMinOrMore</a>
+				<a class="permalink" href="#ErrorMsgMinOrMore">¶</a>
+				
+				
+			</h2>
+			<pre>func ErrorMsgMinOrMore(minLen <a href="../../../builtin/#int">int</a>, got <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
+			<p>ErrorMsgMinOrMore は、文字数が minLen 未満であった場合に返すエラーメッセージを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ErrorMsgStrictInRange">func <a href="../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html?s=1825:1890#L32">ErrorMsgStrictInRange</a>
+				<a class="permalink" href="#ErrorMsgStrictInRange">¶</a>
+				
+				
+			</h2>
+			<pre>func ErrorMsgStrictInRange(minLen, maxLen <a href="../../../builtin/#int">int</a>, got <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
+			<p>ErrorMsgStrictInRange は、文字数が minLen &lt; 文字数 &lt; maxLen の範囲に収まらなかった場合に返すエラーメッセージを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="GreaterThanMin">func <a href="../../../src/go-boilerplate/pkg/stringkit/string_length.go.html?s=1065:1111#L31">GreaterThanMin</a>
+				<a class="permalink" href="#GreaterThanMin">¶</a>
+				
+				
+			</h2>
+			<pre>func GreaterThanMin(s <a href="../../../builtin/#string">string</a>, minLen <a href="../../../builtin/#int">int</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>GreaterThanMin は 文字数 &gt; minLen のとき true
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="InRange">func <a href="../../../src/go-boilerplate/pkg/stringkit/string_length.go.html?s=335:382#L4">InRange</a>
+				<a class="permalink" href="#InRange">¶</a>
+				
+				
+			</h2>
+			<pre>func InRange(s <a href="../../../builtin/#string">string</a>, minLen, maxLen <a href="../../../builtin/#int">int</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>InRange は minLen &lt;= 文字数 &lt;= maxLen のとき true
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="LessThanMax">func <a href="../../../src/go-boilerplate/pkg/stringkit/string_length.go.html?s=930:973#L26">LessThanMax</a>
+				<a class="permalink" href="#LessThanMax">¶</a>
+				
+				
+			</h2>
+			<pre>func LessThanMax(s <a href="../../../builtin/#string">string</a>, maxLen <a href="../../../builtin/#int">int</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>LessThanMax は 文字数 &lt; maxLen のとき true
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="MaxOrLess">func <a href="../../../src/go-boilerplate/pkg/stringkit/string_length.go.html?s=494:535#L10">MaxOrLess</a>
+				<a class="permalink" href="#MaxOrLess">¶</a>
+				
+				
+			</h2>
+			<pre>func MaxOrLess(s <a href="../../../builtin/#string">string</a>, maxLen <a href="../../../builtin/#int">int</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>MaxOrLess は 文字数 &lt;= maxLen のとき true
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="MinOrMore">func <a href="../../../src/go-boilerplate/pkg/stringkit/string_length.go.html?s=624:665#L15">MinOrMore</a>
+				<a class="permalink" href="#MinOrMore">¶</a>
+				
+				
+			</h2>
+			<pre>func MinOrMore(s <a href="../../../builtin/#string">string</a>, minLen <a href="../../../builtin/#int">int</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>MinOrMore は 文字数 &gt;= minLen のとき true
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RuneCount">func <a href="../../../src/go-boilerplate/pkg/stringkit/string_length.go.html?s=207:235#L1">RuneCount</a>
+				<a class="permalink" href="#RuneCount">¶</a>
+				
+				
+			</h2>
+			<pre>func RuneCount(s <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#int">int</a></pre>
+			<p>RuneCount は UTF-8 文字列の文字数を返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="StrictInRange">func <a href="../../../src/go-boilerplate/pkg/stringkit/string_length.go.html?s=766:819#L20">StrictInRange</a>
+				<a class="permalink" href="#StrictInRange">¶</a>
+				
+				
+			</h2>
+			<pre>func StrictInRange(s <a href="../../../builtin/#string">string</a>, minLen, maxLen <a href="../../../builtin/#int">int</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>StrictInRange は minLen &lt; 文字数 &lt; maxLen のとき true
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ValidateInRange">func <a href="../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html?s=671:736#L5">ValidateInRange</a>
+				<a class="permalink" href="#ValidateInRange">¶</a>
+				
+				
+			</h2>
+			<pre>func ValidateInRange(s <a href="../../../builtin/#string">string</a>, minLen, maxLen <a href="../../../builtin/#int">int</a>) (<a href="../../../builtin/#bool">bool</a>, <a href="../../../builtin/#string">string</a>)</pre>
+			<p>ValidateInRange は 文字数が minLen～maxLen 内かを判定し、範囲外なら理由メッセージを返します。
+
+			
+			
+
+		
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_clock.gen.go -package=mock_$GOPACKAGE
 
 // Package clock は、現在時刻の取得を抽象化するバウンダリインターフェースを提供します。
 package clock

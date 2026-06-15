@@ -244,28 +244,9 @@ db := gen.New(s.db.NewLoggingDB(ctx))
 
 QueryService is designed to **not be aware of DB connection state**.
 
-## Direct driver Usage
-
-If logging is unnecessary, non-logging DB access can be used.
-
-```go
-db := gen.New(s.db.NewDB(ctx))
-```
-
-Use cases:
-
-- Suppress log noise in high-frequency processing
-- Simple processing without logging
-- Benchmarking or minimal path verification
-
-Principles:
-
-- Normally use `NewLoggingDB(ctx)`
-- Use `NewDB(ctx)` only when there is a clear reason
-
 ## Error Normalization
 
-PostgreSQL errors are normalized in `internal/infrastructure/rdb/postgres/pgerror`.
+PostgreSQL errors are normalized in `internal/infrastructure/rdb/pgerror`.
 
 ```go
 return pgerror.NormalizeError(err)
@@ -275,7 +256,7 @@ Main mappings:
 
 ```mermaid
 flowchart TB
-    A["sql.ErrNoRows"] --> B["ErrNotFound"]
+    A["pgx.ErrNoRows"] --> B["ErrNotFound"]
     C["unique violation"] --> D["ErrConflict"]
     E["connection error"] --> F["ErrUnavailable"]
     G["others"] --> H["ErrInternal"]
