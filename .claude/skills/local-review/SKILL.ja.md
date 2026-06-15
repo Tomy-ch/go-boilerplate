@@ -2,7 +2,7 @@
 
 # Local Review
 
-実装者とは**別モデル**で回す、ローカルの敵対的・低バイアスなコードレビュー。Copilot もクラウド `/code-review` も使わない。実装者自身のモデルには盲点があり、その盲点を別モデルで拾うのが本質。`/code-review` の finder → verify パターンを下敷きにしつつ、すべてローカルで完結させ、さらにモック単体テストでは構造的に届かない **ランタイム（curl + o11y）検証** を足す。
+実装者とは**別モデル**で回す、ローカルの敵対的・低バイアスなコードレビュー。Copilot もクラウド `/code-review` も使わない。実装者自身のモデルには盲点があり、その盲点を別モデルで拾うのが本質。`/code-review` の finder → verify パターンを下敷きにしつつ、すべてローカルで完結させ、さらにモック単体テストでは構造的に届かない **ランタイム（curl + o11y）検証** を足す。既定では、verifier を通過した CONFIRMED / PLAUSIBLE の指摘を、ブランチの PR に各指摘の行へアンカーした**インラインレビューコメント**として投稿する（`--no-comment` でオプトアウト。PR が無ければローカルレポートのみにフォールバック）。
 
 ## 使うとき
 
@@ -37,6 +37,10 @@
   - 特定のパス/ファイルを指定
   - キャンセル
 ```
+
+### フラグ
+
+- `--no-comment` — Step 6 を抑止（PR に投稿せず）ローカルレポートのみ。**既定はオプトアウト**: ブランチに open な PR があれば、このフラグが無い限り Step 6 が残った指摘をインラインコメントとして投稿する。
 
 ## Step 1 — コンテキスト収集
 
@@ -103,6 +107,63 @@
 
 重大度順、CONFIRMED を PLAUSIBLE より先に。ランタイムで何を検査し何をスキップしたかは必ず明記（黙って省くと「全部見た」と誤読される）。
 
+## Step 6 — 指摘を PR にインラインコメント投稿（既定。`--no-comment` でオプトアウト）
+
+既定では Step 5 の後、残った **CONFIRMED + PLAUSIBLE** の指摘を、ブランチの PR に **インラインレビューコメント**として投稿する — 1指摘につき1コメント、その `path:行` にアンカーし、1つの長文コメントにまとめない。**REFUTED は投稿しない。** Step 5 のローカルレポートは常に出す（本ステップは追加動作）。
+
+以下のときは本ステップを丸ごとスキップ:
+
+- `--no-comment` 指定時、または
+- ブランチに open な PR が無い（`gh pr view` が空）— ローカルレポートのみとし、必要なら PR 作成を提案。
+
+GitHub への投稿は外向きアクションなので、投稿前に **一度だけ** 確認する — 件数と対象 PR を提示（`AskUserQuestion`: 「<N> 件の指摘を PR #<番号> にインラインコメントとして投稿しますか？」/「投稿する」「投稿しない（ローカルレポートのみ）」）。
+
+### 手順
+
+1. PR 番号・リポジトリ・コメントをアンカーする commit を解決:
+
+   ```sh
+   gh pr view --json number,url -q '.number'
+   gh repo view --json nameWithOwner -q '.nameWithOwner'
+   git rev-parse HEAD                                # アンカー SHA
+   git rev-parse @{u}                                # push 済み head — HEAD と異なれば警告
+   ```
+
+   アンカー commit は PR に push 済みの commit でなければならない。ローカル `HEAD` ≠ `@{u}` なら先に push するよう警告（`commit_id` が PR に無いコメントは API が拒否する）。
+
+2. どの指摘をインラインにできるか判定。GitHub のインラインコメントは PR diff に含まれる行にしか付けられない。diff の hunk を解析（`gh pr diff <PR> --patch` か `git diff <base>...HEAD`）:
+   - `(path, line)` が追加/文脈の hunk 内 → インライン、`side: "RIGHT"`。
+   - `(path, line)` が削除行 → インライン、`side: "LEFT"`。
+   - diff 外（reviewer が未変更の文脈を参照）→ インライン不可。レビュー要約 `body` にまとめる。
+
+3. 1つのレビューに全コメントをまとめて atomic に投稿（N 個の単発コメントにしない）:
+
+   ```sh
+   gh api --method POST repos/<owner>/<repo>/pulls/<PR>/reviews --input payload.json
+   ```
+
+   `payload.json`:
+
+   ```json
+   {
+     "commit_id": "<SHA>",
+     "event": "COMMENT",
+     "body": "🔎 local-review (reviewer: <model>) — CONFIRMED <n> / PLAUSIBLE <m>\n\ndiff 外で行アンカー不可の指摘:\n- <path>: <要約>",
+     "comments": [
+       {
+         "path": "<file>",
+         "line": <n>,
+         "side": "RIGHT",
+         "body": "🔎 [CONFIRMED · high] <問題の要約>\n\n根拠: <...>\n修正案: <...>\n検証: <verifier 判定>"
+       }
+     ]
+   }
+   ```
+
+   `event: "COMMENT"` を使う — これは助言的レビューであり `REQUEST_CHANGES` / `APPROVE` にしない。各コメント本文の先頭に `🔎 local-review`（または `🔎 [判定 · 重大度]` タグ）を付け、人間のレビューと区別できるようにする。
+
+4. 堅牢性: API がバッチを拒否（422 — 行が diff に無い）したら、該当コメントを要約 `body` へ移して再投稿。最後にインライン投稿分と要約分を報告 — 指摘を黙って落とさない。
+
 ## やる / やらない
 
 - ✅ reviewer モデル ≠ implementer モデルを保証（本セッションが sonnet なら既定を上書き）。
@@ -110,6 +171,9 @@
 - ✅ レポート前に全 finding を独立 verify、REFUTED は落とす。
 - ✅ 触られたエンドポイントはランタイム検証、共有スキーマ編集なら全 consumer に拡大。
 - ✅ 復旧手段が `make db-init` しかない破壊系 curl は事前にユーザー確認。
+- ✅ 既定で CONFIRMED + PLAUSIBLE をブランチの PR にインラインコメント投稿（Step 6）。`--no-comment` か PR 無しのとき抑止。
+- ✅ PR 投稿前に一度だけ確認（外向きアクション）。各コメントは `path:行` にアンカーし、diff 外の指摘はレビュー要約にまとめる。
+- ❌ REFUTED を投稿する / `REQUEST_CHANGES`・`APPROVE` を使う — 投稿レビューは助言的 `COMMENT` のみ。
 - ❌ 修正を当てる — 本スキルは指摘まで（reviewer は構造的に read-only）。
 - ❌ reviewer を implementer と同一モデルで回す。
 - ❌ 思いつきの style nit を finding として出す / 網羅に見せるための水増し。
@@ -123,3 +187,4 @@
 - [ ] 全 finding を独立 verify、REFUTED は除外（件数は保持）。
 - [ ] 触られたエンドポイントの curl + o11y 実施（共有スキーマ → 全 consumer）、破壊系は確認済み。
 - [ ] 1つの日本語レポート: CONFIRMED → PLAUSIBLE、ランタイムのカバー範囲を明記。
+- [ ] `--no-comment` / PR 無し以外: 一度確認のうえ CONFIRMED + PLAUSIBLE をインライン PR コメント投稿（diff 外 → 要約 body）、REFUTED は除外、`event: COMMENT`。

@@ -1,0 +1,134 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>cookie - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/controller">controller</a>/<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack">httpstack</a>/<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/cookie">cookie</a>/<span class="text-muted">middleware_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/controller/httpstack/cookie">go-boilerplate/internal/controller/httpstack/cookie</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package cookie
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;net/http&#34;
+<span id="L6" class="ln">     6  </span>	&#34;net/http/httptest&#34;
+<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>func TestMiddleware(t *testing.T) {
+<span id="L17" class="ln">    17  </span>	t.Parallel()
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>	require.NotNil(t, Middleware(&amp;SecurityCookie{}))
+<span id="L20" class="ln">    20  </span>}
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>func Test_secureCookieMiddleware_RewritesSetCookie(t *testing.T) {
+<span id="L23" class="ln">    23  </span>	t.Parallel()
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	cfg := config.MockConfigForTest(t)
+<span id="L26" class="ln">    26  </span>	secCfg := config.NewSecureCookieConfig(cfg)
+<span id="L27" class="ln">    27  </span>	secCookie := NewSecurityCookie(secCfg)
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>	e := echo.New()
+<span id="L30" class="ln">    30  </span>	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L31" class="ln">    31  </span>	rec := httptest.NewRecorder()
+<span id="L32" class="ln">    32  </span>	c := e.NewContext(req, rec)
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span>	next := func(c echo.Context) error {
+<span id="L35" class="ln">    35  </span>		<span class="comment">// 書き換え対象となる Set-Cookie を付与する</span>
+<span id="L36" class="ln">    36  </span>		c.Response().Header().Add(&#34;Set-Cookie&#34;, &#34;sessionid=abc; Path=/; HttpOnly&#34;)
+<span id="L37" class="ln">    37  </span>		return c.String(http.StatusOK, &#34;ok&#34;)
+<span id="L38" class="ln">    38  </span>	}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>	handler := secureCookieMiddleware(secCookie)(next)
+<span id="L41" class="ln">    41  </span>	require.NoError(t, handler(c))
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>	cookies := rec.Header().Values(&#34;Set-Cookie&#34;)
+<span id="L44" class="ln">    44  </span>	require.Len(t, cookies, 1)
+<span id="L45" class="ln">    45  </span>	<span class="comment">// mock config 由来の値（SameSite=Strict / Domain=localhost / Secure）が反映される</span>
+<span id="L46" class="ln">    46  </span>	assert.Contains(t, cookies[0], &#34;SameSite=Strict&#34;)
+<span id="L47" class="ln">    47  </span>	assert.Contains(t, cookies[0], &#34;Domain=localhost&#34;)
+<span id="L48" class="ln">    48  </span>	assert.Contains(t, cookies[0], &#34;Secure&#34;)
+<span id="L49" class="ln">    49  </span>}
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>func Test_secureCookieMiddleware_KeepsWrapperOnError(t *testing.T) {
+<span id="L52" class="ln">    52  </span>	t.Parallel()
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>	e := echo.New()
+<span id="L55" class="ln">    55  </span>	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/&#34;, nil)
+<span id="L56" class="ln">    56  </span>	rec := httptest.NewRecorder()
+<span id="L57" class="ln">    57  </span>	c := e.NewContext(req, rec)
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>	handler := secureCookieMiddleware(&amp;SecurityCookie{applyToAll: true})(func(_ echo.Context) error {
+<span id="L60" class="ln">    60  </span>		return echo.NewHTTPError(http.StatusInternalServerError)
+<span id="L61" class="ln">    61  </span>	})
+<span id="L62" class="ln">    62  </span>	require.Error(t, handler(c))
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	<span class="comment">// next がエラーでも Writer は復元されない（エラー経路の Set-Cookie も書き換え対象にするため）</span>
+<span id="L65" class="ln">    65  </span>	_, ok := c.Response().Writer.(*cookieRewriteWriter)
+<span id="L66" class="ln">    66  </span>	assert.True(t, ok)
+<span id="L67" class="ln">    67  </span>}
+<span id="L68" class="ln">    68  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/middleware_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

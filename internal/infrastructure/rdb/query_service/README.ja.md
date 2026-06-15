@@ -244,28 +244,9 @@ db := gen.New(s.db.NewLoggingDB(ctx))
 
 QueryService は **DB接続状態を意識しない設計**になります。
 
-## driver の直接利用
-
-ロギングが不要な場合は、ロギングなしの DB アクセスを利用できます。
-
-```go
-db := gen.New(s.db.NewDB(ctx))
-```
-
-用途
-
-- 高頻度処理でログノイズを抑えたい場合
-- ロギング不要な単純処理
-- ベンチマークや最小経路の確認
-
-原則
-
-- 通常は `NewLoggingDB(ctx)` を使用する
-- 明確な理由がある場合のみ `NewDB(ctx)` を使用する
-
 ## エラー正規化
 
-PostgreSQL エラーは`internal/infrastructure/rdb/postgres/pgerror`で正規化します。
+PostgreSQL エラーは`internal/infrastructure/rdb/pgerror`で正規化します。
 
 ```go
 return pgerror.NormalizeError(err)
@@ -275,7 +256,7 @@ return pgerror.NormalizeError(err)
 
 ```mermaid
 flowchart TB
-    A["sql.ErrNoRows"] --> B["ErrNotFound"]
+    A["pgx.ErrNoRows"] --> B["ErrNotFound"]
     C["unique violation"] --> D["ErrConflict"]
     E["connection error"] --> F["ErrUnavailable"]
     G["others"] --> H["ErrInternal"]

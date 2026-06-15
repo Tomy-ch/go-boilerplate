@@ -1,0 +1,442 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>auth - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package auth
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/auth&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package auth は認証に関連するインターフェースを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+			
+				
+				<dd><a href="#Authenticator">type Authenticator</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Authn">type Authn</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(subject string, provider string, scopes []string, claims map[string]any) (*Authn, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#Authn.Claims">func (a *Authn) Claims() map[string]any</a></dd>
+				
+					
+					<dd>    <a href="#Authn.HasID">func (a *Authn) HasID() bool</a></dd>
+				
+					
+					<dd>    <a href="#Authn.ID">func (a *Authn) ID() (uuid.UUID, error)</a></dd>
+				
+					
+					<dd>    <a href="#Authn.Provider">func (a *Authn) Provider() string</a></dd>
+				
+					
+					<dd>    <a href="#Authn.Scopes">func (a *Authn) Scopes() []string</a></dd>
+				
+					
+					<dd>    <a href="#Authn.Subject">func (a *Authn) Subject() string</a></dd>
+				
+			
+				
+				<dd><a href="#Credential">type Credential</a></dd>
+				
+					
+					<dd>    <a href="#NewCredential">func NewCredential(accessToken string) (*Credential, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#Credential.AccessToken">func (c *Credential) AccessToken() string</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html">auth.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/authenticator.go.html">authenticator.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html">credential.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/error.go.html">error.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				
+				<pre>const (
+    <span class="comment">// ProviderMock はモック認証プロバイダを示します。</span>
+    <span id="ProviderMock">ProviderMock</span> = &#34;mock&#34;
+)</pre>
+			
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				
+				<pre>var (
+    <span id="ErrUnauthenticatedSubjectMissing">ErrUnauthenticatedSubjectMissing</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;unauthenticated: subject missing&#34;)
+    <span id="ErrSubjectNotUUID">ErrSubjectNotUUID</span>                = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrValidation">ErrValidation</a>, &#34;id unavailable: subject is not a uuid&#34;)
+    <span id="ErrTokenMissing">ErrTokenMissing</span>                  = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrInvalidArgument">ErrInvalidArgument</a>, &#34;token missing&#34;)
+)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="Authenticator">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/authenticator.go.html?s=222:428#L1">Authenticator</a>
+				<a class="permalink" href="#Authenticator">¶</a>
+				
+				
+			</h2>
+			<p>Authenticator は認証を行うためのインターフェースです。
+
+			</p><pre>type Authenticator interface {
+    <span class="comment">// Authenticate は与えられた認証情報を基に認証を行い、認証結果を返します。</span>
+    Authenticate(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, cred *<a href="#Credential">Credential</a>) (*<a href="#Authn">Authn</a>, <a href="../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Authn">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=318:657#L8">Authn</a>
+				<a class="permalink" href="#Authn">¶</a>
+				
+				
+			</h2>
+			<p>Authn は、認証結果を表します。
+
+			</p><pre>type Authn struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=659:763#L16">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(
+    subject <a href="../../../../../builtin/#string">string</a>,
+    provider <a href="../../../../../builtin/#string">string</a>,
+    scopes []<a href="../../../../../builtin/#string">string</a>,
+    claims map[<a href="../../../../../builtin/#string">string</a>]<a href="../../../../../builtin/#any">any</a>,
+) (*<a href="#Authn">Authn</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="Authn.Claims">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1947:1986#L72">Claims</a>
+					<a class="permalink" href="#Authn.Claims">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#Authn">Authn</a>) Claims() map[<a href="../../../../../builtin/#string">string</a>]<a href="../../../../../builtin/#any">any</a></pre>
+				<p>Claims はクレーム一覧を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Authn.HasID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1373:1401#L48">HasID</a>
+					<a class="permalink" href="#Authn.HasID">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#Authn">Authn</a>) HasID() <a href="../../../../../builtin/#bool">bool</a></pre>
+				<p>HasID は UUIDとして解釈できたかを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Authn.ID">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1539:1578#L54">ID</a>
+					<a class="permalink" href="#Authn.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#Authn">Authn</a>) ID() (<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ID は UUID を返します。
+UUID として解釈できなかった場合はエラーを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Authn.Provider">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1719:1752#L62">Provider</a>
+					<a class="permalink" href="#Authn.Provider">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#Authn">Authn</a>) Provider() <a href="../../../../../builtin/#string">string</a></pre>
+				<p>Provider は認証プロバイダを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Authn.Scopes">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1827:1860#L67">Scopes</a>
+					<a class="permalink" href="#Authn.Scopes">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#Authn">Authn</a>) Scopes() []<a href="../../../../../builtin/#string">string</a></pre>
+				<p>Scopes はスコープ一覧を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Authn.Subject">func (*Authn) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/auth.go.html?s=1254:1286#L43">Subject</a>
+					<a class="permalink" href="#Authn.Subject">¶</a>
+					
+					
+				</h3>
+				<pre>func (a *<a href="#Authn">Authn</a>) Subject() <a href="../../../../../builtin/#string">string</a></pre>
+				<p>Subject は token の sub を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Credential">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=198:272#L1">Credential</a>
+				<a class="permalink" href="#Credential">¶</a>
+				
+				
+			</h2>
+			<p>Credential は認証情報（トークン）を表します。
+今回は access token のみ。将来 mTLS/DPoP 等が増えてもここを拡張すればOK。
+
+			</p><pre>type Credential struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewCredential">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=274:337#L1">NewCredential</a>
+					<a class="permalink" href="#NewCredential">¶</a>
+					
+					
+				</h3>
+				<pre>func NewCredential(
+    accessToken <a href="../../../../../builtin/#string">string</a>,
+) (*<a href="#Credential">Credential</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="Credential.AccessToken">func (*Credential) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/auth/credential.go.html?s=569:610#L15">AccessToken</a>
+					<a class="permalink" href="#Credential.AccessToken">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Credential">Credential</a>) AccessToken() <a href="../../../../../builtin/#string">string</a></pre>
+				<p>AccessToken はアクセストークンを返します。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

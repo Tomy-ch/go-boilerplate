@@ -16,7 +16,7 @@
 |`ParseDateOnly(s)`|日付のみのパース|
 |`ParseCustomLayout(layout, s)`|任意のレイアウトによるパース|
 
-すべての関数に `InLocation` バリアントがあり、タイムゾーンを指定したパースが可能です。
+すべての関数に `ToLocation` バリアント（例: `ParseRFC3339ToLocation`）があり、タイムゾーンを指定したパースが可能です。
 
 ## ラップ対象
 

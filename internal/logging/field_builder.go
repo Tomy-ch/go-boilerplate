@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_field_builder.gen.go -package=mock_$GOPACKAGE
 package logging
 
 import (

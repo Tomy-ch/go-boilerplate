@@ -1,0 +1,77 @@
+name: Go Test
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/go-test.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '**/*.sql'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    env:
+      ENV: ci
+      DB: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres-password
+    services:
+      database:
+        image: postgres:18.3-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup DB
+        uses: ./.github/actions/setup-postgres
+        with:
+          db: ${{ env.DB }}
+          user: ${{ env.DB_USER }}
+          password: ${{ env.DB_PASSWORD }}
+          init_sql: docker/database/sql/004-init-extensions-test-db.sql
+
+      - name: Initialize Database Table
+        run: go run ./cmd/ migrate-up --database ${{ env.DB }}
+
+      - name: Seed Database
+        run: go run ./cmd/ db-seed --database ${{ env.DB }}
+
+      - name: Run Tests with Coverage
+        run: make test-cover-ci
+
+      - name: Report Test Coverage
+        uses: k1LoW/octocov-action@b3b6ee60482a667950f87553abf1df63217235d9 # v1
+
+      - name: Coverage gate
+        run: make cover-gate

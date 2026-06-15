@@ -1,0 +1,928 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>logging - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package logging
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/logging&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package logging は、アプリケーションのロギング機能を提供します。
+</p><p>Package logging は、アプリケーションのロギング機能を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+			
+				
+				<dd><a href="#SplitStackLines">func SplitStackLines(s string) []string</a></dd>
+			
+			
+				
+				<dd><a href="#Field">type Field</a></dd>
+				
+					
+					<dd>    <a href="#Any">func Any(key fieldKey, v any) *Field</a></dd>
+				
+					
+					<dd>    <a href="#Bool">func Bool(key fieldKey, v bool) *Field</a></dd>
+				
+					
+					<dd>    <a href="#DurationMs">func DurationMs(key fieldKey, v time.Duration) *Field</a></dd>
+				
+					
+					<dd>    <a href="#Error">func Error(key fieldKey, err error) *Field</a></dd>
+				
+					
+					<dd>    <a href="#Float64">func Float64(key fieldKey, v float64) *Field</a></dd>
+				
+					
+					<dd>    <a href="#Int">func Int(key fieldKey, v int) *Field</a></dd>
+				
+					
+					<dd>    <a href="#Int64">func Int64(key fieldKey, v int64) *Field</a></dd>
+				
+					
+					<dd>    <a href="#Stacktrace">func Stacktrace(key fieldKey, err error) *Field</a></dd>
+				
+					
+					<dd>    <a href="#String">func String(key fieldKey, v string) *Field</a></dd>
+				
+					
+					<dd>    <a href="#Strings">func Strings(key fieldKey, v []string) *Field</a></dd>
+				
+					
+					<dd>    <a href="#Time">func Time(key fieldKey, v time.Time) *Field</a></dd>
+				
+				
+			
+				
+				<dd><a href="#HTTPRequestLogInput">type HTTPRequestLogInput</a></dd>
+				
+				
+			
+				
+				<dd><a href="#HTTPResponseLogInput">type HTTPResponseLogInput</a></dd>
+				
+				
+			
+				
+				<dd><a href="#LogFieldBuilder">type LogFieldBuilder</a></dd>
+				
+					
+					<dd>    <a href="#NewLogFields">func NewLogFields(obsCfg *config.ObservabilityConfig, osCfg *config.OperatingSystemConfig) LogFieldBuilder</a></dd>
+				
+					
+					<dd>    <a href="#NewTestLogFieldBuilder">func NewTestLogFieldBuilder(t *testing.T) LogFieldBuilder</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Logger">type Logger</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(appCfg *config.ApplicationConfig) (Logger, error)</a></dd>
+				
+					
+					<dd>    <a href="#NewDevelopmentLogger">func NewDevelopmentLogger() (Logger, error)</a></dd>
+				
+					
+					<dd>    <a href="#NewObservedTestLogger">func NewObservedTestLogger(t *testing.T) (Logger, *observer.ObservedLogs)</a></dd>
+				
+					
+					<dd>    <a href="#NewObservedTestLoggerWithCaller">func NewObservedTestLoggerWithCaller(t *testing.T) (Logger, *observer.ObservedLogs)</a></dd>
+				
+					
+					<dd>    <a href="#NewProductionLogger">func NewProductionLogger() (Logger, error)</a></dd>
+				
+					
+					<dd>    <a href="#NewTestLogger">func NewTestLogger(t *testing.T) Logger</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ObservabilityFieldsInput">type ObservabilityFieldsInput</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SQLFieldsEndInput">type SQLFieldsEndInput</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SQLFieldsStartInput">type SQLFieldsStartInput</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/internal/logging/const.go.html">const.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/logging/field.go.html">field.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html">field_builder.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/logging/logger.go.html">logger.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html">logger_core.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/logging/stacktrace_core.go.html">stacktrace_core.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/logging/test_kit.go.html">test_kit.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				
+				<pre>const (
+
+    <span class="comment">// EventTypeKey は、イベントタイプを表すログフィールドのキーです。</span>
+    <span id="EventTypeKey">EventTypeKey</span> = &#34;event_type&#34;
+    <span class="comment">// EventTypeStart は、開始イベントを表すイベントタイプの値です。</span>
+    <span id="EventTypeStart">EventTypeStart</span> = &#34;start&#34;
+    <span class="comment">// EventTypeEnd は、終了イベントを表すイベントタイプの値です。</span>
+    <span id="EventTypeEnd">EventTypeEnd</span> = &#34;end&#34;
+    <span class="comment">// EventTypeError は、エラー応答イベントを表すイベントタイプの値です。</span>
+    <span id="EventTypeError">EventTypeError</span> = &#34;error&#34;
+    <span class="comment">// EventTypePanic は、パニック復旧イベントを表すイベントタイプの値です。</span>
+    <span id="EventTypePanic">EventTypePanic</span> = &#34;panic&#34;
+    <span class="comment">// EventAtKey は、イベント発生時刻を表すログフィールドのキーです。</span>
+    <span id="EventAtKey">EventAtKey</span> = &#34;event_at&#34;
+    <span class="comment">// EventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。</span>
+    <span id="EventTzKey">EventTzKey</span> = &#34;event_tz&#34;
+
+    <span class="comment">// StatusKey は、HTTPステータスコードを表すログフィールドのキーです。</span>
+    <span id="StatusKey">StatusKey</span> = &#34;status&#34;
+    <span class="comment">// MethodKey は、HTTPメソッドを表すログフィールドのキーです。</span>
+    <span id="MethodKey">MethodKey</span> = &#34;method&#34;
+
+    <span class="comment">// URIKey は、HTTPリクエストURIを表すログフィールドのキーです。</span>
+    <span id="URIKey">URIKey</span> = &#34;uri&#34;
+    <span class="comment">// PathKey は、HTTPパスを表すログフィールドのキーです。</span>
+    <span id="PathKey">PathKey</span> = &#34;path&#34;
+    <span class="comment">// QueryParamsKey は、クエリパラメータを表すログフィールドのキーです。</span>
+    <span id="QueryParamsKey">QueryParamsKey</span> = &#34;query_params&#34;
+    <span class="comment">// PathParamsKey は、パスパラメータを表すログフィールドのキーです。</span>
+    <span id="PathParamsKey">PathParamsKey</span> = &#34;path_params&#34;
+
+    <span class="comment">// UserAgentKey は、ユーザーエージェントを表すログフィールドのキーです。</span>
+    <span id="UserAgentKey">UserAgentKey</span> = &#34;user_agent&#34;
+    <span class="comment">// HostKey は、ホスト名を表すログフィールドのキーです。</span>
+    <span id="HostKey">HostKey</span> = &#34;host&#34;
+    <span class="comment">// SchemeKey は、スキームを表すログフィールドのキーです。</span>
+    <span id="SchemeKey">SchemeKey</span> = &#34;scheme&#34;
+    <span class="comment">// ProtoKey は、プロトコルを表すログフィールドのキーです。</span>
+    <span id="ProtoKey">ProtoKey</span> = &#34;proto&#34;
+    <span class="comment">// RemoteIPKey は、リモートIPアドレスを表すログフィールドのキーです。</span>
+    <span id="RemoteIPKey">RemoteIPKey</span> = &#34;remote_ip&#34;
+    <span class="comment">// ContentTypeKey は、コンテンツタイプを表すログフィールドのキーです。</span>
+    <span id="ContentTypeKey">ContentTypeKey</span> = &#34;content_type&#34;
+    <span class="comment">// ContentLengthKey は、コンテンツ長を表すログフィールドのキーです。</span>
+    <span id="ContentLengthKey">ContentLengthKey</span> = &#34;content_length&#34;
+
+    <span class="comment">// LatencyKey は、HTTPリクエストのレイテンシを表すログフィールドのキーです。</span>
+    <span id="LatencyKey">LatencyKey</span> = &#34;latency_ms&#34;
+    <span class="comment">// RequestIDKey は、リクエストIDを表すログフィールドのキーです。</span>
+    <span id="RequestIDKey">RequestIDKey</span> = &#34;request_id&#34;
+
+    <span class="comment">// ErrorKey は、エラーを表すログフィールドのキーです。</span>
+    <span id="ErrorKey">ErrorKey</span> = &#34;error&#34;
+    <span class="comment">// OriginalErrorKey は、別のエラー処理中に併記する元エラーを表すログフィールドのキーです。</span>
+    <span id="OriginalErrorKey">OriginalErrorKey</span> = &#34;original_error&#34;
+    <span class="comment">// ErrorCodeKey は、エラーコードを表すログフィールドのキーです。</span>
+    <span id="ErrorCodeKey">ErrorCodeKey</span> = &#34;error_code&#34;
+    <span class="comment">// ErrorMessageKey は、エラーメッセージを表すログフィールドのキーです。</span>
+    <span id="ErrorMessageKey">ErrorMessageKey</span> = &#34;error_message&#34;
+    <span class="comment">// ErrorDetailsKey は、エラー詳細を表すログフィールドのキーです。</span>
+    <span id="ErrorDetailsKey">ErrorDetailsKey</span> = &#34;error_details&#34;
+    <span class="comment">// InternalErrorKey は、内部エラーを表すログフィールドのキーです。</span>
+    <span id="InternalErrorKey">InternalErrorKey</span> = &#34;internal_error&#34;
+    <span class="comment">// InternalStackTraceKey は、内部エラーのスタックトレースを表すログフィールドのキーです。</span>
+    <span id="InternalStackTraceKey">InternalStackTraceKey</span> = &#34;internal_stacktrace&#34;
+
+    <span class="comment">// RawQueryKey は、生のSQLクエリを表すログフィールドのキーです。</span>
+    <span id="RawQueryKey">RawQueryKey</span> = &#34;raw_query&#34;
+    <span class="comment">// QueryCompactKey は、コンパクト化されたSQLクエリを表すログフィールドのキーです。</span>
+    <span id="QueryCompactKey">QueryCompactKey</span> = &#34;query_compact&#34;
+    <span class="comment">// QueryArgsCountKey は、SQLクエリ引数の数を表すログフィールドのキーです。</span>
+    <span id="QueryArgsCountKey">QueryArgsCountKey</span> = &#34;args_count&#34;
+
+    <span class="comment">// JobNameKey は、ジョブ名を表すログフィールドのキーです。</span>
+    <span id="JobNameKey">JobNameKey</span> = &#34;job_name&#34;
+    <span class="comment">// JobArgsKey は、ジョブ引数を表すログフィールドのキーです。</span>
+    <span id="JobArgsKey">JobArgsKey</span> = &#34;job_args&#34;
+    <span class="comment">// JobErrorKey は、ジョブエラーを表すログフィールドのキーです。</span>
+    <span id="JobErrorKey">JobErrorKey</span> = &#34;job_error&#34;
+    <span class="comment">// JobResultKey は、ジョブ結果を表すログフィールドのキーです。</span>
+    <span id="JobResultKey">JobResultKey</span> = &#34;job_result&#34;
+    <span class="comment">// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。</span>
+    <span id="FilterKey">FilterKey</span> = &#34;filter&#34;
+
+    <span class="comment">// TraceIDKey は、トレースIDを表すログフィールドのキーです。</span>
+    <span id="TraceIDKey">TraceIDKey</span> = &#34;trace_id&#34;
+    <span class="comment">// SpanIDKey は、スパンIDを表すログフィールドのキーです。</span>
+    <span id="SpanIDKey">SpanIDKey</span> = &#34;span_id&#34;
+    <span class="comment">// ParentSpanIDKey は、親スパンIDを表すログフィールドのキーです。</span>
+    <span id="ParentSpanIDKey">ParentSpanIDKey</span> = &#34;parent_span_id&#34;
+    <span class="comment">// SpanNameKey は、スパン名を表すログフィールドのキーです。</span>
+    <span id="SpanNameKey">SpanNameKey</span> = &#34;span_name&#34;
+    <span class="comment">// LayerKey は、DDDのレイヤーを表すログフィールドのキーです。</span>
+    <span id="LayerKey">LayerKey</span> = &#34;layer&#34;
+    <span class="comment">// PackageKey は、パッケージ名を表すログフィールドのキーです。</span>
+    <span id="PackageKey">PackageKey</span> = &#34;package&#34;
+    <span class="comment">// FunctionKey は、関数名を表すログフィールドのキーです。</span>
+    <span id="FunctionKey">FunctionKey</span> = &#34;function&#34;
+)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="SplitStackLines">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3386:3425#L127">SplitStackLines</a>
+				<a class="permalink" href="#SplitStackLines">¶</a>
+				
+				
+			</h2>
+			<pre>func SplitStackLines(s <a href="../../../builtin/#string">string</a>) []<a href="../../../builtin/#string">string</a></pre>
+			<p>SplitStackLines は、スタックトレース文字列を改行で分割し行配列に変換します。
+末尾の空行は除去し、空文字列または改行のみの入力では nil を返します。
+配列化により行境界が構造として表現されるため、`\t&lt;file&gt;:&lt;line&gt;` の先頭タブは除去します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Field">type <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=376:588#L18">Field</a>
+				<a class="permalink" href="#Field">¶</a>
+				
+				
+			</h2>
+			<p>Field は、ログフィールドを表します。
+
+			</p><pre>type Field struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3705:3741#L140">Any</a>
+					<a class="permalink" href="#Any">¶</a>
+					
+					
+				</h3>
+				<pre>func Any(key fieldKey, v <a href="../../../builtin/#any">any</a>) *<a href="#Field">Field</a></pre>
+				<p>Any は、任意の型のログフィールドを作成します。
+
+				
+				
+			
+				
+				</p><h3 id="Bool">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1746:1784#L78">Bool</a>
+					<a class="permalink" href="#Bool">¶</a>
+					
+					
+				</h3>
+				<pre>func Bool(key fieldKey, v <a href="../../../builtin/#bool">bool</a>) *<a href="#Field">Field</a></pre>
+				<p>Bool は、真偽値のログフィールドを作成します。
+
+				
+				
+			
+				
+				</p><h3 id="DurationMs">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2204:2257#L96">DurationMs</a>
+					<a class="permalink" href="#DurationMs">¶</a>
+					
+					
+				</h3>
+				<pre>func DurationMs(key fieldKey, v <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) *<a href="#Field">Field</a></pre>
+				<p>DurationMs は、時間間隔のログフィールドをミリ秒単位で作成します。
+
+				
+				
+			
+				
+				</p><h3 id="Error">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2441:2483#L105">Error</a>
+					<a class="permalink" href="#Error">¶</a>
+					
+					
+				</h3>
+				<pre>func Error(key fieldKey, err <a href="../../../builtin/#error">error</a>) *<a href="#Field">Field</a></pre>
+				<p>Error は、エラーのログフィールドを作成します。
+
+				
+				
+			
+				
+				</p><h3 id="Float64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1530:1574#L69">Float64</a>
+					<a class="permalink" href="#Float64">¶</a>
+					
+					
+				</h3>
+				<pre>func Float64(key fieldKey, v <a href="../../../builtin/#float64">float64</a>) *<a href="#Field">Field</a></pre>
+				<p>Float64 は、64ビット浮動小数点数のログフィールドを作成します。
+
+				
+				
+			
+				
+				</p><h3 id="Int">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=867:903#L42">Int</a>
+					<a class="permalink" href="#Int">¶</a>
+					
+					
+				</h3>
+				<pre>func Int(key fieldKey, v <a href="../../../builtin/#int">int</a>) *<a href="#Field">Field</a></pre>
+				<p>Int は、整数のログフィールドを作成します。
+
+				
+				
+			
+				
+				</p><h3 id="Int64">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1303:1343#L60">Int64</a>
+					<a class="permalink" href="#Int64">¶</a>
+					
+					
+				</h3>
+				<pre>func Int64(key fieldKey, v <a href="../../../builtin/#int64">int64</a>) *<a href="#Field">Field</a></pre>
+				<p>Int64 は、64ビット整数のログフィールドを作成します。
+
+				
+				
+			
+				
+				</p><h3 id="Stacktrace">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=2855:2902#L116">Stacktrace</a>
+					<a class="permalink" href="#Stacktrace">¶</a>
+					
+					
+				</h3>
+				<pre>func Stacktrace(key fieldKey, err <a href="../../../builtin/#error">error</a>) *<a href="#Field">Field</a></pre>
+				<p>Stacktrace は、エラースタックトレースのログフィールドを作成します。
+JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよう、
+単一文字列ではなく行ごとに分割した []string を保持します。
+
+				
+				
+			
+				
+				</p><h3 id="String">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=661:703#L33">String</a>
+					<a class="permalink" href="#String">¶</a>
+					
+					
+				</h3>
+				<pre>func String(key fieldKey, v <a href="../../../builtin/#string">string</a>) *<a href="#Field">Field</a></pre>
+				<p>String は、文字列のログフィールドを作成します。
+
+				
+				
+			
+				
+				</p><h3 id="Strings">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1077:1122#L51">Strings</a>
+					<a class="permalink" href="#Strings">¶</a>
+					
+					
+				</h3>
+				<pre>func Strings(key fieldKey, v []<a href="../../../builtin/#string">string</a>) *<a href="#Field">Field</a></pre>
+				<p>Strings は、文字列のスライスのログフィールドを作成します。
+
+				
+				
+			
+				
+				</p><h3 id="Time">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=1941:1984#L87">Time</a>
+					<a class="permalink" href="#Time">¶</a>
+					
+					
+				</h3>
+				<pre>func Time(key fieldKey, v <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>) *<a href="#Field">Field</a></pre>
+				<p>Time は、時間のログフィールドを作成します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=738:1185#L15">HTTPRequestLogInput</a>
+				<a class="permalink" href="#HTTPRequestLogInput">¶</a>
+				
+				
+			</h2>
+			<p>HTTPRequestLogInput は、HTTPリクエストのログ出力用の入力情報をまとめた構造体です。
+
+			</p><pre>type HTTPRequestLogInput struct {
+<span id="HTTPRequestLogInput.EventType"></span>    <span class="comment">// EventType は、イベント種別（start/error/panic）を表す。</span>
+    EventType <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.EventAt"></span>    EventAt   <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
+
+<span id="HTTPRequestLogInput.Method"></span>    Method   <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.Path"></span>    Path     <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.URI"></span>    URI      <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.RemoteIP"></span>    RemoteIP <a href="../../../builtin/#string">string</a>
+
+<span id="HTTPRequestLogInput.Host"></span>    Host          <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.Scheme"></span>    Scheme        <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.Proto"></span>    Proto         <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.UserAgent"></span>    UserAgent     <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.ContentType"></span>    ContentType   <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.ContentLength"></span>    ContentLength <a href="../../../builtin/#int64">int64</a>
+
+<span id="HTTPRequestLogInput.PathParams"></span>    PathParams  map[<a href="../../../builtin/#string">string</a>]<a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.QueryParams"></span>    QueryParams map[<a href="../../../builtin/#string">string</a>][]<a href="../../../builtin/#string">string</a>
+
+<span id="HTTPRequestLogInput.TraceID"></span>    TraceID <a href="../../../builtin/#string">string</a>
+<span id="HTTPRequestLogInput.SpanID"></span>    SpanID  <a href="../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1303:1495#L40">HTTPResponseLogInput</a>
+				<a class="permalink" href="#HTTPResponseLogInput">¶</a>
+				
+				
+			</h2>
+			<p>HTTPResponseLogInput は、HTTPレスポンスのログ出力用の入力情報をまとめた構造体です。
+
+			</p><pre>type HTTPResponseLogInput struct {
+<span id="HTTPResponseLogInput.EventAt"></span>    EventAt <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
+
+<span id="HTTPResponseLogInput.Method"></span>    Method <a href="../../../builtin/#string">string</a>
+<span id="HTTPResponseLogInput.Path"></span>    Path   <a href="../../../builtin/#string">string</a>
+<span id="HTTPResponseLogInput.URI"></span>    URI    <a href="../../../builtin/#string">string</a>
+<span id="HTTPResponseLogInput.Status"></span>    Status <a href="../../../builtin/#int">int</a>
+
+<span id="HTTPResponseLogInput.Latency"></span>    Latency <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>
+
+<span id="HTTPResponseLogInput.RequestID"></span>    RequestID <a href="../../../builtin/#string">string</a>
+<span id="HTTPResponseLogInput.TraceID"></span>    TraceID   <a href="../../../builtin/#string">string</a>
+<span id="HTTPResponseLogInput.SpanID"></span>    SpanID    <a href="../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=190:514#L1">LogFieldBuilder</a>
+				<a class="permalink" href="#LogFieldBuilder">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type LogFieldBuilder interface {
+    BuildHTTPRequestFields(req <a href="#HTTPRequestLogInput">HTTPRequestLogInput</a>) []*<a href="#Field">Field</a>
+    BuildHTTPResponseFields(resp <a href="#HTTPResponseLogInput">HTTPResponseLogInput</a>) []*<a href="#Field">Field</a>
+    BuildSQLStartFields(sql <a href="#SQLFieldsStartInput">SQLFieldsStartInput</a>) []*<a href="#Field">Field</a>
+    BuildSQLEndFields(sql <a href="#SQLFieldsEndInput">SQLFieldsEndInput</a>) []*<a href="#Field">Field</a>
+    BuildObservabilityFields(obs <a href="#ObservabilityFieldsInput">ObservabilityFieldsInput</a>) []*<a href="#Field">Field</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2615:2726#L107">NewLogFields</a>
+					<a class="permalink" href="#NewLogFields">¶</a>
+					
+					
+				</h3>
+				<pre>func NewLogFields(
+    obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>,
+    osCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>,
+) <a href="#LogFieldBuilder">LogFieldBuilder</a></pre>
+				<p>NewLogFields は、ログフィールド生成用のLogFieldsインスタンスを生成します。
+
+				
+				
+			
+				
+				</p><h3 id="NewTestLogFieldBuilder">func <a href="../../../src/go-boilerplate/internal/logging/test_kit.go.html?s=1281:1338#L27">NewTestLogFieldBuilder</a>
+					<a class="permalink" href="#NewTestLogFieldBuilder">¶</a>
+					
+					
+				</h3>
+				<pre>func NewTestLogFieldBuilder(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) <a href="#LogFieldBuilder">LogFieldBuilder</a></pre>
+				<p>NewTestLogFieldBuilder は、テスト用のLogFieldBuilderインスタンスを生成します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=327:949#L1">Logger</a>
+				<a class="permalink" href="#Logger">¶</a>
+				
+				
+			</h2>
+			<p>Logger は、アプリ全体が使うロガーのインターフェースです。
+
+			</p><pre>type Logger interface {
+    <span class="comment">// Debug はデバッグレベルのログを出力する。</span>
+    Debug(msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
+    <span class="comment">// Info は情報レベルのログを出力する。</span>
+    Info(msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
+    <span class="comment">// Warn は警告レベルのログを出力する。</span>
+    Warn(msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
+    <span class="comment">// Error はエラーレベルのログを出力する。</span>
+    Error(msg <a href="../../../builtin/#string">string</a>, fields ...*<a href="#Field">Field</a>)
+    <span class="comment">// Named は、新しい名前付きの Logger を返す。</span>
+    Named(name <a href="../../../builtin/#string">string</a>) <a href="#Logger">Logger</a>
+    <span class="comment">// CallerSkip は、コールスタックのスキップ数を設定した新しいLoggerを返す。</span>
+    CallerSkip(skip <a href="../../../builtin/#int">int</a>) <a href="#Logger">Logger</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=3050:3108#L79">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(appCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>) (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>New は、指定された設定に基づいて新しいZapロガーを生成します。
+
+				
+				
+			
+				
+				</p><h3 id="NewDevelopmentLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=1036:1079#L28">NewDevelopmentLogger</a>
+					<a class="permalink" href="#NewDevelopmentLogger">¶</a>
+					
+					
+				</h3>
+				<pre>func NewDevelopmentLogger() (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>NewDevelopmentLogger は、開発環境用のZapロガーを生成します。
+
+				
+				
+			
+				
+				</p><h3 id="NewObservedTestLogger">func <a href="../../../src/go-boilerplate/internal/logging/test_kit.go.html?s=560:633#L12">NewObservedTestLogger</a>
+					<a class="permalink" href="#NewObservedTestLogger">¶</a>
+					
+					
+				</h3>
+				<pre>func NewObservedTestLogger(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) (<a href="#Logger">Logger</a>, *<a href="../../../go.uber.org/zap/zaptest/observer/">observer</a>.<a href="../../../go.uber.org/zap/zaptest/observer/#ObservedLogs">ObservedLogs</a>)</pre>
+				<p>NewObservedTestLogger は、出力を捕捉できるテスト用 Logger と観測ログを返します。
+ログレベル・出力有無を検証したいテストで使用します。
+
+				
+				
+			
+				
+				</p><h3 id="NewObservedTestLoggerWithCaller">func <a href="../../../src/go-boilerplate/internal/logging/test_kit.go.html?s=963:1046#L20">NewObservedTestLoggerWithCaller</a>
+					<a class="permalink" href="#NewObservedTestLoggerWithCaller">¶</a>
+					
+					
+				</h3>
+				<pre>func NewObservedTestLoggerWithCaller(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) (<a href="#Logger">Logger</a>, *<a href="../../../go.uber.org/zap/zaptest/observer/">observer</a>.<a href="../../../go.uber.org/zap/zaptest/observer/#ObservedLogs">ObservedLogs</a>)</pre>
+				<p>NewObservedTestLoggerWithCaller は、caller 情報付きで出力を捕捉できるテスト用 Logger と観測ログを返します。
+caller（発生源）を検証したいテストで使用します。
+
+				
+				
+			
+				
+				</p><h3 id="NewProductionLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=291:333#L4">NewProductionLogger</a>
+					<a class="permalink" href="#NewProductionLogger">¶</a>
+					
+					
+				</h3>
+				<pre>func NewProductionLogger() (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>NewProductionLogger は、本番環境用のZapロガーを生成します。
+
+				
+				
+			
+				
+				</p><h3 id="NewTestLogger">func <a href="../../../src/go-boilerplate/internal/logging/test_kit.go.html?s=269:308#L5">NewTestLogger</a>
+					<a class="permalink" href="#NewTestLogger">¶</a>
+					
+					
+				</h3>
+				<pre>func NewTestLogger(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) <a href="#Logger">Logger</a></pre>
+				<p>NewTestLogger は、テスト用のLoggerインスタンスを生成します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="ObservabilityFieldsInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2273:2509#L90">ObservabilityFieldsInput</a>
+				<a class="permalink" href="#ObservabilityFieldsInput">¶</a>
+				
+				
+			</h2>
+			<p>ObservabilityFieldsInput は、オブザーバビリティ用のログフィールド生成の入力情報をまとめた構造体です。
+
+			</p><pre>type ObservabilityFieldsInput struct {
+<span id="ObservabilityFieldsInput.Layer"></span>    Layer    <a href="../../../builtin/#string">string</a>
+<span id="ObservabilityFieldsInput.PkgName"></span>    PkgName  <a href="../../../builtin/#string">string</a>
+<span id="ObservabilityFieldsInput.FuncName"></span>    FuncName <a href="../../../builtin/#string">string</a>
+<span id="ObservabilityFieldsInput.SpanName"></span>    SpanName <a href="../../../builtin/#string">string</a>
+
+<span id="ObservabilityFieldsInput.EventType"></span>    EventType <a href="../../../builtin/#string">string</a>
+<span id="ObservabilityFieldsInput.EventAt"></span>    EventAt   <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
+
+<span id="ObservabilityFieldsInput.Latency"></span>    Latency <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>
+
+<span id="ObservabilityFieldsInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
+<span id="ObservabilityFieldsInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
+<span id="ObservabilityFieldsInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1878:2128#L70">SQLFieldsEndInput</a>
+				<a class="permalink" href="#SQLFieldsEndInput">¶</a>
+				
+				
+			</h2>
+			<p>SQLFieldsEndInput は、SQL ログ出力用の入力情報をまとめた構造体です。
+
+			</p><pre>type SQLFieldsEndInput struct {
+<span id="SQLFieldsEndInput.Layer"></span>    Layer    <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsEndInput.PkgName"></span>    PkgName  <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsEndInput.FuncName"></span>    FuncName <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsEndInput.SpanName"></span>    SpanName <a href="../../../builtin/#string">string</a>
+
+<span id="SQLFieldsEndInput.EventAt"></span>    EventAt <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
+
+<span id="SQLFieldsEndInput.Latency"></span>    Latency <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>
+
+<span id="SQLFieldsEndInput.Query"></span>    Query <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsEndInput.Args"></span>    Args  []<a href="../../../builtin/#any">any</a>
+<span id="SQLFieldsEndInput.Err"></span>    Err   <a href="../../../builtin/#error">error</a>
+
+<span id="SQLFieldsEndInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsEndInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsEndInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SQLFieldsStartInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1594:1781#L56">SQLFieldsStartInput</a>
+				<a class="permalink" href="#SQLFieldsStartInput">¶</a>
+				
+				
+			</h2>
+			<p>SQLFieldsStartInput は、SQL ログ出力用の入力情報をまとめた構造体です。
+
+			</p><pre>type SQLFieldsStartInput struct {
+<span id="SQLFieldsStartInput.Layer"></span>    Layer    <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsStartInput.PkgName"></span>    PkgName  <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsStartInput.FuncName"></span>    FuncName <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsStartInput.SpanName"></span>    SpanName <a href="../../../builtin/#string">string</a>
+
+<span id="SQLFieldsStartInput.EventAt"></span>    EventAt <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
+
+<span id="SQLFieldsStartInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsStartInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
+<span id="SQLFieldsStartInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

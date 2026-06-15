@@ -118,29 +118,3 @@ func Test_BuildHTTPRequestLogInput(t *testing.T) {
 		})
 	})
 }
-
-func Test_Recovered(t *testing.T) {
-	t.Parallel()
-
-	e := echo.New()
-	newCtx := func() echo.Context {
-		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-		return e.NewContext(req, httptest.NewRecorder())
-	}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("未設定ならfalseを返す", func(t *testing.T) {
-			t.Parallel()
-			assert.False(t, IsRecovered(newCtx()))
-		})
-
-		t.Run("MarkRecovered後はtrueを返す", func(t *testing.T) {
-			t.Parallel()
-			c := newCtx()
-			MarkRecovered(c)
-			assert.True(t, IsRecovered(c))
-		})
-	})
-}

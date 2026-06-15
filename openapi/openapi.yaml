@@ -43,6 +43,7 @@ paths:
   # For error type generation
   /_internal/types/error-response:
     $ref: './paths/internal/types/error_response.yaml'
+  # sample-api:begin
   # サンプルAPI用のパス
   /v1/users:
     $ref: './paths/v1/users.yaml'
@@ -52,12 +53,14 @@ paths:
     $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
+  # sample-api:end
 components:
   parameters:
     PageParam:
       $ref: './components/parameters/pagination/PageParam.yaml'
     PerPageParam:
       $ref: './components/parameters/pagination/PerPageParam.yaml'
+    # sample-api:begin
     # サンプルAPI用のパラメーター定義
     KeywordParam:
       $ref: './components/parameters/search/KeywordParam.yaml'
@@ -65,6 +68,7 @@ components:
       $ref: './components/parameters/search/ActiveParam.yaml'
     UserIdParam:
       $ref: './components/parameters/user/UserIdParam.yaml'
+    # sample-api:end
   securitySchemes:
     BearerAuth:
       $ref: './components/schemas/BearerAuth.yaml'
@@ -79,6 +83,7 @@ components:
       $ref: './components/responses/health-check/ReadyResponse.yaml'
     ResponseVersion:
       $ref: './components/responses/version/VersionResponse.yaml'
+    # sample-api:begin
     # サンプルAPI用の型定義
     UserBaseInputRequest:
       $ref: './components/schemas/UserBaseInputRequest.yaml'
@@ -98,3 +103,4 @@ components:
       $ref: './components/requests/users/UserPutRequest.yaml'
     RequestPatchV1User:
       $ref: './components/requests/users/UserPatchRequest.yaml'
+    # sample-api:end

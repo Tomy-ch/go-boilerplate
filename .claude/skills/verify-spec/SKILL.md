@@ -1,11 +1,11 @@
 ---
 name: verify-spec
-description: Integrator skill for spec validation. Confirms feature name via `AskUserQuestion` (or receives from `scaffold-endpoint`), detects which spec files exist under `docs/spec/<feature>/` (lean A: `domain.md` and/or `usecase.md`), then chains the matching per-spec skills (`verify-spec-domain` / `verify-spec-usecase`) — each handles format check, internal consistency, plus its specific cross-validation (entity ↔ SQL for domain; cross-spec refs + naming convention for usecase). Does NOT check OpenAPI operationId coverage — that violates dependency direction (usecase doesn't know about HTTP/OpenAPI); the OpenAPI ↔ usecase mapping is verified by `scaffold-controller` at scaffold time. Aggregates findings into a single Japanese report. Read-only orchestration — all checks delegated to per-spec skills which are themselves read-only. When chained from `scaffold-endpoint`, aborts the downstream chain on `violation`; standalone exits 0 (informational).
+description: Integrator skill for spec validation. Confirms feature name via `AskUserQuestion` (or receives from `scaffold-endpoint`), detects which spec files exist under `docs/spec/<feature>/` (lean A: `domain.md` and/or `usecase.md`), then fans out the matching read-only `spec-validator-*` subagents (`spec-validator-domain` / `spec-validator-usecase`) IN PARALLEL via the Agent tool — passing the feature name + spec paths so each validator skips its own feature confirmation. Each validator handles format check, internal consistency, plus its specific cross-validation (entity ↔ SQL for domain; cross-spec refs + naming convention for usecase). Does NOT check OpenAPI operationId coverage — that violates dependency direction (usecase doesn't know about HTTP/OpenAPI); the OpenAPI ↔ usecase mapping is verified by `scaffold-controller` at scaffold time. Aggregates findings into a single Japanese report. Read-only orchestration — validators never touch spec or source files. When chained from `scaffold-endpoint`, aborts the downstream chain on `violation`; standalone exits 0 (informational). To validate a single spec, run this integrator — it fans out only the validator(s) for the spec file(s) that exist.
 ---
 
 # Verify Spec
 
-Integrator for spec validation. Chains per-spec skills based on which spec files exist under `docs/spec/<feature>/`.
+Integrator for spec validation. Fans out per-spec **read-only validator subagents** in parallel based on which spec files exist under `docs/spec/<feature>/`.
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
 
@@ -15,7 +15,7 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 - Standalone after editing specs, to confirm all checks pass.
 - During spec authoring as a quick check.
 
-Use the per-spec skill directly (`verify-spec-domain` / `verify-spec-usecase`) when you only care about one spec.
+To validate a single spec, run this integrator — it detects which of `domain.md` / `usecase.md` exist and fans out only the matching validator.
 
 Do NOT use for:
 
@@ -23,14 +23,18 @@ Do NOT use for:
 - Implementation ↔ spec drift — that's `arch-check`.
 - Fixing inconsistencies — read-only, reports only.
 
-## Per-Spec Skills Chained
+## Architecture: parallel validator subagents
 
-| Skill | Spec | Checks |
+Validation is delegated to two **read-only worker subagents** under `.claude/agents/`, one per spec file. The integrator runs them concurrently via the Agent tool (`subagent_type`):
+
+| Validator subagent | Spec | Checks |
 | --- | --- | --- |
-| `verify-spec-domain` | `docs/spec/<feature>/domain.md` | format + entity ↔ SQL soft + internal consistency |
-| `verify-spec-usecase` | `docs/spec/<feature>/usecase.md` | format + cross-spec to domain + 命名規約 + Workflow consistency |
+| `spec-validator-domain` | `docs/spec/<feature>/domain.md` | format + entity ↔ SQL soft + internal consistency |
+| `spec-validator-usecase` | `docs/spec/<feature>/usecase.md` | format + cross-spec to domain + 命名規約 + Workflow consistency |
 
-lean A 構成では controller.md / infra.md は存在しないため、それらの spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check-controller` / `arch-check-infra` が implementation 側で実施）。
+lean A 構成では controller.md / infra.md は存在しないため spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check`（controller / infra 監査）が implementation 側で実施）。
+
+The validators are the per-spec validation workers and are **strictly read-only** (no auto-fix, no writes). The two validators read independently — `spec-validator-usecase` reads `domain.md` itself for cross-spec `calls:` resolution — so there is **no write dependency** between them and they can run in parallel (the old domain-first ordering was a read reference, not a barrier).
 
 ## First Step: Confirm Target Feature
 
@@ -39,7 +43,7 @@ This skill **MUST call `AskUserQuestion` immediately after invocation** (unless 
 - 質問: 「検証対象の feature 名を選んでください」
 - 選択肢: `docs/spec/` 直下のサブディレクトリを列挙 + 規約外パス用のフリーテキスト
 
-If the feature directory is missing or contains no spec files, abort with clear message.
+If the feature directory is missing or contains no spec files, abort with a clear message.
 
 ## Step 1. Detect Existing Spec Files
 
@@ -48,18 +52,18 @@ For the confirmed feature, check existence of:
 - `docs/spec/<feature>/domain.md`
 - `docs/spec/<feature>/usecase.md`
 
-If neither exists → abort with message.
+If neither exists → abort with message. If only one exists → fan out only the matching validator. (If `usecase.md` exists alone, its cross-spec check will surface "domain.md not found" as a `violation`.)
 
-If only one exists → chain only the matching per-spec skill. Note that cross-spec checks (e.g., usecase → domain refs) will surface as "domain.md not found" if `usecase.md` exists alone.
+## Step 2. Fan Out Validator Subagents IN PARALLEL
 
-## Step 2. Chain Per-Spec Skills
+For the existing spec files, spawn the matching validators with the **Agent tool**, all in **a single message with multiple tool calls** so they run concurrently. Pass each validator:
 
-In order (domain first since usecase references it):
+- `feature` — the confirmed feature name
+- `specPath` — the spec file path (`docs/spec/<feature>/domain.md` or `.../usecase.md`)
 
-1. If `domain.md` exists → invoke `verify-spec-domain` with feature name supplied
-2. If `usecase.md` exists → invoke `verify-spec-usecase` with feature name supplied
+Each validator's final message **is** its findings (Japanese), ending in a machine-readable `SUMMARY violations=<v> suggestions=<s>` line. Collect them with their spec label and parse the SUMMARY counts.
 
-Each child returns findings (violations + suggestions counts). Collect with spec label.
+> If the `spec-validator-*` subagents cannot be spawned in the current environment, follow each `spec-validator-<layer>.md` procedure inline instead (domain first, since usecase references it).
 
 ## Step 3. Aggregate Report (Japanese)
 
@@ -67,10 +71,10 @@ Each child returns findings (violations + suggestions counts). Collect with spec
 verify-spec 統合結果（feature: <feature>）
 
 [domain] violations: N, suggestions: K
-  - <findings from verify-spec-domain>
+  - <findings from spec-validator-domain>
 
 [usecase] violations: N, suggestions: K
-  - <findings from verify-spec-usecase>
+  - <findings from spec-validator-usecase>
 
 総計: violations <sum>, suggestions <sum>
 ```
@@ -85,29 +89,30 @@ verify-spec 統合結果（feature: <feature>）
 ## Step 4. Closing
 
 - **Standalone invocation**: print the report and exit. Even with violations, exit status is 0 (informational).
-- **Chained from `scaffold-endpoint`**: when `violations > 0`, the parent skill must abort the downstream chain. Surface a clear "scaffold can not safely proceed" message.
+- **Chained from `scaffold-endpoint`**: when aggregated `violations > 0`, signal the parent to abort the downstream chain with a clear "scaffold can not safely proceed" message. (Suggestions do not abort.)
 
 ## AI Modification Scope
 
-Strictly read-only. Touches no spec or source files. All checks delegated to per-spec skills (themselves read-only).
+Strictly read-only. The integrator and all validator subagents touch no spec or source files. The integrator only runs `AskUserQuestion` (feature confirmation, standalone) and spawns read-only validators.
 
 ## Constraints
 
-- ❌ Hardcode rules — always delegate to per-spec skills (which read `.claude/scaffold-spec/<layer>-spec.md` + `verify-rules.md`)
-- ❌ Auto-fix violations
-- ❌ Modify any file
-- ❌ Skip the target-confirmation `AskUserQuestion`
-- ❌ Chain a per-spec skill when its target file is missing
+- ❌ validator を逐次起動（必ず1メッセージ内で複数 Agent 呼び出し＝並列）
+- ❌ Hardcode rules — validators read `.claude/scaffold-spec/<layer>-spec.md` + `verify-rules.md` every run
+- ❌ Auto-fix violations / modify any file
+- ❌ Skip the target-confirmation `AskUserQuestion` (unless supplied by `scaffold-endpoint`)
+- ❌ Fan out a validator when its target spec file is missing
 - ✅ Japanese aggregated report
-- ✅ Chain only existing spec files
-- ✅ Per-spec skill が独立 standalone 動作可能であることを維持
-- ✅ Run all per-spec checks in one pass (no fail-fast)
+- ✅ Fan out only existing spec files
+- ✅ Per-spec validator / skill が独立 standalone 動作可能であることを維持
+- ✅ Run all per-spec checks in one pass (no fail-fast); abort downstream only when chained from `scaffold-endpoint` with violations
 
 ## Checklist
 
 - [ ] Target feature confirmed via `AskUserQuestion` (or supplied by `scaffold-endpoint`)
 - [ ] Existing spec files detected (domain.md / usecase.md)
-- [ ] Per-spec skills chained for existing files only
-- [ ] Each child ran its own validation
+- [ ] Matching `spec-validator-*` を **1メッセージ内で並列起動**（feature / specPath を渡す）
+- [ ] 各 validator の SUMMARY を集約
 - [ ] Aggregated Japanese report emitted
+- [ ] scaffold-endpoint から chain 時のみ violations>0 で downstream abort
 - [ ] No file modifications

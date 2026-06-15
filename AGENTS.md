@@ -175,6 +175,7 @@ Conditions:
     - `docs/openapi/**` (redocly build output)
     - `docs/coverage/**` (test coverage report)
     - `docs/db-schema/**` (SchemaSpy output)
+    - `docs/godoc/**` (`make gen-godoc` output — godoc static HTML)
     - `docs/portal/docs.json` (`make gen-docs-json` output)
     - `docs/portal/guides/**` (`make gen-portal-docs` output — cleaned and regenerated on every run)
   - Anything listed under `permissions.deny` in `.claude/settings.json`
@@ -561,6 +562,7 @@ Finally, run `make lint` to check for any errors.
   - `docs/openapi/**` (redocly build output)
   - `docs/coverage/**` (test coverage report)
   - `docs/db-schema/**` (SchemaSpy output)
+  - `docs/godoc/**` (`make gen-godoc` output — godoc static HTML)
   - `docs/portal/docs.json` (`make gen-docs-json` output)
   - `docs/portal/guides/**` (`make gen-portal-docs` output)
 

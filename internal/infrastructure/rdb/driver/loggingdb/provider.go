@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_provider.gen.go -package=mock_$GOPACKAGE
 
 // Package loggingdb は、ログ付きのDB接続を提供します。
 package loggingdb

@@ -119,6 +119,7 @@ Apply these hard rules to map viewpoints to a concrete test file outline:
    - Use `t.Run("正常系", ...)` and `t.Run("異常系", ...)` exactly. The group names are the literal two characters, not a prefix.
    - **Forbidden pattern**: `t.Run("正常系_ユーザーが存在する場合", ...)` at the top level. The `正常系_` / `異常系_` prefix on individual case names is explicitly NOT the project convention — it conflates the group axis (正常系 / 異常系) with the case description axis (what this specific case does).
    - **Correct pattern**:
+
      ```go
      t.Run("正常系", func(t *testing.T) {
          t.Parallel()
@@ -130,6 +131,7 @@ Apply these hard rules to map viewpoints to a concrete test file outline:
          t.Run("IDがゼロ値の場合エラーを返す", func(t *testing.T) { ... })
      })
      ```
+
    - Both groups call `t.Parallel()` immediately inside. Nested sub-groups for finer categorization (e.g. `t.Run("firstNameが範囲外の場合、エラーを返す", ...)`) are encouraged when readable, and live INSIDE the relevant 正常系 / 異常系 group.
    - Each `TestXxx` has at most one `正常系` block and at most one `異常系` block. If only happy cases exist, omit the `異常系` block (and vice versa); do NOT create an empty group.
 4. **Every `t.Run` calls `t.Parallel()` as its first statement.** Exception: a block that mutates a pointer shared with another sibling block (e.g. `TestImmutableAccessors`'s `building` vs `deletedAt` blocks) keeps its outer `t.Run` serial; the comment above the block MUST explain why (`-race` would catch the violation). Inner cases inside that serial block still call `t.Parallel()`.
@@ -214,6 +216,7 @@ Run, in order:
 
 1. `make fix` — formats the new test file. If any non-target file is reformatted, surface the diff to the user.
 2. `make test` — confirms the new tests pass and that the package's coverage stays at or above its prior level (and above the 90 % project threshold for new / modified packages, per `CLAUDE.md`).
+3. **Mutation-check the regression-critical cases.** For any case written to lock in a specific behavior or guard a known / just-fixed bug (not generic coverage cases), prove the test actually catches the regression: temporarily inject the regression into the **subject** (flip the condition, drop the guard, swap the field / arg), re-run just that test, confirm it **FAILs**, then revert the mutation. A test that still passes under the mutation protects nothing — strengthen the assertion until it fails. This is the difference between a real regression test and a tautology; do it on the regression-critical cases, not every case.
 
 If `make test` fails:
 
@@ -242,6 +245,7 @@ In chained mode, this skill skips:
 
 ## Constraints (Summary)
 
+- ❌ Add restate-the-code or *why*-narration comments to the generated test — keep test comments minimal (behavior only). Case intent is carried by the Japanese `t.Run` name, not by inline comments; the only required non-godoc comment is the `-race` serial-block exception rationale.
 - ❌ Multiple `TestXxx` for the same function / method.
 - ❌ Bundling multiple subjects into one `TestXxx` without `AskUserQuestion` approval (and the recorded rationale comment).
 - ❌ Table-driven `for`-loop tests without `AskUserQuestion` approval.
@@ -261,6 +265,7 @@ In chained mode, this skill skips:
 - ✅ Generated mocks from `*/mock/` only.
 - ✅ Deterministic fixtures (fixed `baseTime`, `uuid.NewTestFromSalt(t, ...)`).
 - ✅ `t.Helper()` on helper functions in the produced test file.
+- ✅ Mutation-check regression-critical cases (inject the regression into the subject, confirm the test FAILs, revert) — a case that stays green under the mutation is a tautology, not a guard.
 
 ## Checklist
 

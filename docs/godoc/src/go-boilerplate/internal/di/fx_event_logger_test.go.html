@@ -1,0 +1,141 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>di - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../src/go-boilerplate/internal/di">di</a>/<span class="text-muted">fx_event_logger_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/internal/di">go-boilerplate/internal/di</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package di
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;errors&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go.uber.org/fx/fxevent&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>func TestNewFxEventLogger(t *testing.T) {
+<span id="L15" class="ln">    15  </span>	t.Parallel()
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L18" class="ln">    18  </span>		t.Parallel()
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>		t.Run(&#34;非nilのfxevent.Loggerを返す&#34;, func(t *testing.T) {
+<span id="L21" class="ln">    21  </span>			t.Parallel()
+<span id="L22" class="ln">    22  </span>			assert.NotNil(t, NewFxEventLogger(logging.NewTestLogger(t)))
+<span id="L23" class="ln">    23  </span>		})
+<span id="L24" class="ln">    24  </span>	})
+<span id="L25" class="ln">    25  </span>}
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span>func TestFxEventLogger_LogEvent(t *testing.T) {
+<span id="L28" class="ln">    28  </span>	t.Parallel()
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span>	boom := errors.New(&#34;boom&#34;)
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span>	cases := []struct {
+<span id="L33" class="ln">    33  </span>		name      string
+<span id="L34" class="ln">    34  </span>		event     fxevent.Event
+<span id="L35" class="ln">    35  </span>		wantMsg   string <span class="comment">// &#34;&#34; のときはログが出ないことを期待</span>
+<span id="L36" class="ln">    36  </span>		wantLevel string
+<span id="L37" class="ln">    37  </span>	}{
+<span id="L38" class="ln">    38  </span>		{&#34;OnStart失敗はErrorで記録される&#34;, &amp;fxevent.OnStartExecuted{FunctionName: &#34;f&#34;, CallerName: &#34;c&#34;, Err: boom}, &#34;fx OnStart hook failed&#34;, &#34;error&#34;},
+<span id="L39" class="ln">    39  </span>		{&#34;OnStart成功は無視される&#34;, &amp;fxevent.OnStartExecuted{FunctionName: &#34;f&#34;}, &#34;&#34;, &#34;&#34;},
+<span id="L40" class="ln">    40  </span>		{&#34;OnStop失敗はErrorで記録される&#34;, &amp;fxevent.OnStopExecuted{FunctionName: &#34;f&#34;, Err: boom}, &#34;fx OnStop hook failed&#34;, &#34;error&#34;},
+<span id="L41" class="ln">    41  </span>		{&#34;Supply失敗はErrorで記録される&#34;, &amp;fxevent.Supplied{TypeName: &#34;T&#34;, Err: boom}, &#34;fx supply failed&#34;, &#34;error&#34;},
+<span id="L42" class="ln">    42  </span>		{&#34;Provide失敗はErrorで記録される&#34;, &amp;fxevent.Provided{ConstructorName: &#34;ctor&#34;, Err: boom}, &#34;fx provide failed&#34;, &#34;error&#34;},
+<span id="L43" class="ln">    43  </span>		{&#34;Invoke失敗はErrorで記録される&#34;, &amp;fxevent.Invoked{FunctionName: &#34;f&#34;, Err: boom}, &#34;fx invoke failed&#34;, &#34;error&#34;},
+<span id="L44" class="ln">    44  </span>		{&#34;Replace失敗はErrorで記録される&#34;, &amp;fxevent.Replaced{Err: boom}, &#34;fx replace failed&#34;, &#34;error&#34;},
+<span id="L45" class="ln">    45  </span>		{&#34;Decorate失敗はErrorで記録される&#34;, &amp;fxevent.Decorated{DecoratorName: &#34;dec&#34;, Err: boom}, &#34;fx decorate failed&#34;, &#34;error&#34;},
+<span id="L46" class="ln">    46  </span>		{&#34;LoggerInitialized失敗はErrorで記録される&#34;, &amp;fxevent.LoggerInitialized{Err: boom}, &#34;fx logger initialization failed&#34;, &#34;error&#34;},
+<span id="L47" class="ln">    47  </span>		{&#34;Started失敗はErrorで記録される&#34;, &amp;fxevent.Started{Err: boom}, &#34;fx application failed to start&#34;, &#34;error&#34;},
+<span id="L48" class="ln">    48  </span>		{&#34;Started成功はInfoで記録される&#34;, &amp;fxevent.Started{}, &#34;fx application started&#34;, &#34;info&#34;},
+<span id="L49" class="ln">    49  </span>		{&#34;Stopped失敗はErrorで記録される&#34;, &amp;fxevent.Stopped{Err: boom}, &#34;fx application failed to stop&#34;, &#34;error&#34;},
+<span id="L50" class="ln">    50  </span>		{&#34;Stopped成功はInfoで記録される&#34;, &amp;fxevent.Stopped{}, &#34;fx application stopped&#34;, &#34;info&#34;},
+<span id="L51" class="ln">    51  </span>		{&#34;RollingBackは起動失敗をErrorで記録する&#34;, &amp;fxevent.RollingBack{StartErr: boom}, &#34;fx start failed, rolling back&#34;, &#34;error&#34;},
+<span id="L52" class="ln">    52  </span>		{&#34;RolledBack失敗はErrorで記録される&#34;, &amp;fxevent.RolledBack{Err: boom}, &#34;fx rollback failed&#34;, &#34;error&#34;},
+<span id="L53" class="ln">    53  </span>		{&#34;RolledBack成功(Err nil)は無視される&#34;, &amp;fxevent.RolledBack{}, &#34;&#34;, &#34;&#34;},
+<span id="L54" class="ln">    54  </span>		{&#34;対象外イベントは無視される&#34;, &amp;fxevent.Invoking{FunctionName: &#34;f&#34;}, &#34;&#34;, &#34;&#34;},
+<span id="L55" class="ln">    55  </span>	}
+<span id="L56" class="ln">    56  </span>
+<span id="L57" class="ln">    57  </span>	for _, tc := range cases {
+<span id="L58" class="ln">    58  </span>		t.Run(tc.name, func(t *testing.T) {
+<span id="L59" class="ln">    59  </span>			t.Parallel()
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>			obs, logs := logging.NewObservedTestLogger(t)
+<span id="L62" class="ln">    62  </span>			NewFxEventLogger(obs).LogEvent(tc.event)
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>			if tc.wantMsg == &#34;&#34; {
+<span id="L65" class="ln">    65  </span>				assert.Equal(t, 0, logs.Len())
+<span id="L66" class="ln">    66  </span>				return
+<span id="L67" class="ln">    67  </span>			}
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span>			entries := logs.FilterMessage(tc.wantMsg).All()
+<span id="L70" class="ln">    70  </span>			require.Len(t, entries, 1)
+<span id="L71" class="ln">    71  </span>			assert.Equal(t, tc.wantLevel, entries[0].Level.String())
+<span id="L72" class="ln">    72  </span>		})
+<span id="L73" class="ln">    73  </span>	}
+<span id="L74" class="ln">    74  </span>}
+<span id="L75" class="ln">    75  </span>
+</pre><p><a href="../../../../src/go-boilerplate/internal/di/fx_event_logger_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

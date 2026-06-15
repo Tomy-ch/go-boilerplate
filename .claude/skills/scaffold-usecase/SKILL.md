@@ -190,6 +190,7 @@ Remains protected:
 
 ## Constraints
 
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
 - ❌ Invent methods, DTOs, dependencies, or workflow steps not in the spec
 - ❌ Implement business rules (those belong in domain entity)
 - ❌ Access infrastructure directly (only via Repository / Boundary interfaces)

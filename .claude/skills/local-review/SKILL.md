@@ -1,6 +1,6 @@
 ---
 name: local-review
-description: Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap), each on `sonnet` by default so reviewer ≠ an Opus implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Step 3.5), and synthesizes a single Japanese report. Read-only on source: reviewers cannot edit code (no fix is applied), and any destructive runtime curl is confirmed with the user first. Use before commit / PR to get an independent second opinion that the implementer's own model would not surface.
+description: Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap), each on `sonnet` by default so reviewer ≠ an Opus implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Step 3.5), and synthesizes a single Japanese report. Read-only on source: reviewers cannot edit code (no fix is applied), and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; falls back to the local report when no open PR exists). Use before commit / PR to get an independent second opinion that the implementer's own model would not surface.
 ---
 
 # Local Review
@@ -42,6 +42,10 @@ Call `AskUserQuestion` immediately. Default-detect scope by checking branch vs b
   - 特定のパス/ファイルを指定
   - キャンセル
 ```
+
+### Flags
+
+- `--no-comment` — suppress Step 6 (do not post to the PR); produce the local report only. **Default is opt-out**: when an open PR exists for the current branch, Step 6 posts the surviving findings as inline review comments unless this flag is given.
 
 ## Step 1 — Gather Context
 
@@ -108,6 +112,63 @@ Produce one Japanese report:
 
 Order by severity, CONFIRMED before PLAUSIBLE. Always state what runtime checks ran and what was skipped — silent omission reads as "covered everything" when it was not.
 
+## Step 6 — Post Findings as Inline PR Comments (default; opt out with `--no-comment`)
+
+By default, after Step 5, post the surviving **CONFIRMED + PLAUSIBLE** findings to the branch's PR as **inline review comments** — one per finding, anchored to its `path:line`, instead of a single wall-of-text comment. **Never post REFUTED.** The Step 5 local report is still produced regardless; this step is additive.
+
+Skip this step entirely when:
+
+- invoked with `--no-comment`, OR
+- no open PR exists for the current branch (`gh pr view` returns nothing) — keep the local report only and optionally offer to open a PR.
+
+Posting to GitHub is an outward-facing action, so confirm **once** before posting — show the count and the target PR (`AskUserQuestion`: 「<N> 件の指摘を PR #<番号> にインラインコメントとして投稿しますか？」/「投稿する」「投稿しない（ローカルレポートのみ）」).
+
+### Procedure
+
+1. Resolve PR number, repo, and the commit the comments anchor to:
+
+   ```sh
+   gh pr view --json number,url -q '.number'        # PR number
+   gh repo view --json nameWithOwner -q '.nameWithOwner'
+   git rev-parse HEAD                                # anchor SHA
+   git rev-parse @{u}                                # pushed head — warn if it differs from HEAD
+   ```
+
+   The anchor commit MUST be the commit pushed to the PR. If local `HEAD` ≠ `@{u}`, warn the user to push first (the API rejects comments whose `commit_id` is not on the PR).
+
+2. Decide which findings can be inline. A GitHub inline comment must target a line present in the PR diff. Parse the diff hunks (`gh pr diff <PR> --patch` or `git diff <base>...HEAD`):
+   - `(path, line)` inside an added/context hunk → inline comment, `side: "RIGHT"`.
+   - `(path, line)` on a removed line → inline comment, `side: "LEFT"`.
+   - Off-diff (the reviewer referenced unchanged context) → **cannot** be inline; fold it into the review summary `body`.
+
+3. Build one review and post all comments atomically (a single review, not N standalone comments):
+
+   ```sh
+   gh api --method POST repos/<owner>/<repo>/pulls/<PR>/reviews --input payload.json
+   ```
+
+   `payload.json`:
+
+   ```json
+   {
+     "commit_id": "<SHA>",
+     "event": "COMMENT",
+     "body": "🔎 local-review (reviewer: <model>) — CONFIRMED <n> / PLAUSIBLE <m>\n\ndiff 外で行アンカー不可の指摘:\n- <path>: <要約>",
+     "comments": [
+       {
+         "path": "<file>",
+         "line": <n>,
+         "side": "RIGHT",
+         "body": "🔎 [CONFIRMED · high] <問題の要約>\n\n根拠: <...>\n修正案: <...>\n検証: <verifier 判定>"
+       }
+     ]
+   }
+   ```
+
+   Use `event: "COMMENT"` — this is an advisory review, never `REQUEST_CHANGES` / `APPROVE`. Prefix every comment body with `🔎 local-review` (or the `🔎 [verdict · severity]` tag) so the posts are distinguishable from human review.
+
+4. Robustness: if the API rejects the batch (422 — a line is not in the diff), move the offending comment(s) to the summary `body` and retry. Report afterward what was posted inline vs. summarized — never silently drop a finding.
+
 ## Do / Do NOT
 
 - ✅ Guarantee reviewer model ≠ implementer model (override defaults if this session is sonnet).
@@ -115,6 +176,9 @@ Order by severity, CONFIRMED before PLAUSIBLE. Always state what runtime checks 
 - ✅ Independently verify every finding before reporting; drop REFUTED.
 - ✅ Run the runtime stage for touched endpoints; widen to all consumers on a shared-schema edit.
 - ✅ Confirm with the user before any destructive curl whose only restore path is `make db-init`.
+- ✅ By default, post CONFIRMED + PLAUSIBLE findings to the branch's PR as inline review comments (Step 6); suppress with `--no-comment` or when no open PR exists.
+- ✅ Confirm once before posting to the PR (outward action); anchor each comment to its `path:line`, fold off-diff findings into the review summary.
+- ❌ Post REFUTED findings, or use `REQUEST_CHANGES` / `APPROVE` — the posted review is advisory `COMMENT` only.
 - ❌ Apply fixes — this skill reports; the user fixes (reviewers are read-only by construction).
 - ❌ Let a reviewer run on the same model as the implementer.
 - ❌ Report speculative style nits as findings, or pad the list to look thorough.
@@ -128,3 +192,4 @@ Order by severity, CONFIRMED before PLAUSIBLE. Always state what runtime checks 
 - [ ] Every finding independently verified; REFUTED dropped (count kept).
 - [ ] Runtime curl + o11y done for touched endpoints (shared-schema → all consumers); destructive curls confirmed.
 - [ ] Single Japanese report: CONFIRMED → PLAUSIBLE, with runtime coverage stated.
+- [ ] Unless `--no-comment` / no PR: confirmed once, then posted CONFIRMED + PLAUSIBLE as inline PR comments (off-diff → summary body); REFUTED excluded; `event: COMMENT`.

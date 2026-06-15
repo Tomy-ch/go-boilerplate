@@ -1,0 +1,95 @@
+name: Go Lint
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/go-lint.yaml'
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.golangci.yml'
+      - '.golangci-full.yaml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
+        with:
+          version: 2026.6.0
+          install: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install golangci-lint
+        run: mise install golangci-lint
+
+      - name: Check Go / golangci-lint version
+        run: |
+          go version
+          golangci-lint version
+
+      - name: Run golangci-lint
+        id: golangci
+        shell: bash
+        run: |
+          set +e
+
+          golangci-lint run --config=.golangci-full.yaml \
+            --output.text.print-issued-lines=true \
+            --output.text.print-linter-name=true \
+            2>&1 | tee /tmp/golangci-lint.log
+
+          code=${PIPESTATUS[0]}
+
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+
+          if [ "$code" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Go lint: PASS (golangci-lint)" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Go lint: FAIL (golangci-lint)" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0
+
+      - name: Comment Go lint result on PR
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- golangci-lint-result -->'
+          title: ${{ steps.golangci.outputs.title }}
+          body-file: /tmp/golangci-lint.log
+          details-summary: 'golangci-lint log'
+
+      - name: Fail if golangci-lint failed
+        if: always()
+        shell: bash
+        run: |
+          code='${{ steps.golangci.outputs.exit_code }}'
+          if [ "$code" != "0" ]; then
+            echo "golangci-lint failed with exit code $code"
+            exit 1
+          fi

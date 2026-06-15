@@ -24,7 +24,7 @@ controller / infra layer は spec 駆動ではなく、scaffold 時に以下か�
 - OpenAPI gen + 命名規約 → controller
 - domain Repository IF + sqlc gen 関数名 → infra
 
-規約自体は `arch-check-controller` / `arch-check-infra` で強制（handler / Repository ボディの純粋性、命名一致）。詳細は `.claude/scaffold-spec/lifecycle.md` を参照。
+規約自体は `arch-check`（controller / infra 監査）で強制（handler / Repository ボディの純粋性、命名一致）。詳細は `.claude/scaffold-spec/lifecycle.md` を参照。
 
 ## 読み書き範囲
 

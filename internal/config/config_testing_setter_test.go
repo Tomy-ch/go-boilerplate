@@ -12,62 +12,62 @@ func TestConfigTestingSetters(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		cfg := MockConfigForTest(t)
 
-		t.Run("SetAppMode", func(t *testing.T) {
+		t.Run("アプリケーションモードを設定して取得できる", func(t *testing.T) {
 			expected := "test-mode"
 			cfg.app.SetApplicationMode(t, expected)
 			assert.Equal(t, expected, cfg.app.Mode())
 		})
 
-		t.Run("SetAppEnv", func(t *testing.T) {
+		t.Run("アプリケーション環境を設定して取得できる", func(t *testing.T) {
 			expected := "test-env"
 			cfg.app.SetApplicationEnv(t, expected)
 			assert.Equal(t, expected, cfg.app.Env())
 		})
 
-		t.Run("SetServerPort", func(t *testing.T) {
+		t.Run("サーバーポートを設定して取得できる", func(t *testing.T) {
 			expected := 8081
 			cfg.server.SetServerPort(t, expected)
 			assert.Equal(t, expected, cfg.server.Port())
 		})
 
-		t.Run("SetObservabilityMaskedDBQueryArgs", func(t *testing.T) {
+		t.Run("DBクエリ引数のマスク設定を設定して取得できる", func(t *testing.T) {
 			expected := true
 			cfg.observability.SetObservabilityMaskedDBQueryArgs(t, expected)
 			assert.Equal(t, expected, cfg.observability.MaskedDBQueryArgs())
 		})
 
-		t.Run("SetDatabaseHost", func(t *testing.T) {
+		t.Run("データベースホストを設定して取得できる", func(t *testing.T) {
 			expected := "test-host"
 			cfg.database.SetDatabaseHost(t, expected)
 			assert.Equal(t, expected, cfg.database.Host())
 		})
 
-		t.Run("SetDatabaseName", func(t *testing.T) {
+		t.Run("データベース名を設定して取得できる", func(t *testing.T) {
 			expected := "test-name"
 			cfg.database.SetDatabaseName(t, expected)
 			assert.Equal(t, expected, cfg.database.DBName())
 		})
 
-		t.Run("SetMaxConns", func(t *testing.T) {
+		t.Run("最大コネクション数を設定して取得できる", func(t *testing.T) {
 			expected := int32(20)
 			cfg.dbconnection.SetMaxConns(t, expected)
 			assert.Equal(t, expected, cfg.dbconnection.MaxConns())
 		})
 
-		t.Run("SetCIDR", func(t *testing.T) {
+		t.Run("CIDRを設定して取得できる", func(t *testing.T) {
 			_, testCIDR, err := net.ParseCIDR("192.168.1.0/24")
 			require.NoError(t, err)
 			cfg.security.SetCIDR(t, testCIDR)
 			assert.Equal(t, testCIDR, cfg.security.CIDR())
 		})
 
-		t.Run("SetHeaderName", func(t *testing.T) {
+		t.Run("認証ヘッダー名を設定して取得できる", func(t *testing.T) {
 			expected := "X-TEST-AUTH"
 			cfg.auth.SetHeaderName(t, expected)
 			assert.Equal(t, expected, cfg.auth.HeaderName())
 		})
 
-		t.Run("SetAllowedHeaderBearer", func(t *testing.T) {
+		t.Run("Bearerヘッダー許可を設定して取得できる", func(t *testing.T) {
 			expected := true
 			cfg.auth.SetAllowedHeaderBearer(t, expected)
 			assert.Equal(t, expected, cfg.auth.AllowedHeaderBearer())

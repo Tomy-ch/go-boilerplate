@@ -201,6 +201,7 @@ Remains protected:
 
 ## Constraints
 
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
 - ❌ Invent business logic in Repository (data orchestration only)
 - ❌ Generate SQL or run `make gen-query` (out of scope)
 - ❌ Hand-edit sqlc generated files

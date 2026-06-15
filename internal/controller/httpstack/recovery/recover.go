@@ -3,6 +3,7 @@ package recovery
 
 import (
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
@@ -47,12 +48,12 @@ func newRecoverLogErrorFunc(logger logging.Logger, lf logging.LogFieldBuilder) f
 		reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic)
 		recoverFields := []*logging.Field{
 			logging.String(logging.InternalErrorKey, err.Error()),
-			logging.String(logging.InternalStackTraceKey, string(stack)),
+			logging.Strings(logging.InternalStackTraceKey, logging.SplitStackLines(string(stack))),
 		}
 		fields := append(lf.BuildHTTPRequestFields(reqIn), recoverFields...)
 		logger.Named("middleware.recover").Error("panic recovered", fields...)
-		// ログ済みを記録し err を返す（echo が c.Error で 500 を返す。二重ログは IsRecovered で抑止）。
-		server.MarkRecovered(c)
+		// ログ済みを記録し err を返す（echo が c.Error で 500 を返す。二重ログは ctxhelper.GetRecoveredFromEcho で抑止）。
+		ctxhelper.SetRecoveredToEcho(c, true)
 		return err
 	}
 }
