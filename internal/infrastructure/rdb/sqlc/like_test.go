@@ -9,19 +9,19 @@ import (
 func TestWrapLikePatterns(t *testing.T) {
 	t.Parallel()
 
-	t.Run("WrapPrefixLikePattern", func(t *testing.T) {
+	t.Run("前方一致のLIKEパターンに変換する", func(t *testing.T) {
 		t.Parallel()
 		got := WrapPrefixLikePattern("hoge")
 		assert.Equal(t, "hoge%", got)
 	})
 
-	t.Run("WrapSuffixLikePattern", func(t *testing.T) {
+	t.Run("後方一致のLIKEパターンに変換する", func(t *testing.T) {
 		t.Parallel()
 		got := WrapSuffixLikePattern("hoge")
 		assert.Equal(t, "%hoge", got)
 	})
 
-	t.Run("WrapContainsLikePattern", func(t *testing.T) {
+	t.Run("部分一致のLIKEパターンに変換する", func(t *testing.T) {
 		t.Parallel()
 		got := WrapContainsLikePattern("hoge")
 		assert.Equal(t, "%hoge%", got)
