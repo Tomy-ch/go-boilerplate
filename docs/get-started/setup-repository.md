@@ -1,6 +1,6 @@
 # Post-Repository Clone Task List
 
-English | [日本語](setup.ja.md)
+English | [日本語](../ja/get-started/setup-repository.ja.md)
 
 For details of Make commands, refer to [Make Target List](.makefiles/README.md).
 
