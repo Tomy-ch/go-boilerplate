@@ -2,10 +2,10 @@
 
 English | [日本語](README.ja.md)
 
-Provides an `Encrypter` interface for password hashing and comparison.
+Provides a `Hasher` interface for password hashing and comparison.
 
 ```go
-type Encrypter interface {
+type Hasher interface {
     Hash(password string) (string, error)
     Compare(hash, password string) (bool, error)
 }

@@ -9,13 +9,6 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-const (
-	minNameLength = 1
-	maxNameLength = 100
-	minCode       = 1
-	maxCode       = 47
-)
-
 type Prefectures []*Prefecture
 
 type Prefecture struct {

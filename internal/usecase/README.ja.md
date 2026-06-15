@@ -374,7 +374,7 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    encrypter security.Encrypter,
+    hasher security.Hasher,
     userRepo user.Repository,
     userQS query.UserQueryService,
 ) Usecase {
@@ -382,7 +382,7 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        encrypter: encrypter,
+        hasher:    hasher,
         userRepo:  userRepo,
         userQS:    userQS,
     }
@@ -471,10 +471,14 @@ flowchart TB
 - 想定外:
   - そのまま or `apperror.ErrInternal` に包む → 500
 
+`apperror.ErrXXX` センチネルでラップする場合は、標準の `fmt.Errorf("%w", ...)` ではなく
+`pkg/xerrors.Wrap(apperror.ErrXXX, "context")` を使う。スタックトレースを保持しつつ
+`xerrors.Is` でセンチネル判定が可能になる。
+
 ### ページング
 
-- NewPageFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
-- Offset 上限（悪意対策）を超えたら `apperror.ErrInvalidArgument` を返す。
+- NewPagingFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
+- ページ番号が許容最大を超えたら `apperror.ErrInvalidArgument` を返す（offset は int32 変換時にクランプ）。
 
 ## 呼び出せる層 / 呼び出せない層
 
@@ -543,7 +547,7 @@ ctrl := gomock.NewController(t)
 
 userRepo := mock_user.NewMockRepository(ctrl)
 clock := mock_clock.NewMockClock(ctrl)
-byencrypter := mock_security.NewMockBcrypter(ctrl)
+hasher := mock_security.NewMockHasher(ctrl)
 ```
 
 ### テスト対象
@@ -738,7 +742,7 @@ type usecase struct {
     tracer    observability.LayerTracer
     txm       tx.Manager
     clock     clock.Clock
-    encrypter security.Encrypter
+    hasher    security.Hasher
     userRepo  user.Repository
     pftRepo   prefecture.Repository
     userQS    query.UserQueryService
@@ -759,7 +763,7 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    encrypter security.Encrypter,
+    hasher security.Hasher,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
     userQueryService query.UserQueryService,
@@ -768,7 +772,7 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        encrypter: encrypter,
+        hasher:    hasher,
         userRepo:  userRepo,
         pftRepo:   prefectureRepo,
         userQS:    userQueryService,
@@ -798,12 +802,12 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
     }
 
 
-    // オプション: observability.RunDomainWithSpanでDomain層のspanを作成
+    // オプション: observability.RunWithSpanで処理単位のspanを作成
     // 可観測性を高めるために、Domain層の処理もspanとして切り出すことができます。
     // オプションなのでなくても構いません。
     // 第一引数のctxは、後続で使う場合は返り値を受け取って上書きしてください。
-    ctx, prefectureMap, err := observability.RunDomainWithSpan(
-        ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
+    ctx, prefectureMap, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
             // ユーザーの都道府県IDを集めて、一括で都道府県エンティティを取得
             pids := make([]uuid.UUID, len(us))
             for i, u := range us {
@@ -830,9 +834,9 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
       return nil, err
     }
 
-    // ctxは、後続でobservability.RunDomainWithSpanを使わない場合は不要
-    _, dtos, err := observability.RunDomainWithSpan(
-        ctx, u.tracer, "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
+    // ctxは、後続でobservability.RunWithSpanを使わない場合は不要
+    _, dtos, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
             // 結果をDTOに詰め替え
             dtos := make([]UserMutableFields, len(us))
             for i, u := range us {
@@ -870,8 +874,8 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
         return MutableFields{}, err
     }
 
-    // パスワードのハッシュ化はセキュリティのルールなので、Boundaryで提供されるencrypterを使う
-    passwordHash, err := u.encrypter.Hash(rawPassword.Value())
+    // パスワードのハッシュ化はセキュリティのルールなので、Boundaryで提供されるhasherを使う
+    passwordHash, err := u.hasher.Hash(rawPassword.Value())
     if err != nil {
         return MutableFields{}, err
     }

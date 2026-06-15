@@ -2,10 +2,10 @@
 
 [English](README.md) | 日本語
 
-パスワードのハッシュ化・比較のための `Encrypter` インターフェースを提供します。
+パスワードのハッシュ化・比較のための `Hasher` インターフェースを提供します。
 
 ```go
-type Encrypter interface {
+type Hasher interface {
     Hash(password string) (string, error)
     Compare(hash, password string) (bool, error)
 }
