@@ -43,7 +43,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash, AskUserQuestion
 ## 引数（既定値あり）
 
 | 引数 | 既定 | 意味 |
-|------|------|------|
+| --- | --- | --- |
 | `--reviews-dir` | `tmp/reviews` | 指摘 md 群のあるディレクトリ（full-verify の `--out` と対応。例 `tmp/reviews-config`） |
 | `--severity` | `low` | この重大度まで処理する（`critical` だけ / `high` まで / … / `low` まで全件） |
 | `--scope` | （確認） | 対象ディレクトリの csv。未指定なら起動時に AskUserQuestion で確認 |
