@@ -49,10 +49,15 @@ const referenceSectionIds = Array.isArray(meta.reference_links) ? meta.reference
 const referenceSet = new Set(referenceSectionIds)
 const subgroupsConfig = (meta.subgroups && typeof meta.subgroups === "object") ? meta.subgroups : {}
 
-// path から guideId を導く: basename から .ja.md / .md を取り除いたもの (EN/JA 両方が同じ id を持つ)
+// path から guideId を導く: basename から最後尾の語彙拡張子を 1 段だけ取り除いたもの。
+// (.ja.md は EN/JA で同じ id にしたいので 2 段剥がし、それ以外は 1 段のみ)
+// これにより 'foo.html.md' は 'foo.html' になり、純粋な 'foo.html' とは衝突しない。
 function guideIdFromPath(p) {
   const base = p.split("/").pop() || ""
-  return base.replace(/\.ja\.md$/i, "").replace(/\.md$/i, "").replace(/\.html$/i, "")
+  if (/\.ja\.md$/i.test(base)) return base.replace(/\.ja\.md$/i, "")
+  if (/\.md$/i.test(base)) return base.replace(/\.md$/i, "")
+  if (/\.html$/i.test(base)) return base.replace(/\.html$/i, "")
+  return base
 }
 
 // --- セクション辞書を構築する ---
@@ -65,12 +70,22 @@ function ensureSection(id, fallbackTitle) {
       id,
       title: sectionTitles[id] ?? fallbackTitle,
       items: [],
+      _pathSet: new Set(),
     })
-  } else if (sectionTitles[id]) {
-    // 既存セクションがあれば title だけ上書き
-    sectionMap.get(id).title = sectionTitles[id]
   }
   return sectionMap.get(id)
+}
+
+// 同一 path の item を 2 回 push しないためのガード。
+// manifest 由来と auto-discovery 由来が同じファイルを指してしまった場合の
+// 重複カード出現を防ぐ。
+function addItem(section, item) {
+  if (section._pathSet.has(item.path)) {
+    console.warn(`⚠ 重複 item をスキップ: section="${section.id}" path="${item.path}"`)
+    return
+  }
+  section._pathSet.add(item.path)
+  section.items.push(item)
 }
 
 // (a) manifest 由来のセクション
@@ -84,7 +99,7 @@ if (manifest) {
     for (const entry of entries) {
       const relativePath = entry.dst.replace(/^docs\/portal\//, "./")
       const baseName = path.basename(entry.dst)
-      section.items.push({
+      addItem(section, {
         name: autoTitle(baseName),
         path: relativePath,
         lang: langOfDst(entry.dst),
@@ -106,21 +121,11 @@ const rootDirs = fs.readdirSync(docsDir, { withFileTypes: true })
 for (const dir of rootDirs) {
   const dirAbs = path.join(docsDir, dir)
 
-  // ① HTML index 優先
+  // ① HTML index と markdown の両方を拾う (HTML があっても sibling MD を捨てない)。
   const indexHtml = path.join(dirAbs, "index.html")
-  if (fs.existsSync(indexHtml)) {
-    const section = ensureSection(dir, autoTitle(dir))
-    section.items.push({
-      name: section.title,
-      path: `../${dir}/index.html`,
-      lang: "all",
-      source: `docs/${dir}/index.html`,
-      guideId: dir,
-    })
-    continue
-  }
+  const hasIndexHtml = fs.existsSync(indexHtml)
 
-  // ② Markdown
+  // ② markdown の列挙 (EN / JA)
   const enFiles = fs.existsSync(dirAbs)
     ? fs.readdirSync(dirAbs).filter(f => f.endsWith(".md")).sort()
     : []
@@ -129,11 +134,21 @@ for (const dir of rootDirs) {
     ? fs.readdirSync(jaAbs).filter(f => f.endsWith(".md")).sort()
     : []
 
-  if (!enFiles.length && !jaFiles.length) continue
+  if (!hasIndexHtml && !enFiles.length && !jaFiles.length) continue
 
   const section = ensureSection(dir, autoTitle(dir))
+
+  if (hasIndexHtml) {
+    addItem(section, {
+      name: section.title,
+      path: `../${dir}/index.html`,
+      lang: "all",
+      source: `docs/${dir}/index.html`,
+      guideId: dir,
+    })
+  }
   for (const f of enFiles) {
-    section.items.push({
+    addItem(section, {
       name: autoTitle(f),
       path: `../${dir}/${f}`,
       lang: "en",
@@ -142,7 +157,7 @@ for (const dir of rootDirs) {
     })
   }
   for (const f of jaFiles) {
-    section.items.push({
+    addItem(section, {
       name: autoTitle(f),
       path: `../ja/${dir}/${f}`,
       lang: "ja",
@@ -154,9 +169,9 @@ for (const dir of rootDirs) {
 
 // (d) auto-discovered: docs/*.md と docs/ja/*.md を architecture セクションに集約
 {
-  const enFiles = fs.readdirSync(docsDir)
-    .filter(f => f.endsWith(".md"))
-    .sort()
+  const enFiles = fs.existsSync(docsDir)
+    ? fs.readdirSync(docsDir).filter(f => f.endsWith(".md")).sort()
+    : []
   const jaAbs = path.join(docsDir, "ja")
   const jaFiles = fs.existsSync(jaAbs)
     ? fs.readdirSync(jaAbs).filter(f => f.endsWith(".md")).sort()
@@ -165,7 +180,7 @@ for (const dir of rootDirs) {
   if (enFiles.length || jaFiles.length) {
     const section = ensureSection(ROOT_MD_SECTION_ID, sectionTitles[ROOT_MD_SECTION_ID] ?? "Architecture Docs")
     for (const f of enFiles) {
-      section.items.push({
+      addItem(section, {
         name: autoTitle(f),
         path: `../${f}`,
         lang: "en",
@@ -174,7 +189,7 @@ for (const dir of rootDirs) {
       })
     }
     for (const f of jaFiles) {
-      section.items.push({
+      addItem(section, {
         name: autoTitle(f),
         path: `../ja/${f}`,
         lang: "ja",
@@ -257,12 +272,18 @@ for (const groupConfig of groupsConfig) {
 
   const groupSections = []
   for (const id of sectionIds) {
-    if (sectionMap.has(id)) {
-      groupSections.push(sectionMap.get(id))
-      placedSectionIds.add(id)
-    } else {
+    if (!sectionMap.has(id)) {
       console.warn(`⚠ meta.groups: section id "${id}" は存在しないので無視します (group: ${groupConfig.title})`)
+      continue
     }
+    // 別グループで既に配置済みの section id は重複配置せずスキップする。
+    // (DOM id 衝突 / 同じカードの二重表示を防ぐ)
+    if (placedSectionIds.has(id)) {
+      console.warn(`⚠ meta.groups: section id "${id}" が複数グループに記載されています。"${groupConfig.title}" 側は無視します`)
+      continue
+    }
+    groupSections.push(sectionMap.get(id))
+    placedSectionIds.add(id)
   }
 
   if (groupSections.length) {
@@ -314,11 +335,26 @@ for (const id of referenceSectionIds) {
 }
 
 // --- 出力 ---
+// section に持たせている内部フィールド (_pathSet 等) を出力 JSON から除く。
+
+function stripInternalFields(group) {
+  return {
+    title: group.title,
+    slug: group.slug,
+    sections: group.sections.map((s) => ({
+      id: s.id,
+      slug: s.slug,
+      title: s.title,
+      items: s.items,
+      ...(s.subgroups ? { subgroups: s.subgroups } : {}),
+    })),
+  }
+}
 
 const docsJson = {
   title: "go-boilerplate Documentation",
   subtitle: "This document portal provides access to the repository implementation, test results, E-R diagrams, and more.",
-  groups,
+  groups: groups.map(stripInternalFields),
   referenceLinks,
 }
 

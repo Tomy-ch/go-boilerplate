@@ -70,10 +70,17 @@ header p {
 
 /* sidebar */
 
+/* position: sticky + align-self: start でグリッドが
+   サイドバーをコンテンツ高さに引き伸ばさないようにする。
+   max-height を固定すると、ページ先頭で header の高さ分だけ
+   下部が画面外に切れるため、伸ばさずページスクロールに乗せる。
+   コンテンツがビューポートを超えた時のみ overflow-y: auto で
+   サイドバー内スクロールに移行する。 */
 .sidebar {
   position: sticky;
   top: 24px;
-  max-height: calc(100vh - 48px);
+  align-self: start;
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -297,14 +304,9 @@ header p {
 /* hover */
 
 .card:hover {
-  background: linear-gradient(
-    180deg,
-    #ffffff,
-    var(--primary-soft)
-  );
+  background: #fff;
   transform: translateY(-3px);
   border-color: var(--primary);
-  background: #fff;
 
   box-shadow:
     0 8px 22px rgba(0,0,0,0.06);

@@ -98,20 +98,28 @@ function Sidebar({ groups, activeSlug, onSelectGroup, referenceLinks = [] }) {
               </button>
               {isActive ? (
                 <ul className="sidebar-sublist">
-                  {group.sections.map((section) => (
-                    <li key={section.slug}>
-                      <a
-                        href={`#/${group.slug}/${section.slug}`}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          const el = document.getElementById(`section-${section.slug}`)
-                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
-                        }}
-                      >
-                        {section.title}
-                      </a>
-                    </li>
-                  ))}
+                  {group.sections.map((section) => {
+                    const subHash = `#/${group.slug}/${section.slug}`
+                    return (
+                      <li key={section.slug}>
+                        <a
+                          href={subHash}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            // history 汚染を避けるため replaceState で URL を更新する。
+                            // ブックマーク / 共有時に該当セクションまで復元可能になる。
+                            if (window.location.hash !== subHash) {
+                              window.history.replaceState(null, "", subHash)
+                            }
+                            const el = document.getElementById(`section-${section.slug}`)
+                            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
+                          }}
+                        >
+                          {section.title}
+                        </a>
+                      </li>
+                    )
+                  })}
                 </ul>
               ) : null}
             </div>
@@ -147,6 +155,17 @@ function Search({ allItems = [], onResult }) {
 
   const [query, setQuery] = React.useState("")
 
+  // Fuse インスタンスは allItems が変わった時だけ再生成。
+  // (毎キーストロークで再ビルドすると O(n) のインデックス構築が無駄に走る)
+  const fuse = React.useMemo(
+    () =>
+      new Fuse(allItems, {
+        keys: ["name", "sectionTitle", "groupTitle", "source", "path"],
+        threshold: 0.3,
+      }),
+    [allItems]
+  )
+
   React.useEffect(() => {
 
     if (!query.trim()) {
@@ -154,16 +173,10 @@ function Search({ allItems = [], onResult }) {
       return
     }
 
-    const fuse = new Fuse(allItems, {
-      keys: ["name", "sectionTitle", "groupTitle", "source", "path"],
-      threshold: 0.3,
-    })
-
     const results = fuse.search(query).map((r) => r.item)
-
     onResult(results)
 
-  }, [query, allItems, onResult])
+  }, [query, fuse, onResult])
 
   return (
     <div className="search">
@@ -183,35 +196,39 @@ function MarkdownViewer({ html, onClose }) {
 
   React.useEffect(() => {
     if (!ref.current) return
+    const container = ref.current
 
     // markdown 内リンクは無効化 (portal は閲覧専用)
-    const links = ref.current.querySelectorAll("a")
-    links.forEach(link => {
+    container.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", (e) => e.preventDefault())
       link.style.pointerEvents = "none"
       link.style.color = "#6e7781"
       link.style.textDecoration = "none"
     })
 
-    // Mermaid render
-    const blocks = ref.current.querySelectorAll("code.language-mermaid")
-    blocks.forEach((block) => {
+    // ```mermaid フェンスを <div class="mermaid"> に置き換える
+    const mermaidNodes = []
+    container.querySelectorAll("code.language-mermaid").forEach((block) => {
       const parent = block.parentElement
       const graph = block.textContent
       const div = document.createElement("div")
       div.className = "mermaid"
       div.textContent = graph
       parent.replaceWith(div)
+      mermaidNodes.push(div)
     })
 
-    if (window.mermaid) {
+    // Mermaid render — modal 内のノードだけを対象にすることで
+    // ドキュメント全体スキャン (mermaid.run() の既定挙動) を避ける。
+    if (window.mermaid && mermaidNodes.length) {
       mermaid.initialize({ startOnLoad: false })
-      mermaid.run()
+      mermaid.run({ nodes: mermaidNodes })
     }
 
-    // Code highlight
+    // Code highlight — hljs.highlightAll() は document 全体を走るので、
+    // modal 内の <pre><code> だけ highlightElement で処理する。
     if (window.hljs) {
-      hljs.highlightAll()
+      container.querySelectorAll("pre code").forEach((block) => hljs.highlightElement(block))
     }
   }, [html])
 
@@ -238,16 +255,23 @@ function MarkdownViewer({ html, onClose }) {
 // Lang filter
 // ----------------
 
-function filterItemsByLang(items, lang) {
+// effectiveLang はセクション単位で決定する。
+// JA モードでも JA item が一切無いセクションは EN にフォールバックさせる。
+// セクション内のサブグループは「決まった lang」を強制的に共有するため、
+// サブグループごとに EN/JA が混在する事故 (例: 同じ Controller セクション内で
+// Layer Top が JA、HTTP Stack が EN) を避けられる。
+function effectiveLangFor(items, lang) {
+  if (lang !== "JA") return "EN"
+  const hasJa = (items || []).some(i => i.lang === "ja")
+  return hasJa ? "JA" : "EN"
+}
+
+function filterItemsByLangStrict(items, effectiveLang) {
   if (!items || !items.length) return []
 
   const all = items.filter(i => i.lang === "all")
-  const en = items.filter(i => i.lang === "en")
-  const ja = items.filter(i => i.lang === "ja")
-
-  if (lang === "EN") return [...all, ...en]
-  if (ja.length) return [...all, ...ja]
-  return [...all, ...en]
+  if (effectiveLang === "EN") return [...all, ...items.filter(i => i.lang === "en")]
+  return [...all, ...items.filter(i => i.lang === "ja")]
 }
 
 function applyLangFilter(groups, lang) {
@@ -259,12 +283,13 @@ function applyLangFilter(groups, lang) {
       slug: group.slug,
       sections: (group.sections || [])
         .map((section) => {
-          const filteredItems = filterItemsByLang(section.items, lang)
+          const sectionLang = effectiveLangFor(section.items, lang)
+          const filteredItems = filterItemsByLangStrict(section.items, sectionLang)
           const filteredSubgroups = Array.isArray(section.subgroups)
             ? section.subgroups
                 .map((sg) => ({
                   title: sg.title,
-                  items: filterItemsByLang(sg.items, lang),
+                  items: filterItemsByLangStrict(sg.items, sectionLang),
                 }))
                 .filter((sg) => sg.items.length > 0)
             : null
@@ -276,7 +301,9 @@ function applyLangFilter(groups, lang) {
             subgroups: filteredSubgroups,
           }
         })
-        .filter((section) => section.items.length > 0),
+        // items / subgroups どちらかにコンテンツが残っているセクションは保持する。
+        // (将来 section.items を持たず subgroups だけで提供するスキーマでも飛ばない)
+        .filter((section) => section.items.length > 0 || (section.subgroups && section.subgroups.length > 0)),
     }))
     .filter((group) => group.sections.length > 0)
 }
@@ -305,6 +332,19 @@ function buildAllItems(groups) {
 // Main App
 // ----------------
 
+// pushState/replaceState で hash を更新するヘルパ。
+// 直接 window.location.hash に代入すると history エントリーが追加されて
+// 戻るボタンが「直前の hash 状態」に戻る → useEffect が再書き込み → トラップ、
+// になる。replaceState で同じ entry を上書きすればトラップを防げる。
+function replaceHashSlug(slug) {
+  const next = `#/${slug}`
+  if (window.location.hash !== next) {
+    window.history.replaceState(null, "", next)
+    // hashchange は dispatchEvent で同期発火 (replaceState 自身は発火しない)
+    window.dispatchEvent(new HashChangeEvent("hashchange"))
+  }
+}
+
 function App() {
 
   const [docs, setDocs] = React.useState(null)
@@ -319,13 +359,7 @@ function App() {
         if (!res.ok) throw new Error(`failed to load docs.json: ${res.status}`)
         return res.json()
       })
-      .then((data) => {
-        setDocs(data)
-        // 初回ロード時、hash が空なら先頭グループへ
-        if (!parseHash() && Array.isArray(data.groups) && data.groups[0]) {
-          window.location.hash = `#/${data.groups[0].slug}`
-        }
-      })
+      .then(setDocs)
       .catch((err) => console.error(err))
   }, [])
 
@@ -335,7 +369,7 @@ function App() {
     return () => window.removeEventListener("hashchange", onHashChange)
   }, [])
 
-  function openMarkdown(path) {
+  const openMarkdown = React.useCallback((path) => {
     fetch(path)
       .then((res) => {
         if (!res.ok) throw new Error(`failed to load markdown: ${res.status}`)
@@ -343,19 +377,42 @@ function App() {
       })
       .then((md) => setMdHtml(marked.parse(md)))
       .catch((err) => console.error(err))
-  }
+  }, [])
+
+  // docs.json は v2 (groups) を期待。古い (sections) 形式が来た場合は単一 "All" グループに包む。
+  const rawGroups = React.useMemo(() => {
+    if (!docs) return []
+    return Array.isArray(docs.groups)
+      ? docs.groups
+      : [{ title: "All", slug: "all", sections: docs.sections || [] }]
+  }, [docs])
+
+  // 言語フィルタ後の visible groups。allItems もここから派生させ、毎レンダーで
+  // 新規参照が生まれないようメモ化する (Search の useEffect 依存配列を安定させ、
+  // 入力ごとに setFiltered → re-render → 新 allItems → effect 再発火 → setFiltered…
+  // という無限ループを防ぐ)。
+  const visibleGroups = React.useMemo(() => applyLangFilter(rawGroups, lang), [rawGroups, lang])
+  const allItems = React.useMemo(() => buildAllItems(visibleGroups), [visibleGroups])
+
+  // 初期 hash 未設定 / hash が visibleGroups に該当しない場合は、
+  // 言語フィルタ後の先頭グループに replaceState で揃える (history エントリ汚染を回避)。
+  React.useEffect(() => {
+    if (!docs || !visibleGroups.length) return
+    const requestedGroupSlug = parseHash().split("/")[0]
+    if (!requestedGroupSlug || !visibleGroups.find((g) => g.slug === requestedGroupSlug)) {
+      replaceHashSlug(visibleGroups[0].slug)
+    }
+  }, [docs, visibleGroups])
+
+  const onSelectGroup = React.useCallback((slug) => {
+    setFiltered(null)
+    replaceHashSlug(slug)
+    window.scrollTo(0, 0)
+  }, [])
 
   if (!docs) {
     return <div className="loading">Loading...</div>
   }
-
-  // docs.json は v2 (groups) を期待。古い (sections) 形式が来た場合は単一 "All" グループに包む。
-  const rawGroups = Array.isArray(docs.groups)
-    ? docs.groups
-    : [{ title: "All", slug: "all", sections: docs.sections || [] }]
-
-  const visibleGroups = applyLangFilter(rawGroups, lang)
-  const allItems = buildAllItems(visibleGroups)
 
   // hash の先頭 (group slug) を抽出
   const requestedGroupSlug = hashSlug.split("/")[0] || ""
@@ -405,22 +462,22 @@ function App() {
           groups={visibleGroups}
           activeSlug={activeSlug}
           referenceLinks={Array.isArray(docs.referenceLinks) ? docs.referenceLinks : []}
-          onSelectGroup={(slug) => {
-            setFiltered(null)
-            window.location.hash = `#/${slug}`
-            window.scrollTo(0, 0)
-          }}
+          onSelectGroup={onSelectGroup}
         />
 
         <main className="content">
           {filtered ? (
             <div className="page">
               <h2 className="page-title">Search Results</h2>
-              <Section
-                title={`${filtered.length} hit${filtered.length === 1 ? "" : "s"}`}
-                items={filtered}
-                onOpen={openMarkdown}
-              />
+              {filtered.length === 0 ? (
+                <div className="empty">No results matched your query.</div>
+              ) : (
+                <Section
+                  title={`${filtered.length} hit${filtered.length === 1 ? "" : "s"}`}
+                  items={filtered}
+                  onOpen={openMarkdown}
+                />
+              )}
             </div>
           ) : activeGroup ? (
             <div className="page">

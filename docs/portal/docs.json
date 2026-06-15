@@ -8,6 +8,7 @@
       "sections": [
         {
           "id": "overview",
+          "slug": "overview",
           "title": "Overview",
           "items": [
             {
@@ -24,11 +25,11 @@
               "source": "README.ja.md",
               "guideId": "overview"
             }
-          ],
-          "slug": "overview"
+          ]
         },
         {
           "id": "get-started",
+          "slug": "get-started",
           "title": "Setup Repository",
           "items": [
             {
@@ -45,11 +46,11 @@
               "source": "docs/ja/get-started/setup-repository.ja.md",
               "guideId": "setup-repository"
             }
-          ],
-          "slug": "get-started"
+          ]
         },
         {
           "id": "make_commands",
+          "slug": "make-commands",
           "title": "Make Commands",
           "items": [
             {
@@ -66,11 +67,11 @@
               "source": ".makefiles/README.ja.md",
               "guideId": "make"
             }
-          ],
-          "slug": "make-commands"
+          ]
         },
         {
           "id": "environment_variables",
+          "slug": "environment-variables",
           "title": "Environment Variables",
           "items": [
             {
@@ -87,8 +88,7 @@
               "source": "env/README.ja.md",
               "guideId": "environment-variables"
             }
-          ],
-          "slug": "environment-variables"
+          ]
         }
       ]
     },
@@ -98,6 +98,7 @@
       "sections": [
         {
           "id": "architecture",
+          "slug": "architecture",
           "title": "Architecture Docs",
           "items": [
             {
@@ -170,11 +171,11 @@
               "source": "docs/ja/rules.ja.md",
               "guideId": "rules"
             }
-          ],
-          "slug": "architecture"
+          ]
         },
         {
           "id": "project",
+          "slug": "project",
           "title": "Project",
           "items": [
             {
@@ -233,8 +234,7 @@
               "source": "docs/ja/project/versioning.ja.md",
               "guideId": "versioning"
             }
-          ],
-          "slug": "project"
+          ]
         }
       ]
     },
@@ -244,6 +244,7 @@
       "sections": [
         {
           "id": "domain",
+          "slug": "domain",
           "title": "Domain",
           "items": [
             {
@@ -260,11 +261,11 @@
               "source": "internal/domain/README.ja.md",
               "guideId": "domain"
             }
-          ],
-          "slug": "domain"
+          ]
         },
         {
           "id": "usecase",
+          "slug": "usecase",
           "title": "Usecase",
           "items": [
             {
@@ -323,11 +324,11 @@
               "source": "internal/usecase/tools/README.ja.md",
               "guideId": "usecase-tools"
             }
-          ],
-          "slug": "usecase"
+          ]
         },
         {
           "id": "controller",
+          "slug": "controller",
           "title": "Controller",
           "items": [
             {
@@ -632,11 +633,11 @@
                 }
               ]
             }
-          ],
-          "slug": "controller"
+          ]
         },
         {
           "id": "infrastructure",
+          "slug": "infrastructure",
           "title": "Infrastructure",
           "items": [
             {
@@ -997,8 +998,7 @@
                 }
               ]
             }
-          ],
-          "slug": "infrastructure"
+          ]
         }
       ]
     },
@@ -1008,6 +1008,7 @@
       "sections": [
         {
           "id": "di",
+          "slug": "di",
           "title": "DI",
           "items": [
             {
@@ -1289,11 +1290,11 @@
                 }
               ]
             }
-          ],
-          "slug": "di"
+          ]
         },
         {
           "id": "context-helper",
+          "slug": "context-helper",
           "title": "Context Helper",
           "items": [
             {
@@ -1324,11 +1325,11 @@
               "source": "internal/controller/ctxhelper/README.ja.md",
               "guideId": "how-to-use-context-helper"
             }
-          ],
-          "slug": "context-helper"
+          ]
         },
         {
           "id": "cli",
+          "slug": "cli",
           "title": "CLI",
           "items": [
             {
@@ -1345,11 +1346,11 @@
               "source": "internal/cli/README.ja.md",
               "guideId": "cli"
             }
-          ],
-          "slug": "cli"
+          ]
         },
         {
           "id": "pkg",
+          "slug": "pkg",
           "title": "pkg",
           "items": [
             {
@@ -1366,8 +1367,7 @@
               "source": "pkg/README.ja.md",
               "guideId": "pkg"
             }
-          ],
-          "slug": "pkg"
+          ]
         }
       ]
     },
@@ -1377,6 +1377,7 @@
       "sections": [
         {
           "id": "cross-cutting",
+          "slug": "cross-cutting",
           "title": "Cross-Cutting",
           "items": [
             {
@@ -1449,11 +1450,11 @@
               "source": "internal/system/README.ja.md",
               "guideId": "system"
             }
-          ],
-          "slug": "cross-cutting"
+          ]
         },
         {
           "id": "integration",
+          "slug": "integration",
           "title": "Integration",
           "items": [
             {
@@ -1470,8 +1471,7 @@
               "source": "internal/integration/README.ja.md",
               "guideId": "integration"
             }
-          ],
-          "slug": "integration"
+          ]
         }
       ]
     },
@@ -1481,6 +1481,7 @@
       "sections": [
         {
           "id": "docker",
+          "slug": "docker",
           "title": "Docker",
           "items": [
             {
@@ -1539,11 +1540,11 @@
               "source": "docker/tools/README.ja.md",
               "guideId": "docker-tools"
             }
-          ],
-          "slug": "docker"
+          ]
         },
         {
           "id": "database",
+          "slug": "database",
           "title": "Database",
           "items": [
             {
@@ -1708,11 +1709,11 @@
                 }
               ]
             }
-          ],
-          "slug": "database"
+          ]
         },
         {
           "id": "scripts",
+          "slug": "scripts",
           "title": "Scripts",
           "items": [
             {
@@ -1729,11 +1730,11 @@
               "source": "scripts/README.ja.md",
               "guideId": "scripts"
             }
-          ],
-          "slug": "scripts"
+          ]
         },
         {
           "id": "ci",
+          "slug": "ci",
           "title": "CI Workflows",
           "items": [
             {
@@ -1750,11 +1751,11 @@
               "source": ".github/workflows/README.ja.md",
               "guideId": "ci-workflows"
             }
-          ],
-          "slug": "ci"
+          ]
         },
         {
           "id": "maintenance",
+          "slug": "maintenance",
           "title": "Maintenance",
           "items": [
             {
@@ -1799,11 +1800,11 @@
               "source": "docs/ja/maintenance/portal-manifest.ja.md",
               "guideId": "portal-manifest"
             }
-          ],
-          "slug": "maintenance"
+          ]
         },
         {
           "id": "deployment",
+          "slug": "deployment",
           "title": "Deployment",
           "items": [
             {
@@ -1820,8 +1821,7 @@
               "source": "docs/ja/deployment/github-page.ja.md",
               "guideId": "github-page"
             }
-          ],
-          "slug": "deployment"
+          ]
         }
       ]
     },
@@ -1831,6 +1831,7 @@
       "sections": [
         {
           "id": "external",
+          "slug": "external",
           "title": "OpenAPI Sources",
           "items": [
             {
@@ -1889,8 +1890,7 @@
               "source": "openapi/components/schemas/README.ja.md",
               "guideId": "openapi-schemas"
             }
-          ],
-          "slug": "external"
+          ]
         }
       ]
     }
