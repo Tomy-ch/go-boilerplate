@@ -59,7 +59,7 @@ allowed-tools: Read, Grep, Glob, Bash
 `$ARGUMENTS` をそのまま `run.sh` に渡す。各パラメータの既定値:
 
 | 引数 | 既定 | 意味 |
-|------|------|------|
+| --- | --- | --- |
 | `--granularity` | `module` | `module`（サブシステム/ディレクトリ単位）か `file`（リーフ .go 等 1ファイル単位） |
 | `--module-depth` | `1` | `module` 粒度時のモジュール列挙の深さ |
 | `--include-tests` | off | `file` 粒度時に `*_test.go` 等のテストも対象に含める（実装→テストの順で列挙） |

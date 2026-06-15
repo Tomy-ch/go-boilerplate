@@ -74,7 +74,7 @@ tmux attach -t full-verify   # 進捗確認
 ### 引数（既定値あり）
 
 | 引数 | 既定 | 意味 |
-|------|------|------|
+| --- | --- | --- |
 | `--granularity module\|file` | `module` | `module`=サブシステム/ディレクトリ単位、`file`=リーフ（.go 等）1ファイル単位 |
 | `--module-depth N` | `1` | `module` 粒度時のモジュール列挙の深さ |
 | `--include-tests` | off | `file` 粒度時に `*_test.go` 等のテストも対象に含める（実装→テストの順） |
