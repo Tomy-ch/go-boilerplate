@@ -158,7 +158,7 @@ func TestNormalizePgError(t *testing.T) {
 
 func TestIsUnavailable(t *testing.T) {
 	t.Parallel()
-	t.Run("nil", func(t *testing.T) {
+	t.Run("nilの場合は接続不可ではない", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(nil)
 		assert.False(t, got)

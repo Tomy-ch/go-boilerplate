@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"strings"
 	"time"
 
 	"go-boilerplate/pkg/xerrors"
@@ -120,12 +121,29 @@ func Error(key fieldKey, err error) *Field {
 }
 
 // Stacktrace は、エラースタックトレースのログフィールドを作成します。
+// JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよう、
+// 単一文字列ではなく行ごとに分割した []string を保持します。
 func Stacktrace(key fieldKey, err error) *Field {
 	return &Field{
-		key:         string(key),
-		kind:        fieldString,
-		stringValue: xerrors.StackTrace(err),
+		key:          string(key),
+		kind:         fieldStrings,
+		stringsValue: SplitStackLines(xerrors.StackTrace(err)),
 	}
+}
+
+// SplitStackLines は、スタックトレース文字列を改行で分割し行配列に変換します。
+// 末尾の空行は除去し、空文字列または改行のみの入力では nil を返します。
+// 配列化により行境界が構造として表現されるため、`\t<file>:<line>` の先頭タブは除去します。
+func SplitStackLines(s string) []string {
+	trimmed := strings.TrimRight(s, "\n")
+	if trimmed == "" {
+		return nil
+	}
+	lines := strings.Split(trimmed, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimLeft(line, "\t")
+	}
+	return lines
 }
 
 // Any は、任意の型のログフィールドを作成します。

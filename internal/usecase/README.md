@@ -302,7 +302,7 @@ These belong to:
   - Command: create/update/delete (start Tx and ensure Domain invariants).
   - Query (QS): read optimization. Returning DTO directly is allowed.
   - Centralize protocol-independent policies such as Pagination / Validation.
-    - Example: `NewPageFrom1Based`, `MaxPerPage`, `MaxOffsetAllowed`
+    - Example: `paging.NewPagingFrom1Based(page, perPage)`
 - Wrap errors using `apperror.ErrXXX` so Controller can map them to HTTP responses.
 - DI (fx) injects dependencies such as Repository interfaces, TxManager, and Config.
 
@@ -362,10 +362,14 @@ Unexpected errors:
 
 - return as-is or wrap with `apperror.ErrInternal` → 500
 
+When wrapping an `apperror.ErrXXX` sentinel, use `pkg/xerrors.Wrap(apperror.ErrXXX, "context")`
+(not the standard `fmt.Errorf("%w", ...)`) so the stack trace is preserved while `xerrors.Is`
+still matches the sentinel.
+
 ### Pagination
 
-- Use `NewPageFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
-- If offset exceeds allowed limit, return `apperror.ErrInvalidArgument`.
+- Use `NewPagingFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
+- If the page number exceeds the allowed maximum, return `apperror.ErrInvalidArgument` (the offset is clamped on int32 conversion).
 
 ## Callable / Non-callable Layers
 
@@ -429,7 +433,7 @@ ctrl := gomock.NewController(t)
 
 userRepo := mock_user.NewMockRepository(ctrl)
 clock := mock_clock.NewMockClock(ctrl)
-byencrypter := mock_security.NewMockBcrypter(ctrl)
+hasher := mock_security.NewMockHasher(ctrl)
 ```
 
 ### Test targets
@@ -616,7 +620,7 @@ type usecase struct {
     tracer    observability.LayerTracer
     txm       tx.Manager
     clock     clock.Clock
-    encrypter security.Encrypter
+    hasher    security.Hasher
     userRepo  user.Repository
     pftRepo   prefecture.Repository
     userQS    query.UserQueryService
@@ -639,7 +643,7 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    encrypter security.Encrypter,
+    hasher security.Hasher,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
     userQueryService query.UserQueryService,
@@ -648,7 +652,7 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        encrypter: encrypter,
+        hasher:    hasher,
         userRepo:  userRepo,
         pftRepo:   prefectureRepo,
         userQS:    userQueryService,
@@ -679,8 +683,8 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
 
     // Optional: create a span for Domain processing
     // To improve observability, Domain processing can be separated into its own span.
-    ctx, prefectureMap, err := observability.RunDomainWithSpan(
-        ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
+    ctx, prefectureMap, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
 
             // Collect prefecture IDs from users
             pids := make([]uuid.UUID, len(us))
@@ -708,8 +712,8 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
         return nil, err
     }
 
-    _, dtos, err := observability.RunDomainWithSpan(
-        ctx, u.tracer, "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
+    _, dtos, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
 
             // Convert results into DTOs
             dtos := make([]UserMutableFields, len(us))
@@ -752,8 +756,8 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
         return MutableFields{}, err
     }
 
-    // Password hashing is a security rule, so the Boundary encrypter is used
-    passwordHash, err := u.encrypter.Hash(rawPassword.Value())
+    // Password hashing is a security rule, so the Boundary hasher is used
+    passwordHash, err := u.hasher.Hash(rawPassword.Value())
     if err != nil {
         return MutableFields{}, err
     }

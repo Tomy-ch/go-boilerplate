@@ -14,67 +14,61 @@ func TestConstructor(t *testing.T) {
 		t.Parallel()
 		cfg := MockConfigForTest(t)
 
-		t.Run("NewOSConfig", func(t *testing.T) {
+		t.Run("OS設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			osCfg := NewOperatingSystemConfig(cfg)
 			assert.Same(t, &cfg.os, osCfg)
 		})
 
-		t.Run("NewServerConfig", func(t *testing.T) {
+		t.Run("サーバー設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			serverCfg := NewServerConfig(cfg)
 			assert.Same(t, &cfg.server, serverCfg)
 		})
 
-		t.Run("NewMetricsConfig", func(t *testing.T) {
+		t.Run("メトリクス設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			metricsCfg := NewMetricsConfig(cfg)
 			assert.Same(t, &cfg.metrics, metricsCfg)
 		})
 
-		t.Run("NewObservabilityConfig", func(t *testing.T) {
+		t.Run("オブザーバビリティ設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			observabilityCfg := NewObservabilityConfig(cfg)
 			assert.Same(t, &cfg.observability, observabilityCfg)
 		})
 
-		t.Run("NewObservabilityConfig", func(t *testing.T) {
-			t.Parallel()
-			observabilityCfg := NewObservabilityConfig(cfg)
-			assert.Same(t, &cfg.observability, observabilityCfg)
-		})
-
-		t.Run("NewApplicationConfig", func(t *testing.T) {
+		t.Run("アプリケーション設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			appCfg := NewApplicationConfig(cfg)
 			assert.Same(t, &cfg.app, appCfg)
 		})
 
-		t.Run("NewDatabaseConfig", func(t *testing.T) {
+		t.Run("データベース設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			dbCfg := NewDatabaseConfig(cfg)
 			assert.Same(t, &cfg.database, dbCfg)
 		})
 
-		t.Run("NewDBConnectionConfig", func(t *testing.T) {
+		t.Run("DBコネクション設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			dbConnCfg := NewDBConnectionConfig(cfg)
 			assert.Same(t, &cfg.dbconnection, dbConnCfg)
 		})
 
-		t.Run("NewSecurityConfig", func(t *testing.T) {
+		t.Run("セキュリティ設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			securityCfg := NewSecurityConfig(cfg)
 			assert.Same(t, &cfg.security, securityCfg)
 		})
 
-		t.Run("NewSecureCookieConfig", func(t *testing.T) {
+		t.Run("セキュアCookie設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			secureCookieCfg := NewSecureCookieConfig(cfg)
 			assert.Same(t, &cfg.secureCookie, secureCookieCfg)
 		})
 
-		t.Run("NewAuthConfig", func(t *testing.T) {
+		t.Run("認証設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
 			t.Parallel()
 			authCfg := NewAuthConfig(cfg)
 			assert.Same(t, &cfg.auth, authCfg)
@@ -89,195 +83,195 @@ func TestGetterMethods(t *testing.T) {
 
 		cfg := MockConfigForTest(t)
 
-		t.Run("OperatingSystem", func(t *testing.T) {
+		t.Run("OS設定", func(t *testing.T) {
 			t.Parallel()
 			os := cfg.os
-			t.Run("TimeZone", func(t *testing.T) {
+			t.Run("タイムゾーンを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedOSTimeZone, os.TimeZone())
 			})
 		})
 
-		t.Run("Server", func(t *testing.T) {
+		t.Run("サーバー設定", func(t *testing.T) {
 			t.Parallel()
 			server := cfg.server
-			t.Run("Host", func(t *testing.T) {
+			t.Run("ホストを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerHost, server.Host())
 			})
 
-			t.Run("Port", func(t *testing.T) {
+			t.Run("ポートを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerPort, server.Port())
 			})
 
-			t.Run("ReadHeaderTimeout", func(t *testing.T) {
+			t.Run("ヘッダー読み取りタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerReadHeaderTimeout, server.ReadHeaderTimeout())
 			})
 
-			t.Run("ReadTimeout", func(t *testing.T) {
+			t.Run("読み取りタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerReadTimeout, server.ReadTimeout())
 			})
 
-			t.Run("WriteTimeout", func(t *testing.T) {
+			t.Run("書き込みタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerWriteTimeout, server.WriteTimeout())
 			})
 
-			t.Run("IdleTimeout", func(t *testing.T) {
+			t.Run("アイドルタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
 			})
 		})
 
-		t.Run("Metrics", func(t *testing.T) {
+		t.Run("メトリクス設定", func(t *testing.T) {
 			t.Parallel()
 			metrics := cfg.metrics
 
-			t.Run("Host", func(t *testing.T) {
+			t.Run("ホストを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedMetricsHost, metrics.Host())
 			})
 
-			t.Run("Port", func(t *testing.T) {
+			t.Run("ポートを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedMetricsPort, metrics.Port())
 			})
 
-			t.Run("UserName", func(t *testing.T) {
+			t.Run("ユーザー名を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedMetricsUserName, metrics.UserName())
 			})
 
-			t.Run("Password", func(t *testing.T) {
+			t.Run("パスワードを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedMetricsPassword, metrics.Password())
 			})
 		})
 
-		t.Run("Observability", func(t *testing.T) {
+		t.Run("オブザーバビリティ設定", func(t *testing.T) {
 			t.Parallel()
 			observability := cfg.observability
 
-			t.Run("Enabled", func(t *testing.T) {
+			t.Run("有効フラグを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.True(t, observability.Enabled())
 			})
 
-			t.Run("MaskedDBQueryArgs", func(t *testing.T) {
+			t.Run("DBクエリ引数マスク設定を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
 			})
 
-			t.Run("TargetStatusCodeSet", func(t *testing.T) {
+			t.Run("対象ステータスコード集合を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedObservabilityTargetStatusCodeSet, observability.TargetStatusCodeSet())
 			})
 		})
 
-		t.Run("Application", func(t *testing.T) {
+		t.Run("アプリケーション設定", func(t *testing.T) {
 			t.Parallel()
 			app := cfg.app
-			t.Run("Env", func(t *testing.T) {
+			t.Run("環境を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedApplicationEnv, app.Env())
 			})
 
-			t.Run("Name", func(t *testing.T) {
+			t.Run("名前を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedApplicationName, app.Name())
 			})
 
-			t.Run("Mode", func(t *testing.T) {
+			t.Run("モードを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedApplicationMode, app.Mode())
 			})
 
-			t.Run("ShutdownTimeout", func(t *testing.T) {
+			t.Run("シャットダウンタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
 			})
 		})
 
-		t.Run("Database", func(t *testing.T) {
+		t.Run("データベース設定", func(t *testing.T) {
 			t.Parallel()
 			database := cfg.database
-			t.Run("Driver", func(t *testing.T) {
+			t.Run("ドライバーを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBDriver, database.Driver())
 			})
 
-			t.Run("Host", func(t *testing.T) {
+			t.Run("ホストを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBHost, database.Host())
 			})
 
-			t.Run("Port", func(t *testing.T) {
+			t.Run("ポートを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBPort, database.Port())
 			})
 
-			t.Run("User", func(t *testing.T) {
+			t.Run("ユーザーを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBUser, database.User())
 			})
 
-			t.Run("Password", func(t *testing.T) {
+			t.Run("パスワードを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBPassword, database.Password())
 			})
 
-			t.Run("DBName", func(t *testing.T) {
+			t.Run("データベース名を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBName, database.DBName())
 			})
 
-			t.Run("SSLMode", func(t *testing.T) {
+			t.Run("SSLモードを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBSSLMode, database.SSLMode())
 			})
 
-			t.Run("PingTimeout", func(t *testing.T) {
+			t.Run("Pingタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBPingTimeout, database.PingTimeout())
 			})
 
-			t.Run("SlowQueryWarnThreshold", func(t *testing.T) {
+			t.Run("スロークエリ警告閾値を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
 			})
 		})
 
-		t.Run("DBConnection", func(t *testing.T) {
+		t.Run("DBコネクション設定", func(t *testing.T) {
 			t.Parallel()
 			connection := cfg.dbconnection
-			t.Run("MaxConns", func(t *testing.T) {
+			t.Run("最大コネクション数を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
 			})
 
-			t.Run("MinConns", func(t *testing.T) {
+			t.Run("最小コネクション数を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
 			})
 
-			t.Run("MaxLifetime", func(t *testing.T) {
+			t.Run("最大ライフタイムを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBMaxLifetime, connection.MaxLifetime())
 			})
 
-			t.Run("MaxIdleTime", func(t *testing.T) {
+			t.Run("最大アイドル時間を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBMaxIdleTime, connection.MaxIdleTime())
 			})
 		})
 
-		t.Run("Security", func(t *testing.T) {
+		t.Run("セキュリティ設定", func(t *testing.T) {
 			t.Parallel()
 			security := cfg.security
-			t.Run("AllowedOrigins", func(t *testing.T) {
+			t.Run("許可オリジンを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(
 					t,
@@ -286,82 +280,82 @@ func TestGetterMethods(t *testing.T) {
 				)
 			})
 
-			t.Run("CIDR", func(t *testing.T) {
+			t.Run("CIDRを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedCIDR, security.CIDR())
 			})
 
-			t.Run("ContentTypeNosniff", func(t *testing.T) {
+			t.Run("ContentTypeNosniffを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedContentTypeNosniff, security.ContentTypeNosniff())
 			})
 
-			t.Run("XFrameOptions", func(t *testing.T) {
+			t.Run("XFrameOptionsを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedXFrameOptions, security.XFrameOptions())
 			})
 
-			t.Run("HSTSMaxAge", func(t *testing.T) {
+			t.Run("HSTS最大期間を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedHSTSMaxAge, security.HSTSMaxAge())
 			})
 
-			t.Run("HSTSExcludeSubdomains", func(t *testing.T) {
+			t.Run("HSTSサブドメイン除外設定を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedHSTSExcludeSubdomains, security.HSTSExcludeSubdomains())
 			})
 
-			t.Run("HSTSPreloadEnabled", func(t *testing.T) {
+			t.Run("HSTSプリロード有効設定を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedHSTSPreloadEnabled, security.HSTSPreloadEnabled())
 			})
 
-			t.Run("ReferrerPolicy", func(t *testing.T) {
+			t.Run("リファラーポリシーを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
 			})
 
-			t.Run("BcryptCost", func(t *testing.T) {
+			t.Run("bcryptコストを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedBcryptCost, security.BcryptCost())
 			})
 		})
 
-		t.Run("SecureCookie", func(t *testing.T) {
+		t.Run("セキュアCookie設定", func(t *testing.T) {
 			t.Parallel()
 			secureCookie := cfg.secureCookie
 
-			t.Run("Secure", func(t *testing.T) {
+			t.Run("Secure属性を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedSecureCookieSecure, secureCookie.Secure())
 			})
 
-			t.Run("SameSite", func(t *testing.T) {
+			t.Run("SameSite属性を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
 			})
 
-			t.Run("Domain", func(t *testing.T) {
+			t.Run("ドメインを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
 			})
 		})
 
-		t.Run("Auth", func(t *testing.T) {
+		t.Run("認証設定", func(t *testing.T) {
 			t.Parallel()
 			auth := cfg.auth
 
-			t.Run("CookieName", func(t *testing.T) {
+			t.Run("Cookie名を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedAuthCookieName, auth.CookieName())
 			})
 
-			t.Run("HeaderName", func(t *testing.T) {
+			t.Run("ヘッダー名を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedAuthHeaderName, auth.HeaderName())
 			})
 
-			t.Run("AllowedHeaderBearer", func(t *testing.T) {
+			t.Run("Bearerヘッダー許可を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
 			})

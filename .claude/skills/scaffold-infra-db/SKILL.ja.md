@@ -196,6 +196,7 @@ commit しない。
 
 ## 制約事項
 
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。
 - ❌ Repository に業務ロジック発明（データ orchestration のみ）
 - ❌ SQL 生成 / `make gen-query` 実行（スコープ外）
 - ❌ sqlc 生成ファイル手 edit

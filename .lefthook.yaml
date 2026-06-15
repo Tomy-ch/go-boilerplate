@@ -10,6 +10,22 @@ pre-commit:
     sql-lint:
       glob: "*.sql"
       run: make sql-lint
+    actions-lint:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/actions/**/*.{yml,yaml}"
+      run: make actions-lint
+    docker-lint:
+      glob:
+        - "docker/**/Dockerfile"
+        - ".hadolint.yaml"
+      run: make docker-lint
+    pin-actions:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/actions/**/*.{yml,yaml}"
+        - ".github/actions-pin.toml"
+      run: make pin-actions-check
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
@@ -24,7 +40,10 @@ commit-msg:
       run: mise exec npm:@commitlint/cli -- commitlint --edit {1}
 
 pre-push:
+  parallel: true
   commands:
+    secret-scan:
+      run: make secret-scan
     test:
       run: make test
     gen-go-check:

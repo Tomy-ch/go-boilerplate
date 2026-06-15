@@ -1,0 +1,607 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>observability - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package observability
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/observability&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package observability は、可観測性に関連するユーティリティを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+			
+				
+				<dd><a href="#BuildSpanName">func BuildSpanName(layer, pkgName, funcName string) string</a></dd>
+			
+				
+				<dd><a href="#NewStubSpanContext">func NewStubSpanContext(t *testing.T) (context.Context, func())</a></dd>
+			
+				
+				<dd><a href="#RunWithSpan">func RunWithSpan[T any](parentCtx context.Context, lt LayerTracer, layer layerName, pkg, funcName string, fn func(ctx context.Context) (T, error)) (context.Context, T, error)</a></dd>
+			
+				
+				<dd><a href="#ShouldLogWithSpan">func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool</a></dd>
+			
+				
+				<dd><a href="#TracerProvider">func TracerProvider(reg lifecycle.Registrar) trace.TracerProvider</a></dd>
+			
+			
+				
+				<dd><a href="#LayerTracer">type LayerTracer</a></dd>
+				
+					
+					<dd>    <a href="#NewMockControllerLayerTracer">func NewMockControllerLayerTracer(t *testing.T) LayerTracer</a></dd>
+				
+					
+					<dd>    <a href="#NewMockInfraLayerTracer">func NewMockInfraLayerTracer(t *testing.T) LayerTracer</a></dd>
+				
+					
+					<dd>    <a href="#NewMockUsecaseLayerTracer">func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer</a></dd>
+				
+					
+					<dd>    <a href="#NewNoopLayerTracer">func NewNoopLayerTracer(t *testing.T) LayerTracer</a></dd>
+				
+				
+					
+					<dd>    <a href="#LayerTracer.Start">func (lt LayerTracer) Start(ctx context.Context, opts ...trace.SpanStartOption) (context.Context, func())</a></dd>
+				
+					
+					<dd>    <a href="#LayerTracer.StartWithSuffix">func (lt LayerTracer) StartWithSuffix(ctx context.Context, optionalName string, opts ...trace.SpanStartOption) (context.Context, func())</a></dd>
+				
+			
+				
+				<dd><a href="#TraceContext">type TraceContext</a></dd>
+				
+					
+					<dd>    <a href="#ExtractTraceContext">func ExtractTraceContext(ctx context.Context) *TraceContext</a></dd>
+				
+					
+					<dd>    <a href="#StartSpanWithParent">func StartSpanWithParent(ctx context.Context, tracer LayerTracer, name string, opts ...trace.SpanStartOption) (*TraceContext, context.Context, func())</a></dd>
+				
+				
+					
+					<dd>    <a href="#TraceContext.ParentSpanID">func (tc *TraceContext) ParentSpanID() string</a></dd>
+				
+					
+					<dd>    <a href="#TraceContext.SpanID">func (tc *TraceContext) SpanID() string</a></dd>
+				
+					
+					<dd>    <a href="#TraceContext.TraceID">func (tc *TraceContext) TraceID() string</a></dd>
+				
+			
+				
+				<dd><a href="#TracerFactory">type TracerFactory</a></dd>
+				
+					
+					<dd>    <a href="#NewNoopTracerFactory">func NewNoopTracerFactory(t *testing.T) TracerFactory</a></dd>
+				
+					
+					<dd>    <a href="#NewTracerFactory">func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.LogFieldBuilder) TracerFactory</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/internal/observability/caller.go.html">caller.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/helper.go.html">helper.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html">layer_tracer.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/provider.go.html">provider.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html">test_kit.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html">tracer_factory.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				
+				<pre>const (
+    <span id="SpanEventStart">SpanEventStart</span> = &#34;start&#34;
+    <span id="SpanEventEnd">SpanEventEnd</span>   = &#34;end&#34;
+)</pre>
+			
+				
+				<pre>const (
+    <span id="Controller">Controller</span> layerName = &#34;controller&#34;
+    <span id="Usecase">Usecase</span>    layerName = &#34;usecase&#34;
+    <span id="Infra">Infra</span>      layerName = &#34;infrastructure&#34;
+)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=920:978#L20">BuildSpanName</a>
+				<a class="permalink" href="#BuildSpanName">¶</a>
+				
+				
+			</h2>
+			<pre>func BuildSpanName(layer, pkgName, funcName <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
+			<p>BuildSpanName は、レイヤー名、パッケージ名、関数名からスパン名を構築します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewStubSpanContext">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1720:1783#L54">NewStubSpanContext</a>
+				<a class="permalink" href="#NewStubSpanContext">¶</a>
+				
+				
+			</h2>
+			<pre>func NewStubSpanContext(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) (<a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, func())</pre>
+			<p>NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RunWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=2132:2314#L65">RunWithSpan</a>
+				<a class="permalink" href="#RunWithSpan">¶</a>
+				
+				
+			</h2>
+			<pre>func RunWithSpan[T <a href="../../../builtin/#any">any</a>](
+    parentCtx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>,
+    lt <a href="#LayerTracer">LayerTracer</a>,
+    layer layerName,
+    pkg, funcName <a href="../../../builtin/#string">string</a>,
+    fn func(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>) (T, <a href="../../../builtin/#error">error</a>),
+) (<a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, T, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>RunWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
+</p><p>span の開始・終了時に Infoレベルでログ出力を行う。
+</p><p>呼び出し元は、関数 fn の実行結果とエラーを受け取ることができる。
+</p><p>典型的な呼び出し方:
+</p><pre>ctx, result, err := layerTracer.RunWithSpan(ctx, &#34;usecase&#34;, &#34;user&#34;, &#34;FullName&#34;, func(ctx context.Context) (T, error) {
+    // 処理内容
+})
+</pre>
+
+			
+			
+
+		
+			
+			
+			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=640:724#L15">ShouldLogWithSpan</a>
+				<a class="permalink" href="#ShouldLogWithSpan">¶</a>
+				
+				
+			</h2>
+			<pre>func ShouldLogWithSpan(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>ShouldLogWithSpan は、o11y モードと Span の有無から span 前提ログを出してよいか判定する公開ヘルパです。
+span 前提ログを足す際の拡張ポイントとして提供しており、現状は本番未結線（利用例は README 参照）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="TracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=666:731#L8">TracerProvider</a>
+				<a class="permalink" href="#TracerProvider">¶</a>
+				
+				
+			</h2>
+			<pre>func TracerProvider(reg <a href="../../../go-boilerplate/internal/di/lifecycle/">lifecycle</a>.<a href="../../../go-boilerplate/internal/di/lifecycle/#Registrar">Registrar</a>) <a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#TracerProvider">TracerProvider</a></pre>
+			<p>TracerProvider は、OpenTelemetry のトレーサープロバイダーを初期化し、otel.SetTracerProvider で
+グローバル登録したうえで、シャットダウン時に Shutdown を呼ぶフックを Registrar へ登録して返します。
+Exporter / SpanProcessor は未配線（最小構成）のため、span を実際に送出するには利用側で
+WithBatcher 等を追加してください。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="LayerTracer">type <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=643:806#L18">LayerTracer</a>
+				<a class="permalink" href="#LayerTracer">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type LayerTracer struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockControllerLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=780:839#L22">NewMockControllerLayerTracer</a>
+					<a class="permalink" href="#NewMockControllerLayerTracer">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockControllerLayerTracer(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) <a href="#LayerTracer">LayerTracer</a></pre>
+				<p>NewMockControllerLayerTracer は、テスト用のコントローラーレイヤートレーサーを生成します。
+
+				
+				
+			
+				
+				</p><h3 id="NewMockInfraLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1155:1209#L35">NewMockInfraLayerTracer</a>
+					<a class="permalink" href="#NewMockInfraLayerTracer">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockInfraLayerTracer(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) <a href="#LayerTracer">LayerTracer</a></pre>
+				
+				
+				
+			
+				
+				<h3 id="NewMockUsecaseLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1029:1085#L29">NewMockUsecaseLayerTracer</a>
+					<a class="permalink" href="#NewMockUsecaseLayerTracer">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockUsecaseLayerTracer(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) <a href="#LayerTracer">LayerTracer</a></pre>
+				<p>NewMockUsecaseLayerTracer は、テスト用のユースケースレイヤートレーサーを生成します。
+
+				
+				
+			
+				
+				</p><h3 id="NewNoopLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1367:1416#L42">NewNoopLayerTracer</a>
+					<a class="permalink" href="#NewNoopLayerTracer">¶</a>
+					
+					
+				</h3>
+				<pre>func NewNoopLayerTracer(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) <a href="#LayerTracer">LayerTracer</a></pre>
+				<p>NewNoopLayerTracer は、テスト用に LayerTracer を無効化して返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="LayerTracer.Start">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=948:1058#L28">Start</a>
+					<a class="permalink" href="#LayerTracer.Start">¶</a>
+					
+					
+				</h3>
+				<pre>func (lt <a href="#LayerTracer">LayerTracer</a>) Start(
+    ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>,
+    opts ...<a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#SpanStartOption">SpanStartOption</a>,
+) (<a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, func())</pre>
+				<p>Start は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
+
+				
+				
+				
+			
+				
+				</p><h3 id="LayerTracer.StartWithSuffix">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1360:1502#L41">StartWithSuffix</a>
+					<a class="permalink" href="#LayerTracer.StartWithSuffix">¶</a>
+					
+					
+				</h3>
+				<pre>func (lt <a href="#LayerTracer">LayerTracer</a>) StartWithSuffix(
+    ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>,
+    optionalName <a href="../../../builtin/#string">string</a>,
+    opts ...<a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#SpanStartOption">SpanStartOption</a>,
+) (<a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, func())</pre>
+				<p>StartWithSuffix は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="TraceContext">type <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=263:354#L7">TraceContext</a>
+				<a class="permalink" href="#TraceContext">¶</a>
+				
+				
+			</h2>
+			<p>TraceContext は、トレースを識別するための情報を保持します。
+
+			</p><pre>type TraceContext struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1180:1239#L25">ExtractTraceContext</a>
+					<a class="permalink" href="#ExtractTraceContext">¶</a>
+					
+					
+				</h3>
+				<pre>func ExtractTraceContext(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>) *<a href="#TraceContext">TraceContext</a></pre>
+				<p>ExtractTraceContext は、現在の span から traceID/spanID を抽出して返します（parentSpanID は設定しません）。
+
+				
+				
+			
+				
+				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1614:1771#L38">StartSpanWithParent</a>
+					<a class="permalink" href="#StartSpanWithParent">¶</a>
+					
+					
+				</h3>
+				<pre>func StartSpanWithParent(
+    ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>,
+    tracer <a href="#LayerTracer">LayerTracer</a>,
+    name <a href="../../../builtin/#string">string</a>,
+    opts ...<a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#SpanStartOption">SpanStartOption</a>,
+) (*<a href="#TraceContext">TraceContext</a>, <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, func())</pre>
+				<p>StartSpanWithParent は、新しい子スパンを開始し、TraceContext、子コンテキスト、終了関数を返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2495:2540#L73">ParentSpanID</a>
+					<a class="permalink" href="#TraceContext.ParentSpanID">¶</a>
+					
+					
+				</h3>
+				<pre>func (tc *<a href="#TraceContext">TraceContext</a>) ParentSpanID() <a href="../../../builtin/#string">string</a></pre>
+				<p>ParentSpanID は、TraceContext から ParentSpanID を取得します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2355:2394#L68">SpanID</a>
+					<a class="permalink" href="#TraceContext.SpanID">¶</a>
+					
+					
+				</h3>
+				<pre>func (tc *<a href="#TraceContext">TraceContext</a>) SpanID() <a href="../../../builtin/#string">string</a></pre>
+				<p>SpanID は、TraceContext から SpanID を取得します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2225:2265#L63">TraceID</a>
+					<a class="permalink" href="#TraceContext.TraceID">¶</a>
+					
+					
+				</h3>
+				<pre>func (tc *<a href="#TraceContext">TraceContext</a>) TraceID() <a href="../../../builtin/#string">string</a></pre>
+				<p>TraceID は、TraceContext から TraceID を取得します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="TracerFactory">type <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=243:580#L2">TracerFactory</a>
+				<a class="permalink" href="#TracerFactory">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type TracerFactory interface {
+    <span class="comment">// Controller は、コントローラー層用のトレーサーを返します。</span>
+    Controller() <a href="#LayerTracer">LayerTracer</a>
+    <span class="comment">// Usecase は、ユースケース層用のトレーサーを返します。</span>
+    Usecase() <a href="#LayerTracer">LayerTracer</a>
+    <span class="comment">// Infra は、インフラ層用のトレーサーを返します。</span>
+    Infra() <a href="#LayerTracer">LayerTracer</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewNoopTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=443:496#L12">NewNoopTracerFactory</a>
+					<a class="permalink" href="#NewNoopTracerFactory">¶</a>
+					
+					
+				</h3>
+				<pre>func NewNoopTracerFactory(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) <a href="#TracerFactory">TracerFactory</a></pre>
+				<p>NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
+
+				
+				
+			
+				
+				</p><h3 id="NewTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=762:870#L18">NewTracerFactory</a>
+					<a class="permalink" href="#NewTracerFactory">¶</a>
+					
+					
+				</h3>
+				<pre>func NewTracerFactory(tp <a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#TracerProvider">TracerProvider</a>, log <a href="../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>) <a href="#TracerFactory">TracerFactory</a></pre>
+				<p>NewTracerFactory は、TracerFactory を初期化して返します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -15,7 +15,6 @@ import (
 	"go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/handler/testkit/testspan"
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
@@ -175,7 +174,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			// 2 回目は errHandlerKey ガードで抑止されるため、ボディは二重に書かれない。
+			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
 			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
 			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
 
@@ -563,7 +562,7 @@ func Test_httpErrorField(t *testing.T) {
 
 			assert.Contains(t, fields, logging.Strings(logging.ErrorDetailsKey, details))
 			assert.Contains(t, fields, logging.String(logging.InternalErrorKey, he.Internal.Error()))
-			assert.Contains(t, fields, logging.String(logging.InternalStackTraceKey, xerrors.StackTrace(he.Internal)))
+			assert.Contains(t, fields, logging.Stacktrace(logging.InternalStackTraceKey, he.Internal))
 		})
 	})
 }

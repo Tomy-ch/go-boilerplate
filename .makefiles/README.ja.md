@@ -195,12 +195,23 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 ## `.makefiles/security` 系
 
-CI のセキュリティ指摘をローカルで再現するための Trivy 依存スキャンです。image スキャンは CI 専用（`image-scan.yaml`）です。
+CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy 依存スキャン、gitleaks シークレットスキャン）です。image スキャンは CI 専用（`image-scan.yaml`）です。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make trivy-fs` | ライブラリ依存を Trivy fs でスキャンします。 | `go_tool_runner` コンテナ内で `make trivy-fs-ci` を呼び出します。 |
 | `make trivy-fs-ci` | `trivy fs` を直接実行します。 | CI 用ターゲット。CI と揃えるため `vendor/` を除外します。 |
+| `make secret-scan` | ワーキングツリーのシークレットを gitleaks でスキャンします。 | `go_tool_runner` コンテナ内で `make secret-scan-ci` を呼び出します。 |
+| `make secret-scan-ci` | `gitleaks dir . --redact` を直接実行します。 | CI 用ターゲット。生成ファイルは `.gitleaks.toml` で allowlist。 |
+
+## `.makefiles/docker` 系
+
+`go_tool_runner` コンテナ経由で hadolint により Dockerfile を lint します。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make docker-lint` | `docker/*/Dockerfile` を hadolint で lint します。 | `go_tool_runner` コンテナ内で `make docker-lint-ci` を呼び出します。 |
+| `make docker-lint-ci` | `hadolint docker/*/Dockerfile` を直接実行します。 | CI 用ターゲット。無効化ルールは `.hadolint.yaml`。 |
 
 ## `.makefiles/openapi` 系
 
@@ -241,6 +252,7 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 | `make test` | CI 用のテストを実行します。 | `gen` / `cmd` / `mock` / `apperror` / `scripts` を除外したパッケージ群に対して `go test` を実行します（`internal/cli` コアは計測対象に含まれます）。 |
 | `make gen-test-repo` | テストを実行し、HTML カバレッジレポートを生成します。 | 出力先は `docs/coverage/index.html` です。 |
 | `make test-cover-ci` | カバレッジ付きでテストを実行します。 | CI 用ターゲットで、`coverage.out` を出力します。 |
+| `make cover-gate` | 総カバレッジが閾値を下回ると fail します。 | CI ゲート。`COVERAGE_THRESHOLD`（既定 90）。`coverage.out` が必要（先に `test-cover-ci`）。 |
 
 ### Go ツールインストール関連
 
@@ -258,6 +270,8 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 | `make gen-docs-json` | Portal 用ドキュメントリンク JSON を生成します。 | なし |
 | `make gen-portal-docs-ci` | Node.js スクリプトで Portal 用ドキュメントを直接生成します。 | CI 用ターゲットです。 |
 | `make gen-docs-json-ci` | Node.js スクリプトで Portal 用 JSON を直接生成します。 | CI 用ターゲットです。 |
+| `make gen-godoc` | godoc の静的 HTML を `docs/godoc/` に生成します。 | なし |
+| `make gen-godoc-ci` | godoc-static を直接実行して静的 HTML を生成します。 | CI 用ターゲットです。 |
 
 ## `.makefiles/gen` 系
 
@@ -273,6 +287,16 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 | `make gen-query-sysq` | System Query 用 SQLC コード生成を実行します。 | `dump-schema` → `merge-dml-sysq` → `gen-sqlc` を実行します。 |
 
 ## `.makefiles/github` 系
+
+### GitHub Actions lint / pin 関連
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make actions-lint` | ワークフロー / composite action 定義を actionlint で lint します。 | `go_tool_runner` コンテナ内で `make actions-lint-ci` を呼び出します。 |
+| `make actions-lint-ci` | `actionlint` を直接実行します。 | CI 用ターゲット。 |
+| `make pin-actions-resolve` | 各 `uses:` のタグを commit SHA に解決し `.github/actions-pin.toml` lockfile を更新します。 | `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14・0 で無効）より新しい解決先を quarantine。 |
+| `make pin-actions-apply` | lockfile を元に `uses:` を `@<sha> # <tag>` へ固定します。 | なし |
+| `make pin-actions-check` | `uses:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
 
 ### GitHub 設定関連
 
@@ -307,6 +331,7 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 | `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | アプリケーション名や OpenAPI タイトルなどのメタデータを一括置換します。 | README や OpenAPI 定義などに反映されます。 |
 | `make setup-replace-repository-reference REPOSITORY=<org/repo>` | リポジトリ参照（GitHub URL など）を一括置換します。 | README やドキュメント内のリンクを更新します。 |
 | `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | LICENSE の著作権表記を更新します。 | 年は省略可能です。 |
+| `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`gen-api` → `gen-query` → `fix` → `lint` を実行します。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。削除後は `make db-init-local db-init-test && make gen-query` で再構築し、削除済みテーブルが生成モデルに残らないようにします。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 |
 
 ### リリースブランチ関連
 

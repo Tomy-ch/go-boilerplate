@@ -2,7 +2,7 @@ package module
 
 import (
 	"go-boilerplate/internal/controller/job"
-	"go-boilerplate/internal/controller/job/usercount"
+	"go-boilerplate/internal/controller/job/usercount" // sample-api:line
 	dijob "go-boilerplate/internal/di/job"
 	"go-boilerplate/internal/di/job/hook"
 
@@ -13,7 +13,7 @@ func JobModule() fx.Option {
 	return fx.Module("job",
 		provideJobs(
 			// ここにジョブのコンストラクタを追加します。
-			usercount.New,
+			usercount.New, // sample-api:line
 		),
 		fx.Provide(
 			dijob.ProvideRunner,

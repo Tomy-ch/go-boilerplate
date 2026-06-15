@@ -1,0 +1,389 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>datetime - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package datetime
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/pkg/datetime&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package datetime は、日付と時刻に関連する機能を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#ParseCustomLayout">func ParseCustomLayout(layout, s string) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseCustomLayoutToLocation">func ParseCustomLayoutToLocation(layout, s string, loc *time.Location) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseDateOnly">func ParseDateOnly(s string) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseDateOnlyToLocation">func ParseDateOnlyToLocation(s string, loc *time.Location) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseDateTime">func ParseDateTime(s string) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseDateTimeToLocation">func ParseDateTimeToLocation(s string, loc *time.Location) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseISO8601">func ParseISO8601(s string) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseISO8601ToLocation">func ParseISO8601ToLocation(s string, loc *time.Location) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseRFC3339">func ParseRFC3339(s string) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseRFC3339Nano">func ParseRFC3339Nano(s string) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseRFC3339NanoToLocation">func ParseRFC3339NanoToLocation(s string, loc *time.Location) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseRFC3339ToLocation">func ParseRFC3339ToLocation(s string, loc *time.Location) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseRFC3339UTC">func ParseRFC3339UTC(s string) (time.Time, error)</a></dd>
+			
+				
+				<dd><a href="#ParseRFC3339UTCToLocation">func ParseRFC3339UTCToLocation(s string, loc *time.Location) (time.Time, error)</a></dd>
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/pkg/datetime/parse.go.html">parse.go</a>
+			
+				<a href="../../../src/go-boilerplate/pkg/datetime/parseloc.go.html">parseloc.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="ParseCustomLayout">func <a href="../../../src/go-boilerplate/pkg/datetime/parse.go.html?s=1481:1540#L30">ParseCustomLayout</a>
+				<a class="permalink" href="#ParseCustomLayout">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseCustomLayout(layout, s <a href="../../../builtin/#string">string</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseCustomLayout は、カスタムレイアウトの日時文字列を解析します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseCustomLayoutToLocation">func <a href="../../../src/go-boilerplate/pkg/datetime/parseloc.go.html?s=2398:2487#L44">ParseCustomLayoutToLocation</a>
+				<a class="permalink" href="#ParseCustomLayoutToLocation">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseCustomLayoutToLocation(layout, s <a href="../../../builtin/#string">string</a>, loc *<a href="../../../time/">time</a>.<a href="../../../time/#Location">Location</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseCustomLayoutToLocation は、カスタムレイアウトの日時文字列を解析し loc のタイムゾーンへ変換します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseDateOnly">func <a href="../../../src/go-boilerplate/pkg/datetime/parse.go.html?s=1290:1337#L25">ParseDateOnly</a>
+				<a class="permalink" href="#ParseDateOnly">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseDateOnly(s <a href="../../../builtin/#string">string</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseDateOnly は、日付のみ（YYYY-MM-DD）の日時文字列を解析します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseDateOnlyToLocation">func <a href="../../../src/go-boilerplate/pkg/datetime/parseloc.go.html?s=2094:2171#L39">ParseDateOnlyToLocation</a>
+				<a class="permalink" href="#ParseDateOnlyToLocation">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseDateOnlyToLocation(s <a href="../../../builtin/#string">string</a>, loc *<a href="../../../time/">time</a>.<a href="../../../time/#Location">Location</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseDateOnlyToLocation は、日付のみの日時文字列を解析し loc のタイムゾーンへ変換します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseDateTime">func <a href="../../../src/go-boilerplate/pkg/datetime/parse.go.html?s=1102:1149#L20">ParseDateTime</a>
+				<a class="permalink" href="#ParseDateTime">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseDateTime(s <a href="../../../builtin/#string">string</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseDateTime は、日付と時刻（YYYY-MM-DD HH:MM:SS）の日時文字列を解析します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseDateTimeToLocation">func <a href="../../../src/go-boilerplate/pkg/datetime/parseloc.go.html?s=1809:1886#L34">ParseDateTimeToLocation</a>
+				<a class="permalink" href="#ParseDateTimeToLocation">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseDateTimeToLocation(s <a href="../../../builtin/#string">string</a>, loc *<a href="../../../time/">time</a>.<a href="../../../time/#Location">Location</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseDateTimeToLocation は、日付と時刻の日時文字列を解析し loc のタイムゾーンへ変換します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseISO8601">func <a href="../../../src/go-boilerplate/pkg/datetime/parse.go.html?s=890:936#L15">ParseISO8601</a>
+				<a class="permalink" href="#ParseISO8601">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseISO8601(s <a href="../../../builtin/#string">string</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseISO8601 は、ISO8601形式の日時文字列を解析します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseISO8601ToLocation">func <a href="../../../src/go-boilerplate/pkg/datetime/parseloc.go.html?s=1523:1599#L29">ParseISO8601ToLocation</a>
+				<a class="permalink" href="#ParseISO8601ToLocation">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseISO8601ToLocation(s <a href="../../../builtin/#string">string</a>, loc *<a href="../../../time/">time</a>.<a href="../../../time/#Location">Location</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseISO8601ToLocation は、ISO8601形式の日時文字列を解析し loc のタイムゾーンへ変換します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseRFC3339">func <a href="../../../src/go-boilerplate/pkg/datetime/parse.go.html?s=197:243#L1">ParseRFC3339</a>
+				<a class="permalink" href="#ParseRFC3339">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseRFC3339(s <a href="../../../builtin/#string">string</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseRFC3339 は、RFC3339形式の日時文字列を解析します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseRFC3339Nano">func <a href="../../../src/go-boilerplate/pkg/datetime/parse.go.html?s=712:762#L10">ParseRFC3339Nano</a>
+				<a class="permalink" href="#ParseRFC3339Nano">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseRFC3339Nano(s <a href="../../../builtin/#string">string</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseRFC3339Nano は、RFC3339Nano形式の日時文字列を解析します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseRFC3339NanoToLocation">func <a href="../../../src/go-boilerplate/pkg/datetime/parseloc.go.html?s=1232:1312#L24">ParseRFC3339NanoToLocation</a>
+				<a class="permalink" href="#ParseRFC3339NanoToLocation">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseRFC3339NanoToLocation(s <a href="../../../builtin/#string">string</a>, loc *<a href="../../../time/">time</a>.<a href="../../../time/#Location">Location</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseRFC3339NanoToLocation は、RFC3339Nano形式の日時文字列を解析し loc のタイムゾーンへ変換します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseRFC3339ToLocation">func <a href="../../../src/go-boilerplate/pkg/datetime/parseloc.go.html?s=646:722#L14">ParseRFC3339ToLocation</a>
+				<a class="permalink" href="#ParseRFC3339ToLocation">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseRFC3339ToLocation(s <a href="../../../builtin/#string">string</a>, loc *<a href="../../../time/">time</a>.<a href="../../../time/#Location">Location</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseRFC3339ToLocation は、RFC3339形式の日時文字列を解析し loc のタイムゾーンへ変換します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseRFC3339UTC">func <a href="../../../src/go-boilerplate/pkg/datetime/parse.go.html?s=521:570#L5">ParseRFC3339UTC</a>
+				<a class="permalink" href="#ParseRFC3339UTC">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseRFC3339UTC(s <a href="../../../builtin/#string">string</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseRFC3339UTC は、末尾が Z（UTC 表記）の RFC3339 文字列のみを解析します。
+レイアウト末尾はリテラル Z 固定のため、オフセット付き入力（例 +09:00）は受理しません。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ParseRFC3339UTCToLocation">func <a href="../../../src/go-boilerplate/pkg/datetime/parseloc.go.html?s=935:1014#L19">ParseRFC3339UTCToLocation</a>
+				<a class="permalink" href="#ParseRFC3339UTCToLocation">¶</a>
+				
+				
+			</h2>
+			<pre>func ParseRFC3339UTCToLocation(s <a href="../../../builtin/#string">string</a>, loc *<a href="../../../time/">time</a>.<a href="../../../time/#Location">Location</a>) (<a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>ParseRFC3339UTCToLocation は、RFC3339UTC形式の日時文字列を解析し loc のタイムゾーンへ変換します。
+
+			
+			
+
+		
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

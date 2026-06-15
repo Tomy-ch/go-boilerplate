@@ -40,11 +40,10 @@ FROM alpine:3.23 AS runtime
 # デプロイ対象環境（prd/stg/dev）。当該 env ファイルのみ焼き込み、ENV として固定する。
 ARG APP_ENV=prd
 
-RUN apk upgrade --no-cache
-
-RUN apk add --no-cache ca-certificates tzdata
-
-RUN addgroup -S app && adduser -S app -G app
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates tzdata \
+    && addgroup -S app \
+    && adduser -S app -G app
 USER app
 
 COPY --from=builder --chown=app:app /app/bin/server /app/server
@@ -74,6 +73,9 @@ FROM golang:1.26.4-alpine AS tooling_builder
 
 # CGO_ENABLED=0: `go:` backend のツールを静的バイナリにする（go_tools_builder と対称）
 ENV CGO_ENABLED=0
+
+# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 RUN apk add --no-cache bash ca-certificates curl git
 

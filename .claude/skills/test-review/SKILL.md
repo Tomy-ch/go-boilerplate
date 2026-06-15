@@ -125,6 +125,7 @@ Audits whether the assertions are actually meaningful:
 - **Time-literal pinning leaks**: `time.Now()` called inside the assertion rather than a fixed `baseTime`; comparisons relying on system clock.
 - **`TestXxx` responsibility creep**: one `TestXxx` driving multiple subjects without a recorded rationale (rule violation already, but also a semantic smell when the rationale is weak).
 - **Helper duplication**: a 5+-line fixture repeated across three `TestXxx` functions that should be a `t.Helper()`-tagged helper.
+- **Redundant comments**: inline comments that restate the code or narrate *why* (rather than behavior). The project keeps test comments minimal — case intent lives in the Japanese `t.Run` name, not in comments. Flag restated-identifier comments and test-rationale narration left in the test body (one-line godoc-style declaration comments are exempt; the `-race` serial-block exception comment is required, not redundant).
 
 Output: a list of findings with `file:line` and a one-sentence explanation of why the assertion is weak or brittle.
 

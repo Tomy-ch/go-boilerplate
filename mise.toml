@@ -1,23 +1,13 @@
-# プロジェクト全体で使うランタイム / ツールのバージョンをここに一元管理する。
-# 各環境（host / docker / CI）は必要なものだけを `mise install <tool>` で個別取得する。
+# ランタイム / ツールのバージョンを一元管理する SSOT。
+# mise の役割はバージョン宣言のみ。ツールの実行は docker tool-runner 経由で行い、
+# `mise exec` での実行には依存しない。
 #
-# Go ランタイムは `make sync-versions` で `go.mod` の go directive と
-# 各 Dockerfile の `FROM golang:X.Y.Z-alpine` タグへ伝播する。
-# CI の `actions/setup-go` は `go-version-file: go.mod` でこれを読む。
-#
-# 各ツールは「mise 標準レジストリで短い名前が解決できる場合は短い名前」、
-# 解決できない場合は `aqua:` / `go:` / `npm:` / `pipx:` を明示。
+# go / node / python の version は `make sync-versions` が go.mod・各 Dockerfile の
+# FROM タグ・関連 README へ伝播する。短い名前で解決できないツールは backend を明示する。
+min_version = "2026.6.0"
+
 [tools]
 # 言語ランタイム
-# 注: ここに書いた version を `make sync-versions` が以下に伝播する。
-#       go     -> go.mod (`go X.Y.Z` directive) + docker/{server,tools}/Dockerfile (FROM golang:X.Y.Z-alpine)
-#                 + docker/{,server/,tools/}README{,.ja}.md の golang image 記述
-#       node   -> docker/tools/Dockerfile (FROM node:X.Y-alpine)
-#                 + docker/{,tools/}README{,.ja}.md の node image 記述
-#       python -> docker/tools/Dockerfile (FROM python:X.Y.Z-slim)
-#                 + docker/{,tools/}README{,.ja}.md の python image 記述
-#     mise install で host にも入れられるが、各 Dockerfile では公式 base image を採用しているため
-#     mise.toml 側を SSOT、Dockerfile FROM タグは sync によって追従する形になる。
 go = "1.26.4"
 node = "24.14"
 python = "3.14.2"
@@ -26,12 +16,17 @@ python = "3.14.2"
 oapi-codegen = "2.7.0"
 sqlc = "1.31.1"
 golangci-lint = "2.12.2"
+actionlint = "1.7.12"
 lefthook = "2.1.8"
 air = "1.65.3"
 golines = "0.13.0"
 gofumpt = "0.10.0"
+# Dockerfile linter（Haskell 製、標準レジストリで解決可）
+hadolint = "2.14.0"
+# secret scanner（標準レジストリで解決可）
+gitleaks = "8.30.1"
 
-# Go ベース（標準レジストリで解決不可なので backend 明示）
+# Go ベース（backend 明示）
 "aqua:golang-migrate/migrate" = "4.19.1"
 "go:go.uber.org/mock/mockgen" = "0.6.0"
 "aqua:go-delve/delve" = "1.26.3"
@@ -40,6 +35,9 @@ gofumpt = "0.10.0"
 "go:github.com/cweill/gotests/gotests" = "1.9.0"
 "go:golang.org/x/tools/gopls" = "0.22.0"
 "go:github.com/josharian/impl" = "1.5.0"
+# godoc は x/tools 本体から分離済みで v0.1.0-deprecated が最新タグ（通常 semver は無い）
+"go:golang.org/x/tools/cmd/godoc" = "0.1.0-deprecated"
+"go:codeberg.org/tslocum/godoc-static" = "1.0.0"
 
 # Node ベース
 "npm:@redocly/cli" = "2.31.4"

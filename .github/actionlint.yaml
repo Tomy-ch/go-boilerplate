@@ -1,0 +1,13 @@
+# actionlint 設定ファイル（雛形）
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+#
+# self-hosted runner も vars.* も未使用のため現状は不要。必要時に有効化する。
+
+# self-hosted runner のラベル（"unknown runner label" 誤検知の抑止）
+# self-hosted-runner:
+#   labels:
+#     - my-custom-runner
+
+# 許可する vars.*（未定義の vars.X 参照を検出）
+# config-variables:
+#   - DEPLOY_ENV

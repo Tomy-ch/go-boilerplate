@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_job.gen.go -package=mock_$GOPACKAGE
 
 // Package job は、ジョブを管理・実行するためのコマンドを提供するためのパッケージです。
 package job

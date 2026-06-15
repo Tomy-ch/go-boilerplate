@@ -24,7 +24,7 @@ The Controller is the **input/output boundary of the application**.
   - Convert to **DTO/VO for input**
   - Convert DTO returned from Usecase → OpenAPI type
 - Errors are returned using unified mapping defined in [apperror](../../apperror/README.md)
-- Paging is normalized using `paging.NewPageFrom1Based()`
+- Paging is normalized using `paging.NewPagingFrom1Based()`
 - Request ID / logging is handled by middleware (Echo + Zap)
 
 "Business logic", "DB access", and "domain model operations" are delegated to Usecase / Domain / Infra, keeping Controller thin.
@@ -450,7 +450,7 @@ type server struct {
 
 #### Paging
 
-- Controller converts `page & per_page` to Paging via `usecase.NewPagingFrom1Based()`
+- Controller converts `page & per_page` to Paging via `paging.NewPagingFrom1Based()`
 - Usecase manages policy (limits/defaults)
 
 #### Error Mapping

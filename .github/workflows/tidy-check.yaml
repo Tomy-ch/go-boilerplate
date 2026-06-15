@@ -1,4 +1,4 @@
-name: Go Module Consistency Check Workflow
+name: Module Tidy Check
 
 on:
   pull_request:
@@ -28,10 +28,10 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -50,106 +50,24 @@ jobs:
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           if [ "$code" -eq 0 ]; then
             echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ go mod tidy: PASS" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ go mod tidy: FAIL" >> "$GITHUB_OUTPUT"
           fi
 
           exit 0
 
-      - name: Comment go mod tidy result on PR
+      - name: Comment tidy result on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-
-            const marker = '<!-- go-mod-tidy-check-result -->';
-            const status = '${{ steps.tidy.outputs.status }}';
-            const code = '${{ steps.tidy.outputs.exit_code }}';
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-            const shortSha = headSha.slice(0, 7);
-
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            const read = (p) => {
-              try { return fs.readFileSync(p, 'utf8').trim(); }
-              catch (e) { return ''; }
-            };
-
-            const trimLog = (txt) => {
-              const MAX = 45000;
-              if (txt.length <= MAX) return txt;
-              return txt.slice(0, MAX) + '\n... (truncated)';
-            };
-
-            const title = status === 'success'
-              ? '✅ go mod tidy: PASS'
-              : '❌ go mod tidy: FAIL';
-
-            const line = (code) =>
-              (code === '0')
-                ? '- ✅ go.mod / go.sum show no differences after running `go mod tidy`'
-                : '- ❌ go mod tidy show differences in go.mod / go.sum. Please run `go mod tidy` locally and commit the changes.';
-
-            const diff = read('/tmp/go-mod-tidy.diff');
-            const hasDiff = diff && diff.trim().length > 0;
-
-            const body = [
-              marker,
-              `## ${title}`,
-              '',
-              line(code),
-              '',
-              `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
-              `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
-              '',
-              '<details><summary>📄 go.mod / go.sum diff</summary>',
-              '',
-              '```diff',
-              hasDiff ? trimLog(diff) : '(no diff)',
-              '```',
-              '</details>',
-            ].join('\n');
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-
-            const existing = comments.find(c => (c.body || '').includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body,
-              });
-            }
+          marker: '<!-- go-mod-tidy-check-result -->'
+          title: ${{ steps.tidy.outputs.title }}
+          body-file: /tmp/go-mod-tidy.diff
+          details-summary: '📄 go.mod / go.sum diff'
 
       - name: Fail if tidy check failed
         if: always()

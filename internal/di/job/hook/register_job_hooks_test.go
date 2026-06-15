@@ -135,7 +135,7 @@ func TestRunJobAndShutdown(t *testing.T) {
 			runJobAndShutdown(startCtx, sd, runner, logger, osCfg, state)
 
 			require.NoError(t, <-doneCh)
-			assert.NoError(t, jobCtxErr)
+			require.NoError(t, jobCtxErr)
 		})
 	})
 }

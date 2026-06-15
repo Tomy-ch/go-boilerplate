@@ -174,6 +174,7 @@ Remains protected:
 
 ## Constraints
 
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
 - ❌ Invent fields, methods, errors, or constants not in the spec
 - ❌ Hardcode the layer convention — always read `internal/domain/README.md` + an existing aggregate as template
 - ❌ Skip the test-perspective subagent (Step 2)
