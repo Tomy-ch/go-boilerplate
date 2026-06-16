@@ -24,15 +24,21 @@
 - `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_EXPORTER_OTLP_PROTOCOL`
 - `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG`
 
-これらが **未設定の場合は no-op にフォールバック**します（送出も接続試行もしません）。
-そのためローカル開発では設定も DI 差し替えも不要です。ローカルで span を stdout に出したい
-場合は `OTEL_TRACES_EXPORTER=console`、staging / prod では `OTEL_EXPORTER_OTLP_ENDPOINT` を
-Collector / Agent サイドカーに向けます。ベンダー固有（Grafana / Datadog / New Relic）は
-その Collector 側に置き、ここには持ち込みません。
+送出は **エクスポータ種別の選択**（`OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER` に `otlp` /
+`console`）で有効になります。いずれも未設定なら no-op フォールバックとなり、送出も接続試行も
+常駐 goroutine も発生しません。そのためローカル開発では設定も DI 差し替えも不要です。
 
-サービス識別情報（`service.name` / `deployment.environment` / `service.version`）は既存の
-アプリ設定とビルド時注入（ldflags）の `internal/system` に由来し、OTel 固有のキーは typed
-config に漏れません。
+> **重要:** `OTEL_EXPORTER_OTLP_ENDPOINT` **だけでは送出は有効になりません**。SDK は OTLP
+> エクスポータが選択されて初めてエンドポイントを読むため、staging / prod では endpoint を
+> Collector / Agent サイドカーに向けることに加えて **`OTEL_TRACES_EXPORTER=otlp` /
+> `OTEL_METRICS_EXPORTER=otlp`** の設定が必須です。ローカルで span を stdout に出すには
+> `OTEL_TRACES_EXPORTER=console` を使います。
+
+ベンダー固有（Grafana / Datadog / New Relic）はその Collector 側に置き、ここには持ち込みません。
+
+サービス識別情報（`service.name` / `deployment.environment` / `service.version` /
+`service.revision` / `service.build_date`）は既存のアプリ設定とビルド時注入（ldflags）の
+`internal/system` に由来し、OTel 固有のキーは typed config に漏れません。
 
 ## アーキテクチャ
 
@@ -81,7 +87,7 @@ func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.Trac
 - `otel.SetTracerProvider` に登録
 - W3C `TraceContext` + `Baggage` 伝播器を `otel.SetTextMapPropagator` で登録
   （サービス跨ぎのトレース継続に必須）
-- `SpanExporter` を標準 `OTEL_*` env から構築（未設定時は no-op フォールバック）
+- `SpanExporter` を標準 `OTEL_*` env から構築（エクスポータ未選択時は no-op となり BatchSpanProcessor を配線しない＝goroutine 無し）
 - サンプリングは `OTEL_TRACES_SAMPLER` に従う（既定は親準拠の常時採取）
 - アプリ終了時に `Shutdown()` を実行
 
@@ -90,16 +96,17 @@ func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.Trac
 ### 1.1 NewResource / MeterProvider
 
 ```go
-func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) *resource.Resource
+func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)
 func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error)
 ```
 
-- `NewResource` は `service.name` / `deployment.environment` / `service.version` を
-  アプリ設定 + ビルド情報から付与した共有 OTel リソースを構築します。
-- `MeterProvider` は `TracerProvider` と対称で、`otel.SetMeterProvider` への登録、Go
-  **ランタイムメトリクス**計装の開始、標準 `OTEL_*` env からの `MetricReader` 構築
-  （未設定時は no-op フォールバック）、`Shutdown()` フック登録を行います。アプリ内に依存元が
-  無いため、DI モジュールが `InvokeMeterProvider` で明示的に起動します。
+- `NewResource` は `service.name` / `deployment.environment` / `service.version` /
+  `service.revision` / `service.build_date` をアプリ設定 + ビルド情報から付与した共有 OTel
+  リソースを構築します。
+- `MeterProvider` は `TracerProvider` と対称で、`otel.SetMeterProvider` への登録・`Shutdown()`
+  フック登録・標準 `OTEL_*` env からの `MetricReader` 構築を行います。Go **ランタイムメトリクス**
+  計装は実エクスポータが選択されたときのみ開始します（no-op フォールバック時はスキップ）。アプリ内に
+  依存元が無いため、DI モジュールが `InvokeMeterProvider` で明示的に起動します。
 
 ### 2. TracerFactory
 

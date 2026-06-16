@@ -25,15 +25,23 @@ This package wires only the **vendor-neutral OpenTelemetry plumbing**. The expor
 - `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_EXPORTER_OTLP_PROTOCOL`
 - `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG`
 
-When these are **unset, the exporter falls back to a no-op** (nothing is sent, no
-connection is attempted) — so local development requires no configuration and no DI
-swapping. Set `OTEL_TRACES_EXPORTER=console` to print spans to stdout locally, or point
-`OTEL_EXPORTER_OTLP_ENDPOINT` at a Collector / Agent sidecar in staging / prod. Vendor
-specifics (Grafana / Datadog / New Relic) live in that Collector, not here.
+Export is activated by **selecting an exporter** via `OTEL_TRACES_EXPORTER` /
+`OTEL_METRICS_EXPORTER` (`otlp` / `console`). When neither is set, a no-op fallback is
+used — nothing is sent, no connection is attempted, and no background goroutine runs — so
+local development needs no configuration and no DI swapping.
 
-Service identity (`service.name` / `deployment.environment` / `service.version`) comes
-from the existing app config and the build-time `internal/system` build info (ldflags),
-so no OTel-specific keys leak into the typed config.
+> **Important:** setting `OTEL_EXPORTER_OTLP_ENDPOINT` **alone does not enable export**.
+> The SDK only reads the endpoint once an OTLP exporter is selected, so staging / prod must
+> set **`OTEL_TRACES_EXPORTER=otlp` / `OTEL_METRICS_EXPORTER=otlp`** in addition to the
+> endpoint pointing at a Collector / Agent sidecar. `OTEL_TRACES_EXPORTER=console` prints
+> spans to stdout locally.
+
+Vendor specifics (Grafana / Datadog / New Relic) live in that Collector, not here.
+
+Service identity (`service.name` / `deployment.environment` / `service.version` /
+`service.revision` / `service.build_date`) comes from the existing app config and the
+build-time `internal/system` build info (ldflags), so no OTel-specific keys leak into
+the typed config.
 
 ## Architecture
 
@@ -82,7 +90,7 @@ Characteristics
 - Registers it with `otel.SetTracerProvider`
 - Registers the W3C `TraceContext` + `Baggage` propagator via `otel.SetTextMapPropagator`
   (required for cross-service trace continuity)
-- Builds the `SpanExporter` from the standard `OTEL_*` env (no-op fallback when unset)
+- Builds the `SpanExporter` from standard `OTEL_*` env; when no exporter is selected it falls back to no-op and skips the batch processor (no goroutine)
 - Honors `OTEL_TRACES_SAMPLER` for sampling (parent-based always-on by default)
 - Executes `Shutdown()` when the application exits
 
@@ -91,17 +99,18 @@ Used during application DI initialization.
 ### 1.1 NewResource / MeterProvider
 
 ```go
-func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) *resource.Resource
+func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)
 func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error)
 ```
 
 - `NewResource` builds the shared OTel resource carrying `service.name` /
-  `deployment.environment` / `service.version` from app config + build info.
+  `deployment.environment` / `service.version` / `service.revision` / `service.build_date`
+  from app config + build info.
 - `MeterProvider` mirrors `TracerProvider`: it registers the meter provider via
-  `otel.SetMeterProvider`, starts Go **runtime metrics** instrumentation, builds its
-  `MetricReader` from the standard `OTEL_*` env (no-op fallback when unset), and registers
-  a `Shutdown()` hook. It has no in-app consumer, so the DI module force-starts it through
-  `InvokeMeterProvider`.
+  `otel.SetMeterProvider` and a `Shutdown()` hook, and builds its `MetricReader` from the
+  standard `OTEL_*` env. Go **runtime metrics** instrumentation starts only when a real
+  exporter is selected (the no-op fallback skips it). It has no in-app consumer, so the DI
+  module force-starts it through `InvokeMeterProvider`.
 
 ### 2. TracerFactory
 
