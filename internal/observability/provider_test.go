@@ -11,19 +11,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.uber.org/mock/gomock"
 )
 
-func newTestResource(t *testing.T) (*config.ApplicationConfig, system.BuildInfo) {
+func newTestResource(t *testing.T) *resource.Resource {
 	t.Helper()
 
 	appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-	bi := system.NewBuildInfo()
+	res, err := NewResource(appCfg, system.NewBuildInfo())
+	require.NoError(t, err)
 
-	return appCfg, bi
+	return res
 }
 
 func Test_NewResource(t *testing.T) {
@@ -35,10 +38,12 @@ func Test_NewResource(t *testing.T) {
 		t.Run("アプリ設定とビルド情報からサービス識別属性を付与したリソースを生成する", func(t *testing.T) {
 			t.Parallel()
 
-			appCfg, bi := newTestResource(t)
+			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+			bi := system.NewBuildInfo()
 
-			res := NewResource(appCfg, bi)
+			res, err := NewResource(appCfg, bi)
 
+			require.NoError(t, err)
 			require.NotNil(t, res)
 			set := res.Set()
 
@@ -53,6 +58,14 @@ func Test_NewResource(t *testing.T) {
 			version, ok := set.Value(semconv.ServiceVersionKey)
 			require.True(t, ok)
 			assert.Equal(t, bi.Version(), version.AsString())
+
+			revision, ok := set.Value(attribute.Key("service.revision"))
+			require.True(t, ok)
+			assert.Equal(t, bi.Revision(), revision.AsString())
+
+			buildDate, ok := set.Value(attribute.Key("service.build_date"))
+			require.True(t, ok)
+			assert.Equal(t, bi.BuildDate(), buildDate.AsString())
 		})
 	})
 }
@@ -88,8 +101,7 @@ func Test_TracerProvider(t *testing.T) {
 				shutdownFunc = args[0].(func(context.Context) error)
 			}).Times(1)
 
-			appCfg, bi := newTestResource(t)
-			tp, err := TracerProvider(mockReg, NewResource(appCfg, bi))
+			tp, err := TracerProvider(mockReg, newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, tp)
@@ -114,8 +126,7 @@ func Test_TracerProvider(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
 
-			appCfg, bi := newTestResource(t)
-			tp, err := TracerProvider(mockReg, NewResource(appCfg, bi))
+			tp, err := TracerProvider(mockReg, newTestResource(t))
 
 			require.Error(t, err)
 			assert.Nil(t, tp)
@@ -137,8 +148,7 @@ func Test_MeterProvider(t *testing.T) {
 				shutdownFunc = args[0].(func(context.Context) error)
 			}).Times(1)
 
-			appCfg, bi := newTestResource(t)
-			mp, err := MeterProvider(mockReg, NewResource(appCfg, bi))
+			mp, err := MeterProvider(mockReg, newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, mp)
@@ -158,8 +168,7 @@ func Test_MeterProvider(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
 
-			appCfg, bi := newTestResource(t)
-			mp, err := MeterProvider(mockReg, NewResource(appCfg, bi))
+			mp, err := MeterProvider(mockReg, newTestResource(t))
 
 			require.Error(t, err)
 			assert.Nil(t, mp)
