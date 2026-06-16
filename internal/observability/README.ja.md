@@ -9,11 +9,30 @@
 
 主な目的：
 
-- OpenTelemetry の初期化と管理
+- OpenTelemetry の初期化と管理（トレーシング + メトリクス）
 - レイヤー単位の span 生成
 - trace / span 情報のログ出力
 - Domain / Usecase / Controller の観測統一
 - テスト時の軽量トレーサ提供
+
+### 設定境界（env 駆動・ベンダー非依存）
+
+このパッケージが配線するのは **ベンダー非依存な OpenTelemetry の土台のみ**です。送出先は
+**typed config には一切モデル化せず**、SDK が標準の `OTEL_*` 環境変数から読み取ります。
+
+- `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER`（`otlp` / `console` / `none`）
+- `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_EXPORTER_OTLP_PROTOCOL`
+- `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG`
+
+これらが **未設定の場合は no-op にフォールバック**します（送出も接続試行もしません）。
+そのためローカル開発では設定も DI 差し替えも不要です。ローカルで span を stdout に出したい
+場合は `OTEL_TRACES_EXPORTER=console`、staging / prod では `OTEL_EXPORTER_OTLP_ENDPOINT` を
+Collector / Agent サイドカーに向けます。ベンダー固有（Grafana / Datadog / New Relic）は
+その Collector 側に置き、ここには持ち込みません。
+
+サービス識別情報（`service.name` / `deployment.environment` / `service.version`）は既存の
+アプリ設定とビルド時注入（ldflags）の `internal/system` に由来し、OTel 固有のキーは typed
+config に漏れません。
 
 ## アーキテクチャ
 
@@ -37,7 +56,9 @@ LayerTracer --> ApplicationCode
 
 |コンポーネント|役割|
 |---|---|
-|`TracerProvider`|OpenTelemetry のトレーサープロバイダ|
+|`NewResource`|アプリ設定 + ビルド情報から OTel リソース（サービス識別情報）を構築|
+|`TracerProvider`|OpenTelemetry のトレーサープロバイダ + コンテキスト伝播器|
+|`MeterProvider`|OpenTelemetry のメータープロバイダ + Go ランタイムメトリクス|
 |`TracerFactory`|レイヤー別トレーサ生成|
 |`LayerTracer`|span生成 + observabilityログ|
 |`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -51,16 +72,34 @@ LayerTracer --> ApplicationCode
 OpenTelemetry のトレーサープロバイダを初期化します。
 
 ```go
-func TracerProvider(reg lifecycle.Registrar) trace.TracerProvider
+func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.TracerProvider, error)
 ```
 
 特徴
 
-- OpenTelemetry TracerProvider を生成
+- 与えられたリソースで OpenTelemetry TracerProvider を生成
 - `otel.SetTracerProvider` に登録
+- W3C `TraceContext` + `Baggage` 伝播器を `otel.SetTextMapPropagator` で登録
+  （サービス跨ぎのトレース継続に必須）
+- `SpanExporter` を標準 `OTEL_*` env から構築（未設定時は no-op フォールバック）
+- サンプリングは `OTEL_TRACES_SAMPLER` に従う（既定は親準拠の常時採取）
 - アプリ終了時に `Shutdown()` を実行
 
 アプリケーションの DI 初期化で利用されます。
+
+### 1.1 NewResource / MeterProvider
+
+```go
+func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) *resource.Resource
+func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error)
+```
+
+- `NewResource` は `service.name` / `deployment.environment` / `service.version` を
+  アプリ設定 + ビルド情報から付与した共有 OTel リソースを構築します。
+- `MeterProvider` は `TracerProvider` と対称で、`otel.SetMeterProvider` への登録、Go
+  **ランタイムメトリクス**計装の開始、標準 `OTEL_*` env からの `MetricReader` 構築
+  （未設定時は no-op フォールバック）、`Shutdown()` フック登録を行います。アプリ内に依存元が
+  無いため、DI モジュールが `InvokeMeterProvider` で明示的に起動します。
 
 ### 2. TracerFactory
 
