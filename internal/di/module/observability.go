@@ -15,7 +15,6 @@ func ObservabilityModule() fx.Option {
 			observability.MeterProvider,
 			observability.NewTracerFactory,
 		),
-		// MeterProvider は他に依存元が無いため、明示的に構築させる。
 		fx.Invoke(observability.InvokeMeterProvider),
 	)
 }
