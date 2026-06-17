@@ -17,6 +17,7 @@ type repository struct {
 	tracer observability.LayerTracer
 }
 
+// New は、prefecture.Repository の RDB 実装を生成して返します。
 func New(
 	db loggingdb.DBProvider,
 	tf observability.TracerFactory,

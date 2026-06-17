@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 )
 
+// JobModule は、バックグラウンドジョブ関連の依存関係を提供するfx.Moduleです。
 func JobModule() fx.Option {
 	return fx.Module("job",
 		provideJobs(

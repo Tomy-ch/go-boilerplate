@@ -19,6 +19,7 @@ type server struct {
 	healthUsecase healthcheckuc.Usecase
 }
 
+// BindHandler は、レディネスチェックのハンドラーをEchoに登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, healthUsecase healthcheckuc.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer:        tf.Controller(),

@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
+// Repository は、ユーザーの永続化操作を定義するドメインリポジトリインターフェースです。
 type Repository interface {
 	// FindByActive は、ユーザーの情報を、ページング付きで取得します。
 	// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。

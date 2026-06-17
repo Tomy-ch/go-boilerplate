@@ -19,14 +19,17 @@ type FS interface {
 // OS は、os / path/filepath を用いた FS の実装です。
 type OS struct{}
 
+// ReadFile は、name のファイル内容全体を読み込んで返します。
 func (OS) ReadFile(name string) ([]byte, error) {
 	return os.ReadFile(name) //nolint:gosec // path は呼び出し側で検証された信頼パス
 }
 
+// WriteFile は、data を name のファイルへ書き込みます。ファイルが存在しない場合は perm で新規作成します。
 func (OS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }
 
+// Glob は、pattern に一致するファイルパスの一覧を返します。
 func (OS) Glob(pattern string) ([]string, error) {
 	return filepath.Glob(pattern)
 }

@@ -12,9 +12,13 @@ import (
 	"go-boilerplate/internal/usecase/healthcheck/query"
 )
 
+// ヘルスチェックの総合ステータスを表す値。
 const (
-	Degraded  = "degraded"
-	Ok        = "ok"
+	// Degraded は、一部の依存が不調だが稼働継続できる状態を表します。
+	Degraded = "degraded"
+	// Ok は、すべて正常な状態を表します。
+	Ok = "ok"
+	// Unhealthy は、サービスが正常に応答できない状態を表します。
 	Unhealthy = "unhealthy"
 )
 

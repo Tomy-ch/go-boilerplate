@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
+// Repository は、都道府県の永続化操作を定義するドメインリポジトリインターフェースです。
 type Repository interface {
 	// FindByID は、IDから都道府県を取得します。存在しない場合は NotFound を返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Prefecture, error)

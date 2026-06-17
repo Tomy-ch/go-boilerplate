@@ -10,8 +10,10 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// Users は、User エンティティのスライス型です。
 type Users []*User
 
+// User は、ユーザーを表すドメインエンティティです。
 type User struct {
 	id           uuid.UUID
 	firstName    string

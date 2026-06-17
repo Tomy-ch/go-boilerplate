@@ -21,6 +21,7 @@ const (
 	maxOffset = maxPage * maxPerPage
 )
 
+// Paging は、ページネーションに必要な取得上限（limit）とオフセット（offset）を保持する値オブジェクトです。
 type Paging struct {
 	limit  int
 	offset int

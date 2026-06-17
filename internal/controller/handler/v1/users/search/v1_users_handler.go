@@ -21,6 +21,7 @@ type server struct {
 	uc     search.Usecase
 }
 
+// BindHandler は、ユーザー検索エンドポイントのハンドラーをEchoに登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, us search.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),

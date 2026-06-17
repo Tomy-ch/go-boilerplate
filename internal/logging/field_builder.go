@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/config"
 )
 
+// LogFieldBuilder は、各種ログ入力から構造化ログのフィールド列を構築するインターフェースです。
 type LogFieldBuilder interface {
 	BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field
 	BuildHTTPResponseFields(resp HTTPResponseLogInput) []*Field

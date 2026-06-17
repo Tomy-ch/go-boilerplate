@@ -17,6 +17,7 @@ type server struct {
 	tracer observability.LayerTracer
 }
 
+// BindHandler は、liveness 用の healthz ハンドラを Echo に登録します。
 func BindHandler(
 	e *echo.Echo, tf observability.TracerFactory,
 ) {

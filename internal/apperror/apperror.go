@@ -4,27 +4,27 @@ package apperror
 import "go-boilerplate/pkg/xerrors"
 
 var (
-	// 引数が無効な場合に使用します。
+	// ErrInvalidArgument は引数が無効な場合に使用します。
 	ErrInvalidArgument = xerrors.New("invalid argument")
-	// 認証に失敗した場合に使用します。
+	// ErrUnauthenticated は認証に失敗した場合に使用します。
 	ErrUnauthenticated = xerrors.New("unauthenticated")
-	// 権限がない場合に使用します。
+	// ErrPermissionDenied は権限がない場合に使用します。
 	ErrPermissionDenied = xerrors.New("permission denied")
-	// 対象が見つからない場合に使用します。
+	// ErrNotFound は対象が見つからない場合に使用します。
 	ErrNotFound = xerrors.New("not found")
-	// 競合が発生した場合に使用します。
+	// ErrConflict は競合が発生した場合に使用します。
 	ErrConflict = xerrors.New("conflict")
-	// 検証が失敗した場合に使用します。
+	// ErrValidation は検証が失敗した場合に使用します。
 	ErrValidation = xerrors.New("validation error")
-	// リクエストが多すぎる場合に使用します。
+	// ErrTooManyRequests はリクエストが多すぎる場合に使用します。
 	ErrTooManyRequests = xerrors.New("too many requests")
-	// クライアントがリクエストをキャンセル/切断した場合に使用します。
+	// ErrCanceled はクライアントがリクエストをキャンセル/切断した場合に使用します。
 	ErrCanceled = xerrors.New("request canceled")
-	// サーバ内部で予期しないエラーが発生した場合に使用します。
+	// ErrInternal はサーバ内部で予期しないエラーが発生した場合に使用します。
 	ErrInternal = xerrors.New("internal error")
-	// 実装されていない操作が呼び出された場合に使用します。
+	// ErrUnimplemented は実装されていない操作が呼び出された場合に使用します。
 	ErrUnimplemented = xerrors.New("unimplemented")
-	// 一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。
+	// ErrUnavailable は一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。
 	ErrUnavailable = xerrors.New("service unavailable")
 )
 

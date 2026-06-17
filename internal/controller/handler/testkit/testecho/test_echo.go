@@ -24,11 +24,13 @@ var (
 	errModeConflict = errors.New("RequestURL は RoutePattern/PathParams と併用できません")
 )
 
+// EchoTestParam は、テストリクエストに付与するクエリ/パスパラメータの名前と値を表します。
 type EchoTestParam struct {
 	Name  string
 	Value string
 }
 
+// EchoTestClient は、Echo ハンドラをテストから駆動するためのリクエストビルダ兼クライアントです。
 type EchoTestClient struct {
 	t            *testing.T
 	e            *echo.Echo

@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// UUID は、128 ビットの一意識別子を表す値オブジェクトです。
+//
 //nolint:recvcheck // safe: UUID is immutable (value object); pointer receiver is required only for Scan to implement sql.Scanner
 type UUID struct{ b [16]byte }
 

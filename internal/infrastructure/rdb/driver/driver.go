@@ -14,6 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// DatabaseDriver は、PostgreSQL 接続プールに対するトランザクション開始・疎通確認・統計取得を含む
+// DB アクセスの最上位インタフェースです。
 type DatabaseDriver interface {
 	DBTX
 
