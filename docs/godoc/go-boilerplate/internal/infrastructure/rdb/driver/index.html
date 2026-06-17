@@ -297,13 +297,15 @@
 		
 			
 			
-			</p><h2 id="DatabaseDriver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=367:522#L7">DatabaseDriver</a>
+			</p><h2 id="DatabaseDriver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=560:715#L9">DatabaseDriver</a>
 				<a class="permalink" href="#DatabaseDriver">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type DatabaseDriver interface {
+			<p>DatabaseDriver は、PostgreSQL 接続プールに対するトランザクション開始・疎通確認・統計取得を含む
+DB アクセスの最上位インタフェースです。
+
+			</p><pre>type DatabaseDriver interface {
     <a href="#DBTX">DBTX</a>
 
     Begin(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (pgx.<a href="#Tx">Tx</a>, <a href="../../../../../builtin/#error">error</a>)
@@ -322,7 +324,7 @@
 
 			
 				
-				<h3 id="NewDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=698:841#L20">NewDB</a>
+				<h3 id="NewDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=891:1034#L22">NewDB</a>
 					<a class="permalink" href="#NewDB">¶</a>
 					
 					

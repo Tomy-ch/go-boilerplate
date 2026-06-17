@@ -234,15 +234,21 @@
 			
 				
 				<pre>const (
+    <span class="comment">// SpanEventStart は、span の開始イベントを表します。</span>
     <span id="SpanEventStart">SpanEventStart</span> = &#34;start&#34;
-    <span id="SpanEventEnd">SpanEventEnd</span>   = &#34;end&#34;
+    <span class="comment">// SpanEventEnd は、span の終了イベントを表します。</span>
+    <span id="SpanEventEnd">SpanEventEnd</span> = &#34;end&#34;
 )</pre>
 			
 				
 				<pre>const (
+
+    <span class="comment">// Controller は、コントローラー層を表すレイヤー名です。</span>
     <span id="Controller">Controller</span> layerName = &#34;controller&#34;
-    <span id="Usecase">Usecase</span>    layerName = &#34;usecase&#34;
-    <span id="Infra">Infra</span>      layerName = &#34;infrastructure&#34;
+    <span class="comment">// Usecase は、ユースケース層を表すレイヤー名です。</span>
+    <span id="Usecase">Usecase</span> layerName = &#34;usecase&#34;
+    <span class="comment">// Infra は、インフラ層を表すレイヤー名です。</span>
+    <span id="Infra">Infra</span> layerName = &#34;infrastructure&#34;
 )</pre>
 			
 		
@@ -250,7 +256,7 @@
 		
 			
 			
-			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=920:978#L20">BuildSpanName</a>
+			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1056:1114#L22">BuildSpanName</a>
 				<a class="permalink" href="#BuildSpanName">¶</a>
 				
 				
@@ -293,7 +299,7 @@ MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-
 		
 			
 			
-			</p><h2 id="NewStubSpanContext">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1720:1783#L54">NewStubSpanContext</a>
+			</p><h2 id="NewStubSpanContext">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1829:1892#L55">NewStubSpanContext</a>
 				<a class="permalink" href="#NewStubSpanContext">¶</a>
 				
 				
@@ -336,7 +342,7 @@ SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-
 		
 			
 			
-			</p><h2 id="RunWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=2132:2314#L65">RunWithSpan</a>
+			</p><h2 id="RunWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=2451:2633#L69">RunWithSpan</a>
 				<a class="permalink" href="#RunWithSpan">¶</a>
 				
 				
@@ -363,7 +369,7 @@ SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-
 		
 			
 			
-			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=640:724#L15">ShouldLogWithSpan</a>
+			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=776:860#L17">ShouldLogWithSpan</a>
 				<a class="permalink" href="#ShouldLogWithSpan">¶</a>
 				
 				
@@ -379,13 +385,14 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 		
 			
 			
-			</p><h2 id="LayerTracer">type <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=643:806#L18">LayerTracer</a>
+			</p><h2 id="LayerTracer">type <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=962:1125#L22">LayerTracer</a>
 				<a class="permalink" href="#LayerTracer">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type LayerTracer struct {
+			<p>LayerTracer は、アーキテクチャレイヤー単位のトレース span を提供するトレーサーです。
+
+			</p><pre>type LayerTracer struct {
     <span class="comment">// contains filtered or unexported fields</span>
 }
 </pre>
@@ -412,18 +419,19 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="NewMockInfraLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1155:1209#L35">NewMockInfraLayerTracer</a>
+				</p><h3 id="NewMockInfraLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1264:1318#L36">NewMockInfraLayerTracer</a>
 					<a class="permalink" href="#NewMockInfraLayerTracer">¶</a>
 					
 					
 				</h3>
 				<pre>func NewMockInfraLayerTracer(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) <a href="#LayerTracer">LayerTracer</a></pre>
-				
+				<p>NewMockInfraLayerTracer は、テスト用のインフラレイヤートレーサーを生成します。
+
 				
 				
 			
 				
-				<h3 id="NewMockUsecaseLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1029:1085#L29">NewMockUsecaseLayerTracer</a>
+				</p><h3 id="NewMockUsecaseLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1029:1085#L29">NewMockUsecaseLayerTracer</a>
 					<a class="permalink" href="#NewMockUsecaseLayerTracer">¶</a>
 					
 					
@@ -435,7 +443,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="NewNoopLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1367:1416#L42">NewNoopLayerTracer</a>
+				</p><h3 id="NewNoopLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1476:1525#L43">NewNoopLayerTracer</a>
 					<a class="permalink" href="#NewNoopLayerTracer">¶</a>
 					
 					
@@ -449,7 +457,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				</p><h3 id="LayerTracer.Start">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=948:1058#L28">Start</a>
+				</p><h3 id="LayerTracer.Start">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1267:1377#L32">Start</a>
 					<a class="permalink" href="#LayerTracer.Start">¶</a>
 					
 					
@@ -465,7 +473,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="LayerTracer.StartWithSuffix">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1360:1502#L41">StartWithSuffix</a>
+				</p><h3 id="LayerTracer.StartWithSuffix">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1679:1821#L45">StartWithSuffix</a>
 					<a class="permalink" href="#LayerTracer.StartWithSuffix">¶</a>
 					
 					
@@ -522,7 +530,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 		
 			
 			
-			</p><h2 id="TraceContext">type <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=263:354#L7">TraceContext</a>
+			</p><h2 id="TraceContext">type <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=399:490#L9">TraceContext</a>
 				<a class="permalink" href="#TraceContext">¶</a>
 				
 				
@@ -544,7 +552,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1180:1239#L25">ExtractTraceContext</a>
+				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1316:1375#L27">ExtractTraceContext</a>
 					<a class="permalink" href="#ExtractTraceContext">¶</a>
 					
 					
@@ -556,7 +564,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1614:1771#L38">StartSpanWithParent</a>
+				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1750:1907#L40">StartSpanWithParent</a>
 					<a class="permalink" href="#StartSpanWithParent">¶</a>
 					
 					
@@ -575,7 +583,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2495:2540#L73">ParentSpanID</a>
+				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2631:2676#L75">ParentSpanID</a>
 					<a class="permalink" href="#TraceContext.ParentSpanID">¶</a>
 					
 					
@@ -588,7 +596,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2355:2394#L68">SpanID</a>
+				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2491:2530#L70">SpanID</a>
 					<a class="permalink" href="#TraceContext.SpanID">¶</a>
 					
 					
@@ -601,7 +609,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2225:2265#L63">TraceID</a>
+				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2361:2401#L65">TraceID</a>
 					<a class="permalink" href="#TraceContext.TraceID">¶</a>
 					
 					
@@ -616,13 +624,14 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 		
 			
 			
-			</p><h2 id="TracerFactory">type <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=243:580#L2">TracerFactory</a>
+			</p><h2 id="TracerFactory">type <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=337:674#L3">TracerFactory</a>
 				<a class="permalink" href="#TracerFactory">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type TracerFactory interface {
+			<p>TracerFactory は、レイヤー別の LayerTracer を生成するファクトリです。
+
+			</p><pre>type TracerFactory interface {
     <span class="comment">// Controller は、コントローラー層用のトレーサーを返します。</span>
     Controller() <a href="#LayerTracer">LayerTracer</a>
     <span class="comment">// Usecase は、ユースケース層用のトレーサーを返します。</span>
@@ -653,7 +662,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="NewTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=762:870#L18">NewTracerFactory</a>
+				</p><h3 id="NewTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=856:964#L19">NewTracerFactory</a>
 					<a class="permalink" href="#NewTracerFactory">¶</a>
 					
 					

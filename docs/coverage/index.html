@@ -745,6 +745,7 @@ type FileSystem interface {
 // osFileSystem は os パッケージを用いた FileSystem の実装です。
 type osFileSystem struct{}
 
+// Generator は、DML ファイルから sqlc 用の統合 SQL ファイルを生成するオブジェクトです。
 type Generator struct {
         logger          logging.Logger
         callerSkipCount int
@@ -2164,6 +2165,7 @@ import (
         "time"
 )
 
+// Config は、アプリケーション全体の設定をサブ設定ごとに束ねたルート設定です。
 type Config struct {
         os            OperatingSystemConfig
         app           ApplicationConfig
@@ -2177,10 +2179,12 @@ type Config struct {
         auth          AuthConfig
 }
 
+// OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
 type OperatingSystemConfig struct {
         timezone string
 }
 
+// ApplicationConfig は、アプリの識別情報・動作モード・シャットダウン制御の設定を保持します。
 type ApplicationConfig struct {
         env             string
         name            string
@@ -2188,6 +2192,7 @@ type ApplicationConfig struct {
         shutdownTimeout time.Duration
 }
 
+// ServerConfig は、HTTP サーバーの待ち受けアドレスと各種タイムアウトを保持します。
 type ServerConfig struct {
         host              string
         port              int
@@ -2197,6 +2202,7 @@ type ServerConfig struct {
         idleTimeout       time.Duration
 }
 
+// MetricsConfig は、メトリクスエンドポイントの待ち受け情報と認証情報を保持します。
 type MetricsConfig struct {
         host     string
         port     int
@@ -2204,12 +2210,14 @@ type MetricsConfig struct {
         password string
 }
 
+// ObservabilityConfig は、可観測モードの有効化と、DB クエリ引数マスク・監視対象ステータスコードの設定を保持します。
 type ObservabilityConfig struct {
         enabled             bool
         maskedDBQueryArgs   bool
         targetStatusCodeSet map[int]bool
 }
 
+// DatabaseConfig は、データベースの接続情報とタイムアウト閾値を保持します。
 type DatabaseConfig struct {
         driver                 string
         host                   string
@@ -2222,6 +2230,7 @@ type DatabaseConfig struct {
         slowQueryWarnThreshold time.Duration
 }
 
+// DBConnectionConfig は、データベース接続プールのサイズと寿命の設定を保持します。
 type DBConnectionConfig struct {
         maxConns    int32
         minConns    int32
@@ -2229,6 +2238,7 @@ type DBConnectionConfig struct {
         maxIdleTime time.Duration
 }
 
+// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー・bcrypt コスト等のセキュリティ設定を保持します。
 type SecurityConfig struct {
         allowedOrigins        []string
         cidr                  *net.IPNet
@@ -2241,12 +2251,14 @@ type SecurityConfig struct {
         bcryptCost            int
 }
 
+// SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。
 type SecureCookieConfig struct {
         secure   *bool
         sameSite string
         domain   string
 }
 
+// AuthConfig は、認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持します。
 type AuthConfig struct {
         cookieName          string
         headerName          string
@@ -2932,6 +2944,7 @@ type server struct {
         tracer observability.LayerTracer
 }
 
+// BindHandler は、ヘルスチェック（health）ハンドラを Echo に登録します。
 func BindHandler(
         e *echo.Echo, tf observability.TracerFactory,
 ) <span class="cov10" title="3">{
@@ -2970,6 +2983,7 @@ type server struct {
         tracer observability.LayerTracer
 }
 
+// BindHandler は、liveness 用の healthz ハンドラを Echo に登録します。
 func BindHandler(
         e *echo.Echo, tf observability.TracerFactory,
 ) <span class="cov10" title="4">{
@@ -3001,6 +3015,8 @@ import (
         echomw "github.com/labstack/echo/v4/middleware"
 )
 
+// BindHandler は、Prometheusメトリクスエンドポイント（/metrics）をEchoに登録します。
+// Basic認証バリデータを受け取り、エンドポイントへのアクセスを保護します。
 func BindHandler(e *echo.Echo, bav echomw.BasicAuthValidator) <span class="cov10" title="4">{
         e.GET("/metrics",
                 echo.WrapHandler(promhttp.Handler()),
@@ -3030,6 +3046,7 @@ type server struct {
         healthUsecase healthcheckuc.Usecase
 }
 
+// BindHandler は、レディネスチェックのハンドラーをEchoに登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, healthUsecase healthcheckuc.Usecase) <span class="cov10" title="3">{
         gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
                 tracer:        tf.Controller(),
@@ -3162,11 +3179,13 @@ var (
         errModeConflict = errors.New("RequestURL は RoutePattern/PathParams と併用できません")
 )
 
+// EchoTestParam は、テストリクエストに付与するクエリ/パスパラメータの名前と値を表します。
 type EchoTestParam struct {
         Name  string
         Value string
 }
 
+// EchoTestClient は、Echo ハンドラをテストから駆動するためのリクエストビルダ兼クライアントです。
 type EchoTestClient struct {
         t            *testing.T
         e            *echo.Echo
@@ -3436,6 +3455,7 @@ type server struct {
         uc     user.Usecase
 }
 
+// BindHandler は、ユーザー詳細のハンドラを Echo に登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) <span class="cov10" title="7">{
         gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
                 tracer: tf.Controller(),
@@ -3591,6 +3611,7 @@ type server struct {
         uc     search.Usecase
 }
 
+// BindHandler は、ユーザー検索エンドポイントのハンドラーをEchoに登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, us search.Usecase) <span class="cov7" title="3">{
         gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
                 tracer: tf.Controller(),
@@ -3664,6 +3685,7 @@ import (
         "github.com/oapi-codegen/runtime/types"
 )
 
+// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
 var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
@@ -3671,6 +3693,7 @@ type server struct {
         uc     user.Usecase
 }
 
+// BindHandler は、ユーザー一覧のハンドラを Echo に登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) <span class="cov7" title="4">{
         gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
                 tracer: tf.Controller(),
@@ -3794,6 +3817,7 @@ type server struct {
         tracer    observability.LayerTracer
 }
 
+// BindHandler は、バージョン情報を返すハンドラを Echo に登録します。
 func BindHandler(
         e *echo.Echo,
         tf observability.TracerFactory,
@@ -4669,6 +4693,7 @@ import (
         "github.com/labstack/echo/v4"
 )
 
+// New は、アプリケーション設定とセキュリティ設定をもとに Echo の IP アドレス抽出ポリシーを設定します。
 func New(e *echo.Echo, appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig) <span class="cov6" title="3">{
         e.IPExtractor = NewIPExtractor(appCfg, secCfg)
 }</span>
@@ -6007,6 +6032,7 @@ import (
         "go.uber.org/fx"
 )
 
+// JobModule は、バックグラウンドジョブ関連の依存関係を提供するfx.Moduleです。
 func JobModule() fx.Option <span class="cov8" title="7">{
         return fx.Module("job",
                 provideJobs(
@@ -6308,7 +6334,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="30">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="28">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -6868,7 +6894,8 @@ func RegisterDBCloseHooks(
 }
 </pre>
 		
-		<pre class="file" id="file102" style="display: none">package hook
+		<pre class="file" id="file102" style="display: none">// Package hook は、起動と停止のライフサイクルフックを提供します。
+package hook
 
 import (
         "context"
@@ -7050,6 +7077,7 @@ package shutdowner
 
 import "go.uber.org/fx"
 
+// Shutdowner は、アプリケーションのシャットダウンを要求するインターフェースです。
 type Shutdowner interface {
         Shutdown() error
 }
@@ -7093,8 +7121,10 @@ import (
         "go-boilerplate/pkg/xerrors"
 )
 
+// Prefectures は、Prefecture エンティティのスライス型です。
 type Prefectures []*Prefecture
 
+// Prefecture は、都道府県を表すドメインエンティティです。
 type Prefecture struct {
         id   uuid.UUID
         name string
@@ -7146,6 +7176,7 @@ import (
         "go-boilerplate/pkg/xerrors"
 )
 
+// RawPassword は、検証済みの平文パスワードを保持する値オブジェクトです。
 type RawPassword struct {
         value string
 }
@@ -7161,6 +7192,7 @@ func NewRawPassword(v string) (RawPassword, error) <span class="cov10" title="27
         <span class="cov9" title="22">return RawPassword{value: v}, nil</span>
 }
 
+// Value は、保持している平文パスワード文字列を返します。
 func (p RawPassword) Value() string <span class="cov7" title="11">{
         return p.value
 }</span>
@@ -7184,8 +7216,10 @@ import (
         "go-boilerplate/pkg/xerrors"
 )
 
+// Users は、User エンティティのスライス型です。
 type Users []*User
 
+// User は、ユーザーを表すドメインエンティティです。
 type User struct {
         id           uuid.UUID
         firstName    string
@@ -7466,6 +7500,7 @@ const (
         localPrefix = "debug:"
 )
 
+// ErrLocalMockAuthenticatorInvalidToken は、ローカルモック認証でトークンが不正な場合のエラーです。
 var ErrLocalMockAuthenticatorInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, "local mock authenticator: invalid token")
 
 // authenticator は local 開発用の Authenticator です。
@@ -7614,6 +7649,8 @@ import (
         "github.com/jackc/pgx/v5/pgxpool"
 )
 
+// DatabaseDriver は、PostgreSQL 接続プールに対するトランザクション開始・疎通確認・統計取得を含む
+// DB アクセスの最上位インタフェースです。
 type DatabaseDriver interface {
         DBTX
 
@@ -7702,6 +7739,7 @@ import (
         "go-boilerplate/internal/observability"
 )
 
+// DBProvider は、コンテキストを受け取り DBTX を生成するファクトリインタフェースです。
 type DBProvider interface {
         NewLoggingDB(ctx context.Context) driver.DBTX
 }
@@ -8019,6 +8057,7 @@ type poolStatsMetric struct {
         value     func(stats *pgxpool.Stat) float64
 }
 
+// PoolStatsCollector は、DB コネクションプールの統計情報を Prometheus メトリクスとして公開する収集器です。
 type PoolStatsCollector struct {
         db      driver.DatabaseDriver
         metrics []poolStatsMetric
@@ -8238,6 +8277,7 @@ type service struct {
         tracer observability.LayerTracer
 }
 
+// New は、ユーザー検索クエリサービスの実装を生成して返します。
 func New(
         db loggingdb.DBProvider,
         tf observability.TracerFactory,
@@ -8402,6 +8442,7 @@ type repository struct {
         tracer observability.LayerTracer
 }
 
+// New は、prefecture.Repository の RDB 実装を生成して返します。
 func New(
         db loggingdb.DBProvider,
         tf observability.TracerFactory,
@@ -8495,6 +8536,7 @@ type repository struct {
         tracer observability.LayerTracer
 }
 
+// New は、user.Repository の RDB 実装を生成して返します。
 func New(
         db loggingdb.DBProvider,
         tf observability.TracerFactory,
@@ -8696,10 +8738,12 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 }
 </pre>
 		
-		<pre class="file" id="file122" style="display: none">package sqlc
+		<pre class="file" id="file122" style="display: none">// Package sqlc は、LIKE/ILIKE クエリのパターン生成とエスケープのユーティリティを提供します。
+package sqlc
 
 import "strings"
 
+// DefaultLikeEscapeChar は、PostgreSQL の LIKE/ILIKE クエリで使用するデフォルトのエスケープ文字です。
 const DefaultLikeEscapeChar = "\\"
 
 // WrapPrefixLikePattern は、前方一致（prefix match）用に pattern を作ります。
@@ -8750,6 +8794,7 @@ type systemQuery struct {
         tracer observability.LayerTracer
 }
 
+// New は、DB ヘルスチェック用のシステムクエリ実装を生成して返します。
 func New(
         provider loggingdb.DBProvider,
         tf observability.TracerFactory,
@@ -8812,6 +8857,7 @@ var (
         txLock sync.Mutex
 )
 
+// TransactionRunner は、テスト用に関数をトランザクション内で実行するインターフェースです。
 type TransactionRunner interface {
         WithinTx(fn func(ctx context.Context))
 }
@@ -9111,7 +9157,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov6" title="201">{
+        for i, line := range lines </span><span class="cov7" title="291">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>
@@ -9142,6 +9188,7 @@ import (
         "go-boilerplate/internal/config"
 )
 
+// LogFieldBuilder は、各種ログ入力から構造化ログのフィールド列を構築するインターフェースです。
 type LogFieldBuilder interface {
         BuildHTTPRequestFields(req HTTPRequestLogInput) []*Field
         BuildHTTPResponseFields(resp HTTPResponseLogInput) []*Field
@@ -9730,8 +9777,10 @@ import (
 )
 
 const (
+        // SpanEventStart は、span の開始イベントを表します。
         SpanEventStart = "start"
-        SpanEventEnd   = "end"
+        // SpanEventEnd は、span の終了イベントを表します。
+        SpanEventEnd = "end"
 )
 
 // TraceContext は、トレースを識別するための情報を保持します。
@@ -9822,10 +9871,13 @@ import (
 )
 
 const (
-        delimiter            = "."
+        delimiter = "."
+        // Controller は、コントローラー層を表すレイヤー名です。
         Controller layerName = "controller"
-        Usecase    layerName = "usecase"
-        Infra      layerName = "infrastructure"
+        // Usecase は、ユースケース層を表すレイヤー名です。
+        Usecase layerName = "usecase"
+        // Infra は、インフラ層を表すレイヤー名です。
+        Infra layerName = "infrastructure"
 
         // callSkip は、ロガーのコールスタックのスキップ数を定義します。
         callSkip = 3
@@ -9833,6 +9885,7 @@ const (
 
 type layerName string
 
+// LayerTracer は、アーキテクチャレイヤー単位のトレース span を提供するトレーサーです。
 type LayerTracer struct {
         log      logging.Logger
         lf       logging.LogFieldBuilder
@@ -10199,6 +10252,7 @@ func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer <span class="cov5" titl
         return tf.Usecase()
 }</span>
 
+// NewMockInfraLayerTracer は、テスト用のインフラレイヤートレーサーを生成します。
 func NewMockInfraLayerTracer(t *testing.T) LayerTracer <span class="cov5" title="12">{
         t.Helper()
         tf := NewNoopTracerFactory(t)
@@ -10247,6 +10301,7 @@ import (
         "go.opentelemetry.io/otel/trace"
 )
 
+// TracerFactory は、レイヤー別の LayerTracer を生成するファクトリです。
 type TracerFactory interface {
         // Controller は、コントローラー層用のトレーサーを返します。
         Controller() LayerTracer
@@ -10371,6 +10426,7 @@ type Authn struct {
         claims   map[string]any // 任意（監査・UI制御等）
 }
 
+// New は、認証主体や付随情報から認証結果 Authn を生成して返します。
 func New(
         subject string,
         provider string,
@@ -10442,6 +10498,8 @@ type Credential struct {
         accessToken string // アクセストークン
 }
 
+// NewCredential は、アクセストークンを検証して Credential を生成して返します。
+// トークンが空文字列またはホワイトスペースのみの場合は ErrTokenMissing を返します。
 func NewCredential(
         accessToken string,
 ) (*Credential, error) <span class="cov10" title="12">{
@@ -10506,9 +10564,13 @@ import (
         "go-boilerplate/internal/usecase/healthcheck/query"
 )
 
+// ヘルスチェックの総合ステータスを表す値。
 const (
-        Degraded  = "degraded"
-        Ok        = "ok"
+        // Degraded は、一部の依存が不調だが稼働継続できる状態を表します。
+        Degraded = "degraded"
+        // Ok は、すべて正常な状態を表します。
+        Ok = "ok"
+        // Unhealthy は、サービスが正常に応答できない状態を表します。
         Unhealthy = "unhealthy"
 )
 
@@ -10616,6 +10678,7 @@ const (
         maxOffset = maxPage * maxPerPage
 )
 
+// Paging は、ページネーションに必要な取得上限（limit）とオフセット（offset）を保持する値オブジェクトです。
 type Paging struct {
         limit  int
         offset int
@@ -11483,6 +11546,7 @@ type Runner interface {
 // OS は、os/exec を用いた Runner の実装です。
 type OS struct{}
 
+// Output は、dir をカレントとしてコマンドを実行し、標準出力を返します。
 func (OS) Output(ctx context.Context, dir string, env []string, name string, args []string) ([]byte, error) <span class="cov10" title="3">{
         var stdout bytes.Buffer
         cmd := osexec.CommandContext(ctx, name, args...) //nolint:gosec // name/args は呼び出し側で固定された信頼値
@@ -11591,14 +11655,17 @@ type FS interface {
 // OS は、os / path/filepath を用いた FS の実装です。
 type OS struct{}
 
+// ReadFile は、name のファイル内容全体を読み込んで返します。
 func (OS) ReadFile(name string) ([]byte, error) <span class="cov10" title="2">{
         return os.ReadFile(name) //nolint:gosec // path は呼び出し側で検証された信頼パス
 }</span>
 
+// WriteFile は、data を name のファイルへ書き込みます。ファイルが存在しない場合は perm で新規作成します。
 func (OS) WriteFile(name string, data []byte, perm os.FileMode) error <span class="cov1" title="1">{
         return os.WriteFile(name, data, perm)
 }</span>
 
+// Glob は、pattern に一致するファイルパスの一覧を返します。
 func (OS) Glob(pattern string) ([]string, error) <span class="cov1" title="1">{
         return filepath.Glob(pattern)
 }</span>
@@ -11798,6 +11865,8 @@ import (
         "github.com/google/uuid"
 )
 
+// UUID は、128 ビットの一意識別子を表す値オブジェクトです。
+//
 //nolint:recvcheck // safe: UUID is immutable (value object); pointer receiver is required only for Scan to implement sql.Scanner
 type UUID struct{ b [16]byte }
 

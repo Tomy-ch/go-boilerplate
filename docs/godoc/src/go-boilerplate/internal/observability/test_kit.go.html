@@ -99,42 +99,43 @@
 <span id="L42" class="ln">    42  </span>	return tf.Usecase()
 <span id="L43" class="ln">    43  </span>}
 <span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
-<span id="L46" class="ln">    46  </span>	t.Helper()
-<span id="L47" class="ln">    47  </span>	tf := NewNoopTracerFactory(t)
-<span id="L48" class="ln">    48  </span>	return tf.Infra()
-<span id="L49" class="ln">    49  </span>}
-<span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span><span class="comment">// NewNoopLayerTracer は、テスト用に LayerTracer を無効化して返します。</span>
-<span id="L52" class="ln">    52  </span>func NewNoopLayerTracer(t *testing.T) LayerTracer {
-<span id="L53" class="ln">    53  </span>	t.Helper()
-<span id="L54" class="ln">    54  </span>	return LayerTracer{
-<span id="L55" class="ln">    55  </span>		log:     logging.NewTestLogger(t),
-<span id="L56" class="ln">    56  </span>		lf:      logging.NewTestLogFieldBuilder(t),
-<span id="L57" class="ln">    57  </span>		tracer:  noop.NewTracerProvider().Tracer(tracer),
-<span id="L58" class="ln">    58  </span>		layer:   layer,
-<span id="L59" class="ln">    59  </span>		pkgName: pkg,
-<span id="L60" class="ln">    60  </span>	}
-<span id="L61" class="ln">    61  </span>}
-<span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span><span class="comment">// NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。</span>
-<span id="L64" class="ln">    64  </span>func NewStubSpanContext(t *testing.T) (context.Context, func()) {
-<span id="L65" class="ln">    65  </span>	t.Helper()
-<span id="L66" class="ln">    66  </span>
-<span id="L67" class="ln">    67  </span>	prev := otel.GetTracerProvider()
-<span id="L68" class="ln">    68  </span>
-<span id="L69" class="ln">    69  </span>	tp := sdktrace.NewTracerProvider()
-<span id="L70" class="ln">    70  </span>	tr := tp.Tracer(tracer)
-<span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span>	ctx, span := tr.Start(context.Background(), span)
-<span id="L73" class="ln">    73  </span>
-<span id="L74" class="ln">    74  </span>	return ctx, func() {
-<span id="L75" class="ln">    75  </span>		span.End()
-<span id="L76" class="ln">    76  </span>		_ = tp.Shutdown(context.Background())
-<span id="L77" class="ln">    77  </span>		otel.SetTracerProvider(prev)
-<span id="L78" class="ln">    78  </span>	}
-<span id="L79" class="ln">    79  </span>}
-<span id="L80" class="ln">    80  </span>
+<span id="L45" class="ln">    45  </span><span class="comment">// NewMockInfraLayerTracer は、テスト用のインフラレイヤートレーサーを生成します。</span>
+<span id="L46" class="ln">    46  </span>func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
+<span id="L47" class="ln">    47  </span>	t.Helper()
+<span id="L48" class="ln">    48  </span>	tf := NewNoopTracerFactory(t)
+<span id="L49" class="ln">    49  </span>	return tf.Infra()
+<span id="L50" class="ln">    50  </span>}
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span><span class="comment">// NewNoopLayerTracer は、テスト用に LayerTracer を無効化して返します。</span>
+<span id="L53" class="ln">    53  </span>func NewNoopLayerTracer(t *testing.T) LayerTracer {
+<span id="L54" class="ln">    54  </span>	t.Helper()
+<span id="L55" class="ln">    55  </span>	return LayerTracer{
+<span id="L56" class="ln">    56  </span>		log:     logging.NewTestLogger(t),
+<span id="L57" class="ln">    57  </span>		lf:      logging.NewTestLogFieldBuilder(t),
+<span id="L58" class="ln">    58  </span>		tracer:  noop.NewTracerProvider().Tracer(tracer),
+<span id="L59" class="ln">    59  </span>		layer:   layer,
+<span id="L60" class="ln">    60  </span>		pkgName: pkg,
+<span id="L61" class="ln">    61  </span>	}
+<span id="L62" class="ln">    62  </span>}
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span><span class="comment">// NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。</span>
+<span id="L65" class="ln">    65  </span>func NewStubSpanContext(t *testing.T) (context.Context, func()) {
+<span id="L66" class="ln">    66  </span>	t.Helper()
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>	prev := otel.GetTracerProvider()
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>	tp := sdktrace.NewTracerProvider()
+<span id="L71" class="ln">    71  </span>	tr := tp.Tracer(tracer)
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>	ctx, span := tr.Start(context.Background(), span)
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span>	return ctx, func() {
+<span id="L76" class="ln">    76  </span>		span.End()
+<span id="L77" class="ln">    77  </span>		_ = tp.Shutdown(context.Background())
+<span id="L78" class="ln">    78  </span>		otel.SetTracerProvider(prev)
+<span id="L79" class="ln">    79  </span>	}
+<span id="L80" class="ln">    80  </span>}
+<span id="L81" class="ln">    81  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/observability/test_kit.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
