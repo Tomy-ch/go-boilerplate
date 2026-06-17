@@ -216,6 +216,17 @@ Usecase should **avoid direct dependency on Infrastructure**.
 - Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
 - Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
 
+## Comment Rules
+
+- Comments describe **behavior — the contract**: what a declaration does, and the meaning of its inputs / outputs. They must NOT narrate **internal processing**: the step-by-step "how", the implementation means, or the design rationale. If the behavior is stated, the implementation can be read from the code.
+- OK (behavior): `// ReadFile は name のファイル内容全体を読み込んで返す`
+- NG (internal processing / rationale):
+  - `// ReadFile は os.ReadFile を呼び出して…`（implementation means）
+  - `// 〜の登録は di 層が担う` / `// テスト容易性のため…`（design rationale）
+  - restating the implementation steps; tautologies (`// User は User です`)
+- **Exception**: a *load-bearing* constraint warning that the code itself cannot convey (e.g. a magic `runtime.Caller` skip depth, or "do not extract this helper — it shifts the skip count") may remain even though it is not strictly "behavior". It prevents a real bug.
+- Enforcement split: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of comments on exported declarations. This **behavior-only content** rule is semantic and cannot be linted — it is enforced by review (`local-review`'s `comment-style` lens).
+
 ## Testing & Definition of Done
 
 - Co-locate tests with each layer's implementation and verify them **per layer** — write that layer's tests and run `make test` (with coverage) before moving on. Do not batch all testing into a final step; deferred tests hide coverage gaps until late.
