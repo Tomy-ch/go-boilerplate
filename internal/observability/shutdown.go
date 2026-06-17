@@ -8,7 +8,6 @@ import (
 
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // ProviderShutdowner は TracerProvider / MeterProvider の Shutdown をまとめた後始末ハンドル。
@@ -30,6 +29,3 @@ func NewProviderShutdowner(tp *sdktrace.TracerProvider, mp *sdkmetric.MeterProvi
 func (s providerShutdowner) Shutdown(ctx context.Context) error {
 	return errors.Join(s.tp.Shutdown(ctx), s.mp.Shutdown(ctx))
 }
-
-// ProvideTracerProvider は具象 TracerProvider を otel の trace.TracerProvider IF として返す。
-func ProvideTracerProvider(tp *sdktrace.TracerProvider) trace.TracerProvider { return tp }

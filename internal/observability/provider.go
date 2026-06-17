@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // NewResource は service 識別情報を付与した OpenTelemetry リソースを生成する。
@@ -45,7 +46,7 @@ func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 	}
 
 	opts := []sdktrace.TracerProviderOption{sdktrace.WithResource(res)}
-	if _, isNoop := exporter.(noopSpanExporter); !isNoop {
+	if !isNoopSpanExporter(exporter) {
 		opts = append(opts, sdktrace.WithBatcher(exporter))
 	}
 
@@ -73,7 +74,7 @@ func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error) 
 		sdkmetric.WithReader(reader),
 	)
 
-	if _, isNoop := reader.(*sdkmetric.ManualReader); !isNoop {
+	if !isNoopMetricReader(reader) {
 		if err := runtime.Start(runtime.WithMeterProvider(mp)); err != nil {
 			return nil, xerrors.Wrap(err, "failed to start runtime metrics")
 		}
@@ -83,3 +84,6 @@ func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error) 
 
 	return mp, nil
 }
+
+// ProvideTracerProvider は具象 TracerProvider を otel の trace.TracerProvider IF として返す。
+func ProvideTracerProvider(tp *sdktrace.TracerProvider) trace.TracerProvider { return tp }
