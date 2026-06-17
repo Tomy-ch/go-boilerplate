@@ -13,6 +13,14 @@ services:
       - "6060:6060"   # メトリクス(pprof)ポート
     volumes:
       - .:/app
+    # OTel 送出口(別repoのGrafana stackへホスト経由)。既定 no-op、OTEL_*_EXPORTER=otlp で有効化。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
     tty: true
     stdin_open: true
     working_dir: /app
