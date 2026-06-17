@@ -86,6 +86,7 @@
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package mock_observability is a generated GoMock package.
 </p><p>Package mock_observability is a generated GoMock package.
+</p><p>Package mock_observability is a generated GoMock package.
 
 				
 			</p></div>
@@ -104,6 +105,28 @@
 			
 			
 			
+			
+				
+				<dd><a href="#MockProviderShutdowner">type MockProviderShutdowner</a></dd>
+				
+					
+					<dd>    <a href="#NewMockProviderShutdowner">func NewMockProviderShutdowner(ctrl *gomock.Controller) *MockProviderShutdowner</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockProviderShutdowner.EXPECT">func (m *MockProviderShutdowner) EXPECT() *MockProviderShutdownerMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockProviderShutdowner.Shutdown">func (m *MockProviderShutdowner) Shutdown(ctx context.Context) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockProviderShutdownerMockRecorder">type MockProviderShutdownerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockProviderShutdownerMockRecorder.Shutdown">func (mr *MockProviderShutdownerMockRecorder) Shutdown(ctx any) *gomock.Call</a></dd>
+				
 			
 				
 				<dd><a href="#MockTracerFactory">type MockTracerFactory</a></dd>
@@ -152,6 +175,8 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/observability/mock/mock_layer_tracer.gen.go.html">mock_layer_tracer.gen.go</a>
 			
+				<a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.gen.go.html">mock_shutdown.gen.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html">mock_tracer_factory.gen.go</a>
 			
 			</span>
@@ -168,7 +193,110 @@
 		
 			
 			
-			<h2 id="MockTracerFactory">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=491:613#L10">MockTracerFactory</a>
+			<h2 id="MockProviderShutdowner">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.gen.go.html?s=447:579#L10">MockProviderShutdowner</a>
+				<a class="permalink" href="#MockProviderShutdowner">¶</a>
+				
+				
+			</h2>
+			<p>MockProviderShutdowner is a mock of ProviderShutdowner interface.
+
+			</p><pre>type MockProviderShutdowner struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockProviderShutdowner">func <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.gen.go.html?s=808:887#L22">NewMockProviderShutdowner</a>
+					<a class="permalink" href="#NewMockProviderShutdowner">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockProviderShutdowner(ctrl *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockProviderShutdowner">MockProviderShutdowner</a></pre>
+				<p>NewMockProviderShutdowner creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockProviderShutdowner.EXPECT">func (*MockProviderShutdowner) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.gen.go.html?s=1087:1164#L29">EXPECT</a>
+					<a class="permalink" href="#MockProviderShutdowner.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockProviderShutdowner">MockProviderShutdowner</a>) EXPECT() *<a href="#MockProviderShutdownerMockRecorder">MockProviderShutdownerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockProviderShutdowner.Shutdown">func (*MockProviderShutdowner) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.gen.go.html?s=1220:1288#L34">Shutdown</a>
+					<a class="permalink" href="#MockProviderShutdowner.Shutdown">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockProviderShutdowner">MockProviderShutdowner</a>) Shutdown(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>Shutdown mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockProviderShutdownerMockRecorder">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.gen.go.html?s=668:748#L17">MockProviderShutdownerMockRecorder</a>
+				<a class="permalink" href="#MockProviderShutdownerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockProviderShutdownerMockRecorder is the mock recorder for MockProviderShutdowner.
+
+			</p><pre>type MockProviderShutdownerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockProviderShutdownerMockRecorder.Shutdown">func (*MockProviderShutdownerMockRecorder) <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_shutdown.gen.go.html?s=1445:1521#L42">Shutdown</a>
+					<a class="permalink" href="#MockProviderShutdownerMockRecorder.Shutdown">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockProviderShutdownerMockRecorder">MockProviderShutdownerMockRecorder</a>) Shutdown(ctx <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Shutdown indicates an expected call of Shutdown.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockTracerFactory">type <a href="../../../../src/go-boilerplate/internal/observability/mock/mock_tracer_factory.gen.go.html?s=491:613#L10">MockTracerFactory</a>
 				<a class="permalink" href="#MockTracerFactory">¶</a>
 				
 				

@@ -111,10 +111,7 @@
 				<dd><a href="#BuildSpanName">func BuildSpanName(layer, pkgName, funcName string) string</a></dd>
 			
 				
-				<dd><a href="#InvokeMeterProvider">func InvokeMeterProvider(metric.MeterProvider)</a></dd>
-			
-				
-				<dd><a href="#MeterProvider">func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error)</a></dd>
+				<dd><a href="#NewMeterProvider">func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error)</a></dd>
 			
 				
 				<dd><a href="#NewResource">func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)</a></dd>
@@ -123,13 +120,16 @@
 				<dd><a href="#NewStubSpanContext">func NewStubSpanContext(t *testing.T) (context.Context, func())</a></dd>
 			
 				
+				<dd><a href="#NewTracerProvider">func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)</a></dd>
+			
+				
+				<dd><a href="#ProvideTracerProvider">func ProvideTracerProvider(tp *sdktrace.TracerProvider) trace.TracerProvider</a></dd>
+			
+				
 				<dd><a href="#RunWithSpan">func RunWithSpan[T any](parentCtx context.Context, lt LayerTracer, layer layerName, pkg, funcName string, fn func(ctx context.Context) (T, error)) (context.Context, T, error)</a></dd>
 			
 				
 				<dd><a href="#ShouldLogWithSpan">func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool</a></dd>
-			
-				
-				<dd><a href="#TracerProvider">func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.TracerProvider, error)</a></dd>
 			
 			
 				
@@ -153,6 +153,14 @@
 				
 					
 					<dd>    <a href="#LayerTracer.StartWithSuffix">func (lt LayerTracer) StartWithSuffix(ctx context.Context, optionalName string, opts ...trace.SpanStartOption) (context.Context, func())</a></dd>
+				
+			
+				
+				<dd><a href="#ProviderShutdowner">type ProviderShutdowner</a></dd>
+				
+					
+					<dd>    <a href="#NewProviderShutdowner">func NewProviderShutdowner(tp *sdktrace.TracerProvider, mp *sdkmetric.MeterProvider) ProviderShutdowner</a></dd>
+				
 				
 			
 				
@@ -203,7 +211,11 @@
 			
 				<a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html">layer_tracer.go</a>
 			
+				<a href="../../../src/go-boilerplate/internal/observability/noop.go.html">noop.go</a>
+			
 				<a href="../../../src/go-boilerplate/internal/observability/provider.go.html">provider.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html">shutdown.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html">test_kit.go</a>
 			
@@ -252,27 +264,13 @@
 		
 			
 			
-			</p><h2 id="InvokeMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=3421:3467#L87">InvokeMeterProvider</a>
-				<a class="permalink" href="#InvokeMeterProvider">¶</a>
+			</p><h2 id="NewMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=2373:2452#L56">NewMeterProvider</a>
+				<a class="permalink" href="#NewMeterProvider">¶</a>
 				
 				
 			</h2>
-			<pre>func InvokeMeterProvider(<a href="../../../go.opentelemetry.io/otel/metric/">metric</a>.<a href="../../../go.opentelemetry.io/otel/metric/#MeterProvider">MeterProvider</a>)</pre>
-			<p>InvokeMeterProvider は、依存元の無い MeterProvider を fx に構築させる no-op invoke target。
-
-			
-			
-
-		
-			
-			
-			</p><h2 id="MeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=2613:2710#L63">MeterProvider</a>
-				<a class="permalink" href="#MeterProvider">¶</a>
-				
-				
-			</h2>
-			<pre>func MeterProvider(reg <a href="../../../go-boilerplate/internal/di/lifecycle/">lifecycle</a>.<a href="../../../go-boilerplate/internal/di/lifecycle/#Registrar">Registrar</a>, res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (<a href="../../../go.opentelemetry.io/otel/metric/">metric</a>.<a href="../../../go.opentelemetry.io/otel/metric/#MeterProvider">MeterProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
-			<p>MeterProvider は MeterProvider をグローバル登録し、Shutdown フックを登録して返す。
+			<pre>func NewMeterProvider(res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (*<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
 MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-op となりランタイム計装も行わない。
 
 			
@@ -281,7 +279,7 @@ MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-
 		
 			
 			
-			</p><h2 id="NewResource">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=853:952#L18">NewResource</a>
+			</p><h2 id="NewResource">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=682:781#L13">NewResource</a>
 				<a class="permalink" href="#NewResource">¶</a>
 				
 				
@@ -302,6 +300,35 @@ MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-
 			</h2>
 			<pre>func NewStubSpanContext(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) (<a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, func())</pre>
 			<p>NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=1452:1532#L32">NewTracerProvider</a>
+				<a class="permalink" href="#NewTracerProvider">¶</a>
+				
+				
+			</h2>
+			<pre>func NewTracerProvider(res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (*<a href="../../../go.opentelemetry.io/otel/sdk/trace/">sdktrace</a>.<a href="../../../go.opentelemetry.io/otel/sdk/trace/#TracerProvider">TracerProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>NewTracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、構築した TracerProvider を返す。
+SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-op となる。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ProvideTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=3100:3176#L79">ProvideTracerProvider</a>
+				<a class="permalink" href="#ProvideTracerProvider">¶</a>
+				
+				
+			</h2>
+			<pre>func ProvideTracerProvider(tp *<a href="../../../go.opentelemetry.io/otel/sdk/trace/">sdktrace</a>.<a href="../../../go.opentelemetry.io/otel/sdk/trace/#TracerProvider">TracerProvider</a>) <a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#TracerProvider">TracerProvider</a></pre>
+			<p>ProvideTracerProvider は具象 TracerProvider を otel の trace.TracerProvider IF として返す。
 
 			
 			
@@ -344,21 +371,6 @@ MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-
 			<pre>func ShouldLogWithSpan(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>) <a href="../../../builtin/#bool">bool</a></pre>
 			<p>ShouldLogWithSpan は、o11y モードと Span の有無から span 前提ログを出してよいか判定する公開ヘルパです。
 span 前提ログを足す際の拡張ポイントとして提供しており、現状は本番未結線（利用例は README 参照）。
-
-			
-			
-
-		
-			
-			
-			</p><h2 id="TracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=1622:1720#L37">TracerProvider</a>
-				<a class="permalink" href="#TracerProvider">¶</a>
-				
-				
-			</h2>
-			<pre>func TracerProvider(reg <a href="../../../go-boilerplate/internal/di/lifecycle/">lifecycle</a>.<a href="../../../go-boilerplate/internal/di/lifecycle/#Registrar">Registrar</a>, res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (<a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#TracerProvider">TracerProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
-			<p>TracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、Shutdown フックを登録して返す。
-SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-op となる。
 
 			
 			
@@ -468,6 +480,44 @@ SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-
 				
 				
 				
+			
+		
+			
+			
+			</p><h2 id="ProviderShutdowner">type <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=366:553#L4">ProviderShutdowner</a>
+				<a class="permalink" href="#ProviderShutdowner">¶</a>
+				
+				
+			</h2>
+			<p>ProviderShutdowner は TracerProvider / MeterProvider の Shutdown をまとめた後始末ハンドル。
+
+			</p><pre>type ProviderShutdowner interface {
+    <span class="comment">// Shutdown は TracerProvider / MeterProvider を Shutdown し、発生したエラーを結合して返す。</span>
+    Shutdown(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>) <a href="../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewProviderShutdowner">func <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=744:847#L15">NewProviderShutdowner</a>
+					<a class="permalink" href="#NewProviderShutdowner">¶</a>
+					
+					
+				</h3>
+				<pre>func NewProviderShutdowner(tp *<a href="../../../go.opentelemetry.io/otel/sdk/trace/">sdktrace</a>.<a href="../../../go.opentelemetry.io/otel/sdk/trace/#TracerProvider">TracerProvider</a>, mp *<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>) <a href="#ProviderShutdowner">ProviderShutdowner</a></pre>
+				<p>NewProviderShutdowner は具象プロバイダから後始末ハンドルを構築する。
+
+				
+				
+			
+
 			
 		
 			

@@ -108,6 +108,9 @@
 				
 				<dd><a href="#RegisterHTTPServerHooks">func RegisterHTTPServerHooks(e *echo.Echo, reg lifecycle.Registrar, log logging.Logger, appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig, srvCfg *config.ServerConfig, osCfg *config.OperatingSystemConfig, _ *extension.AppliedServerExtends)</a></dd>
 			
+				
+				<dd><a href="#RegisterObservabilityShutdownHooks">func RegisterObservabilityShutdownHooks(reg lifecycle.Registrar, shutdowner observability.ProviderShutdowner)</a></dd>
+			
 			
 			
 			</dl>
@@ -123,6 +126,8 @@
 				<a href="../../../../../src/go-boilerplate/internal/di/server/hook/db_close_hook.go.html">db_close_hook.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/di/server/hook/http_server_hook.go.html">http_server_hook.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/di/server/hook/observability_hook.go.html">observability_hook.go</a>
 			
 			</span>
 			</p>
@@ -172,6 +177,24 @@
     _ *<a href="../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../go-boilerplate/internal/di/server/extension/#AppliedServerExtends">AppliedServerExtends</a>,
 )</pre>
 			<p>RegisterHTTPServerHooks は、HTTPサーバーの起動・停止フックをライフサイクルに登録します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RegisterObservabilityShutdownHooks">func <a href="../../../../../src/go-boilerplate/internal/di/server/hook/observability_hook.go.html?s=630:739#L3">RegisterObservabilityShutdownHooks</a>
+				<a class="permalink" href="#RegisterObservabilityShutdownHooks">¶</a>
+				
+				
+			</h2>
+			<pre>func RegisterObservabilityShutdownHooks(reg <a href="../../../../../go-boilerplate/internal/di/lifecycle/">lifecycle</a>.<a href="../../../../../go-boilerplate/internal/di/lifecycle/#Registrar">Registrar</a>, shutdowner <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#ProviderShutdowner">ProviderShutdowner</a>)</pre>
+			<p>RegisterObservabilityShutdownHooks は、アプリケーションのシャットダウン時に
+TracerProvider / MeterProvider を Shutdown するためのフックを登録します。
+構築（observability.NewTracerProvider / NewMeterProvider）はライフサイクル非依存で行われ、
+その後始末（Shutdown）の登録を di 層であるこの hook が担います。
+otel SDK 型を di 層へ漏らさないため、具象ではなく observability.ProviderShutdowner に依存します。
 
 			
 			
