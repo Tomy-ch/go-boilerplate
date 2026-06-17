@@ -134,6 +134,35 @@ linters:
             - pkg: go.opentelemetry.io/otel
               desc: "オブザーバビリティ関連ライブラリの使用は制限されています。
                 可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
+        restrict_the_use_of_otel_contrib: # OTel contrib(計装/エクスポータ)の使用を制限します
+          files:
+            - "**/*.go"
+            - "!**/internal/observability/**.go" # otel 初期化(exporter / runtime 計装)で使用を許可します
+            - "!**/internal/controller/httpstack/observability/**.go" # HTTP層の otelecho ミドルウェア統合で使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go.opentelemetry.io/contrib
+              desc: "OTel contrib ライブラリの使用は observability の初期化 / HTTP otel ミドルウェアに限定されています。
+                可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
+        restrict_lifecycle_to_di: # ライフサイクルの登録は di 層の責務に限定します
+          files:
+            - "**/*.go"
+            - "!**/internal/di/**.go" # di 配下(composition root / module / hook)でのみ使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/di/lifecycle
+              desc: "lifecycle.Registrar への直接依存は di 層(hook)の責務です。
+                コンポーネントは Close()/Shutdown() 等のハンドルを公開し、その登録は di の hook に委ねてください。"
+        restrict_di_hook_to_di: # di の hook パッケージは di 層の内部実装であり、外部からの参照を禁止します
+          files:
+            - "**/*.go"
+            - "!**/internal/di/**.go" # di 配下(module / composition root)でのみ参照を許可します
+          list-mode: lax
+          deny:
+            - pkg: go-boilerplate/internal/di/server/hook
+              desc: "di の hook パッケージは di 層の内部実装です。コンポーネントから直接参照せず、結線は di 層で行ってください。"
+            - pkg: go-boilerplate/internal/di/job/hook
+              desc: "di の hook パッケージは di 層の内部実装です。コンポーネントから直接参照せず、結線は di 層で行ってください。"
         independent_apperror: # apperrorパッケージが責務の実装層にも依存しないことを保証します
           files:
             - "**/internal/apperror/**.go"
