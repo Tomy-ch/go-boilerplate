@@ -151,7 +151,7 @@ linters:
           list-mode: lax
           deny:
             - pkg: go-boilerplate/internal/di/lifecycle
-              desc: "lifecycle.Registrar への直接依存は di 層(hook)の責務です。
+              desc: "lifecycle.Registrar への直接依存は di 層の責務です。
                 コンポーネントは Close()/Shutdown() 等のハンドルを公開し、その登録は di の hook に委ねてください。"
         restrict_di_hook_to_di: # di の hook パッケージは di 層の内部実装であり、外部からの参照を禁止します
           files:
