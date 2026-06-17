@@ -144,7 +144,7 @@
 		
 			
 			
-			<h2 id="NewTestDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1439:1489#L33">NewTestDB</a>
+			<h2 id="NewTestDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1566:1616#L34">NewTestDB</a>
 				<a class="permalink" href="#NewTestDB">¶</a>
 				
 				
@@ -158,7 +158,7 @@
 		
 			
 			
-			</p><h2 id="NewTestLoggingProvider">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1629:1691#L39">NewTestLoggingProvider</a>
+			</p><h2 id="NewTestLoggingProvider">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1756:1818#L40">NewTestLoggingProvider</a>
 				<a class="permalink" href="#NewTestLoggingProvider">¶</a>
 				
 				
@@ -173,13 +173,14 @@
 		
 			
 			
-			</p><h2 id="TransactionRunner">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1087:1163#L22">TransactionRunner</a>
+			</p><h2 id="TransactionRunner">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1214:1290#L23">TransactionRunner</a>
 				<a class="permalink" href="#TransactionRunner">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type TransactionRunner interface {
+			<p>TransactionRunner は、テスト用に関数をトランザクション内で実行するインターフェースです。
+
+			</p><pre>type TransactionRunner interface {
     WithinTx(fn func(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>))
 }</pre>
 
@@ -193,7 +194,7 @@
 
 			
 				
-				<h3 id="NewTestTransactionRunner">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=2163:2224#L54">NewTestTransactionRunner</a>
+				<h3 id="NewTestTransactionRunner">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=2290:2351#L55">NewTestTransactionRunner</a>
 					<a class="permalink" href="#NewTestTransactionRunner">¶</a>
 					
 					

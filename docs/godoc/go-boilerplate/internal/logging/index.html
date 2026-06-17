@@ -528,7 +528,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=738:1185#L15">HTTPRequestLogInput</a>
+			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=872:1319#L16">HTTPRequestLogInput</a>
 				<a class="permalink" href="#HTTPRequestLogInput">¶</a>
 				
 				
@@ -574,7 +574,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1303:1495#L40">HTTPResponseLogInput</a>
+			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1437:1629#L41">HTTPResponseLogInput</a>
 				<a class="permalink" href="#HTTPResponseLogInput">¶</a>
 				
 				
@@ -611,13 +611,14 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			<h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=190:514#L1">LogFieldBuilder</a>
+			<h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=324:648#L2">LogFieldBuilder</a>
 				<a class="permalink" href="#LogFieldBuilder">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type LogFieldBuilder interface {
+			<p>LogFieldBuilder は、各種ログ入力から構造化ログのフィールド列を構築するインターフェースです。
+
+			</p><pre>type LogFieldBuilder interface {
     BuildHTTPRequestFields(req <a href="#HTTPRequestLogInput">HTTPRequestLogInput</a>) []*<a href="#Field">Field</a>
     BuildHTTPResponseFields(resp <a href="#HTTPResponseLogInput">HTTPResponseLogInput</a>) []*<a href="#Field">Field</a>
     BuildSQLStartFields(sql <a href="#SQLFieldsStartInput">SQLFieldsStartInput</a>) []*<a href="#Field">Field</a>
@@ -635,7 +636,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 			
 				
-				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2615:2726#L107">NewLogFields</a>
+				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2749:2860#L108">NewLogFields</a>
 					<a class="permalink" href="#NewLogFields">¶</a>
 					
 					
@@ -776,7 +777,7 @@ caller（発生源）を検証したいテストで使用します。
 		
 			
 			
-			</p><h2 id="ObservabilityFieldsInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2273:2509#L90">ObservabilityFieldsInput</a>
+			</p><h2 id="ObservabilityFieldsInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2407:2643#L91">ObservabilityFieldsInput</a>
 				<a class="permalink" href="#ObservabilityFieldsInput">¶</a>
 				
 				
@@ -814,7 +815,7 @@ caller（発生源）を検証したいテストで使用します。
 		
 			
 			
-			<h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1878:2128#L70">SQLFieldsEndInput</a>
+			<h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2012:2262#L71">SQLFieldsEndInput</a>
 				<a class="permalink" href="#SQLFieldsEndInput">¶</a>
 				
 				
@@ -855,7 +856,7 @@ caller（発生源）を検証したいテストで使用します。
 		
 			
 			
-			<h2 id="SQLFieldsStartInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1594:1781#L56">SQLFieldsStartInput</a>
+			<h2 id="SQLFieldsStartInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1728:1915#L57">SQLFieldsStartInput</a>
 				<a class="permalink" href="#SQLFieldsStartInput">¶</a>
 				
 				

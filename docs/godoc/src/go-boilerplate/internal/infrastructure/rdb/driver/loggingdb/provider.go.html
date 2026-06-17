@@ -69,47 +69,48 @@
 <span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>type DBProvider interface {
-<span id="L16" class="ln">    16  </span>	NewLoggingDB(ctx context.Context) driver.DBTX
-<span id="L17" class="ln">    17  </span>}
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span><span class="comment">// provider は、ログ付きDB接続を提供します。</span>
-<span id="L20" class="ln">    20  </span>type provider struct {
-<span id="L21" class="ln">    21  </span>	db     driver.DatabaseDriver
-<span id="L22" class="ln">    22  </span>	dbCfg  *config.DatabaseConfig
-<span id="L23" class="ln">    23  </span>	obsCfg *config.ObservabilityConfig
-<span id="L24" class="ln">    24  </span>	l      logging.Logger
-<span id="L25" class="ln">    25  </span>	lf     logging.LogFieldBuilder
-<span id="L26" class="ln">    26  </span>	tracer observability.LayerTracer
-<span id="L27" class="ln">    27  </span>}
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span><span class="comment">// NewLoggingDBProvider は、DBProviderの新しいインスタンスを生成します。</span>
-<span id="L30" class="ln">    30  </span>func NewLoggingDBProvider(
-<span id="L31" class="ln">    31  </span>	db driver.DatabaseDriver,
-<span id="L32" class="ln">    32  </span>	dbCfg *config.DatabaseConfig,
-<span id="L33" class="ln">    33  </span>	obsCfg *config.ObservabilityConfig,
-<span id="L34" class="ln">    34  </span>	log logging.Logger,
-<span id="L35" class="ln">    35  </span>	lf logging.LogFieldBuilder,
-<span id="L36" class="ln">    36  </span>	tracer observability.TracerFactory,
-<span id="L37" class="ln">    37  </span>) DBProvider {
-<span id="L38" class="ln">    38  </span>	return &amp;provider{
-<span id="L39" class="ln">    39  </span>		db:     db,
-<span id="L40" class="ln">    40  </span>		dbCfg:  dbCfg,
-<span id="L41" class="ln">    41  </span>		obsCfg: obsCfg,
-<span id="L42" class="ln">    42  </span>		l:      log,
-<span id="L43" class="ln">    43  </span>		lf:     lf,
-<span id="L44" class="ln">    44  </span>		tracer: tracer.Infra(),
-<span id="L45" class="ln">    45  </span>	}
-<span id="L46" class="ln">    46  </span>}
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span><span class="comment">// NewLoggingDB は、DBTXを生成します。</span>
-<span id="L49" class="ln">    49  </span>func (p *provider) NewLoggingDB(ctx context.Context) driver.DBTX {
-<span id="L50" class="ln">    50  </span>	return &amp;dbWithLogging{
-<span id="L51" class="ln">    51  </span>		db:       driver.New(ctx, p.db),
-<span id="L52" class="ln">    52  </span>		provider: p,
-<span id="L53" class="ln">    53  </span>	}
-<span id="L54" class="ln">    54  </span>}
-<span id="L55" class="ln">    55  </span>
+<span id="L15" class="ln">    15  </span><span class="comment">// DBProvider は、コンテキストを受け取り DBTX を生成するファクトリインタフェースです。</span>
+<span id="L16" class="ln">    16  </span>type DBProvider interface {
+<span id="L17" class="ln">    17  </span>	NewLoggingDB(ctx context.Context) driver.DBTX
+<span id="L18" class="ln">    18  </span>}
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// provider は、ログ付きDB接続を提供します。</span>
+<span id="L21" class="ln">    21  </span>type provider struct {
+<span id="L22" class="ln">    22  </span>	db     driver.DatabaseDriver
+<span id="L23" class="ln">    23  </span>	dbCfg  *config.DatabaseConfig
+<span id="L24" class="ln">    24  </span>	obsCfg *config.ObservabilityConfig
+<span id="L25" class="ln">    25  </span>	l      logging.Logger
+<span id="L26" class="ln">    26  </span>	lf     logging.LogFieldBuilder
+<span id="L27" class="ln">    27  </span>	tracer observability.LayerTracer
+<span id="L28" class="ln">    28  </span>}
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// NewLoggingDBProvider は、DBProviderの新しいインスタンスを生成します。</span>
+<span id="L31" class="ln">    31  </span>func NewLoggingDBProvider(
+<span id="L32" class="ln">    32  </span>	db driver.DatabaseDriver,
+<span id="L33" class="ln">    33  </span>	dbCfg *config.DatabaseConfig,
+<span id="L34" class="ln">    34  </span>	obsCfg *config.ObservabilityConfig,
+<span id="L35" class="ln">    35  </span>	log logging.Logger,
+<span id="L36" class="ln">    36  </span>	lf logging.LogFieldBuilder,
+<span id="L37" class="ln">    37  </span>	tracer observability.TracerFactory,
+<span id="L38" class="ln">    38  </span>) DBProvider {
+<span id="L39" class="ln">    39  </span>	return &amp;provider{
+<span id="L40" class="ln">    40  </span>		db:     db,
+<span id="L41" class="ln">    41  </span>		dbCfg:  dbCfg,
+<span id="L42" class="ln">    42  </span>		obsCfg: obsCfg,
+<span id="L43" class="ln">    43  </span>		l:      log,
+<span id="L44" class="ln">    44  </span>		lf:     lf,
+<span id="L45" class="ln">    45  </span>		tracer: tracer.Infra(),
+<span id="L46" class="ln">    46  </span>	}
+<span id="L47" class="ln">    47  </span>}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span><span class="comment">// NewLoggingDB は、DBTXを生成します。</span>
+<span id="L50" class="ln">    50  </span>func (p *provider) NewLoggingDB(ctx context.Context) driver.DBTX {
+<span id="L51" class="ln">    51  </span>	return &amp;dbWithLogging{
+<span id="L52" class="ln">    52  </span>		db:       driver.New(ctx, p.db),
+<span id="L53" class="ln">    53  </span>		provider: p,
+<span id="L54" class="ln">    54  </span>	}
+<span id="L55" class="ln">    55  </span>}
+<span id="L56" class="ln">    56  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/loggingdb/provider.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

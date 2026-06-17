@@ -168,8 +168,12 @@
 			
 				
 				<pre>var (
-    <span id="ErrInvalidID">ErrInvalidID</span>   = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;id failed&#34;)
+
+    <span class="comment">// ErrInvalidID は、都道府県 ID の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidID">ErrInvalidID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;id failed&#34;)
+    <span class="comment">// ErrInvalidName は、都道府県名の検証に失敗した場合のエラーです。</span>
     <span id="ErrInvalidName">ErrInvalidName</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;name failed&#34;)
+    <span class="comment">// ErrInvalidCode は、都道府県コードの検証に失敗した場合のエラーです。</span>
     <span id="ErrInvalidCode">ErrInvalidCode</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;code failed&#34;)
 )</pre>
 			
@@ -178,13 +182,14 @@
 		
 			
 			
-			<h2 id="Prefecture">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=244:309#L4">Prefecture</a>
+			<h2 id="Prefecture">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=403:468#L6">Prefecture</a>
 				<a class="permalink" href="#Prefecture">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type Prefecture struct {
+			<p>Prefecture は、都道府県を表すドメインエンティティです。
+
+			</p><pre>type Prefecture struct {
     <span class="comment">// contains filtered or unexported fields</span>
 }
 </pre>
@@ -199,7 +204,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=391:463#L11">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=550:622#L13">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -217,7 +222,7 @@
 
 			
 				
-				</p><h3 id="Prefecture.Code">func (*Prefecture) <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=1185:1216#L43">Code</a>
+				</p><h3 id="Prefecture.Code">func (*Prefecture) <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=1344:1375#L45">Code</a>
 					<a class="permalink" href="#Prefecture.Code">¶</a>
 					
 					
@@ -230,7 +235,7 @@
 				
 			
 				
-				</p><h3 id="Prefecture.ID">func (*Prefecture) <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=976:1011#L37">ID</a>
+				</p><h3 id="Prefecture.ID">func (*Prefecture) <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=1135:1170#L39">ID</a>
 					<a class="permalink" href="#Prefecture.ID">¶</a>
 					
 					
@@ -243,7 +248,7 @@
 				
 			
 				
-				</p><h3 id="Prefecture.Name">func (*Prefecture) <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=1077:1111#L40">Name</a>
+				</p><h3 id="Prefecture.Name">func (*Prefecture) <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=1236:1270#L42">Name</a>
 					<a class="permalink" href="#Prefecture.Name">¶</a>
 					
 					
@@ -258,13 +263,14 @@
 		
 			
 			
-			</p><h2 id="Prefectures">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=212:242#L2">Prefectures</a>
+			</p><h2 id="Prefectures">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?s=290:320#L3">Prefectures</a>
 				<a class="permalink" href="#Prefectures">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type Prefectures []*<a href="#Prefecture">Prefecture</a></pre>
+			<p>Prefectures は、Prefecture エンティティのスライス型です。
+
+			</p><pre>type Prefectures []*<a href="#Prefecture">Prefecture</a></pre>
 
 			
 
@@ -280,13 +286,14 @@
 		
 			
 			
-			<h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_repository.go.html?s=186:843#L1">Repository</a>
+			<h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_repository.go.html?s=312:969#L1">Repository</a>
 				<a class="permalink" href="#Repository">¶</a>
 				
 				
 			</h2>
-			
-			<pre>type Repository interface {
+			<p>Repository は、都道府県の永続化操作を定義するドメインリポジトリインターフェースです。
+
+			</p><pre>type Repository interface {
     <span class="comment">// FindByID は、IDから都道府県を取得します。存在しない場合は NotFound を返します。</span>
     FindByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Prefecture">Prefecture</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// FindByIDs は、複数IDから都道府県一覧を取得します。見つからないIDは結果から除外した部分一覧を返します（NotFound は返しません）。</span>

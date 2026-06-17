@@ -136,27 +136,27 @@
 			
 				
 				<pre>var (
-    <span class="comment">// 引数が無効な場合に使用します。</span>
+    <span class="comment">// ErrInvalidArgument は引数が無効な場合に使用します。</span>
     <span id="ErrInvalidArgument">ErrInvalidArgument</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;invalid argument&#34;)
-    <span class="comment">// 認証に失敗した場合に使用します。</span>
+    <span class="comment">// ErrUnauthenticated は認証に失敗した場合に使用します。</span>
     <span id="ErrUnauthenticated">ErrUnauthenticated</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;unauthenticated&#34;)
-    <span class="comment">// 権限がない場合に使用します。</span>
+    <span class="comment">// ErrPermissionDenied は権限がない場合に使用します。</span>
     <span id="ErrPermissionDenied">ErrPermissionDenied</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;permission denied&#34;)
-    <span class="comment">// 対象が見つからない場合に使用します。</span>
+    <span class="comment">// ErrNotFound は対象が見つからない場合に使用します。</span>
     <span id="ErrNotFound">ErrNotFound</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;not found&#34;)
-    <span class="comment">// 競合が発生した場合に使用します。</span>
+    <span class="comment">// ErrConflict は競合が発生した場合に使用します。</span>
     <span id="ErrConflict">ErrConflict</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;conflict&#34;)
-    <span class="comment">// 検証が失敗した場合に使用します。</span>
+    <span class="comment">// ErrValidation は検証が失敗した場合に使用します。</span>
     <span id="ErrValidation">ErrValidation</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;validation error&#34;)
-    <span class="comment">// リクエストが多すぎる場合に使用します。</span>
+    <span class="comment">// ErrTooManyRequests はリクエストが多すぎる場合に使用します。</span>
     <span id="ErrTooManyRequests">ErrTooManyRequests</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;too many requests&#34;)
-    <span class="comment">// クライアントがリクエストをキャンセル/切断した場合に使用します。</span>
+    <span class="comment">// ErrCanceled はクライアントがリクエストをキャンセル/切断した場合に使用します。</span>
     <span id="ErrCanceled">ErrCanceled</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;request canceled&#34;)
-    <span class="comment">// サーバ内部で予期しないエラーが発生した場合に使用します。</span>
+    <span class="comment">// ErrInternal はサーバ内部で予期しないエラーが発生した場合に使用します。</span>
     <span id="ErrInternal">ErrInternal</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;internal error&#34;)
-    <span class="comment">// 実装されていない操作が呼び出された場合に使用します。</span>
+    <span class="comment">// ErrUnimplemented は実装されていない操作が呼び出された場合に使用します。</span>
     <span id="ErrUnimplemented">ErrUnimplemented</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;unimplemented&#34;)
-    <span class="comment">// 一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。</span>
+    <span class="comment">// ErrUnavailable は一時的に利用できない状態を示します（リトライで解消される可能性がある場合）。</span>
     <span id="ErrUnavailable">ErrUnavailable</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;service unavailable&#34;)
 )</pre>
 			
@@ -164,7 +164,7 @@
 		
 			
 			
-			<h2 id="IsAppError">func <a href="../../../src/go-boilerplate/internal/apperror/apperror.go.html?s=1891:1922#L37">IsAppError</a>
+			<h2 id="IsAppError">func <a href="../../../src/go-boilerplate/internal/apperror/apperror.go.html?s=2095:2126#L37">IsAppError</a>
 				<a class="permalink" href="#IsAppError">¶</a>
 				
 				

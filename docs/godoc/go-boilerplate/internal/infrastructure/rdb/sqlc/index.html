@@ -86,9 +86,10 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package sqlc は、LIKE/ILIKE クエリのパターン生成とエスケープのユーティリティを提供します。
+
 				
-				
-			</div>
+			</p></div>
 		</div>
 
 		<div id="pkg-index" class="toggleVisible">
@@ -143,15 +144,16 @@
 		
 			<h2 id="pkg-constants">Constants</h2>
 			
-				
-				<pre>const <span id="DefaultLikeEscapeChar">DefaultLikeEscapeChar</span> = &#34;\\&#34;</pre>
+				<p>DefaultLikeEscapeChar は、PostgreSQL の LIKE/ILIKE クエリで使用するデフォルトのエスケープ文字です。
+
+				</p><pre>const <span id="DefaultLikeEscapeChar">DefaultLikeEscapeChar</span> = &#34;\\&#34;</pre>
 			
 		
 		
 		
 			
 			
-			<h2 id="EscapeForLike">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/like.go.html?s=996:1036#L17">EscapeForLike</a>
+			<h2 id="EscapeForLike">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/like.go.html?s=1253:1293#L19">EscapeForLike</a>
 				<a class="permalink" href="#EscapeForLike">¶</a>
 				
 				
@@ -166,7 +168,7 @@
 		
 			
 			
-			</p><h2 id="WrapContainsLikePattern">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/like.go.html?s=776:827#L11">WrapContainsLikePattern</a>
+			</p><h2 id="WrapContainsLikePattern">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/like.go.html?s=1033:1084#L13">WrapContainsLikePattern</a>
 				<a class="permalink" href="#WrapContainsLikePattern">¶</a>
 				
 				
@@ -181,7 +183,7 @@ escaped は EscapeForLike 済みの文字列を渡すこと。例: &#34;hoge&#34
 		
 			
 			
-			</p><h2 id="WrapPrefixLikePattern">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/like.go.html?s=251:300#L1">WrapPrefixLikePattern</a>
+			</p><h2 id="WrapPrefixLikePattern">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/like.go.html?s=508:557#L1">WrapPrefixLikePattern</a>
 				<a class="permalink" href="#WrapPrefixLikePattern">¶</a>
 				
 				
@@ -196,7 +198,7 @@ escaped は EscapeForLike 済みの文字列を渡すこと。例: &#34;hoge&#34
 		
 			
 			
-			</p><h2 id="WrapSuffixLikePattern">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/like.go.html?s=511:560#L5">WrapSuffixLikePattern</a>
+			</p><h2 id="WrapSuffixLikePattern">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/like.go.html?s=768:817#L7">WrapSuffixLikePattern</a>
 				<a class="permalink" href="#WrapSuffixLikePattern">¶</a>
 				
 				
