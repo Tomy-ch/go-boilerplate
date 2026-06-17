@@ -389,6 +389,9 @@ linters:
       enable-all: true
     revive:
       rules:
+        - name: exported # exported な宣言にはドキュメントコメントを必須とする
+          arguments:
+            - "disableStutteringCheck" # 命名の stutter 検査は行わない(コメント必須化のみが目的)
         - name: var-naming
           arguments:
             - []
@@ -408,8 +411,6 @@ linters:
       time-month: true         # time.Month の検出
 
   exclusions:
-    presets:
-      - comments
     paths:
       - vendor
     rules:
