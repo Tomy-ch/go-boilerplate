@@ -325,7 +325,7 @@
 				
 				<option value="file134">go-boilerplate/internal/observability/layer_tracer.go (100.0%)</option>
 				
-				<option value="file135">go-boilerplate/internal/observability/provider.go (100.0%)</option>
+				<option value="file135">go-boilerplate/internal/observability/provider.go (86.7%)</option>
 				
 				<option value="file136">go-boilerplate/internal/observability/test_kit.go (100.0%)</option>
 				
@@ -1563,7 +1563,7 @@ func validateApplicationConfig(appCfg Application) error <span class="cov5" titl
         if appCfg.Mode != DevelopmentMode &amp;&amp; appCfg.Mode != ProductionMode </span><span class="cov2" title="3">{
                 return ErrInvalidAppMode
         }</span>
-        <span class="cov4" title="18">return nil</span>
+        <span class="cov5" title="18">return nil</span>
 }
 
 // validatePortRange は、ポート番号が許容範囲内かを検証します。
@@ -1596,7 +1596,7 @@ func validateServerConfig(srvCfg Server) error <span class="cov5" title="24">{
                 return ErrInvalidIdleTimeout
         }</span>
 
-        <span class="cov4" title="18">if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout </span><span class="cov1" title="1">{
+        <span class="cov5" title="18">if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout </span><span class="cov1" title="1">{
                 return ErrReadHeaderTimeoutExceedsReadTimeout
         }</span>
         <span class="cov4" title="17">return nil</span>
@@ -1610,7 +1610,7 @@ func validateDatabaseConfig(dbCfg Database) error <span class="cov5" title="21">
         <span class="cov5" title="19">if dbCfg.PingTimeout &lt;= 0 </span><span class="cov1" title="1">{
                 return ErrInvalidDBPingTimeout
         }</span>
-        <span class="cov4" title="18">if dbCfg.SlowQueryWarnThreshold &lt; 0 </span><span class="cov1" title="2">{
+        <span class="cov5" title="18">if dbCfg.SlowQueryWarnThreshold &lt; 0 </span><span class="cov1" title="2">{
                 return ErrInvalidSlowQueryWarnThreshold
         }</span>
         <span class="cov4" title="16">return nil</span>
@@ -1631,7 +1631,7 @@ func validateSecurityConfig(secCfg Security) error <span class="cov5" title="20"
                 return ErrEmptyAllowedOrigins
         }</span>
 
-        <span class="cov4" title="18">if secCfg.BcryptCost &lt; bcrypt.MinCost || bcrypt.MaxCost &lt; secCfg.BcryptCost </span><span class="cov1" title="2">{
+        <span class="cov5" title="18">if secCfg.BcryptCost &lt; bcrypt.MinCost || bcrypt.MaxCost &lt; secCfg.BcryptCost </span><span class="cov1" title="2">{
                 return ErrInvalidBcryptCost
         }</span>
 
@@ -1668,12 +1668,12 @@ func validateAuthConfig(authCfg Auth) error <span class="cov4" title="15">{
 }
 
 // buildStatusCodeSet は、HTTPステータスコードのセットを構築します。
-func buildStatusCodeSet(codes []int) map[int]bool <span class="cov6" title="68">{
+func buildStatusCodeSet(codes []int) map[int]bool <span class="cov6" title="67">{
         m := make(map[int]bool, len(codes))
-        for _, code := range codes </span><span class="cov10" title="673">{
+        for _, code := range codes </span><span class="cov10" title="663">{
                 m[code] = true
         }</span>
-        <span class="cov6" title="68">return m</span>
+        <span class="cov6" title="67">return m</span>
 }
 </pre>
 		
@@ -1786,7 +1786,7 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="337">{
+func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="343">{
         t.Helper()
         return &amp;Config{
                 os: OperatingSystemConfig{
@@ -2254,16 +2254,16 @@ func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig <span class="c
 func (o *OperatingSystemConfig) TimeZone() string <span class="cov10" title="529">{ return o.timezone }</span>
 
 // NewApplicationConfig は、アプリケーションの設定を返します。
-func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov6" title="46">{ return &amp;cfg.app }</span>
+func NewApplicationConfig(cfg *Config) *ApplicationConfig <span class="cov6" title="52">{ return &amp;cfg.app }</span>
 
 // Env は、デプロイ環境ラベルを返します（自由値）。例: "local" / "staging" / "production"。
-func (a *ApplicationConfig) Env() string <span class="cov5" title="20">{ return a.env }</span>
+func (a *ApplicationConfig) Env() string <span class="cov6" title="33">{ return a.env }</span>
 
 // Mode は、アプリの動作モードを返します（"development" / "production" のみ。挙動切替に使用。Env とは別軸）。
 func (a *ApplicationConfig) Mode() string <span class="cov5" title="21">{ return a.mode }</span>
 
 // Name は、アプリケーションの名前を返します。
-func (a *ApplicationConfig) Name() string <span class="cov3" title="7">{ return a.name }</span>
+func (a *ApplicationConfig) Name() string <span class="cov5" title="20">{ return a.name }</span>
 
 // ShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。
 func (a *ApplicationConfig) ShutdownTimeout() time.Duration <span class="cov1" title="2">{ return a.shutdownTimeout }</span>
@@ -5407,19 +5407,19 @@ func NewFxEventLogger(logger logging.Logger) fxevent.Logger <span class="cov5" t
         return &amp;fxEventLogger{logger: logger.Named("fx")}
 }</span>
 
-func (f *fxEventLogger) LogEvent(event fxevent.Event) <span class="cov10" title="447">{
+func (f *fxEventLogger) LogEvent(event fxevent.Event) <span class="cov10" title="489">{
         switch e := event.(type) </span>{
         case *fxevent.OnStartExecuted:<span class="cov2" title="3">
                 f.errorIf(e.Err, "fx OnStart hook failed",
                         logging.String("callee", e.FunctionName), logging.String("caller", e.CallerName))</span>
-        case *fxevent.OnStopExecuted:<span class="cov2" title="3">
+        case *fxevent.OnStopExecuted:<span class="cov3" title="4">
                 f.errorIf(e.Err, "fx OnStop hook failed",
                         logging.String("callee", e.FunctionName), logging.String("caller", e.CallerName))</span>
         case *fxevent.Supplied:<span class="cov1" title="1">
                 f.errorIf(e.Err, "fx supply failed", logging.String("type", e.TypeName))</span>
-        case *fxevent.Provided:<span class="cov8" title="157">
+        case *fxevent.Provided:<span class="cov8" title="165">
                 f.errorIf(e.Err, "fx provide failed", logging.String("constructor", e.ConstructorName))</span>
-        case *fxevent.Invoked:<span class="cov5" title="17">
+        case *fxevent.Invoked:<span class="cov5" title="21">
                 f.errorIf(e.Err, "fx invoke failed", logging.String("function", e.FunctionName))</span>
         case *fxevent.Replaced:<span class="cov1" title="1">
                 f.errorIf(e.Err, "fx replace failed")</span>
@@ -5446,8 +5446,8 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) <span class="cov10" title=
         }
 }
 
-func (f *fxEventLogger) errorIf(err error, msg string, fields ...*logging.Field) <span class="cov8" title="191">{
-        if err == nil </span><span class="cov8" title="182">{
+func (f *fxEventLogger) errorIf(err error, msg string, fields ...*logging.Field) <span class="cov8" title="204">{
+        if err == nil </span><span class="cov8" title="195">{
                 return
         }</span>
         <span class="cov4" title="9">f.logger.Error(msg, append(fields, logging.Error(logging.ErrorKey, err))...)</span>
@@ -5693,17 +5693,17 @@ type lifecycleRegistrar struct {
 }
 
 // NewLifecycleRegistrar は、fx.Lifecycle を用いて Registrar の実装を提供します。
-func NewLifecycleRegistrar(lc fx.Lifecycle) Registrar <span class="cov8" title="10">{
+func NewLifecycleRegistrar(lc fx.Lifecycle) Registrar <span class="cov7" title="10">{
         return lifecycleRegistrar{lc: lc}
 }</span>
 
-func (r lifecycleRegistrar) RegisterStart(start func(ctx context.Context) error) <span class="cov7" title="8">{
+func (r lifecycleRegistrar) RegisterStart(start func(ctx context.Context) error) <span class="cov6" title="8">{
         r.lc.Append(fx.Hook{
                 OnStart: start,
         })
 }</span>
 
-func (r lifecycleRegistrar) RegisterStop(stop func(ctx context.Context) error) <span class="cov10" title="17">{
+func (r lifecycleRegistrar) RegisterStop(stop func(ctx context.Context) error) <span class="cov10" title="23">{
         r.lc.Append(fx.Hook{
                 OnStop: stop,
         })
@@ -6057,13 +6057,16 @@ import (
         "go.uber.org/fx"
 )
 
-// ObservabilityModule は、オブザーバビリティ（トレーシング）関連の依存関係を提供するfx.Moduleです。
+// ObservabilityModule は、オブザーバビリティ（トレーシング / メトリクス）関連の依存関係を提供するfx.Moduleです。
 func ObservabilityModule() fx.Option <span class="cov10" title="13">{
         return fx.Module("observability",
                 fx.Provide(
+                        observability.NewResource,
                         observability.TracerProvider,
+                        observability.MeterProvider,
                         observability.NewTracerFactory,
                 ),
+                fx.Invoke(observability.InvokeMeterProvider),
         )
 }</span>
 </pre>
@@ -6296,7 +6299,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="27">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="31">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -8982,7 +8985,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key fieldKey, v string) *Field <span class="cov10" title="4371">{
+func String(key fieldKey, v string) *Field <span class="cov10" title="4385">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -9082,7 +9085,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov7" title="317">{
+        for i, line := range lines </span><span class="cov6" title="267">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>
@@ -9959,31 +9962,112 @@ func (lt LayerTracer) logSpanEvent(callerSkip int, obs logging.ObservabilityFiel
 import (
         "context"
 
+        "go-boilerplate/internal/config"
         "go-boilerplate/internal/di/lifecycle"
+        "go-boilerplate/internal/system"
+        "go-boilerplate/pkg/xerrors"
 
+        "go.opentelemetry.io/contrib/exporters/autoexport"
+        "go.opentelemetry.io/contrib/instrumentation/runtime"
         "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+        "go.opentelemetry.io/otel/metric"
+        "go.opentelemetry.io/otel/propagation"
+        sdkmetric "go.opentelemetry.io/otel/sdk/metric"
         "go.opentelemetry.io/otel/sdk/resource"
         sdktrace "go.opentelemetry.io/otel/sdk/trace"
+        semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
         "go.opentelemetry.io/otel/trace"
 )
 
-// TracerProvider は、OpenTelemetry のトレーサープロバイダーを初期化し、otel.SetTracerProvider で
-// グローバル登録したうえで、シャットダウン時に Shutdown を呼ぶフックを Registrar へ登録して返します。
-// Exporter / SpanProcessor は未配線（最小構成）のため、span を実際に送出するには利用側で
-// WithBatcher 等を追加してください。
-func TracerProvider(reg lifecycle.Registrar) trace.TracerProvider <span class="cov10" title="10">{
-        tp := sdktrace.NewTracerProvider(
-                sdktrace.WithResource(resource.Default()),
+// noopSpanExporter は span を送出しない SpanExporter。
+type noopSpanExporter struct{}
+
+// NewResource は service 識別情報を付与した OpenTelemetry リソースを生成する。
+func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error) <span class="cov10" title="12">{
+        attrs := resource.NewSchemaless(
+                semconv.ServiceName(appCfg.Name()),
+                semconv.DeploymentEnvironmentName(appCfg.Env()),
+                semconv.ServiceVersion(bi.Version()),
+                attribute.String("service.revision", bi.Revision()),
+                attribute.String("service.build_date", bi.BuildDate()),
         )
 
-        otel.SetTracerProvider(tp)
+        res, err := resource.Merge(resource.Default(), attrs)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, xerrors.Wrap(err, "failed to merge otel resource")
+        }</span>
 
-        reg.RegisterStop(func(ctx context.Context) error </span><span class="cov8" title="6">{
-                return tp.Shutdown(ctx)
-        }</span>)
-
-        <span class="cov10" title="10">return tp</span>
+        <span class="cov10" title="12">return res, nil</span>
 }
+
+// TracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、Shutdown フックを登録して返す。
+// SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-op となる。
+func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.TracerProvider, error) <span class="cov8" title="9">{
+        exporter, err := autoexport.NewSpanExporter(context.Background(), autoexport.WithFallbackSpanExporter(newNoopSpanExporter))
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, xerrors.Wrap(err, "failed to build span exporter")
+        }</span>
+
+        <span class="cov8" title="8">opts := []sdktrace.TracerProviderOption{sdktrace.WithResource(res)}
+        if _, isNoop := exporter.(noopSpanExporter); !isNoop </span><span class="cov0" title="0">{
+                opts = append(opts, sdktrace.WithBatcher(exporter))
+        }</span>
+
+        <span class="cov8" title="8">tp := sdktrace.NewTracerProvider(opts...)
+
+        otel.SetTracerProvider(tp)
+        otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+                propagation.TraceContext{},
+                propagation.Baggage{},
+        ))
+
+        reg.RegisterStop(tp.Shutdown)
+
+        return tp, nil</span>
+}
+
+// MeterProvider は MeterProvider をグローバル登録し、Shutdown フックを登録して返す。
+// MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-op となりランタイム計装も行わない。
+func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error) <span class="cov8" title="9">{
+        reader, err := autoexport.NewMetricReader(context.Background(), autoexport.WithFallbackMetricReader(newNoopMetricReader))
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, xerrors.Wrap(err, "failed to build metric reader")
+        }</span>
+
+        <span class="cov8" title="8">mp := sdkmetric.NewMeterProvider(
+                sdkmetric.WithResource(res),
+                sdkmetric.WithReader(reader),
+        )
+
+        if _, isNoop := reader.(*sdkmetric.ManualReader); !isNoop </span><span class="cov0" title="0">{
+                if err := runtime.Start(runtime.WithMeterProvider(mp)); err != nil </span><span class="cov0" title="0">{
+                        return nil, xerrors.Wrap(err, "failed to start runtime metrics")
+                }</span>
+        }
+
+        <span class="cov8" title="8">otel.SetMeterProvider(mp)
+        reg.RegisterStop(mp.Shutdown)
+
+        return mp, nil</span>
+}
+
+// InvokeMeterProvider は、依存元の無い MeterProvider を fx に構築させる no-op invoke target。
+func InvokeMeterProvider(metric.MeterProvider) {<span class="cov8" title="7">}</span>
+
+// newNoopSpanExporter は送出先未指定時のフォールバック SpanExporter を返す。
+func newNoopSpanExporter(context.Context) (sdktrace.SpanExporter, error) <span class="cov8" title="8">{
+        return noopSpanExporter{}, nil
+}</span>
+
+func (noopSpanExporter) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) error <span class="cov1" title="1">{ return nil }</span>
+
+func (noopSpanExporter) Shutdown(context.Context) error <span class="cov1" title="1">{ return nil }</span>
+
+// newNoopMetricReader は送出先未指定時のフォールバック MetricReader を返す(ManualReader は no-op)。
+func newNoopMetricReader(context.Context) (sdkmetric.Reader, error) <span class="cov8" title="8">{
+        return sdkmetric.NewManualReader(), nil
+}</span>
 </pre>
 		
 		<pre class="file" id="file136" style="display: none">package observability
@@ -10159,7 +10243,7 @@ type buildInfo struct {
 }
 
 // NewBuildInfo は、BuildInfo の新しいインスタンスを作成します。
-func NewBuildInfo() BuildInfo <span class="cov10" title="5">{
+func NewBuildInfo() BuildInfo <span class="cov10" title="16">{
         return &amp;buildInfo{
                 version:   Version,
                 revision:  Revision,
@@ -10168,13 +10252,13 @@ func NewBuildInfo() BuildInfo <span class="cov10" title="5">{
 }</span>
 
 // Version は、buildInfo からバージョン情報を取得します。
-func (bi *buildInfo) Version() string <span class="cov7" title="3">{ return bi.version }</span>
+func (bi *buildInfo) Version() string <span class="cov10" title="16">{ return bi.version }</span>
 
 // Revision は、buildInfo からリビジョン情報を取得します。
-func (bi *buildInfo) Revision() string <span class="cov7" title="3">{ return bi.revision }</span>
+func (bi *buildInfo) Revision() string <span class="cov10" title="16">{ return bi.revision }</span>
 
 // BuildDate は、buildInfo からビルド日時情報を取得します。
-func (bi *buildInfo) BuildDate() string <span class="cov7" title="3">{ return bi.buildDate }</span>
+func (bi *buildInfo) BuildDate() string <span class="cov10" title="16">{ return bi.buildDate }</span>
 </pre>
 		
 		<pre class="file" id="file139" style="display: none">// Package auth は認証に関連するインターフェースを提供します。
@@ -11439,7 +11523,7 @@ func (OS) Glob(pattern string) ([]string, error) <span class="cov1" title="1">{
 package ptr
 
 // To は、引数として渡された値のポインタを返します。
-func To[T any](v T) *T <span class="cov10" title="252">{ return &amp;v }</span>
+func To[T any](v T) *T <span class="cov10" title="251">{ return &amp;v }</span>
 
 // Copy は、ポインタの指す値をシャローコピーした新しいポインタを返します（nil 入力時は nil）。
 // T が参照型フィールド（スライス・マップ・ポインタ等）を含む場合、その参照先は複製元と共有されます。
@@ -11699,13 +11783,13 @@ import (
 )
 
 // New は、新しいエラーを生成します。
-func New(msg string) error <span class="cov9" title="797">{
+func New(msg string) error <span class="cov9" title="786">{
         return errors.New(msg)
 }</span>
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
-func Wrap(err error, msg string) error <span class="cov10" title="1593">{
+func Wrap(err error, msg string) error <span class="cov10" title="1574">{
         return errors.Wrap(err, msg)
 }</span>
 

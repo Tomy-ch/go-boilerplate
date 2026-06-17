@@ -9,11 +9,39 @@ This package provides a **tracing mechanism based on OpenTelemetry**, and
 
 Primary purposes:
 
-- Initialization and management of OpenTelemetry
+- Initialization and management of OpenTelemetry (tracing + metrics)
 - Span generation per layer
 - Logging of trace / span information
 - Unified observability across Domain / Usecase / Controller
 - Lightweight tracer for testing
+
+### Configuration boundary (env-driven, vendor-neutral)
+
+This package wires only the **vendor-neutral OpenTelemetry plumbing**. The export
+**destination is never modeled in the typed config**; it is read from the standard
+`OTEL_*` environment variables by the SDK:
+
+- `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER` (`otlp` / `console` / `none`)
+- `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_EXPORTER_OTLP_PROTOCOL`
+- `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG`
+
+Export is activated by **selecting an exporter** via `OTEL_TRACES_EXPORTER` /
+`OTEL_METRICS_EXPORTER` (`otlp` / `console`). When neither is set, a no-op fallback is
+used — nothing is sent, no connection is attempted, and no background goroutine runs — so
+local development needs no configuration and no DI swapping.
+
+> **Important:** setting `OTEL_EXPORTER_OTLP_ENDPOINT` **alone does not enable export**.
+> The SDK only reads the endpoint once an OTLP exporter is selected, so staging / prod must
+> set **`OTEL_TRACES_EXPORTER=otlp` / `OTEL_METRICS_EXPORTER=otlp`** in addition to the
+> endpoint pointing at a Collector / Agent sidecar. `OTEL_TRACES_EXPORTER=console` prints
+> spans to stdout locally.
+
+Vendor specifics (Grafana / Datadog / New Relic) live in that Collector, not here.
+
+Service identity (`service.name` / `deployment.environment` / `service.version` /
+`service.revision` / `service.build_date`) comes from the existing app config and the
+build-time `internal/system` build info (ldflags), so no OTel-specific keys leak into
+the typed config.
 
 ## Architecture
 
@@ -37,7 +65,9 @@ Roles of each component:
 
 |Component|Role|
 |---|---|
-|`TracerProvider`|OpenTelemetry tracer provider|
+|`NewResource`|Build the OTel resource (service identity) from app config + build info|
+|`TracerProvider`|OpenTelemetry tracer provider + context propagator|
+|`MeterProvider`|OpenTelemetry meter provider + Go runtime metrics|
 |`TracerFactory`|Generate tracers per layer|
 |`LayerTracer`|Span generation + observability logging|
 |`helper.go`|Span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -51,16 +81,36 @@ Roles of each component:
 Initializes the OpenTelemetry tracer provider.
 
 ```go
-func TracerProvider(reg lifecycle.Registrar) trace.TracerProvider
+func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.TracerProvider, error)
 ```
 
 Characteristics
 
-- Creates OpenTelemetry TracerProvider
+- Creates OpenTelemetry TracerProvider with the given resource
 - Registers it with `otel.SetTracerProvider`
+- Registers the W3C `TraceContext` + `Baggage` propagator via `otel.SetTextMapPropagator`
+  (required for cross-service trace continuity)
+- Builds the `SpanExporter` from standard `OTEL_*` env; when no exporter is selected it falls back to no-op and skips the batch processor (no goroutine)
+- Honors `OTEL_TRACES_SAMPLER` for sampling (parent-based always-on by default)
 - Executes `Shutdown()` when the application exits
 
 Used during application DI initialization.
+
+### 1.1 NewResource / MeterProvider
+
+```go
+func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)
+func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error)
+```
+
+- `NewResource` builds the shared OTel resource carrying `service.name` /
+  `deployment.environment` / `service.version` / `service.revision` / `service.build_date`
+  from app config + build info.
+- `MeterProvider` mirrors `TracerProvider`: it registers the meter provider via
+  `otel.SetMeterProvider` and a `Shutdown()` hook, and builds its `MetricReader` from the
+  standard `OTEL_*` env. Go **runtime metrics** instrumentation starts only when a real
+  exporter is selected (the no-op fallback skips it). It has no in-app consumer, so the DI
+  module force-starts it through `InvokeMeterProvider`.
 
 ### 2. TracerFactory
 
