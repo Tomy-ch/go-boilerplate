@@ -1,3 +1,4 @@
+// Package hook は、起動と停止のライフサイクルフックを提供します。
 package hook
 
 import (

@@ -1,3 +1,4 @@
+// Package sqlc は、sqlc で生成されたコードを補助する関数を提供します。
 package sqlc
 
 import "strings"
