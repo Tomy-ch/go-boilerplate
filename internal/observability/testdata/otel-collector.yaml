@@ -1,0 +1,26 @@
+# OTLP エクスポート動作確認用の最小 Collector 設定。
+# 受信した traces / metrics / logs を debug exporter で標準出力にダンプするだけ。
+# 使い方は export_verify_test.go のコメントを参照。
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      exporters: [debug]
+  telemetry:
+    logs:
+      level: info
