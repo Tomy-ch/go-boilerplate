@@ -10,6 +10,9 @@ pre-commit:
     sql-lint:
       glob: "*.sql"
       run: make sql-lint
+    md-lint:
+      glob: "*.md"
+      run: make md-lint
     actions-lint:
       glob:
         - ".github/workflows/*.{yml,yaml}"
