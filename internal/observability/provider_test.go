@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 )
 
@@ -88,6 +89,12 @@ func Test_NewTracerProvider(t *testing.T) {
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("伝播器を設定してグローバルなTracerProviderを構築し、Shutdown可能な具象を返す", func(t *testing.T) {
+			prevTP, prevProp := otel.GetTracerProvider(), otel.GetTextMapPropagator()
+			t.Cleanup(func() {
+				otel.SetTracerProvider(prevTP)
+				otel.SetTextMapPropagator(prevProp)
+			})
+
 			tp, err := NewTracerProvider(newTestResource(t))
 
 			require.NoError(t, err)
@@ -100,6 +107,18 @@ func Test_NewTracerProvider(t *testing.T) {
 			assert.Contains(t, fields, "baggage")
 
 			// ライフサイクル登録は di 層に移譲したため、ここでは Shutdown が呼べることのみ確認する。
+			require.NoError(t, tp.Shutdown(context.Background()))
+		})
+
+		t.Run("OTEL_TRACES_EXPORTERがnoneの場合もno-opとして構築しエラーを返さない", func(t *testing.T) {
+			t.Setenv("OTEL_TRACES_EXPORTER", "none")
+			prevTP := otel.GetTracerProvider()
+			t.Cleanup(func() { otel.SetTracerProvider(prevTP) })
+
+			tp, err := NewTracerProvider(newTestResource(t))
+
+			require.NoError(t, err)
+			require.NotNil(t, tp)
 			require.NoError(t, tp.Shutdown(context.Background()))
 		})
 	})
@@ -116,11 +135,32 @@ func Test_NewTracerProvider(t *testing.T) {
 	})
 }
 
+func Test_ProvideTracerProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("具象TracerProviderをtrace.TracerProviderインターフェースとして返す", func(t *testing.T) {
+			t.Parallel()
+
+			tp := sdktrace.NewTracerProvider()
+
+			got := ProvideTracerProvider(tp)
+
+			assert.Same(t, tp, got)
+		})
+	})
+}
+
 func Test_NewMeterProvider(t *testing.T) {
 	// otel.SetMeterProvider をグローバルに触るため Parallel 不可。
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("グローバルなMeterProviderを構築し、Shutdown可能な具象を返す", func(t *testing.T) {
+			prevMP := otel.GetMeterProvider()
+			t.Cleanup(func() { otel.SetMeterProvider(prevMP) })
+
 			mp, err := NewMeterProvider(newTestResource(t))
 
 			require.NoError(t, err)
@@ -128,6 +168,18 @@ func Test_NewMeterProvider(t *testing.T) {
 			assert.Same(t, mp, otel.GetMeterProvider())
 
 			// ライフサイクル登録は di 層に移譲したため、ここでは Shutdown が呼べることのみ確認する。
+			require.NoError(t, mp.Shutdown(context.Background()))
+		})
+
+		t.Run("OTEL_METRICS_EXPORTERがnoneの場合もno-opとして構築しランタイム計装を行わない", func(t *testing.T) {
+			t.Setenv("OTEL_METRICS_EXPORTER", "none")
+			prevMP := otel.GetMeterProvider()
+			t.Cleanup(func() { otel.SetMeterProvider(prevMP) })
+
+			mp, err := NewMeterProvider(newTestResource(t))
+
+			require.NoError(t, err)
+			require.NotNil(t, mp)
 			require.NoError(t, mp.Shutdown(context.Background()))
 		})
 	})
