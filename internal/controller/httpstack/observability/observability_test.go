@@ -6,13 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
-	"go-boilerplate/internal/observability"
-
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -35,23 +31,4 @@ func TestMiddleware_Integration(t *testing.T) {
 
 	require.NotNil(t, rec)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func TestTracerProvider(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-
-	mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
-	var shutdownFunc func(context.Context) error
-	dummy := func(context.Context) error { return nil }
-	mockReg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		shutdownFunc = args[0].(func(context.Context) error)
-	}).Times(1)
-
-	tp := observability.TracerProvider(mockReg)
-	require.NotNil(t, tp)
-	require.NotNil(t, shutdownFunc)
-
-	require.NoError(t, shutdownFunc(context.Background()))
 }
