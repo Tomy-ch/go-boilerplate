@@ -15,7 +15,7 @@ Primary purposes:
 - Unified observability across Domain / Usecase / Controller
 - Lightweight tracer for testing
 
-### Configuration boundary (env-driven, vendor-neutral)
+## Configuration boundary (env-driven, vendor-neutral)
 
 This package wires only the **vendor-neutral OpenTelemetry plumbing**. The export
 **destination is never modeled in the typed config**; it is read from the standard
