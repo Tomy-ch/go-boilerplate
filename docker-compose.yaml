@@ -13,10 +13,7 @@ services:
       - "6060:6060"   # メトリクス(pprof)ポート
     volumes:
       - .:/app
-    # OTel テレメトリ(traces/metrics)の送出口。別リポジトリの Grafana stack(Collector)へホスト経由で送る。
-    # 既定は無効(OTEL_*_EXPORTER 未設定=no-op)。Grafana stack 起動後に
-    #   OTEL_TRACES_EXPORTER=otlp OTEL_METRICS_EXPORTER=otlp docker compose --profile development up
-    # のように渡すと、ホストに公開された Collector(既定 host.docker.internal:4318)へ送出する。
+    # OTel 送出口(別repoのGrafana stackへホスト経由)。既定 no-op、OTEL_*_EXPORTER=otlp で有効化。
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
