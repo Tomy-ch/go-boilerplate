@@ -42,6 +42,7 @@ func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer {
 	return tf.Usecase()
 }
 
+// NewMockInfraLayerTracer は、テスト用のインフラレイヤートレーサーを生成します。
 func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
 	t.Helper()
 	tf := NewNoopTracerFactory(t)

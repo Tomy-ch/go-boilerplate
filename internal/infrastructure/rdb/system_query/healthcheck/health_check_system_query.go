@@ -17,6 +17,7 @@ type systemQuery struct {
 	tracer observability.LayerTracer
 }
 
+// New は、DB ヘルスチェック用のシステムクエリ実装を生成して返します。
 func New(
 	provider loggingdb.DBProvider,
 	tf observability.TracerFactory,

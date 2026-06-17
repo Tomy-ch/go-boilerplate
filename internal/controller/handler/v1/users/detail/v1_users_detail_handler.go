@@ -27,6 +27,7 @@ type server struct {
 	uc     user.Usecase
 }
 
+// BindHandler は、ユーザー詳細のハンドラを Echo に登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),

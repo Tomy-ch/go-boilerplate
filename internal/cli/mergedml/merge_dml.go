@@ -46,6 +46,7 @@ type FileSystem interface {
 // osFileSystem は os パッケージを用いた FileSystem の実装です。
 type osFileSystem struct{}
 
+// Generator は、DML ファイルから sqlc 用の統合 SQL ファイルを生成するオブジェクトです。
 type Generator struct {
 	logger          logging.Logger
 	callerSkipCount int

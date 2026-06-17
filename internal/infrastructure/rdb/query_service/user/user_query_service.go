@@ -17,6 +17,7 @@ type service struct {
 	tracer observability.LayerTracer
 }
 
+// New は、ユーザー検索クエリサービスの実装を生成して返します。
 func New(
 	db loggingdb.DBProvider,
 	tf observability.TracerFactory,

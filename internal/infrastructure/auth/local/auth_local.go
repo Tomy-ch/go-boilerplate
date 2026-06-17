@@ -14,6 +14,7 @@ const (
 	localPrefix = "debug:"
 )
 
+// ErrLocalMockAuthenticatorInvalidToken は、ローカルモック認証でトークンが不正な場合のエラーです。
 var ErrLocalMockAuthenticatorInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, "local mock authenticator: invalid token")
 
 // authenticator は local 開発用の Authenticator です。

@@ -1,6 +1,6 @@
 ---
 name: local-review
-description: Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap), each on `sonnet` by default so reviewer ≠ an Opus implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Step 3.5), and synthesizes a single Japanese report. Read-only on source: reviewers cannot edit code (no fix is applied), and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; falls back to the local report when no open PR exists). Use before commit / PR to get an independent second opinion that the implementer's own model would not surface.
+description: Local adversarial, low-bias code review of the current change, run by subagents on a DIFFERENT model than the implementer. Mirrors `/code-review`'s finder → verify shape but keeps everything local and adds a runtime (curl + o11y) stage that mocked tests cannot cover. Confirms scope via `AskUserQuestion` (changed files vs branch-vs-base diff vs specific paths), fans out `adversarial-reviewer` subagents — one per lens (correctness / security / architecture / runtime-gap / comment-style), each on `sonnet` by default so reviewer ≠ an Opus implementer — then verifies each finding with an independent `review-verifier` subagent (CONFIRMED / PLAUSIBLE / REFUTED), optionally runs the runtime curl + o11y check for touched endpoints (orchestrator-driven, per `scaffold-endpoint` Step 3.5), and synthesizes a single Japanese report. Read-only on source: reviewers cannot edit code (no fix is applied), and any destructive runtime curl is confirmed with the user first. By default the surviving CONFIRMED / PLAUSIBLE findings are posted to the branch's PR as inline review comments anchored to each finding's line (opt out with `--no-comment`; falls back to the local report when no open PR exists). Use before commit / PR to get an independent second opinion that the implementer's own model would not surface.
 ---
 
 # Local Review
@@ -64,8 +64,9 @@ Spawn `adversarial-reviewer` subagents — **one per lens**, concurrently (issue
 | `security` | always (especially when a handler / auth / DTO / `openapi/**` is touched) |
 | `architecture` | always |
 | `runtime-gap` | when a controller / DI / `openapi/**` / `database/**` is touched |
+| `comment-style` | when the diff adds / changes any doc or code comment (almost always) |
 
-Each subagent prompt MUST include: the lens name + its definition, the base ref + changed-file list + the diff, and pointers to `CLAUDE.md` / the relevant `README.md` / OpenAPI spec / migrations. Use `agentType: "adversarial-reviewer"`, `model:` per the rule, and a `label` like `find:security`.
+Each subagent prompt MUST include: the lens name + its definition, the base ref + changed-file list + the diff, and pointers to `CLAUDE.md` / the relevant `README.md` / OpenAPI spec / migrations. Use `agentType: "adversarial-reviewer"`, `model:` per the rule, and a `label` like `find:security`. For the `comment-style` lens, also point the subagent at `docs/rules.md` ("Comment Rules") as the authoritative policy — it flags comments that narrate internal processing instead of behavior (linters cannot detect this; it is the semantic counterpart to `revive exported`'s presence/format check).
 
 ## Step 3 — Adversarial Verify
 
@@ -94,7 +95,7 @@ Produce one Japanese report:
 ```text
 ## ローカルレビュー結果（reviewer: <model> / implementer: <model>）
 
-スコープ: <base>...HEAD（<N> files） / lens: correctness, security, architecture, runtime-gap
+スコープ: <base>...HEAD（<N> files） / lens: correctness, security, architecture, runtime-gap, comment-style
 ランタイム検証: 実施（curl/o11y）/ 対象外（エンドポイント変更なし）
 
 ### CONFIRMED（要対応）

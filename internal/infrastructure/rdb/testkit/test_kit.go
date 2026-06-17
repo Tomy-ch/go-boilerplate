@@ -29,6 +29,7 @@ var (
 	txLock sync.Mutex
 )
 
+// TransactionRunner は、テスト用に関数をトランザクション内で実行するインターフェースです。
 type TransactionRunner interface {
 	WithinTx(fn func(ctx context.Context))
 }

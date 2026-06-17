@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// RawPassword は、検証済みの平文パスワードを保持する値オブジェクトです。
 type RawPassword struct {
 	value string
 }
@@ -22,6 +23,7 @@ func NewRawPassword(v string) (RawPassword, error) {
 	return RawPassword{value: v}, nil
 }
 
+// Value は、保持している平文パスワード文字列を返します。
 func (p RawPassword) Value() string {
 	return p.value
 }

@@ -8,6 +8,8 @@ type Credential struct {
 	accessToken string // アクセストークン
 }
 
+// NewCredential は、アクセストークンを検証して Credential を生成して返します。
+// トークンが空文字列またはホワイトスペースのみの場合は ErrTokenMissing を返します。
 func NewCredential(
 	accessToken string,
 ) (*Credential, error) {

@@ -7,6 +7,7 @@ package shutdowner
 
 import "go.uber.org/fx"
 
+// Shutdowner は、アプリケーションのシャットダウンを要求するインターフェースです。
 type Shutdowner interface {
 	Shutdown() error
 }

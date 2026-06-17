@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Config は、アプリケーション全体の設定をサブ設定ごとに束ねたルート設定です。
 type Config struct {
 	os            OperatingSystemConfig
 	app           ApplicationConfig
@@ -18,10 +19,12 @@ type Config struct {
 	auth          AuthConfig
 }
 
+// OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
 type OperatingSystemConfig struct {
 	timezone string
 }
 
+// ApplicationConfig は、アプリの識別情報・動作モード・シャットダウン制御の設定を保持します。
 type ApplicationConfig struct {
 	env             string
 	name            string
@@ -29,6 +32,7 @@ type ApplicationConfig struct {
 	shutdownTimeout time.Duration
 }
 
+// ServerConfig は、HTTP サーバーの待ち受けアドレスと各種タイムアウトを保持します。
 type ServerConfig struct {
 	host              string
 	port              int
@@ -38,6 +42,7 @@ type ServerConfig struct {
 	idleTimeout       time.Duration
 }
 
+// MetricsConfig は、メトリクスエンドポイントの待ち受け情報と認証情報を保持します。
 type MetricsConfig struct {
 	host     string
 	port     int
@@ -45,12 +50,14 @@ type MetricsConfig struct {
 	password string
 }
 
+// ObservabilityConfig は、可観測モードの有効化と、DB クエリ引数マスク・監視対象ステータスコードの設定を保持します。
 type ObservabilityConfig struct {
 	enabled             bool
 	maskedDBQueryArgs   bool
 	targetStatusCodeSet map[int]bool
 }
 
+// DatabaseConfig は、データベースの接続情報とタイムアウト閾値を保持します。
 type DatabaseConfig struct {
 	driver                 string
 	host                   string
@@ -63,6 +70,7 @@ type DatabaseConfig struct {
 	slowQueryWarnThreshold time.Duration
 }
 
+// DBConnectionConfig は、データベース接続プールのサイズと寿命の設定を保持します。
 type DBConnectionConfig struct {
 	maxConns    int32
 	minConns    int32
@@ -70,6 +78,7 @@ type DBConnectionConfig struct {
 	maxIdleTime time.Duration
 }
 
+// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー・bcrypt コスト等のセキュリティ設定を保持します。
 type SecurityConfig struct {
 	allowedOrigins        []string
 	cidr                  *net.IPNet
@@ -82,12 +91,14 @@ type SecurityConfig struct {
 	bcryptCost            int
 }
 
+// SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。
 type SecureCookieConfig struct {
 	secure   *bool
 	sameSite string
 	domain   string
 }
 
+// AuthConfig は、認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持します。
 type AuthConfig struct {
 	cookieName          string
 	headerName          string

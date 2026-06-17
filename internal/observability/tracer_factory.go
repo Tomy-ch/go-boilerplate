@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// TracerFactory は、レイヤー別の LayerTracer を生成するファクトリです。
 type TracerFactory interface {
 	// Controller は、コントローラー層用のトレーサーを返します。
 	Controller() LayerTracer

@@ -19,6 +19,7 @@ import (
 	"github.com/oapi-codegen/runtime/types"
 )
 
+// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
 var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
@@ -26,6 +27,7 @@ type server struct {
 	uc     user.Usecase
 }
 
+// BindHandler は、ユーザー一覧のハンドラを Echo に登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),

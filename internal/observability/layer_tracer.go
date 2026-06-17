@@ -14,10 +14,13 @@ import (
 )
 
 const (
-	delimiter            = "."
+	delimiter = "."
+	// Controller は、コントローラー層を表すレイヤー名です。
 	Controller layerName = "controller"
-	Usecase    layerName = "usecase"
-	Infra      layerName = "infrastructure"
+	// Usecase は、ユースケース層を表すレイヤー名です。
+	Usecase layerName = "usecase"
+	// Infra は、インフラ層を表すレイヤー名です。
+	Infra layerName = "infrastructure"
 
 	// callSkip は、ロガーのコールスタックのスキップ数を定義します。
 	callSkip = 3
@@ -25,6 +28,7 @@ const (
 
 type layerName string
 
+// LayerTracer は、アーキテクチャレイヤー単位のトレース span を提供するトレーサーです。
 type LayerTracer struct {
 	log      logging.Logger
 	lf       logging.LogFieldBuilder

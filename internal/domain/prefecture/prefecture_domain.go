@@ -9,8 +9,10 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// Prefectures は、Prefecture エンティティのスライス型です。
 type Prefectures []*Prefecture
 
+// Prefecture は、都道府県を表すドメインエンティティです。
 type Prefecture struct {
 	id   uuid.UUID
 	name string

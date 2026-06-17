@@ -231,6 +231,9 @@ linters:
       require-specific: true
     revive:
       rules:
+        - name: exported # exported な宣言にはドキュメントコメントを必須とする
+          arguments:
+            - "disableStutteringCheck" # 命名の stutter 検査は行わない(コメント必須化のみが目的)
         - name: var-naming
           arguments:
             - []
@@ -238,8 +241,6 @@ linters:
             - [{ skipPackageNameChecks: true }] # 変数名の命名規則をチェックしますが、パッケージ名のチェックはスキップします。これにより、パッケージ名が変数名と同じ場合でもエラーにならなくなります。
 
   exclusions:
-    presets:
-      - comments
     paths:
       - vendor
     rules:

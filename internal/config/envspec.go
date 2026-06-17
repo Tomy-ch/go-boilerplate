@@ -2,6 +2,7 @@ package config
 
 import "time"
 
+// Loader はアプリケーション全体の設定を環境変数から読み込むルートコンテナ。
 type Loader struct {
 	OS            OperatingSystem `envPrefix:"OS_"`
 	App           Application     `envPrefix:"APP_"`
@@ -15,10 +16,12 @@ type Loader struct {
 	Auth          Auth            `envPrefix:"AUTH_"`
 }
 
+// OperatingSystem はOS レベルの設定を保持する。現時点ではタイムゾーンのみを管理する。
 type OperatingSystem struct {
 	Timezone string `env:"TZ" default:"Asia/Tokyo"`
 }
 
+// Application はアプリケーション識別・動作モードおよびシャットダウン制御に関する設定を保持する。
 type Application struct {
 	Env             string        `env:"ENV,required"`
 	Name            string        `env:"NAME,required"`
@@ -26,6 +29,7 @@ type Application struct {
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`
 }
 
+// Server は HTTP サーバーのバインドアドレスおよび各種タイムアウトに関する設定を保持する。
 type Server struct {
 	Host              string        `env:"HOST,required"`
 	Port              int           `env:"PORT,required"`
@@ -35,6 +39,7 @@ type Server struct {
 	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT,required"`
 }
 
+// Metrics はメトリクスエンドポイント（Prometheus 等）への接続情報と認証情報を保持する。
 type Metrics struct {
 	Host     string `env:"HOST,required"`
 	Port     int    `env:"PORT,required"`
@@ -42,12 +47,16 @@ type Metrics struct {
 	Password string `env:"PASSWORD,required"`
 }
 
+// Observability はトレースや計装の有効化フラグ、DBクエリ引数マスク設定、
+// およびトレース対象とする HTTP ステータスコード一覧を保持する。
 type Observability struct {
 	Enabled           bool  `env:"ENABLED,required"`
 	MaskedDBQueryArgs bool  `env:"MASKED_DB_QUERY_ARGS,required"`
 	TargetStatusCodes []int `env:"TARGET_STATUS_CODES,required"  envSeparator:","`
 }
 
+// Database はデータベースへの接続先情報（ドライバ・ホスト・認証情報・SSL）および
+// 接続確認タイムアウトやスロークエリ警告閾値を保持する。
 type Database struct {
 	Driver                 string        `env:"DRIVER,required"`
 	Host                   string        `env:"HOST,required"`
@@ -60,6 +69,7 @@ type Database struct {
 	SlowQueryWarnThreshold time.Duration `env:"SLOW_QUERY_WARN_THRESHOLD,required"`
 }
 
+// DBConnection はコネクションプールの上限・下限数とコネクションの最大生存時間・最大アイドル時間を保持する。
 type DBConnection struct {
 	MaxConns    int32         `env:"MAX_CONNS,required"`
 	MinConns    int32         `env:"MIN_CONNS,required"`
@@ -67,6 +77,8 @@ type DBConnection struct {
 	MaxIdleTime time.Duration `env:"MAX_IDLE_TIME,required"`
 }
 
+// Security は CORS 許可オリジン・CIDR 制限・セキュリティヘッダー（HSTS・X-Frame-Options 等）・
+// Referrer Policy および bcrypt コストパラメータを保持する。
 type Security struct {
 	AllowedOrigins        []string      `env:"ALLOWED_ORIGINS,required"         envSeparator:","`
 	CIDR                  string        `env:"CIDR,required"`
@@ -79,12 +91,14 @@ type Security struct {
 	BcryptCost            int           `env:"BCRYPT_COST,required"`
 }
 
+// SecureCookie はセキュアクッキーの属性（Secure / SameSite / Domain）の上書き設定を保持する。
 type SecureCookie struct {
 	Secure   *bool  `env:"SECURE"`
 	SameSite string `env:"SAME_SITE"`
 	Domain   string `env:"DOMAIN"`
 }
 
+// Auth は認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持する。
 type Auth struct {
 	CookieName          string `env:"COOKIE_NAME,required"`
 	HeaderName          string `env:"HEADER_NAME,required"`

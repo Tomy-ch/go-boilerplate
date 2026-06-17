@@ -28,6 +28,7 @@ type server struct {
 	tracer    observability.LayerTracer
 }
 
+// BindHandler は、バージョン情報を返すハンドラを Echo に登録します。
 func BindHandler(
 	e *echo.Echo,
 	tf observability.TracerFactory,
