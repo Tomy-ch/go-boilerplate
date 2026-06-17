@@ -49,9 +49,9 @@ HTTP サーバーの起動・停止を `lifecycle.Registrar` に登録します�
 
 OpenTelemetry の `TracerProvider` / `MeterProvider` のシャットダウンフックを登録します。
 
-- **Stop**: `tp.Shutdown()` / `mp.Shutdown()` を呼び出し、バッファされた span / metric を flush してリソースを解放
+- **Stop**: `observability.ProviderShutdowner.Shutdown()` を呼び出し、バッファされた span / metric を flush して `TracerProvider` / `MeterProvider` を解放
 - 構築（`observability.NewTracerProvider` / `NewMeterProvider`）はライフサイクル非依存で行われ、シャットダウン登録はこの hook が担う。これにより `observability` パッケージは `di/lifecycle` への依存を持たない
-- otel のインターフェース（`trace.TracerProvider` / `metric.MeterProvider`）は `Shutdown` を公開しないため、具象の `*sdktrace.TracerProvider` / `*sdkmetric.MeterProvider` を受け取る
+- 両プロバイダの `Shutdown` を束ねた otel 非依存ハンドル `observability.ProviderShutdowner` を受け取ることで、otel SDK 型を di 層へ漏らさない
 
 ## DI 登録例
 

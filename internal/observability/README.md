@@ -68,6 +68,8 @@ Roles of each component:
 |`NewResource`|Build the OTel resource (service identity) from app config + build info|
 |`NewTracerProvider`|OpenTelemetry tracer provider + context propagator|
 |`NewMeterProvider`|OpenTelemetry meter provider + Go runtime metrics|
+|`shutdown.go`|`ProviderShutdowner` (otel-agnostic shutdown handle) + `NewProviderShutdowner`, consumed by the DI shutdown hook|
+|`ProvideTracerProvider`|Adapter exposing the concrete `*sdktrace.TracerProvider` as the `trace.TracerProvider` interface (in `provider.go`)|
 |`TracerFactory`|Generate tracers per layer|
 |`LayerTracer`|Span generation + observability logging|
 |`helper.go`|Span / trace helper, ShouldLogWithSpan, BuildSpanName|

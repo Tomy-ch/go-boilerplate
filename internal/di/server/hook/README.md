@@ -49,9 +49,9 @@ Registers a hook to close the database connection on shutdown.
 
 Registers shutdown hooks for the OpenTelemetry `TracerProvider` / `MeterProvider`.
 
-- **Stop**: Calls `tp.Shutdown()` / `mp.Shutdown()` to flush buffered spans / metrics and release resources
+- **Stop**: Calls `observability.ProviderShutdowner.Shutdown()`, which flushes buffered spans / metrics and releases the `TracerProvider` / `MeterProvider`
 - Construction (`observability.NewTracerProvider` / `NewMeterProvider`) is lifecycle-agnostic; this hook owns the shutdown registration, keeping the `observability` package free of any `di/lifecycle` dependency
-- Receives the concrete `*sdktrace.TracerProvider` / `*sdkmetric.MeterProvider` because the otel interfaces (`trace.TracerProvider` / `metric.MeterProvider`) do not expose `Shutdown`
+- Receives `observability.ProviderShutdowner` — an otel-agnostic handle that bundles both providers' `Shutdown` — so that otel SDK types do not leak into the DI layer
 
 ## DI Registration Example
 

@@ -65,6 +65,8 @@ LayerTracer --> ApplicationCode
 |`NewResource`|アプリ設定 + ビルド情報から OTel リソース（サービス識別情報）を構築|
 |`NewTracerProvider`|OpenTelemetry のトレーサープロバイダ + コンテキスト伝播器|
 |`NewMeterProvider`|OpenTelemetry のメータープロバイダ + Go ランタイムメトリクス|
+|`shutdown.go`|`ProviderShutdowner`（otel 非依存の後始末ハンドル）+ `NewProviderShutdowner`。di の shutdown hook が利用|
+|`ProvideTracerProvider`|具象 `*sdktrace.TracerProvider` を `trace.TracerProvider` IF として公開するアダプタ（`provider.go` 内）|
 |`TracerFactory`|レイヤー別トレーサ生成|
 |`LayerTracer`|span生成 + observabilityログ|
 |`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
