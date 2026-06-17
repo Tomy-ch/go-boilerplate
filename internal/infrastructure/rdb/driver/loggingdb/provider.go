@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/internal/observability"
 )
 
-// DBProvider は、コンテキストを受け取りログ付き DBTX を生成するファクトリインタフェースです。
+// DBProvider は、コンテキストを受け取り DBTX を生成するファクトリインタフェースです。
 type DBProvider interface {
 	NewLoggingDB(ctx context.Context) driver.DBTX
 }

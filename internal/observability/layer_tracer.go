@@ -28,7 +28,7 @@ const (
 
 type layerName string
 
-// LayerTracer は、レイヤー単位で span を生成・終了し、観測ログを出力するトレーサーです。
+// LayerTracer は、アーキテクチャレイヤー単位のトレース span を提供するトレーサーです。
 type LayerTracer struct {
 	log      logging.Logger
 	lf       logging.LogFieldBuilder

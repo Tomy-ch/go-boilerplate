@@ -2,8 +2,7 @@ package config
 
 import "time"
 
-// Loader はアプリケーション全体の環境変数をサブ構造体ごとに読み込むルートコンテナ。
-// 各フィールドは envPrefix に対応するプレフィックス付きの環境変数グループにマッピングされる。
+// Loader はアプリケーション全体の設定を環境変数から読み込むルートコンテナ。
 type Loader struct {
 	OS            OperatingSystem `envPrefix:"OS_"`
 	App           Application     `envPrefix:"APP_"`
