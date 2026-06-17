@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/di/lifecycle"
 	"go-boilerplate/internal/system"
 	"go-boilerplate/pkg/xerrors"
 
@@ -12,17 +11,12 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
-	"go.opentelemetry.io/otel/trace"
 )
-
-// noopSpanExporter は span を送出しない SpanExporter。
-type noopSpanExporter struct{}
 
 // NewResource は service 識別情報を付与した OpenTelemetry リソースを生成する。
 func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error) {
@@ -42,9 +36,9 @@ func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resour
 	return res, nil
 }
 
-// TracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、Shutdown フックを登録して返す。
+// NewTracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、構築した TracerProvider を返す。
 // SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-op となる。
-func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.TracerProvider, error) {
+func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error) {
 	exporter, err := autoexport.NewSpanExporter(context.Background(), autoexport.WithFallbackSpanExporter(newNoopSpanExporter))
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to build span exporter")
@@ -63,14 +57,12 @@ func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.Trac
 		propagation.Baggage{},
 	))
 
-	reg.RegisterStop(tp.Shutdown)
-
 	return tp, nil
 }
 
-// MeterProvider は MeterProvider をグローバル登録し、Shutdown フックを登録して返す。
+// NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
 // MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-op となりランタイム計装も行わない。
-func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error) {
+func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error) {
 	reader, err := autoexport.NewMetricReader(context.Background(), autoexport.WithFallbackMetricReader(newNoopMetricReader))
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to build metric reader")
@@ -88,24 +80,6 @@ func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.Mete
 	}
 
 	otel.SetMeterProvider(mp)
-	reg.RegisterStop(mp.Shutdown)
 
 	return mp, nil
-}
-
-// InvokeMeterProvider は、依存元の無い MeterProvider を fx に構築させる no-op invoke target。
-func InvokeMeterProvider(metric.MeterProvider) {}
-
-// newNoopSpanExporter は送出先未指定時のフォールバック SpanExporter を返す。
-func newNoopSpanExporter(context.Context) (sdktrace.SpanExporter, error) {
-	return noopSpanExporter{}, nil
-}
-
-func (noopSpanExporter) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) error { return nil }
-
-func (noopSpanExporter) Shutdown(context.Context) error { return nil }
-
-// newNoopMetricReader は送出先未指定時のフォールバック MetricReader を返す(ManualReader は no-op)。
-func newNoopMetricReader(context.Context) (sdkmetric.Reader, error) {
-	return sdkmetric.NewManualReader(), nil
 }

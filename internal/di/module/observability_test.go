@@ -27,8 +27,8 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 		mockLog := mock_logging.NewMockLogger(ctrl)
 		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
 
-		// TracerProvider と MeterProvider がそれぞれ Stop フックを登録する。
-		mockReg.EXPECT().RegisterStop(gomock.Any()).Times(2)
+		// ProviderShutdowner の Shutdown が単一の Stop フックとして登録される。
+		mockReg.EXPECT().RegisterStop(gomock.Any()).Times(1)
 
 		var tf observability.TracerFactory
 

@@ -10,6 +10,7 @@
 |---|---|---|---|
 |`RegisterHTTPServerHooks`|Echo サーバー起動|Graceful Shutdown|HTTP サーバーのライフサイクル管理|
 |`RegisterDBCloseHooks`|—|DB 接続クローズ|シャットダウン時に DB コネクションを安全に閉じる|
+|`RegisterObservabilityShutdownHooks`|—|TracerProvider / MeterProvider のシャットダウン|シャットダウン時に OpenTelemetry プロバイダを flush して解放する|
 
 ## フロー
 
@@ -22,10 +23,12 @@ flowchart TB
     subgraph "Stop フック"
         Shutdown["e.Shutdown()"]
         DBClose["db.Close()"]
+        O11yShutdown["tp.Shutdown() / mp.Shutdown()"]
     end
 
     HTTP --> Shutdown
     DBClose
+    O11yShutdown
 ```
 
 ## RegisterHTTPServerHooks
@@ -42,12 +45,21 @@ HTTP サーバーの起動・停止を `lifecycle.Registrar` に登録します�
 
 - **Stop**: `db.Close()` を呼び出し、エラーがあればログに出力
 
+## RegisterObservabilityShutdownHooks
+
+OpenTelemetry の `TracerProvider` / `MeterProvider` のシャットダウンフックを登録します。
+
+- **Stop**: `tp.Shutdown()` / `mp.Shutdown()` を呼び出し、バッファされた span / metric を flush してリソースを解放
+- 構築（`observability.NewTracerProvider` / `NewMeterProvider`）はライフサイクル非依存で行われ、シャットダウン登録はこの hook が担う。これにより `observability` パッケージは `di/lifecycle` への依存を持たない
+- otel のインターフェース（`trace.TracerProvider` / `metric.MeterProvider`）は `Shutdown` を公開しないため、具象の `*sdktrace.TracerProvider` / `*sdkmetric.MeterProvider` を受け取る
+
 ## DI 登録例
 
 ```go
 fx.Invoke(
     hook.RegisterHTTPServerHooks,
     hook.RegisterDBCloseHooks,
+    hook.RegisterObservabilityShutdownHooks,
 )
 ```
 

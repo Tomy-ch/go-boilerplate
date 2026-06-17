@@ -66,8 +66,8 @@ Roles of each component:
 |Component|Role|
 |---|---|
 |`NewResource`|Build the OTel resource (service identity) from app config + build info|
-|`TracerProvider`|OpenTelemetry tracer provider + context propagator|
-|`MeterProvider`|OpenTelemetry meter provider + Go runtime metrics|
+|`NewTracerProvider`|OpenTelemetry tracer provider + context propagator|
+|`NewMeterProvider`|OpenTelemetry meter provider + Go runtime metrics|
 |`TracerFactory`|Generate tracers per layer|
 |`LayerTracer`|Span generation + observability logging|
 |`helper.go`|Span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -76,12 +76,12 @@ Roles of each component:
 
 ## Provided Features
 
-### 1. TracerProvider
+### 1. NewTracerProvider
 
 Initializes the OpenTelemetry tracer provider.
 
 ```go
-func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.TracerProvider, error)
+func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 ```
 
 Characteristics
@@ -92,25 +92,29 @@ Characteristics
   (required for cross-service trace continuity)
 - Builds the `SpanExporter` from standard `OTEL_*` env; when no exporter is selected it falls back to no-op and skips the batch processor (no goroutine)
 - Honors `OTEL_TRACES_SAMPLER` for sampling (parent-based always-on by default)
-- Executes `Shutdown()` when the application exits
+- Lifecycle-agnostic: returns the concrete `*sdktrace.TracerProvider` (which exposes `Shutdown`)
+  so the DI layer (`hook.RegisterObservabilityShutdownHooks`) owns the shutdown registration.
+  This keeps the `observability` package free of any `di/lifecycle` dependency.
 
 Used during application DI initialization.
 
-### 1.1 NewResource / MeterProvider
+### 1.1 NewResource / NewMeterProvider
 
 ```go
 func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)
-func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error)
+func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error)
 ```
 
 - `NewResource` builds the shared OTel resource carrying `service.name` /
   `deployment.environment` / `service.version` / `service.revision` / `service.build_date`
   from app config + build info.
-- `MeterProvider` mirrors `TracerProvider`: it registers the meter provider via
-  `otel.SetMeterProvider` and a `Shutdown()` hook, and builds its `MetricReader` from the
-  standard `OTEL_*` env. Go **runtime metrics** instrumentation starts only when a real
-  exporter is selected (the no-op fallback skips it). It has no in-app consumer, so the DI
-  module force-starts it through `InvokeMeterProvider`.
+- `NewMeterProvider` mirrors `NewTracerProvider`: it registers the meter provider via
+  `otel.SetMeterProvider` and builds its `MetricReader` from the standard `OTEL_*` env. Go
+  **runtime metrics** instrumentation starts only when a real exporter is selected (the no-op
+  fallback skips it). It is likewise lifecycle-agnostic — it returns the concrete
+  `*sdkmetric.MeterProvider` and the DI hook registers its `Shutdown`. Because the shutdown
+  hook depends on the concrete provider, the DI module no longer needs a separate
+  force-start invoke; constructing the hook forces both providers to be built.
 
 ### 2. TracerFactory
 

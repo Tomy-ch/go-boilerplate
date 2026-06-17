@@ -63,8 +63,8 @@ LayerTracer --> ApplicationCode
 |コンポーネント|役割|
 |---|---|
 |`NewResource`|アプリ設定 + ビルド情報から OTel リソース（サービス識別情報）を構築|
-|`TracerProvider`|OpenTelemetry のトレーサープロバイダ + コンテキスト伝播器|
-|`MeterProvider`|OpenTelemetry のメータープロバイダ + Go ランタイムメトリクス|
+|`NewTracerProvider`|OpenTelemetry のトレーサープロバイダ + コンテキスト伝播器|
+|`NewMeterProvider`|OpenTelemetry のメータープロバイダ + Go ランタイムメトリクス|
 |`TracerFactory`|レイヤー別トレーサ生成|
 |`LayerTracer`|span生成 + observabilityログ|
 |`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -73,12 +73,12 @@ LayerTracer --> ApplicationCode
 
 ## 提供機能
 
-### 1. TracerProvider
+### 1. NewTracerProvider
 
 OpenTelemetry のトレーサープロバイダを初期化します。
 
 ```go
-func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.TracerProvider, error)
+func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 ```
 
 特徴
@@ -89,24 +89,28 @@ func TracerProvider(reg lifecycle.Registrar, res *resource.Resource) (trace.Trac
   （サービス跨ぎのトレース継続に必須）
 - `SpanExporter` を標準 `OTEL_*` env から構築（エクスポータ未選択時は no-op となり BatchSpanProcessor を配線しない＝goroutine 無し）
 - サンプリングは `OTEL_TRACES_SAMPLER` に従う（既定は親準拠の常時採取）
-- アプリ終了時に `Shutdown()` を実行
+- ライフサイクル非依存：`Shutdown` を公開する具象 `*sdktrace.TracerProvider` を返し、
+  シャットダウン登録は di 層（`hook.RegisterObservabilityShutdownHooks`）が担う。これにより
+  `observability` パッケージは `di/lifecycle` への依存を持たない。
 
 アプリケーションの DI 初期化で利用されます。
 
-### 1.1 NewResource / MeterProvider
+### 1.1 NewResource / NewMeterProvider
 
 ```go
 func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)
-func MeterProvider(reg lifecycle.Registrar, res *resource.Resource) (metric.MeterProvider, error)
+func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error)
 ```
 
 - `NewResource` は `service.name` / `deployment.environment` / `service.version` /
   `service.revision` / `service.build_date` をアプリ設定 + ビルド情報から付与した共有 OTel
   リソースを構築します。
-- `MeterProvider` は `TracerProvider` と対称で、`otel.SetMeterProvider` への登録・`Shutdown()`
-  フック登録・標準 `OTEL_*` env からの `MetricReader` 構築を行います。Go **ランタイムメトリクス**
-  計装は実エクスポータが選択されたときのみ開始します（no-op フォールバック時はスキップ）。アプリ内に
-  依存元が無いため、DI モジュールが `InvokeMeterProvider` で明示的に起動します。
+- `NewMeterProvider` は `NewTracerProvider` と対称で、`otel.SetMeterProvider` への登録・
+  標準 `OTEL_*` env からの `MetricReader` 構築を行います。Go **ランタイムメトリクス**
+  計装は実エクスポータが選択されたときのみ開始します（no-op フォールバック時はスキップ）。これも
+  ライフサイクル非依存で、具象 `*sdkmetric.MeterProvider` を返し `Shutdown` 登録は di の hook が担う。
+  シャットダウン hook が具象プロバイダに依存するため、DI モジュール側に別途の force-start invoke は
+  不要で、hook を構築することで両プロバイダが構築される。
 
 ### 2. TracerFactory
 
