@@ -84,9 +84,8 @@ func Test_noopSpanExporter(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // otel グローバル状態(TracerProvider/Propagator)を差し替えるため並列化不可
 func Test_NewTracerProvider(t *testing.T) {
-	// otel.SetTracerProvider / SetTextMapPropagator をグローバルに触るため Parallel 不可。
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("伝播器を設定してグローバルなTracerProviderを構築し、Shutdown可能な具象を返す", func(t *testing.T) {
 			prevTP, prevProp := otel.GetTracerProvider(), otel.GetTextMapPropagator()
@@ -153,9 +152,8 @@ func Test_ProvideTracerProvider(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // otel グローバル状態(MeterProvider)を差し替えるため並列化不可
 func Test_NewMeterProvider(t *testing.T) {
-	// otel.SetMeterProvider をグローバルに触るため Parallel 不可。
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("グローバルなMeterProviderを構築し、Shutdown可能な具象を返す", func(t *testing.T) {
 			prevMP := otel.GetMeterProvider()

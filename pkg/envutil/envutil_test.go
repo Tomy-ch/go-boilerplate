@@ -39,7 +39,9 @@ func TestOverride(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // t.Setenv使用のテストと環境変数を共有するため並列化不可
 	t.Run("異常系", func(t *testing.T) {
+		//nolint:paralleltest // t.Setenv使用のテストと環境変数を共有するため並列化不可
 		t.Run("不正なキーはエラーを返し副作用を残さない", func(t *testing.T) {
 			// キーに '=' を含むと os.Setenv は失敗する。
 			restore, err := Override("BAD=KEY", "x")

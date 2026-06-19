@@ -1,7 +1,7 @@
 package errorhandler
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"go-boilerplate/internal/controller/error/response"
@@ -87,7 +87,7 @@ func Test_normalizeOpenAPIError(t *testing.T) {
 
 		t.Run("OpenAPI由来でないエラーはnilが返る", func(t *testing.T) {
 			t.Parallel()
-			assert.Nil(t, normalizeOpenAPIError(fmt.Errorf("just an error")))
+			assert.Nil(t, normalizeOpenAPIError(errors.New("just an error")))
 		})
 	})
 }

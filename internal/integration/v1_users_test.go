@@ -9,7 +9,6 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -80,7 +79,7 @@ func TestV1Users_Integration(t *testing.T) {
 					Prefecture: "Tokyo",
 					City:       "Shibuya",
 					Street:     "1-1-1",
-					Building:   ptr.To("Building"),
+					Building:   new("Building"),
 					Password:   "secret",
 				},
 			}

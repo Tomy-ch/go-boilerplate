@@ -7,7 +7,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user/search/query"
-	"go-boilerplate/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,7 +87,7 @@ func Test_service_FindByFilter(t *testing.T) {
 
 				actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
 					Keywords: keywords,
-					Active:   ptr.To(true),
+					Active:   new(true),
 				}, limit, offset)
 				require.NoError(t, err)
 
@@ -113,7 +112,7 @@ func Test_service_FindByFilter(t *testing.T) {
 
 				actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
 					Keywords: keywords,
-					Active:   ptr.To(false),
+					Active:   new(false),
 				}, limit, offset)
 				require.NoError(t, err)
 

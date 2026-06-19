@@ -26,7 +26,9 @@ func TestRegisterDBCloseHooks(t *testing.T) {
 	dummy := func(context.Context) error { return nil }
 
 	reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		closeFn = args[0].(func(context.Context) error)
+		fn, ok := args[0].(func(context.Context) error)
+		require.True(t, ok)
+		closeFn = fn
 	}).Times(1)
 
 	RegisterDBCloseHooks(reg, db, logger)
@@ -53,7 +55,9 @@ func TestRegisterDBCloseHooks_CloseError(t *testing.T) {
 	dummy := func(context.Context) error { return nil }
 
 	reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		closeFn = args[0].(func(context.Context) error)
+		fn, ok := args[0].(func(context.Context) error)
+		require.True(t, ok)
+		closeFn = fn
 	}).Times(1)
 
 	RegisterDBCloseHooks(reg, db, logger)

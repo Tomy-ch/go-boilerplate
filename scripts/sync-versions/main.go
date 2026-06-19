@@ -249,8 +249,7 @@ func validateRules(rules []rule, root string) []string {
 	var errs []string
 	for _, r := range rules {
 		if r.version == "" {
-			errs = append(errs, fmt.Sprintf(
-				"%s: mise.toml に対応する version が未設定", r.label))
+			errs = append(errs, r.label+": mise.toml に対応する version が未設定")
 		}
 	}
 	for _, r := range rules {

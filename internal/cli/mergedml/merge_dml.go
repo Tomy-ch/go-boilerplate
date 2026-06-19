@@ -302,14 +302,7 @@ func resolveConcurrencyConst() int {
 
 // resolveConcurrency は、CPU 数を [minSQLCConcurrency, maxSQLCConcurrency] にクランプして同時実行数を返します。
 func resolveConcurrency(numCPU int) int {
-	n := numCPU
-	if n > maxSQLCConcurrency {
-		n = maxSQLCConcurrency
-	}
-	if n < minSQLCConcurrency {
-		n = minSQLCConcurrency
-	}
-	return n
+	return max(min(numCPU, maxSQLCConcurrency), minSQLCConcurrency)
 }
 
 func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {

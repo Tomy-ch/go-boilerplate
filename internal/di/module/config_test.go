@@ -12,8 +12,9 @@ import (
 	"go-boilerplate/internal/config"
 )
 
+//nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
-	t.Run("ConfigModule を使って各コンポーネントが生成される", func(t *testing.T) {
+	t.Run("ConfigModule を使って各コンポーネントが生成される", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 		// テスト環境の .env を読み込むためリポジトリルートに移動し ENV を設定する
 		config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 

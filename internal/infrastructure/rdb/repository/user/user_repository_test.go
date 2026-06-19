@@ -11,7 +11,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -131,7 +130,7 @@ func Test_repository_FindByActive(t *testing.T) {
 					limit := int32(100)
 					offset := int32(0)
 
-					actual, err := repo.FindByActive(ctx, ptr.To(true), limit, offset)
+					actual, err := repo.FindByActive(ctx, new(true), limit, offset)
 					require.NoError(t, err)
 
 					actualFirst := actual[0]
@@ -159,7 +158,7 @@ func Test_repository_FindByActive(t *testing.T) {
 					lastUserID, err := uuid.Parse("e99b0380-522c-4636-a2b6-452acdd7c4ff")
 					require.NoError(t, err)
 
-					actual, err := repo.FindByActive(ctx, ptr.To(false), limit, offset)
+					actual, err := repo.FindByActive(ctx, new(false), limit, offset)
 					require.NoError(t, err)
 
 					actualFirst := actual[0]
@@ -248,7 +247,7 @@ func Test_repository_FindByActive(t *testing.T) {
 					)
 					require.NoError(t, execErr)
 
-					res, actualErr := repo.FindByActive(ctx, ptr.To(true), 100, 0)
+					res, actualErr := repo.FindByActive(ctx, new(true), 100, 0)
 					require.Nil(t, res)
 					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
 				})
@@ -277,7 +276,7 @@ func Test_repository_FindByActive(t *testing.T) {
 					)
 					require.NoError(t, execErr)
 
-					res, actualErr := repo.FindByActive(ctx, ptr.To(false), 100, 0)
+					res, actualErr := repo.FindByActive(ctx, new(false), 100, 0)
 					require.Nil(t, res)
 					require.ErrorIs(t, actualErr, user.ErrInvalidLastName)
 				})
@@ -323,7 +322,7 @@ func Test_repository_CreateUser(t *testing.T) {
 					prefectureID,
 					"新宿区",
 					"5-5-5",
-					ptr.To("Building X"),
+					new("Building X"),
 					"160-0022",
 					now,
 					now,
@@ -364,7 +363,7 @@ func Test_repository_CreateUser(t *testing.T) {
 					prefectureID,
 					"新宿区",
 					"5-5-5",
-					ptr.To("Building X"),
+					new("Building X"),
 					"160-0022",
 					now,
 					now,
@@ -397,7 +396,7 @@ func Test_repository_CountByActive(t *testing.T) {
 		t.Run("active=trueの場合、アクティブなユーザーの件数が取得できる", func(t *testing.T) {
 			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.CountByActive(ctx, ptr.To(true))
+				got, err := repo.CountByActive(ctx, new(true))
 				require.NoError(t, err)
 				assert.Equal(t, int64(8), got)
 			})
@@ -405,7 +404,7 @@ func Test_repository_CountByActive(t *testing.T) {
 		t.Run("active=falseの場合、非アクティブなユーザーの件数が取得できる", func(t *testing.T) {
 			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.CountByActive(ctx, ptr.To(false))
+				got, err := repo.CountByActive(ctx, new(false))
 				require.NoError(t, err)
 				assert.Equal(t, int64(2), got)
 			})

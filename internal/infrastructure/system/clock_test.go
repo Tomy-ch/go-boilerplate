@@ -8,6 +8,8 @@ import (
 )
 
 func TestNewClock(t *testing.T) {
+	t.Parallel()
+
 	c := NewClock()
 	require.NotNil(t, c)
 }

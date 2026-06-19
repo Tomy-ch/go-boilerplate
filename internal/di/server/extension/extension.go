@@ -18,6 +18,7 @@ const callerSkip = 2
 // ServerExtends は、サーバーの拡張機能を表します。
 type ServerExtends struct {
 	fx.In
+
 	// PreList は、Preミドルウェアとして適用されるミドルウェアのリストです。
 	PreList []PreMiddleware `group:"middlewares.pre"`
 	// UseList は、Useミドルウェアとして適用されるミドルウェアのリストです。
@@ -35,6 +36,7 @@ type SrvCfg func(*echo.Echo)
 // ServeCfgOut は、サーバーの設定の出力時に使用される構造体です。
 type ServeCfgOut struct {
 	fx.Out
+
 	SrvCfg SrvCfg `group:"server.configurators"`
 }
 
@@ -61,12 +63,14 @@ type UseMiddleware struct {
 // PreMiddlewareOut は、fx の group 出力用のラッパーです。
 type PreMiddlewareOut struct {
 	fx.Out
+
 	Middleware PreMiddleware `group:"middlewares.pre"`
 }
 
 // UseMiddlewareOut は、fx の group 出力用のラッパーです。
 type UseMiddlewareOut struct {
 	fx.Out
+
 	Middleware UseMiddleware `group:"middlewares.use"`
 }
 

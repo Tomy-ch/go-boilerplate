@@ -7,8 +7,8 @@ import (
 )
 
 func TestSetUpConfig_Succeeds(t *testing.T) {
-	t.Run("正常系", func(t *testing.T) {
-		t.Run("正常に設定が読み込まれることを確認する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+		t.Run("正常に設定が読み込まれることを確認する", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			EnsureRepoRootAndEnv(t, TestingEnvValue)
 
 			cfg, err := SetUpConfig()

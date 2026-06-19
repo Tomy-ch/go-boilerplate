@@ -18,6 +18,7 @@ import (
 // 本ラッパを Check/Write 二段階契約に沿って再設計してください。
 type stacktraceArrayCore struct {
 	zapcore.Core
+
 	key string
 }
 

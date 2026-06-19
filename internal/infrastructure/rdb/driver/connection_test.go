@@ -11,6 +11,8 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
@@ -24,6 +26,8 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("トランザクションが存在する場合", func(t *testing.T) {
+		t.Parallel()
+
 		tx, err := db.Begin(context.Background())
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -37,6 +41,8 @@ func TestNew(t *testing.T) {
 	})
 
 	t.Run("トランザクションが存在しない場合", func(t *testing.T) {
+		t.Parallel()
+
 		ctx := context.Background()
 		conn := New(ctx, db)
 		assert.Equal(t, db, conn)

@@ -50,6 +50,7 @@ func authExtractor(
 ) (*authbd.Authn, error) {
 	token := extractToken(req, authCfg)
 	if token == "" {
+		//nolint:nilnil // トークン未提供を表す。呼び出し側で authn==nil を判定し未提供エラーへ変換するため意図的にnil,nilを返す
 		return nil, nil
 	}
 
@@ -87,8 +88,8 @@ func extractToken(r *http.Request, authCfg *config.AuthConfig) string {
 		return ""
 	}
 	if authCfg.AllowedHeaderBearer() && strings.EqualFold(authCfg.HeaderName(), echo.HeaderAuthorization) {
-		if strings.HasPrefix(raw, prefixBearer) {
-			return strings.TrimSpace(strings.TrimPrefix(raw, prefixBearer))
+		if after, ok := strings.CutPrefix(raw, prefixBearer); ok {
+			return strings.TrimSpace(after)
 		}
 		return ""
 	}

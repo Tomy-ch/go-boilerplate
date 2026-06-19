@@ -56,7 +56,9 @@ func readMemSink(t *testing.T, name string) []byte {
 	t.Helper()
 	v, ok := memSinks.Load(name)
 	require.True(t, ok, "mem sink %q not found", name)
-	return v.(*memSink).Bytes()
+	s, ok := v.(*memSink)
+	require.True(t, ok, "unexpected type stored for mem sink %q", name)
+	return s.Bytes()
 }
 
 // newJSONStacktraceLogger は、JSON エンコード + stacktraceArrayCore ラップ付きの zap ロガーを生成する。

@@ -17,11 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var rollbackForTestError = xerrors.New("rollback for test")
+var errRollbackForTest = xerrors.New("rollback for test")
 
 var (
 	testDB  driver.DatabaseDriver
-	initErr error
+	errInit error
 	dbOnce  sync.Once
 	// txLock は、テスト用のトランザクションマネージャーでトランザクションを開始する際のロックです。
 	// これにより、テストが並行して実行される場合でも、トランザクションの競合を防止します。
@@ -93,10 +93,10 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
 
 	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
 		fn(txCtx)
-		return rollbackForTestError
+		return errRollbackForTest
 	})
 
-	if xerrors.Is(err, rollbackForTestError) {
+	if xerrors.Is(err, errRollbackForTest) {
 		return
 	}
 	require.NoError(t.t, err)
@@ -112,10 +112,10 @@ func getTestDB(t *testing.T) driver.DatabaseDriver {
 		osCfg := config.NewOperatingSystemConfig(cfg)
 		dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-		testDB, initErr = driver.NewDB(dbCfg, osCfg, dbConnCfg)
+		testDB, errInit = driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	})
 
-	require.NoError(t, initErr)
+	require.NoError(t, errInit)
 	require.NotNil(t, testDB)
 
 	return testDB

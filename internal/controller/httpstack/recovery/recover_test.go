@@ -2,7 +2,7 @@ package recovery
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -55,7 +55,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			inErr := fmt.Errorf("boom")
+			inErr := errors.New("boom")
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack"))
 			require.ErrorIs(t, err, inErr)
@@ -72,7 +72,7 @@ func Test_newRecoverLogErrorFunc(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			inErr := fmt.Errorf("boom2")
+			inErr := errors.New("boom2")
 			f := newRecoverLogErrorFunc(logger, lf)
 			err := f(c, inErr, []byte("stack2"))
 			require.ErrorIs(t, err, inErr)

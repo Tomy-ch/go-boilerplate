@@ -14,7 +14,6 @@ import (
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
 	"go-boilerplate/internal/usecase/testkit"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
@@ -27,7 +26,7 @@ func newActiveUser(t *testing.T, id, prefID uuid.UUID, ts time.Time) *user.User 
 	t.Helper()
 	u, err := user.New(
 		id, "John", "Doe", "hashed_password", "john@example.com", "1234567890",
-		prefID, "Shibuya", "1-2-3", ptr.To("Building A"), "150-0001", ts, ts, nil,
+		prefID, "Shibuya", "1-2-3", new("Building A"), "150-0001", ts, ts, nil,
 	)
 	require.NoError(t, err)
 	return u
@@ -37,7 +36,7 @@ func newUpdateDTO(prefName string) *UpdateProfileParams {
 	return &UpdateProfileParams{
 		FirstName: "Jane", LastName: "Smith", Email: "jane@example.com", Phone: "0987654321",
 		PostalCode: "200-0002", PrefectureName: prefName, City: "Minato", Street: "4-5-6",
-		Building: ptr.To("Tower"),
+		Building: new("Tower"),
 	}
 }
 
@@ -430,7 +429,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo.EXPECT().FindByName(gomock.Any(), "Osaka").Return(pft, nil)
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			dto := &PatchParamsDTO{FirstName: ptr.To("Patched"), PrefectureName: ptr.To("Osaka"), Building: ptr.To("NewTower")}
+			dto := &PatchParamsDTO{FirstName: new("Patched"), PrefectureName: new("Osaka"), Building: new("NewTower")}
 			got, err := uc.UpdateUserPartially(ctx, id, dto)
 			require.NoError(t, err)
 			assert.Equal(t, "Patched", got.FirstName)
@@ -452,7 +451,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(pft, nil)
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			dto := &PatchParamsDTO{LastName: ptr.To("OnlyLast")}
+			dto := &PatchParamsDTO{LastName: new("OnlyLast")}
 			got, err := uc.UpdateUserPartially(ctx, id, dto)
 			require.NoError(t, err)
 			assert.Equal(t, "OnlyLast", got.LastName)
@@ -472,7 +471,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: ptr.To("X")})
+			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: new("X")})
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -489,7 +488,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo.EXPECT().FindByName(gomock.Any(), "Unknown").Return(nil, expectedErr)
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{PrefectureName: ptr.To("Unknown")})
+			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{PrefectureName: new("Unknown")})
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -505,7 +504,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, apperror.ErrNotFound)
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: ptr.To("X")})
+			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: new("X")})
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
@@ -522,7 +521,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, expectedErr)
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: ptr.To("X")})
+			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: new("X")})
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -538,7 +537,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(pft, nil)
 
 			// 空文字へのマージで UpdateProfile（updateProfileThenSave 内）の検証を失敗させる
-			dto := &PatchParamsDTO{FirstName: ptr.To("")}
+			dto := &PatchParamsDTO{FirstName: new("")}
 
 			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
 			_, err := uc.UpdateUserPartially(ctx, id, dto)
@@ -599,8 +598,8 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			deletedUser, err := user.New(
 				id, "John", "Doe", "hashed_password", "john@example.com", "1234567890",
-				prefID, "Shibuya", "1-2-3", ptr.To("Building A"), "150-0001",
-				now, now, ptr.To(now),
+				prefID, "Shibuya", "1-2-3", new("Building A"), "150-0001",
+				now, now, new(now),
 			)
 			require.NoError(t, err)
 

@@ -29,7 +29,9 @@ func TestRegisterObservabilityShutdownHooks(t *testing.T) {
 			var stopFn func(context.Context) error
 			dummy := func(context.Context) error { return nil }
 			reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-				stopFn = args[0].(func(context.Context) error)
+				fn, ok := args[0].(func(context.Context) error)
+				require.True(t, ok)
+				stopFn = fn
 			}).Times(1)
 
 			RegisterObservabilityShutdownHooks(reg, shutdowner)
@@ -55,7 +57,9 @@ func TestRegisterObservabilityShutdownHooks(t *testing.T) {
 			var stopFn func(context.Context) error
 			dummy := func(context.Context) error { return nil }
 			reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-				stopFn = args[0].(func(context.Context) error)
+				fn, ok := args[0].(func(context.Context) error)
+				require.True(t, ok)
+				stopFn = fn
 			}).Times(1)
 
 			RegisterObservabilityShutdownHooks(reg, shutdowner)

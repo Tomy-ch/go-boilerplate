@@ -12,7 +12,6 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -79,7 +78,7 @@ func Test_server_GetUsersDetail(t *testing.T) {
 
 	dto := user.UserView{
 		FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890",
-		PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3", Building: ptr.To("B1"),
+		PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3", Building: new("B1"),
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -120,7 +119,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 	body := &gen.PutUsersDetailJSONRequestBody{
 		FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
 		Phone: "09000000000", PostalCode: "123-4567", Prefecture: "Tokyo",
-		City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
+		City: "Shibuya", Street: "1-1-1", Building: new("Building"),
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -130,7 +129,7 @@ func Test_server_PutUsersDetail(t *testing.T) {
 			t.Parallel()
 			returned := user.UserView{
 				FirstName: "First", LastName: "Last", Email: "put@example.com", Phone: "09000000000",
-				PostalCode: "123-4567", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
+				PostalCode: "123-4567", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-1-1", Building: new("Building"),
 			}
 
 			var got *user.UpdateProfileParams
@@ -177,8 +176,8 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 	t.Parallel()
 
 	body := &gen.PatchUsersDetailJSONRequestBody{
-		FirstName: ptr.To("Patched"),
-		Email:     (*types.Email)(ptr.To("patch@example.com")),
+		FirstName: new("Patched"),
+		Email:     (*types.Email)(new("patch@example.com")),
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -201,7 +200,7 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 
 			wantDTO := &user.PatchParamsDTO{
 				FirstName: body.FirstName,
-				Email:     ptr.To("patch@example.com"),
+				Email:     new("patch@example.com"),
 			}
 			assert.Equal(t, wantDTO, got)
 
@@ -212,7 +211,7 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 
 		t.Run("Email未指定の場合はEmailがnilでDTOへ詰め替えられる", func(t *testing.T) {
 			t.Parallel()
-			noEmailBody := &gen.PatchUsersDetailJSONRequestBody{FirstName: ptr.To("OnlyName")}
+			noEmailBody := &gen.PatchUsersDetailJSONRequestBody{FirstName: new("OnlyName")}
 
 			var got *user.PatchParamsDTO
 			s, mockApp := newServer(t)
@@ -228,7 +227,7 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			assert.Equal(t, ptr.To("OnlyName"), got.FirstName)
+			assert.Equal(t, new("OnlyName"), got.FirstName)
 			assert.Nil(t, got.Email)
 
 			_, ok := resp.(gen.PatchUsersDetail200JSONResponse)

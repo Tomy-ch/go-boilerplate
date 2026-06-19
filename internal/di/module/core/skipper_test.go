@@ -11,7 +11,11 @@ import (
 )
 
 func TestSkipperModule(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで Skipper が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		var s echomw.Skipper
 		app := fx.New(
 			SkipperModule(),

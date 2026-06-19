@@ -1,7 +1,7 @@
 package logging
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -337,7 +337,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 		t.Run("引数/エラー/trace有りの場合、内部エラーとtrace/spanが追加される", func(t *testing.T) {
 			t.Parallel()
 
-			err := fmt.Errorf("boom")
+			err := errors.New("boom")
 			args := []any{1, "a"}
 			s := SQLFieldsEndInput{
 				EventAt:  time.Now(),
@@ -451,7 +451,8 @@ func Test_appendTraceSpanFields(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
-	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	require.True(t, ok)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -503,7 +504,8 @@ func Test_buildCompactQuery(t *testing.T) {
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
-	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	require.True(t, ok)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()

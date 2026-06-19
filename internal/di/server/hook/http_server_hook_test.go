@@ -30,12 +30,16 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 
 	mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
 	mockReg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		startFn = args[0].(func(context.Context) error)
+		fn, ok := args[0].(func(context.Context) error)
+		require.True(t, ok)
+		startFn = fn
 	}).Times(1)
 
 	mockLogger := mock_logging.NewMockLogger(ctrl)
 	mockReg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		shutdownFn = args[0].(func(context.Context) error)
+		fn, ok := args[0].(func(context.Context) error)
+		require.True(t, ok)
+		shutdownFn = fn
 	}).Times(1)
 
 	cfg := config.MockConfigForTest(t)
@@ -55,6 +59,8 @@ func Test_newStartServerFunc(t *testing.T) {
 	t.Parallel()
 
 	t.Run("HTTPサーバーが起動後にListenerが設定されること", func(t *testing.T) {
+		t.Parallel()
+
 		ctrl := gomock.NewController(t)
 
 		mockLogger := mock_logging.NewMockLogger(ctrl)
@@ -70,8 +76,9 @@ func Test_newStartServerFunc(t *testing.T) {
 		lc := &net.ListenConfig{}
 		ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
 		require.NoError(t, err)
-		port := ln.Addr().(*net.TCPAddr).Port
-		require.NoError(t, err)
+		tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+		require.True(t, ok)
+		port := tcpAddr.Port
 		require.NoError(t, ln.Close())
 
 		cfg := config.MockConfigForTest(t)
@@ -94,6 +101,8 @@ func Test_newStartServerFunc(t *testing.T) {
 	})
 
 	t.Run("ポートのリッスンに失敗した場合、エラーが返されること", func(t *testing.T) {
+		t.Parallel()
+
 		ctrl := gomock.NewController(t)
 
 		mockLogger := mock_logging.NewMockLogger(ctrl)
@@ -101,8 +110,9 @@ func Test_newStartServerFunc(t *testing.T) {
 		lc := &net.ListenConfig{}
 		ln, err := lc.Listen(context.Background(), "tcp", ":0")
 		require.NoError(t, err)
-		port := ln.Addr().(*net.TCPAddr).Port
-		require.NoError(t, err)
+		tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+		require.True(t, ok)
+		port := tcpAddr.Port
 		t.Cleanup(func() {
 			_ = ln.Close()
 		})
