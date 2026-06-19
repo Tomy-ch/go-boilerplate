@@ -185,7 +185,7 @@ linters:
             - pkg: go.opentelemetry.io/contrib
               desc: "OTel contrib ライブラリの使用は observability の初期化 / HTTP otel ミドルウェアに限定されています。
                 可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
-        restrict_lifecycle_to_di: # ライフサイクルの登録は di 層の責務に限定します
+        restrict_lifecycle_to_di: # di 層外からの lifecycle.Registrar への参照を禁止する
           files:
             - "**/*.go"
             - "!**/internal/di/**.go" # di 配下(composition root / module / hook)でのみ使用を許可します
@@ -194,7 +194,7 @@ linters:
             - pkg: go-boilerplate/internal/di/lifecycle
               desc: "lifecycle.Registrar への直接依存は di 層の責務です。
                 コンポーネントは Close()/Shutdown() 等のハンドルを公開し、その登録は di の hook に委ねてください。"
-        restrict_di_hook_to_di: # di の hook パッケージは di 層の内部実装であり、外部からの参照を禁止します
+        restrict_di_hook_to_di: # di 層外からの di hook パッケージへの参照を禁止する
           files:
             - "**/*.go"
             - "!**/internal/di/**.go" # di 配下(module / composition root)でのみ参照を許可します
@@ -435,7 +435,7 @@ linters:
       rules:
         - name: exported # exported な宣言にはドキュメントコメントを必須とする
           arguments:
-            - "disableStutteringCheck" # 命名の stutter 検査は行わない(コメント必須化のみが目的)
+            - "disableStutteringCheck" # 命名の stutter 検査は行わない
         - name: var-naming
           arguments:
             - []
@@ -461,10 +461,9 @@ linters:
       - path: (.+)_test\.go
         linters:
           - lll
-          # テストヘルパー(DoJSON等)はt.Cleanup経由でレスポンスボディをcloseしており、
-          # bodyclose静的解析では追跡できないため、テストファイルでは除外します。
+          # bodyclose は誤検知するためテストファイルでは除外する。
           - bodyclose
-      # ptr.To 自体の振る舞いを検証するテストのため、new(expr) への置換提案(modernize)は除外します。
+      # modernize の new(expr) 置換提案は ptr_test.go では不適のため除外する。
       - path: pkg/ptr/ptr_test\.go
         linters:
           - modernize
