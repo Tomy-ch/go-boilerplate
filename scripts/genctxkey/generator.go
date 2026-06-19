@@ -120,16 +120,15 @@ func writeFile(path, tpl string, p Param) error {
 func toExportedName(s string) (string, error) {
 	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
 
-	var out string
-	var outSb123 strings.Builder
+	var sb strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
 		runes := []rune(p)
-		outSb123.WriteString(strings.ToUpper(string(runes[0])) + string(runes[1:]))
+		sb.WriteString(strings.ToUpper(string(runes[0])) + string(runes[1:]))
 	}
-	out += outSb123.String()
+	out := sb.String()
 
 	if out == "" {
 		return "", fmt.Errorf("invalid name: %s", s)
@@ -145,15 +144,14 @@ func toExportedName(s string) (string, error) {
 func toIdentifierLower(s string) (string, error) {
 	// split on non-alnum, join, and lower
 	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
-	var out string
-	var outSb146 strings.Builder
+	var sb strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
-		outSb146.WriteString(strings.ToLower(p))
+		sb.WriteString(strings.ToLower(p))
 	}
-	out += outSb146.String()
+	out := sb.String()
 	if out == "" {
 		return "", fmt.Errorf("invalid name: %s", s)
 	}
