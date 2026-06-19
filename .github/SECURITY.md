@@ -38,11 +38,15 @@
 
 ### 0. 対象 digest の取得
 
+runtime / migration は同一リポジトリ `app` の別タグ（`<sha>` / `<sha>-migration`）で push される。
+検証はタグではなく digest 基準で行うため、対象イメージのタグから digest を解決する。
+
 ```bash
-# タグから digest を解決する
+# runtime イメージ
 docker buildx imagetools inspect ghcr.io/<owner>/app:<tag> --format '{{.Manifest.Digest}}'
-# もしくは
 crane digest ghcr.io/<owner>/app:<tag>
+# migration イメージ（タグに -migration suffix が付く）
+crane digest ghcr.io/<owner>/app:<tag>-migration
 ```
 
 ### 1. cosign 署名の検証
