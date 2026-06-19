@@ -1,8 +1,10 @@
 # Dependabot 設定
 #
 # 対象エコシステム: Go modules / Docker / GitHub Actions の3種。
-# cooldown: バージョンが公開されてから一定日数（patch=5 / minor=7 / major=30、
-#           semver 分類外は default-days=5）経過するまで更新 PR を作成せず、初期不良の枯れを待つ。
+# cooldown: バージョン公開から一定日数経過するまで更新 PR を作成せず、初期不良の枯れを待つ。
+#           - gomod: semver 段階別に patch=5 / minor=7 / major=30 日。
+#           - docker / github-actions: semver 段階指定（semver-*-days）は非対応のため
+#             単一の default-days=5 日のみ指定する（GitHub 仕様で段階キーが使えない）。
 # groups : 1 エコシステムあたり 1 PR にまとめ、更新 PR のノイズを抑制する。
 #
 # 注意: セキュリティアップデート（security update）は cooldown を通らず即時 PR が作成される。
@@ -35,11 +37,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # docker は semver 段階を区別しないため cooldown は default-days のみ指定可能。
     cooldown:
       default-days: 5
-      semver-patch-days: 5
-      semver-minor-days: 7
-      semver-major-days: 30
     groups:
       docker:
         patterns:
@@ -52,11 +52,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # github-actions は semver 段階を区別しないため cooldown は default-days のみ指定可能。
     cooldown:
       default-days: 5
-      semver-patch-days: 5
-      semver-minor-days: 7
-      semver-major-days: 30
     groups:
       github-actions:
         patterns:
