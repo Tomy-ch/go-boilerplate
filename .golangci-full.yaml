@@ -464,6 +464,10 @@ linters:
           # テストヘルパー(DoJSON等)はt.Cleanup経由でレスポンスボディをcloseしており、
           # bodyclose静的解析では追跡できないため、テストファイルでは除外します。
           - bodyclose
+      # ptr.To 自体の振る舞いを検証するテストのため、new(expr) への置換提案(modernize)は除外します。
+      - path: pkg/ptr/ptr_test\.go
+        linters:
+          - modernize
 
 run:
   timeout: "3m"
