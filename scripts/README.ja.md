@@ -10,6 +10,7 @@
 scripts/
 ├── gen-docs-json.mjs           # ポータルナビゲーション用 docs.json の生成
 ├── gen-portal-docs.mjs         # manifest.yaml に基づくドキュメントのポータルへのコピー
+├── build-portal.mjs            # ポータルフロントエンド（src/main.jsx）を esbuild でバンドル
 ├── semver.mjs                  # セマンティックバージョニングヘルパー（patch/minor/major）
 ├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile FROM へ反映（Go 実装）
 ├── make_help.mjs                # Make ターゲットのヘルプ出力生成
@@ -31,6 +32,7 @@ scripts/
 |---|---|---|
 |`gen-portal-docs.mjs`|`manifest.yaml` に基づきソースドキュメントをポータルの `guides/` にコピー|`make gen-docs`|
 |`gen-docs-json.mjs`|ポータルアプリ用のナビゲーション `docs.json` を生成|`make gen-docs`|
+|`build-portal.mjs`|ポータルフロントエンド（`docs/portal/src/main.jsx`）を esbuild で `docs/portal/dist/` 配下（`bundle.js` / `bundle.css` + 遅延チャンク）へバンドルし、`mermaid.min.js` も同じく dist/ へ配置。従来の CDN + ブラウザ内 Babel 構成を置き換え。|`make gen-portal-build`|
 
 ### バージョニング
 

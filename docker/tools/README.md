@@ -13,7 +13,7 @@ This Dockerfile provides **code generation and bundling tool containers** for th
 |Target|Base Image|Included Tools|
 |---|---|---|
 |`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate|
-|`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
+|`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml, esbuild (+ portal bundling libs)|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 
 ## go_tools
@@ -29,12 +29,14 @@ Code generation tools for Go:
 
 ## node_tools
 
-Tools for OpenAPI document processing:
+Tools for OpenAPI document processing and portal frontend bundling:
 
 |Tool|Purpose|
 |---|---|
 |`redocly-cli`|Bundle OpenAPI YAML (`$ref` resolution) and generate HTML docs|
 |`js-yaml`|YAML processing for portal doc generation scripts|
+|`esbuild`|Bundle the portal frontend (`docs/portal/src/main.jsx`) into `docs/portal/dist/` (`make gen-portal-build`)|
+|`react` / `react-dom` / `marked` / `fuse.js` / `mermaid` / `highlight.js`|Portal frontend runtime libraries bundled by esbuild (replacing the former CDN + in-browser Babel setup)|
 
 ## python_tools
 
