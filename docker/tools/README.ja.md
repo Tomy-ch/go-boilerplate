@@ -13,7 +13,7 @@
 |ターゲット|ベースイメージ|含まれるツール|
 |---|---|---|
 |`go_tools`|`golang:1.26.4-alpine`|oapi-codegen, mockgen, sqlc, migrate|
-|`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml|
+|`node_tools`|`node:24.14-alpine`|redocly-cli, js-yaml, esbuild（+ ポータルバンドル用ライブラリ）|
 |`python_tools`|`python:3.14.2-slim`|sqlfluff|
 
 ## go_tools
@@ -29,12 +29,14 @@ Go 用のコード生成ツール：
 
 ## node_tools
 
-OpenAPI ドキュメント処理ツール：
+OpenAPI ドキュメント処理とポータルフロントエンドのバンドル用ツール：
 
 |ツール|用途|
 |---|---|
 |`redocly-cli`|OpenAPI YAML のバンドル（`$ref` 解決）と HTML ドキュメント生成|
 |`js-yaml`|ポータルドキュメント生成スクリプト用の YAML 処理|
+|`esbuild`|ポータルフロントエンド（`docs/portal/src/main.jsx`）を `docs/portal/dist/` へバンドル（`make gen-portal-build`）|
+|`react` / `react-dom` / `marked` / `fuse.js` / `mermaid` / `highlight.js`|esbuild がバンドルするポータルフロントエンドの実行時ライブラリ（従来の CDN + ブラウザ内 Babel 構成を置き換え）|
 
 ## python_tools
 

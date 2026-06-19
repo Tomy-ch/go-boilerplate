@@ -76,8 +76,9 @@ CMD []
 # Node ツールボックス：redocly / markdownlint-cli2 を mise.toml のバージョンで提供
 # Node ランタイムは公式 node:X.Y-alpine（musl 対応のプリビルド）を使用。
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
-# 補助スクリプト (gen-portal-docs.cjs / gen-docs-json.cjs) が参照する js-yaml は
-# ローカル node_modules にインストールしておく
+# 補助スクリプトの依存（gen-docs-json / gen-portal-docs が参照する js-yaml、
+# build-portal が参照する esbuild と React/marked/fuse.js/mermaid/highlight.js 等の
+# ポータルバンドル用ライブラリ）をローカル node_modules にインストールしておく
 # ------------------------------
 FROM node:24.14-alpine AS node_tools
 
