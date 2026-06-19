@@ -188,6 +188,7 @@ func quarantine(ctx context.Context, repo, tag, key, candidate string, minAgeDay
 // 無ければ commit の committer date をフォールバックに使う。
 func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 	var rel struct {
+		//nolint:tagliatelle // GitHub API のレスポンスフィールド名(published_at)に合わせる必要があるため
 		PublishedAt time.Time `json:"published_at"`
 	}
 	st, err := githubGet(ctx, "https://api.github.com/repos/"+repo+"/releases/tags/"+tag, &rel)
@@ -329,7 +330,7 @@ func resolveSHA(ctx context.Context, repo, tag string) (string, error) {
 		return "", fmt.Errorf("git ls-remote: %w", err)
 	}
 	var tagSHA, derefSHA, headSHA string
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		parts := strings.Fields(line)
 		if len(parts) != lsRemoteCols {
 			continue

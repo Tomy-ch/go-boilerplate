@@ -34,7 +34,7 @@ func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logge
 	default:
 		logger.Named("core.authn").CallerSkip(callerSkipCount).Error(
 			"No authenticator configured for the current environment",
-			logging.String("env", string(appCfg.Env())),
+			logging.String("env", appCfg.Env()),
 		)
 
 		return nil, fmt.Errorf("no authenticator configured for environment: %s", appCfg.Env())

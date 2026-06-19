@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/format"
 	"go/token"
@@ -39,7 +40,7 @@ type Param struct {
 
 func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string) error {
 	if name == "" || typ == "" {
-		return fmt.Errorf("name and type are required")
+		return errors.New("name and type are required")
 	}
 
 	if outDir == "" {
@@ -120,13 +121,15 @@ func toExportedName(s string) (string, error) {
 	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
 
 	var out string
+	var outSb123 strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
 		runes := []rune(p)
-		out += strings.ToUpper(string(runes[0])) + string(runes[1:])
+		outSb123.WriteString(strings.ToUpper(string(runes[0])) + string(runes[1:]))
 	}
+	out += outSb123.String()
 
 	if out == "" {
 		return "", fmt.Errorf("invalid name: %s", s)
@@ -143,12 +146,14 @@ func toIdentifierLower(s string) (string, error) {
 	// split on non-alnum, join, and lower
 	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
 	var out string
+	var outSb146 strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
-		out += strings.ToLower(p)
+		outSb146.WriteString(strings.ToLower(p))
 	}
+	out += outSb146.String()
 	if out == "" {
 		return "", fmt.Errorf("invalid name: %s", s)
 	}

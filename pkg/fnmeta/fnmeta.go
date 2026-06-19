@@ -61,8 +61,8 @@ func ExtractPackageName(full string) string {
 		return unknown
 	}
 
-	if idx := strings.Index(lhs, "."); idx >= 0 {
-		return lhs[:idx]
+	if before, _, ok := strings.Cut(lhs, "."); ok {
+		return before
 	}
 
 	return lhs

@@ -49,8 +49,8 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 
 // resolveSubject は token から localPrefix を除いた Subject を抽出します。
 func (a *authenticator) resolveSubject(token string) string {
-	if strings.HasPrefix(token, localPrefix) {
-		sub := strings.TrimSpace(strings.TrimPrefix(token, localPrefix))
+	if after, ok := strings.CutPrefix(token, localPrefix); ok {
+		sub := strings.TrimSpace(after)
 		if sub != "" {
 			return sub
 		}

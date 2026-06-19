@@ -60,10 +60,8 @@ func (p Paging) Limit() int { return p.limit }
 
 // Limit32 は、ページの取得上限をint32型で返します。
 func (p Paging) Limit32() int32 {
-	limit := p.limit
-	if limit > maxPerPage {
-		limit = maxPerPage
-	}
+	limit := min(p.limit, maxPerPage)
+	//nolint:gosec // G115: maxPerPage(int32範囲内の定数)でクランプ済みのためオーバーフローしません
 	return int32(limit)
 }
 
@@ -72,9 +70,7 @@ func (p Paging) Offset() int { return p.offset }
 
 // Offset32 は、ページのオフセットをint32型で返します。
 func (p Paging) Offset32() int32 {
-	offset := p.offset
-	if offset > maxOffset {
-		offset = maxOffset
-	}
+	offset := min(p.offset, maxOffset)
+	//nolint:gosec // G115: maxOffset(int32範囲内の定数)でクランプ済みのためオーバーフローしません
 	return int32(offset)
 }

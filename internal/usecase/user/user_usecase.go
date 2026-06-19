@@ -59,10 +59,10 @@ type UpdateProfileParams struct {
 
 // CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
 type CreateParamsDTO struct {
+	UpdateProfileParams
+
 	UserID      uuid.UUID
 	RawPassword string
-
-	UpdateProfileParams
 }
 
 // PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
