@@ -238,7 +238,7 @@ func Test_extractToken(t *testing.T) {
 
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			req.Header.Set("X-API-KEY", "apikey-123")
+			req.Header.Set("X-Api-Key", "apikey-123")
 			tok := extractToken(req, ac)
 			assert.Equal(t, "apikey-123", tok)
 		})
@@ -266,7 +266,7 @@ func Test_extractToken(t *testing.T) {
 
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-			req.Header.Set("authorization", "Bearer smallcase")
+			req.Header.Set("Authorization", "Bearer smallcase")
 			tok := extractToken(req, ac)
 			assert.Empty(t, tok)
 		})

@@ -176,9 +176,9 @@ func Test_mockLoader(t *testing.T) {
 	})
 }
 
-func Test_setEnv(t *testing.T) {
-	t.Run("正常系", func(t *testing.T) {
-		t.Run("setEnvVarsForTesting の環境変数設定は、テスト内で正しく反映される", func(t *testing.T) {
+func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+		t.Run("setEnvVarsForTesting の環境変数設定は、テスト内で正しく反映される", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			// setEnvVarsForTesting が t.Setenv を使うため、本テストは t.Parallel() を付けられない。
 			setEnvVarsForTesting(t)
 			// OS

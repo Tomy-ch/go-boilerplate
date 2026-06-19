@@ -12,7 +12,11 @@ import (
 )
 
 func TestBasicAuthModule(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで BasicAuthValidator が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		var b echomw.BasicAuthValidator
 		app := fx.New(
 			fx.Provide(func() testing.TB { return t }),

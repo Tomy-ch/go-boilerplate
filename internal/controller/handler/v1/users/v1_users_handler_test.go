@@ -13,7 +13,6 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -73,20 +72,20 @@ func Test_server_GetUsers(t *testing.T) {
 
 	expectedDTO1 := user.UserView{
 		FirstName: "User1", LastName: "One", Email: "user1@example.com", Phone: "1234567890",
-		PostalCode: "100-0001", PrefectureName: "Tokyo", City: "Chiyoda", Street: "1-1", Building: ptr.To("B1"),
+		PostalCode: "100-0001", PrefectureName: "Tokyo", City: "Chiyoda", Street: "1-1", Building: new("B1"),
 	}
 	expectedDTO2 := user.UserView{
 		FirstName: "User2", LastName: "Two", Email: "user2@example.com", Phone: "0987654321",
-		PostalCode: "200-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2", Building: ptr.To("B2"),
+		PostalCode: "200-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2", Building: new("B2"),
 	}
 
-	mockPaging, err := paging.NewPagingFrom1Based(ptr.To(expectedPage), ptr.To(expectedPerPage))
+	mockPaging, err := paging.NewPagingFrom1Based(new(expectedPage), new(expectedPerPage))
 	require.NoError(t, err)
 
 	mockParams := gen.GetUsersRequestObject{
 		Params: gen.GetUsersParams{
-			Page:    ptr.To(expectedPage),
-			PerPage: ptr.To(expectedPerPage),
+			Page:    new(expectedPage),
+			PerPage: new(expectedPerPage),
 		},
 	}
 
@@ -148,7 +147,7 @@ func Test_server_GetUsers(t *testing.T) {
 			invalidPage := 1_000_000
 			invalidParams := gen.GetUsersRequestObject{
 				Params: gen.GetUsersParams{
-					Page:    ptr.To(invalidPage),
+					Page:    new(invalidPage),
 					PerPage: mockParams.Params.PerPage,
 				},
 			}
@@ -207,7 +206,7 @@ func Test_server_PostUsers(t *testing.T) {
 				Prefecture: "Tokyo",
 				City:       "Shibuya",
 				Street:     "1-1-1",
-				Building:   ptr.To("Building"),
+				Building:   new("Building"),
 				Password:   "secret",
 			},
 		}

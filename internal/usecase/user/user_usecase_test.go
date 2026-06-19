@@ -17,7 +17,6 @@ import (
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
@@ -552,7 +551,7 @@ func Test_usecase_CountUsers(t *testing.T) {
 		t.Parallel()
 
 		ctx := t.Context()
-		active := ptr.To(true)
+		active := new(true)
 		expectedCount := int64(42)
 
 		userRepo.

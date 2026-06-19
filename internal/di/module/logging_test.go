@@ -12,7 +12,11 @@ import (
 )
 
 func TestLoggingModule_ProvidesLoggerAndFields(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで Logger と LogFieldBuilder が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		var lg logging.Logger
 		var lf logging.LogFieldBuilder
 

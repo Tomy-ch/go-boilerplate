@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -26,10 +25,10 @@ func TestNew(t *testing.T) {
 	city := "Shibuya"
 	street := "1-2-3"
 	postalCode := "150-0001"
-	building := ptr.To("Building A")
+	building := new("Building A")
 	createdAt := baseTime
 	updatedAt := baseTime.Add(time.Hour)
-	deletedAt := ptr.To(updatedAt.Add(time.Minute))
+	deletedAt := new(updatedAt.Add(time.Minute))
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -100,6 +99,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 
 			t.Run("firstNameの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
+				t.Parallel()
 				actual, err := New(
 					id,
 					strings.Repeat("名", minLength-1),
@@ -122,6 +122,7 @@ func TestNew(t *testing.T) {
 			})
 
 			t.Run("firstNameの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
+				t.Parallel()
 				actual, err := New(
 					id,
 					strings.Repeat("名", maxFirstNameLength+1),
@@ -458,7 +459,7 @@ func TestNew(t *testing.T) {
 					prefectureID,
 					city,
 					street,
-					ptr.To(strings.Repeat("建", minLength-1)),
+					new(strings.Repeat("建", minLength-1)),
 					postalCode,
 					createdAt,
 					updatedAt,
@@ -481,7 +482,7 @@ func TestNew(t *testing.T) {
 					prefectureID,
 					city,
 					street,
-					ptr.To(strings.Repeat("建", maxBuildingLength+1)),
+					new(strings.Repeat("建", maxBuildingLength+1)),
 					postalCode,
 					createdAt,
 					updatedAt,
@@ -608,7 +609,7 @@ func TestNew(t *testing.T) {
 					postalCode,
 					createdAt,
 					updatedAt,
-					ptr.To(createdAt.Add(-time.Minute)),
+					new(createdAt.Add(-time.Minute)),
 				)
 
 				assert.Nil(t, actual)
@@ -631,7 +632,7 @@ func TestNew(t *testing.T) {
 					postalCode,
 					createdAt,
 					updatedAt,
-					ptr.To(updatedAt.Add(-time.Minute)),
+					new(updatedAt.Add(-time.Minute)),
 				)
 
 				assert.Nil(t, actual)
@@ -655,10 +656,10 @@ func TestEntity_Accessors(t *testing.T) {
 	city := "Shibuya"
 	street := "1-2-3"
 	postalCode := "150-0001"
-	building := ptr.To("Building A")
+	building := new("Building A")
 	createdAt := baseTime
 	updatedAt := baseTime.Add(time.Hour)
-	deletedAt := ptr.To(updatedAt.Add(time.Minute))
+	deletedAt := new(updatedAt.Add(time.Minute))
 
 	expected, err := New(
 		id,
@@ -799,6 +800,7 @@ func TestEntity_Accessors(t *testing.T) {
 	})
 }
 
+//nolint:tparallel // 共有ポインタをmutateして検証するため一部サブテストを並列化不可
 func TestImmutableAccessors(t *testing.T) {
 	t.Parallel()
 	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -813,10 +815,10 @@ func TestImmutableAccessors(t *testing.T) {
 	city := "Shibuya"
 	street := "1-2-3"
 	postalCode := "150-0001"
-	building := ptr.To("Building A")
+	building := new("Building A")
 	createdAt := baseTime
 	updatedAt := baseTime.Add(time.Hour)
-	deletedAt := ptr.To(updatedAt.Add(time.Minute))
+	deletedAt := new(updatedAt.Add(time.Minute))
 	// 共有ポインタ building / deletedAt を直接 mutate して不変性を検証するため、
 	// 同じポインタを読む deletedAt ブロックと並列実行すると -race で競合する。意図的に直列化する。
 	t.Run("buildingのポインタの場合", func(t *testing.T) {
@@ -918,7 +920,7 @@ func newValidUser(t *testing.T) (*User, time.Time) {
 		uuid.NewTestFromSalt(t, "user"),
 		"John", "Doe", "hashed_password", "john@example.com", "1234567890",
 		uuid.NewTestFromSalt(t, "prefecture"),
-		"Shibuya", "1-2-3", ptr.To("Building A"), "150-0001",
+		"Shibuya", "1-2-3", new("Building A"), "150-0001",
 		base, base, nil,
 	)
 	require.NoError(t, err)
@@ -933,7 +935,7 @@ func newUserWithUpdatedAt(t *testing.T, offset time.Duration) (*User, time.Time)
 		uuid.NewTestFromSalt(t, "user"),
 		"John", "Doe", "hashed_password", "john@example.com", "1234567890",
 		uuid.NewTestFromSalt(t, "prefecture"),
-		"Shibuya", "1-2-3", ptr.To("Building A"), "150-0001",
+		"Shibuya", "1-2-3", new("Building A"), "150-0001",
 		base, base.Add(offset), nil,
 	)
 	require.NoError(t, err)
@@ -954,7 +956,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 			newUpdatedAt := base.Add(time.Hour)
 
 			err := u.UpdateProfile("Jane", "Smith", "jane@example.com", "0987654321",
-				newPrefID, "Minato", "4-5-6", ptr.To("Tower"), "200-0002", newUpdatedAt)
+				newPrefID, "Minato", "4-5-6", new("Tower"), "200-0002", newUpdatedAt)
 			require.NoError(t, err)
 
 			assert.Equal(t, "Jane", u.firstName)
@@ -1113,7 +1115,7 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 				uuid.NewTestFromSalt(t, "user"),
 				"John", "Doe", "hashed_password", "john@example.com", "1234567890",
 				uuid.NewTestFromSalt(t, "prefecture"),
-				"Shibuya", "1-2-3", ptr.To("Building A"), "150-0001",
+				"Shibuya", "1-2-3", new("Building A"), "150-0001",
 				base, base.Add(2*time.Hour), nil,
 			)
 			require.NoError(t, err)

@@ -84,6 +84,7 @@ func TestRunServer(t *testing.T) {
 			)
 			stopMetrics := func(c context.Context) {
 				stopMetricsCalled = true
+				//nolint:fatcontext // テストで渡されたcontextを捕捉して検証するため意図的
 				stopMetricsCtx = c
 			}
 
@@ -94,6 +95,7 @@ func TestRunServer(t *testing.T) {
 			)
 			//nolint:unparam // RunServer のシグネチャ func(context.Context) error に合わせる必要がある
 			stop := func(c context.Context) error {
+				//nolint:fatcontext // テストで渡されたcontextを捕捉して検証するため意図的
 				stopCtx = c
 				stopDeadline, stopHasDeadline = c.Deadline()
 				return nil

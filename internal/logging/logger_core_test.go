@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+//nolint:paralleltest // config.SetApplicationMode でモック内部状態を書き換えるため並列化不可
 func TestNew(t *testing.T) {
 	// 各サブテストは config.SetApplicationMode でモック内部状態を書き換えるため Parallel 不可。
 

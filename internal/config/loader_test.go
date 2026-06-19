@@ -7,8 +7,8 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	t.Run("正常系", func(t *testing.T) {
-		t.Run("ENV が設定されている場合、Load はエラーなく成功する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+		t.Run("ENV が設定されている場合、Load はエラーなく成功する", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			EnsureRepoRootAndEnv(t, TestingEnvValue)
 
 			err := Load()

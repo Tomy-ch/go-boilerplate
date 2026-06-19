@@ -11,7 +11,11 @@ import (
 )
 
 func TestSystemModule_ProvidesBuildInfo(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで BuildInfo が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		var bi system.BuildInfo
 
 		app := fx.New(

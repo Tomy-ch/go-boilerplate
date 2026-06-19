@@ -16,7 +16,7 @@ func TestTo(t *testing.T) {
 		t.Run("int型の値からポインタを生成する", func(t *testing.T) {
 			t.Parallel()
 			v := 42
-			actual := To(v)
+			actual := new(v)
 			require.NotNil(t, actual)
 			assert.Equal(t, v, *actual)
 		})
@@ -24,7 +24,7 @@ func TestTo(t *testing.T) {
 		t.Run("string型の値からポインタを生成する", func(t *testing.T) {
 			t.Parallel()
 			v := "hello"
-			actual := To(v)
+			actual := new(v)
 			require.NotNil(t, actual)
 			assert.Equal(t, v, *actual)
 		})
@@ -32,7 +32,7 @@ func TestTo(t *testing.T) {
 		t.Run("bool型の値からポインタを生成する", func(t *testing.T) {
 			t.Parallel()
 			v := true
-			actual := To(v)
+			actual := new(v)
 			require.NotNil(t, actual)
 			assert.Equal(t, v, *actual)
 		})
@@ -40,7 +40,7 @@ func TestTo(t *testing.T) {
 		t.Run("float64型の値からポインタを生成する", func(t *testing.T) {
 			t.Parallel()
 			v := 3.14
-			actual := To(v)
+			actual := new(v)
 			require.NotNil(t, actual)
 			require.InDelta(t, v, *actual, 0)
 		})
@@ -48,7 +48,7 @@ func TestTo(t *testing.T) {
 		t.Run("array型の値からポインタを生成する", func(t *testing.T) {
 			t.Parallel()
 			v := [3]int{1, 2, 3}
-			actual := To(v)
+			actual := new(v)
 			require.NotNil(t, actual)
 			assert.Equal(t, v, *actual)
 		})
@@ -59,7 +59,7 @@ func TestTo(t *testing.T) {
 				Field string
 			}
 			v := example{Field: "test"}
-			actual := To(v)
+			actual := new(v)
 			require.NotNil(t, actual)
 			assert.Equal(t, v, *actual)
 		})

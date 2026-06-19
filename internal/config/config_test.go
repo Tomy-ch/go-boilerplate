@@ -10,8 +10,8 @@ import (
 )
 
 func TestNewConfig(t *testing.T) {
-	t.Run("正常系", func(t *testing.T) {
-		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+		t.Run("configに必要な環境変数が全て設定されている場合", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			setEnvVarsForTesting(t)
 			expected := &Config{
 				os: OperatingSystemConfig{

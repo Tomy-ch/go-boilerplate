@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"go-boilerplate/pkg/ptr"
-
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -97,7 +95,7 @@ var (
 	expectedReferrerPolicy        = "no-referrer"
 	expectedBcryptCost            = bcrypt.MinCost
 	// secure cookie
-	expectedSecureCookieSecure   = ptr.To(true)
+	expectedSecureCookieSecure   = new(true)
 	expectedSecureCookieSameSite = "Strict"
 	expectedSecureCookieDomain   = "localhost"
 	// auth
@@ -107,8 +105,8 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config {
-	t.Helper()
+func MockConfigForTest(tb testing.TB) *Config {
+	tb.Helper()
 	return &Config{
 		os: OperatingSystemConfig{
 			timezone: expectedOSTimeZone,
@@ -180,8 +178,8 @@ func MockConfigForTest(t testing.TB) *Config {
 }
 
 // mockLoader は、テスト用のLoaderを返します。
-func mockLoader(t testing.TB) Loader {
-	t.Helper()
+func mockLoader(tb testing.TB) Loader {
+	tb.Helper()
 
 	return Loader{
 		OS: OperatingSystem{

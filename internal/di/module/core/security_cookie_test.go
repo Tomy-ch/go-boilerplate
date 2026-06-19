@@ -12,7 +12,11 @@ import (
 )
 
 func TestSecurityCookieModule_ProvidesSecurityCookie(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで SecurityCookie が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		var sc *cookie.SecurityCookie
 		app := fx.New(
 			fx.Provide(func() testing.TB { return t }),

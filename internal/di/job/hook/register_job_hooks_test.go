@@ -35,7 +35,9 @@ func TestRegisterJobHooks(t *testing.T) {
 
 			dummy := func(context.Context) error { return nil }
 			reg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-				startFn = args[0].(func(context.Context) error)
+				fn, ok := args[0].(func(context.Context) error)
+				require.True(t, ok)
+				startFn = fn
 			}).Times(1)
 
 			doneCh := make(chan error, 1)

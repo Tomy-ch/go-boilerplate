@@ -53,6 +53,7 @@ func Test_repository_FindByID(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest,tparallel // 同一行のロック競合回避のためサブテストを直列実行する
 func Test_repository_Update(t *testing.T) {
 	t.Parallel()
 

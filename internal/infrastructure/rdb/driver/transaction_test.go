@@ -14,6 +14,8 @@ import (
 )
 
 func TestNewTransactionManager(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
@@ -31,6 +33,8 @@ func TestNewTransactionManager(t *testing.T) {
 }
 
 func TestTxManager_Do(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)
@@ -50,6 +54,8 @@ func TestTxManager_Do(t *testing.T) {
 		t.Parallel()
 
 		t.Run("トランザクションがコミットされる", func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 			err := manager.Do(ctx, func(_ context.Context) error {
 				return nil
@@ -62,6 +68,8 @@ func TestTxManager_Do(t *testing.T) {
 		t.Parallel()
 
 		t.Run("トランザクションがロールバックされる", func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 			err := manager.Do(ctx, func(_ context.Context) error {
 				return errors.New("rollback")
@@ -71,6 +79,8 @@ func TestTxManager_Do(t *testing.T) {
 		})
 
 		t.Run("パニックが発生した場合にロールバックされる", func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 			defer func() {
 				r := recover()
@@ -83,6 +93,8 @@ func TestTxManager_Do(t *testing.T) {
 		})
 
 		t.Run("すでにtxがある場合", func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 			tx, err := db.Begin(ctx)
 			require.NoError(t, err)
@@ -101,6 +113,8 @@ func TestTxManager_Do(t *testing.T) {
 }
 
 func TestTxManager_Do_Goexit(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	dbConnCfg := config.NewDBConnectionConfig(cfg)

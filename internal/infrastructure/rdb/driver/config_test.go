@@ -11,6 +11,8 @@ import (
 )
 
 func TestDSN(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 
@@ -19,7 +21,7 @@ func TestDSN(t *testing.T) {
 		User:     url.UserPassword(dbCfg.User(), dbCfg.Password()),
 		Host:     fmt.Sprintf("%s:%d", dbCfg.Host(), dbCfg.Port()),
 		Path:     dbCfg.DBName(),
-		RawQuery: fmt.Sprintf("sslmode=%s", dbCfg.SSLMode()),
+		RawQuery: "sslmode=" + dbCfg.SSLMode(),
 	}
 
 	actual := DSN(dbCfg)
@@ -27,6 +29,8 @@ func TestDSN(t *testing.T) {
 }
 
 func TestDSNWithTimeZone(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
@@ -46,6 +50,8 @@ func TestDSNWithTimeZone(t *testing.T) {
 }
 
 func TestDSNString(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 
@@ -54,7 +60,7 @@ func TestDSNString(t *testing.T) {
 		User:     url.UserPassword(dbCfg.User(), dbCfg.Password()),
 		Host:     fmt.Sprintf("%s:%d", dbCfg.Host(), dbCfg.Port()),
 		Path:     dbCfg.DBName(),
-		RawQuery: fmt.Sprintf("sslmode=%s", dbCfg.SSLMode()),
+		RawQuery: "sslmode=" + dbCfg.SSLMode(),
 	}
 	expected := urlCfg.String()
 
@@ -63,6 +69,8 @@ func TestDSNString(t *testing.T) {
 }
 
 func TestDSNStringWithoutPassword(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 
@@ -71,7 +79,7 @@ func TestDSNStringWithoutPassword(t *testing.T) {
 		User:     url.User(dbCfg.User()),
 		Host:     fmt.Sprintf("%s:%d", dbCfg.Host(), dbCfg.Port()),
 		Path:     dbCfg.DBName(),
-		RawQuery: fmt.Sprintf("sslmode=%s", dbCfg.SSLMode()),
+		RawQuery: "sslmode=" + dbCfg.SSLMode(),
 	}
 	expected := urlCfg.String()
 
@@ -82,6 +90,8 @@ func TestDSNStringWithoutPassword(t *testing.T) {
 }
 
 func TestDSNWithTimeZoneString(t *testing.T) {
+	t.Parallel()
+
 	cfg := config.MockConfigForTest(t)
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)

@@ -9,7 +9,6 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
-	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/labstack/echo/v4"
@@ -73,7 +72,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			body := &detailgen.PutUsersDetailJSONRequestBody{
 				FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
 				Phone: "09000000000", PostalCode: "123-4567", Prefecture: "Tokyo",
-				City: "Shibuya", Street: "1-1-1", Building: ptr.To("Building"),
+				City: "Shibuya", Street: "1-1-1", Building: new("Building"),
 			}
 
 			actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, nil)
@@ -96,7 +95,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			detail.BindHandler(e, tf, mockApp)
 
 			body := &detailgen.PatchUsersDetailJSONRequestBody{
-				FirstName: ptr.To("Patched"),
+				FirstName: new("Patched"),
 			}
 
 			actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, nil)

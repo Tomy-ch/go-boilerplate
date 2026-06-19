@@ -15,7 +15,11 @@ import (
 )
 
 func TestAuthModule(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで Authenticator が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		var a authbd.Authenticator
 		app := fx.New(
 			fx.Provide(func() testing.TB { return t }),
@@ -36,7 +40,11 @@ func TestAuthModule(t *testing.T) {
 }
 
 func Test_provideAuthenticator(t *testing.T) {
+	t.Parallel()
+
 	t.Run("ローカル環境では local.Authenticator が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvLocal)
@@ -49,6 +57,8 @@ func Test_provideAuthenticator(t *testing.T) {
 	})
 
 	t.Run("CI環境では local.Authenticator が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvCI)
@@ -61,6 +71,8 @@ func Test_provideAuthenticator(t *testing.T) {
 	})
 
 	t.Run("テスト環境では local.Authenticator が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvTest)
@@ -73,6 +85,8 @@ func Test_provideAuthenticator(t *testing.T) {
 	})
 
 	t.Run("その他の環境では本番用 Authenticator が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvProduction)

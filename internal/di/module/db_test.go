@@ -17,6 +17,8 @@ import (
 )
 
 func TestDatabaseModule_Composes(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリに DatabaseModule を追加して起動できる", func(t *testing.T) {
 		t.Parallel()
 

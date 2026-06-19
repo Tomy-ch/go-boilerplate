@@ -87,6 +87,7 @@ func TestMigrateUpRun(t *testing.T) {
 			called := false
 			factory := func(_ string) (Migrator, error) {
 				called = true
+				//nolint:nilnil // テスト用スタブのため意図的にnil,nilを返す
 				return nil, nil
 			}
 
@@ -176,6 +177,7 @@ func TestMigrateDownRun(t *testing.T) {
 			called := false
 			factory := func(_ string) (Migrator, error) {
 				called = true
+				//nolint:nilnil // テスト用スタブのため意図的にnil,nilを返す
 				return nil, nil
 			}
 

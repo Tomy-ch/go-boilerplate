@@ -35,7 +35,7 @@ func (b *badWriter) Header() http.Header {
 	return b.header
 }
 
-func (b *badWriter) Write([]byte) (int, error) { return 0, fmt.Errorf("write failed") }
+func (b *badWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 
 func (b *badWriter) WriteHeader(statusCode int) { b.wroteHeader = statusCode }
 
@@ -78,7 +78,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler(fmt.Errorf("some error"), c)
+			handler(errors.New("some error"), c)
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -156,7 +156,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
+			handleHTTPError(c, logger, lf, obsCfg, errors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 		})
@@ -175,8 +175,8 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
-			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
-			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom"))
+			handleHTTPError(c, logger, lf, obsCfg, errors.New("boom"))
+			handleHTTPError(c, logger, lf, obsCfg, errors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -204,7 +204,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf("boom2"))
+			handleHTTPError(c, logger, lf, obsCfg, errors.New("boom2"))
 
 			assert.Equal(t, http.StatusInternalServerError, bw.wroteHeader)
 		})
@@ -302,7 +302,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 					RequestId: "",
 				},
 				HTTPStatus: http.StatusBadRequest,
-				Internal:   fmt.Errorf("inner"),
+				Internal:   errors.New("inner"),
 			}
 
 			actual := normalizeHTTPError(he, expectedRequestID)
@@ -368,7 +368,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		t.Run("echo.HTTPErrorのInternalに通常エラーがある場合_statusベースで返却されInternalは非nilになる", func(t *testing.T) {
 			t.Parallel()
 
-			inner := fmt.Errorf("boom")
+			inner := errors.New("boom")
 			echoErr := &echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
 
 			actual := normalizeHTTPError(echoErr, expectedRequestID)
@@ -546,7 +546,7 @@ func Test_httpErrorField(t *testing.T) {
 
 			c := newEchoCtx(t)
 			details := []string{"d1", "d2"}
-			internalErr := fmt.Errorf("internal err")
+			internalErr := errors.New("internal err")
 			he := &response.HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{
 					Code:      "E_INT",

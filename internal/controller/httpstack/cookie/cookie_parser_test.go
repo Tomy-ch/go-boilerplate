@@ -3,8 +3,6 @@ package cookie
 import (
 	"testing"
 
-	"go-boilerplate/pkg/ptr"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -191,7 +189,7 @@ func Test_delAttr(t *testing.T) {
 
 		t.Run("指定キーが削除され順序も保たれる", func(t *testing.T) {
 			t.Parallel()
-			attrs := &cookieAttrs{order: []string{"a", "b", "c"}, kv: map[string]*string{"a": ptr.To("1"), "b": ptr.To("2"), "c": ptr.To("3")}}
+			attrs := &cookieAttrs{order: []string{"a", "b", "c"}, kv: map[string]*string{"a": new("1"), "b": new("2"), "c": new("3")}}
 
 			delAttr(attrs, "b")
 			assert.Equal(t, []string{"a", "c"}, attrs.order)
@@ -215,7 +213,7 @@ func Test_buildSetCookie(t *testing.T) {
 			t.Parallel()
 			attrs := &cookieAttrs{
 				order: []string{"httponly", "path", "domain", "somespecial"},
-				kv:    map[string]*string{"httponly": nil, "path": ptr.To("/"), "domain": ptr.To("example.com"), "somespecial": ptr.To("v")},
+				kv:    map[string]*string{"httponly": nil, "path": new("/"), "domain": new("example.com"), "somespecial": new("v")},
 			}
 			s := buildSetCookie("id", "1", attrs)
 			assert.Equal(t, "id=1; HttpOnly; Path=/; Domain=example.com; somespecial=v", s)
@@ -223,7 +221,7 @@ func Test_buildSetCookie(t *testing.T) {
 
 		t.Run("kvに存在しないorderは無視される", func(t *testing.T) {
 			t.Parallel()
-			attrs := &cookieAttrs{order: []string{"a", "b"}, kv: map[string]*string{"a": ptr.To("va")}}
+			attrs := &cookieAttrs{order: []string{"a", "b"}, kv: map[string]*string{"a": new("va")}}
 			s := buildSetCookie("k", "v", attrs)
 			assert.Equal(t, "k=v; a=va", s)
 		})

@@ -18,6 +18,8 @@ import (
 )
 
 func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで TracerFactory が提供される", func(t *testing.T) {
 		t.Parallel()
 

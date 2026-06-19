@@ -24,6 +24,7 @@ func TestNewJobCore(t *testing.T) {
 	require.NoError(t, fx.ValidateApp(NewJobCore(), fx.WithLogger(NewFxEventLogger)))
 }
 
+//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
 func TestNewJobCore_BootsWithMockedDB(t *testing.T) {
 	// 実 DB を避けつつ、ジョブ用 fx グラフの全コンストラクタ実行とライフサイクル(OnStart/OnStop)を検証する。
 	// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避する（ジョブは HTTP サーバを起動しないためポート上書きは不要）。
@@ -51,9 +52,11 @@ func TestNewJobCore_BootsWithMockedDB(t *testing.T) {
 	require.NoError(t, app.Stop(stopCtx))
 }
 
+//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
 func TestRunJob(t *testing.T) {
 	config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 
+	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
 	t.Run("start: キャンセル済みコンテキストで開始すると start は context.Canceled を返してチャンネルを閉じることを期待する", func(t *testing.T) {
 		start, stop := RunJob()
 		require.NotNil(t, start)
@@ -75,6 +78,7 @@ func TestRunJob(t *testing.T) {
 		_ = stop(context.Background())
 	})
 
+	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
 	t.Run("stop: start していない状態で stop を呼ぶとエラーなしで成功することを期待する", func(t *testing.T) {
 		_, stop := RunJob()
 		require.NotNil(t, stop)
@@ -83,6 +87,7 @@ func TestRunJob(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
 	t.Run("stop: キャンセル済みコンテキストを与えると stop は context.Canceled を返すことを期待する", func(t *testing.T) {
 		_, stop := RunJob()
 		require.NotNil(t, stop)

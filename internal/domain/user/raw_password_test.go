@@ -13,6 +13,8 @@ func TestNewRawPassword(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
 		t.Run("有効なパスワードの場合、RawPasswordが生成できる", func(t *testing.T) {
 			t.Parallel()
 
@@ -25,6 +27,8 @@ func TestNewRawPassword(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
 		t.Run("パスワードがMinRawPasswordLength未満の場合、エラーになる", func(t *testing.T) {
 			t.Parallel()
 

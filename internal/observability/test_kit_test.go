@@ -23,9 +23,11 @@ func TestNewNoopTracerFactory(t *testing.T) {
 			tp := noop.NewTracerProvider()
 
 			actual := NewNoopTracerFactory(t)
-			assert.Equal(t, lf, actual.(*tracerFactory).lf)
-			require.NotNil(t, actual.(*tracerFactory).log)
-			assert.Equal(t, tp, actual.(*tracerFactory).tp)
+			tf, ok := actual.(*tracerFactory)
+			require.True(t, ok)
+			assert.Equal(t, lf, tf.lf)
+			require.NotNil(t, tf.log)
+			assert.Equal(t, tp, tf.tp)
 		})
 	})
 }

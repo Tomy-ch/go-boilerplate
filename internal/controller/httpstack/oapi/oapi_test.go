@@ -16,6 +16,8 @@ import (
 )
 
 func TestMiddleware(t *testing.T) {
+	t.Parallel()
+
 	spec := &openapi3.T{}
 	mw := Middleware(spec, nil, nil)
 

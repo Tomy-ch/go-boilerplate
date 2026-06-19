@@ -166,6 +166,8 @@ func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 	t.Parallel()
 
 	t.Run("observabilityConfigでMaskedDBQueryArgsがtrueのとき、ログにクエリ引数が含まれない", func(t *testing.T) {
+		t.Parallel()
+
 		cfg := config.MockConfigForTest(t)
 		obsCfg := config.NewObservabilityConfig(cfg)
 		obsCfg.SetObservabilityMaskedDBQueryArgs(t, true)
@@ -174,7 +176,7 @@ func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 
 		tc := &observability.TraceContext{}
 		funcName := "TestBuildSQLLogFields"
-		query := "SELECT * FROM users WHERE id = $1"
+		query := "SELECT id FROM users WHERE id = $1"
 		args := []any{123}
 
 		dwl := &dbWithLogging{
@@ -191,6 +193,8 @@ func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 	})
 
 	t.Run("observabilityConfigでMaskedDBQueryArgsがfalseのとき、ログにクエリ引数が含まれる", func(t *testing.T) {
+		t.Parallel()
+
 		cfg := config.MockConfigForTest(t)
 		obsCfg := config.NewObservabilityConfig(cfg)
 		lf := logging.NewTestLogFieldBuilder(t)
@@ -198,7 +202,7 @@ func Test_dbWithLogging_buildSQLEndLogFields(t *testing.T) {
 		tc := &observability.TraceContext{}
 		funcName := "TestBuildSQLLogFields"
 		query := "SELECT 1"
-		expectedDuration := time.Duration(100 * time.Millisecond)
+		expectedDuration := 100 * time.Millisecond
 
 		dwl := &dbWithLogging{
 			provider: &provider{
@@ -224,7 +228,7 @@ func Test_dbWithLogging_logQueryResult(t *testing.T) {
 	t.Run("Infoが呼ばれる", func(t *testing.T) {
 		t.Parallel()
 
-		mockDuration := dbCfg.SlowQueryWarnThreshold() - time.Duration(100*time.Millisecond)
+		mockDuration := dbCfg.SlowQueryWarnThreshold() - 100*time.Millisecond
 		mockLog := mock_logging.NewMockLogger(ctrl)
 		mockLog.EXPECT().Named(layer).Return(mockLog)
 		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
@@ -238,7 +242,7 @@ func Test_dbWithLogging_logQueryResult(t *testing.T) {
 	t.Run("遅いクエリでWarnが呼ばれる", func(t *testing.T) {
 		t.Parallel()
 
-		mockDuration := dbCfg.SlowQueryWarnThreshold() + time.Duration(100*time.Millisecond)
+		mockDuration := dbCfg.SlowQueryWarnThreshold() + 100*time.Millisecond
 		mockLog := mock_logging.NewMockLogger(ctrl)
 		mockLog.EXPECT().Named(layer).Return(mockLog)
 		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
@@ -252,7 +256,7 @@ func Test_dbWithLogging_logQueryResult(t *testing.T) {
 	t.Run("Errorが呼ばれる", func(t *testing.T) {
 		t.Parallel()
 
-		mockDuration := dbCfg.SlowQueryWarnThreshold() - time.Duration(100*time.Millisecond)
+		mockDuration := dbCfg.SlowQueryWarnThreshold() - 100*time.Millisecond
 		mockLog := mock_logging.NewMockLogger(ctrl)
 		mockLog.EXPECT().Named(layer).Return(mockLog)
 		mockLog.EXPECT().CallerSkip(callSkip).Return(mockLog)
