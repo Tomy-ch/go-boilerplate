@@ -234,7 +234,7 @@ linters:
       rules:
         - name: exported # exported な宣言にはドキュメントコメントを必須とする
           arguments:
-            - "disableStutteringCheck" # 命名の stutter 検査は行わない(コメント必須化のみが目的)
+            - "disableStutteringCheck" # 命名の stutter 検査は行わない
         - name: var-naming
           arguments:
             - []
