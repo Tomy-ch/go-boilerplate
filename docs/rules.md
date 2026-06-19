@@ -226,6 +226,7 @@ Usecase should **avoid direct dependency on Infrastructure**.
   - restating the implementation steps; tautologies (`// User は User です`)
 - **Exception**: a *load-bearing* constraint warning that the code itself cannot convey (e.g. a magic `runtime.Caller` skip depth, or "do not extract this helper — it shifts the skip count") may remain even though it is not strictly "behavior". It prevents a real bug.
 - Enforcement split: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of comments on exported declarations. This **behavior-only content** rule is semantic and cannot be linted — it is enforced by review (`local-review`'s `comment-style` lens).
+- **Language scope**: this content rule is **language-agnostic** — it applies to Go and non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). The Go examples above are illustrative, not a scope limit. Non-Go files are **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-style` review is the *only* check. Hold non-Go comments to the same standard — design rationale / 経緯 narration and redundant restatements are NG even in a build script or workflow file, with the same load-bearing-constraint exception.
 
 ## Testing & Definition of Done
 
