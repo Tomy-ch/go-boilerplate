@@ -1,4 +1,45 @@
 // ----------------
+// Imports
+// ----------------
+//
+// CDN + ブラウザ内 Babel をやめ、esbuild でこのファイルを起点にバンドルする。
+// React / marked / Fuse は初期描画に必要なため eager import。
+// highlight.js は Markdown を開いた時だけ使うため動的 import() で遅延ロードする
+// （esbuild の code splitting で別チャンク化）。
+// mermaid は単体 3MB 超かつ図種ごとに多数の動的チャンクへ分割されるため、
+// esbuild には含めず dist/ 配下の単一 UMD ファイルを遅延 script 注入で読み込む
+// （コミット対象を 1 ファイルに集約しつつ初期ロードからは除外する）。
+
+import React from "react"
+import { createRoot } from "react-dom/client"
+import { marked } from "marked"
+import Fuse from "fuse.js"
+
+// highlight.js のテーマ CSS。esbuild がバンドルして bundle.css として書き出す。
+import "highlight.js/styles/github.css"
+import "highlight.js/styles/github-dark.css"
+
+// ----------------
+// Lazy mermaid loader
+// ----------------
+
+// dist/mermaid.min.js (UMD) を初回のみ <script> 注入で読み込み、window.mermaid を返す。
+let mermaidPromise = null
+function loadMermaid() {
+  if (window.mermaid) return Promise.resolve(window.mermaid)
+  if (!mermaidPromise) {
+    mermaidPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script")
+      script.src = "./dist/mermaid.min.js"
+      script.onload = () => resolve(window.mermaid)
+      script.onerror = () => reject(new Error("failed to load mermaid"))
+      document.head.appendChild(script)
+    })
+  }
+  return mermaidPromise
+}
+
+// ----------------
 // Hash routing
 // ----------------
 
@@ -218,17 +259,24 @@ function MarkdownViewer({ html, onClose }) {
       mermaidNodes.push(div)
     })
 
-    // Mermaid render — modal 内のノードだけを対象にすることで
-    // ドキュメント全体スキャン (mermaid.run() の既定挙動) を避ける。
-    if (window.mermaid && mermaidNodes.length) {
-      mermaid.initialize({ startOnLoad: false })
-      mermaid.run({ nodes: mermaidNodes })
+    // Mermaid render — vendor の単一 UMD を遅延ロードし、
+    // modal 内のノードだけを対象にすることで全体スキャンを避ける。
+    if (mermaidNodes.length) {
+      loadMermaid()
+        .then((mermaid) => {
+          mermaid.initialize({ startOnLoad: false })
+          mermaid.run({ nodes: mermaidNodes })
+        })
+        .catch((err) => console.error(err))
     }
 
-    // Code highlight — hljs.highlightAll() は document 全体を走るので、
-    // modal 内の <pre><code> だけ highlightElement で処理する。
-    if (window.hljs) {
-      container.querySelectorAll("pre code").forEach((block) => hljs.highlightElement(block))
+    // Code highlight — highlight.js (common 言語サブセット) を動的 import で
+    // 遅延ロードし、modal 内の <pre><code> だけ highlightElement で処理する。
+    const codeBlocks = container.querySelectorAll("pre code")
+    if (codeBlocks.length) {
+      import("highlight.js/lib/common").then(({ default: hljs }) => {
+        codeBlocks.forEach((block) => hljs.highlightElement(block))
+      })
     }
   }, [html])
 
@@ -510,6 +558,4 @@ function App() {
 // Render
 // ----------------
 
-ReactDOM
-  .createRoot(document.getElementById("root"))
-  .render(<App />)
+createRoot(document.getElementById("root")).render(<App />)
