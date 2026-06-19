@@ -11,44 +11,85 @@ linters:
     - unused
 
     # Disabled by Default
+    - asasalint # ユニバーサルインターフェースを扱うときの潜在的なバグを防ぐチェックです
     - asciicheck # ASCII以外の文字を変数名などで使用しているかをチェックします
     - bidichk # バイディレクショナルテキストのチェックをします
+    - bodyclose # HTTPレスポンスのボディが閉じられているかをチェックします
+    - canonicalheader # HTTPヘッダーの正規化をチェックします
+    - containedctx # context.Contextが構造体に含まれているかをチェックします
     - contextcheck # context.Contextの伝播が破棄されていないかをチェックします
+    - copyloopvar # ループ変数のコピーをチェックします
     - decorder # constやvarなどの宣言順序をチェックします
     - depguard # 外部ライブラリの使用を制限します
+    - dogsled # _ が複数使用されているかをチェックします
     - dupl # 重複コードの検出を行います
+    - dupword # 重複した単語を検出します
+    - durationcheck # time.Duration型同士を掛け算してしまう誤用を静的分析で検出する
+    - embeddedstructfieldcheck # 埋め込み構造体フィールドの配置をチェックします
+    - errchkjson # JSON エンコーディングに関する安全性をチェックします
+    - errname # エラー名の命名規則をチェックします
     - errorlint # エラー処理のベストプラクティスをチェックします
+    - exhaustive # enum型の全ての値を網羅しているかをチェックします
     - exptostd # 標準ライブラリの使用を推奨します
+    - fatcontext # context.Contextがループで設定されているかをチェックします
     - forbidigo # 識別子の使用禁止ルールを設定します
+    - forcetypeassert # チェックなしの型アサーション(panicの恐れ)を検出します
     - funcorder # 構造体に関連する関数・メソッドの配置順序をチェックします
     - funlen # 関数の長さを制限して、冗長性と複雑さを減らします
     - gocheckcompilerdirectives # // go:ディレクティブのチェックを行います
+    - gochecknoinits # init() 関数が存在しないかを検出します
+    - gochecksumtype # 合併型／タグ付き列挙型の網羅性を静的にチェックします
     - gocognit # 人間の理解難度を測る指標として、関数・メソッドの認知的複雑度を算出します
     - gocritic # Goコードの高級な静的解析を行います
     - gocyclo # 関数単位での複雑度を計算します
+    - goprintffuncname # Printfライクな引数を取る関数が「f」で終わる名前になっているかをチェックします
     - gosec # セキュリティ上の脆弱性を検出します
+    - grouper # const/var/import等のグループ化スタイルをチェックします
+    - iface # インターフェースの不適切な使用を検出します
+    - importas # import文のエイリアスの一貫性を強制します
     - inamedparam # インターフェースのメソッド定義において「名前なしパラメータ」が使われていないかを検出します
     - interfacebloat # 1つのインターフェースにメソッドが多すぎる場合に警告を出します
+    - intrange # 書き換えられる“for”ループ構造を検出し、最適な書き方を提案します
+    - iotamixing # constブロック内でiotaと非iota宣言が混在していないかをチェックします
     - lll # 行の長さを制限します
+    - loggercheck # ログ呼び出しでキーと値の奇数組合せを静的に検出し、もし不一致があれば警告を出します
     - makezero # make()でのスライス初期化に関するバグを防ぐためのチェックを行います
+    - mirror # 文字列とバイトスライスの変換を最適化するパターンを検出します
     - misspell # スペルミスを検出します
     - mnd # マジックナンバーの使用を検出します
+    - modernize # モダンなGo言語・標準ライブラリ機能への簡素化を提案します
     - musttag # Marshal/Unmarshalする際に、エクスポート対象フィールドにタグがついていないことを検出します
+    - nakedret # naked returnを使う関数が一定の長さを超えていないかを検出します
     - nestif # ネストされたif文の深さを制限します
+    - nilerr # エラーチェックでnilが返されているかを検出します
     - nilnesserr # 正しいエラーが返されているかを検出します
+    - nilnil # nilのエラーと無効な値(nil)を同時に返していないかを検出します
     - noctx # context.Contextを使用していない非推奨なコードを検出します
     - nolintlint # nolintコメントの使用をチェックします
     - nonamedreturns # 名前付きリターン値を全部検出して警告します
+    - nosprintfhostport # IPv6 アドレスを含むホスト名とポートの文字列化にfmt.Sprintfを使っていないかを検出します
+    - paralleltest # テスト関数が並列実行(t.Parallel)されているかを検出します
+    - perfsprint # fmt.Sprintfのパフォーマンスに関する問題を検出します
     - prealloc # スライスの事前割り当てを推奨します
     - predeclared # 予約語の使用をチェックします
+    - reassign # グローバル変数の再代入を検出します
     - recvcheck # 関数のレシーバーが統一的に使用されているかをチェックします
     - revive # Goコードの静的解析を行うツールで、特にコードの品質とスタイルに焦点を当てています
     - rowserrcheck # sql系のインスタンスで、行の取得やエラー処理が正しく行われているかをチェックします
     - spancheck # OpenTelemetryのSpanの使用をチェックします
     - sqlclosecheck # SQLの接続やトランザクションのクローズ処理をチェックします
+    - tagliatelle # 構造体タグのスタイルをチェックします
+    - testableexamples # Example関数の末尾に出力内容に関するコメントがあるかをチェックします
     - testifylint # Testifyのアサーションやモックの使用をチェックします
+    - thelper # テストヘルパー関数がt.Helper()を呼んでいるかを検出します
+    - tparallel # テスト関数の不適切なt.Parallel使用を検出します
+    - unconvert # 型が既に同じなのに再度キャストしている冗長コードを検出します
     - unparam # 使用されていない関数のパラメータを検出します
+    - unqueryvet # SQLクエリ/ビルダー内のSELECT *を検出し、明示的なカラム指定を促します
     - usestdlibvars # 標準ライブラリの変数を使用しているかをチェックします
+    - usetesting # テストコードで誤った標準ライブラリの関数を使っていないかを検出します
+    - wastedassign # 不要な代入を検出します
+    - whitespace # 不要な空白を検出します
 
   settings:
     decorder:
@@ -352,6 +393,9 @@ linters:
       # 重複コードの検出を行います。
       # 約300トークン以上の重複を検出します。
       threshold: 300
+    exhaustive:
+      # default節で残りのケースを処理している場合は網羅とみなします。
+      default-signifies-exhaustive: true
     forbidigo:
       forbid:
         - pattern: '^print(ln)?$'
@@ -417,6 +461,9 @@ linters:
       - path: (.+)_test\.go
         linters:
           - lll
+          # テストヘルパー(DoJSON等)はt.Cleanup経由でレスポンスボディをcloseしており、
+          # bodyclose静的解析では追跡できないため、テストファイルでは除外します。
+          - bodyclose
 
 run:
   timeout: "3m"
