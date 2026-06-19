@@ -85,6 +85,7 @@ jobs:
         run: |
           make gen-portal-docs
           make gen-docs-json
+          make gen-portal-build
 
       - name: Generate godoc
         run: make gen-godoc
@@ -151,6 +152,7 @@ jobs:
             - ER diagram
             - Test repository docs
             - Portal docs / docs.json
+            - Portal frontend bundle (`docs/portal/dist/`)
 
             ### ⚠️ Notes
             - No manual edits are included
