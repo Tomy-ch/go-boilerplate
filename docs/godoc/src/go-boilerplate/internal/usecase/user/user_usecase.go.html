@@ -116,10 +116,10 @@
 <span id="L59" class="ln">    59  </span>
 <span id="L60" class="ln">    60  </span><span class="comment">// CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。</span>
 <span id="L61" class="ln">    61  </span>type CreateParamsDTO struct {
-<span id="L62" class="ln">    62  </span>	UserID      uuid.UUID
-<span id="L63" class="ln">    63  </span>	RawPassword string
-<span id="L64" class="ln">    64  </span>
-<span id="L65" class="ln">    65  </span>	UpdateProfileParams
+<span id="L62" class="ln">    62  </span>	UpdateProfileParams
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	UserID      uuid.UUID
+<span id="L65" class="ln">    65  </span>	RawPassword string
 <span id="L66" class="ln">    66  </span>}
 <span id="L67" class="ln">    67  </span>
 <span id="L68" class="ln">    68  </span><span class="comment">// PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。</span>

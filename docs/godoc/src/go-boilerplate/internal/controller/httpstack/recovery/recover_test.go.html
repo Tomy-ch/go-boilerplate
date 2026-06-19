@@ -59,7 +59,7 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
-<span id="L5" class="ln">     5  </span>	&#34;fmt&#34;
+<span id="L5" class="ln">     5  </span>	&#34;errors&#34;
 <span id="L6" class="ln">     6  </span>	&#34;net/http&#34;
 <span id="L7" class="ln">     7  </span>	&#34;net/http/httptest&#34;
 <span id="L8" class="ln">     8  </span>	&#34;testing&#34;
@@ -112,7 +112,7 @@
 <span id="L55" class="ln">    55  </span>			rec := httptest.NewRecorder()
 <span id="L56" class="ln">    56  </span>			c := e.NewContext(req, rec)
 <span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>			inErr := fmt.Errorf(&#34;boom&#34;)
+<span id="L58" class="ln">    58  </span>			inErr := errors.New(&#34;boom&#34;)
 <span id="L59" class="ln">    59  </span>			f := newRecoverLogErrorFunc(logger, lf)
 <span id="L60" class="ln">    60  </span>			err := f(c, inErr, []byte(&#34;stack&#34;))
 <span id="L61" class="ln">    61  </span>			require.ErrorIs(t, err, inErr)
@@ -129,7 +129,7 @@
 <span id="L72" class="ln">    72  </span>			rec := httptest.NewRecorder()
 <span id="L73" class="ln">    73  </span>			c := e.NewContext(req, rec)
 <span id="L74" class="ln">    74  </span>
-<span id="L75" class="ln">    75  </span>			inErr := fmt.Errorf(&#34;boom2&#34;)
+<span id="L75" class="ln">    75  </span>			inErr := errors.New(&#34;boom2&#34;)
 <span id="L76" class="ln">    76  </span>			f := newRecoverLogErrorFunc(logger, lf)
 <span id="L77" class="ln">    77  </span>			err := f(c, inErr, []byte(&#34;stack2&#34;))
 <span id="L78" class="ln">    78  </span>			require.ErrorIs(t, err, inErr)

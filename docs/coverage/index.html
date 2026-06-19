@@ -61,7 +61,7 @@
 				
 				<option value="file2">go-boilerplate/internal/cli/job/job.go (100.0%)</option>
 				
-				<option value="file3">go-boilerplate/internal/cli/mergedml/merge_dml.go (95.3%)</option>
+				<option value="file3">go-boilerplate/internal/cli/mergedml/merge_dml.go (95.1%)</option>
 				
 				<option value="file4">go-boilerplate/internal/cli/migrate/migratedown.go (100.0%)</option>
 				
@@ -1001,15 +1001,8 @@ func resolveConcurrencyConst() int <span class="cov6" title="5">{
 
 // resolveConcurrency は、CPU 数を [minSQLCConcurrency, maxSQLCConcurrency] にクランプして同時実行数を返します。
 func resolveConcurrency(numCPU int) int <span class="cov8" title="10">{
-        n := numCPU
-        if n &gt; maxSQLCConcurrency </span><span class="cov1" title="1">{
-                n = maxSQLCConcurrency
-        }</span>
-        <span class="cov8" title="10">if n &lt; minSQLCConcurrency </span><span class="cov1" title="1">{
-                n = minSQLCConcurrency
-        }</span>
-        <span class="cov8" title="10">return n</span>
-}
+        return max(min(numCPU, maxSQLCConcurrency), minSQLCConcurrency)
+}</span>
 
 func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error <span class="cov7" title="8">{
         keep := make(map[string]struct{}, len(categories))
@@ -1694,8 +1687,6 @@ import (
         "testing"
         "time"
 
-        "go-boilerplate/pkg/ptr"
-
         "golang.org/x/crypto/bcrypt"
 )
 
@@ -1783,7 +1774,7 @@ var (
         expectedReferrerPolicy        = "no-referrer"
         expectedBcryptCost            = bcrypt.MinCost
         // secure cookie
-        expectedSecureCookieSecure   = ptr.To(true)
+        expectedSecureCookieSecure   = new(true)
         expectedSecureCookieSameSite = "Strict"
         expectedSecureCookieDomain   = "localhost"
         // auth
@@ -1793,8 +1784,8 @@ var (
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="345">{
-        t.Helper()
+func MockConfigForTest(tb testing.TB) *Config <span class="cov10" title="345">{
+        tb.Helper()
         return &amp;Config{
                 os: OperatingSystemConfig{
                         timezone: expectedOSTimeZone,
@@ -1866,8 +1857,8 @@ func MockConfigForTest(t testing.TB) *Config <span class="cov10" title="345">{
 }</span>
 
 // mockLoader は、テスト用のLoaderを返します。
-func mockLoader(t testing.TB) Loader <span class="cov6" title="32">{
-        t.Helper()
+func mockLoader(tb testing.TB) Loader <span class="cov6" title="32">{
+        tb.Helper()
 
         return Loader{
                 OS: OperatingSystem{
@@ -2014,111 +2005,111 @@ import (
 // SetApplicationMode は、テスト用にサーバーのAppModeを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *ApplicationConfig) SetApplicationMode(t testing.TB, mode string) <span class="cov10" title="13">{
-        t.Helper()
+func (a *ApplicationConfig) SetApplicationMode(tb testing.TB, mode string) <span class="cov10" title="13">{
+        tb.Helper()
         prev := a.Mode()
         a.mode = mode
-        t.Cleanup(func() </span><span class="cov10" title="13">{ a.mode = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov10" title="13">{ a.mode = prev }</span>)
 }
 
 // SetApplicationEnv は、テスト用にアプリケーションの環境を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *ApplicationConfig) SetApplicationEnv(t testing.TB, env string) <span class="cov6" title="5">{
-        t.Helper()
+func (a *ApplicationConfig) SetApplicationEnv(tb testing.TB, env string) <span class="cov6" title="5">{
+        tb.Helper()
         prev := a.Env()
         a.env = env
-        t.Cleanup(func() </span><span class="cov6" title="5">{ a.env = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov6" title="5">{ a.env = prev }</span>)
 }
 
 // SetServerPort は、テスト用にサーバーのポートを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (s *ServerConfig) SetServerPort(t testing.TB, port int) <span class="cov5" title="4">{
-        t.Helper()
+func (s *ServerConfig) SetServerPort(tb testing.TB, port int) <span class="cov5" title="4">{
+        tb.Helper()
         prev := s.Port()
         s.port = port
-        t.Cleanup(func() </span><span class="cov5" title="4">{ s.port = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov5" title="4">{ s.port = prev }</span>)
 }
 
 // SetObservabilityMaskedDBQueryArgs は、テスト用にオブザーバビリティのDBクエリ引数の設定を行います。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(t testing.TB, val bool) <span class="cov3" title="2">{
-        t.Helper()
+func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(tb testing.TB, val bool) <span class="cov3" title="2">{
+        tb.Helper()
         prev := o.MaskedDBQueryArgs()
         o.maskedDBQueryArgs = val
-        t.Cleanup(func() </span><span class="cov3" title="2">{ o.maskedDBQueryArgs = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov3" title="2">{ o.maskedDBQueryArgs = prev }</span>)
 }
 
 // SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (d *DatabaseConfig) SetDatabaseHost(t testing.TB, host string) <span class="cov7" title="6">{
-        t.Helper()
+func (d *DatabaseConfig) SetDatabaseHost(tb testing.TB, host string) <span class="cov7" title="6">{
+        tb.Helper()
         prev := d.Host()
         d.host = host
-        t.Cleanup(func() </span><span class="cov7" title="6">{ d.host = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov7" title="6">{ d.host = prev }</span>)
 }
 
 // SetDatabaseName は、テスト用にデータベースの名前を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string) <span class="cov3" title="2">{
-        t.Helper()
+func (d *DatabaseConfig) SetDatabaseName(tb testing.TB, name string) <span class="cov3" title="2">{
+        tb.Helper()
         prev := d.DBName()
         d.name = name
-        t.Cleanup(func() </span><span class="cov3" title="2">{ d.name = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov3" title="2">{ d.name = prev }</span>)
 }
 
 // SetMetricsPort は、テスト用にメトリクスサーバーのポートを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (m *MetricsConfig) SetMetricsPort(t testing.TB, port int) <span class="cov1" title="1">{
-        t.Helper()
+func (m *MetricsConfig) SetMetricsPort(tb testing.TB, port int) <span class="cov1" title="1">{
+        tb.Helper()
         prev := m.Port()
         m.port = port
-        t.Cleanup(func() </span><span class="cov1" title="1">{ m.port = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov1" title="1">{ m.port = prev }</span>)
 }
 
 // SetMaxConns は、テスト用にDB接続の最大オープン数を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (c *DBConnectionConfig) SetMaxConns(t testing.TB, maxConns int32) <span class="cov3" title="2">{
-        t.Helper()
+func (c *DBConnectionConfig) SetMaxConns(tb testing.TB, maxConns int32) <span class="cov3" title="2">{
+        tb.Helper()
         prev := c.MaxConns()
         c.maxConns = maxConns
-        t.Cleanup(func() </span><span class="cov3" title="2">{ c.maxConns = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov3" title="2">{ c.maxConns = prev }</span>)
 }
 
 // SetCIDR は、テスト用にセキュリティのCIDRを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (s *SecurityConfig) SetCIDR(t testing.TB, cidr *net.IPNet) <span class="cov4" title="3">{
-        t.Helper()
+func (s *SecurityConfig) SetCIDR(tb testing.TB, cidr *net.IPNet) <span class="cov4" title="3">{
+        tb.Helper()
         prev := s.CIDR()
         s.cidr = cidr
-        t.Cleanup(func() </span><span class="cov4" title="3">{ s.cidr = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov4" title="3">{ s.cidr = prev }</span>)
 }
 
 // SetHeaderName は、テスト用に認証のヘッダ名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *AuthConfig) SetHeaderName(t testing.TB, headerName string) <span class="cov4" title="3">{
-        t.Helper()
+func (a *AuthConfig) SetHeaderName(tb testing.TB, headerName string) <span class="cov4" title="3">{
+        tb.Helper()
         prev := a.headerName
         a.headerName = headerName
-        t.Cleanup(func() </span><span class="cov4" title="3">{ a.headerName = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov4" title="3">{ a.headerName = prev }</span>)
 }
 
 // SetAllowedHeaderBearer は、テスト用に認証の許可されたヘッダベアラーを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *AuthConfig) SetAllowedHeaderBearer(t testing.TB, allowed bool) <span class="cov4" title="3">{
-        t.Helper()
+func (a *AuthConfig) SetAllowedHeaderBearer(tb testing.TB, allowed bool) <span class="cov4" title="3">{
+        tb.Helper()
         prev := a.allowedHeaderBearer
         a.allowedHeaderBearer = allowed
-        t.Cleanup(func() </span><span class="cov4" title="3">{ a.allowedHeaderBearer = prev }</span>)
+        tb.Cleanup(func() </span><span class="cov4" title="3">{ a.allowedHeaderBearer = prev }</span>)
 }
 </pre>
 		
@@ -2705,12 +2696,14 @@ import (
         "fmt"
 
         "go-boilerplate/internal/controller/error/response/gen"
-        "go-boilerplate/pkg/ptr"
 )
 
 // HTTPErrorResponse は、HTTPエラーレスポンスの構造体です。
+//
+//nolint:errname // HTTPエラーレスポンスのDTOであり、レスポンス本体を表す名称が適切なため XxxError 形式には改名しない
 type HTTPErrorResponse struct {
         gen.ErrorResponse
+
         HTTPStatus int   `json:"-"`
         Internal   error `json:"-"`
 }
@@ -2746,7 +2739,7 @@ func (e *HTTPErrorResponse) Error() string <span class="cov2" title="2">{
 func newHTTPErrorFromMeta(meta httpErrorMeta, details ...string) *HTTPErrorResponse <span class="cov10" title="47">{
         var detailsPtr *[]string
         if len(details) &gt; 0 </span><span class="cov5" title="8">{
-                detailsPtr = ptr.To(details)
+                detailsPtr = new(details)
         }</span>
         <span class="cov10" title="47">return &amp;HTTPErrorResponse{
                 ErrorResponse: gen.ErrorResponse{
@@ -3879,8 +3872,6 @@ func NewBasicAuthValidator(mtcCfg *config.MetricsConfig) echomw.BasicAuthValidat
 
 import (
         "strings"
-
-        "go-boilerplate/pkg/ptr"
 )
 
 const keyValueAttrSep = "="
@@ -3912,7 +3903,7 @@ func parseSetCookie(raw string) (string, string, *cookieAttrs, bool) <span class
                 }
                 <span class="cov8" title="41">k, v, isKV := splitAttr(p)
                 if isKV </span><span class="cov7" title="27">{
-                        upsertAttr(attrs, k, ptr.To(v))
+                        upsertAttr(attrs, k, new(v))
                 }</span> else<span class="cov6" title="14"> {
                         upsertAttr(attrs, k, nil)
                 }</span>
@@ -3922,11 +3913,11 @@ func parseSetCookie(raw string) (string, string, *cookieAttrs, bool) <span class
 
 // splitAttr は 属性文字列を key/value に分割します（`=` 前後の空白は除去）。
 func splitAttr(s string) (string, string, bool) <span class="cov8" title="44">{
-        eq := strings.Index(s, keyValueAttrSep)
-        if eq &lt; 0 </span><span class="cov6" title="15">{
+        before, after, ok := strings.Cut(s, keyValueAttrSep)
+        if !ok </span><span class="cov6" title="15">{
                 return strings.TrimSpace(s), "", false
         }</span>
-        <span class="cov8" title="29">return strings.TrimSpace(s[:eq]), strings.TrimSpace(s[eq+1:]), true</span>
+        <span class="cov8" title="29">return strings.TrimSpace(before), strings.TrimSpace(after), true</span>
 }
 
 // upsertAttr は 属性を追加/更新します（order と kv のキー集合を一致させる単一経路）。
@@ -3949,7 +3940,7 @@ func setBoolAttr(attrs *cookieAttrs, key string, on bool) <span class="cov6" tit
 
 // setKVAttr は key/value 属性を設定します。
 func setKVAttr(attrs *cookieAttrs, key, val string) <span class="cov6" title="15">{
-        upsertAttr(attrs, key, ptr.To(val))
+        upsertAttr(attrs, key, new(val))
 }</span>
 
 // delAttr は 属性を削除します。
@@ -4192,11 +4183,10 @@ func secureCookieMiddleware(cfg *SecurityCookie) echo.MiddlewareFunc <span class
 package cookie
 
 import (
-        "fmt"
+        "strconv"
         "strings"
 
         "go-boilerplate/internal/config"
-        "go-boilerplate/pkg/ptr"
 )
 
 // SecurityCookie は Set-Cookie を正規化するための設定です。
@@ -4242,7 +4232,7 @@ func NewSecurityCookie(
                 applyToAll: true,
 
                 // HttpOnly は既定で常に付与する（拡張時はここを直接変更する）
-                forceHTTPOnly: ptr.To(true),
+                forceHTTPOnly: new(true),
 
                 // SameSite=None のとき Secure を要求（ブラウザ仕様に沿って安全側）
                 enforceSecureWhenSameSiteNone: true,
@@ -4295,7 +4285,7 @@ func (cfg *SecurityCookie) RewriteSetCookie(raw string) string <span class="cov1
                 setKVAttr(attrs, "domain", cfg.forceDomain)
         }</span>
         <span class="cov9" title="15">if cfg.forceMaxAge != nil </span><span class="cov1" title="1">{
-                setKVAttr(attrs, "max-age", fmt.Sprintf("%d", *cfg.forceMaxAge))
+                setKVAttr(attrs, "max-age", strconv.Itoa(*cfg.forceMaxAge))
         }</span>
         // expires は整合性が難しいので、この雛形では触らない（必要なら追加）
         <span class="cov9" title="15">cfg.applyNamePrefix(name, attrs)
@@ -4869,6 +4859,7 @@ func authExtractor(
 ) (*authbd.Authn, error) <span class="cov7" title="8">{
         token := extractToken(req, authCfg)
         if token == "" </span><span class="cov3" title="2">{
+                //nolint:nilnil // トークン未提供を表す。呼び出し側で authn==nil を判定し未提供エラーへ変換するため意図的にnil,nilを返す
                 return nil, nil
         }</span>
 
@@ -4906,8 +4897,8 @@ func extractToken(r *http.Request, authCfg *config.AuthConfig) string <span clas
                 return ""
         }</span>
         <span class="cov5" title="4">if authCfg.AllowedHeaderBearer() &amp;&amp; strings.EqualFold(authCfg.HeaderName(), echo.HeaderAuthorization) </span><span class="cov3" title="2">{
-                if strings.HasPrefix(raw, prefixBearer) </span><span class="cov1" title="1">{
-                        return strings.TrimSpace(strings.TrimPrefix(raw, prefixBearer))
+                if after, ok := strings.CutPrefix(raw, prefixBearer); ok </span><span class="cov1" title="1">{
+                        return strings.TrimSpace(after)
                 }</span>
                 <span class="cov1" title="1">return ""</span>
         }
@@ -5270,13 +5261,11 @@ package usercount
 
 import (
         "context"
-        "fmt"
 
         "go-boilerplate/internal/logging"
         "go-boilerplate/internal/observability"
         "go-boilerplate/internal/usecase/boundary/job"
         "go-boilerplate/internal/usecase/user"
-        "go-boilerplate/pkg/ptr"
         "go-boilerplate/pkg/xerrors"
 )
 
@@ -5318,18 +5307,18 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error <span class=
                 switch a </span>{
                 case "--active-only":<span class="cov4" title="2">
                         if active != nil </span><span class="cov0" title="0">{
-                                return xerrors.New(fmt.Sprintf("conflicting filter flag: %s", a))
+                                return xerrors.New("conflicting filter flag: " + a)
                         }</span>
-                        <span class="cov4" title="2">active = ptr.To(true)
+                        <span class="cov4" title="2">active = new(true)
                         filter = "active"</span>
                 case "--inactive-only":<span class="cov4" title="2">
                         if active != nil </span><span class="cov1" title="1">{
-                                return xerrors.New(fmt.Sprintf("conflicting filter flag: %s", a))
+                                return xerrors.New("conflicting filter flag: " + a)
                         }</span>
-                        <span class="cov1" title="1">active = ptr.To(false)
+                        <span class="cov1" title="1">active = new(false)
                         filter = "inactive"</span>
                 default:<span class="cov1" title="1">
-                        return xerrors.New(fmt.Sprintf("unknown flag: %s", a))</span>
+                        return xerrors.New("unknown flag: " + a)</span>
                 }
         }
         <span class="cov7" title="4">count, err := u.usecase.CountUsers(ctx, active)
@@ -5690,6 +5679,7 @@ import (
 // RunnerIn は、Runnerの入力パラメータを表します。
 type RunnerIn struct {
         fx.In
+
         Jobs []job.Job `group:"jobs"`
 }
 
@@ -5860,7 +5850,7 @@ func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logge
         default:<span class="cov1" title="1">
                 logger.Named("core.authn").CallerSkip(callerSkipCount).Error(
                         "No authenticator configured for the current environment",
-                        logging.String("env", string(appCfg.Env())),
+                        logging.String("env", appCfg.Env()),
                 )
 
                 return nil, fmt.Errorf("no authenticator configured for environment: %s", appCfg.Env())</span>
@@ -6233,6 +6223,7 @@ const callerSkip = 2
 // ServerExtends は、サーバーの拡張機能を表します。
 type ServerExtends struct {
         fx.In
+
         // PreList は、Preミドルウェアとして適用されるミドルウェアのリストです。
         PreList []PreMiddleware `group:"middlewares.pre"`
         // UseList は、Useミドルウェアとして適用されるミドルウェアのリストです。
@@ -6250,6 +6241,7 @@ type SrvCfg func(*echo.Echo)
 // ServeCfgOut は、サーバーの設定の出力時に使用される構造体です。
 type ServeCfgOut struct {
         fx.Out
+
         SrvCfg SrvCfg `group:"server.configurators"`
 }
 
@@ -6276,12 +6268,14 @@ type UseMiddleware struct {
 // PreMiddlewareOut は、fx の group 出力用のラッパーです。
 type PreMiddlewareOut struct {
         fx.Out
+
         Middleware PreMiddleware `group:"middlewares.pre"`
 }
 
 // UseMiddlewareOut は、fx の group 出力用のラッパーです。
 type UseMiddlewareOut struct {
         fx.Out
+
         Middleware UseMiddleware `group:"middlewares.use"`
 }
 
@@ -6334,7 +6328,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="17">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="29">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -7535,8 +7529,8 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 
 // resolveSubject は token から localPrefix を除いた Subject を抽出します。
 func (a *authenticator) resolveSubject(token string) string <span class="cov6" title="4">{
-        if strings.HasPrefix(token, localPrefix) </span><span class="cov3" title="2">{
-                sub := strings.TrimSpace(strings.TrimPrefix(token, localPrefix))
+        if after, ok := strings.CutPrefix(token, localPrefix); ok </span><span class="cov3" title="2">{
+                sub := strings.TrimSpace(after)
                 if sub != "" </span><span class="cov3" title="2">{
                         return sub
                 }</span>
@@ -8845,11 +8839,11 @@ import (
         "github.com/stretchr/testify/require"
 )
 
-var rollbackForTestError = xerrors.New("rollback for test")
+var errRollbackForTest = xerrors.New("rollback for test")
 
 var (
         testDB  driver.DatabaseDriver
-        initErr error
+        errInit error
         dbOnce  sync.Once
         // txLock は、テスト用のトランザクションマネージャーでトランザクションを開始する際のロックです。
         // これにより、テストが並行して実行される場合でも、トランザクションの競合を防止します。
@@ -8921,10 +8915,10 @@ func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) <span class="cov9"
 
         err := t.inner.Do(baseCtx, func(txCtx context.Context) error </span><span class="cov9" title="28">{
                 fn(txCtx)
-                return rollbackForTestError
+                return errRollbackForTest
         }</span>)
 
-        <span class="cov9" title="28">if xerrors.Is(err, rollbackForTestError) </span><span class="cov9" title="28">{
+        <span class="cov9" title="28">if xerrors.Is(err, errRollbackForTest) </span><span class="cov9" title="28">{
                 return
         }</span>
         <span class="cov0" title="0">require.NoError(t.t, err)</span>
@@ -8940,10 +8934,10 @@ func getTestDB(t *testing.T) driver.DatabaseDriver <span class="cov10" title="36
                 osCfg := config.NewOperatingSystemConfig(cfg)
                 dbConnCfg := config.NewDBConnectionConfig(cfg)
 
-                testDB, initErr = driver.NewDB(dbCfg, osCfg, dbConnCfg)
+                testDB, errInit = driver.NewDB(dbCfg, osCfg, dbConnCfg)
         }</span>)
 
-        <span class="cov10" title="36">require.NoError(t, initErr)
+        <span class="cov10" title="36">require.NoError(t, errInit)
         require.NotNil(t, testDB)
 
         return testDB</span>
@@ -9157,7 +9151,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov6" title="203">{
+        for i, line := range lines </span><span class="cov7" title="286">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>
@@ -9665,6 +9659,7 @@ import (
 // 本ラッパを Check/Write 二段階契約に沿って再設計してください。
 type stacktraceArrayCore struct {
         zapcore.Core
+
         key string
 }
 
@@ -10717,24 +10712,20 @@ func (p Paging) Limit() int <span class="cov7" title="11">{ return p.limit }</sp
 
 // Limit32 は、ページの取得上限をint32型で返します。
 func (p Paging) Limit32() int32 <span class="cov9" title="26">{
-        limit := p.limit
-        if limit &gt; maxPerPage </span><span class="cov1" title="1">{
-                limit = maxPerPage
-        }</span>
-        <span class="cov9" title="26">return int32(limit)</span>
-}
+        limit := min(p.limit, maxPerPage)
+        //nolint:gosec // G115: maxPerPage(int32範囲内の定数)でクランプ済みのためオーバーフローしません
+        return int32(limit)
+}</span>
 
 // Offset は、ページのオフセットを返します。
 func (p Paging) Offset() int <span class="cov7" title="11">{ return p.offset }</span>
 
 // Offset32 は、ページのオフセットをint32型で返します。
 func (p Paging) Offset32() int32 <span class="cov9" title="26">{
-        offset := p.offset
-        if offset &gt; maxOffset </span><span class="cov1" title="1">{
-                offset = maxOffset
-        }</span>
-        <span class="cov9" title="26">return int32(offset)</span>
-}
+        offset := min(p.offset, maxOffset)
+        //nolint:gosec // G115: maxOffset(int32範囲内の定数)でクランプ済みのためオーバーフローしません
+        return int32(offset)
+}</span>
 </pre>
 		
 		<pre class="file" id="file148" style="display: none">// Package search は、検索関連のユースケースをサポートするユーティリティを提供します。
@@ -10969,10 +10960,10 @@ type UpdateProfileParams struct {
 
 // CreateParamsDTO は、ユーザー作成に必要なパラメータを表します。
 type CreateParamsDTO struct {
+        UpdateProfileParams
+
         UserID      uuid.UUID
         RawPassword string
-
-        UpdateProfileParams
 }
 
 // PatchParamsDTO は、ユーザー部分更新（PATCH）に必要なパラメータを表します。nil のフィールドは更新しません（password は更新対象外）。
@@ -11626,8 +11617,8 @@ func ExtractPackageName(full string) string <span class="cov8" title="176">{
                 return unknown
         }</span>
 
-        <span class="cov8" title="174">if idx := strings.Index(lhs, "."); idx &gt;= 0 </span><span class="cov5" title="21">{
-                return lhs[:idx]
+        <span class="cov8" title="174">if before, _, ok := strings.Cut(lhs, "."); ok </span><span class="cov5" title="21">{
+                return before
         }</span>
 
         <span class="cov8" title="153">return lhs</span>
@@ -11675,11 +11666,11 @@ func (OS) Glob(pattern string) ([]string, error) <span class="cov1" title="1">{
 package ptr
 
 // To は、引数として渡された値のポインタを返します。
-func To[T any](v T) *T <span class="cov10" title="251">{ return &amp;v }</span>
+func To[T any](v T) *T <span class="cov4" title="6">{ return new(v) }</span>
 
 // Copy は、ポインタの指す値をシャローコピーした新しいポインタを返します（nil 入力時は nil）。
 // T が参照型フィールド（スライス・マップ・ポインタ等）を含む場合、その参照先は複製元と共有されます。
-func Copy[T any](v *T) *T <span class="cov9" title="211">{
+func Copy[T any](v *T) *T <span class="cov10" title="211">{
         if v == nil </span><span class="cov8" title="102">{
                 return nil
         }</span>
@@ -11848,8 +11839,8 @@ import (
 //
 // 本番利用は想定していません。
 // v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
-func NewTestFromSalt(t testing.TB, salt string) UUID <span class="cov10" title="56">{
-        t.Helper()
+func NewTestFromSalt(tb testing.TB, salt string) UUID <span class="cov10" title="56">{
+        tb.Helper()
         ns := uuid.NameSpaceURL
         g := uuid.NewSHA1(ns, []byte(salt))
         return fromGoogle(g)
