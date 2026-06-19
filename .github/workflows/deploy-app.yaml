@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   build:
@@ -97,9 +96,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
-      # WARN: 現状は GHCR 向けログインのみ。後段の build-push / cosign sign / SBOM 取得 / attest は
-      #       すべてここで確立した認証情報を使う。他レジストリではこのステップを差し替える
+      # WARN: 他レジストリへ移行する場合はこのステップを差し替えること
       #       （ECR: aws ecr get-login-password / GCP: gcloud auth / ACR: az acr login 等）。
+      #       後段のビルド/署名/attestation はここで確立した認証セッションに依存する。
       - name: Login to registry
         run: |
           echo "Login to container registry here (ECR/GCR/ACR/GHCR)"
@@ -153,6 +152,9 @@ jobs:
         run: |
           cosign sign --yes "${IMAGE_DIGEST_REF}"
 
+      # NOTE: image-scan.yaml の SBOM とは目的が異なる意図的な重複。
+      #       image-scan.yaml は PR ゲートとしてローカルビルド(push:false)を対象にスキャン/レポートする。
+      #       こちらは push 済み digest を対象に attestation へ添付する。どちらか一方を消さないこと。
       - name: Generate SBOM (SPDX) for pushed image
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
