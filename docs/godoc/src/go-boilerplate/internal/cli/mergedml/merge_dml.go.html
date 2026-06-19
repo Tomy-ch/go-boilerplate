@@ -359,59 +359,52 @@
 <span id="L302" class="ln">   302  </span>
 <span id="L303" class="ln">   303  </span><span class="comment">// resolveConcurrency は、CPU 数を [minSQLCConcurrency, maxSQLCConcurrency] にクランプして同時実行数を返します。</span>
 <span id="L304" class="ln">   304  </span>func resolveConcurrency(numCPU int) int {
-<span id="L305" class="ln">   305  </span>	n := numCPU
-<span id="L306" class="ln">   306  </span>	if n &gt; maxSQLCConcurrency {
-<span id="L307" class="ln">   307  </span>		n = maxSQLCConcurrency
-<span id="L308" class="ln">   308  </span>	}
-<span id="L309" class="ln">   309  </span>	if n &lt; minSQLCConcurrency {
-<span id="L310" class="ln">   310  </span>		n = minSQLCConcurrency
-<span id="L311" class="ln">   311  </span>	}
-<span id="L312" class="ln">   312  </span>	return n
-<span id="L313" class="ln">   313  </span>}
-<span id="L314" class="ln">   314  </span>
-<span id="L315" class="ln">   315  </span>func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {
-<span id="L316" class="ln">   316  </span>	keep := make(map[string]struct{}, len(categories))
-<span id="L317" class="ln">   317  </span>	for _, cat := range categories {
-<span id="L318" class="ln">   318  </span>		keep[fmt.Sprintf(&#34;%s_%s.gen.sql&#34;, cat, targetType)] = struct{}{}
-<span id="L319" class="ln">   319  </span>	}
-<span id="L320" class="ln">   320  </span>
-<span id="L321" class="ln">   321  </span>	genAbs := filepath.Join(g.workDir, g.genRootDir) <span class="comment">// /app/database/gen</span>
-<span id="L322" class="ln">   322  </span>	names, err := g.fs.ListGenFileNames(genAbs)
-<span id="L323" class="ln">   323  </span>	if err != nil {
-<span id="L324" class="ln">   324  </span>		return err
-<span id="L325" class="ln">   325  </span>	}
+<span id="L305" class="ln">   305  </span>	return max(min(numCPU, maxSQLCConcurrency), minSQLCConcurrency)
+<span id="L306" class="ln">   306  </span>}
+<span id="L307" class="ln">   307  </span>
+<span id="L308" class="ln">   308  </span>func (g *Generator) cleanupStaleGeneratedFiles(categories []string, targetType string) error {
+<span id="L309" class="ln">   309  </span>	keep := make(map[string]struct{}, len(categories))
+<span id="L310" class="ln">   310  </span>	for _, cat := range categories {
+<span id="L311" class="ln">   311  </span>		keep[fmt.Sprintf(&#34;%s_%s.gen.sql&#34;, cat, targetType)] = struct{}{}
+<span id="L312" class="ln">   312  </span>	}
+<span id="L313" class="ln">   313  </span>
+<span id="L314" class="ln">   314  </span>	genAbs := filepath.Join(g.workDir, g.genRootDir) <span class="comment">// /app/database/gen</span>
+<span id="L315" class="ln">   315  </span>	names, err := g.fs.ListGenFileNames(genAbs)
+<span id="L316" class="ln">   316  </span>	if err != nil {
+<span id="L317" class="ln">   317  </span>		return err
+<span id="L318" class="ln">   318  </span>	}
+<span id="L319" class="ln">   319  </span>
+<span id="L320" class="ln">   320  </span>	suffix := fmt.Sprintf(&#34;_%s.gen.sql&#34;, targetType)
+<span id="L321" class="ln">   321  </span>
+<span id="L322" class="ln">   322  </span>	for _, name := range names {
+<span id="L323" class="ln">   323  </span>		if !strings.HasSuffix(name, suffix) {
+<span id="L324" class="ln">   324  </span>			continue
+<span id="L325" class="ln">   325  </span>		}
 <span id="L326" class="ln">   326  </span>
-<span id="L327" class="ln">   327  </span>	suffix := fmt.Sprintf(&#34;_%s.gen.sql&#34;, targetType)
-<span id="L328" class="ln">   328  </span>
-<span id="L329" class="ln">   329  </span>	for _, name := range names {
-<span id="L330" class="ln">   330  </span>		if !strings.HasSuffix(name, suffix) {
-<span id="L331" class="ln">   331  </span>			continue
-<span id="L332" class="ln">   332  </span>		}
-<span id="L333" class="ln">   333  </span>
-<span id="L334" class="ln">   334  </span>		if _, ok := keep[name]; ok {
-<span id="L335" class="ln">   335  </span>			continue
-<span id="L336" class="ln">   336  </span>		}
-<span id="L337" class="ln">   337  </span>
-<span id="L338" class="ln">   338  </span>		full := filepath.Join(genAbs, name)
-<span id="L339" class="ln">   339  </span>
-<span id="L340" class="ln">   340  </span>		if err := g.ensureUnderDir(full); err != nil {
-<span id="L341" class="ln">   341  </span>			return err
-<span id="L342" class="ln">   342  </span>		}
-<span id="L343" class="ln">   343  </span>
-<span id="L344" class="ln">   344  </span>		if err := g.fs.Remove(full); err != nil {
-<span id="L345" class="ln">   345  </span>			return err
-<span id="L346" class="ln">   346  </span>		}
+<span id="L327" class="ln">   327  </span>		if _, ok := keep[name]; ok {
+<span id="L328" class="ln">   328  </span>			continue
+<span id="L329" class="ln">   329  </span>		}
+<span id="L330" class="ln">   330  </span>
+<span id="L331" class="ln">   331  </span>		full := filepath.Join(genAbs, name)
+<span id="L332" class="ln">   332  </span>
+<span id="L333" class="ln">   333  </span>		if err := g.ensureUnderDir(full); err != nil {
+<span id="L334" class="ln">   334  </span>			return err
+<span id="L335" class="ln">   335  </span>		}
+<span id="L336" class="ln">   336  </span>
+<span id="L337" class="ln">   337  </span>		if err := g.fs.Remove(full); err != nil {
+<span id="L338" class="ln">   338  </span>			return err
+<span id="L339" class="ln">   339  </span>		}
+<span id="L340" class="ln">   340  </span>
+<span id="L341" class="ln">   341  </span>		g.logger.CallerSkip(g.callerSkipCount).Named(&#34;mergedml.cleanupStaleGeneratedFiles&#34;).Info(
+<span id="L342" class="ln">   342  </span>			&#34;remove stale generated sql&#34;,
+<span id="L343" class="ln">   343  </span>			logging.String(&#34;file&#34;, filepath.ToSlash(full)),
+<span id="L344" class="ln">   344  </span>			logging.String(&#34;type&#34;, targetType),
+<span id="L345" class="ln">   345  </span>		)
+<span id="L346" class="ln">   346  </span>	}
 <span id="L347" class="ln">   347  </span>
-<span id="L348" class="ln">   348  </span>		g.logger.CallerSkip(g.callerSkipCount).Named(&#34;mergedml.cleanupStaleGeneratedFiles&#34;).Info(
-<span id="L349" class="ln">   349  </span>			&#34;remove stale generated sql&#34;,
-<span id="L350" class="ln">   350  </span>			logging.String(&#34;file&#34;, filepath.ToSlash(full)),
-<span id="L351" class="ln">   351  </span>			logging.String(&#34;type&#34;, targetType),
-<span id="L352" class="ln">   352  </span>		)
-<span id="L353" class="ln">   353  </span>	}
-<span id="L354" class="ln">   354  </span>
-<span id="L355" class="ln">   355  </span>	return nil
-<span id="L356" class="ln">   356  </span>}
-<span id="L357" class="ln">   357  </span>
+<span id="L348" class="ln">   348  </span>	return nil
+<span id="L349" class="ln">   349  </span>}
+<span id="L350" class="ln">   350  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/cli/mergedml/merge_dml.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

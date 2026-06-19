@@ -92,7 +92,7 @@
 <span id="L35" class="ln">    35  </span>	return b.header
 <span id="L36" class="ln">    36  </span>}
 <span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>func (b *badWriter) Write([]byte) (int, error) { return 0, fmt.Errorf(&#34;write failed&#34;) }
+<span id="L38" class="ln">    38  </span>func (b *badWriter) Write([]byte) (int, error) { return 0, errors.New(&#34;write failed&#34;) }
 <span id="L39" class="ln">    39  </span>
 <span id="L40" class="ln">    40  </span>func (b *badWriter) WriteHeader(statusCode int) { b.wroteHeader = statusCode }
 <span id="L41" class="ln">    41  </span>
@@ -135,7 +135,7 @@
 <span id="L78" class="ln">    78  </span>			rec := httptest.NewRecorder()
 <span id="L79" class="ln">    79  </span>			c := e.NewContext(req, rec)
 <span id="L80" class="ln">    80  </span>
-<span id="L81" class="ln">    81  </span>			handler(fmt.Errorf(&#34;some error&#34;), c)
+<span id="L81" class="ln">    81  </span>			handler(errors.New(&#34;some error&#34;), c)
 <span id="L82" class="ln">    82  </span>
 <span id="L83" class="ln">    83  </span>			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 <span id="L84" class="ln">    84  </span>
@@ -213,7 +213,7 @@
 <span id="L156" class="ln">   156  </span>			c, end := testspan.StartTestSpanForEcho(t, c)
 <span id="L157" class="ln">   157  </span>			defer end()
 <span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf(&#34;boom&#34;))
+<span id="L159" class="ln">   159  </span>			handleHTTPError(c, logger, lf, obsCfg, errors.New(&#34;boom&#34;))
 <span id="L160" class="ln">   160  </span>
 <span id="L161" class="ln">   161  </span>			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 <span id="L162" class="ln">   162  </span>		})
@@ -232,8 +232,8 @@
 <span id="L175" class="ln">   175  </span>			defer end()
 <span id="L176" class="ln">   176  </span>
 <span id="L177" class="ln">   177  </span>			<span class="comment">// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。</span>
-<span id="L178" class="ln">   178  </span>			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf(&#34;boom&#34;))
-<span id="L179" class="ln">   179  </span>			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf(&#34;boom&#34;))
+<span id="L178" class="ln">   178  </span>			handleHTTPError(c, logger, lf, obsCfg, errors.New(&#34;boom&#34;))
+<span id="L179" class="ln">   179  </span>			handleHTTPError(c, logger, lf, obsCfg, errors.New(&#34;boom&#34;))
 <span id="L180" class="ln">   180  </span>
 <span id="L181" class="ln">   181  </span>			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 <span id="L182" class="ln">   182  </span>
@@ -261,7 +261,7 @@
 <span id="L204" class="ln">   204  </span>			c, end := testspan.StartTestSpanForEcho(t, c)
 <span id="L205" class="ln">   205  </span>			defer end()
 <span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>			handleHTTPError(c, logger, lf, obsCfg, fmt.Errorf(&#34;boom2&#34;))
+<span id="L207" class="ln">   207  </span>			handleHTTPError(c, logger, lf, obsCfg, errors.New(&#34;boom2&#34;))
 <span id="L208" class="ln">   208  </span>
 <span id="L209" class="ln">   209  </span>			assert.Equal(t, http.StatusInternalServerError, bw.wroteHeader)
 <span id="L210" class="ln">   210  </span>		})
@@ -359,7 +359,7 @@
 <span id="L302" class="ln">   302  </span>					RequestId: &#34;&#34;,
 <span id="L303" class="ln">   303  </span>				},
 <span id="L304" class="ln">   304  </span>				HTTPStatus: http.StatusBadRequest,
-<span id="L305" class="ln">   305  </span>				Internal:   fmt.Errorf(&#34;inner&#34;),
+<span id="L305" class="ln">   305  </span>				Internal:   errors.New(&#34;inner&#34;),
 <span id="L306" class="ln">   306  </span>			}
 <span id="L307" class="ln">   307  </span>
 <span id="L308" class="ln">   308  </span>			actual := normalizeHTTPError(he, expectedRequestID)
@@ -425,7 +425,7 @@
 <span id="L368" class="ln">   368  </span>		t.Run(&#34;echo.HTTPErrorのInternalに通常エラーがある場合_statusベースで返却されInternalは非nilになる&#34;, func(t *testing.T) {
 <span id="L369" class="ln">   369  </span>			t.Parallel()
 <span id="L370" class="ln">   370  </span>
-<span id="L371" class="ln">   371  </span>			inner := fmt.Errorf(&#34;boom&#34;)
+<span id="L371" class="ln">   371  </span>			inner := errors.New(&#34;boom&#34;)
 <span id="L372" class="ln">   372  </span>			echoErr := &amp;echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
 <span id="L373" class="ln">   373  </span>
 <span id="L374" class="ln">   374  </span>			actual := normalizeHTTPError(echoErr, expectedRequestID)
@@ -603,7 +603,7 @@
 <span id="L546" class="ln">   546  </span>
 <span id="L547" class="ln">   547  </span>			c := newEchoCtx(t)
 <span id="L548" class="ln">   548  </span>			details := []string{&#34;d1&#34;, &#34;d2&#34;}
-<span id="L549" class="ln">   549  </span>			internalErr := fmt.Errorf(&#34;internal err&#34;)
+<span id="L549" class="ln">   549  </span>			internalErr := errors.New(&#34;internal err&#34;)
 <span id="L550" class="ln">   550  </span>			he := &amp;response.HTTPErrorResponse{
 <span id="L551" class="ln">   551  </span>				ErrorResponse: gen.ErrorResponse{
 <span id="L552" class="ln">   552  </span>					Code:      &#34;E_INT&#34;,

@@ -74,11 +74,11 @@
 <span id="L17" class="ln">    17  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L18" class="ln">    18  </span>)
 <span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>var rollbackForTestError = xerrors.New(&#34;rollback for test&#34;)
+<span id="L20" class="ln">    20  </span>var errRollbackForTest = xerrors.New(&#34;rollback for test&#34;)
 <span id="L21" class="ln">    21  </span>
 <span id="L22" class="ln">    22  </span>var (
 <span id="L23" class="ln">    23  </span>	testDB  driver.DatabaseDriver
-<span id="L24" class="ln">    24  </span>	initErr error
+<span id="L24" class="ln">    24  </span>	errInit error
 <span id="L25" class="ln">    25  </span>	dbOnce  sync.Once
 <span id="L26" class="ln">    26  </span>	<span class="comment">// txLock は、テスト用のトランザクションマネージャーでトランザクションを開始する際のロックです。</span>
 <span id="L27" class="ln">    27  </span>	<span class="comment">// これにより、テストが並行して実行される場合でも、トランザクションの競合を防止します。</span>
@@ -150,10 +150,10 @@
 <span id="L93" class="ln">    93  </span>
 <span id="L94" class="ln">    94  </span>	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
 <span id="L95" class="ln">    95  </span>		fn(txCtx)
-<span id="L96" class="ln">    96  </span>		return rollbackForTestError
+<span id="L96" class="ln">    96  </span>		return errRollbackForTest
 <span id="L97" class="ln">    97  </span>	})
 <span id="L98" class="ln">    98  </span>
-<span id="L99" class="ln">    99  </span>	if xerrors.Is(err, rollbackForTestError) {
+<span id="L99" class="ln">    99  </span>	if xerrors.Is(err, errRollbackForTest) {
 <span id="L100" class="ln">   100  </span>		return
 <span id="L101" class="ln">   101  </span>	}
 <span id="L102" class="ln">   102  </span>	require.NoError(t.t, err)
@@ -169,10 +169,10 @@
 <span id="L112" class="ln">   112  </span>		osCfg := config.NewOperatingSystemConfig(cfg)
 <span id="L113" class="ln">   113  </span>		dbConnCfg := config.NewDBConnectionConfig(cfg)
 <span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>		testDB, initErr = driver.NewDB(dbCfg, osCfg, dbConnCfg)
+<span id="L115" class="ln">   115  </span>		testDB, errInit = driver.NewDB(dbCfg, osCfg, dbConnCfg)
 <span id="L116" class="ln">   116  </span>	})
 <span id="L117" class="ln">   117  </span>
-<span id="L118" class="ln">   118  </span>	require.NoError(t, initErr)
+<span id="L118" class="ln">   118  </span>	require.NoError(t, errInit)
 <span id="L119" class="ln">   119  </span>	require.NotNil(t, testDB)
 <span id="L120" class="ln">   120  </span>
 <span id="L121" class="ln">   121  </span>	return testDB

@@ -148,10 +148,10 @@
 					<dd>    <a href="#ApplicationConfig.Name">func (a *ApplicationConfig) Name() string</a></dd>
 				
 					
-					<dd>    <a href="#ApplicationConfig.SetApplicationEnv">func (a *ApplicationConfig) SetApplicationEnv(t testing.TB, env string)</a></dd>
+					<dd>    <a href="#ApplicationConfig.SetApplicationEnv">func (a *ApplicationConfig) SetApplicationEnv(tb testing.TB, env string)</a></dd>
 				
 					
-					<dd>    <a href="#ApplicationConfig.SetApplicationMode">func (a *ApplicationConfig) SetApplicationMode(t testing.TB, mode string)</a></dd>
+					<dd>    <a href="#ApplicationConfig.SetApplicationMode">func (a *ApplicationConfig) SetApplicationMode(tb testing.TB, mode string)</a></dd>
 				
 					
 					<dd>    <a href="#ApplicationConfig.ShutdownTimeout">func (a *ApplicationConfig) ShutdownTimeout() time.Duration</a></dd>
@@ -179,17 +179,17 @@
 					<dd>    <a href="#AuthConfig.HeaderName">func (a *AuthConfig) HeaderName() string</a></dd>
 				
 					
-					<dd>    <a href="#AuthConfig.SetAllowedHeaderBearer">func (a *AuthConfig) SetAllowedHeaderBearer(t testing.TB, allowed bool)</a></dd>
+					<dd>    <a href="#AuthConfig.SetAllowedHeaderBearer">func (a *AuthConfig) SetAllowedHeaderBearer(tb testing.TB, allowed bool)</a></dd>
 				
 					
-					<dd>    <a href="#AuthConfig.SetHeaderName">func (a *AuthConfig) SetHeaderName(t testing.TB, headerName string)</a></dd>
+					<dd>    <a href="#AuthConfig.SetHeaderName">func (a *AuthConfig) SetHeaderName(tb testing.TB, headerName string)</a></dd>
 				
 			
 				
 				<dd><a href="#Config">type Config</a></dd>
 				
 					
-					<dd>    <a href="#MockConfigForTest">func MockConfigForTest(t testing.TB) *Config</a></dd>
+					<dd>    <a href="#MockConfigForTest">func MockConfigForTest(tb testing.TB) *Config</a></dd>
 				
 					
 					<dd>    <a href="#New">func New() (*Config, error)</a></dd>
@@ -224,7 +224,7 @@
 					<dd>    <a href="#DBConnectionConfig.MinConns">func (c *DBConnectionConfig) MinConns() int32</a></dd>
 				
 					
-					<dd>    <a href="#DBConnectionConfig.SetMaxConns">func (c *DBConnectionConfig) SetMaxConns(t testing.TB, maxConns int32)</a></dd>
+					<dd>    <a href="#DBConnectionConfig.SetMaxConns">func (c *DBConnectionConfig) SetMaxConns(tb testing.TB, maxConns int32)</a></dd>
 				
 			
 				
@@ -261,10 +261,10 @@
 					<dd>    <a href="#DatabaseConfig.SSLMode">func (d *DatabaseConfig) SSLMode() string</a></dd>
 				
 					
-					<dd>    <a href="#DatabaseConfig.SetDatabaseHost">func (d *DatabaseConfig) SetDatabaseHost(t testing.TB, host string)</a></dd>
+					<dd>    <a href="#DatabaseConfig.SetDatabaseHost">func (d *DatabaseConfig) SetDatabaseHost(tb testing.TB, host string)</a></dd>
 				
 					
-					<dd>    <a href="#DatabaseConfig.SetDatabaseName">func (d *DatabaseConfig) SetDatabaseName(t testing.TB, name string)</a></dd>
+					<dd>    <a href="#DatabaseConfig.SetDatabaseName">func (d *DatabaseConfig) SetDatabaseName(tb testing.TB, name string)</a></dd>
 				
 					
 					<dd>    <a href="#DatabaseConfig.SlowQueryWarnThreshold">func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration</a></dd>
@@ -300,7 +300,7 @@
 					<dd>    <a href="#MetricsConfig.Port">func (m *MetricsConfig) Port() int</a></dd>
 				
 					
-					<dd>    <a href="#MetricsConfig.SetMetricsPort">func (m *MetricsConfig) SetMetricsPort(t testing.TB, port int)</a></dd>
+					<dd>    <a href="#MetricsConfig.SetMetricsPort">func (m *MetricsConfig) SetMetricsPort(tb testing.TB, port int)</a></dd>
 				
 					
 					<dd>    <a href="#MetricsConfig.UserName">func (m *MetricsConfig) UserName() string</a></dd>
@@ -325,7 +325,7 @@
 					<dd>    <a href="#ObservabilityConfig.MaskedDBQueryArgs">func (o *ObservabilityConfig) MaskedDBQueryArgs() bool</a></dd>
 				
 					
-					<dd>    <a href="#ObservabilityConfig.SetObservabilityMaskedDBQueryArgs">func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(t testing.TB, val bool)</a></dd>
+					<dd>    <a href="#ObservabilityConfig.SetObservabilityMaskedDBQueryArgs">func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(tb testing.TB, val bool)</a></dd>
 				
 					
 					<dd>    <a href="#ObservabilityConfig.TargetStatusCodeSet">func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool</a></dd>
@@ -406,7 +406,7 @@
 					<dd>    <a href="#SecurityConfig.ReferrerPolicy">func (s *SecurityConfig) ReferrerPolicy() string</a></dd>
 				
 					
-					<dd>    <a href="#SecurityConfig.SetCIDR">func (s *SecurityConfig) SetCIDR(t testing.TB, cidr *net.IPNet)</a></dd>
+					<dd>    <a href="#SecurityConfig.SetCIDR">func (s *SecurityConfig) SetCIDR(tb testing.TB, cidr *net.IPNet)</a></dd>
 				
 					
 					<dd>    <a href="#SecurityConfig.XFrameOptions">func (s *SecurityConfig) XFrameOptions() string</a></dd>
@@ -440,7 +440,7 @@
 					<dd>    <a href="#ServerConfig.ReadTimeout">func (s *ServerConfig) ReadTimeout() time.Duration</a></dd>
 				
 					
-					<dd>    <a href="#ServerConfig.SetServerPort">func (s *ServerConfig) SetServerPort(t testing.TB, port int)</a></dd>
+					<dd>    <a href="#ServerConfig.SetServerPort">func (s *ServerConfig) SetServerPort(tb testing.TB, port int)</a></dd>
 				
 					
 					<dd>    <a href="#ServerConfig.WriteTimeout">func (s *ServerConfig) WriteTimeout() time.Duration</a></dd>
@@ -829,12 +829,12 @@
 				
 			
 				
-				</p><h3 id="ApplicationConfig.SetApplicationEnv">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=819:890#L15">SetApplicationEnv</a>
+				</p><h3 id="ApplicationConfig.SetApplicationEnv">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=822:894#L15">SetApplicationEnv</a>
 					<a class="permalink" href="#ApplicationConfig.SetApplicationEnv">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#ApplicationConfig">ApplicationConfig</a>) SetApplicationEnv(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, env <a href="../../../builtin/#string">string</a>)</pre>
+				<pre>func (a *<a href="#ApplicationConfig">ApplicationConfig</a>) SetApplicationEnv(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, env <a href="../../../builtin/#string">string</a>)</pre>
 				<p>SetApplicationEnv は、テスト用にアプリケーションの環境を設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -843,12 +843,12 @@
 				
 			
 				
-				</p><h3 id="ApplicationConfig.SetApplicationMode">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=461:534#L5">SetApplicationMode</a>
+				</p><h3 id="ApplicationConfig.SetApplicationMode">func (*ApplicationConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=461:535#L5">SetApplicationMode</a>
 					<a class="permalink" href="#ApplicationConfig.SetApplicationMode">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#ApplicationConfig">ApplicationConfig</a>) SetApplicationMode(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, mode <a href="../../../builtin/#string">string</a>)</pre>
+				<pre>func (a *<a href="#ApplicationConfig">ApplicationConfig</a>) SetApplicationMode(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, mode <a href="../../../builtin/#string">string</a>)</pre>
 				<p>SetApplicationMode は、テスト用にサーバーのAppModeを設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -975,12 +975,12 @@
 				
 			
 				
-				</p><h3 id="AuthConfig.SetAllowedHeaderBearer">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=4064:4135#L105">SetAllowedHeaderBearer</a>
+				</p><h3 id="AuthConfig.SetAllowedHeaderBearer">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=4094:4166#L105">SetAllowedHeaderBearer</a>
 					<a class="permalink" href="#AuthConfig.SetAllowedHeaderBearer">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetAllowedHeaderBearer(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, allowed <a href="../../../builtin/#bool">bool</a>)</pre>
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetAllowedHeaderBearer(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, allowed <a href="../../../builtin/#bool">bool</a>)</pre>
 				<p>SetAllowedHeaderBearer は、テスト用に認証の許可されたヘッダベアラーを設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -989,12 +989,12 @@
 				
 			
 				
-				</p><h3 id="AuthConfig.SetHeaderName">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=3673:3740#L95">SetHeaderName</a>
+				</p><h3 id="AuthConfig.SetHeaderName">func (*AuthConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=3700:3768#L95">SetHeaderName</a>
 					<a class="permalink" href="#AuthConfig.SetHeaderName">¶</a>
 					
 					
 				</h3>
-				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetHeaderName(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, headerName <a href="../../../builtin/#string">string</a>)</pre>
+				<pre>func (a *<a href="#AuthConfig">AuthConfig</a>) SetHeaderName(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, headerName <a href="../../../builtin/#string">string</a>)</pre>
 				<p>SetHeaderName は、テスト用に認証のヘッダ名を設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -1027,12 +1027,12 @@
 
 			
 				
-				<h3 id="MockConfigForTest">func <a href="../../../src/go-boilerplate/internal/config/config_testing_mock.go.html?s=5107:5151#L100">MockConfigForTest</a>
+				<h3 id="MockConfigForTest">func <a href="../../../src/go-boilerplate/internal/config/config_testing_mock.go.html?s=5077:5122#L98">MockConfigForTest</a>
 					<a class="permalink" href="#MockConfigForTest">¶</a>
 					
 					
 				</h3>
-				<pre>func MockConfigForTest(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>) *<a href="#Config">Config</a></pre>
+				<pre>func MockConfigForTest(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>) *<a href="#Config">Config</a></pre>
 				<p>MockConfigForTest は、テスト用のConfigを返します。
 
 				
@@ -1184,12 +1184,12 @@
 				
 			
 				
-				</p><h3 id="DBConnectionConfig.SetMaxConns">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=2988:3058#L75">SetMaxConns</a>
+				</p><h3 id="DBConnectionConfig.SetMaxConns">func (*DBConnectionConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=3009:3080#L75">SetMaxConns</a>
 					<a class="permalink" href="#DBConnectionConfig.SetMaxConns">¶</a>
 					
 					
 				</h3>
-				<pre>func (c *<a href="#DBConnectionConfig">DBConnectionConfig</a>) SetMaxConns(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, maxConns <a href="../../../builtin/#int32">int32</a>)</pre>
+				<pre>func (c *<a href="#DBConnectionConfig">DBConnectionConfig</a>) SetMaxConns(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, maxConns <a href="../../../builtin/#int32">int32</a>)</pre>
 				<p>SetMaxConns は、テスト用にDB接続の最大オープン数を設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -1362,12 +1362,12 @@
 				
 			
 				
-				</p><h3 id="DatabaseConfig.SetDatabaseHost">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=1947:2014#L45">SetDatabaseHost</a>
+				</p><h3 id="DatabaseConfig.SetDatabaseHost">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=1959:2027#L45">SetDatabaseHost</a>
 					<a class="permalink" href="#DatabaseConfig.SetDatabaseHost">¶</a>
 					
 					
 				</h3>
-				<pre>func (d *<a href="#DatabaseConfig">DatabaseConfig</a>) SetDatabaseHost(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, host <a href="../../../builtin/#string">string</a>)</pre>
+				<pre>func (d *<a href="#DatabaseConfig">DatabaseConfig</a>) SetDatabaseHost(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, host <a href="../../../builtin/#string">string</a>)</pre>
 				<p>SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -1376,12 +1376,12 @@
 				
 			
 				
-				</p><h3 id="DatabaseConfig.SetDatabaseName">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=2291:2358#L55">SetDatabaseName</a>
+				</p><h3 id="DatabaseConfig.SetDatabaseName">func (*DatabaseConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=2306:2374#L55">SetDatabaseName</a>
 					<a class="permalink" href="#DatabaseConfig.SetDatabaseName">¶</a>
 					
 					
 				</h3>
-				<pre>func (d *<a href="#DatabaseConfig">DatabaseConfig</a>) SetDatabaseName(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, name <a href="../../../builtin/#string">string</a>)</pre>
+				<pre>func (d *<a href="#DatabaseConfig">DatabaseConfig</a>) SetDatabaseName(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, name <a href="../../../builtin/#string">string</a>)</pre>
 				<p>SetDatabaseName は、テスト用にデータベースの名前を設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -1559,12 +1559,12 @@
 				
 			
 				
-				</p><h3 id="MetricsConfig.SetMetricsPort">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=2648:2710#L65">SetMetricsPort</a>
+				</p><h3 id="MetricsConfig.SetMetricsPort">func (*MetricsConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=2666:2729#L65">SetMetricsPort</a>
 					<a class="permalink" href="#MetricsConfig.SetMetricsPort">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MetricsConfig">MetricsConfig</a>) SetMetricsPort(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, port <a href="../../../builtin/#int">int</a>)</pre>
+				<pre>func (m *<a href="#MetricsConfig">MetricsConfig</a>) SetMetricsPort(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, port <a href="../../../builtin/#int">int</a>)</pre>
 				<p>SetMetricsPort は、テスト用にメトリクスサーバーのポートを設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -1679,12 +1679,12 @@
 				
 			
 				
-				</p><h3 id="ObservabilityConfig.SetObservabilityMaskedDBQueryArgs">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=1539:1626#L35">SetObservabilityMaskedDBQueryArgs</a>
+				</p><h3 id="ObservabilityConfig.SetObservabilityMaskedDBQueryArgs">func (*ObservabilityConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=1548:1636#L35">SetObservabilityMaskedDBQueryArgs</a>
 					<a class="permalink" href="#ObservabilityConfig.SetObservabilityMaskedDBQueryArgs">¶</a>
 					
 					
 				</h3>
-				<pre>func (o *<a href="#ObservabilityConfig">ObservabilityConfig</a>) SetObservabilityMaskedDBQueryArgs(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, val <a href="../../../builtin/#bool">bool</a>)</pre>
+				<pre>func (o *<a href="#ObservabilityConfig">ObservabilityConfig</a>) SetObservabilityMaskedDBQueryArgs(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, val <a href="../../../builtin/#bool">bool</a>)</pre>
 				<p>SetObservabilityMaskedDBQueryArgs は、テスト用にオブザーバビリティのDBクエリ引数の設定を行います。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -2066,12 +2066,12 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="SecurityConfig.SetCIDR">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=3341:3404#L85">SetCIDR</a>
+				</p><h3 id="SecurityConfig.SetCIDR">func (*SecurityConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=3365:3429#L85">SetCIDR</a>
 					<a class="permalink" href="#SecurityConfig.SetCIDR">¶</a>
 					
 					
 				</h3>
-				<pre>func (s *<a href="#SecurityConfig">SecurityConfig</a>) SetCIDR(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, cidr *<a href="../../../net/">net</a>.<a href="../../../net/#IPNet">IPNet</a>)</pre>
+				<pre>func (s *<a href="#SecurityConfig">SecurityConfig</a>) SetCIDR(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, cidr *<a href="../../../net/">net</a>.<a href="../../../net/#IPNet">IPNet</a>)</pre>
 				<p>SetCIDR は、テスト用にセキュリティのCIDRを設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 
@@ -2227,12 +2227,12 @@ Referrer Policy および bcrypt コストパラメータを保持する。
 				
 			
 				
-				</p><h3 id="ServerConfig.SetServerPort">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=1158:1218#L25">SetServerPort</a>
+				</p><h3 id="ServerConfig.SetServerPort">func (*ServerConfig) <a href="../../../src/go-boilerplate/internal/config/config_testing_setter.go.html?s=1164:1225#L25">SetServerPort</a>
 					<a class="permalink" href="#ServerConfig.SetServerPort">¶</a>
 					
 					
 				</h3>
-				<pre>func (s *<a href="#ServerConfig">ServerConfig</a>) SetServerPort(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, port <a href="../../../builtin/#int">int</a>)</pre>
+				<pre>func (s *<a href="#ServerConfig">ServerConfig</a>) SetServerPort(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, port <a href="../../../builtin/#int">int</a>)</pre>
 				<p>SetServerPort は、テスト用にサーバーのポートを設定します。
 </p><p>実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
 

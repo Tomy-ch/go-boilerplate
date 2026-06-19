@@ -106,8 +106,8 @@
 <span id="L49" class="ln">    49  </span>
 <span id="L50" class="ln">    50  </span><span class="comment">// resolveSubject は token から localPrefix を除いた Subject を抽出します。</span>
 <span id="L51" class="ln">    51  </span>func (a *authenticator) resolveSubject(token string) string {
-<span id="L52" class="ln">    52  </span>	if strings.HasPrefix(token, localPrefix) {
-<span id="L53" class="ln">    53  </span>		sub := strings.TrimSpace(strings.TrimPrefix(token, localPrefix))
+<span id="L52" class="ln">    52  </span>	if after, ok := strings.CutPrefix(token, localPrefix); ok {
+<span id="L53" class="ln">    53  </span>		sub := strings.TrimSpace(after)
 <span id="L54" class="ln">    54  </span>		if sub != &#34;&#34; {
 <span id="L55" class="ln">    55  </span>			return sub
 <span id="L56" class="ln">    56  </span>		}

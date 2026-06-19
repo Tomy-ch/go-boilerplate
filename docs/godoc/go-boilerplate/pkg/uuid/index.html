@@ -114,7 +114,7 @@
 					<dd>    <a href="#New">func New() (UUID, error)</a></dd>
 				
 					
-					<dd>    <a href="#NewTestFromSalt">func NewTestFromSalt(t testing.TB, salt string) UUID</a></dd>
+					<dd>    <a href="#NewTestFromSalt">func NewTestFromSalt(tb testing.TB, salt string) UUID</a></dd>
 				
 					
 					<dd>    <a href="#Parse">func Parse(s string) (UUID, error)</a></dd>
@@ -225,12 +225,12 @@
 				
 			
 				
-				</p><h3 id="NewTestFromSalt">func <a href="../../../src/go-boilerplate/pkg/uuid/test_kit.go.html?s=265:317#L3">NewTestFromSalt</a>
+				</p><h3 id="NewTestFromSalt">func <a href="../../../src/go-boilerplate/pkg/uuid/test_kit.go.html?s=265:318#L3">NewTestFromSalt</a>
 					<a class="permalink" href="#NewTestFromSalt">¶</a>
 					
 					
 				</h3>
-				<pre>func NewTestFromSalt(t <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, salt <a href="../../../builtin/#string">string</a>) <a href="#UUID">UUID</a></pre>
+				<pre>func NewTestFromSalt(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, salt <a href="../../../builtin/#string">string</a>) <a href="#UUID">UUID</a></pre>
 				<p>NewTestFromSalt はテスト専用の決定論UUID生成関数です。
 </p><p>本番利用は想定していません。
 v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。

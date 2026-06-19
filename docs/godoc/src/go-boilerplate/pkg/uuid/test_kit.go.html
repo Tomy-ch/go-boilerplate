@@ -67,8 +67,8 @@
 <span id="L10" class="ln">    10  </span><span class="comment">//</span>
 <span id="L11" class="ln">    11  </span><span class="comment">// 本番利用は想定していません。</span>
 <span id="L12" class="ln">    12  </span><span class="comment">// v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。</span>
-<span id="L13" class="ln">    13  </span>func NewTestFromSalt(t testing.TB, salt string) UUID {
-<span id="L14" class="ln">    14  </span>	t.Helper()
+<span id="L13" class="ln">    13  </span>func NewTestFromSalt(tb testing.TB, salt string) UUID {
+<span id="L14" class="ln">    14  </span>	tb.Helper()
 <span id="L15" class="ln">    15  </span>	ns := uuid.NameSpaceURL
 <span id="L16" class="ln">    16  </span>	g := uuid.NewSHA1(ns, []byte(salt))
 <span id="L17" class="ln">    17  </span>	return fromGoogle(g)

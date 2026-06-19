@@ -306,87 +306,86 @@
 <span id="L249" class="ln">   249  </span>	var errs []string
 <span id="L250" class="ln">   250  </span>	for _, r := range rules {
 <span id="L251" class="ln">   251  </span>		if r.version == &#34;&#34; {
-<span id="L252" class="ln">   252  </span>			errs = append(errs, fmt.Sprintf(
-<span id="L253" class="ln">   253  </span>				&#34;%s: mise.toml に対応する version が未設定&#34;, r.label))
-<span id="L254" class="ln">   254  </span>		}
-<span id="L255" class="ln">   255  </span>	}
-<span id="L256" class="ln">   256  </span>	for _, r := range rules {
-<span id="L257" class="ln">   257  </span>		if _, err := os.Stat(filepath.Join(root, r.file)); err != nil {
-<span id="L258" class="ln">   258  </span>			errs = append(errs, fmt.Sprintf(
-<span id="L259" class="ln">   259  </span>				&#34;%s: %s が見つかりません&#34;, r.label, r.file))
-<span id="L260" class="ln">   260  </span>		}
-<span id="L261" class="ln">   261  </span>	}
-<span id="L262" class="ln">   262  </span>	return errs
-<span id="L263" class="ln">   263  </span>}
-<span id="L264" class="ln">   264  </span>
-<span id="L265" class="ln">   265  </span><span class="comment">// computeChanges は各 file の最終内容を計算する（書き出しは行わない）。期待マッチ数未満の rule があればエラーを返す。</span>
-<span id="L266" class="ln">   266  </span>func computeChanges(rules []rule, root string) (map[string]*fileState, []string) {
-<span id="L267" class="ln">   267  </span>	states := map[string]*fileState{}
-<span id="L268" class="ln">   268  </span>	var errs []string
-<span id="L269" class="ln">   269  </span>	for _, r := range rules {
-<span id="L270" class="ln">   270  </span>		st, ok := states[r.file]
-<span id="L271" class="ln">   271  </span>		if !ok {
-<span id="L272" class="ln">   272  </span>			data, err := os.ReadFile(filepath.Join(root, r.file)) <span class="comment">//nolint:gosec // path from cwd + rule.file</span>
-<span id="L273" class="ln">   273  </span>			if err != nil {
-<span id="L274" class="ln">   274  </span>				errs = append(errs, fmt.Sprintf(&#34;%s: read %s: %v&#34;, r.label, r.file, err))
-<span id="L275" class="ln">   275  </span>				continue
-<span id="L276" class="ln">   276  </span>			}
-<span id="L277" class="ln">   277  </span>			st = &amp;fileState{original: string(data), current: string(data)}
-<span id="L278" class="ln">   278  </span>			states[r.file] = st
-<span id="L279" class="ln">   279  </span>		}
-<span id="L280" class="ln">   280  </span>		matches := r.re.FindAllStringIndex(st.current, -1)
-<span id="L281" class="ln">   281  </span>		if len(matches) &lt; r.expectedCount {
-<span id="L282" class="ln">   282  </span>			errs = append(errs, fmt.Sprintf(
-<span id="L283" class="ln">   283  </span>				&#34;%s: マッチ件数 %d が期待値 %d 未満（regex: %s）&#34;,
-<span id="L284" class="ln">   284  </span>				r.label, len(matches), r.expectedCount, r.re))
-<span id="L285" class="ln">   285  </span>			continue
-<span id="L286" class="ln">   286  </span>		}
-<span id="L287" class="ln">   287  </span>		st.current = r.re.ReplaceAllStringFunc(st.current, r.replace)
-<span id="L288" class="ln">   288  </span>		st.applied = append(st.applied, fmt.Sprintf(&#34;%s x%d&#34;, r.label, len(matches)))
-<span id="L289" class="ln">   289  </span>	}
-<span id="L290" class="ln">   290  </span>	return states, errs
-<span id="L291" class="ln">   291  </span>}
-<span id="L292" class="ln">   292  </span>
-<span id="L293" class="ln">   293  </span><span class="comment">// writeChanges は各 file を 1 回ずつ書き出す。変更が無いファイルは skip する。</span>
-<span id="L294" class="ln">   294  </span>func writeChanges(states map[string]*fileState, root string) error {
-<span id="L295" class="ln">   295  </span>	anyChange := false
-<span id="L296" class="ln">   296  </span>	for file, st := range states {
-<span id="L297" class="ln">   297  </span>		if st.original == st.current {
-<span id="L298" class="ln">   298  </span>			log.Printf(&#34;No change: %s&#34;, file)
-<span id="L299" class="ln">   299  </span>			continue
-<span id="L300" class="ln">   300  </span>		}
-<span id="L301" class="ln">   301  </span>		if err := os.WriteFile(
-<span id="L302" class="ln">   302  </span>			filepath.Join(root, file), []byte(st.current), filePerm,
-<span id="L303" class="ln">   303  </span>		); err != nil {
-<span id="L304" class="ln">   304  </span>			return fmt.Errorf(&#34;write %s: %w&#34;, file, err)
-<span id="L305" class="ln">   305  </span>		}
-<span id="L306" class="ln">   306  </span>		log.Printf(&#34;Updated: %s [%s]&#34;, file, strings.Join(st.applied, &#34;, &#34;))
-<span id="L307" class="ln">   307  </span>		anyChange = true
-<span id="L308" class="ln">   308  </span>	}
-<span id="L309" class="ln">   309  </span>	if anyChange {
-<span id="L310" class="ln">   310  </span>		log.Println(&#34;Done.&#34;)
-<span id="L311" class="ln">   311  </span>	} else {
-<span id="L312" class="ln">   312  </span>		log.Println(&#34;Done (no changes).&#34;)
-<span id="L313" class="ln">   313  </span>	}
-<span id="L314" class="ln">   314  </span>	return nil
-<span id="L315" class="ln">   315  </span>}
-<span id="L316" class="ln">   316  </span>
-<span id="L317" class="ln">   317  </span>func reportAndExit(title string, errs []string) {
-<span id="L318" class="ln">   318  </span>	log.Println(&#34;&#34;)
-<span id="L319" class="ln">   319  </span>	log.Printf(&#34;❌ %s:&#34;, title)
-<span id="L320" class="ln">   320  </span>	for _, e := range errs {
-<span id="L321" class="ln">   321  </span>		log.Printf(&#34;  - %s&#34;, e)
-<span id="L322" class="ln">   322  </span>	}
-<span id="L323" class="ln">   323  </span>	os.Exit(1)
-<span id="L324" class="ln">   324  </span>}
-<span id="L325" class="ln">   325  </span>
-<span id="L326" class="ln">   326  </span>func emptyAs(s string) string {
-<span id="L327" class="ln">   327  </span>	if s == &#34;&#34; {
-<span id="L328" class="ln">   328  </span>		return &#34;(unset)&#34;
-<span id="L329" class="ln">   329  </span>	}
-<span id="L330" class="ln">   330  </span>	return s
-<span id="L331" class="ln">   331  </span>}
-<span id="L332" class="ln">   332  </span>
+<span id="L252" class="ln">   252  </span>			errs = append(errs, r.label+&#34;: mise.toml に対応する version が未設定&#34;)
+<span id="L253" class="ln">   253  </span>		}
+<span id="L254" class="ln">   254  </span>	}
+<span id="L255" class="ln">   255  </span>	for _, r := range rules {
+<span id="L256" class="ln">   256  </span>		if _, err := os.Stat(filepath.Join(root, r.file)); err != nil {
+<span id="L257" class="ln">   257  </span>			errs = append(errs, fmt.Sprintf(
+<span id="L258" class="ln">   258  </span>				&#34;%s: %s が見つかりません&#34;, r.label, r.file))
+<span id="L259" class="ln">   259  </span>		}
+<span id="L260" class="ln">   260  </span>	}
+<span id="L261" class="ln">   261  </span>	return errs
+<span id="L262" class="ln">   262  </span>}
+<span id="L263" class="ln">   263  </span>
+<span id="L264" class="ln">   264  </span><span class="comment">// computeChanges は各 file の最終内容を計算する（書き出しは行わない）。期待マッチ数未満の rule があればエラーを返す。</span>
+<span id="L265" class="ln">   265  </span>func computeChanges(rules []rule, root string) (map[string]*fileState, []string) {
+<span id="L266" class="ln">   266  </span>	states := map[string]*fileState{}
+<span id="L267" class="ln">   267  </span>	var errs []string
+<span id="L268" class="ln">   268  </span>	for _, r := range rules {
+<span id="L269" class="ln">   269  </span>		st, ok := states[r.file]
+<span id="L270" class="ln">   270  </span>		if !ok {
+<span id="L271" class="ln">   271  </span>			data, err := os.ReadFile(filepath.Join(root, r.file)) <span class="comment">//nolint:gosec // path from cwd + rule.file</span>
+<span id="L272" class="ln">   272  </span>			if err != nil {
+<span id="L273" class="ln">   273  </span>				errs = append(errs, fmt.Sprintf(&#34;%s: read %s: %v&#34;, r.label, r.file, err))
+<span id="L274" class="ln">   274  </span>				continue
+<span id="L275" class="ln">   275  </span>			}
+<span id="L276" class="ln">   276  </span>			st = &amp;fileState{original: string(data), current: string(data)}
+<span id="L277" class="ln">   277  </span>			states[r.file] = st
+<span id="L278" class="ln">   278  </span>		}
+<span id="L279" class="ln">   279  </span>		matches := r.re.FindAllStringIndex(st.current, -1)
+<span id="L280" class="ln">   280  </span>		if len(matches) &lt; r.expectedCount {
+<span id="L281" class="ln">   281  </span>			errs = append(errs, fmt.Sprintf(
+<span id="L282" class="ln">   282  </span>				&#34;%s: マッチ件数 %d が期待値 %d 未満（regex: %s）&#34;,
+<span id="L283" class="ln">   283  </span>				r.label, len(matches), r.expectedCount, r.re))
+<span id="L284" class="ln">   284  </span>			continue
+<span id="L285" class="ln">   285  </span>		}
+<span id="L286" class="ln">   286  </span>		st.current = r.re.ReplaceAllStringFunc(st.current, r.replace)
+<span id="L287" class="ln">   287  </span>		st.applied = append(st.applied, fmt.Sprintf(&#34;%s x%d&#34;, r.label, len(matches)))
+<span id="L288" class="ln">   288  </span>	}
+<span id="L289" class="ln">   289  </span>	return states, errs
+<span id="L290" class="ln">   290  </span>}
+<span id="L291" class="ln">   291  </span>
+<span id="L292" class="ln">   292  </span><span class="comment">// writeChanges は各 file を 1 回ずつ書き出す。変更が無いファイルは skip する。</span>
+<span id="L293" class="ln">   293  </span>func writeChanges(states map[string]*fileState, root string) error {
+<span id="L294" class="ln">   294  </span>	anyChange := false
+<span id="L295" class="ln">   295  </span>	for file, st := range states {
+<span id="L296" class="ln">   296  </span>		if st.original == st.current {
+<span id="L297" class="ln">   297  </span>			log.Printf(&#34;No change: %s&#34;, file)
+<span id="L298" class="ln">   298  </span>			continue
+<span id="L299" class="ln">   299  </span>		}
+<span id="L300" class="ln">   300  </span>		if err := os.WriteFile(
+<span id="L301" class="ln">   301  </span>			filepath.Join(root, file), []byte(st.current), filePerm,
+<span id="L302" class="ln">   302  </span>		); err != nil {
+<span id="L303" class="ln">   303  </span>			return fmt.Errorf(&#34;write %s: %w&#34;, file, err)
+<span id="L304" class="ln">   304  </span>		}
+<span id="L305" class="ln">   305  </span>		log.Printf(&#34;Updated: %s [%s]&#34;, file, strings.Join(st.applied, &#34;, &#34;))
+<span id="L306" class="ln">   306  </span>		anyChange = true
+<span id="L307" class="ln">   307  </span>	}
+<span id="L308" class="ln">   308  </span>	if anyChange {
+<span id="L309" class="ln">   309  </span>		log.Println(&#34;Done.&#34;)
+<span id="L310" class="ln">   310  </span>	} else {
+<span id="L311" class="ln">   311  </span>		log.Println(&#34;Done (no changes).&#34;)
+<span id="L312" class="ln">   312  </span>	}
+<span id="L313" class="ln">   313  </span>	return nil
+<span id="L314" class="ln">   314  </span>}
+<span id="L315" class="ln">   315  </span>
+<span id="L316" class="ln">   316  </span>func reportAndExit(title string, errs []string) {
+<span id="L317" class="ln">   317  </span>	log.Println(&#34;&#34;)
+<span id="L318" class="ln">   318  </span>	log.Printf(&#34;❌ %s:&#34;, title)
+<span id="L319" class="ln">   319  </span>	for _, e := range errs {
+<span id="L320" class="ln">   320  </span>		log.Printf(&#34;  - %s&#34;, e)
+<span id="L321" class="ln">   321  </span>	}
+<span id="L322" class="ln">   322  </span>	os.Exit(1)
+<span id="L323" class="ln">   323  </span>}
+<span id="L324" class="ln">   324  </span>
+<span id="L325" class="ln">   325  </span>func emptyAs(s string) string {
+<span id="L326" class="ln">   326  </span>	if s == &#34;&#34; {
+<span id="L327" class="ln">   327  </span>		return &#34;(unset)&#34;
+<span id="L328" class="ln">   328  </span>	}
+<span id="L329" class="ln">   329  </span>	return s
+<span id="L330" class="ln">   330  </span>}
+<span id="L331" class="ln">   331  </span>
 </pre><p><a href="../../../../src/go-boilerplate/scripts/sync-versions/main.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

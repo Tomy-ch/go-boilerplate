@@ -67,8 +67,8 @@
 <span id="L10" class="ln">    10  </span>)
 <span id="L11" class="ln">    11  </span>
 <span id="L12" class="ln">    12  </span>func TestNewConfig(t *testing.T) {
-<span id="L13" class="ln">    13  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L14" class="ln">    14  </span>		t.Run(&#34;configに必要な環境変数が全て設定されている場合&#34;, func(t *testing.T) {
+<span id="L13" class="ln">    13  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可</span>
+<span id="L14" class="ln">    14  </span>		t.Run(&#34;configに必要な環境変数が全て設定されている場合&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可</span>
 <span id="L15" class="ln">    15  </span>			setEnvVarsForTesting(t)
 <span id="L16" class="ln">    16  </span>			expected := &amp;Config{
 <span id="L17" class="ln">    17  </span>				os: OperatingSystemConfig{

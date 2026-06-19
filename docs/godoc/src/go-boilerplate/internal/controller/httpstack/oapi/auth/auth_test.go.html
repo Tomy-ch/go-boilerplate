@@ -295,7 +295,7 @@
 <span id="L238" class="ln">   238  </span>
 <span id="L239" class="ln">   239  </span>			ctx := context.Background()
 <span id="L240" class="ln">   240  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L241" class="ln">   241  </span>			req.Header.Set(&#34;X-API-KEY&#34;, &#34;apikey-123&#34;)
+<span id="L241" class="ln">   241  </span>			req.Header.Set(&#34;X-Api-Key&#34;, &#34;apikey-123&#34;)
 <span id="L242" class="ln">   242  </span>			tok := extractToken(req, ac)
 <span id="L243" class="ln">   243  </span>			assert.Equal(t, &#34;apikey-123&#34;, tok)
 <span id="L244" class="ln">   244  </span>		})
@@ -323,7 +323,7 @@
 <span id="L266" class="ln">   266  </span>
 <span id="L267" class="ln">   267  </span>			ctx := context.Background()
 <span id="L268" class="ln">   268  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)
-<span id="L269" class="ln">   269  </span>			req.Header.Set(&#34;authorization&#34;, &#34;Bearer smallcase&#34;)
+<span id="L269" class="ln">   269  </span>			req.Header.Set(&#34;Authorization&#34;, &#34;Bearer smallcase&#34;)
 <span id="L270" class="ln">   270  </span>			tok := extractToken(req, ac)
 <span id="L271" class="ln">   271  </span>			assert.Empty(t, tok)
 <span id="L272" class="ln">   272  </span>		})
