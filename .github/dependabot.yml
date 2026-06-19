@@ -1,8 +1,8 @@
 # Dependabot 設定
 #
 # 対象エコシステム: Go modules / Docker / GitHub Actions の3種。
-# cooldown: バージョンが公開されてから一定日数（patch=5 / minor=7 / major=30）経過するまで
-#           更新 PR を作成せず、初期不良の枯れを待つ。
+# cooldown: バージョンが公開されてから一定日数（patch=5 / minor=7 / major=30、
+#           semver 分類外は default-days=5）経過するまで更新 PR を作成せず、初期不良の枯れを待つ。
 # groups : 1 エコシステムあたり 1 PR にまとめ、更新 PR のノイズを抑制する。
 #
 # 注意: セキュリティアップデート（security update）は cooldown を通らず即時 PR が作成される。
