@@ -268,8 +268,10 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | --- | --- | --- |
 | `make gen-portal-docs` | Portal 用ドキュメントを生成します。 | なし |
 | `make gen-docs-json` | Portal 用ドキュメントリンク JSON を生成します。 | なし |
+| `make gen-portal-build` | Portal フロントエンド（`docs/portal/src/main.jsx`）を esbuild で `bundle.js` / `bundle.css` にバンドルします。 | なし |
 | `make gen-portal-docs-ci` | Node.js スクリプトで Portal 用ドキュメントを直接生成します。 | CI 用ターゲットです。 |
 | `make gen-docs-json-ci` | Node.js スクリプトで Portal 用 JSON を直接生成します。 | CI 用ターゲットです。 |
+| `make gen-portal-build-ci` | esbuild を直接実行して Portal フロントエンドをバンドルします。 | CI 用ターゲットです。 |
 | `make gen-godoc` | godoc の静的 HTML を `docs/godoc/` に生成します。 | なし |
 | `make gen-godoc-ci` | godoc-static を直接実行して静的 HTML を生成します。 | CI 用ターゲットです。 |
 

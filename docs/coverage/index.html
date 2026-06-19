@@ -6334,7 +6334,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="28">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="17">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -9157,7 +9157,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov6" title="257">{
+        for i, line := range lines </span><span class="cov6" title="203">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>

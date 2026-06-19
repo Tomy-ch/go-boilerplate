@@ -10,6 +10,7 @@ English | [日本語](README.ja.md)
 scripts/
 ├── gen-docs-json.mjs           # Generate docs.json for portal navigation
 ├── gen-portal-docs.mjs         # Copy docs to portal based on manifest.yaml
+├── build-portal.mjs            # Bundle the portal frontend (src/main.jsx) with esbuild
 ├── semver.mjs                  # Semantic versioning helper (patch/minor/major)
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
 ├── make_help.mjs                # Generate Make target help output
@@ -31,6 +32,7 @@ scripts/
 |---|---|---|
 |`gen-portal-docs.mjs`|Copy source docs to portal `guides/` based on `manifest.yaml`|`make gen-docs`|
 |`gen-docs-json.mjs`|Generate `docs.json` navigation for the portal app|`make gen-docs`|
+|`build-portal.mjs`|Bundle the portal frontend (`docs/portal/src/main.jsx`) into `docs/portal/dist/` (`bundle.js` / `bundle.css` + lazy chunks) with esbuild, and copy `mermaid.min.js` there too. Replaces the former CDN + in-browser Babel setup.|`make gen-portal-build`|
 
 ### Versioning
 
