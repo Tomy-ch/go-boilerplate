@@ -268,8 +268,10 @@ This group lints Dockerfiles with hadolint via the `go_tool_runner` container.
 | --- | --- | --- |
 | `make gen-portal-docs` | Generates Portal documentation. | None |
 | `make gen-docs-json` | Generates Portal documentation link JSON. | None |
+| `make gen-portal-build` | Bundles the Portal frontend (`docs/portal/src/main.jsx`) into `bundle.js` / `bundle.css` via esbuild. | None |
 | `make gen-portal-docs-ci` | Generates Portal documentation directly via Node.js script. | CI target |
 | `make gen-docs-json-ci` | Generates Portal JSON directly via Node.js script. | CI target |
+| `make gen-portal-build-ci` | Runs esbuild directly to bundle the Portal frontend. | CI target |
 | `make gen-godoc` | Generates static godoc HTML into `docs/godoc/`. | None |
 | `make gen-godoc-ci` | Runs godoc-static directly to generate static HTML. | CI target |
 
