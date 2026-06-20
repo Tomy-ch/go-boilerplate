@@ -56,6 +56,33 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 	}
 }
 
+// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+// after=nil の場合は先頭ページ、それ以外は after が表す境界より後ろ（より過去）の行を返します。
+func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(r.db.NewLoggingDB(ctx))
+
+	if after == nil {
+		rows, err := db.ListUsersFeedFirst(ctx, limit)
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return rowsToUsers(rows, func(r *gen.ListUsersFeedFirstRow) gen.Users { return r.Users })
+	}
+
+	rows, err := db.ListUsersFeedAfter(ctx, &gen.ListUsersFeedAfterParams{
+		AfterCreatedAt: after.CreatedAt,
+		AfterID:        after.ID,
+		LimitParam:     limit,
+	})
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+	return rowsToUsers(rows, func(r *gen.ListUsersFeedAfterRow) gen.Users { return r.Users })
+}
+
 // rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。
 func rowToUser(u gen.Users) (*user.User, error) {
 	return user.New(

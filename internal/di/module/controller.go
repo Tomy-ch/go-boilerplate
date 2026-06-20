@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/controller/handler/ready"
 	"go-boilerplate/internal/controller/handler/v1/users"        // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/detail" // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/feed"   // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/search" // sample-api:line
 	"go-boilerplate/internal/controller/handler/version"
 
@@ -26,6 +27,7 @@ func ControllerModule() fx.Option {
 			// サンプルのハンドラー
 			users.BindHandler,
 			detail.BindHandler,
+			feed.BindHandler,
 			search.BindHandler,
 			// sample-api:end
 		),

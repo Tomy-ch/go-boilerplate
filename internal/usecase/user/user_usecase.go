@@ -21,6 +21,9 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// feedCursorKeyCount は、フィードカーソルが保持するソートキーの個数（created_at, id）です。
+const feedCursorKeyCount = 2
+
 // 既存ユーザーが参照する prefecture を解決できない参照整合性破れ（サーバ側データ不整合）を表します。
 var errOrphanPrefecture = xerrors.Wrap(apperror.ErrInternal, "prefecture not found for user")
 
@@ -42,6 +45,14 @@ type UserView struct {
 type UserListView struct {
 	Items []UserView
 	Total int64
+}
+
+// UserFeedView は、ユーザーフィード（cursor ページネーション）の取得結果を表します。
+type UserFeedView struct {
+	// Items は、現在ページのユーザー一覧です。
+	Items []UserView
+	// NextCursor は、次ページ取得用の不透明カーソルです。最終ページの場合は nil です。
+	NextCursor *string
 }
 
 // UpdateProfileParams は、ユーザープロフィール更新の入力（可変フィールド）を表します。
@@ -94,6 +105,8 @@ type Usecase interface {
 	ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error)
 	// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
 	ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error)
+	// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。
+	ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error)
 	// CreateUser は、ユーザーを作成します。
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
 	// CountUsers は、ユーザーの総件数を返します。
@@ -142,39 +155,7 @@ func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Pagi
 		return nil, err
 	}
 
-	_, prefectureMap, err := observability.RunWithSpan(
-		ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) {
-			pids := make([]uuid.UUID, len(us))
-			for i, ue := range us {
-				pids[i] = ue.PrefectureID()
-			}
-
-			ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
-			if pftErr != nil {
-				return nil, pftErr
-			}
-
-			prefectureMap := make(map[uuid.UUID]*prefecture.Prefecture, len(ps))
-			for _, p := range ps {
-				prefectureMap[p.ID()] = p
-			}
-
-			return prefectureMap, nil
-		})
-	if err != nil {
-		return nil, err
-	}
-
-	dtos := make([]UserView, len(us))
-	for i, ue := range us {
-		p, ok := prefectureMap[ue.PrefectureID()]
-		if !ok {
-			return nil, errOrphanPrefecture
-		}
-		dtos[i] = toUserView(ue, p.Name())
-	}
-
-	return dtos, nil
+	return u.toUserViews(ctx, us)
 }
 
 // CreateUser は、ユーザーを作成するユースケースです。
@@ -254,6 +235,74 @@ func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *pa
 		return nil, err
 	}
 	return &UserListView{Items: items, Total: total}, nil
+}
+
+// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得するユースケースです。
+func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error) {
+	if cursor == nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
+	}
+
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	after, err := decodeFeedCursor(cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	// 次ページ有無を判定するため limit+1 件を取得する。
+	// cursor.Limit32() は maxPerPage でクランプ済みのため +1 でも int32 上限を超えない。
+	us, err := u.userRepo.FindFeed(ctx, after, cursor.Limit32()+1)
+	if err != nil {
+		return nil, err
+	}
+
+	// limit を超えていれば次ページありと判定し、表示分（limit 件）に切り詰める。
+	limit := cursor.Limit()
+	hasNext := len(us) > limit
+	if hasNext {
+		us = us[:limit]
+	}
+
+	items, err := u.toUserViews(ctx, us)
+	if err != nil {
+		return nil, err
+	}
+
+	var nextCursor *string
+	if hasNext && len(us) > 0 {
+		last := us[len(us)-1]
+		encoded := paging.EncodeCursor(last.CreatedAt().Format(time.RFC3339Nano), last.ID().String())
+		nextCursor = &encoded
+	}
+
+	return &UserFeedView{Items: items, NextCursor: nextCursor}, nil
+}
+
+// decodeFeedCursor は、cursor の不透明キー列を keyset 境界（FeedCursor）へ解釈します。
+// 先頭ページ（カーソル無し）の場合は nil を返します。キーの個数・型が不正な場合は ErrInvalidArgument を返します。
+func decodeFeedCursor(cursor *paging.Cursor) (*user.FeedCursor, error) {
+	if !cursor.HasCursor() {
+		return nil, nil //nolint:nilnil // 先頭ページは境界なし（nil）を正常値として返す
+	}
+
+	keys := cursor.Keys()
+	if len(keys) != feedCursorKeyCount {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: expected 2 keys")
+	}
+
+	createdAt, err := time.Parse(time.RFC3339Nano, keys[0])
+	if err != nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: created_at is not RFC3339Nano")
+	}
+
+	id, err := uuid.Parse(keys[1])
+	if err != nil {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: id is not a valid UUID")
+	}
+
+	return &user.FeedCursor{CreatedAt: createdAt, ID: id}, nil
 }
 
 // GetUser は、IDから単一ユーザーを取得するユースケースです。
@@ -439,6 +488,44 @@ func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		}
 		return u.userRepo.Update(ctx, userEntity)
 	})
+}
+
+// toUserViews は、ユーザーエンティティ列を、都道府県名を一括解決（N+1 回避）して DTO 列へ変換します。
+// いずれかのユーザーが参照する都道府県を解決できない場合は参照整合性破れ（errOrphanPrefecture）を返します。
+func (u *usecase) toUserViews(ctx context.Context, us user.Users) ([]UserView, error) {
+	_, prefectureMap, err := observability.RunWithSpan(
+		ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Prefecture, error) {
+			pids := make([]uuid.UUID, len(us))
+			for i, ue := range us {
+				pids[i] = ue.PrefectureID()
+			}
+
+			ps, pftErr := u.pftRepo.FindByIDs(ctx, pids)
+			if pftErr != nil {
+				return nil, pftErr
+			}
+
+			prefectureMap := make(map[uuid.UUID]*prefecture.Prefecture, len(ps))
+			for _, p := range ps {
+				prefectureMap[p.ID()] = p
+			}
+
+			return prefectureMap, nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]UserView, len(us))
+	for i, ue := range us {
+		p, ok := prefectureMap[ue.PrefectureID()]
+		if !ok {
+			return nil, errOrphanPrefecture
+		}
+		dtos[i] = toUserView(ue, p.Name())
+	}
+
+	return dtos, nil
 }
 
 // resolvePatchPrefecture は、PATCH の都道府県を解決します。

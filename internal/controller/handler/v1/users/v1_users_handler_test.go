@@ -51,17 +51,24 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp)
 
-	expectedMethods := []string{
-		http.MethodGet,
-		http.MethodPost,
-	}
+	// /v1/users (GET, POST) が登録される。
+	routes := e.Routes()
 
-	testassert.AssertEchoRouterPath(
-		t, targetPath, e.Routes(),
-	)
-	testassert.AssertEchoRouterMethods(
-		t, expectedMethods, e.Routes(),
-	)
+	expectedMethods := []string{
+		http.MethodGet,  // GetUsers
+		http.MethodPost, // PostUsers
+	}
+	testassert.AssertEchoRouterMethods(t, expectedMethods, routes)
+
+	actualPaths := make([]string, len(routes))
+	for i, r := range routes {
+		actualPaths[i] = r.Path
+	}
+	expectedPaths := []string{
+		targetPath,
+		targetPath,
+	}
+	assert.ElementsMatch(t, expectedPaths, actualPaths)
 }
 
 func Test_server_GetUsers(t *testing.T) {

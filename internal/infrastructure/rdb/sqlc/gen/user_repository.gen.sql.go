@@ -382,6 +382,132 @@ func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListU
 	return items, nil
 }
 
+const listUsersFeedAfter = `-- name: ListUsersFeedAfter :many
+SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.deleted_at IS NULL
+    AND (
+        u.created_at < $1
+        OR (u.created_at = $1 AND u.id < $2)
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $3
+`
+
+type ListUsersFeedAfterParams struct {
+	AfterCreatedAt time.Time
+	AfterID        uuid.UUID
+	LimitParam     int32
+}
+
+type ListUsersFeedAfterRow struct {
+	Users Users
+}
+
+// keyset 比較は (created_at, id) のタプル比較と等価だが、sqlc が各プレースホルダの型を
+// 比較対象カラムから正しく推論できるよう（特に id を uuid として推論させるため）、
+// 行値コンストラクタではなく展開形で記述する。
+//
+//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.deleted_at IS NULL
+//	    AND (
+//	        u.created_at < $1
+//	        OR (u.created_at = $1 AND u.id < $2)
+//	    )
+//	ORDER BY u.created_at DESC, u.id DESC
+//	LIMIT $3
+func (q *Queries) ListUsersFeedAfter(ctx context.Context, arg *ListUsersFeedAfterParams) ([]*ListUsersFeedAfterRow, error) {
+	rows, err := q.db.Query(ctx, listUsersFeedAfter, arg.AfterCreatedAt, arg.AfterID, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListUsersFeedAfterRow
+	for rows.Next() {
+		var i ListUsersFeedAfterRow
+		if err := rows.Scan(
+			&i.Users.ID,
+			&i.Users.FirstName,
+			&i.Users.LastName,
+			&i.Users.PasswordHash,
+			&i.Users.Email,
+			&i.Users.Phone,
+			&i.Users.PrefectureID,
+			&i.Users.City,
+			&i.Users.Street,
+			&i.Users.Building,
+			&i.Users.PostalCode,
+			&i.Users.DeletedAt,
+			&i.Users.CreatedAt,
+			&i.Users.UpdatedAt,
+			&i.Users.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersFeedFirst = `-- name: ListUsersFeedFirst :many
+SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.deleted_at IS NULL
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $1
+`
+
+type ListUsersFeedFirstRow struct {
+	Users Users
+}
+
+// === source: database/dml/repository/user/select_users_feed.sql ===
+//
+//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.deleted_at IS NULL
+//	ORDER BY u.created_at DESC, u.id DESC
+//	LIMIT $1
+func (q *Queries) ListUsersFeedFirst(ctx context.Context, limitParam int32) ([]*ListUsersFeedFirstRow, error) {
+	rows, err := q.db.Query(ctx, listUsersFeedFirst, limitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListUsersFeedFirstRow
+	for rows.Next() {
+		var i ListUsersFeedFirstRow
+		if err := rows.Scan(
+			&i.Users.ID,
+			&i.Users.FirstName,
+			&i.Users.LastName,
+			&i.Users.PasswordHash,
+			&i.Users.Email,
+			&i.Users.Phone,
+			&i.Users.PrefectureID,
+			&i.Users.City,
+			&i.Users.Street,
+			&i.Users.Building,
+			&i.Users.PostalCode,
+			&i.Users.DeletedAt,
+			&i.Users.CreatedAt,
+			&i.Users.UpdatedAt,
+			&i.Users.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateUser = `-- name: UpdateUser :execrows
 UPDATE users
 SET
