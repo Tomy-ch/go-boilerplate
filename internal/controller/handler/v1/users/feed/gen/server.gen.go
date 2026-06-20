@@ -30,6 +30,8 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) GetUsersFeed(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(string(BearerAuthScopes), []string{})
+
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetUsersFeedParams
 	// ------------- Optional query parameter "after" -------------

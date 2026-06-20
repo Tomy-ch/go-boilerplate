@@ -4,6 +4,8 @@ get:
     - v1/users/feed
   summary: ユーザーフィードの取得
   description: 未削除のユーザーを作成日時の降順（cursor ページネーション）で取得します。先頭ページは after を省略し、以降は前ページのレスポンスに含まれる next_cursor を after に指定します。
+  security:
+    - BearerAuth: []
   parameters:
     - $ref: '../../../components/parameters/pagination/CursorAfterParam.yaml'
     - $ref: '../../../components/parameters/pagination/CursorFirstParam.yaml'

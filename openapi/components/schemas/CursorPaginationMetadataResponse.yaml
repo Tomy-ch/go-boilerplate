@@ -1,5 +1,6 @@
 type: object
 required:
+  - next_cursor
   - has_next
 properties:
   next_cursor:

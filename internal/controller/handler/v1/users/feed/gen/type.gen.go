@@ -9,13 +9,17 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
+)
+
 // CursorPaginationMetadataResponse defines model for CursorPaginationMetadataResponse.
 type CursorPaginationMetadataResponse struct {
 	// HasNext 次ページが存在するかどうか
 	HasNext bool `json:"has_next"`
 
 	// NextCursor 次ページ取得用のカーソル。最終ページの場合は null です。
-	NextCursor *string `json:"next_cursor,omitempty"`
+	NextCursor *string `json:"next_cursor"`
 }
 
 // ErrorResponse エラーレスポンスの共通スキーマ
@@ -72,7 +76,7 @@ type UsersFeedResponse struct {
 	HasNext bool `json:"has_next"`
 
 	// NextCursor 次ページ取得用のカーソル。最終ページの場合は null です。
-	NextCursor *string        `json:"next_cursor,omitempty"`
+	NextCursor *string        `json:"next_cursor"`
 	Users      []UserResponse `json:"users"`
 }
 
