@@ -73,8 +73,8 @@ func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit
 	}
 
 	rows, err := db.ListUsersFeedAfter(ctx, &gen.ListUsersFeedAfterParams{
-		AfterCreatedAt: after.CreatedAt,
-		AfterID:        after.ID,
+		AfterCreatedAt: after.CreatedAt(),
+		AfterID:        after.ID(),
 		LimitParam:     limit,
 	})
 	if err != nil {

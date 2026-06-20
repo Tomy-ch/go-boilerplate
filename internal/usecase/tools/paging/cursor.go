@@ -14,10 +14,9 @@ import (
 //	offset 版（Paging）がページ番号を起点に LIMIT/OFFSET へ変換するのに対し、
 //	Cursor は「直前ページ末尾行のソートキー」を不透明トークンとして受け取り、
 //	keyset 比較（例: WHERE (created_at, id) < (:k0, :k1)）で次ページを取得するための情報を保持します。
-//	深いページでも OFFSET を増やさないため、大規模データのスキャンに強いのが特徴です。
 //
 //	keys はソートキーのタプルを文字列化したものです。型の解釈（RFC3339 → time、UUID 文字列 → uuid 等）は
-//	クエリ層の責務であり、本パッケージは輸送（エンコード/デコード）と件数ポリシーのみを担います。
+//	Cursor を受け取る呼び出し元（usecase 等）の責務であり、本パッケージは輸送（エンコード/デコード）と件数ポリシーのみを担います。
 type Cursor struct {
 	limit int
 	keys  []string
@@ -65,8 +64,7 @@ func (c Cursor) HasCursor() bool { return len(c.keys) > 0 }
 
 // Keys は、直前ページ末尾行のソートキー（タプル）のコピーを返します。
 //
-//	先頭ページの場合は空スライスを返します。クエリ層はこの値を keyset 比較の境界として解釈します。
-//	値オブジェクトの不変性を守るため、内部スライスのコピーを返します。
+//	先頭ページの場合は空スライスを返します。呼び出し元はこの値を keyset 比較の境界として解釈します。
 func (c Cursor) Keys() []string {
 	if len(c.keys) == 0 {
 		return []string{}
@@ -86,7 +84,6 @@ func EncodeCursor(keys ...string) string {
 	}
 	b, err := json.Marshal(keys)
 	if err != nil {
-		// []string の Marshal は失敗しないが、防御的に空を返す。
 		return ""
 	}
 	return base64.RawURLEncoding.EncodeToString(b)

@@ -251,14 +251,11 @@ func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*Us
 		return nil, err
 	}
 
-	// 次ページ有無を判定するため limit+1 件を取得する。
-	// cursor.Limit32() は maxPerPage でクランプ済みのため +1 でも int32 上限を超えない。
 	us, err := u.userRepo.FindFeed(ctx, after, cursor.Limit32()+1)
 	if err != nil {
 		return nil, err
 	}
 
-	// limit を超えていれば次ページありと判定し、表示分（limit 件）に切り詰める。
 	limit := cursor.Limit()
 	hasNext := len(us) > limit
 	if hasNext {
@@ -302,7 +299,8 @@ func decodeFeedCursor(cursor *paging.Cursor) (*user.FeedCursor, error) {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: id is not a valid UUID")
 	}
 
-	return &user.FeedCursor{CreatedAt: createdAt, ID: id}, nil
+	fc := user.NewFeedCursor(createdAt, id)
+	return &fc, nil
 }
 
 // GetUser は、IDから単一ユーザーを取得するユースケースです。
@@ -490,7 +488,7 @@ func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-// toUserViews は、ユーザーエンティティ列を、都道府県名を一括解決（N+1 回避）して DTO 列へ変換します。
+// toUserViews は、ユーザーエンティティ列を、都道府県名を一括解決した DTO 列へ変換します。
 // いずれかのユーザーが参照する都道府県を解決できない場合は参照整合性破れ（errOrphanPrefecture）を返します。
 func (u *usecase) toUserViews(ctx context.Context, us user.Users) ([]UserView, error) {
 	_, prefectureMap, err := observability.RunWithSpan(

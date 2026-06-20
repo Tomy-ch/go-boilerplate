@@ -91,7 +91,8 @@ func Test_repository_FindFeed(t *testing.T) {
 				// (created_at, id) < (base, tieLow) のため、同一 created_at の tieHigh は除外され、
 				// より古い mid → old が返る。
 				last := firstPage[len(firstPage)-1]
-				after := &user.FeedCursor{CreatedAt: last.CreatedAt(), ID: last.ID()}
+				afterCursor := user.NewFeedCursor(last.CreatedAt(), last.ID())
+				after := &afterCursor
 
 				secondPage, err := repo.FindFeed(ctx, after, 2)
 				require.NoError(t, err)
@@ -112,7 +113,8 @@ func Test_repository_FindFeed(t *testing.T) {
 				// 境界を tieHigh（同一 created_at の大きい id）にすると、
 				// (created_at, id) < (base, tieHigh) により tieLow のみが次ページに残る
 				// = created_at が同値でも id で正しくタイブレークされることの検証。
-				after := &user.FeedCursor{CreatedAt: base, ID: mustParse(tieHigh)}
+				afterCursor := user.NewFeedCursor(base, mustParse(tieHigh))
+				after := &afterCursor
 
 				page, err := repo.FindFeed(ctx, after, 10)
 				require.NoError(t, err)
@@ -153,7 +155,8 @@ func Test_repository_FindFeed(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				after := &user.FeedCursor{CreatedAt: base, ID: mustParse(tieHigh)}
+				afterCursor := user.NewFeedCursor(base, mustParse(tieHigh))
+				after := &afterCursor
 				actual, err := repo.FindFeed(ctx, after, -1)
 				require.Nil(t, actual)
 				require.Error(t, err)

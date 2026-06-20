@@ -626,10 +626,12 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 
 			u1 := newFeedUser("feed_user_1", now)
 
+			expectedCursor := user.NewFeedCursor(afterUser.CreatedAt(), afterUser.ID())
+
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindFeed(
 				gomock.Any(),
-				&user.FeedCursor{CreatedAt: afterUser.CreatedAt(), ID: afterUser.ID()},
+				&expectedCursor,
 				int32(21),
 			).Return(user.Users{u1}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)

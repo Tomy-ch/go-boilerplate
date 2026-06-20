@@ -34,7 +34,7 @@ func (s *server) GetUsersFeed(ctx context.Context, request gen.GetUsersFeedReque
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	// WARN: 本来はここで認可を行うべきですが、今回は省略します。
+	// WARN: このエンドポイントは認可チェックを実施していません。
 	cursor, err := paging.NewCursor(request.Params.After, request.Params.First)
 	if err != nil {
 		return nil, err

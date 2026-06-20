@@ -8,12 +8,19 @@ import (
 
 // FeedCursor は、ユーザーフィード（keyset ページネーション）の境界キーを表す値オブジェクトです。
 //
-//	(created_at DESC, id DESC) の安定ソートに対応し、直前ページ末尾行の
-//	作成日時と ID を保持します。クエリ層はこの値を keyset 比較
-//	（WHERE (created_at, id) < (:created_at, :id)）の境界として解釈します。
+//	直前ページ末尾行の作成日時と ID を保持し、次ページ取得時の keyset 比較の境界として用います。
 type FeedCursor struct {
-	// CreatedAt は、直前ページ末尾行の作成日時です。
-	CreatedAt time.Time
-	// ID は、直前ページ末尾行のユーザー ID です（同一作成日時のタイブレーク用）。
-	ID uuid.UUID
+	createdAt time.Time
+	id        uuid.UUID
 }
+
+// NewFeedCursor は、作成日時と ID から FeedCursor を生成します。
+func NewFeedCursor(createdAt time.Time, id uuid.UUID) FeedCursor {
+	return FeedCursor{createdAt: createdAt, id: id}
+}
+
+// CreatedAt は、境界となる作成日時を返します。
+func (c FeedCursor) CreatedAt() time.Time { return c.createdAt }
+
+// ID は、境界となるユーザー ID を返します。
+func (c FeedCursor) ID() uuid.UUID { return c.id }
