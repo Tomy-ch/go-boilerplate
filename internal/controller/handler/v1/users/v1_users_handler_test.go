@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/controller/handler/testkit/testauth"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
@@ -49,7 +50,7 @@ func TestBindHandler(t *testing.T) {
 
 	mockApp := mock_user.NewMockUsecase(ctrl)
 
-	BindHandler(e, tf, mockApp)
+	BindHandler(e, tf, mockApp, idempotency.Deps{})
 
 	// /v1/users (GET, POST) が登録される。
 	routes := e.Routes()

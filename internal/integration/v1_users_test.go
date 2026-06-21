@@ -7,6 +7,7 @@ import (
 	v1users "go-boilerplate/internal/controller/handler/v1/users"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
@@ -38,7 +39,7 @@ func TestV1Users_Integration(t *testing.T) {
 				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&user.UserListView{Items: []user.UserView{expectedDTO}, Total: 1}, nil)
 
-			v1users.BindHandler(e, tf, mockApp)
+			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{})
 
 			expected := gen.UsersResponse{
 				Users: []gen.UserResponse{
@@ -67,7 +68,7 @@ func TestV1Users_Integration(t *testing.T) {
 				CreateUser(gomock.Any(), gomock.Any()).
 				Return(user.UserView{Email: "new@example.com"}, nil)
 
-			v1users.BindHandler(e, tf, mockApp)
+			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{})
 
 			req := gen.PostUsersRequestObject{
 				Body: &gen.PostUsersJSONRequestBody{
