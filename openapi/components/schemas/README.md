@@ -127,21 +127,21 @@ These are technically OpenAPI **response objects** (they carry `description` + `
 
 **The full set (one per `apperror` kind).** Every fragment exists so it is ready to `$ref` the moment an endpoint needs it. A path declares **only the statuses that operation can actually produce** (derived from `internal/controller/error/response/http_error.go` + `internal/infrastructure/rdb/pgerror`):
 
-|Fragment|Status|`apperror`|Currently referenced?|Reached by|
-|---|---|---|---|---|
-|`BadRequest400`|400|`ErrInvalidArgument`|yes|OpenAPI request validation (param/body schema violation)|
-|`Unauthorized401`|401|`ErrUnauthenticated`|yes|auth middleware|
-|`Forbidden403`|403|`ErrPermissionDenied`|yes|auth middleware|
-|`NotFound404`|404|`ErrNotFound`|yes|missing resource|
-|`Conflict409`|409|`ErrConflict`|yes|`ErrAlreadyDeleted` (delete) or unique-violation `23505` (create/update, e.g. duplicate email)|
-|`UnprocessableEntity422`|422|`ErrValidation`|yes|domain validation the OpenAPI schema does not catch (e.g. email format)|
-|`TooManyRequests429`|429|`ErrTooManyRequests`|**not yet**|rate limiting (not currently in-app; reserved)|
-|`ClientClosedRequest499`|499|`ErrCanceled`|**not yet**|client disconnect mid-request|
-|`InternalServerError500`|500|`ErrInternal`|yes|unexpected server error|
-|`NotImplemented501`|501|`ErrUnimplemented`|**not yet**|unimplemented operation (reserved)|
-|`ServiceUnavailable503`|503|`ErrUnavailable`|yes|DB transient errors (`40001`/`40P01`/`57014`/connection) via `pgerror`|
+|Fragment|Status|`apperror`|Reached by|
+|---|---|---|---|
+|`BadRequest400`|400|`ErrInvalidArgument`|OpenAPI request validation (param/body schema violation)|
+|`Unauthorized401`|401|`ErrUnauthenticated`|auth middleware|
+|`Forbidden403`|403|`ErrPermissionDenied`|auth middleware|
+|`NotFound404`|404|`ErrNotFound`|missing resource|
+|`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted` (delete) or unique-violation `23505` (create/update, e.g. duplicate email)|
+|`UnprocessableEntity422`|422|`ErrValidation`|domain validation the OpenAPI schema does not catch (e.g. email format)|
+|`TooManyRequests429`|429|`ErrTooManyRequests`|rate limiting|
+|`ClientClosedRequest499`|499|`ErrCanceled`|client disconnect mid-request|
+|`InternalServerError500`|500|`ErrInternal`|unexpected server error|
+|`NotImplemented501`|501|`ErrUnimplemented`|unimplemented operation|
+|`ServiceUnavailable503`|503|`ErrUnavailable`|DB transient errors (`40001`/`40P01`/`57014`/connection) via `pgerror`|
 
-Fragments marked **not yet** are defined but not referenced by any operation, so `redocly bundle` does not include them and `no-unused-components` does not flag them — they sit ready for the day a code path produces that status. Wire one up by adding a `'<code>': { $ref: ... }` entry to the operation's `responses`.
+A fragment not referenced by any operation is not included by `redocly bundle`, so `no-unused-components` does not flag it. When a code path starts producing that status, wire it up by adding a `'<code>': { $ref: ... }` entry to the operation's `responses`.
 
 ### PaginationMetadataResponse
 

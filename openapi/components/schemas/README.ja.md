@@ -123,25 +123,27 @@ content:
       $ref: '../ErrorResponse.yaml'
 ```
 
-これらは厳密には OpenAPI の**レスポンスオブジェクト**（plain schema が持てない `description` ＋ `content` を持つ）で、エラー定義をまとめるため `ErrorResponse` の隣に置いています。`redocly bundle` が各ファイルを `#/components/responses/<ファイル名>` へホイストし、`oapi-codegen` がそれを `<ファイル名>JSONResponse` という Go 型にします。したがって**ファイル名は有効な Go 識別子（Pascal の理由句 ＋ HTTP コードのサフィックス。数字始まりは不可）**である必要があります。description がオペレーション固有の場合（例：`422`「現在のパスワードが一致しません」）のみ **inline** で残します。
+これらは厳密には OpenAPI の**レスポンスオブジェクト**（plain schema が持てない `description` ＋ `content` を持つ）で、エラー定義をまとめるため `ErrorResponse` の隣に置いています。
+各ファイルを `#/components/responses/<ファイル名>` へホイストし、`oapi-codegen` がそれを `<ファイル名>JSONResponse` という Go 型にします。
+したがって**ファイル名は有効な Go 識別子（Pascal の理由句 ＋ HTTP コードのサフィックス。数字始まりは不可）**である必要があります。description がオペレーション固有の場合（例：`422`「現在のパスワードが一致しません」）のみ **inline** で残します。
 
 **全集合（`apperror` 1種につき1つ）。** すべてのフラグメントを用意しておき、エンドポイントが必要になった瞬間に `$ref` できる状態にしています。パスには**そのオペレーションが実際に返しうるステータスだけ**を宣言します（`internal/controller/error/response/http_error.go` ＋ `internal/infrastructure/rdb/pgerror` から導出）：
 
-|フラグメント|ステータス|`apperror`|現在参照あり?|到達経路|
-|---|---|---|---|---|
-|`BadRequest400`|400|`ErrInvalidArgument`|あり|OpenAPI リクエスト検証（param/body のスキーマ違反）|
-|`Unauthorized401`|401|`ErrUnauthenticated`|あり|認証ミドルウェア|
-|`Forbidden403`|403|`ErrPermissionDenied`|あり|認証ミドルウェア|
-|`NotFound404`|404|`ErrNotFound`|あり|リソース不在|
-|`Conflict409`|409|`ErrConflict`|あり|`ErrAlreadyDeleted`（削除）または unique 違反 `23505`（作成・更新、例：email 重複）|
-|`UnprocessableEntity422`|422|`ErrValidation`|あり|OpenAPI スキーマで捕まらない domain 検証（例：email 形式）|
-|`TooManyRequests429`|429|`ErrTooManyRequests`|**まだ**|レートリミット（現状アプリ内に無し・予約）|
-|`ClientClosedRequest499`|499|`ErrCanceled`|**まだ**|リクエスト中のクライアント切断|
-|`InternalServerError500`|500|`ErrInternal`|あり|予期しないサーバエラー|
-|`NotImplemented501`|501|`ErrUnimplemented`|**まだ**|未実装オペレーション（予約）|
-|`ServiceUnavailable503`|503|`ErrUnavailable`|あり|DB の一時障害（`40001`/`40P01`/`57014`/接続）を `pgerror` 経由|
+|フラグメント|ステータス|`apperror`|到達経路|
+|---|---|---|---|
+|`BadRequest400`|400|`ErrInvalidArgument`|OpenAPI リクエスト検証（param/body のスキーマ違反）|
+|`Unauthorized401`|401|`ErrUnauthenticated`|認証ミドルウェア|
+|`Forbidden403`|403|`ErrPermissionDenied`|認証ミドルウェア|
+|`NotFound404`|404|`ErrNotFound`|リソース不在|
+|`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted`（削除）または unique 違反 `23505`（作成・更新、例：email 重複）|
+|`UnprocessableEntity422`|422|`ErrValidation`|OpenAPI スキーマで捕まらない domain 検証（例：email 形式）|
+|`TooManyRequests429`|429|`ErrTooManyRequests`|レートリミット|
+|`ClientClosedRequest499`|499|`ErrCanceled`|リクエスト中のクライアント切断|
+|`InternalServerError500`|500|`ErrInternal`|予期しないサーバエラー|
+|`NotImplemented501`|501|`ErrUnimplemented`|未実装オペレーション|
+|`ServiceUnavailable503`|503|`ErrUnavailable`|DB の一時障害（`40001`/`40P01`/`57014`/接続）を `pgerror` 経由|
 
-「まだ」のフラグメントは定義済みだがどのオペレーションからも未参照で、`redocly bundle` はバンドルに含めず `no-unused-components` も検知しません — そのステータスを返す経路ができた日のために待機しています。使うときはオペレーションの `responses` に `'<コード>': { $ref: ... }` を足すだけです。
+どのオペレーションからも `$ref` されていないフラグメントは `redocly bundle` がバンドルに含めないため `no-unused-components` にも掛かりません。そのステータスを返す経路ができたら、オペレーションの `responses` に `'<コード>': { $ref: ... }` を足すだけで使えます。
 
 ### PaginationMetadataResponse
 
