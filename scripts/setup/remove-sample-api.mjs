@@ -99,7 +99,7 @@ function report({ deleted, missing }, stripped, dryRun) {
 }
 
 function run({ dryRun }) {
-  console.log("🧹 サンプルAPI（user / product / order）の削除を開始します。")
+  console.log("🧹 サンプルAPI（user / prefecture / product / order）の削除を開始します。")
   console.log(`   ルート: ${ROOT_DIR}`)
   if (dryRun) {
     console.log("   モード: dry-run（ファイルは変更しません）")
@@ -126,7 +126,7 @@ function run({ dryRun }) {
 
 const program = newSetupCommand("remove-sample-api")
 program
-  .description("ボイラープレートのサンプルAPI（user / product / order）を一括削除する")
+  .description("ボイラープレートのサンプルAPI（user / prefecture / product / order）を一括削除する")
   .addHelpText(
     "after",
     `
@@ -138,7 +138,7 @@ program
 （このスクリプトは Go ツールチェーンを持たない node_tool_runner で動くため再生成は行いません。
  make setup-remove-sample-api 経由ならホスト側で自動的に続行されます）。
 
-基盤データ prefecture（migration 000001 等）は削除しません。
+core 基盤の idempotency_keys（migration 000001）は削除しません（prefecture は user サンプルの依存ドメインとして削除対象）。
 共有生成物（*.gen.go / openapi.gen.yaml 等）は再生成に任せます。
 拡張時は sample-api.mjs の各ドメイン paths への追記とマーカー付与だけで対象に含まれます。`
   )

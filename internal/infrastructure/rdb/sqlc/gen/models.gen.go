@@ -10,6 +10,34 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
+// 冪等性キー
+type IdempotencyKeys struct {
+	// ID
+	ID uuid.UUID
+	// スコープ（認証プリンシパルID）
+	Scope string
+	// 冪等性キー（クライアント供給）
+	IdempotencyKey string
+	// リクエストメソッド
+	RequestMethod string
+	// リクエストパス
+	RequestPath string
+	// リクエスト指紋（SHA-256）
+	RequestFingerprint []byte
+	// 状態（claimed / completed）
+	Status string
+	// レスポンスHTTPステータス（completedまでNULL）
+	ResponseStatus *int32
+	// レスポンスペイロード（結果DTOのJSONシリアライズ、completedまでNULL）
+	ResponsePayload []byte
+	// 作成日時
+	CreatedAt time.Time
+	// 完了日時
+	CompletedAt *time.Time
+	// 有効期限（TTL）
+	ExpiresAt time.Time
+}
+
 // 都道府県
 type Prefectures struct {
 	// ID
