@@ -29,6 +29,16 @@ func (a *ApplicationConfig) SetApplicationEnv(tb testing.TB, env string) {
 	tb.Cleanup(func() { a.env = prev })
 }
 
+// SetApplicationLogLevel は、テスト用にアプリケーションのログレベルを設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *ApplicationConfig) SetApplicationLogLevel(tb testing.TB, level string) {
+	tb.Helper()
+	prev := a.LogLevel()
+	a.logLevel = level
+	tb.Cleanup(func() { a.logLevel = prev })
+}
+
 // SetServerPort は、テスト用にサーバーのポートを設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。

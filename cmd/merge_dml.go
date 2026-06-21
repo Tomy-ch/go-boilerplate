@@ -5,7 +5,6 @@ import (
 
 	"go-boilerplate/internal/cli/mergedml"
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/pkg/xerrors"
 
 	"github.com/spf13/cobra"
 )
@@ -37,10 +36,7 @@ func newMergeDMLCommand() *cobra.Command {
 
 // mergeDMLRun は、ロガーとジェネレーターを実依存で組み立て、mergedml.RunMerge へ委譲する薄い殻です。
 func mergeDMLRun(ctx context.Context, targetType, workDir string) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		return xerrors.Wrap(err, "failed to create logger")
-	}
+	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
 
 	gen := mergedml.NewGenerator(logger, workDir)
 	return mergedml.RunMerge(ctx, gen, targetType)
