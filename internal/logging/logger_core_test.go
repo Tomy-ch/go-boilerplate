@@ -47,7 +47,7 @@ func TestNewJSONLogger(t *testing.T) {
 
 		t.Run("JSON用Loggerを返す", func(t *testing.T) {
 			t.Parallel()
-			logger := NewJSONLogger(LevelInfo, LevelError)
+			logger := NewJSONLogger(LevelInfo(), LevelError())
 			require.NotNil(t, logger)
 		})
 	})
@@ -61,7 +61,7 @@ func TestNewConsoleLogger(t *testing.T) {
 
 		t.Run("console用Loggerを返す", func(t *testing.T) {
 			t.Parallel()
-			logger := NewConsoleLogger(LevelDebug, LevelWarn)
+			logger := NewConsoleLogger(LevelDebug(), LevelWarn())
 			require.NotNil(t, logger)
 		})
 	})

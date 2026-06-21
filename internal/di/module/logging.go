@@ -19,7 +19,7 @@ func LoggingModule() fx.Option {
 	)
 }
 
-// provideLogger は、appCfg の Mode と APP_LOG_LEVEL から Logger を構築します。
+// provideLogger は、アプリケーション設定に応じた Logger を生成します。
 func provideLogger(appCfg *config.ApplicationConfig) (logging.Logger, error) {
 	level, err := logging.ParseLevel(appCfg.LogLevel())
 	if err != nil {
@@ -28,9 +28,9 @@ func provideLogger(appCfg *config.ApplicationConfig) (logging.Logger, error) {
 
 	switch {
 	case appCfg.IsProductionMode():
-		return logging.NewJSONLogger(level, logging.LevelError), nil
+		return logging.NewJSONLogger(level, logging.LevelError()), nil
 	case appCfg.IsDevelopmentMode():
-		return logging.NewConsoleLogger(level, logging.LevelWarn), nil
+		return logging.NewConsoleLogger(level, logging.LevelWarn()), nil
 	default:
 		return nil, fmt.Errorf("unknown app mode: %s", appCfg.Mode())
 	}

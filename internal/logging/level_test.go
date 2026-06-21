@@ -17,10 +17,10 @@ func TestParseLevel(t *testing.T) {
 			t.Parallel()
 
 			cases := map[string]Level{
-				"debug": LevelDebug,
-				"info":  LevelInfo,
-				"warn":  LevelWarn,
-				"error": LevelError,
+				"debug": LevelDebug(),
+				"info":  LevelInfo(),
+				"warn":  LevelWarn(),
+				"error": LevelError(),
 			}
 			for input, want := range cases {
 				lv, err := ParseLevel(input)

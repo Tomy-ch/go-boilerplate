@@ -33,7 +33,7 @@ func newFixCollationCommand() *cobra.Command {
 
 // runFixCollation は、ロガーと設定読込を結線し、fixcollation.RunFix へ委譲する薄い殻です。
 func runFixCollation(ctx context.Context, database string) error {
-	logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
+	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
 
 	loadDSN := func() (string, string, error) {
 		cfg, cerr := config.SetUpConfig()
