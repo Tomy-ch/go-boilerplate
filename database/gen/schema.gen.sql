@@ -13,30 +13,6 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 --
--- Name: citext; Type: EXTENSION; Schema: -; Owner: -
---
-CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
---
--- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: -
---
-COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
---
--- Name: hstore; Type: EXTENSION; Schema: -; Owner: -
---
-CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA public;
---
--- Name: EXTENSION hstore; Type: COMMENT; Schema: -; Owner: -
---
-COMMENT ON EXTENSION hstore IS 'data type for storing sets of (key, value) pairs';
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
---
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
---
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
---
 -- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
 --
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
