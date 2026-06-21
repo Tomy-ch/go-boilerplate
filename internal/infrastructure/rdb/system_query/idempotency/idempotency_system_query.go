@@ -6,11 +6,13 @@ import (
 	"errors"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
 	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -19,7 +21,7 @@ import (
 // pgLockNotAvailable は、lock_timeout 失効時の SQLSTATE（55P03）です。
 const pgLockNotAvailable = "55P03"
 
-// claimLockTimeout は、claim 時に並行 in-flight tx を待つ上限です。超過で 55P03 → ErrLockTimeout。
+// claimLockTimeout は、claim 時に並行リクエストを待つロックタイムアウト上限です。
 const claimLockTimeout = "3s"
 
 type store struct {
@@ -108,7 +110,14 @@ func (s *store) Complete(ctx context.Context, p idempotencybndry.CompleteParams)
 		ResponseStatus:  &status,
 		ResponsePayload: p.ResponsePayload,
 	})
-	return pgerror.NormalizeExecResult(affected, err)
+	if err != nil {
+		return pgerror.NormalizeError(err)
+	}
+	if affected == 0 {
+		// 同一 tx で claim 済みの行が complete 対象にならない＝前提崩壊（404 ではなく内部エラー）。
+		return xerrors.Wrap(apperror.ErrInternal, "complete: claimed row not found in the same transaction")
+	}
+	return nil
 }
 
 // DeleteExpired は、cutoff より古い行を limit 件まで削除し、削除件数を返します（GC）。
