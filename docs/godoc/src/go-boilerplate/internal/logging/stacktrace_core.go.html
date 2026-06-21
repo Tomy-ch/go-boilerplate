@@ -70,7 +70,7 @@
 <span id="L13" class="ln">    13  </span><span class="comment">// 前提: 本実装は単一の leaf Core をラップする用途のみを想定します。</span>
 <span id="L14" class="ln">    14  </span><span class="comment">// Check は内側 Core の Check に委譲せず自身のみ登録するため、内側が Sampler や</span>
 <span id="L15" class="ln">    15  </span><span class="comment">// 複数子の Tee の場合に Check フェーズの副作用（Sampler のカウンタ更新など）が</span>
-<span id="L16" class="ln">    16  </span><span class="comment">// 失われます。現状の NewProductionLogger / NewDevelopmentLogger は Sampling を</span>
+<span id="L16" class="ln">    16  </span><span class="comment">// 失われます。現状の NewJSONLogger / NewConsoleLogger は Sampling を</span>
 <span id="L17" class="ln">    17  </span><span class="comment">// 使わず Tee も組まないため到達しません。将来サンプリング等を導入する場合は</span>
 <span id="L18" class="ln">    18  </span><span class="comment">// 本ラッパを Check/Write 二段階契約に沿って再設計してください。</span>
 <span id="L19" class="ln">    19  </span>type stacktraceArrayCore struct {

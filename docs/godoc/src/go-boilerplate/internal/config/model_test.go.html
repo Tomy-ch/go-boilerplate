@@ -246,244 +246,249 @@
 <span id="L189" class="ln">   189  </span>				assert.Equal(t, expectedApplicationMode, app.Mode())
 <span id="L190" class="ln">   190  </span>			})
 <span id="L191" class="ln">   191  </span>
-<span id="L192" class="ln">   192  </span>			t.Run(&#34;シャットダウンタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L192" class="ln">   192  </span>			t.Run(&#34;ログレベルを取得できる&#34;, func(t *testing.T) {
 <span id="L193" class="ln">   193  </span>				t.Parallel()
-<span id="L194" class="ln">   194  </span>				assert.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
+<span id="L194" class="ln">   194  </span>				assert.Equal(t, expectedApplicationLogLevel, app.LogLevel())
 <span id="L195" class="ln">   195  </span>			})
-<span id="L196" class="ln">   196  </span>		})
-<span id="L197" class="ln">   197  </span>
-<span id="L198" class="ln">   198  </span>		t.Run(&#34;データベース設定&#34;, func(t *testing.T) {
-<span id="L199" class="ln">   199  </span>			t.Parallel()
-<span id="L200" class="ln">   200  </span>			database := cfg.database
-<span id="L201" class="ln">   201  </span>			t.Run(&#34;ドライバーを取得できる&#34;, func(t *testing.T) {
-<span id="L202" class="ln">   202  </span>				t.Parallel()
-<span id="L203" class="ln">   203  </span>				assert.Equal(t, expectedDBDriver, database.Driver())
-<span id="L204" class="ln">   204  </span>			})
-<span id="L205" class="ln">   205  </span>
-<span id="L206" class="ln">   206  </span>			t.Run(&#34;ホストを取得できる&#34;, func(t *testing.T) {
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>			t.Run(&#34;シャットダウンタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L198" class="ln">   198  </span>				t.Parallel()
+<span id="L199" class="ln">   199  </span>				assert.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())
+<span id="L200" class="ln">   200  </span>			})
+<span id="L201" class="ln">   201  </span>		})
+<span id="L202" class="ln">   202  </span>
+<span id="L203" class="ln">   203  </span>		t.Run(&#34;データベース設定&#34;, func(t *testing.T) {
+<span id="L204" class="ln">   204  </span>			t.Parallel()
+<span id="L205" class="ln">   205  </span>			database := cfg.database
+<span id="L206" class="ln">   206  </span>			t.Run(&#34;ドライバーを取得できる&#34;, func(t *testing.T) {
 <span id="L207" class="ln">   207  </span>				t.Parallel()
-<span id="L208" class="ln">   208  </span>				assert.Equal(t, expectedDBHost, database.Host())
+<span id="L208" class="ln">   208  </span>				assert.Equal(t, expectedDBDriver, database.Driver())
 <span id="L209" class="ln">   209  </span>			})
 <span id="L210" class="ln">   210  </span>
-<span id="L211" class="ln">   211  </span>			t.Run(&#34;ポートを取得できる&#34;, func(t *testing.T) {
+<span id="L211" class="ln">   211  </span>			t.Run(&#34;ホストを取得できる&#34;, func(t *testing.T) {
 <span id="L212" class="ln">   212  </span>				t.Parallel()
-<span id="L213" class="ln">   213  </span>				assert.Equal(t, expectedDBPort, database.Port())
+<span id="L213" class="ln">   213  </span>				assert.Equal(t, expectedDBHost, database.Host())
 <span id="L214" class="ln">   214  </span>			})
 <span id="L215" class="ln">   215  </span>
-<span id="L216" class="ln">   216  </span>			t.Run(&#34;ユーザーを取得できる&#34;, func(t *testing.T) {
+<span id="L216" class="ln">   216  </span>			t.Run(&#34;ポートを取得できる&#34;, func(t *testing.T) {
 <span id="L217" class="ln">   217  </span>				t.Parallel()
-<span id="L218" class="ln">   218  </span>				assert.Equal(t, expectedDBUser, database.User())
+<span id="L218" class="ln">   218  </span>				assert.Equal(t, expectedDBPort, database.Port())
 <span id="L219" class="ln">   219  </span>			})
 <span id="L220" class="ln">   220  </span>
-<span id="L221" class="ln">   221  </span>			t.Run(&#34;パスワードを取得できる&#34;, func(t *testing.T) {
+<span id="L221" class="ln">   221  </span>			t.Run(&#34;ユーザーを取得できる&#34;, func(t *testing.T) {
 <span id="L222" class="ln">   222  </span>				t.Parallel()
-<span id="L223" class="ln">   223  </span>				assert.Equal(t, expectedDBPassword, database.Password())
+<span id="L223" class="ln">   223  </span>				assert.Equal(t, expectedDBUser, database.User())
 <span id="L224" class="ln">   224  </span>			})
 <span id="L225" class="ln">   225  </span>
-<span id="L226" class="ln">   226  </span>			t.Run(&#34;データベース名を取得できる&#34;, func(t *testing.T) {
+<span id="L226" class="ln">   226  </span>			t.Run(&#34;パスワードを取得できる&#34;, func(t *testing.T) {
 <span id="L227" class="ln">   227  </span>				t.Parallel()
-<span id="L228" class="ln">   228  </span>				assert.Equal(t, expectedDBName, database.DBName())
+<span id="L228" class="ln">   228  </span>				assert.Equal(t, expectedDBPassword, database.Password())
 <span id="L229" class="ln">   229  </span>			})
 <span id="L230" class="ln">   230  </span>
-<span id="L231" class="ln">   231  </span>			t.Run(&#34;SSLモードを取得できる&#34;, func(t *testing.T) {
+<span id="L231" class="ln">   231  </span>			t.Run(&#34;データベース名を取得できる&#34;, func(t *testing.T) {
 <span id="L232" class="ln">   232  </span>				t.Parallel()
-<span id="L233" class="ln">   233  </span>				assert.Equal(t, expectedDBSSLMode, database.SSLMode())
+<span id="L233" class="ln">   233  </span>				assert.Equal(t, expectedDBName, database.DBName())
 <span id="L234" class="ln">   234  </span>			})
 <span id="L235" class="ln">   235  </span>
-<span id="L236" class="ln">   236  </span>			t.Run(&#34;Pingタイムアウトを取得できる&#34;, func(t *testing.T) {
+<span id="L236" class="ln">   236  </span>			t.Run(&#34;SSLモードを取得できる&#34;, func(t *testing.T) {
 <span id="L237" class="ln">   237  </span>				t.Parallel()
-<span id="L238" class="ln">   238  </span>				assert.Equal(t, expectedDBPingTimeout, database.PingTimeout())
+<span id="L238" class="ln">   238  </span>				assert.Equal(t, expectedDBSSLMode, database.SSLMode())
 <span id="L239" class="ln">   239  </span>			})
 <span id="L240" class="ln">   240  </span>
-<span id="L241" class="ln">   241  </span>			t.Run(&#34;スロークエリ警告閾値を取得できる&#34;, func(t *testing.T) {
+<span id="L241" class="ln">   241  </span>			t.Run(&#34;Pingタイムアウトを取得できる&#34;, func(t *testing.T) {
 <span id="L242" class="ln">   242  </span>				t.Parallel()
-<span id="L243" class="ln">   243  </span>				assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
+<span id="L243" class="ln">   243  </span>				assert.Equal(t, expectedDBPingTimeout, database.PingTimeout())
 <span id="L244" class="ln">   244  </span>			})
-<span id="L245" class="ln">   245  </span>		})
-<span id="L246" class="ln">   246  </span>
-<span id="L247" class="ln">   247  </span>		t.Run(&#34;DBコネクション設定&#34;, func(t *testing.T) {
-<span id="L248" class="ln">   248  </span>			t.Parallel()
-<span id="L249" class="ln">   249  </span>			connection := cfg.dbconnection
-<span id="L250" class="ln">   250  </span>			t.Run(&#34;最大コネクション数を取得できる&#34;, func(t *testing.T) {
-<span id="L251" class="ln">   251  </span>				t.Parallel()
-<span id="L252" class="ln">   252  </span>				assert.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
-<span id="L253" class="ln">   253  </span>			})
-<span id="L254" class="ln">   254  </span>
-<span id="L255" class="ln">   255  </span>			t.Run(&#34;最小コネクション数を取得できる&#34;, func(t *testing.T) {
+<span id="L245" class="ln">   245  </span>
+<span id="L246" class="ln">   246  </span>			t.Run(&#34;スロークエリ警告閾値を取得できる&#34;, func(t *testing.T) {
+<span id="L247" class="ln">   247  </span>				t.Parallel()
+<span id="L248" class="ln">   248  </span>				assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
+<span id="L249" class="ln">   249  </span>			})
+<span id="L250" class="ln">   250  </span>		})
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>		t.Run(&#34;DBコネクション設定&#34;, func(t *testing.T) {
+<span id="L253" class="ln">   253  </span>			t.Parallel()
+<span id="L254" class="ln">   254  </span>			connection := cfg.dbconnection
+<span id="L255" class="ln">   255  </span>			t.Run(&#34;最大コネクション数を取得できる&#34;, func(t *testing.T) {
 <span id="L256" class="ln">   256  </span>				t.Parallel()
-<span id="L257" class="ln">   257  </span>				assert.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
+<span id="L257" class="ln">   257  </span>				assert.Equal(t, expectedDBMaxConnsInt32, connection.MaxConns())
 <span id="L258" class="ln">   258  </span>			})
 <span id="L259" class="ln">   259  </span>
-<span id="L260" class="ln">   260  </span>			t.Run(&#34;最大ライフタイムを取得できる&#34;, func(t *testing.T) {
+<span id="L260" class="ln">   260  </span>			t.Run(&#34;最小コネクション数を取得できる&#34;, func(t *testing.T) {
 <span id="L261" class="ln">   261  </span>				t.Parallel()
-<span id="L262" class="ln">   262  </span>				assert.Equal(t, expectedDBMaxLifetime, connection.MaxLifetime())
+<span id="L262" class="ln">   262  </span>				assert.Equal(t, expectedDBMinConnsInt32, connection.MinConns())
 <span id="L263" class="ln">   263  </span>			})
 <span id="L264" class="ln">   264  </span>
-<span id="L265" class="ln">   265  </span>			t.Run(&#34;最大アイドル時間を取得できる&#34;, func(t *testing.T) {
+<span id="L265" class="ln">   265  </span>			t.Run(&#34;最大ライフタイムを取得できる&#34;, func(t *testing.T) {
 <span id="L266" class="ln">   266  </span>				t.Parallel()
-<span id="L267" class="ln">   267  </span>				assert.Equal(t, expectedDBMaxIdleTime, connection.MaxIdleTime())
+<span id="L267" class="ln">   267  </span>				assert.Equal(t, expectedDBMaxLifetime, connection.MaxLifetime())
 <span id="L268" class="ln">   268  </span>			})
-<span id="L269" class="ln">   269  </span>		})
-<span id="L270" class="ln">   270  </span>
-<span id="L271" class="ln">   271  </span>		t.Run(&#34;セキュリティ設定&#34;, func(t *testing.T) {
-<span id="L272" class="ln">   272  </span>			t.Parallel()
-<span id="L273" class="ln">   273  </span>			security := cfg.security
-<span id="L274" class="ln">   274  </span>			t.Run(&#34;許可オリジンを取得できる&#34;, func(t *testing.T) {
-<span id="L275" class="ln">   275  </span>				t.Parallel()
-<span id="L276" class="ln">   276  </span>				assert.Equal(
-<span id="L277" class="ln">   277  </span>					t,
-<span id="L278" class="ln">   278  </span>					strings.Split(expectedAllowedOrigins, &#34;,&#34;),
-<span id="L279" class="ln">   279  </span>					security.AllowedOrigins(),
-<span id="L280" class="ln">   280  </span>				)
-<span id="L281" class="ln">   281  </span>			})
-<span id="L282" class="ln">   282  </span>
-<span id="L283" class="ln">   283  </span>			t.Run(&#34;CIDRを取得できる&#34;, func(t *testing.T) {
-<span id="L284" class="ln">   284  </span>				t.Parallel()
-<span id="L285" class="ln">   285  </span>				assert.Equal(t, expectedCIDR, security.CIDR())
+<span id="L269" class="ln">   269  </span>
+<span id="L270" class="ln">   270  </span>			t.Run(&#34;最大アイドル時間を取得できる&#34;, func(t *testing.T) {
+<span id="L271" class="ln">   271  </span>				t.Parallel()
+<span id="L272" class="ln">   272  </span>				assert.Equal(t, expectedDBMaxIdleTime, connection.MaxIdleTime())
+<span id="L273" class="ln">   273  </span>			})
+<span id="L274" class="ln">   274  </span>		})
+<span id="L275" class="ln">   275  </span>
+<span id="L276" class="ln">   276  </span>		t.Run(&#34;セキュリティ設定&#34;, func(t *testing.T) {
+<span id="L277" class="ln">   277  </span>			t.Parallel()
+<span id="L278" class="ln">   278  </span>			security := cfg.security
+<span id="L279" class="ln">   279  </span>			t.Run(&#34;許可オリジンを取得できる&#34;, func(t *testing.T) {
+<span id="L280" class="ln">   280  </span>				t.Parallel()
+<span id="L281" class="ln">   281  </span>				assert.Equal(
+<span id="L282" class="ln">   282  </span>					t,
+<span id="L283" class="ln">   283  </span>					strings.Split(expectedAllowedOrigins, &#34;,&#34;),
+<span id="L284" class="ln">   284  </span>					security.AllowedOrigins(),
+<span id="L285" class="ln">   285  </span>				)
 <span id="L286" class="ln">   286  </span>			})
 <span id="L287" class="ln">   287  </span>
-<span id="L288" class="ln">   288  </span>			t.Run(&#34;ContentTypeNosniffを取得できる&#34;, func(t *testing.T) {
+<span id="L288" class="ln">   288  </span>			t.Run(&#34;CIDRを取得できる&#34;, func(t *testing.T) {
 <span id="L289" class="ln">   289  </span>				t.Parallel()
-<span id="L290" class="ln">   290  </span>				assert.Equal(t, expectedContentTypeNosniff, security.ContentTypeNosniff())
+<span id="L290" class="ln">   290  </span>				assert.Equal(t, expectedCIDR, security.CIDR())
 <span id="L291" class="ln">   291  </span>			})
 <span id="L292" class="ln">   292  </span>
-<span id="L293" class="ln">   293  </span>			t.Run(&#34;XFrameOptionsを取得できる&#34;, func(t *testing.T) {
+<span id="L293" class="ln">   293  </span>			t.Run(&#34;ContentTypeNosniffを取得できる&#34;, func(t *testing.T) {
 <span id="L294" class="ln">   294  </span>				t.Parallel()
-<span id="L295" class="ln">   295  </span>				assert.Equal(t, expectedXFrameOptions, security.XFrameOptions())
+<span id="L295" class="ln">   295  </span>				assert.Equal(t, expectedContentTypeNosniff, security.ContentTypeNosniff())
 <span id="L296" class="ln">   296  </span>			})
 <span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span>			t.Run(&#34;HSTS最大期間を取得できる&#34;, func(t *testing.T) {
+<span id="L298" class="ln">   298  </span>			t.Run(&#34;XFrameOptionsを取得できる&#34;, func(t *testing.T) {
 <span id="L299" class="ln">   299  </span>				t.Parallel()
-<span id="L300" class="ln">   300  </span>				assert.Equal(t, expectedHSTSMaxAge, security.HSTSMaxAge())
+<span id="L300" class="ln">   300  </span>				assert.Equal(t, expectedXFrameOptions, security.XFrameOptions())
 <span id="L301" class="ln">   301  </span>			})
 <span id="L302" class="ln">   302  </span>
-<span id="L303" class="ln">   303  </span>			t.Run(&#34;HSTSサブドメイン除外設定を取得できる&#34;, func(t *testing.T) {
+<span id="L303" class="ln">   303  </span>			t.Run(&#34;HSTS最大期間を取得できる&#34;, func(t *testing.T) {
 <span id="L304" class="ln">   304  </span>				t.Parallel()
-<span id="L305" class="ln">   305  </span>				assert.Equal(t, expectedHSTSExcludeSubdomains, security.HSTSExcludeSubdomains())
+<span id="L305" class="ln">   305  </span>				assert.Equal(t, expectedHSTSMaxAge, security.HSTSMaxAge())
 <span id="L306" class="ln">   306  </span>			})
 <span id="L307" class="ln">   307  </span>
-<span id="L308" class="ln">   308  </span>			t.Run(&#34;HSTSプリロード有効設定を取得できる&#34;, func(t *testing.T) {
+<span id="L308" class="ln">   308  </span>			t.Run(&#34;HSTSサブドメイン除外設定を取得できる&#34;, func(t *testing.T) {
 <span id="L309" class="ln">   309  </span>				t.Parallel()
-<span id="L310" class="ln">   310  </span>				assert.Equal(t, expectedHSTSPreloadEnabled, security.HSTSPreloadEnabled())
+<span id="L310" class="ln">   310  </span>				assert.Equal(t, expectedHSTSExcludeSubdomains, security.HSTSExcludeSubdomains())
 <span id="L311" class="ln">   311  </span>			})
 <span id="L312" class="ln">   312  </span>
-<span id="L313" class="ln">   313  </span>			t.Run(&#34;リファラーポリシーを取得できる&#34;, func(t *testing.T) {
+<span id="L313" class="ln">   313  </span>			t.Run(&#34;HSTSプリロード有効設定を取得できる&#34;, func(t *testing.T) {
 <span id="L314" class="ln">   314  </span>				t.Parallel()
-<span id="L315" class="ln">   315  </span>				assert.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
+<span id="L315" class="ln">   315  </span>				assert.Equal(t, expectedHSTSPreloadEnabled, security.HSTSPreloadEnabled())
 <span id="L316" class="ln">   316  </span>			})
 <span id="L317" class="ln">   317  </span>
-<span id="L318" class="ln">   318  </span>			t.Run(&#34;bcryptコストを取得できる&#34;, func(t *testing.T) {
+<span id="L318" class="ln">   318  </span>			t.Run(&#34;リファラーポリシーを取得できる&#34;, func(t *testing.T) {
 <span id="L319" class="ln">   319  </span>				t.Parallel()
-<span id="L320" class="ln">   320  </span>				assert.Equal(t, expectedBcryptCost, security.BcryptCost())
+<span id="L320" class="ln">   320  </span>				assert.Equal(t, expectedReferrerPolicy, security.ReferrerPolicy())
 <span id="L321" class="ln">   321  </span>			})
-<span id="L322" class="ln">   322  </span>		})
-<span id="L323" class="ln">   323  </span>
-<span id="L324" class="ln">   324  </span>		t.Run(&#34;セキュアCookie設定&#34;, func(t *testing.T) {
-<span id="L325" class="ln">   325  </span>			t.Parallel()
-<span id="L326" class="ln">   326  </span>			secureCookie := cfg.secureCookie
-<span id="L327" class="ln">   327  </span>
-<span id="L328" class="ln">   328  </span>			t.Run(&#34;Secure属性を取得できる&#34;, func(t *testing.T) {
-<span id="L329" class="ln">   329  </span>				t.Parallel()
-<span id="L330" class="ln">   330  </span>				assert.Equal(t, expectedSecureCookieSecure, secureCookie.Secure())
-<span id="L331" class="ln">   331  </span>			})
+<span id="L322" class="ln">   322  </span>
+<span id="L323" class="ln">   323  </span>			t.Run(&#34;bcryptコストを取得できる&#34;, func(t *testing.T) {
+<span id="L324" class="ln">   324  </span>				t.Parallel()
+<span id="L325" class="ln">   325  </span>				assert.Equal(t, expectedBcryptCost, security.BcryptCost())
+<span id="L326" class="ln">   326  </span>			})
+<span id="L327" class="ln">   327  </span>		})
+<span id="L328" class="ln">   328  </span>
+<span id="L329" class="ln">   329  </span>		t.Run(&#34;セキュアCookie設定&#34;, func(t *testing.T) {
+<span id="L330" class="ln">   330  </span>			t.Parallel()
+<span id="L331" class="ln">   331  </span>			secureCookie := cfg.secureCookie
 <span id="L332" class="ln">   332  </span>
-<span id="L333" class="ln">   333  </span>			t.Run(&#34;SameSite属性を取得できる&#34;, func(t *testing.T) {
+<span id="L333" class="ln">   333  </span>			t.Run(&#34;Secure属性を取得できる&#34;, func(t *testing.T) {
 <span id="L334" class="ln">   334  </span>				t.Parallel()
-<span id="L335" class="ln">   335  </span>				assert.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
+<span id="L335" class="ln">   335  </span>				assert.Equal(t, expectedSecureCookieSecure, secureCookie.Secure())
 <span id="L336" class="ln">   336  </span>			})
 <span id="L337" class="ln">   337  </span>
-<span id="L338" class="ln">   338  </span>			t.Run(&#34;ドメインを取得できる&#34;, func(t *testing.T) {
+<span id="L338" class="ln">   338  </span>			t.Run(&#34;SameSite属性を取得できる&#34;, func(t *testing.T) {
 <span id="L339" class="ln">   339  </span>				t.Parallel()
-<span id="L340" class="ln">   340  </span>				assert.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
+<span id="L340" class="ln">   340  </span>				assert.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
 <span id="L341" class="ln">   341  </span>			})
-<span id="L342" class="ln">   342  </span>		})
-<span id="L343" class="ln">   343  </span>
-<span id="L344" class="ln">   344  </span>		t.Run(&#34;認証設定&#34;, func(t *testing.T) {
-<span id="L345" class="ln">   345  </span>			t.Parallel()
-<span id="L346" class="ln">   346  </span>			auth := cfg.auth
-<span id="L347" class="ln">   347  </span>
-<span id="L348" class="ln">   348  </span>			t.Run(&#34;Cookie名を取得できる&#34;, func(t *testing.T) {
-<span id="L349" class="ln">   349  </span>				t.Parallel()
-<span id="L350" class="ln">   350  </span>				assert.Equal(t, expectedAuthCookieName, auth.CookieName())
-<span id="L351" class="ln">   351  </span>			})
+<span id="L342" class="ln">   342  </span>
+<span id="L343" class="ln">   343  </span>			t.Run(&#34;ドメインを取得できる&#34;, func(t *testing.T) {
+<span id="L344" class="ln">   344  </span>				t.Parallel()
+<span id="L345" class="ln">   345  </span>				assert.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
+<span id="L346" class="ln">   346  </span>			})
+<span id="L347" class="ln">   347  </span>		})
+<span id="L348" class="ln">   348  </span>
+<span id="L349" class="ln">   349  </span>		t.Run(&#34;認証設定&#34;, func(t *testing.T) {
+<span id="L350" class="ln">   350  </span>			t.Parallel()
+<span id="L351" class="ln">   351  </span>			auth := cfg.auth
 <span id="L352" class="ln">   352  </span>
-<span id="L353" class="ln">   353  </span>			t.Run(&#34;ヘッダー名を取得できる&#34;, func(t *testing.T) {
+<span id="L353" class="ln">   353  </span>			t.Run(&#34;Cookie名を取得できる&#34;, func(t *testing.T) {
 <span id="L354" class="ln">   354  </span>				t.Parallel()
-<span id="L355" class="ln">   355  </span>				assert.Equal(t, expectedAuthHeaderName, auth.HeaderName())
+<span id="L355" class="ln">   355  </span>				assert.Equal(t, expectedAuthCookieName, auth.CookieName())
 <span id="L356" class="ln">   356  </span>			})
 <span id="L357" class="ln">   357  </span>
-<span id="L358" class="ln">   358  </span>			t.Run(&#34;Bearerヘッダー許可を取得できる&#34;, func(t *testing.T) {
+<span id="L358" class="ln">   358  </span>			t.Run(&#34;ヘッダー名を取得できる&#34;, func(t *testing.T) {
 <span id="L359" class="ln">   359  </span>				t.Parallel()
-<span id="L360" class="ln">   360  </span>				assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
+<span id="L360" class="ln">   360  </span>				assert.Equal(t, expectedAuthHeaderName, auth.HeaderName())
 <span id="L361" class="ln">   361  </span>			})
-<span id="L362" class="ln">   362  </span>		})
-<span id="L363" class="ln">   363  </span>	})
-<span id="L364" class="ln">   364  </span>}
-<span id="L365" class="ln">   365  </span>
-<span id="L366" class="ln">   366  </span>func Test_ApplicationConfig_IsProductionMode(t *testing.T) {
-<span id="L367" class="ln">   367  </span>	t.Parallel()
-<span id="L368" class="ln">   368  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L369" class="ln">   369  </span>		t.Parallel()
-<span id="L370" class="ln">   370  </span>		t.Run(&#34;本番環境モードの場合&#34;, func(t *testing.T) {
-<span id="L371" class="ln">   371  </span>			t.Parallel()
-<span id="L372" class="ln">   372  </span>			cfg := Config{}
-<span id="L373" class="ln">   373  </span>			cfg.app.mode = ProductionMode
-<span id="L374" class="ln">   374  </span>			assert.True(t, cfg.app.IsProductionMode())
-<span id="L375" class="ln">   375  </span>		})
-<span id="L376" class="ln">   376  </span>
-<span id="L377" class="ln">   377  </span>		t.Run(&#34;開発環境モードの場合&#34;, func(t *testing.T) {
-<span id="L378" class="ln">   378  </span>			t.Parallel()
-<span id="L379" class="ln">   379  </span>			cfg := Config{}
-<span id="L380" class="ln">   380  </span>			cfg.app.mode = DevelopmentMode
-<span id="L381" class="ln">   381  </span>			assert.False(t, cfg.app.IsProductionMode())
-<span id="L382" class="ln">   382  </span>		})
-<span id="L383" class="ln">   383  </span>	})
-<span id="L384" class="ln">   384  </span>}
-<span id="L385" class="ln">   385  </span>
-<span id="L386" class="ln">   386  </span>func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
-<span id="L387" class="ln">   387  </span>	t.Parallel()
-<span id="L388" class="ln">   388  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L389" class="ln">   389  </span>		t.Parallel()
-<span id="L390" class="ln">   390  </span>		t.Run(&#34;開発環境モードの場合&#34;, func(t *testing.T) {
-<span id="L391" class="ln">   391  </span>			t.Parallel()
-<span id="L392" class="ln">   392  </span>			cfg := Config{}
-<span id="L393" class="ln">   393  </span>			cfg.app.mode = DevelopmentMode
-<span id="L394" class="ln">   394  </span>			assert.True(t, cfg.app.IsDevelopmentMode())
-<span id="L395" class="ln">   395  </span>		})
-<span id="L396" class="ln">   396  </span>
-<span id="L397" class="ln">   397  </span>		t.Run(&#34;本番環境モードの場合&#34;, func(t *testing.T) {
-<span id="L398" class="ln">   398  </span>			t.Parallel()
-<span id="L399" class="ln">   399  </span>			cfg := Config{}
-<span id="L400" class="ln">   400  </span>			cfg.app.mode = ProductionMode
-<span id="L401" class="ln">   401  </span>			assert.False(t, cfg.app.IsDevelopmentMode())
-<span id="L402" class="ln">   402  </span>		})
-<span id="L403" class="ln">   403  </span>	})
-<span id="L404" class="ln">   404  </span>}
-<span id="L405" class="ln">   405  </span>
-<span id="L406" class="ln">   406  </span>func TestSecurityConfig_CIDR(t *testing.T) {
-<span id="L407" class="ln">   407  </span>	t.Parallel()
-<span id="L408" class="ln">   408  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L409" class="ln">   409  </span>		t.Parallel()
-<span id="L410" class="ln">   410  </span>		t.Run(&#34;cidrがnilの場合_nilを返す&#34;, func(t *testing.T) {
-<span id="L411" class="ln">   411  </span>			t.Parallel()
-<span id="L412" class="ln">   412  </span>			s := &amp;SecurityConfig{}
-<span id="L413" class="ln">   413  </span>			assert.Nil(t, s.CIDR())
-<span id="L414" class="ln">   414  </span>		})
-<span id="L415" class="ln">   415  </span>	})
-<span id="L416" class="ln">   416  </span>}
-<span id="L417" class="ln">   417  </span>
-<span id="L418" class="ln">   418  </span>func TestSecureCookieConfig_Secure(t *testing.T) {
-<span id="L419" class="ln">   419  </span>	t.Parallel()
-<span id="L420" class="ln">   420  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L421" class="ln">   421  </span>		t.Parallel()
-<span id="L422" class="ln">   422  </span>		t.Run(&#34;secureがnilの場合_nilを返す&#34;, func(t *testing.T) {
-<span id="L423" class="ln">   423  </span>			t.Parallel()
-<span id="L424" class="ln">   424  </span>			s := &amp;SecureCookieConfig{}
-<span id="L425" class="ln">   425  </span>			assert.Nil(t, s.Secure())
-<span id="L426" class="ln">   426  </span>		})
-<span id="L427" class="ln">   427  </span>	})
-<span id="L428" class="ln">   428  </span>}
-<span id="L429" class="ln">   429  </span>
+<span id="L362" class="ln">   362  </span>
+<span id="L363" class="ln">   363  </span>			t.Run(&#34;Bearerヘッダー許可を取得できる&#34;, func(t *testing.T) {
+<span id="L364" class="ln">   364  </span>				t.Parallel()
+<span id="L365" class="ln">   365  </span>				assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
+<span id="L366" class="ln">   366  </span>			})
+<span id="L367" class="ln">   367  </span>		})
+<span id="L368" class="ln">   368  </span>	})
+<span id="L369" class="ln">   369  </span>}
+<span id="L370" class="ln">   370  </span>
+<span id="L371" class="ln">   371  </span>func Test_ApplicationConfig_IsProductionMode(t *testing.T) {
+<span id="L372" class="ln">   372  </span>	t.Parallel()
+<span id="L373" class="ln">   373  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L374" class="ln">   374  </span>		t.Parallel()
+<span id="L375" class="ln">   375  </span>		t.Run(&#34;本番環境モードの場合&#34;, func(t *testing.T) {
+<span id="L376" class="ln">   376  </span>			t.Parallel()
+<span id="L377" class="ln">   377  </span>			cfg := Config{}
+<span id="L378" class="ln">   378  </span>			cfg.app.mode = ProductionMode
+<span id="L379" class="ln">   379  </span>			assert.True(t, cfg.app.IsProductionMode())
+<span id="L380" class="ln">   380  </span>		})
+<span id="L381" class="ln">   381  </span>
+<span id="L382" class="ln">   382  </span>		t.Run(&#34;開発環境モードの場合&#34;, func(t *testing.T) {
+<span id="L383" class="ln">   383  </span>			t.Parallel()
+<span id="L384" class="ln">   384  </span>			cfg := Config{}
+<span id="L385" class="ln">   385  </span>			cfg.app.mode = DevelopmentMode
+<span id="L386" class="ln">   386  </span>			assert.False(t, cfg.app.IsProductionMode())
+<span id="L387" class="ln">   387  </span>		})
+<span id="L388" class="ln">   388  </span>	})
+<span id="L389" class="ln">   389  </span>}
+<span id="L390" class="ln">   390  </span>
+<span id="L391" class="ln">   391  </span>func Test_ApplicationConfig_IsDevelopmentMode(t *testing.T) {
+<span id="L392" class="ln">   392  </span>	t.Parallel()
+<span id="L393" class="ln">   393  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L394" class="ln">   394  </span>		t.Parallel()
+<span id="L395" class="ln">   395  </span>		t.Run(&#34;開発環境モードの場合&#34;, func(t *testing.T) {
+<span id="L396" class="ln">   396  </span>			t.Parallel()
+<span id="L397" class="ln">   397  </span>			cfg := Config{}
+<span id="L398" class="ln">   398  </span>			cfg.app.mode = DevelopmentMode
+<span id="L399" class="ln">   399  </span>			assert.True(t, cfg.app.IsDevelopmentMode())
+<span id="L400" class="ln">   400  </span>		})
+<span id="L401" class="ln">   401  </span>
+<span id="L402" class="ln">   402  </span>		t.Run(&#34;本番環境モードの場合&#34;, func(t *testing.T) {
+<span id="L403" class="ln">   403  </span>			t.Parallel()
+<span id="L404" class="ln">   404  </span>			cfg := Config{}
+<span id="L405" class="ln">   405  </span>			cfg.app.mode = ProductionMode
+<span id="L406" class="ln">   406  </span>			assert.False(t, cfg.app.IsDevelopmentMode())
+<span id="L407" class="ln">   407  </span>		})
+<span id="L408" class="ln">   408  </span>	})
+<span id="L409" class="ln">   409  </span>}
+<span id="L410" class="ln">   410  </span>
+<span id="L411" class="ln">   411  </span>func TestSecurityConfig_CIDR(t *testing.T) {
+<span id="L412" class="ln">   412  </span>	t.Parallel()
+<span id="L413" class="ln">   413  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L414" class="ln">   414  </span>		t.Parallel()
+<span id="L415" class="ln">   415  </span>		t.Run(&#34;cidrがnilの場合_nilを返す&#34;, func(t *testing.T) {
+<span id="L416" class="ln">   416  </span>			t.Parallel()
+<span id="L417" class="ln">   417  </span>			s := &amp;SecurityConfig{}
+<span id="L418" class="ln">   418  </span>			assert.Nil(t, s.CIDR())
+<span id="L419" class="ln">   419  </span>		})
+<span id="L420" class="ln">   420  </span>	})
+<span id="L421" class="ln">   421  </span>}
+<span id="L422" class="ln">   422  </span>
+<span id="L423" class="ln">   423  </span>func TestSecureCookieConfig_Secure(t *testing.T) {
+<span id="L424" class="ln">   424  </span>	t.Parallel()
+<span id="L425" class="ln">   425  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L426" class="ln">   426  </span>		t.Parallel()
+<span id="L427" class="ln">   427  </span>		t.Run(&#34;secureがnilの場合_nilを返す&#34;, func(t *testing.T) {
+<span id="L428" class="ln">   428  </span>			t.Parallel()
+<span id="L429" class="ln">   429  </span>			s := &amp;SecureCookieConfig{}
+<span id="L430" class="ln">   430  </span>			assert.Nil(t, s.Secure())
+<span id="L431" class="ln">   431  </span>		})
+<span id="L432" class="ln">   432  </span>	})
+<span id="L433" class="ln">   433  </span>}
+<span id="L434" class="ln">   434  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/model_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

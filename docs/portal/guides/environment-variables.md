@@ -34,6 +34,7 @@ This directory is the canonical reference for every environment variable read by
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
 |APP_MODE|Execution mode|string|development / production|Switch logs and behavior|
+|APP_LOG_LEVEL|Log output level|string|debug / info / warn / error|Output format follows Mode; level is set explicitly per environment|
 |APP_NAME|Application name|string|Boilerplate|Used for log / metrics identification|
 |APP_ENV|Environment identifier|string|local / staging / prod|For environment distinction|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown duration|duration|45s|Wait time on SIGTERM|
@@ -125,3 +126,4 @@ This directory is the canonical reference for every environment variable read by
 - The `csv` type splits on `,` after trimming whitespace; do not embed commas inside individual values.
 - The `duration` type accepts Go `time.ParseDuration` syntax (`500ms`, `1h30m`); plain numbers are invalid.
 - When introducing a new subsystem section, keep the table column layout (`Variable Name | Description | Type | Example | Notes`) so the doc stays scannable.
+- `APP_LOG_LEVEL` is set explicitly per environment: `debug` for local / ci / dev and **staging** (verbose JSON for pre-production diagnosis), `info` for production. The output format (JSON / console) is chosen by `APP_MODE`, independently of the level.
