@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
 	"go-boilerplate/internal/observability"
@@ -86,7 +87,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 		UpdateProfileParams: user.UpdateProfileParams{
 			FirstName:      request.Body.FirstName,
 			LastName:       request.Body.LastName,
-			Email:          string(request.Body.Email),
+			Email:          conv.Email(request.Body.Email),
 			Phone:          request.Body.Phone,
 			PostalCode:     request.Body.PostalCode,
 			PrefectureName: request.Body.Prefecture,
