@@ -48,7 +48,7 @@ flowchart TB
 - Each module corresponds to a layer boundary (config / logging / db / infra / usecase / controller / job)
 - Inter-module dependencies are automatically resolved by fx
 - Adding a module is as simple as creating a new file and adding it to the app's root module
-- `InfrastructureModule()` intentionally groups its providers into nested `fx.Module` submodules (`repository` / `query_service` / `system_query` / `clock` / `security`) so the fx dependency graph stays readable per component group. The clock submodule is named `clock` (not `system`) to avoid colliding with `SystemModule()`'s `system` label.
+- `InfrastructureModule()` intentionally groups its providers into nested `fx.Module` submodules so the fx dependency graph stays readable per component group. The RDB-backed providers (`repository` / `query_service` / `command_service` / `system_query`) are nested under a `persistence` submodule, distinguishing them from `DatabaseModule()`'s `db` connection layer; `clock` and `security` are direct children of `infrastructure`. The clock submodule is named `clock` (not `system`) to avoid colliding with `SystemModule()`'s `system` label.
 
 ## Notes
 
