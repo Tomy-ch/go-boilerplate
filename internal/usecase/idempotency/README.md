@@ -78,6 +78,8 @@ Default scope = principal. To isolate keys per endpoint as well (`scope = princi
 
 - **GC job** `idempotency-gc` (`internal/controller/job/idempotencygc/`) batch-deletes expired rows. Run it from an external scheduler: `cmd job idempotency-gc` (`--batch-size=N`, default 10,000). Recommended interval: **hourly** (TTL is 24h, so realtime is unnecessary).
 - **TTL = 24h** = the retry window. A retry after the TTL becomes a fresh execution.
+- **Metrics** (`Deps.Metrics`: replay / conflict / fingerprint-mismatch counters) is an optional extension point. It is **no-op by default** (no observability backend is wired); inject an implementation via `Deps.Metrics` when you wire one.
+- **Single success status per operation**: `Run[T]` records one `successStatus` and `PostUsers` always returns 201. If you adopt `Run[T]` on an endpoint that can return multiple success statuses (e.g. 200 vs 201), extend the handler to dispatch on the stored status — replay currently re-renders via the handler's fixed response type.
 
 ## Security / storage notes
 

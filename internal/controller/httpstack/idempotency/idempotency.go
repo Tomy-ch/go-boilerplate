@@ -1,5 +1,4 @@
 // Package idempotency は、冪等性の入り口 middleware（oapi-codegen StrictMiddleware スロット用）を提供します。
-// 役割は opt-in トリガーと ctx 受け渡しのみ。判断・保存は usecase の Run[T] が行います。
 package idempotency
 
 import (

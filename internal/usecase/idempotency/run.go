@@ -26,9 +26,10 @@ type Metrics interface {
 
 // Deps は、Run が必要とする依存です。
 type Deps struct {
-	Txm     tx.Manager
-	Store   idempotencybndry.Store
-	Clock   clock.Clock
+	Txm   tx.Manager
+	Store idempotencybndry.Store
+	Clock clock.Clock
+	// Metrics は任意。nil の場合カウンタは no-op です（観測性バックエンド配線時に実装を注入する）。
 	Metrics Metrics
 }
 

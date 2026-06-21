@@ -1,5 +1,5 @@
 -- name: DeleteExpiredIdempotencyKeys :execrows
--- TTL 失効行をバッチ削除する（$2 件ずつ）。一括 DELETE の long lock を避けるため GC ジョブが 0 件になるまで反復する。
+-- TTL 失効行を最大 $2 件削除し、削除件数を返す。
 DELETE FROM idempotency_keys
 WHERE id IN (
         SELECT ik.id

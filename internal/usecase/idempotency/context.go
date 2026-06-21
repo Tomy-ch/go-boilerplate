@@ -1,14 +1,11 @@
-// Package idempotency は、冪等性管理の本体（Run[T]）を提供します。
-// 入り口 middleware（controller）が Request を ctx へ stash し、Run がそれを読んで
-// 業務 tx 内で at-most-once 実行 / replay / 409 / 422 を判定します。
+// Package idempotency は、冪等性の at-most-once 実行と replay を行う Run[T] を提供します。
 package idempotency
 
 import "context"
 
 type requestCtxKey struct{}
 
-// Request は、入り口 middleware が ctx へ載せる冪等性情報です。
-// すべて HTTP 非依存の素の値で、usecase の Run が読みます。
+// Request は、冪等性判定に必要な HTTP 非依存のリクエスト情報です。
 type Request struct {
 	// Scope は、認証プリンシパル ID（越境防止の名前空間）。
 	Scope string

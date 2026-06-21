@@ -1,5 +1,5 @@
 -- name: ClaimIdempotencyKey :one
--- 業務 tx 内で claimed 行を作る。既存キーがあれば ON CONFLICT DO NOTHING で 0 行を返す（= 既存キーあり）。
+-- 業務 tx 内でキーを claim する。既存キーがある場合は 0 行を返す。
 INSERT INTO idempotency_keys (
     scope,
     idempotency_key,

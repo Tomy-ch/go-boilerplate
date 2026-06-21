@@ -1,7 +1,7 @@
 
 -- === source: database/dml/system_query/idempotency/claim_idempotency_key.sql ===
 -- name: ClaimIdempotencyKey :one
--- 業務 tx 内で claimed 行を作る。既存キーがあれば ON CONFLICT DO NOTHING で 0 行を返す（= 既存キーあり）。
+-- 業務 tx 内でキーを claim する。既存キーがある場合は 0 行を返す。
 INSERT INTO idempotency_keys (
     scope,
     idempotency_key,
@@ -31,7 +31,7 @@ WHERE scope = $1
 
 -- === source: database/dml/system_query/idempotency/delete_expired_idempotency_keys.sql ===
 -- name: DeleteExpiredIdempotencyKeys :execrows
--- TTL 失効行をバッチ削除する（$2 件ずつ）。一括 DELETE の long lock を避けるため GC ジョブが 0 件になるまで反復する。
+-- TTL 失効行を最大 $2 件削除し、削除件数を返す。
 DELETE FROM idempotency_keys
 WHERE id IN (
         SELECT ik.id
@@ -43,7 +43,7 @@ WHERE id IN (
 
 -- === source: database/dml/system_query/idempotency/get_idempotency_key.sql ===
 -- name: GetIdempotencyKey :one
--- scope 必須（越境防止）。claim 衝突後の replay/409/422 判定に使う。
+-- scope 必須（越境防止）。scope と idempotency_key で一致する行を返す。
 SELECT
     status,
     response_status,

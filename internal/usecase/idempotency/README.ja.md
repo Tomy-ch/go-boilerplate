@@ -78,6 +78,8 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 
 - **GC ジョブ** `idempotency-gc`（`internal/controller/job/idempotencygc/`）が失効行をバッチ削除。外部スケジューラから `cmd job idempotency-gc`（`--batch-size=N`、既定 10,000）で起動。推奨間隔は**毎時**（TTL 24h ゆえリアルタイム不要）。
 - **TTL = 24h** = リトライ許容窓。TTL 経過後の再送は新規実行になる。
+- **メトリクス**（`Deps.Metrics`: replay / conflict / fingerprint-mismatch カウンタ）は任意の拡張点。**既定は no-op**（観測性バックエンド未配線）で、配線時に `Deps.Metrics` へ実装を注入する。
+- **オペレーションごとに成功ステータスは1つ**: `Run[T]` は `successStatus` を1つ記録し、`PostUsers` は常に 201 を返す。成功ステータスが複数あり得る（例: 200 と 201）エンドポイントに `Run[T]` を採用する場合は、保存ステータスで分岐するようハンドラを拡張すること（現状の replay はハンドラ固定のレスポンス型で再描画する）。
 
 ## セキュリティ / 保存の注意
 
