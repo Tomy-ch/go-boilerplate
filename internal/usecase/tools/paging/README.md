@@ -4,18 +4,18 @@ English | [日本語](README.ja.md)
 
 Provides common pagination value objects. Two strategies are offered as **equally valid application policies** (pagination is a Usecase-tier concern, not a domain rule):
 
-- **Offset-based (`Paging`)** — converts 1-based page/perPage into limit/offset. Simple, allows random page access, but degrades on deep pages (large `OFFSET` scans).
+- **Offset-based (`Page`)** — converts 1-based page/perPage into limit/offset. Simple, allows random page access, but degrades on deep pages (large `OFFSET` scans).
 - **Cursor-based / keyset (`Cursor`)** — carries an opaque cursor (the previous page's last-row sort keys) for `WHERE (sort_keys) < (:cursor)` queries. Stable and fast even on deep pages; recommended for large datasets and infinite scroll.
 
 Both share the same limit policy constants (`defaultPerPage` / `maxPerPage`).
 
 ## Public API
 
-### Offset-based (`Paging`)
+### Offset-based (`Page`)
 
 |Function / Method|Description|
 |---|---|
-|`NewPagingFrom1Based(page, perPage *int)`|Create `Paging` from 1-based page number and per-page count|
+|`NewPageFrom1Based(page, perPage *int)`|Create `Page` from 1-based page number and per-page count|
 |`Limit()` / `Limit32()`|Return the retrieval limit (int / int32)|
 |`Offset()` / `Offset32()`|Return the offset (int / int32)|
 
@@ -42,7 +42,7 @@ The package owns only **transport (encode/decode), validation, and limit policy*
 
 ## Behavior
 
-**Offset-based (`Paging`)**
+**Offset-based (`Page`)**
 
 - `perPage` ≤ 0 or nil → uses `defaultPerPage` (50)
 - `perPage` > `maxPerPage` → clamped to `maxPerPage` (200)
@@ -64,7 +64,7 @@ The package owns only **transport (encode/decode), validation, and limit policy*
 ### Offset-based
 
 ```go
-pg, err := paging.NewPagingFrom1Based(ptr.To(2), ptr.To(20))
+pg, err := paging.NewPageFrom1Based(ptr.To(2), ptr.To(20))
 // pg.Limit() == 20, pg.Offset() == 20
 ```
 

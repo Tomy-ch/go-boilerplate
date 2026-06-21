@@ -117,7 +117,7 @@ func (mr *MockUsecaseMockRecorder) GetUser(ctx, id any) *gomock.Call {
 }
 
 // ListUsers mocks base method.
-func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]user.UserView, error) {
+func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]user.UserView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsers", ctx, active, page)
 	ret0, _ := ret[0].([]user.UserView)
@@ -147,7 +147,7 @@ func (mr *MockUsecaseMockRecorder) ListUsersFeed(ctx, cursor any) *gomock.Call {
 }
 
 // ListUsersWithTotal mocks base method.
-func (m *MockUsecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*user.UserListView, error) {
+func (m *MockUsecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*user.UserListView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsersWithTotal", ctx, active, page)
 	ret0, _ := ret[0].(*user.UserListView)

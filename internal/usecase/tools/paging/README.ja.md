@@ -4,18 +4,18 @@
 
 ページネーションの共通値オブジェクトを提供します。2つの戦略を**いずれも妥当なアプリケーションポリシー**として提供します（ページネーションは domain のルールではなく usecase 層の関心事）。
 
-- **オフセット方式（`Paging`）** — 1ベースの page/perPage を limit/offset に変換。単純で任意ページへのランダムアクセスが可能だが、深いページで `OFFSET` のスキャンが増えて劣化する。
+- **オフセット方式（`Page`）** — 1ベースの page/perPage を limit/offset に変換。単純で任意ページへのランダムアクセスが可能だが、深いページで `OFFSET` のスキャンが増えて劣化する。
 - **カーソル方式 / keyset（`Cursor`）** — 不透明カーソル（直前ページ末尾行のソートキー）を受け取り、`WHERE (sort_keys) < (:cursor)` クエリに用いる。深いページでも安定して高速で、大規模データや無限スクロールに推奨。
 
 両者は同じ件数ポリシー定数（`defaultPerPage` / `maxPerPage`）を共有します。
 
 ## 公開 API
 
-### オフセット方式（`Paging`）
+### オフセット方式（`Page`）
 
 |関数 / メソッド|説明|
 |---|---|
-|`NewPagingFrom1Based(page, perPage *int)`|1ベースのページ番号と件数から `Paging` を生成|
+|`NewPageFrom1Based(page, perPage *int)`|1ベースのページ番号と件数から `Page` を生成|
 |`Limit()` / `Limit32()`|取得上限を返す（int / int32）|
 |`Offset()` / `Offset32()`|オフセットを返す（int / int32）|
 
@@ -42,7 +42,7 @@
 
 ## 挙動
 
-**オフセット方式（`Paging`）**
+**オフセット方式（`Page`）**
 
 - `perPage` ≤ 0 または nil → `defaultPerPage`（50）を使用
 - `perPage` > `maxPerPage` → `maxPerPage`（200）にクランプ
@@ -64,7 +64,7 @@
 ### オフセット方式
 
 ```go
-pg, err := paging.NewPagingFrom1Based(ptr.To(2), ptr.To(20))
+pg, err := paging.NewPageFrom1Based(ptr.To(2), ptr.To(20))
 // pg.Limit() == 20, pg.Offset() == 20
 ```
 

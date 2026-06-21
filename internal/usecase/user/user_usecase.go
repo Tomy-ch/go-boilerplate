@@ -99,9 +99,9 @@ type usecase struct {
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
 	// ListUsers は、ユーザー一覧を取得します。
-	ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error)
+	ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error)
 	// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
-	ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error)
+	ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error)
 	// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。
 	ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error)
 	// CreateUser は、ユーザーを作成します。
@@ -139,7 +139,7 @@ func New(
 	}
 }
 
-func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error) {
+func (u *usecase) ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error) {
 	if page == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "page must not be nil")
 	}
@@ -219,7 +219,7 @@ func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 }
 
 // ListUsersWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
-func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*UserListView, error) {
+func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 

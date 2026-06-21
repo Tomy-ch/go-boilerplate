@@ -81,7 +81,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 		page := 1
 		perPage := 100
-		p, err := paging.NewPagingFrom1Based(&page, &perPage)
+		p, err := paging.NewPageFrom1Based(&page, &perPage)
 		require.NoError(t, err)
 
 		prefectureDomain, err := prefecture.New(
@@ -136,7 +136,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, actualErr := paging.NewPagingFrom1Based(&page, &perPage)
+			p, actualErr := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, actualErr)
 
 			repo := mock_user.NewMockRepository(ctrl)
@@ -158,7 +158,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, actualErr := paging.NewPagingFrom1Based(&page, &perPage)
+			p, actualErr := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, actualErr)
 
 			ctrl := gomock.NewController(t)
@@ -183,7 +183,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
 			ctrl := gomock.NewController(t)
@@ -467,7 +467,7 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 
 	page := 1
 	perPage := 100
-	p, err := paging.NewPagingFrom1Based(&page, &perPage)
+	p, err := paging.NewPageFrom1Based(&page, &perPage)
 	require.NoError(t, err)
 
 	t.Run("正常系", func(t *testing.T) {

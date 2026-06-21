@@ -46,7 +46,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
 			expected := query.UserSearchResults{
@@ -99,7 +99,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
 			keyword := "Grace Lee"
@@ -136,7 +136,7 @@ func Test_usecase_ListUsersByKeyword(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
 			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
@@ -259,7 +259,7 @@ func Test_usecase_ListUsersByKeywordWithTotal(t *testing.T) {
 	ctx := context.Background()
 	page := 1
 	perPage := 100
-	p, err := paging.NewPagingFrom1Based(&page, &perPage)
+	p, err := paging.NewPageFrom1Based(&page, &perPage)
 	require.NoError(t, err)
 
 	active := new(true)

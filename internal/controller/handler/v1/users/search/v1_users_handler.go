@@ -34,7 +34,7 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 	if err != nil {
 		return nil, err
 	}

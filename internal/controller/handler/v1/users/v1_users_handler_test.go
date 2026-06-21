@@ -86,7 +86,7 @@ func Test_server_GetUsers(t *testing.T) {
 		PostalCode: "200-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2", Building: new("B2"),
 	}
 
-	mockPaging, err := paging.NewPagingFrom1Based(new(expectedPage), new(expectedPerPage))
+	mockPage, err := paging.NewPageFrom1Based(new(expectedPage), new(expectedPerPage))
 	require.NoError(t, err)
 
 	mockParams := gen.GetUsersRequestObject{
@@ -111,14 +111,14 @@ func Test_server_GetUsers(t *testing.T) {
 			}
 			expectedResponse := gen.UsersResponse{
 				Users:  wantUsers,
-				Limit:  mockPaging.Limit(),
-				Offset: mockPaging.Offset(),
+				Limit:  mockPage.Limit(),
+				Offset: mockPage.Offset(),
 				Total:  total,
 			}
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPaging).
+				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
 				Return(&user.UserListView{Items: dtos, Total: total}, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
@@ -178,7 +178,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPaging).
+				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
 				Return(nil, expectedError)
 
 			s := &server{tracer: lt, uc: mockApp}

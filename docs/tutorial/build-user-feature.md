@@ -400,7 +400,7 @@ the usecase interface.
 // shape only — see v1_users_handler.go for the real body
 func (s *server) GetUsers(ctx context.Context, req gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
  ctx, endSpan := s.tracer.Start(ctx); defer endSpan()
- page, err := paging.NewPagingFrom1Based(req.Params.Page, req.Params.PerPage)
+ page, err := paging.NewPageFrom1Based(req.Params.Page, req.Params.PerPage)
  // … list, err := s.uc.<ListMethod>(ctx, …) …
  return gen.GetUsers200JSONResponse(/* mapped DTOs */), nil
 }

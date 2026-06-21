@@ -11,7 +11,7 @@ import (
 
 // Cursor は、キーセット（cursor）ページネーションのリクエストを表す値オブジェクトです。
 //
-//	offset 版（Paging）がページ番号を起点に LIMIT/OFFSET へ変換するのに対し、
+//	offset 版（Page）がページ番号を起点に LIMIT/OFFSET へ変換するのに対し、
 //	Cursor は「直前ページ末尾行のソートキー」を不透明トークンとして受け取り、
 //	keyset 比較（例: WHERE (created_at, id) < (:k0, :k1)）で次ページを取得するための情報を保持します。
 //
@@ -26,7 +26,7 @@ type Cursor struct {
 //
 //	after が nil または空文字の場合は先頭ページとして扱い、keys は空になります。
 //	after の形式が不正な場合は apperror.ErrInvalidArgument を返します。
-//	first[limit] の補完・クランプ規約は offset 版（NewPagingFrom1Based）と共通で、
+//	first[limit] の補完・クランプ規約は offset 版（NewPageFrom1Based）と共通で、
 //	0以下または nil の場合は defaultPerPage、maxPerPage を超える場合は maxPerPage を使用します。
 //	keyset はページ番号を持たないため、offset 版のような最大ページ数エラーは発生しません。
 func NewCursor(after *string, first *int) (*Cursor, error) {

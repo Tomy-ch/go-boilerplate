@@ -41,7 +41,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 	defer endSpan()
 
 	// WARN: 本来はここで認可を行うべきですが、今回は省略します。
-	page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 	if err != nil {
 		return nil, err
 	}

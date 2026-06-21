@@ -17,7 +17,7 @@ package: internal/usecase/user
 name: Usecase
 methods:
   - name: ListUsers
-    signature: ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]UserView, error)
+    signature: ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]UserView, error)
   - name: CreateUser
     signature: CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
   - name: CountUsers
