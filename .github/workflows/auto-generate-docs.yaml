@@ -63,11 +63,17 @@ jobs:
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
+      - name: Stamp OpenAPI version from release branch
+        run: node scripts/stamp-openapi-version.mjs "${{ github.ref_name }}"
+
       - name: Generate OpenAPI bundle
         run: make gen-bundle-oapi
 
       - name: Generate OpenAPI docs
         run: make gen-api-docs
+
+      - name: Regenerate embedded spec (Go)
+        run: make gen-go-code
 
       - name: Migrate
         run: go run ./cmd/ migrate-up --database ${{ env.DB }}
@@ -92,7 +98,7 @@ jobs:
 
       - name: Fix permissions
         run: |
-          sudo chown -R $USER:$USER docs
+          sudo chown -R $USER:$USER docs internal openapi
 
       - name: Detect changes
         id: diff
@@ -143,11 +149,13 @@ jobs:
 
             ### 🔗 Source of truth
             All changes are derived from already reviewed sources:
-            - OpenAPI definitions
+            - OpenAPI definitions (incl. `info.version` synced from the `release/vX.Y.Z` branch name)
             - SQL / database schema
             - Go code
 
             ### 📦 Included outputs
+            - OpenAPI `info.version` (contract version `X.Y.Z`; no SHA — commit-level traceability lives in the runtime `/version`)
+            - OpenAPI bundle (`openapi.gen.yaml`) + embedded validation spec (`validate.gen.go`)
             - OpenAPI docs
             - ER diagram
             - Test repository docs
