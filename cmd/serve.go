@@ -32,7 +32,11 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	appCfg := config.NewApplicationConfig(cfg)
 	mtcCfg := config.NewMetricsConfig(cfg)
 
-	logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
+	level, err := logging.ParseLevel(appCfg.LogLevel())
+	if err != nil {
+		return err
+	}
+	logger := logging.NewJSONLogger(level, logging.LevelError())
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
