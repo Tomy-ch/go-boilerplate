@@ -52,6 +52,7 @@ type CompleteParams struct {
 type Store interface {
 	// Claim は、claimed 行を作ります。新規に作れたら claimed=true、既存キーがあれば false を返します。
 	// ロック待ちタイムアウト時は ErrLockTimeout を返します。
+	// 業務トランザクション内から呼び出すこと（ロック待ちの上限がトランザクションスコープのため）。
 	Claim(ctx context.Context, p ClaimParams) (claimed bool, err error)
 	// Get は、(scope, key) の保存済み状態を返します（存在しなければ nil, nil）。
 	Get(ctx context.Context, scope, key string) (*Record, error)
