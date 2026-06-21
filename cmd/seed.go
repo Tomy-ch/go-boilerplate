@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/pkg/fs"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
 )
 
 // newDBSeedCommand は、データベースに初期データを投入するためのコマンドを生成します。
@@ -32,10 +33,7 @@ func newDBSeedCommand() *cobra.Command {
 
 // dbSeedRun は、ロガーと FS・DB 接続を組み立て、seed.RunDBSeed へ委譲する薄い殻です。
 func dbSeedRun(database string) error {
-	logger, err := logging.NewProductionLogger()
-	if err != nil {
-		panic("failed to create logger: " + err.Error())
-	}
+	logger := logging.NewJSONLogger(zapcore.InfoLevel, zapcore.ErrorLevel)
 
 	return seed.RunDBSeed(logger, fs.OS{}, database, openSeedDB)
 }

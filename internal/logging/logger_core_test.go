@@ -1,12 +1,13 @@
 package logging
 
 import (
+	"bytes"
 	"testing"
 
 	"go-boilerplate/internal/config"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -50,69 +51,53 @@ func TestBuildLogger(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("設定が妥当な場合はLoggerを返す", func(t *testing.T) {
+		t.Run("指定レベル以上のログを出力先へ書き込む", func(t *testing.T) {
 			t.Parallel()
 
-			cfg := zap.Config{
-				Level:         zap.NewAtomicLevelAt(zapcore.InfoLevel),
-				Encoding:      "json",
-				OutputPaths:   []string{"stdout"},
-				EncoderConfig: zapcore.EncoderConfig{MessageKey: "msg"},
-			}
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
 
-			logger, err := buildLogger(cfg, zapcore.ErrorLevel)
-			require.NoError(t, err)
-			require.NotNil(t, logger)
+			l.Info("hello")
+			assert.Contains(t, buf.String(), "hello")
 		})
-	})
 
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("Build失敗時はLoggerを返さずエラーのみ返す", func(t *testing.T) {
+		t.Run("指定レベル未満のログは書き込まれない", func(t *testing.T) {
 			t.Parallel()
 
-			// 未登録スキームの出力先で zap.Config.Build を失敗させる。
-			// 修正前は中身 nil の Logger を返しており、初回ログ出力で panic していた。
-			cfg := zap.Config{
-				Level:         zap.NewAtomicLevelAt(zapcore.InfoLevel),
-				Encoding:      "json",
-				OutputPaths:   []string{"invalid-scheme://nowhere"},
-				EncoderConfig: zapcore.EncoderConfig{MessageKey: "msg"},
-			}
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
+			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
 
-			logger, err := buildLogger(cfg, zapcore.ErrorLevel)
-			require.Error(t, err)
-			require.Nil(t, logger)
+			l.Debug("should not appear")
+			assert.Empty(t, buf.String())
 		})
 	})
 }
 
-func TestNewProductionLogger(t *testing.T) {
+func TestNewJSONLogger(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("本番用Loggerを返す", func(t *testing.T) {
+		t.Run("JSON用Loggerを返す", func(t *testing.T) {
 			t.Parallel()
-			logger, err := NewProductionLogger()
-			require.NoError(t, err)
+			logger := NewJSONLogger(zapcore.InfoLevel, zapcore.ErrorLevel)
 			require.NotNil(t, logger)
 		})
 	})
 }
 
-func TestNewDevelopmentLogger(t *testing.T) {
+func TestNewConsoleLogger(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("開発用Loggerを返す", func(t *testing.T) {
+		t.Run("console用Loggerを返す", func(t *testing.T) {
 			t.Parallel()
-			logger, err := NewDevelopmentLogger()
-			require.NoError(t, err)
+			logger := NewConsoleLogger(zapcore.DebugLevel, zapcore.WarnLevel)
 			require.NotNil(t, logger)
 		})
 	})
