@@ -45,11 +45,8 @@ Two steps (opt-in; an endpoint without the steps is unchanged):
 1. **Entry middleware** — add the StrictMiddleware to the handler's `NewStrictHandler` second argument:
 
    ```go
-   core := idempotencymw.Middleware()
-   idemMW := func(f gen.StrictHandlerFunc, opID string) gen.StrictHandlerFunc {
-       return gen.StrictHandlerFunc(core(idempotencymw.NextFunc(f), opID))
-   }
-   gen.RegisterHandlers(e, gen.NewStrictHandler(server, []gen.StrictMiddlewareFunc{idemMW}))
+   gen.RegisterHandlers(e, gen.NewStrictHandler(server,
+       []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
    ```
 
 2. **Wrap the usecase call** in `Run[T]` with the success status:

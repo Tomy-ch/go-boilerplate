@@ -45,11 +45,8 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 1. **入り口 middleware** を handler の `NewStrictHandler` 第二引数へ差す：
 
    ```go
-   core := idempotencymw.Middleware()
-   idemMW := func(f gen.StrictHandlerFunc, opID string) gen.StrictHandlerFunc {
-       return gen.StrictHandlerFunc(core(idempotencymw.NextFunc(f), opID))
-   }
-   gen.RegisterHandlers(e, gen.NewStrictHandler(server, []gen.StrictMiddlewareFunc{idemMW}))
+   gen.RegisterHandlers(e, gen.NewStrictHandler(server,
+       []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
    ```
 
 2. **ユースケース呼び出しを `Run[T]` で包む**（成功ステータスを渡す）：
