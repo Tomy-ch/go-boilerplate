@@ -69,7 +69,7 @@ func Test_server_GetUsersSearch(t *testing.T) {
 	t1 := time.Now().UTC()
 	t2 := t1.Add(time.Hour)
 
-	mockPaging, err := paging.NewPagingFrom1Based(new(expectedPage), new(expectedPerPage))
+	mockPage, err := paging.NewPageFrom1Based(new(expectedPage), new(expectedPerPage))
 	require.NoError(t, err)
 
 	// Keyword/Active を設定し、ハンドラの filter 詰め替えを検証可能にする。
@@ -95,15 +95,15 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			}
 			expectedResponse := gen.UsersSearchResponse{
 				Users:  wantUsers,
-				Limit:  mockPaging.Limit(),
-				Offset: mockPaging.Offset(),
+				Limit:  mockPage.Limit(),
+				Offset: mockPage.Offset(),
 				Total:  total,
 			}
 
 			var gotFilter *usecase_search.SearchParams
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPaging).
-				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Paging) (*usecase_search.UserSearchListView, error) {
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
+				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
 					gotFilter = f
 					return &usecase_search.UserSearchListView{Items: dtos, Total: total}, nil
 				})
@@ -164,7 +164,7 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			t.Parallel()
 
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPaging).
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
 				Return(nil, apperror.ErrInternal)
 
 			resp, err := s.GetUsersSearch(context.Background(), mockParams)

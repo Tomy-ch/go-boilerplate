@@ -24,7 +24,7 @@ internal/controller/handler は、CLI（Cobra）から起動される **サー�
   - 送信用の **DTO/VO** に詰め替えて渡す
   - Usecaseから返却されたDTO→OpenAPI型への詰め替え
 - エラーは[apperrorで定義されているマップピング](../../apperror/README.ja.md)で apperrorのエラーを統一マッピングして返却される。
-- ページングは`paging.NewPagingFrom1Based()` に渡して正規化。
+- ページングは`paging.NewPageFrom1Based()` に渡して正規化。
 - リクエストID/ロギングなどはミドルウェア（Echo + Zap）で実施。
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
@@ -455,8 +455,8 @@ type server struct {
 
 #### ページング
 
-- Controller: `page & per_page`を受け取り、`paging.NewPagingFrom1Based()`でhttpを意味（Paging）へ変換。
-- Usecase: `Paging`を受け、方針（上限・既定）を一元管理。
+- Controller: `page & per_page`を受け取り、`paging.NewPageFrom1Based()`でhttpを意味（Page）へ変換。
+- Usecase: `Page`を受け、方針（上限・既定）を一元管理。
 
 #### エラーマッピング
 
@@ -605,7 +605,7 @@ Handler テストでは **Usecase を mock 化**し、Controller の責務のみ
 ```go
 mockApp := mock_user.NewMockUsecase(ctrl)
 mockApp.EXPECT().
-    ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
+    ListUsersByKeyword(gomock.Any(), expectedParams, mockPage).
     Return(mockDTO, nil)
 ```
 
@@ -832,7 +832,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
 
-    page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+    page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
     if err != nil {
         return nil, err
     }

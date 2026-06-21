@@ -389,7 +389,7 @@ go test ./internal/usecase/user/...
 // 形のみ —— 実本体は v1_users_handler.go を参照
 func (s *server) GetUsers(ctx context.Context, req gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
  ctx, endSpan := s.tracer.Start(ctx); defer endSpan()
- page, err := paging.NewPagingFrom1Based(req.Params.Page, req.Params.PerPage)
+ page, err := paging.NewPageFrom1Based(req.Params.Page, req.Params.PerPage)
  // … list, err := s.uc.<ListMethod>(ctx, …) …
  return gen.GetUsers200JSONResponse(/* マップした DTO */), nil
 }

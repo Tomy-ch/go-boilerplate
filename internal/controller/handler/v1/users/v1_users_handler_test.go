@@ -51,17 +51,24 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp)
 
-	expectedMethods := []string{
-		http.MethodGet,
-		http.MethodPost,
-	}
+	// /v1/users (GET, POST) が登録される。
+	routes := e.Routes()
 
-	testassert.AssertEchoRouterPath(
-		t, targetPath, e.Routes(),
-	)
-	testassert.AssertEchoRouterMethods(
-		t, expectedMethods, e.Routes(),
-	)
+	expectedMethods := []string{
+		http.MethodGet,  // GetUsers
+		http.MethodPost, // PostUsers
+	}
+	testassert.AssertEchoRouterMethods(t, expectedMethods, routes)
+
+	actualPaths := make([]string, len(routes))
+	for i, r := range routes {
+		actualPaths[i] = r.Path
+	}
+	expectedPaths := []string{
+		targetPath,
+		targetPath,
+	}
+	assert.ElementsMatch(t, expectedPaths, actualPaths)
 }
 
 func Test_server_GetUsers(t *testing.T) {
@@ -79,7 +86,7 @@ func Test_server_GetUsers(t *testing.T) {
 		PostalCode: "200-0002", PrefectureName: "Osaka", City: "Kita", Street: "2-2", Building: new("B2"),
 	}
 
-	mockPaging, err := paging.NewPagingFrom1Based(new(expectedPage), new(expectedPerPage))
+	mockPage, err := paging.NewPageFrom1Based(new(expectedPage), new(expectedPerPage))
 	require.NoError(t, err)
 
 	mockParams := gen.GetUsersRequestObject{
@@ -104,14 +111,14 @@ func Test_server_GetUsers(t *testing.T) {
 			}
 			expectedResponse := gen.UsersResponse{
 				Users:  wantUsers,
-				Limit:  mockPaging.Limit(),
-				Offset: mockPaging.Offset(),
+				Limit:  mockPage.Limit(),
+				Offset: mockPage.Offset(),
 				Total:  total,
 			}
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPaging).
+				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
 				Return(&user.UserListView{Items: dtos, Total: total}, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
@@ -171,7 +178,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPaging).
+				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
 				Return(nil, expectedError)
 
 			s := &server{tracer: lt, uc: mockApp}

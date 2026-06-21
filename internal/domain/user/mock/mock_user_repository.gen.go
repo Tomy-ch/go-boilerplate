@@ -101,6 +101,21 @@ func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockRepository)(nil).FindByID), ctx, id)
 }
 
+// FindFeed mocks base method.
+func (m *MockRepository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindFeed", ctx, after, limit)
+	ret0, _ := ret[0].(user.Users)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindFeed indicates an expected call of FindFeed.
+func (mr *MockRepositoryMockRecorder) FindFeed(ctx, after, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeed", reflect.TypeOf((*MockRepository)(nil).FindFeed), ctx, after, limit)
+}
+
 // Update mocks base method.
 func (m *MockRepository) Update(ctx context.Context, arg1 *user.User) error {
 	m.ctrl.T.Helper()

@@ -81,7 +81,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 		page := 1
 		perPage := 100
-		p, err := paging.NewPagingFrom1Based(&page, &perPage)
+		p, err := paging.NewPageFrom1Based(&page, &perPage)
 		require.NoError(t, err)
 
 		prefectureDomain, err := prefecture.New(
@@ -136,7 +136,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, actualErr := paging.NewPagingFrom1Based(&page, &perPage)
+			p, actualErr := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, actualErr)
 
 			repo := mock_user.NewMockRepository(ctrl)
@@ -158,7 +158,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, actualErr := paging.NewPagingFrom1Based(&page, &perPage)
+			p, actualErr := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, actualErr)
 
 			ctrl := gomock.NewController(t)
@@ -183,7 +183,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			page := 1
 			perPage := 100
-			p, err := paging.NewPagingFrom1Based(&page, &perPage)
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
 			require.NoError(t, err)
 
 			ctrl := gomock.NewController(t)
@@ -467,7 +467,7 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 
 	page := 1
 	perPage := 100
-	p, err := paging.NewPagingFrom1Based(&page, &perPage)
+	p, err := paging.NewPageFrom1Based(&page, &perPage)
 	require.NoError(t, err)
 
 	t.Run("正常系", func(t *testing.T) {
@@ -562,6 +562,212 @@ func Test_usecase_CountUsers(t *testing.T) {
 		actualCount, err := u.CountUsers(ctx, active)
 		require.NoError(t, err)
 		assert.Equal(t, expectedCount, actualCount)
+	})
+}
+
+func Test_usecase_ListUsersFeed(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	lt := observability.NewMockUsecaseLayerTracer(t)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+
+	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
+	require.NoError(t, err)
+
+	// newFeedUser は、作成日時違いのフィードユーザーを生成するヘルパーです。
+	newFeedUser := func(salt string, createdAt time.Time) *user.User {
+		u, uErr := user.New(
+			uuid.NewTestFromSalt(t, salt),
+			"first_name", "last_name", "password", "email_address", "phone_number",
+			prefectureID, "city_name", "town_address", nil, "p_code", createdAt, createdAt, nil,
+		)
+		require.NoError(t, uErr)
+		return u
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("先頭ページの場合、afterがnilでリポジトリが呼ばれ次ページが無ければNextCursorはnilになる", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			first := 20
+			cursor, cErr := paging.NewCursor(nil, &first)
+			require.NoError(t, cErr)
+
+			u1 := newFeedUser("feed_user_1", now)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			// limit+1（=21）件を要求し、先頭ページは after=nil で呼ばれる。
+			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(user.Users{u1}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			require.NoError(t, actualErr)
+			assert.Len(t, actual.Items, 1)
+			assert.Nil(t, actual.NextCursor)
+		})
+
+		t.Run("カーソル指定の場合、afterが解釈されてリポジトリが呼ばれる", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			afterUser := newFeedUser("feed_user_after", now)
+			encoded := paging.EncodeCursor(afterUser.CreatedAt().Format(time.RFC3339Nano), afterUser.ID().String())
+			first := 20
+			cursor, cErr := paging.NewCursor(&encoded, &first)
+			require.NoError(t, cErr)
+
+			u1 := newFeedUser("feed_user_1", now)
+
+			// カーソルの復号正当性は feed_cursor_test.go が担保するため、ここでは
+			// 「after 指定時に limit+1 件でリポジトリが呼ばれる」オーケストレーションのみ検証する。
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindFeed(
+				gomock.Any(),
+				gomock.Any(),
+				int32(21),
+			).Return(user.Users{u1}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			require.NoError(t, actualErr)
+			assert.Len(t, actual.Items, 1)
+			assert.Nil(t, actual.NextCursor)
+		})
+
+		t.Run("limit+1件取得できた場合、limit件に切り詰められ末尾行からNextCursorが生成される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			first := 1
+			cursor, cErr := paging.NewCursor(nil, &first)
+			require.NoError(t, cErr)
+
+			// limit=1 に対し 2 件返す。先頭が表示分、2件目は次ページ存在判定用。
+			head := newFeedUser("feed_user_head", now)
+			tail := newFeedUser("feed_user_tail", now.Add(-time.Hour))
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(2)).Return(user.Users{head, tail}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			// 切り詰め後の 1 件分のみ都道府県解決される。
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			require.NoError(t, actualErr)
+			assert.Len(t, actual.Items, 1)
+			require.NotNil(t, actual.NextCursor)
+			// NextCursor は切り詰め後の末尾（head）のソートキーから生成される。
+			expectedCursor := paging.EncodeCursor(head.CreatedAt().Format(time.RFC3339Nano), head.ID().String())
+			assert.Equal(t, expectedCursor, *actual.NextCursor)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("cursorがnilの場合、ErrInvalidArgumentが返る", func(t *testing.T) {
+			t.Parallel()
+
+			uc := &usecase{tracer: lt}
+			actual, actualErr := uc.ListUsersFeed(ctx, nil)
+			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
+			require.Nil(t, actual)
+		})
+
+		t.Run("カーソルキーが2個でない場合、ErrInvalidArgumentが返る", func(t *testing.T) {
+			t.Parallel()
+
+			// キー1個の不正カーソル。
+			encoded := paging.EncodeCursor("only_one_key")
+			first := 20
+			cursor, cErr := paging.NewCursor(&encoded, &first)
+			require.NoError(t, cErr)
+
+			uc := &usecase{tracer: lt}
+			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
+			require.Nil(t, actual)
+		})
+
+		t.Run("カーソルのcreated_atがRFC3339Nanoでない場合、ErrInvalidArgumentが返る", func(t *testing.T) {
+			t.Parallel()
+
+			encoded := paging.EncodeCursor("not-a-time", uuid.NewTestFromSalt(t, "any").String())
+			first := 20
+			cursor, cErr := paging.NewCursor(&encoded, &first)
+			require.NoError(t, cErr)
+
+			uc := &usecase{tracer: lt}
+			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
+			require.Nil(t, actual)
+		})
+
+		t.Run("カーソルのidがUUIDでない場合、ErrInvalidArgumentが返る", func(t *testing.T) {
+			t.Parallel()
+
+			encoded := paging.EncodeCursor(now.Format(time.RFC3339Nano), "not-a-uuid")
+			first := 20
+			cursor, cErr := paging.NewCursor(&encoded, &first)
+			require.NoError(t, cErr)
+
+			uc := &usecase{tracer: lt}
+			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
+			require.Nil(t, actual)
+		})
+
+		t.Run("リポジトリ取得でエラーが発生した場合、エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			expectedErr := testkit.ExpectedDBError()
+			first := 20
+			cursor, cErr := paging.NewCursor(nil, &first)
+			require.NoError(t, cErr)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(nil, expectedErr)
+			uc := &usecase{tracer: lt, userRepo: userRepo}
+
+			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			require.ErrorIs(t, actualErr, expectedErr)
+			require.Nil(t, actual)
+		})
+
+		t.Run("ユーザーの都道府県が解決できない場合、ErrInternalが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			first := 20
+			cursor, cErr := paging.NewCursor(nil, &first)
+			require.NoError(t, cErr)
+
+			u1 := newFeedUser("feed_user_1", now)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(user.Users{u1}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+
+			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			require.ErrorIs(t, actualErr, apperror.ErrInternal)
+			require.Nil(t, actual)
+		})
 	})
 }
 

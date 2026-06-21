@@ -480,6 +480,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/users/feed:
+    get:
+      operationId: GetUsersFeed
+      tags:
+        - v1/users/feed
+      summary: ユーザーフィードの取得
+      description: 未削除のユーザーを作成日時の降順（cursor ページネーション）で取得します。先頭ページは after を省略し、以降は前ページのレスポンスに含まれる next_cursor を after に指定します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CursorAfterParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+      responses:
+        '200':
+          description: cursor ページネーションで取得したユーザーフィード
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersFeedResponse'
+        '401':
+          description: ユーザーフィードの取得には認証が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: ユーザーフィードの取得には権限が必要です。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラーが発生しました。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
     PageParam:
@@ -503,6 +540,24 @@ components:
         maximum: 100
         default: 10
         example: 10
+    CursorAfterParam:
+      name: after
+      in: query
+      description: 次ページ取得用の不透明カーソル。先頭ページを取得する場合は省略します。
+      required: false
+      schema:
+        type: string
+    CursorFirstParam:
+      name: first
+      in: query
+      description: 取得件数の上限
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+        example: 50
     KeywordParam:
       name: keyword
       in: query
@@ -702,6 +757,33 @@ components:
               items:
                 $ref: '#/components/schemas/UsersSearchResponseItem'
         - $ref: '#/components/schemas/PaginationMetadataResponse'
+    UsersFeedResponse:
+      description: ユーザーフィード（cursor ページネーション）のレスポンススキーマ
+      allOf:
+        - type: object
+          required:
+            - users
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserResponse'
+        - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    CursorPaginationMetadataResponse:
+      type: object
+      required:
+        - next_cursor
+        - has_next
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+          description: 次ページ取得用のカーソル。最終ページの場合は null です。
+          example: eyJrMCI6IjIwMjYtMDEtMDFUMDA6MDA6MDBaIn0
+        has_next:
+          type: boolean
+          description: 次ページが存在するかどうか
+          example: true
     UserSearchResponseItem:
       $ref: '#/components/schemas/UsersSearchResponseItem'
     ResponseV1User:

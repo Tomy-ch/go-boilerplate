@@ -1,0 +1,6 @@
+name: after
+in: query
+description: 次ページ取得用の不透明カーソル。先頭ページを取得する場合は省略します。
+required: false
+schema:
+  type: string

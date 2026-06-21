@@ -59,7 +59,7 @@ func (mr *MockUsecaseMockRecorder) CountUsersByKeyword(ctx, filter any) *gomock.
 }
 
 // ListUsersByKeyword mocks base method.
-func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Paging) (query.UserSearchResults, error) {
+func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Page) (query.UserSearchResults, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsersByKeyword", ctx, filter, page)
 	ret0, _ := ret[0].(query.UserSearchResults)
@@ -74,7 +74,7 @@ func (mr *MockUsecaseMockRecorder) ListUsersByKeyword(ctx, filter, page any) *go
 }
 
 // ListUsersByKeywordWithTotal mocks base method.
-func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *search.SearchParams, page *paging.Paging) (*search.UserSearchListView, error) {
+func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *search.SearchParams, page *paging.Page) (*search.UserSearchListView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUsersByKeywordWithTotal", ctx, filter, page)
 	ret0, _ := ret[0].(*search.UserSearchListView)

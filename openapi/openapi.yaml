@@ -53,6 +53,8 @@ paths:
     $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
+  /v1/users/feed:
+    $ref: './paths/v1/users/feed.yaml'
   # sample-api:end
 components:
   parameters:
@@ -60,6 +62,10 @@ components:
       $ref: './components/parameters/pagination/PageParam.yaml'
     PerPageParam:
       $ref: './components/parameters/pagination/PerPageParam.yaml'
+    CursorAfterParam:
+      $ref: './components/parameters/pagination/CursorAfterParam.yaml'
+    CursorFirstParam:
+      $ref: './components/parameters/pagination/CursorFirstParam.yaml'
     # sample-api:begin
     # サンプルAPI用のパラメーター定義
     KeywordParam:
@@ -91,6 +97,10 @@ components:
       $ref: './components/schemas/UserResponse.yaml'
     UsersSearchResponse:
       $ref: './components/responses/users/UsersSearchResponse.yaml'
+    UsersFeedResponse:
+      $ref: './components/responses/users/UsersFeedResponse.yaml'
+    CursorPaginationMetadataResponse:
+      $ref: './components/schemas/CursorPaginationMetadataResponse.yaml'
     UserSearchResponseItem:
       $ref: './components/responses/users/UsersSearchResponseItem.yaml'
     ResponseV1User:
