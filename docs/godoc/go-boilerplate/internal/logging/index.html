@@ -161,6 +161,26 @@
 				
 			
 				
+				<dd><a href="#Level">type Level</a></dd>
+				
+					
+					<dd>    <a href="#LevelDebug">func LevelDebug() Level</a></dd>
+				
+					
+					<dd>    <a href="#LevelError">func LevelError() Level</a></dd>
+				
+					
+					<dd>    <a href="#LevelInfo">func LevelInfo() Level</a></dd>
+				
+					
+					<dd>    <a href="#LevelWarn">func LevelWarn() Level</a></dd>
+				
+					
+					<dd>    <a href="#ParseLevel">func ParseLevel(s string) (Level, error)</a></dd>
+				
+				
+			
+				
 				<dd><a href="#LogFieldBuilder">type LogFieldBuilder</a></dd>
 				
 					
@@ -175,19 +195,16 @@
 				<dd><a href="#Logger">type Logger</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(appCfg *config.ApplicationConfig) (Logger, error)</a></dd>
+					<dd>    <a href="#NewConsoleLogger">func NewConsoleLogger(level, stacktraceLevel Level) Logger</a></dd>
 				
 					
-					<dd>    <a href="#NewDevelopmentLogger">func NewDevelopmentLogger() (Logger, error)</a></dd>
+					<dd>    <a href="#NewJSONLogger">func NewJSONLogger(level, stacktraceLevel Level) Logger</a></dd>
 				
 					
 					<dd>    <a href="#NewObservedTestLogger">func NewObservedTestLogger(t *testing.T) (Logger, *observer.ObservedLogs)</a></dd>
 				
 					
 					<dd>    <a href="#NewObservedTestLoggerWithCaller">func NewObservedTestLoggerWithCaller(t *testing.T) (Logger, *observer.ObservedLogs)</a></dd>
-				
-					
-					<dd>    <a href="#NewProductionLogger">func NewProductionLogger() (Logger, error)</a></dd>
 				
 					
 					<dd>    <a href="#NewTestLogger">func NewTestLogger(t *testing.T) Logger</a></dd>
@@ -225,6 +242,8 @@
 				<a href="../../../src/go-boilerplate/internal/logging/field.go.html">field.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html">field_builder.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/logging/level.go.html">level.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/logging/logger.go.html">logger.go</a>
 			
@@ -611,7 +630,94 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			<h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=324:648#L2">LogFieldBuilder</a>
+			<h2 id="Level">type <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=187:226#L2">Level</a>
+				<a class="permalink" href="#Level">¶</a>
+				
+				
+			</h2>
+			<p>Level は、ログ出力レベルを表す型です（ゼロ値は Info 相当）。
+
+			</p><pre>type Level struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="LevelDebug">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=280:303#L7">LevelDebug</a>
+					<a class="permalink" href="#LevelDebug">¶</a>
+					
+					
+				</h3>
+				<pre>func LevelDebug() <a href="#Level">Level</a></pre>
+				<p>LevelDebug は Debug レベルを返します。
+
+				
+				
+			
+				
+				</p><h3 id="LevelError">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=614:637#L16">LevelError</a>
+					<a class="permalink" href="#LevelError">¶</a>
+					
+					
+				</h3>
+				<pre>func LevelError() <a href="#Level">Level</a></pre>
+				<p>LevelError は Error レベルを返します。
+
+				
+				
+			
+				
+				</p><h3 id="LevelInfo">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=392:414#L10">LevelInfo</a>
+					<a class="permalink" href="#LevelInfo">¶</a>
+					
+					
+				</h3>
+				<pre>func LevelInfo() <a href="#Level">Level</a></pre>
+				<p>LevelInfo は Info レベルを返します。
+
+				
+				
+			
+				
+				</p><h3 id="LevelWarn">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=502:524#L13">LevelWarn</a>
+					<a class="permalink" href="#LevelWarn">¶</a>
+					
+					
+				</h3>
+				<pre>func LevelWarn() <a href="#Level">Level</a></pre>
+				<p>LevelWarn は Warn レベルを返します。
+
+				
+				
+			
+				
+				</p><h3 id="ParseLevel">func <a href="../../../src/go-boilerplate/internal/logging/level.go.html?s=842:882#L20">ParseLevel</a>
+					<a class="permalink" href="#ParseLevel">¶</a>
+					
+					
+				</h3>
+				<pre>func ParseLevel(s <a href="../../../builtin/#string">string</a>) (<a href="#Level">Level</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>ParseLevel は、APP_LOG_LEVEL が受理するレベル文字列を Level に変換します。
+受理しない文字列の場合はエラーを返します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=324:648#L2">LogFieldBuilder</a>
 				<a class="permalink" href="#LogFieldBuilder">¶</a>
 				
 				
@@ -699,25 +805,27 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 			
 				
-				<h3 id="New">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=3050:3108#L79">New</a>
-					<a class="permalink" href="#New">¶</a>
+				<h3 id="NewConsoleLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=2139:2197#L46">NewConsoleLogger</a>
+					<a class="permalink" href="#NewConsoleLogger">¶</a>
 					
 					
 				</h3>
-				<pre>func New(appCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>) (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				<p>New は、指定された設定に基づいて新しいZapロガーを生成します。
+				<pre>func NewConsoleLogger(level, stacktraceLevel <a href="#Level">Level</a>) <a href="#Logger">Logger</a></pre>
+				<p>NewConsoleLogger は人間可読な console ロガーを生成します。
+level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
 
 				
 				
 			
 				
-				</p><h3 id="NewDevelopmentLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=1036:1079#L28">NewDevelopmentLogger</a>
-					<a class="permalink" href="#NewDevelopmentLogger">¶</a>
+				</p><h3 id="NewJSONLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=1747:1802#L39">NewJSONLogger</a>
+					<a class="permalink" href="#NewJSONLogger">¶</a>
 					
 					
 				</h3>
-				<pre>func NewDevelopmentLogger() (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				<p>NewDevelopmentLogger は、開発環境用のZapロガーを生成します。
+				<pre>func NewJSONLogger(level, stacktraceLevel <a href="#Level">Level</a>) <a href="#Logger">Logger</a></pre>
+				<p>NewJSONLogger は JSON 構造化ロガーを生成します。
+level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
 
 				
 				
@@ -744,18 +852,6 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 				<pre>func NewObservedTestLoggerWithCaller(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) (<a href="#Logger">Logger</a>, *<a href="../../../go.uber.org/zap/zaptest/observer/">observer</a>.<a href="../../../go.uber.org/zap/zaptest/observer/#ObservedLogs">ObservedLogs</a>)</pre>
 				<p>NewObservedTestLoggerWithCaller は、caller 情報付きで出力を捕捉できるテスト用 Logger と観測ログを返します。
 caller（発生源）を検証したいテストで使用します。
-
-				
-				
-			
-				
-				</p><h3 id="NewProductionLogger">func <a href="../../../src/go-boilerplate/internal/logging/logger_core.go.html?s=291:333#L4">NewProductionLogger</a>
-					<a class="permalink" href="#NewProductionLogger">¶</a>
-					
-					
-				</h3>
-				<pre>func NewProductionLogger() (<a href="#Logger">Logger</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				<p>NewProductionLogger は、本番環境用のZapロガーを生成します。
 
 				
 				

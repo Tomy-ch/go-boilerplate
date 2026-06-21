@@ -69,39 +69,27 @@ type Logger interface {
 
 ## Logger 生成
 
-Logger はアプリケーションの実行モードに応じて生成されます。
+Logger は出力方式ごとに生成します。出力レベル（`Level`）と stacktrace を付与し始めるレベルを渡します。
 
 ```go
-logger, err := logging.New(appCfg)
+// JSON ロガー（機械可読・本番向け出力方式）
+logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
+// console ロガー（人間可読・開発向け出力方式）
+logger := logging.NewConsoleLogger(logging.LevelDebug, logging.LevelWarn)
 ```
 
-`New` は `config.ApplicationConfig` のモードに応じて適切なロガーを選択します。
-
-個別に生成する場合は以下の関数も利用できます。
+`Level` は zap のレベルを包む型で、利用側が `zapcore` に直接依存しないようにします。レベル文字列（`debug` / `info` / `warn` / `error`）は `ParseLevel` で変換します。
 
 ```go
-logger, err := logging.NewProductionLogger()
-logger, err := logging.NewDevelopmentLogger()
+level, err := logging.ParseLevel("info")
 ```
 
-内部では次のロガーが使用されます。
+実行中のプロセスがどの出力方式・レベルを使うかは、本パッケージではなく DI の合成ルートで決まります。`internal/di/module/logging.go` の `provideLogger` が `APP_MODE` から出力方式を、`APP_LOG_LEVEL` から出力レベルを選択します。
 
-|Mode|Logger|
-|---|---|
-|production|JSON logger|
-|development|console logger|
-
-### Production Logger
-
-- Encoding: JSON
-- Level: Info
-- Stacktrace: Error以上
-
-### Development Logger
-
-- Encoding: Console
-- Level: Debug
-- Stacktrace: Warn以上
+|Mode|出力方式|Stacktrace|
+|---|---|---|
+|production|JSON logger|Error以上|
+|development|console logger|Warn以上|
 
 ## Field
 
