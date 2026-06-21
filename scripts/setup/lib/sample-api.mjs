@@ -1,8 +1,7 @@
 // サンプルAPI削除の対象を宣言する manifest と、マーカー除去ロジック。
 // 拡張時は該当ドメインの paths にパスを追記し、共有ファイルの混在行を
 // sample-api マーカーで囲めば、同じコマンドの削除対象に含まれる。
-// core 基盤の idempotency_keys（000001）のみ Sample ではないため対象外。
-// prefecture（000002）は日本固有の都道府県マスタで user サンプルの依存なため、下記 prefecture ドメインとして削除対象に含める。
+// core 基盤の idempotency_keys（migration 000001）はこのマニフェストの削除対象に含まれない。
 
 export const SAMPLE_DOMAINS = {
   user: {
@@ -17,6 +16,7 @@ export const SAMPLE_DOMAINS = {
       "internal/integration/v1_users_test.go",
       "internal/integration/v1_users_detail_test.go",
       "internal/integration/v1_users_search_test.go",
+      "internal/integration/v1_users_feed_test.go",
 
       // サンプル専用の生成物は再生成で復活しないため明示削除する
       "internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go",
