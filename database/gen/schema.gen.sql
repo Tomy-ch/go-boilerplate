@@ -13,6 +13,30 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 --
+-- Name: citext; Type: EXTENSION; Schema: -; Owner: -
+--
+CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+--
+-- Name: EXTENSION citext; Type: COMMENT; Schema: -; Owner: -
+--
+COMMENT ON EXTENSION citext IS 'data type for case-insensitive character strings';
+--
+-- Name: hstore; Type: EXTENSION; Schema: -; Owner: -
+--
+CREATE EXTENSION IF NOT EXISTS hstore WITH SCHEMA public;
+--
+-- Name: EXTENSION hstore; Type: COMMENT; Schema: -; Owner: -
+--
+COMMENT ON EXTENSION hstore IS 'data type for storing sets of (key, value) pairs';
+--
+-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
+--
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+--
+-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+--
+COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+--
 -- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
 --
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
@@ -22,6 +46,76 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
 SET default_tablespace = '';
 SET default_table_access_method = heap;
+--
+-- Name: idempotency_keys; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.idempotency_keys (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    scope text NOT NULL,
+    idempotency_key text NOT NULL,
+    request_method text NOT NULL,
+    request_path text NOT NULL,
+    request_fingerprint bytea NOT NULL,
+    status text NOT NULL,
+    response_status integer,
+    response_payload bytea,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    completed_at timestamp with time zone,
+    expires_at timestamp with time zone NOT NULL,
+    CONSTRAINT idempotency_keys_status_check CHECK ((status = ANY (ARRAY['claimed'::text, 'completed'::text])))
+);
+--
+-- Name: TABLE idempotency_keys; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.idempotency_keys IS '冪等性キー';
+--
+-- Name: COLUMN idempotency_keys.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.id IS 'ID';
+--
+-- Name: COLUMN idempotency_keys.scope; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.scope IS 'スコープ（認証プリンシパルID）';
+--
+-- Name: COLUMN idempotency_keys.idempotency_key; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.idempotency_key IS '冪等性キー（クライアント供給）';
+--
+-- Name: COLUMN idempotency_keys.request_method; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.request_method IS 'リクエストメソッド';
+--
+-- Name: COLUMN idempotency_keys.request_path; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.request_path IS 'リクエストパス';
+--
+-- Name: COLUMN idempotency_keys.request_fingerprint; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.request_fingerprint IS 'リクエスト指紋（SHA-256）';
+--
+-- Name: COLUMN idempotency_keys.status; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.status IS '状態（claimed / completed）';
+--
+-- Name: COLUMN idempotency_keys.response_status; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.response_status IS 'レスポンスHTTPステータス（completedまでNULL）';
+--
+-- Name: COLUMN idempotency_keys.response_payload; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.response_payload IS 'レスポンスペイロード（結果DTOのJSONシリアライズ、completedまでNULL）';
+--
+-- Name: COLUMN idempotency_keys.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.created_at IS '作成日時';
+--
+-- Name: COLUMN idempotency_keys.completed_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.completed_at IS '完了日時';
+--
+-- Name: COLUMN idempotency_keys.expires_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.idempotency_keys.expires_at IS '有効期限（TTL）';
 --
 -- Name: prefectures; Type: TABLE; Schema: public; Owner: -
 --
@@ -457,6 +551,16 @@ COMMENT ON COLUMN public.users.updated_at IS '更新日時';
 --
 COMMENT ON COLUMN public.users.search_text IS '全文検索用テキスト';
 --
+-- Name: idempotency_keys idempotency_keys_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.idempotency_keys
+    ADD CONSTRAINT idempotency_keys_id_primary PRIMARY KEY (id);
+--
+-- Name: idempotency_keys idempotency_keys_scope_key_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.idempotency_keys
+    ADD CONSTRAINT idempotency_keys_scope_key_unique UNIQUE (scope, idempotency_key);
+--
 -- Name: prefectures prefectures_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.prefectures
@@ -566,6 +670,10 @@ ALTER TABLE ONLY public.users
 --
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_id_primary PRIMARY KEY (id);
+--
+-- Name: idempotency_keys_expires_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX idempotency_keys_expires_at_idx ON public.idempotency_keys USING btree (expires_at);
 --
 -- Name: users_search_text_trgm_idx; Type: INDEX; Schema: public; Owner: -
 --
