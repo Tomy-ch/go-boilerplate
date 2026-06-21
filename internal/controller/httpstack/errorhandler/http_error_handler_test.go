@@ -88,7 +88,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			_, ok := got["code"].(string)
 			assert.True(t, ok)
 
-			_, ok = got["request_id"].(string)
+			_, ok = got["requestId"].(string)
 			assert.True(t, ok)
 		})
 	})
@@ -128,7 +128,7 @@ func Test_writeErrorResponse(t *testing.T) {
 
 			assert.Equal(t, he.Code, got["code"])
 			assert.Equal(t, he.Message, got["message"])
-			assert.Equal(t, he.RequestId, got["request_id"])
+			assert.Equal(t, he.RequestId, got["requestId"])
 		})
 	})
 }
