@@ -35,6 +35,9 @@ type spyRequest struct {
 	Name string `json:"name"`
 }
 
+// strictHandlerFunc は、oapi-codegen 生成の gen.StrictHandlerFunc と同型のテスト用型です。
+type strictHandlerFunc func(ec echo.Context, request any) (any, error)
+
 // newEcho は、テスト用の echo.Context（POST /v1/users）を生成します。key 非空ならヘッダを付与し、
 // withAuthn なら subject を持つ Authn を ctx に仕込みます。
 func newEcho(key string, withAuthn bool, subject string) echo.Context {
@@ -49,6 +52,24 @@ func newEcho(key string, withAuthn bool, subject string) echo.Context {
 		req.Header.Set(headerName, key)
 	}
 	return echo.New().NewContext(req, httptest.NewRecorder())
+}
+
+func TestStrictMiddleware(t *testing.T) {
+	t.Parallel()
+
+	called := false
+	h := strictHandlerFunc(func(echo.Context, any) (any, error) {
+		called = true
+		return sentinel, nil
+	})
+	// ヘッダ無しは素通しするため、アダプタ越しでも後段がそのまま呼ばれる。
+	ec := newEcho("", true, "user-1")
+
+	res, err := StrictMiddleware[strictHandlerFunc]()(h, "PostUsers")(ec, spyRequest{})
+
+	require.NoError(t, err)
+	assert.True(t, called)
+	assert.Equal(t, sentinel, res)
 }
 
 func TestMiddleware_handle(t *testing.T) {
@@ -165,6 +186,22 @@ func TestMiddleware_handle(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			assert.False(t, called)
 		})
+
+		t.Run("指紋生成に失敗するリクエストは500で後段を呼ばない(fail-closed)", func(t *testing.T) {
+			t.Parallel()
+			called := false
+			next := NextFunc(func(echo.Context, any) (any, error) {
+				called = true
+				return sentinel, nil
+			})
+			ec := newEcho("key-1", true, "user-1")
+
+			// chan は json.Marshal できず、弱い指紋を作らずエラーになる。
+			_, err := Middleware()(next, "PostUsers")(ec, make(chan int))
+
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			assert.False(t, called)
+		})
 	})
 }
 
@@ -195,33 +232,49 @@ func Test_validateKey(t *testing.T) {
 	})
 }
 
+func mustFingerprint(t *testing.T, method, path string, request any) []byte {
+	t.Helper()
+	fp, err := fingerprint(method, path, request)
+	require.NoError(t, err)
+	return fp
+}
+
 func Test_fingerprint(t *testing.T) {
 	t.Parallel()
 
-	base := fingerprint(http.MethodPost, testPath, spyRequest{Name: "alice"})
-
-	t.Run("SHA-256の32バイトを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		assert.Len(t, base, fingerprintLen)
+		base := mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: "alice"})
+
+		t.Run("SHA-256の32バイトを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Len(t, base, fingerprintLen)
+		})
+
+		t.Run("同一入力は同一指紋(決定的)", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, base, mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: "alice"}))
+		})
+
+		t.Run("リクエストボディが異なれば指紋も異なる", func(t *testing.T) {
+			t.Parallel()
+			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: "bob"}))
+		})
+
+		t.Run("methodが異なれば指紋も異なる", func(t *testing.T) {
+			t.Parallel()
+			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPut, testPath, spyRequest{Name: "alice"}))
+		})
+
+		t.Run("pathが異なれば指紋も異なる", func(t *testing.T) {
+			t.Parallel()
+			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPost, "/v1/orders", spyRequest{Name: "alice"}))
+		})
 	})
 
-	t.Run("同一入力は同一指紋(決定的)", func(t *testing.T) {
+	t.Run("異常系_marshal不能な値はエラーを返す(fail-closed)", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, base, fingerprint(http.MethodPost, testPath, spyRequest{Name: "alice"}))
-	})
-
-	t.Run("リクエストボディが異なれば指紋も異なる", func(t *testing.T) {
-		t.Parallel()
-		assert.NotEqual(t, base, fingerprint(http.MethodPost, testPath, spyRequest{Name: "bob"}))
-	})
-
-	t.Run("methodが異なれば指紋も異なる", func(t *testing.T) {
-		t.Parallel()
-		assert.NotEqual(t, base, fingerprint(http.MethodPut, testPath, spyRequest{Name: "alice"}))
-	})
-
-	t.Run("pathが異なれば指紋も異なる", func(t *testing.T) {
-		t.Parallel()
-		assert.NotEqual(t, base, fingerprint(http.MethodPost, "/v1/orders", spyRequest{Name: "alice"}))
+		_, err := fingerprint(http.MethodPost, testPath, make(chan int))
+		require.Error(t, err)
 	})
 }

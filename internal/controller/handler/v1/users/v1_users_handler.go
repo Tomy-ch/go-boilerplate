@@ -34,15 +34,11 @@ type server struct {
 
 // BindHandler は、ユーザー一覧のハンドラを Echo に登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase, idem idempotency.Deps) {
-	core := idempotencymw.Middleware()
-	idemMW := func(f gen.StrictHandlerFunc, operationID string) gen.StrictHandlerFunc {
-		return gen.StrictHandlerFunc(core(idempotencymw.NextFunc(f), operationID))
-	}
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),
 		uc:     uc,
 		idem:   idem,
-	}, []gen.StrictMiddlewareFunc{idemMW}))
+	}, []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
 }
 
 // GetUsers は、ユーザー一覧を取得します。

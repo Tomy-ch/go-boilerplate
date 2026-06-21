@@ -33,6 +33,15 @@ func Middleware() func(next NextFunc, operationID string) NextFunc {
 	}
 }
 
+// StrictMiddleware は、Middleware() を oapi-codegen のパッケージ固有 StrictMiddlewareFunc 形へ
+// 適合させたアダプタを返します。型引数に各 gen パッケージの StrictHandlerFunc を渡して差します。
+func StrictMiddleware[H ~func(ec echo.Context, request any) (any, error)]() func(f H, operationID string) H {
+	core := Middleware()
+	return func(f H, operationID string) H {
+		return H(core(NextFunc(f), operationID))
+	}
+}
+
 func handle(ec echo.Context, request any, operationID string, next NextFunc) (any, error) {
 	r := ec.Request()
 	key := strings.TrimSpace(r.Header.Get(headerName))
@@ -50,10 +59,15 @@ func handle(ec echo.Context, request any, operationID string, next NextFunc) (an
 		return next(ec, request)
 	}
 
+	fp, err := fingerprint(r.Method, r.URL.Path, request)
+	if err != nil {
+		return nil, xerrors.Wrap(apperror.ErrInternal, "failed to fingerprint idempotent request: "+err.Error())
+	}
+
 	reqCtx := idempotencyuc.WithRequest(r.Context(), idempotencyuc.Request{
 		Scope:       authn.Subject(),
 		Key:         key,
-		Fingerprint: fingerprint(r.Method, r.URL.Path, request),
+		Fingerprint: fp,
 		Method:      r.Method,
 		Path:        r.URL.Path,
 		OperationID: operationID,
@@ -77,14 +91,17 @@ func validateKey(key string) error {
 }
 
 // fingerprint は、method + path + typed request の決定的 marshal を SHA-256 した指紋を返します。
-func fingerprint(method, path string, request any) []byte {
+// request の marshal に失敗した場合は弱い指紋を作らずエラーを返します（fail-closed）。
+func fingerprint(method, path string, request any) ([]byte, error) {
+	b, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
 	h := sha256.New()
 	h.Write([]byte(method))
 	h.Write([]byte{'\n'})
 	h.Write([]byte(path))
 	h.Write([]byte{'\n'})
-	if b, err := json.Marshal(request); err == nil {
-		h.Write(b)
-	}
-	return h.Sum(nil)
+	h.Write(b)
+	return h.Sum(nil), nil
 }
