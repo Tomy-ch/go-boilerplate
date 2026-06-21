@@ -156,6 +156,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsersResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
         '401':
           $ref: '#/components/responses/Unauthorized401'
         '403':
@@ -387,6 +389,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsersSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
         '401':
           $ref: '#/components/responses/Unauthorized401'
         '403':
@@ -414,6 +418,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsersFeedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
         '401':
           $ref: '#/components/responses/Unauthorized401'
         '403':
@@ -882,6 +888,12 @@ components:
               type: string
               format: date-time
   responses:
+    BadRequest400:
+      description: リクエストが不正です。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     Unauthorized401:
       description: 認証が必要です。
       content:
@@ -902,12 +914,6 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     ServiceUnavailable503:
       description: サービスが一時的に利用できません。
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    BadRequest400:
-      description: リクエストが不正です。
       content:
         application/json:
           schema:

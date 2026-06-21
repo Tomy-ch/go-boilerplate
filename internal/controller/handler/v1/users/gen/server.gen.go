@@ -160,6 +160,20 @@ func (response GetUsers200JSONResponse) VisitGetUsersResponse(w http.ResponseWri
 	return err
 }
 
+type GetUsers400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetUsers400JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetUsers401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetUsers401JSONResponse) VisitGetUsersResponse(w http.ResponseWriter) error {

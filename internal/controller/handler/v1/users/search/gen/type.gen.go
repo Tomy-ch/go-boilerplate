@@ -130,6 +130,9 @@ type PageParam = int
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
 
+// BadRequest400 エラーレスポンスの共通スキーマ
+type BadRequest400 = ErrorResponse
+
 // Forbidden403 エラーレスポンスの共通スキーマ
 type Forbidden403 = ErrorResponse
 

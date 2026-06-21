@@ -86,6 +86,9 @@ type CursorAfterParam = string
 // CursorFirstParam defines model for CursorFirstParam.
 type CursorFirstParam = int
 
+// BadRequest400 エラーレスポンスの共通スキーマ
+type BadRequest400 = ErrorResponse
+
 // Forbidden403 エラーレスポンスの共通スキーマ
 type Forbidden403 = ErrorResponse
 
