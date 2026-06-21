@@ -11,7 +11,6 @@ import (
 	"go-boilerplate/internal/logging"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
 )
 
 // newServeCommand は、サーバーを起動するためのコマンドを生成します。
@@ -33,7 +32,7 @@ func serveRun(_ *cobra.Command, _ []string) error {
 	appCfg := config.NewApplicationConfig(cfg)
 	mtcCfg := config.NewMetricsConfig(cfg)
 
-	logger := logging.NewJSONLogger(zapcore.InfoLevel, zapcore.ErrorLevel)
+	logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),

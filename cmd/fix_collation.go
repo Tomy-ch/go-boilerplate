@@ -10,7 +10,6 @@ import (
 	"go-boilerplate/pkg/exec"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
 )
 
 // newFixCollationCommand は fix-collation コマンドを生成します。
@@ -34,7 +33,7 @@ func newFixCollationCommand() *cobra.Command {
 
 // runFixCollation は、ロガーと設定読込を結線し、fixcollation.RunFix へ委譲する薄い殻です。
 func runFixCollation(ctx context.Context, database string) error {
-	logger := logging.NewJSONLogger(zapcore.InfoLevel, zapcore.ErrorLevel)
+	logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
 
 	loadDSN := func() (string, string, error) {
 		cfg, cerr := config.SetUpConfig()

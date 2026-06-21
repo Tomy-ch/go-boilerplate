@@ -9,7 +9,6 @@ import (
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/golang-migrate/migrate/v4"
 	// postgres driver for golang-migrate (required for runtime registration)
@@ -36,7 +35,7 @@ func newMigrateUpCommand() *cobra.Command {
 --steps に正の整数を指定すると、現在位置からその段数だけ Up します。
 --database フラグを指定すると、対象のデータベース（例: local, test）に対して Up を行います。`,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			logger := logging.NewJSONLogger(zapcore.InfoLevel, zapcore.ErrorLevel)
+			logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
 			return climigrate.MigrateUpRun(steps, database, logger, buildMigrateInstance)
 		},
 	}
@@ -63,7 +62,7 @@ func newMigrateDownCommand() *cobra.Command {
 --steps に正の整数を指定すると、現在位置からその段数だけ Down します。
 --database フラグを指定すると、対象のデータベース（例: local, test）に対して Down を行います。`,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			logger := logging.NewJSONLogger(zapcore.InfoLevel, zapcore.ErrorLevel)
+			logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
 			return climigrate.MigrateDownRun(steps, database, logger, buildMigrateInstance)
 		},
 	}

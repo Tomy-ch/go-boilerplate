@@ -9,7 +9,6 @@ import (
 	"go-boilerplate/internal/logging"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
 )
 
 // newDumpSchemaCommand は、dump-schema コマンドを生成します。
@@ -34,7 +33,7 @@ func newDumpSchemaCommand() *cobra.Command {
 
 // runDumpSchema は、ロガー・ジェネレーターと設定読込を結線し、dumpschema.RunDump へ委譲する薄い殻です。
 func runDumpSchema(ctx context.Context, workDir string) error {
-	logger := logging.NewJSONLogger(zapcore.InfoLevel, zapcore.ErrorLevel)
+	logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
 
 	gen := dumpschema.NewGenerator(logger, workDir)
 
