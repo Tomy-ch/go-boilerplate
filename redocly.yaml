@@ -1,6 +1,4 @@
-# Redocly 設定 / lint ルールセット。
-# `make lint-oapi`（CI: oapi-lint.yaml）で openapi/openapi.yaml を検証する。
-# bundle / build-docs と同じエントリポイントを共有する。
+# Redocly 設定 / lint ルールセット。`make lint-oapi`（CI: oapi-lint.yaml）で openapi/openapi.yaml を検証する。
 extends:
   - recommended
 

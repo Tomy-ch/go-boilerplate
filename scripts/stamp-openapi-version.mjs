@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-// release/vX.Y.Z のブランチ名から OpenAPI の info.version を契約版(X.Y.Z)へ同期する。
-//
-// production マージ前（release ブランチ）で確定させることで、production 到達時点でタグと spec が一致する。
-// build metadata / commit SHA は付けない（毎 push のチャーンを避けるため。commit 単位の追跡は runtime の /version 側の責務）。
+// release/vX.Y.Z のブランチ名から OpenAPI の info.version を X.Y.Z（SemVer のみ・SHA 等は付けない）へ書き換える。
 //
 // 使い方:
 //   node scripts/stamp-openapi-version.mjs [<ref>]
@@ -12,8 +9,7 @@
 import { readFileSync, writeFileSync } from "node:fs"
 
 const OPENAPI_PATH = new URL("../openapi/openapi.yaml", import.meta.url)
-// info ブロック直下の最初の version 行（2スペースインデント）。
-// /m で行頭一致し、g を付けないことで最初の1件（= info.version）のみを置換する。
+// info.version 行（先頭2スペースインデント）にのみマッチする。
 const VERSION_LINE = /^  version: .*$/m
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
 
