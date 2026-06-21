@@ -130,6 +130,11 @@
 				
 			
 				
+				<dd><a href="#UserFeedView">type UserFeedView</a></dd>
+				
+				
+			
+				
 				<dd><a href="#UserListView">type UserListView</a></dd>
 				
 				
@@ -150,6 +155,8 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../src/go-boilerplate/internal/usecase/user/feed_cursor.go.html">feed_cursor.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html">user_usecase.go</a>
 			
 			</span>
@@ -166,7 +173,7 @@
 		
 			
 			
-			<h2 id="CreateParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1880:1976#L51">CreateParamsDTO</a>
+			<h2 id="CreateParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2244:2340#L59">CreateParamsDTO</a>
 				<a class="permalink" href="#CreateParamsDTO">¶</a>
 				
 				
@@ -195,7 +202,7 @@
 		
 			
 			
-			<h2 id="PatchParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2162:2408#L59">PatchParamsDTO</a>
+			<h2 id="PatchParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2526:2772#L67">PatchParamsDTO</a>
 				<a class="permalink" href="#PatchParamsDTO">¶</a>
 				
 				
@@ -229,7 +236,7 @@
 		
 			
 			
-			<h2 id="UpdateProfileParams">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1546:1789#L38">UpdateProfileParams</a>
+			<h2 id="UpdateProfileParams">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1910:2153#L46">UpdateProfileParams</a>
 				<a class="permalink" href="#UpdateProfileParams">¶</a>
 				
 				
@@ -263,7 +270,7 @@
 		
 			
 			
-			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2766:4262#L82">Usecase</a>
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=3130:4832#L90">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -272,9 +279,11 @@
 
 			</p><pre>type Usecase interface {
     <span class="comment">// ListUsers は、ユーザー一覧を取得します。</span>
-    ListUsers(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, active *<a href="../../../../builtin/#bool">bool</a>, page *<a href="../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/paging/#Paging">Paging</a>) ([]<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
+    ListUsers(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, active *<a href="../../../../builtin/#bool">bool</a>, page *<a href="../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/paging/#Page">Page</a>) ([]<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。</span>
-    ListUsersWithTotal(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, active *<a href="../../../../builtin/#bool">bool</a>, page *<a href="../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/paging/#Paging">Paging</a>) (*<a href="#UserListView">UserListView</a>, <a href="../../../../builtin/#error">error</a>)
+    ListUsersWithTotal(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, active *<a href="../../../../builtin/#bool">bool</a>, page *<a href="../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/paging/#Page">Page</a>) (*<a href="#UserListView">UserListView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。</span>
+    ListUsersFeed(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, cursor *<a href="../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/paging/#Cursor">Cursor</a>) (*<a href="#UserFeedView">UserFeedView</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// CreateUser は、ユーザーを作成します。</span>
     CreateUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, dto *<a href="#CreateParamsDTO">CreateParamsDTO</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// CountUsers は、ユーザーの総件数を返します。</span>
@@ -301,7 +310,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=4344:4527#L104">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=4914:5097#L114">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -324,7 +333,36 @@
 		
 			
 			
-			</p><h2 id="UserListView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1365:1424#L32">UserListView</a>
+			</p><h2 id="UserFeedView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1543:1788#L38">UserFeedView</a>
+				<a class="permalink" href="#UserFeedView">¶</a>
+				
+				
+			</h2>
+			<p>UserFeedView は、ユーザーフィード（cursor ページネーション）の取得結果を表します。
+
+			</p><pre>type UserFeedView struct {
+<span id="UserFeedView.Items"></span>    <span class="comment">// Items は、現在ページのユーザー一覧です。</span>
+    Items []<a href="#UserView">UserView</a>
+<span id="UserFeedView.NextCursor"></span>    <span class="comment">// NextCursor は、次ページ取得用の不透明カーソルです。最終ページの場合は nil です。</span>
+    NextCursor *<a href="../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UserListView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1365:1424#L32">UserListView</a>
 				<a class="permalink" href="#UserListView">¶</a>
 				
 				

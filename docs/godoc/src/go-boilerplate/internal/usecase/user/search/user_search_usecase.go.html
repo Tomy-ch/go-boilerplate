@@ -92,11 +92,11 @@
 <span id="L35" class="ln">    35  </span><span class="comment">// Usecase は、ユーザーに関するユースケースを定義します。</span>
 <span id="L36" class="ln">    36  </span>type Usecase interface {
 <span id="L37" class="ln">    37  </span>	<span class="comment">// ListUsersByKeyword は、キーワードに基づいてユーザー一覧を取得します。</span>
-<span id="L38" class="ln">    38  </span>	ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error)
+<span id="L38" class="ln">    38  </span>	ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (query.UserSearchResults, error)
 <span id="L39" class="ln">    39  </span>	<span class="comment">// CountUsersByKeyword は、キーワードに基づいてユーザーの総件数を返します。</span>
 <span id="L40" class="ln">    40  </span>	CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error)
 <span id="L41" class="ln">    41  </span>	<span class="comment">// ListUsersByKeywordWithTotal は、検索一覧と総件数をまとめて取得します。</span>
-<span id="L42" class="ln">    42  </span>	ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Paging) (*UserSearchListView, error)
+<span id="L42" class="ln">    42  </span>	ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Page) (*UserSearchListView, error)
 <span id="L43" class="ln">    43  </span>}
 <span id="L44" class="ln">    44  </span>
 <span id="L45" class="ln">    45  </span><span class="comment">// New は、ユーザーに関するユースケースを初期化します。</span>
@@ -111,7 +111,7 @@
 <span id="L54" class="ln">    54  </span>}
 <span id="L55" class="ln">    55  </span>
 <span id="L56" class="ln">    56  </span><span class="comment">// ListUsersByKeyword は、ユーザー一覧を取得するユースケースです。</span>
-<span id="L57" class="ln">    57  </span>func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error) {
+<span id="L57" class="ln">    57  </span>func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (query.UserSearchResults, error) {
 <span id="L58" class="ln">    58  </span>	if filter == nil || page == nil {
 <span id="L59" class="ln">    59  </span>		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, &#34;filter and page must not be nil&#34;)
 <span id="L60" class="ln">    60  </span>	}
@@ -135,7 +135,7 @@
 <span id="L78" class="ln">    78  </span>}
 <span id="L79" class="ln">    79  </span>
 <span id="L80" class="ln">    80  </span><span class="comment">// ListUsersByKeywordWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。</span>
-<span id="L81" class="ln">    81  </span>func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Paging) (*UserSearchListView, error) {
+<span id="L81" class="ln">    81  </span>func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Page) (*UserSearchListView, error) {
 <span id="L82" class="ln">    82  </span>	ctx, endSpan := u.tracer.Start(ctx)
 <span id="L83" class="ln">    83  </span>	defer endSpan()
 <span id="L84" class="ln">    84  </span>

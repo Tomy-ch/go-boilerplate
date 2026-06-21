@@ -174,7 +174,7 @@
 <span id="L117" class="ln">   117  </span>}
 <span id="L118" class="ln">   118  </span>
 <span id="L119" class="ln">   119  </span><span class="comment">// ListUsers mocks base method.</span>
-<span id="L120" class="ln">   120  </span>func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Paging) ([]user.UserView, error) {
+<span id="L120" class="ln">   120  </span>func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]user.UserView, error) {
 <span id="L121" class="ln">   121  </span>	m.ctrl.T.Helper()
 <span id="L122" class="ln">   122  </span>	ret := m.ctrl.Call(m, &#34;ListUsers&#34;, ctx, active, page)
 <span id="L123" class="ln">   123  </span>	ret0, _ := ret[0].([]user.UserView)
@@ -188,51 +188,66 @@
 <span id="L131" class="ln">   131  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;ListUsers&#34;, reflect.TypeOf((*MockUsecase)(nil).ListUsers), ctx, active, page)
 <span id="L132" class="ln">   132  </span>}
 <span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span><span class="comment">// ListUsersWithTotal mocks base method.</span>
-<span id="L135" class="ln">   135  </span>func (m *MockUsecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Paging) (*user.UserListView, error) {
+<span id="L134" class="ln">   134  </span><span class="comment">// ListUsersFeed mocks base method.</span>
+<span id="L135" class="ln">   135  </span>func (m *MockUsecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*user.UserFeedView, error) {
 <span id="L136" class="ln">   136  </span>	m.ctrl.T.Helper()
-<span id="L137" class="ln">   137  </span>	ret := m.ctrl.Call(m, &#34;ListUsersWithTotal&#34;, ctx, active, page)
-<span id="L138" class="ln">   138  </span>	ret0, _ := ret[0].(*user.UserListView)
+<span id="L137" class="ln">   137  </span>	ret := m.ctrl.Call(m, &#34;ListUsersFeed&#34;, ctx, cursor)
+<span id="L138" class="ln">   138  </span>	ret0, _ := ret[0].(*user.UserFeedView)
 <span id="L139" class="ln">   139  </span>	ret1, _ := ret[1].(error)
 <span id="L140" class="ln">   140  </span>	return ret0, ret1
 <span id="L141" class="ln">   141  </span>}
 <span id="L142" class="ln">   142  </span>
-<span id="L143" class="ln">   143  </span><span class="comment">// ListUsersWithTotal indicates an expected call of ListUsersWithTotal.</span>
-<span id="L144" class="ln">   144  </span>func (mr *MockUsecaseMockRecorder) ListUsersWithTotal(ctx, active, page any) *gomock.Call {
+<span id="L143" class="ln">   143  </span><span class="comment">// ListUsersFeed indicates an expected call of ListUsersFeed.</span>
+<span id="L144" class="ln">   144  </span>func (mr *MockUsecaseMockRecorder) ListUsersFeed(ctx, cursor any) *gomock.Call {
 <span id="L145" class="ln">   145  </span>	mr.mock.ctrl.T.Helper()
-<span id="L146" class="ln">   146  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;ListUsersWithTotal&#34;, reflect.TypeOf((*MockUsecase)(nil).ListUsersWithTotal), ctx, active, page)
+<span id="L146" class="ln">   146  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;ListUsersFeed&#34;, reflect.TypeOf((*MockUsecase)(nil).ListUsersFeed), ctx, cursor)
 <span id="L147" class="ln">   147  </span>}
 <span id="L148" class="ln">   148  </span>
-<span id="L149" class="ln">   149  </span><span class="comment">// UpdateUser mocks base method.</span>
-<span id="L150" class="ln">   150  </span>func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.UpdateProfileParams) (user.UserView, error) {
+<span id="L149" class="ln">   149  </span><span class="comment">// ListUsersWithTotal mocks base method.</span>
+<span id="L150" class="ln">   150  </span>func (m *MockUsecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*user.UserListView, error) {
 <span id="L151" class="ln">   151  </span>	m.ctrl.T.Helper()
-<span id="L152" class="ln">   152  </span>	ret := m.ctrl.Call(m, &#34;UpdateUser&#34;, ctx, id, dto)
-<span id="L153" class="ln">   153  </span>	ret0, _ := ret[0].(user.UserView)
+<span id="L152" class="ln">   152  </span>	ret := m.ctrl.Call(m, &#34;ListUsersWithTotal&#34;, ctx, active, page)
+<span id="L153" class="ln">   153  </span>	ret0, _ := ret[0].(*user.UserListView)
 <span id="L154" class="ln">   154  </span>	ret1, _ := ret[1].(error)
 <span id="L155" class="ln">   155  </span>	return ret0, ret1
 <span id="L156" class="ln">   156  </span>}
 <span id="L157" class="ln">   157  </span>
-<span id="L158" class="ln">   158  </span><span class="comment">// UpdateUser indicates an expected call of UpdateUser.</span>
-<span id="L159" class="ln">   159  </span>func (mr *MockUsecaseMockRecorder) UpdateUser(ctx, id, dto any) *gomock.Call {
+<span id="L158" class="ln">   158  </span><span class="comment">// ListUsersWithTotal indicates an expected call of ListUsersWithTotal.</span>
+<span id="L159" class="ln">   159  </span>func (mr *MockUsecaseMockRecorder) ListUsersWithTotal(ctx, active, page any) *gomock.Call {
 <span id="L160" class="ln">   160  </span>	mr.mock.ctrl.T.Helper()
-<span id="L161" class="ln">   161  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;UpdateUser&#34;, reflect.TypeOf((*MockUsecase)(nil).UpdateUser), ctx, id, dto)
+<span id="L161" class="ln">   161  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;ListUsersWithTotal&#34;, reflect.TypeOf((*MockUsecase)(nil).ListUsersWithTotal), ctx, active, page)
 <span id="L162" class="ln">   162  </span>}
 <span id="L163" class="ln">   163  </span>
-<span id="L164" class="ln">   164  </span><span class="comment">// UpdateUserPartially mocks base method.</span>
-<span id="L165" class="ln">   165  </span>func (m *MockUsecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *user.PatchParamsDTO) (user.UserView, error) {
+<span id="L164" class="ln">   164  </span><span class="comment">// UpdateUser mocks base method.</span>
+<span id="L165" class="ln">   165  </span>func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.UpdateProfileParams) (user.UserView, error) {
 <span id="L166" class="ln">   166  </span>	m.ctrl.T.Helper()
-<span id="L167" class="ln">   167  </span>	ret := m.ctrl.Call(m, &#34;UpdateUserPartially&#34;, ctx, id, dto)
+<span id="L167" class="ln">   167  </span>	ret := m.ctrl.Call(m, &#34;UpdateUser&#34;, ctx, id, dto)
 <span id="L168" class="ln">   168  </span>	ret0, _ := ret[0].(user.UserView)
 <span id="L169" class="ln">   169  </span>	ret1, _ := ret[1].(error)
 <span id="L170" class="ln">   170  </span>	return ret0, ret1
 <span id="L171" class="ln">   171  </span>}
 <span id="L172" class="ln">   172  </span>
-<span id="L173" class="ln">   173  </span><span class="comment">// UpdateUserPartially indicates an expected call of UpdateUserPartially.</span>
-<span id="L174" class="ln">   174  </span>func (mr *MockUsecaseMockRecorder) UpdateUserPartially(ctx, id, dto any) *gomock.Call {
+<span id="L173" class="ln">   173  </span><span class="comment">// UpdateUser indicates an expected call of UpdateUser.</span>
+<span id="L174" class="ln">   174  </span>func (mr *MockUsecaseMockRecorder) UpdateUser(ctx, id, dto any) *gomock.Call {
 <span id="L175" class="ln">   175  </span>	mr.mock.ctrl.T.Helper()
-<span id="L176" class="ln">   176  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;UpdateUserPartially&#34;, reflect.TypeOf((*MockUsecase)(nil).UpdateUserPartially), ctx, id, dto)
+<span id="L176" class="ln">   176  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;UpdateUser&#34;, reflect.TypeOf((*MockUsecase)(nil).UpdateUser), ctx, id, dto)
 <span id="L177" class="ln">   177  </span>}
 <span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span><span class="comment">// UpdateUserPartially mocks base method.</span>
+<span id="L180" class="ln">   180  </span>func (m *MockUsecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *user.PatchParamsDTO) (user.UserView, error) {
+<span id="L181" class="ln">   181  </span>	m.ctrl.T.Helper()
+<span id="L182" class="ln">   182  </span>	ret := m.ctrl.Call(m, &#34;UpdateUserPartially&#34;, ctx, id, dto)
+<span id="L183" class="ln">   183  </span>	ret0, _ := ret[0].(user.UserView)
+<span id="L184" class="ln">   184  </span>	ret1, _ := ret[1].(error)
+<span id="L185" class="ln">   185  </span>	return ret0, ret1
+<span id="L186" class="ln">   186  </span>}
+<span id="L187" class="ln">   187  </span>
+<span id="L188" class="ln">   188  </span><span class="comment">// UpdateUserPartially indicates an expected call of UpdateUserPartially.</span>
+<span id="L189" class="ln">   189  </span>func (mr *MockUsecaseMockRecorder) UpdateUserPartially(ctx, id, dto any) *gomock.Call {
+<span id="L190" class="ln">   190  </span>	mr.mock.ctrl.T.Helper()
+<span id="L191" class="ln">   191  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;UpdateUserPartially&#34;, reflect.TypeOf((*MockUsecase)(nil).UpdateUserPartially), ctx, id, dto)
+<span id="L192" class="ln">   192  </span>}
+<span id="L193" class="ln">   193  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.gen.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

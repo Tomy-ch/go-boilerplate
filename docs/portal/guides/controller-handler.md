@@ -24,7 +24,7 @@ The Controller is the **input/output boundary of the application**.
   - Convert to **DTO/VO for input**
   - Convert DTO returned from Usecase → OpenAPI type
 - Errors are returned using unified mapping defined in [apperror](../../apperror/README.md)
-- Paging is normalized using `paging.NewPagingFrom1Based()`
+- Page is normalized using `paging.NewPageFrom1Based()`
 - Request ID / logging is handled by middleware (Echo + Zap)
 
 "Business logic", "DB access", and "domain model operations" are delegated to Usecase / Domain / Infra, keeping Controller thin.
@@ -448,9 +448,9 @@ type server struct {
 - **Never** pass `http.Request`, `http.Header`, `http.Status*`
 - Use DTO / VO (e.g., Page) / Context only
 
-#### Paging
+#### Page
 
-- Controller converts `page & per_page` to Paging via `paging.NewPagingFrom1Based()`
+- Controller converts `page & per_page` to Page via `paging.NewPageFrom1Based()`
 - Usecase manages policy (limits/defaults)
 
 #### Error Mapping
@@ -545,7 +545,7 @@ testassert.AssertEchoRouterMethods(t, expectedMethods, e.Routes())
 ```go
 mockApp := mock_user.NewMockUsecase(ctrl)
 mockApp.EXPECT().
-    ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
+    ListUsersByKeyword(gomock.Any(), expectedParams, mockPage).
     Return(mockDTO, nil)
 ```
 
@@ -702,7 +702,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
 
-    page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+    page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
     if err != nil {
         return nil, err
     }

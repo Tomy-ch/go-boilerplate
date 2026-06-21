@@ -477,7 +477,7 @@ flowchart TB
 
 ### ページング
 
-- NewPagingFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
+- NewPageFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
 - ページ番号が許容最大を超えたら `apperror.ErrInvalidArgument` を返す（offset は int32 変換時にクランプ）。
 
 ## 呼び出せる層 / 呼び出せない層
@@ -751,7 +751,7 @@ type usecase struct {
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
     // ListUsersByKeyword は、ユーザー一覧を取得します。
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
     // CreateUser は、ユーザーを作成します。
     CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
     // CountUsers は、ユーザーの総件数を返します。
@@ -779,7 +779,7 @@ func New(
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Paging) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()

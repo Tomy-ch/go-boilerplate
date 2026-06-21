@@ -126,7 +126,7 @@
 <span id="L69" class="ln">    69  </span>	t1 := time.Now().UTC()
 <span id="L70" class="ln">    70  </span>	t2 := t1.Add(time.Hour)
 <span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span>	mockPaging, err := paging.NewPagingFrom1Based(new(expectedPage), new(expectedPerPage))
+<span id="L72" class="ln">    72  </span>	mockPage, err := paging.NewPageFrom1Based(new(expectedPage), new(expectedPerPage))
 <span id="L73" class="ln">    73  </span>	require.NoError(t, err)
 <span id="L74" class="ln">    74  </span>
 <span id="L75" class="ln">    75  </span>	<span class="comment">// Keyword/Active を設定し、ハンドラの filter 詰め替えを検証可能にする。</span>
@@ -152,15 +152,15 @@
 <span id="L95" class="ln">    95  </span>			}
 <span id="L96" class="ln">    96  </span>			expectedResponse := gen.UsersSearchResponse{
 <span id="L97" class="ln">    97  </span>				Users:  wantUsers,
-<span id="L98" class="ln">    98  </span>				Limit:  mockPaging.Limit(),
-<span id="L99" class="ln">    99  </span>				Offset: mockPaging.Offset(),
+<span id="L98" class="ln">    98  </span>				Limit:  mockPage.Limit(),
+<span id="L99" class="ln">    99  </span>				Offset: mockPage.Offset(),
 <span id="L100" class="ln">   100  </span>				Total:  total,
 <span id="L101" class="ln">   101  </span>			}
 <span id="L102" class="ln">   102  </span>
 <span id="L103" class="ln">   103  </span>			var gotFilter *usecase_search.SearchParams
 <span id="L104" class="ln">   104  </span>			s, mockApp := newServer(t)
-<span id="L105" class="ln">   105  </span>			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPaging).
-<span id="L106" class="ln">   106  </span>				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Paging) (*usecase_search.UserSearchListView, error) {
+<span id="L105" class="ln">   105  </span>			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
+<span id="L106" class="ln">   106  </span>				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
 <span id="L107" class="ln">   107  </span>					gotFilter = f
 <span id="L108" class="ln">   108  </span>					return &amp;usecase_search.UserSearchListView{Items: dtos, Total: total}, nil
 <span id="L109" class="ln">   109  </span>				})
@@ -221,7 +221,7 @@
 <span id="L164" class="ln">   164  </span>			t.Parallel()
 <span id="L165" class="ln">   165  </span>
 <span id="L166" class="ln">   166  </span>			s, mockApp := newServer(t)
-<span id="L167" class="ln">   167  </span>			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPaging).
+<span id="L167" class="ln">   167  </span>			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
 <span id="L168" class="ln">   168  </span>				Return(nil, apperror.ErrInternal)
 <span id="L169" class="ln">   169  </span>
 <span id="L170" class="ln">   170  </span>			resp, err := s.GetUsersSearch(context.Background(), mockParams)

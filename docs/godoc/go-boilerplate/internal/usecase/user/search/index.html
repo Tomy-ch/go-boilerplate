@@ -178,7 +178,7 @@
 		
 			
 			
-			<h2 id="Usecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/search/user_search_usecase.go.html?s=1066:1708#L26">Usecase</a>
+			<h2 id="Usecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/search/user_search_usecase.go.html?s=1066:1704#L26">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -187,11 +187,11 @@
 
 			</p><pre>type Usecase interface {
     <span class="comment">// ListUsersByKeyword は、キーワードに基づいてユーザー一覧を取得します。</span>
-    ListUsersByKeyword(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, filter *<a href="#SearchParams">SearchParams</a>, page *<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/#Paging">Paging</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/search/query/">query</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/search/query/#UserSearchResults">UserSearchResults</a>, <a href="../../../../../builtin/#error">error</a>)
+    ListUsersByKeyword(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, filter *<a href="#SearchParams">SearchParams</a>, page *<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/#Page">Page</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/search/query/">query</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/search/query/#UserSearchResults">UserSearchResults</a>, <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// CountUsersByKeyword は、キーワードに基づいてユーザーの総件数を返します。</span>
     CountUsersByKeyword(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, filter *<a href="#SearchParams">SearchParams</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// ListUsersByKeywordWithTotal は、検索一覧と総件数をまとめて取得します。</span>
-    ListUsersByKeywordWithTotal(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, filter *<a href="#SearchParams">SearchParams</a>, page *<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/#Paging">Paging</a>) (*<a href="#UserSearchListView">UserSearchListView</a>, <a href="../../../../../builtin/#error">error</a>)
+    ListUsersByKeywordWithTotal(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, filter *<a href="#SearchParams">SearchParams</a>, page *<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/#Page">Page</a>) (*<a href="#UserSearchListView">UserSearchListView</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 
 			
@@ -204,7 +204,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/user/search/user_search_usecase.go.html?s=1790:1890#L36">New</a>
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/user/search/user_search_usecase.go.html?s=1786:1886#L36">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					

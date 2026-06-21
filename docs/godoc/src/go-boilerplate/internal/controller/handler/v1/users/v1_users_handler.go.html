@@ -98,7 +98,7 @@
 <span id="L41" class="ln">    41  </span>	defer endSpan()
 <span id="L42" class="ln">    42  </span>
 <span id="L43" class="ln">    43  </span>	<span class="comment">// WARN: 本来はここで認可を行うべきですが、今回は省略します。</span>
-<span id="L44" class="ln">    44  </span>	page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+<span id="L44" class="ln">    44  </span>	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 <span id="L45" class="ln">    45  </span>	if err != nil {
 <span id="L46" class="ln">    46  </span>		return nil, err
 <span id="L47" class="ln">    47  </span>	}

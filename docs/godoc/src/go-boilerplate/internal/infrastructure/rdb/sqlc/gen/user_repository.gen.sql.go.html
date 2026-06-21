@@ -439,81 +439,205 @@
 <span id="L382" class="ln">   382  </span>	return items, nil
 <span id="L383" class="ln">   383  </span>}
 <span id="L384" class="ln">   384  </span>
-<span id="L385" class="ln">   385  </span>const updateUser = `-- name: UpdateUser :execrows
-<span id="L386" class="ln">   386  </span>UPDATE users
-<span id="L387" class="ln">   387  </span>SET
-<span id="L388" class="ln">   388  </span>    first_name = $1,
-<span id="L389" class="ln">   389  </span>    last_name = $2,
-<span id="L390" class="ln">   390  </span>    password_hash = $3,
-<span id="L391" class="ln">   391  </span>    email = $4,
-<span id="L392" class="ln">   392  </span>    phone = $5,
-<span id="L393" class="ln">   393  </span>    prefecture_id = $6,
-<span id="L394" class="ln">   394  </span>    city = $7,
-<span id="L395" class="ln">   395  </span>    street = $8,
-<span id="L396" class="ln">   396  </span>    building = $9,
-<span id="L397" class="ln">   397  </span>    postal_code = $10,
-<span id="L398" class="ln">   398  </span>    updated_at = $11,
-<span id="L399" class="ln">   399  </span>    deleted_at = $12
-<span id="L400" class="ln">   400  </span>WHERE id = $13
-<span id="L401" class="ln">   401  </span>    AND deleted_at IS NULL
-<span id="L402" class="ln">   402  </span>`
-<span id="L403" class="ln">   403  </span>
-<span id="L404" class="ln">   404  </span>type UpdateUserParams struct {
-<span id="L405" class="ln">   405  </span>	FirstName    string
-<span id="L406" class="ln">   406  </span>	LastName     string
-<span id="L407" class="ln">   407  </span>	PasswordHash string
-<span id="L408" class="ln">   408  </span>	Email        string
-<span id="L409" class="ln">   409  </span>	Phone        string
-<span id="L410" class="ln">   410  </span>	PrefectureID uuid.UUID
-<span id="L411" class="ln">   411  </span>	City         string
-<span id="L412" class="ln">   412  </span>	Street       string
-<span id="L413" class="ln">   413  </span>	Building     *string
-<span id="L414" class="ln">   414  </span>	PostalCode   string
-<span id="L415" class="ln">   415  </span>	UpdatedAt    time.Time
-<span id="L416" class="ln">   416  </span>	DeletedAt    *time.Time
-<span id="L417" class="ln">   417  </span>	ID           uuid.UUID
-<span id="L418" class="ln">   418  </span>}
-<span id="L419" class="ln">   419  </span>
-<span id="L420" class="ln">   420  </span><span class="comment">// === source: database/dml/repository/user/update_user.sql ===</span>
-<span id="L421" class="ln">   421  </span><span class="comment">//</span>
-<span id="L422" class="ln">   422  </span><span class="comment">//	UPDATE users</span>
-<span id="L423" class="ln">   423  </span><span class="comment">//	SET</span>
-<span id="L424" class="ln">   424  </span><span class="comment">//	    first_name = $1,</span>
-<span id="L425" class="ln">   425  </span><span class="comment">//	    last_name = $2,</span>
-<span id="L426" class="ln">   426  </span><span class="comment">//	    password_hash = $3,</span>
-<span id="L427" class="ln">   427  </span><span class="comment">//	    email = $4,</span>
-<span id="L428" class="ln">   428  </span><span class="comment">//	    phone = $5,</span>
-<span id="L429" class="ln">   429  </span><span class="comment">//	    prefecture_id = $6,</span>
-<span id="L430" class="ln">   430  </span><span class="comment">//	    city = $7,</span>
-<span id="L431" class="ln">   431  </span><span class="comment">//	    street = $8,</span>
-<span id="L432" class="ln">   432  </span><span class="comment">//	    building = $9,</span>
-<span id="L433" class="ln">   433  </span><span class="comment">//	    postal_code = $10,</span>
-<span id="L434" class="ln">   434  </span><span class="comment">//	    updated_at = $11,</span>
-<span id="L435" class="ln">   435  </span><span class="comment">//	    deleted_at = $12</span>
-<span id="L436" class="ln">   436  </span><span class="comment">//	WHERE id = $13</span>
-<span id="L437" class="ln">   437  </span><span class="comment">//	    AND deleted_at IS NULL</span>
-<span id="L438" class="ln">   438  </span>func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) (int64, error) {
-<span id="L439" class="ln">   439  </span>	result, err := q.db.Exec(ctx, updateUser,
-<span id="L440" class="ln">   440  </span>		arg.FirstName,
-<span id="L441" class="ln">   441  </span>		arg.LastName,
-<span id="L442" class="ln">   442  </span>		arg.PasswordHash,
-<span id="L443" class="ln">   443  </span>		arg.Email,
-<span id="L444" class="ln">   444  </span>		arg.Phone,
-<span id="L445" class="ln">   445  </span>		arg.PrefectureID,
-<span id="L446" class="ln">   446  </span>		arg.City,
-<span id="L447" class="ln">   447  </span>		arg.Street,
-<span id="L448" class="ln">   448  </span>		arg.Building,
-<span id="L449" class="ln">   449  </span>		arg.PostalCode,
-<span id="L450" class="ln">   450  </span>		arg.UpdatedAt,
-<span id="L451" class="ln">   451  </span>		arg.DeletedAt,
-<span id="L452" class="ln">   452  </span>		arg.ID,
-<span id="L453" class="ln">   453  </span>	)
-<span id="L454" class="ln">   454  </span>	if err != nil {
-<span id="L455" class="ln">   455  </span>		return 0, err
-<span id="L456" class="ln">   456  </span>	}
-<span id="L457" class="ln">   457  </span>	return result.RowsAffected(), nil
-<span id="L458" class="ln">   458  </span>}
-<span id="L459" class="ln">   459  </span>
+<span id="L385" class="ln">   385  </span>const listUsersFeedAfter = `-- name: ListUsersFeedAfter :many
+<span id="L386" class="ln">   386  </span>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+<span id="L387" class="ln">   387  </span>FROM users AS u
+<span id="L388" class="ln">   388  </span>WHERE u.deleted_at IS NULL
+<span id="L389" class="ln">   389  </span>    AND (
+<span id="L390" class="ln">   390  </span>        u.created_at &lt; $1
+<span id="L391" class="ln">   391  </span>        OR (u.created_at = $1 AND u.id &lt; $2)
+<span id="L392" class="ln">   392  </span>    )
+<span id="L393" class="ln">   393  </span>ORDER BY u.created_at DESC, u.id DESC
+<span id="L394" class="ln">   394  </span>LIMIT $3
+<span id="L395" class="ln">   395  </span>`
+<span id="L396" class="ln">   396  </span>
+<span id="L397" class="ln">   397  </span>type ListUsersFeedAfterParams struct {
+<span id="L398" class="ln">   398  </span>	AfterCreatedAt time.Time
+<span id="L399" class="ln">   399  </span>	AfterID        uuid.UUID
+<span id="L400" class="ln">   400  </span>	LimitParam     int32
+<span id="L401" class="ln">   401  </span>}
+<span id="L402" class="ln">   402  </span>
+<span id="L403" class="ln">   403  </span>type ListUsersFeedAfterRow struct {
+<span id="L404" class="ln">   404  </span>	Users Users
+<span id="L405" class="ln">   405  </span>}
+<span id="L406" class="ln">   406  </span>
+<span id="L407" class="ln">   407  </span><span class="comment">// (created_at DESC, id DESC) の keyset 境界より過去の未削除ユーザーを返します。</span>
+<span id="L408" class="ln">   408  </span><span class="comment">//</span>
+<span id="L409" class="ln">   409  </span><span class="comment">//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text</span>
+<span id="L410" class="ln">   410  </span><span class="comment">//	FROM users AS u</span>
+<span id="L411" class="ln">   411  </span><span class="comment">//	WHERE u.deleted_at IS NULL</span>
+<span id="L412" class="ln">   412  </span><span class="comment">//	    AND (</span>
+<span id="L413" class="ln">   413  </span><span class="comment">//	        u.created_at &lt; $1</span>
+<span id="L414" class="ln">   414  </span><span class="comment">//	        OR (u.created_at = $1 AND u.id &lt; $2)</span>
+<span id="L415" class="ln">   415  </span><span class="comment">//	    )</span>
+<span id="L416" class="ln">   416  </span><span class="comment">//	ORDER BY u.created_at DESC, u.id DESC</span>
+<span id="L417" class="ln">   417  </span><span class="comment">//	LIMIT $3</span>
+<span id="L418" class="ln">   418  </span>func (q *Queries) ListUsersFeedAfter(ctx context.Context, arg *ListUsersFeedAfterParams) ([]*ListUsersFeedAfterRow, error) {
+<span id="L419" class="ln">   419  </span>	rows, err := q.db.Query(ctx, listUsersFeedAfter, arg.AfterCreatedAt, arg.AfterID, arg.LimitParam)
+<span id="L420" class="ln">   420  </span>	if err != nil {
+<span id="L421" class="ln">   421  </span>		return nil, err
+<span id="L422" class="ln">   422  </span>	}
+<span id="L423" class="ln">   423  </span>	defer rows.Close()
+<span id="L424" class="ln">   424  </span>	var items []*ListUsersFeedAfterRow
+<span id="L425" class="ln">   425  </span>	for rows.Next() {
+<span id="L426" class="ln">   426  </span>		var i ListUsersFeedAfterRow
+<span id="L427" class="ln">   427  </span>		if err := rows.Scan(
+<span id="L428" class="ln">   428  </span>			&amp;i.Users.ID,
+<span id="L429" class="ln">   429  </span>			&amp;i.Users.FirstName,
+<span id="L430" class="ln">   430  </span>			&amp;i.Users.LastName,
+<span id="L431" class="ln">   431  </span>			&amp;i.Users.PasswordHash,
+<span id="L432" class="ln">   432  </span>			&amp;i.Users.Email,
+<span id="L433" class="ln">   433  </span>			&amp;i.Users.Phone,
+<span id="L434" class="ln">   434  </span>			&amp;i.Users.PrefectureID,
+<span id="L435" class="ln">   435  </span>			&amp;i.Users.City,
+<span id="L436" class="ln">   436  </span>			&amp;i.Users.Street,
+<span id="L437" class="ln">   437  </span>			&amp;i.Users.Building,
+<span id="L438" class="ln">   438  </span>			&amp;i.Users.PostalCode,
+<span id="L439" class="ln">   439  </span>			&amp;i.Users.DeletedAt,
+<span id="L440" class="ln">   440  </span>			&amp;i.Users.CreatedAt,
+<span id="L441" class="ln">   441  </span>			&amp;i.Users.UpdatedAt,
+<span id="L442" class="ln">   442  </span>			&amp;i.Users.SearchText,
+<span id="L443" class="ln">   443  </span>		); err != nil {
+<span id="L444" class="ln">   444  </span>			return nil, err
+<span id="L445" class="ln">   445  </span>		}
+<span id="L446" class="ln">   446  </span>		items = append(items, &amp;i)
+<span id="L447" class="ln">   447  </span>	}
+<span id="L448" class="ln">   448  </span>	if err := rows.Err(); err != nil {
+<span id="L449" class="ln">   449  </span>		return nil, err
+<span id="L450" class="ln">   450  </span>	}
+<span id="L451" class="ln">   451  </span>	return items, nil
+<span id="L452" class="ln">   452  </span>}
+<span id="L453" class="ln">   453  </span>
+<span id="L454" class="ln">   454  </span>const listUsersFeedFirst = `-- name: ListUsersFeedFirst :many
+<span id="L455" class="ln">   455  </span>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+<span id="L456" class="ln">   456  </span>FROM users AS u
+<span id="L457" class="ln">   457  </span>WHERE u.deleted_at IS NULL
+<span id="L458" class="ln">   458  </span>ORDER BY u.created_at DESC, u.id DESC
+<span id="L459" class="ln">   459  </span>LIMIT $1
+<span id="L460" class="ln">   460  </span>`
+<span id="L461" class="ln">   461  </span>
+<span id="L462" class="ln">   462  </span>type ListUsersFeedFirstRow struct {
+<span id="L463" class="ln">   463  </span>	Users Users
+<span id="L464" class="ln">   464  </span>}
+<span id="L465" class="ln">   465  </span>
+<span id="L466" class="ln">   466  </span><span class="comment">// === source: database/dml/repository/user/select_users_feed.sql ===</span>
+<span id="L467" class="ln">   467  </span><span class="comment">//</span>
+<span id="L468" class="ln">   468  </span><span class="comment">//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text</span>
+<span id="L469" class="ln">   469  </span><span class="comment">//	FROM users AS u</span>
+<span id="L470" class="ln">   470  </span><span class="comment">//	WHERE u.deleted_at IS NULL</span>
+<span id="L471" class="ln">   471  </span><span class="comment">//	ORDER BY u.created_at DESC, u.id DESC</span>
+<span id="L472" class="ln">   472  </span><span class="comment">//	LIMIT $1</span>
+<span id="L473" class="ln">   473  </span>func (q *Queries) ListUsersFeedFirst(ctx context.Context, limitParam int32) ([]*ListUsersFeedFirstRow, error) {
+<span id="L474" class="ln">   474  </span>	rows, err := q.db.Query(ctx, listUsersFeedFirst, limitParam)
+<span id="L475" class="ln">   475  </span>	if err != nil {
+<span id="L476" class="ln">   476  </span>		return nil, err
+<span id="L477" class="ln">   477  </span>	}
+<span id="L478" class="ln">   478  </span>	defer rows.Close()
+<span id="L479" class="ln">   479  </span>	var items []*ListUsersFeedFirstRow
+<span id="L480" class="ln">   480  </span>	for rows.Next() {
+<span id="L481" class="ln">   481  </span>		var i ListUsersFeedFirstRow
+<span id="L482" class="ln">   482  </span>		if err := rows.Scan(
+<span id="L483" class="ln">   483  </span>			&amp;i.Users.ID,
+<span id="L484" class="ln">   484  </span>			&amp;i.Users.FirstName,
+<span id="L485" class="ln">   485  </span>			&amp;i.Users.LastName,
+<span id="L486" class="ln">   486  </span>			&amp;i.Users.PasswordHash,
+<span id="L487" class="ln">   487  </span>			&amp;i.Users.Email,
+<span id="L488" class="ln">   488  </span>			&amp;i.Users.Phone,
+<span id="L489" class="ln">   489  </span>			&amp;i.Users.PrefectureID,
+<span id="L490" class="ln">   490  </span>			&amp;i.Users.City,
+<span id="L491" class="ln">   491  </span>			&amp;i.Users.Street,
+<span id="L492" class="ln">   492  </span>			&amp;i.Users.Building,
+<span id="L493" class="ln">   493  </span>			&amp;i.Users.PostalCode,
+<span id="L494" class="ln">   494  </span>			&amp;i.Users.DeletedAt,
+<span id="L495" class="ln">   495  </span>			&amp;i.Users.CreatedAt,
+<span id="L496" class="ln">   496  </span>			&amp;i.Users.UpdatedAt,
+<span id="L497" class="ln">   497  </span>			&amp;i.Users.SearchText,
+<span id="L498" class="ln">   498  </span>		); err != nil {
+<span id="L499" class="ln">   499  </span>			return nil, err
+<span id="L500" class="ln">   500  </span>		}
+<span id="L501" class="ln">   501  </span>		items = append(items, &amp;i)
+<span id="L502" class="ln">   502  </span>	}
+<span id="L503" class="ln">   503  </span>	if err := rows.Err(); err != nil {
+<span id="L504" class="ln">   504  </span>		return nil, err
+<span id="L505" class="ln">   505  </span>	}
+<span id="L506" class="ln">   506  </span>	return items, nil
+<span id="L507" class="ln">   507  </span>}
+<span id="L508" class="ln">   508  </span>
+<span id="L509" class="ln">   509  </span>const updateUser = `-- name: UpdateUser :execrows
+<span id="L510" class="ln">   510  </span>UPDATE users
+<span id="L511" class="ln">   511  </span>SET
+<span id="L512" class="ln">   512  </span>    first_name = $1,
+<span id="L513" class="ln">   513  </span>    last_name = $2,
+<span id="L514" class="ln">   514  </span>    password_hash = $3,
+<span id="L515" class="ln">   515  </span>    email = $4,
+<span id="L516" class="ln">   516  </span>    phone = $5,
+<span id="L517" class="ln">   517  </span>    prefecture_id = $6,
+<span id="L518" class="ln">   518  </span>    city = $7,
+<span id="L519" class="ln">   519  </span>    street = $8,
+<span id="L520" class="ln">   520  </span>    building = $9,
+<span id="L521" class="ln">   521  </span>    postal_code = $10,
+<span id="L522" class="ln">   522  </span>    updated_at = $11,
+<span id="L523" class="ln">   523  </span>    deleted_at = $12
+<span id="L524" class="ln">   524  </span>WHERE id = $13
+<span id="L525" class="ln">   525  </span>    AND deleted_at IS NULL
+<span id="L526" class="ln">   526  </span>`
+<span id="L527" class="ln">   527  </span>
+<span id="L528" class="ln">   528  </span>type UpdateUserParams struct {
+<span id="L529" class="ln">   529  </span>	FirstName    string
+<span id="L530" class="ln">   530  </span>	LastName     string
+<span id="L531" class="ln">   531  </span>	PasswordHash string
+<span id="L532" class="ln">   532  </span>	Email        string
+<span id="L533" class="ln">   533  </span>	Phone        string
+<span id="L534" class="ln">   534  </span>	PrefectureID uuid.UUID
+<span id="L535" class="ln">   535  </span>	City         string
+<span id="L536" class="ln">   536  </span>	Street       string
+<span id="L537" class="ln">   537  </span>	Building     *string
+<span id="L538" class="ln">   538  </span>	PostalCode   string
+<span id="L539" class="ln">   539  </span>	UpdatedAt    time.Time
+<span id="L540" class="ln">   540  </span>	DeletedAt    *time.Time
+<span id="L541" class="ln">   541  </span>	ID           uuid.UUID
+<span id="L542" class="ln">   542  </span>}
+<span id="L543" class="ln">   543  </span>
+<span id="L544" class="ln">   544  </span><span class="comment">// === source: database/dml/repository/user/update_user.sql ===</span>
+<span id="L545" class="ln">   545  </span><span class="comment">//</span>
+<span id="L546" class="ln">   546  </span><span class="comment">//	UPDATE users</span>
+<span id="L547" class="ln">   547  </span><span class="comment">//	SET</span>
+<span id="L548" class="ln">   548  </span><span class="comment">//	    first_name = $1,</span>
+<span id="L549" class="ln">   549  </span><span class="comment">//	    last_name = $2,</span>
+<span id="L550" class="ln">   550  </span><span class="comment">//	    password_hash = $3,</span>
+<span id="L551" class="ln">   551  </span><span class="comment">//	    email = $4,</span>
+<span id="L552" class="ln">   552  </span><span class="comment">//	    phone = $5,</span>
+<span id="L553" class="ln">   553  </span><span class="comment">//	    prefecture_id = $6,</span>
+<span id="L554" class="ln">   554  </span><span class="comment">//	    city = $7,</span>
+<span id="L555" class="ln">   555  </span><span class="comment">//	    street = $8,</span>
+<span id="L556" class="ln">   556  </span><span class="comment">//	    building = $9,</span>
+<span id="L557" class="ln">   557  </span><span class="comment">//	    postal_code = $10,</span>
+<span id="L558" class="ln">   558  </span><span class="comment">//	    updated_at = $11,</span>
+<span id="L559" class="ln">   559  </span><span class="comment">//	    deleted_at = $12</span>
+<span id="L560" class="ln">   560  </span><span class="comment">//	WHERE id = $13</span>
+<span id="L561" class="ln">   561  </span><span class="comment">//	    AND deleted_at IS NULL</span>
+<span id="L562" class="ln">   562  </span>func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) (int64, error) {
+<span id="L563" class="ln">   563  </span>	result, err := q.db.Exec(ctx, updateUser,
+<span id="L564" class="ln">   564  </span>		arg.FirstName,
+<span id="L565" class="ln">   565  </span>		arg.LastName,
+<span id="L566" class="ln">   566  </span>		arg.PasswordHash,
+<span id="L567" class="ln">   567  </span>		arg.Email,
+<span id="L568" class="ln">   568  </span>		arg.Phone,
+<span id="L569" class="ln">   569  </span>		arg.PrefectureID,
+<span id="L570" class="ln">   570  </span>		arg.City,
+<span id="L571" class="ln">   571  </span>		arg.Street,
+<span id="L572" class="ln">   572  </span>		arg.Building,
+<span id="L573" class="ln">   573  </span>		arg.PostalCode,
+<span id="L574" class="ln">   574  </span>		arg.UpdatedAt,
+<span id="L575" class="ln">   575  </span>		arg.DeletedAt,
+<span id="L576" class="ln">   576  </span>		arg.ID,
+<span id="L577" class="ln">   577  </span>	)
+<span id="L578" class="ln">   578  </span>	if err != nil {
+<span id="L579" class="ln">   579  </span>		return 0, err
+<span id="L580" class="ln">   580  </span>	}
+<span id="L581" class="ln">   581  </span>	return result.RowsAffected(), nil
+<span id="L582" class="ln">   582  </span>}
+<span id="L583" class="ln">   583  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

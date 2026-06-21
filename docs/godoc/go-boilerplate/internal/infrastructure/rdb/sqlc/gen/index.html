@@ -155,6 +155,21 @@
 				
 			
 				
+				<dd><a href="#ListUsersFeedAfterParams">type ListUsersFeedAfterParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListUsersFeedAfterRow">type ListUsersFeedAfterRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListUsersFeedFirstRow">type ListUsersFeedFirstRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#ListUsersParams">type ListUsersParams</a></dd>
 				
 				
@@ -250,6 +265,12 @@
 				
 					
 					<dd>    <a href="#Queries.ListUsers">func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListUsersRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListUsersFeedAfter">func (q *Queries) ListUsersFeedAfter(ctx context.Context, arg *ListUsersFeedAfterParams) ([]*ListUsersFeedAfterRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListUsersFeedFirst">func (q *Queries) ListUsersFeedFirst(ctx context.Context, limitParam int32) ([]*ListUsersFeedFirstRow, error)</a></dd>
 				
 					
 					<dd>    <a href="#Queries.SearchActiveUsers">func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersParams) ([]*SearchActiveUsersRow, error)</a></dd>
@@ -605,6 +626,83 @@
 			
 			<pre>type ListDeletedUsersRow struct {
 <span id="ListDeletedUsersRow.Users"></span>    Users <a href="#Users">Users</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListUsersFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9300:9414#L387">ListUsersFeedAfterParams</a>
+				<a class="permalink" href="#ListUsersFeedAfterParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListUsersFeedAfterParams struct {
+<span id="ListUsersFeedAfterParams.AfterCreatedAt"></span>    AfterCreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListUsersFeedAfterParams.AfterID"></span>    AfterID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListUsersFeedAfterParams.LimitParam"></span>    LimitParam     <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListUsersFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9416:9466#L393">ListUsersFeedAfterRow</a>
+				<a class="permalink" href="#ListUsersFeedAfterRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListUsersFeedAfterRow struct {
+<span id="ListUsersFeedAfterRow.Users"></span>    Users <a href="#Users">Users</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListUsersFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11187:11237#L452">ListUsersFeedFirstRow</a>
+				<a class="permalink" href="#ListUsersFeedFirstRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListUsersFeedFirstRow struct {
+<span id="ListUsersFeedFirstRow.Users"></span>    Users <a href="#Users">Users</a>
 }
 </pre>
 
@@ -1291,6 +1389,48 @@ LIMIT $2 OFFSET $1
 				
 			
 				
+				<h3 id="Queries.ListUsersFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9970:10092#L408">ListUsersFeedAfter</a>
+					<a class="permalink" href="#Queries.ListUsersFeedAfter">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListUsersFeedAfter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListUsersFeedAfterParams">ListUsersFeedAfterParams</a>) ([]*<a href="#ListUsersFeedAfterRow">ListUsersFeedAfterRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>(created_at DESC, id DESC) の keyset 境界より過去の未削除ユーザーを返します。
+</p><pre>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.deleted_at IS NULL
+    AND (
+        u.created_at &lt; $1
+        OR (u.created_at = $1 AND u.id &lt; $2)
+    )
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $3
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListUsersFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11610:11719#L463">ListUsersFeedFirst</a>
+					<a class="permalink" href="#Queries.ListUsersFeedFirst">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListUsersFeedFirst(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, limitParam <a href="../../../../../../builtin/#int32">int32</a>) ([]*<a href="#ListUsersFeedFirstRow">ListUsersFeedFirstRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/user/select_users_feed.sql ===
+</p><pre>SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.deleted_at IS NULL
+ORDER BY u.created_at DESC, u.id DESC
+LIMIT $1
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.SearchActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_query_service.gen.sql.go.html?s=2923:3042#L94">SearchActiveUsers</a>
 					<a class="permalink" href="#Queries.SearchActiveUsers">¶</a>
 					
@@ -1359,7 +1499,7 @@ LIMIT $3 OFFSET $2
 				
 			
 				
-				<h3 id="Queries.UpdateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9948:10035#L428">UpdateUser</a>
+				<h3 id="Queries.UpdateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=13512:13599#L552">UpdateUser</a>
 					<a class="permalink" href="#Queries.UpdateUser">¶</a>
 					
 					
@@ -1588,7 +1728,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="UpdateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9215:9534#L394">UpdateUserParams</a>
+			<h2 id="UpdateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12779:13098#L518">UpdateUserParams</a>
 				<a class="permalink" href="#UpdateUserParams">¶</a>
 				
 				
