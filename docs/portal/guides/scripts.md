@@ -12,6 +12,7 @@ scripts/
 ├── gen-portal-docs.mjs         # Copy docs to portal based on manifest.yaml
 ├── build-portal.mjs            # Bundle the portal frontend (src/main.jsx) with esbuild
 ├── semver.mjs                  # Semantic versioning helper (patch/minor/major)
+├── stamp-openapi-version.mjs   # Sync openapi.yaml info.version from the release/vX.Y.Z branch name
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
 ├── make_help.mjs                # Generate Make target help output
 ├── genctxkey/                  # Context key code generator (Go)
@@ -39,6 +40,7 @@ scripts/
 |Script|Description|Invoked By|
 |---|---|---|
 |`semver.mjs`|Bump semantic version (patch/minor/major)|Release workflow|
+|`stamp-openapi-version.mjs`|Derive `X.Y.Z` from a `release/vX.Y.Z` branch name and write it into `openapi.yaml` `info.version` (first `version:` line only; idempotent; no-op for non-release refs). Contract version only — no SHA / build metadata (commit-level traceability is the runtime `/version`'s job). Dependency-free ESM; runs on the bare runner `node`.|`auto-generate-docs.yaml`|
 |`sync-versions/`|Go-based sync utility. Parses `mise.toml` `[tools]` (table-scoped, no external deps) and propagates `go` / `node` / `python` versions to `go.mod` (`go` directive) + `docker/*/Dockerfile` `FROM golang:` / `FROM node:` / `FROM python:` lines. Pre-validates all rules (version present, file exists, expected match count) and writes per file atomically, so failures never leave a partial state.|`make sync-versions`|
 
 All other tool versions are managed by [`mise.toml`](../mise.toml) as the single source of truth. Each environment (host / docker / CI) installs only what it needs via `mise install <tool>` — no sync script required for those.

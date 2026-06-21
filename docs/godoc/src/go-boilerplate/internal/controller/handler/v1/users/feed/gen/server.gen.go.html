@@ -161,114 +161,156 @@
 <span id="L104" class="ln">   104  </span>
 <span id="L105" class="ln">   105  </span>}
 <span id="L106" class="ln">   106  </span>
-<span id="L107" class="ln">   107  </span>type GetUsersFeedRequestObject struct {
-<span id="L108" class="ln">   108  </span>	Params GetUsersFeedParams
-<span id="L109" class="ln">   109  </span>}
+<span id="L107" class="ln">   107  </span>type BadRequest400JSONResponse ErrorResponse
+<span id="L108" class="ln">   108  </span>
+<span id="L109" class="ln">   109  </span>type Forbidden403JSONResponse ErrorResponse
 <span id="L110" class="ln">   110  </span>
-<span id="L111" class="ln">   111  </span>type GetUsersFeedResponseObject interface {
-<span id="L112" class="ln">   112  </span>	VisitGetUsersFeedResponse(w http.ResponseWriter) error
-<span id="L113" class="ln">   113  </span>}
+<span id="L111" class="ln">   111  </span>type InternalServerError500JSONResponse ErrorResponse
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>type ServiceUnavailable503JSONResponse ErrorResponse
 <span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>type GetUsersFeed200JSONResponse UsersFeedResponse
+<span id="L115" class="ln">   115  </span>type Unauthorized401JSONResponse ErrorResponse
 <span id="L116" class="ln">   116  </span>
-<span id="L117" class="ln">   117  </span>func (response GetUsersFeed200JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
-<span id="L118" class="ln">   118  </span>
-<span id="L119" class="ln">   119  </span>	var buf bytes.Buffer
-<span id="L120" class="ln">   120  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
-<span id="L121" class="ln">   121  </span>		return err
-<span id="L122" class="ln">   122  </span>	}
-<span id="L123" class="ln">   123  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
-<span id="L124" class="ln">   124  </span>	w.WriteHeader(200)
-<span id="L125" class="ln">   125  </span>	_, err := buf.WriteTo(w)
-<span id="L126" class="ln">   126  </span>	return err
-<span id="L127" class="ln">   127  </span>}
+<span id="L117" class="ln">   117  </span>type GetUsersFeedRequestObject struct {
+<span id="L118" class="ln">   118  </span>	Params GetUsersFeedParams
+<span id="L119" class="ln">   119  </span>}
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>type GetUsersFeedResponseObject interface {
+<span id="L122" class="ln">   122  </span>	VisitGetUsersFeedResponse(w http.ResponseWriter) error
+<span id="L123" class="ln">   123  </span>}
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>type GetUsersFeed200JSONResponse UsersFeedResponse
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span>func (response GetUsersFeed200JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
 <span id="L128" class="ln">   128  </span>
-<span id="L129" class="ln">   129  </span>type GetUsersFeed401JSONResponse ErrorResponse
-<span id="L130" class="ln">   130  </span>
-<span id="L131" class="ln">   131  </span>func (response GetUsersFeed401JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
-<span id="L132" class="ln">   132  </span>
-<span id="L133" class="ln">   133  </span>	var buf bytes.Buffer
-<span id="L134" class="ln">   134  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
-<span id="L135" class="ln">   135  </span>		return err
-<span id="L136" class="ln">   136  </span>	}
-<span id="L137" class="ln">   137  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
-<span id="L138" class="ln">   138  </span>	w.WriteHeader(401)
-<span id="L139" class="ln">   139  </span>	_, err := buf.WriteTo(w)
-<span id="L140" class="ln">   140  </span>	return err
-<span id="L141" class="ln">   141  </span>}
+<span id="L129" class="ln">   129  </span>	var buf bytes.Buffer
+<span id="L130" class="ln">   130  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
+<span id="L131" class="ln">   131  </span>		return err
+<span id="L132" class="ln">   132  </span>	}
+<span id="L133" class="ln">   133  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
+<span id="L134" class="ln">   134  </span>	w.WriteHeader(200)
+<span id="L135" class="ln">   135  </span>	_, err := buf.WriteTo(w)
+<span id="L136" class="ln">   136  </span>	return err
+<span id="L137" class="ln">   137  </span>}
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>type GetUsersFeed400JSONResponse struct{ BadRequest400JSONResponse }
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span>func (response GetUsersFeed400JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
 <span id="L142" class="ln">   142  </span>
-<span id="L143" class="ln">   143  </span>type GetUsersFeed403JSONResponse ErrorResponse
-<span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span>func (response GetUsersFeed403JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
-<span id="L146" class="ln">   146  </span>
-<span id="L147" class="ln">   147  </span>	var buf bytes.Buffer
-<span id="L148" class="ln">   148  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
-<span id="L149" class="ln">   149  </span>		return err
-<span id="L150" class="ln">   150  </span>	}
-<span id="L151" class="ln">   151  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
-<span id="L152" class="ln">   152  </span>	w.WriteHeader(403)
-<span id="L153" class="ln">   153  </span>	_, err := buf.WriteTo(w)
-<span id="L154" class="ln">   154  </span>	return err
-<span id="L155" class="ln">   155  </span>}
+<span id="L143" class="ln">   143  </span>	var buf bytes.Buffer
+<span id="L144" class="ln">   144  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
+<span id="L145" class="ln">   145  </span>		return err
+<span id="L146" class="ln">   146  </span>	}
+<span id="L147" class="ln">   147  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
+<span id="L148" class="ln">   148  </span>	w.WriteHeader(400)
+<span id="L149" class="ln">   149  </span>	_, err := buf.WriteTo(w)
+<span id="L150" class="ln">   150  </span>	return err
+<span id="L151" class="ln">   151  </span>}
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>type GetUsersFeed401JSONResponse struct{ Unauthorized401JSONResponse }
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span>func (response GetUsersFeed401JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
 <span id="L156" class="ln">   156  </span>
-<span id="L157" class="ln">   157  </span>type GetUsersFeed500JSONResponse ErrorResponse
-<span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>func (response GetUsersFeed500JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
-<span id="L160" class="ln">   160  </span>
-<span id="L161" class="ln">   161  </span>	var buf bytes.Buffer
-<span id="L162" class="ln">   162  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
-<span id="L163" class="ln">   163  </span>		return err
-<span id="L164" class="ln">   164  </span>	}
-<span id="L165" class="ln">   165  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
-<span id="L166" class="ln">   166  </span>	w.WriteHeader(500)
-<span id="L167" class="ln">   167  </span>	_, err := buf.WriteTo(w)
-<span id="L168" class="ln">   168  </span>	return err
-<span id="L169" class="ln">   169  </span>}
+<span id="L157" class="ln">   157  </span>	var buf bytes.Buffer
+<span id="L158" class="ln">   158  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
+<span id="L159" class="ln">   159  </span>		return err
+<span id="L160" class="ln">   160  </span>	}
+<span id="L161" class="ln">   161  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
+<span id="L162" class="ln">   162  </span>	w.WriteHeader(401)
+<span id="L163" class="ln">   163  </span>	_, err := buf.WriteTo(w)
+<span id="L164" class="ln">   164  </span>	return err
+<span id="L165" class="ln">   165  </span>}
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>type GetUsersFeed403JSONResponse struct{ Forbidden403JSONResponse }
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span>func (response GetUsersFeed403JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
 <span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span><span class="comment">// StrictServerInterface represents all server handlers.</span>
-<span id="L172" class="ln">   172  </span>type StrictServerInterface interface {
-<span id="L173" class="ln">   173  </span>	<span class="comment">// ユーザーフィードの取得</span>
-<span id="L174" class="ln">   174  </span>	<span class="comment">// (GET /v1/users/feed)</span>
-<span id="L175" class="ln">   175  </span>	GetUsersFeed(ctx context.Context, request GetUsersFeedRequestObject) (GetUsersFeedResponseObject, error)
-<span id="L176" class="ln">   176  </span>}
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
-<span id="L179" class="ln">   179  </span>type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+<span id="L171" class="ln">   171  </span>	var buf bytes.Buffer
+<span id="L172" class="ln">   172  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
+<span id="L173" class="ln">   173  </span>		return err
+<span id="L174" class="ln">   174  </span>	}
+<span id="L175" class="ln">   175  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
+<span id="L176" class="ln">   176  </span>	w.WriteHeader(403)
+<span id="L177" class="ln">   177  </span>	_, err := buf.WriteTo(w)
+<span id="L178" class="ln">   178  </span>	return err
+<span id="L179" class="ln">   179  </span>}
 <span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span>func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
-<span id="L182" class="ln">   182  </span>	return &amp;strictHandler{ssi: ssi, middlewares: middlewares}
+<span id="L181" class="ln">   181  </span>type GetUsersFeed500JSONResponse struct {
+<span id="L182" class="ln">   182  </span>	InternalServerError500JSONResponse
 <span id="L183" class="ln">   183  </span>}
 <span id="L184" class="ln">   184  </span>
-<span id="L185" class="ln">   185  </span>type strictHandler struct {
-<span id="L186" class="ln">   186  </span>	ssi         StrictServerInterface
-<span id="L187" class="ln">   187  </span>	middlewares []StrictMiddlewareFunc
-<span id="L188" class="ln">   188  </span>}
-<span id="L189" class="ln">   189  </span>
-<span id="L190" class="ln">   190  </span><span class="comment">// GetUsersFeed operation middleware</span>
-<span id="L191" class="ln">   191  </span>func (sh *strictHandler) GetUsersFeed(ctx echo.Context, params GetUsersFeedParams) error {
-<span id="L192" class="ln">   192  </span>	var request GetUsersFeedRequestObject
-<span id="L193" class="ln">   193  </span>
-<span id="L194" class="ln">   194  </span>	request.Params = params
-<span id="L195" class="ln">   195  </span>
-<span id="L196" class="ln">   196  </span>	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-<span id="L197" class="ln">   197  </span>		return sh.ssi.GetUsersFeed(ctx.Request().Context(), request.(GetUsersFeedRequestObject))
-<span id="L198" class="ln">   198  </span>	}
-<span id="L199" class="ln">   199  </span>	for _, middleware := range sh.middlewares {
-<span id="L200" class="ln">   200  </span>		handler = middleware(handler, &#34;GetUsersFeed&#34;)
-<span id="L201" class="ln">   201  </span>	}
+<span id="L185" class="ln">   185  </span>func (response GetUsersFeed500JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
+<span id="L186" class="ln">   186  </span>
+<span id="L187" class="ln">   187  </span>	var buf bytes.Buffer
+<span id="L188" class="ln">   188  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
+<span id="L189" class="ln">   189  </span>		return err
+<span id="L190" class="ln">   190  </span>	}
+<span id="L191" class="ln">   191  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
+<span id="L192" class="ln">   192  </span>	w.WriteHeader(500)
+<span id="L193" class="ln">   193  </span>	_, err := buf.WriteTo(w)
+<span id="L194" class="ln">   194  </span>	return err
+<span id="L195" class="ln">   195  </span>}
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>type GetUsersFeed503JSONResponse struct {
+<span id="L198" class="ln">   198  </span>	ServiceUnavailable503JSONResponse
+<span id="L199" class="ln">   199  </span>}
+<span id="L200" class="ln">   200  </span>
+<span id="L201" class="ln">   201  </span>func (response GetUsersFeed503JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
 <span id="L202" class="ln">   202  </span>
-<span id="L203" class="ln">   203  </span>	response, err := handler(ctx, request)
-<span id="L204" class="ln">   204  </span>
-<span id="L205" class="ln">   205  </span>	if err != nil {
-<span id="L206" class="ln">   206  </span>		return err
-<span id="L207" class="ln">   207  </span>	} else if validResponse, ok := response.(GetUsersFeedResponseObject); ok {
-<span id="L208" class="ln">   208  </span>		return validResponse.VisitGetUsersFeedResponse(ctx.Response())
-<span id="L209" class="ln">   209  </span>	} else if response != nil {
-<span id="L210" class="ln">   210  </span>		return fmt.Errorf(&#34;unexpected response type: %T&#34;, response)
-<span id="L211" class="ln">   211  </span>	}
-<span id="L212" class="ln">   212  </span>	return nil
-<span id="L213" class="ln">   213  </span>}
-<span id="L214" class="ln">   214  </span>
+<span id="L203" class="ln">   203  </span>	var buf bytes.Buffer
+<span id="L204" class="ln">   204  </span>	if err := json.NewEncoder(&amp;buf).Encode(response); err != nil {
+<span id="L205" class="ln">   205  </span>		return err
+<span id="L206" class="ln">   206  </span>	}
+<span id="L207" class="ln">   207  </span>	w.Header().Set(&#34;Content-Type&#34;, &#34;application/json&#34;)
+<span id="L208" class="ln">   208  </span>	w.WriteHeader(503)
+<span id="L209" class="ln">   209  </span>	_, err := buf.WriteTo(w)
+<span id="L210" class="ln">   210  </span>	return err
+<span id="L211" class="ln">   211  </span>}
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span><span class="comment">// StrictServerInterface represents all server handlers.</span>
+<span id="L214" class="ln">   214  </span>type StrictServerInterface interface {
+<span id="L215" class="ln">   215  </span>	<span class="comment">// ユーザーフィードの取得</span>
+<span id="L216" class="ln">   216  </span>	<span class="comment">// (GET /v1/users/feed)</span>
+<span id="L217" class="ln">   217  </span>	GetUsersFeed(ctx context.Context, request GetUsersFeedRequestObject) (GetUsersFeedResponseObject, error)
+<span id="L218" class="ln">   218  </span>}
+<span id="L219" class="ln">   219  </span>
+<span id="L220" class="ln">   220  </span>type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+<span id="L221" class="ln">   221  </span>type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
+<span id="L222" class="ln">   222  </span>
+<span id="L223" class="ln">   223  </span>func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
+<span id="L224" class="ln">   224  </span>	return &amp;strictHandler{ssi: ssi, middlewares: middlewares}
+<span id="L225" class="ln">   225  </span>}
+<span id="L226" class="ln">   226  </span>
+<span id="L227" class="ln">   227  </span>type strictHandler struct {
+<span id="L228" class="ln">   228  </span>	ssi         StrictServerInterface
+<span id="L229" class="ln">   229  </span>	middlewares []StrictMiddlewareFunc
+<span id="L230" class="ln">   230  </span>}
+<span id="L231" class="ln">   231  </span>
+<span id="L232" class="ln">   232  </span><span class="comment">// GetUsersFeed operation middleware</span>
+<span id="L233" class="ln">   233  </span>func (sh *strictHandler) GetUsersFeed(ctx echo.Context, params GetUsersFeedParams) error {
+<span id="L234" class="ln">   234  </span>	var request GetUsersFeedRequestObject
+<span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>	request.Params = params
+<span id="L237" class="ln">   237  </span>
+<span id="L238" class="ln">   238  </span>	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+<span id="L239" class="ln">   239  </span>		return sh.ssi.GetUsersFeed(ctx.Request().Context(), request.(GetUsersFeedRequestObject))
+<span id="L240" class="ln">   240  </span>	}
+<span id="L241" class="ln">   241  </span>	for _, middleware := range sh.middlewares {
+<span id="L242" class="ln">   242  </span>		handler = middleware(handler, &#34;GetUsersFeed&#34;)
+<span id="L243" class="ln">   243  </span>	}
+<span id="L244" class="ln">   244  </span>
+<span id="L245" class="ln">   245  </span>	response, err := handler(ctx, request)
+<span id="L246" class="ln">   246  </span>
+<span id="L247" class="ln">   247  </span>	if err != nil {
+<span id="L248" class="ln">   248  </span>		return err
+<span id="L249" class="ln">   249  </span>	} else if validResponse, ok := response.(GetUsersFeedResponseObject); ok {
+<span id="L250" class="ln">   250  </span>		return validResponse.VisitGetUsersFeedResponse(ctx.Response())
+<span id="L251" class="ln">   251  </span>	} else if response != nil {
+<span id="L252" class="ln">   252  </span>		return fmt.Errorf(&#34;unexpected response type: %T&#34;, response)
+<span id="L253" class="ln">   253  </span>	}
+<span id="L254" class="ln">   254  </span>	return nil
+<span id="L255" class="ln">   255  </span>}
+<span id="L256" class="ln">   256  </span>
 </pre><p><a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -122,6 +122,16 @@
 				
 			
 				
+				<dd><a href="#BadRequest400">type BadRequest400</a></dd>
+				
+				
+			
+				
+				<dd><a href="#BadRequest400JSONResponse">type BadRequest400JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#EchoRouter">type EchoRouter</a></dd>
 				
 				
@@ -132,11 +142,29 @@
 				
 			
 				
+				<dd><a href="#Forbidden403">type Forbidden403</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Forbidden403JSONResponse">type Forbidden403JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#GetUsersSearch200JSONResponse">type GetUsersSearch200JSONResponse</a></dd>
 				
 				
 					
 					<dd>    <a href="#GetUsersSearch200JSONResponse.VisitGetUsersSearchResponse">func (response GetUsersSearch200JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error</a></dd>
+				
+			
+				
+				<dd><a href="#GetUsersSearch400JSONResponse">type GetUsersSearch400JSONResponse</a></dd>
+				
+				
+					
+					<dd>    <a href="#GetUsersSearch400JSONResponse.VisitGetUsersSearchResponse">func (response GetUsersSearch400JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error</a></dd>
 				
 			
 				
@@ -164,6 +192,14 @@
 				
 			
 				
+				<dd><a href="#GetUsersSearch503JSONResponse">type GetUsersSearch503JSONResponse</a></dd>
+				
+				
+					
+					<dd>    <a href="#GetUsersSearch503JSONResponse.VisitGetUsersSearchResponse">func (response GetUsersSearch503JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error</a></dd>
+				
+			
+				
 				<dd><a href="#GetUsersSearchParams">type GetUsersSearchParams</a></dd>
 				
 				
@@ -175,6 +211,16 @@
 			
 				
 				<dd><a href="#GetUsersSearchResponseObject">type GetUsersSearchResponseObject</a></dd>
+				
+				
+			
+				
+				<dd><a href="#InternalServerError500">type InternalServerError500</a></dd>
+				
+				
+			
+				
+				<dd><a href="#InternalServerError500JSONResponse">type InternalServerError500JSONResponse</a></dd>
 				
 				
 			
@@ -220,6 +266,16 @@
 				
 			
 				
+				<dd><a href="#ServiceUnavailable503">type ServiceUnavailable503</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ServiceUnavailable503JSONResponse">type ServiceUnavailable503JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#StrictHandlerFunc">type StrictHandlerFunc</a></dd>
 				
 				
@@ -231,6 +287,16 @@
 			
 				
 				<dd><a href="#StrictServerInterface">type StrictServerInterface</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Unauthorized401">type Unauthorized401</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Unauthorized401JSONResponse">type Unauthorized401JSONResponse</a></dd>
 				
 				
 			
@@ -322,7 +388,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="ActiveParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3079:3102#L112">ActiveParam</a>
+			</p><h2 id="ActiveParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3078:3101#L112">ActiveParam</a>
 				<a class="permalink" href="#ActiveParam">¶</a>
 				
 				
@@ -330,6 +396,51 @@ including any per-operation middleware.
 			<p>ActiveParam defines model for ActiveParam.
 
 			</p><pre>type ActiveParam = <a href="../../../../../../../../builtin/#bool">bool</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3379:3413#L124">BadRequest400</a>
+				<a class="permalink" href="#BadRequest400">¶</a>
+				
+				
+			</h2>
+			<p>BadRequest400 エラーレスポンスの共通スキーマ
+
+			</p><pre>type BadRequest400 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=4984:5028#L109">BadRequest400JSONResponse</a>
+				<a class="permalink" href="#BadRequest400JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type BadRequest400JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
 
 			
 
@@ -380,7 +491,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=318:681#L3">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=318:680#L3">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
@@ -398,7 +509,7 @@ either of them for path registration
     Message <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;message&#34;`
 
 <span id="ErrorResponse.RequestId"></span>    <span class="comment">// RequestId リクエストID</span>
-    RequestId <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;request_id&#34;`
+    RequestId <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;requestId&#34;`
 }
 </pre>
 
@@ -416,7 +527,52 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersSearch200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5165:5219#L117">GetUsersSearch200JSONResponse</a>
+			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3477:3510#L127">Forbidden403</a>
+				<a class="permalink" href="#Forbidden403">¶</a>
+				
+				
+			</h2>
+			<p>Forbidden403 エラーレスポンスの共通スキーマ
+
+			</p><pre>type Forbidden403 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Forbidden403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5030:5073#L111">Forbidden403JSONResponse</a>
+				<a class="permalink" href="#Forbidden403JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type Forbidden403JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetUsersSearch200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5413:5467#L127">GetUsersSearch200JSONResponse</a>
 				<a class="permalink" href="#GetUsersSearch200JSONResponse">¶</a>
 				
 				
@@ -436,7 +592,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersSearch200JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5221:5323#L119">VisitGetUsersSearchResponse</a>
+				<h3 id="GetUsersSearch200JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5469:5571#L129">VisitGetUsersSearchResponse</a>
 					<a class="permalink" href="#GetUsersSearch200JSONResponse.VisitGetUsersSearchResponse">¶</a>
 					
 					
@@ -450,13 +606,49 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersSearch401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5542:5590#L131">GetUsersSearch401JSONResponse</a>
+			<h2 id="GetUsersSearch400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5790:5860#L141">GetUsersSearch400JSONResponse</a>
+				<a class="permalink" href="#GetUsersSearch400JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetUsersSearch400JSONResponse struct{ <a href="#BadRequest400JSONResponse">BadRequest400JSONResponse</a> }
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="GetUsersSearch400JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5862:5964#L143">VisitGetUsersSearchResponse</a>
+					<a class="permalink" href="#GetUsersSearch400JSONResponse.VisitGetUsersSearchResponse">¶</a>
+					
+					
+				</h3>
+				<pre>func (response <a href="#GetUsersSearch400JSONResponse">GetUsersSearch400JSONResponse</a>) VisitGetUsersSearchResponse(w <a href="../../../../../../../../net/http/">http</a>.<a href="../../../../../../../../net/http/#ResponseWriter">ResponseWriter</a>) <a href="../../../../../../../../builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GetUsersSearch401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6183:6255#L155">GetUsersSearch401JSONResponse</a>
 				<a class="permalink" href="#GetUsersSearch401JSONResponse">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type GetUsersSearch401JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+			<pre>type GetUsersSearch401JSONResponse struct{ <a href="#Unauthorized401JSONResponse">Unauthorized401JSONResponse</a> }
+</pre>
 
 			
 
@@ -470,7 +662,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersSearch401JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5592:5694#L133">VisitGetUsersSearchResponse</a>
+				<h3 id="GetUsersSearch401JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6257:6359#L157">VisitGetUsersSearchResponse</a>
 					<a class="permalink" href="#GetUsersSearch401JSONResponse.VisitGetUsersSearchResponse">¶</a>
 					
 					
@@ -484,13 +676,14 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersSearch403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5913:5961#L145">GetUsersSearch403JSONResponse</a>
+			<h2 id="GetUsersSearch403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6578:6647#L169">GetUsersSearch403JSONResponse</a>
 				<a class="permalink" href="#GetUsersSearch403JSONResponse">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type GetUsersSearch403JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+			<pre>type GetUsersSearch403JSONResponse struct{ <a href="#Forbidden403JSONResponse">Forbidden403JSONResponse</a> }
+</pre>
 
 			
 
@@ -504,7 +697,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersSearch403JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5963:6065#L147">VisitGetUsersSearchResponse</a>
+				<h3 id="GetUsersSearch403JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6649:6751#L171">VisitGetUsersSearchResponse</a>
 					<a class="permalink" href="#GetUsersSearch403JSONResponse.VisitGetUsersSearchResponse">¶</a>
 					
 					
@@ -518,13 +711,16 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersSearch500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6284:6332#L159">GetUsersSearch500JSONResponse</a>
+			<h2 id="GetUsersSearch500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6970:7051#L183">GetUsersSearch500JSONResponse</a>
 				<a class="permalink" href="#GetUsersSearch500JSONResponse">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type GetUsersSearch500JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+			<pre>type GetUsersSearch500JSONResponse struct {
+    <a href="#InternalServerError500JSONResponse">InternalServerError500JSONResponse</a>
+}
+</pre>
 
 			
 
@@ -538,7 +734,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersSearch500JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6334:6436#L161">VisitGetUsersSearchResponse</a>
+				<h3 id="GetUsersSearch500JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=7053:7155#L187">VisitGetUsersSearchResponse</a>
 					<a class="permalink" href="#GetUsersSearch500JSONResponse.VisitGetUsersSearchResponse">¶</a>
 					
 					
@@ -552,7 +748,44 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersSearchParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3593:4241#L130">GetUsersSearchParams</a>
+			<h2 id="GetUsersSearch503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=7374:7454#L199">GetUsersSearch503JSONResponse</a>
+				<a class="permalink" href="#GetUsersSearch503JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetUsersSearch503JSONResponse struct {
+    <a href="#ServiceUnavailable503JSONResponse">ServiceUnavailable503JSONResponse</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="GetUsersSearch503JSONResponse.VisitGetUsersSearchResponse">func (GetUsersSearch503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=7456:7558#L203">VisitGetUsersSearchResponse</a>
+					<a class="permalink" href="#GetUsersSearch503JSONResponse.VisitGetUsersSearchResponse">¶</a>
+					
+					
+				</h3>
+				<pre>func (response <a href="#GetUsersSearch503JSONResponse">GetUsersSearch503JSONResponse</a>) VisitGetUsersSearchResponse(w <a href="../../../../../../../../net/http/">http</a>.<a href="../../../../../../../../net/http/#ResponseWriter">ResponseWriter</a>) <a href="../../../../../../../../builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GetUsersSearchParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=4123:4771#L145">GetUsersSearchParams</a>
 				<a class="permalink" href="#GetUsersSearchParams">¶</a>
 				
 				
@@ -588,7 +821,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersSearchRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=4984:5056#L109">GetUsersSearchRequestObject</a>
+			<h2 id="GetUsersSearchRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5232:5304#L119">GetUsersSearchRequestObject</a>
 				<a class="permalink" href="#GetUsersSearchRequestObject">¶</a>
 				
 				
@@ -613,7 +846,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersSearchResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5058:5163#L113">GetUsersSearchResponseObject</a>
+			<h2 id="GetUsersSearchResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5306:5411#L123">GetUsersSearchResponseObject</a>
 				<a class="permalink" href="#GetUsersSearchResponseObject">¶</a>
 				
 				
@@ -637,7 +870,52 @@ either of them for path registration
 		
 			
 			
-			<h2 id="KeywordParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3152:3178#L115">KeywordParam</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3584:3627#L130">InternalServerError500</a>
+				<a class="permalink" href="#InternalServerError500">¶</a>
+				
+				
+			</h2>
+			<p>InternalServerError500 エラーレスポンスの共通スキーマ
+
+			</p><pre>type InternalServerError500 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5075:5128#L113">InternalServerError500JSONResponse</a>
+				<a class="permalink" href="#InternalServerError500JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type InternalServerError500JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="KeywordParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3151:3177#L115">KeywordParam</a>
 				<a class="permalink" href="#KeywordParam">¶</a>
 				
 				
@@ -660,7 +938,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PageParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3222:3242#L118">PageParam</a>
+			<h2 id="PageParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3221:3241#L118">PageParam</a>
 				<a class="permalink" href="#PageParam">¶</a>
 				
 				
@@ -683,7 +961,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PaginationMetadataResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=759:980#L18">PaginationMetadataResponse</a>
+			<h2 id="PaginationMetadataResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=758:979#L18">PaginationMetadataResponse</a>
 				<a class="permalink" href="#PaginationMetadataResponse">¶</a>
 				
 				
@@ -716,7 +994,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PerPageParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3292:3315#L121">PerPageParam</a>
+			<h2 id="PerPageParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3291:3314#L121">PerPageParam</a>
 				<a class="permalink" href="#PerPageParam">¶</a>
 				
 				
@@ -796,7 +1074,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="NewStrictHandler">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=7088:7188#L183">NewStrictHandler</a>
+				<h3 id="NewStrictHandler">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=8210:8310#L225">NewStrictHandler</a>
 					<a class="permalink" href="#NewStrictHandler">¶</a>
 					
 					
@@ -850,7 +1128,52 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="StrictHandlerFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6925:6996#L180">StrictHandlerFunc</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3700:3742#L133">ServiceUnavailable503</a>
+				<a class="permalink" href="#ServiceUnavailable503">¶</a>
+				
+				
+			</h2>
+			<p>ServiceUnavailable503 エラーレスポンスの共通スキーマ
+
+			</p><pre>type ServiceUnavailable503 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5130:5182#L115">ServiceUnavailable503JSONResponse</a>
+				<a class="permalink" href="#ServiceUnavailable503JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ServiceUnavailable503JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=8047:8118#L222">StrictHandlerFunc</a>
 				<a class="permalink" href="#StrictHandlerFunc">¶</a>
 				
 				
@@ -872,7 +1195,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6997:7086#L181">StrictMiddlewareFunc</a>
+			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=8119:8208#L223">StrictMiddlewareFunc</a>
 				<a class="permalink" href="#StrictMiddlewareFunc">¶</a>
 				
 				
@@ -894,7 +1217,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictServerInterface">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=6712:6923#L174">StrictServerInterface</a>
+			<h2 id="StrictServerInterface">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=7834:8045#L216">StrictServerInterface</a>
 				<a class="permalink" href="#StrictServerInterface">¶</a>
 				
 				
@@ -921,7 +1244,52 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UserResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=1053:1789#L30">UserResponse</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=3809:3845#L136">Unauthorized401</a>
+				<a class="permalink" href="#Unauthorized401">¶</a>
+				
+				
+			</h2>
+			<p>Unauthorized401 エラーレスポンスの共通スキーマ
+
+			</p><pre>type Unauthorized401 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Unauthorized401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/server.gen.go.html?s=5184:5230#L117">Unauthorized401JSONResponse</a>
+				<a class="permalink" href="#Unauthorized401JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type Unauthorized401JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UserResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=1052:1788#L30">UserResponse</a>
 				<a class="permalink" href="#UserResponse">¶</a>
 				
 				
@@ -941,10 +1309,10 @@ either of them for path registration
 <span id="UserResponse.Email"></span>    <span class="comment">// Email メールアドレス</span>
     Email <a href="../../../../../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../../../../../github.com/oapi-codegen/runtime/types/#Email">Email</a> `json:&#34;email&#34;`
 
-<span id="UserResponse.FirstName"></span>    <span class="comment">// FirstName 苗字</span>
+<span id="UserResponse.FirstName"></span>    <span class="comment">// FirstName 名前</span>
     FirstName <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;firstName&#34;`
 
-<span id="UserResponse.LastName"></span>    <span class="comment">// LastName 名前</span>
+<span id="UserResponse.LastName"></span>    <span class="comment">// LastName 苗字</span>
     LastName <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;lastName&#34;`
 
 <span id="UserResponse.Phone"></span>    <span class="comment">// Phone 電話番号</span>
@@ -975,7 +1343,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UsersSearchResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=1853:2135#L63">UsersSearchResponse</a>
+			<h2 id="UsersSearchResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=1852:2134#L63">UsersSearchResponse</a>
 				<a class="permalink" href="#UsersSearchResponse">¶</a>
 				
 				
@@ -1009,7 +1377,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UsersSearchResponseItem">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=2207:3031#L76">UsersSearchResponseItem</a>
+			<h2 id="UsersSearchResponseItem">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?s=2206:3030#L76">UsersSearchResponseItem</a>
 				<a class="permalink" href="#UsersSearchResponseItem">¶</a>
 				
 				
@@ -1029,10 +1397,10 @@ either of them for path registration
 <span id="UsersSearchResponseItem.Email"></span>    <span class="comment">// Email メールアドレス</span>
     Email <a href="../../../../../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../../../../../github.com/oapi-codegen/runtime/types/#Email">Email</a> `json:&#34;email&#34;`
 
-<span id="UsersSearchResponseItem.FirstName"></span>    <span class="comment">// FirstName 苗字</span>
+<span id="UsersSearchResponseItem.FirstName"></span>    <span class="comment">// FirstName 名前</span>
     FirstName <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;firstName&#34;`
 
-<span id="UsersSearchResponseItem.LastName"></span>    <span class="comment">// LastName 名前</span>
+<span id="UsersSearchResponseItem.LastName"></span>    <span class="comment">// LastName 苗字</span>
     LastName <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;lastName&#34;`
 
 <span id="UsersSearchResponseItem.Phone"></span>    <span class="comment">// Phone 電話番号</span>

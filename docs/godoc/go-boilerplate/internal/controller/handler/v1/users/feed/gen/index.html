@@ -119,6 +119,16 @@
 			
 			
 				
+				<dd><a href="#BadRequest400">type BadRequest400</a></dd>
+				
+				
+			
+				
+				<dd><a href="#BadRequest400JSONResponse">type BadRequest400JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#CursorAfterParam">type CursorAfterParam</a></dd>
 				
 				
@@ -144,11 +154,29 @@
 				
 			
 				
+				<dd><a href="#Forbidden403">type Forbidden403</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Forbidden403JSONResponse">type Forbidden403JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#GetUsersFeed200JSONResponse">type GetUsersFeed200JSONResponse</a></dd>
 				
 				
 					
 					<dd>    <a href="#GetUsersFeed200JSONResponse.VisitGetUsersFeedResponse">func (response GetUsersFeed200JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error</a></dd>
+				
+			
+				
+				<dd><a href="#GetUsersFeed400JSONResponse">type GetUsersFeed400JSONResponse</a></dd>
+				
+				
+					
+					<dd>    <a href="#GetUsersFeed400JSONResponse.VisitGetUsersFeedResponse">func (response GetUsersFeed400JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error</a></dd>
 				
 			
 				
@@ -176,6 +204,14 @@
 				
 			
 				
+				<dd><a href="#GetUsersFeed503JSONResponse">type GetUsersFeed503JSONResponse</a></dd>
+				
+				
+					
+					<dd>    <a href="#GetUsersFeed503JSONResponse.VisitGetUsersFeedResponse">func (response GetUsersFeed503JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error</a></dd>
+				
+			
+				
 				<dd><a href="#GetUsersFeedParams">type GetUsersFeedParams</a></dd>
 				
 				
@@ -187,6 +223,16 @@
 			
 				
 				<dd><a href="#GetUsersFeedResponseObject">type GetUsersFeedResponseObject</a></dd>
+				
+				
+			
+				
+				<dd><a href="#InternalServerError500">type InternalServerError500</a></dd>
+				
+				
+			
+				
+				<dd><a href="#InternalServerError500JSONResponse">type InternalServerError500JSONResponse</a></dd>
 				
 				
 			
@@ -212,6 +258,16 @@
 				
 			
 				
+				<dd><a href="#ServiceUnavailable503">type ServiceUnavailable503</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ServiceUnavailable503JSONResponse">type ServiceUnavailable503JSONResponse</a></dd>
+				
+				
+			
+				
 				<dd><a href="#StrictHandlerFunc">type StrictHandlerFunc</a></dd>
 				
 				
@@ -223,6 +279,16 @@
 			
 				
 				<dd><a href="#StrictServerInterface">type StrictServerInterface</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Unauthorized401">type Unauthorized401</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Unauthorized401JSONResponse">type Unauthorized401JSONResponse</a></dd>
 				
 				
 			
@@ -317,7 +383,52 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="CursorAfterParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2346:2376#L74">CursorAfterParam</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2521:2555#L80">BadRequest400</a>
+				<a class="permalink" href="#BadRequest400">¶</a>
+				
+				
+			</h2>
+			<p>BadRequest400 エラーレスポンスの共通スキーマ
+
+			</p><pre>type BadRequest400 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4259:4303#L97">BadRequest400JSONResponse</a>
+				<a class="permalink" href="#BadRequest400JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type BadRequest400JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CursorAfterParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2341:2371#L74">CursorAfterParam</a>
 				<a class="permalink" href="#CursorAfterParam">¶</a>
 				
 				
@@ -340,7 +451,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CursorFirstParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2434:2461#L77">CursorFirstParam</a>
+			<h2 id="CursorFirstParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2429:2456#L77">CursorFirstParam</a>
 				<a class="permalink" href="#CursorFirstParam">¶</a>
 				
 				
@@ -363,7 +474,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CursorPaginationMetadataResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=415:686#L7">CursorPaginationMetadataResponse</a>
+			<h2 id="CursorPaginationMetadataResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=415:684#L7">CursorPaginationMetadataResponse</a>
 				<a class="permalink" href="#CursorPaginationMetadataResponse">¶</a>
 				
 				
@@ -372,10 +483,10 @@ including any per-operation middleware.
 
 			</p><pre>type CursorPaginationMetadataResponse struct {
 <span id="CursorPaginationMetadataResponse.HasNext"></span>    <span class="comment">// HasNext 次ページが存在するかどうか</span>
-    HasNext <a href="../../../../../../../../builtin/#bool">bool</a> `json:&#34;has_next&#34;`
+    HasNext <a href="../../../../../../../../builtin/#bool">bool</a> `json:&#34;hasNext&#34;`
 
 <span id="CursorPaginationMetadataResponse.NextCursor"></span>    <span class="comment">// NextCursor 次ページ取得用のカーソル。最終ページの場合は null です。</span>
-    NextCursor *<a href="../../../../../../../../builtin/#string">string</a> `json:&#34;next_cursor&#34;`
+    NextCursor *<a href="../../../../../../../../builtin/#string">string</a> `json:&#34;nextCursor&#34;`
 }
 </pre>
 
@@ -428,7 +539,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=751:1114#L16">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=749:1111#L16">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
@@ -446,7 +557,7 @@ either of them for path registration
     Message <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;message&#34;`
 
 <span id="ErrorResponse.RequestId"></span>    <span class="comment">// RequestId リクエストID</span>
-    RequestId <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;request_id&#34;`
+    RequestId <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;requestId&#34;`
 }
 </pre>
 
@@ -464,7 +575,52 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersFeed200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4432:4482#L105">GetUsersFeed200JSONResponse</a>
+			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2619:2652#L83">Forbidden403</a>
+				<a class="permalink" href="#Forbidden403">¶</a>
+				
+				
+			</h2>
+			<p>Forbidden403 エラーレスポンスの共通スキーマ
+
+			</p><pre>type Forbidden403 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Forbidden403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4305:4348#L99">Forbidden403JSONResponse</a>
+				<a class="permalink" href="#Forbidden403JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type Forbidden403JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetUsersFeed200JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4680:4730#L115">GetUsersFeed200JSONResponse</a>
 				<a class="permalink" href="#GetUsersFeed200JSONResponse">¶</a>
 				
 				
@@ -484,7 +640,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersFeed200JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4484:4582#L107">VisitGetUsersFeedResponse</a>
+				<h3 id="GetUsersFeed200JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed200JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4732:4830#L117">VisitGetUsersFeedResponse</a>
 					<a class="permalink" href="#GetUsersFeed200JSONResponse.VisitGetUsersFeedResponse">¶</a>
 					
 					
@@ -498,13 +654,49 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersFeed401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4801:4847#L119">GetUsersFeed401JSONResponse</a>
+			<h2 id="GetUsersFeed400JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5049:5117#L129">GetUsersFeed400JSONResponse</a>
+				<a class="permalink" href="#GetUsersFeed400JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetUsersFeed400JSONResponse struct{ <a href="#BadRequest400JSONResponse">BadRequest400JSONResponse</a> }
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="GetUsersFeed400JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed400JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5119:5217#L131">VisitGetUsersFeedResponse</a>
+					<a class="permalink" href="#GetUsersFeed400JSONResponse.VisitGetUsersFeedResponse">¶</a>
+					
+					
+				</h3>
+				<pre>func (response <a href="#GetUsersFeed400JSONResponse">GetUsersFeed400JSONResponse</a>) VisitGetUsersFeedResponse(w <a href="../../../../../../../../net/http/">http</a>.<a href="../../../../../../../../net/http/#ResponseWriter">ResponseWriter</a>) <a href="../../../../../../../../builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GetUsersFeed401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5436:5506#L143">GetUsersFeed401JSONResponse</a>
 				<a class="permalink" href="#GetUsersFeed401JSONResponse">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type GetUsersFeed401JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+			<pre>type GetUsersFeed401JSONResponse struct{ <a href="#Unauthorized401JSONResponse">Unauthorized401JSONResponse</a> }
+</pre>
 
 			
 
@@ -518,7 +710,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersFeed401JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4849:4947#L121">VisitGetUsersFeedResponse</a>
+				<h3 id="GetUsersFeed401JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed401JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5508:5606#L145">VisitGetUsersFeedResponse</a>
 					<a class="permalink" href="#GetUsersFeed401JSONResponse.VisitGetUsersFeedResponse">¶</a>
 					
 					
@@ -532,13 +724,14 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersFeed403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5166:5212#L133">GetUsersFeed403JSONResponse</a>
+			<h2 id="GetUsersFeed403JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5825:5892#L157">GetUsersFeed403JSONResponse</a>
 				<a class="permalink" href="#GetUsersFeed403JSONResponse">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type GetUsersFeed403JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+			<pre>type GetUsersFeed403JSONResponse struct{ <a href="#Forbidden403JSONResponse">Forbidden403JSONResponse</a> }
+</pre>
 
 			
 
@@ -552,7 +745,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersFeed403JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5214:5312#L135">VisitGetUsersFeedResponse</a>
+				<h3 id="GetUsersFeed403JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed403JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5894:5992#L159">VisitGetUsersFeedResponse</a>
 					<a class="permalink" href="#GetUsersFeed403JSONResponse.VisitGetUsersFeedResponse">¶</a>
 					
 					
@@ -566,13 +759,16 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersFeed500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5531:5577#L147">GetUsersFeed500JSONResponse</a>
+			<h2 id="GetUsersFeed500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=6211:6290#L171">GetUsersFeed500JSONResponse</a>
 				<a class="permalink" href="#GetUsersFeed500JSONResponse">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type GetUsersFeed500JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+			<pre>type GetUsersFeed500JSONResponse struct {
+    <a href="#InternalServerError500JSONResponse">InternalServerError500JSONResponse</a>
+}
+</pre>
 
 			
 
@@ -586,7 +782,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetUsersFeed500JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5579:5677#L149">VisitGetUsersFeedResponse</a>
+				<h3 id="GetUsersFeed500JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed500JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=6292:6390#L175">VisitGetUsersFeedResponse</a>
 					<a class="permalink" href="#GetUsersFeed500JSONResponse.VisitGetUsersFeedResponse">¶</a>
 					
 					
@@ -600,7 +796,44 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersFeedParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2735:3064#L86">GetUsersFeedParams</a>
+			<h2 id="GetUsersFeed503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=6609:6687#L187">GetUsersFeed503JSONResponse</a>
+				<a class="permalink" href="#GetUsersFeed503JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetUsersFeed503JSONResponse struct {
+    <a href="#ServiceUnavailable503JSONResponse">ServiceUnavailable503JSONResponse</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="GetUsersFeed503JSONResponse.VisitGetUsersFeedResponse">func (GetUsersFeed503JSONResponse) <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=6689:6787#L191">VisitGetUsersFeedResponse</a>
+					<a class="permalink" href="#GetUsersFeed503JSONResponse.VisitGetUsersFeedResponse">¶</a>
+					
+					
+				</h3>
+				<pre>func (response <a href="#GetUsersFeed503JSONResponse">GetUsersFeed503JSONResponse</a>) VisitGetUsersFeedResponse(w <a href="../../../../../../../../net/http/">http</a>.<a href="../../../../../../../../net/http/#ResponseWriter">ResponseWriter</a>) <a href="../../../../../../../../builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GetUsersFeedParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=3261:3590#L101">GetUsersFeedParams</a>
 				<a class="permalink" href="#GetUsersFeedParams">¶</a>
 				
 				
@@ -630,7 +863,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersFeedRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4259:4327#L97">GetUsersFeedRequestObject</a>
+			<h2 id="GetUsersFeedRequestObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4507:4575#L107">GetUsersFeedRequestObject</a>
 				<a class="permalink" href="#GetUsersFeedRequestObject">¶</a>
 				
 				
@@ -655,7 +888,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetUsersFeedResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4329:4430#L101">GetUsersFeedResponseObject</a>
+			<h2 id="GetUsersFeedResponseObject">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4577:4678#L111">GetUsersFeedResponseObject</a>
 				<a class="permalink" href="#GetUsersFeedResponseObject">¶</a>
 				
 				
@@ -664,6 +897,51 @@ either of them for path registration
 			<pre>type GetUsersFeedResponseObject interface {
     VisitGetUsersFeedResponse(w <a href="../../../../../../../../net/http/">http</a>.<a href="../../../../../../../../net/http/#ResponseWriter">ResponseWriter</a>) <a href="../../../../../../../../builtin/#error">error</a>
 }</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2726:2769#L86">InternalServerError500</a>
+				<a class="permalink" href="#InternalServerError500">¶</a>
+				
+				
+			</h2>
+			<p>InternalServerError500 エラーレスポンスの共通スキーマ
+
+			</p><pre>type InternalServerError500 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4350:4403#L101">InternalServerError500JSONResponse</a>
+				<a class="permalink" href="#InternalServerError500JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type InternalServerError500JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
 
 			
 
@@ -736,7 +1014,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="NewStrictHandler">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=6327:6427#L171">NewStrictHandler</a>
+				<h3 id="NewStrictHandler">func <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=7437:7537#L213">NewStrictHandler</a>
 					<a class="permalink" href="#NewStrictHandler">¶</a>
 					
 					
@@ -790,7 +1068,52 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="StrictHandlerFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=6164:6235#L168">StrictHandlerFunc</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2842:2884#L89">ServiceUnavailable503</a>
+				<a class="permalink" href="#ServiceUnavailable503">¶</a>
+				
+				
+			</h2>
+			<p>ServiceUnavailable503 エラーレスポンスの共通スキーマ
+
+			</p><pre>type ServiceUnavailable503 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4405:4457#L103">ServiceUnavailable503JSONResponse</a>
+				<a class="permalink" href="#ServiceUnavailable503JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ServiceUnavailable503JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=7274:7345#L210">StrictHandlerFunc</a>
 				<a class="permalink" href="#StrictHandlerFunc">¶</a>
 				
 				
@@ -812,7 +1135,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=6236:6325#L169">StrictMiddlewareFunc</a>
+			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=7346:7435#L211">StrictMiddlewareFunc</a>
 				<a class="permalink" href="#StrictMiddlewareFunc">¶</a>
 				
 				
@@ -834,7 +1157,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictServerInterface">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=5953:6162#L162">StrictServerInterface</a>
+			<h2 id="StrictServerInterface">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=7063:7272#L204">StrictServerInterface</a>
 				<a class="permalink" href="#StrictServerInterface">¶</a>
 				
 				
@@ -861,7 +1184,52 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UserResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=1187:1923#L31">UserResponse</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=2951:2987#L92">Unauthorized401</a>
+				<a class="permalink" href="#Unauthorized401">¶</a>
+				
+				
+			</h2>
+			<p>Unauthorized401 エラーレスポンスの共通スキーマ
+
+			</p><pre>type Unauthorized401 = <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Unauthorized401JSONResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/server.gen.go.html?s=4459:4505#L105">Unauthorized401JSONResponse</a>
+				<a class="permalink" href="#Unauthorized401JSONResponse">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type Unauthorized401JSONResponse <a href="#ErrorResponse">ErrorResponse</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UserResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=1184:1920#L31">UserResponse</a>
 				<a class="permalink" href="#UserResponse">¶</a>
 				
 				
@@ -881,10 +1249,10 @@ either of them for path registration
 <span id="UserResponse.Email"></span>    <span class="comment">// Email メールアドレス</span>
     Email <a href="../../../../../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../../../../../github.com/oapi-codegen/runtime/types/#Email">Email</a> `json:&#34;email&#34;`
 
-<span id="UserResponse.FirstName"></span>    <span class="comment">// FirstName 苗字</span>
+<span id="UserResponse.FirstName"></span>    <span class="comment">// FirstName 名前</span>
     FirstName <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;firstName&#34;`
 
-<span id="UserResponse.LastName"></span>    <span class="comment">// LastName 名前</span>
+<span id="UserResponse.LastName"></span>    <span class="comment">// LastName 苗字</span>
     LastName <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;lastName&#34;`
 
 <span id="UserResponse.Phone"></span>    <span class="comment">// Phone 電話番号</span>
@@ -915,7 +1283,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UsersFeedResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=1983:2288#L64">UsersFeedResponse</a>
+			<h2 id="UsersFeedResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/feed/gen/type.gen.go.html?s=1980:2283#L64">UsersFeedResponse</a>
 				<a class="permalink" href="#UsersFeedResponse">¶</a>
 				
 				
@@ -924,10 +1292,10 @@ either of them for path registration
 
 			</p><pre>type UsersFeedResponse struct {
 <span id="UsersFeedResponse.HasNext"></span>    <span class="comment">// HasNext 次ページが存在するかどうか</span>
-    HasNext <a href="../../../../../../../../builtin/#bool">bool</a> `json:&#34;has_next&#34;`
+    HasNext <a href="../../../../../../../../builtin/#bool">bool</a> `json:&#34;hasNext&#34;`
 
 <span id="UsersFeedResponse.NextCursor"></span>    <span class="comment">// NextCursor 次ページ取得用のカーソル。最終ページの場合は null です。</span>
-    NextCursor *<a href="../../../../../../../../builtin/#string">string</a>        `json:&#34;next_cursor&#34;`
+    NextCursor *<a href="../../../../../../../../builtin/#string">string</a>        `json:&#34;nextCursor&#34;`
 <span id="UsersFeedResponse.Users"></span>    Users      []<a href="#UserResponse">UserResponse</a> `json:&#34;users&#34;`
 }
 </pre>

@@ -22,19 +22,19 @@ This package handles the generation and management of HTTP error responses.
 
 ```json
 {
-  "Code": "INTERNAL_ERROR",
-  "Details": ["Specific error description"],
-  "Message": "An unexpected error occurred on the server. Please try again later.",
-  "RequestID": "123e4567-e89b-12d3-a456-426614174000"
+  "code": "INTERNAL_ERROR",
+  "message": "An unexpected error occurred on the server. Please try again later.",
+  "details": ["Specific error description"],
+  "requestId": "123e4567-e89b-12d3-a456-426614174000"
 }
 ```
 
 |Field|Description|
 |---|---|
-|`Code`|Application-level error identifier|
-|`Details`|Additional information for debugging (only publicly safe information)|
-|`Message`|User-friendly message for end users|
-|`RequestID`|Unique ID for request tracing|
+|`code`|Application-level error identifier|
+|`message`|User-friendly message for end users|
+|`details`|Additional information for debugging (only publicly safe information)|
+|`requestId`|Unique ID for request tracing|
 
 HTTP status codes are returned in the response header, and internal information such as stack traces is output only to logs.
 
@@ -59,6 +59,7 @@ HTTP status codes are returned in the response header, and internal information 
 |`ErrConflict`|409 Conflict|`RESOURCE_CONFLICT`|
 |`ErrValidation`|422 Unprocessable Entity|`VALIDATION_FAILED`|
 |`ErrTooManyRequests`|429 Too Many Requests|`TOO_MANY_REQUESTS`|
+|`ErrCanceled`|499 Client Closed Request|`CLIENT_CLOSED_REQUEST`|
 |`ErrUnimplemented`|501 Not Implemented|`NOT_AVAILABLE`|
 |`ErrUnavailable`|503 Service Unavailable|`NOT_AVAILABLE`|
 |Other|500 Internal Server Error|`INTERNAL_ERROR`|

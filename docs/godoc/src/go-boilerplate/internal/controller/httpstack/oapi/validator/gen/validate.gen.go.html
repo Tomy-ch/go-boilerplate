@@ -77,182 +77,188 @@
 <span id="L20" class="ln">    20  </span><span class="comment">// const string: with thousands of chunks the chained `+` fold is several</span>
 <span id="L21" class="ln">    21  </span><span class="comment">// times slower for the Go compiler than parsing a slice literal.</span>
 <span id="L22" class="ln">    22  </span>var swaggerSpec = []string{
-<span id="L23" class="ln">    23  </span>	&#34;7FztV9RIuv9XcnP3w+65Dd2N6Dp8uevbzGVWRlZ074t6PUVSTcdJJz1Jtcp4OIekRUHgwqDioDj4MgKC&#34;,
-<span id="L24" class="ln">    24  </span>	&#34;NLrjuAiIf0yRbvqT/8I9VZWkk3TSdLvgyywf9NCQPPW8/p6nnnqqr/CCmsmqClSQzrdd4bNAAxmIoEY/&#34;,
-<span id="L25" class="ln">    25  </span>	&#34;HRKQdBF2kt+RjyLUBU3KIklV+Da+OD1k3XiNjQWcv47z69h8i40CNt5ic8Ja3th68RAb89iYwuaw9eCl&#34;,
-<span id="L26" class="ln">    26  </span>	&#34;NT6IjWWk5SDuN0pXHzb6ZgrIOnnVGpjHxix53H01+qXiyHWrcBcbd8hSxlU+xkuE8e9yUOvlY7wCMpBv&#34;,
-<span id="L27" class="ln">    27  </span>	&#34;4wEVko/xupCGGUAEhZdBJitDvo0wHONRb5Y82K2qMgQK39cX44/kNF3VDqUQ1KLU8+whzt+lPK5YY5PW&#34;,
-<span id="L28" class="ln">    28  </span>	&#34;xp3SrXlsFDZXRsv9Y8Uf/w+bi/Svb3B+Efeb1sBg+cGS+woRi74VkKk0bZRuP6EybZA/9ZtRYhHefFLZ&#34;,
-<span id="L29" class="ln">    29  </span>	&#34;YuhIk5QejxRfSpqOIqRgPGyuvSrefk6Zv1GeGo9YMUXo+FYUYQrkZMS37U/EKkolHzLgspTJZfi2lgT5&#34;,
-<span id="L30" class="ln">    30  </span>	&#34;JCnsU9JVtqQg2AM1yuafYe8lVROjWByYL05eL/48XXr5CJtLRH35Zfr/UASj3zJ64SZ3fuIqT1UrrhP0&#34;,
-<span id="L31" class="ln">    31  </span>	&#34;RIWFa8HS7QVr7O/v1geT2BjG5pA1N0xsZg6/W49iLAt6YLgCkx79JbdVWCfxykgOkxUnM0xszGDzBjYK&#34;,
-<span id="L32" class="ln">    32  </span>	&#34;XktHsQe18zVY9No46bVxsg4bn9ah1i5G6nSWMvyK/G8UTp9uP+qwmAUoXeEwp0PtvERspsHvcpIGRSeG&#34;,
-<span id="L33" class="ln">    33  </span>	&#34;wyydbNkHW/cf+GMTPPhFd1OyRdzXBFr3H2hqbTlwINma/GNrIpHgY3xK1TIAEeo5Kcwd+hzqFDNZTHWC&#34;,
-<span id="L34" class="ln">    34  </span>	&#34;HkkBhP0OiIAIEDgJ9ayq6JCirKZmoYYkSN9IA/28Ai+j2hiCjRFr6Udr2gY54lPGU2xcw8YwH9sOsWI8&#34;,
-<span id="L35" class="ln">    35  </span>	&#34;WeC8QHmrH6sCEFWc7i/9ano4KriwxCk5WeawMedikieger/WOo60H2i/0H6p48J/o46jx1DH0S9Pdxw9&#34;,
-<span id="L36" class="ln">    36  </span>	&#34;dID9OwzaFaJpQgR0V4nhCbyKWc/4RIpVtHjOfU/tvgAFRKQ/pmmq5rVAwL/MeZx/SjHjGTZf4/x9nP+F&#34;,
-<span id="L37" class="ln">    37  </span>	&#34;/GAUrIEX5f675GcbWn7iYwH7CaoYQrP4dKb46Hnp7lVsLFrXZ0vj16yx5a38G5KL3OXMX1ygqujr2H8d&#34;,
-<span id="L38" class="ln">    38  </span>	&#34;6ug8fuz8sZMnT5ys9rcYL0IEJFmvJYdR2Hr6S+nl82J+wHrw4veba2vFq2N/8C5zJuRpbBSKk9dLiw+S&#34;,
-<span id="L39" class="ln">    39  </span>	&#34;fKzWn1uIkiUEM3pIXnEZBpoGesnnDNR1AhtV/G6urpYnb2JjZGthCZsGceuKJR7ifB6ba8zXfAqyCndL&#34;,
-<span id="L40" class="ln">    40  </span>	&#34;G0+xcRubIxS/It+pYo34D9QRwYgQlFnA5jKhRlxgkGJMZVHQLYgw1ZOWLnwrZxQ1+52mo9zFS5d7v+e3&#34;,
-<span id="L41" class="ln">    41  </span>	&#34;c1TqIBU1+LgI89b/gEBG6Vru+iuVdpwZB+d/JPFJmDawOUdVsGwHcNCfK/Hp92EdAZTTt12qNLZBEahA&#34;,
-<span id="L42" class="ln">    42  </span>	&#34;qV5zKrDX2Jwo/bwaqEoqulO/3VZHNgNh6mgES2UpI6F6U56b7HxpK5icYryaSukwhKpHGws4f5s6Xh7n&#34;,
-<span id="L43" class="ln">    43  </span>	&#34;B70UQwkiFQE5tJIJYynhSUGSgg608qEZ1KtNtkDMVocrQZh2T0Ig9jbga89I5W0+xvnRf8zjQDYrSwI1&#34;,
-<span id="L44" class="ln">    44  </span>	&#34;6ykpE7ryI5y/Q4PyBbXd33F+jlINccnilGkNrvmcriXR0tqUONCUSJ5KtrQlEm2J5P94s7kIEGxCZOkw&#34;,
-<span id="L45" class="ln">    45  </span>	&#34;iO0+DhBUhN6OsKBw9x75KfrDa+vtdGnpFnX+OYKSU2Z58ua79UGcn8H5hdLcBKv5XOYO1mFSwgSziwjF&#34;,
-<span id="L46" class="ln">    46  </span>	&#34;Q6geNrAxUpzutzZGsLFYXHpsrayQ5GPzdgcbM8U7T4pT5jZqStSvpjphI+A1pRuvigO0alFIQXiG4YMI&#34;,
-<span id="L47" class="ln">    47  </span>	&#34;ezQgQlJh5ZQ0hcBe4rHvAyOxKvcKatNv4rDAIBXpYaDDdiWbQycZYtcuTVmyJUXDzGpx+pk18MS6cc9b&#34;,
-<span id="L48" class="ln">    48  </span>	&#34;OuB+86wCZPlEiiu9mioOvX23Pth5ousUh40RLgt0nWw4OLL1G7hqrc/4XjXmtt6+sW48eLc+hI15Doii&#34;,
-<span id="L49" class="ln">    49  </span>	&#34;RFgAcqcbVm10l8xhY/ms8nXXiW+4LlqWcpsrN7AxV77/0+bqRHHs3rv1QWtm1Vq9bRkvSVXJ1jIKjD6N&#34;,
-<span id="L50" class="ln">    50  </span>	&#34;uSWc/4Hgu/kYmxPF4QlrfJaVnXT1GZKr+42zShgTXPXGm5aOC6WZJxQkH1OBFnF+iGxnb80UB8etn4ap&#34;,
-<span id="L51" class="ln">    51  </span>	&#34;l4xj82cS4eRPc6WrD7dmJ+0sbw5T3VWhSHdOkkXiCNVgurZaGnpqjY/i/Fo5P2+9GGYbMp/zd6Wl7lwv&#34;,
-<span id="L52" class="ln">    52  </span>	&#34;4A7bZLhkgpQ+GXD5OFR6UNren25Tl8Z4QUK9ISysmNbIaunWavH+D2HL+leiQF9FGWaAJIe53UNbjQQl&#34;,
-<span id="L53" class="ln">    53  </span>	&#34;hxjq+usVWRJgs56RUPpP9m+bBTXjDW1GO2RRupP/BoSh8tbwHWvpjm+lQ2Qlvyz7w0SRQRRRa3zUGhr1&#34;,
-<span id="L54" class="ln">    54  </span>	&#34;q4gwXgfRbFpVQiiW761tPX0RYvHEF4lkyz6y6ztInAkgBDXywv+ePftv/34m0fTFuSvJRCy5v+93YYrJ&#34;,
-<span id="L55" class="ln">    55  </span>	&#34;qjoC8pHQgr+c/3Vz423Iksn9iaZEojXpX4+tta+vif3QGrGgBlNQQDktdME3ZeOmtTpdmh7xLVi8/2Jz&#34;,
-<span id="L56" class="ln">    56  </span>	&#34;9Vk5/6YeB9ORBsOKm80Vo3SvgPNrRKLp536Jmlqa9nFfS4oClJBwCdkgEzDttAGu0wenYRjCMySL1W4D&#34;,
-<span id="L57" class="ln">    57  </span>	&#34;EIwipYbd7LF+Hiree/lufbA0thH4U2lgjm5TTWzeYJk4sIPLaRpUkMNgrUrPT5isRmmXbs0HUjzf+Sdd&#34;,
-<span id="L58" class="ln">    58  </span>	&#34;v5TQxH/xhpwD8jxtiDhaOxhiFwVeiuanOPmcouvVAD8+Br7Zd+kf4iG4iwkoyc/iOdfISEh7zUuyHd92&#34;,
-<span id="L59" class="ln">    59  </span>	&#34;5gr/Ow2m+Db+X+OVjnPc7pvEQ3Nt37lYPcmWgPvgteK9l8XJ507eDrhY3Tz4uO+LXfEpoIKKHiyLuSjq&#34;,
-<span id="L60" class="ln">    60  </span>	&#34;wQYHlnzxa2cJN+JileR1rk5R/ULWKNqji5JgfV6rsfFhkusHTKYilCGKKqa92DJiDd0oT/3sthhY3Yz7&#34;,
-<span id="L61" class="ln">    61  </span>	&#34;Tf/vZ0kE0hLHbYSRUoFtd0Ir6G0riffO9xfUtNIsqnCXk/3XalrZ6Vx/VIV7mf69Mv0p9dte9RPJ8rF6&#34;,
-<span id="L62" class="ln">    62  </span>	&#34;wNLBxXDQrAWWldiN2qzpX0IoekGxgvt+XMvp9vmm28LcLi+4VKu6mwGxGekQDmuvse2hQe0E4dlXkZKE&#34;,
-<span id="L63" class="ln">    63  </span>	&#34;9cS5Ss8rP+ptoNA9XKFWInAU2qnqaIdyeSxohGxkcVO7zNu5Gqs+j3U9tUK1ruTu8+zGM/3k863Zsc03&#34;,
-<span id="L64" class="ln">    64  </span>	&#34;08XBcdccn6dvv7dXu8qgPcDXOD+IzYmtt7ewMRXZZXRU1QWBJqR3R2EB4u0IZj493bHj8PrCPESehqLd&#34;,
-<span id="L65" class="ln">    65  </span>	&#34;40FB7WqwR9IR1MKLrtLUWnnkb25Tsp6eY0CvPvrV6q3SEdNL8f7DzbVX2Fi0Zlax8YRWcbPOuMUdbMxU&#34;,
-<span id="L66" class="ln">    66  </span>	&#34;uyFR1l+hpkuq0kCzfNwBYIK7jFCDbXKKHEcBaqRBTsjfZC22hnQb46FyUdJUJQOVEGtZhZmthyOliefW&#34;,
-<span id="L67" class="ln">    67  </span>	&#34;o3z42dpFSaePNsTpAmHW0VFokxlqFyWhhrpvYvO1NT4a9u5FZrIGWfKZbVsfdNbwaCDmsZtfqxVxqr2V&#34;,
-<span id="L68" class="ln">    68  </span>	&#34;yirkNAn10s4t84DDQJeEQzmSw6rq84XRrfl1bCzSZ+xP5sTmm7fUy9icwE1szIeez9EQpmMC5O2KmGmE&#34;,
-<span id="L69" class="ln">    69  </span>	&#34;skR3hyHQoOas3E0/fem40df/eYqPRbJDnyWATfS4TH28ca4okSBbREmSklLZwbuCgEA91Z7/OKVmeo+0&#34;,
-<span id="L70" class="ln">    70  </span>	&#34;7D/YeiDBx/icJtvv6W3x+GWyI4p7n+gLCnAqLencoc52TtI5YkDEqQoHuIwq5mSgxTgZ9BKo4QhcSoil&#34;,
-<span id="L71" class="ln">    71  </span>	&#34;fi6nk73tV2qMOyak1RgHFJEjhVOPBrv+crz5rNKOuJQqy+olnUNpyJ1QJFXhDnlJkFcknROhLvUoUOSQ&#34;,
-<span id="L72" class="ln">    72  </span>	&#34;ynVDDkEdkb1ijMsASUFAUtgn8rQuALqPbD6rnFVOpSGX1VTiRISMjrQcpUsYVXOKyIkqodAkatJFqHBZ&#34;,
-<span id="L73" class="ln">    73  </span>	&#34;TVIEKStDPcZdklCaE2QIFE6HWaDRXMN1Q3QJQoWTFAS1FBCgHjur5HTICUAnbzF6HFSQRHCKsSQpKQ24&#34;,
-<span id="L74" class="ln">    74  </span>	&#34;azdzh2SZSwNFlKGmc0CDXA9UoAYQFLmUpmaYLrJQIfrWs1CQUvZ5DVmKqFQFWalJUEXYAxVbaqRJAuJQ&#34;,
-<span id="L75" class="ln">    75  </span>	&#34;b5b8XdI5qKRUTSCCCpqqM/3qvTqCGVsxFXsSWRSRPKpzgKhLzAlktSYNArGX61YlGWpZGSDIoTRAXDeQ&#34;,
-<span id="L76" class="ln">    76  </span>	&#34;gSJAnctCjYKnIsDYWSUlw8tStyRLqJfxJMKLUCaIzcHLWahJUBGIVejhqwDtNGG7Z0f7Ke64/duge6pZ&#34;,
-<span id="L77" class="ln">    77  </span>	&#34;qOhqThNgs6r1xO2X9XhH+ylaXUAto59IdTlY6L7XI6F0rtv17SYhHe9RmzziNEEhrTZRZerfyTTOJUSr&#34;,
-<span id="L78" class="ln">    78  </span>	&#34;58Memb9SmS9Ueyfzaypr11+OH+E9oMonmpPNNI4I9yAr8W38vuZE8z62AU5T/Iqfp26kADlOIlmPQ01T&#34;,
-<span id="L79" class="ln">    79  </span>	&#34;tSbNk0V7wramFCMKdLiDngjl7zunQ3Tg6CvVnZ5hh0h0hpQeTRkPsPEDye72vFQFXzirMFO+ew8bi9hY&#34;,
-<span id="L80" class="ln">    80  </span>	&#34;Jvns8QDOr1kDz8qTw05TZwMb97B50zlvIqalbtku8m38V7YP04EidrxGcZ/JQuVtSSQccLLTqOcsMn5B&#34;,
-<span id="L81" class="ln">    81  </span>	&#34;Z9moMo9Wq7ryzy1R8AtVUvXY0k/DBF1txTDIZbpxK2WSbXKZDNB6+Tb+3fqgdW2gnJ9njWzfutZPw4wQ&#34;,
-<span id="L82" class="ln">    82  </span>	&#34;ge8wcxCXAj06yYW1TX2OLBpnZ7vRdvcVUSPuOXZpft3Kj1Jr0r4bm4EzJ0qPVrcWRv1CFo4d6cLm1UPH&#34;,
-<span id="L83" class="ln">    83  </span>	&#34;D1vjP1BnCJ+SifCuSjEWtD5iszm7afPA9E+Y0X0aWo7UkJtV/bauZ3zIY1LbXF7bfb/Lxvtz1+6Y7ft/&#34;,
-<span id="L84" class="ln">    84  </span>	&#34;Prt9bxsuA0nu1Os0XIH2mwedibjX9lbcP5Pu2qtxc3TY3GxrDgQvo3hWBlLAECHd8TBuxxex2U/r/GdU&#34;,
-<span id="L85" class="ln">    85  </span>	&#34;ul/oUMMS6yaEj/LuhMnsIp5unj3l+xna/alhUJ8UTNUegzomZAalZUtd5rQG5jff3MTGSGDAkZrzDjZ+&#34;,
-<span id="L86" class="ln">    86  </span>	&#34;2Fz7kQSbOVxcnbTMKfIkMd5oPbFaYyCscbegs2i7GaP+Ybft7f2eGqsjgB2j1FKgx/bM2szyF5Nxt2kV&#34;,
-<span id="L87" class="ln">    87  </span>	&#34;bnx/A3VzpX9rds4TvJV6KKpFjM0JZ4aHibURbTTaQqIFX+XqUETTqPJI3Hu1KKoL5nm8cp2hnoe91x9I&#34;,
-<span id="L88" class="ln">    88  </span>	&#34;yO2aP/nbsiH+5Kh8sTg4bt2Yqe4uMeOQEro1kfyAdWMVC+4VEFYcO3v5EevtwNas4euwtib2fUKcFuef&#34;,
-<span id="L89" class="ln">    89  </span>	&#34;lqfGwznd/0FrcS92VIbnR0pTq6VbM07YUQeohoZoKT0o4Eb+OfuEsuZkiAcEzAl2lOCNfUddC266DKJd&#34;,
-<span id="L90" class="ln">    90  </span>	&#34;ftpGJmORZlKDwtsY3V/dZnN9VYDQqeouIthj7odVlqh2LuK851J9/nYc0nKwryrikzu6fr3uSrDXVrs3&#34;,
-<span id="L91" class="ln">    91  </span>	&#34;/m0nYJH0If0zYF5jZHNltLj02I2YoEfQB7Ze/eIt251Bh0V6EOPumCvQ8JFAzKvrTxW+Ajx+zsDlq3A9&#34;,
-<span id="L92" class="ln">    92  </span>	&#34;feKqEjdM/HBE85Y28RSEYmR9U5xecOZwCqEwZ4/rGIXy1Gj5wbU6j8Tnquuj4KVcY5mj92o5Ug67N3H7&#34;,
-<span id="L93" class="ln">    93  </span>	&#34;jc21J+WpUWwsW0Oj3vtxVY0ZCqTGBhtp5jw32AhFh7ax6Bmg3q7y+hLSkfnGqq+q68t1VFVVl4V3v7Ly&#34;,
-<span id="L94" class="ln">    94  </span>	&#34;DXSEOO42VvWbdCZqYuLj4paHkc+hBKvB7z8dnoWpIgTbGJgFAC4D494JmGwORR3vba4sBXBu6/rC1upi&#34;,
-<span id="L95" class="ln">    95  </span>	&#34;9WgM2eLRIWgvcESNLhMEs8eiKYKt9G9dZy/OODm+gI23bOS0JhJ15hgSdUDPbPBu1X4hQ+R1VYCtYdtk&#34;,
-<span id="L96" class="ln">    96  </span>	&#34;v0KMgqO9vWptVwSKVPe2YNf64di0GfHVLYtbT/9mvblpt77MR9hcxOas09Aa8Z8z2YdHlPGWlg/HeGSg&#34;,
-<span id="L97" class="ln">    97  </span>	&#34;E8dwg9vP4G8FlquNFoWRzOfCUJrdqg/itE5no6JL0eh5oo/QhWODXA1Xg77vV6mjEvwN9e4Cc4IhXvse&#34;,
-<span id="L98" class="ln">    98  </span>	&#34;E2N7Pb29nl7DPT0HaQL4c8X+Sps+hj0yDJsEdFDCvq1y+nT70WDS8m+Tne1zjaruKF2LBslRhoyNwor3&#34;,
-<span id="L99" class="ln">    99  </span>	&#34;K31CIrl124MLh8vPohxjSi9Ybx5Z62Ps6JuyOua/IPQJ9s1cNX/CfTMvj7XA4YOWig2GXY1C8bdSh1mj&#34;,
-<span id="L100" class="ln">   100  </span>	&#34;P26u9IfarmbJFYuorhpUsO9Lj0JLrcjSaXcwLvGxzh3Czh33oHPnYemTb9fVX1ftQecnCJ2R1aIHOrMA&#34;,
-<span id="L101" class="ln">   101  </span>	&#34;CekdAE8XNtmNevbVddX9v106NyZC7CwS71YD0vsVAfW0Hj9aEvB+M8JeU/NDYK2r6084H3h53MsHn1c+&#34;,
-<span id="L102" class="ln">   102  </span>	&#34;8H3XyTZZIYd2Mid8sDyQQ59FFmjw+Omj5YA99N9D/z30/22gfx24T3vHlTvP9V31CLmlvnNXPf7quR29&#34;,
-<span id="L103" class="ln">   103  </span>	&#34;S5AYvJe/7Vx/pMwUU+7UfQGntuJ8XSfXZLY6zrHvjYfaRSez+Rk+rgpAdi6XZqCCOPas795oWzwuk+fS&#34;,
-<span id="L104" class="ln">   104  </span>	&#34;qo7aDiYOJugJm59Qp3vT1abA/V6DWRkIkF34BALKAZk7ffL4H6rupIKs1Oz9Oqlq6l0I9EhKT+OkdfZi&#34;,
-<span id="L105" class="ln">   105  </span>	&#34;8/ZL2NaFIr3JCxUxq0oKamApjxKrlzvX9/8BAAD//w==&#34;,
-<span id="L106" class="ln">   106  </span>}
-<span id="L107" class="ln">   107  </span>
-<span id="L108" class="ln">   108  </span><span class="comment">// decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,</span>
-<span id="L109" class="ln">   109  </span><span class="comment">// after base64-decoding and flate-decompressing the embedded blob.</span>
-<span id="L110" class="ln">   110  </span>func decodeSpec() ([]byte, error) {
-<span id="L111" class="ln">   111  </span>	encoded := strings.Join(swaggerSpec, &#34;&#34;)
-<span id="L112" class="ln">   112  </span>	compressed, err := base64.StdEncoding.DecodeString(encoded)
-<span id="L113" class="ln">   113  </span>	if err != nil {
-<span id="L114" class="ln">   114  </span>		return nil, fmt.Errorf(&#34;error base64 decoding spec: %w&#34;, err)
-<span id="L115" class="ln">   115  </span>	}
-<span id="L116" class="ln">   116  </span>	zr := flate.NewReader(bytes.NewReader(compressed))
-<span id="L117" class="ln">   117  </span>	var buf bytes.Buffer
-<span id="L118" class="ln">   118  </span>	if _, err := buf.ReadFrom(zr); err != nil {
-<span id="L119" class="ln">   119  </span>		return nil, fmt.Errorf(&#34;read flate: %w&#34;, err)
-<span id="L120" class="ln">   120  </span>	}
-<span id="L121" class="ln">   121  </span>	if err := zr.Close(); err != nil {
-<span id="L122" class="ln">   122  </span>		return nil, fmt.Errorf(&#34;close flate reader: %w&#34;, err)
-<span id="L123" class="ln">   123  </span>	}
-<span id="L124" class="ln">   124  </span>
-<span id="L125" class="ln">   125  </span>	return buf.Bytes(), nil
-<span id="L126" class="ln">   126  </span>}
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span>var rawSpec = decodeSpecCached()
-<span id="L129" class="ln">   129  </span>
-<span id="L130" class="ln">   130  </span><span class="comment">// a naive cache of the decoded OpenAPI spec</span>
-<span id="L131" class="ln">   131  </span>func decodeSpecCached() func() ([]byte, error) {
-<span id="L132" class="ln">   132  </span>	data, err := decodeSpec()
-<span id="L133" class="ln">   133  </span>	return func() ([]byte, error) {
-<span id="L134" class="ln">   134  </span>		return data, err
-<span id="L135" class="ln">   135  </span>	}
-<span id="L136" class="ln">   136  </span>}
-<span id="L137" class="ln">   137  </span>
-<span id="L138" class="ln">   138  </span><span class="comment">// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.</span>
-<span id="L139" class="ln">   139  </span>func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
-<span id="L140" class="ln">   140  </span>	res := make(map[string]func() ([]byte, error))
-<span id="L141" class="ln">   141  </span>	if len(pathToFile) &gt; 0 {
-<span id="L142" class="ln">   142  </span>		res[pathToFile] = rawSpec
-<span id="L143" class="ln">   143  </span>	}
-<span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span>	return res
-<span id="L146" class="ln">   146  </span>}
-<span id="L147" class="ln">   147  </span>
-<span id="L148" class="ln">   148  </span><span class="comment">// GetSpec returns the OpenAPI specification corresponding to the generated</span>
-<span id="L149" class="ln">   149  </span><span class="comment">// code in this file. External references in the spec are resolved through</span>
-<span id="L150" class="ln">   150  </span><span class="comment">// PathToRawSpec; externally-referenced files must be embedded in their</span>
-<span id="L151" class="ln">   151  </span><span class="comment">// corresponding Go packages (via the import-mapping feature). URL-based</span>
-<span id="L152" class="ln">   152  </span><span class="comment">// external refs are not supported.</span>
-<span id="L153" class="ln">   153  </span>func GetSpec() (swagger *openapi3.T, err error) {
-<span id="L154" class="ln">   154  </span>	resolvePath := PathToRawSpec(&#34;&#34;)
-<span id="L155" class="ln">   155  </span>
-<span id="L156" class="ln">   156  </span>	loader := openapi3.NewLoader()
-<span id="L157" class="ln">   157  </span>	loader.IsExternalRefsAllowed = true
-<span id="L158" class="ln">   158  </span>	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
-<span id="L159" class="ln">   159  </span>		pathToFile := url.String()
-<span id="L160" class="ln">   160  </span>		pathToFile = path.Clean(pathToFile)
-<span id="L161" class="ln">   161  </span>		getSpec, ok := resolvePath[pathToFile]
-<span id="L162" class="ln">   162  </span>		if !ok {
-<span id="L163" class="ln">   163  </span>			err1 := fmt.Errorf(&#34;path not found: %s&#34;, pathToFile)
-<span id="L164" class="ln">   164  </span>			return nil, err1
-<span id="L165" class="ln">   165  </span>		}
-<span id="L166" class="ln">   166  </span>		return getSpec()
-<span id="L167" class="ln">   167  </span>	}
-<span id="L168" class="ln">   168  </span>	var specData []byte
-<span id="L169" class="ln">   169  </span>	specData, err = rawSpec()
-<span id="L170" class="ln">   170  </span>	if err != nil {
-<span id="L171" class="ln">   171  </span>		return
-<span id="L172" class="ln">   172  </span>	}
-<span id="L173" class="ln">   173  </span>	swagger, err = loader.LoadFromData(specData)
-<span id="L174" class="ln">   174  </span>	if err != nil {
-<span id="L175" class="ln">   175  </span>		return
-<span id="L176" class="ln">   176  </span>	}
-<span id="L177" class="ln">   177  </span>	return
-<span id="L178" class="ln">   178  </span>}
-<span id="L179" class="ln">   179  </span>
-<span id="L180" class="ln">   180  </span><span class="comment">// GetSpecJSON returns the raw JSON bytes of the embedded OpenAPI</span>
-<span id="L181" class="ln">   181  </span><span class="comment">// specification: decompressed but not unmarshaled. External references</span>
-<span id="L182" class="ln">   182  </span><span class="comment">// are not resolved here; the bytes are the spec exactly as embedded by</span>
-<span id="L183" class="ln">   183  </span><span class="comment">// codegen. The result is cached at package init time, so repeated calls</span>
-<span id="L184" class="ln">   184  </span><span class="comment">// are cheap.</span>
-<span id="L185" class="ln">   185  </span>func GetSpecJSON() ([]byte, error) {
-<span id="L186" class="ln">   186  </span>	return rawSpec()
-<span id="L187" class="ln">   187  </span>}
-<span id="L188" class="ln">   188  </span>
-<span id="L189" class="ln">   189  </span><span class="comment">// GetSwagger returns the OpenAPI specification corresponding to the</span>
-<span id="L190" class="ln">   190  </span><span class="comment">// generated code in this file.</span>
-<span id="L191" class="ln">   191  </span><span class="comment">//</span>
-<span id="L192" class="ln">   192  </span><span class="comment">// Deprecated: GetSwagger predates kin-openapi renaming openapi3.Swagger</span>
-<span id="L193" class="ln">   193  </span><span class="comment">// to openapi3.T. Use [GetSpec] instead. This wrapper is retained for</span>
-<span id="L194" class="ln">   194  </span><span class="comment">// backwards compatibility.</span>
-<span id="L195" class="ln">   195  </span>func GetSwagger() (*openapi3.T, error) {
-<span id="L196" class="ln">   196  </span>	return GetSpec()
-<span id="L197" class="ln">   197  </span>}
-<span id="L198" class="ln">   198  </span>
+<span id="L23" class="ln">    23  </span>	&#34;7HzrV9RYtvi/kl9+82Fm3QKqEBibL3d89qVbWkZ07kO9vQ7JKSp2KqlOTqnoYi2SEi0ErjQ+UWy0fYAg&#34;,
+<span id="L24" class="ln">    24  </span>	&#34;hU7bDgLqH3MqVfCJf+Guc06SSlJJPRzBca4fdFFVOXvvs99nn71zkRfUdEZVoIJ0vvsinwEaSEMENfpp&#34;,
+<span id="L25" class="ln">    25  </span>	&#34;n4Cks7CPfEc+ilAXNCmDJFXhu/nS7Jh19Q02FnHuCs5tYPM9NgrYeI/NaWvl3ebLh9hYwMYMNsetB6+s&#34;,
+<span id="L26" class="ln">    26  </span>	&#34;qTw2VpCWhXjEKF962OzKJJB1stQaXcDGU/K4uzR6UWniilW4i43bBJVxiY/xEiH8xyzUhvgYr4A05Lt5&#34;,
+<span id="L27" class="ln">    27  </span>	&#34;QDfJx3hdSME0IBuF50E6I0O+mxAc49FQhjw4oKoyBAo/PBzjD2Q1XdX2JRHUotjz/CHO3aU0rlrXblnv&#34;,
+<span id="L28" class="ln">    28  </span>	&#34;bpdvLGCjUFyd3Bq5VrrzP9hcor++xbklPGJao/mtB8vuErItuiqwp/KsUb75hO7pHflpxIzaFqHNtyt7&#34;,
+<span id="L29" class="ln">    29  </span>	&#34;GzrSJGXQs4vDkqajiF0wGorrr0s3X1Dir27NTEVgTBI4PowiTIKsjPjuzniswlTyIQ3OS+lsmu9uj5NP&#34;,
+<span id="L30" class="ln">    30  </span>	&#34;ksI+JVxmSwqCg1CjZH4Lh86pmhhF4uhC6daV0uPZ8qtfsLlM2Jdbof+PRRD6A4MXLnLnL67yVDXj+sBg&#34;,
+<span id="L31" class="ln">    31  </span>	&#34;lFm4EizfXLSu/W17I5/Axjg2x6z5cSIzc3x7I4qwDBiE4QxMePiXqMuwPqKVkRQmKkpmmNiYw+ZVbBS8&#34;,
+<span id="L32" class="ln">    32  </span>	&#34;ko4iD2rf1yDRK+OEV8aJBmR8QodajxjJ06eU4Nfkf6Nw4kTPQYfEDECpCoVZHWrfS0RmGvwxK2lQdGw4&#34;,
+<span id="L33" class="ln">    33  </span>	&#34;TNKJ9j2wo7Prjy1w71cDLYl2cU8L6Ojsaulo7+pKdCT+2BGPx/kYn1S1NEAEelYKU4dhgk3PqIoOqdfc&#34;,
+<span id="L34" class="ln">    34  </span>	&#34;D8Rj8Mcs1FFHPE6+EFQFQQWRP0EmI0sCIPtqO6OTzV30kPY7DSb5bv7/t1Wcchv7VW87pGmqdszGw7AG&#34;,
+<span id="L35" class="ln">    35  </span>	&#34;mbSIzRVsLmDzDc7lsTFRXJ0sLT/CxrztKIjFq0pSlgTUEf9qlyl7SyX4BhsT5aXX1Jfdpp78UsWRDcf4&#34;,
+<span id="L36" class="ln">    36  </span>	&#34;w6o2IIkiVDrie3aPwNLCs62ZKWxMWO9HN58aPo71KAhqCpD7oXYWahRU566K1fyNOrMpyr8FnHtGjWCi&#34;,
+<span id="L37" class="ln">    37  </span>	&#34;PLNWvjHnBILbxI4Zwd+p6LCaVcSOeMcuctAOtTexOUFI8UvcWr5jzS44tN7D5nWbVsJUSYAnFHAWSDIY&#34;,
+<span id="L38" class="ln">    38  </span>	&#34;kGHnbsrd4e11RmZxdaQ0Y5bvXsLGkpV/RuP1PDYmg1SfUEAWpVRNugDFjnhi9+jdXJzcXNgI19MTSkZT&#34;,
+<span id="L39" class="ln">    39  </span>	&#34;BajrhIuHFCShoY729t2jzRp9Yl29Z408xsbE5lOjuP4am9OltRGiDT5Tdxk57Hhl6jVZLtIHBiWF0tcL&#34;,
+<span id="L40" class="ln">    40  </span>	&#34;ERABAi5Okp1qagZqSGJ+NgX07+B5VDv18mgfyaNIKDaeYeMyNsb5WL1EL8Yr8DxilDWe4QUSu9LsSPk3&#34;,
+<span id="L41" class="ln">    41  </span>	&#34;00NQwU3mOCUry1xFjDFvGjL0jdZ7oKer50zPud4z/4l6Dx5CvQcPn+g9uK+L/dsPehQSnwgQIvTALjzp&#34;,
+<span id="L42" class="ln">    42  </span>	&#34;SiUYnvTuKOay8LS7Sh04AwVEtu6XeHVMdn1R7jmNOPdx7ldqRwVr9OXWyF3yt52O/czHArITVDEEZunZ&#34;,
+<span id="L43" class="ln">    43  </span>	&#34;XOmXF7YBXnlanrpsXVvZzL0l+buLzvzVTe4q3Dr0H/t6+44c+v7QsWNHj1XHaKKsCEiyXmsfRmHz2a/l&#34;,
+<span id="L44" class="ln">    44  </span>	&#34;Vy9KuVHrwcvfF9fXS5eu/cGL5mTI09golG5dKS89SPCxWj+3EyZLCKb1kFzcJRhoGhgin9PEkgdDeFRc&#34;,
+<span id="L45" class="ln">    45  </span>	&#34;W9u6dZ0Y2eIyNg2i0xVJPMS5HDbXmab5GGQV7pbfPas46Og1VaRpLJnpEcMSM1/OQdOyCk4wIIgwOZiS&#34;,
+<span id="L46" class="ln">    46  </span>	&#34;zvwgpxU186Omo+zZc+eHLvD1tJTqR4ULXiLCdPXfIJBRqpayeoIoOTzeIbZJaDawOU8ZsGIbb1CbK7bp&#34;,
+<span id="L47" class="ln">    47  </span>	&#34;12AdAZTV66IqX3tHnU+BQr3snFnfYHO6/HgtcI6rsE79oS6LbALC2NGMF5WltIQaPSS4xwNfoh9M52O8&#34;,
+<span id="L48" class="ln">    48  </span>	&#34;mkzqMASqhxuLOHeTql0O5/JeiKEAkYqAHHr2CyMp7knaJQV1dfChZw4vNxmCmM0Odwdh3D0GgTjUhK49&#34;,
+<span id="L49" class="ln">    49  </span>	&#34;x7kr2HyEc5N/n8Z5gvdxKR2K+Recu01t8iWV3d9wbp5CDVHJ0oxp5dd9Stceb+9oiXe1xBPHE+3d8Xh3&#34;,
+<span id="L50" class="ln">    50  </span>	&#34;PPFf3vOPCBBsQQR1mIMdOAIQVISh3jCjcKs1uRmWFVrvZ8vLN6jyzxMfOWNu3bq+vZHHOZI8luen2SnZ&#34;,
+<span id="L51" class="ln">    51  </span>	&#34;JW5vAyIlRDC5iFDchxohAxsTpdkR690ENpZKy4+s1VUSemzaSFJduv2kNGPWYVO8cTY16DYCWlO++ro0&#34;,
+<span id="L52" class="ln">    52  </span>	&#34;ShMWhRyhTzL/IMJBDYiQnEmzSoq6wCGisR/iRmJV6hXkpl/EYYZBzvD7gQ57lEwW2Ufg2od5FmpJyjC3&#34;,
+<span id="L53" class="ln">    53  </span>	&#34;Vpp9znJIb+KAR8xTCpDlo0mu/HqmNPZ+eyPfd7T/OIeNCS4DdP2cqokcNqet0UvWxpxvqTG/+f6tdfXB&#34;,
+<span id="L54" class="ln">    54  </span>	&#34;9sYYNhY4IIoSIQHIfa5ZddO6IoeNlVPKN/1Hv+P6aULKFVevYmN+6/7PxbXp0rV72xt5a27NWrtpGa9I&#34;,
+<span id="L55" class="ln">    55  </span>	&#34;QslwGQUGn9rcMs79RPy7+YikvePT1tRTlnFS7HMkUo8Yp5QwIrjqUiVNGxfLc0+ok3xEN7SEc2PYWCnf&#34;,
+<span id="L56" class="ln">    56  </span>	&#34;mCvlp6yfx6mWTGHzMbFw8tN8+dLDzae37BhvjlPeVXmRgawki0QRqp3p+lp57Jk1NYlz61u5BevlOCth&#34;,
+<span id="L57" class="ln">    57  </span>	&#34;+ZS/PyUNZIcAt98GwyXiJPFJg/NHoDKIUnZFr05OGuMFCQ2FkLBqWhNr5Rtrpfs/haH1Y6KOvgoyTANJ&#34;,
+<span id="L58" class="ln">    58  </span>	&#34;DlO7hzYbiZccY17Xn67IkgBb9bSEUn+yv20V1LTXtBnsBoigtdDvQJiXtqYmrbFJH+Z9BLMfbGcYVBlE&#34;,
+<span id="L59" class="ln">    59  </span>	&#34;Ad0cv20t3/azjGykAaCZlKqEQNy6t7757GWIBsS/iifa93R0dv1xL1EugBDUyIL/PnXqX/71ZLzlq9MX&#34;,
+<span id="L60" class="ln">    60  </span>	&#34;E/FYonP4d2H+L6PqCMgHQtP/rdxvxXfvQ1AmOuMt8XhHwo+P4doz3ML+6IhAqMEkFFBWC0X4dsu4bq3N&#34;,
+<span id="L61" class="ln">    61  </span>	&#34;lmcnfAhL918W155v5d42ImsdaTAs2SmuGuV7BZxbJzuafeHfUUt7yx7uG0lRgBJiPiElRuJc+2yH1+dz&#34;,
+<span id="L62" class="ln">    62  </span>	&#34;r2E+hWeeLVa7kEp8Fkk97HK59XisdO/V9ka+fO1d4Kfy6Dw9sprYvMoic+A8l9U0qCCHwFqZnx8wwUZh&#34;,
+<span id="L63" class="ln">    63  </span>	&#34;l28sBEI+3/cnXT8X18T/5zVBx+n7udbVQSvMzse9IWJS4Llo8kq3XlDneylAno+e7/ac+5gkBY88ARb6&#34;,
+<span id="L64" class="ln">    64  </span>	&#34;KT7tqgASUl7hk9jId5+sXb0JjczDp2ONhGYSCvKXS/delW69cKJ8QAEbpsFH/XDsoo8BFZ/p8XQx1+d6&#34;,
+<span id="L65" class="ln">    65  </span>	&#34;PIfjtHzWbccU1x5jlVB3usGt+jdZI8WPTmGC2XytIsjOh+LOzl0NvSKUIYpKvb2eZ8Iau7o189gtR7As&#34;,
+<span id="L66" class="ln">    66  </span>	&#34;G4+Y/u9ZzZAkRG7JjCQW7HAUmm/XzTs+ODs4o6aUVlGF9VKDvzMV+EZNKY2wuqlU4KAKG4H5JROozgSO&#34;,
+<span id="L67" class="ln">    67  </span>	&#34;qz8MqZ8gCwix3EC8iHCXjmcMd5u13GXFeqMOd/phCEWvW6x4fr9ny+p2B4lb8KwXGSpXC8FaaGDbDHQI&#34;,
+<span id="L68" class="ln">    68  </span>	&#34;hbVx1L1eqB0iPOcwkrIIFBpXqZHlJr0FF3rmK9QKBQ5D+1QdfaRoHgsKIROZ7dROA3csB2tMgV3FrSBp&#34;,
+<span id="L69" class="ln">    69  </span>	&#34;KNr7FL350H/rxebTa8W3s6X8lCudz1PVP1jJXWbQEiJtIjCnN9/fwMZMZJHSYVU/BJqQ2hmGBYD3IJj+&#34;,
+<span id="L70" class="ln">    70  </span>	&#34;x+Md6z9qzOpD9tOU8Xs0KMhdDQ5KOoJaeBZWnlnfmvirW9NspGQZ4KsPfjV7q3jE+FK6/7C4/hobS9bc&#34;,
+<span id="L71" class="ln">    71  </span>	&#34;Gjae0LTuqdPfRnsXqtSQMOsvUNMlVWmi1j7l+GPihhmgJqvs1HMcBKiZ+joBf51V6MLrxV0t8URLPHGc&#34;,
+<span id="L72" class="ln">    72  </span>	&#34;FoubqhdD5aykqUravsAP5I+Fuc2HE+XpF9YvOR/KjKaKWYE+FXqhd1bSJXb738QOF2mjhM1bf+UsMdAu&#34;,
+<span id="L73" class="ln">    73  </span>	&#34;7BFD692swyNadNex+caa8ifBg2rLgCrJUMvIRBAhYM8yzWhyBz7t8GdirZ2t8brK72D1sDDmURi/tCp7&#34;,
+<span id="L74" class="ln">    74  </span>	&#34;rzYTyhghq0loiFacncYxXRL2ZUnwvBjR+bFEn7E/mdPFt++perPWhuvYWAi9V6S+g3Y2kNWVbaYQyhBu&#34;,
+<span id="L75" class="ln">    75  </span>	&#34;7odAg5qDeYB+Ouyo5zf/fpyPRZJDnyWRgnB2hRpX81RRIEGyCJMkJak6LSxAoBZgd/odV9NDB9o793Z0&#34;,
+<span id="L76" class="ln">    76  </span>	&#34;EbFlNdlep3e3tZ0nZ7M27xNV3SrHU5LO7evr4SSdIwJEnKpwgEurYlYGWoyTwRDxcRzx0xJiOQeX1ckp&#34;,
+<span id="L77" class="ln">    77  </span>	&#34;+2s1xh0SUmqMA4rIkQRuUIP9fz7SekrpQVxSlWX1nM6hFOSOKpKqcPu8IMgSSedEqEuDChQ5pHIDkENQ&#34;,
+<span id="L78" class="ln">    78  </span>	&#34;R+TUGuPSQFIQkBT2iTytC4CeaFtPKaeU4ynIZTSVKBEBoyMtS+ESQtWsInKiSiC0iJp0FipcRpMUQcrI&#34;,
+<span id="L79" class="ln">    79  </span>	&#34;UI9x5ySU4gQZAoXTYQZoNMhxAxCdg1DhJAVBLQkEqMdOKVkdcgLQySoGj4MKkoiDZCRJSlIDLu5Wbp8s&#34;,
+<span id="L80" class="ln">    80  </span>	&#34;cymgiDLUdA5okBuECtQAgiKX1NQ040UGKoTfegYKUtK+ZyKoCEtVkJFaBFWEg1Cxd400SUAcGsqQ3yWd&#34;,
+<span id="L81" class="ln">    81  </span>	&#34;g0pS1QSyUUFTdcZffUhHMG0zpiJPshdFJI/qHOAqrrBFg0Ac4jyehUMpgLgBIANFgDqXgRp1yooAY6eU&#34;,
+<span id="L82" class="ln">    82  </span>	&#34;pAzPSwOSLKEhRpMIz0KZhAoOns9ATYKKQKRCL40FaMcnWz17e45zR+xvg+qpZqCiq1lNgK2qNthmL9bb&#34;,
+<span id="L83" class="ln">    83  </span>	&#34;enuO07QGamn9aLLfcZzuukEJpbIDrm63CKk2v6NsgUJKbaHM1H+UqZ1LiLq3/Z49f60yXajWTqbXdK/9&#34;,
+<span id="L84" class="ln">    84  </span>	&#34;fz5ygPe4WdtBDsd4Qj3ISHw3v6c13rqHHcRT1H+1fS/ZzZJtxJL1NqhpqtaiecL3YNgRmfqIAm1JoTdZ&#34;,
+<span id="L85" class="ln">    85  </span>	&#34;ufvOrRZtkvpadXt+2OUXnRagV2rGA2z8RNIKX4Mh8S+cVZjbunsPG0vYWCFx8tEozq1bo8+3bo075aVK&#34;,
+<span id="L86" class="ln">    86  </span>	&#34;MxqVIhEtVcseke/mv7Z1mLZBsWtBPtDo276rfaCMSdXNVj+PE+9qM4a5XMYbN0Un0SabTgNtiO/mtzfy&#34;,
+<span id="L87" class="ln">    87  </span>	&#34;1uXRrdwCK7j78Fo/jzNAxH2HiYOoFBjUSSysLerTBGkbu5OOlrsve5tw79/LCxtWbrLSNcja9szp8i9r&#34;,
+<span id="L88" class="ln">    88  </span>	&#34;m4uT/k0WDh3ox+alfUf2W1M/UWUI7+6J0K5KFhiUPmI9RTsp80DXUr3mX2MlkkOVFmqfrBtpe/KI1BaX&#34;,
+<span id="L89" class="ln">    89  </span>	&#34;V3YXdlh43/bvjNgu/N+T2wVbcGlIYqfeoOAKtPKddxr53tg1AP/0kSuv5sXRa1NTVxwInkdtGRlIAUGE&#34;,
+<span id="L90" class="ln">    90  </span>	&#34;1OnDqJ1awuYIzfyf0939SpsxllkZI3xo42OIzE7i6andk76fpGWnGgL17YKx2iNQR4RMoDRtaUic1uhC&#34;,
+<span id="L91" class="ln">    91  </span>	&#34;8e11bEwEZ0GIOG9j46fi+h1ibOZ4ae2WZc6QJ+0O9/q2WqORrXm1oD10O2mj/ia9+vL+QI41YMCOUGox&#34;,
+<span id="L92" class="ln">    92  </span>	&#34;0CN7Jm0m+bOJNrdaFi58fyG3uDqy+XTeY7yVfCiqVI3Naaf3yB11iBIarV3RhK8yJBpRrao80uYdIo0q&#34;,
+<span id="L93" class="ln">    93  </span>	&#34;v3kerwyuNfKwd9CNmNyO6ZO/Hhw2/2CzfKmUn7KuzlWXtZhwSAptj4WFoXPpb/NPkdFVifqrgqMpdN2e&#34;,
+<span id="L94" class="ln">    94  </span>	&#34;+ut8c1fDMb6zERIjRqPo8gZwhg//BAypioHuqKLHZlw7OW3fK9Zs8PCYjDnNKv5eS3Fmaxbd4BL0DblZ&#34;,
+<span id="L95" class="ln">    95  </span>	&#34;246NJRp3DOoMrtHTyE3WvVdlPn2q7tqP3cu+X2Vu/ePpp/c2adhfvEJaFg5X2Ufio+KvPQPo91Q2273W&#34;,
+<span id="L96" class="ln">    96  </span>	&#34;Yo+xfSYWYk9Q1l7kHbcka9hAVj0CQwe5Pr1R+nIdT8WwKtkJE3W4tXqDXFsSQjEy0pVmF53ekEKoCdst&#34;,
+<span id="L97" class="ln">    97  </span>	&#34;JEZha2Zy68HlBi9p56sjZXAQ31jh6Cw9RxIjd/p+xCiuP9mamcTGijU26Z3uqjqiUydhvGNNuVxl/ooA&#34;,
+<span id="L98" class="ln">    98  </span>	&#34;dEAbS54O4Hoh+DCkPd/NheGqNxY0EF6r3g+w8yHW12EQ4kfqCNUv0bmoK/wvUXjHDN7D5Vqhmll7wAOk&#34;,
+<span id="L99" class="ln">    99  </span>	&#34;YZu3aSGTRVE3IcXV5YAj2LyyuLm2VN3NQLJh2tfqNa2oblRi4nanKzXx1ZHNK2zhnNOBVsDGe9YnWNNW&#34;,
+<span id="L100" class="ln">   100  </span>	&#34;+7LMVnuhp6FzpwJ/SF9wQ+G/I+xE4WeIUXC49w8Sqjvqr/NOwFei7u6UaSM1i46XO9rknyf/TMzcvvRr&#34;,
+<span id="L101" class="ln">   101  </span>	&#34;wOaYyoRZPRvDDdq9TvshomN/dA/BJzgAs+aNpuOv7yU2DcTef6Jjc6A3KOz1Ec13iXw5Tu/4cdqxy4C1&#34;,
+<span id="L102" class="ln">   102  </span>	&#34;XrTfsjPMLFWGYb0ygReCnDjRcxAbS5vP/mq9vW4XFv1ZvJPd14ipBykuqlIHmR9p1gi9bxkK0fuOuhU2&#34;,
+<span id="L103" class="ln">   103  </span>	&#34;h8rP+dz6ARH0A866n0lQsybvFFdHQqVcM37FIkJVc2rvf+VEaNyKjEM7YwLxT1URCquf/vNb1mdtJZFx&#34;,
+<span id="L104" class="ln">   104  </span>	&#34;w2MlGYCE1EewE9dC2Dgae0dM9Tlsh4q3ZBMf1+h26iDona9r5Aj4yezdO1b4JZ5+qR3XcDS+CdQ67iaL&#34;,
+<span id="L105" class="ln">   105  </span>	&#34;Pqaz2TUHk0WfhXtpsr70yZzLF7fyxa3UdSsNOBR67q2MGjTWTxUyg/Lx+qn+4hlB2CFbC07d1G2eidwz&#34;,
+<span id="L106" class="ln">   106  </span>	&#34;nR273XCXW23G+Y5ErshsdpweHraHTRyX6Sf4iCoA2engTkMFcexZX3N2d1ubTJ5LqTrq3hvfG6e1ND+g&#34;,
+<span id="L107" class="ln">   107  </span>	&#34;Pred3IbA/V6DGRkIkHVVAwFlgcydOHbkD1WN3yAjtXqnx6uh9yMwKCmDzYPW2cLW+igOVvGgCTQeBlaj&#34;,
+<span id="L108" class="ln">   108  </span>	&#34;Ou2KpbqIEtLAuL2Rl6WzUIG6vr0xxsRqd8/bjajVxEcB+jY7ADUFIqhz7I1N2ChwtaFfCAUf2aG1vZEv&#34;,
+<span id="L109" class="ln">   109  </span>	&#34;vrtvLd+xRvNuvyGnQSBKYThYF1cIhobHk2z99wJ1lD1UK9MQpWBW5wK9hT4ATl9h2M69V3iVl/eSbdM6&#34;,
+<span id="L110" class="ln">   110  </span>	&#34;oW2FuXV22x7cr3unXw262vdub+RdcHakZq+5cM8DuXW70JZbj3hHTTh6x3PX22Czw9yhuOgNZm1MrK69&#34;,
+<span id="L111" class="ln">   111  </span>	&#34;vZEPvJg+EqZdca2GGmjbdzv1rRem89bZ99h8QTLUwlx0WFlx3y9WQV67k3/49PD/BgAA//8=&#34;,
+<span id="L112" class="ln">   112  </span>}
+<span id="L113" class="ln">   113  </span>
+<span id="L114" class="ln">   114  </span><span class="comment">// decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,</span>
+<span id="L115" class="ln">   115  </span><span class="comment">// after base64-decoding and flate-decompressing the embedded blob.</span>
+<span id="L116" class="ln">   116  </span>func decodeSpec() ([]byte, error) {
+<span id="L117" class="ln">   117  </span>	encoded := strings.Join(swaggerSpec, &#34;&#34;)
+<span id="L118" class="ln">   118  </span>	compressed, err := base64.StdEncoding.DecodeString(encoded)
+<span id="L119" class="ln">   119  </span>	if err != nil {
+<span id="L120" class="ln">   120  </span>		return nil, fmt.Errorf(&#34;error base64 decoding spec: %w&#34;, err)
+<span id="L121" class="ln">   121  </span>	}
+<span id="L122" class="ln">   122  </span>	zr := flate.NewReader(bytes.NewReader(compressed))
+<span id="L123" class="ln">   123  </span>	var buf bytes.Buffer
+<span id="L124" class="ln">   124  </span>	if _, err := buf.ReadFrom(zr); err != nil {
+<span id="L125" class="ln">   125  </span>		return nil, fmt.Errorf(&#34;read flate: %w&#34;, err)
+<span id="L126" class="ln">   126  </span>	}
+<span id="L127" class="ln">   127  </span>	if err := zr.Close(); err != nil {
+<span id="L128" class="ln">   128  </span>		return nil, fmt.Errorf(&#34;close flate reader: %w&#34;, err)
+<span id="L129" class="ln">   129  </span>	}
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>	return buf.Bytes(), nil
+<span id="L132" class="ln">   132  </span>}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>var rawSpec = decodeSpecCached()
+<span id="L135" class="ln">   135  </span>
+<span id="L136" class="ln">   136  </span><span class="comment">// a naive cache of the decoded OpenAPI spec</span>
+<span id="L137" class="ln">   137  </span>func decodeSpecCached() func() ([]byte, error) {
+<span id="L138" class="ln">   138  </span>	data, err := decodeSpec()
+<span id="L139" class="ln">   139  </span>	return func() ([]byte, error) {
+<span id="L140" class="ln">   140  </span>		return data, err
+<span id="L141" class="ln">   141  </span>	}
+<span id="L142" class="ln">   142  </span>}
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span><span class="comment">// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.</span>
+<span id="L145" class="ln">   145  </span>func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
+<span id="L146" class="ln">   146  </span>	res := make(map[string]func() ([]byte, error))
+<span id="L147" class="ln">   147  </span>	if len(pathToFile) &gt; 0 {
+<span id="L148" class="ln">   148  </span>		res[pathToFile] = rawSpec
+<span id="L149" class="ln">   149  </span>	}
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>	return res
+<span id="L152" class="ln">   152  </span>}
+<span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span><span class="comment">// GetSpec returns the OpenAPI specification corresponding to the generated</span>
+<span id="L155" class="ln">   155  </span><span class="comment">// code in this file. External references in the spec are resolved through</span>
+<span id="L156" class="ln">   156  </span><span class="comment">// PathToRawSpec; externally-referenced files must be embedded in their</span>
+<span id="L157" class="ln">   157  </span><span class="comment">// corresponding Go packages (via the import-mapping feature). URL-based</span>
+<span id="L158" class="ln">   158  </span><span class="comment">// external refs are not supported.</span>
+<span id="L159" class="ln">   159  </span>func GetSpec() (swagger *openapi3.T, err error) {
+<span id="L160" class="ln">   160  </span>	resolvePath := PathToRawSpec(&#34;&#34;)
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>	loader := openapi3.NewLoader()
+<span id="L163" class="ln">   163  </span>	loader.IsExternalRefsAllowed = true
+<span id="L164" class="ln">   164  </span>	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
+<span id="L165" class="ln">   165  </span>		pathToFile := url.String()
+<span id="L166" class="ln">   166  </span>		pathToFile = path.Clean(pathToFile)
+<span id="L167" class="ln">   167  </span>		getSpec, ok := resolvePath[pathToFile]
+<span id="L168" class="ln">   168  </span>		if !ok {
+<span id="L169" class="ln">   169  </span>			err1 := fmt.Errorf(&#34;path not found: %s&#34;, pathToFile)
+<span id="L170" class="ln">   170  </span>			return nil, err1
+<span id="L171" class="ln">   171  </span>		}
+<span id="L172" class="ln">   172  </span>		return getSpec()
+<span id="L173" class="ln">   173  </span>	}
+<span id="L174" class="ln">   174  </span>	var specData []byte
+<span id="L175" class="ln">   175  </span>	specData, err = rawSpec()
+<span id="L176" class="ln">   176  </span>	if err != nil {
+<span id="L177" class="ln">   177  </span>		return
+<span id="L178" class="ln">   178  </span>	}
+<span id="L179" class="ln">   179  </span>	swagger, err = loader.LoadFromData(specData)
+<span id="L180" class="ln">   180  </span>	if err != nil {
+<span id="L181" class="ln">   181  </span>		return
+<span id="L182" class="ln">   182  </span>	}
+<span id="L183" class="ln">   183  </span>	return
+<span id="L184" class="ln">   184  </span>}
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span><span class="comment">// GetSpecJSON returns the raw JSON bytes of the embedded OpenAPI</span>
+<span id="L187" class="ln">   187  </span><span class="comment">// specification: decompressed but not unmarshaled. External references</span>
+<span id="L188" class="ln">   188  </span><span class="comment">// are not resolved here; the bytes are the spec exactly as embedded by</span>
+<span id="L189" class="ln">   189  </span><span class="comment">// codegen. The result is cached at package init time, so repeated calls</span>
+<span id="L190" class="ln">   190  </span><span class="comment">// are cheap.</span>
+<span id="L191" class="ln">   191  </span>func GetSpecJSON() ([]byte, error) {
+<span id="L192" class="ln">   192  </span>	return rawSpec()
+<span id="L193" class="ln">   193  </span>}
+<span id="L194" class="ln">   194  </span>
+<span id="L195" class="ln">   195  </span><span class="comment">// GetSwagger returns the OpenAPI specification corresponding to the</span>
+<span id="L196" class="ln">   196  </span><span class="comment">// generated code in this file.</span>
+<span id="L197" class="ln">   197  </span><span class="comment">//</span>
+<span id="L198" class="ln">   198  </span><span class="comment">// Deprecated: GetSwagger predates kin-openapi renaming openapi3.Swagger</span>
+<span id="L199" class="ln">   199  </span><span class="comment">// to openapi3.T. Use [GetSpec] instead. This wrapper is retained for</span>
+<span id="L200" class="ln">   200  </span><span class="comment">// backwards compatibility.</span>
+<span id="L201" class="ln">   201  </span>func GetSwagger() (*openapi3.T, error) {
+<span id="L202" class="ln">   202  </span>	return GetSpec()
+<span id="L203" class="ln">   203  </span>}
+<span id="L204" class="ln">   204  </span>
 </pre><p><a href="../../../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/validator/gen/validate.gen.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
