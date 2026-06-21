@@ -29,6 +29,7 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 |Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|
 |Generated Database Artifacts Check|`gen-db-artifacts-check.yaml`|Verify generated sqlc code matches committed artifacts|
 |Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
+|OpenAPI Lint|`oapi-lint.yaml`|`redocly lint` the OpenAPI definition (naming / casing / descriptions / unused components)|
 |App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
 |Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
 
@@ -53,7 +54,7 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
-|Auto-generate Docs|`auto-generate-docs.yaml`|push to release/* branches|Auto-generate OpenAPI docs, ER diagrams, portal docs|
+|Auto-generate Docs|`auto-generate-docs.yaml`|push to release/* branches|Sync OpenAPI `info.version` from the `release/vX.Y.Z` branch name, then auto-generate the OpenAPI bundle / embedded spec / docs, ER diagrams, portal docs|
 
 ## Shared Composite Actions
 

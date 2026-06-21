@@ -2540,12 +2540,12 @@ import (
 )
 
 // Email は、OpenAPI 生成の Email を文字列へ変換します。
-func Email(e openapi_types.Email) string <span class="cov7" title="4">{
+func Email(e openapi_types.Email) string <span class="cov10" title="7">{
         return string(e)
 }</span>
 
 // EmailPtr は、任意の OpenAPI 生成 Email を文字列ポインタへ変換します（nil は nil を返す）。
-func EmailPtr(e *openapi_types.Email) *string <span class="cov10" title="6">{
+func EmailPtr(e *openapi_types.Email) *string <span class="cov9" title="6">{
         if e == nil </span><span class="cov6" title="3">{
                 return nil
         }</span>
@@ -3753,6 +3753,7 @@ import (
         "context"
 
         "go-boilerplate/internal/apperror"
+        "go-boilerplate/internal/controller/conv"
         "go-boilerplate/internal/controller/ctxhelper"
         "go-boilerplate/internal/controller/handler/v1/users/gen"
         "go-boilerplate/internal/observability"
@@ -3831,7 +3832,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
                 UpdateProfileParams: user.UpdateProfileParams{
                         FirstName:      request.Body.FirstName,
                         LastName:       request.Body.LastName,
-                        Email:          string(request.Body.Email),
+                        Email:          conv.Email(request.Body.Email),
                         Phone:          request.Body.Phone,
                         PostalCode:     request.Body.PostalCode,
                         PrefectureName: request.Body.Prefecture,
@@ -6426,7 +6427,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="28">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="24">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -9304,7 +9305,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov7" title="301">{
+        for i, line := range lines </span><span class="cov6" title="281">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>

@@ -145,7 +145,7 @@
 <span id="L88" class="ln">    88  </span>			_, ok := got[&#34;code&#34;].(string)
 <span id="L89" class="ln">    89  </span>			assert.True(t, ok)
 <span id="L90" class="ln">    90  </span>
-<span id="L91" class="ln">    91  </span>			_, ok = got[&#34;request_id&#34;].(string)
+<span id="L91" class="ln">    91  </span>			_, ok = got[&#34;requestId&#34;].(string)
 <span id="L92" class="ln">    92  </span>			assert.True(t, ok)
 <span id="L93" class="ln">    93  </span>		})
 <span id="L94" class="ln">    94  </span>	})
@@ -185,7 +185,7 @@
 <span id="L128" class="ln">   128  </span>
 <span id="L129" class="ln">   129  </span>			assert.Equal(t, he.Code, got[&#34;code&#34;])
 <span id="L130" class="ln">   130  </span>			assert.Equal(t, he.Message, got[&#34;message&#34;])
-<span id="L131" class="ln">   131  </span>			assert.Equal(t, he.RequestId, got[&#34;request_id&#34;])
+<span id="L131" class="ln">   131  </span>			assert.Equal(t, he.RequestId, got[&#34;requestId&#34;])
 <span id="L132" class="ln">   132  </span>		})
 <span id="L133" class="ln">   133  </span>	})
 <span id="L134" class="ln">   134  </span>}
