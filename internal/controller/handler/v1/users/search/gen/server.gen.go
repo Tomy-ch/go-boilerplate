@@ -116,6 +116,14 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 }
 
+type Forbidden403JSONResponse ErrorResponse
+
+type InternalServerError500JSONResponse ErrorResponse
+
+type ServiceUnavailable503JSONResponse ErrorResponse
+
+type Unauthorized401JSONResponse ErrorResponse
+
 type GetUsersSearchRequestObject struct {
 	Params GetUsersSearchParams
 }
@@ -138,7 +146,7 @@ func (response GetUsersSearch200JSONResponse) VisitGetUsersSearchResponse(w http
 	return err
 }
 
-type GetUsersSearch401JSONResponse ErrorResponse
+type GetUsersSearch401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetUsersSearch401JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
 
@@ -152,7 +160,7 @@ func (response GetUsersSearch401JSONResponse) VisitGetUsersSearchResponse(w http
 	return err
 }
 
-type GetUsersSearch403JSONResponse ErrorResponse
+type GetUsersSearch403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response GetUsersSearch403JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
 
@@ -166,7 +174,9 @@ func (response GetUsersSearch403JSONResponse) VisitGetUsersSearchResponse(w http
 	return err
 }
 
-type GetUsersSearch500JSONResponse ErrorResponse
+type GetUsersSearch500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
 
 func (response GetUsersSearch500JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
 
@@ -176,6 +186,22 @@ func (response GetUsersSearch500JSONResponse) VisitGetUsersSearchResponse(w http
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersSearch503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response GetUsersSearch503JSONResponse) VisitGetUsersSearchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }

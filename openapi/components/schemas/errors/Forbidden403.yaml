@@ -1,0 +1,5 @@
+description: 権限が必要です。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

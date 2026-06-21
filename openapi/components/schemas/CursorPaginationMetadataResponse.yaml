@@ -1,14 +1,14 @@
 type: object
 required:
-  - next_cursor
-  - has_next
+  - nextCursor
+  - hasNext
 properties:
-  next_cursor:
+  nextCursor:
     type: string
     nullable: true
     description: 次ページ取得用のカーソル。最終ページの場合は null です。
     example: eyJrMCI6IjIwMjYtMDEtMDFUMDA6MDA6MDBaIn0
-  has_next:
+  hasNext:
     type: boolean
     description: 次ページが存在するかどうか
     example: true

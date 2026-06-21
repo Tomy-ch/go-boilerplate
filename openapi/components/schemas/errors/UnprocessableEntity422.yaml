@@ -1,0 +1,5 @@
+description: 入力値が要件を満たしていません。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

@@ -17,20 +17,10 @@ get:
           schema:
             $ref: '../../../components/responses/users/UsersSearchResponse.yaml'
     '401':
-      description: ユーザー一覧の取得には認証が必要です。
-      content:
-        application/json:
-          schema:
-            $ref: '../../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
     '403':
-      description: ユーザー一覧の取得には権限が必要です。
-      content:
-        application/json:
-          schema:
-            $ref: '../../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../../components/schemas/errors/Forbidden403.yaml'
     '500':
-      description: サーバーエラーが発生しました。
-      content:
-        application/json:
-          schema:
-            $ref: '../../../components/schemas/ErrorResponse.yaml'
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

@@ -21,7 +21,7 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 
 	// RequestId リクエストID
-	RequestId string `json:"request_id"`
+	RequestId string `json:"requestId"`
 }
 
 // PaginationMetadataResponse defines model for PaginationMetadataResponse.
@@ -50,10 +50,10 @@ type UserResponse struct {
 	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
 
-	// FirstName 苗字
+	// FirstName 名前
 	FirstName string `json:"firstName"`
 
-	// LastName 名前
+	// LastName 苗字
 	LastName string `json:"lastName"`
 
 	// Phone 電話番号
@@ -96,10 +96,10 @@ type UsersSearchResponseItem struct {
 	// Email メールアドレス
 	Email openapi_types.Email `json:"email"`
 
-	// FirstName 苗字
+	// FirstName 名前
 	FirstName string `json:"firstName"`
 
-	// LastName 名前
+	// LastName 苗字
 	LastName string `json:"lastName"`
 
 	// Phone 電話番号
@@ -129,6 +129,18 @@ type PageParam = int
 
 // PerPageParam defines model for PerPageParam.
 type PerPageParam = int
+
+// Forbidden403 エラーレスポンスの共通スキーマ
+type Forbidden403 = ErrorResponse
+
+// InternalServerError500 エラーレスポンスの共通スキーマ
+type InternalServerError500 = ErrorResponse
+
+// ServiceUnavailable503 エラーレスポンスの共通スキーマ
+type ServiceUnavailable503 = ErrorResponse
+
+// Unauthorized401 エラーレスポンスの共通スキーマ
+type Unauthorized401 = ErrorResponse
 
 // basicAuthContextKey is the context key for BasicAuth security scheme
 type basicAuthContextKey string

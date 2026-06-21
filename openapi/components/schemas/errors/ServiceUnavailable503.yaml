@@ -1,0 +1,5 @@
+description: サービスが一時的に利用できません。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'
