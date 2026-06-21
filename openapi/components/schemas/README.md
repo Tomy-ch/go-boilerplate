@@ -8,8 +8,10 @@ English | [日本語](README.ja.md)
 
 |File|Type|Description|
 |---|---|---|
-|`ErrorResponse.yaml`|Response|Unified error response schema (code / message / details / request_id)|
-|`PaginationMetadataResponse.yaml`|Response|Pagination metadata (total / limit / offset)|
+|`ErrorResponse.yaml`|Response|Unified error response schema (code / message / details / requestId)|
+|`errors/`|Response objects|Reusable error responses — one per HTTP status covering every `apperror` kind (`<Reason><Code>.yaml`), wrapping `ErrorResponse`|
+|`PaginationMetadataResponse.yaml`|Response|Offset pagination metadata (total / limit / offset)|
+|`CursorPaginationMetadataResponse.yaml`|Response|Cursor (keyset) pagination metadata (nextCursor / hasNext)|
 |`BasicAuth.yaml`|Security|HTTP Basic authentication scheme|
 |`BearerAuth.yaml`|Security|HTTP Bearer (JWT) authentication scheme|
 |`UserBaseInputRequest.yaml`|Request|User input fields (sample)|
@@ -46,9 +48,19 @@ properties:
 |Response schemas|`*Response.yaml`|`UserResponse.yaml`, `ErrorResponse.yaml`|
 |Security schemes|Descriptive name|`BasicAuth.yaml`, `BearerAuth.yaml`|
 
-### Request and Response in schemas/
+### Payloads are schemas, organized by role across three folders
 
-Due to constraints with `redocly` bundling and `oapi-codegen` generation, request bodies and responses are defined as **schemas** (not under `requestBodies/` or `responses/`).
+Because of `redocly` bundling and `oapi-codegen` generation constraints, every request / response payload is modeled as a **schema** — never as the OpenAPI `requestBodies` / `responses` **component object** types. A path references these schemas directly under `content.<media>.schema.$ref`.
+
+They are split across three folders **by role**, not by kind:
+
+|Folder|Holds|Example|
+|---|---|---|
+|`schemas/`|Base & reusable schemas + security schemes|`UserResponse.yaml`, `ErrorResponse.yaml`, `PaginationMetadataResponse.yaml`|
+|`requests/`|Endpoint **request-body** schemas (usually compose a base via `allOf`)|`UsersPostRequest.yaml` = `UserBaseInputRequest` + `password`|
+|`responses/`|Endpoint **response-body** schemas (usually compose a base via `allOf`)|`UsersResponse.yaml` = `UserResponse[]` + pagination metadata|
+
+Rule of thumb: a small reusable building block lives in `schemas/`; the per-endpoint shape that composes those blocks lives in `requests/` or `responses/`. See [`requests/README.md`](../requests/README.md) and [`responses/README.md`](../responses/README.md).
 
 ### $ref Usage
 
@@ -81,19 +93,59 @@ Unified error response used across all endpoints:
 
 ```yaml
 type: object
-required: [code, message, request_id]
+required: [code, message, requestId]
 properties:
-  code:        # Machine-readable error code (e.g., BAD_REQUEST)
-  message:     # Human-readable error message
-  details:     # Optional array of detail strings
-  request_id:  # Request tracking ID
+  code:       # Machine-readable error code (e.g., BAD_REQUEST)
+  message:    # Human-readable error message
+  details:    # Optional array of detail strings
+  requestId:  # Request tracking ID
 ```
 
 Maps to `response.HTTPErrorResponse` in Go — see `internal/controller/error/response/`.
 
+### errors/ — reusable error response objects (DRY)
+
+Every operation returns the same `ErrorResponse` body for its error statuses. Instead of repeating the full block in each path, `schemas/errors/` holds **one reusable response object per HTTP status — covering every `apperror` kind** — and a path references the whole status entry:
+
+```yaml
+# in a path
+responses:
+  '401':
+    $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+```
+
+```yaml
+# schemas/errors/Unauthorized401.yaml
+description: 認証が必要です。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'
+```
+
+These are technically OpenAPI **response objects** (they carry `description` + `content`, which a plain schema cannot), kept here next to `ErrorResponse` so all error definitions live together. `redocly bundle` hoists each into `#/components/responses/<FileName>`, which `oapi-codegen` turns into a `<FileName>JSONResponse` Go type — so **the file name must be a valid Go identifier (PascalReason + HTTP-code suffix, never a bare number)**. Keep a status **inline** only when its description is operation-specific (e.g. `422` "current password does not match").
+
+**The full set (one per `apperror` kind).** Every fragment exists so it is ready to `$ref` the moment an endpoint needs it. A path declares **only the statuses that operation can actually produce** (derived from `internal/controller/error/response/http_error.go` + `internal/infrastructure/rdb/pgerror`):
+
+|Fragment|Status|`apperror`|Currently referenced?|Reached by|
+|---|---|---|---|---|
+|`BadRequest400`|400|`ErrInvalidArgument`|yes|OpenAPI request validation (param/body schema violation)|
+|`Unauthorized401`|401|`ErrUnauthenticated`|yes|auth middleware|
+|`Forbidden403`|403|`ErrPermissionDenied`|yes|auth middleware|
+|`NotFound404`|404|`ErrNotFound`|yes|missing resource|
+|`Conflict409`|409|`ErrConflict`|yes|`ErrAlreadyDeleted` (delete) or unique-violation `23505` (create/update, e.g. duplicate email)|
+|`UnprocessableEntity422`|422|`ErrValidation`|yes|domain validation the OpenAPI schema does not catch (e.g. email format)|
+|`TooManyRequests429`|429|`ErrTooManyRequests`|**not yet**|rate limiting (not currently in-app; reserved)|
+|`ClientClosedRequest499`|499|`ErrCanceled`|**not yet**|client disconnect mid-request|
+|`InternalServerError500`|500|`ErrInternal`|yes|unexpected server error|
+|`NotImplemented501`|501|`ErrUnimplemented`|**not yet**|unimplemented operation (reserved)|
+|`ServiceUnavailable503`|503|`ErrUnavailable`|yes|DB transient errors (`40001`/`40P01`/`57014`/connection) via `pgerror`|
+
+Fragments marked **not yet** are defined but not referenced by any operation, so `redocly bundle` does not include them and `no-unused-components` does not flag them — they sit ready for the day a code path produces that status. Wire one up by adding a `'<code>': { $ref: ... }` entry to the operation's `responses`.
+
 ### PaginationMetadataResponse
 
-Pagination metadata returned with list endpoints:
+**Offset** pagination metadata returned with list endpoints:
 
 ```yaml
 type: object
@@ -104,6 +156,36 @@ properties:
   offset:  # Current offset
 ```
 
+### CursorPaginationMetadataResponse
+
+**Cursor (keyset)** pagination metadata — the alternative strategy to offset:
+
+```yaml
+type: object
+required: [nextCursor, hasNext]
+properties:
+  nextCursor:  # Opaque cursor for the next page; null on the last page
+  hasNext:     # Whether a next page exists
+```
+
+Reuse pattern: the cursor pieces are **resource-agnostic and shared**. To add a cursor-paginated endpoint, you do **not** create new pagination components — reuse the existing ones:
+
+- Query parameters: `parameters/pagination/CursorAfterParam.yaml` (`after`) + `parameters/pagination/CursorFirstParam.yaml` (`first`)
+- Response: compose the item array with this metadata via `allOf` in a per-resource wrapper. Only that wrapper is feature-specific:
+
+```yaml
+# responses/users/UsersFeedResponse.yaml
+allOf:
+  - type: object
+    required: [users]
+    properties:
+      users:
+        type: array
+        items:
+          $ref: '../../schemas/UserResponse.yaml'
+  - $ref: '../../schemas/CursorPaginationMetadataResponse.yaml'
+```
+
 ## Rules
 
 - Avoid defining schemas inline in path definitions — always extract to `schemas/`
@@ -111,6 +193,7 @@ properties:
 - Include `description` and `example` on all properties
 - Use `required` to explicitly list mandatory fields
 - Keep `additionalProperties: false` on request schemas to reject unknown fields
+- Boundary values like `maxLength` are a **wire contract**, not the domain's business rule (different owner) — see [Input Boundary Value Ownership](../../boundary-ownership.md)
 
 ## Checklist
 
