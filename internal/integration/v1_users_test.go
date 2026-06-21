@@ -1,12 +1,17 @@
 package integration
 
 import (
+	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	v1users "go-boilerplate/internal/controller/handler/v1/users"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
 	"go-boilerplate/internal/observability"
+	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
+	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
@@ -88,6 +93,54 @@ func TestV1Users_Integration(t *testing.T) {
 			uuid, err := uuid.Parse("d1f64798-7321-242b-e4ff-115f6a0b7803")
 			require.NoError(t, err)
 			headers := MakeAvailableUserID(t, e, uuid)
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, headers)
+			assert.Equal(t, http.StatusCreated, actual.StatusCode)
+		})
+
+		t.Run("POST /v1/usersがIdempotency-Key付きでclaim→completeし201を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				CreateUser(gomock.Any(), gomock.Any()).
+				Return(user.UserView{Email: "idem@example.com"}, nil)
+
+			// 実 Deps を組んだ BindHandler に Idempotency-Key 付きリクエストを通し、
+			// middleware→Run 配線（claim→complete）が実スタックで動くことを検証する。
+			store := mock_idempotency.NewMockStore(ctrl)
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
+			txm := mock_tx.NewMockManager(ctrl)
+			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+			clk := mock_clock.NewMockClock(ctrl)
+			clk.EXPECT().Now().Return(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)).AnyTimes()
+
+			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{Txm: txm, Store: store, Clock: clk})
+
+			req := gen.PostUsersRequestObject{
+				Body: &gen.PostUsersJSONRequestBody{
+					FirstName:  "First",
+					LastName:   "Last",
+					Email:      types.Email("idem@example.com"),
+					Phone:      "09000000000",
+					PostalCode: "123-4567",
+					Prefecture: "Tokyo",
+					City:       "Shibuya",
+					Street:     "1-1-1",
+					Building:   new("Building"),
+					Password:   "secret",
+				},
+			}
+
+			uuid, err := uuid.Parse("e2f64798-7321-242b-e4ff-115f6a0b7804")
+			require.NoError(t, err)
+			headers := MakeAvailableUserID(t, e, uuid)
+			headers.Set("Idempotency-Key", "integration-key-1")
 			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, headers)
 			assert.Equal(t, http.StatusCreated, actual.StatusCode)
 		})
