@@ -1,5 +1,5 @@
 
--- === source: database/dml/query_service/user/count_user_by_keyword.sql ===
+-- === source: /app/database/dml/query_service/user/count_user_by_keyword.sql ===
 -- name: CountSearchUsers :one
 SELECT COUNT(*)
 FROM users AS u
@@ -17,7 +17,7 @@ FROM users AS u
 WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT [])
     AND u.deleted_at IS NOT NULL;
 
--- === source: database/dml/query_service/user/select_users_by_keyword.sql ===
+-- === source: /app/database/dml/query_service/user/select_users_by_keyword.sql ===
 -- name: SearchUsers :many
 SELECT
     p.name AS prefecture_name,
