@@ -163,10 +163,10 @@ endpoint that has no contract. Each `operationId` (`GetUsers`, `PostUsers`, `Get
 
 **Files:**
 
-- `database/migrations/000002_create_users.up.sql` / `.down.sql` — the `users` table
+- `database/migrations/000003_create_users.up.sql` / `.down.sql` — the `users` table
   (`id` UUID PK, `email` UNIQUE, `prefecture_id` FK, address columns, `created_at` /
   `updated_at` / `deleted_at` for soft delete).
-- `database/migrations/000009_users_table_search_text_column.up.sql` / `.down.sql` — a
+- `database/migrations/000010_users_table_search_text_column.up.sql` / `.down.sql` — a
   `GENERATED ALWAYS` `search_text` column + a GIN trigram index for keyword search.
 - `database/dml/repository/user/*.sql` — the aggregate's CRUD queries
   (`insert_user`, `select_user_by_id`, `select_users`, `update_user`, `count_user`).

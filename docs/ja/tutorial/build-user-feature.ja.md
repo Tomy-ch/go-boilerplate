@@ -161,10 +161,10 @@ spec の Entity フィールド表は SQL マイグレーションに対して�
 
 **ファイル:**
 
-- `database/migrations/000002_create_users.up.sql` / `.down.sql` —— `users` テーブル
+- `database/migrations/000003_create_users.up.sql` / `.down.sql` —— `users` テーブル
   （`id` UUID PK、`email` UNIQUE、`prefecture_id` FK、住所カラム、論理削除用の `created_at` /
   `updated_at` / `deleted_at`）。
-- `database/migrations/000009_users_table_search_text_column.up.sql` / `.down.sql` ——
+- `database/migrations/000010_users_table_search_text_column.up.sql` / `.down.sql` ——
   `GENERATED ALWAYS` の `search_text` カラム + キーワード検索用の GIN トライグラム索引。
 - `database/dml/repository/user/*.sql` —— 集約の CRUD クエリ
   （`insert_user`、`select_user_by_id`、`select_users`、`update_user`、`count_user`）。
