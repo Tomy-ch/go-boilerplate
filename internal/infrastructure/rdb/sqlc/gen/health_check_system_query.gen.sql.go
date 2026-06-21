@@ -13,7 +13,7 @@ const getDBHealthCheck = `-- name: GetDBHealthCheck :one
 SELECT 1 AS health_check
 `
 
-// === source: /app/database/dml/system_query/health_check/select_system_health.sql ===
+// === source: database/dml/system_query/health_check/select_system_health.sql ===
 //
 //	SELECT 1 AS health_check
 func (q *Queries) GetDBHealthCheck(ctx context.Context) (int32, error) {

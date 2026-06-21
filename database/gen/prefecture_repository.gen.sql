@@ -1,5 +1,5 @@
 
--- === source: /app/database/dml/repository/prefecture/select_prefecture_by_id.sql ===
+-- === source: database/dml/repository/prefecture/select_prefecture_by_id.sql ===
 -- name: GetPrefectureDomainByID :one
 SELECT
     p.id,
@@ -8,7 +8,7 @@ SELECT
 FROM prefectures AS p
 WHERE p.id = sqlc.arg('id_param');
 
--- === source: /app/database/dml/repository/prefecture/select_prefecture_by_ids.sql ===
+-- === source: database/dml/repository/prefecture/select_prefecture_by_ids.sql ===
 -- name: GetPrefectureDomainByIDs :many
 SELECT
     p.id,
@@ -18,7 +18,7 @@ FROM prefectures AS p
 WHERE p.id = ANY(@ids_param::UUID [])
 ORDER BY p.code;
 
--- === source: /app/database/dml/repository/prefecture/select_prefecture_by_name.sql ===
+-- === source: database/dml/repository/prefecture/select_prefecture_by_name.sql ===
 -- name: GetPrefectureDomainByName :one
 SELECT
     p.id,

@@ -1,5 +1,5 @@
 
--- === source: /app/database/dml/repository/user/count_user.sql ===
+-- === source: database/dml/repository/user/count_user.sql ===
 -- name: CountUsers :one
 SELECT COUNT(*)
 FROM users;
@@ -14,7 +14,7 @@ SELECT COUNT(*)
 FROM users AS u
 WHERE u.deleted_at IS NOT NULL;
 
--- === source: /app/database/dml/repository/user/insert_user.sql ===
+-- === source: database/dml/repository/user/insert_user.sql ===
 -- name: CreateUser :exec
 INSERT INTO users (
     id,
@@ -47,14 +47,14 @@ INSERT INTO users (
     sqlc.arg('updated_at')
 );
 
--- === source: /app/database/dml/repository/user/select_user_by_id.sql ===
+-- === source: database/dml/repository/user/select_user_by_id.sql ===
 -- name: GetUserByID :one
 SELECT sqlc.embed(u)
 FROM users AS u
 WHERE u.id = sqlc.arg('user_id_param')
     AND u.deleted_at IS NULL;
 
--- === source: /app/database/dml/repository/user/select_users.sql ===
+-- === source: database/dml/repository/user/select_users.sql ===
 -- name: ListUsers :many
 SELECT sqlc.embed(u)
 FROM users AS u
@@ -75,7 +75,7 @@ WHERE u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 
--- === source: /app/database/dml/repository/user/select_users_feed.sql ===
+-- === source: database/dml/repository/user/select_users_feed.sql ===
 -- name: ListUsersFeedFirst :many
 SELECT sqlc.embed(u)
 FROM users AS u
@@ -95,7 +95,7 @@ WHERE u.deleted_at IS NULL
 ORDER BY u.created_at DESC, u.id DESC
 LIMIT sqlc.arg('limit_param');
 
--- === source: /app/database/dml/repository/user/update_user.sql ===
+-- === source: database/dml/repository/user/update_user.sql ===
 -- name: UpdateUser :execrows
 UPDATE users
 SET

@@ -26,7 +26,7 @@ type GetPrefectureDomainByIDRow struct {
 	Code int16
 }
 
-// === source: /app/database/dml/repository/prefecture/select_prefecture_by_id.sql ===
+// === source: database/dml/repository/prefecture/select_prefecture_by_id.sql ===
 //
 //	SELECT
 //	    p.id,
@@ -57,7 +57,7 @@ type GetPrefectureDomainByIDsRow struct {
 	Code int16
 }
 
-// === source: /app/database/dml/repository/prefecture/select_prefecture_by_ids.sql ===
+// === source: database/dml/repository/prefecture/select_prefecture_by_ids.sql ===
 //
 //	SELECT
 //	    p.id,
@@ -101,7 +101,7 @@ type GetPrefectureDomainByNameRow struct {
 	Code int16
 }
 
-// === source: /app/database/dml/repository/prefecture/select_prefecture_by_name.sql ===
+// === source: database/dml/repository/prefecture/select_prefecture_by_name.sql ===
 //
 //	SELECT
 //	    p.id,

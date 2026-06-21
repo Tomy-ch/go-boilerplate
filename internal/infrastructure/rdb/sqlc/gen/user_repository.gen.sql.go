@@ -53,7 +53,7 @@ SELECT COUNT(*)
 FROM users
 `
 
-// === source: /app/database/dml/repository/user/count_user.sql ===
+// === source: database/dml/repository/user/count_user.sql ===
 //
 //	SELECT COUNT(*)
 //	FROM users
@@ -113,7 +113,7 @@ type CreateUserParams struct {
 	UpdatedAt    time.Time
 }
 
-// === source: /app/database/dml/repository/user/insert_user.sql ===
+// === source: database/dml/repository/user/insert_user.sql ===
 //
 //	INSERT INTO users (
 //	    id,
@@ -175,7 +175,7 @@ type GetUserByIDRow struct {
 	Users Users
 }
 
-// === source: /app/database/dml/repository/user/select_user_by_id.sql ===
+// === source: database/dml/repository/user/select_user_by_id.sql ===
 //
 //	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
@@ -340,7 +340,7 @@ type ListUsersRow struct {
 	Users Users
 }
 
-// === source: /app/database/dml/repository/user/select_users.sql ===
+// === source: database/dml/repository/user/select_users.sql ===
 //
 //	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
@@ -463,7 +463,7 @@ type ListUsersFeedFirstRow struct {
 	Users Users
 }
 
-// === source: /app/database/dml/repository/user/select_users_feed.sql ===
+// === source: database/dml/repository/user/select_users_feed.sql ===
 //
 //	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
@@ -541,7 +541,7 @@ type UpdateUserParams struct {
 	ID           uuid.UUID
 }
 
-// === source: /app/database/dml/repository/user/update_user.sql ===
+// === source: database/dml/repository/user/update_user.sql ===
 //
 //	UPDATE users
 //	SET
