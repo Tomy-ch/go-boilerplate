@@ -92,9 +92,9 @@ jobs:
           echo ">>>>> GENDB_DEBUG FULL DIFF START"
           git --no-pager diff --cached -- . ':(exclude)database/gen/schema.gen.sql'
           echo ">>>>> GENDB_DEBUG FULL DIFF END"
-          echo ">>>>> GENDB_DEBUG SCHEMA DIFF STAT START"
-          git --no-pager diff --cached --stat -- database/gen/schema.gen.sql
-          echo ">>>>> GENDB_DEBUG SCHEMA DIFF STAT END"
+          echo ">>>>> GENDB_DEBUG SCHEMA DIFF START"
+          git --no-pager diff --cached -- database/gen/schema.gen.sql
+          echo ">>>>> GENDB_DEBUG SCHEMA DIFF END"
       - name: Detect generated changes (file list)
         id: gen_diff
         shell: bash
