@@ -626,12 +626,12 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 
 			u1 := newFeedUser("feed_user_1", now)
 
-			expectedCursor := user.NewFeedCursor(afterUser.CreatedAt(), afterUser.ID())
-
+			// カーソルの復号正当性は feed_cursor_test.go が担保するため、ここでは
+			// 「after 指定時に limit+1 件でリポジトリが呼ばれる」オーケストレーションのみ検証する。
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindFeed(
 				gomock.Any(),
-				&expectedCursor,
+				gomock.Any(),
 				int32(21),
 			).Return(user.Users{u1}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)

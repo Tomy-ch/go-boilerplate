@@ -21,9 +21,6 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// feedCursorKeyCount は、フィードカーソルが保持するソートキーの個数（created_at, id）です。
-const feedCursorKeyCount = 2
-
 // 既存ユーザーが参照する prefecture を解決できない参照整合性破れ（サーバ側データ不整合）を表します。
 var errOrphanPrefecture = xerrors.Wrap(apperror.ErrInternal, "prefecture not found for user")
 
@@ -269,38 +266,11 @@ func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*Us
 
 	var nextCursor *string
 	if hasNext && len(us) > 0 {
-		last := us[len(us)-1]
-		encoded := paging.EncodeCursor(last.CreatedAt().Format(time.RFC3339Nano), last.ID().String())
+		encoded := encodeFeedCursor(us[len(us)-1])
 		nextCursor = &encoded
 	}
 
 	return &UserFeedView{Items: items, NextCursor: nextCursor}, nil
-}
-
-// decodeFeedCursor は、cursor の不透明キー列を keyset 境界（FeedCursor）へ解釈します。
-// 先頭ページ（カーソル無し）の場合は nil を返します。キーの個数・型が不正な場合は ErrInvalidArgument を返します。
-func decodeFeedCursor(cursor *paging.Cursor) (*user.FeedCursor, error) {
-	if !cursor.HasCursor() {
-		return nil, nil //nolint:nilnil // 先頭ページは境界なし（nil）を正常値として返す
-	}
-
-	keys := cursor.Keys()
-	if len(keys) != feedCursorKeyCount {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: expected 2 keys")
-	}
-
-	createdAt, err := time.Parse(time.RFC3339Nano, keys[0])
-	if err != nil {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: created_at is not RFC3339Nano")
-	}
-
-	id, err := uuid.Parse(keys[1])
-	if err != nil {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "invalid cursor: id is not a valid UUID")
-	}
-
-	fc := user.NewFeedCursor(createdAt, id)
-	return &fc, nil
 }
 
 // GetUser は、IDから単一ユーザーを取得するユースケースです。
