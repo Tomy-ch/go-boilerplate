@@ -15,7 +15,7 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 
 	// RequestId リクエストID
-	RequestId string `json:"request_id"`
+	RequestId string `json:"requestId"`
 }
 
 // basicAuthContextKey is the context key for BasicAuth security scheme

@@ -74,14 +74,14 @@ All errors are returned as JSON using `response.HTTPErrorResponse`:
 
 ```json
 {
-  "Code": "BAD_REQUEST",
-  "Message": "...",
-  "Details": ["..."],
-  "RequestID": "..."
+  "code": "BAD_REQUEST",
+  "message": "...",
+  "details": ["..."],
+  "requestId": "..."
 }
 ```
 
-- `RequestID` is always attached (extracted via `requestid.GetRequestIDFromResponse`)
+- `requestId` is always attached (extracted via `requestid.GetRequestIDFromResponse`)
 - `Details` and `Internal` error are included when available
 - `Internal` error and stack trace are logged but **not returned to the client**
 

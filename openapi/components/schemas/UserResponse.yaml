@@ -12,15 +12,15 @@ required:
   - deletedAt
 properties:
   firstName:
-    description: 苗字
-    type: string
-    example: "John"
-    maxLength: 50
-  lastName:
     description: 名前
     type: string
+    example: "John"
+    maxLength: 100
+  lastName:
+    description: 苗字
+    type: string
     example: "Doe"
-    maxLength: 50
+    maxLength: 100
   email:
     type: string
     description: メールアドレス
@@ -50,12 +50,12 @@ properties:
     description: 丁目・番地
     type: string
     example: "1-2-3 Jinnan"
-    maxLength: 200
+    maxLength: 255
   building:
     description: 建物名・部屋番号
     type: string
     example: "Shibuya Building 101"
-    maxLength: 200
+    maxLength: 255
   deletedAt:
     description: ユーザーが削除された日時。削除されていない場合はnull。
     type: string

@@ -1,0 +1,5 @@
+description: リクエストが不正です。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

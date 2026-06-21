@@ -27,7 +27,28 @@ servers:
   - url: https://staging.api.example.com
     description: Staging server (replace with actual URL)
   - url: https://development.api.example.com
-    description: Versioned API endpoint (replace with actual URL)
+    description: Development server (replace with actual URL)
+tags:
+  - name: health
+    description: ヘルスチェック（liveness）。
+  - name: healthz
+    description: ヘルスチェック（Kubernetes 互換の liveness）。
+  - name: ready
+    description: レディネスチェック（依存先を含む readiness）。
+  - name: version
+    description: アプリケーションのバージョン情報。
+  - name: metrics
+    description: Prometheus メトリクス。
+  - name: v1/users
+    description: ユーザーリソース（一覧取得・作成）。
+  - name: v1/users/detail
+    description: 単一ユーザー（取得・更新・部分更新・削除・パスワード変更）。
+  - name: v1/users/feed
+    description: ユーザーフィード（cursor ページネーション）。
+  - name: v1/users/search
+    description: ユーザー検索（キーワード）。
+  - name: internal/types/error-response
+    description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
   # Operation handlers
   /health:

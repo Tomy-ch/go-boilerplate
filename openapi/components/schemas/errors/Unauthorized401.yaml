@@ -1,0 +1,5 @@
+description: 認証が必要です。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

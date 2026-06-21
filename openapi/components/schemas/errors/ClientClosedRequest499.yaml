@@ -1,0 +1,5 @@
+description: クライアントが接続を切断しました。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

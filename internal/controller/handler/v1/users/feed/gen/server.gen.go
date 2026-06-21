@@ -104,6 +104,16 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 }
 
+type BadRequest400JSONResponse ErrorResponse
+
+type Forbidden403JSONResponse ErrorResponse
+
+type InternalServerError500JSONResponse ErrorResponse
+
+type ServiceUnavailable503JSONResponse ErrorResponse
+
+type Unauthorized401JSONResponse ErrorResponse
+
 type GetUsersFeedRequestObject struct {
 	Params GetUsersFeedParams
 }
@@ -126,7 +136,21 @@ func (response GetUsersFeed200JSONResponse) VisitGetUsersFeedResponse(w http.Res
 	return err
 }
 
-type GetUsersFeed401JSONResponse ErrorResponse
+type GetUsersFeed400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetUsersFeed400JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersFeed401JSONResponse struct{ Unauthorized401JSONResponse }
 
 func (response GetUsersFeed401JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
 
@@ -140,7 +164,7 @@ func (response GetUsersFeed401JSONResponse) VisitGetUsersFeedResponse(w http.Res
 	return err
 }
 
-type GetUsersFeed403JSONResponse ErrorResponse
+type GetUsersFeed403JSONResponse struct{ Forbidden403JSONResponse }
 
 func (response GetUsersFeed403JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
 
@@ -154,7 +178,9 @@ func (response GetUsersFeed403JSONResponse) VisitGetUsersFeedResponse(w http.Res
 	return err
 }
 
-type GetUsersFeed500JSONResponse ErrorResponse
+type GetUsersFeed500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
 
 func (response GetUsersFeed500JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
 
@@ -164,6 +190,22 @@ func (response GetUsersFeed500JSONResponse) VisitGetUsersFeedResponse(w http.Res
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUsersFeed503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response GetUsersFeed503JSONResponse) VisitGetUsersFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
 	_, err := buf.WriteTo(w)
 	return err
 }
