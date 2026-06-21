@@ -11,16 +11,13 @@ import (
 const stacktraceKey = "stacktrace"
 
 // stdoutSyncer / stderrSyncer は標準出力 / 標準エラーへの WriteSyncer です。
-// logging パッケージは os を直接 import できない（depguard）ため、zap.Open 経由で
-// 解決します。zap は "stdout" / "stderr" を特別扱いし失敗しないため解決は確定的で、
-// 返る syncer は Lock 済みのため追加の Lock は不要です。
+// logging は os を直接 import できない（depguard）制約があるため zap.Open で解決します。
 var (
 	stdoutSyncer = mustOpenSink("stdout")
 	stderrSyncer = mustOpenSink("stderr")
 )
 
-// mustOpenSink は zap.Open で WriteSyncer を解決します。
-// "stdout" / "stderr" は失敗しない前提で、想定外の失敗時のみ panic します（起動時に検知）。
+// mustOpenSink は path の WriteSyncer を返します。開けない場合は panic します。
 func mustOpenSink(path string) zapcore.WriteSyncer {
 	ws, _, err := zap.Open(path)
 	if err != nil {
@@ -30,9 +27,7 @@ func mustOpenSink(path string) zapcore.WriteSyncer {
 }
 
 // encoderConfig は JSON / console 共通のエンコーダ設定を返します。
-//
-// キー名は JSON 取り込み適性を優先した名称に統一します。
-// encodeLevel のみ出力方式依存（JSON=lowercase / console=color）で呼び出し側が差し込みます。
+// encodeLevel は呼び出し側が指定します。
 func encoderConfig(encodeLevel zapcore.LevelEncoder) zapcore.EncoderConfig {
 	return zapcore.EncoderConfig{
 		TimeKey:       "ts",
@@ -63,9 +58,8 @@ func NewConsoleLogger(level, stacktraceLevel Level) Logger {
 	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, false)
 }
 
-// buildLogger は encoder と出力先から Logger を直接構築する共通処理です。
-//
-// jsonArrayStacktrace=true のとき、zap が単一文字列で付与する stacktrace を行配列へ変換します。
+// buildLogger は encoder と出力先から Logger を構築します。
+// jsonArrayStacktrace=true のとき、stacktrace を行配列として出力します。
 func buildLogger(
 	enc zapcore.Encoder, ws zapcore.WriteSyncer, level, stacktraceLevel zapcore.Level, jsonArrayStacktrace bool,
 ) Logger {

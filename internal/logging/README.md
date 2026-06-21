@@ -67,39 +67,27 @@ This design provides:
 
 ## Logger Creation
 
-Logger is created according to the application runtime mode.
+Loggers are created by output format. Pass a `Level` (output level) and the level at which stacktraces start.
 
 ```go
-logger, err := logging.New(appCfg)
+// JSON logger (machine-readable; production-style output)
+logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
+// Console logger (human-readable; development-style output)
+logger := logging.NewConsoleLogger(logging.LevelDebug, logging.LevelWarn)
 ```
 
-`New` selects the appropriate logger based on the mode of `config.ApplicationConfig`.
-
-You can also create loggers individually:
+`Level` wraps the zap level so callers never depend on `zapcore` directly. Parse a level string (`debug` / `info` / `warn` / `error`) with `ParseLevel`:
 
 ```go
-logger, err := logging.NewProductionLogger()
-logger, err := logging.NewDevelopmentLogger()
+level, err := logging.ParseLevel("info")
 ```
 
-Internally, the following loggers are used.
+Which output format and level a running process uses is decided at the DI composition root, not here: `provideLogger` in `internal/di/module/logging.go` selects the format from `APP_MODE` and the output level from `APP_LOG_LEVEL`.
 
-|Mode|Logger|
-|---|---|
-|production|JSON logger|
-|development|console logger|
-
-### Production Logger
-
-- Encoding: JSON
-- Level: Info
-- Stacktrace: Error and above
-
-### Development Logger
-
-- Encoding: Console
-- Level: Debug
-- Stacktrace: Warn and above
+|Mode|Output format|Stacktrace|
+|---|---|---|
+|production|JSON logger|Error and above|
+|development|console logger|Warn and above|
 
 ## Field
 

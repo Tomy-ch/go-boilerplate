@@ -86,8 +86,7 @@ func (f *fxEventLogger) LogEvent(event fxevent.Event) {
 	}
 }
 
-// record は fx イベントの成否でログを振り分ける共通処理。
-// 失敗時は failFields に error を添えて Error、成功時は logOK（Debug / Info）で okFields を記録する。
+// record は fx イベントの成否に応じてログを記録します。
 func (f *fxEventLogger) record(
 	err error,
 	failMsg string, failFields []*logging.Field,

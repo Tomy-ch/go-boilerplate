@@ -24,7 +24,7 @@ const (
 	ProductionMode = "production"
 )
 
-// ログ出力レベルの列挙。APP_LOG_LEVEL が受理する値（出力方式とは別軸でレベルのみを制御）。
+// ログ出力レベルの列挙。APP_LOG_LEVEL が受理する値。
 const (
 	// LogLevelDebug はデバッグレベルを表します。
 	LogLevelDebug = "debug"
