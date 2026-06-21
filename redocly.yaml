@@ -1,0 +1,48 @@
+# Redocly 設定 / lint ルールセット。
+# `make lint-oapi`（CI: oapi-lint.yaml）で openapi/openapi.yaml を検証する。
+# bundle / build-docs と同じエントリポイントを共有する。
+extends:
+  - recommended
+
+rules:
+  # --- 構造・必須メタの強制 ---
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-summary: error
+  operation-description: off
+  operation-2xx-response: error
+  operation-4xx-response: off # 全オペレーションに 4xx を必須とはしない（204 系など）
+  no-unused-components: error
+  operation-tag-defined: error # 全 operation の tag は root tags: に宣言する
+  tag-description: error # 宣言した tag には description を付ける
+
+  # --- このリポジトリの規約に合わせて抑制 ---
+  security-defined: off # version / health など意図的に公開のエンドポイントがある
+  info-license: off # ボイラープレートのため info.license は要求しない
+  tags-alphabetical: off
+  no-server-example.com: off # servers はプレースホルダ（利用時に差し替え）
+
+  # --- 命名 casing（ロケーション別。openapi/README の規約と一致） ---
+  # ボディフィールド（schema のプロパティ名）は camelCase
+  rule/body-fields-camelCase:
+    severity: error
+    subject:
+      type: SchemaProperties
+    assertions:
+      casing: camelCase
+  # クエリ / パスパラメータ名は snake_case
+  rule/parameter-names-snake_case:
+    severity: error
+    subject:
+      type: Parameter
+      property: name
+    assertions:
+      casing: snake_case
+  # operationId は PascalCase
+  rule/operationId-PascalCase:
+    severity: error
+    subject:
+      type: Operation
+      property: operationId
+    assertions:
+      casing: PascalCase

@@ -12,6 +12,7 @@ scripts/
 ├── gen-portal-docs.mjs         # manifest.yaml に基づくドキュメントのポータルへのコピー
 ├── build-portal.mjs            # ポータルフロントエンド（src/main.jsx）を esbuild でバンドル
 ├── semver.mjs                  # セマンティックバージョニングヘルパー（patch/minor/major）
+├── stamp-openapi-version.mjs   # release/vX.Y.Z のブランチ名から openapi.yaml の info.version を同期
 ├── sync-versions/              # mise.toml の go / node / python を go.mod と Dockerfile FROM へ反映（Go 実装）
 ├── make_help.mjs                # Make ターゲットのヘルプ出力生成
 ├── genctxkey/                  # コンテキストキーコードジェネレータ（Go）
@@ -39,6 +40,7 @@ scripts/
 |スクリプト|説明|実行元|
 |---|---|---|
 |`semver.mjs`|セマンティックバージョンのバンプ（patch / minor / major）|リリースワークフロー|
+|`stamp-openapi-version.mjs`|`release/vX.Y.Z` のブランチ名から `X.Y.Z` を導出し `openapi.yaml` の `info.version` に書き込む（先頭の `version:` 行のみ・冪等・非 release ref は no-op）。契約版のみで SHA / build metadata は付けない（commit 単位の追跡は runtime の `/version` の責務）。依存ゼロの ESM で、素の runner `node` で動く。|`auto-generate-docs.yaml`|
 |`sync-versions/`|Go 実装の sync ツール。`mise.toml` の `[tools]` table を行ベース parser で解析し（外部依存ゼロ）、`go` / `node` / `python` を `go.mod` の `go` directive と `docker/*/Dockerfile` の `FROM golang:` / `FROM node:` / `FROM python:` 行へ反映する。version 存在・ファイル存在・期待マッチ数の事前 validate を全 rule で通してからファイル単位 atomic に書き出すため、partial state にならない。|`make sync-versions`|
 
 その他のツールのバージョンは [`mise.toml`](../mise.toml) を SSOT として管理しています。各環境（host / docker / CI）は必要なものだけ `mise install <tool>` で個別に取得するため、sync スクリプトは不要です。
