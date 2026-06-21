@@ -6,4 +6,5 @@ users
 products
 purchases
 purchase_details
+idempotency_keys
 schema_migrations

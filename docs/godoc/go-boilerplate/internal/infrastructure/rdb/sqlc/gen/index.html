@@ -135,6 +135,11 @@
 				
 			
 				
+				<dd><a href="#IdempotencyKeys">type IdempotencyKeys</a></dd>
+				
+				
+			
+				
 				<dd><a href="#ListActiveUsersParams">type ListActiveUsersParams</a></dd>
 				
 				
@@ -541,6 +546,55 @@
 		
 			
 			
+			<h2 id="IdempotencyKeys">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=157:896#L4">IdempotencyKeys</a>
+				<a class="permalink" href="#IdempotencyKeys">¶</a>
+				
+				
+			</h2>
+			<p>冪等性キー
+
+			</p><pre>type IdempotencyKeys struct {
+<span id="IdempotencyKeys.ID"></span>    <span class="comment">// ID</span>
+    ID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// スコープ（認証プリンシパルID）</span>
+<span id="IdempotencyKeys.Scope"></span>    Scope <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 冪等性キー（クライアント供給）</span>
+<span id="IdempotencyKeys.IdempotencyKey"></span>    IdempotencyKey <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// リクエストメソッド</span>
+<span id="IdempotencyKeys.RequestMethod"></span>    RequestMethod <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// リクエストパス</span>
+<span id="IdempotencyKeys.RequestPath"></span>    RequestPath <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// リクエスト指紋（SHA-256）</span>
+<span id="IdempotencyKeys.RequestFingerprint"></span>    RequestFingerprint []<a href="../../../../../../builtin/#byte">byte</a>
+    <span class="comment">// 状態（claimed / completed）</span>
+<span id="IdempotencyKeys.Status"></span>    Status <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// レスポンスHTTPステータス（completedまでNULL）</span>
+<span id="IdempotencyKeys.ResponseStatus"></span>    ResponseStatus *<a href="../../../../../../builtin/#int32">int32</a>
+    <span class="comment">// レスポンスペイロード（結果DTOのJSONシリアライズ、completedまでNULL）</span>
+<span id="IdempotencyKeys.ResponsePayload"></span>    ResponsePayload []<a href="../../../../../../builtin/#byte">byte</a>
+    <span class="comment">// 作成日時</span>
+<span id="IdempotencyKeys.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 完了日時</span>
+<span id="IdempotencyKeys.CompletedAt"></span>    CompletedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 有効期限（TTL）</span>
+<span id="IdempotencyKeys.ExpiresAt"></span>    ExpiresAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
 			<h2 id="ListActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4395:4470#L205">ListActiveUsersParams</a>
 				<a class="permalink" href="#ListActiveUsersParams">¶</a>
 				
@@ -771,7 +825,7 @@
 		
 			
 			
-			<h2 id="Prefectures">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=154:349#L4">Prefectures</a>
+			<h2 id="Prefectures">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=914:1109#L32">Prefectures</a>
 				<a class="permalink" href="#Prefectures">¶</a>
 				
 				
@@ -806,7 +860,7 @@
 		
 			
 			
-			<h2 id="ProductCategories">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=373:579#L18">ProductCategories</a>
+			<h2 id="ProductCategories">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1133:1339#L46">ProductCategories</a>
 				<a class="permalink" href="#ProductCategories">¶</a>
 				
 				
@@ -843,7 +897,7 @@
 		
 			
 			
-			<h2 id="ProductStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=606:810#L34">ProductStatuses</a>
+			<h2 id="ProductStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1366:1570#L62">ProductStatuses</a>
 				<a class="permalink" href="#ProductStatuses">¶</a>
 				
 				
@@ -880,7 +934,7 @@
 		
 			
 			
-			<h2 id="Products">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=822:1242#L50">Products</a>
+			<h2 id="Products">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1582:2002#L78">Products</a>
 				<a class="permalink" href="#Products">¶</a>
 				
 				
@@ -927,7 +981,7 @@
 		
 			
 			
-			<h2 id="PurchaseDetails">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1260:1512#L76">PurchaseDetails</a>
+			<h2 id="PurchaseDetails">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2020:2272#L104">PurchaseDetails</a>
 				<a class="permalink" href="#PurchaseDetails">¶</a>
 				
 				
@@ -966,7 +1020,7 @@
 		
 			
 			
-			<h2 id="PurchaseStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1539:1744#L94">PurchaseStatuses</a>
+			<h2 id="PurchaseStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2299:2504#L122">PurchaseStatuses</a>
 				<a class="permalink" href="#PurchaseStatuses">¶</a>
 				
 				
@@ -1003,7 +1057,7 @@
 		
 			
 			
-			<h2 id="Purchases">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1756:2329#L110">Purchases</a>
+			<h2 id="Purchases">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2516:3089#L138">Purchases</a>
 				<a class="permalink" href="#Purchases">¶</a>
 				
 				
@@ -1543,7 +1597,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="SchemaMigrations">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2331:2392#L143">SchemaMigrations</a>
+			<h2 id="SchemaMigrations">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=3091:3152#L171">SchemaMigrations</a>
 				<a class="permalink" href="#SchemaMigrations">¶</a>
 				
 				
@@ -1765,7 +1819,7 @@ WHERE id = $13
 		
 			
 			
-			<h2 id="Users">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2407:2964#L149">Users</a>
+			<h2 id="Users">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=3167:3724#L177">Users</a>
 				<a class="permalink" href="#Users">¶</a>
 				
 				
