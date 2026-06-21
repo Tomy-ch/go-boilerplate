@@ -189,6 +189,11 @@ func TestGetterMethods(t *testing.T) {
 				assert.Equal(t, expectedApplicationMode, app.Mode())
 			})
 
+			t.Run("ログレベルを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedApplicationLogLevel, app.LogLevel())
+			})
+
 			t.Run("シャットダウンタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedAppShutdownTimeout, app.ShutdownTimeout())

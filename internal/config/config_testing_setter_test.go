@@ -24,6 +24,12 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 			assert.Equal(t, expected, cfg.app.Env())
 		})
 
+		t.Run("アプリケーションログレベルを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := "warn"
+			cfg.app.SetApplicationLogLevel(t, expected)
+			assert.Equal(t, expected, cfg.app.LogLevel())
+		})
+
 		t.Run("サーバーポートを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
 			expected := 8081
 			cfg.server.SetServerPort(t, expected)

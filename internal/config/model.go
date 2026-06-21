@@ -29,6 +29,7 @@ type ApplicationConfig struct {
 	env             string
 	name            string
 	mode            string
+	logLevel        string
 	shutdownTimeout time.Duration
 }
 
@@ -119,6 +120,9 @@ func (a *ApplicationConfig) Env() string { return a.env }
 
 // Mode は、アプリの動作モードを返します（"development" / "production" のみ。挙動切替に使用。Env とは別軸）。
 func (a *ApplicationConfig) Mode() string { return a.mode }
+
+// LogLevel は、ログ出力レベル（"debug" / "info" / "warn" / "error" 等）を返します。解釈は利用側が担います。
+func (a *ApplicationConfig) LogLevel() string { return a.logLevel }
 
 // Name は、アプリケーションの名前を返します。
 func (a *ApplicationConfig) Name() string { return a.name }

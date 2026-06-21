@@ -24,6 +24,18 @@ const (
 	ProductionMode = "production"
 )
 
+// ログ出力レベルの列挙。APP_LOG_LEVEL が受理する値（出力方式とは別軸でレベルのみを制御）。
+const (
+	// LogLevelDebug はデバッグレベルを表します。
+	LogLevelDebug = "debug"
+	// LogLevelInfo は情報レベルを表します。
+	LogLevelInfo = "info"
+	// LogLevelWarn は警告レベルを表します。
+	LogLevelWarn = "warn"
+	// LogLevelError はエラーレベルを表します。
+	LogLevelError = "error"
+)
+
 const (
 	// MinPort は許可される最小ポート番号を表します。
 	MinPort = 1

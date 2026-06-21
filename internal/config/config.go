@@ -37,6 +37,7 @@ func New() (*Config, error) {
 			env:             cfg.App.Env,
 			name:            cfg.App.Name,
 			mode:            cfg.App.Mode,
+			logLevel:        cfg.App.LogLevel,
 			shutdownTimeout: cfg.App.ShutdownTimeout,
 		},
 		server: ServerConfig{
@@ -132,6 +133,11 @@ func validateConfig(cfg Loader) error {
 func validateApplicationConfig(appCfg Application) error {
 	if appCfg.Mode != DevelopmentMode && appCfg.Mode != ProductionMode {
 		return ErrInvalidAppMode
+	}
+	switch appCfg.LogLevel {
+	case LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError:
+	default:
+		return ErrInvalidLogLevel
 	}
 	return nil
 }

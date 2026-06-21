@@ -17,6 +17,14 @@ var (
 		errInvalidConfig,
 		fmt.Sprintf("invalid app mode, must be one of %s or %s", DevelopmentMode, ProductionMode),
 	)
+	// ErrInvalidLogLevel は、無効なログレベルに関するエラーを表します。
+	ErrInvalidLogLevel = xerrors.Wrap(
+		errInvalidConfig,
+		fmt.Sprintf(
+			"invalid log level, must be one of %s, %s, %s or %s",
+			LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError,
+		),
+	)
 	// ErrInvalidPortRange は、無効なポート範囲に関するエラーを表します。
 	ErrInvalidPortRange = xerrors.Wrap(
 		errInvalidConfig,

@@ -34,6 +34,7 @@
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |APP_MODE|実行モード|string|development / production|ログや挙動切り替え|
+|APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定、レベルは環境ごとに明示指定|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
 |APP_ENV|環境識別子|string|local / staging / prod|環境区別用|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|45s|SIGTERM時の待機時間|
