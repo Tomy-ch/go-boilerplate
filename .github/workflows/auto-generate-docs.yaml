@@ -64,7 +64,7 @@ jobs:
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
       - name: Stamp OpenAPI version from release branch
-        run: node scripts/stamp-openapi-version.mjs "${{ github.ref_name }}"
+        run: node scripts/stamp-openapi-version.mjs
 
       - name: Generate OpenAPI bundle
         run: make gen-bundle-oapi
