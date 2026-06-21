@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS idempotency_keys (
-    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    id UUID NOT NULL DEFAULT GEN_RANDOM_UUID(),
     scope TEXT NOT NULL,
     idempotency_key TEXT NOT NULL,
     request_method TEXT NOT NULL,
