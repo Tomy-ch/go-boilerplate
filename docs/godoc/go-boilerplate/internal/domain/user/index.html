@@ -111,6 +111,20 @@
 			
 			
 				
+				<dd><a href="#FeedCursor">type FeedCursor</a></dd>
+				
+					
+					<dd>    <a href="#NewFeedCursor">func NewFeedCursor(createdAt time.Time, id uuid.UUID) FeedCursor</a></dd>
+				
+				
+					
+					<dd>    <a href="#FeedCursor.CreatedAt">func (c FeedCursor) CreatedAt() time.Time</a></dd>
+				
+					
+					<dd>    <a href="#FeedCursor.ID">func (c FeedCursor) ID() uuid.UUID</a></dd>
+				
+			
+				
 				<dd><a href="#RawPassword">type RawPassword</a></dd>
 				
 					
@@ -218,6 +232,8 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/domain/user/user_domain.go.html">user_domain.go</a>
 			
+				<a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html">user_feed.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/domain/user/user_repository.go.html">user_repository.go</a>
 			
 			</span>
@@ -291,7 +307,73 @@
 		
 			
 			
-			<h2 id="RawPassword">type <a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html?s=199:240#L1">RawPassword</a>
+			<h2 id="FeedCursor">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=337:405#L2">FeedCursor</a>
+				<a class="permalink" href="#FeedCursor">¶</a>
+				
+				
+			</h2>
+			<p>FeedCursor は、ユーザーフィード（keyset ページネーション）の境界キーを表す値オブジェクトです。
+</p><pre>直前ページ末尾行の作成日時と ID を保持し、次ページ取得時の keyset 比較の境界として用います。
+</pre>
+
+			<pre>type FeedCursor struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewFeedCursor">func <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=489:553#L8">NewFeedCursor</a>
+					<a class="permalink" href="#NewFeedCursor">¶</a>
+					
+					
+				</h3>
+				<pre>func NewFeedCursor(createdAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="#FeedCursor">FeedCursor</a></pre>
+				<p>NewFeedCursor は、作成日時と ID から FeedCursor を生成します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="FeedCursor.CreatedAt">func (FeedCursor) <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=673:714#L13">CreatedAt</a>
+					<a class="permalink" href="#FeedCursor.CreatedAt">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#FeedCursor">FeedCursor</a>) CreatedAt() <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+				<p>CreatedAt は、境界となる作成日時を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="FeedCursor.ID">func (FeedCursor) <a href="../../../../src/go-boilerplate/internal/domain/user/user_feed.go.html?s=801:835#L16">ID</a>
+					<a class="permalink" href="#FeedCursor.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#FeedCursor">FeedCursor</a>) ID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ID は、境界となるユーザー ID を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="RawPassword">type <a href="../../../../src/go-boilerplate/internal/domain/user/raw_password.go.html?s=199:240#L1">RawPassword</a>
 				<a class="permalink" href="#RawPassword">¶</a>
 				
 				
@@ -368,7 +450,7 @@
 		
 			
 			
-			</p><h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_repository.go.html?s=300:1409#L1">Repository</a>
+			</p><h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/user/user_repository.go.html?s=300:1769#L1">Repository</a>
 				<a class="permalink" href="#Repository">¶</a>
 				
 				
@@ -379,6 +461,9 @@
     <span class="comment">// FindByActive は、ユーザーの情報を、ページング付きで取得します。</span>
     <span class="comment">// active=nil で全件（削除済み含む）、true でアクティブのみ、false で削除済みのみを対象とします。</span>
     FindByActive(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, active *<a href="../../../../builtin/#bool">bool</a>, limit, offset <a href="../../../../builtin/#int32">int32</a>) (<a href="#Users">Users</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。</span>
+    <span class="comment">// after=nil の場合は先頭ページを返し、それ以外は after が表す境界より後ろ（より過去）の行を返します。</span>
+    FindFeed(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, after *<a href="#FeedCursor">FeedCursor</a>, limit <a href="../../../../builtin/#int32">int32</a>) (<a href="#Users">Users</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// FindByID は、IDから単一ユーザーを取得します。存在しない場合は NotFound を返します。</span>
     FindByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#User">User</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// Create は、ユーザーを作成します。</span>

@@ -302,7 +302,7 @@ These belong to:
   - Command: create/update/delete (start Tx and ensure Domain invariants).
   - Query (QS): read optimization. Returning DTO directly is allowed.
   - Centralize protocol-independent policies such as Pagination / Validation.
-    - Example: `paging.NewPagingFrom1Based(page, perPage)`
+    - Example: `paging.NewPageFrom1Based(page, perPage)`
 - Wrap errors using `apperror.ErrXXX` so Controller can map them to HTTP responses.
 - DI (fx) injects dependencies such as Repository interfaces, TxManager, and Config.
 
@@ -368,7 +368,7 @@ still matches the sentinel.
 
 ### Pagination
 
-- Use `NewPagingFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
+- Use `NewPageFrom1Based(page, perPage)` to unify defaults, limits, and conversions.
 - If the page number exceeds the allowed maximum, return `apperror.ErrInvalidArgument` (the offset is clamped on int32 conversion).
 
 ## Callable / Non-callable Layers
@@ -629,7 +629,7 @@ type usecase struct {
 // Usecase defines the use cases related to users.
 type Usecase interface {
     // ListUsersByKeyword retrieves a list of users.
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
 
     // CreateUser creates a user.
     CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
@@ -659,7 +659,7 @@ func New(
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Paging) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
     // Start and end the span
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()

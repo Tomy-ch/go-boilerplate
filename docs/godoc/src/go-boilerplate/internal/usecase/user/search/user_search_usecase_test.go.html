@@ -103,7 +103,7 @@
 <span id="L46" class="ln">    46  </span>
 <span id="L47" class="ln">    47  </span>			page := 1
 <span id="L48" class="ln">    48  </span>			perPage := 100
-<span id="L49" class="ln">    49  </span>			p, err := paging.NewPagingFrom1Based(&amp;page, &amp;perPage)
+<span id="L49" class="ln">    49  </span>			p, err := paging.NewPageFrom1Based(&amp;page, &amp;perPage)
 <span id="L50" class="ln">    50  </span>			require.NoError(t, err)
 <span id="L51" class="ln">    51  </span>
 <span id="L52" class="ln">    52  </span>			expected := query.UserSearchResults{
@@ -156,7 +156,7 @@
 <span id="L99" class="ln">    99  </span>
 <span id="L100" class="ln">   100  </span>			page := 1
 <span id="L101" class="ln">   101  </span>			perPage := 100
-<span id="L102" class="ln">   102  </span>			p, err := paging.NewPagingFrom1Based(&amp;page, &amp;perPage)
+<span id="L102" class="ln">   102  </span>			p, err := paging.NewPageFrom1Based(&amp;page, &amp;perPage)
 <span id="L103" class="ln">   103  </span>			require.NoError(t, err)
 <span id="L104" class="ln">   104  </span>
 <span id="L105" class="ln">   105  </span>			keyword := &#34;Grace Lee&#34;
@@ -193,7 +193,7 @@
 <span id="L136" class="ln">   136  </span>
 <span id="L137" class="ln">   137  </span>			page := 1
 <span id="L138" class="ln">   138  </span>			perPage := 100
-<span id="L139" class="ln">   139  </span>			p, err := paging.NewPagingFrom1Based(&amp;page, &amp;perPage)
+<span id="L139" class="ln">   139  </span>			p, err := paging.NewPageFrom1Based(&amp;page, &amp;perPage)
 <span id="L140" class="ln">   140  </span>			require.NoError(t, err)
 <span id="L141" class="ln">   141  </span>
 <span id="L142" class="ln">   142  </span>			uc := &amp;usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
@@ -316,7 +316,7 @@
 <span id="L259" class="ln">   259  </span>	ctx := context.Background()
 <span id="L260" class="ln">   260  </span>	page := 1
 <span id="L261" class="ln">   261  </span>	perPage := 100
-<span id="L262" class="ln">   262  </span>	p, err := paging.NewPagingFrom1Based(&amp;page, &amp;perPage)
+<span id="L262" class="ln">   262  </span>	p, err := paging.NewPageFrom1Based(&amp;page, &amp;perPage)
 <span id="L263" class="ln">   263  </span>	require.NoError(t, err)
 <span id="L264" class="ln">   264  </span>
 <span id="L265" class="ln">   265  </span>	active := new(true)

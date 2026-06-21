@@ -118,10 +118,10 @@
 					<dd>    <a href="#MockUsecase.EXPECT">func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecase.ListUsersByKeyword">func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Paging) (query.UserSearchResults, error)</a></dd>
+					<dd>    <a href="#MockUsecase.ListUsersByKeyword">func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Page) (query.UserSearchResults, error)</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecase.ListUsersByKeywordWithTotal">func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *search.SearchParams, page *paging.Paging) (*search.UserSearchListView, error)</a></dd>
+					<dd>    <a href="#MockUsecase.ListUsersByKeywordWithTotal">func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *search.SearchParams, page *paging.Page) (*search.UserSearchListView, error)</a></dd>
 				
 			
 				
@@ -227,12 +227,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListUsersByKeyword">func (*MockUsecase) <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/mock/mock_user_search_usecase.gen.go.html?s=1887:2031#L52">ListUsersByKeyword</a>
+				</p><h3 id="MockUsecase.ListUsersByKeyword">func (*MockUsecase) <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/mock/mock_user_search_usecase.gen.go.html?s=1887:2029#L52">ListUsersByKeyword</a>
 					<a class="permalink" href="#MockUsecase.ListUsersByKeyword">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ListUsersByKeyword(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, filter *<a href="../../../../../../go-boilerplate/internal/usecase/user/search/">search</a>.<a href="../../../../../../go-boilerplate/internal/usecase/user/search/#SearchParams">SearchParams</a>, page *<a href="../../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/paging/#Paging">Paging</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/user/search/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/user/search/query/#UserSearchResults">UserSearchResults</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ListUsersByKeyword(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, filter *<a href="../../../../../../go-boilerplate/internal/usecase/user/search/">search</a>.<a href="../../../../../../go-boilerplate/internal/usecase/user/search/#SearchParams">SearchParams</a>, page *<a href="../../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/paging/#Page">Page</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/user/search/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/user/search/query/#UserSearchResults">UserSearchResults</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>ListUsersByKeyword mocks base method.
 
 				
@@ -240,12 +240,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListUsersByKeywordWithTotal">func (*MockUsecase) <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/mock/mock_user_search_usecase.gen.go.html?s=2605:2761#L67">ListUsersByKeywordWithTotal</a>
+				</p><h3 id="MockUsecase.ListUsersByKeywordWithTotal">func (*MockUsecase) <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/mock/mock_user_search_usecase.gen.go.html?s=2603:2757#L67">ListUsersByKeywordWithTotal</a>
 					<a class="permalink" href="#MockUsecase.ListUsersByKeywordWithTotal">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ListUsersByKeywordWithTotal(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, filter *<a href="../../../../../../go-boilerplate/internal/usecase/user/search/">search</a>.<a href="../../../../../../go-boilerplate/internal/usecase/user/search/#SearchParams">SearchParams</a>, page *<a href="../../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/paging/#Paging">Paging</a>) (*<a href="../../../../../../go-boilerplate/internal/usecase/user/search/">search</a>.<a href="../../../../../../go-boilerplate/internal/usecase/user/search/#UserSearchListView">UserSearchListView</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ListUsersByKeywordWithTotal(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, filter *<a href="../../../../../../go-boilerplate/internal/usecase/user/search/">search</a>.<a href="../../../../../../go-boilerplate/internal/usecase/user/search/#SearchParams">SearchParams</a>, page *<a href="../../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/paging/#Page">Page</a>) (*<a href="../../../../../../go-boilerplate/internal/usecase/user/search/">search</a>.<a href="../../../../../../go-boilerplate/internal/usecase/user/search/#UserSearchListView">UserSearchListView</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>ListUsersByKeywordWithTotal mocks base method.
 
 				
@@ -292,7 +292,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListUsersByKeyword">func (*MockUsecaseMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/mock/mock_user_search_usecase.gen.go.html?s=2283:2372#L61">ListUsersByKeyword</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListUsersByKeyword">func (*MockUsecaseMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/mock/mock_user_search_usecase.gen.go.html?s=2281:2370#L61">ListUsersByKeyword</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListUsersByKeyword">¶</a>
 					
 					
@@ -305,7 +305,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListUsersByKeywordWithTotal">func (*MockUsecaseMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/mock/mock_user_search_usecase.gen.go.html?s=3043:3141#L76">ListUsersByKeywordWithTotal</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListUsersByKeywordWithTotal">func (*MockUsecaseMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/mock/mock_user_search_usecase.gen.go.html?s=3039:3137#L76">ListUsersByKeywordWithTotal</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListUsersByKeywordWithTotal">¶</a>
 					
 					

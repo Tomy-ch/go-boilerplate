@@ -116,7 +116,7 @@
 <span id="L59" class="ln">    59  </span>}
 <span id="L60" class="ln">    60  </span>
 <span id="L61" class="ln">    61  </span><span class="comment">// ListUsersByKeyword mocks base method.</span>
-<span id="L62" class="ln">    62  </span>func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Paging) (query.UserSearchResults, error) {
+<span id="L62" class="ln">    62  </span>func (m *MockUsecase) ListUsersByKeyword(ctx context.Context, filter *search.SearchParams, page *paging.Page) (query.UserSearchResults, error) {
 <span id="L63" class="ln">    63  </span>	m.ctrl.T.Helper()
 <span id="L64" class="ln">    64  </span>	ret := m.ctrl.Call(m, &#34;ListUsersByKeyword&#34;, ctx, filter, page)
 <span id="L65" class="ln">    65  </span>	ret0, _ := ret[0].(query.UserSearchResults)
@@ -131,7 +131,7 @@
 <span id="L74" class="ln">    74  </span>}
 <span id="L75" class="ln">    75  </span>
 <span id="L76" class="ln">    76  </span><span class="comment">// ListUsersByKeywordWithTotal mocks base method.</span>
-<span id="L77" class="ln">    77  </span>func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *search.SearchParams, page *paging.Paging) (*search.UserSearchListView, error) {
+<span id="L77" class="ln">    77  </span>func (m *MockUsecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *search.SearchParams, page *paging.Page) (*search.UserSearchListView, error) {
 <span id="L78" class="ln">    78  </span>	m.ctrl.T.Helper()
 <span id="L79" class="ln">    79  </span>	ret := m.ctrl.Call(m, &#34;ListUsersByKeywordWithTotal&#34;, ctx, filter, page)
 <span id="L80" class="ln">    80  </span>	ret0, _ := ret[0].(*search.UserSearchListView)

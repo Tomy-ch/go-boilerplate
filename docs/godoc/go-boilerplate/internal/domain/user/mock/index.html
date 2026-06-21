@@ -127,6 +127,9 @@
 					<dd>    <a href="#MockRepository.FindByID">func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error)</a></dd>
 				
 					
+					<dd>    <a href="#MockRepository.FindFeed">func (m *MockRepository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error)</a></dd>
+				
+					
 					<dd>    <a href="#MockRepository.Update">func (m *MockRepository) Update(ctx context.Context, arg1 *user.User) error</a></dd>
 				
 			
@@ -145,6 +148,9 @@
 				
 					
 					<dd>    <a href="#MockRepositoryMockRecorder.FindByID">func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindFeed">func (mr *MockRepositoryMockRecorder) FindFeed(ctx, after, limit any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockRepositoryMockRecorder.Update">func (mr *MockRepositoryMockRecorder) Update(ctx, arg1 any) *gomock.Call</a></dd>
@@ -278,7 +284,20 @@
 				
 			
 				
-				</p><h3 id="MockRepository.Update">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.gen.go.html?s=3445:3520#L95">Update</a>
+				</p><h3 id="MockRepository.FindFeed">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.gen.go.html?s=3447:3558#L95">FindFeed</a>
+					<a class="permalink" href="#MockRepository.FindFeed">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindFeed(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, after *<a href="../../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../../go-boilerplate/internal/domain/user/#FeedCursor">FeedCursor</a>, limit <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../../go-boilerplate/internal/domain/user/#Users">Users</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindFeed mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.Update">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.gen.go.html?s=4044:4119#L110">Update</a>
 					<a class="permalink" href="#MockRepository.Update">¶</a>
 					
 					
@@ -369,7 +388,20 @@
 				
 			
 				
-				</p><h3 id="MockRepositoryMockRecorder.Update">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.gen.go.html?s=3677:3749#L103">Update</a>
+				</p><h3 id="MockRepositoryMockRecorder.FindFeed">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.gen.go.html?s=3767:3849#L104">FindFeed</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindFeed">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindFeed(ctx, after, limit <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindFeed indicates an expected call of FindFeed.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.Update">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/user/mock/mock_user_repository.gen.go.html?s=4276:4348#L118">Update</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.Update">¶</a>
 					
 					
