@@ -6052,8 +6052,8 @@ func DatabaseModule() fx.Option <span class="cov10" title="13">{
 
 import (
         userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user" // sample-api:line
-        "go-boilerplate/internal/infrastructure/rdb/repository/prefecture"
-        "go-boilerplate/internal/infrastructure/rdb/repository/user" // sample-api:line
+        "go-boilerplate/internal/infrastructure/rdb/repository/prefecture"     // sample-api:line
+        "go-boilerplate/internal/infrastructure/rdb/repository/user"           // sample-api:line
         "go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck"
         "go-boilerplate/internal/infrastructure/security"
         "go-boilerplate/internal/infrastructure/system"
@@ -6064,25 +6064,35 @@ import (
 // InfrastructureModule は、インフラストラクチャ層の依存関係を提供するfx.Moduleです。
 func InfrastructureModule() fx.Option <span class="cov10" title="12">{
         return fx.Module("infrastructure",
-                fx.Module("repository",
-                        fx.Provide(
+                fx.Module("persistence",
+                        fx.Module("repository",
+                                fx.Provide(
+                                        // sample-api:begin
+                                        // サンプルのリポジトリ
+                                        user.New,
+                                        prefecture.New,
+                                        // sample-api:end
+                                ),
+                        ),
+                        fx.Module("query_service",
+                                fx.Provide(
+                                        // sample-api:begin
+                                        // サンプルのクエリサービス
+                                        userqs.New,
+                                        // sample-api:end
+                                ),
+                        ),
+                        fx.Module("command_service",
+                                fx.Provide(
                                 // sample-api:begin
-                                // サンプルのリポジトリ
-                                user.New,
+                                // コマンドサービスは、このサンプルでは用意しませんが、必要に応じてここに追加します。
                                 // sample-api:end
-                                prefecture.New,
+                                ),
                         ),
-                ),
-                // sample-api:begin
-                fx.Module("query_service",
-                        fx.Provide(
-                                userqs.New,
-                        ),
-                ),
-                // sample-api:end
-                fx.Module("system_query",
-                        fx.Provide(
-                                healthcheck.New,
+                        fx.Module("system_query",
+                                fx.Provide(
+                                        healthcheck.New,
+                                ),
                         ),
                 ),
                 fx.Module("clock",
@@ -6416,7 +6426,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="23">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="28">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -9294,7 +9304,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov6" title="209">{
+        for i, line := range lines </span><span class="cov7" title="301">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>

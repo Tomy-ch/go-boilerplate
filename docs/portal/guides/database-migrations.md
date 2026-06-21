@@ -21,8 +21,8 @@ make new-migrate-create_orders
 This auto-generates a numbered up / down pair:
 
 ```text
-000010_create_orders.up.sql
-000010_create_orders.down.sql
+000011_create_orders.up.sql
+000011_create_orders.down.sql
 ```
 
 ## File Naming Convention
