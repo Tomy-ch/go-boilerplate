@@ -130,8 +130,13 @@ func (r *run) waitCooldown(ctx context.Context) bool {
 
 // dispatchAll は、受信メッセージを in-flight 計上のうえ dispatch へ回します。
 func (r *run) dispatchAll(ctx context.Context, msgs []worker.Message) {
+	if len(msgs) == 0 {
+		return
+	}
+	r.e.met.received.Add(ctx, int64(len(msgs)))
 	for _, m := range msgs {
 		r.inflight <- struct{}{}
+		r.e.met.inFlight.Add(ctx, 1)
 		r.wg.Add(1)
 		r.keyed.dispatch(ctx, m)
 	}
@@ -141,25 +146,34 @@ func (r *run) dispatchAll(ctx context.Context, msgs []worker.Message) {
 func (r *run) process(ctx context.Context, m worker.Message) {
 	defer r.finishMessage()
 
+	ctx = r.withTrace(ctx, m) // D1: traceparent から trace 継続
 	ctx, endSpan := r.e.tracer.Start(ctx)
 	defer endSpan()
 
 	r.conc <- struct{}{}
 	defer func() { <-r.conc }()
 
-	r.warnIfPoison(m)
+	r.warnIfPoison(ctx, m)
+	start := time.Now()
 	err := r.safeHandle(ctx, m)
+	r.e.met.latencyMs.Record(ctx, msSince(start))
 	r.handleResult(ctx, m, err)
 }
 
 // finishMessage は、in-flight トークンを解放し poll loop を起床させます。
 func (r *run) finishMessage() {
 	<-r.inflight
+	r.e.met.inFlight.Add(context.Background(), -1)
 	select {
 	case r.slotFreed <- struct{}{}:
 	default:
 	}
 	r.wg.Done()
+}
+
+// msSince は、start からの経過時間をミリ秒（小数）で返します。
+func msSince(start time.Time) float64 {
+	return float64(time.Since(start)) / float64(time.Millisecond)
 }
 
 // safeHandle は、per-message recover（A6）と Extend ハートビート（A3）付きで Handle を実行します。
@@ -205,21 +219,32 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 }
 
 // handleResult は、Handle の結果を分類して Ack / Nack / FailureHandler / engine 停止に振り分けます。
+// 併せて engine 所有 metric の更新（D2）と構造化ログ（D3）を行います。
 func (r *run) handleResult(ctx context.Context, m worker.Message, err error) {
 	if err == nil {
 		r.ack(ctx, m) // A1: 成功時のみ Ack
 		r.cb.onSuccess()
+		r.e.met.processed.Add(ctx, 1)
+		r.e.log.Named("worker.process").Debug("message processed", msgFields(ctx, r.name, m)...)
 		return
 	}
+
+	r.e.met.failed.Add(ctx, 1)
+	fields := append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))
 
 	switch classify(err) {
 	case catRetryable:
 		r.nack(ctx, m) // A2
 		r.cb.onFailure()
+		r.e.met.retried.Add(ctx, 1)
+		r.e.log.Named("worker.process").Warn("retryable failure, nacked", fields...)
 	case catPermanent:
 		r.routePermanent(ctx, m, err) // A5
 		r.cb.onSuccess()
+		r.e.met.dlq.Add(ctx, 1)
+		r.e.log.Named("worker.process").Warn("permanent failure, routed to dead-letter", fields...)
 	case catFatal:
+		r.e.log.Named("worker.process").Error("fatal failure, stopping engine", fields...)
 		r.triggerFatal(err) // A5（Fatal）
 	}
 }
@@ -249,33 +274,27 @@ func (r *run) nack(ctx context.Context, m worker.Message) {
 
 // onPollError は、Receive の失敗をサーキットへ反映します（broker 到達不能など）。
 func (r *run) onPollError(err error) {
+	r.e.met.pollErrors.Add(context.Background(), 1)
 	r.logErr("worker.poll", "receive error", err)
 	r.cb.onFailure()
 }
 
 // warnIfPoison は、再配送回数が閾値以上のとき warn します（A7。無限ループは IaC の DLQ で打ち切る）。
-func (r *run) warnIfPoison(m worker.Message) {
+func (r *run) warnIfPoison(ctx context.Context, m worker.Message) {
 	th := r.e.set.ReceiveCountWarnThreshold
 	if th <= 0 || m.ReceiveCount < th {
 		return
 	}
-	r.e.log.Named("worker.poison").Warn(
-		"receive count threshold reached",
-		logging.String(logging.WorkerNameKey, r.name),
-		logging.String(logging.MessageIDKey, m.ID),
-		logging.Int(logging.ReceiveCountKey, m.ReceiveCount),
-	)
+	r.e.log.Named("worker.poison").Warn("receive count threshold reached", msgFields(ctx, r.name, m)...)
 }
 
-// triggerFatal は、Fatal を記録して engine を停止（ctx キャンセル）します。
+// triggerFatal は、Fatal を記録して engine を停止（ctx キャンセル）します。ログは handleResult が出します。
 func (r *run) triggerFatal(err error) {
 	r.fatalMu.Lock()
 	if r.fatal == nil {
 		r.fatal = err
 	}
 	r.fatalMu.Unlock()
-
-	r.e.log.Named("worker.fatal").Error("fatal error, stopping engine", logging.Error(logging.ErrorKey, err))
 	r.cancel()
 }
 

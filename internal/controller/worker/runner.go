@@ -4,6 +4,8 @@ import (
 	"context"
 	"sort"
 
+	"go.opentelemetry.io/otel"
+
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/worker"
@@ -17,6 +19,7 @@ type Engine struct {
 	set     Settings
 	tracer  observability.LayerTracer
 	log     logging.Logger
+	met     *metrics
 }
 
 // New は、Engine を生成します。worker 名の重複は ErrDuplicateWorker を返します。
@@ -36,11 +39,17 @@ func New(
 	}
 	set.normalize()
 
+	met, err := newMetrics(otel.Meter(meterName))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Engine{
 		workers: m,
 		set:     set,
 		tracer:  tf.Controller(),
 		log:     log,
+		met:     met,
 	}, nil
 }
 
