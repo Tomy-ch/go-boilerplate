@@ -52,6 +52,10 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # 埋め込み対象 env/.env を ci 用に焼き直す（go build が ci 設定を embed する）。
+      - name: Materialize ci env for embedding
+        run: cp env/.env.ci env/.env
+
       - name: Build server
         run: go build -o ./bin/server ./cmd/
 

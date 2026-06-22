@@ -52,10 +52,10 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Materialize ci env for embedding
+        run: cp env/.env.ci env/.env
+
       # 特定のサンプルジョブ名に依存しないため、存在しないジョブ名で起動する。
-      # ここで「unknown job」エラーに到達できる＝ cobra → cmd/main.go → DI グラフ構築 → DB 接続 →
-      # ジョブランナーの dispatch まで、実バイナリ経路が起動できたことの証左になる。
-      # DB 接続や DI 構築の失敗で落ちた場合は出力に「unknown job」が含まれないので区別できる。
       - name: Boot job entrypoint and expect "unknown job"
         run: |
           set -uo pipefail

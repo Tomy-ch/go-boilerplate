@@ -75,6 +75,10 @@ jobs:
       - name: Regenerate embedded spec (Go)
         run: make gen-go-code
 
+      # 埋め込み対象 env/.env を ci 用に焼き直す（go run が ci 設定を embed する）。
+      - name: Materialize ci env for embedding
+        run: cp env/.env.ci env/.env
+
       - name: Migrate
         run: go run ./cmd/ migrate-up --database ${{ env.DB }}
 
