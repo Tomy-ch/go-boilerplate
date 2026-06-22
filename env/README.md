@@ -18,7 +18,7 @@ This directory is the canonical reference for every environment variable read by
 
 1. Add the field to the relevant struct in `internal/config/`.
 2. Document it in the table below under the matching subsystem (or add a new subsystem section).
-3. Update the local-dev sample env file so contributors can run the app immediately.
+3. Add the variable to `env/.env` (the local default) and to every per-environment file (`env/.env.<env>`).
 4. Run `make test` to confirm the config struct still loads.
 
 ## Variables by Subsystem
@@ -127,3 +127,4 @@ This directory is the canonical reference for every environment variable read by
 - The `duration` type accepts Go `time.ParseDuration` syntax (`500ms`, `1h30m`); plain numbers are invalid.
 - When introducing a new subsystem section, keep the table column layout (`Variable Name | Description | Type | Example | Notes`) so the doc stays scannable.
 - `APP_LOG_LEVEL` is set explicitly per environment: `debug` for local / ci / dev and **staging** (verbose JSON for pre-production diagnosis), `info` for production. The output format (JSON / console) is chosen by `APP_MODE`, independently of the level.
+- Env files are embedded into the binary at build time (`embed.go`). `env/.env` is the local default and the single embed target; `env/.env.<env>` hold the per-environment sources. The Docker `builder` stage materializes the target via the `APP_ENV` build arg (`cp env/.env.${APP_ENV} env/.env`) before `go build`. Non-Docker flows (`go run` / `go test`) embed the committed local `env/.env`, so CI that needs another environment re-bakes it the same way (e.g. `cp env/.env.ci env/.env`). Runtime environment variables still win over embedded values.
