@@ -30,16 +30,25 @@ func RunWorkerWith(
 func runWorker(ctx context.Context, name string, args []string, start StartFunc, stop StopFunc) error {
 	done := start(ctx, name, args)
 
+	var runErr error
 	select {
-	case err := <-done:
+	case runErr = <-done:
 		// engine が自走停止（Fatal / unknown worker）。
-		gracefulStop(stop)
-		return err
 	case <-ctx.Done():
-		// SIGTERM。engine を drain して停止する。
-		gracefulStop(stop)
-		return nil
+		// SIGTERM。engine を drain して停止し、停止後に結果を確認する。
 	}
+
+	gracefulStop(stop)
+
+	// SIGTERM と engine 停止が競合した場合に Fatal を取りこぼさないよう、drain 後に結果を再確認する。
+	// gracefulStop（app.Stop→OnStop）が engine の終了を待つため、ここで done に結果が入っている。
+	if runErr == nil {
+		select {
+		case runErr = <-done:
+		default:
+		}
+	}
+	return runErr
 }
 
 // gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop=drain）を実行します。

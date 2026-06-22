@@ -1,8 +1,11 @@
-// Package backoff は、指数バックオフの待機時間を算出する framework-agnostic なユーティリティです。
-// 純関数として attempt を受け取り、現在時刻や乱数に依存しません（決定的・テスト容易）。
+// Package backoff は、指数バックオフの待機時間を算出するユーティリティです。
+// attempt を受け取り待機時間を返す純関数で、現在時刻や乱数には依存しません。
 package backoff
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 // Exponential は、指数バックオフの設定です。
 type Exponential struct {
@@ -38,6 +41,11 @@ func (e Exponential) Duration(attempt int) time.Duration {
 	}
 	if e.Max > 0 && d > float64(e.Max) {
 		return e.Max
+	}
+	// Max 上限なし（Max<=0）かつ高 attempt で d が +Inf / int64 範囲外になりうる。
+	// time.Duration(+Inf) は負値になり cooldown が即発火するため、MaxInt64 で頭打ちにする。
+	if d > float64(math.MaxInt64) {
+		return time.Duration(math.MaxInt64)
 	}
 	return time.Duration(d)
 }

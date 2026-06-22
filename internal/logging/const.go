@@ -99,6 +99,8 @@ const (
 	MessageIDKey = "message_id"
 	// ReceiveCountKey は、メッセージの再配送回数を表すログフィールドのキーです。
 	ReceiveCountKey = "receive_count"
+	// PanicKey は、recover した panic 値を表すログフィールドのキーです。
+	PanicKey = "panic"
 
 	// 可観測系ログのキー
 

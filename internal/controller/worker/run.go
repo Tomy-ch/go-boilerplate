@@ -57,7 +57,7 @@ func (r *run) loop(parent context.Context) error {
 	defer r.drain()
 
 	for {
-		r.e.markProgress() // C2: poll loop が生きていることを記録
+		r.e.markProgress() // C2: stuck 検出用に進捗時刻を更新
 		n, ok := r.acquire(ctx)
 		if !ok {
 			return r.fatalErr()
@@ -151,7 +151,11 @@ func (r *run) process(ctx context.Context, m worker.Message) {
 	ctx, endSpan := r.e.tracer.Start(ctx)
 	defer endSpan()
 
-	r.conc <- struct{}{}
+	select {
+	case r.conc <- struct{}{}:
+	case <-ctx.Done():
+		return // 停止中は未処理のまま離脱（Ack/Nack せず再配送へ）。in-flight は finishMessage が解放
+	}
 	defer func() { <-r.conc }()
 
 	r.warnIfPoison(ctx, m)
@@ -181,7 +185,12 @@ func msSince(start time.Time) float64 {
 func (r *run) safeHandle(ctx context.Context, m worker.Message) (err error) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			err = xerrors.Wrap(apperror.ErrRetryable, fmt.Sprintf("panic recovered: %v", rec))
+			// panic 値はログにのみ残し、伝播するエラーには含めない（秘密情報の漏洩防止）。
+			r.e.log.Named("worker.recover").Error(
+				"panic recovered in handler",
+				append(msgFields(ctx, r.name, m), logging.String(logging.PanicKey, fmt.Sprintf("%v", rec)))...,
+			)
+			err = xerrors.Wrap(apperror.ErrRetryable, "panic recovered in handler")
 		}
 	}()
 
