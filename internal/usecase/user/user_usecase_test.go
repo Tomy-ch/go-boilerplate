@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
-	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/testkit"
@@ -31,7 +31,7 @@ func TestNew(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tf := observability.NewNoopTracerFactory(t)
 	mockTxManager := mock_tx.NewMockManager(ctrl)
-	clock := mock_clock.NewMockClock(ctrl)
+	clock := clocktest.NewMockClock(t, time.Time{})
 	encrypter := mock_security.NewMockHasher(ctrl)
 	userRepo := mock_user.NewMockRepository(ctrl)
 	pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -271,8 +271,7 @@ func Test_usecase_Create(t *testing.T) {
 				Building:       createDTO.Building,
 			}
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
@@ -306,13 +305,11 @@ func Test_usecase_Create(t *testing.T) {
 
 		t.Run("生パスワードの検証が失敗した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 			createDTO.RawPassword = strings.Repeat("a", user.MaxRawPasswordLength+1) // パスワードを最大長+1にしてエラーを発生させる
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 
 			uc := &usecase{
 				tracer: lt,
@@ -332,8 +329,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("", expectedErr)
 
@@ -356,8 +352,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -386,8 +381,7 @@ func Test_usecase_Create(t *testing.T) {
 			createDTO := newCreateDTO(userDomain, prefectureName)
 			createDTO.FirstName = "" // FirstNameを空にしてエラーを発生させる
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -417,8 +411,7 @@ func Test_usecase_Create(t *testing.T) {
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)

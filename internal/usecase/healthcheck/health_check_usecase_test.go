@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/observability"
-	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/healthcheck/query"
 	mock_query "go-boilerplate/internal/usecase/healthcheck/query/mock"
 	"go-boilerplate/internal/usecase/testkit"
@@ -22,7 +22,7 @@ func TestNew(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tf := observability.NewNoopTracerFactory(t)
 	sysQuery := mock_query.NewMockDBSystemQuery(ctrl)
-	clock := mock_clock.NewMockClock(ctrl)
+	clock := clocktest.NewMockClock(t, time.Time{})
 
 	expected := &usecase{
 		tracer:        tf.Usecase(),
@@ -54,8 +54,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 				RespondedAt: now,
 			}, nil).Times(1)
 
-			mockClock := mock_clock.NewMockClock(ctrl)
-			mockClock.EXPECT().Now().Return(now).Times(1)
+			mockClock := clocktest.NewMockClockOnce(t, now)
 
 			u := &usecase{
 				tracer:        lt,
@@ -85,8 +84,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{}, expectedErr).Times(1)
 
-			mockClock := mock_clock.NewMockClock(ctrl)
-			mockClock.EXPECT().Now().Return(now).Times(1)
+			mockClock := clocktest.NewMockClockOnce(t, now)
 
 			u := &usecase{
 				tracer:        lt,

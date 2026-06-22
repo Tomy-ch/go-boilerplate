@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/usecase/boundary/auth"
-	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
@@ -129,8 +129,7 @@ func TestMiddleware_handle(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
 			txm := mock_tx.NewMockManager(ctrl)
-			clk := mock_clock.NewMockClock(ctrl)
-			clk.EXPECT().Now().Return(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)).AnyTimes()
+			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
 
