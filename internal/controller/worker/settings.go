@@ -30,6 +30,8 @@ type Settings struct {
 	CircuitOpenBackoffMax time.Duration
 	// CircuitHalfOpenProbe は、Half-open 時に試行する最大件数です。
 	CircuitHalfOpenProbe int
+	// ProgressStaleAfter は、readiness 判定で「進捗なし(stuck)」とみなすまでの時間です（C2）。
+	ProgressStaleAfter time.Duration
 }
 
 // normalize は、ゼロ値に安全な既定値を補います。
@@ -51,6 +53,9 @@ func (s *Settings) normalize() {
 	}
 	if s.CircuitHalfOpenProbe < 1 {
 		s.CircuitHalfOpenProbe = 1
+	}
+	if s.ProgressStaleAfter <= 0 {
+		s.ProgressStaleAfter = 60 * time.Second
 	}
 }
 

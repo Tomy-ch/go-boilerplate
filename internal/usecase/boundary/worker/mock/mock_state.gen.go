@@ -40,24 +40,25 @@ func (m *MockState) EXPECT() *MockStateMockRecorder {
 }
 
 // Set mocks base method.
-func (m *MockState) Set(name string, args []string) {
+func (m *MockState) Set(name string, args []string, done chan error) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Set", name, args)
+	m.ctrl.Call(m, "Set", name, args, done)
 }
 
 // Set indicates an expected call of Set.
-func (mr *MockStateMockRecorder) Set(name, args any) *gomock.Call {
+func (mr *MockStateMockRecorder) Set(name, args, done any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockState)(nil).Set), name, args)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockState)(nil).Set), name, args, done)
 }
 
 // Snapshot mocks base method.
-func (m *MockState) Snapshot() (string, []string) {
+func (m *MockState) Snapshot() (string, []string, chan error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Snapshot")
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].([]string)
-	return ret0, ret1
+	ret2, _ := ret[2].(chan error)
+	return ret0, ret1, ret2
 }
 
 // Snapshot indicates an expected call of Snapshot.

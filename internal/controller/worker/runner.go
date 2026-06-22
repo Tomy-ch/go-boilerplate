@@ -3,6 +3,8 @@ package worker
 import (
 	"context"
 	"sort"
+	"sync/atomic"
+	"time"
 
 	"go.opentelemetry.io/otel"
 
@@ -20,6 +22,9 @@ type Engine struct {
 	tracer  observability.LayerTracer
 	log     logging.Logger
 	met     *metrics
+
+	active   atomic.Bool  // Run 実行中か
+	progress atomic.Int64 // 最後に poll loop が進んだ時刻(UnixNano)
 }
 
 // New は、Engine を生成します。worker 名の重複は ErrDuplicateWorker を返します。
@@ -70,5 +75,24 @@ func (e *Engine) Run(ctx context.Context, name string) error {
 	if !ok {
 		return xerrors.Wrap(ErrUnknownWorker, name)
 	}
+
+	e.active.Store(true)
+	e.markProgress()
+	defer e.active.Store(false)
+
 	return newRun(e, w).loop(ctx)
+}
+
+// Healthy は、readiness 判定を返します（C2）。Run 実行中かつ poll 進捗が閾値内のとき true。
+func (e *Engine) Healthy() bool {
+	if !e.active.Load() {
+		return false
+	}
+	last := time.Unix(0, e.progress.Load())
+	return time.Since(last) < e.set.ProgressStaleAfter
+}
+
+// markProgress は、poll loop が進んだ時刻を記録します（stuck 検出の基準）。
+func (e *Engine) markProgress() {
+	e.progress.Store(time.Now().UnixNano())
 }

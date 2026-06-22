@@ -57,6 +57,7 @@ func (r *run) loop(parent context.Context) error {
 	defer r.drain()
 
 	for {
+		r.e.markProgress() // C2: poll loop が生きていることを記録
 		n, ok := r.acquire(ctx)
 		if !ok {
 			return r.fatalErr()
