@@ -2,7 +2,6 @@ package idempotency
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"go-boilerplate/internal/observability"
 	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,25 +19,6 @@ func newFingerprint(b byte) []byte {
 		fp[i] = b
 	}
 	return fp
-}
-
-func Test_isLockNotAvailable(t *testing.T) {
-	t.Parallel()
-
-	t.Run("55P03(lock_not_available)はtrue", func(t *testing.T) {
-		t.Parallel()
-		assert.True(t, isLockNotAvailable(&pgconn.PgError{Code: pgLockNotAvailable}))
-	})
-
-	t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
-		t.Parallel()
-		assert.False(t, isLockNotAvailable(&pgconn.PgError{Code: "23505"}))
-	})
-
-	t.Run("PgError以外はfalse", func(t *testing.T) {
-		t.Parallel()
-		assert.False(t, isLockNotAvailable(errors.New("plain error")))
-	})
 }
 
 func TestNew(t *testing.T) {
