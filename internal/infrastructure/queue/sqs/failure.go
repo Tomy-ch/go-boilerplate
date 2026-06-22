@@ -27,23 +27,22 @@ func NewDeadLetter(api API, dlqURL string, tf observability.TracerFactory) *Dead
 	return &DeadLetter{api: api, dlqURL: dlqURL, tracer: tf.Infra()}
 }
 
-// Fail は、永久失敗メッセージを DLQ へ SendMessage します。失敗理由は属性に付与します。
-func (d *DeadLetter) Fail(ctx context.Context, m worker.Message, cause error) error {
+// Fail は、永久失敗メッセージを DLQ へ SendMessage します。
+// 失敗理由は分類カテゴリのみ属性に付与し、cause の詳細は載せません
+// （cause が PII/内部詳細を含みうるため。詳細は engine 側のログに残ります）。
+func (d *DeadLetter) Fail(ctx context.Context, m worker.Message, _ error) error {
 	ctx, endSpan := d.tracer.Start(ctx)
 	defer endSpan()
 
-	attrs := map[string]types.MessageAttributeValue{}
-	if cause != nil {
-		attrs["failure_reason"] = types.MessageAttributeValue{
-			DataType:    aws.String("String"),
-			StringValue: aws.String(cause.Error()),
-		}
-	}
-
 	_, err := d.api.SendMessage(ctx, &sqs.SendMessageInput{
-		QueueUrl:          aws.String(d.dlqURL),
-		MessageBody:       aws.String(string(m.Body)),
-		MessageAttributes: attrs,
+		QueueUrl:    aws.String(d.dlqURL),
+		MessageBody: aws.String(string(m.Body)),
+		MessageAttributes: map[string]types.MessageAttributeValue{
+			"failure_reason": {
+				DataType:    aws.String("String"),
+				StringValue: aws.String("permanent"),
+			},
+		},
 	})
 	return normalizeError(err)
 }
