@@ -1,0 +1,49 @@
+# Worker Engine Guide (`internal/controller/worker`)
+
+English | [日本語](README.ja.md)
+
+## Role in Onion Architecture
+
+- A **message-in driving adapter**, on par with the HTTP handler — it is **another entry point into the Usecase layer**, not a new architectural layer.
+- Consumes a pull-ack queue and dispatches each message to a business `Handler`.
+- Depends only on the seam ports in `internal/usecase/boundary/worker` (`Consumer` / `Handler` / `FailureHandler` / `Worker` / `State`); it never imports `infrastructure/queue/*` (enforced by depguard `maintain_a_sound_controller`).
+
+> The ports live in `usecase/boundary/worker` (not here) because that is the only package both the engine (controller) and the broker adapters (infrastructure) can import under the layer rules — same reason `job` keeps its ports there.
+
+## Pull-type premise & first-class platforms
+
+- This worker is **pull-type**: the consumer **pulls** messages via `Receive`. The interface is designed first and foremost for **AWS SQS** and **GCP Pub/Sub (pull)**.
+- Other pull-ack platforms (Azure Service Bus, Cloudflare Queues HTTP pull, ...) are **illustrative examples**: they generally fit by **writing an adapter only** (no interface change).
+- **Rewriting the interface itself is only needed for platforms that fundamentally do not fit pull-ack** (push delivery, streaming-log).
+- **Push-type brokers (e.g. RabbitMQ) are out of scope** — push delivery (e.g. Pub/Sub push, webhooks) is the HTTP controller's domain. Rationale: in worker workloads pull is the majority and lets the consumer own backpressure.
+
+## "Stopping" — three distinct mechanisms
+
+These are easy to conflate. The circuit breaker is applied to the **intake side** (whether to keep pulling), which is less common than the usual "protect a downstream call" framing — so the distinction is documented here.
+
+| Mechanism | What it stops | Recovery | Process |
+|---|---|---|---|
+| **Backoff / throttle** | only slows down (never stops) | automatic | alive (folded into the Open cooldown calc) |
+| **Circuit Open** | **stops calling `Receive`** (intake) on continued downstream failure | **automatic** (Open → cooldown → Half-open → Closed) | alive |
+| **Fatal** | drains and **stops the engine** | manual (restart) | exits |
+
+- **Open ↔ Fatal boundary**: continued Retryable failures escalate the circuit (Open → cooldown grows on each Open→Half-open→Open cycle); the engine is taken down (Fatal) only when a `Handler` returns `apperror.ErrFatal` (e.g. unrecoverable config error). Circuit Open is a temporary, self-healing pause; Fatal is terminal.
+- **Circuit (engine-wide) vs `Nack` delay (per-message)**: the circuit throttles the whole poll loop (how much to pull from the queue); per-message redelivery delay is the adapter's best-effort `Nack` behavior (e.g. SQS visibility). They are different layers — the `Nack` delay is **not** a port guarantee; broker-agnostic backpressure is the circuit's job.
+
+## Invariants (acceptance criteria)
+
+The engine is **completed against the in-memory fake** (`usecase/boundary/worker/fake`); all engine tests are green without a real broker. Test names map to invariant IDs A1–A7 / B1–B4 / C1 (see the scaffold plan). Key ones:
+
+- A1/A2: `Ack` only after success; `Nack` on Retryable.
+- A5: Permanent → `FailureHandler` → `Ack`; Fatal → stop.
+- A6: a single message's panic is recovered and does not take down the engine.
+- B1/B2/B3: concurrency cap / in-flight cap / `PartitionKey` serialization.
+- B4: circuit breaker (Open pauses intake; Half-open recovers).
+- C1: SIGTERM drains in-flight; unfinished messages are not `Ack`ed (redelivered).
+
+## Files
+
+- `runner.go` — `Engine` (registry, `Run`, `Healthy`), `run.go` — per-run poll loop / dispatch / drain.
+- `circuit.go` — 3-state breaker (cooldown via `pkg/backoff`). `classify.go` — error → category. `settings.go` — engine-core `Settings`. `dispatch.go` — `PartitionKey` keyed serialization. `state.go` — `worker.State` impl. `errors.go` — registry sentinels. `metrics.go` / `telemetry.go` — O11Y.
+
+The SQS reference adapter (`infrastructure/queue/sqs`) is **not wired by default** so `aws-sdk-go-v2` stays out of the shipped binary.
