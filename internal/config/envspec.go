@@ -14,6 +14,24 @@ type Loader struct {
 	Security      Security        `envPrefix:"SECURITY_"`
 	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
 	Auth          Auth            `envPrefix:"AUTH_"`
+	Worker        Worker          `envPrefix:"WORKER_"`
+}
+
+// Worker は worker engine の engine-core 設定（broker 非依存）を保持する。
+// serve/job では使わないため、未設定でも起動できるよう default を与える（required にしない）。
+type Worker struct {
+	Concurrency               int           `env:"CONCURRENCY"                  default:"4"`
+	MaxInFlight               int           `env:"MAX_IN_FLIGHT"                default:"8"`
+	BatchSize                 int           `env:"BATCH_SIZE"                   default:"4"`
+	ExtendInterval            time.Duration `env:"EXTEND_INTERVAL"              default:"0s"`
+	DrainTimeout              time.Duration `env:"DRAIN_TIMEOUT"                default:"30s"`
+	ReceiveCountWarnThreshold int           `env:"RECEIVE_COUNT_WARN_THRESHOLD" default:"0"`
+	CircuitFailureThreshold   int           `env:"CIRCUIT_FAILURE_THRESHOLD"    default:"0"`
+	CircuitOpenBackoffInitial time.Duration `env:"CIRCUIT_OPEN_BACKOFF_INITIAL" default:"1s"`
+	CircuitOpenBackoffMax     time.Duration `env:"CIRCUIT_OPEN_BACKOFF_MAX"     default:"30s"`
+	CircuitHalfOpenProbe      int           `env:"CIRCUIT_HALF_OPEN_PROBE"      default:"1"`
+	HealthListenAddr          string        `env:"HEALTH_LISTEN_ADDR"           default:":8081"`
+	ProgressStaleAfter        time.Duration `env:"PROGRESS_STALE_AFTER"         default:"60s"`
 }
 
 // OperatingSystem はOS レベルの設定を保持する。現時点ではタイムゾーンのみを管理する。
