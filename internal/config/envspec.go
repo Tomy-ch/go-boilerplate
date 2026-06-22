@@ -25,8 +25,8 @@ type Worker struct {
 	BatchSize                 int           `env:"BATCH_SIZE"                   default:"4"`
 	ExtendInterval            time.Duration `env:"EXTEND_INTERVAL"              default:"0s"`
 	DrainTimeout              time.Duration `env:"DRAIN_TIMEOUT"                default:"30s"`
-	ReceiveCountWarnThreshold int           `env:"RECEIVE_COUNT_WARN_THRESHOLD" default:"0"`
-	CircuitFailureThreshold   int           `env:"CIRCUIT_FAILURE_THRESHOLD"    default:"0"`
+	ReceiveCountWarnThreshold int           `env:"RECEIVE_COUNT_WARN_THRESHOLD" default:"5"`
+	CircuitFailureThreshold   int           `env:"CIRCUIT_FAILURE_THRESHOLD"    default:"10"`
 	CircuitOpenBackoffInitial time.Duration `env:"CIRCUIT_OPEN_BACKOFF_INITIAL" default:"1s"`
 	CircuitOpenBackoffMax     time.Duration `env:"CIRCUIT_OPEN_BACKOFF_MAX"     default:"30s"`
 	CircuitHalfOpenProbe      int           `env:"CIRCUIT_HALF_OPEN_PROBE"      default:"1"`

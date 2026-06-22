@@ -108,8 +108,8 @@ var (
 	expectedWorkerBatchSize                 = 4
 	expectedWorkerExtendInterval            = time.Duration(0)
 	expectedWorkerDrainTimeout              = 30 * time.Second
-	expectedWorkerReceiveCountWarnThreshold = 0
-	expectedWorkerCircuitFailureThreshold   = 0
+	expectedWorkerReceiveCountWarnThreshold = 5
+	expectedWorkerCircuitFailureThreshold   = 10
 	expectedWorkerCircuitOpenBackoffInitial = 1 * time.Second
 	expectedWorkerCircuitOpenBackoffMax     = 30 * time.Second
 	expectedWorkerCircuitHalfOpenProbe      = 1
