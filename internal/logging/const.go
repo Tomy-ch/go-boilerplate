@@ -91,6 +91,15 @@ const (
 	// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。
 	FilterKey = "filter"
 
+	// worker 系ログのキー
+
+	// WorkerNameKey は、worker 名を表すログフィールドのキーです。
+	WorkerNameKey = "worker_name"
+	// MessageIDKey は、メッセージ ID を表すログフィールドのキーです。
+	MessageIDKey = "message_id"
+	// ReceiveCountKey は、メッセージの再配送回数を表すログフィールドのキーです。
+	ReceiveCountKey = "receive_count"
+
 	// 可観測系ログのキー
 
 	// TraceIDKey は、トレースIDを表すログフィールドのキーです。
