@@ -31,7 +31,7 @@ func TestGCUsecase_SweepExpired(t *testing.T) {
 				store.EXPECT().DeleteExpired(gomock.Any(), now, int32(2)).Return(int64(1), nil),
 			)
 
-			total, err := idempotency.NewGC(store, fakeClock{now: now}).SweepExpired(context.Background(), 2)
+			total, err := idempotency.NewGC(store, fixedClock(ctrl, now)).SweepExpired(context.Background(), 2)
 
 			require.NoError(t, err)
 			assert.Equal(t, int64(3), total)
@@ -46,7 +46,7 @@ func TestGCUsecase_SweepExpired(t *testing.T) {
 				DeleteExpired(gomock.Any(), gomock.Any(), idempotency.DefaultGCBatchSize).
 				Return(int64(0), nil)
 
-			total, err := idempotency.NewGC(store, fakeClock{}).SweepExpired(context.Background(), 0)
+			total, err := idempotency.NewGC(store, fixedClock(ctrl, time.Time{})).SweepExpired(context.Background(), 0)
 
 			require.NoError(t, err)
 			assert.Equal(t, int64(0), total)
@@ -64,7 +64,7 @@ func TestGCUsecase_SweepExpired(t *testing.T) {
 
 			store.EXPECT().DeleteExpired(gomock.Any(), gomock.Any(), int32(5)).Return(int64(0), wantErr)
 
-			total, err := idempotency.NewGC(store, fakeClock{}).SweepExpired(context.Background(), 5)
+			total, err := idempotency.NewGC(store, fixedClock(ctrl, time.Time{})).SweepExpired(context.Background(), 5)
 
 			require.ErrorIs(t, err, wantErr)
 			assert.Equal(t, int64(0), total)

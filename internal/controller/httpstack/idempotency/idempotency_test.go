@@ -25,8 +25,9 @@ import (
 
 const (
 	fingerprintLen = 32
-	// testPath は、テスト対象の POST パスです。
-	testPath = "/v1/users"
+	// testPath は、ミドルウェア検証用の POST パスです。spy ハンドラに渡す任意値であり、
+	// 特定のサンプルエンドポイント（/v1/users 等）には依存しません。
+	testPath = "/v1/resources"
 	// sentinel は、後段ハンドラが呼ばれたことを示す戻り値です。
 	sentinel = "SENTINEL"
 )
@@ -38,7 +39,7 @@ type spyRequest struct {
 // strictHandlerFunc は、oapi-codegen 生成の gen.StrictHandlerFunc と同型のテスト用型です。
 type strictHandlerFunc func(ec echo.Context, request any) (any, error)
 
-// newEcho は、テスト用の echo.Context（POST /v1/users）を生成します。key 非空ならヘッダを付与し、
+// newEcho は、テスト用の echo.Context（POST testPath）を生成します。key 非空ならヘッダを付与し、
 // withAuthn なら subject を持つ Authn を ctx に仕込みます。
 func newEcho(key string, withAuthn bool, subject string) echo.Context {
 	ctx := context.Background()
