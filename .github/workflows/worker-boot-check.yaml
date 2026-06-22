@@ -1,0 +1,81 @@
+name: Worker Boot Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/worker-boot-check.yaml'
+      - 'cmd/**.go'
+      - 'internal/**.go'
+      - 'env/.env.ci'
+      - 'env/.env'
+      - 'go.mod'
+      - 'go.sum'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  worker-boot-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      ENV: ci
+    services:
+      database:
+        image: postgres:18.3-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # 特定のサンプル worker 名に依存しないため、存在しない worker 名で起動する。
+      # ここで「unknown worker」エラーに到達できる＝ cobra → cmd/main.go → DI グラフ構築 → DB 接続 →
+      # worker engine の dispatch まで、実バイナリ経路が起動できたことの証左になる。
+      # DB 接続や DI 構築の失敗で落ちた場合は出力に「unknown worker」が含まれないので区別できる。
+      - name: Boot worker entrypoint and expect "unknown worker"
+        run: |
+          set -uo pipefail
+          set +e
+          output="$(go run ./cmd/ worker __ci_boot_check_no_such_worker__ 2>&1)"
+          code=$?
+          set -e
+
+          echo "----- worker output -----"
+          echo "${output}"
+          echo "-------------------------"
+
+          if [ "${code}" -eq 0 ]; then
+            echo "FAIL: 未知 worker なのに exit 0 が返った（dispatch が機能していない可能性）"
+            exit 1
+          fi
+
+          if ! echo "${output}" | grep -q "unknown worker"; then
+            echo "FAIL: non-zero 終了だが 'unknown worker' 経路ではない（起動/DI/DB 接続の失敗の可能性）"
+            exit 1
+          fi
+
+          echo "OK: worker のエントリポイントが起動（DI/DB 構築）し、未知 worker を正しく拒否した"
