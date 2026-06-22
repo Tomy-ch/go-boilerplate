@@ -18,7 +18,7 @@ const (
 type category int
 
 // classify は、非 nil の err を重大度順（Fatal > Permanent > Retryable）で分類します。
-// いずれの分類センチネルにも該当しない裸の error は、安全側として Retryable 扱いとします。
+// いずれの分類センチネルにも該当しない error は Retryable として扱います。
 func classify(err error) category {
 	switch {
 	case xerrors.Is(err, apperror.ErrFatal):

@@ -3,8 +3,6 @@
 package worker
 
 // State は、起動対象の worker 名・引数と、engine の実行結果を返す done チャネルを保持します。
-// DI で app を構築した後、cmd/cli から選択された worker 名を engine へ引き渡し、
-// engine 停止時の結果（nil / Fatal / unknown worker）を cli へ返すために使います（job の State と同様）。
 type State interface {
 	// Set は、起動対象の worker 名・引数と done チャネルを設定します。
 	// done はバッファ付き（cap≥1）であること。engine 停止時に結果を 1 度送って close します。

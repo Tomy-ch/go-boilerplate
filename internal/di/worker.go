@@ -30,7 +30,6 @@ func NewWorkerCore() fx.Option {
 }
 
 // RunWorker は、worker 実行用の開始関数・停止関数を生成して返します。
-// context の制御は呼び出し側（cli/worker）が担います。
 func RunWorker() (StartFunc, StopFunc) {
 	var (
 		state  workerboundary.State
@@ -54,7 +53,7 @@ func RunWorker() (StartFunc, StopFunc) {
 				logging.String(logging.WorkerNameKey, name),
 				logging.Error(logging.ErrorKey, err),
 			)
-			// 共有 done に触れると hook goroutine と二重送信になり得るため、専用チャネルで返す。
+			// done は hook goroutine が送信/close を所有するため、起動失敗は専用チャネルで返す。
 			failCh := make(chan error, 1)
 			failCh <- err
 			close(failCh)

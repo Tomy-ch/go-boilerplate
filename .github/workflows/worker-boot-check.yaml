@@ -52,10 +52,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # 特定のサンプル worker 名に依存しないため、存在しない worker 名で起動する。
-      # ここで「unknown worker」エラーに到達できる＝ cobra → cmd/main.go → DI グラフ構築 → DB 接続 →
-      # worker engine の dispatch まで、実バイナリ経路が起動できたことの証左になる。
-      # DB 接続や DI 構築の失敗で落ちた場合は出力に「unknown worker」が含まれないので区別できる。
+      # 存在しない worker 名を渡し、"unknown worker" エラーで終了することを確認する
+      # （DI 構築・DB 接続を含む起動経路が機能していることの確認。DB/DI 失敗時は出力に含まれない）。
       - name: Boot worker entrypoint and expect "unknown worker"
         run: |
           set -uo pipefail

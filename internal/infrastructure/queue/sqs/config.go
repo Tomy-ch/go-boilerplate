@@ -1,11 +1,7 @@
-// Package sqs は、worker seam（Consumer / FailureHandler）の AWS SQS 参考実装です。
+// Package sqs は、worker seam（Consumer / FailureHandler）の AWS SQS 実装を提供します。
 //
-// この adapter は seam が fake 以外の 2nd impl でも成立することを示す参考実装であり、
-// cmd の default 配線からは import されません（出荷バイナリに aws-sdk を載せないため。E3）。
-// 本番利用する場合は integrator が WorkerModule に明示的に配線します。
-//
-// dead-letter の一般経路は worker.FailureHandler（本 package の DeadLetter）です。
-// SQS の redrive policy（maxReceiveCount→DLQ）は IaC 側の設定であり、app は ReceiveCount の監視のみ行います。
+// cmd の default 配線からは import しないこと（出荷バイナリに aws-sdk を含めないため）。
+// 本番利用時は integrator が WorkerModule に配線します。詳細は README.md を参照。
 package sqs
 
 // Config は、SQS Consumer の adapter 固有設定です（engine-core の WorkerConfig とは分離）。

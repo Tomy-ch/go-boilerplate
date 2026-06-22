@@ -7,7 +7,6 @@ import (
 )
 
 // Settings は、engine の挙動を制御する engine-core 設定です（broker 非依存）。
-// Phase 4 で config.WorkerConfig からマッピングして渡します。
 type Settings struct {
 	// Concurrency は、同時に Handle を実行する最大数です（B1）。
 	Concurrency int

@@ -33,7 +33,7 @@ func (r *run) withTrace(ctx context.Context, m worker.Message) context.Context {
 	return otel.GetTextMapPropagator().Extract(ctx, attrCarrier(m.Attributes))
 }
 
-// extractTraceContext は、attrs の traceparent を prop で ctx に取り込みます（D1 の純粋部分・テスト用）。
+// extractTraceContext は、attrs の traceparent を prop で ctx に取り込みます。
 func extractTraceContext(ctx context.Context, attrs map[string]string, prop propagation.TextMapPropagator) context.Context {
 	if len(attrs) == 0 {
 		return ctx
