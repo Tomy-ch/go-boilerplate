@@ -26,7 +26,7 @@ Verify isolation: `go version -m <binary>` for a binary built from `./cmd/` must
 | `Ack` | `DeleteMessage` (reserved-key receipt handle) |
 | `Nack` | `ChangeMessageVisibility(0)` (immediate redelivery, best-effort; delay is not a port guarantee) |
 | `Extend` | `ChangeMessageVisibility(d)` |
-| `FailureHandler.Fail` | `SendMessage` to the DLQ |
+| `FailureHandler.Fail` | `SendMessage` to the DLQ with a `failure_reason="permanent"` attribute. The `cause` detail is intentionally **not** included (PII/internal-detail leak guard); it is logged engine-side instead. |
 
 ## Dead-letter / redrive
 

@@ -6,9 +6,9 @@
 
 - HTTP ハンドラと同格の **message-in driving adapter**。新しいアーキテクチャ層ではなく、**Usecase 層へのもう 1 つの入口**。
 - pull-ack キューを consume し、各メッセージを業務 `Handler` へ dispatch する。
-- 依存は `internal/usecase/boundary/worker` の seam port（`Consumer` / `Handler` / `FailureHandler` / `Worker` / `State`）のみ。`infrastructure/queue/*` は import しない（depguard `maintain_a_sound_controller` で機械担保）。
+- 依存は `internal/usecase/boundary/worker` の seam port（`Consumer` / `Handler` / `FailureHandler` / `Worker` / `State`）のみ。`internal/infrastructure/queue/*` は import しない（depguard `maintain_a_sound_controller` で機械担保）。
 
-> port を（ここではなく）`usecase/boundary/worker` に置くのは、層ルール上 engine（controller）と broker adapter（infrastructure）の双方が import できる唯一の場所だから。`job` が port を boundary に置くのと同じ理由。
+> port を（ここではなく）`internal/usecase/boundary/worker` に置くのは、層ルール上 engine（controller）と broker adapter（infrastructure）の双方が import できる唯一の場所だから。`job` が port を boundary に置くのと同じ理由。
 
 ## pull 型前提と第一想定プラットフォーム
 
@@ -23,7 +23,7 @@
 
 | 機構 | 何を止めるか | 復帰 | プロセス |
 |---|---|---|---|
-| **Backoff / throttle** | 速度を落とすだけ（止めない） | 自動 | 生存（Open の cooldown 計算に内包） |
+| **Backoff** | 速度制御のみ（intake は止めない）。独立した状態ではなく Open の cooldown を `pkg/backoff` で指数的に伸ばす形で実現 | 自動 | 生存 |
 | **Circuit Open** | 下流失敗の継続で **`Receive`（intake）を停止** | **自動**（Open→cooldown→Half-open→Closed） | 生存 |
 | **Fatal** | drain して **engine を停止** | 手動（再起動） | 終了 |
 
@@ -32,18 +32,19 @@
 
 ## 不変条件（受け入れ基準）
 
-engine は **in-memory fake**（`usecase/boundary/worker/fake`）に対して完成し、実 broker 無しで全テストが green。テスト名は不変条件 ID A1–A7 / B1–B4 / C1 にマップ（詳細は scaffold 計画書）。主なもの：
+engine は **in-memory fake**（`internal/usecase/boundary/worker/fake`）に対して完成し、実 broker 無しで全テストが green。テスト名は不変条件 ID A1–A7 / B1–B4 / C1（engine）＋ D1–D3（O11Y）にマップ。主なもの：
 
 - A1/A2：成功時のみ `Ack`、Retryable で `Nack`。
 - A5：Permanent → `FailureHandler` → `Ack`、Fatal → 停止。
 - A6：1 メッセージの panic を recover し engine を巻き込まない。
 - B1/B2/B3：同時数上限 / in-flight 上限 / `PartitionKey` 直列化。
 - B4：サーキットブレーカ（Open で intake 停止、Half-open で回復）。
-- C1：SIGTERM で in-flight を drain、未完は `Ack` しない（再配送）。
+- C1：SIGTERM/SIGINT で in-flight を drain、未完は `Ack` しない（再配送）。
+- D1–D3：traceparent 継続 / engine 所有 metric / 構造化ログ。
 
 ## ファイル
 
-- `runner.go`（`Engine`：registry / `Run` / `Healthy`）、`run.go`（poll loop / dispatch / drain）。
+- `runner.go`（`Engine`：registry / `Run` / `Healthy`）、`run.go`（1 Run 単位の poll loop / dispatch / drain）。
 - `circuit.go`（3 状態ブレーカ、cooldown は `pkg/backoff`）、`classify.go`（error→分類）、`settings.go`（engine-core `Settings`）、`dispatch.go`（`PartitionKey` 直列化）、`state.go`（`worker.State` 実装）、`errors.go`（registry sentinel）、`metrics.go` / `telemetry.go`（O11Y）。
 
-SQS 参考 adapter（`infrastructure/queue/sqs`）は **default では配線せず**、`aws-sdk-go-v2` を出荷バイナリに載せない。
+SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は **default では配線せず**、`aws-sdk-go-v2` を出荷バイナリに載せない。

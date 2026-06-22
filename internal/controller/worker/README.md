@@ -6,9 +6,9 @@ English | [日本語](README.ja.md)
 
 - A **message-in driving adapter**, on par with the HTTP handler — it is **another entry point into the Usecase layer**, not a new architectural layer.
 - Consumes a pull-ack queue and dispatches each message to a business `Handler`.
-- Depends only on the seam ports in `internal/usecase/boundary/worker` (`Consumer` / `Handler` / `FailureHandler` / `Worker` / `State`); it never imports `infrastructure/queue/*` (enforced by depguard `maintain_a_sound_controller`).
+- Depends only on the seam ports in `internal/usecase/boundary/worker` (`Consumer` / `Handler` / `FailureHandler` / `Worker` / `State`); it never imports `internal/infrastructure/queue/*` (enforced by depguard `maintain_a_sound_controller`).
 
-> The ports live in `usecase/boundary/worker` (not here) because that is the only package both the engine (controller) and the broker adapters (infrastructure) can import under the layer rules — same reason `job` keeps its ports there.
+> The ports live in `internal/usecase/boundary/worker` (not here) because that is the only package both the engine (controller) and the broker adapters (infrastructure) can import under the layer rules — same reason `job` keeps its ports there.
 
 ## Pull-type premise & first-class platforms
 
@@ -23,7 +23,7 @@ These are easy to conflate. The circuit breaker is applied to the **intake side*
 
 | Mechanism | What it stops | Recovery | Process |
 |---|---|---|---|
-| **Backoff / throttle** | only slows down (never stops) | automatic | alive (folded into the Open cooldown calc) |
+| **Backoff** | speed control only (never stops intake) — realized as the Open cooldown's exponential growth (`pkg/backoff`), not a standalone runtime state | automatic | alive |
 | **Circuit Open** | **stops calling `Receive`** (intake) on continued downstream failure | **automatic** (Open → cooldown → Half-open → Closed) | alive |
 | **Fatal** | drains and **stops the engine** | manual (restart) | exits |
 
@@ -32,18 +32,19 @@ These are easy to conflate. The circuit breaker is applied to the **intake side*
 
 ## Invariants (acceptance criteria)
 
-The engine is **completed against the in-memory fake** (`usecase/boundary/worker/fake`); all engine tests are green without a real broker. Test names map to invariant IDs A1–A7 / B1–B4 / C1 (see the scaffold plan). Key ones:
+The engine is **completed against the in-memory fake** (`internal/usecase/boundary/worker/fake`); all engine tests are green without a real broker. Test names map to invariant IDs A1–A7 / B1–B4 / C1 (engine) plus D1–D3 (O11Y). Key ones:
 
 - A1/A2: `Ack` only after success; `Nack` on Retryable.
 - A5: Permanent → `FailureHandler` → `Ack`; Fatal → stop.
 - A6: a single message's panic is recovered and does not take down the engine.
 - B1/B2/B3: concurrency cap / in-flight cap / `PartitionKey` serialization.
 - B4: circuit breaker (Open pauses intake; Half-open recovers).
-- C1: SIGTERM drains in-flight; unfinished messages are not `Ack`ed (redelivered).
+- C1: SIGTERM/SIGINT drains in-flight; unfinished messages are not `Ack`ed (redelivered).
+- D1–D3: traceparent continuation / engine-owned metrics / structured logs.
 
 ## Files
 
 - `runner.go` — `Engine` (registry, `Run`, `Healthy`), `run.go` — per-run poll loop / dispatch / drain.
 - `circuit.go` — 3-state breaker (cooldown via `pkg/backoff`). `classify.go` — error → category. `settings.go` — engine-core `Settings`. `dispatch.go` — `PartitionKey` keyed serialization. `state.go` — `worker.State` impl. `errors.go` — registry sentinels. `metrics.go` / `telemetry.go` — O11Y.
 
-The SQS reference adapter (`infrastructure/queue/sqs`) is **not wired by default** so `aws-sdk-go-v2` stays out of the shipped binary.
+The SQS reference adapter (`internal/infrastructure/queue/sqs`) is **not wired by default** so `aws-sdk-go-v2` stays out of the shipped binary.
