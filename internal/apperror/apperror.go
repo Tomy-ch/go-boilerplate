@@ -28,6 +28,19 @@ var (
 	ErrUnavailable = xerrors.New("service unavailable")
 )
 
+// worker のメッセージ処理分類センチネル。
+// engine が Handler の返すエラーを分類して挙動を変えるために使用します
+// （Retryable=Nack で再配送 / Permanent=FailureHandler へ退避して Ack / Fatal=engine 停止）。
+// これらは HTTP エラー taxonomy ではないため、appErrors（IsAppError 判定対象）には含めません。
+var (
+	// ErrRetryable は一時障害を示します。engine は Nack で再配送します。
+	ErrRetryable = xerrors.New("retryable")
+	// ErrPermanent は永久失敗を示します。engine は FailureHandler へ退避してから Ack します。
+	ErrPermanent = xerrors.New("permanent")
+	// ErrFatal はプロセス継続不能を示します。engine は drain して停止します。
+	ErrFatal = xerrors.New("fatal")
+)
+
 // appErrors は、定義済みの全 apperror センチネルです。
 var appErrors = []error{
 	ErrInvalidArgument,
