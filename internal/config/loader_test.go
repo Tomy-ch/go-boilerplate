@@ -1,45 +1,45 @@
 package config
 
 import (
+	"os"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:paralleltest // Load は os.Setenv でグローバル環境を変更するため並列化不可
 func TestLoad(t *testing.T) {
-	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
-		t.Run("ENV が設定されている場合、Load はエラーなく成功する", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
-			EnsureRepoRootAndEnv(t, TestingEnvValue)
+	restoreEnvAfterTest(t)
 
-			err := Load()
-			require.NoError(t, err)
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("埋め込み env を読み込み環境変数へ反映する", func(t *testing.T) {
+			_ = os.Unsetenv("APP_NAME")
+
+			require.NoError(t, Load())
+			assert.Equal(t, "Boilerplate", os.Getenv("APP_NAME"))
+		})
+
+		t.Run("既存の環境変数は上書きしない", func(t *testing.T) {
+			t.Setenv("APP_NAME", "existing-value")
+
+			require.NoError(t, Load())
+			assert.Equal(t, "existing-value", os.Getenv("APP_NAME"))
 		})
 	})
+}
 
-	t.Run("異常系", func(t *testing.T) {
-		t.Run("デフォルトの .env ファイルが存在しない場合、ErrFailedToLoadDefaultEnvFile を返す", func(t *testing.T) {
-			tmp := t.TempDir()
-			t.Chdir(tmp)
-			t.Setenv(envKey, "")
-
-			err := Load()
-			require.ErrorIs(t, err, ErrFailedToLoadDefaultEnvFile)
-		})
-
-		t.Run("env/.env は存在するが ENV が空のため ErrEnvNotResolved を返す", func(t *testing.T) {
-			EnsureRepoRootAndEnv(t, TestingEnvValue)
-			t.Setenv(envKey, "")
-
-			err := Load()
-			require.ErrorIs(t, err, ErrEnvNotResolved)
-		})
-
-		t.Run("ENV に対応する .env.<env> が存在しない場合、ErrFailedToLoadEnvFile を返す", func(t *testing.T) {
-			EnsureRepoRootAndEnv(t, TestingEnvValue)
-			t.Setenv(envKey, "nonexistent_env")
-
-			err := Load()
-			require.ErrorIs(t, err, ErrFailedToLoadEnvFile)
-		})
+// restoreEnvAfterTest は、テスト終了時に環境変数をテスト開始時点へ戻します。
+func restoreEnvAfterTest(t *testing.T) {
+	t.Helper()
+	snapshot := os.Environ()
+	t.Cleanup(func() {
+		os.Clearenv()
+		for _, kv := range snapshot {
+			k, v, _ := strings.Cut(kv, "=")
+			//nolint:usetesting // テスト後の環境変数一括復元のため t.Setenv は使用できない
+			_ = os.Setenv(k, v)
+		}
 	})
 }

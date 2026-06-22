@@ -12,8 +12,6 @@ import (
 )
 
 const (
-	// envKey は、環境変数のキー名です。
-	envKey = "ENV"
 	// TestingEnvValue は、テスト用の環境変数の値です。
 	TestingEnvValue = "ci"
 )
