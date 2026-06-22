@@ -1,3 +1,4 @@
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_metrics.gen.go -package=mock_$GOPACKAGE
 package idempotency
 
 import (
