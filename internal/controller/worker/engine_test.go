@@ -52,7 +52,7 @@ func baseSettings() Settings {
 // startEngine は、worker を別 goroutine で起動し、cancel と完了 channel を返します。
 func startEngine(t *testing.T, set Settings, log logging.Logger, w bw.Worker) (context.CancelFunc, <-chan error) {
 	t.Helper()
-	eng, err := New([]bw.Worker{w}, set, observability.NewNoopTracerFactory(t), log)
+	eng, err := New([]bw.Worker{w}, set, observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), log)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -73,7 +73,13 @@ func Test_New(t *testing.T) {
 			t.Parallel()
 
 			w := testWorker{name: "dup", cons: fake.New(), handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
-			eng, err := New([]bw.Worker{w, w}, baseSettings(), observability.NewNoopTracerFactory(t), logging.NewTestLogger(t))
+			eng, err := New(
+				[]bw.Worker{w, w},
+				baseSettings(),
+				observability.NewNoopTracerFactory(t),
+				observability.NewNoopWorkerMetrics(t),
+				logging.NewTestLogger(t),
+			)
 
 			require.ErrorIs(t, err, ErrDuplicateWorker)
 			assert.Nil(t, eng)
@@ -91,7 +97,13 @@ func Test_Engine_Run(t *testing.T) {
 			t.Parallel()
 
 			w := testWorker{name: "known", cons: fake.New(), handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
-			eng, err := New([]bw.Worker{w}, baseSettings(), observability.NewNoopTracerFactory(t), logging.NewTestLogger(t))
+			eng, err := New(
+				[]bw.Worker{w},
+				baseSettings(),
+				observability.NewNoopTracerFactory(t),
+				observability.NewNoopWorkerMetrics(t),
+				logging.NewTestLogger(t),
+			)
 			require.NoError(t, err)
 
 			err = eng.Run(context.Background(), "unknown")
@@ -103,7 +115,7 @@ func Test_Engine_Run(t *testing.T) {
 
 // --- A. 配信correctness ---
 
-func Test_Engine_A1_A2_AckNack規律(t *testing.T) {
+func Test_Engine_A1_A2_AckNackDiscipline(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -145,7 +157,7 @@ func Test_Engine_A1_A2_AckNack規律(t *testing.T) {
 	})
 }
 
-func Test_Engine_A3_Extendハートビート(t *testing.T) {
+func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -172,7 +184,7 @@ func Test_Engine_A3_Extendハートビート(t *testing.T) {
 	})
 }
 
-func Test_Engine_A4_重複配送(t *testing.T) {
+func Test_Engine_A4_DuplicateDelivery(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -204,7 +216,7 @@ func Test_Engine_A4_重複配送(t *testing.T) {
 	})
 }
 
-func Test_Engine_A5_PermanentとFatal(t *testing.T) {
+func Test_Engine_A5_PermanentAndFatal(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -251,7 +263,7 @@ func Test_Engine_A5_PermanentとFatal(t *testing.T) {
 	})
 }
 
-func Test_Engine_A6_panic隔離(t *testing.T) {
+func Test_Engine_A6_PanicIsolation(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -278,7 +290,7 @@ func Test_Engine_A6_panic隔離(t *testing.T) {
 	})
 }
 
-func Test_Engine_A7_poison警告(t *testing.T) {
+func Test_Engine_A7_PoisonWarn(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -306,7 +318,7 @@ func Test_Engine_A7_poison警告(t *testing.T) {
 
 // --- B. backpressure / 順序 ---
 
-func Test_Engine_B1_同時処理数上限(t *testing.T) {
+func Test_Engine_B1_ConcurrencyLimit(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -347,7 +359,7 @@ func Test_Engine_B1_同時処理数上限(t *testing.T) {
 	})
 }
 
-func Test_Engine_B2_inflight上限(t *testing.T) {
+func Test_Engine_B2_InflightLimit(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -379,7 +391,7 @@ func Test_Engine_B2_inflight上限(t *testing.T) {
 	})
 }
 
-func Test_Engine_B3_partition直列化(t *testing.T) {
+func Test_Engine_B3_PartitionSerialization(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -420,7 +432,7 @@ func Test_Engine_B3_partition直列化(t *testing.T) {
 	})
 }
 
-func Test_Engine_B4_サーキットブレーカ(t *testing.T) {
+func Test_Engine_B4_CircuitBreaker(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -454,7 +466,7 @@ func Test_Engine_B4_サーキットブレーカ(t *testing.T) {
 			require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 2 }, eventually, tick)
 			nacksAtOpen := len(f.NackedIDs())
 			time.Sleep(80 * time.Millisecond) // cooldown(300ms) 未満
-			assert.Equal(t, nacksAtOpen, len(f.NackedIDs()))
+			assert.Len(t, f.NackedIDs(), nacksAtOpen)
 
 			// B4-2: 回復させると cooldown 経過後の Half-open 試行で成功し Ack される。
 			failing.Store(false)

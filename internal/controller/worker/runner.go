@@ -6,8 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.opentelemetry.io/otel"
-
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/worker"
@@ -21,17 +19,19 @@ type Engine struct {
 	set     Settings
 	tracer  observability.LayerTracer
 	log     logging.Logger
-	met     *metrics
+	met     *observability.WorkerMetrics
 
 	active   atomic.Bool  // Run 実行中か
 	progress atomic.Int64 // 最後に poll loop が進んだ時刻(UnixNano)
 }
 
 // New は、Engine を生成します。worker 名の重複は ErrDuplicateWorker を返します。
+// metrics は注入された WorkerMetrics を用い、otel への依存は observability に閉じ込めます（D2）。
 func New(
 	workers []worker.Worker,
 	set Settings,
 	tf observability.TracerFactory,
+	met *observability.WorkerMetrics,
 	log logging.Logger,
 ) (*Engine, error) {
 	m := make(map[string]worker.Worker, len(workers))
@@ -43,11 +43,6 @@ func New(
 		m[name] = w
 	}
 	set.normalize()
-
-	met, err := newMetrics(otel.Meter(meterName))
-	if err != nil {
-		return nil, err
-	}
 
 	return &Engine{
 		workers: m,

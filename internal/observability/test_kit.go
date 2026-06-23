@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/logging"
 
 	"go.opentelemetry.io/otel"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
@@ -59,6 +60,16 @@ func NewNoopLayerTracer(t *testing.T) LayerTracer {
 		layer:   layer,
 		pkgName: pkg,
 	}
+}
+
+// NewNoopWorkerMetrics は、テスト用に no-op の MeterProvider から WorkerMetrics を生成します。
+func NewNoopWorkerMetrics(t *testing.T) *WorkerMetrics {
+	t.Helper()
+	wm, err := NewWorkerMetrics(metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatalf("failed to build noop worker metrics: %v", err)
+	}
+	return wm
 }
 
 // NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。

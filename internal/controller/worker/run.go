@@ -12,6 +12,10 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// extendVisibilityFactor は、Extend で延長する可視性を ExtendInterval の何倍にするかの係数です。
+// ハートビート周期より長く延長して、tick 間に lease 切れ（早期再配送）が起きないようにします。
+const extendVisibilityFactor = 2
+
 // run は、Engine.Run 1 回ぶんの実行状態です。
 type run struct {
 	e        *Engine
@@ -67,7 +71,7 @@ func (r *run) loop(parent context.Context) error {
 			if ctx.Err() != nil {
 				return r.fatalErr()
 			}
-			r.onPollError(err)
+			r.onPollError(ctx, err)
 			continue
 		}
 		r.dispatchAll(ctx, msgs)
@@ -92,14 +96,16 @@ func (r *run) acquire(ctx context.Context) (int, bool) {
 		if !ok {
 			return 0, false
 		}
-		if r.cb.phaseNow() == phaseOpen {
+		// phase は 1 度だけ snapshot して判定する（複数回 phaseNow() すると
+		// その間の trip() 割り込みで Open なのに BatchSize 件 Receive しうる TOCTOU を防ぐ）。
+		switch r.cb.phaseNow() {
+		case phaseOpen:
 			continue // スロット待ちの間に Open へ遷移したので Receive せず再評価
+		case phaseHalfOpen:
+			return min(r.e.set.CircuitHalfOpenProbe, free), true
+		default:
+			return min(r.e.set.BatchSize, free), true
 		}
-		limit := r.e.set.BatchSize
-		if r.cb.phaseNow() == phaseHalfOpen {
-			limit = r.e.set.CircuitHalfOpenProbe
-		}
-		return min(limit, free), true
 	}
 }
 
@@ -134,10 +140,10 @@ func (r *run) dispatchAll(ctx context.Context, msgs []worker.Message) {
 	if len(msgs) == 0 {
 		return
 	}
-	r.e.met.received.Add(ctx, int64(len(msgs)))
+	r.e.met.Received(ctx, int64(len(msgs)))
 	for _, m := range msgs {
 		r.inflight <- struct{}{}
-		r.e.met.inFlight.Add(ctx, 1)
+		r.e.met.InFlightAdd(ctx, 1)
 		r.wg.Add(1)
 		r.keyed.dispatch(ctx, m)
 	}
@@ -145,7 +151,7 @@ func (r *run) dispatchAll(ctx context.Context, msgs []worker.Message) {
 
 // process は、1 メッセージの処理単位です（B1 の同時数制御・span・分類処理）。
 func (r *run) process(ctx context.Context, m worker.Message) {
-	defer r.finishMessage()
+	defer r.finishMessage(ctx)
 
 	ctx = r.withTrace(ctx, m) // D1: traceparent から trace 継続
 	ctx, endSpan := r.e.tracer.Start(ctx)
@@ -161,14 +167,14 @@ func (r *run) process(ctx context.Context, m worker.Message) {
 	r.warnIfPoison(ctx, m)
 	start := time.Now()
 	err := r.safeHandle(ctx, m)
-	r.e.met.latencyMs.Record(ctx, msSince(start))
+	r.e.met.RecordLatencyMs(ctx, msSince(start))
 	r.handleResult(ctx, m, err)
 }
 
 // finishMessage は、in-flight トークンを解放し poll loop を起床させます。
-func (r *run) finishMessage() {
+func (r *run) finishMessage(ctx context.Context) {
 	<-r.inflight
-	r.e.met.inFlight.Add(context.Background(), -1)
+	r.e.met.InFlightAdd(ctx, -1)
 	select {
 	case r.slotFreed <- struct{}{}:
 	default:
@@ -217,7 +223,7 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				_ = r.consumer.Extend(ctx, m, interval*2)
+				_ = r.consumer.Extend(ctx, m, interval*extendVisibilityFactor)
 			}
 		}
 	}()
@@ -234,24 +240,24 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) {
 	if err == nil {
 		r.ack(ctx, m) // A1: 成功時のみ Ack
 		r.cb.onSuccess()
-		r.e.met.processed.Add(ctx, 1)
+		r.e.met.Processed(ctx)
 		r.e.log.Named("worker.process").Debug("message processed", msgFields(ctx, r.name, m)...)
 		return
 	}
 
-	r.e.met.failed.Add(ctx, 1)
+	r.e.met.Failed(ctx)
 	fields := append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))
 
 	switch classify(err) {
 	case catRetryable:
 		r.nack(ctx, m) // A2
 		r.cb.onFailure()
-		r.e.met.retried.Add(ctx, 1)
+		r.e.met.Retried(ctx)
 		r.e.log.Named("worker.process").Warn("retryable failure, nacked", fields...)
 	case catPermanent:
 		r.routePermanent(ctx, m, err) // A5
 		r.cb.onSuccess()
-		r.e.met.dlq.Add(ctx, 1)
+		r.e.met.DLQ(ctx)
 		r.e.log.Named("worker.process").Warn("permanent failure, routed to dead-letter", fields...)
 	case catFatal:
 		r.e.log.Named("worker.process").Error("fatal failure, stopping engine", fields...)
@@ -283,8 +289,8 @@ func (r *run) nack(ctx context.Context, m worker.Message) {
 }
 
 // onPollError は、Receive の失敗をサーキットへ反映します（broker 到達不能など）。
-func (r *run) onPollError(err error) {
-	r.e.met.pollErrors.Add(context.Background(), 1)
+func (r *run) onPollError(ctx context.Context, err error) {
+	r.e.met.PollError(ctx)
 	r.logErr("worker.poll", "receive error", err)
 	r.cb.onFailure()
 }

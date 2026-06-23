@@ -1,16 +1,20 @@
-package worker
+package observability
 
 import (
+	"context"
+
 	"go.opentelemetry.io/otel/metric"
 
 	"go-boilerplate/pkg/xerrors"
 )
 
-const meterName = "go-boilerplate/worker"
+// workerMeterName は、worker engine 計装の meter 名です。
+const workerMeterName = "go-boilerplate/worker"
 
-// metrics は、engine 所有（broker 非依存）の計装一式です（D2）。
+// WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です（D2）。
+// otel/metric への依存は本パッケージに閉じ込め、worker 側へは意味づけされたメソッドのみを公開します。
 // queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のため含みません。
-type metrics struct {
+type WorkerMetrics struct {
 	received   metric.Int64Counter
 	processed  metric.Int64Counter
 	failed     metric.Int64Counter
@@ -27,10 +31,11 @@ type meterBuilder struct {
 	err error
 }
 
-// newMetrics は、worker engine の計装一式を生成します。いずれかの生成失敗で error を返します。
-func newMetrics(m metric.Meter) (*metrics, error) {
-	b := &meterBuilder{m: m}
-	mt := &metrics{
+// NewWorkerMetrics は、注入された MeterProvider から worker engine の計装一式を生成します。
+// グローバル otel.Meter() に依存せず、いずれかの計装生成失敗で error を返します。
+func NewWorkerMetrics(mp metric.MeterProvider) (*WorkerMetrics, error) {
+	b := &meterBuilder{m: mp.Meter(workerMeterName)}
+	wm := &WorkerMetrics{
 		received:   b.counter("worker.received", "受信したメッセージ数"),
 		processed:  b.counter("worker.processed", "正常処理したメッセージ数"),
 		failed:     b.counter("worker.failed", "処理に失敗したメッセージ数"),
@@ -43,8 +48,32 @@ func newMetrics(m metric.Meter) (*metrics, error) {
 	if b.err != nil {
 		return nil, b.err
 	}
-	return mt, nil
+	return wm, nil
 }
+
+// Received は、受信したメッセージ数を計上します。
+func (m *WorkerMetrics) Received(ctx context.Context, n int64) { m.received.Add(ctx, n) }
+
+// Processed は、正常処理したメッセージ数を計上します。
+func (m *WorkerMetrics) Processed(ctx context.Context) { m.processed.Add(ctx, 1) }
+
+// Failed は、処理に失敗したメッセージ数を計上します。
+func (m *WorkerMetrics) Failed(ctx context.Context) { m.failed.Add(ctx, 1) }
+
+// Retried は、Nack して再配送へ戻したメッセージ数を計上します。
+func (m *WorkerMetrics) Retried(ctx context.Context) { m.retried.Add(ctx, 1) }
+
+// DLQ は、FailureHandler へ退避したメッセージ数を計上します。
+func (m *WorkerMetrics) DLQ(ctx context.Context) { m.dlq.Add(ctx, 1) }
+
+// PollError は、Receive のエラー回数を計上します。
+func (m *WorkerMetrics) PollError(ctx context.Context) { m.pollErrors.Add(ctx, 1) }
+
+// RecordLatencyMs は、Handle の処理時間(ミリ秒)を記録します。
+func (m *WorkerMetrics) RecordLatencyMs(ctx context.Context, ms float64) { m.latencyMs.Record(ctx, ms) }
+
+// InFlightAdd は、処理中(受信済み・未確定)のメッセージ数を増減します。
+func (m *WorkerMetrics) InFlightAdd(ctx context.Context, delta int64) { m.inFlight.Add(ctx, delta) }
 
 func (b *meterBuilder) counter(name, desc string) metric.Int64Counter {
 	if b.err != nil {

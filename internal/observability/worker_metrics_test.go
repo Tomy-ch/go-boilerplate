@@ -1,4 +1,4 @@
-package worker
+package observability_test
 
 import (
 	"context"
@@ -8,9 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+
+	"go-boilerplate/internal/observability"
 )
 
-func Test_newMetrics_D2(t *testing.T) {
+func Test_NewWorkerMetrics_D2(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -23,18 +25,18 @@ func Test_newMetrics_D2(t *testing.T) {
 			reader := sdkmetric.NewManualReader()
 			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
 
-			mt, err := newMetrics(provider.Meter("test"))
+			wm, err := observability.NewWorkerMetrics(provider)
 			require.NoError(t, err)
 
 			// 各計装に 1 度ずつ測定値を入れる（manual reader は測定のある計装のみ出力するため）。
-			mt.received.Add(ctx, 1)
-			mt.processed.Add(ctx, 1)
-			mt.failed.Add(ctx, 1)
-			mt.retried.Add(ctx, 1)
-			mt.dlq.Add(ctx, 1)
-			mt.pollErrors.Add(ctx, 1)
-			mt.latencyMs.Record(ctx, 1)
-			mt.inFlight.Add(ctx, 1)
+			wm.Received(ctx, 1)
+			wm.Processed(ctx)
+			wm.Failed(ctx)
+			wm.Retried(ctx)
+			wm.DLQ(ctx)
+			wm.PollError(ctx)
+			wm.RecordLatencyMs(ctx, 1)
+			wm.InFlightAdd(ctx, 1)
 
 			var rm metricdata.ResourceMetrics
 			require.NoError(t, reader.Collect(ctx, &rm))

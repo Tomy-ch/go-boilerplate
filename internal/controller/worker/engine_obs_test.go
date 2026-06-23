@@ -14,7 +14,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-func Test_Engine_D3_構造化ログ(t *testing.T) {
+func Test_Engine_D3_StructuredLog(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

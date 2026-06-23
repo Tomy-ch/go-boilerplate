@@ -18,6 +18,7 @@ type EngineIn struct {
 	Workers []workerboundary.Worker `group:"workers"`
 	Config  *config.WorkerConfig
 	TF      observability.TracerFactory
+	Metrics *observability.WorkerMetrics
 	Logger  logging.Logger
 }
 
@@ -37,5 +38,5 @@ func ProvideEngine(in EngineIn) (*workerengine.Engine, error) {
 		CircuitHalfOpenProbe:      c.CircuitHalfOpenProbe(),
 		ProgressStaleAfter:        c.ProgressStaleAfter(),
 	}
-	return workerengine.New(in.Workers, set, in.TF, in.Logger)
+	return workerengine.New(in.Workers, set, in.TF, in.Metrics, in.Logger)
 }

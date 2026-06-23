@@ -6,6 +6,7 @@ import (
 	workercontroller "go-boilerplate/internal/controller/worker"
 	diworker "go-boilerplate/internal/di/worker"
 	"go-boilerplate/internal/di/worker/hook"
+	"go-boilerplate/internal/observability"
 )
 
 // WorkerModule は、worker engine 関連の依存関係を提供する fx.Module です。
@@ -17,6 +18,7 @@ func WorkerModule() fx.Option {
 		// 各 worker は usecase/boundary/worker.Worker を実装し、Consumer(broker adapter) を内包します。
 		),
 		fx.Provide(
+			observability.NewWorkerMetrics,
 			diworker.ProvideEngine,
 			workercontroller.NewState,
 		),

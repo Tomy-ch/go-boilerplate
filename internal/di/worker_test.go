@@ -22,7 +22,6 @@ func TestNewWorkerCore(t *testing.T) {
 	require.NoError(t, fx.ValidateApp(NewWorkerCore(), fx.WithLogger(NewFxEventLogger)))
 }
 
-//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
 func TestNewWorkerCore_BootsWithMockedDB(t *testing.T) {
 	// 実 DB を避けつつ、worker 用 fx グラフの全コンストラクタ実行とライフサイクル(OnStart/OnStop)を検証する。
 	// worker 未選択(state 未設定)でも起動・停止でき、health listener の起動/停止まで通ることを確認する。
