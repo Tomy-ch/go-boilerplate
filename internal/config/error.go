@@ -42,17 +42,7 @@ var (
 		errInvalidConfig,
 		"http only localhost is allowed",
 	)
-	// ErrEnvNotResolved は、env/.env 読み込み後も ENV が解決できなかったことを示すエラーです。
-	ErrEnvNotResolved = xerrors.Wrap(
-		errInvalidConfig,
-		"ENV is not set after loading env/.env",
-	)
-	// ErrFailedToLoadDefaultEnvFile は、デフォルトの env/.env 読み込みに失敗したことを示すエラーです。
-	ErrFailedToLoadDefaultEnvFile = xerrors.Wrap(
-		errInvalidConfig,
-		"failed to load default env file",
-	)
-	// ErrFailedToLoadEnvFile は、ENV に対応する env/.env.<env> 読み込みに失敗したことを示すエラーです。
+	// ErrFailedToLoadEnvFile は、埋め込み env ファイルの読み込みに失敗したことを示すエラーです。
 	ErrFailedToLoadEnvFile = xerrors.Wrap(
 		errInvalidConfig,
 		"failed to load env file",

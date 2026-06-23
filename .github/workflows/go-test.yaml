@@ -61,6 +61,9 @@ jobs:
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
       - name: Initialize Database Table
         run: go run ./cmd/ migrate-up --database ${{ env.DB }}
 

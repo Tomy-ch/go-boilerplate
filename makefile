@@ -17,6 +17,7 @@ include .makefiles/database/gen.mk
 # Application関連
 include .makefiles/app/server.mk
 include .makefiles/app/job.mk
+include .makefiles/app/env.mk
 # GitHub関連
 include .makefiles/github/operation/release-branch.mk
 include .makefiles/github/operation/release-tag.mk

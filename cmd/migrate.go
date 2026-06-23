@@ -1,6 +1,7 @@
 package main
 
 import (
+	rootenv "go-boilerplate"
 	climigrate "go-boilerplate/internal/cli/migrate"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -11,12 +12,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+
 	// postgres driver for golang-migrate (required for runtime registration)
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// migrateFilePlace は、マイグレーションファイルの場所を定義します。
+// migrateFilePlace は、埋め込み FS 内のマイグレーションディレクトリのパスです。
 const migrateFilePlace = "database/migrations"
 
 // newMigrateUpCommand は、DBのマイグレーションを上げるためのコマンドを生成します。
@@ -92,7 +94,12 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
 
-	m, err := migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
+	src, err := iofs.New(rootenv.FS, migrateFilePlace)
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to create migration source")
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", src, driver.DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to create migrate instance")
 	}
