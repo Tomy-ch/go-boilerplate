@@ -29,7 +29,6 @@ type DatabaseDriver interface {
 type dbDriver struct{ pool *pgxpool.Pool }
 
 // NewDB は Postgres のDB接続を初期化して返します（クエリトレーサーなし）。
-// マイグレーション / シードなどクエリ計装が不要な経路で利用します。
 func NewDB(
 	dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig,
 ) (DatabaseDriver, error) {

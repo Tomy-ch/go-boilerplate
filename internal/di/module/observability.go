@@ -17,6 +17,7 @@ func ObservabilityModule() fx.Option {
 			observability.ProvideTracerProvider,
 			observability.NewProviderShutdowner,
 			observability.NewTracerFactory,
+			observability.NewPgxTracer,
 		),
 		fx.Invoke(hook.RegisterObservabilityShutdownHooks),
 	)

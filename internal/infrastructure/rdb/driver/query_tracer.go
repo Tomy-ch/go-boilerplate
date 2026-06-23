@@ -22,15 +22,13 @@ type queryLogKey struct{}
 
 // queryLogData は、クエリ終了時のログ出力に必要な開始時点の情報です。
 type queryLogData struct {
-	sql   string
-	args  []any
-	start time.Time
+	sql          string
+	args         []any
+	start        time.Time
+	parentSpanID string
 }
 
-// queryTracer は、otelpgx による span 生成に、エラー / スロークエリ時のみのログ出力を合成した pgx トレーサーです。
-//
-// *otelpgx.Tracer を埋め込むことで、Batch / CopyFrom / Connect / Prepare / Acquire の各トレースは
-// otelpgx の実装をそのまま利用し、Query のみログ出力を上乗せします。
+// queryTracer は、エラー / スロークエリ時のみログを付加する pgx.QueryTracer の実装です。
 type queryTracer struct {
 	*otelpgx.Tracer
 
@@ -41,14 +39,17 @@ type queryTracer struct {
 }
 
 // NewQueryTracer は、span(otelpgx) とエラー / スロークエリログを行う pgx.QueryTracer を生成します。
+//
+// tracer は provider を結線済みの otelpgx トレーサー（observability.NewPgxTracer 由来）を受け取ります。
 func NewQueryTracer(
 	dbCfg *config.DatabaseConfig,
 	obsCfg *config.ObservabilityConfig,
+	tracer *otelpgx.Tracer,
 	logger logging.Logger,
 	lf logging.LogFieldBuilder,
 ) pgx.QueryTracer {
 	return &queryTracer{
-		Tracer:        otelpgx.NewTracer(),
+		Tracer:        tracer,
 		logger:        logger,
 		lf:            lf,
 		maskArgs:      obsCfg.MaskedDBQueryArgs(),
@@ -56,20 +57,21 @@ func NewQueryTracer(
 	}
 }
 
-// TraceQueryStart は、otelpgx の span を開始し、終了ログ用の開始情報を context に積みます。
+// TraceQueryStart は、クエリ開始の span を開始し、新しい Context を返します。
 func (t *queryTracer) TraceQueryStart(
 	ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData,
 ) context.Context {
+	parentSpanID := observability.ExtractTraceContext(ctx).SpanID()
 	ctx = t.Tracer.TraceQueryStart(ctx, conn, data)
 	return context.WithValue(ctx, queryLogKey{}, queryLogData{
-		sql:   data.SQL,
-		args:  data.Args,
-		start: time.Now(),
+		sql:          data.SQL,
+		args:         data.Args,
+		start:        time.Now(),
+		parentSpanID: parentSpanID,
 	})
 }
 
-// TraceQueryEnd は、otelpgx の span を終了し、エラー時 / スロークエリ時のみログを出力します。
-// 正常終了時は span のみで、ログは出力しません。
+// TraceQueryEnd は、span を終了し、エラー時 / スロークエリ時のみログを出力します。
 func (t *queryTracer) TraceQueryEnd(
 	ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData,
 ) {
@@ -92,7 +94,6 @@ func (t *queryTracer) TraceQueryEnd(
 	}
 }
 
-// endFields は、SQL 終了ログのフィールドを構築します。
 func (t *queryTracer) endFields(
 	ctx context.Context, ld queryLogData, duration time.Duration, err error,
 ) []*logging.Field {
@@ -104,14 +105,15 @@ func (t *queryTracer) endFields(
 	tc := observability.ExtractTraceContext(ctx)
 
 	return t.lf.BuildSQLEndFields(logging.SQLFieldsEndInput{
-		Layer:   queryTracerLayer,
-		PkgName: queryTracerPkg,
-		EventAt: time.Now(),
-		Latency: duration,
-		Query:   ld.sql,
-		Args:    args,
-		Err:     err,
-		TraceID: tc.TraceID(),
-		SpanID:  tc.SpanID(),
+		Layer:        queryTracerLayer,
+		PkgName:      queryTracerPkg,
+		EventAt:      time.Now(),
+		Latency:      duration,
+		Query:        ld.sql,
+		Args:         args,
+		Err:          err,
+		TraceID:      tc.TraceID(),
+		SpanID:       tc.SpanID(),
+		ParentSpanID: ld.parentSpanID,
 	})
 }

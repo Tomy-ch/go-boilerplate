@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/exaring/otelpgx"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
@@ -41,6 +42,7 @@ func TestDatabaseModule_Composes(t *testing.T) {
 			fx.Provide(config.NewDBConnectionConfig),
 			fx.Provide(func() logging.Logger { return mockLogger }),
 			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+			fx.Provide(func() *otelpgx.Tracer { return otelpgx.NewTracer() }),
 			fx.Provide(observability.NewNoopTracerFactory),
 			fx.NopLogger,
 			fx.Invoke(hook.RegisterDBCloseHooks),

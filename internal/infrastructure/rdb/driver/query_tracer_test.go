@@ -10,6 +10,7 @@ import (
 	mock_logging "go-boilerplate/internal/logging/mock"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,7 +32,7 @@ func newTestQueryTracer(t *testing.T) (*queryTracer, *mock_logging.MockLogger) {
 
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	qt, ok := NewQueryTracer(dbCfg, obsCfg, mockLogger, lf).(*queryTracer)
+	qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), mockLogger, lf).(*queryTracer)
 	require.True(t, ok)
 	return qt, mockLogger
 }
@@ -53,7 +54,7 @@ func TestNewQueryTracer(t *testing.T) {
 			mockLogger := mock_logging.NewMockLogger(ctrl)
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			qt, ok := NewQueryTracer(dbCfg, obsCfg, mockLogger, lf).(*queryTracer)
+			qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), mockLogger, lf).(*queryTracer)
 			require.True(t, ok)
 			assert.NotNil(t, qt.Tracer)
 			assert.Equal(t, obsCfg.MaskedDBQueryArgs(), qt.maskArgs)
@@ -166,7 +167,7 @@ func TestNewTracedDB_RealQueryInstrumentation(t *testing.T) {
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).MinTimes(1)
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	tracer := NewQueryTracer(dbCfg, obsCfg, mockLogger, lf)
+	tracer := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), mockLogger, lf)
 
 	db, err := NewTracedDB(dbCfg, osCfg, dbConnCfg, tracer)
 	require.NoError(t, err)
