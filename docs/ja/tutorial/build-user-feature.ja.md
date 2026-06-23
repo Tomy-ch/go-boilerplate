@@ -293,7 +293,7 @@ repository メソッドの形 —— span、sqlc 呼び出し、正規化、変�
 func (r *repository) Create(ctx context.Context, u *user.User) error {
  ctx, endSpan := r.tracer.Start(ctx)
  defer endSpan()
- db := gen.New(r.db.NewLoggingDB(ctx))
+ db := gen.New(driver.New(ctx, r.db))
  if err := db.CreateUser(ctx, toCreateParams(u)); err != nil {
   return pgerror.NormalizeError(err)
  }

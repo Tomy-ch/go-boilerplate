@@ -23,7 +23,7 @@ This directory is composed of the following layered structure.
 
 ```mermaid
 flowchart TB
-    Usecase --> Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"] --> DB["PostgreSQL"]
+    Usecase --> Repo["Repository / QueryService"] --> Driver["driver (+ pgx query tracer)"] --> DB["PostgreSQL"]
 ```
 
 The responsibilities of each layer are as follows.
@@ -32,8 +32,7 @@ The responsibilities of each layer are as follows.
 |---|---|
 |Repository|Aggregate persistence (implementation of Domain Repository Interface)|
 |QueryService|Provides search-specific queries (implementation of Usecase Interface)|
-|loggingdb|Adds SQL logging / tracing (Observability wrapper)|
-|driver|DB connection management / transaction management|
+|driver|DB connection / transaction management, and SQL logging / tracing via a pgx query tracer|
 |PostgreSQL|Actual DB|
 
 The following exist as supporting components.
@@ -53,8 +52,7 @@ internal/infrastructure/rdb
  ├ repository/        Repository implementation
  ├ query_service/     QueryService implementation
  ├ system_query/      System operational queries (health check, etc.)
- ├ driver/            DB connection / transaction
- │   └ loggingdb/     SQL logging / tracing wrapper
+ ├ driver/            DB connection / transaction + pgx query tracer (logging / tracing)
  ├ sqlc/              sqlc generated code + SQL helper
  ├ pgerror/           PostgreSQL error normalization
  ├ metrics/           Connection pool Prometheus metrics
@@ -125,6 +123,7 @@ Main functions
 - DB connection pool management
 - Transaction management (tx.Manager)
 - DBTX interface for sqlc
+- SQL logging / tracing via a pgx query tracer (see below)
 
 Important: **Transaction boundaries are managed by the Usecase layer**
 
@@ -132,28 +131,29 @@ See details below.
 
 [driver directory README](driver/README.md)
 
-## loggingdb
+## SQL Logging / Tracing (pgx query tracer)
 
-`loggingdb` is an **Observability wrapper that adds SQL execution logs and tracing**.
+SQL logging and tracing are wired at the **pgx connection level** (`ConnConfig.Tracer`) by
+`driver.NewQueryTracer`, not in a separate wrapper layer. Repository / QueryService talk to the
+driver directly via `driver.New(ctx, db)`; instrumentation is transparent and also covers
+transaction-bound queries.
 
 ```mermaid
 flowchart TB
-    Repo["Repository / QueryService"] --> Logging["loggingdb"] --> Driver["driver"]
+    Repo["Repository / QueryService"] --> Driver["driver (ConnConfig.Tracer)"] --> DB["PostgreSQL"]
 ```
+
+The query tracer embeds `otelpgx` for OpenTelemetry spans (with semconv DB attributes) and adds
+**log output only for failures and slow queries** — successful queries are recorded as spans only.
+This keeps the trace backend (APM) as the source of truth for span lifecycle / latency while
+avoiding per-query log noise.
 
 Main functions
 
-- SQL log output
-- OpenTelemetry span
-- Query execution time measurement
-- slow query detection
-
-Important:  
-**loggingdb does not execute DB operations (pure wrapper)**
-
-See details below.
-
-[loggingdb directory README](driver/loggingdb/README.md)
+- OpenTelemetry span per query (via `otelpgx`, including batch / copy)
+- Error log on query failure (`span.RecordError` + log)
+- Slow query warning log (threshold: `DB_SLOW_QUERY_WARN_THRESHOLD`)
+- Query argument masking (`OBSERVABILITY_MASKED_DB_QUERY_ARGS`)
 
 ## PostgreSQL Error Normalization
 
@@ -208,7 +208,7 @@ See details below.
 Main functions
 
 - Test DB initialization
-- LoggingDBProvider generation
+- Shared test DB driver provision
 - Transaction-based testing (automatic rollback)
 
 Test characteristics
@@ -252,7 +252,8 @@ All SQL execution is performed through `sqlc`.
 
 ### 6. Observability
 
-SQL execution logging and tracing are provided by `loggingdb`.
+SQL execution tracing is provided by a pgx query tracer wired at the driver connection level
+(`otelpgx` spans), with log output limited to query failures and slow queries.
 
 ### 7. Test Strategy (Integration-based)
 

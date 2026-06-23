@@ -35,7 +35,7 @@ SystemQuery handles **queries for operational and monitoring purposes that do no
 Verifies DB connectivity and measures response time.
 
 ```go
-func New(provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery
+func New(provider driver.DatabaseDriver, tf observability.TracerFactory) query.DBSystemQuery
 ```
 
 |Method|Description|
@@ -71,7 +71,7 @@ internal/infrastructure/rdb/system_query/
 - Interface defined in Usecase layer (`internal/usecase/<concern>/query`)
 - Implementation placed in Infrastructure layer
 - Does not contain business logic
-- Receives `loggingdb.DBProvider` + `observability.LayerTracer` via DI
+- Receives `driver.DatabaseDriver` + `observability.LayerTracer` via DI
 - DB errors normalized with `pgerror.NormalizeError`
 
 ## Extending

@@ -78,7 +78,7 @@ The Infrastructure layer provides the following observability.
 - Tracing using OpenTelemetry
 - Execution time measurement (slow query)
 
-Mainly implemented using wrappers such as loggingdb.
+Mainly implemented by a pgx query tracer wired at the driver connection level (`otelpgx` spans, with log output limited to query failures and slow queries).
 
 ## Prohibited Practices
 
@@ -94,7 +94,7 @@ The following must not be done in the Infrastructure layer.
 
 - Use sqlc for SQL execution
 - Do not write search logic in Repository (use QueryService)
-- Do not use driver directly; use it via loggingdb
+- Acquire the DBTX via `driver.New(ctx, db)` (logging / tracing is applied at the driver connection level)
 - Always propagate context
 - Always normalize external errors
 

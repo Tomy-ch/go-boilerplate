@@ -243,21 +243,22 @@ The following cases are separated into QueryService.
 - Complex filter + sort + paging
 - Read-optimized searches for list screens
 
-## LoggingDBProvider
+## DB Access (driver)
 
-Repository normally uses `loggingdb.DBProvider` to access DB.
+Repository accesses the DB through `driver.DatabaseDriver`.
 
 ```go
-db := gen.New(r.db.NewLoggingDB(ctx))
+db := gen.New(driver.New(ctx, r.db))
 ```
 
-`loggingdb.DBProvider` provides:
+`driver.New(ctx, db)` provides:
 
-- SQL log output
-- Transparent DB / Tx switching
+- Transparent DB / Tx switching (picks the tx in context if present)
 - Context-based connection acquisition
 
-Repository is designed to **not be aware of DB connection state**.
+SQL logging / tracing is applied transparently by the pgx query tracer wired at the driver
+connection level (see `driver/README.md`), so Repository is designed to **not be aware of DB
+connection state**.
 
 ## Error normalization
 
@@ -288,7 +289,7 @@ Transaction management is the responsibility of **Usecase**.
 Query execution is performed using:
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 With this,
@@ -296,7 +297,7 @@ With this,
 Repository uses
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 to transparently use `Tx / DB`.
@@ -372,7 +373,7 @@ func InfrastructureModule() fx.Option {
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -427,7 +428,7 @@ is used to receive via interface.
 
 Repository implementation has the following dependencies.
 
-- loggingdb.DBProvider is the DB access entry point normally used by Repository.
+- driver.DatabaseDriver is the DB access entry point normally used by Repository.
   - SQL log output
   - trace integration
   - transparent DB / Tx switching
@@ -438,7 +439,7 @@ Repository implementation has the following dependencies.
 
 ```go
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -447,7 +448,7 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -498,13 +499,11 @@ Repository tests initialize DB using `testkit`.
 
 ```go
 db := testkit.NewTestDB(t)
-provider := testkit.NewTestLoggingProvider(t)
 ```
 
-These functions provide:
+This function provides:
 
-- `NewTestDB`: test DB connection (`driver.DatabaseDriver`)
-- `NewTestLoggingProvider`: `loggingdb.DBProvider`
+- `NewTestDB`: shared test DB connection (`driver.DatabaseDriver`), passed directly to the Repository constructor
 
 ### Transaction tests
 
@@ -724,7 +723,7 @@ Transaction management is the responsibility of **Usecase**.
 Repository uses
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 to transparently use `Tx / DB`.
@@ -783,14 +782,14 @@ Infra **only implements Domain Interface**.
 package user
 
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New is the constructor of Repository.
 // All dependencies are injected from outside.
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -805,7 +804,7 @@ func (r *repository) FindByActive(ctx context.Context, active*bool, limit, offse
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    db := gen.New(r.db.NewLoggingDB(ctx))
+    db := gen.New(driver.New(ctx, r.db))
 
     switch {
     case active == nil:

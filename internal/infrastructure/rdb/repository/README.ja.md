@@ -245,21 +245,21 @@ LIKE 検索は Repository で実装して問題ありません。
 - 複雑なフィルタ + ソート + ページング
 - 一覧画面専用の読み取り最適化検索
 
-## LoggingDBProvider
+## DB アクセス（driver）
 
-Repository は通常、`loggingdb.DBProvider` を利用して DB にアクセスします。
+Repository は `driver.DatabaseDriver` を通じて DB にアクセスします。
 
 ```go
-db := gen.New(r.db.NewLoggingDB(ctx))
+db := gen.New(driver.New(ctx, r.db))
 ```
 
-`loggingdb.DBProvider` は次を提供します。
+`driver.New(ctx, db)` は次を提供します。
 
-- SQL ログ出力
-- DB / Tx の透過切り替え
-- Contextベース接続取得
+- DB / Tx の透過切り替え（context に tx があればそれを採用）
+- Context ベース接続取得
 
-Repository は **DB接続状態を意識しない設計**になります。
+SQL のログ / トレースは driver の接続層に結線した pgx クエリトレーサーが透過的に付与します
+（`driver/README.md` 参照）。そのため Repository は **DB 接続状態を意識しない設計**になります。
 
 ## エラー正規化
 
@@ -292,7 +292,7 @@ flowchart TB
 クエリ実行は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を利用して行います。
@@ -302,7 +302,7 @@ gen.New(r.db.NewLoggingDB(ctx))
 Repository は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を使用して `Tx / DB` を透過的に利用します。
@@ -382,7 +382,7 @@ func InfrastructureModule() fx.Option {
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -437,7 +437,7 @@ type service struct {
 
 Repository 実装は次の依存を持ちます。
 
-- loggingdb.DBProvider は、Repository が通常利用する DB アクセス入口です。
+- driver.DatabaseDriver は、Repository が通常利用する DB アクセス入口です。
   - SQL ログ出力
   - トレース連携
   - DB / Tx の透過切り替え
@@ -448,7 +448,7 @@ Repository 実装は次の依存を持ちます。
 
 ```go
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -457,7 +457,7 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -508,13 +508,11 @@ Repository テストは `testkit` を使用して DB を初期化します。
 
 ```go
 db := testkit.NewTestDB(t)
-provider := testkit.NewTestLoggingProvider(t)
 ```
 
-これらの関数は次を提供します。
+この関数は次を提供します。
 
-- `NewTestDB`: テスト用 DB 接続（`driver.DatabaseDriver`）
-- `NewTestLoggingProvider`: `loggingdb.DBProvider`
+- `NewTestDB`: 共有テスト用 DB 接続（`driver.DatabaseDriver`）。Repository コンストラクタへ直接渡す
 
 ### トランザクションテスト
 
@@ -739,7 +737,7 @@ tx, _ := db.Begin()
 Repository は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を使用して `Tx / DB` を透過的に利用します。
@@ -798,14 +796,14 @@ Infra は **Domain Interface の実装のみ**を行います。
 package user
 
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New は Repository のコンストラクタです。
 // 依存はすべて外から注入します。
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -820,7 +818,7 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    db := gen.New(r.db.NewLoggingDB(ctx))
+    db := gen.New(driver.New(ctx, r.db))
 
     switch {
     case active == nil:

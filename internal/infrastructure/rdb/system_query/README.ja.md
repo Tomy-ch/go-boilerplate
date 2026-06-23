@@ -35,7 +35,7 @@ SystemQuery は **ビジネスドメインに属さない運用・監視目的�
 DB の疎通確認を行い、応答時間を計測します。
 
 ```go
-func New(provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery
+func New(provider driver.DatabaseDriver, tf observability.TracerFactory) query.DBSystemQuery
 ```
 
 |メソッド|説明|
@@ -71,7 +71,7 @@ internal/infrastructure/rdb/system_query/
 - interface は Usecase 層（`internal/usecase/<concern>/query`）に定義
 - 実装は Infrastructure 層に配置
 - ビジネスロジックを含まない
-- `loggingdb.DBProvider` + `observability.LayerTracer` を DI で受け取る
+- `driver.DatabaseDriver` + `observability.LayerTracer` を DI で受け取る
 - DB エラーは `pgerror.NormalizeError` で正規化
 
 ## 拡張する場合
