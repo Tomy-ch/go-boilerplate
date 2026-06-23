@@ -180,6 +180,30 @@ worker-design:
   - src: docs/ja/design/worker.ja.md
     dst: docs/portal/guides/ja/worker-design.ja.md
 
+job-design:
+  # English
+  - src: docs/design/job.md
+    dst: docs/portal/guides/job-design.md
+  # Japanese
+  - src: docs/ja/design/job.ja.md
+    dst: docs/portal/guides/ja/job-design.ja.md
+
+idempotency-design:
+  # English
+  - src: docs/design/idempotency.md
+    dst: docs/portal/guides/idempotency-design.md
+  # Japanese
+  - src: docs/ja/design/idempotency.ja.md
+    dst: docs/portal/guides/ja/idempotency-design.ja.md
+
+rest-design:
+  # English
+  - src: docs/design/rest.md
+    dst: docs/portal/guides/rest-design.md
+  # Japanese
+  - src: docs/ja/design/rest.ja.md
+    dst: docs/portal/guides/ja/rest-design.ja.md
+
 domain:
   # English
   - src: internal/domain/README.md
