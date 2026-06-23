@@ -70,9 +70,8 @@ jobs:
           user: ${{ env.DB_USER }}
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
-      # 埋め込み対象 env/.env を ci 用に焼き直す（make 内の go run が ci 設定を embed する）。
       - name: Materialize ci env for embedding
-        run: cp env/.env.ci env/.env
+        run: make materialize-env
       - name: Initialize Database Table
         run: make db-migrate-ci-up DB=${{ env.DB }}
       - name: Dump schema
@@ -85,6 +84,9 @@ jobs:
         run: make sqlc-generate-ci
       - name: Format generated code
         run: make fmt
+      # 材料化した env/.env は生成物ではないため、ドリフト判定の対象から外す。
+      - name: Restore embedded env
+        run: make restore-env
       - name: Detect generated changes (file list)
         id: gen_diff
         shell: bash

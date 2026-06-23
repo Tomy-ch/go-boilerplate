@@ -53,7 +53,7 @@ jobs:
           cache: true
 
       - name: Materialize ci env for embedding
-        run: cp env/.env.ci env/.env
+        run: make materialize-env
 
       # 特定のサンプルジョブ名に依存しないため、存在しないジョブ名で起動する。
       - name: Boot job entrypoint and expect "unknown job"
