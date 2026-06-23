@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"go-boilerplate/internal/logging"
-
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -21,11 +19,9 @@ const (
 // NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
 func NewNoopTracerFactory(t *testing.T) TracerFactory {
 	t.Helper()
-	lf := logging.NewTestLogFieldBuilder(t)
 
 	tp := noop.NewTracerProvider()
-	tl := logging.NewTestLogger(t)
-	return NewTracerFactory(tp, tl, lf)
+	return NewTracerFactory(tp)
 }
 
 // NewMockControllerLayerTracer は、テスト用のコントローラーレイヤートレーサーを生成します。
@@ -53,8 +49,6 @@ func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
 func NewNoopLayerTracer(t *testing.T) LayerTracer {
 	t.Helper()
 	return LayerTracer{
-		log:     logging.NewTestLogger(t),
-		lf:      logging.NewTestLogFieldBuilder(t),
 		tracer:  noop.NewTracerProvider().Tracer(tracer),
 		layer:   layer,
 		pkgName: pkg,

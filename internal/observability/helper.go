@@ -8,13 +8,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const (
-	// SpanEventStart は、span の開始イベントを表します。
-	SpanEventStart = "start"
-	// SpanEventEnd は、span の終了イベントを表します。
-	SpanEventEnd = "end"
-)
-
 // TraceContext は、トレースを識別するための情報を保持します。
 type TraceContext struct {
 	traceID      string

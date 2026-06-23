@@ -9,7 +9,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/logging"
 )
 
 func TestShouldLogWithSpan(t *testing.T) {
@@ -126,8 +125,6 @@ func TestStartSpanWithParent(t *testing.T) {
 			defer func() { _ = tp.Shutdown(context.Background()) }()
 
 			layerTracer := LayerTracer{
-				log:     logging.NewTestLogger(t),
-				lf:      logging.NewTestLogFieldBuilder(t),
 				tracer:  tracer,
 				layer:   "test-layer",
 				pkgName: "test-pkg",

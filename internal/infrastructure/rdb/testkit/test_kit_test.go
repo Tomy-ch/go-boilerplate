@@ -20,14 +20,6 @@ func TestNewTestDB(t *testing.T) {
 	require.NoError(t, db.Ping(context.Background()))
 }
 
-func TestNewTestLoggingProvider(t *testing.T) {
-	t.Parallel()
-	provider := NewTestLoggingProvider(t)
-	// provider が依存を結線し、ログ付き DBTX を生成して返すことを検証する。
-	require.NotNil(t, provider)
-	require.NotNil(t, provider.NewLoggingDB(context.Background()))
-}
-
 func TestNewTestTransactionRunner(t *testing.T) {
 	t.Parallel()
 	runner := NewTestTransactionRunner(t)

@@ -24,23 +24,23 @@ func newFingerprint(b byte) []byte {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &store{
 		tracer: tf.Infra(),
-		db:     loggingDB,
+		db:     testDB,
 	}
 
-	assert.Equal(t, expected, New(loggingDB, tf))
+	assert.Equal(t, expected, New(testDB, tf))
 }
 
 func Test_store_lifecycle(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
-	s := &store{tracer: lt, db: loggingDB}
+	s := &store{tracer: lt, db: testDB}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -103,10 +103,10 @@ func Test_store_lifecycle(t *testing.T) {
 func Test_store_DeleteExpired(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
-	s := &store{tracer: lt, db: loggingDB}
+	s := &store{tracer: lt, db: testDB}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -163,10 +163,10 @@ func Test_store_DeleteExpired(t *testing.T) {
 func Test_store_errors(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
-	s := &store{tracer: lt, db: loggingDB}
+	s := &store{tracer: lt, db: testDB}
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()

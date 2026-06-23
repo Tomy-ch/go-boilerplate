@@ -4,7 +4,7 @@ package user
 import (
 	"context"
 
-	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
@@ -13,13 +13,13 @@ import (
 )
 
 type service struct {
-	db     loggingdb.DBProvider
+	db     driver.DatabaseDriver
 	tracer observability.LayerTracer
 }
 
 // New は、ユーザー検索クエリサービスの実装を生成して返します。
 func New(
-	db loggingdb.DBProvider,
+	db driver.DatabaseDriver,
 	tf observability.TracerFactory,
 ) query.UserSearchQueryService {
 	return &service{
@@ -64,7 +64,7 @@ func (s *service) FindByFilter(ctx context.Context, filter *query.UserSearchFilt
 	defer endSpan()
 
 	tokens := buildLikeTokens(filter.Keywords)
-	db := gen.New(s.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, s.db))
 
 	switch {
 	case filter.Active == nil:
@@ -139,7 +139,7 @@ func (s *service) CountByFilter(ctx context.Context, filter *query.UserSearchFil
 	defer endSpan()
 
 	tokens := buildLikeTokens(filter.Keywords)
-	db := gen.New(s.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, s.db))
 
 	var (
 		count int64

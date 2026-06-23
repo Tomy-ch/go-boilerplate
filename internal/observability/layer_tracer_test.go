@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -45,12 +44,9 @@ func Test_LayerTracer_Start(t *testing.T) {
 			tracer, shutdown := newTestTracer(t)
 			defer shutdown()
 
-			logger := logging.NewTestLogger(t)
-			lf := logging.NewTestLogFieldBuilder(t)
-
 			lt := LayerTracer{
-				log: logger, tracer: tracer, lf: lf,
-				layer: "usecase", pkgName: "pkg", funcName: "Fn",
+				tracer: tracer,
+				layer:  "usecase", pkgName: "pkg", funcName: "Fn",
 			}
 			ctx := context.Background()
 			ctx, end := lt.Start(ctx)
@@ -64,12 +60,9 @@ func Test_LayerTracer_Start(t *testing.T) {
 			tracer, shutdown := newTestTracer(t)
 			defer shutdown()
 
-			logger := logging.NewTestLogger(t)
-			lf := logging.NewTestLogFieldBuilder(t)
-
 			lt := LayerTracer{
-				log: logger, tracer: tracer, lf: lf,
-				layer: "usecase", pkgName: "pkg", funcName: "",
+				tracer: tracer,
+				layer:  "usecase", pkgName: "pkg", funcName: "",
 			}
 			ctx := context.Background()
 			ctx, end := lt.Start(ctx)
@@ -91,12 +84,9 @@ func Test_LayerTracer_StartWithSuffix(t *testing.T) {
 			tracer, shutdown := newTestTracer(t)
 			defer shutdown()
 
-			logger := logging.NewTestLogger(t)
-			lf := logging.NewTestLogFieldBuilder(t)
-
 			lt := LayerTracer{
-				log: logger, tracer: tracer, lf: lf,
-				layer: "controller", pkgName: "p", funcName: "",
+				tracer: tracer,
+				layer:  "controller", pkgName: "p", funcName: "",
 			}
 			ctx, end := lt.StartWithSuffix(context.Background(), "DB")
 			end()
@@ -109,12 +99,9 @@ func Test_LayerTracer_StartWithSuffix(t *testing.T) {
 			tracer, shutdown := newTestTracer(t)
 			defer shutdown()
 
-			logger := logging.NewTestLogger(t)
-			lf := logging.NewTestLogFieldBuilder(t)
-
 			lt := LayerTracer{
-				log: logger, tracer: tracer, lf: lf,
-				layer: "controller", pkgName: "p", funcName: "F",
+				tracer: tracer,
+				layer:  "controller", pkgName: "p", funcName: "F",
 			}
 			ctx, end := lt.StartWithSuffix(context.Background(), "DB")
 			end()
@@ -127,12 +114,9 @@ func Test_LayerTracer_StartWithSuffix(t *testing.T) {
 			tracer, shutdown := newTestTracer(t)
 			defer shutdown()
 
-			logger := logging.NewTestLogger(t)
-			lf := logging.NewTestLogFieldBuilder(t)
-
 			lt := LayerTracer{
-				log: logger, tracer: tracer, lf: lf,
-				layer: "controller", pkgName: "p", funcName: "F",
+				tracer: tracer,
+				layer:  "controller", pkgName: "p", funcName: "F",
 			}
 			ctx, end := lt.StartWithSuffix(context.Background(), "")
 			end()
@@ -147,18 +131,13 @@ func TestRunWithSpan(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("成功時は値を返しログにstart/endが出る", func(t *testing.T) {
+		t.Run("成功時はspan内で関数を実行し値を返す", func(t *testing.T) {
 			t.Parallel()
 
 			tracer, shutdown := newTestTracer(t)
 			defer shutdown()
 
-			logger := logging.NewTestLogger(t)
-			lf := logging.NewTestLogFieldBuilder(t)
-
-			lt := LayerTracer{
-				log: logger, tracer: tracer, lf: lf,
-			}
+			lt := LayerTracer{tracer: tracer}
 
 			ctx, v, err := RunWithSpan(
 				context.Background(), lt, Usecase, "pkg", "Func",
@@ -180,12 +159,7 @@ func TestRunWithSpan(t *testing.T) {
 			tracer, shutdown := newTestTracer(t)
 			defer shutdown()
 
-			logger := logging.NewTestLogger(t)
-			lf := logging.NewTestLogFieldBuilder(t)
-
-			lt := LayerTracer{
-				log: logger, tracer: tracer, lf: lf,
-			}
+			lt := LayerTracer{tracer: tracer}
 
 			ctx, v, err := RunWithSpan(
 				context.Background(), lt, Usecase, "pkg", "Func",
@@ -238,12 +212,9 @@ func Test_startSpan(t *testing.T) {
 			tracer, shutdown := newTestTracer(t)
 			defer shutdown()
 
-			logger := logging.NewTestLogger(t)
-			lf := logging.NewTestLogFieldBuilder(t)
-
 			lt := LayerTracer{
-				log: logger, tracer: tracer, lf: lf,
-				layer: Usecase, pkgName: "pkg", funcName: "func",
+				tracer: tracer,
+				layer:  Usecase, pkgName: "pkg", funcName: "func",
 			}
 
 			spanCtx, end := lt.startSpan(context.Background(), "optional")

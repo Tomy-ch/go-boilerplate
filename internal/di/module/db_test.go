@@ -36,6 +36,7 @@ func TestDatabaseModule_Composes(t *testing.T) {
 			fx.Provide(func() testing.TB { return t }),
 			fx.Provide(config.MockConfigForTest),
 			fx.Provide(config.NewDatabaseConfig),
+			fx.Provide(config.NewObservabilityConfig),
 			fx.Provide(config.NewOperatingSystemConfig),
 			fx.Provide(config.NewDBConnectionConfig),
 			fx.Provide(func() logging.Logger { return mockLogger }),
