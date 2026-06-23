@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
-	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/pkg/uuid"
@@ -144,8 +144,7 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.AssignableToTypeOf(u)).Return(nil)
@@ -167,8 +166,7 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("not found")
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
@@ -182,8 +180,7 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("prefecture not found")
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -198,8 +195,7 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -218,8 +214,7 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("update failed")
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
@@ -256,8 +251,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
 			encrypter.EXPECT().Hash(newPassword).Return("new_hashed", nil)
@@ -276,9 +270,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 
 		t.Run("現パスワードの検証エラー", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 
 			uc := &usecase{tracer: lt, clock: clock}
 			err := uc.ChangePassword(ctx, id, "short", newPassword)
@@ -287,9 +279,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 
 		t.Run("新パスワードの検証エラー", func(t *testing.T) {
 			t.Parallel()
-			ctrl := gomock.NewController(t)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 
 			uc := &usecase{tracer: lt, clock: clock}
 			err := uc.ChangePassword(ctx, id, currentPassword, "short")
@@ -300,8 +290,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("not found")
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
@@ -314,8 +303,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(false, nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
@@ -331,8 +319,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("compare failed")
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(false, expectedErr)
 			userRepo := mock_user.NewMockRepository(ctrl)
@@ -348,8 +335,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("hash failed")
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
 			encrypter.EXPECT().Hash(newPassword).Return("", expectedErr)
@@ -365,8 +351,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
 			encrypter.EXPECT().Hash(newPassword).Return("", nil) // 空ハッシュ → ドメイン ChangePassword で失敗
@@ -383,8 +368,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("update failed")
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
 			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
 			encrypter.EXPECT().Hash(newPassword).Return("new_hashed", nil)
@@ -420,8 +404,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
@@ -442,8 +425,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
@@ -465,8 +447,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("not found")
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
@@ -480,8 +461,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("prefecture not found")
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -496,8 +476,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -513,8 +492,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("db error")
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -529,8 +507,7 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -564,8 +541,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			u := newActiveUser(t, id, prefID, now)
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
@@ -583,8 +559,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			expectedErr := xerrors.New("not found")
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now)
+			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
@@ -603,8 +578,7 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			clock := mock_clock.NewMockClock(ctrl)
-			clock.EXPECT().Now().Return(now.Add(time.Hour))
+			clock := clocktest.NewMockClockOnce(t, now.Add(time.Hour))
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(deletedUser, nil)
 

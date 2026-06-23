@@ -6,12 +6,15 @@ package users
 
 import (
 	"context"
+	"net/http"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
+	idempotencymw "go-boilerplate/internal/controller/httpstack/idempotency"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/user"
 	"go-boilerplate/pkg/xerrors"
@@ -26,14 +29,16 @@ var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires
 type server struct {
 	tracer observability.LayerTracer
 	uc     user.Usecase
+	idem   idempotency.Deps
 }
 
 // BindHandler は、ユーザー一覧のハンドラを Echo に登録します。
-func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) {
+func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase, idem idempotency.Deps) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),
 		uc:     uc,
-	}, nil))
+		idem:   idem,
+	}, []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
 }
 
 // GetUsers は、ユーザー一覧を取得します。
@@ -97,7 +102,9 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 		},
 	}
 
-	dto, err := s.uc.CreateUser(ctx, createParams)
+	dto, _, err := idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx context.Context) (user.UserView, error) {
+		return s.uc.CreateUser(ctx, createParams)
+	})
 	if err != nil {
 		return nil, err
 	}

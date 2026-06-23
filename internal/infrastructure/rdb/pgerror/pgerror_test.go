@@ -228,6 +228,25 @@ func Test_isPgConnectionError(t *testing.T) {
 	})
 }
 
+func TestIsLockNotAvailable(t *testing.T) {
+	t.Parallel()
+
+	t.Run("55P03(lock_not_available)はtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsLockNotAvailable(&pgconn.PgError{Code: "55P03"}))
+	})
+
+	t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsLockNotAvailable(&pgconn.PgError{Code: "23505"}))
+	})
+
+	t.Run("PgError以外はfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsLockNotAvailable(errors.New("plain error")))
+	})
+}
+
 func TestNormalizeExecResult(t *testing.T) {
 	t.Parallel()
 

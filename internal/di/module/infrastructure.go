@@ -5,6 +5,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"     // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/user"           // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck"
+	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_query/idempotency"
 	"go-boilerplate/internal/infrastructure/security"
 	"go-boilerplate/internal/infrastructure/system"
 
@@ -42,6 +43,7 @@ func InfrastructureModule() fx.Option {
 			fx.Module("system_query",
 				fx.Provide(
 					healthcheck.New,
+					idempotencysq.New,
 				),
 			),
 		),
