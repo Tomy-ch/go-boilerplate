@@ -18,7 +18,7 @@
 
 1. `internal/config/` の対応する構造体にフィールドを追加
 2. 該当サブシステムのテーブル（または新規サブシステム節）に変数を記載
-3. ローカル開発用のサンプル env ファイルを更新
+3. `env/.env`（ローカル既定）と各環境ファイル（`env/.env.<env>`）に変数を追加
 4. `make test` を実行して config 構造体がロードできることを確認
 
 ## 変数一覧（サブシステム別）
@@ -34,6 +34,7 @@
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |APP_MODE|実行モード|string|development / production|ログや挙動切り替え|
+|APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定、レベルは環境ごとに明示指定|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
 |APP_ENV|環境識別子|string|local / staging / prod|環境区別用|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|45s|SIGTERM時の待機時間|
@@ -125,3 +126,5 @@
 - `csv` 型は `,` 区切りで空白トリム後に分割。値そのものに `,` を含めないこと
 - `duration` 型は Go `time.ParseDuration` 構文（`500ms`, `1h30m`）。素の数値は不可
 - 新規サブシステム節を作る際もテーブル列構成（`変数名 | 説明 | 型 | 例 | 備考`）を維持してスキャン性を保つこと
+- `APP_LOG_LEVEL` は環境ごとに明示指定する。local / ci / dev と **staging** は `debug`（本番前診断のための詳細 JSON ログ）、production は `info`。出力方式（JSON / console）はレベルとは独立に `APP_MODE` が決定する
+- env ファイルはビルド時にバイナリへ埋め込まれる（`embed.go`）。`env/.env` がローカル既定かつ唯一の埋め込み対象で、`env/.env.<env>` は各環境のソース。Docker の `builder` ステージが `APP_ENV` ビルド引数で対象を材料化する（`go build` 前に `cp env/.env.${APP_ENV} env/.env`）。Docker 以外（`go run` / `go test`）はコミット済みの local `env/.env` を埋め込むため、別環境が必要な CI は同様に焼き直す（例: `cp env/.env.ci env/.env`）。実行時の環境変数は埋め込み値より優先される

@@ -2,96 +2,75 @@
 package logging
 
 import (
-	"fmt"
-
-	"go-boilerplate/internal/config"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-// NewProductionLogger は、本番環境用のZapロガーを生成します。
-func NewProductionLogger() (Logger, error) {
-	cfg := zap.Config{
-		Level:            zap.NewAtomicLevelAt(zapcore.InfoLevel),
-		Development:      false,
-		Encoding:         "json",
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:       "ts",
-			LevelKey:      "level",
-			NameKey:       "logger",
-			CallerKey:     "caller",
-			MessageKey:    "msg",
-			StacktraceKey: "stacktrace",
-			EncodeTime:    zapcore.ISO8601TimeEncoder,
-			EncodeLevel:   zapcore.LowercaseLevelEncoder,
-			EncodeCaller:  zapcore.ShortCallerEncoder,
-		},
-	}
+// stacktraceKey は stacktrace の出力キー名。EncoderConfig.StacktraceKey と
+// JSON array 化ラッパ（wrapStacktraceCore）の双方が参照する単一の出所。
+const stacktraceKey = "stacktrace"
 
-	return buildLogger(cfg, zapcore.ErrorLevel)
+// stdoutSyncer / stderrSyncer は標準出力 / 標準エラーへの WriteSyncer です。
+// logging は os を直接 import できない（depguard）制約があるため zap.Open で解決します。
+var (
+	stdoutSyncer = mustOpenSink("stdout")
+	stderrSyncer = mustOpenSink("stderr")
+)
+
+// mustOpenSink は path の WriteSyncer を返します。開けない場合は panic します。
+func mustOpenSink(path string) zapcore.WriteSyncer {
+	ws, _, err := zap.Open(path)
+	if err != nil {
+		panic("logging: failed to open sink " + path + ": " + err.Error())
+	}
+	return ws
 }
 
-// NewDevelopmentLogger は、開発環境用のZapロガーを生成します。
-func NewDevelopmentLogger() (Logger, error) {
-	cfg := zap.Config{
-		Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
-		Development:      true,
-		Encoding:         "console",
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:       "Time",
-			LevelKey:      "Level",
-			NameKey:       "Name",
-			CallerKey:     "Call",
-			MessageKey:    "Msg",
-			StacktraceKey: "Stack",
-			EncodeTime:    zapcore.ISO8601TimeEncoder,
-			EncodeLevel:   zapcore.CapitalColorLevelEncoder,
-			EncodeCaller:  zapcore.ShortCallerEncoder,
-		},
+// encoderConfig は JSON / console 共通のエンコーダ設定を返します。
+// encodeLevel は呼び出し側が指定します。
+func encoderConfig(encodeLevel zapcore.LevelEncoder) zapcore.EncoderConfig {
+	return zapcore.EncoderConfig{
+		TimeKey:       "ts",
+		LevelKey:      "level",
+		NameKey:       "logger",
+		CallerKey:     "caller",
+		MessageKey:    "msg",
+		StacktraceKey: stacktraceKey,
+		LineEnding:    zapcore.DefaultLineEnding,
+		EncodeTime:    zapcore.ISO8601TimeEncoder,
+		EncodeLevel:   encodeLevel,
+		EncodeCaller:  zapcore.ShortCallerEncoder,
+		EncodeName:    zapcore.FullNameEncoder,
 	}
-
-	return buildLogger(cfg, zapcore.WarnLevel)
 }
 
-// buildLogger は、zap.Config から Logger を構築する共通処理です。
-// Build 失敗時は zap が nil の *zap.Logger を返すため、それを包んだ
-// Logger（中身 nil）を返すと初回ログ出力で nil 参照 panic になる。
-// よってエラー時は Logger を返さず、nil とエラーのみを返す。
-//
-// stacktrace は JSON 出力時のみ行配列に変換する（wrapStacktraceCore）。
-// console エンコーダは Entry.Stack を独自に整形（改行+インデント）するため、
-// wrap すると console 出力が一行 JSON ダンプ化して可読性が落ちるので適用しない。
-// StacktraceKey 未設定の Config（テスト用最小構成など）でも wrap をスキップする。
-func buildLogger(cfg zap.Config, stacktraceLevel zapcore.Level) (Logger, error) {
-	opts := []zap.Option{
+// NewJSONLogger は JSON 構造化ロガーを生成します。
+// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
+func NewJSONLogger(level, stacktraceLevel Level) Logger {
+	enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
+	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, true)
+}
+
+// NewConsoleLogger は人間可読な console ロガーを生成します。
+// level は出力レベル、stacktraceLevel は stacktrace を付与し始めるレベルです。
+func NewConsoleLogger(level, stacktraceLevel Level) Logger {
+	enc := zapcore.NewConsoleEncoder(encoderConfig(zapcore.CapitalColorLevelEncoder))
+	return buildLogger(enc, stdoutSyncer, level.zl, stacktraceLevel.zl, false)
+}
+
+// buildLogger は encoder と出力先から Logger を構築します。
+// jsonArrayStacktrace=true のとき、stacktrace を行配列として出力します。
+func buildLogger(
+	enc zapcore.Encoder, ws zapcore.WriteSyncer, level, stacktraceLevel zapcore.Level, jsonArrayStacktrace bool,
+) Logger {
+	core := zapcore.NewCore(enc, ws, zap.NewAtomicLevelAt(level))
+	if jsonArrayStacktrace {
+		core = wrapStacktraceCore(core, stacktraceKey)
+	}
+	zl := zap.New(core,
 		zap.AddCaller(),
 		zap.AddStacktrace(stacktraceLevel),
-	}
-	if stacktraceKey := cfg.EncoderConfig.StacktraceKey; cfg.Encoding == "json" && stacktraceKey != "" {
-		opts = append(opts, zap.WrapCore(func(core zapcore.Core) zapcore.Core {
-			return wrapStacktraceCore(core, stacktraceKey)
-		}))
-	}
-	zl, err := cfg.Build(opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &logger{log: zl}, nil
-}
-
-// New は、指定された設定に基づいて新しいZapロガーを生成します。
-func New(appCfg *config.ApplicationConfig) (Logger, error) {
-	if appCfg.IsProductionMode() {
-		return NewProductionLogger()
-	}
-	if appCfg.IsDevelopmentMode() {
-		return NewDevelopmentLogger()
-	}
-	return nil, fmt.Errorf("unknown app mode: %s", appCfg.Mode())
+		zap.ErrorOutput(stderrSyncer),
+	)
+	return &logger{log: zl}
 }

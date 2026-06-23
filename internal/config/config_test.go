@@ -21,6 +21,7 @@ func TestNewConfig(t *testing.T) {
 					env:             expectedApplicationEnv,
 					name:            expectedApplicationName,
 					mode:            expectedApplicationMode,
+					logLevel:        expectedApplicationLogLevel,
 					shutdownTimeout: expectedAppShutdownTimeout,
 				},
 				server: ServerConfig{
@@ -206,6 +207,15 @@ func Test_validateApplicationConfig(t *testing.T) {
 
 			err := validateApplicationConfig(cfg.App)
 			require.ErrorIs(t, err, ErrInvalidAppMode)
+		})
+
+		t.Run("無効なログレベル", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.App.LogLevel = "invalid_level" // 無効なログレベル
+
+			err := validateApplicationConfig(cfg.App)
+			require.ErrorIs(t, err, ErrInvalidLogLevel)
 		})
 	})
 }

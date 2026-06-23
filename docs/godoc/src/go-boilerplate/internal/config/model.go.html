@@ -86,280 +86,284 @@
 <span id="L29" class="ln">    29  </span>	env             string
 <span id="L30" class="ln">    30  </span>	name            string
 <span id="L31" class="ln">    31  </span>	mode            string
-<span id="L32" class="ln">    32  </span>	shutdownTimeout time.Duration
-<span id="L33" class="ln">    33  </span>}
-<span id="L34" class="ln">    34  </span>
-<span id="L35" class="ln">    35  </span><span class="comment">// ServerConfig は、HTTP サーバーの待ち受けアドレスと各種タイムアウトを保持します。</span>
-<span id="L36" class="ln">    36  </span>type ServerConfig struct {
-<span id="L37" class="ln">    37  </span>	host              string
-<span id="L38" class="ln">    38  </span>	port              int
-<span id="L39" class="ln">    39  </span>	readHeaderTimeout time.Duration
-<span id="L40" class="ln">    40  </span>	readTimeout       time.Duration
-<span id="L41" class="ln">    41  </span>	writeTimeout      time.Duration
-<span id="L42" class="ln">    42  </span>	idleTimeout       time.Duration
-<span id="L43" class="ln">    43  </span>}
-<span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span><span class="comment">// MetricsConfig は、メトリクスエンドポイントの待ち受け情報と認証情報を保持します。</span>
-<span id="L46" class="ln">    46  </span>type MetricsConfig struct {
-<span id="L47" class="ln">    47  </span>	host     string
-<span id="L48" class="ln">    48  </span>	port     int
-<span id="L49" class="ln">    49  </span>	userName string
-<span id="L50" class="ln">    50  </span>	password string
-<span id="L51" class="ln">    51  </span>}
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span><span class="comment">// ObservabilityConfig は、可観測モードの有効化と、DB クエリ引数マスク・監視対象ステータスコードの設定を保持します。</span>
-<span id="L54" class="ln">    54  </span>type ObservabilityConfig struct {
-<span id="L55" class="ln">    55  </span>	enabled             bool
-<span id="L56" class="ln">    56  </span>	maskedDBQueryArgs   bool
-<span id="L57" class="ln">    57  </span>	targetStatusCodeSet map[int]bool
-<span id="L58" class="ln">    58  </span>}
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span><span class="comment">// DatabaseConfig は、データベースの接続情報とタイムアウト閾値を保持します。</span>
-<span id="L61" class="ln">    61  </span>type DatabaseConfig struct {
-<span id="L62" class="ln">    62  </span>	driver                 string
-<span id="L63" class="ln">    63  </span>	host                   string
-<span id="L64" class="ln">    64  </span>	port                   int
-<span id="L65" class="ln">    65  </span>	user                   string
-<span id="L66" class="ln">    66  </span>	password               string
-<span id="L67" class="ln">    67  </span>	name                   string
-<span id="L68" class="ln">    68  </span>	sslMode                string
-<span id="L69" class="ln">    69  </span>	pingTimeout            time.Duration
-<span id="L70" class="ln">    70  </span>	slowQueryWarnThreshold time.Duration
-<span id="L71" class="ln">    71  </span>}
-<span id="L72" class="ln">    72  </span>
-<span id="L73" class="ln">    73  </span><span class="comment">// DBConnectionConfig は、データベース接続プールのサイズと寿命の設定を保持します。</span>
-<span id="L74" class="ln">    74  </span>type DBConnectionConfig struct {
-<span id="L75" class="ln">    75  </span>	maxConns    int32
-<span id="L76" class="ln">    76  </span>	minConns    int32
-<span id="L77" class="ln">    77  </span>	maxLifetime time.Duration
-<span id="L78" class="ln">    78  </span>	maxIdleTime time.Duration
-<span id="L79" class="ln">    79  </span>}
-<span id="L80" class="ln">    80  </span>
-<span id="L81" class="ln">    81  </span><span class="comment">// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー・bcrypt コスト等のセキュリティ設定を保持します。</span>
-<span id="L82" class="ln">    82  </span>type SecurityConfig struct {
-<span id="L83" class="ln">    83  </span>	allowedOrigins        []string
-<span id="L84" class="ln">    84  </span>	cidr                  *net.IPNet
-<span id="L85" class="ln">    85  </span>	contentTypeNosniff    string
-<span id="L86" class="ln">    86  </span>	xFrameOptions         string
-<span id="L87" class="ln">    87  </span>	hstsMaxAge            time.Duration
-<span id="L88" class="ln">    88  </span>	hstsExcludeSubdomains bool
-<span id="L89" class="ln">    89  </span>	hstsPreloadEnabled    bool
-<span id="L90" class="ln">    90  </span>	referrerPolicy        string
-<span id="L91" class="ln">    91  </span>	bcryptCost            int
-<span id="L92" class="ln">    92  </span>}
-<span id="L93" class="ln">    93  </span>
-<span id="L94" class="ln">    94  </span><span class="comment">// SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。</span>
-<span id="L95" class="ln">    95  </span>type SecureCookieConfig struct {
-<span id="L96" class="ln">    96  </span>	secure   *bool
-<span id="L97" class="ln">    97  </span>	sameSite string
-<span id="L98" class="ln">    98  </span>	domain   string
-<span id="L99" class="ln">    99  </span>}
-<span id="L100" class="ln">   100  </span>
-<span id="L101" class="ln">   101  </span><span class="comment">// AuthConfig は、認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持します。</span>
-<span id="L102" class="ln">   102  </span>type AuthConfig struct {
-<span id="L103" class="ln">   103  </span>	cookieName          string
-<span id="L104" class="ln">   104  </span>	headerName          string
-<span id="L105" class="ln">   105  </span>	allowedHeaderBearer bool
-<span id="L106" class="ln">   106  </span>}
-<span id="L107" class="ln">   107  </span>
-<span id="L108" class="ln">   108  </span><span class="comment">// NewOperatingSystemConfig は、OSの設定を返します。</span>
-<span id="L109" class="ln">   109  </span>func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig { return &amp;cfg.os }
-<span id="L110" class="ln">   110  </span>
-<span id="L111" class="ln">   111  </span><span class="comment">// TimeZone は、OSのタイムゾーンを返します。</span>
-<span id="L112" class="ln">   112  </span>func (o *OperatingSystemConfig) TimeZone() string { return o.timezone }
-<span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span><span class="comment">// NewApplicationConfig は、アプリケーションの設定を返します。</span>
-<span id="L115" class="ln">   115  </span>func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &amp;cfg.app }
-<span id="L116" class="ln">   116  </span>
-<span id="L117" class="ln">   117  </span><span class="comment">// Env は、デプロイ環境ラベルを返します（自由値）。例: &#34;local&#34; / &#34;staging&#34; / &#34;production&#34;。</span>
-<span id="L118" class="ln">   118  </span>func (a *ApplicationConfig) Env() string { return a.env }
-<span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span><span class="comment">// Mode は、アプリの動作モードを返します（&#34;development&#34; / &#34;production&#34; のみ。挙動切替に使用。Env とは別軸）。</span>
-<span id="L121" class="ln">   121  </span>func (a *ApplicationConfig) Mode() string { return a.mode }
-<span id="L122" class="ln">   122  </span>
-<span id="L123" class="ln">   123  </span><span class="comment">// Name は、アプリケーションの名前を返します。</span>
-<span id="L124" class="ln">   124  </span>func (a *ApplicationConfig) Name() string { return a.name }
-<span id="L125" class="ln">   125  </span>
-<span id="L126" class="ln">   126  </span><span class="comment">// ShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。</span>
-<span id="L127" class="ln">   127  </span>func (a *ApplicationConfig) ShutdownTimeout() time.Duration { return a.shutdownTimeout }
-<span id="L128" class="ln">   128  </span>
-<span id="L129" class="ln">   129  </span><span class="comment">// IsProductionMode は、アプリケーションが本番環境モードかどうかを返します。</span>
-<span id="L130" class="ln">   130  </span>func (a *ApplicationConfig) IsProductionMode() bool {
-<span id="L131" class="ln">   131  </span>	return a.mode == ProductionMode
-<span id="L132" class="ln">   132  </span>}
-<span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span><span class="comment">// IsDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。</span>
-<span id="L135" class="ln">   135  </span>func (a *ApplicationConfig) IsDevelopmentMode() bool {
-<span id="L136" class="ln">   136  </span>	return a.mode == DevelopmentMode
-<span id="L137" class="ln">   137  </span>}
-<span id="L138" class="ln">   138  </span>
-<span id="L139" class="ln">   139  </span><span class="comment">// NewServerConfig は、サーバーの設定を返します。</span>
-<span id="L140" class="ln">   140  </span>func NewServerConfig(cfg *Config) *ServerConfig { return &amp;cfg.server }
-<span id="L141" class="ln">   141  </span>
-<span id="L142" class="ln">   142  </span><span class="comment">// Host は、サーバーがリッスンするホスト名を返します。</span>
-<span id="L143" class="ln">   143  </span>func (s *ServerConfig) Host() string { return s.host }
-<span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span><span class="comment">// Port は、サーバーがリッスンするポート番号を返します。</span>
-<span id="L146" class="ln">   146  </span>func (s *ServerConfig) Port() int { return s.port }
-<span id="L147" class="ln">   147  </span>
-<span id="L148" class="ln">   148  </span><span class="comment">// ReadHeaderTimeout は、サーバーのヘッダー読み取りタイムアウトを返します。</span>
-<span id="L149" class="ln">   149  </span>func (s *ServerConfig) ReadHeaderTimeout() time.Duration { return s.readHeaderTimeout }
-<span id="L150" class="ln">   150  </span>
-<span id="L151" class="ln">   151  </span><span class="comment">// ReadTimeout は、サーバーの読み取りタイムアウトを返します。</span>
-<span id="L152" class="ln">   152  </span>func (s *ServerConfig) ReadTimeout() time.Duration { return s.readTimeout }
-<span id="L153" class="ln">   153  </span>
-<span id="L154" class="ln">   154  </span><span class="comment">// WriteTimeout は、サーバーの書き込みタイムアウトを返します。</span>
-<span id="L155" class="ln">   155  </span>func (s *ServerConfig) WriteTimeout() time.Duration { return s.writeTimeout }
-<span id="L156" class="ln">   156  </span>
-<span id="L157" class="ln">   157  </span><span class="comment">// IdleTimeout は、サーバーのアイドルタイムアウトを返します。</span>
-<span id="L158" class="ln">   158  </span>func (s *ServerConfig) IdleTimeout() time.Duration { return s.idleTimeout }
-<span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span><span class="comment">// NewMetricsConfig は、メトリクスの設定を返します。</span>
-<span id="L161" class="ln">   161  </span>func NewMetricsConfig(cfg *Config) *MetricsConfig { return &amp;cfg.metrics }
-<span id="L162" class="ln">   162  </span>
-<span id="L163" class="ln">   163  </span><span class="comment">// Host は、メトリクスサーバーがリッスンするホスト名を返します。</span>
-<span id="L164" class="ln">   164  </span>func (m *MetricsConfig) Host() string { return m.host }
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span><span class="comment">// Port は、メトリクスサーバーがリッスンするポート番号を返します。</span>
-<span id="L167" class="ln">   167  </span>func (m *MetricsConfig) Port() int { return m.port }
-<span id="L168" class="ln">   168  </span>
-<span id="L169" class="ln">   169  </span><span class="comment">// UserName は、メトリクスサーバーの認証に使用するユーザー名を返します。</span>
-<span id="L170" class="ln">   170  </span>func (m *MetricsConfig) UserName() string { return m.userName }
-<span id="L171" class="ln">   171  </span>
-<span id="L172" class="ln">   172  </span><span class="comment">// Password は、メトリクスサーバーの認証に使用するパスワードを返します。</span>
-<span id="L173" class="ln">   173  </span>func (m *MetricsConfig) Password() string { return m.password }
-<span id="L174" class="ln">   174  </span>
-<span id="L175" class="ln">   175  </span><span class="comment">// NewObservabilityConfig は、可観測の設定を返します。</span>
-<span id="L176" class="ln">   176  </span>func NewObservabilityConfig(cfg *Config) *ObservabilityConfig { return &amp;cfg.observability }
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span><span class="comment">// Enabled は、可観測モードが有効かどうかを返します。</span>
-<span id="L179" class="ln">   179  </span>func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
-<span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span><span class="comment">// MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。</span>
-<span id="L182" class="ln">   182  </span>func (o *ObservabilityConfig) MaskedDBQueryArgs() bool { return o.maskedDBQueryArgs }
-<span id="L183" class="ln">   183  </span>
-<span id="L184" class="ln">   184  </span><span class="comment">// TargetStatusCodeSet は、可観測モードで監視対象となるHTTPステータスコードのセットを返します。</span>
-<span id="L185" class="ln">   185  </span><span class="comment">// 返り値はホットパスで参照される共有マップのため変更してはいけません（read-only）。</span>
-<span id="L186" class="ln">   186  </span>func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool { return o.targetStatusCodeSet }
+<span id="L32" class="ln">    32  </span>	logLevel        string
+<span id="L33" class="ln">    33  </span>	shutdownTimeout time.Duration
+<span id="L34" class="ln">    34  </span>}
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span><span class="comment">// ServerConfig は、HTTP サーバーの待ち受けアドレスと各種タイムアウトを保持します。</span>
+<span id="L37" class="ln">    37  </span>type ServerConfig struct {
+<span id="L38" class="ln">    38  </span>	host              string
+<span id="L39" class="ln">    39  </span>	port              int
+<span id="L40" class="ln">    40  </span>	readHeaderTimeout time.Duration
+<span id="L41" class="ln">    41  </span>	readTimeout       time.Duration
+<span id="L42" class="ln">    42  </span>	writeTimeout      time.Duration
+<span id="L43" class="ln">    43  </span>	idleTimeout       time.Duration
+<span id="L44" class="ln">    44  </span>}
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span><span class="comment">// MetricsConfig は、メトリクスエンドポイントの待ち受け情報と認証情報を保持します。</span>
+<span id="L47" class="ln">    47  </span>type MetricsConfig struct {
+<span id="L48" class="ln">    48  </span>	host     string
+<span id="L49" class="ln">    49  </span>	port     int
+<span id="L50" class="ln">    50  </span>	userName string
+<span id="L51" class="ln">    51  </span>	password string
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// ObservabilityConfig は、可観測モードの有効化と、DB クエリ引数マスク・監視対象ステータスコードの設定を保持します。</span>
+<span id="L55" class="ln">    55  </span>type ObservabilityConfig struct {
+<span id="L56" class="ln">    56  </span>	enabled             bool
+<span id="L57" class="ln">    57  </span>	maskedDBQueryArgs   bool
+<span id="L58" class="ln">    58  </span>	targetStatusCodeSet map[int]bool
+<span id="L59" class="ln">    59  </span>}
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span><span class="comment">// DatabaseConfig は、データベースの接続情報とタイムアウト閾値を保持します。</span>
+<span id="L62" class="ln">    62  </span>type DatabaseConfig struct {
+<span id="L63" class="ln">    63  </span>	driver                 string
+<span id="L64" class="ln">    64  </span>	host                   string
+<span id="L65" class="ln">    65  </span>	port                   int
+<span id="L66" class="ln">    66  </span>	user                   string
+<span id="L67" class="ln">    67  </span>	password               string
+<span id="L68" class="ln">    68  </span>	name                   string
+<span id="L69" class="ln">    69  </span>	sslMode                string
+<span id="L70" class="ln">    70  </span>	pingTimeout            time.Duration
+<span id="L71" class="ln">    71  </span>	slowQueryWarnThreshold time.Duration
+<span id="L72" class="ln">    72  </span>}
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span><span class="comment">// DBConnectionConfig は、データベース接続プールのサイズと寿命の設定を保持します。</span>
+<span id="L75" class="ln">    75  </span>type DBConnectionConfig struct {
+<span id="L76" class="ln">    76  </span>	maxConns    int32
+<span id="L77" class="ln">    77  </span>	minConns    int32
+<span id="L78" class="ln">    78  </span>	maxLifetime time.Duration
+<span id="L79" class="ln">    79  </span>	maxIdleTime time.Duration
+<span id="L80" class="ln">    80  </span>}
+<span id="L81" class="ln">    81  </span>
+<span id="L82" class="ln">    82  </span><span class="comment">// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー・bcrypt コスト等のセキュリティ設定を保持します。</span>
+<span id="L83" class="ln">    83  </span>type SecurityConfig struct {
+<span id="L84" class="ln">    84  </span>	allowedOrigins        []string
+<span id="L85" class="ln">    85  </span>	cidr                  *net.IPNet
+<span id="L86" class="ln">    86  </span>	contentTypeNosniff    string
+<span id="L87" class="ln">    87  </span>	xFrameOptions         string
+<span id="L88" class="ln">    88  </span>	hstsMaxAge            time.Duration
+<span id="L89" class="ln">    89  </span>	hstsExcludeSubdomains bool
+<span id="L90" class="ln">    90  </span>	hstsPreloadEnabled    bool
+<span id="L91" class="ln">    91  </span>	referrerPolicy        string
+<span id="L92" class="ln">    92  </span>	bcryptCost            int
+<span id="L93" class="ln">    93  </span>}
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span><span class="comment">// SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。</span>
+<span id="L96" class="ln">    96  </span>type SecureCookieConfig struct {
+<span id="L97" class="ln">    97  </span>	secure   *bool
+<span id="L98" class="ln">    98  </span>	sameSite string
+<span id="L99" class="ln">    99  </span>	domain   string
+<span id="L100" class="ln">   100  </span>}
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span><span class="comment">// AuthConfig は、認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持します。</span>
+<span id="L103" class="ln">   103  </span>type AuthConfig struct {
+<span id="L104" class="ln">   104  </span>	cookieName          string
+<span id="L105" class="ln">   105  </span>	headerName          string
+<span id="L106" class="ln">   106  </span>	allowedHeaderBearer bool
+<span id="L107" class="ln">   107  </span>}
+<span id="L108" class="ln">   108  </span>
+<span id="L109" class="ln">   109  </span><span class="comment">// NewOperatingSystemConfig は、OSの設定を返します。</span>
+<span id="L110" class="ln">   110  </span>func NewOperatingSystemConfig(cfg *Config) *OperatingSystemConfig { return &amp;cfg.os }
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span><span class="comment">// TimeZone は、OSのタイムゾーンを返します。</span>
+<span id="L113" class="ln">   113  </span>func (o *OperatingSystemConfig) TimeZone() string { return o.timezone }
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span><span class="comment">// NewApplicationConfig は、アプリケーションの設定を返します。</span>
+<span id="L116" class="ln">   116  </span>func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &amp;cfg.app }
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span><span class="comment">// Env は、デプロイ環境ラベルを返します（自由値）。例: &#34;local&#34; / &#34;staging&#34; / &#34;production&#34;。</span>
+<span id="L119" class="ln">   119  </span>func (a *ApplicationConfig) Env() string { return a.env }
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span><span class="comment">// Mode は、アプリの動作モードを返します（&#34;development&#34; / &#34;production&#34; のみ。挙動切替に使用。Env とは別軸）。</span>
+<span id="L122" class="ln">   122  </span>func (a *ApplicationConfig) Mode() string { return a.mode }
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span><span class="comment">// LogLevel は、ログ出力レベル（&#34;debug&#34; / &#34;info&#34; / &#34;warn&#34; / &#34;error&#34;）を返します。</span>
+<span id="L125" class="ln">   125  </span>func (a *ApplicationConfig) LogLevel() string { return a.logLevel }
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span><span class="comment">// Name は、アプリケーションの名前を返します。</span>
+<span id="L128" class="ln">   128  </span>func (a *ApplicationConfig) Name() string { return a.name }
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span><span class="comment">// ShutdownTimeout は、アプリケーションのシャットダウンタイムアウトを返します。</span>
+<span id="L131" class="ln">   131  </span>func (a *ApplicationConfig) ShutdownTimeout() time.Duration { return a.shutdownTimeout }
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span><span class="comment">// IsProductionMode は、アプリケーションが本番環境モードかどうかを返します。</span>
+<span id="L134" class="ln">   134  </span>func (a *ApplicationConfig) IsProductionMode() bool {
+<span id="L135" class="ln">   135  </span>	return a.mode == ProductionMode
+<span id="L136" class="ln">   136  </span>}
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span><span class="comment">// IsDevelopmentMode は、アプリケーションが開発環境モードかどうかを返します。</span>
+<span id="L139" class="ln">   139  </span>func (a *ApplicationConfig) IsDevelopmentMode() bool {
+<span id="L140" class="ln">   140  </span>	return a.mode == DevelopmentMode
+<span id="L141" class="ln">   141  </span>}
+<span id="L142" class="ln">   142  </span>
+<span id="L143" class="ln">   143  </span><span class="comment">// NewServerConfig は、サーバーの設定を返します。</span>
+<span id="L144" class="ln">   144  </span>func NewServerConfig(cfg *Config) *ServerConfig { return &amp;cfg.server }
+<span id="L145" class="ln">   145  </span>
+<span id="L146" class="ln">   146  </span><span class="comment">// Host は、サーバーがリッスンするホスト名を返します。</span>
+<span id="L147" class="ln">   147  </span>func (s *ServerConfig) Host() string { return s.host }
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span><span class="comment">// Port は、サーバーがリッスンするポート番号を返します。</span>
+<span id="L150" class="ln">   150  </span>func (s *ServerConfig) Port() int { return s.port }
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span><span class="comment">// ReadHeaderTimeout は、サーバーのヘッダー読み取りタイムアウトを返します。</span>
+<span id="L153" class="ln">   153  </span>func (s *ServerConfig) ReadHeaderTimeout() time.Duration { return s.readHeaderTimeout }
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span><span class="comment">// ReadTimeout は、サーバーの読み取りタイムアウトを返します。</span>
+<span id="L156" class="ln">   156  </span>func (s *ServerConfig) ReadTimeout() time.Duration { return s.readTimeout }
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span><span class="comment">// WriteTimeout は、サーバーの書き込みタイムアウトを返します。</span>
+<span id="L159" class="ln">   159  </span>func (s *ServerConfig) WriteTimeout() time.Duration { return s.writeTimeout }
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span><span class="comment">// IdleTimeout は、サーバーのアイドルタイムアウトを返します。</span>
+<span id="L162" class="ln">   162  </span>func (s *ServerConfig) IdleTimeout() time.Duration { return s.idleTimeout }
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span><span class="comment">// NewMetricsConfig は、メトリクスの設定を返します。</span>
+<span id="L165" class="ln">   165  </span>func NewMetricsConfig(cfg *Config) *MetricsConfig { return &amp;cfg.metrics }
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span><span class="comment">// Host は、メトリクスサーバーがリッスンするホスト名を返します。</span>
+<span id="L168" class="ln">   168  </span>func (m *MetricsConfig) Host() string { return m.host }
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span><span class="comment">// Port は、メトリクスサーバーがリッスンするポート番号を返します。</span>
+<span id="L171" class="ln">   171  </span>func (m *MetricsConfig) Port() int { return m.port }
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span><span class="comment">// UserName は、メトリクスサーバーの認証に使用するユーザー名を返します。</span>
+<span id="L174" class="ln">   174  </span>func (m *MetricsConfig) UserName() string { return m.userName }
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span><span class="comment">// Password は、メトリクスサーバーの認証に使用するパスワードを返します。</span>
+<span id="L177" class="ln">   177  </span>func (m *MetricsConfig) Password() string { return m.password }
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span><span class="comment">// NewObservabilityConfig は、可観測の設定を返します。</span>
+<span id="L180" class="ln">   180  </span>func NewObservabilityConfig(cfg *Config) *ObservabilityConfig { return &amp;cfg.observability }
+<span id="L181" class="ln">   181  </span>
+<span id="L182" class="ln">   182  </span><span class="comment">// Enabled は、可観測モードが有効かどうかを返します。</span>
+<span id="L183" class="ln">   183  </span>func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
+<span id="L184" class="ln">   184  </span>
+<span id="L185" class="ln">   185  </span><span class="comment">// MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。</span>
+<span id="L186" class="ln">   186  </span>func (o *ObservabilityConfig) MaskedDBQueryArgs() bool { return o.maskedDBQueryArgs }
 <span id="L187" class="ln">   187  </span>
-<span id="L188" class="ln">   188  </span><span class="comment">// NewDatabaseConfig は、データベースの設定を返します。</span>
-<span id="L189" class="ln">   189  </span>func NewDatabaseConfig(cfg *Config) *DatabaseConfig { return &amp;cfg.database }
-<span id="L190" class="ln">   190  </span>
-<span id="L191" class="ln">   191  </span><span class="comment">// Driver は、データベースのドライバー名を返します。</span>
-<span id="L192" class="ln">   192  </span>func (d *DatabaseConfig) Driver() string { return d.driver }
-<span id="L193" class="ln">   193  </span>
-<span id="L194" class="ln">   194  </span><span class="comment">// Host は、データベースのホスト名を返します。</span>
-<span id="L195" class="ln">   195  </span>func (d *DatabaseConfig) Host() string { return d.host }
-<span id="L196" class="ln">   196  </span>
-<span id="L197" class="ln">   197  </span><span class="comment">// Port は、データベースのポート番号を返します。</span>
-<span id="L198" class="ln">   198  </span>func (d *DatabaseConfig) Port() int { return d.port }
-<span id="L199" class="ln">   199  </span>
-<span id="L200" class="ln">   200  </span><span class="comment">// User は、データベースのユーザー名を返します。</span>
-<span id="L201" class="ln">   201  </span>func (d *DatabaseConfig) User() string { return d.user }
-<span id="L202" class="ln">   202  </span>
-<span id="L203" class="ln">   203  </span><span class="comment">// Password は、データベースのパスワードを返します。</span>
-<span id="L204" class="ln">   204  </span>func (d *DatabaseConfig) Password() string { return d.password }
-<span id="L205" class="ln">   205  </span>
-<span id="L206" class="ln">   206  </span><span class="comment">// DBName は、データベースの名前を返します。</span>
-<span id="L207" class="ln">   207  </span>func (d *DatabaseConfig) DBName() string { return d.name }
-<span id="L208" class="ln">   208  </span>
-<span id="L209" class="ln">   209  </span><span class="comment">// SSLMode は、データベースのSSLモードを返します。</span>
-<span id="L210" class="ln">   210  </span>func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
-<span id="L211" class="ln">   211  </span>
-<span id="L212" class="ln">   212  </span><span class="comment">// PingTimeout は、データベースのpingタイムアウトを返します。</span>
-<span id="L213" class="ln">   213  </span>func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
-<span id="L214" class="ln">   214  </span>
-<span id="L215" class="ln">   215  </span><span class="comment">// SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。</span>
-<span id="L216" class="ln">   216  </span><span class="comment">//</span>
-<span id="L217" class="ln">   217  </span><span class="comment">// この値より長く実行されたクエリは警告レベルでログ出力されます。</span>
-<span id="L218" class="ln">   218  </span><span class="comment">// 0以下の値の場合、スロークエリ警告は無効になります。</span>
-<span id="L219" class="ln">   219  </span>func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
-<span id="L220" class="ln">   220  </span>
-<span id="L221" class="ln">   221  </span><span class="comment">// NewDBConnectionConfig は、データベース接続の設定を返します。</span>
-<span id="L222" class="ln">   222  </span>func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &amp;cfg.dbconnection }
-<span id="L223" class="ln">   223  </span>
-<span id="L224" class="ln">   224  </span><span class="comment">// MaxConns は、データベースの最大オープン接続数を返します。</span>
-<span id="L225" class="ln">   225  </span>func (c *DBConnectionConfig) MaxConns() int32 { return c.maxConns }
-<span id="L226" class="ln">   226  </span>
-<span id="L227" class="ln">   227  </span><span class="comment">// MinConns は、pgxpool の最小プールサイズ（最小接続数）を返します。</span>
-<span id="L228" class="ln">   228  </span>func (c *DBConnectionConfig) MinConns() int32 { return c.minConns }
-<span id="L229" class="ln">   229  </span>
-<span id="L230" class="ln">   230  </span><span class="comment">// MaxLifetime は、データベースの接続の最大寿命を返します。</span>
-<span id="L231" class="ln">   231  </span>func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime }
-<span id="L232" class="ln">   232  </span>
-<span id="L233" class="ln">   233  </span><span class="comment">// MaxIdleTime は、データベースの接続の最大アイドル時間を返します。</span>
-<span id="L234" class="ln">   234  </span>func (c *DBConnectionConfig) MaxIdleTime() time.Duration { return c.maxIdleTime }
-<span id="L235" class="ln">   235  </span>
-<span id="L236" class="ln">   236  </span><span class="comment">// NewSecurityConfig は、セキュリティの設定を返します。</span>
-<span id="L237" class="ln">   237  </span>func NewSecurityConfig(cfg *Config) *SecurityConfig { return &amp;cfg.security }
-<span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span><span class="comment">// AllowedOrigins は、CORSを許可するオリジンのリストを返します。</span>
-<span id="L240" class="ln">   240  </span>func (s *SecurityConfig) AllowedOrigins() []string {
-<span id="L241" class="ln">   241  </span>	return append([]string(nil), s.allowedOrigins...)
-<span id="L242" class="ln">   242  </span>}
-<span id="L243" class="ln">   243  </span>
-<span id="L244" class="ln">   244  </span><span class="comment">// CIDR は、セキュリティ設定で使用されるCIDRを返します。</span>
-<span id="L245" class="ln">   245  </span>func (s *SecurityConfig) CIDR() *net.IPNet {
-<span id="L246" class="ln">   246  </span>	if s.cidr == nil {
-<span id="L247" class="ln">   247  </span>		return nil
-<span id="L248" class="ln">   248  </span>	}
-<span id="L249" class="ln">   249  </span>	return &amp;net.IPNet{
-<span id="L250" class="ln">   250  </span>		IP:   append(net.IP(nil), s.cidr.IP...),
-<span id="L251" class="ln">   251  </span>		Mask: append(net.IPMask(nil), s.cidr.Mask...),
+<span id="L188" class="ln">   188  </span><span class="comment">// TargetStatusCodeSet は、可観測モードで監視対象となるHTTPステータスコードのセットを返します。</span>
+<span id="L189" class="ln">   189  </span><span class="comment">// 返り値はホットパスで参照される共有マップのため変更してはいけません（read-only）。</span>
+<span id="L190" class="ln">   190  </span>func (o *ObservabilityConfig) TargetStatusCodeSet() map[int]bool { return o.targetStatusCodeSet }
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span><span class="comment">// NewDatabaseConfig は、データベースの設定を返します。</span>
+<span id="L193" class="ln">   193  </span>func NewDatabaseConfig(cfg *Config) *DatabaseConfig { return &amp;cfg.database }
+<span id="L194" class="ln">   194  </span>
+<span id="L195" class="ln">   195  </span><span class="comment">// Driver は、データベースのドライバー名を返します。</span>
+<span id="L196" class="ln">   196  </span>func (d *DatabaseConfig) Driver() string { return d.driver }
+<span id="L197" class="ln">   197  </span>
+<span id="L198" class="ln">   198  </span><span class="comment">// Host は、データベースのホスト名を返します。</span>
+<span id="L199" class="ln">   199  </span>func (d *DatabaseConfig) Host() string { return d.host }
+<span id="L200" class="ln">   200  </span>
+<span id="L201" class="ln">   201  </span><span class="comment">// Port は、データベースのポート番号を返します。</span>
+<span id="L202" class="ln">   202  </span>func (d *DatabaseConfig) Port() int { return d.port }
+<span id="L203" class="ln">   203  </span>
+<span id="L204" class="ln">   204  </span><span class="comment">// User は、データベースのユーザー名を返します。</span>
+<span id="L205" class="ln">   205  </span>func (d *DatabaseConfig) User() string { return d.user }
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span><span class="comment">// Password は、データベースのパスワードを返します。</span>
+<span id="L208" class="ln">   208  </span>func (d *DatabaseConfig) Password() string { return d.password }
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span><span class="comment">// DBName は、データベースの名前を返します。</span>
+<span id="L211" class="ln">   211  </span>func (d *DatabaseConfig) DBName() string { return d.name }
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span><span class="comment">// SSLMode は、データベースのSSLモードを返します。</span>
+<span id="L214" class="ln">   214  </span>func (d *DatabaseConfig) SSLMode() string { return d.sslMode }
+<span id="L215" class="ln">   215  </span>
+<span id="L216" class="ln">   216  </span><span class="comment">// PingTimeout は、データベースのpingタイムアウトを返します。</span>
+<span id="L217" class="ln">   217  </span>func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span><span class="comment">// SlowQueryWarnThreshold は、スロークエリ警告の閾値を返します。</span>
+<span id="L220" class="ln">   220  </span><span class="comment">//</span>
+<span id="L221" class="ln">   221  </span><span class="comment">// この値より長く実行されたクエリは警告レベルでログ出力されます。</span>
+<span id="L222" class="ln">   222  </span><span class="comment">// 0以下の値の場合、スロークエリ警告は無効になります。</span>
+<span id="L223" class="ln">   223  </span>func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span><span class="comment">// NewDBConnectionConfig は、データベース接続の設定を返します。</span>
+<span id="L226" class="ln">   226  </span>func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &amp;cfg.dbconnection }
+<span id="L227" class="ln">   227  </span>
+<span id="L228" class="ln">   228  </span><span class="comment">// MaxConns は、データベースの最大オープン接続数を返します。</span>
+<span id="L229" class="ln">   229  </span>func (c *DBConnectionConfig) MaxConns() int32 { return c.maxConns }
+<span id="L230" class="ln">   230  </span>
+<span id="L231" class="ln">   231  </span><span class="comment">// MinConns は、pgxpool の最小プールサイズ（最小接続数）を返します。</span>
+<span id="L232" class="ln">   232  </span>func (c *DBConnectionConfig) MinConns() int32 { return c.minConns }
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span><span class="comment">// MaxLifetime は、データベースの接続の最大寿命を返します。</span>
+<span id="L235" class="ln">   235  </span>func (c *DBConnectionConfig) MaxLifetime() time.Duration { return c.maxLifetime }
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span><span class="comment">// MaxIdleTime は、データベースの接続の最大アイドル時間を返します。</span>
+<span id="L238" class="ln">   238  </span>func (c *DBConnectionConfig) MaxIdleTime() time.Duration { return c.maxIdleTime }
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span><span class="comment">// NewSecurityConfig は、セキュリティの設定を返します。</span>
+<span id="L241" class="ln">   241  </span>func NewSecurityConfig(cfg *Config) *SecurityConfig { return &amp;cfg.security }
+<span id="L242" class="ln">   242  </span>
+<span id="L243" class="ln">   243  </span><span class="comment">// AllowedOrigins は、CORSを許可するオリジンのリストを返します。</span>
+<span id="L244" class="ln">   244  </span>func (s *SecurityConfig) AllowedOrigins() []string {
+<span id="L245" class="ln">   245  </span>	return append([]string(nil), s.allowedOrigins...)
+<span id="L246" class="ln">   246  </span>}
+<span id="L247" class="ln">   247  </span>
+<span id="L248" class="ln">   248  </span><span class="comment">// CIDR は、セキュリティ設定で使用されるCIDRを返します。</span>
+<span id="L249" class="ln">   249  </span>func (s *SecurityConfig) CIDR() *net.IPNet {
+<span id="L250" class="ln">   250  </span>	if s.cidr == nil {
+<span id="L251" class="ln">   251  </span>		return nil
 <span id="L252" class="ln">   252  </span>	}
-<span id="L253" class="ln">   253  </span>}
-<span id="L254" class="ln">   254  </span>
-<span id="L255" class="ln">   255  </span><span class="comment">// ContentTypeNosniff は、X-Content-Type-Optionsヘッダーの値を返します。</span>
-<span id="L256" class="ln">   256  </span>func (s *SecurityConfig) ContentTypeNosniff() string { return s.contentTypeNosniff }
-<span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span><span class="comment">// XFrameOptions は、X-Frame-Optionsヘッダーの値を返します。</span>
-<span id="L259" class="ln">   259  </span>func (s *SecurityConfig) XFrameOptions() string { return s.xFrameOptions }
-<span id="L260" class="ln">   260  </span>
-<span id="L261" class="ln">   261  </span><span class="comment">// HSTSMaxAge は、HSTSの最大年齢を返します。</span>
-<span id="L262" class="ln">   262  </span>func (s *SecurityConfig) HSTSMaxAge() time.Duration { return s.hstsMaxAge }
-<span id="L263" class="ln">   263  </span>
-<span id="L264" class="ln">   264  </span><span class="comment">// HSTSExcludeSubdomains は、HSTSでサブドメインを除外するかどうかを返します。</span>
-<span id="L265" class="ln">   265  </span>func (s *SecurityConfig) HSTSExcludeSubdomains() bool { return s.hstsExcludeSubdomains }
-<span id="L266" class="ln">   266  </span>
-<span id="L267" class="ln">   267  </span><span class="comment">// HSTSPreloadEnabled は、HSTSのプリロードが有効かどうかを返します。</span>
-<span id="L268" class="ln">   268  </span>func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled }
-<span id="L269" class="ln">   269  </span>
-<span id="L270" class="ln">   270  </span><span class="comment">// ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。</span>
-<span id="L271" class="ln">   271  </span>func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
-<span id="L272" class="ln">   272  </span>
-<span id="L273" class="ln">   273  </span><span class="comment">// BcryptCost は、bcryptのコストを返します。</span>
-<span id="L274" class="ln">   274  </span>func (s *SecurityConfig) BcryptCost() int { return s.bcryptCost }
-<span id="L275" class="ln">   275  </span>
-<span id="L276" class="ln">   276  </span><span class="comment">// NewSecureCookieConfig は、セキュアクッキーの設定を返します。</span>
-<span id="L277" class="ln">   277  </span>func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &amp;cfg.secureCookie }
-<span id="L278" class="ln">   278  </span>
-<span id="L279" class="ln">   279  </span><span class="comment">// Secure は、Secure属性の強制設定を返します。</span>
-<span id="L280" class="ln">   280  </span>func (s *SecureCookieConfig) Secure() *bool {
-<span id="L281" class="ln">   281  </span>	if s.secure == nil {
-<span id="L282" class="ln">   282  </span>		return nil
-<span id="L283" class="ln">   283  </span>	}
-<span id="L284" class="ln">   284  </span>	v := *s.secure
-<span id="L285" class="ln">   285  </span>	return &amp;v
-<span id="L286" class="ln">   286  </span>}
-<span id="L287" class="ln">   287  </span>
-<span id="L288" class="ln">   288  </span><span class="comment">// SameSite は、SameSite属性の強制設定を返します。</span>
-<span id="L289" class="ln">   289  </span>func (s *SecureCookieConfig) SameSite() string { return s.sameSite }
-<span id="L290" class="ln">   290  </span>
-<span id="L291" class="ln">   291  </span><span class="comment">// Domain は、Domain属性の強制設定を返します。</span>
-<span id="L292" class="ln">   292  </span>func (s *SecureCookieConfig) Domain() string { return s.domain }
-<span id="L293" class="ln">   293  </span>
-<span id="L294" class="ln">   294  </span><span class="comment">// NewAuthConfig は、認証の設定を返します。</span>
-<span id="L295" class="ln">   295  </span>func NewAuthConfig(cfg *Config) *AuthConfig { return &amp;cfg.auth }
-<span id="L296" class="ln">   296  </span>
-<span id="L297" class="ln">   297  </span><span class="comment">// CookieName は、認証に使用するCookie名を返します。</span>
-<span id="L298" class="ln">   298  </span>func (a *AuthConfig) CookieName() string { return a.cookieName }
-<span id="L299" class="ln">   299  </span>
-<span id="L300" class="ln">   300  </span><span class="comment">// HeaderName は、認証に使用するヘッダー名を返します。</span>
-<span id="L301" class="ln">   301  </span>func (a *AuthConfig) HeaderName() string { return a.headerName }
-<span id="L302" class="ln">   302  </span>
-<span id="L303" class="ln">   303  </span><span class="comment">// AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。</span>
-<span id="L304" class="ln">   304  </span>func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
-<span id="L305" class="ln">   305  </span>
+<span id="L253" class="ln">   253  </span>	return &amp;net.IPNet{
+<span id="L254" class="ln">   254  </span>		IP:   append(net.IP(nil), s.cidr.IP...),
+<span id="L255" class="ln">   255  </span>		Mask: append(net.IPMask(nil), s.cidr.Mask...),
+<span id="L256" class="ln">   256  </span>	}
+<span id="L257" class="ln">   257  </span>}
+<span id="L258" class="ln">   258  </span>
+<span id="L259" class="ln">   259  </span><span class="comment">// ContentTypeNosniff は、X-Content-Type-Optionsヘッダーの値を返します。</span>
+<span id="L260" class="ln">   260  </span>func (s *SecurityConfig) ContentTypeNosniff() string { return s.contentTypeNosniff }
+<span id="L261" class="ln">   261  </span>
+<span id="L262" class="ln">   262  </span><span class="comment">// XFrameOptions は、X-Frame-Optionsヘッダーの値を返します。</span>
+<span id="L263" class="ln">   263  </span>func (s *SecurityConfig) XFrameOptions() string { return s.xFrameOptions }
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span><span class="comment">// HSTSMaxAge は、HSTSの最大年齢を返します。</span>
+<span id="L266" class="ln">   266  </span>func (s *SecurityConfig) HSTSMaxAge() time.Duration { return s.hstsMaxAge }
+<span id="L267" class="ln">   267  </span>
+<span id="L268" class="ln">   268  </span><span class="comment">// HSTSExcludeSubdomains は、HSTSでサブドメインを除外するかどうかを返します。</span>
+<span id="L269" class="ln">   269  </span>func (s *SecurityConfig) HSTSExcludeSubdomains() bool { return s.hstsExcludeSubdomains }
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span><span class="comment">// HSTSPreloadEnabled は、HSTSのプリロードが有効かどうかを返します。</span>
+<span id="L272" class="ln">   272  </span>func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled }
+<span id="L273" class="ln">   273  </span>
+<span id="L274" class="ln">   274  </span><span class="comment">// ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。</span>
+<span id="L275" class="ln">   275  </span>func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
+<span id="L276" class="ln">   276  </span>
+<span id="L277" class="ln">   277  </span><span class="comment">// BcryptCost は、bcryptのコストを返します。</span>
+<span id="L278" class="ln">   278  </span>func (s *SecurityConfig) BcryptCost() int { return s.bcryptCost }
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span><span class="comment">// NewSecureCookieConfig は、セキュアクッキーの設定を返します。</span>
+<span id="L281" class="ln">   281  </span>func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &amp;cfg.secureCookie }
+<span id="L282" class="ln">   282  </span>
+<span id="L283" class="ln">   283  </span><span class="comment">// Secure は、Secure属性の強制設定を返します。</span>
+<span id="L284" class="ln">   284  </span>func (s *SecureCookieConfig) Secure() *bool {
+<span id="L285" class="ln">   285  </span>	if s.secure == nil {
+<span id="L286" class="ln">   286  </span>		return nil
+<span id="L287" class="ln">   287  </span>	}
+<span id="L288" class="ln">   288  </span>	v := *s.secure
+<span id="L289" class="ln">   289  </span>	return &amp;v
+<span id="L290" class="ln">   290  </span>}
+<span id="L291" class="ln">   291  </span>
+<span id="L292" class="ln">   292  </span><span class="comment">// SameSite は、SameSite属性の強制設定を返します。</span>
+<span id="L293" class="ln">   293  </span>func (s *SecureCookieConfig) SameSite() string { return s.sameSite }
+<span id="L294" class="ln">   294  </span>
+<span id="L295" class="ln">   295  </span><span class="comment">// Domain は、Domain属性の強制設定を返します。</span>
+<span id="L296" class="ln">   296  </span>func (s *SecureCookieConfig) Domain() string { return s.domain }
+<span id="L297" class="ln">   297  </span>
+<span id="L298" class="ln">   298  </span><span class="comment">// NewAuthConfig は、認証の設定を返します。</span>
+<span id="L299" class="ln">   299  </span>func NewAuthConfig(cfg *Config) *AuthConfig { return &amp;cfg.auth }
+<span id="L300" class="ln">   300  </span>
+<span id="L301" class="ln">   301  </span><span class="comment">// CookieName は、認証に使用するCookie名を返します。</span>
+<span id="L302" class="ln">   302  </span>func (a *AuthConfig) CookieName() string { return a.cookieName }
+<span id="L303" class="ln">   303  </span>
+<span id="L304" class="ln">   304  </span><span class="comment">// HeaderName は、認証に使用するヘッダー名を返します。</span>
+<span id="L305" class="ln">   305  </span>func (a *AuthConfig) HeaderName() string { return a.headerName }
+<span id="L306" class="ln">   306  </span>
+<span id="L307" class="ln">   307  </span><span class="comment">// AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。</span>
+<span id="L308" class="ln">   308  </span>func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
+<span id="L309" class="ln">   309  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/model.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

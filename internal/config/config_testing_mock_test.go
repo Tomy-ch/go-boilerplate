@@ -25,6 +25,7 @@ func TestMockConfigForTest(t *testing.T) {
 					env:             expectedApplicationEnv,
 					name:            expectedApplicationName,
 					mode:            expectedApplicationMode,
+					logLevel:        expectedApplicationLogLevel,
 					shutdownTimeout: expectedAppShutdownTimeout,
 				},
 				server: ServerConfig{
@@ -123,6 +124,7 @@ func Test_mockLoader(t *testing.T) {
 					Env:             expectedApplicationEnv,
 					Name:            expectedApplicationName,
 					Mode:            expectedApplicationMode,
+					LogLevel:        expectedApplicationLogLevel,
 					ShutdownTimeout: expectedAppShutdownTimeout,
 				},
 				Server: Server{
@@ -201,6 +203,7 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, expectedApplicationEnv, os.Getenv("APP_ENV"))
 			assert.Equal(t, expectedApplicationName, os.Getenv("APP_NAME"))
 			assert.Equal(t, expectedApplicationMode, os.Getenv("APP_MODE"))
+			assert.Equal(t, expectedApplicationLogLevel, os.Getenv("APP_LOG_LEVEL"))
 			assert.Equal(t, expectedAppShutdownTimeoutStr, os.Getenv("APP_SHUTDOWN_TIMEOUT"))
 			// Server
 			assert.Equal(t, expectedServerHost, os.Getenv("SERVER_HOST"))

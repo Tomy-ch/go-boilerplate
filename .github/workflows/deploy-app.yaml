@@ -27,8 +27,6 @@ jobs:
         include:
           - target: runtime
             suffix: ""
-          - target: migration
-            suffix: "-migration"
 
     steps:
       - name: Checkout
@@ -199,7 +197,7 @@ jobs:
           echo "- Should be triggered from CI or a job system"
           echo "- ENV はブランチ別イメージにビルド時固定済み（実行時注入は不要）"
           echo "Example (local/docker run):"
-          echo "docker run <image>-migration"
+          echo "docker run <image> /app/server migrate-up   # runtime イメージを command override で実行"
           echo "    - AWS: ECS RunTask / EKS (Kubernetes Job)"
           echo "    - GCP: Cloud Run Job/ GKE (Kubernetes Job)"
           echo "    - Azure: Container App Job / AKS(Kubernetes Job)"

@@ -75,6 +75,9 @@ jobs:
       - name: Regenerate embedded spec (Go)
         run: make gen-go-code
 
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
       - name: Migrate
         run: go run ./cmd/ migrate-up --database ${{ env.DB }}
 
@@ -99,6 +102,10 @@ jobs:
       - name: Fix permissions
         run: |
           sudo chown -R $USER:$USER docs internal openapi
+
+      # 材料化した env/.env は生成物ではないため、コミット判定の対象から外す。
+      - name: Restore embedded env
+        run: make restore-env
 
       - name: Detect changes
         id: diff

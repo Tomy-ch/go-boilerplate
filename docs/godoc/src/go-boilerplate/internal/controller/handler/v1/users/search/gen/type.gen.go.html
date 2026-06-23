@@ -78,7 +78,7 @@
 <span id="L21" class="ln">    21  </span>	Message string `json:&#34;message&#34;`
 <span id="L22" class="ln">    22  </span>
 <span id="L23" class="ln">    23  </span>	<span class="comment">// RequestId リクエストID</span>
-<span id="L24" class="ln">    24  </span>	RequestId string `json:&#34;request_id&#34;`
+<span id="L24" class="ln">    24  </span>	RequestId string `json:&#34;requestId&#34;`
 <span id="L25" class="ln">    25  </span>}
 <span id="L26" class="ln">    26  </span>
 <span id="L27" class="ln">    27  </span><span class="comment">// PaginationMetadataResponse defines model for PaginationMetadataResponse.</span>
@@ -107,10 +107,10 @@
 <span id="L50" class="ln">    50  </span>	<span class="comment">// Email メールアドレス</span>
 <span id="L51" class="ln">    51  </span>	Email openapi_types.Email `json:&#34;email&#34;`
 <span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>	<span class="comment">// FirstName 苗字</span>
+<span id="L53" class="ln">    53  </span>	<span class="comment">// FirstName 名前</span>
 <span id="L54" class="ln">    54  </span>	FirstName string `json:&#34;firstName&#34;`
 <span id="L55" class="ln">    55  </span>
-<span id="L56" class="ln">    56  </span>	<span class="comment">// LastName 名前</span>
+<span id="L56" class="ln">    56  </span>	<span class="comment">// LastName 苗字</span>
 <span id="L57" class="ln">    57  </span>	LastName string `json:&#34;lastName&#34;`
 <span id="L58" class="ln">    58  </span>
 <span id="L59" class="ln">    59  </span>	<span class="comment">// Phone 電話番号</span>
@@ -153,10 +153,10 @@
 <span id="L96" class="ln">    96  </span>	<span class="comment">// Email メールアドレス</span>
 <span id="L97" class="ln">    97  </span>	Email openapi_types.Email `json:&#34;email&#34;`
 <span id="L98" class="ln">    98  </span>
-<span id="L99" class="ln">    99  </span>	<span class="comment">// FirstName 苗字</span>
+<span id="L99" class="ln">    99  </span>	<span class="comment">// FirstName 名前</span>
 <span id="L100" class="ln">   100  </span>	FirstName string `json:&#34;firstName&#34;`
 <span id="L101" class="ln">   101  </span>
-<span id="L102" class="ln">   102  </span>	<span class="comment">// LastName 名前</span>
+<span id="L102" class="ln">   102  </span>	<span class="comment">// LastName 苗字</span>
 <span id="L103" class="ln">   103  </span>	LastName string `json:&#34;lastName&#34;`
 <span id="L104" class="ln">   104  </span>
 <span id="L105" class="ln">   105  </span>	<span class="comment">// Phone 電話番号</span>
@@ -187,27 +187,42 @@
 <span id="L130" class="ln">   130  </span><span class="comment">// PerPageParam defines model for PerPageParam.</span>
 <span id="L131" class="ln">   131  </span>type PerPageParam = int
 <span id="L132" class="ln">   132  </span>
-<span id="L133" class="ln">   133  </span><span class="comment">// basicAuthContextKey is the context key for BasicAuth security scheme</span>
-<span id="L134" class="ln">   134  </span>type basicAuthContextKey string
+<span id="L133" class="ln">   133  </span><span class="comment">// BadRequest400 エラーレスポンスの共通スキーマ</span>
+<span id="L134" class="ln">   134  </span>type BadRequest400 = ErrorResponse
 <span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span><span class="comment">// bearerAuthContextKey is the context key for BearerAuth security scheme</span>
-<span id="L137" class="ln">   137  </span>type bearerAuthContextKey string
+<span id="L136" class="ln">   136  </span><span class="comment">// Forbidden403 エラーレスポンスの共通スキーマ</span>
+<span id="L137" class="ln">   137  </span>type Forbidden403 = ErrorResponse
 <span id="L138" class="ln">   138  </span>
-<span id="L139" class="ln">   139  </span><span class="comment">// GetUsersSearchParams defines parameters for GetUsersSearch.</span>
-<span id="L140" class="ln">   140  </span>type GetUsersSearchParams struct {
-<span id="L141" class="ln">   141  </span>	<span class="comment">// Keyword 全文検索キーワード</span>
-<span id="L142" class="ln">   142  </span>	Keyword *KeywordParam `form:&#34;keyword,omitempty&#34; json:&#34;keyword,omitempty&#34;`
-<span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span>	<span class="comment">// Active 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない</span>
-<span id="L145" class="ln">   145  </span>	Active *ActiveParam `form:&#34;active,omitempty&#34; json:&#34;active,omitempty&#34;`
-<span id="L146" class="ln">   146  </span>
-<span id="L147" class="ln">   147  </span>	<span class="comment">// Page ページ番号（1から始まる）</span>
-<span id="L148" class="ln">   148  </span>	Page *PageParam `form:&#34;page,omitempty&#34; json:&#34;page,omitempty&#34;`
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>	<span class="comment">// PerPage 1ページあたりの取得件数</span>
-<span id="L151" class="ln">   151  </span>	PerPage *PerPageParam `form:&#34;per_page,omitempty&#34; json:&#34;per_page,omitempty&#34;`
-<span id="L152" class="ln">   152  </span>}
+<span id="L139" class="ln">   139  </span><span class="comment">// InternalServerError500 エラーレスポンスの共通スキーマ</span>
+<span id="L140" class="ln">   140  </span>type InternalServerError500 = ErrorResponse
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span><span class="comment">// ServiceUnavailable503 エラーレスポンスの共通スキーマ</span>
+<span id="L143" class="ln">   143  </span>type ServiceUnavailable503 = ErrorResponse
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span><span class="comment">// Unauthorized401 エラーレスポンスの共通スキーマ</span>
+<span id="L146" class="ln">   146  </span>type Unauthorized401 = ErrorResponse
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span><span class="comment">// basicAuthContextKey is the context key for BasicAuth security scheme</span>
+<span id="L149" class="ln">   149  </span>type basicAuthContextKey string
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span><span class="comment">// bearerAuthContextKey is the context key for BearerAuth security scheme</span>
+<span id="L152" class="ln">   152  </span>type bearerAuthContextKey string
 <span id="L153" class="ln">   153  </span>
+<span id="L154" class="ln">   154  </span><span class="comment">// GetUsersSearchParams defines parameters for GetUsersSearch.</span>
+<span id="L155" class="ln">   155  </span>type GetUsersSearchParams struct {
+<span id="L156" class="ln">   156  </span>	<span class="comment">// Keyword 全文検索キーワード</span>
+<span id="L157" class="ln">   157  </span>	Keyword *KeywordParam `form:&#34;keyword,omitempty&#34; json:&#34;keyword,omitempty&#34;`
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>	<span class="comment">// Active 有効なデータのみを対象とする場合はtrue、無効なデータのみを対象とする場合はfalse、全てのデータを対象とする場合は指定しない</span>
+<span id="L160" class="ln">   160  </span>	Active *ActiveParam `form:&#34;active,omitempty&#34; json:&#34;active,omitempty&#34;`
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>	<span class="comment">// Page ページ番号（1から始まる）</span>
+<span id="L163" class="ln">   163  </span>	Page *PageParam `form:&#34;page,omitempty&#34; json:&#34;page,omitempty&#34;`
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>	<span class="comment">// PerPage 1ページあたりの取得件数</span>
+<span id="L166" class="ln">   166  </span>	PerPage *PerPageParam `form:&#34;per_page,omitempty&#34; json:&#34;per_page,omitempty&#34;`
+<span id="L167" class="ln">   167  </span>}
+<span id="L168" class="ln">   168  </span>
 </pre><p><a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/search/gen/type.gen.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

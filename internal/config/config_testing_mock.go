@@ -12,8 +12,6 @@ import (
 )
 
 const (
-	// envKey は、環境変数のキー名です。
-	envKey = "ENV"
 	// TestingEnvValue は、テスト用の環境変数の値です。
 	TestingEnvValue = "ci"
 )
@@ -27,6 +25,7 @@ var (
 	expectedApplicationEnv          = "test"
 	expectedApplicationName         = "TestApp"
 	expectedApplicationMode         = DevelopmentMode
+	expectedApplicationLogLevel     = "debug"
 	expectedAppShutdownTimeoutCount = 60
 	expectedAppShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
 	expectedAppShutdownTimeout      = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
@@ -128,6 +127,7 @@ func MockConfigForTest(tb testing.TB) *Config {
 			env:             expectedApplicationEnv,
 			name:            expectedApplicationName,
 			mode:            expectedApplicationMode,
+			logLevel:        expectedApplicationLogLevel,
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
@@ -216,6 +216,7 @@ func mockLoader(tb testing.TB) Loader {
 			Env:             expectedApplicationEnv,
 			Name:            expectedApplicationName,
 			Mode:            expectedApplicationMode,
+			LogLevel:        expectedApplicationLogLevel,
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
 		Metrics: Metrics{
@@ -286,6 +287,7 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("APP_ENV", expectedApplicationEnv)
 	t.Setenv("APP_NAME", expectedApplicationName)
 	t.Setenv("APP_MODE", expectedApplicationMode)
+	t.Setenv("APP_LOG_LEVEL", expectedApplicationLogLevel)
 	t.Setenv("APP_SHUTDOWN_TIMEOUT", expectedAppShutdownTimeoutStr)
 	// Server
 	t.Setenv("SERVER_HOST", expectedServerHost)

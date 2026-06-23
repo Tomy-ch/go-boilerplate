@@ -44,6 +44,7 @@ type Application struct {
 	Env             string        `env:"ENV,required"`
 	Name            string        `env:"NAME,required"`
 	Mode            string        `env:"MODE,required"`
+	LogLevel        string        `env:"LOG_LEVEL,required"`
 	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT,required"`
 }
 

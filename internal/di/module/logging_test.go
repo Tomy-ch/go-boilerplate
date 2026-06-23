@@ -14,30 +14,88 @@ import (
 func TestLoggingModule_ProvidesLoggerAndFields(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fx アプリで Logger と LogFieldBuilder が提供される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("fx アプリで Logger と LogFieldBuilder が提供される", func(t *testing.T) {
+			t.Parallel()
+
+			var lg logging.Logger
+			var lf logging.LogFieldBuilder
+
+			app := fx.New(
+				LoggingModule(),
+				fx.Provide(func() testing.TB { return t }),
+				fx.Provide(config.MockConfigForTest),
+				fx.Provide(
+					config.NewApplicationConfig,
+					config.NewObservabilityConfig,
+					config.NewOperatingSystemConfig,
+				),
+				fx.Populate(&lg, &lf),
+				fx.NopLogger,
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			require.NotNil(t, lg)
+			require.NotNil(t, lf)
+			// basic smoke: calling logger methods should not panic
+			require.NotPanics(t, func() { lg.Info("test") })
+			require.NoError(t, app.Stop(context.Background()))
+		})
+	})
+}
+
+func Test_provideLogger(t *testing.T) {
+	t.Parallel()
+
+	newAppCfg := func(t *testing.T, mode, level string) *config.ApplicationConfig {
+		t.Helper()
+		appCfg := config.NewApplicationConfig(&config.Config{})
+		appCfg.SetApplicationMode(t, mode)
+		appCfg.SetApplicationLogLevel(t, level)
+		return appCfg
+	}
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		var lg logging.Logger
-		var lf logging.LogFieldBuilder
+		t.Run("本番モードかつinfoでLoggerを返す", func(t *testing.T) {
+			t.Parallel()
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "info"))
+			require.NoError(t, err)
+			require.NotNil(t, lg)
+		})
 
-		app := fx.New(
-			LoggingModule(),
-			fx.Provide(func() testing.TB { return t }),
-			fx.Provide(config.MockConfigForTest),
-			fx.Provide(
-				config.NewApplicationConfig,
-				config.NewObservabilityConfig,
-				config.NewOperatingSystemConfig,
-			),
-			fx.Populate(&lg, &lf),
-			fx.NopLogger,
-		)
+		t.Run("開発モードかつdebugでLoggerを返す", func(t *testing.T) {
+			t.Parallel()
+			lg, err := provideLogger(newAppCfg(t, config.DevelopmentMode, "debug"))
+			require.NoError(t, err)
+			require.NotNil(t, lg)
+		})
 
-		require.NoError(t, app.Start(context.Background()))
-		require.NotNil(t, lg)
-		require.NotNil(t, lf)
-		// basic smoke: calling logger methods should not panic
-		require.NotPanics(t, func() { lg.Info("test") })
-		require.NoError(t, app.Stop(context.Background()))
+		t.Run("本番モードでもdebug指定でLoggerを返す", func(t *testing.T) {
+			t.Parallel()
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "debug"))
+			require.NoError(t, err)
+			require.NotNil(t, lg)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("不正なログレベルはエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "invalid"))
+			require.Error(t, err)
+			require.Nil(t, lg)
+		})
+
+		t.Run("未知のモードはエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			lg, err := provideLogger(newAppCfg(t, "unknown", "info"))
+			require.Error(t, err)
+			require.Nil(t, lg)
+		})
 	})
 }

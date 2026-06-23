@@ -34,6 +34,7 @@
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
 |APP_MODE|実行モード|string|development / production|ログや挙動切り替え|
+|APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定、レベルは環境ごとに明示指定|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
 |APP_ENV|環境識別子|string|local / staging / prod|環境区別用|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|45s|SIGTERM時の待機時間|
@@ -125,3 +126,4 @@
 - `csv` 型は `,` 区切りで空白トリム後に分割。値そのものに `,` を含めないこと
 - `duration` 型は Go `time.ParseDuration` 構文（`500ms`, `1h30m`）。素の数値は不可
 - 新規サブシステム節を作る際もテーブル列構成（`変数名 | 説明 | 型 | 例 | 備考`）を維持してスキャン性を保つこと
+- `APP_LOG_LEVEL` は環境ごとに明示指定する。local / ci / dev と **staging** は `debug`（本番前診断のための詳細 JSON ログ）、production は `info`。出力方式（JSON / console）はレベルとは独立に `APP_MODE` が決定する

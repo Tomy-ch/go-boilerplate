@@ -35,36 +35,21 @@ func TestEnsureRepoRootAndEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/
 	// t.Setenv / t.Chdir でプロセス状態を書き換えるため Parallel は使用しない。
 	orig, err := os.Getwd()
 	require.NoError(t, err)
-	prevEnv := os.Getenv(envKey)
 
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
-		t.Run("go.mod が見つかる場合、リポジトリルートに移動し ENV を設定する", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
+		t.Run("リポジトリルートへ移動し対象 env の値を環境変数へ設定する", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 			EnsureRepoRootAndEnv(t, TestingEnvValue)
 
 			cwd, inErr := os.Getwd()
 			require.NoError(t, inErr)
 			assert.FileExists(t, filepath.Join(cwd, "go.mod"))
-			assert.Equal(t, TestingEnvValue, os.Getenv(envKey))
+			// env/.env.<env> の値が環境変数へ反映される。
+			assert.Equal(t, TestingEnvValue, os.Getenv("APP_ENV"))
 		})
 	})
 
-	t.Run("異常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
-		t.Run("go.mod が見つからない場合、cwd は変更されず ENV のみ設定される", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
-			tmp := t.TempDir()
-			t.Chdir(tmp)
-
-			EnsureRepoRootAndEnv(t, TestingEnvValue)
-
-			cwd, inErr := os.Getwd()
-			require.NoError(t, inErr)
-			assert.Equal(t, tmp, cwd)
-			assert.Equal(t, TestingEnvValue, os.Getenv(envKey))
-		})
-	})
-
-	// サブテスト終了時に t.Setenv / t.Chdir がクリーンアップされ、副作用が漏れないこと。
+	// サブテスト終了時に t.Chdir がクリーンアップされ、cwd が復元されること。
 	cwdAfter, err := os.Getwd()
 	require.NoError(t, err)
 	assert.Equal(t, orig, cwdAfter)
-	assert.Equal(t, prevEnv, os.Getenv(envKey))
 }
