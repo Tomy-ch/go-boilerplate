@@ -48,3 +48,5 @@ engine は **in-memory fake**（`internal/usecase/boundary/worker/fake`）に対
 - `circuit.go`（3 状態ブレーカ、cooldown は `pkg/backoff`）、`classify.go`（error→分類）、`settings.go`（engine-core `Settings`）、`dispatch.go`（`PartitionKey` 直列化）、`state.go`（`worker.State` 実装）、`errors.go`（registry sentinel）、`metrics.go` / `telemetry.go`（O11Y）。
 
 SQS 参考 adapter（`internal/infrastructure/queue/sqs`）は **default では配線せず**、`aws-sdk-go-v2` を出荷バイナリに載せない。
+
+> 詳細設計（状態遷移 / 実装箇所マップ / 用語集）: [docs/ja/design/worker.ja.md](../../../docs/ja/design/worker.ja.md)。

@@ -48,3 +48,5 @@ The engine is **completed against the in-memory fake** (`internal/usecase/bounda
 - `circuit.go` — 3-state breaker (cooldown via `pkg/backoff`). `classify.go` — error → category. `settings.go` — engine-core `Settings`. `dispatch.go` — `PartitionKey` keyed serialization. `state.go` — `worker.State` impl. `errors.go` — registry sentinels. `metrics.go` / `telemetry.go` — O11Y.
 
 The SQS reference adapter (`internal/infrastructure/queue/sqs`) is **not wired by default** so `aws-sdk-go-v2` stays out of the shipped binary.
+
+> Design deep-dive (state transitions / implementation map / glossary): [docs/design/worker.md](../../../docs/design/worker.md).

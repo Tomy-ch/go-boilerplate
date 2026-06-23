@@ -1,6 +1,6 @@
 # Worker サブシステム設計リファレンス
 
-[English README](README.md) | [日本語 README](README.ja.md) | 設計詳細（本書）
+[Worker README（日本語）](../../../internal/controller/worker/README.ja.md) | English: [worker.md](../../design/worker.md)
 
 本書は worker scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。概要は README、採用判断は `docs/decisions.md` の ADR を参照。
 
@@ -13,7 +13,7 @@ worker は **HTTP handler と同格の「message-in driving adapter」**。新�
 責務の分担（誰が何を持つか）:
 
 | 構成要素 | 層 | 責務 | 持たないもの |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **engine**（`Engine`） | controller | transport のオーケストレーション：poll / 並列・順序制御 / Ack-Nack 規律 / サーキット / drain / O11Y | 業務ロジック・broker 固有知識 |
 | **seam**（`Consumer`/`Handler`/`FailureHandler`/`Worker`/`State`） | usecase/boundary | engine と外界（broker adapter・業務）の契約 | 実装 |
 | **Handler**（業務処理） | integrator が実装（usecase を呼ぶ） | メッセージ 1 件の業務処理（**冪等**） | ack/nack/再送制御（engine の責務） |
@@ -212,7 +212,7 @@ flowchart LR
 ```
 
 | # | 必要な実装 | 置き場（推奨） | 参考 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | ① | 業務 `Handler`（冪等、usecase を呼ぶ） | `internal/controller/worker/<name>/` | job の `usercount` 構造 |
 | ② | `Consumer`(+`FailureHandler`) adapter | SQS は `infrastructure/queue/sqs` を配線 / 他は新規 package | `sqs.NewConsumer` / `NewDeadLetter` |
 | ③ | `Worker`（Name/Consumer/Handler/FailureHandler を返す）+ `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
@@ -227,7 +227,7 @@ flowchart LR
 ## 5. 用語集
 
 | 用語 | 意味 |
-|---|---|
+| --- | --- |
 | **seam** | engine と外界（broker adapter・業務 Handler）の境界となる port 群。`internal/usecase/boundary/worker`。 |
 | **port** | seam を構成する interface：`Consumer` / `Handler` / `FailureHandler` / `Worker` / `State`。 |
 | **Message** | broker 非依存のメッセージ封筒（`ID`/`Body`/`Attributes`/`ReceiveCount`/`PartitionKey`）。 |
