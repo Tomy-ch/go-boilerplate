@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -87,3 +88,7 @@ func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error) 
 
 // ProvideTracerProvider は具象 TracerProvider を otel の trace.TracerProvider IF として返す。
 func ProvideTracerProvider(tp *sdktrace.TracerProvider) trace.TracerProvider { return tp }
+
+// ProvideMeterProvider は具象 MeterProvider を otel の metric.MeterProvider IF として返す。
+// otel 型を DI 層へ漏らさず WorkerMetrics 等へ MeterProvider を注入するための変換点。
+func ProvideMeterProvider(mp *sdkmetric.MeterProvider) metric.MeterProvider { return mp }

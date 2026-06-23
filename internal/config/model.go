@@ -17,6 +17,7 @@ type Config struct {
 	security      SecurityConfig
 	secureCookie  SecureCookieConfig
 	auth          AuthConfig
+	worker        WorkerConfig
 }
 
 // OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
@@ -104,6 +105,23 @@ type AuthConfig struct {
 	cookieName          string
 	headerName          string
 	allowedHeaderBearer bool
+}
+
+// WorkerConfig は、worker engine の engine-core 設定（broker 非依存）を保持します。
+// VisibilityTimeout 等の broker 固有設定はここではなく adapter 側の設定に置きます。
+type WorkerConfig struct {
+	concurrency               int
+	maxInFlight               int
+	batchSize                 int
+	extendInterval            time.Duration
+	drainTimeout              time.Duration
+	receiveCountWarnThreshold int
+	circuitFailureThreshold   int
+	circuitOpenBackoffInitial time.Duration
+	circuitOpenBackoffMax     time.Duration
+	circuitHalfOpenProbe      int
+	healthListenAddr          string
+	progressStaleAfter        time.Duration
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -306,3 +324,42 @@ func (a *AuthConfig) HeaderName() string { return a.headerName }
 
 // AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
 func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
+
+// NewWorkerConfig は、worker engine の設定を返します。
+func NewWorkerConfig(cfg *Config) *WorkerConfig { return &cfg.worker }
+
+// Concurrency は、同時に Handle を実行する最大数を返します。
+func (w *WorkerConfig) Concurrency() int { return w.concurrency }
+
+// MaxInFlight は、受信済み・未確定の最大メッセージ数を返します。
+func (w *WorkerConfig) MaxInFlight() int { return w.maxInFlight }
+
+// BatchSize は、1 回の Receive で取得する最大件数を返します。
+func (w *WorkerConfig) BatchSize() int { return w.batchSize }
+
+// ExtendInterval は、Extend を呼ぶ周期を返します（0 以下で無効）。
+func (w *WorkerConfig) ExtendInterval() time.Duration { return w.extendInterval }
+
+// DrainTimeout は、停止時に in-flight の完了を待つ上限を返します。
+func (w *WorkerConfig) DrainTimeout() time.Duration { return w.drainTimeout }
+
+// ReceiveCountWarnThreshold は、再配送回数の警告閾値を返します（0 以下で無効）。
+func (w *WorkerConfig) ReceiveCountWarnThreshold() int { return w.receiveCountWarnThreshold }
+
+// CircuitFailureThreshold は、サーキットを Open にする連続失敗数を返します（0 以下で無効）。
+func (w *WorkerConfig) CircuitFailureThreshold() int { return w.circuitFailureThreshold }
+
+// CircuitOpenBackoffInitial は、Open の初回 cooldown を返します。
+func (w *WorkerConfig) CircuitOpenBackoffInitial() time.Duration { return w.circuitOpenBackoffInitial }
+
+// CircuitOpenBackoffMax は、Open の cooldown 上限を返します。
+func (w *WorkerConfig) CircuitOpenBackoffMax() time.Duration { return w.circuitOpenBackoffMax }
+
+// CircuitHalfOpenProbe は、Half-open 時に試行する最大件数を返します。
+func (w *WorkerConfig) CircuitHalfOpenProbe() int { return w.circuitHalfOpenProbe }
+
+// HealthListenAddr は、liveness/readiness を公開する health listener の待ち受けアドレスを返します。
+func (w *WorkerConfig) HealthListenAddr() string { return w.healthListenAddr }
+
+// ProgressStaleAfter は、readiness 判定で「進捗なし」とみなすまでの時間を返します。
+func (w *WorkerConfig) ProgressStaleAfter() time.Duration { return w.progressStaleAfter }

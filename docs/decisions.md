@@ -196,6 +196,33 @@ Effective for small systems, but becomes difficult to manage as systems grow.
 
 Compile-time DI, but does not provide runtime lifecycle management.
 
+## Why a broker-agnostic worker scaffold (pull-ack only)
+
+### Intent (worker scaffold)
+
+Provide a way to consume queue messages as **another driving adapter into the Usecase layer** (message-in), on par with the HTTP handler, without inventing a new architectural layer.
+
+### Decision (worker scaffold)
+
+- The engine (`internal/controller/worker`) depends only on a minimal seam (`Consumer` / `Handler` / `FailureHandler`) defined in `internal/usecase/boundary/worker`, and is **completed against an in-memory fake** — all engine invariants are tested without a real broker.
+- The seam is **scoped to the pull-ack class**, with the interface designed first for **AWS SQS** and **GCP Pub/Sub (pull)**. Other pull-ack platforms fit by writing an adapter; only fundamentally different models require changing the interface.
+- **Push-type brokers (RabbitMQ) and streaming-log (Kafka / Kinesis) are out of scope.** Push delivery is the HTTP controller's domain; a streaming-log consumer (offset commit / consumer-group / partition) is a different engine, not an extension of this port.
+- Permanent failures route through a `FailureHandler` (dead-letter) seam; broker-specific redrive (SQS `maxReceiveCount` → DLQ) is IaC configuration, not application code.
+- Backpressure is a 3-state **circuit breaker on the intake side** (stop pulling on continued downstream failure, self-heal via half-open). This is distinct from per-message `Nack` delay and from `Fatal` (which stops the engine).
+- The reference broker adapter (SQS) lives in `internal/infrastructure/queue/sqs` and is **not wired into the default `cmd` build**, so `aws-sdk-go-v2` is not linked into the shipped binary (dependency isolation).
+
+### Benefits (worker scaffold)
+
+- The same Usecase / domain code is reachable from HTTP and from queues without duplication.
+- Broker independence: switching or adding a pull-ack broker is an adapter change; the engine and its tests do not change.
+- A fake-first engine keeps the behavioral contract (ack discipline, ordering, drain, backpressure) verifiable in fast unit tests.
+
+### Alternatives Considered (worker scaffold)
+
+- **A general multi-broker abstraction (incl. push / streaming).** Rejected: the lowest-common-denominator port would leak or weaken guarantees; Kafka-style consumers belong to a separate engine.
+- **Wiring SQS by default.** Rejected: it would force `aws-sdk-go-v2` into every binary (including `serve`), so the adapter is opt-in.
+- **Build tags for dependency isolation.** Rejected: there is no precedent in this repo and a single binary makes module separation insufficient; not importing the adapter from `cmd` achieves isolation without tags.
+
 ## Future Evolution
 
 These technology choices are **not immutable**.

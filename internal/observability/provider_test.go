@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -148,6 +149,24 @@ func Test_ProvideTracerProvider(t *testing.T) {
 			got := ProvideTracerProvider(tp)
 
 			assert.Same(t, tp, got)
+		})
+	})
+}
+
+func Test_ProvideMeterProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("具象MeterProviderをmetric.MeterProviderインターフェースとして返す", func(t *testing.T) {
+			t.Parallel()
+
+			mp := sdkmetric.NewMeterProvider()
+
+			got := ProvideMeterProvider(mp)
+
+			assert.Same(t, mp, got)
 		})
 	})
 }

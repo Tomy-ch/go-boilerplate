@@ -15,6 +15,7 @@ func ObservabilityModule() fx.Option {
 			observability.NewTracerProvider,
 			observability.NewMeterProvider,
 			observability.ProvideTracerProvider,
+			observability.ProvideMeterProvider,
 			observability.NewProviderShutdowner,
 			observability.NewTracerFactory,
 		),

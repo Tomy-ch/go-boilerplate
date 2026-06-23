@@ -97,6 +97,20 @@ func New() (*Config, error) {
 			headerName:          cfg.Auth.HeaderName,
 			allowedHeaderBearer: cfg.Auth.AllowedHeaderBearer,
 		},
+		worker: WorkerConfig{
+			concurrency:               cfg.Worker.Concurrency,
+			maxInFlight:               cfg.Worker.MaxInFlight,
+			batchSize:                 cfg.Worker.BatchSize,
+			extendInterval:            cfg.Worker.ExtendInterval,
+			drainTimeout:              cfg.Worker.DrainTimeout,
+			receiveCountWarnThreshold: cfg.Worker.ReceiveCountWarnThreshold,
+			circuitFailureThreshold:   cfg.Worker.CircuitFailureThreshold,
+			circuitOpenBackoffInitial: cfg.Worker.CircuitOpenBackoffInitial,
+			circuitOpenBackoffMax:     cfg.Worker.CircuitOpenBackoffMax,
+			circuitHalfOpenProbe:      cfg.Worker.CircuitHalfOpenProbe,
+			healthListenAddr:          cfg.Worker.HealthListenAddr,
+			progressStaleAfter:        cfg.Worker.ProgressStaleAfter,
+		},
 	}, nil
 }
 

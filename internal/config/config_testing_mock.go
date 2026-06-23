@@ -101,6 +101,19 @@ var (
 	expectedAuthCookieName          = "auth_token"
 	expectedAuthHeaderName          = "Authorization"
 	expectedAuthAllowedHeaderBearer = true
+	// worker（WORKER_ は env 未設定で default が適用される前提。値は envspec の default と一致させる）
+	expectedWorkerConcurrency               = 4
+	expectedWorkerMaxInFlight               = 8
+	expectedWorkerBatchSize                 = 4
+	expectedWorkerExtendInterval            = time.Duration(0)
+	expectedWorkerDrainTimeout              = 30 * time.Second
+	expectedWorkerReceiveCountWarnThreshold = 5
+	expectedWorkerCircuitFailureThreshold   = 10
+	expectedWorkerCircuitOpenBackoffInitial = 1 * time.Second
+	expectedWorkerCircuitOpenBackoffMax     = 30 * time.Second
+	expectedWorkerCircuitHalfOpenProbe      = 1
+	expectedWorkerHealthListenAddr          = ":8081"
+	expectedWorkerProgressStaleAfter        = 60 * time.Second
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -173,6 +186,20 @@ func MockConfigForTest(tb testing.TB) *Config {
 			cookieName:          expectedAuthCookieName,
 			headerName:          expectedAuthHeaderName,
 			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
+		},
+		worker: WorkerConfig{
+			concurrency:               expectedWorkerConcurrency,
+			maxInFlight:               expectedWorkerMaxInFlight,
+			batchSize:                 expectedWorkerBatchSize,
+			extendInterval:            expectedWorkerExtendInterval,
+			drainTimeout:              expectedWorkerDrainTimeout,
+			receiveCountWarnThreshold: expectedWorkerReceiveCountWarnThreshold,
+			circuitFailureThreshold:   expectedWorkerCircuitFailureThreshold,
+			circuitOpenBackoffInitial: expectedWorkerCircuitOpenBackoffInitial,
+			circuitOpenBackoffMax:     expectedWorkerCircuitOpenBackoffMax,
+			circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
+			healthListenAddr:          expectedWorkerHealthListenAddr,
+			progressStaleAfter:        expectedWorkerProgressStaleAfter,
 		},
 	}
 }

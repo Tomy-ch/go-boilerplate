@@ -16,5 +16,6 @@ func registerCommands(rootCmd *cobra.Command) {
 		newDumpSchemaCommand(),
 		newMergeDMLCommand(),
 		newJobCommand(),
+		newWorkerCommand(),
 	)
 }

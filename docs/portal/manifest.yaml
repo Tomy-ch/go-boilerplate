@@ -10,6 +10,8 @@ meta:
       sections: [architecture, project]
     - title: Application Layers
       sections: [domain, usecase, controller, infrastructure]
+    - title: Design
+      sections: [worker-design]
     - title: Wiring & Helpers
       sections: [di, context-helper, cli, pkg]
     - title: Cross-Cutting
@@ -32,7 +34,7 @@ meta:
       - title: Layer Top
         items: [controller]
       - title: Server & Handler
-        items: [controller-server, controller-handler, controller-job]
+        items: [controller-server, controller-handler, controller-job, controller-worker]
       - title: HTTP Stack
         items:
           - controller-httpstack
@@ -130,6 +132,8 @@ controller:
     dst: docs/portal/guides/controller-handler.md
   - src: internal/controller/job/README.md
     dst: docs/portal/guides/controller-job.md
+  - src: internal/controller/worker/README.md
+    dst: docs/portal/guides/controller-worker.md
   - src: internal/controller/error/response/README.md
     dst: docs/portal/guides/controller-error-response.md
   - src: internal/controller/httpstack/README.md
@@ -151,6 +155,8 @@ controller:
     dst: docs/portal/guides/ja/controller-handler.ja.md
   - src: internal/controller/job/README.ja.md
     dst: docs/portal/guides/ja/controller-job.ja.md
+  - src: internal/controller/worker/README.ja.md
+    dst: docs/portal/guides/ja/controller-worker.ja.md
   - src: internal/controller/error/response/README.ja.md
     dst: docs/portal/guides/ja/controller-error-response.ja.md
   - src: internal/controller/httpstack/README.ja.md
@@ -165,6 +171,38 @@ controller:
     dst: docs/portal/guides/ja/controller-httpstack-oapi-auth.ja.md
   - src: internal/controller/httpstack/oapi/skipper/README.ja.md
     dst: docs/portal/guides/ja/controller-httpstack-oapi-skipper.ja.md
+
+worker-design:
+  # English
+  - src: docs/design/worker.md
+    dst: docs/portal/guides/worker-design.md
+  # Japanese
+  - src: docs/ja/design/worker.ja.md
+    dst: docs/portal/guides/ja/worker-design.ja.md
+
+job-design:
+  # English
+  - src: docs/design/job.md
+    dst: docs/portal/guides/job-design.md
+  # Japanese
+  - src: docs/ja/design/job.ja.md
+    dst: docs/portal/guides/ja/job-design.ja.md
+
+idempotency-design:
+  # English
+  - src: docs/design/idempotency.md
+    dst: docs/portal/guides/idempotency-design.md
+  # Japanese
+  - src: docs/ja/design/idempotency.ja.md
+    dst: docs/portal/guides/ja/idempotency-design.ja.md
+
+rest-design:
+  # English
+  - src: docs/design/rest.md
+    dst: docs/portal/guides/rest-design.md
+  # Japanese
+  - src: docs/ja/design/rest.ja.md
+    dst: docs/portal/guides/ja/rest-design.ja.md
 
 domain:
   # English
