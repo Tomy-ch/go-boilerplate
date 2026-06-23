@@ -42,8 +42,6 @@ type nopMetrics struct{}
 //
 // 前提: 本関数は「成功時のステータスが常に successStatus 単一」の操作向けです（例: PostUsers は 201 のみ）。
 // replay 時は保存済みの応答ボディ（T）のみを復元し、保存済み response_status は呼び出し側へ伝播しません。
-// 成功ステータスが複数あり得る操作（200/201/202 を出し分ける等）へ適用する場合は、保存済みステータスを
-// 戻り値で返す設計へ拡張する必要があります。
 func Run[T any](
 	ctx context.Context,
 	deps Deps,

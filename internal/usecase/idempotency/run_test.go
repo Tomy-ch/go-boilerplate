@@ -30,7 +30,6 @@ type payload struct {
 }
 
 // newDeps は、tx.Manager の生成 mock と clock testkit を組んだ Deps を返します。
-// Txm.Do は業務処理をそのまま実行する素通し、Clock.Now は固定時刻 fixedNow を返します。
 func newDeps(t *testing.T, store idempotencybndry.Store) idempotency.Deps {
 	t.Helper()
 	txm := mock_tx.NewMockManager(gomock.NewController(t))
