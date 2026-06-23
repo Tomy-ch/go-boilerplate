@@ -69,7 +69,7 @@
 <span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/domain/user&#34;
 <span id="L13" class="ln">    13  </span>	mock_user &#34;go-boilerplate/internal/domain/user/mock&#34;
 <span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L15" class="ln">    15  </span>	mock_clock &#34;go-boilerplate/internal/usecase/boundary/clock/mock&#34;
+<span id="L15" class="ln">    15  </span>	clocktest &#34;go-boilerplate/internal/usecase/boundary/clock/testkit&#34;
 <span id="L16" class="ln">    16  </span>	mock_security &#34;go-boilerplate/internal/usecase/boundary/security/mock&#34;
 <span id="L17" class="ln">    17  </span>	mock_tx &#34;go-boilerplate/internal/usecase/boundary/tx/mock&#34;
 <span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/internal/usecase/testkit&#34;
@@ -88,7 +88,7 @@
 <span id="L31" class="ln">    31  </span>	ctrl := gomock.NewController(t)
 <span id="L32" class="ln">    32  </span>	tf := observability.NewNoopTracerFactory(t)
 <span id="L33" class="ln">    33  </span>	mockTxManager := mock_tx.NewMockManager(ctrl)
-<span id="L34" class="ln">    34  </span>	clock := mock_clock.NewMockClock(ctrl)
+<span id="L34" class="ln">    34  </span>	clock := clocktest.NewMockClock(t, time.Time{})
 <span id="L35" class="ln">    35  </span>	encrypter := mock_security.NewMockHasher(ctrl)
 <span id="L36" class="ln">    36  </span>	userRepo := mock_user.NewMockRepository(ctrl)
 <span id="L37" class="ln">    37  </span>	pftRepo := mock_prefecture.NewMockRepository(ctrl)
@@ -328,525 +328,518 @@
 <span id="L271" class="ln">   271  </span>				Building:       createDTO.Building,
 <span id="L272" class="ln">   272  </span>			}
 <span id="L273" class="ln">   273  </span>
-<span id="L274" class="ln">   274  </span>			clock := mock_clock.NewMockClock(ctrl)
-<span id="L275" class="ln">   275  </span>			clock.EXPECT().Now().Return(now)
-<span id="L276" class="ln">   276  </span>			encrypter := mock_security.NewMockHasher(ctrl)
-<span id="L277" class="ln">   277  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;hashed_password&#34;, nil)
-<span id="L278" class="ln">   278  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L279" class="ln">   279  </span>			userRepo.EXPECT().Create(
-<span id="L280" class="ln">   280  </span>				gomock.Any(),
-<span id="L281" class="ln">   281  </span>				gomock.AssignableToTypeOf(userDomain),
-<span id="L282" class="ln">   282  </span>			).Return(nil)
-<span id="L283" class="ln">   283  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L284" class="ln">   284  </span>			pftRepo.EXPECT().FindByName(
-<span id="L285" class="ln">   285  </span>				gomock.Any(),
-<span id="L286" class="ln">   286  </span>				prefectureName,
-<span id="L287" class="ln">   287  </span>			).Return(pftDomain, nil)
-<span id="L288" class="ln">   288  </span>
-<span id="L289" class="ln">   289  </span>			uc := &amp;usecase{
-<span id="L290" class="ln">   290  </span>				tracer:    lt,
-<span id="L291" class="ln">   291  </span>				txm:       mockTxManager,
-<span id="L292" class="ln">   292  </span>				clock:     clock,
-<span id="L293" class="ln">   293  </span>				encrypter: encrypter,
-<span id="L294" class="ln">   294  </span>				userRepo:  userRepo,
-<span id="L295" class="ln">   295  </span>				pftRepo:   pftRepo,
-<span id="L296" class="ln">   296  </span>			}
-<span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span>			actual, err := uc.CreateUser(ctx, createDTO)
-<span id="L299" class="ln">   299  </span>			require.NoError(t, err)
-<span id="L300" class="ln">   300  </span>			assert.Equal(t, expected, actual)
-<span id="L301" class="ln">   301  </span>		})
-<span id="L302" class="ln">   302  </span>	})
-<span id="L303" class="ln">   303  </span>
-<span id="L304" class="ln">   304  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L305" class="ln">   305  </span>		t.Parallel()
-<span id="L306" class="ln">   306  </span>
-<span id="L307" class="ln">   307  </span>		t.Run(&#34;生パスワードの検証が失敗した場合、エラーが返される&#34;, func(t *testing.T) {
-<span id="L308" class="ln">   308  </span>			t.Parallel()
-<span id="L309" class="ln">   309  </span>			ctrl := gomock.NewController(t)
-<span id="L310" class="ln">   310  </span>
-<span id="L311" class="ln">   311  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
-<span id="L312" class="ln">   312  </span>			createDTO.RawPassword = strings.Repeat(&#34;a&#34;, user.MaxRawPasswordLength+1) <span class="comment">// パスワードを最大長+1にしてエラーを発生させる</span>
+<span id="L274" class="ln">   274  </span>			clock := clocktest.NewMockClockOnce(t, now)
+<span id="L275" class="ln">   275  </span>			encrypter := mock_security.NewMockHasher(ctrl)
+<span id="L276" class="ln">   276  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;hashed_password&#34;, nil)
+<span id="L277" class="ln">   277  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L278" class="ln">   278  </span>			userRepo.EXPECT().Create(
+<span id="L279" class="ln">   279  </span>				gomock.Any(),
+<span id="L280" class="ln">   280  </span>				gomock.AssignableToTypeOf(userDomain),
+<span id="L281" class="ln">   281  </span>			).Return(nil)
+<span id="L282" class="ln">   282  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L283" class="ln">   283  </span>			pftRepo.EXPECT().FindByName(
+<span id="L284" class="ln">   284  </span>				gomock.Any(),
+<span id="L285" class="ln">   285  </span>				prefectureName,
+<span id="L286" class="ln">   286  </span>			).Return(pftDomain, nil)
+<span id="L287" class="ln">   287  </span>
+<span id="L288" class="ln">   288  </span>			uc := &amp;usecase{
+<span id="L289" class="ln">   289  </span>				tracer:    lt,
+<span id="L290" class="ln">   290  </span>				txm:       mockTxManager,
+<span id="L291" class="ln">   291  </span>				clock:     clock,
+<span id="L292" class="ln">   292  </span>				encrypter: encrypter,
+<span id="L293" class="ln">   293  </span>				userRepo:  userRepo,
+<span id="L294" class="ln">   294  </span>				pftRepo:   pftRepo,
+<span id="L295" class="ln">   295  </span>			}
+<span id="L296" class="ln">   296  </span>
+<span id="L297" class="ln">   297  </span>			actual, err := uc.CreateUser(ctx, createDTO)
+<span id="L298" class="ln">   298  </span>			require.NoError(t, err)
+<span id="L299" class="ln">   299  </span>			assert.Equal(t, expected, actual)
+<span id="L300" class="ln">   300  </span>		})
+<span id="L301" class="ln">   301  </span>	})
+<span id="L302" class="ln">   302  </span>
+<span id="L303" class="ln">   303  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L304" class="ln">   304  </span>		t.Parallel()
+<span id="L305" class="ln">   305  </span>
+<span id="L306" class="ln">   306  </span>		t.Run(&#34;生パスワードの検証が失敗した場合、エラーが返される&#34;, func(t *testing.T) {
+<span id="L307" class="ln">   307  </span>			t.Parallel()
+<span id="L308" class="ln">   308  </span>
+<span id="L309" class="ln">   309  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
+<span id="L310" class="ln">   310  </span>			createDTO.RawPassword = strings.Repeat(&#34;a&#34;, user.MaxRawPasswordLength+1) <span class="comment">// パスワードを最大長+1にしてエラーを発生させる</span>
+<span id="L311" class="ln">   311  </span>
+<span id="L312" class="ln">   312  </span>			clock := clocktest.NewMockClockOnce(t, now)
 <span id="L313" class="ln">   313  </span>
-<span id="L314" class="ln">   314  </span>			clock := mock_clock.NewMockClock(ctrl)
-<span id="L315" class="ln">   315  </span>			clock.EXPECT().Now().Return(now)
-<span id="L316" class="ln">   316  </span>
-<span id="L317" class="ln">   317  </span>			uc := &amp;usecase{
-<span id="L318" class="ln">   318  </span>				tracer: lt,
-<span id="L319" class="ln">   319  </span>				clock:  clock,
-<span id="L320" class="ln">   320  </span>			}
-<span id="L321" class="ln">   321  </span>
-<span id="L322" class="ln">   322  </span>			actual, err := uc.CreateUser(ctx, createDTO)
-<span id="L323" class="ln">   323  </span>			assert.Equal(t, UserView{}, actual)
-<span id="L324" class="ln">   324  </span>			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
-<span id="L325" class="ln">   325  </span>		})
-<span id="L326" class="ln">   326  </span>
-<span id="L327" class="ln">   327  </span>		t.Run(&#34;暗号化が失敗した場合、エラーが返される&#34;, func(t *testing.T) {
-<span id="L328" class="ln">   328  </span>			t.Parallel()
-<span id="L329" class="ln">   329  </span>			ctrl := gomock.NewController(t)
-<span id="L330" class="ln">   330  </span>
-<span id="L331" class="ln">   331  </span>			expectedErr := xerrors.New(&#34;encryption failed&#34;)
-<span id="L332" class="ln">   332  </span>
-<span id="L333" class="ln">   333  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
-<span id="L334" class="ln">   334  </span>
-<span id="L335" class="ln">   335  </span>			clock := mock_clock.NewMockClock(ctrl)
-<span id="L336" class="ln">   336  </span>			clock.EXPECT().Now().Return(now)
-<span id="L337" class="ln">   337  </span>			encrypter := mock_security.NewMockHasher(ctrl)
-<span id="L338" class="ln">   338  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;&#34;, expectedErr)
-<span id="L339" class="ln">   339  </span>
-<span id="L340" class="ln">   340  </span>			uc := &amp;usecase{
-<span id="L341" class="ln">   341  </span>				tracer:    lt,
-<span id="L342" class="ln">   342  </span>				clock:     clock,
-<span id="L343" class="ln">   343  </span>				encrypter: encrypter,
-<span id="L344" class="ln">   344  </span>			}
-<span id="L345" class="ln">   345  </span>
-<span id="L346" class="ln">   346  </span>			actual, err := uc.CreateUser(ctx, createDTO)
-<span id="L347" class="ln">   347  </span>			assert.Equal(t, UserView{}, actual)
-<span id="L348" class="ln">   348  </span>			require.ErrorIs(t, err, expectedErr)
-<span id="L349" class="ln">   349  </span>		})
+<span id="L314" class="ln">   314  </span>			uc := &amp;usecase{
+<span id="L315" class="ln">   315  </span>				tracer: lt,
+<span id="L316" class="ln">   316  </span>				clock:  clock,
+<span id="L317" class="ln">   317  </span>			}
+<span id="L318" class="ln">   318  </span>
+<span id="L319" class="ln">   319  </span>			actual, err := uc.CreateUser(ctx, createDTO)
+<span id="L320" class="ln">   320  </span>			assert.Equal(t, UserView{}, actual)
+<span id="L321" class="ln">   321  </span>			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
+<span id="L322" class="ln">   322  </span>		})
+<span id="L323" class="ln">   323  </span>
+<span id="L324" class="ln">   324  </span>		t.Run(&#34;暗号化が失敗した場合、エラーが返される&#34;, func(t *testing.T) {
+<span id="L325" class="ln">   325  </span>			t.Parallel()
+<span id="L326" class="ln">   326  </span>			ctrl := gomock.NewController(t)
+<span id="L327" class="ln">   327  </span>
+<span id="L328" class="ln">   328  </span>			expectedErr := xerrors.New(&#34;encryption failed&#34;)
+<span id="L329" class="ln">   329  </span>
+<span id="L330" class="ln">   330  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
+<span id="L331" class="ln">   331  </span>
+<span id="L332" class="ln">   332  </span>			clock := clocktest.NewMockClockOnce(t, now)
+<span id="L333" class="ln">   333  </span>			encrypter := mock_security.NewMockHasher(ctrl)
+<span id="L334" class="ln">   334  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;&#34;, expectedErr)
+<span id="L335" class="ln">   335  </span>
+<span id="L336" class="ln">   336  </span>			uc := &amp;usecase{
+<span id="L337" class="ln">   337  </span>				tracer:    lt,
+<span id="L338" class="ln">   338  </span>				clock:     clock,
+<span id="L339" class="ln">   339  </span>				encrypter: encrypter,
+<span id="L340" class="ln">   340  </span>			}
+<span id="L341" class="ln">   341  </span>
+<span id="L342" class="ln">   342  </span>			actual, err := uc.CreateUser(ctx, createDTO)
+<span id="L343" class="ln">   343  </span>			assert.Equal(t, UserView{}, actual)
+<span id="L344" class="ln">   344  </span>			require.ErrorIs(t, err, expectedErr)
+<span id="L345" class="ln">   345  </span>		})
+<span id="L346" class="ln">   346  </span>
+<span id="L347" class="ln">   347  </span>		t.Run(&#34;都道府県の取得に失敗した場合、エラーが返される&#34;, func(t *testing.T) {
+<span id="L348" class="ln">   348  </span>			t.Parallel()
+<span id="L349" class="ln">   349  </span>			ctrl := gomock.NewController(t)
 <span id="L350" class="ln">   350  </span>
-<span id="L351" class="ln">   351  </span>		t.Run(&#34;都道府県の取得に失敗した場合、エラーが返される&#34;, func(t *testing.T) {
-<span id="L352" class="ln">   352  </span>			t.Parallel()
-<span id="L353" class="ln">   353  </span>			ctrl := gomock.NewController(t)
+<span id="L351" class="ln">   351  </span>			expectedErr := testkit.ExpectedDBError()
+<span id="L352" class="ln">   352  </span>
+<span id="L353" class="ln">   353  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
 <span id="L354" class="ln">   354  </span>
-<span id="L355" class="ln">   355  </span>			expectedErr := testkit.ExpectedDBError()
-<span id="L356" class="ln">   356  </span>
-<span id="L357" class="ln">   357  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
-<span id="L358" class="ln">   358  </span>
-<span id="L359" class="ln">   359  </span>			clock := mock_clock.NewMockClock(ctrl)
-<span id="L360" class="ln">   360  </span>			clock.EXPECT().Now().Return(now)
-<span id="L361" class="ln">   361  </span>			encrypter := mock_security.NewMockHasher(ctrl)
-<span id="L362" class="ln">   362  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;hashed_password&#34;, nil)
-<span id="L363" class="ln">   363  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L364" class="ln">   364  </span>			pftRepo.EXPECT().FindByName(
-<span id="L365" class="ln">   365  </span>				gomock.Any(),
-<span id="L366" class="ln">   366  </span>				prefectureName,
-<span id="L367" class="ln">   367  </span>			).Return(nil, expectedErr)
-<span id="L368" class="ln">   368  </span>
-<span id="L369" class="ln">   369  </span>			uc := &amp;usecase{
-<span id="L370" class="ln">   370  </span>				tracer:    lt,
-<span id="L371" class="ln">   371  </span>				txm:       mockTxManager,
-<span id="L372" class="ln">   372  </span>				clock:     clock,
-<span id="L373" class="ln">   373  </span>				encrypter: encrypter,
-<span id="L374" class="ln">   374  </span>				pftRepo:   pftRepo,
-<span id="L375" class="ln">   375  </span>			}
+<span id="L355" class="ln">   355  </span>			clock := clocktest.NewMockClockOnce(t, now)
+<span id="L356" class="ln">   356  </span>			encrypter := mock_security.NewMockHasher(ctrl)
+<span id="L357" class="ln">   357  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;hashed_password&#34;, nil)
+<span id="L358" class="ln">   358  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L359" class="ln">   359  </span>			pftRepo.EXPECT().FindByName(
+<span id="L360" class="ln">   360  </span>				gomock.Any(),
+<span id="L361" class="ln">   361  </span>				prefectureName,
+<span id="L362" class="ln">   362  </span>			).Return(nil, expectedErr)
+<span id="L363" class="ln">   363  </span>
+<span id="L364" class="ln">   364  </span>			uc := &amp;usecase{
+<span id="L365" class="ln">   365  </span>				tracer:    lt,
+<span id="L366" class="ln">   366  </span>				txm:       mockTxManager,
+<span id="L367" class="ln">   367  </span>				clock:     clock,
+<span id="L368" class="ln">   368  </span>				encrypter: encrypter,
+<span id="L369" class="ln">   369  </span>				pftRepo:   pftRepo,
+<span id="L370" class="ln">   370  </span>			}
+<span id="L371" class="ln">   371  </span>
+<span id="L372" class="ln">   372  </span>			actual, err := uc.CreateUser(ctx, createDTO)
+<span id="L373" class="ln">   373  </span>			assert.Equal(t, UserView{}, actual)
+<span id="L374" class="ln">   374  </span>			require.ErrorIs(t, err, expectedErr)
+<span id="L375" class="ln">   375  </span>		})
 <span id="L376" class="ln">   376  </span>
-<span id="L377" class="ln">   377  </span>			actual, err := uc.CreateUser(ctx, createDTO)
-<span id="L378" class="ln">   378  </span>			assert.Equal(t, UserView{}, actual)
-<span id="L379" class="ln">   379  </span>			require.ErrorIs(t, err, expectedErr)
-<span id="L380" class="ln">   380  </span>		})
-<span id="L381" class="ln">   381  </span>
-<span id="L382" class="ln">   382  </span>		t.Run(&#34;ユーザードメインの生成に失敗した場合、エラーが返される&#34;, func(t *testing.T) {
-<span id="L383" class="ln">   383  </span>			t.Parallel()
-<span id="L384" class="ln">   384  </span>			ctrl := gomock.NewController(t)
-<span id="L385" class="ln">   385  </span>
-<span id="L386" class="ln">   386  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
-<span id="L387" class="ln">   387  </span>			createDTO.FirstName = &#34;&#34; <span class="comment">// FirstNameを空にしてエラーを発生させる</span>
-<span id="L388" class="ln">   388  </span>
-<span id="L389" class="ln">   389  </span>			clock := mock_clock.NewMockClock(ctrl)
-<span id="L390" class="ln">   390  </span>			clock.EXPECT().Now().Return(now)
-<span id="L391" class="ln">   391  </span>			encrypter := mock_security.NewMockHasher(ctrl)
-<span id="L392" class="ln">   392  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;hashed_password&#34;, nil)
-<span id="L393" class="ln">   393  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L394" class="ln">   394  </span>			pftRepo.EXPECT().FindByName(
-<span id="L395" class="ln">   395  </span>				gomock.Any(),
-<span id="L396" class="ln">   396  </span>				prefectureName,
-<span id="L397" class="ln">   397  </span>			).Return(pftDomain, nil)
-<span id="L398" class="ln">   398  </span>
-<span id="L399" class="ln">   399  </span>			uc := &amp;usecase{
-<span id="L400" class="ln">   400  </span>				tracer:    lt,
-<span id="L401" class="ln">   401  </span>				txm:       mockTxManager,
-<span id="L402" class="ln">   402  </span>				clock:     clock,
-<span id="L403" class="ln">   403  </span>				encrypter: encrypter,
-<span id="L404" class="ln">   404  </span>				pftRepo:   pftRepo,
-<span id="L405" class="ln">   405  </span>			}
-<span id="L406" class="ln">   406  </span>
-<span id="L407" class="ln">   407  </span>			actual, err := uc.CreateUser(ctx, createDTO)
-<span id="L408" class="ln">   408  </span>			assert.Equal(t, UserView{}, actual)
-<span id="L409" class="ln">   409  </span>			require.ErrorIs(t, err, user.ErrInvalidFirstName)
-<span id="L410" class="ln">   410  </span>		})
+<span id="L377" class="ln">   377  </span>		t.Run(&#34;ユーザードメインの生成に失敗した場合、エラーが返される&#34;, func(t *testing.T) {
+<span id="L378" class="ln">   378  </span>			t.Parallel()
+<span id="L379" class="ln">   379  </span>			ctrl := gomock.NewController(t)
+<span id="L380" class="ln">   380  </span>
+<span id="L381" class="ln">   381  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
+<span id="L382" class="ln">   382  </span>			createDTO.FirstName = &#34;&#34; <span class="comment">// FirstNameを空にしてエラーを発生させる</span>
+<span id="L383" class="ln">   383  </span>
+<span id="L384" class="ln">   384  </span>			clock := clocktest.NewMockClockOnce(t, now)
+<span id="L385" class="ln">   385  </span>			encrypter := mock_security.NewMockHasher(ctrl)
+<span id="L386" class="ln">   386  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;hashed_password&#34;, nil)
+<span id="L387" class="ln">   387  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L388" class="ln">   388  </span>			pftRepo.EXPECT().FindByName(
+<span id="L389" class="ln">   389  </span>				gomock.Any(),
+<span id="L390" class="ln">   390  </span>				prefectureName,
+<span id="L391" class="ln">   391  </span>			).Return(pftDomain, nil)
+<span id="L392" class="ln">   392  </span>
+<span id="L393" class="ln">   393  </span>			uc := &amp;usecase{
+<span id="L394" class="ln">   394  </span>				tracer:    lt,
+<span id="L395" class="ln">   395  </span>				txm:       mockTxManager,
+<span id="L396" class="ln">   396  </span>				clock:     clock,
+<span id="L397" class="ln">   397  </span>				encrypter: encrypter,
+<span id="L398" class="ln">   398  </span>				pftRepo:   pftRepo,
+<span id="L399" class="ln">   399  </span>			}
+<span id="L400" class="ln">   400  </span>
+<span id="L401" class="ln">   401  </span>			actual, err := uc.CreateUser(ctx, createDTO)
+<span id="L402" class="ln">   402  </span>			assert.Equal(t, UserView{}, actual)
+<span id="L403" class="ln">   403  </span>			require.ErrorIs(t, err, user.ErrInvalidFirstName)
+<span id="L404" class="ln">   404  </span>		})
+<span id="L405" class="ln">   405  </span>
+<span id="L406" class="ln">   406  </span>		t.Run(&#34;ユーザー作成に失敗した場合、エラーが返される&#34;, func(t *testing.T) {
+<span id="L407" class="ln">   407  </span>			t.Parallel()
+<span id="L408" class="ln">   408  </span>			ctrl := gomock.NewController(t)
+<span id="L409" class="ln">   409  </span>
+<span id="L410" class="ln">   410  </span>			expectedErr := testkit.ExpectedDBError()
 <span id="L411" class="ln">   411  </span>
-<span id="L412" class="ln">   412  </span>		t.Run(&#34;ユーザー作成に失敗した場合、エラーが返される&#34;, func(t *testing.T) {
-<span id="L413" class="ln">   413  </span>			t.Parallel()
-<span id="L414" class="ln">   414  </span>			ctrl := gomock.NewController(t)
-<span id="L415" class="ln">   415  </span>
-<span id="L416" class="ln">   416  </span>			expectedErr := testkit.ExpectedDBError()
-<span id="L417" class="ln">   417  </span>
-<span id="L418" class="ln">   418  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
-<span id="L419" class="ln">   419  </span>
-<span id="L420" class="ln">   420  </span>			clock := mock_clock.NewMockClock(ctrl)
-<span id="L421" class="ln">   421  </span>			clock.EXPECT().Now().Return(now)
-<span id="L422" class="ln">   422  </span>			encrypter := mock_security.NewMockHasher(ctrl)
-<span id="L423" class="ln">   423  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;hashed_password&#34;, nil)
-<span id="L424" class="ln">   424  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L425" class="ln">   425  </span>			userRepo.EXPECT().Create(
-<span id="L426" class="ln">   426  </span>				gomock.Any(),
-<span id="L427" class="ln">   427  </span>				gomock.AssignableToTypeOf(userDomain),
-<span id="L428" class="ln">   428  </span>			).Return(expectedErr)
-<span id="L429" class="ln">   429  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L430" class="ln">   430  </span>			pftRepo.EXPECT().FindByName(
-<span id="L431" class="ln">   431  </span>				gomock.Any(),
-<span id="L432" class="ln">   432  </span>				prefectureName,
-<span id="L433" class="ln">   433  </span>			).Return(pftDomain, nil)
-<span id="L434" class="ln">   434  </span>
-<span id="L435" class="ln">   435  </span>			uc := &amp;usecase{
-<span id="L436" class="ln">   436  </span>				tracer:    lt,
-<span id="L437" class="ln">   437  </span>				txm:       mockTxManager,
-<span id="L438" class="ln">   438  </span>				clock:     clock,
-<span id="L439" class="ln">   439  </span>				encrypter: encrypter,
-<span id="L440" class="ln">   440  </span>				userRepo:  userRepo,
-<span id="L441" class="ln">   441  </span>				pftRepo:   pftRepo,
-<span id="L442" class="ln">   442  </span>			}
+<span id="L412" class="ln">   412  </span>			createDTO := newCreateDTO(userDomain, prefectureName)
+<span id="L413" class="ln">   413  </span>
+<span id="L414" class="ln">   414  </span>			clock := clocktest.NewMockClockOnce(t, now)
+<span id="L415" class="ln">   415  </span>			encrypter := mock_security.NewMockHasher(ctrl)
+<span id="L416" class="ln">   416  </span>			encrypter.EXPECT().Hash(createDTO.RawPassword).Return(&#34;hashed_password&#34;, nil)
+<span id="L417" class="ln">   417  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L418" class="ln">   418  </span>			userRepo.EXPECT().Create(
+<span id="L419" class="ln">   419  </span>				gomock.Any(),
+<span id="L420" class="ln">   420  </span>				gomock.AssignableToTypeOf(userDomain),
+<span id="L421" class="ln">   421  </span>			).Return(expectedErr)
+<span id="L422" class="ln">   422  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L423" class="ln">   423  </span>			pftRepo.EXPECT().FindByName(
+<span id="L424" class="ln">   424  </span>				gomock.Any(),
+<span id="L425" class="ln">   425  </span>				prefectureName,
+<span id="L426" class="ln">   426  </span>			).Return(pftDomain, nil)
+<span id="L427" class="ln">   427  </span>
+<span id="L428" class="ln">   428  </span>			uc := &amp;usecase{
+<span id="L429" class="ln">   429  </span>				tracer:    lt,
+<span id="L430" class="ln">   430  </span>				txm:       mockTxManager,
+<span id="L431" class="ln">   431  </span>				clock:     clock,
+<span id="L432" class="ln">   432  </span>				encrypter: encrypter,
+<span id="L433" class="ln">   433  </span>				userRepo:  userRepo,
+<span id="L434" class="ln">   434  </span>				pftRepo:   pftRepo,
+<span id="L435" class="ln">   435  </span>			}
+<span id="L436" class="ln">   436  </span>
+<span id="L437" class="ln">   437  </span>			actual, err := uc.CreateUser(ctx, createDTO)
+<span id="L438" class="ln">   438  </span>			assert.Equal(t, UserView{}, actual)
+<span id="L439" class="ln">   439  </span>			require.ErrorIs(t, err, expectedErr)
+<span id="L440" class="ln">   440  </span>		})
+<span id="L441" class="ln">   441  </span>	})
+<span id="L442" class="ln">   442  </span>}
 <span id="L443" class="ln">   443  </span>
-<span id="L444" class="ln">   444  </span>			actual, err := uc.CreateUser(ctx, createDTO)
-<span id="L445" class="ln">   445  </span>			assert.Equal(t, UserView{}, actual)
-<span id="L446" class="ln">   446  </span>			require.ErrorIs(t, err, expectedErr)
-<span id="L447" class="ln">   447  </span>		})
-<span id="L448" class="ln">   448  </span>	})
-<span id="L449" class="ln">   449  </span>}
+<span id="L444" class="ln">   444  </span>func Test_usecase_ListUsersWithTotal(t *testing.T) {
+<span id="L445" class="ln">   445  </span>	t.Parallel()
+<span id="L446" class="ln">   446  </span>
+<span id="L447" class="ln">   447  </span>	ctx := context.Background()
+<span id="L448" class="ln">   448  </span>	lt := observability.NewMockUsecaseLayerTracer(t)
+<span id="L449" class="ln">   449  </span>	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
 <span id="L450" class="ln">   450  </span>
-<span id="L451" class="ln">   451  </span>func Test_usecase_ListUsersWithTotal(t *testing.T) {
-<span id="L452" class="ln">   452  </span>	t.Parallel()
-<span id="L453" class="ln">   453  </span>
-<span id="L454" class="ln">   454  </span>	ctx := context.Background()
-<span id="L455" class="ln">   455  </span>	lt := observability.NewMockUsecaseLayerTracer(t)
-<span id="L456" class="ln">   456  </span>	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
-<span id="L457" class="ln">   457  </span>
-<span id="L458" class="ln">   458  </span>	prefectureID := uuid.NewTestFromSalt(t, &#34;prefecture_domain&#34;)
-<span id="L459" class="ln">   459  </span>	userDomain, err := user.New(
-<span id="L460" class="ln">   460  </span>		uuid.NewTestFromSalt(t, &#34;user_domain&#34;),
-<span id="L461" class="ln">   461  </span>		&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;email_address&#34;, &#34;phone_number&#34;,
-<span id="L462" class="ln">   462  </span>		prefectureID, &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;p_code&#34;, now, now, nil,
-<span id="L463" class="ln">   463  </span>	)
+<span id="L451" class="ln">   451  </span>	prefectureID := uuid.NewTestFromSalt(t, &#34;prefecture_domain&#34;)
+<span id="L452" class="ln">   452  </span>	userDomain, err := user.New(
+<span id="L453" class="ln">   453  </span>		uuid.NewTestFromSalt(t, &#34;user_domain&#34;),
+<span id="L454" class="ln">   454  </span>		&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;email_address&#34;, &#34;phone_number&#34;,
+<span id="L455" class="ln">   455  </span>		prefectureID, &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;p_code&#34;, now, now, nil,
+<span id="L456" class="ln">   456  </span>	)
+<span id="L457" class="ln">   457  </span>	require.NoError(t, err)
+<span id="L458" class="ln">   458  </span>	prefectureDomain, err := prefecture.New(prefectureID, &#34;prefecture_name&#34;, 1)
+<span id="L459" class="ln">   459  </span>	require.NoError(t, err)
+<span id="L460" class="ln">   460  </span>
+<span id="L461" class="ln">   461  </span>	page := 1
+<span id="L462" class="ln">   462  </span>	perPage := 100
+<span id="L463" class="ln">   463  </span>	p, err := paging.NewPageFrom1Based(&amp;page, &amp;perPage)
 <span id="L464" class="ln">   464  </span>	require.NoError(t, err)
-<span id="L465" class="ln">   465  </span>	prefectureDomain, err := prefecture.New(prefectureID, &#34;prefecture_name&#34;, 1)
-<span id="L466" class="ln">   466  </span>	require.NoError(t, err)
-<span id="L467" class="ln">   467  </span>
-<span id="L468" class="ln">   468  </span>	page := 1
-<span id="L469" class="ln">   469  </span>	perPage := 100
-<span id="L470" class="ln">   470  </span>	p, err := paging.NewPageFrom1Based(&amp;page, &amp;perPage)
-<span id="L471" class="ln">   471  </span>	require.NoError(t, err)
-<span id="L472" class="ln">   472  </span>
-<span id="L473" class="ln">   473  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L474" class="ln">   474  </span>		t.Parallel()
-<span id="L475" class="ln">   475  </span>		t.Run(&#34;一覧と総件数をまとめて取得できる&#34;, func(t *testing.T) {
-<span id="L476" class="ln">   476  </span>			t.Parallel()
-<span id="L477" class="ln">   477  </span>			ctrl := gomock.NewController(t)
-<span id="L478" class="ln">   478  </span>
-<span id="L479" class="ln">   479  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L480" class="ln">   480  </span>			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
-<span id="L481" class="ln">   481  </span>			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(1), nil)
-<span id="L482" class="ln">   482  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L483" class="ln">   483  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
-<span id="L484" class="ln">   484  </span>
-<span id="L485" class="ln">   485  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+<span id="L465" class="ln">   465  </span>
+<span id="L466" class="ln">   466  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L467" class="ln">   467  </span>		t.Parallel()
+<span id="L468" class="ln">   468  </span>		t.Run(&#34;一覧と総件数をまとめて取得できる&#34;, func(t *testing.T) {
+<span id="L469" class="ln">   469  </span>			t.Parallel()
+<span id="L470" class="ln">   470  </span>			ctrl := gomock.NewController(t)
+<span id="L471" class="ln">   471  </span>
+<span id="L472" class="ln">   472  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L473" class="ln">   473  </span>			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+<span id="L474" class="ln">   474  </span>			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(1), nil)
+<span id="L475" class="ln">   475  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L476" class="ln">   476  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+<span id="L477" class="ln">   477  </span>
+<span id="L478" class="ln">   478  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+<span id="L479" class="ln">   479  </span>
+<span id="L480" class="ln">   480  </span>			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+<span id="L481" class="ln">   481  </span>			require.NoError(t, err)
+<span id="L482" class="ln">   482  </span>			assert.Len(t, actual.Items, 1)
+<span id="L483" class="ln">   483  </span>			assert.Equal(t, int64(1), actual.Total)
+<span id="L484" class="ln">   484  </span>		})
+<span id="L485" class="ln">   485  </span>	})
 <span id="L486" class="ln">   486  </span>
-<span id="L487" class="ln">   487  </span>			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
-<span id="L488" class="ln">   488  </span>			require.NoError(t, err)
-<span id="L489" class="ln">   489  </span>			assert.Len(t, actual.Items, 1)
-<span id="L490" class="ln">   490  </span>			assert.Equal(t, int64(1), actual.Total)
-<span id="L491" class="ln">   491  </span>		})
-<span id="L492" class="ln">   492  </span>	})
-<span id="L493" class="ln">   493  </span>
-<span id="L494" class="ln">   494  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L495" class="ln">   495  </span>		t.Parallel()
-<span id="L496" class="ln">   496  </span>
-<span id="L497" class="ln">   497  </span>		t.Run(&#34;一覧取得でエラーが発生した場合、エラーが返る&#34;, func(t *testing.T) {
-<span id="L498" class="ln">   498  </span>			t.Parallel()
-<span id="L499" class="ln">   499  </span>			expectedErr := testkit.ExpectedDBError()
-<span id="L500" class="ln">   500  </span>			ctrl := gomock.NewController(t)
-<span id="L501" class="ln">   501  </span>
-<span id="L502" class="ln">   502  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L503" class="ln">   503  </span>			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
-<span id="L504" class="ln">   504  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo}
-<span id="L505" class="ln">   505  </span>
-<span id="L506" class="ln">   506  </span>			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
-<span id="L507" class="ln">   507  </span>			require.ErrorIs(t, err, expectedErr)
-<span id="L508" class="ln">   508  </span>			require.Nil(t, actual)
-<span id="L509" class="ln">   509  </span>		})
-<span id="L510" class="ln">   510  </span>
-<span id="L511" class="ln">   511  </span>		t.Run(&#34;総件数取得でエラーが発生した場合、エラーが返る&#34;, func(t *testing.T) {
-<span id="L512" class="ln">   512  </span>			t.Parallel()
-<span id="L513" class="ln">   513  </span>			expectedErr := testkit.ExpectedDBError()
-<span id="L514" class="ln">   514  </span>			ctrl := gomock.NewController(t)
+<span id="L487" class="ln">   487  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L488" class="ln">   488  </span>		t.Parallel()
+<span id="L489" class="ln">   489  </span>
+<span id="L490" class="ln">   490  </span>		t.Run(&#34;一覧取得でエラーが発生した場合、エラーが返る&#34;, func(t *testing.T) {
+<span id="L491" class="ln">   491  </span>			t.Parallel()
+<span id="L492" class="ln">   492  </span>			expectedErr := testkit.ExpectedDBError()
+<span id="L493" class="ln">   493  </span>			ctrl := gomock.NewController(t)
+<span id="L494" class="ln">   494  </span>
+<span id="L495" class="ln">   495  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L496" class="ln">   496  </span>			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
+<span id="L497" class="ln">   497  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo}
+<span id="L498" class="ln">   498  </span>
+<span id="L499" class="ln">   499  </span>			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+<span id="L500" class="ln">   500  </span>			require.ErrorIs(t, err, expectedErr)
+<span id="L501" class="ln">   501  </span>			require.Nil(t, actual)
+<span id="L502" class="ln">   502  </span>		})
+<span id="L503" class="ln">   503  </span>
+<span id="L504" class="ln">   504  </span>		t.Run(&#34;総件数取得でエラーが発生した場合、エラーが返る&#34;, func(t *testing.T) {
+<span id="L505" class="ln">   505  </span>			t.Parallel()
+<span id="L506" class="ln">   506  </span>			expectedErr := testkit.ExpectedDBError()
+<span id="L507" class="ln">   507  </span>			ctrl := gomock.NewController(t)
+<span id="L508" class="ln">   508  </span>
+<span id="L509" class="ln">   509  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L510" class="ln">   510  </span>			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+<span id="L511" class="ln">   511  </span>			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(0), expectedErr)
+<span id="L512" class="ln">   512  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L513" class="ln">   513  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+<span id="L514" class="ln">   514  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
 <span id="L515" class="ln">   515  </span>
-<span id="L516" class="ln">   516  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L517" class="ln">   517  </span>			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
-<span id="L518" class="ln">   518  </span>			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(0), expectedErr)
-<span id="L519" class="ln">   519  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L520" class="ln">   520  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
-<span id="L521" class="ln">   521  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
-<span id="L522" class="ln">   522  </span>
-<span id="L523" class="ln">   523  </span>			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
-<span id="L524" class="ln">   524  </span>			require.ErrorIs(t, err, expectedErr)
-<span id="L525" class="ln">   525  </span>			require.Nil(t, actual)
-<span id="L526" class="ln">   526  </span>		})
-<span id="L527" class="ln">   527  </span>
-<span id="L528" class="ln">   528  </span>		t.Run(&#34;page が nil の場合、ErrInvalidArgument が返る&#34;, func(t *testing.T) {
-<span id="L529" class="ln">   529  </span>			t.Parallel()
-<span id="L530" class="ln">   530  </span>			uc := &amp;usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
-<span id="L531" class="ln">   531  </span>			actual, err := uc.ListUsersWithTotal(ctx, nil, nil)
-<span id="L532" class="ln">   532  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-<span id="L533" class="ln">   533  </span>			require.Nil(t, actual)
-<span id="L534" class="ln">   534  </span>		})
-<span id="L535" class="ln">   535  </span>	})
-<span id="L536" class="ln">   536  </span>}
+<span id="L516" class="ln">   516  </span>			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+<span id="L517" class="ln">   517  </span>			require.ErrorIs(t, err, expectedErr)
+<span id="L518" class="ln">   518  </span>			require.Nil(t, actual)
+<span id="L519" class="ln">   519  </span>		})
+<span id="L520" class="ln">   520  </span>
+<span id="L521" class="ln">   521  </span>		t.Run(&#34;page が nil の場合、ErrInvalidArgument が返る&#34;, func(t *testing.T) {
+<span id="L522" class="ln">   522  </span>			t.Parallel()
+<span id="L523" class="ln">   523  </span>			uc := &amp;usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
+<span id="L524" class="ln">   524  </span>			actual, err := uc.ListUsersWithTotal(ctx, nil, nil)
+<span id="L525" class="ln">   525  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L526" class="ln">   526  </span>			require.Nil(t, actual)
+<span id="L527" class="ln">   527  </span>		})
+<span id="L528" class="ln">   528  </span>	})
+<span id="L529" class="ln">   529  </span>}
+<span id="L530" class="ln">   530  </span>
+<span id="L531" class="ln">   531  </span>func Test_usecase_CountUsers(t *testing.T) {
+<span id="L532" class="ln">   532  </span>	t.Parallel()
+<span id="L533" class="ln">   533  </span>
+<span id="L534" class="ln">   534  </span>	ctrl := gomock.NewController(t)
+<span id="L535" class="ln">   535  </span>	tf := observability.NewNoopTracerFactory(t)
+<span id="L536" class="ln">   536  </span>	userRepo := mock_user.NewMockRepository(ctrl)
 <span id="L537" class="ln">   537  </span>
-<span id="L538" class="ln">   538  </span>func Test_usecase_CountUsers(t *testing.T) {
-<span id="L539" class="ln">   539  </span>	t.Parallel()
-<span id="L540" class="ln">   540  </span>
-<span id="L541" class="ln">   541  </span>	ctrl := gomock.NewController(t)
-<span id="L542" class="ln">   542  </span>	tf := observability.NewNoopTracerFactory(t)
-<span id="L543" class="ln">   543  </span>	userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L544" class="ln">   544  </span>
-<span id="L545" class="ln">   545  </span>	u := &amp;usecase{
-<span id="L546" class="ln">   546  </span>		tracer:   tf.Usecase(),
-<span id="L547" class="ln">   547  </span>		userRepo: userRepo,
-<span id="L548" class="ln">   548  </span>	}
+<span id="L538" class="ln">   538  </span>	u := &amp;usecase{
+<span id="L539" class="ln">   539  </span>		tracer:   tf.Usecase(),
+<span id="L540" class="ln">   540  </span>		userRepo: userRepo,
+<span id="L541" class="ln">   541  </span>	}
+<span id="L542" class="ln">   542  </span>
+<span id="L543" class="ln">   543  </span>	t.Run(&#34;ユーザーの総件数が正常に取得できること&#34;, func(t *testing.T) {
+<span id="L544" class="ln">   544  </span>		t.Parallel()
+<span id="L545" class="ln">   545  </span>
+<span id="L546" class="ln">   546  </span>		ctx := t.Context()
+<span id="L547" class="ln">   547  </span>		active := new(true)
+<span id="L548" class="ln">   548  </span>		expectedCount := int64(42)
 <span id="L549" class="ln">   549  </span>
-<span id="L550" class="ln">   550  </span>	t.Run(&#34;ユーザーの総件数が正常に取得できること&#34;, func(t *testing.T) {
-<span id="L551" class="ln">   551  </span>		t.Parallel()
-<span id="L552" class="ln">   552  </span>
-<span id="L553" class="ln">   553  </span>		ctx := t.Context()
-<span id="L554" class="ln">   554  </span>		active := new(true)
-<span id="L555" class="ln">   555  </span>		expectedCount := int64(42)
-<span id="L556" class="ln">   556  </span>
-<span id="L557" class="ln">   557  </span>		userRepo.
-<span id="L558" class="ln">   558  </span>			EXPECT().
-<span id="L559" class="ln">   559  </span>			CountByActive(gomock.Any(), active).
-<span id="L560" class="ln">   560  </span>			Return(expectedCount, nil)
-<span id="L561" class="ln">   561  </span>
-<span id="L562" class="ln">   562  </span>		actualCount, err := u.CountUsers(ctx, active)
-<span id="L563" class="ln">   563  </span>		require.NoError(t, err)
-<span id="L564" class="ln">   564  </span>		assert.Equal(t, expectedCount, actualCount)
-<span id="L565" class="ln">   565  </span>	})
-<span id="L566" class="ln">   566  </span>}
+<span id="L550" class="ln">   550  </span>		userRepo.
+<span id="L551" class="ln">   551  </span>			EXPECT().
+<span id="L552" class="ln">   552  </span>			CountByActive(gomock.Any(), active).
+<span id="L553" class="ln">   553  </span>			Return(expectedCount, nil)
+<span id="L554" class="ln">   554  </span>
+<span id="L555" class="ln">   555  </span>		actualCount, err := u.CountUsers(ctx, active)
+<span id="L556" class="ln">   556  </span>		require.NoError(t, err)
+<span id="L557" class="ln">   557  </span>		assert.Equal(t, expectedCount, actualCount)
+<span id="L558" class="ln">   558  </span>	})
+<span id="L559" class="ln">   559  </span>}
+<span id="L560" class="ln">   560  </span>
+<span id="L561" class="ln">   561  </span>func Test_usecase_ListUsersFeed(t *testing.T) {
+<span id="L562" class="ln">   562  </span>	t.Parallel()
+<span id="L563" class="ln">   563  </span>
+<span id="L564" class="ln">   564  </span>	ctx := context.Background()
+<span id="L565" class="ln">   565  </span>	lt := observability.NewMockUsecaseLayerTracer(t)
+<span id="L566" class="ln">   566  </span>	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
 <span id="L567" class="ln">   567  </span>
-<span id="L568" class="ln">   568  </span>func Test_usecase_ListUsersFeed(t *testing.T) {
-<span id="L569" class="ln">   569  </span>	t.Parallel()
-<span id="L570" class="ln">   570  </span>
-<span id="L571" class="ln">   571  </span>	ctx := context.Background()
-<span id="L572" class="ln">   572  </span>	lt := observability.NewMockUsecaseLayerTracer(t)
-<span id="L573" class="ln">   573  </span>	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
-<span id="L574" class="ln">   574  </span>
-<span id="L575" class="ln">   575  </span>	prefectureID := uuid.NewTestFromSalt(t, &#34;prefecture_domain&#34;)
-<span id="L576" class="ln">   576  </span>	prefectureDomain, err := prefecture.New(prefectureID, &#34;prefecture_name&#34;, 1)
-<span id="L577" class="ln">   577  </span>	require.NoError(t, err)
-<span id="L578" class="ln">   578  </span>
-<span id="L579" class="ln">   579  </span>	<span class="comment">// newFeedUser は、作成日時違いのフィードユーザーを生成するヘルパーです。</span>
-<span id="L580" class="ln">   580  </span>	newFeedUser := func(salt string, createdAt time.Time) *user.User {
-<span id="L581" class="ln">   581  </span>		u, uErr := user.New(
-<span id="L582" class="ln">   582  </span>			uuid.NewTestFromSalt(t, salt),
-<span id="L583" class="ln">   583  </span>			&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;email_address&#34;, &#34;phone_number&#34;,
-<span id="L584" class="ln">   584  </span>			prefectureID, &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;p_code&#34;, createdAt, createdAt, nil,
-<span id="L585" class="ln">   585  </span>		)
-<span id="L586" class="ln">   586  </span>		require.NoError(t, uErr)
-<span id="L587" class="ln">   587  </span>		return u
-<span id="L588" class="ln">   588  </span>	}
+<span id="L568" class="ln">   568  </span>	prefectureID := uuid.NewTestFromSalt(t, &#34;prefecture_domain&#34;)
+<span id="L569" class="ln">   569  </span>	prefectureDomain, err := prefecture.New(prefectureID, &#34;prefecture_name&#34;, 1)
+<span id="L570" class="ln">   570  </span>	require.NoError(t, err)
+<span id="L571" class="ln">   571  </span>
+<span id="L572" class="ln">   572  </span>	<span class="comment">// newFeedUser は、作成日時違いのフィードユーザーを生成するヘルパーです。</span>
+<span id="L573" class="ln">   573  </span>	newFeedUser := func(salt string, createdAt time.Time) *user.User {
+<span id="L574" class="ln">   574  </span>		u, uErr := user.New(
+<span id="L575" class="ln">   575  </span>			uuid.NewTestFromSalt(t, salt),
+<span id="L576" class="ln">   576  </span>			&#34;first_name&#34;, &#34;last_name&#34;, &#34;password&#34;, &#34;email_address&#34;, &#34;phone_number&#34;,
+<span id="L577" class="ln">   577  </span>			prefectureID, &#34;city_name&#34;, &#34;town_address&#34;, nil, &#34;p_code&#34;, createdAt, createdAt, nil,
+<span id="L578" class="ln">   578  </span>		)
+<span id="L579" class="ln">   579  </span>		require.NoError(t, uErr)
+<span id="L580" class="ln">   580  </span>		return u
+<span id="L581" class="ln">   581  </span>	}
+<span id="L582" class="ln">   582  </span>
+<span id="L583" class="ln">   583  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L584" class="ln">   584  </span>		t.Parallel()
+<span id="L585" class="ln">   585  </span>
+<span id="L586" class="ln">   586  </span>		t.Run(&#34;先頭ページの場合、afterがnilでリポジトリが呼ばれ次ページが無ければNextCursorはnilになる&#34;, func(t *testing.T) {
+<span id="L587" class="ln">   587  </span>			t.Parallel()
+<span id="L588" class="ln">   588  </span>			ctrl := gomock.NewController(t)
 <span id="L589" class="ln">   589  </span>
-<span id="L590" class="ln">   590  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L591" class="ln">   591  </span>		t.Parallel()
-<span id="L592" class="ln">   592  </span>
-<span id="L593" class="ln">   593  </span>		t.Run(&#34;先頭ページの場合、afterがnilでリポジトリが呼ばれ次ページが無ければNextCursorはnilになる&#34;, func(t *testing.T) {
-<span id="L594" class="ln">   594  </span>			t.Parallel()
-<span id="L595" class="ln">   595  </span>			ctrl := gomock.NewController(t)
-<span id="L596" class="ln">   596  </span>
-<span id="L597" class="ln">   597  </span>			first := 20
-<span id="L598" class="ln">   598  </span>			cursor, cErr := paging.NewCursor(nil, &amp;first)
-<span id="L599" class="ln">   599  </span>			require.NoError(t, cErr)
-<span id="L600" class="ln">   600  </span>
-<span id="L601" class="ln">   601  </span>			u1 := newFeedUser(&#34;feed_user_1&#34;, now)
-<span id="L602" class="ln">   602  </span>
-<span id="L603" class="ln">   603  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L604" class="ln">   604  </span>			<span class="comment">// limit+1（=21）件を要求し、先頭ページは after=nil で呼ばれる。</span>
-<span id="L605" class="ln">   605  </span>			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(user.Users{u1}, nil)
-<span id="L606" class="ln">   606  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L607" class="ln">   607  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
-<span id="L608" class="ln">   608  </span>
-<span id="L609" class="ln">   609  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
-<span id="L610" class="ln">   610  </span>
-<span id="L611" class="ln">   611  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
-<span id="L612" class="ln">   612  </span>			require.NoError(t, actualErr)
-<span id="L613" class="ln">   613  </span>			assert.Len(t, actual.Items, 1)
-<span id="L614" class="ln">   614  </span>			assert.Nil(t, actual.NextCursor)
-<span id="L615" class="ln">   615  </span>		})
-<span id="L616" class="ln">   616  </span>
-<span id="L617" class="ln">   617  </span>		t.Run(&#34;カーソル指定の場合、afterが解釈されてリポジトリが呼ばれる&#34;, func(t *testing.T) {
-<span id="L618" class="ln">   618  </span>			t.Parallel()
-<span id="L619" class="ln">   619  </span>			ctrl := gomock.NewController(t)
-<span id="L620" class="ln">   620  </span>
-<span id="L621" class="ln">   621  </span>			afterUser := newFeedUser(&#34;feed_user_after&#34;, now)
-<span id="L622" class="ln">   622  </span>			encoded := paging.EncodeCursor(afterUser.CreatedAt().Format(time.RFC3339Nano), afterUser.ID().String())
-<span id="L623" class="ln">   623  </span>			first := 20
-<span id="L624" class="ln">   624  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, &amp;first)
-<span id="L625" class="ln">   625  </span>			require.NoError(t, cErr)
-<span id="L626" class="ln">   626  </span>
-<span id="L627" class="ln">   627  </span>			u1 := newFeedUser(&#34;feed_user_1&#34;, now)
-<span id="L628" class="ln">   628  </span>
-<span id="L629" class="ln">   629  </span>			<span class="comment">// カーソルの復号正当性は feed_cursor_test.go が担保するため、ここでは</span>
-<span id="L630" class="ln">   630  </span>			<span class="comment">// 「after 指定時に limit+1 件でリポジトリが呼ばれる」オーケストレーションのみ検証する。</span>
-<span id="L631" class="ln">   631  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L632" class="ln">   632  </span>			userRepo.EXPECT().FindFeed(
-<span id="L633" class="ln">   633  </span>				gomock.Any(),
-<span id="L634" class="ln">   634  </span>				gomock.Any(),
-<span id="L635" class="ln">   635  </span>				int32(21),
-<span id="L636" class="ln">   636  </span>			).Return(user.Users{u1}, nil)
-<span id="L637" class="ln">   637  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L638" class="ln">   638  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
-<span id="L639" class="ln">   639  </span>
-<span id="L640" class="ln">   640  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
-<span id="L641" class="ln">   641  </span>
-<span id="L642" class="ln">   642  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
-<span id="L643" class="ln">   643  </span>			require.NoError(t, actualErr)
-<span id="L644" class="ln">   644  </span>			assert.Len(t, actual.Items, 1)
-<span id="L645" class="ln">   645  </span>			assert.Nil(t, actual.NextCursor)
-<span id="L646" class="ln">   646  </span>		})
-<span id="L647" class="ln">   647  </span>
-<span id="L648" class="ln">   648  </span>		t.Run(&#34;limit+1件取得できた場合、limit件に切り詰められ末尾行からNextCursorが生成される&#34;, func(t *testing.T) {
-<span id="L649" class="ln">   649  </span>			t.Parallel()
-<span id="L650" class="ln">   650  </span>			ctrl := gomock.NewController(t)
-<span id="L651" class="ln">   651  </span>
-<span id="L652" class="ln">   652  </span>			first := 1
-<span id="L653" class="ln">   653  </span>			cursor, cErr := paging.NewCursor(nil, &amp;first)
-<span id="L654" class="ln">   654  </span>			require.NoError(t, cErr)
-<span id="L655" class="ln">   655  </span>
-<span id="L656" class="ln">   656  </span>			<span class="comment">// limit=1 に対し 2 件返す。先頭が表示分、2件目は次ページ存在判定用。</span>
-<span id="L657" class="ln">   657  </span>			head := newFeedUser(&#34;feed_user_head&#34;, now)
-<span id="L658" class="ln">   658  </span>			tail := newFeedUser(&#34;feed_user_tail&#34;, now.Add(-time.Hour))
-<span id="L659" class="ln">   659  </span>
-<span id="L660" class="ln">   660  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L661" class="ln">   661  </span>			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(2)).Return(user.Users{head, tail}, nil)
-<span id="L662" class="ln">   662  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L663" class="ln">   663  </span>			<span class="comment">// 切り詰め後の 1 件分のみ都道府県解決される。</span>
-<span id="L664" class="ln">   664  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
-<span id="L665" class="ln">   665  </span>
-<span id="L666" class="ln">   666  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
-<span id="L667" class="ln">   667  </span>
-<span id="L668" class="ln">   668  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
-<span id="L669" class="ln">   669  </span>			require.NoError(t, actualErr)
-<span id="L670" class="ln">   670  </span>			assert.Len(t, actual.Items, 1)
-<span id="L671" class="ln">   671  </span>			require.NotNil(t, actual.NextCursor)
-<span id="L672" class="ln">   672  </span>			<span class="comment">// NextCursor は切り詰め後の末尾（head）のソートキーから生成される。</span>
-<span id="L673" class="ln">   673  </span>			expectedCursor := paging.EncodeCursor(head.CreatedAt().Format(time.RFC3339Nano), head.ID().String())
-<span id="L674" class="ln">   674  </span>			assert.Equal(t, expectedCursor, *actual.NextCursor)
-<span id="L675" class="ln">   675  </span>		})
-<span id="L676" class="ln">   676  </span>	})
-<span id="L677" class="ln">   677  </span>
-<span id="L678" class="ln">   678  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L679" class="ln">   679  </span>		t.Parallel()
-<span id="L680" class="ln">   680  </span>
-<span id="L681" class="ln">   681  </span>		t.Run(&#34;cursorがnilの場合、ErrInvalidArgumentが返る&#34;, func(t *testing.T) {
-<span id="L682" class="ln">   682  </span>			t.Parallel()
-<span id="L683" class="ln">   683  </span>
-<span id="L684" class="ln">   684  </span>			uc := &amp;usecase{tracer: lt}
-<span id="L685" class="ln">   685  </span>			actual, actualErr := uc.ListUsersFeed(ctx, nil)
-<span id="L686" class="ln">   686  </span>			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
-<span id="L687" class="ln">   687  </span>			require.Nil(t, actual)
-<span id="L688" class="ln">   688  </span>		})
-<span id="L689" class="ln">   689  </span>
-<span id="L690" class="ln">   690  </span>		t.Run(&#34;カーソルキーが2個でない場合、ErrInvalidArgumentが返る&#34;, func(t *testing.T) {
-<span id="L691" class="ln">   691  </span>			t.Parallel()
-<span id="L692" class="ln">   692  </span>
-<span id="L693" class="ln">   693  </span>			<span class="comment">// キー1個の不正カーソル。</span>
-<span id="L694" class="ln">   694  </span>			encoded := paging.EncodeCursor(&#34;only_one_key&#34;)
-<span id="L695" class="ln">   695  </span>			first := 20
-<span id="L696" class="ln">   696  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, &amp;first)
-<span id="L697" class="ln">   697  </span>			require.NoError(t, cErr)
-<span id="L698" class="ln">   698  </span>
-<span id="L699" class="ln">   699  </span>			uc := &amp;usecase{tracer: lt}
-<span id="L700" class="ln">   700  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
-<span id="L701" class="ln">   701  </span>			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
-<span id="L702" class="ln">   702  </span>			require.Nil(t, actual)
-<span id="L703" class="ln">   703  </span>		})
-<span id="L704" class="ln">   704  </span>
-<span id="L705" class="ln">   705  </span>		t.Run(&#34;カーソルのcreated_atがRFC3339Nanoでない場合、ErrInvalidArgumentが返る&#34;, func(t *testing.T) {
-<span id="L706" class="ln">   706  </span>			t.Parallel()
-<span id="L707" class="ln">   707  </span>
-<span id="L708" class="ln">   708  </span>			encoded := paging.EncodeCursor(&#34;not-a-time&#34;, uuid.NewTestFromSalt(t, &#34;any&#34;).String())
-<span id="L709" class="ln">   709  </span>			first := 20
-<span id="L710" class="ln">   710  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, &amp;first)
-<span id="L711" class="ln">   711  </span>			require.NoError(t, cErr)
-<span id="L712" class="ln">   712  </span>
-<span id="L713" class="ln">   713  </span>			uc := &amp;usecase{tracer: lt}
-<span id="L714" class="ln">   714  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
-<span id="L715" class="ln">   715  </span>			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
-<span id="L716" class="ln">   716  </span>			require.Nil(t, actual)
-<span id="L717" class="ln">   717  </span>		})
-<span id="L718" class="ln">   718  </span>
-<span id="L719" class="ln">   719  </span>		t.Run(&#34;カーソルのidがUUIDでない場合、ErrInvalidArgumentが返る&#34;, func(t *testing.T) {
-<span id="L720" class="ln">   720  </span>			t.Parallel()
-<span id="L721" class="ln">   721  </span>
-<span id="L722" class="ln">   722  </span>			encoded := paging.EncodeCursor(now.Format(time.RFC3339Nano), &#34;not-a-uuid&#34;)
-<span id="L723" class="ln">   723  </span>			first := 20
-<span id="L724" class="ln">   724  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, &amp;first)
-<span id="L725" class="ln">   725  </span>			require.NoError(t, cErr)
-<span id="L726" class="ln">   726  </span>
-<span id="L727" class="ln">   727  </span>			uc := &amp;usecase{tracer: lt}
-<span id="L728" class="ln">   728  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
-<span id="L729" class="ln">   729  </span>			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
-<span id="L730" class="ln">   730  </span>			require.Nil(t, actual)
-<span id="L731" class="ln">   731  </span>		})
-<span id="L732" class="ln">   732  </span>
-<span id="L733" class="ln">   733  </span>		t.Run(&#34;リポジトリ取得でエラーが発生した場合、エラーが返る&#34;, func(t *testing.T) {
-<span id="L734" class="ln">   734  </span>			t.Parallel()
-<span id="L735" class="ln">   735  </span>			ctrl := gomock.NewController(t)
-<span id="L736" class="ln">   736  </span>
-<span id="L737" class="ln">   737  </span>			expectedErr := testkit.ExpectedDBError()
-<span id="L738" class="ln">   738  </span>			first := 20
-<span id="L739" class="ln">   739  </span>			cursor, cErr := paging.NewCursor(nil, &amp;first)
-<span id="L740" class="ln">   740  </span>			require.NoError(t, cErr)
-<span id="L741" class="ln">   741  </span>
-<span id="L742" class="ln">   742  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L743" class="ln">   743  </span>			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(nil, expectedErr)
-<span id="L744" class="ln">   744  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo}
-<span id="L745" class="ln">   745  </span>
-<span id="L746" class="ln">   746  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
-<span id="L747" class="ln">   747  </span>			require.ErrorIs(t, actualErr, expectedErr)
-<span id="L748" class="ln">   748  </span>			require.Nil(t, actual)
-<span id="L749" class="ln">   749  </span>		})
-<span id="L750" class="ln">   750  </span>
-<span id="L751" class="ln">   751  </span>		t.Run(&#34;ユーザーの都道府県が解決できない場合、ErrInternalが返る&#34;, func(t *testing.T) {
-<span id="L752" class="ln">   752  </span>			t.Parallel()
-<span id="L753" class="ln">   753  </span>			ctrl := gomock.NewController(t)
-<span id="L754" class="ln">   754  </span>
-<span id="L755" class="ln">   755  </span>			first := 20
-<span id="L756" class="ln">   756  </span>			cursor, cErr := paging.NewCursor(nil, &amp;first)
-<span id="L757" class="ln">   757  </span>			require.NoError(t, cErr)
-<span id="L758" class="ln">   758  </span>
-<span id="L759" class="ln">   759  </span>			u1 := newFeedUser(&#34;feed_user_1&#34;, now)
-<span id="L760" class="ln">   760  </span>
-<span id="L761" class="ln">   761  </span>			userRepo := mock_user.NewMockRepository(ctrl)
-<span id="L762" class="ln">   762  </span>			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(user.Users{u1}, nil)
-<span id="L763" class="ln">   763  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-<span id="L764" class="ln">   764  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
-<span id="L765" class="ln">   765  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+<span id="L590" class="ln">   590  </span>			first := 20
+<span id="L591" class="ln">   591  </span>			cursor, cErr := paging.NewCursor(nil, &amp;first)
+<span id="L592" class="ln">   592  </span>			require.NoError(t, cErr)
+<span id="L593" class="ln">   593  </span>
+<span id="L594" class="ln">   594  </span>			u1 := newFeedUser(&#34;feed_user_1&#34;, now)
+<span id="L595" class="ln">   595  </span>
+<span id="L596" class="ln">   596  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L597" class="ln">   597  </span>			<span class="comment">// limit+1（=21）件を要求し、先頭ページは after=nil で呼ばれる。</span>
+<span id="L598" class="ln">   598  </span>			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(user.Users{u1}, nil)
+<span id="L599" class="ln">   599  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L600" class="ln">   600  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+<span id="L601" class="ln">   601  </span>
+<span id="L602" class="ln">   602  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+<span id="L603" class="ln">   603  </span>
+<span id="L604" class="ln">   604  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+<span id="L605" class="ln">   605  </span>			require.NoError(t, actualErr)
+<span id="L606" class="ln">   606  </span>			assert.Len(t, actual.Items, 1)
+<span id="L607" class="ln">   607  </span>			assert.Nil(t, actual.NextCursor)
+<span id="L608" class="ln">   608  </span>		})
+<span id="L609" class="ln">   609  </span>
+<span id="L610" class="ln">   610  </span>		t.Run(&#34;カーソル指定の場合、afterが解釈されてリポジトリが呼ばれる&#34;, func(t *testing.T) {
+<span id="L611" class="ln">   611  </span>			t.Parallel()
+<span id="L612" class="ln">   612  </span>			ctrl := gomock.NewController(t)
+<span id="L613" class="ln">   613  </span>
+<span id="L614" class="ln">   614  </span>			afterUser := newFeedUser(&#34;feed_user_after&#34;, now)
+<span id="L615" class="ln">   615  </span>			encoded := paging.EncodeCursor(afterUser.CreatedAt().Format(time.RFC3339Nano), afterUser.ID().String())
+<span id="L616" class="ln">   616  </span>			first := 20
+<span id="L617" class="ln">   617  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, &amp;first)
+<span id="L618" class="ln">   618  </span>			require.NoError(t, cErr)
+<span id="L619" class="ln">   619  </span>
+<span id="L620" class="ln">   620  </span>			u1 := newFeedUser(&#34;feed_user_1&#34;, now)
+<span id="L621" class="ln">   621  </span>
+<span id="L622" class="ln">   622  </span>			<span class="comment">// カーソルの復号正当性は feed_cursor_test.go が担保するため、ここでは</span>
+<span id="L623" class="ln">   623  </span>			<span class="comment">// 「after 指定時に limit+1 件でリポジトリが呼ばれる」オーケストレーションのみ検証する。</span>
+<span id="L624" class="ln">   624  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L625" class="ln">   625  </span>			userRepo.EXPECT().FindFeed(
+<span id="L626" class="ln">   626  </span>				gomock.Any(),
+<span id="L627" class="ln">   627  </span>				gomock.Any(),
+<span id="L628" class="ln">   628  </span>				int32(21),
+<span id="L629" class="ln">   629  </span>			).Return(user.Users{u1}, nil)
+<span id="L630" class="ln">   630  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L631" class="ln">   631  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+<span id="L632" class="ln">   632  </span>
+<span id="L633" class="ln">   633  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+<span id="L634" class="ln">   634  </span>
+<span id="L635" class="ln">   635  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+<span id="L636" class="ln">   636  </span>			require.NoError(t, actualErr)
+<span id="L637" class="ln">   637  </span>			assert.Len(t, actual.Items, 1)
+<span id="L638" class="ln">   638  </span>			assert.Nil(t, actual.NextCursor)
+<span id="L639" class="ln">   639  </span>		})
+<span id="L640" class="ln">   640  </span>
+<span id="L641" class="ln">   641  </span>		t.Run(&#34;limit+1件取得できた場合、limit件に切り詰められ末尾行からNextCursorが生成される&#34;, func(t *testing.T) {
+<span id="L642" class="ln">   642  </span>			t.Parallel()
+<span id="L643" class="ln">   643  </span>			ctrl := gomock.NewController(t)
+<span id="L644" class="ln">   644  </span>
+<span id="L645" class="ln">   645  </span>			first := 1
+<span id="L646" class="ln">   646  </span>			cursor, cErr := paging.NewCursor(nil, &amp;first)
+<span id="L647" class="ln">   647  </span>			require.NoError(t, cErr)
+<span id="L648" class="ln">   648  </span>
+<span id="L649" class="ln">   649  </span>			<span class="comment">// limit=1 に対し 2 件返す。先頭が表示分、2件目は次ページ存在判定用。</span>
+<span id="L650" class="ln">   650  </span>			head := newFeedUser(&#34;feed_user_head&#34;, now)
+<span id="L651" class="ln">   651  </span>			tail := newFeedUser(&#34;feed_user_tail&#34;, now.Add(-time.Hour))
+<span id="L652" class="ln">   652  </span>
+<span id="L653" class="ln">   653  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L654" class="ln">   654  </span>			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(2)).Return(user.Users{head, tail}, nil)
+<span id="L655" class="ln">   655  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L656" class="ln">   656  </span>			<span class="comment">// 切り詰め後の 1 件分のみ都道府県解決される。</span>
+<span id="L657" class="ln">   657  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+<span id="L658" class="ln">   658  </span>
+<span id="L659" class="ln">   659  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+<span id="L660" class="ln">   660  </span>
+<span id="L661" class="ln">   661  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+<span id="L662" class="ln">   662  </span>			require.NoError(t, actualErr)
+<span id="L663" class="ln">   663  </span>			assert.Len(t, actual.Items, 1)
+<span id="L664" class="ln">   664  </span>			require.NotNil(t, actual.NextCursor)
+<span id="L665" class="ln">   665  </span>			<span class="comment">// NextCursor は切り詰め後の末尾（head）のソートキーから生成される。</span>
+<span id="L666" class="ln">   666  </span>			expectedCursor := paging.EncodeCursor(head.CreatedAt().Format(time.RFC3339Nano), head.ID().String())
+<span id="L667" class="ln">   667  </span>			assert.Equal(t, expectedCursor, *actual.NextCursor)
+<span id="L668" class="ln">   668  </span>		})
+<span id="L669" class="ln">   669  </span>	})
+<span id="L670" class="ln">   670  </span>
+<span id="L671" class="ln">   671  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L672" class="ln">   672  </span>		t.Parallel()
+<span id="L673" class="ln">   673  </span>
+<span id="L674" class="ln">   674  </span>		t.Run(&#34;cursorがnilの場合、ErrInvalidArgumentが返る&#34;, func(t *testing.T) {
+<span id="L675" class="ln">   675  </span>			t.Parallel()
+<span id="L676" class="ln">   676  </span>
+<span id="L677" class="ln">   677  </span>			uc := &amp;usecase{tracer: lt}
+<span id="L678" class="ln">   678  </span>			actual, actualErr := uc.ListUsersFeed(ctx, nil)
+<span id="L679" class="ln">   679  </span>			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
+<span id="L680" class="ln">   680  </span>			require.Nil(t, actual)
+<span id="L681" class="ln">   681  </span>		})
+<span id="L682" class="ln">   682  </span>
+<span id="L683" class="ln">   683  </span>		t.Run(&#34;カーソルキーが2個でない場合、ErrInvalidArgumentが返る&#34;, func(t *testing.T) {
+<span id="L684" class="ln">   684  </span>			t.Parallel()
+<span id="L685" class="ln">   685  </span>
+<span id="L686" class="ln">   686  </span>			<span class="comment">// キー1個の不正カーソル。</span>
+<span id="L687" class="ln">   687  </span>			encoded := paging.EncodeCursor(&#34;only_one_key&#34;)
+<span id="L688" class="ln">   688  </span>			first := 20
+<span id="L689" class="ln">   689  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, &amp;first)
+<span id="L690" class="ln">   690  </span>			require.NoError(t, cErr)
+<span id="L691" class="ln">   691  </span>
+<span id="L692" class="ln">   692  </span>			uc := &amp;usecase{tracer: lt}
+<span id="L693" class="ln">   693  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+<span id="L694" class="ln">   694  </span>			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
+<span id="L695" class="ln">   695  </span>			require.Nil(t, actual)
+<span id="L696" class="ln">   696  </span>		})
+<span id="L697" class="ln">   697  </span>
+<span id="L698" class="ln">   698  </span>		t.Run(&#34;カーソルのcreated_atがRFC3339Nanoでない場合、ErrInvalidArgumentが返る&#34;, func(t *testing.T) {
+<span id="L699" class="ln">   699  </span>			t.Parallel()
+<span id="L700" class="ln">   700  </span>
+<span id="L701" class="ln">   701  </span>			encoded := paging.EncodeCursor(&#34;not-a-time&#34;, uuid.NewTestFromSalt(t, &#34;any&#34;).String())
+<span id="L702" class="ln">   702  </span>			first := 20
+<span id="L703" class="ln">   703  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, &amp;first)
+<span id="L704" class="ln">   704  </span>			require.NoError(t, cErr)
+<span id="L705" class="ln">   705  </span>
+<span id="L706" class="ln">   706  </span>			uc := &amp;usecase{tracer: lt}
+<span id="L707" class="ln">   707  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+<span id="L708" class="ln">   708  </span>			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
+<span id="L709" class="ln">   709  </span>			require.Nil(t, actual)
+<span id="L710" class="ln">   710  </span>		})
+<span id="L711" class="ln">   711  </span>
+<span id="L712" class="ln">   712  </span>		t.Run(&#34;カーソルのidがUUIDでない場合、ErrInvalidArgumentが返る&#34;, func(t *testing.T) {
+<span id="L713" class="ln">   713  </span>			t.Parallel()
+<span id="L714" class="ln">   714  </span>
+<span id="L715" class="ln">   715  </span>			encoded := paging.EncodeCursor(now.Format(time.RFC3339Nano), &#34;not-a-uuid&#34;)
+<span id="L716" class="ln">   716  </span>			first := 20
+<span id="L717" class="ln">   717  </span>			cursor, cErr := paging.NewCursor(&amp;encoded, &amp;first)
+<span id="L718" class="ln">   718  </span>			require.NoError(t, cErr)
+<span id="L719" class="ln">   719  </span>
+<span id="L720" class="ln">   720  </span>			uc := &amp;usecase{tracer: lt}
+<span id="L721" class="ln">   721  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+<span id="L722" class="ln">   722  </span>			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
+<span id="L723" class="ln">   723  </span>			require.Nil(t, actual)
+<span id="L724" class="ln">   724  </span>		})
+<span id="L725" class="ln">   725  </span>
+<span id="L726" class="ln">   726  </span>		t.Run(&#34;リポジトリ取得でエラーが発生した場合、エラーが返る&#34;, func(t *testing.T) {
+<span id="L727" class="ln">   727  </span>			t.Parallel()
+<span id="L728" class="ln">   728  </span>			ctrl := gomock.NewController(t)
+<span id="L729" class="ln">   729  </span>
+<span id="L730" class="ln">   730  </span>			expectedErr := testkit.ExpectedDBError()
+<span id="L731" class="ln">   731  </span>			first := 20
+<span id="L732" class="ln">   732  </span>			cursor, cErr := paging.NewCursor(nil, &amp;first)
+<span id="L733" class="ln">   733  </span>			require.NoError(t, cErr)
+<span id="L734" class="ln">   734  </span>
+<span id="L735" class="ln">   735  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L736" class="ln">   736  </span>			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(nil, expectedErr)
+<span id="L737" class="ln">   737  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo}
+<span id="L738" class="ln">   738  </span>
+<span id="L739" class="ln">   739  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+<span id="L740" class="ln">   740  </span>			require.ErrorIs(t, actualErr, expectedErr)
+<span id="L741" class="ln">   741  </span>			require.Nil(t, actual)
+<span id="L742" class="ln">   742  </span>		})
+<span id="L743" class="ln">   743  </span>
+<span id="L744" class="ln">   744  </span>		t.Run(&#34;ユーザーの都道府県が解決できない場合、ErrInternalが返る&#34;, func(t *testing.T) {
+<span id="L745" class="ln">   745  </span>			t.Parallel()
+<span id="L746" class="ln">   746  </span>			ctrl := gomock.NewController(t)
+<span id="L747" class="ln">   747  </span>
+<span id="L748" class="ln">   748  </span>			first := 20
+<span id="L749" class="ln">   749  </span>			cursor, cErr := paging.NewCursor(nil, &amp;first)
+<span id="L750" class="ln">   750  </span>			require.NoError(t, cErr)
+<span id="L751" class="ln">   751  </span>
+<span id="L752" class="ln">   752  </span>			u1 := newFeedUser(&#34;feed_user_1&#34;, now)
+<span id="L753" class="ln">   753  </span>
+<span id="L754" class="ln">   754  </span>			userRepo := mock_user.NewMockRepository(ctrl)
+<span id="L755" class="ln">   755  </span>			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(user.Users{u1}, nil)
+<span id="L756" class="ln">   756  </span>			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+<span id="L757" class="ln">   757  </span>			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
+<span id="L758" class="ln">   758  </span>			uc := &amp;usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+<span id="L759" class="ln">   759  </span>
+<span id="L760" class="ln">   760  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+<span id="L761" class="ln">   761  </span>			require.ErrorIs(t, actualErr, apperror.ErrInternal)
+<span id="L762" class="ln">   762  </span>			require.Nil(t, actual)
+<span id="L763" class="ln">   763  </span>		})
+<span id="L764" class="ln">   764  </span>	})
+<span id="L765" class="ln">   765  </span>}
 <span id="L766" class="ln">   766  </span>
-<span id="L767" class="ln">   767  </span>			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
-<span id="L768" class="ln">   768  </span>			require.ErrorIs(t, actualErr, apperror.ErrInternal)
-<span id="L769" class="ln">   769  </span>			require.Nil(t, actual)
-<span id="L770" class="ln">   770  </span>		})
-<span id="L771" class="ln">   771  </span>	})
-<span id="L772" class="ln">   772  </span>}
-<span id="L773" class="ln">   773  </span>
-<span id="L774" class="ln">   774  </span><span class="comment">// newCreateDTO は、テスト用のCreateParamsDTOを生成するヘルパー関数です。</span>
-<span id="L775" class="ln">   775  </span>func newCreateDTO(u *user.User, pName string) *CreateParamsDTO {
-<span id="L776" class="ln">   776  </span>	return &amp;CreateParamsDTO{
-<span id="L777" class="ln">   777  </span>		UserID:      u.ID(),
-<span id="L778" class="ln">   778  </span>		RawPassword: &#34;password&#34;,
-<span id="L779" class="ln">   779  </span>		UpdateProfileParams: UpdateProfileParams{
-<span id="L780" class="ln">   780  </span>			FirstName:      u.FirstName(),
-<span id="L781" class="ln">   781  </span>			LastName:       u.LastName(),
-<span id="L782" class="ln">   782  </span>			Email:          u.Email(),
-<span id="L783" class="ln">   783  </span>			Phone:          u.Phone(),
-<span id="L784" class="ln">   784  </span>			PostalCode:     u.PostalCode(),
-<span id="L785" class="ln">   785  </span>			PrefectureName: pName,
-<span id="L786" class="ln">   786  </span>			City:           u.City(),
-<span id="L787" class="ln">   787  </span>			Street:         u.Street(),
-<span id="L788" class="ln">   788  </span>			Building:       u.Building(),
-<span id="L789" class="ln">   789  </span>		},
-<span id="L790" class="ln">   790  </span>	}
-<span id="L791" class="ln">   791  </span>}
-<span id="L792" class="ln">   792  </span>
+<span id="L767" class="ln">   767  </span><span class="comment">// newCreateDTO は、テスト用のCreateParamsDTOを生成するヘルパー関数です。</span>
+<span id="L768" class="ln">   768  </span>func newCreateDTO(u *user.User, pName string) *CreateParamsDTO {
+<span id="L769" class="ln">   769  </span>	return &amp;CreateParamsDTO{
+<span id="L770" class="ln">   770  </span>		UserID:      u.ID(),
+<span id="L771" class="ln">   771  </span>		RawPassword: &#34;password&#34;,
+<span id="L772" class="ln">   772  </span>		UpdateProfileParams: UpdateProfileParams{
+<span id="L773" class="ln">   773  </span>			FirstName:      u.FirstName(),
+<span id="L774" class="ln">   774  </span>			LastName:       u.LastName(),
+<span id="L775" class="ln">   775  </span>			Email:          u.Email(),
+<span id="L776" class="ln">   776  </span>			Phone:          u.Phone(),
+<span id="L777" class="ln">   777  </span>			PostalCode:     u.PostalCode(),
+<span id="L778" class="ln">   778  </span>			PrefectureName: pName,
+<span id="L779" class="ln">   779  </span>			City:           u.City(),
+<span id="L780" class="ln">   780  </span>			Street:         u.Street(),
+<span id="L781" class="ln">   781  </span>			Building:       u.Building(),
+<span id="L782" class="ln">   782  </span>		},
+<span id="L783" class="ln">   783  </span>	}
+<span id="L784" class="ln">   784  </span>}
+<span id="L785" class="ln">   785  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/user/user_usecase_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

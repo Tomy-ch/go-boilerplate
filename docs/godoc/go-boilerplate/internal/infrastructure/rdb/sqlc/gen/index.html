@@ -105,12 +105,37 @@
 			
 			
 				
+				<dd><a href="#ClaimIdempotencyKeyParams">type ClaimIdempotencyKeyParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CompleteIdempotencyKeyParams">type CompleteIdempotencyKeyParams</a></dd>
+				
+				
+			
+				
 				<dd><a href="#CreateUserParams">type CreateUserParams</a></dd>
 				
 				
 			
 				
 				<dd><a href="#DBTX">type DBTX</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DeleteExpiredIdempotencyKeysParams">type DeleteExpiredIdempotencyKeysParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GetIdempotencyKeyParams">type GetIdempotencyKeyParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GetIdempotencyKeyRow">type GetIdempotencyKeyRow</a></dd>
 				
 				
 			
@@ -227,6 +252,12 @@
 				
 				
 					
+					<dd>    <a href="#Queries.ClaimIdempotencyKey">func (q *Queries) ClaimIdempotencyKey(ctx context.Context, arg *ClaimIdempotencyKeyParams) (uuid.UUID, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.CompleteIdempotencyKey">func (q *Queries) CompleteIdempotencyKey(ctx context.Context, arg *CompleteIdempotencyKeyParams) (int64, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.CountActiveUsers">func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error)</a></dd>
 				
 					
@@ -248,7 +279,13 @@
 					<dd>    <a href="#Queries.CreateUser">func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) error</a></dd>
 				
 					
+					<dd>    <a href="#Queries.DeleteExpiredIdempotencyKeys">func (q *Queries) DeleteExpiredIdempotencyKeys(ctx context.Context, arg *DeleteExpiredIdempotencyKeysParams) (int64, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.GetDBHealthCheck">func (q *Queries) GetDBHealthCheck(ctx context.Context) (int32, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.GetIdempotencyKey">func (q *Queries) GetIdempotencyKey(ctx context.Context, arg *GetIdempotencyKeyParams) (*GetIdempotencyKeyRow, error)</a></dd>
 				
 					
 					<dd>    <a href="#Queries.GetPrefectureDomainByID">func (q *Queries) GetPrefectureDomainByID(ctx context.Context, idParam uuid.UUID) (*GetPrefectureDomainByIDRow, error)</a></dd>
@@ -355,6 +392,8 @@
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/health_check_system_query.gen.sql.go.html">health_check_system_query.gen.sql.go</a>
 			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html">idempotency_system_query.gen.sql.go</a>
+			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html">models.gen.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go.html">prefecture_repository.gen.sql.go</a>
@@ -374,6 +413,64 @@
 		
 		
 		
+		
+			
+			
+			<h2 id="ClaimIdempotencyKeyParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=547:753#L21">ClaimIdempotencyKeyParams</a>
+				<a class="permalink" href="#ClaimIdempotencyKeyParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ClaimIdempotencyKeyParams struct {
+<span id="ClaimIdempotencyKeyParams.Scope"></span>    Scope              <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimIdempotencyKeyParams.IdempotencyKey"></span>    IdempotencyKey     <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimIdempotencyKeyParams.RequestMethod"></span>    RequestMethod      <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimIdempotencyKeyParams.RequestPath"></span>    RequestPath        <a href="../../../../../../builtin/#string">string</a>
+<span id="ClaimIdempotencyKeyParams.RequestFingerprint"></span>    RequestFingerprint []<a href="../../../../../../builtin/#byte">byte</a>
+<span id="ClaimIdempotencyKeyParams.ExpiresAt"></span>    ExpiresAt          <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CompleteIdempotencyKeyParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=1883:2023#L72">CompleteIdempotencyKeyParams</a>
+				<a class="permalink" href="#CompleteIdempotencyKeyParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type CompleteIdempotencyKeyParams struct {
+<span id="CompleteIdempotencyKeyParams.Scope"></span>    Scope           <a href="../../../../../../builtin/#string">string</a>
+<span id="CompleteIdempotencyKeyParams.IdempotencyKey"></span>    IdempotencyKey  <a href="../../../../../../builtin/#string">string</a>
+<span id="CompleteIdempotencyKeyParams.ResponseStatus"></span>    ResponseStatus  *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="CompleteIdempotencyKeyParams.ResponsePayload"></span>    ResponsePayload []<a href="../../../../../../builtin/#byte">byte</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
 		
 			
 			
@@ -425,6 +522,86 @@
     Query(<a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, <a href="../../../../../../builtin/#string">string</a>, ...interface{}) (pgx.<a href="#Rows">Rows</a>, <a href="../../../../../../builtin/#error">error</a>)
     QueryRow(<a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, <a href="../../../../../../builtin/#string">string</a>, ...interface{}) pgx.<a href="#Row">Row</a>
 }</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="DeleteExpiredIdempotencyKeysParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=3098:3186#L115">DeleteExpiredIdempotencyKeysParams</a>
+				<a class="permalink" href="#DeleteExpiredIdempotencyKeysParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type DeleteExpiredIdempotencyKeysParams struct {
+<span id="DeleteExpiredIdempotencyKeysParams.ExpiresAt"></span>    ExpiresAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="DeleteExpiredIdempotencyKeysParams.Limit"></span>    Limit     <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetIdempotencyKeyParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=4067:4152#L150">GetIdempotencyKeyParams</a>
+				<a class="permalink" href="#GetIdempotencyKeyParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetIdempotencyKeyParams struct {
+<span id="GetIdempotencyKeyParams.Scope"></span>    Scope          <a href="../../../../../../builtin/#string">string</a>
+<span id="GetIdempotencyKeyParams.IdempotencyKey"></span>    IdempotencyKey <a href="../../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetIdempotencyKeyRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=4154:4298#L155">GetIdempotencyKeyRow</a>
+				<a class="permalink" href="#GetIdempotencyKeyRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type GetIdempotencyKeyRow struct {
+<span id="GetIdempotencyKeyRow.Status"></span>    Status             <a href="../../../../../../builtin/#string">string</a>
+<span id="GetIdempotencyKeyRow.ResponseStatus"></span>    ResponseStatus     *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="GetIdempotencyKeyRow.ResponsePayload"></span>    ResponsePayload    []<a href="../../../../../../builtin/#byte">byte</a>
+<span id="GetIdempotencyKeyRow.RequestFingerprint"></span>    RequestFingerprint []<a href="../../../../../../builtin/#byte">byte</a>
+}
+</pre>
 
 			
 
@@ -1146,6 +1323,58 @@
 
 			
 				
+				<h3 id="Queries.ClaimIdempotencyKey">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=1261:1370#L46">ClaimIdempotencyKey</a>
+					<a class="permalink" href="#Queries.ClaimIdempotencyKey">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ClaimIdempotencyKey(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ClaimIdempotencyKeyParams">ClaimIdempotencyKeyParams</a>) (<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/idempotency/claim_idempotency_key.sql ===
+業務 tx 内でキーを claim する。既存キーがある場合は 0 行を返す。
+</p><pre>INSERT INTO idempotency_keys (
+    scope,
+    idempotency_key,
+    request_method,
+    request_path,
+    request_fingerprint,
+    status,
+    expires_at
+) VALUES (
+    $1, $2, $3, $4, $5, &#39;claimed&#39;, $6
+)
+ON CONFLICT ON CONSTRAINT idempotency_keys_scope_key_unique DO NOTHING
+RETURNING id
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.CompleteIdempotencyKey">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=2496:2607#L91">CompleteIdempotencyKey</a>
+					<a class="permalink" href="#Queries.CompleteIdempotencyKey">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) CompleteIdempotencyKey(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#CompleteIdempotencyKeyParams">CompleteIdempotencyKeyParams</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/idempotency/complete_idempotency_key.sql ===
+同一 tx 内で claimed → completed へ遷移し、結果 DTO(JSON) と HTTP ステータスを保存する。scope 必須（越境防止）。
+</p><pre>UPDATE idempotency_keys
+SET
+    status = &#39;completed&#39;,
+    response_status = $3,
+    response_payload = $4,
+    completed_at = NOW()
+WHERE scope = $1
+    AND idempotency_key = $2
+    AND status = &#39;claimed&#39;
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.CountActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=394:464#L16">CountActiveUsers</a>
 					<a class="permalink" href="#Queries.CountActiveUsers">¶</a>
 					
@@ -1293,6 +1522,29 @@ FROM users
 				
 			
 				
+				<h3 id="Queries.DeleteExpiredIdempotencyKeys">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=3564:3687#L131">DeleteExpiredIdempotencyKeys</a>
+					<a class="permalink" href="#Queries.DeleteExpiredIdempotencyKeys">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) DeleteExpiredIdempotencyKeys(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#DeleteExpiredIdempotencyKeysParams">DeleteExpiredIdempotencyKeysParams</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/idempotency/delete_expired_idempotency_keys.sql ===
+TTL 失効行を最大 $2 件削除し、削除件数を返す。
+</p><pre>DELETE FROM idempotency_keys
+WHERE id IN (
+        SELECT ik.id
+        FROM idempotency_keys AS ik
+        WHERE ik.expires_at &lt; $1
+        ORDER BY ik.expires_at
+        LIMIT $2
+    )
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.GetDBHealthCheck">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/health_check_system_query.gen.sql.go.html?s=352:422#L9">GetDBHealthCheck</a>
 					<a class="permalink" href="#Queries.GetDBHealthCheck">¶</a>
 					
@@ -1301,6 +1553,29 @@ FROM users
 				<pre>func (q *<a href="#Queries">Queries</a>) GetDBHealthCheck(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) (<a href="../../../../../../builtin/#int32">int32</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>=== source: database/dml/system_query/health_check/select_system_health.sql ===
 </p><pre>SELECT 1 AS health_check
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.GetIdempotencyKey">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/idempotency_system_query.gen.sql.go.html?s=4655:4772#L173">GetIdempotencyKey</a>
+					<a class="permalink" href="#Queries.GetIdempotencyKey">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) GetIdempotencyKey(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#GetIdempotencyKeyParams">GetIdempotencyKeyParams</a>) (*<a href="#GetIdempotencyKeyRow">GetIdempotencyKeyRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/system_query/idempotency/get_idempotency_key.sql ===
+scope 必須（越境防止）。scope と idempotency_key で一致する行を返す。
+</p><pre>SELECT
+    status,
+    response_status,
+    response_payload,
+    request_fingerprint
+FROM idempotency_keys
+WHERE scope = $1
+    AND idempotency_key = $2
 </pre>
 
 				
