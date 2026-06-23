@@ -63,22 +63,22 @@
 <span id="L6" class="ln">     6  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L7" class="ln">     7  </span>)
 <span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>func TestSetUpConfig_Succeeds(t *testing.T) {
-<span id="L10" class="ln">    10  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可</span>
-<span id="L11" class="ln">    11  </span>		t.Run(&#34;正常に設定が読み込まれることを確認する&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可</span>
-<span id="L12" class="ln">    12  </span>			EnsureRepoRootAndEnv(t, TestingEnvValue)
-<span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span>			cfg, err := SetUpConfig()
-<span id="L15" class="ln">    15  </span>			require.NoError(t, err)
-<span id="L16" class="ln">    16  </span>			require.NotNil(t, cfg)
-<span id="L17" class="ln">    17  </span>		})
-<span id="L18" class="ln">    18  </span>	})
-<span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L21" class="ln">    21  </span>		t.Run(&#34;設定の読み込みに失敗した場合、エラーが返されることを確認する&#34;, func(t *testing.T) {
-<span id="L22" class="ln">    22  </span>			tmp := t.TempDir()
-<span id="L23" class="ln">    23  </span>			t.Chdir(tmp)
-<span id="L24" class="ln">    24  </span>			t.Setenv(envKey, &#34;&#34;)
+<span id="L9" class="ln">     9  </span><span class="comment">//nolint:paralleltest // SetUpConfig は os.Setenv でグローバル環境を変更するため並列化不可</span>
+<span id="L10" class="ln">    10  </span>func TestSetUpConfig_Succeeds(t *testing.T) {
+<span id="L11" class="ln">    11  </span>	restoreEnvAfterTest(t)
+<span id="L12" class="ln">    12  </span>
+<span id="L13" class="ln">    13  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L14" class="ln">    14  </span>		t.Run(&#34;正常に設定が読み込まれることを確認する&#34;, func(t *testing.T) {
+<span id="L15" class="ln">    15  </span>			cfg, err := SetUpConfig()
+<span id="L16" class="ln">    16  </span>			require.NoError(t, err)
+<span id="L17" class="ln">    17  </span>			require.NotNil(t, cfg)
+<span id="L18" class="ln">    18  </span>		})
+<span id="L19" class="ln">    19  </span>	})
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L22" class="ln">    22  </span>		t.Run(&#34;設定値が不正な場合、エラーが返されることを確認する&#34;, func(t *testing.T) {
+<span id="L23" class="ln">    23  </span>			<span class="comment">// Load は既存の環境変数を上書きしないため、不正な APP_MODE が残り検証で落ちる。</span>
+<span id="L24" class="ln">    24  </span>			t.Setenv(&#34;APP_MODE&#34;, &#34;invalid-mode&#34;)
 <span id="L25" class="ln">    25  </span>
 <span id="L26" class="ln">    26  </span>			cfg, err := SetUpConfig()
 <span id="L27" class="ln">    27  </span>			require.Error(t, err)

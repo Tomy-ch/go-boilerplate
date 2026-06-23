@@ -58,46 +58,46 @@
 <pre><span id="L1" class="ln">     1  </span>package config
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;testing&#34;
-<span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L7" class="ln">     7  </span>)
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>func TestLoad(t *testing.T) {
-<span id="L10" class="ln">    10  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可</span>
-<span id="L11" class="ln">    11  </span>		t.Run(&#34;ENV が設定されている場合、Load はエラーなく成功する&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可</span>
-<span id="L12" class="ln">    12  </span>			EnsureRepoRootAndEnv(t, TestingEnvValue)
-<span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span>			err := Load()
-<span id="L15" class="ln">    15  </span>			require.NoError(t, err)
-<span id="L16" class="ln">    16  </span>		})
-<span id="L17" class="ln">    17  </span>	})
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L20" class="ln">    20  </span>		t.Run(&#34;デフォルトの .env ファイルが存在しない場合、ErrFailedToLoadDefaultEnvFile を返す&#34;, func(t *testing.T) {
-<span id="L21" class="ln">    21  </span>			tmp := t.TempDir()
-<span id="L22" class="ln">    22  </span>			t.Chdir(tmp)
-<span id="L23" class="ln">    23  </span>			t.Setenv(envKey, &#34;&#34;)
-<span id="L24" class="ln">    24  </span>
-<span id="L25" class="ln">    25  </span>			err := Load()
-<span id="L26" class="ln">    26  </span>			require.ErrorIs(t, err, ErrFailedToLoadDefaultEnvFile)
-<span id="L27" class="ln">    27  </span>		})
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span>		t.Run(&#34;env/.env は存在するが ENV が空のため ErrEnvNotResolved を返す&#34;, func(t *testing.T) {
-<span id="L30" class="ln">    30  </span>			EnsureRepoRootAndEnv(t, TestingEnvValue)
-<span id="L31" class="ln">    31  </span>			t.Setenv(envKey, &#34;&#34;)
+<span id="L4" class="ln">     4  </span>	&#34;os&#34;
+<span id="L5" class="ln">     5  </span>	&#34;strings&#34;
+<span id="L6" class="ln">     6  </span>	&#34;testing&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L10" class="ln">    10  </span>)
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span><span class="comment">//nolint:paralleltest // Load は os.Setenv でグローバル環境を変更するため並列化不可</span>
+<span id="L13" class="ln">    13  </span>func TestLoad(t *testing.T) {
+<span id="L14" class="ln">    14  </span>	restoreEnvAfterTest(t)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L17" class="ln">    17  </span>		t.Run(&#34;埋め込み env を読み込み環境変数へ反映する&#34;, func(t *testing.T) {
+<span id="L18" class="ln">    18  </span>			_ = os.Unsetenv(&#34;APP_NAME&#34;)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>			require.NoError(t, Load())
+<span id="L21" class="ln">    21  </span>			assert.Equal(t, &#34;Boilerplate&#34;, os.Getenv(&#34;APP_NAME&#34;))
+<span id="L22" class="ln">    22  </span>		})
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span>		t.Run(&#34;既存の環境変数は上書きしない&#34;, func(t *testing.T) {
+<span id="L25" class="ln">    25  </span>			t.Setenv(&#34;APP_NAME&#34;, &#34;existing-value&#34;)
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span>			require.NoError(t, Load())
+<span id="L28" class="ln">    28  </span>			assert.Equal(t, &#34;existing-value&#34;, os.Getenv(&#34;APP_NAME&#34;))
+<span id="L29" class="ln">    29  </span>		})
+<span id="L30" class="ln">    30  </span>	})
+<span id="L31" class="ln">    31  </span>}
 <span id="L32" class="ln">    32  </span>
-<span id="L33" class="ln">    33  </span>			err := Load()
-<span id="L34" class="ln">    34  </span>			require.ErrorIs(t, err, ErrEnvNotResolved)
-<span id="L35" class="ln">    35  </span>		})
-<span id="L36" class="ln">    36  </span>
-<span id="L37" class="ln">    37  </span>		t.Run(&#34;ENV に対応する .env.&lt;env&gt; が存在しない場合、ErrFailedToLoadEnvFile を返す&#34;, func(t *testing.T) {
-<span id="L38" class="ln">    38  </span>			EnsureRepoRootAndEnv(t, TestingEnvValue)
-<span id="L39" class="ln">    39  </span>			t.Setenv(envKey, &#34;nonexistent_env&#34;)
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>			err := Load()
-<span id="L42" class="ln">    42  </span>			require.ErrorIs(t, err, ErrFailedToLoadEnvFile)
-<span id="L43" class="ln">    43  </span>		})
+<span id="L33" class="ln">    33  </span><span class="comment">// restoreEnvAfterTest は、テスト終了時に環境変数をテスト開始時点へ戻します。</span>
+<span id="L34" class="ln">    34  </span>func restoreEnvAfterTest(t *testing.T) {
+<span id="L35" class="ln">    35  </span>	t.Helper()
+<span id="L36" class="ln">    36  </span>	snapshot := os.Environ()
+<span id="L37" class="ln">    37  </span>	t.Cleanup(func() {
+<span id="L38" class="ln">    38  </span>		os.Clearenv()
+<span id="L39" class="ln">    39  </span>		for _, kv := range snapshot {
+<span id="L40" class="ln">    40  </span>			k, v, _ := strings.Cut(kv, &#34;=&#34;)
+<span id="L41" class="ln">    41  </span>			<span class="comment">//nolint:usetesting // テスト後の環境変数一括復元のため t.Setenv は使用できない</span>
+<span id="L42" class="ln">    42  </span>			_ = os.Setenv(k, v)
+<span id="L43" class="ln">    43  </span>		}
 <span id="L44" class="ln">    44  </span>	})
 <span id="L45" class="ln">    45  </span>}
 <span id="L46" class="ln">    46  </span>
