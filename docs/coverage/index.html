@@ -79,11 +79,11 @@
 				
 				<option value="file11">go-boilerplate/internal/config/config_testing_setter.go (100.0%)</option>
 				
-				<option value="file12">go-boilerplate/internal/config/loader.go (100.0%)</option>
+				<option value="file12">go-boilerplate/internal/config/loader.go (75.0%)</option>
 				
 				<option value="file13">go-boilerplate/internal/config/model.go (100.0%)</option>
 				
-				<option value="file14">go-boilerplate/internal/config/setup.go (100.0%)</option>
+				<option value="file14">go-boilerplate/internal/config/setup.go (66.7%)</option>
 				
 				<option value="file15">go-boilerplate/internal/config/test_kit.go (100.0%)</option>
 				
@@ -1452,13 +1452,13 @@ import (
 )
 
 // New は、アプリケーションの設定を初期化します。
-func New() (*Config, error) <span class="cov4" title="13">{
+func New() (*Config, error) <span class="cov4" title="14">{
         cfg, err := env.ParseAs[Loader]()
         if err != nil </span><span class="cov1" title="1">{
                 return nil, fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
         }</span>
 
-        <span class="cov4" title="12">if err := validateConfig(cfg); err != nil </span><span class="cov1" title="1">{
+        <span class="cov4" title="13">if err := validateConfig(cfg); err != nil </span><span class="cov1" title="2">{
                 return nil, err
         }</span>
 
@@ -1541,8 +1541,8 @@ func New() (*Config, error) <span class="cov4" title="13">{
 }
 
 // validateConfig は、Loaderの内容を検証します。
-func validateConfig(cfg Loader) error <span class="cov5" title="19">{
-        if err := validateApplicationConfig(cfg.App); err != nil </span><span class="cov1" title="2">{
+func validateConfig(cfg Loader) error <span class="cov5" title="20">{
+        if err := validateApplicationConfig(cfg.App); err != nil </span><span class="cov2" title="3">{
                 return err
         }</span>
 
@@ -1570,8 +1570,8 @@ func validateConfig(cfg Loader) error <span class="cov5" title="19">{
 }
 
 // validateApplicationConfig は、アプリケーション設定を検証します。
-func validateApplicationConfig(appCfg Application) error <span class="cov5" title="22">{
-        if appCfg.Mode != DevelopmentMode &amp;&amp; appCfg.Mode != ProductionMode </span><span class="cov2" title="3">{
+func validateApplicationConfig(appCfg Application) error <span class="cov5" title="23">{
+        if appCfg.Mode != DevelopmentMode &amp;&amp; appCfg.Mode != ProductionMode </span><span class="cov2" title="4">{
                 return ErrInvalidAppMode
         }</span>
         <span class="cov5" title="19">switch appCfg.LogLevel </span>{
@@ -1707,8 +1707,6 @@ import (
 )
 
 const (
-        // envKey は、環境変数のキー名です。
-        envKey = "ENV"
         // TestingEnvValue は、テスト用の環境変数の値です。
         TestingEnvValue = "ci"
 )
@@ -2146,36 +2144,37 @@ func (a *AuthConfig) SetAllowedHeaderBearer(tb testing.TB, allowed bool) <span c
 		<pre class="file" id="file12" style="display: none">package config
 
 import (
+        "bytes"
         "fmt"
         "os"
-        "path/filepath"
+
+        rootenv "go-boilerplate"
 
         "github.com/joho/godotenv"
 )
 
-const envDir = "env"
-
-// Load は、環境変数を読み込む関数です。
-func Load() error <span class="cov10" title="14">{
-        env := os.Getenv("ENV")
-
-        if env == "" </span><span class="cov4" title="3">{
-                base := filepath.Join(envDir, ".env")
-                if err := godotenv.Load(base); err != nil </span><span class="cov3" title="2">{
-                        return fmt.Errorf("%w : %w", ErrFailedToLoadDefaultEnvFile, err)
-                }</span>
-                <span class="cov1" title="1">env = os.Getenv("ENV")</span>
-        }
-
-        <span class="cov9" title="12">if env == "" </span><span class="cov1" title="1">{
-                return ErrEnvNotResolved
-        }</span>
-
-        <span class="cov9" title="11">path := filepath.Join(envDir, ".env."+env)
-        if err := godotenv.Load(path); err != nil </span><span class="cov1" title="1">{
+// Load は、埋め込まれた env ファイルから環境変数を設定します。
+// 既に設定済みの環境変数は上書きしません（実行時注入を優先）。
+func Load() error <span class="cov4" title="12">{
+        b, err := rootenv.FS.ReadFile("env/.env")
+        if err != nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("%w : %w", ErrFailedToLoadEnvFile, err)
         }</span>
-        <span class="cov8" title="10">return nil</span>
+
+        <span class="cov4" title="12">kv, err := godotenv.Parse(bytes.NewReader(b))
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
+        }</span>
+
+        <span class="cov4" title="12">for k, v := range kv </span><span class="cov10" title="564">{
+                if _, ok := os.LookupEnv(k); ok </span><span class="cov9" title="474">{
+                        continue</span>
+                }
+                <span class="cov7" title="90">if err := os.Setenv(k, v); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
+                }</span>
+        }
+        <span class="cov4" title="12">return nil</span>
 }
 </pre>
 		
@@ -2493,11 +2492,11 @@ func (a *AuthConfig) AllowedHeaderBearer() bool <span class="cov3" title="6">{ r
 
 // SetUpConfig は、Configを初期化するための関数です。
 func SetUpConfig() (*Config, error) <span class="cov10" title="10">{
-        if err := Load(); err != nil </span><span class="cov1" title="1">{
+        if err := Load(); err != nil </span><span class="cov0" title="0">{
                 return nil, err
         }</span>
 
-        <span class="cov9" title="9">return New()</span>
+        <span class="cov10" title="10">return New()</span>
 }
 </pre>
 		
@@ -2509,6 +2508,7 @@ import (
         "testing"
         "time"
 
+        "github.com/joho/godotenv"
         "github.com/stretchr/testify/require"
 )
 
@@ -2523,29 +2523,36 @@ func NewTestLocation(t *testing.T) *time.Location <span class="cov2" title="2">{
         return loc
 }</span>
 
-// EnsureRepoRootAndEnv は、go.mod のあるリポジトリルートへ作業ディレクトリを移動し（見つかった場合）、
-// 併せてテスト用の ENV を t.Setenv で設定します。作業ディレクトリの復元は t.Chdir が自動で行います。
-func EnsureRepoRootAndEnv(t *testing.T, env string) <span class="cov6" title="10">{
+// EnsureRepoRootAndEnv は、go.mod のあるリポジトリルートへ作業ディレクトリを移動し、
+// env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（local）より対象環境の値が優先されます。
+// 作業ディレクトリと環境変数の復元は t.Chdir / t.Setenv が自動で行います。
+func EnsureRepoRootAndEnv(t *testing.T, env string) <span class="cov3" title="5">{
         t.Helper()
 
-        orig, err := os.Getwd()
+        root := repoRoot(t)
+        t.Chdir(root)
+
+        kv, err := godotenv.Read(filepath.Join(root, "env", ".env."+env))
         require.NoError(t, err)
+        for k, v := range kv </span><span class="cov10" title="235">{
+                t.Setenv(k, v)
+        }</span>
+}
 
-        // find repo root by locating go.mod upwards
-        p := orig
-        for </span><span class="cov10" title="32">{
-                if _, err := os.Stat(filepath.Join(p, "go.mod")); err == nil </span><span class="cov6" title="9">{
-                        t.Chdir(p)
-                        break</span>
-                }
-                <span class="cov9" title="23">parent := filepath.Dir(p)
-                if parent == p </span><span class="cov1" title="1">{
-                        break</span>
-                }
-                <span class="cov9" title="22">p = parent</span>
+// repoRoot は、go.mod を上方向に探索してリポジトリルートを返します。
+func repoRoot(t *testing.T) string <span class="cov3" title="5">{
+        t.Helper()
+
+        p, err := os.Getwd()
+        require.NoError(t, err)
+        for </span><span class="cov5" title="16">{
+                if _, err := os.Stat(filepath.Join(p, "go.mod")); err == nil </span><span class="cov3" title="5">{
+                        return p
+                }</span>
+                <span class="cov4" title="11">parent := filepath.Dir(p)
+                require.NotEqual(t, parent, p, "リポジトリルート（go.mod）が見つかりません")
+                p = parent</span>
         }
-
-        <span class="cov6" title="10">t.Setenv(envKey, env)</span>
 }
 </pre>
 		
@@ -6509,7 +6516,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="25">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="32">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -9387,7 +9394,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov6" title="233">{
+        for i, line := range lines </span><span class="cov6" title="305">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>
@@ -12413,7 +12420,7 @@ func New(msg string) error <span class="cov9" title="798">{
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
-func Wrap(err error, msg string) error <span class="cov10" title="1687">{
+func Wrap(err error, msg string) error <span class="cov10" title="1573">{
         return errors.Wrap(err, msg)
 }</span>
 

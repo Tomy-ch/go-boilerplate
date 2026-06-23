@@ -545,7 +545,6 @@
 			
 				
 				<pre>const (
-
     <span class="comment">// TestingEnvValue は、テスト用の環境変数の値です。</span>
     <span id="TestingEnvValue">TestingEnvValue</span> = &#34;ci&#34;
 )</pre>
@@ -587,17 +586,7 @@
         errInvalidConfig,
         &#34;http only localhost is allowed&#34;,
     )
-    <span class="comment">// ErrEnvNotResolved は、env/.env 読み込み後も ENV が解決できなかったことを示すエラーです。</span>
-    <span id="ErrEnvNotResolved">ErrEnvNotResolved</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(
-        errInvalidConfig,
-        &#34;ENV is not set after loading env/.env&#34;,
-    )
-    <span class="comment">// ErrFailedToLoadDefaultEnvFile は、デフォルトの env/.env 読み込みに失敗したことを示すエラーです。</span>
-    <span id="ErrFailedToLoadDefaultEnvFile">ErrFailedToLoadDefaultEnvFile</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(
-        errInvalidConfig,
-        &#34;failed to load default env file&#34;,
-    )
-    <span class="comment">// ErrFailedToLoadEnvFile は、ENV に対応する env/.env.&lt;env&gt; 読み込みに失敗したことを示すエラーです。</span>
+    <span class="comment">// ErrFailedToLoadEnvFile は、埋め込み env ファイルの読み込みに失敗したことを示すエラーです。</span>
     <span id="ErrFailedToLoadEnvFile">ErrFailedToLoadEnvFile</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(
         errInvalidConfig,
         &#34;failed to load env file&#34;,
@@ -668,14 +657,15 @@
 		
 			
 			
-			<h2 id="EnsureRepoRootAndEnv">func <a href="../../../src/go-boilerplate/internal/config/test_kit.go.html?s=697:748#L15">EnsureRepoRootAndEnv</a>
+			<h2 id="EnsureRepoRootAndEnv">func <a href="../../../src/go-boilerplate/internal/config/test_kit.go.html?s=794:845#L17">EnsureRepoRootAndEnv</a>
 				<a class="permalink" href="#EnsureRepoRootAndEnv">¶</a>
 				
 				
 			</h2>
 			<pre>func EnsureRepoRootAndEnv(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>, env <a href="../../../builtin/#string">string</a>)</pre>
-			<p>EnsureRepoRootAndEnv は、go.mod のあるリポジトリルートへ作業ディレクトリを移動し（見つかった場合）、
-併せてテスト用の ENV を t.Setenv で設定します。作業ディレクトリの復元は t.Chdir が自動で行います。
+			<p>EnsureRepoRootAndEnv は、go.mod のあるリポジトリルートへ作業ディレクトリを移動し、
+env/.env.&lt;env&gt; の各値を t.Setenv で設定します。埋め込み（local）より対象環境の値が優先されます。
+作業ディレクトリと環境変数の復元は t.Chdir / t.Setenv が自動で行います。
 
 			
 			
@@ -683,13 +673,14 @@
 		
 			
 			
-			</p><h2 id="Load">func <a href="../../../src/go-boilerplate/internal/config/loader.go.html?s=166:183#L4">Load</a>
+			</p><h2 id="Load">func <a href="../../../src/go-boilerplate/internal/config/loader.go.html?s=289:306#L5">Load</a>
 				<a class="permalink" href="#Load">¶</a>
 				
 				
 			</h2>
 			<pre>func Load() <a href="../../../builtin/#error">error</a></pre>
-			<p>Load は、環境変数を読み込む関数です。
+			<p>Load は、埋め込まれた env ファイルから環境変数を設定します。
+既に設定済みの環境変数は上書きしません（実行時注入を優先）。
 
 			
 			
@@ -697,7 +688,7 @@
 		
 			
 			
-			</p><h2 id="NewTestLocation">func <a href="../../../src/go-boilerplate/internal/config/test_kit.go.html?s=208:257#L3">NewTestLocation</a>
+			</p><h2 id="NewTestLocation">func <a href="../../../src/go-boilerplate/internal/config/test_kit.go.html?s=236:285#L4">NewTestLocation</a>
 				<a class="permalink" href="#NewTestLocation">¶</a>
 				
 				
@@ -1082,7 +1073,7 @@
 
 			
 				
-				<h3 id="MockConfigForTest">func <a href="../../../src/go-boilerplate/internal/config/config_testing_mock.go.html?s=5120:5165#L99">MockConfigForTest</a>
+				<h3 id="MockConfigForTest">func <a href="../../../src/go-boilerplate/internal/config/config_testing_mock.go.html?s=5053:5098#L97">MockConfigForTest</a>
 					<a class="permalink" href="#MockConfigForTest">¶</a>
 					
 					

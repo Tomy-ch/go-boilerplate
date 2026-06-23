@@ -8,7 +8,7 @@ English | [日本語](README.ja.md)
 
 Make targets are mainly organized into the following units.
 
-- `.makefiles/app` : Application startup / Job execution
+- `.makefiles/app` : Application startup / Job execution / Embedded env materialization
 - `.makefiles/database` : DB initialization / Migration / Seed / DML / Schema
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
@@ -62,6 +62,17 @@ Example:
 make job NAME=sample-job
 make job NAME=batch-import ARGS="--target=local --dry-run"
 ```
+
+### Embedded env materialization related
+
+The server binary embeds `env/.env`. CI and the Docker build materialize the
+per-environment file into `env/.env` before building, so these targets centralize
+that step (and its undo for drift checks).
+
+| Command | Description | Main Use |
+| --- | --- | --- |
+| `make materialize-env` | Copies `env/.env.$(APP_ENV)` over `env/.env` (defaults to `APP_ENV=ci`). | Materialize the embed target in CI / build before `go build` / `go run` |
+| `make restore-env` | Restores `env/.env` to its git-tracked content via `git restore`. | Undo materialization before a generated-artifact drift / commit check |
 
 ## `.makefiles/database` group
 
