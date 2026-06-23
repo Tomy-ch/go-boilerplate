@@ -423,6 +423,13 @@
               "guideId": "controller-server"
             },
             {
+              "name": "Controller Worker",
+              "path": "./guides/controller-worker.md",
+              "lang": "en",
+              "source": "internal/controller/worker/README.md",
+              "guideId": "controller-worker"
+            },
+            {
               "name": "Controller",
               "path": "./guides/ja/controller.ja.md",
               "lang": "ja",
@@ -491,6 +498,13 @@
               "lang": "ja",
               "source": "internal/controller/server/README.ja.md",
               "guideId": "controller-server"
+            },
+            {
+              "name": "Controller Worker",
+              "path": "./guides/ja/controller-worker.ja.md",
+              "lang": "ja",
+              "source": "internal/controller/worker/README.ja.md",
+              "guideId": "controller-worker"
             }
           ],
           "subgroups": [
@@ -557,6 +571,20 @@
                   "lang": "ja",
                   "source": "internal/controller/job/README.ja.md",
                   "guideId": "controller-job"
+                },
+                {
+                  "name": "Controller Worker",
+                  "path": "./guides/controller-worker.md",
+                  "lang": "en",
+                  "source": "internal/controller/worker/README.md",
+                  "guideId": "controller-worker"
+                },
+                {
+                  "name": "Controller Worker",
+                  "path": "./guides/ja/controller-worker.ja.md",
+                  "lang": "ja",
+                  "source": "internal/controller/worker/README.ja.md",
+                  "guideId": "controller-worker"
                 }
               ]
             },
@@ -1018,6 +1046,33 @@
                   "guideId": "infrastructure-system"
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Design",
+      "slug": "design",
+      "sections": [
+        {
+          "id": "worker-design",
+          "slug": "worker-design",
+          "title": "Worker Design",
+          "items": [
+            {
+              "name": "Worker Design",
+              "path": "./guides/worker-design.md",
+              "lang": "en",
+              "source": "docs/design/worker.md",
+              "guideId": "worker-design"
+            },
+            {
+              "name": "Worker Design",
+              "path": "./guides/ja/worker-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/worker.ja.md",
+              "guideId": "worker-design"
             }
           ]
         }
@@ -1910,6 +1965,138 @@
               "lang": "ja",
               "source": "openapi/components/schemas/README.ja.md",
               "guideId": "openapi-schemas"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Uncategorized",
+      "slug": "uncategorized",
+      "sections": [
+        {
+          "id": "design",
+          "slug": "design",
+          "title": "Design",
+          "items": [
+            {
+              "name": "Idempotency",
+              "path": "../design/idempotency.md",
+              "lang": "en",
+              "source": "docs/design/idempotency.md",
+              "guideId": "idempotency"
+            },
+            {
+              "name": "Job",
+              "path": "../design/job.md",
+              "lang": "en",
+              "source": "docs/design/job.md",
+              "guideId": "job"
+            },
+            {
+              "name": "Rest",
+              "path": "../design/rest.md",
+              "lang": "en",
+              "source": "docs/design/rest.md",
+              "guideId": "rest"
+            },
+            {
+              "name": "Worker",
+              "path": "../design/worker.md",
+              "lang": "en",
+              "source": "docs/design/worker.md",
+              "guideId": "worker"
+            },
+            {
+              "name": "Idempotency",
+              "path": "../ja/design/idempotency.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/idempotency.ja.md",
+              "guideId": "idempotency"
+            },
+            {
+              "name": "Job",
+              "path": "../ja/design/job.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/job.ja.md",
+              "guideId": "job"
+            },
+            {
+              "name": "Rest",
+              "path": "../ja/design/rest.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/rest.ja.md",
+              "guideId": "rest"
+            },
+            {
+              "name": "Worker",
+              "path": "../ja/design/worker.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/worker.ja.md",
+              "guideId": "worker"
+            }
+          ]
+        },
+        {
+          "id": "idempotency-design",
+          "slug": "idempotency-design",
+          "title": "Idempotency Design",
+          "items": [
+            {
+              "name": "Idempotency Design",
+              "path": "./guides/idempotency-design.md",
+              "lang": "en",
+              "source": "docs/design/idempotency.md",
+              "guideId": "idempotency-design"
+            },
+            {
+              "name": "Idempotency Design",
+              "path": "./guides/ja/idempotency-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/idempotency.ja.md",
+              "guideId": "idempotency-design"
+            }
+          ]
+        },
+        {
+          "id": "job-design",
+          "slug": "job-design",
+          "title": "Job Design",
+          "items": [
+            {
+              "name": "Job Design",
+              "path": "./guides/job-design.md",
+              "lang": "en",
+              "source": "docs/design/job.md",
+              "guideId": "job-design"
+            },
+            {
+              "name": "Job Design",
+              "path": "./guides/ja/job-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/job.ja.md",
+              "guideId": "job-design"
+            }
+          ]
+        },
+        {
+          "id": "rest-design",
+          "slug": "rest-design",
+          "title": "Rest Design",
+          "items": [
+            {
+              "name": "Rest Design",
+              "path": "./guides/rest-design.md",
+              "lang": "en",
+              "source": "docs/design/rest.md",
+              "guideId": "rest-design"
+            },
+            {
+              "name": "Rest Design",
+              "path": "./guides/ja/rest-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/rest.ja.md",
+              "guideId": "rest-design"
             }
           ]
         }

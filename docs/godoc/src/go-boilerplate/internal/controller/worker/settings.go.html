@@ -1,0 +1,144 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>worker - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/controller">controller</a>/<a href="../../../../../src/go-boilerplate/internal/controller/worker">worker</a>/<span class="text-muted">settings.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/controller/worker">go-boilerplate/internal/controller/worker</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package worker
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;time&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/backoff&#34;
+<span id="L7" class="ln">     7  </span>)
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>const (
+<span id="L10" class="ln">    10  </span>	<span class="comment">// defaultDrainTimeout は、DrainTimeout 未設定時の既定値です（C1）。</span>
+<span id="L11" class="ln">    11  </span>	defaultDrainTimeout = 30 * time.Second
+<span id="L12" class="ln">    12  </span>	<span class="comment">// defaultProgressStaleAfter は、ProgressStaleAfter 未設定時の既定値です（C2）。</span>
+<span id="L13" class="ln">    13  </span>	defaultProgressStaleAfter = 60 * time.Second
+<span id="L14" class="ln">    14  </span>	<span class="comment">// circuitBackoffMultiplier は、Open の cooldown を指数的に伸ばす際の倍率です。</span>
+<span id="L15" class="ln">    15  </span>	circuitBackoffMultiplier = 2
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span><span class="comment">// Settings は、engine の挙動を制御する engine-core 設定です（broker 非依存）。</span>
+<span id="L19" class="ln">    19  </span>type Settings struct {
+<span id="L20" class="ln">    20  </span>	<span class="comment">// Concurrency は、同時に Handle を実行する最大数です（B1）。</span>
+<span id="L21" class="ln">    21  </span>	Concurrency int
+<span id="L22" class="ln">    22  </span>	<span class="comment">// MaxInFlight は、受信済み・未確定（Ack/Nack 前）の最大メッセージ数です（B2）。</span>
+<span id="L23" class="ln">    23  </span>	MaxInFlight int
+<span id="L24" class="ln">    24  </span>	<span class="comment">// BatchSize は、1 回の Receive で取得する最大件数です。</span>
+<span id="L25" class="ln">    25  </span>	BatchSize int
+<span id="L26" class="ln">    26  </span>	<span class="comment">// ExtendInterval は、長時間処理中に Extend を呼ぶ周期です（0 以下で無効）（A3）。</span>
+<span id="L27" class="ln">    27  </span>	ExtendInterval time.Duration
+<span id="L28" class="ln">    28  </span>	<span class="comment">// DrainTimeout は、停止時に in-flight の完了を待つ上限です（C1）。</span>
+<span id="L29" class="ln">    29  </span>	DrainTimeout time.Duration
+<span id="L30" class="ln">    30  </span>	<span class="comment">// ReceiveCountWarnThreshold は、この回数以上の再配送で warn する閾値です（0 以下で無効）（A7）。</span>
+<span id="L31" class="ln">    31  </span>	ReceiveCountWarnThreshold int
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>	<span class="comment">// CircuitFailureThreshold は、Open に入るまでの連続失敗数です（0 以下でサーキット無効）。</span>
+<span id="L34" class="ln">    34  </span>	CircuitFailureThreshold int
+<span id="L35" class="ln">    35  </span>	<span class="comment">// CircuitOpenBackoffInitial は、Open の初回 cooldown です。</span>
+<span id="L36" class="ln">    36  </span>	CircuitOpenBackoffInitial time.Duration
+<span id="L37" class="ln">    37  </span>	<span class="comment">// CircuitOpenBackoffMax は、Open の cooldown 上限です。</span>
+<span id="L38" class="ln">    38  </span>	CircuitOpenBackoffMax time.Duration
+<span id="L39" class="ln">    39  </span>	<span class="comment">// CircuitHalfOpenProbe は、Half-open 時に試行する最大件数です。</span>
+<span id="L40" class="ln">    40  </span>	CircuitHalfOpenProbe int
+<span id="L41" class="ln">    41  </span>	<span class="comment">// ProgressStaleAfter は、readiness 判定で「進捗なし(stuck)」とみなすまでの時間です（C2）。</span>
+<span id="L42" class="ln">    42  </span>	ProgressStaleAfter time.Duration
+<span id="L43" class="ln">    43  </span>}
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span><span class="comment">// normalize は、ゼロ値に安全な既定値を補います。</span>
+<span id="L46" class="ln">    46  </span>func (s *Settings) normalize() {
+<span id="L47" class="ln">    47  </span>	if s.Concurrency &lt; 1 {
+<span id="L48" class="ln">    48  </span>		s.Concurrency = 1
+<span id="L49" class="ln">    49  </span>	}
+<span id="L50" class="ln">    50  </span>	if s.MaxInFlight &lt; s.Concurrency {
+<span id="L51" class="ln">    51  </span>		s.MaxInFlight = s.Concurrency
+<span id="L52" class="ln">    52  </span>	}
+<span id="L53" class="ln">    53  </span>	if s.BatchSize &lt; 1 {
+<span id="L54" class="ln">    54  </span>		s.BatchSize = 1
+<span id="L55" class="ln">    55  </span>	}
+<span id="L56" class="ln">    56  </span>	if s.BatchSize &gt; s.MaxInFlight {
+<span id="L57" class="ln">    57  </span>		s.BatchSize = s.MaxInFlight
+<span id="L58" class="ln">    58  </span>	}
+<span id="L59" class="ln">    59  </span>	if s.DrainTimeout &lt;= 0 {
+<span id="L60" class="ln">    60  </span>		s.DrainTimeout = defaultDrainTimeout
+<span id="L61" class="ln">    61  </span>	}
+<span id="L62" class="ln">    62  </span>	if s.CircuitHalfOpenProbe &lt; 1 {
+<span id="L63" class="ln">    63  </span>		s.CircuitHalfOpenProbe = 1
+<span id="L64" class="ln">    64  </span>	}
+<span id="L65" class="ln">    65  </span>	if s.ProgressStaleAfter &lt;= 0 {
+<span id="L66" class="ln">    66  </span>		s.ProgressStaleAfter = defaultProgressStaleAfter
+<span id="L67" class="ln">    67  </span>	}
+<span id="L68" class="ln">    68  </span>}
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span><span class="comment">// circuitBackoff は、Settings から Open の cooldown 算出器を構築します。</span>
+<span id="L71" class="ln">    71  </span>func (s *Settings) circuitBackoff() backoff.Exponential {
+<span id="L72" class="ln">    72  </span>	return backoff.Exponential{
+<span id="L73" class="ln">    73  </span>		Initial:    s.CircuitOpenBackoffInitial,
+<span id="L74" class="ln">    74  </span>		Max:        s.CircuitOpenBackoffMax,
+<span id="L75" class="ln">    75  </span>		Multiplier: circuitBackoffMultiplier,
+<span id="L76" class="ln">    76  </span>	}
+<span id="L77" class="ln">    77  </span>}
+<span id="L78" class="ln">    78  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/controller/worker/settings.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

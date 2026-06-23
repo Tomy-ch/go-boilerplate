@@ -160,11 +160,25 @@
     <span id="ErrUnavailable">ErrUnavailable</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;service unavailable&#34;)
 )</pre>
 			
+				<p>worker のメッセージ処理分類センチネル。
+engine が Handler の返すエラーを分類して挙動を変えるために使用します
+（Retryable=Nack で再配送 / Permanent=FailureHandler へ退避して Ack / Fatal=engine 停止）。
+これらは HTTP エラー taxonomy ではないため、appErrors（IsAppError 判定対象）には含めません。
+
+				</p><pre>var (
+    <span class="comment">// ErrRetryable は一時障害を示します。engine は Nack で再配送します。</span>
+    <span id="ErrRetryable">ErrRetryable</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;retryable&#34;)
+    <span class="comment">// ErrPermanent は永久失敗を示します。engine は FailureHandler へ退避してから Ack します。</span>
+    <span id="ErrPermanent">ErrPermanent</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;permanent&#34;)
+    <span class="comment">// ErrFatal はプロセス継続不能を示します。engine は drain して停止します。</span>
+    <span id="ErrFatal">ErrFatal</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;fatal&#34;)
+)</pre>
+			
 		
 		
 			
 			
-			<h2 id="IsAppError">func <a href="../../../src/go-boilerplate/internal/apperror/apperror.go.html?s=2095:2126#L37">IsAppError</a>
+			<h2 id="IsAppError">func <a href="../../../src/go-boilerplate/internal/apperror/apperror.go.html?s=2915:2946#L50">IsAppError</a>
 				<a class="permalink" href="#IsAppError">¶</a>
 				
 				

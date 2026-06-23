@@ -118,7 +118,13 @@
 				<dd><a href="#NewJobCore">func NewJobCore() fx.Option</a></dd>
 			
 				
+				<dd><a href="#NewWorkerCore">func NewWorkerCore() fx.Option</a></dd>
+			
+				
 				<dd><a href="#RunJob">func RunJob() (StartFunc, StopFunc)</a></dd>
+			
+				
+				<dd><a href="#RunWorker">func RunWorker() (StartFunc, StopFunc)</a></dd>
 			
 			
 				
@@ -147,6 +153,8 @@
 				<a href="../../../src/go-boilerplate/internal/di/job.go.html">job.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/di/server.go.html">server.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/di/worker.go.html">worker.go</a>
 			
 			</span>
 			</p>
@@ -218,6 +226,21 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
+			</p><h2 id="NewWorkerCore">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=481:511#L7">NewWorkerCore</a>
+				<a class="permalink" href="#NewWorkerCore">¶</a>
+				
+				
+			</h2>
+			<pre>func NewWorkerCore() <a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>NewWorkerCore は、worker の fx.App を構成する fx.Option を返します。
+WorkerModule は本コアにのみ含め、serve 用の NewApplicationCore には含めません（依存隔離）。
+
+			
+			
+
+		
+			
+			
 			</p><h2 id="RunJob">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1259:1294#L38">RunJob</a>
 				<a class="permalink" href="#RunJob">¶</a>
 				
@@ -225,6 +248,20 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 			</h2>
 			<pre>func RunJob() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
 			<p>RunJob は、ジョブ実行用の開始関数・停止関数を生成して返します。context／タイムアウトの制御は返した関数の呼出側が担います。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RunWorker">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=900:938#L23">RunWorker</a>
+				<a class="permalink" href="#RunWorker">¶</a>
+				
+				
+			</h2>
+			<pre>func RunWorker() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
+			<p>RunWorker は、worker 実行用の開始関数・停止関数を生成して返します。
 
 			
 			

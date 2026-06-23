@@ -132,6 +132,9 @@
 				
 				<dd><a href="#UsecaseModule">func UsecaseModule() fx.Option</a></dd>
 			
+				
+				<dd><a href="#WorkerModule">func WorkerModule() fx.Option</a></dd>
+			
 			
 			
 			</dl>
@@ -161,6 +164,8 @@
 				<a href="../../../../src/go-boilerplate/internal/di/module/system.go.html">system.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html">usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/worker.go.html">worker.go</a>
 			
 			</span>
 			</p>
@@ -294,6 +299,21 @@
 			</h2>
 			<pre>func UsecaseModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
 			<p>UsecaseModule は、ユースケース層の依存関係を提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="WorkerModule">func <a href="../../../../src/go-boilerplate/internal/di/module/worker.go.html?s=453:482#L4">WorkerModule</a>
+				<a class="permalink" href="#WorkerModule">¶</a>
+				
+				
+			</h2>
+			<pre>func WorkerModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>WorkerModule は、worker engine 関連の依存関係を提供する fx.Module です。
+既定では worker を 1 つも登録しません（broker adapter は integrator が opt-in で配線します）。
 
 			
 			

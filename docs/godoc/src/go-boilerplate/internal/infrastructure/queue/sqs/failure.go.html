@@ -1,0 +1,116 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>sqs - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue">queue</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs">sqs</a>/<span class="text-muted">failure.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/infrastructure/queue/sqs">go-boilerplate/internal/infrastructure/queue/sqs</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package sqs
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;go/constant&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;github.com/aws/aws-sdk-go-v2/aws&#34;
+<span id="L8" class="ln">     8  </span>	&#34;github.com/aws/aws-sdk-go-v2/service/sqs&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/aws/aws-sdk-go-v2/service/sqs/types&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/worker&#34;
+<span id="L13" class="ln">    13  </span>)
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span><span class="comment">// 実装漏れをコンパイル時に検出します。</span>
+<span id="L16" class="ln">    16  </span>var _ worker.FailureHandler = (*DeadLetter)(nil)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span><span class="comment">// DeadLetter は、worker.FailureHandler の SQS 実装です（Permanent を別キュー=DLQ へ送ります）。</span>
+<span id="L19" class="ln">    19  </span><span class="comment">// SQS の redrive policy に委ねる運用ではこの実装を配線せず、app は ReceiveCount 監視のみとします。</span>
+<span id="L20" class="ln">    20  </span>type DeadLetter struct {
+<span id="L21" class="ln">    21  </span>	api    API
+<span id="L22" class="ln">    22  </span>	dlqURL string
+<span id="L23" class="ln">    23  </span>	tracer observability.LayerTracer
+<span id="L24" class="ln">    24  </span>}
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span><span class="comment">// NewDeadLetter は、DLQ への退避を行う FailureHandler を生成します。</span>
+<span id="L27" class="ln">    27  </span>func NewDeadLetter(api API, dlqURL string, tf observability.TracerFactory) *DeadLetter {
+<span id="L28" class="ln">    28  </span>	return &amp;DeadLetter{api: api, dlqURL: dlqURL, tracer: tf.Infra()}
+<span id="L29" class="ln">    29  </span>}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// Fail は、永久失敗メッセージを DLQ へ SendMessage します。</span>
+<span id="L32" class="ln">    32  </span><span class="comment">// 失敗理由は分類カテゴリのみ属性に付与し、cause の詳細は載せません</span>
+<span id="L33" class="ln">    33  </span><span class="comment">// （cause が PII/内部詳細を含みうるため。詳細は engine 側のログに残ります）。</span>
+<span id="L34" class="ln">    34  </span>func (d *DeadLetter) Fail(ctx context.Context, m worker.Message, _ error) error {
+<span id="L35" class="ln">    35  </span>	ctx, endSpan := d.tracer.Start(ctx)
+<span id="L36" class="ln">    36  </span>	defer endSpan()
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>	_, err := d.api.SendMessage(ctx, &amp;sqs.SendMessageInput{
+<span id="L39" class="ln">    39  </span>		QueueUrl:    aws.String(d.dlqURL),
+<span id="L40" class="ln">    40  </span>		MessageBody: aws.String(string(m.Body)),
+<span id="L41" class="ln">    41  </span>		MessageAttributes: map[string]types.MessageAttributeValue{
+<span id="L42" class="ln">    42  </span>			&#34;failure_reason&#34;: {
+<span id="L43" class="ln">    43  </span>				DataType:    aws.String(constant.String.String()),
+<span id="L44" class="ln">    44  </span>				StringValue: aws.String(&#34;permanent&#34;),
+<span id="L45" class="ln">    45  </span>			},
+<span id="L46" class="ln">    46  </span>		},
+<span id="L47" class="ln">    47  </span>	})
+<span id="L48" class="ln">    48  </span>	return normalizeError(err)
+<span id="L49" class="ln">    49  </span>}
+<span id="L50" class="ln">    50  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/failure.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>
