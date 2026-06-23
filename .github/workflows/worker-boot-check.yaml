@@ -52,6 +52,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
       # 存在しない worker 名を渡し、"unknown worker" エラーで終了することを確認する
       # （DI 構築・DB 接続を含む起動経路が機能していることの確認。DB/DI 失敗時は出力に含まれない）。
       - name: Boot worker entrypoint and expect "unknown worker"
