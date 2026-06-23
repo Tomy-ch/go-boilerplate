@@ -9,7 +9,7 @@ import (
 	v1users "go-boilerplate/internal/controller/handler/v1/users"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
 	"go-boilerplate/internal/observability"
-	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/idempotency"
@@ -117,8 +117,7 @@ func TestV1Users_Integration(t *testing.T) {
 			txm := mock_tx.NewMockManager(ctrl)
 			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
-			clk := mock_clock.NewMockClock(ctrl)
-			clk.EXPECT().Now().Return(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)).AnyTimes()
+			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 
 			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{Txm: txm, Store: store, Clock: clk})
 

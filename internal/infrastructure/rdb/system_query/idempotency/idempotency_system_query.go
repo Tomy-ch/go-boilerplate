@@ -15,11 +15,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
-
-// pgLockNotAvailable は、lock_timeout 失効時の SQLSTATE（55P03）です。
-const pgLockNotAvailable = "55P03"
 
 // claimLockTimeout は、claim 時に並行リクエストを待つロックタイムアウト上限です。
 const claimLockTimeout = "3s"
@@ -65,7 +61,7 @@ func (s *store) Claim(ctx context.Context, p idempotencybndry.ClaimParams) (bool
 	case errors.Is(err, pgx.ErrNoRows):
 		// ON CONFLICT DO NOTHING で 0 行 = 既存キーあり。
 		return false, nil
-	case isLockNotAvailable(err):
+	case pgerror.IsLockNotAvailable(err):
 		return false, idempotencybndry.ErrLockTimeout
 	default:
 		return false, pgerror.NormalizeError(err)
@@ -134,10 +130,4 @@ func (s *store) DeleteExpired(ctx context.Context, cutoff time.Time, limit int32
 		return 0, pgerror.NormalizeError(err)
 	}
 	return affected, nil
-}
-
-// isLockNotAvailable は、lock_timeout 失効（SQLSTATE 55P03）かを判定します。
-func isLockNotAvailable(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == pgLockNotAvailable
 }

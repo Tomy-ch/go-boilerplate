@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/usecase/boundary/auth"
-	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
@@ -25,8 +25,9 @@ import (
 
 const (
 	fingerprintLen = 32
-	// testPath は、テスト対象の POST パスです。
-	testPath = "/v1/users"
+	// testPath は、ミドルウェア検証用の POST パスです。spy ハンドラに渡す任意値であり、
+	// 特定のサンプルエンドポイント（/v1/users 等）には依存しません。
+	testPath = "/v1/resources"
 	// sentinel は、後段ハンドラが呼ばれたことを示す戻り値です。
 	sentinel = "SENTINEL"
 )
@@ -38,7 +39,7 @@ type spyRequest struct {
 // strictHandlerFunc は、oapi-codegen 生成の gen.StrictHandlerFunc と同型のテスト用型です。
 type strictHandlerFunc func(ec echo.Context, request any) (any, error)
 
-// newEcho は、テスト用の echo.Context（POST /v1/users）を生成します。key 非空ならヘッダを付与し、
+// newEcho は、テスト用の echo.Context（POST testPath）を生成します。key 非空ならヘッダを付与し、
 // withAuthn なら subject を持つ Authn を ctx に仕込みます。
 func newEcho(key string, withAuthn bool, subject string) echo.Context {
 	ctx := context.Background()
@@ -128,8 +129,7 @@ func TestMiddleware_handle(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
 			txm := mock_tx.NewMockManager(ctrl)
-			clk := mock_clock.NewMockClock(ctrl)
-			clk.EXPECT().Now().Return(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)).AnyTimes()
+			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
 

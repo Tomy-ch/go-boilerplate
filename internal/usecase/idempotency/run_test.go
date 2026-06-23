@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/usecase/boundary/clock/testkit"
 	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
+	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/idempotency"
+	mock_idempotencyuc "go-boilerplate/internal/usecase/idempotency/mock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,26 +22,35 @@ import (
 // statusCreated は、HTTP 201（usecase 層では net/http を import できないため定義）。
 const statusCreated = 201
 
+// fixedNow は、固定クロックが返すテスト用の基準時刻です。
+var fixedNow = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+
 type payload struct {
 	V string `json:"v"`
 }
 
-type fakeTxm struct{}
+// newDeps は、tx.Manager の生成 mock と clock testkit を組んだ Deps を返します。
+func newDeps(t *testing.T, store idempotencybndry.Store) idempotency.Deps {
+	t.Helper()
+	txm := mock_tx.NewMockManager(gomock.NewController(t))
+	txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }).AnyTimes()
 
-type fakeClock struct{ now time.Time }
-
-func (fakeTxm) Do(ctx context.Context, fn func(ctx context.Context) error) error {
-	return fn(ctx)
+	return idempotency.Deps{
+		Txm:   txm,
+		Store: store,
+		Clock: testkit.NewMockClock(t, fixedNow),
+	}
 }
 
-func (c fakeClock) Now() time.Time { return c.now }
-
-func newDeps(store idempotencybndry.Store) idempotency.Deps {
-	return idempotency.Deps{
-		Txm:   fakeTxm{},
-		Store: store,
-		Clock: fakeClock{now: time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)},
-	}
+// newDepsWithMetrics は、newDeps に Metrics mock を差した Deps を返します。
+func newDepsWithMetrics(
+	t *testing.T, store idempotencybndry.Store, m idempotency.Metrics,
+) idempotency.Deps {
+	t.Helper()
+	deps := newDeps(t, store)
+	deps.Metrics = m
+	return deps
 }
 
 func reqCtx(fingerprint []byte) context.Context {
@@ -47,8 +59,8 @@ func reqCtx(fingerprint []byte) context.Context {
 		Key:         "key-1",
 		Fingerprint: fingerprint,
 		Method:      "POST",
-		Path:        "/v1/users",
-		OperationID: "PostUsers",
+		Path:        "/v1/resources",
+		OperationID: "PostResources",
 	})
 }
 
@@ -63,7 +75,7 @@ func TestRun(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
 
-			res, replayed, err := idempotency.Run(context.Background(), newDeps(store), statusCreated,
+			res, replayed, err := idempotency.Run(context.Background(), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{V: "ok"}, nil })
 
 			require.NoError(t, err)
@@ -86,7 +98,7 @@ func TestRun(t *testing.T) {
 					return nil
 				})
 
-			res, replayed, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(store), statusCreated,
+			res, replayed, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return want, nil })
 
 			require.NoError(t, err)
@@ -108,7 +120,7 @@ func TestRun(t *testing.T) {
 				Fingerprint:     fp,
 			}, nil)
 
-			res, replayed, err := idempotency.Run(reqCtx(fp), newDeps(store), statusCreated,
+			res, replayed, err := idempotency.Run(reqCtx(fp), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) {
 					t.Fatal("業務処理は呼ばれてはならない")
 					return payload{}, nil
@@ -135,7 +147,7 @@ func TestRun(t *testing.T) {
 				Fingerprint: fp,
 			}, nil)
 
-			_, _, err := idempotency.Run(reqCtx(fp), newDeps(store), statusCreated,
+			_, _, err := idempotency.Run(reqCtx(fp), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrConflict)
@@ -152,7 +164,7 @@ func TestRun(t *testing.T) {
 				Fingerprint: []byte("stored-fp"),
 			}, nil)
 
-			_, _, err := idempotency.Run(reqCtx([]byte("request-fp")), newDeps(store), statusCreated,
+			_, _, err := idempotency.Run(reqCtx([]byte("request-fp")), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrValidation)
@@ -166,7 +178,7 @@ func TestRun(t *testing.T) {
 
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
 
-			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(store), statusCreated,
+			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{}, bizErr })
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
@@ -179,7 +191,7 @@ func TestRun(t *testing.T) {
 
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, idempotencybndry.ErrLockTimeout)
 
-			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(store), statusCreated,
+			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrConflict)
@@ -193,7 +205,7 @@ func TestRun(t *testing.T) {
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
 			store.EXPECT().Get(gomock.Any(), "user-1", "key-1").Return(nil, nil)
 
-			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(store), statusCreated,
+			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrConflict)
@@ -212,7 +224,7 @@ func TestRun(t *testing.T) {
 				Fingerprint:     fp,
 			}, nil)
 
-			_, _, err := idempotency.Run(reqCtx(fp), newDeps(store), statusCreated,
+			_, _, err := idempotency.Run(reqCtx(fp), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrInternal)
@@ -226,10 +238,94 @@ func TestRun(t *testing.T) {
 
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, wantErr)
 
-			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(store), statusCreated,
+			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
+	})
+}
+
+func TestRun_Metrics(t *testing.T) {
+	t.Parallel()
+
+	// reqCtx の OperationID（メトリクスのラベル）。
+	const op = "PostResources"
+
+	t.Run("completed への再送は IncReplay を計上する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		store := mock_idempotency.NewMockStore(ctrl)
+		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+		stored, _ := json.Marshal(payload{V: "replayed"})
+		fp := []byte("fp")
+
+		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+		store.EXPECT().Get(gomock.Any(), "user-1", "key-1").Return(&idempotencybndry.Record{
+			Status:          idempotencybndry.StatusCompleted,
+			ResponsePayload: stored,
+			Fingerprint:     fp,
+		}, nil)
+		metrics.EXPECT().IncReplay(op)
+
+		_, replayed, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
+			func(context.Context) (payload, error) { return payload{}, nil })
+
+		require.NoError(t, err)
+		assert.True(t, replayed)
+	})
+
+	t.Run("claimed への並行再送は IncConflict を計上する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		store := mock_idempotency.NewMockStore(ctrl)
+		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+		fp := []byte("fp")
+
+		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+		store.EXPECT().Get(gomock.Any(), "user-1", "key-1").Return(&idempotencybndry.Record{
+			Status:      idempotencybndry.StatusClaimed,
+			Fingerprint: fp,
+		}, nil)
+		metrics.EXPECT().IncConflict(op)
+
+		_, _, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
+			func(context.Context) (payload, error) { return payload{}, nil })
+
+		require.ErrorIs(t, err, apperror.ErrConflict)
+	})
+
+	t.Run("ロック待ちタイムアウトは IncConflict を計上する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		store := mock_idempotency.NewMockStore(ctrl)
+		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+
+		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, idempotencybndry.ErrLockTimeout)
+		metrics.EXPECT().IncConflict(op)
+
+		_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
+			func(context.Context) (payload, error) { return payload{}, nil })
+
+		require.ErrorIs(t, err, apperror.ErrConflict)
+	})
+
+	t.Run("指紋不一致は IncFingerprintMismatch を計上する", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		store := mock_idempotency.NewMockStore(ctrl)
+		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+
+		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+		store.EXPECT().Get(gomock.Any(), "user-1", "key-1").Return(&idempotencybndry.Record{
+			Status:      idempotencybndry.StatusCompleted,
+			Fingerprint: []byte("stored-fp"),
+		}, nil)
+		metrics.EXPECT().IncFingerprintMismatch(op)
+
+		_, _, err := idempotency.Run(reqCtx([]byte("request-fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
+			func(context.Context) (payload, error) { return payload{}, nil })
+
+		require.ErrorIs(t, err, apperror.ErrValidation)
 	})
 }

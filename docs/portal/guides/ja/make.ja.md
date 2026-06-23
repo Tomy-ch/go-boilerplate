@@ -8,7 +8,7 @@
 
 Make ターゲットは主に以下の単位で整理されています。
 
-- `.makefiles/app` : アプリケーション起動・Job 実行
+- `.makefiles/app` : アプリケーション起動・Job 実行・埋め込み env 材料化
 - `.makefiles/database` : DB 初期化 / マイグレーション / シード / DML / スキーマ
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
@@ -62,6 +62,17 @@ Make ターゲットは主に以下の単位で整理されています。
 make job NAME=sample-job
 make job NAME=batch-import ARGS="--target=local --dry-run"
 ```
+
+### 埋め込み env 材料化関連
+
+サーバーバイナリは `env/.env` を埋め込みます。CI および Docker ビルドはビルド前に
+環境別ファイルを `env/.env` へ材料化するため、その手順（と、ドリフト判定向けの取り消し）を
+これらのターゲットへ集約します。
+
+| コマンド | 説明 | 主な用途 |
+| --- | --- | --- |
+| `make materialize-env` | `env/.env.$(APP_ENV)` を `env/.env` へコピーします（既定は `APP_ENV=ci`）。 | CI / ビルドで `go build` / `go run` 前に埋め込み対象を材料化する |
+| `make restore-env` | `git restore` で `env/.env` を git 管理の内容へ戻します。 | 生成物ドリフト / コミット判定の前に材料化を取り消す |
 
 ## `.makefiles/database` 系
 

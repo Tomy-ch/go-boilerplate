@@ -37,13 +37,11 @@
 
 
   <h1>
-    File go-boilerplate
+    Package env
     <span class="text-muted"></span>
   </h1>
 
 
-
-  <h2>go-boilerplate</h2>
 
 
 
@@ -57,11 +55,329 @@
 	Use of this source code is governed by a BSD-style
 	license that can be found in the LICENSE file.
 -->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
 
-<p>
-<span class="alert" style="font-size:120%">cannot find package &#34;.&#34; in:
-	/src/go-boilerplate</span>
-</p>
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package env は、バイナリへ焼き込む設定とマイグレーションを embed.FS として公開します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../src/go-boilerplate/embed.go.html">embed.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>FS は env/.env と database/migrations を埋め込んだ読み取り専用ファイルシステムです。
+
+				</p><pre>var <span id="FS">FS</span> <a href="../embed/">embed</a>.<a href="../embed/#FS">FS</a></pre>
+			
+		
+		
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 0px;">
+						<a href="cmd/">cmd</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package main はアプリケーションのエントリポイントです。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 0px;">
+						<a href="pkg/">pkg</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/datetime/">datetime</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package datetime は、日付と時刻に関連する機能を提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/envutil/">envutil</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package envutil は、環境変数を扱うための小さなユーティリティを提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/exec/">exec</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package exec は、外部プロセス実行の薄いラッパーを提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 40px;">
+						<a href="pkg/exec/mock/">mock</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package mock_exec is a generated GoMock package.
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/fnmeta/">fnmeta</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package fnmeta は、関数名やパッケージ名の抽出に関するユーティリティを提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/fs/">fs</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package fs は、ファイルシステム操作の薄いラッパーを提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 40px;">
+						<a href="pkg/fs/mock/">mock</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package mock_fs is a generated GoMock package.
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/ptr/">ptr</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package ptr は、ポインタ操作に関するユーティリティを提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/safecast/">safecast</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package safecast は、型変換の安全な関数を提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/stringkit/">stringkit</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package stringkit は、文字列の長さを検証するための関数を提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/uuid/">uuid</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package uuid は、UUIDを生成および操作するための機能を提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="pkg/xerrors/">xerrors</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package xerrors は、エラーハンドリングのユーティリティを提供します。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 40px;">
+						<a href="pkg/xerrors/mock/">mock</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package mock_xerrors is a generated GoMock package.
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 0px;">
+						<a href="scripts/">scripts</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/genctxkey/">genctxkey</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/pin-actions/">pin-actions</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						pin-actions は GitHub Actions の `uses:` 参照を不変の commit SHA へ固定するツール。
+					</td>
+				</tr>
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 20px;">
+						<a href="scripts/sync-versions/">sync-versions</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						不変条件: 全 rule の事前 validate を通してから初めて書き出す。
+					</td>
+				</tr>
+			
+		</tbody></table>
+	</div>
+
 
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -1,3 +1,4 @@
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_metrics.gen.go -package=mock_$GOPACKAGE
 package idempotency
 
 import (
@@ -38,6 +39,9 @@ type nopMetrics struct{}
 // Run は、ctx に Idempotency-Key が無ければ businessFn を素通し実行し、ある場合は業務 tx 内で
 // claim → businessFn → complete を 1 tx で行います。再送は replay、並行 claim は 409、指紋不一致は 422。
 // successStatus は completed 行へ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。
+//
+// 前提: 本関数は「成功時のステータスが常に successStatus 単一」の操作向けです（例: PostUsers は 201 のみ）。
+// replay 時は保存済みの応答ボディ（T）のみを復元し、保存済み response_status は呼び出し側へ伝播しません。
 func Run[T any](
 	ctx context.Context,
 	deps Deps,

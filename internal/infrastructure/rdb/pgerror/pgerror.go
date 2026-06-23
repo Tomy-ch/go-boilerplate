@@ -102,3 +102,9 @@ func isPgConnectionError(err error) bool {
 	}
 	return strings.HasPrefix(pgErr.Code, "08")
 }
+
+// IsLockNotAvailable は、lock_timeout 失効によるエラーであるかを判定します。
+func IsLockNotAvailable(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "55P03"
+}
