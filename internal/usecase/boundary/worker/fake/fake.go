@@ -51,7 +51,7 @@ func New() *Fake {
 }
 
 // Receive は、最大 max 件を取得します。キューが空の場合は投入 or ctx 完了までブロックします。
-func (f *Fake) Receive(ctx context.Context, max int) ([]worker.Message, error) {
+func (f *Fake) Receive(ctx context.Context, limit int) ([]worker.Message, error) {
 	for {
 		f.mu.Lock()
 		if len(f.receiveErrs) > 0 {
@@ -61,7 +61,7 @@ func (f *Fake) Receive(ctx context.Context, max int) ([]worker.Message, error) {
 			return nil, err
 		}
 		if len(f.queue) > 0 {
-			n := min(max, len(f.queue))
+			n := min(limit, len(f.queue))
 			out := make([]worker.Message, 0, n)
 			for range n {
 				m := f.queue[0]

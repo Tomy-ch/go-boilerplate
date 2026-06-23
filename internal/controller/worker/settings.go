@@ -6,6 +6,15 @@ import (
 	"go-boilerplate/pkg/backoff"
 )
 
+const (
+	// defaultDrainTimeout は、DrainTimeout 未設定時の既定値です（C1）。
+	defaultDrainTimeout = 30 * time.Second
+	// defaultProgressStaleAfter は、ProgressStaleAfter 未設定時の既定値です（C2）。
+	defaultProgressStaleAfter = 60 * time.Second
+	// circuitBackoffMultiplier は、Open の cooldown を指数的に伸ばす際の倍率です。
+	circuitBackoffMultiplier = 2
+)
+
 // Settings は、engine の挙動を制御する engine-core 設定です（broker 非依存）。
 type Settings struct {
 	// Concurrency は、同時に Handle を実行する最大数です（B1）。
@@ -48,13 +57,13 @@ func (s *Settings) normalize() {
 		s.BatchSize = s.MaxInFlight
 	}
 	if s.DrainTimeout <= 0 {
-		s.DrainTimeout = 30 * time.Second
+		s.DrainTimeout = defaultDrainTimeout
 	}
 	if s.CircuitHalfOpenProbe < 1 {
 		s.CircuitHalfOpenProbe = 1
 	}
 	if s.ProgressStaleAfter <= 0 {
-		s.ProgressStaleAfter = 60 * time.Second
+		s.ProgressStaleAfter = defaultProgressStaleAfter
 	}
 }
 
@@ -63,6 +72,6 @@ func (s *Settings) circuitBackoff() backoff.Exponential {
 	return backoff.Exponential{
 		Initial:    s.CircuitOpenBackoffInitial,
 		Max:        s.CircuitOpenBackoffMax,
-		Multiplier: 2,
+		Multiplier: circuitBackoffMultiplier,
 	}
 }

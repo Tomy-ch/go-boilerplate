@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"go/constant"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -39,7 +40,7 @@ func (d *DeadLetter) Fail(ctx context.Context, m worker.Message, _ error) error 
 		MessageBody: aws.String(string(m.Body)),
 		MessageAttributes: map[string]types.MessageAttributeValue{
 			"failure_reason": {
-				DataType:    aws.String("String"),
+				DataType:    aws.String(constant.String.String()),
 				StringValue: aws.String("permanent"),
 			},
 		},

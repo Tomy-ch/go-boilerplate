@@ -30,31 +30,35 @@ func RunWorkerWith(
 func runWorker(ctx context.Context, name string, args []string, start StartFunc, stop StopFunc) error {
 	done := start(ctx, name, args)
 
-	var runErr error
+	var (
+		runErr      error
+		selfStopped bool
+	)
 	select {
 	case runErr = <-done:
-		// engine が自走停止（Fatal / unknown worker）。
+		// engine が自走停止（Fatal / unknown worker）。done は消費済み。
+		selfStopped = true
 	case <-ctx.Done():
 		// SIGTERM。engine を drain して停止し、停止後に結果を確認する。
 	}
 
-	gracefulStop(stop)
+	gracefulStop(ctx, stop)
 
-	// SIGTERM と engine 停止が競合した場合に Fatal を取りこぼさないよう、drain 後に結果を再確認する。
-	// gracefulStop（app.Stop→OnStop）が engine の終了を待つため、ここで done に結果が入っている。
-	if runErr == nil {
-		select {
-		case runErr = <-done:
-		default:
-		}
+	// SIGTERM 経路では engine の実際の終了結果を必ず待ち切る。
+	// stopTimeout が engine の drain 完了より先に満了して OnStop が早期 return しても、
+	// engine goroutine は drain 後に必ず done へ結果を書く（DrainTimeout で有界）。
+	// 非ブロッキングで default を取ると、その間に発生した Fatal を取りこぼし exit 0 になってしまう。
+	if !selfStopped {
+		runErr = <-done
 	}
 	return runErr
 }
 
 // gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop=drain）を実行します。
-// ctx は SIGTERM で既にキャンセル済みのため、停止用 context は ctx を継承せず作り直します。
-func gracefulStop(stop StopFunc) {
-	stopCtx, cancel := context.WithTimeout(context.Background(), stopTimeout)
+// ctx は SIGTERM で既にキャンセル済みのため、停止用 context はキャンセルだけ切り離して
+// （trace/baggage は引き継ぎつつ）作り直します。
+func gracefulStop(ctx context.Context, stop StopFunc) {
+	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stopTimeout)
 	defer cancel()
 	_ = stop(stopCtx)
 }

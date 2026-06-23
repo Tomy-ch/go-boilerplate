@@ -85,16 +85,16 @@ func (mr *MockConsumerMockRecorder) Nack(ctx, m any) *gomock.Call {
 }
 
 // Receive mocks base method.
-func (m *MockConsumer) Receive(ctx context.Context, max int) ([]worker.Message, error) {
+func (m *MockConsumer) Receive(ctx context.Context, limit int) ([]worker.Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Receive", ctx, max)
+	ret := m.ctrl.Call(m, "Receive", ctx, limit)
 	ret0, _ := ret[0].([]worker.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Receive indicates an expected call of Receive.
-func (mr *MockConsumerMockRecorder) Receive(ctx, max any) *gomock.Call {
+func (mr *MockConsumerMockRecorder) Receive(ctx, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockConsumer)(nil).Receive), ctx, max)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockConsumer)(nil).Receive), ctx, limit)
 }

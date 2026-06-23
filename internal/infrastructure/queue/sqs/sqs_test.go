@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"go/constant"
 	"testing"
 	"time"
 
@@ -44,7 +45,7 @@ func Test_Consumer_Receive(t *testing.T) {
 						string(types.MessageSystemAttributeNameMessageGroupId):          "grp",
 					},
 					MessageAttributes: map[string]types.MessageAttributeValue{
-						"traceparent": {DataType: aws.String("String"), StringValue: aws.String("tp-val")},
+						"traceparent": {DataType: aws.String(constant.String.String()), StringValue: aws.String("tp-val")},
 					},
 				}},
 			}, nil)

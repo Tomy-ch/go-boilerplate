@@ -4,6 +4,7 @@ package sqs
 
 import (
 	"context"
+	"math"
 	"strconv"
 	"time"
 
@@ -23,10 +24,14 @@ var _ worker.Consumer = (*Consumer)(nil)
 
 // API は、Consumer が利用する SQS の操作のみを抽象化したものです（*sqs.Client が満たします）。
 type API interface {
-	ReceiveMessage(context.Context, *sqs.ReceiveMessageInput, ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
-	DeleteMessage(context.Context, *sqs.DeleteMessageInput, ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
-	ChangeMessageVisibility(context.Context, *sqs.ChangeMessageVisibilityInput, ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error)
-	SendMessage(context.Context, *sqs.SendMessageInput, ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
+	ReceiveMessage(ctx context.Context, in *sqs.ReceiveMessageInput, opts ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
+	DeleteMessage(ctx context.Context, in *sqs.DeleteMessageInput, opts ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+	ChangeMessageVisibility(
+		ctx context.Context,
+		in *sqs.ChangeMessageVisibilityInput,
+		opts ...func(*sqs.Options),
+	) (*sqs.ChangeMessageVisibilityOutput, error)
+	SendMessage(ctx context.Context, in *sqs.SendMessageInput, opts ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
 }
 
 // Consumer は、worker.Consumer の SQS 実装です。
@@ -113,9 +118,16 @@ func (c *Consumer) Extend(ctx context.Context, m worker.Message, d time.Duration
 	_, err := c.api.ChangeMessageVisibility(ctx, &sqs.ChangeMessageVisibilityInput{
 		QueueUrl:          aws.String(c.cfg.QueueURL),
 		ReceiptHandle:     aws.String(m.Attributes[worker.AttrReceiptHandle]),
-		VisibilityTimeout: int32(d.Seconds()),
+		VisibilityTimeout: visibilitySeconds(d),
 	})
 	return normalizeError(err)
+}
+
+// visibilitySeconds は、Duration を SQS の可視性秒数（int32）へ丸めます。
+// サブ秒は切り捨てると 0 秒＝即時再配送になり処理中メッセージが重複配送されるため、
+// 切り上げたうえで 1 秒を下限とします。
+func visibilitySeconds(d time.Duration) int32 {
+	return max(1, int32(math.Ceil(d.Seconds())))
 }
 
 // toMessage は、SQS のメッセージを broker 非依存の Message へ正規化します。

@@ -9,8 +9,8 @@ import (
 
 // Consumer は、pull-ack クラスのキューに対する最小 seam です。これ以上広げません。
 type Consumer interface {
-	// Receive は long-poll で最大 max 件を取得します。ctx 完了 or メッセージ到着までブロックします。
-	Receive(ctx context.Context, max int) ([]Message, error)
+	// Receive は long-poll で最大 limit 件を取得します。ctx 完了 or メッセージ到着までブロックします。
+	Receive(ctx context.Context, limit int) ([]Message, error)
 	// Ack は処理成功後にのみ呼びます（process → ack を厳守）。
 	Ack(ctx context.Context, m Message) error
 	// Nack はメッセージを再配送へ戻します。遅延は保証しません（adapter best-effort）。

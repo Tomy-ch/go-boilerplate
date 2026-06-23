@@ -42,10 +42,10 @@ func (m *MockAPI) EXPECT() *MockAPIMockRecorder {
 }
 
 // ChangeMessageVisibility mocks base method.
-func (m *MockAPI) ChangeMessageVisibility(arg0 context.Context, arg1 *sqs.ChangeMessageVisibilityInput, arg2 ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error) {
+func (m *MockAPI) ChangeMessageVisibility(ctx context.Context, in *sqs.ChangeMessageVisibilityInput, opts ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, in}
+	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ChangeMessageVisibility", varargs...)
@@ -55,17 +55,17 @@ func (m *MockAPI) ChangeMessageVisibility(arg0 context.Context, arg1 *sqs.Change
 }
 
 // ChangeMessageVisibility indicates an expected call of ChangeMessageVisibility.
-func (mr *MockAPIMockRecorder) ChangeMessageVisibility(arg0, arg1 any, arg2 ...any) *gomock.Call {
+func (mr *MockAPIMockRecorder) ChangeMessageVisibility(ctx, in any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeMessageVisibility", reflect.TypeOf((*MockAPI)(nil).ChangeMessageVisibility), varargs...)
 }
 
 // DeleteMessage mocks base method.
-func (m *MockAPI) DeleteMessage(arg0 context.Context, arg1 *sqs.DeleteMessageInput, arg2 ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+func (m *MockAPI) DeleteMessage(ctx context.Context, in *sqs.DeleteMessageInput, opts ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, in}
+	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "DeleteMessage", varargs...)
@@ -75,17 +75,17 @@ func (m *MockAPI) DeleteMessage(arg0 context.Context, arg1 *sqs.DeleteMessageInp
 }
 
 // DeleteMessage indicates an expected call of DeleteMessage.
-func (mr *MockAPIMockRecorder) DeleteMessage(arg0, arg1 any, arg2 ...any) *gomock.Call {
+func (mr *MockAPIMockRecorder) DeleteMessage(ctx, in any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMessage", reflect.TypeOf((*MockAPI)(nil).DeleteMessage), varargs...)
 }
 
 // ReceiveMessage mocks base method.
-func (m *MockAPI) ReceiveMessage(arg0 context.Context, arg1 *sqs.ReceiveMessageInput, arg2 ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+func (m *MockAPI) ReceiveMessage(ctx context.Context, in *sqs.ReceiveMessageInput, opts ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, in}
+	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ReceiveMessage", varargs...)
@@ -95,17 +95,17 @@ func (m *MockAPI) ReceiveMessage(arg0 context.Context, arg1 *sqs.ReceiveMessageI
 }
 
 // ReceiveMessage indicates an expected call of ReceiveMessage.
-func (mr *MockAPIMockRecorder) ReceiveMessage(arg0, arg1 any, arg2 ...any) *gomock.Call {
+func (mr *MockAPIMockRecorder) ReceiveMessage(ctx, in any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReceiveMessage", reflect.TypeOf((*MockAPI)(nil).ReceiveMessage), varargs...)
 }
 
 // SendMessage mocks base method.
-func (m *MockAPI) SendMessage(arg0 context.Context, arg1 *sqs.SendMessageInput, arg2 ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+func (m *MockAPI) SendMessage(ctx context.Context, in *sqs.SendMessageInput, opts ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{ctx, in}
+	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "SendMessage", varargs...)
@@ -115,8 +115,8 @@ func (m *MockAPI) SendMessage(arg0 context.Context, arg1 *sqs.SendMessageInput, 
 }
 
 // SendMessage indicates an expected call of SendMessage.
-func (mr *MockAPIMockRecorder) SendMessage(arg0, arg1 any, arg2 ...any) *gomock.Call {
+func (mr *MockAPIMockRecorder) SendMessage(ctx, in any, opts ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMessage", reflect.TypeOf((*MockAPI)(nil).SendMessage), varargs...)
 }
