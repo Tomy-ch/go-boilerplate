@@ -63,121 +63,128 @@
 <span id="L6" class="ln">     6  </span>
 <span id="L7" class="ln">     7  </span>import (
 <span id="L8" class="ln">     8  </span>	&#34;context&#34;
-<span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/apperror&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/controller/conv&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/controller/ctxhelper&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/controller/handler/v1/users/gen&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/usecase/tools/paging&#34;
-<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/usecase/user&#34;
-<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span>	&#34;github.com/labstack/echo/v4&#34;
-<span id="L20" class="ln">    20  </span>	&#34;github.com/oapi-codegen/runtime/types&#34;
-<span id="L21" class="ln">    21  </span>)
-<span id="L22" class="ln">    22  </span>
-<span id="L23" class="ln">    23  </span><span class="comment">// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。</span>
-<span id="L24" class="ln">    24  </span>var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, &#34;requires authenticated user&#34;)
+<span id="L9" class="ln">     9  </span>	&#34;net/http&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/controller/conv&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/controller/ctxhelper&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/controller/handler/v1/users/gen&#34;
+<span id="L15" class="ln">    15  </span>	idempotencymw &#34;go-boilerplate/internal/controller/httpstack/idempotency&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/internal/usecase/idempotency&#34;
+<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/internal/usecase/tools/paging&#34;
+<span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/internal/usecase/user&#34;
+<span id="L20" class="ln">    20  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L23" class="ln">    23  </span>	&#34;github.com/oapi-codegen/runtime/types&#34;
+<span id="L24" class="ln">    24  </span>)
 <span id="L25" class="ln">    25  </span>
-<span id="L26" class="ln">    26  </span>type server struct {
-<span id="L27" class="ln">    27  </span>	tracer observability.LayerTracer
-<span id="L28" class="ln">    28  </span>	uc     user.Usecase
-<span id="L29" class="ln">    29  </span>}
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span><span class="comment">// BindHandler は、ユーザー一覧のハンドラを Echo に登録します。</span>
-<span id="L32" class="ln">    32  </span>func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) {
-<span id="L33" class="ln">    33  </span>	gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
-<span id="L34" class="ln">    34  </span>		tracer: tf.Controller(),
-<span id="L35" class="ln">    35  </span>		uc:     uc,
-<span id="L36" class="ln">    36  </span>	}, nil))
-<span id="L37" class="ln">    37  </span>}
-<span id="L38" class="ln">    38  </span>
-<span id="L39" class="ln">    39  </span><span class="comment">// GetUsers は、ユーザー一覧を取得します。</span>
-<span id="L40" class="ln">    40  </span>func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
-<span id="L41" class="ln">    41  </span>	ctx, endSpan := s.tracer.Start(ctx)
-<span id="L42" class="ln">    42  </span>	defer endSpan()
+<span id="L26" class="ln">    26  </span><span class="comment">// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。</span>
+<span id="L27" class="ln">    27  </span>var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, &#34;requires authenticated user&#34;)
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>type server struct {
+<span id="L30" class="ln">    30  </span>	tracer observability.LayerTracer
+<span id="L31" class="ln">    31  </span>	uc     user.Usecase
+<span id="L32" class="ln">    32  </span>	idem   idempotency.Deps
+<span id="L33" class="ln">    33  </span>}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// BindHandler は、ユーザー一覧のハンドラを Echo に登録します。</span>
+<span id="L36" class="ln">    36  </span>func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase, idem idempotency.Deps) {
+<span id="L37" class="ln">    37  </span>	gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
+<span id="L38" class="ln">    38  </span>		tracer: tf.Controller(),
+<span id="L39" class="ln">    39  </span>		uc:     uc,
+<span id="L40" class="ln">    40  </span>		idem:   idem,
+<span id="L41" class="ln">    41  </span>	}, []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
+<span id="L42" class="ln">    42  </span>}
 <span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>	<span class="comment">// WARN: 本来はここで認可を行うべきですが、今回は省略します。</span>
-<span id="L45" class="ln">    45  </span>	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
-<span id="L46" class="ln">    46  </span>	if err != nil {
-<span id="L47" class="ln">    47  </span>		return nil, err
-<span id="L48" class="ln">    48  </span>	}
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>	list, err := s.uc.ListUsersWithTotal(ctx, request.Params.Active, page)
+<span id="L44" class="ln">    44  </span><span class="comment">// GetUsers は、ユーザー一覧を取得します。</span>
+<span id="L45" class="ln">    45  </span>func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
+<span id="L46" class="ln">    46  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L47" class="ln">    47  </span>	defer endSpan()
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	<span class="comment">// WARN: 本来はここで認可を行うべきですが、今回は省略します。</span>
+<span id="L50" class="ln">    50  </span>	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 <span id="L51" class="ln">    51  </span>	if err != nil {
 <span id="L52" class="ln">    52  </span>		return nil, err
 <span id="L53" class="ln">    53  </span>	}
 <span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>	users := make([]gen.UserResponse, len(list.Items))
-<span id="L56" class="ln">    56  </span>	for i, dto := range list.Items {
-<span id="L57" class="ln">    57  </span>		users[i] = toUserResponse(dto)
+<span id="L55" class="ln">    55  </span>	list, err := s.uc.ListUsersWithTotal(ctx, request.Params.Active, page)
+<span id="L56" class="ln">    56  </span>	if err != nil {
+<span id="L57" class="ln">    57  </span>		return nil, err
 <span id="L58" class="ln">    58  </span>	}
 <span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>	res := gen.UsersResponse{
-<span id="L61" class="ln">    61  </span>		Users:  users,
-<span id="L62" class="ln">    62  </span>		Total:  list.Total,
-<span id="L63" class="ln">    63  </span>		Limit:  page.Limit(),
-<span id="L64" class="ln">    64  </span>		Offset: page.Offset(),
-<span id="L65" class="ln">    65  </span>	}
-<span id="L66" class="ln">    66  </span>
-<span id="L67" class="ln">    67  </span>	return gen.GetUsers200JSONResponse(res), nil
-<span id="L68" class="ln">    68  </span>}
-<span id="L69" class="ln">    69  </span>
-<span id="L70" class="ln">    70  </span><span class="comment">// PostUsers は、ユーザーを作成します。</span>
-<span id="L71" class="ln">    71  </span>func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObject) (gen.PostUsersResponseObject, error) {
-<span id="L72" class="ln">    72  </span>	ctx, endSpan := s.tracer.Start(ctx)
-<span id="L73" class="ln">    73  </span>	defer endSpan()
+<span id="L60" class="ln">    60  </span>	users := make([]gen.UserResponse, len(list.Items))
+<span id="L61" class="ln">    61  </span>	for i, dto := range list.Items {
+<span id="L62" class="ln">    62  </span>		users[i] = toUserResponse(dto)
+<span id="L63" class="ln">    63  </span>	}
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>	res := gen.UsersResponse{
+<span id="L66" class="ln">    66  </span>		Users:  users,
+<span id="L67" class="ln">    67  </span>		Total:  list.Total,
+<span id="L68" class="ln">    68  </span>		Limit:  page.Limit(),
+<span id="L69" class="ln">    69  </span>		Offset: page.Offset(),
+<span id="L70" class="ln">    70  </span>	}
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>	return gen.GetUsers200JSONResponse(res), nil
+<span id="L73" class="ln">    73  </span>}
 <span id="L74" class="ln">    74  </span>
-<span id="L75" class="ln">    75  </span>	authn, ok := ctxhelper.GetAuthn(ctx)
-<span id="L76" class="ln">    76  </span>	if !ok {
-<span id="L77" class="ln">    77  </span>		return nil, ErrUnauthenticatedUser
-<span id="L78" class="ln">    78  </span>	}
-<span id="L79" class="ln">    79  </span>	userID, err := authn.ID()
-<span id="L80" class="ln">    80  </span>	if err != nil {
-<span id="L81" class="ln">    81  </span>		return nil, xerrors.Wrap(err, &#34;failed to get user ID from authenticator&#34;)
-<span id="L82" class="ln">    82  </span>	}
-<span id="L83" class="ln">    83  </span>
-<span id="L84" class="ln">    84  </span>	createParams := &amp;user.CreateParamsDTO{
-<span id="L85" class="ln">    85  </span>		UserID:      userID,
-<span id="L86" class="ln">    86  </span>		RawPassword: request.Body.Password,
-<span id="L87" class="ln">    87  </span>		UpdateProfileParams: user.UpdateProfileParams{
-<span id="L88" class="ln">    88  </span>			FirstName:      request.Body.FirstName,
-<span id="L89" class="ln">    89  </span>			LastName:       request.Body.LastName,
-<span id="L90" class="ln">    90  </span>			Email:          conv.Email(request.Body.Email),
-<span id="L91" class="ln">    91  </span>			Phone:          request.Body.Phone,
-<span id="L92" class="ln">    92  </span>			PostalCode:     request.Body.PostalCode,
-<span id="L93" class="ln">    93  </span>			PrefectureName: request.Body.Prefecture,
-<span id="L94" class="ln">    94  </span>			City:           request.Body.City,
-<span id="L95" class="ln">    95  </span>			Street:         request.Body.Street,
-<span id="L96" class="ln">    96  </span>			Building:       request.Body.Building,
-<span id="L97" class="ln">    97  </span>		},
-<span id="L98" class="ln">    98  </span>	}
-<span id="L99" class="ln">    99  </span>
-<span id="L100" class="ln">   100  </span>	dto, err := s.uc.CreateUser(ctx, createParams)
-<span id="L101" class="ln">   101  </span>	if err != nil {
-<span id="L102" class="ln">   102  </span>		return nil, err
+<span id="L75" class="ln">    75  </span><span class="comment">// PostUsers は、ユーザーを作成します。</span>
+<span id="L76" class="ln">    76  </span>func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObject) (gen.PostUsersResponseObject, error) {
+<span id="L77" class="ln">    77  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L78" class="ln">    78  </span>	defer endSpan()
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>	authn, ok := ctxhelper.GetAuthn(ctx)
+<span id="L81" class="ln">    81  </span>	if !ok {
+<span id="L82" class="ln">    82  </span>		return nil, ErrUnauthenticatedUser
+<span id="L83" class="ln">    83  </span>	}
+<span id="L84" class="ln">    84  </span>	userID, err := authn.ID()
+<span id="L85" class="ln">    85  </span>	if err != nil {
+<span id="L86" class="ln">    86  </span>		return nil, xerrors.Wrap(err, &#34;failed to get user ID from authenticator&#34;)
+<span id="L87" class="ln">    87  </span>	}
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>	createParams := &amp;user.CreateParamsDTO{
+<span id="L90" class="ln">    90  </span>		UserID:      userID,
+<span id="L91" class="ln">    91  </span>		RawPassword: request.Body.Password,
+<span id="L92" class="ln">    92  </span>		UpdateProfileParams: user.UpdateProfileParams{
+<span id="L93" class="ln">    93  </span>			FirstName:      request.Body.FirstName,
+<span id="L94" class="ln">    94  </span>			LastName:       request.Body.LastName,
+<span id="L95" class="ln">    95  </span>			Email:          conv.Email(request.Body.Email),
+<span id="L96" class="ln">    96  </span>			Phone:          request.Body.Phone,
+<span id="L97" class="ln">    97  </span>			PostalCode:     request.Body.PostalCode,
+<span id="L98" class="ln">    98  </span>			PrefectureName: request.Body.Prefecture,
+<span id="L99" class="ln">    99  </span>			City:           request.Body.City,
+<span id="L100" class="ln">   100  </span>			Street:         request.Body.Street,
+<span id="L101" class="ln">   101  </span>			Building:       request.Body.Building,
+<span id="L102" class="ln">   102  </span>		},
 <span id="L103" class="ln">   103  </span>	}
 <span id="L104" class="ln">   104  </span>
-<span id="L105" class="ln">   105  </span>	return gen.PostUsers201JSONResponse(toUserResponse(dto)), nil
-<span id="L106" class="ln">   106  </span>}
-<span id="L107" class="ln">   107  </span>
-<span id="L108" class="ln">   108  </span><span class="comment">// toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。</span>
-<span id="L109" class="ln">   109  </span>func toUserResponse(dto user.UserView) gen.UserResponse {
-<span id="L110" class="ln">   110  </span>	return gen.UserResponse{
-<span id="L111" class="ln">   111  </span>		FirstName:  dto.FirstName,
-<span id="L112" class="ln">   112  </span>		LastName:   dto.LastName,
-<span id="L113" class="ln">   113  </span>		Email:      types.Email(dto.Email),
-<span id="L114" class="ln">   114  </span>		Phone:      dto.Phone,
-<span id="L115" class="ln">   115  </span>		PostalCode: dto.PostalCode,
-<span id="L116" class="ln">   116  </span>		Prefecture: dto.PrefectureName,
-<span id="L117" class="ln">   117  </span>		City:       dto.City,
-<span id="L118" class="ln">   118  </span>		Street:     dto.Street,
-<span id="L119" class="ln">   119  </span>		Building:   dto.Building,
-<span id="L120" class="ln">   120  </span>		DeletedAt:  dto.DeletedAt,
-<span id="L121" class="ln">   121  </span>	}
-<span id="L122" class="ln">   122  </span>}
-<span id="L123" class="ln">   123  </span>
+<span id="L105" class="ln">   105  </span>	dto, _, err := idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx context.Context) (user.UserView, error) {
+<span id="L106" class="ln">   106  </span>		return s.uc.CreateUser(ctx, createParams)
+<span id="L107" class="ln">   107  </span>	})
+<span id="L108" class="ln">   108  </span>	if err != nil {
+<span id="L109" class="ln">   109  </span>		return nil, err
+<span id="L110" class="ln">   110  </span>	}
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>	return gen.PostUsers201JSONResponse(toUserResponse(dto)), nil
+<span id="L113" class="ln">   113  </span>}
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span><span class="comment">// toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。</span>
+<span id="L116" class="ln">   116  </span>func toUserResponse(dto user.UserView) gen.UserResponse {
+<span id="L117" class="ln">   117  </span>	return gen.UserResponse{
+<span id="L118" class="ln">   118  </span>		FirstName:  dto.FirstName,
+<span id="L119" class="ln">   119  </span>		LastName:   dto.LastName,
+<span id="L120" class="ln">   120  </span>		Email:      types.Email(dto.Email),
+<span id="L121" class="ln">   121  </span>		Phone:      dto.Phone,
+<span id="L122" class="ln">   122  </span>		PostalCode: dto.PostalCode,
+<span id="L123" class="ln">   123  </span>		Prefecture: dto.PrefectureName,
+<span id="L124" class="ln">   124  </span>		City:       dto.City,
+<span id="L125" class="ln">   125  </span>		Street:     dto.Street,
+<span id="L126" class="ln">   126  </span>		Building:   dto.Building,
+<span id="L127" class="ln">   127  </span>		DeletedAt:  dto.DeletedAt,
+<span id="L128" class="ln">   128  </span>	}
+<span id="L129" class="ln">   129  </span>}
+<span id="L130" class="ln">   130  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/v1_users_handler.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

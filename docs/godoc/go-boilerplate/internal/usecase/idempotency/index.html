@@ -1,0 +1,402 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>idempotency - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package idempotency
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/idempotency&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package idempotency は、冪等性の at-most-once 実行と replay を行う Run[T] を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+			
+				
+				<dd><a href="#Run">func Run[T any](ctx context.Context, deps Deps, successStatus int, businessFn func(ctx context.Context) (T, error)) (T, bool, error)</a></dd>
+			
+				
+				<dd><a href="#WithRequest">func WithRequest(ctx context.Context, r Request) context.Context</a></dd>
+			
+			
+				
+				<dd><a href="#Deps">type Deps</a></dd>
+				
+					
+					<dd>    <a href="#NewDeps">func NewDeps(txm tx.Manager, store idempotencybndry.Store, clk clock.Clock) Deps</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GCUsecase">type GCUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewGC">func NewGC(store idempotencybndry.Store, clk clock.Clock) GCUsecase</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Metrics">type Metrics</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Request">type Request</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/idempotency/context.go.html">context.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/idempotency/deps.go.html">deps.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html">gc.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html">run.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				<p>DefaultGCBatchSize は、GC の 1 バッチあたり削除件数の既定値です。
+
+				</p><pre>const <span id="DefaultGCBatchSize">DefaultGCBatchSize</span> <a href="../../../../builtin/#int32">int32</a> = 10_000</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1763:1902#L35">Run</a>
+				<a class="permalink" href="#Run">¶</a>
+				
+				
+			</h2>
+			<pre>func Run[T <a href="../../../../builtin/#any">any</a>](
+    ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>,
+    deps <a href="#Deps">Deps</a>,
+    successStatus <a href="../../../../builtin/#int">int</a>,
+    businessFn func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (T, <a href="../../../../builtin/#error">error</a>),
+) (T, <a href="../../../../builtin/#bool">bool</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+			<p>Run は、ctx に Idempotency-Key が無ければ businessFn を素通し実行し、ある場合は業務 tx 内で
+claim → businessFn → complete を 1 tx で行います。再送は replay、並行 claim は 409、指紋不一致は 422。
+successStatus は completed 行へ保存する HTTP ステータス、戻り値 replayed は再生したことを表します。
+</p><p>前提: 本関数は「成功時のステータスが常に successStatus 単一」の操作向けです（例: PostUsers は 201 のみ）。
+replay 時は保存済みの応答ボディ（T）のみを復元し、保存済み response_status は呼び出し側へ伝播しません。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="WithRequest">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/context.go.html?s=834:898#L14">WithRequest</a>
+				<a class="permalink" href="#WithRequest">¶</a>
+				
+				
+			</h2>
+			<pre>func WithRequest(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, r <a href="#Request">Request</a>) <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a></pre>
+			<p>WithRequest は、冪等性 Request を ctx へ載せます（入り口 middleware が使用）。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=817:1056#L19">Deps</a>
+				<a class="permalink" href="#Deps">¶</a>
+				
+				
+			</h2>
+			<p>Deps は、Run が必要とする依存です。
+
+			</p><pre>type Deps struct {
+<span id="Deps.Txm"></span>    Txm   <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>
+<span id="Deps.Store"></span>    Store <a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotencybndry</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Store">Store</a>
+<span id="Deps.Clock"></span>    Clock <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>
+<span id="Deps.Metrics"></span>    <span class="comment">// Metrics は任意。nil の場合カウンタは no-op です（観測性バックエンド配線時に実装を注入する）。</span>
+    Metrics <a href="#Metrics">Metrics</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewDeps">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/deps.go.html?s=279:365#L1">NewDeps</a>
+					<a class="permalink" href="#NewDeps">¶</a>
+					
+					
+				</h3>
+				<pre>func NewDeps(
+    txm <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>,
+    store <a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotencybndry</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Store">Store</a>,
+    clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
+) <a href="#Deps">Deps</a></pre>
+				<p>NewDeps は、Run が必要とする依存を束ねて生成します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="GCUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=487:686#L5">GCUsecase</a>
+				<a class="permalink" href="#GCUsecase">¶</a>
+				
+				
+			</h2>
+			<p>GCUsecase は、TTL 失効した冪等性キーを掃除するユースケースです。
+
+			</p><pre>type GCUsecase interface {
+    <span class="comment">// SweepExpired は、失効行を batchSize 件ずつ削除し、合計削除件数を返します。</span>
+    SweepExpired(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, batchSize <a href="../../../../builtin/#int32">int32</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewGC">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=811:878#L16">NewGC</a>
+					<a class="permalink" href="#NewGC">¶</a>
+					
+					
+				</h3>
+				<pre>func NewGC(store <a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotencybndry</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Store">Store</a>, clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>) <a href="#GCUsecase">GCUsecase</a></pre>
+				<p>NewGC は、GCUsecase を生成します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="Metrics">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=629:763#L12">Metrics</a>
+				<a class="permalink" href="#Metrics">¶</a>
+				
+				
+			</h2>
+			<p>Metrics は、冪等性の o11y カウンタです（operationID ラベルで分解）。
+
+			</p><pre>type Metrics interface {
+    IncReplay(operationID <a href="../../../../builtin/#string">string</a>)
+    IncConflict(operationID <a href="../../../../builtin/#string">string</a>)
+    IncFingerprintMismatch(operationID <a href="../../../../builtin/#string">string</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Request">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/context.go.html?s=272:730#L1">Request</a>
+				<a class="permalink" href="#Request">¶</a>
+				
+				
+			</h2>
+			<p>Request は、冪等性判定に必要な HTTP 非依存のリクエスト情報です。
+
+			</p><pre>type Request struct {
+<span id="Request.Scope"></span>    <span class="comment">// Scope は、認証プリンシパル ID（越境防止の名前空間）。</span>
+    Scope <a href="../../../../builtin/#string">string</a>
+<span id="Request.Key"></span>    <span class="comment">// Key は、クライアント供給の Idempotency-Key。</span>
+    Key <a href="../../../../builtin/#string">string</a>
+<span id="Request.Fingerprint"></span>    <span class="comment">// Fingerprint は、リクエスト指紋（SHA-256・32 byte）。</span>
+    Fingerprint []<a href="../../../../builtin/#byte">byte</a>
+<span id="Request.Method"></span>    <span class="comment">// Method / Path は、リクエストの method / path。</span>
+    Method <a href="../../../../builtin/#string">string</a>
+<span id="Request.Path"></span>    Path   <a href="../../../../builtin/#string">string</a>
+<span id="Request.OperationID"></span>    <span class="comment">// OperationID は、o11y ラベル用（OpenAPI operationId）。</span>
+    OperationID <a href="../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>
