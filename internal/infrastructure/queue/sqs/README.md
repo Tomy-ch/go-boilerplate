@@ -21,7 +21,7 @@ Verify isolation: `go version -m <binary>` for a binary built from `./cmd/` must
 ## Port mapping
 
 | seam | SQS |
-|---|---|
+| --- | --- |
 | `Receive(ctx, max)` | `ReceiveMessage` (long-poll). `ApproximateReceiveCount` → `ReceiveCount`, `MessageGroupId` → `PartitionKey`, `MessageAttributes` (incl. `traceparent`) → `Attributes`, `ReceiptHandle` → reserved key `_receipt_handle` |
 | `Ack` | `DeleteMessage` (reserved-key receipt handle) |
 | `Nack` | `ChangeMessageVisibility(0)` (immediate redelivery, best-effort; delay is not a port guarantee) |

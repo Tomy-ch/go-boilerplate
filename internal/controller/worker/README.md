@@ -22,7 +22,7 @@ English | [日本語](README.ja.md)
 These are easy to conflate. The circuit breaker is applied to the **intake side** (whether to keep pulling), which is less common than the usual "protect a downstream call" framing — so the distinction is documented here.
 
 | Mechanism | What it stops | Recovery | Process |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Backoff** | speed control only (never stops intake) — realized as the Open cooldown's exponential growth (`pkg/backoff`), not a standalone runtime state | automatic | alive |
 | **Circuit Open** | **stops calling `Receive`** (intake) on continued downstream failure | **automatic** (Open → cooldown → Half-open → Closed) | alive |
 | **Fatal** | drains and **stops the engine** | manual (restart) | exits |
