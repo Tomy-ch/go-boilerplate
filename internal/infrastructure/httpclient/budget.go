@@ -9,9 +9,8 @@ const (
 	retryBudgetRetryCost = 1.0
 )
 
-// retryBudget は、per-downstream の retry トークンバケットです（A-5 / D-7）。
-// リクエストごとに ratio 分を補充し、retry ごとに 1 消費します。連続失敗でトークンが枯渇すると
-// retry が止まり fail-fast します（thundering retry を抑制）。
+// retryBudget は、Downstream ごとの retry トークンバケットです。
+// リクエストごとに ratio 分を補充し、retry ごとに 1 消費します。トークン枯渇時は retry を止めます。
 type retryBudget struct {
 	mu     sync.Mutex
 	tokens map[Downstream]float64

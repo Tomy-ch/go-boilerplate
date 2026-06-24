@@ -14,9 +14,7 @@ type Clock interface {
 	Now() time.Time
 }
 
-// Sleeper は、決定的にテスト可能な待機を提供するインターフェースです。
-// backoff のスリープや breaker のタイマー待ちが依存します。
-// Now() の消費者を巻き込まないよう Clock とは別インターフェースに分離しています。
+// Sleeper は、時間経過の待機を抽象化するインターフェースです。
 type Sleeper interface {
 	// Sleep は、d 経過まで待機します。
 	// ctx が先に done になった場合は即座に ctx.Err() を返します。

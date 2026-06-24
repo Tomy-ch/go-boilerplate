@@ -15,7 +15,7 @@ func NewClock() clock.Clock {
 	return &systemClock{}
 }
 
-// NewSleeper は、sleeperを生成します。
+// NewSleeper は、clock.Sleeper の実装を生成します。
 func NewSleeper() clock.Sleeper {
 	return &systemClock{}
 }

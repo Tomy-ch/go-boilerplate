@@ -90,8 +90,8 @@ func NewRegistry(profiles map[Downstream]Profile) Registry {
 	}
 }
 
-// NewDefaultRegistry は、コード定義のデフォルト Profile のみを持つ Registry を返します（DI 既定）。
-// downstream 固有の調整が必要になったら、ここで profiles を登録するか typed config へ移します。
+// NewDefaultRegistry は、デフォルト Profile のみを持つ Registry を返します。
+// 未登録の Downstream には DefaultProfile が適用されます。
 func NewDefaultRegistry() Registry {
 	return NewRegistry(nil)
 }
