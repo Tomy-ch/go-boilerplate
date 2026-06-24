@@ -12,9 +12,8 @@ import (
 // httpClientMeterName は、外部 HTTP client substrate 計装の meter 名です。
 const httpClientMeterName = "go-boilerplate/httpclient"
 
-// HTTPClientMetrics は、外部 HTTP client substrate 所有の RED 計装一式です（WorkerMetrics 対称）。
-// otel/metric への依存は本パッケージに閉じ込め、substrate へは意味づけされたメソッドのみを公開します。
-// otelhttp の自動 metrics（http.client.*）は無効化し、Downstream 単位の RED は本 struct が担います。
+// HTTPClientMetrics は、外部 HTTP client の RED 計装（リクエスト数・エラー数・レイテンシ）に
+// retry 回数と breaker 状態 gauge を加えた計装一式です。
 type HTTPClientMetrics struct {
 	requests     metric.Int64Counter
 	errors       metric.Int64Counter

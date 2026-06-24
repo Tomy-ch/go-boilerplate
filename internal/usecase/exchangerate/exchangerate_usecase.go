@@ -1,9 +1,6 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_exchangerate_usecase.gen.go -package=mock_$GOPACKAGE
 
 // Package exchangerate は、為替レート gateway を用いた換算ユースケースのサンプルです。
-//
-// usecase は意味的 gateway IF（boundary.Gateway）にのみ依存し、HTTP / substrate を一切知りません。
-// DB-backed Repository を使うのと同じ体験で、永続先・通信先が外部 HTTP であることは実装詳細です。
 package exchangerate
 
 import (

@@ -17,9 +17,6 @@ import (
 type dialControl = func(ctx context.Context, network, address string, c syscall.RawConn) error
 
 // HTTPClientTransport は、otelhttp 計装済みの outbound transport を包む不透明な型です。
-//
-// substrate（httpclient）の公開 API に net/http 型を露出させないためのラッパで、
-// otel-contrib への依存も本パッケージに閉じ込めます（otelpgx を driver へ渡すのと対称）。
 type HTTPClientTransport struct {
 	rt http.RoundTripper
 }
