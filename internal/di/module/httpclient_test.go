@@ -12,7 +12,6 @@ import (
 	"go-boilerplate/internal/di/lifecycle"
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	"go-boilerplate/internal/infrastructure/httpclient"
-	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
 	mock_logging "go-boilerplate/internal/logging/mock"
 	infrasystem "go-boilerplate/internal/system"
@@ -24,7 +23,7 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("fx アプリで Client が提供される", func(t *testing.T) {
+		t.Run("実モジュール配線(clock + httpclient)から Client が構築される", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -36,8 +35,11 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 
 			var client httpclient.Client
 
+			// 本番と同じ clockModule()/httpClientModule() を通し、配線そのものを検証する。
 			app := fx.New(
 				ObservabilityModule(),
+				clockModule(),
+				httpClientModule(),
 				fx.Provide(func() testing.TB { return t }),
 				fx.Provide(func() lifecycle.Registrar { return mockReg }),
 				fx.Provide(func() logging.Logger { return mockLog }),
@@ -46,11 +48,6 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 					return config.NewApplicationConfig(config.MockConfigForTest(t))
 				}),
 				fx.Provide(infrasystem.NewBuildInfo),
-				fx.Provide(
-					system.NewSleeper,
-					httpclient.NewDefaultRegistry,
-					httpclient.New,
-				),
 				fx.Populate(&client),
 				fx.NopLogger,
 			)

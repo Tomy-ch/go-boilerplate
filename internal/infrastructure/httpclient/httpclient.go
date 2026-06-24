@@ -53,6 +53,7 @@ type Request struct {
 	// Method は、HTTP メソッドです。
 	Method Method
 	// URL は、リクエスト先 URL です。
+	// 認証情報などの機密はクエリではなく Header に載せてください（URL は o11y span へ記録されます）。
 	URL string
 	// Header は、リクエストヘッダです。
 	Header Header

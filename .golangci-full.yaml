@@ -369,6 +369,9 @@ linters:
               desc: "outbound HTTP client では echo(inbound ハンドラ用)を使用しないでください。"
             - pkg: go-boilerplate/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/domain/
+              desc: "汎用 substrate である outbound HTTP client は domain 層に依存してはいけません。
+                domain 概念を扱うのは external gateway / repository 実装の責務です。"
         # diコンテナのcontroller層の設定ファイルでは、internal/controller/handler配下で定義されたもののみをimport可能とします。
         configure_only_the_controller_layer:
           files:

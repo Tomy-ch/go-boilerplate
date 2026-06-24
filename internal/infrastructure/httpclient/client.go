@@ -28,21 +28,30 @@ type client struct {
 }
 
 // New は、resilient な外部 HTTP 通信の substrate を生成します。
-// transport は observability.NewHTTPClientTransport が生成する otelhttp 計装済み RoundTripper を受けます。
+// transport は observability が計装した不透明な outbound transport で、公開 API に net/http 型を露出しません。
 func New(
-	transport http.RoundTripper,
+	transport *observability.HTTPClientTransport,
 	sleeper clock.Sleeper,
 	registry Registry,
 	metrics *observability.HTTPClientMetrics,
 ) Client {
 	return &client{
-		httpClient: &http.Client{Transport: transport},
-		sleeper:    sleeper,
-		registry:   registry,
-		metrics:    metrics,
-		budget:     newRetryBudget(),
-		breakers:   newBreakerManager(),
+		httpClient: &http.Client{
+			Transport:     transport.RoundTripper(),
+			CheckRedirect: noFollowRedirect,
+		},
+		sleeper:  sleeper,
+		registry: registry,
+		metrics:  metrics,
+		budget:   newRetryBudget(),
+		breakers: newBreakerManager(),
 	}
+}
+
+// noFollowRedirect は、リダイレクトを追従せず最終レスポンス（3xx）をそのまま返します。
+// 追従先の検証を呼び出し側に委ね、未検証ホストへの自動接続（SSRF 面）を避けます。
+func noFollowRedirect(_ *http.Request, _ []*http.Request) error {
+	return http.ErrUseLastResponse
 }
 
 // Do は、req を送信し Response を返します。retry / backoff / deadline 規律を含みます。
@@ -130,10 +139,11 @@ func (c *client) canRetryWithin(ctx context.Context, backoff time.Duration) bool
 func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*Response, error) {
 	attemptCtx, cancel := context.WithTimeout(ctx, profile.PerAttemptTimeout)
 	defer cancel()
+	attemptCtx = observability.ContextWithTracePropagation(attemptCtx, profile.PropagateTrace)
 
 	httpReq, err := buildRequest(attemptCtx, req)
 	if err != nil {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, redactErrMessage(err))
 	}
 
 	httpResp, err := c.httpClient.Do(httpReq)

@@ -69,10 +69,10 @@ func TestNewHTTPClientTransport(t *testing.T) {
 			}))
 			t.Cleanup(srv.Close)
 
-			rt := observability.NewHTTPClientTransport(tracenoop.NewTracerProvider())
-			require.NotNil(t, rt)
+			transport := observability.NewHTTPClientTransport(tracenoop.NewTracerProvider())
+			require.NotNil(t, transport)
 
-			client := &http.Client{Transport: rt}
+			client := &http.Client{Transport: transport.RoundTripper()}
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
 			require.NoError(t, err)
 

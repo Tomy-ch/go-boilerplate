@@ -76,6 +76,12 @@ func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
 	return hm
 }
 
+// NewNoopHTTPClientTransport は、テスト用に no-op の TracerProvider から HTTPClientTransport を生成します。
+func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
+	t.Helper()
+	return NewHTTPClientTransport(noop.NewTracerProvider())
+}
+
 // NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。
 func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 	t.Helper()

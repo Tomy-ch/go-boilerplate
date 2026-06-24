@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"go-boilerplate/internal/apperror"
@@ -74,6 +75,36 @@ func TestNormalizeTransportError(t *testing.T) {
 			t.Parallel()
 			got := normalizeTransportError(errors.New("dial tcp: connection refused"))
 			require.ErrorIs(t, got, apperror.ErrUnavailable)
+		})
+	})
+}
+
+func TestRedactErrMessage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("url_Errorはホストのみへredactしクエリを落とす", func(t *testing.T) {
+			t.Parallel()
+
+			urlErr := &url.Error{
+				Op:  "Get",
+				URL: "https://api.example.com/rates?token=secret123&base=USD",
+				Err: errors.New("dial tcp 93.184.216.34:443: connect: connection refused"),
+			}
+
+			msg := redactErrMessage(urlErr)
+			assert.Contains(t, msg, "api.example.com")
+			assert.NotContains(t, msg, "secret123")
+			assert.NotContains(t, msg, "token")
+		})
+
+		t.Run("url_Error以外はそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			msg := redactErrMessage(errors.New("plain error"))
+			assert.Equal(t, "plain error", msg)
 		})
 	})
 }

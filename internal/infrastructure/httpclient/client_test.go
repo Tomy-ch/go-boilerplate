@@ -46,7 +46,7 @@ func retryProfile() httpclient.Registry {
 func newClient(t *testing.T, registry httpclient.Registry) httpclient.Client {
 	t.Helper()
 	return httpclient.New(
-		http.DefaultTransport,
+		observability.NewNoopHTTPClientTransport(t),
 		clocktestkit.NewNoopSleeper(t),
 		registry,
 		observability.NewNoopHTTPClientMetrics(t),
@@ -227,6 +227,43 @@ func TestClientDo(t *testing.T) {
 	})
 }
 
+func TestClientDoRedirect(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("リダイレクトを追従せず3xxをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			var redirectTargetHit atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/moved" {
+					redirectTargetHit.Add(1)
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+				w.Header().Set("Location", "/moved")
+				w.WriteHeader(http.StatusFound)
+			}))
+			t.Cleanup(srv.Close)
+
+			client := newClient(t, httpclient.NewRegistry(nil))
+			resp, err := client.Do(context.Background(), &httpclient.Request{
+				Downstream: "sample",
+				Method:     httpclient.MethodGet,
+				URL:        srv.URL,
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusFound, resp.StatusCode)
+			assert.Equal(t, []string{"/moved"}, resp.Header["Location"])
+			assert.Equal(t, int32(0), redirectTargetHit.Load()) // 追従していない
+		})
+	})
+}
+
 func TestNewRegistry(t *testing.T) {
 	t.Parallel()
 
@@ -385,7 +422,7 @@ func TestClientDoRetry(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Return(context.Canceled).AnyTimes()
 
-			client := httpclient.New(http.DefaultTransport, sleeper, retryProfile(), observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, retryProfile(), observability.NewNoopHTTPClientMetrics(t))
 
 			_, err := client.Do(context.Background(), &httpclient.Request{
 				Downstream: "retry",
@@ -424,7 +461,7 @@ func TestClientDoBackoff(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
-			client := httpclient.New(http.DefaultTransport, sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
 			_, err := client.Do(context.Background(), &httpclient.Request{
 				Downstream: "retry",
 				Method:     httpclient.MethodGet,
@@ -461,7 +498,12 @@ func TestClientDoDeadline(t *testing.T) {
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"retry": profile})
 
 			// 実時間を消費する sleeper を使い、overall デッドラインで打ち切られることを検証する。
-			client := httpclient.New(http.DefaultTransport, system.NewSleeper(), registry, observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				system.NewSleeper(),
+				registry,
+				observability.NewNoopHTTPClientMetrics(t),
+			)
 			_, err := client.Do(context.Background(), &httpclient.Request{
 				Downstream: "retry",
 				Method:     httpclient.MethodGet,
@@ -583,7 +625,7 @@ func TestClientDoRetryAfter(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
-			client := httpclient.New(http.DefaultTransport, sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
 			_, err := client.Do(context.Background(), &httpclient.Request{
 				Downstream: "ra",
 				Method:     httpclient.MethodGet,

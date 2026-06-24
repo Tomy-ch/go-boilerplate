@@ -3,7 +3,9 @@ package httpclient
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/xerrors"
@@ -52,9 +54,27 @@ func statusToAppError(statusCode int) error {
 // ctx cancel は ErrCanceled、それ以外（network / DNS / TLS / deadline 超過）は ErrUnavailable です。
 func normalizeTransportError(err error) error {
 	if errors.Is(err, context.Canceled) {
-		return xerrors.Wrap(apperror.ErrCanceled, err.Error())
+		return xerrors.Wrap(apperror.ErrCanceled, redactErrMessage(err))
 	}
-	return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+	return xerrors.Wrap(apperror.ErrUnavailable, redactErrMessage(err))
+}
+
+// redactErrMessage は、エラーメッセージから URL のクエリ等の機密になり得る情報を除去します。
+// *url.Error は完全 URL（クエリ込み）を出力するため、ホストのみへ redact します。
+func redactErrMessage(err error) string {
+	if urlErr, ok := errors.AsType[*url.Error](err); ok {
+		return fmt.Sprintf("%s %s: %v", urlErr.Op, redactURLHost(urlErr.URL), urlErr.Err)
+	}
+	return err.Error()
+}
+
+// redactURLHost は、URL 文字列からホスト部のみを返します（スキーム・パス・クエリを落とします）。
+func redactURLHost(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Host == "" {
+		return "upstream"
+	}
+	return parsed.Host
 }
 
 // statusClass は、ステータスコードを metrics ラベル用のクラス文字列に変換します。

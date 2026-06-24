@@ -11,6 +11,7 @@ const (
 	defaultMaxBackoff        = 2 * time.Second
 	defaultRetryBudgetRatio  = 0.1
 	defaultMaxResponseBytes  = 4 << 20 // 4 MiB
+	defaultPropagateTrace    = true
 
 	// デフォルト BreakerConfig の各値。
 	defaultBreakerFailureThreshold = 0.5
@@ -35,6 +36,9 @@ type Profile struct {
 	RetryBudgetRatio float64
 	// MaxResponseBytes は、読み込むレスポンスボディの上限バイト数です。
 	MaxResponseBytes int64
+	// PropagateTrace は、この Downstream へ traceparent/baggage を注入するかを表します。
+	// 信頼できない外部サービスへは false にし、内部相関 ID の外部漏洩を防ぎます。
+	PropagateTrace bool
 	// Breaker は、circuit breaker の設定です。
 	Breaker BreakerConfig
 }
@@ -73,6 +77,7 @@ func DefaultProfile() Profile {
 		MaxBackoff:        defaultMaxBackoff,
 		RetryBudgetRatio:  defaultRetryBudgetRatio,
 		MaxResponseBytes:  defaultMaxResponseBytes,
+		PropagateTrace:    defaultPropagateTrace,
 		Breaker: BreakerConfig{
 			FailureThreshold: defaultBreakerFailureThreshold,
 			MinRequests:      defaultBreakerMinRequests,
