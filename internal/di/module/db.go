@@ -3,7 +3,6 @@ package module
 import (
 	"go-boilerplate/internal/di/server/hook"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
-	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
 	"go-boilerplate/internal/infrastructure/rdb/metrics"
 
 	"go.uber.org/fx"
@@ -13,9 +12,9 @@ import (
 func DatabaseModule() fx.Option {
 	return fx.Module("db",
 		fx.Provide(
-			driver.NewDB,
+			driver.NewQueryTracer,
+			driver.NewTracedDB,
 			driver.NewTransactionManager,
-			loggingdb.NewLoggingDBProvider,
 			metrics.NewRegisterer,
 			metrics.New,
 		),

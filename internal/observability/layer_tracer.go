@@ -5,9 +5,7 @@ package observability
 
 import (
 	"context"
-	"time"
 
-	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
@@ -21,17 +19,12 @@ const (
 	Usecase layerName = "usecase"
 	// Infra は、インフラ層を表すレイヤー名です。
 	Infra layerName = "infrastructure"
-
-	// callSkip は、ロガーのコールスタックのスキップ数を定義します。
-	callSkip = 3
 )
 
 type layerName string
 
 // LayerTracer は、アーキテクチャレイヤー単位のトレース span を提供するトレーサーです。
 type LayerTracer struct {
-	log      logging.Logger
-	lf       logging.LogFieldBuilder
 	tracer   trace.Tracer
 	layer    layerName
 	pkgName  string
@@ -67,8 +60,6 @@ func (lt LayerTracer) StartWithSuffix(
 
 // RunWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
 //
-// span の開始・終了時に Infoレベルでログ出力を行う。
-//
 // 呼び出し元は、関数 fn の実行結果とエラーを受け取ることができる。
 //
 // 典型的な呼び出し方:
@@ -85,29 +76,8 @@ func RunWithSpan[T any](
 ) (context.Context, T, error) {
 	spanName := BuildSpanName(string(layer), pkg, funcName)
 
-	tc, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName)
-	start := time.Now()
-
-	obsIn := logging.ObservabilityFieldsInput{
-		SpanName:     spanName,
-		Layer:        string(layer),
-		PkgName:      pkg,
-		FuncName:     funcName,
-		TraceID:      tc.TraceID(),
-		ParentSpanID: tc.ParentSpanID(),
-		SpanID:       tc.SpanID(),
-	}
-	obsIn.EventType = SpanEventStart
-
-	lt.logSpanEvent(callSkip, obsIn)
-
-	defer func() {
-		event := SpanEventEnd
-		obsIn.EventType = event
-		obsIn.Latency = time.Since(start)
-		lt.logSpanEvent(callSkip+1, obsIn)
-		end()
-	}()
+	_, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName)
+	defer end()
 
 	v, err := fn(childCtx)
 	if err != nil {
@@ -131,8 +101,6 @@ func (lt LayerTracer) makeSpanName(optionalName string) string {
 //
 // optionalName を指定することで、span 名に追加情報を付与できる。
 //
-// このメソッドは LayerTracer の共通の span 開始ロジックを提供します。
-//
 // 呼び出し元は処理完了時に endSpan を呼び出すことで span を確実に終了させることを想定している。
 func (lt LayerTracer) startSpan(
 	parentCtx context.Context,
@@ -140,40 +108,7 @@ func (lt LayerTracer) startSpan(
 	opts ...trace.SpanStartOption,
 ) (context.Context, func()) {
 	spanName := lt.makeSpanName(optionalName)
-	tc, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName, opts...)
+	_, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName, opts...)
 
-	startTime := time.Now()
-
-	obsIn := logging.ObservabilityFieldsInput{
-		SpanName:     spanName,
-		Layer:        string(lt.layer),
-		PkgName:      lt.pkgName,
-		FuncName:     lt.funcName,
-		EventAt:      time.Now(),
-		TraceID:      tc.TraceID(),
-		SpanID:       tc.SpanID(),
-		ParentSpanID: tc.ParentSpanID(),
-	}
-
-	obsIn.EventType = SpanEventStart
-	lt.logSpanEvent(callSkip+1, obsIn)
-
-	endSpan := func() {
-		obsIn.EventType = SpanEventEnd
-		obsIn.Latency = time.Since(startTime)
-
-		lt.logSpanEvent(callSkip, obsIn)
-
-		end()
-	}
-
-	return childCtx, endSpan
-}
-
-// logSpanEvent は、指定された観測可能性フィールドを使用してログを記録します。
-func (lt LayerTracer) logSpanEvent(callerSkip int, obs logging.ObservabilityFieldsInput) {
-	lt.log.Named(obs.Layer).CallerSkip(callerSkip).Info(
-		obs.SpanName+delimiter+obs.EventType,
-		lt.lf.BuildObservabilityFields(obs)...,
-	)
+	return childCtx, end
 }

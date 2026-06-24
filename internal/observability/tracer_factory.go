@@ -3,7 +3,6 @@
 package observability
 
 import (
-	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
@@ -20,17 +19,13 @@ type TracerFactory interface {
 }
 
 type tracerFactory struct {
-	tp  trace.TracerProvider
-	log logging.Logger
-	lf  logging.LogFieldBuilder
+	tp trace.TracerProvider
 }
 
 // NewTracerFactory は、TracerFactory を初期化して返します。
-func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.LogFieldBuilder) TracerFactory {
+func NewTracerFactory(tp trace.TracerProvider) TracerFactory {
 	return &tracerFactory{
-		tp:  tp,
-		log: log,
-		lf:  lf,
+		tp: tp,
 	}
 }
 
@@ -64,8 +59,6 @@ func (t *tracerFactory) Infra() LayerTracer {
 // newLayerTracer は LayerTracer を初期化して返します。
 func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTracer {
 	return LayerTracer{
-		log:     t.log,
-		lf:      t.lf,
 		tracer:  t.tp.Tracer(string(layer) + delimiter + pkgName),
 		layer:   layer,
 		pkgName: pkgName,

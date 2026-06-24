@@ -28,9 +28,30 @@ type DatabaseDriver interface {
 // dbDriver は pgxpool.Pool への薄いアダプタです。
 type dbDriver struct{ pool *pgxpool.Pool }
 
-// NewDB は Postgres のDB接続を初期化して返します。
+// NewDB は Postgres のDB接続を初期化して返します（クエリトレーサーなし）。
 func NewDB(
 	dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig,
+) (DatabaseDriver, error) {
+	return newDB(dbCfg, osCfg, dbConnCfg, nil)
+}
+
+// NewTracedDB は、pgx クエリトレーサーを結線した Postgres のDB接続を初期化して返します。
+// アプリ本体（DI）はこちらを利用し、span 生成とエラー / スロークエリログを接続層で得ます。
+func NewTracedDB(
+	dbCfg *config.DatabaseConfig,
+	osCfg *config.OperatingSystemConfig,
+	dbConnCfg *config.DBConnectionConfig,
+	tracer pgx.QueryTracer,
+) (DatabaseDriver, error) {
+	return newDB(dbCfg, osCfg, dbConnCfg, tracer)
+}
+
+// newDB は、DB接続プールを初期化する共通処理です。tracer が非 nil の場合のみクエリ計装を結線します。
+func newDB(
+	dbCfg *config.DatabaseConfig,
+	osCfg *config.OperatingSystemConfig,
+	dbConnCfg *config.DBConnectionConfig,
+	tracer pgx.QueryTracer,
 ) (DatabaseDriver, error) {
 	poolCfg, err := pgxpool.ParseConfig(DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
@@ -42,6 +63,10 @@ func NewDB(
 	poolCfg.MinConns = dbConnCfg.MinConns()
 	poolCfg.MaxConnLifetime = dbConnCfg.MaxLifetime()
 	poolCfg.MaxConnIdleTime = dbConnCfg.MaxIdleTime()
+
+	if tracer != nil {
+		poolCfg.ConnConfig.Tracer = tracer
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), dbCfg.PingTimeout())
 	defer cancel()

@@ -41,12 +41,12 @@ func insertFeedUser(ctx context.Context, t *testing.T, db driver.DBTX, id string
 func Test_repository_FindFeed(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	db := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
 
-	repo := &repository{tracer: lt, db: loggingDB}
+	repo := &repository{tracer: lt, db: testDB}
 
 	// created_at 降順で安定した順序を作るための固定 ID（タイブレーク検証のため tie ペアを含む）。
 	// base は十分未来の時刻にし、seed データより必ず後ろ（より新しい）に来るようにする。

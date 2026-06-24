@@ -37,11 +37,16 @@ flowchart TB
 
 ## DB Initialization
 
-`NewDB()` initializes the DB connection.
+Two constructors initialize the DB connection:
 
 ```go
-func NewDB(...) (DatabaseDriver, error)
+func NewDB(...) (DatabaseDriver, error)                         // no query tracer
+func NewTracedDB(..., tracer pgx.QueryTracer) (DatabaseDriver, error) // with query tracer
 ```
+
+`NewTracedDB` is used by the application (DI) and wires the pgx query tracer at
+`poolCfg.ConnConfig.Tracer`. `NewDB` (no tracer) is kept for tooling paths that do not need
+query instrumentation (e.g. migration / seed).
 
 Processing details:
 
@@ -51,7 +56,8 @@ Processing details:
     - MinConns
     - ConnMaxLifetime
     - ConnMaxIdleTime
-3. Verify DB connectivity using `Ping`
+3. Attach the query tracer to `ConnConfig.Tracer` (only when provided)
+4. Verify DB connectivity using `Ping`
 
 If Ping fails, it returns an error at startup (**fail fast** design).
 
@@ -219,19 +225,21 @@ func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging
 
 Constructor that implements `tx.Manager` (`internal/usecase/boundary/tx`) for the Usecase layer.
 
-## loggingdb Subdirectory
+## Query Tracer (query_tracer.go)
 
-`loggingdb/` is a **decorator that adds logging + tracing to SQL execution**.
+`NewQueryTracer` builds the `pgx.QueryTracer` that is wired at `ConnConfig.Tracer`. It embeds
+`otelpgx` for OpenTelemetry spans and adds log output only for failures and slow queries.
 
 |Type / Function|Description|
 |---|---|
-|`DBProvider`|Interface for creating logged DBTX|
-|`NewLoggingDBProvider`|Create `DBProvider` (receives DB / Config / Logger / Tracer)|
-|`NewLoggingDB(ctx)`|Wrap `DBTX` to add logging and spans to Exec / Query / QueryRow|
+|`NewQueryTracer`|Build a `pgx.QueryTracer` (receives DB / Observability config, Logger, LogFieldBuilder)|
+|`queryTracer`|Embeds `*otelpgx.Tracer`; overrides `TraceQueryStart` / `TraceQueryEnd` to add logging|
 
 Features:
 
-- Structured logging for SQL start / end
-- Slow query detection (Warn level when `SlowQueryWarnThreshold` is exceeded)
-- Query argument masking via `ObservabilityConfig.MaskedDBQueryArgs()`
-- OpenTelemetry span attached to each query
+- OpenTelemetry span per query via `otelpgx` (with semconv DB attributes; batch / copy covered too)
+- **Error log** on query failure (in addition to `span.RecordError`)
+- **Slow query Warn log** when `DB_SLOW_QUERY_WARN_THRESHOLD` is exceeded
+- Query argument masking via `OBSERVABILITY_MASKED_DB_QUERY_ARGS`
+- Successful queries are recorded as spans only (no per-query log), keeping the trace backend
+  (APM) as the source of truth and avoiding log noise

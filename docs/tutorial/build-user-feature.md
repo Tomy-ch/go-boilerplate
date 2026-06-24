@@ -300,7 +300,7 @@ The repository method shape — span, sqlc call, normalize, convert:
 func (r *repository) Create(ctx context.Context, u *user.User) error {
  ctx, endSpan := r.tracer.Start(ctx)
  defer endSpan()
- db := gen.New(r.db.NewLoggingDB(ctx))
+ db := gen.New(driver.New(ctx, r.db))
  if err := db.CreateUser(ctx, toCreateParams(u)); err != nil {
   return pgerror.NormalizeError(err)
  }

@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.44.0
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/cockroachdb/errors v1.13.0
+	github.com/exaring/otelpgx v0.11.1
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0

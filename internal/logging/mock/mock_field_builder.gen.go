@@ -68,20 +68,6 @@ func (mr *MockLogFieldBuilderMockRecorder) BuildHTTPResponseFields(resp any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildHTTPResponseFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildHTTPResponseFields), resp)
 }
 
-// BuildObservabilityFields mocks base method.
-func (m *MockLogFieldBuilder) BuildObservabilityFields(obs logging.ObservabilityFieldsInput) []*logging.Field {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BuildObservabilityFields", obs)
-	ret0, _ := ret[0].([]*logging.Field)
-	return ret0
-}
-
-// BuildObservabilityFields indicates an expected call of BuildObservabilityFields.
-func (mr *MockLogFieldBuilderMockRecorder) BuildObservabilityFields(obs any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildObservabilityFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildObservabilityFields), obs)
-}
-
 // BuildSQLEndFields mocks base method.
 func (m *MockLogFieldBuilder) BuildSQLEndFields(sql logging.SQLFieldsEndInput) []*logging.Field {
 	m.ctrl.T.Helper()
@@ -94,18 +80,4 @@ func (m *MockLogFieldBuilder) BuildSQLEndFields(sql logging.SQLFieldsEndInput) [
 func (mr *MockLogFieldBuilderMockRecorder) BuildSQLEndFields(sql any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildSQLEndFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildSQLEndFields), sql)
-}
-
-// BuildSQLStartFields mocks base method.
-func (m *MockLogFieldBuilder) BuildSQLStartFields(sql logging.SQLFieldsStartInput) []*logging.Field {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BuildSQLStartFields", sql)
-	ret0, _ := ret[0].([]*logging.Field)
-	return ret0
-}
-
-// BuildSQLStartFields indicates an expected call of BuildSQLStartFields.
-func (mr *MockLogFieldBuilderMockRecorder) BuildSQLStartFields(sql any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildSQLStartFields", reflect.TypeOf((*MockLogFieldBuilder)(nil).BuildSQLStartFields), sql)
 }

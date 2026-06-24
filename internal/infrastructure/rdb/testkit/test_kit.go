@@ -8,9 +8,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
-	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
 	"go-boilerplate/internal/logging"
-	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/pkg/xerrors"
 
@@ -44,21 +42,6 @@ type testTxRunner struct {
 func NewTestDB(t *testing.T) driver.DatabaseDriver {
 	t.Helper()
 	return getTestDB(t)
-}
-
-// NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。
-func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
-	t.Helper()
-
-	cfg := config.MockConfigForTest(t)
-	dbCfg := config.NewDatabaseConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	tracer := observability.NewNoopTracerFactory(t)
-
-	mockLogger := logging.NewTestLogger(t)
-	lf := logging.NewTestLogFieldBuilder(t)
-
-	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
 }
 
 // NewTestTransactionRunner は、テスト用のトランザクションランナーを生成します。

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
@@ -21,13 +21,13 @@ import (
 const claimLockTimeout = "3s"
 
 type store struct {
-	db     loggingdb.DBProvider
+	db     driver.DatabaseDriver
 	tracer observability.LayerTracer
 }
 
 // New は、idempotency.Store の RDB 実装を生成して返します。
 func New(
-	provider loggingdb.DBProvider,
+	provider driver.DatabaseDriver,
 	tf observability.TracerFactory,
 ) idempotencybndry.Store {
 	return &store{
@@ -41,7 +41,7 @@ func (s *store) Claim(ctx context.Context, p idempotencybndry.ClaimParams) (bool
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	ldb := s.db.NewLoggingDB(ctx)
+	ldb := driver.New(ctx, s.db)
 	if _, err := ldb.Exec(ctx, "SET LOCAL lock_timeout = '"+claimLockTimeout+"'"); err != nil {
 		return false, pgerror.NormalizeError(err)
 	}
@@ -73,7 +73,7 @@ func (s *store) Get(ctx context.Context, scope, key string) (*idempotencybndry.R
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(s.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, s.db))
 	row, err := db.GetIdempotencyKey(ctx, &gen.GetIdempotencyKeyParams{
 		Scope:          scope,
 		IdempotencyKey: key,
@@ -98,7 +98,7 @@ func (s *store) Complete(ctx context.Context, p idempotencybndry.CompleteParams)
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(s.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, s.db))
 	status := p.ResponseStatus
 	affected, err := db.CompleteIdempotencyKey(ctx, &gen.CompleteIdempotencyKeyParams{
 		Scope:           p.Scope,
@@ -121,7 +121,7 @@ func (s *store) DeleteExpired(ctx context.Context, cutoff time.Time, limit int32
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(s.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, s.db))
 	affected, err := db.DeleteExpiredIdempotencyKeys(ctx, &gen.DeleteExpiredIdempotencyKeysParams{
 		ExpiresAt: cutoff,
 		Limit:     limit,
