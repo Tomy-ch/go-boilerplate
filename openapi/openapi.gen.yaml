@@ -47,6 +47,8 @@ tags:
     description: ユーザーフィード（cursor ページネーション）。
   - name: v1/users/search
     description: ユーザー検索（キーワード）。
+  - name: v1/exchange-rates
+    description: 為替レート換算（外部 gateway 利用サンプル）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -428,6 +430,45 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/exchange-rates:
+    get:
+      operationId: GetExchangeRates
+      tags:
+        - v1/exchange-rates
+      summary: 為替レートで金額を換算します。
+      description: |
+        base 通貨建ての amount を quote 通貨へ換算した結果を返します。
+        外部の為替レートサービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
+      parameters:
+        - name: base
+          in: query
+          required: true
+          description: 換算元の通貨コード
+          schema:
+            type: string
+            example: USD
+        - name: quote
+          in: query
+          required: true
+          description: 換算先の通貨コード
+          schema:
+            type: string
+            example: JPY
+        - name: amount
+          in: query
+          required: true
+          description: 換算する金額（base 通貨建て）
+          schema:
+            type: number
+            format: double
+            example: 100
+      responses:
+        '200':
+          description: 換算結果を返します。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeRateResponse'
 components:
   parameters:
     PageParam:
@@ -708,6 +749,8 @@ components:
       $ref: '#/components/schemas/UserPutRequest'
     RequestPatchV1User:
       $ref: '#/components/schemas/UserPatchRequest'
+    ResponseV1ExchangeRate:
+      $ref: '#/components/schemas/ExchangeRateResponse'
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。
@@ -887,6 +930,33 @@ components:
               description: 登録日時
               type: string
               format: date-time
+    ExchangeRateResponse:
+      type: object
+      description: 為替換算結果のレスポンスです。
+      required:
+        - base
+        - quote
+        - amount
+        - converted
+      properties:
+        base:
+          type: string
+          description: 換算元の通貨コード
+          example: USD
+        quote:
+          type: string
+          description: 換算先の通貨コード
+          example: JPY
+        amount:
+          type: number
+          format: double
+          description: 換算元の金額
+          example: 100
+        converted:
+          type: number
+          format: double
+          description: 換算後の金額
+          example: 15050
   responses:
     BadRequest400:
       description: リクエストが不正です。
