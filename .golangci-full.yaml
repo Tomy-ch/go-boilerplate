@@ -340,9 +340,14 @@ linters:
                 出力する値は必ずDTOなどを介して受け渡してください。"
         # infrastructure層では、主に永続化を行うライブラリの使用を許可します。
         # ただし、HTTPリクエストを扱うライブラリの使用は禁止します。(主にnet/httpなど)
+        # net/http 全面 deny の本来の趣旨は「infra で HTTP ハンドラ(inbound)を定義させない」ことです。
+        # 外部送信(outbound)専用の resilient HTTP client substrate はハンドラを定義しないため、
+        # httpclient 配下のみ本ルールから除外し、専用ルール(maintain_a_sound_outbound_http_client)で
+        # echo / controller の deny を再掲して多層防御を維持します。
         maintain_a_sound_infrastructure:
           files:
             - "**/internal/infrastructure/**.go"
+            - "!**/internal/infrastructure/httpclient/**.go" # outbound HTTP client substrate は net/http を許可(下の専用ルールで別途制限)
           list-mode: lax
           deny:
             - pkg: net/http
@@ -351,6 +356,17 @@ linters:
             - pkg: github.com/labstack/echo/v4
               desc: "Infrastructure層でechoパッケージを直接使用しないでください。
                 controller層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "infrastructure層でcontroller層を参照することは禁止です。"
+        # outbound HTTP client substrate 専用ルール。
+        # net/http は許可(外部送信のため)しますが、inbound(ハンドラ)用ライブラリと controller 参照は引き続き禁止します。
+        maintain_a_sound_outbound_http_client:
+          files:
+            - "**/internal/infrastructure/httpclient/**.go"
+          list-mode: lax
+          deny:
+            - pkg: github.com/labstack/echo/v4
+              desc: "outbound HTTP client では echo(inbound ハンドラ用)を使用しないでください。"
             - pkg: go-boilerplate/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"
         # diコンテナのcontroller層の設定ファイルでは、internal/controller/handler配下で定義されたもののみをimport可能とします。
