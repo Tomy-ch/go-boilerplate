@@ -404,6 +404,29 @@ Even if observability fails:
 
 are not affected.
 
+### 5 Span value by layer (why controller spans are the most redundant)
+
+Layer spans are emitted in all three layers (controller / usecase / infra) via
+`LayerTracer.Start`, but their **diagnostic value differs**, which matters when
+deciding where to trim instrumentation.
+
+- **Controller layer span — most redundant.** The `otelecho` middleware already
+  creates a **per-request root span**, so a span added in the controller (handler)
+  layer covers **almost the same boundary and roughly the same interval** as that
+  request span. It largely duplicates the root span.
+- **Usecase / infra layer spans — worth keeping.** These represent the
+  **breakdown within a request** — *which usecase flow* ran, and *which repository /
+  SQL* was executed. That detail is **not visible from the root span alone** and has
+  real diagnostic value.
+
+Design judgment: if instrumentation must be reduced, the **controller-layer span is
+the first candidate** to drop, while the **usecase / infra spans are worth retaining**.
+
+> **Note:** The current code intentionally **keeps the controller-layer span as well**
+> (every layer calls `LayerTracer.Start`) for layer consistency. The point above is
+> about **relative value / the rationale behind the design judgment**, not a statement
+> that the controller span has been removed.
+
 ## Security Considerations
 
 Do not include the following in trace information.

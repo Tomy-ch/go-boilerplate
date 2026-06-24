@@ -402,6 +402,25 @@ observability 機能が失敗しても
 
 に影響を与えません。
 
+### 5 レイヤーごとの span の価値（なぜ controller 層の span が最も冗長か）
+
+layer span は controller / usecase / infra の全層で `LayerTracer.Start` により生成されますが、
+その **診断上の価値は異なります**。これは計装をどこから削るかを判断する際に重要になります。
+
+- **controller 層の span — 最も冗長。** `otelecho` ミドルウェアが **リクエスト単位のルート span を既に生成**
+  しているため、controller(handler) 層で追加する span は **そのリクエスト span とほぼ同じ境界・同程度の区間を重複**
+  します。ルート span とほぼ重なります。
+- **usecase / infra 層の span — 残す価値がある。** これらは **リクエスト内の内訳**
+  ——「どの usecase フローか」「どの repository / SQL か」——を表します。この内訳は **ルート span だけでは見えず**、
+  実際の診断価値があります。
+
+設計判断: 計装を削るなら **controller 層の span が第一候補**であり、**usecase / infra の span は残す価値がある**、
+という整理です。
+
+> **注意:** 現状のコードは層の一貫性のため **controller 層の span も意図的に残しています**
+> （各層で `LayerTracer.Start` を呼ぶ）。ここでの記述は **相対的な価値・設計判断の根拠**についてであり、
+> 「controller の span を削除した」という意味ではありません。
+
 ## セキュリティ注意点
 
 トレース情報には次を含めないでください。

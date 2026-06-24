@@ -39,8 +39,6 @@ type queryTracer struct {
 }
 
 // NewQueryTracer は、span(otelpgx) とエラー / スロークエリログを行う pgx.QueryTracer を生成します。
-//
-// tracer は provider を結線済みの otelpgx トレーサー（observability.NewPgxTracer 由来）を受け取ります。
 func NewQueryTracer(
 	dbCfg *config.DatabaseConfig,
 	obsCfg *config.ObservabilityConfig,
