@@ -1,6 +1,8 @@
 package module
 
 import (
+	exchangerateext "go-boilerplate/internal/infrastructure/external/exchangerate" // sample-api:line
+	"go-boilerplate/internal/infrastructure/httpclient"
 	userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user" // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"     // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/user"           // sample-api:line
@@ -50,6 +52,22 @@ func InfrastructureModule() fx.Option {
 		fx.Module("clock",
 			fx.Provide(
 				system.NewClock,
+				system.NewSleeper,
+			),
+		),
+		fx.Module("httpclient",
+			fx.Provide(
+				httpclient.NewDefaultRegistry,
+				httpclient.New,
+			),
+		),
+		fx.Module("external",
+			fx.Provide(
+				// sample-api:begin
+				// サンプルの外部サービス gateway（DTO モード）
+				exchangerateext.NewEndpoint,
+				exchangerateext.New,
+				// sample-api:end
 			),
 		),
 		fx.Module("security",

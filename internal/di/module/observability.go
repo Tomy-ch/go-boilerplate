@@ -19,6 +19,8 @@ func ObservabilityModule() fx.Option {
 			observability.NewProviderShutdowner,
 			observability.NewTracerFactory,
 			observability.NewPgxTracer,
+			observability.NewHTTPClientTransport,
+			observability.NewHTTPClientMetrics,
 		),
 		fx.Invoke(hook.RegisterObservabilityShutdownHooks),
 	)
