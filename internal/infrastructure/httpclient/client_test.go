@@ -233,7 +233,7 @@ func TestClientDoRedirect(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("リダイレクトを追従せず3xxをそのまま返す", func(t *testing.T) {
+		t.Run("リダイレクトを追従せず3xxをErrUnavailableとして返す", func(t *testing.T) {
 			t.Parallel()
 
 			var redirectTargetHit atomic.Int32
@@ -255,7 +255,8 @@ func TestClientDoRedirect(t *testing.T) {
 				URL:        srv.URL,
 			})
 
-			require.NoError(t, err)
+			// 非追従でも resp(Location 付き)は返り、非2xx契約どおり err は ErrUnavailable。
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			require.NotNil(t, resp)
 			assert.Equal(t, http.StatusFound, resp.StatusCode)
 			assert.Equal(t, []string{"/moved"}, resp.Header["Location"])

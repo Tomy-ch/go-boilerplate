@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/pkg/backoff"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -15,6 +16,8 @@ import (
 const (
 	retryableStatusTooManyRequests = 429
 	retryableStatusServerErrorMin  = 500
+	// backoffMultiplier は、指数バックオフの attempt ごとの倍率です。
+	backoffMultiplier = 2
 	// retryAfterHeader は、サーバが推奨する再試行待機時間を伝える HTTP ヘッダ名です。
 	retryAfterHeader = "Retry-After"
 )
@@ -45,21 +48,24 @@ func isRetryableOutcome(resp *Response, err error) bool {
 		return resp.StatusCode == retryableStatusTooManyRequests ||
 			resp.StatusCode >= retryableStatusServerErrorMin
 	}
-	// 応答未取得（network / DNS / TLS / deadline 等）は retry 対象。
-	return true
+	// 応答未取得は transport 失敗(ErrUnavailable)のみ retry 対象。
+	// buildRequest 由来の client エラー(ErrInvalidArgument 等)は決定的なので retry しない。
+	return xerrors.Is(err, apperror.ErrUnavailable)
 }
 
 // computeBackoff は、attempt（1 起算）に対する指数バックオフ + full jitter の待機時間を返します。
+// 指数カーブは pkg/backoff.Exponential に委譲し（overflow 耐性込み）、その上に full jitter を載せます。
 func computeBackoff(attempt int, profile Profile) time.Duration {
 	if attempt < 1 {
 		attempt = 1
 	}
 
-	backoff := profile.BaseBackoff << (attempt - 1)
-	if backoff <= 0 || backoff > profile.MaxBackoff {
-		backoff = profile.MaxBackoff
+	exp := backoff.Exponential{
+		Initial:    profile.BaseBackoff,
+		Max:        profile.MaxBackoff,
+		Multiplier: backoffMultiplier,
 	}
-	return fullJitter(backoff)
+	return fullJitter(exp.Duration(attempt - 1))
 }
 
 // retryWait は、次の retry までの待機時間を決定します。

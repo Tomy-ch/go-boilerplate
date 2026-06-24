@@ -17,6 +17,11 @@ import (
 // idempotencyHeader は、冪等性キーを伝搬する HTTP ヘッダ名です。
 const idempotencyHeader = "Idempotency-Key"
 
+// errCircuitOpen は、circuit breaker による fail-fast を表す内部マーカです。
+// ErrUnavailable を内包するため呼び出し側の分類は従来どおりですが、metrics では transport 失敗と
+// 区別して計上するために使います。
+var errCircuitOpen = xerrors.Wrap(apperror.ErrUnavailable, "circuit open")
+
 // client は、Client の実装です。otelhttp 計装済み transport を介して外部 HTTP 通信を行います。
 type client struct {
 	httpClient *http.Client
@@ -93,7 +98,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 		if !allowed {
 			c.metrics.SetBreakerState(ctx, ds, int64(br.currentState()))
 			if resp == nil {
-				return nil, xerrors.Wrap(apperror.ErrUnavailable, "circuit open: "+ds)
+				return nil, xerrors.Wrap(errCircuitOpen, ds)
 			}
 			return resp, err
 		}
@@ -182,6 +187,8 @@ func (c *client) recordOutcome(ctx context.Context, ds string, resp *Response, e
 	switch {
 	case resp != nil:
 		c.metrics.RecordError(ctx, ds, "http_"+statusClass(resp.StatusCode))
+	case xerrors.Is(err, errCircuitOpen):
+		c.metrics.RecordError(ctx, ds, "circuit_open")
 	case xerrors.Is(err, apperror.ErrCanceled):
 		c.metrics.RecordError(ctx, ds, "canceled")
 	default:

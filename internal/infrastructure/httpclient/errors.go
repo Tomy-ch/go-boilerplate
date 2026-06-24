@@ -20,7 +20,8 @@ const (
 )
 
 // statusToAppError は、HTTP ステータスコードを apperror sentinel に写像します。
-// 2xx / 3xx（成功・リダイレクト）は nil を返します。
+// 2xx は nil を返します。3xx はリダイレクト非追従のため未解決とみなし ErrUnavailable を返します
+// （resp に Location を残すので、追従が必要な呼び出し側はそれを参照できます）。
 // 位置づけは RDB の pgerror.NormalizeError の HTTP 版で、写像は substrate 内部に閉じます。
 func statusToAppError(statusCode int) error {
 	switch statusCode {
@@ -45,8 +46,10 @@ func statusToAppError(statusCode int) error {
 		return apperror.ErrUnavailable
 	case statusCode >= statusClientErrorMin:
 		return apperror.ErrInvalidArgument
+	case statusCode >= statusRedirectMin:
+		return apperror.ErrUnavailable // 3xx: リダイレクト非追従のため未解決
 	default:
-		return nil
+		return nil // 2xx
 	}
 }
 

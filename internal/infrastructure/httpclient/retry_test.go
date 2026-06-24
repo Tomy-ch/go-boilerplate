@@ -1,12 +1,12 @@
 package httpclient
 
 import (
-	"errors"
 	"net/http"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,7 +59,8 @@ func TestIsRetryableOutcome(t *testing.T) {
 			"429は対象":       {resp: &Response{StatusCode: 429}, err: apperror.ErrTooManyRequests, want: true},
 			"404は対象外":      {resp: &Response{StatusCode: 404}, err: apperror.ErrNotFound, want: false},
 			"400は対象外":      {resp: &Response{StatusCode: 400}, err: apperror.ErrInvalidArgument, want: false},
-			"応答未取得のtransport失敗は対象": {resp: nil, err: errors.New("dial error"), want: true},
+			"応答未取得のtransport失敗(ErrUnavailable)は対象":  {resp: nil, err: xerrors.Wrap(apperror.ErrUnavailable, "dial error"), want: true},
+			"応答未取得でもErrInvalidArgument(不正URL等)は対象外": {resp: nil, err: xerrors.Wrap(apperror.ErrInvalidArgument, "bad url"), want: false},
 		}
 
 		for name, tc := range cases {

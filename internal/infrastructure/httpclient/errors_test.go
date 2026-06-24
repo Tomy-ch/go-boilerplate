@@ -26,7 +26,8 @@ func TestStatusToAppError(t *testing.T) {
 		}{
 			"200はエラーなし":                     {status: http.StatusOK, wantNil: true},
 			"204はエラーなし":                     {status: http.StatusNoContent, wantNil: true},
-			"301はエラーなし":                     {status: http.StatusMovedPermanently, wantNil: true},
+			"301はErrUnavailable_非追従リダイレクト":  {status: http.StatusMovedPermanently, want: apperror.ErrUnavailable},
+			"302はErrUnavailable_非追従リダイレクト":  {status: http.StatusFound, want: apperror.ErrUnavailable},
 			"400はErrInvalidArgument":        {status: http.StatusBadRequest, want: apperror.ErrInvalidArgument},
 			"401はErrUnauthenticated":        {status: http.StatusUnauthorized, want: apperror.ErrUnauthenticated},
 			"403はErrPermissionDenied":       {status: http.StatusForbidden, want: apperror.ErrPermissionDenied},
