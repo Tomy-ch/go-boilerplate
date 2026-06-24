@@ -88,6 +88,9 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 	retrySafe := isRetrySafe(req)
 	br := c.breakers.get(req.Downstream, profile.Breaker)
 
+	// breaker 状態は level（gauge）なので、最終状態を呼び出し終了時に 1 回だけ記録する。
+	defer func() { c.metrics.SetBreakerState(ctx, ds, int64(br.currentState())) }()
+
 	// MaxAttempts が未設定/不正でも最低 1 回は試行し、(nil, nil) を返さないようにする。
 	maxAttempts := max(1, profile.MaxAttempts)
 
@@ -96,7 +99,6 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		allowed, generation := br.allow(time.Now())
 		if !allowed {
-			c.metrics.SetBreakerState(ctx, ds, int64(br.currentState()))
 			if resp == nil {
 				return nil, xerrors.Wrap(errCircuitOpen, ds)
 			}
@@ -106,7 +108,6 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 		resp, err = c.attempt(ctx, req, profile)
 		serverFault := isRetryableOutcome(resp, err)
 		br.record(!serverFault, time.Now(), generation)
-		c.metrics.SetBreakerState(ctx, ds, int64(br.currentState()))
 
 		if !retrySafe || !serverFault {
 			return resp, err
@@ -178,8 +179,10 @@ func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*R
 
 // recordOutcome は、呼び出し結果を metrics に計上します。
 func (c *client) recordOutcome(ctx context.Context, ds string, resp *Response, err error) {
+	var class string
 	if resp != nil {
-		c.metrics.RecordRequest(ctx, ds, statusClass(resp.StatusCode))
+		class = statusClass(resp.StatusCode)
+		c.metrics.RecordRequest(ctx, ds, class)
 	}
 	if err == nil {
 		return
@@ -187,7 +190,7 @@ func (c *client) recordOutcome(ctx context.Context, ds string, resp *Response, e
 
 	switch {
 	case resp != nil:
-		c.metrics.RecordError(ctx, ds, "http_"+statusClass(resp.StatusCode))
+		c.metrics.RecordError(ctx, ds, "http_"+class)
 	case xerrors.Is(err, errCircuitOpen):
 		c.metrics.RecordError(ctx, ds, "circuit_open")
 	case xerrors.Is(err, apperror.ErrCanceled):
