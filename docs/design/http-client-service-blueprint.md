@@ -10,16 +10,16 @@
 
 ## 0. 確定した設計判断（ロック済み）
 
-| # | 論点 | 決定 |
+|#|論点|決定|
 |---|---|---|
-| D-1 | port の置き場所・名前（**db.driver 流 / A案**） | 汎用 resilient client は **infra 内部 substrate**（`internal/infrastructure/httpclient/`、`rdb/driver.DatabaseDriver` 相当）。IF 名は `httpclient.Client`（infra-internal）。**boundary には汎用 HTTP port を置かない**。usecase 直依存は**外部サービスごとの意味的 gateway IF**（DB の `domain.Repository` 相当、`auth.Authenticator` と同列）。判断基準は「usecase が直接 import するか」＝ driver が infra にあるのと同じ理屈。gateway IF の戻り値 / 配置（DTO / Domain）は状況次第＝§6.2 |
-| D-2 | substrate の型 | substrate API は **net/http 型を露出しない自前型**（`Method` / `Header` / `Request` / `Response` / `Downstream`）。`Body []byte`（retry replay 可）/ `io.ReadCloser` 非露出。これらは **infra-internal**（gateway が意味的型へ変換し usecase に渡す。usecase は substrate 型を見ない） |
-| D-3 | エラーモデル | typed struct を捨て、**`apperror` sentinel + `xerrors.Wrap`** に寄せる。新規 sentinel は追加しない（`ErrUnavailable` 等に集約）。**status code → apperror の写像も client の責務**（caller は apperror で分岐, §1.1） |
-| D-4 | 時刻/待機抽象 | `clock` パッケージに **`Sleeper` を別 interface で追加**（`Now()` 消費者を巻き込まない＝ISP）。`systemClock` が両方実装 |
-| D-5 | downstream キーリング | breaker / metrics / profile / rate-limit のキーを **`Downstream`（論理依存名）に統一** |
-| D-6 | body 所有権 | substrate は **`[]byte` で返し `io.ReadCloser` を露出しない**。中間 attempt の body は adapter が drain/close |
-| D-7 | retry budget スコープ | **per-downstream**（breaker と同じ `Downstream` キーに相乗り） |
-| D-8 | o11y | **trace は otelhttp 自動計装に委譲**（`otelpgx` / `otelecho` と対称＝transport 自動計装 + 各層 LayerTracer span）。手動 traceparent inject はしない。**RED metrics（B-2）は `internal/observability` 側に struct 配置**（`WorkerMetrics` 対称）。両者ともオプションにしない（§5） |
+|D-1|port の置き場所・名前（**db.driver 流 / A案**）|汎用 resilient client は **infra 内部 substrate**（`internal/infrastructure/httpclient/`、`rdb/driver.DatabaseDriver` 相当）。IF 名は `httpclient.Client`（infra-internal）。**boundary には汎用 HTTP port を置かない**。usecase 直依存は**外部サービスごとの意味的 gateway IF**（DB の `domain.Repository` 相当、`auth.Authenticator` と同列）。判断基準は「usecase が直接 import するか」＝ driver が infra にあるのと同じ理屈。gateway IF の戻り値 / 配置（DTO / Domain）は状況次第＝§6.2|
+|D-2|substrate の型|substrate API は **net/http 型を露出しない自前型**（`Method` / `Header` / `Request` / `Response` / `Downstream`）。`Body []byte`（retry replay 可）/ `io.ReadCloser` 非露出。これらは **infra-internal**（gateway が意味的型へ変換し usecase に渡す。usecase は substrate 型を見ない）|
+|D-3|エラーモデル|typed struct を捨て、**`apperror` sentinel + `xerrors.Wrap`** に寄せる。新規 sentinel は追加しない（`ErrUnavailable` 等に集約）。**status code → apperror の写像も client の責務**（caller は apperror で分岐, §1.1）|
+|D-4|時刻/待機抽象|`clock` パッケージに **`Sleeper` を別 interface で追加**（`Now()` 消費者を巻き込まない＝ISP）。`systemClock` が両方実装|
+|D-5|downstream キーリング|breaker / metrics / profile / rate-limit のキーを **`Downstream`（論理依存名）に統一**|
+|D-6|body 所有権|substrate は **`[]byte` で返し `io.ReadCloser` を露出しない**。中間 attempt の body は adapter が drain/close|
+|D-7|retry budget スコープ|**per-downstream**（breaker と同じ `Downstream` キーに相乗り）|
+|D-8|o11y|**trace は otelhttp 自動計装に委譲**（`otelpgx` / `otelecho` と対称＝transport 自動計装 + 各層 LayerTracer span）。手動 traceparent inject はしない。**RED metrics（B-2）は `internal/observability` 側に struct 配置**（`WorkerMetrics` 対称）。両者ともオプションにしない（§5）|
 
 > D-1 の補足（A案の根拠）: boundary の membership 基準は「技術 vs 外部」ではなく **「usecase が直接 import するか」**。`clock.Clock` が boundary なのは usecase が `Now()` を直に呼ぶから、`driver.DatabaseDriver` が infra なのは usecase が呼ばない（`domain.Repository` の2ホップ奥）から。汎用 HTTP client も usecase は直接叩かず **意味的 gateway 経由**で使う。よって client = infra substrate（driver 相当）、gateway IF = usecase 直依存ポート（repository が実装する `domain.Repository` 相当）。これで DB と HTTP が対称になり、boundary を「usecase 直依存ポートの集合」に保てる。status→apperror 写像（D-3）は substrate 内部に閉じ、gateway 経由で apperror が usecase へ伝播する。
 
@@ -38,7 +38,7 @@ package httpclient
 // resilient（timeout/retry/budget/breaker/o11y）は実装側で完結し、
 // gateway は意図（Request）と結果（Response）だけを扱う。
 type Client interface {
-	Do(ctx context.Context, req *Request) (*Response, error)
+ Do(ctx context.Context, req *Request) (*Response, error)
 }
 
 // Downstream は breaker / metrics / profile / budget の共通キー（論理依存名）。D-5
@@ -48,11 +48,11 @@ type Downstream string
 type Method string
 
 const (
-	MethodGet    Method = "GET"
-	MethodPost   Method = "POST"
-	MethodPut    Method = "PUT"
-	MethodPatch  Method = "PATCH"
-	MethodDelete Method = "DELETE"
+ MethodGet    Method = "GET"
+ MethodPost   Method = "POST"
+ MethodPut    Method = "PUT"
+ MethodPatch  Method = "PATCH"
+ MethodDelete Method = "DELETE"
 )
 
 // Header は net/http.Header を露出しないための自前型。D-2
@@ -60,20 +60,20 @@ type Header map[string][]string
 
 // Request は 1 呼び出しの意図を明示する。
 type Request struct {
-	Downstream     Downstream // 必須。キーが自然に揃う
-	Method         Method
-	URL            string
-	Header         Header
-	Body           []byte // バッファ済み = retry で replay 可能（stream は非対象）
-	IdempotencyKey string // 非冪等メソッドを retry 安全にする（任意）
-	AllowRetry     bool   // POST 等を明示的に retry 許可。後述の不変条件あり
+ Downstream     Downstream // 必須。キーが自然に揃う
+ Method         Method
+ URL            string
+ Header         Header
+ Body           []byte // バッファ済み = retry で replay 可能（stream は非対象）
+ IdempotencyKey string // 非冪等メソッドを retry 安全にする（任意）
+ AllowRetry     bool   // POST 等を明示的に retry 許可。後述の不変条件あり
 }
 
 // Response は io.ReadCloser を露出しない。D-6
 type Response struct {
-	StatusCode int
-	Header     Header
-	Body       []byte // adapter が MaxBytesReader で読み切り済み
+ StatusCode int
+ Header     Header
+ Body       []byte // adapter が MaxBytesReader で読み切り済み
 }
 ```
 
@@ -106,22 +106,22 @@ default:                                           // 2xx
 
 `Do` が返す `err` は、transport 事象と HTTP status の両方を **client 内部で apperror sentinel に統一**したもの。
 
-| 事象 | 返す sentinel | 備考 |
+|事象|返す sentinel|備考|
 |---|---|---|
-| network / DNS / TLS 失敗 | `ErrUnavailable` | wrap msg に原因 |
-| per-attempt / overall deadline | `ErrUnavailable` | 「retry 尽きた」も含む |
-| circuit open | `ErrUnavailable` | msg `"circuit open: <downstream>"`。区別が要れば将来 `ErrCircuitOpen` 追加 |
-| retry budget 枯渇 | `ErrUnavailable` | msg `"retry budget exhausted"` |
-| ctx cancel | `ErrCanceled` | |
-| HTTP 400 | `ErrInvalidArgument` | |
-| HTTP 401 | `ErrUnauthenticated` | |
-| HTTP 403 | `ErrPermissionDenied` | |
-| HTTP 404 | `ErrNotFound` | |
-| HTTP 409 | `ErrConflict` | |
-| HTTP 422 | `ErrValidation` | |
-| HTTP 429 | `ErrTooManyRequests` | |
-| HTTP 5xx | `ErrUnavailable` | retry 尽きた最終結果 |
-| その他 4xx | `ErrInvalidArgument` | default |
+|network / DNS / TLS 失敗|`ErrUnavailable`|wrap msg に原因|
+|per-attempt / overall deadline|`ErrUnavailable`|「retry 尽きた」も含む|
+|circuit open|`ErrUnavailable`|msg `"circuit open: <downstream>"`。区別が要れば将来 `ErrCircuitOpen` 追加|
+|retry budget 枯渇|`ErrUnavailable`|msg `"retry budget exhausted"`|
+|ctx cancel|`ErrCanceled`||
+|HTTP 400|`ErrInvalidArgument`||
+|HTTP 401|`ErrUnauthenticated`||
+|HTTP 403|`ErrPermissionDenied`||
+|HTTP 404|`ErrNotFound`||
+|HTTP 409|`ErrConflict`||
+|HTTP 422|`ErrValidation`||
+|HTTP 429|`ErrTooManyRequests`||
+|HTTP 5xx|`ErrUnavailable`|retry 尽きた最終結果|
+|その他 4xx|`ErrInvalidArgument`|default|
 
 - 非 2xx でも `resp`（status / header / body）は返す（診断・ログ用）。**caller の分岐は `err` の sentinel で行う**（§1.1）。
 - 実装: `internal/infrastructure/httpclient/errors.go` に「transport 事象 → sentinel」「status code → sentinel」の 2 写像を関数化し、`xerrors.Wrap(apperror.ErrXxx, "...")` で集約。caller には公開しない（client 内部関数）。位置づけは RDB の `pgerror.NormalizeError`（DB エラー → apperror）の HTTP 版。
@@ -136,8 +136,8 @@ default:                                           // 2xx
 
 // Sleeper は決定的テスト可能な待機を提供する。backoff / breaker timer が依存。
 type Sleeper interface {
-	// Sleep は d 経過まで待機する。ctx が先に done になれば即座に ctx.Err() を返す。
-	Sleep(ctx context.Context, d time.Duration) error
+ // Sleep は d 経過まで待機する。ctx が先に done になれば即座に ctx.Err() を返す。
+ Sleep(ctx context.Context, d time.Duration) error
 }
 ```
 
@@ -155,28 +155,28 @@ usecase も gateway も profile を意識しない。substrate（infra）内部�
 ```go
 // internal/infrastructure/httpclient/profile.go（infra 内部・port に漏らさない）
 type Profile struct {
-	PerAttemptTimeout time.Duration // A-1
-	OverallTimeout    time.Duration // A-1
-	MaxAttempts       int           // A-4
-	BaseBackoff       time.Duration // A-4
-	MaxBackoff        time.Duration // A-4
-	RetryBudgetRatio  float64       // A-5 / D-7
-	MaxResponseBytes  int64         // B-6
-	Breaker           BreakerConfig // A-6
-	// RateLimit *RateConfig  // C-2（任意・後続）
-	// Auth      AuthProvider // C-1（任意・後続）
+ PerAttemptTimeout time.Duration // A-1
+ OverallTimeout    time.Duration // A-1
+ MaxAttempts       int           // A-4
+ BaseBackoff       time.Duration // A-4
+ MaxBackoff        time.Duration // A-4
+ RetryBudgetRatio  float64       // A-5 / D-7
+ MaxResponseBytes  int64         // B-6
+ Breaker           BreakerConfig // A-6
+ // RateLimit *RateConfig  // C-2（任意・後続）
+ // Auth      AuthProvider // C-1（任意・後続）
 }
 
 type BreakerConfig struct {
-	FailureThreshold float64       // open に倒す失敗率
-	MinRequests      int           // 評価に必要な最小サンプル数
-	OpenDuration     time.Duration // open→half-open までの待機
-	HalfOpenProbes   int           // half-open で通すプローブ数
+ FailureThreshold float64       // open に倒す失敗率
+ MinRequests      int           // 評価に必要な最小サンプル数
+ OpenDuration     time.Duration // open→half-open までの待機
+ HalfOpenProbes   int           // half-open で通すプローブ数
 }
 
 // Registry は Downstream → Profile。未登録キーは安全側デフォルトに fallback。
 type Registry interface {
-	Profile(d httpclient.Downstream) Profile
+ Profile(d httpclient.Downstream) Profile
 }
 ```
 
@@ -212,7 +212,7 @@ trace・metrics いずれもオプション化しない（引数を nil 許容�
 
 ## 6. ファイル構成（新規・変更）
 
-```
+```text
 # ── substrate（driver 相当・infra 内部）──
 internal/infrastructure/httpclient/
   httpclient.go          # 新規: Client IF + 自前型（Method/Header/Request/Response/Downstream）
@@ -258,10 +258,10 @@ substrate を infra に置くことで、層境界は **既存 depguard でそ�
 
 substrate を使う「意味的 IF」は、戻り値が Domain か DTO かで **既存の抽象をそのまま使い分ける（新概念を増やさない）**。
 
-| モード | 戻り値型 | 意味的 IF | 配置（IF / 実装） | 例 |
+|モード|戻り値型|意味的 IF|配置（IF / 実装）|例|
 |---|---|---|---|---|
-| **Domain モード** | domain entity / VO | **`domain.Repository`**（DB 版と同一抽象。永続先が HTTP なだけ） | `domain/<agg>/<agg>_repository.go` / `infra/external/<agg>/<agg>_repository.go` | 外部が `Customer` の正本／外部 `CreditScore` を与信ロジックが使う |
-| **DTO モード** | 自前 DTO / VO | **boundary gateway IF**（`auth.Authenticator` と同列） | `usecase/boundary/<service>/` / `infra/external/<service>/<service>_gateway.go` | 通知送信・トークン検証・為替取得で素通し |
+|**Domain モード**|domain entity / VO|**`domain.Repository`**（DB 版と同一抽象。永続先が HTTP なだけ）|`domain/<agg>/<agg>_repository.go` / `infra/external/<agg>/<agg>_repository.go`|外部が `Customer` の正本／外部 `CreditScore` を与信ロジックが使う|
+|**DTO モード**|自前 DTO / VO|**boundary gateway IF**（`auth.Authenticator` と同列）|`usecase/boundary/<service>/` / `infra/external/<service>/<service>_gateway.go`|通知送信・トークン検証・為替取得で素通し|
 
 - **Domain モードは新概念を作らない**: 「外部データを domain として持つ」なら **既存の `domain.Repository` を定義して HTTP 実装するだけ**。usecase から見れば DB-backed か HTTP-backed かは実装詳細で、`domain.<Agg>Repository` に依存する体験は完全に同じ（storage-agnostic Repository）。**"gateway" という語は DTO モード専用**とする。
 - **判別軸**: データの出所（外部であること）ではなく **「業務ルールがそれを不変条件付きの中核概念として扱うか」**。扱う→Repository（Domain）、素通し→gateway（DTO）。
@@ -274,16 +274,16 @@ substrate を使う「意味的 IF」は、戻り値が Domain か DTO かで **
 
 ## 7. 実装フェーズ（各フェーズ末で compile + test 通過）
 
-| Phase | 内容 | 完了条件 |
+|Phase|内容|完了条件|
 |---|---|---|
-| **P0 境界拡張** | clock `Sleeper` 追加 + `systemClock.Sleep` 実装 + `NewSleeper` provider + `make gen-api` で mock 再生成 | 既存 test green、Sleeper mock 生成 |
-| **P1 substrate 型/IF** | `internal/infrastructure/httpclient` パッケージ（`Client` IF + 自前型）+ mock。gateway 未接続 | パッケージ単体で compile、型定義の sanity test |
-| **P2 substrate 骨格** | transport 構築（otelhttp ラップ）+ 単発 `Do`（retry 無し）+ body `[]byte` 読み切り（MaxBytesReader/drain・close）+ errors.go（transport + status→apperror 写像）+ metrics（D-8 5.2）。**net/http 初出のため `.golangci-full.yaml` に outbound 例外を追加（§6.1）** | httptest で 2xx→`(resp,nil)` / 4xx・5xx→対応 apperror / transport 失敗→`ErrUnavailable`（table-driven で全 status 写像を検証）+ `make lint`（full）green |
-| **P3 retry コア** | 分類(A-3) + backoff/jitter(A-4, `Sleeper` 注入) + deadline 規律(A-1) + 冪等性ガード(A-2) | §8 の retry/冪等/deadline/backoff テスト green |
-| **P4 budget + breaker** | retry budget(A-5/D-7) + circuit breaker(A-6) per-downstream | budget 枯渇・breaker open→fail-fast→half-open のテスト green |
-| **P5 profile + substrate DI** | Registry(M-1) + `fx.Provide(httpclient.New)` 配線 + デフォルト profile 供給（仮案） | DI 起動 test、未登録キー fallback |
-| **P6 意味的 IF サンプル** | サンプルは DTO モード=gateway IF（boundary）+ 実装（`infra/external`、`tf.Infra()` 層 span + `client.Do` + 意味的型/エラー変換）+ mock 生成 + DI 配線 + usecase 利用サンプル（Domain モードは既存 `domain.Repository` を HTTP 実装するだけ・§6.2） | 実装は httptest、usecase は意味的 IF の mock でテスト green |
-| **P7 推奨群** | Retry-After(B-7) + redaction(B-3) + metrics 拡充(B-2) | 各単体テスト |
+|**P0 境界拡張**|clock `Sleeper` 追加 + `systemClock.Sleep` 実装 + `NewSleeper` provider + `make gen-api` で mock 再生成|既存 test green、Sleeper mock 生成|
+|**P1 substrate 型/IF**|`internal/infrastructure/httpclient` パッケージ（`Client` IF + 自前型）+ mock。gateway 未接続|パッケージ単体で compile、型定義の sanity test|
+|**P2 substrate 骨格**|transport 構築（otelhttp ラップ）+ 単発 `Do`（retry 無し）+ body `[]byte` 読み切り（MaxBytesReader/drain・close）+ errors.go（transport + status→apperror 写像）+ metrics（D-8 5.2）。**net/http 初出のため `.golangci-full.yaml` に outbound 例外を追加（§6.1）**|httptest で 2xx→`(resp,nil)` / 4xx・5xx→対応 apperror / transport 失敗→`ErrUnavailable`（table-driven で全 status 写像を検証）+ `make lint`（full）green|
+|**P3 retry コア**|分類(A-3) + backoff/jitter(A-4, `Sleeper` 注入) + deadline 規律(A-1) + 冪等性ガード(A-2)|§8 の retry/冪等/deadline/backoff テスト green|
+|**P4 budget + breaker**|retry budget(A-5/D-7) + circuit breaker(A-6) per-downstream|budget 枯渇・breaker open→fail-fast→half-open のテスト green|
+|**P5 profile + substrate DI**|Registry(M-1) + `fx.Provide(httpclient.New)` 配線 + デフォルト profile 供給（仮案）|DI 起動 test、未登録キー fallback|
+|**P6 意味的 IF サンプル**|サンプルは DTO モード=gateway IF（boundary）+ 実装（`infra/external`、`tf.Infra()` 層 span + `client.Do` + 意味的型/エラー変換）+ mock 生成 + DI 配線 + usecase 利用サンプル（Domain モードは既存 `domain.Repository` を HTTP 実装するだけ・§6.2）|実装は httptest、usecase は意味的 IF の mock でテスト green|
+|**P7 推奨群**|Retry-After(B-7) + redaction(B-3) + metrics 拡充(B-2)|各単体テスト|
 
 > 各フェーズは「コンパイル可能・テスト green」を維持して進める（big-bang にしない）。
 
