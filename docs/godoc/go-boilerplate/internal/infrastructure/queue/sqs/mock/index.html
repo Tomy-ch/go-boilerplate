@@ -1,0 +1,369 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_sqs
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/queue/sqs/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_sqs is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockAPI">type MockAPI</a></dd>
+				
+					
+					<dd>    <a href="#NewMockAPI">func NewMockAPI(ctrl *gomock.Controller) *MockAPI</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockAPI.ChangeMessageVisibility">func (m *MockAPI) ChangeMessageVisibility(ctx context.Context, in *sqs.ChangeMessageVisibilityInput, opts ...func(*sqs.Options)) (*sqs.ChangeMessageVisibilityOutput, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockAPI.DeleteMessage">func (m *MockAPI) DeleteMessage(ctx context.Context, in *sqs.DeleteMessageInput, opts ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockAPI.EXPECT">func (m *MockAPI) EXPECT() *MockAPIMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockAPI.ReceiveMessage">func (m *MockAPI) ReceiveMessage(ctx context.Context, in *sqs.ReceiveMessageInput, opts ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockAPI.SendMessage">func (m *MockAPI) SendMessage(ctx context.Context, in *sqs.SendMessageInput, opts ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockAPIMockRecorder">type MockAPIMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockAPIMockRecorder.ChangeMessageVisibility">func (mr *MockAPIMockRecorder) ChangeMessageVisibility(ctx, in any, opts ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockAPIMockRecorder.DeleteMessage">func (mr *MockAPIMockRecorder) DeleteMessage(ctx, in any, opts ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockAPIMockRecorder.ReceiveMessage">func (mr *MockAPIMockRecorder) ReceiveMessage(ctx, in any, opts ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockAPIMockRecorder.SendMessage">func (mr *MockAPIMockRecorder) SendMessage(ctx, in any, opts ...any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html">mock_sqs.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockAPI">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=420:522#L11">MockAPI</a>
+				<a class="permalink" href="#MockAPI">¶</a>
+				
+				
+			</h2>
+			<p>MockAPI is a mock of API interface.
+
+			</p><pre>type MockAPI struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockAPI">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=676:725#L23">NewMockAPI</a>
+					<a class="permalink" href="#NewMockAPI">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockAPI(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockAPI">MockAPI</a></pre>
+				<p>NewMockAPI creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockAPI.ChangeMessageVisibility">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=1013:1185#L35">ChangeMessageVisibility</a>
+					<a class="permalink" href="#MockAPI.ChangeMessageVisibility">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockAPI">MockAPI</a>) ChangeMessageVisibility(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, in *<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#ChangeMessageVisibilityInput">ChangeMessageVisibilityInput</a>, opts ...func(*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Options">Options</a>)) (*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#ChangeMessageVisibilityOutput">ChangeMessageVisibilityOutput</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>ChangeMessageVisibility mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPI.DeleteMessage">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=1898:2040#L55">DeleteMessage</a>
+					<a class="permalink" href="#MockAPI.DeleteMessage">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockAPI">MockAPI</a>) DeleteMessage(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, in *<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#DeleteMessageInput">DeleteMessageInput</a>, opts ...func(*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Options">Options</a>)) (*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#DeleteMessageOutput">DeleteMessageOutput</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>DeleteMessage mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPI.EXPECT">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=895:942#L30">EXPECT</a>
+					<a class="permalink" href="#MockAPI.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockAPI">MockAPI</a>) EXPECT() *<a href="#MockAPIMockRecorder">MockAPIMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPI.ReceiveMessage">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=2684:2829#L75">ReceiveMessage</a>
+					<a class="permalink" href="#MockAPI.ReceiveMessage">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockAPI">MockAPI</a>) ReceiveMessage(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, in *<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#ReceiveMessageInput">ReceiveMessageInput</a>, opts ...func(*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Options">Options</a>)) (*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#ReceiveMessageOutput">ReceiveMessageOutput</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>ReceiveMessage mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPI.SendMessage">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=3477:3613#L95">SendMessage</a>
+					<a class="permalink" href="#MockAPI.SendMessage">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockAPI">MockAPI</a>) SendMessage(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, in *<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#SendMessageInput">SendMessageInput</a>, opts ...func(*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Options">Options</a>)) (*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#SendMessageOutput">SendMessageOutput</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>SendMessage mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockAPIMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=581:631#L18">MockAPIMockRecorder</a>
+				<a class="permalink" href="#MockAPIMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockAPIMockRecorder is the mock recorder for MockAPI.
+
+			</p><pre>type MockAPIMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockAPIMockRecorder.ChangeMessageVisibility">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=1543:1636#L48">ChangeMessageVisibility</a>
+					<a class="permalink" href="#MockAPIMockRecorder.ChangeMessageVisibility">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockAPIMockRecorder">MockAPIMockRecorder</a>) ChangeMessageVisibility(ctx, in <a href="../../../../../../builtin/#any">any</a>, opts ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ChangeMessageVisibility indicates an expected call of ChangeMessageVisibility.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPIMockRecorder.DeleteMessage">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=2358:2441#L68">DeleteMessage</a>
+					<a class="permalink" href="#MockAPIMockRecorder.DeleteMessage">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockAPIMockRecorder">MockAPIMockRecorder</a>) DeleteMessage(ctx, in <a href="../../../../../../builtin/#any">any</a>, opts ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>DeleteMessage indicates an expected call of DeleteMessage.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPIMockRecorder.ReceiveMessage">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=3151:3235#L88">ReceiveMessage</a>
+					<a class="permalink" href="#MockAPIMockRecorder.ReceiveMessage">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockAPIMockRecorder">MockAPIMockRecorder</a>) ReceiveMessage(ctx, in <a href="../../../../../../builtin/#any">any</a>, opts ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ReceiveMessage indicates an expected call of ReceiveMessage.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPIMockRecorder.SendMessage">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.gen.go.html?s=3923:4004#L108">SendMessage</a>
+					<a class="permalink" href="#MockAPIMockRecorder.SendMessage">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockAPIMockRecorder">MockAPIMockRecorder</a>) SendMessage(ctx, in <a href="../../../../../../builtin/#any">any</a>, opts ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SendMessage indicates an expected call of SendMessage.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

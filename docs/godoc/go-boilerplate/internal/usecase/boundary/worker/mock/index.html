@@ -1,0 +1,1009 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_worker
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/worker/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_worker is a generated GoMock package.
+</p><p>Package mock_worker is a generated GoMock package.
+</p><p>Package mock_worker is a generated GoMock package.
+</p><p>Package mock_worker is a generated GoMock package.
+</p><p>Package mock_worker is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockConsumer">type MockConsumer</a></dd>
+				
+					
+					<dd>    <a href="#NewMockConsumer">func NewMockConsumer(ctrl *gomock.Controller) *MockConsumer</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockConsumer.Ack">func (m_2 *MockConsumer) Ack(ctx context.Context, m worker.Message) error</a></dd>
+				
+					
+					<dd>    <a href="#MockConsumer.EXPECT">func (m *MockConsumer) EXPECT() *MockConsumerMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockConsumer.Extend">func (m_2 *MockConsumer) Extend(ctx context.Context, m worker.Message, d time.Duration) error</a></dd>
+				
+					
+					<dd>    <a href="#MockConsumer.Nack">func (m_2 *MockConsumer) Nack(ctx context.Context, m worker.Message) error</a></dd>
+				
+					
+					<dd>    <a href="#MockConsumer.Receive">func (m *MockConsumer) Receive(ctx context.Context, limit int) ([]worker.Message, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockConsumerMockRecorder">type MockConsumerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockConsumerMockRecorder.Ack">func (mr *MockConsumerMockRecorder) Ack(ctx, m any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockConsumerMockRecorder.Extend">func (mr *MockConsumerMockRecorder) Extend(ctx, m, d any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockConsumerMockRecorder.Nack">func (mr *MockConsumerMockRecorder) Nack(ctx, m any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockConsumerMockRecorder.Receive">func (mr *MockConsumerMockRecorder) Receive(ctx, limit any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockFailureHandler">type MockFailureHandler</a></dd>
+				
+					
+					<dd>    <a href="#NewMockFailureHandler">func NewMockFailureHandler(ctrl *gomock.Controller) *MockFailureHandler</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockFailureHandler.EXPECT">func (m *MockFailureHandler) EXPECT() *MockFailureHandlerMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockFailureHandler.Fail">func (m_2 *MockFailureHandler) Fail(ctx context.Context, m worker.Message, cause error) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockFailureHandlerMockRecorder">type MockFailureHandlerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockFailureHandlerMockRecorder.Fail">func (mr *MockFailureHandlerMockRecorder) Fail(ctx, m, cause any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockHandler">type MockHandler</a></dd>
+				
+					
+					<dd>    <a href="#NewMockHandler">func NewMockHandler(ctrl *gomock.Controller) *MockHandler</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockHandler.EXPECT">func (m *MockHandler) EXPECT() *MockHandlerMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockHandler.Handle">func (m_2 *MockHandler) Handle(ctx context.Context, m worker.Message) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockHandlerMockRecorder">type MockHandlerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockHandlerMockRecorder.Handle">func (mr *MockHandlerMockRecorder) Handle(ctx, m any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockState">type MockState</a></dd>
+				
+					
+					<dd>    <a href="#NewMockState">func NewMockState(ctrl *gomock.Controller) *MockState</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockState.EXPECT">func (m *MockState) EXPECT() *MockStateMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockState.Set">func (m *MockState) Set(name string, args []string, done chan error)</a></dd>
+				
+					
+					<dd>    <a href="#MockState.Snapshot">func (m *MockState) Snapshot() (string, []string, chan error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockStateMockRecorder">type MockStateMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockStateMockRecorder.Set">func (mr *MockStateMockRecorder) Set(name, args, done any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockStateMockRecorder.Snapshot">func (mr *MockStateMockRecorder) Snapshot() *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockWorker">type MockWorker</a></dd>
+				
+					
+					<dd>    <a href="#NewMockWorker">func NewMockWorker(ctrl *gomock.Controller) *MockWorker</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockWorker.Consumer">func (m *MockWorker) Consumer() worker.Consumer</a></dd>
+				
+					
+					<dd>    <a href="#MockWorker.EXPECT">func (m *MockWorker) EXPECT() *MockWorkerMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockWorker.FailureHandler">func (m *MockWorker) FailureHandler() worker.FailureHandler</a></dd>
+				
+					
+					<dd>    <a href="#MockWorker.Handler">func (m *MockWorker) Handler() worker.Handler</a></dd>
+				
+					
+					<dd>    <a href="#MockWorker.Name">func (m *MockWorker) Name() string</a></dd>
+				
+			
+				
+				<dd><a href="#MockWorkerMockRecorder">type MockWorkerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockWorkerMockRecorder.Consumer">func (mr *MockWorkerMockRecorder) Consumer() *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockWorkerMockRecorder.FailureHandler">func (mr *MockWorkerMockRecorder) FailureHandler() *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockWorkerMockRecorder.Handler">func (mr *MockWorkerMockRecorder) Handler() *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockWorkerMockRecorder.Name">func (mr *MockWorkerMockRecorder) Name() *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html">mock_consumer.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_failure.gen.go.html">mock_failure.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_handler.gen.go.html">mock_handler.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html">mock_state.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html">mock_worker.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockConsumer">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=477:589#L12">MockConsumer</a>
+				<a class="permalink" href="#MockConsumer">¶</a>
+				
+				
+			</h2>
+			<p>MockConsumer is a mock of Consumer interface.
+
+			</p><pre>type MockConsumer struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockConsumer">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=768:827#L24">NewMockConsumer</a>
+					<a class="permalink" href="#NewMockConsumer">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockConsumer(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockConsumer">MockConsumer</a></pre>
+				<p>NewMockConsumer creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockConsumer.Ack">func (*MockConsumer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=1115:1188#L36">Ack</a>
+					<a class="permalink" href="#MockConsumer.Ack">¶</a>
+					
+					
+				</h3>
+				<pre>func (m_2 *<a href="#MockConsumer">MockConsumer</a>) Ack(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, m <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Ack mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumer.EXPECT">func (*MockConsumer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=1007:1064#L31">EXPECT</a>
+					<a class="permalink" href="#MockConsumer.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockConsumer">MockConsumer</a>) EXPECT() *<a href="#MockConsumerMockRecorder">MockConsumerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumer.Extend">func (*MockConsumer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=1575:1668#L50">Extend</a>
+					<a class="permalink" href="#MockConsumer.Extend">¶</a>
+					
+					
+				</h3>
+				<pre>func (m_2 *<a href="#MockConsumer">MockConsumer</a>) Extend(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, m <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, d <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Duration">Duration</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Extend mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumer.Nack">func (*MockConsumer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=2080:2154#L64">Nack</a>
+					<a class="permalink" href="#MockConsumer.Nack">¶</a>
+					
+					
+				</h3>
+				<pre>func (m_2 *<a href="#MockConsumer">MockConsumer</a>) Nack(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, m <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Nack mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumer.Receive">func (*MockConsumer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=2548:2636#L78">Receive</a>
+					<a class="permalink" href="#MockConsumer.Receive">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockConsumer">MockConsumer</a>) Receive(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, limit <a href="../../../../../../builtin/#int">int</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Receive mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockConsumerMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=658:718#L19">MockConsumerMockRecorder</a>
+				<a class="permalink" href="#MockConsumerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockConsumerMockRecorder is the mock recorder for MockConsumer.
+
+			</p><pre>type MockConsumerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockConsumerMockRecorder.Ack">func (*MockConsumerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=1339:1403#L44">Ack</a>
+					<a class="permalink" href="#MockConsumerMockRecorder.Ack">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockConsumerMockRecorder">MockConsumerMockRecorder</a>) Ack(ctx, m <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Ack indicates an expected call of Ack.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumerMockRecorder.Extend">func (*MockConsumerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=1831:1901#L58">Extend</a>
+					<a class="permalink" href="#MockConsumerMockRecorder.Extend">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockConsumerMockRecorder">MockConsumerMockRecorder</a>) Extend(ctx, m, d <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Extend indicates an expected call of Extend.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumerMockRecorder.Nack">func (*MockConsumerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=2308:2373#L72">Nack</a>
+					<a class="permalink" href="#MockConsumerMockRecorder.Nack">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockConsumerMockRecorder">MockConsumerMockRecorder</a>) Nack(ctx, m <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Nack indicates an expected call of Nack.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumerMockRecorder.Receive">func (*MockConsumerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=2841:2913#L87">Receive</a>
+					<a class="permalink" href="#MockConsumerMockRecorder.Receive">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockConsumerMockRecorder">MockConsumerMockRecorder</a>) Receive(ctx, limit <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Receive indicates an expected call of Receive.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockFailureHandler">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_failure.gen.go.html?s=473:597#L11">MockFailureHandler</a>
+				<a class="permalink" href="#MockFailureHandler">¶</a>
+				
+				
+			</h2>
+			<p>MockFailureHandler is a mock of FailureHandler interface.
+
+			</p><pre>type MockFailureHandler struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockFailureHandler">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_failure.gen.go.html?s=806:877#L23">NewMockFailureHandler</a>
+					<a class="permalink" href="#NewMockFailureHandler">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockFailureHandler(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockFailureHandler">MockFailureHandler</a></pre>
+				<p>NewMockFailureHandler creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockFailureHandler.EXPECT">func (*MockFailureHandler) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_failure.gen.go.html?s=1069:1138#L30">EXPECT</a>
+					<a class="permalink" href="#MockFailureHandler.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFailureHandler">MockFailureHandler</a>) EXPECT() *<a href="#MockFailureHandlerMockRecorder">MockFailureHandlerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFailureHandler.Fail">func (*MockFailureHandler) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_failure.gen.go.html?s=1190:1283#L35">Fail</a>
+					<a class="permalink" href="#MockFailureHandler.Fail">¶</a>
+					
+					
+				</h3>
+				<pre>func (m_2 *<a href="#MockFailureHandler">MockFailureHandler</a>) Fail(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, m <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, cause <a href="../../../../../../builtin/#error">error</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Fail mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockFailureHandlerMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_failure.gen.go.html?s=678:750#L18">MockFailureHandlerMockRecorder</a>
+				<a class="permalink" href="#MockFailureHandlerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockFailureHandlerMockRecorder is the mock recorder for MockFailureHandler.
+
+			</p><pre>type MockFailureHandlerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockFailureHandlerMockRecorder.Fail">func (*MockFailureHandlerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_failure.gen.go.html?s=1444:1522#L43">Fail</a>
+					<a class="permalink" href="#MockFailureHandlerMockRecorder.Fail">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFailureHandlerMockRecorder">MockFailureHandlerMockRecorder</a>) Fail(ctx, m, cause <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Fail indicates an expected call of Fail.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockHandler">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_handler.gen.go.html?s=459:569#L11">MockHandler</a>
+				<a class="permalink" href="#MockHandler">¶</a>
+				
+				
+			</h2>
+			<p>MockHandler is a mock of Handler interface.
+
+			</p><pre>type MockHandler struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockHandler">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_handler.gen.go.html?s=743:800#L23">NewMockHandler</a>
+					<a class="permalink" href="#NewMockHandler">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockHandler(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockHandler">MockHandler</a></pre>
+				<p>NewMockHandler creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockHandler.EXPECT">func (*MockHandler) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_handler.gen.go.html?s=978:1033#L30">EXPECT</a>
+					<a class="permalink" href="#MockHandler.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockHandler">MockHandler</a>) EXPECT() *<a href="#MockHandlerMockRecorder">MockHandlerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockHandler.Handle">func (*MockHandler) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_handler.gen.go.html?s=1087:1162#L35">Handle</a>
+					<a class="permalink" href="#MockHandler.Handle">¶</a>
+					
+					
+				</h3>
+				<pre>func (m_2 *<a href="#MockHandler">MockHandler</a>) Handle(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, m <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Handle mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockHandlerMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_handler.gen.go.html?s=636:694#L18">MockHandlerMockRecorder</a>
+				<a class="permalink" href="#MockHandlerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockHandlerMockRecorder is the mock recorder for MockHandler.
+
+			</p><pre>type MockHandlerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockHandlerMockRecorder.Handle">func (*MockHandlerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_handler.gen.go.html?s=1322:1388#L43">Handle</a>
+					<a class="permalink" href="#MockHandlerMockRecorder.Handle">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockHandlerMockRecorder">MockHandlerMockRecorder</a>) Handle(ctx, m <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Handle indicates an expected call of Handle.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockState">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html?s=372:478#L9">MockState</a>
+				<a class="permalink" href="#MockState">¶</a>
+				
+				
+			</h2>
+			<p>MockState is a mock of State interface.
+
+			</p><pre>type MockState struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockState">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html?s=642:695#L21">NewMockState</a>
+					<a class="permalink" href="#NewMockState">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockState(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockState">MockState</a></pre>
+				<p>NewMockState creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockState.EXPECT">func (*MockState) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html?s=869:920#L28">EXPECT</a>
+					<a class="permalink" href="#MockState.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockState">MockState</a>) EXPECT() *<a href="#MockStateMockRecorder">MockStateMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockState.Set">func (*MockState) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html?s=971:1039#L33">Set</a>
+					<a class="permalink" href="#MockState.Set">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockState">MockState</a>) Set(name <a href="../../../../../../builtin/#string">string</a>, args []<a href="../../../../../../builtin/#string">string</a>, done chan <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Set mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockState.Snapshot">func (*MockState) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html?s=1399:1460#L45">Snapshot</a>
+					<a class="permalink" href="#MockState.Snapshot">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockState">MockState</a>) Snapshot() (<a href="../../../../../../builtin/#string">string</a>, []<a href="../../../../../../builtin/#string">string</a>, chan <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Snapshot mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockStateMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html?s=541:595#L16">MockStateMockRecorder</a>
+				<a class="permalink" href="#MockStateMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockStateMockRecorder is the mock recorder for MockState.
+
+			</p><pre>type MockStateMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockStateMockRecorder.Set">func (*MockStateMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html?s=1147:1218#L39">Set</a>
+					<a class="permalink" href="#MockStateMockRecorder.Set">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStateMockRecorder">MockStateMockRecorder</a>) Set(name, args, done <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Set indicates an expected call of Set.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStateMockRecorder.Snapshot">func (*MockStateMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.gen.go.html?s=1687:1743#L55">Snapshot</a>
+					<a class="permalink" href="#MockStateMockRecorder.Snapshot">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStateMockRecorder">MockStateMockRecorder</a>) Snapshot() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Snapshot indicates an expected call of Snapshot.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockWorker">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=435:543#L10">MockWorker</a>
+				<a class="permalink" href="#MockWorker">¶</a>
+				
+				
+			</h2>
+			<p>MockWorker is a mock of Worker interface.
+
+			</p><pre>type MockWorker struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockWorker">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=712:767#L22">NewMockWorker</a>
+					<a class="permalink" href="#NewMockWorker">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockWorker(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockWorker">MockWorker</a></pre>
+				<p>NewMockWorker creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockWorker.Consumer">func (*MockWorker) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=1052:1099#L34">Consumer</a>
+					<a class="permalink" href="#MockWorker.Consumer">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockWorker">MockWorker</a>) Consumer() <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Consumer">Consumer</a></pre>
+				<p>Consumer mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockWorker.EXPECT">func (*MockWorker) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=943:996#L29">EXPECT</a>
+					<a class="permalink" href="#MockWorker.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockWorker">MockWorker</a>) EXPECT() *<a href="#MockWorkerMockRecorder">MockWorkerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockWorker.FailureHandler">func (*MockWorker) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=1498:1557#L48">FailureHandler</a>
+					<a class="permalink" href="#MockWorker.FailureHandler">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockWorker">MockWorker</a>) FailureHandler() <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#FailureHandler">FailureHandler</a></pre>
+				<p>FailureHandler mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockWorker.Handler">func (*MockWorker) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=1991:2036#L62">Handler</a>
+					<a class="permalink" href="#MockWorker.Handler">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockWorker">MockWorker</a>) Handler() <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Handler">Handler</a></pre>
+				<p>Handler mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockWorker.Name">func (*MockWorker) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=2418:2452#L76">Name</a>
+					<a class="permalink" href="#MockWorker.Name">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockWorker">MockWorker</a>) Name() <a href="../../../../../../builtin/#string">string</a></pre>
+				<p>Name mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockWorkerMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=608:664#L17">MockWorkerMockRecorder</a>
+				<a class="permalink" href="#MockWorkerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockWorkerMockRecorder is the mock recorder for MockWorker.
+
+			</p><pre>type MockWorkerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockWorkerMockRecorder.Consumer">func (*MockWorkerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=1261:1318#L42">Consumer</a>
+					<a class="permalink" href="#MockWorkerMockRecorder.Consumer">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockWorkerMockRecorder">MockWorkerMockRecorder</a>) Consumer() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Consumer indicates an expected call of Consumer.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockWorkerMockRecorder.FailureHandler">func (*MockWorkerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=1743:1806#L56">FailureHandler</a>
+					<a class="permalink" href="#MockWorkerMockRecorder.FailureHandler">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockWorkerMockRecorder">MockWorkerMockRecorder</a>) FailureHandler() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FailureHandler indicates an expected call of FailureHandler.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockWorkerMockRecorder.Handler">func (*MockWorkerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=2194:2250#L70">Handler</a>
+					<a class="permalink" href="#MockWorkerMockRecorder.Handler">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockWorkerMockRecorder">MockWorkerMockRecorder</a>) Handler() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Handler indicates an expected call of Handler.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockWorkerMockRecorder.Name">func (*MockWorkerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_worker.gen.go.html?s=2593:2646#L84">Name</a>
+					<a class="permalink" href="#MockWorkerMockRecorder.Name">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockWorkerMockRecorder">MockWorkerMockRecorder</a>) Name() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Name indicates an expected call of Name.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>
