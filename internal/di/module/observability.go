@@ -19,6 +19,7 @@ func ObservabilityModule() fx.Option {
 			observability.NewProviderShutdowner,
 			observability.NewTracerFactory,
 			observability.NewPgxTracer,
+			observability.NewTextMapPropagator,
 			observability.NewHTTPClientTransport,
 			observability.NewHTTPClientMetrics,
 		),

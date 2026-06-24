@@ -72,17 +72,16 @@ func (b *breaker) allow(now time.Time) (bool, uint64) {
 }
 
 // record は、試行結果を記録し状態遷移を行います。success=false は downstream 起因の失敗です。
-// generation が allow 発行時から変化していれば、別エポックの遅延結果とみなして無視します。
 func (b *breaker) record(success bool, now time.Time, generation uint64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if generation != b.generation {
-		return
-	}
-
 	switch b.state {
 	case breakerHalfOpen:
+		// half-open は厳密にプローブ数で回復判定するため、別エポックの遅延結果を無視する。
+		if generation != b.generation {
+			return
+		}
 		if !success {
 			b.toOpen(now)
 			return
@@ -92,6 +91,7 @@ func (b *breaker) record(success bool, now time.Time, generation uint64) {
 			b.toClosed()
 		}
 	case breakerClosed:
+		// closed の集計は状態遷移時にリセットされるため、競合した遅延 record も無害に計上できる。
 		b.requests++
 		if !success {
 			b.failures++

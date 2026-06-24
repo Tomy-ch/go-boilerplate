@@ -12,7 +12,7 @@ func TestRetryBudget(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("初回refillで満タンになりmaxTokensまでtryConsumeできる", func(t *testing.T) {
+		t.Run("初回refillは初期トークンから始まる", func(t *testing.T) {
 			t.Parallel()
 
 			b := newRetryBudget()
@@ -22,14 +22,16 @@ func TestRetryBudget(t *testing.T) {
 			for b.tryConsume("d") {
 				consumed++
 			}
-			assert.Equal(t, int(retryBudgetMaxTokens), consumed)
+			assert.Equal(t, int(retryBudgetInitialTokens), consumed)
 		})
 
-		t.Run("refillはratio分だけ補充し上限を超えない", func(t *testing.T) {
+		t.Run("refillを重ねると上限maxTokensまで補充され超過しない", func(t *testing.T) {
 			t.Parallel()
 
 			b := newRetryBudget()
-			b.refill("d", 0.5) // 満タン(10)から開始、上限超過分は捨てられる
+			for range 100 {
+				b.refill("d", 0.5) // 初期2 + 0.5*100 だが上限10で頭打ち
+			}
 
 			consumed := 0
 			for b.tryConsume("d") {

@@ -10,29 +10,42 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func TestSSRFGuardControl(t *testing.T) {
+func TestGuardedDialControl(t *testing.T) {
 	t.Parallel()
+
+	allow := ContextWithAllowPrivateNetwork(context.Background(), true)
+	deny := ContextWithAllowPrivateNetwork(context.Background(), false)
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("通常のグローバルアドレスは許可する", func(t *testing.T) {
+		t.Run("グローバルアドレスは許可する", func(t *testing.T) {
 			t.Parallel()
-			require.NoError(t, ssrfGuardControl("tcp", "93.184.216.34:443", nil))
+			require.NoError(t, guardedDialControl(deny, "tcp", "93.184.216.34:443", nil))
 		})
 
-		t.Run("ループバックは許可する", func(t *testing.T) {
+		t.Run("private許可フラグありならloopback/privateを許可する", func(t *testing.T) {
 			t.Parallel()
-			require.NoError(t, ssrfGuardControl("tcp", "127.0.0.1:8080", nil))
+			require.NoError(t, guardedDialControl(allow, "tcp", "127.0.0.1:8080", nil))
+			require.NoError(t, guardedDialControl(allow, "tcp", "10.0.0.5:80", nil))
+			require.NoError(t, guardedDialControl(allow, "tcp", "192.168.1.10:80", nil))
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("クラウドメタデータ等のリンクローカルは拒否する", func(t *testing.T) {
+		t.Run("リンクローカル(メタデータ)はフラグに関わらず拒否する", func(t *testing.T) {
 			t.Parallel()
-			require.Error(t, ssrfGuardControl("tcp", "169.254.169.254:80", nil))
+			require.Error(t, guardedDialControl(allow, "tcp", "169.254.169.254:80", nil))
+			require.Error(t, guardedDialControl(deny, "tcp", "169.254.169.254:80", nil))
+		})
+
+		t.Run("private許可フラグなしならloopback/privateを拒否する", func(t *testing.T) {
+			t.Parallel()
+			require.Error(t, guardedDialControl(deny, "tcp", "127.0.0.1:8080", nil))
+			require.Error(t, guardedDialControl(deny, "tcp", "10.0.0.5:80", nil))
+			require.Error(t, guardedDialControl(deny, "tcp", "192.168.1.10:80", nil))
 		})
 	})
 }

@@ -76,10 +76,11 @@ func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
 	return hm
 }
 
-// NewNoopHTTPClientTransport は、テスト用に no-op の TracerProvider から HTTPClientTransport を生成します。
+// NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を
+// 生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。
 func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
 	t.Helper()
-	return NewHTTPClientTransport(noop.NewTracerProvider())
+	return newHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator(), permissiveDialControl)
 }
 
 // NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。

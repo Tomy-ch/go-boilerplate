@@ -71,16 +71,21 @@ func clockModule() fx.Option {
 }
 
 // httpClientModule は、resilient な外部 HTTP client substrate を提供するfx.Moduleです。
+// Registry は各 gateway が group:"httpclient_profiles" で寄与した DownstreamProfile から集約します。
 func httpClientModule() fx.Option {
 	return fx.Module("httpclient",
 		fx.Provide(
-			httpclient.NewDefaultRegistry,
+			fx.Annotate(
+				httpclient.NewRegistryFromProfiles,
+				fx.ParamTags(`group:"httpclient_profiles"`),
+			),
 			httpclient.New,
 		),
 	)
 }
 
 // externalModule は、外部サービス gateway を提供するfx.Moduleです。
+// 各 gateway は自分の DownstreamProfile を group:"httpclient_profiles" へ寄与します。
 func externalModule() fx.Option {
 	return fx.Module("external",
 		fx.Provide(
@@ -88,6 +93,10 @@ func externalModule() fx.Option {
 			// サンプルの外部サービス gateway（DTO モード）
 			exchangerateext.NewEndpoint,
 			exchangerateext.New,
+			fx.Annotate(
+				exchangerateext.NewDownstreamProfile,
+				fx.ResultTags(`group:"httpclient_profiles"`),
+			),
 			// sample-api:end
 		),
 	)

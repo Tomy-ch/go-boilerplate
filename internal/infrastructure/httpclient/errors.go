@@ -66,18 +66,22 @@ func normalizeTransportError(err error) error {
 // *url.Error は完全 URL（クエリ込み）を出力するため、ホストのみへ redact します。
 func redactErrMessage(err error) string {
 	if urlErr, ok := errors.AsType[*url.Error](err); ok {
-		return fmt.Sprintf("%s %s: %v", urlErr.Op, redactURLHost(urlErr.URL), urlErr.Err)
+		return fmt.Sprintf("%s %s: %v", urlErr.Op, redactURL(urlErr.URL), urlErr.Err)
 	}
 	return err.Error()
 }
 
-// redactURLHost は、URL 文字列からホスト部のみを返します（スキーム・パス・クエリを落とします）。
-func redactURLHost(rawURL string) string {
+// redactURL は、URL から機密になり得るクエリ・userinfo・fragment のみを除去し、
+// 診断に有用な scheme/host/path は残します。パース不能時のみ "upstream" を返します。
+func redactURL(rawURL string) string {
 	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Host == "" {
+	if err != nil {
 		return "upstream"
 	}
-	return parsed.Host
+	parsed.RawQuery = ""
+	parsed.User = nil
+	parsed.Fragment = ""
+	return parsed.String()
 }
 
 // statusClass は、ステータスコードを metrics ラベル用のクラス文字列に変換します。

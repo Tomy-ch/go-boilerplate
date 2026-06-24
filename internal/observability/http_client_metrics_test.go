@@ -69,11 +69,15 @@ func TestNewHTTPClientTransport(t *testing.T) {
 			}))
 			t.Cleanup(srv.Close)
 
-			transport := observability.NewHTTPClientTransport(tracenoop.NewTracerProvider())
+			transport := observability.NewHTTPClientTransport(
+				tracenoop.NewTracerProvider(), observability.NewTextMapPropagator(),
+			)
 			require.NotNil(t, transport)
 
+			// httptest は loopback のため、SSRF ガードを通すには private 許可フラグが要る。
+			ctx := observability.ContextWithAllowPrivateNetwork(context.Background(), true)
 			client := &http.Client{Transport: transport.RoundTripper()}
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
 			require.NoError(t, err)
 
 			resp, err := client.Do(req)

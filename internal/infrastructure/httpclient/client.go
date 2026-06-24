@@ -145,6 +145,7 @@ func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*R
 	attemptCtx, cancel := context.WithTimeout(ctx, profile.PerAttemptTimeout)
 	defer cancel()
 	attemptCtx = observability.ContextWithTracePropagation(attemptCtx, profile.PropagateTrace)
+	attemptCtx = observability.ContextWithAllowPrivateNetwork(attemptCtx, profile.AllowPrivateNetwork)
 
 	httpReq, err := buildRequest(attemptCtx, req)
 	if err != nil {

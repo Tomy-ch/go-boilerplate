@@ -54,12 +54,18 @@ func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 	tp := sdktrace.NewTracerProvider(opts...)
 
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
+	otel.SetTextMapPropagator(NewTextMapPropagator())
 
 	return tp, nil
+}
+
+// NewTextMapPropagator は、W3C TraceContext + Baggage の複合 propagator を返します。
+// inbound/DB のグローバル設定と outbound substrate への注入で同一インスタンスを共有します。
+func NewTextMapPropagator() propagation.TextMapPropagator {
+	return propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	)
 }
 
 // NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。

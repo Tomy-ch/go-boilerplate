@@ -451,6 +451,7 @@ func TestClientDoBackoff(t *testing.T) {
 			profile.MaxAttempts = 4
 			profile.BaseBackoff = 10 * time.Millisecond
 			profile.MaxBackoff = time.Second
+			profile.RetryBudgetRatio = 100 // budget で retry が絞られないよう十分に確保
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"retry": profile})
 
 			var slept []time.Duration
@@ -580,8 +581,8 @@ func TestClientDoBudget(t *testing.T) {
 
 			req := &httpclient.Request{Downstream: "bdg", Method: httpclient.MethodGet, URL: srv.URL}
 
-			// 初期トークン(=10)を消費し切るまでリクエストを繰り返す。
-			for range 10 {
+			// 初期トークン(=retryBudgetInitialTokens)を消費し切るまでリクエストを繰り返す。
+			for range 2 {
 				_, err := client.Do(context.Background(), req)
 				require.ErrorIs(t, err, apperror.ErrUnavailable)
 			}

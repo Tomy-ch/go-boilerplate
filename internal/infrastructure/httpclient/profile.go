@@ -12,6 +12,9 @@ const (
 	defaultRetryBudgetRatio  = 0.1
 	defaultMaxResponseBytes  = 4 << 20 // 4 MiB
 	defaultPropagateTrace    = true
+	// 既定では内部サービス利用を想定し private/loopback を許可（link-local は常に拒否）。
+	// 外部 downstream は AllowPrivateNetwork=false を明示登録する。
+	defaultAllowPrivateNetwork = true
 
 	// デフォルト BreakerConfig の各値。
 	defaultBreakerFailureThreshold = 0.5
@@ -39,6 +42,10 @@ type Profile struct {
 	// PropagateTrace は、この Downstream へ traceparent/baggage を注入するかを表します。
 	// 信頼できない外部サービスへは false にし、内部相関 ID の外部漏洩を防ぎます。
 	PropagateTrace bool
+	// AllowPrivateNetwork は、loopback / private(RFC1918, ULA) 宛て接続を許可するかを表します。
+	// 内部サービス向けは true、信頼できない外部サービス向けは false にします。
+	// link-local(クラウドメタデータ等)・unspecified は本フラグに関わらず常に拒否されます。
+	AllowPrivateNetwork bool
 	// Breaker は、circuit breaker の設定です。
 	Breaker BreakerConfig
 }
@@ -61,6 +68,15 @@ type Registry interface {
 	Profile(d Downstream) Profile
 }
 
+// DownstreamProfile は、Downstream と Profile の組です。
+// 各 gateway が自分の resilient プロファイルを宣言し、DI が Registry へ集約します。
+type DownstreamProfile struct {
+	// Name は、論理依存名です。
+	Name Downstream
+	// Profile は、その Downstream の resilient 設定です。
+	Profile Profile
+}
+
 // staticRegistry は、固定の Profile マップで構成された Registry です。
 type staticRegistry struct {
 	profiles map[Downstream]Profile
@@ -70,14 +86,15 @@ type staticRegistry struct {
 // DefaultProfile は、未登録 Downstream に適用される安全側のデフォルト Profile を返します。
 func DefaultProfile() Profile {
 	return Profile{
-		PerAttemptTimeout: defaultPerAttemptTimeout,
-		OverallTimeout:    defaultOverallTimeout,
-		MaxAttempts:       defaultMaxAttempts,
-		BaseBackoff:       defaultBaseBackoff,
-		MaxBackoff:        defaultMaxBackoff,
-		RetryBudgetRatio:  defaultRetryBudgetRatio,
-		MaxResponseBytes:  defaultMaxResponseBytes,
-		PropagateTrace:    defaultPropagateTrace,
+		PerAttemptTimeout:   defaultPerAttemptTimeout,
+		OverallTimeout:      defaultOverallTimeout,
+		MaxAttempts:         defaultMaxAttempts,
+		BaseBackoff:         defaultBaseBackoff,
+		MaxBackoff:          defaultMaxBackoff,
+		RetryBudgetRatio:    defaultRetryBudgetRatio,
+		MaxResponseBytes:    defaultMaxResponseBytes,
+		PropagateTrace:      defaultPropagateTrace,
+		AllowPrivateNetwork: defaultAllowPrivateNetwork,
 		Breaker: BreakerConfig{
 			FailureThreshold: defaultBreakerFailureThreshold,
 			MinRequests:      defaultBreakerMinRequests,
@@ -95,10 +112,14 @@ func NewRegistry(profiles map[Downstream]Profile) Registry {
 	}
 }
 
-// NewDefaultRegistry は、デフォルト Profile のみを持つ Registry を返します。
-// 未登録の Downstream には DefaultProfile が適用されます。
-func NewDefaultRegistry() Registry {
-	return NewRegistry(nil)
+// NewRegistryFromProfiles は、各 gateway が寄与した DownstreamProfile 群から Registry を生成します。
+// 未登録の Downstream には DefaultProfile が適用されます。DI が fx group から集約します。
+func NewRegistryFromProfiles(profiles []DownstreamProfile) Registry {
+	m := make(map[Downstream]Profile, len(profiles))
+	for _, p := range profiles {
+		m[p.Name] = p.Profile
+	}
+	return NewRegistry(m)
 }
 
 // Profile は、d に対応する Profile を返します。未登録なら fallback を返します。

@@ -36,6 +36,15 @@ type rateResponse struct {
 	Rate float64 `json:"rate"`
 }
 
+// NewDownstreamProfile は、外部為替サービス向けの resilient プロファイルを返します。
+// 外部サービスのため trace を伝搬せず、private/loopback 宛て接続を拒否します。
+func NewDownstreamProfile() httpclient.DownstreamProfile {
+	p := httpclient.DefaultProfile()
+	p.PropagateTrace = false
+	p.AllowPrivateNetwork = false
+	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
+}
+
 // New は、為替レート gateway の外部サービス実装を生成します。
 func New(
 	endpoint Endpoint,
