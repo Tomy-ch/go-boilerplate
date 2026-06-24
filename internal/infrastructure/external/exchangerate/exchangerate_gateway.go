@@ -70,6 +70,9 @@ func (g *gateway) GetRate(ctx context.Context, base, quote string) (*boundary.Ra
 	if uerr := json.Unmarshal(resp.Body, &body); uerr != nil {
 		return nil, xerrors.Wrap(apperror.ErrUnavailable, "invalid exchangerate response: "+uerr.Error())
 	}
+	if body.Rate <= 0 {
+		return nil, xerrors.Wrap(apperror.ErrUnavailable, "exchangerate response has non-positive rate")
+	}
 
 	return &boundary.Rate{Base: base, Quote: quote, Value: body.Rate}, nil
 }

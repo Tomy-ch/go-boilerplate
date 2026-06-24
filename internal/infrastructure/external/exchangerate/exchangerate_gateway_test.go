@@ -18,10 +18,6 @@ import (
 
 const testEndpoint exchangerate.Endpoint = "https://api.exchangerate.example.com"
 
-// substrate（httpclient.Client）は mock 化し、gateway 自身のロジック（Request 組立・
-// レスポンス→DTO 変換・apperror 伝播）を検証します。substrate の実通信挙動は httpclient 側の
-// httptest スイートで担保済みのため、ここでは下位コラボレータを mock するのが層テストの定石です。
-
 func TestGatewayGetRate(t *testing.T) {
 	t.Parallel()
 
@@ -77,6 +73,20 @@ func TestGatewayGetRate(t *testing.T) {
 			client := mock_httpclient.NewMockClient(ctrl)
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).
 				Return(&httpclient.Response{StatusCode: 200, Body: []byte(`not-json`)}, nil)
+
+			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+			_, err := gw.GetRate(context.Background(), "USD", "JPY")
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("rateが0以下のレスポンスはErrUnavailableを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+				Return(&httpclient.Response{StatusCode: 200, Body: []byte(`{"rate":0}`)}, nil)
 
 			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
 			_, err := gw.GetRate(context.Background(), "USD", "JPY")

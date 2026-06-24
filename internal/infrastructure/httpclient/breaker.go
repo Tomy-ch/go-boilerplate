@@ -14,15 +14,17 @@ const (
 	breakerOpen
 )
 
-// breakerState は、circuit breaker の状態です（0:closed 1:half-open 2:open）。
+// breakerState は、circuit breaker の状態を表します。
 type breakerState int
 
-// breaker は、per-downstream の circuit breaker です（A-6）。
-// 時刻は now 引数で注入し、テストを決定的にします（実呼び出し側は time.Now() を渡します）。
+// breaker は、Downstream ごとの circuit breaker です。
 type breaker struct {
 	mu     sync.Mutex
 	config BreakerConfig
 	state  breakerState
+
+	// generation は状態遷移ごとに増加し、allow で発行したプローブ枠と record の整合を取るためのエポック識別子です。
+	generation uint64
 
 	requests int
 	failures int
@@ -43,9 +45,10 @@ func newBreaker(config BreakerConfig) *breaker {
 	return &breaker{config: config, state: breakerClosed}
 }
 
-// allow は、now 時点でリクエストを通してよいかを返します。
+// allow は、now 時点でリクエストを通してよいかと、その試行が属するエポックを返します。
+// 返したエポックは record にそのまま渡します。
 // open は OpenDuration 経過で half-open へ遷移し、half-open は HalfOpenProbes 件までプローブを通します。
-func (b *breaker) allow(now time.Time) bool {
+func (b *breaker) allow(now time.Time) (bool, uint64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -54,24 +57,29 @@ func (b *breaker) allow(now time.Time) bool {
 		if now.Sub(b.openedAt) >= b.config.OpenDuration {
 			b.toHalfOpen()
 			b.halfOpenProbes++
-			return true
+			return true, b.generation
 		}
-		return false
+		return false, b.generation
 	case breakerHalfOpen:
 		if b.halfOpenProbes < b.config.HalfOpenProbes {
 			b.halfOpenProbes++
-			return true
+			return true, b.generation
 		}
-		return false
+		return false, b.generation
 	default: // breakerClosed
-		return true
+		return true, b.generation
 	}
 }
 
 // record は、試行結果を記録し状態遷移を行います。success=false は downstream 起因の失敗です。
-func (b *breaker) record(success bool, now time.Time) {
+// generation が allow 発行時から変化していれば、別エポックの遅延結果とみなして無視します。
+func (b *breaker) record(success bool, now time.Time, generation uint64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	if generation != b.generation {
+		return
+	}
 
 	switch b.state {
 	case breakerHalfOpen:
@@ -113,18 +121,21 @@ func (b *breaker) shouldOpen() bool {
 func (b *breaker) toOpen(now time.Time) {
 	b.state = breakerOpen
 	b.openedAt = now
+	b.generation++
 	b.halfOpenProbes = 0
 	b.halfOpenSuccess = 0
 }
 
 func (b *breaker) toHalfOpen() {
 	b.state = breakerHalfOpen
+	b.generation++
 	b.halfOpenProbes = 0
 	b.halfOpenSuccess = 0
 }
 
 func (b *breaker) toClosed() {
 	b.state = breakerClosed
+	b.generation++
 	b.requests = 0
 	b.failures = 0
 	b.halfOpenProbes = 0

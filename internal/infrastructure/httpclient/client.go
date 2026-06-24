@@ -74,30 +74,34 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 	retrySafe := isRetrySafe(req)
 	br := c.breakers.get(req.Downstream, profile.Breaker)
 
+	// MaxAttempts が未設定/不正でも最低 1 回は試行し、(nil, nil) を返さないようにする。
+	maxAttempts := max(1, profile.MaxAttempts)
+
 	var resp *Response
 	var err error
-	for attempt := 1; attempt <= profile.MaxAttempts; attempt++ {
-		if !br.allow(time.Now()) {
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		allowed, generation := br.allow(time.Now())
+		if !allowed {
 			c.metrics.SetBreakerState(ctx, ds, int64(br.currentState()))
 			if resp == nil {
 				return nil, xerrors.Wrap(apperror.ErrUnavailable, "circuit open: "+ds)
 			}
-			return resp, err // retry 途中で open。直近の結果を返す
+			return resp, err
 		}
 
 		resp, err = c.attempt(ctx, req, profile)
 		serverFault := isRetryableOutcome(resp, err)
-		br.record(!serverFault, time.Now())
+		br.record(!serverFault, time.Now(), generation)
 		c.metrics.SetBreakerState(ctx, ds, int64(br.currentState()))
 
 		if !retrySafe || !serverFault {
 			return resp, err
 		}
-		if attempt == profile.MaxAttempts {
+		if attempt == maxAttempts {
 			return resp, err
 		}
 		if !c.budget.tryConsume(req.Downstream) {
-			return resp, err // retry budget 枯渇。直近の結果(ErrUnavailable 等)を返す
+			return resp, err
 		}
 
 		wait := retryWait(attempt, profile, resp)
@@ -113,7 +117,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 	return resp, err
 }
 
-// canRetryWithin は、backoff 待機後も overall deadline 内に次の試行を開始できるかを返します（deadline 規律 A-1）。
+// canRetryWithin は、backoff 待機後も overall deadline 内に次の試行を開始できるかを返します。
 func (c *client) canRetryWithin(ctx context.Context, backoff time.Duration) bool {
 	deadline, ok := ctx.Deadline()
 	if !ok {

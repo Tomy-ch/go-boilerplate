@@ -252,6 +252,36 @@ func TestNewRegistry(t *testing.T) {
 	})
 }
 
+func TestClientDoMinimumAttempt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("MaxAttemptsが0でも最低1回試行しnil_nilを返さない", func(t *testing.T) {
+			t.Parallel()
+
+			srv, hits := countingServer(t, http.StatusOK)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxAttempts = 0
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"zero": profile})
+
+			client := newClient(t, registry)
+			resp, err := client.Do(context.Background(), &httpclient.Request{
+				Downstream: "zero",
+				Method:     httpclient.MethodGet,
+				URL:        srv.URL,
+			})
+
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.Equal(t, int32(1), hits.Load())
+		})
+	})
+}
+
 func TestClientDoRetry(t *testing.T) {
 	t.Parallel()
 
