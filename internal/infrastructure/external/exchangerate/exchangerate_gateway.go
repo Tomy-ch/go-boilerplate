@@ -1,0 +1,75 @@
+// Package exchangerate は、為替レート gateway の外部サービス実装を提供します。
+//
+// resilient HTTP substrate（httpclient.Client）を用い、tf.Infra() の層 span を張ったうえで
+// 外部 API を呼び出します。外部 payload は infra 内部の型で受け、境界 DTO（boundary.Rate）へ
+// 変換してから返します（ACL）。usecase は substrate も外部 payload も知りません。
+package exchangerate
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/url"
+
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/infrastructure/httpclient"
+	"go-boilerplate/internal/observability"
+	boundary "go-boilerplate/internal/usecase/boundary/exchangerate"
+	"go-boilerplate/pkg/xerrors"
+)
+
+// downstream は、profile / breaker / metrics / budget の論理依存名です。
+const downstream httpclient.Downstream = "exchangerate"
+
+// Endpoint は、外部為替レートサービスのベース URL です（DI で注入）。
+type Endpoint string
+
+// gateway は、boundary.Gateway の外部サービス実装です。
+type gateway struct {
+	endpoint Endpoint
+	client   httpclient.Client
+	tracer   observability.LayerTracer
+}
+
+// rateResponse は、外部 API の JSON レスポンス（外部都合の形）です。infra 内部に閉じます。
+type rateResponse struct {
+	Rate float64 `json:"rate"`
+}
+
+// New は、為替レート gateway の外部サービス実装を生成します。
+func New(
+	endpoint Endpoint,
+	client httpclient.Client,
+	tf observability.TracerFactory,
+) boundary.Gateway {
+	return &gateway{
+		endpoint: endpoint,
+		client:   client,
+		tracer:   tf.Infra(),
+	}
+}
+
+// GetRate は、外部 API から為替レートを取得し、境界 DTO へ変換して返します。
+func (g *gateway) GetRate(ctx context.Context, base, quote string) (*boundary.Rate, error) {
+	ctx, endSpan := g.tracer.Start(ctx)
+	defer endSpan()
+
+	reqURL := fmt.Sprintf("%s/rates?base=%s&quote=%s",
+		g.endpoint, url.QueryEscape(base), url.QueryEscape(quote))
+
+	resp, err := g.client.Do(ctx, &httpclient.Request{
+		Downstream: downstream,
+		Method:     httpclient.MethodGet,
+		URL:        reqURL,
+	})
+	if err != nil {
+		return nil, err // substrate が apperror sentinel へ写像済み
+	}
+
+	var body rateResponse
+	if uerr := json.Unmarshal(resp.Body, &body); uerr != nil {
+		return nil, xerrors.Wrap(apperror.ErrUnavailable, "invalid exchangerate response: "+uerr.Error())
+	}
+
+	return &boundary.Rate{Base: base, Quote: quote, Value: body.Rate}, nil
+}
