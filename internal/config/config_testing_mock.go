@@ -114,6 +114,12 @@ var (
 	expectedWorkerCircuitHalfOpenProbe      = 1
 	expectedWorkerHealthListenAddr          = ":8081"
 	expectedWorkerProgressStaleAfter        = 60 * time.Second
+
+	// outbox
+	expectedOutboxEndpoint     = ""
+	expectedOutboxPollInterval = 1 * time.Second
+	expectedOutboxErrorBackoff = 5 * time.Second
+	expectedOutboxBatchSize    = 100
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -200,6 +206,12 @@ func MockConfigForTest(tb testing.TB) *Config {
 			circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
 			healthListenAddr:          expectedWorkerHealthListenAddr,
 			progressStaleAfter:        expectedWorkerProgressStaleAfter,
+		},
+		outbox: OutboxConfig{
+			endpoint:     expectedOutboxEndpoint,
+			pollInterval: expectedOutboxPollInterval,
+			errorBackoff: expectedOutboxErrorBackoff,
+			batchSize:    expectedOutboxBatchSize,
 		},
 	}
 }

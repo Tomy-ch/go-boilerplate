@@ -111,6 +111,12 @@ func New() (*Config, error) {
 			healthListenAddr:          cfg.Worker.HealthListenAddr,
 			progressStaleAfter:        cfg.Worker.ProgressStaleAfter,
 		},
+		outbox: OutboxConfig{
+			endpoint:     cfg.Outbox.Endpoint,
+			pollInterval: cfg.Outbox.PollInterval,
+			errorBackoff: cfg.Outbox.ErrorBackoff,
+			batchSize:    cfg.Outbox.BatchSize,
+		},
 	}, nil
 }
 
