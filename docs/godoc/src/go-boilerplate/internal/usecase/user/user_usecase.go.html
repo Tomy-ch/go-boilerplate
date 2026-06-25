@@ -291,7 +291,7 @@
 <span id="L234" class="ln">   234  </span>	return &amp;UserListView{Items: items, Total: total}, nil
 <span id="L235" class="ln">   235  </span>}
 <span id="L236" class="ln">   236  </span>
-<span id="L237" class="ln">   237  </span><span class="comment">// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得するユースケースです。</span>
+<span id="L237" class="ln">   237  </span><span class="comment">// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。</span>
 <span id="L238" class="ln">   238  </span>func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error) {
 <span id="L239" class="ln">   239  </span>	if cursor == nil {
 <span id="L240" class="ln">   240  </span>		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, &#34;cursor must not be nil&#34;)
@@ -515,7 +515,7 @@
 <span id="L458" class="ln">   458  </span>	})
 <span id="L459" class="ln">   459  </span>}
 <span id="L460" class="ln">   460  </span>
-<span id="L461" class="ln">   461  </span><span class="comment">// toUserViews は、ユーザーエンティティ列を、都道府県名を一括解決した DTO 列へ変換します。</span>
+<span id="L461" class="ln">   461  </span><span class="comment">// toUserViews は、ユーザーエンティティ列を UserView の DTO 列へ変換します。</span>
 <span id="L462" class="ln">   462  </span><span class="comment">// いずれかのユーザーが参照する都道府県を解決できない場合は参照整合性破れ（errOrphanPrefecture）を返します。</span>
 <span id="L463" class="ln">   463  </span>func (u *usecase) toUserViews(ctx context.Context, us user.Users) ([]UserView, error) {
 <span id="L464" class="ln">   464  </span>	_, prefectureMap, err := observability.RunWithSpan(

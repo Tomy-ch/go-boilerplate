@@ -61,52 +61,55 @@
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
 <span id="L5" class="ln">     5  </span>	&#34;testing&#34;
 <span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go.uber.org/fx&#34;
-<span id="L9" class="ln">     9  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
-<span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/di/lifecycle&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/di/server/hook&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L15" class="ln">    15  </span>	mock_logging &#34;go-boilerplate/internal/logging/mock&#34;
-<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L17" class="ln">    17  </span>)
-<span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span>func TestDatabaseModule_Composes(t *testing.T) {
-<span id="L20" class="ln">    20  </span>	t.Parallel()
-<span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>	t.Run(&#34;fx アプリに DatabaseModule を追加して起動できる&#34;, func(t *testing.T) {
-<span id="L23" class="ln">    23  </span>		t.Parallel()
-<span id="L24" class="ln">    24  </span>
-<span id="L25" class="ln">    25  </span>		ctrl := gomock.NewController(t)
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span>		mockLogger := mock_logging.NewMockLogger(ctrl)
-<span id="L28" class="ln">    28  </span>		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
-<span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span>		mockLogger.EXPECT().Named(&#34;db.CloseHook&#34;).Return(mockLogger).AnyTimes()
-<span id="L31" class="ln">    31  </span>		mockLogger.EXPECT().Info(&#34;Closing database connection&#34;).AnyTimes()
-<span id="L32" class="ln">    32  </span>
-<span id="L33" class="ln">    33  </span>		app := fx.New(
-<span id="L34" class="ln">    34  </span>			lifecycle.Module(),
-<span id="L35" class="ln">    35  </span>			DatabaseModule(),
-<span id="L36" class="ln">    36  </span>			fx.Provide(func() testing.TB { return t }),
-<span id="L37" class="ln">    37  </span>			fx.Provide(config.MockConfigForTest),
-<span id="L38" class="ln">    38  </span>			fx.Provide(config.NewDatabaseConfig),
-<span id="L39" class="ln">    39  </span>			fx.Provide(config.NewOperatingSystemConfig),
-<span id="L40" class="ln">    40  </span>			fx.Provide(config.NewDBConnectionConfig),
-<span id="L41" class="ln">    41  </span>			fx.Provide(func() logging.Logger { return mockLogger }),
-<span id="L42" class="ln">    42  </span>			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
-<span id="L43" class="ln">    43  </span>			fx.Provide(observability.NewNoopTracerFactory),
-<span id="L44" class="ln">    44  </span>			fx.NopLogger,
-<span id="L45" class="ln">    45  </span>			fx.Invoke(hook.RegisterDBCloseHooks),
-<span id="L46" class="ln">    46  </span>		)
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span>		require.NoError(t, app.Start(context.Background()))
-<span id="L49" class="ln">    49  </span>		require.NoError(t, app.Stop(context.Background()))
-<span id="L50" class="ln">    50  </span>	})
-<span id="L51" class="ln">    51  </span>}
-<span id="L52" class="ln">    52  </span>
+<span id="L7" class="ln">     7  </span>	&#34;github.com/exaring/otelpgx&#34;
+<span id="L8" class="ln">     8  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go.uber.org/fx&#34;
+<span id="L10" class="ln">    10  </span>	gomock &#34;go.uber.org/mock/gomock&#34;
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/di/lifecycle&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/di/server/hook&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L16" class="ln">    16  </span>	mock_logging &#34;go-boilerplate/internal/logging/mock&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L18" class="ln">    18  </span>)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>func TestDatabaseModule_Composes(t *testing.T) {
+<span id="L21" class="ln">    21  </span>	t.Parallel()
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span>	t.Run(&#34;fx アプリに DatabaseModule を追加して起動できる&#34;, func(t *testing.T) {
+<span id="L24" class="ln">    24  </span>		t.Parallel()
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span>		ctrl := gomock.NewController(t)
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span>		mockLogger := mock_logging.NewMockLogger(ctrl)
+<span id="L29" class="ln">    29  </span>		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>		mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
+<span id="L32" class="ln">    32  </span>		mockLogger.EXPECT().Info(&#34;Closing database connection&#34;).AnyTimes()
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span>		app := fx.New(
+<span id="L35" class="ln">    35  </span>			lifecycle.Module(),
+<span id="L36" class="ln">    36  </span>			DatabaseModule(),
+<span id="L37" class="ln">    37  </span>			fx.Provide(func() testing.TB { return t }),
+<span id="L38" class="ln">    38  </span>			fx.Provide(config.MockConfigForTest),
+<span id="L39" class="ln">    39  </span>			fx.Provide(config.NewDatabaseConfig),
+<span id="L40" class="ln">    40  </span>			fx.Provide(config.NewObservabilityConfig),
+<span id="L41" class="ln">    41  </span>			fx.Provide(config.NewOperatingSystemConfig),
+<span id="L42" class="ln">    42  </span>			fx.Provide(config.NewDBConnectionConfig),
+<span id="L43" class="ln">    43  </span>			fx.Provide(func() logging.Logger { return mockLogger }),
+<span id="L44" class="ln">    44  </span>			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+<span id="L45" class="ln">    45  </span>			fx.Provide(func() *otelpgx.Tracer { return otelpgx.NewTracer() }),
+<span id="L46" class="ln">    46  </span>			fx.Provide(observability.NewNoopTracerFactory),
+<span id="L47" class="ln">    47  </span>			fx.NopLogger,
+<span id="L48" class="ln">    48  </span>			fx.Invoke(hook.RegisterDBCloseHooks),
+<span id="L49" class="ln">    49  </span>		)
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>		require.NoError(t, app.Start(context.Background()))
+<span id="L52" class="ln">    52  </span>		require.NoError(t, app.Stop(context.Background()))
+<span id="L53" class="ln">    53  </span>	})
+<span id="L54" class="ln">    54  </span>}
+<span id="L55" class="ln">    55  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/db_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

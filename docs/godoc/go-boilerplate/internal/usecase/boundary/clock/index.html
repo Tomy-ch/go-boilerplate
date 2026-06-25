@@ -111,6 +111,11 @@
 				
 				
 			
+				
+				<dd><a href="#Sleeper">type Sleeper</a></dd>
+				
+				
+			
 			
 			</dl>
 			</div><!-- #manual-nav -->
@@ -138,7 +143,7 @@
 		
 			
 			
-			<h2 id="Clock">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/clock/clock.go.html?s=341:430#L1">Clock</a>
+			<h2 id="Clock">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/clock/clock.go.html?s=357:446#L2">Clock</a>
 				<a class="permalink" href="#Clock">¶</a>
 				
 				
@@ -148,6 +153,33 @@
 			</p><pre>type Clock interface {
     <span class="comment">// Now は、現在の時刻を返します。</span>
     Now() <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Sleeper">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/clock/clock.go.html?s=538:747#L8">Sleeper</a>
+				<a class="permalink" href="#Sleeper">¶</a>
+				
+				
+			</h2>
+			<p>Sleeper は、時間経過の待機を抽象化するインターフェースです。
+
+			</p><pre>type Sleeper interface {
+    <span class="comment">// Sleep は、d 経過まで待機します。</span>
+    <span class="comment">// ctx が先に done になった場合は即座に ctx.Err() を返します。</span>
+    Sleep(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, d <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) <a href="../../../../../builtin/#error">error</a>
 }</pre>
 
 			

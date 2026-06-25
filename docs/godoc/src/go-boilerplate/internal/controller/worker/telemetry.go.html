@@ -66,7 +66,7 @@
 <span id="L9" class="ln">     9  </span>)
 <span id="L10" class="ln">    10  </span>
 <span id="L11" class="ln">    11  </span><span class="comment">// withTrace は、Message.Attributes の traceparent から trace context を継続します（D1）。</span>
-<span id="L12" class="ln">    12  </span><span class="comment">// producer → consumer → handler を 1 trace に繋ぎます。propagation 実装は observability に委譲します。</span>
+<span id="L12" class="ln">    12  </span><span class="comment">// producer → consumer → handler を 1 trace に繋ぎます。</span>
 <span id="L13" class="ln">    13  </span>func (r *run) withTrace(ctx context.Context, m worker.Message) context.Context {
 <span id="L14" class="ln">    14  </span>	return observability.ExtractFromCarrier(ctx, m.Attributes)
 <span id="L15" class="ln">    15  </span>}

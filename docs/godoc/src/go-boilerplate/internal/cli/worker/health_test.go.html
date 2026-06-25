@@ -67,7 +67,7 @@
 <span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L11" class="ln">    11  </span>)
 <span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span><span class="comment">// httpGet は、context 付きで GET リクエストを実行するテストヘルパです（noctx 回避）。</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// httpGet は、context 付きで GET リクエストを実行するテストヘルパです。</span>
 <span id="L14" class="ln">    14  </span>func httpGet(t *testing.T, url string) *http.Response {
 <span id="L15" class="ln">    15  </span>	t.Helper()
 <span id="L16" class="ln">    16  </span>	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)

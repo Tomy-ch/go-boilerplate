@@ -98,12 +98,12 @@
 <span id="L41" class="ln">    41  </span>func Test_repository_FindFeed(t *testing.T) {
 <span id="L42" class="ln">    42  </span>	t.Parallel()
 <span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>	loggingDB := testkit.NewTestLoggingProvider(t)
+<span id="L44" class="ln">    44  </span>	testDB := testkit.NewTestDB(t)
 <span id="L45" class="ln">    45  </span>	db := testkit.NewTestDB(t)
 <span id="L46" class="ln">    46  </span>	lt := observability.NewMockInfraLayerTracer(t)
 <span id="L47" class="ln">    47  </span>	txm := testkit.NewTestTransactionRunner(t)
 <span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span>	repo := &amp;repository{tracer: lt, db: loggingDB}
+<span id="L49" class="ln">    49  </span>	repo := &amp;repository{tracer: lt, db: testDB}
 <span id="L50" class="ln">    50  </span>
 <span id="L51" class="ln">    51  </span>	<span class="comment">// created_at 降順で安定した順序を作るための固定 ID（タイブレーク検証のため tie ペアを含む）。</span>
 <span id="L52" class="ln">    52  </span>	<span class="comment">// base は十分未来の時刻にし、seed データより必ず後ろ（より新しい）に来るようにする。</span>

@@ -121,6 +121,9 @@
 				<dd><a href="#DSNWithTimeZoneString">func DSNWithTimeZoneString(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig) string</a></dd>
 			
 				
+				<dd><a href="#NewQueryTracer">func NewQueryTracer(dbCfg *config.DatabaseConfig, obsCfg *config.ObservabilityConfig, tracer *otelpgx.Tracer, logger logging.Logger, lf logging.LogFieldBuilder) pgx.QueryTracer</a></dd>
+			
+				
 				<dd><a href="#NewTransactionManager">func NewTransactionManager(db DatabaseDriver, logger logging.Logger) tx.Manager</a></dd>
 			
 			
@@ -137,6 +140,9 @@
 				
 					
 					<dd>    <a href="#NewDB">func NewDB(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig) (DatabaseDriver, error)</a></dd>
+				
+					
+					<dd>    <a href="#NewTracedDB">func NewTracedDB(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig, dbConnCfg *config.DBConnectionConfig, tracer pgx.QueryTracer) (DatabaseDriver, error)</a></dd>
 				
 				
 			
@@ -156,6 +162,8 @@
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html">connection.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html">driver.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_tracer.go.html">query_tracer.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html">transaction.go</a>
 			
@@ -236,6 +244,26 @@
 			</h2>
 			<pre>func DSNWithTimeZoneString(dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>, osCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>) <a href="../../../../../builtin/#string">string</a></pre>
 			<p>DSNWithTimeZoneString は、DSNWithTimeZoneを文字列形式で返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewQueryTracer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_tracer.go.html?s=1091:1275#L33">NewQueryTracer</a>
+				<a class="permalink" href="#NewQueryTracer">¶</a>
+				
+				
+			</h2>
+			<pre>func NewQueryTracer(
+    dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>,
+    obsCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>,
+    tracer *<a href="../../../../../github.com/exaring/otelpgx/">otelpgx</a>.<a href="../../../../../github.com/exaring/otelpgx/#Tracer">Tracer</a>,
+    logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>,
+    lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>,
+) pgx.<a href="#QueryTracer">QueryTracer</a></pre>
+			<p>NewQueryTracer は、span(otelpgx) とクエリログ(終了/スロー/エラー)を行う pgx.QueryTracer を生成します。
 
 			
 			
@@ -324,7 +352,7 @@ DB アクセスの最上位インタフェースです。
 
 			
 				
-				<h3 id="NewDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=891:1034#L22">NewDB</a>
+				<h3 id="NewDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=927:1070#L22">NewDB</a>
 					<a class="permalink" href="#NewDB">¶</a>
 					
 					
@@ -332,7 +360,24 @@ DB アクセスの最上位インタフェースです。
 				<pre>func NewDB(
     dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>, osCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>, dbConnCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DBConnectionConfig">DBConnectionConfig</a>,
 ) (<a href="#DatabaseDriver">DatabaseDriver</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
-				<p>NewDB は Postgres のDB接続を初期化して返します。
+				<p>NewDB は Postgres のDB接続を初期化して返します（クエリトレーサーなし）。
+
+				
+				
+			
+				
+				</p><h3 id="NewTracedDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html?s=1239:1415#L29">NewTracedDB</a>
+					<a class="permalink" href="#NewTracedDB">¶</a>
+					
+					
+				</h3>
+				<pre>func NewTracedDB(
+    dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>,
+    osCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#OperatingSystemConfig">OperatingSystemConfig</a>,
+    dbConnCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DBConnectionConfig">DBConnectionConfig</a>,
+    tracer pgx.<a href="#QueryTracer">QueryTracer</a>,
+) (<a href="#DatabaseDriver">DatabaseDriver</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>NewTracedDB は、pgx クエリトレーサーを結線した Postgres のDB接続を初期化して返します。
 
 				
 				

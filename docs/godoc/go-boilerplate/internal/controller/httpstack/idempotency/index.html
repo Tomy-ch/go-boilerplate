@@ -141,14 +141,13 @@
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=1033:1099#L18">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=912:978#L17">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
 			</h2>
 			<pre>func Middleware() func(next <a href="#NextFunc">NextFunc</a>, operationID <a href="../../../../../builtin/#string">string</a>) <a href="#NextFunc">NextFunc</a></pre>
 			<p>Middleware は、冪等性入り口を StrictMiddleware の構造的シグネチャで返します。
-採用する handler パッケージが自身の gen.StrictMiddlewareFunc へ変換して差します。
 
 			
 			
@@ -156,14 +155,14 @@
 		
 			
 			
-			</p><h2 id="StrictMiddleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=1521:1628#L28">StrictMiddleware</a>
+			</p><h2 id="StrictMiddleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=1316:1423#L27">StrictMiddleware</a>
 				<a class="permalink" href="#StrictMiddleware">¶</a>
 				
 				
 			</h2>
 			<pre>func StrictMiddleware[H ~func(ec echo.<a href="#Context">Context</a>, request <a href="../../../../../builtin/#any">any</a>) (<a href="../../../../../builtin/#any">any</a>, <a href="../../../../../builtin/#error">error</a>)]() func(f H, operationID <a href="../../../../../builtin/#string">string</a>) H</pre>
 			<p>StrictMiddleware は、Middleware() を oapi-codegen のパッケージ固有 StrictMiddlewareFunc 形へ
-適合させたアダプタを返します。型引数に各 gen パッケージの StrictHandlerFunc を渡して差します。
+適合させたアダプタを返します。
 
 			
 			
@@ -172,7 +171,7 @@
 		
 			
 			
-			</p><h2 id="NextFunc">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=756:818#L14">NextFunc</a>
+			</p><h2 id="NextFunc">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency.go.html?s=743:805#L14">NextFunc</a>
 				<a class="permalink" href="#NextFunc">¶</a>
 				
 				

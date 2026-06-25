@@ -65,119 +65,102 @@
 <span id="L8" class="ln">     8  </span>
 <span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/config&#34;
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver/loggingdb&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/logging&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/boundary/tx&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L18" class="ln">    18  </span>)
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/tx&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>var errRollbackForTest = xerrors.New(&#34;rollback for test&#34;)
 <span id="L19" class="ln">    19  </span>
-<span id="L20" class="ln">    20  </span>var errRollbackForTest = xerrors.New(&#34;rollback for test&#34;)
-<span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>var (
-<span id="L23" class="ln">    23  </span>	testDB  driver.DatabaseDriver
-<span id="L24" class="ln">    24  </span>	errInit error
-<span id="L25" class="ln">    25  </span>	dbOnce  sync.Once
-<span id="L26" class="ln">    26  </span>	<span class="comment">// txLock は、テスト用のトランザクションマネージャーでトランザクションを開始する際のロックです。</span>
-<span id="L27" class="ln">    27  </span>	<span class="comment">// これにより、テストが並行して実行される場合でも、トランザクションの競合を防止します。</span>
-<span id="L28" class="ln">    28  </span>	<span class="comment">// テスト数が増加し、ボトルネックとなる場合はテスト用のDocker一時コンテナを用意するライブラリの導入を検討してください。</span>
-<span id="L29" class="ln">    29  </span>	txLock sync.Mutex
-<span id="L30" class="ln">    30  </span>)
-<span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span><span class="comment">// TransactionRunner は、テスト用に関数をトランザクション内で実行するインターフェースです。</span>
-<span id="L33" class="ln">    33  </span>type TransactionRunner interface {
-<span id="L34" class="ln">    34  </span>	WithinTx(fn func(ctx context.Context))
-<span id="L35" class="ln">    35  </span>}
-<span id="L36" class="ln">    36  </span>
-<span id="L37" class="ln">    37  </span><span class="comment">// testTxRunner はテスト用のトランザクションランナーを表します。</span>
-<span id="L38" class="ln">    38  </span>type testTxRunner struct {
-<span id="L39" class="ln">    39  </span>	inner tx.Manager
-<span id="L40" class="ln">    40  </span>	t     *testing.T
-<span id="L41" class="ln">    41  </span>}
-<span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span><span class="comment">// NewTestDB は、テスト用の共有データベースドライバー（シングルトン）を取得します。</span>
-<span id="L44" class="ln">    44  </span>func NewTestDB(t *testing.T) driver.DatabaseDriver {
-<span id="L45" class="ln">    45  </span>	t.Helper()
-<span id="L46" class="ln">    46  </span>	return getTestDB(t)
-<span id="L47" class="ln">    47  </span>}
-<span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span><span class="comment">// NewTestLoggingProvider は、テスト用のログ付きDBプロバイダーを生成します。</span>
-<span id="L50" class="ln">    50  </span>func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider {
-<span id="L51" class="ln">    51  </span>	t.Helper()
-<span id="L52" class="ln">    52  </span>
-<span id="L53" class="ln">    53  </span>	cfg := config.MockConfigForTest(t)
-<span id="L54" class="ln">    54  </span>	dbCfg := config.NewDatabaseConfig(cfg)
-<span id="L55" class="ln">    55  </span>	obsCfg := config.NewObservabilityConfig(cfg)
-<span id="L56" class="ln">    56  </span>	tracer := observability.NewNoopTracerFactory(t)
-<span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>	mockLogger := logging.NewTestLogger(t)
-<span id="L59" class="ln">    59  </span>	lf := logging.NewTestLogFieldBuilder(t)
-<span id="L60" class="ln">    60  </span>
-<span id="L61" class="ln">    61  </span>	return loggingdb.NewLoggingDBProvider(getTestDB(t), dbCfg, obsCfg, mockLogger, lf, tracer)
-<span id="L62" class="ln">    62  </span>}
-<span id="L63" class="ln">    63  </span>
-<span id="L64" class="ln">    64  </span><span class="comment">// NewTestTransactionRunner は、テスト用のトランザクションランナーを生成します。</span>
-<span id="L65" class="ln">    65  </span>func NewTestTransactionRunner(t *testing.T) TransactionRunner {
-<span id="L66" class="ln">    66  </span>	t.Helper()
-<span id="L67" class="ln">    67  </span>	testLogger := logging.NewTestLogger(t)
-<span id="L68" class="ln">    68  </span>
-<span id="L69" class="ln">    69  </span>	innerTxm := driver.NewTransactionManager(getTestDB(t), testLogger)
-<span id="L70" class="ln">    70  </span>
-<span id="L71" class="ln">    71  </span>	runner := &amp;testTxRunner{
-<span id="L72" class="ln">    72  </span>		inner: innerTxm,
-<span id="L73" class="ln">    73  </span>		t:     t,
-<span id="L74" class="ln">    74  </span>	}
-<span id="L75" class="ln">    75  </span>
-<span id="L76" class="ln">    76  </span>	return runner
-<span id="L77" class="ln">    77  </span>}
-<span id="L78" class="ln">    78  </span>
-<span id="L79" class="ln">    79  </span><span class="comment">// WithinTx は、テスト用のトランザクションマネージャーでトランザクションを開始し、引数で渡されたfnを実行し、最後にロールバックします。</span>
-<span id="L80" class="ln">    80  </span><span class="comment">//</span>
-<span id="L81" class="ln">    81  </span><span class="comment">// 使用例:</span>
-<span id="L82" class="ln">    82  </span><span class="comment">//</span>
-<span id="L83" class="ln">    83  </span><span class="comment">//	txm.WithinTx(func(ctx context.Context) {</span>
-<span id="L84" class="ln">    84  </span><span class="comment">//	  // トランザクション内の処理</span>
-<span id="L85" class="ln">    85  </span><span class="comment">//	})</span>
-<span id="L86" class="ln">    86  </span>func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
-<span id="L87" class="ln">    87  </span>	t.t.Helper()
-<span id="L88" class="ln">    88  </span>
-<span id="L89" class="ln">    89  </span>	txLock.Lock()
-<span id="L90" class="ln">    90  </span>	defer txLock.Unlock()
+<span id="L20" class="ln">    20  </span>var (
+<span id="L21" class="ln">    21  </span>	testDB  driver.DatabaseDriver
+<span id="L22" class="ln">    22  </span>	errInit error
+<span id="L23" class="ln">    23  </span>	dbOnce  sync.Once
+<span id="L24" class="ln">    24  </span>	<span class="comment">// txLock は、テスト用のトランザクションマネージャーでトランザクションを開始する際のロックです。</span>
+<span id="L25" class="ln">    25  </span>	<span class="comment">// これにより、テストが並行して実行される場合でも、トランザクションの競合を防止します。</span>
+<span id="L26" class="ln">    26  </span>	<span class="comment">// テスト数が増加し、ボトルネックとなる場合はテスト用のDocker一時コンテナを用意するライブラリの導入を検討してください。</span>
+<span id="L27" class="ln">    27  </span>	txLock sync.Mutex
+<span id="L28" class="ln">    28  </span>)
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// TransactionRunner は、テスト用に関数をトランザクション内で実行するインターフェースです。</span>
+<span id="L31" class="ln">    31  </span>type TransactionRunner interface {
+<span id="L32" class="ln">    32  </span>	WithinTx(fn func(ctx context.Context))
+<span id="L33" class="ln">    33  </span>}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// testTxRunner はテスト用のトランザクションランナーを表します。</span>
+<span id="L36" class="ln">    36  </span>type testTxRunner struct {
+<span id="L37" class="ln">    37  </span>	inner tx.Manager
+<span id="L38" class="ln">    38  </span>	t     *testing.T
+<span id="L39" class="ln">    39  </span>}
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span><span class="comment">// NewTestDB は、テスト用の共有データベースドライバー（シングルトン）を取得します。</span>
+<span id="L42" class="ln">    42  </span>func NewTestDB(t *testing.T) driver.DatabaseDriver {
+<span id="L43" class="ln">    43  </span>	t.Helper()
+<span id="L44" class="ln">    44  </span>	return getTestDB(t)
+<span id="L45" class="ln">    45  </span>}
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span><span class="comment">// NewTestTransactionRunner は、テスト用のトランザクションランナーを生成します。</span>
+<span id="L48" class="ln">    48  </span>func NewTestTransactionRunner(t *testing.T) TransactionRunner {
+<span id="L49" class="ln">    49  </span>	t.Helper()
+<span id="L50" class="ln">    50  </span>	testLogger := logging.NewTestLogger(t)
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>	innerTxm := driver.NewTransactionManager(getTestDB(t), testLogger)
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>	runner := &amp;testTxRunner{
+<span id="L55" class="ln">    55  </span>		inner: innerTxm,
+<span id="L56" class="ln">    56  </span>		t:     t,
+<span id="L57" class="ln">    57  </span>	}
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>	return runner
+<span id="L60" class="ln">    60  </span>}
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span><span class="comment">// WithinTx は、テスト用のトランザクションマネージャーでトランザクションを開始し、引数で渡されたfnを実行し、最後にロールバックします。</span>
+<span id="L63" class="ln">    63  </span><span class="comment">//</span>
+<span id="L64" class="ln">    64  </span><span class="comment">// 使用例:</span>
+<span id="L65" class="ln">    65  </span><span class="comment">//</span>
+<span id="L66" class="ln">    66  </span><span class="comment">//	txm.WithinTx(func(ctx context.Context) {</span>
+<span id="L67" class="ln">    67  </span><span class="comment">//	  // トランザクション内の処理</span>
+<span id="L68" class="ln">    68  </span><span class="comment">//	})</span>
+<span id="L69" class="ln">    69  </span>func (t *testTxRunner) WithinTx(fn func(ctx context.Context)) {
+<span id="L70" class="ln">    70  </span>	t.t.Helper()
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>	txLock.Lock()
+<span id="L73" class="ln">    73  </span>	defer txLock.Unlock()
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span>	baseCtx := context.Background()
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span>	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
+<span id="L78" class="ln">    78  </span>		fn(txCtx)
+<span id="L79" class="ln">    79  </span>		return errRollbackForTest
+<span id="L80" class="ln">    80  </span>	})
+<span id="L81" class="ln">    81  </span>
+<span id="L82" class="ln">    82  </span>	if xerrors.Is(err, errRollbackForTest) {
+<span id="L83" class="ln">    83  </span>		return
+<span id="L84" class="ln">    84  </span>	}
+<span id="L85" class="ln">    85  </span>	require.NoError(t.t, err)
+<span id="L86" class="ln">    86  </span>}
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span><span class="comment">// getTestDB は、テスト用の共有データベースドライバーを返します（初回呼び出し時のみ生成）。</span>
+<span id="L89" class="ln">    89  </span>func getTestDB(t *testing.T) driver.DatabaseDriver {
+<span id="L90" class="ln">    90  </span>	t.Helper()
 <span id="L91" class="ln">    91  </span>
-<span id="L92" class="ln">    92  </span>	baseCtx := context.Background()
-<span id="L93" class="ln">    93  </span>
-<span id="L94" class="ln">    94  </span>	err := t.inner.Do(baseCtx, func(txCtx context.Context) error {
-<span id="L95" class="ln">    95  </span>		fn(txCtx)
-<span id="L96" class="ln">    96  </span>		return errRollbackForTest
-<span id="L97" class="ln">    97  </span>	})
-<span id="L98" class="ln">    98  </span>
-<span id="L99" class="ln">    99  </span>	if xerrors.Is(err, errRollbackForTest) {
-<span id="L100" class="ln">   100  </span>		return
-<span id="L101" class="ln">   101  </span>	}
-<span id="L102" class="ln">   102  </span>	require.NoError(t.t, err)
-<span id="L103" class="ln">   103  </span>}
-<span id="L104" class="ln">   104  </span>
-<span id="L105" class="ln">   105  </span><span class="comment">// getTestDB は、テスト用の共有データベースドライバーを返します（初回呼び出し時のみ生成）。</span>
-<span id="L106" class="ln">   106  </span>func getTestDB(t *testing.T) driver.DatabaseDriver {
-<span id="L107" class="ln">   107  </span>	t.Helper()
-<span id="L108" class="ln">   108  </span>
-<span id="L109" class="ln">   109  </span>	dbOnce.Do(func() {
-<span id="L110" class="ln">   110  </span>		cfg := config.MockConfigForTest(t)
-<span id="L111" class="ln">   111  </span>		dbCfg := config.NewDatabaseConfig(cfg)
-<span id="L112" class="ln">   112  </span>		osCfg := config.NewOperatingSystemConfig(cfg)
-<span id="L113" class="ln">   113  </span>		dbConnCfg := config.NewDBConnectionConfig(cfg)
-<span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>		testDB, errInit = driver.NewDB(dbCfg, osCfg, dbConnCfg)
-<span id="L116" class="ln">   116  </span>	})
-<span id="L117" class="ln">   117  </span>
-<span id="L118" class="ln">   118  </span>	require.NoError(t, errInit)
-<span id="L119" class="ln">   119  </span>	require.NotNil(t, testDB)
-<span id="L120" class="ln">   120  </span>
-<span id="L121" class="ln">   121  </span>	return testDB
-<span id="L122" class="ln">   122  </span>}
-<span id="L123" class="ln">   123  </span>
+<span id="L92" class="ln">    92  </span>	dbOnce.Do(func() {
+<span id="L93" class="ln">    93  </span>		cfg := config.MockConfigForTest(t)
+<span id="L94" class="ln">    94  </span>		dbCfg := config.NewDatabaseConfig(cfg)
+<span id="L95" class="ln">    95  </span>		osCfg := config.NewOperatingSystemConfig(cfg)
+<span id="L96" class="ln">    96  </span>		dbConnCfg := config.NewDBConnectionConfig(cfg)
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>		testDB, errInit = driver.NewDB(dbCfg, osCfg, dbConnCfg)
+<span id="L99" class="ln">    99  </span>	})
+<span id="L100" class="ln">   100  </span>
+<span id="L101" class="ln">   101  </span>	require.NoError(t, errInit)
+<span id="L102" class="ln">   102  </span>	require.NotNil(t, testDB)
+<span id="L103" class="ln">   103  </span>
+<span id="L104" class="ln">   104  </span>	return testDB
+<span id="L105" class="ln">   105  </span>}
+<span id="L106" class="ln">   106  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

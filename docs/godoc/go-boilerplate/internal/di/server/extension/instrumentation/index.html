@@ -110,7 +110,7 @@
 				<dd><a href="#LoggingModule">func LoggingModule() fx.Option</a></dd>
 			
 				
-				<dd><a href="#ObservabilityMiddleware">func ObservabilityMiddleware(appCfg *config.ApplicationConfig) extension.UseMiddlewareOut</a></dd>
+				<dd><a href="#ObservabilityMiddleware">func ObservabilityMiddleware(appCfg *config.ApplicationConfig, obsCfg *config.ObservabilityConfig) extension.UseMiddlewareOut</a></dd>
 			
 				
 				<dd><a href="#ObservabilityModule">func ObservabilityModule() fx.Option</a></dd>
@@ -180,13 +180,15 @@
 		
 			
 			
-			</p><h2 id="ObservabilityMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/observability_di.go.html?s=560:649#L13">ObservabilityMiddleware</a>
+			</p><h2 id="ObservabilityMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/observability_di.go.html?s=632:761#L13">ObservabilityMiddleware</a>
 				<a class="permalink" href="#ObservabilityMiddleware">¶</a>
 				
 				
 			</h2>
-			<pre>func ObservabilityMiddleware(appCfg *<a href="../../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>) <a href="../../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../../go-boilerplate/internal/di/server/extension/#UseMiddlewareOut">UseMiddlewareOut</a></pre>
-			<p>ObservabilityMiddleware は、可観測性ミドルウェアを提供します。
+			<pre>func ObservabilityMiddleware(
+    appCfg *<a href="../../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>, obsCfg *<a href="../../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>,
+) <a href="../../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../../go-boilerplate/internal/di/server/extension/#UseMiddlewareOut">UseMiddlewareOut</a></pre>
+			<p>ObservabilityMiddleware は、可観測性ミドルウェアを提供します。トレースが無効なら素通しミドルウェアを返します。
 
 			
 			

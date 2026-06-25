@@ -83,7 +83,7 @@
 <span id="L26" class="ln">    26  </span>	return extractFromCarrier(ctx, attrs, otel.GetTextMapPropagator())
 <span id="L27" class="ln">    27  </span>}
 <span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span><span class="comment">// extractFromCarrier は、prop を明示注入できる ExtractFromCarrier の中核です（テスト用 seam）。</span>
+<span id="L29" class="ln">    29  </span><span class="comment">// extractFromCarrier は、prop から trace context を抽出して ctx に付与します。</span>
 <span id="L30" class="ln">    30  </span>func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propagation.TextMapPropagator) context.Context {
 <span id="L31" class="ln">    31  </span>	if len(attrs) == 0 {
 <span id="L32" class="ln">    32  </span>		return ctx

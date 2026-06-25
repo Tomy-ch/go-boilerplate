@@ -62,7 +62,7 @@
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
 <span id="L6" class="ln">     6  </span>
 <span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/domain/user&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver/loggingdb&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
 <span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
 <span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
@@ -70,13 +70,13 @@
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
 <span id="L15" class="ln">    15  </span>type repository struct {
-<span id="L16" class="ln">    16  </span>	db     loggingdb.DBProvider
+<span id="L16" class="ln">    16  </span>	db     driver.DatabaseDriver
 <span id="L17" class="ln">    17  </span>	tracer observability.LayerTracer
 <span id="L18" class="ln">    18  </span>}
 <span id="L19" class="ln">    19  </span>
 <span id="L20" class="ln">    20  </span><span class="comment">// New は、user.Repository の RDB 実装を生成して返します。</span>
 <span id="L21" class="ln">    21  </span>func New(
-<span id="L22" class="ln">    22  </span>	db loggingdb.DBProvider,
+<span id="L22" class="ln">    22  </span>	db driver.DatabaseDriver,
 <span id="L23" class="ln">    23  </span>	tf observability.TracerFactory,
 <span id="L24" class="ln">    24  </span>) user.Repository {
 <span id="L25" class="ln">    25  </span>	return &amp;repository{
@@ -90,7 +90,7 @@
 <span id="L33" class="ln">    33  </span>	ctx, endSpan := r.tracer.Start(ctx)
 <span id="L34" class="ln">    34  </span>	defer endSpan()
 <span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
+<span id="L36" class="ln">    36  </span>	db := gen.New(driver.New(ctx, r.db))
 <span id="L37" class="ln">    37  </span>
 <span id="L38" class="ln">    38  </span>	switch {
 <span id="L39" class="ln">    39  </span>	case active == nil:
@@ -119,7 +119,7 @@
 <span id="L62" class="ln">    62  </span>	ctx, endSpan := r.tracer.Start(ctx)
 <span id="L63" class="ln">    63  </span>	defer endSpan()
 <span id="L64" class="ln">    64  </span>
-<span id="L65" class="ln">    65  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
+<span id="L65" class="ln">    65  </span>	db := gen.New(driver.New(ctx, r.db))
 <span id="L66" class="ln">    66  </span>
 <span id="L67" class="ln">    67  </span>	if after == nil {
 <span id="L68" class="ln">    68  </span>		rows, err := db.ListUsersFeedFirst(ctx, limit)
@@ -211,7 +211,7 @@
 <span id="L154" class="ln">   154  </span>	ctx, endSpan := r.tracer.Start(ctx)
 <span id="L155" class="ln">   155  </span>	defer endSpan()
 <span id="L156" class="ln">   156  </span>
-<span id="L157" class="ln">   157  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
+<span id="L157" class="ln">   157  </span>	db := gen.New(driver.New(ctx, r.db))
 <span id="L158" class="ln">   158  </span>	err := db.CreateUser(ctx, &amp;gen.CreateUserParams{
 <span id="L159" class="ln">   159  </span>		ID:           u.ID(),
 <span id="L160" class="ln">   160  </span>		FirstName:    u.FirstName(),
@@ -238,7 +238,7 @@
 <span id="L181" class="ln">   181  </span>	ctx, endSpan := r.tracer.Start(ctx)
 <span id="L182" class="ln">   182  </span>	defer endSpan()
 <span id="L183" class="ln">   183  </span>
-<span id="L184" class="ln">   184  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
+<span id="L184" class="ln">   184  </span>	db := gen.New(driver.New(ctx, r.db))
 <span id="L185" class="ln">   185  </span>	row, err := db.GetUserByID(ctx, id)
 <span id="L186" class="ln">   186  </span>	if err != nil {
 <span id="L187" class="ln">   187  </span>		return nil, pgerror.NormalizeError(err)
@@ -252,7 +252,7 @@
 <span id="L195" class="ln">   195  </span>	ctx, endSpan := r.tracer.Start(ctx)
 <span id="L196" class="ln">   196  </span>	defer endSpan()
 <span id="L197" class="ln">   197  </span>
-<span id="L198" class="ln">   198  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
+<span id="L198" class="ln">   198  </span>	db := gen.New(driver.New(ctx, r.db))
 <span id="L199" class="ln">   199  </span>	rows, err := db.UpdateUser(ctx, &amp;gen.UpdateUserParams{
 <span id="L200" class="ln">   200  </span>		FirstName:    u.FirstName(),
 <span id="L201" class="ln">   201  </span>		LastName:     u.LastName(),
@@ -277,7 +277,7 @@
 <span id="L220" class="ln">   220  </span>	ctx, endSpan := r.tracer.Start(ctx)
 <span id="L221" class="ln">   221  </span>	defer endSpan()
 <span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span>	db := gen.New(r.db.NewLoggingDB(ctx))
+<span id="L223" class="ln">   223  </span>	db := gen.New(driver.New(ctx, r.db))
 <span id="L224" class="ln">   224  </span>
 <span id="L225" class="ln">   225  </span>	var (
 <span id="L226" class="ln">   226  </span>		count int64

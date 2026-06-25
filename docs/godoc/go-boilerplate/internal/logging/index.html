@@ -181,6 +181,11 @@
 				
 			
 				
+				<dd><a href="#LogCore">type LogCore</a></dd>
+				
+				
+			
+				
 				<dd><a href="#LogFieldBuilder">type LogFieldBuilder</a></dd>
 				
 					
@@ -209,20 +214,13 @@
 					
 					<dd>    <a href="#NewTestLogger">func NewTestLogger(t *testing.T) Logger</a></dd>
 				
-				
-			
-				
-				<dd><a href="#ObservabilityFieldsInput">type ObservabilityFieldsInput</a></dd>
+					
+					<dd>    <a href="#WithCore">func WithCore(l Logger, core LogCore) Logger</a></dd>
 				
 				
 			
 				
 				<dd><a href="#SQLFieldsEndInput">type SQLFieldsEndInput</a></dd>
-				
-				
-			
-				
-				<dd><a href="#SQLFieldsStartInput">type SQLFieldsStartInput</a></dd>
 				
 				
 			
@@ -556,7 +554,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=872:1319#L16">HTTPRequestLogInput</a>
+			</p><h2 id="HTTPRequestLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=752:1199#L14">HTTPRequestLogInput</a>
 				<a class="permalink" href="#HTTPRequestLogInput">¶</a>
 				
 				
@@ -602,7 +600,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1437:1629#L41">HTTPResponseLogInput</a>
+			<h2 id="HTTPResponseLogInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1317:1509#L39">HTTPResponseLogInput</a>
 				<a class="permalink" href="#HTTPResponseLogInput">¶</a>
 				
 				
@@ -726,7 +724,30 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=324:648#L2">LogFieldBuilder</a>
+			</p><h2 id="LogCore">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=346:373#L2">LogCore</a>
+				<a class="permalink" href="#LogCore">¶</a>
+				
+				
+			</h2>
+			<p>LogCore は、Logger に追加で Tee できるログ core の型です。
+
+			</p><pre>type LogCore = <a href="../../../go.uber.org/zap/zapcore/">zapcore</a>.<a href="../../../go.uber.org/zap/zapcore/#Core">Core</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="LogFieldBuilder">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=324:528#L2">LogFieldBuilder</a>
 				<a class="permalink" href="#LogFieldBuilder">¶</a>
 				
 				
@@ -736,9 +757,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 			</p><pre>type LogFieldBuilder interface {
     BuildHTTPRequestFields(req <a href="#HTTPRequestLogInput">HTTPRequestLogInput</a>) []*<a href="#Field">Field</a>
     BuildHTTPResponseFields(resp <a href="#HTTPResponseLogInput">HTTPResponseLogInput</a>) []*<a href="#Field">Field</a>
-    BuildSQLStartFields(sql <a href="#SQLFieldsStartInput">SQLFieldsStartInput</a>) []*<a href="#Field">Field</a>
     BuildSQLEndFields(sql <a href="#SQLFieldsEndInput">SQLFieldsEndInput</a>) []*<a href="#Field">Field</a>
-    BuildObservabilityFields(obs <a href="#ObservabilityFieldsInput">ObservabilityFieldsInput</a>) []*<a href="#Field">Field</a>
 }</pre>
 
 			
@@ -751,7 +770,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 
 			
 				
-				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2749:2860#L108">NewLogFields</a>
+				<h3 id="NewLogFields">func <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1962:2073#L75">NewLogFields</a>
 					<a class="permalink" href="#NewLogFields">¶</a>
 					
 					
@@ -782,7 +801,7 @@ JSON ビューア（Grafana / Loki 等）で改行が可読に表示されるよ
 		
 			
 			
-			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=327:949#L1">Logger</a>
+			</p><h2 id="Logger">type <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=461:1083#L5">Logger</a>
 				<a class="permalink" href="#Logger">¶</a>
 				
 				
@@ -877,50 +896,25 @@ caller（発生源）を検証したいテストで使用します。
 				
 				
 			
+				
+				</p><h3 id="WithCore">func <a href="../../../src/go-boilerplate/internal/logging/logger.go.html?s=1545:1589#L33">WithCore</a>
+					<a class="permalink" href="#WithCore">¶</a>
+					
+					
+				</h3>
+				<pre>func WithCore(l <a href="#Logger">Logger</a>, core <a href="#LogCore">LogCore</a>) <a href="#Logger">Logger</a></pre>
+				<p>WithCore は、既存 Logger に追加のログ core を、元 Logger と同じ最小レベルでゲートして
+Tee した新しい Logger を返します。core が nil の場合は、元の Logger をそのまま返します。
 
-			
-		
-			
-			
-			</p><h2 id="ObservabilityFieldsInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2407:2643#L91">ObservabilityFieldsInput</a>
-				<a class="permalink" href="#ObservabilityFieldsInput">¶</a>
 				
 				
-			</h2>
-			<p>ObservabilityFieldsInput は、オブザーバビリティ用のログフィールド生成の入力情報をまとめた構造体です。
-
-			</p><pre>type ObservabilityFieldsInput struct {
-<span id="ObservabilityFieldsInput.Layer"></span>    Layer    <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.PkgName"></span>    PkgName  <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.FuncName"></span>    FuncName <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.SpanName"></span>    SpanName <a href="../../../builtin/#string">string</a>
-
-<span id="ObservabilityFieldsInput.EventType"></span>    EventType <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.EventAt"></span>    EventAt   <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
-
-<span id="ObservabilityFieldsInput.Latency"></span>    Latency <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>
-
-<span id="ObservabilityFieldsInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
-<span id="ObservabilityFieldsInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
-}
-</pre>
-
-			
-
-			
-
-			
-			
-			
-
 			
 
 			
 		
 			
 			
-			<h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=2012:2262#L71">SQLFieldsEndInput</a>
+			</p><h2 id="SQLFieldsEndInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1606:1856#L55">SQLFieldsEndInput</a>
 				<a class="permalink" href="#SQLFieldsEndInput">¶</a>
 				
 				
@@ -944,41 +938,6 @@ caller（発生源）を検証したいテストで使用します。
 <span id="SQLFieldsEndInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
 <span id="SQLFieldsEndInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
 <span id="SQLFieldsEndInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
-}
-</pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-		
-			
-			
-			<h2 id="SQLFieldsStartInput">type <a href="../../../src/go-boilerplate/internal/logging/field_builder.go.html?s=1728:1915#L57">SQLFieldsStartInput</a>
-				<a class="permalink" href="#SQLFieldsStartInput">¶</a>
-				
-				
-			</h2>
-			<p>SQLFieldsStartInput は、SQL ログ出力用の入力情報をまとめた構造体です。
-
-			</p><pre>type SQLFieldsStartInput struct {
-<span id="SQLFieldsStartInput.Layer"></span>    Layer    <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.PkgName"></span>    PkgName  <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.FuncName"></span>    FuncName <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.SpanName"></span>    SpanName <a href="../../../builtin/#string">string</a>
-
-<span id="SQLFieldsStartInput.EventAt"></span>    EventAt <a href="../../../time/">time</a>.<a href="../../../time/#Time">Time</a>
-
-<span id="SQLFieldsStartInput.TraceID"></span>    TraceID      <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.SpanID"></span>    SpanID       <a href="../../../builtin/#string">string</a>
-<span id="SQLFieldsStartInput.ParentSpanID"></span>    ParentSpanID <a href="../../../builtin/#string">string</a>
 }
 </pre>
 

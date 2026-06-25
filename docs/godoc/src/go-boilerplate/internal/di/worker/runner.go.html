@@ -79,7 +79,7 @@
 <span id="L22" class="ln">    22  </span>	Logger  logging.Logger
 <span id="L23" class="ln">    23  </span>}
 <span id="L24" class="ln">    24  </span>
-<span id="L25" class="ln">    25  </span><span class="comment">// ProvideEngine は、config.WorkerConfig を engine-core Settings へマッピングして Engine を生成します。</span>
+<span id="L25" class="ln">    25  </span><span class="comment">// ProvideEngine は、WorkerConfig の設定から Engine を生成します。</span>
 <span id="L26" class="ln">    26  </span>func ProvideEngine(in EngineIn) (*workerengine.Engine, error) {
 <span id="L27" class="ln">    27  </span>	c := in.Config
 <span id="L28" class="ln">    28  </span>	set := workerengine.Settings{
