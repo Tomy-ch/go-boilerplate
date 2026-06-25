@@ -149,7 +149,7 @@ span のライフサイクル / レイテンシはトレースバックエンド
 - クエリごとの OpenTelemetry span（`otelpgx` 経由、batch / copy も対象）
 - クエリ失敗時のエラーログ（`span.RecordError` に加えて）
 - スロークエリ警告ログ（しきい値: `DB_SLOW_QUERY_WARN_THRESHOLD`）
-- クエリ引数のマスク（`OBSERVABILITY_MASKED_DB_QUERY_ARGS`）
+- クエリ引数のマスク（`OBS_MASKED_DB_QUERY_ARGS`）
 
 ## PostgreSQL エラー正規化
 

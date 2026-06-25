@@ -63,9 +63,13 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OBSERVABILITY_ENABLED|トレース/ログ有効化|bool|true||
-|OBSERVABILITY_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|true|セキュリティ重要|
-|OBSERVABILITY_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,409,422,500,501,503|エラー監視用|
+|OBS_TRACES_EXPORTER|trace の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でトレース無効（軽量構成）|
+|OBS_METRICS_EXPORTER|metric の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でメトリクス無効（軽量構成）|
+|OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）|
+|OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|<http://observability:4318>|exporter 有効時に使用|
+|OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|既定 `http/protobuf`|
+|OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|true|セキュリティ重要|
+|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,409,422,500,501,503|エラー監視用|
 
 ### Database
 

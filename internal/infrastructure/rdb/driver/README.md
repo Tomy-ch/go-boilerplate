@@ -240,6 +240,6 @@ Features:
 - OpenTelemetry span per query via `otelpgx` (with semconv DB attributes; batch / copy covered too)
 - **Error log** on query failure (in addition to `span.RecordError`)
 - **Slow query Warn log** when `DB_SLOW_QUERY_WARN_THRESHOLD` is exceeded
-- Query argument masking via `OBSERVABILITY_MASKED_DB_QUERY_ARGS`
+- Query argument masking via `OBS_MASKED_DB_QUERY_ARGS`
 - Successful queries are recorded as spans only (no per-query log), keeping the trace backend
   (APM) as the source of truth and avoiding log noise

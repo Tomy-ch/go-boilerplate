@@ -153,7 +153,7 @@ Main functions
 - OpenTelemetry span per query (via `otelpgx`, including batch / copy)
 - Error log on query failure (`span.RecordError` + log)
 - Slow query warning log (threshold: `DB_SLOW_QUERY_WARN_THRESHOLD`)
-- Query argument masking (`OBSERVABILITY_MASKED_DB_QUERY_ARGS`)
+- Query argument masking (`OBS_MASKED_DB_QUERY_ARGS`)
 
 ## PostgreSQL Error Normalization
 

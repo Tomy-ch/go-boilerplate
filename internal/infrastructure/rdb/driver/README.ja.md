@@ -267,5 +267,5 @@ span のために `otelpgx` を埋め込み、失敗時とスロークエリ時�
 - `otelpgx` によるクエリごとの OpenTelemetry span（semconv の DB 属性付き、batch / copy も対象）
 - クエリ失敗時の**エラーログ**（`span.RecordError` に加えて）
 - `DB_SLOW_QUERY_WARN_THRESHOLD` 超過時の**スロークエリ Warn ログ**
-- `OBSERVABILITY_MASKED_DB_QUERY_ARGS` によるクエリ引数のマスキング
+- `OBS_MASKED_DB_QUERY_ARGS` によるクエリ引数のマスキング
 - 正常クエリは span のみ記録（クエリごとのログは出さず、トレースバックエンド（APM）を正とする）
