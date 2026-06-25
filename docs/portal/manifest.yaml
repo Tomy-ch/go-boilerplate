@@ -51,7 +51,6 @@ meta:
         items:
           - infrastructure-rdb
           - infrastructure-rdb-driver
-          - infrastructure-rdb-driver-loggingdb
           - infrastructure-rdb-pgerror
           - infrastructure-rdb-sqlc
           - infrastructure-rdb-repository
@@ -244,8 +243,6 @@ infrastructure:
     dst: docs/portal/guides/infrastructure-rdb-query-service.md
   - src: internal/infrastructure/rdb/driver/README.md
     dst: docs/portal/guides/infrastructure-rdb-driver.md
-  - src: internal/infrastructure/rdb/driver/loggingdb/README.md
-    dst: docs/portal/guides/infrastructure-rdb-driver-loggingdb.md
   - src: internal/infrastructure/rdb/README.md
     dst: docs/portal/guides/infrastructure-rdb.md
   - src: internal/infrastructure/rdb/pgerror/README.md
@@ -269,8 +266,6 @@ infrastructure:
     dst: docs/portal/guides/ja/infrastructure-rdb-query-service.ja.md
   - src: internal/infrastructure/rdb/driver/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb-driver.ja.md
-  - src: internal/infrastructure/rdb/driver/loggingdb/README.ja.md
-    dst: docs/portal/guides/ja/infrastructure-rdb-driver-loggingdb.ja.md
   - src: internal/infrastructure/rdb/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb.ja.md
   - src: internal/infrastructure/rdb/pgerror/README.ja.md

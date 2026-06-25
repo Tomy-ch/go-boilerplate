@@ -78,7 +78,7 @@ Infrastructure 層では以下の可観測性を提供します。
 - OpenTelemetry によるトレース
 - 実行時間計測（slow query）
 
-主に loggingdb などの wrapper で実現します。
+主に driver の接続層に結線した pgx クエリトレーサー（`otelpgx` の span、ログ出力はクエリ失敗とスロークエリのみ）で実現します。
 
 ## 禁止事項
 
@@ -94,7 +94,7 @@ Infrastructure 層では以下を行ってはいけません。
 
 - SQL 実行は sqlc を使用する
 - Repository に検索ロジックを書かない（QueryServiceへ）
-- driver を直接使わず loggingdb 経由で利用する
+- DBTX は `driver.New(ctx, db)` で取得する（ログ / トレースは driver の接続層で付与される）
 - context を必ず伝搬する
 - 外部エラーは必ず正規化する
 

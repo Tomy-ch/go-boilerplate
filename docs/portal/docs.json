@@ -718,13 +718,6 @@
               "guideId": "infrastructure-rdb-driver"
             },
             {
-              "name": "Infrastructure Rdb Driver Loggingdb",
-              "path": "./guides/infrastructure-rdb-driver-loggingdb.md",
-              "lang": "en",
-              "source": "internal/infrastructure/rdb/driver/loggingdb/README.md",
-              "guideId": "infrastructure-rdb-driver-loggingdb"
-            },
-            {
               "name": "Infrastructure Rdb Pgerror",
               "path": "./guides/infrastructure-rdb-pgerror.md",
               "lang": "en",
@@ -800,13 +793,6 @@
               "lang": "ja",
               "source": "internal/infrastructure/rdb/driver/README.ja.md",
               "guideId": "infrastructure-rdb-driver"
-            },
-            {
-              "name": "Infrastructure Rdb Driver Loggingdb",
-              "path": "./guides/ja/infrastructure-rdb-driver-loggingdb.ja.md",
-              "lang": "ja",
-              "source": "internal/infrastructure/rdb/driver/loggingdb/README.ja.md",
-              "guideId": "infrastructure-rdb-driver-loggingdb"
             },
             {
               "name": "Infrastructure Rdb Pgerror",
@@ -908,20 +894,6 @@
                   "lang": "ja",
                   "source": "internal/infrastructure/rdb/driver/README.ja.md",
                   "guideId": "infrastructure-rdb-driver"
-                },
-                {
-                  "name": "Infrastructure Rdb Driver Loggingdb",
-                  "path": "./guides/infrastructure-rdb-driver-loggingdb.md",
-                  "lang": "en",
-                  "source": "internal/infrastructure/rdb/driver/loggingdb/README.md",
-                  "guideId": "infrastructure-rdb-driver-loggingdb"
-                },
-                {
-                  "name": "Infrastructure Rdb Driver Loggingdb",
-                  "path": "./guides/ja/infrastructure-rdb-driver-loggingdb.ja.md",
-                  "lang": "ja",
-                  "source": "internal/infrastructure/rdb/driver/loggingdb/README.ja.md",
-                  "guideId": "infrastructure-rdb-driver-loggingdb"
                 },
                 {
                   "name": "Infrastructure Rdb Pgerror",
