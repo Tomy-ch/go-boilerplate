@@ -63,9 +63,13 @@ This directory is the canonical reference for every environment variable read by
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|OBSERVABILITY_ENABLED|Enable trace/log|bool|true||
-|OBSERVABILITY_MASKED_DB_QUERY_ARGS|Mask DB parameters|bool|true|Security critical|
-|OBSERVABILITY_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,409,422,500,501,503|For error monitoring|
+|OBS_TRACES_EXPORTER|Trace OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables tracing (lightweight)|
+|OBS_METRICS_EXPORTER|Metric OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables metrics (lightweight)|
+|OBS_LOGS_EXPORTER|Log OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables log export (zap stdout only)|
+|OBS_OTLP_ENDPOINT|OTLP export endpoint URL|string|<http://observability:4318>|Used when an exporter is enabled|
+|OBS_OTLP_PROTOCOL|OTLP protocol (`http/protobuf` or `grpc`)|string|http/protobuf|Default `http/protobuf`|
+|OBS_MASKED_DB_QUERY_ARGS|Mask DB parameters|bool|true|Security critical|
+|OBS_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,409,422,500,501,503|For error monitoring|
 
 ### Database
 

@@ -228,21 +228,21 @@ row.Users.Building   // *string
 row.Users.DeletedAt  // *time.Time
 ```
 
-## LoggingDBProvider
+## DB アクセス（driver）
 
-QueryService は通常、`loggingdb.DBProvider` を利用して DB にアクセスします。
+QueryService は `driver.DatabaseDriver` を通じて DB にアクセスします。
 
 ```go
-db := gen.New(s.db.NewLoggingDB(ctx))
+db := gen.New(driver.New(ctx, s.db))
 ```
 
-`loggingdb.DBProvider` は次を提供します。
+`driver.New(ctx, db)` は次を提供します。
 
-- SQL ログ出力
-- DB / Tx の透過切り替え
-- Contextベース接続取得
+- DB / Tx の透過切り替え（context に tx があればそれを採用）
+- Context ベース接続取得
 
-QueryService は **DB接続状態を意識しない設計**になります。
+SQL のログ / トレースは driver の接続層に結線した pgx クエリトレーサーが透過的に付与します
+（`driver/README.md` 参照）。そのため QueryService は **DB 接続状態を意識しない設計**になります。
 
 ## エラー正規化
 
@@ -334,7 +334,7 @@ func InfrastructureModule() fx.Option {
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -398,7 +398,7 @@ QueryService は次の依存を持ちます。
 
 ```go
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -407,7 +407,7 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -469,14 +469,14 @@ return rows
 // service は QueryService の実装です。
 // DBアクセスとトレーシングを責務として持ちます。
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New は QueryService のコンストラクタです。
 // 依存はすべて外から注入し、内部で new は行いません。
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -501,7 +501,7 @@ func (s *service) FindByFilter(ctx context.Context, filter *query.UserSearchFilt
     }
 
     // loggingDB を利用して DB 接続を取得
-    db := gen.New(s.db.NewLoggingDB(ctx))
+    db := gen.New(driver.New(ctx, s.db))
 
     // 削除状態に応じてクエリを切り替える
     switch {
