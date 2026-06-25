@@ -141,12 +141,12 @@ flowchart TB
 ```
 
 クエリトレーサーは OpenTelemetry span（semconv の DB 属性付き）のために `otelpgx` を埋め込み、
-**失敗時とスロークエリ時のみログを出力**します。正常クエリは span のみ記録します。これにより
-span のライフサイクル / レイテンシはトレースバックエンド（APM）を正とし、クエリごとのログノイズを避けます。
+クエリログを出力します：**正常終了は Info（latency 付き）、スローは Warn、失敗は Error**。
 
 主な機能
 
 - クエリごとの OpenTelemetry span（`otelpgx` 経由、batch / copy も対象）
+- 正常終了時の Info ログ（latency 付き）
 - クエリ失敗時のエラーログ（`span.RecordError` に加えて）
 - スロークエリ警告ログ（しきい値: `DB_SLOW_QUERY_WARN_THRESHOLD`）
 - クエリ引数のマスク（`OBS_MASKED_DB_QUERY_ARGS`）
@@ -251,7 +251,7 @@ SQL 実行はすべて`sqlc`を通して行います。
 ### 6. 可観測性
 
 SQL 実行トレースは driver の接続層に結線した pgx クエリトレーサー（`otelpgx` の span）が提供し、
-ログ出力はクエリ失敗とスロークエリのみに限定します。
+ログは正常終了（Info・latency 付き）・スロー（Warn）・失敗（Error）で出力します。
 
 ### 7. テスト戦略（Integration 前提）
 

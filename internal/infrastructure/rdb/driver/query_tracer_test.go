@@ -77,11 +77,12 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 			qt.TraceQueryEnd(context.Background(), nil, pgx.TraceQueryEndData{})
 		})
 
-		t.Run("正常終了時はログを出さない", func(t *testing.T) {
+		t.Run("正常終了時は Info ログを出す", func(t *testing.T) {
 			t.Parallel()
 
-			qt, _ := newTestQueryTracer(t)
+			qt, mockLogger := newTestQueryTracer(t)
 			qt.slowThreshold = time.Second
+			mockLogger.EXPECT().Info("DB query completed", gomock.Any()).Times(1)
 
 			ctx := context.WithValue(context.Background(), queryLogKey{}, queryLogData{
 				sql:   "SELECT 1",
@@ -164,6 +165,7 @@ func TestNewTracedDB_RealQueryInstrumentation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockLogger := mock_logging.NewMockLogger(ctrl)
 	mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
+	mockLogger.EXPECT().Info("DB query completed", gomock.Any()).MinTimes(1)
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).MinTimes(1)
 	lf := logging.NewTestLogFieldBuilder(t)
 
@@ -175,11 +177,11 @@ func TestNewTracedDB_RealQueryInstrumentation(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 正常クエリは span のみ（ログ無し）。
+	// 正常クエリは TraceQueryEnd(Info) のログが出る。
 	_, err = db.Exec(ctx, "SELECT 1")
 	require.NoError(t, err)
 
-	// 失敗クエリは TraceQueryStart/End を通り Error ログが出る。
+	// 失敗クエリは終了で Error ログが出る。
 	_, err = db.Exec(ctx, "SELECT 1 FROM no_such_table_for_test")
 	require.Error(t, err)
 }

@@ -144,13 +144,12 @@ flowchart TB
 ```
 
 The query tracer embeds `otelpgx` for OpenTelemetry spans (with semconv DB attributes) and adds
-**log output only for failures and slow queries** — successful queries are recorded as spans only.
-This keeps the trace backend (APM) as the source of truth for span lifecycle / latency while
-avoiding per-query log noise.
+query logs: **success at Info (with latency), slow queries at Warn, and failures at Error**.
 
 Main functions
 
 - OpenTelemetry span per query (via `otelpgx`, including batch / copy)
+- Info log on successful completion (with latency)
 - Error log on query failure (`span.RecordError` + log)
 - Slow query warning log (threshold: `DB_SLOW_QUERY_WARN_THRESHOLD`)
 - Query argument masking (`OBS_MASKED_DB_QUERY_ARGS`)
@@ -253,7 +252,8 @@ All SQL execution is performed through `sqlc`.
 ### 6. Observability
 
 SQL execution tracing is provided by a pgx query tracer wired at the driver connection level
-(`otelpgx` spans), with log output limited to query failures and slow queries.
+(`otelpgx` spans), with logs on successful completion (Info, with latency), slow queries (Warn),
+and failures (Error).
 
 ### 7. Test Strategy (Integration-based)
 

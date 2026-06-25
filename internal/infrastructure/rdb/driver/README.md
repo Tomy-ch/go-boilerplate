@@ -228,7 +228,8 @@ Constructor that implements `tx.Manager` (`internal/usecase/boundary/tx`) for th
 ## Query Tracer (query_tracer.go)
 
 `NewQueryTracer` builds the `pgx.QueryTracer` that is wired at `ConnConfig.Tracer`. It embeds
-`otelpgx` for OpenTelemetry spans and adds log output only for failures and slow queries.
+`otelpgx` for OpenTelemetry spans and adds query logs: success at Info (with latency), slow
+queries at Warn, and failures at Error.
 
 |Type / Function|Description|
 |---|---|
@@ -238,8 +239,7 @@ Constructor that implements `tx.Manager` (`internal/usecase/boundary/tx`) for th
 Features:
 
 - OpenTelemetry span per query via `otelpgx` (with semconv DB attributes; batch / copy covered too)
+- **Info log** on successful completion (with latency)
 - **Error log** on query failure (in addition to `span.RecordError`)
 - **Slow query Warn log** when `DB_SLOW_QUERY_WARN_THRESHOLD` is exceeded
 - Query argument masking via `OBS_MASKED_DB_QUERY_ARGS`
-- Successful queries are recorded as spans only (no per-query log), keeping the trace backend
-  (APM) as the source of truth and avoiding log noise

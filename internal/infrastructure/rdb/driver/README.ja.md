@@ -255,7 +255,7 @@ Usecase 層の `tx.Manager`（`internal/usecase/boundary/tx`）を実装する�
 ## クエリトレーサー（query_tracer.go）
 
 `NewQueryTracer` は `ConnConfig.Tracer` に結線する `pgx.QueryTracer` を生成します。OpenTelemetry
-span のために `otelpgx` を埋め込み、失敗時とスロークエリ時のみログ出力を上乗せします。
+span のために `otelpgx` を埋め込み、クエリログ（正常終了 Info / スロー Warn / 失敗 Error）を上乗せします。
 
 |型 / 関数|説明|
 |---|---|
@@ -265,7 +265,7 @@ span のために `otelpgx` を埋め込み、失敗時とスロークエリ時�
 特徴：
 
 - `otelpgx` によるクエリごとの OpenTelemetry span（semconv の DB 属性付き、batch / copy も対象）
+- 正常終了時の**Info ログ**（latency 付き）
 - クエリ失敗時の**エラーログ**（`span.RecordError` に加えて）
 - `DB_SLOW_QUERY_WARN_THRESHOLD` 超過時の**スロークエリ Warn ログ**
 - `OBS_MASKED_DB_QUERY_ARGS` によるクエリ引数のマスキング
-- 正常クエリは span のみ記録（クエリごとのログは出さず、トレースバックエンド（APM）を正とする）
