@@ -5,7 +5,11 @@ package logging
 
 import (
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
+
+// LogCore は、Logger に追加で Tee できるログ core の型です。
+type LogCore = zapcore.Core
 
 // Logger は、アプリ全体が使うロガーのインターフェースです。
 type Logger interface {
@@ -25,6 +29,23 @@ type Logger interface {
 
 type logger struct {
 	log *zap.Logger
+}
+
+// WithCore は、既存 Logger に追加のログ core を Tee した新しい Logger を返します。
+// core が nil の場合は、元の Logger をそのまま返します。
+func WithCore(l Logger, core LogCore) Logger {
+	if core == nil {
+		return l
+	}
+	base, ok := l.(*logger)
+	if !ok {
+		return l
+	}
+	return &logger{
+		log: base.log.WithOptions(zap.WrapCore(func(c zapcore.Core) zapcore.Core {
+			return zapcore.NewTee(c, core)
+		})),
+	}
 }
 
 // Named は、新しい名前付きの Logger を返す。

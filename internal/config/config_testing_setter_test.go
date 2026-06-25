@@ -42,6 +42,27 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 			assert.Equal(t, expected, cfg.observability.MaskedDBQueryArgs())
 		})
 
+		t.Run("trace exporter を設定して有効判定が変わる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			cfg.observability.SetObservabilityTracesExporter(t, "")
+			assert.False(t, cfg.observability.TracesEnabled())
+		})
+
+		t.Run("metric exporter を設定して有効判定が変わる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			cfg.observability.SetObservabilityMetricsExporter(t, "")
+			assert.False(t, cfg.observability.MetricsEnabled())
+		})
+
+		t.Run("log exporter を設定して有効判定が変わる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			cfg.observability.SetObservabilityLogsExporter(t, "")
+			assert.False(t, cfg.observability.LogsEnabled())
+		})
+
+		t.Run("OTLPプロトコルを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := "grpc"
+			cfg.observability.SetObservabilityOTLPProtocol(t, expected)
+			assert.Equal(t, expected, cfg.observability.OTLPProtocol())
+		})
+
 		t.Run("データベースホストを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
 			expected := "test-host"
 			cfg.database.SetDatabaseHost(t, expected)

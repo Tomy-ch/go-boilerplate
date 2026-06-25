@@ -7,7 +7,7 @@ type Loader struct {
 	OS            OperatingSystem `envPrefix:"OS_"`
 	App           Application     `envPrefix:"APP_"`
 	Server        Server          `envPrefix:"SERVER_"`
-	Observability Observability   `envPrefix:"OBSERVABILITY_"`
+	Observability Observability   `envPrefix:"OBS_"`
 	Metrics       Metrics         `envPrefix:"METRICS_"`
 	Database      Database        `envPrefix:"DB_"`
 	DBConnection  DBConnection    `envPrefix:"DBCONN_"`
@@ -66,12 +66,16 @@ type Metrics struct {
 	Password string `env:"PASSWORD,required"`
 }
 
-// Observability はトレースや計装の有効化フラグ、DBクエリ引数マスク設定、
-// およびトレース対象とする HTTP ステータスコード一覧を保持する。
+// Observability は OTLP exporter 設定（trace/metric/log の送出先種別・エンドポイント・プロトコル）、
+// DBクエリ引数マスク設定、およびトレース対象とする HTTP ステータスコード一覧を保持する。
 type Observability struct {
-	Enabled           bool  `env:"ENABLED,required"`
-	MaskedDBQueryArgs bool  `env:"MASKED_DB_QUERY_ARGS,required"`
-	TargetStatusCodes []int `env:"TARGET_STATUS_CODES,required"  envSeparator:","`
+	TracesExporter    string `env:"TRACES_EXPORTER"`
+	MetricsExporter   string `env:"METRICS_EXPORTER"`
+	LogsExporter      string `env:"LOGS_EXPORTER"`
+	OTLPEndpoint      string `env:"OTLP_ENDPOINT"`
+	OTLPProtocol      string `env:"OTLP_PROTOCOL"                 default:"http/protobuf"`
+	MaskedDBQueryArgs bool   `env:"MASKED_DB_QUERY_ARGS,required"`
+	TargetStatusCodes []int  `env:"TARGET_STATUS_CODES,required"                          envSeparator:","`
 }
 
 // Database はデータベースへの接続先情報（ドライバ・ホスト・認証情報・SSL）および

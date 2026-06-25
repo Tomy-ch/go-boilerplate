@@ -39,7 +39,11 @@ func TestNewConfig(t *testing.T) {
 					password: expectedMetricsPassword,
 				},
 				observability: ObservabilityConfig{
-					enabled:             expectedObservabilityEnabled,
+					tracesExporter:      expectedObservabilityTracesExporter,
+					metricsExporter:     expectedObservabilityMetricsExporter,
+					logsExporter:        expectedObservabilityLogsExporter,
+					otlpEndpoint:        expectedObservabilityOTLPEndpoint,
+					otlpProtocol:        expectedObservabilityOTLPProtocol,
 					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 				},

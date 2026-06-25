@@ -59,6 +59,46 @@ func (o *ObservabilityConfig) SetObservabilityMaskedDBQueryArgs(tb testing.TB, v
 	tb.Cleanup(func() { o.maskedDBQueryArgs = prev })
 }
 
+// SetObservabilityTracesExporter は、テスト用に trace exporter 指定を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *ObservabilityConfig) SetObservabilityTracesExporter(tb testing.TB, val string) {
+	tb.Helper()
+	prev := o.tracesExporter
+	o.tracesExporter = val
+	tb.Cleanup(func() { o.tracesExporter = prev })
+}
+
+// SetObservabilityMetricsExporter は、テスト用に metric exporter 指定を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *ObservabilityConfig) SetObservabilityMetricsExporter(tb testing.TB, val string) {
+	tb.Helper()
+	prev := o.metricsExporter
+	o.metricsExporter = val
+	tb.Cleanup(func() { o.metricsExporter = prev })
+}
+
+// SetObservabilityLogsExporter は、テスト用に log exporter 指定を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *ObservabilityConfig) SetObservabilityLogsExporter(tb testing.TB, val string) {
+	tb.Helper()
+	prev := o.logsExporter
+	o.logsExporter = val
+	tb.Cleanup(func() { o.logsExporter = prev })
+}
+
+// SetObservabilityOTLPProtocol は、テスト用に OTLP プロトコル指定を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *ObservabilityConfig) SetObservabilityOTLPProtocol(tb testing.TB, val string) {
+	tb.Helper()
+	prev := o.otlpProtocol
+	o.otlpProtocol = val
+	tb.Cleanup(func() { o.otlpProtocol = prev })
+}
+
 // SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。

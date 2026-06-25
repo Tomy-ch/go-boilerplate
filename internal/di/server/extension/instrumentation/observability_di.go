@@ -19,13 +19,20 @@ func ObservabilityModule() fx.Option {
 	)
 }
 
-// ObservabilityMiddleware は、可観測性ミドルウェアを提供します。
-func ObservabilityMiddleware(appCfg *config.ApplicationConfig) extension.UseMiddlewareOut {
+// ObservabilityMiddleware は、可観測性ミドルウェアを提供します。可観測が無効なら素通しミドルウェアを返します。
+func ObservabilityMiddleware(
+	appCfg *config.ApplicationConfig, obsCfg *config.ObservabilityConfig,
+) extension.UseMiddlewareOut {
+	mw := observability.PassthroughMiddleware()
+	if obsCfg.Enabled() {
+		mw = observability.Middleware(appCfg.Name())
+	}
+
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
 			Name:       "observability",
 			Priority:   observabilityPriority,
-			Middleware: observability.Middleware(appCfg.Name()),
+			Middleware: mw,
 		},
 	}
 }

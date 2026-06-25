@@ -43,6 +43,13 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 			fx.Provide(func() *config.ApplicationConfig {
 				return config.NewApplicationConfig(config.MockConfigForTest(t))
 			}),
+			fx.Provide(func() *config.ObservabilityConfig {
+				oc := config.NewObservabilityConfig(config.MockConfigForTest(t))
+				oc.SetObservabilityTracesExporter(t, "")
+				oc.SetObservabilityMetricsExporter(t, "")
+				oc.SetObservabilityLogsExporter(t, "")
+				return oc
+			}),
 			fx.Provide(system.NewBuildInfo),
 			fx.Populate(&tf),
 			fx.NopLogger,

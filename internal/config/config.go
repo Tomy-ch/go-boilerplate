@@ -11,6 +11,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// exporterNone は、送出を明示的に無効化する exporter 値。
+const exporterNone = "none"
+
 // New は、アプリケーションの設定を初期化します。
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[Loader]()
@@ -55,7 +58,11 @@ func New() (*Config, error) {
 			password: cfg.Metrics.Password,
 		},
 		observability: ObservabilityConfig{
-			enabled:             cfg.Observability.Enabled,
+			tracesExporter:      cfg.Observability.TracesExporter,
+			metricsExporter:     cfg.Observability.MetricsExporter,
+			logsExporter:        cfg.Observability.LogsExporter,
+			otlpEndpoint:        cfg.Observability.OTLPEndpoint,
+			otlpProtocol:        cfg.Observability.OTLPProtocol,
 			maskedDBQueryArgs:   cfg.Observability.MaskedDBQueryArgs,
 			targetStatusCodeSet: buildStatusCodeSet(cfg.Observability.TargetStatusCodes),
 		},
@@ -264,4 +271,10 @@ func buildStatusCodeSet(codes []int) map[int]bool {
 		m[code] = true
 	}
 	return m
+}
+
+// isActiveExporter は、exporter 指定が送出を行う有効値かどうかを返します。
+// 空文字（未設定）と "none" は無効（送出しない）とみなします。
+func isActiveExporter(v string) bool {
+	return v != "" && v != exporterNone
 }

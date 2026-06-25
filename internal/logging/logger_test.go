@@ -10,6 +10,36 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+func TestWithCore(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("coreがnilなら元のLoggerをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			base := NewConsoleLogger(LevelDebug(), LevelError())
+			got := WithCore(base, nil)
+			assert.Same(t, base, got)
+		})
+
+		t.Run("coreを渡すと別のLoggerを返し追加coreへTeeされる", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
+
+			base := NewConsoleLogger(LevelDebug(), LevelError())
+			got := WithCore(base, extra)
+
+			assert.NotSame(t, base, got)
+			got.Info("tee-test")
+			assert.Contains(t, buf.String(), "tee-test")
+		})
+	})
+}
+
 func Test_logger_CallerSkip(t *testing.T) {
 	t.Parallel()
 

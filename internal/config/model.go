@@ -52,9 +52,14 @@ type MetricsConfig struct {
 	password string
 }
 
-// ObservabilityConfig は、可観測モードの有効化と、DB クエリ引数マスク・監視対象ステータスコードの設定を保持します。
+// ObservabilityConfig は、OTLP exporter 設定（trace/metric/log の送出先種別・エンドポイント・プロトコル）と、
+// DB クエリ引数マスク・監視対象ステータスコードの設定を保持します。
 type ObservabilityConfig struct {
-	enabled             bool
+	tracesExporter      string
+	metricsExporter     string
+	logsExporter        string
+	otlpEndpoint        string
+	otlpProtocol        string
 	maskedDBQueryArgs   bool
 	targetStatusCodeSet map[int]bool
 }
@@ -197,8 +202,25 @@ func (m *MetricsConfig) Password() string { return m.password }
 // NewObservabilityConfig は、可観測の設定を返します。
 func NewObservabilityConfig(cfg *Config) *ObservabilityConfig { return &cfg.observability }
 
-// Enabled は、可観測モードが有効かどうかを返します。
-func (o *ObservabilityConfig) Enabled() bool { return o.enabled }
+// Enabled は、可観測が有効かどうかを返します。
+func (o *ObservabilityConfig) Enabled() bool {
+	return o.TracesEnabled() || o.MetricsEnabled() || o.LogsEnabled()
+}
+
+// TracesEnabled は、trace exporter が有効値かどうかを返します。
+func (o *ObservabilityConfig) TracesEnabled() bool { return isActiveExporter(o.tracesExporter) }
+
+// MetricsEnabled は、metric exporter が有効値かどうかを返します。
+func (o *ObservabilityConfig) MetricsEnabled() bool { return isActiveExporter(o.metricsExporter) }
+
+// LogsEnabled は、log exporter が有効値かどうかを返します。
+func (o *ObservabilityConfig) LogsEnabled() bool { return isActiveExporter(o.logsExporter) }
+
+// OTLPEndpoint は、OTLP exporter の送出先エンドポイントを返します。
+func (o *ObservabilityConfig) OTLPEndpoint() string { return o.otlpEndpoint }
+
+// OTLPProtocol は、OTLP exporter のプロトコル（"http/protobuf" / "grpc"）を返します。
+func (o *ObservabilityConfig) OTLPProtocol() string { return o.otlpProtocol }
 
 // MaskedDBQueryArgs は、可観測モードでDBクエリの引数をマスクするかどうかを返します。
 func (o *ObservabilityConfig) MaskedDBQueryArgs() bool { return o.maskedDBQueryArgs }

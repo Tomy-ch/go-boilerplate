@@ -155,9 +155,34 @@ func TestGetterMethods(t *testing.T) {
 			t.Parallel()
 			observability := cfg.observability
 
-			t.Run("有効フラグを取得できる", func(t *testing.T) {
+			t.Run("trace exporter が有効値なら有効を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.True(t, observability.TracesEnabled())
+			})
+
+			t.Run("metric exporter が有効値なら有効を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.True(t, observability.MetricsEnabled())
+			})
+
+			t.Run("log exporter が有効値なら有効を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.True(t, observability.LogsEnabled())
+			})
+
+			t.Run("いずれかの exporter が有効値なら全体有効を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.True(t, observability.Enabled())
+			})
+
+			t.Run("OTLPエンドポイントを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedObservabilityOTLPEndpoint, observability.OTLPEndpoint())
+			})
+
+			t.Run("OTLPプロトコルを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedObservabilityOTLPProtocol, observability.OTLPProtocol())
 			})
 
 			t.Run("DBクエリ引数マスク設定を取得できる", func(t *testing.T) {
@@ -430,4 +455,37 @@ func TestSecureCookieConfig_Secure(t *testing.T) {
 			assert.Nil(t, s.Secure())
 		})
 	})
+}
+
+func TestObservabilityConfig_Enabled(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		traces      string
+		metrics     string
+		logs        string
+		wantTraces  bool
+		wantMetrics bool
+		wantLogs    bool
+		wantEnabled bool
+	}{
+		{"正常系_全部otlpなら全て有効", "otlp", "otlp", "otlp", true, true, true, true},
+		{"正常系_traceのみ有効", "otlp", "", "", true, false, false, true},
+		{"正常系_metricのみ有効", "", "otlp", "", false, true, false, true},
+		{"正常系_logのみ有効", "", "", "otlp", false, false, true, true},
+		{"正常系_全部空なら無効", "", "", "", false, false, false, false},
+		{"正常系_noneは無効として扱う", "none", "none", "none", false, false, false, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			o := &ObservabilityConfig{tracesExporter: tc.traces, metricsExporter: tc.metrics, logsExporter: tc.logs}
+			assert.Equal(t, tc.wantTraces, o.TracesEnabled())
+			assert.Equal(t, tc.wantMetrics, o.MetricsEnabled())
+			assert.Equal(t, tc.wantLogs, o.LogsEnabled())
+			assert.Equal(t, tc.wantEnabled, o.Enabled())
+		})
+	}
 }
