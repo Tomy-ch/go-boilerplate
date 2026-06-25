@@ -36,7 +36,6 @@ func NewDB(
 }
 
 // NewTracedDB は、pgx クエリトレーサーを結線した Postgres のDB接続を初期化して返します。
-// アプリ本体（DI）はこちらを利用し、span 生成とエラー / スロークエリログを接続層で得ます。
 func NewTracedDB(
 	dbCfg *config.DatabaseConfig,
 	osCfg *config.OperatingSystemConfig,

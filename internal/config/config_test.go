@@ -216,7 +216,7 @@ func Test_validateApplicationConfig(t *testing.T) {
 		t.Run("無効なログレベル", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
-			cfg.App.LogLevel = "invalid_level" // 無効なログレベル
+			cfg.App.LogLevel = "invalid_level"
 
 			err := validateApplicationConfig(cfg.App)
 			require.ErrorIs(t, err, ErrInvalidLogLevel)

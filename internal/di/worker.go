@@ -12,8 +12,7 @@ import (
 	workerboundary "go-boilerplate/internal/usecase/boundary/worker"
 )
 
-// NewWorkerCore は、worker の fx.App を構成する fx.Option を返します。
-// WorkerModule は本コアにのみ含め、serve 用の NewApplicationCore には含めません（依存隔離）。
+// NewWorkerCore は、worker 実行用の fx.App を構成する fx.Option を返します。
 func NewWorkerCore() fx.Option {
 	return fx.Options(
 		shutdowner.Module(),

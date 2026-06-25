@@ -113,7 +113,6 @@ type AuthConfig struct {
 }
 
 // WorkerConfig は、worker engine の engine-core 設定（broker 非依存）を保持します。
-// VisibilityTimeout 等の broker 固有設定はここではなく adapter 側の設定に置きます。
 type WorkerConfig struct {
 	concurrency               int
 	maxInFlight               int

@@ -12,8 +12,6 @@ import (
 const workerMeterName = "go-boilerplate/worker"
 
 // WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です（D2）。
-// otel/metric への依存は本パッケージに閉じ込め、worker 側へは意味づけされたメソッドのみを公開します。
-// queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のため含みません。
 type WorkerMetrics struct {
 	received   metric.Int64Counter
 	processed  metric.Int64Counter
@@ -32,7 +30,7 @@ type meterBuilder struct {
 }
 
 // NewWorkerMetrics は、注入された MeterProvider から worker engine の計装一式を生成します。
-// グローバル otel.Meter() に依存せず、いずれかの計装生成失敗で error を返します。
+// いずれかの計装生成失敗で error を返します。
 func NewWorkerMetrics(mp metric.MeterProvider) (*WorkerMetrics, error) {
 	b := &meterBuilder{m: mp.Meter(workerMeterName)}
 	wm := &WorkerMetrics{
