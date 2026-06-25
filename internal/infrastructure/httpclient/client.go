@@ -22,7 +22,7 @@ const idempotencyHeader = "Idempotency-Key"
 // 区別して計上するために使います。
 var errCircuitOpen = xerrors.Wrap(apperror.ErrUnavailable, "circuit open")
 
-// client は、Client の実装です。otelhttp 計装済み transport を介して外部 HTTP 通信を行います。
+// client は、Client の実装です。
 type client struct {
 	httpClient *http.Client
 	sleeper    clock.Sleeper
@@ -224,7 +224,6 @@ func buildRequest(ctx context.Context, req *Request) (*http.Request, error) {
 }
 
 // readBody は、レスポンスボディを maxBytes まで読み込みます。上限超過時はエラーを返します。
-// クライアント側のため server 用の http.MaxBytesReader ではなく io.LimitReader で打ち切ります。
 func readBody(body io.Reader, maxBytes int64) ([]byte, error) {
 	limited := io.LimitReader(body, maxBytes+1)
 	data, err := io.ReadAll(limited)

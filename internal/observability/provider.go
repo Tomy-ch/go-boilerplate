@@ -60,7 +60,6 @@ func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 }
 
 // NewTextMapPropagator は、W3C TraceContext + Baggage の複合 propagator を返します。
-// inbound/DB のグローバル設定と outbound substrate への注入で同一インスタンスを共有します。
 func NewTextMapPropagator() propagation.TextMapPropagator {
 	return propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
@@ -96,5 +95,4 @@ func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error) 
 func ProvideTracerProvider(tp *sdktrace.TracerProvider) trace.TracerProvider { return tp }
 
 // ProvideMeterProvider は具象 MeterProvider を otel の metric.MeterProvider IF として返す。
-// otel 型を DI 層へ漏らさず WorkerMetrics 等へ MeterProvider を注入するための変換点。
 func ProvideMeterProvider(mp *sdkmetric.MeterProvider) metric.MeterProvider { return mp }

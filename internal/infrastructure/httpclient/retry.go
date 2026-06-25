@@ -54,7 +54,6 @@ func isRetryableOutcome(resp *Response, err error) bool {
 }
 
 // computeBackoff は、attempt（1 起算）に対する指数バックオフ + full jitter の待機時間を返します。
-// 指数カーブは pkg/backoff.Exponential に委譲し（overflow 耐性込み）、その上に full jitter を載せます。
 func computeBackoff(attempt int, profile Profile) time.Duration {
 	if attempt < 1 {
 		attempt = 1

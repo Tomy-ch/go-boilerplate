@@ -9,7 +9,7 @@ import (
 )
 
 // withTrace は、Message.Attributes の traceparent から trace context を継続します（D1）。
-// producer → consumer → handler を 1 trace に繋ぎます。propagation 実装は observability に委譲します。
+// producer → consumer → handler を 1 trace に繋ぎます。
 func (r *run) withTrace(ctx context.Context, m worker.Message) context.Context {
 	return observability.ExtractFromCarrier(ctx, m.Attributes)
 }

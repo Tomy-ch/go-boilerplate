@@ -9,11 +9,9 @@
 import { readFileSync, writeFileSync } from "node:fs"
 
 const OPENAPI_PATH = new URL("../openapi/openapi.yaml", import.meta.url)
-// info.version 行（先頭2スペースインデント）にのみマッチする。
 const VERSION_LINE = /^  version: .*$/m
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
 
-// release/vX.Y.Z → X.Y.Z（それ以外は null）。
 function deriveVersion(ref) {
   const matched = /^release\/v(.+)$/.exec(ref ?? "")
   return matched ? matched[1] : null

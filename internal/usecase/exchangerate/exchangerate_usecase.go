@@ -30,7 +30,7 @@ func New(gateway boundary.Gateway, tf observability.TracerFactory) Usecase {
 	}
 }
 
-// Convert は、gateway から取得したレートで amount を換算します。
+// Convert は、amount（base 通貨建て）を quote 通貨へ換算した値を返します。
 func (u *usecase) Convert(ctx context.Context, base, quote string, amount float64) (float64, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

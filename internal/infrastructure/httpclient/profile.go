@@ -69,7 +69,6 @@ type Registry interface {
 }
 
 // DownstreamProfile は、Downstream と Profile の組です。
-// 各 gateway が自分の resilient プロファイルを宣言し、DI が Registry へ集約します。
 type DownstreamProfile struct {
 	// Name は、論理依存名です。
 	Name Downstream
@@ -113,7 +112,7 @@ func NewRegistry(profiles map[Downstream]Profile) Registry {
 }
 
 // NewRegistryFromProfiles は、各 gateway が寄与した DownstreamProfile 群から Registry を生成します。
-// 未登録の Downstream には DefaultProfile が適用されます。DI が fx group から集約します。
+// 未登録の Downstream には DefaultProfile が適用されます。
 func NewRegistryFromProfiles(profiles []DownstreamProfile) Registry {
 	m := make(map[Downstream]Profile, len(profiles))
 	for _, p := range profiles {

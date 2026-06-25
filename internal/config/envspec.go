@@ -18,7 +18,6 @@ type Loader struct {
 }
 
 // Worker は worker engine の engine-core 設定（broker 非依存）を保持する。
-// serve/job では使わないため、未設定でも起動できるよう default を与える（required にしない）。
 type Worker struct {
 	Concurrency               int           `env:"CONCURRENCY"                  default:"4"`
 	MaxInFlight               int           `env:"MAX_IN_FLIGHT"                default:"8"`
@@ -34,7 +33,7 @@ type Worker struct {
 	ProgressStaleAfter        time.Duration `env:"PROGRESS_STALE_AFTER"         default:"60s"`
 }
 
-// OperatingSystem はOS レベルの設定を保持する。現時点ではタイムゾーンのみを管理する。
+// OperatingSystem は OS レベルの設定を保持する。
 type OperatingSystem struct {
 	Timezone string `env:"TZ" default:"Asia/Tokyo"`
 }

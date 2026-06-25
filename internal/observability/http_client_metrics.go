@@ -24,7 +24,7 @@ type HTTPClientMetrics struct {
 }
 
 // NewHTTPClientMetrics は、注入された MeterProvider から substrate の計装一式を生成します。
-// グローバル otel.Meter() に依存せず、いずれかの計装生成失敗で error を返します。
+// いずれかの計装生成失敗で error を返します。
 func NewHTTPClientMetrics(mp metric.MeterProvider) (*HTTPClientMetrics, error) {
 	b := &meterBuilder{m: mp.Meter(httpClientMeterName)}
 	hm := &HTTPClientMetrics{

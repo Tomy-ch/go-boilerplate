@@ -26,7 +26,6 @@ type Engine struct {
 }
 
 // New は、Engine を生成します。worker 名の重複は ErrDuplicateWorker を返します。
-// metrics は注入された WorkerMetrics を用い、otel への依存は observability に閉じ込めます（D2）。
 func New(
 	workers []worker.Worker,
 	set Settings,

@@ -1,8 +1,4 @@
 // Package exchangerate は、為替レート gateway の外部サービス実装を提供します。
-//
-// resilient HTTP substrate（httpclient.Client）を用い、tf.Infra() の層 span を張ったうえで
-// 外部 API を呼び出します。外部 payload は infra 内部の型で受け、境界 DTO（boundary.Rate）へ
-// 変換してから返します（ACL）。usecase は substrate も外部 payload も知りません。
 package exchangerate
 
 import (
@@ -31,7 +27,7 @@ type gateway struct {
 	tracer   observability.LayerTracer
 }
 
-// rateResponse は、外部 API の JSON レスポンス（外部都合の形）です。infra 内部に閉じます。
+// rateResponse は、外部 API の JSON レスポンスの形を表します。
 type rateResponse struct {
 	Rate float64 `json:"rate"`
 }

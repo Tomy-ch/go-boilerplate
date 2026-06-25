@@ -101,7 +101,7 @@ var (
 	expectedAuthCookieName          = "auth_token"
 	expectedAuthHeaderName          = "Authorization"
 	expectedAuthAllowedHeaderBearer = true
-	// worker（WORKER_ は env 未設定で default が適用される前提。値は envspec の default と一致させる）
+	// worker
 	expectedWorkerConcurrency               = 4
 	expectedWorkerMaxInFlight               = 8
 	expectedWorkerBatchSize                 = 4

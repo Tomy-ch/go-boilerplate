@@ -37,12 +37,11 @@ type conditionalPropagator struct {
 // HTTP span 生成は自動化し、traceparent/baggage の outgoing inject は ContextWithTracePropagation の
 // フラグに従って外部 downstream への伝搬を抑止できます。private/loopback 宛て接続は
 // ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウドメタデータ等）は常に拒否します。
-// propagator は注入し、グローバル状態への暗黙依存を排します。
 func NewHTTPClientTransport(tp trace.TracerProvider, propagator propagation.TextMapPropagator) *HTTPClientTransport {
 	return newHTTPClientTransport(tp, propagator, guardedDialControl)
 }
 
-// newHTTPClientTransport は、dial control を差し替え可能にした内部コンストラクタです（テストは permissive を渡す）。
+// newHTTPClientTransport は、dial control を差し替え可能にした内部コンストラクタです。
 func newHTTPClientTransport(
 	tp trace.TracerProvider, propagator propagation.TextMapPropagator, control dialControl,
 ) *HTTPClientTransport {

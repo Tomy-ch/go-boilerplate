@@ -17,14 +17,13 @@ import (
 // headerName は、冪等性キーのリクエストヘッダ名です。
 const headerName = "Idempotency-Key"
 
-// maxKeyLength は、Idempotency-Key の最大長です（index 効率 + DoS 防止）。
+// maxKeyLength は、Idempotency-Key ヘッダの最大バイト長です。
 const maxKeyLength = 255
 
 // NextFunc は、StrictHandlerFunc と構造的に同一の handler 呼び出しシグネチャです。
 type NextFunc func(ctx echo.Context, request any) (any, error)
 
 // Middleware は、冪等性入り口を StrictMiddleware の構造的シグネチャで返します。
-// 採用する handler パッケージが自身の gen.StrictMiddlewareFunc へ変換して差します。
 func Middleware() func(next NextFunc, operationID string) NextFunc {
 	return func(next NextFunc, operationID string) NextFunc {
 		return func(ec echo.Context, request any) (any, error) {
@@ -34,7 +33,7 @@ func Middleware() func(next NextFunc, operationID string) NextFunc {
 }
 
 // StrictMiddleware は、Middleware() を oapi-codegen のパッケージ固有 StrictMiddlewareFunc 形へ
-// 適合させたアダプタを返します。型引数に各 gen パッケージの StrictHandlerFunc を渡して差します。
+// 適合させたアダプタを返します。
 func StrictMiddleware[H ~func(ec echo.Context, request any) (any, error)]() func(f H, operationID string) H {
 	core := Middleware()
 	return func(f H, operationID string) H {

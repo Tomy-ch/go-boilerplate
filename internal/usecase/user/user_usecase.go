@@ -234,7 +234,7 @@ func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *pa
 	return &UserListView{Items: items, Total: total}, nil
 }
 
-// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得するユースケースです。
+// ListUsersFeed は、未削除ユーザーを作成日時の降順（cursor ページネーション）で取得します。
 func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*UserFeedView, error) {
 	if cursor == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
@@ -458,7 +458,7 @@ func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-// toUserViews は、ユーザーエンティティ列を、都道府県名を一括解決した DTO 列へ変換します。
+// toUserViews は、ユーザーエンティティ列を UserView の DTO 列へ変換します。
 // いずれかのユーザーが参照する都道府県を解決できない場合は参照整合性破れ（errOrphanPrefecture）を返します。
 func (u *usecase) toUserViews(ctx context.Context, us user.Users) ([]UserView, error) {
 	_, prefectureMap, err := observability.RunWithSpan(
