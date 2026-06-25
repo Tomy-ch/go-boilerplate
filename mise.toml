@@ -47,3 +47,7 @@ gitleaks = "8.30.1"
 
 # Python ベース
 "pipx:sqlfluff" = "4.2.1"
+
+# Docker イメージのバージョン。[tools] は mise の解決対象専用のため [env] で宣言する。
+[env]
+OTEL_LGTM_VERSION = "0.28.0"

@@ -18,6 +18,23 @@ func TestMiddleware(t *testing.T) {
 	require.NotNil(t, mw)
 }
 
+func TestPassthroughMiddleware(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	e.Use(PassthroughMiddleware())
+	e.GET("/", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
 func TestMiddleware_Integration(t *testing.T) {
 	t.Parallel()
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
@@ -27,7 +28,9 @@ func TestNewProviderShutdowner(t *testing.T) {
 		t.Run("具象プロバイダを束ねた ProviderShutdowner を返す", func(t *testing.T) {
 			t.Parallel()
 
-			s := NewProviderShutdowner(sdktrace.NewTracerProvider(), sdkmetric.NewMeterProvider())
+			s := NewProviderShutdowner(
+				sdktrace.NewTracerProvider(), sdkmetric.NewMeterProvider(), sdklog.NewLoggerProvider(),
+			)
 
 			require.NotNil(t, s)
 		})
@@ -43,7 +46,9 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 		t.Run("TracerProviderとMeterProviderをShutdownしエラーを返さない", func(t *testing.T) {
 			t.Parallel()
 
-			s := NewProviderShutdowner(sdktrace.NewTracerProvider(), sdkmetric.NewMeterProvider())
+			s := NewProviderShutdowner(
+				sdktrace.NewTracerProvider(), sdkmetric.NewMeterProvider(), sdklog.NewLoggerProvider(),
+			)
 
 			require.NoError(t, s.Shutdown(context.Background()))
 		})
@@ -59,10 +64,11 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 			// バッチャ経由で失敗する exporter を仕込み、tp.Shutdown がエラーを返すようにする。
 			tp := sdktrace.NewTracerProvider(sdktrace.WithBatcher(errSpanExporter{err: wantErr}))
 			mp := sdkmetric.NewMeterProvider()
+			lp := sdklog.NewLoggerProvider()
 
-			// errors.Join は両引数（tp.Shutdown / mp.Shutdown）を評価してから結合するため、
-			// tp が失敗しても mp の Shutdown は必ず呼ばれる（Go の引数評価保証）。
-			err := NewProviderShutdowner(tp, mp).Shutdown(context.Background())
+			// errors.Join は全引数（tp/mp/lp の Shutdown）を評価してから結合するため、
+			// tp が失敗しても mp / lp の Shutdown は必ず呼ばれる（Go の引数評価保証）。
+			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
 			require.ErrorContains(t, err, wantErr.Error())
 		})

@@ -50,7 +50,11 @@ var (
 	expectedMetricsUserName = "metrics-user"
 	expectedMetricsPassword = "metrics-password"
 	// observability
-	expectedObservabilityEnabled              = true
+	expectedObservabilityTracesExporter       = "otlp"
+	expectedObservabilityMetricsExporter      = "otlp"
+	expectedObservabilityLogsExporter         = "otlp"
+	expectedObservabilityOTLPEndpoint         = "http://localhost:4318"
+	expectedObservabilityOTLPProtocol         = "http/protobuf"
 	expectedObservabilityMaskedDBQueryArgs    = false
 	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
 	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
@@ -145,7 +149,11 @@ func MockConfigForTest(tb testing.TB) *Config {
 			password: expectedMetricsPassword,
 		},
 		observability: ObservabilityConfig{
-			enabled:             expectedObservabilityEnabled,
+			tracesExporter:      expectedObservabilityTracesExporter,
+			metricsExporter:     expectedObservabilityMetricsExporter,
+			logsExporter:        expectedObservabilityLogsExporter,
+			otlpEndpoint:        expectedObservabilityOTLPEndpoint,
+			otlpProtocol:        expectedObservabilityOTLPProtocol,
 			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
@@ -226,7 +234,11 @@ func mockLoader(tb testing.TB) Loader {
 			Password: expectedMetricsPassword,
 		},
 		Observability: Observability{
-			Enabled:           expectedObservabilityEnabled,
+			TracesExporter:    expectedObservabilityTracesExporter,
+			MetricsExporter:   expectedObservabilityMetricsExporter,
+			LogsExporter:      expectedObservabilityLogsExporter,
+			OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
+			OTLPProtocol:      expectedObservabilityOTLPProtocol,
 			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
@@ -278,8 +290,7 @@ func mockLoader(tb testing.TB) Loader {
 	}
 }
 
-// setEnvVarsForTesting は、テスト用の環境変数を設定します。
-func setEnvVarsForTesting(t *testing.T) {
+func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環境変数設定のため長くなるのは許容する
 	t.Helper()
 	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
@@ -302,9 +313,13 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("METRICS_USERNAME", expectedMetricsUserName)
 	t.Setenv("METRICS_PASSWORD", expectedMetricsPassword)
 	// Observability
-	t.Setenv("OBSERVABILITY_ENABLED", strconv.FormatBool(expectedObservabilityEnabled))
-	t.Setenv("OBSERVABILITY_MASKED_DB_QUERY_ARGS", strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs))
-	t.Setenv("OBSERVABILITY_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
+	t.Setenv("OBS_TRACES_EXPORTER", expectedObservabilityTracesExporter)
+	t.Setenv("OBS_METRICS_EXPORTER", expectedObservabilityMetricsExporter)
+	t.Setenv("OBS_LOGS_EXPORTER", expectedObservabilityLogsExporter)
+	t.Setenv("OBS_OTLP_ENDPOINT", expectedObservabilityOTLPEndpoint)
+	t.Setenv("OBS_OTLP_PROTOCOL", expectedObservabilityOTLPProtocol)
+	t.Setenv("OBS_MASKED_DB_QUERY_ARGS", strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs))
+	t.Setenv("OBS_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
 	// Database
 	t.Setenv("DB_DRIVER", expectedDBDriver)
 	t.Setenv("DB_HOST", expectedDBHost)

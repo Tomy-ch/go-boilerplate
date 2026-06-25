@@ -31,6 +31,7 @@ func TestLoggingModule_ProvidesLoggerAndFields(t *testing.T) {
 					config.NewObservabilityConfig,
 					config.NewOperatingSystemConfig,
 				),
+				fx.Provide(func() logging.LogCore { return nil }),
 				fx.Populate(&lg, &lf),
 				fx.NopLogger,
 			)
@@ -61,21 +62,21 @@ func Test_provideLogger(t *testing.T) {
 
 		t.Run("本番モードかつinfoでLoggerを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "info"))
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "info"), nil)
 			require.NoError(t, err)
 			require.NotNil(t, lg)
 		})
 
 		t.Run("開発モードかつdebugでLoggerを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, config.DevelopmentMode, "debug"))
+			lg, err := provideLogger(newAppCfg(t, config.DevelopmentMode, "debug"), nil)
 			require.NoError(t, err)
 			require.NotNil(t, lg)
 		})
 
 		t.Run("本番モードでもdebug指定でLoggerを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "debug"))
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "debug"), nil)
 			require.NoError(t, err)
 			require.NotNil(t, lg)
 		})
@@ -86,14 +87,14 @@ func Test_provideLogger(t *testing.T) {
 
 		t.Run("不正なログレベルはエラーを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "invalid"))
+			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "invalid"), nil)
 			require.Error(t, err)
 			require.Nil(t, lg)
 		})
 
 		t.Run("未知のモードはエラーを返す", func(t *testing.T) {
 			t.Parallel()
-			lg, err := provideLogger(newAppCfg(t, "unknown", "info"))
+			lg, err := provideLogger(newAppCfg(t, "unknown", "info"), nil)
 			require.Error(t, err)
 			require.Nil(t, lg)
 		})

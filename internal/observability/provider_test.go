@@ -3,6 +3,7 @@ package observability
 import (
 	"context"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/system"
@@ -25,6 +26,21 @@ func newTestResource(t *testing.T) *resource.Resource {
 	require.NoError(t, err)
 
 	return res
+}
+
+// newTestObsCfg は、mock 設定から ObservabilityConfig を返す（既定: trace/metric ともに otlp 有効）。
+func newTestObsCfg(t *testing.T) *config.ObservabilityConfig {
+	t.Helper()
+	return config.NewObservabilityConfig(config.MockConfigForTest(t))
+}
+
+// shutdownMeterProvider は、PeriodicReader の最終 export を伴う Shutdown を
+// ローカル境界の短い deadline で打ち切る（送出可否は検証対象外。goroutine の後始末のみが目的）。
+func shutdownMeterProvider(t *testing.T, mp *sdkmetric.MeterProvider) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	_ = mp.Shutdown(ctx)
 }
 
 func Test_NewResource(t *testing.T) {
@@ -68,34 +84,17 @@ func Test_NewResource(t *testing.T) {
 	})
 }
 
-func Test_noopSpanExporter(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("ExportSpansとShutdownは何もせずエラーを返さない", func(t *testing.T) {
-			t.Parallel()
-
-			exp := noopSpanExporter{}
-
-			require.NoError(t, exp.ExportSpans(context.Background(), nil))
-			require.NoError(t, exp.Shutdown(context.Background()))
-		})
-	})
-}
-
 //nolint:paralleltest // otel グローバル状態(TracerProvider/Propagator)を差し替えるため並列化不可
 func Test_NewTracerProvider(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
-		t.Run("伝播器を設定してグローバルなTracerProviderを構築し、Shutdown可能な具象を返す", func(t *testing.T) {
+		t.Run("trace有効(http)で伝播器を設定しグローバルなTracerProviderを構築する", func(t *testing.T) {
 			prevTP, prevProp := otel.GetTracerProvider(), otel.GetTextMapPropagator()
 			t.Cleanup(func() {
 				otel.SetTracerProvider(prevTP)
 				otel.SetTextMapPropagator(prevProp)
 			})
 
-			tp, err := NewTracerProvider(newTestResource(t))
+			tp, err := NewTracerProvider(newTestObsCfg(t), newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, tp)
@@ -106,16 +105,31 @@ func Test_NewTracerProvider(t *testing.T) {
 			assert.Contains(t, fields, "traceparent")
 			assert.Contains(t, fields, "baggage")
 
-			// ライフサイクル登録は di 層に移譲したため、ここでは Shutdown が呼べることのみ確認する。
 			require.NoError(t, tp.Shutdown(context.Background()))
 		})
 
-		t.Run("OTEL_TRACES_EXPORTERがnoneの場合もno-opとして構築しエラーを返さない", func(t *testing.T) {
-			t.Setenv("OTEL_TRACES_EXPORTER", "none")
+		t.Run("trace有効(grpc)でも構築できる", func(t *testing.T) {
 			prevTP := otel.GetTracerProvider()
 			t.Cleanup(func() { otel.SetTracerProvider(prevTP) })
 
-			tp, err := NewTracerProvider(newTestResource(t))
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
+
+			tp, err := NewTracerProvider(obsCfg, newTestResource(t))
+
+			require.NoError(t, err)
+			require.NotNil(t, tp)
+			require.NoError(t, tp.Shutdown(context.Background()))
+		})
+
+		t.Run("trace無効ならBatcherを付けずに構築する", func(t *testing.T) {
+			prevTP := otel.GetTracerProvider()
+			t.Cleanup(func() { otel.SetTracerProvider(prevTP) })
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityTracesExporter(t, "")
+
+			tp, err := NewTracerProvider(obsCfg, newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, tp)
@@ -124,10 +138,11 @@ func Test_NewTracerProvider(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Run("不正なOTEL_TRACES_EXPORTERが指定された場合はエラーを返す", func(t *testing.T) {
-			t.Setenv("OTEL_TRACES_EXPORTER", "invalid-exporter")
+		t.Run("不正なOTLPプロトコルが指定された場合はエラーを返す", func(t *testing.T) {
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, "invalid-protocol")
 
-			tp, err := NewTracerProvider(newTestResource(t))
+			tp, err := NewTracerProvider(obsCfg, newTestResource(t))
 
 			require.Error(t, err)
 			assert.Nil(t, tp)
@@ -174,26 +189,41 @@ func Test_ProvideMeterProvider(t *testing.T) {
 //nolint:paralleltest // otel グローバル状態(MeterProvider)を差し替えるため並列化不可
 func Test_NewMeterProvider(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
-		t.Run("グローバルなMeterProviderを構築し、Shutdown可能な具象を返す", func(t *testing.T) {
+		t.Run("metric有効(http)でグローバルなMeterProviderを構築する", func(t *testing.T) {
 			prevMP := otel.GetMeterProvider()
 			t.Cleanup(func() { otel.SetMeterProvider(prevMP) })
 
-			mp, err := NewMeterProvider(newTestResource(t))
+			mp, err := NewMeterProvider(newTestObsCfg(t), newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, mp)
 			assert.Same(t, mp, otel.GetMeterProvider())
 
-			// ライフサイクル登録は di 層に移譲したため、ここでは Shutdown が呼べることのみ確認する。
-			require.NoError(t, mp.Shutdown(context.Background()))
+			shutdownMeterProvider(t, mp)
 		})
 
-		t.Run("OTEL_METRICS_EXPORTERがnoneの場合もno-opとして構築しランタイム計装を行わない", func(t *testing.T) {
-			t.Setenv("OTEL_METRICS_EXPORTER", "none")
+		t.Run("metric有効(grpc)でも構築できる", func(t *testing.T) {
 			prevMP := otel.GetMeterProvider()
 			t.Cleanup(func() { otel.SetMeterProvider(prevMP) })
 
-			mp, err := NewMeterProvider(newTestResource(t))
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
+
+			mp, err := NewMeterProvider(obsCfg, newTestResource(t))
+
+			require.NoError(t, err)
+			require.NotNil(t, mp)
+			shutdownMeterProvider(t, mp)
+		})
+
+		t.Run("metric無効ならReaderを付けずランタイム計装も行わない", func(t *testing.T) {
+			prevMP := otel.GetMeterProvider()
+			t.Cleanup(func() { otel.SetMeterProvider(prevMP) })
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityMetricsExporter(t, "")
+
+			mp, err := NewMeterProvider(obsCfg, newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, mp)
@@ -202,10 +232,11 @@ func Test_NewMeterProvider(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Run("不正なOTEL_METRICS_EXPORTERが指定された場合はエラーを返す", func(t *testing.T) {
-			t.Setenv("OTEL_METRICS_EXPORTER", "invalid-exporter")
+		t.Run("不正なOTLPプロトコルが指定された場合はエラーを返す", func(t *testing.T) {
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, "invalid-protocol")
 
-			mp, err := NewMeterProvider(newTestResource(t))
+			mp, err := NewMeterProvider(obsCfg, newTestResource(t))
 
 			require.Error(t, err)
 			assert.Nil(t, mp)

@@ -47,6 +47,9 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 				fx.Provide(func() *config.ApplicationConfig {
 					return config.NewApplicationConfig(config.MockConfigForTest(t))
 				}),
+				fx.Provide(func() *config.ObservabilityConfig {
+					return config.NewObservabilityConfig(config.MockConfigForTest(t))
+				}),
 				fx.Provide(infrasystem.NewBuildInfo),
 				fx.Populate(&client),
 				fx.NopLogger,

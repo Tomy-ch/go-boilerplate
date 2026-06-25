@@ -43,7 +43,11 @@ func TestMockConfigForTest(t *testing.T) {
 					password: expectedMetricsPassword,
 				},
 				observability: ObservabilityConfig{
-					enabled:             expectedObservabilityEnabled,
+					tracesExporter:      expectedObservabilityTracesExporter,
+					metricsExporter:     expectedObservabilityMetricsExporter,
+					logsExporter:        expectedObservabilityLogsExporter,
+					otlpEndpoint:        expectedObservabilityOTLPEndpoint,
+					otlpProtocol:        expectedObservabilityOTLPProtocol,
 					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 				},
@@ -142,7 +146,11 @@ func Test_mockLoader(t *testing.T) {
 					Password: expectedMetricsPassword,
 				},
 				Observability: Observability{
-					Enabled:           expectedObservabilityEnabled,
+					TracesExporter:    expectedObservabilityTracesExporter,
+					MetricsExporter:   expectedObservabilityMetricsExporter,
+					LogsExporter:      expectedObservabilityLogsExporter,
+					OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
+					OTLPProtocol:      expectedObservabilityOTLPProtocol,
 					MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 					TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 				},
@@ -218,9 +226,13 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, expectedMetricsUserName, os.Getenv("METRICS_USERNAME"))
 			assert.Equal(t, expectedMetricsPassword, os.Getenv("METRICS_PASSWORD"))
 			// Observability
-			assert.Equal(t, strconv.FormatBool(expectedObservabilityEnabled), os.Getenv("OBSERVABILITY_ENABLED"))
-			assert.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBSERVABILITY_MASKED_DB_QUERY_ARGS"))
-			assert.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBSERVABILITY_TARGET_STATUS_CODES"))
+			assert.Equal(t, expectedObservabilityTracesExporter, os.Getenv("OBS_TRACES_EXPORTER"))
+			assert.Equal(t, expectedObservabilityMetricsExporter, os.Getenv("OBS_METRICS_EXPORTER"))
+			assert.Equal(t, expectedObservabilityLogsExporter, os.Getenv("OBS_LOGS_EXPORTER"))
+			assert.Equal(t, expectedObservabilityOTLPEndpoint, os.Getenv("OBS_OTLP_ENDPOINT"))
+			assert.Equal(t, expectedObservabilityOTLPProtocol, os.Getenv("OBS_OTLP_PROTOCOL"))
+			assert.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBS_MASKED_DB_QUERY_ARGS"))
+			assert.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBS_TARGET_STATUS_CODES"))
 			// Database
 			assert.Equal(t, expectedDBDriver, os.Getenv("DB_DRIVER"))
 			assert.Equal(t, expectedDBHost, os.Getenv("DB_HOST"))

@@ -28,7 +28,8 @@ type queryLogData struct {
 	parentSpanID string
 }
 
-// queryTracer は、エラー / スロークエリ時のみログを付加する pgx.QueryTracer の実装です。
+// queryTracer は、span(otelpgx) に加え、正常終了(Info)・スロー(Warn)・エラー(Error)のログを
+// 付加する pgx.QueryTracer の実装です。
 type queryTracer struct {
 	*otelpgx.Tracer
 
@@ -38,7 +39,7 @@ type queryTracer struct {
 	slowThreshold time.Duration
 }
 
-// NewQueryTracer は、span(otelpgx) とエラー / スロークエリログを行う pgx.QueryTracer を生成します。
+// NewQueryTracer は、span(otelpgx) とクエリログ(終了/スロー/エラー)を行う pgx.QueryTracer を生成します。
 func NewQueryTracer(
 	dbCfg *config.DatabaseConfig,
 	obsCfg *config.ObservabilityConfig,
@@ -48,7 +49,7 @@ func NewQueryTracer(
 ) pgx.QueryTracer {
 	return &queryTracer{
 		Tracer:        tracer,
-		logger:        logger,
+		logger:        logger.Named(queryTracerLayer),
 		lf:            lf,
 		maskArgs:      obsCfg.MaskedDBQueryArgs(),
 		slowThreshold: dbCfg.SlowQueryWarnThreshold(),
@@ -69,7 +70,7 @@ func (t *queryTracer) TraceQueryStart(
 	})
 }
 
-// TraceQueryEnd は、span を終了し、エラー時 / スロークエリ時のみログを出力します。
+// TraceQueryEnd は、span を終了し、正常終了(Info)・スロー(Warn)・エラー(Error)のログを出力します。
 func (t *queryTracer) TraceQueryEnd(
 	ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData,
 ) {
@@ -81,14 +82,13 @@ func (t *queryTracer) TraceQueryEnd(
 	}
 	duration := time.Since(ld.start)
 
-	logger := t.logger.Named(queryTracerLayer)
 	switch {
 	case data.Err != nil:
-		logger.Error("DB query failed", t.endFields(ctx, ld, duration, data.Err)...)
+		t.logger.Error("DB query failed", t.endFields(ctx, ld, duration, data.Err)...)
 	case t.slowThreshold > 0 && duration > t.slowThreshold:
-		logger.Warn("DB slow query", t.endFields(ctx, ld, duration, nil)...)
+		t.logger.Warn("DB slow query", t.endFields(ctx, ld, duration, nil)...)
 	default:
-		// 正常終了は span のみ（ログは出力しない）
+		t.logger.Info("DB query completed", t.endFields(ctx, ld, duration, nil)...)
 	}
 }
 
