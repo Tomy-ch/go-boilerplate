@@ -44,6 +44,8 @@ func WithCore(l Logger, core LogCore) Logger {
 	if core == nil {
 		return l
 	}
+	// 本パッケージの具象 *logger だけが zap core を内包するため、Tee 対象も *logger に限定する。
+	// それ以外の Logger 実装（テスト用 fake 等）は core を持たないので、ゲートできず素通しする。
 	base, ok := l.(*logger)
 	if !ok {
 		return l
