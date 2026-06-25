@@ -185,7 +185,7 @@
 		
 			
 			
-			</p><h2 id="RegisterObservabilityShutdownHooks">func <a href="../../../../../src/go-boilerplate/internal/di/server/hook/observability_hook.go.html?s=630:739#L3">RegisterObservabilityShutdownHooks</a>
+			</p><h2 id="RegisterObservabilityShutdownHooks">func <a href="../../../../../src/go-boilerplate/internal/di/server/hook/observability_hook.go.html?s=299:408#L1">RegisterObservabilityShutdownHooks</a>
 				<a class="permalink" href="#RegisterObservabilityShutdownHooks">¶</a>
 				
 				
@@ -193,9 +193,6 @@
 			<pre>func RegisterObservabilityShutdownHooks(reg <a href="../../../../../go-boilerplate/internal/di/lifecycle/">lifecycle</a>.<a href="../../../../../go-boilerplate/internal/di/lifecycle/#Registrar">Registrar</a>, shutdowner <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#ProviderShutdowner">ProviderShutdowner</a>)</pre>
 			<p>RegisterObservabilityShutdownHooks は、アプリケーションのシャットダウン時に
 TracerProvider / MeterProvider を Shutdown するためのフックを登録します。
-構築（observability.NewTracerProvider / NewMeterProvider）はライフサイクル非依存で行われ、
-その後始末（Shutdown）の登録を di 層であるこの hook が担います。
-otel SDK 型を di 層へ漏らさないため、具象ではなく observability.ProviderShutdowner に依存します。
 
 			
 			

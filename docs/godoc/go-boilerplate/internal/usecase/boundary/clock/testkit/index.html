@@ -109,6 +109,9 @@
 				
 				<dd><a href="#NewMockClockOnce">func NewMockClockOnce(t *testing.T, now time.Time) clock.Clock</a></dd>
 			
+				
+				<dd><a href="#NewNoopSleeper">func NewNoopSleeper(t *testing.T) clock.Sleeper</a></dd>
+			
 			
 			
 			</dl>
@@ -157,6 +160,20 @@
 			</h2>
 			<pre>func NewMockClockOnce(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, now <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>) <a href="../../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a></pre>
 			<p>NewMockClockOnce は、now を返すテスト用のクロックを生成します（Now が 1 回だけ呼ばれることを検証）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewNoopSleeper">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/clock/testkit/test_kit.go.html?s=1135:1182#L23">NewNoopSleeper</a>
+				<a class="permalink" href="#NewNoopSleeper">¶</a>
+				
+				
+			</h2>
+			<pre>func NewNoopSleeper(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>) <a href="../../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/clock/#Sleeper">Sleeper</a></pre>
+			<p>NewNoopSleeper は、待機せず即座に nil を返すテスト用の sleeper を生成します（呼び出し回数は問いません）。
 
 			
 			

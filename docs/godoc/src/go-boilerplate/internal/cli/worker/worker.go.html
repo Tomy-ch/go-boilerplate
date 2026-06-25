@@ -65,13 +65,13 @@
 <span id="L8" class="ln">     8  </span>
 <span id="L9" class="ln">     9  </span>const stopTimeout = 30 * time.Second
 <span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span><span class="comment">// StartFunc は、worker の開始関数の型です（DI から取得した開始関数を注入します）。</span>
+<span id="L11" class="ln">    11  </span><span class="comment">// StartFunc は、worker を起動して完了チャネルを返す関数の型です。</span>
 <span id="L12" class="ln">    12  </span>type StartFunc func(ctx context.Context, name string, args []string) &lt;-chan error
 <span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span><span class="comment">// StopFunc は、worker の停止関数の型です（DI から取得した停止関数を注入します）。</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// StopFunc は、worker をグレースフルに停止する関数の型です。</span>
 <span id="L15" class="ln">    15  </span>type StopFunc func(ctx context.Context) error
 <span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span><span class="comment">// RunWorkerWith は、worker ランナーの取得元（provide）を差し替え可能にした上で runWorker へ委譲します。</span>
+<span id="L17" class="ln">    17  </span><span class="comment">// RunWorkerWith は、provide が返す開始・停止関数で worker を実行します。</span>
 <span id="L18" class="ln">    18  </span>func RunWorkerWith(
 <span id="L19" class="ln">    19  </span>	ctx context.Context,
 <span id="L20" class="ln">    20  </span>	name string,

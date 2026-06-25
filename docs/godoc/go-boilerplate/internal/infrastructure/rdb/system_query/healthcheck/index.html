@@ -104,7 +104,7 @@
 			
 			
 				
-				<dd><a href="#New">func New(provider loggingdb.DBProvider, tf observability.TracerFactory) query.DBSystemQuery</a></dd>
+				<dd><a href="#New">func New(provider driver.DatabaseDriver, tf observability.TracerFactory) query.DBSystemQuery</a></dd>
 			
 			
 			
@@ -133,13 +133,13 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck/health_check_system_query.go.html?s=632:728#L11">New</a>
+			<h2 id="New">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck/health_check_system_query.go.html?s=623:720#L11">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
 			</h2>
 			<pre>func New(
-    provider <a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/loggingdb/">loggingdb</a>.<a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/loggingdb/#DBProvider">DBProvider</a>,
+    provider <a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/">driver</a>.<a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/#DatabaseDriver">DatabaseDriver</a>,
     tf <a href="../../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
 ) <a href="../../../../../../go-boilerplate/internal/usecase/healthcheck/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/healthcheck/query/#DBSystemQuery">DBSystemQuery</a></pre>
 			<p>New は、DB ヘルスチェック用のシステムクエリ実装を生成して返します。

@@ -84,7 +84,7 @@
 <span id="L27" class="ln">    27  </span>	return &amp;gcUsecase{store: store, clock: clk}
 <span id="L28" class="ln">    28  </span>}
 <span id="L29" class="ln">    29  </span>
-<span id="L30" class="ln">    30  </span><span class="comment">// SweepExpired は、失効行をバッチ削除します。1 バッチ＝1 DELETE で long lock を避け、0 件になるまで反復します。</span>
+<span id="L30" class="ln">    30  </span><span class="comment">// SweepExpired は、失効行を batchSize 件ずつ削除し、合計削除件数を返します。</span>
 <span id="L31" class="ln">    31  </span>func (g *gcUsecase) SweepExpired(ctx context.Context, batchSize int32) (int64, error) {
 <span id="L32" class="ln">    32  </span>	if batchSize &lt;= 0 {
 <span id="L33" class="ln">    33  </span>		batchSize = DefaultGCBatchSize

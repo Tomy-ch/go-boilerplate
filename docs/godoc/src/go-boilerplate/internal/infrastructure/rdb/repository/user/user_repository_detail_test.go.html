@@ -75,12 +75,12 @@
 <span id="L18" class="ln">    18  </span>func Test_repository_FindByID(t *testing.T) {
 <span id="L19" class="ln">    19  </span>	t.Parallel()
 <span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span>	loggingDB := testkit.NewTestLoggingProvider(t)
+<span id="L21" class="ln">    21  </span>	testDB := testkit.NewTestDB(t)
 <span id="L22" class="ln">    22  </span>	_ = testkit.NewTestDB(t)
 <span id="L23" class="ln">    23  </span>	lt := observability.NewMockInfraLayerTracer(t)
 <span id="L24" class="ln">    24  </span>	txm := testkit.NewTestTransactionRunner(t)
 <span id="L25" class="ln">    25  </span>
-<span id="L26" class="ln">    26  </span>	repo := &amp;repository{tracer: lt, db: loggingDB}
+<span id="L26" class="ln">    26  </span>	repo := &amp;repository{tracer: lt, db: testDB}
 <span id="L27" class="ln">    27  </span>
 <span id="L28" class="ln">    28  </span>	seededID, err := uuid.Parse(&#34;eaabee3e-3b7a-4f61-8fa9-030944625e92&#34;)
 <span id="L29" class="ln">    29  </span>	require.NoError(t, err)
@@ -114,12 +114,12 @@
 <span id="L57" class="ln">    57  </span>func Test_repository_Update(t *testing.T) {
 <span id="L58" class="ln">    58  </span>	t.Parallel()
 <span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span>	loggingDB := testkit.NewTestLoggingProvider(t)
+<span id="L60" class="ln">    60  </span>	testDB := testkit.NewTestDB(t)
 <span id="L61" class="ln">    61  </span>	_ = testkit.NewTestDB(t)
 <span id="L62" class="ln">    62  </span>	lt := observability.NewMockInfraLayerTracer(t)
 <span id="L63" class="ln">    63  </span>	txm := testkit.NewTestTransactionRunner(t)
 <span id="L64" class="ln">    64  </span>
-<span id="L65" class="ln">    65  </span>	repo := &amp;repository{tracer: lt, db: loggingDB}
+<span id="L65" class="ln">    65  </span>	repo := &amp;repository{tracer: lt, db: testDB}
 <span id="L66" class="ln">    66  </span>
 <span id="L67" class="ln">    67  </span>	firstID, err := uuid.Parse(&#34;eaabee3e-3b7a-4f61-8fa9-030944625e92&#34;)
 <span id="L68" class="ln">    68  </span>	require.NoError(t, err)

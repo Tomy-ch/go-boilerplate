@@ -111,10 +111,25 @@
 				<dd><a href="#BuildSpanName">func BuildSpanName(layer, pkgName, funcName string) string</a></dd>
 			
 				
+				<dd><a href="#ContextWithAllowPrivateNetwork">func ContextWithAllowPrivateNetwork(ctx context.Context, allowed bool) context.Context</a></dd>
+			
+				
+				<dd><a href="#ContextWithTracePropagation">func ContextWithTracePropagation(ctx context.Context, enabled bool) context.Context</a></dd>
+			
+				
 				<dd><a href="#ExtractFromCarrier">func ExtractFromCarrier(ctx context.Context, attrs map[string]string) context.Context</a></dd>
 			
 				
-				<dd><a href="#NewMeterProvider">func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error)</a></dd>
+				<dd><a href="#NewLogCore">func NewLogCore(obsCfg *config.ObservabilityConfig, appCfg *config.ApplicationConfig, lp *sdklog.LoggerProvider) logging.LogCore</a></dd>
+			
+				
+				<dd><a href="#NewLoggerProvider">func NewLoggerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdklog.LoggerProvider, error)</a></dd>
+			
+				
+				<dd><a href="#NewMeterProvider">func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error)</a></dd>
+			
+				
+				<dd><a href="#NewPgxTracer">func NewPgxTracer(tp trace.TracerProvider, mp *sdkmetric.MeterProvider) *otelpgx.Tracer</a></dd>
 			
 				
 				<dd><a href="#NewResource">func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)</a></dd>
@@ -123,7 +138,10 @@
 				<dd><a href="#NewStubSpanContext">func NewStubSpanContext(t *testing.T) (context.Context, func())</a></dd>
 			
 				
-				<dd><a href="#NewTracerProvider">func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)</a></dd>
+				<dd><a href="#NewTextMapPropagator">func NewTextMapPropagator() propagation.TextMapPropagator</a></dd>
+			
+				
+				<dd><a href="#NewTracerProvider">func NewTracerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdktrace.TracerProvider, error)</a></dd>
 			
 				
 				<dd><a href="#ProvideMeterProvider">func ProvideMeterProvider(mp *sdkmetric.MeterProvider) metric.MeterProvider</a></dd>
@@ -137,6 +155,49 @@
 				
 				<dd><a href="#ShouldLogWithSpan">func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool</a></dd>
 			
+			
+				
+				<dd><a href="#HTTPClientMetrics">type HTTPClientMetrics</a></dd>
+				
+					
+					<dd>    <a href="#NewHTTPClientMetrics">func NewHTTPClientMetrics(mp metric.MeterProvider) (*HTTPClientMetrics, error)</a></dd>
+				
+					
+					<dd>    <a href="#NewNoopHTTPClientMetrics">func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics</a></dd>
+				
+				
+					
+					<dd>    <a href="#HTTPClientMetrics.InFlightAdd">func (m *HTTPClientMetrics) InFlightAdd(ctx context.Context, downstream string, delta int64)</a></dd>
+				
+					
+					<dd>    <a href="#HTTPClientMetrics.RecordError">func (m *HTTPClientMetrics) RecordError(ctx context.Context, downstream, reason string)</a></dd>
+				
+					
+					<dd>    <a href="#HTTPClientMetrics.RecordLatencyMs">func (m *HTTPClientMetrics) RecordLatencyMs(ctx context.Context, downstream string, ms float64)</a></dd>
+				
+					
+					<dd>    <a href="#HTTPClientMetrics.RecordRequest">func (m *HTTPClientMetrics) RecordRequest(ctx context.Context, downstream, statusClass string)</a></dd>
+				
+					
+					<dd>    <a href="#HTTPClientMetrics.RecordRetry">func (m *HTTPClientMetrics) RecordRetry(ctx context.Context, downstream string)</a></dd>
+				
+					
+					<dd>    <a href="#HTTPClientMetrics.SetBreakerState">func (m *HTTPClientMetrics) SetBreakerState(ctx context.Context, downstream string, state int64)</a></dd>
+				
+			
+				
+				<dd><a href="#HTTPClientTransport">type HTTPClientTransport</a></dd>
+				
+					
+					<dd>    <a href="#NewHTTPClientTransport">func NewHTTPClientTransport(tp trace.TracerProvider, propagator propagation.TextMapPropagator) *HTTPClientTransport</a></dd>
+				
+					
+					<dd>    <a href="#NewNoopHTTPClientTransport">func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport</a></dd>
+				
+				
+					
+					<dd>    <a href="#HTTPClientTransport.RoundTripper">func (t *HTTPClientTransport) RoundTripper() http.RoundTripper</a></dd>
+				
 			
 				
 				<dd><a href="#LayerTracer">type LayerTracer</a></dd>
@@ -165,7 +226,7 @@
 				<dd><a href="#ProviderShutdowner">type ProviderShutdowner</a></dd>
 				
 					
-					<dd>    <a href="#NewProviderShutdowner">func NewProviderShutdowner(tp *sdktrace.TracerProvider, mp *sdkmetric.MeterProvider) ProviderShutdowner</a></dd>
+					<dd>    <a href="#NewProviderShutdowner">func NewProviderShutdowner(tp *sdktrace.TracerProvider, mp *sdkmetric.MeterProvider, lp *sdklog.LoggerProvider) ProviderShutdowner</a></dd>
 				
 				
 			
@@ -196,7 +257,7 @@
 					<dd>    <a href="#NewNoopTracerFactory">func NewNoopTracerFactory(t *testing.T) TracerFactory</a></dd>
 				
 					
-					<dd>    <a href="#NewTracerFactory">func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.LogFieldBuilder) TracerFactory</a></dd>
+					<dd>    <a href="#NewTracerFactory">func NewTracerFactory(tp trace.TracerProvider) TracerFactory</a></dd>
 				
 				
 			
@@ -250,9 +311,15 @@
 			
 				<a href="../../../src/go-boilerplate/internal/observability/helper.go.html">helper.go</a>
 			
+				<a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html">http_client_metrics.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html">http_client_transport.go</a>
+			
 				<a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html">layer_tracer.go</a>
 			
-				<a href="../../../src/go-boilerplate/internal/observability/noop.go.html">noop.go</a>
+				<a href="../../../src/go-boilerplate/internal/observability/log_provider.go.html">log_provider.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/pgx_tracer.go.html">pgx_tracer.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/observability/propagation.go.html">propagation.go</a>
 			
@@ -279,14 +346,6 @@
 			
 				
 				<pre>const (
-    <span class="comment">// SpanEventStart は、span の開始イベントを表します。</span>
-    <span id="SpanEventStart">SpanEventStart</span> = &#34;start&#34;
-    <span class="comment">// SpanEventEnd は、span の終了イベントを表します。</span>
-    <span id="SpanEventEnd">SpanEventEnd</span> = &#34;end&#34;
-)</pre>
-			
-				
-				<pre>const (
 
     <span class="comment">// Controller は、コントローラー層を表すレイヤー名です。</span>
     <span id="Controller">Controller</span> layerName = &#34;controller&#34;
@@ -301,13 +360,41 @@
 		
 			
 			
-			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1056:1114#L22">BuildSpanName</a>
+			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=859:917#L15">BuildSpanName</a>
 				<a class="permalink" href="#BuildSpanName">¶</a>
 				
 				
 			</h2>
 			<pre>func BuildSpanName(layer, pkgName, funcName <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
 			<p>BuildSpanName は、レイヤー名、パッケージ名、関数名からスパン名を構築します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ContextWithAllowPrivateNetwork">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=3002:3088#L58">ContextWithAllowPrivateNetwork</a>
+				<a class="permalink" href="#ContextWithAllowPrivateNetwork">¶</a>
+				
+				
+			</h2>
+			<pre>func ContextWithAllowPrivateNetwork(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, allowed <a href="../../../builtin/#bool">bool</a>) <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a></pre>
+			<p>ContextWithAllowPrivateNetwork は、この outbound 呼び出しで private/loopback 宛て接続を許可するかを ctx に設定します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ContextWithTracePropagation">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=2701:2784#L53">ContextWithTracePropagation</a>
+				<a class="permalink" href="#ContextWithTracePropagation">¶</a>
+				
+				
+			</h2>
+			<pre>func ContextWithTracePropagation(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, enabled <a href="../../../builtin/#bool">bool</a>) <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a></pre>
+			<p>ContextWithTracePropagation は、この outbound 呼び出しで traceparent/baggage を注入するかを ctx に設定します。
 
 			
 			
@@ -330,14 +417,15 @@ producer → consumer → handler を 1 trace に繋ぐための公開ヘルパ�
 		
 			
 			
-			</p><h2 id="NewMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=2408:2487#L57">NewMeterProvider</a>
-				<a class="permalink" href="#NewMeterProvider">¶</a>
+			</p><h2 id="NewLogCore">func <a href="../../../src/go-boilerplate/internal/observability/log_provider.go.html?s=1100:1232#L23">NewLogCore</a>
+				<a class="permalink" href="#NewLogCore">¶</a>
 				
 				
 			</h2>
-			<pre>func NewMeterProvider(res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (*<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
-			<p>NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
-MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-op となりランタイム計装も行わない。
+			<pre>func NewLogCore(
+    obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>, appCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>, lp *<a href="../../../go.opentelemetry.io/otel/sdk/log/">sdklog</a>.<a href="../../../go.opentelemetry.io/otel/sdk/log/#LoggerProvider">LoggerProvider</a>,
+) <a href="../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../go-boilerplate/internal/logging/#LogCore">LogCore</a></pre>
+			<p>NewLogCore は zap ログを OTLP へ橋渡しする otelzap core を返す。log exporter が無効値のときは nil を返す。
 
 			
 			
@@ -345,7 +433,51 @@ MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-
 		
 			
 			
-			</p><h2 id="NewResource">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=717:816#L14">NewResource</a>
+			</p><h2 id="NewLoggerProvider">func <a href="../../../src/go-boilerplate/internal/observability/log_provider.go.html?s=469:583#L8">NewLoggerProvider</a>
+				<a class="permalink" href="#NewLoggerProvider">¶</a>
+				
+				
+			</h2>
+			<pre>func NewLoggerProvider(obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>, res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (*<a href="../../../go.opentelemetry.io/otel/sdk/log/">sdklog</a>.<a href="../../../go.opentelemetry.io/otel/sdk/log/#LoggerProvider">LoggerProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>NewLoggerProvider は LoggerProvider を構築して返す。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=3591:3706#L92">NewMeterProvider</a>
+				<a class="permalink" href="#NewMeterProvider">¶</a>
+				
+				
+			</h2>
+			<pre>func NewMeterProvider(obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>, res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (*<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewPgxTracer">func <a href="../../../src/go-boilerplate/internal/observability/pgx_tracer.go.html?s=484:571#L3">NewPgxTracer</a>
+				<a class="permalink" href="#NewPgxTracer">¶</a>
+				
+				
+			</h2>
+			<pre>func NewPgxTracer(tp <a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#TracerProvider">TracerProvider</a>, mp *<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>) *<a href="../../../github.com/exaring/otelpgx/">otelpgx</a>.<a href="../../../github.com/exaring/otelpgx/#Tracer">Tracer</a></pre>
+			<p>NewPgxTracer は、TracerProvider / MeterProvider を明示注入した otelpgx トレーサーを生成します。
+</p><p>provider を引数で受けることで、グローバル provider の登録順に依存せず span / metric を送出します。
+接続情報（DB ユーザー名等）は span 属性に含めません。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewResource">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=1971:2070#L46">NewResource</a>
 				<a class="permalink" href="#NewResource">¶</a>
 				
 				
@@ -359,7 +491,7 @@ MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-
 		
 			
 			
-			</p><h2 id="NewStubSpanContext">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=2215:2278#L66">NewStubSpanContext</a>
+			</p><h2 id="NewStubSpanContext">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=2784:2847#L77">NewStubSpanContext</a>
 				<a class="permalink" href="#NewStubSpanContext">¶</a>
 				
 				
@@ -373,14 +505,13 @@ MetricReader は標準 OTEL_* env から構築し、送出先未指定時は no-
 		
 			
 			
-			</p><h2 id="NewTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=1487:1567#L33">NewTracerProvider</a>
-				<a class="permalink" href="#NewTracerProvider">¶</a>
+			</p><h2 id="NewTextMapPropagator">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=3311:3368#L84">NewTextMapPropagator</a>
+				<a class="permalink" href="#NewTextMapPropagator">¶</a>
 				
 				
 			</h2>
-			<pre>func NewTracerProvider(res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (*<a href="../../../go.opentelemetry.io/otel/sdk/trace/">sdktrace</a>.<a href="../../../go.opentelemetry.io/otel/sdk/trace/#TracerProvider">TracerProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
-			<p>NewTracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、構築した TracerProvider を返す。
-SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-op となる。
+			<pre>func NewTextMapPropagator() <a href="../../../go.opentelemetry.io/otel/propagation/">propagation</a>.<a href="../../../go.opentelemetry.io/otel/propagation/#TextMapPropagator">TextMapPropagator</a></pre>
+			<p>NewTextMapPropagator は、W3C TraceContext + Baggage の複合 propagator を返します。
 
 			
 			
@@ -388,14 +519,27 @@ SpanExporter は標準 OTEL_* env から構築し、送出先未指定時は no-
 		
 			
 			
-			</p><h2 id="ProvideMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=3440:3515#L84">ProvideMeterProvider</a>
+			</p><h2 id="NewTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=2642:2758#L64">NewTracerProvider</a>
+				<a class="permalink" href="#NewTracerProvider">¶</a>
+				
+				
+			</h2>
+			<pre>func NewTracerProvider(obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>, res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (*<a href="../../../go.opentelemetry.io/otel/sdk/trace/">sdktrace</a>.<a href="../../../go.opentelemetry.io/otel/sdk/trace/#TracerProvider">TracerProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>NewTracerProvider は TracerProvider と W3C 伝播器をグローバル登録し、構築した TracerProvider を返す。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ProvideMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=6656:6731#L172">ProvideMeterProvider</a>
 				<a class="permalink" href="#ProvideMeterProvider">¶</a>
 				
 				
 			</h2>
 			<pre>func ProvideMeterProvider(mp *<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>) <a href="../../../go.opentelemetry.io/otel/metric/">metric</a>.<a href="../../../go.opentelemetry.io/otel/metric/#MeterProvider">MeterProvider</a></pre>
 			<p>ProvideMeterProvider は具象 MeterProvider を otel の metric.MeterProvider IF として返す。
-otel 型を DI 層へ漏らさず WorkerMetrics 等へ MeterProvider を注入するための変換点。
 
 			
 			
@@ -403,7 +547,7 @@ otel 型を DI 層へ漏らさず WorkerMetrics 等へ MeterProvider を注入�
 		
 			
 			
-			</p><h2 id="ProvideTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=3135:3211#L80">ProvideTracerProvider</a>
+			</p><h2 id="ProvideTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=6460:6536#L169">ProvideTracerProvider</a>
 				<a class="permalink" href="#ProvideTracerProvider">¶</a>
 				
 				
@@ -417,7 +561,7 @@ otel 型を DI 層へ漏らさず WorkerMetrics 等へ MeterProvider を注入�
 		
 			
 			
-			</p><h2 id="RunWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=2451:2633#L69">RunWithSpan</a>
+			</p><h2 id="RunWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=2165:2347#L60">RunWithSpan</a>
 				<a class="permalink" href="#RunWithSpan">¶</a>
 				
 				
@@ -430,7 +574,6 @@ otel 型を DI 層へ漏らさず WorkerMetrics 等へ MeterProvider を注入�
     fn func(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>) (T, <a href="../../../builtin/#error">error</a>),
 ) (<a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, T, <a href="../../../builtin/#error">error</a>)</pre>
 			<p>RunWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
-</p><p>span の開始・終了時に Infoレベルでログ出力を行う。
 </p><p>呼び出し元は、関数 fn の実行結果とエラーを受け取ることができる。
 </p><p>典型的な呼び出し方:
 </p><pre>ctx, result, err := layerTracer.RunWithSpan(ctx, &#34;usecase&#34;, &#34;user&#34;, &#34;FullName&#34;, func(ctx context.Context) (T, error) {
@@ -444,7 +587,7 @@ otel 型を DI 層へ漏らさず WorkerMetrics 等へ MeterProvider を注入�
 		
 			
 			
-			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=776:860#L17">ShouldLogWithSpan</a>
+			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=579:663#L10">ShouldLogWithSpan</a>
 				<a class="permalink" href="#ShouldLogWithSpan">¶</a>
 				
 				
@@ -460,7 +603,204 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 		
 			
 			
-			</p><h2 id="LayerTracer">type <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=962:1125#L22">LayerTracer</a>
+			</p><h2 id="HTTPClientMetrics">type <a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html?s=490:735#L7">HTTPClientMetrics</a>
+				<a class="permalink" href="#HTTPClientMetrics">¶</a>
+				
+				
+			</h2>
+			<p>HTTPClientMetrics は、外部 HTTP client の RED 計装（リクエスト数・エラー数・レイテンシ）に
+retry 回数と breaker 状態 gauge を加えた計装一式です。
+
+			</p><pre>type HTTPClientMetrics struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewHTTPClientMetrics">func <a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html?s=916:994#L18">NewHTTPClientMetrics</a>
+					<a class="permalink" href="#NewHTTPClientMetrics">¶</a>
+					
+					
+				</h3>
+				<pre>func NewHTTPClientMetrics(mp <a href="../../../go.opentelemetry.io/otel/metric/">metric</a>.<a href="../../../go.opentelemetry.io/otel/metric/#MeterProvider">MeterProvider</a>) (*<a href="#HTTPClientMetrics">HTTPClientMetrics</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>NewHTTPClientMetrics は、注入された MeterProvider から substrate の計装一式を生成します。
+いずれかの計装生成失敗で error を返します。
+
+				
+				
+			
+				
+				</p><h3 id="NewNoopHTTPClientMetrics">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=2043:2105#L60">NewNoopHTTPClientMetrics</a>
+					<a class="permalink" href="#NewNoopHTTPClientMetrics">¶</a>
+					
+					
+				</h3>
+				<pre>func NewNoopHTTPClientMetrics(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) *<a href="#HTTPClientMetrics">HTTPClientMetrics</a></pre>
+				<p>NewNoopHTTPClientMetrics は、テスト用に no-op の MeterProvider から HTTPClientMetrics を生成します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="HTTPClientMetrics.InFlightAdd">func (*HTTPClientMetrics) <a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html?s=3130:3222#L61">InFlightAdd</a>
+					<a class="permalink" href="#HTTPClientMetrics.InFlightAdd">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#HTTPClientMetrics">HTTPClientMetrics</a>) InFlightAdd(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, downstream <a href="../../../builtin/#string">string</a>, delta <a href="../../../builtin/#int64">int64</a>)</pre>
+				<p>InFlightAdd は、処理中のリクエスト数を Downstream 別に増減します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="HTTPClientMetrics.RecordError">func (*HTTPClientMetrics) <a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html?s=2250:2337#L43">RecordError</a>
+					<a class="permalink" href="#HTTPClientMetrics.RecordError">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#HTTPClientMetrics">HTTPClientMetrics</a>) RecordError(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, downstream, reason <a href="../../../builtin/#string">string</a>)</pre>
+				<p>RecordError は、失敗したリクエストを Downstream と理由別に計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="HTTPClientMetrics.RecordLatencyMs">func (*HTTPClientMetrics) <a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html?s=2842:2937#L56">RecordLatencyMs</a>
+					<a class="permalink" href="#HTTPClientMetrics.RecordLatencyMs">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#HTTPClientMetrics">HTTPClientMetrics</a>) RecordLatencyMs(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, downstream <a href="../../../builtin/#string">string</a>, ms <a href="../../../builtin/#float64">float64</a>)</pre>
+				<p>RecordLatencyMs は、リクエスト全体の所要時間(ミリ秒)を Downstream 別に記録します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="HTTPClientMetrics.RecordRequest">func (*HTTPClientMetrics) <a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html?s=1907:2001#L35">RecordRequest</a>
+					<a class="permalink" href="#HTTPClientMetrics.RecordRequest">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#HTTPClientMetrics">HTTPClientMetrics</a>) RecordRequest(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, downstream, statusClass <a href="../../../builtin/#string">string</a>)</pre>
+				<p>RecordRequest は、完了したリクエストを Downstream とステータスクラス別に計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="HTTPClientMetrics.RecordRetry">func (*HTTPClientMetrics) <a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html?s=2555:2634#L51">RecordRetry</a>
+					<a class="permalink" href="#HTTPClientMetrics.RecordRetry">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#HTTPClientMetrics">HTTPClientMetrics</a>) RecordRetry(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, downstream <a href="../../../builtin/#string">string</a>)</pre>
+				<p>RecordRetry は、リトライ回数を Downstream 別に計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="HTTPClientMetrics.SetBreakerState">func (*HTTPClientMetrics) <a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html?s=3446:3542#L66">SetBreakerState</a>
+					<a class="permalink" href="#HTTPClientMetrics.SetBreakerState">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#HTTPClientMetrics">HTTPClientMetrics</a>) SetBreakerState(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, downstream <a href="../../../builtin/#string">string</a>, state <a href="../../../builtin/#int64">int64</a>)</pre>
+				<p>SetBreakerState は、circuit breaker の状態を Downstream 別に記録します（0:closed 1:half-open 2:open）。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="HTTPClientTransport">type <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=578:635#L10">HTTPClientTransport</a>
+				<a class="permalink" href="#HTTPClientTransport">¶</a>
+				
+				
+			</h2>
+			<p>HTTPClientTransport は、otelhttp 計装済みの outbound transport を包む不透明な型です。
+
+			</p><pre>type HTTPClientTransport struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewHTTPClientTransport">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=1655:1770#L30">NewHTTPClientTransport</a>
+					<a class="permalink" href="#NewHTTPClientTransport">¶</a>
+					
+					
+				</h3>
+				<pre>func NewHTTPClientTransport(tp <a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#TracerProvider">TracerProvider</a>, propagator <a href="../../../go.opentelemetry.io/otel/propagation/">propagation</a>.<a href="../../../go.opentelemetry.io/otel/propagation/#TextMapPropagator">TextMapPropagator</a>) *<a href="#HTTPClientTransport">HTTPClientTransport</a></pre>
+				<p>NewHTTPClientTransport は、SSRF ガード付き base transport を otelhttp で計装した outbound transport を生成します。
+</p><p>HTTP span 生成は自動化し、traceparent/baggage の outgoing inject は ContextWithTracePropagation の
+フラグに従って外部 downstream への伝搬を抑止できます。private/loopback 宛て接続は
+ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウドメタデータ等）は常に拒否します。
+
+				
+				
+			
+				
+				</p><h3 id="NewNoopHTTPClientTransport">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=2503:2569#L71">NewNoopHTTPClientTransport</a>
+					<a class="permalink" href="#NewNoopHTTPClientTransport">¶</a>
+					
+					
+				</h3>
+				<pre>func NewNoopHTTPClientTransport(t *<a href="../../../testing/">testing</a>.<a href="../../../testing/#T">T</a>) *<a href="#HTTPClientTransport">HTTPClientTransport</a></pre>
+				<p>NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を
+生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="HTTPClientTransport.RoundTripper">func (*HTTPClientTransport) <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=2483:2545#L48">RoundTripper</a>
+					<a class="permalink" href="#HTTPClientTransport.RoundTripper">¶</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#HTTPClientTransport">HTTPClientTransport</a>) RoundTripper() <a href="../../../net/http/">http</a>.<a href="../../../net/http/#RoundTripper">RoundTripper</a></pre>
+				<p>RoundTripper は、内部の RoundTripper を返します（substrate 内部でのみ利用します）。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="LayerTracer">type <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=812:916#L17">LayerTracer</a>
 				<a class="permalink" href="#LayerTracer">¶</a>
 				
 				
@@ -482,7 +822,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				<h3 id="NewMockControllerLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=831:890#L23">NewMockControllerLayerTracer</a>
+				<h3 id="NewMockControllerLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=714:773#L19">NewMockControllerLayerTracer</a>
 					<a class="permalink" href="#NewMockControllerLayerTracer">¶</a>
 					
 					
@@ -494,7 +834,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="NewMockInfraLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1315:1369#L37">NewMockInfraLayerTracer</a>
+				</p><h3 id="NewMockInfraLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1198:1252#L33">NewMockInfraLayerTracer</a>
 					<a class="permalink" href="#NewMockInfraLayerTracer">¶</a>
 					
 					
@@ -506,7 +846,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="NewMockUsecaseLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1080:1136#L30">NewMockUsecaseLayerTracer</a>
+				</p><h3 id="NewMockUsecaseLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=963:1019#L26">NewMockUsecaseLayerTracer</a>
 					<a class="permalink" href="#NewMockUsecaseLayerTracer">¶</a>
 					
 					
@@ -518,7 +858,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="NewNoopLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1527:1576#L44">NewNoopLayerTracer</a>
+				</p><h3 id="NewNoopLayerTracer">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1410:1459#L40">NewNoopLayerTracer</a>
 					<a class="permalink" href="#NewNoopLayerTracer">¶</a>
 					
 					
@@ -532,7 +872,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				</p><h3 id="LayerTracer.Start">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1267:1377#L32">Start</a>
+				</p><h3 id="LayerTracer.Start">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1058:1168#L25">Start</a>
 					<a class="permalink" href="#LayerTracer.Start">¶</a>
 					
 					
@@ -548,7 +888,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="LayerTracer.StartWithSuffix">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1679:1821#L45">StartWithSuffix</a>
+				</p><h3 id="LayerTracer.StartWithSuffix">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1470:1612#L38">StartWithSuffix</a>
 					<a class="permalink" href="#LayerTracer.StartWithSuffix">¶</a>
 					
 					
@@ -567,15 +907,15 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 		
 			
 			
-			</p><h2 id="ProviderShutdowner">type <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=366:553#L4">ProviderShutdowner</a>
+			</p><h2 id="ProviderShutdowner">type <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=426:630#L5">ProviderShutdowner</a>
 				<a class="permalink" href="#ProviderShutdowner">¶</a>
 				
 				
 			</h2>
-			<p>ProviderShutdowner は TracerProvider / MeterProvider の Shutdown をまとめた後始末ハンドル。
+			<p>ProviderShutdowner は TracerProvider / MeterProvider / LoggerProvider の Shutdown をまとめた後始末ハンドル。
 
 			</p><pre>type ProviderShutdowner interface {
-    <span class="comment">// Shutdown は TracerProvider / MeterProvider を Shutdown し、発生したエラーを結合して返す。</span>
+    <span class="comment">// Shutdown は TracerProvider / MeterProvider / LoggerProvider を Shutdown し、発生したエラーを結合して返す。</span>
     Shutdown(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>) <a href="../../../builtin/#error">error</a>
 }</pre>
 
@@ -589,12 +929,14 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				<h3 id="NewProviderShutdowner">func <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=744:847#L15">NewProviderShutdowner</a>
+				<h3 id="NewProviderShutdowner">func <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=848:982#L17">NewProviderShutdowner</a>
 					<a class="permalink" href="#NewProviderShutdowner">¶</a>
 					
 					
 				</h3>
-				<pre>func NewProviderShutdowner(tp *<a href="../../../go.opentelemetry.io/otel/sdk/trace/">sdktrace</a>.<a href="../../../go.opentelemetry.io/otel/sdk/trace/#TracerProvider">TracerProvider</a>, mp *<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>) <a href="#ProviderShutdowner">ProviderShutdowner</a></pre>
+				<pre>func NewProviderShutdowner(
+    tp *<a href="../../../go.opentelemetry.io/otel/sdk/trace/">sdktrace</a>.<a href="../../../go.opentelemetry.io/otel/sdk/trace/#TracerProvider">TracerProvider</a>, mp *<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>, lp *<a href="../../../go.opentelemetry.io/otel/sdk/log/">sdklog</a>.<a href="../../../go.opentelemetry.io/otel/sdk/log/#LoggerProvider">LoggerProvider</a>,
+) <a href="#ProviderShutdowner">ProviderShutdowner</a></pre>
 				<p>NewProviderShutdowner は具象プロバイダから後始末ハンドルを構築する。
 
 				
@@ -605,7 +947,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 		
 			
 			
-			</p><h2 id="TraceContext">type <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=399:490#L9">TraceContext</a>
+			</p><h2 id="TraceContext">type <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=202:293#L2">TraceContext</a>
 				<a class="permalink" href="#TraceContext">¶</a>
 				
 				
@@ -627,7 +969,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1316:1375#L27">ExtractTraceContext</a>
+				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1119:1178#L20">ExtractTraceContext</a>
 					<a class="permalink" href="#ExtractTraceContext">¶</a>
 					
 					
@@ -639,7 +981,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1750:1907#L40">StartSpanWithParent</a>
+				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1553:1710#L33">StartSpanWithParent</a>
 					<a class="permalink" href="#StartSpanWithParent">¶</a>
 					
 					
@@ -658,7 +1000,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2631:2676#L75">ParentSpanID</a>
+				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2434:2479#L68">ParentSpanID</a>
 					<a class="permalink" href="#TraceContext.ParentSpanID">¶</a>
 					
 					
@@ -671,7 +1013,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2491:2530#L70">SpanID</a>
+				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2294:2333#L63">SpanID</a>
 					<a class="permalink" href="#TraceContext.SpanID">¶</a>
 					
 					
@@ -684,7 +1026,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2361:2401#L65">TraceID</a>
+				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2164:2204#L58">TraceID</a>
 					<a class="permalink" href="#TraceContext.TraceID">¶</a>
 					
 					
@@ -699,7 +1041,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 		
 			
 			
-			</p><h2 id="TracerFactory">type <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=337:674#L3">TracerFactory</a>
+			</p><h2 id="TracerFactory">type <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=302:639#L2">TracerFactory</a>
 				<a class="permalink" href="#TracerFactory">¶</a>
 				
 				
@@ -725,7 +1067,7 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 
 			
 				
-				<h3 id="NewNoopTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=494:547#L13">NewNoopTracerFactory</a>
+				<h3 id="NewNoopTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=458:511#L11">NewNoopTracerFactory</a>
 					<a class="permalink" href="#NewNoopTracerFactory">¶</a>
 					
 					
@@ -737,12 +1079,12 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 				
 			
 				
-				</p><h3 id="NewTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=856:964#L19">NewTracerFactory</a>
+				</p><h3 id="NewTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=771:831#L16">NewTracerFactory</a>
 					<a class="permalink" href="#NewTracerFactory">¶</a>
 					
 					
 				</h3>
-				<pre>func NewTracerFactory(tp <a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#TracerProvider">TracerProvider</a>, log <a href="../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>) <a href="#TracerFactory">TracerFactory</a></pre>
+				<pre>func NewTracerFactory(tp <a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#TracerProvider">TracerProvider</a>) <a href="#TracerFactory">TracerFactory</a></pre>
 				<p>NewTracerFactory は、TracerFactory を初期化して返します。
 
 				
@@ -753,14 +1095,12 @@ span 前提ログを足す際の拡張ポイントとして提供しており、
 		
 			
 			
-			</p><h2 id="WorkerMetrics">type <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=574:869#L7">WorkerMetrics</a>
+			</p><h2 id="WorkerMetrics">type <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=328:623#L5">WorkerMetrics</a>
 				<a class="permalink" href="#WorkerMetrics">¶</a>
 				
 				
 			</h2>
 			<p>WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です（D2）。
-otel/metric への依存は本パッケージに閉じ込め、worker 側へは意味づけされたメソッドのみを公開します。
-queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のため含みません。
 
 			</p><pre>type WorkerMetrics struct {
     <span class="comment">// contains filtered or unexported fields</span>
@@ -777,7 +1117,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 
 			
 				
-				<h3 id="NewNoopWorkerMetrics">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1900:1954#L56">NewNoopWorkerMetrics</a>
+				<h3 id="NewNoopWorkerMetrics">func <a href="../../../src/go-boilerplate/internal/observability/test_kit.go.html?s=1700:1754#L50">NewNoopWorkerMetrics</a>
 					<a class="permalink" href="#NewNoopWorkerMetrics">¶</a>
 					
 					
@@ -789,14 +1129,14 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 				
 			
 				
-				</p><h3 id="NewWorkerMetrics">func <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=1263:1333#L26">NewWorkerMetrics</a>
+				</p><h3 id="NewWorkerMetrics">func <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=970:1040#L24">NewWorkerMetrics</a>
 					<a class="permalink" href="#NewWorkerMetrics">¶</a>
 					
 					
 				</h3>
 				<pre>func NewWorkerMetrics(mp <a href="../../../go.opentelemetry.io/otel/metric/">metric</a>.<a href="../../../go.opentelemetry.io/otel/metric/#MeterProvider">MeterProvider</a>) (*<a href="#WorkerMetrics">WorkerMetrics</a>, <a href="../../../builtin/#error">error</a>)</pre>
 				<p>NewWorkerMetrics は、注入された MeterProvider から worker engine の計装一式を生成します。
-グローバル otel.Meter() に依存せず、いずれかの計装生成失敗で error を返します。
+いずれかの計装生成失敗で error を返します。
 
 				
 				
@@ -804,7 +1144,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 
 			
 				
-				</p><h3 id="WorkerMetrics.DLQ">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2922:2970#L57">DLQ</a>
+				</p><h3 id="WorkerMetrics.DLQ">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2629:2677#L55">DLQ</a>
 					<a class="permalink" href="#WorkerMetrics.DLQ">¶</a>
 					
 					
@@ -817,7 +1157,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.Failed">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2592:2643#L51">Failed</a>
+				</p><h3 id="WorkerMetrics.Failed">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2299:2350#L49">Failed</a>
 					<a class="permalink" href="#WorkerMetrics.Failed">¶</a>
 					
 					
@@ -830,7 +1170,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.InFlightAdd">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3431:3500#L66">InFlightAdd</a>
+				</p><h3 id="WorkerMetrics.InFlightAdd">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3138:3207#L64">InFlightAdd</a>
 					<a class="permalink" href="#WorkerMetrics.InFlightAdd">¶</a>
 					
 					
@@ -843,7 +1183,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.PollError">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3061:3115#L60">PollError</a>
+				</p><h3 id="WorkerMetrics.PollError">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2768:2822#L58">PollError</a>
 					<a class="permalink" href="#WorkerMetrics.PollError">¶</a>
 					
 					
@@ -856,7 +1196,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.Processed">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2431:2485#L48">Processed</a>
+				</p><h3 id="WorkerMetrics.Processed">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2138:2192#L46">Processed</a>
 					<a class="permalink" href="#WorkerMetrics.Processed">¶</a>
 					
 					
@@ -869,7 +1209,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.Received">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2263:2325#L45">Received</a>
+				</p><h3 id="WorkerMetrics.Received">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=1970:2032#L43">Received</a>
 					<a class="permalink" href="#WorkerMetrics.Received">¶</a>
 					
 					
@@ -882,7 +1222,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.RecordLatencyMs">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3226:3298#L63">RecordLatencyMs</a>
+				</p><h3 id="WorkerMetrics.RecordLatencyMs">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2933:3005#L61">RecordLatencyMs</a>
 					<a class="permalink" href="#WorkerMetrics.RecordLatencyMs">¶</a>
 					
 					
@@ -895,7 +1235,7 @@ queue 滞留系（oldest-message-age / consumer-lag）は adapter 所有のた�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.Retried">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2759:2811#L54">Retried</a>
+				</p><h3 id="WorkerMetrics.Retried">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2466:2518#L52">Retried</a>
 					<a class="permalink" href="#WorkerMetrics.Retried">¶</a>
 					
 					

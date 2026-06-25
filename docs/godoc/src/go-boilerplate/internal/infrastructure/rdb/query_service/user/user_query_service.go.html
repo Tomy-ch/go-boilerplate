@@ -61,7 +61,7 @@
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
 <span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver/loggingdb&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
 <span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
 <span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc&#34;
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
@@ -70,13 +70,13 @@
 <span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
 <span id="L15" class="ln">    15  </span>type service struct {
-<span id="L16" class="ln">    16  </span>	db     loggingdb.DBProvider
+<span id="L16" class="ln">    16  </span>	db     driver.DatabaseDriver
 <span id="L17" class="ln">    17  </span>	tracer observability.LayerTracer
 <span id="L18" class="ln">    18  </span>}
 <span id="L19" class="ln">    19  </span>
 <span id="L20" class="ln">    20  </span><span class="comment">// New は、ユーザー検索クエリサービスの実装を生成して返します。</span>
 <span id="L21" class="ln">    21  </span>func New(
-<span id="L22" class="ln">    22  </span>	db loggingdb.DBProvider,
+<span id="L22" class="ln">    22  </span>	db driver.DatabaseDriver,
 <span id="L23" class="ln">    23  </span>	tf observability.TracerFactory,
 <span id="L24" class="ln">    24  </span>) query.UserSearchQueryService {
 <span id="L25" class="ln">    25  </span>	return &amp;service{
@@ -121,7 +121,7 @@
 <span id="L64" class="ln">    64  </span>	defer endSpan()
 <span id="L65" class="ln">    65  </span>
 <span id="L66" class="ln">    66  </span>	tokens := buildLikeTokens(filter.Keywords)
-<span id="L67" class="ln">    67  </span>	db := gen.New(s.db.NewLoggingDB(ctx))
+<span id="L67" class="ln">    67  </span>	db := gen.New(driver.New(ctx, s.db))
 <span id="L68" class="ln">    68  </span>
 <span id="L69" class="ln">    69  </span>	switch {
 <span id="L70" class="ln">    70  </span>	case filter.Active == nil:
@@ -196,7 +196,7 @@
 <span id="L139" class="ln">   139  </span>	defer endSpan()
 <span id="L140" class="ln">   140  </span>
 <span id="L141" class="ln">   141  </span>	tokens := buildLikeTokens(filter.Keywords)
-<span id="L142" class="ln">   142  </span>	db := gen.New(s.db.NewLoggingDB(ctx))
+<span id="L142" class="ln">   142  </span>	db := gen.New(driver.New(ctx, s.db))
 <span id="L143" class="ln">   143  </span>
 <span id="L144" class="ln">   144  </span>	var (
 <span id="L145" class="ln">   145  </span>		count int64

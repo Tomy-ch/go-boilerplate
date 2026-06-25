@@ -1,0 +1,115 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>exchangerate - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../../src/go-boilerplate/internal/controller">controller</a>/<a href="../../../../../../../src/go-boilerplate/internal/controller/handler">handler</a>/<a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1">v1</a>/<a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate">exchangerate</a>/<span class="text-muted">v1_exchange_rates_handler.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../../go-boilerplate/internal/controller/handler/v1/exchangerate">go-boilerplate/internal/controller/handler/v1/exchangerate</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/exchange-rates --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/exchange-rates --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml</span>
+<span id="L3" class="ln">     3  </span>
+<span id="L4" class="ln">     4  </span><span class="comment">// Package exchangerate は、/v1/exchange-rates エンドポイントに関連するハンドラを提供します。</span>
+<span id="L5" class="ln">     5  </span>package exchangerate
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>import (
+<span id="L8" class="ln">     8  </span>	&#34;context&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/controller/handler/v1/exchangerate/gen&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L12" class="ln">    12  </span>	exchangerateuc &#34;go-boilerplate/internal/usecase/exchangerate&#34;
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L15" class="ln">    15  </span>)
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>type server struct {
+<span id="L18" class="ln">    18  </span>	tracer observability.LayerTracer
+<span id="L19" class="ln">    19  </span>	uc     exchangerateuc.Usecase
+<span id="L20" class="ln">    20  </span>}
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span><span class="comment">// BindHandler は、為替換算エンドポイントのハンドラを Echo に登録します。</span>
+<span id="L23" class="ln">    23  </span>func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc exchangerateuc.Usecase) {
+<span id="L24" class="ln">    24  </span>	gen.RegisterHandlers(e, gen.NewStrictHandler(&amp;server{
+<span id="L25" class="ln">    25  </span>		tracer: tf.Controller(),
+<span id="L26" class="ln">    26  </span>		uc:     uc,
+<span id="L27" class="ln">    27  </span>	}, nil))
+<span id="L28" class="ln">    28  </span>}
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// GetExchangeRates は、為替レートで amount を換算した結果を返します。</span>
+<span id="L31" class="ln">    31  </span>func (s *server) GetExchangeRates(
+<span id="L32" class="ln">    32  </span>	ctx context.Context, request gen.GetExchangeRatesRequestObject,
+<span id="L33" class="ln">    33  </span>) (gen.GetExchangeRatesResponseObject, error) {
+<span id="L34" class="ln">    34  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L35" class="ln">    35  </span>	defer endSpan()
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>	converted, err := s.uc.Convert(ctx, request.Params.Base, request.Params.Quote, request.Params.Amount)
+<span id="L38" class="ln">    38  </span>	if err != nil {
+<span id="L39" class="ln">    39  </span>		return nil, err
+<span id="L40" class="ln">    40  </span>	}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>	return gen.GetExchangeRates200JSONResponse(gen.ExchangeRateResponse{
+<span id="L43" class="ln">    43  </span>		Base:      request.Params.Base,
+<span id="L44" class="ln">    44  </span>		Quote:     request.Params.Quote,
+<span id="L45" class="ln">    45  </span>		Amount:    request.Params.Amount,
+<span id="L46" class="ln">    46  </span>		Converted: converted,
+<span id="L47" class="ln">    47  </span>	}), nil
+<span id="L48" class="ln">    48  </span>}
+<span id="L49" class="ln">    49  </span>
+</pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/exchangerate/v1_exchange_rates_handler.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

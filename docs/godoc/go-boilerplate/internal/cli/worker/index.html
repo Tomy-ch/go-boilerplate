@@ -164,7 +164,7 @@ metrics サーバーと異なり専用の ServeMux を使い、pprof/metrics と
 		
 			
 			
-			</p><h2 id="RunWorkerWith">func <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=736:854#L8">RunWorkerWith</a>
+			</p><h2 id="RunWorkerWith">func <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=640:758#L8">RunWorkerWith</a>
 				<a class="permalink" href="#RunWorkerWith">¶</a>
 				
 				
@@ -175,7 +175,7 @@ metrics サーバーと異なり専用の ServeMux を使い、pprof/metrics と
     args []<a href="../../../../builtin/#string">string</a>,
     provide func() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>),
 ) <a href="../../../../builtin/#error">error</a></pre>
-			<p>RunWorkerWith は、worker ランナーの取得元（provide）を差し替え可能にした上で runWorker へ委譲します。
+			<p>RunWorkerWith は、provide が返す開始・停止関数で worker を実行します。
 
 			
 			
@@ -184,12 +184,12 @@ metrics サーバーと異なり専用の ServeMux を使い、pprof/metrics と
 		
 			
 			
-			</p><h2 id="StartFunc">type <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=357:438#L2">StartFunc</a>
+			</p><h2 id="StartFunc">type <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=333:414#L2">StartFunc</a>
 				<a class="permalink" href="#StartFunc">¶</a>
 				
 				
 			</h2>
-			<p>StartFunc は、worker の開始関数の型です（DI から取得した開始関数を注入します）。
+			<p>StartFunc は、worker を起動して完了チャネルを返す関数の型です。
 
 			</p><pre>type StartFunc func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, name <a href="../../../../builtin/#string">string</a>, args []<a href="../../../../builtin/#string">string</a>) &lt;-chan <a href="../../../../builtin/#error">error</a></pre>
 
@@ -207,12 +207,12 @@ metrics サーバーと異なり専用の ServeMux を使い、pprof/metrics と
 		
 			
 			
-			<h2 id="StopFunc">type <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=553:598#L5">StopFunc</a>
+			<h2 id="StopFunc">type <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=499:544#L5">StopFunc</a>
 				<a class="permalink" href="#StopFunc">¶</a>
 				
 				
 			</h2>
-			<p>StopFunc は、worker の停止関数の型です（DI から取得した停止関数を注入します）。
+			<p>StopFunc は、worker をグレースフルに停止する関数の型です。
 
 			</p><pre>type StopFunc func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a></pre>
 

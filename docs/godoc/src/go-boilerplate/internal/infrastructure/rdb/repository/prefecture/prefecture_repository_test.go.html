@@ -73,27 +73,27 @@
 <span id="L16" class="ln">    16  </span>func TestNew(t *testing.T) {
 <span id="L17" class="ln">    17  </span>	t.Parallel()
 <span id="L18" class="ln">    18  </span>
-<span id="L19" class="ln">    19  </span>	loggingDB := testkit.NewTestLoggingProvider(t)
+<span id="L19" class="ln">    19  </span>	testDB := testkit.NewTestDB(t)
 <span id="L20" class="ln">    20  </span>	tf := observability.NewNoopTracerFactory(t)
 <span id="L21" class="ln">    21  </span>	expected := &amp;repository{
 <span id="L22" class="ln">    22  </span>		tracer: tf.Infra(),
-<span id="L23" class="ln">    23  </span>		db:     loggingDB,
+<span id="L23" class="ln">    23  </span>		db:     testDB,
 <span id="L24" class="ln">    24  </span>	}
-<span id="L25" class="ln">    25  </span>	actual := New(loggingDB, tf)
+<span id="L25" class="ln">    25  </span>	actual := New(testDB, tf)
 <span id="L26" class="ln">    26  </span>	assert.Equal(t, expected, actual)
 <span id="L27" class="ln">    27  </span>}
 <span id="L28" class="ln">    28  </span>
 <span id="L29" class="ln">    29  </span>func TestFindByName(t *testing.T) {
 <span id="L30" class="ln">    30  </span>	t.Parallel()
 <span id="L31" class="ln">    31  </span>
-<span id="L32" class="ln">    32  </span>	loggingDB := testkit.NewTestLoggingProvider(t)
+<span id="L32" class="ln">    32  </span>	testDB := testkit.NewTestDB(t)
 <span id="L33" class="ln">    33  </span>	lt := observability.NewMockInfraLayerTracer(t)
 <span id="L34" class="ln">    34  </span>
 <span id="L35" class="ln">    35  </span>	txm := testkit.NewTestTransactionRunner(t)
 <span id="L36" class="ln">    36  </span>
 <span id="L37" class="ln">    37  </span>	repo := &amp;repository{
 <span id="L38" class="ln">    38  </span>		tracer: lt,
-<span id="L39" class="ln">    39  </span>		db:     loggingDB,
+<span id="L39" class="ln">    39  </span>		db:     testDB,
 <span id="L40" class="ln">    40  </span>	}
 <span id="L41" class="ln">    41  </span>
 <span id="L42" class="ln">    42  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -127,14 +127,14 @@
 <span id="L70" class="ln">    70  </span>func TestFindByID(t *testing.T) {
 <span id="L71" class="ln">    71  </span>	t.Parallel()
 <span id="L72" class="ln">    72  </span>
-<span id="L73" class="ln">    73  </span>	loggingDB := testkit.NewTestLoggingProvider(t)
+<span id="L73" class="ln">    73  </span>	testDB := testkit.NewTestDB(t)
 <span id="L74" class="ln">    74  </span>	lt := observability.NewMockInfraLayerTracer(t)
 <span id="L75" class="ln">    75  </span>
 <span id="L76" class="ln">    76  </span>	txm := testkit.NewTestTransactionRunner(t)
 <span id="L77" class="ln">    77  </span>
 <span id="L78" class="ln">    78  </span>	repo := &amp;repository{
 <span id="L79" class="ln">    79  </span>		tracer: lt,
-<span id="L80" class="ln">    80  </span>		db:     loggingDB,
+<span id="L80" class="ln">    80  </span>		db:     testDB,
 <span id="L81" class="ln">    81  </span>	}
 <span id="L82" class="ln">    82  </span>
 <span id="L83" class="ln">    83  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
@@ -169,14 +169,14 @@
 <span id="L112" class="ln">   112  </span>func TestFindByIDs(t *testing.T) {
 <span id="L113" class="ln">   113  </span>	t.Parallel()
 <span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>	loggingDB := testkit.NewTestLoggingProvider(t)
+<span id="L115" class="ln">   115  </span>	testDB := testkit.NewTestDB(t)
 <span id="L116" class="ln">   116  </span>	lt := observability.NewMockInfraLayerTracer(t)
 <span id="L117" class="ln">   117  </span>
 <span id="L118" class="ln">   118  </span>	txm := testkit.NewTestTransactionRunner(t)
 <span id="L119" class="ln">   119  </span>
 <span id="L120" class="ln">   120  </span>	repo := &amp;repository{
 <span id="L121" class="ln">   121  </span>		tracer: lt,
-<span id="L122" class="ln">   122  </span>		db:     loggingDB,
+<span id="L122" class="ln">   122  </span>		db:     testDB,
 <span id="L123" class="ln">   123  </span>	}
 <span id="L124" class="ln">   124  </span>
 <span id="L125" class="ln">   125  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
