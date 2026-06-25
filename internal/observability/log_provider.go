@@ -2,7 +2,6 @@ package observability
 
 import (
 	"context"
-	"net/url"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
@@ -14,9 +13,6 @@ import (
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
-
-// otlpLogsPath は OTLP HTTP のログ送出パス。
-const otlpLogsPath = "/v1/logs"
 
 // NewLoggerProvider は LoggerProvider を構築して返す。
 func NewLoggerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdklog.LoggerProvider, error) {
@@ -55,22 +51,10 @@ func newLogExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (sd
 	case protocolHTTP, "":
 		var opts []otlploghttp.Option
 		if ep := obsCfg.OTLPEndpoint(); ep != "" {
-			opts = append(opts, otlploghttp.WithEndpointURL(ensureLogsPath(ep)))
+			opts = append(opts, otlploghttp.WithEndpointURL(ensureOTLPPath(ep, otlpLogsPath)))
 		}
 		return otlploghttp.New(ctx, opts...)
 	default:
 		return nil, errInvalidOTLPProtocol
 	}
-}
-
-// ensureLogsPath は OTLP HTTP のエンドポイント URL に path が無ければ /v1/logs を補う。
-// otlploghttp v0.20.0 の WithEndpointURL は path 無し URL のとき既定 /v1/logs を補わず
-// （空文字を「設定済み」と解釈する）ルートへ送って 404 になるための回避。
-func ensureLogsPath(rawURL string) string {
-	u, err := url.Parse(rawURL)
-	if err != nil || u.Path != "" {
-		return rawURL
-	}
-	u.Path = otlpLogsPath
-	return u.String()
 }

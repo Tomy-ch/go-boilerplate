@@ -86,7 +86,7 @@ func Test_NewLoggerProvider(t *testing.T) {
 	})
 }
 
-func Test_ensureLogsPath(t *testing.T) {
+func Test_ensureOTLPPath(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -94,7 +94,8 @@ func Test_ensureLogsPath(t *testing.T) {
 		in   string
 		want string
 	}{
-		{"正常系_path無しなら_v1_logsを補う", "http://observability:4318", "http://observability:4318/v1/logs"},
+		{"正常系_path無しなら補う", "http://observability:4318", "http://observability:4318/v1/logs"},
+		{"正常系_末尾スラッシュも補う", "http://observability:4318/", "http://observability:4318/v1/logs"},
 		{"正常系_path有りならそのまま", "http://observability:4318/custom", "http://observability:4318/custom"},
 		{"正常系_パース不能ならそのまま", "://bad", "://bad"},
 	}
@@ -102,7 +103,7 @@ func Test_ensureLogsPath(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tc.want, ensureLogsPath(tc.in))
+			assert.Equal(t, tc.want, ensureOTLPPath(tc.in, otlpLogsPath))
 		})
 	}
 }

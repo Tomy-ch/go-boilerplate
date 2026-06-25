@@ -476,6 +476,7 @@ func TestObservabilityConfig_Enabled(t *testing.T) {
 		{"正常系_logのみ有効", "", "", "otlp", false, false, true, true},
 		{"正常系_全部空なら無効", "", "", "", false, false, false, false},
 		{"正常系_noneは無効として扱う", "none", "none", "none", false, false, false, false},
+		{"正常系_大文字NONEも無効として扱う", "NONE", "None", "nOnE", false, false, false, false},
 	}
 
 	for _, tc := range cases {

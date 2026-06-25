@@ -276,5 +276,5 @@ func buildStatusCodeSet(codes []int) map[int]bool {
 // isActiveExporter は、exporter 指定が送出を行う有効値かどうかを返します。
 // 空文字（未設定）と "none" は無効（送出しない）とみなします。
 func isActiveExporter(v string) bool {
-	return v != "" && v != exporterNone
+	return v != "" && !strings.EqualFold(v, exporterNone)
 }

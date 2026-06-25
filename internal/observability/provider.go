@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"net/url"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/system"
@@ -29,8 +30,27 @@ const (
 	protocolGRPC = "grpc"
 )
 
+// OTLP HTTP の signal 別送出パス。
+const (
+	otlpTracesPath  = "/v1/traces"
+	otlpMetricsPath = "/v1/metrics"
+	otlpLogsPath    = "/v1/logs"
+)
+
 // errInvalidOTLPProtocol は、OBS_OTLP_PROTOCOL が http/protobuf でも grpc でもない場合に返されます。
 var errInvalidOTLPProtocol = xerrors.New("invalid OTLP protocol (want http/protobuf or grpc)")
+
+// ensureOTLPPath は OTLP HTTP のエンドポイント URL に signal パスが無ければ defaultPath を補う。
+// otlp*http の WithEndpointURL は path 無し（"" / "/"）の URL に既定 path を補わずルートへ送って 404 に
+// なる版があるため、空・ルートのときは defaultPath を明示する。
+func ensureOTLPPath(rawURL, defaultPath string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Path != "" && u.Path != "/") {
+		return rawURL
+	}
+	u.Path = defaultPath
+	return u.String()
+}
 
 // NewResource は service 識別情報を付与した OpenTelemetry リソースを生成する。
 func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error) {
@@ -89,6 +109,8 @@ func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource
 
 	if obsCfg.MetricsEnabled() {
 		if err := runtime.Start(runtime.WithMeterProvider(mp)); err != nil {
+			// mp は既に PeriodicReader（送出 goroutine）を抱えているため、失敗時は Shutdown して回収する。
+			_ = mp.Shutdown(context.Background())
 			return nil, xerrors.Wrap(err, "failed to start runtime metrics")
 		}
 	}
@@ -111,7 +133,7 @@ func newSpanExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (s
 	case protocolHTTP, "":
 		var opts []otlptracehttp.Option
 		if ep := obsCfg.OTLPEndpoint(); ep != "" {
-			opts = append(opts, otlptracehttp.WithEndpointURL(ep))
+			opts = append(opts, otlptracehttp.WithEndpointURL(ensureOTLPPath(ep, otlpTracesPath)))
 		}
 		return otlptracehttp.New(ctx, opts...)
 	default:
@@ -140,7 +162,7 @@ func newMetricExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) 
 	case protocolHTTP, "":
 		var opts []otlpmetrichttp.Option
 		if ep := obsCfg.OTLPEndpoint(); ep != "" {
-			opts = append(opts, otlpmetrichttp.WithEndpointURL(ep))
+			opts = append(opts, otlpmetrichttp.WithEndpointURL(ensureOTLPPath(ep, otlpMetricsPath)))
 		}
 		return otlpmetrichttp.New(ctx, opts...)
 	default:
