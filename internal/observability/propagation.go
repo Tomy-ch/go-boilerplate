@@ -26,7 +26,7 @@ func ExtractFromCarrier(ctx context.Context, attrs map[string]string) context.Co
 	return extractFromCarrier(ctx, attrs, otel.GetTextMapPropagator())
 }
 
-// extractFromCarrier は、prop を明示注入できる ExtractFromCarrier の中核です（テスト用 seam）。
+// extractFromCarrier は、prop から trace context を抽出して ctx に付与します。
 func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propagation.TextMapPropagator) context.Context {
 	if len(attrs) == 0 {
 		return ctx

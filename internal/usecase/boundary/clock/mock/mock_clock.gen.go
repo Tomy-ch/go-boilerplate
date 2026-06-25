@@ -10,6 +10,7 @@
 package mock_clock
 
 import (
+	context "context"
 	reflect "reflect"
 	time "time"
 
@@ -52,4 +53,42 @@ func (m *MockClock) Now() time.Time {
 func (mr *MockClockMockRecorder) Now() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Now", reflect.TypeOf((*MockClock)(nil).Now))
+}
+
+// MockSleeper is a mock of Sleeper interface.
+type MockSleeper struct {
+	ctrl     *gomock.Controller
+	recorder *MockSleeperMockRecorder
+	isgomock struct{}
+}
+
+// MockSleeperMockRecorder is the mock recorder for MockSleeper.
+type MockSleeperMockRecorder struct {
+	mock *MockSleeper
+}
+
+// NewMockSleeper creates a new mock instance.
+func NewMockSleeper(ctrl *gomock.Controller) *MockSleeper {
+	mock := &MockSleeper{ctrl: ctrl}
+	mock.recorder = &MockSleeperMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSleeper) EXPECT() *MockSleeperMockRecorder {
+	return m.recorder
+}
+
+// Sleep mocks base method.
+func (m *MockSleeper) Sleep(ctx context.Context, d time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Sleep", ctx, d)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Sleep indicates an expected call of Sleep.
+func (mr *MockSleeperMockRecorder) Sleep(ctx, d any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sleep", reflect.TypeOf((*MockSleeper)(nil).Sleep), ctx, d)
 }

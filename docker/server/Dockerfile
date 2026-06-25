@@ -27,8 +27,7 @@ ARG APP_ENV=prd
 
 COPY . .
 
-# 選択した env を埋め込み対象 env/.env へ材料化（local は既定値のためコピー不要）してからビルドする。
-RUN if [ "${APP_ENV}" != "local" ]; then cp "env/.env.${APP_ENV}" env/.env; fi \
+RUN cp "env/.env.${APP_ENV}" env/.env \
   && go build -mod=vendor -trimpath \
   -ldflags="-s -w \
     -X 'go-boilerplate/internal/system.Version=${VERSION}' \

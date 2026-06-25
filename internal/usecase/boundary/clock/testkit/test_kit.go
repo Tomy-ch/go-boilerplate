@@ -28,3 +28,12 @@ func NewMockClockOnce(t *testing.T, now time.Time) clock.Clock {
 	clk.EXPECT().Now().Return(now).Times(1)
 	return clk
 }
+
+// NewNoopSleeper は、待機せず即座に nil を返すテスト用の sleeper を生成します（呼び出し回数は問いません）。
+func NewNoopSleeper(t *testing.T) clock.Sleeper {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	s := mock_clock.NewMockSleeper(ctrl)
+	s.EXPECT().Sleep(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	return s
+}

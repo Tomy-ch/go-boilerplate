@@ -10,7 +10,7 @@ import (
 )
 
 // WorkerModule は、worker engine 関連の依存関係を提供する fx.Module です。
-// 既定では worker を 1 つも登録しません（broker adapter は integrator が opt-in で配線します）。
+// 既定では worker を 1 つも登録しません。
 func WorkerModule() fx.Option {
 	return fx.Module("worker",
 		provideWorkers(
@@ -26,7 +26,7 @@ func WorkerModule() fx.Option {
 	)
 }
 
-// provideWorkers は、worker のコンストラクタを group:"workers" として提供します。
+// provideWorkers は、worker のコンストラクタ群を worker グループへ登録します。
 func provideWorkers(constructors ...any) fx.Option {
 	opts := make([]fx.Option, len(constructors))
 	for i, c := range constructors {

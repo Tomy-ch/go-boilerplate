@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// httpGet は、context 付きで GET リクエストを実行するテストヘルパです（noctx 回避）。
+// httpGet は、context 付きで GET リクエストを実行するテストヘルパです。
 func httpGet(t *testing.T, url string) *http.Response {
 	t.Helper()
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)

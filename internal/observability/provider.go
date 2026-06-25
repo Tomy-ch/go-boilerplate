@@ -54,12 +54,17 @@ func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 	tp := sdktrace.NewTracerProvider(opts...)
 
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
+	otel.SetTextMapPropagator(NewTextMapPropagator())
 
 	return tp, nil
+}
+
+// NewTextMapPropagator は、W3C TraceContext + Baggage の複合 propagator を返します。
+func NewTextMapPropagator() propagation.TextMapPropagator {
+	return propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	)
 }
 
 // NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
@@ -90,5 +95,4 @@ func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error) 
 func ProvideTracerProvider(tp *sdktrace.TracerProvider) trace.TracerProvider { return tp }
 
 // ProvideMeterProvider は具象 MeterProvider を otel の metric.MeterProvider IF として返す。
-// otel 型を DI 層へ漏らさず WorkerMetrics 等へ MeterProvider を注入するための変換点。
 func ProvideMeterProvider(mp *sdkmetric.MeterProvider) metric.MeterProvider { return mp }

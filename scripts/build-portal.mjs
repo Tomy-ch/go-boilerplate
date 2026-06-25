@@ -1,5 +1,4 @@
 // ポータル (docs/portal) のフロントエンド（src/main.jsx）を esbuild でバンドルして docs/portal/dist/ へ出力する。
-// make gen-portal-build（node_tool_runner コンテナ内）から実行する。
 
 import * as esbuild from "esbuild"
 import fs from "node:fs"
@@ -17,7 +16,6 @@ const nodeModules = path.join(__dirname, "node_modules")
 const mermaidSrc = path.join(nodeModules, "mermaid", "dist", "mermaid.min.js")
 const mermaidDest = path.join(distDir, "mermaid.min.js")
 
-// dist/ の既存ファイルを削除してから生成する。
 function resetDistDir() {
   fs.rmSync(distDir, { recursive: true, force: true })
   fs.mkdirSync(distDir, { recursive: true })
@@ -52,7 +50,6 @@ async function main() {
     metafile: true,
   })
 
-  // 生成ファイルのサイズ一覧を出力する。
   for (const [file, meta] of Object.entries(result.metafile.outputs)) {
     console.log(`  ${file}  ${(meta.bytes / 1024).toFixed(1)} KiB`)
   }

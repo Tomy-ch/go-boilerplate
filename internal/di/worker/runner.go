@@ -22,7 +22,7 @@ type EngineIn struct {
 	Logger  logging.Logger
 }
 
-// ProvideEngine は、config.WorkerConfig を engine-core Settings へマッピングして Engine を生成します。
+// ProvideEngine は、WorkerConfig の設定から Engine を生成します。
 func ProvideEngine(in EngineIn) (*workerengine.Engine, error) {
 	c := in.Config
 	set := workerengine.Settings{

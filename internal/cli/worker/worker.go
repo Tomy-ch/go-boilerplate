@@ -8,13 +8,13 @@ import (
 
 const stopTimeout = 30 * time.Second
 
-// StartFunc は、worker の開始関数の型です（DI から取得した開始関数を注入します）。
+// StartFunc は、worker を起動して完了チャネルを返す関数の型です。
 type StartFunc func(ctx context.Context, name string, args []string) <-chan error
 
-// StopFunc は、worker の停止関数の型です（DI から取得した停止関数を注入します）。
+// StopFunc は、worker をグレースフルに停止する関数の型です。
 type StopFunc func(ctx context.Context) error
 
-// RunWorkerWith は、worker ランナーの取得元（provide）を差し替え可能にした上で runWorker へ委譲します。
+// RunWorkerWith は、provide が返す開始・停止関数で worker を実行します。
 func RunWorkerWith(
 	ctx context.Context,
 	name string,

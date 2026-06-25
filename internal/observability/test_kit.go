@@ -66,6 +66,23 @@ func NewNoopWorkerMetrics(t *testing.T) *WorkerMetrics {
 	return wm
 }
 
+// NewNoopHTTPClientMetrics は、テスト用に no-op の MeterProvider から HTTPClientMetrics を生成します。
+func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
+	t.Helper()
+	hm, err := NewHTTPClientMetrics(metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatalf("failed to build noop http client metrics: %v", err)
+	}
+	return hm
+}
+
+// NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を
+// 生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。
+func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
+	t.Helper()
+	return newHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator(), permissiveDialControl)
+}
+
 // NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。
 func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 	t.Helper()

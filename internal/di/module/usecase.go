@@ -1,6 +1,7 @@
 package module
 
 import (
+	exchangerateuc "go-boilerplate/internal/usecase/exchangerate" // sample-api:line
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/user"        // sample-api:line
@@ -20,6 +21,7 @@ func UsecaseModule() fx.Option {
 			// サンプルのユースケース
 			user.New,
 			search.New,
+			exchangerateuc.New,
 			// sample-api:end
 		),
 	)
