@@ -52,6 +52,7 @@ func TestNewQueryTracer(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			mockLogger := mock_logging.NewMockLogger(ctrl)
+			mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
 			lf := logging.NewTestLogFieldBuilder(t)
 
 			qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), mockLogger, lf).(*queryTracer)

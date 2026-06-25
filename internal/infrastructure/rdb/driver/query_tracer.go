@@ -49,7 +49,7 @@ func NewQueryTracer(
 ) pgx.QueryTracer {
 	return &queryTracer{
 		Tracer:        tracer,
-		logger:        logger,
+		logger:        logger.Named(queryTracerLayer),
 		lf:            lf,
 		maskArgs:      obsCfg.MaskedDBQueryArgs(),
 		slowThreshold: dbCfg.SlowQueryWarnThreshold(),
@@ -70,7 +70,7 @@ func (t *queryTracer) TraceQueryStart(
 	})
 }
 
-// TraceQueryEnd は、span を終了し、エラー時 / スロークエリ時のみログを出力します。
+// TraceQueryEnd は、span を終了し、正常終了(Info)・スロー(Warn)・エラー(Error)のログを出力します。
 func (t *queryTracer) TraceQueryEnd(
 	ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData,
 ) {
@@ -82,14 +82,13 @@ func (t *queryTracer) TraceQueryEnd(
 	}
 	duration := time.Since(ld.start)
 
-	logger := t.logger.Named(queryTracerLayer)
 	switch {
 	case data.Err != nil:
-		logger.Error("DB query failed", t.endFields(ctx, ld, duration, data.Err)...)
+		t.logger.Error("DB query failed", t.endFields(ctx, ld, duration, data.Err)...)
 	case t.slowThreshold > 0 && duration > t.slowThreshold:
-		logger.Warn("DB slow query", t.endFields(ctx, ld, duration, nil)...)
+		t.logger.Warn("DB slow query", t.endFields(ctx, ld, duration, nil)...)
 	default:
-		logger.Info("DB query completed", t.endFields(ctx, ld, duration, nil)...)
+		t.logger.Info("DB query completed", t.endFields(ctx, ld, duration, nil)...)
 	}
 }
 

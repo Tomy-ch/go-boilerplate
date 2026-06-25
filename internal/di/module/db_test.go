@@ -28,7 +28,7 @@ func TestDatabaseModule_Composes(t *testing.T) {
 		mockLogger := mock_logging.NewMockLogger(ctrl)
 		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
 
-		mockLogger.EXPECT().Named("db.CloseHook").Return(mockLogger).AnyTimes()
+		mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
 		mockLogger.EXPECT().Info("Closing database connection").AnyTimes()
 
 		app := fx.New(
