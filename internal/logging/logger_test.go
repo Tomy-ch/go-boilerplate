@@ -37,6 +37,24 @@ func TestWithCore(t *testing.T) {
 			got.Info("tee-test")
 			assert.Contains(t, buf.String(), "tee-test")
 		})
+
+		t.Run("追加coreは元Loggerの最小レベルでゲートされる", func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			enc := zapcore.NewJSONEncoder(zapcore.EncoderConfig{MessageKey: "msg"})
+			// 追加 core 自体は Debug まで通すが、元 Logger は Info のため Debug はゲートされる。
+			extra := zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.DebugLevel)
+
+			base := NewConsoleLogger(LevelInfo(), LevelError())
+			got := WithCore(base, extra)
+
+			got.Debug("gated-out")
+			assert.NotContains(t, buf.String(), "gated-out")
+
+			got.Info("passed")
+			assert.Contains(t, buf.String(), "passed")
+		})
 	})
 }
 

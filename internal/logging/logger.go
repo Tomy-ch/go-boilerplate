@@ -31,8 +31,15 @@ type logger struct {
 	log *zap.Logger
 }
 
-// WithCore は、既存 Logger に追加のログ core を Tee した新しい Logger を返します。
-// core が nil の場合は、元の Logger をそのまま返します。
+// levelGatedCore は、埋め込み core を最小レベル min で絞り込む zapcore.Core ラッパーです。
+type levelGatedCore struct {
+	zapcore.Core
+
+	min zapcore.Level
+}
+
+// WithCore は、既存 Logger に追加のログ core を、元 Logger と同じ最小レベルでゲートして
+// Tee した新しい Logger を返します。core が nil の場合は、元の Logger をそのまま返します。
 func WithCore(l Logger, core LogCore) Logger {
 	if core == nil {
 		return l
@@ -41,11 +48,31 @@ func WithCore(l Logger, core LogCore) Logger {
 	if !ok {
 		return l
 	}
+	gated := levelGatedCore{Core: core, min: base.log.Level()}
+
 	return &logger{
 		log: base.log.WithOptions(zap.WrapCore(func(c zapcore.Core) zapcore.Core {
-			return zapcore.NewTee(c, core)
+			return zapcore.NewTee(c, gated)
 		})),
 	}
+}
+
+// Enabled は、min 以上かつ埋め込み core が有効なレベルのみ true を返します。
+func (c levelGatedCore) Enabled(level zapcore.Level) bool {
+	return level >= c.min && c.Core.Enabled(level)
+}
+
+// Check は、レベルが有効なときのみ自身を CheckedEntry に追加します。
+func (c levelGatedCore) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if c.Enabled(ent.Level) {
+		return ce.AddCore(ent, c)
+	}
+	return ce
+}
+
+// With は、フィールドを付与しつつゲートを維持した core を返します。
+func (c levelGatedCore) With(fields []zapcore.Field) zapcore.Core {
+	return levelGatedCore{Core: c.Core.With(fields), min: c.min}
 }
 
 // Named は、新しい名前付きの Logger を返す。
