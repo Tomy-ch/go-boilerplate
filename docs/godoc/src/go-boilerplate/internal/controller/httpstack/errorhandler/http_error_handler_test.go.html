@@ -61,17 +61,17 @@
 <span id="L4" class="ln">     4  </span>	&#34;context&#34;
 <span id="L5" class="ln">     5  </span>	&#34;encoding/json&#34;
 <span id="L6" class="ln">     6  </span>	&#34;errors&#34;
-<span id="L7" class="ln">     7  </span>	&#34;fmt&#34;
-<span id="L8" class="ln">     8  </span>	&#34;net/http&#34;
-<span id="L9" class="ln">     9  </span>	&#34;net/http/httptest&#34;
-<span id="L10" class="ln">    10  </span>	&#34;testing&#34;
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/apperror&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/controller/error/response&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/controller/error/response/gen&#34;
-<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/controller/handler/testkit/testspan&#34;
-<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L7" class="ln">     7  </span>	&#34;net/http&#34;
+<span id="L8" class="ln">     8  </span>	&#34;net/http/httptest&#34;
+<span id="L9" class="ln">     9  </span>	&#34;testing&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/controller/error/response&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/controller/error/response/gen&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/controller/handler/testkit/testspan&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L18" class="ln">    18  </span>
 <span id="L19" class="ln">    19  </span>	&#34;github.com/getkin/kin-openapi/openapi3filter&#34;
 <span id="L20" class="ln">    20  </span>	&#34;github.com/labstack/echo/v4&#34;
@@ -273,7 +273,7 @@
 <span id="L216" class="ln">   216  </span>
 <span id="L217" class="ln">   217  </span>	expectedDetails := &#34;expected details&#34;
 <span id="L218" class="ln">   218  </span>	expectedRequestID := &#34;expected request ID&#34;
-<span id="L219" class="ln">   219  </span>	expectedInternal := fmt.Errorf(&#34;expected internal error: %w&#34;, apperror.ErrValidation)
+<span id="L219" class="ln">   219  </span>	expectedInternal := xerrors.Wrap(apperror.ErrValidation, &#34;expected internal error&#34;)
 <span id="L220" class="ln">   220  </span>
 <span id="L221" class="ln">   221  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L222" class="ln">   222  </span>		t.Parallel()

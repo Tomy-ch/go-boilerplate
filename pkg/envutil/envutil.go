@@ -4,6 +4,8 @@ package envutil
 import (
 	"fmt"
 	"os"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 // Override は、環境変数を一時的に上書きし、元の状態へ戻す復元関数を返します。
@@ -21,7 +23,7 @@ import (
 func Override(key, value string) (func(), error) {
 	prev, existed := os.LookupEnv(key)
 	if err := os.Setenv(key, value); err != nil {
-		return func() {}, fmt.Errorf("failed to set env %q: %w", key, err)
+		return func() {}, xerrors.Wrap(err, fmt.Sprintf("failed to set env %q", key))
 	}
 	restore := func() {
 		if existed {

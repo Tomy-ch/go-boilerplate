@@ -5,11 +5,11 @@ package driver
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -56,7 +56,7 @@ func newDB(
 ) (DatabaseDriver, error) {
 	poolCfg, err := pgxpool.ParseConfig(DSNWithTimeZoneString(dbCfg, osCfg))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse DB config: %w", err)
+		return nil, xerrors.Wrap(err, "failed to parse DB config")
 	}
 
 	// 接続プール設定
@@ -77,12 +77,12 @@ func newDB(
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create DB connection pool: %w", err)
+		return nil, xerrors.Wrap(err, "failed to create DB connection pool")
 	}
 
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("failed to ping DB: %w", err)
+		return nil, xerrors.Wrap(err, "failed to ping DB")
 	}
 
 	return &dbDriver{pool: pool}, nil

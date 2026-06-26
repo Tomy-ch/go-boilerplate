@@ -218,15 +218,34 @@ Usecase should **avoid direct dependency on Infrastructure**.
 
 ## Comment Rules
 
-- Comments describe **behavior — the contract**: what a declaration does, and the meaning of its inputs / outputs. They must NOT narrate **internal processing**: the step-by-step "how", the implementation means, or the design rationale. If the behavior is stated, the implementation can be read from the code.
-- OK (behavior): `// ReadFile は name のファイル内容全体を読み込んで返す`
-- NG (internal processing / rationale):
-  - `// ReadFile は os.ReadFile を呼び出して…`（implementation means）
-  - `// 〜の登録は di 層が担う` / `// テスト容易性のため…`（design rationale）
-  - restating the implementation steps; tautologies (`// User は User です`)
-- **Exception**: a *load-bearing* constraint warning that the code itself cannot convey (e.g. a magic `runtime.Caller` skip depth, or "do not extract this helper — it shifts the skip count") may remain even though it is not strictly "behavior". It prevents a real bug.
-- Enforcement split: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of comments on exported declarations. This **behavior-only content** rule is semantic and cannot be linted — it is enforced by review (`local-review`'s `comment-style` lens).
-- **Language scope**: this content rule is **language-agnostic** — it applies to Go and non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). The Go examples above are illustrative, not a scope limit. Non-Go files are **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-style` review is the *only* check. Hold non-Go comments to the same standard — design rationale / 経緯 narration and redundant restatements are NG even in a build script or workflow file, with the same load-bearing-constraint exception.
+- Comments describe **What** and **Why**, never **How**:
+  - **What — the contract**: what a declaration does and the meaning of its inputs / outputs / errors. This is what callers rely on.
+  - **Why — non-obvious rationale**: the reason behind a decision that the code itself cannot convey (a constraint, an intent, a non-obvious trade-off). Encouraged when genuinely non-obvious.
+  - **How is left to the code**: do NOT narrate the step-by-step "how" or the implementation means. If What is stated, the implementation reads from the code.
+- A **What must be high quality**, not merely present (`revive` checks only presence / format):
+  - **Correct** — it matches the actual behavior. A What that lies about or has drifted from the code is worse than no comment — the highest-priority finding.
+  - **Sufficient** — it covers the non-obvious contract: error semantics, nil / zero-value behavior, units, boundaries, side effects. Do not omit what a caller cannot infer.
+  - **Substantive** — it adds information beyond the identifier; a pure restatement of the name is low-value. (For a genuinely trivial exported declaration a concise minimal What is acceptable — `revive` mandates the doc comment — so flag only when non-obvious information could and should have been stated.)
+- A **Why must be the good kind**:
+  - OK (non-obvious rationale / load-bearing constraint): `// upstream がバースト時にレート制限するため 3 回までリトライする`; a magic `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count").
+  - NG (development 経緯 / meta): migration history, incident backstory, "なぜ移行したか", `// テスト容易性のため`, `// 〜の登録は di 層が担う`, and other meta-organizational notes — these rot and belong in the PR / commit log, not the code.
+- OK (What): `// ReadFile は name のファイル内容全体を読み込んで返す`
+- NG (How / restatement / tautology):
+  - `// ReadFile は os.ReadFile を呼び出して…`（implementation means / How）
+  - restating the implementation steps; internal-representation notes (`// 内部表現は [16]byte`); tautologies (`// User は User です`)
+- Enforcement split: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of comments on exported declarations. This **content** rule (What quality + good Why + no How) is semantic and cannot be linted — it is enforced by review: `local-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments (What correct / sufficient / substantive; Why non-obvious) and **flags** bad ones (How / 経緯 / restatement / tautology), then auto-fixes the confirmed findings.
+- **Language scope**: this content rule is **language-agnostic** — it applies to Go and non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). The Go examples above are illustrative, not a scope limit. Non-Go files are **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same standard — How narration, development 経緯, and redundant restatements are NG even in a build script or workflow file; the good Why (non-obvious rationale) and the load-bearing-constraint note stay.
+
+## Documentation Rules
+
+Applies to standalone **documentation prose** — `README*` / `docs/**` / guides — as opposed to source-code comments (see *Comment Rules*). It is a **content** standard, enforced by review (the `doc-reviewer` agent), not by a linter. The transferable principles from *Comment Rules* (accuracy / substance / no rot) apply; the difference is that docs **welcome** What, Why, and How.
+
+- **Accurate** — the prose must match reality: the code, files, commands, flags, and APIs it describes. A doc that has **drifted** from the code (a removed symbol, a renamed file, a changed flag) is the **highest-priority** finding — a confidently wrong doc misleads more than a missing one. Verify claims against the actual code / files, do not trust the prose.
+- **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
+- **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
+- **No redundant restatement** — do not duplicate, verbatim, what an adjacent canonical doc or the code already states; **link** instead.
+- **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/decisions.md` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
+- Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
 
 ## Testing & Definition of Done
 

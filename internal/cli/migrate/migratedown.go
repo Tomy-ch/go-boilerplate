@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/safecast"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/golang-migrate/migrate/v4"
 )
@@ -14,7 +15,7 @@ import (
 func MigrateDownRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
 	if steps < 0 {
 		// 負値を許すと符号反転で Up 方向へ進んでしまうため、Down コマンドでは弾きます。
-		err := fmt.Errorf("steps must be zero or positive, got %d", steps)
+		err := xerrors.New(fmt.Sprintf("steps must be zero or positive, got %d", steps))
 		logger.Named("migrateDownRun").Error("invalid steps", logging.Error(logging.ErrorKey, err))
 		return err
 	}
