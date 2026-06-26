@@ -181,6 +181,30 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 
 			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
 		})
+
+		t.Run("Extend が失敗してもハートビートは継続し処理は完了する", func(t *testing.T) {
+			t.Parallel()
+
+			// H2: Extend 失敗は握り潰さず log+metric で可視化しつつ、ハートビート goroutine は
+			// 生き続け、handler 完了で Ack される（lease 延長失敗は致命ではない）。
+			f := fake.New()
+			f.Enqueue(bw.Message{ID: "a"})
+			f.SetExtendErr(xerrors.New("extend boom"))
+			release := make(chan struct{})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+				<-release
+				return nil
+			})}
+			set := baseSettings()
+			set.ExtendInterval = 5 * time.Millisecond
+
+			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
+			close(release)
+			require.Eventually(t, func() bool { return len(f.AckedIDs()) >= 1 }, eventually, tick)
+		})
 	})
 }
 

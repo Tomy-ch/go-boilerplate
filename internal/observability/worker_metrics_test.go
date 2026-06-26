@@ -35,6 +35,7 @@ func Test_NewWorkerMetrics_D2(t *testing.T) {
 			wm.Retried(ctx)
 			wm.DLQ(ctx)
 			wm.PollError(ctx)
+			wm.ExtendError(ctx)
 			wm.RecordLatencyMs(ctx, 1)
 			wm.InFlightAdd(ctx, 1)
 
@@ -50,7 +51,8 @@ func Test_NewWorkerMetrics_D2(t *testing.T) {
 
 			for _, want := range []string{
 				"worker.received", "worker.processed", "worker.failed", "worker.retried",
-				"worker.dlq", "worker.poll_errors", "worker.processing_latency_ms", "worker.in_flight",
+				"worker.dlq", "worker.poll_errors", "worker.extend_errors",
+				"worker.processing_latency_ms", "worker.in_flight",
 			} {
 				assert.Contains(t, names, want)
 			}
