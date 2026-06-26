@@ -15,28 +15,6 @@ internal/di/server/
 └── hook/           # サーバーライフサイクルフック（HTTP 起動/停止、DB クローズ）
 ```
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`Module()`|`server.NewAppServer` で `*echo.Echo` を提供|
-|`HookModule()`|サーバーライフサイクルフックを登録（HTTP 起動/停止）|
-|`MiddlewareModule()`|HTTP スタック全体のミドルウェア・Configurator を集約|
-
-### MiddlewareModule の構成
-
-`MiddlewareModule()` は以下のサブモジュールを集約します。
-
-|カテゴリ|モジュール|
-|---|---|
-|inbound|`IPExtractorModule`, `URIModule`, `OpenAPIModule`|
-|outbound|`ErrorHandlerModule`, `ForceJSONModule`, `RecoveryModule`|
-|security|`Module`, `CORSModule`, `CookieModule`|
-|instrumentation|`RequestIDModule`, `LoggingModule`, `ObservabilityModule`|
-|nonprod|`DebugModeModule`|
-
-加えて、`extension.ApplyExtends` が提供され、収集されたミドルウェアと Configurator を Echo インスタンスに一括適用します。
-
 ## アプリケーション起動順序
 
 ```mermaid

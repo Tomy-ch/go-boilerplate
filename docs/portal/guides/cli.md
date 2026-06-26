@@ -20,6 +20,8 @@ live in `cmd/` (package `main`). This split keeps the core unit-testable and the
 |`fix-collation`|`fixcollation/`|`cmd/fix_collation.go`|Fix PostgreSQL collation version mismatch|
 |`dump-schema`|`dumpschema/`|`cmd/dump_schema.go`|Dump and format DB schema|
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|Merge DML directory SQL files by type|
+|`worker`|`worker/`|`cmd/worker.go`|Run a registered worker (`worker <worker-name> [args...]`)|
+|`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|Run the outbox relay; `replay` subcommand returns dead rows to pending|
 
 ## Structure
 
@@ -37,7 +39,9 @@ internal/cli/            # pure testable core (covered by unit tests, 90%+)
 ├── job/                 # RunJobWith
 ├── fixcollation/        # RunFix
 ├── dumpschema/          # RunDump / NewGenerator
-└── mergedml/            # RunMerge / NewGenerator
+├── mergedml/            # RunMerge / NewGenerator
+├── worker/              # RunWorkerWith / NewHealthServer
+└── outbox/              # RunRelay / RunReplayWith
 ```
 
 `registerCommands` in `cmd/commands.go` registers all subcommands to the Cobra root command.

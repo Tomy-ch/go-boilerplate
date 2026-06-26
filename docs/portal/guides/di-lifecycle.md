@@ -48,34 +48,6 @@ Placing these in `server/` or `controller/` would be a responsibility violation.
 
 By looking at `lifecycle.Module()`, you can immediately see where Start/Stop mechanisms are provided and where the boundary between fx and the application lies.
 
-## Public API
-
-### Registrar Interface
-
-```go
-type Registrar interface {
-    RegisterStart(start func(ctx context.Context) error)
-    RegisterStop(stop func(ctx context.Context) error)
-}
-```
-
-|Method|Description|
-|---|---|
-|`RegisterStart`|Register a function to execute at application start|
-|`RegisterStop`|Register a function to execute at application stop|
-
-### Constructor
-
-|Function|Description|
-|---|---|
-|`NewLifecycleRegistrar(lc fx.Lifecycle)`|Create a `Registrar` wrapping `fx.Lifecycle`|
-
-### DI Module
-
-|Function|Description|
-|---|---|
-|`Module()`|Return an `fx.Module` that registers `Registrar` in the DI container|
-
 ## File Structure
 
 |File|Role|

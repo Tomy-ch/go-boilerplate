@@ -29,16 +29,6 @@ flowchart TB
 3. **Auth** extracts the token, authenticates via boundary `Authenticator`, and stores `Authn` in Echo context
 4. Handler receives a validated, authenticated request
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`Middleware(spec, skipper, authFunc)`|Return Echo middleware combining validation + authentication|
-
-### Key Implementation Detail
-
-Before delegating to the oapi-codegen validator, the middleware injects the Echo context into `request.Context()` via `ctxhelper.SetEchoContext`. This allows the authentication function (which receives a plain `context.Context`) to access the Echo context and store `Authn`.
-
 ## Subpackages
 
 |Package|Description|Details|
@@ -62,4 +52,5 @@ Before delegating to the oapi-codegen validator, the middleware injects the Echo
 - OpenAPI validation covers path parameters, query parameters, request body, and content-type
 - Authentication is only triggered for endpoints with `security` defined in the OpenAPI spec
 - The `Skipper` ensures ops endpoints are never validated or authenticated
+- Before delegating to the oapi-codegen validator, the middleware injects the Echo context into `request.Context()` via `ctxhelper.SetEchoContext` so the authentication function (which receives a plain `context.Context`) can access it and store `Authn`
 - All errors from this layer are caught by `errorhandler` and converted to appropriate HTTP responses

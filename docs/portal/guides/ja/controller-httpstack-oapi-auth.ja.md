@@ -4,12 +4,6 @@
 
 Cookie またはヘッダーからトークンを抽出し、boundary の `Authenticator` で検証し、結果を Echo コンテキストに格納する OpenAPI 認証関数です。
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`NewAuthenticator(authCfg, authenticator)`|OpenAPI セキュリティバリデーション用の `openapi3filter.AuthenticationFunc` を返す|
-
 ## トークン抽出フロー
 
 ```mermaid
