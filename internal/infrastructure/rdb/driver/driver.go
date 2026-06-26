@@ -65,7 +65,7 @@ func newDB(
 	poolCfg.MaxConnLifetime = dbConnCfg.MaxLifetime()
 	poolCfg.MaxConnIdleTime = dbConnCfg.MaxIdleTime()
 
-	// SQL 層の backstop（M1）。ctx を無視する runaway query / 長時間ロック待ちを Postgres 側で打ち切る。
+	// SQL 層の backstop。ctx を無視する runaway query / 長時間ロック待ちを Postgres 側で打ち切る。
 	applyDBTimeouts(poolCfg, dbCfg.StatementTimeout(), dbCfg.LockTimeout())
 
 	if tracer != nil {
@@ -88,7 +88,7 @@ func newDB(
 	return &dbDriver{pool: pool}, nil
 }
 
-// applyDBTimeouts は、statement_timeout / lock_timeout を接続 RuntimeParams（ミリ秒）として設定します（M1）。
+// applyDBTimeouts は、statement_timeout / lock_timeout を接続 RuntimeParams（ミリ秒）として設定します。
 // 0 以下は設定せず Postgres 既定（無制限）のままにします。全コネクションに適用されます。
 func applyDBTimeouts(poolCfg *pgxpool.Config, statementTimeout, lockTimeout time.Duration) {
 	if statementTimeout > 0 {

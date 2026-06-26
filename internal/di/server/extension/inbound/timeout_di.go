@@ -9,8 +9,8 @@ import (
 )
 
 // timeoutPrePriority は、timeout ミドルウェアの Pre 適用順序です。
-// uri=1 の外側（uri より後の小さくない値）に置き、全 Use / openapi / handler / DB を
-// 単一の deadline budget で覆います。
+// priority が小さいほど先に実行されるため、uri(=1) の直後(=2)に位置し、
+// 全 Use / openapi / handler / DB を単一の deadline budget で覆います。
 const timeoutPrePriority = 2
 
 // TimeoutModule は、リクエスト deadline budget のミドルウェアを提供する fx モジュールを返します。

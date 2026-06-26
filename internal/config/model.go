@@ -276,10 +276,10 @@ func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
 
-// StatementTimeout は、SQL 文の実行時間上限を返します（0 以下で無効）。ctx を無視する runaway query の backstop（M1）。
+// StatementTimeout は、SQL 文の実行時間上限を返します（0 以下で無効）。ctx を無視する runaway query の backstop。
 func (d *DatabaseConfig) StatementTimeout() time.Duration { return d.statementTimeout }
 
-// LockTimeout は、ロック獲得待ちの上限を返します（0 以下で無効）。長時間ロック待ちの backstop（M1）。
+// LockTimeout は、ロック獲得待ちの上限を返します（0 以下で無効）。長時間ロック待ちの backstop。
 func (d *DatabaseConfig) LockTimeout() time.Duration { return d.lockTimeout }
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。
