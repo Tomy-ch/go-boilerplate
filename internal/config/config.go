@@ -117,6 +117,8 @@ func New() (*Config, error) {
 			circuitHalfOpenProbe:      cfg.Worker.CircuitHalfOpenProbe,
 			healthListenAddr:          cfg.Worker.HealthListenAddr,
 			progressStaleAfter:        cfg.Worker.ProgressStaleAfter,
+			nackBackoffInitial:        cfg.Worker.NackBackoffInitial,
+			nackBackoffMax:            cfg.Worker.NackBackoffMax,
 		},
 		outbox: OutboxConfig{
 			endpoint:     cfg.Outbox.Endpoint,

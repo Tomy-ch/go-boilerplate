@@ -118,6 +118,8 @@ var (
 	expectedWorkerCircuitHalfOpenProbe      = 1
 	expectedWorkerHealthListenAddr          = ":8081"
 	expectedWorkerProgressStaleAfter        = 60 * time.Second
+	expectedWorkerNackBackoffInitial        = 1 * time.Second
+	expectedWorkerNackBackoffMax            = 30 * time.Second
 
 	// outbox
 	expectedOutboxEndpoint     = ""
@@ -214,6 +216,8 @@ func MockConfigForTest(tb testing.TB) *Config {
 			circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
 			healthListenAddr:          expectedWorkerHealthListenAddr,
 			progressStaleAfter:        expectedWorkerProgressStaleAfter,
+			nackBackoffInitial:        expectedWorkerNackBackoffInitial,
+			nackBackoffMax:            expectedWorkerNackBackoffMax,
 		},
 		outbox: OutboxConfig{
 			endpoint:     expectedOutboxEndpoint,

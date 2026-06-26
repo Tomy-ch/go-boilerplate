@@ -127,6 +127,8 @@ type WorkerConfig struct {
 	circuitHalfOpenProbe      int
 	healthListenAddr          string
 	progressStaleAfter        time.Duration
+	nackBackoffInitial        time.Duration
+	nackBackoffMax            time.Duration
 }
 
 // OutboxConfig は、transactional outbox relay の設定を保持します。
@@ -393,6 +395,12 @@ func (w *WorkerConfig) HealthListenAddr() string { return w.healthListenAddr }
 
 // ProgressStaleAfter は、readiness 判定で「進捗なし」とみなすまでの時間を返します。
 func (w *WorkerConfig) ProgressStaleAfter() time.Duration { return w.progressStaleAfter }
+
+// NackBackoffInitial は、retryable 失敗時の per-message 再配送 backoff の初回待機を返します（M3）。
+func (w *WorkerConfig) NackBackoffInitial() time.Duration { return w.nackBackoffInitial }
+
+// NackBackoffMax は、per-message 再配送 backoff の上限を返します（M3）。
+func (w *WorkerConfig) NackBackoffMax() time.Duration { return w.nackBackoffMax }
 
 // NewOutboxConfig は、outbox relay の設定を返します。
 func NewOutboxConfig(cfg *Config) *OutboxConfig { return &cfg.outbox }

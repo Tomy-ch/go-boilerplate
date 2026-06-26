@@ -37,6 +37,8 @@ func ProvideEngine(in EngineIn) (*workerengine.Engine, error) {
 		CircuitOpenBackoffMax:     c.CircuitOpenBackoffMax(),
 		CircuitHalfOpenProbe:      c.CircuitHalfOpenProbe(),
 		ProgressStaleAfter:        c.ProgressStaleAfter(),
+		NackBackoffInitial:        c.NackBackoffInitial(),
+		NackBackoffMax:            c.NackBackoffMax(),
 	}
 	return workerengine.New(in.Workers, set, in.TF, in.Metrics, in.Logger)
 }
