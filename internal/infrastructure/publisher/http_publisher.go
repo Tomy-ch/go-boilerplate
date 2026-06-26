@@ -27,10 +27,12 @@ type httpPublisher struct {
 // relay の poll ループ自体が at-least-once の retry 本体であるため、transport 層 retry は
 // 二重になる。これを避けるため MaxAttempts=1 で transport retry を無効化する（D10）。
 // traceparent は emit 時に capture した値を headers で明示伝搬するため、ここでの自動 inject は抑止する。
+// 送信先はクラスター外部の受信エンドポイントを想定するため、private/loopback 宛てを拒否する（SSRF 抑止）。
 func NewDownstreamProfile() httpclient.DownstreamProfile {
 	p := httpclient.DefaultProfile()
 	p.MaxAttempts = 1
 	p.PropagateTrace = false
+	p.AllowPrivateNetwork = false
 	return httpclient.DownstreamProfile{Name: downstream, Profile: p}
 }
 

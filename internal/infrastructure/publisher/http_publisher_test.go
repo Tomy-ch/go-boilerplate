@@ -87,5 +87,7 @@ func TestNewDownstreamProfile(t *testing.T) {
 	assert.Equal(t, 1, p.Profile.MaxAttempts)
 	// traceparent は headers で明示伝搬するため自動 inject は抑止する。
 	assert.False(t, p.Profile.PropagateTrace)
+	// 送信先は外部エンドポイントのため private/loopback 宛ては拒否する。
+	assert.False(t, p.Profile.AllowPrivateNetwork)
 	assert.Equal(t, httpclient.Downstream("outbox"), p.Name)
 }
