@@ -1,0 +1,846 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_outbox
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/outbox/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_outbox is a generated GoMock package.
+</p><p>Package mock_outbox is a generated GoMock package.
+</p><p>Package mock_outbox is a generated GoMock package.
+</p><p>Package mock_outbox is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockEmitUsecase">type MockEmitUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockEmitUsecase">func NewMockEmitUsecase(ctrl *gomock.Controller) *MockEmitUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockEmitUsecase.EXPECT">func (m *MockEmitUsecase) EXPECT() *MockEmitUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockEmitUsecase.Emit">func (m *MockEmitUsecase) Emit(ctx context.Context, in outbox.EmitInput) (uuid.UUID, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockEmitUsecaseMockRecorder">type MockEmitUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockEmitUsecaseMockRecorder.Emit">func (mr *MockEmitUsecaseMockRecorder) Emit(ctx, in any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockGCUsecase">type MockGCUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockGCUsecase">func NewMockGCUsecase(ctrl *gomock.Controller) *MockGCUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockGCUsecase.EXPECT">func (m *MockGCUsecase) EXPECT() *MockGCUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockGCUsecase.SweepPublished">func (m *MockGCUsecase) SweepPublished(ctx context.Context, batchSize int32) (int64, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockGCUsecaseMockRecorder">type MockGCUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockGCUsecaseMockRecorder.SweepPublished">func (mr *MockGCUsecaseMockRecorder) SweepPublished(ctx, batchSize any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockMetrics">type MockMetrics</a></dd>
+				
+					
+					<dd>    <a href="#NewMockMetrics">func NewMockMetrics(ctrl *gomock.Controller) *MockMetrics</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockMetrics.EXPECT">func (m *MockMetrics) EXPECT() *MockMetricsMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockMetrics.IncDead">func (m *MockMetrics) IncDead(ctx context.Context)</a></dd>
+				
+					
+					<dd>    <a href="#MockMetrics.SetLagSeconds">func (m *MockMetrics) SetLagSeconds(ctx context.Context, seconds int64)</a></dd>
+				
+			
+				
+				<dd><a href="#MockMetricsMockRecorder">type MockMetricsMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockMetricsMockRecorder.IncDead">func (mr *MockMetricsMockRecorder) IncDead(ctx any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockMetricsMockRecorder.SetLagSeconds">func (mr *MockMetricsMockRecorder) SetLagSeconds(ctx, seconds any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockRelayUsecase">type MockRelayUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockRelayUsecase">func NewMockRelayUsecase(ctrl *gomock.Controller) *MockRelayUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRelayUsecase.EXPECT">func (m *MockRelayUsecase) EXPECT() *MockRelayUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockRelayUsecase.RecordLag">func (m *MockRelayUsecase) RecordLag(ctx context.Context) error</a></dd>
+				
+					
+					<dd>    <a href="#MockRelayUsecase.RelayBatch">func (m *MockRelayUsecase) RelayBatch(ctx context.Context, batchSize int32) (outbox.RelayResult, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockRelayUsecaseMockRecorder">type MockRelayUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRelayUsecaseMockRecorder.RecordLag">func (mr *MockRelayUsecaseMockRecorder) RecordLag(ctx any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRelayUsecaseMockRecorder.RelayBatch">func (mr *MockRelayUsecaseMockRecorder) RelayBatch(ctx, batchSize any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockReplayUsecase">type MockReplayUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockReplayUsecase">func NewMockReplayUsecase(ctrl *gomock.Controller) *MockReplayUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockReplayUsecase.EXPECT">func (m *MockReplayUsecase) EXPECT() *MockReplayUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockReplayUsecase.ReplayDead">func (m *MockReplayUsecase) ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockReplayUsecaseMockRecorder">type MockReplayUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockReplayUsecaseMockRecorder.ReplayDead">func (mr *MockReplayUsecaseMockRecorder) ReplayDead(ctx, messageID any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_emit.gen.go.html">mock_emit.gen.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_gc.gen.go.html">mock_gc.gen.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html">mock_relay.gen.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_replay.gen.go.html">mock_replay.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockEmitUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_emit.gen.go.html?s=481:599#L12">MockEmitUsecase</a>
+				<a class="permalink" href="#MockEmitUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockEmitUsecase is a mock of EmitUsecase interface.
+
+			</p><pre>type MockEmitUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockEmitUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_emit.gen.go.html?s=793:858#L24">NewMockEmitUsecase</a>
+					<a class="permalink" href="#NewMockEmitUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockEmitUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockEmitUsecase">MockEmitUsecase</a></pre>
+				<p>NewMockEmitUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockEmitUsecase.EXPECT">func (*MockEmitUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_emit.gen.go.html?s=1044:1107#L31">EXPECT</a>
+					<a class="permalink" href="#MockEmitUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockEmitUsecase">MockEmitUsecase</a>) EXPECT() *<a href="#MockEmitUsecaseMockRecorder">MockEmitUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockEmitUsecase.Emit">func (*MockEmitUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_emit.gen.go.html?s=1159:1250#L36">Emit</a>
+					<a class="permalink" href="#MockEmitUsecase.Emit">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockEmitUsecase">MockEmitUsecase</a>) Emit(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, in <a href="../../../../../go-boilerplate/internal/usecase/outbox/">outbox</a>.<a href="../../../../../go-boilerplate/internal/usecase/outbox/#EmitInput">EmitInput</a>) (<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>Emit mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockEmitUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_emit.gen.go.html?s=674:740#L19">MockEmitUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockEmitUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockEmitUsecaseMockRecorder is the mock recorder for MockEmitUsecase.
+
+			</p><pre>type MockEmitUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockEmitUsecaseMockRecorder.Emit">func (*MockEmitUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_emit.gen.go.html?s=1436:1505#L45">Emit</a>
+					<a class="permalink" href="#MockEmitUsecaseMockRecorder.Emit">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockEmitUsecaseMockRecorder">MockEmitUsecaseMockRecorder</a>) Emit(ctx, in <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Emit indicates an expected call of Emit.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockGCUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_gc.gen.go.html?s=390:504#L10">MockGCUsecase</a>
+				<a class="permalink" href="#MockGCUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockGCUsecase is a mock of GCUsecase interface.
+
+			</p><pre>type MockGCUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockGCUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_gc.gen.go.html?s=688:749#L22">NewMockGCUsecase</a>
+					<a class="permalink" href="#NewMockGCUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockGCUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockGCUsecase">MockGCUsecase</a></pre>
+				<p>NewMockGCUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockGCUsecase.EXPECT">func (*MockGCUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_gc.gen.go.html?s=931:990#L29">EXPECT</a>
+					<a class="permalink" href="#MockGCUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockGCUsecase">MockGCUsecase</a>) EXPECT() *<a href="#MockGCUsecaseMockRecorder">MockGCUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockGCUsecase.SweepPublished">func (*MockGCUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_gc.gen.go.html?s=1052:1143#L34">SweepPublished</a>
+					<a class="permalink" href="#MockGCUsecase.SweepPublished">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockGCUsecase">MockGCUsecase</a>) SweepPublished(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, batchSize <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>SweepPublished mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockGCUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_gc.gen.go.html?s=575:637#L17">MockGCUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockGCUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockGCUsecaseMockRecorder is the mock recorder for MockGCUsecase.
+
+			</p><pre>type MockGCUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockGCUsecaseMockRecorder.SweepPublished">func (*MockGCUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_gc.gen.go.html?s=1362:1446#L43">SweepPublished</a>
+					<a class="permalink" href="#MockGCUsecaseMockRecorder.SweepPublished">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockGCUsecaseMockRecorder">MockGCUsecaseMockRecorder</a>) SweepPublished(ctx, batchSize <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SweepPublished indicates an expected call of SweepPublished.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockMetrics">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=444:554#L11">MockMetrics</a>
+				<a class="permalink" href="#MockMetrics">¶</a>
+				
+				
+			</h2>
+			<p>MockMetrics is a mock of Metrics interface.
+
+			</p><pre>type MockMetrics struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockMetrics">func <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=728:785#L23">NewMockMetrics</a>
+					<a class="permalink" href="#NewMockMetrics">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockMetrics(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockMetrics">MockMetrics</a></pre>
+				<p>NewMockMetrics creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockMetrics.EXPECT">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=963:1018#L30">EXPECT</a>
+					<a class="permalink" href="#MockMetrics.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) EXPECT() *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetrics.IncDead">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=1073:1123#L35">IncDead</a>
+					<a class="permalink" href="#MockMetrics.IncDead">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) IncDead(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>)</pre>
+				<p>IncDead mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetrics.SetLagSeconds">func (*MockMetrics) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=1477:1548#L47">SetLagSeconds</a>
+					<a class="permalink" href="#MockMetrics.SetLagSeconds">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockMetrics">MockMetrics</a>) SetLagSeconds(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, seconds <a href="../../../../../builtin/#int64">int64</a>)</pre>
+				<p>SetLagSeconds mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockMetricsMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=621:679#L18">MockMetricsMockRecorder</a>
+				<a class="permalink" href="#MockMetricsMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockMetricsMockRecorder is the mock recorder for MockMetrics.
+
+			</p><pre>type MockMetricsMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockMetricsMockRecorder.IncDead">func (*MockMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=1230:1294#L41">IncDead</a>
+					<a class="permalink" href="#MockMetricsMockRecorder.IncDead">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a>) IncDead(ctx <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>IncDead indicates an expected call of IncDead.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockMetricsMockRecorder.SetLagSeconds">func (*MockMetricsMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=1682:1761#L53">SetLagSeconds</a>
+					<a class="permalink" href="#MockMetricsMockRecorder.SetLagSeconds">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockMetricsMockRecorder">MockMetricsMockRecorder</a>) SetLagSeconds(ctx, seconds <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SetLagSeconds indicates an expected call of SetLagSeconds.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRelayUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=1986:2106#L59">MockRelayUsecase</a>
+				<a class="permalink" href="#MockRelayUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockRelayUsecase is a mock of RelayUsecase interface.
+
+			</p><pre>type MockRelayUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockRelayUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=2305:2372#L71">NewMockRelayUsecase</a>
+					<a class="permalink" href="#NewMockRelayUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockRelayUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockRelayUsecase">MockRelayUsecase</a></pre>
+				<p>NewMockRelayUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockRelayUsecase.EXPECT">func (*MockRelayUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=2560:2625#L78">EXPECT</a>
+					<a class="permalink" href="#MockRelayUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRelayUsecase">MockRelayUsecase</a>) EXPECT() *<a href="#MockRelayUsecaseMockRecorder">MockRelayUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRelayUsecase.RecordLag">func (*MockRelayUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=2682:2745#L83">RecordLag</a>
+					<a class="permalink" href="#MockRelayUsecase.RecordLag">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRelayUsecase">MockRelayUsecase</a>) RecordLag(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>RecordLag mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRelayUsecase.RelayBatch">func (*MockRelayUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=3165:3268#L97">RelayBatch</a>
+					<a class="permalink" href="#MockRelayUsecase.RelayBatch">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRelayUsecase">MockRelayUsecase</a>) RelayBatch(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, batchSize <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../go-boilerplate/internal/usecase/outbox/">outbox</a>.<a href="../../../../../go-boilerplate/internal/usecase/outbox/#RelayResult">RelayResult</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>RelayBatch mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRelayUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=2183:2251#L66">MockRelayUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockRelayUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockRelayUsecaseMockRecorder is the mock recorder for MockRelayUsecase.
+
+			</p><pre>type MockRelayUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockRelayUsecaseMockRecorder.RecordLag">func (*MockRelayUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=2905:2976#L91">RecordLag</a>
+					<a class="permalink" href="#MockRelayUsecaseMockRecorder.RecordLag">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRelayUsecaseMockRecorder">MockRelayUsecaseMockRecorder</a>) RecordLag(ctx <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>RecordLag indicates an expected call of RecordLag.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRelayUsecaseMockRecorder.RelayBatch">func (*MockRelayUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_relay.gen.go.html?s=3488:3571#L106">RelayBatch</a>
+					<a class="permalink" href="#MockRelayUsecaseMockRecorder.RelayBatch">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRelayUsecaseMockRecorder">MockRelayUsecaseMockRecorder</a>) RelayBatch(ctx, batchSize <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>RelayBatch indicates an expected call of RelayBatch.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockReplayUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_replay.gen.go.html?s=442:564#L11">MockReplayUsecase</a>
+				<a class="permalink" href="#MockReplayUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockReplayUsecase is a mock of ReplayUsecase interface.
+
+			</p><pre>type MockReplayUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockReplayUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_replay.gen.go.html?s=768:837#L23">NewMockReplayUsecase</a>
+					<a class="permalink" href="#NewMockReplayUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockReplayUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockReplayUsecase">MockReplayUsecase</a></pre>
+				<p>NewMockReplayUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockReplayUsecase.EXPECT">func (*MockReplayUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_replay.gen.go.html?s=1027:1094#L30">EXPECT</a>
+					<a class="permalink" href="#MockReplayUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockReplayUsecase">MockReplayUsecase</a>) EXPECT() *<a href="#MockReplayUsecaseMockRecorder">MockReplayUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockReplayUsecase.ReplayDead">func (*MockReplayUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_replay.gen.go.html?s=1152:1248#L35">ReplayDead</a>
+					<a class="permalink" href="#MockReplayUsecase.ReplayDead">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockReplayUsecase">MockReplayUsecase</a>) ReplayDead(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, messageID *<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../builtin/#int64">int64</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ReplayDead mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockReplayUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_replay.gen.go.html?s=643:713#L18">MockReplayUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockReplayUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockReplayUsecaseMockRecorder is the mock recorder for MockReplayUsecase.
+
+			</p><pre>type MockReplayUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockReplayUsecaseMockRecorder.ReplayDead">func (*MockReplayUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/outbox/mock/mock_replay.gen.go.html?s=1455:1539#L44">ReplayDead</a>
+					<a class="permalink" href="#MockReplayUsecaseMockRecorder.ReplayDead">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockReplayUsecaseMockRecorder">MockReplayUsecaseMockRecorder</a>) ReplayDead(ctx, messageID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ReplayDead indicates an expected call of ReplayDead.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -103,6 +103,12 @@ func TestMockConfigForTest(t *testing.T) {
 					healthListenAddr:          expectedWorkerHealthListenAddr,
 					progressStaleAfter:        expectedWorkerProgressStaleAfter,
 				},
+				outbox: OutboxConfig{
+					endpoint:     expectedOutboxEndpoint,
+					pollInterval: expectedOutboxPollInterval,
+					errorBackoff: expectedOutboxErrorBackoff,
+					batchSize:    expectedOutboxBatchSize,
+				},
 			}
 
 			actual := MockConfigForTest(t)

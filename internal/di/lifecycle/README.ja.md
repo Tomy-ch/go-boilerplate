@@ -28,34 +28,6 @@ flowchart TB
 - **Start / Stop の登録窓口を一元化** — 起動・停止の順序と全体像が把握しやすい
 - **テスト容易性** — テストでは Noop スタブを渡せる
 
-## 公開 API
-
-### Registrar インターフェース
-
-```go
-type Registrar interface {
-    RegisterStart(start func(ctx context.Context) error)
-    RegisterStop(stop func(ctx context.Context) error)
-}
-```
-
-|メソッド|説明|
-|---|---|
-|`RegisterStart`|アプリケーション開始時に実行される関数を登録|
-|`RegisterStop`|アプリケーション停止時に実行される関数を登録|
-
-### コンストラクタ
-
-|関数|説明|
-|---|---|
-|`NewLifecycleRegistrar(lc fx.Lifecycle)`|`fx.Lifecycle` をラップした `Registrar` を生成|
-
-### DI モジュール
-
-|関数|説明|
-|---|---|
-|`Module()`|`Registrar` を DI コンテナに登録する `fx.Module` を返す|
-
 ## ファイル構成
 
 |ファイル|役割|

@@ -9,14 +9,6 @@
 - 開発時の手早い動作確認のために、`Authenticator` インターフェース経由で認証情報を提供
 - 本番認証サービスの代替として、簡易的に認証済みの主体（`Authn`）を返す
 
-## 公開 API
-
-|関数 / 型|説明|
-|---|---|
-|`New()`|`LocalMockAuthenticator` を生成（`authbd.Authenticator` を返す）|
-|`Authenticate(ctx, cred)`|トークンから Subject を抽出し `Authn` を返す|
-|`ErrLocalMockAuthenticatorInvalidToken`|無効・空トークン時のエラー|
-
 ## トークン形式
 
 ```text

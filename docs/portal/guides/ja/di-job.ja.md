@@ -35,23 +35,6 @@ flowchart TB
     Hook --> Execute --> Shutdown
 ```
 
-## 公開 API
-
-### runner.go
-
-|型 / 関数|説明|
-|---|---|
-|`RunnerIn`|`fx.In` 構造体。`group:"jobs"` で注入された `[]job.Job` を保持|
-|`ProvideRunner(in RunnerIn)`|`RunnerIn` から `job.Runner` を生成して DI コンテナに提供|
-
-### hook/
-
-起動時ジョブ実行のライフサイクルフック。詳細は [hook/README.ja.md](hook/README.ja.md) を参照。
-
-|関数|説明|
-|---|---|
-|`RegisterJobHooks`|`lifecycle.Registrar` に Start フックを登録し、起動時にジョブを自動実行|
-
 ## DI 登録例
 
 ```go

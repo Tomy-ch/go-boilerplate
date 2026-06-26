@@ -175,167 +175,173 @@
 <span id="L118" class="ln">   118  </span>			healthListenAddr:          cfg.Worker.HealthListenAddr,
 <span id="L119" class="ln">   119  </span>			progressStaleAfter:        cfg.Worker.ProgressStaleAfter,
 <span id="L120" class="ln">   120  </span>		},
-<span id="L121" class="ln">   121  </span>	}, nil
-<span id="L122" class="ln">   122  </span>}
-<span id="L123" class="ln">   123  </span>
-<span id="L124" class="ln">   124  </span><span class="comment">// validateConfig は、Loaderの内容を検証します。</span>
-<span id="L125" class="ln">   125  </span>func validateConfig(cfg Loader) error {
-<span id="L126" class="ln">   126  </span>	if err := validateApplicationConfig(cfg.App); err != nil {
-<span id="L127" class="ln">   127  </span>		return err
-<span id="L128" class="ln">   128  </span>	}
+<span id="L121" class="ln">   121  </span>		outbox: OutboxConfig{
+<span id="L122" class="ln">   122  </span>			endpoint:     cfg.Outbox.Endpoint,
+<span id="L123" class="ln">   123  </span>			pollInterval: cfg.Outbox.PollInterval,
+<span id="L124" class="ln">   124  </span>			errorBackoff: cfg.Outbox.ErrorBackoff,
+<span id="L125" class="ln">   125  </span>			batchSize:    cfg.Outbox.BatchSize,
+<span id="L126" class="ln">   126  </span>		},
+<span id="L127" class="ln">   127  </span>	}, nil
+<span id="L128" class="ln">   128  </span>}
 <span id="L129" class="ln">   129  </span>
-<span id="L130" class="ln">   130  </span>	if err := validateServerConfig(cfg.Server); err != nil {
-<span id="L131" class="ln">   131  </span>		return err
-<span id="L132" class="ln">   132  </span>	}
-<span id="L133" class="ln">   133  </span>
-<span id="L134" class="ln">   134  </span>	if err := validateDatabaseConfig(cfg.Database); err != nil {
-<span id="L135" class="ln">   135  </span>		return err
-<span id="L136" class="ln">   136  </span>	}
-<span id="L137" class="ln">   137  </span>
-<span id="L138" class="ln">   138  </span>	if err := validateDBConnectionConfig(cfg.DBConnection); err != nil {
-<span id="L139" class="ln">   139  </span>		return err
-<span id="L140" class="ln">   140  </span>	}
-<span id="L141" class="ln">   141  </span>
-<span id="L142" class="ln">   142  </span>	if err := validateSecurityConfig(cfg.Security); err != nil {
-<span id="L143" class="ln">   143  </span>		return err
-<span id="L144" class="ln">   144  </span>	}
-<span id="L145" class="ln">   145  </span>
-<span id="L146" class="ln">   146  </span>	if err := validateAuthConfig(cfg.Auth); err != nil {
-<span id="L147" class="ln">   147  </span>		return err
-<span id="L148" class="ln">   148  </span>	}
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>	return nil
-<span id="L151" class="ln">   151  </span>}
-<span id="L152" class="ln">   152  </span>
-<span id="L153" class="ln">   153  </span><span class="comment">// validateApplicationConfig は、アプリケーション設定を検証します。</span>
-<span id="L154" class="ln">   154  </span>func validateApplicationConfig(appCfg Application) error {
-<span id="L155" class="ln">   155  </span>	if appCfg.Mode != DevelopmentMode &amp;&amp; appCfg.Mode != ProductionMode {
-<span id="L156" class="ln">   156  </span>		return ErrInvalidAppMode
-<span id="L157" class="ln">   157  </span>	}
-<span id="L158" class="ln">   158  </span>	switch appCfg.LogLevel {
-<span id="L159" class="ln">   159  </span>	case LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError:
-<span id="L160" class="ln">   160  </span>	default:
-<span id="L161" class="ln">   161  </span>		return ErrInvalidLogLevel
-<span id="L162" class="ln">   162  </span>	}
-<span id="L163" class="ln">   163  </span>	return nil
-<span id="L164" class="ln">   164  </span>}
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span><span class="comment">// validatePortRange は、ポート番号が許容範囲内かを検証します。</span>
-<span id="L167" class="ln">   167  </span>func validatePortRange(port int, outOfRangeErr error) error {
-<span id="L168" class="ln">   168  </span>	if port &lt; MinPort || MaxPort &lt; port {
-<span id="L169" class="ln">   169  </span>		return outOfRangeErr
-<span id="L170" class="ln">   170  </span>	}
-<span id="L171" class="ln">   171  </span>	return nil
-<span id="L172" class="ln">   172  </span>}
-<span id="L173" class="ln">   173  </span>
-<span id="L174" class="ln">   174  </span><span class="comment">// validateServerConfig は、サーバー設定を検証します。</span>
-<span id="L175" class="ln">   175  </span>func validateServerConfig(srvCfg Server) error {
-<span id="L176" class="ln">   176  </span>	if err := validatePortRange(srvCfg.Port, ErrInvalidPortRange); err != nil {
-<span id="L177" class="ln">   177  </span>		return err
-<span id="L178" class="ln">   178  </span>	}
+<span id="L130" class="ln">   130  </span><span class="comment">// validateConfig は、Loaderの内容を検証します。</span>
+<span id="L131" class="ln">   131  </span>func validateConfig(cfg Loader) error {
+<span id="L132" class="ln">   132  </span>	if err := validateApplicationConfig(cfg.App); err != nil {
+<span id="L133" class="ln">   133  </span>		return err
+<span id="L134" class="ln">   134  </span>	}
+<span id="L135" class="ln">   135  </span>
+<span id="L136" class="ln">   136  </span>	if err := validateServerConfig(cfg.Server); err != nil {
+<span id="L137" class="ln">   137  </span>		return err
+<span id="L138" class="ln">   138  </span>	}
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>	if err := validateDatabaseConfig(cfg.Database); err != nil {
+<span id="L141" class="ln">   141  </span>		return err
+<span id="L142" class="ln">   142  </span>	}
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>	if err := validateDBConnectionConfig(cfg.DBConnection); err != nil {
+<span id="L145" class="ln">   145  </span>		return err
+<span id="L146" class="ln">   146  </span>	}
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>	if err := validateSecurityConfig(cfg.Security); err != nil {
+<span id="L149" class="ln">   149  </span>		return err
+<span id="L150" class="ln">   150  </span>	}
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span>	if err := validateAuthConfig(cfg.Auth); err != nil {
+<span id="L153" class="ln">   153  </span>		return err
+<span id="L154" class="ln">   154  </span>	}
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>	return nil
+<span id="L157" class="ln">   157  </span>}
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span><span class="comment">// validateApplicationConfig は、アプリケーション設定を検証します。</span>
+<span id="L160" class="ln">   160  </span>func validateApplicationConfig(appCfg Application) error {
+<span id="L161" class="ln">   161  </span>	if appCfg.Mode != DevelopmentMode &amp;&amp; appCfg.Mode != ProductionMode {
+<span id="L162" class="ln">   162  </span>		return ErrInvalidAppMode
+<span id="L163" class="ln">   163  </span>	}
+<span id="L164" class="ln">   164  </span>	switch appCfg.LogLevel {
+<span id="L165" class="ln">   165  </span>	case LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError:
+<span id="L166" class="ln">   166  </span>	default:
+<span id="L167" class="ln">   167  </span>		return ErrInvalidLogLevel
+<span id="L168" class="ln">   168  </span>	}
+<span id="L169" class="ln">   169  </span>	return nil
+<span id="L170" class="ln">   170  </span>}
+<span id="L171" class="ln">   171  </span>
+<span id="L172" class="ln">   172  </span><span class="comment">// validatePortRange は、ポート番号が許容範囲内かを検証します。</span>
+<span id="L173" class="ln">   173  </span>func validatePortRange(port int, outOfRangeErr error) error {
+<span id="L174" class="ln">   174  </span>	if port &lt; MinPort || MaxPort &lt; port {
+<span id="L175" class="ln">   175  </span>		return outOfRangeErr
+<span id="L176" class="ln">   176  </span>	}
+<span id="L177" class="ln">   177  </span>	return nil
+<span id="L178" class="ln">   178  </span>}
 <span id="L179" class="ln">   179  </span>
-<span id="L180" class="ln">   180  </span>	if srvCfg.ReadHeaderTimeout &lt;= 0 {
-<span id="L181" class="ln">   181  </span>		return ErrInvalidReadHeaderTimeout
-<span id="L182" class="ln">   182  </span>	}
-<span id="L183" class="ln">   183  </span>
-<span id="L184" class="ln">   184  </span>	if srvCfg.ReadTimeout &lt;= 0 {
-<span id="L185" class="ln">   185  </span>		return ErrInvalidReadTimeout
-<span id="L186" class="ln">   186  </span>	}
-<span id="L187" class="ln">   187  </span>
-<span id="L188" class="ln">   188  </span>	if srvCfg.WriteTimeout &lt;= 0 {
-<span id="L189" class="ln">   189  </span>		return ErrInvalidWriteTimeout
-<span id="L190" class="ln">   190  </span>	}
-<span id="L191" class="ln">   191  </span>
-<span id="L192" class="ln">   192  </span>	if srvCfg.IdleTimeout &lt;= 0 {
-<span id="L193" class="ln">   193  </span>		return ErrInvalidIdleTimeout
-<span id="L194" class="ln">   194  </span>	}
-<span id="L195" class="ln">   195  </span>
-<span id="L196" class="ln">   196  </span>	if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout {
-<span id="L197" class="ln">   197  </span>		return ErrReadHeaderTimeoutExceedsReadTimeout
-<span id="L198" class="ln">   198  </span>	}
-<span id="L199" class="ln">   199  </span>	return nil
-<span id="L200" class="ln">   200  </span>}
+<span id="L180" class="ln">   180  </span><span class="comment">// validateServerConfig は、サーバー設定を検証します。</span>
+<span id="L181" class="ln">   181  </span>func validateServerConfig(srvCfg Server) error {
+<span id="L182" class="ln">   182  </span>	if err := validatePortRange(srvCfg.Port, ErrInvalidPortRange); err != nil {
+<span id="L183" class="ln">   183  </span>		return err
+<span id="L184" class="ln">   184  </span>	}
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>	if srvCfg.ReadHeaderTimeout &lt;= 0 {
+<span id="L187" class="ln">   187  </span>		return ErrInvalidReadHeaderTimeout
+<span id="L188" class="ln">   188  </span>	}
+<span id="L189" class="ln">   189  </span>
+<span id="L190" class="ln">   190  </span>	if srvCfg.ReadTimeout &lt;= 0 {
+<span id="L191" class="ln">   191  </span>		return ErrInvalidReadTimeout
+<span id="L192" class="ln">   192  </span>	}
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>	if srvCfg.WriteTimeout &lt;= 0 {
+<span id="L195" class="ln">   195  </span>		return ErrInvalidWriteTimeout
+<span id="L196" class="ln">   196  </span>	}
+<span id="L197" class="ln">   197  </span>
+<span id="L198" class="ln">   198  </span>	if srvCfg.IdleTimeout &lt;= 0 {
+<span id="L199" class="ln">   199  </span>		return ErrInvalidIdleTimeout
+<span id="L200" class="ln">   200  </span>	}
 <span id="L201" class="ln">   201  </span>
-<span id="L202" class="ln">   202  </span><span class="comment">// validateDatabaseConfig は、データベース設定を検証します。</span>
-<span id="L203" class="ln">   203  </span>func validateDatabaseConfig(dbCfg Database) error {
-<span id="L204" class="ln">   204  </span>	if err := validatePortRange(dbCfg.Port, ErrInvalidDBPortRange); err != nil {
-<span id="L205" class="ln">   205  </span>		return err
-<span id="L206" class="ln">   206  </span>	}
-<span id="L207" class="ln">   207  </span>	if dbCfg.PingTimeout &lt;= 0 {
-<span id="L208" class="ln">   208  </span>		return ErrInvalidDBPingTimeout
-<span id="L209" class="ln">   209  </span>	}
-<span id="L210" class="ln">   210  </span>	if dbCfg.SlowQueryWarnThreshold &lt; 0 {
-<span id="L211" class="ln">   211  </span>		return ErrInvalidSlowQueryWarnThreshold
+<span id="L202" class="ln">   202  </span>	if srvCfg.ReadHeaderTimeout &gt; srvCfg.ReadTimeout {
+<span id="L203" class="ln">   203  </span>		return ErrReadHeaderTimeoutExceedsReadTimeout
+<span id="L204" class="ln">   204  </span>	}
+<span id="L205" class="ln">   205  </span>	return nil
+<span id="L206" class="ln">   206  </span>}
+<span id="L207" class="ln">   207  </span>
+<span id="L208" class="ln">   208  </span><span class="comment">// validateDatabaseConfig は、データベース設定を検証します。</span>
+<span id="L209" class="ln">   209  </span>func validateDatabaseConfig(dbCfg Database) error {
+<span id="L210" class="ln">   210  </span>	if err := validatePortRange(dbCfg.Port, ErrInvalidDBPortRange); err != nil {
+<span id="L211" class="ln">   211  </span>		return err
 <span id="L212" class="ln">   212  </span>	}
-<span id="L213" class="ln">   213  </span>	return nil
-<span id="L214" class="ln">   214  </span>}
-<span id="L215" class="ln">   215  </span>
-<span id="L216" class="ln">   216  </span><span class="comment">// validateDBConnectionConfig は、データベース接続設定を検証します。</span>
-<span id="L217" class="ln">   217  </span>func validateDBConnectionConfig(dbConnCfg DBConnection) error {
-<span id="L218" class="ln">   218  </span>	if dbConnCfg.MinConns &gt; dbConnCfg.MaxConns {
-<span id="L219" class="ln">   219  </span>		return ErrInvalidExceedMaxConns
-<span id="L220" class="ln">   220  </span>	}
-<span id="L221" class="ln">   221  </span>	return nil
-<span id="L222" class="ln">   222  </span>}
-<span id="L223" class="ln">   223  </span>
-<span id="L224" class="ln">   224  </span><span class="comment">// validateSecurityConfig は、セキュリティ設定を検証します。</span>
-<span id="L225" class="ln">   225  </span><span class="comment">// CIDR は解析が検証を兼ねるため、ここでは扱わず New の parseCIDR に委ねる。</span>
-<span id="L226" class="ln">   226  </span>func validateSecurityConfig(secCfg Security) error {
-<span id="L227" class="ln">   227  </span>	if len(secCfg.AllowedOrigins) == 0 {
-<span id="L228" class="ln">   228  </span>		return ErrEmptyAllowedOrigins
-<span id="L229" class="ln">   229  </span>	}
-<span id="L230" class="ln">   230  </span>
-<span id="L231" class="ln">   231  </span>	if secCfg.BcryptCost &lt; bcrypt.MinCost || bcrypt.MaxCost &lt; secCfg.BcryptCost {
-<span id="L232" class="ln">   232  </span>		return ErrInvalidBcryptCost
-<span id="L233" class="ln">   233  </span>	}
-<span id="L234" class="ln">   234  </span>
-<span id="L235" class="ln">   235  </span>	for _, origin := range secCfg.AllowedOrigins {
-<span id="L236" class="ln">   236  </span>		parsedURL, err := url.Parse(origin)
-<span id="L237" class="ln">   237  </span>		if err != nil {
-<span id="L238" class="ln">   238  </span>			return ErrHTTPOnlyAllowedForLocalhost
-<span id="L239" class="ln">   239  </span>		}
-<span id="L240" class="ln">   240  </span>		<span class="comment">// スキームは url.Parse で小文字正規化されるが、念のため EqualFold で大小無視判定する。</span>
-<span id="L241" class="ln">   241  </span>		if strings.EqualFold(parsedURL.Scheme, &#34;http&#34;) &amp;&amp;
-<span id="L242" class="ln">   242  </span>			parsedURL.Hostname() != &#34;localhost&#34; &amp;&amp; parsedURL.Hostname() != &#34;127.0.0.1&#34; {
-<span id="L243" class="ln">   243  </span>			return ErrHTTPOnlyAllowedForLocalhost
-<span id="L244" class="ln">   244  </span>		}
-<span id="L245" class="ln">   245  </span>	}
-<span id="L246" class="ln">   246  </span>
-<span id="L247" class="ln">   247  </span>	return nil
-<span id="L248" class="ln">   248  </span>}
-<span id="L249" class="ln">   249  </span>
-<span id="L250" class="ln">   250  </span><span class="comment">// parseCIDR は、CIDR 文字列を *net.IPNet へ解析します。</span>
-<span id="L251" class="ln">   251  </span>func parseCIDR(s string) (*net.IPNet, error) {
-<span id="L252" class="ln">   252  </span>	_, cidr, err := net.ParseCIDR(s)
-<span id="L253" class="ln">   253  </span>	if err != nil {
-<span id="L254" class="ln">   254  </span>		return nil, fmt.Errorf(&#34;%w : %w&#34;, ErrFailedToParseCIDR, err)
-<span id="L255" class="ln">   255  </span>	}
-<span id="L256" class="ln">   256  </span>	return cidr, nil
-<span id="L257" class="ln">   257  </span>}
-<span id="L258" class="ln">   258  </span>
-<span id="L259" class="ln">   259  </span><span class="comment">// validateAuthConfig は、認証設定を検証します。</span>
-<span id="L260" class="ln">   260  </span>func validateAuthConfig(authCfg Auth) error {
-<span id="L261" class="ln">   261  </span>	if authCfg.CookieName == &#34;&#34; &amp;&amp; authCfg.HeaderName == &#34;&#34; {
-<span id="L262" class="ln">   262  </span>		return ErrAuthConfigMissing
-<span id="L263" class="ln">   263  </span>	}
-<span id="L264" class="ln">   264  </span>	return nil
-<span id="L265" class="ln">   265  </span>}
-<span id="L266" class="ln">   266  </span>
-<span id="L267" class="ln">   267  </span><span class="comment">// buildStatusCodeSet は、HTTPステータスコードのセットを構築します。</span>
-<span id="L268" class="ln">   268  </span>func buildStatusCodeSet(codes []int) map[int]bool {
-<span id="L269" class="ln">   269  </span>	m := make(map[int]bool, len(codes))
-<span id="L270" class="ln">   270  </span>	for _, code := range codes {
-<span id="L271" class="ln">   271  </span>		m[code] = true
-<span id="L272" class="ln">   272  </span>	}
-<span id="L273" class="ln">   273  </span>	return m
-<span id="L274" class="ln">   274  </span>}
-<span id="L275" class="ln">   275  </span>
-<span id="L276" class="ln">   276  </span><span class="comment">// isActiveExporter は、exporter 指定が送出を行う有効値かどうかを返します。</span>
-<span id="L277" class="ln">   277  </span><span class="comment">// 空文字（未設定）と &#34;none&#34; は無効（送出しない）とみなします。</span>
-<span id="L278" class="ln">   278  </span>func isActiveExporter(v string) bool {
-<span id="L279" class="ln">   279  </span>	return v != &#34;&#34; &amp;&amp; !strings.EqualFold(v, exporterNone)
+<span id="L213" class="ln">   213  </span>	if dbCfg.PingTimeout &lt;= 0 {
+<span id="L214" class="ln">   214  </span>		return ErrInvalidDBPingTimeout
+<span id="L215" class="ln">   215  </span>	}
+<span id="L216" class="ln">   216  </span>	if dbCfg.SlowQueryWarnThreshold &lt; 0 {
+<span id="L217" class="ln">   217  </span>		return ErrInvalidSlowQueryWarnThreshold
+<span id="L218" class="ln">   218  </span>	}
+<span id="L219" class="ln">   219  </span>	return nil
+<span id="L220" class="ln">   220  </span>}
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span><span class="comment">// validateDBConnectionConfig は、データベース接続設定を検証します。</span>
+<span id="L223" class="ln">   223  </span>func validateDBConnectionConfig(dbConnCfg DBConnection) error {
+<span id="L224" class="ln">   224  </span>	if dbConnCfg.MinConns &gt; dbConnCfg.MaxConns {
+<span id="L225" class="ln">   225  </span>		return ErrInvalidExceedMaxConns
+<span id="L226" class="ln">   226  </span>	}
+<span id="L227" class="ln">   227  </span>	return nil
+<span id="L228" class="ln">   228  </span>}
+<span id="L229" class="ln">   229  </span>
+<span id="L230" class="ln">   230  </span><span class="comment">// validateSecurityConfig は、セキュリティ設定を検証します。</span>
+<span id="L231" class="ln">   231  </span><span class="comment">// CIDR は解析が検証を兼ねるため、ここでは扱わず New の parseCIDR に委ねる。</span>
+<span id="L232" class="ln">   232  </span>func validateSecurityConfig(secCfg Security) error {
+<span id="L233" class="ln">   233  </span>	if len(secCfg.AllowedOrigins) == 0 {
+<span id="L234" class="ln">   234  </span>		return ErrEmptyAllowedOrigins
+<span id="L235" class="ln">   235  </span>	}
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>	if secCfg.BcryptCost &lt; bcrypt.MinCost || bcrypt.MaxCost &lt; secCfg.BcryptCost {
+<span id="L238" class="ln">   238  </span>		return ErrInvalidBcryptCost
+<span id="L239" class="ln">   239  </span>	}
+<span id="L240" class="ln">   240  </span>
+<span id="L241" class="ln">   241  </span>	for _, origin := range secCfg.AllowedOrigins {
+<span id="L242" class="ln">   242  </span>		parsedURL, err := url.Parse(origin)
+<span id="L243" class="ln">   243  </span>		if err != nil {
+<span id="L244" class="ln">   244  </span>			return ErrHTTPOnlyAllowedForLocalhost
+<span id="L245" class="ln">   245  </span>		}
+<span id="L246" class="ln">   246  </span>		<span class="comment">// スキームは url.Parse で小文字正規化されるが、念のため EqualFold で大小無視判定する。</span>
+<span id="L247" class="ln">   247  </span>		if strings.EqualFold(parsedURL.Scheme, &#34;http&#34;) &amp;&amp;
+<span id="L248" class="ln">   248  </span>			parsedURL.Hostname() != &#34;localhost&#34; &amp;&amp; parsedURL.Hostname() != &#34;127.0.0.1&#34; {
+<span id="L249" class="ln">   249  </span>			return ErrHTTPOnlyAllowedForLocalhost
+<span id="L250" class="ln">   250  </span>		}
+<span id="L251" class="ln">   251  </span>	}
+<span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span>	return nil
+<span id="L254" class="ln">   254  </span>}
+<span id="L255" class="ln">   255  </span>
+<span id="L256" class="ln">   256  </span><span class="comment">// parseCIDR は、CIDR 文字列を *net.IPNet へ解析します。</span>
+<span id="L257" class="ln">   257  </span>func parseCIDR(s string) (*net.IPNet, error) {
+<span id="L258" class="ln">   258  </span>	_, cidr, err := net.ParseCIDR(s)
+<span id="L259" class="ln">   259  </span>	if err != nil {
+<span id="L260" class="ln">   260  </span>		return nil, fmt.Errorf(&#34;%w : %w&#34;, ErrFailedToParseCIDR, err)
+<span id="L261" class="ln">   261  </span>	}
+<span id="L262" class="ln">   262  </span>	return cidr, nil
+<span id="L263" class="ln">   263  </span>}
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span><span class="comment">// validateAuthConfig は、認証設定を検証します。</span>
+<span id="L266" class="ln">   266  </span>func validateAuthConfig(authCfg Auth) error {
+<span id="L267" class="ln">   267  </span>	if authCfg.CookieName == &#34;&#34; &amp;&amp; authCfg.HeaderName == &#34;&#34; {
+<span id="L268" class="ln">   268  </span>		return ErrAuthConfigMissing
+<span id="L269" class="ln">   269  </span>	}
+<span id="L270" class="ln">   270  </span>	return nil
+<span id="L271" class="ln">   271  </span>}
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span><span class="comment">// buildStatusCodeSet は、HTTPステータスコードのセットを構築します。</span>
+<span id="L274" class="ln">   274  </span>func buildStatusCodeSet(codes []int) map[int]bool {
+<span id="L275" class="ln">   275  </span>	m := make(map[int]bool, len(codes))
+<span id="L276" class="ln">   276  </span>	for _, code := range codes {
+<span id="L277" class="ln">   277  </span>		m[code] = true
+<span id="L278" class="ln">   278  </span>	}
+<span id="L279" class="ln">   279  </span>	return m
 <span id="L280" class="ln">   280  </span>}
 <span id="L281" class="ln">   281  </span>
+<span id="L282" class="ln">   282  </span><span class="comment">// isActiveExporter は、exporter 指定が送出を行う有効値かどうかを返します。</span>
+<span id="L283" class="ln">   283  </span><span class="comment">// 空文字（未設定）と &#34;none&#34; は無効（送出しない）とみなします。</span>
+<span id="L284" class="ln">   284  </span>func isActiveExporter(v string) bool {
+<span id="L285" class="ln">   285  </span>	return v != &#34;&#34; &amp;&amp; !strings.EqualFold(v, exporterNone)
+<span id="L286" class="ln">   286  </span>}
+<span id="L287" class="ln">   287  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/config.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

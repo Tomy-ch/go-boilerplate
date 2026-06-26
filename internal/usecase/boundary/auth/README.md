@@ -4,16 +4,6 @@ English | [日本語](README.ja.md)
 
 Provides interfaces and value objects for authentication.
 
-## Public API
-
-|Type / Function|Description|
-|---|---|
-|`Authenticator`|Interface: generate `Authn` from `Credential`|
-|`Authn`|Authentication result (subject / id / provider / scopes / claims)|
-|`New(subject, provider, scopes, claims)`|Create `Authn` (empty subject → `ErrUnauthorizedSubjectMissing`)|
-|`Credential`|Value object holding access token|
-|`NewCredential(accessToken)`|Create `Credential` (empty token → `ErrArgumentTokenMissing`)|
-
 ## Authn Details
 
 - `Subject()` — returns the authenticated subject (e.g., userID)
@@ -39,4 +29,4 @@ Provides interfaces and value objects for authentication.
 
 ## Implementation
 
-`internal/infrastructure/auth/` provides environment-specific implementations.
+`internal/infrastructure/auth/` provides environment-specific implementations of the `Authenticator` interface, which generates an `Authn` from a `Credential`.

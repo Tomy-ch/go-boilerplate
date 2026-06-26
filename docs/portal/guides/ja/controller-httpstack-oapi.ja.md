@@ -29,16 +29,6 @@ flowchart TB
 3. **Auth** がトークンを抽出し、boundary の `Authenticator` 経由で認証し、`Authn` を Echo コンテキストに格納
 4. Handler はバリデーション済み・認証済みのリクエストを受け取る
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`Middleware(spec, skipper, authFunc)`|バリデーション + 認証を統合した Echo ミドルウェアを返す|
-
-### 重要な実装の詳細
-
-oapi-codegen バリデータに委譲する前に、`ctxhelper.SetEchoContext` で Echo コンテキストを `request.Context()` に注入します。これにより、認証関数（`context.Context` のみを受け取る）が Echo コンテキストにアクセスして `Authn` を格納できるようになります。
-
 ## サブパッケージ
 
 |パッケージ|説明|詳細|
@@ -62,4 +52,5 @@ oapi-codegen バリデータに委譲する前に、`ctxhelper.SetEchoContext` �
 - OpenAPI バリデーションはパスパラメータ、クエリパラメータ、リクエストボディ、Content-Type をカバー
 - 認証は OpenAPI 仕様に `security` が定義されたエンドポイントでのみトリガーされる
 - `Skipper` により ops エンドポイントはバリデーション・認証の対象外
+- oapi-codegen バリデータに委譲する前に、`ctxhelper.SetEchoContext` で Echo コンテキストを `request.Context()` に注入し、認証関数（`context.Context` のみを受け取る）が Echo コンテキストにアクセスして `Authn` を格納できるようにする
 - このレイヤーからのエラーは `errorhandler` で捕捉され、適切な HTTP レスポンスに変換される

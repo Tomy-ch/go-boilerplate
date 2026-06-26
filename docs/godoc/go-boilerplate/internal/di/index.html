@@ -118,10 +118,19 @@
 				<dd><a href="#NewJobCore">func NewJobCore() fx.Option</a></dd>
 			
 				
+				<dd><a href="#NewOutboxRelayApp">func NewOutboxRelayApp() *fx.App</a></dd>
+			
+				
+				<dd><a href="#NewOutboxRelayCore">func NewOutboxRelayCore() fx.Option</a></dd>
+			
+				
 				<dd><a href="#NewWorkerCore">func NewWorkerCore() fx.Option</a></dd>
 			
 				
 				<dd><a href="#RunJob">func RunJob() (StartFunc, StopFunc)</a></dd>
+			
+				
+				<dd><a href="#RunOutboxReplay">func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error)</a></dd>
 			
 				
 				<dd><a href="#RunWorker">func RunWorker() (StartFunc, StopFunc)</a></dd>
@@ -151,6 +160,8 @@
 				<a href="../../../src/go-boilerplate/internal/di/fx_event_logger.go.html">fx_event_logger.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/di/job.go.html">job.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html">outboxrelay.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/di/server.go.html">server.go</a>
 			
@@ -226,6 +237,35 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
+			</p><h2 id="NewOutboxRelayApp">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1178:1210#L30">NewOutboxRelayApp</a>
+				<a class="permalink" href="#NewOutboxRelayApp">¶</a>
+				
+				
+			</h2>
+			<pre>func NewOutboxRelayApp() *<a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#App">App</a></pre>
+			<p>NewOutboxRelayApp は、relay 常駐プロセス用の fx.App を生成します。
+OutboxRelayModule の OnStart フックが poll ループを起動します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewOutboxRelayCore">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=882:917#L24">NewOutboxRelayCore</a>
+				<a class="permalink" href="#NewOutboxRelayCore">¶</a>
+				
+				
+			</h2>
+			<pre>func NewOutboxRelayCore() <a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>NewOutboxRelayCore は、relay 常駐プロセス用の fx.App を構成する fx.Option を返します。
+
+			
+			
+
+		
+			
+			
 			</p><h2 id="NewWorkerCore">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=369:399#L6">NewWorkerCore</a>
 				<a class="permalink" href="#NewWorkerCore">¶</a>
 				
@@ -247,6 +287,21 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 			</h2>
 			<pre>func RunJob() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
 			<p>RunJob は、ジョブ実行用の開始関数・停止関数を生成して返します。context／タイムアウトの制御は返した関数の呼出側が担います。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RunOutboxReplay">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1531:1609#L36">RunOutboxReplay</a>
+				<a class="permalink" href="#RunOutboxReplay">¶</a>
+				
+				
+			</h2>
+			<pre>func RunOutboxReplay(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, messageID *<a href="../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../builtin/#int64">int64</a>, <a href="../../../builtin/#error">error</a>)</pre>
+			<p>RunOutboxReplay は、dead 状態の outbox 行を pending へ戻すワンショット実行を行います。
+poll ループを持たない（OutboxRelayModule を含まない）一時的な fx.App で ReplayUsecase を解決します。
 
 			
 			

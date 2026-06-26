@@ -107,39 +107,42 @@ jobs:
       - name: Restore embedded env
         run: make restore-env
 
-      - name: Detect changes
+      - name: Strip nondeterministic noise & detect changes
         id: diff
         env:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
+          # この push に .go 変更が含まれるか（意味のあるカバレッジ更新の判定に使う）。
+          go_changed=false
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            # 前回 tip が取れない（新規ブランチ等）場合は安全側で「変更あり」とみなす。
+            go_changed=true
+          elif git diff --name-only "$BEFORE_SHA..$AFTER_SHA" -- '*.go' | grep -q .; then
+            go_changed=true
+          fi
+
+          # 非決定的ノイズ（再生成のたびに揺れる値）を PR コミットから除外する。【根本対応】
+          # これらを残すと、各 auto-docs PR が異なるノイズ値を抱え、1 つが merge される度に
+          # 他の PR が「SchemaSpy 生成日時 / カバレッジ実行回数」だけで衝突してしまう。
+          # ここで戻す 3 ファイルは、従来から差分判定で除外していたノイズ集合と同一。
+          #
+          # SchemaSpy の概要 / メタ情報は生成日時のみが揺れる純ノイズ → 常に元へ戻す
+          # （スキーマ自体の変更は diagrams/ や tables/ 等の別ファイルに反映されるため失われない）。
+          git checkout -- docs/db-schema/index.html docs/db-schema/info-html.txt 2>/dev/null || true
+          # coverage はカバレッジ実行回数が揺れる純ノイズ。ただし今回 push に .go 変更があれば
+          # 意味のあるカバレッジ更新があり得るため残す。
+          if [ "$go_changed" = "false" ]; then
+            git checkout -- docs/coverage/index.html 2>/dev/null || true
+          fi
+
+          # ノイズ除去後に、コミットすべき差分が残っているかで PR 作成可否を判定する。
           git add -A
-          # ノイズ（カバレッジカウントの揺れ / SchemaSpy 生成日時）を除外して、
-          # 意味のある生成物に差分があるかをまず判定する。
-          if ! git diff --cached --quiet -- . \
-            ':(exclude)docs/coverage/index.html' \
-            ':(exclude)docs/db-schema/index.html' \
-            ':(exclude)docs/db-schema/info-html.txt'
-          then
+          if git diff --cached --quiet; then
+            echo "has_diff=false" >> $GITHUB_OUTPUT
+          else
             echo "has_diff=true" >> $GITHUB_OUTPUT
-            exit 0
           fi
-
-          # 上記が無差分でも、coverage に差があり、かつ今回の push に .go の変更が含まれていれば
-          # 意味のあるカバレッジ更新とみなして PR を作成する。
-          if ! git diff --cached --quiet -- docs/coverage/index.html; then
-            if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-              # 新規ブランチ作成等で前回 tip が取得できない場合は安全側で trigger する。
-              echo "has_diff=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-            if git diff --name-only "$BEFORE_SHA..$AFTER_SHA" -- '*.go' | grep -q .; then
-              echo "has_diff=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-          fi
-
-          echo "has_diff=false" >> $GITHUB_OUTPUT
 
       - name: Create PR
         if: steps.diff.outputs.has_diff == 'true'

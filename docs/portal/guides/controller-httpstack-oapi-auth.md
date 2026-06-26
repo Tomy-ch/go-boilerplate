@@ -4,12 +4,6 @@ English | [日本語](README.ja.md)
 
 OpenAPI authentication function that extracts tokens from cookies or headers, validates them via boundary `Authenticator`, and stores the result in Echo context.
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`NewAuthenticator(authCfg, authenticator)`|Return `openapi3filter.AuthenticationFunc` for OpenAPI security validation|
-
 ## Token Extraction Flow
 
 ```mermaid

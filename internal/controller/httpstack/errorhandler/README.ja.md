@@ -34,13 +34,6 @@ flowchart TB
     AddReqID --> Write --> Log
 ```
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`New(e, log, lf, obsCfg)`|Echo インスタンスに統一エラーハンドラを設定（`e.HTTPErrorHandler`）|
-|`NewHTTPErrorHandler(logger, lf, obsCfg)`|すべてのエラー型を正規化する `echo.HTTPErrorHandler` を返す|
-
 ## エラー正規化
 
 ハンドラは以下の優先順位でエラーを処理します。
