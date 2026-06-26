@@ -4,12 +4,16 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go-boilerplate/pkg/xerrors"
 )
+
+// testGrace は、テスト用の停止猶予（APP_SHUTDOWN_TIMEOUT 相当）です。
+const testGrace = 30 * time.Second
 
 func Test_runWorker(t *testing.T) {
 	t.Parallel()
@@ -35,7 +39,7 @@ func Test_runWorker(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel() // SIGTERM 相当
 
-			err := runWorker(ctx, "w", nil, start, stop)
+			err := runWorker(ctx, "w", nil, testGrace, start, stop)
 
 			require.NoError(t, err)
 			assert.True(t, stopped.Load())
@@ -58,7 +62,7 @@ func Test_runWorker(t *testing.T) {
 				return nil
 			}
 
-			err := runWorker(context.Background(), "w", nil, start, stop)
+			err := runWorker(context.Background(), "w", nil, testGrace, start, stop)
 
 			require.ErrorIs(t, err, wantErr)
 			assert.True(t, stopped.Load())
@@ -80,7 +84,7 @@ func Test_runWorker(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel() // SIGTERM 相当
 
-			err := runWorker(ctx, "w", nil, start, stop)
+			err := runWorker(ctx, "w", nil, testGrace, start, stop)
 
 			require.ErrorIs(t, err, wantErr)
 		})
@@ -93,21 +97,27 @@ func Test_gracefulStop(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("stop に有効期限付き context を渡して呼び出す", func(t *testing.T) {
+		t.Run("stop に grace 由来の有効期限付き context を渡して呼び出す", func(t *testing.T) {
 			t.Parallel()
 
-			var gotDeadline atomic.Bool
+			var (
+				gotDeadline atomic.Bool
+				remaining   atomic.Int64
+			)
 			stop := func(ctx context.Context) error {
-				_, ok := ctx.Deadline()
+				dl, ok := ctx.Deadline()
 				gotDeadline.Store(ok)
+				if ok {
+					remaining.Store(int64(time.Until(dl)))
+				}
 				return nil
 			}
 
-			gracefulStop(context.Background(), stop)
+			gracefulStop(context.Background(), testGrace, stop)
 
 			assert.True(t, gotDeadline.Load())
-			// stopTimeout が将来 0 にされないことの軽い保証。
-			assert.Positive(t, int64(stopTimeout))
+			// 停止猶予は grace 由来。ライブ時刻に依存しないよう grace/2 超を下限として固定する。
+			assert.Greater(t, remaining.Load(), int64(testGrace/2))
 		})
 	})
 }

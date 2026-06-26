@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/fx"
 
@@ -29,7 +30,9 @@ func NewWorkerCore() fx.Option {
 }
 
 // RunWorker は、worker 実行用の開始関数・停止関数を生成して返します。
-func RunWorker() (StartFunc, StopFunc) {
+// grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
+// DrainTimeout より先に drain を打ち切らないようにします（C2）。
+func RunWorker(grace time.Duration) (StartFunc, StopFunc) {
 	var (
 		state  workerboundary.State
 		logger logging.Logger
@@ -37,6 +40,7 @@ func RunWorker() (StartFunc, StopFunc) {
 
 	app := fx.New(
 		NewWorkerCore(),
+		fx.StopTimeout(grace),
 		fx.Populate(&state, &logger),
 		fx.WithLogger(NewFxEventLogger),
 	)

@@ -26,7 +26,7 @@ func TestNewOutboxRelayApp(t *testing.T) {
 		t.Run("有効な OUTBOX_ENDPOINT なら relay app が起動可能", func(t *testing.T) {
 			t.Setenv("OUTBOX_ENDPOINT", "http://localhost:9999")
 
-			app := NewOutboxRelayApp()
+			app := NewOutboxRelayApp(30 * time.Second)
 
 			require.NotNil(t, app)
 			// fx.New はコンストラクタ（NewEndpoint 等）を実行しエラーを app.Err() に格納する。
@@ -38,7 +38,7 @@ func TestNewOutboxRelayApp(t *testing.T) {
 		t.Run("OUTBOX_ENDPOINT が空なら起動時に弾かれる", func(t *testing.T) {
 			t.Setenv("OUTBOX_ENDPOINT", "")
 
-			app := NewOutboxRelayApp()
+			app := NewOutboxRelayApp(30 * time.Second)
 
 			require.NotNil(t, app)
 			require.Error(t, app.Err())
