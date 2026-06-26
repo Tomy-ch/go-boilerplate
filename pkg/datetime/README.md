@@ -4,19 +4,9 @@ English | [日本語](README.ja.md)
 
 Provides date/time parsing utilities supporting multiple formats with timezone awareness.
 
-## Public API
+## Role
 
-|Function|Description|
-|---|---|
-|`ParseRFC3339(s)`|Parse RFC3339 format|
-|`ParseRFC3339UTC(s)`|Parse RFC3339 format (UTC)|
-|`ParseRFC3339Nano(s)`|Parse RFC3339Nano format|
-|`ParseISO8601(s)`|Parse ISO8601 format|
-|`ParseDateTime(s)`|Parse standard datetime format|
-|`ParseDateOnly(s)`|Parse date-only format|
-|`ParseCustomLayout(layout, s)`|Parse with arbitrary layout|
-
-All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for parsing with a specified timezone.
+Centralizes the layout strings and timezone handling involved in parsing date/time input, so callers across layers do not scatter raw `time.Parse` calls with inconsistent formats or location handling. This keeps date parsing a single, reusable, framework-agnostic concern with predictable behavior.
 
 ## Wraps
 

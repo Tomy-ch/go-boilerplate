@@ -1,0 +1,51 @@
+# httpclient
+
+[English](README.md) | 日本語
+
+`internal/infrastructure/httpclient` は、外部 HTTP 通信の **resilient な substrate**（retry / circuit breaker / budget / tracing）を提供し、gateway や publisher などの意味的 IF 実装から利用されるパッケージです。
+
+## アーキテクチャ上の位置づけ
+
+```mermaid
+flowchart TB
+    subgraph "Usecase 層"
+        GW["exchangerate.Gateway interface"]
+        PUB["publisher.Publisher interface"]
+    end
+    subgraph "Infrastructure 層"
+        GWImpl["webapi/exchangerate 実装"]
+        PUBImpl["publisher 実装"]
+        Sub["httpclient.Client substrate"]
+    end
+
+    GWImpl -. implements .-> GW
+    PUBImpl -. implements .-> PUB
+    GWImpl --> Sub
+    PUBImpl --> Sub
+```
+
+このパッケージは domain / usecase の境界インターフェースを実装しません。driver 相当の substrate（`rdb/driver` の HTTP 版）であり、`webapi/` と `publisher/` から利用されます。呼び出し側は意図（`Request`）と結果（`Response`）だけを扱い、ステータス解釈・`apperror` への写像・timeout / retry / budget / breaker / o11y はすべて substrate 内部で完結します。
+
+## 設計方針
+
+- net/http を露出しない: 自前型（`Method` / `Header` / `Request` / `Response` / `Downstream`）を公開し、ステータス解釈と `apperror` への写像は substrate 内部に閉じる（`pgerror.NormalizeError` の HTTP 版）。
+- `Downstream` ごとの resilient 設定は `Registry` が解決する: 各 gateway が `DownstreamProfile` を `httpclient_profiles` fx グループへ寄与し、未登録キーは `DefaultProfile` へ fallback する。
+- retry の安全性はメソッド依存: 冪等メソッド（GET / PUT / DELETE）は常に retry 安全、非冪等メソッド（POST / PATCH）は `AllowRetry` 明示時のみ安全で、その場合 `IdempotencyKey` が必須。
+- retry 対象は 5xx / 429 / transport 失敗。4xx / 成功 / ctx cancel は対象外。backoff は指数 + full jitter で、`Retry-After` ヘッダがあればそれを優先する。
+- Downstream ごとの retry budget（トークンバケット）が retry の増幅を抑え、Downstream ごとの circuit breaker（closed / half-open / open）が継続的な downstream 障害時に fail-fast する。
+- 2 段のタイムアウトを強制: 1 試行ごとの per-attempt timeout と、呼び出し全体の overall timeout。backoff 待機が overall deadline を超える場合は retry を打ち切る。
+- セキュリティ既定: リダイレクトは追従せず（`http.ErrUseLastResponse`、SSRF 面の縮小）、応答ボディは `MaxResponseBytes` までしか読まず、エラーメッセージは query / userinfo / fragment を redact し、trace 伝搬 / private-network 接続は Downstream ごとに opt-out できる。
+- transport / status 事象は `apperror` sentinel（`ErrUnavailable` / `ErrCanceled` / `ErrInvalidArgument` 等）へ正規化する。呼び出し側は raw status ではなく sentinel で分岐する。
+
+## DI 登録
+
+`internal/di/module/httpclient.go` の `httpclient` モジュールに登録します。各 Downstream が `httpclient_profiles` グループへ `Profile` を寄与し、`Registry` がそれらをまとめて解決します。
+
+```go
+fx.Module("httpclient",
+    fx.Provide(
+        provideHTTPClientRegistry,
+        httpclient.New,
+    ),
+)
+```

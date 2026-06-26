@@ -4,10 +4,6 @@
 
 Controller 層テスト用のアサーションヘルパーです。
 
-## 公開 API
+## 役割
 
-|関数|説明|
-|---|---|
-|`AssertJSONEqual[T](t, expectedCode, expectedResponse, actualResponse)`|HTTP ステータスコードと JSON ボディを検証|
-|`AssertEchoRouterMethods(t, expectedMethods, actualRoute)`|登録されたルートの HTTP メソッドを検証|
-|`AssertEchoRouterPath(t, expectedPath, actualRoute)`|登録されたルートのパスを検証|
+JSON レスポンスや HTTP ルーティングを手作業で検証すると、アンマーシャルして比較する処理やルート探索のロジックを各テストで繰り返すことになり、冗長で微妙な誤りも生じやすくなります。本ヘルパーはそれらのアサーションを集約し、ハンドラテストが期待値を宣言的に表現し、不一致を一箇所で一貫して報告できるようにします。

@@ -9,14 +9,6 @@ This directory contains a simple `Authenticator` implementation intended for use
 - Provide authentication information (via `Authenticator` interface) for quick verification during development
 - Return a simply authenticated subject (`Authn`) as a substitute for production authentication services
 
-## Public API
-
-|Function / Type|Description|
-|---|---|
-|`New()`|Create a `LocalMockAuthenticator` (returns `authbd.Authenticator`)|
-|`Authenticate(ctx, cred)`|Extract subject from token and return `Authn`|
-|`ErrLocalMockAuthenticatorInvalidToken`|Error for invalid/empty token|
-
 ## Token Format
 
 ```text

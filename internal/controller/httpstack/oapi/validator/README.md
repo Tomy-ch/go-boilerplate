@@ -4,13 +4,6 @@ English | [日本語](README.ja.md)
 
 Loads the embedded OpenAPI specification and provides request validation middleware.
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`GetValidator()`|Load and return `*openapi3.T` from the embedded OpenAPI spec|
-|`Middleware(validator)`|Return Echo middleware that validates requests against the OpenAPI schema|
-
 ## How It Works
 
 ```mermaid

@@ -4,13 +4,9 @@ English | [日本語](README.ja.md)
 
 Provides utilities for tokenizing search keyword strings — splitting, deduplicating, and limiting token count.
 
-## Public API
+## Role
 
-|Function / Constant|Description|
-|---|---|
-|`ParseSearchTokens(keyword *string, maxTokens int)`|Tokenize keyword string (split, dedupe, limit)|
-|`DefaultMaxTokens`|Default max token count (30)|
-|`MaxKeywordLength`|Maximum keyword length in runes (1024)|
+This package centralizes the one rule for turning a free-text search keyword into a bounded, deduplicated token set. Keeping it here means every search-capable usecase produces tokens with identical semantics instead of each re-implementing splitting and limiting, and the hard cap on length and token count keeps untrusted input from inflating query cost. It is a deterministic, mechanical transformation only — no domain rules and no awareness of how the query layer later consumes the tokens.
 
 ## Processing Steps
 

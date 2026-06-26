@@ -4,13 +4,6 @@ English | [日本語](README.ja.md)
 
 Provides a `Manager` interface for transaction boundary management and a generic helper for returning values from transactions.
 
-## Public API
-
-|Type / Function|Description|
-|---|---|
-|`Manager`|`Do(ctx, fn)` — execute `fn` within a transaction (commit on success, rollback on error)|
-|`DoWithResult[T](ctx, m, fn)`|Generic helper to return a value from within a transaction|
-
 ## Design Intent
 
 - Make Usecase aware of "the existence of transactions" without exposing DB details

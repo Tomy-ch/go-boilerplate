@@ -5,31 +5,9 @@ English | [日本語](README.ja.md)
 Provides common pagination value objects. Two strategies are offered as **equally valid application policies** (pagination is a Usecase-tier concern, not a domain rule):
 
 - **Offset-based (`Page`)** — converts 1-based page/perPage into limit/offset. Simple, allows random page access, but degrades on deep pages (large `OFFSET` scans).
-- **Cursor-based / keyset (`Cursor`)** — carries an opaque cursor (the previous page's last-row sort keys) for `WHERE (sort_keys) < (:cursor)` queries. Stable and fast even on deep pages; recommended for large datasets and infinite scroll.
+- **Cursor-based / keyset (`Cursor`)** — carries an opaque cursor (the previous page's last-row sort keys) for `WHERE (sort_keys) < (:cursor)` queries. Stable and fast even on deep pages; recommended for large datasets and infinite scroll. The package owns only **transport (encode/decode), validation, and limit policy**; interpreting the keys back into typed sort columns (e.g. RFC3339 → time, UUID string → uuid) is the **query layer's** responsibility.
 
 Both share the same limit policy constants (`defaultPerPage` / `maxPerPage`).
-
-## Public API
-
-### Offset-based (`Page`)
-
-|Function / Method|Description|
-|---|---|
-|`NewPageFrom1Based(page, perPage *int)`|Create `Page` from 1-based page number and per-page count|
-|`Limit()` / `Limit32()`|Return the retrieval limit (int / int32)|
-|`Offset()` / `Offset32()`|Return the offset (int / int32)|
-
-### Cursor-based (`Cursor`)
-
-|Function / Method|Description|
-|---|---|
-|`NewCursor(after *string, first *int)`|Create `Cursor` from an opaque cursor string and item count|
-|`EncodeCursor(keys ...string)`|Encode a sort-key tuple into an opaque cursor string (empty string when no keys)|
-|`Limit()` / `Limit32()`|Return the retrieval limit (int / int32)|
-|`HasCursor()`|Whether a cursor was supplied (i.e. not the first page)|
-|`Keys()`|The decoded sort-key tuple (copy; empty for the first page)|
-
-The package owns only **transport (encode/decode), validation, and limit policy**. Interpreting the keys back into typed sort columns (e.g. RFC3339 → time, UUID string → uuid) is the **query layer's** responsibility.
 
 ## Constants
 

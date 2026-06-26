@@ -4,13 +4,6 @@
 
 埋め込まれた OpenAPI 仕様を読み込み、リクエストバリデーションミドルウェアを提供します。
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`GetValidator()`|埋め込まれた OpenAPI 仕様から `*openapi3.T` を読み込んで返す|
-|`Middleware(validator)`|OpenAPI スキーマに対してリクエストをバリデーションする Echo ミドルウェアを返す|
-
 ## 仕組み
 
 ```mermaid
