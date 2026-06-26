@@ -10,6 +10,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/error/response/gen"
+	"go-boilerplate/pkg/xerrors"
 )
 
 func TestNewHTTPErrorFromAppError(t *testing.T) {
@@ -21,7 +22,7 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 		t.Run("detailsがある場合、detailsが表示されるエラー構造体が返る", func(t *testing.T) {
 			t.Parallel()
 
-			err := fmt.Errorf("bad request error: %w", apperror.ErrInvalidArgument)
+			err := xerrors.Wrap(apperror.ErrInvalidArgument, "bad request error")
 			details := []string{"invalid input", "missing field"}
 
 			expected := &HTTPErrorResponse{
@@ -40,7 +41,7 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 		t.Run("detailsがない場合、detailsは表示されないエラー構造体が返る", func(t *testing.T) {
 			t.Parallel()
 
-			err := fmt.Errorf("internal server error: %w", apperror.ErrInternal)
+			err := xerrors.Wrap(apperror.ErrInternal, "internal server error")
 
 			expected := &HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{

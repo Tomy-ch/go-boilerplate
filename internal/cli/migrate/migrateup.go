@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/golang-migrate/migrate/v4"
 )
@@ -12,7 +13,7 @@ import (
 // MigrateUpRun は、マイグレーションをアップグレードするための実行関数です。
 func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
 	if steps < 0 {
-		err := fmt.Errorf("steps must be zero or positive, got %d", steps)
+		err := xerrors.New(fmt.Sprintf("steps must be zero or positive, got %d", steps))
 		logger.Named("migrateUpRun").Error("invalid steps", logging.Error(logging.ErrorKey, err))
 		return err
 	}

@@ -262,6 +262,9 @@ linters:
           files:
             - "**/pkg/**.go"
           list-mode: lax
+          allow:
+            # pkg 配下からの参照のみ例外的に許可します。
+            - go-boilerplate/pkg/xerrors
           deny:
             - pkg: go-boilerplate/internal/
               desc: "pkgディレクトリはinternalディレクトリから独立している必要があります。
@@ -424,6 +427,9 @@ linters:
                 ログ出力にはzap.Loggerを使用してください"
         - pattern: '^spew\.Dump$'
           msg: "禁止：spew.Dumpは禁止されています"
+        - pattern: '^fmt\.Errorf$'
+          msg: "禁止：fmt.Errorf は使用しないでください。
+                pkg/xerrors の New / Wrap / Join を使用してください。"
       analyze-types: true
     funcorder:
       constructor: true
