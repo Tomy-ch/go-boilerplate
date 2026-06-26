@@ -11,25 +11,10 @@ import (
 // RegisterRelayHooks は、relay engine の poll ループを fx ライフサイクルに結線します。
 //   - OnStart: poll ループを detached goroutine で起動する（OnStart はブロックしない）。
 //   - OnStop:  engine の context をキャンセルしてループの終了を（stopCtx の範囲で）待つ。
+//
+// 結線は共通の [lifecycle.SupervisedRunner] に委ねる（job / worker hook と同型）。
 func RegisterRelayHooks(reg lifecycle.Registrar, engine *outboxengine.Engine) {
-	// engineCtx は OnStop でのみキャンセルする（OnStart 完了後の startCtx キャンセルに巻き込まれない）。
-	engineCtx, cancel := context.WithCancel(context.Background())
-	engineDone := make(chan struct{})
-
-	reg.RegisterStart(func(_ context.Context) error {
-		go func() {
-			defer close(engineDone)
-			_ = engine.Run(engineCtx)
-		}()
-		return nil
-	})
-
-	reg.RegisterStop(func(stopCtx context.Context) error {
-		cancel()
-		select {
-		case <-engineDone: // ループ終了
-		case <-stopCtx.Done(): // 猶予切れ
-		}
-		return nil
-	})
+	lifecycle.SupervisedRunner{
+		Body: func(ctx context.Context) { _ = engine.Run(ctx) },
+	}.Register(reg)
 }

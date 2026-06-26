@@ -15,6 +15,9 @@ import (
 // RegisterWorkerHooks は、worker engine と health listener のライフサイクルフックを登録します。
 //   - OnStart: health listener を起動し、選択された worker を detached goroutine で実行する。
 //   - OnStop:  engine の context をキャンセルして drain 完了を（stopCtx の範囲で）待ち、health listener を停止する。
+//
+// 結線は共通の [lifecycle.SupervisedRunner] に委ね、health listener の起動/停止を
+// OnStartAux / OnStopAux として渡す（job / relay hook と同型）。
 func RegisterWorkerHooks(
 	reg lifecycle.Registrar,
 	engine *workerengine.Engine,
@@ -22,36 +25,19 @@ func RegisterWorkerHooks(
 	wc *config.WorkerConfig,
 	logger logging.Logger,
 ) {
-	engineCtx, cancel := context.WithCancel(context.Background())
-	engineDone := make(chan struct{})
 	startHealth, stopHealth := cliworker.NewHealthServer(wc.HealthListenAddr(), engine.Healthy, logger)
 
-	reg.RegisterStart(func(_ context.Context) error {
-		startHealth()
-
-		name, _, done := state.Snapshot()
-		if done == nil {
-			logger.Named("worker.Hooks").Info("No worker to run", logging.String(logging.WorkerNameKey, name))
-			close(engineDone)
-			return nil
-		}
-
-		// engineCtx は OnStop でのみキャンセルする（OnStart 完了後の startCtx キャンセルに巻き込まれない）。
-		go func() {
-			defer close(engineDone)
+	lifecycle.SupervisedRunner{
+		OnStartAux: startHealth,
+		Body: func(ctx context.Context) {
+			name, _, done := state.Snapshot()
+			if done == nil {
+				logger.Named("worker.Hooks").Info("No worker to run", logging.String(logging.WorkerNameKey, name))
+				return
+			}
 			defer close(done)
-			done <- engine.Run(engineCtx, name)
-		}()
-		return nil
-	})
-
-	reg.RegisterStop(func(stopCtx context.Context) error {
-		cancel()
-		select {
-		case <-engineDone: // drain 完了
-		case <-stopCtx.Done(): // 猶予切れ（未完は Ack されず再配送へ）
-		}
-		stopHealth(stopCtx)
-		return nil
-	})
+			done <- engine.Run(ctx, name) // 猶予超過時の未完は Ack されず再配送へ
+		},
+		OnStopAux: stopHealth,
+	}.Register(reg)
 }
