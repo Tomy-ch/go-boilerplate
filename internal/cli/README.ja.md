@@ -20,6 +20,8 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
 |`fix-collation`|`fixcollation/`|`cmd/fix_collation.go`|PostgreSQL の照合順序バージョン不一致を修正|
 |`dump-schema`|`dumpschema/`|`cmd/dump_schema.go`|DB スキーマをダンプして整形|
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|DML ディレクトリの SQL ファイルを種別ごとにマージ|
+|`worker`|`worker/`|`cmd/worker.go`|登録済み worker を起動（`worker <worker-name> [args...]`）|
+|`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|outbox relay を起動。`replay` サブコマンドは dead 行を pending へ戻す|
 
 ## 構造
 
@@ -37,7 +39,9 @@ internal/cli/            # 純粋なテスト可能コア（ユニットテス�
 ├── job/                 # RunJobWith
 ├── fixcollation/        # RunFix
 ├── dumpschema/          # RunDump / NewGenerator
-└── mergedml/            # RunMerge / NewGenerator
+├── mergedml/            # RunMerge / NewGenerator
+├── worker/              # RunWorkerWith / NewHealthServer
+└── outbox/              # RunRelay / RunReplayWith
 ```
 
 `cmd/commands.go` の `registerCommands` で全サブコマンドを Cobra のルートコマンドに登録します。

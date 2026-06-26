@@ -43,6 +43,8 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |`auth`|`Authenticator`|Obtain auth info (`Authn`) from token|`internal/infrastructure/auth/`|
 |`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
+|`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_query/outbox/`|
+|`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
 |`security`|`Hasher`|Password hashing and comparison|`internal/infrastructure/security/`|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 
@@ -85,6 +87,34 @@ Abstraction to prevent Domain / Usecase from depending directly on `time.Now()`.
 |`Job`|Job definition with `Name()` + `Execute(ctx, args)`|
 |`Runner`|Execute and list jobs via `Run(ctx, jobName, args)` + `Names()`|
 |`State`|Manage job execution state via `Set(name, args, done)` + `Snapshot()`|
+
+### outbox
+
+Persistence boundary for the transactional outbox table. The emit usecase and the relay engine (controller layer) both depend on it.
+
+|Type / Function|Description|
+|---|---|
+|`Store`|Outbox table persistence boundary interface|
+|`Insert(ctx, p)`|INSERT one outbox row within the business tx, returning the assigned `message_id`|
+|`ClaimPending(ctx, limit)`|Claim up to `limit` pending rows (`FOR UPDATE SKIP LOCKED`)|
+|`MarkPublished(ctx, id)`|Transition a published row to `published` (no-op unless still pending)|
+|`MarkFailed(ctx, id, lastErr)`|Increment `attempts`, record `last_error`, return the new attempt count|
+|`MarkDead(ctx, id)`|Transition a row to `dead` (no-op unless still pending)|
+|`ReplayDead(ctx, messageID)`|Return `dead` rows to `pending` (all dead rows when `messageID` is nil), returning the count|
+|`DeletePublished(ctx, cutoff, limit)`|Delete published rows older than `cutoff` up to `limit` (GC), returning the count|
+|`OldestPendingCreatedAt(ctx)`|Return the oldest pending row's `created_at` for the outbox-lag SLI (`ok=false` when none)|
+
+Input / output value objects: `EmitParams` (INSERT input) and `PendingMessage` (claimed unpublished row).
+
+### publisher
+
+Outbound publish boundary for domain events plus a substrate-agnostic message envelope. Both the relay engine (controller layer) and the publish adapter (infrastructure layer) depend on it.
+
+|Type / Function|Description|
+|---|---|
+|`Publisher`|Boundary that sends a message to its destination|
+|`Publish(ctx, m)`|Send `m` to the destination; on failure returns an error and the relay re-sends on its next poll (at-least-once)|
+|`Message`|Substrate-agnostic message envelope built from an outbox row (exposes no `net/http` types)|
 
 ### security
 
