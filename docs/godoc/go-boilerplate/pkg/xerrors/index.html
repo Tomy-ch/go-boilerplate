@@ -75,8 +75,6 @@
 			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
 			
 			
-				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
-			
 			</dl>
 		</div>
 		<!-- The package's Name is printed as title by the top-level template -->
@@ -86,7 +84,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package xerrors は、エラーハンドリングのユーティリティを提供します。
+				<p>Package xerrors は、StackTrace を含むエラーのラップ・判定・結合を提供します。
 
 				
 			</p></div>
@@ -112,6 +110,9 @@
 				<dd><a href="#Is">func Is(err, target error) bool</a></dd>
 			
 				
+				<dd><a href="#Join">func Join(errs ...error) error</a></dd>
+			
+				
 				<dd><a href="#New">func New(msg string) error</a></dd>
 			
 				
@@ -120,14 +121,6 @@
 				
 				<dd><a href="#Wrap">func Wrap(err error, msg string) error</a></dd>
 			
-			
-				
-				<dd><a href="#Errors">type Errors</a></dd>
-				
-					
-					<dd>    <a href="#NewErrors">func NewErrors() Errors</a></dd>
-				
-				
 			
 			
 			</dl>
@@ -142,10 +135,6 @@
 			
 				<a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html">errors.go</a>
 			
-				<a href="../../../src/go-boilerplate/pkg/xerrors/interface.go.html">interface.go</a>
-			
-				<a href="../../../src/go-boilerplate/pkg/xerrors/std_errors.go.html">std_errors.go</a>
-			
 			</span>
 			</p>
 		
@@ -159,7 +148,7 @@
 		
 			
 			
-			<h2 id="As">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=724:759#L16">As</a>
+			<h2 id="As">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=830:865#L17">As</a>
 				<a class="permalink" href="#As">¶</a>
 				
 				
@@ -173,7 +162,7 @@
 		
 			
 			
-			</p><h2 id="Is">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=565:596#L11">Is</a>
+			</p><h2 id="Is">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=671:702#L12">Is</a>
 				<a class="permalink" href="#Is">¶</a>
 				
 				
@@ -187,7 +176,21 @@
 		
 			
 			
-			</p><h2 id="New">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=123:149#L1">New</a>
+			</p><h2 id="Join">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=989:1019#L22">Join</a>
+				<a class="permalink" href="#Join">¶</a>
+				
+				
+			</h2>
+			<pre>func Join(errs ...<a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#error">error</a></pre>
+			<p>Join は、複数のエラーを結合して新しいエラーを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="New">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=229:255#L1">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -201,7 +204,7 @@
 		
 			
 			
-			</p><h2 id="StackTrace">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=928:961#L21">StackTrace</a>
+			</p><h2 id="StackTrace">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=1186:1219#L27">StackTrace</a>
 				<a class="permalink" href="#StackTrace">¶</a>
 				
 				
@@ -215,7 +218,7 @@
 		
 			
 			
-			</p><h2 id="Wrap">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=394:432#L6">Wrap</a>
+			</p><h2 id="Wrap">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=500:538#L7">Wrap</a>
 				<a class="permalink" href="#Wrap">¶</a>
 				
 				
@@ -229,52 +232,6 @@ msg はラップする際の追加メッセージです。メッセージは元�
 
 		
 		
-			
-			
-			</p><h2 id="Errors">type <a href="../../../src/go-boilerplate/pkg/xerrors/interface.go.html?s=339:998#L1">Errors</a>
-				<a class="permalink" href="#Errors">¶</a>
-				
-				
-			</h2>
-			<p>Errors は、cockroachdb/errors への依存をこの抽象に閉じ込め差し替え可能に保つ契約です。
-
-			</p><pre>type Errors interface {
-    <span class="comment">// New は、新しいエラーを作成します。</span>
-    New(msg <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#error">error</a>
-    <span class="comment">// Wrap は、既存のエラーをラップして新しいエラーを作成します。</span>
-    Wrap(err <a href="../../../builtin/#error">error</a>, msg <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#error">error</a>
-    <span class="comment">// Is は、エラーが特定のターゲットエラーと一致するかどうかを判定します。</span>
-    Is(err, target <a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#bool">bool</a>
-    <span class="comment">// As は、エラーが特定のターゲット型に変換可能かどうかを判定します。</span>
-    As(err <a href="../../../builtin/#error">error</a>, target <a href="../../../builtin/#any">any</a>) <a href="../../../builtin/#bool">bool</a>
-    <span class="comment">// StackTrace は、エラーの詳細表現（メッセージとスタックトレースを含む）を文字列で返します。</span>
-    StackTrace(err <a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#string">string</a>
-}</pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-				
-				<h3 id="NewErrors">func <a href="../../../src/go-boilerplate/pkg/xerrors/std_errors.go.html?s=197:220#L1">NewErrors</a>
-					<a class="permalink" href="#NewErrors">¶</a>
-					
-					
-				</h3>
-				<pre>func NewErrors() <a href="#Errors">Errors</a></pre>
-				<p>NewErrors は、Errors の標準実装を返します。
-
-				
-				
-			
-
-			
-		
 	
 
 	
@@ -283,41 +240,9 @@ msg はラップする際の追加メッセージです。メッセージは元�
 
 
 
-	
-	
-		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
-	
-	<div class="pkg-dir">
-		<table>
-			<tbody><tr>
-				<th class="pkg-name">Name</th>
-				<th class="pkg-synopsis">Synopsis</th>
-			</tr>
-
-			
-			<tr>
-				<td colspan="2"><a href="..">..</a></td>
-			</tr>
-			
-
-			
-				<tr>
-				
-					<td class="pkg-name" style="padding-left: 0px;">
-						<a href="mock/">mock</a>
-					</td>
-				
-					<td class="pkg-synopsis">
-						Package mock_xerrors is a generated GoMock package.
-					</td>
-				</tr>
-			
-		</tbody></table>
-	</div>
 
 
-
-<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
 
 </div><!-- .container -->
 </div><!-- #page -->
