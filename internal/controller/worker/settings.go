@@ -13,6 +13,13 @@ const (
 	defaultProgressStaleAfter = 60 * time.Second
 	// circuitBackoffMultiplier は、Open の cooldown を指数的に伸ばす際の倍率です。
 	circuitBackoffMultiplier = 2
+
+	// defaultNackBackoffInitial は、NackBackoffInitial 未設定時の既定値です（M3）。
+	defaultNackBackoffInitial = 1 * time.Second
+	// defaultNackBackoffMax は、NackBackoffMax 未設定時の既定値です（M3）。
+	defaultNackBackoffMax = 30 * time.Second
+	// nackBackoffMultiplier は、per-message 再配送 backoff を指数的に伸ばす際の倍率です。
+	nackBackoffMultiplier = 2
 )
 
 // Settings は、engine の挙動を制御する engine-core 設定です（broker 非依存）。
@@ -40,6 +47,11 @@ type Settings struct {
 	CircuitHalfOpenProbe int
 	// ProgressStaleAfter は、readiness 判定で「進捗なし(stuck)」とみなすまでの時間です（C2）。
 	ProgressStaleAfter time.Duration
+
+	// NackBackoffInitial は、retryable 失敗時の per-message 再配送 backoff の初回待機です（M3）。
+	NackBackoffInitial time.Duration
+	// NackBackoffMax は、per-message 再配送 backoff の上限です（M3）。
+	NackBackoffMax time.Duration
 }
 
 // normalize は、ゼロ値に安全な既定値を補います。
@@ -65,6 +77,12 @@ func (s *Settings) normalize() {
 	if s.ProgressStaleAfter <= 0 {
 		s.ProgressStaleAfter = defaultProgressStaleAfter
 	}
+	if s.NackBackoffInitial <= 0 {
+		s.NackBackoffInitial = defaultNackBackoffInitial
+	}
+	if s.NackBackoffMax <= 0 {
+		s.NackBackoffMax = defaultNackBackoffMax
+	}
 }
 
 // circuitBackoff は、Settings から Open の cooldown 算出器を構築します。
@@ -73,5 +91,14 @@ func (s *Settings) circuitBackoff() backoff.Exponential {
 		Initial:    s.CircuitOpenBackoffInitial,
 		Max:        s.CircuitOpenBackoffMax,
 		Multiplier: circuitBackoffMultiplier,
+	}
+}
+
+// nackBackoff は、Settings から per-message 再配送 backoff の算出器を構築します（M3）。
+func (s *Settings) nackBackoff() backoff.Exponential {
+	return backoff.Exponential{
+		Initial:    s.NackBackoffInitial,
+		Max:        s.NackBackoffMax,
+		Multiplier: nackBackoffMultiplier,
 	}
 }
