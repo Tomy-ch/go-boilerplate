@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
@@ -285,7 +286,7 @@ func (g *Generator) ensureUnderDir(path string) error {
 	}
 	rel = filepath.Clean(rel)
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return fmt.Errorf("path is outside of baseDir: path=%s base=%s", absPath, absBase)
+		return xerrors.New(fmt.Sprintf("path is outside of baseDir: path=%s base=%s", absPath, absBase))
 	}
 	return nil
 }
