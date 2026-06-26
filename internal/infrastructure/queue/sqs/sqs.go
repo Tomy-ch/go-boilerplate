@@ -97,7 +97,7 @@ func (c *Consumer) Ack(ctx context.Context, m worker.Message) error {
 	return normalizeError(err)
 }
 
-// Nack は、可視性を 0 にして即時再配送します（遅延は保証しない best-effort）。
+// Nack は、可視性を 0 にして即時再配送します。
 func (c *Consumer) Nack(ctx context.Context, m worker.Message) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
