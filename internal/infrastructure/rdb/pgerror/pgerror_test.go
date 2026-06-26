@@ -247,6 +247,30 @@ func TestIsLockNotAvailable(t *testing.T) {
 	})
 }
 
+func TestIsRetryableTxError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("40001(serialization_failure)はtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsRetryableTxError(&pgconn.PgError{Code: "40001"}))
+	})
+
+	t.Run("40P01(deadlock_detected)はtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsRetryableTxError(&pgconn.PgError{Code: "40P01"}))
+	})
+
+	t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsRetryableTxError(&pgconn.PgError{Code: "23505"}))
+	})
+
+	t.Run("PgError以外はfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsRetryableTxError(errors.New("plain error")))
+	})
+}
+
 func TestNormalizeExecResult(t *testing.T) {
 	t.Parallel()
 
