@@ -25,7 +25,6 @@ const (
 )
 
 // Metrics は、relay engine が記録する outbox 固有の o11y シンクです。
-// 具象計装（observability.OutboxMetrics）への直接依存を避け、呼び出しをテストで検証可能にします。
 type Metrics interface {
 	// SetLagSeconds は、最古 pending 行の経過秒数（SLI=outbox lag）を記録します。
 	SetLagSeconds(ctx context.Context, seconds int64)
@@ -125,7 +124,7 @@ func (u *relayUsecase) RelayBatch(ctx context.Context, batchSize int32) (RelayRe
 		for i := range msgs {
 			published, derr := u.deliver(ctx, msgs[i])
 			if derr != nil {
-				return res, derr
+				return RelayResult{}, derr
 			}
 			if published {
 				res.Published++
