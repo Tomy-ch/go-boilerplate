@@ -58,14 +58,14 @@
 <pre><span id="L1" class="ln">     1  </span>package core
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	&#34;fmt&#34;
-<span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/config&#34;
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/controller/httpstack/oapi/auth&#34;
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/auth/local&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L4" class="ln">     4  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L5" class="ln">     5  </span>	&#34;go-boilerplate/internal/controller/httpstack/oapi/auth&#34;
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/infrastructure/auth/local&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/logging&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
 <span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	authbd &#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L12" class="ln">    12  </span>
 <span id="L13" class="ln">    13  </span>	&#34;go.uber.org/fx&#34;
 <span id="L14" class="ln">    14  </span>)
@@ -94,7 +94,7 @@
 <span id="L37" class="ln">    37  </span>			logging.String(&#34;env&#34;, appCfg.Env()),
 <span id="L38" class="ln">    38  </span>		)
 <span id="L39" class="ln">    39  </span>
-<span id="L40" class="ln">    40  </span>		return nil, fmt.Errorf(&#34;no authenticator configured for environment: %s&#34;, appCfg.Env())
+<span id="L40" class="ln">    40  </span>		return nil, xerrors.New(&#34;no authenticator configured for environment: &#34; + appCfg.Env())
 <span id="L41" class="ln">    41  </span>	}
 <span id="L42" class="ln">    42  </span>}
 <span id="L43" class="ln">    43  </span>
