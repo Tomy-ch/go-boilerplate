@@ -64,33 +64,52 @@
 <span id="L7" class="ln">     7  </span>	&#34;go.opentelemetry.io/otel/propagation&#34;
 <span id="L8" class="ln">     8  </span>)
 <span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span><span class="comment">// mapCarrier は、map[string]string を propagation のキャリアとして扱うアダプタです。</span>
-<span id="L11" class="ln">    11  </span>type mapCarrier map[string]string
+<span id="L10" class="ln">    10  </span><span class="comment">// traceContextPropagator は、traceparent/tracestate のみを伝搬する propagator です（Baggage を含まない）。</span>
+<span id="L11" class="ln">    11  </span>var traceContextPropagator propagation.TextMapPropagator = propagation.TraceContext{}
 <span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span>func (c mapCarrier) Get(key string) string { return c[key] }
-<span id="L14" class="ln">    14  </span>func (c mapCarrier) Set(key, value string) { c[key] = value }
-<span id="L15" class="ln">    15  </span>func (c mapCarrier) Keys() []string {
-<span id="L16" class="ln">    16  </span>	keys := make([]string, 0, len(c))
-<span id="L17" class="ln">    17  </span>	for k := range c {
-<span id="L18" class="ln">    18  </span>		keys = append(keys, k)
-<span id="L19" class="ln">    19  </span>	}
-<span id="L20" class="ln">    20  </span>	return keys
-<span id="L21" class="ln">    21  </span>}
-<span id="L22" class="ln">    22  </span>
-<span id="L23" class="ln">    23  </span><span class="comment">// ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します（D1）。</span>
-<span id="L24" class="ln">    24  </span><span class="comment">// producer → consumer → handler を 1 trace に繋ぐための公開ヘルパです。</span>
-<span id="L25" class="ln">    25  </span>func ExtractFromCarrier(ctx context.Context, attrs map[string]string) context.Context {
-<span id="L26" class="ln">    26  </span>	return extractFromCarrier(ctx, attrs, otel.GetTextMapPropagator())
-<span id="L27" class="ln">    27  </span>}
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span><span class="comment">// extractFromCarrier は、prop から trace context を抽出して ctx に付与します。</span>
-<span id="L30" class="ln">    30  </span>func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propagation.TextMapPropagator) context.Context {
-<span id="L31" class="ln">    31  </span>	if len(attrs) == 0 {
-<span id="L32" class="ln">    32  </span>		return ctx
-<span id="L33" class="ln">    33  </span>	}
-<span id="L34" class="ln">    34  </span>	return prop.Extract(ctx, mapCarrier(attrs))
-<span id="L35" class="ln">    35  </span>}
-<span id="L36" class="ln">    36  </span>
+<span id="L13" class="ln">    13  </span><span class="comment">// mapCarrier は、map[string]string を propagation のキャリアとして扱うアダプタです。</span>
+<span id="L14" class="ln">    14  </span>type mapCarrier map[string]string
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>func (c mapCarrier) Get(key string) string { return c[key] }
+<span id="L17" class="ln">    17  </span>func (c mapCarrier) Set(key, value string) { c[key] = value }
+<span id="L18" class="ln">    18  </span>func (c mapCarrier) Keys() []string {
+<span id="L19" class="ln">    19  </span>	keys := make([]string, 0, len(c))
+<span id="L20" class="ln">    20  </span>	for k := range c {
+<span id="L21" class="ln">    21  </span>		keys = append(keys, k)
+<span id="L22" class="ln">    22  </span>	}
+<span id="L23" class="ln">    23  </span>	return keys
+<span id="L24" class="ln">    24  </span>}
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span><span class="comment">// ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します（D1）。</span>
+<span id="L27" class="ln">    27  </span><span class="comment">// producer → consumer → handler を 1 trace に繋ぐための公開ヘルパです。</span>
+<span id="L28" class="ln">    28  </span>func ExtractFromCarrier(ctx context.Context, attrs map[string]string) context.Context {
+<span id="L29" class="ln">    29  </span>	return extractFromCarrier(ctx, attrs, otel.GetTextMapPropagator())
+<span id="L30" class="ln">    30  </span>}
+<span id="L31" class="ln">    31  </span>
+<span id="L32" class="ln">    32  </span><span class="comment">// extractFromCarrier は、prop から trace context を抽出して ctx に付与します。</span>
+<span id="L33" class="ln">    33  </span>func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propagation.TextMapPropagator) context.Context {
+<span id="L34" class="ln">    34  </span>	if len(attrs) == 0 {
+<span id="L35" class="ln">    35  </span>		return ctx
+<span id="L36" class="ln">    36  </span>	}
+<span id="L37" class="ln">    37  </span>	return prop.Extract(ctx, mapCarrier(attrs))
+<span id="L38" class="ln">    38  </span>}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます（D1）。</span>
+<span id="L41" class="ln">    41  </span><span class="comment">// outbox emit 時に traceparent を headers へ載せ、後続の relay→受信側を起点 trace に繋ぐための公開ヘルパです。</span>
+<span id="L42" class="ln">    42  </span><span class="comment">// グローバル伝播器（Baggage を含みうる）ではなく TraceContext 限定で inject することで、インバウンド由来の</span>
+<span id="L43" class="ln">    43  </span><span class="comment">// 任意 baggage が outbox 経由で外部エンドポイントへ転送される経路を断ちます。</span>
+<span id="L44" class="ln">    44  </span>func InjectTraceContextToCarrier(ctx context.Context, attrs map[string]string) {
+<span id="L45" class="ln">    45  </span>	injectToCarrier(ctx, attrs, traceContextPropagator)
+<span id="L46" class="ln">    46  </span>}
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span><span class="comment">// injectToCarrier は、prop で ctx の trace context を attrs へ書き込みます。</span>
+<span id="L49" class="ln">    49  </span>func injectToCarrier(ctx context.Context, attrs map[string]string, prop propagation.TextMapPropagator) {
+<span id="L50" class="ln">    50  </span>	if attrs == nil {
+<span id="L51" class="ln">    51  </span>		return
+<span id="L52" class="ln">    52  </span>	}
+<span id="L53" class="ln">    53  </span>	prop.Inject(ctx, mapCarrier(attrs))
+<span id="L54" class="ln">    54  </span>}
+<span id="L55" class="ln">    55  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/observability/propagation.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

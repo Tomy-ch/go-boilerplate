@@ -7,4 +7,5 @@ products
 purchases
 purchase_details
 idempotency_keys
+outbox
 schema_migrations
