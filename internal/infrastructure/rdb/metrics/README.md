@@ -4,13 +4,9 @@ English | [日本語](README.ja.md)
 
 `internal/infrastructure/rdb/metrics` is a package that **exposes pgxpool (PostgreSQL connection pool) statistics as Prometheus metrics**.
 
-## Public API
+## Role
 
-|Function / Type|Description|
-|---|---|
-|`PoolStatsCollector`|Connection pool stats collector implementing `prometheus.Collector`|
-|`New(db DatabaseDriver)`|Create a `PoolStatsCollector`|
-|`RegisterPoolStatsCollector(c)`|Register collector with Prometheus registry (ignores duplicate registration)|
+The connection pool is the scarcest shared resource in the Infrastructure layer: when it saturates, requests pile up waiting to acquire a connection and latency degrades before any single query fails. This package exists to encapsulate that pool-observability concern — it translates the connection pool's runtime statistics snapshot into standard metrics so saturation signals (acquire waits, connection exhaustion, connection churn) become visible to operators and alerting. Isolating this conversion keeps the pool library's vendor-specific statistics API out of the rest of the system and surfaces pool health as a generic metrics-backend signal, letting capacity and timeout problems be caught before they turn into outages.
 
 ## Metrics List
 

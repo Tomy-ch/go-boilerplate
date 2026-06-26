@@ -6,6 +6,10 @@ English | [日本語](README.ja.md)
 
 It handles **response transformation / error handling / output format enforcement / panic recovery** after request processing.
 
+## Role
+
+This package isolates the **response (output) side** of the composable server pipeline — the mirror of the request-side `inbound` group. Bundling response transformation, error mapping, output-format enforcement, and panic recovery into a single DI unit lets the output behavior be prioritized and evolved independently of the rest of the server, while keeping this controller-layer plumbing from leaking into the domain or usecase layers.
+
 ## Modules
 
 |Module|Type|Description|

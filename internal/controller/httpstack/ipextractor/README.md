@@ -4,9 +4,6 @@ English | [日本語](README.ja.md)
 
 Configures client IP extraction strategy based on environment.
 
-## Public API
+## Role
 
-|Function|Description|
-|---|---|
-|`New(e, appCfg, secCfg)`|Set IP extractor on Echo instance|
-|`NewIPExtractor(appCfg, secCfg)`|Return `echo.IPExtractor` — X-Forwarded-For with CIDR trust in production, direct extraction in development|
+The real client IP is derived differently depending on whether the app runs directly exposed or behind a trusted proxy or load balancer, and getting it wrong undermines logging and any IP-based control. Centralizing the extraction strategy as an environment-driven setup gives the rest of the stack a single, correctly-derived client IP to trust.
