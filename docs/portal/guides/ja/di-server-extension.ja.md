@@ -28,19 +28,6 @@ flowchart TB
 - **Configurator**: Echo インスタンスへの設定適用（デバッグモード等）
 - Priority の重複は自動検出されエラーになる
 
-## 公開 API
-
-|型 / 関数|説明|
-|---|---|
-|`ServerExtends`|`fx.In` 構造体。3系統のグループを受け取る|
-|`ApplyExtends()`|Pre / Use / Configurator を一括適用|
-|`PreMiddleware`|Pre ミドルウェア（Name + Priority + Middleware）|
-|`PreMiddlewareOut`|Pre ミドルウェアの fx 出力用ラッパー|
-|`UseMiddleware`|Use ミドルウェア（Name + Priority + Middleware）|
-|`UseMiddlewareOut`|Use ミドルウェアの fx 出力用ラッパー|
-|`SrvCfg`|`func(*echo.Echo)` 型の設定関数|
-|`ServeCfgOut`|Configurator の fx 出力用ラッパー|
-
 ## サブディレクトリ一覧
 
 ### inbound（リクエスト受信）
