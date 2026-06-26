@@ -30,5 +30,5 @@ job <job-name> [args...] [flags]
 
 - The job name must correspond to a job registered in the DI layer (`di.RunJob()`).
 - When `--timeout` is set, the job is cancelled if it exceeds the specified duration.
-- Cleanup (`stop`) is always called after the job finishes, whether it succeeds, fails, or times out.
+- Cleanup (`stop`) is always called after the job finishes, whether it succeeds, fails, or times out. Its failure (e.g. OTel flush / DB pool close) is **joined** (`xerrors.Join`) with the job result and surfaced to the caller, so a clean job with a failed teardown still produces a non-zero exit code (H3).
 - Argument parsing and validation are the responsibility of each job implementation.

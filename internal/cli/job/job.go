@@ -4,6 +4,8 @@ package job
 import (
 	"context"
 	"time"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const stopTimeout = 30 * time.Second
@@ -39,8 +41,7 @@ func runJob(
 
 	if timeout <= 0 {
 		err := <-done
-		gracefulStop(ctx, stop)
-		return err
+		return xerrors.Join(err, gracefulStop(ctx, stop))
 	}
 
 	waitCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -48,19 +49,20 @@ func runJob(
 
 	select {
 	case err := <-done:
-		gracefulStop(ctx, stop)
-		return err
+		return xerrors.Join(err, gracefulStop(ctx, stop))
 	case <-waitCtx.Done():
 		// waitCtx は ctx の子。タイムアウト(DeadlineExceeded)・親キャンセル(Canceled)の両方で発火する。
 		// 停止は期限切れの waitCtx ではなく専用 context を作り直して猶予を与える。
-		gracefulStop(ctx, stop)
-		return waitCtx.Err()
+		return xerrors.Join(waitCtx.Err(), gracefulStop(ctx, stop))
 	}
 }
 
-// gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop）を実行します。
-func gracefulStop(ctx context.Context, stop StopFunc) {
+// gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop）を実行し、
+// その結果を返します（H3）。停止失敗（OTel flush 失敗・DB pool close 失敗等）は呼出側が
+// 本体結果と xerrors.Join し、Execute 側の os.Exit 判定で拾えるようにします。
+// xerrors.Join は nil を畳むため、停止成功時は本体結果のみが返ります。
+func gracefulStop(ctx context.Context, stop StopFunc) error {
 	stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
 	defer cancel()
-	_ = stop(stopCtx)
+	return stop(stopCtx)
 }

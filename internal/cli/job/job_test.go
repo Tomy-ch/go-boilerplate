@@ -15,6 +15,7 @@ type recordingStop struct {
 	called      bool
 	hasDeadline bool
 	deadline    time.Time
+	err         error // fn が返す停止エラー（nil なら成功）
 }
 
 // makeStart は、固定の done チャネルを返すフェイクの開始関数を生成します。
@@ -28,7 +29,7 @@ func (r *recordingStop) fn() StopFunc {
 	return func(c context.Context) error {
 		r.called = true
 		r.deadline, r.hasDeadline = c.Deadline()
-		return nil
+		return r.err
 	}
 }
 
@@ -127,6 +128,35 @@ func TestRunJob(t *testing.T) {
 
 			require.ErrorIs(t, err, context.Canceled)
 			assert.True(t, stop.called)
+		})
+
+		t.Run("本体成功でも停止が失敗すれば停止エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// H3: 停止失敗（OTel flush / DB pool close 等）が exit code へ反映されるよう
+			// 本体結果(nil)と Join して非 nil を返すこと。
+			stopErr := errors.New("stop failed")
+			done := make(chan error, 1)
+			done <- nil
+			stop := &recordingStop{err: stopErr}
+
+			err := runJob(context.Background(), "j", nil, 0, makeStart(done), stop.fn())
+
+			require.ErrorIs(t, err, stopErr)
+		})
+
+		t.Run("タイムアウト発火かつ停止失敗時は両方のエラーが取れる", func(t *testing.T) {
+			t.Parallel()
+
+			// H3: 本体側(DeadlineExceeded)と停止側(stopErr)の双方が errors.Is で取得できること。
+			stopErr := errors.New("stop failed")
+			done := make(chan error) // 送信されない
+			stop := &recordingStop{err: stopErr}
+
+			err := runJob(context.Background(), "j", nil, 20*time.Millisecond, makeStart(done), stop.fn())
+
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+			require.ErrorIs(t, err, stopErr)
 		})
 	})
 }
