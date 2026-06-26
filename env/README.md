@@ -49,6 +49,7 @@ This directory is the canonical reference for every environment variable read by
 |SERVER_READ_TIMEOUT|Request read timeout|duration|10s||
 |SERVER_WRITE_TIMEOUT|Response write timeout|duration|10s||
 |SERVER_IDLE_TIMEOUT|KeepAlive timeout|duration|60s||
+|SERVER_BODY_LIMIT_MB|Request body size limit in MB (decimal, 1MB=1,000,000 bytes); 413 on exceed|int|5|Pre middleware, applied before OpenAPI validation reads the body|
 
 ### Metrics
 

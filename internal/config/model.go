@@ -43,6 +43,7 @@ type ServerConfig struct {
 	readTimeout       time.Duration
 	writeTimeout      time.Duration
 	idleTimeout       time.Duration
+	bodyLimitMB       int
 }
 
 // MetricsConfig は、メトリクスエンドポイントの待ち受け情報と認証情報を保持します。
@@ -191,6 +192,9 @@ func (s *ServerConfig) WriteTimeout() time.Duration { return s.writeTimeout }
 
 // IdleTimeout は、サーバーのアイドルタイムアウトを返します。
 func (s *ServerConfig) IdleTimeout() time.Duration { return s.idleTimeout }
+
+// BodyLimitMB は、リクエストボディのサイズ上限を MB（10進, 1MB=1,000,000 byte）で返します（M2）。
+func (s *ServerConfig) BodyLimitMB() int { return s.bodyLimitMB }
 
 // NewMetricsConfig は、メトリクスの設定を返します。
 func NewMetricsConfig(cfg *Config) *MetricsConfig { return &cfg.metrics }

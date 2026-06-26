@@ -49,6 +49,7 @@
 |SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s||
 |SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|10s||
 |SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s||
+|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|5|Pre middleware。OpenAPI 検証がボディを読む前に適用|
 
 ### Metrics
 

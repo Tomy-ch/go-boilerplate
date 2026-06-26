@@ -35,6 +35,7 @@ func TestMockConfigForTest(t *testing.T) {
 					readTimeout:       expectedServerReadTimeout,
 					writeTimeout:      expectedServerWriteTimeout,
 					idleTimeout:       expectedServerIdleTimeout,
+					bodyLimitMB:       expectedServerBodyLimitMB,
 				},
 				metrics: MetricsConfig{
 					host:     expectedMetricsHost,
@@ -144,6 +145,7 @@ func Test_mockLoader(t *testing.T) {
 					ReadTimeout:       expectedServerReadTimeout,
 					WriteTimeout:      expectedServerWriteTimeout,
 					IdleTimeout:       expectedServerIdleTimeout,
+					BodyLimitMB:       expectedServerBodyLimitMB,
 				},
 				Metrics: Metrics{
 					Host:     expectedMetricsHost,

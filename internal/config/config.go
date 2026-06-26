@@ -51,6 +51,7 @@ func New() (*Config, error) {
 			readTimeout:       cfg.Server.ReadTimeout,
 			writeTimeout:      cfg.Server.WriteTimeout,
 			idleTimeout:       cfg.Server.IdleTimeout,
+			bodyLimitMB:       cfg.Server.BodyLimitMB,
 		},
 		metrics: MetricsConfig{
 			host:     cfg.Metrics.Host,
