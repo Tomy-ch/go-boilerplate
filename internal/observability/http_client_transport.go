@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// cgnatNet は、CGNAT 共有アドレス空間（RFC 6598, 100.64.0.0/10）です（L1）。
+// cgnatNet は、CGNAT 共有アドレス空間（RFC 6598, 100.64.0.0/10）です。
 // Go の net.IP.IsPrivate は RFC1918 / ULA(fc00::/7) のみで CGNAT を含まないため、
 // private 不許可時のブロック対象として明示的に判定します（クラウド内部用途の SSRF 面を塞ぐ）。
 var cgnatNet = mustParseCIDR("100.64.0.0/10")
