@@ -29,6 +29,8 @@ func TestGuardedDialControl(t *testing.T) {
 			require.NoError(t, guardedDialControl(allow, "tcp", "127.0.0.1:8080", nil))
 			require.NoError(t, guardedDialControl(allow, "tcp", "10.0.0.5:80", nil))
 			require.NoError(t, guardedDialControl(allow, "tcp", "192.168.1.10:80", nil))
+			// CGNAT(RFC 6598) も private 扱いで、フラグありなら許可する（L1）。
+			require.NoError(t, guardedDialControl(allow, "tcp", "100.64.0.1:80", nil))
 		})
 	})
 
@@ -46,6 +48,19 @@ func TestGuardedDialControl(t *testing.T) {
 			require.Error(t, guardedDialControl(deny, "tcp", "127.0.0.1:8080", nil))
 			require.Error(t, guardedDialControl(deny, "tcp", "10.0.0.5:80", nil))
 			require.Error(t, guardedDialControl(deny, "tcp", "192.168.1.10:80", nil))
+		})
+
+		t.Run("private許可フラグなしならCGNAT(100.64.0.0/10)も拒否する", func(t *testing.T) {
+			t.Parallel()
+			// L1: Go の IsPrivate は CGNAT を含まないため、明示判定で塞ぐ。境界も検証。
+			require.Error(t, guardedDialControl(deny, "tcp", "100.64.0.1:80", nil))
+			require.Error(t, guardedDialControl(deny, "tcp", "100.127.255.254:80", nil))
+		})
+
+		t.Run("CGNAT帯の外(100.128.x)は許可する", func(t *testing.T) {
+			t.Parallel()
+			// 100.128.0.0 は /10 の外＝グローバル扱いで通ること（過剰ブロック防止）。
+			require.NoError(t, guardedDialControl(deny, "tcp", "100.128.0.1:80", nil))
 		})
 	})
 }

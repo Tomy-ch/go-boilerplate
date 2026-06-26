@@ -14,6 +14,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// cgnatNet は、CGNAT 共有アドレス空間（RFC 6598, 100.64.0.0/10）です（L1）。
+// Go の net.IP.IsPrivate は RFC1918 / ULA(fc00::/7) のみで CGNAT を含まないため、
+// private 不許可時のブロック対象として明示的に判定します（クラウド内部用途の SSRF 面を塞ぐ）。
+var cgnatNet = mustParseCIDR("100.64.0.0/10")
+
 // dialControl は、接続直前に呼ばれる net.Dialer の ControlContext 関数の型です。
 type dialControl = func(ctx context.Context, network, address string, c syscall.RawConn) error
 
@@ -100,7 +105,7 @@ func newGuardedBaseTransport(control dialControl) *http.Transport {
 }
 
 // guardedDialControl は、名前解決後の実接続先 IP を検査する SSRF ガードです（DNS rebinding も防ぎます）。
-// link-local / unspecified は常に拒否し、loopback / private は ctx フラグで許可されない限り拒否します。
+// link-local / unspecified は常に拒否し、loopback / private / CGNAT は ctx フラグで許可されない限り拒否します。
 func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawConn) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
@@ -113,10 +118,19 @@ func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawCon
 	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
 		return xerrors.New("ssrf guard: blocked address " + host)
 	}
-	if !allowPrivateNetworkFromContext(ctx) && (ip.IsLoopback() || ip.IsPrivate()) {
+	if !allowPrivateNetworkFromContext(ctx) && (ip.IsLoopback() || ip.IsPrivate() || cgnatNet.Contains(ip)) {
 		return xerrors.New("ssrf guard: blocked private/loopback address " + host)
 	}
 	return nil
+}
+
+// mustParseCIDR は、定数 CIDR 文字列を *net.IPNet へ解析します。不正リテラルは起動時 panic です。
+func mustParseCIDR(s string) *net.IPNet {
+	_, n, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(err)
+	}
+	return n
 }
 
 // permissiveDialControl は、すべての接続を許可する dial control です（テスト用）。
