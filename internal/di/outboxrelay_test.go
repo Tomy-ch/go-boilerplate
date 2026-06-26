@@ -20,9 +20,30 @@ func TestNewOutboxRelayCore(t *testing.T) {
 }
 
 func TestNewOutboxRelayApp(t *testing.T) {
-	t.Parallel()
+	config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 
-	require.NotNil(t, NewOutboxRelayApp())
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("有効な OUTBOX_ENDPOINT なら relay app が起動可能", func(t *testing.T) {
+			t.Setenv("OUTBOX_ENDPOINT", "http://localhost:9999")
+
+			app := NewOutboxRelayApp()
+
+			require.NotNil(t, app)
+			// fx.New はコンストラクタ（NewEndpoint 等）を実行しエラーを app.Err() に格納する。
+			require.NoError(t, app.Err())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("OUTBOX_ENDPOINT が空なら起動時に弾かれる", func(t *testing.T) {
+			t.Setenv("OUTBOX_ENDPOINT", "")
+
+			app := NewOutboxRelayApp()
+
+			require.NotNil(t, app)
+			require.Error(t, app.Err())
+		})
+	})
 }
 
 //nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可

@@ -128,3 +128,13 @@ func (a *AuthConfig) SetAllowedHeaderBearer(tb testing.TB, allowed bool) {
 	a.allowedHeaderBearer = allowed
 	tb.Cleanup(func() { a.allowedHeaderBearer = prev })
 }
+
+// SetOutboxBatchSize は、テスト用に outbox relay の batch size を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *OutboxConfig) SetOutboxBatchSize(tb testing.TB, batchSize int) {
+	tb.Helper()
+	prev := o.batchSize
+	o.batchSize = batchSize
+	tb.Cleanup(func() { o.batchSize = prev })
+}
