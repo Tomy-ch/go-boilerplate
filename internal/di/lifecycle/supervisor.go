@@ -7,7 +7,6 @@ import (
 // SupervisedRunner は、detached goroutine で常駐する background runner を fx ライフサイクルへ
 // 結線する共通プリミティブです。job / worker / outbox relay の各 hook が共有します。
 //
-// 結線の骨子（3 hook 共通だった配線をここへ集約）:
 //   - OnStart: [SupervisedRunner.OnStartAux]（任意）を同期実行した後、[SupervisedRunner.Body] を
 //     goroutine で起動する（OnStart はブロックしない）。
 //   - OnStop:  実行 context をキャンセルし、Body の完了を stopCtx（grace）の範囲で待ち、
@@ -16,10 +15,6 @@ import (
 // 実行 context は context.Background() から WithCancel で派生させます。これにより
 //   - OnStart 完了後に fx が startCtx をキャンセルしても Body は巻き込まれず（detached）、
 //   - OnStop の cancel でのみ Body の context が切れて中断できる（停止時キャンセル）。
-//
-// この「Background 由来 + OnStop cancel」の型を 3 hook で揃えることで、停止シグナルが
-// 確実に実行中の処理へ伝播します（従来 job hook だけが WithoutCancel(startCtx) で
-// 停止キャンセルを欠いていた outlier を解消）。
 type SupervisedRunner struct {
 	// Body は、background ループ本体です。渡される context は OnStop でキャンセルされます。
 	// nil の場合は何も起動しません。

@@ -15,9 +15,6 @@ import (
 // RegisterWorkerHooks は、worker engine と health listener のライフサイクルフックを登録します。
 //   - OnStart: health listener を起動し、選択された worker を detached goroutine で実行する。
 //   - OnStop:  engine の context をキャンセルして drain 完了を（stopCtx の範囲で）待ち、health listener を停止する。
-//
-// 結線は共通の [lifecycle.SupervisedRunner] に委ね、health listener の起動/停止を
-// OnStartAux / OnStopAux として渡す（job / relay hook と同型）。
 func RegisterWorkerHooks(
 	reg lifecycle.Registrar,
 	engine *workerengine.Engine,

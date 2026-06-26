@@ -15,7 +15,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// ErrInvalidShutdownGrace は、停止猶予より drain の方が長く設定された不整合を表します（C2）。
+// ErrInvalidShutdownGrace は、停止猶予より drain の方が長く設定された不整合を表します。
 var ErrInvalidShutdownGrace = xerrors.New("invalid shutdown grace")
 
 // EngineIn は、Engine の入力パラメータを表します。
@@ -29,7 +29,7 @@ type EngineIn struct {
 	Logger  logging.Logger
 }
 
-// ValidateShutdownGrace は、drain 完了前に停止猶予が尽きないことを起動時に検証します（C2, fail fast）。
+// ValidateShutdownGrace は、drain 完了前に停止猶予が尽きないことを起動時に検証します。
 //
 // 停止時の実効カットオフは fx.StopTimeout と停止 context の deadline（共に APP_SHUTDOWN_TIMEOUT を
 // 単一軸とする grace）で決まります。WORKER_DRAIN_TIMEOUT >= grace だと OnStop の drain が grace で
@@ -39,7 +39,7 @@ func ValidateShutdownGrace(appCfg *config.ApplicationConfig, workerCfg *config.W
 	return validateShutdownGrace(workerCfg.DrainTimeout(), appCfg.ShutdownTimeout())
 }
 
-// validateShutdownGrace は、drain < grace を検証する純関数です（config 非依存でテスト可能）。
+// validateShutdownGrace は、drain < grace を検証します。
 func validateShutdownGrace(drain, grace time.Duration) error {
 	if drain >= grace {
 		return xerrors.Wrap(ErrInvalidShutdownGrace, fmt.Sprintf(

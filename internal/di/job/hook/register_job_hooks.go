@@ -15,10 +15,8 @@ import (
 
 // RegisterJobHooks は、ジョブのライフサイクルフックを登録します。
 //
-// 結線は共通の [lifecycle.SupervisedRunner] に委ねる（worker / relay hook と同型）。
-// これにより OnStop で実行 context がキャンセルされるため、`--timeout` 超過で cli が
-// app.Stop を呼ぶと実行中のジョブ（DB クエリ等）が中断される（C1: 従来は WithoutCancel
-// で停止キャンセルを欠いていた）。
+// OnStop で実行 context がキャンセルされるため、`--timeout` 超過で cli が
+// app.Stop を呼ぶと実行中のジョブ（DB クエリ等）が中断されます。
 func RegisterJobHooks(
 	reg lifecycle.Registrar,
 	sd shutdowner.Shutdowner,
