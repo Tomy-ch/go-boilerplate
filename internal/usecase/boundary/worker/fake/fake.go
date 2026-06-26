@@ -108,6 +108,7 @@ func (f *Fake) Nack(_ context.Context, m worker.Message) error {
 }
 
 // Extend は、Extend の呼び出し回数を記録します（可視性の実時間延長は模さない）。
+// SetExtendErr でエラーが設定されている場合はそのエラーを返します。
 func (f *Fake) Extend(_ context.Context, m worker.Message, _ time.Duration) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

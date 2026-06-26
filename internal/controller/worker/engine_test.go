@@ -182,6 +182,11 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
 		})
 
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
 		t.Run("Extend が失敗してもハートビートは継続し処理は完了する", func(t *testing.T) {
 			t.Parallel()
 
@@ -191,6 +196,8 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 			f.Enqueue(bw.Message{ID: "a"})
 			f.SetExtendErr(xerrors.New("extend boom"))
 			release := make(chan struct{})
+			var once sync.Once
+			closeRelease := func() { once.Do(func() { close(release) }) }
 			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
 				<-release
 				return nil
@@ -199,10 +206,10 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 			set.ExtendInterval = 5 * time.Millisecond
 
 			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-			defer func() { cancel(); <-done }()
+			defer func() { closeRelease(); cancel(); <-done }()
 
 			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
-			close(release)
+			closeRelease()
 			require.Eventually(t, func() bool { return len(f.AckedIDs()) >= 1 }, eventually, tick)
 		})
 	})
