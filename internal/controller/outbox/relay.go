@@ -66,6 +66,7 @@ func (e *Engine) Run(ctx context.Context) error {
 		}
 
 		n, err := e.uc.RelayBatch(ctx, e.set.BatchSize)
+		e.observeLag(ctx, log)
 		switch {
 		case err != nil:
 			if ctx.Err() != nil {
@@ -89,4 +90,15 @@ func (e *Engine) Run(ctx context.Context) error {
 // waitDone は、d 待機します。ctx 完了で待機が中断された場合に true を返します。
 func (e *Engine) waitDone(ctx context.Context, d time.Duration) bool {
 	return e.sleeper.Sleep(ctx, d) != nil
+}
+
+// observeLag は、outbox lag(SLI) をベストエフォートで記録します。
+// ctx 完了時は記録をスキップし、記録失敗はループを止めずログのみ行います。
+func (e *Engine) observeLag(ctx context.Context, log logging.Logger) {
+	if ctx.Err() != nil {
+		return
+	}
+	if err := e.uc.RecordLag(ctx); err != nil {
+		log.Error("failed to record outbox lag", logging.Error(logging.JobErrorKey, err))
+	}
 }

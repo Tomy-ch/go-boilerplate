@@ -76,6 +76,16 @@ func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
 	return hm
 }
 
+// NewNoopOutboxMetrics は、テスト用に no-op の MeterProvider から OutboxMetrics を生成します。
+func NewNoopOutboxMetrics(t *testing.T) *OutboxMetrics {
+	t.Helper()
+	om, err := NewOutboxMetrics(metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatalf("failed to build noop outbox metrics: %v", err)
+	}
+	return om
+}
+
 // NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を
 // 生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。
 func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {

@@ -6,13 +6,18 @@ import (
 	"go-boilerplate/internal/config"
 	outboxengine "go-boilerplate/internal/controller/outbox"
 	relayhook "go-boilerplate/internal/di/outboxrelay/hook"
+	"go-boilerplate/internal/observability"
+	outboxuc "go-boilerplate/internal/usecase/outbox"
 )
 
 // OutboxRelayModule は、outbox relay engine とそのライフサイクルフックを提供するfx.Moduleです。
-// relay 専用プロセス（cmd outbox-relay）でのみ使用します。
+// relay 専用プロセス（cmd outbox-relay）でのみ使用します。RelayUsecase と OutboxMetrics は
+// relay でのみ必要なため、共有の UsecaseModule ではなくここで提供します。
 func OutboxRelayModule() fx.Option {
 	return fx.Module("outbox-relay",
 		fx.Provide(
+			observability.NewOutboxMetrics,
+			outboxuc.NewRelay,
 			provideRelaySettings,
 			outboxengine.NewEngine,
 		),

@@ -6,6 +6,7 @@ package outbox
 import (
 	"context"
 	"encoding/json"
+	"maps"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
@@ -46,17 +47,23 @@ func NewEmit(store outboxbndry.Store, tf observability.TracerFactory) EmitUsecas
 }
 
 // Emit は、業務 tx 内で outbox 行を 1 行 INSERT し、採番された message_id を返します。
+// 現在の ctx の traceparent を headers へ capture し、後続の relay→受信側を起点 trace に繋ぎます。
 func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	var headers []byte
-	if len(in.Headers) > 0 {
-		b, err := json.Marshal(in.Headers)
+	headers := make(map[string]string, len(in.Headers)+1)
+	maps.Copy(headers, in.Headers)
+	// emit span の trace context を traceparent 等として載せる（消費側が同一 trace に繋がる）。
+	observability.InjectToCarrier(ctx, headers)
+
+	var headerBytes []byte
+	if len(headers) > 0 {
+		b, err := json.Marshal(headers)
 		if err != nil {
 			return uuid.UUID{}, xerrors.Wrap(apperror.ErrInternal, "failed to encode outbox headers: "+err.Error())
 		}
-		headers = b
+		headerBytes = b
 	}
 
 	return u.store.Insert(ctx, outboxbndry.EmitParams{
@@ -64,6 +71,6 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 		AggregateID:   in.AggregateID,
 		EventType:     in.EventType,
 		Payload:       in.Payload,
-		Headers:       headers,
+		Headers:       headerBytes,
 	})
 }

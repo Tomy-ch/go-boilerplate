@@ -5,9 +5,11 @@ package outbox
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/clock"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	"go-boilerplate/internal/usecase/boundary/publisher"
 	"go-boilerplate/internal/usecase/boundary/tx"
@@ -29,12 +31,16 @@ type RelayUsecase interface {
 	// 個々の publish 失敗は tx を巻き戻さず（failed/dead をマークして）次 poll で再送します。
 	// DB アクセス自体の失敗のみ tx を巻き戻すエラーとして返します。
 	RelayBatch(ctx context.Context, batchSize int32) (int, error)
+	// RecordLag は、最古 pending 行の経過時間（outbox lag）を SLI メトリクスへ記録します。
+	RecordLag(ctx context.Context) error
 }
 
 type relayUsecase struct {
 	txm         tx.Manager
 	store       outboxbndry.Store
 	publisher   publisher.Publisher
+	metrics     *observability.OutboxMetrics
+	clock       clock.Clock
 	logging     logging.Logger
 	tracer      observability.LayerTracer
 	maxAttempts int32
@@ -45,6 +51,8 @@ func NewRelay(
 	txm tx.Manager,
 	store outboxbndry.Store,
 	pub publisher.Publisher,
+	metrics *observability.OutboxMetrics,
+	clk clock.Clock,
 	log logging.Logger,
 	tf observability.TracerFactory,
 ) RelayUsecase {
@@ -52,10 +60,33 @@ func NewRelay(
 		txm:         txm,
 		store:       store,
 		publisher:   pub,
+		metrics:     metrics,
+		clock:       clk,
 		logging:     log,
 		tracer:      tf.Usecase(),
 		maxAttempts: DefaultMaxAttempts,
 	}
+}
+
+// RecordLag は、最古 pending 行の経過時間（outbox lag）を SLI メトリクスへ記録します。
+// pending 行が無ければ 0 を記録します。
+func (u *relayUsecase) RecordLag(ctx context.Context) error {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	createdAt, ok, err := u.store.OldestPendingCreatedAt(ctx)
+	if err != nil {
+		return err
+	}
+
+	var lag time.Duration
+	if ok {
+		if lag = u.clock.Now().Sub(createdAt); lag < 0 {
+			lag = 0
+		}
+	}
+	u.metrics.SetLagSeconds(ctx, int64(lag.Seconds()))
+	return nil
 }
 
 // RelayBatch は、最大 batchSize 件の pending 行を 1 tx で claim → publish → mark します。
@@ -104,6 +135,7 @@ func (u *relayUsecase) deliver(ctx context.Context, m outboxbndry.PendingMessage
 		if derr := u.store.MarkDead(ctx, m.ID); derr != nil {
 			return derr
 		}
+		u.metrics.IncDead(ctx)
 		u.logging.Named(relayLoggerName).Warn(
 			"outbox message marked dead after reaching max attempts",
 			logging.String(logging.MessageIDKey, m.MessageID.String()),

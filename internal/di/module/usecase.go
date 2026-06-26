@@ -19,7 +19,6 @@ func UsecaseModule() fx.Option {
 			idempotency.NewDeps,
 			idempotency.NewGC,
 			outbox.NewEmit,
-			outbox.NewRelay,
 			outbox.NewGC,
 			outbox.NewReplay,
 			// sample-api:begin

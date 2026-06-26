@@ -40,6 +40,20 @@ func (m *MockRelayUsecase) EXPECT() *MockRelayUsecaseMockRecorder {
 	return m.recorder
 }
 
+// RecordLag mocks base method.
+func (m *MockRelayUsecase) RecordLag(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecordLag", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecordLag indicates an expected call of RecordLag.
+func (mr *MockRelayUsecaseMockRecorder) RecordLag(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordLag", reflect.TypeOf((*MockRelayUsecase)(nil).RecordLag), ctx)
+}
+
 // RelayBatch mocks base method.
 func (m *MockRelayUsecase) RelayBatch(ctx context.Context, batchSize int32) (int, error) {
 	m.ctrl.T.Helper()
