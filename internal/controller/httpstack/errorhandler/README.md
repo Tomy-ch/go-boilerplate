@@ -34,13 +34,6 @@ flowchart TB
     AddReqID --> Write --> Log
 ```
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`New(e, log, lf, obsCfg)`|Set unified error handler on Echo instance (`e.HTTPErrorHandler`)|
-|`NewHTTPErrorHandler(logger, lf, obsCfg)`|Return `echo.HTTPErrorHandler` that normalizes all error types|
-
 ## Error Normalization
 
 The handler processes errors in the following priority:

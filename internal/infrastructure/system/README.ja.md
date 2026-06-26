@@ -24,13 +24,6 @@ flowchart TB
 
 Domain / Usecase が `time.Now()` を直接呼ぶと、テストで時刻を制御できなくなります。`clock.Clock` インターフェース（`internal/usecase/boundary/clock`）を介することで、テスト時にモック差し替えが可能になります。
 
-## 公開 API
-
-|関数 / メソッド|説明|
-|---|---|
-|`NewClock()`|`clock.Clock` を実装した実体を生成（内部で `time.Now()` を呼ぶ）|
-|`Now()`|現在の時刻を返す|
-
 ## なぜ抽象化するのか
 
 - Domain / Usecase の **決定論性（determinism）** を守る — テストで時刻を固定できる

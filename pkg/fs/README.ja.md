@@ -4,16 +4,6 @@
 
 ファイルシステム操作の薄いラッパーを提供し、利用側が `os` に直接依存せずインターフェース経由で扱えるようにします。
 
-## 公開 API
-
-|型 / メソッド|説明|
-|---|---|
-|`FS`|ファイルシステム操作を抽象化するインターフェース|
-|`OS`|`os` / `path/filepath` を用いた `FS` 実装|
-|`FS.ReadFile(name) ([]byte, error)`|ファイル読み込み|
-|`FS.WriteFile(name, data, perm) error`|ファイル書き込み|
-|`FS.Glob(pattern) ([]string, error)`|glob マッチ|
-
 ## ラップ対象
 
 - `os.ReadFile` / `os.WriteFile`

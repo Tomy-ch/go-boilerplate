@@ -33,19 +33,6 @@ flowchart TB
     Hook --> Execute --> Shutdown
 ```
 
-## Public API
-
-### runner.go
-
-|Type / Function|Description|
-|---|---|
-|`RunnerIn`|`fx.In` struct holding `[]job.Job` injected via `group:"jobs"`|
-|`ProvideRunner(in RunnerIn)`|Create `job.Runner` from `RunnerIn` and provide to DI container|
-
-### hook/
-
-Lifecycle hook for startup job execution. See [hook/README.md](hook/README.md) for details.
-
 ## DI Registration Example
 
 ```go

@@ -25,25 +25,6 @@ flowchart TB
 - `done` が `nil` の場合：ジョブなしと判断し、即座にシャットダウン
 - `done` が存在する場合：別ゴルーチンでジョブを実行し、結果を `done` チャネルに送信後シャットダウン
 
-## 公開 API
-
-```go
-func RegisterJobHooks(
-    reg lifecycle.Registrar,
-    sd shutdowner.Shutdowner,
-    runner job.Runner,
-    logger logging.Logger,
-    osCfg *config.OperatingSystemConfig,
-    state job.State,
-)
-```
-
-DI での登録：
-
-```go
-fx.Invoke(hook.RegisterJobHooks)
-```
-
 ## 使用フロー
 
 CLI 側で起動前に `State` をセットしておきます。

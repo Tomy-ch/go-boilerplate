@@ -4,21 +4,6 @@
 
 `github.com/cockroachdb/errors` をラップし、スタックトレース付きのエラー操作を提供します。
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`New(msg)`|スタックトレース付きの新しいエラーを生成|
-|`Wrap(err, msg)`|既存エラーをメッセージとスタックトレース付きでラップ|
-|`Is(err, target)`|エラーの同一性を判定（ラップチェーン対応）|
-|`As(err, target)`|エラーの型アサーション（ラップチェーン対応）|
-|`StackTrace(err)`|フォーマット済みスタックトレース文字列を取得|
-|`NewErrors()`|`Errors` 実装を返す（DI / モック用）|
-
-上記のパッケージ関数は `Errors` インターフェース（`New` / `Wrap` / `Is` / `As` / `StackTrace`）
-としても公開されています。これにより `cockroachdb/errors` への依存を単一の契約に閉じ込め、
-注入・モック可能にしています。
-
 ## ラップ対象
 
 `github.com/cockroachdb/errors`

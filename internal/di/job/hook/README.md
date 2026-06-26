@@ -12,25 +12,6 @@ English | [日本語](README.ja.md)
 2. If `done == nil`: logs and triggers `sd.Shutdown()`
 3. Otherwise: executes `runner.Run(startCtx, name, args)` in a goroutine, sends result to `done`, then calls `sd.Shutdown()`
 
-## Public API
-
-```go
-func RegisterJobHooks(
-    reg lifecycle.Registrar,
-    sd shutdowner.Shutdowner,
-    runner job.Runner,
-    logger logging.Logger,
-    osCfg *config.OperatingSystemConfig,
-    state job.State,
-)
-```
-
-DI registration:
-
-```go
-fx.Invoke(hook.RegisterJobHooks)
-```
-
 ## Usage Flow
 
 Set `State` before application startup from the CLI:
