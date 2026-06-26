@@ -49,6 +49,7 @@
 |SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s||
 |SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|10s||
 |SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s||
+|SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|停止/期限の単一軸。statement_timeout 等は backstop|
 
 ### Metrics
 

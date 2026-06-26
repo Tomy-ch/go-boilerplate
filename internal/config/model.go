@@ -43,6 +43,7 @@ type ServerConfig struct {
 	readTimeout       time.Duration
 	writeTimeout      time.Duration
 	idleTimeout       time.Duration
+	requestTimeout    time.Duration
 }
 
 // MetricsConfig は、メトリクスエンドポイントの待ち受け情報と認証情報を保持します。
@@ -191,6 +192,9 @@ func (s *ServerConfig) WriteTimeout() time.Duration { return s.writeTimeout }
 
 // IdleTimeout は、サーバーのアイドルタイムアウトを返します。
 func (s *ServerConfig) IdleTimeout() time.Duration { return s.idleTimeout }
+
+// RequestTimeout は、REST リクエスト全体の deadline budget を返します（入口で1点設定し ctx で全層伝播）。
+func (s *ServerConfig) RequestTimeout() time.Duration { return s.requestTimeout }
 
 // NewMetricsConfig は、メトリクスの設定を返します。
 func NewMetricsConfig(cfg *Config) *MetricsConfig { return &cfg.metrics }

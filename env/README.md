@@ -49,6 +49,7 @@ This directory is the canonical reference for every environment variable read by
 |SERVER_READ_TIMEOUT|Request read timeout|duration|10s||
 |SERVER_WRITE_TIMEOUT|Response write timeout|duration|10s||
 |SERVER_IDLE_TIMEOUT|KeepAlive timeout|duration|60s||
+|SERVER_REQUEST_TIMEOUT|Per-request deadline budget (set once at the entry, propagated to all layers via ctx)|duration|60s|Single stop-timeout axis; statement_timeout etc. are backstops|
 
 ### Metrics
 

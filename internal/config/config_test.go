@@ -31,6 +31,7 @@ func TestNewConfig(t *testing.T) {
 					readTimeout:       expectedServerReadTimeout,
 					writeTimeout:      expectedServerWriteTimeout,
 					idleTimeout:       expectedServerIdleTimeout,
+					requestTimeout:    expectedServerRequestTimeout,
 				},
 				metrics: MetricsConfig{
 					host:     expectedMetricsHost,
