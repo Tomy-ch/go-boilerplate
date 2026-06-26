@@ -25,7 +25,8 @@ type EmitInput struct {
 	EventType string
 	// Payload は呼び出し側が snapshot + version で marshal 済みのイベント本文 JSON です。
 	Payload []byte
-	// Headers は publish 時に伝搬するヘッダ（traceparent 等）です。nil 可。
+	// Headers は publish 時に外部エンドポイントへ伝搬するヘッダ（traceparent 等）です。nil 可。
+	// ここに入れた値はそのまま外部へ送出されるため、Authorization / Cookie 等の機微ヘッダを含めてはならない。
 	Headers map[string]string
 }
 
@@ -55,7 +56,6 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 	headers := make(map[string]string, len(in.Headers)+1)
 	maps.Copy(headers, in.Headers)
 	// emit span の trace context を traceparent として載せる（消費側が同一 trace に繋がる）。
-	// TraceContext 限定で inject し、インバウンド由来の baggage が外部へ転送されるのを防ぐ。
 	observability.InjectTraceContextToCarrier(ctx, headers)
 
 	var headerBytes []byte

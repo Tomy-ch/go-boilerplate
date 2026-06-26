@@ -56,7 +56,7 @@ func NewEngine(
 //   - 空振り・部分消化・「満杯だが全件 publish 失敗」なら PollInterval、エラー時は ErrorBackoff 待機します。
 //     全件 publish 失敗の満杯バッチを待機ゼロで再 claim すると、下流停止時にホットループして即時 dead 化
 //     するため、進捗が無い満杯バッチは必ず待機へ落とします。
-//   - 待機は clock.Sleeper 経由で行い、ctx 完了で即座に抜けます（決定的テストのため注入）。
+//   - 待機は clock.Sleeper 経由で行い、ctx 完了で即座に抜けます。
 func (e *Engine) Run(ctx context.Context) error {
 	ctx, endSpan := e.tracer.Start(ctx)
 	defer endSpan()

@@ -64,7 +64,6 @@ func TestNewEndpoint(t *testing.T) {
 		t.Run("config の endpoint が未設定なら ErrInvalidEndpoint を返す", func(t *testing.T) {
 			t.Parallel()
 
-			// MockConfigForTest の OUTBOX_ENDPOINT は既定で空のため、起動時検証で弾かれる。
 			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
 
 			got, err := NewEndpoint(cfg)
