@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/xerrors"
 
 	"go.uber.org/zap/zapcore"
 )
@@ -38,6 +39,6 @@ func ParseLevel(s string) (Level, error) {
 	case config.LogLevelError:
 		return LevelError(), nil
 	default:
-		return Level{}, fmt.Errorf("unsupported log level: %q", s)
+		return Level{}, xerrors.New(fmt.Sprintf("unsupported log level: %q", s))
 	}
 }
