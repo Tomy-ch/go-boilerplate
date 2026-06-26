@@ -54,8 +54,9 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 
 	headers := make(map[string]string, len(in.Headers)+1)
 	maps.Copy(headers, in.Headers)
-	// emit span の trace context を traceparent 等として載せる（消費側が同一 trace に繋がる）。
-	observability.InjectToCarrier(ctx, headers)
+	// emit span の trace context を traceparent として載せる（消費側が同一 trace に繋がる）。
+	// TraceContext 限定で inject し、インバウンド由来の baggage が外部へ転送されるのを防ぐ。
+	observability.InjectTraceContextToCarrier(ctx, headers)
 
 	var headerBytes []byte
 	if len(headers) > 0 {

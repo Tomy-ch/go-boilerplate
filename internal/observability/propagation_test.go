@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -106,11 +107,28 @@ func Test_injectToCarrier_D1(t *testing.T) {
 			assert.NotPanics(t, func() { injectToCarrier(context.Background(), nil, prop) })
 		})
 
-		t.Run("公開関数はグローバル伝播器を用いる", func(t *testing.T) {
+		t.Run("公開関数は TraceContext 限定の伝播器を用いる", func(t *testing.T) {
 			t.Parallel()
 
-			// グローバル伝播器を変更せず公開経路（otel.GetTextMapPropagator 利用）を通す。
-			assert.NotPanics(t, func() { InjectToCarrier(context.Background(), map[string]string{}) })
+			// グローバル伝播器に依らず TraceContext 限定で inject する公開経路を通す。
+			assert.NotPanics(t, func() { InjectTraceContextToCarrier(context.Background(), map[string]string{}) })
+		})
+
+		t.Run("公開関数は baggage を attrs へ転送しない", func(t *testing.T) {
+			t.Parallel()
+
+			// ctx に baggage を載せても、TraceContext 限定の公開関数は baggage を attrs へ書き込まない。
+			// （グローバル伝播器に依存しないため、ここでは global を変更せず関数自身の挙動のみを確認する）。
+			member, err := baggage.NewMember("tenant", "acme")
+			require.NoError(t, err)
+			bag, err := baggage.New(member)
+			require.NoError(t, err)
+			ctx := baggage.ContextWithBaggage(context.Background(), bag)
+
+			attrs := map[string]string{}
+			InjectTraceContextToCarrier(ctx, attrs)
+
+			assert.NotContains(t, attrs, "baggage")
 		})
 	})
 }
