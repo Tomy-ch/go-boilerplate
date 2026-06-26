@@ -85,6 +85,8 @@ This directory is the canonical reference for every environment variable read by
 |DB_SSL_MODE|SSL setting|string|disable|require recommended in production|
 |DB_PING_TIMEOUT|Connection check timeout|duration|10s||
 |DB_SLOW_QUERY_WARN_THRESHOLD|Slow query warning threshold|duration|500ms|Integrated with observability|
+|DB_STATEMENT_TIMEOUT|Per-statement execution timeout (`statement_timeout`)|duration|30s|SQL-level backstop for queries that ignore ctx; 0 disables (M1)|
+|DB_LOCK_TIMEOUT|Lock acquisition wait timeout (`lock_timeout`)|duration|10s|Backstop against long lock waits; 0 disables (M1)|
 
 ### Database Connection Pool
 

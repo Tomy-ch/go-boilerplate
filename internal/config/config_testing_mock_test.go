@@ -62,6 +62,8 @@ func TestMockConfigForTest(t *testing.T) {
 					sslMode:                expectedDBSSLMode,
 					pingTimeout:            expectedDBPingTimeout,
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					statementTimeout:       expectedDBStatementTimeout,
+					lockTimeout:            expectedDBLockTimeout,
 				},
 				dbconnection: DBConnectionConfig{
 					maxConns:    expectedDBMaxConnsInt32,
@@ -171,6 +173,8 @@ func Test_mockLoader(t *testing.T) {
 					SSLMode:                expectedDBSSLMode,
 					PingTimeout:            expectedDBPingTimeout,
 					SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					StatementTimeout:       expectedDBStatementTimeout,
+					LockTimeout:            expectedDBLockTimeout,
 				},
 				DBConnection: DBConnection{
 					MaxConns:    expectedDBMaxConnsInt32,

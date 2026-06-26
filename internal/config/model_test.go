@@ -277,6 +277,16 @@ func TestGetterMethods(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
 			})
+
+			t.Run("statement_timeout を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBStatementTimeout, database.StatementTimeout())
+			})
+
+			t.Run("lock_timeout を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBLockTimeout, database.LockTimeout())
+			})
 		})
 
 		t.Run("DBコネクション設定", func(t *testing.T) {

@@ -76,6 +76,8 @@ var (
 	expectedDBSlowQueryWarnThresholdCount = 500
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
+	expectedDBStatementTimeout            = 30 * time.Second
+	expectedDBLockTimeout                 = 10 * time.Second
 	// dbconnection
 	expectedDBMaxConns         = 10
 	expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
@@ -177,6 +179,8 @@ func MockConfigForTest(tb testing.TB) *Config {
 			sslMode:                expectedDBSSLMode,
 			pingTimeout:            expectedDBPingTimeout,
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+			statementTimeout:       expectedDBStatementTimeout,
+			lockTimeout:            expectedDBLockTimeout,
 		},
 		dbconnection: DBConnectionConfig{
 			maxConns:    expectedDBMaxConnsInt32,
@@ -276,6 +280,8 @@ func mockLoader(tb testing.TB) Loader {
 			SSLMode:                expectedDBSSLMode,
 			PingTimeout:            expectedDBPingTimeout,
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+			StatementTimeout:       expectedDBStatementTimeout,
+			LockTimeout:            expectedDBLockTimeout,
 		},
 		DBConnection: DBConnection{
 			MaxConns:    expectedDBMaxConnsInt32,
@@ -348,6 +354,8 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
 	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
+	t.Setenv("DB_STATEMENT_TIMEOUT", expectedDBStatementTimeout.String())
+	t.Setenv("DB_LOCK_TIMEOUT", expectedDBLockTimeout.String())
 	// DBConnection
 	t.Setenv("DBCONN_MAX_CONNS", strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10))
 	t.Setenv("DBCONN_MIN_CONNS", strconv.FormatInt(int64(expectedDBMinConnsInt32), 10))

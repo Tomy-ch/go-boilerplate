@@ -77,6 +77,8 @@ type DatabaseConfig struct {
 	sslMode                string
 	pingTimeout            time.Duration
 	slowQueryWarnThreshold time.Duration
+	statementTimeout       time.Duration
+	lockTimeout            time.Duration
 }
 
 // DBConnectionConfig は、データベース接続プールのサイズと寿命の設定を保持します。
@@ -273,6 +275,12 @@ func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 // この値より長く実行されたクエリは警告レベルでログ出力されます。
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
+
+// StatementTimeout は、SQL 文の実行時間上限を返します（0 以下で無効）。ctx を無視する runaway query の backstop（M1）。
+func (d *DatabaseConfig) StatementTimeout() time.Duration { return d.statementTimeout }
+
+// LockTimeout は、ロック獲得待ちの上限を返します（0 以下で無効）。長時間ロック待ちの backstop（M1）。
+func (d *DatabaseConfig) LockTimeout() time.Duration { return d.lockTimeout }
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }

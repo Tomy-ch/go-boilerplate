@@ -85,6 +85,8 @@
 |DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨|
 |DB_PING_TIMEOUT|接続確認タイムアウト|duration|10s||
 |DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|observability連携|
+|DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|ctx を無視する query への SQL 層 backstop。0 で無効（M1）|
+|DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|長時間ロック待ちへの backstop。0 で無効（M1）|
 
 ### Database Connection Pool
 
