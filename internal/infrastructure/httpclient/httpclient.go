@@ -13,8 +13,7 @@ package httpclient
 
 import "context"
 
-// HTTP メソッドの定数群です。Method は閉じた型なので、これら以外の不正な
-// メソッド文字列は型レベルで構築できません（L2: string 別名による型の穴を根絶）。
+// HTTP メソッドの定義済み値群です。不正なメソッド文字列をコンパイル時に排除します（L2）。
 var (
 	// MethodGet は、HTTP GET メソッドです。
 	MethodGet = Method{"GET"}
@@ -44,9 +43,8 @@ type Downstream string
 
 // Method は、HTTP メソッドを表す閉じた自前型です（net/http に依存しません）。
 //
-// 内部フィールドが非公開なため、パッケージ外からは MethodGet 等の定義済み定数しか
-// 構築できません。`Method("garbage")` のような不正な文字列キャストは型レベルで弾かれます
-// （L2: 真因「string 別名で型が防げない」を根絶）。
+// パッケージ外からは MethodGet 等の定義済み値しか構築できず、`Method("garbage")` のような
+// 任意の文字列から Method を生成することはできません（L2: string 別名で型が防げない問題を根絶）。
 type Method struct{ s string }
 
 // Header は、HTTP ヘッダを表す自前型です（net/http.Header を露出しません）。
@@ -54,9 +52,8 @@ type Header map[string][]string
 
 // Request は、1 回の外部 HTTP 呼び出しの意図を表します。
 //
-// フィールドはすべて非公開で、構築は NewRequest（必須項目を強制）と With* オプション経由に
-// 限定されます。パッケージ外からの struct リテラル構築を型レベルで封じることで、「downstream
-// 欠落」「AllowRetry なのに IdempotencyKey 不在」といった不正状態を構築時点で排除します（L2）。
+// 構築は NewRequest（必須項目を強制）と With* オプション経由のみ。「downstream 欠落」
+// 「AllowRetry なのに IdempotencyKey 不在」といった不正状態を構築時点で排除します（L2）。
 type Request struct {
 	// downstream は、論理依存名です（必須）。breaker / metrics / profile / budget のキーになります。
 	downstream Downstream
@@ -93,8 +90,7 @@ type Response struct {
 func (m Method) String() string { return m.s }
 
 // NewRequest は、必須項目（method / downstream / url）を強制してリクエストを生成します（L2）。
-// method は閉じた Method 型、downstream は引数で必須化されるため、不正なメソッドや
-// downstream 欠落を構築時点で型・シグネチャにより排除します。
+// 不正なメソッドや downstream 欠落という不正状態を、構築時点で排除します。
 func NewRequest(method Method, downstream Downstream, url string, opts ...RequestOption) *Request {
 	r := &Request{
 		downstream: downstream,
