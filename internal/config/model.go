@@ -18,6 +18,7 @@ type Config struct {
 	secureCookie  SecureCookieConfig
 	auth          AuthConfig
 	worker        WorkerConfig
+	outbox        OutboxConfig
 }
 
 // OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
@@ -126,6 +127,14 @@ type WorkerConfig struct {
 	circuitHalfOpenProbe      int
 	healthListenAddr          string
 	progressStaleAfter        time.Duration
+}
+
+// OutboxConfig は、transactional outbox relay の設定を保持します。
+type OutboxConfig struct {
+	endpoint     string
+	pollInterval time.Duration
+	errorBackoff time.Duration
+	batchSize    int
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -384,3 +393,18 @@ func (w *WorkerConfig) HealthListenAddr() string { return w.healthListenAddr }
 
 // ProgressStaleAfter は、readiness 判定で「進捗なし」とみなすまでの時間を返します。
 func (w *WorkerConfig) ProgressStaleAfter() time.Duration { return w.progressStaleAfter }
+
+// NewOutboxConfig は、outbox relay の設定を返します。
+func NewOutboxConfig(cfg *Config) *OutboxConfig { return &cfg.outbox }
+
+// Endpoint は、メッセージの送信先エンドポイント URL を返します。
+func (o *OutboxConfig) Endpoint() string { return o.endpoint }
+
+// PollInterval は、pending を捌き切った後に次 poll まで待機する時間を返します。
+func (o *OutboxConfig) PollInterval() time.Duration { return o.pollInterval }
+
+// ErrorBackoff は、relay バッチがエラーを返した後に待機する時間を返します。
+func (o *OutboxConfig) ErrorBackoff() time.Duration { return o.errorBackoff }
+
+// BatchSize は、1 回の poll で claim する pending 行数を返します。
+func (o *OutboxConfig) BatchSize() int { return o.batchSize }

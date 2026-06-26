@@ -99,5 +99,11 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 			cfg.auth.SetAllowedHeaderBearer(t, expected)
 			assert.Equal(t, expected, cfg.auth.AllowedHeaderBearer())
 		})
+
+		t.Run("outboxのbatch sizeを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := 7
+			cfg.outbox.SetOutboxBatchSize(t, expected)
+			assert.Equal(t, expected, cfg.outbox.BatchSize())
+		})
 	})
 }

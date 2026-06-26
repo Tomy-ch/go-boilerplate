@@ -3,8 +3,8 @@ package exchangerate_test
 import (
 	"testing"
 
-	"go-boilerplate/internal/infrastructure/external/exchangerate"
 	"go-boilerplate/internal/infrastructure/httpclient"
+	"go-boilerplate/internal/infrastructure/webapi/exchangerate"
 
 	"github.com/stretchr/testify/assert"
 )

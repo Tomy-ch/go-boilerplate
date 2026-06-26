@@ -38,6 +38,34 @@ type IdempotencyKeys struct {
 	ExpiresAt time.Time
 }
 
+// トランザクショナル outbox（ドメインイベントの信頼 publish）
+type Outbox struct {
+	// ID
+	ID int64
+	// dedup の安定キー（INSERT 時採番、Idempotency-Key へ伝搬）
+	MessageID uuid.UUID
+	// 集約種別（観測・調査用。順序キーではない）
+	AggregateType string
+	// 集約ID（観測・調査用。順序キーではない）
+	AggregateID string
+	// イベント種別 + version
+	EventType string
+	// ペイロード（snapshot + version の収束可能な自己完結ペイロード）
+	Payload []byte
+	// publish 時に伝搬するヘッダ（traceparent 等）
+	Headers []byte
+	// 状態（pending / published / dead）
+	Status string
+	// publish 試行回数
+	Attempts int32
+	// 直近の publish 失敗理由
+	LastError *string
+	// 作成日時
+	CreatedAt time.Time
+	// publish 完了日時（published 遷移時刻）
+	PublishedAt *time.Time
+}
+
 // 都道府県
 type Prefectures struct {
 	// ID

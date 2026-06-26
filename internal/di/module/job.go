@@ -3,6 +3,7 @@ package module
 import (
 	"go-boilerplate/internal/controller/job"
 	"go-boilerplate/internal/controller/job/idempotencygc"
+	"go-boilerplate/internal/controller/job/outboxgc"
 	"go-boilerplate/internal/controller/job/usercount" // sample-api:line
 	dijob "go-boilerplate/internal/di/job"
 	"go-boilerplate/internal/di/job/hook"
@@ -16,6 +17,7 @@ func JobModule() fx.Option {
 		provideJobs(
 			// ここにジョブのコンストラクタを追加します。
 			idempotencygc.New,
+			outboxgc.New,
 			usercount.New, // sample-api:line
 		),
 		fx.Provide(

@@ -15,6 +15,15 @@ type Loader struct {
 	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
 	Auth          Auth            `envPrefix:"AUTH_"`
 	Worker        Worker          `envPrefix:"WORKER_"`
+	Outbox        Outbox          `envPrefix:"OUTBOX_"`
+}
+
+// Outbox は transactional outbox relay の設定を保持する。
+type Outbox struct {
+	Endpoint     string        `env:"ENDPOINT"      default:""`
+	PollInterval time.Duration `env:"POLL_INTERVAL" default:"1s"`
+	ErrorBackoff time.Duration `env:"ERROR_BACKOFF" default:"5s"`
+	BatchSize    int           `env:"BATCH_SIZE"    default:"100"`
 }
 
 // Worker は worker engine の engine-core 設定（broker 非依存）を保持する。
