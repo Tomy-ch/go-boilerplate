@@ -14,6 +14,11 @@ import (
 )
 
 // RegisterJobHooks は、ジョブのライフサイクルフックを登録します。
+//
+// 結線は共通の [lifecycle.SupervisedRunner] に委ねる（worker / relay hook と同型）。
+// これにより OnStop で実行 context がキャンセルされるため、`--timeout` 超過で cli が
+// app.Stop を呼ぶと実行中のジョブ（DB クエリ等）が中断される（C1: 従来は WithoutCancel
+// で停止キャンセルを欠いていた）。
 func RegisterJobHooks(
 	reg lifecycle.Registrar,
 	sd shutdowner.Shutdowner,
@@ -22,16 +27,18 @@ func RegisterJobHooks(
 	osCfg *config.OperatingSystemConfig,
 	state job.State,
 ) {
-	reg.RegisterStart(func(startCtx context.Context) error {
-		go runJobAndShutdown(startCtx, sd, runner, logger, osCfg, state)
-		return nil
-	})
+	lifecycle.SupervisedRunner{
+		Body: func(ctx context.Context) { runJobAndShutdown(ctx, sd, runner, logger, osCfg, state) },
+	}.Register(reg)
 }
 
 // runJobAndShutdown は、スナップショットしたジョブを実行し done に結果を送って停止を要求する。
 // ジョブ未設定時（done==nil）はログ出力のみ行って停止する。
+//
+// jobCtx は [lifecycle.SupervisedRunner] が供給する実行 context で、Background 由来かつ
+// OnStop でのみキャンセルされる。よって起動 ctx のキャンセルには巻き込まれず、停止時のみ中断される。
 func runJobAndShutdown(
-	startCtx context.Context,
+	jobCtx context.Context,
 	sd shutdowner.Shutdowner,
 	runner job.Runner,
 	logger logging.Logger,
@@ -54,10 +61,6 @@ func runJobAndShutdown(
 
 	defer close(done)
 
-	// startCtx は fx の OnStart フック用で、OnStart 完了後にキャンセルされる。
-	// ジョブ本体は detached goroutine で起動後も走り続けるため、キャンセルだけ
-	// 無効化した派生 context を渡し、起動 ctx のキャンセルに巻き込まれないようにする。
-	jobCtx := context.WithoutCancel(startCtx)
 	done <- runner.Run(jobCtx, name, args)
 
 	shutdown(sd, logger)

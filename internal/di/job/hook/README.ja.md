@@ -6,7 +6,7 @@
 
 ## 役割
 
-`RegisterJobHooks` が `lifecycle.Registrar` に Start フックを登録し、起動時に以下の処理を行います。
+`RegisterJobHooks` はジョブを `lifecycle.SupervisedRunner`（worker / outbox relay hook も使う共通プリミティブ）に載せ、`lifecycle.Registrar` に Start と Stop の両フックを登録します。Start 時に以下の処理を行います。
 
 ```mermaid
 flowchart TB
@@ -25,6 +25,8 @@ flowchart TB
 - `done` が `nil` の場合：ジョブなしと判断し、即座にシャットダウン
 - `done` が存在する場合：別ゴルーチンでジョブを実行し、結果を `done` チャネルに送信後シャットダウン
 
+ジョブ実行 context（`jobCtx`）は `SupervisedRunner` が供給します。`context.Background()` 由来のため起動 context が `OnStart` 後にキャンセルされても巻き込まれず、かつ **`OnStop` でキャンセル**されます。これが `--timeout` を機能させます——CLI が timeout 超過で `app.Stop` を呼ぶと `OnStop` が `jobCtx` をキャンセルし、実行中のジョブ（長い DB クエリ等）を中断します。詳細は `lifecycle/README.md`（SupervisedRunner）参照。
+
 ## 使用フロー
 
 CLI 側で起動前に `State` をセットしておきます。
@@ -42,3 +44,4 @@ err := <-done
 - ジョブ実行は別ゴルーチンで非同期に開始される
 - `done` チャネルはフック側で `close` する（呼び出し側でクローズしないこと）
 - `shutdowner.Shutdown()` によりジョブ完了後にアプリケーション停止がトリガーされる
+- `OnStop` で実行 context がキャンセルされるため、実行中のジョブ（`--timeout` 等）は detach されず中断される
