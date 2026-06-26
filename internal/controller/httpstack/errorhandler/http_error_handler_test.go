@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/handler/testkit/testspan"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"
@@ -216,7 +216,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 
 	expectedDetails := "expected details"
 	expectedRequestID := "expected request ID"
-	expectedInternal := fmt.Errorf("expected internal error: %w", apperror.ErrValidation)
+	expectedInternal := xerrors.Wrap(apperror.ErrValidation, "expected internal error")
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()

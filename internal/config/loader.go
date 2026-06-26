@@ -2,10 +2,10 @@ package config
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 
 	rootenv "go-boilerplate"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/joho/godotenv"
 )
@@ -15,12 +15,12 @@ import (
 func Load() error {
 	b, err := rootenv.FS.ReadFile("env/.env")
 	if err != nil {
-		return fmt.Errorf("%w : %w", ErrFailedToLoadEnvFile, err)
+		return xerrors.Join(ErrFailedToLoadEnvFile, err)
 	}
 
 	kv, err := godotenv.Parse(bytes.NewReader(b))
 	if err != nil {
-		return fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
+		return xerrors.Join(ErrFailedToParseConfig, err)
 	}
 
 	for k, v := range kv {
@@ -28,7 +28,7 @@ func Load() error {
 			continue
 		}
 		if err := os.Setenv(k, v); err != nil {
-			return fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
+			return xerrors.Join(ErrFailedToParseConfig, err)
 		}
 	}
 	return nil

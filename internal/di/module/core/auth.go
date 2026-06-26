@@ -1,14 +1,14 @@
 package core
 
 import (
-	"fmt"
-
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/httpstack/oapi/auth"
 	"go-boilerplate/internal/infrastructure/auth/local"
 	"go-boilerplate/internal/logging"
 
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
+
+	"go-boilerplate/pkg/xerrors"
 
 	"go.uber.org/fx"
 )
@@ -37,6 +37,6 @@ func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logge
 			logging.String("env", appCfg.Env()),
 		)
 
-		return nil, fmt.Errorf("no authenticator configured for environment: %s", appCfg.Env())
+		return nil, xerrors.New("no authenticator configured for environment: " + appCfg.Env())
 	}
 }
