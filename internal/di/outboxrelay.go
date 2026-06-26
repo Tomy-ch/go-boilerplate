@@ -56,7 +56,12 @@ func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 
 	stopCtx, cancel := context.WithTimeout(context.Background(), outboxReplayStopTimeout)
 	defer cancel()
-	_ = app.Stop(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
+	stopErr := app.Stop(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
 
-	return result, runErr
+	// replay 成功時は OnStop の失敗（DB プール Close 等）をオペレータへ可視化するため返す。
+	// replay 自体が失敗していればそちらを優先する。
+	if runErr != nil {
+		return result, runErr
+	}
+	return result, stopErr
 }
