@@ -28,19 +28,6 @@ flowchart TB
 - **Configurator**: Configuration applied to Echo instance (debug mode, etc.)
 - Duplicate priorities are automatically detected and cause an error
 
-## Public API
-
-|Type / Function|Description|
-|---|---|
-|`ServerExtends`|`fx.In` struct receiving all three groups|
-|`ApplyExtends()`|Apply Pre / Use / Configurators in bulk|
-|`PreMiddleware`|Pre middleware (Name + Priority + Middleware)|
-|`PreMiddlewareOut`|fx output wrapper for Pre middleware|
-|`UseMiddleware`|Use middleware (Name + Priority + Middleware)|
-|`UseMiddlewareOut`|fx output wrapper for Use middleware|
-|`SrvCfg`|`func(*echo.Echo)` configurator function type|
-|`ServeCfgOut`|fx output wrapper for Configurator|
-
 ## Subdirectory List
 
 ### inbound (Request Receiving)

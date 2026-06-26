@@ -127,6 +127,9 @@
 				<dd><a href="#ObservabilityModule">func ObservabilityModule() fx.Option</a></dd>
 			
 				
+				<dd><a href="#OutboxRelayModule">func OutboxRelayModule() fx.Option</a></dd>
+			
+				
 				<dd><a href="#SystemModule">func SystemModule() fx.Option</a></dd>
 			
 				
@@ -135,6 +138,11 @@
 				
 				<dd><a href="#WorkerModule">func WorkerModule() fx.Option</a></dd>
 			
+			
+				
+				<dd><a href="#HTTPClientProfilesIn">type HTTPClientProfilesIn</a></dd>
+				
+				
 			
 			
 			</dl>
@@ -147,11 +155,15 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../src/go-boilerplate/internal/di/module/clock.go.html">clock.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/di/module/config.go.html">config.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/controller.go.html">controller.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/db.go.html">db.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html">httpclient.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html">infrastructure.go</a>
 			
@@ -161,9 +173,19 @@
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/observability.go.html">observability.go</a>
 			
+				<a href="../../../../src/go-boilerplate/internal/di/module/outboxpublisher.go.html">outboxpublisher.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/outboxrelay.go.html">outboxrelay.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/persistence.go.html">persistence.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/security.go.html">security.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/di/module/system.go.html">system.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html">usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/webapi.go.html">webapi.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/worker.go.html">worker.go</a>
 			
@@ -222,13 +244,16 @@
 		
 			
 			
-			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=840:877#L8">InfrastructureModule</a>
+			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=507:544#L1">InfrastructureModule</a>
 				<a class="permalink" href="#InfrastructureModule">¶</a>
 				
 				
 			</h2>
 			<pre>func InfrastructureModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
-			<p>InfrastructureModule は、インフラストラクチャ層の依存関係を提供するfx.Moduleです。
+			<p>InfrastructureModule は、全プロセス共通のインフラストラクチャ層の依存関係を集約して提供するfx.Moduleです。
+各 concern（永続化 / clock / HTTP client / webapi gateway / security）は
+同パッケージ内の concern ごとのファイルにサブモジュールとして切り出し、ここで束ねます。
+outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で提供します。
 
 			
 			
@@ -236,7 +261,7 @@
 		
 			
 			
-			</p><h2 id="JobModule">func <a href="../../../../src/go-boilerplate/internal/di/module/job.go.html?s=402:428#L4">JobModule</a>
+			</p><h2 id="JobModule">func <a href="../../../../src/go-boilerplate/internal/di/module/job.go.html?s=453:479#L5">JobModule</a>
 				<a class="permalink" href="#JobModule">¶</a>
 				
 				
@@ -278,6 +303,23 @@
 		
 			
 			
+			</p><h2 id="OutboxRelayModule">func <a href="../../../../src/go-boilerplate/internal/di/module/outboxrelay.go.html?s=730:764#L7">OutboxRelayModule</a>
+				<a class="permalink" href="#OutboxRelayModule">¶</a>
+				
+				
+			</h2>
+			<pre>func OutboxRelayModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>OutboxRelayModule は、outbox relay engine とそのライフサイクルフックを提供するfx.Moduleです。
+relay 専用プロセス（cmd outbox-relay）でのみ使用します。
+outboxPublisherModule は非標準の httpclient profile（MaxAttempts=1 等）を value group へ寄与するため、
+relay 以外のプロセスへ漏れないよう共有 InfrastructureModule ではなくここに閉じ込めます。
+
+			
+			
+
+		
+			
+			
 			</p><h2 id="SystemModule">func <a href="../../../../src/go-boilerplate/internal/di/module/system.go.html?s=176:205#L1">SystemModule</a>
 				<a class="permalink" href="#SystemModule">¶</a>
 				
@@ -292,7 +334,7 @@
 		
 			
 			
-			</p><h2 id="UsecaseModule">func <a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html?s=448:478#L4">UsecaseModule</a>
+			</p><h2 id="UsecaseModule">func <a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html?s=490:520#L5">UsecaseModule</a>
 				<a class="permalink" href="#UsecaseModule">¶</a>
 				
 				
@@ -320,6 +362,35 @@
 
 		
 		
+			
+			
+			</p><h2 id="HTTPClientProfilesIn">type <a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html?s=305:420#L1">HTTPClientProfilesIn</a>
+				<a class="permalink" href="#HTTPClientProfilesIn">¶</a>
+				
+				
+			</h2>
+			<p>HTTPClientProfilesIn は、httpclient_profiles グループに集まった各 Downstream の Profile を
+集約する入力です（グループの consumer 側。di/job の RunnerIn と同形）。
+
+			</p><pre>type HTTPClientProfilesIn struct {
+    <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#In">In</a>
+
+<span id="HTTPClientProfilesIn.Profiles"></span>    Profiles []<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/#DownstreamProfile">DownstreamProfile</a> `group:&#34;httpclient_profiles&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
 	
 
 	
@@ -330,7 +401,7 @@
 
 	
 	
-		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
 	
 	<div class="pkg-dir">
 		<table>

@@ -104,14 +104,22 @@ Infrastructure 層では以下を行ってはいけません。
 flowchart TB
     Root["internal/infrastructure"]
     Auth["auth/"]
+    HTTP["httpclient/"]
+    Pub["publisher/"]
+    Queue["queue/"]
     RDB["rdb/"]
     Sec["security/"]
     Sys["system/"]
+    Web["webapi/"]
 
     Root --> Auth
+    Root --> HTTP
+    Root --> Pub
+    Root --> Queue
     Root --> RDB
     Root --> Sec
     Root --> Sys
+    Root --> Web
 ```
 
 ## サブディレクトリ
@@ -119,9 +127,13 @@ flowchart TB
 |ディレクトリ|説明|interface 配置|詳細|
 |---|---|---|---|
 |`auth/`|認証基盤（環境別 Authenticator 実装）|Usecase boundary|[README](auth/README.ja.md)|
+|`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|—|
+|`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|—|
+|`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
 |`security/`|パスワードハッシュ化（bcrypt）|Usecase boundary|[README](security/README.ja.md)|
 |`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
+|`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|—|
 
 ## テスト戦略
 

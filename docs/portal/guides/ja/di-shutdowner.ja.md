@@ -6,14 +6,6 @@
 
 DI コンテナから取得した `fx.Shutdowner` をラップし、アプリケーションコードやテストから利用しやすくします。
 
-## 公開 API
-
-|型 / 関数|説明|
-|---|---|
-|`Shutdowner`|`Shutdown(...fx.ShutdownOption) error` を抽象化したインターフェース|
-|`NewShutdowner(sd fx.Shutdowner)`|`fx.Shutdowner` をラップした具象インスタンスを生成|
-|`Module()`|`Shutdowner` を DI コンテナに登録する `fx.Module` を返す|
-
 ## なぜ抽象化するのか
 
 - `fx.Shutdowner` を直接使うと、アプリケーションコードが fx フレームワークに結合する

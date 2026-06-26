@@ -104,14 +104,22 @@ The following must not be done in the Infrastructure layer.
 flowchart TB
     Root["internal/infrastructure"]
     Auth["auth/"]
+    HTTP["httpclient/"]
+    Pub["publisher/"]
+    Queue["queue/"]
     RDB["rdb/"]
     Sec["security/"]
     Sys["system/"]
+    Web["webapi/"]
 
     Root --> Auth
+    Root --> HTTP
+    Root --> Pub
+    Root --> Queue
     Root --> RDB
     Root --> Sec
     Root --> Sys
+    Root --> Web
 ```
 
 ## Subdirectories
@@ -119,9 +127,13 @@ flowchart TB
 |Directory|Description|Interface Placement|Details|
 |---|---|---|---|
 |`auth/`|Authentication infrastructure (environment-specific Authenticator impl)|Usecase boundary|[README](auth/README.md)|
+|`httpclient/`|Resilient HTTP client substrate (retry / circuit breaker / tracing); shared driver-level base consumed by `webapi/` and `publisher/`|— (substrate, no domain/usecase IF)|—|
+|`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|—|
+|`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
 |`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
 |`security/`|Password hashing (bcrypt)|Usecase boundary|[README](security/README.md)|
 |`system/`|System-dependent operations (time retrieval, etc.)|Usecase boundary|[README](system/README.md)|
+|`webapi/`|External web API gateways (e.g. exchange rate, impl of `boundary.Gateway`)|Usecase boundary|—|
 
 ## Test Strategy
 

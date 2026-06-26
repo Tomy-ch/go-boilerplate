@@ -24,13 +24,6 @@ flowchart TB
 
 If Domain / Usecase call `time.Now()` directly, time cannot be controlled in tests. By going through the `clock.Clock` interface (`internal/usecase/boundary/clock`), mock substitution becomes possible during testing.
 
-## Public API
-
-|Function / Method|Description|
-|---|---|
-|`NewClock()`|Create an implementation of `clock.Clock` (internally calls `time.Now()`)|
-|`Now()`|Return the current time|
-
 ## Why Abstract?
 
 - Preserve **determinism** in Domain / Usecase — time can be fixed in tests
