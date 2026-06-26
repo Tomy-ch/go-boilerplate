@@ -109,7 +109,7 @@
 <span id="L52" class="ln">    52  </span>		lc := &amp;net.ListenConfig{}
 <span id="L53" class="ln">    53  </span>		ln, err := lc.Listen(ctx, &#34;tcp&#34;, &#34;:&#34;+strconv.Itoa(port))
 <span id="L54" class="ln">    54  </span>		if err != nil {
-<span id="L55" class="ln">    55  </span>			return fmt.Errorf(&#34;failed to listen on port %d: %w&#34;, port, err)
+<span id="L55" class="ln">    55  </span>			return xerrors.Wrap(err, fmt.Sprintf(&#34;failed to listen on port %d&#34;, port))
 <span id="L56" class="ln">    56  </span>		}
 <span id="L57" class="ln">    57  </span>		e.Listener = ln
 <span id="L58" class="ln">    58  </span>

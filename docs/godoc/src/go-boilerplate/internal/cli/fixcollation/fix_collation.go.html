@@ -94,7 +94,7 @@
 <span id="L37" class="ln">    37  </span>	case &#34;local&#34;, &#34;test&#34;:
 <span id="L38" class="ln">    38  </span>		return nil
 <span id="L39" class="ln">    39  </span>	default:
-<span id="L40" class="ln">    40  </span>		return fmt.Errorf(&#34;invalid database name: %s&#34;, name)
+<span id="L40" class="ln">    40  </span>		return xerrors.New(&#34;invalid database name: &#34; + name)
 <span id="L41" class="ln">    41  </span>	}
 <span id="L42" class="ln">    42  </span>}
 <span id="L43" class="ln">    43  </span>
