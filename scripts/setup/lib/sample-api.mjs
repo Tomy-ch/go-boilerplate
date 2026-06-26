@@ -35,10 +35,10 @@ export const SAMPLE_DOMAINS = {
 
       "database/dml/repository/user",
       "database/dml/query_service/user",
-      "database/migrations/000003_create_users.up.sql",
-      "database/migrations/000003_create_users.down.sql",
-      "database/migrations/000010_users_table_search_text_column.up.sql",
-      "database/migrations/000010_users_table_search_text_column.down.sql",
+      "database/migrations/000004_create_users.up.sql",
+      "database/migrations/000004_create_users.down.sql",
+      "database/migrations/000011_users_table_search_text_column.up.sql",
+      "database/migrations/000011_users_table_search_text_column.down.sql",
       "database/seed/000001_users.sql",
 
       "docs/spec/user",
@@ -57,20 +57,20 @@ export const SAMPLE_DOMAINS = {
       "internal/infrastructure/rdb/sqlc/gen/prefecture_repository.gen.sql.go",
       "database/gen/prefecture_repository.gen.sql",
 
-      "database/migrations/000002_create_prefectures.up.sql",
-      "database/migrations/000002_create_prefectures.down.sql",
+      "database/migrations/000003_create_prefectures.up.sql",
+      "database/migrations/000003_create_prefectures.down.sql",
     ],
   },
 
   product: {
     description: "サンプル 商品ドメイン（現状: DB スタブのみ。Go 層実装時に追記）",
     paths: [
-      "database/migrations/000004_create_product_statuses.up.sql",
-      "database/migrations/000004_create_product_statuses.down.sql",
-      "database/migrations/000005_create_product_categories.up.sql",
-      "database/migrations/000005_create_product_categories.down.sql",
-      "database/migrations/000006_create_products.up.sql",
-      "database/migrations/000006_create_products.down.sql",
+      "database/migrations/000005_create_product_statuses.up.sql",
+      "database/migrations/000005_create_product_statuses.down.sql",
+      "database/migrations/000006_create_product_categories.up.sql",
+      "database/migrations/000006_create_product_categories.down.sql",
+      "database/migrations/000007_create_products.up.sql",
+      "database/migrations/000007_create_products.down.sql",
       "database/seed/000002_products_electronic_equipment.sql",
       "database/seed/000003_products_books.sql",
       "database/seed/000004_products_clothing.sql",
@@ -83,12 +83,12 @@ export const SAMPLE_DOMAINS = {
   order: {
     description: "サンプル 注文ドメイン（現状: DB スタブのみ。Go 層実装時に追記）",
     paths: [
-      "database/migrations/000007_create_purchase_statuses.up.sql",
-      "database/migrations/000007_create_purchase_statuses.down.sql",
-      "database/migrations/000008_create_purchases.up.sql",
-      "database/migrations/000008_create_purchases.down.sql",
-      "database/migrations/000009_create_purchase_details.up.sql",
-      "database/migrations/000009_create_purchase_details.down.sql",
+      "database/migrations/000008_create_purchase_statuses.up.sql",
+      "database/migrations/000008_create_purchase_statuses.down.sql",
+      "database/migrations/000009_create_purchases.up.sql",
+      "database/migrations/000009_create_purchases.down.sql",
+      "database/migrations/000010_create_purchase_details.up.sql",
+      "database/migrations/000010_create_purchase_details.down.sql",
     ],
   },
 }
