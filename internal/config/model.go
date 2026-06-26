@@ -273,15 +273,18 @@ func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
 
-// TxMaxRetries は、トランザクションのリトライ最大試行回数を返します（H1）。
+// TxMaxRetries は、トランザクションのリトライ最大試行回数を返します。
 //
 // serialization failure / deadlock 検出時の有限リトライ上限です。
+// 0 以下の場合は実装側の既定値（3回）にフォールバックします。
 func (d *DatabaseConfig) TxMaxRetries() int { return d.txMaxRetries }
 
-// TxRetryBaseBackoff は、トランザクションリトライ backoff の初期値を返します（H1）。
+// TxRetryBaseBackoff は、トランザクションリトライ backoff の初期値（指数 backoff の基準値）を返します。
+// 0 以下の場合は実装側の既定値にフォールバックします。
 func (d *DatabaseConfig) TxRetryBaseBackoff() time.Duration { return d.txRetryBaseBackoff }
 
-// TxRetryMaxBackoff は、トランザクションリトライ backoff の上限値を返します（H1）。
+// TxRetryMaxBackoff は、トランザクションリトライ backoff の上限値（1試行あたりの最大待機時間）を返します。
+// 0 以下の場合は実装側の既定値にフォールバックします。
 func (d *DatabaseConfig) TxRetryMaxBackoff() time.Duration { return d.txRetryMaxBackoff }
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。

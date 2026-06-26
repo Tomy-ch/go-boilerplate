@@ -131,7 +131,7 @@ func TestTxManager_Do_Retry(t *testing.T) {
 	retryablePgErr := &pgconn.PgError{Code: "40001"}    // serialization_failure
 	nonRetryablePgErr := &pgconn.PgError{Code: "23505"} // unique_violation
 
-	t.Run("正常系", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("serialization_failureが続くとmaxAttemptsまで再試行しErrUnavailableを返す", func(t *testing.T) {

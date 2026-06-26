@@ -41,10 +41,9 @@ type txManager struct {
 
 // NewTransactionManager は、トランザクションマネージャを初期化します。
 //
-// serialization failure / deadlock 検出時の有限リトライ（H1）に sleeper を用います。
+// serialization failure / deadlock 検出時に fn を有限回まで再試行します。
 // リトライ上限・backoff は config（DB_TX_MAX_RETRIES / DB_TX_RETRY_BASE_BACKOFF /
 // DB_TX_RETRY_MAX_BACKOFF）から取得します。0 以下の場合は既定値にフォールバックします。
-// sleeper は httpclient と同様に DI 注入します。
 func NewTransactionManager(
 	db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper,
 ) tx.Manager {
