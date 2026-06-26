@@ -1,7 +1,6 @@
 package httpclient
 
 import (
-	"math/rand/v2"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,6 +8,7 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/backoff"
+	"go-boilerplate/pkg/retry"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -64,7 +64,7 @@ func computeBackoff(attempt int, profile Profile) time.Duration {
 		Max:        profile.MaxBackoff,
 		Multiplier: backoffMultiplier,
 	}
-	return fullJitter(exp.Duration(attempt - 1))
+	return retry.Full(exp.Duration(attempt - 1))
 }
 
 // retryWait は、次の retry までの待機時間を決定します。
@@ -108,12 +108,4 @@ func retryAfter(header Header, now time.Time) (time.Duration, bool) {
 		return max(0, at.Sub(now)), true
 	}
 	return 0, false
-}
-
-// fullJitter は、[0, d] の一様乱数を返します。バックオフの thundering herd を避けます。
-func fullJitter(d time.Duration) time.Duration {
-	if d <= 0 {
-		return 0
-	}
-	return time.Duration(rand.Int64N(int64(d) + 1)) //nolint:gosec // jitter は暗号強度不要
 }
