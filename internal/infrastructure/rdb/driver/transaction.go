@@ -2,43 +2,104 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/tx"
+	"go-boilerplate/pkg/backoff"
+	"go-boilerplate/pkg/retry"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
 	callerSkipCount = 1
 	cleanupTimeout  = 5 * time.Second
+
+	// defaultTxMaxAttempts は、tx リトライの最大試行回数の既定値です（H1）。
+	defaultTxMaxAttempts = 3
+	// defaultTxBackoffInitial / defaultTxBackoffMax は、tx リトライ backoff の既定値です（H1）。
+	defaultTxBackoffInitial = 5 * time.Millisecond
+	defaultTxBackoffMax     = 100 * time.Millisecond
+	// txBackoffMultiplier は、tx リトライ backoff の倍率です。
+	txBackoffMultiplier = 2
 )
 
 // txManager は、トランザクションの管理を行います。
 type txManager struct {
-	db     DatabaseDriver
-	logger logging.Logger
+	db          DatabaseDriver
+	logger      logging.Logger
+	sleeper     clock.Sleeper
+	maxAttempts int
+	backoff     backoff.Exponential
 }
 
 // NewTransactionManager は、トランザクションマネージャを初期化します。
-func NewTransactionManager(db DatabaseDriver, logger logging.Logger) tx.Manager {
+//
+// serialization failure / deadlock 検出時の有限リトライ（H1）に sleeper を用います。
+// リトライ上限・backoff は既定値（将来 config 化）。sleeper は httpclient と同様に DI 注入します。
+func NewTransactionManager(db DatabaseDriver, logger logging.Logger, sleeper clock.Sleeper) tx.Manager {
 	return &txManager{
-		db:     db,
-		logger: logger,
+		db:          db,
+		logger:      logger,
+		sleeper:     sleeper,
+		maxAttempts: defaultTxMaxAttempts,
+		backoff: backoff.Exponential{
+			Initial:    defaultTxBackoffInitial,
+			Max:        defaultTxBackoffMax,
+			Multiplier: txBackoffMultiplier,
+		},
 	}
 }
 
-// Do は、トランザクションを開始し、引数で渡されたfnを実行します。
+// Do は、トランザクションを開始し、引数で渡された fn を実行します。
+//
+// serialization failure / deadlock を検出した場合、有限回（maxAttempts）まで tx 全体を
+// 再試行します（指数 backoff + full jitter、pkg/retry）。**fn は最大 N 回再実行されうる**ため、
+// DB 副作用以外について冪等であること（呼出側責務）。外部副作用は同一 tx 内で outbox row 化すれば
+// rollback と共に巻き戻り retry-safe になります。nested（既存 tx 再利用）経路はリトライ対象外（1 回）。
 func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
 	if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
-		return fn(ctx)
+		return fn(ctx) // nested: savepoint 相当・リトライしない（最外の Do が正規化する）
 	}
 
+	// doOnce は生エラーを返す。IsRetryableTxError で生 SQLSTATE を判定し有限リトライした後、
+	// 最終結果を 1 度だけ正規化する。
+	err := retry.Do(ctx, t.sleeper,
+		retry.Policy{MaxAttempts: t.maxAttempts, Backoff: t.backoff.Duration},
+		pgerror.IsRetryableTxError,
+		func(c context.Context) error { return t.doOnce(c, fn) },
+	)
+	return normalizeTxResult(err)
+}
+
+// normalizeTxResult は、リトライ後の最終エラーを正規化します。
+// begin / commit の DB エラー（生 pg / 接続）のみ apperror へ正規化し、fn が返したエラー
+// （apperror や testkit の rollback sentinel 等）はそのまま通します。これにより呼出側が
+// errors.Is で判定する fn のエラーを tx 層が書き換えません（既存契約の維持）。
+func normalizeTxResult(err error) error {
+	if err == nil {
+		return nil
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) || pgerror.IsUnavailable(err) {
+		return pgerror.NormalizeError(err)
+	}
+	return err
+}
+
+// doOnce は、1 回分のトランザクション（begin → fn → commit / rollback）を実行します。
+//
+// エラーは正規化せず**生のまま**返します。serialization failure / deadlock の判定（IsRetryableTxError）は
+// 生 SQLSTATE を要するため、正規化（PgError を文字列化して捨てる）は呼出元 Do がリトライ後に 1 度だけ行います。
+func (t *txManager) doOnce(ctx context.Context, fn func(ctx context.Context) error) error {
 	tx, err := t.db.Begin(ctx)
 	if err != nil {
-		return pgerror.NormalizeError(err)
+		return err
 	}
 
 	completed := false
@@ -64,7 +125,7 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 
 	if err := tx.Commit(ctx); err != nil {
 		completed = true
-		return pgerror.NormalizeError(err)
+		return err
 	}
 
 	completed = true

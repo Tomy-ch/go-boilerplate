@@ -8,6 +8,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/system"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/pkg/xerrors"
@@ -49,7 +50,7 @@ func NewTestTransactionRunner(t *testing.T) TransactionRunner {
 	t.Helper()
 	testLogger := logging.NewTestLogger(t)
 
-	innerTxm := driver.NewTransactionManager(getTestDB(t), testLogger)
+	innerTxm := driver.NewTransactionManager(getTestDB(t), testLogger, system.NewSleeper())
 
 	runner := &testTxRunner{
 		inner: innerTxm,

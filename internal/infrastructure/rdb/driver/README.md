@@ -220,10 +220,13 @@ Utilities for building DB connection DSNs.
 ## NewTransactionManager
 
 ```go
-func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager
+func NewTransactionManager(db DatabaseDriver, logger logging.Logger, sleeper clock.Sleeper) tx.Manager
 ```
 
 Constructor that implements `tx.Manager` (`internal/usecase/boundary/tx`) for the Usecase layer.
+`Do` retries the whole transaction a bounded number of times on `serialization_failure` (40001) /
+`deadlock_detected` (40P01), using `sleeper` for exponential backoff + full jitter (`pkg/retry`). See
+the `tx` boundary README for the `fn`-idempotency contract.
 
 ## Query Tracer (query_tracer.go)
 
