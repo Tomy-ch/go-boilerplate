@@ -133,7 +133,7 @@ func TestRunJob(t *testing.T) {
 		t.Run("本体成功でも停止が失敗すれば停止エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			// H3: 停止失敗（OTel flush / DB pool close 等）が exit code へ反映されるよう
+			// 停止失敗（OTel flush / DB pool close 等）が exit code へ反映されるよう
 			// 本体結果(nil)と Join して非 nil を返すこと。
 			stopErr := errors.New("stop failed")
 			done := make(chan error, 1)
@@ -148,7 +148,7 @@ func TestRunJob(t *testing.T) {
 		t.Run("タイムアウト発火かつ停止失敗時は両方のエラーが取れる", func(t *testing.T) {
 			t.Parallel()
 
-			// H3: 本体側(DeadlineExceeded)と停止側(stopErr)の双方が errors.Is で取得できること。
+			// 本体側(DeadlineExceeded)と停止側(stopErr)の双方が errors.Is で取得できること。
 			stopErr := errors.New("stop failed")
 			done := make(chan error) // 送信されない
 			stop := &recordingStop{err: stopErr}
