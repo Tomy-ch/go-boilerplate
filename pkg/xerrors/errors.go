@@ -1,3 +1,4 @@
+// Package xerrors は、StackTrace を含むエラーのラップ・判定・結合を提供します。
 package xerrors
 
 import (
@@ -25,6 +26,11 @@ func Is(err, target error) bool {
 // As は、エラーが特定のターゲット型に変換可能かを判定します。
 func As(err error, target any) bool {
 	return errors.As(err, target)
+}
+
+// Join は、複数のエラーを結合して新しいエラーを生成します。
+func Join(errs ...error) error {
+	return errors.Join(errs...)
 }
 
 // StackTrace は、エラーの詳細表現（メッセージとスタックトレースを含む）を文字列で返します。

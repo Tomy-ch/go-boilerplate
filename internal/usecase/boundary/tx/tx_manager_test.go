@@ -8,6 +8,7 @@ import (
 
 	"go-boilerplate/internal/usecase/boundary/tx"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,7 @@ func recoveringManager(t *testing.T) tx.Manager {
 		func(ctx context.Context, fn func(context.Context) error) (err error) {
 			defer func() {
 				if p := recover(); p != nil {
-					err = fmt.Errorf("panic recovered: %v", p)
+					err = xerrors.New(fmt.Sprintf("panic recovered: %v", p))
 				}
 			}()
 			return fn(ctx)

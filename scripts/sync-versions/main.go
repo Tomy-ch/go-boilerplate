@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -106,7 +108,7 @@ func parseMiseTOML(path string) (runtimeVersions, error) {
 	var v runtimeVersions
 	f, err := os.Open(path) //nolint:gosec // path is constructed from cwd + literal filename
 	if err != nil {
-		return v, fmt.Errorf("open: %w", err)
+		return v, xerrors.Wrap(err, "open")
 	}
 	defer func() { _ = f.Close() }()
 
@@ -126,7 +128,7 @@ func parseMiseTOML(path string) (runtimeVersions, error) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return v, fmt.Errorf("scan: %w", err)
+		return v, xerrors.Wrap(err, "scan")
 	}
 	return v, nil
 }
@@ -314,7 +316,7 @@ func writeChanges(states map[string]*fileState, root string) error {
 		if err := os.WriteFile(
 			filepath.Join(root, file), []byte(st.current), filePerm,
 		); err != nil {
-			return fmt.Errorf("write %s: %w", file, err)
+			return xerrors.Wrap(err, "write "+file)
 		}
 		log.Printf("Updated: %s [%s]", file, strings.Join(st.applied, ", "))
 		anyChange = true

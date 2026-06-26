@@ -37,7 +37,7 @@ func validateDatabaseName(name string) error {
 	case "local", "test":
 		return nil
 	default:
-		return fmt.Errorf("invalid database name: %s", name)
+		return xerrors.New("invalid database name: " + name)
 	}
 }
 
