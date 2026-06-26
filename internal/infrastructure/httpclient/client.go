@@ -61,19 +61,19 @@ func noFollowRedirect(_ *http.Request, _ []*http.Request) error {
 
 // Do は、req を送信し Response を返します。retry / backoff / deadline 規律を含みます。
 func (c *client) Do(ctx context.Context, req *Request) (*Response, error) {
-	if req.AllowRetry && req.IdempotencyKey == "" {
+	if req.allowRetry && req.idempotencyKey == "" {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "AllowRetry requires IdempotencyKey")
 	}
 
-	profile := c.registry.Profile(req.Downstream)
-	ds := string(req.Downstream)
+	profile := c.registry.Profile(req.downstream)
+	ds := string(req.downstream)
 
 	ctx, cancel := context.WithTimeout(ctx, profile.OverallTimeout)
 	defer cancel()
 
 	c.metrics.InFlightAdd(ctx, ds, 1)
 	defer c.metrics.InFlightAdd(ctx, ds, -1)
-	c.budget.refill(req.Downstream, profile.RetryBudgetRatio)
+	c.budget.refill(req.downstream, profile.RetryBudgetRatio)
 
 	start := time.Now()
 	resp, err := c.doWithRetry(ctx, req, profile, ds)
@@ -86,7 +86,7 @@ func (c *client) Do(ctx context.Context, req *Request) (*Response, error) {
 // doWithRetry は、breaker / budget / backoff を伴う retry ループを回します。
 func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile, ds string) (*Response, error) {
 	retrySafe := isRetrySafe(req)
-	br := c.breakers.get(req.Downstream, profile.Breaker)
+	br := c.breakers.get(req.downstream, profile.Breaker)
 
 	// breaker 状態は level（gauge）なので、最終状態を呼び出し終了時に 1 回だけ記録する。
 	defer func() { c.metrics.SetBreakerState(ctx, ds, int64(br.currentState())) }()
@@ -115,7 +115,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 		if attempt == maxAttempts {
 			return resp, err
 		}
-		if !c.budget.tryConsume(req.Downstream) {
+		if !c.budget.tryConsume(req.downstream) {
 			return resp, err
 		}
 
@@ -171,7 +171,7 @@ func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*R
 	}
 
 	if appErr := statusToAppError(httpResp.StatusCode); appErr != nil {
-		msg := fmt.Sprintf("downstream %s returned status %d", req.Downstream, httpResp.StatusCode)
+		msg := fmt.Sprintf("downstream %s returned status %d", req.downstream, httpResp.StatusCode)
 		return resp, xerrors.Wrap(appErr, msg)
 	}
 	return resp, nil
@@ -203,22 +203,22 @@ func (c *client) recordOutcome(ctx context.Context, ds string, resp *Response, e
 // buildRequest は、自前型の Request から net/http のリクエストを組み立てます。
 func buildRequest(ctx context.Context, req *Request) (*http.Request, error) {
 	var body io.Reader
-	if len(req.Body) > 0 {
-		body = bytes.NewReader(req.Body)
+	if len(req.body) > 0 {
+		body = bytes.NewReader(req.body)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, req.Method.String(), req.URL, body)
+	httpReq, err := http.NewRequestWithContext(ctx, req.method.String(), req.url, body)
 	if err != nil {
 		return nil, err
 	}
 
-	for key, values := range req.Header {
+	for key, values := range req.header {
 		for _, v := range values {
 			httpReq.Header.Add(key, v)
 		}
 	}
-	if req.IdempotencyKey != "" {
-		httpReq.Header.Set(idempotencyHeader, req.IdempotencyKey)
+	if req.idempotencyKey != "" {
+		httpReq.Header.Set(idempotencyHeader, req.idempotencyKey)
 	}
 	return httpReq, nil
 }

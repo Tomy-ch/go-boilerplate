@@ -70,11 +70,7 @@ func TestClientDo(t *testing.T) {
 			t.Cleanup(srv.Close)
 
 			client := newClient(t, httpclient.NewRegistry(nil))
-			resp, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "sample",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "sample", srv.URL))
 
 			require.NoError(t, err)
 			require.NotNil(t, resp)
@@ -96,13 +92,11 @@ func TestClientDo(t *testing.T) {
 			t.Cleanup(srv.Close)
 
 			client := newClient(t, httpclient.NewRegistry(nil))
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream:     "sample",
-				Method:         httpclient.MethodPost,
-				URL:            srv.URL,
-				Body:           []byte(`{"v":1}`),
-				IdempotencyKey: "key-123",
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(
+				httpclient.MethodPost, "sample", srv.URL,
+				httpclient.WithBody([]byte(`{"v":1}`)),
+				httpclient.WithIdempotencyKey("key-123"),
+			))
 
 			require.NoError(t, err)
 			assert.Equal(t, []byte(`{"v":1}`), gotBody)
@@ -134,11 +128,7 @@ func TestClientDo(t *testing.T) {
 				t.Cleanup(srv.Close)
 
 				client := newClient(t, httpclient.NewRegistry(nil))
-				resp, err := client.Do(context.Background(), &httpclient.Request{
-					Downstream: "sample",
-					Method:     httpclient.MethodGet,
-					URL:        srv.URL,
-				})
+				resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "sample", srv.URL))
 
 				require.ErrorIs(t, err, tc.want)
 				require.NotNil(t, resp)
@@ -155,11 +145,7 @@ func TestClientDo(t *testing.T) {
 			srv.Close() // 先に閉じて接続不能にする
 
 			client := newClient(t, httpclient.NewRegistry(nil))
-			resp, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "sample",
-				Method:     httpclient.MethodGet,
-				URL:        url,
-			})
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "sample", url))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
@@ -177,11 +163,7 @@ func TestClientDo(t *testing.T) {
 			cancel()
 
 			client := newClient(t, httpclient.NewRegistry(nil))
-			resp, err := client.Do(ctx, &httpclient.Request{
-				Downstream: "sample",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			resp, err := client.Do(ctx, httpclient.NewRequest(httpclient.MethodGet, "sample", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, resp)
@@ -191,11 +173,7 @@ func TestClientDo(t *testing.T) {
 			t.Parallel()
 
 			client := newClient(t, httpclient.NewRegistry(nil))
-			resp, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "sample",
-				Method:     httpclient.MethodGet,
-				URL:        "://invalid",
-			})
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "sample", "://invalid"))
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			assert.Nil(t, resp)
@@ -215,11 +193,7 @@ func TestClientDo(t *testing.T) {
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"tiny": profile})
 
 			client := newClient(t, registry)
-			resp, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "tiny",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "tiny", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
@@ -249,11 +223,7 @@ func TestClientDoRedirect(t *testing.T) {
 			t.Cleanup(srv.Close)
 
 			client := newClient(t, httpclient.NewRegistry(nil))
-			resp, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "sample",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "sample", srv.URL))
 
 			// 非追従でも resp(Location 付き)は返り、非2xx契約どおり err は ErrUnavailable。
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -306,11 +276,7 @@ func TestClientDoMinimumAttempt(t *testing.T) {
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"zero": profile})
 
 			client := newClient(t, registry)
-			resp, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "zero",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "zero", srv.URL))
 
 			require.NoError(t, err)
 			require.NotNil(t, resp)
@@ -332,11 +298,7 @@ func TestClientDoRetry(t *testing.T) {
 			srv, hits := countingServer(t, http.StatusServiceUnavailable)
 			client := newClient(t, retryProfile())
 
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "retry",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Equal(t, int32(3), hits.Load())
@@ -348,11 +310,7 @@ func TestClientDoRetry(t *testing.T) {
 			srv, hits := countingServer(t, http.StatusBadRequest)
 			client := newClient(t, retryProfile())
 
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "retry",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			assert.Equal(t, int32(1), hits.Load())
@@ -364,11 +322,7 @@ func TestClientDoRetry(t *testing.T) {
 			srv, hits := countingServer(t, http.StatusServiceUnavailable)
 			client := newClient(t, retryProfile())
 
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "retry",
-				Method:     httpclient.MethodPost,
-				URL:        srv.URL,
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodPost, "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Equal(t, int32(1), hits.Load())
@@ -380,13 +334,10 @@ func TestClientDoRetry(t *testing.T) {
 			srv, hits := countingServer(t, http.StatusServiceUnavailable)
 			client := newClient(t, retryProfile())
 
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream:     "retry",
-				Method:         httpclient.MethodPost,
-				URL:            srv.URL,
-				IdempotencyKey: "key-1",
-				AllowRetry:     true,
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(
+				httpclient.MethodPost, "retry", srv.URL,
+				httpclient.WithRetry("key-1"),
+			))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Equal(t, int32(3), hits.Load())
@@ -396,23 +347,9 @@ func TestClientDoRetry(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("AllowRetryありで冪等性キーなしはErrInvalidArgumentを返し送信しない", func(t *testing.T) {
-			t.Parallel()
-
-			srv, hits := countingServer(t, http.StatusOK)
-			client := newClient(t, retryProfile())
-
-			resp, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "retry",
-				Method:     httpclient.MethodPost,
-				URL:        srv.URL,
-				AllowRetry: true,
-			})
-
-			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-			assert.Nil(t, resp)
-			assert.Equal(t, int32(0), hits.Load())
-		})
+		// NOTE: 「AllowRetry あり・冪等性キーなし」という不正状態は Request の非公開フィールド化（L2）に
+		// より公開 API からは構築不能になったため、そのランタイムガード（defense-in-depth）の検証は
+		// パッケージ内テスト（request_guard_internal_test.go）へ移設した。
 
 		t.Run("backoffのスリープ中にctxがキャンセルされたらErrCanceledを返す", func(t *testing.T) {
 			t.Parallel()
@@ -425,11 +362,7 @@ func TestClientDoRetry(t *testing.T) {
 
 			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, retryProfile(), observability.NewNoopHTTPClientMetrics(t))
 
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "retry",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
@@ -464,11 +397,7 @@ func TestClientDoBackoff(t *testing.T) {
 				}).AnyTimes()
 
 			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "retry",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			require.Len(t, slept, 3) // MaxAttempts-1 回のリトライ
@@ -506,11 +435,7 @@ func TestClientDoDeadline(t *testing.T) {
 				registry,
 				observability.NewNoopHTTPClientMetrics(t),
 			)
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "retry",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Less(t, hits.Load(), int32(20))
@@ -541,7 +466,7 @@ func TestClientDoBreaker(t *testing.T) {
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"brk": profile})
 			client := newClient(t, registry)
 
-			req := &httpclient.Request{Downstream: "brk", Method: httpclient.MethodGet, URL: srv.URL}
+			req := httpclient.NewRequest(httpclient.MethodGet, "brk", srv.URL)
 
 			// MinRequests(2) 件の失敗で open する。
 			_, err1 := client.Do(context.Background(), req)
@@ -579,7 +504,7 @@ func TestClientDoBudget(t *testing.T) {
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"bdg": profile})
 			client := newClient(t, registry)
 
-			req := &httpclient.Request{Downstream: "bdg", Method: httpclient.MethodGet, URL: srv.URL}
+			req := httpclient.NewRequest(httpclient.MethodGet, "bdg", srv.URL)
 
 			// 初期トークン(=retryBudgetInitialTokens)を消費し切るまでリクエストを繰り返す。
 			for range 2 {
@@ -628,11 +553,7 @@ func TestClientDoRetryAfter(t *testing.T) {
 				}).AnyTimes()
 
 			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
-			_, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "ra",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "ra", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			require.Len(t, slept, 1)
@@ -662,11 +583,7 @@ func TestClientDoTimeout(t *testing.T) {
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"slow": profile})
 
 			client := newClient(t, registry)
-			resp, err := client.Do(context.Background(), &httpclient.Request{
-				Downstream: "slow",
-				Method:     httpclient.MethodGet,
-				URL:        srv.URL,
-			})
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet, "slow", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)

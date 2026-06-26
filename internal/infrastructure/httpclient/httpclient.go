@@ -53,23 +53,27 @@ type Method struct{ s string }
 type Header map[string][]string
 
 // Request は、1 回の外部 HTTP 呼び出しの意図を表します。
+//
+// フィールドはすべて非公開で、構築は NewRequest（必須項目を強制）と With* オプション経由に
+// 限定されます。パッケージ外からの struct リテラル構築を型レベルで封じることで、「downstream
+// 欠落」「AllowRetry なのに IdempotencyKey 不在」といった不正状態を構築時点で排除します（L2）。
 type Request struct {
-	// Downstream は、論理依存名です（必須）。breaker / metrics / profile / budget のキーになります。
-	Downstream Downstream
-	// Method は、HTTP メソッドです。
-	Method Method
-	// URL は、リクエスト先 URL です。
+	// downstream は、論理依存名です（必須）。breaker / metrics / profile / budget のキーになります。
+	downstream Downstream
+	// method は、HTTP メソッドです。
+	method Method
+	// url は、リクエスト先 URL です。
 	// 認証情報などの機密はクエリではなく Header に載せてください（URL は o11y span へ記録されます）。
-	URL string
-	// Header は、リクエストヘッダです。
-	Header Header
-	// Body は、バッファ済みのリクエストボディです。retry で replay 可能です（stream は非対象）。
-	Body []byte
-	// IdempotencyKey は、非冪等メソッドを retry 安全にするためのキーです（任意）。
-	IdempotencyKey string
-	// AllowRetry は、POST 等の非冪等メソッドを明示的に retry 許可するフラグです。
-	// true の場合は IdempotencyKey が必須です（二重実行防止）。
-	AllowRetry bool
+	url string
+	// header は、リクエストヘッダです。
+	header Header
+	// body は、バッファ済みのリクエストボディです。retry で replay 可能です（stream は非対象）。
+	body []byte
+	// idempotencyKey は、非冪等メソッドを retry 安全にするためのキーです（任意）。
+	idempotencyKey string
+	// allowRetry は、POST 等の非冪等メソッドを明示的に retry 許可するフラグです。
+	// true の場合は idempotencyKey が必須です（二重実行防止）。
+	allowRetry bool
 }
 
 // RequestOption は、NewRequest の任意項目を設定する関数オプションです。
@@ -93,9 +97,9 @@ func (m Method) String() string { return m.s }
 // downstream 欠落を構築時点で型・シグネチャにより排除します。
 func NewRequest(method Method, downstream Downstream, url string, opts ...RequestOption) *Request {
 	r := &Request{
-		Downstream: downstream,
-		Method:     method,
-		URL:        url,
+		downstream: downstream,
+		method:     method,
+		url:        url,
 	}
 	for _, opt := range opts {
 		opt(r)
@@ -104,21 +108,42 @@ func NewRequest(method Method, downstream Downstream, url string, opts ...Reques
 }
 
 // WithHeader は、リクエストヘッダを設定します。
-func WithHeader(h Header) RequestOption { return func(r *Request) { r.Header = h } }
+func WithHeader(h Header) RequestOption { return func(r *Request) { r.header = h } }
 
 // WithBody は、リクエストボディを設定します。
-func WithBody(b []byte) RequestOption { return func(r *Request) { r.Body = b } }
+func WithBody(b []byte) RequestOption { return func(r *Request) { r.body = b } }
 
 // WithIdempotencyKey は、冪等性キーを設定します（retry は許可しません）。
 func WithIdempotencyKey(key string) RequestOption {
-	return func(r *Request) { r.IdempotencyKey = key }
+	return func(r *Request) { r.idempotencyKey = key }
 }
 
-// WithRetry は、非冪等メソッドの retry を許可します。IdempotencyKey を同時に必須化することで、
-// 「AllowRetry なのに IdempotencyKey 不在」という不正状態を構築時点で避けます。
+// WithRetry は、非冪等メソッドの retry を許可します。idempotencyKey を同時に必須化することで、
+// 「allowRetry なのに idempotencyKey 不在」という不正状態を構築時点で避けます。
 func WithRetry(idempotencyKey string) RequestOption {
 	return func(r *Request) {
-		r.AllowRetry = true
-		r.IdempotencyKey = idempotencyKey
+		r.allowRetry = true
+		r.idempotencyKey = idempotencyKey
 	}
 }
+
+// Downstream は、論理依存名を返します。
+func (r *Request) Downstream() Downstream { return r.downstream }
+
+// Method は、HTTP メソッドを返します。
+func (r *Request) Method() Method { return r.method }
+
+// URL は、リクエスト先 URL を返します。
+func (r *Request) URL() string { return r.url }
+
+// Header は、リクエストヘッダを返します。
+func (r *Request) Header() Header { return r.header }
+
+// Body は、リクエストボディを返します。
+func (r *Request) Body() []byte { return r.body }
+
+// IdempotencyKey は、冪等性キーを返します（未設定時は ""）。
+func (r *Request) IdempotencyKey() string { return r.idempotencyKey }
+
+// AllowRetry は、非冪等メソッドの retry 許可フラグを返します。
+func (r *Request) AllowRetry() bool { return r.allowRetry }

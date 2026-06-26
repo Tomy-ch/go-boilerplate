@@ -22,14 +22,14 @@ func TestIsRetrySafe(t *testing.T) {
 			req  *Request
 			want bool
 		}{
-			"GETは常に安全":               {req: &Request{Method: MethodGet}, want: true},
-			"PUTは常に安全":               {req: &Request{Method: MethodPut}, want: true},
-			"DELETEは常に安全":            {req: &Request{Method: MethodDelete}, want: true},
-			"POSTはAllowRetryなしで非安全":  {req: &Request{Method: MethodPost}, want: false},
-			"POSTはAllowRetryありで安全":   {req: &Request{Method: MethodPost, AllowRetry: true}, want: true},
-			"PATCHはAllowRetryなしで非安全": {req: &Request{Method: MethodPatch}, want: false},
-			"PATCHはAllowRetryありで安全":  {req: &Request{Method: MethodPatch, AllowRetry: true}, want: true},
-			"ゼロ値(未設定)メソッドは非安全":       {req: &Request{Method: Method{}}, want: false},
+			"GETは常に安全":               {req: &Request{method: MethodGet}, want: true},
+			"PUTは常に安全":               {req: &Request{method: MethodPut}, want: true},
+			"DELETEは常に安全":            {req: &Request{method: MethodDelete}, want: true},
+			"POSTはAllowRetryなしで非安全":  {req: &Request{method: MethodPost}, want: false},
+			"POSTはAllowRetryありで安全":   {req: &Request{method: MethodPost, allowRetry: true}, want: true},
+			"PATCHはAllowRetryなしで非安全": {req: &Request{method: MethodPatch}, want: false},
+			"PATCHはAllowRetryありで安全":  {req: &Request{method: MethodPatch, allowRetry: true}, want: true},
+			"ゼロ値(未設定)メソッドは非安全":       {req: &Request{method: Method{}}, want: false},
 		}
 
 		for name, tc := range cases {

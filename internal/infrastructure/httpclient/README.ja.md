@@ -30,6 +30,7 @@ flowchart TB
 
 - net/http を露出しない: 自前型（`Method` / `Header` / `Request` / `Response` / `Downstream`）を公開し、ステータス解釈と `apperror` への写像は substrate 内部に閉じる（`pgerror.NormalizeError` の HTTP 版）。
 - `Method` は**閉じた型**（struct ベース・非公開フィールド）: 定義済み定数（`MethodGet` … `MethodDelete`）しか構築できず、不正なメソッド文字列は実行時ではなくコンパイル時に弾かれる（L2）。リクエストは `NewRequest(method, downstream, url, opts...)` で生成する——`method` / `downstream` / `url` はシグネチャで必須化され、任意項目は `WithHeader` / `WithBody` / `WithIdempotencyKey` / `WithRetry` で設定する（`WithRetry` は `AllowRetry` と `IdempotencyKey` を同時に設定し、両者が乖離しないようにする）。
+- `Request` は**イミュータブルな値オブジェクト**（L2）: 全フィールドが非公開で、構築は `NewRequest` + `With*` オプション経由のみ、参照は getter（`Downstream()` / `Method()` / `URL()` / `Header()` / `Body()` / `IdempotencyKey()` / `AllowRetry()`）経由のみに限定される。これによりパッケージ外からは不正状態（`downstream` 欠落、`IdempotencyKey` なしの `AllowRetry` 等）を表現できない。`Do` 内のランタイムガードはパッケージ内向けの defense-in-depth として残す。
 - `Downstream` ごとの resilient 設定は `Registry` が解決する: 各 gateway が `DownstreamProfile` を `httpclient_profiles` fx グループへ寄与し、未登録キーは `DefaultProfile` へ fallback する。
 - retry の安全性はメソッド依存: 冪等メソッド（GET / PUT / DELETE）は常に retry 安全、非冪等メソッド（POST / PATCH）は `AllowRetry` 明示時のみ安全で、その場合 `IdempotencyKey` が必須。
 - retry 対象は 5xx / 429 / transport 失敗。4xx / 成功 / ctx cancel は対象外。backoff は指数 + full jitter で、`Retry-After` ヘッダがあればそれを優先する。

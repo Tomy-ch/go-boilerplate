@@ -25,11 +25,11 @@ const (
 // isRetrySafe は、req が retry してよいリクエストかを返します。
 // 冪等メソッド(GET/PUT/DELETE)は常に安全、非冪等メソッド(POST/PATCH)は AllowRetry 明示時のみ安全です。
 func isRetrySafe(req *Request) bool {
-	switch req.Method {
+	switch req.method {
 	case MethodGet, MethodPut, MethodDelete:
 		return true
 	case MethodPost, MethodPatch:
-		return req.AllowRetry
+		return req.allowRetry
 	default:
 		return false
 	}

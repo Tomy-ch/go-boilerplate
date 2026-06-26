@@ -44,23 +44,20 @@ func TestRequest(t *testing.T) {
 		t.Run("各フィールドを保持できる", func(t *testing.T) {
 			t.Parallel()
 
-			req := &httpclient.Request{
-				Downstream:     "payment",
-				Method:         httpclient.MethodPost,
-				URL:            "https://example.com/charge",
-				Header:         httpclient.Header{"Content-Type": {"application/json"}},
-				Body:           []byte(`{"amount":100}`),
-				IdempotencyKey: "key-1",
-				AllowRetry:     true,
-			}
+			req := httpclient.NewRequest(
+				httpclient.MethodPost, "payment", "https://example.com/charge",
+				httpclient.WithHeader(httpclient.Header{"Content-Type": {"application/json"}}),
+				httpclient.WithBody([]byte(`{"amount":100}`)),
+				httpclient.WithRetry("key-1"),
+			)
 
-			assert.Equal(t, httpclient.Downstream("payment"), req.Downstream)
-			assert.Equal(t, httpclient.MethodPost, req.Method)
-			assert.Equal(t, "https://example.com/charge", req.URL)
-			assert.Equal(t, []string{"application/json"}, req.Header["Content-Type"])
-			assert.Equal(t, []byte(`{"amount":100}`), req.Body)
-			assert.Equal(t, "key-1", req.IdempotencyKey)
-			assert.True(t, req.AllowRetry)
+			assert.Equal(t, httpclient.Downstream("payment"), req.Downstream())
+			assert.Equal(t, httpclient.MethodPost, req.Method())
+			assert.Equal(t, "https://example.com/charge", req.URL())
+			assert.Equal(t, []string{"application/json"}, req.Header()["Content-Type"])
+			assert.Equal(t, []byte(`{"amount":100}`), req.Body())
+			assert.Equal(t, "key-1", req.IdempotencyKey())
+			assert.True(t, req.AllowRetry())
 		})
 	})
 }
@@ -76,13 +73,13 @@ func TestNewRequest(t *testing.T) {
 
 			req := httpclient.NewRequest(httpclient.MethodGet, "rates", "https://example.com/rates")
 
-			assert.Equal(t, httpclient.MethodGet, req.Method)
-			assert.Equal(t, httpclient.Downstream("rates"), req.Downstream)
-			assert.Equal(t, "https://example.com/rates", req.URL)
-			assert.Nil(t, req.Header)
-			assert.Nil(t, req.Body)
-			assert.Empty(t, req.IdempotencyKey)
-			assert.False(t, req.AllowRetry)
+			assert.Equal(t, httpclient.MethodGet, req.Method())
+			assert.Equal(t, httpclient.Downstream("rates"), req.Downstream())
+			assert.Equal(t, "https://example.com/rates", req.URL())
+			assert.Nil(t, req.Header())
+			assert.Nil(t, req.Body())
+			assert.Empty(t, req.IdempotencyKey())
+			assert.False(t, req.AllowRetry())
 		})
 
 		t.Run("オプションでheader_body_idempotencyKeyを設定できる", func(t *testing.T) {
@@ -95,10 +92,10 @@ func TestNewRequest(t *testing.T) {
 				httpclient.WithIdempotencyKey("key-1"),
 			)
 
-			assert.Equal(t, header, req.Header)
-			assert.Equal(t, []byte("{}"), req.Body)
-			assert.Equal(t, "key-1", req.IdempotencyKey)
-			assert.False(t, req.AllowRetry, "WithIdempotencyKey は retry を許可しない")
+			assert.Equal(t, header, req.Header())
+			assert.Equal(t, []byte("{}"), req.Body())
+			assert.Equal(t, "key-1", req.IdempotencyKey())
+			assert.False(t, req.AllowRetry(), "WithIdempotencyKey は retry を許可しない")
 		})
 
 		t.Run("WithRetryはAllowRetryとIdempotencyKeyを同時に設定する", func(t *testing.T) {
@@ -108,8 +105,8 @@ func TestNewRequest(t *testing.T) {
 				httpclient.WithRetry("key-2"),
 			)
 
-			assert.True(t, req.AllowRetry)
-			assert.Equal(t, "key-2", req.IdempotencyKey)
+			assert.True(t, req.AllowRetry())
+			assert.Equal(t, "key-2", req.IdempotencyKey())
 		})
 	})
 }
