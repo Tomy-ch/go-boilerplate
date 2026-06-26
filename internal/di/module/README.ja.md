@@ -13,7 +13,7 @@
 |`ConfigModule()`|`config.go`|設定（`*Config` + 全 SubConfig プロバイダー + `*time.Location`）|
 |`ControllerModule()`|`controller.go`|HTTP ハンドラの登録（`fx.Invoke` で `BindHandler` を実行）|
 |`DatabaseModule()`|`db.go`|DB 接続（`*pgxpool.Pool`）+ ドライバ / トランザクションマネージャ / メトリクス|
-|`InfrastructureModule()`|`infrastructure.go`|リポジトリ / クエリサービス / system query + Clock / パスワードハッシュ|
+|`InfrastructureModule()`|`infrastructure.go`|concern ごとのサブモジュールの集約: persistence（repository / query service / command service / system query）+ clock + httpclient + webapi gateway + outbox publisher + security|
 |`JobModule()`|`job.go`|ジョブ登録（`group:"jobs"`）+ Runner + State + Hook|
 |`LoggingModule()`|`logging.go`|Logger + LogFieldBuilder|
 |`ObservabilityModule()`|`observability.go`|TracerProvider + TracerFactory|
@@ -48,7 +48,8 @@ flowchart TB
 - 各モジュールはレイヤの境界に対応（config / logging / db / infra / usecase / controller / job）
 - モジュール間の依存は fx が自動解決する
 - モジュールの追加は新しいファイルを作成し、アプリのルートモジュールに追加するだけ
-- `InfrastructureModule()` は各プロバイダを入れ子の `fx.Module` サブモジュールに意図的にまとめており、fx の依存グラフをコンポーネント単位で読みやすく保つ。RDB 系プロバイダ（`repository` / `query_service` / `command_service` / `system_query`）は `persistence` サブモジュール配下に入れ子化し、`DatabaseModule()` の `db`（接続レイヤ）と区別している。`clock` と `security` は `infrastructure` の直下子。clock サブモジュールは `SystemModule()` の `system` ラベルとの衝突を避けるため `system` ではなく `clock` と命名している。
+- `InfrastructureModule()` は純粋な**集約ポイント**であり、concern ごとのサブモジュールを束ねるだけ。これにより fx の依存グラフをコンポーネント単位で読みやすく保つ。各 concern はそれぞれ独立したファイルに置く — `persistence.go`（`persistenceModule()`）/ `clock.go`（`clockModule()`）/ `httpclient.go`（`httpClientModule()`）/ `webapi.go`（`webapiModule()`）/ `outboxpublisher.go`（`outboxPublisherModule()`）/ `security.go`（`securityModule()`） — `infrastructure.go` はこれらを `infrastructure` モジュール配下に束ねるだけ。各 concern ファイルには対の `*_test.go` があり個別の `Test<Concern>Module_GraphIsValid` を持つ。`infrastructure_test.go` は集約後の全体を検証する。
+  - RDB 系プロバイダ（`repository` / `query_service` / `command_service` / `system_query`）は `persistence` サブモジュール配下に入れ子化し、`DatabaseModule()` の `db`（接続レイヤ）と区別している。clock サブモジュールは `SystemModule()` の `system` ラベルとの衝突を避けるため `system` ではなく `clock` と命名している。`webapi` / `outbox_publisher` は `httpclient` substrate に依存する。
 
 ## 注意点
 
