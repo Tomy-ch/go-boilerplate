@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/clock/testkit"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	"go-boilerplate/internal/usecase/boundary/publisher"
@@ -32,7 +34,9 @@ func passthroughManager(t *testing.T, ctrl *gomock.Controller) tx.Manager {
 
 func newRelay(t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher) outbox.RelayUsecase {
 	t.Helper()
-	return outbox.NewRelay(txm, store, pub, logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+	return outbox.NewRelay(txm, store, pub,
+		observability.NewNoopOutboxMetrics(t), testkit.NewMockClock(t, time.Time{}),
+		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
 }
 
 func pendingMessage(t *testing.T) outboxbndry.PendingMessage {
@@ -258,6 +262,66 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 				RelayBatch(context.Background(), 100)
 
 			require.ErrorIs(t, err, wantErr)
+		})
+	})
+}
+
+func TestRelayUsecase_RecordLag(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	build := func(t *testing.T, store outboxbndry.Store) outbox.RelayUsecase {
+		t.Helper()
+		ctrl := gomock.NewController(t)
+		return outbox.NewRelay(
+			mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl),
+			observability.NewNoopOutboxMetrics(t), testkit.NewMockClock(t, now),
+			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("pending 行があれば lag を記録して nil を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(-time.Minute), true, nil)
+
+			require.NoError(t, build(t, store).RecordLag(context.Background()))
+		})
+
+		t.Run("pending 行が無ければ 0 を記録して nil を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, nil)
+
+			require.NoError(t, build(t, store).RecordLag(context.Background()))
+		})
+
+		t.Run("now より未来の created_at は負の lag を 0 にクランプする", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(time.Minute), true, nil)
+
+			require.NoError(t, build(t, store).RecordLag(context.Background()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("OldestPendingCreatedAt のエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			wantErr := errors.New("lag query failed")
+			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, wantErr)
+
+			require.ErrorIs(t, build(t, store).RecordLag(context.Background()), wantErr)
 		})
 	})
 }

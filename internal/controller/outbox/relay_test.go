@@ -39,6 +39,7 @@ func TestEngine_Run(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(0, nil)
@@ -51,6 +52,7 @@ func TestEngine_Run(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			gomock.InOrder(
@@ -67,6 +69,7 @@ func TestEngine_Run(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(0, errors.New("batch failed"))
@@ -75,10 +78,24 @@ func TestEngine_Run(t *testing.T) {
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
 		})
 
+		t.Run("RecordLag が失敗してもログのみでループを継続する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+
+			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(0, nil).AnyTimes()
+			uc.EXPECT().RecordLag(gomock.Any()).Return(errors.New("lag failed")).AnyTimes()
+			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled)
+
+			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
+		})
+
 		t.Run("開始時に ctx が完了済みなら RelayBatch を呼ばず停止する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -91,6 +108,7 @@ func TestEngine_Run(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			ctx, cancel := context.WithCancel(context.Background())
