@@ -247,13 +247,14 @@ DB 接続用の DSN を組み立てるユーティリティです。
 ## NewTransactionManager
 
 ```go
-func NewTransactionManager(db DatabaseDriver, logger logging.Logger, sleeper clock.Sleeper) tx.Manager
+func NewTransactionManager(db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper) tx.Manager
 ```
 
 Usecase 層の `tx.Manager`（`internal/usecase/boundary/tx`）を実装するコンストラクタです。
 `Do` は `serialization_failure`(40001) / `deadlock_detected`(40P01) を検出するとトランザクション全体を
-有限回まで再試行します（`sleeper` で指数 backoff + full jitter, `pkg/retry`）。`fn` の冪等性契約は
-`tx` 境界 README を参照してください。
+有限回まで再試行します（`sleeper` で指数 backoff + full jitter, `pkg/retry`）。再試行回数と backoff は
+config（`DB_TX_MAX_RETRIES` / `DB_TX_RETRY_BASE_BACKOFF` / `DB_TX_RETRY_MAX_BACKOFF`）から取得し、
+0 以下の場合は組み込み既定値にフォールバックします。`fn` の冪等性契約は `tx` 境界 README を参照してください。
 
 ## クエリトレーサー（query_tracer.go）
 

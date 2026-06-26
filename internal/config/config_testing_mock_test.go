@@ -61,6 +61,9 @@ func TestMockConfigForTest(t *testing.T) {
 					sslMode:                expectedDBSSLMode,
 					pingTimeout:            expectedDBPingTimeout,
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					txMaxRetries:           expectedDBTxMaxRetries,
+					txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				dbconnection: DBConnectionConfig{
 					maxConns:    expectedDBMaxConnsInt32,
@@ -169,6 +172,9 @@ func Test_mockLoader(t *testing.T) {
 					SSLMode:                expectedDBSSLMode,
 					PingTimeout:            expectedDBPingTimeout,
 					SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					TxMaxRetries:           expectedDBTxMaxRetries,
+					TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				DBConnection: DBConnection{
 					MaxConns:    expectedDBMaxConnsInt32,

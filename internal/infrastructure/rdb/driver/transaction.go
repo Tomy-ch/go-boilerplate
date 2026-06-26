@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/clock"
@@ -41,16 +42,33 @@ type txManager struct {
 // NewTransactionManager は、トランザクションマネージャを初期化します。
 //
 // serialization failure / deadlock 検出時の有限リトライ（H1）に sleeper を用います。
-// リトライ上限・backoff は既定値（将来 config 化）。sleeper は httpclient と同様に DI 注入します。
-func NewTransactionManager(db DatabaseDriver, logger logging.Logger, sleeper clock.Sleeper) tx.Manager {
+// リトライ上限・backoff は config（DB_TX_MAX_RETRIES / DB_TX_RETRY_BASE_BACKOFF /
+// DB_TX_RETRY_MAX_BACKOFF）から取得します。0 以下の場合は既定値にフォールバックします。
+// sleeper は httpclient と同様に DI 注入します。
+func NewTransactionManager(
+	db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper,
+) tx.Manager {
+	maxAttempts := dbCfg.TxMaxRetries()
+	if maxAttempts <= 0 {
+		maxAttempts = defaultTxMaxAttempts
+	}
+	initialBackoff := dbCfg.TxRetryBaseBackoff()
+	if initialBackoff <= 0 {
+		initialBackoff = defaultTxBackoffInitial
+	}
+	maxBackoff := dbCfg.TxRetryMaxBackoff()
+	if maxBackoff <= 0 {
+		maxBackoff = defaultTxBackoffMax
+	}
+
 	return &txManager{
 		db:          db,
 		logger:      logger,
 		sleeper:     sleeper,
-		maxAttempts: defaultTxMaxAttempts,
+		maxAttempts: maxAttempts,
 		backoff: backoff.Exponential{
-			Initial:    defaultTxBackoffInitial,
-			Max:        defaultTxBackoffMax,
+			Initial:    initialBackoff,
+			Max:        maxBackoff,
 			Multiplier: txBackoffMultiplier,
 		},
 	}

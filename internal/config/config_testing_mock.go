@@ -73,6 +73,14 @@ var (
 	expectedDBSlowQueryWarnThresholdCount = 500
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
+	expectedDBTxMaxRetries                = 3
+	expectedDBTxMaxRetriesStr             = strconv.Itoa(expectedDBTxMaxRetries)
+	expectedDBTxRetryBaseBackoffCount     = 5
+	expectedDBTxRetryBaseBackoffStr       = fmt.Sprintf("%dms", expectedDBTxRetryBaseBackoffCount)
+	expectedDBTxRetryBaseBackoff          = time.Duration(expectedDBTxRetryBaseBackoffCount) * time.Millisecond
+	expectedDBTxRetryMaxBackoffCount      = 100
+	expectedDBTxRetryMaxBackoffStr        = fmt.Sprintf("%dms", expectedDBTxRetryMaxBackoffCount)
+	expectedDBTxRetryMaxBackoff           = time.Duration(expectedDBTxRetryMaxBackoffCount) * time.Millisecond
 	// dbconnection
 	expectedDBMaxConns         = 10
 	expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
@@ -173,6 +181,9 @@ func MockConfigForTest(tb testing.TB) *Config {
 			sslMode:                expectedDBSSLMode,
 			pingTimeout:            expectedDBPingTimeout,
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+			txMaxRetries:           expectedDBTxMaxRetries,
+			txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+			txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 		},
 		dbconnection: DBConnectionConfig{
 			maxConns:    expectedDBMaxConnsInt32,
@@ -271,6 +282,9 @@ func mockLoader(tb testing.TB) Loader {
 			SSLMode:                expectedDBSSLMode,
 			PingTimeout:            expectedDBPingTimeout,
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+			TxMaxRetries:           expectedDBTxMaxRetries,
+			TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+			TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 		},
 		DBConnection: DBConnection{
 			MaxConns:    expectedDBMaxConnsInt32,
@@ -342,6 +356,9 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
 	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
+	t.Setenv("DB_TX_MAX_RETRIES", expectedDBTxMaxRetriesStr)
+	t.Setenv("DB_TX_RETRY_BASE_BACKOFF", expectedDBTxRetryBaseBackoffStr)
+	t.Setenv("DB_TX_RETRY_MAX_BACKOFF", expectedDBTxRetryMaxBackoffStr)
 	// DBConnection
 	t.Setenv("DBCONN_MAX_CONNS", strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10))
 	t.Setenv("DBCONN_MIN_CONNS", strconv.FormatInt(int64(expectedDBMinConnsInt32), 10))

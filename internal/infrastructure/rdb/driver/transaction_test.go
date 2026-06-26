@@ -39,7 +39,7 @@ func TestNewTransactionManager(t *testing.T) {
 		require.NoError(t, db.Close())
 	})
 
-	manager := NewTransactionManager(db, testLogger, system.NewSleeper())
+	manager := NewTransactionManager(db, dbCfg, testLogger, system.NewSleeper())
 	require.NotNil(t, manager)
 }
 
@@ -60,7 +60,7 @@ func TestTxManager_Do(t *testing.T) {
 		require.NoError(t, db.Close())
 	})
 
-	manager := NewTransactionManager(db, testLogger, system.NewSleeper())
+	manager := NewTransactionManager(db, dbCfg, testLogger, system.NewSleeper())
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -142,7 +142,8 @@ func TestTxManager_Do_Retry(t *testing.T) {
 			db.EXPECT().Begin(gomock.Any()).Return(nil, retryablePgErr).Times(defaultTxMaxAttempts)
 			sleeper := &recordingSleeper{}
 
-			m := NewTransactionManager(db, logging.NewTestLogger(t), sleeper)
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			m := NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
 			err := m.Do(context.Background(), func(context.Context) error { return nil })
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -158,7 +159,8 @@ func TestTxManager_Do_Retry(t *testing.T) {
 			db.EXPECT().Begin(gomock.Any()).Return(nil, nonRetryablePgErr).Times(1)
 			sleeper := &recordingSleeper{}
 
-			m := NewTransactionManager(db, logging.NewTestLogger(t), sleeper)
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			m := NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
 			err := m.Do(context.Background(), func(context.Context) error { return nil })
 
 			require.Error(t, err)
@@ -183,7 +185,7 @@ func TestTxManager_Do_Goexit(t *testing.T) {
 		require.NoError(t, db.Close())
 	})
 
-	manager := NewTransactionManager(db, testLogger, system.NewSleeper())
+	manager := NewTransactionManager(db, dbCfg, testLogger, system.NewSleeper())
 
 	// fn が runtime.Goexit（testify の FailNow と同じ中断）で抜けても
 	// ロールバックされ、取得済み接続がプールへ返却される（リークしない）こと。

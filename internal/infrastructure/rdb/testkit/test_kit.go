@@ -50,7 +50,8 @@ func NewTestTransactionRunner(t *testing.T) TransactionRunner {
 	t.Helper()
 	testLogger := logging.NewTestLogger(t)
 
-	innerTxm := driver.NewTransactionManager(getTestDB(t), testLogger, system.NewSleeper())
+	dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+	innerTxm := driver.NewTransactionManager(getTestDB(t), dbCfg, testLogger, system.NewSleeper())
 
 	runner := &testTxRunner{
 		inner: innerTxm,

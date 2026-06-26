@@ -76,6 +76,9 @@ type DatabaseConfig struct {
 	sslMode                string
 	pingTimeout            time.Duration
 	slowQueryWarnThreshold time.Duration
+	txMaxRetries           int
+	txRetryBaseBackoff     time.Duration
+	txRetryMaxBackoff      time.Duration
 }
 
 // DBConnectionConfig は、データベース接続プールのサイズと寿命の設定を保持します。
@@ -269,6 +272,17 @@ func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 // この値より長く実行されたクエリは警告レベルでログ出力されます。
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
+
+// TxMaxRetries は、トランザクションのリトライ最大試行回数を返します（H1）。
+//
+// serialization failure / deadlock 検出時の有限リトライ上限です。
+func (d *DatabaseConfig) TxMaxRetries() int { return d.txMaxRetries }
+
+// TxRetryBaseBackoff は、トランザクションリトライ backoff の初期値を返します（H1）。
+func (d *DatabaseConfig) TxRetryBaseBackoff() time.Duration { return d.txRetryBaseBackoff }
+
+// TxRetryMaxBackoff は、トランザクションリトライ backoff の上限値を返します（H1）。
+func (d *DatabaseConfig) TxRetryMaxBackoff() time.Duration { return d.txRetryMaxBackoff }
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }
