@@ -1,7 +1,7 @@
 # 既知バグ 実装計画書（go-boilerplate release/v1.5.0）
 
 - 入力: `/Users/tomy/dev/tmp/known-bugs.ja.md`（C1, C2, H1–H3, M1–M3 = 8件 open ＋ L1, L2 = 2件 new）
-- 対象ブランチ: `release/v1.5.0` @ `edc83466`
+- 対象ブランチ: `release/v1.5.0`（初版 @ `edc83466` / rev4 で outbox マージ後の HEAD に対し再検証済み）
 - 方針の核: 横断パターン「**分類は揃っているが、それを消費する行動層が欠けている**」を埋める。参照実装は `internal/infrastructure/httpclient/`（classify→retry→backoff→breaker が完結）。
 - 各修正は「負荷・競合・遅延・大入力でしか発火しない」性質のため、**発火条件を注入したテスト**を必ず添える（fake consumer の Extend 失敗 / fake DB の 40001 返却 / fake Sleeper / 並列更新など）。`make test` で 90% 維持。
 
@@ -14,6 +14,15 @@
 > - **M1(b) を自前実装 → echo `middleware.ContextTimeout` ラップへ**（自前は再発明。不採用理由が事実誤認）。
 > - **M1/M2 を Use → Pre middleware へ**（openapi validator(Use=6)の body 先読みで body limit が無効化する順序欠陥を回避）。
 > - **C2 に第3タイムアウト（cli ハードコード 30s）と config 軸重複（既存 `APP_SHUTDOWN_TIMEOUT`）を追記**。
+
+> ## 改訂履歴（rev4: outbox マージ後の再精査）
+> PR #442（Transactional Outbox 一式: relay engine / Publisher / GC job / DI / config）マージ後の HEAD で全項目を再突き合わせ。**結論: 10 件すべて open のまま、14 個の参照ファイルは無変更＝行番号も有効**。outbox 着地で前提と裏付けが更新された:
+> - **H1 / rev3 依存ゲート解消**: outbox は「設計中」から「実装済み」へ。`internal/usecase/outbox/emit.go:36` が「呼出側のドメイン変更と同じ `tx.Manager.Do` 内で emit せよ」と明記＝「非DB副作用→同一 tx の outbox row→tx-retry 安全」が**稼働インフラ**に。べき論 H1 は**今すぐ outbox-safe 形で実装可能**。
+> - **H3 に precedent 出現**: `internal/di/outboxrelay.go:60-64` が既に `errors.Join(runErr, stopErr)`（コメントまで H3 提案と同一）。`cli/seed/seed.go` も同様。→ `cli/job/job.go` の `_ = stop` が唯一の outlier。
+> - **C1 の outlier が二重確定**: 新 relay hook (`register_relay_hooks.go`) も `WithCancel(Background())` + `RegisterStop(cancel)` の正しい型。worker・relay が正、job だけが欠落。
+> - **C2 が反復パターン化（relay = 2 例目）**: relay hook が worker と同一の OnStop truncation を共有（コメント流用）。→ rev3「supervised runner」抽象の実クライアントが job/worker/relay の **3 つ**に。
+> - **M3 撤回が二重正当化**: relay の at-least-once は「次 poll が `ErrorBackoff`/`PollInterval` で再 claim」＝再送 backoff は poll ループ責務。worker README の思想を outbox が独立に再確認。
+> - **L1 の現実度上昇**: outbox Publisher が `AllowPrivateNetwork=false` で同一 `guardedDialControl` を経由（SSRF ロジック非複製）。CGNAT 欠落は**本番 outbox egress の SSRF 面**に。
 
 ---
 
@@ -71,6 +80,7 @@ H1（tx retry）/ 既存 httpclient が同じ「指数 backoff ＋ full jitter�
       return errors.Join(waitCtx.Err(), gracefulStop(ctx, stop))
   ```
 - `errors.Join` は nil を畳むので、停止成功時は本体 err のみ。`os.Exit(1)` 判定（Execute 側）が停止失敗（OTel flush 失敗等）も拾う。
+- **【rev4 precedent】**: outbox マージで同型の正しい実装が repo 内に出現済み——`internal/di/outboxrelay.go:60-64` が `errors.Join(runErr, stopErr)`（コメント「errors.Join は両方 nil なら nil を返す」まで本提案と一致）、`internal/cli/seed/seed.go` も同様。本項は新パターンでなく**確立済み precedent への outlier 是正**。
 - **テスト**: `stop` が error を返す fake で、(a) 本体成功＋停止失敗→非 nil、(b) 両方成功→nil、(c) timeout 分岐＋停止失敗→両方が `errors.Is` で取れる、を検証。
 
 ### L2. HTTP client `Do()` 入口の precondition 検証
@@ -89,6 +99,8 @@ H1（tx retry）/ 既存 httpclient が同じ「指数 backoff ＋ full jitter�
 - **テスト**: `Method:""` / `Method:"Get"`（大小違い）/ `Downstream:""` がいずれも送信前に `ErrInvalidArgument` で弾かれること。正規定数は従来どおり通ること（既存テストの回帰確認）。
 
 ### L1. SSRF dial guard に CGNAT 帯を追加
+
+> **【rev4 現実度上昇】** 当初はサンプル(exchangerate)経路のみだったが、outbox マージで **本番 egress 経路が追加**。`internal/infrastructure/publisher/http_publisher.go:31-36` の `NewDownstreamProfile` が `AllowPrivateNetwork=false` を設定し、SSRF ロジックを複製せず**同一の `guardedDialControl` を経由**する。よって CGNAT deny-list 欠落は outbox publisher の送信先にも効く本番 SSRF 面。修正は 1 箇所（共有 guard）で全 egress に波及するため費用対効果も高い。
 
 - **場所**: `internal/observability/http_client_transport.go:103-119`（`guardedDialControl`）
 - **変更**: deny 判定に 100.64.0.0/10（RFC 6598）を追加。`net/netip` で package 変数として一度だけ parse。
@@ -126,6 +138,8 @@ H1（tx retry）/ 既存 httpclient が同じ「指数 backoff ＋ full jitter�
 - known-bugs.ja.md の「boundary README に明記が要るか」は**誤り**——意図は `controller/worker/README.md` に既出で、M3 案とは**逆**。むしろ「engine は per-message delay を持たない」を再確認する一文を README に残すか検討。
 - **どうしても** engine seam が要る場合のみ（bug-fix の範囲外・別 PR・要ユーザー判断）: `Extend` 転用ではなく `Consumer` port に明示的な `NackWithDelay(ctx, m, d)` を追加し、「delay 非保証」契約を破らず adapter 実装へ委ねる。これは README の "different layers" 宣言の改訂を伴う**設計変更**であり、本書のバグ修正スコープから切り離す。
 
+> **【rev4 二重正当化】** outbox relay が同じ思想を独立に体現。`internal/controller/outbox/relay.go` の at-least-once は「次 poll が `ErrorBackoff`/`PollInterval` 待機して再 claim」＝**再送 backoff は poll ループの責務**で、per-message Extend ではない。worker README の層分担（M3 当初案が侵していたもの）を新規実装が裏書きした形。
+
 → M3 は「未配線バグ」ではなく「文書化済みの層分担」。**本計画から除外**し、production-checklist 側（adapter/IaC の関心）へ移送する。
 
 ### C2. worker drain とプロセス停止の順序を保証する
@@ -146,6 +160,9 @@ H1（tx retry）/ 既存 httpclient が同じ「指数 backoff ＋ full jitter�
      > 当初案の「`ProvideEngine`(`di/worker/runner.go`, package `worker`)に置く」は**precedent 不整合**。参照すべき `extension.validatePriorityConflicts`（`extension.go:142`）は middleware を**実際に適用する** `applyMiddlewares`（同:116, 同一パッケージ）と co-located。検証と enforcement の同居が precedent。grace を適用する `di/worker.go` と検証する `ProvideEngine` を別パッケージに分離するとドリフトで validation が無意味化する。
   4. **OnStop は drain 完了を基本に待つ**: `select { engineDone / stopCtx.Done() }` は保険として維持。validation で `DrainTimeout < min(grace, cli stopTimeout)` が保証されれば通常 `engineDone` が先勝ち。猶予超過時の挙動（未 Ack＝再配送）を doc に明記。
 - **テスト**: (a) `DrainTimeout >= min(grace, cli stopTimeout)` で起動 validation が error、(b) 正常値で成功。drain の実時間競合は単体困難なため validation のロジックテストで担保。
+
+> **【rev4 反復パターン化: relay = 2 例目】** outbox マージで `internal/di/outboxrelay/hook/register_relay_hooks.go:27-34` が worker と**同一の OnStop `select { engineDone / stopCtx.Done() }` truncation**（コメントも流用）を持って出荷された。fx StopTimeout は依然未設定（既定 15s）。relay は `RelayBatch` がトランザクショナル（`usecase/outbox/relay.go:118`）で truncation 時は rollback＝worker より軽症だが、**drain-vs-grace の同一クラス**。
+> → C2 fix は worker 単独でなく **hook 横断の一般化**として設計すべき。これは rev3「supervised background runner」抽象の実クライアントが job/worker/relay の **3 つ**になったことを意味する（うち worker・relay の 2 つが同じ穴を共有）。grace の単一軸化（`APP_SHUTDOWN_TIMEOUT`）と起動時 validation も 3 hook 共通の基盤に寄せるのが正。
 
 ---
 
@@ -258,6 +275,7 @@ Pre と Use は **別 priority 名前空間**（kind 単位で `validatePriority
 > 当初の「timeout を `job.State` に載せて hook へ運ぶ」案は**動くが最善でない（PLAUSIBLE）**。`usecase/boundary/job/README.md:13` の State 責務は「invocation identity(name/args)＋結果 channel」で、timeout（実行ポリシー／orchestration 関心）を boundary に押し込むと usecase boundary に orchestration が滲む。さらに当初案は (a) state 構造体の場所を誤記（boundary ではなく **`internal/controller/job/state.go:9`**）、(b) 波及を過少計上（`controller/job/state.go` + `state_test.go` + boundary README en/ja + mock 再生成まで実波及）。
 >
 > **決定的事実**: `ctx 経由で deadline を運べない`は「データ(time.Duration)で運べ」を意味せず「**キャンセルで中断せよ**」を排除しない。そして worker hook が**まさにその最小 seam を実装済み**（`register_worker_hooks.go`: `context.WithCancel(context.Background())` + `reg.RegisterStop(cancel)`）。job hook はこの兄弟パターンに対し**唯一 `WithoutCancel(startCtx)` を使い RegisterStop を持たない outlier**。C1 は本質的に「job hook が worker hook と同じ OnStop キャンセル配線を忘れている」だけ。CLAUDE.md「新パターン導入禁止」にも、既存パターン踏襲＝整合。
+> **【rev4 outlier 二重確定】** outbox マージで `register_relay_hooks.go:16,27-34` も `WithCancel(Background())` + `RegisterStop(cancel)` の正しい型を採用。**worker・relay の 2 hook が正、job だけが欠落**となり、job hook が outlier であることが一層明確に。
 
 - **改訂 seam（boundary 不変・hook 1 パッケージで完結）**:
   1. `internal/di/job/hook/register_job_hooks.go`: 実行 ctx をキャンセル可能化し、OnStop で cancel を登録。
@@ -315,9 +333,9 @@ Pre と Use は **別 priority 名前空間**（kind 単位で `validatePriority
 
 ## 付録: べき論版（rev3 — あるべき構造 / 大改修も厭わない）
 
-rev2 は「blast radius 最小・bug-fix スコープ」で寄せた。本付録は制約を外し「アーキ的に正しい終点」を示す。**前提**: tmp に確定済みの 2 計画が存在し、いずれも `tx.Manager.Do` / inbound idempotency / `httpclient` / `pkg/backoff` の再利用前提で設計済み:
-- `tmp/outbox-implementation-plan.ja.md`（Transactional Outbox。D5=ドメイン変更と outbox INSERT を同一 commit / 配信 at-least-once / 冪等 consumer 要求）
-- `tmp/idempotency-design.md`（同一 tx claim・Postgres・DTO replay。**実装着手可**）
+rev2 は「blast radius 最小・bug-fix スコープ」で寄せた。本付録は制約を外し「アーキ的に正しい終点」を示す。**前提（rev4 で更新）**:
+- **outbox は実装済み（PR #442 マージ）**: relay engine / Publisher / GC job / DI / config が `main` に存在。`tx.Manager.Do` / `httpclient` / `pkg/backoff` を再利用。`internal/usecase/outbox/emit.go:36` が「ドメイン変更と同じ `tx.Manager.Do` 内で emit」を明記＝**D5(同一 commit) が稼働中**。→ べき論 H1 の依存ゲートは**解消済み**。
+- `tmp/idempotency-design.md`（inbound idempotency: 同一 tx claim・Postgres・DTO replay。**実装着手可**。consumer dedup として再利用予定）
 
 ### べき論の核: 点修正でなく resilience substrate の昇格
 known-bugs の真因「**分類は揃うが行動層が無い**」の正しい解は、httpclient を**範＝終点**にせず**再利用可能な共有層へ昇格**し、tx・worker・lifecycle・境界が一様に消費すること。抽出すべき共有抽象は 4 つ:
@@ -332,7 +350,7 @@ known-bugs の真因「**分類は揃うが行動層が無い**」の正しい�
 | 項目 | rev2（最小） | べき論（あるべき） | 反転理由 |
 |---|---|---|---|
 | **M3** | engine から撤回（adapter/IaC へ） | **port へ昇格**。`Consumer.NackWithBackoff` を追加、engine に policy を戻し、`README.md:31` を改訂 | per-message backoff は circuit breaker と同 class の broker 非依存 policy。IaC 丸投げは「substrate 非依存の resilience」という boilerplate の価値に反する。`Extend` 転用が誤りだっただけで目的は正当 |
-| **H1** | `Do` 内 retry ＋ 契約 doc（fn 冪等は呼出側規律） | **outbox と同時に**。tx-retry は `pkg/retry` で実装し、非DB副作用は **outbox row 化して同一 tx に載せる** | doc 依存の規律でなく**構造で**「fn N回再実行 → 外部副作用多重発火」を消す。outbox plan D5 がまさにこの原子点。outbox は確定済 |
+| **H1** | `Do` 内 retry ＋ 契約 doc（fn 冪等は呼出側規律） | tx-retry は `pkg/retry` で実装し、非DB副作用は **outbox row 化して同一 tx に載せる**（**outbox 実装済みのため今すぐ可**） | doc 依存の規律でなく**構造で**「fn N回再実行 → 外部副作用多重発火」を消す。outbox D5(emit in-tx) が稼働中なので、tx-retry は最初から outbox-safe で入れられる |
 | **C1 + C2** | 個別の OnStop 配線（hook ごと） | **supervised runner に統合**し job/worker 共通化。grace は `APP_SHUTDOWN_TIMEOUT` 単一軸へ統一、cli ハードコード 30s と fx default を撤廃 | C1 outlier を型で消す。3つのタイムアウト乱立を 1 軸へ。C1/C2 は同一問題系なので 1 抽象で解くのが正 |
 | **M1** | timeout middleware と statement_timeout を独立に | **deadline budget 一本化**（入口 1 点 → 全層伝播、statement_timeout は backstop） | 「境界ごとに期限がある」の終点は独立ノブでなく 1 予算からの導出 |
 | **M2** | Pre body limit（priority 2） | **同左**（Pre で正しい）＋ 限界値を profile/route 単位で宣言する余地 | 変更なし。rev2 が既に正しい |
@@ -351,7 +369,7 @@ known-bugs の真因「**分類は揃うが行動層が無い**」の正しい�
 - これは boilerplate の「resilience substrate」章を一段引き上げる**中〜大規模リファクタ**。複数 PR、`README`/`decisions.md`/`architecture.md` 改訂、mock 再生成、全 caller 波及（M3 port / L2 Request 型 / outbox）を伴う。
 - 一部は **bug fix を超えた機能追加・設計変更**（M3 port 昇格 / outbox / allowlist / Request 型安全）。known-bugs が「対象外（設計判断）」とした関心を**意図的に取り込む**立場。
 - 逆に **H3 / M1(b) ラップ / M2 Pre / Phase0 分離方針**は rev2 と実質同一（べき論でも追加リスクなし）。
-- **依存ゲート**: べき論 H1 は outbox 着手が前提。outbox 未着手のまま tx-retry だけ入れると rev2 の「fn 冪等は呼出側規律」へ degrade する（= rev2 が outbox 不在時の正しい妥協解）。
+- **依存ゲート（rev4 解消）**: べき論 H1 は outbox 着手が前提だったが、**outbox は PR #442 でマージ済み**。よって tx-retry は最初から outbox-safe 形で実装可能（rev2 の「fn 冪等は呼出側規律」への degrade を回避できる）。残る注意は「emit を `tx.Manager.Do` 内で呼ぶ」規約の徹底——これは tx 境界 README（H1 で更新する箇所）に明記して担保する。
 
 ---
 
