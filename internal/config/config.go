@@ -2,13 +2,14 @@
 package config
 
 import (
-	"fmt"
 	"net"
 	"net/url"
 	"strings"
 
 	"github.com/caarlos0/env/v11"
 	"golang.org/x/crypto/bcrypt"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 // exporterNone は、送出を明示的に無効化する exporter 値。
@@ -18,7 +19,7 @@ const exporterNone = "none"
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[Loader]()
 	if err != nil {
-		return nil, fmt.Errorf("%w : %w", ErrFailedToParseConfig, err)
+		return nil, xerrors.Join(ErrFailedToParseConfig, err)
 	}
 
 	if err := validateConfig(cfg); err != nil {
@@ -257,7 +258,7 @@ func validateSecurityConfig(secCfg Security) error {
 func parseCIDR(s string) (*net.IPNet, error) {
 	_, cidr, err := net.ParseCIDR(s)
 	if err != nil {
-		return nil, fmt.Errorf("%w : %w", ErrFailedToParseCIDR, err)
+		return nil, xerrors.Join(ErrFailedToParseCIDR, err)
 	}
 	return cidr, nil
 }

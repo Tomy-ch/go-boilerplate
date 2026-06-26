@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"go.uber.org/fx"
 )
@@ -24,7 +25,7 @@ func LoggingModule() fx.Option {
 func provideLogger(appCfg *config.ApplicationConfig, logCore logging.LogCore) (logging.Logger, error) {
 	level, err := logging.ParseLevel(appCfg.LogLevel())
 	if err != nil {
-		return nil, fmt.Errorf("invalid APP_LOG_LEVEL %q: %w", appCfg.LogLevel(), err)
+		return nil, xerrors.Wrap(err, fmt.Sprintf("invalid APP_LOG_LEVEL %q", appCfg.LogLevel()))
 	}
 
 	switch {
@@ -33,6 +34,6 @@ func provideLogger(appCfg *config.ApplicationConfig, logCore logging.LogCore) (l
 	case appCfg.IsDevelopmentMode():
 		return logging.WithCore(logging.NewConsoleLogger(level, logging.LevelWarn()), logCore), nil
 	default:
-		return nil, fmt.Errorf("unknown app mode: %s", appCfg.Mode())
+		return nil, xerrors.New("unknown app mode: " + appCfg.Mode())
 	}
 }

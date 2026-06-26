@@ -14,6 +14,8 @@ import (
 	"unicode"
 
 	_ "embed"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -131,11 +133,11 @@ func toExportedName(s string) (string, error) {
 	out := sb.String()
 
 	if out == "" {
-		return "", fmt.Errorf("invalid name: %s", s)
+		return "", xerrors.New("invalid name: " + s)
 	}
 
 	if !isValidIdentifier(out) {
-		return "", fmt.Errorf("invalid identifier: %s", out)
+		return "", xerrors.New("invalid identifier: " + out)
 	}
 
 	return out, nil
@@ -153,7 +155,7 @@ func toIdentifierLower(s string) (string, error) {
 	}
 	out := sb.String()
 	if out == "" {
-		return "", fmt.Errorf("invalid name: %s", s)
+		return "", xerrors.New("invalid name: " + s)
 	}
 	// ensure starts with a letter or '_'
 	runes := []rune(out)
@@ -161,7 +163,7 @@ func toIdentifierLower(s string) (string, error) {
 		out = "x" + out
 	}
 	if !isValidIdentifier(out) {
-		return "", fmt.Errorf("invalid identifier: %s", out)
+		return "", xerrors.New("invalid identifier: " + out)
 	}
 	return out, nil
 }
@@ -216,7 +218,7 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 
 	// Alias provided: validate against qualifier when present
 	if qualifier != "" && qualifier != importAlias {
-		return "", fmt.Errorf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias)
+		return "", xerrors.New(fmt.Sprintf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias))
 	}
 
 	return importAlias, nil

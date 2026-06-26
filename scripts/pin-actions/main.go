@@ -25,6 +25,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -109,7 +111,7 @@ func targetFiles(root string) ([]string, error) {
 	} {
 		m, err := filepath.Glob(filepath.Join(root, pat))
 		if err != nil {
-			return nil, fmt.Errorf("glob %s: %w", pat, err)
+			return nil, xerrors.Wrap(err, "glob "+pat)
 		}
 		files = append(files, m...)
 	}
@@ -199,7 +201,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		return daysSince(rel.PublishedAt), nil
 	}
 	if st != http.StatusOK && st != http.StatusNotFound {
-		return 0, fmt.Errorf("releases/tags/%s: %d", tag, st)
+		return 0, xerrors.New(fmt.Sprintf("releases/tags/%s: %d", tag, st))
 	}
 
 	var commit struct {
@@ -214,7 +216,7 @@ func refAgeDays(ctx context.Context, repo, tag, sha string) (int, error) {
 		return 0, err
 	}
 	if st != http.StatusOK {
-		return 0, fmt.Errorf("commits/%s: %d", sha, st)
+		return 0, xerrors.New(fmt.Sprintf("commits/%s: %d", sha, st))
 	}
 	return daysSince(commit.Commit.Committer.Date), nil
 }
@@ -327,7 +329,7 @@ func resolveSHA(ctx context.Context, repo, tag string) (string, error) {
 	url := "https://github.com/" + repo
 	out, err := exec.CommandContext(cctx, "git", "ls-remote", url, tag, tag+"^{}").Output() //nolint:gosec // 参照名は workflow 由来
 	if err != nil {
-		return "", fmt.Errorf("git ls-remote: %w", err)
+		return "", xerrors.Wrap(err, "git ls-remote")
 	}
 	var tagSHA, derefSHA, headSHA string
 	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
@@ -353,7 +355,7 @@ func resolveSHA(ctx context.Context, repo, tag string) (string, error) {
 	case headSHA != "":
 		return headSHA, nil
 	default:
-		return "", fmt.Errorf("ref %q が見つかりません", tag)
+		return "", xerrors.New(fmt.Sprintf("ref %q が見つかりません", tag))
 	}
 }
 

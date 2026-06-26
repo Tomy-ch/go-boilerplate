@@ -47,6 +47,24 @@ func TestWrap(t *testing.T) {
 	})
 }
 
+func TestJoin(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("結合した全てのエラーに対してIsがtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			err1 := errors.New("error 1")
+			err2 := errors.New("error 2")
+			joined := Join(err1, err2)
+			require.Error(t, joined)
+			assert.True(t, Is(joined, err1))
+			assert.True(t, Is(joined, err2))
+		})
+	})
+}
+
 func TestIs(t *testing.T) {
 	t.Parallel()
 
