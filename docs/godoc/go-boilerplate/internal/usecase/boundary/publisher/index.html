@@ -1,0 +1,244 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>publisher - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package publisher
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/publisher&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package publisher は、ドメインイベントの outbound publish 境界（Publisher）と
+publish 先非依存のメッセージ封筒を定義します。relay engine（controller 層）と
+publish adapter（infrastructure 層）の双方が依存する境界です。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#Message">type Message</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Publisher">type Publisher</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/publisher/publisher.go.html">publisher.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="Message">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/publisher/publisher.go.html?s=673:1168#L6">Message</a>
+				<a class="permalink" href="#Message">¶</a>
+				
+				
+			</h2>
+			<p>Message は、publish 先非依存のメッセージ封筒です。outbox 行から構築され、
+substrate（HTTP 等）へ載せ替える際の中立表現です。net/http 等の型は露出しません。
+
+			</p><pre>type Message struct {
+<span id="Message.MessageID"></span>    <span class="comment">// MessageID は dedup の安定キーです。受信側へ Idempotency-Key として伝搬されます。</span>
+    MessageID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="Message.EventType"></span>    <span class="comment">// EventType はイベント種別 + version です。</span>
+    EventType <a href="../../../../../builtin/#string">string</a>
+<span id="Message.Payload"></span>    <span class="comment">// Payload はイベント本文（snapshot + version の収束可能なペイロード）です。</span>
+    Payload []<a href="../../../../../builtin/#byte">byte</a>
+<span id="Message.Headers"></span>    <span class="comment">// Headers は publish 時に伝搬するヘッダ（traceparent 等）です。engine が解釈せず素通しします。</span>
+    Headers map[<a href="../../../../../builtin/#string">string</a>]<a href="../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Publisher">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/publisher/publisher.go.html?s=1244:1478#L18">Publisher</a>
+				<a class="permalink" href="#Publisher">¶</a>
+				
+				
+			</h2>
+			<p>Publisher は、メッセージを publish 先へ送る境界です。
+
+			</p><pre>type Publisher interface {
+    <span class="comment">// Publish は、m を publish 先へ送ります。</span>
+    <span class="comment">// 送信失敗時はエラーを返し、relay の次 poll で再送されます（at-least-once）。</span>
+    Publish(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>) <a href="../../../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>
