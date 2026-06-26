@@ -13,9 +13,9 @@ English | [日本語](README.ja.md)
 
 Helpers used by only one feature should be placed within that feature's package.
 
-Packages that perform external I/O (e.g. `exec`, `fs`, `xerrors`) follow a common
+Packages that perform external I/O (e.g. `exec`, `fs`) follow a common
 shape: define an **interface** for the capability, provide a concrete implementation
-(`OS{}` / `stdErrors{}` etc.) that wires the real dependency, and add a
+(`OS{}` etc.) that wires the real dependency, and add a
 `//go:generate mockgen` directive so callers can inject a mock in tests.
 
 ### `pkg/` vs application-wide cross-cutting concerns
@@ -186,6 +186,7 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 |`Wrap`|Wrap an existing error|
 |`Is`|Check error identity|
 |`As`|Type-assert an error|
+|`Join`|Combine multiple errors|
 |`StackTrace`|Get stack trace string|
 
 ## Checklist for Adding a New Package

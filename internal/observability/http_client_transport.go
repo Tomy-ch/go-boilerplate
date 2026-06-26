@@ -2,10 +2,11 @@ package observability
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"syscall"
+
+	"go-boilerplate/pkg/xerrors"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
@@ -110,10 +111,10 @@ func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawCon
 		return nil
 	}
 	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
-		return fmt.Errorf("ssrf guard: blocked address %s", host)
+		return xerrors.New("ssrf guard: blocked address " + host)
 	}
 	if !allowPrivateNetworkFromContext(ctx) && (ip.IsLoopback() || ip.IsPrivate()) {
-		return fmt.Errorf("ssrf guard: blocked private/loopback address %s", host)
+		return xerrors.New("ssrf guard: blocked private/loopback address " + host)
 	}
 	return nil
 }
