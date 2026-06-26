@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go.uber.org/fx"
@@ -58,10 +59,7 @@ func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 	defer cancel()
 	stopErr := app.Stop(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
 
-	// replay 成功時は OnStop の失敗（DB プール Close 等）をオペレータへ可視化するため返す。
-	// replay 自体が失敗していればそちらを優先する。
-	if runErr != nil {
-		return result, runErr
-	}
-	return result, stopErr
+	// replay 失敗と OnStop 失敗（DB プール Close 等）の双方をオペレータへ可視化する。
+	// errors.Join は両方 nil なら nil を返す。
+	return result, errors.Join(runErr, stopErr)
 }
