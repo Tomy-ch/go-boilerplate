@@ -207,7 +207,7 @@ func buildRequest(ctx context.Context, req *Request) (*http.Request, error) {
 		body = bytes.NewReader(req.Body)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, string(req.Method), req.URL, body)
+	httpReq, err := http.NewRequestWithContext(ctx, req.Method.String(), req.URL, body)
 	if err != nil {
 		return nil, err
 	}

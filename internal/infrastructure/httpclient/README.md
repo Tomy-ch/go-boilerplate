@@ -29,6 +29,7 @@ This package does **not** implement a domain / usecase boundary interface. It is
 ## Design Policy
 
 - net/http is never exposed: own types (`Method` / `Header` / `Request` / `Response` / `Downstream`) are public, and status interpretation + `apperror` mapping are closed inside the substrate (the HTTP version of `pgerror.NormalizeError`).
+- `Method` is a **closed type** (struct-backed, unexported field): only the defined constants (`MethodGet` … `MethodDelete`) are constructible, so an invalid method string is rejected at compile time rather than at runtime (L2). Build requests with `NewRequest(method, downstream, url, opts...)` — `method` / `downstream` / `url` are required by the signature, and optional fields use `WithHeader` / `WithBody` / `WithIdempotencyKey` / `WithRetry` (the last sets `AllowRetry` + `IdempotencyKey` together so they can't drift apart).
 - Per-`Downstream` resilience is resolved by `Registry`: each gateway contributes a `DownstreamProfile` to the `httpclient_profiles` fx group, and unregistered keys fall back to `DefaultProfile`.
 - Retry safety is method-aware: idempotent methods (GET / PUT / DELETE) are always retry-safe; non-idempotent methods (POST / PATCH) are retried only when `AllowRetry` is set, which then requires `IdempotencyKey`.
 - Retryable outcomes are 5xx / 429 / transport failures; 4xx / success / context cancellation are not retried. Backoff is exponential with full jitter, honoring a `Retry-After` header when present.

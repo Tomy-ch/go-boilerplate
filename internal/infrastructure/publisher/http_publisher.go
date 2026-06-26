@@ -61,14 +61,13 @@ func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
 		header[k] = []string{v}
 	}
 
-	_, err := p.client.Do(ctx, &httpclient.Request{
-		Downstream:     downstream,
-		Method:         httpclient.MethodPost,
-		URL:            string(p.endpoint),
-		Header:         header,
-		Body:           m.Payload,
-		IdempotencyKey: m.MessageID.String(),
-		AllowRetry:     false,
-	})
+	// AllowRetry は付与しない（at-least-once は relay の poll ループが担う）。
+	// 受信側 dedup 用に IdempotencyKey（message_id）のみ伝搬する。
+	_, err := p.client.Do(ctx, httpclient.NewRequest(
+		httpclient.MethodPost, downstream, string(p.endpoint),
+		httpclient.WithHeader(header),
+		httpclient.WithBody(m.Payload),
+		httpclient.WithIdempotencyKey(m.MessageID.String()),
+	))
 	return err
 }

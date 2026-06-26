@@ -29,7 +29,7 @@ func TestIsRetrySafe(t *testing.T) {
 			"POSTはAllowRetryありで安全":   {req: &Request{Method: MethodPost, AllowRetry: true}, want: true},
 			"PATCHはAllowRetryなしで非安全": {req: &Request{Method: MethodPatch}, want: false},
 			"PATCHはAllowRetryありで安全":  {req: &Request{Method: MethodPatch, AllowRetry: true}, want: true},
-			"未知メソッドは非安全":             {req: &Request{Method: Method("TRACE")}, want: false},
+			"ゼロ値(未設定)メソッドは非安全":       {req: &Request{Method: Method{}}, want: false},
 		}
 
 		for name, tc := range cases {
