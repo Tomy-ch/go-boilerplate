@@ -1,15 +1,16 @@
 package module
 
 import (
-	exchangerateext "go-boilerplate/internal/infrastructure/external/exchangerate" // sample-api:line
-	"go-boilerplate/internal/infrastructure/httpclient"
+	outboxpublisher "go-boilerplate/internal/infrastructure/publisher"
 	userqs "go-boilerplate/internal/infrastructure/rdb/query_service/user" // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"     // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/user"           // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_query/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_query/idempotency"
+	outboxsq "go-boilerplate/internal/infrastructure/rdb/system_query/outbox"
 	"go-boilerplate/internal/infrastructure/security"
 	"go-boilerplate/internal/infrastructure/system"
+	exchangerateext "go-boilerplate/internal/infrastructure/webapi/exchangerate" // sample-api:line
 
 	"go.uber.org/fx"
 )
@@ -46,12 +47,14 @@ func InfrastructureModule() fx.Option {
 				fx.Provide(
 					healthcheck.New,
 					idempotencysq.New,
+					outboxsq.New,
 				),
 			),
 		),
 		clockModule(),
 		httpClientModule(),
-		externalModule(),
+		webapiModule(),
+		outboxPublisherModule(),
 		fx.Module("security",
 			fx.Provide(
 				security.NewBcryptHasher,
@@ -70,32 +73,29 @@ func clockModule() fx.Option {
 	)
 }
 
-// httpClientModule は、resilient な外部 HTTP client substrate を提供するfx.Moduleです。
-func httpClientModule() fx.Option {
-	return fx.Module("httpclient",
+// webapiModule は、外部 Web API クライアント（gateway）を提供するfx.Moduleです。
+func webapiModule() fx.Option {
+	return fx.Module("webapi",
 		fx.Provide(
-			fx.Annotate(
-				httpclient.NewRegistryFromProfiles,
-				fx.ParamTags(`group:"httpclient_profiles"`),
-			),
-			httpclient.New,
+			// サンプルの外部サービス gateway（DTO モード）
+			exchangerateext.NewEndpoint, // sample-api:line
+			exchangerateext.New,         // sample-api:line
+		),
+		provideHTTPClientProfiles(
+			exchangerateext.NewDownstreamProfile, // sample-api:line
 		),
 	)
 }
 
-// externalModule は、外部サービス gateway を提供するfx.Moduleです。
-func externalModule() fx.Option {
-	return fx.Module("external",
+// outboxPublisherModule は、transactional outbox の publish 先（HTTP）を提供するfx.Moduleです。
+func outboxPublisherModule() fx.Option {
+	return fx.Module("outbox_publisher",
 		fx.Provide(
-			// sample-api:begin
-			// サンプルの外部サービス gateway（DTO モード）
-			exchangerateext.NewEndpoint,
-			exchangerateext.New,
-			fx.Annotate(
-				exchangerateext.NewDownstreamProfile,
-				fx.ResultTags(`group:"httpclient_profiles"`),
-			),
-			// sample-api:end
+			outboxpublisher.NewEndpoint,
+			outboxpublisher.New,
+		),
+		provideHTTPClientProfiles(
+			outboxpublisher.NewDownstreamProfile,
 		),
 	)
 }

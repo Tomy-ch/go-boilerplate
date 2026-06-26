@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/infrastructure/external/exchangerate"
 	"go-boilerplate/internal/infrastructure/httpclient"
 	mock_httpclient "go-boilerplate/internal/infrastructure/httpclient/mock"
+	"go-boilerplate/internal/infrastructure/webapi/exchangerate"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/xerrors"
 

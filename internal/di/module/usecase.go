@@ -4,6 +4,7 @@ import (
 	exchangerateuc "go-boilerplate/internal/usecase/exchangerate" // sample-api:line
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
+	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/user"        // sample-api:line
 	"go-boilerplate/internal/usecase/user/search" // sample-api:line
 
@@ -17,6 +18,10 @@ func UsecaseModule() fx.Option {
 			healthcheck.New,
 			idempotency.NewDeps,
 			idempotency.NewGC,
+			outbox.NewEmit,
+			outbox.NewRelay,
+			outbox.NewGC,
+			outbox.NewReplay,
 			// sample-api:begin
 			// サンプルのユースケース
 			user.New,

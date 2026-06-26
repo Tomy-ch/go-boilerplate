@@ -17,5 +17,6 @@ func registerCommands(rootCmd *cobra.Command) {
 		newMergeDMLCommand(),
 		newJobCommand(),
 		newWorkerCommand(),
+		newOutboxRelayCommand(),
 	)
 }
