@@ -10,10 +10,14 @@ import (
 
 // Middleware は、リクエストボディを limitMB（MB, 10進・1MB=1,000,000 byte）で上限化する
 // ミドルウェアを返します。上限超過時は echo が 413（Request Entity Too Large）を返します。
+// limitMB が 0 以下の場合はパニックします。
 //
-// echo 標準の middleware.BodyLimit を薄くラップします。BodyLimit は reader をラップするだけで
-// ルーティングに非依存なため、Pre ミドルウェアとして登録すれば OpenAPI validator（Use）が
-// requestBody を読み切る前に確実に上限を適用できます（M2）。
+// Pre ミドルウェアとして登録すること。Use 層の OpenAPI validator が requestBody を
+// 読む前に上限を適用するために必要です。Use 以降に置くと validator が無制限ボディを
+// 読み切り、上限がサイレントに無効化されます。
 func Middleware(limitMB int) echo.MiddlewareFunc {
+	if limitMB <= 0 {
+		panic(fmt.Sprintf("bodylimit: limitMB must be positive, got %d", limitMB))
+	}
 	return middleware.BodyLimit(fmt.Sprintf("%dM", limitMB))
 }

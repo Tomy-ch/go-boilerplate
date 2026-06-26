@@ -60,5 +60,12 @@ func TestMiddleware(t *testing.T) {
 			assert.Equal(t, http.StatusRequestEntityTooLarge, he.Code)
 			assert.False(t, handled)
 		})
+
+		t.Run("limitMBが0以下の場合はパニックする", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Panics(t, func() { Middleware(0) })
+			assert.Panics(t, func() { Middleware(-1) })
+		})
 	})
 }
