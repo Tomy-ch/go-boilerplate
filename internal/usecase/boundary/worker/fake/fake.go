@@ -31,10 +31,11 @@ type Fake struct {
 	inflight map[string]worker.Message // 受信済み・Ack/Nack 待ち（ID キー）
 	delivery map[string]int            // ID ごとの配送回数（再配送で増加）
 
-	acked   []string
-	nacked  []string
-	extends map[string]int // ID ごとの Extend 呼び出し回数
-	failed  []FailedRecord
+	acked        []string
+	nacked       []string
+	extends      map[string]int           // ID ごとの Extend 呼び出し回数
+	nackBackoffs map[string]time.Duration // ID ごとの NackWithBackoff 遅延（最後の値）
+	failed       []FailedRecord
 
 	receiveErrs []error       // 注入された Receive エラー（先頭から消費）
 	notify      chan struct{} // long-poll 起床用のブロードキャスト
@@ -43,10 +44,11 @@ type Fake struct {
 // New は、空の Fake を生成します。
 func New() *Fake {
 	return &Fake{
-		inflight: make(map[string]worker.Message),
-		delivery: make(map[string]int),
-		extends:  make(map[string]int),
-		notify:   make(chan struct{}),
+		inflight:     make(map[string]worker.Message),
+		delivery:     make(map[string]int),
+		extends:      make(map[string]int),
+		nackBackoffs: make(map[string]time.Duration),
+		notify:       make(chan struct{}),
 	}
 }
 
@@ -95,14 +97,21 @@ func (f *Fake) Ack(_ context.Context, m worker.Message) error {
 	return nil
 }
 
-// Nack は、メッセージを再配送（キュー末尾へ戻す）し、記録します。
+// Nack は、メッセージを即時に再配送（キュー末尾へ戻す）し、記録します。
 func (f *Fake) Nack(_ context.Context, m worker.Message) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.inflight, m.ID)
-	f.nacked = append(f.nacked, m.ID)
-	f.queue = append(f.queue, m)
-	f.signal()
+	f.nackLocked(m)
+	return nil
+}
+
+// NackWithBackoff は、要求された遅延 d を記録したうえでメッセージを再配送します（M3）。
+// in-memory fake は実時間の遅延は模さず、d の記録のみ行います（テストで NackBackoffOf により検証）。
+func (f *Fake) NackWithBackoff(_ context.Context, m worker.Message, d time.Duration) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.nackBackoffs[m.ID] = d
+	f.nackLocked(m)
 	return nil
 }
 
@@ -161,6 +170,22 @@ func (f *Fake) ExtendCount(id string) int {
 	return f.extends[id]
 }
 
+// NackBackoffOf は、指定 ID に対し NackWithBackoff で要求された遅延を返します（未記録は 0）。
+func (f *Fake) NackBackoffOf(id string) time.Duration {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.nackBackoffs[id]
+}
+
+// NackBackoffApplied は、指定 ID に対し NackWithBackoff が呼ばれたかを返します。
+// full jitter で遅延が 0 になり得るため、遅延値ではなく呼び出し有無で判定します。
+func (f *Fake) NackBackoffApplied(id string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	_, ok := f.nackBackoffs[id]
+	return ok
+}
+
 // Failed は、Fail の呼び出し記録（呼び出し順）を返します。
 func (f *Fake) Failed() []FailedRecord {
 	f.mu.Lock()
@@ -180,6 +205,14 @@ func (f *Fake) InflightLen() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.inflight)
+}
+
+// nackLocked は、メッセージを再配送し記録します（呼び出し側で mu ロック済み）。
+func (f *Fake) nackLocked(m worker.Message) {
+	delete(f.inflight, m.ID)
+	f.nacked = append(f.nacked, m.ID)
+	f.queue = append(f.queue, m)
+	f.signal()
 }
 
 // signal は、long-poll 中の Receive を起床させます。呼び出しは mu ロック下で行います。

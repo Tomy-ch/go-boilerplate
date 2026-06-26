@@ -110,6 +110,24 @@ func (c *Consumer) Nack(ctx context.Context, m worker.Message) error {
 	return normalizeError(err)
 }
 
+// NackWithBackoff は、可視性タイムアウトを d に設定して遅延再配送します（M3）。
+// SQS の ChangeMessageVisibility が native に遅延を honor します。d<=0 は Nack（即時）と等価です。
+func (c *Consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error {
+	if d <= 0 {
+		return c.Nack(ctx, m)
+	}
+
+	ctx, endSpan := c.tracer.Start(ctx)
+	defer endSpan()
+
+	_, err := c.api.ChangeMessageVisibility(ctx, &sqs.ChangeMessageVisibilityInput{
+		QueueUrl:          aws.String(c.cfg.QueueURL),
+		ReceiptHandle:     aws.String(m.Attributes[worker.AttrReceiptHandle]),
+		VisibilityTimeout: visibilitySeconds(d),
+	})
+	return normalizeError(err)
+}
+
 // Extend は、可視性タイムアウトを延長します（長時間 handler のハートビート）。
 func (c *Consumer) Extend(ctx context.Context, m worker.Message, d time.Duration) error {
 	ctx, endSpan := c.tracer.Start(ctx)

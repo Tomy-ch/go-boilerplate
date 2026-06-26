@@ -3,6 +3,7 @@ package fake
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -125,6 +126,40 @@ func Test_Fake_Nack(t *testing.T) {
 			assert.Equal(t, []string{"a"}, f.NackedIDs())
 			assert.Equal(t, "a", second[0].ID)
 			assert.Equal(t, 2, second[0].ReceiveCount)
+		})
+	})
+}
+
+func Test_Fake_NackWithBackoff(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("遅延を記録して再配送し、ReceiveCountが増える", func(t *testing.T) {
+			t.Parallel()
+
+			f := New()
+			f.Enqueue(worker.Message{ID: "a"})
+			first, err := f.Receive(context.Background(), 1)
+			require.NoError(t, err)
+			require.NoError(t, f.NackWithBackoff(context.Background(), first[0], 5*time.Second))
+
+			second, err := f.Receive(context.Background(), 1)
+			require.NoError(t, err)
+
+			assert.Equal(t, []string{"a"}, f.NackedIDs())
+			assert.Equal(t, 5*time.Second, f.NackBackoffOf("a"))
+			assert.True(t, f.NackBackoffApplied("a"))
+			assert.Equal(t, 2, second[0].ReceiveCount)
+		})
+
+		t.Run("NackWithBackoff未呼び出しのIDはAppliedがfalse", func(t *testing.T) {
+			t.Parallel()
+
+			f := New()
+			assert.False(t, f.NackBackoffApplied("missing"))
+			assert.Equal(t, time.Duration(0), f.NackBackoffOf("missing"))
 		})
 	})
 }
