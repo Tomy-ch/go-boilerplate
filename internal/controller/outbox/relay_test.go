@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	outboxuc "go-boilerplate/internal/usecase/outbox"
 	mock_relay "go-boilerplate/internal/usecase/outbox/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -42,13 +43,13 @@ func TestEngine_Run(t *testing.T) {
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
-			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(0, nil)
+			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil)
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
 		})
 
-		t.Run("batch 満杯の間は待機せず連続消化する", func(t *testing.T) {
+		t.Run("満杯かつ publish 進捗ありの間は待機せず連続消化する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
@@ -56,10 +57,26 @@ func TestEngine_Run(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			gomock.InOrder(
-				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(int(testBatchSize), nil),
-				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(0, nil),
+				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
+					outboxuc.RelayResult{Claimed: int(testBatchSize), Published: int(testBatchSize)}, nil),
+				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil),
 			)
-			// 満杯の回は Sleep されず、捌き切った回だけ PollInterval で待機する。
+			// 満杯かつ進捗ありの回は Sleep されず、捌き切った回だけ PollInterval で待機する。
+			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled).Times(1)
+
+			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
+		})
+
+		t.Run("満杯でも publish 進捗が無ければ PollInterval で待機しホットループしない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+
+			// 全件 publish 失敗（Published==0）の満杯バッチは、待機ゼロで再 claim せず PollInterval を挟む。
+			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
+				outboxuc.RelayResult{Claimed: int(testBatchSize), Published: 0}, nil)
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled).Times(1)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
@@ -69,10 +86,11 @@ func TestEngine_Run(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
-			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			// エラー時は lag を記録しない（呼べば未期待呼び出しで失敗する）。
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
-			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(0, errors.New("batch failed"))
+			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
+				outboxuc.RelayResult{}, errors.New("batch failed"))
 			sleeper.EXPECT().Sleep(gomock.Any(), testErrorBackoff).Return(context.Canceled)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
@@ -84,7 +102,7 @@ func TestEngine_Run(t *testing.T) {
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
-			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(0, nil).AnyTimes()
+			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil).AnyTimes()
 			uc.EXPECT().RecordLag(gomock.Any()).Return(errors.New("lag failed")).AnyTimes()
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled)
 
@@ -113,9 +131,9 @@ func TestEngine_Run(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(context.Background())
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).DoAndReturn(
-				func(_ context.Context, _ int32) (int, error) {
+				func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
 					cancel()
-					return 0, errors.New("batch failed")
+					return outboxuc.RelayResult{}, errors.New("batch failed")
 				})
 
 			// ctx 完了済みのため Sleep は呼ばれない。

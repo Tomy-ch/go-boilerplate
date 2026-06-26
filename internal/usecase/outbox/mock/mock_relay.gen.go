@@ -11,10 +11,59 @@ package mock_outbox
 
 import (
 	context "context"
+	outbox "go-boilerplate/internal/usecase/outbox"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
 )
+
+// MockMetrics is a mock of Metrics interface.
+type MockMetrics struct {
+	ctrl     *gomock.Controller
+	recorder *MockMetricsMockRecorder
+	isgomock struct{}
+}
+
+// MockMetricsMockRecorder is the mock recorder for MockMetrics.
+type MockMetricsMockRecorder struct {
+	mock *MockMetrics
+}
+
+// NewMockMetrics creates a new mock instance.
+func NewMockMetrics(ctrl *gomock.Controller) *MockMetrics {
+	mock := &MockMetrics{ctrl: ctrl}
+	mock.recorder = &MockMetricsMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMetrics) EXPECT() *MockMetricsMockRecorder {
+	return m.recorder
+}
+
+// IncDead mocks base method.
+func (m *MockMetrics) IncDead(ctx context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncDead", ctx)
+}
+
+// IncDead indicates an expected call of IncDead.
+func (mr *MockMetricsMockRecorder) IncDead(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncDead", reflect.TypeOf((*MockMetrics)(nil).IncDead), ctx)
+}
+
+// SetLagSeconds mocks base method.
+func (m *MockMetrics) SetLagSeconds(ctx context.Context, seconds int64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetLagSeconds", ctx, seconds)
+}
+
+// SetLagSeconds indicates an expected call of SetLagSeconds.
+func (mr *MockMetricsMockRecorder) SetLagSeconds(ctx, seconds any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLagSeconds", reflect.TypeOf((*MockMetrics)(nil).SetLagSeconds), ctx, seconds)
+}
 
 // MockRelayUsecase is a mock of RelayUsecase interface.
 type MockRelayUsecase struct {
@@ -55,10 +104,10 @@ func (mr *MockRelayUsecaseMockRecorder) RecordLag(ctx any) *gomock.Call {
 }
 
 // RelayBatch mocks base method.
-func (m *MockRelayUsecase) RelayBatch(ctx context.Context, batchSize int32) (int, error) {
+func (m *MockRelayUsecase) RelayBatch(ctx context.Context, batchSize int32) (outbox.RelayResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RelayBatch", ctx, batchSize)
-	ret0, _ := ret[0].(int)
+	ret0, _ := ret[0].(outbox.RelayResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

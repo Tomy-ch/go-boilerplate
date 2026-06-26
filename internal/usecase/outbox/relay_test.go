@@ -16,6 +16,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/tx"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/outbox"
+	mock_relay "go-boilerplate/internal/usecase/outbox/mock"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -32,11 +33,17 @@ func passthroughManager(t *testing.T, ctrl *gomock.Controller) tx.Manager {
 	return m
 }
 
+func newRelayWithMetrics(
+	t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher, metrics outbox.Metrics,
+) outbox.RelayUsecase {
+	t.Helper()
+	return outbox.NewRelay(txm, store, pub, metrics, testkit.NewMockClock(t, time.Time{}),
+		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+}
+
 func newRelay(t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher) outbox.RelayUsecase {
 	t.Helper()
-	return outbox.NewRelay(txm, store, pub,
-		observability.NewNoopOutboxMetrics(t), testkit.NewMockClock(t, time.Time{}),
-		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+	return newRelayWithMetrics(t, txm, store, pub, observability.NewNoopOutboxMetrics(t))
 }
 
 func pendingMessage(t *testing.T) outboxbndry.PendingMessage {
@@ -67,7 +74,8 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 				RelayBatch(context.Background(), 100)
 
 			require.NoError(t, err)
-			assert.Equal(t, 0, got)
+			assert.Equal(t, 0, got.Claimed)
+			assert.Equal(t, 0, got.Published)
 		})
 
 		t.Run("publish 成功で MarkPublished し claim 件数を返す", func(t *testing.T) {
@@ -91,7 +99,8 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 				RelayBatch(context.Background(), 100)
 
 			require.NoError(t, err)
-			assert.Equal(t, 1, got)
+			assert.Equal(t, 1, got.Claimed)
+			assert.Equal(t, 1, got.Published)
 		})
 
 		t.Run("batchSize が 0 以下なら既定値で claim する", func(t *testing.T) {
@@ -123,7 +132,8 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 				RelayBatch(context.Background(), 100)
 
 			require.NoError(t, err)
-			assert.Equal(t, 1, got)
+			assert.Equal(t, 1, got.Claimed)
+			assert.Equal(t, 0, got.Published)
 		})
 
 		t.Run("保存済みヘッダ JSON を復元して publish へ渡す", func(t *testing.T) {
@@ -181,12 +191,15 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(errors.New("publish failed"))
 			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(outbox.DefaultMaxAttempts, nil)
 			store.EXPECT().MarkDead(gomock.Any(), msg.ID).Return(nil)
+			metrics := mock_relay.NewMockMetrics(ctrl)
+			metrics.EXPECT().IncDead(gomock.Any()).Times(1)
 
-			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
+			got, err := newRelayWithMetrics(t, passthroughManager(t, ctrl), store, pub, metrics).
 				RelayBatch(context.Background(), 100)
 
 			require.NoError(t, err)
-			assert.Equal(t, 1, got)
+			assert.Equal(t, 1, got.Claimed)
+			assert.Equal(t, 0, got.Published)
 		})
 	})
 
@@ -206,7 +219,7 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 				RelayBatch(context.Background(), 100)
 
 			require.ErrorIs(t, err, wantErr)
-			assert.Equal(t, 0, got)
+			assert.Equal(t, 0, got.Claimed)
 		})
 
 		t.Run("MarkPublished のエラーは tx を巻き戻すエラーとして返す", func(t *testing.T) {
@@ -271,25 +284,27 @@ func TestRelayUsecase_RecordLag(t *testing.T) {
 
 	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	build := func(t *testing.T, store outboxbndry.Store) outbox.RelayUsecase {
+	build := func(t *testing.T, store outboxbndry.Store, metrics outbox.Metrics) outbox.RelayUsecase {
 		t.Helper()
 		ctrl := gomock.NewController(t)
 		return outbox.NewRelay(
 			mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl),
-			observability.NewNoopOutboxMetrics(t), testkit.NewMockClock(t, now),
+			metrics, testkit.NewMockClock(t, now),
 			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
 	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("pending 行があれば lag を記録して nil を返す", func(t *testing.T) {
+		t.Run("pending 行があれば経過秒数を lag として記録し nil を返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(-time.Minute), true, nil)
+			metrics := mock_relay.NewMockMetrics(ctrl)
+			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(60)).Times(1)
 
-			require.NoError(t, build(t, store).RecordLag(context.Background()))
+			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
 		})
 
 		t.Run("pending 行が無ければ 0 を記録して nil を返す", func(t *testing.T) {
@@ -297,8 +312,10 @@ func TestRelayUsecase_RecordLag(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, nil)
+			metrics := mock_relay.NewMockMetrics(ctrl)
+			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(0)).Times(1)
 
-			require.NoError(t, build(t, store).RecordLag(context.Background()))
+			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
 		})
 
 		t.Run("now より未来の created_at は負の lag を 0 にクランプする", func(t *testing.T) {
@@ -306,22 +323,26 @@ func TestRelayUsecase_RecordLag(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(time.Minute), true, nil)
+			metrics := mock_relay.NewMockMetrics(ctrl)
+			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(0)).Times(1)
 
-			require.NoError(t, build(t, store).RecordLag(context.Background()))
+			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("OldestPendingCreatedAt のエラーを伝播する", func(t *testing.T) {
+		t.Run("OldestPendingCreatedAt のエラーを伝播し lag は記録しない", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			wantErr := errors.New("lag query failed")
 			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, wantErr)
+			// エラー時は SetLagSeconds を呼ばない（呼べば mock が未期待呼び出しで失敗する）。
+			metrics := mock_relay.NewMockMetrics(ctrl)
 
-			require.ErrorIs(t, build(t, store).RecordLag(context.Background()), wantErr)
+			require.ErrorIs(t, build(t, store, metrics).RecordLag(context.Background()), wantErr)
 		})
 	})
 }

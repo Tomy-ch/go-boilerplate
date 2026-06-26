@@ -51,9 +51,11 @@ func NewEngine(
 }
 
 // Run は、poll ループ本体です。ctx 完了まで常駐し、完了時に nil を返します。
-//   - RelayBatch が満杯（claim 件数 == BatchSize）を返す間は、まだ pending が残る可能性があるため
-//     待機せず連続して捌きます。
-//   - 空振り or 部分消化なら PollInterval、エラー時は ErrorBackoff 待機します。
+//   - 満杯（claim 件数 == BatchSize）かつ publish 進捗あり（published > 0）の間は、まだ pending が
+//     残る可能性が高いため待機せず連続して捌きます。
+//   - 空振り・部分消化・「満杯だが全件 publish 失敗」なら PollInterval、エラー時は ErrorBackoff 待機します。
+//     全件 publish 失敗の満杯バッチを待機ゼロで再 claim すると、下流停止時にホットループして即時 dead 化
+//     するため、進捗が無い満杯バッチは必ず待機へ落とします。
 //   - 待機は clock.Sleeper 経由で行い、ctx 完了で即座に抜けます（決定的テストのため注入）。
 func (e *Engine) Run(ctx context.Context) error {
 	ctx, endSpan := e.tracer.Start(ctx)
@@ -65,10 +67,8 @@ func (e *Engine) Run(ctx context.Context) error {
 			return nil
 		}
 
-		n, err := e.uc.RelayBatch(ctx, e.set.BatchSize)
-		e.observeLag(ctx, log)
-		switch {
-		case err != nil:
+		res, err := e.uc.RelayBatch(ctx, e.set.BatchSize)
+		if err != nil {
 			if ctx.Err() != nil {
 				return nil
 			}
@@ -76,13 +76,18 @@ func (e *Engine) Run(ctx context.Context) error {
 			if e.waitDone(ctx, e.set.ErrorBackoff) {
 				return nil
 			}
-		case n >= int(e.set.BatchSize):
-			// まだ pending が残る可能性があるため、待機せず次 poll を即実行する。
 			continue
-		default:
-			if e.waitDone(ctx, e.set.PollInterval) {
-				return nil
-			}
+		}
+
+		// lag 記録はバッチ成功時のみ行う。エラー時は同一原因（DB 障害等）で二重にエラーログが出るのを避ける。
+		e.observeLag(ctx, log)
+
+		if res.Claimed >= int(e.set.BatchSize) && res.Published > 0 {
+			// 満杯かつ進捗あり。まだ pending が残る可能性が高いため待機せず次 poll を即実行する。
+			continue
+		}
+		if e.waitDone(ctx, e.set.PollInterval) {
+			return nil
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	outboxuc "go-boilerplate/internal/usecase/outbox"
 	mock_relay "go-boilerplate/internal/usecase/outbox/mock"
 
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,7 @@ func TestRegisterRelayHooks(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			// pending は常に空。Sleep は ctx 完了（OnStop の cancel）まで待機する。
-			uc.EXPECT().RelayBatch(gomock.Any(), gomock.Any()).Return(0, nil).AnyTimes()
+			uc.EXPECT().RelayBatch(gomock.Any(), gomock.Any()).Return(outboxuc.RelayResult{}, nil).AnyTimes()
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
 			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(ctx context.Context, _ time.Duration) error {
