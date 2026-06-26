@@ -36,6 +36,7 @@ Each sub-package is split into small responsibilities and combined during applic
 |`cookie`|`Middleware`|Enforce security attributes on Set-Cookie headers|
 |`forcejson`|`Middleware`|Force response Content-Type to JSON|
 |`uri`|`Middleware`|Remove trailing slashes|
+|`bodylimit`|`Middleware`|Per-request body size limit (MB), 413 on exceed|
 |`observability`|`Middleware`|OpenTelemetry tracing integration|
 
 ### Error Handling

@@ -39,3 +39,12 @@ func TestURIModule_ProvidesPreMiddleware(t *testing.T) {
 	t.Parallel()
 	testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre", URIModule())
 }
+
+func TestBodyLimitModule_ProvidesPreMiddleware(t *testing.T) {
+	t.Parallel()
+	cfg := config.MockConfigForTest(t)
+	testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre",
+		BodyLimitModule(),
+		fx.Supply(config.NewServerConfig(cfg)),
+	)
+}
