@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/logging"
 
 	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/infrastructure/system"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,7 @@ func Test_testTxRunner_Do(t *testing.T) {
 
 	db, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
 	require.NoError(t, err)
-	innerTxm := driver.NewTransactionManager(db, testLogger)
+	innerTxm := driver.NewTransactionManager(db, dbCfg, testLogger, system.NewSleeper())
 
 	t.Run("実行時にエラーが発生しない場合、正常に終了すること", func(t *testing.T) {
 		t.Parallel()

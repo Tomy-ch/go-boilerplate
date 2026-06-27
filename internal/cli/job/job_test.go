@@ -10,6 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testGrace は、テスト用の停止猶予（APP_SHUTDOWN_TIMEOUT 相当）です。
+const testGrace = 30 * time.Second
+
 // recordingStop は、呼び出し有無・停止用 context の期限・ctx のエラー状態を記録するフェイクの停止関数です。
 type recordingStop struct {
 	called      bool
@@ -48,7 +51,7 @@ func TestRunJob(t *testing.T) {
 			done <- nil
 			stop := &recordingStop{}
 
-			err := runJob(context.Background(), "j", nil, 0, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 0, testGrace, makeStart(done), stop.fn())
 
 			require.NoError(t, err)
 			assert.True(t, stop.called, "停止処理が呼ばれること")
@@ -61,7 +64,7 @@ func TestRunJob(t *testing.T) {
 			done <- nil
 			stop := &recordingStop{}
 
-			err := runJob(context.Background(), "j", nil, 10*time.Second, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 10*time.Second, testGrace, makeStart(done), stop.fn())
 
 			require.NoError(t, err)
 			assert.True(t, stop.called)
@@ -78,7 +81,7 @@ func TestRunJob(t *testing.T) {
 			done <- jobErr
 			stop := &recordingStop{}
 
-			err := runJob(context.Background(), "j", nil, 0, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 0, testGrace, makeStart(done), stop.fn())
 
 			require.ErrorIs(t, err, jobErr)
 			assert.True(t, stop.called)
@@ -93,7 +96,7 @@ func TestRunJob(t *testing.T) {
 			done <- jobErr
 			stop := &recordingStop{}
 
-			err := runJob(context.Background(), "j", nil, 10*time.Second, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 10*time.Second, testGrace, makeStart(done), stop.fn())
 
 			require.ErrorIs(t, err, jobErr)
 			assert.True(t, stop.called)
@@ -106,15 +109,14 @@ func TestRunJob(t *testing.T) {
 			done := make(chan error) // 送信されない
 			stop := &recordingStop{}
 
-			err := runJob(context.Background(), "j", nil, 20*time.Millisecond, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 20*time.Millisecond, testGrace, makeStart(done), stop.fn())
 
 			require.ErrorIs(t, err, context.DeadlineExceeded)
 			assert.True(t, stop.called)
-			// 停止用 context は期限切れの waitCtx ではなく、停止開始時点から作り直された猶予を持つこと
-			// （4a10247 の回帰防止）。stopTimeout 定数を基準に「ライブ時刻ではなく定数 ÷ 2 を超える猶予」
-			// として固定し、 stopTimeout の値変更にも追随する。
+			// 停止用 context は期限切れの waitCtx ではなく、停止開始時点から作り直された猶予（grace）を持つこと。
+			// grace を基準に「ライブ時刻ではなく grace ÷ 2 を超える猶予」として固定し、grace の値変更にも追随する。
 			require.True(t, stop.hasDeadline)
-			assert.Greater(t, time.Until(stop.deadline), stopTimeout/2)
+			assert.Greater(t, time.Until(stop.deadline), testGrace/2)
 		})
 
 		t.Run("親contextキャンセル時はそのエラーを返し停止処理を流す", func(t *testing.T) {
@@ -126,7 +128,7 @@ func TestRunJob(t *testing.T) {
 
 			cancel() // 親をキャンセル済みにしてから実行する
 
-			err := runJob(ctx, "j", nil, 10*time.Second, makeStart(done), stop.fn())
+			err := runJob(ctx, "j", nil, 10*time.Second, testGrace, makeStart(done), stop.fn())
 
 			require.ErrorIs(t, err, context.Canceled)
 			assert.True(t, stop.called)
@@ -142,7 +144,7 @@ func TestRunJob(t *testing.T) {
 			done <- nil
 			stop := &recordingStop{err: stopErr}
 
-			err := runJob(context.Background(), "j", nil, 0, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 0, testGrace, makeStart(done), stop.fn())
 
 			require.ErrorIs(t, err, stopErr)
 		})
@@ -155,7 +157,7 @@ func TestRunJob(t *testing.T) {
 			done := make(chan error) // 送信されない
 			stop := &recordingStop{err: stopErr}
 
-			err := runJob(context.Background(), "j", nil, 20*time.Millisecond, makeStart(done), stop.fn())
+			err := runJob(context.Background(), "j", nil, 20*time.Millisecond, testGrace, makeStart(done), stop.fn())
 
 			require.ErrorIs(t, err, context.DeadlineExceeded)
 			require.ErrorIs(t, err, stopErr)
@@ -174,13 +176,13 @@ func TestGracefulStop(t *testing.T) {
 		cancel()
 		stop := &recordingStop{}
 
-		_ = gracefulStop(ctx, stop.fn())
+		_ = gracefulStop(ctx, testGrace, stop.fn())
 
-		// 停止処理は呼ばれ、渡された context は期限切れでなく stopTimeout 相当の猶予を持つこと。
+		// 停止処理は呼ばれ、渡された context は期限切れでなく grace 相当の猶予を持つこと。
 		require.True(t, stop.called, "停止処理が呼ばれること")
 		require.True(t, stop.hasDeadline, "停止用 context に deadline があること")
 		require.NoError(t, stop.ctxErr, "停止用 context が期限切れでないこと")
-		assert.Greater(t, time.Until(stop.deadline), stopTimeout/2, "stopTimeout 相当の猶予が残っていること")
+		assert.Greater(t, time.Until(stop.deadline), testGrace/2, "grace 相当の猶予が残っていること")
 	})
 }
 
@@ -201,7 +203,7 @@ func TestRunJobWith(t *testing.T) {
 				return makeStart(done), stop.fn()
 			}
 
-			err := RunJobWith(context.Background(), "j", nil, 0, provide)
+			err := RunJobWith(context.Background(), "j", nil, 0, testGrace, provide)
 
 			require.NoError(t, err)
 			assert.True(t, stop.called, "provide 由来の停止処理が呼ばれること")

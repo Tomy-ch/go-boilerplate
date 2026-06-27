@@ -26,7 +26,8 @@ err := <-done
 
 ## Notes
 
+- The Start/Stop plumbing (detached goroutine, cancel-on-stop, grace-bounded drain) is delegated to `lifecycle.SupervisedRunner`; the health listener is passed as its `OnStartAux` / `OnStopAux`
 - `state.Set(name, args, done)` must be called before application startup
-- The engine runs in a detached goroutine; `engineCtx` is cancelled only on `OnStop` (not by `startCtx` cancellation after Start completes)
+- The engine runs in a detached goroutine; the run context is cancelled only on `OnStop` (not by `startCtx` cancellation after Start completes)
 - On Stop, drain is bounded by `stopCtx`; work unfinished past the deadline is not Acked and is redelivered
 - The health listener is started on `OnStart` and stopped on `OnStop`

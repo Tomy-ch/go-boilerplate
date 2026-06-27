@@ -57,6 +57,9 @@ func TestNewConfig(t *testing.T) {
 					sslMode:                expectedDBSSLMode,
 					pingTimeout:            expectedDBPingTimeout,
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					txMaxRetries:           expectedDBTxMaxRetries,
+					txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				dbconnection: DBConnectionConfig{
 					maxConns:    expectedDBMaxConnsInt32,
