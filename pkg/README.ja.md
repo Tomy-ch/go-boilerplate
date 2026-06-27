@@ -47,7 +47,7 @@
 |`fnmeta`|関数 / パッケージ名の抽出|標準ライブラリ `runtime`|
 |`fs`|ファイルシステム操作（インターフェース + モック）|標準ライブラリ `os`|
 |`ptr`|ポインタ操作|なし|
-|`retry`|有限リトライの行動層（backoff + full jitter / deadline-aware）|なし|
+|`retry`|有限リトライの行動層（backoff + full jitter, deadline-aware）|なし|
 |`safecast`|オーバーフロー検出付き型変換|なし|
 |`stringkit`|文字列長バリデーション|なし|
 |`uuid`|UUID 値オブジェクト|`github.com/google/uuid`|
