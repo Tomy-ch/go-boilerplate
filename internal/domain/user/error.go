@@ -35,13 +35,13 @@ var (
 	ErrInvalidDeletedAt = xerrors.Wrap(errInvalid, "deleted at failed")
 
 	// ErrInvalidRawPassword は、RawPassword 値オブジェクト固有の検証エラーです。
-	// User フィールド検証群（errInvalid 系）とは別系統で、errInvalid を経由しません。
+	// ErrInvalidID 等の User フィールド検証エラーとは独立した系統であり、errors.Is(err, ErrInvalidID) 等では一致しません。
 	ErrInvalidRawPassword = xerrors.Wrap(apperror.ErrValidation, "invalid raw password")
 
 	// ErrAlreadyDeleted は、既に論理削除済みのユーザーを再度削除しようとした場合のエラーです。
 	ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
 
-	// ErrCurrentPasswordMismatch は、パスワード変更時に現在のパスワードが一致しない場合のエラーです（422）。
-	// authn 失敗（401）でも権限不足（403）でもなく、整形済みリクエストの意味的検証失敗として ErrValidation を用いる。
+	// ErrCurrentPasswordMismatch は、パスワード変更時に現在のパスワードが一致しない場合のエラーです。
+	// 認証失敗・権限不足ではなく意味的な入力検証失敗に該当するため、ErrValidation を wraps します。
 	ErrCurrentPasswordMismatch = xerrors.Wrap(apperror.ErrValidation, "current password does not match")
 )

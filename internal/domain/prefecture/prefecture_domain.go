@@ -1,4 +1,4 @@
-// Package prefecture は、都道府県関連のドメインを提供します。
+// Package prefecture は、都道府県ドメインを定義します。JIS コード（1〜47）・名称の不変条件を持つ Prefecture エンティティと Repository インターフェースを提供します。
 package prefecture
 
 import (
@@ -19,7 +19,9 @@ type Prefecture struct {
 	code int
 }
 
-// New は、都道府県エンティティの検証と生成を行います。
+// New は、都道府県エンティティの検証と生成を行います。code は 1〜47（JIS 都道府県コード）の
+// 整数である必要があります。id が nil の場合は ErrInvalidID、名前長または code 範囲違反の場合は
+// ErrInvalidName / ErrInvalidCode を返します。
 func New(
 	id uuid.UUID,
 	name string,
