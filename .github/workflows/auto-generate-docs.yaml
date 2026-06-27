@@ -84,20 +84,29 @@ jobs:
       - name: Seed Database
         run: go run ./cmd/ db-seed --database ${{ env.DB }}
 
-      - name: Generate Test Repo Docs
-        run: make gen-test-repo
-
       - name: Generate ER Diagram
         run: make gen-db-schema-ci
 
-      - name: Generate Portal Docs
+      - name: Generate docs (parallel)
         run: |
-          make gen-portal-docs
-          make gen-docs-json
-          make gen-portal-build
+          set -uo pipefail
+          LOG="$RUNNER_TEMP/genlogs"
+          mkdir -p "$LOG"
 
-      - name: Generate godoc
-        run: make gen-godoc
+          ( make gen-test-repo )      > "$LOG/test-repo.log" 2>&1 & pid_test=$!
+          ( make gen-portal-docs && make gen-docs-json && make gen-portal-build ) \
+                                      > "$LOG/portal.log"    2>&1 & pid_portal=$!
+          ( make gen-godoc )          > "$LOG/godoc.log"     2>&1 & pid_godoc=$!
+
+          rc=0
+          for pid in $pid_test $pid_portal $pid_godoc; do
+            wait "$pid" || rc=1
+          done
+
+          for f in test-repo portal godoc; do
+            echo "::group::$f"; cat "$LOG/$f.log"; echo "::endgroup::"
+          done
+          exit $rc
 
       - name: Fix permissions
         run: |
