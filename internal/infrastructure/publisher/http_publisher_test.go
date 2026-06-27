@@ -33,13 +33,13 @@ func Test_httpPublisher_Publish(t *testing.T) {
 
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
-					assert.Equal(t, httpclient.MethodPost, req.Method)
-					assert.Equal(t, testEndpoint, req.URL)
-					assert.Equal(t, msgID.String(), req.IdempotencyKey)
-					assert.False(t, req.AllowRetry)
-					assert.Equal(t, []byte(`{"v":1}`), req.Body)
-					assert.Equal(t, []string{"application/json"}, req.Header["Content-Type"])
-					assert.Equal(t, []string{"00-x"}, req.Header["traceparent"])
+					assert.Equal(t, httpclient.MethodPost(), req.Method())
+					assert.Equal(t, testEndpoint, req.URL())
+					assert.Equal(t, msgID.String(), req.IdempotencyKey())
+					assert.False(t, req.AllowRetry())
+					assert.Equal(t, []byte(`{"v":1}`), req.Body())
+					assert.Equal(t, []string{"application/json"}, req.Header()["Content-Type"])
+					assert.Equal(t, []string{"00-x"}, req.Header()["traceparent"])
 					return &httpclient.Response{StatusCode: 200}, nil
 				})
 

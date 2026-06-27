@@ -62,11 +62,7 @@ func (g *gateway) GetRate(ctx context.Context, base, quote string) (*boundary.Ra
 	reqURL := fmt.Sprintf("%s/rates?base=%s&quote=%s",
 		g.endpoint, url.QueryEscape(base), url.QueryEscape(quote))
 
-	resp, err := g.client.Do(ctx, &httpclient.Request{
-		Downstream: downstream,
-		Method:     httpclient.MethodGet,
-		URL:        reqURL,
-	})
+	resp, err := g.client.Do(ctx, httpclient.NewRequest(httpclient.MethodGet(), downstream, reqURL))
 	if err != nil {
 		return nil, err // substrate が apperror sentinel へ写像済み
 	}

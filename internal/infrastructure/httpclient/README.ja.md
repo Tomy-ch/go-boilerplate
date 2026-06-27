@@ -29,6 +29,8 @@ flowchart TB
 ## 設計方針
 
 - net/http を露出しない: 自前型（`Method` / `Header` / `Request` / `Response` / `Downstream`）を公開し、ステータス解釈と `apperror` への写像は substrate 内部に閉じる（`pgerror.NormalizeError` の HTTP 版）。
+- `Method` は**閉じた型**（struct ベース・非公開フィールド）: `Method("garbage")` のような任意のメソッド文字列は実行時ではなくコンパイル時に弾かれる——定義済みファクトリ関数（`MethodGet()` … `MethodDelete()`）を使う（L2）。ゼロ値 `Method{}` は構築可能なため、`Do` が `ErrInvalidArgument` で弾く。リクエストは `NewRequest(method, downstream, url, opts...)` で生成する——`method` / `downstream` / `url` はシグネチャで必須化され、任意項目は `WithHeader` / `WithBody` / `WithIdempotencyKey` / `WithRetry` で設定する（`WithRetry` は `AllowRetry` と `IdempotencyKey` を同時に設定するが、`WithRetry("")` の空 key は `Do` で弾かれる）。
+- `Request` は**イミュータブルな値オブジェクト**（L2）: 全フィールドが非公開で、構築は `NewRequest` + `With*` オプション経由のみ、参照は getter 経由のみ（`Header()` / `Body()` は防御的コピーを返すため内部状態を変更できない）。型は任意メソッド文字列をコンパイル時に排除するが、型で表現を防ぎきれない残りの不正状態——ゼロ値 `Method{}`、`WithRetry("")` による空 `IdempotencyKey` での `AllowRetry`——は `Do` 実行時に `ErrInvalidArgument` で弾く。
 - `Downstream` ごとの resilient 設定は `Registry` が解決する: 各 gateway が `DownstreamProfile` を `httpclient_profiles` fx グループへ寄与し、未登録キーは `DefaultProfile` へ fallback する。
 - retry の安全性はメソッド依存: 冪等メソッド（GET / PUT / DELETE）は常に retry 安全、非冪等メソッド（POST / PATCH）は `AllowRetry` 明示時のみ安全で、その場合 `IdempotencyKey` が必須。
 - retry 対象は 5xx / 429 / transport 失敗。4xx / 成功 / ctx cancel は対象外。backoff は指数 + full jitter で、`Retry-After` ヘッダがあればそれを優先する。
