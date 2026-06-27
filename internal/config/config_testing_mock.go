@@ -38,7 +38,7 @@ var (
 	expectedServerReadTimeoutCount       = 10
 	expectedServerReadTimeoutStr         = fmt.Sprintf("%ds", expectedServerReadTimeoutCount)
 	expectedServerReadTimeout            = time.Duration(expectedServerReadTimeoutCount) * time.Second
-	expectedServerWriteTimeoutCount      = 15
+	expectedServerWriteTimeoutCount      = 95
 	expectedServerWriteTimeoutStr        = fmt.Sprintf("%ds", expectedServerWriteTimeoutCount)
 	expectedServerWriteTimeout           = time.Duration(expectedServerWriteTimeoutCount) * time.Second
 	expectedServerIdleTimeoutCount       = 60
