@@ -399,7 +399,7 @@
 		
 			
 			
-			</p><h2 id="ContextWithAllowPrivateNetwork">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=3026:3112#L59">ContextWithAllowPrivateNetwork</a>
+			</p><h2 id="ContextWithAllowPrivateNetwork">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=4296:4382#L76">ContextWithAllowPrivateNetwork</a>
 				<a class="permalink" href="#ContextWithAllowPrivateNetwork">¶</a>
 				
 				
@@ -413,7 +413,7 @@
 		
 			
 			
-			</p><h2 id="ContextWithTracePropagation">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=2725:2808#L54">ContextWithTracePropagation</a>
+			</p><h2 id="ContextWithTracePropagation">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=3995:4078#L71">ContextWithTracePropagation</a>
 				<a class="permalink" href="#ContextWithTracePropagation">¶</a>
 				
 				
@@ -775,7 +775,7 @@ retry 回数と breaker 状態 gauge を加えた計装一式です。
 		
 			
 			
-			</p><h2 id="HTTPClientTransport">type <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=602:659#L11">HTTPClientTransport</a>
+			</p><h2 id="HTTPClientTransport">type <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=1872:1929#L28">HTTPClientTransport</a>
 				<a class="permalink" href="#HTTPClientTransport">¶</a>
 				
 				
@@ -797,7 +797,7 @@ retry 回数と breaker 状態 gauge を加えた計装一式です。
 
 			
 				
-				<h3 id="NewHTTPClientTransport">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=1679:1794#L31">NewHTTPClientTransport</a>
+				<h3 id="NewHTTPClientTransport">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=2949:3064#L48">NewHTTPClientTransport</a>
 					<a class="permalink" href="#NewHTTPClientTransport">¶</a>
 					
 					
@@ -827,7 +827,7 @@ ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウ
 
 			
 				
-				</p><h3 id="HTTPClientTransport.RoundTripper">func (*HTTPClientTransport) <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=2507:2569#L49">RoundTripper</a>
+				</p><h3 id="HTTPClientTransport.RoundTripper">func (*HTTPClientTransport) <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=3777:3839#L66">RoundTripper</a>
 					<a class="permalink" href="#HTTPClientTransport.RoundTripper">¶</a>
 					
 					
@@ -1277,13 +1277,13 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.ExtendError">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3113:3169#L63">ExtendError</a>
+				</p><h3 id="WorkerMetrics.ExtendError">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3105:3161#L63">ExtendError</a>
 					<a class="permalink" href="#WorkerMetrics.ExtendError">¶</a>
 					
 					
 				</h3>
 				<pre>func (m *<a href="#WorkerMetrics">WorkerMetrics</a>) ExtendError(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>)</pre>
-				<p>ExtendError は、Extend(ハートビート)のエラー回数を計上します（H2）。
+				<p>ExtendError は、Extend(ハートビート)のエラー回数を計上します。
 
 				
 				
@@ -1303,7 +1303,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.InFlightAdd">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3487:3556#L69">InFlightAdd</a>
+				</p><h3 id="WorkerMetrics.InFlightAdd">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3479:3548#L69">InFlightAdd</a>
 					<a class="permalink" href="#WorkerMetrics.InFlightAdd">¶</a>
 					
 					
@@ -1355,7 +1355,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.RecordLatencyMs">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3282:3354#L66">RecordLatencyMs</a>
+				</p><h3 id="WorkerMetrics.RecordLatencyMs">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3274:3346#L66">RecordLatencyMs</a>
 					<a class="permalink" href="#WorkerMetrics.RecordLatencyMs">¶</a>
 					
 					

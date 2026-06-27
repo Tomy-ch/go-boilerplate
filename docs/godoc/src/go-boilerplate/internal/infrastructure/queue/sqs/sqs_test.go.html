@@ -195,61 +195,108 @@
 <span id="L138" class="ln">   138  </span>	})
 <span id="L139" class="ln">   139  </span>}
 <span id="L140" class="ln">   140  </span>
-<span id="L141" class="ln">   141  </span>func Test_Consumer_Extend(t *testing.T) {
+<span id="L141" class="ln">   141  </span>func Test_Consumer_NackWithBackoff(t *testing.T) {
 <span id="L142" class="ln">   142  </span>	t.Parallel()
 <span id="L143" class="ln">   143  </span>
 <span id="L144" class="ln">   144  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L145" class="ln">   145  </span>		t.Parallel()
 <span id="L146" class="ln">   146  </span>
-<span id="L147" class="ln">   147  </span>		t.Run(&#34;指定時間で可視性を延長する&#34;, func(t *testing.T) {
+<span id="L147" class="ln">   147  </span>		t.Run(&#34;可視性を遅延秒数に設定して遅延再配送する&#34;, func(t *testing.T) {
 <span id="L148" class="ln">   148  </span>			t.Parallel()
 <span id="L149" class="ln">   149  </span>
 <span id="L150" class="ln">   150  </span>			ctrl := gomock.NewController(t)
 <span id="L151" class="ln">   151  </span>			api := mock_sqs.NewMockAPI(ctrl)
 <span id="L152" class="ln">   152  </span>			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).DoAndReturn(
 <span id="L153" class="ln">   153  </span>				func(_ context.Context, in *awssqs.ChangeMessageVisibilityInput, _ ...func(*awssqs.Options)) (*awssqs.ChangeMessageVisibilityOutput, error) {
-<span id="L154" class="ln">   154  </span>					assert.Equal(t, int32(30), in.VisibilityTimeout)
-<span id="L155" class="ln">   155  </span>					return &amp;awssqs.ChangeMessageVisibilityOutput{}, nil
-<span id="L156" class="ln">   156  </span>				},
-<span id="L157" class="ln">   157  </span>			)
-<span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>			err := newConsumer(t, api).Extend(context.Background(), worker.Message{
-<span id="L160" class="ln">   160  </span>				Attributes: map[string]string{worker.AttrReceiptHandle: &#34;rh1&#34;},
-<span id="L161" class="ln">   161  </span>			}, 30*time.Second)
-<span id="L162" class="ln">   162  </span>
-<span id="L163" class="ln">   163  </span>			require.NoError(t, err)
-<span id="L164" class="ln">   164  </span>		})
-<span id="L165" class="ln">   165  </span>	})
-<span id="L166" class="ln">   166  </span>}
-<span id="L167" class="ln">   167  </span>
-<span id="L168" class="ln">   168  </span>func Test_DeadLetter_Fail(t *testing.T) {
-<span id="L169" class="ln">   169  </span>	t.Parallel()
-<span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L172" class="ln">   172  </span>		t.Parallel()
-<span id="L173" class="ln">   173  </span>
-<span id="L174" class="ln">   174  </span>		t.Run(&#34;DLQ へ本文と失敗理由を SendMessage する&#34;, func(t *testing.T) {
-<span id="L175" class="ln">   175  </span>			t.Parallel()
-<span id="L176" class="ln">   176  </span>
-<span id="L177" class="ln">   177  </span>			ctrl := gomock.NewController(t)
-<span id="L178" class="ln">   178  </span>			api := mock_sqs.NewMockAPI(ctrl)
-<span id="L179" class="ln">   179  </span>			api.EXPECT().SendMessage(gomock.Any(), gomock.Any()).DoAndReturn(
-<span id="L180" class="ln">   180  </span>				func(_ context.Context, in *awssqs.SendMessageInput, _ ...func(*awssqs.Options)) (*awssqs.SendMessageOutput, error) {
-<span id="L181" class="ln">   181  </span>					assert.Equal(t, &#34;dlq&#34;, aws.ToString(in.QueueUrl))
-<span id="L182" class="ln">   182  </span>					assert.Equal(t, &#34;body&#34;, aws.ToString(in.MessageBody))
-<span id="L183" class="ln">   183  </span>					assert.Contains(t, in.MessageAttributes, &#34;failure_reason&#34;)
-<span id="L184" class="ln">   184  </span>					return &amp;awssqs.SendMessageOutput{}, nil
-<span id="L185" class="ln">   185  </span>				},
-<span id="L186" class="ln">   186  </span>			)
+<span id="L154" class="ln">   154  </span>					assert.Equal(t, int32(5), in.VisibilityTimeout)
+<span id="L155" class="ln">   155  </span>					assert.Equal(t, &#34;rh1&#34;, aws.ToString(in.ReceiptHandle))
+<span id="L156" class="ln">   156  </span>					return &amp;awssqs.ChangeMessageVisibilityOutput{}, nil
+<span id="L157" class="ln">   157  </span>				},
+<span id="L158" class="ln">   158  </span>			)
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span>			err := newConsumer(t, api).NackWithBackoff(context.Background(), worker.Message{
+<span id="L161" class="ln">   161  </span>				Attributes: map[string]string{worker.AttrReceiptHandle: &#34;rh1&#34;},
+<span id="L162" class="ln">   162  </span>			}, 5*time.Second)
+<span id="L163" class="ln">   163  </span>
+<span id="L164" class="ln">   164  </span>			require.NoError(t, err)
+<span id="L165" class="ln">   165  </span>		})
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>		t.Run(&#34;遅延が0以下なら即時再配送_Nack相当_になる&#34;, func(t *testing.T) {
+<span id="L168" class="ln">   168  </span>			t.Parallel()
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>			ctrl := gomock.NewController(t)
+<span id="L171" class="ln">   171  </span>			api := mock_sqs.NewMockAPI(ctrl)
+<span id="L172" class="ln">   172  </span>			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L173" class="ln">   173  </span>				func(_ context.Context, in *awssqs.ChangeMessageVisibilityInput, _ ...func(*awssqs.Options)) (*awssqs.ChangeMessageVisibilityOutput, error) {
+<span id="L174" class="ln">   174  </span>					assert.Equal(t, int32(0), in.VisibilityTimeout)
+<span id="L175" class="ln">   175  </span>					return &amp;awssqs.ChangeMessageVisibilityOutput{}, nil
+<span id="L176" class="ln">   176  </span>				},
+<span id="L177" class="ln">   177  </span>			)
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span>			err := newConsumer(t, api).NackWithBackoff(context.Background(), worker.Message{
+<span id="L180" class="ln">   180  </span>				Attributes: map[string]string{worker.AttrReceiptHandle: &#34;rh1&#34;},
+<span id="L181" class="ln">   181  </span>			}, 0)
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>			require.NoError(t, err)
+<span id="L184" class="ln">   184  </span>		})
+<span id="L185" class="ln">   185  </span>	})
+<span id="L186" class="ln">   186  </span>}
 <span id="L187" class="ln">   187  </span>
-<span id="L188" class="ln">   188  </span>			dl := NewDeadLetter(api, &#34;dlq&#34;, observability.NewNoopTracerFactory(t))
-<span id="L189" class="ln">   189  </span>			err := dl.Fail(context.Background(), worker.Message{Body: []byte(&#34;body&#34;)}, assert.AnError)
+<span id="L188" class="ln">   188  </span>func Test_Consumer_Extend(t *testing.T) {
+<span id="L189" class="ln">   189  </span>	t.Parallel()
 <span id="L190" class="ln">   190  </span>
-<span id="L191" class="ln">   191  </span>			require.NoError(t, err)
-<span id="L192" class="ln">   192  </span>		})
-<span id="L193" class="ln">   193  </span>	})
-<span id="L194" class="ln">   194  </span>}
-<span id="L195" class="ln">   195  </span>
+<span id="L191" class="ln">   191  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L192" class="ln">   192  </span>		t.Parallel()
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>		t.Run(&#34;指定時間で可視性を延長する&#34;, func(t *testing.T) {
+<span id="L195" class="ln">   195  </span>			t.Parallel()
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>			ctrl := gomock.NewController(t)
+<span id="L198" class="ln">   198  </span>			api := mock_sqs.NewMockAPI(ctrl)
+<span id="L199" class="ln">   199  </span>			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L200" class="ln">   200  </span>				func(_ context.Context, in *awssqs.ChangeMessageVisibilityInput, _ ...func(*awssqs.Options)) (*awssqs.ChangeMessageVisibilityOutput, error) {
+<span id="L201" class="ln">   201  </span>					assert.Equal(t, int32(30), in.VisibilityTimeout)
+<span id="L202" class="ln">   202  </span>					return &amp;awssqs.ChangeMessageVisibilityOutput{}, nil
+<span id="L203" class="ln">   203  </span>				},
+<span id="L204" class="ln">   204  </span>			)
+<span id="L205" class="ln">   205  </span>
+<span id="L206" class="ln">   206  </span>			err := newConsumer(t, api).Extend(context.Background(), worker.Message{
+<span id="L207" class="ln">   207  </span>				Attributes: map[string]string{worker.AttrReceiptHandle: &#34;rh1&#34;},
+<span id="L208" class="ln">   208  </span>			}, 30*time.Second)
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>			require.NoError(t, err)
+<span id="L211" class="ln">   211  </span>		})
+<span id="L212" class="ln">   212  </span>	})
+<span id="L213" class="ln">   213  </span>}
+<span id="L214" class="ln">   214  </span>
+<span id="L215" class="ln">   215  </span>func Test_DeadLetter_Fail(t *testing.T) {
+<span id="L216" class="ln">   216  </span>	t.Parallel()
+<span id="L217" class="ln">   217  </span>
+<span id="L218" class="ln">   218  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L219" class="ln">   219  </span>		t.Parallel()
+<span id="L220" class="ln">   220  </span>
+<span id="L221" class="ln">   221  </span>		t.Run(&#34;DLQ へ本文と失敗理由を SendMessage する&#34;, func(t *testing.T) {
+<span id="L222" class="ln">   222  </span>			t.Parallel()
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>			ctrl := gomock.NewController(t)
+<span id="L225" class="ln">   225  </span>			api := mock_sqs.NewMockAPI(ctrl)
+<span id="L226" class="ln">   226  </span>			api.EXPECT().SendMessage(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L227" class="ln">   227  </span>				func(_ context.Context, in *awssqs.SendMessageInput, _ ...func(*awssqs.Options)) (*awssqs.SendMessageOutput, error) {
+<span id="L228" class="ln">   228  </span>					assert.Equal(t, &#34;dlq&#34;, aws.ToString(in.QueueUrl))
+<span id="L229" class="ln">   229  </span>					assert.Equal(t, &#34;body&#34;, aws.ToString(in.MessageBody))
+<span id="L230" class="ln">   230  </span>					assert.Contains(t, in.MessageAttributes, &#34;failure_reason&#34;)
+<span id="L231" class="ln">   231  </span>					return &amp;awssqs.SendMessageOutput{}, nil
+<span id="L232" class="ln">   232  </span>				},
+<span id="L233" class="ln">   233  </span>			)
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>			dl := NewDeadLetter(api, &#34;dlq&#34;, observability.NewNoopTracerFactory(t))
+<span id="L236" class="ln">   236  </span>			err := dl.Fail(context.Background(), worker.Message{Body: []byte(&#34;body&#34;)}, assert.AnError)
+<span id="L237" class="ln">   237  </span>
+<span id="L238" class="ln">   238  </span>			require.NoError(t, err)
+<span id="L239" class="ln">   239  </span>		})
+<span id="L240" class="ln">   240  </span>	})
+<span id="L241" class="ln">   241  </span>}
+<span id="L242" class="ln">   242  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -191,20 +191,28 @@ broker adapter（infrastructure 層）の双方が依存する境界です。
 		
 			
 			
-			<h2 id="Consumer">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/consumer.go.html?s=262:931#L1">Consumer</a>
+			<h2 id="Consumer">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/consumer.go.html?s=638:1670#L6">Consumer</a>
 				<a class="permalink" href="#Consumer">¶</a>
 				
 				
 			</h2>
-			<p>Consumer は、pull-ack クラスのキューに対する最小 seam です。これ以上広げません。
+			<p>Consumer は、pull-ack クラスのキューに対する seam です。
+</p><p>per-message の再配送遅延は first-class な port capability です。engine が
+再配送 backoff の policy（ReceiveCount からの指数 + jitter）を決め、adapter は native 機構
+（SQS ChangeMessageVisibility 等）でそれを honor します。これは broker 非依存の
+circuit（poll ループ全体の intake throttle）とは別レイヤで、両者は併存します。
 
 			</p><pre>type Consumer interface {
     <span class="comment">// Receive は long-poll で最大 limit 件を取得します。ctx 完了 or メッセージ到着までブロックします。</span>
     Receive(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, limit <a href="../../../../../builtin/#int">int</a>) ([]<a href="#Message">Message</a>, <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// Ack は処理成功後にのみ呼びます（process → ack を厳守）。</span>
     Ack(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>) <a href="../../../../../builtin/#error">error</a>
-    <span class="comment">// Nack はメッセージを再配送へ戻します。遅延は保証しません（adapter best-effort）。</span>
+    <span class="comment">// Nack はメッセージを即時に再配送へ戻します（遅延なし）。</span>
     Nack(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>) <a href="../../../../../builtin/#error">error</a>
+    <span class="comment">// NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します。</span>
+    <span class="comment">// adapter は native 機構（SQS ChangeMessageVisibility 等）で遅延を honor します。</span>
+    <span class="comment">// d&lt;=0 は Nack と等価です。delay は best-effort ではなく port が要求する capability です。</span>
+    NackWithBackoff(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>, d <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) <a href="../../../../../builtin/#error">error</a>
     <span class="comment">// Extend は処理 lease/visibility を延長します（長時間 handler のハートビート）。</span>
     Extend(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>, d <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) <a href="../../../../../builtin/#error">error</a>
 }</pre>

@@ -104,6 +104,12 @@
 			
 			
 				
+				<dd><a href="#BodyLimitModule">func BodyLimitModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#BodyLimitPreMiddleware">func BodyLimitPreMiddleware(srvCfg *config.ServerConfig) extension.PreMiddlewareOut</a></dd>
+			
+				
 				<dd><a href="#IPExtractorModule">func IPExtractorModule() fx.Option</a></dd>
 			
 				
@@ -111,6 +117,12 @@
 			
 				
 				<dd><a href="#OpenAPIModule">func OpenAPIModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#TimeoutModule">func TimeoutModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#TimeoutPreMiddleware">func TimeoutPreMiddleware(srvCfg *config.ServerConfig) extension.PreMiddlewareOut</a></dd>
 			
 				
 				<dd><a href="#URIModule">func URIModule() fx.Option</a></dd>
@@ -130,9 +142,13 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/body_limit_di.go.html">body_limit_di.go</a>
+			
 				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/ipextractor_di.go.html">ipextractor_di.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/openapi_di.go.html">openapi_di.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/timeout_di.go.html">timeout_di.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/uri_di.go.html">uri_di.go</a>
 			
@@ -149,7 +165,36 @@
 		
 			
 			
-			<h2 id="IPExtractorModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/ipextractor_di.go.html?s=297:331#L3">IPExtractorModule</a>
+			<h2 id="BodyLimitModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/body_limit_di.go.html?s=744:776#L8">BodyLimitModule</a>
+				<a class="permalink" href="#BodyLimitModule">¶</a>
+				
+				
+			</h2>
+			<pre>func BodyLimitModule() <a href="../../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>BodyLimitModule は、リクエストボディ上限のミドルウェアを提供する fx モジュールを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="BodyLimitPreMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/body_limit_di.go.html?s=1023:1106#L18">BodyLimitPreMiddleware</a>
+				<a class="permalink" href="#BodyLimitPreMiddleware">¶</a>
+				
+				
+			</h2>
+			<pre>func BodyLimitPreMiddleware(srvCfg *<a href="../../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../../go-boilerplate/internal/config/#ServerConfig">ServerConfig</a>) <a href="../../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../../go-boilerplate/internal/di/server/extension/#PreMiddlewareOut">PreMiddlewareOut</a></pre>
+			<p>BodyLimitPreMiddleware は、SERVER_BODY_LIMIT_MB を上限とする body limit ミドルウェアを
+Pre ミドルウェアとして提供します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="IPExtractorModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/ipextractor_di.go.html?s=297:331#L3">IPExtractorModule</a>
 				<a class="permalink" href="#IPExtractorModule">¶</a>
 				
 				
@@ -188,6 +233,35 @@
 			</h2>
 			<pre>func OpenAPIModule() <a href="../../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../../go.uber.org/fx/#Option">Option</a></pre>
 			<p>OpenAPIModule は、OpenAPIバリデーションのミドルウェアを提供するfxモジュールを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="TimeoutModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/timeout_di.go.html?s=609:639#L7">TimeoutModule</a>
+				<a class="permalink" href="#TimeoutModule">¶</a>
+				
+				
+			</h2>
+			<pre>func TimeoutModule() <a href="../../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>TimeoutModule は、リクエスト deadline budget のミドルウェアを提供する fx モジュールを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="TimeoutPreMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/inbound/timeout_di.go.html?s=890:971#L17">TimeoutPreMiddleware</a>
+				<a class="permalink" href="#TimeoutPreMiddleware">¶</a>
+				
+				
+			</h2>
+			<pre>func TimeoutPreMiddleware(srvCfg *<a href="../../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../../go-boilerplate/internal/config/#ServerConfig">ServerConfig</a>) <a href="../../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../../go-boilerplate/internal/di/server/extension/#PreMiddlewareOut">PreMiddlewareOut</a></pre>
+			<p>TimeoutPreMiddleware は、SERVER_REQUEST_TIMEOUT を deadline budget とする
+timeout ミドルウェアを Pre ミドルウェアとして提供します。
 
 			
 			

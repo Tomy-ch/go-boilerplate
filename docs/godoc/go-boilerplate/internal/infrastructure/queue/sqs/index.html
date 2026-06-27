@@ -135,6 +135,9 @@
 					<dd>    <a href="#Consumer.Nack">func (c *Consumer) Nack(ctx context.Context, m worker.Message) error</a></dd>
 				
 					
+					<dd>    <a href="#Consumer.NackWithBackoff">func (c *Consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error</a></dd>
+				
+					
 					<dd>    <a href="#Consumer.Receive">func (c *Consumer) Receive(ctx context.Context, maxMessages int) ([]worker.Message, error)</a></dd>
 				
 			
@@ -296,7 +299,7 @@
 				
 			
 				
-				</p><h3 id="Consumer.Extend">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=3842:3929#L104">Extend</a>
+				</p><h3 id="Consumer.Extend">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=4433:4520#L122">Extend</a>
 					<a class="permalink" href="#Consumer.Extend">¶</a>
 					
 					
@@ -309,13 +312,27 @@
 				
 			
 				
-				</p><h3 id="Consumer.Nack">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=3344:3412#L91">Nack</a>
+				</p><h3 id="Consumer.Nack">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=3305:3373#L91">Nack</a>
 					<a class="permalink" href="#Consumer.Nack">¶</a>
 					
 					
 				</h3>
 				<pre>func (c *<a href="#Consumer">Consumer</a>) Nack(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>) <a href="../../../../../builtin/#error">error</a></pre>
-				<p>Nack は、可視性を 0 にして即時再配送します（遅延は保証しない best-effort）。
+				<p>Nack は、メッセージを即時に再配送へ戻します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Consumer.NackWithBackoff">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=3847:3943#L105">NackWithBackoff</a>
+					<a class="permalink" href="#Consumer.NackWithBackoff">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Consumer">Consumer</a>) NackWithBackoff(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, d <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します。
+d&lt;=0 は Nack（即時）と等価です。
 
 				
 				

@@ -148,6 +148,15 @@
 					<dd>    <a href="#Fake.Nack">func (f *Fake) Nack(_ context.Context, m worker.Message) error</a></dd>
 				
 					
+					<dd>    <a href="#Fake.NackBackoffApplied">func (f *Fake) NackBackoffApplied(id string) bool</a></dd>
+				
+					
+					<dd>    <a href="#Fake.NackBackoffOf">func (f *Fake) NackBackoffOf(id string) time.Duration</a></dd>
+				
+					
+					<dd>    <a href="#Fake.NackWithBackoff">func (f *Fake) NackWithBackoff(_ context.Context, m worker.Message, d time.Duration) error</a></dd>
+				
+					
 					<dd>    <a href="#Fake.NackedIDs">func (f *Fake) NackedIDs() []string</a></dd>
 				
 					
@@ -214,7 +223,7 @@
 		
 			
 			
-			<h2 id="Fake">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=892:1562#L17">Fake</a>
+			<h2 id="Fake">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=892:1685#L17">Fake</a>
 				<a class="permalink" href="#Fake">¶</a>
 				
 				
@@ -237,7 +246,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=1611:1627#L35">New</a>
+				<h3 id="New">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=1734:1750#L36">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -251,7 +260,7 @@
 
 			
 				
-				</p><h3 id="Fake.Ack">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=2770:2831#L81">Ack</a>
+				</p><h3 id="Fake.Ack">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=2957:3018#L83">Ack</a>
 					<a class="permalink" href="#Fake.Ack">¶</a>
 					
 					
@@ -264,7 +273,7 @@
 				
 			
 				
-				</p><h3 id="Fake.AckedIDs">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4724:4758#L143">AckedIDs</a>
+				</p><h3 id="Fake.AckedIDs">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5267:5301#L152">AckedIDs</a>
 					<a class="permalink" href="#Fake.AckedIDs">¶</a>
 					
 					
@@ -277,7 +286,7 @@
 				
 			
 				
-				</p><h3 id="Fake.Enqueue">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4007:4053#L120">Enqueue</a>
+				</p><h3 id="Fake.Enqueue">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4550:4596#L129">Enqueue</a>
 					<a class="permalink" href="#Fake.Enqueue">¶</a>
 					
 					
@@ -290,7 +299,7 @@
 				
 			
 				
-				</p><h3 id="Fake.Extend">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=3464:3545#L102">Extend</a>
+				</p><h3 id="Fake.Extend">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4007:4088#L111">Extend</a>
 					<a class="permalink" href="#Fake.Extend">¶</a>
 					
 					
@@ -304,7 +313,7 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.ExtendCount">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5138:5179#L157">ExtendCount</a>
+				</p><h3 id="Fake.ExtendCount">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5681:5722#L166">ExtendCount</a>
 					<a class="permalink" href="#Fake.ExtendCount">¶</a>
 					
 					
@@ -317,7 +326,7 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.Fail">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=3693:3768#L110">Fail</a>
+				</p><h3 id="Fake.Fail">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4236:4311#L119">Fail</a>
 					<a class="permalink" href="#Fake.Fail">¶</a>
 					
 					
@@ -330,7 +339,7 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.FailReceiveOnce">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4284:4325#L128">FailReceiveOnce</a>
+				</p><h3 id="Fake.FailReceiveOnce">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4827:4868#L137">FailReceiveOnce</a>
 					<a class="permalink" href="#Fake.FailReceiveOnce">¶</a>
 					
 					
@@ -343,7 +352,7 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.Failed">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5323:5361#L164">Failed</a>
+				</p><h3 id="Fake.Failed">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=6453:6491#L189">Failed</a>
 					<a class="permalink" href="#Fake.Failed">¶</a>
 					
 					
@@ -356,7 +365,7 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.InflightLen">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5699:5731#L178">InflightLen</a>
+				</p><h3 id="Fake.InflightLen">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=6829:6861#L203">InflightLen</a>
 					<a class="permalink" href="#Fake.InflightLen">¶</a>
 					
 					
@@ -369,20 +378,61 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.Nack">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=3038:3100#L90">Nack</a>
+				</p><h3 id="Fake.Nack">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=3234:3296#L92">Nack</a>
 					<a class="permalink" href="#Fake.Nack">¶</a>
 					
 					
 				</h3>
 				<pre>func (f *<a href="#Fake">Fake</a>) Nack(_ <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, m <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>) <a href="../../../../../../builtin/#error">error</a></pre>
-				<p>Nack は、メッセージを再配送（キュー末尾へ戻す）し、記録します。
+				<p>Nack は、メッセージを即時に再配送（キュー末尾へ戻す）し、記録します。
 
 				
 				
 				
 			
 				
-				</p><h3 id="Fake.NackedIDs">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4941:4976#L150">NackedIDs</a>
+				</p><h3 id="Fake.NackBackoffApplied">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=6242:6291#L181">NackBackoffApplied</a>
+					<a class="permalink" href="#Fake.NackBackoffApplied">¶</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#Fake">Fake</a>) NackBackoffApplied(id <a href="../../../../../../builtin/#string">string</a>) <a href="../../../../../../builtin/#bool">bool</a></pre>
+				<p>NackBackoffApplied は、指定 ID に対し NackWithBackoff が呼ばれたかを返します。
+full jitter で遅延が 0 になり得るため、遅延値ではなく呼び出し有無で判定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Fake.NackBackoffOf">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5906:5959#L173">NackBackoffOf</a>
+					<a class="permalink" href="#Fake.NackBackoffOf">¶</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#Fake">Fake</a>) NackBackoffOf(id <a href="../../../../../../builtin/#string">string</a>) <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Duration">Duration</a></pre>
+				<p>NackBackoffOf は、指定 ID に対し NackWithBackoff で要求された遅延を返します（未記録は 0）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Fake.NackWithBackoff">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=3613:3703#L101">NackWithBackoff</a>
+					<a class="permalink" href="#Fake.NackWithBackoff">¶</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#Fake">Fake</a>) NackWithBackoff(_ <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, m <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, d <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Duration">Duration</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>NackWithBackoff は、要求された遅延 d を記録したうえでメッセージを再配送します。
+in-memory fake は実時間の遅延は模さず、d の記録のみ行います（テストで NackBackoffOf により検証）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Fake.NackedIDs">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5484:5519#L159">NackedIDs</a>
 					<a class="permalink" href="#Fake.NackedIDs">¶</a>
 					
 					
@@ -395,7 +445,7 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.QueueLen">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5520:5549#L171">QueueLen</a>
+				</p><h3 id="Fake.QueueLen">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=6650:6679#L196">QueueLen</a>
 					<a class="permalink" href="#Fake.QueueLen">¶</a>
 					
 					
@@ -408,7 +458,7 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.Receive">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=1927:2007#L45">Receive</a>
+				</p><h3 id="Fake.Receive">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=2114:2194#L47">Receive</a>
 					<a class="permalink" href="#Fake.Receive">¶</a>
 					
 					
@@ -421,7 +471,7 @@ SetExtendErr でエラーが設定されている場合はそのエラーを返�
 				
 			
 				
-				</p><h3 id="Fake.SetExtendErr">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=4528:4566#L136">SetExtendErr</a>
+				</p><h3 id="Fake.SetExtendErr">func (*Fake) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/fake/fake.go.html?s=5071:5109#L145">SetExtendErr</a>
 					<a class="permalink" href="#Fake.SetExtendErr">¶</a>
 					
 					

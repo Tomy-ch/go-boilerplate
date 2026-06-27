@@ -79,14 +79,14 @@
 <span id="L22" class="ln">    22  </span>			req  *Request
 <span id="L23" class="ln">    23  </span>			want bool
 <span id="L24" class="ln">    24  </span>		}{
-<span id="L25" class="ln">    25  </span>			&#34;GETは常に安全&#34;:               {req: &amp;Request{Method: MethodGet}, want: true},
-<span id="L26" class="ln">    26  </span>			&#34;PUTは常に安全&#34;:               {req: &amp;Request{Method: MethodPut}, want: true},
-<span id="L27" class="ln">    27  </span>			&#34;DELETEは常に安全&#34;:            {req: &amp;Request{Method: MethodDelete}, want: true},
-<span id="L28" class="ln">    28  </span>			&#34;POSTはAllowRetryなしで非安全&#34;:  {req: &amp;Request{Method: MethodPost}, want: false},
-<span id="L29" class="ln">    29  </span>			&#34;POSTはAllowRetryありで安全&#34;:   {req: &amp;Request{Method: MethodPost, AllowRetry: true}, want: true},
-<span id="L30" class="ln">    30  </span>			&#34;PATCHはAllowRetryなしで非安全&#34;: {req: &amp;Request{Method: MethodPatch}, want: false},
-<span id="L31" class="ln">    31  </span>			&#34;PATCHはAllowRetryありで安全&#34;:  {req: &amp;Request{Method: MethodPatch, AllowRetry: true}, want: true},
-<span id="L32" class="ln">    32  </span>			&#34;未知メソッドは非安全&#34;:             {req: &amp;Request{Method: Method(&#34;TRACE&#34;)}, want: false},
+<span id="L25" class="ln">    25  </span>			&#34;GETは常に安全&#34;:               {req: &amp;Request{method: MethodGet()}, want: true},
+<span id="L26" class="ln">    26  </span>			&#34;PUTは常に安全&#34;:               {req: &amp;Request{method: MethodPut()}, want: true},
+<span id="L27" class="ln">    27  </span>			&#34;DELETEは常に安全&#34;:            {req: &amp;Request{method: MethodDelete()}, want: true},
+<span id="L28" class="ln">    28  </span>			&#34;POSTはAllowRetryなしで非安全&#34;:  {req: &amp;Request{method: MethodPost()}, want: false},
+<span id="L29" class="ln">    29  </span>			&#34;POSTはAllowRetryありで安全&#34;:   {req: &amp;Request{method: MethodPost(), allowRetry: true}, want: true},
+<span id="L30" class="ln">    30  </span>			&#34;PATCHはAllowRetryなしで非安全&#34;: {req: &amp;Request{method: MethodPatch()}, want: false},
+<span id="L31" class="ln">    31  </span>			&#34;PATCHはAllowRetryありで安全&#34;:  {req: &amp;Request{method: MethodPatch(), allowRetry: true}, want: true},
+<span id="L32" class="ln">    32  </span>			&#34;ゼロ値(未設定)メソッドは非安全&#34;:       {req: &amp;Request{method: Method{}}, want: false},
 <span id="L33" class="ln">    33  </span>		}
 <span id="L34" class="ln">    34  </span>
 <span id="L35" class="ln">    35  </span>		for name, tc := range cases {

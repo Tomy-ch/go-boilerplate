@@ -128,6 +128,9 @@
 					<dd>    <a href="#MockConsumer.Nack">func (m_2 *MockConsumer) Nack(ctx context.Context, m worker.Message) error</a></dd>
 				
 					
+					<dd>    <a href="#MockConsumer.NackWithBackoff">func (m_2 *MockConsumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error</a></dd>
+				
+					
 					<dd>    <a href="#MockConsumer.Receive">func (m *MockConsumer) Receive(ctx context.Context, limit int) ([]worker.Message, error)</a></dd>
 				
 			
@@ -143,6 +146,9 @@
 				
 					
 					<dd>    <a href="#MockConsumerMockRecorder.Nack">func (mr *MockConsumerMockRecorder) Nack(ctx, m any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockConsumerMockRecorder.NackWithBackoff">func (mr *MockConsumerMockRecorder) NackWithBackoff(ctx, m, d any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockConsumerMockRecorder.Receive">func (mr *MockConsumerMockRecorder) Receive(ctx, limit any) *gomock.Call</a></dd>
@@ -383,7 +389,20 @@
 				
 			
 				
-				</p><h3 id="MockConsumer.Receive">func (*MockConsumer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=2548:2636#L78">Receive</a>
+				</p><h3 id="MockConsumer.NackWithBackoff">func (*MockConsumer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=2556:2658#L78">NackWithBackoff</a>
+					<a class="permalink" href="#MockConsumer.NackWithBackoff">¶</a>
+					
+					
+				</h3>
+				<pre>func (m_2 *<a href="#MockConsumer">MockConsumer</a>) NackWithBackoff(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, m <a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, d <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Duration">Duration</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>NackWithBackoff mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumer.Receive">func (*MockConsumer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=3127:3215#L92">Receive</a>
 					<a class="permalink" href="#MockConsumer.Receive">¶</a>
 					
 					
@@ -461,7 +480,20 @@
 				
 			
 				
-				</p><h3 id="MockConsumerMockRecorder.Receive">func (*MockConsumerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=2841:2913#L87">Receive</a>
+				</p><h3 id="MockConsumerMockRecorder.NackWithBackoff">func (*MockConsumerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=2848:2927#L86">NackWithBackoff</a>
+					<a class="permalink" href="#MockConsumerMockRecorder.NackWithBackoff">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockConsumerMockRecorder">MockConsumerMockRecorder</a>) NackWithBackoff(ctx, m, d <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>NackWithBackoff indicates an expected call of NackWithBackoff.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockConsumerMockRecorder.Receive">func (*MockConsumerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_consumer.gen.go.html?s=3420:3492#L101">Receive</a>
 					<a class="permalink" href="#MockConsumerMockRecorder.Receive">¶</a>
 					
 					

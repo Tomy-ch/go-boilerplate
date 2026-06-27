@@ -43,7 +43,7 @@ stateDiagram-v2
       an unknown name returns ErrUnknownWorker immediately → Stopped
     end note
     note right of Draining
-      unfinished messages are not Acked = left for redelivery (C1)
+      unfinished messages are not Acked = left for redelivery
     end note
 ```
 
@@ -244,8 +244,8 @@ flowchart LR
 | **Retryable / Permanent / Fatal** | Error classification sentinels (`apperror`). Nack-redeliver / route to FailureHandler then Ack / stop the engine. |
 | **FailureHandler / DeadLetter / DLQ** | The dead-letter seam for permanent failures / its SQS implementation / the dead-letter queue. |
 | **redrive** | The SQS IaC setting that auto-sends to the DLQ past `maxReceiveCount`. The app's general path is the FailureHandler. |
-| **drain (`DrainTimeout`)** | On stop, wait for in-flight up to a deadline. Unfinished messages are not Acked = redelivered (C1). |
-| **readiness / liveness / health listener** | A plain net/http that serves `/readyz` (`Healthy()` = progress within `ProgressStaleAfter`) and `/healthz` (C2). |
+| **drain (`DrainTimeout`)** | On stop, wait for in-flight up to a deadline. Unfinished messages are not Acked = redelivered. |
+| **readiness / liveness / health listener** | A plain net/http that serves `/readyz` (`Healthy()` = progress within `ProgressStaleAfter`) and `/healthz`. |
 | **Settings** | The engine-core behavior settings (an engine-local struct). Mapped from `config.WorkerConfig` via DI. |
 | **WorkerConfig** | The engine-core settings (broker-agnostic, `WORKER_*` with `default` tags). Broker-specific settings live in the adapter `Config`. |
 | **traceparent / continuation** | W3C trace context. `Extract`ed from `Message.Attributes` to continue the span (D1). |

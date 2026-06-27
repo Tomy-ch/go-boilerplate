@@ -38,7 +38,7 @@ REST は **「request-in driving adapter」、Usecase 層への同期 HTTP 入�
 stateDiagram-v2
     [*] --> Building: NewApplicationCore() → fx.New (config→logging→o11y→db→infra→usecase→controller→server)
     Building --> Wired: BindHandler×N (RegisterHandlers) ＋ ApplyExtends (middleware ソート＆適用) ＋ RegisterHTTPServerHooks
-    Wired --> Listening: fx OnStart → net listen :port → go e.Start()
+    Wired --> Listening: fx OnStart → net listen port → go e.Start()
     Listening --> Serving: request → middleware チェーン → handler → 応答（常駐）
     Serving --> Listening: 応答送出
     Listening --> Draining: SIGINT/SIGTERM → RunServer の ctx.Done()

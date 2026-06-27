@@ -90,13 +90,13 @@
 <span id="L33" class="ln">    33  </span>
 <span id="L34" class="ln">    34  </span>			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 <span id="L35" class="ln">    35  </span>				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
-<span id="L36" class="ln">    36  </span>					assert.Equal(t, httpclient.MethodPost, req.Method)
-<span id="L37" class="ln">    37  </span>					assert.Equal(t, testEndpoint, req.URL)
-<span id="L38" class="ln">    38  </span>					assert.Equal(t, msgID.String(), req.IdempotencyKey)
-<span id="L39" class="ln">    39  </span>					assert.False(t, req.AllowRetry)
-<span id="L40" class="ln">    40  </span>					assert.Equal(t, []byte(`{&#34;v&#34;:1}`), req.Body)
-<span id="L41" class="ln">    41  </span>					assert.Equal(t, []string{&#34;application/json&#34;}, req.Header[&#34;Content-Type&#34;])
-<span id="L42" class="ln">    42  </span>					assert.Equal(t, []string{&#34;00-x&#34;}, req.Header[&#34;traceparent&#34;])
+<span id="L36" class="ln">    36  </span>					assert.Equal(t, httpclient.MethodPost(), req.Method())
+<span id="L37" class="ln">    37  </span>					assert.Equal(t, testEndpoint, req.URL())
+<span id="L38" class="ln">    38  </span>					assert.Equal(t, msgID.String(), req.IdempotencyKey())
+<span id="L39" class="ln">    39  </span>					assert.False(t, req.AllowRetry())
+<span id="L40" class="ln">    40  </span>					assert.Equal(t, []byte(`{&#34;v&#34;:1}`), req.Body())
+<span id="L41" class="ln">    41  </span>					assert.Equal(t, []string{&#34;application/json&#34;}, req.Header()[&#34;Content-Type&#34;])
+<span id="L42" class="ln">    42  </span>					assert.Equal(t, []string{&#34;00-x&#34;}, req.Header()[&#34;traceparent&#34;])
 <span id="L43" class="ln">    43  </span>					return &amp;httpclient.Response{StatusCode: 200}, nil
 <span id="L44" class="ln">    44  </span>				})
 <span id="L45" class="ln">    45  </span>
