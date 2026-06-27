@@ -181,7 +181,6 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 
 			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
 		})
-
 	})
 
 	t.Run("異常系", func(t *testing.T) {
