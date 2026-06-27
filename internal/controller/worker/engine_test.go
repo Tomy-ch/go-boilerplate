@@ -153,6 +153,8 @@ func Test_Engine_A1_A2_AckNackDiscipline(t *testing.T) {
 
 			require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 1 }, eventually, tick)
 			assert.Empty(t, f.AckedIDs())
+			// M3: retryable は per-message backoff つきで再配送される（NackWithBackoff 経由）。
+			assert.True(t, f.NackBackoffApplied("a"), "NackWithBackoff で再配送されること")
 		})
 	})
 }

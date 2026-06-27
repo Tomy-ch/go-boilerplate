@@ -40,6 +40,8 @@ type Worker struct {
 	CircuitHalfOpenProbe      int           `env:"CIRCUIT_HALF_OPEN_PROBE"      default:"1"`
 	HealthListenAddr          string        `env:"HEALTH_LISTEN_ADDR"           default:":8081"`
 	ProgressStaleAfter        time.Duration `env:"PROGRESS_STALE_AFTER"         default:"60s"`
+	NackBackoffInitial        time.Duration `env:"NACK_BACKOFF_INITIAL"         default:"1s"`
+	NackBackoffMax            time.Duration `env:"NACK_BACKOFF_MAX"             default:"30s"`
 }
 
 // OperatingSystem は OS レベルの設定を保持する。

@@ -28,13 +28,13 @@
 | **Fatal** | drain して **engine を停止** | 手動（再起動） | 終了 |
 
 - **Open↔Fatal の境界**：Retryable 失敗の継続はサーキットを段階的にエスカレート（Open→Half-open→Open ごとに cooldown 増分）。engine を落とす（Fatal）のは `Handler` が `apperror.ErrFatal` を返したとき（回復不能な設定不整合等）のみ。Circuit Open は一時的・自己回復、Fatal は終端。
-- **Circuit（engine 全体）vs `Nack` 遅延（per-message）**：circuit は poll loop 全体を絞る（キューからどれだけ引くか）。per-message の再配送遅延は adapter の best-effort な `Nack` 挙動（SQS の可視性等）。両者は別レイヤで、`Nack` 遅延は **port 保証にしない**。broker 非依存の backpressure は circuit が担う。
+- **Circuit（engine 全体）vs 再配送 backoff（per-message）**（M3）：circuit は poll loop 全体を絞る（キューからどれだけ引くか）。per-message の再配送遅延は **first-class な port capability** で、engine が backoff policy（`ReceiveCount` からの指数 + full jitter, `pkg/retry`）を持ち `Consumer.NackWithBackoff(ctx, m, d)` を呼び、adapter が native 機構（SQS `ChangeMessageVisibility` 等）で honor する。両者は別レイヤで併存：circuit は broker 非依存の intake backpressure、再配送 backoff は per-message かつ broker honor。
 
 ## 不変条件（受け入れ基準）
 
 engine は **in-memory fake**（`internal/usecase/boundary/worker/fake`）に対して完成し、実 broker 無しで全テストが green。テスト名は不変条件 ID A1–A7 / B1–B4 / C1（engine）＋ D1–D3（O11Y）にマップ。主なもの：
 
-- A1/A2：成功時のみ `Ack`、Retryable で `Nack`。
+- A1/A2：成功時のみ `Ack`、Retryable で `NackWithBackoff`（per-message 指数 + jitter）。
 - A5：Permanent → `FailureHandler` → `Ack`、Fatal → 停止。
 - A6：1 メッセージの panic を recover し engine を巻き込まない。
 - B1/B2/B3：同時数上限 / in-flight 上限 / `PartitionKey` 直列化。

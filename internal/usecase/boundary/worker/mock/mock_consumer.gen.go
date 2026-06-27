@@ -84,6 +84,20 @@ func (mr *MockConsumerMockRecorder) Nack(ctx, m any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Nack", reflect.TypeOf((*MockConsumer)(nil).Nack), ctx, m)
 }
 
+// NackWithBackoff mocks base method.
+func (m_2 *MockConsumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error {
+	m_2.ctrl.T.Helper()
+	ret := m_2.ctrl.Call(m_2, "NackWithBackoff", ctx, m, d)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NackWithBackoff indicates an expected call of NackWithBackoff.
+func (mr *MockConsumerMockRecorder) NackWithBackoff(ctx, m, d any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NackWithBackoff", reflect.TypeOf((*MockConsumer)(nil).NackWithBackoff), ctx, m, d)
+}
+
 // Receive mocks base method.
 func (m *MockConsumer) Receive(ctx context.Context, limit int) ([]worker.Message, error) {
 	m.ctrl.T.Helper()

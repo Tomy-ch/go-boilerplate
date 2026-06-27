@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/usecase/boundary/worker"
+	"go-boilerplate/pkg/retry"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -292,10 +293,21 @@ func (r *run) ack(ctx context.Context, m worker.Message) {
 	}
 }
 
+// nack は、retryable 失敗時に per-message 再配送 backoff（指数 + full jitter）を計算し、
+// その遅延つきで再配送します（M3）。policy は engine が持ち、adapter が native 機構で honor します。
 func (r *run) nack(ctx context.Context, m worker.Message) {
-	if err := r.consumer.Nack(ctx, m); err != nil {
+	d := r.nackBackoff(m.ReceiveCount)
+	if err := r.consumer.NackWithBackoff(ctx, m, d); err != nil {
 		r.logErr("worker.nack", "nack error", err)
 	}
+}
+
+// nackBackoff は、ReceiveCount（1 起算）に対する再配送遅延を返します。
+// 指数 backoff を full jitter で散らし、同時失敗の thundering herd を避けます。
+func (r *run) nackBackoff(receiveCount int) time.Duration {
+	// ReceiveCount は 1 起算、backoff.Duration は 0 起算。
+	attempt := max(0, receiveCount-1)
+	return retry.Full(r.e.set.nackBackoff().Duration(attempt))
 }
 
 // onPollError は、Receive の失敗をサーキットへ反映します（broker 到達不能など）。

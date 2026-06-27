@@ -109,6 +109,8 @@ func TestMockConfigForTest(t *testing.T) {
 					circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
 					healthListenAddr:          expectedWorkerHealthListenAddr,
 					progressStaleAfter:        expectedWorkerProgressStaleAfter,
+					nackBackoffInitial:        expectedWorkerNackBackoffInitial,
+					nackBackoffMax:            expectedWorkerNackBackoffMax,
 				},
 				outbox: OutboxConfig{
 					endpoint:     expectedOutboxEndpoint,

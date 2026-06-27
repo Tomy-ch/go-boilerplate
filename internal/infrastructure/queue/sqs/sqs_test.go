@@ -138,6 +138,53 @@ func Test_Consumer_Nack(t *testing.T) {
 	})
 }
 
+func Test_Consumer_NackWithBackoff(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("可視性を遅延秒数に設定して遅延再配送する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, in *awssqs.ChangeMessageVisibilityInput, _ ...func(*awssqs.Options)) (*awssqs.ChangeMessageVisibilityOutput, error) {
+					assert.Equal(t, int32(5), in.VisibilityTimeout)
+					assert.Equal(t, "rh1", aws.ToString(in.ReceiptHandle))
+					return &awssqs.ChangeMessageVisibilityOutput{}, nil
+				},
+			)
+
+			err := newConsumer(t, api).NackWithBackoff(context.Background(), worker.Message{
+				Attributes: map[string]string{worker.AttrReceiptHandle: "rh1"},
+			}, 5*time.Second)
+
+			require.NoError(t, err)
+		})
+
+		t.Run("遅延が0以下なら即時再配送_Nack相当_になる", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, in *awssqs.ChangeMessageVisibilityInput, _ ...func(*awssqs.Options)) (*awssqs.ChangeMessageVisibilityOutput, error) {
+					assert.Equal(t, int32(0), in.VisibilityTimeout)
+					return &awssqs.ChangeMessageVisibilityOutput{}, nil
+				},
+			)
+
+			err := newConsumer(t, api).NackWithBackoff(context.Background(), worker.Message{
+				Attributes: map[string]string{worker.AttrReceiptHandle: "rh1"},
+			}, 0)
+
+			require.NoError(t, err)
+		})
+	})
+}
+
 func Test_Consumer_Extend(t *testing.T) {
 	t.Parallel()
 

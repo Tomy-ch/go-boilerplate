@@ -28,13 +28,13 @@ These are easy to conflate. The circuit breaker is applied to the **intake side*
 | **Fatal** | drains and **stops the engine** | manual (restart) | exits |
 
 - **Open ↔ Fatal boundary**: continued Retryable failures escalate the circuit (Open → cooldown grows on each Open→Half-open→Open cycle); the engine is taken down (Fatal) only when a `Handler` returns `apperror.ErrFatal` (e.g. unrecoverable config error). Circuit Open is a temporary, self-healing pause; Fatal is terminal.
-- **Circuit (engine-wide) vs `Nack` delay (per-message)**: the circuit throttles the whole poll loop (how much to pull from the queue); per-message redelivery delay is the adapter's best-effort `Nack` behavior (e.g. SQS visibility). They are different layers — the `Nack` delay is **not** a port guarantee; broker-agnostic backpressure is the circuit's job.
+- **Circuit (engine-wide) vs redelivery backoff (per-message)** (M3): the circuit throttles the whole poll loop (how much to pull from the queue); per-message redelivery delay is a **first-class port capability** — the engine owns the backoff policy (exponential from `ReceiveCount` + full jitter via `pkg/retry`) and calls `Consumer.NackWithBackoff(ctx, m, d)`, which the adapter honours through its native mechanism (e.g. SQS `ChangeMessageVisibility`). They remain different layers and coexist: the circuit is broker-agnostic intake backpressure; the redelivery backoff is per-message and broker-honoured.
 
 ## Invariants (acceptance criteria)
 
 The engine is **completed against the in-memory fake** (`internal/usecase/boundary/worker/fake`); all engine tests are green without a real broker. Test names map to invariant IDs A1–A7 / B1–B4 / C1 (engine) plus D1–D3 (O11Y). Key ones:
 
-- A1/A2: `Ack` only after success; `Nack` on Retryable.
+- A1/A2: `Ack` only after success; `NackWithBackoff` (per-message exponential + jitter) on Retryable.
 - A5: Permanent → `FailureHandler` → `Ack`; Fatal → stop.
 - A6: a single message's panic is recovered and does not take down the engine.
 - B1/B2/B3: concurrency cap / in-flight cap / `PartitionKey` serialization.
