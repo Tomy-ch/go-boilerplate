@@ -199,9 +199,11 @@ This group handles linting and auto-fixing of Markdown files.
 
 | Command | Description | Notes |
 | --- | --- | --- |
-| `make md-lint` | Lints Markdown files. | Invokes `make md-lint-ci` inside the `node_tool_runner` container. |
+| `make md-lint` | Lints Markdown (markdownlint + mermaid syntax). | Invokes `make md-lint-ci` inside the `node_tool_runner` container. |
 | `make md-fix` | Auto-fixes Markdown files. | Invokes `make md-fix-ci` inside the `node_tool_runner` container. |
-| `make md-lint-ci` | Lints `**/*.md` directly with `markdownlint-cli2`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
+| `make md-mermaid-lint` | Validates only the ` ```mermaid ` fences. | Invokes `make md-mermaid-lint-ci` inside the `node_tool_runner` container. |
+| `make md-lint-ci` | Runs `markdownlint-cli2` then the mermaid syntax lint. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
+| `make md-mermaid-lint-ci` | Validates ` ```mermaid ` fences with `scripts/mermaid-lint.mjs` (real `mermaid.parse`). | CI target. markdownlint never checks diagram grammar. |
 | `make md-fix-ci` | Fixes `**/*.md` directly with `markdownlint-cli2 --fix`. | CI target. Excludes `vendor/`, `node_modules/`, `.git/`. |
 
 ## `.makefiles/security` group

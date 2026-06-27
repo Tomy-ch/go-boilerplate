@@ -96,7 +96,7 @@
 <span id="L39" class="ln">    39  </span>				require.True(t, ok)
 <span id="L40" class="ln">    40  </span>				startFn = fn
 <span id="L41" class="ln">    41  </span>			}).Times(1)
-<span id="L42" class="ln">    42  </span>			<span class="comment">// SupervisedRunner 化により OnStop（停止時キャンセル）も登録される（C1）。</span>
+<span id="L42" class="ln">    42  </span>			<span class="comment">// SupervisedRunner 化により OnStop（停止時キャンセル）も登録される。</span>
 <span id="L43" class="ln">    43  </span>			reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Times(1)
 <span id="L44" class="ln">    44  </span>
 <span id="L45" class="ln">    45  </span>			doneCh := make(chan error, 1)

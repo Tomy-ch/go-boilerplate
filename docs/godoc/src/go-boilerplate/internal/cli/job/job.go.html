@@ -61,68 +61,70 @@
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
 <span id="L6" class="ln">     6  </span>	&#34;time&#34;
-<span id="L7" class="ln">     7  </span>)
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span><span class="comment">// StartFunc は、ジョブの開始関数の型です（DI から取得した開始関数を注入します）。</span>
-<span id="L10" class="ln">    10  </span>type StartFunc func(ctx context.Context, name string, args []string) &lt;-chan error
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span><span class="comment">// StopFunc は、ジョブの停止関数の型です（DI から取得した停止関数を注入します）。</span>
-<span id="L13" class="ln">    13  </span>type StopFunc func(ctx context.Context) error
-<span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span><span class="comment">// RunJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。</span>
-<span id="L16" class="ln">    16  </span><span class="comment">// grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。</span>
-<span id="L17" class="ln">    17  </span>func RunJobWith(
-<span id="L18" class="ln">    18  </span>	ctx context.Context,
-<span id="L19" class="ln">    19  </span>	name string,
-<span id="L20" class="ln">    20  </span>	args []string,
-<span id="L21" class="ln">    21  </span>	timeout time.Duration,
-<span id="L22" class="ln">    22  </span>	grace time.Duration,
-<span id="L23" class="ln">    23  </span>	provide func() (StartFunc, StopFunc),
-<span id="L24" class="ln">    24  </span>) error {
-<span id="L25" class="ln">    25  </span>	start, stop := provide()
-<span id="L26" class="ln">    26  </span>	return runJob(ctx, name, args, timeout, grace, start, stop)
-<span id="L27" class="ln">    27  </span>}
-<span id="L28" class="ln">    28  </span>
-<span id="L29" class="ln">    29  </span><span class="comment">// runJob は、ジョブ実行のオーケストレーション（タイムアウト分岐と停止処理）を行います。</span>
-<span id="L30" class="ln">    30  </span>func runJob(
-<span id="L31" class="ln">    31  </span>	ctx context.Context,
-<span id="L32" class="ln">    32  </span>	name string,
-<span id="L33" class="ln">    33  </span>	args []string,
-<span id="L34" class="ln">    34  </span>	timeout time.Duration,
-<span id="L35" class="ln">    35  </span>	grace time.Duration,
-<span id="L36" class="ln">    36  </span>	start StartFunc,
-<span id="L37" class="ln">    37  </span>	stop StopFunc,
-<span id="L38" class="ln">    38  </span>) error {
-<span id="L39" class="ln">    39  </span>	done := start(ctx, name, args)
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	if timeout &lt;= 0 {
-<span id="L42" class="ln">    42  </span>		err := &lt;-done
-<span id="L43" class="ln">    43  </span>		gracefulStop(ctx, grace, stop)
-<span id="L44" class="ln">    44  </span>		return err
-<span id="L45" class="ln">    45  </span>	}
-<span id="L46" class="ln">    46  </span>
-<span id="L47" class="ln">    47  </span>	waitCtx, cancel := context.WithTimeout(ctx, timeout)
-<span id="L48" class="ln">    48  </span>	defer cancel()
-<span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>	select {
-<span id="L51" class="ln">    51  </span>	case err := &lt;-done:
-<span id="L52" class="ln">    52  </span>		gracefulStop(ctx, grace, stop)
-<span id="L53" class="ln">    53  </span>		return err
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span><span class="comment">// StartFunc は、ジョブの開始関数の型です（DI から取得した開始関数を注入します）。</span>
+<span id="L12" class="ln">    12  </span>type StartFunc func(ctx context.Context, name string, args []string) &lt;-chan error
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span><span class="comment">// StopFunc は、ジョブの停止関数の型です（DI から取得した停止関数を注入します）。</span>
+<span id="L15" class="ln">    15  </span>type StopFunc func(ctx context.Context) error
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span><span class="comment">// RunJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。</span>
+<span id="L18" class="ln">    18  </span><span class="comment">// grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。</span>
+<span id="L19" class="ln">    19  </span>func RunJobWith(
+<span id="L20" class="ln">    20  </span>	ctx context.Context,
+<span id="L21" class="ln">    21  </span>	name string,
+<span id="L22" class="ln">    22  </span>	args []string,
+<span id="L23" class="ln">    23  </span>	timeout time.Duration,
+<span id="L24" class="ln">    24  </span>	grace time.Duration,
+<span id="L25" class="ln">    25  </span>	provide func() (StartFunc, StopFunc),
+<span id="L26" class="ln">    26  </span>) error {
+<span id="L27" class="ln">    27  </span>	start, stop := provide()
+<span id="L28" class="ln">    28  </span>	return runJob(ctx, name, args, timeout, grace, start, stop)
+<span id="L29" class="ln">    29  </span>}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span><span class="comment">// runJob は、ジョブ実行のオーケストレーション（タイムアウト分岐と停止処理）を行います。</span>
+<span id="L32" class="ln">    32  </span>func runJob(
+<span id="L33" class="ln">    33  </span>	ctx context.Context,
+<span id="L34" class="ln">    34  </span>	name string,
+<span id="L35" class="ln">    35  </span>	args []string,
+<span id="L36" class="ln">    36  </span>	timeout time.Duration,
+<span id="L37" class="ln">    37  </span>	grace time.Duration,
+<span id="L38" class="ln">    38  </span>	start StartFunc,
+<span id="L39" class="ln">    39  </span>	stop StopFunc,
+<span id="L40" class="ln">    40  </span>) error {
+<span id="L41" class="ln">    41  </span>	done := start(ctx, name, args)
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>	if timeout &lt;= 0 {
+<span id="L44" class="ln">    44  </span>		err := &lt;-done
+<span id="L45" class="ln">    45  </span>		return xerrors.Join(err, gracefulStop(ctx, grace, stop))
+<span id="L46" class="ln">    46  </span>	}
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+<span id="L49" class="ln">    49  </span>	defer cancel()
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>	select {
+<span id="L52" class="ln">    52  </span>	case err := &lt;-done:
+<span id="L53" class="ln">    53  </span>		return xerrors.Join(err, gracefulStop(ctx, grace, stop))
 <span id="L54" class="ln">    54  </span>	case &lt;-waitCtx.Done():
 <span id="L55" class="ln">    55  </span>		<span class="comment">// waitCtx は ctx の子。タイムアウト(DeadlineExceeded)・親キャンセル(Canceled)の両方で発火する。</span>
 <span id="L56" class="ln">    56  </span>		<span class="comment">// 停止は期限切れの waitCtx ではなく専用 context を作り直して猶予を与える。</span>
-<span id="L57" class="ln">    57  </span>		gracefulStop(ctx, grace, stop)
-<span id="L58" class="ln">    58  </span>		return waitCtx.Err()
-<span id="L59" class="ln">    59  </span>	}
-<span id="L60" class="ln">    60  </span>}
-<span id="L61" class="ln">    61  </span>
-<span id="L62" class="ln">    62  </span><span class="comment">// gracefulStop は、停止開始時点から grace の猶予を与えて後始末を実行します。</span>
-<span id="L63" class="ln">    63  </span>func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) {
-<span id="L64" class="ln">    64  </span>	stopCtx, cancel := context.WithTimeout(ctx, grace)
-<span id="L65" class="ln">    65  </span>	defer cancel()
-<span id="L66" class="ln">    66  </span>	_ = stop(stopCtx)
-<span id="L67" class="ln">    67  </span>}
-<span id="L68" class="ln">    68  </span>
+<span id="L57" class="ln">    57  </span>		return xerrors.Join(waitCtx.Err(), gracefulStop(ctx, grace, stop))
+<span id="L58" class="ln">    58  </span>	}
+<span id="L59" class="ln">    59  </span>}
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span><span class="comment">// gracefulStop は、親キャンセルに左右されない grace の猶予を停止処理（app.Stop）に与え、</span>
+<span id="L62" class="ln">    62  </span><span class="comment">// その結果を返します。SIGINT 伝播や親 ctx タイムアウト後でも OTel flush / DB pool close に</span>
+<span id="L63" class="ln">    63  </span><span class="comment">// grace の全猶予が保証されます。停止失敗を呼び出し元のエラーチェーンに含め exit code へ</span>
+<span id="L64" class="ln">    64  </span><span class="comment">// 反映できるよう、エラーは破棄せず返します。</span>
+<span id="L65" class="ln">    65  </span>func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) error {
+<span id="L66" class="ln">    66  </span>	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)
+<span id="L67" class="ln">    67  </span>	defer cancel()
+<span id="L68" class="ln">    68  </span>	return stop(stopCtx)
+<span id="L69" class="ln">    69  </span>}
+<span id="L70" class="ln">    70  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/cli/job/job.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

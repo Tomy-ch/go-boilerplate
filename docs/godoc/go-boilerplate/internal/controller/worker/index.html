@@ -243,13 +243,13 @@ seam（worker.Consumer / Handler / FailureHandler）のみに依存し、broker 
 
 			
 				
-				</p><h3 id="Engine.Healthy">func (*Engine) <a href="../../../../src/go-boilerplate/internal/controller/worker/runner.go.html?s=2152:2183#L71">Healthy</a>
+				</p><h3 id="Engine.Healthy">func (*Engine) <a href="../../../../src/go-boilerplate/internal/controller/worker/runner.go.html?s=2144:2175#L71">Healthy</a>
 					<a class="permalink" href="#Engine.Healthy">¶</a>
 					
 					
 				</h3>
 				<pre>func (e *<a href="#Engine">Engine</a>) Healthy() <a href="../../../../builtin/#bool">bool</a></pre>
-				<p>Healthy は、readiness 判定を返します（C2）。Run 実行中かつ poll 進捗が閾値内のとき true。
+				<p>Healthy は、readiness 判定を返します。Run 実行中かつ poll 進捗が閾値内のとき true。
 
 				
 				
@@ -285,7 +285,7 @@ seam（worker.Consumer / Handler / FailureHandler）のみに依存し、broker 
 		
 			
 			
-			</p><h2 id="Settings">type <a href="../../../../src/go-boilerplate/internal/controller/worker/settings.go.html?s=575:1950#L9">Settings</a>
+			</p><h2 id="Settings">type <a href="../../../../src/go-boilerplate/internal/controller/worker/settings.go.html?s=952:2557#L16">Settings</a>
 				<a class="permalink" href="#Settings">¶</a>
 				
 				
@@ -301,7 +301,7 @@ seam（worker.Consumer / Handler / FailureHandler）のみに依存し、broker 
     BatchSize <a href="../../../../builtin/#int">int</a>
 <span id="Settings.ExtendInterval"></span>    <span class="comment">// ExtendInterval は、長時間処理中に Extend を呼ぶ周期です（0 以下で無効）（A3）。</span>
     ExtendInterval <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>
-<span id="Settings.DrainTimeout"></span>    <span class="comment">// DrainTimeout は、停止時に in-flight の完了を待つ上限です（C1）。</span>
+<span id="Settings.DrainTimeout"></span>    <span class="comment">// DrainTimeout は、停止時に in-flight の完了を待つ上限です。</span>
     DrainTimeout <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>
 <span id="Settings.ReceiveCountWarnThreshold"></span>    <span class="comment">// ReceiveCountWarnThreshold は、この回数以上の再配送で warn する閾値です（0 以下で無効）（A7）。</span>
     ReceiveCountWarnThreshold <a href="../../../../builtin/#int">int</a>
@@ -314,8 +314,13 @@ seam（worker.Consumer / Handler / FailureHandler）のみに依存し、broker 
     CircuitOpenBackoffMax <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>
 <span id="Settings.CircuitHalfOpenProbe"></span>    <span class="comment">// CircuitHalfOpenProbe は、Half-open 時に試行する最大件数です。</span>
     CircuitHalfOpenProbe <a href="../../../../builtin/#int">int</a>
-<span id="Settings.ProgressStaleAfter"></span>    <span class="comment">// ProgressStaleAfter は、readiness 判定で「進捗なし(stuck)」とみなすまでの時間です（C2）。</span>
+<span id="Settings.ProgressStaleAfter"></span>    <span class="comment">// ProgressStaleAfter は、readiness 判定で「進捗なし(stuck)」とみなすまでの時間です。</span>
     ProgressStaleAfter <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>
+
+<span id="Settings.NackBackoffInitial"></span>    <span class="comment">// NackBackoffInitial は、retryable 失敗時の per-message 再配送 backoff の初回待機です。</span>
+    NackBackoffInitial <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>
+<span id="Settings.NackBackoffMax"></span>    <span class="comment">// NackBackoffMax は、per-message 再配送 backoff の上限です。</span>
+    NackBackoffMax <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>
 }
 </pre>
 

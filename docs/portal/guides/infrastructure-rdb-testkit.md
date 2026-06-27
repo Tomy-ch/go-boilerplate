@@ -90,7 +90,7 @@ Processing flow:
 ```mermaid
 flowchart TD
     A[Transaction Begin]
-    B[Execute fn(ctx)]
+    B["Execute fn(ctx)"]
     C[Return rollbackForTestError]
     D[Rollback]
 
@@ -101,7 +101,7 @@ Internally, it uses `tx.Manager.Do`.
 
 ```mermaid
 flowchart TD
-    A[Do(fn)]
+    A["Do(fn)"]
     B[Return error to trigger rollback]
 
     A --> B

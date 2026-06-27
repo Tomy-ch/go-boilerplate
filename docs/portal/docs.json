@@ -1966,6 +1966,13 @@
               "guideId": "job"
             },
             {
+              "name": "Outbox",
+              "path": "../design/outbox.md",
+              "lang": "en",
+              "source": "docs/design/outbox.md",
+              "guideId": "outbox"
+            },
+            {
               "name": "Rest",
               "path": "../design/rest.md",
               "lang": "en",
@@ -1992,6 +1999,13 @@
               "lang": "ja",
               "source": "docs/ja/design/job.ja.md",
               "guideId": "job"
+            },
+            {
+              "name": "Outbox",
+              "path": "../ja/design/outbox.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/outbox.ja.md",
+              "guideId": "outbox"
             },
             {
               "name": "Rest",
@@ -2052,6 +2066,27 @@
           ]
         },
         {
+          "id": "outbox-design",
+          "slug": "outbox-design",
+          "title": "Outbox Design",
+          "items": [
+            {
+              "name": "Outbox Design",
+              "path": "./guides/outbox-design.md",
+              "lang": "en",
+              "source": "docs/design/outbox.md",
+              "guideId": "outbox-design"
+            },
+            {
+              "name": "Outbox Design",
+              "path": "./guides/ja/outbox-design.ja.md",
+              "lang": "ja",
+              "source": "docs/ja/design/outbox.ja.md",
+              "guideId": "outbox-design"
+            }
+          ]
+        },
+        {
           "id": "rest-design",
           "slug": "rest-design",
           "title": "Rest Design",
@@ -2081,12 +2116,6 @@
       "title": "OpenAPI Reference",
       "path": "../openapi/index.html",
       "source": "docs/openapi/index.html"
-    },
-    {
-      "sectionId": "godoc",
-      "title": "Godoc",
-      "path": "../godoc/index.html",
-      "source": "docs/godoc/index.html"
     },
     {
       "sectionId": "db-schema",

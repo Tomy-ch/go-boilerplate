@@ -126,7 +126,7 @@
 <span id="L69" class="ln">    69  </span><span class="comment">// PollError は、Receive のエラー回数を計上します。</span>
 <span id="L70" class="ln">    70  </span>func (m *WorkerMetrics) PollError(ctx context.Context) { m.pollErrors.Add(ctx, 1) }
 <span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span><span class="comment">// ExtendError は、Extend(ハートビート)のエラー回数を計上します（H2）。</span>
+<span id="L72" class="ln">    72  </span><span class="comment">// ExtendError は、Extend(ハートビート)のエラー回数を計上します。</span>
 <span id="L73" class="ln">    73  </span>func (m *WorkerMetrics) ExtendError(ctx context.Context) { m.extendErrors.Add(ctx, 1) }
 <span id="L74" class="ln">    74  </span>
 <span id="L75" class="ln">    75  </span><span class="comment">// RecordLatencyMs は、Handle の処理時間(ミリ秒)を記録します。</span>

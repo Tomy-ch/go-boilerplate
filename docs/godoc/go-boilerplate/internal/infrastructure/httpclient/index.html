@@ -143,6 +143,24 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 				
 				<dd><a href="#Method">type Method</a></dd>
 				
+					
+					<dd>    <a href="#MethodDelete">func MethodDelete() Method</a></dd>
+				
+					
+					<dd>    <a href="#MethodGet">func MethodGet() Method</a></dd>
+				
+					
+					<dd>    <a href="#MethodPatch">func MethodPatch() Method</a></dd>
+				
+					
+					<dd>    <a href="#MethodPost">func MethodPost() Method</a></dd>
+				
+					
+					<dd>    <a href="#MethodPut">func MethodPut() Method</a></dd>
+				
+				
+					
+					<dd>    <a href="#Method.String">func (m Method) String() string</a></dd>
 				
 			
 				
@@ -166,6 +184,47 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 			
 				
 				<dd><a href="#Request">type Request</a></dd>
+				
+					
+					<dd>    <a href="#NewRequest">func NewRequest(method Method, downstream Downstream, url string, opts ...RequestOption) *Request</a></dd>
+				
+				
+					
+					<dd>    <a href="#Request.AllowRetry">func (r *Request) AllowRetry() bool</a></dd>
+				
+					
+					<dd>    <a href="#Request.Body">func (r *Request) Body() []byte</a></dd>
+				
+					
+					<dd>    <a href="#Request.Downstream">func (r *Request) Downstream() Downstream</a></dd>
+				
+					
+					<dd>    <a href="#Request.Header">func (r *Request) Header() Header</a></dd>
+				
+					
+					<dd>    <a href="#Request.IdempotencyKey">func (r *Request) IdempotencyKey() string</a></dd>
+				
+					
+					<dd>    <a href="#Request.Method">func (r *Request) Method() Method</a></dd>
+				
+					
+					<dd>    <a href="#Request.URL">func (r *Request) URL() string</a></dd>
+				
+			
+				
+				<dd><a href="#RequestOption">type RequestOption</a></dd>
+				
+					
+					<dd>    <a href="#WithBody">func WithBody(b []byte) RequestOption</a></dd>
+				
+					
+					<dd>    <a href="#WithHeader">func WithHeader(h Header) RequestOption</a></dd>
+				
+					
+					<dd>    <a href="#WithIdempotencyKey">func WithIdempotencyKey(key string) RequestOption</a></dd>
+				
+					
+					<dd>    <a href="#WithRetry">func WithRetry(idempotencyKey string) RequestOption</a></dd>
 				
 				
 			
@@ -246,7 +305,7 @@ breaker / o11y といった resilient な振る舞いは実装側で完結し、
 		
 			
 			
-			<h2 id="Client">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=1411:1937#L20">Client</a>
+			<h2 id="Client">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=1006:1532#L10">Client</a>
 				<a class="permalink" href="#Client">¶</a>
 				
 				
@@ -295,7 +354,7 @@ transport は observability が計装した不透明な outbound transport で�
 		
 			
 			
-			</p><h2 id="Downstream">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2042:2064#L31">Downstream</a>
+			</p><h2 id="Downstream">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=1637:1659#L21">Downstream</a>
 				<a class="permalink" href="#Downstream">¶</a>
 				
 				
@@ -347,7 +406,7 @@ transport は observability が計装した不透明な outbound transport で�
 		
 			
 			
-			<h2 id="Header">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2284:2315#L37">Header</a>
+			<h2 id="Header">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2176:2207#L31">Header</a>
 				<a class="permalink" href="#Header">¶</a>
 				
 				
@@ -370,44 +429,110 @@ transport は observability が計装した不透明な outbound transport で�
 		
 			
 			
-			<h2 id="Method">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2163:2181#L34">Method</a>
+			<h2 id="Method">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2043:2073#L28">Method</a>
 				<a class="permalink" href="#Method">¶</a>
 				
 				
 			</h2>
-			<p>Method は、HTTP メソッドを表す自前型です（net/http に依存しません）。
+			<p>Method は、HTTP メソッドを表す閉じた自前型です（net/http に依存しません）。
+</p><p>`Method(&#34;garbage&#34;)` のような任意の文字列からの生成はコンパイル時に排除されます
+（string 別名で型が防げない問題を根絶）。ゼロ値 Method{} のみ構築可能で、これは Do が
+ErrInvalidArgument で弾きます。
 
-			</p><pre>type Method <a href="../../../../builtin/#string">string</a></pre>
+			</p><pre>type Method struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
 
 			
 				
-				<pre>const (
-    <span class="comment">// MethodGet は、HTTP GET メソッドです。</span>
-    <span id="MethodGet">MethodGet</span> <a href="#Method">Method</a> = &#34;GET&#34;
-    <span class="comment">// MethodPost は、HTTP POST メソッドです。</span>
-    <span id="MethodPost">MethodPost</span> <a href="#Method">Method</a> = &#34;POST&#34;
-    <span class="comment">// MethodPut は、HTTP PUT メソッドです。</span>
-    <span id="MethodPut">MethodPut</span> <a href="#Method">Method</a> = &#34;PUT&#34;
-    <span class="comment">// MethodPatch は、HTTP PATCH メソッドです。</span>
-    <span id="MethodPatch">MethodPatch</span> <a href="#Method">Method</a> = &#34;PATCH&#34;
-    <span class="comment">// MethodDelete は、HTTP DELETE メソッドです。</span>
-    <span id="MethodDelete">MethodDelete</span> <a href="#Method">Method</a> = &#34;DELETE&#34;
-)</pre>
+				<h3 id="MethodDelete">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4772:4798#L85">MethodDelete</a>
+					<a class="permalink" href="#MethodDelete">¶</a>
+					
+					
+				</h3>
+				<pre>func MethodDelete() <a href="#Method">Method</a></pre>
+				<p>MethodDelete は、HTTP DELETE メソッドを返します。
+
+				
+				
+			
+				
+				</p><h3 id="MethodGet">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4318:4341#L73">MethodGet</a>
+					<a class="permalink" href="#MethodGet">¶</a>
+					
+					
+				</h3>
+				<pre>func MethodGet() <a href="#Method">Method</a></pre>
+				<p>MethodGet は、HTTP GET メソッドを返します。
+</p><p>パッケージ外からの再代入で定義済み値が破壊されるのを防ぐため、関数として提供します。
+
+				
+				
+			
+				
+				</p><h3 id="MethodPatch">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4653:4678#L82">MethodPatch</a>
+					<a class="permalink" href="#MethodPatch">¶</a>
+					
+					
+				</h3>
+				<pre>func MethodPatch() <a href="#Method">Method</a></pre>
+				<p>MethodPatch は、HTTP PATCH メソッドを返します。
+
+				
+				
+			
+				
+				</p><h3 id="MethodPost">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4429:4453#L76">MethodPost</a>
+					<a class="permalink" href="#MethodPost">¶</a>
+					
+					
+				</h3>
+				<pre>func MethodPost() <a href="#Method">Method</a></pre>
+				<p>MethodPost は、HTTP POST メソッドを返します。
+
+				
+				
+			
+				
+				</p><h3 id="MethodPut">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4540:4563#L79">MethodPut</a>
+					<a class="permalink" href="#MethodPut">¶</a>
+					
+					
+				</h3>
+				<pre>func MethodPut() <a href="#Method">Method</a></pre>
+				<p>MethodPut は、HTTP PUT メソッドを返します。
+
+				
+				
 			
 
 			
+				
+				</p><h3 id="Method.String">func (Method) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=4910:4941#L88">String</a>
+					<a class="permalink" href="#Method.String">¶</a>
+					
+					
+				</h3>
+				<pre>func (m <a href="#Method">Method</a>) String() <a href="../../../../builtin/#string">string</a></pre>
+				<p>String は、HTTP メソッド文字列を返します（ゼロ値は &#34;&#34;）。
 
-			
-			
-			
-
-			
-
+				
+				
+				
 			
 		
 			
 			
-			<h2 id="Profile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=1023:2507#L17">Profile</a>
+			</p><h2 id="Profile">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/profile.go.html?s=1023:2507#L17">Profile</a>
 				<a class="permalink" href="#Profile">¶</a>
 				
 				
@@ -518,30 +643,18 @@ transport は observability が計装した不透明な outbound transport で�
 		
 			
 			
-			</p><h2 id="Request">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2394:3356#L40">Request</a>
+			</p><h2 id="Request">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=2634:3596#L38">Request</a>
 				<a class="permalink" href="#Request">¶</a>
 				
 				
 			</h2>
 			<p>Request は、1 回の外部 HTTP 呼び出しの意図を表します。
+</p><p>構築は NewRequest（必須項目をシグネチャで強制）と With* オプション経由のみ。任意メソッド文字列は
+型でコンパイル時に排除し、「空メソッド」「AllowRetry なのに IdempotencyKey 不在」といった残りの
+不正状態は Do 実行時に ErrInvalidArgument で弾きます。
 
 			</p><pre>type Request struct {
-<span id="Request.Downstream"></span>    <span class="comment">// Downstream は、論理依存名です（必須）。breaker / metrics / profile / budget のキーになります。</span>
-    Downstream <a href="#Downstream">Downstream</a>
-<span id="Request.Method"></span>    <span class="comment">// Method は、HTTP メソッドです。</span>
-    Method <a href="#Method">Method</a>
-<span id="Request.URL"></span>    <span class="comment">// URL は、リクエスト先 URL です。</span>
-    <span class="comment">// 認証情報などの機密はクエリではなく Header に載せてください（URL は o11y span へ記録されます）。</span>
-    URL <a href="../../../../builtin/#string">string</a>
-<span id="Request.Header"></span>    <span class="comment">// Header は、リクエストヘッダです。</span>
-    Header <a href="#Header">Header</a>
-<span id="Request.Body"></span>    <span class="comment">// Body は、バッファ済みのリクエストボディです。retry で replay 可能です（stream は非対象）。</span>
-    Body []<a href="../../../../builtin/#byte">byte</a>
-<span id="Request.IdempotencyKey"></span>    <span class="comment">// IdempotencyKey は、非冪等メソッドを retry 安全にするためのキーです（任意）。</span>
-    IdempotencyKey <a href="../../../../builtin/#string">string</a>
-<span id="Request.AllowRetry"></span>    <span class="comment">// AllowRetry は、POST 等の非冪等メソッドを明示的に retry 許可するフラグです。</span>
-    <span class="comment">// true の場合は IdempotencyKey が必須です（二重実行防止）。</span>
-    AllowRetry <a href="../../../../builtin/#bool">bool</a>
+    <span class="comment">// contains filtered or unexported fields</span>
 }
 </pre>
 
@@ -554,12 +667,188 @@ transport は observability が計装した不透明な outbound transport で�
 			
 
 			
+				
+				<h3 id="NewRequest">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5227:5324#L92">NewRequest</a>
+					<a class="permalink" href="#NewRequest">¶</a>
+					
+					
+				</h3>
+				<pre>func NewRequest(method <a href="#Method">Method</a>, downstream <a href="#Downstream">Downstream</a>, url <a href="../../../../builtin/#string">string</a>, opts ...<a href="#RequestOption">RequestOption</a>) *<a href="#Request">Request</a></pre>
+				<p>NewRequest は、必須項目（method / downstream / url）をシグネチャで強制してリクエストを生成します。
+任意メソッド文字列は型で排除済み。空メソッドや AllowRetry の key 不在は Do 実行時に弾かれます。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Request.AllowRetry">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7371:7406#L143">AllowRetry</a>
+					<a class="permalink" href="#Request.AllowRetry">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Request">Request</a>) AllowRetry() <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>AllowRetry は、非冪等メソッドの retry 許可フラグを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Request.Body">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7068:7099#L137">Body</a>
+					<a class="permalink" href="#Request.Body">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Request">Request</a>) Body() []<a href="../../../../builtin/#byte">byte</a></pre>
+				<p>Body は、リクエストボディの防御的コピーを返します（Request は不変値オブジェクトのため内部状態を共有しません）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Request.Downstream">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6397:6438#L125">Downstream</a>
+					<a class="permalink" href="#Request.Downstream">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Request">Request</a>) Downstream() <a href="#Downstream">Downstream</a></pre>
+				<p>Downstream は、論理依存名を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Request.Header">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6841:6874#L134">Header</a>
+					<a class="permalink" href="#Request.Header">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Request">Request</a>) Header() <a href="#Header">Header</a></pre>
+				<p>Header は、リクエストヘッダの防御的コピーを返します（Request は不変値オブジェクトのため内部状態を共有しません）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Request.IdempotencyKey">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=7215:7256#L140">IdempotencyKey</a>
+					<a class="permalink" href="#Request.IdempotencyKey">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Request">Request</a>) IdempotencyKey() <a href="../../../../builtin/#string">string</a></pre>
+				<p>IdempotencyKey は、冪等性キーを返します（未設定時は &#34;&#34;）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Request.Method">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6516:6549#L128">Method</a>
+					<a class="permalink" href="#Request.Method">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Request">Request</a>) Method() <a href="#Method">Method</a></pre>
+				<p>Method は、HTTP メソッドを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Request.URL">func (*Request) <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6626:6656#L131">URL</a>
+					<a class="permalink" href="#Request.URL">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Request">Request</a>) URL() <a href="../../../../builtin/#string">string</a></pre>
+				<p>URL は、リクエスト先 URL を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="RequestOption">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=3693:3726#L58">RequestOption</a>
+				<a class="permalink" href="#RequestOption">¶</a>
+				
+				
+			</h2>
+			<p>RequestOption は、NewRequest の任意項目を設定する関数オプションです。
+
+			</p><pre>type RequestOption func(*<a href="#Request">Request</a>)</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="WithBody">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5682:5719#L108">WithBody</a>
+					<a class="permalink" href="#WithBody">¶</a>
+					
+					
+				</h3>
+				<pre>func WithBody(b []<a href="../../../../builtin/#byte">byte</a>) <a href="#RequestOption">RequestOption</a></pre>
+				<p>WithBody は、リクエストボディを設定します。
+
+				
+				
+			
+				
+				</p><h3 id="WithHeader">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5532:5571#L105">WithHeader</a>
+					<a class="permalink" href="#WithHeader">¶</a>
+					
+					
+				</h3>
+				<pre>func WithHeader(h <a href="#Header">Header</a>) <a href="#RequestOption">RequestOption</a></pre>
+				<p>WithHeader は、リクエストヘッダを設定します。
+
+				
+				
+			
+				
+				</p><h3 id="WithIdempotencyKey">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=5862:5911#L111">WithIdempotencyKey</a>
+					<a class="permalink" href="#WithIdempotencyKey">¶</a>
+					
+					
+				</h3>
+				<pre>func WithIdempotencyKey(key <a href="../../../../builtin/#string">string</a>) <a href="#RequestOption">RequestOption</a></pre>
+				<p>WithIdempotencyKey は、冪等性キーを設定します（retry は許可しません）。
+
+				
+				
+			
+				
+				</p><h3 id="WithRetry">func <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=6198:6249#L117">WithRetry</a>
+					<a class="permalink" href="#WithRetry">¶</a>
+					
+					
+				</h3>
+				<pre>func WithRetry(idempotencyKey <a href="../../../../builtin/#string">string</a>) <a href="#RequestOption">RequestOption</a></pre>
+				<p>WithRetry は、非冪等メソッドの retry を許可し idempotencyKey を同時に設定します。
+空 key のまま（WithRetry(&#34;&#34;)）Do を呼ぶと ErrInvalidArgument で弾かれます（二重実行防止）。
+
+				
+				
+			
 
 			
 		
 			
 			
-			<h2 id="Response">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=3469:3754#L60">Response</a>
+			</p><h2 id="Response">type <a href="../../../../src/go-boilerplate/internal/infrastructure/httpclient/httpclient.go.html?s=3839:4124#L61">Response</a>
 				<a class="permalink" href="#Response">¶</a>
 				
 				
