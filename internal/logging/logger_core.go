@@ -1,4 +1,3 @@
-// Package logging は、アプリケーションのロギング機能を提供します。
 package logging
 
 import (
