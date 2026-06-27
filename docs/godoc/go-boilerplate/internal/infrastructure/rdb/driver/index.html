@@ -124,7 +124,7 @@
 				<dd><a href="#NewQueryTracer">func NewQueryTracer(dbCfg *config.DatabaseConfig, obsCfg *config.ObservabilityConfig, tracer *otelpgx.Tracer, logger logging.Logger, lf logging.LogFieldBuilder) pgx.QueryTracer</a></dd>
 			
 				
-				<dd><a href="#NewTransactionManager">func NewTransactionManager(db DatabaseDriver, logger logging.Logger) tx.Manager</a></dd>
+				<dd><a href="#NewTransactionManager">func NewTransactionManager(db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper) tx.Manager</a></dd>
 			
 			
 				
@@ -271,13 +271,18 @@
 		
 			
 			
-			</p><h2 id="NewTransactionManager">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html?s=518:597#L16">NewTransactionManager</a>
+			</p><h2 id="NewTransactionManager">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html?s=1511:1647#L37">NewTransactionManager</a>
 				<a class="permalink" href="#NewTransactionManager">¶</a>
 				
 				
 			</h2>
-			<pre>func NewTransactionManager(db <a href="#DatabaseDriver">DatabaseDriver</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a></pre>
+			<pre>func NewTransactionManager(
+    db <a href="#DatabaseDriver">DatabaseDriver</a>, dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, sleeper <a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/#Sleeper">Sleeper</a>,
+) <a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a></pre>
 			<p>NewTransactionManager は、トランザクションマネージャを初期化します。
+</p><p>serialization failure / deadlock 検出時に fn を有限回まで再試行します。
+リトライ上限・backoff は config（DB_TX_MAX_RETRIES / DB_TX_RETRY_BASE_BACKOFF /
+DB_TX_RETRY_MAX_BACKOFF）から取得します。0 以下の場合は既定値にフォールバックします。
 
 			
 			
