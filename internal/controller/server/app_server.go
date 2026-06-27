@@ -1,4 +1,4 @@
-// Package server は、サーバーインスタンスを初期化します。
+// Package server は、Echo サーバーの初期化と、HTTP リクエストのログ入力・クエリ/パスパラメータ抽出ユーティリティを提供します。
 package server
 
 import (

@@ -8,7 +8,6 @@ import (
 
 // NewTestFromSalt はテスト専用の決定論UUID生成関数です。
 //
-// 本番利用は想定していません。
 // v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 func NewTestFromSalt(tb testing.TB, salt string) UUID {
 	tb.Helper()

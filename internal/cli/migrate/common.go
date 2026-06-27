@@ -3,7 +3,7 @@ package migrate
 
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_common.gen.go -package=mock_$GOPACKAGE
 
-// Migrator は、golang-migrate の操作を抽象化し、テストでモック差し替え可能にします。
+// Migrator は、golang-migrate のマイグレーション操作（Up / Down / Steps / Version / Force）を抽象化します。
 type Migrator interface {
 	Up() error
 	Down() error

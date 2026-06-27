@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
-// Middleware は、セキュリティミドルウェアを構築します。
+// Middleware は、Content-Type-Options / Referrer-Policy / X-Frame-Options / HSTS を設定する Echo セキュリティミドルウェアを返します。各値は SecurityConfig から取得します。
 func Middleware(secCfg *config.SecurityConfig) echo.MiddlewareFunc {
 	return middleware.SecureWithConfig(buildSecureConfig(secCfg))
 }

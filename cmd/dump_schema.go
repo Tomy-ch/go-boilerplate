@@ -31,7 +31,7 @@ func newDumpSchemaCommand() *cobra.Command {
 	return cmd
 }
 
-// runDumpSchema は、ロガー・ジェネレーターと設定読込を結線し、dumpschema.RunDump へ委譲する薄い殻です。
+// runDumpSchema は dumpschema.RunDump への薄い委譲殻です。
 func runDumpSchema(ctx context.Context, workDir string) error {
 	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
 

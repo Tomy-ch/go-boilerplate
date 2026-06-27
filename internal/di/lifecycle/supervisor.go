@@ -12,7 +12,7 @@ import (
 //   - OnStop:  実行 context をキャンセルし、Body の完了を stopCtx（grace）の範囲で待ち、
 //     その後 [SupervisedRunner.OnStopAux]（任意）を実行する。
 //
-// 実行 context は context.Background() から WithCancel で派生させます。これにより
+// Body に渡される実行 context は startCtx とは独立しており、OnStop でのみキャンセルされます。これにより
 //   - OnStart 完了後に fx が startCtx をキャンセルしても Body は巻き込まれず（detached）、
 //   - OnStop の cancel でのみ Body の context が切れて中断できる（停止時キャンセル）。
 type SupervisedRunner struct {

@@ -52,7 +52,7 @@ func handle(ec echo.Context, request any, operationID string, next NextFunc) (an
 		return nil, err
 	}
 
-	// 認証プリンシパルが取れなければ冪等性は発動しない（S1: 認証前提）。
+	// 認証プリンシパルが取れなければ冪等性は発動しない（スコープキーに Subject を使うため、認証済みリクエストのみ対象とする）。
 	authn, ok := ctxhelper.GetAuthn(r.Context())
 	if !ok {
 		return next(ec, request)

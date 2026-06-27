@@ -151,7 +151,7 @@ func (f *Fake) FailReceiveOnce(err error) {
 	f.signal()
 }
 
-// SetExtendErr は、以降の Extend が常に返すエラーを設定します（H2 Extend 失敗）。
+// SetExtendErr は、以降の Extend が常に返すエラーを設定します。
 func (f *Fake) SetExtendErr(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

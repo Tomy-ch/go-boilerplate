@@ -34,15 +34,15 @@ func NewOutboxRelayCore() fx.Option {
 }
 
 // NewOutboxRelayApp は、relay 常駐プロセス用の fx.App を生成します。
-// OutboxRelayModule の OnStart フックが poll ループを起動します。
 // grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、fx 既定（15s）が停止猶予より
 // 先に teardown を打ち切らないようにします（停止軸を grace に一本化）。
 func NewOutboxRelayApp(grace time.Duration) *fx.App {
 	return fx.New(NewOutboxRelayCore(), fx.StopTimeout(grace), fx.WithLogger(NewFxEventLogger))
 }
 
-// RunOutboxReplay は、dead 状態の outbox 行を pending へ戻すワンショット実行を行います。
-// poll ループを持たない（OutboxRelayModule を含まない）一時的な fx.App で ReplayUsecase を解決します。
+// RunOutboxReplay は、dead 状態の outbox 行を pending へ戻すワンショット実行を行い、
+// 書き換えた行数と発生したエラーを返します。messageID が nil の場合は全 dead 行を対象とします。
+// 停止処理のエラーは runErr と errors.Join で結合して返します。
 func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 	var (
 		replay outboxuc.ReplayUsecase
@@ -65,6 +65,5 @@ func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 	stopErr := app.Stop(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
 
 	// replay 失敗と OnStop 失敗（DB プール Close 等）の双方をオペレータへ可視化する。
-	// errors.Join は両方 nil なら nil を返す。
 	return result, errors.Join(runErr, stopErr)
 }

@@ -37,7 +37,7 @@ var (
 		errInvalidConfig,
 		fmt.Sprintf("invalid bcrypt cost, must be between %d and %d", bcrypt.MinCost, bcrypt.MaxCost),
 	)
-	// ErrHTTPOnlyAllowedForLocalhost は、HTTPのみのローカルホストにアクセス可能にするためのエラーを表します。
+	// ErrHTTPOnlyAllowedForLocalhost は、HTTP スキームが localhost（127.0.0.1 含む）以外のオリジンに使用されたことを示す検証エラーです。
 	ErrHTTPOnlyAllowedForLocalhost = xerrors.Wrap(
 		errInvalidConfig,
 		"http only localhost is allowed",
@@ -99,7 +99,7 @@ var (
 		errInvalidConfig,
 		"invalid slow query warn threshold, must be greater than or equal to 0",
 	)
-	// ErrInvalidExceedMaxConns は、データベースの最大接続数が過剰であることに関するエラーを表します。
+	// ErrInvalidExceedMaxConns は、MinConns が MaxConns を超えていることを示すエラーです。コネクションプールの最小接続数は最大接続数以下でなければなりません。
 	ErrInvalidExceedMaxConns = xerrors.Wrap(
 		errInvalidConfig,
 		"invalid database max connections, min connections must be less than or equal to max connections",

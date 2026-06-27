@@ -42,7 +42,6 @@ func New(
 		claims:   maps.Clone(claims),
 	}
 
-	// subject が UUID なら id を埋める（変換できない場合は nil のまま）
 	if id, err := uuid.Parse(trimmedSubject); err == nil {
 		a.id = &id
 	}

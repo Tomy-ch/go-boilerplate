@@ -1,4 +1,4 @@
-// Package pgerror は、PostgreSQL固有の処理を提供します。
+// Package pgerror は、PostgreSQL エラー（SQLSTATE・接続断・context タイムアウト）をアプリケーションエラー（apperror）へ正規化する関数群と、retryable / lock-timeout / unavailable 判定述語を提供します。
 package pgerror
 
 import (
@@ -15,7 +15,6 @@ import (
 )
 
 // sqlstateToAppError は、PostgreSQL の SQLSTATE をアプリケーションエラーへ対応付けます。
-// 対応表は README の SQLSTATE 表を正とします。
 var sqlstateToAppError = map[string]error{
 	"23505": apperror.ErrConflict,
 	"23503": apperror.ErrInvalidArgument,
@@ -30,7 +29,6 @@ var sqlstateToAppError = map[string]error{
 }
 
 // NormalizeError は、PostgreSQLのエラーをアプリケーション固有のエラーに変換します。
-// Infrastructure層から返されるPostgreSQLエラーを一貫した形で処理するために使用します。
 // 既に正規化済みの apperror はそのまま返します。
 func NormalizeError(err error) error {
 	if err == nil {
@@ -63,7 +61,7 @@ func NormalizeError(err error) error {
 	return xerrors.Wrap(apperror.ErrInternal, err.Error())
 }
 
-// NormalizeExecResult は、影響行数を返す書き込み系（sqlc `:execrows`）の結果を正規化します。
+// NormalizeExecResult は、影響行数を返す書き込み系クエリの結果を正規化します。
 // エラーは NormalizeError と同じ規則で変換し、エラーが無くても影響行数が 0 の場合は
 // 対象が存在しないとみなして ErrNotFound を返します（UPDATE / DELETE のサイレント成功を防ぐ）。
 func NormalizeExecResult(affected int64, err error) error {
@@ -76,7 +74,7 @@ func NormalizeExecResult(affected int64, err error) error {
 	return nil
 }
 
-// IsUnavailable は、与えられたエラーがデータベースの接続不可エラーであるかを判定します。
+// IsUnavailable は、DB が利用不可能な状態を示すエラーかを判定します。context.DeadlineExceeded・net.Error・PostgreSQL 接続例外クラス(08xxx) を対象とします。
 func IsUnavailable(err error) bool {
 	if err == nil {
 		return false

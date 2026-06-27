@@ -22,7 +22,7 @@ const (
 // statusToAppError は、HTTP ステータスコードを apperror sentinel に写像します。
 // 2xx は nil を返します。3xx はリダイレクト非追従のため未解決とみなし ErrUnavailable を返します
 // （resp に Location を残すので、追従が必要な呼び出し側はそれを参照できます）。
-// 位置づけは RDB の pgerror.NormalizeError の HTTP 版で、写像は substrate 内部に閉じます。
+// 写像は substrate 内部に閉じます。
 func statusToAppError(statusCode int) error {
 	switch statusCode {
 	case http.StatusBadRequest:
@@ -63,7 +63,7 @@ func normalizeTransportError(err error) error {
 }
 
 // redactErrMessage は、エラーメッセージから URL のクエリ等の機密になり得る情報を除去します。
-// *url.Error は完全 URL（クエリ込み）を出力するため、ホストのみへ redact します。
+// *url.Error は完全 URL（クエリ込み）を出力するため、クエリ・userinfo・fragment を除去し scheme/host/path を残します。
 func redactErrMessage(err error) string {
 	if urlErr, ok := errors.AsType[*url.Error](err); ok {
 		return fmt.Sprintf("%s %s: %v", urlErr.Op, redactURL(urlErr.URL), urlErr.Err)

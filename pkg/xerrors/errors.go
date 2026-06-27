@@ -14,6 +14,7 @@ func New(msg string) error {
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
+// err が nil の場合は nil を返します。
 func Wrap(err error, msg string) error {
 	return errors.Wrap(err, msg)
 }
@@ -33,7 +34,7 @@ func Join(errs ...error) error {
 	return errors.Join(errs...)
 }
 
-// StackTrace は、エラーの詳細表現（メッセージとスタックトレースを含む）を文字列で返します。
+// StackTrace は、err の詳細文字列表現を返します。err が cockroachdb/errors 等でスタックトレースを付加されている場合はそれも含みます。err が nil の場合は空文字列を返します。
 func StackTrace(err error) string {
 	if err == nil {
 		return ""

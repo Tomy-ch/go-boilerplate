@@ -13,6 +13,7 @@ import (
 	"go.uber.org/fx"
 )
 
+// callerSkip は、applyMiddlewares → ApplyPreMiddlewares/ApplyUseMiddlewares の呼び出し経路で挟まるフレームを飛ばし、ログの caller を実呼び出し位置に合わせる段数。
 const callerSkip = 2
 
 // ServerExtends は、サーバーの拡張機能を表します。
@@ -82,6 +83,7 @@ type middlewareEntry struct {
 }
 
 // ApplyExtends は、サーバー拡張を適用します。
+// ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数を Priority 昇順に Echo へ適用する。同一 kind 内で Priority が重複するミドルウェアが存在する場合はエラーを返す。
 func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*AppliedServerExtends, error) {
 	if err := ApplyPreMiddlewares(e, logger, extends.PreList); err != nil {
 		return nil, err
@@ -94,6 +96,7 @@ func ApplyExtends(e *echo.Echo, logger logging.Logger, extends ServerExtends) (*
 }
 
 // ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
+// ApplyPreMiddlewares は、mws を Priority 昇順に Echo.Pre として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
 func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddleware) error {
 	entries := make([]middlewareEntry, len(mws))
 	for i, mw := range mws {
@@ -103,6 +106,7 @@ func ApplyPreMiddlewares(e *echo.Echo, logger logging.Logger, mws []PreMiddlewar
 }
 
 // ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
+// ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
 func ApplyUseMiddlewares(e *echo.Echo, logger logging.Logger, mws []UseMiddleware) error {
 	entries := make([]middlewareEntry, len(mws))
 	for i, mw := range mws {

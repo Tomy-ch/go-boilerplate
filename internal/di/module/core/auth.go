@@ -26,7 +26,8 @@ func AuthnModule() fx.Option {
 	)
 }
 
-// provideAuthenticator は、Authenticator のコンストラクタを提供します。
+// provideAuthenticator は、環境（EnvLocal / EnvCI / EnvTest）に対応した Authenticator を返します。
+// それ以外の環境ではエラーを返し、FX の起動に失敗します。
 func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logger) (authbd.Authenticator, error) {
 	switch appCfg.Env() {
 	case config.EnvLocal, config.EnvCI, config.EnvTest:

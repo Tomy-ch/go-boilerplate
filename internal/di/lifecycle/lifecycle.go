@@ -1,6 +1,6 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_lifecycle.gen.go -package=mock_$GOPACKAGE
 
-// Package lifecycle は、アプリケーションのライフサイクル管理に関する機能を提供します。
+// Package lifecycle は、fx.Lifecycle を抽象化するテスト可能な Registrar インターフェースと、バックグラウンドランナーを fx ライフサイクルへ結線する SupervisedRunner プリミティブを提供します。
 package lifecycle
 
 import (

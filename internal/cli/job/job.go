@@ -8,13 +8,13 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// StartFunc は、ジョブの開始関数の型です（DI から取得した開始関数を注入します）。
+// StartFunc は、ジョブを起動してエラーチャネルを返す関数の型です。
 type StartFunc func(ctx context.Context, name string, args []string) <-chan error
 
-// StopFunc は、ジョブの停止関数の型です（DI から取得した停止関数を注入します）。
+// StopFunc は、ジョブをグレースフルに停止する関数の型です。
 type StopFunc func(ctx context.Context) error
 
-// RunJobWith は、ジョブランナーの取得元（provide）を差し替え可能にした上で runJob へ委譲します。
+// RunJobWith は、provide が返す開始・停止関数でジョブを実行します。
 // grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。
 func RunJobWith(
 	ctx context.Context,

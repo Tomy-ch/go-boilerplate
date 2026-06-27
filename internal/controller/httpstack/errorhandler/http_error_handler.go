@@ -21,7 +21,7 @@ const (
 	errorLevelBoundHTTPStatus = 500
 )
 
-// New は、Echo に HTTP エラーハンドラを登録します（DI 配線用エントリ・戻り値なし）。
+// New は、NewHTTPErrorHandler で生成したハンドラを Echo の HTTPErrorHandler として登録します。
 func New(e *echo.Echo, log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig) {
 	e.HTTPErrorHandler = NewHTTPErrorHandler(log, lf, obsCfg)
 }

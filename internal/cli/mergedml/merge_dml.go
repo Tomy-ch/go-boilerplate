@@ -246,7 +246,7 @@ func (g *Generator) buildCategorySQLFile(category, targetType string) error {
 		return err
 	}
 
-	// 連結結果はメモリ上に構築し、成功時のみ一括書き込みします（部分生成物を残さない）。
+	// 成功時のみ一括書き込みし、途中失敗でも部分生成物を残しません。
 	var buf bytes.Buffer
 	for _, fpath := range files {
 		// 由来が分かるように見出しを入れる（sqlcはSQLコメントなら無害）

@@ -3,7 +3,6 @@ package auth
 import "strings"
 
 // Credential は認証情報（トークン）を表します。
-// 今回は access token のみ。将来 mTLS/DPoP 等が増えてもここを拡張すればOK。
 type Credential struct {
 	accessToken string // アクセストークン
 }

@@ -56,7 +56,7 @@ func (s *store) Insert(ctx context.Context, p outboxbndry.EmitParams) (uuid.UUID
 	return row.MessageID, nil
 }
 
-// ClaimPending は、pending 行を最大 limit 件 claim します（FOR UPDATE SKIP LOCKED）。
+// ClaimPending は、pending 行を最大 limit 件ロックして返します。並行ワーカーが同一行を取得しません。
 func (s *store) ClaimPending(ctx context.Context, limit int32) ([]outboxbndry.PendingMessage, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

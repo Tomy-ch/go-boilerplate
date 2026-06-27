@@ -10,7 +10,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
-// MigrateUpRun は、マイグレーションをアップグレードするための実行関数です。
+// MigrateUpRun は、データベースマイグレーションを Up 方向に適用します。
+// steps=0 なら全マイグレーションを適用し、正数なら段数分だけ適用します。steps が負の場合はエラーを返します。既に最新の場合（ErrNoChange）は成功扱いです。
 func MigrateUpRun(steps int, database string, logger logging.Logger, newMigrator MigratorFactory) error {
 	if steps < 0 {
 		err := xerrors.New(fmt.Sprintf("steps must be zero or positive, got %d", steps))

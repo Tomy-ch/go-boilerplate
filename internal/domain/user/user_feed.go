@@ -7,8 +7,7 @@ import (
 )
 
 // FeedCursor は、ユーザーフィード（keyset ページネーション）の境界キーを表す値オブジェクトです。
-//
-//	直前ページ末尾行の作成日時と ID を保持し、次ページ取得時の keyset 比較の境界として用います。
+// 直前ページ末尾行の作成日時と ID を保持し、次ページ取得時の keyset 比較の境界として用います。
 type FeedCursor struct {
 	createdAt time.Time
 	id        uuid.UUID

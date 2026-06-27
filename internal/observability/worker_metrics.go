@@ -11,7 +11,7 @@ import (
 // workerMeterName は、worker engine 計装の meter 名です。
 const workerMeterName = "go-boilerplate/worker"
 
-// WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です（D2）。
+// WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です。
 type WorkerMetrics struct {
 	received     metric.Int64Counter
 	processed    metric.Int64Counter

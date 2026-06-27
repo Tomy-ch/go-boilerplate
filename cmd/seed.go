@@ -30,7 +30,7 @@ func newDBSeedCommand() *cobra.Command {
 	return cmd
 }
 
-// dbSeedRun は、ロガーと FS・DB 接続を組み立て、seed.RunDBSeed へ委譲する薄い殻です。
+// dbSeedRun は seed.RunDBSeed への薄い委譲殻です。
 func dbSeedRun(database string) error {
 	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
 
