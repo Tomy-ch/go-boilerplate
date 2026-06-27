@@ -15,6 +15,7 @@ scripts/
 ├── stamp-openapi-version.mjs   # Sync openapi.yaml info.version from the release/vX.Y.Z branch name
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
 ├── make_help.mjs                # Generate Make target help output
+├── mermaid-lint.mjs            # Validate ```mermaid fences in Markdown with the real mermaid parser
 ├── genctxkey/                  # Context key code generator (Go)
 └── setup/                     # Initial project setup scripts
     ├── replace-module.mjs
@@ -34,6 +35,12 @@ scripts/
 |`gen-portal-docs.mjs`|Copy source docs to portal `guides/` based on `manifest.yaml`|`make gen-docs`|
 |`gen-docs-json.mjs`|Generate `docs.json` navigation for the portal app|`make gen-docs`|
 |`build-portal.mjs`|Bundle the portal frontend (`docs/portal/src/main.jsx`) into `docs/portal/dist/` (`bundle.js` / `bundle.css` + lazy chunks) with esbuild, and copy `mermaid.min.js` there too. Replaces the former CDN + in-browser Babel setup.|`make gen-portal-build`|
+
+### Linting
+
+|Script|Description|Invoked By|
+|---|---|---|
+|`mermaid-lint.mjs`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Exits non-zero on the first broken diagram. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
 
 ### Versioning
 
