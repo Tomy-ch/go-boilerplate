@@ -97,7 +97,7 @@ func (c *Consumer) Ack(ctx context.Context, m worker.Message) error {
 	return normalizeError(err)
 }
 
-// Nack は、可視性を 0 にして即時再配送します。
+// Nack は、メッセージを即時に再配送へ戻します。
 func (c *Consumer) Nack(ctx context.Context, m worker.Message) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
@@ -110,8 +110,8 @@ func (c *Consumer) Nack(ctx context.Context, m worker.Message) error {
 	return normalizeError(err)
 }
 
-// NackWithBackoff は、可視性タイムアウトを d に設定して遅延再配送します（M3）。
-// SQS の ChangeMessageVisibility が native に遅延を honor します。d<=0 は Nack（即時）と等価です。
+// NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します（M3）。
+// d<=0 は Nack（即時）と等価です。
 func (c *Consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error {
 	if d <= 0 {
 		return c.Nack(ctx, m)

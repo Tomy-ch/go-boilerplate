@@ -28,7 +28,7 @@
 | **Fatal** | drain して **engine を停止** | 手動（再起動） | 終了 |
 
 - **Open↔Fatal の境界**：Retryable 失敗の継続はサーキットを段階的にエスカレート（Open→Half-open→Open ごとに cooldown 増分）。engine を落とす（Fatal）のは `Handler` が `apperror.ErrFatal` を返したとき（回復不能な設定不整合等）のみ。Circuit Open は一時的・自己回復、Fatal は終端。
-- **Circuit（engine 全体）vs 再配送 backoff（per-message）**（M3）：circuit は poll loop 全体を絞る（キューからどれだけ引くか）。per-message の再配送遅延は **first-class な port capability** で、engine が backoff policy（`ReceiveCount` からの指数 + full jitter, `pkg/retry`）を持ち `Consumer.NackWithBackoff(ctx, m, d)` を呼び、adapter が native 機構（SQS `ChangeMessageVisibility` 等）で honor する。両者は別レイヤで併存：circuit は broker 非依存の intake backpressure、再配送 backoff は per-message かつ broker honor。（以前はこの遅延を意図的に adapter best-effort（port 非保証）としていたが、M3 で port capability に昇格し、各 adapter / IaC が再導出しなくても resilience が成立するようにした。）
+- **Circuit（engine 全体）vs 再配送 backoff（per-message）**（M3）：circuit は poll loop 全体を絞る（キューからどれだけ引くか）。per-message の再配送遅延は **first-class な port capability** で、engine が backoff policy（`ReceiveCount` からの指数 + full jitter, `pkg/retry`）を持ち `Consumer.NackWithBackoff(ctx, m, d)` を呼び、adapter が native 機構（SQS `ChangeMessageVisibility` 等）で honor する。両者は別レイヤで併存：circuit は broker 非依存の intake backpressure、再配送 backoff は per-message かつ broker honor。
 
 ## 不変条件（受け入れ基準）
 
