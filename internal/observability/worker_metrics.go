@@ -69,7 +69,7 @@ func (m *WorkerMetrics) DLQ(ctx context.Context) { m.dlq.Add(ctx, 1) }
 // PollError は、Receive のエラー回数を計上します。
 func (m *WorkerMetrics) PollError(ctx context.Context) { m.pollErrors.Add(ctx, 1) }
 
-// ExtendError は、Extend(ハートビート)のエラー回数を計上します（H2）。
+// ExtendError は、Extend(ハートビート)のエラー回数を計上します。
 func (m *WorkerMetrics) ExtendError(ctx context.Context) { m.extendErrors.Add(ctx, 1) }
 
 // RecordLatencyMs は、Handle の処理時間(ミリ秒)を記録します。

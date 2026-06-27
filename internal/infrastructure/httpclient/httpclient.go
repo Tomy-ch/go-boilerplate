@@ -33,7 +33,7 @@ type Downstream string
 // Method は、HTTP メソッドを表す閉じた自前型です（net/http に依存しません）。
 //
 // `Method("garbage")` のような任意の文字列からの生成はコンパイル時に排除されます
-// （L2: string 別名で型が防げない問題を根絶）。ゼロ値 Method{} のみ構築可能で、これは Do が
+// （string 別名で型が防げない問題を根絶）。ゼロ値 Method{} のみ構築可能で、これは Do が
 // ErrInvalidArgument で弾きます。
 type Method struct{ s string }
 
@@ -44,7 +44,7 @@ type Header map[string][]string
 //
 // 構築は NewRequest（必須項目をシグネチャで強制）と With* オプション経由のみ。任意メソッド文字列は
 // 型でコンパイル時に排除し、「空メソッド」「AllowRetry なのに IdempotencyKey 不在」といった残りの
-// 不正状態は Do 実行時に ErrInvalidArgument で弾きます（L2）。
+// 不正状態は Do 実行時に ErrInvalidArgument で弾きます。
 type Request struct {
 	// downstream は、論理依存名です（必須）。breaker / metrics / profile / budget のキーになります。
 	downstream Downstream
@@ -97,7 +97,7 @@ func MethodDelete() Method { return Method{"DELETE"} }
 // String は、HTTP メソッド文字列を返します（ゼロ値は ""）。
 func (m Method) String() string { return m.s }
 
-// NewRequest は、必須項目（method / downstream / url）をシグネチャで強制してリクエストを生成します（L2）。
+// NewRequest は、必須項目（method / downstream / url）をシグネチャで強制してリクエストを生成します。
 // 任意メソッド文字列は型で排除済み。空メソッドや AllowRetry の key 不在は Do 実行時に弾かれます。
 func NewRequest(method Method, downstream Downstream, url string, opts ...RequestOption) *Request {
 	r := &Request{

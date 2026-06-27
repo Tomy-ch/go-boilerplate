@@ -62,7 +62,7 @@ func (r *run) loop(parent context.Context) error {
 	defer r.drain()
 
 	for {
-		r.e.markProgress() // C2: stuck 検出用に進捗時刻を更新
+		r.e.markProgress() // stuck 検出用に進捗時刻を更新
 		n, ok := r.acquire(ctx)
 		if !ok {
 			return r.fatalErr()
@@ -228,7 +228,7 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 					if ctx.Err() != nil {
 						return // 停止中の Extend 失敗は握り潰してよい（未 Ack なので再配送される）
 					}
-					// H2: 握り潰さず可視化する。lease 延長失敗は早期再配送→重複処理の予兆。
+					// 握り潰さず可視化する。lease 延長失敗は早期再配送→重複処理の予兆。
 					r.e.met.ExtendError(ctx)
 					r.e.log.Named("worker.extend").Warn(
 						"extend failed",
@@ -294,7 +294,7 @@ func (r *run) ack(ctx context.Context, m worker.Message) {
 }
 
 // nack は、retryable 失敗時に per-message 再配送 backoff（指数 + full jitter）を計算し、
-// その遅延つきで再配送します（M3）。policy は engine が持ち、adapter が native 機構で honor します。
+// その遅延つきで再配送します。policy は engine が持ち、adapter が native 機構で honor します。
 func (r *run) nack(ctx context.Context, m worker.Message) {
 	d := r.nackBackoff(m.ReceiveCount)
 	if err := r.consumer.NackWithBackoff(ctx, m, d); err != nil {

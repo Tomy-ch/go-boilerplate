@@ -110,7 +110,7 @@ func (c *Consumer) Nack(ctx context.Context, m worker.Message) error {
 	return normalizeError(err)
 }
 
-// NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します（M3）。
+// NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します。
 // d<=0 は Nack（即時）と等価です。
 func (c *Consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error {
 	if d <= 0 {

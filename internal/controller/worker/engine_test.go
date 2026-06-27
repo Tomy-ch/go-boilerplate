@@ -153,7 +153,7 @@ func Test_Engine_A1_A2_AckNackDiscipline(t *testing.T) {
 
 			require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 1 }, eventually, tick)
 			assert.Empty(t, f.AckedIDs())
-			// M3: retryable は per-message backoff つきで再配送される（NackWithBackoff 経由）。
+			// retryable は per-message backoff つきで再配送される（NackWithBackoff 経由）。
 			assert.True(t, f.NackBackoffApplied("a"), "NackWithBackoff で再配送されること")
 		})
 	})
@@ -191,7 +191,7 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 		t.Run("Extend が失敗してもハートビートは継続し処理は完了する", func(t *testing.T) {
 			t.Parallel()
 
-			// H2: Extend 失敗は握り潰さず log+metric で可視化しつつ、ハートビート goroutine は
+			// Extend 失敗は握り潰さず log+metric で可視化しつつ、ハートビート goroutine は
 			// 生き続け、handler 完了で Ack される（lease 延長失敗は致命ではない）。
 			f := fake.New()
 			f.Enqueue(bw.Message{ID: "a"})

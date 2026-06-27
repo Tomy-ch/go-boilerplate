@@ -43,7 +43,7 @@ stateDiagram-v2
       未登録 name の場合は即 ErrUnknownWorker で Stopped
     end note
     note right of Draining
-      未完メッセージは Ack しない＝再配送に委ねる（C1）
+      未完メッセージは Ack しない＝再配送に委ねる
     end note
 ```
 
@@ -245,8 +245,8 @@ flowchart LR
 | **Retryable / Permanent / Fatal** | エラー分類 sentinel（`apperror`）。Nack 再配送 / FailureHandler 退避→Ack / engine 停止。 |
 | **FailureHandler / DeadLetter / DLQ** | 永久失敗の退避 seam / その SQS 実装 / dead-letter queue。 |
 | **redrive** | SQS が `maxReceiveCount` 超で自動的に DLQ へ送る IaC 設定。app の一般経路は FailureHandler。 |
-| **drain（`DrainTimeout`）** | 停止時に in-flight を期限まで待つ。未完は Ack しない＝再配送（C1）。 |
-| **readiness / liveness / health listener** | `/readyz`（`Healthy()`＝進捗が `ProgressStaleAfter` 内）/ `/healthz` を出す plain net/http（C2）。 |
+| **drain（`DrainTimeout`）** | 停止時に in-flight を期限まで待つ。未完は Ack しない＝再配送。 |
+| **readiness / liveness / health listener** | `/readyz`（`Healthy()`＝進捗が `ProgressStaleAfter` 内）/ `/healthz` を出す plain net/http。 |
 | **Settings** | engine-core の挙動設定（engine-local struct）。`config.WorkerConfig` から DI でマッピング。 |
 | **WorkerConfig** | engine-core 設定（broker 非依存、`WORKER_*`・`default` タグ付き）。broker 固有は adapter `Config`。 |
 | **traceparent / 継続** | W3C trace context。`Message.Attributes` から `Extract` して span を継続（D1）。 |

@@ -28,7 +28,7 @@
 | **Fatal** | drain して **engine を停止** | 手動（再起動） | 終了 |
 
 - **Open↔Fatal の境界**：Retryable 失敗の継続はサーキットを段階的にエスカレート（Open→Half-open→Open ごとに cooldown 増分）。engine を落とす（Fatal）のは `Handler` が `apperror.ErrFatal` を返したとき（回復不能な設定不整合等）のみ。Circuit Open は一時的・自己回復、Fatal は終端。
-- **Circuit（engine 全体）vs 再配送 backoff（per-message）**（M3）：circuit は poll loop 全体を絞る（キューからどれだけ引くか）。per-message の再配送遅延は **first-class な port capability** で、engine が backoff policy（`ReceiveCount` からの指数 + full jitter, `pkg/retry`）を持ち `Consumer.NackWithBackoff(ctx, m, d)` を呼び、adapter が native 機構（SQS `ChangeMessageVisibility` 等）で honor する。両者は別レイヤで併存：circuit は broker 非依存の intake backpressure、再配送 backoff は per-message かつ broker honor。
+- **Circuit（engine 全体）vs 再配送 backoff（per-message）**：circuit は poll loop 全体を絞る（キューからどれだけ引くか）。per-message の再配送遅延は **first-class な port capability** で、engine が backoff policy（`ReceiveCount` からの指数 + full jitter, `pkg/retry`）を持ち `Consumer.NackWithBackoff(ctx, m, d)` を呼び、adapter が native 機構（SQS `ChangeMessageVisibility` 等）で honor する。両者は別レイヤで併存：circuit は broker 非依存の intake backpressure、再配送 backoff は per-message かつ broker honor。
 
 ## 不変条件（受け入れ基準）
 
@@ -39,7 +39,7 @@ engine は **in-memory fake**（`internal/usecase/boundary/worker/fake`）に対
 - A6：1 メッセージの panic を recover し engine を巻き込まない。
 - B1/B2/B3：同時数上限 / in-flight 上限 / `PartitionKey` 直列化。
 - B4：サーキットブレーカ（Open で intake 停止、Half-open で回復）。
-- C1：SIGTERM/SIGINT で in-flight を drain、未完は `Ack` しない（再配送）。
+- SIGTERM/SIGINT で in-flight を drain、未完は `Ack` しない（再配送）。
 - D1–D3：traceparent 継続 / engine 所有 metric / 構造化ログ。
 
 ## ファイル

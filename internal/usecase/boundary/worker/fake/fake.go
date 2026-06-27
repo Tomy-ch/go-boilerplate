@@ -34,7 +34,7 @@ type Fake struct {
 	acked        []string
 	nacked       []string
 	extends      map[string]int           // ID ごとの Extend 呼び出し回数
-	extendErr    error                    // 設定時、Extend が常にこのエラーを返す（H2）
+	extendErr    error                    // 設定時、Extend が常にこのエラーを返す
 	nackBackoffs map[string]time.Duration // ID ごとの NackWithBackoff 遅延（最後の値）
 	failed       []FailedRecord
 
@@ -106,7 +106,7 @@ func (f *Fake) Nack(_ context.Context, m worker.Message) error {
 	return nil
 }
 
-// NackWithBackoff は、要求された遅延 d を記録したうえでメッセージを再配送します（M3）。
+// NackWithBackoff は、要求された遅延 d を記録したうえでメッセージを再配送します。
 // in-memory fake は実時間の遅延は模さず、d の記録のみ行います（テストで NackBackoffOf により検証）。
 func (f *Fake) NackWithBackoff(_ context.Context, m worker.Message, d time.Duration) error {
 	f.mu.Lock()

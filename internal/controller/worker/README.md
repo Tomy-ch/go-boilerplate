@@ -28,7 +28,7 @@ These are easy to conflate. The circuit breaker is applied to the **intake side*
 | **Fatal** | drains and **stops the engine** | manual (restart) | exits |
 
 - **Open ↔ Fatal boundary**: continued Retryable failures escalate the circuit (Open → cooldown grows on each Open→Half-open→Open cycle); the engine is taken down (Fatal) only when a `Handler` returns `apperror.ErrFatal` (e.g. unrecoverable config error). Circuit Open is a temporary, self-healing pause; Fatal is terminal.
-- **Circuit (engine-wide) vs redelivery backoff (per-message)** (M3): the circuit throttles the whole poll loop (how much to pull from the queue); per-message redelivery delay is a **first-class port capability** — the engine owns the backoff policy (exponential from `ReceiveCount` + full jitter via `pkg/retry`) and calls `Consumer.NackWithBackoff(ctx, m, d)`, which the adapter honours through its native mechanism (e.g. SQS `ChangeMessageVisibility`). They remain different layers and coexist: the circuit is broker-agnostic intake backpressure; the redelivery backoff is per-message and broker-honoured.
+- **Circuit (engine-wide) vs redelivery backoff (per-message)**: the circuit throttles the whole poll loop (how much to pull from the queue); per-message redelivery delay is a **first-class port capability** — the engine owns the backoff policy (exponential from `ReceiveCount` + full jitter via `pkg/retry`) and calls `Consumer.NackWithBackoff(ctx, m, d)`, which the adapter honours through its native mechanism (e.g. SQS `ChangeMessageVisibility`). They remain different layers and coexist: the circuit is broker-agnostic intake backpressure; the redelivery backoff is per-message and broker-honoured.
 
 ## Invariants (acceptance criteria)
 
@@ -39,7 +39,7 @@ The engine is **completed against the in-memory fake** (`internal/usecase/bounda
 - A6: a single message's panic is recovered and does not take down the engine.
 - B1/B2/B3: concurrency cap / in-flight cap / `PartitionKey` serialization.
 - B4: circuit breaker (Open pauses intake; Half-open recovers).
-- C1: SIGTERM/SIGINT drains in-flight; unfinished messages are not `Ack`ed (redelivered).
+- SIGTERM/SIGINT drains in-flight; unfinished messages are not `Ack`ed (redelivered).
 - D1–D3: traceparent continuation / engine-owned metrics / structured logs.
 
 ## Files
