@@ -45,8 +45,7 @@ type PendingMessage struct {
 type Store interface {
 	// Insert は、業務 tx 内で outbox 行を 1 行 INSERT し、採番された message_id を返します。
 	Insert(ctx context.Context, p EmitParams) (uuid.UUID, error)
-	// ClaimPending は、pending 行を最大 limit 件 claim します（FOR UPDATE SKIP LOCKED）。
-	// 呼び出し側 tx の保持中だけロックされ、多インスタンスでも同一行を二重取得しません。
+	// ClaimPending は、pending 行を最大 limit 件を排他取得します。複数インスタンスが同時に呼び出しても同一行を二重取得しません。
 	ClaimPending(ctx context.Context, limit int32) ([]PendingMessage, error)
 	// MarkPublished は、publish 成功行を published へ遷移します（既に pending でなければ no-op）。
 	MarkPublished(ctx context.Context, id int64) error

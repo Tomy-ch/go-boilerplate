@@ -7,6 +7,6 @@ package security
 type Hasher interface {
 	// Hash は、パスワードをハッシュ化します。ハッシュ化に失敗した場合はエラーを返します。
 	Hash(password string) (string, error)
-	// Compare は、ハッシュとパスワードを比較します。比較に失敗した場合はエラーを返します。
+	// Compare は、hash とパスワードが一致するかを検証します。一致すれば (true, nil)、不一致なら (false, nil) を返します。ハッシュ形式が不正など系レベルの失敗時のみ error を返します。
 	Compare(hash, password string) (bool, error)
 }

@@ -34,7 +34,7 @@ type Fake struct {
 	acked        []string
 	nacked       []string
 	extends      map[string]int           // ID ごとの Extend 呼び出し回数
-	extendErr    error                    // 設定時、Extend が常にこのエラーを返す（H2）
+	extendErr    error                    // 設定時、Extend が常にこのエラーを返す
 	nackBackoffs map[string]time.Duration // ID ごとの NackWithBackoff 遅延（最後の値）
 	failed       []FailedRecord
 
@@ -151,7 +151,7 @@ func (f *Fake) FailReceiveOnce(err error) {
 	f.signal()
 }
 
-// SetExtendErr は、以降の Extend が常に返すエラーを設定します（H2 Extend 失敗）。
+// SetExtendErr は、以降の Extend が常に返すエラーを設定します。
 func (f *Fake) SetExtendErr(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

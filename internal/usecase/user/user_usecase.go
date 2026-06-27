@@ -218,7 +218,7 @@ func (u *usecase) CountUsers(ctx context.Context, active *bool) (int64, error) {
 	return u.userRepo.CountByActive(ctx, active)
 }
 
-// ListUsersWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
+// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。
 func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -294,7 +294,7 @@ func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
 	return toUserView(userEntity, pftDomain.Name()), nil
 }
 
-// UpdateUser は、ユーザーのプロフィールを全更新するユースケースです（PUT、パスワードは含みません）。
+// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
 func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -384,8 +384,8 @@ func (u *usecase) ChangePassword(ctx context.Context, id uuid.UUID, currentPassw
 	})
 }
 
-// UpdateUserPartially は、ユーザーを部分更新するユースケースです（PATCH）。
-// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは PUT を使う）。password は更新しない。
+// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
+// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは全更新用の UpdateUser を使う）。password は更新しない。
 func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -440,7 +440,7 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *Pa
 	return toUserView(userEntity, pftName), nil
 }
 
-// DeleteUser は、ユーザーを論理削除するユースケースです（DELETE）。
+// DeleteUser は、ユーザーを論理削除します。
 func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -496,7 +496,7 @@ func (u *usecase) toUserViews(ctx context.Context, us user.Users) ([]UserView, e
 	return dtos, nil
 }
 
-// resolvePatchPrefecture は、PATCH の都道府県を解決します。
+// resolvePatchPrefecture は、部分更新時の都道府県を解決します。
 // 名前指定があれば名前で解決（入力エラーは伝播）、なければ既存 ID で解決します（未解決は参照整合性破れ）。
 func (u *usecase) resolvePatchPrefecture(ctx context.Context, name *string, currentID uuid.UUID) (*prefecture.Prefecture, error) {
 	if name != nil {

@@ -32,7 +32,7 @@ type usecase struct {
 	userQS query.UserSearchQueryService
 }
 
-// Usecase は、ユーザーに関するユースケースを定義します。
+// Usecase は、キーワード検索によるユーザー検索ユースケースを定義します。
 type Usecase interface {
 	// ListUsersByKeyword は、キーワードに基づいてユーザー一覧を取得します。
 	ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (query.UserSearchResults, error)
@@ -53,7 +53,7 @@ func New(
 	}
 }
 
-// ListUsersByKeyword は、ユーザー一覧を取得するユースケースです。
+// ListUsersByKeyword は、キーワードに基づいてユーザー一覧を取得します。
 func (u *usecase) ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (query.UserSearchResults, error) {
 	if filter == nil || page == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "filter and page must not be nil")
@@ -77,7 +77,7 @@ func (u *usecase) CountUsersByKeyword(ctx context.Context, filter *SearchParams)
 	return u.userQS.CountByFilter(ctx, u.toFilter(filter))
 }
 
-// ListUsersByKeywordWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。
+// ListUsersByKeywordWithTotal は、検索一覧と総件数をまとめて取得します。
 func (u *usecase) ListUsersByKeywordWithTotal(ctx context.Context, filter *SearchParams, page *paging.Page) (*UserSearchListView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
