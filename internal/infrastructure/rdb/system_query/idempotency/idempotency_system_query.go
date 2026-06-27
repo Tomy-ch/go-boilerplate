@@ -36,7 +36,9 @@ func New(
 	}
 }
 
-// Claim は、claimed 行を作ります。業務 tx 内から呼ばれる前提（SET LOCAL lock_timeout が効く）。
+// Claim は、claimed 行を作ります。新規に作れたら true、同一 (scope, key) の既存行があれば
+// false を返します。ロック競合タイムアウト時は ErrLockTimeout を返します。
+// 業務 tx 内から呼ぶこと（SET LOCAL lock_timeout がセッションに有効になる）。
 func (s *store) Claim(ctx context.Context, p idempotencybndry.ClaimParams) (bool, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

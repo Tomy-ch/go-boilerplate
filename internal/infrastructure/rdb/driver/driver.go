@@ -59,7 +59,6 @@ func newDB(
 		return nil, xerrors.Wrap(err, "failed to parse DB config")
 	}
 
-	// 接続プール設定
 	poolCfg.MaxConns = dbConnCfg.MaxConns()
 	poolCfg.MinConns = dbConnCfg.MinConns()
 	poolCfg.MaxConnLifetime = dbConnCfg.MaxLifetime()

@@ -1,4 +1,4 @@
-// Package prefecture は、都道府県関連のドメインを提供します。
+// Package prefecture は、都道府県リポジトリ（prefecture.Repository）の RDB 実装を提供します。
 package prefecture
 
 import (
