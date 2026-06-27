@@ -206,6 +206,10 @@ func validateServerConfig(srvCfg Server) error {
 	if srvCfg.ReadHeaderTimeout > srvCfg.ReadTimeout {
 		return ErrReadHeaderTimeoutExceedsReadTimeout
 	}
+
+	if srvCfg.WriteTimeout < srvCfg.RequestTimeout {
+		return ErrWriteTimeoutBelowRequestTimeout
+	}
 	return nil
 }
 
