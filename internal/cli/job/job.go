@@ -57,11 +57,12 @@ func runJob(
 	}
 }
 
-// gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop）を実行し、
-// その結果を返します。停止失敗（OTel flush / DB pool close 等）を呼び出し元のエラーチェーンに
-// 含め exit code へ反映できるよう、エラーを破棄せず返します。
+// gracefulStop は、親キャンセルに左右されない stopTimeout の猶予を停止処理（app.Stop）に与え、
+// その結果を返します。SIGINT 伝播や親 ctx タイムアウト後でも OTel flush / DB pool close に
+// stopTimeout の全猶予が保証されます。停止失敗を呼び出し元のエラーチェーンに含め exit code へ
+// 反映できるよう、エラーは破棄せず返します。
 func gracefulStop(ctx context.Context, stop StopFunc) error {
-	stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
+	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stopTimeout)
 	defer cancel()
 	return stop(stopCtx)
 }

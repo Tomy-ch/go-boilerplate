@@ -10,11 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// recordingStop は、呼び出し有無と渡された停止用 context の期限を記録するフェイクの停止関数です。
+// recordingStop は、呼び出し有無・停止用 context の期限・ctx のエラー状態を記録するフェイクの停止関数です。
 type recordingStop struct {
 	called      bool
 	hasDeadline bool
 	deadline    time.Time
+	ctxErr      error // fn 呼び出し時点の停止用 context のエラー状態
 	err         error // fn が返す停止エラー（nil なら成功）
 }
 
@@ -29,6 +30,7 @@ func (r *recordingStop) fn() StopFunc {
 	return func(c context.Context) error {
 		r.called = true
 		r.deadline, r.hasDeadline = c.Deadline()
+		r.ctxErr = c.Err()
 		return r.err
 	}
 }
@@ -158,6 +160,27 @@ func TestRunJob(t *testing.T) {
 			require.ErrorIs(t, err, context.DeadlineExceeded)
 			require.ErrorIs(t, err, stopErr)
 		})
+	})
+}
+
+func TestGracefulStop(t *testing.T) {
+	t.Parallel()
+
+	t.Run("親ctxがキャンセル済みでも停止用ctxは全猶予を持ち期限切れでない", func(t *testing.T) {
+		t.Parallel()
+
+		// 親 ctx を事前にキャンセルしておく（SIGINT 伝播・waitCtx タイムアウト後の状況を模倣）。
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		stop := &recordingStop{}
+
+		_ = gracefulStop(ctx, stop.fn())
+
+		// 停止処理は呼ばれ、渡された context は期限切れでなく stopTimeout 相当の猶予を持つこと。
+		require.True(t, stop.called, "停止処理が呼ばれること")
+		require.True(t, stop.hasDeadline, "停止用 context に deadline があること")
+		require.Nil(t, stop.ctxErr, "停止用 context が期限切れでないこと")
+		assert.Greater(t, time.Until(stop.deadline), stopTimeout/2, "stopTimeout 相当の猶予が残っていること")
 	})
 }
 
