@@ -65,7 +65,7 @@ func runJobAndShutdown(
 }
 
 // shutdown は、ジョブ完了後のアプリ停止を要求し、失敗時はジョブ系のログ様式に合わせて記録します。
-// 隣接する di/job.go の app.Stop 失敗ログと方針を揃え、エラーの黙殺を避けます。
+// エラーは黙殺せずログ記録する。
 func shutdown(sd shutdowner.Shutdowner, logger logging.Logger) {
 	if err := sd.Shutdown(); err != nil {
 		logger.Named("job.Hooks").Error(

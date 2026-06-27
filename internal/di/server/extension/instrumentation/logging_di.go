@@ -20,7 +20,7 @@ func LoggingModule() fx.Option {
 	)
 }
 
-// LoggingMiddleware は、OTelロギングミドルウェアを提供します。
+// LoggingMiddleware は、HTTPリクエスト／レスポンスのアクセスログを出力するミドルウェアを提供します（OTel トレースコンテキストの TraceID・SpanID を含む）。
 func LoggingMiddleware(z logging.Logger, lf logging.LogFieldBuilder) extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{

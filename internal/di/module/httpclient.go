@@ -7,15 +7,14 @@ import (
 )
 
 // HTTPClientProfilesIn は、httpclient_profiles グループに集まった各 Downstream の Profile を
-// 集約する入力です（グループの consumer 側。di/job の RunnerIn と同形）。
+// 集約する入力です（グループの consumer 側）。
 type HTTPClientProfilesIn struct {
 	fx.In
 
 	Profiles []httpclient.DownstreamProfile `group:"httpclient_profiles"`
 }
 
-// provideHTTPClientRegistry は、グループに集まった Profile から Registry を生成します
-// （di/job の ProvideRunner と同形）。
+// provideHTTPClientRegistry は、グループに集まった Profile から Registry を生成します。
 func provideHTTPClientRegistry(in HTTPClientProfilesIn) httpclient.Registry {
 	return httpclient.NewRegistryFromProfiles(in.Profiles)
 }
@@ -32,8 +31,7 @@ func httpClientModule() fx.Option {
 }
 
 // provideHTTPClientProfiles は、各 Downstream の Profile コンストラクタを httpclient_profiles
-// グループへ登録します（producer 側）。provideJobs / provideWorkers と同形の
-// 「グループへ寄与するコンストラクタ群」をまとめるヘルパーで、各所での fx.Annotate 重複を排します。
+// グループへ登録します（producer 側）。各コンストラクタへの fx.Annotate 重複を排するヘルパーです。
 func provideHTTPClientProfiles(constructors ...any) fx.Option {
 	opts := make([]fx.Option, len(constructors))
 	for i, c := range constructors {
