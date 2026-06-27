@@ -77,7 +77,7 @@ func (e *Engine) Run(ctx context.Context, name string) error {
 	return newRun(e, w).loop(ctx)
 }
 
-// Healthy は、readiness 判定を返します（C2）。Run 実行中かつ poll 進捗が閾値内のとき true。
+// Healthy は、readiness 判定を返します。Run 実行中かつ poll 進捗が閾値内のとき true。
 func (e *Engine) Healthy() bool {
 	if !e.active.Load() {
 		return false

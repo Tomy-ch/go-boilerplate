@@ -429,10 +429,10 @@ func (w *WorkerConfig) HealthListenAddr() string { return w.healthListenAddr }
 // ProgressStaleAfter は、readiness 判定で「進捗なし」とみなすまでの時間を返します。
 func (w *WorkerConfig) ProgressStaleAfter() time.Duration { return w.progressStaleAfter }
 
-// NackBackoffInitial は、retryable 失敗時の per-message 再配送 backoff の初回待機を返します（M3）。
+// NackBackoffInitial は、retryable 失敗時の per-message 再配送 backoff の初回待機を返します。
 func (w *WorkerConfig) NackBackoffInitial() time.Duration { return w.nackBackoffInitial }
 
-// NackBackoffMax は、per-message 再配送 backoff の上限を返します（M3）。
+// NackBackoffMax は、per-message 再配送 backoff の上限を返します。
 func (w *WorkerConfig) NackBackoffMax() time.Duration { return w.nackBackoffMax }
 
 // NewOutboxConfig は、outbox relay の設定を返します。

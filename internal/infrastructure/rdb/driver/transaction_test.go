@@ -85,7 +85,7 @@ func TestTxManager_Do(t *testing.T) {
 			err := manager.Do(ctx, func(_ context.Context) error {
 				return errors.New("rollback")
 			})
-			// H1: fn が返す非 DB エラー（pg / 接続でない）は正規化せず生のまま返す（既存契約の維持）。
+			// fn が返す非 DB エラー（pg / 接続でない）は正規化せず生のまま返す（既存契約の維持）。
 			require.Error(t, err)
 			require.EqualError(t, err, "rollback")
 		})

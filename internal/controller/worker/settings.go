@@ -7,16 +7,16 @@ import (
 )
 
 const (
-	// defaultDrainTimeout は、DrainTimeout 未設定時の既定値です（C1）。
+	// defaultDrainTimeout は、DrainTimeout 未設定時の既定値です。
 	defaultDrainTimeout = 30 * time.Second
-	// defaultProgressStaleAfter は、ProgressStaleAfter 未設定時の既定値です（C2）。
+	// defaultProgressStaleAfter は、ProgressStaleAfter 未設定時の既定値です。
 	defaultProgressStaleAfter = 60 * time.Second
 	// circuitBackoffMultiplier は、Open の cooldown を指数的に伸ばす際の倍率です。
 	circuitBackoffMultiplier = 2
 
-	// defaultNackBackoffInitial は、NackBackoffInitial 未設定時の既定値です（M3）。
+	// defaultNackBackoffInitial は、NackBackoffInitial 未設定時の既定値です。
 	defaultNackBackoffInitial = 1 * time.Second
-	// defaultNackBackoffMax は、NackBackoffMax 未設定時の既定値です（M3）。
+	// defaultNackBackoffMax は、NackBackoffMax 未設定時の既定値です。
 	defaultNackBackoffMax = 30 * time.Second
 	// nackBackoffMultiplier は、per-message 再配送 backoff を指数的に伸ばす際の倍率です。
 	nackBackoffMultiplier = 2
@@ -32,7 +32,7 @@ type Settings struct {
 	BatchSize int
 	// ExtendInterval は、長時間処理中に Extend を呼ぶ周期です（0 以下で無効）（A3）。
 	ExtendInterval time.Duration
-	// DrainTimeout は、停止時に in-flight の完了を待つ上限です（C1）。
+	// DrainTimeout は、停止時に in-flight の完了を待つ上限です。
 	DrainTimeout time.Duration
 	// ReceiveCountWarnThreshold は、この回数以上の再配送で warn する閾値です（0 以下で無効）（A7）。
 	ReceiveCountWarnThreshold int
@@ -45,12 +45,12 @@ type Settings struct {
 	CircuitOpenBackoffMax time.Duration
 	// CircuitHalfOpenProbe は、Half-open 時に試行する最大件数です。
 	CircuitHalfOpenProbe int
-	// ProgressStaleAfter は、readiness 判定で「進捗なし(stuck)」とみなすまでの時間です（C2）。
+	// ProgressStaleAfter は、readiness 判定で「進捗なし(stuck)」とみなすまでの時間です。
 	ProgressStaleAfter time.Duration
 
-	// NackBackoffInitial は、retryable 失敗時の per-message 再配送 backoff の初回待機です（M3）。
+	// NackBackoffInitial は、retryable 失敗時の per-message 再配送 backoff の初回待機です。
 	NackBackoffInitial time.Duration
-	// NackBackoffMax は、per-message 再配送 backoff の上限です（M3）。
+	// NackBackoffMax は、per-message 再配送 backoff の上限です。
 	NackBackoffMax time.Duration
 }
 
@@ -94,7 +94,7 @@ func (s *Settings) circuitBackoff() backoff.Exponential {
 	}
 }
 
-// nackBackoff は、Settings から per-message 再配送 backoff の算出器を構築します（M3）。
+// nackBackoff は、Settings から per-message 再配送 backoff の算出器を構築します。
 func (s *Settings) nackBackoff() backoff.Exponential {
 	return backoff.Exponential{
 		Initial:    s.NackBackoffInitial,
