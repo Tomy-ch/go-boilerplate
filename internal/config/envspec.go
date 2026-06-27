@@ -98,6 +98,9 @@ type Database struct {
 	SSLMode                string        `env:"SSL_MODE,required"`
 	PingTimeout            time.Duration `env:"PING_TIMEOUT,required"`
 	SlowQueryWarnThreshold time.Duration `env:"SLOW_QUERY_WARN_THRESHOLD,required"`
+	TxMaxRetries           int           `env:"TX_MAX_RETRIES,required"`
+	TxRetryBaseBackoff     time.Duration `env:"TX_RETRY_BASE_BACKOFF,required"`
+	TxRetryMaxBackoff      time.Duration `env:"TX_RETRY_MAX_BACKOFF,required"`
 }
 
 // DBConnection はコネクションプールの上限・下限数とコネクションの最大生存時間・最大アイドル時間を保持する。

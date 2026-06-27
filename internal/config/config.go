@@ -77,6 +77,9 @@ func New() (*Config, error) {
 			sslMode:                cfg.Database.SSLMode,
 			pingTimeout:            cfg.Database.PingTimeout,
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
+			txMaxRetries:           cfg.Database.TxMaxRetries,
+			txRetryBaseBackoff:     cfg.Database.TxRetryBaseBackoff,
+			txRetryMaxBackoff:      cfg.Database.TxRetryMaxBackoff,
 		},
 		dbconnection: DBConnectionConfig{
 			maxConns:    cfg.DBConnection.MaxConns,
