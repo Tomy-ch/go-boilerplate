@@ -131,6 +131,45 @@ func TestTxManager_Do_Retry(t *testing.T) {
 	retryablePgErr := &pgconn.PgError{Code: "40001"}    // serialization_failure
 	nonRetryablePgErr := &pgconn.PgError{Code: "23505"} // unique_violation
 
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("1回目のリトライ可能エラー後に2回目の試行でコミットが成功する", func(t *testing.T) {
+			t.Parallel()
+
+			// pgx.Tx のモックが存在しないため Begin を mock で差し替える方式は採れない。
+			// 実 DB を用い fn 内でカウンタにより1回目のみリトライ可能エラーを返す方式とする。
+			cfg := config.MockConfigForTest(t)
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
+			dbCfg.SetDatabaseHost(t, "localhost")
+
+			realDB, err := NewDB(dbCfg, osCfg, dbConnCfg)
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				require.NoError(t, realDB.Close())
+			})
+
+			sleeper := &recordingSleeper{}
+			m := NewTransactionManager(realDB, dbCfg, logging.NewTestLogger(t), sleeper)
+
+			attempts := 0
+			err = m.Do(context.Background(), func(_ context.Context) error {
+				attempts++
+				if attempts == 1 {
+					return retryablePgErr
+				}
+				return nil
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, 2, attempts)
+			// 試行間の sleep は1回。
+			assert.Equal(t, 1, sleeper.calls)
+		})
+	})
+
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 

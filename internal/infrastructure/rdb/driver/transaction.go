@@ -94,16 +94,19 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 	return normalizeTxResult(err)
 }
 
-// normalizeTxResult は、リトライ後の最終エラーを正規化します。
-// begin / commit の DB エラー（生 pg / 接続）のみ apperror へ正規化し、fn が返したエラー
-// （apperror や testkit の rollback sentinel 等）はそのまま通します。これにより呼出側が
-// errors.Is で判定する fn のエラーを tx 層が書き換えません（既存契約の維持）。
+// normalizeTxResult は、リトライ後の最終エラーを apperror へ正規化します。
+// begin / commit 由来の DB エラー（生 pg / 接続）および context キャンセル・期限超過を
+// apperror へ写像します。fn が返したエラー（apperror や rollback sentinel 等）は
+// そのまま通し、呼出側のエラー判定に干渉しません。
 func normalizeTxResult(err error) error {
 	if err == nil {
 		return nil
 	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) || pgerror.IsUnavailable(err) {
+		return pgerror.NormalizeError(err)
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return pgerror.NormalizeError(err)
 	}
 	return err
