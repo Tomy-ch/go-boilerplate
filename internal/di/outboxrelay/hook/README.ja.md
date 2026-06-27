@@ -31,7 +31,8 @@ flowchart TB
 
 ## 注意点
 
-- `engineCtx` は `OnStop` でのみキャンセルされるため、Start 完了後の `startCtx` キャンセルには巻き込まれない
+- Start/Stop 配線（detached goroutine・停止時キャンセル・grace 内 drain）は `lifecycle.SupervisedRunner` に委譲する
+- 実行 context は `OnStop` でのみキャンセルされるため、Start 完了後の `startCtx` キャンセルには巻き込まれない
 - `engine.Run` の戻り値は意図的に無視される（リトライ／バックオフはループ自身が管理する）
 - relay 専用プロセス（`cmd outbox-relay`）でのみ使用し、メインサーバーでは使用しない
 - `OnStop` でのループ終了待ちは `stopCtx` で制限される

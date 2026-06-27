@@ -30,5 +30,5 @@ job <job-name> [args...] [flags]
 
 - The job name must correspond to a job registered in the DI layer (`di.RunJob()`).
 - When `--timeout` is set, the job is cancelled if it exceeds the specified duration.
-- Cleanup (`stop`) is always called after the job finishes, whether it succeeds, fails, or times out.
+- Cleanup (`stop`) is always called after the job finishes, whether it succeeds, fails, or times out. It is bounded by the shutdown grace (`APP_SHUTDOWN_TIMEOUT`, the single stop-timeout axis, also set as `fx.StopTimeout`).
 - Argument parsing and validation are the responsibility of each job implementation.

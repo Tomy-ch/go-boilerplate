@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/cli/job"
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/di"
 
 	"github.com/spf13/cobra"
@@ -20,8 +21,14 @@ func newJobCommand() *cobra.Command {
 			"例: job usercount --timeout 30s",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return job.RunJobWith(cmd.Context(), args[0], args[1:], timeout, func() (job.StartFunc, job.StopFunc) {
-				start, stop := di.RunJob()
+			cfg, err := config.SetUpConfig()
+			if err != nil {
+				return err
+			}
+			grace := config.NewApplicationConfig(cfg).ShutdownTimeout()
+
+			return job.RunJobWith(cmd.Context(), args[0], args[1:], timeout, grace, func() (job.StartFunc, job.StopFunc) {
+				start, stop := di.RunJob(grace)
 				return job.StartFunc(start), job.StopFunc(stop)
 			})
 		},
