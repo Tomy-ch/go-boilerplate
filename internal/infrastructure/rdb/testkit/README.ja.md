@@ -92,7 +92,7 @@ func (t *testTxManager) WithinTx(fn func(ctx context.Context))
 ```mermaid
 flowchart TD
     A[Transaction Begin]
-    B[fn(ctx) 実行]
+    B["fn(ctx) 実行"]
     C[rollbackForTestError を返す]
     D[Rollback]
 
@@ -103,7 +103,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Do(fn)]
+    A["Do(fn)"]
     B[error を返すことで rollback]
 
     A --> B
