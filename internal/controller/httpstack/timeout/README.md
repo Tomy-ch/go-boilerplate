@@ -6,7 +6,7 @@ Sets a per-request deadline budget on the request context (`SERVER_REQUEST_TIMEO
 
 ## Role
 
-Entry point of the **deadline budget**: a single per-request deadline is set once here and propagated through `ctx` to every downstream layer — the remaining `Use` middleware, OpenAPI validation, the handler, DB queries (pgx cancels on `ctx` deadline), and outbound HTTP (`httpclient` already honours the remaining budget via `ctx.Deadline()`). Instead of placing independent timeout knobs at each boundary, every layer derives its deadline from this one budget; `statement_timeout` / `lock_timeout` (future) are coarse backstops for queries that ignore `ctx`, not the primary mechanism.
+Entry point of the **deadline budget**: a single per-request deadline is set once here and propagated through `ctx` to every downstream layer — the remaining `Use` middleware, OpenAPI validation, the handler, DB queries (pgx cancels on `ctx` deadline), and outbound HTTP (`httpclient` already honours the remaining budget via `ctx.Deadline()`). Instead of placing independent timeout knobs at each boundary, every layer derives its deadline from this one budget; `statement_timeout` / `lock_timeout` are coarse backstops for queries that ignore `ctx`, not the primary mechanism.
 
 To avoid response-writer data races, Echo's race-free `middleware.ContextTimeout` is used as the base (the deprecated `middleware.Timeout` carries such a race). On deadline exceedance the middleware returns `apperror.ErrUnavailable`, so Echo's central unified `HTTPErrorHandler` produces the same error body shape as every other error (HTTP 503).
 
