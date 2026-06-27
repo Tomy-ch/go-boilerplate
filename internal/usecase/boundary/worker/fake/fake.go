@@ -34,7 +34,7 @@ type Fake struct {
 	acked     []string
 	nacked    []string
 	extends   map[string]int // ID ごとの Extend 呼び出し回数
-	extendErr error          // 設定時、Extend が常にこのエラーを返す（H2 テスト用）
+	extendErr error          // 設定時、Extend が常にこのエラーを返す（H2）
 	failed    []FailedRecord
 
 	receiveErrs []error       // 注入された Receive エラー（先頭から消費）
@@ -142,7 +142,7 @@ func (f *Fake) FailReceiveOnce(err error) {
 	f.signal()
 }
 
-// SetExtendErr は、以降の Extend が常に返すエラーを設定します（H2 の Extend 失敗テスト用）。
+// SetExtendErr は、以降の Extend が常に返すエラーを設定します（H2 Extend 失敗）。
 func (f *Fake) SetExtendErr(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
