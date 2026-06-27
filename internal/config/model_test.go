@@ -129,6 +129,11 @@ func TestGetterMethods(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerBodyLimitMB, server.BodyLimitMB())
 			})
+
+			t.Run("リクエストタイムアウトを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedServerRequestTimeout, server.RequestTimeout())
+			})
 		})
 
 		t.Run("メトリクス設定", func(t *testing.T) {
@@ -276,6 +281,31 @@ func TestGetterMethods(t *testing.T) {
 			t.Run("スロークエリ警告閾値を取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBSlowQueryWarnThreshold, database.SlowQueryWarnThreshold())
+			})
+
+			t.Run("statement_timeout を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBStatementTimeout, database.StatementTimeout())
+			})
+
+			t.Run("lock_timeout を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBLockTimeout, database.LockTimeout())
+			})
+
+			t.Run("トランザクションリトライ最大試行回数を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxMaxRetries, database.TxMaxRetries())
+			})
+
+			t.Run("トランザクションリトライbackoff初期値を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxRetryBaseBackoff, database.TxRetryBaseBackoff())
+			})
+
+			t.Run("トランザクションリトライbackoff上限値を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxRetryMaxBackoff, database.TxRetryMaxBackoff())
 			})
 		})
 

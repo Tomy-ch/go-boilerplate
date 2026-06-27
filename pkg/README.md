@@ -50,6 +50,7 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 |`fnmeta`|Function / package name extraction|Standard library `runtime`|
 |`fs`|Filesystem operations (interface + mock)|Standard library `os`|
 |`ptr`|Pointer operations|None|
+|`retry`|Bounded-retry behavior layer (backoff + full jitter, deadline-aware)|None|
 |`safecast`|Type conversion with overflow detection|None|
 |`stringkit`|String length validation|None|
 |`uuid`|UUID value object|`github.com/google/uuid`|
@@ -121,6 +122,17 @@ Pointer manipulation utilities using generics.
 |`To[T]`|Create a pointer from a value|
 |`Copy[T]`|Copy a pointer (nil-safe)|
 |`Deref[T]`|Dereference a pointer, returning a fallback when nil|
+
+### retry
+
+A bounded-retry behavior layer that consumes a failure classification (`classify → bounded attempts → backoff + full jitter → deadline-aware`). Keeps `backoff` pure by confining the randomness (full jitter) here.
+
+|Symbol|Description|
+|---|---|
+|`Do`|Run a function with bounded retries while a classifier marks the error retryable|
+|`Full`|Full jitter — uniform random duration in `[0, d]`|
+|`Policy`|`MaxAttempts` + `Backoff` (`func(attempt int) time.Duration`)|
+|`Sleeper` (interface)|`Sleep(ctx, d)` wait abstraction (satisfied by `clock.Sleeper`)|
 
 ### safecast
 

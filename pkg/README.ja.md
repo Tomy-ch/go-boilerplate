@@ -47,6 +47,7 @@
 |`fnmeta`|関数 / パッケージ名の抽出|標準ライブラリ `runtime`|
 |`fs`|ファイルシステム操作（インターフェース + モック）|標準ライブラリ `os`|
 |`ptr`|ポインタ操作|なし|
+|`retry`|有限リトライの行動層（backoff + full jitter, deadline-aware）|なし|
 |`safecast`|オーバーフロー検出付き型変換|なし|
 |`stringkit`|文字列長バリデーション|なし|
 |`uuid`|UUID 値オブジェクト|`github.com/google/uuid`|
@@ -118,6 +119,17 @@
 |`To[T]`|値からポインタを生成|
 |`Copy[T]`|ポインタのコピー（nil安全）|
 |`Deref[T]`|ポインタをデリファレンスし、nil の場合はフォールバック値を返す|
+
+### retry
+
+失敗分類を消費する有限リトライの行動層です（`classify → bounded attempts → backoff + full jitter → deadline-aware`）。乱数（full jitter）を本パッケージに閉じることで `backoff` の純粋性を保ちます。
+
+|シンボル|説明|
+|---|---|
+|`Do`|分類関数がリトライ可能と判定する間、関数を有限リトライで実行|
+|`Full`|full jitter（`[0, d]` の一様乱数）|
+|`Policy`|`MaxAttempts` ＋ `Backoff`（`func(attempt int) time.Duration`）|
+|`Sleeper`（インターフェース）|`Sleep(ctx, d)` 待機抽象（`clock.Sleeper` が充足）|
 
 ### safecast
 

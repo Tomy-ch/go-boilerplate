@@ -48,3 +48,12 @@ func TestBodyLimitModule_ProvidesPreMiddleware(t *testing.T) {
 		fx.Supply(config.NewServerConfig(cfg)),
 	)
 }
+
+func TestTimeoutModule_ProvidesPreMiddleware(t *testing.T) {
+	t.Parallel()
+	cfg := config.MockConfigForTest(t)
+	testkit.RequireProvidesOne[extension.PreMiddleware](t, "middlewares.pre",
+		TimeoutModule(),
+		fx.Supply(config.NewServerConfig(cfg)),
+	)
+}

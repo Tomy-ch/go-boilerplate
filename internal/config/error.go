@@ -77,6 +77,13 @@ var (
 		errInvalidConfig,
 		"read header timeout exceeds read timeout",
 	)
+	// ErrWriteTimeoutBelowRequestTimeout は、WriteTimeout が RequestTimeout（per-request deadline budget）未満であることを示すエラーです。
+	// net/http の WriteTimeout が RequestTimeout より短いと、deadline budget が発火する前に WriteTimeout が先に切断するため、
+	// budget による制御が実質無効化されます。WriteTimeout は必ず RequestTimeout を超える値を設定してください。
+	ErrWriteTimeoutBelowRequestTimeout = xerrors.Wrap(
+		errInvalidConfig,
+		"write timeout must be greater than or equal to request timeout",
+	)
 	// ErrInvalidDBPortRange は、データベースの無効なポート範囲に関するエラーを表します。
 	ErrInvalidDBPortRange = xerrors.Wrap(
 		errInvalidConfig,

@@ -31,10 +31,11 @@ type Fake struct {
 	inflight map[string]worker.Message // 受信済み・Ack/Nack 待ち（ID キー）
 	delivery map[string]int            // ID ごとの配送回数（再配送で増加）
 
-	acked   []string
-	nacked  []string
-	extends map[string]int // ID ごとの Extend 呼び出し回数
-	failed  []FailedRecord
+	acked     []string
+	nacked    []string
+	extends   map[string]int // ID ごとの Extend 呼び出し回数
+	extendErr error          // 設定時、Extend が常にこのエラーを返す（H2）
+	failed    []FailedRecord
 
 	receiveErrs []error       // 注入された Receive エラー（先頭から消費）
 	notify      chan struct{} // long-poll 起床用のブロードキャスト
@@ -107,11 +108,12 @@ func (f *Fake) Nack(_ context.Context, m worker.Message) error {
 }
 
 // Extend は、Extend の呼び出し回数を記録します（可視性の実時間延長は模さない）。
+// SetExtendErr でエラーが設定されている場合はそのエラーを返します。
 func (f *Fake) Extend(_ context.Context, m worker.Message, _ time.Duration) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.extends[m.ID]++
-	return nil
+	return f.extendErr
 }
 
 // Fail は、FailureHandler としての退避を記録します。
@@ -138,6 +140,13 @@ func (f *Fake) FailReceiveOnce(err error) {
 	defer f.mu.Unlock()
 	f.receiveErrs = append(f.receiveErrs, err)
 	f.signal()
+}
+
+// SetExtendErr は、以降の Extend が常に返すエラーを設定します（H2 Extend 失敗）。
+func (f *Fake) SetExtendErr(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.extendErr = err
 }
 
 // AckedIDs は、Ack されたメッセージ ID の一覧（呼び出し順）を返します。

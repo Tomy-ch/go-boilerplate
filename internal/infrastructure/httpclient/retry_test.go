@@ -166,26 +166,3 @@ func TestRetryAfter(t *testing.T) {
 		}
 	})
 }
-
-func TestFullJitter(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("0以下は0を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, time.Duration(0), fullJitter(0))
-			assert.Equal(t, time.Duration(0), fullJitter(-time.Second))
-		})
-
-		t.Run("正の値は0からその値の範囲に収まる", func(t *testing.T) {
-			t.Parallel()
-			for range 50 {
-				got := fullJitter(100 * time.Millisecond)
-				assert.GreaterOrEqual(t, got, time.Duration(0))
-				assert.LessOrEqual(t, got, 100*time.Millisecond)
-			}
-		})
-	})
-}

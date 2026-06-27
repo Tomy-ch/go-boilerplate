@@ -37,6 +37,7 @@ Each sub-package is split into small responsibilities and combined during applic
 |`forcejson`|`Middleware`|Force response Content-Type to JSON|
 |`uri`|`Middleware`|Remove trailing slashes|
 |`bodylimit`|`Middleware`|Per-request body size limit (MB), 413 on exceed|
+|`timeout`|`Middleware`|Per-request deadline budget (entry point of deadline propagation)|
 |`observability`|`Middleware`|OpenTelemetry tracing integration|
 
 ### Error Handling
