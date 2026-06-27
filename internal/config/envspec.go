@@ -64,6 +64,7 @@ type Server struct {
 	ReadTimeout       time.Duration `env:"READ_TIMEOUT,required"`
 	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT,required"`
 	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT,required"`
+	BodyLimitMB       int           `env:"BODY_LIMIT_MB,required"`
 	RequestTimeout    time.Duration `env:"REQUEST_TIMEOUT,required"`
 }
 

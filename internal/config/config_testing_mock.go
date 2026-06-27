@@ -44,6 +44,8 @@ var (
 	expectedServerIdleTimeoutCount       = 60
 	expectedServerIdleTimeoutStr         = fmt.Sprintf("%ds", expectedServerIdleTimeoutCount)
 	expectedServerIdleTimeout            = time.Duration(expectedServerIdleTimeoutCount) * time.Second
+	expectedServerBodyLimitMB            = 7
+	expectedServerBodyLimitMBStr         = strconv.Itoa(expectedServerBodyLimitMB)
 	expectedServerRequestTimeoutCount    = 90
 	expectedServerRequestTimeoutStr      = fmt.Sprintf("%ds", expectedServerRequestTimeoutCount)
 	expectedServerRequestTimeout         = time.Duration(expectedServerRequestTimeoutCount) * time.Second
@@ -160,6 +162,7 @@ func MockConfigForTest(tb testing.TB) *Config {
 			readTimeout:       expectedServerReadTimeout,
 			writeTimeout:      expectedServerWriteTimeout,
 			idleTimeout:       expectedServerIdleTimeout,
+			bodyLimitMB:       expectedServerBodyLimitMB,
 			requestTimeout:    expectedServerRequestTimeout,
 		},
 		metrics: MetricsConfig{
@@ -280,6 +283,7 @@ func mockLoader(tb testing.TB) Loader {
 			ReadTimeout:       expectedServerReadTimeout,
 			WriteTimeout:      expectedServerWriteTimeout,
 			IdleTimeout:       expectedServerIdleTimeout,
+			BodyLimitMB:       expectedServerBodyLimitMB,
 			RequestTimeout:    expectedServerRequestTimeout,
 		},
 		Database: Database{
@@ -344,6 +348,7 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SERVER_READ_TIMEOUT", expectedServerReadTimeoutStr)
 	t.Setenv("SERVER_WRITE_TIMEOUT", expectedServerWriteTimeoutStr)
 	t.Setenv("SERVER_IDLE_TIMEOUT", expectedServerIdleTimeoutStr)
+	t.Setenv("SERVER_BODY_LIMIT_MB", expectedServerBodyLimitMBStr)
 	t.Setenv("SERVER_REQUEST_TIMEOUT", expectedServerRequestTimeoutStr)
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)

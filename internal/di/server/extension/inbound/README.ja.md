@@ -12,6 +12,7 @@ Binder / Validator / URI 正規化 / IP 抽出を統一的に管理し、API 入
 |---|---|---|
 |`URIModule()`|Pre (priority 1)|URI 末尾スラッシュの除去|
 |`TimeoutModule()`|Pre (priority 2)|per-request の deadline budget（`SERVER_REQUEST_TIMEOUT`）|
+|`BodyLimitModule()`|Pre (priority 3)|リクエストボディのサイズ上限（`SERVER_BODY_LIMIT_MB`）。OpenAPI 検証がボディを読む前に適用|
 |`IPExtractorModule()`|Configurator|クライアント IP 抽出（X-Forwarded-For / 直接）|
 |`OpenAPIModule()`|Use|OpenAPI ベースのリクエスト自動バリデーション|
 

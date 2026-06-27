@@ -43,6 +43,7 @@ type ServerConfig struct {
 	readTimeout       time.Duration
 	writeTimeout      time.Duration
 	idleTimeout       time.Duration
+	bodyLimitMB       int
 	requestTimeout    time.Duration
 }
 
@@ -197,6 +198,9 @@ func (s *ServerConfig) WriteTimeout() time.Duration { return s.writeTimeout }
 
 // IdleTimeout は、サーバーのアイドルタイムアウトを返します。
 func (s *ServerConfig) IdleTimeout() time.Duration { return s.idleTimeout }
+
+// BodyLimitMB は、リクエストボディのサイズ上限を MB（10進, 1MB=1,000,000 byte）で返します。
+func (s *ServerConfig) BodyLimitMB() int { return s.bodyLimitMB }
 
 // RequestTimeout は、REST リクエスト全体の deadline budget を返します（入口で1点設定し ctx で全層伝播）。
 func (s *ServerConfig) RequestTimeout() time.Duration { return s.requestTimeout }

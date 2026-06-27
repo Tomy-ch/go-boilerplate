@@ -12,6 +12,7 @@ It centrally manages Binder / Validator / URI normalization / IP extraction exec
 |---|---|---|
 |`URIModule()`|Pre (priority 1)|Remove trailing slashes from URIs|
 |`TimeoutModule()`|Pre (priority 2)|Per-request deadline budget (`SERVER_REQUEST_TIMEOUT`)|
+|`BodyLimitModule()`|Pre (priority 3)|Request body size limit (`SERVER_BODY_LIMIT_MB`); applied before OpenAPI validation reads the body|
 |`IPExtractorModule()`|Configurator|Client IP extraction (X-Forwarded-For / direct)|
 |`OpenAPIModule()`|Use|OpenAPI-based automatic request validation|
 

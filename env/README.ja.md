@@ -49,6 +49,7 @@
 |SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s||
 |SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|65s|SERVER_REQUEST_TIMEOUT 以上であること必須。短いと deadline budget より先に net/http が接続を切断し budget 制御が無効化される|
 |SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s||
+|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|5|Pre middleware。OpenAPI 検証がボディを読む前に適用|
 |SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|停止/期限の単一軸。statement_timeout 等は backstop|
 
 ### Metrics

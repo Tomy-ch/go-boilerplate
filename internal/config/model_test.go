@@ -125,6 +125,11 @@ func TestGetterMethods(t *testing.T) {
 				assert.Equal(t, expectedServerIdleTimeout, server.IdleTimeout())
 			})
 
+			t.Run("ボディ上限MBを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedServerBodyLimitMB, server.BodyLimitMB())
+			})
+
 			t.Run("リクエストタイムアウトを取得できる", func(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedServerRequestTimeout, server.RequestTimeout())
