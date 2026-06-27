@@ -72,7 +72,7 @@ func newHTTPClientTransport(
 	return &HTTPClientTransport{rt: rt}
 }
 
-// RoundTripper は、内部の RoundTripper を返します（substrate 内部でのみ利用します）。
+// RoundTripper は、ラップしている http.RoundTripper を返します。
 func (t *HTTPClientTransport) RoundTripper() http.RoundTripper {
 	return t.rt
 }

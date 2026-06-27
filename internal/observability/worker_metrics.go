@@ -11,7 +11,7 @@ import (
 // workerMeterName は、worker engine 計装の meter 名です。
 const workerMeterName = "go-boilerplate/worker"
 
-// WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です（D2）。
+// WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です。
 type WorkerMetrics struct {
 	received     metric.Int64Counter
 	processed    metric.Int64Counter
@@ -69,7 +69,7 @@ func (m *WorkerMetrics) DLQ(ctx context.Context) { m.dlq.Add(ctx, 1) }
 // PollError は、Receive のエラー回数を計上します。
 func (m *WorkerMetrics) PollError(ctx context.Context) { m.pollErrors.Add(ctx, 1) }
 
-// ExtendError は、Extend(ハートビート)のエラー回数を計上します（H2）。
+// ExtendError は、Extend(ハートビート)のエラー回数を計上します。
 func (m *WorkerMetrics) ExtendError(ctx context.Context) { m.extendErrors.Add(ctx, 1) }
 
 // RecordLatencyMs は、Handle の処理時間(ミリ秒)を記録します。

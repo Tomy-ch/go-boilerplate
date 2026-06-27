@@ -1,6 +1,8 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_layer_tracer.gen.go -package=mock_$GOPACKAGE
 
-// Package observability は、可観測性に関連するユーティリティを提供します。
+// Package observability は、OTel ベースの分散トレース・メトリクス・ログ計装ユーティリティを提供します。
+// LayerTracer によるアーキテクチャ層別 span、SSRF ガード付き HTTPClientTransport、
+// Worker / HTTPClient / Outbox 向けメトリクスセット、OTLP Provider のセットアップ関数が含まれます。
 package observability
 
 import (
@@ -45,6 +47,7 @@ func (lt LayerTracer) Start(
 }
 
 // StartWithSuffix は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
+// optionalName が空でない場合は span 名のサフィックスとして付与される。
 func (lt LayerTracer) StartWithSuffix(
 	ctx context.Context,
 	optionalName string,
@@ -64,7 +67,7 @@ func (lt LayerTracer) StartWithSuffix(
 //
 // 典型的な呼び出し方:
 //
-//	ctx, result, err := layerTracer.RunWithSpan(ctx, "usecase", "user", "FullName", func(ctx context.Context) (T, error) {
+//	ctx, result, err := observability.RunWithSpan(ctx, lt, observability.Usecase, "user", "FullName", func(ctx context.Context) (T, error) {
 //	    // 処理内容
 //	})
 func RunWithSpan[T any](

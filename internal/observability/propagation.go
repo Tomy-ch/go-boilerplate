@@ -23,7 +23,7 @@ func (c mapCarrier) Keys() []string {
 	return keys
 }
 
-// ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します（D1）。
+// ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します。
 // producer → consumer → handler を 1 trace に繋ぐための公開ヘルパです。
 func ExtractFromCarrier(ctx context.Context, attrs map[string]string) context.Context {
 	return extractFromCarrier(ctx, attrs, otel.GetTextMapPropagator())
@@ -37,7 +37,7 @@ func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propa
 	return prop.Extract(ctx, mapCarrier(attrs))
 }
 
-// InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます（D1）。
+// InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます。
 // outbox emit 時に traceparent を headers へ載せ、後続の relay→受信側を起点 trace に繋ぐための公開ヘルパです。
 // グローバル伝播器（Baggage を含みうる）ではなく TraceContext 限定で inject することで、インバウンド由来の
 // 任意 baggage が outbox 経由で外部エンドポイントへ転送される経路を断ちます。

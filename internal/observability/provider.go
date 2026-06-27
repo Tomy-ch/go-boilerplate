@@ -99,6 +99,7 @@ func NewTextMapPropagator() propagation.TextMapPropagator {
 }
 
 // NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
+// MetricsEnabled が真の場合は Go ランタイムメトリクスの収集 goroutine も開始する。
 func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
 	opts := []sdkmetric.Option{sdkmetric.WithResource(res)}
 
@@ -146,7 +147,7 @@ func newSpanExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (s
 	}
 }
 
-// newMetricReader は OTLP MetricExporter を PeriodicReader で包んで返す。
+// newMetricReader は定期収集型の Reader を返す。
 func newMetricReader(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdkmetric.Reader, error) {
 	exporter, err := newMetricExporter(ctx, obsCfg)
 	if err != nil {
