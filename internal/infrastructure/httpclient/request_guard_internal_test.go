@@ -14,7 +14,7 @@ import (
 // 「allowRetry あり・idempotencyKey なし」という不正状態に対する Do の防御的ガードを検証します。
 //
 // 非公開フィールドを直接組み立てられるパッケージ内からのみ到達可能な分岐のため、外部テストでは
-// なくこのパッケージ内テストで担保します（L2: Request の非公開フィールド化に伴う移設）。
+// なくこのパッケージ内テストで担保します。
 func TestClientDo_AllowRetryWithoutKey_Guard(t *testing.T) {
 	t.Parallel()
 

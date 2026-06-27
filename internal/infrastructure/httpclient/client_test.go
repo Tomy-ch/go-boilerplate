@@ -347,9 +347,8 @@ func TestClientDoRetry(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		// NOTE: 「AllowRetry あり・冪等性キーなし」という不正状態は Request の非公開フィールド化（L2）に
-		// より公開 API からは構築不能になったため、そのランタイムガード（defense-in-depth）の検証は
-		// パッケージ内テスト（request_guard_internal_test.go）へ移設した。
+		// 「AllowRetry あり・冪等性キーなし」のランタイムガードは request_guard_internal_test.go で担保しています。
+		// 公開 API から構築不能（非公開フィールドの直接設定が必要）なため、外部テストからは到達できません。
 
 		t.Run("backoffのスリープ中にctxがキャンセルされたらErrCanceledを返す", func(t *testing.T) {
 			t.Parallel()
