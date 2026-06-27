@@ -34,7 +34,7 @@ This package does **not** implement a domain / usecase boundary interface. It is
 - Retryable outcomes are 5xx / 429 / transport failures; 4xx / success / context cancellation are not retried. Backoff is exponential with full jitter, honoring a `Retry-After` header when present.
 - A per-downstream retry budget (token bucket) caps retry amplification, and a per-downstream circuit breaker (closed / half-open / open) fails fast under sustained downstream faults.
 - Two timeout layers are enforced: a per-attempt timeout and an overall timeout; a backoff wait that would overrun the overall deadline aborts the retry.
-- Security defaults: redirects are not followed (`http.ErrUseLastResponse`, SSRF surface reduction), response bodies are read only up to `MaxResponseBytes`, error messages are redacted of query / userinfo / fragment, and trace propagation / private-network access are opt-out per downstream.
+- Security defaults: redirects are not followed (`http.ErrUseLastResponse`, SSRF surface reduction), response bodies are read only up to `MaxResponseBytes`, error messages are redacted of query / userinfo / fragment, and trace propagation / private-network access are opt-out per downstream. The post-DNS dial guard (in `internal/observability`) always blocks link-local (cloud metadata `169.254.169.254`) / unspecified / bogon-reserved ranges (TEST-NETs, Future Use, IETF Assignments, Benchmarking, IPv6 Documentation), and blocks loopback / private (RFC1918, ULA) / CGNAT (RFC 6598 `100.64.0.0/10`) unless `AllowPrivateNetwork` is set.
 - Transport / status events are normalized into `apperror` sentinels (`ErrUnavailable` / `ErrCanceled` / `ErrInvalidArgument` etc.); callers branch on sentinels, never on raw status.
 
 ## DI Registration

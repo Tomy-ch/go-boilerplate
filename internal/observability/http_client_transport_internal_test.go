@@ -29,6 +29,14 @@ func TestGuardedDialControl(t *testing.T) {
 			require.NoError(t, guardedDialControl(allow, "tcp", "127.0.0.1:8080", nil))
 			require.NoError(t, guardedDialControl(allow, "tcp", "10.0.0.5:80", nil))
 			require.NoError(t, guardedDialControl(allow, "tcp", "192.168.1.10:80", nil))
+			// CGNAT(RFC 6598) も private 扱いで、フラグありなら許可する。
+			require.NoError(t, guardedDialControl(allow, "tcp", "100.64.0.1:80", nil))
+		})
+
+		t.Run("CGNAT帯の外(100.128.x)は許可する", func(t *testing.T) {
+			t.Parallel()
+			// 100.128.0.0 は /10 の外＝グローバル扱いで通ること（過剰ブロック防止）。
+			require.NoError(t, guardedDialControl(deny, "tcp", "100.128.0.1:80", nil))
 		})
 	})
 
@@ -46,6 +54,31 @@ func TestGuardedDialControl(t *testing.T) {
 			require.Error(t, guardedDialControl(deny, "tcp", "127.0.0.1:8080", nil))
 			require.Error(t, guardedDialControl(deny, "tcp", "10.0.0.5:80", nil))
 			require.Error(t, guardedDialControl(deny, "tcp", "192.168.1.10:80", nil))
+		})
+
+		t.Run("private許可フラグなしならCGNAT(100.64.0.0/10)も拒否する", func(t *testing.T) {
+			t.Parallel()
+			// Go の IsPrivate は CGNAT を含まないため、明示判定で塞ぐ。境界も検証。
+			require.Error(t, guardedDialControl(deny, "tcp", "100.64.0.1:80", nil))
+			require.Error(t, guardedDialControl(deny, "tcp", "100.127.255.254:80", nil))
+		})
+
+		t.Run("予約/将来利用帯はprivate許可フラグありでも拒否する", func(t *testing.T) {
+			t.Parallel()
+			// RFC 5737 TEST-NET-1（192.0.2.0/24）— ドキュメント/テスト用、正当な宛先にならない。
+			require.Error(t, guardedDialControl(allow, "tcp", "192.0.2.1:80", nil))
+			// RFC 5737 TEST-NET-2（198.51.100.0/24）— ドキュメント/テスト用、正当な宛先にならない。
+			require.Error(t, guardedDialControl(allow, "tcp", "198.51.100.5:80", nil))
+			// RFC 5737 TEST-NET-3（203.0.113.0/24）— ドキュメント/テスト用、正当な宛先にならない。
+			require.Error(t, guardedDialControl(allow, "tcp", "203.0.113.5:80", nil))
+			// RFC 1112/6890 将来予約（240.0.0.0/4）— 現実の宛先として到達不能。
+			require.Error(t, guardedDialControl(allow, "tcp", "240.0.0.1:80", nil))
+			// RFC 2544 ベンチマーク測定用（198.18.0.0/15）— 本番トラフィックの宛先にならない。
+			require.Error(t, guardedDialControl(allow, "tcp", "198.18.0.1:80", nil))
+			// RFC 6890 IETF プロトコル割当（192.0.0.0/24）— 一般宛て通信には使われない。
+			require.Error(t, guardedDialControl(allow, "tcp", "192.0.0.1:80", nil))
+			// RFC 3849 IPv6 ドキュメント用（2001:db8::/32）— テスト/文書専用で実到達不能。
+			require.Error(t, guardedDialControl(allow, "tcp", "[2001:db8::1]:443", nil))
 		})
 	})
 }
