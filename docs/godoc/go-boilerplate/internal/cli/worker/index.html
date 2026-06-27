@@ -107,7 +107,7 @@
 				<dd><a href="#NewHealthServer">func NewHealthServer(addr string, ready func() bool, logger logging.Logger) (func(), func(context.Context))</a></dd>
 			
 				
-				<dd><a href="#RunWorkerWith">func RunWorkerWith(ctx context.Context, name string, args []string, provide func() (StartFunc, StopFunc)) error</a></dd>
+				<dd><a href="#RunWorkerWith">func RunWorkerWith(ctx context.Context, name string, args []string, grace time.Duration, provide func() (StartFunc, StopFunc)) error</a></dd>
 			
 			
 				
@@ -164,7 +164,7 @@ metrics サーバーと異なり専用の ServeMux を使い、pprof/metrics と
 		
 			
 			
-			</p><h2 id="RunWorkerWith">func <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=640:758#L8">RunWorkerWith</a>
+			</p><h2 id="RunWorkerWith">func <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=716:856#L7">RunWorkerWith</a>
 				<a class="permalink" href="#RunWorkerWith">¶</a>
 				
 				
@@ -173,9 +173,11 @@ metrics サーバーと異なり専用の ServeMux を使い、pprof/metrics と
     ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>,
     name <a href="../../../../builtin/#string">string</a>,
     args []<a href="../../../../builtin/#string">string</a>,
+    grace <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>,
     provide func() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>),
 ) <a href="../../../../builtin/#error">error</a></pre>
 			<p>RunWorkerWith は、provide が返す開始・停止関数で worker を実行します。
+grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。
 
 			
 			
@@ -184,7 +186,7 @@ metrics サーバーと異なり専用の ServeMux を使い、pprof/metrics と
 		
 			
 			
-			</p><h2 id="StartFunc">type <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=333:414#L2">StartFunc</a>
+			</p><h2 id="StartFunc">type <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=295:376#L1">StartFunc</a>
 				<a class="permalink" href="#StartFunc">¶</a>
 				
 				
@@ -207,7 +209,7 @@ metrics サーバーと異なり専用の ServeMux を使い、pprof/metrics と
 		
 			
 			
-			<h2 id="StopFunc">type <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=499:544#L5">StopFunc</a>
+			<h2 id="StopFunc">type <a href="../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?s=461:506#L3">StopFunc</a>
 				<a class="permalink" href="#StopFunc">¶</a>
 				
 				
