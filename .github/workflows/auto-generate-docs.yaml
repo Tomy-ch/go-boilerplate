@@ -84,20 +84,29 @@ jobs:
       - name: Seed Database
         run: go run ./cmd/ db-seed --database ${{ env.DB }}
 
-      - name: Generate Test Repo Docs
-        run: make gen-test-repo
-
       - name: Generate ER Diagram
         run: make gen-db-schema-ci
 
-      - name: Generate Portal Docs
+      - name: Generate docs (parallel)
         run: |
-          make gen-portal-docs
-          make gen-docs-json
-          make gen-portal-build
+          set -uo pipefail
+          LOG="$RUNNER_TEMP/genlogs"
+          mkdir -p "$LOG"
 
-      - name: Generate godoc
-        run: make gen-godoc
+          ( make gen-test-repo )      > "$LOG/test-repo.log" 2>&1 & pid_test=$!
+          ( make gen-portal-docs && make gen-docs-json && make gen-portal-build ) \
+                                      > "$LOG/portal.log"    2>&1 & pid_portal=$!
+          ( make gen-godoc )          > "$LOG/godoc.log"     2>&1 & pid_godoc=$!
+
+          rc=0
+          for pid in $pid_test $pid_portal $pid_godoc; do
+            wait "$pid" || rc=1
+          done
+
+          for f in test-repo portal godoc; do
+            echo "::group::$f"; cat "$LOG/$f.log"; echo "::endgroup::"
+          done
+          exit $rc
 
       - name: Fix permissions
         run: |
@@ -116,22 +125,12 @@ jobs:
           # この push に .go 変更が含まれるか（意味のあるカバレッジ更新の判定に使う）。
           go_changed=false
           if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            # 前回 tip が取れない（新規ブランチ等）場合は安全側で「変更あり」とみなす。
             go_changed=true
           elif git diff --name-only "$BEFORE_SHA..$AFTER_SHA" -- '*.go' | grep -q .; then
             go_changed=true
           fi
 
-          # 非決定的ノイズ（再生成のたびに揺れる値）を PR コミットから除外する。【根本対応】
-          # これらを残すと、各 auto-docs PR が異なるノイズ値を抱え、1 つが merge される度に
-          # 他の PR が「SchemaSpy 生成日時 / カバレッジ実行回数」だけで衝突してしまう。
-          # ここで戻す 3 ファイルは、従来から差分判定で除外していたノイズ集合と同一。
-          #
-          # SchemaSpy の概要 / メタ情報は生成日時のみが揺れる純ノイズ → 常に元へ戻す
-          # （スキーマ自体の変更は diagrams/ や tables/ 等の別ファイルに反映されるため失われない）。
           git checkout -- docs/db-schema/index.html docs/db-schema/info-html.txt 2>/dev/null || true
-          # coverage はカバレッジ実行回数が揺れる純ノイズ。ただし今回 push に .go 変更があれば
-          # 意味のあるカバレッジ更新があり得るため残す。
           if [ "$go_changed" = "false" ]; then
             git checkout -- docs/coverage/index.html 2>/dev/null || true
           fi
@@ -149,7 +148,7 @@ jobs:
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
           commit-message: "chore(docs): auto update docs [skip ci]"
-          branch: auto/docs-update/${{ github.ref_name }}-${{ github.run_id }}
+          branch: auto/docs-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
           title: "chore(docs): sync generated artifacts"
           body: |
