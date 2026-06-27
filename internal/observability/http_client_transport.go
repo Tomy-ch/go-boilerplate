@@ -19,6 +19,18 @@ import (
 // private 不許可時のブロック対象として明示的に判定します（クラウド内部用途の SSRF 面を塞ぐ）。
 var cgnatNet = mustParseCIDR("100.64.0.0/10")
 
+// reservedNets は、bogon/予約帯として常時拒否する CIDR 一覧です。
+// これらは正当な宛先になり得ないため、allowPrivateNetwork フラグに関わらずブロックします。
+var reservedNets = []*net.IPNet{
+	mustParseCIDR("240.0.0.0/4"),     // RFC 1112/6890 将来予約（Future Use）
+	mustParseCIDR("192.0.0.0/24"),    // RFC 6890 IETF プロトコル割当（IETF Protocol Assignments）
+	mustParseCIDR("192.0.2.0/24"),    // RFC 5737 TEST-NET-1（ドキュメント/テスト用）
+	mustParseCIDR("198.51.100.0/24"), // RFC 5737 TEST-NET-2（ドキュメント/テスト用）
+	mustParseCIDR("203.0.113.0/24"),  // RFC 5737 TEST-NET-3（ドキュメント/テスト用）
+	mustParseCIDR("198.18.0.0/15"),   // RFC 2544 ベンチマーク測定用（Benchmarking）
+	mustParseCIDR("2001:db8::/32"),   // RFC 3849 IPv6 ドキュメント用（Documentation）
+}
+
 // dialControl は、接続直前に呼ばれる net.Dialer の ControlContext 関数の型です。
 type dialControl = func(ctx context.Context, network, address string, c syscall.RawConn) error
 
@@ -105,7 +117,7 @@ func newGuardedBaseTransport(control dialControl) *http.Transport {
 }
 
 // guardedDialControl は、名前解決後の実接続先 IP を検査する SSRF ガードです（DNS rebinding も防ぎます）。
-// link-local / unspecified は常に拒否し、loopback / private / CGNAT は ctx フラグで許可されない限り拒否します。
+// link-local / unspecified / bogon予約帯は常に拒否し、loopback / private / CGNAT は ctx フラグで許可されない限り拒否します。
 func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawConn) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
@@ -117,6 +129,12 @@ func guardedDialControl(ctx context.Context, _, address string, _ syscall.RawCon
 	}
 	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
 		return xerrors.New("ssrf guard: blocked address " + host)
+	}
+	// bogon/予約帯は正当な宛先にならないため allowPrivateNetwork フラグに関わらず常時拒否する。
+	for _, n := range reservedNets {
+		if n.Contains(ip) {
+			return xerrors.New("ssrf guard: blocked reserved address " + host)
+		}
 	}
 	if !allowPrivateNetworkFromContext(ctx) && (ip.IsLoopback() || ip.IsPrivate() || cgnatNet.Contains(ip)) {
 		return xerrors.New("ssrf guard: blocked private/loopback address " + host)
