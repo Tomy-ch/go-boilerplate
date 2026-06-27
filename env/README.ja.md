@@ -47,8 +47,9 @@
 |SERVER_PORT|ポート番号|int|8080||
 |SERVER_READ_HEADER_TIMEOUT|ヘッダ読み取りタイムアウト|duration|5s|Slowloris対策|
 |SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s||
-|SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|10s||
+|SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|65s|SERVER_REQUEST_TIMEOUT 以上であること必須。短いと deadline budget より先に net/http が接続を切断し budget 制御が無効化される|
 |SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s||
+|SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|停止/期限の単一軸。statement_timeout 等は backstop|
 
 ### Metrics
 
@@ -84,6 +85,8 @@
 |DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨|
 |DB_PING_TIMEOUT|接続確認タイムアウト|duration|10s||
 |DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|observability連携|
+|DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|ctx を無視する query への SQL 層 backstop。0 で無効|
+|DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|長時間ロック待ちへの backstop。0 で無効|
 |DB_TX_MAX_RETRIES|serialization failure / deadlock 時の tx リトライ最大試行回数|int|3|0 でリトライ無効（単発実行）|
 |DB_TX_RETRY_BASE_BACKOFF|tx リトライ backoff の初期値|duration|5ms|指数 backoff の基準値（×2）|
 |DB_TX_RETRY_MAX_BACKOFF|tx リトライ backoff の上限値|duration|100ms|1 試行あたりの上限|

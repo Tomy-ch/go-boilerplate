@@ -64,6 +64,7 @@ type Server struct {
 	ReadTimeout       time.Duration `env:"READ_TIMEOUT,required"`
 	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT,required"`
 	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT,required"`
+	RequestTimeout    time.Duration `env:"REQUEST_TIMEOUT,required"`
 }
 
 // Metrics はメトリクスエンドポイント（Prometheus 等）への接続情報と認証情報を保持する。
@@ -98,6 +99,8 @@ type Database struct {
 	SSLMode                string        `env:"SSL_MODE,required"`
 	PingTimeout            time.Duration `env:"PING_TIMEOUT,required"`
 	SlowQueryWarnThreshold time.Duration `env:"SLOW_QUERY_WARN_THRESHOLD,required"`
+	StatementTimeout       time.Duration `env:"STATEMENT_TIMEOUT,required"`
+	LockTimeout            time.Duration `env:"LOCK_TIMEOUT,required"`
 	TxMaxRetries           int           `env:"TX_MAX_RETRIES,required"`
 	TxRetryBaseBackoff     time.Duration `env:"TX_RETRY_BASE_BACKOFF,required"`
 	TxRetryMaxBackoff      time.Duration `env:"TX_RETRY_MAX_BACKOFF,required"`

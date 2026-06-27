@@ -36,6 +36,7 @@ Each sub-package is split into small responsibilities and combined during applic
 |`cookie`|`Middleware`|Enforce security attributes on Set-Cookie headers|
 |`forcejson`|`Middleware`|Force response Content-Type to JSON|
 |`uri`|`Middleware`|Remove trailing slashes|
+|`timeout`|`Middleware`|Per-request deadline budget (entry point of deadline propagation)|
 |`observability`|`Middleware`|OpenTelemetry tracing integration|
 
 ### Error Handling

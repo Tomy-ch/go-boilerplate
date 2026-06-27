@@ -43,6 +43,7 @@ type ServerConfig struct {
 	readTimeout       time.Duration
 	writeTimeout      time.Duration
 	idleTimeout       time.Duration
+	requestTimeout    time.Duration
 }
 
 // MetricsConfig は、メトリクスエンドポイントの待ち受け情報と認証情報を保持します。
@@ -76,6 +77,8 @@ type DatabaseConfig struct {
 	sslMode                string
 	pingTimeout            time.Duration
 	slowQueryWarnThreshold time.Duration
+	statementTimeout       time.Duration
+	lockTimeout            time.Duration
 	txMaxRetries           int
 	txRetryBaseBackoff     time.Duration
 	txRetryMaxBackoff      time.Duration
@@ -195,6 +198,9 @@ func (s *ServerConfig) WriteTimeout() time.Duration { return s.writeTimeout }
 // IdleTimeout は、サーバーのアイドルタイムアウトを返します。
 func (s *ServerConfig) IdleTimeout() time.Duration { return s.idleTimeout }
 
+// RequestTimeout は、REST リクエスト全体の deadline budget を返します（入口で1点設定し ctx で全層伝播）。
+func (s *ServerConfig) RequestTimeout() time.Duration { return s.requestTimeout }
+
 // NewMetricsConfig は、メトリクスの設定を返します。
 func NewMetricsConfig(cfg *Config) *MetricsConfig { return &cfg.metrics }
 
@@ -272,6 +278,12 @@ func (d *DatabaseConfig) PingTimeout() time.Duration { return d.pingTimeout }
 // この値より長く実行されたクエリは警告レベルでログ出力されます。
 // 0以下の値の場合、スロークエリ警告は無効になります。
 func (d *DatabaseConfig) SlowQueryWarnThreshold() time.Duration { return d.slowQueryWarnThreshold }
+
+// StatementTimeout は、SQL 文の実行時間上限を返します（0 以下で無効）。ctx を無視する runaway query の backstop。
+func (d *DatabaseConfig) StatementTimeout() time.Duration { return d.statementTimeout }
+
+// LockTimeout は、ロック獲得待ちの上限を返します（0 以下で無効）。長時間ロック待ちの backstop。
+func (d *DatabaseConfig) LockTimeout() time.Duration { return d.lockTimeout }
 
 // TxMaxRetries は、トランザクションのリトライ最大試行回数を返します。
 //

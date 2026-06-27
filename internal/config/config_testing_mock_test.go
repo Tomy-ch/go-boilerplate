@@ -35,6 +35,7 @@ func TestMockConfigForTest(t *testing.T) {
 					readTimeout:       expectedServerReadTimeout,
 					writeTimeout:      expectedServerWriteTimeout,
 					idleTimeout:       expectedServerIdleTimeout,
+					requestTimeout:    expectedServerRequestTimeout,
 				},
 				metrics: MetricsConfig{
 					host:     expectedMetricsHost,
@@ -61,6 +62,8 @@ func TestMockConfigForTest(t *testing.T) {
 					sslMode:                expectedDBSSLMode,
 					pingTimeout:            expectedDBPingTimeout,
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					statementTimeout:       expectedDBStatementTimeout,
+					lockTimeout:            expectedDBLockTimeout,
 					txMaxRetries:           expectedDBTxMaxRetries,
 					txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
 					txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
@@ -147,6 +150,7 @@ func Test_mockLoader(t *testing.T) {
 					ReadTimeout:       expectedServerReadTimeout,
 					WriteTimeout:      expectedServerWriteTimeout,
 					IdleTimeout:       expectedServerIdleTimeout,
+					RequestTimeout:    expectedServerRequestTimeout,
 				},
 				Metrics: Metrics{
 					Host:     expectedMetricsHost,
@@ -172,6 +176,8 @@ func Test_mockLoader(t *testing.T) {
 					SSLMode:                expectedDBSSLMode,
 					PingTimeout:            expectedDBPingTimeout,
 					SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					StatementTimeout:       expectedDBStatementTimeout,
+					LockTimeout:            expectedDBLockTimeout,
 					TxMaxRetries:           expectedDBTxMaxRetries,
 					TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
 					TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,

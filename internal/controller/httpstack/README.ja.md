@@ -36,6 +36,7 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 |`cookie`|`Middleware`|Set-Cookie ヘッダのセキュリティ属性強制|
 |`forcejson`|`Middleware`|レスポンスの Content-Type を JSON に強制|
 |`uri`|`Middleware`|末尾スラッシュの除去|
+|`timeout`|`Middleware`|per-request deadline budget（deadline 伝播の入口）|
 |`observability`|`Middleware`|OpenTelemetry トレーシング統合|
 
 ### エラーハンドリング

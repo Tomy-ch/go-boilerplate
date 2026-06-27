@@ -38,12 +38,15 @@ var (
 	expectedServerReadTimeoutCount       = 10
 	expectedServerReadTimeoutStr         = fmt.Sprintf("%ds", expectedServerReadTimeoutCount)
 	expectedServerReadTimeout            = time.Duration(expectedServerReadTimeoutCount) * time.Second
-	expectedServerWriteTimeoutCount      = 15
+	expectedServerWriteTimeoutCount      = 95
 	expectedServerWriteTimeoutStr        = fmt.Sprintf("%ds", expectedServerWriteTimeoutCount)
 	expectedServerWriteTimeout           = time.Duration(expectedServerWriteTimeoutCount) * time.Second
 	expectedServerIdleTimeoutCount       = 60
 	expectedServerIdleTimeoutStr         = fmt.Sprintf("%ds", expectedServerIdleTimeoutCount)
 	expectedServerIdleTimeout            = time.Duration(expectedServerIdleTimeoutCount) * time.Second
+	expectedServerRequestTimeoutCount    = 90
+	expectedServerRequestTimeoutStr      = fmt.Sprintf("%ds", expectedServerRequestTimeoutCount)
+	expectedServerRequestTimeout         = time.Duration(expectedServerRequestTimeoutCount) * time.Second
 	// metrics
 	expectedMetricsHost     = "localhost"
 	expectedMetricsPort     = 6060
@@ -73,6 +76,8 @@ var (
 	expectedDBSlowQueryWarnThresholdCount = 500
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
+	expectedDBStatementTimeout            = 30 * time.Second
+	expectedDBLockTimeout                 = 10 * time.Second
 	expectedDBTxMaxRetries                = 3
 	expectedDBTxMaxRetriesStr             = strconv.Itoa(expectedDBTxMaxRetries)
 	expectedDBTxRetryBaseBackoffCount     = 5
@@ -155,6 +160,7 @@ func MockConfigForTest(tb testing.TB) *Config {
 			readTimeout:       expectedServerReadTimeout,
 			writeTimeout:      expectedServerWriteTimeout,
 			idleTimeout:       expectedServerIdleTimeout,
+			requestTimeout:    expectedServerRequestTimeout,
 		},
 		metrics: MetricsConfig{
 			host:     expectedMetricsHost,
@@ -181,6 +187,8 @@ func MockConfigForTest(tb testing.TB) *Config {
 			sslMode:                expectedDBSSLMode,
 			pingTimeout:            expectedDBPingTimeout,
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+			statementTimeout:       expectedDBStatementTimeout,
+			lockTimeout:            expectedDBLockTimeout,
 			txMaxRetries:           expectedDBTxMaxRetries,
 			txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
 			txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
@@ -272,6 +280,7 @@ func mockLoader(tb testing.TB) Loader {
 			ReadTimeout:       expectedServerReadTimeout,
 			WriteTimeout:      expectedServerWriteTimeout,
 			IdleTimeout:       expectedServerIdleTimeout,
+			RequestTimeout:    expectedServerRequestTimeout,
 		},
 		Database: Database{
 			Host:                   expectedDBHost,
@@ -282,6 +291,8 @@ func mockLoader(tb testing.TB) Loader {
 			SSLMode:                expectedDBSSLMode,
 			PingTimeout:            expectedDBPingTimeout,
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+			StatementTimeout:       expectedDBStatementTimeout,
+			LockTimeout:            expectedDBLockTimeout,
 			TxMaxRetries:           expectedDBTxMaxRetries,
 			TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
 			TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
@@ -333,6 +344,7 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SERVER_READ_TIMEOUT", expectedServerReadTimeoutStr)
 	t.Setenv("SERVER_WRITE_TIMEOUT", expectedServerWriteTimeoutStr)
 	t.Setenv("SERVER_IDLE_TIMEOUT", expectedServerIdleTimeoutStr)
+	t.Setenv("SERVER_REQUEST_TIMEOUT", expectedServerRequestTimeoutStr)
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)
 	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))
@@ -356,6 +368,8 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
 	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
+	t.Setenv("DB_STATEMENT_TIMEOUT", expectedDBStatementTimeout.String())
+	t.Setenv("DB_LOCK_TIMEOUT", expectedDBLockTimeout.String())
 	t.Setenv("DB_TX_MAX_RETRIES", expectedDBTxMaxRetriesStr)
 	t.Setenv("DB_TX_RETRY_BASE_BACKOFF", expectedDBTxRetryBaseBackoffStr)
 	t.Setenv("DB_TX_RETRY_MAX_BACKOFF", expectedDBTxRetryMaxBackoffStr)
