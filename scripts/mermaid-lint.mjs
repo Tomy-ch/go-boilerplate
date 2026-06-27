@@ -80,13 +80,23 @@ function extractMermaidBlocks(content) {
 
 const repoRoot = process.cwd()
 const files = collectMarkdown(repoRoot)
+const suffix = (n) => (n > 0 ? `（読めず skip: ${n} 件）` : "")
 
 let blockCount = 0
 let fileWithBlocks = 0
 const failures = []
+const skipped = []
 
 for (const rel of files) {
-  const content = fs.readFileSync(path.join(repoRoot, rel), "utf8")
+  let content
+  try {
+    content = fs.readFileSync(path.join(repoRoot, rel), "utf8")
+  } catch {
+    // 読めないファイル（壊れた symlink ＝ コンテナ内では実体の無い tmp/ 配下の git 外プラン等、
+    // または権限エラー）は検証対象外としてスキップする。markdownlint も壊れた symlink を黙って飛ばす。
+    skipped.push(rel)
+    continue
+  }
   const blocks = extractMermaidBlocks(content)
   if (blocks.length > 0) fileWithBlocks++
   for (let b = 0; b < blocks.length; b++) {
@@ -111,4 +121,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log(`✓ mermaid-lint: ${blockCount} ブロック / ${fileWithBlocks} ファイル すべて OK`)
+console.log(`✓ mermaid-lint: ${blockCount} ブロック / ${fileWithBlocks} ファイル すべて OK${suffix(skipped.length)}`)
