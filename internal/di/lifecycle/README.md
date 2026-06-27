@@ -72,7 +72,7 @@ lifecycle.SupervisedRunner{
 - **OnStart**: runs `OnStartAux` (if any), then starts `Body` in a goroutine (does not block).
 - **OnStop**: cancels the run context, waits for `Body` to finish bounded by the stop `ctx` (grace), then runs `OnStopAux`.
 
-The run context is derived from `context.Background()` with `WithCancel`, so the goroutine is **not** affected when fx cancels the start context after `OnStart`, yet **is** cancelled on `OnStop`. Standardizing this "Background-derived + cancel-on-stop" shape across the three hooks guarantees the stop signal propagates into in-flight work (previously the job hook alone used `WithoutCancel(startCtx)` and missed stop cancellation).
+The run context is derived from `context.Background()` with `WithCancel`, so the goroutine is **not** affected when fx cancels the start context after `OnStart`, yet **is** cancelled on `OnStop`. Standardizing this "Background-derived + cancel-on-stop" shape across the three hooks guarantees the stop signal propagates into in-flight work.
 
 ## Usage Examples
 

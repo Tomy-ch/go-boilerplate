@@ -59,7 +59,7 @@ func runJob(
 	}
 }
 
-// gracefulStop は、停止開始時点から grace の猶予を与えて後始末（app.Stop）を実行します。
+// gracefulStop は、停止開始時点から grace の猶予を与えて後始末を実行します。
 func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) {
 	stopCtx, cancel := context.WithTimeout(ctx, grace)
 	defer cancel()

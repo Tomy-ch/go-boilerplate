@@ -29,5 +29,5 @@ worker <worker-name> [args...]
 - `job` と異なり、worker は常駐プロセスです。1 回の実行で終了せず、engine の完了チャネルを待ち続けます。
 - SIGINT / SIGTERM を受けると engine を drain してグレースフルに停止し、実際の engine の終了結果（遅延した `Fatal` を含む）を必ず待ち切るため、失敗が握り潰されることはありません。
 - engine 側が自走停止する場合（例: `Fatal` や unknown worker）もあり、その際はその結果でプロセスが終了します。
-- グレースフルストップは停止猶予（`APP_SHUTDOWN_TIMEOUT`、停止タイムアウトの単一軸）で上限が設けられ、停止開始時点から計測されます。停止用 context はキャンセルを切り離しつつ trace/baggage は引き継ぎます。同じ grace を `fx.StopTimeout` にも設定して fx 既定の 15 秒が drain を打ち切らないようにし、起動時に `WORKER_DRAIN_TIMEOUT < APP_SHUTDOWN_TIMEOUT` を検証します（C2）。
+- グレースフルストップは停止猶予（`APP_SHUTDOWN_TIMEOUT`、停止タイムアウトの単一軸）で上限が設けられ、停止開始時点から計測されます。停止用 context はキャンセルを切り離しつつ trace/baggage は引き継ぎます。同じ grace を `fx.StopTimeout` にも設定して fx 既定の 15 秒が drain を打ち切らないようにし、起動時に `WORKER_DRAIN_TIMEOUT < APP_SHUTDOWN_TIMEOUT` を検証します。
 - 本パッケージは、metrics/pprof サーバーとは別の専用 mux で health listener（`/healthz` liveness、`/readyz` readiness）を公開できます。

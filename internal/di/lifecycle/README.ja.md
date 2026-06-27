@@ -52,7 +52,7 @@ lifecycle.SupervisedRunner{
 - **OnStart**: `OnStartAux`（あれば）を実行後、`Body` を goroutine で起動（ブロックしない）。
 - **OnStop**: 実行 context をキャンセルし、停止 `ctx`（grace）の範囲で `Body` の完了を待ち、`OnStopAux` を実行。
 
-実行 context は `context.Background()` を `WithCancel` で派生させるため、`OnStart` 完了後に fx が起動 context をキャンセルしても goroutine は巻き込まれず、`OnStop` でのみキャンセルされます。この「Background 由来 + 停止時キャンセル」の型を 3 hook で揃えることで、停止シグナルが実行中の処理へ確実に伝播します（従来は job hook だけが `WithoutCancel(startCtx)` で停止キャンセルを欠いていました）。
+実行 context は `context.Background()` を `WithCancel` で派生させるため、`OnStart` 完了後に fx が起動 context をキャンセルしても goroutine は巻き込まれず、`OnStop` でのみキャンセルされます。この「Background 由来 + 停止時キャンセル」の型を 3 hook で揃えることで、停止シグナルが実行中の処理へ確実に伝播します。
 
 ## 利用箇所の例
 

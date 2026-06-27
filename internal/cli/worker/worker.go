@@ -55,7 +55,7 @@ func runWorker(ctx context.Context, name string, args []string, grace time.Durat
 	return runErr
 }
 
-// gracefulStop は、停止開始時点から grace の猶予を与えて後始末（app.Stop=drain）を実行します。
+// gracefulStop は、停止開始時点から grace の猶予を与えて後始末を実行します。
 // ctx は SIGTERM で既にキャンセル済みのため、停止用 context はキャンセルだけ切り離して
 // （trace/baggage は引き継ぎつつ）作り直します。
 func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) {

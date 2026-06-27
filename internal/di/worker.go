@@ -31,7 +31,7 @@ func NewWorkerCore() fx.Option {
 
 // RunWorker は、worker 実行用の開始関数・停止関数を生成して返します。
 // grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
-// DrainTimeout より先に drain を打ち切らないようにします（C2）。
+// DrainTimeout より先に drain を打ち切らないようにします。
 func RunWorker(grace time.Duration) (StartFunc, StopFunc) {
 	var (
 		state  workerboundary.State
