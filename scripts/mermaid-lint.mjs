@@ -2,8 +2,8 @@
 // markdownlint-cli2 は Markdown の体裁しか見ず mermaid 図の文法は素通りするため、その穴を塞ぐ。
 // node_tool_runner コンテナ内で `make md-lint-ci` から呼ばれる前提（mermaid / linkedom は scripts/node_modules）。
 //
-// mermaid.parse は flowchart の DOMPurify サニタイズで DOM を要求するため、import 前に linkedom で
-// 最小の window/document を用意してから mermaid を動的 import する。1 つでも壊れた図があれば非 0 で終了する。
+// mermaid.parse は DOMPurify サニタイズで DOM を要求するため、mermaid のロードには DOM 環境が要る。
+// 1 つでも壊れた図があれば非 0 で終了する。
 import fs from "node:fs"
 import path from "node:path"
 import { createRequire } from "node:module"
@@ -69,7 +69,8 @@ function extractMermaidBlocks(content) {
     const body = []
     let j = i + 1
     for (; j < lines.length; j++) {
-      if (close.test(lines[j]) && !lines[j].trim().endsWith("mermaid")) break
+      // close は `\s*$` 終端のため、フェンス文字のみの行だけが閉じになる（```mermaid 等は閉じ扱いにならない）。
+      if (close.test(lines[j])) break
       body.push(lines[j])
     }
     blocks.push({ startLine: i + 1, code: body.join("\n") })
@@ -92,8 +93,8 @@ for (const rel of files) {
   try {
     content = fs.readFileSync(path.join(repoRoot, rel), "utf8")
   } catch {
-    // 読めないファイル（壊れた symlink ＝ コンテナ内では実体の無い tmp/ 配下の git 外プラン等、
-    // または権限エラー）は検証対象外としてスキップする。markdownlint も壊れた symlink を黙って飛ばす。
+    // 読めないファイル（壊れた symlink や権限エラー）は検証対象外としてスキップする。
+    // markdownlint も壊れた symlink を黙って飛ばすため挙動を揃える。
     skipped.push(rel)
     continue
   }

@@ -6,7 +6,7 @@
 # -----CI内で実行するコマンド群-----
 .PHONY: md-lint-ci ## MarkdownのLintを実行(CI用)
 .PHONY: md-fix-ci ## MarkdownのLint自動修正を実行(CI用)
-.PHONY: md-markdownlint-ci
+.PHONY: md-markdownlint-ci ## markdownlint-cli2 で Markdown 体裁を Lint(CI用)
 .PHONY: md-mermaid-lint-ci ## Mermaid 図の構文Lintを実行(CI用)
 
 # -----Dockerコンテナ内で実行するコマンド群-----
@@ -23,7 +23,7 @@ md-mermaid-lint:
 # markdownlint-cli2 の ignore 記法は "#glob"。Make 変数代入では # がコメント開始になるため \# でエスケープする。
 MD_GLOBS := "**/*.md" "\#vendor/**" "\#**/node_modules/**" "\#.git/**" "\#docs/portal/guides/**" "\#docs/coverage/**" "\#docs/db-schema/**" "\#AGENTS.md"
 
-# markdownlint（体裁）と mermaid（図の構文）の両方を通す。どちらかが落ちれば md-lint-ci も落ちる。
+# markdownlint（体裁）と mermaid（図の構文）の両方を通す。
 md-lint-ci: md-markdownlint-ci md-mermaid-lint-ci
 
 md-markdownlint-ci:
