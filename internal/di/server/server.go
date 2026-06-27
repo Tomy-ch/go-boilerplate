@@ -38,6 +38,8 @@ func MiddlewareModule() fx.Option {
 		// Middleware Modules
 		inbound.IPExtractorModule(),
 		inbound.URIModule(),
+		inbound.TimeoutModule(),
+		inbound.BodyLimitModule(),
 		inbound.OpenAPIModule(),
 		outbound.ErrorHandlerModule(),
 		outbound.ForceJSONModule(),

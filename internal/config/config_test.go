@@ -3,6 +3,7 @@ package config
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,8 @@ func TestNewConfig(t *testing.T) {
 					readTimeout:       expectedServerReadTimeout,
 					writeTimeout:      expectedServerWriteTimeout,
 					idleTimeout:       expectedServerIdleTimeout,
+					bodyLimitMB:       expectedServerBodyLimitMB,
+					requestTimeout:    expectedServerRequestTimeout,
 				},
 				metrics: MetricsConfig{
 					host:     expectedMetricsHost,
@@ -57,6 +60,11 @@ func TestNewConfig(t *testing.T) {
 					sslMode:                expectedDBSSLMode,
 					pingTimeout:            expectedDBPingTimeout,
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+					statementTimeout:       expectedDBStatementTimeout,
+					lockTimeout:            expectedDBLockTimeout,
+					txMaxRetries:           expectedDBTxMaxRetries,
+					txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				dbconnection: DBConnectionConfig{
 					maxConns:    expectedDBMaxConnsInt32,
@@ -286,6 +294,24 @@ func Test_validateServerConfig(t *testing.T) {
 
 			err := validateServerConfig(cfg.Server)
 			require.ErrorIs(t, err, ErrReadHeaderTimeoutExceedsReadTimeout)
+		})
+
+		t.Run("WriteTimeoutがRequestTimeout未満の場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Server.WriteTimeout = cfg.Server.RequestTimeout - time.Second // RequestTimeout より 1s 短い
+
+			err := validateServerConfig(cfg.Server)
+			require.ErrorIs(t, err, ErrWriteTimeoutBelowRequestTimeout)
+		})
+
+		t.Run("WriteTimeoutがRequestTimeoutと同値の場合は許容されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Server.WriteTimeout = cfg.Server.RequestTimeout // 境界値: 等値は有効
+
+			err := validateServerConfig(cfg.Server)
+			require.NoError(t, err)
 		})
 	})
 }

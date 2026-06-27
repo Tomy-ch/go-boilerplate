@@ -19,7 +19,8 @@ English | [日本語](README.ja.md)
 
 ## Notes
 
-- `engineCtx` is cancelled only on `OnStop`, so it is not affected by `startCtx` cancellation after Start completes
+- The Start/Stop plumbing (detached goroutine, cancel-on-stop, grace-bounded drain) is delegated to `lifecycle.SupervisedRunner`
+- The run context is cancelled only on `OnStop`, so it is not affected by `startCtx` cancellation after Start completes
 - The return value of `engine.Run` is intentionally ignored; the loop owns its own retry / backoff
 - Used only in the relay-dedicated process (`cmd outbox-relay`), not in the main server
 - On Stop, loop termination is bounded by `stopCtx`

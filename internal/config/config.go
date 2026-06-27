@@ -51,6 +51,8 @@ func New() (*Config, error) {
 			readTimeout:       cfg.Server.ReadTimeout,
 			writeTimeout:      cfg.Server.WriteTimeout,
 			idleTimeout:       cfg.Server.IdleTimeout,
+			bodyLimitMB:       cfg.Server.BodyLimitMB,
+			requestTimeout:    cfg.Server.RequestTimeout,
 		},
 		metrics: MetricsConfig{
 			host:     cfg.Metrics.Host,
@@ -77,6 +79,11 @@ func New() (*Config, error) {
 			sslMode:                cfg.Database.SSLMode,
 			pingTimeout:            cfg.Database.PingTimeout,
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
+			statementTimeout:       cfg.Database.StatementTimeout,
+			lockTimeout:            cfg.Database.LockTimeout,
+			txMaxRetries:           cfg.Database.TxMaxRetries,
+			txRetryBaseBackoff:     cfg.Database.TxRetryBaseBackoff,
+			txRetryMaxBackoff:      cfg.Database.TxRetryMaxBackoff,
 		},
 		dbconnection: DBConnectionConfig{
 			maxConns:    cfg.DBConnection.MaxConns,
@@ -204,6 +211,10 @@ func validateServerConfig(srvCfg Server) error {
 
 	if srvCfg.ReadHeaderTimeout > srvCfg.ReadTimeout {
 		return ErrReadHeaderTimeoutExceedsReadTimeout
+	}
+
+	if srvCfg.WriteTimeout < srvCfg.RequestTimeout {
+		return ErrWriteTimeoutBelowRequestTimeout
 	}
 	return nil
 }

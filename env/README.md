@@ -47,8 +47,10 @@ This directory is the canonical reference for every environment variable read by
 |SERVER_PORT|Port number|int|8080||
 |SERVER_READ_HEADER_TIMEOUT|Header read timeout|duration|5s|Protection against Slowloris|
 |SERVER_READ_TIMEOUT|Request read timeout|duration|10s||
-|SERVER_WRITE_TIMEOUT|Response write timeout|duration|10s||
+|SERVER_WRITE_TIMEOUT|Response write timeout|duration|65s|Must be >= SERVER_REQUEST_TIMEOUT; net/http cuts the connection before the deadline budget fires if this is shorter|
 |SERVER_IDLE_TIMEOUT|KeepAlive timeout|duration|60s||
+|SERVER_BODY_LIMIT_MB|Request body size limit in MB (decimal, 1MB=1,000,000 bytes); 413 on exceed|int|5|Pre middleware, applied before OpenAPI validation reads the body|
+|SERVER_REQUEST_TIMEOUT|Per-request deadline budget (set once at the entry, propagated to all layers via ctx)|duration|60s|Single stop-timeout axis; statement_timeout etc. are backstops|
 
 ### Metrics
 
@@ -84,6 +86,11 @@ This directory is the canonical reference for every environment variable read by
 |DB_SSL_MODE|SSL setting|string|disable|require recommended in production|
 |DB_PING_TIMEOUT|Connection check timeout|duration|10s||
 |DB_SLOW_QUERY_WARN_THRESHOLD|Slow query warning threshold|duration|500ms|Integrated with observability|
+|DB_STATEMENT_TIMEOUT|Per-statement execution timeout (`statement_timeout`)|duration|30s|SQL-level backstop for queries that ignore ctx; 0 disables|
+|DB_LOCK_TIMEOUT|Lock acquisition wait timeout (`lock_timeout`)|duration|10s|Backstop against long lock waits; 0 disables|
+|DB_TX_MAX_RETRIES|Max tx retry attempts on serialization failure / deadlock|int|3|0 disables retry (single attempt)|
+|DB_TX_RETRY_BASE_BACKOFF|Initial backoff for tx retry|duration|5ms|Exponential base (×2)|
+|DB_TX_RETRY_MAX_BACKOFF|Max backoff for tx retry|duration|100ms|Upper bound per attempt|
 
 ### Database Connection Pool
 

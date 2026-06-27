@@ -239,336 +239,366 @@
 <span id="L182" class="ln">   182  </span>			require.Eventually(t, func() bool { return f.ExtendCount(&#34;a&#34;) &gt;= 2 }, eventually, tick)
 <span id="L183" class="ln">   183  </span>		})
 <span id="L184" class="ln">   184  </span>	})
-<span id="L185" class="ln">   185  </span>}
-<span id="L186" class="ln">   186  </span>
-<span id="L187" class="ln">   187  </span>func Test_Engine_A4_DuplicateDelivery(t *testing.T) {
-<span id="L188" class="ln">   188  </span>	t.Parallel()
-<span id="L189" class="ln">   189  </span>
-<span id="L190" class="ln">   190  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L191" class="ln">   191  </span>		t.Parallel()
-<span id="L192" class="ln">   192  </span>
-<span id="L193" class="ln">   193  </span>		t.Run(&#34;同一 ID の重複配送がそのまま Handler に届く&#34;, func(t *testing.T) {
-<span id="L194" class="ln">   194  </span>			t.Parallel()
-<span id="L195" class="ln">   195  </span>
-<span id="L196" class="ln">   196  </span>			f := fake.New()
-<span id="L197" class="ln">   197  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;}, bw.Message{ID: &#34;a&#34;})
-<span id="L198" class="ln">   198  </span>			var mu sync.Mutex
-<span id="L199" class="ln">   199  </span>			count := 0
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L187" class="ln">   187  </span>		t.Parallel()
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>		t.Run(&#34;Extend が失敗してもハートビートは継続し処理は完了する&#34;, func(t *testing.T) {
+<span id="L190" class="ln">   190  </span>			t.Parallel()
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>			<span class="comment">// H2: Extend 失敗は握り潰さず log+metric で可視化しつつ、ハートビート goroutine は</span>
+<span id="L193" class="ln">   193  </span>			<span class="comment">// 生き続け、handler 完了で Ack される（lease 延長失敗は致命ではない）。</span>
+<span id="L194" class="ln">   194  </span>			f := fake.New()
+<span id="L195" class="ln">   195  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
+<span id="L196" class="ln">   196  </span>			f.SetExtendErr(xerrors.New(&#34;extend boom&#34;))
+<span id="L197" class="ln">   197  </span>			release := make(chan struct{})
+<span id="L198" class="ln">   198  </span>			var once sync.Once
+<span id="L199" class="ln">   199  </span>			closeRelease := func() { once.Do(func() { close(release) }) }
 <span id="L200" class="ln">   200  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-<span id="L201" class="ln">   201  </span>				mu.Lock()
-<span id="L202" class="ln">   202  </span>				count++
-<span id="L203" class="ln">   203  </span>				mu.Unlock()
-<span id="L204" class="ln">   204  </span>				return nil
-<span id="L205" class="ln">   205  </span>			})}
+<span id="L201" class="ln">   201  </span>				&lt;-release
+<span id="L202" class="ln">   202  </span>				return nil
+<span id="L203" class="ln">   203  </span>			})}
+<span id="L204" class="ln">   204  </span>			set := baseSettings()
+<span id="L205" class="ln">   205  </span>			set.ExtendInterval = 5 * time.Millisecond
 <span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-<span id="L208" class="ln">   208  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L207" class="ln">   207  </span>			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+<span id="L208" class="ln">   208  </span>			defer func() { closeRelease(); cancel(); &lt;-done }()
 <span id="L209" class="ln">   209  </span>
-<span id="L210" class="ln">   210  </span>			require.Eventually(t, func() bool {
-<span id="L211" class="ln">   211  </span>				mu.Lock()
-<span id="L212" class="ln">   212  </span>				defer mu.Unlock()
-<span id="L213" class="ln">   213  </span>				return count == 2
-<span id="L214" class="ln">   214  </span>			}, eventually, tick)
-<span id="L215" class="ln">   215  </span>		})
-<span id="L216" class="ln">   216  </span>	})
-<span id="L217" class="ln">   217  </span>}
-<span id="L218" class="ln">   218  </span>
-<span id="L219" class="ln">   219  </span>func Test_Engine_A5_PermanentAndFatal(t *testing.T) {
-<span id="L220" class="ln">   220  </span>	t.Parallel()
-<span id="L221" class="ln">   221  </span>
-<span id="L222" class="ln">   222  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L223" class="ln">   223  </span>		t.Parallel()
-<span id="L224" class="ln">   224  </span>
-<span id="L225" class="ln">   225  </span>		t.Run(&#34;Permanent は FailureHandler へ退避してから Ack される&#34;, func(t *testing.T) {
-<span id="L226" class="ln">   226  </span>			t.Parallel()
-<span id="L227" class="ln">   227  </span>
-<span id="L228" class="ln">   228  </span>			f := fake.New()
-<span id="L229" class="ln">   229  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
-<span id="L230" class="ln">   230  </span>			w := testWorker{name: &#34;w&#34;, cons: f, failure: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-<span id="L231" class="ln">   231  </span>				return xerrors.Wrap(apperror.ErrPermanent, &#34;bad message&#34;)
-<span id="L232" class="ln">   232  </span>			})}
-<span id="L233" class="ln">   233  </span>
-<span id="L234" class="ln">   234  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-<span id="L235" class="ln">   235  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L210" class="ln">   210  </span>			require.Eventually(t, func() bool { return f.ExtendCount(&#34;a&#34;) &gt;= 2 }, eventually, tick)
+<span id="L211" class="ln">   211  </span>			closeRelease()
+<span id="L212" class="ln">   212  </span>			require.Eventually(t, func() bool { return len(f.AckedIDs()) &gt;= 1 }, eventually, tick)
+<span id="L213" class="ln">   213  </span>		})
+<span id="L214" class="ln">   214  </span>	})
+<span id="L215" class="ln">   215  </span>}
+<span id="L216" class="ln">   216  </span>
+<span id="L217" class="ln">   217  </span>func Test_Engine_A4_DuplicateDelivery(t *testing.T) {
+<span id="L218" class="ln">   218  </span>	t.Parallel()
+<span id="L219" class="ln">   219  </span>
+<span id="L220" class="ln">   220  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L221" class="ln">   221  </span>		t.Parallel()
+<span id="L222" class="ln">   222  </span>
+<span id="L223" class="ln">   223  </span>		t.Run(&#34;同一 ID の重複配送がそのまま Handler に届く&#34;, func(t *testing.T) {
+<span id="L224" class="ln">   224  </span>			t.Parallel()
+<span id="L225" class="ln">   225  </span>
+<span id="L226" class="ln">   226  </span>			f := fake.New()
+<span id="L227" class="ln">   227  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;}, bw.Message{ID: &#34;a&#34;})
+<span id="L228" class="ln">   228  </span>			var mu sync.Mutex
+<span id="L229" class="ln">   229  </span>			count := 0
+<span id="L230" class="ln">   230  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+<span id="L231" class="ln">   231  </span>				mu.Lock()
+<span id="L232" class="ln">   232  </span>				count++
+<span id="L233" class="ln">   233  </span>				mu.Unlock()
+<span id="L234" class="ln">   234  </span>				return nil
+<span id="L235" class="ln">   235  </span>			})}
 <span id="L236" class="ln">   236  </span>
-<span id="L237" class="ln">   237  </span>			require.Eventually(t, func() bool {
-<span id="L238" class="ln">   238  </span>				return len(f.Failed()) == 1 &amp;&amp; len(f.AckedIDs()) == 1
-<span id="L239" class="ln">   239  </span>			}, eventually, tick)
-<span id="L240" class="ln">   240  </span>			assert.Empty(t, f.NackedIDs())
-<span id="L241" class="ln">   241  </span>		})
-<span id="L242" class="ln">   242  </span>
-<span id="L243" class="ln">   243  </span>		t.Run(&#34;Fatal は cancel 無しでも engine を停止させる&#34;, func(t *testing.T) {
-<span id="L244" class="ln">   244  </span>			t.Parallel()
-<span id="L245" class="ln">   245  </span>
-<span id="L246" class="ln">   246  </span>			f := fake.New()
-<span id="L247" class="ln">   247  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
-<span id="L248" class="ln">   248  </span>			fatal := xerrors.Wrap(apperror.ErrFatal, &#34;config broken&#34;)
-<span id="L249" class="ln">   249  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-<span id="L250" class="ln">   250  </span>				return fatal
-<span id="L251" class="ln">   251  </span>			})}
-<span id="L252" class="ln">   252  </span>
-<span id="L253" class="ln">   253  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-<span id="L254" class="ln">   254  </span>			defer cancel()
-<span id="L255" class="ln">   255  </span>
-<span id="L256" class="ln">   256  </span>			select {
-<span id="L257" class="ln">   257  </span>			case err := &lt;-done:
-<span id="L258" class="ln">   258  </span>				require.ErrorIs(t, err, apperror.ErrFatal)
-<span id="L259" class="ln">   259  </span>			case &lt;-time.After(eventually):
-<span id="L260" class="ln">   260  </span>				t.Fatal(&#34;Fatal で engine が停止しなかった&#34;)
-<span id="L261" class="ln">   261  </span>			}
-<span id="L262" class="ln">   262  </span>		})
-<span id="L263" class="ln">   263  </span>	})
-<span id="L264" class="ln">   264  </span>}
-<span id="L265" class="ln">   265  </span>
-<span id="L266" class="ln">   266  </span>func Test_Engine_A6_PanicIsolation(t *testing.T) {
-<span id="L267" class="ln">   267  </span>	t.Parallel()
-<span id="L268" class="ln">   268  </span>
-<span id="L269" class="ln">   269  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L270" class="ln">   270  </span>		t.Parallel()
-<span id="L271" class="ln">   271  </span>
-<span id="L272" class="ln">   272  </span>		t.Run(&#34;1 メッセージの panic が他メッセージ・engine を巻き込まない&#34;, func(t *testing.T) {
-<span id="L273" class="ln">   273  </span>			t.Parallel()
-<span id="L274" class="ln">   274  </span>
-<span id="L275" class="ln">   275  </span>			f := fake.New()
-<span id="L276" class="ln">   276  </span>			f.Enqueue(bw.Message{ID: &#34;good&#34;}, bw.Message{ID: &#34;bad&#34;})
-<span id="L277" class="ln">   277  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
-<span id="L278" class="ln">   278  </span>				if m.ID == &#34;bad&#34; {
-<span id="L279" class="ln">   279  </span>					panic(&#34;boom&#34;)
-<span id="L280" class="ln">   280  </span>				}
-<span id="L281" class="ln">   281  </span>				return nil
-<span id="L282" class="ln">   282  </span>			})}
-<span id="L283" class="ln">   283  </span>
-<span id="L284" class="ln">   284  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-<span id="L285" class="ln">   285  </span>			defer func() { cancel(); &lt;-done }()
-<span id="L286" class="ln">   286  </span>
-<span id="L287" class="ln">   287  </span>			require.Eventually(t, func() bool { return slices.Contains(f.AckedIDs(), &#34;good&#34;) }, eventually, tick)
-<span id="L288" class="ln">   288  </span>			require.Eventually(t, func() bool { return slices.Contains(f.NackedIDs(), &#34;bad&#34;) }, eventually, tick)
-<span id="L289" class="ln">   289  </span>		})
-<span id="L290" class="ln">   290  </span>	})
-<span id="L291" class="ln">   291  </span>}
-<span id="L292" class="ln">   292  </span>
-<span id="L293" class="ln">   293  </span>func Test_Engine_A7_PoisonWarn(t *testing.T) {
-<span id="L294" class="ln">   294  </span>	t.Parallel()
+<span id="L237" class="ln">   237  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+<span id="L238" class="ln">   238  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span>			require.Eventually(t, func() bool {
+<span id="L241" class="ln">   241  </span>				mu.Lock()
+<span id="L242" class="ln">   242  </span>				defer mu.Unlock()
+<span id="L243" class="ln">   243  </span>				return count == 2
+<span id="L244" class="ln">   244  </span>			}, eventually, tick)
+<span id="L245" class="ln">   245  </span>		})
+<span id="L246" class="ln">   246  </span>	})
+<span id="L247" class="ln">   247  </span>}
+<span id="L248" class="ln">   248  </span>
+<span id="L249" class="ln">   249  </span>func Test_Engine_A5_PermanentAndFatal(t *testing.T) {
+<span id="L250" class="ln">   250  </span>	t.Parallel()
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L253" class="ln">   253  </span>		t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>		t.Run(&#34;Permanent は FailureHandler へ退避してから Ack される&#34;, func(t *testing.T) {
+<span id="L256" class="ln">   256  </span>			t.Parallel()
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>			f := fake.New()
+<span id="L259" class="ln">   259  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
+<span id="L260" class="ln">   260  </span>			w := testWorker{name: &#34;w&#34;, cons: f, failure: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+<span id="L261" class="ln">   261  </span>				return xerrors.Wrap(apperror.ErrPermanent, &#34;bad message&#34;)
+<span id="L262" class="ln">   262  </span>			})}
+<span id="L263" class="ln">   263  </span>
+<span id="L264" class="ln">   264  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+<span id="L265" class="ln">   265  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L266" class="ln">   266  </span>
+<span id="L267" class="ln">   267  </span>			require.Eventually(t, func() bool {
+<span id="L268" class="ln">   268  </span>				return len(f.Failed()) == 1 &amp;&amp; len(f.AckedIDs()) == 1
+<span id="L269" class="ln">   269  </span>			}, eventually, tick)
+<span id="L270" class="ln">   270  </span>			assert.Empty(t, f.NackedIDs())
+<span id="L271" class="ln">   271  </span>		})
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span>		t.Run(&#34;Fatal は cancel 無しでも engine を停止させる&#34;, func(t *testing.T) {
+<span id="L274" class="ln">   274  </span>			t.Parallel()
+<span id="L275" class="ln">   275  </span>
+<span id="L276" class="ln">   276  </span>			f := fake.New()
+<span id="L277" class="ln">   277  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
+<span id="L278" class="ln">   278  </span>			fatal := xerrors.Wrap(apperror.ErrFatal, &#34;config broken&#34;)
+<span id="L279" class="ln">   279  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+<span id="L280" class="ln">   280  </span>				return fatal
+<span id="L281" class="ln">   281  </span>			})}
+<span id="L282" class="ln">   282  </span>
+<span id="L283" class="ln">   283  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+<span id="L284" class="ln">   284  </span>			defer cancel()
+<span id="L285" class="ln">   285  </span>
+<span id="L286" class="ln">   286  </span>			select {
+<span id="L287" class="ln">   287  </span>			case err := &lt;-done:
+<span id="L288" class="ln">   288  </span>				require.ErrorIs(t, err, apperror.ErrFatal)
+<span id="L289" class="ln">   289  </span>			case &lt;-time.After(eventually):
+<span id="L290" class="ln">   290  </span>				t.Fatal(&#34;Fatal で engine が停止しなかった&#34;)
+<span id="L291" class="ln">   291  </span>			}
+<span id="L292" class="ln">   292  </span>		})
+<span id="L293" class="ln">   293  </span>	})
+<span id="L294" class="ln">   294  </span>}
 <span id="L295" class="ln">   295  </span>
-<span id="L296" class="ln">   296  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L297" class="ln">   297  </span>		t.Parallel()
+<span id="L296" class="ln">   296  </span>func Test_Engine_A6_PanicIsolation(t *testing.T) {
+<span id="L297" class="ln">   297  </span>	t.Parallel()
 <span id="L298" class="ln">   298  </span>
-<span id="L299" class="ln">   299  </span>		t.Run(&#34;ReceiveCount が閾値以上で warn ログが出る&#34;, func(t *testing.T) {
-<span id="L300" class="ln">   300  </span>			t.Parallel()
+<span id="L299" class="ln">   299  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L300" class="ln">   300  </span>		t.Parallel()
 <span id="L301" class="ln">   301  </span>
-<span id="L302" class="ln">   302  </span>			logger, observed := logging.NewObservedTestLogger(t)
-<span id="L303" class="ln">   303  </span>			f := fake.New()
-<span id="L304" class="ln">   304  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
-<span id="L305" class="ln">   305  </span>			set := baseSettings()
-<span id="L306" class="ln">   306  </span>			set.ReceiveCountWarnThreshold = 1
-<span id="L307" class="ln">   307  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
-<span id="L308" class="ln">   308  </span>
-<span id="L309" class="ln">   309  </span>			cancel, done := startEngine(t, set, logger, w)
-<span id="L310" class="ln">   310  </span>			defer func() { cancel(); &lt;-done }()
-<span id="L311" class="ln">   311  </span>
-<span id="L312" class="ln">   312  </span>			require.Eventually(t, func() bool {
-<span id="L313" class="ln">   313  </span>				return observed.FilterMessage(&#34;receive count threshold reached&#34;).Len() &gt;= 1
-<span id="L314" class="ln">   314  </span>			}, eventually, tick)
-<span id="L315" class="ln">   315  </span>		})
-<span id="L316" class="ln">   316  </span>	})
-<span id="L317" class="ln">   317  </span>}
-<span id="L318" class="ln">   318  </span>
-<span id="L319" class="ln">   319  </span><span class="comment">// --- B. backpressure / 順序 ---</span>
-<span id="L320" class="ln">   320  </span>
-<span id="L321" class="ln">   321  </span>func Test_Engine_B1_ConcurrencyLimit(t *testing.T) {
-<span id="L322" class="ln">   322  </span>	t.Parallel()
-<span id="L323" class="ln">   323  </span>
-<span id="L324" class="ln">   324  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L325" class="ln">   325  </span>		t.Parallel()
-<span id="L326" class="ln">   326  </span>
-<span id="L327" class="ln">   327  </span>		t.Run(&#34;同時 Handle 数が Concurrency を超えない&#34;, func(t *testing.T) {
-<span id="L328" class="ln">   328  </span>			t.Parallel()
-<span id="L329" class="ln">   329  </span>
-<span id="L330" class="ln">   330  </span>			f := fake.New()
-<span id="L331" class="ln">   331  </span>			for i := range 6 {
-<span id="L332" class="ln">   332  </span>				f.Enqueue(bw.Message{ID: string(rune(&#39;a&#39; + i))})
-<span id="L333" class="ln">   333  </span>			}
-<span id="L334" class="ln">   334  </span>			var cur, maxObserved atomic.Int32
-<span id="L335" class="ln">   335  </span>			release := make(chan struct{})
-<span id="L336" class="ln">   336  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-<span id="L337" class="ln">   337  </span>				c := cur.Add(1)
-<span id="L338" class="ln">   338  </span>				for {
-<span id="L339" class="ln">   339  </span>					old := maxObserved.Load()
-<span id="L340" class="ln">   340  </span>					if c &lt;= old || maxObserved.CompareAndSwap(old, c) {
-<span id="L341" class="ln">   341  </span>						break
-<span id="L342" class="ln">   342  </span>					}
-<span id="L343" class="ln">   343  </span>				}
-<span id="L344" class="ln">   344  </span>				&lt;-release
-<span id="L345" class="ln">   345  </span>				cur.Add(-1)
-<span id="L346" class="ln">   346  </span>				return nil
-<span id="L347" class="ln">   347  </span>			})}
-<span id="L348" class="ln">   348  </span>			set := baseSettings()
-<span id="L349" class="ln">   349  </span>			set.Concurrency = 2
-<span id="L350" class="ln">   350  </span>			set.MaxInFlight = 8
-<span id="L351" class="ln">   351  </span>			set.BatchSize = 8
-<span id="L352" class="ln">   352  </span>
-<span id="L353" class="ln">   353  </span>			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-<span id="L354" class="ln">   354  </span>			defer func() { close(release); cancel(); &lt;-done }()
-<span id="L355" class="ln">   355  </span>
-<span id="L356" class="ln">   356  </span>			require.Eventually(t, func() bool { return cur.Load() == 2 }, eventually, tick)
-<span id="L357" class="ln">   357  </span>			assert.LessOrEqual(t, maxObserved.Load(), int32(2))
-<span id="L358" class="ln">   358  </span>		})
-<span id="L359" class="ln">   359  </span>	})
-<span id="L360" class="ln">   360  </span>}
-<span id="L361" class="ln">   361  </span>
-<span id="L362" class="ln">   362  </span>func Test_Engine_B2_InflightLimit(t *testing.T) {
-<span id="L363" class="ln">   363  </span>	t.Parallel()
-<span id="L364" class="ln">   364  </span>
-<span id="L365" class="ln">   365  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L366" class="ln">   366  </span>		t.Parallel()
-<span id="L367" class="ln">   367  </span>
-<span id="L368" class="ln">   368  </span>		t.Run(&#34;in-flight が MaxInFlight を超えない&#34;, func(t *testing.T) {
-<span id="L369" class="ln">   369  </span>			t.Parallel()
-<span id="L370" class="ln">   370  </span>
-<span id="L371" class="ln">   371  </span>			f := fake.New()
-<span id="L372" class="ln">   372  </span>			for i := range 10 {
-<span id="L373" class="ln">   373  </span>				f.Enqueue(bw.Message{ID: string(rune(&#39;a&#39; + i))})
-<span id="L374" class="ln">   374  </span>			}
-<span id="L375" class="ln">   375  </span>			release := make(chan struct{})
-<span id="L376" class="ln">   376  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-<span id="L377" class="ln">   377  </span>				&lt;-release
-<span id="L378" class="ln">   378  </span>				return nil
-<span id="L379" class="ln">   379  </span>			})}
-<span id="L380" class="ln">   380  </span>			set := baseSettings()
-<span id="L381" class="ln">   381  </span>			set.Concurrency = 3
-<span id="L382" class="ln">   382  </span>			set.MaxInFlight = 3
-<span id="L383" class="ln">   383  </span>			set.BatchSize = 5
-<span id="L384" class="ln">   384  </span>
-<span id="L385" class="ln">   385  </span>			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-<span id="L386" class="ln">   386  </span>			defer func() { close(release); cancel(); &lt;-done }()
-<span id="L387" class="ln">   387  </span>
-<span id="L388" class="ln">   388  </span>			require.Eventually(t, func() bool { return f.InflightLen() == 3 }, eventually, tick)
-<span id="L389" class="ln">   389  </span>			assert.LessOrEqual(t, f.InflightLen(), 3)
-<span id="L390" class="ln">   390  </span>		})
-<span id="L391" class="ln">   391  </span>	})
-<span id="L392" class="ln">   392  </span>}
-<span id="L393" class="ln">   393  </span>
-<span id="L394" class="ln">   394  </span>func Test_Engine_B3_PartitionSerialization(t *testing.T) {
-<span id="L395" class="ln">   395  </span>	t.Parallel()
-<span id="L396" class="ln">   396  </span>
-<span id="L397" class="ln">   397  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L398" class="ln">   398  </span>		t.Parallel()
-<span id="L399" class="ln">   399  </span>
-<span id="L400" class="ln">   400  </span>		t.Run(&#34;同一 PartitionKey のメッセージは投入順に直列処理される&#34;, func(t *testing.T) {
-<span id="L401" class="ln">   401  </span>			t.Parallel()
-<span id="L402" class="ln">   402  </span>
-<span id="L403" class="ln">   403  </span>			f := fake.New()
-<span id="L404" class="ln">   404  </span>			f.Enqueue(
-<span id="L405" class="ln">   405  </span>				bw.Message{ID: &#34;1&#34;, PartitionKey: &#34;k&#34;},
-<span id="L406" class="ln">   406  </span>				bw.Message{ID: &#34;2&#34;, PartitionKey: &#34;k&#34;},
-<span id="L407" class="ln">   407  </span>				bw.Message{ID: &#34;3&#34;, PartitionKey: &#34;k&#34;},
-<span id="L408" class="ln">   408  </span>			)
-<span id="L409" class="ln">   409  </span>			var mu sync.Mutex
-<span id="L410" class="ln">   410  </span>			var order []string
-<span id="L411" class="ln">   411  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
-<span id="L412" class="ln">   412  </span>				time.Sleep(2 * time.Millisecond)
-<span id="L413" class="ln">   413  </span>				mu.Lock()
-<span id="L414" class="ln">   414  </span>				order = append(order, m.ID)
-<span id="L415" class="ln">   415  </span>				mu.Unlock()
-<span id="L416" class="ln">   416  </span>				return nil
-<span id="L417" class="ln">   417  </span>			})}
-<span id="L418" class="ln">   418  </span>
-<span id="L419" class="ln">   419  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-<span id="L420" class="ln">   420  </span>			defer func() { cancel(); &lt;-done }()
-<span id="L421" class="ln">   421  </span>
-<span id="L422" class="ln">   422  </span>			require.Eventually(t, func() bool {
-<span id="L423" class="ln">   423  </span>				mu.Lock()
-<span id="L424" class="ln">   424  </span>				defer mu.Unlock()
-<span id="L425" class="ln">   425  </span>				return len(order) == 3
-<span id="L426" class="ln">   426  </span>			}, eventually, tick)
-<span id="L427" class="ln">   427  </span>
-<span id="L428" class="ln">   428  </span>			mu.Lock()
-<span id="L429" class="ln">   429  </span>			defer mu.Unlock()
-<span id="L430" class="ln">   430  </span>			assert.Equal(t, []string{&#34;1&#34;, &#34;2&#34;, &#34;3&#34;}, order)
-<span id="L431" class="ln">   431  </span>		})
-<span id="L432" class="ln">   432  </span>	})
-<span id="L433" class="ln">   433  </span>}
-<span id="L434" class="ln">   434  </span>
-<span id="L435" class="ln">   435  </span>func Test_Engine_B4_CircuitBreaker(t *testing.T) {
-<span id="L436" class="ln">   436  </span>	t.Parallel()
-<span id="L437" class="ln">   437  </span>
-<span id="L438" class="ln">   438  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L439" class="ln">   439  </span>		t.Parallel()
-<span id="L440" class="ln">   440  </span>
-<span id="L441" class="ln">   441  </span>		t.Run(&#34;連続失敗で Open し intake が止まり、回復後 Half-open で再開する&#34;, func(t *testing.T) {
-<span id="L442" class="ln">   442  </span>			t.Parallel()
-<span id="L443" class="ln">   443  </span>
-<span id="L444" class="ln">   444  </span>			f := fake.New()
-<span id="L445" class="ln">   445  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
-<span id="L446" class="ln">   446  </span>			var failing atomic.Bool
-<span id="L447" class="ln">   447  </span>			failing.Store(true)
-<span id="L448" class="ln">   448  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-<span id="L449" class="ln">   449  </span>				if failing.Load() {
-<span id="L450" class="ln">   450  </span>					return xerrors.Wrap(apperror.ErrRetryable, &#34;downstream down&#34;)
-<span id="L451" class="ln">   451  </span>				}
-<span id="L452" class="ln">   452  </span>				return nil
-<span id="L453" class="ln">   453  </span>			})}
-<span id="L454" class="ln">   454  </span>			set := baseSettings()
-<span id="L455" class="ln">   455  </span>			set.Concurrency = 1
-<span id="L456" class="ln">   456  </span>			set.MaxInFlight = 1
-<span id="L457" class="ln">   457  </span>			set.BatchSize = 1
-<span id="L458" class="ln">   458  </span>			set.CircuitFailureThreshold = 2
-<span id="L459" class="ln">   459  </span>			set.CircuitOpenBackoffInitial = 300 * time.Millisecond
-<span id="L460" class="ln">   460  </span>			set.CircuitOpenBackoffMax = 300 * time.Millisecond
-<span id="L461" class="ln">   461  </span>
-<span id="L462" class="ln">   462  </span>			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-<span id="L463" class="ln">   463  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L302" class="ln">   302  </span>		t.Run(&#34;1 メッセージの panic が他メッセージ・engine を巻き込まない&#34;, func(t *testing.T) {
+<span id="L303" class="ln">   303  </span>			t.Parallel()
+<span id="L304" class="ln">   304  </span>
+<span id="L305" class="ln">   305  </span>			f := fake.New()
+<span id="L306" class="ln">   306  </span>			f.Enqueue(bw.Message{ID: &#34;good&#34;}, bw.Message{ID: &#34;bad&#34;})
+<span id="L307" class="ln">   307  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
+<span id="L308" class="ln">   308  </span>				if m.ID == &#34;bad&#34; {
+<span id="L309" class="ln">   309  </span>					panic(&#34;boom&#34;)
+<span id="L310" class="ln">   310  </span>				}
+<span id="L311" class="ln">   311  </span>				return nil
+<span id="L312" class="ln">   312  </span>			})}
+<span id="L313" class="ln">   313  </span>
+<span id="L314" class="ln">   314  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+<span id="L315" class="ln">   315  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L316" class="ln">   316  </span>
+<span id="L317" class="ln">   317  </span>			require.Eventually(t, func() bool { return slices.Contains(f.AckedIDs(), &#34;good&#34;) }, eventually, tick)
+<span id="L318" class="ln">   318  </span>			require.Eventually(t, func() bool { return slices.Contains(f.NackedIDs(), &#34;bad&#34;) }, eventually, tick)
+<span id="L319" class="ln">   319  </span>		})
+<span id="L320" class="ln">   320  </span>	})
+<span id="L321" class="ln">   321  </span>}
+<span id="L322" class="ln">   322  </span>
+<span id="L323" class="ln">   323  </span>func Test_Engine_A7_PoisonWarn(t *testing.T) {
+<span id="L324" class="ln">   324  </span>	t.Parallel()
+<span id="L325" class="ln">   325  </span>
+<span id="L326" class="ln">   326  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L327" class="ln">   327  </span>		t.Parallel()
+<span id="L328" class="ln">   328  </span>
+<span id="L329" class="ln">   329  </span>		t.Run(&#34;ReceiveCount が閾値以上で warn ログが出る&#34;, func(t *testing.T) {
+<span id="L330" class="ln">   330  </span>			t.Parallel()
+<span id="L331" class="ln">   331  </span>
+<span id="L332" class="ln">   332  </span>			logger, observed := logging.NewObservedTestLogger(t)
+<span id="L333" class="ln">   333  </span>			f := fake.New()
+<span id="L334" class="ln">   334  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
+<span id="L335" class="ln">   335  </span>			set := baseSettings()
+<span id="L336" class="ln">   336  </span>			set.ReceiveCountWarnThreshold = 1
+<span id="L337" class="ln">   337  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+<span id="L338" class="ln">   338  </span>
+<span id="L339" class="ln">   339  </span>			cancel, done := startEngine(t, set, logger, w)
+<span id="L340" class="ln">   340  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L341" class="ln">   341  </span>
+<span id="L342" class="ln">   342  </span>			require.Eventually(t, func() bool {
+<span id="L343" class="ln">   343  </span>				return observed.FilterMessage(&#34;receive count threshold reached&#34;).Len() &gt;= 1
+<span id="L344" class="ln">   344  </span>			}, eventually, tick)
+<span id="L345" class="ln">   345  </span>		})
+<span id="L346" class="ln">   346  </span>	})
+<span id="L347" class="ln">   347  </span>}
+<span id="L348" class="ln">   348  </span>
+<span id="L349" class="ln">   349  </span><span class="comment">// --- B. backpressure / 順序 ---</span>
+<span id="L350" class="ln">   350  </span>
+<span id="L351" class="ln">   351  </span>func Test_Engine_B1_ConcurrencyLimit(t *testing.T) {
+<span id="L352" class="ln">   352  </span>	t.Parallel()
+<span id="L353" class="ln">   353  </span>
+<span id="L354" class="ln">   354  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L355" class="ln">   355  </span>		t.Parallel()
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>		t.Run(&#34;同時 Handle 数が Concurrency を超えない&#34;, func(t *testing.T) {
+<span id="L358" class="ln">   358  </span>			t.Parallel()
+<span id="L359" class="ln">   359  </span>
+<span id="L360" class="ln">   360  </span>			f := fake.New()
+<span id="L361" class="ln">   361  </span>			for i := range 6 {
+<span id="L362" class="ln">   362  </span>				f.Enqueue(bw.Message{ID: string(rune(&#39;a&#39; + i))})
+<span id="L363" class="ln">   363  </span>			}
+<span id="L364" class="ln">   364  </span>			var cur, maxObserved atomic.Int32
+<span id="L365" class="ln">   365  </span>			release := make(chan struct{})
+<span id="L366" class="ln">   366  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+<span id="L367" class="ln">   367  </span>				c := cur.Add(1)
+<span id="L368" class="ln">   368  </span>				for {
+<span id="L369" class="ln">   369  </span>					old := maxObserved.Load()
+<span id="L370" class="ln">   370  </span>					if c &lt;= old || maxObserved.CompareAndSwap(old, c) {
+<span id="L371" class="ln">   371  </span>						break
+<span id="L372" class="ln">   372  </span>					}
+<span id="L373" class="ln">   373  </span>				}
+<span id="L374" class="ln">   374  </span>				&lt;-release
+<span id="L375" class="ln">   375  </span>				cur.Add(-1)
+<span id="L376" class="ln">   376  </span>				return nil
+<span id="L377" class="ln">   377  </span>			})}
+<span id="L378" class="ln">   378  </span>			set := baseSettings()
+<span id="L379" class="ln">   379  </span>			set.Concurrency = 2
+<span id="L380" class="ln">   380  </span>			set.MaxInFlight = 8
+<span id="L381" class="ln">   381  </span>			set.BatchSize = 8
+<span id="L382" class="ln">   382  </span>
+<span id="L383" class="ln">   383  </span>			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+<span id="L384" class="ln">   384  </span>			defer func() { close(release); cancel(); &lt;-done }()
+<span id="L385" class="ln">   385  </span>
+<span id="L386" class="ln">   386  </span>			require.Eventually(t, func() bool { return cur.Load() == 2 }, eventually, tick)
+<span id="L387" class="ln">   387  </span>			assert.LessOrEqual(t, maxObserved.Load(), int32(2))
+<span id="L388" class="ln">   388  </span>		})
+<span id="L389" class="ln">   389  </span>	})
+<span id="L390" class="ln">   390  </span>}
+<span id="L391" class="ln">   391  </span>
+<span id="L392" class="ln">   392  </span>func Test_Engine_B2_InflightLimit(t *testing.T) {
+<span id="L393" class="ln">   393  </span>	t.Parallel()
+<span id="L394" class="ln">   394  </span>
+<span id="L395" class="ln">   395  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L396" class="ln">   396  </span>		t.Parallel()
+<span id="L397" class="ln">   397  </span>
+<span id="L398" class="ln">   398  </span>		t.Run(&#34;in-flight が MaxInFlight を超えない&#34;, func(t *testing.T) {
+<span id="L399" class="ln">   399  </span>			t.Parallel()
+<span id="L400" class="ln">   400  </span>
+<span id="L401" class="ln">   401  </span>			f := fake.New()
+<span id="L402" class="ln">   402  </span>			for i := range 10 {
+<span id="L403" class="ln">   403  </span>				f.Enqueue(bw.Message{ID: string(rune(&#39;a&#39; + i))})
+<span id="L404" class="ln">   404  </span>			}
+<span id="L405" class="ln">   405  </span>			release := make(chan struct{})
+<span id="L406" class="ln">   406  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+<span id="L407" class="ln">   407  </span>				&lt;-release
+<span id="L408" class="ln">   408  </span>				return nil
+<span id="L409" class="ln">   409  </span>			})}
+<span id="L410" class="ln">   410  </span>			set := baseSettings()
+<span id="L411" class="ln">   411  </span>			set.Concurrency = 3
+<span id="L412" class="ln">   412  </span>			set.MaxInFlight = 3
+<span id="L413" class="ln">   413  </span>			set.BatchSize = 5
+<span id="L414" class="ln">   414  </span>
+<span id="L415" class="ln">   415  </span>			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+<span id="L416" class="ln">   416  </span>			defer func() { close(release); cancel(); &lt;-done }()
+<span id="L417" class="ln">   417  </span>
+<span id="L418" class="ln">   418  </span>			require.Eventually(t, func() bool { return f.InflightLen() == 3 }, eventually, tick)
+<span id="L419" class="ln">   419  </span>			assert.LessOrEqual(t, f.InflightLen(), 3)
+<span id="L420" class="ln">   420  </span>		})
+<span id="L421" class="ln">   421  </span>	})
+<span id="L422" class="ln">   422  </span>}
+<span id="L423" class="ln">   423  </span>
+<span id="L424" class="ln">   424  </span>func Test_Engine_B3_PartitionSerialization(t *testing.T) {
+<span id="L425" class="ln">   425  </span>	t.Parallel()
+<span id="L426" class="ln">   426  </span>
+<span id="L427" class="ln">   427  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L428" class="ln">   428  </span>		t.Parallel()
+<span id="L429" class="ln">   429  </span>
+<span id="L430" class="ln">   430  </span>		t.Run(&#34;同一 PartitionKey のメッセージは投入順に直列処理される&#34;, func(t *testing.T) {
+<span id="L431" class="ln">   431  </span>			t.Parallel()
+<span id="L432" class="ln">   432  </span>
+<span id="L433" class="ln">   433  </span>			f := fake.New()
+<span id="L434" class="ln">   434  </span>			f.Enqueue(
+<span id="L435" class="ln">   435  </span>				bw.Message{ID: &#34;1&#34;, PartitionKey: &#34;k&#34;},
+<span id="L436" class="ln">   436  </span>				bw.Message{ID: &#34;2&#34;, PartitionKey: &#34;k&#34;},
+<span id="L437" class="ln">   437  </span>				bw.Message{ID: &#34;3&#34;, PartitionKey: &#34;k&#34;},
+<span id="L438" class="ln">   438  </span>			)
+<span id="L439" class="ln">   439  </span>			var mu sync.Mutex
+<span id="L440" class="ln">   440  </span>			var order []string
+<span id="L441" class="ln">   441  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
+<span id="L442" class="ln">   442  </span>				time.Sleep(2 * time.Millisecond)
+<span id="L443" class="ln">   443  </span>				mu.Lock()
+<span id="L444" class="ln">   444  </span>				order = append(order, m.ID)
+<span id="L445" class="ln">   445  </span>				mu.Unlock()
+<span id="L446" class="ln">   446  </span>				return nil
+<span id="L447" class="ln">   447  </span>			})}
+<span id="L448" class="ln">   448  </span>
+<span id="L449" class="ln">   449  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+<span id="L450" class="ln">   450  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L451" class="ln">   451  </span>
+<span id="L452" class="ln">   452  </span>			require.Eventually(t, func() bool {
+<span id="L453" class="ln">   453  </span>				mu.Lock()
+<span id="L454" class="ln">   454  </span>				defer mu.Unlock()
+<span id="L455" class="ln">   455  </span>				return len(order) == 3
+<span id="L456" class="ln">   456  </span>			}, eventually, tick)
+<span id="L457" class="ln">   457  </span>
+<span id="L458" class="ln">   458  </span>			mu.Lock()
+<span id="L459" class="ln">   459  </span>			defer mu.Unlock()
+<span id="L460" class="ln">   460  </span>			assert.Equal(t, []string{&#34;1&#34;, &#34;2&#34;, &#34;3&#34;}, order)
+<span id="L461" class="ln">   461  </span>		})
+<span id="L462" class="ln">   462  </span>	})
+<span id="L463" class="ln">   463  </span>}
 <span id="L464" class="ln">   464  </span>
-<span id="L465" class="ln">   465  </span>			<span class="comment">// B4-1: 連続 2 失敗で Open。cooldown 中は Receive されず Nack が増えない。</span>
-<span id="L466" class="ln">   466  </span>			require.Eventually(t, func() bool { return len(f.NackedIDs()) &gt;= 2 }, eventually, tick)
-<span id="L467" class="ln">   467  </span>			nacksAtOpen := len(f.NackedIDs())
-<span id="L468" class="ln">   468  </span>			time.Sleep(80 * time.Millisecond) <span class="comment">// cooldown(300ms) 未満</span>
-<span id="L469" class="ln">   469  </span>			assert.Len(t, f.NackedIDs(), nacksAtOpen)
+<span id="L465" class="ln">   465  </span>func Test_Engine_B4_CircuitBreaker(t *testing.T) {
+<span id="L466" class="ln">   466  </span>	t.Parallel()
+<span id="L467" class="ln">   467  </span>
+<span id="L468" class="ln">   468  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L469" class="ln">   469  </span>		t.Parallel()
 <span id="L470" class="ln">   470  </span>
-<span id="L471" class="ln">   471  </span>			<span class="comment">// B4-2: 回復させると cooldown 経過後の Half-open 試行で成功し Ack される。</span>
-<span id="L472" class="ln">   472  </span>			failing.Store(false)
-<span id="L473" class="ln">   473  </span>			require.Eventually(t, func() bool { return len(f.AckedIDs()) &gt;= 1 }, 3*time.Second, tick)
-<span id="L474" class="ln">   474  </span>		})
-<span id="L475" class="ln">   475  </span>	})
-<span id="L476" class="ln">   476  </span>}
-<span id="L477" class="ln">   477  </span>
-<span id="L478" class="ln">   478  </span><span class="comment">// --- C. lifecycle ---</span>
-<span id="L479" class="ln">   479  </span>
-<span id="L480" class="ln">   480  </span>func Test_Engine_C1_drain(t *testing.T) {
-<span id="L481" class="ln">   481  </span>	t.Parallel()
-<span id="L482" class="ln">   482  </span>
-<span id="L483" class="ln">   483  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L484" class="ln">   484  </span>		t.Parallel()
-<span id="L485" class="ln">   485  </span>
-<span id="L486" class="ln">   486  </span>		t.Run(&#34;ctx cancel 後も in-flight は drain 期限内に完了して Ack される&#34;, func(t *testing.T) {
-<span id="L487" class="ln">   487  </span>			t.Parallel()
-<span id="L488" class="ln">   488  </span>
-<span id="L489" class="ln">   489  </span>			f := fake.New()
-<span id="L490" class="ln">   490  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
-<span id="L491" class="ln">   491  </span>			started := make(chan struct{}, 1)
-<span id="L492" class="ln">   492  </span>			release := make(chan struct{})
-<span id="L493" class="ln">   493  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
-<span id="L494" class="ln">   494  </span>				started &lt;- struct{}{}
-<span id="L495" class="ln">   495  </span>				&lt;-release
-<span id="L496" class="ln">   496  </span>				return nil
-<span id="L497" class="ln">   497  </span>			})}
-<span id="L498" class="ln">   498  </span>
-<span id="L499" class="ln">   499  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+<span id="L471" class="ln">   471  </span>		t.Run(&#34;連続失敗で Open し intake が止まり、回復後 Half-open で再開する&#34;, func(t *testing.T) {
+<span id="L472" class="ln">   472  </span>			t.Parallel()
+<span id="L473" class="ln">   473  </span>
+<span id="L474" class="ln">   474  </span>			f := fake.New()
+<span id="L475" class="ln">   475  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
+<span id="L476" class="ln">   476  </span>			var failing atomic.Bool
+<span id="L477" class="ln">   477  </span>			failing.Store(true)
+<span id="L478" class="ln">   478  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+<span id="L479" class="ln">   479  </span>				if failing.Load() {
+<span id="L480" class="ln">   480  </span>					return xerrors.Wrap(apperror.ErrRetryable, &#34;downstream down&#34;)
+<span id="L481" class="ln">   481  </span>				}
+<span id="L482" class="ln">   482  </span>				return nil
+<span id="L483" class="ln">   483  </span>			})}
+<span id="L484" class="ln">   484  </span>			set := baseSettings()
+<span id="L485" class="ln">   485  </span>			set.Concurrency = 1
+<span id="L486" class="ln">   486  </span>			set.MaxInFlight = 1
+<span id="L487" class="ln">   487  </span>			set.BatchSize = 1
+<span id="L488" class="ln">   488  </span>			set.CircuitFailureThreshold = 2
+<span id="L489" class="ln">   489  </span>			set.CircuitOpenBackoffInitial = 300 * time.Millisecond
+<span id="L490" class="ln">   490  </span>			set.CircuitOpenBackoffMax = 300 * time.Millisecond
+<span id="L491" class="ln">   491  </span>
+<span id="L492" class="ln">   492  </span>			cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
+<span id="L493" class="ln">   493  </span>			defer func() { cancel(); &lt;-done }()
+<span id="L494" class="ln">   494  </span>
+<span id="L495" class="ln">   495  </span>			<span class="comment">// B4-1: 連続 2 失敗で Open。cooldown 中は Receive されず Nack が増えない。</span>
+<span id="L496" class="ln">   496  </span>			require.Eventually(t, func() bool { return len(f.NackedIDs()) &gt;= 2 }, eventually, tick)
+<span id="L497" class="ln">   497  </span>			nacksAtOpen := len(f.NackedIDs())
+<span id="L498" class="ln">   498  </span>			time.Sleep(80 * time.Millisecond) <span class="comment">// cooldown(300ms) 未満</span>
+<span id="L499" class="ln">   499  </span>			assert.Len(t, f.NackedIDs(), nacksAtOpen)
 <span id="L500" class="ln">   500  </span>
-<span id="L501" class="ln">   501  </span>			&lt;-started <span class="comment">// in-flight に入った</span>
-<span id="L502" class="ln">   502  </span>			cancel()  <span class="comment">// Receive 停止</span>
-<span id="L503" class="ln">   503  </span>			close(release)
-<span id="L504" class="ln">   504  </span>
-<span id="L505" class="ln">   505  </span>			select {
-<span id="L506" class="ln">   506  </span>			case &lt;-done:
-<span id="L507" class="ln">   507  </span>			case &lt;-time.After(eventually):
-<span id="L508" class="ln">   508  </span>				t.Fatal(&#34;drain が完了しなかった&#34;)
-<span id="L509" class="ln">   509  </span>			}
-<span id="L510" class="ln">   510  </span>			assert.Equal(t, []string{&#34;a&#34;}, f.AckedIDs())
-<span id="L511" class="ln">   511  </span>		})
-<span id="L512" class="ln">   512  </span>	})
-<span id="L513" class="ln">   513  </span>}
-<span id="L514" class="ln">   514  </span>
+<span id="L501" class="ln">   501  </span>			<span class="comment">// B4-2: 回復させると cooldown 経過後の Half-open 試行で成功し Ack される。</span>
+<span id="L502" class="ln">   502  </span>			failing.Store(false)
+<span id="L503" class="ln">   503  </span>			require.Eventually(t, func() bool { return len(f.AckedIDs()) &gt;= 1 }, 3*time.Second, tick)
+<span id="L504" class="ln">   504  </span>		})
+<span id="L505" class="ln">   505  </span>	})
+<span id="L506" class="ln">   506  </span>}
+<span id="L507" class="ln">   507  </span>
+<span id="L508" class="ln">   508  </span><span class="comment">// --- C. lifecycle ---</span>
+<span id="L509" class="ln">   509  </span>
+<span id="L510" class="ln">   510  </span>func Test_Engine_C1_drain(t *testing.T) {
+<span id="L511" class="ln">   511  </span>	t.Parallel()
+<span id="L512" class="ln">   512  </span>
+<span id="L513" class="ln">   513  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L514" class="ln">   514  </span>		t.Parallel()
+<span id="L515" class="ln">   515  </span>
+<span id="L516" class="ln">   516  </span>		t.Run(&#34;ctx cancel 後も in-flight は drain 期限内に完了して Ack される&#34;, func(t *testing.T) {
+<span id="L517" class="ln">   517  </span>			t.Parallel()
+<span id="L518" class="ln">   518  </span>
+<span id="L519" class="ln">   519  </span>			f := fake.New()
+<span id="L520" class="ln">   520  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
+<span id="L521" class="ln">   521  </span>			started := make(chan struct{}, 1)
+<span id="L522" class="ln">   522  </span>			release := make(chan struct{})
+<span id="L523" class="ln">   523  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
+<span id="L524" class="ln">   524  </span>				started &lt;- struct{}{}
+<span id="L525" class="ln">   525  </span>				&lt;-release
+<span id="L526" class="ln">   526  </span>				return nil
+<span id="L527" class="ln">   527  </span>			})}
+<span id="L528" class="ln">   528  </span>
+<span id="L529" class="ln">   529  </span>			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+<span id="L530" class="ln">   530  </span>
+<span id="L531" class="ln">   531  </span>			&lt;-started <span class="comment">// in-flight に入った</span>
+<span id="L532" class="ln">   532  </span>			cancel()  <span class="comment">// Receive 停止</span>
+<span id="L533" class="ln">   533  </span>			close(release)
+<span id="L534" class="ln">   534  </span>
+<span id="L535" class="ln">   535  </span>			select {
+<span id="L536" class="ln">   536  </span>			case &lt;-done:
+<span id="L537" class="ln">   537  </span>			case &lt;-time.After(eventually):
+<span id="L538" class="ln">   538  </span>				t.Fatal(&#34;drain が完了しなかった&#34;)
+<span id="L539" class="ln">   539  </span>			}
+<span id="L540" class="ln">   540  </span>			assert.Equal(t, []string{&#34;a&#34;}, f.AckedIDs())
+<span id="L541" class="ln">   541  </span>		})
+<span id="L542" class="ln">   542  </span>	})
+<span id="L543" class="ln">   543  </span>}
+<span id="L544" class="ln">   544  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/controller/worker/engine_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

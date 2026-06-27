@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cliworker "go-boilerplate/internal/cli/worker"
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/di"
 )
 
@@ -20,11 +21,17 @@ func newWorkerCommand() *cobra.Command {
 			"例: worker myworker",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
+			cfg, err := config.SetUpConfig()
+			if err != nil {
+				return err
+			}
+			grace := config.NewApplicationConfig(cfg).ShutdownTimeout()
+
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
 
-			return cliworker.RunWorkerWith(ctx, args[0], args[1:], func() (cliworker.StartFunc, cliworker.StopFunc) {
-				start, stopFn := di.RunWorker()
+			return cliworker.RunWorkerWith(ctx, args[0], args[1:], grace, func() (cliworker.StartFunc, cliworker.StopFunc) {
+				start, stopFn := di.RunWorker(grace)
 				return cliworker.StartFunc(start), cliworker.StopFunc(stopFn)
 			})
 		},

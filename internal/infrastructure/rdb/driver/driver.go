@@ -5,6 +5,8 @@ package driver
 
 import (
 	"context"
+	"strconv"
+	"time"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/pkg/xerrors"
@@ -63,6 +65,9 @@ func newDB(
 	poolCfg.MaxConnLifetime = dbConnCfg.MaxLifetime()
 	poolCfg.MaxConnIdleTime = dbConnCfg.MaxIdleTime()
 
+	// SQL 層の backstop。ctx を無視する runaway query / 長時間ロック待ちを Postgres 側で打ち切る。
+	applyDBTimeouts(poolCfg, dbCfg.StatementTimeout(), dbCfg.LockTimeout())
+
 	if tracer != nil {
 		poolCfg.ConnConfig.Tracer = tracer
 	}
@@ -81,6 +86,17 @@ func newDB(
 	}
 
 	return &dbDriver{pool: pool}, nil
+}
+
+// applyDBTimeouts は、statement_timeout / lock_timeout を接続 RuntimeParams（ミリ秒）として設定します。
+// 0 以下は設定せず Postgres 既定（無制限）のままにします。全コネクションに適用されます。
+func applyDBTimeouts(poolCfg *pgxpool.Config, statementTimeout, lockTimeout time.Duration) {
+	if statementTimeout > 0 {
+		poolCfg.ConnConfig.RuntimeParams["statement_timeout"] = strconv.FormatInt(statementTimeout.Milliseconds(), 10)
+	}
+	if lockTimeout > 0 {
+		poolCfg.ConnConfig.RuntimeParams["lock_timeout"] = strconv.FormatInt(lockTimeout.Milliseconds(), 10)
+	}
 }
 
 func (d *dbDriver) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {

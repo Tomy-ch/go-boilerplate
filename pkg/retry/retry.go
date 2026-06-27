@@ -8,7 +8,7 @@
 // 「現在時刻や乱数に依存しない」純粋性を保ちます。
 //
 // pkg は相互独立（pkg→pkg import 禁止）のため、Backoff は pkg/backoff の型ではなく
-// 関数値として受け取り、呼び出し側（internal）が backoff.Exponential 等を結線します。
+// 関数値として受け取ります。
 package retry
 
 import (

@@ -45,7 +45,9 @@ func NewJobCore() fx.Option {
 }
 
 // RunJob は、ジョブ実行用の開始関数・停止関数を生成して返します。context／タイムアウトの制御は返した関数の呼出側が担います。
-func RunJob() (StartFunc, StopFunc) {
+// grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
+// 停止猶予より先に teardown を打ち切らないようにします（停止軸を grace に一本化）。
+func RunJob(grace time.Duration) (StartFunc, StopFunc) {
 	var (
 		state  job.State
 		logger logging.Logger
@@ -54,6 +56,7 @@ func RunJob() (StartFunc, StopFunc) {
 
 	app := fx.New(
 		NewJobCore(),
+		fx.StopTimeout(grace),
 		fx.Populate(&state, &logger, &osCfg),
 		fx.WithLogger(NewFxEventLogger),
 	)

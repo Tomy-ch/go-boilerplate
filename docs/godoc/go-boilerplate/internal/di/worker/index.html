@@ -104,9 +104,14 @@
 			<dl>
 			
 			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
 			
 				
 				<dd><a href="#ProvideEngine">func ProvideEngine(in EngineIn) (*workerengine.Engine, error)</a></dd>
+			
+				
+				<dd><a href="#ValidateShutdownGrace">func ValidateShutdownGrace(appCfg *config.ApplicationConfig, workerCfg *config.WorkerConfig) error</a></dd>
 			
 			
 				
@@ -137,10 +142,17 @@
 
 		
 		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrInvalidShutdownGrace は、停止猶予より drain の方が長く設定された不整合を表します。
+
+				</p><pre>var <span id="ErrInvalidShutdownGrace">ErrInvalidShutdownGrace</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#New">New</a>(&#34;invalid shutdown grace&#34;)</pre>
+			
+		
 		
 			
 			
-			<h2 id="ProvideEngine">func <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=721:782#L16">ProvideEngine</a>
+			<h2 id="ProvideEngine">func <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=2034:2095#L42">ProvideEngine</a>
 				<a class="permalink" href="#ProvideEngine">¶</a>
 				
 				
@@ -152,10 +164,28 @@
 			
 
 		
+			
+			
+			</p><h2 id="ValidateShutdownGrace">func <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=1444:1542#L28">ValidateShutdownGrace</a>
+				<a class="permalink" href="#ValidateShutdownGrace">¶</a>
+				
+				
+			</h2>
+			<pre>func ValidateShutdownGrace(appCfg *<a href="../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../go-boilerplate/internal/config/#ApplicationConfig">ApplicationConfig</a>, workerCfg *<a href="../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../go-boilerplate/internal/config/#WorkerConfig">WorkerConfig</a>) <a href="../../../../builtin/#error">error</a></pre>
+			<p>ValidateShutdownGrace は、drain 完了前に停止猶予が尽きないことを起動時に検証します。
+</p><p>停止時の実効カットオフは fx.StopTimeout と停止 context の deadline（共に APP_SHUTDOWN_TIMEOUT を
+単一軸とする grace）で決まります。WORKER_DRAIN_TIMEOUT &gt;= grace だと OnStop の drain が grace で
+打ち切られ、未完了の in-flight handler と後続の停止処理（DB pool close 等）が競合します。
+設定不整合は起動時に失敗させ、運用時の競合を未然に防ぎます。
+
+			
+			
+
+		
 		
 			
 			
-			</p><h2 id="EngineIn">type <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=426:638#L5">EngineIn</a>
+			</p><h2 id="EngineIn">type <a href="../../../../src/go-boilerplate/internal/di/worker/runner.go.html?s=657:869#L12">EngineIn</a>
 				<a class="permalink" href="#EngineIn">¶</a>
 				
 				
