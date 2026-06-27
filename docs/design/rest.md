@@ -38,7 +38,7 @@ Design principles (invariants):
 stateDiagram-v2
     [*] --> Building: NewApplicationCore() → fx.New (config→logging→o11y→db→infra→usecase→controller→server)
     Building --> Wired: BindHandler×N (RegisterHandlers) + ApplyExtends (sort & apply middleware) + RegisterHTTPServerHooks
-    Wired --> Listening: fx OnStart → net listen :port → go e.Start()
+    Wired --> Listening: fx OnStart → net listen port → go e.Start()
     Listening --> Serving: request → middleware chain → handler → response (resident)
     Serving --> Listening: response sent
     Listening --> Draining: SIGINT/SIGTERM → ctx.Done() in RunServer

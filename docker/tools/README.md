@@ -36,7 +36,8 @@ Tools for OpenAPI document processing and portal frontend bundling:
 |`redocly-cli`|Bundle OpenAPI YAML (`$ref` resolution) and generate HTML docs|
 |`js-yaml`|YAML processing for portal doc generation scripts|
 |`esbuild`|Bundle the portal frontend (`docs/portal/src/main.jsx`) into `docs/portal/dist/` (`make gen-portal-build`)|
-|`react` / `react-dom` / `marked` / `fuse.js` / `mermaid` / `highlight.js`|Portal frontend runtime libraries bundled by esbuild (replacing the former CDN + in-browser Babel setup)|
+|`react` / `react-dom` / `marked` / `fuse.js` / `mermaid` / `highlight.js`|Portal frontend runtime libraries bundled by esbuild (replacing the former CDN + in-browser Babel setup). `mermaid` is also reused by `scripts/mermaid-lint.mjs` to validate ` ```mermaid ` fences (`make md-lint`).|
+|`linkedom`|Headless DOM that lets `mermaid.parse` run in Node for the Markdown mermaid syntax lint (`scripts/mermaid-lint.mjs`)|
 
 ## python_tools
 

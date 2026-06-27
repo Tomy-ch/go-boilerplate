@@ -203,6 +203,14 @@ rest-design:
   - src: docs/ja/design/rest.ja.md
     dst: docs/portal/guides/ja/rest-design.ja.md
 
+outbox-design:
+  # English
+  - src: docs/design/outbox.md
+    dst: docs/portal/guides/outbox-design.md
+  # Japanese
+  - src: docs/ja/design/outbox.ja.md
+    dst: docs/portal/guides/ja/outbox-design.ja.md
+
 domain:
   # English
   - src: internal/domain/README.md

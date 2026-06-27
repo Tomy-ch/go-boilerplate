@@ -199,9 +199,11 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make md-lint` | Markdown ファイルの Lint を実行します。 | `node_tool_runner` コンテナ内で `make md-lint-ci` を呼び出します。 |
+| `make md-lint` | Markdown の Lint を実行します（markdownlint + mermaid 構文）。 | `node_tool_runner` コンテナ内で `make md-lint-ci` を呼び出します。 |
 | `make md-fix` | Markdown ファイルの Lint 自動修正を実行します。 | `node_tool_runner` コンテナ内で `make md-fix-ci` を呼び出します。 |
-| `make md-lint-ci` | `markdownlint-cli2` で `**/*.md` を直接 Lint します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
+| `make md-mermaid-lint` | ` ```mermaid ` フェンスのみを構文検証します。 | `node_tool_runner` コンテナ内で `make md-mermaid-lint-ci` を呼び出します。 |
+| `make md-lint-ci` | `markdownlint-cli2` を実行後、mermaid 構文 Lint を実行します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
+| `make md-mermaid-lint-ci` | `scripts/mermaid-lint.mjs`（実 `mermaid.parse`）で ` ```mermaid ` フェンスを検証します。 | CI 用ターゲット。markdownlint は図の文法を見ません。 |
 | `make md-fix-ci` | `markdownlint-cli2 --fix` で `**/*.md` を直接修正します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
 
 ## `.makefiles/security` 系

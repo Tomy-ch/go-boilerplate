@@ -165,7 +165,7 @@ sequenceDiagram
     Run->>J: Execute(ctx, args)  // span started, usecase called
     J-->>Run: nil / error
     Run-->>Hook: result
-    Hook->>Hook: done <- result; close(done); sd.Shutdown()
+    Hook->>Hook: done <- result, close(done), sd.Shutdown()
     CLI->>CLI: err := <-done (or waitCtx.Done() on timeout)
     CLI->>DI: gracefulStop → stop(ctx) = app.Stop (≤30s)
     CLI-->>Cobra: return err (exit code)

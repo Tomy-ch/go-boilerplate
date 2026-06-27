@@ -60,7 +60,7 @@ fx.Provide(
 flowchart TD
 
 Controller --> Usecase
-Usecase --> Domain Interface
+Usecase --> DomainInterface
 Infrastructure --> DomainInterface
 ```
 
