@@ -25,7 +25,7 @@ func newOutboxRelayCommand() *cobra.Command {
 	return cmd
 }
 
-// outboxRelayRun は、設定読込・シグナル・DI アプリ生成を結線し、outboxcli.RunRelay へ委譲する薄い殻です。
+// outboxRelayRun は outboxcli.RunRelay への薄い委譲殻です。
 func outboxRelayRun(_ *cobra.Command, _ []string) error {
 	cfg, err := config.SetUpConfig()
 	if err != nil {

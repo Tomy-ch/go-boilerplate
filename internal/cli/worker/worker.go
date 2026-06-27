@@ -58,6 +58,7 @@ func runWorker(ctx context.Context, name string, args []string, grace time.Durat
 // gracefulStop は、停止開始時点から grace の猶予を与えて後始末を実行します。
 // ctx は SIGTERM で既にキャンセル済みのため、停止用 context はキャンセルだけ切り離して
 // （trace/baggage は引き継ぎつつ）作り直します。
+// 停止エラーは worker 本体の実行結果（runErr）で返すため、後始末失敗は exit code に含めない。
 func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) {
 	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)
 	defer cancel()
