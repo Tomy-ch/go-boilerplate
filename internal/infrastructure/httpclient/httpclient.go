@@ -13,23 +13,6 @@ package httpclient
 
 import "context"
 
-// MethodGet は、HTTP GET メソッドを返します。
-//
-// パッケージ外からの再代入で定義済み値が破壊されるのを防ぐため、関数として提供します。
-func MethodGet() Method { return Method{"GET"} }
-
-// MethodPost は、HTTP POST メソッドを返します。
-func MethodPost() Method { return Method{"POST"} }
-
-// MethodPut は、HTTP PUT メソッドを返します。
-func MethodPut() Method { return Method{"PUT"} }
-
-// MethodPatch は、HTTP PATCH メソッドを返します。
-func MethodPatch() Method { return Method{"PATCH"} }
-
-// MethodDelete は、HTTP DELETE メソッドを返します。
-func MethodDelete() Method { return Method{"DELETE"} }
-
 // Client は、resilient な外部 HTTP 通信の substrate port です（infra 内部・driver.DatabaseDriver 相当）。
 type Client interface {
 	// Do は、req を送信し Response を返します。
@@ -88,6 +71,23 @@ type Response struct {
 	// Body は、読み切り済みのレスポンスボディです（上限まで読み込み済み）。
 	Body []byte
 }
+
+// MethodGet は、HTTP GET メソッドを返します。
+//
+// パッケージ外からの再代入で定義済み値が破壊されるのを防ぐため、関数として提供します。
+func MethodGet() Method { return Method{"GET"} }
+
+// MethodPost は、HTTP POST メソッドを返します。
+func MethodPost() Method { return Method{"POST"} }
+
+// MethodPut は、HTTP PUT メソッドを返します。
+func MethodPut() Method { return Method{"PUT"} }
+
+// MethodPatch は、HTTP PATCH メソッドを返します。
+func MethodPatch() Method { return Method{"PATCH"} }
+
+// MethodDelete は、HTTP DELETE メソッドを返します。
+func MethodDelete() Method { return Method{"DELETE"} }
 
 // String は、HTTP メソッド文字列を返します（ゼロ値は ""）。
 func (m Method) String() string { return m.s }
