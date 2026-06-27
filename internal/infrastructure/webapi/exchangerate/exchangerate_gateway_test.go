@@ -32,7 +32,7 @@ func TestGatewayGetRate(t *testing.T) {
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
 					assert.Equal(t, httpclient.Downstream("exchangerate"), req.Downstream())
-					assert.Equal(t, httpclient.MethodGet, req.Method())
+					assert.Equal(t, httpclient.MethodGet(), req.Method())
 					assert.Contains(t, req.URL(), "base=USD")
 					assert.Contains(t, req.URL(), "quote=JPY")
 					return &httpclient.Response{StatusCode: 200, Body: []byte(`{"rate":150.5}`)}, nil

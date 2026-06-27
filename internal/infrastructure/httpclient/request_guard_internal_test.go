@@ -22,7 +22,7 @@ func TestClientDo_AllowRetryWithoutKey_Guard(t *testing.T) {
 	c := &client{}
 	req := &Request{
 		downstream: "retry",
-		method:     MethodPost,
+		method:     MethodPost(),
 		url:        "http://example.com",
 		allowRetry: true,
 	}

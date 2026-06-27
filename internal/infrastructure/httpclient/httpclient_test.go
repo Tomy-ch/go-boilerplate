@@ -18,11 +18,11 @@ func TestMethod(t *testing.T) {
 			method httpclient.Method
 			want   string
 		}{
-			"GETは文字列GETを表す":       {method: httpclient.MethodGet, want: "GET"},
-			"POSTは文字列POSTを表す":     {method: httpclient.MethodPost, want: "POST"},
-			"PUTは文字列PUTを表す":       {method: httpclient.MethodPut, want: "PUT"},
-			"PATCHは文字列PATCHを表す":   {method: httpclient.MethodPatch, want: "PATCH"},
-			"DELETEは文字列DELETEを表す": {method: httpclient.MethodDelete, want: "DELETE"},
+			"GETは文字列GETを表す":       {method: httpclient.MethodGet(), want: "GET"},
+			"POSTは文字列POSTを表す":     {method: httpclient.MethodPost(), want: "POST"},
+			"PUTは文字列PUTを表す":       {method: httpclient.MethodPut(), want: "PUT"},
+			"PATCHは文字列PATCHを表す":   {method: httpclient.MethodPatch(), want: "PATCH"},
+			"DELETEは文字列DELETEを表す": {method: httpclient.MethodDelete(), want: "DELETE"},
 			"ゼロ値は空文字を表す":          {method: httpclient.Method{}, want: ""},
 		}
 
@@ -45,14 +45,14 @@ func TestRequest(t *testing.T) {
 			t.Parallel()
 
 			req := httpclient.NewRequest(
-				httpclient.MethodPost, "payment", "https://example.com/charge",
+				httpclient.MethodPost(), "payment", "https://example.com/charge",
 				httpclient.WithHeader(httpclient.Header{"Content-Type": {"application/json"}}),
 				httpclient.WithBody([]byte(`{"amount":100}`)),
 				httpclient.WithRetry("key-1"),
 			)
 
 			assert.Equal(t, httpclient.Downstream("payment"), req.Downstream())
-			assert.Equal(t, httpclient.MethodPost, req.Method())
+			assert.Equal(t, httpclient.MethodPost(), req.Method())
 			assert.Equal(t, "https://example.com/charge", req.URL())
 			assert.Equal(t, []string{"application/json"}, req.Header()["Content-Type"])
 			assert.Equal(t, []byte(`{"amount":100}`), req.Body())
@@ -71,9 +71,9 @@ func TestNewRequest(t *testing.T) {
 		t.Run("必須項目のみで生成し任意項目は未設定になる", func(t *testing.T) {
 			t.Parallel()
 
-			req := httpclient.NewRequest(httpclient.MethodGet, "rates", "https://example.com/rates")
+			req := httpclient.NewRequest(httpclient.MethodGet(), "rates", "https://example.com/rates")
 
-			assert.Equal(t, httpclient.MethodGet, req.Method())
+			assert.Equal(t, httpclient.MethodGet(), req.Method())
 			assert.Equal(t, httpclient.Downstream("rates"), req.Downstream())
 			assert.Equal(t, "https://example.com/rates", req.URL())
 			assert.Nil(t, req.Header())
@@ -86,7 +86,7 @@ func TestNewRequest(t *testing.T) {
 			t.Parallel()
 
 			header := httpclient.Header{"Content-Type": {"application/json"}}
-			req := httpclient.NewRequest(httpclient.MethodPost, "pay", "https://example.com/charge",
+			req := httpclient.NewRequest(httpclient.MethodPost(), "pay", "https://example.com/charge",
 				httpclient.WithHeader(header),
 				httpclient.WithBody([]byte("{}")),
 				httpclient.WithIdempotencyKey("key-1"),
@@ -101,7 +101,7 @@ func TestNewRequest(t *testing.T) {
 		t.Run("WithRetryはAllowRetryとIdempotencyKeyを同時に設定する", func(t *testing.T) {
 			t.Parallel()
 
-			req := httpclient.NewRequest(httpclient.MethodPost, "pay", "https://example.com/charge",
+			req := httpclient.NewRequest(httpclient.MethodPost(), "pay", "https://example.com/charge",
 				httpclient.WithRetry("key-2"),
 			)
 

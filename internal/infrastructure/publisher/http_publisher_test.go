@@ -33,7 +33,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
-					assert.Equal(t, httpclient.MethodPost, req.Method())
+					assert.Equal(t, httpclient.MethodPost(), req.Method())
 					assert.Equal(t, testEndpoint, req.URL())
 					assert.Equal(t, msgID.String(), req.IdempotencyKey())
 					assert.False(t, req.AllowRetry())

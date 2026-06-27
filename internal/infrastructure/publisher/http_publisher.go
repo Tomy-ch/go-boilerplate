@@ -64,7 +64,7 @@ func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
 	// AllowRetry は付与しない（at-least-once は relay の poll ループが担う）。
 	// 受信側 dedup 用に IdempotencyKey（message_id）のみ伝搬する。
 	_, err := p.client.Do(ctx, httpclient.NewRequest(
-		httpclient.MethodPost, downstream, string(p.endpoint),
+		httpclient.MethodPost(), downstream, string(p.endpoint),
 		httpclient.WithHeader(header),
 		httpclient.WithBody(m.Payload),
 		httpclient.WithIdempotencyKey(m.MessageID.String()),

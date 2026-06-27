@@ -13,19 +13,22 @@ package httpclient
 
 import "context"
 
-// HTTP メソッドの定義済み値群です。不正なメソッド文字列をコンパイル時に排除します（L2）。
-var (
-	// MethodGet は、HTTP GET メソッドです。
-	MethodGet = Method{"GET"}
-	// MethodPost は、HTTP POST メソッドです。
-	MethodPost = Method{"POST"}
-	// MethodPut は、HTTP PUT メソッドです。
-	MethodPut = Method{"PUT"}
-	// MethodPatch は、HTTP PATCH メソッドです。
-	MethodPatch = Method{"PATCH"}
-	// MethodDelete は、HTTP DELETE メソッドです。
-	MethodDelete = Method{"DELETE"}
-)
+// MethodGet は、HTTP GET メソッドを返します。
+//
+// パッケージ外からの再代入で定義済み値が破壊されるのを防ぐため、関数として提供します。
+func MethodGet() Method { return Method{"GET"} }
+
+// MethodPost は、HTTP POST メソッドを返します。
+func MethodPost() Method { return Method{"POST"} }
+
+// MethodPut は、HTTP PUT メソッドを返します。
+func MethodPut() Method { return Method{"PUT"} }
+
+// MethodPatch は、HTTP PATCH メソッドを返します。
+func MethodPatch() Method { return Method{"PATCH"} }
+
+// MethodDelete は、HTTP DELETE メソッドを返します。
+func MethodDelete() Method { return Method{"DELETE"} }
 
 // Client は、resilient な外部 HTTP 通信の substrate port です（infra 内部・driver.DatabaseDriver 相当）。
 type Client interface {
@@ -43,7 +46,7 @@ type Downstream string
 
 // Method は、HTTP メソッドを表す閉じた自前型です（net/http に依存しません）。
 //
-// パッケージ外からは MethodGet 等の定義済み値しか構築できず、`Method("garbage")` のような
+// パッケージ外からは MethodGet() 等の定義済み値しか構築できず、`Method("garbage")` のような
 // 任意の文字列から Method を生成することはできません（L2: string 別名で型が防げない問題を根絶）。
 type Method struct{ s string }
 

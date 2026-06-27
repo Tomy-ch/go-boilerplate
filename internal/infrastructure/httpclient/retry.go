@@ -26,9 +26,9 @@ const (
 // 冪等メソッド(GET/PUT/DELETE)は常に安全、非冪等メソッド(POST/PATCH)は AllowRetry 明示時のみ安全です。
 func isRetrySafe(req *Request) bool {
 	switch req.method {
-	case MethodGet, MethodPut, MethodDelete:
+	case MethodGet(), MethodPut(), MethodDelete():
 		return true
-	case MethodPost, MethodPatch:
+	case MethodPost(), MethodPatch():
 		return req.allowRetry
 	default:
 		return false
