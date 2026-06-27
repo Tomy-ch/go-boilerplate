@@ -36,7 +36,7 @@ func outboxRelayRun(_ *cobra.Command, _ []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	app := di.NewOutboxRelayApp()
+	app := di.NewOutboxRelayApp(appCfg.ShutdownTimeout())
 	startApp, stopApp := di.NewApplicationServer(app)
 
 	return outboxcli.RunRelay(ctx, appCfg.ShutdownTimeout(), startApp, stopApp)

@@ -108,3 +108,12 @@ func IsLockNotAvailable(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "55P03"
 }
+
+// IsRetryableTxError は、リトライで解消しうる tx エラーかを判定します。
+// 40001 = serialization_failure, 40P01 = deadlock_detected。
+// 写像後の sentinel（両者は ErrUnavailable へ写像される）ではなく生 SQLSTATE で判定し、
+// 接続断など他の ErrUnavailable をリトライ対象に巻き込まないようにします。
+func IsRetryableTxError(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && (pgErr.Code == "40001" || pgErr.Code == "40P01")
+}

@@ -101,6 +101,9 @@ type Database struct {
 	SlowQueryWarnThreshold time.Duration `env:"SLOW_QUERY_WARN_THRESHOLD,required"`
 	StatementTimeout       time.Duration `env:"STATEMENT_TIMEOUT,required"`
 	LockTimeout            time.Duration `env:"LOCK_TIMEOUT,required"`
+	TxMaxRetries           int           `env:"TX_MAX_RETRIES,required"`
+	TxRetryBaseBackoff     time.Duration `env:"TX_RETRY_BASE_BACKOFF,required"`
+	TxRetryMaxBackoff      time.Duration `env:"TX_RETRY_MAX_BACKOFF,required"`
 }
 
 // DBConnection はコネクションプールの上限・下限数とコネクションの最大生存時間・最大アイドル時間を保持する。

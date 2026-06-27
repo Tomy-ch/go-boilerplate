@@ -223,7 +223,17 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				_ = r.consumer.Extend(ctx, m, interval*extendVisibilityFactor)
+				if err := r.consumer.Extend(ctx, m, interval*extendVisibilityFactor); err != nil {
+					if ctx.Err() != nil {
+						return // 停止中の Extend 失敗は握り潰してよい（未 Ack なので再配送される）
+					}
+					// H2: 握り潰さず可視化する。lease 延長失敗は早期再配送→重複処理の予兆。
+					r.e.met.ExtendError(ctx)
+					r.e.log.Named("worker.extend").Warn(
+						"extend failed",
+						append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))...,
+					)
+				}
 			}
 		}
 	}()

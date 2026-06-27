@@ -133,7 +133,7 @@
 		
 			
 			
-			<h2 id="RegisterJobHooks">func <a href="../../../../../src/go-boilerplate/internal/di/job/hook/register_job_hooks.go.html?s=421:598#L7">RegisterJobHooks</a>
+			<h2 id="RegisterJobHooks">func <a href="../../../../../src/go-boilerplate/internal/di/job/hook/register_job_hooks.go.html?s=609:786#L10">RegisterJobHooks</a>
 				<a class="permalink" href="#RegisterJobHooks">¶</a>
 				
 				
@@ -147,6 +147,8 @@
     state <a href="../../../../../go-boilerplate/internal/usecase/boundary/job/">job</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/job/#State">State</a>,
 )</pre>
 			<p>RegisterJobHooks は、ジョブのライフサイクルフックを登録します。
+</p><p>OnStop で実行 context がキャンセルされるため、`--timeout` 超過で cli が
+app.Stop を呼ぶと実行中のジョブ（DB クエリ等）が中断されます。
 
 			
 			

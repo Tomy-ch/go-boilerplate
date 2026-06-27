@@ -79,6 +79,9 @@ type DatabaseConfig struct {
 	slowQueryWarnThreshold time.Duration
 	statementTimeout       time.Duration
 	lockTimeout            time.Duration
+	txMaxRetries           int
+	txRetryBaseBackoff     time.Duration
+	txRetryMaxBackoff      time.Duration
 }
 
 // DBConnectionConfig は、データベース接続プールのサイズと寿命の設定を保持します。
@@ -281,6 +284,20 @@ func (d *DatabaseConfig) StatementTimeout() time.Duration { return d.statementTi
 
 // LockTimeout は、ロック獲得待ちの上限を返します（0 以下で無効）。長時間ロック待ちの backstop。
 func (d *DatabaseConfig) LockTimeout() time.Duration { return d.lockTimeout }
+
+// TxMaxRetries は、トランザクションのリトライ最大試行回数を返します。
+//
+// serialization failure / deadlock 検出時の有限リトライ上限です。
+// 0 以下の場合は実装側の既定値（3回）にフォールバックします。
+func (d *DatabaseConfig) TxMaxRetries() int { return d.txMaxRetries }
+
+// TxRetryBaseBackoff は、トランザクションリトライ backoff の初期値（指数 backoff の基準値）を返します。
+// 0 以下の場合は実装側の既定値にフォールバックします。
+func (d *DatabaseConfig) TxRetryBaseBackoff() time.Duration { return d.txRetryBaseBackoff }
+
+// TxRetryMaxBackoff は、トランザクションリトライ backoff の上限値（1試行あたりの最大待機時間）を返します。
+// 0 以下の場合は実装側の既定値にフォールバックします。
+func (d *DatabaseConfig) TxRetryMaxBackoff() time.Duration { return d.txRetryMaxBackoff }
 
 // NewDBConnectionConfig は、データベース接続の設定を返します。
 func NewDBConnectionConfig(cfg *Config) *DBConnectionConfig { return &cfg.dbconnection }

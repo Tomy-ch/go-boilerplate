@@ -22,6 +22,8 @@ func WorkerModule() fx.Option {
 			diworker.ProvideEngine,
 			workercontroller.NewState,
 		),
+		// 起動時に DrainTimeout < grace を検証する。違反時は app.Start が失敗する。
+		fx.Invoke(diworker.ValidateShutdownGrace),
 		fx.Invoke(hook.RegisterWorkerHooks),
 	)
 }

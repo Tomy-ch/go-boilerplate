@@ -64,6 +64,9 @@ func TestMockConfigForTest(t *testing.T) {
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 					statementTimeout:       expectedDBStatementTimeout,
 					lockTimeout:            expectedDBLockTimeout,
+					txMaxRetries:           expectedDBTxMaxRetries,
+					txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				dbconnection: DBConnectionConfig{
 					maxConns:    expectedDBMaxConnsInt32,
@@ -175,6 +178,9 @@ func Test_mockLoader(t *testing.T) {
 					SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 					StatementTimeout:       expectedDBStatementTimeout,
 					LockTimeout:            expectedDBLockTimeout,
+					TxMaxRetries:           expectedDBTxMaxRetries,
+					TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				DBConnection: DBConnection{
 					MaxConns:    expectedDBMaxConnsInt32,

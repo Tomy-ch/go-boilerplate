@@ -80,6 +80,9 @@ func New() (*Config, error) {
 			slowQueryWarnThreshold: cfg.Database.SlowQueryWarnThreshold,
 			statementTimeout:       cfg.Database.StatementTimeout,
 			lockTimeout:            cfg.Database.LockTimeout,
+			txMaxRetries:           cfg.Database.TxMaxRetries,
+			txRetryBaseBackoff:     cfg.Database.TxRetryBaseBackoff,
+			txRetryMaxBackoff:      cfg.Database.TxRetryMaxBackoff,
 		},
 		dbconnection: DBConnectionConfig{
 			maxConns:    cfg.DBConnection.MaxConns,

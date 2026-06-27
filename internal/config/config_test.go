@@ -61,6 +61,9 @@ func TestNewConfig(t *testing.T) {
 					slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
 					statementTimeout:       expectedDBStatementTimeout,
 					lockTimeout:            expectedDBLockTimeout,
+					txMaxRetries:           expectedDBTxMaxRetries,
+					txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+					txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 				},
 				dbconnection: DBConnectionConfig{
 					maxConns:    expectedDBMaxConnsInt32,

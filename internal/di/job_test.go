@@ -58,7 +58,7 @@ func TestRunJob(t *testing.T) {
 
 	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
 	t.Run("start: キャンセル済みコンテキストで開始すると start は context.Canceled を返してチャンネルを閉じることを期待する", func(t *testing.T) {
-		start, stop := RunJob()
+		start, stop := RunJob(30 * time.Second)
 		require.NotNil(t, start)
 		require.NotNil(t, stop)
 
@@ -80,7 +80,7 @@ func TestRunJob(t *testing.T) {
 
 	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
 	t.Run("stop: start していない状態で stop を呼ぶとエラーなしで成功することを期待する", func(t *testing.T) {
-		_, stop := RunJob()
+		_, stop := RunJob(30 * time.Second)
 		require.NotNil(t, stop)
 
 		err := stop(context.Background())
@@ -89,7 +89,7 @@ func TestRunJob(t *testing.T) {
 
 	//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可
 	t.Run("stop: キャンセル済みコンテキストを与えると stop は context.Canceled を返すことを期待する", func(t *testing.T) {
-		_, stop := RunJob()
+		_, stop := RunJob(30 * time.Second)
 		require.NotNil(t, stop)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -101,7 +101,7 @@ func TestRunJob(t *testing.T) {
 	})
 
 	t.Run("start: 存在しないジョブ名で start すると runner の unknown job エラーが done チャンネルに流れることを期待する", func(t *testing.T) {
-		start, stop := RunJob()
+		start, stop := RunJob(30 * time.Second)
 		require.NotNil(t, start)
 		require.NotNil(t, stop)
 

@@ -87,6 +87,9 @@
 |DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|observability連携|
 |DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|ctx を無視する query への SQL 層 backstop。0 で無効|
 |DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|長時間ロック待ちへの backstop。0 で無効|
+|DB_TX_MAX_RETRIES|serialization failure / deadlock 時の tx リトライ最大試行回数|int|3|0 でリトライ無効（単発実行）|
+|DB_TX_RETRY_BASE_BACKOFF|tx リトライ backoff の初期値|duration|5ms|指数 backoff の基準値（×2）|
+|DB_TX_RETRY_MAX_BACKOFF|tx リトライ backoff の上限値|duration|100ms|1 試行あたりの上限|
 
 ### Database Connection Pool
 

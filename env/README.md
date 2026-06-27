@@ -87,6 +87,9 @@ This directory is the canonical reference for every environment variable read by
 |DB_SLOW_QUERY_WARN_THRESHOLD|Slow query warning threshold|duration|500ms|Integrated with observability|
 |DB_STATEMENT_TIMEOUT|Per-statement execution timeout (`statement_timeout`)|duration|30s|SQL-level backstop for queries that ignore ctx; 0 disables|
 |DB_LOCK_TIMEOUT|Lock acquisition wait timeout (`lock_timeout`)|duration|10s|Backstop against long lock waits; 0 disables|
+|DB_TX_MAX_RETRIES|Max tx retry attempts on serialization failure / deadlock|int|3|0 disables retry (single attempt)|
+|DB_TX_RETRY_BASE_BACKOFF|Initial backoff for tx retry|duration|5ms|Exponential base (×2)|
+|DB_TX_RETRY_MAX_BACKOFF|Max backoff for tx retry|duration|100ms|Upper bound per attempt|
 
 ### Database Connection Pool
 

@@ -118,7 +118,7 @@
 				<dd><a href="#NewJobCore">func NewJobCore() fx.Option</a></dd>
 			
 				
-				<dd><a href="#NewOutboxRelayApp">func NewOutboxRelayApp() *fx.App</a></dd>
+				<dd><a href="#NewOutboxRelayApp">func NewOutboxRelayApp(grace time.Duration) *fx.App</a></dd>
 			
 				
 				<dd><a href="#NewOutboxRelayCore">func NewOutboxRelayCore() fx.Option</a></dd>
@@ -127,13 +127,13 @@
 				<dd><a href="#NewWorkerCore">func NewWorkerCore() fx.Option</a></dd>
 			
 				
-				<dd><a href="#RunJob">func RunJob() (StartFunc, StopFunc)</a></dd>
+				<dd><a href="#RunJob">func RunJob(grace time.Duration) (StartFunc, StopFunc)</a></dd>
 			
 				
 				<dd><a href="#RunOutboxReplay">func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error)</a></dd>
 			
 				
-				<dd><a href="#RunWorker">func RunWorker() (StartFunc, StopFunc)</a></dd>
+				<dd><a href="#RunWorker">func RunWorker(grace time.Duration) (StartFunc, StopFunc)</a></dd>
 			
 			
 				
@@ -237,14 +237,16 @@ extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）�
 		
 			
 			
-			</p><h2 id="NewOutboxRelayApp">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1178:1210#L30">NewOutboxRelayApp</a>
+			</p><h2 id="NewOutboxRelayApp">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1272:1323#L30">NewOutboxRelayApp</a>
 				<a class="permalink" href="#NewOutboxRelayApp">¶</a>
 				
 				
 			</h2>
-			<pre>func NewOutboxRelayApp() *<a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#App">App</a></pre>
+			<pre>func NewOutboxRelayApp(grace <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) *<a href="../../../go.uber.org/fx/">fx</a>.<a href="../../../go.uber.org/fx/#App">App</a></pre>
 			<p>NewOutboxRelayApp は、relay 常駐プロセス用の fx.App を生成します。
 OutboxRelayModule の OnStart フックが poll ループを起動します。
+grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、fx 既定（15s）が停止猶予より
+先に teardown を打ち切らないようにします（停止軸を grace に一本化）。
 
 			
 			
@@ -252,7 +254,7 @@ OutboxRelayModule の OnStart フックが poll ループを起動します。
 		
 			
 			
-			</p><h2 id="NewOutboxRelayCore">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=882:917#L24">NewOutboxRelayCore</a>
+			</p><h2 id="NewOutboxRelayCore">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=769:804#L22">NewOutboxRelayCore</a>
 				<a class="permalink" href="#NewOutboxRelayCore">¶</a>
 				
 				
@@ -266,7 +268,7 @@ OutboxRelayModule の OnStart フックが poll ループを起動します。
 		
 			
 			
-			</p><h2 id="NewWorkerCore">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=369:399#L6">NewWorkerCore</a>
+			</p><h2 id="NewWorkerCore">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=377:407#L7">NewWorkerCore</a>
 				<a class="permalink" href="#NewWorkerCore">¶</a>
 				
 				
@@ -280,13 +282,15 @@ OutboxRelayModule の OnStart フックが poll ループを起動します。
 		
 			
 			
-			</p><h2 id="RunJob">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1259:1294#L38">RunJob</a>
+			</p><h2 id="RunJob">func <a href="../../../src/go-boilerplate/internal/di/job.go.html?s=1479:1533#L40">RunJob</a>
 				<a class="permalink" href="#RunJob">¶</a>
 				
 				
 			</h2>
-			<pre>func RunJob() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
+			<pre>func RunJob(grace <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
 			<p>RunJob は、ジョブ実行用の開始関数・停止関数を生成して返します。context／タイムアウトの制御は返した関数の呼出側が担います。
+grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
+停止猶予より先に teardown を打ち切らないようにします（停止軸を grace に一本化）。
 
 			
 			
@@ -294,7 +298,7 @@ OutboxRelayModule の OnStart フックが poll ループを起動します。
 		
 			
 			
-			</p><h2 id="RunOutboxReplay">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1531:1609#L36">RunOutboxReplay</a>
+			</p><h2 id="RunOutboxReplay">func <a href="../../../src/go-boilerplate/internal/di/outboxrelay.go.html?s=1667:1745#L36">RunOutboxReplay</a>
 				<a class="permalink" href="#RunOutboxReplay">¶</a>
 				
 				
@@ -309,13 +313,15 @@ poll ループを持たない（OutboxRelayModule を含まない）一時的な
 		
 			
 			
-			</p><h2 id="RunWorker">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=788:826#L22">RunWorker</a>
+			</p><h2 id="RunWorker">func <a href="../../../src/go-boilerplate/internal/di/worker.go.html?s=977:1034#L25">RunWorker</a>
 				<a class="permalink" href="#RunWorker">¶</a>
 				
 				
 			</h2>
-			<pre>func RunWorker() (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
+			<pre>func RunWorker(grace <a href="../../../time/">time</a>.<a href="../../../time/#Duration">Duration</a>) (<a href="#StartFunc">StartFunc</a>, <a href="#StopFunc">StopFunc</a>)</pre>
 			<p>RunWorker は、worker 実行用の開始関数・停止関数を生成して返します。
+grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、停止時に fx 既定（15s）が
+DrainTimeout より先に drain を打ち切らないようにします。
 
 			
 			

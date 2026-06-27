@@ -287,6 +287,21 @@ func TestGetterMethods(t *testing.T) {
 				t.Parallel()
 				assert.Equal(t, expectedDBLockTimeout, database.LockTimeout())
 			})
+
+			t.Run("トランザクションリトライ最大試行回数を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxMaxRetries, database.TxMaxRetries())
+			})
+
+			t.Run("トランザクションリトライbackoff初期値を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxRetryBaseBackoff, database.TxRetryBaseBackoff())
+			})
+
+			t.Run("トランザクションリトライbackoff上限値を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedDBTxRetryMaxBackoff, database.TxRetryMaxBackoff())
+			})
 		})
 
 		t.Run("DBコネクション設定", func(t *testing.T) {
