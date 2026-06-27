@@ -179,7 +179,7 @@ func TestGracefulStop(t *testing.T) {
 		// 停止処理は呼ばれ、渡された context は期限切れでなく stopTimeout 相当の猶予を持つこと。
 		require.True(t, stop.called, "停止処理が呼ばれること")
 		require.True(t, stop.hasDeadline, "停止用 context に deadline があること")
-		require.Nil(t, stop.ctxErr, "停止用 context が期限切れでないこと")
+		require.NoError(t, stop.ctxErr, "停止用 context が期限切れでないこと")
 		assert.Greater(t, time.Until(stop.deadline), stopTimeout/2, "stopTimeout 相当の猶予が残っていること")
 	})
 }
