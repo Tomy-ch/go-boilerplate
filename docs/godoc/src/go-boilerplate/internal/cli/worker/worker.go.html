@@ -63,28 +63,28 @@
 <span id="L6" class="ln">     6  </span>	&#34;time&#34;
 <span id="L7" class="ln">     7  </span>)
 <span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>const stopTimeout = 30 * time.Second
-<span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span><span class="comment">// StartFunc は、worker を起動して完了チャネルを返す関数の型です。</span>
-<span id="L12" class="ln">    12  </span>type StartFunc func(ctx context.Context, name string, args []string) &lt;-chan error
-<span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span><span class="comment">// StopFunc は、worker をグレースフルに停止する関数の型です。</span>
-<span id="L15" class="ln">    15  </span>type StopFunc func(ctx context.Context) error
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span><span class="comment">// RunWorkerWith は、provide が返す開始・停止関数で worker を実行します。</span>
-<span id="L18" class="ln">    18  </span>func RunWorkerWith(
-<span id="L19" class="ln">    19  </span>	ctx context.Context,
-<span id="L20" class="ln">    20  </span>	name string,
-<span id="L21" class="ln">    21  </span>	args []string,
+<span id="L9" class="ln">     9  </span><span class="comment">// StartFunc は、worker を起動して完了チャネルを返す関数の型です。</span>
+<span id="L10" class="ln">    10  </span>type StartFunc func(ctx context.Context, name string, args []string) &lt;-chan error
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span><span class="comment">// StopFunc は、worker をグレースフルに停止する関数の型です。</span>
+<span id="L13" class="ln">    13  </span>type StopFunc func(ctx context.Context) error
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span><span class="comment">// RunWorkerWith は、provide が返す開始・停止関数で worker を実行します。</span>
+<span id="L16" class="ln">    16  </span><span class="comment">// grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。</span>
+<span id="L17" class="ln">    17  </span>func RunWorkerWith(
+<span id="L18" class="ln">    18  </span>	ctx context.Context,
+<span id="L19" class="ln">    19  </span>	name string,
+<span id="L20" class="ln">    20  </span>	args []string,
+<span id="L21" class="ln">    21  </span>	grace time.Duration,
 <span id="L22" class="ln">    22  </span>	provide func() (StartFunc, StopFunc),
 <span id="L23" class="ln">    23  </span>) error {
 <span id="L24" class="ln">    24  </span>	start, stop := provide()
-<span id="L25" class="ln">    25  </span>	return runWorker(ctx, name, args, start, stop)
+<span id="L25" class="ln">    25  </span>	return runWorker(ctx, name, args, grace, start, stop)
 <span id="L26" class="ln">    26  </span>}
 <span id="L27" class="ln">    27  </span>
 <span id="L28" class="ln">    28  </span><span class="comment">// runWorker は、worker を起動して常駐させ、SIGTERM(ctx 完了) もしくは engine 自走停止で</span>
 <span id="L29" class="ln">    29  </span><span class="comment">// グレースフルに停止します。job と異なり完了 channel を待ち続ける常駐型です。</span>
-<span id="L30" class="ln">    30  </span>func runWorker(ctx context.Context, name string, args []string, start StartFunc, stop StopFunc) error {
+<span id="L30" class="ln">    30  </span>func runWorker(ctx context.Context, name string, args []string, grace time.Duration, start StartFunc, stop StopFunc) error {
 <span id="L31" class="ln">    31  </span>	done := start(ctx, name, args)
 <span id="L32" class="ln">    32  </span>
 <span id="L33" class="ln">    33  </span>	var (
@@ -99,27 +99,28 @@
 <span id="L42" class="ln">    42  </span>		<span class="comment">// SIGTERM。engine を drain して停止し、停止後に結果を確認する。</span>
 <span id="L43" class="ln">    43  </span>	}
 <span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>	gracefulStop(ctx, stop)
+<span id="L45" class="ln">    45  </span>	gracefulStop(ctx, grace, stop)
 <span id="L46" class="ln">    46  </span>
 <span id="L47" class="ln">    47  </span>	<span class="comment">// SIGTERM 経路では engine の実際の終了結果を必ず待ち切る。</span>
-<span id="L48" class="ln">    48  </span>	<span class="comment">// stopTimeout が engine の drain 完了より先に満了して OnStop が早期 return しても、</span>
-<span id="L49" class="ln">    49  </span>	<span class="comment">// engine goroutine は drain 後に必ず done へ結果を書く（DrainTimeout で有界）。</span>
-<span id="L50" class="ln">    50  </span>	<span class="comment">// 非ブロッキングで default を取ると、その間に発生した Fatal を取りこぼし exit 0 になってしまう。</span>
-<span id="L51" class="ln">    51  </span>	if !selfStopped {
-<span id="L52" class="ln">    52  </span>		runErr = &lt;-done
-<span id="L53" class="ln">    53  </span>	}
-<span id="L54" class="ln">    54  </span>	return runErr
-<span id="L55" class="ln">    55  </span>}
-<span id="L56" class="ln">    56  </span>
-<span id="L57" class="ln">    57  </span><span class="comment">// gracefulStop は、停止開始時点から stopTimeout の猶予を与えて後始末（app.Stop=drain）を実行します。</span>
-<span id="L58" class="ln">    58  </span><span class="comment">// ctx は SIGTERM で既にキャンセル済みのため、停止用 context はキャンセルだけ切り離して</span>
-<span id="L59" class="ln">    59  </span><span class="comment">// （trace/baggage は引き継ぎつつ）作り直します。</span>
-<span id="L60" class="ln">    60  </span>func gracefulStop(ctx context.Context, stop StopFunc) {
-<span id="L61" class="ln">    61  </span>	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stopTimeout)
-<span id="L62" class="ln">    62  </span>	defer cancel()
-<span id="L63" class="ln">    63  </span>	_ = stop(stopCtx)
-<span id="L64" class="ln">    64  </span>}
-<span id="L65" class="ln">    65  </span>
+<span id="L48" class="ln">    48  </span>	<span class="comment">// grace が engine の drain 完了より先に満了して OnStop が早期 return しても、</span>
+<span id="L49" class="ln">    49  </span>	<span class="comment">// engine goroutine は drain 後に必ず done へ結果を書く（DrainTimeout で有界。</span>
+<span id="L50" class="ln">    50  </span>	<span class="comment">// 起動時 validation で DrainTimeout &lt; grace を保証）。</span>
+<span id="L51" class="ln">    51  </span>	<span class="comment">// 非ブロッキングで default を取ると、その間に発生した Fatal を取りこぼし exit 0 になってしまう。</span>
+<span id="L52" class="ln">    52  </span>	if !selfStopped {
+<span id="L53" class="ln">    53  </span>		runErr = &lt;-done
+<span id="L54" class="ln">    54  </span>	}
+<span id="L55" class="ln">    55  </span>	return runErr
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span><span class="comment">// gracefulStop は、停止開始時点から grace の猶予を与えて後始末を実行します。</span>
+<span id="L59" class="ln">    59  </span><span class="comment">// ctx は SIGTERM で既にキャンセル済みのため、停止用 context はキャンセルだけ切り離して</span>
+<span id="L60" class="ln">    60  </span><span class="comment">// （trace/baggage は引き継ぎつつ）作り直します。</span>
+<span id="L61" class="ln">    61  </span>func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) {
+<span id="L62" class="ln">    62  </span>	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)
+<span id="L63" class="ln">    63  </span>	defer cancel()
+<span id="L64" class="ln">    64  </span>	_ = stop(stopCtx)
+<span id="L65" class="ln">    65  </span>}
+<span id="L66" class="ln">    66  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/cli/worker/worker.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -115,7 +115,7 @@
 <span id="L58" class="ln">    58  </span>
 <span id="L59" class="ln">    59  </span>	<span class="comment">//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可</span>
 <span id="L60" class="ln">    60  </span>	t.Run(&#34;start: キャンセル済みコンテキストで開始すると start は context.Canceled を返してチャンネルを閉じることを期待する&#34;, func(t *testing.T) {
-<span id="L61" class="ln">    61  </span>		start, stop := RunJob()
+<span id="L61" class="ln">    61  </span>		start, stop := RunJob(30 * time.Second)
 <span id="L62" class="ln">    62  </span>		require.NotNil(t, start)
 <span id="L63" class="ln">    63  </span>		require.NotNil(t, stop)
 <span id="L64" class="ln">    64  </span>
@@ -137,7 +137,7 @@
 <span id="L80" class="ln">    80  </span>
 <span id="L81" class="ln">    81  </span>	<span class="comment">//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可</span>
 <span id="L82" class="ln">    82  </span>	t.Run(&#34;stop: start していない状態で stop を呼ぶとエラーなしで成功することを期待する&#34;, func(t *testing.T) {
-<span id="L83" class="ln">    83  </span>		_, stop := RunJob()
+<span id="L83" class="ln">    83  </span>		_, stop := RunJob(30 * time.Second)
 <span id="L84" class="ln">    84  </span>		require.NotNil(t, stop)
 <span id="L85" class="ln">    85  </span>
 <span id="L86" class="ln">    86  </span>		err := stop(context.Background())
@@ -146,7 +146,7 @@
 <span id="L89" class="ln">    89  </span>
 <span id="L90" class="ln">    90  </span>	<span class="comment">//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可</span>
 <span id="L91" class="ln">    91  </span>	t.Run(&#34;stop: キャンセル済みコンテキストを与えると stop は context.Canceled を返すことを期待する&#34;, func(t *testing.T) {
-<span id="L92" class="ln">    92  </span>		_, stop := RunJob()
+<span id="L92" class="ln">    92  </span>		_, stop := RunJob(30 * time.Second)
 <span id="L93" class="ln">    93  </span>		require.NotNil(t, stop)
 <span id="L94" class="ln">    94  </span>
 <span id="L95" class="ln">    95  </span>		ctx, cancel := context.WithCancel(context.Background())
@@ -158,7 +158,7 @@
 <span id="L101" class="ln">   101  </span>	})
 <span id="L102" class="ln">   102  </span>
 <span id="L103" class="ln">   103  </span>	t.Run(&#34;start: 存在しないジョブ名で start すると runner の unknown job エラーが done チャンネルに流れることを期待する&#34;, func(t *testing.T) {
-<span id="L104" class="ln">   104  </span>		start, stop := RunJob()
+<span id="L104" class="ln">   104  </span>		start, stop := RunJob(30 * time.Second)
 <span id="L105" class="ln">   105  </span>		require.NotNil(t, start)
 <span id="L106" class="ln">   106  </span>		require.NotNil(t, stop)
 <span id="L107" class="ln">   107  </span>

@@ -113,7 +113,7 @@
 <span id="L56" class="ln">    56  </span>
 <span id="L57" class="ln">    57  </span>	<span class="comment">//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可</span>
 <span id="L58" class="ln">    58  </span>	t.Run(&#34;start: キャンセル済みコンテキストで開始すると context.Canceled を返してチャンネルを閉じる&#34;, func(t *testing.T) {
-<span id="L59" class="ln">    59  </span>		start, stop := RunWorker()
+<span id="L59" class="ln">    59  </span>		start, stop := RunWorker(30 * time.Second)
 <span id="L60" class="ln">    60  </span>		require.NotNil(t, start)
 <span id="L61" class="ln">    61  </span>		require.NotNil(t, stop)
 <span id="L62" class="ln">    62  </span>
@@ -132,7 +132,7 @@
 <span id="L75" class="ln">    75  </span>
 <span id="L76" class="ln">    76  </span>	<span class="comment">//nolint:paralleltest // 親が EnsureRepoRootAndEnv(t.Setenv/t.Chdir) を使用するため並列化不可</span>
 <span id="L77" class="ln">    77  </span>	t.Run(&#34;stop: start していない状態で stop を呼ぶとエラーなしで成功する&#34;, func(t *testing.T) {
-<span id="L78" class="ln">    78  </span>		_, stop := RunWorker()
+<span id="L78" class="ln">    78  </span>		_, stop := RunWorker(30 * time.Second)
 <span id="L79" class="ln">    79  </span>		require.NotNil(t, stop)
 <span id="L80" class="ln">    80  </span>
 <span id="L81" class="ln">    81  </span>		require.NoError(t, stop(context.Background()))
