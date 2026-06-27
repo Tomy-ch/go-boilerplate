@@ -21,9 +21,9 @@ const (
 	callerSkipCount = 1
 	cleanupTimeout  = 5 * time.Second
 
-	// defaultTxMaxAttempts は、tx リトライの最大試行回数の既定値です（H1）。
+	// defaultTxMaxAttempts は、tx リトライの最大試行回数の既定値です。
 	defaultTxMaxAttempts = 3
-	// defaultTxBackoffInitial / defaultTxBackoffMax は、tx リトライ backoff の既定値です（H1）。
+	// defaultTxBackoffInitial / defaultTxBackoffMax は、tx リトライ backoff の既定値です。
 	defaultTxBackoffInitial = 5 * time.Millisecond
 	defaultTxBackoffMax     = 100 * time.Millisecond
 	// txBackoffMultiplier は、tx リトライ backoff の倍率です。
@@ -84,8 +84,6 @@ func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) 
 		return fn(ctx) // nested: savepoint 相当・リトライしない（最外の Do が正規化する）
 	}
 
-	// doOnce は生エラーを返す。IsRetryableTxError で生 SQLSTATE を判定し有限リトライした後、
-	// 最終結果を 1 度だけ正規化する。
 	err := retry.Do(ctx, t.sleeper,
 		retry.Policy{MaxAttempts: t.maxAttempts, Backoff: t.backoff.Duration},
 		pgerror.IsRetryableTxError,

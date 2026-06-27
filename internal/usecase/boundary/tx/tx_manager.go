@@ -9,7 +9,7 @@ import (
 
 // Manager は、トランザクションの管理を行うインターフェースです。
 //
-// Do は serialization failure / deadlock 検出時に fn を最大 N 回再実行しうります（H1）。
+// Do は serialization failure / deadlock 検出時に fn を最大 N 回再実行しうります。
 // よって fn は DB 副作用以外について冪等であること（呼出側責務）。外部副作用（イベント発行・
 // メール送信等）は、同一 tx 内で outbox 行として書き込めば rollback と共に巻き戻り retry-safe に
 // なります。nested（既存 tx を再利用する）経路はリトライ対象外で 1 回のみ実行されます。

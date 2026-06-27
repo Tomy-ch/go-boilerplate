@@ -84,7 +84,7 @@ This directory is the canonical reference for every environment variable read by
 |DB_SSL_MODE|SSL setting|string|disable|require recommended in production|
 |DB_PING_TIMEOUT|Connection check timeout|duration|10s||
 |DB_SLOW_QUERY_WARN_THRESHOLD|Slow query warning threshold|duration|500ms|Integrated with observability|
-|DB_TX_MAX_RETRIES|Max tx retry attempts on serialization failure / deadlock|int|3|H1; 0 disables retry (single attempt)|
+|DB_TX_MAX_RETRIES|Max tx retry attempts on serialization failure / deadlock|int|3|0 disables retry (single attempt)|
 |DB_TX_RETRY_BASE_BACKOFF|Initial backoff for tx retry|duration|5ms|Exponential base (×2)|
 |DB_TX_RETRY_MAX_BACKOFF|Max backoff for tx retry|duration|100ms|Upper bound per attempt|
 
