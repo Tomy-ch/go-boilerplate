@@ -19,8 +19,7 @@ import (
 // Sleeper は、リトライ間の待機を抽象化するインターフェースです。
 // ctx のキャンセル / deadline を尊重し、待機が打ち切られた場合は error を返します。
 //
-// 本パッケージは internal 非依存のため独自に定義しますが、internal/usecase/boundary/clock
-// の Sleeper が構造的に充足するため、呼び出し側はそのまま注入できます。
+// 本パッケージは internal 非依存のため独自に定義します。Sleep(ctx context.Context, d time.Duration) error を持つ任意の型を注入できます。
 type Sleeper interface {
 	// Sleep は、d 経過まで待機します。ctx 打ち切り時は error を返します。
 	Sleep(ctx context.Context, d time.Duration) error
@@ -54,7 +53,6 @@ func Do(
 	isRetryable func(error) bool,
 	fn func(context.Context) error,
 ) error {
-	// MaxAttempts が未設定/不正でも最低 1 回は試行する。
 	attempts := max(1, policy.MaxAttempts)
 
 	var err error
