@@ -211,7 +211,7 @@
 				
 				<option value="file77">go-boilerplate/internal/controller/worker/dispatch.go (100.0%)</option>
 				
-				<option value="file78">go-boilerplate/internal/controller/worker/run.go (90.3%)</option>
+				<option value="file78">go-boilerplate/internal/controller/worker/run.go (90.0%)</option>
 				
 				<option value="file79">go-boilerplate/internal/controller/worker/runner.go (64.0%)</option>
 				
@@ -443,7 +443,7 @@
 				
 				<option value="file193">go-boilerplate/internal/observability/tracer_factory.go (100.0%)</option>
 				
-				<option value="file194">go-boilerplate/internal/observability/worker_metrics.go (71.4%)</option>
+				<option value="file194">go-boilerplate/internal/observability/worker_metrics.go (70.6%)</option>
 				
 				<option value="file195">go-boilerplate/internal/system/buildinfo.go (100.0%)</option>
 				
@@ -6622,12 +6622,12 @@ type circuit struct {
 }
 
 // newCircuit は、サーキットブレーカを生成します。threshold が 0 以下なら常に Closed のままです。
-func newCircuit(threshold int, bo backoff.Exponential) *circuit <span class="cov4" title="15">{
+func newCircuit(threshold int, bo backoff.Exponential) *circuit <span class="cov4" title="14">{
         return &amp;circuit{threshold: threshold, backoff: bo}
 }</span>
 
 // phaseNow は、現在の状態を返します。
-func (c *circuit) phaseNow() circuitPhase <span class="cov10" title="658">{
+func (c *circuit) phaseNow() circuitPhase <span class="cov10" title="416">{
         c.mu.Lock()
         defer c.mu.Unlock()
         return c.phase
@@ -6650,7 +6650,7 @@ func (c *circuit) toHalfOpen() <span class="cov1" title="1">{
 }
 
 // onSuccess は、成功（または Permanent 退避完了）を記録します。Half-open なら Closed へ復帰します。
-func (c *circuit) onSuccess() <span class="cov5" title="18">{
+func (c *circuit) onSuccess() <span class="cov5" title="17">{
         c.mu.Lock()
         defer c.mu.Unlock()
         c.failures = 0
@@ -6661,17 +6661,17 @@ func (c *circuit) onSuccess() <span class="cov5" title="18">{
 }
 
 // onFailure は、Retryable 失敗または poll エラーを記録します。閾値超過 or Half-open 失敗で Open へ遷移します。
-func (c *circuit) onFailure() <span class="cov8" title="300">{
+func (c *circuit) onFailure() <span class="cov8" title="182">{
         c.mu.Lock()
         defer c.mu.Unlock()
-        if c.threshold &lt;= 0 </span><span class="cov8" title="298">{
+        if c.threshold &lt;= 0 </span><span class="cov8" title="180">{
                 return
         }</span>
-        <span class="cov1" title="2">c.failures++
+        <span class="cov2" title="2">c.failures++
         switch c.phase </span>{
         case phaseHalfOpen:<span class="cov0" title="0">
                 c.trip()</span>
-        case phaseClosed:<span class="cov1" title="2">
+        case phaseClosed:<span class="cov2" title="2">
                 if c.failures &gt;= c.threshold </span><span class="cov1" title="1">{
                         c.trip()
                 }</span>
@@ -6709,13 +6709,13 @@ type category int
 
 // classify は、非 nil の err を重大度順（Fatal &gt; Permanent &gt; Retryable）で分類します。
 // いずれの分類センチネルにも該当しない error は Retryable として扱います。
-func classify(err error) category <span class="cov10" title="302">{
+func classify(err error) category <span class="cov10" title="184">{
         switch </span>{
         case xerrors.Is(err, apperror.ErrFatal):<span class="cov1" title="1">
                 return catFatal</span>
         case xerrors.Is(err, apperror.ErrPermanent):<span class="cov1" title="1">
                 return catPermanent</span>
-        default:<span class="cov9" title="300">
+        default:<span class="cov9" title="182">
                 return catRetryable</span>
         }
 }
@@ -6748,7 +6748,7 @@ type keyRunner struct {
 }
 
 // newKeyedDispatcher は、keyedDispatcher を生成します。buffer は key ごとのキュー長です。
-func newKeyedDispatcher(buffer int, proc func(ctx context.Context, m worker.Message)) *keyedDispatcher <span class="cov5" title="15">{
+func newKeyedDispatcher(buffer int, proc func(ctx context.Context, m worker.Message)) *keyedDispatcher <span class="cov5" title="14">{
         return &amp;keyedDispatcher{
                 runners: make(map[string]*keyRunner),
                 buffer:  buffer,
@@ -6757,8 +6757,8 @@ func newKeyedDispatcher(buffer int, proc func(ctx context.Context, m worker.Mess
 }</span>
 
 // dispatch は、メッセージを並列 or key 直列で処理へ回します。
-func (kd *keyedDispatcher) dispatch(ctx context.Context, m worker.Message) <span class="cov10" title="325">{
-        if m.PartitionKey == "" </span><span class="cov9" title="322">{
+func (kd *keyedDispatcher) dispatch(ctx context.Context, m worker.Message) <span class="cov10" title="205">{
+        if m.PartitionKey == "" </span><span class="cov9" title="202">{
                 go kd.proc(ctx, m)
                 return
         }</span>
@@ -6832,7 +6832,7 @@ type run struct {
         fatal   error
 }
 
-func newRun(e *Engine, w worker.Worker) *run <span class="cov5" title="15">{
+func newRun(e *Engine, w worker.Worker) *run <span class="cov5" title="14">{
         set := e.set
         r := &amp;run{
                 e:         e,
@@ -6850,66 +6850,66 @@ func newRun(e *Engine, w worker.Worker) *run <span class="cov5" title="15">{
 }</span>
 
 // loop は、poll loop 本体です。ctx 完了 or Fatal で抜け、drain して返ります。
-func (r *run) loop(parent context.Context) error <span class="cov5" title="15">{
+func (r *run) loop(parent context.Context) error <span class="cov5" title="14">{
         ctx, cancel := context.WithCancel(parent)
         r.cancel = cancel
         defer cancel()
         defer r.drain()
 
-        for </span><span class="cov9" title="329">{
+        for </span><span class="cov9" title="208">{
                 r.e.markProgress() // C2: stuck 検出用に進捗時刻を更新
                 n, ok := r.acquire(ctx)
                 if !ok </span><span class="cov2" title="2">{
                         return r.fatalErr()
                 }</span>
-                <span class="cov9" title="327">msgs, err := r.consumer.Receive(ctx, n)
-                if err != nil </span><span class="cov4" title="13">{
-                        if ctx.Err() != nil </span><span class="cov4" title="13">{
+                <span class="cov9" title="206">msgs, err := r.consumer.Receive(ctx, n)
+                if err != nil </span><span class="cov5" title="12">{
+                        if ctx.Err() != nil </span><span class="cov5" title="12">{
                                 return r.fatalErr()
                         }</span>
                         <span class="cov0" title="0">r.onPollError(ctx, err)
                         continue</span>
                 }
-                <span class="cov9" title="314">r.dispatchAll(ctx, msgs)</span>
+                <span class="cov9" title="194">r.dispatchAll(ctx, msgs)</span>
         }
 }
 
 // acquire は、Receive を許可できる状態になるまで待ち、取得件数を返します。
 // サーキットが Open なら cooldown を待ち、in-flight に空きが出るまで待つ二段ゲートです。
 // スロット待ちの間に Open へ遷移しうるため、待機後に状態を再確認します。
-func (r *run) acquire(ctx context.Context) (int, bool) <span class="cov9" title="329">{
-        for </span><span class="cov9" title="331">{
+func (r *run) acquire(ctx context.Context) (int, bool) <span class="cov9" title="208">{
+        for </span><span class="cov9" title="210">{
                 if ctx.Err() != nil </span><span class="cov1" title="1">{
                         return 0, false
                 }</span>
-                <span class="cov9" title="330">if r.cb.phaseNow() == phaseOpen </span><span class="cov1" title="1">{
+                <span class="cov9" title="209">if r.cb.phaseNow() == phaseOpen </span><span class="cov1" title="1">{
                         if !r.waitCooldown(ctx) </span><span class="cov0" title="0">{
                                 return 0, false
                         }</span>
                         <span class="cov1" title="1">continue</span>
                 }
-                <span class="cov9" title="329">free, ok := r.waitForSlot(ctx)
+                <span class="cov9" title="208">free, ok := r.waitForSlot(ctx)
                 if !ok </span><span class="cov1" title="1">{
                         return 0, false
                 }</span>
                 // phase は 1 度だけ snapshot して判定する（複数回 phaseNow() すると
                 // その間の trip() 割り込みで Open なのに BatchSize 件 Receive しうる TOCTOU を防ぐ）。
-                <span class="cov9" title="328">switch r.cb.phaseNow() </span>{
+                <span class="cov9" title="207">switch r.cb.phaseNow() </span>{
                 case phaseOpen:<span class="cov1" title="1">
                         continue</span> // スロット待ちの間に Open へ遷移したので Receive せず再評価
                 case phaseHalfOpen:<span class="cov1" title="1">
                         return min(r.e.set.CircuitHalfOpenProbe, free), true</span>
-                default:<span class="cov9" title="326">
+                default:<span class="cov9" title="205">
                         return min(r.e.set.BatchSize, free), true</span>
                 }
         }
 }
 
 // waitForSlot は、in-flight に空きが出るまで待ち、空き数を返します（B2 のゲート）。
-func (r *run) waitForSlot(ctx context.Context) (int, bool) <span class="cov9" title="329">{
-        for </span><span class="cov10" title="332">{
+func (r *run) waitForSlot(ctx context.Context) (int, bool) <span class="cov9" title="208">{
+        for </span><span class="cov10" title="211">{
                 free := cap(r.inflight) - len(r.inflight)
-                if free &gt; 0 </span><span class="cov9" title="328">{
+                if free &gt; 0 </span><span class="cov9" title="207">{
                         return free, true
                 }</span>
                 <span class="cov3" title="4">select </span>{
@@ -6932,12 +6932,12 @@ func (r *run) waitCooldown(ctx context.Context) bool <span class="cov1" title="1
 }
 
 // dispatchAll は、受信メッセージを in-flight 計上のうえ dispatch へ回します。
-func (r *run) dispatchAll(ctx context.Context, msgs []worker.Message) <span class="cov9" title="314">{
+func (r *run) dispatchAll(ctx context.Context, msgs []worker.Message) <span class="cov9" title="194">{
         if len(msgs) == 0 </span><span class="cov0" title="0">{
                 return
         }</span>
-        <span class="cov9" title="314">r.e.met.Received(ctx, int64(len(msgs)))
-        for _, m := range msgs </span><span class="cov9" title="325">{
+        <span class="cov9" title="194">r.e.met.Received(ctx, int64(len(msgs)))
+        for _, m := range msgs </span><span class="cov9" title="205">{
                 r.inflight &lt;- struct{}{}
                 r.e.met.InFlightAdd(ctx, 1)
                 r.wg.Add(1)
@@ -6946,7 +6946,7 @@ func (r *run) dispatchAll(ctx context.Context, msgs []worker.Message) <span clas
 }
 
 // process は、1 メッセージの処理単位です（B1 の同時数制御・span・分類処理）。
-func (r *run) process(ctx context.Context, m worker.Message) <span class="cov9" title="325">{
+func (r *run) process(ctx context.Context, m worker.Message) <span class="cov9" title="205">{
         defer r.finishMessage(ctx)
 
         ctx = r.withTrace(ctx, m) // D1: traceparent から trace 継続
@@ -6954,13 +6954,13 @@ func (r *run) process(ctx context.Context, m worker.Message) <span class="cov9" 
         defer endSpan()
 
         select </span>{
-        case r.conc &lt;- struct{}{}:<span class="cov9" title="319"></span>
-        case &lt;-ctx.Done():<span class="cov3" title="6">
+        case r.conc &lt;- struct{}{}:<span class="cov9" title="200"></span>
+        case &lt;-ctx.Done():<span class="cov3" title="5">
                 return</span> // 停止中は未処理のまま離脱（Ack/Nack せず再配送へ）。in-flight は finishMessage が解放
         }
-        <span class="cov9" title="319">defer func() </span><span class="cov9" title="319">{ &lt;-r.conc }</span>()
+        <span class="cov9" title="200">defer func() </span><span class="cov9" title="200">{ &lt;-r.conc }</span>()
 
-        <span class="cov9" title="319">r.warnIfPoison(ctx, m)
+        <span class="cov9" title="200">r.warnIfPoison(ctx, m)
         start := time.Now()
         err := r.safeHandle(ctx, m)
         r.e.met.RecordLatencyMs(ctx, msSince(start))
@@ -6968,25 +6968,25 @@ func (r *run) process(ctx context.Context, m worker.Message) <span class="cov9" 
 }
 
 // finishMessage は、in-flight トークンを解放し poll loop を起床させます。
-func (r *run) finishMessage(ctx context.Context) <span class="cov9" title="325">{
+func (r *run) finishMessage(ctx context.Context) <span class="cov9" title="205">{
         &lt;-r.inflight
         r.e.met.InFlightAdd(ctx, -1)
         select </span>{
-        case r.slotFreed &lt;- struct{}{}:<span class="cov5" title="17"></span>
-        default:<span class="cov9" title="308"></span>
+        case r.slotFreed &lt;- struct{}{}:<span class="cov5" title="16"></span>
+        default:<span class="cov9" title="189"></span>
         }
-        <span class="cov9" title="325">r.wg.Done()</span>
+        <span class="cov9" title="205">r.wg.Done()</span>
 }
 
 // msSince は、start からの経過時間をミリ秒（小数）で返します。
-func msSince(start time.Time) float64 <span class="cov9" title="319">{
+func msSince(start time.Time) float64 <span class="cov9" title="200">{
         return float64(time.Since(start)) / float64(time.Millisecond)
 }</span>
 
 // safeHandle は、per-message recover（A6）と Extend ハートビート（A3）付きで Handle を実行します。
-func (r *run) safeHandle(ctx context.Context, m worker.Message) (err error) <span class="cov9" title="319">{
-        defer func() </span><span class="cov9" title="319">{
-                if rec := recover(); rec != nil </span><span class="cov7" title="51">{
+func (r *run) safeHandle(ctx context.Context, m worker.Message) (err error) <span class="cov9" title="200">{
+        defer func() </span><span class="cov9" title="200">{
+                if rec := recover(); rec != nil </span><span class="cov5" title="11">{
                         // panic 値はログにのみ残し、伝播するエラーには含めない（秘密情報の漏洩防止）。
                         r.e.log.Named("worker.recover").Error(
                                 "panic recovered in handler",
@@ -6996,45 +6996,35 @@ func (r *run) safeHandle(ctx context.Context, m worker.Message) (err error) <spa
                 }</span>
         }()
 
-        <span class="cov9" title="319">stop := r.startHeartbeat(ctx, m)
+        <span class="cov9" title="200">stop := r.startHeartbeat(ctx, m)
         defer stop()
 
         return r.handler.Handle(ctx, m)</span>
 }
 
 // startHeartbeat は、ExtendInterval ごとに Extend を呼ぶハートビートを開始し、停止関数を返します。
-func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() <span class="cov9" title="319">{
+func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() <span class="cov9" title="200">{
         interval := r.e.set.ExtendInterval
-        if interval &lt;= 0 </span><span class="cov9" title="317">{
-                return func() </span>{<span class="cov9" title="317">}</span>
+        if interval &lt;= 0 </span><span class="cov9" title="199">{
+                return func() </span>{<span class="cov9" title="199">}</span>
         }
 
-        <span class="cov2" title="2">ticker := time.NewTicker(interval)
+        <span class="cov1" title="1">ticker := time.NewTicker(interval)
         done := make(chan struct{})
-        go func() </span><span class="cov2" title="2">{
-                for </span><span class="cov3" title="6">{
+        go func() </span><span class="cov1" title="1">{
+                for </span><span class="cov2" title="3">{
                         select </span>{
-                        case &lt;-done:<span class="cov1" title="1">
+                        case &lt;-done:<span class="cov0" title="0">
                                 return</span>
                         case &lt;-ctx.Done():<span class="cov1" title="1">
                                 return</span>
-                        case &lt;-ticker.C:<span class="cov3" title="4">
-                                if err := r.consumer.Extend(ctx, m, interval*extendVisibilityFactor); err != nil </span><span class="cov2" title="2">{
-                                        if ctx.Err() != nil </span><span class="cov0" title="0">{
-                                                return // 停止中の Extend 失敗は握り潰してよい（未 Ack なので再配送される）
-                                        }</span>
-                                        // H2: 握り潰さず可視化する。lease 延長失敗は早期再配送→重複処理の予兆。
-                                        <span class="cov2" title="2">r.e.met.ExtendError(ctx)
-                                        r.e.log.Named("worker.extend").Warn(
-                                                "extend failed",
-                                                append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))...,
-                                        )</span>
-                                }
+                        case &lt;-ticker.C:<span class="cov2" title="2">
+                                _ = r.consumer.Extend(ctx, m, interval*extendVisibilityFactor)</span>
                         }
                 }
         }()
 
-        <span class="cov2" title="2">return func() </span><span class="cov2" title="2">{
+        <span class="cov1" title="1">return func() </span><span class="cov1" title="1">{
                 ticker.Stop()
                 close(done)
         }</span>
@@ -7042,8 +7032,8 @@ func (r *run) startHeartbeat(ctx context.Context, m worker.Message) func() <span
 
 // handleResult は、Handle の結果を分類して Ack / Nack / FailureHandler / engine 停止に振り分けます。
 // 併せて engine 所有 metric の更新（D2）と構造化ログ（D3）を行います。
-func (r *run) handleResult(ctx context.Context, m worker.Message, err error) <span class="cov9" title="319">{
-        if err == nil </span><span class="cov5" title="17">{
+func (r *run) handleResult(ctx context.Context, m worker.Message, err error) <span class="cov9" title="200">{
+        if err == nil </span><span class="cov5" title="16">{
                 r.ack(ctx, m) // A1: 成功時のみ Ack
                 r.cb.onSuccess()
                 r.e.met.Processed(ctx)
@@ -7051,11 +7041,11 @@ func (r *run) handleResult(ctx context.Context, m worker.Message, err error) <sp
                 return
         }</span>
 
-        <span class="cov9" title="302">r.e.met.Failed(ctx)
+        <span class="cov9" title="184">r.e.met.Failed(ctx)
         fields := append(msgFields(ctx, r.name, m), logging.Error(logging.ErrorKey, err))
 
         switch classify(err) </span>{
-        case catRetryable:<span class="cov9" title="300">
+        case catRetryable:<span class="cov9" title="182">
                 r.nack(ctx, m) // A2
                 r.cb.onFailure()
                 r.e.met.Retried(ctx)
@@ -7082,13 +7072,13 @@ func (r *run) routePermanent(ctx context.Context, m worker.Message, cause error)
         <span class="cov1" title="1">r.ack(ctx, m)</span>
 }
 
-func (r *run) ack(ctx context.Context, m worker.Message) <span class="cov5" title="18">{
+func (r *run) ack(ctx context.Context, m worker.Message) <span class="cov5" title="17">{
         if err := r.consumer.Ack(ctx, m); err != nil </span><span class="cov0" title="0">{
                 r.logErr("worker.ack", "ack error", err)
         }</span>
 }
 
-func (r *run) nack(ctx context.Context, m worker.Message) <span class="cov9" title="300">{
+func (r *run) nack(ctx context.Context, m worker.Message) <span class="cov9" title="182">{
         if err := r.consumer.Nack(ctx, m); err != nil </span><span class="cov0" title="0">{
                 r.logErr("worker.nack", "nack error", err)
         }</span>
@@ -7102,9 +7092,9 @@ func (r *run) onPollError(ctx context.Context, err error) <span class="cov0" tit
 }</span>
 
 // warnIfPoison は、再配送回数が閾値以上のとき warn します（A7。無限ループは IaC の DLQ で打ち切る）。
-func (r *run) warnIfPoison(ctx context.Context, m worker.Message) <span class="cov9" title="319">{
+func (r *run) warnIfPoison(ctx context.Context, m worker.Message) <span class="cov9" title="200">{
         th := r.e.set.ReceiveCountWarnThreshold
-        if th &lt;= 0 || m.ReceiveCount &lt; th </span><span class="cov9" title="318">{
+        if th &lt;= 0 || m.ReceiveCount &lt; th </span><span class="cov9" title="199">{
                 return
         }</span>
         <span class="cov1" title="1">r.e.log.Named("worker.poison").Warn("receive count threshold reached", msgFields(ctx, r.name, m)...)</span>
@@ -7120,7 +7110,7 @@ func (r *run) triggerFatal(err error) <span class="cov1" title="1">{
         r.cancel()</span>
 }
 
-func (r *run) fatalErr() error <span class="cov5" title="15">{
+func (r *run) fatalErr() error <span class="cov5" title="14">{
         r.fatalMu.Lock()
         defer r.fatalMu.Unlock()
         return r.fatal
@@ -7131,15 +7121,15 @@ func (r *run) logErr(name, msg string, err error) <span class="cov0" title="0">{
 }</span>
 
 // drain は、in-flight の完了を DrainTimeout まで待ちます（C1。未完は Ack されず再配送へ）。
-func (r *run) drain() <span class="cov5" title="15">{
+func (r *run) drain() <span class="cov5" title="14">{
         done := make(chan struct{})
-        go func() </span><span class="cov5" title="15">{
+        go func() </span><span class="cov5" title="14">{
                 r.wg.Wait()
                 close(done)
         }</span>()
 
-        <span class="cov5" title="15">select </span>{
-        case &lt;-done:<span class="cov5" title="15"></span>
+        <span class="cov5" title="14">select </span>{
+        case &lt;-done:<span class="cov5" title="14"></span>
         case &lt;-time.After(r.e.set.DrainTimeout):<span class="cov0" title="0"></span>
         }
 }
@@ -7179,16 +7169,16 @@ func New(
         tf observability.TracerFactory,
         met *observability.WorkerMetrics,
         log logging.Logger,
-) (*Engine, error) <span class="cov5" title="20">{
+) (*Engine, error) <span class="cov5" title="19">{
         m := make(map[string]worker.Worker, len(workers))
-        for _, w := range workers </span><span class="cov5" title="18">{
+        for _, w := range workers </span><span class="cov5" title="17">{
                 name := w.Name()
                 if _, exists := m[name]; exists </span><span class="cov1" title="1">{
                         return nil, xerrors.Wrap(ErrDuplicateWorker, name)
                 }</span>
-                <span class="cov5" title="17">m[name] = w</span>
+                <span class="cov5" title="16">m[name] = w</span>
         }
-        <span class="cov5" title="19">set.normalize()
+        <span class="cov5" title="18">set.normalize()
 
         return &amp;Engine{
                 workers: m,
@@ -7211,13 +7201,13 @@ func (e *Engine) Names() []string <span class="cov0" title="0">{
 
 // Run は、指定された worker を実行します。ctx 完了 or Fatal で drain して返ります。
 // 通常（Retryable/Permanent のみ）の場合は ctx 完了まで常駐します。
-func (e *Engine) Run(ctx context.Context, name string) error <span class="cov5" title="16">{
+func (e *Engine) Run(ctx context.Context, name string) error <span class="cov5" title="15">{
         w, ok := e.workers[name]
         if !ok </span><span class="cov1" title="1">{
                 return xerrors.Wrap(ErrUnknownWorker, name)
         }</span>
 
-        <span class="cov5" title="15">e.active.Store(true)
+        <span class="cov5" title="14">e.active.Store(true)
         e.markProgress()
         defer e.active.Store(false)
 
@@ -7234,7 +7224,7 @@ func (e *Engine) Healthy() bool <span class="cov0" title="0">{
 }
 
 // markProgress は、poll loop が進んだ時刻を記録します（stuck 検出の基準）。
-func (e *Engine) markProgress() <span class="cov10" title="344">{
+func (e *Engine) markProgress() <span class="cov10" title="222">{
         e.progress.Store(time.Now().UnixNano())
 }</span>
 </pre>
@@ -7284,32 +7274,32 @@ type Settings struct {
 }
 
 // normalize は、ゼロ値に安全な既定値を補います。
-func (s *Settings) normalize() <span class="cov10" title="19">{
+func (s *Settings) normalize() <span class="cov10" title="18">{
         if s.Concurrency &lt; 1 </span><span class="cov4" title="3">{
                 s.Concurrency = 1
         }</span>
-        <span class="cov10" title="19">if s.MaxInFlight &lt; s.Concurrency </span><span class="cov4" title="3">{
+        <span class="cov10" title="18">if s.MaxInFlight &lt; s.Concurrency </span><span class="cov4" title="3">{
                 s.MaxInFlight = s.Concurrency
         }</span>
-        <span class="cov10" title="19">if s.BatchSize &lt; 1 </span><span class="cov4" title="3">{
+        <span class="cov10" title="18">if s.BatchSize &lt; 1 </span><span class="cov4" title="3">{
                 s.BatchSize = 1
         }</span>
-        <span class="cov10" title="19">if s.BatchSize &gt; s.MaxInFlight </span><span class="cov1" title="1">{
+        <span class="cov10" title="18">if s.BatchSize &gt; s.MaxInFlight </span><span class="cov1" title="1">{
                 s.BatchSize = s.MaxInFlight
         }</span>
-        <span class="cov10" title="19">if s.DrainTimeout &lt;= 0 </span><span class="cov4" title="3">{
+        <span class="cov10" title="18">if s.DrainTimeout &lt;= 0 </span><span class="cov4" title="3">{
                 s.DrainTimeout = defaultDrainTimeout
         }</span>
-        <span class="cov10" title="19">if s.CircuitHalfOpenProbe &lt; 1 </span><span class="cov10" title="19">{
+        <span class="cov10" title="18">if s.CircuitHalfOpenProbe &lt; 1 </span><span class="cov10" title="18">{
                 s.CircuitHalfOpenProbe = 1
         }</span>
-        <span class="cov10" title="19">if s.ProgressStaleAfter &lt;= 0 </span><span class="cov10" title="19">{
+        <span class="cov10" title="18">if s.ProgressStaleAfter &lt;= 0 </span><span class="cov10" title="18">{
                 s.ProgressStaleAfter = defaultProgressStaleAfter
         }</span>
 }
 
 // circuitBackoff は、Settings から Open の cooldown 算出器を構築します。
-func (s *Settings) circuitBackoff() backoff.Exponential <span class="cov9" title="15">{
+func (s *Settings) circuitBackoff() backoff.Exponential <span class="cov9" title="14">{
         return backoff.Exponential{
                 Initial:    s.CircuitOpenBackoffInitial,
                 Max:        s.CircuitOpenBackoffMax,
@@ -7368,12 +7358,12 @@ import (
 
 // withTrace は、Message.Attributes の traceparent から trace context を継続します（D1）。
 // producer → consumer → handler を 1 trace に繋ぎます。
-func (r *run) withTrace(ctx context.Context, m worker.Message) context.Context <span class="cov9" title="325">{
+func (r *run) withTrace(ctx context.Context, m worker.Message) context.Context <span class="cov9" title="205">{
         return observability.ExtractFromCarrier(ctx, m.Attributes)
 }</span>
 
 // msgFields は、構造化ログ用のフィールド（worker 名 / message id / receive count / trace id）を返します（D3）。
-func msgFields(ctx context.Context, name string, m worker.Message) []*logging.Field <span class="cov10" title="373">{
+func msgFields(ctx context.Context, name string, m worker.Message) []*logging.Field <span class="cov10" title="212">{
         fields := []*logging.Field{
                 logging.String(logging.WorkerNameKey, name),
                 logging.String(logging.MessageIDKey, m.ID),
@@ -7382,7 +7372,7 @@ func msgFields(ctx context.Context, name string, m worker.Message) []*logging.Fi
         if traceID := observability.ExtractTraceContext(ctx).TraceID(); traceID != "" </span><span class="cov0" title="0">{
                 fields = append(fields, logging.String(logging.TraceIDKey, traceID))
         }</span>
-        <span class="cov10" title="373">return fields</span>
+        <span class="cov10" title="212">return fields</span>
 }
 </pre>
 		
@@ -8796,7 +8786,7 @@ func applyMiddlewares(logger logging.Logger, kind string, mws []middlewareEntry,
                 logging.Int("count", len(mws)),
         )
 
-        sort.Slice(mws, func(i, j int) bool </span><span class="cov8" title="24">{
+        sort.Slice(mws, func(i, j int) bool </span><span class="cov9" title="29">{
                 return mws[i].priority &lt; mws[j].priority
         }</span>)
 
@@ -13357,7 +13347,7 @@ type Field struct {
 }
 
 // String は、文字列のログフィールドを作成します。
-func String(key fieldKey, v string) *Field <span class="cov10" title="4083">{
+func String(key fieldKey, v string) *Field <span class="cov10" title="3721">{
         return &amp;Field{
                 key:         string(key),
                 kind:        fieldString,
@@ -13366,7 +13356,7 @@ func String(key fieldKey, v string) *Field <span class="cov10" title="4083">{
 }</span>
 
 // Int は、整数のログフィールドを作成します。
-func Int(key fieldKey, v int) *Field <span class="cov7" title="443">{
+func Int(key fieldKey, v int) *Field <span class="cov7" title="282">{
         return &amp;Field{
                 key:      string(key),
                 kind:     fieldInt,
@@ -13375,7 +13365,7 @@ func Int(key fieldKey, v int) *Field <span class="cov7" title="443">{
 }</span>
 
 // Strings は、文字列のスライスのログフィールドを作成します。
-func Strings(key fieldKey, v []string) *Field <span class="cov7" title="625">{
+func Strings(key fieldKey, v []string) *Field <span class="cov8" title="625">{
         return &amp;Field{
                 key:          string(key),
                 kind:         fieldStrings,
@@ -13429,7 +13419,7 @@ func DurationMs(key fieldKey, v time.Duration) *Field <span class="cov4" title="
 }</span>
 
 // Error は、エラーのログフィールドを作成します。
-func Error(key fieldKey, err error) *Field <span class="cov7" title="410">{
+func Error(key fieldKey, err error) *Field <span class="cov7" title="290">{
         return &amp;Field{
                 key:        string(key),
                 kind:       fieldError,
@@ -13457,7 +13447,7 @@ func SplitStackLines(s string) []string <span class="cov4" title="20">{
                 return nil
         }</span>
         <span class="cov4" title="18">lines := strings.Split(trimmed, "\n")
-        for i, line := range lines </span><span class="cov7" title="267">{
+        for i, line := range lines </span><span class="cov7" title="253">{
                 lines[i] = strings.TrimLeft(line, "\t")
         }</span>
         <span class="cov4" title="18">return lines</span>
@@ -13813,7 +13803,7 @@ func (c levelGatedCore) With(fields []zapcore.Field) zapcore.Core <span class="c
 }</span>
 
 // Named は、新しい名前付きの Logger を返す。
-func (l *logger) Named(name string) Logger <span class="cov7" title="560">{
+func (l *logger) Named(name string) Logger <span class="cov7" title="399">{
         return &amp;logger{
                 log: l.log.Named(name),
         }
@@ -13827,7 +13817,7 @@ func (l *logger) CallerSkip(skip int) Logger <span class="cov5" title="65">{
 }</span>
 
 // Debug はデバッグレベルのログを出力する。
-func (l *logger) Debug(msg string, fields ...*Field) <span class="cov8" title="693">{
+func (l *logger) Debug(msg string, fields ...*Field) <span class="cov8" title="692">{
         l.log.Debug(msg, l.convertFields(fields)...)
 }</span>
 
@@ -13837,26 +13827,26 @@ func (l *logger) Info(msg string, fields ...*Field) <span class="cov6" title="13
 }</span>
 
 // Warn は警告レベルのログを出力する。
-func (l *logger) Warn(msg string, fields ...*Field) <span class="cov7" title="312">{
+func (l *logger) Warn(msg string, fields ...*Field) <span class="cov6" title="192">{
         l.log.Warn(msg, l.convertFields(fields)...)
 }</span>
 
 // Error はエラーレベルのログを出力する。
-func (l *logger) Error(msg string, fields ...*Field) <span class="cov6" title="114">{
+func (l *logger) Error(msg string, fields ...*Field) <span class="cov5" title="74">{
         l.log.Error(msg, l.convertFields(fields)...)
 }</span>
 
 // convertFields は Field のスライスを zap.Field のスライスに変換する。
-func (l *logger) convertFields(fs []*Field) []zap.Field <span class="cov8" title="1253">{
+func (l *logger) convertFields(fs []*Field) []zap.Field <span class="cov8" title="1092">{
         zfs := make([]zap.Field, 0, len(fs))
 
-        for _, f := range fs </span><span class="cov10" title="3972">{
+        for _, f := range fs </span><span class="cov10" title="3329">{
                 switch f.kind </span>{
-                case fieldString:<span class="cov9" title="2503">
+                case fieldString:<span class="cov9" title="2141">
                         zfs = append(zfs, zap.String(f.key, f.stringValue))</span>
-                case fieldStrings:<span class="cov7" title="621">
+                case fieldStrings:<span class="cov8" title="621">
                         zfs = append(zfs, zap.Strings(f.key, f.stringsValue))</span>
-                case fieldInt:<span class="cov7" title="428">
+                case fieldInt:<span class="cov7" title="267">
                         zfs = append(zfs, zap.Int(f.key, f.intValue))</span>
                 case fieldInt64:<span class="cov4" title="22">
                         zfs = append(zfs, zap.Int64(f.key, f.int64Value))</span>
@@ -13864,7 +13854,7 @@ func (l *logger) convertFields(fs []*Field) []zap.Field <span class="cov8" title
                         zfs = append(zfs, zap.Float64(f.key, f.float64Value))</span>
                 case fieldBool:<span class="cov1" title="1">
                         zfs = append(zfs, zap.Bool(f.key, f.boolValue))</span>
-                case fieldError:<span class="cov7" title="356">
+                case fieldError:<span class="cov7" title="236">
                         zfs = append(zfs, zap.NamedError(f.key, f.errorValue))</span>
                 case fieldAny:<span class="cov4" title="29">
                         zfs = append(zfs, zap.Any(f.key, f.anyValue))</span>
@@ -13875,7 +13865,7 @@ func (l *logger) convertFields(fs []*Field) []zap.Field <span class="cov8" title
                 }
         }
 
-        <span class="cov8" title="1253">return zfs</span>
+        <span class="cov8" title="1092">return zfs</span>
 }
 </pre>
 		
@@ -14025,7 +14015,7 @@ import (
 )
 
 // NewTestLogger は、テスト用のLoggerインスタンスを生成します。
-func NewTestLogger(t *testing.T) Logger <span class="cov10" title="173">{
+func NewTestLogger(t *testing.T) Logger <span class="cov10" title="172">{
         t.Helper()
         return &amp;logger{log: zaptest.NewLogger(t)}
 }</span>
@@ -14066,16 +14056,16 @@ import "runtime"
 const skipCallerFramesForLayerTracer = 2
 
 // getCallerFullName は、本関数の直接呼び出し元のフル関数名を返す（取得失敗時は空文字）。
-func getCallerFullName() string <span class="cov10" title="881">{
+func getCallerFullName() string <span class="cov10" title="760">{
         pc, _, _, ok := runtime.Caller(skipCallerFramesForLayerTracer)
         if !ok </span><span class="cov0" title="0">{
                 return ""
         }</span>
-        <span class="cov10" title="881">fn := runtime.FuncForPC(pc)
+        <span class="cov10" title="760">fn := runtime.FuncForPC(pc)
         if fn == nil </span><span class="cov0" title="0">{
                 return ""
         }</span>
-        <span class="cov10" title="881">return fn.Name()</span>
+        <span class="cov10" title="760">return fn.Name()</span>
 }
 </pre>
 		
@@ -14098,19 +14088,19 @@ type TraceContext struct {
 
 // ShouldLogWithSpan は、o11y モードと Span の有無から span 前提ログを出してよいか判定する公開ヘルパです。
 // span 前提ログを足す際の拡張ポイントとして提供しており、現状は本番未結線（利用例は README 参照）。
-func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool <span class="cov2" title="4">{
+func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool <span class="cov3" title="4">{
         return obsCfg.Enabled() &amp;&amp; trace.SpanFromContext(ctx).SpanContext().IsValid()
 }</span>
 
 // BuildSpanName は、レイヤー名、パッケージ名、関数名からスパン名を構築します。
-func BuildSpanName(layer, pkgName, funcName string) string <span class="cov10" title="627">{
+func BuildSpanName(layer, pkgName, funcName string) string <span class="cov10" title="507">{
         return layer + delimiter + pkgName + delimiter + funcName
 }</span>
 
 // ExtractTraceContext は、現在の span から traceID/spanID を抽出して返します（parentSpanID は設定しません）。
-func ExtractTraceContext(ctx context.Context) *TraceContext <span class="cov9" title="406">{
+func ExtractTraceContext(ctx context.Context) *TraceContext <span class="cov8" title="245">{
         span := trace.SpanFromContext(ctx)
-        if !span.SpanContext().IsValid() </span><span class="cov9" title="395">{
+        if !span.SpanContext().IsValid() </span><span class="cov8" title="234">{
                 return &amp;TraceContext{}
         }</span>
         <span class="cov4" title="11">spanCtx := span.SpanContext()
@@ -14126,7 +14116,7 @@ func StartSpanWithParent(
         tracer LayerTracer,
         name string,
         opts ...trace.SpanStartOption,
-) (*TraceContext, context.Context, func()) <span class="cov9" title="623">{
+) (*TraceContext, context.Context, func()) <span class="cov9" title="503">{
         parentSC := trace.SpanFromContext(ctx).SpanContext()
 
         childCtx, span := tracer.tracer.Start(ctx, name, opts...)
@@ -14137,16 +14127,16 @@ func StartSpanWithParent(
                 spanID:  childSC.SpanID().String(),
         }
 
-        if parentSC.IsValid() </span><span class="cov1" title="2">{
+        if parentSC.IsValid() </span><span class="cov2" title="2">{
                 tc.parentSpanID = parentSC.SpanID().String()
         }</span>
 
-        <span class="cov9" title="623">end := func() </span><span class="cov9" title="623">{ span.End() }</span>
-        <span class="cov9" title="623">return tc, childCtx, end</span>
+        <span class="cov9" title="503">end := func() </span><span class="cov9" title="503">{ span.End() }</span>
+        <span class="cov9" title="503">return tc, childCtx, end</span>
 }
 
 // TraceID は、TraceContext から TraceID を取得します。
-func (tc *TraceContext) TraceID() string <span class="cov9" title="406">{
+func (tc *TraceContext) TraceID() string <span class="cov8" title="245">{
         return tc.traceID
 }</span>
 
@@ -14423,13 +14413,13 @@ type LayerTracer struct {
 func (lt LayerTracer) Start(
         ctx context.Context,
         opts ...trace.SpanStartOption,
-) (context.Context, func()) <span class="cov9" title="607">{
-        if lt.funcName == "" </span><span class="cov9" title="606">{
+) (context.Context, func()) <span class="cov9" title="487">{
+        if lt.funcName == "" </span><span class="cov9" title="486">{
                 full := getCallerFullName()
                 lt.funcName = fnmeta.ExtractFunctionName(full)
         }</span>
 
-        <span class="cov9" title="607">return lt.startSpan(ctx, "", opts...)</span>
+        <span class="cov9" title="487">return lt.startSpan(ctx, "", opts...)</span>
 }
 
 // StartWithSuffix は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
@@ -14468,7 +14458,7 @@ func RunWithSpan[T any](
         defer end()
 
         v, err := fn(childCtx)
-        if err != nil </span><span class="cov1" title="2">{
+        if err != nil </span><span class="cov2" title="2">{
                 var zero T
                 return childCtx, zero, err
         }</span>
@@ -14477,12 +14467,12 @@ func RunWithSpan[T any](
 }
 
 // makeSpanName は、LayerTracer の情報をもとに完全なspan名を生成します。
-func (lt LayerTracer) makeSpanName(optionalName string) string <span class="cov10" title="615">{
+func (lt LayerTracer) makeSpanName(optionalName string) string <span class="cov10" title="495">{
         fullName := BuildSpanName(string(lt.layer), lt.pkgName, lt.funcName)
         if optionalName != "" </span><span class="cov3" title="5">{
                 fullName += delimiter + optionalName
         }</span>
-        <span class="cov10" title="615">return fullName</span>
+        <span class="cov10" title="495">return fullName</span>
 }
 
 // startSpan は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
@@ -14494,7 +14484,7 @@ func (lt LayerTracer) startSpan(
         parentCtx context.Context,
         optionalName string,
         opts ...trace.SpanStartOption,
-) (context.Context, func()) <span class="cov9" title="611">{
+) (context.Context, func()) <span class="cov9" title="491">{
         spanName := lt.makeSpanName(optionalName)
         _, childCtx, end := StartSpanWithParent(parentCtx, lt, spanName, opts...)
 
@@ -14653,13 +14643,13 @@ func (c mapCarrier) Keys() []string <span class="cov0" title="0">{
 
 // ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します（D1）。
 // producer → consumer → handler を 1 trace に繋ぐための公開ヘルパです。
-func ExtractFromCarrier(ctx context.Context, attrs map[string]string) context.Context <span class="cov9" title="326">{
+func ExtractFromCarrier(ctx context.Context, attrs map[string]string) context.Context <span class="cov9" title="206">{
         return extractFromCarrier(ctx, attrs, otel.GetTextMapPropagator())
 }</span>
 
 // extractFromCarrier は、prop から trace context を抽出して ctx に付与します。
-func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propagation.TextMapPropagator) context.Context <span class="cov10" title="329">{
-        if len(attrs) == 0 </span><span class="cov9" title="327">{
+func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propagation.TextMapPropagator) context.Context <span class="cov10" title="209">{
+        if len(attrs) == 0 </span><span class="cov9" title="207">{
                 return ctx
         }</span>
         <span class="cov2" title="2">return prop.Extract(ctx, mapCarrier(attrs))</span>
@@ -14678,7 +14668,7 @@ func injectToCarrier(ctx context.Context, attrs map[string]string, prop propagat
         if attrs == nil </span><span class="cov1" title="1">{
                 return
         }</span>
-        <span class="cov3" title="6">prop.Inject(ctx, mapCarrier(attrs))</span>
+        <span class="cov4" title="6">prop.Inject(ctx, mapCarrier(attrs))</span>
 }
 </pre>
 		
@@ -14923,7 +14913,7 @@ const (
 )
 
 // NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
-func NewNoopTracerFactory(t *testing.T) TracerFactory <span class="cov10" title="183">{
+func NewNoopTracerFactory(t *testing.T) TracerFactory <span class="cov10" title="182">{
         t.Helper()
 
         tp := noop.NewTracerProvider()
@@ -14962,13 +14952,13 @@ func NewNoopLayerTracer(t *testing.T) LayerTracer <span class="cov1" title="1">{
 }</span>
 
 // NewNoopWorkerMetrics は、テスト用に no-op の MeterProvider から WorkerMetrics を生成します。
-func NewNoopWorkerMetrics(t *testing.T) *WorkerMetrics <span class="cov5" title="17">{
+func NewNoopWorkerMetrics(t *testing.T) *WorkerMetrics <span class="cov5" title="16">{
         t.Helper()
         wm, err := NewWorkerMetrics(metricnoop.NewMeterProvider())
         if err != nil </span><span class="cov0" title="0">{
                 t.Fatalf("failed to build noop worker metrics: %v", err)
         }</span>
-        <span class="cov5" title="17">return wm</span>
+        <span class="cov5" title="16">return wm</span>
 }
 
 // NewNoopHTTPClientMetrics は、テスト用に no-op の MeterProvider から HTTPClientMetrics を生成します。
@@ -15042,7 +15032,7 @@ type tracerFactory struct {
 }
 
 // NewTracerFactory は、TracerFactory を初期化して返します。
-func NewTracerFactory(tp trace.TracerProvider) TracerFactory <span class="cov9" title="197">{
+func NewTracerFactory(tp trace.TracerProvider) TracerFactory <span class="cov9" title="196">{
         return &amp;tracerFactory{
                 tp: tp,
         }
@@ -15052,7 +15042,7 @@ func NewTracerFactory(tp trace.TracerProvider) TracerFactory <span class="cov9" 
 // 呼び出し階層に依存するため、共通ヘルパへ括り出すと pkg 解決が 1 段ずれて壊れる。
 
 // Controller は Controller 層用のトレーサーを返します。
-func (t *tracerFactory) Controller() LayerTracer <span class="cov8" title="134">{
+func (t *tracerFactory) Controller() LayerTracer <span class="cov8" title="133">{
         full := getCallerFullName()
         pkg := fnmeta.ExtractPackageName(full)
 
@@ -15076,7 +15066,7 @@ func (t *tracerFactory) Infra() LayerTracer <span class="cov7" title="72">{
 }</span>
 
 // newLayerTracer は LayerTracer を初期化して返します。
-func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTracer <span class="cov10" title="274">{
+func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTracer <span class="cov10" title="273">{
         return LayerTracer{
                 tracer:  t.tp.Tracer(string(layer) + delimiter + pkgName),
                 layer:   layer,
@@ -15100,15 +15090,14 @@ const workerMeterName = "go-boilerplate/worker"
 
 // WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です（D2）。
 type WorkerMetrics struct {
-        received     metric.Int64Counter
-        processed    metric.Int64Counter
-        failed       metric.Int64Counter
-        retried      metric.Int64Counter
-        dlq          metric.Int64Counter
-        pollErrors   metric.Int64Counter
-        extendErrors metric.Int64Counter
-        latencyMs    metric.Float64Histogram
-        inFlight     metric.Int64UpDownCounter
+        received   metric.Int64Counter
+        processed  metric.Int64Counter
+        failed     metric.Int64Counter
+        retried    metric.Int64Counter
+        dlq        metric.Int64Counter
+        pollErrors metric.Int64Counter
+        latencyMs  metric.Float64Histogram
+        inFlight   metric.Int64UpDownCounter
 }
 
 // meterBuilder は、計装生成の最初のエラーを保持しつつ宣言的に組み立てます。
@@ -15119,86 +15108,82 @@ type meterBuilder struct {
 
 // NewWorkerMetrics は、注入された MeterProvider から worker engine の計装一式を生成します。
 // いずれかの計装生成失敗で error を返します。
-func NewWorkerMetrics(mp metric.MeterProvider) (*WorkerMetrics, error) <span class="cov5" title="21">{
+func NewWorkerMetrics(mp metric.MeterProvider) (*WorkerMetrics, error) <span class="cov5" title="20">{
         b := &amp;meterBuilder{m: mp.Meter(workerMeterName)}
         wm := &amp;WorkerMetrics{
-                received:     b.counter("worker.received", "受信したメッセージ数"),
-                processed:    b.counter("worker.processed", "正常処理したメッセージ数"),
-                failed:       b.counter("worker.failed", "処理に失敗したメッセージ数"),
-                retried:      b.counter("worker.retried", "Nack して再配送へ戻したメッセージ数"),
-                dlq:          b.counter("worker.dlq", "FailureHandler へ退避したメッセージ数"),
-                pollErrors:   b.counter("worker.poll_errors", "Receive のエラー回数"),
-                extendErrors: b.counter("worker.extend_errors", "Extend(ハートビート)のエラー回数"),
-                latencyMs:    b.histogram("worker.processing_latency_ms", "Handle の処理時間(ミリ秒)"),
-                inFlight:     b.upDownCounter("worker.in_flight", "処理中(受信済み・未確定)のメッセージ数"),
+                received:   b.counter("worker.received", "受信したメッセージ数"),
+                processed:  b.counter("worker.processed", "正常処理したメッセージ数"),
+                failed:     b.counter("worker.failed", "処理に失敗したメッセージ数"),
+                retried:    b.counter("worker.retried", "Nack して再配送へ戻したメッセージ数"),
+                dlq:        b.counter("worker.dlq", "FailureHandler へ退避したメッセージ数"),
+                pollErrors: b.counter("worker.poll_errors", "Receive のエラー回数"),
+                latencyMs:  b.histogram("worker.processing_latency_ms", "Handle の処理時間(ミリ秒)"),
+                inFlight:   b.upDownCounter("worker.in_flight", "処理中(受信済み・未確定)のメッセージ数"),
         }
         if b.err != nil </span><span class="cov0" title="0">{
                 return nil, b.err
         }</span>
-        <span class="cov5" title="21">return wm, nil</span>
+        <span class="cov5" title="20">return wm, nil</span>
 }
 
 // Received は、受信したメッセージ数を計上します。
-func (m *WorkerMetrics) Received(ctx context.Context, n int64) <span class="cov8" title="315">{ m.received.Add(ctx, n) }</span>
+func (m *WorkerMetrics) Received(ctx context.Context, n int64) <span class="cov8" title="195">{ m.received.Add(ctx, n) }</span>
 
 // Processed は、正常処理したメッセージ数を計上します。
-func (m *WorkerMetrics) Processed(ctx context.Context) <span class="cov5" title="18">{ m.processed.Add(ctx, 1) }</span>
+func (m *WorkerMetrics) Processed(ctx context.Context) <span class="cov5" title="17">{ m.processed.Add(ctx, 1) }</span>
 
 // Failed は、処理に失敗したメッセージ数を計上します。
-func (m *WorkerMetrics) Failed(ctx context.Context) <span class="cov8" title="303">{ m.failed.Add(ctx, 1) }</span>
+func (m *WorkerMetrics) Failed(ctx context.Context) <span class="cov8" title="185">{ m.failed.Add(ctx, 1) }</span>
 
 // Retried は、Nack して再配送へ戻したメッセージ数を計上します。
-func (m *WorkerMetrics) Retried(ctx context.Context) <span class="cov8" title="301">{ m.retried.Add(ctx, 1) }</span>
+func (m *WorkerMetrics) Retried(ctx context.Context) <span class="cov8" title="183">{ m.retried.Add(ctx, 1) }</span>
 
 // DLQ は、FailureHandler へ退避したメッセージ数を計上します。
-func (m *WorkerMetrics) DLQ(ctx context.Context) <span class="cov1" title="2">{ m.dlq.Add(ctx, 1) }</span>
+func (m *WorkerMetrics) DLQ(ctx context.Context) <span class="cov2" title="2">{ m.dlq.Add(ctx, 1) }</span>
 
 // PollError は、Receive のエラー回数を計上します。
 func (m *WorkerMetrics) PollError(ctx context.Context) <span class="cov1" title="1">{ m.pollErrors.Add(ctx, 1) }</span>
 
-// ExtendError は、Extend(ハートビート)のエラー回数を計上します（H2）。
-func (m *WorkerMetrics) ExtendError(ctx context.Context) <span class="cov2" title="3">{ m.extendErrors.Add(ctx, 1) }</span>
-
 // RecordLatencyMs は、Handle の処理時間(ミリ秒)を記録します。
-func (m *WorkerMetrics) RecordLatencyMs(ctx context.Context, ms float64) <span class="cov9" title="320">{ m.latencyMs.Record(ctx, ms) }</span>
+func (m *WorkerMetrics) RecordLatencyMs(ctx context.Context, ms float64) <span class="cov8" title="201">{ m.latencyMs.Record(ctx, ms) }</span>
 
 // InFlightAdd は、処理中(受信済み・未確定)のメッセージ数を増減します。
-func (m *WorkerMetrics) InFlightAdd(ctx context.Context, delta int64) <span class="cov10" title="651">{ m.inFlight.Add(ctx, delta) }</span>
+func (m *WorkerMetrics) InFlightAdd(ctx context.Context, delta int64) <span class="cov10" title="411">{ m.inFlight.Add(ctx, delta) }</span>
 
-func (b *meterBuilder) counter(name, desc string) metric.Int64Counter <span class="cov8" title="246">{
+func (b *meterBuilder) counter(name, desc string) metric.Int64Counter <span class="cov9" title="219">{
         if b.err != nil </span><span class="cov0" title="0">{
                 return nil
         }</span>
-        <span class="cov8" title="246">c, err := b.m.Int64Counter(name, metric.WithDescription(desc))
+        <span class="cov9" title="219">c, err := b.m.Int64Counter(name, metric.WithDescription(desc))
         if err != nil </span><span class="cov0" title="0">{
                 b.err = xerrors.Wrap(err, name)
                 return nil
         }</span>
-        <span class="cov8" title="246">return c</span>
+        <span class="cov9" title="219">return c</span>
 }
 
-func (b *meterBuilder) histogram(name, desc string) metric.Float64Histogram <span class="cov6" title="50">{
+func (b *meterBuilder) histogram(name, desc string) metric.Float64Histogram <span class="cov6" title="49">{
         if b.err != nil </span><span class="cov0" title="0">{
                 return nil
         }</span>
-        <span class="cov6" title="50">h, err := b.m.Float64Histogram(name, metric.WithDescription(desc), metric.WithUnit("ms"))
+        <span class="cov6" title="49">h, err := b.m.Float64Histogram(name, metric.WithDescription(desc), metric.WithUnit("ms"))
         if err != nil </span><span class="cov0" title="0">{
                 b.err = xerrors.Wrap(err, name)
                 return nil
         }</span>
-        <span class="cov6" title="50">return h</span>
+        <span class="cov6" title="49">return h</span>
 }
 
-func (b *meterBuilder) upDownCounter(name, desc string) metric.Int64UpDownCounter <span class="cov6" title="50">{
+func (b *meterBuilder) upDownCounter(name, desc string) metric.Int64UpDownCounter <span class="cov6" title="49">{
         if b.err != nil </span><span class="cov0" title="0">{
                 return nil
         }</span>
-        <span class="cov6" title="50">c, err := b.m.Int64UpDownCounter(name, metric.WithDescription(desc))
+        <span class="cov6" title="49">c, err := b.m.Int64UpDownCounter(name, metric.WithDescription(desc))
         if err != nil </span><span class="cov0" title="0">{
                 b.err = xerrors.Wrap(err, name)
                 return nil
         }</span>
-        <span class="cov6" title="50">return c</span>
+        <span class="cov6" title="49">return c</span>
 }
 </pre>
 		
@@ -15466,18 +15451,17 @@ type Fake struct {
         inflight map[string]worker.Message // 受信済み・Ack/Nack 待ち（ID キー）
         delivery map[string]int            // ID ごとの配送回数（再配送で増加）
 
-        acked     []string
-        nacked    []string
-        extends   map[string]int // ID ごとの Extend 呼び出し回数
-        extendErr error          // 設定時、Extend が常にこのエラーを返す（H2）
-        failed    []FailedRecord
+        acked   []string
+        nacked  []string
+        extends map[string]int // ID ごとの Extend 呼び出し回数
+        failed  []FailedRecord
 
         receiveErrs []error       // 注入された Receive エラー（先頭から消費）
         notify      chan struct{} // long-poll 起床用のブロードキャスト
 }
 
 // New は、空の Fake を生成します。
-func New() *Fake <span class="cov5" title="25">{
+func New() *Fake <span class="cov5" title="24">{
         return &amp;Fake{
                 inflight: make(map[string]worker.Message),
                 delivery: make(map[string]int),
@@ -15487,8 +15471,8 @@ func New() *Fake <span class="cov5" title="25">{
 }</span>
 
 // Receive は、最大 max 件を取得します。キューが空の場合は投入 or ctx 完了までブロックします。
-func (f *Fake) Receive(ctx context.Context, limit int) ([]worker.Message, error) <span class="cov9" title="334">{
-        for </span><span class="cov10" title="631">{
+func (f *Fake) Receive(ctx context.Context, limit int) ([]worker.Message, error) <span class="cov9" title="213">{
+        for </span><span class="cov10" title="391">{
                 f.mu.Lock()
                 if len(f.receiveErrs) &gt; 0 </span><span class="cov1" title="1">{
                         err := f.receiveErrs[0]
@@ -15496,10 +15480,10 @@ func (f *Fake) Receive(ctx context.Context, limit int) ([]worker.Message, error)
                         f.mu.Unlock()
                         return nil, err
                 }</span>
-                <span class="cov9" title="630">if len(f.queue) &gt; 0 </span><span class="cov9" title="319">{
+                <span class="cov9" title="390">if len(f.queue) &gt; 0 </span><span class="cov8" title="199">{
                         n := min(limit, len(f.queue))
                         out := make([]worker.Message, 0, n)
-                        for range n </span><span class="cov9" title="331">{
+                        for range n </span><span class="cov9" title="211">{
                                 m := f.queue[0]
                                 f.queue = f.queue[1:]
                                 f.delivery[m.ID]++
@@ -15507,23 +15491,23 @@ func (f *Fake) Receive(ctx context.Context, limit int) ([]worker.Message, error)
                                 f.inflight[m.ID] = m
                                 out = append(out, m)
                         }</span>
-                        <span class="cov9" title="319">f.mu.Unlock()
+                        <span class="cov8" title="199">f.mu.Unlock()
                         return out, nil</span>
                 }
-                <span class="cov9" title="311">notify := f.notify
+                <span class="cov8" title="191">notify := f.notify
                 f.mu.Unlock()
 
                 select </span>{
-                case &lt;-ctx.Done():<span class="cov4" title="14">
+                case &lt;-ctx.Done():<span class="cov4" title="13">
                         return nil, ctx.Err()</span>
-                case &lt;-notify:<span class="cov8" title="297"></span>
+                case &lt;-notify:<span class="cov8" title="178"></span>
                         // メッセージ投入 or 再配送で起床。ループ先頭で再評価する。
                 }
         }
 }
 
 // Ack は、メッセージを in-flight から除去し、記録します。
-func (f *Fake) Ack(_ context.Context, m worker.Message) error <span class="cov5" title="19">{
+func (f *Fake) Ack(_ context.Context, m worker.Message) error <span class="cov5" title="18">{
         f.mu.Lock()
         defer f.mu.Unlock()
         delete(f.inflight, m.ID)
@@ -15532,7 +15516,7 @@ func (f *Fake) Ack(_ context.Context, m worker.Message) error <span class="cov5"
 }</span>
 
 // Nack は、メッセージを再配送（キュー末尾へ戻す）し、記録します。
-func (f *Fake) Nack(_ context.Context, m worker.Message) error <span class="cov8" title="301">{
+func (f *Fake) Nack(_ context.Context, m worker.Message) error <span class="cov8" title="183">{
         f.mu.Lock()
         defer f.mu.Unlock()
         delete(f.inflight, m.ID)
@@ -15543,16 +15527,15 @@ func (f *Fake) Nack(_ context.Context, m worker.Message) error <span class="cov8
 }</span>
 
 // Extend は、Extend の呼び出し回数を記録します（可視性の実時間延長は模さない）。
-// SetExtendErr でエラーが設定されている場合はそのエラーを返します。
-func (f *Fake) Extend(_ context.Context, m worker.Message, _ time.Duration) error <span class="cov3" title="6">{
+func (f *Fake) Extend(_ context.Context, m worker.Message, _ time.Duration) error <span class="cov3" title="4">{
         f.mu.Lock()
         defer f.mu.Unlock()
         f.extends[m.ID]++
-        return f.extendErr
+        return nil
 }</span>
 
 // Fail は、FailureHandler としての退避を記録します。
-func (f *Fake) Fail(_ context.Context, m worker.Message, cause error) error <span class="cov1" title="2">{
+func (f *Fake) Fail(_ context.Context, m worker.Message, cause error) error <span class="cov2" title="2">{
         f.mu.Lock()
         defer f.mu.Unlock()
         f.failed = append(f.failed, FailedRecord{Message: m, Cause: cause})
@@ -15562,7 +15545,7 @@ func (f *Fake) Fail(_ context.Context, m worker.Message, cause error) error <spa
 // --- テスト操作・検証用ヘルパー ---
 
 // Enqueue は、メッセージをキューに投入します。
-func (f *Fake) Enqueue(msgs ...worker.Message) <span class="cov5" title="33">{
+func (f *Fake) Enqueue(msgs ...worker.Message) <span class="cov6" title="32">{
         f.mu.Lock()
         defer f.mu.Unlock()
         f.queue = append(f.queue, msgs...)
@@ -15577,15 +15560,8 @@ func (f *Fake) FailReceiveOnce(err error) <span class="cov1" title="1">{
         f.signal()
 }</span>
 
-// SetExtendErr は、以降の Extend が常に返すエラーを設定します（H2 Extend 失敗）。
-func (f *Fake) SetExtendErr(err error) <span class="cov1" title="1">{
-        f.mu.Lock()
-        defer f.mu.Unlock()
-        f.extendErr = err
-}</span>
-
 // AckedIDs は、Ack されたメッセージ ID の一覧（呼び出し順）を返します。
-func (f *Fake) AckedIDs() []string <span class="cov6" title="55">{
+func (f *Fake) AckedIDs() []string <span class="cov6" title="52">{
         f.mu.Lock()
         defer f.mu.Unlock()
         return append([]string(nil), f.acked...)
@@ -15599,7 +15575,7 @@ func (f *Fake) NackedIDs() []string <span class="cov4" title="10">{
 }</span>
 
 // ExtendCount は、指定 ID の Extend 呼び出し回数を返します。
-func (f *Fake) ExtendCount(id string) int <span class="cov3" title="7">{
+func (f *Fake) ExtendCount(id string) int <span class="cov3" title="4">{
         f.mu.Lock()
         defer f.mu.Unlock()
         return f.extends[id]
@@ -15613,7 +15589,7 @@ func (f *Fake) Failed() []FailedRecord <span class="cov2" title="3">{
 }</span>
 
 // QueueLen は、受信待ちのメッセージ数を返します。
-func (f *Fake) QueueLen() int <span class="cov1" title="2">{
+func (f *Fake) QueueLen() int <span class="cov2" title="2">{
         f.mu.Lock()
         defer f.mu.Unlock()
         return len(f.queue)
@@ -15627,7 +15603,7 @@ func (f *Fake) InflightLen() int <span class="cov3" title="5">{
 }</span>
 
 // signal は、long-poll 中の Receive を起床させます。呼び出しは mu ロック下で行います。
-func (f *Fake) signal() <span class="cov9" title="335">{
+func (f *Fake) signal() <span class="cov9" title="216">{
         close(f.notify)
         f.notify = make(chan struct{})
 }</span>
@@ -17596,18 +17572,18 @@ const unknown = "unknown"
 //
 //        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser"
 //          → lhs: "user.(*UserUsecase)", rhs: "GetUser"
-func splitFuncName(full string) (string, string) <span class="cov10" title="892">{
+func splitFuncName(full string) (string, string) <span class="cov10" title="771">{
         if full == "" </span><span class="cov2" title="3">{
                 return unknown, ""
         }</span>
 
         // パス部分を除去: internal/usecase/user.(*UserUsecase).GetUser
-        <span class="cov9" title="889">if idx := strings.LastIndex(full, "/"); idx &gt;= 0 </span><span class="cov9" title="886">{
+        <span class="cov9" title="768">if idx := strings.LastIndex(full, "/"); idx &gt;= 0 </span><span class="cov9" title="765">{
                 full = full[idx+1:]
         }</span>
 
         // 最後の "." で分割: lhs = "user.(*UserUsecase)", rhs = "GetUser"
-        <span class="cov9" title="889">if idx := strings.LastIndex(full, "."); idx &gt;= 0 </span><span class="cov9" title="885">{
+        <span class="cov9" title="768">if idx := strings.LastIndex(full, "."); idx &gt;= 0 </span><span class="cov9" title="764">{
                 return full[:idx], full[idx+1:]
         }</span>
 
@@ -17621,12 +17597,12 @@ func splitFuncName(full string) (string, string) <span class="cov10" title="892"
 //
 //        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser"
 //          → "GetUser"
-func ExtractFunctionName(full string) string <span class="cov9" title="610">{
+func ExtractFunctionName(full string) string <span class="cov9" title="490">{
         _, fn := splitFuncName(full)
         if fn == "" </span><span class="cov1" title="2">{
                 return unknown
         }</span>
-        <span class="cov9" title="608">return fn</span>
+        <span class="cov9" title="488">return fn</span>
 }
 
 // ExtractPackageName は、runtime.Func のフルネームからパッケージ名を抽出します。
@@ -17636,7 +17612,7 @@ func ExtractFunctionName(full string) string <span class="cov9" title="610">{
 //
 //        "github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser" → "user"
 //        "github.com/org/proj/internal/usecase/user.UserUsecase.GetUser"    → "user"
-func ExtractPackageName(full string) string <span class="cov8" title="278">{
+func ExtractPackageName(full string) string <span class="cov8" title="277">{
         lhs, fn := splitFuncName(full)
         // 分割できない（"." が無い）入力は抽出不能として ExtractFunctionName と
         // 同様に unknown へ正規化する。
@@ -17644,11 +17620,11 @@ func ExtractPackageName(full string) string <span class="cov8" title="278">{
                 return unknown
         }</span>
 
-        <span class="cov8" title="276">if before, _, ok := strings.Cut(lhs, "."); ok </span><span class="cov5" title="29">{
+        <span class="cov8" title="275">if before, _, ok := strings.Cut(lhs, "."); ok </span><span class="cov5" title="29">{
                 return before
         }</span>
 
-        <span class="cov8" title="247">return lhs</span>
+        <span class="cov8" title="246">return lhs</span>
 }
 </pre>
 		
@@ -18051,18 +18027,18 @@ import (
 )
 
 // New は、新しいエラーを生成します。
-func New(msg string) error <span class="cov9" title="1329">{
+func New(msg string) error <span class="cov9" title="1328">{
         return errors.New(msg)
 }</span>
 
 // Wrap は、既存のエラーをラップして新しいエラーを生成します。
 // msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
-func Wrap(err error, msg string) error <span class="cov10" title="2298">{
+func Wrap(err error, msg string) error <span class="cov10" title="2180">{
         return errors.Wrap(err, msg)
 }</span>
 
 // Is は、エラーが特定のターゲットエラーと一致するかを判定します。
-func Is(err, target error) bool <span class="cov9" title="1408">{
+func Is(err, target error) bool <span class="cov9" title="1172">{
         return errors.Is(err, target)
 }</span>
 
