@@ -59,7 +59,6 @@ func NewSecurityCookie(
 		// 多くのケースで "/" 固定
 		forcePath: "/",
 
-		// 以下は拡張時にここを直接変更する
 		cookieNames:     map[string]struct{}{},
 		skipCookieNames: map[string]struct{}{},
 		forceMaxAge:     nil,
@@ -106,7 +105,7 @@ func (cfg *SecurityCookie) RewriteSetCookie(raw string) string {
 	if cfg.forceMaxAge != nil {
 		setKVAttr(attrs, "max-age", strconv.Itoa(*cfg.forceMaxAge))
 	}
-	// expires は整合性が難しいので、この雛形では触らない（必要なら追加）
+	// expires は Secure 属性との整合性を保つのが困難なため、Max-Age と並行して操作しない。
 	cfg.applyNamePrefix(name, attrs)
 
 	return buildSetCookie(name, value, attrs)

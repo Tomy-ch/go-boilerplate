@@ -19,7 +19,8 @@ type HTTPErrorResponse struct {
 	Internal   error `json:"-"`
 }
 
-// NewHTTPErrorFromAppError は、エラーの中身がアプリケーションエラーである場合に、対応するHTTPエラーレスポンスを生成します。
+// NewHTTPErrorFromAppError は、err をアプリケーションエラーとして解釈し、対応する HTTP エラーレスポンスを返します。
+// 既知のエラー型に一致しない場合は 500 Internal Server Error として扱います。
 func NewHTTPErrorFromAppError(err error, details ...string) *HTTPErrorResponse {
 	meta := lookupErrorMetaByAppError(err)
 

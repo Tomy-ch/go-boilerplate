@@ -37,7 +37,8 @@ func (u *jobImpl) Name() string {
 	return jobName
 }
 
-// Execute は、ジョブを実行します。
+// Execute は、ユーザ件数を集計してログに出力します。
+// --active-only / --inactive-only でカウント対象を絞り込めます。両フラグの併用はエラーです。
 func (u *jobImpl) Execute(ctx context.Context, args []string) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

@@ -13,6 +13,7 @@ import (
 )
 
 // Middleware は、OpenAPI スキーマに基づくリクエストバリデーション（認証は authFunc 経由）を行うミドルウェアを返します。
+// バリデーション実行前にリクエストコンテキストへ authn スロット（ctxhelper.WithAuthn）を注入するため、authFunc はそのスロットへ認証結果を書き込めます。
 func Middleware(
 	spec *openapi3.T,
 	skipper echomw.Skipper,

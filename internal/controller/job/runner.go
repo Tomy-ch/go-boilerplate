@@ -22,7 +22,7 @@ type runner struct {
 	registry map[string]job.Job
 }
 
-// NewRunner は、Runnerを生成します。
+// NewRunner は、Runner を生成します。jobs に同名のエントリが含まれる場合は ErrDuplicateJob を返します。
 func NewRunner(jobs []job.Job) (job.Runner, error) {
 	m := make(map[string]job.Job, len(jobs))
 	for _, j := range jobs {
@@ -35,7 +35,7 @@ func NewRunner(jobs []job.Job) (job.Runner, error) {
 	return &runner{registry: m}, nil
 }
 
-// Run は、指定されたジョブを実行します。
+// Run は、指定されたジョブを実行します。jobName が未登録の場合は ErrUnknownJob（利用可能名一覧付き）を返します。
 func (r *runner) Run(ctx context.Context, jobName string, args []string) error {
 	j, ok := r.registry[jobName]
 	if !ok {

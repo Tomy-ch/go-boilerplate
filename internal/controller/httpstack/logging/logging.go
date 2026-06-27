@@ -20,6 +20,7 @@ type requestLog struct {
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
+// ただし /health, /metrics 等の運用系エンドポイントはログ出力をスキップします。
 func Middleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.MiddlewareFunc {
 	return loggingMiddleware(logger, lf)
 }
