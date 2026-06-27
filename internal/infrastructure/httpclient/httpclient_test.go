@@ -59,6 +59,27 @@ func TestRequest(t *testing.T) {
 			assert.Equal(t, "key-1", req.IdempotencyKey())
 			assert.True(t, req.AllowRetry())
 		})
+
+		t.Run("HeaderとBodyのゲッターは防御的コピーを返し内部状態は不変", func(t *testing.T) {
+			t.Parallel()
+
+			req := httpclient.NewRequest(
+				httpclient.MethodPost(), "payment", "https://example.com/charge",
+				httpclient.WithHeader(httpclient.Header{"X-Token": {"secret"}}),
+				httpclient.WithBody([]byte("original")),
+			)
+
+			// 返り値を破壊的に変更しても、Request 内部には影響しないこと。
+			got := req.Header()
+			got["X-Token"][0] = "tampered"
+			got["X-Injected"] = []string{"x"}
+			body := req.Body()
+			body[0] = 'X'
+
+			assert.Equal(t, []string{"secret"}, req.Header()["X-Token"], "Header の値スライスが共有されていないこと")
+			assert.NotContains(t, req.Header(), "X-Injected", "Header の map が共有されていないこと")
+			assert.Equal(t, []byte("original"), req.Body(), "Body スライスが共有されていないこと")
+		})
 	})
 }
 

@@ -61,6 +61,9 @@ func noFollowRedirect(_ *http.Request, _ []*http.Request) error {
 
 // Do は、req を送信し Response を返します。retry / backoff / deadline 規律を含みます。
 func (c *client) Do(ctx context.Context, req *Request) (*Response, error) {
+	if req.method == (Method{}) {
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "Method is required")
+	}
 	if req.allowRetry && req.idempotencyKey == "" {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "AllowRetry requires IdempotencyKey")
 	}

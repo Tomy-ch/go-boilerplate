@@ -11,7 +11,10 @@
 // 公開し、ステータスコードの解釈や apperror への写像は substrate 内部で完結させます。
 package httpclient
 
-import "context"
+import (
+	"context"
+	"slices"
+)
 
 // Client は、resilient な外部 HTTP 通信の substrate port です（infra 内部・driver.DatabaseDriver 相当）。
 type Client interface {
@@ -29,8 +32,9 @@ type Downstream string
 
 // Method は、HTTP メソッドを表す閉じた自前型です（net/http に依存しません）。
 //
-// パッケージ外からは MethodGet() 等の定義済み値しか構築できず、`Method("garbage")` のような
-// 任意の文字列から Method を生成することはできません（L2: string 別名で型が防げない問題を根絶）。
+// `Method("garbage")` のような任意の文字列からの生成はコンパイル時に排除されます
+// （L2: string 別名で型が防げない問題を根絶）。ゼロ値 Method{} のみ構築可能で、これは Do が
+// ErrInvalidArgument で弾きます。
 type Method struct{ s string }
 
 // Header は、HTTP ヘッダを表す自前型です（net/http.Header を露出しません）。
@@ -38,8 +42,9 @@ type Header map[string][]string
 
 // Request は、1 回の外部 HTTP 呼び出しの意図を表します。
 //
-// 構築は NewRequest（必須項目を強制）と With* オプション経由のみ。「downstream 欠落」
-// 「AllowRetry なのに IdempotencyKey 不在」といった不正状態を構築時点で排除します（L2）。
+// 構築は NewRequest（必須項目をシグネチャで強制）と With* オプション経由のみ。任意メソッド文字列は
+// 型でコンパイル時に排除し、「空メソッド」「AllowRetry なのに IdempotencyKey 不在」といった残りの
+// 不正状態は Do 実行時に ErrInvalidArgument で弾きます（L2）。
 type Request struct {
 	// downstream は、論理依存名です（必須）。breaker / metrics / profile / budget のキーになります。
 	downstream Downstream
@@ -92,8 +97,8 @@ func MethodDelete() Method { return Method{"DELETE"} }
 // String は、HTTP メソッド文字列を返します（ゼロ値は ""）。
 func (m Method) String() string { return m.s }
 
-// NewRequest は、必須項目（method / downstream / url）を強制してリクエストを生成します（L2）。
-// 不正なメソッドや downstream 欠落という不正状態を、構築時点で排除します。
+// NewRequest は、必須項目（method / downstream / url）をシグネチャで強制してリクエストを生成します（L2）。
+// 任意メソッド文字列は型で排除済み。空メソッドや AllowRetry の key 不在は Do 実行時に弾かれます。
 func NewRequest(method Method, downstream Downstream, url string, opts ...RequestOption) *Request {
 	r := &Request{
 		downstream: downstream,
@@ -117,8 +122,8 @@ func WithIdempotencyKey(key string) RequestOption {
 	return func(r *Request) { r.idempotencyKey = key }
 }
 
-// WithRetry は、非冪等メソッドの retry を許可します。idempotencyKey を同時に必須化することで、
-// 「allowRetry なのに idempotencyKey 不在」という不正状態を構築時点で避けます。
+// WithRetry は、非冪等メソッドの retry を許可し idempotencyKey を同時に設定します。
+// 空 key のまま（WithRetry("")）Do を呼ぶと ErrInvalidArgument で弾かれます（二重実行防止）。
 func WithRetry(idempotencyKey string) RequestOption {
 	return func(r *Request) {
 		r.allowRetry = true
@@ -135,14 +140,26 @@ func (r *Request) Method() Method { return r.method }
 // URL は、リクエスト先 URL を返します。
 func (r *Request) URL() string { return r.url }
 
-// Header は、リクエストヘッダを返します。
-func (r *Request) Header() Header { return r.header }
+// Header は、リクエストヘッダの防御的コピーを返します（Request は不変値オブジェクトのため内部状態を共有しません）。
+func (r *Request) Header() Header { return r.header.clone() }
 
-// Body は、リクエストボディを返します。
-func (r *Request) Body() []byte { return r.body }
+// Body は、リクエストボディの防御的コピーを返します（Request は不変値オブジェクトのため内部状態を共有しません）。
+func (r *Request) Body() []byte { return slices.Clone(r.body) }
 
 // IdempotencyKey は、冪等性キーを返します（未設定時は ""）。
 func (r *Request) IdempotencyKey() string { return r.idempotencyKey }
 
 // AllowRetry は、非冪等メソッドの retry 許可フラグを返します。
 func (r *Request) AllowRetry() bool { return r.allowRetry }
+
+// clone は、Header の深いコピーを返します（map と各値スライスを複製し、内部状態との共有を断ちます）。
+func (h Header) clone() Header {
+	if h == nil {
+		return nil
+	}
+	out := make(Header, len(h))
+	for k, v := range h {
+		out[k] = slices.Clone(v)
+	}
+	return out
+}
