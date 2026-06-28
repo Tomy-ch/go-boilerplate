@@ -18,7 +18,7 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_merge_dml.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 const (
 	// ▼ カテゴリ単位のファイル連結ジョブの並列数チューニング定数（値の由来は README に記載）

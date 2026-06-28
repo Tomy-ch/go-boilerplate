@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_fs.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // FS は、ファイルシステム操作を抽象化するインターフェースです。
 type FS interface {

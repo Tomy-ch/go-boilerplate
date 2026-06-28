@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_emit.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package outbox は、トランザクショナル outbox の emit / relay / GC / replay ユースケースを提供します。
 package outbox
