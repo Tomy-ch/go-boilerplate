@@ -15,3 +15,10 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 - Use `New` / `Wrap` / `Join` instead of `fmt.Errorf` for error creation and wrapping
   (`Join` combines multiple errors). When a value must be embedded in the message, compose it with
   `fmt.Sprintf` and pass it to `New` / `Wrap`. `fmt.Errorf` is forbidden by `forbidigo`.
+- When attaching an apperror sentinel to an underlying error, prefer `Join(sentinel, err)`
+  (or `Join(sentinel, Wrap(err, "context"))` when context is needed) so the original error stays
+  in the chain for `Is` / `As`. Do not flatten it with `Wrap(sentinel, err.Error())`, which drops
+  the original error's type and stack.
+  - Exception: if the underlying error may carry sensitive data (e.g. a URL with query / userinfo),
+    do not `Join` it — redact the message first and `Wrap(sentinel, <redacted string>)` so the raw
+    error never propagates.
