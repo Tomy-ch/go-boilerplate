@@ -93,6 +93,28 @@ func TestNewConfig(t *testing.T) {
 					headerName:          expectedAuthHeaderName,
 					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 				},
+				worker: WorkerConfig{
+					concurrency:               expectedWorkerConcurrency,
+					maxInFlight:               expectedWorkerMaxInFlight,
+					batchSize:                 expectedWorkerBatchSize,
+					extendInterval:            expectedWorkerExtendInterval,
+					drainTimeout:              expectedWorkerDrainTimeout,
+					receiveCountWarnThreshold: expectedWorkerReceiveCountWarnThreshold,
+					circuitFailureThreshold:   expectedWorkerCircuitFailureThreshold,
+					circuitOpenBackoffInitial: expectedWorkerCircuitOpenBackoffInitial,
+					circuitOpenBackoffMax:     expectedWorkerCircuitOpenBackoffMax,
+					circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
+					healthListenAddr:          expectedWorkerHealthListenAddr,
+					progressStaleAfter:        expectedWorkerProgressStaleAfter,
+					nackBackoffInitial:        expectedWorkerNackBackoffInitial,
+					nackBackoffMax:            expectedWorkerNackBackoffMax,
+				},
+				outbox: OutboxConfig{
+					endpoint:     expectedOutboxEndpoint,
+					pollInterval: expectedOutboxPollInterval,
+					errorBackoff: expectedOutboxErrorBackoff,
+					batchSize:    expectedOutboxBatchSize,
+				},
 			}
 
 			actual, err := New()
