@@ -9,7 +9,6 @@ import (
 )
 
 // authorizer は、すべての認可要求を許可する Authorizer です（ローカル/開発用の割り切り実装）。
-// 本番でポリシー制御が必要になった際に、RBAC / 外部ポリシーエンジン実装へ差し替えます。
 type authorizer struct{}
 
 // New は、全許可 Authorizer のコンストラクタです。

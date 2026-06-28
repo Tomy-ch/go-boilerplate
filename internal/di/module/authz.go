@@ -17,8 +17,7 @@ const callerSkipCount = 1
 
 // authzModule は、認可（Authorizer）の依存を提供するfx.Moduleです。
 // Authorizer は usecase 層から参照されるため、usecase に依存を供給する
-// InfrastructureModule の一部として提供します（authn の Authenticator が
-// controller 側の core モジュールに置かれるのと対照的な配置です）。
+// InfrastructureModule の一部として提供します。
 func authzModule() fx.Option {
 	return fx.Module("authz",
 		fx.Provide(

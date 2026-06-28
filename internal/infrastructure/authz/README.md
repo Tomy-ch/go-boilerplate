@@ -33,6 +33,27 @@ Infrastructure["Infrastructure (authz implementation)"] -. implements .-> Bounda
 
 A real deployment replaces this with an RBAC / external policy-engine implementation.
 
+## Local / Staging / Production Implementation
+
+`allowall` is a **development-only stub**; it is wired only for `local` / `ci` / `test`. For `development` / `staging` / `production` you must add real implementations and wire them per environment (see [setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2). The DI provider is **fail-closed**, so until you do, those environments refuse to start by design.
+
+Suggested layout (mirrors `internal/infrastructure/auth/`):
+
+```txt
+internal/infrastructure/authz
+├── allowall   # local / ci / test stub (grants everything)
+├── stg        # staging Authorizer
+└── prd        # production Authorizer
+```
+
+A real `Authorizer` typically decides via:
+
+- ownership (subject == `Resource.OwnerID()`) — object-level authorization
+- RBAC (roles derived from `auth.Authn` claims / scopes)
+- an external policy engine (OPA / Cedar)
+
+Wire each environment in `provideAuthorizer` (`internal/di/module/authz.go`) by adding `case config.EnvDevelopment / EnvStaging / EnvProduction` branches that return your real implementation instead of the current `default` fail-closed error.
+
 ## Registration to DI
 
 `Authorizer` is registered via `authzModule()` in:

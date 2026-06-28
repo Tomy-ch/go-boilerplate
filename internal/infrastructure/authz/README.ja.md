@@ -33,6 +33,27 @@ Infrastructure["Infrastructure（authz 実装）"] -. implements .-> Boundary
 
 実運用では RBAC / 外部ポリシーエンジン実装へ差し替えます。
 
+## local / staging / production の実装
+
+`allowall` は **開発用スタブ**であり、配線されるのは `local` / `ci` / `test` のみです。`development` / `staging` / `production` では実実装を追加し、環境ごとに配線する必要があります（[setup-repository.md](../../../docs/get-started/setup-repository.md) Phase 9.2 参照）。DI プロバイダは **fail-closed** のため、実装するまでこれらの環境は設計上起動しません。
+
+推奨レイアウト（`internal/infrastructure/auth/` と対になる構成）:
+
+```txt
+internal/infrastructure/authz
+├── allowall   # local / ci / test 用スタブ（すべて許可）
+├── stg        # staging 用 Authorizer
+└── prd        # production 用 Authorizer
+```
+
+実運用の `Authorizer` は通常、次のいずれかで判定します。
+
+- 所有権（subject == `Resource.OwnerID()`）— オブジェクトレベル認可
+- RBAC（`auth.Authn` の claims / scopes から導いたロール）
+- 外部ポリシーエンジン（OPA / Cedar）
+
+各環境は `provideAuthorizer`（`internal/di/module/authz.go`）で、現在の `default`（fail-closed エラー）の代わりに `case config.EnvDevelopment / EnvStaging / EnvProduction` を追加して実実装を返すよう配線します。
+
 ## DI への登録
 
 `Authorizer` は次の `authzModule()` で登録されます。
