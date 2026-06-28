@@ -12,6 +12,9 @@ import (
 	"go.uber.org/fx"
 )
 
+// callerSkipCount は、ロギングラッパーが追加するフレーム数を補正するためのスキップ数です。
+const callerSkipCount = 1
+
 // authzModule は、認可（Authorizer）の依存を提供するfx.Moduleです。
 // Authorizer は usecase 層から参照されるため、usecase に依存を供給する
 // InfrastructureModule の一部として提供します（authn の Authenticator が
@@ -32,7 +35,7 @@ func provideAuthorizer(appCfg *config.ApplicationConfig, logger logging.Logger) 
 	case config.EnvLocal, config.EnvCI, config.EnvTest:
 		return allowall.New(), nil
 	default:
-		logger.Named("authz").Error(
+		logger.Named("authz").CallerSkip(callerSkipCount).Error(
 			"No authorizer configured for the current environment",
 			logging.String("env", appCfg.Env()),
 		)
