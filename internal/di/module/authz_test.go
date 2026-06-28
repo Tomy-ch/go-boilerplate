@@ -70,17 +70,25 @@ func Test_provideAuthorizer(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("本番相当の環境では全許可を配線せずエラーを返す", func(t *testing.T) {
-			t.Parallel()
+		// local / ci / test 以外（本番相当）はすべて fail-closed でエラーを返すこと。
+		envs := map[string]string{
+			"development環境": config.EnvDevelopment,
+			"staging環境":     config.EnvStaging,
+			"production環境":  config.EnvProduction,
+		}
+		for name, env := range envs {
+			t.Run(name+"では全許可を配線せずエラーを返す", func(t *testing.T) {
+				t.Parallel()
 
-			cfg := config.MockConfigForTest(t)
-			appCfg := config.NewApplicationConfig(cfg)
-			appCfg.SetApplicationEnv(t, config.EnvProduction)
-			logger := logging.NewTestLogger(t)
+				cfg := config.MockConfigForTest(t)
+				appCfg := config.NewApplicationConfig(cfg)
+				appCfg.SetApplicationEnv(t, env)
+				logger := logging.NewTestLogger(t)
 
-			authorizer, err := provideAuthorizer(appCfg, logger)
-			require.Error(t, err)
-			require.Nil(t, authorizer)
-		})
+				authorizer, err := provideAuthorizer(appCfg, logger)
+				require.Error(t, err)
+				require.Nil(t, authorizer)
+			})
+		}
 	})
 }

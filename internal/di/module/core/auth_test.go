@@ -86,15 +86,23 @@ func Test_provideAuthenticator(t *testing.T) {
 		assert.Equal(t, la, authenticator)
 	})
 
-	t.Run("その他の環境では本番用 Authenticator が提供される", func(t *testing.T) {
-		t.Parallel()
+	// local / ci / test 以外（本番相当）はすべて fail-closed でエラーを返すこと。
+	envs := map[string]string{
+		"development環境": config.EnvDevelopment,
+		"staging環境":     config.EnvStaging,
+		"production環境":  config.EnvProduction,
+	}
+	for name, env := range envs {
+		t.Run(name+"では Authenticator を配線せずエラーを返す", func(t *testing.T) {
+			t.Parallel()
 
-		cfg := config.MockConfigForTest(t)
-		appCfg := config.NewApplicationConfig(cfg)
-		appCfg.SetApplicationEnv(t, config.EnvProduction)
-		logger := logging.NewTestLogger(t)
-		authenticator, err := provideAuthenticator(appCfg, logger)
-		require.Error(t, err)
-		require.Nil(t, authenticator)
-	})
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			appCfg.SetApplicationEnv(t, env)
+			logger := logging.NewTestLogger(t)
+			authenticator, err := provideAuthenticator(appCfg, logger)
+			require.Error(t, err)
+			require.Nil(t, authenticator)
+		})
+	}
 }
