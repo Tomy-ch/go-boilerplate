@@ -1,3 +1,5 @@
+// Package main は mise.toml の version を各種ファイルに反映する。
+//
 // 不変条件: 全 rule の事前 validate を通してから初めて書き出す。期待マッチ数を
 // 満たさない rule が1つでもあれば一切書かずに非ゼロ終了し、partial state を残さない。
 package main
