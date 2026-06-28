@@ -33,6 +33,11 @@ func authzModule() fx.Option {
 func provideAuthorizer(appCfg *config.ApplicationConfig, logger logging.Logger) (authzbd.Authorizer, error) {
 	switch appCfg.Env() {
 	case config.EnvLocal, config.EnvCI, config.EnvTest:
+		logger.Named("authz").CallerSkip(callerSkipCount).Warn(
+			"Allow-all authorizer wired: every request is permitted (non-production only)",
+			logging.String("env", appCfg.Env()),
+		)
+
 		return allowall.New(), nil
 	default:
 		logger.Named("authz").CallerSkip(callerSkipCount).Error(
