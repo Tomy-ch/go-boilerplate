@@ -121,13 +121,13 @@
 					<dd>    <a href="#MockUsecase.CreateUser">func (m *MockUsecase) CreateUser(ctx context.Context, dto *user.CreateParamsDTO) (user.UserView, error)</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecase.DeleteUser">func (m *MockUsecase) DeleteUser(ctx context.Context, id uuid.UUID) error</a></dd>
+					<dd>    <a href="#MockUsecase.DeleteUser">func (m *MockUsecase) DeleteUser(ctx context.Context, authn *auth.Authn, id uuid.UUID) error</a></dd>
 				
 					
 					<dd>    <a href="#MockUsecase.EXPECT">func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecase.GetUser">func (m *MockUsecase) GetUser(ctx context.Context, id uuid.UUID) (user.UserView, error)</a></dd>
+					<dd>    <a href="#MockUsecase.GetUser">func (m *MockUsecase) GetUser(ctx context.Context, authn *auth.Authn, id uuid.UUID) (user.UserView, error)</a></dd>
 				
 					
 					<dd>    <a href="#MockUsecase.ListUsers">func (m *MockUsecase) ListUsers(ctx context.Context, active *bool, page *paging.Page) ([]user.UserView, error)</a></dd>
@@ -139,10 +139,10 @@
 					<dd>    <a href="#MockUsecase.ListUsersWithTotal">func (m *MockUsecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*user.UserListView, error)</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecase.UpdateUser">func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.UpdateProfileParams) (user.UserView, error)</a></dd>
+					<dd>    <a href="#MockUsecase.UpdateUser">func (m *MockUsecase) UpdateUser(ctx context.Context, authn *auth.Authn, id uuid.UUID, dto *user.UpdateProfileParams) (user.UserView, error)</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecase.UpdateUserPartially">func (m *MockUsecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *user.PatchParamsDTO) (user.UserView, error)</a></dd>
+					<dd>    <a href="#MockUsecase.UpdateUserPartially">func (m *MockUsecase) UpdateUserPartially(ctx context.Context, authn *auth.Authn, id uuid.UUID, dto *user.PatchParamsDTO) (user.UserView, error)</a></dd>
 				
 			
 				
@@ -159,10 +159,10 @@
 					<dd>    <a href="#MockUsecaseMockRecorder.CreateUser">func (mr *MockUsecaseMockRecorder) CreateUser(ctx, dto any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecaseMockRecorder.DeleteUser">func (mr *MockUsecaseMockRecorder) DeleteUser(ctx, id any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockUsecaseMockRecorder.DeleteUser">func (mr *MockUsecaseMockRecorder) DeleteUser(ctx, authn, id any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecaseMockRecorder.GetUser">func (mr *MockUsecaseMockRecorder) GetUser(ctx, id any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockUsecaseMockRecorder.GetUser">func (mr *MockUsecaseMockRecorder) GetUser(ctx, authn, id any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockUsecaseMockRecorder.ListUsers">func (mr *MockUsecaseMockRecorder) ListUsers(ctx, active, page any) *gomock.Call</a></dd>
@@ -174,10 +174,10 @@
 					<dd>    <a href="#MockUsecaseMockRecorder.ListUsersWithTotal">func (mr *MockUsecaseMockRecorder) ListUsersWithTotal(ctx, active, page any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecaseMockRecorder.UpdateUser">func (mr *MockUsecaseMockRecorder) UpdateUser(ctx, id, dto any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockUsecaseMockRecorder.UpdateUser">func (mr *MockUsecaseMockRecorder) UpdateUser(ctx, authn, id, dto any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecaseMockRecorder.UpdateUserPartially">func (mr *MockUsecaseMockRecorder) UpdateUserPartially(ctx, id, dto any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockUsecaseMockRecorder.UpdateUserPartially">func (mr *MockUsecaseMockRecorder) UpdateUserPartially(ctx, authn, id, dto any) *gomock.Call</a></dd>
 				
 			
 			
@@ -207,7 +207,7 @@
 		
 			
 			
-			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=545:655#L13">MockUsecase</a>
+			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=599:709#L14">MockUsecase</a>
 				<a class="permalink" href="#MockUsecase">¶</a>
 				
 				
@@ -229,7 +229,7 @@
 
 			
 				
-				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=829:886#L25">NewMockUsecase</a>
+				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=883:940#L26">NewMockUsecase</a>
 					<a class="permalink" href="#NewMockUsecase">¶</a>
 					
 					
@@ -243,7 +243,7 @@
 
 			
 				
-				</p><h3 id="MockUsecase.ChangePassword">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1181:1295#L37">ChangePassword</a>
+				</p><h3 id="MockUsecase.ChangePassword">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1235:1349#L38">ChangePassword</a>
 					<a class="permalink" href="#MockUsecase.ChangePassword">¶</a>
 					
 					
@@ -256,7 +256,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.CountUsers">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1837:1919#L51">CountUsers</a>
+				</p><h3 id="MockUsecase.CountUsers">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1891:1973#L52">CountUsers</a>
 					<a class="permalink" href="#MockUsecase.CountUsers">¶</a>
 					
 					
@@ -269,7 +269,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.CreateUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2392:2495#L66">CreateUser</a>
+				</p><h3 id="MockUsecase.CreateUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2446:2549#L67">CreateUser</a>
 					<a class="permalink" href="#MockUsecase.CreateUser">¶</a>
 					
 					
@@ -282,12 +282,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.DeleteUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2967:3040#L81">DeleteUser</a>
+				</p><h3 id="MockUsecase.DeleteUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3021:3113#L82">DeleteUser</a>
 					<a class="permalink" href="#MockUsecase.DeleteUser">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) DeleteUser(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) DeleteUser(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../../builtin/#error">error</a></pre>
 				<p>DeleteUser mocks base method.
 
 				
@@ -295,7 +295,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1064:1119#L32">EXPECT</a>
+				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1118:1173#L33">EXPECT</a>
 					<a class="permalink" href="#MockUsecase.EXPECT">¶</a>
 					
 					
@@ -308,12 +308,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.GetUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3465:3552#L95">GetUser</a>
+				</p><h3 id="MockUsecase.GetUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3559:3665#L96">GetUser</a>
 					<a class="permalink" href="#MockUsecase.GetUser">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetUser(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#UserView">UserView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetUser(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#UserView">UserView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 				<p>GetUser mocks base method.
 
 				
@@ -321,7 +321,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListUsers">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4002:4112#L110">ListUsers</a>
+				</p><h3 id="MockUsecase.ListUsers">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4136:4246#L111">ListUsers</a>
 					<a class="permalink" href="#MockUsecase.ListUsers">¶</a>
 					
 					
@@ -334,7 +334,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListUsersFeed">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4610:4717#L125">ListUsersFeed</a>
+				</p><h3 id="MockUsecase.ListUsersFeed">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4744:4851#L126">ListUsersFeed</a>
 					<a class="permalink" href="#MockUsecase.ListUsersFeed">¶</a>
 					
 					
@@ -347,7 +347,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListUsersWithTotal">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5229:5351#L140">ListUsersWithTotal</a>
+				</p><h3 id="MockUsecase.ListUsersWithTotal">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5363:5485#L141">ListUsersWithTotal</a>
 					<a class="permalink" href="#MockUsecase.ListUsersWithTotal">¶</a>
 					
 					
@@ -360,12 +360,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.UpdateUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5903:6024#L155">UpdateUser</a>
+				</p><h3 id="MockUsecase.UpdateUser">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6037:6177#L156">UpdateUser</a>
 					<a class="permalink" href="#MockUsecase.UpdateUser">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) UpdateUser(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#UpdateProfileParams">UpdateProfileParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#UserView">UserView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) UpdateUser(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#UpdateProfileParams">UpdateProfileParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#UserView">UserView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 				<p>UpdateUser mocks base method.
 
 				
@@ -373,12 +373,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.UpdateUserPartially">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6517:6642#L170">UpdateUserPartially</a>
+				</p><h3 id="MockUsecase.UpdateUserPartially">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6691:6835#L171">UpdateUserPartially</a>
 					<a class="permalink" href="#MockUsecase.UpdateUserPartially">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) UpdateUserPartially(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#PatchParamsDTO">PatchParamsDTO</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#UserView">UserView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) UpdateUserPartially(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#PatchParamsDTO">PatchParamsDTO</a>) (<a href="../../../../../go-boilerplate/internal/usecase/user/">user</a>.<a href="../../../../../go-boilerplate/internal/usecase/user/#UserView">UserView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 				<p>UpdateUserPartially mocks base method.
 
 				
@@ -388,7 +388,7 @@
 		
 			
 			
-			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=722:780#L20">MockUsecaseMockRecorder</a>
+			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=776:834#L21">MockUsecaseMockRecorder</a>
 				<a class="permalink" href="#MockUsecaseMockRecorder">¶</a>
 				
 				
@@ -412,7 +412,7 @@
 
 			
 				
-				<h3 id="MockUsecaseMockRecorder.ChangePassword">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1504:1609#L45">ChangePassword</a>
+				<h3 id="MockUsecaseMockRecorder.ChangePassword">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=1558:1663#L46">ChangePassword</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ChangePassword">¶</a>
 					
 					
@@ -425,7 +425,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.CountUsers">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2123:2198#L60">CountUsers</a>
+				</p><h3 id="MockUsecaseMockRecorder.CountUsers">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2177:2252#L61">CountUsers</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.CountUsers">¶</a>
 					
 					
@@ -438,7 +438,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.CreateUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2704:2776#L75">CreateUser</a>
+				</p><h3 id="MockUsecaseMockRecorder.CreateUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=2758:2830#L76">CreateUser</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.CreateUser">¶</a>
 					
 					
@@ -451,12 +451,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.DeleteUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3207:3278#L89">DeleteUser</a>
+				</p><h3 id="MockUsecaseMockRecorder.DeleteUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3287:3365#L90">DeleteUser</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.DeleteUser">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) DeleteUser(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) DeleteUser(ctx, authn, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>DeleteUser indicates an expected call of DeleteUser.
 
 				
@@ -464,12 +464,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.GetUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3751:3819#L104">GetUser</a>
+				</p><h3 id="MockUsecaseMockRecorder.GetUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=3871:3946#L105">GetUser</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.GetUser">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetUser(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetUser(ctx, authn, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>GetUser indicates an expected call of GetUser.
 
 				
@@ -477,7 +477,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListUsers">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4329:4409#L119">ListUsers</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListUsers">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4463:4543#L120">ListUsers</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListUsers">¶</a>
 					
 					
@@ -490,7 +490,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListUsersFeed">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=4943:5021#L134">ListUsersFeed</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListUsersFeed">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5077:5155#L135">ListUsersFeed</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListUsersFeed">¶</a>
 					
 					
@@ -503,7 +503,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListUsersWithTotal">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5598:5687#L149">ListUsersWithTotal</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListUsersWithTotal">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=5732:5821#L150">ListUsersWithTotal</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListUsersWithTotal">¶</a>
 					
 					
@@ -516,12 +516,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.UpdateUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6237:6313#L164">UpdateUser</a>
+				</p><h3 id="MockUsecaseMockRecorder.UpdateUser">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6397:6480#L165">UpdateUser</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.UpdateUser">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) UpdateUser(ctx, id, dto <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) UpdateUser(ctx, authn, id, dto <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>UpdateUser indicates an expected call of UpdateUser.
 
 				
@@ -529,12 +529,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.UpdateUserPartially">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=6882:6967#L179">UpdateUserPartially</a>
+				</p><h3 id="MockUsecaseMockRecorder.UpdateUserPartially">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/user/mock/mock_user_usecase.go.gen.go.html?s=7082:7174#L180">UpdateUserPartially</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.UpdateUserPartially">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) UpdateUserPartially(ctx, id, dto <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) UpdateUserPartially(ctx, authn, id, dto <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>UpdateUserPartially indicates an expected call of UpdateUserPartially.
 
 				

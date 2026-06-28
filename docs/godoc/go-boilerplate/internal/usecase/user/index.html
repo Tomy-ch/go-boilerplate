@@ -125,7 +125,7 @@
 				<dd><a href="#Usecase">type Usecase</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(tf observability.TracerFactory, txm tx.Manager, clock clock.Clock, encrypter security.Hasher, userRepo user.Repository, prefectureRepo prefecture.Repository) Usecase</a></dd>
+					<dd>    <a href="#New">func New(tf observability.TracerFactory, txm tx.Manager, clock clock.Clock, encrypter security.Hasher, authorizer authz.Authorizer, userRepo user.Repository, prefectureRepo prefecture.Repository) Usecase</a></dd>
 				
 				
 			
@@ -173,7 +173,7 @@
 		
 			
 			
-			<h2 id="CreateParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2239:2335#L59">CreateParamsDTO</a>
+			<h2 id="CreateParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2345:2441#L61">CreateParamsDTO</a>
 				<a class="permalink" href="#CreateParamsDTO">¶</a>
 				
 				
@@ -202,7 +202,7 @@
 		
 			
 			
-			<h2 id="PatchParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2521:2767#L67">PatchParamsDTO</a>
+			<h2 id="PatchParamsDTO">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2627:2873#L69">PatchParamsDTO</a>
 				<a class="permalink" href="#PatchParamsDTO">¶</a>
 				
 				
@@ -236,7 +236,7 @@
 		
 			
 			
-			<h2 id="UpdateProfileParams">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1905:2148#L46">UpdateProfileParams</a>
+			<h2 id="UpdateProfileParams">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=2011:2254#L48">UpdateProfileParams</a>
 				<a class="permalink" href="#UpdateProfileParams">¶</a>
 				
 				
@@ -270,7 +270,7 @@
 		
 			
 			
-			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=3125:4827#L90">Usecase</a>
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=3266:5662#L93">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -288,16 +288,20 @@
     CreateUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, dto *<a href="#CreateParamsDTO">CreateParamsDTO</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// CountUsers は、ユーザーの総件数を返します。</span>
     CountUsers(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, active *<a href="../../../../builtin/#bool">bool</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// GetUser は、IDから単一ユーザーを取得します。</span>
-    GetUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。</span>
-    UpdateUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="#UpdateProfileParams">UpdateProfileParams</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
-    <span class="comment">// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。</span>
-    UpdateUserPartially(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="#PatchParamsDTO">PatchParamsDTO</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// GetUser は、認可を確認したうえで ID から単一ユーザーを取得します。</span>
+    <span class="comment">// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。</span>
+    GetUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// UpdateUser は、認可を確認したうえでユーザーのプロフィールを全更新します（パスワードは含みません）。</span>
+    <span class="comment">// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。</span>
+    UpdateUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="#UpdateProfileParams">UpdateProfileParams</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します（パスワードは更新しません）。</span>
+    <span class="comment">// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。</span>
+    UpdateUserPartially(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, dto *<a href="#PatchParamsDTO">PatchParamsDTO</a>) (<a href="#UserView">UserView</a>, <a href="../../../../builtin/#error">error</a>)
     <span class="comment">// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。</span>
     ChangePassword(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, currentPassword, newPassword <a href="../../../../builtin/#string">string</a>) <a href="../../../../builtin/#error">error</a>
-    <span class="comment">// DeleteUser は、ユーザーを論理削除します。</span>
-    DeleteUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../builtin/#error">error</a>
+    <span class="comment">// DeleteUser は、認可を確認したうえでユーザーを論理削除します。</span>
+    <span class="comment">// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。</span>
+    DeleteUser(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../builtin/#error">error</a>
 }</pre>
 
 			
@@ -310,7 +314,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=4909:5092#L114">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=5744:5957#L121">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -320,6 +324,7 @@
     txm <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>,
     clock <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
     encrypter <a href="../../../../go-boilerplate/internal/usecase/boundary/security/">security</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/security/#Hasher">Hasher</a>,
+    authorizer <a href="../../../../go-boilerplate/internal/usecase/boundary/authz/">authz</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/authz/#Authorizer">Authorizer</a>,
     userRepo <a href="../../../../go-boilerplate/internal/domain/user/">user</a>.<a href="../../../../go-boilerplate/internal/domain/user/#Repository">Repository</a>,
     prefectureRepo <a href="../../../../go-boilerplate/internal/domain/prefecture/">prefecture</a>.<a href="../../../../go-boilerplate/internal/domain/prefecture/#Repository">Repository</a>,
 ) <a href="#Usecase">Usecase</a></pre>
@@ -333,7 +338,7 @@
 		
 			
 			
-			</p><h2 id="UserFeedView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1538:1783#L38">UserFeedView</a>
+			</p><h2 id="UserFeedView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1644:1889#L40">UserFeedView</a>
 				<a class="permalink" href="#UserFeedView">¶</a>
 				
 				
@@ -362,7 +367,7 @@
 		
 			
 			
-			<h2 id="UserListView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1360:1419#L32">UserListView</a>
+			<h2 id="UserListView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1466:1525#L34">UserListView</a>
 				<a class="permalink" href="#UserListView">¶</a>
 				
 				
@@ -389,7 +394,7 @@
 		
 			
 			
-			<h2 id="UserView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1001:1260#L18">UserView</a>
+			<h2 id="UserView">type <a href="../../../../src/go-boilerplate/internal/usecase/user/user_usecase.go.html?s=1107:1366#L20">UserView</a>
 				<a class="permalink" href="#UserView">¶</a>
 				
 				

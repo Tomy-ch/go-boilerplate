@@ -1,0 +1,273 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_authz
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/authz/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_authz is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockAuthorizer">type MockAuthorizer</a></dd>
+				
+					
+					<dd>    <a href="#NewMockAuthorizer">func NewMockAuthorizer(ctrl *gomock.Controller) *MockAuthorizer</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockAuthorizer.Authorize">func (m *MockAuthorizer) Authorize(ctx context.Context, authn *auth.Authn, action authz.Action, resource *authz.Resource) error</a></dd>
+				
+					
+					<dd>    <a href="#MockAuthorizer.EXPECT">func (m *MockAuthorizer) EXPECT() *MockAuthorizerMockRecorder</a></dd>
+				
+			
+				
+				<dd><a href="#MockAuthorizerMockRecorder">type MockAuthorizerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockAuthorizerMockRecorder.Authorize">func (mr *MockAuthorizerMockRecorder) Authorize(ctx, authn, action, resource any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/authz/mock/mock_authorizer.go.gen.go.html">mock_authorizer.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockAuthorizer">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/authz/mock/mock_authorizer.go.gen.go.html?s=526:642#L12">MockAuthorizer</a>
+				<a class="permalink" href="#MockAuthorizer">¶</a>
+				
+				
+			</h2>
+			<p>MockAuthorizer is a mock of Authorizer interface.
+
+			</p><pre>type MockAuthorizer struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockAuthorizer">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/authz/mock/mock_authorizer.go.gen.go.html?s=831:894#L24">NewMockAuthorizer</a>
+					<a class="permalink" href="#NewMockAuthorizer">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockAuthorizer(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockAuthorizer">MockAuthorizer</a></pre>
+				<p>NewMockAuthorizer creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockAuthorizer.Authorize">func (*MockAuthorizer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/authz/mock/mock_authorizer.go.gen.go.html?s=1196:1323#L36">Authorize</a>
+					<a class="permalink" href="#MockAuthorizer.Authorize">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockAuthorizer">MockAuthorizer</a>) Authorize(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, authn *<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, action <a href="../../../../../../go-boilerplate/internal/usecase/boundary/authz/">authz</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/authz/#Action">Action</a>, resource *<a href="../../../../../../go-boilerplate/internal/usecase/boundary/authz/">authz</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/authz/#Resource">Resource</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Authorize mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAuthorizer.EXPECT">func (*MockAuthorizer) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/authz/mock/mock_authorizer.go.gen.go.html?s=1078:1139#L31">EXPECT</a>
+					<a class="permalink" href="#MockAuthorizer.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockAuthorizer">MockAuthorizer</a>) EXPECT() *<a href="#MockAuthorizerMockRecorder">MockAuthorizerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockAuthorizerMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/authz/mock/mock_authorizer.go.gen.go.html?s=715:779#L19">MockAuthorizerMockRecorder</a>
+				<a class="permalink" href="#MockAuthorizerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockAuthorizerMockRecorder is the mock recorder for MockAuthorizer.
+
+			</p><pre>type MockAuthorizerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockAuthorizerMockRecorder.Authorize">func (*MockAuthorizerMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/authz/mock/mock_authorizer.go.gen.go.html?s=1508:1602#L44">Authorize</a>
+					<a class="permalink" href="#MockAuthorizerMockRecorder.Authorize">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockAuthorizerMockRecorder">MockAuthorizerMockRecorder</a>) Authorize(ctx, authn, action, resource <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Authorize indicates an expected call of Authorize.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -155,6 +155,8 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../src/go-boilerplate/internal/di/module/authz.go.html">authz.go</a>
+			
 				<a href="../../../../src/go-boilerplate/internal/di/module/clock.go.html">clock.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/di/module/config.go.html">config.go</a>
@@ -244,14 +246,14 @@
 		
 			
 			
-			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=385:422#L1">InfrastructureModule</a>
+			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=393:430#L1">InfrastructureModule</a>
 				<a class="permalink" href="#InfrastructureModule">¶</a>
 				
 				
 			</h2>
 			<pre>func InfrastructureModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
 			<p>InfrastructureModule は、全プロセス共通のインフラストラクチャ層の依存関係を集約して提供するfx.Moduleです。
-含む concern は永続化 / clock / HTTP client / webapi gateway / security です。
+含む concern は永続化 / clock / HTTP client / webapi gateway / security / authz です。
 outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で提供します。
 
 			
