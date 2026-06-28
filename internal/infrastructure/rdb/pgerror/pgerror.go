@@ -40,25 +40,25 @@ func NormalizeError(err error) error {
 	}
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return xerrors.Wrap(apperror.ErrNotFound, err.Error())
+		return xerrors.Join(apperror.ErrNotFound, err)
 	}
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		if appErr, ok := sqlstateToAppError[pgErr.Code]; ok {
-			return xerrors.Wrap(appErr, err.Error())
+			return xerrors.Join(appErr, err)
 		}
 	}
 
 	if errors.Is(err, context.Canceled) {
-		return xerrors.Wrap(apperror.ErrCanceled, err.Error())
+		return xerrors.Join(apperror.ErrCanceled, err)
 	}
 
 	if IsUnavailable(err) {
-		return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+		return xerrors.Join(apperror.ErrUnavailable, err)
 	}
 
-	return xerrors.Wrap(apperror.ErrInternal, err.Error())
+	return xerrors.Join(apperror.ErrInternal, err)
 }
 
 // NormalizeExecResult は、影響行数を返す書き込み系クエリの結果を正規化します。

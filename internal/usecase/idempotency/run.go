@@ -89,7 +89,7 @@ func Run[T any](
 		}
 		payload, err := json.Marshal(res)
 		if err != nil {
-			return xerrors.Wrap(apperror.ErrInternal, "failed to encode idempotent response: "+err.Error())
+			return xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "failed to encode idempotent response"))
 		}
 		if err := deps.Store.Complete(ctx, idempotencybndry.CompleteParams{
 			Scope:           req.Scope,
@@ -136,7 +136,7 @@ func decideExisting[T any](
 	// completed → 保存済み DTO を復元して replay。
 	var result T
 	if err := json.Unmarshal(rec.ResponsePayload, &result); err != nil {
-		return zero, false, xerrors.Wrap(apperror.ErrInternal, "failed to decode stored idempotent response: "+err.Error())
+		return zero, false, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "failed to decode stored idempotent response"))
 	}
 	deps.metrics().IncReplay(req.OperationID)
 	return result, true, nil
