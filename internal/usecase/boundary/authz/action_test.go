@@ -14,6 +14,8 @@ func TestAction_String(t *testing.T) {
 
 		t.Run("Actionの文字列表現を返す", func(t *testing.T) {
 			t.Parallel()
+			assert.Equal(t, "user:get", ActionUserGet.String())
+			assert.Equal(t, "user:update", ActionUserUpdate.String())
 			assert.Equal(t, "user:delete", ActionUserDelete.String())
 		})
 	})

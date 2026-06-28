@@ -111,15 +111,19 @@ type Usecase interface {
 	CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error)
 	// CountUsers は、ユーザーの総件数を返します。
 	CountUsers(ctx context.Context, active *bool) (int64, error)
-	// GetUser は、IDから単一ユーザーを取得します。
-	GetUser(ctx context.Context, id uuid.UUID) (UserView, error)
-	// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
-	UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
-	// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
-	UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
+	// GetUser は、認可を確認したうえで ID から単一ユーザーを取得します。
+	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
+	GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) (UserView, error)
+	// UpdateUser は、認可を確認したうえでユーザーのプロフィールを全更新します（パスワードは含みません）。
+	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
+	UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error)
+	// UpdateUserPartially は、認可を確認したうえでユーザーを部分更新します（パスワードは更新しません）。
+	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
+	UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
 	// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。
 	ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error
 	// DeleteUser は、認可を確認したうえでユーザーを論理削除します。
+	// 認可が拒否された場合は authz.ErrForbidden（apperror.ErrPermissionDenied をラップ）を返します。
 	DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error
 }
 
@@ -279,9 +283,13 @@ func (u *usecase) ListUsersFeed(ctx context.Context, cursor *paging.Cursor) (*Us
 }
 
 // GetUser は、IDから単一ユーザーを取得するユースケースです。
-func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
+func (u *usecase) GetUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
+
+	if err := u.authorizeUserAccess(ctx, authn, authz.ActionUserGet, id); err != nil {
+		return UserView{}, err
+	}
 
 	userEntity, err := u.userRepo.FindByID(ctx, id)
 	if err != nil {
@@ -300,9 +308,13 @@ func (u *usecase) GetUser(ctx context.Context, id uuid.UUID) (UserView, error) {
 }
 
 // UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。
-func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
+func (u *usecase) UpdateUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
+
+	if err := u.authorizeUserAccess(ctx, authn, authz.ActionUserUpdate, id); err != nil {
+		return UserView{}, err
+	}
 
 	now := u.clock.Now()
 
@@ -391,9 +403,13 @@ func (u *usecase) ChangePassword(ctx context.Context, id uuid.UUID, currentPassw
 
 // UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。
 // 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは全更新用の UpdateUser を使う）。password は更新しない。
-func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
+func (u *usecase) UpdateUserPartially(ctx context.Context, authn *authbd.Authn, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
+
+	if err := u.authorizeUserAccess(ctx, authn, authz.ActionUserUpdate, id); err != nil {
+		return UserView{}, err
+	}
 
 	now := u.clock.Now()
 
@@ -450,8 +466,7 @@ func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	// 認可: 対象ユーザー（所有者 = 対象 id）への削除操作が許可されるか判定する。
-	if err := u.authorizer.Authorize(ctx, authn, authz.ActionUserDelete, authz.NewResource("user", &id)); err != nil {
+	if err := u.authorizeUserAccess(ctx, authn, authz.ActionUserDelete, id); err != nil {
 		return err
 	}
 
@@ -466,6 +481,16 @@ func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 		}
 		return u.userRepo.Update(ctx, userEntity)
 	})
+}
+
+// authorizeUserAccess は、認証主体 authn が対象ユーザー（所有者 = id）への action を実行してよいか判定します。
+// リソースの所有者を対象ユーザー（id）とすることで、所有権モデルでは呼出元が自分自身のみを操作できます。
+// authn が nil の場合は、認可判定以前に呼出元を特定できないため apperror.ErrUnauthenticated を返します。
+func (u *usecase) authorizeUserAccess(ctx context.Context, authn *authbd.Authn, action authz.Action, id uuid.UUID) error {
+	if authn == nil {
+		return apperror.ErrUnauthenticated
+	}
+	return u.authorizer.Authorize(ctx, authn, action, authz.NewResource("user", &id))
 }
 
 // toUserViews は、ユーザーエンティティ列を UserView の DTO 列へ変換します。

@@ -103,18 +103,18 @@ func (mr *MockUsecaseMockRecorder) DeleteUser(ctx, authn, id any) *gomock.Call {
 }
 
 // GetUser mocks base method.
-func (m *MockUsecase) GetUser(ctx context.Context, id uuid.UUID) (user.UserView, error) {
+func (m *MockUsecase) GetUser(ctx context.Context, authn *auth.Authn, id uuid.UUID) (user.UserView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUser", ctx, id)
+	ret := m.ctrl.Call(m, "GetUser", ctx, authn, id)
 	ret0, _ := ret[0].(user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUser indicates an expected call of GetUser.
-func (mr *MockUsecaseMockRecorder) GetUser(ctx, id any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) GetUser(ctx, authn, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockUsecase)(nil).GetUser), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockUsecase)(nil).GetUser), ctx, authn, id)
 }
 
 // ListUsers mocks base method.
@@ -163,31 +163,31 @@ func (mr *MockUsecaseMockRecorder) ListUsersWithTotal(ctx, active, page any) *go
 }
 
 // UpdateUser mocks base method.
-func (m *MockUsecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *user.UpdateProfileParams) (user.UserView, error) {
+func (m *MockUsecase) UpdateUser(ctx context.Context, authn *auth.Authn, id uuid.UUID, dto *user.UpdateProfileParams) (user.UserView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateUser", ctx, id, dto)
+	ret := m.ctrl.Call(m, "UpdateUser", ctx, authn, id, dto)
 	ret0, _ := ret[0].(user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateUser indicates an expected call of UpdateUser.
-func (mr *MockUsecaseMockRecorder) UpdateUser(ctx, id, dto any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) UpdateUser(ctx, authn, id, dto any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockUsecase)(nil).UpdateUser), ctx, id, dto)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockUsecase)(nil).UpdateUser), ctx, authn, id, dto)
 }
 
 // UpdateUserPartially mocks base method.
-func (m *MockUsecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *user.PatchParamsDTO) (user.UserView, error) {
+func (m *MockUsecase) UpdateUserPartially(ctx context.Context, authn *auth.Authn, id uuid.UUID, dto *user.PatchParamsDTO) (user.UserView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateUserPartially", ctx, id, dto)
+	ret := m.ctrl.Call(m, "UpdateUserPartially", ctx, authn, id, dto)
 	ret0, _ := ret[0].(user.UserView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateUserPartially indicates an expected call of UpdateUserPartially.
-func (mr *MockUsecaseMockRecorder) UpdateUserPartially(ctx, id, dto any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) UpdateUserPartially(ctx, authn, id, dto any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserPartially", reflect.TypeOf((*MockUsecase)(nil).UpdateUserPartially), ctx, id, dto)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserPartially", reflect.TypeOf((*MockUsecase)(nil).UpdateUserPartially), ctx, authn, id, dto)
 }

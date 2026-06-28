@@ -1,6 +1,10 @@
 package authz
 
 const (
+	// ActionUserGet は、ユーザー取得操作を表します。
+	ActionUserGet Action = "user:get"
+	// ActionUserUpdate は、ユーザー更新操作（全更新・部分更新）を表します。
+	ActionUserUpdate Action = "user:update"
 	// ActionUserDelete は、ユーザー削除操作を表します。
 	ActionUserDelete Action = "user:delete"
 )

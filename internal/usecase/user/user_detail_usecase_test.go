@@ -25,6 +25,28 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// newAllowAuthorizer は、Authorize が常に許可（nil）を返す Authorizer モックを返します。
+func newAllowAuthorizer(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
+	a := mock_authz.NewMockAuthorizer(ctrl)
+	a.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	return a
+}
+
+// newDenyAuthorizer は、Authorize が常に拒否（ErrForbidden）を返す Authorizer モックを返します。
+func newDenyAuthorizer(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
+	a := mock_authz.NewMockAuthorizer(ctrl)
+	a.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(authz.ErrForbidden)
+	return a
+}
+
+// newTestAuthn は、テスト用の認証主体（Authn）を返します。
+func newTestAuthn(t *testing.T) *authbd.Authn {
+	t.Helper()
+	authn, err := authbd.New(uuid.NewTestFromSalt(t, "caller").String(), authbd.ProviderMock, nil, nil)
+	require.NoError(t, err)
+	return authn
+}
+
 func newActiveUser(t *testing.T, id, prefID uuid.UUID, ts time.Time) *user.User {
 	t.Helper()
 	u, err := user.New(
@@ -46,6 +68,7 @@ func newUpdateDTO(prefName string) *UpdateProfileParams {
 func Test_usecase_GetUser(t *testing.T) {
 	t.Parallel()
 
+	authn := newTestAuthn(t)
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
@@ -68,8 +91,8 @@ func Test_usecase_GetUser(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(pft, nil)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
-			got, err := uc.GetUser(ctx, id)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			got, err := uc.GetUser(ctx, authn, id)
 			require.NoError(t, err)
 			assert.Equal(t, "Tokyo", got.PrefectureName)
 			assert.Equal(t, "john@example.com", got.Email)
@@ -79,6 +102,17 @@ func Test_usecase_GetUser(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("認可が拒否される場合_ErrForbidden", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			// 認可で弾かれるため repository は呼ばれない。
+			userRepo := mock_user.NewMockRepository(ctrl)
+
+			uc := &usecase{tracer: lt, authorizer: newDenyAuthorizer(ctrl), userRepo: userRepo}
+			_, err := uc.GetUser(ctx, authn, id)
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
+
 		t.Run("ユーザー取得でエラー", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
@@ -87,8 +121,8 @@ func Test_usecase_GetUser(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo}
-			_, err := uc.GetUser(ctx, id)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo}
+			_, err := uc.GetUser(ctx, authn, id)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -103,8 +137,8 @@ func Test_usecase_GetUser(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.GetUser(ctx, id)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.GetUser(ctx, authn, id)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -118,8 +152,8 @@ func Test_usecase_GetUser(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, apperror.ErrNotFound)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.GetUser(ctx, id)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.GetUser(ctx, authn, id)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 	})
@@ -128,6 +162,7 @@ func Test_usecase_GetUser(t *testing.T) {
 func Test_usecase_UpdateUser(t *testing.T) {
 	t.Parallel()
 
+	authn := newTestAuthn(t)
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
@@ -154,8 +189,8 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(gomock.Any(), prefName).Return(pft, nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			got, err := uc.UpdateUser(ctx, id, newUpdateDTO(prefName))
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			got, err := uc.UpdateUser(ctx, authn, id, newUpdateDTO(prefName))
 			require.NoError(t, err)
 			assert.Equal(t, "Jane", got.FirstName)
 			assert.Equal(t, prefName, got.PrefectureName)
@@ -173,9 +208,20 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo}
-			_, err := uc.UpdateUser(ctx, id, newUpdateDTO(prefName))
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo}
+			_, err := uc.UpdateUser(ctx, authn, id, newUpdateDTO(prefName))
 			require.ErrorIs(t, err, expectedErr)
+		})
+
+		t.Run("認可が拒否される場合_ErrForbidden", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			// 認可で弾かれるため repository / clock は呼ばれない。
+			userRepo := mock_user.NewMockRepository(ctrl)
+
+			uc := &usecase{tracer: lt, txm: txm, authorizer: newDenyAuthorizer(ctrl), userRepo: userRepo}
+			_, err := uc.UpdateUser(ctx, authn, id, newUpdateDTO(prefName))
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
 
 		t.Run("都道府県解決でエラー", func(t *testing.T) {
@@ -189,8 +235,8 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(gomock.Any(), prefName).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUser(ctx, id, newUpdateDTO(prefName))
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.UpdateUser(ctx, authn, id, newUpdateDTO(prefName))
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -207,8 +253,8 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			dto := newUpdateDTO(prefName)
 			dto.FirstName = "" // UpdateProfile の検証で失敗させる
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUser(ctx, id, dto)
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.UpdateUser(ctx, authn, id, dto)
 			require.ErrorIs(t, err, user.ErrInvalidFirstName)
 		})
 
@@ -224,8 +270,8 @@ func Test_usecase_UpdateUser(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(gomock.Any(), prefName).Return(pft, nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUser(ctx, id, newUpdateDTO(prefName))
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.UpdateUser(ctx, authn, id, newUpdateDTO(prefName))
 			require.ErrorIs(t, err, expectedErr)
 		})
 	})
@@ -389,6 +435,7 @@ func Test_usecase_ChangePassword(t *testing.T) {
 func Test_usecase_UpdateUserPartially(t *testing.T) {
 	t.Parallel()
 
+	authn := newTestAuthn(t)
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
@@ -414,9 +461,9 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(gomock.Any(), "Osaka").Return(pft, nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
 			dto := &PatchParamsDTO{FirstName: new("Patched"), PrefectureName: new("Osaka"), Building: new("NewTower")}
-			got, err := uc.UpdateUserPartially(ctx, id, dto)
+			got, err := uc.UpdateUserPartially(ctx, authn, id, dto)
 			require.NoError(t, err)
 			assert.Equal(t, "Patched", got.FirstName)
 			assert.Equal(t, "Osaka", got.PrefectureName)
@@ -435,9 +482,9 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(pft, nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
 			dto := &PatchParamsDTO{LastName: new("OnlyLast")}
-			got, err := uc.UpdateUserPartially(ctx, id, dto)
+			got, err := uc.UpdateUserPartially(ctx, authn, id, dto)
 			require.NoError(t, err)
 			assert.Equal(t, "OnlyLast", got.LastName)
 		})
@@ -454,9 +501,20 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: new("X")})
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo}
+			_, err := uc.UpdateUserPartially(ctx, authn, id, &PatchParamsDTO{FirstName: new("X")})
 			require.ErrorIs(t, err, expectedErr)
+		})
+
+		t.Run("認可が拒否される場合_ErrForbidden", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			// 認可で弾かれるため repository / clock は呼ばれない。
+			userRepo := mock_user.NewMockRepository(ctrl)
+
+			uc := &usecase{tracer: lt, txm: txm, authorizer: newDenyAuthorizer(ctrl), userRepo: userRepo}
+			_, err := uc.UpdateUserPartially(ctx, authn, id, &PatchParamsDTO{FirstName: new("X")})
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
 
 		t.Run("都道府県解決でエラー", func(t *testing.T) {
@@ -470,8 +528,8 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(gomock.Any(), "Unknown").Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{PrefectureName: new("Unknown")})
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.UpdateUserPartially(ctx, authn, id, &PatchParamsDTO{PrefectureName: new("Unknown")})
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -485,8 +543,8 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, apperror.ErrNotFound)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: new("X")})
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.UpdateUserPartially(ctx, authn, id, &PatchParamsDTO{FirstName: new("X")})
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
@@ -501,8 +559,8 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByID(gomock.Any(), prefID).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, &PatchParamsDTO{FirstName: new("X")})
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.UpdateUserPartially(ctx, authn, id, &PatchParamsDTO{FirstName: new("X")})
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -519,8 +577,8 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 			// 空文字へのマージで UpdateProfile（updateProfileThenSave 内）の検証を失敗させる
 			dto := &PatchParamsDTO{FirstName: new("")}
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo, pftRepo: pftRepo}
-			_, err := uc.UpdateUserPartially(ctx, id, dto)
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: newAllowAuthorizer(ctrl), userRepo: userRepo, pftRepo: pftRepo}
+			_, err := uc.UpdateUserPartially(ctx, authn, id, dto)
 			require.ErrorIs(t, err, user.ErrInvalidFirstName)
 		})
 	})
@@ -577,6 +635,14 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			uc := &usecase{tracer: lt, txm: txm, authorizer: authorizer, userRepo: userRepo}
 			err := uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
+
+		t.Run("authnがnilの場合_ErrUnauthenticated", func(t *testing.T) {
+			t.Parallel()
+			// authn が nil のため認可判定以前に弾かれ、authorizer / repository は呼ばれない。
+			uc := &usecase{tracer: lt, txm: txm}
+			err := uc.DeleteUser(ctx, nil, id)
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 
 		t.Run("対象ユーザーが存在しない", func(t *testing.T) {
