@@ -53,7 +53,7 @@ func NewFake() *Fake {
 	}
 }
 
-// Receive は、最大 max 件を取得します。キューが空の場合は投入 or ctx 完了までブロックします。
+// Receive は、最大 limit 件を取得します。キューが空の場合は投入 or ctx 完了までブロックします。
 func (f *Fake) Receive(ctx context.Context, limit int) ([]worker.Message, error) {
 	for {
 		f.mu.Lock()
