@@ -9,7 +9,7 @@ import (
 	osexec "os/exec"
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_exec.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Runner は、外部コマンド実行を抽象化するインターフェースです。
 type Runner interface {

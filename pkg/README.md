@@ -38,12 +38,14 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 - Must not contain business logic
 - Must not depend on `internal/` packages
 - Must not depend on infrastructure or framework-specific packages
+- Must not depend on other `pkg/` packages — the sole permitted exception is `pkg/xerrors` (enforced by depguard `independent_pkg` in `.golangci-full.yaml`)
 - Each package must have a single responsibility
 
 ## Package List
 
 |Package|Summary|Wraps|
 |---|---|---|
+|`backoff`|Exponential backoff duration (pure, clock/randomness-free)|None|
 |`datetime`|Date/time parsing|Standard library `time`|
 |`envutil`|Environment variable override (test helper)|Standard library `os`|
 |`exec`|External command execution (interface + mock)|Standard library `os/exec`|
@@ -57,6 +59,15 @@ under `internal/` as cross-cutting concerns. The domain layer may depend on
 |`xerrors`|Errors with stack traces|`github.com/cockroachdb/errors`|
 
 ## Package Details
+
+### backoff
+
+Computes exponential backoff wait durations as a pure function of the attempt count, free of clock or randomness (the jitter step lives in `retry`).
+
+|Symbol|Description|
+|---|---|
+|`Exponential` (struct)|`Initial` / `Max` / `Multiplier` configuration|
+|`Duration(attempt)`|Return the base wait duration for the given attempt|
 
 ### datetime
 
@@ -157,6 +168,7 @@ A set of validation functions based on string length (rune count).
 |`StrictInRange`|Check if length is within open interval|
 |`LessThanMax`|Check if length < max|
 |`GreaterThanMin`|Check if length > min|
+|`ValidateInRange`|Check closed-interval length and also return the error message|
 
 Each function has a corresponding `ErrorMsg` function for generating validation error messages.
 
@@ -174,6 +186,10 @@ Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valu
 |`String`|Return string representation|
 |`IsNil`|Check if zero value|
 |`Equal`|Compare UUIDs|
+|`EqualPtr`|Compare against a `*UUID` (nil-safe)|
+|`Bytes`|Return the raw `[16]byte`|
+|`ToPtr`|Return a pointer to the value|
+|`ToPrimitive` / `FromPrimitive`|Convert to / from `github.com/google/uuid` (e.g. sqlc integration)|
 |`Scan` / `Value`|DB integration interface implementation|
 
 ### xerrors

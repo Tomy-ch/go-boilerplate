@@ -1,7 +1,7 @@
 // サンプルAPI削除の対象を宣言する manifest と、マーカー除去ロジック。
 // 拡張時は該当ドメインの paths にパスを追記し、共有ファイルの混在行を
 // sample-api マーカーで囲めば、同じコマンドの削除対象に含まれる。
-// core 基盤の idempotency_keys（migration 000001）はこのマニフェストの削除対象に含まれない。
+// core 基盤の idempotency_keys（migration 000001）と outbox（migration 000002）はこのマニフェストの削除対象に含まれない。
 
 export const SAMPLE_DOMAINS = {
   user: {

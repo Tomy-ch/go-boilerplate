@@ -8,7 +8,7 @@
 
 `pkg/backoff` は待機時間を attempt 回数のみから算出する純関数で、時刻や乱数に依存しません。full jitter の付与には `math/rand/v2` が必要なため、その責務を本パッケージへ閉じます。これにより `backoff` の純粋性を保ちつつ、乱数依存を `retry` 側に局所化します。
 
-`pkg/` 配下は相互独立（pkg → pkg の import 禁止）のため、`Policy.Backoff` は `backoff.Exponential` 型ではなく**関数値**（`attempt → 基本待機時間`）で受け取り、呼び出し側（`internal/`）が `backoff.Exponential.Duration` 等を結線します。
+`pkg/` 配下は相互独立（pkg → pkg の import は `pkg/xerrors` のみ例外的に許可）のため、`Policy.Backoff` は `backoff.Exponential` 型ではなく**関数値**（`attempt → 基本待機時間`）で受け取り、呼び出し側（`internal/`）が `backoff.Exponential.Duration` 等を結線します。
 
 ## API
 

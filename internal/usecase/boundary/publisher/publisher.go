@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_publisher.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package publisher は、ドメインイベントの outbound publish 境界（Publisher）と
 // publish 先非依存のメッセージ封筒を定義します。relay engine（controller 層）と

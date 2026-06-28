@@ -324,6 +324,7 @@ flowchart TB
 
 - Usecaseは原則 標準ライブラリのみ（context, time, errors, fmt など）。
 - ORM・SQL実行・HTTPクライアント・EchoなどI/O系は一切持ち込まない。
+- 横断的例外: `internal/logging.Logger` は `internal/apperror` と同様、専用 boundary を介さずコンストラクタ DI で直接注入してよい。純粋な mock 可能インターフェースであり、失敗ログが必要なバックグラウンドワーカー（例: outbox relay の dead-message 警告）に限って使用する。それ以外は `metrics`/boundary を優先する。
 - 型定義やDTOもプロジェクト内型で閉じる。sqlc生成型/driver型やOpenAPI生成型は上位/下位の層に隔離。
 - テストも`testify`/`mock`程度に留め、モックはinterfaceベースで注入。
 - どうしても必要な場合は、[pkg/](../../pkg/)で薄いラッパーを作成する。
@@ -704,7 +705,7 @@ observability層がtracerの生成ルール（レイヤー名やパッケージ�
 ## 実装例
 
 ```go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 // 唯一性のある名称
 package user
 

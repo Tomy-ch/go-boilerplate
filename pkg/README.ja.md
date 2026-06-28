@@ -35,12 +35,14 @@
 - ビジネスロジックを含めてはならない
 - `internal/` のパッケージに依存してはならない
 - infrastructure やフレームワーク固有のパッケージに依存してはならない
+- 他の `pkg/` パッケージに依存してはならない — 唯一の例外は `pkg/xerrors`（`.golangci-full.yaml` の depguard `independent_pkg` で強制）
 - 1パッケージ = 1責務を守ること
 
 ## パッケージ一覧
 
 |パッケージ|概要|ラップ対象|
 |---|---|---|
+|`backoff`|指数バックオフの待機時間算出（純粋・時刻/乱数非依存）|なし|
 |`datetime`|日時パース|標準ライブラリ `time`|
 |`envutil`|環境変数の一時上書き（テスト補助）|標準ライブラリ `os`|
 |`exec`|外部コマンド実行（インターフェース + モック）|標準ライブラリ `os/exec`|
@@ -54,6 +56,15 @@
 |`xerrors`|スタックトレース付きエラー|`github.com/cockroachdb/errors`|
 
 ## 各パッケージの詳細
+
+### backoff
+
+試行回数のみから指数バックオフの待機時間を算出する純関数で、時刻や乱数に依存しません（ジッタ付与は `retry` 側）。
+
+|シンボル|説明|
+|---|---|
+|`Exponential`（struct）|`Initial` / `Max` / `Multiplier` の設定|
+|`Duration(attempt)`|指定試行回数の基本待機時間を返す|
 
 ### datetime
 
@@ -154,6 +165,7 @@
 |`StrictInRange`|長さが開区間内か判定|
 |`LessThanMax`|長さが最大値未満か判定|
 |`GreaterThanMin`|長さが最小値超過か判定|
+|`ValidateInRange`|閉区間の長さ判定とエラーメッセージを同時に返す|
 
 各関数に対応する `ErrorMsg` 関数があり、バリデーションエラーメッセージを生成できます。
 
@@ -171,6 +183,10 @@ UUIDv7 を生成し、データベース連携（`sql.Scanner` / `driver.Valuer`
 |`String`|文字列表現を返す|
 |`IsNil`|ゼロ値か判定|
 |`Equal`|UUID の比較|
+|`EqualPtr`|`*UUID` との比較（nil 安全）|
+|`Bytes`|生の `[16]byte` を返す|
+|`ToPtr`|値へのポインタを返す|
+|`ToPrimitive` / `FromPrimitive`|`github.com/google/uuid` との相互変換（sqlc 連携など）|
 |`Scan` / `Value`|DB 連携用インターフェース実装|
 
 ### xerrors

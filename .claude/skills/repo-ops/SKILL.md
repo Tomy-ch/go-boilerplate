@@ -76,7 +76,7 @@ mise exec npm:@commitlint/cli -- commitlint --edit {1}
 
 ## 6. Generated mocks — never hand-write, regenerate via Docker
 
-Mocks are generated, never authored by hand. Each source declares `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE`, and `make gen-go-code` runs them in `go_tool_runner` with the **pinned** mockgen (`v0.6.0`). Regenerated mock directories may come back root-owned (see §2).
+Mocks are generated, never authored by hand. Each source declares `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE` (the `$GOFILE`-based destination is uniform across the repo, so the same line copies into any interface file), and `make gen-go-code` runs them in `go_tool_runner` with the **pinned** mockgen (`v0.6.0`). Regenerated mock directories may come back root-owned (see §2).
 
 After changing an interface (signature, new method), regenerate rather than editing `*_mock.go`:
 

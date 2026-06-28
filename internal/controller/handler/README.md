@@ -35,6 +35,8 @@ A handler delegates to a **single Usecase operation** per action and only shapes
 
 Presenter is the conversion process from `Usecase DTO → OpenAPI response type`.
 
+When the same conversion is reused across handler methods, define it as a private `toXxxResponse(dto …) gen.XxxResponse` helper inside the handler package (e.g. `toUserResponse`). One-off conversions may stay inline in the handler body.
+
 ## Architecture
 
 ### HTTP Request Flow
@@ -320,6 +322,8 @@ defer endSpan()
 Point: Controller only knows start/end of span,  
 and does not touch OpenTelemetry SDK details.
 
+Exception: a handler that calls no downstream usecase (e.g. the liveness/health/version probes) has no use for the re-bound `ctx`, so it may write `_, endSpan := s.tracer.Start(ctx)` to avoid an unused-variable error while still recording the span.
+
 #### 2. Tracer DI (observability.LayerTracer)
 
 Controller receives `observability.LayerTracer` as dependency:
@@ -418,6 +422,8 @@ type server struct {
 - Only DI dependencies as fields
 - Do not instantiate dependencies inside
 - Depend on interface
+
+Exception: operational endpoints that are **not** defined in OpenAPI (e.g. the Prometheus `/metrics` handler) have no generated `ServerInterface`, so they do not follow the `server` struct + `gen.NewStrictHandler` pattern. They register their own `echo.HandlerFunc` (e.g. `echo.WrapHandler(promhttp.Handler())`) directly in `BindHandler`. This carve-out is limited to non-OpenAPI ops endpoints.
 
 ### Why use fx.Invoke
 

@@ -35,9 +35,12 @@ You are **read-only**. Never edit, write, or mutate anything. You do **not** ins
 | Convention | Severity basis |
 | --- | --- |
 | Repository method が 1+ の sqlc gen 関数を呼ぶ（多重 / switch dispatch / JOIN 用複数 query OK） | 呼び出し皆無 → `suggestion` |
-| Repository body = データ orchestration のみ（sqlc + pgerror + 行→entity 変換）。業務ロジック厳禁 | 業務ロジック検出 → `violation` |
-| `pgerror.NormalizeError` が全 sqlc return で呼ばれる | 未経由 → `violation` |
 | 全 Repository が対応 domain Repository IF を実装 | 未充足 → `violation` |
+
+加えて以下を毎回 README から読んで判定する（README が canonical、ここに再掲しない）:
+
+- Repository body = データ orchestration のみ・業務ロジック厳禁（`rdb/README.md` Repository セクション） → 業務ロジック検出は `violation`
+- `pgerror.NormalizeError` を Infra → Usecase 境界の単一正規化点として全 sqlc return に適用（`pgerror/README.md`） → 未経由は `violation`
 
 Recognize legitimate multi-query / switch-dispatch / JOIN patterns from body structure; introduce **no** annotations into code.
 

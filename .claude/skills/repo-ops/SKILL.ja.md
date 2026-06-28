@@ -73,7 +73,7 @@ mise exec npm:@commitlint/cli -- commitlint --edit {1}
 
 ## 6. 生成モック — 手書きせず Docker で再生成
 
-モックは生成物・手書き禁止。各ソースに `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE` を宣言し、`make gen-go-code` が `go_tool_runner` 内で**ピン版** mockgen（`v0.6.0`）で実行。再生成された mock ディレクトリは root 所有で返ることがある（§2）。
+モックは生成物・手書き禁止。各ソースに `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE` を宣言し（`$GOFILE` ベースの destination はリポジトリ全体で統一されており、どの interface ファイルにも同じ行をコピペできる）、`make gen-go-code` が `go_tool_runner` 内で**ピン版** mockgen（`v0.6.0`）で実行。再生成された mock ディレクトリは root 所有で返ることがある（§2）。
 
 インターフェース変更（シグネチャ・新メソッド）後は `*_mock.go` を編集せず再生成:
 

@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_layer_tracer.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package observability は、OTel ベースの分散トレース・メトリクス・ログ計装ユーティリティを提供します。
 // LayerTracer によるアーキテクチャ層別 span、SSRF ガード付き HTTPClientTransport、
