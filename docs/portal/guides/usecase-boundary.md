@@ -41,6 +41,7 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |Package|Interface|Description|Implementation|
 |---|---|---|---|
 |`auth`|`Authenticator`|Obtain auth info (`Authn`) from token|`internal/infrastructure/auth/`|
+|`authz`|`Authorizer`|Decide whether a subject may perform an action on a resource|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_query/outbox/`|
@@ -69,6 +70,25 @@ Errors:
 |`ErrUnauthenticatedSubjectMissing`|Subject is empty|
 |`ErrSubjectNotUUID`|Subject cannot be parsed as UUID|
 |`ErrTokenMissing`|Access token is empty|
+
+### authz
+
+Provides the interface and value objects for authorization — the counterpart to `auth`. The Usecase layer is the enforcement point (PEP): it calls `Authorize(...)` and maps a deny to `apperror.ErrPermissionDenied` (403).
+
+|Type / Function|Description|
+|---|---|
+|`Authorizer`|Interface deciding whether `authn` may perform `action` on `resource` (`Authorize(ctx, *auth.Authn, Action, *Resource) error`)|
+|`Action`|Operation being authorized (e.g. `ActionUserDelete` = `"user:delete"`)|
+|`Resource`|Target resource carrying `Kind()` and optional `OwnerID()`, so ownership-based (object-level) decisions are expressible|
+|`NewResource(kind, ownerID)`|Create a `Resource`|
+
+Errors:
+
+|Error|Description|
+|---|---|
+|`ErrForbidden`|Authorization denied (wraps `apperror.ErrPermissionDenied`, HTTP 403)|
+
+Passing the full `auth.Authn` (subject / scopes / claims) plus the target `Resource` lets both RBAC (roles from claims) and ownership (subject == OwnerID) models be expressed. The default implementation is allow-all and restricted to non-production environments.
 
 ### clock
 

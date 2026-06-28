@@ -41,6 +41,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |パッケージ|interface|説明|実装場所|
 |---|---|---|---|
 |`auth`|`Authenticator`|トークンから認証情報（`Authn`）を取得|`internal/infrastructure/auth/`|
+|`authz`|`Authorizer`|認証主体がリソースに対し操作を実行してよいか判定|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|現在時刻の取得|`internal/infrastructure/system/`|
 |`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_query/outbox/`|
@@ -69,6 +70,25 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`ErrUnauthorizedSubjectMissing`|subject が空|
 |`ErrInvalidIDMissing`|subject が UUID として解釈できない|
 |`ErrArgumentTokenMissing`|アクセストークンが空|
+
+### authz
+
+認可に関するインターフェースと値オブジェクトを提供します（`auth` と対になる存在）。強制点（PEP）は Usecase 層であり、`Authorize(...)` を呼び、拒否時に `apperror.ErrPermissionDenied`（403）へ対応づけます。
+
+|型 / 関数|説明|
+|---|---|
+|`Authorizer`|`authn` が `resource` に対し `action` を実行してよいか判定するインターフェース（`Authorize(ctx, *auth.Authn, Action, *Resource) error`）|
+|`Action`|認可対象の操作（例: `ActionUserDelete` = `"user:delete"`）|
+|`Resource`|対象リソース。`Kind()` と任意の `OwnerID()` を持ち、所有権ベース（オブジェクトレベル）の判定を表現可能|
+|`NewResource(kind, ownerID)`|`Resource` を生成|
+
+エラー：
+
+|エラー|説明|
+|---|---|
+|`ErrForbidden`|認可拒否（`apperror.ErrPermissionDenied` をラップ、HTTP 403）|
+
+`auth.Authn`（subject / scopes / claims）と対象 `Resource` を渡すことで、RBAC（claims からロール）と所有権（subject == OwnerID）の双方を表現できます。デフォルト実装は全許可であり、本番以外の環境に限定されます。
 
 ### clock
 
