@@ -134,12 +134,14 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
+			uid := uuid.NewTestFromSalt(t, "me-delete")
 			mockApp := mock_user.NewMockUsecase(ctrl)
-			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uid)
 
-			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, headers)
 			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
 		})
 	})

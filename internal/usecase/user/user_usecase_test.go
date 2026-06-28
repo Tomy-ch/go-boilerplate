@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
+	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
@@ -33,18 +34,20 @@ func TestNew(t *testing.T) {
 	mockTxManager := mock_tx.NewMockManager(ctrl)
 	clock := clocktest.NewMockClock(t, time.Time{})
 	encrypter := mock_security.NewMockHasher(ctrl)
+	authorizer := mock_authz.NewMockAuthorizer(ctrl)
 	userRepo := mock_user.NewMockRepository(ctrl)
 	pftRepo := mock_prefecture.NewMockRepository(ctrl)
 
 	expected := &usecase{
-		tracer:    tf.Usecase(),
-		txm:       mockTxManager,
-		clock:     clock,
-		encrypter: encrypter,
-		userRepo:  userRepo,
-		pftRepo:   pftRepo,
+		tracer:     tf.Usecase(),
+		txm:        mockTxManager,
+		clock:      clock,
+		encrypter:  encrypter,
+		authorizer: authorizer,
+		userRepo:   userRepo,
+		pftRepo:    pftRepo,
 	}
-	actual := New(tf, mockTxManager, clock, encrypter, userRepo, pftRepo)
+	actual := New(tf, mockTxManager, clock, encrypter, authorizer, userRepo, pftRepo)
 
 	assert.Equal(t, expected, actual)
 }

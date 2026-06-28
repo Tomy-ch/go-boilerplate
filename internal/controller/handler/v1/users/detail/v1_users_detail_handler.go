@@ -133,10 +133,14 @@ func (s *server) DeleteUsersDetail(ctx context.Context, request gen.DeleteUsersD
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+
 	id := conv.UUID(request.UserId)
 
-	// WARN: 本来はここで認可（呼出元と対象ユーザーの一致確認等）を行うべきですが、今回は省略します。
-	if err := s.uc.DeleteUser(ctx, id); err != nil {
+	if err := s.uc.DeleteUser(ctx, &authn, id); err != nil {
 		return nil, err
 	}
 

@@ -12,6 +12,8 @@ import (
 	"go-boilerplate/internal/domain/prefecture"
 	"go-boilerplate/internal/domain/user"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/security"
 	"go-boilerplate/internal/usecase/boundary/tx"
@@ -88,12 +90,13 @@ type PatchParamsDTO struct {
 
 // usecase は、ユーザーに関するユースケースを提供します。
 type usecase struct {
-	tracer    observability.LayerTracer
-	txm       tx.Manager
-	clock     clock.Clock
-	encrypter security.Hasher
-	userRepo  user.Repository
-	pftRepo   prefecture.Repository
+	tracer     observability.LayerTracer
+	txm        tx.Manager
+	clock      clock.Clock
+	encrypter  security.Hasher
+	authorizer authz.Authorizer
+	userRepo   user.Repository
+	pftRepo    prefecture.Repository
 }
 
 // Usecase は、ユーザーに関するユースケースを定義します。
@@ -116,8 +119,8 @@ type Usecase interface {
 	UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error)
 	// ChangePassword は、現在のパスワードを照合したうえでユーザーのパスワードを変更します。
 	ChangePassword(ctx context.Context, id uuid.UUID, currentPassword, newPassword string) error
-	// DeleteUser は、ユーザーを論理削除します。
-	DeleteUser(ctx context.Context, id uuid.UUID) error
+	// DeleteUser は、認可を確認したうえでユーザーを論理削除します。
+	DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error
 }
 
 // New は、ユーザーに関するユースケースを初期化します。
@@ -126,16 +129,18 @@ func New(
 	txm tx.Manager,
 	clock clock.Clock,
 	encrypter security.Hasher,
+	authorizer authz.Authorizer,
 	userRepo user.Repository,
 	prefectureRepo prefecture.Repository,
 ) Usecase {
 	return &usecase{
-		tracer:    tf.Usecase(),
-		txm:       txm,
-		clock:     clock,
-		encrypter: encrypter,
-		userRepo:  userRepo,
-		pftRepo:   prefectureRepo,
+		tracer:     tf.Usecase(),
+		txm:        txm,
+		clock:      clock,
+		encrypter:  encrypter,
+		authorizer: authorizer,
+		userRepo:   userRepo,
+		pftRepo:    prefectureRepo,
 	}
 }
 
@@ -441,9 +446,14 @@ func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *Pa
 }
 
 // DeleteUser は、ユーザーを論理削除します。
-func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.UUID) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
+
+	// 認可: 対象ユーザー（所有者 = 対象 id）への削除操作が許可されるか判定する。
+	if err := u.authorizer.Authorize(ctx, authn, authz.ActionUserDelete, authz.NewResource("user", &id)); err != nil {
+		return err
+	}
 
 	now := u.clock.Now()
 	return u.txm.Do(ctx, func(ctx context.Context) error {

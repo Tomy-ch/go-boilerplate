@@ -11,6 +11,7 @@ package mock_user
 
 import (
 	context "context"
+	auth "go-boilerplate/internal/usecase/boundary/auth"
 	paging "go-boilerplate/internal/usecase/tools/paging"
 	user "go-boilerplate/internal/usecase/user"
 	uuid "go-boilerplate/pkg/uuid"
@@ -88,17 +89,17 @@ func (mr *MockUsecaseMockRecorder) CreateUser(ctx, dto any) *gomock.Call {
 }
 
 // DeleteUser mocks base method.
-func (m *MockUsecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+func (m *MockUsecase) DeleteUser(ctx context.Context, authn *auth.Authn, id uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteUser", ctx, id)
+	ret := m.ctrl.Call(m, "DeleteUser", ctx, authn, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteUser indicates an expected call of DeleteUser.
-func (mr *MockUsecaseMockRecorder) DeleteUser(ctx, id any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) DeleteUser(ctx, authn, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockUsecase)(nil).DeleteUser), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockUsecase)(nil).DeleteUser), ctx, authn, id)
 }
 
 // GetUser mocks base method.

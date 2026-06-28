@@ -11,6 +11,9 @@ import (
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
+	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
 	"go-boilerplate/internal/usecase/testkit"
@@ -532,6 +535,14 @@ func Test_usecase_DeleteUser(t *testing.T) {
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
 	id := uuid.NewTestFromSalt(t, "user")
 	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	authn, err := authbd.New(id.String(), authbd.ProviderMock, nil, nil)
+	require.NoError(t, err)
+
+	allowAuthorizer := func(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
+		a := mock_authz.NewMockAuthorizer(ctrl)
+		a.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+		return a
+	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
@@ -546,14 +557,27 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo}
-			err := uc.DeleteUser(ctx, id)
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
+			err := uc.DeleteUser(ctx, authn, id)
 			require.NoError(t, err)
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("認可が拒否される場合_ErrForbidden", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(authz.ErrForbidden)
+			// 認可で弾かれるため repository / clock は呼ばれない。
+			userRepo := mock_user.NewMockRepository(ctrl)
+
+			uc := &usecase{tracer: lt, txm: txm, authorizer: authorizer, userRepo: userRepo}
+			err := uc.DeleteUser(ctx, authn, id)
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
 
 		t.Run("対象ユーザーが存在しない", func(t *testing.T) {
 			t.Parallel()
@@ -563,8 +587,8 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo}
-			err := uc.DeleteUser(ctx, id)
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
+			err := uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, expectedErr)
 		})
 
@@ -582,8 +606,8 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(deletedUser, nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo}
-			err = uc.DeleteUser(ctx, id)
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
+			err = uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, user.ErrAlreadyDeleted)
 		})
 	})

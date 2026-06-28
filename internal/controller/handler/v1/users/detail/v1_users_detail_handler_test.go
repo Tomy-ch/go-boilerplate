@@ -318,15 +318,18 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 func Test_server_DeleteUsersDetail(t *testing.T) {
 	t.Parallel()
 
+	const subject = "11111111-1111-1111-1111-111111111111"
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("削除が成功する場合_204が返る", func(t *testing.T) {
 			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-			resp, err := s.DeleteUsersDetail(context.Background(), gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 			require.NoError(t, err)
 			_, ok := resp.(gen.DeleteUsersDetail204Response)
 			assert.True(t, ok)
@@ -336,12 +339,22 @@ func Test_server_DeleteUsersDetail(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
 			t.Parallel()
-			s, mockApp := newServer(t)
-			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(apperror.ErrNotFound)
+			s, _ := newServer(t)
 
 			resp, err := s.DeleteUsersDetail(context.Background(), gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(apperror.ErrNotFound)
+
+			resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
