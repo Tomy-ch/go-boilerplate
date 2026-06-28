@@ -1,6 +1,6 @@
-// Package fake は、worker seam（Consumer / FailureHandler）の in-memory テストダブルを提供します。
+// Package testkit は、worker seam（Consumer / FailureHandler）の in-memory テストダブルを提供します。
 // 実 broker 無しで engine の不変条件テストを green にするための 2nd impl です（SDK 非依存）。
-package fake
+package testkit
 
 import (
 	"context"
@@ -42,8 +42,8 @@ type Fake struct {
 	notify      chan struct{} // long-poll 起床用のブロードキャスト
 }
 
-// New は、空の Fake を生成します。
-func New() *Fake {
+// NewFake は、空の Fake を生成します。
+func NewFake() *Fake {
 	return &Fake{
 		inflight:     make(map[string]worker.Message),
 		delivery:     make(map[string]int),
@@ -53,7 +53,7 @@ func New() *Fake {
 	}
 }
 
-// Receive は、最大 max 件を取得します。キューが空の場合は投入 or ctx 完了までブロックします。
+// Receive は、最大 limit 件を取得します。キューが空の場合は投入 or ctx 完了までブロックします。
 func (f *Fake) Receive(ctx context.Context, limit int) ([]worker.Message, error) {
 	for {
 		f.mu.Lock()

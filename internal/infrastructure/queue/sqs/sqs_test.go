@@ -19,7 +19,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/worker"
 )
 
-func newConsumer(t *testing.T, api API) *Consumer {
+func newConsumer(t *testing.T, api API) worker.Consumer {
 	t.Helper()
 	return NewConsumer(api, Config{QueueURL: "q", MaxMessages: 10}, observability.NewNoopTracerFactory(t))
 }

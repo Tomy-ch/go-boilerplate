@@ -23,7 +23,7 @@ func NewBcryptHasher(secCfg *config.SecurityConfig) security.Hasher {
 func (b *bcrypter) Hash(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), b.cost)
 	if err != nil {
-		return "", xerrors.Wrap(apperror.ErrInternal, "bcrypt hash failed: "+err.Error())
+		return "", xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "bcrypt hash failed"))
 	}
 	return string(hash), nil
 }
@@ -35,7 +35,7 @@ func (b *bcrypter) Compare(hash, password string) (bool, error) {
 		if xerrors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return false, nil
 		}
-		return false, xerrors.Wrap(apperror.ErrInternal, "bcrypt compare failed: "+err.Error())
+		return false, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "bcrypt compare failed"))
 	}
 	return true, nil
 }

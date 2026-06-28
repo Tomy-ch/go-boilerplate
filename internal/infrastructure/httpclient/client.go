@@ -164,7 +164,7 @@ func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*R
 
 	body, err := readBody(httpResp.Body, profile.MaxResponseBytes)
 	if err != nil {
-		return nil, xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+		return nil, xerrors.Join(apperror.ErrUnavailable, err)
 	}
 
 	resp := &Response{

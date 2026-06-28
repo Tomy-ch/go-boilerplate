@@ -60,7 +60,7 @@ func handle(ec echo.Context, request any, operationID string, next NextFunc) (an
 
 	fp, err := fingerprint(r.Method, r.URL.Path, request)
 	if err != nil {
-		return nil, xerrors.Wrap(apperror.ErrInternal, "failed to fingerprint idempotent request: "+err.Error())
+		return nil, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "failed to fingerprint idempotent request"))
 	}
 
 	reqCtx := idempotencyuc.WithRequest(r.Context(), idempotencyuc.Request{

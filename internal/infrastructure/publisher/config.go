@@ -26,7 +26,7 @@ func parseEndpoint(raw string) (Endpoint, error) {
 
 	u, err := url.Parse(raw)
 	if err != nil {
-		return "", xerrors.Wrap(ErrInvalidEndpoint, "OUTBOX_ENDPOINT is not a valid URL: "+err.Error())
+		return "", xerrors.Join(ErrInvalidEndpoint, xerrors.Wrap(err, "OUTBOX_ENDPOINT is not a valid URL"))
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return "", xerrors.Wrap(ErrInvalidEndpoint, "OUTBOX_ENDPOINT scheme must be http or https")

@@ -30,9 +30,9 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 
 ## Dead-letter / redrive
 
-アプリレベルの dead-letter 経路は `worker.FailureHandler`（ここでの `DeadLetter` 型。DLQ へ
+アプリレベルの dead-letter 経路は `worker.FailureHandler`（ここでの `NewDeadLetter` ハンドラ。DLQ へ
 `SendMessage` する）です。あるいは、**IaC** で設定した SQS の **redrive policy**
-（`maxReceiveCount` → DLQ）に委ねることもできます。そのモードでは `DeadLetter` を配線せず、
+（`maxReceiveCount` → DLQ）に委ねることもできます。そのモードでは `NewDeadLetter` を配線せず、
 アプリは `ReceiveCount` の監視のみを行います（worker invariant A7 参照）。redrive policy は
 アプリケーションコードではなくインフラ設定です。
 

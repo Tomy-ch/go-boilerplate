@@ -62,7 +62,7 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 	if len(headers) > 0 {
 		b, err := json.Marshal(headers)
 		if err != nil {
-			return uuid.UUID{}, xerrors.Wrap(apperror.ErrInternal, "failed to encode outbox headers: "+err.Error())
+			return uuid.UUID{}, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "failed to encode outbox headers"))
 		}
 		headerBytes = b
 	}

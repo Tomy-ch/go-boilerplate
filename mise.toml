@@ -21,9 +21,7 @@ lefthook = "2.1.8"
 air = "1.65.3"
 golines = "0.13.0"
 gofumpt = "0.10.0"
-# Dockerfile linter（Haskell 製、標準レジストリで解決可）
 hadolint = "2.14.0"
-# secret scanner（標準レジストリで解決可）
 gitleaks = "8.30.1"
 
 # Go ベース（backend 明示）
@@ -35,14 +33,12 @@ gitleaks = "8.30.1"
 "go:github.com/cweill/gotests/gotests" = "1.9.0"
 "go:golang.org/x/tools/gopls" = "0.22.0"
 "go:github.com/josharian/impl" = "1.5.0"
-# godoc は x/tools 本体から分離済みで v0.1.0-deprecated が最新タグ（通常 semver は無い）
 "go:golang.org/x/tools/cmd/godoc" = "0.1.0-deprecated"
 "go:codeberg.org/tslocum/godoc-static" = "1.0.0"
 
 # Node ベース
 "npm:@redocly/cli" = "2.31.4"
 "npm:markdownlint-cli2" = "0.22.1"
-# commit-msg フック（lefthook）でコミットメッセージ規約を検証する
 "npm:@commitlint/cli" = "21.0.2"
 
 # Python ベース

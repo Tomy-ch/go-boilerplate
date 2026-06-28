@@ -15,7 +15,7 @@ func normalizeError(err error) error {
 		return nil
 	}
 	if errors.Is(err, context.Canceled) {
-		return xerrors.Wrap(apperror.ErrCanceled, err.Error())
+		return xerrors.Join(apperror.ErrCanceled, err)
 	}
-	return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+	return xerrors.Join(apperror.ErrUnavailable, err)
 }
