@@ -106,6 +106,7 @@ The following must not be done in the Infrastructure layer.
 flowchart TB
     Root["internal/infrastructure"]
     Auth["auth/"]
+    Authz["authz/"]
     HTTP["httpclient/"]
     Pub["publisher/"]
     Queue["queue/"]
@@ -115,6 +116,7 @@ flowchart TB
     Web["webapi/"]
 
     Root --> Auth
+    Root --> Authz
     Root --> HTTP
     Root --> Pub
     Root --> Queue
@@ -129,6 +131,7 @@ flowchart TB
 |Directory|Description|Interface Placement|Details|
 |---|---|---|---|
 |`auth/`|Authentication infrastructure (environment-specific Authenticator impl)|Usecase boundary|[README](auth/README.md)|
+|`authz/`|Authorization infrastructure (Authorizer impl; default `allowall` for non-production)|Usecase boundary|[README](authz/README.md)|
 |`httpclient/`|Resilient HTTP client substrate (retry / circuit breaker / tracing); shared driver-level base consumed by `webapi/` and `publisher/`|— (substrate, no domain/usecase IF)|—|
 |`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|—|
 |`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
