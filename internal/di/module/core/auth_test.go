@@ -42,18 +42,20 @@ func TestAuthModule(t *testing.T) {
 func Test_provideAuthenticator(t *testing.T) {
 	t.Parallel()
 
-	t.Run("ローカル環境では local.Authenticator が提供される", func(t *testing.T) {
+	t.Run("ローカル環境では local.Authenticator が提供されWARNが出る", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := config.MockConfigForTest(t)
 		appCfg := config.NewApplicationConfig(cfg)
 		appCfg.SetApplicationEnv(t, config.EnvLocal)
-		logger := logging.NewTestLogger(t)
+		logger, logs := logging.NewObservedTestLogger(t)
 		authenticator, err := provideAuthenticator(appCfg, logger)
 		require.NoError(t, err)
 
 		la := local.New()
 		assert.Equal(t, la, authenticator)
+		// 開発用スタブ配線時に WARN で注意喚起されること。
+		assert.Len(t, logs.FilterMessage("Local authenticator wired: authentication is stubbed (non-production only)").All(), 1)
 	})
 
 	t.Run("CI環境では local.Authenticator が提供される", func(t *testing.T) {
