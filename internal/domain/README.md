@@ -138,6 +138,15 @@ validate
 
 These belong to DTO / Infrastructure.
 
+### Not every DB column is an entity field
+
+An entity models only state that carries **domain meaning**. Columns that exist purely for persistence or search infrastructure are intentionally left off the entity, even when present in the table:
+
+- Audit columns (`created_at` / `updated_at`) — read them directly from the DB when needed; they need not become entity fields or invariants.
+- DB-generated / computed columns (e.g. `GENERATED ALWAYS AS ... STORED` search-text columns) — infrastructure search optimization, not domain state.
+
+So a 1:1 entity ↔ column correspondence is **not** required; absence of such columns from an entity is a deliberate design choice, not drift.
+
 ### Handling time and ID
 
 - Do not use `time.Now()` in Domain
