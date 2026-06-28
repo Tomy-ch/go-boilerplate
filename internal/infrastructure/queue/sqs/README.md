@@ -30,9 +30,9 @@ Verify isolation: `go version -m <binary>` for a binary built from `./cmd/` must
 
 ## Dead-letter / redrive
 
-The app-level dead-letter path is `worker.FailureHandler` (the `DeadLetter` type here, which
+The app-level dead-letter path is `worker.FailureHandler` (the `NewDeadLetter` handler here, which
 `SendMessage`s to a DLQ). Alternatively, rely on the SQS **redrive policy**
-(`maxReceiveCount` → DLQ) configured in **IaC**; in that mode do not wire `DeadLetter` and let
+(`maxReceiveCount` → DLQ) configured in **IaC**; in that mode do not wire `NewDeadLetter` and let
 the app only monitor `ReceiveCount` (see worker invariant A7). Redrive policy is infrastructure
 configuration, not application code.
 

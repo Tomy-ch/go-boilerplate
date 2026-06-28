@@ -20,7 +20,7 @@ import (
 const maxSQSBatch = 10
 
 // 実装漏れをコンパイル時に検出します。
-var _ worker.Consumer = (*Consumer)(nil)
+var _ worker.Consumer = (*consumer)(nil)
 
 // API は、Consumer が利用する SQS の操作のみを抽象化したものです（*sqs.Client が満たします）。
 type API interface {
@@ -34,20 +34,20 @@ type API interface {
 	SendMessage(ctx context.Context, in *sqs.SendMessageInput, opts ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
 }
 
-// Consumer は、worker.Consumer の SQS 実装です。
-type Consumer struct {
+// consumer は、worker.Consumer の SQS 実装です。
+type consumer struct {
 	api    API
 	cfg    Config
 	tracer observability.LayerTracer
 }
 
 // NewConsumer は、SQS Consumer を生成します。
-func NewConsumer(api API, cfg Config, tf observability.TracerFactory) *Consumer {
-	return &Consumer{api: api, cfg: cfg, tracer: tf.Infra()}
+func NewConsumer(api API, cfg Config, tf observability.TracerFactory) worker.Consumer {
+	return &consumer{api: api, cfg: cfg, tracer: tf.Infra()}
 }
 
 // Receive は、ReceiveMessage で long-poll し、broker 非依存の Message へ変換して返します。
-func (c *Consumer) Receive(ctx context.Context, maxMessages int) ([]worker.Message, error) {
+func (c *consumer) Receive(ctx context.Context, maxMessages int) ([]worker.Message, error) {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
 
@@ -86,7 +86,7 @@ func (c *Consumer) Receive(ctx context.Context, maxMessages int) ([]worker.Messa
 }
 
 // Ack は、DeleteMessage でメッセージを削除します。
-func (c *Consumer) Ack(ctx context.Context, m worker.Message) error {
+func (c *consumer) Ack(ctx context.Context, m worker.Message) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
 
@@ -98,7 +98,7 @@ func (c *Consumer) Ack(ctx context.Context, m worker.Message) error {
 }
 
 // Nack は、メッセージを即時に再配送へ戻します。
-func (c *Consumer) Nack(ctx context.Context, m worker.Message) error {
+func (c *consumer) Nack(ctx context.Context, m worker.Message) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
 
@@ -112,7 +112,7 @@ func (c *Consumer) Nack(ctx context.Context, m worker.Message) error {
 
 // NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します。
 // d<=0 は Nack（即時）と等価です。
-func (c *Consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error {
+func (c *consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error {
 	if d <= 0 {
 		return c.Nack(ctx, m)
 	}
@@ -129,7 +129,7 @@ func (c *Consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time
 }
 
 // Extend は、可視性タイムアウトを延長します（長時間 handler のハートビート）。
-func (c *Consumer) Extend(ctx context.Context, m worker.Message, d time.Duration) error {
+func (c *consumer) Extend(ctx context.Context, m worker.Message, d time.Duration) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
 
