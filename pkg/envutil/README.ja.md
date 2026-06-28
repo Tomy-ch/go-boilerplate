@@ -18,4 +18,4 @@ defer restore()
 ## 注意点
 
 - 設定読み込みの間だけ特定の環境変数（例: `DB_NAME`）を差し替える用途に有用で、グローバル状態の残留を防ぎ冪等性を保ちます。
-- `pkg/` は `internal/` や他の `pkg/` に依存できません（depguard で強制）。本パッケージは `os` のみ使用します。
+- `pkg/` は `internal/` や他の `pkg/` に依存できません（例外として `pkg/xerrors` のみ許可。depguard で強制）。本パッケージは `os` と `pkg/xerrors` を使用します。

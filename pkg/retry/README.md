@@ -8,7 +8,7 @@ A bounded-retry behavior layer that *consumes* a failure classification: `classi
 
 `pkg/backoff` computes wait durations as a pure function of the attempt count, free of clock or randomness. The full-jitter step needs `math/rand/v2`, so it lives here instead — keeping `backoff` pure while the randomness dependency is confined to `retry`.
 
-`pkg/` packages are mutually independent (no pkg → pkg imports), so `Policy.Backoff` is taken as a **function value** (`attempt → base duration`) rather than a `backoff.Exponential`; the caller (in `internal/`) wires `backoff.Exponential.Duration` or any equivalent.
+`pkg/` packages are mutually independent (the only permitted pkg → pkg dependency is `pkg/xerrors`), so `Policy.Backoff` is taken as a **function value** (`attempt → base duration`) rather than a `backoff.Exponential`; the caller (in `internal/`) wires `backoff.Exponential.Duration` or any equivalent.
 
 ## API
 

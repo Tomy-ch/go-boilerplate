@@ -18,4 +18,4 @@ defer restore()
 ## Notes
 
 - Useful for swapping a single env var (e.g. `DB_NAME`) only during config loading, avoiding lingering global state and keeping the operation idempotent.
-- `pkg/` may not depend on `internal/` or other `pkg/` packages (enforced by depguard); this package only uses `os`.
+- `pkg/` may not depend on `internal/` or other `pkg/` packages except `pkg/xerrors` (enforced by depguard); this package uses `os` and `pkg/xerrors`.
