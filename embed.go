@@ -1,5 +1,4 @@
-// Package env は、バイナリへ焼き込む設定とマイグレーションを embed.FS として公開します。
-package env
+package root
 
 import "embed"
 

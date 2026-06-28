@@ -1,7 +1,7 @@
 package main
 
 import (
-	rootenv "go-boilerplate"
+	root "go-boilerplate"
 	climigrate "go-boilerplate/internal/cli/migrate"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -94,7 +94,7 @@ func buildMigrateInstance(database string) (climigrate.Migrator, error) {
 	dbCfg := config.NewDatabaseConfig(cfg)
 	osCfg := config.NewOperatingSystemConfig(cfg)
 
-	src, err := iofs.New(rootenv.FS, migrateFilePlace)
+	src, err := iofs.New(root.FS, migrateFilePlace)
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to create migration source")
 	}
