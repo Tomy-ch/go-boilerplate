@@ -37,7 +37,7 @@
 
 
   <h1>
-    Package env
+    Package root
     <span class="text-muted"></span>
   </h1>
 
@@ -86,7 +86,15 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package env は、バイナリへ焼き込む設定とマイグレーションを embed.FS として公開します。
+				<p>Package root は go-boilerplate（軽量 Onion Architecture による RESTful API のひな形）の
+モジュールルートであり、godoc のランディングを兼ねます。
+</p><p>アーキテクチャは controller → usecase → domain の依存方向で構成し、infrastructure が
+domain のインターフェースを実装します。OpenAPI ファースト・sqlc による型安全な DB アクセスを
+採用し、ビジネスロジックは internal/ 配下に閉じます。各レイヤの詳細は README.md および
+docs/architecture.md を参照してください。
+</p><p>ルートパッケージ自体は、バイナリへ焼き込む設定とマイグレーションを embed.FS として公開する
+役割だけを持ちます（FS を参照）。go:embed が親ディレクトリを遡れない制約上、埋め込み対象の
+env/.env と database/migrations を参照できるモジュールルートに配置しています。
 
 				
 			</p></div>
@@ -118,6 +126,8 @@
 			<h3>Package files</h3>
 			<p>
 			<span style="font-size:90%">
+			
+				<a href="../src/go-boilerplate/doc.go.html">doc.go</a>
 			
 				<a href="../src/go-boilerplate/embed.go.html">embed.go</a>
 			
@@ -206,7 +216,7 @@
 					</td>
 				
 					<td class="pkg-synopsis">
-						Package datetime は、日付と時刻に関連する機能を提供します。
+						Package datetime は、RFC3339、ISO 8601、YYYY-MM-DD HH:MM:SS などの形式の日時文字列を解析するユーティリティを提供します。
 					</td>
 				</tr>
 			
@@ -371,7 +381,7 @@
 					</td>
 				
 					<td class="pkg-synopsis">
-						pin-actions は GitHub Actions の `uses:` 参照を不変の commit SHA へ固定するツール。
+						Package main は GitHub Actions の `uses:` 参照を不変の commit SHA へ固定するツール。
 					</td>
 				</tr>
 			
@@ -382,7 +392,7 @@
 					</td>
 				
 					<td class="pkg-synopsis">
-						不変条件: 全 rule の事前 validate を通してから初めて書き出す。
+						Package main は mise.toml の version を各種ファイルに反映する。
 					</td>
 				</tr>
 			

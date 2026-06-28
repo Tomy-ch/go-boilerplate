@@ -179,7 +179,7 @@
 		
 			
 			
-			<h2 id="UUID">type <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=387:417#L3">UUID</a>
+			<h2 id="UUID">type <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=254:284#L1">UUID</a>
 				<a class="permalink" href="#UUID">¶</a>
 				
 				
@@ -188,7 +188,7 @@
 
 			</p><pre>type UUID struct {
     <span class="comment">// contains filtered or unexported fields</span>
-}
+} <span class="comment">//nolint:recvcheck // immutable VO; pointer receiver only for Scan (sql.Scanner)</span>
 </pre>
 
 			
@@ -201,7 +201,7 @@
 
 			
 				
-				<h3 id="FromPrimitive">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1646:1682#L36">FromPrimitive</a>
+				<h3 id="FromPrimitive">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1620:1656#L34">FromPrimitive</a>
 					<a class="permalink" href="#FromPrimitive">¶</a>
 					
 					
@@ -213,33 +213,32 @@
 				
 			
 				
-				</p><h3 id="New">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=515:539#L6">New</a>
+				</p><h3 id="New">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=489:513#L4">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
 				</h3>
 				<pre>func New() (<a href="#UUID">UUID</a>, <a href="../../../builtin/#error">error</a>)</pre>
-				<p>New は、uuidを生成します。生成に失敗した場合はエラーを返します。
+				<p>New は、UUIDv7（時刻単調増加）を生成します。生成に失敗した場合はエラーを返します。
 
 				
 				
 			
 				
-				</p><h3 id="NewTestFromSalt">func <a href="../../../src/go-boilerplate/pkg/uuid/test_kit.go.html?s=265:318#L3">NewTestFromSalt</a>
+				</p><h3 id="NewTestFromSalt">func <a href="../../../src/go-boilerplate/pkg/uuid/test_kit.go.html?s=219:272#L2">NewTestFromSalt</a>
 					<a class="permalink" href="#NewTestFromSalt">¶</a>
 					
 					
 				</h3>
 				<pre>func NewTestFromSalt(tb <a href="../../../testing/">testing</a>.<a href="../../../testing/#TB">TB</a>, salt <a href="../../../builtin/#string">string</a>) <a href="#UUID">UUID</a></pre>
 				<p>NewTestFromSalt はテスト専用の決定論UUID生成関数です。
-</p><p>本番利用は想定していません。
-v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
+</p><p>v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 
 				
 				
 			
 				
-				</p><h3 id="Parse">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1822:1856#L39">Parse</a>
+				</p><h3 id="Parse">func <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1796:1830#L37">Parse</a>
 					<a class="permalink" href="#Parse">¶</a>
 					
 					
@@ -253,7 +252,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 
 			
 				
-				</p><h3 id="UUID.Bytes">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=813:843#L18">Bytes</a>
+				</p><h3 id="UUID.Bytes">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=787:817#L16">Bytes</a>
 					<a class="permalink" href="#UUID.Bytes">¶</a>
 					
 					
@@ -266,7 +265,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 				
 			
 				
-				</p><h3 id="UUID.Equal">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1221:1253#L27">Equal</a>
+				</p><h3 id="UUID.Equal">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1195:1227#L25">Equal</a>
 					<a class="permalink" href="#UUID.Equal">¶</a>
 					
 					
@@ -279,7 +278,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 				
 			
 				
-				</p><h3 id="UUID.EqualPtr">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1465:1501#L33">EqualPtr</a>
+				</p><h3 id="UUID.EqualPtr">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1439:1475#L31">EqualPtr</a>
 					<a class="permalink" href="#UUID.EqualPtr">¶</a>
 					
 					
@@ -292,7 +291,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 				
 			
 				
-				</p><h3 id="UUID.IsNil">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1090:1116#L24">IsNil</a>
+				</p><h3 id="UUID.IsNil">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1064:1090#L22">IsNil</a>
 					<a class="permalink" href="#UUID.IsNil">¶</a>
 					
 					
@@ -305,7 +304,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 				
 			
 				
-				</p><h3 id="UUID.Scan">func (*UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=2088:2122#L48">Scan</a>
+				</p><h3 id="UUID.Scan">func (*UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=2062:2096#L46">Scan</a>
 					<a class="permalink" href="#UUID.Scan">¶</a>
 					
 					
@@ -318,7 +317,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 				
 			
 				
-				</p><h3 id="UUID.String">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=691:720#L15">String</a>
+				</p><h3 id="UUID.String">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=665:694#L13">String</a>
 					<a class="permalink" href="#UUID.String">¶</a>
 					
 					
@@ -331,7 +330,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 				
 			
 				
-				</p><h3 id="UUID.ToPrimitive">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=951:988#L21">ToPrimitive</a>
+				</p><h3 id="UUID.ToPrimitive">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=925:962#L19">ToPrimitive</a>
 					<a class="permalink" href="#UUID.ToPrimitive">¶</a>
 					
 					
@@ -344,7 +343,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 				
 			
 				
-				</p><h3 id="UUID.ToPtr">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1330:1357#L30">ToPtr</a>
+				</p><h3 id="UUID.ToPtr">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=1304:1331#L28">ToPtr</a>
 					<a class="permalink" href="#UUID.ToPtr">¶</a>
 					
 					
@@ -357,7 +356,7 @@ v5(SHA-1)ベースで、同じsaltなら毎回同じ値を返します。
 				
 			
 				
-				</p><h3 id="UUID.Value">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=2376:2419#L58">Value</a>
+				</p><h3 id="UUID.Value">func (UUID) <a href="../../../src/go-boilerplate/pkg/uuid/uuid.go.html?s=2350:2393#L56">Value</a>
 					<a class="permalink" href="#UUID.Value">¶</a>
 					
 					

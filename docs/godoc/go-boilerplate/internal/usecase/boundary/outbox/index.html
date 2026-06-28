@@ -149,7 +149,7 @@ emit（usecase 層）と relay engine（controller 層）の双方がこの境�
 		
 			
 			
-			<h2 id="EmitParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=489:1070#L5">EmitParams</a>
+			<h2 id="EmitParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=491:1072#L5">EmitParams</a>
 				<a class="permalink" href="#EmitParams">¶</a>
 				
 				
@@ -184,7 +184,7 @@ emit（usecase 層）と relay engine（controller 層）の双方がこの境�
 		
 			
 			
-			<h2 id="PendingMessage">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=1188:1677#L19">PendingMessage</a>
+			<h2 id="PendingMessage">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=1190:1679#L19">PendingMessage</a>
 				<a class="permalink" href="#PendingMessage">¶</a>
 				
 				
@@ -221,7 +221,7 @@ emit（usecase 層）と relay engine（controller 層）の双方がこの境�
 		
 			
 			
-			<h2 id="Store">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=1741:3442#L35">Store</a>
+			<h2 id="Store">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/outbox/store.go.html?s=1743:3391#L35">Store</a>
 				<a class="permalink" href="#Store">¶</a>
 				
 				
@@ -231,8 +231,7 @@ emit（usecase 層）と relay engine（controller 層）の双方がこの境�
 			</p><pre>type Store interface {
     <span class="comment">// Insert は、業務 tx 内で outbox 行を 1 行 INSERT し、採番された message_id を返します。</span>
     Insert(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, p <a href="#EmitParams">EmitParams</a>) (<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, <a href="../../../../../builtin/#error">error</a>)
-    <span class="comment">// ClaimPending は、pending 行を最大 limit 件 claim します（FOR UPDATE SKIP LOCKED）。</span>
-    <span class="comment">// 呼び出し側 tx の保持中だけロックされ、多インスタンスでも同一行を二重取得しません。</span>
+    <span class="comment">// ClaimPending は、pending 行を最大 limit 件を排他取得します。複数インスタンスが同時に呼び出しても同一行を二重取得しません。</span>
     ClaimPending(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, limit <a href="../../../../../builtin/#int32">int32</a>) ([]<a href="#PendingMessage">PendingMessage</a>, <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// MarkPublished は、publish 成功行を published へ遷移します（既に pending でなければ no-op）。</span>
     MarkPublished(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../builtin/#int64">int64</a>) <a href="../../../../../builtin/#error">error</a>

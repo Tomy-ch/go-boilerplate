@@ -58,7 +58,7 @@
 <pre><span id="L1" class="ln">     1  </span>package main
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
-<span id="L4" class="ln">     4  </span>	rootenv &#34;go-boilerplate&#34;
+<span id="L4" class="ln">     4  </span>	root &#34;go-boilerplate&#34;
 <span id="L5" class="ln">     5  </span>	climigrate &#34;go-boilerplate/internal/cli/migrate&#34;
 <span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/config&#34;
 <span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
@@ -151,7 +151,7 @@
 <span id="L94" class="ln">    94  </span>	dbCfg := config.NewDatabaseConfig(cfg)
 <span id="L95" class="ln">    95  </span>	osCfg := config.NewOperatingSystemConfig(cfg)
 <span id="L96" class="ln">    96  </span>
-<span id="L97" class="ln">    97  </span>	src, err := iofs.New(rootenv.FS, migrateFilePlace)
+<span id="L97" class="ln">    97  </span>	src, err := iofs.New(root.FS, migrateFilePlace)
 <span id="L98" class="ln">    98  </span>	if err != nil {
 <span id="L99" class="ln">    99  </span>		return nil, xerrors.Wrap(err, &#34;failed to create migration source&#34;)
 <span id="L100" class="ln">   100  </span>	}

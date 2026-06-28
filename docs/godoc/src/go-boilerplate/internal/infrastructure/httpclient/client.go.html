@@ -221,7 +221,7 @@
 <span id="L164" class="ln">   164  </span>
 <span id="L165" class="ln">   165  </span>	body, err := readBody(httpResp.Body, profile.MaxResponseBytes)
 <span id="L166" class="ln">   166  </span>	if err != nil {
-<span id="L167" class="ln">   167  </span>		return nil, xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+<span id="L167" class="ln">   167  </span>		return nil, xerrors.Join(apperror.ErrUnavailable, err)
 <span id="L168" class="ln">   168  </span>	}
 <span id="L169" class="ln">   169  </span>
 <span id="L170" class="ln">   170  </span>	resp := &amp;Response{

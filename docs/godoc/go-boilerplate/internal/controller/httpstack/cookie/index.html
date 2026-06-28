@@ -150,13 +150,13 @@
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/middleware.go.html?s=107:163#L1">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/middleware.go.html?s=275:331#L1">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
 			</h2>
 			<pre>func Middleware(cfg *<a href="#SecurityCookie">SecurityCookie</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
-			<p>Middleware は Echo 用 middleware です。
+			<p>Middleware は、SecurityCookie 設定に従い Set-Cookie ヘッダのセキュリティ属性（Secure / HttpOnly / SameSite / Path / Domain など）を上書きする Echo ミドルウェアを返します。
 
 			
 			
@@ -203,7 +203,7 @@
 
 			
 				
-				</p><h3 id="SecurityCookie.RewriteSetCookie">func (*SecurityCookie) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/secure_cookie.go.html?s=2917:2979#L74">RewriteSetCookie</a>
+				</p><h3 id="SecurityCookie.RewriteSetCookie">func (*SecurityCookie) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/secure_cookie.go.html?s=2863:2925#L73">RewriteSetCookie</a>
 					<a class="permalink" href="#SecurityCookie.RewriteSetCookie">¶</a>
 					
 					

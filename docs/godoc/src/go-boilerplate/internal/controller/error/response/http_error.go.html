@@ -191,35 +191,36 @@
 <span id="L134" class="ln">   134  </span>}
 <span id="L135" class="ln">   135  </span>
 <span id="L136" class="ln">   136  </span><span class="comment">// lookupErrorMetaByAppError は、アプリケーションエラーに対応するエラーメタデータを取得します。</span>
-<span id="L137" class="ln">   137  </span>func lookupErrorMetaByAppError(err error) httpErrorMeta {
-<span id="L138" class="ln">   138  </span>	switch {
-<span id="L139" class="ln">   139  </span>	case xerrors.Is(err, apperror.ErrInvalidArgument): <span class="comment">// 400</span>
-<span id="L140" class="ln">   140  </span>		return lookupErrorMetaByHTTPStatus(http.StatusBadRequest)
-<span id="L141" class="ln">   141  </span>	case xerrors.Is(err, apperror.ErrValidation): <span class="comment">// 422</span>
-<span id="L142" class="ln">   142  </span>		return lookupErrorMetaByHTTPStatus(http.StatusUnprocessableEntity)
-<span id="L143" class="ln">   143  </span>	case xerrors.Is(err, apperror.ErrUnauthenticated): <span class="comment">// 401</span>
-<span id="L144" class="ln">   144  </span>		return lookupErrorMetaByHTTPStatus(http.StatusUnauthorized)
-<span id="L145" class="ln">   145  </span>	case xerrors.Is(err, apperror.ErrPermissionDenied): <span class="comment">// 403</span>
-<span id="L146" class="ln">   146  </span>		return lookupErrorMetaByHTTPStatus(http.StatusForbidden)
-<span id="L147" class="ln">   147  </span>	case xerrors.Is(err, apperror.ErrNotFound): <span class="comment">// 404</span>
-<span id="L148" class="ln">   148  </span>		return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
-<span id="L149" class="ln">   149  </span>	case xerrors.Is(err, apperror.ErrConflict): <span class="comment">// 409</span>
-<span id="L150" class="ln">   150  </span>		return lookupErrorMetaByHTTPStatus(http.StatusConflict)
-<span id="L151" class="ln">   151  </span>	case xerrors.Is(err, apperror.ErrCanceled): <span class="comment">// 499</span>
-<span id="L152" class="ln">   152  </span>		return lookupErrorMetaByHTTPStatus(statusClientClosedRequest)
-<span id="L153" class="ln">   153  </span>	case xerrors.Is(err, apperror.ErrUnavailable): <span class="comment">// 503</span>
-<span id="L154" class="ln">   154  </span>		return lookupErrorMetaByHTTPStatus(http.StatusServiceUnavailable)
-<span id="L155" class="ln">   155  </span>	case xerrors.Is(err, apperror.ErrUnimplemented): <span class="comment">// 501</span>
-<span id="L156" class="ln">   156  </span>		return lookupErrorMetaByHTTPStatus(http.StatusNotImplemented)
-<span id="L157" class="ln">   157  </span>	case xerrors.Is(err, apperror.ErrTooManyRequests): <span class="comment">// 429</span>
-<span id="L158" class="ln">   158  </span>		return lookupErrorMetaByHTTPStatus(http.StatusTooManyRequests)
-<span id="L159" class="ln">   159  </span>	case xerrors.Is(err, apperror.ErrInternal): <span class="comment">// 500</span>
-<span id="L160" class="ln">   160  </span>		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)
-<span id="L161" class="ln">   161  </span>	default:
-<span id="L162" class="ln">   162  </span>		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)
-<span id="L163" class="ln">   163  </span>	}
-<span id="L164" class="ln">   164  </span>}
-<span id="L165" class="ln">   165  </span>
+<span id="L137" class="ln">   137  </span><span class="comment">// 既知のエラー型に一致しない場合は 500 Internal Server Error のメタを返します。</span>
+<span id="L138" class="ln">   138  </span>func lookupErrorMetaByAppError(err error) httpErrorMeta {
+<span id="L139" class="ln">   139  </span>	switch {
+<span id="L140" class="ln">   140  </span>	case xerrors.Is(err, apperror.ErrInvalidArgument): <span class="comment">// 400</span>
+<span id="L141" class="ln">   141  </span>		return lookupErrorMetaByHTTPStatus(http.StatusBadRequest)
+<span id="L142" class="ln">   142  </span>	case xerrors.Is(err, apperror.ErrValidation): <span class="comment">// 422</span>
+<span id="L143" class="ln">   143  </span>		return lookupErrorMetaByHTTPStatus(http.StatusUnprocessableEntity)
+<span id="L144" class="ln">   144  </span>	case xerrors.Is(err, apperror.ErrUnauthenticated): <span class="comment">// 401</span>
+<span id="L145" class="ln">   145  </span>		return lookupErrorMetaByHTTPStatus(http.StatusUnauthorized)
+<span id="L146" class="ln">   146  </span>	case xerrors.Is(err, apperror.ErrPermissionDenied): <span class="comment">// 403</span>
+<span id="L147" class="ln">   147  </span>		return lookupErrorMetaByHTTPStatus(http.StatusForbidden)
+<span id="L148" class="ln">   148  </span>	case xerrors.Is(err, apperror.ErrNotFound): <span class="comment">// 404</span>
+<span id="L149" class="ln">   149  </span>		return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
+<span id="L150" class="ln">   150  </span>	case xerrors.Is(err, apperror.ErrConflict): <span class="comment">// 409</span>
+<span id="L151" class="ln">   151  </span>		return lookupErrorMetaByHTTPStatus(http.StatusConflict)
+<span id="L152" class="ln">   152  </span>	case xerrors.Is(err, apperror.ErrCanceled): <span class="comment">// 499</span>
+<span id="L153" class="ln">   153  </span>		return lookupErrorMetaByHTTPStatus(statusClientClosedRequest)
+<span id="L154" class="ln">   154  </span>	case xerrors.Is(err, apperror.ErrUnavailable): <span class="comment">// 503</span>
+<span id="L155" class="ln">   155  </span>		return lookupErrorMetaByHTTPStatus(http.StatusServiceUnavailable)
+<span id="L156" class="ln">   156  </span>	case xerrors.Is(err, apperror.ErrUnimplemented): <span class="comment">// 501</span>
+<span id="L157" class="ln">   157  </span>		return lookupErrorMetaByHTTPStatus(http.StatusNotImplemented)
+<span id="L158" class="ln">   158  </span>	case xerrors.Is(err, apperror.ErrTooManyRequests): <span class="comment">// 429</span>
+<span id="L159" class="ln">   159  </span>		return lookupErrorMetaByHTTPStatus(http.StatusTooManyRequests)
+<span id="L160" class="ln">   160  </span>	case xerrors.Is(err, apperror.ErrInternal): <span class="comment">// 500</span>
+<span id="L161" class="ln">   161  </span>		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)
+<span id="L162" class="ln">   162  </span>	default:
+<span id="L163" class="ln">   163  </span>		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)
+<span id="L164" class="ln">   164  </span>	}
+<span id="L165" class="ln">   165  </span>}
+<span id="L166" class="ln">   166  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/error/response/http_error.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -55,7 +55,7 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_user_usecase.gen.go -package=mock_$GOPACKAGE</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span><span class="comment">// Package user は、ユーザーに関するユースケースを提供します。</span>
 <span id="L4" class="ln">     4  </span>package user
@@ -275,7 +275,7 @@
 <span id="L218" class="ln">   218  </span>	return u.userRepo.CountByActive(ctx, active)
 <span id="L219" class="ln">   219  </span>}
 <span id="L220" class="ln">   220  </span>
-<span id="L221" class="ln">   221  </span><span class="comment">// ListUsersWithTotal は、一覧と総件数の合成を controller から usecase へ寄せる。</span>
+<span id="L221" class="ln">   221  </span><span class="comment">// ListUsersWithTotal は、ユーザー一覧と総件数をまとめて取得します。</span>
 <span id="L222" class="ln">   222  </span>func (u *usecase) ListUsersWithTotal(ctx context.Context, active *bool, page *paging.Page) (*UserListView, error) {
 <span id="L223" class="ln">   223  </span>	ctx, endSpan := u.tracer.Start(ctx)
 <span id="L224" class="ln">   224  </span>	defer endSpan()
@@ -351,7 +351,7 @@
 <span id="L294" class="ln">   294  </span>	return toUserView(userEntity, pftDomain.Name()), nil
 <span id="L295" class="ln">   295  </span>}
 <span id="L296" class="ln">   296  </span>
-<span id="L297" class="ln">   297  </span><span class="comment">// UpdateUser は、ユーザーのプロフィールを全更新するユースケースです（PUT、パスワードは含みません）。</span>
+<span id="L297" class="ln">   297  </span><span class="comment">// UpdateUser は、ユーザーのプロフィールを全更新します（パスワードは含みません）。</span>
 <span id="L298" class="ln">   298  </span>func (u *usecase) UpdateUser(ctx context.Context, id uuid.UUID, dto *UpdateProfileParams) (UserView, error) {
 <span id="L299" class="ln">   299  </span>	ctx, endSpan := u.tracer.Start(ctx)
 <span id="L300" class="ln">   300  </span>	defer endSpan()
@@ -441,8 +441,8 @@
 <span id="L384" class="ln">   384  </span>	})
 <span id="L385" class="ln">   385  </span>}
 <span id="L386" class="ln">   386  </span>
-<span id="L387" class="ln">   387  </span><span class="comment">// UpdateUserPartially は、ユーザーを部分更新するユースケースです（PATCH）。</span>
-<span id="L388" class="ln">   388  </span><span class="comment">// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは PUT を使う）。password は更新しない。</span>
+<span id="L387" class="ln">   387  </span><span class="comment">// UpdateUserPartially は、ユーザーを部分更新します（パスワードは更新しません）。</span>
+<span id="L388" class="ln">   388  </span><span class="comment">// 指定フィールドのみ更新し、未指定/null は据え置く（クリアは非対応。クリアは全更新用の UpdateUser を使う）。password は更新しない。</span>
 <span id="L389" class="ln">   389  </span>func (u *usecase) UpdateUserPartially(ctx context.Context, id uuid.UUID, dto *PatchParamsDTO) (UserView, error) {
 <span id="L390" class="ln">   390  </span>	ctx, endSpan := u.tracer.Start(ctx)
 <span id="L391" class="ln">   391  </span>	defer endSpan()
@@ -497,7 +497,7 @@
 <span id="L440" class="ln">   440  </span>	return toUserView(userEntity, pftName), nil
 <span id="L441" class="ln">   441  </span>}
 <span id="L442" class="ln">   442  </span>
-<span id="L443" class="ln">   443  </span><span class="comment">// DeleteUser は、ユーザーを論理削除するユースケースです（DELETE）。</span>
+<span id="L443" class="ln">   443  </span><span class="comment">// DeleteUser は、ユーザーを論理削除します。</span>
 <span id="L444" class="ln">   444  </span>func (u *usecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 <span id="L445" class="ln">   445  </span>	ctx, endSpan := u.tracer.Start(ctx)
 <span id="L446" class="ln">   446  </span>	defer endSpan()
@@ -553,7 +553,7 @@
 <span id="L496" class="ln">   496  </span>	return dtos, nil
 <span id="L497" class="ln">   497  </span>}
 <span id="L498" class="ln">   498  </span>
-<span id="L499" class="ln">   499  </span><span class="comment">// resolvePatchPrefecture は、PATCH の都道府県を解決します。</span>
+<span id="L499" class="ln">   499  </span><span class="comment">// resolvePatchPrefecture は、部分更新時の都道府県を解決します。</span>
 <span id="L500" class="ln">   500  </span><span class="comment">// 名前指定があれば名前で解決（入力エラーは伝播）、なければ既存 ID で解決します（未解決は参照整合性破れ）。</span>
 <span id="L501" class="ln">   501  </span>func (u *usecase) resolvePatchPrefecture(ctx context.Context, name *string, currentID uuid.UUID) (*prefecture.Prefecture, error) {
 <span id="L502" class="ln">   502  </span>	if name != nil {

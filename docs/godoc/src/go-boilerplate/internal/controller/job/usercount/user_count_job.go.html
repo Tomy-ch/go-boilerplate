@@ -94,44 +94,45 @@
 <span id="L37" class="ln">    37  </span>	return jobName
 <span id="L38" class="ln">    38  </span>}
 <span id="L39" class="ln">    39  </span>
-<span id="L40" class="ln">    40  </span><span class="comment">// Execute は、ジョブを実行します。</span>
-<span id="L41" class="ln">    41  </span>func (u *jobImpl) Execute(ctx context.Context, args []string) error {
-<span id="L42" class="ln">    42  </span>	ctx, endSpan := u.tracer.Start(ctx)
-<span id="L43" class="ln">    43  </span>	defer endSpan()
-<span id="L44" class="ln">    44  </span>
-<span id="L45" class="ln">    45  </span>	var active *bool
-<span id="L46" class="ln">    46  </span>	filter := &#34;all&#34;
-<span id="L47" class="ln">    47  </span>	for _, a := range args {
-<span id="L48" class="ln">    48  </span>		<span class="comment">// 相反・重複するフィルタ指定は、後勝ちで黙殺せずエラーにする。</span>
-<span id="L49" class="ln">    49  </span>		switch a {
-<span id="L50" class="ln">    50  </span>		case &#34;--active-only&#34;:
-<span id="L51" class="ln">    51  </span>			if active != nil {
-<span id="L52" class="ln">    52  </span>				return xerrors.New(&#34;conflicting filter flag: &#34; + a)
-<span id="L53" class="ln">    53  </span>			}
-<span id="L54" class="ln">    54  </span>			active = new(true)
-<span id="L55" class="ln">    55  </span>			filter = &#34;active&#34;
-<span id="L56" class="ln">    56  </span>		case &#34;--inactive-only&#34;:
-<span id="L57" class="ln">    57  </span>			if active != nil {
-<span id="L58" class="ln">    58  </span>				return xerrors.New(&#34;conflicting filter flag: &#34; + a)
-<span id="L59" class="ln">    59  </span>			}
-<span id="L60" class="ln">    60  </span>			active = new(false)
-<span id="L61" class="ln">    61  </span>			filter = &#34;inactive&#34;
-<span id="L62" class="ln">    62  </span>		default:
-<span id="L63" class="ln">    63  </span>			return xerrors.New(&#34;unknown flag: &#34; + a)
-<span id="L64" class="ln">    64  </span>		}
-<span id="L65" class="ln">    65  </span>	}
-<span id="L66" class="ln">    66  </span>	count, err := u.usecase.CountUsers(ctx, active)
-<span id="L67" class="ln">    67  </span>	if err != nil {
-<span id="L68" class="ln">    68  </span>		return err
-<span id="L69" class="ln">    69  </span>	}
-<span id="L70" class="ln">    70  </span>	u.logging.Named(jobName).Info(
-<span id="L71" class="ln">    71  </span>		&#34;Result: total user count&#34;,
-<span id="L72" class="ln">    72  </span>		logging.Int64(logging.JobResultKey, count),
-<span id="L73" class="ln">    73  </span>		logging.String(logging.FilterKey, filter),
-<span id="L74" class="ln">    74  </span>	)
-<span id="L75" class="ln">    75  </span>	return nil
-<span id="L76" class="ln">    76  </span>}
-<span id="L77" class="ln">    77  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// Execute は、ユーザ件数を集計してログに出力します。</span>
+<span id="L41" class="ln">    41  </span><span class="comment">// --active-only / --inactive-only でカウント対象を絞り込めます。両フラグの併用はエラーです。</span>
+<span id="L42" class="ln">    42  </span>func (u *jobImpl) Execute(ctx context.Context, args []string) error {
+<span id="L43" class="ln">    43  </span>	ctx, endSpan := u.tracer.Start(ctx)
+<span id="L44" class="ln">    44  </span>	defer endSpan()
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span>	var active *bool
+<span id="L47" class="ln">    47  </span>	filter := &#34;all&#34;
+<span id="L48" class="ln">    48  </span>	for _, a := range args {
+<span id="L49" class="ln">    49  </span>		<span class="comment">// 相反・重複するフィルタ指定は、後勝ちで黙殺せずエラーにする。</span>
+<span id="L50" class="ln">    50  </span>		switch a {
+<span id="L51" class="ln">    51  </span>		case &#34;--active-only&#34;:
+<span id="L52" class="ln">    52  </span>			if active != nil {
+<span id="L53" class="ln">    53  </span>				return xerrors.New(&#34;conflicting filter flag: &#34; + a)
+<span id="L54" class="ln">    54  </span>			}
+<span id="L55" class="ln">    55  </span>			active = new(true)
+<span id="L56" class="ln">    56  </span>			filter = &#34;active&#34;
+<span id="L57" class="ln">    57  </span>		case &#34;--inactive-only&#34;:
+<span id="L58" class="ln">    58  </span>			if active != nil {
+<span id="L59" class="ln">    59  </span>				return xerrors.New(&#34;conflicting filter flag: &#34; + a)
+<span id="L60" class="ln">    60  </span>			}
+<span id="L61" class="ln">    61  </span>			active = new(false)
+<span id="L62" class="ln">    62  </span>			filter = &#34;inactive&#34;
+<span id="L63" class="ln">    63  </span>		default:
+<span id="L64" class="ln">    64  </span>			return xerrors.New(&#34;unknown flag: &#34; + a)
+<span id="L65" class="ln">    65  </span>		}
+<span id="L66" class="ln">    66  </span>	}
+<span id="L67" class="ln">    67  </span>	count, err := u.usecase.CountUsers(ctx, active)
+<span id="L68" class="ln">    68  </span>	if err != nil {
+<span id="L69" class="ln">    69  </span>		return err
+<span id="L70" class="ln">    70  </span>	}
+<span id="L71" class="ln">    71  </span>	u.logging.Named(jobName).Info(
+<span id="L72" class="ln">    72  </span>		&#34;Result: total user count&#34;,
+<span id="L73" class="ln">    73  </span>		logging.Int64(logging.JobResultKey, count),
+<span id="L74" class="ln">    74  </span>		logging.String(logging.FilterKey, filter),
+<span id="L75" class="ln">    75  </span>	)
+<span id="L76" class="ln">    76  </span>	return nil
+<span id="L77" class="ln">    77  </span>}
+<span id="L78" class="ln">    78  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/job/usercount/user_count_job.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

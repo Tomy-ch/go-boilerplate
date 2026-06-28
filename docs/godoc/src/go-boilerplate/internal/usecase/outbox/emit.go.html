@@ -55,7 +55,7 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_emit.gen.go -package=mock_$GOPACKAGE</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span><span class="comment">// Package outbox は、トランザクショナル outbox の emit / relay / GC / replay ユースケースを提供します。</span>
 <span id="L4" class="ln">     4  </span>package outbox
@@ -119,7 +119,7 @@
 <span id="L62" class="ln">    62  </span>	if len(headers) &gt; 0 {
 <span id="L63" class="ln">    63  </span>		b, err := json.Marshal(headers)
 <span id="L64" class="ln">    64  </span>		if err != nil {
-<span id="L65" class="ln">    65  </span>			return uuid.UUID{}, xerrors.Wrap(apperror.ErrInternal, &#34;failed to encode outbox headers: &#34;+err.Error())
+<span id="L65" class="ln">    65  </span>			return uuid.UUID{}, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, &#34;failed to encode outbox headers&#34;))
 <span id="L66" class="ln">    66  </span>		}
 <span id="L67" class="ln">    67  </span>		headerBytes = b
 <span id="L68" class="ln">    68  </span>	}

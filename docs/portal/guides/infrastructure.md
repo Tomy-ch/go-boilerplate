@@ -80,6 +80,8 @@ The Infrastructure layer provides the following observability.
 
 Mainly implemented by a pgx query tracer wired at the driver connection level (`otelpgx` spans, with log output limited to query failures and slow queries).
 
+In addition to the driver-level tracer, every I/O component (Repository / QueryService / SystemQuery / external gateways / queue / publisher) opens an application-level span per public method: it holds an `observability.LayerTracer` field initialized from `tf.Infra()` in its constructor, and each method begins with `ctx, endSpan := r.tracer.Start(ctx); defer endSpan()`. Pure in-memory components with no real I/O (e.g. password hashing) are exempt.
+
 ## Prohibited Practices
 
 The following must not be done in the Infrastructure layer.

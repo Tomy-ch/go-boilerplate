@@ -69,7 +69,7 @@
 <span id="L12" class="ln">    12  </span><span class="comment">//   - OnStop:  実行 context をキャンセルし、Body の完了を stopCtx（grace）の範囲で待ち、</span>
 <span id="L13" class="ln">    13  </span><span class="comment">//     その後 [SupervisedRunner.OnStopAux]（任意）を実行する。</span>
 <span id="L14" class="ln">    14  </span><span class="comment">//</span>
-<span id="L15" class="ln">    15  </span><span class="comment">// 実行 context は context.Background() から WithCancel で派生させます。これにより</span>
+<span id="L15" class="ln">    15  </span><span class="comment">// Body に渡される実行 context は startCtx とは独立しており、OnStop でのみキャンセルされます。これにより</span>
 <span id="L16" class="ln">    16  </span><span class="comment">//   - OnStart 完了後に fx が startCtx をキャンセルしても Body は巻き込まれず（detached）、</span>
 <span id="L17" class="ln">    17  </span><span class="comment">//   - OnStop の cancel でのみ Body の context が切れて中断できる（停止時キャンセル）。</span>
 <span id="L18" class="ln">    18  </span>type SupervisedRunner struct {

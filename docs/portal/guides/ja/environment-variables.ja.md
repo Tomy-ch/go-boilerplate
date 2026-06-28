@@ -13,12 +13,15 @@
   - `csv` → `[]string`（`,` 区切り、空白トリム後分割）
 - 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
 - **Secret management recommended** は定期ローテーションを推奨
+- 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `default:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
 
 ## 新規変数を追加する手順
 
-1. `internal/config/` の対応する構造体にフィールドを追加
+1. `internal/config/envspec.go` の対応する構造体にフィールドを追加（あわせて `model.go` の getter 構造体・`config.go` のマッピングも）
 2. 該当サブシステムのテーブル（または新規サブシステム節）に変数を記載
-3. `env/.env`（ローカル既定）と各環境ファイル（`env/.env.<env>`）に変数を追加
+3. 値の供給方法を決める:
+   - **プロジェクト固有・環境ごとに変わる値** → フィールドを `required` にし、`env/.env`（ローカル既定）と各環境ファイル（`env/.env.<env>`）に追加
+   - **普遍的なフレームワーク既定値** → 代わりに `default:` タグを付与し、`.env` ファイルには記載せず、テーブルに **Code default `<値>`** と明記
 4. `make test` を実行して config 構造体がロードできることを確認
 
 ## 変数一覧（サブシステム別）
@@ -37,7 +40,7 @@
 |APP_LOG_LEVEL|ログ出力レベル|string|debug / info / warn / error|出力方式は Mode が決定、レベルは環境ごとに明示指定|
 |APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
 |APP_ENV|環境識別子|string|local / staging / prod|環境区別用|
-|APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|45s|SIGTERM時の待機時間|
+|APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|45s|Code default `45s`。SIGTERM時の待機時間|
 
 ### Server
 
@@ -45,12 +48,12 @@
 |---|---|---|---|---|
 |SERVER_HOST|バインドホスト|string|localhost|Dockerでは0.0.0.0推奨|
 |SERVER_PORT|ポート番号|int|8080||
-|SERVER_READ_HEADER_TIMEOUT|ヘッダ読み取りタイムアウト|duration|5s|Slowloris対策|
-|SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s||
-|SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|65s|SERVER_REQUEST_TIMEOUT 以上であること必須。短いと deadline budget より先に net/http が接続を切断し budget 制御が無効化される|
-|SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s||
-|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|5|Pre middleware。OpenAPI 検証がボディを読む前に適用|
-|SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|停止/期限の単一軸。statement_timeout 等は backstop|
+|SERVER_READ_HEADER_TIMEOUT|ヘッダ読み取りタイムアウト|duration|5s|Code default `5s`。Slowloris対策|
+|SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s|Code default `10s`|
+|SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|65s|Code default `65s`。SERVER_REQUEST_TIMEOUT 以上であること必須。短いと deadline budget より先に net/http が接続を切断し budget 制御が無効化される|
+|SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s|Code default `60s`|
+|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|5|Code default `5`。Pre middleware。OpenAPI 検証がボディを読む前に適用|
+|SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|Code default `60s`。停止/期限の単一軸。statement_timeout 等は backstop|
 
 ### Metrics
 
@@ -69,7 +72,7 @@
 |OBS_METRICS_EXPORTER|metric の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でメトリクス無効（軽量構成）|
 |OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）|
 |OBS_OTLP_ENDPOINT|OTLP 送出先エンドポイント URL|string|<http://observability:4318>|exporter 有効時に使用|
-|OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|既定 `http/protobuf`|
+|OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
 |OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|true|セキュリティ重要|
 |OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,409,422,500,501,503|エラー監視用|
 
@@ -77,7 +80,7 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|DB_DRIVER|DBドライバ|string|pgx|固定推奨|
+|DB_DRIVER|DBドライバ|string|pgx|Code default `pgx`。固定推奨|
 |DB_HOST|DBホスト|string|database|docker service名（環境ごとに変更）|
 |DB_PORT|DBポート|int|5432||
 |DB_USER|ユーザー|string|postgres|シークレット管理推奨|
@@ -85,21 +88,21 @@
 |DB_NAME|DB名|string|local|シークレット管理推奨|
 |DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨|
 |DB_PING_TIMEOUT|接続確認タイムアウト|duration|10s||
-|DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|observability連携|
-|DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|ctx を無視する query への SQL 層 backstop。0 で無効|
-|DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|長時間ロック待ちへの backstop。0 で無効|
-|DB_TX_MAX_RETRIES|serialization failure / deadlock 時の tx リトライ最大試行回数|int|3|0 でリトライ無効（単発実行）|
-|DB_TX_RETRY_BASE_BACKOFF|tx リトライ backoff の初期値|duration|5ms|指数 backoff の基準値（×2）|
-|DB_TX_RETRY_MAX_BACKOFF|tx リトライ backoff の上限値|duration|100ms|1 試行あたりの上限|
+|DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|Code default `500ms`。observability連携|
+|DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|Code default `30s`。ctx を無視する query への SQL 層 backstop。0 で無効|
+|DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|Code default `10s`。長時間ロック待ちへの backstop。0 で無効|
+|DB_TX_MAX_RETRIES|serialization failure / deadlock 時の tx リトライ最大試行回数|int|3|Code default `3`。0 でリトライ無効（単発実行）|
+|DB_TX_RETRY_BASE_BACKOFF|tx リトライ backoff の初期値|duration|5ms|Code default `5ms`。指数 backoff の基準値（×2）|
+|DB_TX_RETRY_MAX_BACKOFF|tx リトライ backoff の上限値|duration|100ms|Code default `100ms`。1 試行あたりの上限|
 
 ### Database Connection Pool
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|DBCONN_MAX_CONNS|最大接続数|int|10||
-|DBCONN_MIN_CONNS|最小接続数|int|5||
-|DBCONN_MAX_LIFETIME|接続寿命|duration|30m||
-|DBCONN_MAX_IDLE_TIME|アイドル時間|duration|10m||
+|DBCONN_MAX_CONNS|最大接続数|int|10|Code default `10`|
+|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`|
+|DBCONN_MAX_LIFETIME|接続寿命|duration|30m|Code default `30m`|
+|DBCONN_MAX_IDLE_TIME|アイドル時間|duration|10m|Code default `10m`|
 
 ### Security
 

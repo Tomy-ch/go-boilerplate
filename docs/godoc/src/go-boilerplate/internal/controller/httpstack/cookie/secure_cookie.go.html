@@ -116,118 +116,117 @@
 <span id="L59" class="ln">    59  </span>		<span class="comment">// 多くのケースで &#34;/&#34; 固定</span>
 <span id="L60" class="ln">    60  </span>		forcePath: &#34;/&#34;,
 <span id="L61" class="ln">    61  </span>
-<span id="L62" class="ln">    62  </span>		<span class="comment">// 以下は拡張時にここを直接変更する</span>
-<span id="L63" class="ln">    63  </span>		cookieNames:     map[string]struct{}{},
-<span id="L64" class="ln">    64  </span>		skipCookieNames: map[string]struct{}{},
-<span id="L65" class="ln">    65  </span>		forceMaxAge:     nil,
-<span id="L66" class="ln">    66  </span>	}
-<span id="L67" class="ln">    67  </span>
-<span id="L68" class="ln">    68  </span>	cfg.forceSecure = p.Secure()
-<span id="L69" class="ln">    69  </span>	<span class="comment">// SameSite: 空なら上書きしない、許容値（Lax/Strict/None）へ正規化し非許容値は無視</span>
-<span id="L70" class="ln">    70  </span>	if s := normalizeSameSite(p.SameSite()); s != &#34;&#34; {
-<span id="L71" class="ln">    71  </span>		cfg.forceSameSite = s
-<span id="L72" class="ln">    72  </span>	}
-<span id="L73" class="ln">    73  </span>	<span class="comment">// Domain: 空なら上書きしない</span>
-<span id="L74" class="ln">    74  </span>	<span class="comment">// （__Host- を使う場合は Rewrite 内で Domain が落とされる）</span>
-<span id="L75" class="ln">    75  </span>	if d := strings.TrimSpace(p.Domain()); d != &#34;&#34; {
-<span id="L76" class="ln">    76  </span>		cfg.forceDomain = d
-<span id="L77" class="ln">    77  </span>	}
-<span id="L78" class="ln">    78  </span>
-<span id="L79" class="ln">    79  </span>	return cfg
-<span id="L80" class="ln">    80  </span>}
-<span id="L81" class="ln">    81  </span>
-<span id="L82" class="ln">    82  </span><span class="comment">// RewriteSetCookie は Set-Cookie ヘッダ値（1本）を cfg に基づいて上書きします。</span>
-<span id="L83" class="ln">    83  </span><span class="comment">// 失敗時は空文字を返します（呼び出し側で元の raw を使う想定）。</span>
-<span id="L84" class="ln">    84  </span>func (cfg *SecurityCookie) RewriteSetCookie(raw string) string {
-<span id="L85" class="ln">    85  </span>	name, value, attrs, ok := parseSetCookie(raw)
-<span id="L86" class="ln">    86  </span>	if !ok || name == &#34;&#34; {
-<span id="L87" class="ln">    87  </span>		return &#34;&#34;
-<span id="L88" class="ln">    88  </span>	}
-<span id="L89" class="ln">    89  </span>	if !cfg.targets(name) {
-<span id="L90" class="ln">    90  </span>		return raw
-<span id="L91" class="ln">    91  </span>	}
-<span id="L92" class="ln">    92  </span>
-<span id="L93" class="ln">    93  </span>	if cfg.forceSecure != nil {
-<span id="L94" class="ln">    94  </span>		setBoolAttr(attrs, &#34;secure&#34;, *cfg.forceSecure)
-<span id="L95" class="ln">    95  </span>	}
-<span id="L96" class="ln">    96  </span>	if cfg.forceHTTPOnly != nil {
-<span id="L97" class="ln">    97  </span>		setBoolAttr(attrs, &#34;httponly&#34;, *cfg.forceHTTPOnly)
-<span id="L98" class="ln">    98  </span>	}
-<span id="L99" class="ln">    99  </span>	cfg.applySameSite(attrs)
-<span id="L100" class="ln">   100  </span>	if cfg.forcePath != &#34;&#34; {
-<span id="L101" class="ln">   101  </span>		setKVAttr(attrs, &#34;path&#34;, cfg.forcePath)
-<span id="L102" class="ln">   102  </span>	}
-<span id="L103" class="ln">   103  </span>	if cfg.forceDomain != &#34;&#34; {
-<span id="L104" class="ln">   104  </span>		setKVAttr(attrs, &#34;domain&#34;, cfg.forceDomain)
-<span id="L105" class="ln">   105  </span>	}
-<span id="L106" class="ln">   106  </span>	if cfg.forceMaxAge != nil {
-<span id="L107" class="ln">   107  </span>		setKVAttr(attrs, &#34;max-age&#34;, strconv.Itoa(*cfg.forceMaxAge))
-<span id="L108" class="ln">   108  </span>	}
-<span id="L109" class="ln">   109  </span>	<span class="comment">// expires は整合性が難しいので、この雛形では触らない（必要なら追加）</span>
-<span id="L110" class="ln">   110  </span>	cfg.applyNamePrefix(name, attrs)
-<span id="L111" class="ln">   111  </span>
-<span id="L112" class="ln">   112  </span>	return buildSetCookie(name, value, attrs)
-<span id="L113" class="ln">   113  </span>}
-<span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span><span class="comment">// targets は、name を書き換え対象とするか判定します。</span>
-<span id="L116" class="ln">   116  </span>func (cfg *SecurityCookie) targets(name string) bool {
-<span id="L117" class="ln">   117  </span>	if !cfg.applyToAll {
-<span id="L118" class="ln">   118  </span>		if _, ok := cfg.cookieNames[name]; !ok {
-<span id="L119" class="ln">   119  </span>			return false
-<span id="L120" class="ln">   120  </span>		}
-<span id="L121" class="ln">   121  </span>	}
-<span id="L122" class="ln">   122  </span>	_, skip := cfg.skipCookieNames[name]
-<span id="L123" class="ln">   123  </span>	return !skip
-<span id="L124" class="ln">   124  </span>}
-<span id="L125" class="ln">   125  </span>
-<span id="L126" class="ln">   126  </span><span class="comment">// applySameSite は SameSite 上書きと、実効 SameSite=None 時の Secure 強制を適用します。</span>
-<span id="L127" class="ln">   127  </span>func (cfg *SecurityCookie) applySameSite(attrs *cookieAttrs) {
-<span id="L128" class="ln">   128  </span>	if cfg.forceSameSite != &#34;&#34; {
-<span id="L129" class="ln">   129  </span>		setKVAttr(attrs, &#34;samesite&#34;, cfg.forceSameSite)
-<span id="L130" class="ln">   130  </span>	}
-<span id="L131" class="ln">   131  </span>	if !cfg.enforceSecureWhenSameSiteNone {
-<span id="L132" class="ln">   132  </span>		return
-<span id="L133" class="ln">   133  </span>	}
-<span id="L134" class="ln">   134  </span>	<span class="comment">// 実効 SameSite（強制値優先、無ければ入力値）が None なら Secure を強制する</span>
-<span id="L135" class="ln">   135  </span>	effective := cfg.forceSameSite
-<span id="L136" class="ln">   136  </span>	if effective == &#34;&#34; {
-<span id="L137" class="ln">   137  </span>		if p := attrs.kv[&#34;samesite&#34;]; p != nil {
-<span id="L138" class="ln">   138  </span>			effective = *p
-<span id="L139" class="ln">   139  </span>		}
-<span id="L140" class="ln">   140  </span>	}
-<span id="L141" class="ln">   141  </span>	if strings.EqualFold(effective, &#34;None&#34;) {
-<span id="L142" class="ln">   142  </span>		setBoolAttr(attrs, &#34;secure&#34;, true)
-<span id="L143" class="ln">   143  </span>	}
-<span id="L144" class="ln">   144  </span>}
-<span id="L145" class="ln">   145  </span>
-<span id="L146" class="ln">   146  </span><span class="comment">// applyNamePrefix は __Secure-/__Host- prefix の安全要件を適用します。</span>
-<span id="L147" class="ln">   147  </span>func (cfg *SecurityCookie) applyNamePrefix(name string, attrs *cookieAttrs) {
-<span id="L148" class="ln">   148  </span>	hostPrefix := strings.HasPrefix(name, &#34;__Host-&#34;)
-<span id="L149" class="ln">   149  </span>	securePrefix := strings.HasPrefix(name, &#34;__Secure-&#34;) || hostPrefix
-<span id="L150" class="ln">   150  </span>	if securePrefix {
-<span id="L151" class="ln">   151  </span>		setBoolAttr(attrs, &#34;secure&#34;, true)
-<span id="L152" class="ln">   152  </span>	}
-<span id="L153" class="ln">   153  </span>	if hostPrefix {
-<span id="L154" class="ln">   154  </span>		<span class="comment">// __Host- は Secure（securePrefix で付与済み）+ Path=/ + Domain無し</span>
-<span id="L155" class="ln">   155  </span>		setKVAttr(attrs, &#34;path&#34;, &#34;/&#34;)
-<span id="L156" class="ln">   156  </span>		delAttr(attrs, &#34;domain&#34;)
-<span id="L157" class="ln">   157  </span>	}
-<span id="L158" class="ln">   158  </span>}
-<span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span><span class="comment">// normalizeSameSite は SameSite 値を許容値（Lax/Strict/None）へ正規化します。非許容値・空は &#34;&#34; を返します。</span>
-<span id="L161" class="ln">   161  </span>func normalizeSameSite(s string) string {
-<span id="L162" class="ln">   162  </span>	switch strings.ToLower(strings.TrimSpace(s)) {
-<span id="L163" class="ln">   163  </span>	case &#34;lax&#34;:
-<span id="L164" class="ln">   164  </span>		return &#34;Lax&#34;
-<span id="L165" class="ln">   165  </span>	case &#34;strict&#34;:
-<span id="L166" class="ln">   166  </span>		return &#34;Strict&#34;
-<span id="L167" class="ln">   167  </span>	case &#34;none&#34;:
-<span id="L168" class="ln">   168  </span>		return &#34;None&#34;
-<span id="L169" class="ln">   169  </span>	default:
-<span id="L170" class="ln">   170  </span>		return &#34;&#34;
-<span id="L171" class="ln">   171  </span>	}
-<span id="L172" class="ln">   172  </span>}
-<span id="L173" class="ln">   173  </span>
+<span id="L62" class="ln">    62  </span>		cookieNames:     map[string]struct{}{},
+<span id="L63" class="ln">    63  </span>		skipCookieNames: map[string]struct{}{},
+<span id="L64" class="ln">    64  </span>		forceMaxAge:     nil,
+<span id="L65" class="ln">    65  </span>	}
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span>	cfg.forceSecure = p.Secure()
+<span id="L68" class="ln">    68  </span>	<span class="comment">// SameSite: 空なら上書きしない、許容値（Lax/Strict/None）へ正規化し非許容値は無視</span>
+<span id="L69" class="ln">    69  </span>	if s := normalizeSameSite(p.SameSite()); s != &#34;&#34; {
+<span id="L70" class="ln">    70  </span>		cfg.forceSameSite = s
+<span id="L71" class="ln">    71  </span>	}
+<span id="L72" class="ln">    72  </span>	<span class="comment">// Domain: 空なら上書きしない</span>
+<span id="L73" class="ln">    73  </span>	<span class="comment">// （__Host- を使う場合は Rewrite 内で Domain が落とされる）</span>
+<span id="L74" class="ln">    74  </span>	if d := strings.TrimSpace(p.Domain()); d != &#34;&#34; {
+<span id="L75" class="ln">    75  </span>		cfg.forceDomain = d
+<span id="L76" class="ln">    76  </span>	}
+<span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span>	return cfg
+<span id="L79" class="ln">    79  </span>}
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span><span class="comment">// RewriteSetCookie は Set-Cookie ヘッダ値（1本）を cfg に基づいて上書きします。</span>
+<span id="L82" class="ln">    82  </span><span class="comment">// 失敗時は空文字を返します（呼び出し側で元の raw を使う想定）。</span>
+<span id="L83" class="ln">    83  </span>func (cfg *SecurityCookie) RewriteSetCookie(raw string) string {
+<span id="L84" class="ln">    84  </span>	name, value, attrs, ok := parseSetCookie(raw)
+<span id="L85" class="ln">    85  </span>	if !ok || name == &#34;&#34; {
+<span id="L86" class="ln">    86  </span>		return &#34;&#34;
+<span id="L87" class="ln">    87  </span>	}
+<span id="L88" class="ln">    88  </span>	if !cfg.targets(name) {
+<span id="L89" class="ln">    89  </span>		return raw
+<span id="L90" class="ln">    90  </span>	}
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span>	if cfg.forceSecure != nil {
+<span id="L93" class="ln">    93  </span>		setBoolAttr(attrs, &#34;secure&#34;, *cfg.forceSecure)
+<span id="L94" class="ln">    94  </span>	}
+<span id="L95" class="ln">    95  </span>	if cfg.forceHTTPOnly != nil {
+<span id="L96" class="ln">    96  </span>		setBoolAttr(attrs, &#34;httponly&#34;, *cfg.forceHTTPOnly)
+<span id="L97" class="ln">    97  </span>	}
+<span id="L98" class="ln">    98  </span>	cfg.applySameSite(attrs)
+<span id="L99" class="ln">    99  </span>	if cfg.forcePath != &#34;&#34; {
+<span id="L100" class="ln">   100  </span>		setKVAttr(attrs, &#34;path&#34;, cfg.forcePath)
+<span id="L101" class="ln">   101  </span>	}
+<span id="L102" class="ln">   102  </span>	if cfg.forceDomain != &#34;&#34; {
+<span id="L103" class="ln">   103  </span>		setKVAttr(attrs, &#34;domain&#34;, cfg.forceDomain)
+<span id="L104" class="ln">   104  </span>	}
+<span id="L105" class="ln">   105  </span>	if cfg.forceMaxAge != nil {
+<span id="L106" class="ln">   106  </span>		setKVAttr(attrs, &#34;max-age&#34;, strconv.Itoa(*cfg.forceMaxAge))
+<span id="L107" class="ln">   107  </span>	}
+<span id="L108" class="ln">   108  </span>	<span class="comment">// expires は Secure 属性との整合性を保つのが困難なため、Max-Age と並行して操作しない。</span>
+<span id="L109" class="ln">   109  </span>	cfg.applyNamePrefix(name, attrs)
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>	return buildSetCookie(name, value, attrs)
+<span id="L112" class="ln">   112  </span>}
+<span id="L113" class="ln">   113  </span>
+<span id="L114" class="ln">   114  </span><span class="comment">// targets は、name を書き換え対象とするか判定します。</span>
+<span id="L115" class="ln">   115  </span>func (cfg *SecurityCookie) targets(name string) bool {
+<span id="L116" class="ln">   116  </span>	if !cfg.applyToAll {
+<span id="L117" class="ln">   117  </span>		if _, ok := cfg.cookieNames[name]; !ok {
+<span id="L118" class="ln">   118  </span>			return false
+<span id="L119" class="ln">   119  </span>		}
+<span id="L120" class="ln">   120  </span>	}
+<span id="L121" class="ln">   121  </span>	_, skip := cfg.skipCookieNames[name]
+<span id="L122" class="ln">   122  </span>	return !skip
+<span id="L123" class="ln">   123  </span>}
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span><span class="comment">// applySameSite は SameSite 上書きと、実効 SameSite=None 時の Secure 強制を適用します。</span>
+<span id="L126" class="ln">   126  </span>func (cfg *SecurityCookie) applySameSite(attrs *cookieAttrs) {
+<span id="L127" class="ln">   127  </span>	if cfg.forceSameSite != &#34;&#34; {
+<span id="L128" class="ln">   128  </span>		setKVAttr(attrs, &#34;samesite&#34;, cfg.forceSameSite)
+<span id="L129" class="ln">   129  </span>	}
+<span id="L130" class="ln">   130  </span>	if !cfg.enforceSecureWhenSameSiteNone {
+<span id="L131" class="ln">   131  </span>		return
+<span id="L132" class="ln">   132  </span>	}
+<span id="L133" class="ln">   133  </span>	<span class="comment">// 実効 SameSite（強制値優先、無ければ入力値）が None なら Secure を強制する</span>
+<span id="L134" class="ln">   134  </span>	effective := cfg.forceSameSite
+<span id="L135" class="ln">   135  </span>	if effective == &#34;&#34; {
+<span id="L136" class="ln">   136  </span>		if p := attrs.kv[&#34;samesite&#34;]; p != nil {
+<span id="L137" class="ln">   137  </span>			effective = *p
+<span id="L138" class="ln">   138  </span>		}
+<span id="L139" class="ln">   139  </span>	}
+<span id="L140" class="ln">   140  </span>	if strings.EqualFold(effective, &#34;None&#34;) {
+<span id="L141" class="ln">   141  </span>		setBoolAttr(attrs, &#34;secure&#34;, true)
+<span id="L142" class="ln">   142  </span>	}
+<span id="L143" class="ln">   143  </span>}
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span><span class="comment">// applyNamePrefix は __Secure-/__Host- prefix の安全要件を適用します。</span>
+<span id="L146" class="ln">   146  </span>func (cfg *SecurityCookie) applyNamePrefix(name string, attrs *cookieAttrs) {
+<span id="L147" class="ln">   147  </span>	hostPrefix := strings.HasPrefix(name, &#34;__Host-&#34;)
+<span id="L148" class="ln">   148  </span>	securePrefix := strings.HasPrefix(name, &#34;__Secure-&#34;) || hostPrefix
+<span id="L149" class="ln">   149  </span>	if securePrefix {
+<span id="L150" class="ln">   150  </span>		setBoolAttr(attrs, &#34;secure&#34;, true)
+<span id="L151" class="ln">   151  </span>	}
+<span id="L152" class="ln">   152  </span>	if hostPrefix {
+<span id="L153" class="ln">   153  </span>		<span class="comment">// __Host- は Secure（securePrefix で付与済み）+ Path=/ + Domain無し</span>
+<span id="L154" class="ln">   154  </span>		setKVAttr(attrs, &#34;path&#34;, &#34;/&#34;)
+<span id="L155" class="ln">   155  </span>		delAttr(attrs, &#34;domain&#34;)
+<span id="L156" class="ln">   156  </span>	}
+<span id="L157" class="ln">   157  </span>}
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span><span class="comment">// normalizeSameSite は SameSite 値を許容値（Lax/Strict/None）へ正規化します。非許容値・空は &#34;&#34; を返します。</span>
+<span id="L160" class="ln">   160  </span>func normalizeSameSite(s string) string {
+<span id="L161" class="ln">   161  </span>	switch strings.ToLower(strings.TrimSpace(s)) {
+<span id="L162" class="ln">   162  </span>	case &#34;lax&#34;:
+<span id="L163" class="ln">   163  </span>		return &#34;Lax&#34;
+<span id="L164" class="ln">   164  </span>	case &#34;strict&#34;:
+<span id="L165" class="ln">   165  </span>		return &#34;Strict&#34;
+<span id="L166" class="ln">   166  </span>	case &#34;none&#34;:
+<span id="L167" class="ln">   167  </span>		return &#34;None&#34;
+<span id="L168" class="ln">   168  </span>	default:
+<span id="L169" class="ln">   169  </span>		return &#34;&#34;
+<span id="L170" class="ln">   170  </span>	}
+<span id="L171" class="ln">   171  </span>}
+<span id="L172" class="ln">   172  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/secure_cookie.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

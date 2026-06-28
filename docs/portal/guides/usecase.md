@@ -310,6 +310,7 @@ These belong to:
 
 - Usecase should rely mostly on **standard library** (`context`, `time`, `errors`, `fmt` etc.).
 - ORM / SQL execution / HTTP clients / Echo / I/O frameworks must not be used.
+- Cross-cutting exception: `internal/logging.Logger` may be injected directly (constructor DI) without a dedicated boundary, like `internal/apperror`. It is a pure, mockable interface, and only background workers that need failure logging (e.g. the outbox relay's dead-message warning) use it. Prefer `metrics` / boundaries for everything else.
 - DTOs and types should remain inside the project. sqlc types, driver types, and OpenAPI generated types should be isolated to other layers.
 - Tests should use minimal tools (`testify`, `mock`). Mocks are injected via interfaces.
 - If absolutely necessary, create a thin wrapper under `[pkg/](../../pkg/)`.
@@ -584,7 +585,7 @@ Observability layer hides SDK details.
 ## Implementation Example
 
 ```go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 // Unique package name
 package user
 

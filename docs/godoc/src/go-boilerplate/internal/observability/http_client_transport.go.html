@@ -129,7 +129,7 @@
 <span id="L72" class="ln">    72  </span>	return &amp;HTTPClientTransport{rt: rt}
 <span id="L73" class="ln">    73  </span>}
 <span id="L74" class="ln">    74  </span>
-<span id="L75" class="ln">    75  </span><span class="comment">// RoundTripper は、内部の RoundTripper を返します（substrate 内部でのみ利用します）。</span>
+<span id="L75" class="ln">    75  </span><span class="comment">// RoundTripper は、ラップしている http.RoundTripper を返します。</span>
 <span id="L76" class="ln">    76  </span>func (t *HTTPClientTransport) RoundTripper() http.RoundTripper {
 <span id="L77" class="ln">    77  </span>	return t.rt
 <span id="L78" class="ln">    78  </span>}

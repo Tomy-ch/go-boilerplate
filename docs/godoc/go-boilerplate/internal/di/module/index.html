@@ -244,15 +244,14 @@
 		
 			
 			
-			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=507:544#L1">InfrastructureModule</a>
+			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=385:422#L1">InfrastructureModule</a>
 				<a class="permalink" href="#InfrastructureModule">¶</a>
 				
 				
 			</h2>
 			<pre>func InfrastructureModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
 			<p>InfrastructureModule は、全プロセス共通のインフラストラクチャ層の依存関係を集約して提供するfx.Moduleです。
-各 concern（永続化 / clock / HTTP client / webapi gateway / security）は
-同パッケージ内の concern ごとのファイルにサブモジュールとして切り出し、ここで束ねます。
+含む concern は永続化 / clock / HTTP client / webapi gateway / security です。
 outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で提供します。
 
 			
@@ -289,13 +288,13 @@ outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で�
 		
 			
 			
-			</p><h2 id="ObservabilityModule">func <a href="../../../../src/go-boilerplate/internal/di/module/observability.go.html?s=283:319#L1">ObservabilityModule</a>
+			</p><h2 id="ObservabilityModule">func <a href="../../../../src/go-boilerplate/internal/di/module/observability.go.html?s=298:334#L1">ObservabilityModule</a>
 				<a class="permalink" href="#ObservabilityModule">¶</a>
 				
 				
 			</h2>
 			<pre>func ObservabilityModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
-			<p>ObservabilityModule は、オブザーバビリティ（トレーシング / メトリクス）関連の依存関係を提供するfx.Moduleです。
+			<p>ObservabilityModule は、オブザーバビリティ（トレーシング / メトリクス / ロギング）関連の依存関係を提供するfx.Moduleです。
 
 			
 			
@@ -364,13 +363,13 @@ relay 以外のプロセスへ漏れないよう共有 InfrastructureModule で�
 		
 			
 			
-			</p><h2 id="HTTPClientProfilesIn">type <a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html?s=305:420#L1">HTTPClientProfilesIn</a>
+			</p><h2 id="HTTPClientProfilesIn">type <a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html?s=273:388#L1">HTTPClientProfilesIn</a>
 				<a class="permalink" href="#HTTPClientProfilesIn">¶</a>
 				
 				
 			</h2>
 			<p>HTTPClientProfilesIn は、httpclient_profiles グループに集まった各 Downstream の Profile を
-集約する入力です（グループの consumer 側。di/job の RunnerIn と同形）。
+集約する入力です（グループの consumer 側）。
 
 			</p><pre>type HTTPClientProfilesIn struct {
     <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#In">In</a>

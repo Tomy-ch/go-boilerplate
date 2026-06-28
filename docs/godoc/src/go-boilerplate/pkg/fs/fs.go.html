@@ -64,7 +64,7 @@
 <span id="L7" class="ln">     7  </span>	&#34;path/filepath&#34;
 <span id="L8" class="ln">     8  </span>)
 <span id="L9" class="ln">     9  </span>
-<span id="L10" class="ln">    10  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_fs.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L10" class="ln">    10  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
 <span id="L11" class="ln">    11  </span>
 <span id="L12" class="ln">    12  </span><span class="comment">// FS は、ファイルシステム操作を抽象化するインターフェースです。</span>
 <span id="L13" class="ln">    13  </span>type FS interface {

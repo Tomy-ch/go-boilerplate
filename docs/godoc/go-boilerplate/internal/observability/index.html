@@ -86,7 +86,9 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package observability は、可観測性に関連するユーティリティを提供します。
+				<p>Package observability は、OTel ベースの分散トレース・メトリクス・ログ計装ユーティリティを提供します。
+LayerTracer によるアーキテクチャ層別 span、SSRF ガード付き HTTPClientTransport、
+Worker / HTTPClient / Outbox 向けメトリクスセット、OTLP Provider のセットアップ関数が含まれます。
 
 				
 			</p></div>
@@ -385,7 +387,7 @@
 		
 			
 			
-			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=859:917#L15">BuildSpanName</a>
+			<h2 id="BuildSpanName">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=765:823#L14">BuildSpanName</a>
 				<a class="permalink" href="#BuildSpanName">¶</a>
 				
 				
@@ -399,7 +401,7 @@
 		
 			
 			
-			</p><h2 id="ContextWithAllowPrivateNetwork">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=4296:4382#L76">ContextWithAllowPrivateNetwork</a>
+			</p><h2 id="ContextWithAllowPrivateNetwork">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=4267:4353#L76">ContextWithAllowPrivateNetwork</a>
 				<a class="permalink" href="#ContextWithAllowPrivateNetwork">¶</a>
 				
 				
@@ -413,7 +415,7 @@
 		
 			
 			
-			</p><h2 id="ContextWithTracePropagation">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=3995:4078#L71">ContextWithTracePropagation</a>
+			</p><h2 id="ContextWithTracePropagation">func <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=3966:4049#L71">ContextWithTracePropagation</a>
 				<a class="permalink" href="#ContextWithTracePropagation">¶</a>
 				
 				
@@ -427,13 +429,13 @@
 		
 			
 			
-			</p><h2 id="ExtractFromCarrier">func <a href="../../../src/go-boilerplate/internal/observability/propagation.go.html?s=954:1039#L18">ExtractFromCarrier</a>
+			</p><h2 id="ExtractFromCarrier">func <a href="../../../src/go-boilerplate/internal/observability/propagation.go.html?s=946:1031#L18">ExtractFromCarrier</a>
 				<a class="permalink" href="#ExtractFromCarrier">¶</a>
 				
 				
 			</h2>
 			<pre>func ExtractFromCarrier(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, attrs map[<a href="../../../builtin/#string">string</a>]<a href="../../../builtin/#string">string</a>) <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a></pre>
-			<p>ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します（D1）。
+			<p>ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します。
 producer → consumer → handler を 1 trace に繋ぐための公開ヘルパです。
 
 			
@@ -442,13 +444,13 @@ producer → consumer → handler を 1 trace に繋ぐための公開ヘルパ�
 		
 			
 			
-			</p><h2 id="InjectTraceContextToCarrier">func <a href="../../../src/go-boilerplate/internal/observability/propagation.go.html?s=1954:2032#L34">InjectTraceContextToCarrier</a>
+			</p><h2 id="InjectTraceContextToCarrier">func <a href="../../../src/go-boilerplate/internal/observability/propagation.go.html?s=1938:2016#L34">InjectTraceContextToCarrier</a>
 				<a class="permalink" href="#InjectTraceContextToCarrier">¶</a>
 				
 				
 			</h2>
 			<pre>func InjectTraceContextToCarrier(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, attrs map[<a href="../../../builtin/#string">string</a>]<a href="../../../builtin/#string">string</a>)</pre>
-			<p>InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます（D1）。
+			<p>InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます。
 outbox emit 時に traceparent を headers へ載せ、後続の relay→受信側を起点 trace に繋ぐための公開ヘルパです。
 グローバル伝播器（Baggage を含みうる）ではなく TraceContext 限定で inject することで、インバウンド由来の
 任意 baggage が outbox 経由で外部エンドポイントへ転送される経路を断ちます。
@@ -489,13 +491,14 @@ outbox emit 時に traceparent を headers へ載せ、後続の relay→受信�
 		
 			
 			
-			</p><h2 id="NewMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=3591:3706#L92">NewMeterProvider</a>
+			</p><h2 id="NewMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=3700:3815#L93">NewMeterProvider</a>
 				<a class="permalink" href="#NewMeterProvider">¶</a>
 				
 				
 			</h2>
 			<pre>func NewMeterProvider(obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>, res *<a href="../../../go.opentelemetry.io/otel/sdk/resource/">resource</a>.<a href="../../../go.opentelemetry.io/otel/sdk/resource/#Resource">Resource</a>) (*<a href="../../../go.opentelemetry.io/otel/sdk/metric/">sdkmetric</a>.<a href="../../../go.opentelemetry.io/otel/sdk/metric/#MeterProvider">MeterProvider</a>, <a href="../../../builtin/#error">error</a>)</pre>
 			<p>NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。
+MetricsEnabled が真の場合は Go ランタイムメトリクスの収集 goroutine も開始する。
 
 			
 			
@@ -575,7 +578,7 @@ outbox emit 時に traceparent を headers へ載せ、後続の relay→受信�
 		
 			
 			
-			</p><h2 id="ProvideMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=6656:6731#L172">ProvideMeterProvider</a>
+			</p><h2 id="ProvideMeterProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=6742:6817#L173">ProvideMeterProvider</a>
 				<a class="permalink" href="#ProvideMeterProvider">¶</a>
 				
 				
@@ -589,7 +592,7 @@ outbox emit 時に traceparent を headers へ載せ、後続の relay→受信�
 		
 			
 			
-			</p><h2 id="ProvideTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=6460:6536#L169">ProvideTracerProvider</a>
+			</p><h2 id="ProvideTracerProvider">func <a href="../../../src/go-boilerplate/internal/observability/provider.go.html?s=6546:6622#L170">ProvideTracerProvider</a>
 				<a class="permalink" href="#ProvideTracerProvider">¶</a>
 				
 				
@@ -603,7 +606,7 @@ outbox emit 時に traceparent を headers へ載せ、後続の relay→受信�
 		
 			
 			
-			</p><h2 id="RunWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=2165:2347#L60">RunWithSpan</a>
+			</p><h2 id="RunWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=2548:2730#L63">RunWithSpan</a>
 				<a class="permalink" href="#RunWithSpan">¶</a>
 				
 				
@@ -618,7 +621,7 @@ outbox emit 時に traceparent を headers へ載せ、後続の relay→受信�
 			<p>RunWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
 </p><p>呼び出し元は、関数 fn の実行結果とエラーを受け取ることができる。
 </p><p>典型的な呼び出し方:
-</p><pre>ctx, result, err := layerTracer.RunWithSpan(ctx, &#34;usecase&#34;, &#34;user&#34;, &#34;FullName&#34;, func(ctx context.Context) (T, error) {
+</p><pre>ctx, result, err := observability.RunWithSpan(ctx, lt, observability.Usecase, &#34;user&#34;, &#34;FullName&#34;, func(ctx context.Context) (T, error) {
     // 処理内容
 })
 </pre>
@@ -629,14 +632,13 @@ outbox emit 時に traceparent を headers へ載せ、後続の relay→受信�
 		
 			
 			
-			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=579:663#L10">ShouldLogWithSpan</a>
+			<h2 id="ShouldLogWithSpan">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=485:569#L9">ShouldLogWithSpan</a>
 				<a class="permalink" href="#ShouldLogWithSpan">¶</a>
 				
 				
 			</h2>
 			<pre>func ShouldLogWithSpan(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, obsCfg *<a href="../../../go-boilerplate/internal/config/">config</a>.<a href="../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>) <a href="../../../builtin/#bool">bool</a></pre>
-			<p>ShouldLogWithSpan は、o11y モードと Span の有無から span 前提ログを出してよいか判定する公開ヘルパです。
-span 前提ログを足す際の拡張ポイントとして提供しており、現状は本番未結線（利用例は README 参照）。
+			<p>ShouldLogWithSpan は、o11y モードが有効かつ ctx にアクティブな Span が存在するとき true を返す。span 付きログを出す前提条件チェックに使う。
 
 			
 			
@@ -827,13 +829,13 @@ ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウ
 
 			
 				
-				</p><h3 id="HTTPClientTransport.RoundTripper">func (*HTTPClientTransport) <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=3777:3839#L66">RoundTripper</a>
+				</p><h3 id="HTTPClientTransport.RoundTripper">func (*HTTPClientTransport) <a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html?s=3748:3810#L66">RoundTripper</a>
 					<a class="permalink" href="#HTTPClientTransport.RoundTripper">¶</a>
 					
 					
 				</h3>
 				<pre>func (t *<a href="#HTTPClientTransport">HTTPClientTransport</a>) RoundTripper() <a href="../../../net/http/">http</a>.<a href="../../../net/http/#RoundTripper">RoundTripper</a></pre>
-				<p>RoundTripper は、内部の RoundTripper を返します（substrate 内部でのみ利用します）。
+				<p>RoundTripper は、ラップしている http.RoundTripper を返します。
 
 				
 				
@@ -842,7 +844,7 @@ ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウ
 		
 			
 			
-			</p><h2 id="LayerTracer">type <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=812:916#L17">LayerTracer</a>
+			</p><h2 id="LayerTracer">type <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1079:1183#L19">LayerTracer</a>
 				<a class="permalink" href="#LayerTracer">¶</a>
 				
 				
@@ -914,7 +916,7 @@ ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウ
 
 			
 				
-				</p><h3 id="LayerTracer.Start">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1058:1168#L25">Start</a>
+				</p><h3 id="LayerTracer.Start">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1325:1435#L27">Start</a>
 					<a class="permalink" href="#LayerTracer.Start">¶</a>
 					
 					
@@ -930,7 +932,7 @@ ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウ
 				
 			
 				
-				</p><h3 id="LayerTracer.StartWithSuffix">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1470:1612#L38">StartWithSuffix</a>
+				</p><h3 id="LayerTracer.StartWithSuffix">func (LayerTracer) <a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html?s=1835:1977#L41">StartWithSuffix</a>
 					<a class="permalink" href="#LayerTracer.StartWithSuffix">¶</a>
 					
 					
@@ -941,6 +943,7 @@ ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウ
     opts ...<a href="../../../go.opentelemetry.io/otel/trace/">trace</a>.<a href="../../../go.opentelemetry.io/otel/trace/#SpanStartOption">SpanStartOption</a>,
 ) (<a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, func())</pre>
 				<p>StartWithSuffix は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
+optionalName が空でない場合は span 名のサフィックスとして付与される。
 
 				
 				
@@ -1027,7 +1030,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 		
 			
 			
-			</p><h2 id="ProviderShutdowner">type <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=426:630#L5">ProviderShutdowner</a>
+			</p><h2 id="ProviderShutdowner">type <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=425:629#L5">ProviderShutdowner</a>
 				<a class="permalink" href="#ProviderShutdowner">¶</a>
 				
 				
@@ -1049,7 +1052,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 
 			
 				
-				<h3 id="NewProviderShutdowner">func <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=848:982#L17">NewProviderShutdowner</a>
+				<h3 id="NewProviderShutdowner">func <a href="../../../src/go-boilerplate/internal/observability/shutdown.go.html?s=847:981#L17">NewProviderShutdowner</a>
 					<a class="permalink" href="#NewProviderShutdowner">¶</a>
 					
 					
@@ -1089,7 +1092,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 
 			
 				
-				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1119:1178#L20">ExtractTraceContext</a>
+				<h3 id="ExtractTraceContext">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1025:1084#L19">ExtractTraceContext</a>
 					<a class="permalink" href="#ExtractTraceContext">¶</a>
 					
 					
@@ -1101,7 +1104,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1553:1710#L33">StartSpanWithParent</a>
+				</p><h3 id="StartSpanWithParent">func <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=1459:1616#L32">StartSpanWithParent</a>
 					<a class="permalink" href="#StartSpanWithParent">¶</a>
 					
 					
@@ -1120,7 +1123,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 
 			
 				
-				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2434:2479#L68">ParentSpanID</a>
+				</p><h3 id="TraceContext.ParentSpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2340:2385#L67">ParentSpanID</a>
 					<a class="permalink" href="#TraceContext.ParentSpanID">¶</a>
 					
 					
@@ -1133,7 +1136,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2294:2333#L63">SpanID</a>
+				</p><h3 id="TraceContext.SpanID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2200:2239#L62">SpanID</a>
 					<a class="permalink" href="#TraceContext.SpanID">¶</a>
 					
 					
@@ -1146,7 +1149,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2164:2204#L58">TraceID</a>
+				</p><h3 id="TraceContext.TraceID">func (*TraceContext) <a href="../../../src/go-boilerplate/internal/observability/helper.go.html?s=2070:2110#L57">TraceID</a>
 					<a class="permalink" href="#TraceContext.TraceID">¶</a>
 					
 					
@@ -1161,7 +1164,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 		
 			
 			
-			</p><h2 id="TracerFactory">type <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=302:639#L2">TracerFactory</a>
+			</p><h2 id="TracerFactory">type <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=295:632#L2">TracerFactory</a>
 				<a class="permalink" href="#TracerFactory">¶</a>
 				
 				
@@ -1199,7 +1202,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="NewTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=771:831#L16">NewTracerFactory</a>
+				</p><h3 id="NewTracerFactory">func <a href="../../../src/go-boilerplate/internal/observability/tracer_factory.go.html?s=764:824#L16">NewTracerFactory</a>
 					<a class="permalink" href="#NewTracerFactory">¶</a>
 					
 					
@@ -1215,12 +1218,12 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 		
 			
 			
-			</p><h2 id="WorkerMetrics">type <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=328:673#L5">WorkerMetrics</a>
+			</p><h2 id="WorkerMetrics">type <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=320:665#L5">WorkerMetrics</a>
 				<a class="permalink" href="#WorkerMetrics">¶</a>
 				
 				
 			</h2>
-			<p>WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です（D2）。
+			<p>WorkerMetrics は、worker engine 所有（broker 非依存）の計装一式です。
 
 			</p><pre>type WorkerMetrics struct {
     <span class="comment">// contains filtered or unexported fields</span>
@@ -1249,7 +1252,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="NewWorkerMetrics">func <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=1020:1090#L25">NewWorkerMetrics</a>
+				</p><h3 id="NewWorkerMetrics">func <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=1012:1082#L25">NewWorkerMetrics</a>
 					<a class="permalink" href="#NewWorkerMetrics">¶</a>
 					
 					
@@ -1264,7 +1267,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 
 			
 				
-				</p><h3 id="WorkerMetrics.DLQ">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2794:2842#L57">DLQ</a>
+				</p><h3 id="WorkerMetrics.DLQ">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2786:2834#L57">DLQ</a>
 					<a class="permalink" href="#WorkerMetrics.DLQ">¶</a>
 					
 					
@@ -1277,7 +1280,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.ExtendError">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3105:3161#L63">ExtendError</a>
+				</p><h3 id="WorkerMetrics.ExtendError">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3097:3153#L63">ExtendError</a>
 					<a class="permalink" href="#WorkerMetrics.ExtendError">¶</a>
 					
 					
@@ -1290,7 +1293,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.Failed">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2464:2515#L51">Failed</a>
+				</p><h3 id="WorkerMetrics.Failed">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2456:2507#L51">Failed</a>
 					<a class="permalink" href="#WorkerMetrics.Failed">¶</a>
 					
 					
@@ -1303,7 +1306,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.InFlightAdd">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3479:3548#L69">InFlightAdd</a>
+				</p><h3 id="WorkerMetrics.InFlightAdd">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3471:3540#L69">InFlightAdd</a>
 					<a class="permalink" href="#WorkerMetrics.InFlightAdd">¶</a>
 					
 					
@@ -1316,7 +1319,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.PollError">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2933:2987#L60">PollError</a>
+				</p><h3 id="WorkerMetrics.PollError">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2925:2979#L60">PollError</a>
 					<a class="permalink" href="#WorkerMetrics.PollError">¶</a>
 					
 					
@@ -1329,7 +1332,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.Processed">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2303:2357#L48">Processed</a>
+				</p><h3 id="WorkerMetrics.Processed">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2295:2349#L48">Processed</a>
 					<a class="permalink" href="#WorkerMetrics.Processed">¶</a>
 					
 					
@@ -1342,7 +1345,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.Received">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2135:2197#L45">Received</a>
+				</p><h3 id="WorkerMetrics.Received">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2127:2189#L45">Received</a>
 					<a class="permalink" href="#WorkerMetrics.Received">¶</a>
 					
 					
@@ -1355,7 +1358,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.RecordLatencyMs">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3274:3346#L66">RecordLatencyMs</a>
+				</p><h3 id="WorkerMetrics.RecordLatencyMs">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=3266:3338#L66">RecordLatencyMs</a>
 					<a class="permalink" href="#WorkerMetrics.RecordLatencyMs">¶</a>
 					
 					
@@ -1368,7 +1371,7 @@ publish 自体の count/latency/error は httpclient(downstream=outbox) の計�
 				
 			
 				
-				</p><h3 id="WorkerMetrics.Retried">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2631:2683#L54">Retried</a>
+				</p><h3 id="WorkerMetrics.Retried">func (*WorkerMetrics) <a href="../../../src/go-boilerplate/internal/observability/worker_metrics.go.html?s=2623:2675#L54">Retried</a>
 					<a class="permalink" href="#WorkerMetrics.Retried">¶</a>
 					
 					

@@ -94,7 +94,7 @@
 <span id="L37" class="ln">    37  </span>		errInvalidConfig,
 <span id="L38" class="ln">    38  </span>		fmt.Sprintf(&#34;invalid bcrypt cost, must be between %d and %d&#34;, bcrypt.MinCost, bcrypt.MaxCost),
 <span id="L39" class="ln">    39  </span>	)
-<span id="L40" class="ln">    40  </span>	<span class="comment">// ErrHTTPOnlyAllowedForLocalhost は、HTTPのみのローカルホストにアクセス可能にするためのエラーを表します。</span>
+<span id="L40" class="ln">    40  </span>	<span class="comment">// ErrHTTPOnlyAllowedForLocalhost は、HTTP スキームが localhost（127.0.0.1 含む）以外のオリジンに使用されたことを示す検証エラーです。</span>
 <span id="L41" class="ln">    41  </span>	ErrHTTPOnlyAllowedForLocalhost = xerrors.Wrap(
 <span id="L42" class="ln">    42  </span>		errInvalidConfig,
 <span id="L43" class="ln">    43  </span>		&#34;http only localhost is allowed&#34;,
@@ -156,7 +156,7 @@
 <span id="L99" class="ln">    99  </span>		errInvalidConfig,
 <span id="L100" class="ln">   100  </span>		&#34;invalid slow query warn threshold, must be greater than or equal to 0&#34;,
 <span id="L101" class="ln">   101  </span>	)
-<span id="L102" class="ln">   102  </span>	<span class="comment">// ErrInvalidExceedMaxConns は、データベースの最大接続数が過剰であることに関するエラーを表します。</span>
+<span id="L102" class="ln">   102  </span>	<span class="comment">// ErrInvalidExceedMaxConns は、MinConns が MaxConns を超えていることを示すエラーです。コネクションプールの最小接続数は最大接続数以下でなければなりません。</span>
 <span id="L103" class="ln">   103  </span>	ErrInvalidExceedMaxConns = xerrors.Wrap(
 <span id="L104" class="ln">   104  </span>		errInvalidConfig,
 <span id="L105" class="ln">   105  </span>		&#34;invalid database max connections, min connections must be less than or equal to max connections&#34;,

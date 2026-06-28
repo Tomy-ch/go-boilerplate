@@ -55,7 +55,7 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package prefecture は、都道府県関連のドメインを提供します。</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package prefecture は、都道府県ドメインを定義します。JIS コード（1〜47）・名称の不変条件を持つ Prefecture エンティティと Repository インターフェースを提供します。</span>
 <span id="L2" class="ln">     2  </span>package prefecture
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span>import (
@@ -76,41 +76,43 @@
 <span id="L19" class="ln">    19  </span>	code int
 <span id="L20" class="ln">    20  </span>}
 <span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span><span class="comment">// New は、都道府県エンティティの検証と生成を行います。</span>
-<span id="L23" class="ln">    23  </span>func New(
-<span id="L24" class="ln">    24  </span>	id uuid.UUID,
-<span id="L25" class="ln">    25  </span>	name string,
-<span id="L26" class="ln">    26  </span>	code int,
-<span id="L27" class="ln">    27  </span>) (*Prefecture, error) {
-<span id="L28" class="ln">    28  </span>	if id.IsNil() {
-<span id="L29" class="ln">    29  </span>		return nil, xerrors.Wrap(ErrInvalidID, &#34;id is required&#34;)
-<span id="L30" class="ln">    30  </span>	}
-<span id="L31" class="ln">    31  </span>	if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok {
-<span id="L32" class="ln">    32  </span>		return nil, xerrors.Wrap(ErrInvalidName, msg)
-<span id="L33" class="ln">    33  </span>	}
-<span id="L34" class="ln">    34  </span>	if code &lt; minCode || maxCode &lt; code {
-<span id="L35" class="ln">    35  </span>		return nil, xerrors.Wrap(
-<span id="L36" class="ln">    36  </span>			ErrInvalidCode,
-<span id="L37" class="ln">    37  </span>			fmt.Sprintf(&#34;code must be between %d and %d, got %d&#34;, minCode, maxCode, code),
-<span id="L38" class="ln">    38  </span>		)
-<span id="L39" class="ln">    39  </span>	}
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	return &amp;Prefecture{
-<span id="L42" class="ln">    42  </span>		id:   id,
-<span id="L43" class="ln">    43  </span>		name: name,
-<span id="L44" class="ln">    44  </span>		code: code,
-<span id="L45" class="ln">    45  </span>	}, nil
-<span id="L46" class="ln">    46  </span>}
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span><span class="comment">// ID は、都道府県のIDを返します。</span>
-<span id="L49" class="ln">    49  </span>func (p *Prefecture) ID() uuid.UUID { return p.id }
-<span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span><span class="comment">// Name は、都道府県名を返します。</span>
-<span id="L52" class="ln">    52  </span>func (p *Prefecture) Name() string { return p.name }
-<span id="L53" class="ln">    53  </span>
-<span id="L54" class="ln">    54  </span><span class="comment">// Code は、都道府県コードを返します。</span>
-<span id="L55" class="ln">    55  </span>func (p *Prefecture) Code() int { return p.code }
-<span id="L56" class="ln">    56  </span>
+<span id="L22" class="ln">    22  </span><span class="comment">// New は、都道府県エンティティの検証と生成を行います。code は 1〜47（JIS 都道府県コード）の</span>
+<span id="L23" class="ln">    23  </span><span class="comment">// 整数である必要があります。id が nil の場合は ErrInvalidID、名前長または code 範囲違反の場合は</span>
+<span id="L24" class="ln">    24  </span><span class="comment">// ErrInvalidName / ErrInvalidCode を返します。</span>
+<span id="L25" class="ln">    25  </span>func New(
+<span id="L26" class="ln">    26  </span>	id uuid.UUID,
+<span id="L27" class="ln">    27  </span>	name string,
+<span id="L28" class="ln">    28  </span>	code int,
+<span id="L29" class="ln">    29  </span>) (*Prefecture, error) {
+<span id="L30" class="ln">    30  </span>	if id.IsNil() {
+<span id="L31" class="ln">    31  </span>		return nil, xerrors.Wrap(ErrInvalidID, &#34;id is required&#34;)
+<span id="L32" class="ln">    32  </span>	}
+<span id="L33" class="ln">    33  </span>	if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok {
+<span id="L34" class="ln">    34  </span>		return nil, xerrors.Wrap(ErrInvalidName, msg)
+<span id="L35" class="ln">    35  </span>	}
+<span id="L36" class="ln">    36  </span>	if code &lt; minCode || maxCode &lt; code {
+<span id="L37" class="ln">    37  </span>		return nil, xerrors.Wrap(
+<span id="L38" class="ln">    38  </span>			ErrInvalidCode,
+<span id="L39" class="ln">    39  </span>			fmt.Sprintf(&#34;code must be between %d and %d, got %d&#34;, minCode, maxCode, code),
+<span id="L40" class="ln">    40  </span>		)
+<span id="L41" class="ln">    41  </span>	}
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>	return &amp;Prefecture{
+<span id="L44" class="ln">    44  </span>		id:   id,
+<span id="L45" class="ln">    45  </span>		name: name,
+<span id="L46" class="ln">    46  </span>		code: code,
+<span id="L47" class="ln">    47  </span>	}, nil
+<span id="L48" class="ln">    48  </span>}
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span><span class="comment">// ID は、都道府県のIDを返します。</span>
+<span id="L51" class="ln">    51  </span>func (p *Prefecture) ID() uuid.UUID { return p.id }
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span><span class="comment">// Name は、都道府県名を返します。</span>
+<span id="L54" class="ln">    54  </span>func (p *Prefecture) Name() string { return p.name }
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span><span class="comment">// Code は、都道府県コードを返します。</span>
+<span id="L57" class="ln">    57  </span>func (p *Prefecture) Code() int { return p.code }
+<span id="L58" class="ln">    58  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/domain/prefecture/prefecture_domain.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

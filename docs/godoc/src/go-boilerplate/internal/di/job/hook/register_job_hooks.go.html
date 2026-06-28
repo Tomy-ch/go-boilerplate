@@ -122,7 +122,7 @@
 <span id="L65" class="ln">    65  </span>}
 <span id="L66" class="ln">    66  </span>
 <span id="L67" class="ln">    67  </span><span class="comment">// shutdown は、ジョブ完了後のアプリ停止を要求し、失敗時はジョブ系のログ様式に合わせて記録します。</span>
-<span id="L68" class="ln">    68  </span><span class="comment">// 隣接する di/job.go の app.Stop 失敗ログと方針を揃え、エラーの黙殺を避けます。</span>
+<span id="L68" class="ln">    68  </span><span class="comment">// エラーは黙殺せずログ記録する。</span>
 <span id="L69" class="ln">    69  </span>func shutdown(sd shutdowner.Shutdowner, logger logging.Logger) {
 <span id="L70" class="ln">    70  </span>	if err := sd.Shutdown(); err != nil {
 <span id="L71" class="ln">    71  </span>		logger.Named(&#34;job.Hooks&#34;).Error(

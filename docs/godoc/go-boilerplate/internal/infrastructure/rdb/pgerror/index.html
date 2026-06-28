@@ -84,7 +84,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package pgerror は、PostgreSQL固有の処理を提供します。
+				<p>Package pgerror は、PostgreSQL エラー（SQLSTATE・接続断・context タイムアウト）をアプリケーションエラー（apperror）へ正規化する関数群と、retryable / lock-timeout / unavailable 判定述語を提供します。
 
 				
 			</p></div>
@@ -145,7 +145,7 @@
 		
 			
 			
-			<h2 id="IsLockNotAvailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3111:3150#L97">IsLockNotAvailable</a>
+			<h2 id="IsLockNotAvailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3136:3175#L95">IsLockNotAvailable</a>
 				<a class="permalink" href="#IsLockNotAvailable">¶</a>
 				
 				
@@ -159,7 +159,7 @@
 		
 			
 			
-			</p><h2 id="IsRetryableTxError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3616:3655#L106">IsRetryableTxError</a>
+			</p><h2 id="IsRetryableTxError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3641:3680#L104">IsRetryableTxError</a>
 				<a class="permalink" href="#IsRetryableTxError">¶</a>
 				
 				
@@ -176,13 +176,13 @@
 		
 			
 			
-			</p><h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2493:2527#L70">IsUnavailable</a>
+			</p><h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2518:2552#L68">IsUnavailable</a>
 				<a class="permalink" href="#IsUnavailable">¶</a>
 				
 				
 			</h2>
 			<pre>func IsUnavailable(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
-			<p>IsUnavailable は、与えられたエラーがデータベースの接続不可エラーであるかを判定します。
+			<p>IsUnavailable は、DB が利用不可能な状態を示すエラーかを判定します。context.DeadlineExceeded・net.Error・PostgreSQL 接続例外クラス(08xxx) を対象とします。
 
 			
 			
@@ -190,14 +190,13 @@
 		
 			
 			
-			</p><h2 id="NormalizeError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=1160:1196#L25">NormalizeError</a>
+			</p><h2 id="NormalizeError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=1165:1201#L23">NormalizeError</a>
 				<a class="permalink" href="#NormalizeError">¶</a>
 				
 				
 			</h2>
 			<pre>func NormalizeError(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a></pre>
 			<p>NormalizeError は、PostgreSQLのエラーをアプリケーション固有のエラーに変換します。
-Infrastructure層から返されるPostgreSQLエラーを一貫した形で処理するために使用します。
 既に正規化済みの apperror はそのまま返します。
 
 			
@@ -206,13 +205,13 @@ Infrastructure層から返されるPostgreSQLエラーを一貫した形で処�
 		
 			
 			
-			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2156:2213#L59">NormalizeExecResult</a>
+			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2108:2165#L57">NormalizeExecResult</a>
 				<a class="permalink" href="#NormalizeExecResult">¶</a>
 				
 				
 			</h2>
 			<pre>func NormalizeExecResult(affected <a href="../../../../../builtin/#int64">int64</a>, err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a></pre>
-			<p>NormalizeExecResult は、影響行数を返す書き込み系（sqlc `:execrows`）の結果を正規化します。
+			<p>NormalizeExecResult は、影響行数を返す書き込み系クエリの結果を正規化します。
 エラーは NormalizeError と同じ規則で変換し、エラーが無くても影響行数が 0 の場合は
 対象が存在しないとみなして ErrNotFound を返します（UPDATE / DELETE のサイレント成功を防ぐ）。
 

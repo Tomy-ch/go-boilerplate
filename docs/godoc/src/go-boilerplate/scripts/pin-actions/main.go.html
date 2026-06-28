@@ -55,7 +55,7 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">// pin-actions は GitHub Actions の `uses:` 参照を不変の commit SHA へ固定するツール。</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package main は GitHub Actions の `uses:` 参照を不変の commit SHA へ固定するツール。</span>
 <span id="L2" class="ln">     2  </span><span class="comment">//</span>
 <span id="L3" class="ln">     3  </span><span class="comment">//	resolve: .github/workflows/** と .github/actions/** の外部アクション参照を走査し、</span>
 <span id="L4" class="ln">     4  </span><span class="comment">//	         tag/version を git ls-remote で SHA へ解決して lockfile (.github/actions-pin.toml) へ書き出す。</span>

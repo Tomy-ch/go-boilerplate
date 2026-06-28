@@ -156,88 +156,89 @@
 <span id="L99" class="ln">    99  </span>}
 <span id="L100" class="ln">   100  </span>
 <span id="L101" class="ln">   101  </span><span class="comment">// NewMeterProvider は MeterProvider をグローバル登録し、構築した MeterProvider を返す。</span>
-<span id="L102" class="ln">   102  </span>func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
-<span id="L103" class="ln">   103  </span>	opts := []sdkmetric.Option{sdkmetric.WithResource(res)}
-<span id="L104" class="ln">   104  </span>
-<span id="L105" class="ln">   105  </span>	if obsCfg.MetricsEnabled() {
-<span id="L106" class="ln">   106  </span>		reader, err := newMetricReader(context.Background(), obsCfg)
-<span id="L107" class="ln">   107  </span>		if err != nil {
-<span id="L108" class="ln">   108  </span>			return nil, xerrors.Wrap(err, &#34;failed to build metric reader&#34;)
-<span id="L109" class="ln">   109  </span>		}
-<span id="L110" class="ln">   110  </span>		opts = append(opts, sdkmetric.WithReader(reader))
-<span id="L111" class="ln">   111  </span>	}
-<span id="L112" class="ln">   112  </span>
-<span id="L113" class="ln">   113  </span>	mp := sdkmetric.NewMeterProvider(opts...)
-<span id="L114" class="ln">   114  </span>
-<span id="L115" class="ln">   115  </span>	if obsCfg.MetricsEnabled() {
-<span id="L116" class="ln">   116  </span>		if err := runtime.Start(runtime.WithMeterProvider(mp)); err != nil {
-<span id="L117" class="ln">   117  </span>			<span class="comment">// mp は既に PeriodicReader（送出 goroutine）を抱えているため、失敗時は Shutdown して回収する。</span>
-<span id="L118" class="ln">   118  </span>			_ = mp.Shutdown(context.Background())
-<span id="L119" class="ln">   119  </span>			return nil, xerrors.Wrap(err, &#34;failed to start runtime metrics&#34;)
-<span id="L120" class="ln">   120  </span>		}
-<span id="L121" class="ln">   121  </span>	}
-<span id="L122" class="ln">   122  </span>
-<span id="L123" class="ln">   123  </span>	otel.SetMeterProvider(mp)
-<span id="L124" class="ln">   124  </span>
-<span id="L125" class="ln">   125  </span>	return mp, nil
-<span id="L126" class="ln">   126  </span>}
-<span id="L127" class="ln">   127  </span>
-<span id="L128" class="ln">   128  </span><span class="comment">// newSpanExporter は OBS_OTLP_PROTOCOL / OBS_OTLP_ENDPOINT から OTLP SpanExporter を構築する。</span>
-<span id="L129" class="ln">   129  </span><span class="comment">// endpoint 未指定時は OTLP のデフォルト（localhost:4318 / :4317）に従う。</span>
-<span id="L130" class="ln">   130  </span>func newSpanExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdktrace.SpanExporter, error) {
-<span id="L131" class="ln">   131  </span>	switch obsCfg.OTLPProtocol() {
-<span id="L132" class="ln">   132  </span>	case protocolGRPC:
-<span id="L133" class="ln">   133  </span>		var opts []otlptracegrpc.Option
-<span id="L134" class="ln">   134  </span>		if ep := obsCfg.OTLPEndpoint(); ep != &#34;&#34; {
-<span id="L135" class="ln">   135  </span>			opts = append(opts, otlptracegrpc.WithEndpointURL(ep))
-<span id="L136" class="ln">   136  </span>		}
-<span id="L137" class="ln">   137  </span>		return otlptracegrpc.New(ctx, opts...)
-<span id="L138" class="ln">   138  </span>	case protocolHTTP, &#34;&#34;:
-<span id="L139" class="ln">   139  </span>		var opts []otlptracehttp.Option
-<span id="L140" class="ln">   140  </span>		if ep := obsCfg.OTLPEndpoint(); ep != &#34;&#34; {
-<span id="L141" class="ln">   141  </span>			opts = append(opts, otlptracehttp.WithEndpointURL(ensureOTLPPath(ep, otlpTracesPath)))
-<span id="L142" class="ln">   142  </span>		}
-<span id="L143" class="ln">   143  </span>		return otlptracehttp.New(ctx, opts...)
-<span id="L144" class="ln">   144  </span>	default:
-<span id="L145" class="ln">   145  </span>		return nil, errInvalidOTLPProtocol
-<span id="L146" class="ln">   146  </span>	}
-<span id="L147" class="ln">   147  </span>}
-<span id="L148" class="ln">   148  </span>
-<span id="L149" class="ln">   149  </span><span class="comment">// newMetricReader は OTLP MetricExporter を PeriodicReader で包んで返す。</span>
-<span id="L150" class="ln">   150  </span>func newMetricReader(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdkmetric.Reader, error) {
-<span id="L151" class="ln">   151  </span>	exporter, err := newMetricExporter(ctx, obsCfg)
-<span id="L152" class="ln">   152  </span>	if err != nil {
-<span id="L153" class="ln">   153  </span>		return nil, err
-<span id="L154" class="ln">   154  </span>	}
-<span id="L155" class="ln">   155  </span>	return sdkmetric.NewPeriodicReader(exporter), nil
-<span id="L156" class="ln">   156  </span>}
-<span id="L157" class="ln">   157  </span>
-<span id="L158" class="ln">   158  </span><span class="comment">// newMetricExporter は OBS_OTLP_PROTOCOL / OBS_OTLP_ENDPOINT から OTLP MetricExporter を構築する。</span>
-<span id="L159" class="ln">   159  </span>func newMetricExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdkmetric.Exporter, error) {
-<span id="L160" class="ln">   160  </span>	switch obsCfg.OTLPProtocol() {
-<span id="L161" class="ln">   161  </span>	case protocolGRPC:
-<span id="L162" class="ln">   162  </span>		var opts []otlpmetricgrpc.Option
-<span id="L163" class="ln">   163  </span>		if ep := obsCfg.OTLPEndpoint(); ep != &#34;&#34; {
-<span id="L164" class="ln">   164  </span>			opts = append(opts, otlpmetricgrpc.WithEndpointURL(ep))
-<span id="L165" class="ln">   165  </span>		}
-<span id="L166" class="ln">   166  </span>		return otlpmetricgrpc.New(ctx, opts...)
-<span id="L167" class="ln">   167  </span>	case protocolHTTP, &#34;&#34;:
-<span id="L168" class="ln">   168  </span>		var opts []otlpmetrichttp.Option
-<span id="L169" class="ln">   169  </span>		if ep := obsCfg.OTLPEndpoint(); ep != &#34;&#34; {
-<span id="L170" class="ln">   170  </span>			opts = append(opts, otlpmetrichttp.WithEndpointURL(ensureOTLPPath(ep, otlpMetricsPath)))
-<span id="L171" class="ln">   171  </span>		}
-<span id="L172" class="ln">   172  </span>		return otlpmetrichttp.New(ctx, opts...)
-<span id="L173" class="ln">   173  </span>	default:
-<span id="L174" class="ln">   174  </span>		return nil, errInvalidOTLPProtocol
-<span id="L175" class="ln">   175  </span>	}
-<span id="L176" class="ln">   176  </span>}
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span><span class="comment">// ProvideTracerProvider は具象 TracerProvider を otel の trace.TracerProvider IF として返す。</span>
-<span id="L179" class="ln">   179  </span>func ProvideTracerProvider(tp *sdktrace.TracerProvider) trace.TracerProvider { return tp }
-<span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span><span class="comment">// ProvideMeterProvider は具象 MeterProvider を otel の metric.MeterProvider IF として返す。</span>
-<span id="L182" class="ln">   182  </span>func ProvideMeterProvider(mp *sdkmetric.MeterProvider) metric.MeterProvider { return mp }
-<span id="L183" class="ln">   183  </span>
+<span id="L102" class="ln">   102  </span><span class="comment">// MetricsEnabled が真の場合は Go ランタイムメトリクスの収集 goroutine も開始する。</span>
+<span id="L103" class="ln">   103  </span>func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
+<span id="L104" class="ln">   104  </span>	opts := []sdkmetric.Option{sdkmetric.WithResource(res)}
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span>	if obsCfg.MetricsEnabled() {
+<span id="L107" class="ln">   107  </span>		reader, err := newMetricReader(context.Background(), obsCfg)
+<span id="L108" class="ln">   108  </span>		if err != nil {
+<span id="L109" class="ln">   109  </span>			return nil, xerrors.Wrap(err, &#34;failed to build metric reader&#34;)
+<span id="L110" class="ln">   110  </span>		}
+<span id="L111" class="ln">   111  </span>		opts = append(opts, sdkmetric.WithReader(reader))
+<span id="L112" class="ln">   112  </span>	}
+<span id="L113" class="ln">   113  </span>
+<span id="L114" class="ln">   114  </span>	mp := sdkmetric.NewMeterProvider(opts...)
+<span id="L115" class="ln">   115  </span>
+<span id="L116" class="ln">   116  </span>	if obsCfg.MetricsEnabled() {
+<span id="L117" class="ln">   117  </span>		if err := runtime.Start(runtime.WithMeterProvider(mp)); err != nil {
+<span id="L118" class="ln">   118  </span>			<span class="comment">// mp は既に PeriodicReader（送出 goroutine）を抱えているため、失敗時は Shutdown して回収する。</span>
+<span id="L119" class="ln">   119  </span>			_ = mp.Shutdown(context.Background())
+<span id="L120" class="ln">   120  </span>			return nil, xerrors.Wrap(err, &#34;failed to start runtime metrics&#34;)
+<span id="L121" class="ln">   121  </span>		}
+<span id="L122" class="ln">   122  </span>	}
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>	otel.SetMeterProvider(mp)
+<span id="L125" class="ln">   125  </span>
+<span id="L126" class="ln">   126  </span>	return mp, nil
+<span id="L127" class="ln">   127  </span>}
+<span id="L128" class="ln">   128  </span>
+<span id="L129" class="ln">   129  </span><span class="comment">// newSpanExporter は OBS_OTLP_PROTOCOL / OBS_OTLP_ENDPOINT から OTLP SpanExporter を構築する。</span>
+<span id="L130" class="ln">   130  </span><span class="comment">// endpoint 未指定時は OTLP のデフォルト（localhost:4318 / :4317）に従う。</span>
+<span id="L131" class="ln">   131  </span>func newSpanExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdktrace.SpanExporter, error) {
+<span id="L132" class="ln">   132  </span>	switch obsCfg.OTLPProtocol() {
+<span id="L133" class="ln">   133  </span>	case protocolGRPC:
+<span id="L134" class="ln">   134  </span>		var opts []otlptracegrpc.Option
+<span id="L135" class="ln">   135  </span>		if ep := obsCfg.OTLPEndpoint(); ep != &#34;&#34; {
+<span id="L136" class="ln">   136  </span>			opts = append(opts, otlptracegrpc.WithEndpointURL(ep))
+<span id="L137" class="ln">   137  </span>		}
+<span id="L138" class="ln">   138  </span>		return otlptracegrpc.New(ctx, opts...)
+<span id="L139" class="ln">   139  </span>	case protocolHTTP, &#34;&#34;:
+<span id="L140" class="ln">   140  </span>		var opts []otlptracehttp.Option
+<span id="L141" class="ln">   141  </span>		if ep := obsCfg.OTLPEndpoint(); ep != &#34;&#34; {
+<span id="L142" class="ln">   142  </span>			opts = append(opts, otlptracehttp.WithEndpointURL(ensureOTLPPath(ep, otlpTracesPath)))
+<span id="L143" class="ln">   143  </span>		}
+<span id="L144" class="ln">   144  </span>		return otlptracehttp.New(ctx, opts...)
+<span id="L145" class="ln">   145  </span>	default:
+<span id="L146" class="ln">   146  </span>		return nil, errInvalidOTLPProtocol
+<span id="L147" class="ln">   147  </span>	}
+<span id="L148" class="ln">   148  </span>}
+<span id="L149" class="ln">   149  </span>
+<span id="L150" class="ln">   150  </span><span class="comment">// newMetricReader は定期収集型の Reader を返す。</span>
+<span id="L151" class="ln">   151  </span>func newMetricReader(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdkmetric.Reader, error) {
+<span id="L152" class="ln">   152  </span>	exporter, err := newMetricExporter(ctx, obsCfg)
+<span id="L153" class="ln">   153  </span>	if err != nil {
+<span id="L154" class="ln">   154  </span>		return nil, err
+<span id="L155" class="ln">   155  </span>	}
+<span id="L156" class="ln">   156  </span>	return sdkmetric.NewPeriodicReader(exporter), nil
+<span id="L157" class="ln">   157  </span>}
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span><span class="comment">// newMetricExporter は OBS_OTLP_PROTOCOL / OBS_OTLP_ENDPOINT から OTLP MetricExporter を構築する。</span>
+<span id="L160" class="ln">   160  </span>func newMetricExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdkmetric.Exporter, error) {
+<span id="L161" class="ln">   161  </span>	switch obsCfg.OTLPProtocol() {
+<span id="L162" class="ln">   162  </span>	case protocolGRPC:
+<span id="L163" class="ln">   163  </span>		var opts []otlpmetricgrpc.Option
+<span id="L164" class="ln">   164  </span>		if ep := obsCfg.OTLPEndpoint(); ep != &#34;&#34; {
+<span id="L165" class="ln">   165  </span>			opts = append(opts, otlpmetricgrpc.WithEndpointURL(ep))
+<span id="L166" class="ln">   166  </span>		}
+<span id="L167" class="ln">   167  </span>		return otlpmetricgrpc.New(ctx, opts...)
+<span id="L168" class="ln">   168  </span>	case protocolHTTP, &#34;&#34;:
+<span id="L169" class="ln">   169  </span>		var opts []otlpmetrichttp.Option
+<span id="L170" class="ln">   170  </span>		if ep := obsCfg.OTLPEndpoint(); ep != &#34;&#34; {
+<span id="L171" class="ln">   171  </span>			opts = append(opts, otlpmetrichttp.WithEndpointURL(ensureOTLPPath(ep, otlpMetricsPath)))
+<span id="L172" class="ln">   172  </span>		}
+<span id="L173" class="ln">   173  </span>		return otlpmetrichttp.New(ctx, opts...)
+<span id="L174" class="ln">   174  </span>	default:
+<span id="L175" class="ln">   175  </span>		return nil, errInvalidOTLPProtocol
+<span id="L176" class="ln">   176  </span>	}
+<span id="L177" class="ln">   177  </span>}
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span><span class="comment">// ProvideTracerProvider は具象 TracerProvider を otel の trace.TracerProvider IF として返す。</span>
+<span id="L180" class="ln">   180  </span>func ProvideTracerProvider(tp *sdktrace.TracerProvider) trace.TracerProvider { return tp }
+<span id="L181" class="ln">   181  </span>
+<span id="L182" class="ln">   182  </span><span class="comment">// ProvideMeterProvider は具象 MeterProvider を otel の metric.MeterProvider IF として返す。</span>
+<span id="L183" class="ln">   183  </span>func ProvideMeterProvider(mp *sdkmetric.MeterProvider) metric.MeterProvider { return mp }
+<span id="L184" class="ln">   184  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/observability/provider.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

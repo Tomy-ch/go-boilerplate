@@ -86,7 +86,7 @@
 			</div>
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
-				<p>Package lifecycle は、アプリケーションのライフサイクル管理に関する機能を提供します。
+				<p>Package lifecycle は、fx.Lifecycle を抽象化するテスト可能な Registrar インターフェースと、バックグラウンドランナーを fx ライフサイクルへ結線する SupervisedRunner プリミティブを提供します。
 
 				
 			</p></div>
@@ -170,7 +170,7 @@
 		
 			
 			
-			</p><h2 id="Registrar">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=405:765#L3">Registrar</a>
+			</p><h2 id="Registrar">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=536:896#L3">Registrar</a>
 				<a class="permalink" href="#Registrar">¶</a>
 				
 				
@@ -194,7 +194,7 @@
 
 			
 				
-				<h3 id="NewLifecycleRegistrar">func <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=1049:1102#L16">NewLifecycleRegistrar</a>
+				<h3 id="NewLifecycleRegistrar">func <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=1180:1233#L16">NewLifecycleRegistrar</a>
 					<a class="permalink" href="#NewLifecycleRegistrar">¶</a>
 					
 					
@@ -210,7 +210,7 @@
 		
 			
 			
-			</p><h2 id="SupervisedRunner">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html?s=974:1566#L8">SupervisedRunner</a>
+			</p><h2 id="SupervisedRunner">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html?s=1013:1605#L8">SupervisedRunner</a>
 				<a class="permalink" href="#SupervisedRunner">¶</a>
 				
 				
@@ -223,7 +223,7 @@ goroutine で起動する（OnStart はブロックしない）。
 </li><li>OnStop:  実行 context をキャンセルし、Body の完了を stopCtx（grace）の範囲で待ち、
 その後 <a href="#SupervisedRunner.OnStopAux">SupervisedRunner.OnStopAux</a>（任意）を実行する。
 </li></ul>
-<p>実行 context は context.Background() から WithCancel で派生させます。これにより
+<p>Body に渡される実行 context は startCtx とは独立しており、OnStop でのみキャンセルされます。これにより
 </p><ul>
 <li>OnStart 完了後に fx が startCtx をキャンセルしても Body は巻き込まれず（detached）、
 </li><li>OnStop の cancel でのみ Body の context が切れて中断できる（停止時キャンセル）。
@@ -253,7 +253,7 @@ goroutine で起動する（OnStart はブロックしない）。
 
 			
 				
-				<h3 id="SupervisedRunner.Register">func (SupervisedRunner) <a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html?s=1657:1706#L20">Register</a>
+				<h3 id="SupervisedRunner.Register">func (SupervisedRunner) <a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html?s=1696:1745#L20">Register</a>
 					<a class="permalink" href="#SupervisedRunner.Register">¶</a>
 					
 					

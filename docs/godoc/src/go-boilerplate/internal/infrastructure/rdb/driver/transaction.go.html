@@ -169,62 +169,64 @@
 <span id="L112" class="ln">   112  </span>
 <span id="L113" class="ln">   113  </span><span class="comment">// doOnce は、1 回分のトランザクション（begin → fn → commit / rollback）を実行します。</span>
 <span id="L114" class="ln">   114  </span><span class="comment">//</span>
-<span id="L115" class="ln">   115  </span><span class="comment">// エラーは正規化せず**生のまま**返します。serialization failure / deadlock の判定（IsRetryableTxError）は</span>
-<span id="L116" class="ln">   116  </span><span class="comment">// 生 SQLSTATE を要するため、正規化（PgError を文字列化して捨てる）は呼出元 Do がリトライ後に 1 度だけ行います。</span>
-<span id="L117" class="ln">   117  </span>func (t *txManager) doOnce(ctx context.Context, fn func(ctx context.Context) error) error {
-<span id="L118" class="ln">   118  </span>	tx, err := t.db.Begin(ctx)
-<span id="L119" class="ln">   119  </span>	if err != nil {
-<span id="L120" class="ln">   120  </span>		return err
-<span id="L121" class="ln">   121  </span>	}
-<span id="L122" class="ln">   122  </span>
-<span id="L123" class="ln">   123  </span>	completed := false
-<span id="L124" class="ln">   124  </span>	defer func(ctx context.Context) {
-<span id="L125" class="ln">   125  </span>		if completed {
-<span id="L126" class="ln">   126  </span>			return
-<span id="L127" class="ln">   127  </span>		}
-<span id="L128" class="ln">   128  </span>		if p := recover(); p != nil {
-<span id="L129" class="ln">   129  </span>			t.rollback(ctx, tx, logging.Any(&#34;panic&#34;, p))
-<span id="L130" class="ln">   130  </span>			panic(p)
-<span id="L131" class="ln">   131  </span>		}
-<span id="L132" class="ln">   132  </span>		<span class="comment">// fn が runtime.Goexit（testify の FailNow 等）で中断した場合の後始末。</span>
-<span id="L133" class="ln">   133  </span>		t.rollback(ctx, tx)
-<span id="L134" class="ln">   134  </span>	}(ctx)
-<span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span>	ctx = withTx(ctx, tx)
+<span id="L115" class="ln">   115  </span><span class="comment">// エラーは正規化せず**生のまま**返します。fn 内の repository は NormalizeError 済みのエラーを返しますが、</span>
+<span id="L116" class="ln">   116  </span><span class="comment">// それは xerrors.Join で元の PgError を chain に保持するため、IsRetryableTxError は正規化後でも</span>
+<span id="L117" class="ln">   117  </span><span class="comment">// 生 SQLSTATE（40001/40P01）を errors.As で参照でき、fn 内の serialization failure / deadlock も</span>
+<span id="L118" class="ln">   118  </span><span class="comment">// リトライ対象になります。最終的な apperror への写像は呼出元 Do がリトライ後に 1 度だけ行います。</span>
+<span id="L119" class="ln">   119  </span>func (t *txManager) doOnce(ctx context.Context, fn func(ctx context.Context) error) error {
+<span id="L120" class="ln">   120  </span>	tx, err := t.db.Begin(ctx)
+<span id="L121" class="ln">   121  </span>	if err != nil {
+<span id="L122" class="ln">   122  </span>		return err
+<span id="L123" class="ln">   123  </span>	}
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>	completed := false
+<span id="L126" class="ln">   126  </span>	defer func(ctx context.Context) {
+<span id="L127" class="ln">   127  </span>		if completed {
+<span id="L128" class="ln">   128  </span>			return
+<span id="L129" class="ln">   129  </span>		}
+<span id="L130" class="ln">   130  </span>		if p := recover(); p != nil {
+<span id="L131" class="ln">   131  </span>			t.rollback(ctx, tx, logging.Any(&#34;panic&#34;, p))
+<span id="L132" class="ln">   132  </span>			panic(p)
+<span id="L133" class="ln">   133  </span>		}
+<span id="L134" class="ln">   134  </span>		<span class="comment">// fn が runtime.Goexit（testify の FailNow 等）で中断した場合の後始末。</span>
+<span id="L135" class="ln">   135  </span>		t.rollback(ctx, tx)
+<span id="L136" class="ln">   136  </span>	}(ctx)
 <span id="L137" class="ln">   137  </span>
-<span id="L138" class="ln">   138  </span>	if err := fn(ctx); err != nil {
-<span id="L139" class="ln">   139  </span>		t.rollback(ctx, tx, logging.Error(logging.OriginalErrorKey, err))
-<span id="L140" class="ln">   140  </span>		completed = true
-<span id="L141" class="ln">   141  </span>		return err
-<span id="L142" class="ln">   142  </span>	}
-<span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span>	if err := tx.Commit(ctx); err != nil {
-<span id="L145" class="ln">   145  </span>		completed = true
-<span id="L146" class="ln">   146  </span>		return err
-<span id="L147" class="ln">   147  </span>	}
-<span id="L148" class="ln">   148  </span>
-<span id="L149" class="ln">   149  </span>	completed = true
-<span id="L150" class="ln">   150  </span>	return nil
-<span id="L151" class="ln">   151  </span>}
-<span id="L152" class="ln">   152  </span>
-<span id="L153" class="ln">   153  </span><span class="comment">// rollback はロールバックし、失敗時に fields を併記してログを残します。</span>
-<span id="L154" class="ln">   154  </span>func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.Field) {
-<span id="L155" class="ln">   155  </span>	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
-<span id="L156" class="ln">   156  </span>	defer cancel()
-<span id="L157" class="ln">   157  </span>
-<span id="L158" class="ln">   158  </span>	if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
-<span id="L159" class="ln">   159  </span>		logFields := append([]*logging.Field{logging.Error(logging.ErrorKey, pgErr)}, fields...)
-<span id="L160" class="ln">   160  </span>		t.logger.CallerSkip(callerSkipCount).Named(&#34;TransactionManager&#34;).Error(
-<span id="L161" class="ln">   161  </span>			&#34;Failed to rollback transaction&#34;, logFields...,
-<span id="L162" class="ln">   162  </span>		)
-<span id="L163" class="ln">   163  </span>	}
-<span id="L164" class="ln">   164  </span>}
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span><span class="comment">// withTx は、context.Contextにトランザクションを設定します。</span>
-<span id="L167" class="ln">   167  </span>func withTx(ctx context.Context, tx pgx.Tx) context.Context {
-<span id="L168" class="ln">   168  </span>	return context.WithValue(ctx, txKey{}, tx)
-<span id="L169" class="ln">   169  </span>}
-<span id="L170" class="ln">   170  </span>
+<span id="L138" class="ln">   138  </span>	ctx = withTx(ctx, tx)
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>	if err := fn(ctx); err != nil {
+<span id="L141" class="ln">   141  </span>		t.rollback(ctx, tx, logging.Error(logging.OriginalErrorKey, err))
+<span id="L142" class="ln">   142  </span>		completed = true
+<span id="L143" class="ln">   143  </span>		return err
+<span id="L144" class="ln">   144  </span>	}
+<span id="L145" class="ln">   145  </span>
+<span id="L146" class="ln">   146  </span>	if err := tx.Commit(ctx); err != nil {
+<span id="L147" class="ln">   147  </span>		completed = true
+<span id="L148" class="ln">   148  </span>		return err
+<span id="L149" class="ln">   149  </span>	}
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>	completed = true
+<span id="L152" class="ln">   152  </span>	return nil
+<span id="L153" class="ln">   153  </span>}
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span><span class="comment">// rollback はロールバックし、失敗時に fields を併記してログを残します。</span>
+<span id="L156" class="ln">   156  </span>func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.Field) {
+<span id="L157" class="ln">   157  </span>	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+<span id="L158" class="ln">   158  </span>	defer cancel()
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span>	if pgErr := tx.Rollback(cleanupCtx); pgErr != nil {
+<span id="L161" class="ln">   161  </span>		logFields := append([]*logging.Field{logging.Error(logging.ErrorKey, pgErr)}, fields...)
+<span id="L162" class="ln">   162  </span>		t.logger.CallerSkip(callerSkipCount).Named(&#34;TransactionManager&#34;).Error(
+<span id="L163" class="ln">   163  </span>			&#34;Failed to rollback transaction&#34;, logFields...,
+<span id="L164" class="ln">   164  </span>		)
+<span id="L165" class="ln">   165  </span>	}
+<span id="L166" class="ln">   166  </span>}
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span><span class="comment">// withTx は、context.Contextにトランザクションを設定します。</span>
+<span id="L169" class="ln">   169  </span>func withTx(ctx context.Context, tx pgx.Tx) context.Context {
+<span id="L170" class="ln">   170  </span>	return context.WithValue(ctx, txKey{}, tx)
+<span id="L171" class="ln">   171  </span>}
+<span id="L172" class="ln">   172  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/transaction.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

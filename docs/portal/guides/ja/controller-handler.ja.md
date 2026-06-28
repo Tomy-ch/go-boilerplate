@@ -35,6 +35,8 @@ handler は 1 アクションにつき **単一の Usecase 操作へ委譲**し�
 
 Presenterとは`Usecase DTO → OpenAPIレスポンス型`への変換処理です。
 
+同一の変換を複数のハンドラーメソッドで再利用する場合は、ハンドラーパッケージ内に private な `toXxxResponse(dto …) gen.XxxResponse` ヘルパー（例: `toUserResponse`）として定義します。単発の変換はハンドラー本体にインラインで書いてかまいません。
+
 ## アーキテクチャ
 
 ### HTTPリクエストの処理フロー
@@ -322,6 +324,8 @@ defer endSpan()
 ポイント：Controllerはspanの開始・終了だけを知り、
 OpenTelemetry SDK の詳細には一切触れません。
 
+例外：下流の usecase を呼ばないハンドラー（liveness/health/version 等のプローブ）は再束縛した `ctx` を使わないため、未使用変数エラーを避けつつ span を記録する目的で `_, endSpan := s.tracer.Start(ctx)` と書いてよい。
+
 #### 2. TracerのDI（observability.LayerTracer）
 
 Controllerは以下のようにobservability.LayerTracerを依存として受け取ります。
@@ -423,6 +427,8 @@ type server struct {
 - フィールドは **DIで受け取る依存のみ**
 - new を使って内部で依存生成しない
 - interface（Usecase）に依存する
+
+例外：OpenAPI に定義されない運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は生成された `ServerInterface` を持たないため、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外は非 OpenAPI の運用エンドポイントに限ります。
 
 ### なぜ fx.Invoke を使うのか
 
