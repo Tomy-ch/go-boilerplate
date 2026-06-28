@@ -112,8 +112,10 @@ func normalizeTxResult(err error) error {
 
 // doOnce は、1 回分のトランザクション（begin → fn → commit / rollback）を実行します。
 //
-// エラーは正規化せず**生のまま**返します。serialization failure / deadlock の判定（IsRetryableTxError）は
-// 生 SQLSTATE を要するため、正規化（PgError を文字列化して捨てる）は呼出元 Do がリトライ後に 1 度だけ行います。
+// エラーは正規化せず**生のまま**返します。fn 内の repository は NormalizeError 済みのエラーを返しますが、
+// それは xerrors.Join で元の PgError を chain に保持するため、IsRetryableTxError は正規化後でも
+// 生 SQLSTATE（40001/40P01）を errors.As で参照でき、fn 内の serialization failure / deadlock も
+// リトライ対象になります。最終的な apperror への写像は呼出元 Do がリトライ後に 1 度だけ行います。
 func (t *txManager) doOnce(ctx context.Context, fn func(ctx context.Context) error) error {
 	tx, err := t.db.Begin(ctx)
 	if err != nil {
