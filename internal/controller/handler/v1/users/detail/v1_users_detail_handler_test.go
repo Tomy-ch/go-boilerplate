@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/controller/handler/testkit/testuuid"
 	"go-boilerplate/internal/controller/handler/v1/users/detail/gen"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
@@ -22,6 +23,9 @@ import (
 )
 
 const targetPath = "/v1/users/:user_id"
+
+// subject は、認可付きエンドポイントのテストで使う認証主体の subject です。
+const subject = "11111111-1111-1111-1111-111111111111"
 
 func newServer(t *testing.T) (*server, *mock_user.MockUsecase) {
 	t.Helper()
@@ -87,9 +91,12 @@ func Test_server_GetUsersDetail(t *testing.T) {
 		t.Run("ユーザーが存在する場合_詳細が取得できる", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(dto, nil)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(dto, nil)
 
-			resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			resp, err := s.GetUsersDetail(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)},
+			)
 			require.NoError(t, err)
 
 			actual, ok := resp.(gen.GetUsersDetail200JSONResponse)
@@ -101,12 +108,24 @@ func Test_server_GetUsersDetail(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(user.UserView{}, apperror.ErrNotFound)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(user.UserView{}, apperror.ErrNotFound)
 
-			resp, err := s.GetUsersDetail(context.Background(), gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			resp, err := s.GetUsersDetail(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.GetUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)},
+			)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
@@ -134,13 +153,16 @@ func Test_server_PutUsersDetail(t *testing.T) {
 
 			var got *user.UpdateProfileParams
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.UpdateProfileParams) (user.UserView, error) {
+			mockApp.EXPECT().UpdateUser(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ *authbd.Authn, _ uuid.UUID, p *user.UpdateProfileParams) (user.UserView, error) {
 					got = p
 					return returned, nil
 				})
 
-			resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			resp, err := s.PutUsersDetail(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body},
+			)
 			require.NoError(t, err)
 
 			wantDTO := &user.UpdateProfileParams{
@@ -158,14 +180,26 @@ func Test_server_PutUsersDetail(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
 			mockApp.EXPECT().
-				UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
+				UpdateUser(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
 				Return(user.UserView{}, apperror.ErrInternal)
 
-			resp, err := s.PutUsersDetail(context.Background(), gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			resp, err := s.PutUsersDetail(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.PutUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body},
+			)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -189,13 +223,16 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 
 			var got *user.PatchParamsDTO
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.UserView, error) {
+			mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ *authbd.Authn, _ uuid.UUID, p *user.PatchParamsDTO) (user.UserView, error) {
 					got = p
 					return returned, nil
 				})
 
-			resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			resp, err := s.PatchUsersDetail(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body},
+			)
 			require.NoError(t, err)
 
 			wantDTO := &user.PatchParamsDTO{
@@ -215,14 +252,14 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 
 			var got *user.PatchParamsDTO
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, _ uuid.UUID, p *user.PatchParamsDTO) (user.UserView, error) {
+			mockApp.EXPECT().UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, _ *authbd.Authn, _ uuid.UUID, p *user.PatchParamsDTO) (user.UserView, error) {
 					got = p
 					return user.UserView{FirstName: "OnlyName"}, nil
 				})
 
 			resp, err := s.PatchUsersDetail(
-				context.Background(),
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
 				gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: noEmailBody},
 			)
 			require.NoError(t, err)
@@ -238,14 +275,26 @@ func Test_server_PatchUsersDetail(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
 			t.Parallel()
 			s, mockApp := newServer(t)
 			mockApp.EXPECT().
-				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
+				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
 				Return(user.UserView{}, apperror.ErrInternal)
 
-			resp, err := s.PatchUsersDetail(context.Background(), gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body})
+			resp, err := s.PatchUsersDetail(
+				testauth.MakeAvailableAuthn(context.Background(), t, subject),
+				gen.PatchUsersDetailRequestObject{UserId: testuuid.RequestUUID(t), Body: body},
+			)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -318,15 +367,18 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 func Test_server_DeleteUsersDetail(t *testing.T) {
 	t.Parallel()
 
+	const subject = "11111111-1111-1111-1111-111111111111"
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
 		t.Run("削除が成功する場合_204が返る", func(t *testing.T) {
 			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
 			s, mockApp := newServer(t)
-			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-			resp, err := s.DeleteUsersDetail(context.Background(), gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 			require.NoError(t, err)
 			_, ok := resp.(gen.DeleteUsersDetail204Response)
 			assert.True(t, ok)
@@ -336,12 +388,22 @@ func Test_server_DeleteUsersDetail(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
 			t.Parallel()
-			s, mockApp := newServer(t)
-			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(apperror.ErrNotFound)
+			s, _ := newServer(t)
 
 			resp, err := s.DeleteUsersDetail(context.Background(), gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
+		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {
+			t.Parallel()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, subject)
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(apperror.ErrNotFound)
+
+			resp, err := s.DeleteUsersDetail(ctx, gen.DeleteUsersDetailRequestObject{UserId: testuuid.RequestUUID(t)})
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})

@@ -141,17 +141,38 @@ Deployment CI/CD: Complete [.github/workflows/deploy-app.yaml](.github/workflows
 
 `Note: Please modify this section according to your environment` indicates sections that need to be modified according to your environment.
 
-## Phase 9: Implement Authentication
+## Phase 9: Implement Authentication & Authorization
+
+This boilerplate ships **development-only stubs** for both authentication (authn) and authorization (authz), and they are wired **only** for the `local` / `ci` / `test` environments. For `development` / `staging` / `production` the DI providers are **fail-closed**: they refuse to wire the stub and return an error, so the application **deliberately fails to start** until you implement and wire real components.
+
+This is an intentional forcing function — it guarantees a signature-skipping authenticator or an allow-all authorizer can never ship to a real environment. **Implementing both for `development` / `staging` / `production` is a required project-start task.**
+
+> [!IMPORTANT]
+> The `Authorizer` is provided inside `InfrastructureModule`, so **every process that builds a usecase** — the HTTP server **and** the background job / worker processes — requires a configured `Authorizer`. Until Phase 9.2 is done, running any of them with `APP_ENV=development` / `staging` / `production` exits at Fx construction with `no authorizer configured for environment` (authn behaves the same with `no authenticator configured for environment`). Seeing this before you implement the real components is expected, not a bug.
+
+### 9.1 Authentication (authn)
 
 This boilerplate includes sample code using JWT as an example implementation of authentication. Implement authentication according to your project requirements.
 
 Create authentication functionality by implementing the usecase [Authenticator](internal/usecase/boundary/auth/authenticator.go) interface.
 
-Refer to [internal/infrastructure/auth/README.md](internal/infrastructure/auth/README.md) for implementation.
+- Reference: [internal/infrastructure/auth/README.md](internal/infrastructure/auth/README.md)
+- Stub example (local, signature-less): [internal/infrastructure/auth/local/auth_local.go](internal/infrastructure/auth/local/auth_local.go)
+- Add your `stg` / `prd` implementations (JWT / OAuth2 / OIDC / Cognito / Auth0 など) under `internal/infrastructure/auth/{stg,prd}/`.
+- Wire them per environment by editing the [authentication DI module](internal/di/module/core/auth.go) (`provideAuthenticator`): replace the `default` fail-closed branch with `case config.EnvDevelopment / EnvStaging / EnvProduction` returning your real `Authenticator`.
 
-Implementation example (local): [internal/infrastructure/auth/local/auth_local.go](internal/infrastructure/auth/local/auth_local.go)
+### 9.2 Authorization (authz)
 
-After implementation, edit the [authentication DI module](internal/di/module/core/auth.go) to integrate authentication into the application.
+This boilerplate ships an **allow-all** authorizer as a development stub. Implement a real policy decision point (PDP) for your project.
+
+Create authorization functionality by implementing the usecase [Authorizer](internal/usecase/boundary/authz/authorizer.go) interface.
+
+- Reference: [internal/infrastructure/authz/README.md](internal/infrastructure/authz/README.md)
+- Stub example (allow-all): [internal/infrastructure/authz/allowall/authz_allowall.go](internal/infrastructure/authz/allowall/authz_allowall.go)
+- Add your `stg` / `prd` implementations (RBAC from claims / ownership check / external policy engine such as OPA / Cedar) under `internal/infrastructure/authz/{stg,prd}/`.
+- Wire them per environment by editing the [authorization DI module](internal/di/module/authz.go) (`provideAuthorizer`): replace the `default` fail-closed branch with `case config.EnvDevelopment / EnvStaging / EnvProduction` returning your real `Authorizer`.
+
+The `Authorize(ctx, *auth.Authn, Action, *Resource)` signature already carries the full `Authn` (subject / scopes / claims) and the target `Resource` (with optional `OwnerID`), so both RBAC and ownership (object-level) models are expressible without changing call sites.
 
 ## Phase 10: Remove Sample APIs
 

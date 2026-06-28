@@ -106,6 +106,7 @@ Infrastructure 層では以下を行ってはいけません。
 flowchart TB
     Root["internal/infrastructure"]
     Auth["auth/"]
+    Authz["authz/"]
     HTTP["httpclient/"]
     Pub["publisher/"]
     Queue["queue/"]
@@ -115,6 +116,7 @@ flowchart TB
     Web["webapi/"]
 
     Root --> Auth
+    Root --> Authz
     Root --> HTTP
     Root --> Pub
     Root --> Queue
@@ -129,6 +131,7 @@ flowchart TB
 |ディレクトリ|説明|interface 配置|詳細|
 |---|---|---|---|
 |`auth/`|認証基盤（環境別 Authenticator 実装）|Usecase boundary|[README](auth/README.ja.md)|
+|`authz/`|認可基盤（Authorizer 実装。本番以外はデフォルトの `allowall`）|Usecase boundary|[README](authz/README.ja.md)|
 |`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|—|
 |`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|—|
 |`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.md)|

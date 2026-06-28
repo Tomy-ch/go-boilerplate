@@ -36,9 +36,10 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				PostalCode: "150-0041", PrefectureName: "Tokyo", City: "Shibuya", Street: "1-2-3",
 			}
 			mockApp := mock_user.NewMockUsecase(ctrl)
-			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any()).Return(expectedDTO, nil)
+			mockApp.EXPECT().GetUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(expectedDTO, nil)
 
 			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-get"))
 
 			expected := detailgen.UserResponse{
 				FirstName:  expectedDTO.FirstName,
@@ -51,7 +52,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				Street:     expectedDTO.Street,
 			}
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, detailPath, nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 			AssertJSONResponse(t, expected, actual)
 		})
@@ -64,10 +65,11 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				UpdateUser(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
+				UpdateUser(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.UpdateProfileParams{})).
 				Return(user.UserView{FirstName: "First", Email: "put@example.com"}, nil)
 
 			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-put"))
 
 			body := &detailgen.PutUsersDetailJSONRequestBody{
 				FirstName: "First", LastName: "Last", Email: types.Email("put@example.com"),
@@ -75,7 +77,7 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 				City: "Shibuya", Street: "1-1-1", Building: new("Building"),
 			}
 
-			actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodPut, detailPath, body, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 			// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
 			AssertJSONResponse(t, detailgen.UserResponse{}, actual)
@@ -89,16 +91,17 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
+				UpdateUserPartially(gomock.Any(), gomock.Any(), gomock.Any(), gomock.AssignableToTypeOf(&user.PatchParamsDTO{})).
 				Return(user.UserView{FirstName: "Patched", Email: "patch@example.com"}, nil)
 
 			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uuid.NewTestFromSalt(t, "me-patch"))
 
 			body := &detailgen.PatchUsersDetailJSONRequestBody{
 				FirstName: new("Patched"),
 			}
 
-			actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodPatch, detailPath, body, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 			// Presenter / 型変換まで含め、レスポンスが gen.UserResponse にデコード可能か検証
 			AssertJSONResponse(t, detailgen.UserResponse{}, actual)
@@ -134,12 +137,14 @@ func TestV1UsersDetail_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
+			uid := uuid.NewTestFromSalt(t, "me-delete")
 			mockApp := mock_user.NewMockUsecase(ctrl)
-			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Return(nil)
+			mockApp.EXPECT().DeleteUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 			detail.BindHandler(e, tf, mockApp)
+			headers := MakeAvailableUserID(t, e, uid)
 
-			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodDelete, detailPath, nil, headers)
 			assert.Equal(t, http.StatusNoContent, actual.StatusCode)
 		})
 	})

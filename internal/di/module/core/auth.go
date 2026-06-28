@@ -31,6 +31,11 @@ func AuthnModule() fx.Option {
 func provideAuthenticator(appCfg *config.ApplicationConfig, logger logging.Logger) (authbd.Authenticator, error) {
 	switch appCfg.Env() {
 	case config.EnvLocal, config.EnvCI, config.EnvTest:
+		logger.Named("core.authn").CallerSkip(callerSkipCount).Warn(
+			"Local authenticator wired: authentication is stubbed (non-production only)",
+			logging.String("env", appCfg.Env()),
+		)
+
 		return local.New(), nil
 	default:
 		logger.Named("core.authn").CallerSkip(callerSkipCount).Error(
