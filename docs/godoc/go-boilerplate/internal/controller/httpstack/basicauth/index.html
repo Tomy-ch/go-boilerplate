@@ -133,13 +133,13 @@
 		
 			
 			
-			<h2 id="NewBasicAuthValidator">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/basicauth/basic.go.html?s=343:425#L4">NewBasicAuthValidator</a>
+			<h2 id="NewBasicAuthValidator">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/basicauth/basic.go.html?s=508:590#L4">NewBasicAuthValidator</a>
 				<a class="permalink" href="#NewBasicAuthValidator">¶</a>
 				
 				
 			</h2>
 			<pre>func NewBasicAuthValidator(mtcCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#MetricsConfig">MetricsConfig</a>) <a href="../../../../../github.com/labstack/echo/v4/middleware/">echomw</a>.<a href="../../../../../github.com/labstack/echo/v4/middleware/#BasicAuthValidator">BasicAuthValidator</a></pre>
-			<p>NewBasicAuthValidator は、Basic認証のバリデータを返します。
+			<p>NewBasicAuthValidator は、MetricsConfig のユーザ名・パスワードを用いる Basic 認証バリデータを返します。タイミング攻撃を防ぐために定数時間比較（subtle.ConstantTimeCompare）を用います。
 
 			
 			

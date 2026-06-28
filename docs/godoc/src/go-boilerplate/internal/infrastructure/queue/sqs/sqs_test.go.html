@@ -76,7 +76,7 @@
 <span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/internal/usecase/boundary/worker&#34;
 <span id="L20" class="ln">    20  </span>)
 <span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>func newConsumer(t *testing.T, api API) *Consumer {
+<span id="L22" class="ln">    22  </span>func newConsumer(t *testing.T, api API) worker.Consumer {
 <span id="L23" class="ln">    23  </span>	t.Helper()
 <span id="L24" class="ln">    24  </span>	return NewConsumer(api, Config{QueueURL: &#34;q&#34;, MaxMessages: 10}, observability.NewNoopTracerFactory(t))
 <span id="L25" class="ln">    25  </span>}

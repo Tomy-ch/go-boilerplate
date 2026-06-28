@@ -55,7 +55,7 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_job.gen.go -package=mock_$GOPACKAGE</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span><span class="comment">// Package job は、ジョブを管理・実行するためのコマンドを提供するためのパッケージです。</span>
 <span id="L4" class="ln">     4  </span>package job

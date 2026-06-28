@@ -61,7 +61,7 @@
 <span id="L4" class="ln">     4  </span>	&#34;github.com/labstack/echo/v4&#34;
 <span id="L5" class="ln">     5  </span>)
 <span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span><span class="comment">// Middleware は Echo 用 middleware です。</span>
+<span id="L7" class="ln">     7  </span><span class="comment">// Middleware は、SecurityCookie 設定に従い Set-Cookie ヘッダのセキュリティ属性（Secure / HttpOnly / SameSite / Path / Domain など）を上書きする Echo ミドルウェアを返します。</span>
 <span id="L8" class="ln">     8  </span>func Middleware(cfg *SecurityCookie) echo.MiddlewareFunc {
 <span id="L9" class="ln">     9  </span>	return secureCookieMiddleware(cfg)
 <span id="L10" class="ln">    10  </span>}

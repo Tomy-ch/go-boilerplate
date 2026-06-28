@@ -71,7 +71,7 @@
 <span id="L14" class="ln">    14  </span>
 <span id="L15" class="ln">    15  </span><span class="comment">// NewIPExtractor は、EchoでクライアントのIPアドレスを抽出するためのインスタンスを生成します。</span>
 <span id="L16" class="ln">    16  </span><span class="comment">//</span>
-<span id="L17" class="ln">    17  </span><span class="comment">//	開発環境では直接抽出し、それ以外（本番・未知環境）ではX-Forwarded-Forヘッダーから抽出します。</span>
+<span id="L17" class="ln">    17  </span><span class="comment">// 開発環境では直接抽出し、それ以外（本番・未知環境）ではX-Forwarded-Forヘッダーから抽出します。</span>
 <span id="L18" class="ln">    18  </span>func NewIPExtractor(appCfg *config.ApplicationConfig, secCfg *config.SecurityConfig) echo.IPExtractor {
 <span id="L19" class="ln">    19  </span>	if appCfg.IsDevelopmentMode() {
 <span id="L20" class="ln">    20  </span>		return echo.ExtractIPDirect()

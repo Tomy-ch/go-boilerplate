@@ -146,7 +146,7 @@
 				
 			</h2>
 			<pre>func New(e *echo.<a href="#Echo">Echo</a>, log <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>, obsCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>)</pre>
-			<p>New は、Echo に HTTP エラーハンドラを登録します（DI 配線用エントリ・戻り値なし）。
+			<p>New は、NewHTTPErrorHandler で生成したハンドラを Echo の HTTPErrorHandler として登録します。
 
 			
 			

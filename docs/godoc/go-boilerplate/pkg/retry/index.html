@@ -156,7 +156,7 @@
 		
 			
 			
-			<h2 id="Do">func <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=2830:2966#L40">Do</a>
+			<h2 id="Do">func <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=2788:2924#L39">Do</a>
 				<a class="permalink" href="#Do">¶</a>
 				
 				
@@ -201,7 +201,7 @@ error（成功時は nil）を返します。
 		
 			
 			
-			</p><h2 id="Policy">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1550:2057#L20">Policy</a>
+			</p><h2 id="Policy">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1508:2015#L19">Policy</a>
 				<a class="permalink" href="#Policy">¶</a>
 				
 				
@@ -232,15 +232,14 @@ error（成功時は nil）を返します。
 		
 			
 			
-			<h2 id="Sleeper">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1322:1495#L14">Sleeper</a>
+			<h2 id="Sleeper">type <a href="../../../src/go-boilerplate/pkg/retry/retry.go.html?s=1280:1453#L13">Sleeper</a>
 				<a class="permalink" href="#Sleeper">¶</a>
 				
 				
 			</h2>
 			<p>Sleeper は、リトライ間の待機を抽象化するインターフェースです。
 ctx のキャンセル / deadline を尊重し、待機が打ち切られた場合は error を返します。
-</p><p>本パッケージは internal 非依存のため独自に定義しますが、internal/usecase/boundary/clock
-の Sleeper が構造的に充足するため、呼び出し側はそのまま注入できます。
+</p><p>本パッケージは internal 非依存のため独自に定義します。Sleep(ctx context.Context, d time.Duration) error を持つ任意の型を注入できます。
 
 			</p><pre>type Sleeper interface {
     <span class="comment">// Sleep は、d 経過まで待機します。ctx 打ち切り時は error を返します。</span>

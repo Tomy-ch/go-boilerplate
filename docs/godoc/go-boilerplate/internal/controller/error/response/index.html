@@ -174,19 +174,20 @@
 
 			
 				
-				<h3 id="NewHTTPErrorFromAppError">func <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=899:977#L13">NewHTTPErrorFromAppError</a>
+				<h3 id="NewHTTPErrorFromAppError">func <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=987:1065#L14">NewHTTPErrorFromAppError</a>
 					<a class="permalink" href="#NewHTTPErrorFromAppError">¶</a>
 					
 					
 				</h3>
 				<pre>func NewHTTPErrorFromAppError(err <a href="../../../../../builtin/#error">error</a>, details ...<a href="../../../../../builtin/#string">string</a>) *<a href="#HTTPErrorResponse">HTTPErrorResponse</a></pre>
-				<p>NewHTTPErrorFromAppError は、エラーの中身がアプリケーションエラーである場合に、対応するHTTPエラーレスポンスを生成します。
+				<p>NewHTTPErrorFromAppError は、err をアプリケーションエラーとして解釈し、対応する HTTP エラーレスポンスを返します。
+既知のエラー型に一致しない場合は 500 Internal Server Error として扱います。
 
 				
 				
 			
 				
-				</p><h3 id="NewHTTPErrorFromStatus">func <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=1327:1419#L23">NewHTTPErrorFromStatus</a>
+				</p><h3 id="NewHTTPErrorFromStatus">func <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=1415:1507#L24">NewHTTPErrorFromStatus</a>
 					<a class="permalink" href="#NewHTTPErrorFromStatus">¶</a>
 					
 					
@@ -201,7 +202,7 @@ err はログ出力用の元エラーとして Internal に格納されます。
 
 			
 				
-				</p><h3 id="HTTPErrorResponse.Error">func (*HTTPErrorResponse) <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=1646:1688#L32">Error</a>
+				</p><h3 id="HTTPErrorResponse.Error">func (*HTTPErrorResponse) <a href="../../../../../src/go-boilerplate/internal/controller/error/response/error_response.go.html?s=1734:1776#L33">Error</a>
 					<a class="permalink" href="#HTTPErrorResponse.Error">¶</a>
 					
 					

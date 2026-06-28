@@ -55,12 +55,12 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package ops は、OpenAPIのパス定義に関連する操作を提供します。</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package ops は、運用系エンドポイント（/health, /metrics, /healthz, /ready, /version）を識別するためのユーティリティを提供します。</span>
 <span id="L2" class="ln">     2  </span>package ops
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span>import &#34;strings&#34;
 <span id="L5" class="ln">     5  </span>
-<span id="L6" class="ln">     6  </span><span class="comment">// IsOpsPath は運用系エンドポイント（ops endpoints）かどうかを判定します。</span>
+<span id="L6" class="ln">     6  </span><span class="comment">// IsOpsPath は /metrics, /health, /healthz, /ready, /version のいずれかを運用系エンドポイントとして判定し true を返します。末尾スラッシュは無視されます。</span>
 <span id="L7" class="ln">     7  </span>func IsOpsPath(path string) bool {
 <span id="L8" class="ln">     8  </span>	path = strings.TrimRight(path, &#34;/&#34;)
 <span id="L9" class="ln">     9  </span>

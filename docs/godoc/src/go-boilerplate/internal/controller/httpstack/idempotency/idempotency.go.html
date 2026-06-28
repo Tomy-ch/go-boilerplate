@@ -109,7 +109,7 @@
 <span id="L52" class="ln">    52  </span>		return nil, err
 <span id="L53" class="ln">    53  </span>	}
 <span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>	<span class="comment">// 認証プリンシパルが取れなければ冪等性は発動しない（S1: 認証前提）。</span>
+<span id="L55" class="ln">    55  </span>	<span class="comment">// 認証プリンシパルが取れなければ冪等性は発動しない（スコープキーに Subject を使うため、認証済みリクエストのみ対象とする）。</span>
 <span id="L56" class="ln">    56  </span>	authn, ok := ctxhelper.GetAuthn(r.Context())
 <span id="L57" class="ln">    57  </span>	if !ok {
 <span id="L58" class="ln">    58  </span>		return next(ec, request)
@@ -117,7 +117,7 @@
 <span id="L60" class="ln">    60  </span>
 <span id="L61" class="ln">    61  </span>	fp, err := fingerprint(r.Method, r.URL.Path, request)
 <span id="L62" class="ln">    62  </span>	if err != nil {
-<span id="L63" class="ln">    63  </span>		return nil, xerrors.Wrap(apperror.ErrInternal, &#34;failed to fingerprint idempotent request: &#34;+err.Error())
+<span id="L63" class="ln">    63  </span>		return nil, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, &#34;failed to fingerprint idempotent request&#34;))
 <span id="L64" class="ln">    64  </span>	}
 <span id="L65" class="ln">    65  </span>
 <span id="L66" class="ln">    66  </span>	reqCtx := idempotencyuc.WithRequest(r.Context(), idempotencyuc.Request{

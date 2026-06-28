@@ -80,7 +80,7 @@
 <span id="L23" class="ln">    23  </span>	return keys
 <span id="L24" class="ln">    24  </span>}
 <span id="L25" class="ln">    25  </span>
-<span id="L26" class="ln">    26  </span><span class="comment">// ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します（D1）。</span>
+<span id="L26" class="ln">    26  </span><span class="comment">// ExtractFromCarrier は、attrs（traceparent 等）からグローバル伝播器で trace context を継続します。</span>
 <span id="L27" class="ln">    27  </span><span class="comment">// producer → consumer → handler を 1 trace に繋ぐための公開ヘルパです。</span>
 <span id="L28" class="ln">    28  </span>func ExtractFromCarrier(ctx context.Context, attrs map[string]string) context.Context {
 <span id="L29" class="ln">    29  </span>	return extractFromCarrier(ctx, attrs, otel.GetTextMapPropagator())
@@ -94,7 +94,7 @@
 <span id="L37" class="ln">    37  </span>	return prop.Extract(ctx, mapCarrier(attrs))
 <span id="L38" class="ln">    38  </span>}
 <span id="L39" class="ln">    39  </span>
-<span id="L40" class="ln">    40  </span><span class="comment">// InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます（D1）。</span>
+<span id="L40" class="ln">    40  </span><span class="comment">// InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます。</span>
 <span id="L41" class="ln">    41  </span><span class="comment">// outbox emit 時に traceparent を headers へ載せ、後続の relay→受信側を起点 trace に繋ぐための公開ヘルパです。</span>
 <span id="L42" class="ln">    42  </span><span class="comment">// グローバル伝播器（Baggage を含みうる）ではなく TraceContext 限定で inject することで、インバウンド由来の</span>
 <span id="L43" class="ln">    43  </span><span class="comment">// 任意 baggage が outbox 経由で外部エンドポイントへ転送される経路を断ちます。</span>

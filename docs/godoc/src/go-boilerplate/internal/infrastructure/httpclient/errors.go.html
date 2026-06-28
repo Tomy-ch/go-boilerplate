@@ -79,7 +79,7 @@
 <span id="L22" class="ln">    22  </span><span class="comment">// statusToAppError は、HTTP ステータスコードを apperror sentinel に写像します。</span>
 <span id="L23" class="ln">    23  </span><span class="comment">// 2xx は nil を返します。3xx はリダイレクト非追従のため未解決とみなし ErrUnavailable を返します</span>
 <span id="L24" class="ln">    24  </span><span class="comment">// （resp に Location を残すので、追従が必要な呼び出し側はそれを参照できます）。</span>
-<span id="L25" class="ln">    25  </span><span class="comment">// 位置づけは RDB の pgerror.NormalizeError の HTTP 版で、写像は substrate 内部に閉じます。</span>
+<span id="L25" class="ln">    25  </span><span class="comment">// 写像は substrate 内部に閉じます。</span>
 <span id="L26" class="ln">    26  </span>func statusToAppError(statusCode int) error {
 <span id="L27" class="ln">    27  </span>	switch statusCode {
 <span id="L28" class="ln">    28  </span>	case http.StatusBadRequest:
@@ -120,7 +120,7 @@
 <span id="L63" class="ln">    63  </span>}
 <span id="L64" class="ln">    64  </span>
 <span id="L65" class="ln">    65  </span><span class="comment">// redactErrMessage は、エラーメッセージから URL のクエリ等の機密になり得る情報を除去します。</span>
-<span id="L66" class="ln">    66  </span><span class="comment">// *url.Error は完全 URL（クエリ込み）を出力するため、ホストのみへ redact します。</span>
+<span id="L66" class="ln">    66  </span><span class="comment">// *url.Error は完全 URL（クエリ込み）を出力するため、クエリ・userinfo・fragment を除去し scheme/host/path を残します。</span>
 <span id="L67" class="ln">    67  </span>func redactErrMessage(err error) string {
 <span id="L68" class="ln">    68  </span>	if urlErr, ok := errors.AsType[*url.Error](err); ok {
 <span id="L69" class="ln">    69  </span>		return fmt.Sprintf(&#34;%s %s: %v&#34;, urlErr.Op, redactURL(urlErr.URL), urlErr.Err)

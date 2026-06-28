@@ -67,7 +67,7 @@
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/apperror&#34;
 <span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/logging&#34;
 <span id="L12" class="ln">    12  </span>	bw &#34;go-boilerplate/internal/usecase/boundary/worker&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/boundary/worker/fake&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/boundary/worker/testkit&#34;
 <span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>)
 <span id="L16" class="ln">    16  </span>
@@ -81,7 +81,7 @@
 <span id="L24" class="ln">    24  </span>			t.Parallel()
 <span id="L25" class="ln">    25  </span>
 <span id="L26" class="ln">    26  </span>			logger, observed := logging.NewObservedTestLogger(t)
-<span id="L27" class="ln">    27  </span>			f := fake.New()
+<span id="L27" class="ln">    27  </span>			f := testkit.NewFake()
 <span id="L28" class="ln">    28  </span>			f.Enqueue(bw.Message{ID: &#34;a&#34;})
 <span id="L29" class="ln">    29  </span>			w := testWorker{name: &#34;w&#34;, cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
 <span id="L30" class="ln">    30  </span>				return xerrors.Wrap(apperror.ErrRetryable, &#34;downstream&#34;)

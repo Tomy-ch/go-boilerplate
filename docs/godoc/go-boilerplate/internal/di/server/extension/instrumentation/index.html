@@ -152,13 +152,13 @@
 		
 			
 			
-			<h2 id="LoggingMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/logging_di.go.html?s=652:747#L14">LoggingMiddleware</a>
+			<h2 id="LoggingMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/logging_di.go.html?s=780:875#L14">LoggingMiddleware</a>
 				<a class="permalink" href="#LoggingMiddleware">¶</a>
 				
 				
 			</h2>
 			<pre>func LoggingMiddleware(z <a href="../../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, lf <a href="../../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>) <a href="../../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../../go-boilerplate/internal/di/server/extension/#UseMiddlewareOut">UseMiddlewareOut</a></pre>
-			<p>LoggingMiddleware は、OTelロギングミドルウェアを提供します。
+			<p>LoggingMiddleware は、HTTPリクエスト／レスポンスのアクセスログを出力するミドルウェアを提供します（OTel トレースコンテキストの TraceID・SpanID を含む）。
 
 			
 			

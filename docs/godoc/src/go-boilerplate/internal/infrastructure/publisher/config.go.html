@@ -83,7 +83,7 @@
 <span id="L26" class="ln">    26  </span>
 <span id="L27" class="ln">    27  </span>	u, err := url.Parse(raw)
 <span id="L28" class="ln">    28  </span>	if err != nil {
-<span id="L29" class="ln">    29  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;OUTBOX_ENDPOINT is not a valid URL: &#34;+err.Error())
+<span id="L29" class="ln">    29  </span>		return &#34;&#34;, xerrors.Join(ErrInvalidEndpoint, xerrors.Wrap(err, &#34;OUTBOX_ENDPOINT is not a valid URL&#34;))
 <span id="L30" class="ln">    30  </span>	}
 <span id="L31" class="ln">    31  </span>	if u.Scheme != &#34;http&#34; &amp;&amp; u.Scheme != &#34;https&#34; {
 <span id="L32" class="ln">    32  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;OUTBOX_ENDPOINT scheme must be http or https&#34;)

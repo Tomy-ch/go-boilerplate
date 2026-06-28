@@ -249,6 +249,8 @@ PostgreSQL-specific errors are converted into application-wide errors by `pgerro
 
 All SQL execution is performed through `sqlc`.
 
+Exception: PostgreSQL session-configuration commands that `sqlc` cannot model (e.g. `SET LOCAL lock_timeout` issued before a row-locking query) may be run via a direct `Exec`. These are confined to `system_query` and their errors still flow through `pgerror.NormalizeError`.
+
 ### 6. Observability
 
 SQL execution tracing is provided by a pgx query tracer wired at the driver connection level

@@ -108,7 +108,7 @@
 <span id="L51" class="ln">    51  </span>
 <span id="L52" class="ln">    52  </span>	buildDate, err := datetime.ParseRFC3339UTCToLocation(s.buildInfo.BuildDate(), s.loc)
 <span id="L53" class="ln">    53  </span>	if err != nil {
-<span id="L54" class="ln">    54  </span>		return nil, xerrors.Wrap(errInvalidBuildDate, err.Error())
+<span id="L54" class="ln">    54  </span>		return nil, xerrors.Join(errInvalidBuildDate, err)
 <span id="L55" class="ln">    55  </span>	}
 <span id="L56" class="ln">    56  </span>
 <span id="L57" class="ln">    57  </span>	return gen.GetVersion200JSONResponse(gen.VersionResponse{

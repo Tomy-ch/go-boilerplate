@@ -179,7 +179,7 @@
 		
 			
 			
-			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1763:1902#L35">Run</a>
+			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1727:1866#L35">Run</a>
 				<a class="permalink" href="#Run">¶</a>
 				
 				
@@ -217,7 +217,7 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 		
 			
 			
-			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=817:1056#L19">Deps</a>
+			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=817:1020#L19">Deps</a>
 				<a class="permalink" href="#Deps">¶</a>
 				
 				
@@ -228,7 +228,7 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 <span id="Deps.Txm"></span>    Txm   <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>
 <span id="Deps.Store"></span>    Store <a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotencybndry</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Store">Store</a>
 <span id="Deps.Clock"></span>    Clock <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>
-<span id="Deps.Metrics"></span>    <span class="comment">// Metrics は任意。nil の場合カウンタは no-op です（観測性バックエンド配線時に実装を注入する）。</span>
+<span id="Deps.Metrics"></span>    <span class="comment">// Metrics は任意。nil の場合はすべてのカウンタ操作が no-op になります。</span>
     Metrics <a href="#Metrics">Metrics</a>
 }
 </pre>
@@ -263,7 +263,7 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 		
 			
 			
-			</p><h2 id="GCUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=487:686#L5">GCUsecase</a>
+			</p><h2 id="GCUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=492:691#L5">GCUsecase</a>
 				<a class="permalink" href="#GCUsecase">¶</a>
 				
 				
@@ -285,7 +285,7 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 
 			
 				
-				<h3 id="NewGC">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=811:878#L16">NewGC</a>
+				<h3 id="NewGC">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=816:883#L16">NewGC</a>
 					<a class="permalink" href="#NewGC">¶</a>
 					
 					

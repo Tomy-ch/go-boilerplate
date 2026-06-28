@@ -113,7 +113,7 @@
 <span id="L56" class="ln">    56  </span>	return row.MessageID, nil
 <span id="L57" class="ln">    57  </span>}
 <span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span><span class="comment">// ClaimPending は、pending 行を最大 limit 件 claim します（FOR UPDATE SKIP LOCKED）。</span>
+<span id="L59" class="ln">    59  </span><span class="comment">// ClaimPending は、pending 行を最大 limit 件ロックして返します。並行ワーカーが同一行を取得しません。</span>
 <span id="L60" class="ln">    60  </span>func (s *store) ClaimPending(ctx context.Context, limit int32) ([]outboxbndry.PendingMessage, error) {
 <span id="L61" class="ln">    61  </span>	ctx, endSpan := s.tracer.Start(ctx)
 <span id="L62" class="ln">    62  </span>	defer endSpan()

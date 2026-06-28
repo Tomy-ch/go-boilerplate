@@ -77,7 +77,7 @@
 <span id="L20" class="ln">    20  </span>	)
 <span id="L21" class="ln">    21  </span>}
 <span id="L22" class="ln">    22  </span>
-<span id="L23" class="ln">    23  </span><span class="comment">// LoggingMiddleware は、OTelロギングミドルウェアを提供します。</span>
+<span id="L23" class="ln">    23  </span><span class="comment">// LoggingMiddleware は、HTTPリクエスト／レスポンスのアクセスログを出力するミドルウェアを提供します（OTel トレースコンテキストの TraceID・SpanID を含む）。</span>
 <span id="L24" class="ln">    24  </span>func LoggingMiddleware(z logging.Logger, lf logging.LogFieldBuilder) extension.UseMiddlewareOut {
 <span id="L25" class="ln">    25  </span>	return extension.UseMiddlewareOut{
 <span id="L26" class="ln">    26  </span>		Middleware: extension.UseMiddleware{

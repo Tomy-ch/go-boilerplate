@@ -107,6 +107,12 @@
 			
 			
 			
+				
+				<dd><a href="#NewConsumer">func NewConsumer(api API, cfg Config, tf observability.TracerFactory) worker.Consumer</a></dd>
+			
+				
+				<dd><a href="#NewDeadLetter">func NewDeadLetter(api API, dlqURL string, tf observability.TracerFactory) worker.FailureHandler</a></dd>
+			
 			
 				
 				<dd><a href="#API">type API</a></dd>
@@ -116,40 +122,6 @@
 				
 				<dd><a href="#Config">type Config</a></dd>
 				
-				
-			
-				
-				<dd><a href="#Consumer">type Consumer</a></dd>
-				
-					
-					<dd>    <a href="#NewConsumer">func NewConsumer(api API, cfg Config, tf observability.TracerFactory) *Consumer</a></dd>
-				
-				
-					
-					<dd>    <a href="#Consumer.Ack">func (c *Consumer) Ack(ctx context.Context, m worker.Message) error</a></dd>
-				
-					
-					<dd>    <a href="#Consumer.Extend">func (c *Consumer) Extend(ctx context.Context, m worker.Message, d time.Duration) error</a></dd>
-				
-					
-					<dd>    <a href="#Consumer.Nack">func (c *Consumer) Nack(ctx context.Context, m worker.Message) error</a></dd>
-				
-					
-					<dd>    <a href="#Consumer.NackWithBackoff">func (c *Consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error</a></dd>
-				
-					
-					<dd>    <a href="#Consumer.Receive">func (c *Consumer) Receive(ctx context.Context, maxMessages int) ([]worker.Message, error)</a></dd>
-				
-			
-				
-				<dd><a href="#DeadLetter">type DeadLetter</a></dd>
-				
-					
-					<dd>    <a href="#NewDeadLetter">func NewDeadLetter(api API, dlqURL string, tf observability.TracerFactory) *DeadLetter</a></dd>
-				
-				
-					
-					<dd>    <a href="#DeadLetter.Fail">func (d *DeadLetter) Fail(ctx context.Context, m worker.Message, _ error) error</a></dd>
 				
 			
 			
@@ -182,10 +154,38 @@
 		
 		
 		
+			
+			
+			<h2 id="NewConsumer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=1498:1583#L35">NewConsumer</a>
+				<a class="permalink" href="#NewConsumer">¶</a>
+				
+				
+			</h2>
+			<pre>func NewConsumer(api <a href="#API">API</a>, cfg <a href="#Config">Config</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Consumer">Consumer</a></pre>
+			<p>NewConsumer は、SQS Consumer を生成します。
+
+			
+			
+
 		
 			
 			
-			<h2 id="API">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=728:1291#L16">API</a>
+			</p><h2 id="NewDeadLetter">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/failure.go.html?s=804:900#L17">NewDeadLetter</a>
+				<a class="permalink" href="#NewDeadLetter">¶</a>
+				
+				
+			</h2>
+			<pre>func NewDeadLetter(api <a href="#API">API</a>, dlqURL <a href="../../../../../builtin/#string">string</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#FailureHandler">FailureHandler</a></pre>
+			<p>NewDeadLetter は、DLQ への退避を行う FailureHandler を生成します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="API">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=732:1295#L16">API</a>
 				<a class="permalink" href="#API">¶</a>
 				
 				
@@ -248,164 +248,6 @@
 
 			
 		
-			
-			
-			<h2 id="Consumer">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=1351:1436#L28">Consumer</a>
-				<a class="permalink" href="#Consumer">¶</a>
-				
-				
-			</h2>
-			<p>Consumer は、worker.Consumer の SQS 実装です。
-
-			</p><pre>type Consumer struct {
-    <span class="comment">// contains filtered or unexported fields</span>
-}
-</pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-				
-				<h3 id="NewConsumer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=1494:1573#L35">NewConsumer</a>
-					<a class="permalink" href="#NewConsumer">¶</a>
-					
-					
-				</h3>
-				<pre>func NewConsumer(api <a href="#API">API</a>, cfg <a href="#Config">Config</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) *<a href="#Consumer">Consumer</a></pre>
-				<p>NewConsumer は、SQS Consumer を生成します。
-
-				
-				
-			
-
-			
-				
-				</p><h3 id="Consumer.Ack">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=2901:2968#L79">Ack</a>
-					<a class="permalink" href="#Consumer.Ack">¶</a>
-					
-					
-				</h3>
-				<pre>func (c *<a href="#Consumer">Consumer</a>) Ack(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>) <a href="../../../../../builtin/#error">error</a></pre>
-				<p>Ack は、DeleteMessage でメッセージを削除します。
-
-				
-				
-				
-			
-				
-				</p><h3 id="Consumer.Extend">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=4433:4520#L122">Extend</a>
-					<a class="permalink" href="#Consumer.Extend">¶</a>
-					
-					
-				</h3>
-				<pre>func (c *<a href="#Consumer">Consumer</a>) Extend(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, d <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) <a href="../../../../../builtin/#error">error</a></pre>
-				<p>Extend は、可視性タイムアウトを延長します（長時間 handler のハートビート）。
-
-				
-				
-				
-			
-				
-				</p><h3 id="Consumer.Nack">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=3305:3373#L91">Nack</a>
-					<a class="permalink" href="#Consumer.Nack">¶</a>
-					
-					
-				</h3>
-				<pre>func (c *<a href="#Consumer">Consumer</a>) Nack(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>) <a href="../../../../../builtin/#error">error</a></pre>
-				<p>Nack は、メッセージを即時に再配送へ戻します。
-
-				
-				
-				
-			
-				
-				</p><h3 id="Consumer.NackWithBackoff">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=3847:3943#L105">NackWithBackoff</a>
-					<a class="permalink" href="#Consumer.NackWithBackoff">¶</a>
-					
-					
-				</h3>
-				<pre>func (c *<a href="#Consumer">Consumer</a>) NackWithBackoff(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, d <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) <a href="../../../../../builtin/#error">error</a></pre>
-				<p>NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します。
-d&lt;=0 は Nack（即時）と等価です。
-
-				
-				
-				
-			
-				
-				</p><h3 id="Consumer.Receive">func (*Consumer) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=1748:1838#L40">Receive</a>
-					<a class="permalink" href="#Consumer.Receive">¶</a>
-					
-					
-				</h3>
-				<pre>func (c *<a href="#Consumer">Consumer</a>) Receive(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, maxMessages <a href="../../../../../builtin/#int">int</a>) ([]<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
-				<p>Receive は、ReceiveMessage で long-poll し、broker 非依存の Message へ変換して返します。
-
-				
-				
-				
-			
-		
-			
-			
-			</p><h2 id="DeadLetter">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/failure.go.html?s=629:716#L10">DeadLetter</a>
-				<a class="permalink" href="#DeadLetter">¶</a>
-				
-				
-			</h2>
-			<p>DeadLetter は、worker.FailureHandler の SQS 実装です（Permanent を別キュー=DLQ へ送ります）。
-SQS の redrive policy に委ねる運用ではこの実装を配線せず、app は ReceiveCount 監視のみとします。
-
-			</p><pre>type DeadLetter struct {
-    <span class="comment">// contains filtered or unexported fields</span>
-}
-</pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-				
-				<h3 id="NewDeadLetter">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/failure.go.html?s=804:890#L17">NewDeadLetter</a>
-					<a class="permalink" href="#NewDeadLetter">¶</a>
-					
-					
-				</h3>
-				<pre>func NewDeadLetter(api <a href="#API">API</a>, dlqURL <a href="../../../../../builtin/#string">string</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) *<a href="#DeadLetter">DeadLetter</a></pre>
-				<p>NewDeadLetter は、DLQ への退避を行う FailureHandler を生成します。
-
-				
-				
-			
-
-			
-				
-				</p><h3 id="DeadLetter.Fail">func (*DeadLetter) <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/failure.go.html?s=1244:1323#L24">Fail</a>
-					<a class="permalink" href="#DeadLetter.Fail">¶</a>
-					
-					
-				</h3>
-				<pre>func (d *<a href="#DeadLetter">DeadLetter</a>) Fail(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#Message">Message</a>, _ <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a></pre>
-				<p>Fail は、永久失敗メッセージを DLQ へ SendMessage します。
-失敗理由は分類カテゴリのみ属性に付与し、cause の詳細は載せません
-（cause が PII/内部詳細を含みうるため。詳細は engine 側のログに残ります）。
-
-				
-				
-				
-			
-		
 	
 
 	
@@ -416,7 +258,7 @@ SQS の redrive policy に委ねる運用ではこの実装を配線せず、app
 
 	
 	
-		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
 	
 	<div class="pkg-dir">
 		<table>

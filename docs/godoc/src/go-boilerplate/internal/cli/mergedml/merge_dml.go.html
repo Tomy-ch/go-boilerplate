@@ -75,7 +75,7 @@
 <span id="L18" class="ln">    18  </span>	&#34;golang.org/x/sync/semaphore&#34;
 <span id="L19" class="ln">    19  </span>)
 <span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_merge_dml.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L21" class="ln">    21  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
 <span id="L22" class="ln">    22  </span>
 <span id="L23" class="ln">    23  </span>const (
 <span id="L24" class="ln">    24  </span>	<span class="comment">// ▼ カテゴリ単位のファイル連結ジョブの並列数チューニング定数（値の由来は README に記載）</span>
@@ -303,7 +303,7 @@
 <span id="L246" class="ln">   246  </span>		return err
 <span id="L247" class="ln">   247  </span>	}
 <span id="L248" class="ln">   248  </span>
-<span id="L249" class="ln">   249  </span>	<span class="comment">// 連結結果はメモリ上に構築し、成功時のみ一括書き込みします（部分生成物を残さない）。</span>
+<span id="L249" class="ln">   249  </span>	<span class="comment">// 成功時のみ一括書き込みし、途中失敗でも部分生成物を残しません。</span>
 <span id="L250" class="ln">   250  </span>	var buf bytes.Buffer
 <span id="L251" class="ln">   251  </span>	for _, fpath := range files {
 <span id="L252" class="ln">   252  </span>		<span class="comment">// 由来が分かるように見出しを入れる（sqlcはSQLコメントなら無害）</span>

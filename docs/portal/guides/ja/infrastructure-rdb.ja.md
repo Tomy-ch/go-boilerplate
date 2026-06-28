@@ -248,6 +248,8 @@ PostgreSQL 固有エラーは`pgerror`でアプリケーション共通エラー
 
 SQL 実行はすべて`sqlc`を通して行います。
 
+例外: `sqlc` で表現できない PostgreSQL のセッション設定コマンド（例: 行ロッククエリ前に発行する `SET LOCAL lock_timeout`）は直接 `Exec` で実行してよい。これらは `system_query` に限定し、エラーは引き続き `pgerror.NormalizeError` を経由させます。
+
 ### 6. 可観測性
 
 SQL 実行トレースは driver の接続層に結線した pgx クエリトレーサー（`otelpgx` の span）が提供し、
