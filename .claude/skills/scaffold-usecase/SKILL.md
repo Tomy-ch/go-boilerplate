@@ -125,13 +125,13 @@ Order:
 Implementation file conventions:
 
 - `package <package>` (lowercase aggregate name)
-- `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE` at top
+- `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE` at top (repo-wide standard directive — identical in every interface file)
 - `type Usecase interface { ... }` from spec's Interface
 - DTOs as `type XxxDTO struct { ... }` from spec's DTOs
 - `type usecase struct { tracer observability.LayerTracer; <deps...> }` from spec's Dependencies
 - `func New(tf observability.TracerFactory, <deps...>) Usecase { return &usecase{tracer: tf.Usecase(), <init...>} }`
 - Each method body:
-  - `ctx, endSpan := u.tracer.Start(ctx); defer endSpan()`
+  - Open the tracer span at the top (`u.tracer.Start(ctx)` / `defer endSpan()`), per usecase README "Observability (Tracing)"
   - If `tx_required: true`, wrap the body in `u.txm.Do(ctx, func(ctx context.Context) error { ... })`
   - Implement Workflow steps in order, calling the declared `calls:` entries
   - Apply error mapping per spec
@@ -150,7 +150,7 @@ Test file conventions:
 make gen-api
 ```
 
-Processes the `//go:generate mockgen` directive in the new usecase file and produces `internal/usecase/<package>/mock/mock_<package>_usecase.go`. Verify the mock file exists.
+Processes the `//go:generate mockgen` directive in the new usecase file and produces `internal/usecase/<package>/mock/mock_<package>_usecase.go.gen.go`. Verify the mock file exists.
 
 ## Step 6. Verify
 
@@ -194,7 +194,7 @@ Remains protected:
 - ❌ Invent methods, DTOs, dependencies, or workflow steps not in the spec
 - ❌ Implement business rules (those belong in domain entity)
 - ❌ Access infrastructure directly (only via Repository / Boundary interfaces)
-- ❌ Use `time.Now()` directly — must go through `clock.Clock` boundary if time is needed
+- ❌ Use `time.Now()` directly — go through the `clock.Clock` boundary (canonical detail: usecase README "Time Handling Policy")
 - ❌ Skip the test-perspective subagent (Step 2)
 - ❌ Skip the spec-confirmation `AskUserQuestion`
 - ❌ Overwrite an existing usecase package

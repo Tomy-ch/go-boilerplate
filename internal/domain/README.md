@@ -800,7 +800,7 @@ func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // creat
 
 ```go
 // user_repository.go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 package user
 
 import (

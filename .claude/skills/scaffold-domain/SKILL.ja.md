@@ -126,7 +126,7 @@ spec に**書かれていない**が convention で決まる要素を派生:
 make gen-api
 ```
 
-`<aggregate>_repository.go` の `//go:generate mockgen` を処理し `internal/domain/<aggregate>/mock/mock_<aggregate>_repository.go` を生成。コマンド後にファイル存在確認。
+`<aggregate>_repository.go` の `//go:generate mockgen` を処理し `internal/domain/<aggregate>/mock/mock_<aggregate>_repository.go.gen.go` を生成。コマンド後にファイル存在確認。
 
 ## Step 7. 検証
 

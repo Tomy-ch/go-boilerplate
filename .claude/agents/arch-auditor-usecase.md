@@ -54,7 +54,7 @@ For each in-scope usecase Go file:
 2. **Thin-orchestrator heuristic**: function > ~50 lines or containing conditional business-rule chains → `suggestion` 「業務ロジックは domain entity へ」.
 3. **Transaction boundary**: DB writes spanning multiple Repository calls without `tx.Manager.Do(...)` wrapping → `suggestion`.
 4. **Boundary usage**: every external dependency (time, randomness, external HTTP/queue) should be injected via an `internal/usecase/boundary/` interface, not used directly.
-5. **Tracer span (recommended)**: per README Observability, each public method ideally opens `ctx, endSpan := u.tracer.Start(ctx); defer endSpan()`. Missing span → `suggestion` (推奨機能、未配線は blocker ではない).
+5. **Tracer span (recommended)**: per usecase README "Observability (Tracing)" (canonical — re-read, not restated here), each public method should open a tracer span. Missing span → `suggestion` (推奨機能、未配線は blocker ではない).
 
 ## Output (Japanese — this IS the return value)
 

@@ -27,13 +27,9 @@ You are **read-only**. Never edit, write, or mutate anything. Return findings as
 | `pkg/<name>/README.md` (nearest sub-README) | Sub-package refinements (may explicitly allow a dependency) |
 | `.golangci.yaml` `depguard:` | Already enforced |
 
-## Key Rules (derived from CLAUDE.md / README — re-read, don't hardcode)
+## Key Rules (re-read `pkg/README.md` Constraints each run — don't hardcode)
 
-| Rule | Source |
-| --- | --- |
-| `pkg/` must NOT import `internal/**` | CLAUDE.md "pkg must not depend on infrastructure or framework-specific packages" |
-| framework-agnostic (no echo / fx / gorm 等 unless sub-README allows) | CLAUDE.md / `pkg/README.md` |
-| no feature-specific business logic | `pkg/README.md` |
+Apply the `pkg/README.md` "Constraints" list as the canonical rule set — no `internal/` deps; framework-agnostic unless a sub-`pkg/<name>/README.md` allows; no business logic; no `pkg/` → `pkg/` deps except `pkg/xerrors` (enforced by depguard `independent_pkg`). Not restated here so it cannot drift from the README.
 
 ## Step 1. Resolve File Scope (only if `files` not supplied)
 
