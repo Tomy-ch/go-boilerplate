@@ -1,4 +1,4 @@
-package fake
+package testkit
 
 import (
 	"context"
@@ -21,7 +21,7 @@ func Test_Fake_Receive(t *testing.T) {
 		t.Run("投入済みメッセージを最大 max 件取得し ReceiveCount=1 で in-flight へ移る", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			f.Enqueue(
 				worker.Message{ID: "a"},
 				worker.Message{ID: "b"},
@@ -41,7 +41,7 @@ func Test_Fake_Receive(t *testing.T) {
 		t.Run("max がキュー長を上回る場合は残り全件を返す", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			f.Enqueue(worker.Message{ID: "a"})
 
 			got, err := f.Receive(context.Background(), 10)
@@ -58,7 +58,7 @@ func Test_Fake_Receive(t *testing.T) {
 		t.Run("注入されたエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			injected := xerrors.New("boom")
 			f.FailReceiveOnce(injected)
 
@@ -71,7 +71,7 @@ func Test_Fake_Receive(t *testing.T) {
 		t.Run("キューが空で ctx がキャンセルされた場合は ctx エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 
@@ -92,7 +92,7 @@ func Test_Fake_Ack(t *testing.T) {
 		t.Run("Ack で in-flight から除去され記録される", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			f.Enqueue(worker.Message{ID: "a"})
 			got, err := f.Receive(context.Background(), 1)
 			require.NoError(t, err)
@@ -114,7 +114,7 @@ func Test_Fake_Nack(t *testing.T) {
 		t.Run("Nack で再配送され、次の Receive で ReceiveCount が増える", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			f.Enqueue(worker.Message{ID: "a"})
 			first, err := f.Receive(context.Background(), 1)
 			require.NoError(t, err)
@@ -139,7 +139,7 @@ func Test_Fake_NackWithBackoff(t *testing.T) {
 		t.Run("遅延を記録して再配送し、ReceiveCountが増える", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			f.Enqueue(worker.Message{ID: "a"})
 			first, err := f.Receive(context.Background(), 1)
 			require.NoError(t, err)
@@ -157,7 +157,7 @@ func Test_Fake_NackWithBackoff(t *testing.T) {
 		t.Run("NackWithBackoff未呼び出しのIDはAppliedがfalse", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			assert.False(t, f.NackBackoffApplied("missing"))
 			assert.Equal(t, time.Duration(0), f.NackBackoffOf("missing"))
 		})
@@ -173,7 +173,7 @@ func Test_Fake_Extend(t *testing.T) {
 		t.Run("Extend の呼び出し回数が記録される", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			m := worker.Message{ID: "a"}
 
 			require.NoError(t, f.Extend(context.Background(), m, 0))
@@ -193,7 +193,7 @@ func Test_Fake_Fail(t *testing.T) {
 		t.Run("Fail の記録に message と cause が残る", func(t *testing.T) {
 			t.Parallel()
 
-			f := New()
+			f := NewFake()
 			m := worker.Message{ID: "a"}
 			cause := xerrors.New("permanent reason")
 

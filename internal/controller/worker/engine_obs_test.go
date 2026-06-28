@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
 	bw "go-boilerplate/internal/usecase/boundary/worker"
-	"go-boilerplate/internal/usecase/boundary/worker/fake"
+	"go-boilerplate/internal/usecase/boundary/worker/testkit"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -24,7 +24,7 @@ func Test_Engine_D3_StructuredLog(t *testing.T) {
 			t.Parallel()
 
 			logger, observed := logging.NewObservedTestLogger(t)
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
 				return xerrors.Wrap(apperror.ErrRetryable, "downstream")

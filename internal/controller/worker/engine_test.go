@@ -15,7 +15,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	bw "go-boilerplate/internal/usecase/boundary/worker"
-	"go-boilerplate/internal/usecase/boundary/worker/fake"
+	"go-boilerplate/internal/usecase/boundary/worker/testkit"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -72,7 +72,7 @@ func Test_New(t *testing.T) {
 		t.Run("同名の worker が重複登録された場合はエラー", func(t *testing.T) {
 			t.Parallel()
 
-			w := testWorker{name: "dup", cons: fake.New(), handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			w := testWorker{name: "dup", cons: testkit.NewFake(), handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
 			eng, err := New(
 				[]bw.Worker{w, w},
 				baseSettings(),
@@ -96,7 +96,7 @@ func Test_Engine_Run(t *testing.T) {
 		t.Run("未登録の worker 名が指定された場合はエラー", func(t *testing.T) {
 			t.Parallel()
 
-			w := testWorker{name: "known", cons: fake.New(), handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			w := testWorker{name: "known", cons: testkit.NewFake(), handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
 			eng, err := New(
 				[]bw.Worker{w},
 				baseSettings(),
@@ -124,7 +124,7 @@ func Test_Engine_A1_A2_AckNackDiscipline(t *testing.T) {
 		t.Run("成功時に Ack され Nack されない", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
 
@@ -142,7 +142,7 @@ func Test_Engine_A1_A2_AckNackDiscipline(t *testing.T) {
 		t.Run("Retryable 失敗時は Nack され Ack されない", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
 				return xerrors.Wrap(apperror.ErrRetryable, "downstream")
@@ -168,7 +168,7 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 		t.Run("長時間処理中に Extend が周期的に呼ばれる", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			release := make(chan struct{})
 			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
@@ -193,7 +193,7 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 
 			// Extend 失敗は握り潰さず log+metric で可視化しつつ、ハートビート goroutine は
 			// 生き続け、handler 完了で Ack される（lease 延長失敗は致命ではない）。
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			f.SetExtendErr(xerrors.New("extend boom"))
 			release := make(chan struct{})
@@ -225,7 +225,7 @@ func Test_Engine_A4_DuplicateDelivery(t *testing.T) {
 		t.Run("同一 ID の重複配送がそのまま Handler に届く", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"}, bw.Message{ID: "a"})
 			var mu sync.Mutex
 			count := 0
@@ -257,7 +257,7 @@ func Test_Engine_A5_PermanentAndFatal(t *testing.T) {
 		t.Run("Permanent は FailureHandler へ退避してから Ack される", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			w := testWorker{name: "w", cons: f, failure: f, handler: handlerFunc(func(context.Context, bw.Message) error {
 				return xerrors.Wrap(apperror.ErrPermanent, "bad message")
@@ -275,7 +275,7 @@ func Test_Engine_A5_PermanentAndFatal(t *testing.T) {
 		t.Run("Fatal は cancel 無しでも engine を停止させる", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			fatal := xerrors.Wrap(apperror.ErrFatal, "config broken")
 			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error {
@@ -304,7 +304,7 @@ func Test_Engine_A6_PanicIsolation(t *testing.T) {
 		t.Run("1 メッセージの panic が他メッセージ・engine を巻き込まない", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "good"}, bw.Message{ID: "bad"})
 			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(_ context.Context, m bw.Message) error {
 				if m.ID == "bad" {
@@ -332,7 +332,7 @@ func Test_Engine_A7_PoisonWarn(t *testing.T) {
 			t.Parallel()
 
 			logger, observed := logging.NewObservedTestLogger(t)
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			set := baseSettings()
 			set.ReceiveCountWarnThreshold = 1
@@ -359,7 +359,7 @@ func Test_Engine_B1_ConcurrencyLimit(t *testing.T) {
 		t.Run("同時 Handle 数が Concurrency を超えない", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			for i := range 6 {
 				f.Enqueue(bw.Message{ID: string(rune('a' + i))})
 			}
@@ -400,7 +400,7 @@ func Test_Engine_B2_InflightLimit(t *testing.T) {
 		t.Run("in-flight が MaxInFlight を超えない", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			for i := range 10 {
 				f.Enqueue(bw.Message{ID: string(rune('a' + i))})
 			}
@@ -432,7 +432,7 @@ func Test_Engine_B3_PartitionSerialization(t *testing.T) {
 		t.Run("同一 PartitionKey のメッセージは投入順に直列処理される", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(
 				bw.Message{ID: "1", PartitionKey: "k"},
 				bw.Message{ID: "2", PartitionKey: "k"},
@@ -473,7 +473,7 @@ func Test_Engine_B4_CircuitBreaker(t *testing.T) {
 		t.Run("連続失敗で Open し intake が止まり、回復後 Half-open で再開する", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			var failing atomic.Bool
 			failing.Store(true)
@@ -518,7 +518,7 @@ func Test_Engine_C1_drain(t *testing.T) {
 		t.Run("ctx cancel 後も in-flight は drain 期限内に完了して Ack される", func(t *testing.T) {
 			t.Parallel()
 
-			f := fake.New()
+			f := testkit.NewFake()
 			f.Enqueue(bw.Message{ID: "a"})
 			started := make(chan struct{}, 1)
 			release := make(chan struct{})
