@@ -89,6 +89,7 @@
 </p><p>Package mock_worker is a generated GoMock package.
 </p><p>Package mock_worker is a generated GoMock package.
 </p><p>Package mock_worker is a generated GoMock package.
+</p><p>Package mock_worker is a generated GoMock package.
 
 				
 			</p></div>
@@ -199,6 +200,28 @@
 				
 			
 				
+				<dd><a href="#MockQueueStatsProvider">type MockQueueStatsProvider</a></dd>
+				
+					
+					<dd>    <a href="#NewMockQueueStatsProvider">func NewMockQueueStatsProvider(ctrl *gomock.Controller) *MockQueueStatsProvider</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockQueueStatsProvider.EXPECT">func (m *MockQueueStatsProvider) EXPECT() *MockQueueStatsProviderMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockQueueStatsProvider.QueueStats">func (m *MockQueueStatsProvider) QueueStats(ctx context.Context) (worker.QueueStats, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockQueueStatsProviderMockRecorder">type MockQueueStatsProviderMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockQueueStatsProviderMockRecorder.QueueStats">func (mr *MockQueueStatsProviderMockRecorder) QueueStats(ctx any) *gomock.Call</a></dd>
+				
+			
+				
 				<dd><a href="#MockState">type MockState</a></dd>
 				
 					
@@ -282,6 +305,8 @@
 				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_failure.go.gen.go.html">mock_failure.go.gen.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_handler.go.gen.go.html">mock_handler.go.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_queue_stats.go.gen.go.html">mock_queue_stats.go.gen.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_state.go.gen.go.html">mock_state.go.gen.go</a>
 			
@@ -706,6 +731,109 @@
 				</h3>
 				<pre>func (mr *<a href="#MockHandlerMockRecorder">MockHandlerMockRecorder</a>) Handle(ctx, m <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Handle indicates an expected call of Handle.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockQueueStatsProvider">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_queue_stats.go.gen.go.html?s=496:628#L11">MockQueueStatsProvider</a>
+				<a class="permalink" href="#MockQueueStatsProvider">¶</a>
+				
+				
+			</h2>
+			<p>MockQueueStatsProvider is a mock of QueueStatsProvider interface.
+
+			</p><pre>type MockQueueStatsProvider struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockQueueStatsProvider">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_queue_stats.go.gen.go.html?s=857:936#L23">NewMockQueueStatsProvider</a>
+					<a class="permalink" href="#NewMockQueueStatsProvider">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockQueueStatsProvider(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockQueueStatsProvider">MockQueueStatsProvider</a></pre>
+				<p>NewMockQueueStatsProvider creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockQueueStatsProvider.EXPECT">func (*MockQueueStatsProvider) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_queue_stats.go.gen.go.html?s=1136:1213#L30">EXPECT</a>
+					<a class="permalink" href="#MockQueueStatsProvider.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockQueueStatsProvider">MockQueueStatsProvider</a>) EXPECT() *<a href="#MockQueueStatsProviderMockRecorder">MockQueueStatsProviderMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockQueueStatsProvider.QueueStats">func (*MockQueueStatsProvider) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_queue_stats.go.gen.go.html?s=1271:1362#L35">QueueStats</a>
+					<a class="permalink" href="#MockQueueStatsProvider.QueueStats">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockQueueStatsProvider">MockQueueStatsProvider</a>) QueueStats(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/worker/#QueueStats">QueueStats</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>QueueStats mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockQueueStatsProviderMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_queue_stats.go.gen.go.html?s=717:797#L18">MockQueueStatsProviderMockRecorder</a>
+				<a class="permalink" href="#MockQueueStatsProviderMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockQueueStatsProviderMockRecorder is the mock recorder for MockQueueStatsProvider.
+
+			</p><pre>type MockQueueStatsProviderMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockQueueStatsProviderMockRecorder.QueueStats">func (*MockQueueStatsProviderMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/worker/mock/mock_queue_stats.go.gen.go.html?s=1570:1648#L44">QueueStats</a>
+					<a class="permalink" href="#MockQueueStatsProviderMockRecorder.QueueStats">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockQueueStatsProviderMockRecorder">MockQueueStatsProviderMockRecorder</a>) QueueStats(ctx <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>QueueStats indicates an expected call of QueueStats.
 
 				
 				

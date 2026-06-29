@@ -118,6 +118,7 @@ BuildInfo is used for the following purposes.
 - `--version` command
 - `/version` API
 - `/health` endpoint
+- `app_build_info` Prometheus metric (see `internal/observability/metrics/buildinfo`)
 - log output
 - diagnostic information
 

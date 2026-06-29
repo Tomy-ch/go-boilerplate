@@ -86,6 +86,7 @@
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package mock_driver is a generated GoMock package.
 </p><p>Package mock_driver is a generated GoMock package.
+</p><p>Package mock_driver is a generated GoMock package.
 
 				
 			</p></div>
@@ -197,6 +198,28 @@
 					<dd>    <a href="#MockDatabaseDriverMockRecorder.Stats">func (mr *MockDatabaseDriverMockRecorder) Stats() *gomock.Call</a></dd>
 				
 			
+				
+				<dd><a href="#MockQueryRecorder">type MockQueryRecorder</a></dd>
+				
+					
+					<dd>    <a href="#NewMockQueryRecorder">func NewMockQueryRecorder(ctrl *gomock.Controller) *MockQueryRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockQueryRecorder.EXPECT">func (m *MockQueryRecorder) EXPECT() *MockQueryRecorderMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockQueryRecorder.Observe">func (m *MockQueryRecorder) Observe(ctx context.Context, attrs driver.QueryAttrs)</a></dd>
+				
+			
+				
+				<dd><a href="#MockQueryRecorderMockRecorder">type MockQueryRecorderMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockQueryRecorderMockRecorder.Observe">func (mr *MockQueryRecorderMockRecorder) Observe(ctx, attrs any) *gomock.Call</a></dd>
+				
+			
 			
 			</dl>
 			</div><!-- #manual-nav -->
@@ -211,6 +234,8 @@
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_connection.go.gen.go.html">mock_connection.go.gen.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_driver.go.gen.go.html">mock_driver.go.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_query_metric.go.gen.go.html">mock_query_metric.go.gen.go</a>
 			
 			</span>
 			</p>
@@ -632,6 +657,109 @@
 				</h3>
 				<pre>func (mr *<a href="#MockDatabaseDriverMockRecorder">MockDatabaseDriverMockRecorder</a>) Stats() *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Stats indicates an expected call of Stats.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockQueryRecorder">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_query_metric.go.gen.go.html?s=491:613#L11">MockQueryRecorder</a>
+				<a class="permalink" href="#MockQueryRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockQueryRecorder is a mock of QueryRecorder interface.
+
+			</p><pre>type MockQueryRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockQueryRecorder">func <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_query_metric.go.gen.go.html?s=817:886#L23">NewMockQueryRecorder</a>
+					<a class="permalink" href="#NewMockQueryRecorder">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockQueryRecorder(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockQueryRecorder">MockQueryRecorder</a></pre>
+				<p>NewMockQueryRecorder creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockQueryRecorder.EXPECT">func (*MockQueryRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_query_metric.go.gen.go.html?s=1076:1143#L30">EXPECT</a>
+					<a class="permalink" href="#MockQueryRecorder.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockQueryRecorder">MockQueryRecorder</a>) EXPECT() *<a href="#MockQueryRecorderMockRecorder">MockQueryRecorderMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockQueryRecorder.Observe">func (*MockQueryRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_query_metric.go.gen.go.html?s=1198:1279#L35">Observe</a>
+					<a class="permalink" href="#MockQueryRecorder.Observe">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockQueryRecorder">MockQueryRecorder</a>) Observe(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, attrs <a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/">driver</a>.<a href="../../../../../../go-boilerplate/internal/infrastructure/rdb/driver/#QueryAttrs">QueryAttrs</a>)</pre>
+				<p>Observe mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockQueryRecorderMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_query_metric.go.gen.go.html?s=692:762#L18">MockQueryRecorderMockRecorder</a>
+				<a class="permalink" href="#MockQueryRecorderMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockQueryRecorderMockRecorder is the mock recorder for MockQueryRecorder.
+
+			</p><pre>type MockQueryRecorderMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockQueryRecorderMockRecorder.Observe">func (*MockQueryRecorderMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/mock/mock_query_metric.go.gen.go.html?s=1393:1470#L41">Observe</a>
+					<a class="permalink" href="#MockQueryRecorderMockRecorder.Observe">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockQueryRecorderMockRecorder">MockQueryRecorderMockRecorder</a>) Observe(ctx, attrs <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Observe indicates an expected call of Observe.
 
 				
 				

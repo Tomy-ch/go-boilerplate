@@ -1,0 +1,331 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>redmetrics - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package redmetrics
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/controller/httpstack/redmetrics&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package redmetrics は、HTTP の RED（Rate / Errors / Duration）メトリクスを
+Echo ミドルウェアとして計測するための実装を提供します。
+label は method / route / status_code / status_class のみで、raw path や query
+など高カーディナリティな値・秘匿情報は持たせません。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#Middleware">func Middleware(rec Recorder) echo.MiddlewareFunc</a></dd>
+			
+				
+				<dd><a href="#RegisterRecorder">func RegisterRecorder(reg prometheus.Registerer, r *PrometheusRecorder) error</a></dd>
+			
+			
+				
+				<dd><a href="#PrometheusRecorder">type PrometheusRecorder</a></dd>
+				
+					
+					<dd>    <a href="#NewPrometheusRecorder">func NewPrometheusRecorder() *PrometheusRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#PrometheusRecorder.Collect">func (r *PrometheusRecorder) Collect(ch chan&lt;- prometheus.Metric)</a></dd>
+				
+					
+					<dd>    <a href="#PrometheusRecorder.Describe">func (r *PrometheusRecorder) Describe(ch chan&lt;- *prometheus.Desc)</a></dd>
+				
+					
+					<dd>    <a href="#PrometheusRecorder.Observe">func (r *PrometheusRecorder) Observe(method, route string, statusCode int, statusClass string, duration time.Duration)</a></dd>
+				
+			
+				
+				<dd><a href="#Recorder">type Recorder</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/middleware.go.html">middleware.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html">recorder.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/route.go.html">route.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/status.go.html">status.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/middleware.go.html?s=1234:1283#L16">Middleware</a>
+				<a class="permalink" href="#Middleware">¶</a>
+				
+				
+			</h2>
+			<pre>func Middleware(rec <a href="#Recorder">Recorder</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
+			<p>Middleware は、HTTP リクエストの count / duration / status を計測する Echo ミドルウェアを返します。
+status は c.Response().After フックで確定後に取得し、error handler / recovery による
+最終 status を安全に観測します。/metrics などの運用系パスは計測対象から除外します。
+</p><p>After フックはレスポンスの Write ごとに発火するため、ストリーミング応答（チャンク / SSE 等）
+では複数回呼ばれうる。これによる重複計上を防ぐため、Observe は 1 リクエストにつき
+厳密に 1 回だけ呼び出されることを保証する。
+</p><p>計測の既知の限界（After フック方式に起因する仕様）:
+</p><ul>
+<li>ボディ無し応答（204 No Content / 304 Not Modified など）は Write が呼ばれず
+After フックが発火しないため、計測されない。
+</li></ul>
+<p>これは status を確定後に安全に観測するための After フック採用とのトレードオフであり、
+現時点では仕様として許容する。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RegisterRecorder">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=3259:3336#L73">RegisterRecorder</a>
+				<a class="permalink" href="#RegisterRecorder">¶</a>
+				
+				
+			</h2>
+			<pre>func RegisterRecorder(reg <a href="../../../../../github.com/prometheus/client_golang/prometheus/">prometheus</a>.<a href="../../../../../github.com/prometheus/client_golang/prometheus/#Registerer">Registerer</a>, r *<a href="#PrometheusRecorder">PrometheusRecorder</a>) <a href="../../../../../builtin/#error">error</a></pre>
+			<p>RegisterRecorder は、PrometheusRecorder を指定レジストリに登録します。
+既に登録済みの場合はエラーを返さず無視します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="PrometheusRecorder">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=1330:1432#L22">PrometheusRecorder</a>
+				<a class="permalink" href="#PrometheusRecorder">¶</a>
+				
+				
+			</h2>
+			<p>PrometheusRecorder は、Recorder を Prometheus メトリクスとして公開する実装です。
+prometheus.Collector も満たし、pool_stats_collector と同じく registry へ登録して使用します。
+
+			</p><pre>type PrometheusRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewPrometheusRecorder">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=1612:1660#L29">NewPrometheusRecorder</a>
+					<a class="permalink" href="#NewPrometheusRecorder">¶</a>
+					
+					
+				</h3>
+				<pre>func NewPrometheusRecorder() *<a href="#PrometheusRecorder">PrometheusRecorder</a></pre>
+				<p>NewPrometheusRecorder は、PrometheusRecorder を初期化して返します。
+副作用は持たず、registry への登録は RegisterRecorder で別途行います。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="PrometheusRecorder.Collect">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=2976:3041#L66">Collect</a>
+					<a class="permalink" href="#PrometheusRecorder.Collect">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#PrometheusRecorder">PrometheusRecorder</a>) Collect(ch chan&lt;- <a href="../../../../../github.com/prometheus/client_golang/prometheus/">prometheus</a>.<a href="../../../../../github.com/prometheus/client_golang/prometheus/#Metric">Metric</a>)</pre>
+				<p>Collect は、PrometheusRecorder のメトリクスを収集して Prometheus に提供します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="PrometheusRecorder.Describe">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=2752:2817#L60">Describe</a>
+					<a class="permalink" href="#PrometheusRecorder.Describe">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#PrometheusRecorder">PrometheusRecorder</a>) Describe(ch chan&lt;- *<a href="../../../../../github.com/prometheus/client_golang/prometheus/">prometheus</a>.<a href="../../../../../github.com/prometheus/client_golang/prometheus/#Desc">Desc</a>)</pre>
+				<p>Describe は、PrometheusRecorder のメトリクスの説明を Prometheus に提供します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="PrometheusRecorder.Observe">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=2281:2399#L48">Observe</a>
+					<a class="permalink" href="#PrometheusRecorder.Observe">¶</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#PrometheusRecorder">PrometheusRecorder</a>) Observe(method, route <a href="../../../../../builtin/#string">string</a>, statusCode <a href="../../../../../builtin/#int">int</a>, statusClass <a href="../../../../../builtin/#string">string</a>, duration <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>)</pre>
+				<p>Observe は、request count を increment し、duration を histogram に記録します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Recorder">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=907:1108#L15">Recorder</a>
+				<a class="permalink" href="#Recorder">¶</a>
+				
+				
+			</h2>
+			<p>Recorder は、1 リクエスト分の計測値を記録するためのインターフェースです。
+
+			</p><pre>type Recorder interface {
+    <span class="comment">// Observe は、1 リクエスト分の count と duration を記録します。</span>
+    Observe(method, route <a href="../../../../../builtin/#string">string</a>, statusCode <a href="../../../../../builtin/#int">int</a>, statusClass <a href="../../../../../builtin/#string">string</a>, duration <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

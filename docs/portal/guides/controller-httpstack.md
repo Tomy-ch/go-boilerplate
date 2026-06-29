@@ -39,6 +39,7 @@ Each sub-package is split into small responsibilities and combined during applic
 |`bodylimit`|`Middleware`|Per-request body size limit (MB), 413 on exceed|
 |`timeout`|`Middleware`|Per-request deadline budget (entry point of deadline propagation)|
 |`observability`|`Middleware`|OpenTelemetry tracing integration|
+|`redmetrics`|`Middleware`|HTTP RED metrics (request count / duration / status); labels limited to method / route / status_code / status_class|
 
 ### Error Handling
 

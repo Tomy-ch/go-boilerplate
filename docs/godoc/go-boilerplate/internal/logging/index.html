@@ -376,7 +376,7 @@
 		
 			
 			
-			<h2 id="SplitStackLines">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3386:3425#L127">SplitStackLines</a>
+			<h2 id="SplitStackLines">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3598:3637#L129">SplitStackLines</a>
 				<a class="permalink" href="#SplitStackLines">¶</a>
 				
 				
@@ -384,7 +384,9 @@
 			<pre>func SplitStackLines(s <a href="../../../builtin/#string">string</a>) []<a href="../../../builtin/#string">string</a></pre>
 			<p>SplitStackLines は、スタックトレース文字列を改行で分割し行配列に変換します。
 末尾の空行は除去し、空文字列または改行のみの入力では nil を返します。
-配列化により行境界が構造として表現されるため、`\t&lt;file&gt;:&lt;line&gt;` の先頭タブは除去します。
+配列化により行境界とネスト深さが構造として表現されるため、cockroachdb/errors の
+`%+v` が各行頭に付与するガター（`  | ` の空白・パイプや `\t&lt;file&gt;:&lt;line&gt;` の先頭タブ）は
+冗長になる。各行頭の空白・`|`・タブをまとめて除去し、内容だけを残す。
 
 			
 			
@@ -415,7 +417,7 @@
 
 			
 				
-				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3705:3741#L140">Any</a>
+				<h3 id="Any">func <a href="../../../src/go-boilerplate/internal/logging/field.go.html?s=3919:3955#L142">Any</a>
 					<a class="permalink" href="#Any">¶</a>
 					
 					

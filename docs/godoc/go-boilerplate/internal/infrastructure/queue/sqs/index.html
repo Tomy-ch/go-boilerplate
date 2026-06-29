@@ -113,6 +113,9 @@
 				
 				<dd><a href="#NewDeadLetter">func NewDeadLetter(api API, dlqURL string, tf observability.TracerFactory) worker.FailureHandler</a></dd>
 			
+				
+				<dd><a href="#NewQueueStatsProvider">func NewQueueStatsProvider(api API, cfg Config, tf observability.TracerFactory) worker.QueueStatsProvider</a></dd>
+			
 			
 				
 				<dd><a href="#API">type API</a></dd>
@@ -143,6 +146,8 @@
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html">sqs.go</a>
 			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/stats.go.html">stats.go</a>
+			
 			</span>
 			</p>
 		
@@ -156,7 +161,7 @@
 		
 			
 			
-			<h2 id="NewConsumer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=1498:1583#L35">NewConsumer</a>
+			<h2 id="NewConsumer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=1649:1734#L40">NewConsumer</a>
 				<a class="permalink" href="#NewConsumer">¶</a>
 				
 				
@@ -182,10 +187,25 @@
 			
 
 		
+			
+			
+			</p><h2 id="NewQueueStatsProvider">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/stats.go.html?s=891:996#L18">NewQueueStatsProvider</a>
+				<a class="permalink" href="#NewQueueStatsProvider">¶</a>
+				
+				
+			</h2>
+			<pre>func NewQueueStatsProvider(api <a href="#API">API</a>, cfg <a href="#Config">Config</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/">worker</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/worker/#QueueStatsProvider">QueueStatsProvider</a></pre>
+			<p>NewQueueStatsProvider は、SQS の滞留量を取得する QueueStatsProvider を生成します。
+NewConsumer とは別 capability として provide し、既存の Consumer interface 返しを変更しません。
+
+			
+			
+
+		
 		
 			
 			
-			</p><h2 id="API">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=732:1295#L16">API</a>
+			</p><h2 id="API">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?s=732:1446#L16">API</a>
 				<a class="permalink" href="#API">¶</a>
 				
 				
@@ -201,6 +221,11 @@
         opts ...func(*<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Options">Options</a>),
     ) (*<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#ChangeMessageVisibilityOutput">ChangeMessageVisibilityOutput</a>, <a href="../../../../../builtin/#error">error</a>)
     SendMessage(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, in *<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#SendMessageInput">SendMessageInput</a>, opts ...func(*<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Options">Options</a>)) (*<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#SendMessageOutput">SendMessageOutput</a>, <a href="../../../../../builtin/#error">error</a>)
+    GetQueueAttributes(
+        ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>,
+        in *<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#GetQueueAttributesInput">GetQueueAttributesInput</a>,
+        opts ...func(*<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Options">Options</a>),
+    ) (*<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#GetQueueAttributesOutput">GetQueueAttributesOutput</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 
 			
@@ -217,7 +242,7 @@
 		
 			
 			
-			<h2 id="Config">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/config.go.html?s=451:878#L1">Config</a>
+			<h2 id="Config">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/config.go.html?s=451:988#L1">Config</a>
 				<a class="permalink" href="#Config">¶</a>
 				
 				
@@ -227,6 +252,8 @@
 			</p><pre>type Config struct {
 <span id="Config.QueueURL"></span>    <span class="comment">// QueueURL は、consume 対象キューの URL です。</span>
     QueueURL <a href="../../../../../builtin/#string">string</a>
+<span id="Config.DLQURL"></span>    <span class="comment">// DLQURL は、DLQ の URL です。空の場合は DLQ の滞留量を取得しません。</span>
+    DLQURL <a href="../../../../../builtin/#string">string</a>
 <span id="Config.MaxMessages"></span>    <span class="comment">// MaxMessages は、ReceiveMessage の最大取得件数です（SQS の上限は 10）。</span>
     MaxMessages <a href="../../../../../builtin/#int32">int32</a>
 <span id="Config.WaitTimeSeconds"></span>    <span class="comment">// WaitTimeSeconds は、long-poll の待機秒数です（0〜20）。</span>

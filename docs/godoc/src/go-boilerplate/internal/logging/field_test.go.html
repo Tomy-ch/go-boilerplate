@@ -327,58 +327,70 @@
 <span id="L270" class="ln">   270  </span>			assert.Equal(t, expected, SplitStackLines(input))
 <span id="L271" class="ln">   271  </span>		})
 <span id="L272" class="ln">   272  </span>
-<span id="L273" class="ln">   273  </span>		t.Run(&#34;末尾改行は分割結果から除去される&#34;, func(t *testing.T) {
+<span id="L273" class="ln">   273  </span>		t.Run(&#34;cockroachdb_errorsのガター（空白・パイプ・タブ）を行頭から除去する&#34;, func(t *testing.T) {
 <span id="L274" class="ln">   274  </span>			t.Parallel()
 <span id="L275" class="ln">   275  </span>
-<span id="L276" class="ln">   276  </span>			input := &#34;frame1\nframe2\n&#34;
-<span id="L277" class="ln">   277  </span>			expected := []string{&#34;frame1&#34;, &#34;frame2&#34;}
-<span id="L278" class="ln">   278  </span>			assert.Equal(t, expected, SplitStackLines(input))
-<span id="L279" class="ln">   279  </span>		})
-<span id="L280" class="ln">   280  </span>
-<span id="L281" class="ln">   281  </span>		t.Run(&#34;空文字列の場合、nilを返す&#34;, func(t *testing.T) {
-<span id="L282" class="ln">   282  </span>			t.Parallel()
-<span id="L283" class="ln">   283  </span>
-<span id="L284" class="ln">   284  </span>			assert.Nil(t, SplitStackLines(&#34;&#34;))
-<span id="L285" class="ln">   285  </span>		})
-<span id="L286" class="ln">   286  </span>	})
-<span id="L287" class="ln">   287  </span>}
-<span id="L288" class="ln">   288  </span>
-<span id="L289" class="ln">   289  </span>func TestAny(t *testing.T) {
-<span id="L290" class="ln">   290  </span>	t.Parallel()
-<span id="L291" class="ln">   291  </span>
-<span id="L292" class="ln">   292  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L293" class="ln">   293  </span>		t.Parallel()
-<span id="L294" class="ln">   294  </span>
-<span id="L295" class="ln">   295  </span>		t.Run(&#34;任意型値を保持するFieldを生成する&#34;, func(t *testing.T) {
-<span id="L296" class="ln">   296  </span>			t.Parallel()
-<span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span>			const expectedKey = &#34;key&#34;
-<span id="L299" class="ln">   299  </span>			expectedAny := map[string]int{&#34;one&#34;: 1, &#34;two&#34;: 2}
-<span id="L300" class="ln">   300  </span>			expected := &amp;Field{
-<span id="L301" class="ln">   301  </span>				key:      expectedKey,
-<span id="L302" class="ln">   302  </span>				kind:     fieldAny,
-<span id="L303" class="ln">   303  </span>				anyValue: expectedAny,
-<span id="L304" class="ln">   304  </span>			}
-<span id="L305" class="ln">   305  </span>
-<span id="L306" class="ln">   306  </span>			assert.Equal(t, expected, Any(expectedKey, expectedAny))
-<span id="L307" class="ln">   307  </span>		})
-<span id="L308" class="ln">   308  </span>	})
-<span id="L309" class="ln">   309  </span>}
-<span id="L310" class="ln">   310  </span>
-<span id="L311" class="ln">   311  </span>func Test_latencyMs(t *testing.T) {
-<span id="L312" class="ln">   312  </span>	t.Parallel()
-<span id="L313" class="ln">   313  </span>
-<span id="L314" class="ln">   314  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L315" class="ln">   315  </span>		t.Parallel()
-<span id="L316" class="ln">   316  </span>
-<span id="L317" class="ln">   317  </span>		t.Run(&#34;ミリ秒変換が正しい&#34;, func(t *testing.T) {
-<span id="L318" class="ln">   318  </span>			t.Parallel()
-<span id="L319" class="ln">   319  </span>			ms := latencyMs(250 * time.Millisecond)
-<span id="L320" class="ln">   320  </span>			require.InEpsilon(t, float64(250), ms, 0.01)
-<span id="L321" class="ln">   321  </span>		})
-<span id="L322" class="ln">   322  </span>	})
-<span id="L323" class="ln">   323  </span>}
-<span id="L324" class="ln">   324  </span>
+<span id="L276" class="ln">   276  </span>			input := &#34;  | go-boilerplate/pkg/xerrors.Join\n  | \t/app/pkg/xerrors/errors.go:34\n  -- stack trace:&#34;
+<span id="L277" class="ln">   277  </span>			expected := []string{
+<span id="L278" class="ln">   278  </span>				&#34;go-boilerplate/pkg/xerrors.Join&#34;,
+<span id="L279" class="ln">   279  </span>				&#34;/app/pkg/xerrors/errors.go:34&#34;,
+<span id="L280" class="ln">   280  </span>				&#34;-- stack trace:&#34;,
+<span id="L281" class="ln">   281  </span>			}
+<span id="L282" class="ln">   282  </span>			assert.Equal(t, expected, SplitStackLines(input))
+<span id="L283" class="ln">   283  </span>		})
+<span id="L284" class="ln">   284  </span>
+<span id="L285" class="ln">   285  </span>		t.Run(&#34;末尾改行は分割結果から除去される&#34;, func(t *testing.T) {
+<span id="L286" class="ln">   286  </span>			t.Parallel()
+<span id="L287" class="ln">   287  </span>
+<span id="L288" class="ln">   288  </span>			input := &#34;frame1\nframe2\n&#34;
+<span id="L289" class="ln">   289  </span>			expected := []string{&#34;frame1&#34;, &#34;frame2&#34;}
+<span id="L290" class="ln">   290  </span>			assert.Equal(t, expected, SplitStackLines(input))
+<span id="L291" class="ln">   291  </span>		})
+<span id="L292" class="ln">   292  </span>
+<span id="L293" class="ln">   293  </span>		t.Run(&#34;空文字列の場合、nilを返す&#34;, func(t *testing.T) {
+<span id="L294" class="ln">   294  </span>			t.Parallel()
+<span id="L295" class="ln">   295  </span>
+<span id="L296" class="ln">   296  </span>			assert.Nil(t, SplitStackLines(&#34;&#34;))
+<span id="L297" class="ln">   297  </span>		})
+<span id="L298" class="ln">   298  </span>	})
+<span id="L299" class="ln">   299  </span>}
+<span id="L300" class="ln">   300  </span>
+<span id="L301" class="ln">   301  </span>func TestAny(t *testing.T) {
+<span id="L302" class="ln">   302  </span>	t.Parallel()
+<span id="L303" class="ln">   303  </span>
+<span id="L304" class="ln">   304  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L305" class="ln">   305  </span>		t.Parallel()
+<span id="L306" class="ln">   306  </span>
+<span id="L307" class="ln">   307  </span>		t.Run(&#34;任意型値を保持するFieldを生成する&#34;, func(t *testing.T) {
+<span id="L308" class="ln">   308  </span>			t.Parallel()
+<span id="L309" class="ln">   309  </span>
+<span id="L310" class="ln">   310  </span>			const expectedKey = &#34;key&#34;
+<span id="L311" class="ln">   311  </span>			expectedAny := map[string]int{&#34;one&#34;: 1, &#34;two&#34;: 2}
+<span id="L312" class="ln">   312  </span>			expected := &amp;Field{
+<span id="L313" class="ln">   313  </span>				key:      expectedKey,
+<span id="L314" class="ln">   314  </span>				kind:     fieldAny,
+<span id="L315" class="ln">   315  </span>				anyValue: expectedAny,
+<span id="L316" class="ln">   316  </span>			}
+<span id="L317" class="ln">   317  </span>
+<span id="L318" class="ln">   318  </span>			assert.Equal(t, expected, Any(expectedKey, expectedAny))
+<span id="L319" class="ln">   319  </span>		})
+<span id="L320" class="ln">   320  </span>	})
+<span id="L321" class="ln">   321  </span>}
+<span id="L322" class="ln">   322  </span>
+<span id="L323" class="ln">   323  </span>func Test_latencyMs(t *testing.T) {
+<span id="L324" class="ln">   324  </span>	t.Parallel()
+<span id="L325" class="ln">   325  </span>
+<span id="L326" class="ln">   326  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L327" class="ln">   327  </span>		t.Parallel()
+<span id="L328" class="ln">   328  </span>
+<span id="L329" class="ln">   329  </span>		t.Run(&#34;ミリ秒変換が正しい&#34;, func(t *testing.T) {
+<span id="L330" class="ln">   330  </span>			t.Parallel()
+<span id="L331" class="ln">   331  </span>			ms := latencyMs(250 * time.Millisecond)
+<span id="L332" class="ln">   332  </span>			require.InEpsilon(t, float64(250), ms, 0.01)
+<span id="L333" class="ln">   333  </span>		})
+<span id="L334" class="ln">   334  </span>	})
+<span id="L335" class="ln">   335  </span>}
+<span id="L336" class="ln">   336  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/logging/field_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

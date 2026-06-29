@@ -205,6 +205,38 @@ Worker / HTTPClient / Outbox 向けメトリクスセット、OTLP Provider の�
 				
 			
 				
+				<dd><a href="#IdempotencyMetrics">type IdempotencyMetrics</a></dd>
+				
+					
+					<dd>    <a href="#NewIdempotencyMetrics">func NewIdempotencyMetrics(mp metric.MeterProvider) (*IdempotencyMetrics, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#IdempotencyMetrics.IncClaimFailure">func (m *IdempotencyMetrics) IncClaimFailure(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#IdempotencyMetrics.IncCompleteFailure">func (m *IdempotencyMetrics) IncCompleteFailure(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#IdempotencyMetrics.IncConflict">func (m *IdempotencyMetrics) IncConflict(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#IdempotencyMetrics.IncExpiredCleanup">func (m *IdempotencyMetrics) IncExpiredCleanup(ctx context.Context, count int64)</a></dd>
+				
+					
+					<dd>    <a href="#IdempotencyMetrics.IncExpiredCleanupFailure">func (m *IdempotencyMetrics) IncExpiredCleanupFailure(ctx context.Context)</a></dd>
+				
+					
+					<dd>    <a href="#IdempotencyMetrics.IncFingerprintMismatch">func (m *IdempotencyMetrics) IncFingerprintMismatch(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#IdempotencyMetrics.IncHit">func (m *IdempotencyMetrics) IncHit(ctx context.Context, operationID string)</a></dd>
+				
+					
+					<dd>    <a href="#IdempotencyMetrics.IncMiss">func (m *IdempotencyMetrics) IncMiss(ctx context.Context, operationID string)</a></dd>
+				
+			
+				
 				<dd><a href="#LayerTracer">type LayerTracer</a></dd>
 				
 					
@@ -339,6 +371,8 @@ Worker / HTTPClient / Outbox 向けメトリクスセット、OTLP Provider の�
 				<a href="../../../src/go-boilerplate/internal/observability/http_client_metrics.go.html">http_client_metrics.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/observability/http_client_transport.go.html">http_client_transport.go</a>
+			
+				<a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html">idempotency_metrics.go</a>
 			
 				<a href="../../../src/go-boilerplate/internal/observability/layer_tracer.go.html">layer_tracer.go</a>
 			
@@ -836,6 +870,152 @@ ContextWithAllowPrivateNetwork のフラグで制御し、link-local（クラウ
 				</h3>
 				<pre>func (t *<a href="#HTTPClientTransport">HTTPClientTransport</a>) RoundTripper() <a href="../../../net/http/">http</a>.<a href="../../../net/http/#RoundTripper">RoundTripper</a></pre>
 				<p>RoundTripper は、ラップしている http.RoundTripper を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="IdempotencyMetrics">type <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=833:975#L11">IdempotencyMetrics</a>
+				<a class="permalink" href="#IdempotencyMetrics">¶</a>
+				
+				
+			</h2>
+			<p>IdempotencyMetrics は、冪等性サブシステムの判定結果・内部失敗・GC 削除を計上する計装一式です。
+usecase 層の idempotency.Metrics および idempotency.GCMetrics を実装します。
+</p><p>高カーディナリティ・秘匿値（Idempotency-Key / scope / fingerprint / PII / raw error）は
+ラベルに載せません。許可ラベルは operation_id / result / phase / job のみです。
+
+			</p><pre>type IdempotencyMetrics struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewIdempotencyMetrics">func <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=1152:1232#L19">NewIdempotencyMetrics</a>
+					<a class="permalink" href="#NewIdempotencyMetrics">¶</a>
+					
+					
+				</h3>
+				<pre>func NewIdempotencyMetrics(mp <a href="../../../go.opentelemetry.io/otel/metric/">metric</a>.<a href="../../../go.opentelemetry.io/otel/metric/#MeterProvider">MeterProvider</a>) (*<a href="#IdempotencyMetrics">IdempotencyMetrics</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>NewIdempotencyMetrics は、注入された MeterProvider から冪等性計装一式を生成します。
+いずれかの計装生成失敗で error を返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="IdempotencyMetrics.IncClaimFailure">func (*IdempotencyMetrics) <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=2662:2747#L53">IncClaimFailure</a>
+					<a class="permalink" href="#IdempotencyMetrics.IncClaimFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#IdempotencyMetrics">IdempotencyMetrics</a>) IncClaimFailure(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, operationID <a href="../../../builtin/#string">string</a>)</pre>
+				<p>IncClaimFailure は、ErrLockTimeout 以外の Claim 失敗を計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="IdempotencyMetrics.IncCompleteFailure">func (*IdempotencyMetrics) <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=2883:2971#L58">IncCompleteFailure</a>
+					<a class="permalink" href="#IdempotencyMetrics.IncCompleteFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#IdempotencyMetrics">IdempotencyMetrics</a>) IncCompleteFailure(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, operationID <a href="../../../builtin/#string">string</a>)</pre>
+				<p>IncCompleteFailure は、Complete 失敗（結果保存失敗）を計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="IdempotencyMetrics.IncConflict">func (*IdempotencyMetrics) <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=2194:2275#L43">IncConflict</a>
+					<a class="permalink" href="#IdempotencyMetrics.IncConflict">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#IdempotencyMetrics">IdempotencyMetrics</a>) IncConflict(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, operationID <a href="../../../builtin/#string">string</a>)</pre>
+				<p>IncConflict は、処理中キーへの並行再送（409）を計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="IdempotencyMetrics.IncExpiredCleanup">func (*IdempotencyMetrics) <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=3109:3189#L63">IncExpiredCleanup</a>
+					<a class="permalink" href="#IdempotencyMetrics.IncExpiredCleanup">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#IdempotencyMetrics">IdempotencyMetrics</a>) IncExpiredCleanup(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, count <a href="../../../builtin/#int64">int64</a>)</pre>
+				<p>IncExpiredCleanup は、削除に成功した失効キー件数を計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="IdempotencyMetrics.IncExpiredCleanupFailure">func (*IdempotencyMetrics) <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=3386:3460#L69">IncExpiredCleanupFailure</a>
+					<a class="permalink" href="#IdempotencyMetrics.IncExpiredCleanupFailure">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#IdempotencyMetrics">IdempotencyMetrics</a>) IncExpiredCleanupFailure(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>)</pre>
+				<p>IncExpiredCleanupFailure は、GC 削除バッチの失敗回数を計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="IdempotencyMetrics.IncFingerprintMismatch">func (*IdempotencyMetrics) <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=2424:2516#L48">IncFingerprintMismatch</a>
+					<a class="permalink" href="#IdempotencyMetrics.IncFingerprintMismatch">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#IdempotencyMetrics">IdempotencyMetrics</a>) IncFingerprintMismatch(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, operationID <a href="../../../builtin/#string">string</a>)</pre>
+				<p>IncFingerprintMismatch は、同一キー別ボディの再利用（422）を計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="IdempotencyMetrics.IncHit">func (*IdempotencyMetrics) <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=1807:1883#L33">IncHit</a>
+					<a class="permalink" href="#IdempotencyMetrics.IncHit">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#IdempotencyMetrics">IdempotencyMetrics</a>) IncHit(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, operationID <a href="../../../builtin/#string">string</a>)</pre>
+				<p>IncHit は、completed 行の再送（replay）を計上します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="IdempotencyMetrics.IncMiss">func (*IdempotencyMetrics) <a href="../../../src/go-boilerplate/internal/observability/idempotency_metrics.go.html?s=1986:2063#L38">IncMiss</a>
+					<a class="permalink" href="#IdempotencyMetrics.IncMiss">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#IdempotencyMetrics">IdempotencyMetrics</a>) IncMiss(ctx <a href="../../../context/">context</a>.<a href="../../../context/#Context">Context</a>, operationID <a href="../../../builtin/#string">string</a>)</pre>
+				<p>IncMiss は、新規 claim 成立を計上します。
 
 				
 				

@@ -121,10 +121,13 @@
 				<dd><a href="#DSNWithTimeZoneString">func DSNWithTimeZoneString(dbCfg *config.DatabaseConfig, osCfg *config.OperatingSystemConfig) string</a></dd>
 			
 				
-				<dd><a href="#NewQueryTracer">func NewQueryTracer(dbCfg *config.DatabaseConfig, obsCfg *config.ObservabilityConfig, tracer *otelpgx.Tracer, logger logging.Logger, lf logging.LogFieldBuilder) pgx.QueryTracer</a></dd>
+				<dd><a href="#NewQueryTracer">func NewQueryTracer(dbCfg *config.DatabaseConfig, obsCfg *config.ObservabilityConfig, tracer *otelpgx.Tracer, recorder QueryRecorder, logger logging.Logger, lf logging.LogFieldBuilder) pgx.QueryTracer</a></dd>
 			
 				
 				<dd><a href="#NewTransactionManager">func NewTransactionManager(db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper) tx.Manager</a></dd>
+			
+				
+				<dd><a href="#WithQueryName">func WithQueryName(ctx context.Context, name string) context.Context</a></dd>
 			
 			
 				
@@ -146,6 +149,16 @@
 				
 				
 			
+				
+				<dd><a href="#QueryAttrs">type QueryAttrs</a></dd>
+				
+				
+			
+				
+				<dd><a href="#QueryRecorder">type QueryRecorder</a></dd>
+				
+				
+			
 			
 			</dl>
 			</div><!-- #manual-nav -->
@@ -162,6 +175,8 @@
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/connection.go.html">connection.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/driver.go.html">driver.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html">query_metric.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_tracer.go.html">query_tracer.go</a>
 			
@@ -251,7 +266,7 @@
 		
 			
 			
-			</p><h2 id="NewQueryTracer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_tracer.go.html?s=1091:1275#L33">NewQueryTracer</a>
+			</p><h2 id="NewQueryTracer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_tracer.go.html?s=1152:1361#L34">NewQueryTracer</a>
 				<a class="permalink" href="#NewQueryTracer">¶</a>
 				
 				
@@ -260,10 +275,11 @@
     dbCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#DatabaseConfig">DatabaseConfig</a>,
     obsCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#ObservabilityConfig">ObservabilityConfig</a>,
     tracer *<a href="../../../../../github.com/exaring/otelpgx/">otelpgx</a>.<a href="../../../../../github.com/exaring/otelpgx/#Tracer">Tracer</a>,
+    recorder <a href="#QueryRecorder">QueryRecorder</a>,
     logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>,
     lf <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#LogFieldBuilder">LogFieldBuilder</a>,
 ) pgx.<a href="#QueryTracer">QueryTracer</a></pre>
-			<p>NewQueryTracer は、span(otelpgx) とクエリログ(終了/スロー/エラー)を行う pgx.QueryTracer を生成します。
+			<p>NewQueryTracer は、span(otelpgx)・クエリログ(終了/スロー/エラー)・クエリメトリクス記録を行う pgx.QueryTracer を生成します。
 
 			
 			
@@ -283,6 +299,21 @@
 </p><p>serialization failure / deadlock 検出時に fn を有限回まで再試行します。
 リトライ上限・backoff は config（DB_TX_MAX_RETRIES / DB_TX_RETRY_BASE_BACKOFF /
 DB_TX_RETRY_MAX_BACKOFF）から取得します。0 以下の場合は既定値にフォールバックします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="WithQueryName">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html?s=1855:1923#L51">WithQueryName</a>
+				<a class="permalink" href="#WithQueryName">¶</a>
+				
+				
+			</h2>
+			<pre>func WithQueryName(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, name <a href="../../../../../builtin/#string">string</a>) <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a></pre>
+			<p>WithQueryName は、メトリクスの query_name ラベルに使う安定名を context に付与します。
+Repository / QueryService 側で操作名（例: &#34;user.find_by_id&#34;）を明示します。
 
 			
 			
@@ -390,6 +421,63 @@ DB アクセスの最上位インタフェースです。
 
 			
 		
+			
+			
+			</p><h2 id="QueryAttrs">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html?s=1111:1239#L32">QueryAttrs</a>
+				<a class="permalink" href="#QueryAttrs">¶</a>
+				
+				
+			</h2>
+			<p>QueryAttrs は、1 クエリの観測属性です。
+SQL 本文・bind 値・テーブル名・制約名・PII などの高カーディナリティ／秘匿情報は持ちません。
+
+			</p><pre>type QueryAttrs struct {
+<span id="QueryAttrs.QueryName"></span>    QueryName  <a href="../../../../../builtin/#string">string</a>
+<span id="QueryAttrs.Operation"></span>    Operation  <a href="../../../../../builtin/#string">string</a>
+<span id="QueryAttrs.Status"></span>    Status     <a href="../../../../../builtin/#string">string</a>
+<span id="QueryAttrs.ErrorClass"></span>    ErrorClass <a href="../../../../../builtin/#string">string</a>
+<span id="QueryAttrs.Duration"></span>    Duration   <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QueryRecorder">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/driver/query_metric.go.html?s=1452:1532#L42">QueryRecorder</a>
+				<a class="permalink" href="#QueryRecorder">¶</a>
+				
+				
+			</h2>
+			<p>QueryRecorder は、1 クエリの実行結果をメトリクスとして記録します。
+（interface を消費側の driver に置くことで metrics → driver の循環 import を避けます）。
+
+			</p><pre>type QueryRecorder interface {
+    Observe(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, attrs <a href="#QueryAttrs">QueryAttrs</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
 	
 
 	
@@ -400,7 +488,7 @@ DB アクセスの最上位インタフェースです。
 
 	
 	
-		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
 	
 	<div class="pkg-dir">
 		<table>

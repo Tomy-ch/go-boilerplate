@@ -89,151 +89,156 @@
 <span id="L32" class="ln">    32  </span>		opts ...func(*sqs.Options),
 <span id="L33" class="ln">    33  </span>	) (*sqs.ChangeMessageVisibilityOutput, error)
 <span id="L34" class="ln">    34  </span>	SendMessage(ctx context.Context, in *sqs.SendMessageInput, opts ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
-<span id="L35" class="ln">    35  </span>}
-<span id="L36" class="ln">    36  </span>
-<span id="L37" class="ln">    37  </span><span class="comment">// consumer は、worker.Consumer の SQS 実装です。</span>
-<span id="L38" class="ln">    38  </span>type consumer struct {
-<span id="L39" class="ln">    39  </span>	api    API
-<span id="L40" class="ln">    40  </span>	cfg    Config
-<span id="L41" class="ln">    41  </span>	tracer observability.LayerTracer
-<span id="L42" class="ln">    42  </span>}
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span><span class="comment">// NewConsumer は、SQS Consumer を生成します。</span>
-<span id="L45" class="ln">    45  </span>func NewConsumer(api API, cfg Config, tf observability.TracerFactory) worker.Consumer {
-<span id="L46" class="ln">    46  </span>	return &amp;consumer{api: api, cfg: cfg, tracer: tf.Infra()}
+<span id="L35" class="ln">    35  </span>	GetQueueAttributes(
+<span id="L36" class="ln">    36  </span>		ctx context.Context,
+<span id="L37" class="ln">    37  </span>		in *sqs.GetQueueAttributesInput,
+<span id="L38" class="ln">    38  </span>		opts ...func(*sqs.Options),
+<span id="L39" class="ln">    39  </span>	) (*sqs.GetQueueAttributesOutput, error)
+<span id="L40" class="ln">    40  </span>}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span><span class="comment">// consumer は、worker.Consumer の SQS 実装です。</span>
+<span id="L43" class="ln">    43  </span>type consumer struct {
+<span id="L44" class="ln">    44  </span>	api    API
+<span id="L45" class="ln">    45  </span>	cfg    Config
+<span id="L46" class="ln">    46  </span>	tracer observability.LayerTracer
 <span id="L47" class="ln">    47  </span>}
 <span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span><span class="comment">// Receive は、ReceiveMessage で long-poll し、broker 非依存の Message へ変換して返します。</span>
-<span id="L50" class="ln">    50  </span>func (c *consumer) Receive(ctx context.Context, maxMessages int) ([]worker.Message, error) {
-<span id="L51" class="ln">    51  </span>	ctx, endSpan := c.tracer.Start(ctx)
-<span id="L52" class="ln">    52  </span>	defer endSpan()
+<span id="L49" class="ln">    49  </span><span class="comment">// NewConsumer は、SQS Consumer を生成します。</span>
+<span id="L50" class="ln">    50  </span>func NewConsumer(api API, cfg Config, tf observability.TracerFactory) worker.Consumer {
+<span id="L51" class="ln">    51  </span>	return &amp;consumer{api: api, cfg: cfg, tracer: tf.Infra()}
+<span id="L52" class="ln">    52  </span>}
 <span id="L53" class="ln">    53  </span>
-<span id="L54" class="ln">    54  </span>	limit := maxMessages
-<span id="L55" class="ln">    55  </span>	if c.cfg.MaxMessages &gt; 0 &amp;&amp; limit &gt; int(c.cfg.MaxMessages) {
-<span id="L56" class="ln">    56  </span>		limit = int(c.cfg.MaxMessages)
-<span id="L57" class="ln">    57  </span>	}
-<span id="L58" class="ln">    58  </span>	if limit &gt; maxSQSBatch {
-<span id="L59" class="ln">    59  </span>		limit = maxSQSBatch
-<span id="L60" class="ln">    60  </span>	}
-<span id="L61" class="ln">    61  </span>	if limit &lt; 1 {
-<span id="L62" class="ln">    62  </span>		limit = 1
-<span id="L63" class="ln">    63  </span>	}
-<span id="L64" class="ln">    64  </span>	n := int32(limit) <span class="comment">// limit は 1..maxSQSBatch(10) に丸め済み</span>
-<span id="L65" class="ln">    65  </span>
-<span id="L66" class="ln">    66  </span>	out, err := c.api.ReceiveMessage(ctx, &amp;sqs.ReceiveMessageInput{
-<span id="L67" class="ln">    67  </span>		QueueUrl:            aws.String(c.cfg.QueueURL),
-<span id="L68" class="ln">    68  </span>		MaxNumberOfMessages: n,
-<span id="L69" class="ln">    69  </span>		WaitTimeSeconds:     c.cfg.WaitTimeSeconds,
-<span id="L70" class="ln">    70  </span>		VisibilityTimeout:   c.cfg.VisibilityTimeout,
-<span id="L71" class="ln">    71  </span>		MessageSystemAttributeNames: []types.MessageSystemAttributeName{
-<span id="L72" class="ln">    72  </span>			types.MessageSystemAttributeNameApproximateReceiveCount,
-<span id="L73" class="ln">    73  </span>			types.MessageSystemAttributeNameMessageGroupId,
-<span id="L74" class="ln">    74  </span>		},
-<span id="L75" class="ln">    75  </span>		MessageAttributeNames: []string{&#34;All&#34;},
-<span id="L76" class="ln">    76  </span>	})
-<span id="L77" class="ln">    77  </span>	if err != nil {
-<span id="L78" class="ln">    78  </span>		return nil, normalizeError(err)
-<span id="L79" class="ln">    79  </span>	}
-<span id="L80" class="ln">    80  </span>
-<span id="L81" class="ln">    81  </span>	msgs := make([]worker.Message, 0, len(out.Messages))
-<span id="L82" class="ln">    82  </span>	for _, m := range out.Messages {
-<span id="L83" class="ln">    83  </span>		msgs = append(msgs, toMessage(m))
+<span id="L54" class="ln">    54  </span><span class="comment">// Receive は、ReceiveMessage で long-poll し、broker 非依存の Message へ変換して返します。</span>
+<span id="L55" class="ln">    55  </span>func (c *consumer) Receive(ctx context.Context, maxMessages int) ([]worker.Message, error) {
+<span id="L56" class="ln">    56  </span>	ctx, endSpan := c.tracer.Start(ctx)
+<span id="L57" class="ln">    57  </span>	defer endSpan()
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>	limit := maxMessages
+<span id="L60" class="ln">    60  </span>	if c.cfg.MaxMessages &gt; 0 &amp;&amp; limit &gt; int(c.cfg.MaxMessages) {
+<span id="L61" class="ln">    61  </span>		limit = int(c.cfg.MaxMessages)
+<span id="L62" class="ln">    62  </span>	}
+<span id="L63" class="ln">    63  </span>	if limit &gt; maxSQSBatch {
+<span id="L64" class="ln">    64  </span>		limit = maxSQSBatch
+<span id="L65" class="ln">    65  </span>	}
+<span id="L66" class="ln">    66  </span>	if limit &lt; 1 {
+<span id="L67" class="ln">    67  </span>		limit = 1
+<span id="L68" class="ln">    68  </span>	}
+<span id="L69" class="ln">    69  </span>	n := int32(limit) <span class="comment">// limit は 1..maxSQSBatch(10) に丸め済み</span>
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span>	out, err := c.api.ReceiveMessage(ctx, &amp;sqs.ReceiveMessageInput{
+<span id="L72" class="ln">    72  </span>		QueueUrl:            aws.String(c.cfg.QueueURL),
+<span id="L73" class="ln">    73  </span>		MaxNumberOfMessages: n,
+<span id="L74" class="ln">    74  </span>		WaitTimeSeconds:     c.cfg.WaitTimeSeconds,
+<span id="L75" class="ln">    75  </span>		VisibilityTimeout:   c.cfg.VisibilityTimeout,
+<span id="L76" class="ln">    76  </span>		MessageSystemAttributeNames: []types.MessageSystemAttributeName{
+<span id="L77" class="ln">    77  </span>			types.MessageSystemAttributeNameApproximateReceiveCount,
+<span id="L78" class="ln">    78  </span>			types.MessageSystemAttributeNameMessageGroupId,
+<span id="L79" class="ln">    79  </span>		},
+<span id="L80" class="ln">    80  </span>		MessageAttributeNames: []string{&#34;All&#34;},
+<span id="L81" class="ln">    81  </span>	})
+<span id="L82" class="ln">    82  </span>	if err != nil {
+<span id="L83" class="ln">    83  </span>		return nil, normalizeError(err)
 <span id="L84" class="ln">    84  </span>	}
-<span id="L85" class="ln">    85  </span>	return msgs, nil
-<span id="L86" class="ln">    86  </span>}
-<span id="L87" class="ln">    87  </span>
-<span id="L88" class="ln">    88  </span><span class="comment">// Ack は、DeleteMessage でメッセージを削除します。</span>
-<span id="L89" class="ln">    89  </span>func (c *consumer) Ack(ctx context.Context, m worker.Message) error {
-<span id="L90" class="ln">    90  </span>	ctx, endSpan := c.tracer.Start(ctx)
-<span id="L91" class="ln">    91  </span>	defer endSpan()
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>	msgs := make([]worker.Message, 0, len(out.Messages))
+<span id="L87" class="ln">    87  </span>	for _, m := range out.Messages {
+<span id="L88" class="ln">    88  </span>		msgs = append(msgs, toMessage(m))
+<span id="L89" class="ln">    89  </span>	}
+<span id="L90" class="ln">    90  </span>	return msgs, nil
+<span id="L91" class="ln">    91  </span>}
 <span id="L92" class="ln">    92  </span>
-<span id="L93" class="ln">    93  </span>	_, err := c.api.DeleteMessage(ctx, &amp;sqs.DeleteMessageInput{
-<span id="L94" class="ln">    94  </span>		QueueUrl:      aws.String(c.cfg.QueueURL),
-<span id="L95" class="ln">    95  </span>		ReceiptHandle: aws.String(m.Attributes[worker.AttrReceiptHandle]),
-<span id="L96" class="ln">    96  </span>	})
-<span id="L97" class="ln">    97  </span>	return normalizeError(err)
-<span id="L98" class="ln">    98  </span>}
-<span id="L99" class="ln">    99  </span>
-<span id="L100" class="ln">   100  </span><span class="comment">// Nack は、メッセージを即時に再配送へ戻します。</span>
-<span id="L101" class="ln">   101  </span>func (c *consumer) Nack(ctx context.Context, m worker.Message) error {
-<span id="L102" class="ln">   102  </span>	ctx, endSpan := c.tracer.Start(ctx)
-<span id="L103" class="ln">   103  </span>	defer endSpan()
+<span id="L93" class="ln">    93  </span><span class="comment">// Ack は、DeleteMessage でメッセージを削除します。</span>
+<span id="L94" class="ln">    94  </span>func (c *consumer) Ack(ctx context.Context, m worker.Message) error {
+<span id="L95" class="ln">    95  </span>	ctx, endSpan := c.tracer.Start(ctx)
+<span id="L96" class="ln">    96  </span>	defer endSpan()
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>	_, err := c.api.DeleteMessage(ctx, &amp;sqs.DeleteMessageInput{
+<span id="L99" class="ln">    99  </span>		QueueUrl:      aws.String(c.cfg.QueueURL),
+<span id="L100" class="ln">   100  </span>		ReceiptHandle: aws.String(m.Attributes[worker.AttrReceiptHandle]),
+<span id="L101" class="ln">   101  </span>	})
+<span id="L102" class="ln">   102  </span>	return normalizeError(err)
+<span id="L103" class="ln">   103  </span>}
 <span id="L104" class="ln">   104  </span>
-<span id="L105" class="ln">   105  </span>	_, err := c.api.ChangeMessageVisibility(ctx, &amp;sqs.ChangeMessageVisibilityInput{
-<span id="L106" class="ln">   106  </span>		QueueUrl:          aws.String(c.cfg.QueueURL),
-<span id="L107" class="ln">   107  </span>		ReceiptHandle:     aws.String(m.Attributes[worker.AttrReceiptHandle]),
-<span id="L108" class="ln">   108  </span>		VisibilityTimeout: 0,
-<span id="L109" class="ln">   109  </span>	})
-<span id="L110" class="ln">   110  </span>	return normalizeError(err)
-<span id="L111" class="ln">   111  </span>}
-<span id="L112" class="ln">   112  </span>
-<span id="L113" class="ln">   113  </span><span class="comment">// NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します。</span>
-<span id="L114" class="ln">   114  </span><span class="comment">// d&lt;=0 は Nack（即時）と等価です。</span>
-<span id="L115" class="ln">   115  </span>func (c *consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error {
-<span id="L116" class="ln">   116  </span>	if d &lt;= 0 {
-<span id="L117" class="ln">   117  </span>		return c.Nack(ctx, m)
-<span id="L118" class="ln">   118  </span>	}
-<span id="L119" class="ln">   119  </span>
-<span id="L120" class="ln">   120  </span>	ctx, endSpan := c.tracer.Start(ctx)
-<span id="L121" class="ln">   121  </span>	defer endSpan()
-<span id="L122" class="ln">   122  </span>
-<span id="L123" class="ln">   123  </span>	_, err := c.api.ChangeMessageVisibility(ctx, &amp;sqs.ChangeMessageVisibilityInput{
-<span id="L124" class="ln">   124  </span>		QueueUrl:          aws.String(c.cfg.QueueURL),
-<span id="L125" class="ln">   125  </span>		ReceiptHandle:     aws.String(m.Attributes[worker.AttrReceiptHandle]),
-<span id="L126" class="ln">   126  </span>		VisibilityTimeout: visibilitySeconds(d),
-<span id="L127" class="ln">   127  </span>	})
-<span id="L128" class="ln">   128  </span>	return normalizeError(err)
-<span id="L129" class="ln">   129  </span>}
-<span id="L130" class="ln">   130  </span>
-<span id="L131" class="ln">   131  </span><span class="comment">// Extend は、可視性タイムアウトを延長します（長時間 handler のハートビート）。</span>
-<span id="L132" class="ln">   132  </span>func (c *consumer) Extend(ctx context.Context, m worker.Message, d time.Duration) error {
-<span id="L133" class="ln">   133  </span>	ctx, endSpan := c.tracer.Start(ctx)
-<span id="L134" class="ln">   134  </span>	defer endSpan()
+<span id="L105" class="ln">   105  </span><span class="comment">// Nack は、メッセージを即時に再配送へ戻します。</span>
+<span id="L106" class="ln">   106  </span>func (c *consumer) Nack(ctx context.Context, m worker.Message) error {
+<span id="L107" class="ln">   107  </span>	ctx, endSpan := c.tracer.Start(ctx)
+<span id="L108" class="ln">   108  </span>	defer endSpan()
+<span id="L109" class="ln">   109  </span>
+<span id="L110" class="ln">   110  </span>	_, err := c.api.ChangeMessageVisibility(ctx, &amp;sqs.ChangeMessageVisibilityInput{
+<span id="L111" class="ln">   111  </span>		QueueUrl:          aws.String(c.cfg.QueueURL),
+<span id="L112" class="ln">   112  </span>		ReceiptHandle:     aws.String(m.Attributes[worker.AttrReceiptHandle]),
+<span id="L113" class="ln">   113  </span>		VisibilityTimeout: 0,
+<span id="L114" class="ln">   114  </span>	})
+<span id="L115" class="ln">   115  </span>	return normalizeError(err)
+<span id="L116" class="ln">   116  </span>}
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span><span class="comment">// NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します。</span>
+<span id="L119" class="ln">   119  </span><span class="comment">// d&lt;=0 は Nack（即時）と等価です。</span>
+<span id="L120" class="ln">   120  </span>func (c *consumer) NackWithBackoff(ctx context.Context, m worker.Message, d time.Duration) error {
+<span id="L121" class="ln">   121  </span>	if d &lt;= 0 {
+<span id="L122" class="ln">   122  </span>		return c.Nack(ctx, m)
+<span id="L123" class="ln">   123  </span>	}
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>	ctx, endSpan := c.tracer.Start(ctx)
+<span id="L126" class="ln">   126  </span>	defer endSpan()
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span>	_, err := c.api.ChangeMessageVisibility(ctx, &amp;sqs.ChangeMessageVisibilityInput{
+<span id="L129" class="ln">   129  </span>		QueueUrl:          aws.String(c.cfg.QueueURL),
+<span id="L130" class="ln">   130  </span>		ReceiptHandle:     aws.String(m.Attributes[worker.AttrReceiptHandle]),
+<span id="L131" class="ln">   131  </span>		VisibilityTimeout: visibilitySeconds(d),
+<span id="L132" class="ln">   132  </span>	})
+<span id="L133" class="ln">   133  </span>	return normalizeError(err)
+<span id="L134" class="ln">   134  </span>}
 <span id="L135" class="ln">   135  </span>
-<span id="L136" class="ln">   136  </span>	_, err := c.api.ChangeMessageVisibility(ctx, &amp;sqs.ChangeMessageVisibilityInput{
-<span id="L137" class="ln">   137  </span>		QueueUrl:          aws.String(c.cfg.QueueURL),
-<span id="L138" class="ln">   138  </span>		ReceiptHandle:     aws.String(m.Attributes[worker.AttrReceiptHandle]),
-<span id="L139" class="ln">   139  </span>		VisibilityTimeout: visibilitySeconds(d),
-<span id="L140" class="ln">   140  </span>	})
-<span id="L141" class="ln">   141  </span>	return normalizeError(err)
-<span id="L142" class="ln">   142  </span>}
-<span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span><span class="comment">// visibilitySeconds は、Duration を SQS の可視性秒数（int32）へ丸めます。</span>
-<span id="L145" class="ln">   145  </span><span class="comment">// サブ秒は切り捨てると 0 秒＝即時再配送になり処理中メッセージが重複配送されるため、</span>
-<span id="L146" class="ln">   146  </span><span class="comment">// 切り上げたうえで 1 秒を下限とします。</span>
-<span id="L147" class="ln">   147  </span>func visibilitySeconds(d time.Duration) int32 {
-<span id="L148" class="ln">   148  </span>	return max(1, int32(math.Ceil(d.Seconds())))
-<span id="L149" class="ln">   149  </span>}
-<span id="L150" class="ln">   150  </span>
-<span id="L151" class="ln">   151  </span><span class="comment">// toMessage は、SQS のメッセージを broker 非依存の Message へ正規化します。</span>
-<span id="L152" class="ln">   152  </span><span class="comment">//   - MessageAttributes（traceparent 等）→ Attributes</span>
-<span id="L153" class="ln">   153  </span><span class="comment">//   - ReceiptHandle → Attributes の予約キー（engine は解釈しない）</span>
-<span id="L154" class="ln">   154  </span><span class="comment">//   - ApproximateReceiveCount → ReceiveCount / MessageGroupId → PartitionKey</span>
-<span id="L155" class="ln">   155  </span>func toMessage(m types.Message) worker.Message {
-<span id="L156" class="ln">   156  </span>	attrs := make(map[string]string, len(m.MessageAttributes)+1)
-<span id="L157" class="ln">   157  </span>	for k, v := range m.MessageAttributes {
-<span id="L158" class="ln">   158  </span>		if v.StringValue != nil {
-<span id="L159" class="ln">   159  </span>			attrs[k] = *v.StringValue
-<span id="L160" class="ln">   160  </span>		}
-<span id="L161" class="ln">   161  </span>	}
-<span id="L162" class="ln">   162  </span>	if m.ReceiptHandle != nil {
-<span id="L163" class="ln">   163  </span>		attrs[worker.AttrReceiptHandle] = *m.ReceiptHandle
-<span id="L164" class="ln">   164  </span>	}
-<span id="L165" class="ln">   165  </span>
-<span id="L166" class="ln">   166  </span>	receiveCount := 0
-<span id="L167" class="ln">   167  </span>	if s, ok := m.Attributes[string(types.MessageSystemAttributeNameApproximateReceiveCount)]; ok {
-<span id="L168" class="ln">   168  </span>		receiveCount, _ = strconv.Atoi(s)
+<span id="L136" class="ln">   136  </span><span class="comment">// Extend は、可視性タイムアウトを延長します（長時間 handler のハートビート）。</span>
+<span id="L137" class="ln">   137  </span>func (c *consumer) Extend(ctx context.Context, m worker.Message, d time.Duration) error {
+<span id="L138" class="ln">   138  </span>	ctx, endSpan := c.tracer.Start(ctx)
+<span id="L139" class="ln">   139  </span>	defer endSpan()
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span>	_, err := c.api.ChangeMessageVisibility(ctx, &amp;sqs.ChangeMessageVisibilityInput{
+<span id="L142" class="ln">   142  </span>		QueueUrl:          aws.String(c.cfg.QueueURL),
+<span id="L143" class="ln">   143  </span>		ReceiptHandle:     aws.String(m.Attributes[worker.AttrReceiptHandle]),
+<span id="L144" class="ln">   144  </span>		VisibilityTimeout: visibilitySeconds(d),
+<span id="L145" class="ln">   145  </span>	})
+<span id="L146" class="ln">   146  </span>	return normalizeError(err)
+<span id="L147" class="ln">   147  </span>}
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span><span class="comment">// visibilitySeconds は、Duration を SQS の可視性秒数（int32）へ丸めます。</span>
+<span id="L150" class="ln">   150  </span><span class="comment">// サブ秒は切り捨てると 0 秒＝即時再配送になり処理中メッセージが重複配送されるため、</span>
+<span id="L151" class="ln">   151  </span><span class="comment">// 切り上げたうえで 1 秒を下限とします。</span>
+<span id="L152" class="ln">   152  </span>func visibilitySeconds(d time.Duration) int32 {
+<span id="L153" class="ln">   153  </span>	return max(1, int32(math.Ceil(d.Seconds())))
+<span id="L154" class="ln">   154  </span>}
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span><span class="comment">// toMessage は、SQS のメッセージを broker 非依存の Message へ正規化します。</span>
+<span id="L157" class="ln">   157  </span><span class="comment">//   - MessageAttributes（traceparent 等）→ Attributes</span>
+<span id="L158" class="ln">   158  </span><span class="comment">//   - ReceiptHandle → Attributes の予約キー（engine は解釈しない）</span>
+<span id="L159" class="ln">   159  </span><span class="comment">//   - ApproximateReceiveCount → ReceiveCount / MessageGroupId → PartitionKey</span>
+<span id="L160" class="ln">   160  </span>func toMessage(m types.Message) worker.Message {
+<span id="L161" class="ln">   161  </span>	attrs := make(map[string]string, len(m.MessageAttributes)+1)
+<span id="L162" class="ln">   162  </span>	for k, v := range m.MessageAttributes {
+<span id="L163" class="ln">   163  </span>		if v.StringValue != nil {
+<span id="L164" class="ln">   164  </span>			attrs[k] = *v.StringValue
+<span id="L165" class="ln">   165  </span>		}
+<span id="L166" class="ln">   166  </span>	}
+<span id="L167" class="ln">   167  </span>	if m.ReceiptHandle != nil {
+<span id="L168" class="ln">   168  </span>		attrs[worker.AttrReceiptHandle] = *m.ReceiptHandle
 <span id="L169" class="ln">   169  </span>	}
 <span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>	return worker.Message{
-<span id="L172" class="ln">   172  </span>		ID:           aws.ToString(m.MessageId),
-<span id="L173" class="ln">   173  </span>		Body:         []byte(aws.ToString(m.Body)),
-<span id="L174" class="ln">   174  </span>		Attributes:   attrs,
-<span id="L175" class="ln">   175  </span>		ReceiveCount: receiveCount,
-<span id="L176" class="ln">   176  </span>		PartitionKey: m.Attributes[string(types.MessageSystemAttributeNameMessageGroupId)],
-<span id="L177" class="ln">   177  </span>	}
-<span id="L178" class="ln">   178  </span>}
-<span id="L179" class="ln">   179  </span>
+<span id="L171" class="ln">   171  </span>	receiveCount := 0
+<span id="L172" class="ln">   172  </span>	if s, ok := m.Attributes[string(types.MessageSystemAttributeNameApproximateReceiveCount)]; ok {
+<span id="L173" class="ln">   173  </span>		receiveCount, _ = strconv.Atoi(s)
+<span id="L174" class="ln">   174  </span>	}
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>	return worker.Message{
+<span id="L177" class="ln">   177  </span>		ID:           aws.ToString(m.MessageId),
+<span id="L178" class="ln">   178  </span>		Body:         []byte(aws.ToString(m.Body)),
+<span id="L179" class="ln">   179  </span>		Attributes:   attrs,
+<span id="L180" class="ln">   180  </span>		ReceiveCount: receiveCount,
+<span id="L181" class="ln">   181  </span>		PartitionKey: m.Attributes[string(types.MessageSystemAttributeNameMessageGroupId)],
+<span id="L182" class="ln">   182  </span>	}
+<span id="L183" class="ln">   183  </span>}
+<span id="L184" class="ln">   184  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

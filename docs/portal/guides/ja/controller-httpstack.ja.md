@@ -39,6 +39,7 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 |`bodylimit`|`Middleware`|リクエストボディのサイズ上限（MB）、超過時 413|
 |`timeout`|`Middleware`|per-request deadline budget（deadline 伝播の入口）|
 |`observability`|`Middleware`|OpenTelemetry トレーシング統合|
+|`redmetrics`|`Middleware`|HTTP RED メトリクス（request count / duration / status）。label は method / route / status_code / status_class のみ|
 
 ### エラーハンドリング
 

@@ -120,6 +120,7 @@ BuildInfo は次の用途で使用されます。
 - `--version` コマンド
 - `/version` API
 - `/health` エンドポイント
+- `app_build_info` Prometheus メトリクス（`internal/observability/metrics/buildinfo` を参照）
 - ログ出力
 - 診断情報
 
