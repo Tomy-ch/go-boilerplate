@@ -301,9 +301,13 @@ func Test_fingerprint(t *testing.T) {
 		})
 	})
 
-	t.Run("異常系_marshal不能な値はエラーを返す(fail-closed)", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		_, err := fingerprint(http.MethodPost, testPath, make(chan int))
-		require.Error(t, err)
+
+		t.Run("marshal不能な値はエラーを返す(fail-closed)", func(t *testing.T) {
+			t.Parallel()
+			_, err := fingerprint(http.MethodPost, testPath, make(chan int))
+			require.Error(t, err)
+		})
 	})
 }

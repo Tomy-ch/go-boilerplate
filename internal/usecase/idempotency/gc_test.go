@@ -66,32 +66,6 @@ func TestGCUsecase_SweepExpired(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, int64(1), total)
 		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("途中の削除失敗はそれまでの件数とエラーを返す", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			store := mock_idempotency.NewMockStore(ctrl)
-			wantErr := idempotencybndry.ErrLockTimeout
-
-			store.EXPECT().DeleteExpired(gomock.Any(), gomock.Any(), int32(5)).Return(int64(0), wantErr)
-
-			total, err := idempotency.NewGC(store, testkit.NewMockClock(t, time.Time{}), nil).SweepExpired(context.Background(), 5)
-
-			require.ErrorIs(t, err, wantErr)
-			assert.Equal(t, int64(0), total)
-		})
-	})
-}
-
-func TestGCUsecase_SweepExpired_Metrics(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("削除件数が正ならバッチごとに IncExpiredCleanup を計上する", func(t *testing.T) {
 			t.Parallel()
@@ -134,6 +108,20 @@ func TestGCUsecase_SweepExpired_Metrics(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("途中の削除失敗はそれまでの件数とエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+			wantErr := idempotencybndry.ErrLockTimeout
+
+			store.EXPECT().DeleteExpired(gomock.Any(), gomock.Any(), int32(5)).Return(int64(0), wantErr)
+
+			total, err := idempotency.NewGC(store, testkit.NewMockClock(t, time.Time{}), nil).SweepExpired(context.Background(), 5)
+
+			require.ErrorIs(t, err, wantErr)
+			assert.Equal(t, int64(0), total)
+		})
 
 		t.Run("削除失敗時は IncExpiredCleanupFailure を計上する", func(t *testing.T) {
 			t.Parallel()

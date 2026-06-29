@@ -35,26 +35,6 @@ func (e *recordingExporter) recorded() []string {
 	return append([]string(nil), e.names...)
 }
 
-func TestLayerTracer_makeSpanName(t *testing.T) {
-	t.Parallel()
-
-	lt := LayerTracer{layer: "usecase", pkgName: "mypkg", funcName: "Do"}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("optionalName無しはlayer.pkg.funcのみを返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, "usecase.mypkg.Do", lt.makeSpanName(""))
-		})
-
-		t.Run("optionalNameありはlayer.pkg.func.optionalを返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, "usecase.mypkg.Do.Optional", lt.makeSpanName("Optional"))
-		})
-	})
-}
-
 func Test_LayerTracer_Start(t *testing.T) {
 	t.Parallel()
 
@@ -202,7 +182,7 @@ func TestRunWithSpan(t *testing.T) {
 	})
 }
 
-func Test_makeSpanName(t *testing.T) {
+func Test_LayerTracer_makeSpanName(t *testing.T) {
 	t.Parallel()
 
 	expectedLayer := "layer"

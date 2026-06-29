@@ -144,72 +144,81 @@ func Test_newStartServerFunc(t *testing.T) {
 func Test_newStopServerFunc(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	mockLogger := mock_logging.NewMockLogger(ctrl)
+		t.Run("処理中接続が無ければ即座にShutdownしInfoログを出す", func(t *testing.T) {
+			t.Parallel()
 
-	mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
-	mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
-	mockLogger.EXPECT().Info("http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+			ctrl := gomock.NewController(t)
+			mockLogger := mock_logging.NewMockLogger(ctrl)
+			mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
+			mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
+			mockLogger.EXPECT().Info("http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
 
-	cfg := config.MockConfigForTest(t)
-	srvCfg := config.NewServerConfig(cfg)
-	osCfg := config.NewOperatingSystemConfig(cfg)
+			cfg := config.MockConfigForTest(t)
+			srvCfg := config.NewServerConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
 
-	e := server.NewAppServer(srvCfg)
-	fn := newStopServerFunc(e, mockLogger, osCfg)
+			e := server.NewAppServer(srvCfg)
+			fn := newStopServerFunc(e, mockLogger, osCfg)
 
-	require.NoError(t, fn(context.Background()))
-}
-
-func Test_newStopServerFunc_ShutdownError(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-
-	mockLogger := mock_logging.NewMockLogger(ctrl)
-	mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
-	mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
-	mockLogger.EXPECT().Info("http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
-	mockLogger.EXPECT().Error("failed to shutdown http server", gomock.Any()).Times(1)
-
-	cfg := config.MockConfigForTest(t)
-	srvCfg := config.NewServerConfig(cfg)
-	osCfg := config.NewOperatingSystemConfig(cfg)
-
-	e := server.NewAppServer(srvCfg)
-
-	// ハンドラを処理中にして接続を active に保ち、Shutdown を idle 完了させない
-	entered := make(chan struct{})
-	release := make(chan struct{})
-	e.GET("/block", func(c echo.Context) error {
-		close(entered)
-		<-release
-		return c.NoContent(http.StatusOK)
+			require.NoError(t, fn(context.Background()))
+		})
 	})
 
-	lc := &net.ListenConfig{}
-	ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	e.Listener = ln
-	go func() { _ = e.Start("") }()
-	t.Cleanup(func() { close(release) })
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 
-	go func() {
-		req, rerr := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://"+ln.Addr().String()+"/block", nil)
-		if rerr != nil {
-			return
-		}
-		resp, gerr := http.DefaultClient.Do(req)
-		if gerr == nil {
-			_ = resp.Body.Close()
-		}
-	}()
-	<-entered // リクエストが処理中＝接続が active になったことを保証
+		t.Run("処理中接続が残りShutdownがタイムアウトするとErrorログを出しエラーを返す", func(t *testing.T) {
+			t.Parallel()
 
-	// 既に期限の切れた context で Shutdown → 処理中接続が残り context error を返す
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
-	defer cancel()
-	fn := newStopServerFunc(e, mockLogger, osCfg)
-	require.Error(t, fn(ctx))
+			ctrl := gomock.NewController(t)
+			mockLogger := mock_logging.NewMockLogger(ctrl)
+			mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
+			mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
+			mockLogger.EXPECT().Info("http stopping", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+			mockLogger.EXPECT().Error("failed to shutdown http server", gomock.Any()).Times(1)
+
+			cfg := config.MockConfigForTest(t)
+			srvCfg := config.NewServerConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
+
+			e := server.NewAppServer(srvCfg)
+
+			// ハンドラを処理中にして接続を active に保ち、Shutdown を idle 完了させない
+			entered := make(chan struct{})
+			release := make(chan struct{})
+			e.GET("/block", func(c echo.Context) error {
+				close(entered)
+				<-release
+				return c.NoContent(http.StatusOK)
+			})
+
+			lc := &net.ListenConfig{}
+			ln, err := lc.Listen(context.Background(), "tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			e.Listener = ln
+			go func() { _ = e.Start("") }()
+			t.Cleanup(func() { close(release) })
+
+			go func() {
+				req, rerr := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://"+ln.Addr().String()+"/block", nil)
+				if rerr != nil {
+					return
+				}
+				resp, gerr := http.DefaultClient.Do(req)
+				if gerr == nil {
+					_ = resp.Body.Close()
+				}
+			}()
+			<-entered // リクエストが処理中＝接続が active になったことを保証
+
+			// 既に期限の切れた context で Shutdown → 処理中接続が残り context error を返す
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+			defer cancel()
+			fn := newStopServerFunc(e, mockLogger, osCfg)
+			require.Error(t, fn(ctx))
+		})
+	})
 }

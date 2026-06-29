@@ -66,6 +66,8 @@ func reqCtx(fingerprint []byte) context.Context {
 func TestRun(t *testing.T) {
 	t.Parallel()
 
+	const op = "PostResources"
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -128,6 +130,46 @@ func TestRun(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, replayed)
 			assert.Equal(t, "replayed", res.V)
+		})
+
+		t.Run("completed への再送は IncHit を計上する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+			stored, _ := json.Marshal(payload{V: "replayed"})
+			fp := []byte("fp")
+
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+			store.EXPECT().Get(gomock.Any(), "user-1", "key-1").Return(&idempotencybndry.Record{
+				Status:          idempotencybndry.StatusCompleted,
+				ResponsePayload: stored,
+				Fingerprint:     fp,
+			}, nil)
+			metrics.EXPECT().IncHit(gomock.Any(), op)
+
+			_, replayed, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
+				func(context.Context) (payload, error) { return payload{}, nil })
+
+			require.NoError(t, err)
+			assert.True(t, replayed)
+		})
+
+		t.Run("新規 claim は IncMiss を計上する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
+			metrics.EXPECT().IncMiss(gomock.Any(), op)
+
+			_, replayed, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
+				func(context.Context) (payload, error) { return payload{V: "created"}, nil })
+
+			require.NoError(t, err)
+			assert.False(t, replayed)
 		})
 	})
 
@@ -257,61 +299,6 @@ func TestRun(t *testing.T) {
 
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
-	})
-}
-
-func TestRun_Metrics(t *testing.T) {
-	t.Parallel()
-
-	// reqCtx の OperationID（メトリクスのラベル）。
-	const op = "PostResources"
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("completed への再送は IncHit を計上する", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			store := mock_idempotency.NewMockStore(ctrl)
-			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
-			stored, _ := json.Marshal(payload{V: "replayed"})
-			fp := []byte("fp")
-
-			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
-			store.EXPECT().Get(gomock.Any(), "user-1", "key-1").Return(&idempotencybndry.Record{
-				Status:          idempotencybndry.StatusCompleted,
-				ResponsePayload: stored,
-				Fingerprint:     fp,
-			}, nil)
-			metrics.EXPECT().IncHit(gomock.Any(), op)
-
-			_, replayed, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
-				func(context.Context) (payload, error) { return payload{}, nil })
-
-			require.NoError(t, err)
-			assert.True(t, replayed)
-		})
-
-		t.Run("新規 claim は IncMiss を計上する", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			store := mock_idempotency.NewMockStore(ctrl)
-			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
-
-			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
-			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
-			metrics.EXPECT().IncMiss(gomock.Any(), op)
-
-			_, replayed, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
-				func(context.Context) (payload, error) { return payload{V: "created"}, nil })
-
-			require.NoError(t, err)
-			assert.False(t, replayed)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("claim衝突直後に行が消えたレースは IncConflict を計上する", func(t *testing.T) {
 			t.Parallel()
