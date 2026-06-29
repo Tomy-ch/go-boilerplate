@@ -348,6 +348,16 @@ Even if observability fails:
 
 are not affected.
 
+## Metrics
+
+In addition to tracing, this package exposes process-level metrics.
+
+### Build Info (`app_build_info`)
+
+The `internal/observability/metrics/buildinfo` subpackage exposes the application's build / version / runtime information as a Prometheus info gauge (`app_build_info`, value always `1`). It shares the same source of truth (`system.BuildInfo`) as the `/version` endpoint, and resolves all label values once at DI wiring time.
+
+See `internal/observability/metrics/buildinfo/README.md` for details.
+
 ## Security Considerations
 
 Do not include the following in trace information.
