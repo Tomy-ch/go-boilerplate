@@ -124,18 +124,30 @@ Output: README が宣言しているが test が exercise していない観点�
 
 Output: `file:line` + 「なぜ弱い / 脆いか」の 1 文説明 finding リスト。
 
-### Lens 4: 観点ギャップ (subject 駆動)
+### Lens 4: 観点ギャップ — 分岐 × 意味 網羅 (subject 駆動)
 
-subject ソースを直接読み、 既存 test がカバーしていない case を提案:
+subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の網羅マトリクスを構築する。 カバレッジ ≠ 意味のあるカバレッジ: ある分岐が「その分岐固有の何か」を一切 assert しないケースで実行されているだけのことがあり、その穴を切り分けるのが本 lens の目的。 各 subject で両軸を走らせる — 分岐は「到達済み (軸A)」かつ「固有に assert 済み (軸B)」で初めて完了。
 
-- subject の各条件分岐に対して、ポジ / ネガ少なくとも 1 件のカバーケースがあるか。
-- subject 内で宣言 / 返却されている error sentinel (`ErrInvalid*` / `apperror.*`) が `require.ErrorIs` で少なくとも 1 件 assert されているか。
-- subject が境界制約を持つフィールドについて、min-1 / min / max / max+1 の境界値 test があるか。
-- domain で `ptr.Copy` を使ったポインタ返却 getter に不変性 test があるか。
-- 状態 mutate メソッドに「mutate 後の不変条件 hold」確認があるか。
-- 防御している場合、constructor / factory に「zero 値 / nil 入力 reject」 test があるか。
+**軸A — 分岐網羅**: subject の各論理分岐が最低 1 件のケースで到達されているか。
 
-Output: 既存 test に追加すべき `t.Run` ケース提案リスト（提案ケース名 + カバーする分岐 / sentinel + rationale）。
+- 各条件分岐（ポジ / ネガ）に最低 1 件の `t.Run` ケースがあるか。
+- 宣言 / 返却される error sentinel (`ErrInvalid*` / `apperror.*`) が最低 1 件のケースで到達されているか。
+- 境界制約を持つフィールドについて min-1 / min / max / max+1 の境界値が exercise されているか。
+- zero 値 / nil 入力を防御している constructor / factory に reject ケースがあるか。
+
+カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。
+
+**軸B — 意味網羅**: カバー済みの各分岐のケースが、単に実行されたことではなく*その分岐固有*の outcome を assert しているか。
+
+- error 分岐は `require.Error` 止まりでなく `require.ErrorIs` で固有 sentinel を assert。
+- 成功分岐は `require.NoError` / `assert.NotNil` 止まりでなく、他分岐と区別される結果値 / state を assert。
+- state mutate メソッドのケースは「呼べた」止まりでなく mutate 後の不変条件 / 変化フィールドを assert。
+- `ptr.Copy` を使うポインタ返却 getter は値等価だけでなく不変性を assert。
+- 境界ケースは accept 側だけでなく境界の両側（accept vs reject）で異なる outcome を assert。
+
+カバーは**されているが**固有 outcome を区別 assert していない分岐は **分岐カバー済み・意味未検証** finding → severity **再考**（pass して coverage は上がるが何も明らかにしない）。 finding は当該 subject 分岐 + それを名目上カバーしている test ケースに紐付ける。
+
+Output: subject ごとに、(1) 未カバー分岐 + 提案 `t.Run` ケース名（軸A → 追加検討）、(2) カバー済みだが意味未検証の分岐 + 不足している区別アサーション（軸B → 再考）。 各々 subject 分岐の `file:line` とカバーしている test ケースを引用。
 
 ## Step 3. 各 finding を検証
 
@@ -183,9 +195,16 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
   - 詳細: <one-sentence why>
   - verifier: CONFIRMED / PLAUSIBLE
 
-## 観点ギャップ（追加検討）
+## 観点ギャップ: 分岐網羅（追加検討）
 - <file> に対して subject <subject path> から導出:
+  - 分岐未カバー: <subject file:line の分岐>
   - 提案: t.Run("<case name>", ...) — カバーする分岐 / sentinel: <reason>
+  - verifier: CONFIRMED / PLAUSIBLE
+
+## 観点ギャップ: 意味網羅（再考）
+- <file> に対して subject <subject path> から導出:
+  - 分岐カバー済み・意味未検証: <subject file:line の分岐> を <test file:line のケース> がカバーするが固有 outcome 未 assert
+  - 不足アサーション: <あるべき distinctive assertion>
   - verifier: CONFIRMED / PLAUSIBLE
 
 ## 補遺
@@ -197,8 +216,8 @@ severity マッピング:
 
 - **修正必須** （構造準拠）: `CLAUDE.md` / `scaffold-test/SKILL.md` のハードルール違反。 CONFIRMED → 修正必須 / PLAUSIBLE → 確認推奨。
 - **補完推奨** （観点カバレッジ）: README で宣言されているのに exercise されていない観点。 CONFIRMED → 補完推奨 / PLAUSIBLE → 確認推奨。
-- **再考** （意味的品質）: pass はするが意味が薄い。 CONFIRMED → 再考 / PLAUSIBLE → 補強候補。
-- **追加検討** （観点ギャップ）: subject 検査から派生する proactive 提案。 CONFIRMED → 追加検討 / PLAUSIBLE → 提案。
+- **再考** （意味的品質 + 観点ギャップ 軸B）: pass はするが意味が薄い — 弱アサーション、または分岐はカバーされているが固有 outcome を区別 assert していない。 CONFIRMED → 再考 / PLAUSIBLE → 補強候補。
+- **追加検討** （観点ギャップ 軸A）: subject 検査から派生する未カバー分岐の proactive 提案。 CONFIRMED → 追加検討 / PLAUSIBLE → 提案。
 
 ## Step 5. 次アクション提案
 
@@ -239,6 +258,7 @@ PR レビューフローで `code-review` / `local-review` / `arch-check` と並
 - [ ] 各対象 `*_test.go` に対し subject ソースが解決済み。
 - [ ] Step 1 で 層 README + `CLAUDE.md` + `scaffold-test/SKILL.md` + sibling tests を読んだ。
 - [ ] 4 レンズが（並列で）走った。
+- [ ] Lens 4 は subject ごとに両軸を走らせた — 軸A 分岐網羅（未カバー分岐 → 追加検討）/ 軸B 意味網羅（カバー済みだが意味未検証 → 再考）。
 - [ ] 各 finding が `review-verifier` を通過した（`skip_verifier: true` 親指定以外）。
 - [ ] REFUTED は落とし、 CONFIRMED / PLAUSIBLE のみ残した。
 - [ ] 最終レポートが日本語、 lens 別、 severity tag 付き。

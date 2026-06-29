@@ -1,6 +1,6 @@
 ---
 name: test-review
-description: Independent quality review of Go test files (`*_test.go`) in this repository, with adversarial finder + skeptical verifier two-stage pipeline. Defaults to `git diff` HEAD-vs-working tree to surface the changed `*_test.go` files; alternative scopes (branch-vs-base, specific paths) selectable via `AskUserQuestion`. Hardcodes no rules — reads `CLAUDE.md` Testing Instructions + the target layer's README `Test Strategy` / `Testing strategy` section + `.claude/skills/scaffold-test/SKILL.md` (the canonical generation rules) + the subject source file at runtime as the source of truth, so the reviewer stays in sync as conventions evolve (README > Code > SKILL priority). Fans out four `adversarial-reviewer` subagents on `sonnet` by default (so reviewer ≠ an Opus implementer) — one per lens: (1) **structural compliance** (`t.Parallel()` at every level / `t.Run` per subcase / outermost groups are the literal strings `正常系` / `異常系` with no `正常系_xxx` prefix form, sub-case names inside those groups carry no `正常系_` / `異常系_` prefix either / Japanese case names / `require` for errors vs `assert` for terminals per testifylint `require-error` / generated mock policy / `for`-loop usage justified / one `TestXxx` per subject); (2) **viewpoint coverage** (every sub-section in the layer README's Test Strategy is actually exercised); (3) **semantic quality** (weak assertions, brittle internals coupling, over-mocking, time-literal pinning leaks, single-`TestXxx` responsibility creep); (4) **viewpoint gap** (reads the subject source itself and proposes test cases the existing file does not cover — branch coverage, error sentinels not asserted, boundary values not exercised). Each surviving finding is verified by an independent `review-verifier` subagent that classifies CONFIRMED / PLAUSIBLE / REFUTED, defaulting to skepticism so plausible-but-wrong findings get filtered out. Synthesizes a single Japanese report grouped by lens with per-finding severity (修正必須 / 補完推奨 / 再考 / 追加検討). Read-only — never edits test files; the user decides what to fix and runs `scaffold-test` or hand-edits to apply. Standalone-callable; designed to slot into a PR review flow alongside `code-review` / `local-review` / `arch-check`.
+description: Independent quality review of Go test files (`*_test.go`) in this repository, with adversarial finder + skeptical verifier two-stage pipeline. Defaults to `git diff` HEAD-vs-working tree to surface the changed `*_test.go` files; alternative scopes (branch-vs-base, specific paths) selectable via `AskUserQuestion`. Hardcodes no rules — reads `CLAUDE.md` Testing Instructions + the target layer's README `Test Strategy` / `Testing strategy` section + `.claude/skills/scaffold-test/SKILL.md` (the canonical generation rules) + the subject source file at runtime as the source of truth, so the reviewer stays in sync as conventions evolve (README > Code > SKILL priority). Fans out four `adversarial-reviewer` subagents on `sonnet` by default (so reviewer ≠ an Opus implementer) — one per lens: (1) **structural compliance** (`t.Parallel()` at every level / `t.Run` per subcase / outermost groups are the literal strings `正常系` / `異常系` with no `正常系_xxx` prefix form, sub-case names inside those groups carry no `正常系_` / `異常系_` prefix either / Japanese case names / `require` for errors vs `assert` for terminals per testifylint `require-error` / generated mock policy / `for`-loop usage justified / one `TestXxx` per subject); (2) **viewpoint coverage** (every sub-section in the layer README's Test Strategy is actually exercised); (3) **semantic quality** (weak assertions, brittle internals coupling, over-mocking, time-literal pinning leaks, single-`TestXxx` responsibility creep); (4) **viewpoint gap / branch × meaning completeness** (reads the subject source itself and builds a per-function two-axis matrix — Axis A 分岐網羅: every branch has a covering case; Axis B 意味網羅: each covered branch's case asserts that branch's distinctive outcome, not just that it executed — surfacing uncovered branches and covered-but-vacuously-asserted branches separately). Each surviving finding is verified by an independent `review-verifier` subagent that classifies CONFIRMED / PLAUSIBLE / REFUTED, defaulting to skepticism so plausible-but-wrong findings get filtered out. Synthesizes a single Japanese report grouped by lens with per-finding severity (修正必須 / 補完推奨 / 再考 / 追加検討). Read-only — never edits test files; the user decides what to fix and runs `scaffold-test` or hand-edits to apply. Standalone-callable; designed to slot into a PR review flow alongside `code-review` / `local-review` / `arch-check`.
 ---
 
 # Test Review
@@ -129,18 +129,30 @@ Audits whether the assertions are actually meaningful:
 
 Output: a list of findings with `file:line` and a one-sentence explanation of why the assertion is weak or brittle.
 
-### Lens 4: Viewpoint Gap (subject-driven)
+### Lens 4: Viewpoint Gap — Branch × Meaning Completeness (subject-driven)
 
-Reads the subject source file itself and proposes test cases the existing test file does not cover:
+Reads the subject source file itself and builds, **per function / method**, a two-axis completeness matrix. Code coverage ≠ meaningful coverage: a branch can be executed by a case that asserts nothing about what makes that branch distinct, and isolating that gap is the point of this lens. Run both axes for every subject — a branch is only "done" when it is both reached (Axis A) and distinctly asserted (Axis B).
 
-- Every conditional branch in the subject has at least one covering case (positive / negative).
-- Every error sentinel (`ErrInvalid*` / `apperror.*`) declared or returned in the subject is asserted by at least one test via `require.ErrorIs`.
-- Every boundary value pair (min-1 / min / max / max+1) for a constrained field is tested if the subject enforces it.
-- Pointer-returning getters in domain have an immutability test if the subject uses `ptr.Copy`.
-- Methods that mutate state have a "after-mutation invariant holds" check.
-- Constructor / factory functions have a "zero-value / nil input rejected" check if the subject defends against it.
+**Axis A — branch enumeration (分岐網羅)**: every logical branch in the subject is reached by at least one case.
 
-Output: a list of proposed *additional* `t.Run` cases with rationale, formatted as suggested case names + the branch / sentinel they would cover.
+- Every conditional branch (positive / negative) has at least one `t.Run` case.
+- Every error sentinel (`ErrInvalid*` / `apperror.*`) declared or returned is reached by at least one case.
+- Every boundary value pair (min-1 / min / max / max+1) for a constrained field is exercised if the subject enforces it.
+- Constructor / factory functions that defend against zero-value / nil input have a rejecting case.
+
+A branch with NO covering case is a **分岐未カバー** finding → severity **追加検討** (proactive). Cite the subject `file:line` of the uncovered branch + a proposed `t.Run` case name.
+
+**Axis B — meaning coverage (意味網羅)**: each covered branch's case actually asserts that branch's *distinctive* outcome, not merely that it executed.
+
+- An error branch asserts the specific sentinel via `require.ErrorIs` — not just `require.Error`.
+- A success branch asserts the resulting value / state that distinguishes it from the other branches — not just `require.NoError` / `assert.NotNil`.
+- A state-mutating method's case asserts the post-mutation invariant / changed field — not just that the call returned.
+- A pointer-returning getter using `ptr.Copy` has an immutability assertion, not just a value-equality check.
+- A boundary case asserts the differing outcome on each side of the boundary (accept vs reject), not just the accept side.
+
+A branch that IS covered but whose case does not distinctly assert its outcome is a **分岐カバー済み・意味未検証** finding → severity **再考** (it passes and lifts coverage but reveals nothing). Tie the finding to the specific subject branch + the test case that nominally covers it.
+
+Output: per subject, (1) uncovered branches with proposed `t.Run` case names (Axis A → 追加検討), and (2) covered-but-vacuously-asserted branches with the missing distinctive assertion (Axis B → 再考), each citing the subject branch `file:line` and the covering test case.
 
 ## Step 3. Verify Each Finding
 
@@ -188,9 +200,16 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
   - 詳細: <one-sentence why>
   - verifier: CONFIRMED / PLAUSIBLE
 
-## 観点ギャップ（追加検討）
+## 観点ギャップ: 分岐網羅（追加検討）
 - <file> に対して subject <subject path> から導出:
+  - 分岐未カバー: <subject file:line の分岐>
   - 提案: t.Run("<case name>", ...) — カバーする分岐 / sentinel: <reason>
+  - verifier: CONFIRMED / PLAUSIBLE
+
+## 観点ギャップ: 意味網羅（再考）
+- <file> に対して subject <subject path> から導出:
+  - 分岐カバー済み・意味未検証: <subject file:line の分岐> を <test file:line のケース> がカバーするが固有 outcome 未 assert
+  - 不足アサーション: <あるべき distinctive assertion>
   - verifier: CONFIRMED / PLAUSIBLE
 
 ## 補遺
@@ -202,8 +221,8 @@ Severity mapping:
 
 - **修正必須** (Structural Compliance lens): rule violations against `CLAUDE.md` / `scaffold-test/SKILL.md` — these are hard rules. CONFIRMED → 修正必須; PLAUSIBLE → 確認推奨.
 - **補完推奨** (Viewpoint Coverage lens): README declares a viewpoint that is not exercised. CONFIRMED → 補完推奨; PLAUSIBLE → 確認推奨.
-- **再考** (Semantic Quality lens): the test compiles and passes but reveals little. CONFIRMED → 再考; PLAUSIBLE → 補強候補.
-- **追加検討** (Viewpoint Gap lens): proactive suggestion based on subject inspection. CONFIRMED → 追加検討; PLAUSIBLE → 提案.
+- **再考** (Semantic Quality lens + Viewpoint Gap Axis B): the test compiles and passes but reveals little — a weak assertion, or a branch that is covered yet does not distinctly assert its outcome. CONFIRMED → 再考; PLAUSIBLE → 補強候補.
+- **追加検討** (Viewpoint Gap Axis A): proactive suggestion for an uncovered branch found by subject inspection. CONFIRMED → 追加検討; PLAUSIBLE → 提案.
 
 ## Step 5. Next-Action Suggestion
 
@@ -244,6 +263,7 @@ Before reporting completion, confirm:
 - [ ] Each target `*_test.go` has its subject source file located.
 - [ ] Layer README + `CLAUDE.md` + `scaffold-test/SKILL.md` + sibling tests were read in Step 1.
 - [ ] All four lenses ran (in parallel).
+- [ ] Lens 4 ran both axes per subject — Axis A 分岐網羅 (uncovered branches → 追加検討) and Axis B 意味網羅 (covered-but-vacuously-asserted branches → 再考).
 - [ ] Every finding from every lens went through `review-verifier` (unless `skip_verifier: true`).
 - [ ] REFUTED findings were dropped; CONFIRMED / PLAUSIBLE were kept.
 - [ ] Final report is Japanese, grouped by lens, with severity tags.
