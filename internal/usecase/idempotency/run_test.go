@@ -266,7 +266,7 @@ func TestRun_Metrics(t *testing.T) {
 			ResponsePayload: stored,
 			Fingerprint:     fp,
 		}, nil)
-		metrics.EXPECT().IncHit(op)
+		metrics.EXPECT().IncHit(gomock.Any(), op)
 
 		_, replayed, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
 			func(context.Context) (payload, error) { return payload{}, nil })
@@ -283,7 +283,7 @@ func TestRun_Metrics(t *testing.T) {
 
 		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
 		store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
-		metrics.EXPECT().IncMiss(op)
+		metrics.EXPECT().IncMiss(gomock.Any(), op)
 
 		_, replayed, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
 			func(context.Context) (payload, error) { return payload{V: "created"}, nil })
@@ -300,7 +300,7 @@ func TestRun_Metrics(t *testing.T) {
 
 		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
 		store.EXPECT().Get(gomock.Any(), "user-1", "key-1").Return(nil, nil)
-		metrics.EXPECT().IncConflict(op)
+		metrics.EXPECT().IncConflict(gomock.Any(), op)
 
 		_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
 			func(context.Context) (payload, error) { return payload{}, nil })
@@ -315,7 +315,7 @@ func TestRun_Metrics(t *testing.T) {
 		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
 
 		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, apperror.ErrInternal)
-		metrics.EXPECT().IncClaimFailure(op)
+		metrics.EXPECT().IncClaimFailure(gomock.Any(), op)
 
 		_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
 			func(context.Context) (payload, error) { return payload{}, nil })
@@ -332,8 +332,8 @@ func TestRun_Metrics(t *testing.T) {
 		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
 		store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(apperror.ErrInternal)
 		// 新規 claim 成立で IncMiss、結果保存失敗で IncCompleteFailure の双方を計上する。
-		metrics.EXPECT().IncMiss(op)
-		metrics.EXPECT().IncCompleteFailure(op)
+		metrics.EXPECT().IncMiss(gomock.Any(), op)
+		metrics.EXPECT().IncCompleteFailure(gomock.Any(), op)
 
 		_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
 			func(context.Context) (payload, error) { return payload{V: "created"}, nil })
@@ -353,7 +353,7 @@ func TestRun_Metrics(t *testing.T) {
 			Status:      idempotencybndry.StatusClaimed,
 			Fingerprint: fp,
 		}, nil)
-		metrics.EXPECT().IncConflict(op)
+		metrics.EXPECT().IncConflict(gomock.Any(), op)
 
 		_, _, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
 			func(context.Context) (payload, error) { return payload{}, nil })
@@ -368,7 +368,7 @@ func TestRun_Metrics(t *testing.T) {
 		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
 
 		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, idempotencybndry.ErrLockTimeout)
-		metrics.EXPECT().IncConflict(op)
+		metrics.EXPECT().IncConflict(gomock.Any(), op)
 
 		_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
 			func(context.Context) (payload, error) { return payload{}, nil })
@@ -387,7 +387,7 @@ func TestRun_Metrics(t *testing.T) {
 			Status:      idempotencybndry.StatusCompleted,
 			Fingerprint: []byte("stored-fp"),
 		}, nil)
-		metrics.EXPECT().IncFingerprintMismatch(op)
+		metrics.EXPECT().IncFingerprintMismatch(gomock.Any(), op)
 
 		_, _, err := idempotency.Run(reqCtx([]byte("request-fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
 			func(context.Context) (payload, error) { return payload{}, nil })

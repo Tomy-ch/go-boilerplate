@@ -102,8 +102,8 @@ func TestGCUsecase_SweepExpired_Metrics(t *testing.T) {
 			store.EXPECT().DeleteExpired(gomock.Any(), now, int32(2)).Return(int64(1), nil),
 		)
 		gomock.InOrder(
-			metrics.EXPECT().IncExpiredCleanup(int64(2)),
-			metrics.EXPECT().IncExpiredCleanup(int64(1)),
+			metrics.EXPECT().IncExpiredCleanup(gomock.Any(), int64(2)),
+			metrics.EXPECT().IncExpiredCleanup(gomock.Any(), int64(1)),
 		)
 
 		total, err := idempotency.NewGC(store, testkit.NewMockClock(t, now), metrics).SweepExpired(context.Background(), 2)
@@ -136,7 +136,7 @@ func TestGCUsecase_SweepExpired_Metrics(t *testing.T) {
 		wantErr := idempotencybndry.ErrLockTimeout
 
 		store.EXPECT().DeleteExpired(gomock.Any(), gomock.Any(), int32(5)).Return(int64(0), wantErr)
-		metrics.EXPECT().IncExpiredCleanupFailure()
+		metrics.EXPECT().IncExpiredCleanupFailure(gomock.Any())
 
 		total, err := idempotency.NewGC(store, testkit.NewMockClock(t, time.Time{}), metrics).SweepExpired(context.Background(), 5)
 
