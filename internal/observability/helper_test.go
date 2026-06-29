@@ -143,6 +143,30 @@ func TestStartSpanWithParent(t *testing.T) {
 			assert.Equal(t, parentSpan.SpanContext().SpanID().String(), tc.ParentSpanID())
 			assert.Equal(t, childSpan.SpanContext().SpanID().String(), tc.SpanID())
 		})
+
+		t.Run("親spanが無い場合はParentSpanIDが空になる", func(t *testing.T) {
+			t.Parallel()
+
+			tp := sdktrace.NewTracerProvider()
+			tracer := tp.Tracer("test")
+			defer func() { _ = tp.Shutdown(context.Background()) }()
+
+			layerTracer := LayerTracer{
+				tracer:  tracer,
+				layer:   "test-layer",
+				pkgName: "test-pkg",
+			}
+
+			// context.Background() を直接渡し、親 span が存在しない経路を通す。
+			tc, childCtx, end := StartSpanWithParent(context.Background(), layerTracer, "root-span")
+			defer end()
+
+			childSpan := trace.SpanFromContext(childCtx)
+			assert.True(t, childSpan.SpanContext().IsValid())
+
+			assert.Empty(t, tc.ParentSpanID())
+			assert.Equal(t, childSpan.SpanContext().SpanID().String(), tc.SpanID())
+		})
 	})
 }
 

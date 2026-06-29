@@ -74,7 +74,7 @@ func TestNewCollector(t *testing.T) {
 			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 
 			c := NewCollector(appCfg, bi)
-			require.NotNil(t, c)
+			assert.NotNil(t, c)
 		})
 	})
 }
@@ -213,9 +213,7 @@ func TestRegister(t *testing.T) {
 			require.NoError(t, register(reg, NewCollector(appCfg, bi)))
 		})
 
-		t.Run("デフォルトレジストリに登録できる", func(t *testing.T) {
-			t.Parallel()
-
+		t.Run("デフォルトレジストリに登録できる", func(t *testing.T) { //nolint:paralleltest // DefaultRegisterer(プロセス共有)を変更するため直列実行
 			ctrl := gomock.NewController(t)
 			bi := mock_system.NewMockBuildInfo(ctrl)
 			bi.EXPECT().Version().Return("v1.5.0").AnyTimes()

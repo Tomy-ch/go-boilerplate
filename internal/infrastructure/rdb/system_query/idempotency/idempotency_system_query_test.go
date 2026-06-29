@@ -2,16 +2,26 @@ package idempotency
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
+	"go-boilerplate/internal/infrastructure/system"
+	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// errHolderRollback は、ロック競合テストで保持側 tx を最後にロールバックさせるための sentinel です。
+var errHolderRollback = xerrors.New("rollback holder tx for test")
 
 func newFingerprint(b byte) []byte {
 	fp := make([]byte, 32)
@@ -179,11 +189,70 @@ func Test_store_errors(t *testing.T) {
 					Scope: "missing-scope", Key: "missing-key",
 					ResponseStatus: 201, ResponsePayload: []byte(`{}`),
 				})
-				require.Error(t, err)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
 
-		t.Run("キャンセル済みコンテキストでは各操作がエラーを返す", func(t *testing.T) {
+		t.Run("ロック競合タイムアウト時はErrLockTimeoutを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// Claim の 55P03(lock_not_available) 分岐は、同一 (scope,key) を SET LOCAL
+			// lock_timeout 付きで claim する 2 本の業務 tx が並行に競合して初めて発生する。
+			// testkit の WithinTx は txLock で直列化するため再現できないので、ここでは
+			// TransactionManager を 2 本（= 2 コネクション）並行で走らせて再現する。
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			txm := driver.NewTransactionManager(testDB, dbCfg, logging.NewTestLogger(t), system.NewSleeper())
+
+			params := idempotencybndry.ClaimParams{
+				Scope: "lock-timeout-scope", Key: "key-1", Method: "POST", Path: "/v1/users",
+				Fingerprint: newFingerprint(0x04), ExpiresAt: time.Now().Add(time.Hour),
+			}
+
+			holderClaimed := make(chan struct{})
+			releaseHolder := make(chan struct{})
+			holderDone := make(chan error, 1)
+
+			var releaseOnce sync.Once
+			release := func() { releaseOnce.Do(func() { close(releaseHolder) }) }
+			t.Cleanup(release) // 失敗時も保持側 goroutine をリークさせない
+
+			// 保持側 tx: 同一キーを claim し、競合側がタイムアウトするまで未コミットで保持する。
+			go func() {
+				holderDone <- txm.Do(context.Background(), func(ctx context.Context) error {
+					claimed, err := s.Claim(ctx, params)
+					if err != nil {
+						return err
+					}
+					if !claimed {
+						return xerrors.New("holder: expected fresh claim to succeed")
+					}
+					close(holderClaimed)
+					<-releaseHolder
+					// 行を残さないようエラー返却で rollback させる。
+					return errHolderRollback
+				})
+			}()
+
+			// 保持側が claim 済み（行ロック確立）になるまで待つ。失敗時は holderDone で検知。
+			select {
+			case <-holderClaimed:
+			case err := <-holderDone:
+				require.NoError(t, err, "保持側 tx が claim 前に失敗した")
+				return
+			}
+
+			// 競合側 tx: 同一キーの claim はロック待ち→ lock_timeout で 55P03 → ErrLockTimeout。
+			contenderErr := txm.Do(context.Background(), func(ctx context.Context) error {
+				_, err := s.Claim(ctx, params)
+				return err
+			})
+			require.ErrorIs(t, contenderErr, idempotencybndry.ErrLockTimeout)
+
+			release()
+			require.ErrorIs(t, <-holderDone, errHolderRollback)
+		})
+
+		t.Run("キャンセル済みコンテキストでは各操作がErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -193,19 +262,20 @@ func Test_store_errors(t *testing.T) {
 				Scope: "ctx-cancel", Key: "key-1", Method: "POST", Path: "/v1/users",
 				Fingerprint: newFingerprint(0x03), ExpiresAt: time.Now().Add(time.Hour),
 			}
+			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
 			_, claimErr := s.Claim(ctx, params)
-			require.Error(t, claimErr)
+			require.ErrorIs(t, claimErr, apperror.ErrCanceled)
 
 			_, getErr := s.Get(ctx, "ctx-cancel", "key-1")
-			require.Error(t, getErr)
+			require.ErrorIs(t, getErr, apperror.ErrCanceled)
 
 			completeErr := s.Complete(ctx, idempotencybndry.CompleteParams{
 				Scope: "ctx-cancel", Key: "key-1", ResponseStatus: 201, ResponsePayload: []byte(`{}`),
 			})
-			require.Error(t, completeErr)
+			require.ErrorIs(t, completeErr, apperror.ErrCanceled)
 
 			_, delErr := s.DeleteExpired(ctx, time.Now(), 100)
-			require.Error(t, delErr)
+			require.ErrorIs(t, delErr, apperror.ErrCanceled)
 		})
 	})
 }

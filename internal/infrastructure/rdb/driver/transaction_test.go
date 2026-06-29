@@ -63,6 +63,24 @@ func TestTxManager_Do(t *testing.T) {
 			})
 			require.NoError(t, err)
 		})
+
+		t.Run("すでにtxがある場合", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			tx, err := db.Begin(ctx)
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				err = tx.Rollback(context.Background())
+				require.NoError(t, err)
+			})
+
+			ctx = withTx(ctx, tx)
+			err = manager.Do(ctx, func(_ context.Context) error {
+				return nil
+			})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -92,24 +110,6 @@ func TestTxManager_Do(t *testing.T) {
 			_ = manager.Do(ctx, func(_ context.Context) error {
 				panic("panic occurred")
 			})
-		})
-
-		t.Run("すでにtxがある場合", func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.Background()
-			tx, err := db.Begin(ctx)
-			require.NoError(t, err)
-			t.Cleanup(func() {
-				err = tx.Rollback(context.Background())
-				require.NoError(t, err)
-			})
-
-			ctx = withTx(ctx, tx)
-			err = manager.Do(ctx, func(_ context.Context) error {
-				return nil
-			})
-			require.NoError(t, err)
 		})
 	})
 }

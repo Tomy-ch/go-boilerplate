@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go-boilerplate/internal/logging"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,6 +63,37 @@ func Test_healthMux(t *testing.T) {
 			res := httpGet(t, srv.URL+"/readyz")
 			defer func() { _ = res.Body.Close() }()
 			assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+		})
+	})
+}
+
+func TestNewHealthServer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("起動から停止までのライフサイクルがpanicせず完了する", func(t *testing.T) {
+			t.Parallel()
+
+			// 固定ポートの bind 衝突を避けるため、エフェメラルポート(:0)で待ち受けさせる。
+			start, stop := NewHealthServer(":0", func() bool { return true }, logging.NewTestLogger(t))
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
+
+			assert.NotPanics(t, func() {
+				start()
+				stop(context.Background())
+			})
+		})
+
+		t.Run("起動していないサーバーへの停止でもpanicしない", func(t *testing.T) {
+			t.Parallel()
+
+			_, stop := NewHealthServer(":0", func() bool { return true }, logging.NewTestLogger(t))
+
+			// 起動していないサーバーへの Shutdown はエラーにならず、panic しないこと。
+			assert.NotPanics(t, func() { stop(context.Background()) })
 		})
 	})
 }

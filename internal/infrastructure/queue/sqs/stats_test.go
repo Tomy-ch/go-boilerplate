@@ -160,5 +160,18 @@ func Test_StatsProvider_QueueStats(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Equal(t, worker.QueueStats{}, stats)
 		})
+
+		t.Run("context.Canceled は ErrCanceled に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).Return(nil, context.Canceled)
+
+			stats, err := newStatsProvider(t, api, Config{QueueURL: "q"}).QueueStats(context.Background())
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Equal(t, worker.QueueStats{}, stats)
+		})
 	})
 }

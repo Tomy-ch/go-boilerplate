@@ -124,7 +124,7 @@ func Test_jobImpl_Execute(t *testing.T) {
 			}
 
 			err := job.Execute(ctx, []string{})
-			assert.Equal(t, assertError, err)
+			require.ErrorIs(t, err, assertError)
 		})
 
 		t.Run("未知のフラグが指定された場合、CountUsersを呼ばずにエラーを返す", func(t *testing.T) {

@@ -111,6 +111,49 @@ func TestComputeBackoff(t *testing.T) {
 	})
 }
 
+func TestRetryWait(t *testing.T) {
+	t.Parallel()
+
+	profile := Profile{
+		BaseBackoff: 10 * time.Millisecond,
+		MaxBackoff:  time.Second,
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("respがnilならバックオフ範囲の待機時間を返す", func(t *testing.T) {
+			t.Parallel()
+
+			// jitter があるため複数回試行し attempt1 の cap 範囲に収まることを確認する。
+			for range 50 {
+				got := retryWait(1, profile, nil)
+				assert.GreaterOrEqual(t, got, time.Duration(0))
+				assert.LessOrEqual(t, got, profile.BaseBackoff)
+			}
+		})
+
+		t.Run("respはあるがRetry-After不在ならバックオフ範囲の待機時間を返す", func(t *testing.T) {
+			t.Parallel()
+
+			resp := &Response{StatusCode: 503, Header: Header{}}
+			for range 50 {
+				got := retryWait(1, profile, resp)
+				assert.GreaterOrEqual(t, got, time.Duration(0))
+				assert.LessOrEqual(t, got, profile.BaseBackoff)
+			}
+		})
+
+		t.Run("Retry-Afterがあればバックオフより優先する", func(t *testing.T) {
+			t.Parallel()
+
+			resp := &Response{StatusCode: 503, Header: Header{retryAfterHeader: {"5"}}}
+			got := retryWait(1, profile, resp)
+			assert.Equal(t, 5*time.Second, got) // バックオフ(<=10ms)ではなく Retry-After(5s)
+		})
+	})
+}
+
 func TestRetryAfter(t *testing.T) {
 	t.Parallel()
 

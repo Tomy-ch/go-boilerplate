@@ -113,9 +113,7 @@ func Test_Engine_Run(t *testing.T) {
 	})
 }
 
-// --- A. 配信correctness ---
-
-func Test_Engine_A1_A2_AckNackDiscipline(t *testing.T) {
+func Test_Engine_AckNackDiscipline(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -159,7 +157,7 @@ func Test_Engine_A1_A2_AckNackDiscipline(t *testing.T) {
 	})
 }
 
-func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
+func Test_Engine_ExtendHeartbeat(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -216,7 +214,7 @@ func Test_Engine_A3_ExtendHeartbeat(t *testing.T) {
 	})
 }
 
-func Test_Engine_A4_DuplicateDelivery(t *testing.T) {
+func Test_Engine_DuplicateDelivery(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -248,7 +246,7 @@ func Test_Engine_A4_DuplicateDelivery(t *testing.T) {
 	})
 }
 
-func Test_Engine_A5_PermanentAndFatal(t *testing.T) {
+func Test_Engine_PermanentAndFatal(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -295,7 +293,7 @@ func Test_Engine_A5_PermanentAndFatal(t *testing.T) {
 	})
 }
 
-func Test_Engine_A6_PanicIsolation(t *testing.T) {
+func Test_Engine_PanicIsolation(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -322,7 +320,7 @@ func Test_Engine_A6_PanicIsolation(t *testing.T) {
 	})
 }
 
-func Test_Engine_A7_PoisonWarn(t *testing.T) {
+func Test_Engine_PoisonWarn(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -348,9 +346,7 @@ func Test_Engine_A7_PoisonWarn(t *testing.T) {
 	})
 }
 
-// --- B. backpressure / 順序 ---
-
-func Test_Engine_B1_ConcurrencyLimit(t *testing.T) {
+func Test_Engine_ConcurrencyLimit(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -391,7 +387,7 @@ func Test_Engine_B1_ConcurrencyLimit(t *testing.T) {
 	})
 }
 
-func Test_Engine_B2_InflightLimit(t *testing.T) {
+func Test_Engine_InflightLimit(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -423,7 +419,7 @@ func Test_Engine_B2_InflightLimit(t *testing.T) {
 	})
 }
 
-func Test_Engine_B3_PartitionSerialization(t *testing.T) {
+func Test_Engine_PartitionSerialization(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -464,7 +460,7 @@ func Test_Engine_B3_PartitionSerialization(t *testing.T) {
 	})
 }
 
-func Test_Engine_B4_CircuitBreaker(t *testing.T) {
+func Test_Engine_CircuitBreaker(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -507,9 +503,7 @@ func Test_Engine_B4_CircuitBreaker(t *testing.T) {
 	})
 }
 
-// --- C. lifecycle ---
-
-func Test_Engine_C1_drain(t *testing.T) {
+func Test_Engine_drain(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

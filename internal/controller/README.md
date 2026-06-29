@@ -49,3 +49,14 @@ flowchart TB
 ```
 
 Controllers access lower layers **only through Usecase**.
+
+## Test Strategy
+
+Handler tests mock the usecase and drive the handler through Echo (`testkit/testecho` + `testkit/testassert`); business logic lives in the usecase and is not re-tested here. Each handler test verifies:
+
+- HTTP I/O conversion — request binding (path / query / body) → usecase input, and usecase output → response DTO / status
+- request validation paths (OpenAPI / bind failures → 400 etc.)
+- `apperror` → HTTP status mapping (the usecase error surfaced as the right status / code)
+- middleware-supplied context — values the handler reads from context (auth principal / request id / idempotency)
+
+Boundary-level HTTP wiring (Router → Middleware → Handler → Presenter) is covered separately by the `internal/integration` HTTP-boundary tests.

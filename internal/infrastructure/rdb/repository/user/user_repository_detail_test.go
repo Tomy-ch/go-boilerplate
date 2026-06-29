@@ -19,7 +19,6 @@ func Test_repository_FindByID(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
-	_ = testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 	txm := testkit.NewTestTransactionRunner(t)
 

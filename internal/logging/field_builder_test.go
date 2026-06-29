@@ -24,7 +24,7 @@ func TestNewLogFields(t *testing.T) {
 			osCfg := config.NewOperatingSystemConfig(cfg)
 
 			lf := NewLogFields(obsCfg, osCfg)
-			require.NotNil(t, lf)
+			assert.NotNil(t, lf)
 		})
 	})
 }
@@ -304,7 +304,54 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 
 			assert.Equal(t, expected, lf.BuildSQLEndFields(s))
 		})
+
+		t.Run("引数のみ有りエラー無しの場合、引数件数のみ追加されエラーは追加されない", func(t *testing.T) {
+			t.Parallel()
+
+			s := SQLFieldsEndInput{
+				EventAt:  time.Now(),
+				Layer:    "layer",
+				PkgName:  "pkg",
+				FuncName: "fn",
+				SpanName: "sn",
+				Query:    q,
+				Latency:  12 * time.Millisecond,
+				Args:     []any{1, "a"},
+			}
+
+			keys := fieldKeys(lf.BuildSQLEndFields(s))
+			assert.Contains(t, keys, QueryArgsCountKey)
+			assert.NotContains(t, keys, InternalErrorKey)
+		})
+
+		t.Run("エラーのみ有り引数無しの場合、エラーのみ追加され引数件数は追加されない", func(t *testing.T) {
+			t.Parallel()
+
+			s := SQLFieldsEndInput{
+				EventAt:  time.Now(),
+				Layer:    "layer",
+				PkgName:  "pkg",
+				FuncName: "fn",
+				SpanName: "sn",
+				Query:    q,
+				Latency:  12 * time.Millisecond,
+				Err:      errors.New("boom"),
+			}
+
+			keys := fieldKeys(lf.BuildSQLEndFields(s))
+			assert.Contains(t, keys, InternalErrorKey)
+			assert.NotContains(t, keys, QueryArgsCountKey)
+		})
 	})
+}
+
+// fieldKeys は、Field スライスからキー文字列の一覧を抽出するテストヘルパーです。
+func fieldKeys(fs []*Field) []string {
+	keys := make([]string, 0, len(fs))
+	for _, f := range fs {
+		keys = append(keys, f.key)
+	}
+	return keys
 }
 
 func Test_appendTraceSpanFields(t *testing.T) {
@@ -330,6 +377,20 @@ func Test_appendTraceSpanFields(t *testing.T) {
 			t.Parallel()
 			base := []*Field{String("a", "b")}
 			got := impl.appendTraceSpanFields(base, "", "", "c")
+			assert.Equal(t, base, got)
+		})
+
+		t.Run("traceIDのみありspanID無しの場合、何も追加しない", func(t *testing.T) {
+			t.Parallel()
+			base := []*Field{String("a", "b")}
+			got := impl.appendTraceSpanFields(base, "t-1", "", "")
+			assert.Equal(t, base, got)
+		})
+
+		t.Run("spanIDのみありtraceID無しの場合、何も追加しない", func(t *testing.T) {
+			t.Parallel()
+			base := []*Field{String("a", "b")}
+			got := impl.appendTraceSpanFields(base, "", "s-1", "")
 			assert.Equal(t, base, got)
 		})
 
@@ -381,7 +442,7 @@ func Test_buildCompactQuery(t *testing.T) {
 
 		t.Run("空文字は空を返す", func(t *testing.T) {
 			t.Parallel()
-			require.Empty(t, impl.buildCompactQuery(""))
+			assert.Empty(t, impl.buildCompactQuery(""))
 		})
 	})
 }

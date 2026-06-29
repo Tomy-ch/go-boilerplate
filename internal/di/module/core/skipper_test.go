@@ -13,18 +13,22 @@ import (
 func TestSkipperModule(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fx アプリで Skipper が提供される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		var s echomw.Skipper
-		app := fx.New(
-			SkipperModule(),
-			fx.Populate(&s),
-		)
+		t.Run("fx アプリで Skipper が提供される", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, app.Start(context.Background()))
-		require.NotNil(t, s)
-		require.NotPanics(t, func() { _ = s })
-		require.NoError(t, app.Stop(context.Background()))
+			var s echomw.Skipper
+			app := fx.New(
+				SkipperModule(),
+				fx.Populate(&s),
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			require.NotNil(t, s)
+			require.NotPanics(t, func() { _ = s })
+			require.NoError(t, app.Stop(context.Background()))
+		})
 	})
 }

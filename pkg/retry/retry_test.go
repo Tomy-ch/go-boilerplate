@@ -37,7 +37,6 @@ func TestDo(t *testing.T) {
 	errFatal := errors.New("fatal")
 	errSleep := errors.New("ctx canceled")
 
-	// 基本待機は固定の小さな値で十分（実待機は fakeSleeper が即時化する）。
 	policy := Policy{
 		MaxAttempts: 3,
 		Backoff:     func(attempt int) time.Duration { return time.Duration(attempt+1) * time.Millisecond },
@@ -112,6 +111,22 @@ func TestDo(t *testing.T) {
 			assert.Equal(t, 1, sleeper.calls)
 		})
 
+		t.Run("isRetryableがnilでもfn成功時はパニックせずnilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			sleeper := &fakeSleeper{}
+			calls := 0
+			// fn が nil を返すと err==nil の短絡で isRetryable は呼ばれないため、nil でもパニックしない。
+			err := Do(context.Background(), sleeper, policy, nil, func(context.Context) error {
+				calls++
+				return nil
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, 1, calls)
+			assert.Equal(t, 0, sleeper.calls)
+		})
+
 		t.Run("MaxAttemptsが1未満でも最低1回試行する", func(t *testing.T) {
 			t.Parallel()
 
@@ -149,7 +164,6 @@ func TestDo(t *testing.T) {
 		t.Run("Sleep打ち切り時はsleepエラーではなく直前のfnエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			// 1 回目の Sleep で打ち切り。fn は 1 回だけ呼ばれ、元の errRetryable が返る。
 			sleeper := &fakeSleeper{errAt: 1, err: errSleep}
 			calls := 0
 			err := Do(context.Background(), sleeper, policy, alwaysRetryable, func(context.Context) error {

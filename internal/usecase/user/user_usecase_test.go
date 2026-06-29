@@ -29,27 +29,31 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
-	tf := observability.NewNoopTracerFactory(t)
-	mockTxManager := mock_tx.NewMockManager(ctrl)
-	clock := clocktest.NewMockClock(t, time.Time{})
-	encrypter := mock_security.NewMockHasher(ctrl)
-	authorizer := mock_authz.NewMockAuthorizer(ctrl)
-	userRepo := mock_user.NewMockRepository(ctrl)
-	pftRepo := mock_prefecture.NewMockRepository(ctrl)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	expected := &usecase{
-		tracer:     tf.Usecase(),
-		txm:        mockTxManager,
-		clock:      clock,
-		encrypter:  encrypter,
-		authorizer: authorizer,
-		userRepo:   userRepo,
-		pftRepo:    pftRepo,
-	}
-	actual := New(tf, mockTxManager, clock, encrypter, authorizer, userRepo, pftRepo)
+		ctrl := gomock.NewController(t)
+		tf := observability.NewNoopTracerFactory(t)
+		mockTxManager := mock_tx.NewMockManager(ctrl)
+		clock := clocktest.NewMockClock(t, time.Time{})
+		encrypter := mock_security.NewMockHasher(ctrl)
+		authorizer := mock_authz.NewMockAuthorizer(ctrl)
+		userRepo := mock_user.NewMockRepository(ctrl)
+		pftRepo := mock_prefecture.NewMockRepository(ctrl)
 
-	assert.Equal(t, expected, actual)
+		expected := &usecase{
+			tracer:     tf.Usecase(),
+			txm:        mockTxManager,
+			clock:      clock,
+			encrypter:  encrypter,
+			authorizer: authorizer,
+			userRepo:   userRepo,
+			pftRepo:    pftRepo,
+		}
+		actual := New(tf, mockTxManager, clock, encrypter, authorizer, userRepo, pftRepo)
+
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func Test_usecase_ListUsers(t *testing.T) {
@@ -151,7 +155,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 			actual, actualErr := uc.ListUsers(ctx, nil, p)
 			require.Nil(t, actual)
-			require.ErrorIs(t, expectedErr, actualErr)
+			require.ErrorIs(t, actualErr, expectedErr)
 		})
 
 		t.Run("都道府県取得時にエラーが発生した場合、エラーが返される", func(t *testing.T) {
@@ -276,17 +280,21 @@ func Test_usecase_Create(t *testing.T) {
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().Create(
-				gomock.Any(),
-				gomock.AssignableToTypeOf(userDomain),
-			).Return(nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
-			pftRepo.EXPECT().FindByName(
-				gomock.Any(),
-				prefectureName,
-			).Return(pftDomain, nil)
+
+			// 暗号化 → 都道府県解決 → ユーザー永続化の呼出順序を固定する。
+			gomock.InOrder(
+				encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil),
+				pftRepo.EXPECT().FindByName(
+					gomock.Any(),
+					prefectureName,
+				).Return(pftDomain, nil),
+				userRepo.EXPECT().Create(
+					gomock.Any(),
+					gomock.AssignableToTypeOf(userDomain),
+				).Return(nil),
+			)
 
 			uc := &usecase{
 				tracer:    lt,
@@ -543,21 +551,53 @@ func Test_usecase_CountUsers(t *testing.T) {
 		userRepo: userRepo,
 	}
 
-	t.Run("ユーザーの総件数が正常に取得できること", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := t.Context()
-		active := new(true)
-		expectedCount := int64(42)
+		t.Run("ユーザーの総件数が正常に取得できること", func(t *testing.T) {
+			t.Parallel()
 
-		userRepo.
-			EXPECT().
-			CountByActive(gomock.Any(), active).
-			Return(expectedCount, nil)
+			ctx := t.Context()
+			active := new(true)
+			expectedCount := int64(42)
 
-		actualCount, err := u.CountUsers(ctx, active)
-		require.NoError(t, err)
-		assert.Equal(t, expectedCount, actualCount)
+			userRepo.
+				EXPECT().
+				CountByActive(gomock.Any(), active).
+				Return(expectedCount, nil)
+
+			actualCount, err := u.CountUsers(ctx, active)
+			require.NoError(t, err)
+			assert.Equal(t, expectedCount, actualCount)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("総件数取得でエラーが発生した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			ctx := t.Context()
+			active := new(true)
+			expectedErr := testkit.ExpectedDBError()
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.
+				EXPECT().
+				CountByActive(gomock.Any(), active).
+				Return(int64(0), expectedErr)
+
+			uc := &usecase{
+				tracer:   observability.NewNoopTracerFactory(t).Usecase(),
+				userRepo: userRepo,
+			}
+
+			actualCount, err := uc.CountUsers(ctx, active)
+			require.ErrorIs(t, err, expectedErr)
+			assert.Zero(t, actualCount)
+		})
 	})
 }
 

@@ -2,7 +2,6 @@ package response
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -52,6 +51,21 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 				Internal:   err,
 			}
 
+			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未知のエラーの場合、500のエラー構造体にフォールバックする", func(t *testing.T) {
+			t.Parallel()
+			err := errors.New("unknown error")
+			expected := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeInternalError, Message: errorMessageInternalError},
+				HTTPStatus:    http.StatusInternalServerError,
+				Internal:      err,
+			}
 			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
 		})
 	})
@@ -123,7 +137,7 @@ func TestHTTPErrorResponse_Error(t *testing.T) {
 				},
 			}
 
-			expected := fmt.Sprintf("HTTP %d: %s (%s)", http.StatusBadRequest, codeBadRequest, errorMessageBadRequest)
+			expected := "HTTP 400: BAD_REQUEST (入力内容に誤りがあります。再度ご確認ください。)"
 
 			assert.Equal(t, expected, httpError.Error())
 		})

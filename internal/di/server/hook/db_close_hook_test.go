@@ -16,59 +16,63 @@ import (
 func TestRegisterDBCloseHooks(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
+	// captureCloseFn は、RegisterDBCloseHooks が RegisterStop に登録する close 関数を捕捉して返す。
+	captureCloseFn := func(t *testing.T, ctrl *gomock.Controller, db *mock_driver.MockDatabaseDriver, logger *mock_logging.MockLogger) func(context.Context) error {
+		t.Helper()
 
-	reg := mock_lifecycle.NewMockRegistrar(ctrl)
-	db := mock_driver.NewMockDatabaseDriver(ctrl)
-	logger := mock_logging.NewMockLogger(ctrl)
+		reg := mock_lifecycle.NewMockRegistrar(ctrl)
+		var closeFn func(context.Context) error
+		dummy := func(context.Context) error { return nil }
+		reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
+			fn, ok := args[0].(func(context.Context) error)
+			require.True(t, ok)
+			closeFn = fn
+		}).Times(1)
 
-	var closeFn func(context.Context) error
-	dummy := func(context.Context) error { return nil }
+		RegisterDBCloseHooks(reg, db, logger)
+		require.NotNil(t, closeFn)
+		return closeFn
+	}
 
-	reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		fn, ok := args[0].(func(context.Context) error)
-		require.True(t, ok)
-		closeFn = fn
-	}).Times(1)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	RegisterDBCloseHooks(reg, db, logger)
-	require.NotNil(t, closeFn)
+		t.Run("OnStopでNamedロガーにInfoを出しDBを閉じる", func(t *testing.T) {
+			t.Parallel()
 
-	namedMock := mock_logging.NewMockLogger(ctrl)
-	logger.EXPECT().Named("db.CloseHook").Return(namedMock)
-	namedMock.EXPECT().Info("Closing database connection")
-	db.EXPECT().Close()
+			ctrl := gomock.NewController(t)
+			db := mock_driver.NewMockDatabaseDriver(ctrl)
+			logger := mock_logging.NewMockLogger(ctrl)
+			closeFn := captureCloseFn(t, ctrl, db, logger)
 
-	require.NoError(t, closeFn(context.Background()))
-}
+			namedMock := mock_logging.NewMockLogger(ctrl)
+			logger.EXPECT().Named("db.CloseHook").Return(namedMock)
+			namedMock.EXPECT().Info("Closing database connection")
+			db.EXPECT().Close()
 
-func TestRegisterDBCloseHooks_CloseError(t *testing.T) {
-	t.Parallel()
+			require.NoError(t, closeFn(context.Background()))
+		})
+	})
 
-	ctrl := gomock.NewController(t)
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 
-	reg := mock_lifecycle.NewMockRegistrar(ctrl)
-	db := mock_driver.NewMockDatabaseDriver(ctrl)
-	logger := mock_logging.NewMockLogger(ctrl)
+		t.Run("DBのClose失敗時はErrorログを出しエラーを返す", func(t *testing.T) {
+			t.Parallel()
 
-	var closeFn func(context.Context) error
-	dummy := func(context.Context) error { return nil }
+			ctrl := gomock.NewController(t)
+			db := mock_driver.NewMockDatabaseDriver(ctrl)
+			logger := mock_logging.NewMockLogger(ctrl)
+			closeFn := captureCloseFn(t, ctrl, db, logger)
 
-	reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		fn, ok := args[0].(func(context.Context) error)
-		require.True(t, ok)
-		closeFn = fn
-	}).Times(1)
+			namedMock := mock_logging.NewMockLogger(ctrl)
+			logger.EXPECT().Named("db.CloseHook").Return(namedMock)
+			namedMock.EXPECT().Info("Closing database connection")
+			wantErr := errors.New("close failed")
+			db.EXPECT().Close().Return(wantErr)
+			namedMock.EXPECT().Error("failed to close database", gomock.Any()).Times(1)
 
-	RegisterDBCloseHooks(reg, db, logger)
-	require.NotNil(t, closeFn)
-
-	namedMock := mock_logging.NewMockLogger(ctrl)
-	logger.EXPECT().Named("db.CloseHook").Return(namedMock)
-	namedMock.EXPECT().Info("Closing database connection")
-	wantErr := errors.New("close failed")
-	db.EXPECT().Close().Return(wantErr)
-	namedMock.EXPECT().Error("failed to close database", gomock.Any()).Times(1)
-
-	require.ErrorIs(t, closeFn(context.Background()), wantErr)
+			require.ErrorIs(t, closeFn(context.Background()), wantErr)
+		})
+	})
 }

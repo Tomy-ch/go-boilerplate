@@ -37,7 +37,7 @@ func TestNewMockControllerLayerTracer(t *testing.T) {
 			t.Parallel()
 			actual := NewMockControllerLayerTracer(t)
 			assert.Equal(t, Controller, actual.layer)
-			require.NotNil(t, actual.tracer)
+			assert.NotNil(t, actual.tracer)
 		})
 	})
 }
@@ -52,7 +52,7 @@ func TestNewMockUsecaseLayerTracer(t *testing.T) {
 			t.Parallel()
 			actual := NewMockUsecaseLayerTracer(t)
 			assert.Equal(t, Usecase, actual.layer)
-			require.NotNil(t, actual.tracer)
+			assert.NotNil(t, actual.tracer)
 		})
 	})
 }
@@ -67,7 +67,7 @@ func TestNewMockInfraLayerTracer(t *testing.T) {
 			t.Parallel()
 			actual := NewMockInfraLayerTracer(t)
 			assert.Equal(t, Infra, actual.layer)
-			require.NotNil(t, actual.tracer)
+			assert.NotNil(t, actual.tracer)
 		})
 	})
 }
@@ -83,12 +83,12 @@ func TestNewNoopLayerTracer(t *testing.T) {
 			actual := NewNoopLayerTracer(t)
 			assert.Equal(t, layer, actual.layer)
 			assert.Equal(t, pkg, actual.pkgName)
-			require.NotNil(t, actual.tracer)
+			assert.NotNil(t, actual.tracer)
 		})
 	})
 }
 
-func TestNewNoopSpanContext(t *testing.T) {
+func TestNewStubSpanContext(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {

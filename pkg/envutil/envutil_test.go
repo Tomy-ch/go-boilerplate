@@ -46,7 +46,7 @@ func TestOverride(t *testing.T) {
 			// キーに '=' を含むと os.Setenv は失敗する。
 			restore, err := Override("BAD=KEY", "x")
 			require.Error(t, err)
-			require.NotNil(t, restore) // 復元関数は no-op でも非 nil を返す
+			assert.NotNil(t, restore) // 復元関数は no-op でも非 nil を返す
 			_, ok := os.LookupEnv("BAD=KEY")
 			assert.False(t, ok)
 		})

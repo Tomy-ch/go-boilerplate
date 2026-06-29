@@ -20,17 +20,21 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
-	tf := observability.NewNoopTracerFactory(t)
-	userQS := mock_query.NewMockUserSearchQueryService(ctrl)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	expected := &usecase{
-		tracer: tf.Usecase(),
-		userQS: userQS,
-	}
-	actual := New(tf, userQS)
+		ctrl := gomock.NewController(t)
+		tf := observability.NewNoopTracerFactory(t)
+		userQS := mock_query.NewMockUserSearchQueryService(ctrl)
 
-	assert.Equal(t, expected, actual)
+		expected := &usecase{
+			tracer: tf.Usecase(),
+			userQS: userQS,
+		}
+		actual := New(tf, userQS)
+
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func Test_usecase_ListUsersByKeyword(t *testing.T) {

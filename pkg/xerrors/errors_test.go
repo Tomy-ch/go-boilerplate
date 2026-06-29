@@ -45,6 +45,15 @@ func TestWrap(t *testing.T) {
 			assert.Contains(t, actual.Error(), baseErr.Error())
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nilをwrapするとnilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, Wrap(nil, "wrapped error"))
+		})
+	})
 }
 
 func TestJoin(t *testing.T) {
@@ -61,6 +70,15 @@ func TestJoin(t *testing.T) {
 			require.Error(t, joined)
 			assert.True(t, Is(joined, err1))
 			assert.True(t, Is(joined, err2))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全てnilを渡すとnilを返す", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, Join(nil, nil))
 		})
 	})
 }
@@ -126,7 +144,7 @@ func TestStackTrace(t *testing.T) {
 			t.Parallel()
 			err := New("stack-msg")
 			st := StackTrace(err)
-			require.NotEmpty(t, st)
+			assert.NotEmpty(t, st)
 			assert.Contains(t, st, "stack-msg")
 		})
 	})

@@ -49,5 +49,21 @@ func TestRunRelay(t *testing.T) {
 			require.ErrorIs(t, err, wantErr)
 			assert.False(t, stopped)
 		})
+
+		t.Run("停止失敗時は起動済みでも停止エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			wantErr := errors.New("stop failed")
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel() // 即時に <-ctx.Done() を抜けさせる
+
+			started := false
+			start := func(context.Context) error { started = true; return nil }
+			stop := func(context.Context) error { return wantErr }
+
+			err := outboxcli.RunRelay(ctx, time.Second, start, stop)
+			require.ErrorIs(t, err, wantErr)
+			assert.True(t, started)
+		})
 	})
 }

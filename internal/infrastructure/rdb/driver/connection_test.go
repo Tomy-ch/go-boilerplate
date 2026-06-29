@@ -25,26 +25,30 @@ func TestNew(t *testing.T) {
 		require.NoError(t, db.Close())
 	})
 
-	t.Run("トランザクションが存在する場合", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		tx, err := db.Begin(context.Background())
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			err := tx.Rollback(context.Background())
+		t.Run("トランザクションが存在する場合", func(t *testing.T) {
+			t.Parallel()
+
+			tx, err := db.Begin(context.Background())
 			require.NoError(t, err)
+			t.Cleanup(func() {
+				err := tx.Rollback(context.Background())
+				require.NoError(t, err)
+			})
+
+			ctx := withTx(context.Background(), tx)
+			conn := New(ctx, db)
+			assert.Equal(t, tx, conn)
 		})
 
-		ctx := withTx(context.Background(), tx)
-		conn := New(ctx, db)
-		assert.Equal(t, tx, conn)
-	})
+		t.Run("トランザクションが存在しない場合", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("トランザクションが存在しない場合", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := context.Background()
-		conn := New(ctx, db)
-		assert.Equal(t, db, conn)
+			ctx := context.Background()
+			conn := New(ctx, db)
+			assert.Equal(t, db, conn)
+		})
 	})
 }

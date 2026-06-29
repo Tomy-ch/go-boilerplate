@@ -49,7 +49,6 @@ func Test_Exponential_Duration(t *testing.T) {
 			e := Exponential{Initial: time.Second, Max: 0, Multiplier: 2}
 			got := e.Duration(1000)
 			assert.Equal(t, time.Duration(math.MaxInt64), got)
-			assert.Positive(t, int64(got))
 		})
 	})
 

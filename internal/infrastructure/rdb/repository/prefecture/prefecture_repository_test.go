@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -65,6 +66,20 @@ func TestFindByName(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しない都道府県名の場合、ErrNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByName(ctx, "存在しない県")
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+				assert.Nil(t, actual)
+			})
+		})
+	})
 }
 
 func TestFindByID(t *testing.T) {
@@ -104,6 +119,23 @@ func TestFindByID(t *testing.T) {
 				actual, err := repo.FindByID(ctx, expectedID)
 				require.NoError(t, err)
 				assert.Equal(t, expected, actual)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("存在しない都道府県IDの場合、ErrNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			notExistID, err := uuid.Parse("00000000-0000-0000-0000-000000000000")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.FindByID(ctx, notExistID)
+				require.ErrorIs(t, err, apperror.ErrNotFound)
+				assert.Nil(t, actual)
 			})
 		})
 	})

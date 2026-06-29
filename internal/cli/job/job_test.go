@@ -90,7 +90,6 @@ func TestRunJob(t *testing.T) {
 		t.Run("タイムアウト指定でも期限内にジョブがエラー完了すればそのエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			// timeout > 0 だが期限到達前に done<-jobErr が届くケース（select の done arm 経路）。
 			jobErr := errors.New("job failed")
 			done := make(chan error, 1)
 			done <- jobErr
@@ -105,7 +104,6 @@ func TestRunJob(t *testing.T) {
 		t.Run("タイムアウト発火時はDeadlineExceededを返し停止に新しい猶予を与える", func(t *testing.T) {
 			t.Parallel()
 
-			// 完了通知が来ない done を渡し、短いタイムアウトを発火させる。
 			done := make(chan error) // 送信されない
 			stop := &recordingStop{}
 
@@ -137,8 +135,6 @@ func TestRunJob(t *testing.T) {
 		t.Run("本体成功でも停止が失敗すれば停止エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			// 停止失敗（OTel flush / DB pool close 等）が exit code へ反映されるよう
-			// 本体結果(nil)と Join して非 nil を返すこと。
 			stopErr := errors.New("stop failed")
 			done := make(chan error, 1)
 			done <- nil
@@ -152,7 +148,6 @@ func TestRunJob(t *testing.T) {
 		t.Run("タイムアウト発火かつ停止失敗時は両方のエラーが取れる", func(t *testing.T) {
 			t.Parallel()
 
-			// 本体側(DeadlineExceeded)と停止側(stopErr)の双方が errors.Is で取得できること。
 			stopErr := errors.New("stop failed")
 			done := make(chan error) // 送信されない
 			stop := &recordingStop{err: stopErr}
@@ -168,21 +163,23 @@ func TestRunJob(t *testing.T) {
 func TestGracefulStop(t *testing.T) {
 	t.Parallel()
 
-	t.Run("親ctxがキャンセル済みでも停止用ctxは全猶予を持ち期限切れでない", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		// 親 ctx を事前にキャンセルしておく（SIGINT 伝播・waitCtx タイムアウト後の状況を模倣）。
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		stop := &recordingStop{}
+		t.Run("親ctxがキャンセル済みでも停止用ctxは全猶予を持ち期限切れでない", func(t *testing.T) {
+			t.Parallel()
 
-		_ = gracefulStop(ctx, testGrace, stop.fn())
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			stop := &recordingStop{}
 
-		// 停止処理は呼ばれ、渡された context は期限切れでなく grace 相当の猶予を持つこと。
-		require.True(t, stop.called, "停止処理が呼ばれること")
-		require.True(t, stop.hasDeadline, "停止用 context に deadline があること")
-		require.NoError(t, stop.ctxErr, "停止用 context が期限切れでないこと")
-		assert.Greater(t, time.Until(stop.deadline), testGrace/2, "grace 相当の猶予が残っていること")
+			_ = gracefulStop(ctx, testGrace, stop.fn())
+
+			require.True(t, stop.called, "停止処理が呼ばれること")
+			require.True(t, stop.hasDeadline, "停止用 context に deadline があること")
+			require.NoError(t, stop.ctxErr, "停止用 context が期限切れでないこと")
+			assert.Greater(t, time.Until(stop.deadline), testGrace/2, "grace 相当の猶予が残っていること")
+		})
 	})
 }
 

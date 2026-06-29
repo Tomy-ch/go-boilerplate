@@ -28,7 +28,7 @@ func Test_runWorker(t *testing.T) {
 			done := make(chan error, 1)
 			var stopped atomic.Bool
 			start := func(context.Context, string, []string) <-chan error {
-				return done // 自走停止しない（SIGTERM 待ち）
+				return done
 			}
 			stop := func(context.Context) error {
 				stopped.Store(true)
@@ -71,8 +71,6 @@ func Test_runWorker(t *testing.T) {
 		t.Run("SIGTERM と drain 中の Fatal が競合しても Fatal を取りこぼさない", func(t *testing.T) {
 			t.Parallel()
 
-			// drain 中に engine が Fatal を検出して done へ書くケース。
-			// 非ブロッキング再確認だと取りこぼして nil(exit 0) になってしまうため、必ず待ち切ることを検証する。
 			wantErr := xerrors.New("fatal during drain")
 			done := make(chan error, 1)
 			start := func(context.Context, string, []string) <-chan error { return done }
@@ -115,9 +113,66 @@ func Test_gracefulStop(t *testing.T) {
 
 			gracefulStop(context.Background(), testGrace, stop)
 
-			assert.True(t, gotDeadline.Load())
+			require.True(t, gotDeadline.Load())
 			// 停止猶予は grace 由来。ライブ時刻に依存しないよう grace/2 超を下限として固定する。
 			assert.Greater(t, remaining.Load(), int64(testGrace/2))
+		})
+
+		t.Run("親ctxがキャンセル済みでも停止用ctxは期限切れでない", func(t *testing.T) {
+			t.Parallel()
+
+			// gracefulStop は stop を同期呼び出しするため平易な変数で記録できる。
+			var (
+				called      bool
+				hasDeadline bool
+				ctxErr      error
+			)
+			stop := func(ctx context.Context) error {
+				called = true
+				_, hasDeadline = ctx.Deadline()
+				ctxErr = ctx.Err()
+				return nil
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel() // SIGTERM 相当に親をキャンセル済みにする
+
+			gracefulStop(ctx, testGrace, stop)
+
+			require.True(t, called, "停止処理が呼ばれること")
+			require.True(t, hasDeadline, "停止用 context に deadline があること")
+			// context.WithoutCancel により親のキャンセルは引き継がれず、grace 由来の猶予が確保される。
+			require.NoError(t, ctxErr, "停止用 context が期限切れでないこと")
+		})
+	})
+}
+
+func TestRunWorkerWith(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("provideで取得したstart/stopをrunWorkerへ渡し結果を返す", func(t *testing.T) {
+			t.Parallel()
+
+			done := make(chan error, 1)
+			var stopped atomic.Bool
+			start := func(context.Context, string, []string) <-chan error { return done }
+			stop := func(context.Context) error { //nolint:unparam // StopFunc シグネチャ準拠のため error を返す
+				stopped.Store(true)
+				done <- nil // drain 完了で engine が結果を書く
+				return nil
+			}
+			provide := func() (StartFunc, StopFunc) { return start, stop }
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel() // SIGTERM 相当
+
+			err := RunWorkerWith(ctx, "w", nil, testGrace, provide)
+
+			require.NoError(t, err)
+			assert.True(t, stopped.Load(), "provide 由来の停止処理が呼ばれること")
 		})
 	})
 }

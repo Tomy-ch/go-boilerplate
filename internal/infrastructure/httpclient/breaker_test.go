@@ -81,6 +81,29 @@ func TestBreakerAllowAndRecord(t *testing.T) {
 
 			assert.Equal(t, breakerClosed, b.currentState())
 		})
+
+		t.Run("回復後に再びMinRequests件失敗すると再openする", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+
+			// 1 サイクル目: open → half-open → 成功で closed へ回復する。
+			recordClosedFailures(b, 4, base)
+			require.Equal(t, breakerOpen, b.currentState())
+
+			now := base.Add(10 * time.Second)
+			allowed, gen := b.allow(now)
+			require.True(t, allowed)
+			b.record(true, now, gen)
+			allowed, gen = b.allow(now)
+			require.True(t, allowed)
+			b.record(true, now, gen)
+			require.Equal(t, breakerClosed, b.currentState())
+
+			// 2 サイクル目: toClosed のリセット後、再び MinRequests 件失敗で再 open する。
+			recordClosedFailures(b, 4, now)
+			assert.Equal(t, breakerOpen, b.currentState())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -141,6 +164,44 @@ func TestBreakerAllowAndRecord(t *testing.T) {
 			// 新エポックの成功は 1 件のみのため、まだ closed へは戻らない。
 			b.record(true, later, gen3)
 			assert.Equal(t, breakerHalfOpen, b.currentState())
+		})
+	})
+}
+
+func TestBreakerShouldOpen(t *testing.T) {
+	t.Parallel()
+
+	base := time.Unix(1000, 0)
+
+	// recordOutcomes は、closed 状態で失敗 fail 件・成功 success 件を記録します。
+	recordOutcomes := func(b *breaker, fail, success int) {
+		for range fail {
+			b.record(false, base, b.generation)
+		}
+		for range success {
+			b.record(true, base, b.generation)
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("失敗率が閾値ちょうど_2失敗2成功_0.5_でopenする", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig()) // MinRequests=4, FailureThreshold=0.5
+			recordOutcomes(b, 2, 2)
+
+			assert.Equal(t, breakerOpen, b.currentState())
+		})
+
+		t.Run("失敗率が閾値未満_1失敗3成功_0.25_ならclosedのまま", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			recordOutcomes(b, 1, 3)
+
+			assert.Equal(t, breakerClosed, b.currentState())
 		})
 	})
 }

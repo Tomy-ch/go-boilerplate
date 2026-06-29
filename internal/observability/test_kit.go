@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"go.opentelemetry.io/otel"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -97,8 +96,6 @@ func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
 func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 	t.Helper()
 
-	prev := otel.GetTracerProvider()
-
 	tp := sdktrace.NewTracerProvider()
 	tr := tp.Tracer(tracer)
 
@@ -107,6 +104,5 @@ func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 	return ctx, func() {
 		span.End()
 		_ = tp.Shutdown(context.Background())
-		otel.SetTracerProvider(prev)
 	}
 }

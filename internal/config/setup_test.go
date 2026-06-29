@@ -3,6 +3,7 @@ package config
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +25,7 @@ func TestSetUpConfig_Succeeds(t *testing.T) {
 
 			cfg, err := SetUpConfig()
 			require.Error(t, err)
-			require.Nil(t, cfg)
+			assert.Nil(t, cfg)
 		})
 	})
 }
