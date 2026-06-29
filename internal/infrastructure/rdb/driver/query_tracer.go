@@ -35,15 +35,17 @@ type queryTracer struct {
 
 	logger        logging.Logger
 	lf            logging.LogFieldBuilder
+	recorder      QueryRecorder
 	maskArgs      bool
 	slowThreshold time.Duration
 }
 
-// NewQueryTracer は、span(otelpgx) とクエリログ(終了/スロー/エラー)を行う pgx.QueryTracer を生成します。
+// NewQueryTracer は、span(otelpgx)・クエリログ(終了/スロー/エラー)・クエリメトリクス記録を行う pgx.QueryTracer を生成します。
 func NewQueryTracer(
 	dbCfg *config.DatabaseConfig,
 	obsCfg *config.ObservabilityConfig,
 	tracer *otelpgx.Tracer,
+	recorder QueryRecorder,
 	logger logging.Logger,
 	lf logging.LogFieldBuilder,
 ) pgx.QueryTracer {
@@ -51,6 +53,7 @@ func NewQueryTracer(
 		Tracer:        tracer,
 		logger:        logger.Named(queryTracerLayer),
 		lf:            lf,
+		recorder:      recorder,
 		maskArgs:      obsCfg.MaskedDBQueryArgs(),
 		slowThreshold: dbCfg.SlowQueryWarnThreshold(),
 	}
@@ -82,6 +85,8 @@ func (t *queryTracer) TraceQueryEnd(
 	}
 	duration := time.Since(ld.start)
 
+	t.recordQueryMetric(ctx, ld.sql, duration, data.Err)
+
 	switch {
 	case data.Err != nil:
 		t.logger.Error("DB query failed", t.endFields(ctx, ld, duration, data.Err)...)
@@ -90,6 +95,14 @@ func (t *queryTracer) TraceQueryEnd(
 	default:
 		t.logger.Info("DB query completed", t.endFields(ctx, ld, duration, nil)...)
 	}
+}
+
+// recordQueryMetric は、recorder が設定されている場合にクエリメトリクスを記録します。
+func (t *queryTracer) recordQueryMetric(ctx context.Context, sql string, duration time.Duration, err error) {
+	if t.recorder == nil {
+		return
+	}
+	t.recorder.Observe(ctx, buildQueryAttrs(ctx, sql, duration, err))
 }
 
 func (t *queryTracer) endFields(

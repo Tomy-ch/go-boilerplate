@@ -16,6 +16,7 @@ func DatabaseModule() fx.Option {
 			driver.NewTracedDB,
 			driver.NewTransactionManager,
 			metrics.NewRegisterer,
+			metrics.NewQueryRecorder,
 			metrics.New,
 		),
 		fx.Invoke(
