@@ -133,7 +133,9 @@ func Stacktrace(key fieldKey, err error) *Field {
 
 // SplitStackLines は、スタックトレース文字列を改行で分割し行配列に変換します。
 // 末尾の空行は除去し、空文字列または改行のみの入力では nil を返します。
-// 配列化により行境界が構造として表現されるため、`\t<file>:<line>` の先頭タブは除去します。
+// 配列化により行境界とネスト深さが構造として表現されるため、cockroachdb/errors の
+// `%+v` が各行頭に付与するガター（`  | ` の空白・パイプや `\t<file>:<line>` の先頭タブ）は
+// 冗長になる。各行頭の空白・`|`・タブをまとめて除去し、内容だけを残す。
 func SplitStackLines(s string) []string {
 	trimmed := strings.TrimRight(s, "\n")
 	if trimmed == "" {
@@ -141,7 +143,7 @@ func SplitStackLines(s string) []string {
 	}
 	lines := strings.Split(trimmed, "\n")
 	for i, line := range lines {
-		lines[i] = strings.TrimLeft(line, "\t")
+		lines[i] = strings.TrimLeft(line, " |\t")
 	}
 	return lines
 }
