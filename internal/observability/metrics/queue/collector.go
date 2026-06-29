@@ -26,7 +26,6 @@ const (
 // registry は Gather のたびに Collect を goroutine で並行起動するため、deadline なしで
 // broker API（SQS GetQueueAttributes 等）を呼ぶと、応答不能時に goroutine が蓄積して
 // リソースを枯渇させ得ます。これを防ぐため scrape 単位で timeout を設けます。
-// 将来 TTL cache を導入する際は、その更新間隔に合わせてこの値を見直す想定です。
 const collectTimeout = 5 * time.Second
 
 // queue label の値。URL / ARN / message id 等の高カーディナリティ・秘匿情報は label にしません。
@@ -44,7 +43,8 @@ const (
 )
 
 // Target は、収集対象の worker と滞留量取得 capability の対応です。
-// DI group "worker.queue_stats_targets" 経由で SQS worker のときだけ任意登録されます。
+// DI group "worker.queue_stats_targets" 経由で、QueueStatsProvider を実装する adapter（SQS など）を
+// 使う worker のときだけ任意登録されます。
 type Target struct {
 	// WorkerName は、metric の worker label に使う worker 名です。
 	WorkerName string
@@ -61,8 +61,8 @@ type StatsCollector struct {
 	depthDesc   *prometheus.Desc
 	failureDesc *prometheus.Desc
 
-	// failures は、収集失敗の累積回数です。失敗は Collect（scrape）時にのみ発生するため、
-	// counter の単調増加を Collect 内 increment で表現します。
+	// failures は、収集失敗の累積回数です。Collect は Prometheus の Gather から並行呼び出し
+	// されるため、mu で保護します。
 	mu       sync.Mutex
 	failures map[failureKey]int64
 }
