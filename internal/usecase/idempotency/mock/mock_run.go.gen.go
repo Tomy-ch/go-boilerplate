@@ -39,6 +39,30 @@ func (m *MockMetrics) EXPECT() *MockMetricsMockRecorder {
 	return m.recorder
 }
 
+// IncClaimFailure mocks base method.
+func (m *MockMetrics) IncClaimFailure(operationID string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncClaimFailure", operationID)
+}
+
+// IncClaimFailure indicates an expected call of IncClaimFailure.
+func (mr *MockMetricsMockRecorder) IncClaimFailure(operationID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncClaimFailure", reflect.TypeOf((*MockMetrics)(nil).IncClaimFailure), operationID)
+}
+
+// IncCompleteFailure mocks base method.
+func (m *MockMetrics) IncCompleteFailure(operationID string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncCompleteFailure", operationID)
+}
+
+// IncCompleteFailure indicates an expected call of IncCompleteFailure.
+func (mr *MockMetricsMockRecorder) IncCompleteFailure(operationID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncCompleteFailure", reflect.TypeOf((*MockMetrics)(nil).IncCompleteFailure), operationID)
+}
+
 // IncConflict mocks base method.
 func (m *MockMetrics) IncConflict(operationID string) {
 	m.ctrl.T.Helper()
@@ -63,14 +87,26 @@ func (mr *MockMetricsMockRecorder) IncFingerprintMismatch(operationID any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncFingerprintMismatch", reflect.TypeOf((*MockMetrics)(nil).IncFingerprintMismatch), operationID)
 }
 
-// IncReplay mocks base method.
-func (m *MockMetrics) IncReplay(operationID string) {
+// IncHit mocks base method.
+func (m *MockMetrics) IncHit(operationID string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "IncReplay", operationID)
+	m.ctrl.Call(m, "IncHit", operationID)
 }
 
-// IncReplay indicates an expected call of IncReplay.
-func (mr *MockMetricsMockRecorder) IncReplay(operationID any) *gomock.Call {
+// IncHit indicates an expected call of IncHit.
+func (mr *MockMetricsMockRecorder) IncHit(operationID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncReplay", reflect.TypeOf((*MockMetrics)(nil).IncReplay), operationID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncHit", reflect.TypeOf((*MockMetrics)(nil).IncHit), operationID)
+}
+
+// IncMiss mocks base method.
+func (m *MockMetrics) IncMiss(operationID string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncMiss", operationID)
+}
+
+// IncMiss indicates an expected call of IncMiss.
+func (mr *MockMetricsMockRecorder) IncMiss(operationID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncMiss", reflect.TypeOf((*MockMetrics)(nil).IncMiss), operationID)
 }

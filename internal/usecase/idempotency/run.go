@@ -18,11 +18,20 @@ import (
 // ttl は、冪等性キーの保持期間（= リトライ許容窓）です。
 const ttl = 24 * time.Hour
 
-// Metrics は、冪等性の o11y カウンタです（operationID ラベルで分解）。
+// Metrics は、冪等性判定結果の o11y カウンタです（operationID ラベルで分解）。
 type Metrics interface {
-	IncReplay(operationID string)
+	// IncHit は、completed 行の再送（replay）を計上します。
+	IncHit(operationID string)
+	// IncMiss は、新規 claim 成立（businessFn 実行へ進む）を計上します。
+	IncMiss(operationID string)
+	// IncConflict は、処理中キーへの並行再送（409）を計上します。
 	IncConflict(operationID string)
+	// IncFingerprintMismatch は、同一キー別ボディの再利用（422）を計上します。
 	IncFingerprintMismatch(operationID string)
+	// IncClaimFailure は、ErrLockTimeout 以外の Claim 失敗を計上します。
+	IncClaimFailure(operationID string)
+	// IncCompleteFailure は、Complete 失敗（結果保存失敗）を計上します。
+	IncCompleteFailure(operationID string)
 }
 
 // Deps は、Run が必要とする依存です。
@@ -70,6 +79,7 @@ func Run[T any](
 				deps.metrics().IncConflict(req.OperationID)
 				return xerrors.Wrap(apperror.ErrConflict, "idempotency key is being processed, retry later")
 			}
+			deps.metrics().IncClaimFailure(req.OperationID)
 			return err
 		}
 
@@ -83,6 +93,7 @@ func Run[T any](
 		}
 
 		// 新規 claim 成立。業務処理を同一 tx で実行する（失敗は tx ロールバックで claim ごと解放）。
+		deps.metrics().IncMiss(req.OperationID)
 		res, err := businessFn(ctx)
 		if err != nil {
 			return err
@@ -97,6 +108,7 @@ func Run[T any](
 			ResponseStatus:  int32(successStatus), //nolint:gosec // HTTP ステータスコードは int32 に収まる
 			ResponsePayload: payload,
 		}); err != nil {
+			deps.metrics().IncCompleteFailure(req.OperationID)
 			return err
 		}
 		result = res
@@ -120,6 +132,7 @@ func decideExisting[T any](
 	}
 	if rec == nil {
 		// claim 衝突直後に行が消えた稀なレース。後で再試行させる。
+		deps.metrics().IncConflict(req.OperationID)
 		return zero, false, xerrors.Wrap(apperror.ErrConflict, "idempotency key state unavailable, retry later")
 	}
 
@@ -138,7 +151,7 @@ func decideExisting[T any](
 	if err := json.Unmarshal(rec.ResponsePayload, &result); err != nil {
 		return zero, false, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "failed to decode stored idempotent response"))
 	}
-	deps.metrics().IncReplay(req.OperationID)
+	deps.metrics().IncHit(req.OperationID)
 	return result, true, nil
 }
 
@@ -149,6 +162,9 @@ func (d Deps) metrics() Metrics {
 	return d.Metrics
 }
 
-func (nopMetrics) IncReplay(string)              {}
+func (nopMetrics) IncHit(string)                 {}
+func (nopMetrics) IncMiss(string)                {}
 func (nopMetrics) IncConflict(string)            {}
 func (nopMetrics) IncFingerprintMismatch(string) {}
+func (nopMetrics) IncClaimFailure(string)        {}
+func (nopMetrics) IncCompleteFailure(string)     {}
