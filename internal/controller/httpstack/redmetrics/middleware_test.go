@@ -131,6 +131,20 @@ func TestMiddleware(t *testing.T) {
 			assert.NotContains(t, calls[0].route, "secret")
 		})
 
+		t.Run("204応答はAfterフックが発火せず計測されない", func(t *testing.T) {
+			t.Parallel()
+
+			calls := serve(t, serveCfg{
+				registerPath: "/no-content",
+				requestPath:  "/no-content",
+				handler: func(c echo.Context) error {
+					return c.NoContent(http.StatusNoContent)
+				},
+			})
+
+			assert.Empty(t, calls)
+		})
+
 		t.Run("route未一致の404ではrouteがunknownでstatus_classが4xxになる", func(t *testing.T) {
 			t.Parallel()
 
