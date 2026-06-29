@@ -1,6 +1,7 @@
 package buildinfo
 
 import (
+	"errors"
 	"runtime"
 	"testing"
 
@@ -13,6 +14,13 @@ import (
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 )
+
+// errRegisterFailed は、fakeRegisterer が Register で返すテスト用の番兵エラーです。
+var errRegisterFailed = errors.New("register failed")
+
+// fakeRegisterer は、Register が常に errRegisterFailed を返す prometheus.Registerer の
+// テスト用スタブです。AlreadyRegisteredError 以外のエラー分岐を到達させるために用います。
+type fakeRegisterer struct{}
 
 // gatherLabels は、Collector を専用レジストリへ登録して app_build_info の
 // ラベルと値を収集するテスト補助関数です。
@@ -44,6 +52,10 @@ func gatherLabels(t *testing.T, c *Collector) (map[string]string, float64) {
 	return labels, metric.GetGauge().GetValue()
 }
 
+func (fakeRegisterer) Register(prometheus.Collector) error  { return errRegisterFailed }
+func (fakeRegisterer) MustRegister(...prometheus.Collector) {}
+func (fakeRegisterer) Unregister(prometheus.Collector) bool { return false }
+
 func TestNewCollector(t *testing.T) {
 	t.Parallel()
 
@@ -67,6 +79,38 @@ func TestNewCollector(t *testing.T) {
 	})
 }
 
+func TestCollector_Describe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Descが1つだけ送られメトリクス名を含む", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			bi := mock_system.NewMockBuildInfo(ctrl)
+			bi.EXPECT().Version().Return("v1.5.0")
+			bi.EXPECT().Revision().Return("abcdef1")
+			bi.EXPECT().BuildDate().Return("2026-06-28T17:00:00Z")
+
+			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+
+			ch := make(chan *prometheus.Desc, 1)
+			NewCollector(appCfg, bi).Describe(ch)
+			close(ch)
+
+			var descs []*prometheus.Desc
+			for d := range ch {
+				descs = append(descs, d)
+			}
+
+			require.Len(t, descs, 1)
+			assert.Contains(t, descs[0].String(), metricName)
+		})
+	})
+}
+
 func TestCollector_Collect(t *testing.T) {
 	t.Parallel()
 
@@ -86,7 +130,7 @@ func TestCollector_Collect(t *testing.T) {
 
 			labels, value := gatherLabels(t, NewCollector(appCfg, bi))
 
-			assert.InDelta(t, 1.0, value, 0)
+			assert.Equal(t, 1.0, value)
 			assert.Equal(t, "TestApp", labels[labelService])
 			assert.Equal(t, "test", labels[labelEnvironment])
 			assert.Equal(t, "v1.5.0", labels[labelVersion])
@@ -109,7 +153,7 @@ func TestCollector_Collect(t *testing.T) {
 
 			labels, value := gatherLabels(t, NewCollector(appCfg, bi))
 
-			assert.InDelta(t, 1.0, value, 0)
+			assert.Equal(t, 1.0, value)
 			assert.Equal(t, unknownValue, labels[labelEnvironment])
 			assert.Equal(t, unknownValue, labels[labelVersion])
 			assert.Equal(t, unknownValue, labels[labelRevision])
@@ -201,6 +245,21 @@ func TestRegister(t *testing.T) {
 
 			require.NoError(t, register(reg, c))
 			require.NoError(t, register(reg, c))
+		})
+
+		t.Run("AlreadyRegisteredError以外のエラーはそのまま返される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			bi := mock_system.NewMockBuildInfo(ctrl)
+			bi.EXPECT().Version().Return("v1.5.0").AnyTimes()
+			bi.EXPECT().Revision().Return("abcdef1").AnyTimes()
+			bi.EXPECT().BuildDate().Return("2026-06-28T17:00:00Z").AnyTimes()
+
+			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+
+			err := register(fakeRegisterer{}, NewCollector(appCfg, bi))
+			require.ErrorIs(t, err, errRegisterFailed)
 		})
 	})
 }
