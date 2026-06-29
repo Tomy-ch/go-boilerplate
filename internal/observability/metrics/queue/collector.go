@@ -9,6 +9,7 @@ package queue
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -20,6 +21,13 @@ const (
 	namespace = "worker"
 	subsystem = "queue"
 )
+
+// collectTimeout は、1 回の scrape（Collect）で全 target の滞留量取得に許す上限時間です。
+// registry は Gather のたびに Collect を goroutine で並行起動するため、deadline なしで
+// broker API（SQS GetQueueAttributes 等）を呼ぶと、応答不能時に goroutine が蓄積して
+// リソースを枯渇させ得ます。これを防ぐため scrape 単位で timeout を設けます。
+// 将来 TTL cache を導入する際は、その更新間隔に合わせてこの値を見直す想定です。
+const collectTimeout = 5 * time.Second
 
 // queue label の値。URL / ARN / message id 等の高カーディナリティ・秘匿情報は label にしません。
 const (
@@ -93,7 +101,8 @@ func (c *StatsCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect は、各 target から滞留量を取得して Prometheus に提供します。
 // provider がエラーを返した場合は depth を出さず、収集失敗 counter を増やします。
 func (c *StatsCollector) Collect(ch chan<- prometheus.Metric) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), collectTimeout)
+	defer cancel()
 	for _, t := range c.targets {
 		stats, err := t.Provider.QueueStats(ctx)
 		if err != nil {

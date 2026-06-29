@@ -1,6 +1,7 @@
 package queue_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -95,6 +96,25 @@ worker_queue_depth{adapter="sqs",queue="dlq",state="delayed",worker="w"} 0
 			})
 
 			// dlq の系列が 1 つも無いことを確認する（source の 3 系列のみ）。
+			assert.Equal(t, 3, testutil.CollectAndCount(c, "worker_queue_depth"))
+		})
+
+		t.Run("provider に deadline 付きの context を渡す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			provider := mock_worker.NewMockQueueStatsProvider(ctrl)
+			provider.EXPECT().QueueStats(gomock.Any()).DoAndReturn(
+				func(ctx context.Context) (worker.QueueStats, error) {
+					_, ok := ctx.Deadline()
+					assert.True(t, ok)
+					return worker.QueueStats{Source: worker.QueueDepth{Visible: 1}}, nil
+				})
+
+			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
+				{WorkerName: "w", Adapter: "sqs", Provider: provider},
+			})
+
 			assert.Equal(t, 3, testutil.CollectAndCount(c, "worker_queue_depth"))
 		})
 
