@@ -116,6 +116,8 @@ func TestClassifyErrorClass(t *testing.T) {
 		{name: "statement_timeoutはtimeout", err: &pgconn.PgError{Code: "57014"}, want: errorClassTimeout},
 		{name: "DeadlineExceededはtimeout", err: context.DeadlineExceeded, want: errorClassTimeout},
 		{name: "接続例外08xxxはconnection", err: &pgconn.PgError{Code: "08006"}, want: errorClassConnection},
+		{name: "serialization_failure(40001)はretryable", err: &pgconn.PgError{Code: "40001"}, want: errorClassRetryable},
+		{name: "deadlock_detected(40P01)はretryable", err: &pgconn.PgError{Code: "40P01"}, want: errorClassRetryable},
 		{name: "分類不能はunknown", err: xerrors.New("boom"), want: errorClassUnknown},
 	}
 

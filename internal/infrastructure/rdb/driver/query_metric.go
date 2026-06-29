@@ -32,6 +32,7 @@ const (
 	errorClassConstraint = "constraint"
 	errorClassConnection = "connection"
 	errorClassTimeout    = "timeout"
+	errorClassRetryable  = "retryable"
 	errorClassUnknown    = "unknown"
 )
 
@@ -169,6 +170,8 @@ func classifyErrorClass(err error) string {
 		return errorClassConstraint
 	case isTimeout(err):
 		return errorClassTimeout
+	case pgerror.IsRetryableTxError(err):
+		return errorClassRetryable
 	case pgerror.IsUnavailable(err):
 		return errorClassConnection
 	default:
