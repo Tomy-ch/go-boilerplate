@@ -88,9 +88,12 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 - 全サブケースが `t.Run`（裸のアサーション禁止）。
 - `TestXxx` 最外殻 `t.Run` group の name は literal `正常系` / `異常系` （各 `TestXxx` に最大 1 個ずつ、 さらに細分するならその **内側に** ネストする）。 最外殻に `t.Run("正常系_xxx", ...)` 形式を使っているのは違反 → finding として出す。 内側のサブケース名にも `正常系_` / `異常系_` プレフィックスは禁止（外殻 group で既に区別済みのため二重ラベル）。
 - ケース名は日本語。
-- エラーは `require.*`（testifylint `require-error`）、終端値は `assert.*`。
+- エラーは `require.*`（testifylint `require-error`）、終端値は `assert.*`。`require.NotNil` / `require.True` 等は、**後続コードをガードする**場合（そのまま使うと panic / 無意味になる。例: `require.NotNil(fn); fn(...)` や `require.NotNil(rec); _ = rec.Field`）のみ正しい。値を以降で使わないなら終端なので `assert.*` にすべき — 終端の `require.NotNil` / `require.True` / `require.Equal` は違反として指摘。
+- 生成 mock を駆動するサブテストは mock controller 経由で assert している扱い: `EXPECT()`（メソッドが呼ばれないことを示す意図的な *no-EXPECT* や `.Times(0)` を含む）がアサーション。`assert.*` / `require.*` 行が無いというだけで「アサーション無し」と指摘しない。
 - `for` ループ / table-driven が出てくる場合は明確な可読性理由が見える、それ以外は逐次 `t.Run` 前提。
-- 各 `TestXxx` は 1 subject（関数 / メソッド）対応 — 例外的に複数束ねている場合は `scaffold-test/SKILL.md` 通り 1 行 rationale コメント必須。
+- **subject 関数 ↔ `TestXxx` の 1:1 対応。** ここでの *subject* はペアになる本番ソース — バイナリにビルドされる非テスト・非生成の `.go` ファイル。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外（手書き `TestXxx` を期待しない）。両方向を確認:
+  - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数束ねる `TestXxx` は `scaffold-test/SKILL.md` 通り 1 行 rationale コメント必須。
+  - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は網羅ギャップ（その分岐は Lens 4 軸A でも surface する）。
 - mock は `<package>/mock/*_mock.go` から（手書き mock 禁止）。
 - 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`CLAUDE.md` ルール）。
 
@@ -115,6 +118,7 @@ Output: README が宣言しているが test が exercise していない観点�
 アサーションが本当に意味を持っているかを監査:
 
 - **弱いアサーション**: 複雑な戻り値に対する唯一の確認が `assert.NotNil(t, x)`、`assert.NoError` 後に state 確認なし、`assert.Equal(t, len(actual), 1)` のように要素自体を assert していない 等。
+- **ケース名がアサートを過剰約束**: `t.Run` ケース名が本体で検証していない性質を名乗る — 例: 本体は `NotNil` だけなのに `"…を保持した収集器を返す"`。保持値が unexported フィールドにある / 別ユニットの責務、という場合に起きる。固有の性質を assert するか、検証している内容にケース名を合わせる。系: **分岐なしの pass-through / 配線関数**（入力をコンストラクタへ素通しするだけの DI provider 等）は honest な 1 ケースで十分 — 入力を変えて同じ `NotNil` を再実行するケースは分岐で区別されず網羅を増やさないので畳む。
 - **内部結合の脆さ**: public API で済むのに unexported フィールドを読みに行く、`errors.Is` を使わず error メッセージ文字列で assert する。
 - **過剰モック**: pure 実装で済む collaborator まで全て mock 化、call count の粒度が実装にロックインしている。
 - **時刻リテラル漏れ**: `time.Now()` を assert 内で呼ぶ（固定 `baseTime` でなく）、system clock 依存比較。
@@ -134,6 +138,8 @@ subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の�
 - 宣言 / 返却される error sentinel (`ErrInvalid*` / `apperror.*`) が最低 1 件のケースで到達されているか。
 - 境界制約を持つフィールドについて min-1 / min / max / max+1 の境界値が exercise されているか。
 - zero 値 / nil 入力を防御している constructor / factory に reject ケースがあるか。
+- テストの harness が**実行しない** constructor / provider / `fx.Invoke` 本体を通ってしか到達できない分岐は未カバー扱い。特に `fx.ValidateApp` は依存グラフを検証するがコンストラクタやライフサイクルフックを実行しない — グラフ検証テストでは provider / invoke 本体はカバーされず、分岐網羅には直接の単体テスト（関数を実際に呼ぶ）が必要。
+- 「再現できない」と理由付けされた `t.Skip` は受け入れず軸A のギャップとして疑う: 統合スタイルの harness で到達できないか確認する（例: 実 DB のロック競合 / `55P03` は、直列化するテスト用 tx ヘルパでは並行を表現できないため 2 本の独立コネクション + トランザクションが要る）。skip 分岐を具体的な再現経路つきで 追加検討 として surface する。
 
 カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。
 

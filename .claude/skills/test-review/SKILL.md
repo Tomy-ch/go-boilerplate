@@ -93,9 +93,12 @@ Audits mechanical rule adherence — these are the hard rules surfaced by `scaff
 - Every subcase uses `t.Run` (no inline assertions outside a `t.Run`).
 - Outermost `t.Run` groups in a `TestXxx` are the literal strings `正常系` and `異常系` (each `TestXxx` may have at most one of each; finer groupings sit INSIDE those two). The `正常系_xxx` / `異常系_xxx` prefix form on the outermost group is a violation — flag it. Sub-case names inside `正常系` / `異常系` groups must NOT carry the `正常系_` / `異常系_` prefix either, since the group already labels the axis.
 - Case names are Japanese.
-- Error assertions use `require.*` (testifylint `require-error`); terminal value assertions use `assert.*`.
+- Error assertions use `require.*` (testifylint `require-error`); terminal value assertions use `assert.*`. `require.NotNil` / `require.True` etc. are correct ONLY when they guard subsequent code that would panic / be meaningless otherwise (e.g. `require.NotNil(fn); fn(...)` or `require.NotNil(rec); _ = rec.Field`); when nothing uses the value afterwards the check is terminal and must be `assert.*` — flag a terminal `require.NotNil` / `require.True` / `require.Equal` as a violation.
+- A subtest that drives a generated mock asserts via the mock controller: `EXPECT()` expectations — including a deliberate *no-EXPECT* (or `.Times(0)`) to assert a method is never called — ARE the assertion. Do NOT flag such a subtest as "assertion-less" merely because it has no `assert.*` / `require.*` line.
 - `for`-loop / table-driven blocks have an obvious readability justification; otherwise sequential `t.Run` is expected.
-- Each `TestXxx` corresponds to exactly one subject (function / method) — unless a bundled multi-subject `TestXxx` carries a one-line rationale comment as required by `scaffold-test/SKILL.md`.
+- **1:1 mapping between subject functions and `TestXxx`.** The *subject* is the paired production source — the non-test, non-generated `.go` file that the binary is built from; `*.gen.go` / `*.sql.go` / `*_mock.go` and test-only helpers are out of scope (no hand-written `TestXxx` expected). Check BOTH directions:
+  - *forward*: each `TestXxx` covers exactly one subject function / method — a `TestXxx` bundling multiple subjects needs the one-line rationale comment required by `scaffold-test/SKILL.md`.
+  - *reverse*: each subject function / method maps to exactly one `TestXxx`. A subject split across multiple `TestXxx` (e.g. `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`, or a `Test_foo` / `TestFoo_foo` naming-variant pair) is a finding → consolidate into a single `TestXxx` whose `正常系` / `異常系` groups absorb the variants (Rule 7). A public subject function with NO `TestXxx` at all is a coverage gap (its branches also surface in Lens 4 Axis A).
 - Mocks come from `<package>/mock/*_mock.go` — no hand-written mocks.
 - No imports of `internal/` from `pkg/**` test files; no infrastructure imports from `internal/domain/**` test files; etc. (architectural rules in `CLAUDE.md`).
 
@@ -120,6 +123,7 @@ Output: a list of viewpoints the README declares but the test file does not exer
 Audits whether the assertions are actually meaningful:
 
 - **Weak assertions**: `assert.NotNil(t, x)` as the only check for a complex return value; `assert.NoError` without follow-up state assertions; `assert.Equal(t, len(actual), 1)` instead of asserting on the element.
+- **Name over-promising the assertion**: a `t.Run` case name claims a property the body does not actually verify — e.g. `"…を保持した収集器を返す"` while the body only asserts `NotNil`, when the held value lives in an unexported field or is another unit's responsibility. Either assert the distinctive property or rename the case to what is verified. Corollary: for a **branchless pass-through / wiring function** (e.g. a DI provider that just forwards its input to a constructor), one honest case is correct — extra cases that re-run the same `NotNil` assertion with different inputs add no coverage (no branch distinguishes them) and should be collapsed.
 - **Brittle internals coupling**: tests reading unexported fields when the public API would do; tests asserting on logging output or error message *strings* without `errors.Is`.
 - **Over-mocking**: every collaborator mocked when a real (pure) implementation would be lighter and more revealing; mock setup verifying call counts at a granularity that locks the implementation in place.
 - **Time-literal pinning leaks**: `time.Now()` called inside the assertion rather than a fixed `baseTime`; comparisons relying on system clock.
@@ -139,6 +143,8 @@ Reads the subject source file itself and builds, **per function / method**, a tw
 - Every error sentinel (`ErrInvalid*` / `apperror.*`) declared or returned is reached by at least one case.
 - Every boundary value pair (min-1 / min / max / max+1) for a constrained field is exercised if the subject enforces it.
 - Constructor / factory functions that defend against zero-value / nil input have a rejecting case.
+- A branch reached only by *executing* a constructor / provider / `fx.Invoke` body that the test's harness never runs is still uncovered. Notably `fx.ValidateApp` validates the dependency graph WITHOUT executing constructors or lifecycle hooks — so a graph-validation test does NOT cover a provider / invoke body; that needs a direct unit test (call the function) for branch coverage.
+- A `t.Skip` whose reason claims the branch "cannot be reproduced" is itself an Axis-A gap to challenge, not to accept: check whether an integration-style harness reaches it (e.g. real-DB lock contention / `55P03` needs two independent connections + transactions because a serialized test-tx helper cannot represent concurrency). Surface the skipped branch as 追加検討 with the concrete reproduction path.
 
 A branch with NO covering case is a **分岐未カバー** finding → severity **追加検討** (proactive). Cite the subject `file:line` of the uncovered branch + a proposed `t.Run` case name.
 
