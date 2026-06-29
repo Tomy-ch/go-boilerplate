@@ -18,7 +18,6 @@ func UsecaseModule() fx.Option {
 		fx.Provide(
 			healthcheck.New,
 			// 具象 IdempotencyMetrics を usecase 境界の Metrics / GCMetrics の双方として供給する。
-			// 1 つの fx.Annotate に複数の fx.As を並べ、単一インスタンスを各 interface へ写像する。
 			fx.Annotate(
 				observability.NewIdempotencyMetrics,
 				fx.As(new(idempotency.Metrics)),

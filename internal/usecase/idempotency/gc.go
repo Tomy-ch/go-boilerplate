@@ -11,8 +11,8 @@ import (
 // DefaultGCBatchSize は、GC の 1 バッチあたり削除件数の既定値です。
 const DefaultGCBatchSize int32 = 10_000
 
-// GCMetrics は、GC の o11y カウンタです（GCUsecase は GC 固有カウンタのみ必要なため
-// interface を分離。実体は Run の Metrics と同一インスタンスで lifecycle も同一）。
+// GCMetrics は、GC の o11y カウンタです。GCUsecase は GC 固有カウンタのみ必要なため
+// interface を分離しています。
 // 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。
 type GCMetrics interface {
 	// IncExpiredCleanup は、削除に成功した失効キー件数を計上します。

@@ -14,8 +14,7 @@ const idempotencyMeterName = "go-boilerplate/idempotency"
 const idempotencyGCJob = "idempotency_gc"
 
 // IdempotencyMetrics は、冪等性サブシステムの判定結果・内部失敗・GC 削除を計上する計装一式です。
-// usecase 層の idempotency.Metrics / idempotency.GCMetrics を実装し、Prometheus 等の具象は
-// MeterProvider 経由で外側から注入されます（usecase へ具象依存を持ち込まない）。
+// usecase 層の idempotency.Metrics および idempotency.GCMetrics を実装します。
 //
 // 高カーディナリティ・秘匿値（Idempotency-Key / scope / fingerprint / PII / raw error）は
 // ラベルに載せません。許可ラベルは operation_id / result / phase / job のみです。
