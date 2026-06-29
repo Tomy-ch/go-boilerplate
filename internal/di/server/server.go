@@ -50,6 +50,7 @@ func MiddlewareModule() fx.Option {
 		instrumentation.RequestIDModule(),
 		instrumentation.LoggingModule(),
 		instrumentation.ObservabilityModule(),
+		instrumentation.HTTPRedMetricsModule(),
 		nonprod.DebugModeModule(),
 		fx.Provide(
 			extension.ApplyExtends,
