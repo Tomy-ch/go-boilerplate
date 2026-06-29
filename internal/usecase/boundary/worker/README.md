@@ -47,7 +47,37 @@ type State interface {
 - Allow mock substitution in tests for deterministic behavior
 - Isolate broker-specific values (receipt handle, lease) inside the `Message` envelope's reserved-prefix attributes, and express error classification via `apperror` sentinels (`ErrRetryable` / `ErrPermanent` / `ErrFatal`)
 
+## Optional capabilities
+
+Some observations are broker-specific and not every broker can express them the same way, so
+they are **optional capability seams** kept out of the required `Consumer` interface:
+
+```go
+// QueueStatsProvider reports broker queue backlog (depth / DLQ count).
+// Optional: the engine never depends on it. Only an observability collector consumes it.
+type QueueStatsProvider interface {
+    QueueStats(ctx context.Context) (QueueStats, error)
+}
+
+type QueueStats struct {
+    Source QueueDepth  // source queue backlog
+    DLQ    *QueueDepth // nil when there is no DLQ / it is not collected (distinguishes "0" from "absent")
+}
+
+type QueueDepth struct {
+    Visible  int64 // receivable messages
+    InFlight int64 // received-but-unacked (in-flight) messages
+    Delayed  int64 // delayed messages
+}
+```
+
+An adapter that can report depth (e.g. SQS) implements this capability and is provided
+**separately** from its `Consumer` so the engine stays broker-agnostic. The collector lives in
+`internal/observability/metrics/queue` and exposes `worker_queue_depth` (gauge) and
+`worker_queue_stats_collection_failures_total` (counter).
+
 ## Implementation
 
-- `internal/infrastructure/queue/sqs/` provides the concrete `Consumer` and `FailureHandler` (SQS adapter).
+- `internal/infrastructure/queue/sqs/` provides the concrete `Consumer` and `FailureHandler` (SQS adapter), plus the optional `QueueStatsProvider` via `NewQueueStatsProvider`.
 - `internal/controller/worker/` provides the concrete `State` and hosts the engine that drives these seams; `Worker` instances are assembled in `internal/di/module/worker.go`.
+- `internal/observability/metrics/queue/` is the Prometheus collector that scrapes `QueueStatsProvider`; targets are wired via the `worker.queue_stats_targets` DI group.
