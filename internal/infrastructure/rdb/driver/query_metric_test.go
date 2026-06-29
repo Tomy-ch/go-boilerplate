@@ -140,20 +140,6 @@ func TestBuildQueryAttrs(t *testing.T) {
 			assert.Equal(t, statusSuccess, got.Status)
 			assert.Empty(t, got.ErrorClass)
 		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("失敗時はstatus=errorでerror_classが入る", func(t *testing.T) {
-			t.Parallel()
-
-			got := buildQueryAttrs(context.Background(), "INSERT INTO users", time.Millisecond, &pgconn.PgError{Code: "23505"})
-
-			assert.Equal(t, operationInsert, got.Operation)
-			assert.Equal(t, statusError, got.Status)
-			assert.Equal(t, errorClassConstraint, got.ErrorClass)
-		})
 
 		t.Run("ラベルにSQL本文やbind値を含めない", func(t *testing.T) {
 			t.Parallel()
@@ -167,6 +153,20 @@ func TestBuildQueryAttrs(t *testing.T) {
 			assert.NotContains(t, got.Operation, "email")
 			assert.NotContains(t, got.QueryName, "SELECT")
 			assert.Equal(t, operationSelect, got.Operation)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("失敗時はstatus=errorでerror_classが入る", func(t *testing.T) {
+			t.Parallel()
+
+			got := buildQueryAttrs(context.Background(), "INSERT INTO users", time.Millisecond, &pgconn.PgError{Code: "23505"})
+
+			assert.Equal(t, operationInsert, got.Operation)
+			assert.Equal(t, statusError, got.Status)
+			assert.Equal(t, errorClassConstraint, got.ErrorClass)
 		})
 	})
 }

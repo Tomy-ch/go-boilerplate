@@ -129,7 +129,7 @@ func TestNewConfig(t *testing.T) {
 			t.Setenv("SERVER_ENV", expectedApplicationEnv)
 
 			actual, err := New()
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorContains(t, err, "APP_MODE")
 		})
 
@@ -138,7 +138,7 @@ func TestNewConfig(t *testing.T) {
 			t.Setenv("APP_MODE", "invalid_env")
 
 			actual, err := New()
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidAppMode)
 		})
 
@@ -147,7 +147,7 @@ func TestNewConfig(t *testing.T) {
 			t.Setenv("SECURITY_CIDR", "invalid_cidr") // 無効なCIDR
 
 			actual, err := New()
-			require.Nil(t, actual)
+			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrFailedToParseCIDR)
 		})
 	})
@@ -234,6 +234,7 @@ func Test_validateApplicationConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("無効なアプリケーションモード", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
@@ -264,13 +265,27 @@ func Test_validateServerConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("無効なポート番号", func(t *testing.T) {
 			t.Parallel()
-			cfg := mockLoader(t)
-			cfg.Server.Port = MaxPort + 1 // 無効なポート番号
 
-			err := validateServerConfig(cfg.Server)
-			require.ErrorIs(t, err, ErrInvalidPortRange)
+			t.Run("ポート番号がMinPort未満の場合", func(t *testing.T) {
+				t.Parallel()
+				cfg := mockLoader(t)
+				cfg.Server.Port = MinPort - 1 // 無効なポート番号（下限境界）
+
+				err := validateServerConfig(cfg.Server)
+				require.ErrorIs(t, err, ErrInvalidPortRange)
+			})
+
+			t.Run("ポート番号がMaxPortを超えている場合", func(t *testing.T) {
+				t.Parallel()
+				cfg := mockLoader(t)
+				cfg.Server.Port = MaxPort + 1 // 無効なポート番号（上限境界）
+
+				err := validateServerConfig(cfg.Server)
+				require.ErrorIs(t, err, ErrInvalidPortRange)
+			})
 		})
 
 		t.Run("ReadHeaderTimeoutが無効な場合", func(t *testing.T) {
@@ -348,6 +363,7 @@ func Test_validateDatabaseConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("無効なデータベースポート番号", func(t *testing.T) {
 			t.Parallel()
 
@@ -401,6 +417,7 @@ func Test_validateDBConnectionConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("MinConnsがMaxConnsを超えている場合、エラーが返されること", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
@@ -422,6 +439,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("BcryptCostが無効な場合", func(t *testing.T) {
 			t.Parallel()
 
@@ -485,6 +503,7 @@ func Test_validateAuthConfig(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("CookieNameとHeaderNameの両方が空の場合、エラーが返されること", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)

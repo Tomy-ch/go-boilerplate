@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 	"go-boilerplate/internal/logging"
+	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 )
 
 // recordingSleeper は、Sleep 呼び出し回数を記録し即時に返すテスト用 sleeper です。
@@ -103,6 +104,67 @@ func TestTxManager_Do_Retry(t *testing.T) {
 			err := m.Do(context.Background(), func(context.Context) error { return nil })
 
 			require.Error(t, err)
+			require.ErrorIs(t, err, apperror.ErrConflict)
+			assert.Equal(t, 0, sleeper.calls)
+		})
+
+		t.Run("リトライ待機中にcontextがキャンセルされると直前のエラーを正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			db := mock_driver.NewMockDatabaseDriver(ctrl)
+			// 1回目のリトライ可能エラー後、待機（Sleep）が ctx 打ち切りで失敗するため再試行されない。
+			db.EXPECT().Begin(gomock.Any()).Return(nil, retryablePgErr).Times(1)
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Return(context.Canceled).Times(1)
+
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
+			err := m.Do(context.Background(), func(context.Context) error { return nil })
+
+			// 待機の context.Canceled ではなく、リトライ対象だった元の失敗（40001）を
+			// 正規化した ErrUnavailable が返る。
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+	})
+}
+
+func TestTxManager_Do_ContextError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Beginがcontext.DeadlineExceededを返すとErrUnavailableへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			db := mock_driver.NewMockDatabaseDriver(ctrl)
+			// context.DeadlineExceeded はリトライ対象外のため Begin は1回のみ。
+			db.EXPECT().Begin(gomock.Any()).Return(nil, context.DeadlineExceeded).Times(1)
+			sleeper := &recordingSleeper{}
+
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
+			err := m.Do(context.Background(), func(context.Context) error { return nil })
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Equal(t, 0, sleeper.calls)
+		})
+
+		t.Run("Beginがcontext.Canceledを返すとErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			db := mock_driver.NewMockDatabaseDriver(ctrl)
+			db.EXPECT().Begin(gomock.Any()).Return(nil, context.Canceled).Times(1)
+			sleeper := &recordingSleeper{}
+
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
+			err := m.Do(context.Background(), func(context.Context) error { return nil })
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Equal(t, 0, sleeper.calls)
 		})
 	})

@@ -21,48 +21,52 @@ import (
 func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fx アプリで TracerFactory が提供される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
+		t.Run("fx アプリで TracerFactory が提供される", func(t *testing.T) {
+			t.Parallel()
 
-		mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
-		mockLog := mock_logging.NewMockLogger(ctrl)
-		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
+			ctrl := gomock.NewController(t)
 
-		// ProviderShutdowner の Shutdown が単一の Stop フックとして登録される。
-		mockReg.EXPECT().RegisterStop(gomock.Any()).Times(1)
+			mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
+			mockLog := mock_logging.NewMockLogger(ctrl)
+			mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
 
-		// buildinfo.Register はデフォルトレジストリへ登録するため、テスト間の汚染を避ける。
-		origReg := prometheus.DefaultRegisterer
-		prometheus.DefaultRegisterer = prometheus.NewRegistry()
-		t.Cleanup(func() { prometheus.DefaultRegisterer = origReg })
+			// ProviderShutdowner の Shutdown が単一の Stop フックとして登録される。
+			mockReg.EXPECT().RegisterStop(gomock.Any()).Times(1)
 
-		var tf observability.TracerFactory
+			// buildinfo.Register はデフォルトレジストリへ登録するため、テスト間の汚染を避ける。
+			origReg := prometheus.DefaultRegisterer
+			prometheus.DefaultRegisterer = prometheus.NewRegistry()
+			t.Cleanup(func() { prometheus.DefaultRegisterer = origReg })
 
-		app := fx.New(
-			ObservabilityModule(),
-			fx.Provide(func() testing.TB { return t }),
-			fx.Provide(func() lifecycle.Registrar { return mockReg }),
-			fx.Provide(func() logging.Logger { return mockLog }),
-			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
-			fx.Provide(func() *config.ApplicationConfig {
-				return config.NewApplicationConfig(config.MockConfigForTest(t))
-			}),
-			fx.Provide(func() *config.ObservabilityConfig {
-				oc := config.NewObservabilityConfig(config.MockConfigForTest(t))
-				oc.SetObservabilityTracesExporter(t, "")
-				oc.SetObservabilityMetricsExporter(t, "")
-				oc.SetObservabilityLogsExporter(t, "")
-				return oc
-			}),
-			fx.Provide(system.NewBuildInfo),
-			fx.Populate(&tf),
-			fx.NopLogger,
-		)
+			var tf observability.TracerFactory
 
-		require.NoError(t, app.Start(context.Background()))
-		require.NotNil(t, tf)
-		require.NoError(t, app.Stop(context.Background()))
+			app := fx.New(
+				ObservabilityModule(),
+				fx.Provide(func() testing.TB { return t }),
+				fx.Provide(func() lifecycle.Registrar { return mockReg }),
+				fx.Provide(func() logging.Logger { return mockLog }),
+				fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+				fx.Provide(func() *config.ApplicationConfig {
+					return config.NewApplicationConfig(config.MockConfigForTest(t))
+				}),
+				fx.Provide(func() *config.ObservabilityConfig {
+					oc := config.NewObservabilityConfig(config.MockConfigForTest(t))
+					oc.SetObservabilityTracesExporter(t, "")
+					oc.SetObservabilityMetricsExporter(t, "")
+					oc.SetObservabilityLogsExporter(t, "")
+					return oc
+				}),
+				fx.Provide(system.NewBuildInfo),
+				fx.Populate(&tf),
+				fx.NopLogger,
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			require.NotNil(t, tf)
+			require.NoError(t, app.Stop(context.Background()))
+		})
 	})
 }

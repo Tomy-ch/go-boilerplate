@@ -32,7 +32,7 @@ func TestResolveMetricsStop(t *testing.T) {
 			}
 
 			stop := ResolveMetricsStop(appCfg, newMetrics)
-			require.NotNil(t, stop, "非本番では停止関数が返ること")
+			assert.NotNil(t, stop, "非本番では停止関数が返ること")
 			assert.True(t, started, "メトリクスサーバーが起動されること")
 		})
 

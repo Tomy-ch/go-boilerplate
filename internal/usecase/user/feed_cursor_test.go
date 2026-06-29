@@ -87,28 +87,32 @@ func TestDecodeFeedCursor(t *testing.T) {
 func TestEncodeFeedCursor(t *testing.T) {
 	t.Parallel()
 
-	t.Run("末尾行のソートキーから生成したカーソルは同じcreated_at/idへ復号できる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		id := uuid.NewTestFromSalt(t, "encode_feed_cursor_id")
-		createdAt := time.Date(2025, time.March, 4, 5, 6, 7, 800000000, time.UTC)
-		last, err := user.New(
-			id,
-			"first_name", "last_name", "password", "email_address", "phone_number",
-			uuid.NewTestFromSalt(t, "encode_feed_cursor_pref"), "city_name", "town_address", nil, "p_code", createdAt, createdAt, nil,
-		)
-		require.NoError(t, err)
+		t.Run("末尾行のソートキーから生成したカーソルは同じcreated_at/idへ復号できる", func(t *testing.T) {
+			t.Parallel()
 
-		encoded := encodeFeedCursor(last)
-		require.NotEmpty(t, encoded)
+			id := uuid.NewTestFromSalt(t, "encode_feed_cursor_id")
+			createdAt := time.Date(2025, time.March, 4, 5, 6, 7, 800000000, time.UTC)
+			last, err := user.New(
+				id,
+				"first_name", "last_name", "password", "email_address", "phone_number",
+				uuid.NewTestFromSalt(t, "encode_feed_cursor_pref"), "city_name", "town_address", nil, "p_code", createdAt, createdAt, nil,
+			)
+			require.NoError(t, err)
 
-		cursor, cErr := paging.NewCursor(&encoded, nil)
-		require.NoError(t, cErr)
+			encoded := encodeFeedCursor(last)
+			require.NotEmpty(t, encoded)
 
-		decoded, decErr := decodeFeedCursor(cursor)
-		require.NoError(t, decErr)
-		require.NotNil(t, decoded)
-		assert.True(t, decoded.CreatedAt().Equal(createdAt))
-		assert.Equal(t, id, decoded.ID())
+			cursor, cErr := paging.NewCursor(&encoded, nil)
+			require.NoError(t, cErr)
+
+			decoded, decErr := decodeFeedCursor(cursor)
+			require.NoError(t, decErr)
+			require.NotNil(t, decoded)
+			assert.True(t, decoded.CreatedAt().Equal(createdAt))
+			assert.Equal(t, id, decoded.ID())
+		})
 	})
 }

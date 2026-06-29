@@ -169,6 +169,65 @@ worker_queue_stats_collection_failures_total{adapter="sqs",queue="unknown",worke
 `
 			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(expected)))
 		})
+
+		t.Run("複数 target 混在で 1 つの失敗が他 target の収集を妨げない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			okProvider := mock_worker.NewMockQueueStatsProvider(ctrl)
+			okProvider.EXPECT().QueueStats(gomock.Any()).Return(worker.QueueStats{
+				Source: worker.QueueDepth{Visible: 7},
+			}, nil)
+			ngProvider := mock_worker.NewMockQueueStatsProvider(ctrl)
+			ngProvider.EXPECT().QueueStats(gomock.Any()).Return(worker.QueueStats{}, assert.AnError)
+
+			// target A(成功) の後に target B(失敗) を置き、B の失敗が A の depth 出力を妨げないことを確認する。
+			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
+				{WorkerName: "a", Adapter: "sqs", Provider: okProvider},
+				{WorkerName: "b", Adapter: "sqs", Provider: ngProvider},
+			})
+
+			expected := `
+# HELP worker_queue_depth Approximate number of messages in the queue by state. SQS values are approximate.
+# TYPE worker_queue_depth gauge
+worker_queue_depth{adapter="sqs",queue="source",state="visible",worker="a"} 7
+worker_queue_depth{adapter="sqs",queue="source",state="not_visible",worker="a"} 0
+worker_queue_depth{adapter="sqs",queue="source",state="delayed",worker="a"} 0
+# HELP worker_queue_stats_collection_failures_total Total number of queue stats collection failures.
+# TYPE worker_queue_stats_collection_failures_total counter
+worker_queue_stats_collection_failures_total{adapter="sqs",queue="unknown",worker="b"} 1
+`
+			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(expected),
+				"worker_queue_depth", "worker_queue_stats_collection_failures_total"))
+		})
+
+		t.Run("収集失敗 counter は複数回の Collect で累積する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			provider := mock_worker.NewMockQueueStatsProvider(ctrl)
+			provider.EXPECT().QueueStats(gomock.Any()).Return(worker.QueueStats{}, assert.AnError).Times(2)
+
+			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
+				{WorkerName: "w", Adapter: "sqs", Provider: provider},
+			})
+
+			// 1 回目の Collect 後は失敗回数が 1。
+			first := `
+# HELP worker_queue_stats_collection_failures_total Total number of queue stats collection failures.
+# TYPE worker_queue_stats_collection_failures_total counter
+worker_queue_stats_collection_failures_total{adapter="sqs",queue="unknown",worker="w"} 1
+`
+			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(first)))
+
+			// 2 回目の Collect 後は累積して 2 になる。
+			second := `
+# HELP worker_queue_stats_collection_failures_total Total number of queue stats collection failures.
+# TYPE worker_queue_stats_collection_failures_total counter
+worker_queue_stats_collection_failures_total{adapter="sqs",queue="unknown",worker="w"} 2
+`
+			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(second)))
+		})
 	})
 }
 

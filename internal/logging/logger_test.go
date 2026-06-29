@@ -147,6 +147,21 @@ func Test_logger_convertFields(t *testing.T) {
 			actual := l.convertFields(fields)
 			assert.Equal(t, expected, actual)
 		})
+
+		t.Run("未知のkindはdefault分岐でzap.Anyへ変換される", func(t *testing.T) {
+			t.Parallel()
+
+			log := zap.NewNop()
+			l := &logger{log: log}
+
+			fields := []*Field{{key: "unknown", kind: fieldUnknown}}
+
+			expected := []zap.Field{
+				zap.Any("unknown", nil),
+			}
+			actual := l.convertFields(fields)
+			assert.Equal(t, expected, actual)
+		})
 	})
 }
 

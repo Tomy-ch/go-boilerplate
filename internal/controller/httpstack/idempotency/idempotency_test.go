@@ -58,19 +58,27 @@ func newEcho(key string, withAuthn bool, subject string) echo.Context {
 func TestStrictMiddleware(t *testing.T) {
 	t.Parallel()
 
-	called := false
-	h := strictHandlerFunc(func(echo.Context, any) (any, error) {
-		called = true
-		return sentinel, nil
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ヘッダ無しは素通しし後段をそのまま呼ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			called := false
+			h := strictHandlerFunc(func(echo.Context, any) (any, error) {
+				called = true
+				return sentinel, nil
+			})
+			// ヘッダ無しは素通しするため、アダプタ越しでも後段がそのまま呼ばれる。
+			ec := newEcho("", true, "user-1")
+
+			res, err := StrictMiddleware[strictHandlerFunc]()(h, "PostUsers")(ec, spyRequest{})
+
+			require.NoError(t, err)
+			assert.True(t, called)
+			assert.Equal(t, sentinel, res)
+		})
 	})
-	// ヘッダ無しは素通しするため、アダプタ越しでも後段がそのまま呼ばれる。
-	ec := newEcho("", true, "user-1")
-
-	res, err := StrictMiddleware[strictHandlerFunc]()(h, "PostUsers")(ec, spyRequest{})
-
-	require.NoError(t, err)
-	assert.True(t, called)
-	assert.Equal(t, sentinel, res)
 }
 
 func TestMiddleware_handle(t *testing.T) {
@@ -87,6 +95,24 @@ func TestMiddleware_handle(t *testing.T) {
 				return sentinel, nil
 			})
 			ec := newEcho("", true, "user-1")
+
+			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
+
+			require.NoError(t, err)
+			assert.True(t, called)
+			assert.Equal(t, sentinel, res)
+		})
+
+		t.Run("空白のみのキーは素通しし後段をそのまま呼ぶ", func(t *testing.T) {
+			t.Parallel()
+			called := false
+			next := NextFunc(func(echo.Context, any) (any, error) {
+				called = true
+				return sentinel, nil
+			})
+			// 空白のみのキーは handle 内の TrimSpace で空になり、ヘッダ無し相当として素通しされる
+			// （validateKey は呼ばれない）。
+			ec := newEcho("   ", true, "user-1")
 
 			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{})
 
@@ -208,9 +234,12 @@ func TestMiddleware_handle(t *testing.T) {
 func Test_validateKey(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系_印字可能ASCIIは通る", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		require.NoError(t, validateKey("Idem-Key_123.~"))
+		t.Run("印字可能ASCIIは通る", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateKey("Idem-Key_123.~"))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

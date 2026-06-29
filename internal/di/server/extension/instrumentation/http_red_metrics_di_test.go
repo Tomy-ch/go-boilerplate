@@ -9,7 +9,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
 
@@ -19,14 +18,14 @@ func TestHTTPRedMetricsMiddleware(t *testing.T) {
 	out := HTTPRedMetricsMiddleware(redmetrics.NewPrometheusRecorder())
 	assert.Equal(t, httpREDMetricsPriority, out.Middleware.Priority)
 	assert.Equal(t, "httpredmetrics", out.Middleware.Name)
-	require.NotNil(t, out.Middleware.Middleware)
+	assert.NotNil(t, out.Middleware.Middleware)
 }
 
 func TestNewHTTPRedMetricsRecorder(t *testing.T) {
 	t.Parallel()
 
 	rec := newHTTPRedMetricsRecorder(redmetrics.NewPrometheusRecorder())
-	require.NotNil(t, rec)
+	assert.NotNil(t, rec)
 }
 
 func TestHTTPRedMetricsModule_ProvidesUseMiddleware(t *testing.T) {

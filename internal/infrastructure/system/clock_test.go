@@ -12,21 +12,34 @@ import (
 func TestNewClock(t *testing.T) {
 	t.Parallel()
 
-	c := NewClock()
-	require.NotNil(t, c)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		c := NewClock()
+		require.NotNil(t, c)
+	})
 }
 
 func TestClockNow(t *testing.T) {
 	t.Parallel()
-	now := NewClock().Now()
-	require.WithinDuration(t, time.Now(), now, time.Second)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		now := NewClock().Now()
+		require.WithinDuration(t, time.Now(), now, time.Second)
+	})
 }
 
 func TestNewSleeper(t *testing.T) {
 	t.Parallel()
 
-	s := NewSleeper()
-	require.NotNil(t, s)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		s := NewSleeper()
+		require.NotNil(t, s)
+	})
 }
 
 func TestClockSleep(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
 	mock_logging "go-boilerplate/internal/logging/mock"
+	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/exaring/otelpgx"
@@ -123,6 +124,39 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 				start: time.Now().Add(-time.Hour),
 			})
 			qt.TraceQueryEnd(ctx, nil, pgx.TraceQueryEndData{})
+		})
+	})
+}
+
+func TestQueryTracer_TraceQueryStart(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("開始時のspanIDがparentSpanIDとして終了処理経路まで引き継がれる", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, end := observability.NewStubSpanContext(t)
+			defer end()
+
+			wantSpanID := observability.ExtractTraceContext(ctx).SpanID()
+			require.NotEmpty(t, wantSpanID)
+
+			qt, mockLogger := newTestQueryTracer(t)
+			qt.slowThreshold = time.Second
+			mockLogger.EXPECT().Info("DB query completed", gomock.Any()).Times(1)
+
+			// TraceQueryStart が開始時点の spanID を queryLogData.parentSpanID に取り込む。
+			startedCtx := qt.TraceQueryStart(ctx, nil, pgx.TraceQueryStartData{SQL: "SELECT 1"})
+
+			ld, ok := startedCtx.Value(queryLogKey{}).(queryLogData)
+			require.True(t, ok)
+			assert.Equal(t, wantSpanID, ld.parentSpanID)
+
+			// 手組みの context を使わず TraceQueryStart の出力 context をそのまま
+			// TraceQueryEnd へ渡し、parentSpanID が終了処理経路へ引き継がれることを確認する。
+			qt.TraceQueryEnd(startedCtx, nil, pgx.TraceQueryEndData{})
 		})
 	})
 }

@@ -483,6 +483,42 @@ func TestClientDoBreaker(t *testing.T) {
 	})
 }
 
+func TestClientDoBreakerReturnsLastResponse(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("retry2回目でbreakerがopenでも直前のレスポンスを返す", func(t *testing.T) {
+			t.Parallel()
+
+			srv, hits := countingServer(t, http.StatusServiceUnavailable)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxAttempts = 2 // attempt1 で open させ attempt2 の allow=false を踏む
+			profile.BaseBackoff = time.Millisecond
+			profile.MaxBackoff = time.Millisecond
+			profile.RetryBudgetRatio = 100 // budget で retry が絞られないよう確保
+			profile.Breaker = httpclient.BreakerConfig{
+				FailureThreshold: 0.5,
+				MinRequests:      1,         // 1 件の失敗で即 open
+				OpenDuration:     time.Hour, // attempt2 までに half-open へ遷移させない
+				HalfOpenProbes:   1,
+			}
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"brk": profile})
+			client := newClient(t, registry)
+
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "brk", srv.URL))
+
+			// attempt1 の 503 で open。attempt2 は allow=false だが直前 resp を返す。
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+			assert.Equal(t, int32(1), hits.Load()) // attempt2 はサーバへ到達しない
+		})
+	})
+}
+
 func TestClientDoBudget(t *testing.T) {
 	t.Parallel()
 

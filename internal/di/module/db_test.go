@@ -11,7 +11,6 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/di/lifecycle"
-	"go-boilerplate/internal/di/server/hook"
 	"go-boilerplate/internal/logging"
 	mock_logging "go-boilerplate/internal/logging/mock"
 	"go-boilerplate/internal/observability"
@@ -20,35 +19,38 @@ import (
 func TestDatabaseModule_Composes(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fx アプリに DatabaseModule を追加して起動できる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
+		t.Run("fx アプリに DatabaseModule を追加して起動できる", func(t *testing.T) {
+			t.Parallel()
 
-		mockLogger := mock_logging.NewMockLogger(ctrl)
-		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
+			ctrl := gomock.NewController(t)
 
-		mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
-		mockLogger.EXPECT().Info("Closing database connection").AnyTimes()
+			mockLogger := mock_logging.NewMockLogger(ctrl)
+			mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
 
-		app := fx.New(
-			lifecycle.Module(),
-			DatabaseModule(),
-			fx.Provide(func() testing.TB { return t }),
-			fx.Provide(config.MockConfigForTest),
-			fx.Provide(config.NewDatabaseConfig),
-			fx.Provide(config.NewObservabilityConfig),
-			fx.Provide(config.NewOperatingSystemConfig),
-			fx.Provide(config.NewDBConnectionConfig),
-			fx.Provide(func() logging.Logger { return mockLogger }),
-			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
-			fx.Provide(func() *otelpgx.Tracer { return otelpgx.NewTracer() }),
-			fx.Provide(observability.NewNoopTracerFactory),
-			fx.NopLogger,
-			fx.Invoke(hook.RegisterDBCloseHooks),
-		)
+			mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
+			mockLogger.EXPECT().Info("Closing database connection").AnyTimes()
 
-		require.NoError(t, app.Start(context.Background()))
-		require.NoError(t, app.Stop(context.Background()))
+			app := fx.New(
+				lifecycle.Module(),
+				DatabaseModule(),
+				fx.Provide(func() testing.TB { return t }),
+				fx.Provide(config.MockConfigForTest),
+				fx.Provide(config.NewDatabaseConfig),
+				fx.Provide(config.NewObservabilityConfig),
+				fx.Provide(config.NewOperatingSystemConfig),
+				fx.Provide(config.NewDBConnectionConfig),
+				fx.Provide(func() logging.Logger { return mockLogger }),
+				fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+				fx.Provide(func() *otelpgx.Tracer { return otelpgx.NewTracer() }),
+				fx.Provide(observability.NewNoopTracerFactory),
+				fx.NopLogger,
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			require.NoError(t, app.Stop(context.Background()))
+		})
 	})
 }

@@ -259,6 +259,34 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			require.ErrorIs(t, err, wantErr)
 		})
 
+		t.Run("複数メッセージ混在時に2件目が失敗すると tx を巻き戻し結果は破棄される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			pub := mock_publisher.NewMockPublisher(ctrl)
+			wantErr := errors.New("mark failed")
+
+			// 1件目は publish 成功で MarkPublished も成功するが、2件目の MarkPublished が
+			// DB エラーになる。deliver の DB マーク失敗は tx を巻き戻すエラーなので、
+			// 1件目の成功も含めて RelayResult は破棄される（DoWithResult が zero 値を返す）。
+			msg1 := pendingMessage(t)
+			msg2 := pendingMessage(t)
+			msg2.ID = 2
+
+			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).
+				Return([]outboxbndry.PendingMessage{msg1, msg2}, nil)
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+			store.EXPECT().MarkPublished(gomock.Any(), msg1.ID).Return(nil)
+			store.EXPECT().MarkPublished(gomock.Any(), msg2.ID).Return(wantErr)
+
+			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
+				RelayBatch(context.Background(), 100)
+
+			require.ErrorIs(t, err, wantErr)
+			assert.Equal(t, 0, got.Claimed)
+			assert.Equal(t, 0, got.Published)
+		})
+
 		t.Run("MarkFailed のエラーは tx を巻き戻すエラーとして返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
@@ -339,7 +367,7 @@ func TestRelayUsecase_RecordLag(t *testing.T) {
 			store := mock_outbox.NewMockStore(ctrl)
 			wantErr := errors.New("lag query failed")
 			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, wantErr)
-			// エラー時は SetLagSeconds を呼ばない（呼べば mock が未期待呼び出しで失敗する）。
+			// エラー時は SetLagSeconds を呼ばない。
 			metrics := mock_relay.NewMockMetrics(ctrl)
 
 			require.ErrorIs(t, build(t, store, metrics).RecordLag(context.Background()), wantErr)

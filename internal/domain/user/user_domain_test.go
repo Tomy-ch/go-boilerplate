@@ -68,6 +68,30 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, updatedAt, actual.updatedAt)
 			assert.Equal(t, *deletedAt, *actual.deletedAt)
 		})
+
+		t.Run("オプションのbuildingがnilの場合、エンティティが生成されBuildingはnilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := New(
+				id,
+				firstName,
+				lastName,
+				passwordHash,
+				email,
+				phone,
+				prefectureID,
+				city,
+				street,
+				nil,
+				postalCode,
+				createdAt,
+				updatedAt,
+				deletedAt,
+			)
+
+			require.NoError(t, err)
+			assert.Nil(t, actual.Building())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -682,7 +706,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("IDメソッドが保存した文字列をuuid.UUIDに変換した値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.ID()
 		assert.Equal(t, expected.id, actual)
 	})
@@ -690,7 +713,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("FirstNameメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.FirstName()
 		assert.Equal(t, expected.firstName, actual)
 	})
@@ -698,7 +720,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("LastNameメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.LastName()
 		assert.Equal(t, expected.lastName, actual)
 	})
@@ -706,7 +727,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("PasswordHashメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.PasswordHash()
 		assert.Equal(t, expected.passwordHash, actual)
 	})
@@ -714,7 +734,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("Emailメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.Email()
 		assert.Equal(t, expected.email, actual)
 	})
@@ -722,7 +741,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("Phoneメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.Phone()
 		assert.Equal(t, expected.phone, actual)
 	})
@@ -730,7 +748,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("PrefectureIDメソッドが保存した文字列をuuid.UUIDに変換した値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.PrefectureID()
 		assert.Equal(t, expected.prefectureID, actual)
 	})
@@ -738,7 +755,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("Cityメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.City()
 		assert.Equal(t, expected.city, actual)
 	})
@@ -746,7 +762,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("Streetメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.Street()
 		assert.Equal(t, expected.street, actual)
 	})
@@ -754,7 +769,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("Buildingメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.Building()
 		assert.Equal(t, expected.building, actual)
 	})
@@ -762,7 +776,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("PostalCodeメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.PostalCode()
 		assert.Equal(t, expected.postalCode, actual)
 	})
@@ -770,7 +783,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("DeletedAtメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.DeletedAt()
 		assert.Equal(t, expected.deletedAt, actual)
 	})
@@ -778,7 +790,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("CreatedAtメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.CreatedAt()
 		assert.Equal(t, expected.createdAt, actual)
 	})
@@ -786,7 +797,6 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("UpdatedAtメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.UpdatedAt()
 		assert.Equal(t, expected.updatedAt, actual)
 	})
@@ -794,9 +804,33 @@ func TestEntity_Accessors(t *testing.T) {
 	t.Run("FullNameメソッドが保存した正しい値を返す", func(t *testing.T) {
 		t.Parallel()
 
-		expected := expected
 		actual := expected.FullName()
 		assert.Equal(t, expected.firstName+" "+expected.lastName, actual)
+	})
+
+	t.Run("buildingとdeletedAtがnilの場合、BuildingメソッドとDeletedAtメソッドがnilを返す", func(t *testing.T) {
+		t.Parallel()
+
+		user, err := New(
+			id,
+			firstName,
+			lastName,
+			passwordHash,
+			email,
+			phone,
+			prefectureID,
+			city,
+			street,
+			nil,
+			postalCode,
+			createdAt,
+			updatedAt,
+			nil,
+		)
+		require.NoError(t, err)
+
+		assert.Nil(t, user.Building())
+		assert.Nil(t, user.DeletedAt())
 	})
 }
 
@@ -962,8 +996,13 @@ func TestUser_UpdateProfile(t *testing.T) {
 			assert.Equal(t, "Jane", u.firstName)
 			assert.Equal(t, "Smith", u.lastName)
 			assert.Equal(t, "jane@example.com", u.email)
+			assert.Equal(t, "0987654321", u.phone)
 			assert.Equal(t, newPrefID, u.prefectureID)
 			assert.Equal(t, "Minato", u.city)
+			assert.Equal(t, "4-5-6", u.street)
+			require.NotNil(t, u.building)
+			assert.Equal(t, "Tower", *u.building)
+			assert.Equal(t, "200-0002", u.postalCode)
 			assert.Equal(t, newUpdatedAt, u.updatedAt)
 		})
 	})

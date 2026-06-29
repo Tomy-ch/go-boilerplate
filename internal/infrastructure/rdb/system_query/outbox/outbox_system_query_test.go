@@ -114,6 +114,37 @@ func Test_store_lifecycle(t *testing.T) {
 			})
 		})
 
+		t.Run("ReplayDead に message_id を指定すると当該 1 件のみ pending へ戻る", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				// 2 行 insert し、両方を dead にする。
+				targetMsgID, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+				otherMsgID, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+
+				claimed, err := s.ClaimPending(ctx, 10)
+				require.NoError(t, err)
+				require.Len(t, claimed, 2)
+				for _, m := range claimed {
+					require.NoError(t, s.MarkDead(ctx, m.ID))
+				}
+
+				// 指定 message_id の 1 件のみが戻る。
+				replayed, err := s.ReplayDead(ctx, &targetMsgID)
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), replayed)
+
+				// 戻ったのは指定行のみ（再 claim で targetMsgID だけが返る）。
+				back, err := s.ClaimPending(ctx, 10)
+				require.NoError(t, err)
+				require.Len(t, back, 1)
+				assert.Equal(t, targetMsgID, back[0].MessageID)
+				assert.NotEqual(t, otherMsgID, back[0].MessageID)
+			})
+		})
+
 		t.Run("DeletePublished は cutoff より古い published 行を削除する", func(t *testing.T) {
 			t.Parallel()
 

@@ -2,7 +2,6 @@ package response
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -55,6 +54,21 @@ func TestNewHTTPErrorFromAppError(t *testing.T) {
 			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未知のエラーの場合、500のエラー構造体にフォールバックする", func(t *testing.T) {
+			t.Parallel()
+			err := errors.New("unknown error")
+			expected := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeInternalError, Message: errorMessageInternalError},
+				HTTPStatus:    http.StatusInternalServerError,
+				Internal:      err,
+			}
+			assert.Equal(t, expected, NewHTTPErrorFromAppError(err))
+		})
+	})
 }
 
 func TestNewHTTPErrorFromStatus(t *testing.T) {
@@ -104,6 +118,78 @@ func TestNewHTTPErrorFromStatus(t *testing.T) {
 			}
 			assert.Equal(t, want, NewHTTPErrorFromStatus(999, nil))
 		})
+
+		t.Run("401の場合、Unauthorizedのエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			want := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeUnauthorized, Message: errorMessageUnauthorized},
+				HTTPStatus:    http.StatusUnauthorized,
+			}
+			assert.Equal(t, want, NewHTTPErrorFromStatus(http.StatusUnauthorized, nil))
+		})
+
+		t.Run("403の場合、AccessDeniedのエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			want := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeAccessDenied, Message: errorMessageAccessDenied},
+				HTTPStatus:    http.StatusForbidden,
+			}
+			assert.Equal(t, want, NewHTTPErrorFromStatus(http.StatusForbidden, nil))
+		})
+
+		t.Run("422の場合、ValidationFailedのエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			want := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeValidationFailed, Message: errorMessageValidationFailed},
+				HTTPStatus:    http.StatusUnprocessableEntity,
+			}
+			assert.Equal(t, want, NewHTTPErrorFromStatus(http.StatusUnprocessableEntity, nil))
+		})
+
+		t.Run("429の場合、TooManyRequestsのエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			want := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeTooManyRequests, Message: errorMessageTooManyRequests},
+				HTTPStatus:    http.StatusTooManyRequests,
+			}
+			assert.Equal(t, want, NewHTTPErrorFromStatus(http.StatusTooManyRequests, nil))
+		})
+
+		t.Run("499の場合、ClientClosedRequestのエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			want := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeClientClosedRequest, Message: errorMessageClientClosedRequest},
+				HTTPStatus:    statusClientClosedRequest,
+			}
+			assert.Equal(t, want, NewHTTPErrorFromStatus(statusClientClosedRequest, nil))
+		})
+
+		t.Run("500の場合、InternalErrorのエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			want := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeInternalError, Message: errorMessageInternalError},
+				HTTPStatus:    http.StatusInternalServerError,
+			}
+			assert.Equal(t, want, NewHTTPErrorFromStatus(http.StatusInternalServerError, nil))
+		})
+
+		t.Run("501の場合、NotImplementedのエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			want := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeNotImplemented, Message: errorMessageNotImplemented},
+				HTTPStatus:    http.StatusNotImplemented,
+			}
+			assert.Equal(t, want, NewHTTPErrorFromStatus(http.StatusNotImplemented, nil))
+		})
+
+		t.Run("503の場合、ServiceUnavailableのエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			want := &HTTPErrorResponse{
+				ErrorResponse: gen.ErrorResponse{Code: codeServiceUnavailable, Message: errorMessageServiceUnavailable},
+				HTTPStatus:    http.StatusServiceUnavailable,
+			}
+			assert.Equal(t, want, NewHTTPErrorFromStatus(http.StatusServiceUnavailable, nil))
+		})
 	})
 }
 
@@ -123,7 +209,7 @@ func TestHTTPErrorResponse_Error(t *testing.T) {
 				},
 			}
 
-			expected := fmt.Sprintf("HTTP %d: %s (%s)", http.StatusBadRequest, codeBadRequest, errorMessageBadRequest)
+			expected := "HTTP 400: BAD_REQUEST (入力内容に誤りがあります。再度ご確認ください。)"
 
 			assert.Equal(t, expected, httpError.Error())
 		})

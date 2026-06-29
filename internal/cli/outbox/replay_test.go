@@ -2,6 +2,7 @@ package outbox_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	outboxcli "go-boilerplate/internal/cli/outbox"
@@ -67,6 +68,18 @@ func TestRunReplayWith(t *testing.T) {
 			_, err := outboxcli.RunReplayWith(context.Background(), "not-a-uuid", replay)
 			require.Error(t, err)
 			assert.False(t, called)
+		})
+
+		t.Run("replayが失敗するとそのエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			wantErr := errors.New("replay failed")
+			replay := func(context.Context, *uuid.UUID) (int64, error) {
+				return 0, wantErr
+			}
+
+			_, err := outboxcli.RunReplayWith(context.Background(), "", replay)
+			require.ErrorIs(t, err, wantErr)
 		})
 	})
 }

@@ -13,23 +13,27 @@ import (
 func TestSystemModule_ProvidesBuildInfo(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fx アプリで BuildInfo が提供される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		var bi system.BuildInfo
+		t.Run("fx アプリで BuildInfo が提供される", func(t *testing.T) {
+			t.Parallel()
 
-		app := fx.New(
-			SystemModule(),
-			fx.Populate(&bi),
-			fx.NopLogger,
-		)
+			var bi system.BuildInfo
 
-		require.NoError(t, app.Start(context.Background()))
-		require.NotNil(t, bi)
-		// Methods should be callable
-		_ = bi.Version()
-		_ = bi.Revision()
-		_ = bi.BuildDate()
-		require.NoError(t, app.Stop(context.Background()))
+			app := fx.New(
+				SystemModule(),
+				fx.Populate(&bi),
+				fx.NopLogger,
+			)
+
+			require.NoError(t, app.Start(context.Background()))
+			require.NotNil(t, bi)
+			// Methods should be callable
+			_ = bi.Version()
+			_ = bi.Revision()
+			_ = bi.BuildDate()
+			require.NoError(t, app.Stop(context.Background()))
+		})
 	})
 }

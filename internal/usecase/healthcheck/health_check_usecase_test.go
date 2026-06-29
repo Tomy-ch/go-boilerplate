@@ -19,19 +19,23 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
-	tf := observability.NewNoopTracerFactory(t)
-	sysQuery := mock_query.NewMockDBSystemQuery(ctrl)
-	clock := clocktest.NewMockClock(t, time.Time{})
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	expected := &usecase{
-		tracer:        tf.Usecase(),
-		clock:         clock,
-		dbSystemQuery: sysQuery,
-	}
-	actual := New(sysQuery, tf, clock)
+		ctrl := gomock.NewController(t)
+		tf := observability.NewNoopTracerFactory(t)
+		sysQuery := mock_query.NewMockDBSystemQuery(ctrl)
+		clock := clocktest.NewMockClock(t, time.Time{})
 
-	assert.Equal(t, expected, actual)
+		expected := &usecase{
+			tracer:        tf.Usecase(),
+			clock:         clock,
+			dbSystemQuery: sysQuery,
+		}
+		actual := New(sysQuery, tf, clock)
+
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func Test_usecase_CheckHealth(t *testing.T) {
@@ -93,7 +97,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			}
 
 			actualResult, actualErr := u.CheckHealth(ctx)
-			assert.Equal(t, expectedErr, actualErr)
+			require.ErrorIs(t, actualErr, expectedErr)
 			assert.Nil(t, actualResult)
 		})
 	})

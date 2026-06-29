@@ -2,15 +2,34 @@ package observability_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/embedded"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
 	"go-boilerplate/internal/observability"
 )
+
+// errMeter は、failingMeter が Int64Counter 生成で返す注入エラーです。
+var errMeter = errors.New("int64 counter creation failed")
+
+// failingMeterProvider は、Int64Counter 生成に失敗する Meter を返す MeterProvider スタブです。
+type failingMeterProvider struct{ embedded.MeterProvider }
+
+// failingMeter は、Int64Counter 生成のみエラーを返す Meter スタブです。
+// NewWorkerMetrics は最初に Int64Counter を呼ぶため、ここでエラーを注入すれば生成失敗経路を通せます。
+type failingMeter struct{ metric.Meter }
+
+func (failingMeterProvider) Meter(string, ...metric.MeterOption) metric.Meter { return failingMeter{} }
+
+func (failingMeter) Int64Counter(string, ...metric.Int64CounterOption) (metric.Int64Counter, error) {
+	return nil, errMeter
+}
 
 func Test_NewWorkerMetrics_D2(t *testing.T) {
 	t.Parallel()
@@ -56,6 +75,19 @@ func Test_NewWorkerMetrics_D2(t *testing.T) {
 			} {
 				assert.Contains(t, names, want)
 			}
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("計装生成に失敗した場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			wm, err := observability.NewWorkerMetrics(failingMeterProvider{})
+
+			require.ErrorIs(t, err, errMeter)
+			assert.Nil(t, wm)
 		})
 	})
 }

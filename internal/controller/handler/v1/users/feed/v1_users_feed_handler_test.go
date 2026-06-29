@@ -56,7 +56,7 @@ func TestBindHandler(t *testing.T) {
 	// /v1/users/feed (GET) が登録される。
 	routes := e.Routes()
 
-	assert.Len(t, routes, 1)
+	require.Len(t, routes, 1)
 	assert.Equal(t, http.MethodGet, routes[0].Method)
 	assert.Equal(t, targetPath, routes[0].Path)
 }

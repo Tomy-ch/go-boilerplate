@@ -141,6 +141,11 @@ func Test_server_GetUsers(t *testing.T) {
 			t.Parallel()
 			exec(t, []user.UserView{expectedDTO1}, 1)
 		})
+
+		t.Run("ユーザーが0件の場合、空リストと200が返る", func(t *testing.T) {
+			t.Parallel()
+			exec(t, []user.UserView{}, 0)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -199,73 +204,77 @@ func Test_server_PostUsers(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-		ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String())
-		ctrl := gomock.NewController(t)
-		lt := observability.NewMockControllerLayerTracer(t)
+		t.Run("認証済みユーザーが登録した場合_201とUserViewが返る", func(t *testing.T) {
+			t.Parallel()
 
-		req := gen.PostUsersRequestObject{
-			Body: &gen.PostUsersJSONRequestBody{
-				FirstName:  "First",
-				LastName:   "Last",
-				Email:      types.Email("new@example.com"),
-				Phone:      "09000000000",
-				PostalCode: "123-4567",
-				Prefecture: "Tokyo",
-				City:       "Shibuya",
-				Street:     "1-1-1",
-				Building:   new("Building"),
-				Password:   "secret",
-			},
-		}
+			ctx := context.Background()
+			ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String())
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockControllerLayerTracer(t)
 
-		wantParams := user.UpdateProfileParams{
-			FirstName:      req.Body.FirstName,
-			LastName:       req.Body.LastName,
-			Email:          string(req.Body.Email),
-			Phone:          req.Body.Phone,
-			PostalCode:     req.Body.PostalCode,
-			PrefectureName: req.Body.Prefecture,
-			City:           req.Body.City,
-			Street:         req.Body.Street,
-			Building:       req.Body.Building,
-		}
-		wantView := user.UserView{
-			FirstName:      req.Body.FirstName,
-			LastName:       req.Body.LastName,
-			Email:          string(req.Body.Email),
-			Phone:          req.Body.Phone,
-			PostalCode:     req.Body.PostalCode,
-			PrefectureName: req.Body.Prefecture,
-			City:           req.Body.City,
-			Street:         req.Body.Street,
-			Building:       req.Body.Building,
-		}
+			req := gen.PostUsersRequestObject{
+				Body: &gen.PostUsersJSONRequestBody{
+					FirstName:  "First",
+					LastName:   "Last",
+					Email:      types.Email("new@example.com"),
+					Phone:      "09000000000",
+					PostalCode: "123-4567",
+					Prefecture: "Tokyo",
+					City:       "Shibuya",
+					Street:     "1-1-1",
+					Building:   new("Building"),
+					Password:   "secret",
+				},
+			}
 
-		// 認証 subject 由来の UserID 注入とリクエスト→DTO 詰め替えを引数捕捉で検証する。
-		var gotParams *user.CreateParamsDTO
-		mockApp := mock_user.NewMockUsecase(ctrl)
-		mockApp.EXPECT().CreateUser(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, p *user.CreateParamsDTO) (user.UserView, error) {
-				gotParams = p
-				return wantView, nil
-			})
+			wantParams := user.UpdateProfileParams{
+				FirstName:      req.Body.FirstName,
+				LastName:       req.Body.LastName,
+				Email:          string(req.Body.Email),
+				Phone:          req.Body.Phone,
+				PostalCode:     req.Body.PostalCode,
+				PrefectureName: req.Body.Prefecture,
+				City:           req.Body.City,
+				Street:         req.Body.Street,
+				Building:       req.Body.Building,
+			}
+			wantView := user.UserView{
+				FirstName:      req.Body.FirstName,
+				LastName:       req.Body.LastName,
+				Email:          string(req.Body.Email),
+				Phone:          req.Body.Phone,
+				PostalCode:     req.Body.PostalCode,
+				PrefectureName: req.Body.Prefecture,
+				City:           req.Body.City,
+				Street:         req.Body.Street,
+				Building:       req.Body.Building,
+			}
 
-		s := &server{tracer: lt, uc: mockApp}
-		resp, err := s.PostUsers(ctx, req)
-		require.NoError(t, err)
+			// 認証 subject 由来の UserID 注入とリクエスト→DTO 詰め替えを引数捕捉で検証する。
+			var gotParams *user.CreateParamsDTO
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().CreateUser(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p *user.CreateParamsDTO) (user.UserView, error) {
+					gotParams = p
+					return wantView, nil
+				})
 
-		expectedParams := &user.CreateParamsDTO{
-			UserID:              userID,
-			RawPassword:         req.Body.Password,
-			UpdateProfileParams: wantParams,
-		}
-		assert.Equal(t, expectedParams, gotParams)
+			s := &server{tracer: lt, uc: mockApp}
+			resp, err := s.PostUsers(ctx, req)
+			require.NoError(t, err)
 
-		actual, ok := resp.(gen.PostUsers201JSONResponse)
-		require.True(t, ok)
+			expectedParams := &user.CreateParamsDTO{
+				UserID:              userID,
+				RawPassword:         req.Body.Password,
+				UpdateProfileParams: wantParams,
+			}
+			assert.Equal(t, expectedParams, gotParams)
 
-		assert.Equal(t, wantUserResponse(wantView), gen.UserResponse(actual))
+			actual, ok := resp.(gen.PostUsers201JSONResponse)
+			require.True(t, ok)
+
+			assert.Equal(t, wantUserResponse(wantView), gen.UserResponse(actual))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

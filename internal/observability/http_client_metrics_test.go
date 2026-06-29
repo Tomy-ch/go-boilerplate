@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 )
 
@@ -51,6 +53,54 @@ func TestHTTPClientMetricsRecord(t *testing.T) {
 				hm.InFlightAdd(ctx, "sample", -1)
 				hm.SetBreakerState(ctx, "sample", 2)
 			})
+		})
+	})
+}
+
+func TestHTTPClientMetricsAttributes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("RecordRequest は downstream と status_class を付与して計上する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			hm, err := observability.NewHTTPClientMetrics(provider)
+			require.NoError(t, err)
+
+			hm.RecordRequest(ctx, "outbox", "2xx")
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "httpclient.requests"))
+			assert.Equal(t, "outbox", attributeOf(t, rm, "httpclient.requests", "downstream"))
+			assert.Equal(t, "2xx", attributeOf(t, rm, "httpclient.requests", "status_class"))
+		})
+
+		t.Run("RecordError は downstream と reason を付与して計上する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			hm, err := observability.NewHTTPClientMetrics(provider)
+			require.NoError(t, err)
+
+			hm.RecordError(ctx, "outbox", "transport")
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "httpclient.errors"))
+			assert.Equal(t, "outbox", attributeOf(t, rm, "httpclient.errors", "downstream"))
+			assert.Equal(t, "transport", attributeOf(t, rm, "httpclient.errors", "reason"))
 		})
 	})
 }

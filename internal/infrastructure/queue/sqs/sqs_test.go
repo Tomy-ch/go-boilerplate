@@ -79,6 +79,19 @@ func Test_Consumer_Receive(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, msgs)
 		})
+
+		t.Run("context.Canceled は ErrCanceled に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().ReceiveMessage(gomock.Any(), gomock.Any()).Return(nil, context.Canceled)
+
+			msgs, err := newConsumer(t, api).Receive(context.Background(), 5)
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.Nil(t, msgs)
+		})
 	})
 }
 
@@ -108,6 +121,38 @@ func Test_Consumer_Ack(t *testing.T) {
 			require.NoError(t, err)
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("API エラーは ErrUnavailable に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().DeleteMessage(gomock.Any(), gomock.Any()).Return(nil, assert.AnError)
+
+			err := newConsumer(t, api).Ack(context.Background(), worker.Message{
+				Attributes: map[string]string{worker.AttrReceiptHandle: "rh1"},
+			})
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("context.Canceled は ErrCanceled に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().DeleteMessage(gomock.Any(), gomock.Any()).Return(nil, context.Canceled)
+
+			err := newConsumer(t, api).Ack(context.Background(), worker.Message{
+				Attributes: map[string]string{worker.AttrReceiptHandle: "rh1"},
+			})
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
 }
 
 func Test_Consumer_Nack(t *testing.T) {
@@ -134,6 +179,38 @@ func Test_Consumer_Nack(t *testing.T) {
 			})
 
 			require.NoError(t, err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("API エラーは ErrUnavailable に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).Return(nil, assert.AnError)
+
+			err := newConsumer(t, api).Nack(context.Background(), worker.Message{
+				Attributes: map[string]string{worker.AttrReceiptHandle: "rh1"},
+			})
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("context.Canceled は ErrCanceled に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).Return(nil, context.Canceled)
+
+			err := newConsumer(t, api).Nack(context.Background(), worker.Message{
+				Attributes: map[string]string{worker.AttrReceiptHandle: "rh1"},
+			})
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
 }
@@ -210,6 +287,38 @@ func Test_Consumer_Extend(t *testing.T) {
 			require.NoError(t, err)
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("API エラーは ErrUnavailable に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).Return(nil, assert.AnError)
+
+			err := newConsumer(t, api).Extend(context.Background(), worker.Message{
+				Attributes: map[string]string{worker.AttrReceiptHandle: "rh1"},
+			}, 30*time.Second)
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("context.Canceled は ErrCanceled に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().ChangeMessageVisibility(gomock.Any(), gomock.Any()).Return(nil, context.Canceled)
+
+			err := newConsumer(t, api).Extend(context.Background(), worker.Message{
+				Attributes: map[string]string{worker.AttrReceiptHandle: "rh1"},
+			}, 30*time.Second)
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
 }
 
 func Test_DeadLetter_Fail(t *testing.T) {
@@ -236,6 +345,23 @@ func Test_DeadLetter_Fail(t *testing.T) {
 			err := dl.Fail(context.Background(), worker.Message{Body: []byte("body")}, assert.AnError)
 
 			require.NoError(t, err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("API エラーは ErrUnavailable に正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			api := mock_sqs.NewMockAPI(ctrl)
+			api.EXPECT().SendMessage(gomock.Any(), gomock.Any()).Return(nil, assert.AnError)
+
+			dl := NewDeadLetter(api, "dlq", observability.NewNoopTracerFactory(t))
+			err := dl.Fail(context.Background(), worker.Message{Body: []byte("body")}, assert.AnError)
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 		})
 	})
 }

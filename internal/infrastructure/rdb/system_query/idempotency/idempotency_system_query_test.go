@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
@@ -179,8 +180,20 @@ func Test_store_errors(t *testing.T) {
 					Scope: "missing-scope", Key: "missing-key",
 					ResponseStatus: 201, ResponsePayload: []byte(`{}`),
 				})
-				require.Error(t, err)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
+		})
+
+		t.Run("ロック競合タイムアウト時はErrLockTimeoutを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// Claim の 55P03(lock_not_available) 分岐は、同一 (scope,key) を
+			// SET LOCAL lock_timeout 付きで claim する 2 本の業務 tx が
+			// 同時に競合して初めて発生する。testkit の WithinTx は txLock で
+			// トランザクションを直列化し最後に rollback する様式のため、
+			// 真の並行コネクション競合を表現できない。再現には専用の
+			// 統合テスト（2 コネクションの並行トランザクション）が必要。
+			t.Skip("ErrLockTimeout(55P03) は 2 コネクションの並行 claim 競合が必要で、testkit の直列化様式では再現不可")
 		})
 
 		t.Run("キャンセル済みコンテキストでは各操作がエラーを返す", func(t *testing.T) {

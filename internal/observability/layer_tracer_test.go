@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"go-boilerplate/pkg/xerrors"
@@ -11,6 +12,28 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
+
+type recordingExporter struct {
+	mu    sync.Mutex
+	names []string
+}
+
+func (e *recordingExporter) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, s := range spans {
+		e.names = append(e.names, s.Name())
+	}
+	return nil
+}
+
+func (*recordingExporter) Shutdown(context.Context) error { return nil }
+
+func (e *recordingExporter) recorded() []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]string(nil), e.names...)
+}
 
 func TestLayerTracer_makeSpanName(t *testing.T) {
 	t.Parallel()
@@ -38,20 +61,22 @@ func Test_LayerTracer_Start(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("funcNameが既に設定されている場合、その値でspanを開始する", func(t *testing.T) {
+		t.Run("funcNameが既に設定されている場合、layer.pkg.func形式のspan名で開始する", func(t *testing.T) {
 			t.Parallel()
 
-			tracer, shutdown := newTestTracer(t)
-			defer shutdown()
+			exp := &recordingExporter{}
+			tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+			defer func() { _ = tp.Shutdown(context.Background()) }()
 
 			lt := LayerTracer{
-				tracer: tracer,
-				layer:  "usecase", pkgName: "pkg", funcName: "Fn",
+				tracer: tp.Tracer("test"),
+				layer:  Usecase, pkgName: "pkg", funcName: "Fn",
 			}
-			ctx := context.Background()
-			ctx, end := lt.Start(ctx)
+			ctx, end := lt.Start(context.Background())
 			end()
+
 			require.NotNil(t, ctx)
+			assert.Equal(t, []string{"usecase.pkg.Fn"}, exp.recorded())
 		})
 
 		t.Run("funcNameが空の場合、getCallerFullNameによって設定される", func(t *testing.T) {
@@ -96,16 +121,19 @@ func Test_LayerTracer_StartWithSuffix(t *testing.T) {
 		t.Run("optionalNameを指定した場合、span名にサフィックスが付与される", func(t *testing.T) {
 			t.Parallel()
 
-			tracer, shutdown := newTestTracer(t)
-			defer shutdown()
+			exp := &recordingExporter{}
+			tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+			defer func() { _ = tp.Shutdown(context.Background()) }()
 
 			lt := LayerTracer{
-				tracer: tracer,
-				layer:  "controller", pkgName: "p", funcName: "F",
+				tracer: tp.Tracer("test"),
+				layer:  Controller, pkgName: "p", funcName: "F",
 			}
 			ctx, end := lt.StartWithSuffix(context.Background(), "DB")
 			end()
+
 			require.NotNil(t, ctx)
+			assert.Equal(t, []string{"controller.p.F.DB"}, exp.recorded())
 		})
 
 		t.Run("optionalNameが空の場合、サフィックス無しでspanを開始する", func(t *testing.T) {
