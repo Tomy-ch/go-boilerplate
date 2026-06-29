@@ -1,7 +1,6 @@
 package module
 
 import (
-	"context"
 	"testing"
 
 	"github.com/exaring/otelpgx"
@@ -22,18 +21,17 @@ func TestDatabaseModule_Composes(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("fx アプリに DatabaseModule を追加して起動できる", func(t *testing.T) {
+		t.Run("DatabaseModule を含む fx アプリの依存グラフが解決できる", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-
 			mockLogger := mock_logging.NewMockLogger(ctrl)
 			mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
 
-			mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
-			mockLogger.EXPECT().Info("Closing database connection").AnyTimes()
-
-			app := fx.New(
+			// fx.ValidateApp は依存グラフの解決可能性のみを検証し、コンストラクタや
+			// ライフサイクルフックを実行しない。NewTracedDB 内の実 DB 接続(Ping)が
+			// 走らないため、Postgres 不在でも DatabaseModule の合成を検証できる。
+			require.NoError(t, fx.ValidateApp(
 				lifecycle.Module(),
 				DatabaseModule(),
 				fx.Provide(func() testing.TB { return t }),
@@ -47,10 +45,7 @@ func TestDatabaseModule_Composes(t *testing.T) {
 				fx.Provide(func() *otelpgx.Tracer { return otelpgx.NewTracer() }),
 				fx.Provide(observability.NewNoopTracerFactory),
 				fx.NopLogger,
-			)
-
-			require.NoError(t, app.Start(context.Background()))
-			require.NoError(t, app.Stop(context.Background()))
+			))
 		})
 	})
 }
