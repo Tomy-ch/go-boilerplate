@@ -11,12 +11,14 @@ import (
 // DefaultGCBatchSize は、GC の 1 バッチあたり削除件数の既定値です。
 const DefaultGCBatchSize int32 = 10_000
 
-// GCMetrics は、GC の o11y カウンタです（Run の Metrics とは lifecycle が異なるため分離）。
+// GCMetrics は、GC の o11y カウンタです（GCUsecase は GC 固有カウンタのみ必要なため
+// interface を分離。実体は Run の Metrics と同一インスタンスで lifecycle も同一）。
+// 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。
 type GCMetrics interface {
 	// IncExpiredCleanup は、削除に成功した失効キー件数を計上します。
-	IncExpiredCleanup(count int64)
+	IncExpiredCleanup(ctx context.Context, count int64)
 	// IncExpiredCleanupFailure は、削除バッチの失敗回数を計上します。
-	IncExpiredCleanupFailure()
+	IncExpiredCleanupFailure(ctx context.Context)
 }
 
 // GCUsecase は、TTL 失効した冪等性キーを掃除するユースケースです。
@@ -50,11 +52,11 @@ func (g *gcUsecase) SweepExpired(ctx context.Context, batchSize int32) (int64, e
 	for {
 		deleted, err := g.store.DeleteExpired(ctx, cutoff, batchSize)
 		if err != nil {
-			g.metrics().IncExpiredCleanupFailure()
+			g.metrics().IncExpiredCleanupFailure(ctx)
 			return total, err
 		}
 		if deleted > 0 {
-			g.metrics().IncExpiredCleanup(deleted)
+			g.metrics().IncExpiredCleanup(ctx, deleted)
 		}
 		total += deleted
 		// バッチが満たなかった = もう失効行は無い。
@@ -71,5 +73,5 @@ func (g *gcUsecase) metrics() GCMetrics {
 	return g.metricsImpl
 }
 
-func (nopGCMetrics) IncExpiredCleanup(int64)   {}
-func (nopGCMetrics) IncExpiredCleanupFailure() {}
+func (nopGCMetrics) IncExpiredCleanup(context.Context, int64) {}
+func (nopGCMetrics) IncExpiredCleanupFailure(context.Context) {}

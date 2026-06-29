@@ -19,19 +19,20 @@ import (
 const ttl = 24 * time.Hour
 
 // Metrics は、冪等性判定結果の o11y カウンタです（operationID ラベルで分解）。
+// 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。
 type Metrics interface {
 	// IncHit は、completed 行の再送（replay）を計上します。
-	IncHit(operationID string)
+	IncHit(ctx context.Context, operationID string)
 	// IncMiss は、新規 claim 成立（businessFn 実行へ進む）を計上します。
-	IncMiss(operationID string)
+	IncMiss(ctx context.Context, operationID string)
 	// IncConflict は、処理中キーへの並行再送（409）を計上します。
-	IncConflict(operationID string)
+	IncConflict(ctx context.Context, operationID string)
 	// IncFingerprintMismatch は、同一キー別ボディの再利用（422）を計上します。
-	IncFingerprintMismatch(operationID string)
+	IncFingerprintMismatch(ctx context.Context, operationID string)
 	// IncClaimFailure は、ErrLockTimeout 以外の Claim 失敗を計上します。
-	IncClaimFailure(operationID string)
+	IncClaimFailure(ctx context.Context, operationID string)
 	// IncCompleteFailure は、Complete 失敗（結果保存失敗）を計上します。
-	IncCompleteFailure(operationID string)
+	IncCompleteFailure(ctx context.Context, operationID string)
 }
 
 // Deps は、Run が必要とする依存です。
@@ -76,10 +77,10 @@ func Run[T any](
 		})
 		if err != nil {
 			if errors.Is(err, idempotencybndry.ErrLockTimeout) {
-				deps.metrics().IncConflict(req.OperationID)
+				deps.metrics().IncConflict(ctx, req.OperationID)
 				return xerrors.Wrap(apperror.ErrConflict, "idempotency key is being processed, retry later")
 			}
-			deps.metrics().IncClaimFailure(req.OperationID)
+			deps.metrics().IncClaimFailure(ctx, req.OperationID)
 			return err
 		}
 
@@ -93,7 +94,7 @@ func Run[T any](
 		}
 
 		// 新規 claim 成立。業務処理を同一 tx で実行する（失敗は tx ロールバックで claim ごと解放）。
-		deps.metrics().IncMiss(req.OperationID)
+		deps.metrics().IncMiss(ctx, req.OperationID)
 		res, err := businessFn(ctx)
 		if err != nil {
 			return err
@@ -108,7 +109,7 @@ func Run[T any](
 			ResponseStatus:  int32(successStatus), //nolint:gosec // HTTP ステータスコードは int32 に収まる
 			ResponsePayload: payload,
 		}); err != nil {
-			deps.metrics().IncCompleteFailure(req.OperationID)
+			deps.metrics().IncCompleteFailure(ctx, req.OperationID)
 			return err
 		}
 		result = res
@@ -132,17 +133,17 @@ func decideExisting[T any](
 	}
 	if rec == nil {
 		// claim 衝突直後に行が消えた稀なレース。後で再試行させる。
-		deps.metrics().IncConflict(req.OperationID)
+		deps.metrics().IncConflict(ctx, req.OperationID)
 		return zero, false, xerrors.Wrap(apperror.ErrConflict, "idempotency key state unavailable, retry later")
 	}
 
 	if !bytes.Equal(rec.Fingerprint, req.Fingerprint) {
-		deps.metrics().IncFingerprintMismatch(req.OperationID)
+		deps.metrics().IncFingerprintMismatch(ctx, req.OperationID)
 		return zero, false, xerrors.Wrap(apperror.ErrValidation, "idempotency key reused with a different request")
 	}
 
 	if rec.Status != idempotencybndry.StatusCompleted {
-		deps.metrics().IncConflict(req.OperationID)
+		deps.metrics().IncConflict(ctx, req.OperationID)
 		return zero, false, xerrors.Wrap(apperror.ErrConflict, "idempotency key is being processed, retry later")
 	}
 
@@ -151,7 +152,7 @@ func decideExisting[T any](
 	if err := json.Unmarshal(rec.ResponsePayload, &result); err != nil {
 		return zero, false, xerrors.Join(apperror.ErrInternal, xerrors.Wrap(err, "failed to decode stored idempotent response"))
 	}
-	deps.metrics().IncHit(req.OperationID)
+	deps.metrics().IncHit(ctx, req.OperationID)
 	return result, true, nil
 }
 
@@ -162,9 +163,9 @@ func (d Deps) metrics() Metrics {
 	return d.Metrics
 }
 
-func (nopMetrics) IncHit(string)                 {}
-func (nopMetrics) IncMiss(string)                {}
-func (nopMetrics) IncConflict(string)            {}
-func (nopMetrics) IncFingerprintMismatch(string) {}
-func (nopMetrics) IncClaimFailure(string)        {}
-func (nopMetrics) IncCompleteFailure(string)     {}
+func (nopMetrics) IncHit(context.Context, string)                 {}
+func (nopMetrics) IncMiss(context.Context, string)                {}
+func (nopMetrics) IncConflict(context.Context, string)            {}
+func (nopMetrics) IncFingerprintMismatch(context.Context, string) {}
+func (nopMetrics) IncClaimFailure(context.Context, string)        {}
+func (nopMetrics) IncCompleteFailure(context.Context, string)     {}

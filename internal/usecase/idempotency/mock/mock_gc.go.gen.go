@@ -41,27 +41,27 @@ func (m *MockGCMetrics) EXPECT() *MockGCMetricsMockRecorder {
 }
 
 // IncExpiredCleanup mocks base method.
-func (m *MockGCMetrics) IncExpiredCleanup(count int64) {
+func (m *MockGCMetrics) IncExpiredCleanup(ctx context.Context, count int64) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "IncExpiredCleanup", count)
+	m.ctrl.Call(m, "IncExpiredCleanup", ctx, count)
 }
 
 // IncExpiredCleanup indicates an expected call of IncExpiredCleanup.
-func (mr *MockGCMetricsMockRecorder) IncExpiredCleanup(count any) *gomock.Call {
+func (mr *MockGCMetricsMockRecorder) IncExpiredCleanup(ctx, count any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncExpiredCleanup", reflect.TypeOf((*MockGCMetrics)(nil).IncExpiredCleanup), count)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncExpiredCleanup", reflect.TypeOf((*MockGCMetrics)(nil).IncExpiredCleanup), ctx, count)
 }
 
 // IncExpiredCleanupFailure mocks base method.
-func (m *MockGCMetrics) IncExpiredCleanupFailure() {
+func (m *MockGCMetrics) IncExpiredCleanupFailure(ctx context.Context) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "IncExpiredCleanupFailure")
+	m.ctrl.Call(m, "IncExpiredCleanupFailure", ctx)
 }
 
 // IncExpiredCleanupFailure indicates an expected call of IncExpiredCleanupFailure.
-func (mr *MockGCMetricsMockRecorder) IncExpiredCleanupFailure() *gomock.Call {
+func (mr *MockGCMetricsMockRecorder) IncExpiredCleanupFailure(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncExpiredCleanupFailure", reflect.TypeOf((*MockGCMetrics)(nil).IncExpiredCleanupFailure))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncExpiredCleanupFailure", reflect.TypeOf((*MockGCMetrics)(nil).IncExpiredCleanupFailure), ctx)
 }
 
 // MockGCUsecase is a mock of GCUsecase interface.
