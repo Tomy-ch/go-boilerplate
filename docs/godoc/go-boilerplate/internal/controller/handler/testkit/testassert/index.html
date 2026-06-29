@@ -1,0 +1,201 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>testassert - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package testassert
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/controller/handler/testkit/testassert&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package testassert は、テスト用のアサーションヘルパーを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#AssertEchoRouterMethods">func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute []*echo.Route)</a></dd>
+			
+				
+				<dd><a href="#AssertEchoRouterPath">func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute []*echo.Route)</a></dd>
+			
+				
+				<dd><a href="#AssertJSONEqual">func AssertJSONEqual[T any](t *testing.T, expectedCode int, expectedResponse T, actualResponse *httptest.ResponseRecorder)</a></dd>
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html">test_assert.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="AssertEchoRouterMethods">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html?s=1041:1136#L18">AssertEchoRouterMethods</a>
+				<a class="permalink" href="#AssertEchoRouterMethods">¶</a>
+				
+				
+			</h2>
+			<pre>func AssertEchoRouterMethods(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, expectedMethods []<a href="../../../../../../builtin/#string">string</a>, actualRoute []*echo.<a href="#Route">Route</a>)</pre>
+			<p>AssertEchoRouterMethods は、EchoのルートのHTTPメソッド集合が期待通りであることをアサートします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="AssertEchoRouterPath">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html?s=1442:1529#L29">AssertEchoRouterPath</a>
+				<a class="permalink" href="#AssertEchoRouterPath">¶</a>
+				
+				
+			</h2>
+			<pre>func AssertEchoRouterPath(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, expectedPath <a href="../../../../../../builtin/#string">string</a>, actualRoute []*echo.<a href="#Route">Route</a>)</pre>
+			<p>AssertEchoRouterPath は、Echoのルートのパスが期待通りであることをアサートします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="AssertJSONEqual">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html?s=406:532#L5">AssertJSONEqual</a>
+				<a class="permalink" href="#AssertJSONEqual">¶</a>
+				
+				
+			</h2>
+			<pre>func AssertJSONEqual[T <a href="../../../../../../builtin/#any">any</a>](
+    t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, expectedCode <a href="../../../../../../builtin/#int">int</a>, expectedResponse T, actualResponse *<a href="../../../../../../net/http/httptest/">httptest</a>.<a href="../../../../../../net/http/httptest/#ResponseRecorder">ResponseRecorder</a>,
+)</pre>
+			<p>AssertJSONEqual は、HTTPレスポンスのJSONボディが期待される値と等しいことを検証します。
+
+			
+			
+
+		
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

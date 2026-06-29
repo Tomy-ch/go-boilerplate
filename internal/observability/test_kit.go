@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"go-boilerplate/internal/logging"
-
 	"go.opentelemetry.io/otel"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
@@ -21,11 +20,9 @@ const (
 // NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
 func NewNoopTracerFactory(t *testing.T) TracerFactory {
 	t.Helper()
-	lf := logging.NewTestLogFieldBuilder(t)
 
 	tp := noop.NewTracerProvider()
-	tl := logging.NewTestLogger(t)
-	return NewTracerFactory(tp, tl, lf)
+	return NewTracerFactory(tp)
 }
 
 // NewMockControllerLayerTracer は、テスト用のコントローラーレイヤートレーサーを生成します。
@@ -42,6 +39,7 @@ func NewMockUsecaseLayerTracer(t *testing.T) LayerTracer {
 	return tf.Usecase()
 }
 
+// NewMockInfraLayerTracer は、テスト用のインフラレイヤートレーサーを生成します。
 func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
 	t.Helper()
 	tf := NewNoopTracerFactory(t)
@@ -52,12 +50,47 @@ func NewMockInfraLayerTracer(t *testing.T) LayerTracer {
 func NewNoopLayerTracer(t *testing.T) LayerTracer {
 	t.Helper()
 	return LayerTracer{
-		log:     logging.NewTestLogger(t),
-		lf:      logging.NewTestLogFieldBuilder(t),
 		tracer:  noop.NewTracerProvider().Tracer(tracer),
 		layer:   layer,
 		pkgName: pkg,
 	}
+}
+
+// NewNoopWorkerMetrics は、テスト用に no-op の MeterProvider から WorkerMetrics を生成します。
+func NewNoopWorkerMetrics(t *testing.T) *WorkerMetrics {
+	t.Helper()
+	wm, err := NewWorkerMetrics(metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatalf("failed to build noop worker metrics: %v", err)
+	}
+	return wm
+}
+
+// NewNoopHTTPClientMetrics は、テスト用に no-op の MeterProvider から HTTPClientMetrics を生成します。
+func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
+	t.Helper()
+	hm, err := NewHTTPClientMetrics(metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatalf("failed to build noop http client metrics: %v", err)
+	}
+	return hm
+}
+
+// NewNoopOutboxMetrics は、テスト用に no-op の MeterProvider から OutboxMetrics を生成します。
+func NewNoopOutboxMetrics(t *testing.T) *OutboxMetrics {
+	t.Helper()
+	om, err := NewOutboxMetrics(metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatalf("failed to build noop outbox metrics: %v", err)
+	}
+	return om
+}
+
+// NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を
+// 生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。
+func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
+	t.Helper()
+	return newHTTPClientTransport(noop.NewTracerProvider(), NewTextMapPropagator(), permissiveDialControl)
 }
 
 // NewStubSpanContext は、テスト用のスタブSpanコンテキストを返します。

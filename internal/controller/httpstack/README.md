@@ -22,10 +22,7 @@ Each sub-package is split into small responsibilities and combined during applic
 
 |Package|Function|Description|
 |---|---|---|
-|`banner`|`New`|Hide Echo banner in production|
 |`debugmode`|`New`|Enable debug mode in development only|
-|`defaultport`|`New`|Hide port number display in production|
-|`binder`|`New`|Initialize Echo request body binder|
 
 ### Middleware
 
@@ -39,6 +36,8 @@ Each sub-package is split into small responsibilities and combined during applic
 |`cookie`|`Middleware`|Enforce security attributes on Set-Cookie headers|
 |`forcejson`|`Middleware`|Force response Content-Type to JSON|
 |`uri`|`Middleware`|Remove trailing slashes|
+|`bodylimit`|`Middleware`|Per-request body size limit (MB), 413 on exceed|
+|`timeout`|`Middleware`|Per-request deadline budget (entry point of deadline propagation)|
 |`observability`|`Middleware`|OpenTelemetry tracing integration|
 
 ### Error Handling
@@ -71,8 +70,6 @@ Middleware registration is done in `internal/di/server/extension`.
 ```go
 // Conceptual example in internal/di/server/extension
 func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.Logger, lf logging.LogFieldBuilder) {
-    banner.New(e, cfg)
-    defaultport.New(e, cfg)
     e.Use(requestid.Middleware())
     e.Use(logging.Middleware(logger, lf))
     e.Use(recovery.Middleware(logger, lf, cfg))
@@ -87,9 +84,7 @@ Do not register middleware directly within `httpstack`. This can cause dependenc
 
 |Feature|Development|Production|
 |---|---|---|
-|Banner display|Shown|Hidden|
 |Debug mode|Enabled|Disabled|
-|Port display|Shown|Hidden|
 |IP extraction|Direct|X-Forwarded-For + CIDR|
 |Recovery stack|10KB (full)|4KB (limited)|
 

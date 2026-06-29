@@ -25,36 +25,15 @@ flowchart TB
 
 - **Pre middleware**: Executed before routing (`e.Pre()`)
 - **Use middleware**: Executed after routing (`e.Use()`)
-- **Configurator**: Configuration applied to Echo instance (banner, port, debug mode, etc.)
+- **Configurator**: Configuration applied to Echo instance (debug mode, etc.)
 - Duplicate priorities are automatically detected and cause an error
 
-## Public API
-
-|Type / Function|Description|
-|---|---|
-|`ServerExtends`|`fx.In` struct receiving all three groups|
-|`ApplyExtends()`|Apply Pre / Use / Configurators in bulk|
-|`PreMiddleware`|Pre middleware (Name + Priority + Middleware)|
-|`PreMiddlewareOut`|fx output wrapper for Pre middleware|
-|`UseMiddleware`|Use middleware (Name + Priority + Middleware)|
-|`UseMiddlewareOut`|fx output wrapper for Use middleware|
-|`SrvCfg`|`func(*echo.Echo)` configurator function type|
-|`ServeCfgOut`|fx output wrapper for Configurator|
-
 ## Subdirectory List
-
-### decoration (Server Decoration)
-
-|Module|Type|Description|
-|---|---|---|
-|`BannerModule()`|Configurator|Hide banner in production|
-|`DefaultPortModule()`|Configurator|Hide port display in production|
 
 ### inbound (Request Receiving)
 
 |Module|Type|Description|
 |---|---|---|
-|`BinderModule()`|Configurator|Request body binder|
 |`IPExtractorModule()`|Configurator|Client IP extraction|
 |`OpenAPIModule()`|Use|OpenAPI validation|
 |`URIModule()`|Pre|Remove trailing slashes|

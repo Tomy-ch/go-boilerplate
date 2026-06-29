@@ -24,22 +24,19 @@ func NewAuthenticator(
 	return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 		req := input.RequestValidationInput.Request
 
-		//nolint:contextcheck // inputのContext内部のものにアクセスするため
-		ec, ok := ctxhelper.GetEchoContext(req.Context())
-		if !ok {
-			return ErrUnauthorizedEchoContextNotFound
-		}
-
+		// エラー変換は authExtractor に一本化。
 		authn, err := authExtractor(ctx, req, authCfg, authenticator)
 		if err != nil {
-			return ErrUnauthorizedInvalidToken
+			return err
 		}
 		if authn == nil {
 			return ErrUnauthorizedTokenNotProvided
 		}
 
-		//nolint:contextcheck // ecのContext内部のものにアクセスするため
-		ctxhelper.SetAuthnToEcho(ec, *authn)
+		//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
+		if !ctxhelper.SetAuthn(req.Context(), *authn) {
+			return ErrAuthnSlotNotFound
+		}
 		return nil
 	}
 }
@@ -53,6 +50,7 @@ func authExtractor(
 ) (*authbd.Authn, error) {
 	token := extractToken(req, authCfg)
 	if token == "" {
+		//nolint:nilnil // トークン未提供を表す。呼び出し側で authn==nil を判定し未提供エラーへ変換するため意図的にnil,nilを返す
 		return nil, nil
 	}
 
@@ -90,8 +88,8 @@ func extractToken(r *http.Request, authCfg *config.AuthConfig) string {
 		return ""
 	}
 	if authCfg.AllowedHeaderBearer() && strings.EqualFold(authCfg.HeaderName(), echo.HeaderAuthorization) {
-		if strings.HasPrefix(raw, prefixBearer) {
-			return strings.TrimSpace(strings.TrimPrefix(raw, prefixBearer))
+		if after, ok := strings.CutPrefix(raw, prefixBearer); ok {
+			return strings.TrimSpace(after)
 		}
 		return ""
 	}

@@ -1,0 +1,5 @@
+description: リソースが競合しています。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

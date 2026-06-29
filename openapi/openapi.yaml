@@ -5,7 +5,7 @@ info:
   contact:
     name: TomyC258460
     url: https://x.com/TomyC258460
-  version: 0.1.0
+  version: 1.5.0
   description: |
     This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
     It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
@@ -27,7 +27,30 @@ servers:
   - url: https://staging.api.example.com
     description: Staging server (replace with actual URL)
   - url: https://development.api.example.com
-    description: Versioned API endpoint (replace with actual URL)
+    description: Development server (replace with actual URL)
+tags:
+  - name: health
+    description: ヘルスチェック（liveness）。
+  - name: healthz
+    description: ヘルスチェック（Kubernetes 互換の liveness）。
+  - name: ready
+    description: レディネスチェック（依存先を含む readiness）。
+  - name: version
+    description: アプリケーションのバージョン情報。
+  - name: metrics
+    description: Prometheus メトリクス。
+  - name: v1/users
+    description: ユーザーリソース（一覧取得・作成）。
+  - name: v1/users/detail
+    description: 単一ユーザー（取得・更新・部分更新・削除・パスワード変更）。
+  - name: v1/users/feed
+    description: ユーザーフィード（cursor ページネーション）。
+  - name: v1/users/search
+    description: ユーザー検索（キーワード）。
+  - name: v1/exchange-rates
+    description: 為替レート換算（外部 gateway 利用サンプル）。
+  - name: internal/types/error-response
+    description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
   # Operation handlers
   /health:
@@ -43,6 +66,7 @@ paths:
   # For error type generation
   /_internal/types/error-response:
     $ref: './paths/internal/types/error_response.yaml'
+  # sample-api:begin
   # サンプルAPI用のパス
   /v1/users:
     $ref: './paths/v1/users.yaml'
@@ -52,21 +76,22 @@ paths:
     $ref: './paths/v1/users/me/password.yaml'
   /v1/users/search:
     $ref: './paths/v1/users/search.yaml'
-  # デバッグ用のパス(サービスを作成する際には必ず削除してください)
-  /debug/cookie:
-    $ref: './paths/debug/cookie.yaml'
-  /debug/cookie/copy:
-    $ref: './paths/debug/cookie/copy.yaml'
-  /debug/cookie/stream:
-    $ref: './paths/debug/cookie/stream.yaml'
-  /debug/cookie/ws:
-    $ref: './paths/debug/cookie/ws.yaml'
+  /v1/users/feed:
+    $ref: './paths/v1/users/feed.yaml'
+  /v1/exchange-rates:
+    $ref: './paths/v1/exchange-rates.yaml'
+  # sample-api:end
 components:
   parameters:
     PageParam:
       $ref: './components/parameters/pagination/PageParam.yaml'
     PerPageParam:
       $ref: './components/parameters/pagination/PerPageParam.yaml'
+    CursorAfterParam:
+      $ref: './components/parameters/pagination/CursorAfterParam.yaml'
+    CursorFirstParam:
+      $ref: './components/parameters/pagination/CursorFirstParam.yaml'
+    # sample-api:begin
     # サンプルAPI用のパラメーター定義
     KeywordParam:
       $ref: './components/parameters/search/KeywordParam.yaml'
@@ -74,6 +99,7 @@ components:
       $ref: './components/parameters/search/ActiveParam.yaml'
     UserIdParam:
       $ref: './components/parameters/user/UserIdParam.yaml'
+    # sample-api:end
   securitySchemes:
     BearerAuth:
       $ref: './components/schemas/BearerAuth.yaml'
@@ -88,6 +114,7 @@ components:
       $ref: './components/responses/health-check/ReadyResponse.yaml'
     ResponseVersion:
       $ref: './components/responses/version/VersionResponse.yaml'
+    # sample-api:begin
     # サンプルAPI用の型定義
     UserBaseInputRequest:
       $ref: './components/schemas/UserBaseInputRequest.yaml'
@@ -95,6 +122,10 @@ components:
       $ref: './components/schemas/UserResponse.yaml'
     UsersSearchResponse:
       $ref: './components/responses/users/UsersSearchResponse.yaml'
+    UsersFeedResponse:
+      $ref: './components/responses/users/UsersFeedResponse.yaml'
+    CursorPaginationMetadataResponse:
+      $ref: './components/schemas/CursorPaginationMetadataResponse.yaml'
     UserSearchResponseItem:
       $ref: './components/responses/users/UsersSearchResponseItem.yaml'
     ResponseV1User:
@@ -107,8 +138,6 @@ components:
       $ref: './components/requests/users/UserPutRequest.yaml'
     RequestPatchV1User:
       $ref: './components/requests/users/UserPatchRequest.yaml'
-    # デバッグ用の型定義(サービスを作成する際には必ず削除してください)
-    DebugIssueCookieRequest:
-      $ref: './components/requests/debug/DebugIssueCookieRequest.yaml'
-    DebugCookieInspectResponse:
-      $ref: './components/responses/debug/DebugCookieInspectResponse.yaml'
+    ResponseV1ExchangeRate:
+      $ref: './components/responses/exchange-rates/ExchangeRateResponse.yaml'
+    # sample-api:end

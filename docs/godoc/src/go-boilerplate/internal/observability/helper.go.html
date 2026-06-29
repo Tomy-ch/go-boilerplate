@@ -1,0 +1,146 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>observability - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../src/go-boilerplate/internal/observability">observability</a>/<span class="text-muted">helper.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/internal/observability">go-boilerplate/internal/observability</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package observability
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/config&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go.opentelemetry.io/otel/trace&#34;
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span><span class="comment">// TraceContext は、トレースを識別するための情報を保持します。</span>
+<span id="L12" class="ln">    12  </span>type TraceContext struct {
+<span id="L13" class="ln">    13  </span>	traceID      string
+<span id="L14" class="ln">    14  </span>	spanID       string
+<span id="L15" class="ln">    15  </span>	parentSpanID string
+<span id="L16" class="ln">    16  </span>}
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span><span class="comment">// ShouldLogWithSpan は、o11y モードが有効かつ ctx にアクティブな Span が存在するとき true を返す。span 付きログを出す前提条件チェックに使う。</span>
+<span id="L19" class="ln">    19  </span>func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool {
+<span id="L20" class="ln">    20  </span>	return obsCfg.Enabled() &amp;&amp; trace.SpanFromContext(ctx).SpanContext().IsValid()
+<span id="L21" class="ln">    21  </span>}
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span><span class="comment">// BuildSpanName は、レイヤー名、パッケージ名、関数名からスパン名を構築します。</span>
+<span id="L24" class="ln">    24  </span>func BuildSpanName(layer, pkgName, funcName string) string {
+<span id="L25" class="ln">    25  </span>	return layer + delimiter + pkgName + delimiter + funcName
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// ExtractTraceContext は、現在の span から traceID/spanID を抽出して返します（parentSpanID は設定しません）。</span>
+<span id="L29" class="ln">    29  </span>func ExtractTraceContext(ctx context.Context) *TraceContext {
+<span id="L30" class="ln">    30  </span>	span := trace.SpanFromContext(ctx)
+<span id="L31" class="ln">    31  </span>	if !span.SpanContext().IsValid() {
+<span id="L32" class="ln">    32  </span>		return &amp;TraceContext{}
+<span id="L33" class="ln">    33  </span>	}
+<span id="L34" class="ln">    34  </span>	spanCtx := span.SpanContext()
+<span id="L35" class="ln">    35  </span>	return &amp;TraceContext{
+<span id="L36" class="ln">    36  </span>		traceID: spanCtx.TraceID().String(),
+<span id="L37" class="ln">    37  </span>		spanID:  spanCtx.SpanID().String(),
+<span id="L38" class="ln">    38  </span>	}
+<span id="L39" class="ln">    39  </span>}
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span><span class="comment">// StartSpanWithParent は、新しい子スパンを開始し、TraceContext、子コンテキスト、終了関数を返します。</span>
+<span id="L42" class="ln">    42  </span>func StartSpanWithParent(
+<span id="L43" class="ln">    43  </span>	ctx context.Context,
+<span id="L44" class="ln">    44  </span>	tracer LayerTracer,
+<span id="L45" class="ln">    45  </span>	name string,
+<span id="L46" class="ln">    46  </span>	opts ...trace.SpanStartOption,
+<span id="L47" class="ln">    47  </span>) (*TraceContext, context.Context, func()) {
+<span id="L48" class="ln">    48  </span>	parentSC := trace.SpanFromContext(ctx).SpanContext()
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span>	childCtx, span := tracer.tracer.Start(ctx, name, opts...)
+<span id="L51" class="ln">    51  </span>	childSC := span.SpanContext()
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>	tc := &amp;TraceContext{
+<span id="L54" class="ln">    54  </span>		traceID: childSC.TraceID().String(),
+<span id="L55" class="ln">    55  </span>		spanID:  childSC.SpanID().String(),
+<span id="L56" class="ln">    56  </span>	}
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>	if parentSC.IsValid() {
+<span id="L59" class="ln">    59  </span>		tc.parentSpanID = parentSC.SpanID().String()
+<span id="L60" class="ln">    60  </span>	}
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>	end := func() { span.End() }
+<span id="L63" class="ln">    63  </span>	return tc, childCtx, end
+<span id="L64" class="ln">    64  </span>}
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span><span class="comment">// TraceID は、TraceContext から TraceID を取得します。</span>
+<span id="L67" class="ln">    67  </span>func (tc *TraceContext) TraceID() string {
+<span id="L68" class="ln">    68  </span>	return tc.traceID
+<span id="L69" class="ln">    69  </span>}
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span><span class="comment">// SpanID は、TraceContext から SpanID を取得します。</span>
+<span id="L72" class="ln">    72  </span>func (tc *TraceContext) SpanID() string {
+<span id="L73" class="ln">    73  </span>	return tc.spanID
+<span id="L74" class="ln">    74  </span>}
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span><span class="comment">// ParentSpanID は、TraceContext から ParentSpanID を取得します。</span>
+<span id="L77" class="ln">    77  </span>func (tc *TraceContext) ParentSpanID() string {
+<span id="L78" class="ln">    78  </span>	return tc.parentSpanID
+<span id="L79" class="ln">    79  </span>}
+<span id="L80" class="ln">    80  </span>
+</pre><p><a href="../../../../src/go-boilerplate/internal/observability/helper.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

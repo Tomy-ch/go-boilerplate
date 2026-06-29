@@ -2,19 +2,18 @@
 
 [English](README.md) | 日本語
 
-アプリケーションサーバーの Docker イメージを定義する Dockerfile です。マルチステージビルドにより、本番・マイグレーション・ローカル開発の各ターゲットを提供します。
+アプリケーションサーバーの Docker イメージを定義する Dockerfile です。マルチステージビルドにより、本番・ローカル開発の各ターゲットを提供します。
 
 ## 役割
 
-`docker/server/Dockerfile` はこのプロジェクトで使用するサーバーサイドコンテナすべての single source of truth です。1 つの Dockerfile から 4 ターゲット（`builder` / `runtime` / `migration` / `tooling`）を生成することで、本番デプロイ、スキーママイグレーションジョブ、ローカル開発のホットリロード環境が同じベースレイヤーと Go ツールチェインバージョンに揃った状態を保ちます。本番と開発者ローカルの drift を回避しつつ、各ターゲットは必要なものだけを追加する設計（例: 開発ツールは `tooling` にのみ含める）です。
+`docker/server/Dockerfile` はこのプロジェクトで使用するサーバーサイドコンテナすべての single source of truth です。1 つの Dockerfile から 3 ターゲット（`builder` / `runtime` / `tooling`）を生成することで、本番デプロイとローカル開発のホットリロード環境が同じベースレイヤーと Go ツールチェインバージョンに揃った状態を保ちます。本番と開発者ローカルの drift を回避しつつ、各ターゲットは必要なものだけを追加する設計（例: 開発ツールは `tooling` にのみ含める）です。スキーママイグレーションは `runtime` イメージを command override で実行するため、専用のマイグレーションターゲットは持ちません。
 
 ## ビルドターゲット
 
 |ターゲット|ベースイメージ|用途|
 |---|---|---|
 |`builder`|`golang:1.26.4-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
-|`runtime`|`alpine:3.23`|本番実行用コンテナ（非 root ユーザー `app`）|
-|`migration`|`runtime` を継承|マイグレーション実行用コンテナ（`migrate-up` コマンド）|
+|`runtime`|`alpine:3.23`|本番実行用コンテナ（非 root ユーザー `app`）。command override でマイグレーションも実行|
 |`tooling`|`golang:1.26.4-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
 
 ## runtime
@@ -22,14 +21,9 @@
 - 非 root ユーザー（`app`）で実行
 - `vendor` モードでビルド（`GOPROXY=off`）
 - `-ldflags` でバージョン / リビジョン / ビルド日時を埋め込み
+- `env/.env` と `database/migrations` をバイナリへ埋め込み。`builder` ステージが `APP_ENV` ビルド引数で対象 env を材料化する（`go build` 前に `cp env/.env.${APP_ENV} env/.env`）
 - デフォルトコマンド: `./server serve`
-
-## migration
-
-- `runtime` イメージを継承
-- `database/migrations` ディレクトリを追加
-- デフォルトコマンド: `./server migrate-up`
-- アプリケーションデプロイ前に一度だけ実行されるジョブとして使用
+- マイグレーションは同一イメージを command override（`./server migrate-up`）でデプロイ前に一度だけ実行。専用イメージは不要
 
 ## tooling（ローカル開発）
 

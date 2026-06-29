@@ -1,3 +1,6 @@
+# mise 本体の固定バージョン（全ツールステージ共通。bump 時はここだけ変更する）
+ARG MISE_VERSION=v2026.6.0
+
 # ------------------------------
 # Go ツールビルダー：mise.toml のバージョン pin で Go 系ツール一式を install し、
 # バイナリだけを /out に抽出する。最終 go_tools ステージに mise 本体を残さないための中継。
@@ -7,12 +10,16 @@ FROM golang:1.26.4-alpine AS go_tools_builder
 # CGO_ENABLED=0: `go:` backend で install されるツール（mockgen）を静的バイナリにする
 ENV CGO_ENABLED=0
 
+# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+
 RUN apk add --no-cache bash ca-certificates curl git
 
+ARG MISE_VERSION
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
@@ -23,17 +30,27 @@ RUN mise install aqua:golang-migrate/migrate \
     && mise install go:go.uber.org/mock/mockgen \
     && mise install oapi-codegen \
     && mise install sqlc \
-    && mise install aqua:aquasecurity/trivy
+    && mise install aqua:aquasecurity/trivy \
+    && mise install actionlint \
+    && mise install hadolint \
+    && mise install gitleaks \
+    && mise install go:golang.org/x/tools/cmd/godoc \
+    && mise install go:codeberg.org/tslocum/godoc-static
 
 RUN mkdir /out \
     && cp "$(mise which migrate)" /out/ \
     && cp "$(mise which mockgen)" /out/ \
     && cp "$(mise which oapi-codegen)" /out/ \
     && cp "$(mise which sqlc)" /out/ \
-    && cp "$(mise which trivy)" /out/
+    && cp "$(mise which trivy)" /out/ \
+    && cp "$(mise which actionlint)" /out/ \
+    && cp "$(mise which hadolint)" /out/ \
+    && cp "$(mise which gitleaks)" /out/ \
+    && cp "$(mise which godoc)" /out/ \
+    && cp "$(mise which godoc-static)" /out/
 
 # ------------------------------
-# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy を mise.toml のバージョンで提供
+# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / hadolint / gitleaks / godoc / godoc-static を mise.toml のバージョンで提供
 # Go ランタイムは golang 公式 base image を使用（mise.toml の go 値と `make sync-go-version` で同期）
 # ------------------------------
 FROM golang:1.26.4-alpine AS go_tools
@@ -59,10 +76,12 @@ CMD []
 # Node ツールボックス：redocly / markdownlint-cli2 を mise.toml のバージョンで提供
 # Node ランタイムは公式 node:X.Y-alpine（musl 対応のプリビルド）を使用。
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
-# 補助スクリプト (gen-portal-docs.cjs / gen-docs-json.cjs) が参照する js-yaml は
-# ローカル node_modules にインストールしておく
+# 補助スクリプトが依存する npm パッケージをローカル node_modules にインストールしておく
 # ------------------------------
 FROM node:24.14-alpine AS node_tools
+
+# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 RUN apk add --no-cache \
     bash \
@@ -71,10 +90,11 @@ RUN apk add --no-cache \
     git \
     make
 
+ARG MISE_VERSION
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
@@ -85,10 +105,12 @@ RUN mise install npm:@redocly/cli \
     && mise install npm:markdownlint-cli2 \
     && rm -rf /root/.cache /root/.npm
 
-WORKDIR /opt/tools
-COPY docker/tools/package.json ./
-RUN npm install
-ENV NODE_PATH=/opt/tools/node_modules
+# scripts の依存を in-tree（/app/scripts/node_modules）へ install する
+WORKDIR /app/scripts
+COPY docker/tools/package.json docker/tools/package-lock.json ./
+RUN npm ci \
+    && npm cache clean --force \
+    && rm -rf /root/.npm
 
 WORKDIR /app
 
@@ -115,10 +137,15 @@ RUN apt-get update \
         pipx \
     && rm -rf /var/lib/apt/lists/*
 
+# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
+# bash は上の apt-get で導入済み（python:slim は debian ベースで /bin/ash を持たない）
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+ARG MISE_VERSION
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH" \
     MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise
-RUN curl -fsSL https://mise.run | sh \
+RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app

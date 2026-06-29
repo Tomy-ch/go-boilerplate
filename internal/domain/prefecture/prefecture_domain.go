@@ -1,4 +1,4 @@
-// Package prefecture は、都道府県関連のドメインを提供します。
+// Package prefecture は、都道府県ドメインを定義します。JIS コード（1〜47）・名称の不変条件を持つ Prefecture エンティティと Repository インターフェースを提供します。
 package prefecture
 
 import (
@@ -9,22 +9,19 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-const (
-	MinPrefectureNameLength = 1
-	MaxPrefectureNameLength = 100
-	MinCode                 = 1
-	MaxCode                 = 47
-)
-
+// Prefectures は、Prefecture エンティティのスライス型です。
 type Prefectures []*Prefecture
 
+// Prefecture は、都道府県を表すドメインエンティティです。
 type Prefecture struct {
 	id   uuid.UUID
 	name string
 	code int
 }
 
-// New は、都道府県エンティティの検証と生成を行います。
+// New は、都道府県エンティティの検証と生成を行います。code は 1〜47（JIS 都道府県コード）の
+// 整数である必要があります。id が nil の場合は ErrInvalidID、名前長または code 範囲違反の場合は
+// ErrInvalidName / ErrInvalidCode を返します。
 func New(
 	id uuid.UUID,
 	name string,
@@ -33,16 +30,13 @@ func New(
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
-	if !stringkit.InRange(name, MinPrefectureNameLength, MaxPrefectureNameLength) {
-		return nil, xerrors.Wrap(
-			ErrInvalidPrefectureName,
-			stringkit.ErrorMsgInRange(MinPrefectureNameLength, MaxPrefectureNameLength, name),
-		)
+	if ok, msg := stringkit.ValidateInRange(name, minNameLength, maxNameLength); !ok {
+		return nil, xerrors.Wrap(ErrInvalidName, msg)
 	}
-	if code < MinCode || MaxCode < code {
+	if code < minCode || maxCode < code {
 		return nil, xerrors.Wrap(
 			ErrInvalidCode,
-			fmt.Sprintf("code must be between %d and %d, got %d", MinCode, MaxCode, code),
+			fmt.Sprintf("code must be between %d and %d, got %d", minCode, maxCode, code),
 		)
 	}
 

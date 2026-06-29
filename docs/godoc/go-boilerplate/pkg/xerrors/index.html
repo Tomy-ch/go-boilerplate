@@ -1,0 +1,252 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>xerrors - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package xerrors
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/pkg/xerrors&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package xerrors は、StackTrace を含むエラーのラップ・判定・結合を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#As">func As(err error, target any) bool</a></dd>
+			
+				
+				<dd><a href="#Is">func Is(err, target error) bool</a></dd>
+			
+				
+				<dd><a href="#Join">func Join(errs ...error) error</a></dd>
+			
+				
+				<dd><a href="#New">func New(msg string) error</a></dd>
+			
+				
+				<dd><a href="#StackTrace">func StackTrace(err error) string</a></dd>
+			
+				
+				<dd><a href="#Wrap">func Wrap(err error, msg string) error</a></dd>
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html">errors.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="As">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=881:916#L18">As</a>
+				<a class="permalink" href="#As">¶</a>
+				
+				
+			</h2>
+			<pre>func As(err <a href="../../../builtin/#error">error</a>, target <a href="../../../builtin/#any">any</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>As は、エラーが特定のターゲット型に変換可能かを判定します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="Is">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=722:753#L13">Is</a>
+				<a class="permalink" href="#Is">¶</a>
+				
+				
+			</h2>
+			<pre>func Is(err, target <a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#bool">bool</a></pre>
+			<p>Is は、エラーが特定のターゲットエラーと一致するかを判定します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="Join">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=1040:1070#L23">Join</a>
+				<a class="permalink" href="#Join">¶</a>
+				
+				
+			</h2>
+			<pre>func Join(errs ...<a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#error">error</a></pre>
+			<p>Join は、複数のエラーを結合して新しいエラーを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="New">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=229:255#L1">New</a>
+				<a class="permalink" href="#New">¶</a>
+				
+				
+			</h2>
+			<pre>func New(msg <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#error">error</a></pre>
+			<p>New は、新しいエラーを生成します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="StackTrace">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=1340:1373#L28">StackTrace</a>
+				<a class="permalink" href="#StackTrace">¶</a>
+				
+				
+			</h2>
+			<pre>func StackTrace(err <a href="../../../builtin/#error">error</a>) <a href="../../../builtin/#string">string</a></pre>
+			<p>StackTrace は、err の詳細文字列表現を返します。err が cockroachdb/errors 等でスタックトレースを付加されている場合はそれも含みます。err が nil の場合は空文字列を返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="Wrap">func <a href="../../../src/go-boilerplate/pkg/xerrors/errors.go.html?s=551:589#L8">Wrap</a>
+				<a class="permalink" href="#Wrap">¶</a>
+				
+				
+			</h2>
+			<pre>func Wrap(err <a href="../../../builtin/#error">error</a>, msg <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#error">error</a></pre>
+			<p>Wrap は、既存のエラーをラップして新しいエラーを生成します。
+msg はラップする際の追加メッセージです。メッセージは元のエラーの前に付加されます。
+err が nil の場合は nil を返します。
+
+			
+			
+
+		
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

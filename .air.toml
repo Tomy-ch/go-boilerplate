@@ -11,7 +11,7 @@ tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力�
   # バイナリのビルドコマンド（Delve用ビルド）
   # --mod=vendor: vendorディレクトリを優先
   # -gcflags "all=-N -l": 最適化無効でデバッグしやすくする
-  cmd = "go build --mod=vendor -gcflags='all=-N -l' -o tmp/main cmd/main.go"
+  cmd = "go build --mod=vendor -gcflags='all=-N -l' -o tmp/main ./cmd/"
 
   # ビルド成果物の相対パス（airがここを監視して実行）
   bin = "./tmp/main"
@@ -29,7 +29,7 @@ tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力�
   include_dir = ["internal", "cmd", "pkg"]
 
   # 追加で個別に監視したいファイル（例：環境ファイルなど）
-  include_file = ["env/.env.local"]
+  include_file = ["env/.env"]
 
   # 無視するファイルのパターン（正規表現）
   exclude_regex = ["_test\\.go$", "mock_.*\\.go$"]
@@ -55,27 +55,14 @@ tmp_dir = "tmp"                # ビルド済バイナリなどを一時出力�
   # 実行中プロセスをSIGINTで終了（graceful shutdown向け）
   send_interrupt = true
 
-  # kill信号を送るまでの待機時間（ミリ秒）
-  kill_delay = 0
+  # SIGINT 送出後に強制 kill するまでの猶予（graceful shutdown 用。duration 文字列）
+  kill_delay = "2s"
 
   # ファイル変更がなくても一定間隔で再起動するか
   rerun = false
 
   # ビルドログを保存するファイル
-  log = "air.log"
-
-# =========================
-# 設定ファイルの監視
-# =========================
-[watch]
-  # 除外対象ディレクトリ
-  exclude = ["tmp", "vendor"]
-
-  # 監視する拡張子（設定ファイルやテンプレートも含める）
-  include_ext = ["go", "yaml", "yml"]
-
-  # シンボリックリンクを追跡するか
-  follow_symlink = true
+  log = "tmp/air.log"
 
 # =========================
 # ログ表示の制御

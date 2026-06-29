@@ -1,4 +1,4 @@
-name: Dependency Vulnerability Scan Workflow
+name: Dependency Scan
 
 on:
   pull_request:
@@ -26,10 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Trivy FS scan (JSON)
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scanners: 'vuln'
@@ -55,16 +55,19 @@ jobs:
           echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
 
           if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Trivy FS: PASS (no vulnerabilities)" >> "$GITHUB_OUTPUT"
             echo "No vulnerabilities found." > trivy-fs-summary.md
             exit 0
           fi
+
+          echo "title=## 🚨 Trivy FS: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
 
           # Build markdown summary
           jq -r '
             .Results
             | map(.Vulnerabilities // [])
             | flatten
-            | sort_by(.Severity) | reverse
+            | sort_by({CRITICAL:0,HIGH:1,MEDIUM:2,LOW:3,UNKNOWN:4}[.Severity] // 5)
             | .[]
             | "- [\(.Severity)] \(.PkgName // "unknown") `\(.InstalledVersion // "?")` → `\(.FixedVersion // "none")` (\(.VulnerabilityID))"
           ' trivy-fs.json > trivy-fs-summary.md
@@ -72,7 +75,7 @@ jobs:
         shell: bash
 
       - name: Upload Trivy FS report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: trivy-fs
           path: |
@@ -81,94 +84,18 @@ jobs:
 
       - name: Comment Trivy FS result on PR
         if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/github-script@v8
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-
-            const marker = '<!-- trivy-fs-result -->';
-            const count = Number('${{ steps.summarize.outputs.count }}' || '0');
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-            const shortSha = headSha.slice(0, 7);
-
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            const read = (p) => {
-              try { return fs.readFileSync(p, 'utf8').trim(); }
-              catch (e) { return '(summary not found)'; }
-            };
-
-            const trimLog = (txt) => {
-              const MAX = 45000; // コメント上限対策
-              if (txt.length <= MAX) return txt;
-              return txt.slice(0, MAX) + '\n... (truncated)';
-            };
-
-            const title = (count === 0)
-              ? '✅ Trivy FS: PASS (no vulnerabilities)'
-              : `🚨 Trivy FS: FOUND (${count})`;
-
-            const summary = read('trivy-fs-summary.md');
-
-            const body = [
-              marker,
-              `## ${title}`,
-              '',
-              `- Total vulnerabilities: **${count}**`,
-              `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
-              `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
-              '',
-              '<details><summary>📄 Summary</summary>',
-              '',
-              trimLog(summary),
-              '',
-              '</details>',
-            ].join('\n');
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-
-            const existing = comments.find(c => (c.body || '').includes(marker));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body,
-              });
-            }
+          marker: '<!-- trivy-fs-result -->'
+          title: ${{ steps.summarize.outputs.title }}
+          body-file: trivy-fs-summary.md
+          details-summary: '📄 Summary'
 
       - name: Trivy FS scan (SARIF)
         if: always()
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scanners: 'vuln'
@@ -181,7 +108,7 @@ jobs:
       - name: Upload Trivy FS SARIF to code scanning
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs

@@ -1,10 +1,12 @@
 {
+  "mise.configureExtensionsAutomatically": false,
+  "debug.javascript.defaultRuntimeExecutable": {
+    "pwa-node": "${env:HOME}/.local/share/mise/shims/node"
+  },
   "go.alternateTools": {
-    "golangci-lint": "${HOME}/go/bin/golangci-lint",
-    "gopls": "gopls",
-    "gofumpt": "gofumpt",
-    "gotests": "${HOME}/go/bin/gotests",
-    "impl": "${HOME}/go/bin/impl"
+    "go": "${env:HOME}/.local/share/mise/shims/go",
+    "dlv": "${env:HOME}/.local/share/mise/shims/dlv",
+    "gopls": "${env:HOME}/.local/share/mise/shims/gopls"
   },
 
   "go.lintTool": "golangci-lint-v2",

@@ -14,37 +14,63 @@ import (
 )
 
 // RegisterJobHooks は、ジョブのライフサイクルフックを登録します。
+//
+// OnStop で実行 context がキャンセルされるため、`--timeout` 超過で cli が
+// app.Stop を呼ぶと実行中のジョブ（DB クエリ等）が中断されます。
 func RegisterJobHooks(
 	reg lifecycle.Registrar,
 	sd shutdowner.Shutdowner,
 	runner job.Runner,
 	logger logging.Logger,
-	osCfg *config.OperationSystemConfig,
+	osCfg *config.OperatingSystemConfig,
 	state job.State,
 ) {
-	reg.RegisterStart(func(startCtx context.Context) error {
-		go func() {
-			name, args, done := state.Snapshot()
-			if done == nil {
-				logger.Named("job.Hooks").Info(
-					"No job to run",
-					logging.String(logging.EventTypeKey, logging.EventTypeStart),
-					logging.Time(logging.EventAtKey, time.Now()),
-					logging.String(logging.EventTzKey, osCfg.TimeZone()),
-					logging.String(logging.JobNameKey, name),
-					logging.Strings(logging.JobArgsKey, args),
-				)
-				_ = sd.Shutdown()
-				return
-			}
+	lifecycle.SupervisedRunner{
+		Body: func(ctx context.Context) { runJobAndShutdown(ctx, sd, runner, logger, osCfg, state) },
+	}.Register(reg)
+}
 
-			defer close(done)
+// runJobAndShutdown は、スナップショットしたジョブを実行し done に結果を送って停止を要求する。
+// ジョブ未設定時（done==nil）はログ出力のみ行って停止する。
+//
+// jobCtx は [lifecycle.SupervisedRunner] が供給する実行 context で、Background 由来かつ
+// OnStop でのみキャンセルされる。よって起動 ctx のキャンセルには巻き込まれず、停止時のみ中断される。
+func runJobAndShutdown(
+	jobCtx context.Context,
+	sd shutdowner.Shutdowner,
+	runner job.Runner,
+	logger logging.Logger,
+	osCfg *config.OperatingSystemConfig,
+	state job.State,
+) {
+	name, args, done := state.Snapshot()
+	if done == nil {
+		logger.Named("job.Hooks").Info(
+			"No job to run",
+			logging.String(logging.EventTypeKey, logging.EventTypeStart),
+			logging.Time(logging.EventAtKey, time.Now()),
+			logging.String(logging.EventTzKey, osCfg.TimeZone()),
+			logging.String(logging.JobNameKey, name),
+			logging.Strings(logging.JobArgsKey, args),
+		)
+		shutdown(sd, logger)
+		return
+	}
 
-			err := runner.Run(startCtx, name, args)
-			done <- err
+	defer close(done)
 
-			_ = sd.Shutdown()
-		}()
-		return nil
-	})
+	done <- runner.Run(jobCtx, name, args)
+
+	shutdown(sd, logger)
+}
+
+// shutdown は、ジョブ完了後のアプリ停止を要求し、失敗時はジョブ系のログ様式に合わせて記録します。
+// エラーは黙殺せずログ記録する。
+func shutdown(sd shutdowner.Shutdowner, logger logging.Logger) {
+	if err := sd.Shutdown(); err != nil {
+		logger.Named("job.Hooks").Error(
+			"failed to shutdown",
+			logging.Error(logging.JobErrorKey, err),
+		)
+	}
 }

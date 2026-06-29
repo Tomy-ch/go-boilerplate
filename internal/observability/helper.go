@@ -8,11 +8,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const (
-	SpanEventStart = "start"
-	SpanEventEnd   = "end"
-)
-
 // TraceContext は、トレースを識別するための情報を保持します。
 type TraceContext struct {
 	traceID      string
@@ -20,7 +15,7 @@ type TraceContext struct {
 	parentSpanID string
 }
 
-// ShouldLogWithSpan は、o11yモードとSpanの有無から、「このログを span 前提で出してよいか」を判定します。
+// ShouldLogWithSpan は、o11y モードが有効かつ ctx にアクティブな Span が存在するとき true を返す。span 付きログを出す前提条件チェックに使う。
 func ShouldLogWithSpan(ctx context.Context, obsCfg *config.ObservabilityConfig) bool {
 	return obsCfg.Enabled() && trace.SpanFromContext(ctx).SpanContext().IsValid()
 }
@@ -30,7 +25,7 @@ func BuildSpanName(layer, pkgName, funcName string) string {
 	return layer + delimiter + pkgName + delimiter + funcName
 }
 
-// ExtractTraceContext は、Context からトレース情報を抽出して返します。
+// ExtractTraceContext は、現在の span から traceID/spanID を抽出して返します（parentSpanID は設定しません）。
 func ExtractTraceContext(ctx context.Context) *TraceContext {
 	span := trace.SpanFromContext(ctx)
 	if !span.SpanContext().IsValid() {
@@ -49,13 +44,13 @@ func StartSpanWithParent(
 	tracer LayerTracer,
 	name string,
 	opts ...trace.SpanStartOption,
-) (TraceContext, context.Context, func()) {
+) (*TraceContext, context.Context, func()) {
 	parentSC := trace.SpanFromContext(ctx).SpanContext()
 
 	childCtx, span := tracer.tracer.Start(ctx, name, opts...)
 	childSC := span.SpanContext()
 
-	tc := TraceContext{
+	tc := &TraceContext{
 		traceID: childSC.TraceID().String(),
 		spanID:  childSC.SpanID().String(),
 	}

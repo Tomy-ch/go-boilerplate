@@ -1,3 +1,104 @@
+# --- portal viewer の構造制御 (manifest コピー処理は無視) ---
+# gen-docs-json.mjs が読み取り、ビューアー上の見出し階層 (groups → sections → cards) を組み立てる。
+# 上から順に表示される。auto-discovered な section id (architecture / project / maintenance /
+# deployment / coverage / db-schema / godoc / openapi) も groups の section リストに含めて配置を決める。
+meta:
+  groups:
+    - title: Get Started
+      sections: [overview, get-started, make_commands, environment_variables, tutorial]
+    - title: Architecture
+      sections: [architecture, project]
+    - title: Application Layers
+      sections: [domain, usecase, controller, infrastructure]
+    - title: Design
+      sections: [worker-design]
+    - title: Wiring & Helpers
+      sections: [di, context-helper, cli, pkg]
+    - title: Cross-Cutting
+      sections: [cross-cutting, integration]
+    - title: Build / Operations
+      sections: [docker, database, scripts, ci, maintenance, deployment]
+    - title: API Contracts
+      sections: [external]
+
+  # サイドバー下部に常設するリファレンスリンク (外部ツール / 生成ドキュメント)。
+  # groups からは抜き、新タブで開く ↗ リンクとして固定表示される。
+  reference_links: [openapi, godoc, db-schema, coverage]
+
+  # 肥大セクションを section 内の役割で更にサブグループ化する。
+  # キー = section id。値 = [{title, items: [guide_id, ...]}]。
+  # guide_id = guides 配下の basename (.ja.md / .md を除いたもの) で、EN/JA 両方に作用する。
+  # ここに含まれない item は末尾の "Other" サブグループに自動集約される。
+  subgroups:
+    controller:
+      - title: Layer Top
+        items: [controller]
+      - title: Server & Handler
+        items: [controller-server, controller-handler, controller-job, controller-worker]
+      - title: HTTP Stack
+        items:
+          - controller-httpstack
+          - controller-httpstack-errorhandler
+          - controller-httpstack-oapi
+          - controller-httpstack-oapi-auth
+          - controller-httpstack-oapi-skipper
+      - title: Error Response
+        items: [controller-error-response]
+    infrastructure:
+      - title: Layer Top
+        items: [infrastructure]
+      - title: RDB
+        items:
+          - infrastructure-rdb
+          - infrastructure-rdb-driver
+          - infrastructure-rdb-pgerror
+          - infrastructure-rdb-sqlc
+          - infrastructure-rdb-repository
+          - infrastructure-rdb-query-service
+          - infrastructure-rdb-testkit
+      - title: Auth & Security
+        items: [infrastructure-auth, infrastructure-security]
+      - title: System
+        items: [infrastructure-system]
+    di:
+      - title: Layer Top
+        items: [di]
+      - title: Modules
+        items: [di-module, di-module-core]
+      - title: Server
+        items: [di-server, di-server-extension, di-server-hook]
+      - title: Lifecycle
+        items: [di-lifecycle, di-shutdowner]
+      - title: Job
+        items: [di-job]
+    database:
+      - title: Layer Top
+        items: [database]
+      - title: Migration (DDL)
+        items: [database-migrations]
+      - title: Query (DML)
+        items: [sqlc-query-guide, sqlc-settings]
+      - title: Seed
+        items: [database-seed]
+
+  # auto-Title-Case で汚くなる id の表示名を上書きする (略語 / 改名のみ用途)。
+  section_titles:
+    architecture: Architecture Docs
+    get-started: Setup Repository
+    make_commands: Make Commands
+    environment_variables: Environment Variables
+    cross-cutting: Cross-Cutting
+    context-helper: Context Helper
+    di: DI
+    cli: CLI
+    ci: CI Workflows
+    pkg: pkg
+    external: OpenAPI Sources
+    openapi: OpenAPI Reference
+    db-schema: DB Schema
+    godoc: Godoc
+    coverage: Coverage Report
+
 overview:
   # English
   - src: README.md
@@ -30,6 +131,8 @@ controller:
     dst: docs/portal/guides/controller-handler.md
   - src: internal/controller/job/README.md
     dst: docs/portal/guides/controller-job.md
+  - src: internal/controller/worker/README.md
+    dst: docs/portal/guides/controller-worker.md
   - src: internal/controller/error/response/README.md
     dst: docs/portal/guides/controller-error-response.md
   - src: internal/controller/httpstack/README.md
@@ -51,6 +154,8 @@ controller:
     dst: docs/portal/guides/ja/controller-handler.ja.md
   - src: internal/controller/job/README.ja.md
     dst: docs/portal/guides/ja/controller-job.ja.md
+  - src: internal/controller/worker/README.ja.md
+    dst: docs/portal/guides/ja/controller-worker.ja.md
   - src: internal/controller/error/response/README.ja.md
     dst: docs/portal/guides/ja/controller-error-response.ja.md
   - src: internal/controller/httpstack/README.ja.md
@@ -65,6 +170,46 @@ controller:
     dst: docs/portal/guides/ja/controller-httpstack-oapi-auth.ja.md
   - src: internal/controller/httpstack/oapi/skipper/README.ja.md
     dst: docs/portal/guides/ja/controller-httpstack-oapi-skipper.ja.md
+
+worker-design:
+  # English
+  - src: docs/design/worker.md
+    dst: docs/portal/guides/worker-design.md
+  # Japanese
+  - src: docs/ja/design/worker.ja.md
+    dst: docs/portal/guides/ja/worker-design.ja.md
+
+job-design:
+  # English
+  - src: docs/design/job.md
+    dst: docs/portal/guides/job-design.md
+  # Japanese
+  - src: docs/ja/design/job.ja.md
+    dst: docs/portal/guides/ja/job-design.ja.md
+
+idempotency-design:
+  # English
+  - src: docs/design/idempotency.md
+    dst: docs/portal/guides/idempotency-design.md
+  # Japanese
+  - src: docs/ja/design/idempotency.ja.md
+    dst: docs/portal/guides/ja/idempotency-design.ja.md
+
+rest-design:
+  # English
+  - src: docs/design/rest.md
+    dst: docs/portal/guides/rest-design.md
+  # Japanese
+  - src: docs/ja/design/rest.ja.md
+    dst: docs/portal/guides/ja/rest-design.ja.md
+
+outbox-design:
+  # English
+  - src: docs/design/outbox.md
+    dst: docs/portal/guides/outbox-design.md
+  # Japanese
+  - src: docs/ja/design/outbox.ja.md
+    dst: docs/portal/guides/ja/outbox-design.ja.md
 
 domain:
   # English
@@ -106,8 +251,6 @@ infrastructure:
     dst: docs/portal/guides/infrastructure-rdb-query-service.md
   - src: internal/infrastructure/rdb/driver/README.md
     dst: docs/portal/guides/infrastructure-rdb-driver.md
-  - src: internal/infrastructure/rdb/driver/loggingdb/README.md
-    dst: docs/portal/guides/infrastructure-rdb-driver-loggingdb.md
   - src: internal/infrastructure/rdb/README.md
     dst: docs/portal/guides/infrastructure-rdb.md
   - src: internal/infrastructure/rdb/pgerror/README.md
@@ -131,8 +274,6 @@ infrastructure:
     dst: docs/portal/guides/ja/infrastructure-rdb-query-service.ja.md
   - src: internal/infrastructure/rdb/driver/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb-driver.ja.md
-  - src: internal/infrastructure/rdb/driver/loggingdb/README.ja.md
-    dst: docs/portal/guides/ja/infrastructure-rdb-driver-loggingdb.ja.md
   - src: internal/infrastructure/rdb/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-rdb.ja.md
   - src: internal/infrastructure/rdb/pgerror/README.ja.md

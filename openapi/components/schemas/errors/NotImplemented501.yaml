@@ -1,0 +1,5 @@
+description: 未実装の機能です。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

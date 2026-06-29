@@ -4,13 +4,12 @@ English | [日本語](README.ja.md)
 
 Provides safe type conversion with overflow detection.
 
-## Public API
+## Role
 
-|Function / Variable|Description|
-|---|---|
-|`UintToInt(x uint) (int, error)`|Safe conversion from `uint` to `int`|
-|`ErrOverflow`|Error returned when overflow occurs|
+Go's built-in numeric conversions silently wrap or truncate on overflow. This package centralizes range-checked conversions so that crossing signed/unsigned or width boundaries fails loudly with an error instead of corrupting a value, giving every layer one trustworthy, framework-agnostic conversion to reach for.
 
 ## Notes
 
 Returns `ErrOverflow` when the value exceeds `math.MaxInt`.
+
+Depends on `pkg/xerrors` for error wrapping — the sole permitted `pkg/` → `pkg/` dependency (enforced by depguard `independent_pkg`).

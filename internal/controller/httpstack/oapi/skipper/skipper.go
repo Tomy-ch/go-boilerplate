@@ -8,7 +8,7 @@ import (
 	echomw "github.com/labstack/echo/v4/middleware"
 )
 
-// New は、リクエストをスキップするためのSkipper関数を返します。
+// New は、運用系エンドポイント（/health, /metrics 等）へのリクエストを OpenAPI バリデーションからスキップする Skipper 関数を返します。
 func New() echomw.Skipper {
 	return func(c echo.Context) bool {
 		return ops.IsOpsPath(c.Request().URL.Path)

@@ -2,11 +2,10 @@
 package cookie
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/pkg/ptr"
 )
 
 // SecurityCookie は Set-Cookie を正規化するための設定です。
@@ -51,8 +50,8 @@ func NewSecurityCookie(
 		// デフォルト（boilerplate 推奨値）
 		applyToAll: true,
 
-		// 基本 true 固定で良い（プロダクト要件が出たら opts で変更）
-		forceHTTPOnly: ptr.To(true),
+		// HttpOnly は既定で常に付与する（拡張時はここを直接変更する）
+		forceHTTPOnly: new(true),
 
 		// SameSite=None のとき Secure を要求（ブラウザ仕様に沿って安全側）
 		enforceSecureWhenSameSiteNone: true,
@@ -60,15 +59,14 @@ func NewSecurityCookie(
 		// 多くのケースで "/" 固定
 		forcePath: "/",
 
-		// 下記は用途に応じて変更する想定
 		cookieNames:     map[string]struct{}{},
 		skipCookieNames: map[string]struct{}{},
 		forceMaxAge:     nil,
 	}
 
 	cfg.forceSecure = p.Secure()
-	// SameSite: 空なら上書きしない、指定があれば上書き
-	if s := strings.TrimSpace(p.SameSite()); s != "" {
+	// SameSite: 空なら上書きしない、許容値（Lax/Strict/None）へ正規化し非許容値は無視
+	if s := normalizeSameSite(p.SameSite()); s != "" {
 		cfg.forceSameSite = s
 	}
 	// Domain: 空なら上書きしない
@@ -87,19 +85,9 @@ func (cfg *SecurityCookie) RewriteSetCookie(raw string) string {
 	if !ok || name == "" {
 		return ""
 	}
-
-	// 対象判定
-	if !cfg.applyToAll {
-		if _, ok := cfg.cookieNames[name]; !ok {
-			return raw
-		}
-	}
-	if _, ok := cfg.skipCookieNames[name]; ok {
+	if !cfg.targets(name) {
 		return raw
 	}
-
-	hostPrefix := strings.HasPrefix(name, "__Host-")
-	securePrefix := strings.HasPrefix(name, "__Secure-") || hostPrefix
 
 	if cfg.forceSecure != nil {
 		setBoolAttr(attrs, "secure", *cfg.forceSecure)
@@ -107,12 +95,7 @@ func (cfg *SecurityCookie) RewriteSetCookie(raw string) string {
 	if cfg.forceHTTPOnly != nil {
 		setBoolAttr(attrs, "httponly", *cfg.forceHTTPOnly)
 	}
-	if cfg.forceSameSite != "" {
-		setKVAttr(attrs, "samesite", cfg.forceSameSite)
-		if cfg.enforceSecureWhenSameSiteNone && strings.EqualFold(cfg.forceSameSite, "None") {
-			setBoolAttr(attrs, "secure", true)
-		}
-	}
+	cfg.applySameSite(attrs)
 	if cfg.forcePath != "" {
 		setKVAttr(attrs, "path", cfg.forcePath)
 	}
@@ -120,20 +103,69 @@ func (cfg *SecurityCookie) RewriteSetCookie(raw string) string {
 		setKVAttr(attrs, "domain", cfg.forceDomain)
 	}
 	if cfg.forceMaxAge != nil {
-		setKVAttr(attrs, "max-age", fmt.Sprintf("%d", *cfg.forceMaxAge))
+		setKVAttr(attrs, "max-age", strconv.Itoa(*cfg.forceMaxAge))
 	}
-	// expires は整合性が難しいので、この雛形では触らない（必要なら追加）
+	// expires は Secure 属性との整合性を保つのが困難なため、Max-Age と並行して操作しない。
+	cfg.applyNamePrefix(name, attrs)
 
-	// prefix 強制
+	return buildSetCookie(name, value, attrs)
+}
+
+// targets は、name を書き換え対象とするか判定します。
+func (cfg *SecurityCookie) targets(name string) bool {
+	if !cfg.applyToAll {
+		if _, ok := cfg.cookieNames[name]; !ok {
+			return false
+		}
+	}
+	_, skip := cfg.skipCookieNames[name]
+	return !skip
+}
+
+// applySameSite は SameSite 上書きと、実効 SameSite=None 時の Secure 強制を適用します。
+func (cfg *SecurityCookie) applySameSite(attrs *cookieAttrs) {
+	if cfg.forceSameSite != "" {
+		setKVAttr(attrs, "samesite", cfg.forceSameSite)
+	}
+	if !cfg.enforceSecureWhenSameSiteNone {
+		return
+	}
+	// 実効 SameSite（強制値優先、無ければ入力値）が None なら Secure を強制する
+	effective := cfg.forceSameSite
+	if effective == "" {
+		if p := attrs.kv["samesite"]; p != nil {
+			effective = *p
+		}
+	}
+	if strings.EqualFold(effective, "None") {
+		setBoolAttr(attrs, "secure", true)
+	}
+}
+
+// applyNamePrefix は __Secure-/__Host- prefix の安全要件を適用します。
+func (cfg *SecurityCookie) applyNamePrefix(name string, attrs *cookieAttrs) {
+	hostPrefix := strings.HasPrefix(name, "__Host-")
+	securePrefix := strings.HasPrefix(name, "__Secure-") || hostPrefix
 	if securePrefix {
 		setBoolAttr(attrs, "secure", true)
 	}
 	if hostPrefix {
-		// __Host- は Secure + Path=/ + Domain無し
-		setBoolAttr(attrs, "secure", true)
+		// __Host- は Secure（securePrefix で付与済み）+ Path=/ + Domain無し
 		setKVAttr(attrs, "path", "/")
 		delAttr(attrs, "domain")
 	}
+}
 
-	return buildSetCookie(name, value, attrs)
+// normalizeSameSite は SameSite 値を許容値（Lax/Strict/None）へ正規化します。非許容値・空は "" を返します。
+func normalizeSameSite(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "lax":
+		return "Lax"
+	case "strict":
+		return "Strict"
+	case "none":
+		return "None"
+	default:
+		return ""
+	}
 }

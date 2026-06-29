@@ -1,0 +1,5 @@
+description: リクエストが多すぎます。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

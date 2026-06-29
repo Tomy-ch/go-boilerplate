@@ -5,7 +5,7 @@ info:
   contact:
     name: TomyC258460
     url: https://x.com/TomyC258460
-  version: 0.1.0
+  version: 1.5.0
   description: |
     This API is built on a modular, layered architecture using Go, Echo, and PostgreSQL.
     It follows the Onion Architecture and is designed to be testable, maintainable, and scalable.
@@ -27,7 +27,30 @@ servers:
   - url: https://staging.api.example.com
     description: Staging server (replace with actual URL)
   - url: https://development.api.example.com
-    description: Versioned API endpoint (replace with actual URL)
+    description: Development server (replace with actual URL)
+tags:
+  - name: health
+    description: ヘルスチェック（liveness）。
+  - name: healthz
+    description: ヘルスチェック（Kubernetes 互換の liveness）。
+  - name: ready
+    description: レディネスチェック（依存先を含む readiness）。
+  - name: version
+    description: アプリケーションのバージョン情報。
+  - name: metrics
+    description: Prometheus メトリクス。
+  - name: v1/users
+    description: ユーザーリソース（一覧取得・作成）。
+  - name: v1/users/detail
+    description: 単一ユーザー（取得・更新・部分更新・削除・パスワード変更）。
+  - name: v1/users/feed
+    description: ユーザーフィード（cursor ページネーション）。
+  - name: v1/users/search
+    description: ユーザー検索（キーワード）。
+  - name: v1/exchange-rates
+    description: 為替レート換算（外部 gateway 利用サンプル）。
+  - name: internal/types/error-response
+    description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
   /health:
     get:
@@ -135,24 +158,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsersResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
         '401':
-          description: ユーザー一覧の取得には認証が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized401'
         '403':
-          description: ユーザー一覧の取得には権限が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Forbidden403'
         '500':
-          description: サーバーエラーが発生しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
     post:
       operationId: PostUsers
       tags:
@@ -175,29 +190,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '400':
-          description: リクエストが不正です。必要な情報が不足している場合に返されます。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/BadRequest400'
         '401':
-          description: ユーザーの作成には認証が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized401'
         '403':
-          description: ユーザーの作成には権限が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Forbidden403'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
         '500':
-          description: サーバーエラーが発生しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/users/{user_id}:
     get:
       operationId: GetUsersDetail
@@ -217,35 +222,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '400':
-          description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/BadRequest400'
         '401':
-          description: ユーザーの取得には認証が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized401'
         '403':
-          description: ユーザーの取得には権限が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Forbidden403'
         '404':
-          description: 指定されたUUIDに該当するユーザーが存在しません。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/NotFound404'
         '500':
-          description: サーバーエラーが発生しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
     put:
       operationId: PutUsersDetail
       tags:
@@ -270,35 +257,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '400':
-          description: リクエストが不正です。必要な情報が不足している場合に返されます。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/BadRequest400'
         '401':
-          description: ユーザーの更新には認証が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized401'
         '403':
-          description: ユーザーの更新には権限が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Forbidden403'
         '404':
-          description: 指定されたUUIDに該当するユーザーが存在しません。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
         '500':
-          description: サーバーエラーが発生しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
     patch:
       operationId: PatchUsersDetail
       tags:
@@ -323,35 +296,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '400':
-          description: リクエストが不正です。必要な情報が不足している場合に返されます。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/BadRequest400'
         '401':
-          description: ユーザーの更新には認証が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized401'
         '403':
-          description: ユーザーの更新には権限が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Forbidden403'
         '404':
-          description: 指定されたUUIDに該当するユーザーが存在しません。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
         '500':
-          description: サーバーエラーが発生しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
     delete:
       operationId: DeleteUsersDetail
       tags:
@@ -366,35 +325,19 @@ paths:
         '204':
           description: ユーザーの削除に成功しました
         '400':
-          description: リクエストが不正です。UUIDの形式が正しくない場合に返されます。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/BadRequest400'
         '401':
-          description: ユーザーの削除には認証が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized401'
         '403':
-          description: ユーザーの削除には権限が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Forbidden403'
         '404':
-          description: 指定されたUUIDに該当するユーザーが存在しません。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/NotFound404'
+        '409':
+          $ref: '#/components/responses/Conflict409'
         '500':
-          description: サーバーエラーが発生しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/users/me/password:
     put:
       operationId: PutUsersMePassword
@@ -414,23 +357,11 @@ paths:
         '204':
           description: パスワードの変更に成功しました
         '400':
-          description: リクエストが不正です。必要な情報が不足している場合に返されます。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/BadRequest400'
         '401':
-          description: パスワードの変更には認証が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/Unauthorized401'
         '404':
-          description: 認証ユーザーに該当するアカウントが存在しません。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/NotFound404'
         '422':
           description: 現在のパスワードが一致しません。
           content:
@@ -438,11 +369,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: サーバーエラーが発生しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/users/search:
     get:
       operationId: GetUsersSearch
@@ -462,170 +391,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsersSearchResponse'
-        '401':
-          description: ユーザー一覧の取得には認証が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: ユーザー一覧の取得には権限が必要です。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: サーバーエラーが発生しました。
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /debug/cookie:
-    get:
-      operationId: GetDebugCookie
-      tags:
-        - debug/cookie
-      summary: |
-        Debug - request cookie確認（Cookieヘッダと解析結果を返す）
-        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DebugCookieInspectResponse'
-    post:
-      operationId: PostDebugCookie
-      tags:
-        - debug/cookie
-      summary: |
-        Debug - issue Set-Cookie (rewrite確認用)
-        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DebugIssueCookieRequest'
-      responses:
-        '204':
-          description: No Content
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
-    delete:
-      operationId: DeleteDebugCookie
-      tags:
-        - debug/cookie
-      summary: |
-        Debug - clear cookie
-        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-      parameters:
-        - name: name
-          in: query
-          required: false
-          schema:
-            type: string
-            default: __Host-access_token
-        - name: path
-          in: query
-          required: false
-          schema:
-            type: string
-            default: /
-      responses:
-        '204':
-          description: No Content
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
-  /debug/cookie/copy:
-    get:
-      operationId: GetDebugCookieRawCopy
-      tags:
-        - debug/cookie
-      summary: |
-        Debug - io.Copy / ReadFrom 経路確認
-        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-      description: |
-        サーバ側で io.Copy を使ってレスポンスボディを書き出します。
-        SecurityCookie MW による Set-Cookie rewrite と、ReadFrom 経路でも壊れないことを確認できます。
-      responses:
-        '200':
-          description: OK
-          headers:
-            Set-Cookie:
-              description: (debug) issued cookie (MWでrewriteされる想定)
-              schema:
-                type: string
-          content:
-            text/plain:
-              schema:
-                type: string
-              examples:
-                sample:
-                  value: |
-                    hello-cookie
-                    hello-cookie
-  /debug/cookie/stream:
-    get:
-      operationId: GetDebugCookieRawStream
-      tags:
-        - debug/cookie
-      summary: |
-        Debug - Flush 経路確認（SSE風）
-        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-      description: |
-        text/event-stream を返し、サーバ側で複数回 Flush() を呼びます。
-        SecurityCookie MW による Set-Cookie の rewrite と、Flush 経路で壊れないことを確認できます。
-      responses:
-        '200':
-          description: OK (SSE stream)
-          headers:
-            Set-Cookie:
-              description: (debug) issued cookie (MWでrewriteされる想定)
-              schema:
-                type: string
-          content:
-            text/event-stream:
-              schema:
-                type: string
-              examples:
-                ping:
-                  value: |
-                    data: ping
-  /debug/cookie/ws:
-    get:
-      operationId: GetDebugCookieRawWs
-      tags:
-        - debug/cookie
-      summary: |
-        Debug - WebSocket / Hijack 経路確認
-        このエンドポイントはクッキー周りの動作確認用であり、サービス作成時には削除してください。
-      description: |
-        WebSocket に Upgrade します（内部で Hijack が関与する実装を想定）。
-        OpenAPI 3.0 では WebSocket を厳密に表現できないため、101 と説明で表します。
-        動作確認は wscat 等で行ってください。
-      responses:
-        '101':
-          description: Switching Protocols (WebSocket)
-          headers:
-            Upgrade:
-              schema:
-                type: string
-                example: websocket
-            Connection:
-              schema:
-                type: string
-                example: Upgrade
-            Sec-WebSocket-Accept:
-              schema:
-                type: string
         '400':
-          description: Bad Request (Upgrade 失敗)
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/users/feed:
+    get:
+      operationId: GetUsersFeed
+      tags:
+        - v1/users/feed
+      summary: ユーザーフィードの取得
+      description: 未削除のユーザーを作成日時の降順（cursor ページネーション）で取得します。先頭ページは after を省略し、以降は前ページのレスポンスに含まれる nextCursor を after に指定します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CursorAfterParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+      responses:
+        '200':
+          description: cursor ページネーションで取得したユーザーフィード
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersFeedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/exchange-rates:
+    get:
+      operationId: GetExchangeRates
+      tags:
+        - v1/exchange-rates
+      summary: 為替レートで金額を換算します。
+      description: |
+        base 通貨建ての amount を quote 通貨へ換算した結果を返します。
+        外部の為替レートサービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
+      parameters:
+        - name: base
+          in: query
+          required: true
+          description: 換算元の通貨コード
+          schema:
+            type: string
+            example: USD
+        - name: quote
+          in: query
+          required: true
+          description: 換算先の通貨コード
+          schema:
+            type: string
+            example: JPY
+        - name: amount
+          in: query
+          required: true
+          description: 換算する金額（base 通貨建て）
+          schema:
+            type: number
+            format: double
+            example: 100
+      responses:
+        '200':
+          description: 換算結果を返します。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeRateResponse'
 components:
   parameters:
     PageParam:
@@ -649,6 +492,24 @@ components:
         maximum: 100
         default: 10
         example: 10
+    CursorAfterParam:
+      name: after
+      in: query
+      description: 次ページ取得用の不透明カーソル。先頭ページを取得する場合は省略します。
+      required: false
+      schema:
+        type: string
+    CursorFirstParam:
+      name: first
+      in: query
+      description: 取得件数の上限
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+        example: 50
     KeywordParam:
       name: keyword
       in: query
@@ -691,7 +552,7 @@ components:
       required:
         - code
         - message
-        - request_id
+        - requestId
       properties:
         code:
           type: string
@@ -701,7 +562,7 @@ components:
           type: string
           description: 人間が読めるエラーメッセージ
           example: 定義されたエラーメッセージ
-        request_id:
+        requestId:
           type: string
           description: リクエストID
           example: abcdefghijklmnopqrstuvwxyz
@@ -727,12 +588,12 @@ components:
         additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
       properties:
         firstName:
-          description: 苗字
+          description: 名前
           type: string
           example: Alice
           maxLength: 50
         lastName:
-          description: 名前
+          description: 苗字
           type: string
           example: Smith
           maxLength: 50
@@ -740,6 +601,7 @@ components:
           description: メールアドレス
           type: string
           format: email
+          maxLength: 100
           example: alice.smith@example.com
         phone:
           description: 電話番号
@@ -787,15 +649,15 @@ components:
         - deletedAt
       properties:
         firstName:
-          description: 苗字
-          type: string
-          example: John
-          maxLength: 50
-        lastName:
           description: 名前
           type: string
+          example: John
+          maxLength: 100
+        lastName:
+          description: 苗字
+          type: string
           example: Doe
-          maxLength: 50
+          maxLength: 100
         email:
           type: string
           description: メールアドレス
@@ -825,12 +687,12 @@ components:
           description: 丁目・番地
           type: string
           example: 1-2-3 Jinnan
-          maxLength: 200
+          maxLength: 255
         building:
           description: 建物名・部屋番号
           type: string
           example: Shibuya Building 101
-          maxLength: 200
+          maxLength: 255
         deletedAt:
           description: ユーザーが削除された日時。削除されていない場合はnull。
           type: string
@@ -848,6 +710,33 @@ components:
               items:
                 $ref: '#/components/schemas/UsersSearchResponseItem'
         - $ref: '#/components/schemas/PaginationMetadataResponse'
+    UsersFeedResponse:
+      description: ユーザーフィード（cursor ページネーション）のレスポンススキーマ
+      allOf:
+        - type: object
+          required:
+            - users
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserResponse'
+        - $ref: '#/components/schemas/CursorPaginationMetadataResponse'
+    CursorPaginationMetadataResponse:
+      type: object
+      required:
+        - nextCursor
+        - hasNext
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+          description: 次ページ取得用のカーソル。最終ページの場合は null です。
+          example: eyJrMCI6IjIwMjYtMDEtMDFUMDA6MDA6MDBaIn0
+        hasNext:
+          type: boolean
+          description: 次ページが存在するかどうか
+          example: true
     UserSearchResponseItem:
       $ref: '#/components/schemas/UsersSearchResponseItem'
     ResponseV1User:
@@ -860,33 +749,8 @@ components:
       $ref: '#/components/schemas/UserPutRequest'
     RequestPatchV1User:
       $ref: '#/components/schemas/UserPatchRequest'
-    DebugIssueCookieRequest:
-      additionalProperties: false
-      description: |
-        Debug - issue Set-Cookie request schema
-        このリクエストは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
-      properties:
-        setCookie:
-          type: string
-          description: Raw Set-Cookie header value
-          example: __Host-access_token=rawtoken; Path=/hoge; Domain=example.com; SameSite=None
-      required:
-        - setCookie
-    DebugCookieInspectResponse:
-      description: |
-        Debug - request cookie確認（Cookieヘッダと解析結果を返す）
-        このレスポンスは、クッキー周りの動作確認用でありboilerplateからそれぞれのサービスを作成する時には削除してください。
-      additionalProperties: false
-      properties:
-        rawCookieHeader:
-          type: string
-        cookies:
-          type: object
-          additionalProperties:
-            type: string
-      required:
-        - rawCookieHeader
-        - cookies
+    ResponseV1ExchangeRate:
+      $ref: '#/components/schemas/ExchangeRateResponse'
     HealthResponse:
       type: object
       description: サーバーのヘルスチェック用のレスポンスです。
@@ -903,7 +767,7 @@ components:
       required:
         - status
         - applicationTime
-        - dbResponsedAt
+        - dbRespondedAt
         - dbLatencyMs
       properties:
         status:
@@ -919,7 +783,7 @@ components:
           format: date-time
           description: アプリケーションサーバーの現在時刻
           example: '2024-06-01T12:00:01Z'
-        dbResponsedAt:
+        dbRespondedAt:
           type: string
           format: date-time
           description: データベースが最後に正常に応答した日時
@@ -942,19 +806,24 @@ components:
         version:
           type: string
           description: アプリケーションのバージョン
+          example: 1.5.0
         revision:
           type: string
           description: アプリケーションのリビジョン
+          example: a1b2c3d
         buildDate:
           type: string
           format: date-time
           description: アプリケーションのビルド日時
+          example: '2026-01-01T00:00:00Z'
         environment:
           type: string
           description: 実行環境
+          example: production
         service:
           type: string
           description: サービス名
+          example: go-boilerplate
     PaginationMetadataResponse:
       type: object
       required:
@@ -997,6 +866,7 @@ components:
               type: string
               format: password
               minLength: 8
+              maxLength: 64
               example: P@ssw0rd!
           required:
             - firstName
@@ -1036,12 +906,14 @@ components:
           type: string
           format: password
           minLength: 8
+          maxLength: 64
           example: P@ssw0rd!
         newPassword:
           description: 新しいパスワード
           type: string
           format: password
           minLength: 8
+          maxLength: 64
           example: N3wP@ssw0rd!
       required:
         - currentPassword
@@ -1058,3 +930,79 @@ components:
               description: 登録日時
               type: string
               format: date-time
+    ExchangeRateResponse:
+      type: object
+      description: 為替換算結果のレスポンスです。
+      required:
+        - base
+        - quote
+        - amount
+        - converted
+      properties:
+        base:
+          type: string
+          description: 換算元の通貨コード
+          example: USD
+        quote:
+          type: string
+          description: 換算先の通貨コード
+          example: JPY
+        amount:
+          type: number
+          format: double
+          description: 換算元の金額
+          example: 100
+        converted:
+          type: number
+          format: double
+          description: 換算後の金額
+          example: 15050
+  responses:
+    BadRequest400:
+      description: リクエストが不正です。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized401:
+      description: 認証が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden403:
+      description: 権限が必要です。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError500:
+      description: サーバーエラーが発生しました。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable503:
+      description: サービスが一時的に利用できません。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict409:
+      description: リソースが競合しています。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnprocessableEntity422:
+      description: 入力値が要件を満たしていません。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound404:
+      description: 指定されたリソースが存在しません。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

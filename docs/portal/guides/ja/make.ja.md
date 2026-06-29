@@ -8,7 +8,7 @@
 
 Make ターゲットは主に以下の単位で整理されています。
 
-- `.makefiles/app` : アプリケーション起動・Job 実行
+- `.makefiles/app` : アプリケーション起動・Job 実行・埋め込み env 材料化
 - `.makefiles/database` : DB 初期化 / マイグレーション / シード / DML / スキーマ
 - `.makefiles/sql` : SQL Lint / Fix
 - `.makefiles/markdown` : Markdown Lint / Fix
@@ -45,9 +45,8 @@ Make ターゲットは主に以下の単位で整理されています。
 | `make serve-build` | Docker イメージをキャッシュを利用して再ビルドしたうえで開発環境を起動します。 | Dockerfile や依存変更の反映 |
 | `make serve-build-clean` | `--no-cache --pull` でクリーンビルドしたうえで開発環境を起動します。 | base image 更新の取り込み（例: Go バージョンアップ） |
 | `make tools` | `tools` プロファイルの開発支援ツール群を起動します。 | 開発ツール利用時 |
-| `make tools-build` | 開発用ツールコンテナをキャッシュを利用してビルドします（起動はしません）。 | ツールコンテナの Dockerfile や依存変更の反映 |
-| `make tools-build-clean` | 開発用ツールコンテナを `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールコンテナの base image 更新の取り込み |
-| `make smoke` | `smoke` プロファイルの `smoke_server` をビルド付きで起動します。 | Smoke Test 環境の確認 |
+| `make tool-runners-build` | オンデマンド実行のツールランナー画像(go/node/python)をキャッシュ利用でビルドします（起動はしません）。 | ツールランナーの Dockerfile や依存変更の反映 |
+| `make tool-runners-build-clean` | ツールランナー画像を `--no-cache --pull` 付きでクリーンビルドします（起動はしません）。 | ツールランナーの base image 更新の取り込み |
 
 #### `make job NAME=<job名> ARGS="<引数>"`
 
@@ -63,6 +62,17 @@ Make ターゲットは主に以下の単位で整理されています。
 make job NAME=sample-job
 make job NAME=batch-import ARGS="--target=local --dry-run"
 ```
+
+### 埋め込み env 材料化関連
+
+サーバーバイナリは `env/.env` を埋め込みます。CI および Docker ビルドはビルド前に
+環境別ファイルを `env/.env` へ材料化するため、その手順（と、ドリフト判定向けの取り消し）を
+これらのターゲットへ集約します。
+
+| コマンド | 説明 | 主な用途 |
+| --- | --- | --- |
+| `make materialize-env` | `env/.env.$(APP_ENV)` を `env/.env` へコピーします（既定は `APP_ENV=ci`）。 | CI / ビルドで `go build` / `go run` 前に埋め込み対象を材料化する |
+| `make restore-env` | `git restore` で `env/.env` を git 管理の内容へ戻します。 | 生成物ドリフト / コミット判定の前に材料化を取り消す |
 
 ## `.makefiles/database` 系
 
@@ -87,21 +97,21 @@ DB 操作全般を扱うターゲット群です。
 | `make check-migration-up-gap` | `up` 側マイグレーションの連番ギャップをチェックします。 | なし |
 | `make check-migration-down-gap` | `down` 側マイグレーションの連番ギャップをチェックします。 | なし |
 | `make db-migrate-up DB=<database>` | 指定した DB に対して、全マイグレーションを最新まで適用します。 | 例: `make db-migrate-up DB=local` |
-| `make db-migrate-up-<version> DB=<database>` | 指定した DB に対して、特定バージョンまでマイグレーションを適用します。 | 例: `make db-migrate-up-10 DB=local` |
+| `make db-migrate-up-<steps> DB=<database>` | 指定した DB に対して、現在位置から指定段数だけマイグレーションを適用します。 | 例: `make db-migrate-up-2 DB=local` |
 | `make db-migrate-down DB=<database>` | 指定した DB に対して、全マイグレーションを初期状態までダウングレードします。 | なし |
-| `make db-migrate-down-<version> DB=<database>` | 指定した DB に対して、特定バージョンまでダウングレードします。 | なし |
+| `make db-migrate-down-<steps> DB=<database>` | 指定した DB に対して、指定段数だけダウングレードします。 | なし |
 | `make db-local-migrate-up` | LocalDB に対して全マイグレーションを最新まで適用します。 | `DB=local` を指定した `db-migrate-up` のエイリアスです。 |
-| `make db-local-migrate-up-<version>` | LocalDB に対して特定バージョンまでマイグレーションを適用します。 | なし |
+| `make db-local-migrate-up-<steps>` | LocalDB に対して指定段数だけマイグレーションを適用します。 | なし |
 | `make db-local-migrate-down` | LocalDB を初期状態までダウングレードします。 | `DB=local` を指定した `db-migrate-down` のエイリアスです。 |
-| `make db-local-migrate-down-<version>` | LocalDB を特定バージョンまでダウングレードします。 | なし |
+| `make db-local-migrate-down-<steps>` | LocalDB を指定段数だけダウングレードします。 | なし |
 | `make db-test-migrate-up` | TestDB に対して全マイグレーションを最新まで適用します。 | `DB=test` を指定した `db-migrate-up` のエイリアスです。 |
-| `make db-test-migrate-up-<version>` | TestDB に対して特定バージョンまでマイグレーションを適用します。 | なし |
+| `make db-test-migrate-up-<steps>` | TestDB に対して指定段数だけマイグレーションを適用します。 | なし |
 | `make db-test-migrate-down` | TestDB を初期状態までダウングレードします。 | `DB=test` を指定した `db-migrate-down` のエイリアスです。 |
-| `make db-test-migrate-down-<version>` | TestDB を特定バージョンまでダウングレードします。 | なし |
+| `make db-test-migrate-down-<steps>` | TestDB を指定段数だけダウングレードします。 | なし |
 | `make db-migrate-ci-up DB=<database>` | Docker を介さず、直接 `cmd/main.go migrate-up` を実行します。 | CI 用ターゲットです。 |
-| `make db-migrate-ci-up-<version> DB=<database>` | Docker を介さず、指定バージョンまで `migrate-up` を実行します。 | CI 用ターゲットです。 |
+| `make db-migrate-ci-up-<steps> DB=<database>` | Docker を介さず、指定段数だけ `migrate-up` を実行します。 | CI 用ターゲットです。 |
 | `make db-migrate-ci-down DB=<database>` | Docker を介さず、直接 `cmd/main.go migrate-down` を実行します。 | CI 用ターゲットです。 |
-| `make db-migrate-ci-down-<version> DB=<database>` | Docker を介さず、指定バージョンまで `migrate-down` を実行します。 | CI 用ターゲットです。 |
+| `make db-migrate-ci-down-<steps> DB=<database>` | Docker を介さず、指定段数だけ `migrate-down` を実行します。 | CI 用ターゲットです。 |
 
 例:
 
@@ -189,19 +199,32 @@ Markdown ファイルに対する Lint と自動修正を扱うターゲット�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make md-lint` | Markdown ファイルの Lint を実行します。 | `node_tool_runner` コンテナ内で `make md-lint-ci` を呼び出します。 |
+| `make md-lint` | Markdown の Lint を実行します（markdownlint + mermaid 構文）。 | `node_tool_runner` コンテナ内で `make md-lint-ci` を呼び出します。 |
 | `make md-fix` | Markdown ファイルの Lint 自動修正を実行します。 | `node_tool_runner` コンテナ内で `make md-fix-ci` を呼び出します。 |
-| `make md-lint-ci` | `markdownlint-cli2` で `**/*.md` を直接 Lint します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
+| `make md-mermaid-lint` | ` ```mermaid ` フェンスのみを構文検証します。 | `node_tool_runner` コンテナ内で `make md-mermaid-lint-ci` を呼び出します。 |
+| `make md-lint-ci` | `markdownlint-cli2` を実行後、mermaid 構文 Lint を実行します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
+| `make md-mermaid-lint-ci` | `scripts/mermaid-lint.mjs`（実 `mermaid.parse`）で ` ```mermaid ` フェンスを検証します。 | CI 用ターゲット。markdownlint は図の文法を見ません。 |
 | `make md-fix-ci` | `markdownlint-cli2 --fix` で `**/*.md` を直接修正します。 | CI 用ターゲットです。`vendor/`、`node_modules/`、`.git/` を除外します。 |
 
 ## `.makefiles/security` 系
 
-CI のセキュリティ指摘をローカルで再現するための Trivy 依存スキャンです。image スキャンは CI 専用（`image-scan.yaml`）です。
+CI のセキュリティ指摘をローカルで再現するためのスキャン（Trivy 依存スキャン、gitleaks シークレットスキャン）です。image スキャンは CI 専用（`image-scan.yaml`）です。
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
 | `make trivy-fs` | ライブラリ依存を Trivy fs でスキャンします。 | `go_tool_runner` コンテナ内で `make trivy-fs-ci` を呼び出します。 |
 | `make trivy-fs-ci` | `trivy fs` を直接実行します。 | CI 用ターゲット。CI と揃えるため `vendor/` を除外します。 |
+| `make secret-scan` | ワーキングツリーのシークレットを gitleaks でスキャンします。 | `go_tool_runner` コンテナ内で `make secret-scan-ci` を呼び出します。 |
+| `make secret-scan-ci` | `gitleaks dir . --redact` を直接実行します。 | CI 用ターゲット。生成ファイルは `.gitleaks.toml` で allowlist。 |
+
+## `.makefiles/docker` 系
+
+`go_tool_runner` コンテナ経由で hadolint により Dockerfile を lint します。
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make docker-lint` | `docker/*/Dockerfile` を hadolint で lint します。 | `go_tool_runner` コンテナ内で `make docker-lint-ci` を呼び出します。 |
+| `make docker-lint-ci` | `hadolint docker/*/Dockerfile` を直接実行します。 | CI 用ターゲット。無効化ルールは `.hadolint.yaml`。 |
 
 ## `.makefiles/openapi` 系
 
@@ -239,9 +262,10 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 
 | コマンド | 説明 | 補足 |
 | --- | --- | --- |
-| `make test` | CI 用のテストを実行します。 | `gen` / `cli` / `cmd` / `mock` / `apperror` / `scripts` を除外したパッケージ群に対して `go test` を実行します。 |
+| `make test` | CI 用のテストを実行します。 | `gen` / `cmd` / `mock` / `apperror` / `scripts` を除外したパッケージ群に対して `go test` を実行します（`internal/cli` コアは計測対象に含まれます）。 |
 | `make gen-test-repo` | テストを実行し、HTML カバレッジレポートを生成します。 | 出力先は `docs/coverage/index.html` です。 |
 | `make test-cover-ci` | カバレッジ付きでテストを実行します。 | CI 用ターゲットで、`coverage.out` を出力します。 |
+| `make cover-gate` | 総カバレッジが閾値を下回ると fail します。 | CI ゲート。`COVERAGE_THRESHOLD`（既定 90）。`coverage.out` が必要（先に `test-cover-ci`）。 |
 
 ### Go ツールインストール関連
 
@@ -257,8 +281,12 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 | --- | --- | --- |
 | `make gen-portal-docs` | Portal 用ドキュメントを生成します。 | なし |
 | `make gen-docs-json` | Portal 用ドキュメントリンク JSON を生成します。 | なし |
+| `make gen-portal-build` | Portal フロントエンド（`docs/portal/src/main.jsx`）を esbuild で `bundle.js` / `bundle.css` にバンドルします。 | なし |
 | `make gen-portal-docs-ci` | Node.js スクリプトで Portal 用ドキュメントを直接生成します。 | CI 用ターゲットです。 |
 | `make gen-docs-json-ci` | Node.js スクリプトで Portal 用 JSON を直接生成します。 | CI 用ターゲットです。 |
+| `make gen-portal-build-ci` | esbuild を直接実行して Portal フロントエンドをバンドルします。 | CI 用ターゲットです。 |
+| `make gen-godoc` | godoc の静的 HTML を `docs/godoc/` に生成します。 | なし |
+| `make gen-godoc-ci` | godoc-static を直接実行して静的 HTML を生成します。 | CI 用ターゲットです。 |
 
 ## `.makefiles/gen` 系
 
@@ -274,6 +302,16 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 | `make gen-query-sysq` | System Query 用 SQLC コード生成を実行します。 | `dump-schema` → `merge-dml-sysq` → `gen-sqlc` を実行します。 |
 
 ## `.makefiles/github` 系
+
+### GitHub Actions lint / pin 関連
+
+| コマンド | 説明 | 補足 |
+| --- | --- | --- |
+| `make actions-lint` | ワークフロー / composite action 定義を actionlint で lint します。 | `go_tool_runner` コンテナ内で `make actions-lint-ci` を呼び出します。 |
+| `make actions-lint-ci` | `actionlint` を直接実行します。 | CI 用ターゲット。 |
+| `make pin-actions-resolve` | 各 `uses:` のタグを commit SHA に解決し `.github/actions-pin.toml` lockfile を更新します。 | `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14・0 で無効）より新しい解決先を quarantine。 |
+| `make pin-actions-apply` | lockfile を元に `uses:` を `@<sha> # <tag>` へ固定します。 | なし |
+| `make pin-actions-check` | `uses:` が lockfile 通り固定済みか検証します（書き換えなし）。 | CI / pre-commit ゲート。 |
 
 ### GitHub 設定関連
 
@@ -308,7 +346,7 @@ CI のセキュリティ指摘をローカルで再現するための Trivy 依�
 | `make setup-replace-app-metadata APP_NAME=<name> OPENAPI_TITLE=<title> COPILOT_TITLE=<title>` | アプリケーション名や OpenAPI タイトルなどのメタデータを一括置換します。 | README や OpenAPI 定義などに反映されます。 |
 | `make setup-replace-repository-reference REPOSITORY=<org/repo>` | リポジトリ参照（GitHub URL など）を一括置換します。 | README やドキュメント内のリンクを更新します。 |
 | `make setup-replace-license-copyright COPYRIGHT_HOLDER=<name> [COPYRIGHT_YEAR=<year>]` | LICENSE の著作権表記を更新します。 | 年は省略可能です。 |
-| `make setup-remove-debug-handlers` | Debug 用ハンドラ一式を削除します。 | 本番利用時の不要コード削除に使用します。 |
+| `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`gen-api` → `gen-query` → `fix` → `lint` を実行します。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。削除後は `make db-init-local db-init-test && make gen-query` で再構築し、削除済みテーブルが生成モデルに残らないようにします。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 |
 
 ### リリースブランチ関連
 

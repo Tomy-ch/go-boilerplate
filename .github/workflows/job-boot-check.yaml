@@ -1,13 +1,13 @@
-name: Job Boot Verification
+name: Job Boot Check
 
 on:
   pull_request:
     paths:
       - '.github/workflows/job-boot-check.yaml'
       - 'cmd/**.go'
-      - 'internal/cli/job/**.go'
-      - 'internal/di/**.go'
-      - 'internal/controller/job/**.go'
+      - 'internal/**.go'
+      - 'env/.env.ci'
+      - 'env/.env'
       - 'go.mod'
       - 'go.sum'
   workflow_dispatch:
@@ -44,23 +44,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
 
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
       # 特定のサンプルジョブ名に依存しないため、存在しないジョブ名で起動する。
-      # ここで「unknown job」エラーに到達できる＝ cobra → cmd/main.go → DI グラフ構築 → DB 接続 →
-      # ジョブランナーの dispatch まで、実バイナリ経路が起動できたことの証左になる。
-      # DB 接続や DI 構築の失敗で落ちた場合は出力に「unknown job」が含まれないので区別できる。
       - name: Boot job entrypoint and expect "unknown job"
         run: |
           set -uo pipefail
           set +e
-          output="$(go run cmd/main.go job __ci_boot_check_no_such_job__ 2>&1)"
+          output="$(go run ./cmd/ job __ci_boot_check_no_such_job__ 2>&1)"
           code=$?
           set -e
 

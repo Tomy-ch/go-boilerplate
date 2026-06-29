@@ -15,9 +15,15 @@ import (
 
 type mockNetError struct{}
 
+type mockNonTimeoutNetError struct{}
+
 func (m mockNetError) Error() string   { return "mock net error" }
 func (m mockNetError) Timeout() bool   { return true }
 func (m mockNetError) Temporary() bool { return false }
+
+func (m mockNonTimeoutNetError) Error() string   { return "connection refused" }
+func (m mockNonTimeoutNetError) Timeout() bool   { return false }
+func (m mockNonTimeoutNetError) Temporary() bool { return false }
 
 func TestNormalizePgError(t *testing.T) {
 	t.Parallel()
@@ -33,6 +39,22 @@ func TestNormalizePgError(t *testing.T) {
 		got := NormalizeError(context.DeadlineExceeded)
 		require.Error(t, got)
 		require.ErrorIs(t, got, apperror.ErrUnavailable)
+	})
+
+	t.Run("contextがキャンセルされた場合はクライアント起因として ErrCanceled", func(t *testing.T) {
+		t.Parallel()
+		got := NormalizeError(context.Canceled)
+		require.Error(t, got)
+		require.ErrorIs(t, got, apperror.ErrCanceled)
+	})
+
+	t.Run("既に正規化済みのapperrorは分類を保持して素通しする", func(t *testing.T) {
+		t.Parallel()
+		// 二重適用しても ErrInternal に劣化しないこと。
+		once := NormalizeError(&pgconn.PgError{Code: "23505", Message: "dup"})
+		twice := NormalizeError(once)
+		require.ErrorIs(t, twice, apperror.ErrConflict)
+		assert.Equal(t, once, twice)
 	})
 
 	t.Run("ユニーク制約違反", func(t *testing.T) {
@@ -136,7 +158,7 @@ func TestNormalizePgError(t *testing.T) {
 
 func TestIsUnavailable(t *testing.T) {
 	t.Parallel()
-	t.Run("nil", func(t *testing.T) {
+	t.Run("nilの場合は接続不可ではない", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(nil)
 		assert.False(t, got)
@@ -148,9 +170,21 @@ func TestIsUnavailable(t *testing.T) {
 		assert.True(t, got)
 	})
 
-	t.Run("ネットワークエラー", func(t *testing.T) {
+	t.Run("コンテキストキャンセルはクライアント起因なので接続不可ではない", func(t *testing.T) {
+		t.Parallel()
+		got := IsUnavailable(context.Canceled)
+		assert.False(t, got)
+	})
+
+	t.Run("ネットワークエラー(タイムアウト)", func(t *testing.T) {
 		t.Parallel()
 		got := IsUnavailable(mockNetError{})
+		assert.True(t, got)
+	})
+
+	t.Run("ネットワークエラー(非タイムアウト/接続拒否)", func(t *testing.T) {
+		t.Parallel()
+		got := IsUnavailable(mockNonTimeoutNetError{})
 		assert.True(t, got)
 	})
 
@@ -191,6 +225,49 @@ func Test_isPgConnectionError(t *testing.T) {
 		t.Parallel()
 		got := isPgConnectionError(errors.New("other"))
 		assert.False(t, got)
+	})
+}
+
+func TestIsLockNotAvailable(t *testing.T) {
+	t.Parallel()
+
+	t.Run("55P03(lock_not_available)はtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsLockNotAvailable(&pgconn.PgError{Code: "55P03"}))
+	})
+
+	t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsLockNotAvailable(&pgconn.PgError{Code: "23505"}))
+	})
+
+	t.Run("PgError以外はfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsLockNotAvailable(errors.New("plain error")))
+	})
+}
+
+func TestIsRetryableTxError(t *testing.T) {
+	t.Parallel()
+
+	t.Run("40001(serialization_failure)はtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsRetryableTxError(&pgconn.PgError{Code: "40001"}))
+	})
+
+	t.Run("40P01(deadlock_detected)はtrue", func(t *testing.T) {
+		t.Parallel()
+		assert.True(t, IsRetryableTxError(&pgconn.PgError{Code: "40P01"}))
+	})
+
+	t.Run("別のSQLSTATEはfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsRetryableTxError(&pgconn.PgError{Code: "23505"}))
+	})
+
+	t.Run("PgError以外はfalse", func(t *testing.T) {
+		t.Parallel()
+		assert.False(t, IsRetryableTxError(errors.New("plain error")))
 	})
 }
 

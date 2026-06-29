@@ -19,6 +19,8 @@ import (
 )
 
 func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで TracerFactory が提供される", func(t *testing.T) {
 		t.Parallel()
 
@@ -28,7 +30,7 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 		mockLog := mock_logging.NewMockLogger(ctrl)
 		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
 
-		// TracerProvider will register a stop hook
+		// ProviderShutdowner の Shutdown が単一の Stop フックとして登録される。
 		mockReg.EXPECT().RegisterStop(gomock.Any()).Times(1)
 
 		// buildinfo.Register はデフォルトレジストリへ登録するため、テスト間の汚染を避ける。
@@ -46,6 +48,13 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
 			fx.Provide(func() *config.ApplicationConfig {
 				return config.NewApplicationConfig(config.MockConfigForTest(t))
+			}),
+			fx.Provide(func() *config.ObservabilityConfig {
+				oc := config.NewObservabilityConfig(config.MockConfigForTest(t))
+				oc.SetObservabilityTracesExporter(t, "")
+				oc.SetObservabilityMetricsExporter(t, "")
+				oc.SetObservabilityLogsExporter(t, "")
+				return oc
 			}),
 			fx.Provide(system.NewBuildInfo),
 			fx.Populate(&tf),

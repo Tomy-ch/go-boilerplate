@@ -157,7 +157,7 @@ Go バージョンアップでは base image タグが変わるため、新し�
 
 ```sh
 make serve-build-clean
-make tools-build-clean
+make tool-runners-build-clean
 ```
 
 ### 10. コード生成の再実行
@@ -190,7 +190,7 @@ make gen
 make test
 make lint
 make serve-build-clean
-make tools-build-clean
+make tool-runners-build-clean
 ```
 
 `make sync-versions` を最後にも入れているのは、作業中に `mise.toml` と下流ファイルの drift が残っていた場合に検知するため。

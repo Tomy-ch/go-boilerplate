@@ -20,6 +20,7 @@
 internal/logging
 ├── logger.go
 ├── logger_core.go
+├── stacktrace_core.go
 ├── field.go
 ├── field_builder.go
 ├── const.go
@@ -33,6 +34,7 @@ internal/logging
 |---|---|
 |`logger.go`|アプリケーションが利用する Logger interface|
 |`logger_core.go`|zap.Logger の実装|
+|`stacktrace_core.go`|zap 自動付与の `Entry.Stack` を JSON 出力時に行配列へ変換する zapcore.Core ラッパ|
 |`field.go`|ログフィールドの型|
 |`field_builder.go`|HTTP / SQL / Observability ログフィールド生成|
 |`const.go`|ログキー定義|
@@ -67,39 +69,27 @@ type Logger interface {
 
 ## Logger 生成
 
-Logger はアプリケーションの実行モードに応じて生成されます。
+Logger は出力方式ごとに生成します。出力レベル（`Level`）と stacktrace を付与し始めるレベルを渡します。
 
 ```go
-logger, err := logging.New(appCfg)
+// JSON ロガー（機械可読・本番向け出力方式）
+logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
+// console ロガー（人間可読・開発向け出力方式）
+logger := logging.NewConsoleLogger(logging.LevelDebug, logging.LevelWarn)
 ```
 
-`New` は `config.ApplicationConfig` のモードに応じて適切なロガーを選択します。
-
-個別に生成する場合は以下の関数も利用できます。
+`Level` は zap のレベルを包む型で、利用側が `zapcore` に直接依存しないようにします。レベル文字列（`debug` / `info` / `warn` / `error`）は `ParseLevel` で変換します。
 
 ```go
-logger, err := logging.NewProductionLogger()
-logger, err := logging.NewDevelopmentLogger()
+level, err := logging.ParseLevel("info")
 ```
 
-内部では次のロガーが使用されます。
+実行中のプロセスがどの出力方式・レベルを使うかは、本パッケージではなく DI の合成ルートで決まります。`internal/di/module/logging.go` の `provideLogger` が `APP_MODE` から出力方式を、`APP_LOG_LEVEL` から出力レベルを選択します。
 
-|Mode|Logger|
-|---|---|
-|production|JSON logger|
-|development|console logger|
-
-### Production Logger
-
-- Encoding: JSON
-- Level: Info
-- Stacktrace: Error以上
-
-### Development Logger
-
-- Encoding: Console
-- Level: Debug
-- Stacktrace: Warn以上
+|Mode|出力方式|Stacktrace|
+|---|---|---|
+|production|JSON logger|Error以上|
+|development|console logger|Warn以上|
 
 ## Field
 
@@ -126,7 +116,7 @@ logger.Info(
 |Time|time.Time（RFC3339Nano文字列に変換）|
 |DurationMs|time.Duration（ミリ秒単位のfloat64に変換）|
 |Error|error|
-|Stacktrace|error（スタックトレース文字列に変換）|
+|Stacktrace|error（スタックトレースを行配列 []string に変換）|
 |Any|any|
 
 この設計の目的
@@ -155,7 +145,7 @@ type LogFieldBuilder interface {
 lf := logging.NewLogFields(obsCfg, osCfg)
 ```
 
-`config.ObservabilityConfig` と `config.OperationSystemConfig` を受け取り、trace/span フィールドの付与やタイムゾーン情報の付与を制御します。
+`config.ObservabilityConfig` と `config.OperatingSystemConfig` を受け取り、trace/span フィールドの付与やタイムゾーン情報の付与を制御します。
 
 用途
 

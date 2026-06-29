@@ -20,6 +20,7 @@ The main purposes are as follows.
 internal/logging
 ├── logger.go
 ├── logger_core.go
+├── stacktrace_core.go
 ├── field.go
 ├── field_builder.go
 ├── const.go
@@ -33,6 +34,7 @@ The role of each file is as follows.
 |---|---|
 |`logger.go`|Logger interface used by application|
 |`logger_core.go`|Implementation of zap.Logger|
+|`stacktrace_core.go`|zapcore.Core wrapper that converts the auto-attached `Entry.Stack` into a line array for JSON output|
 |`field.go`|Type of log fields|
 |`field_builder.go`|Generation of HTTP / SQL / Observability log fields|
 |`const.go`|Log key definitions|
@@ -65,39 +67,27 @@ This design provides:
 
 ## Logger Creation
 
-Logger is created according to the application runtime mode.
+Loggers are created by output format. Pass a `Level` (output level) and the level at which stacktraces start.
 
 ```go
-logger, err := logging.New(appCfg)
+// JSON logger (machine-readable; production-style output)
+logger := logging.NewJSONLogger(logging.LevelInfo, logging.LevelError)
+// Console logger (human-readable; development-style output)
+logger := logging.NewConsoleLogger(logging.LevelDebug, logging.LevelWarn)
 ```
 
-`New` selects the appropriate logger based on the mode of `config.ApplicationConfig`.
-
-You can also create loggers individually:
+`Level` wraps the zap level so callers never depend on `zapcore` directly. Parse a level string (`debug` / `info` / `warn` / `error`) with `ParseLevel`:
 
 ```go
-logger, err := logging.NewProductionLogger()
-logger, err := logging.NewDevelopmentLogger()
+level, err := logging.ParseLevel("info")
 ```
 
-Internally, the following loggers are used.
+Which output format and level a running process uses is decided at the DI composition root, not here: `provideLogger` in `internal/di/module/logging.go` selects the format from `APP_MODE` and the output level from `APP_LOG_LEVEL`.
 
-|Mode|Logger|
-|---|---|
-|production|JSON logger|
-|development|console logger|
-
-### Production Logger
-
-- Encoding: JSON
-- Level: Info
-- Stacktrace: Error and above
-
-### Development Logger
-
-- Encoding: Console
-- Level: Debug
-- Stacktrace: Warn and above
+|Mode|Output format|Stacktrace|
+|---|---|---|
+|production|JSON logger|Error and above|
+|development|console logger|Warn and above|
 
 ## Field
 
@@ -124,7 +114,7 @@ Supported types
 |Time|time.Time (converted to RFC3339Nano string)|
 |DurationMs|time.Duration (converted to float64 in milliseconds)|
 |Error|error|
-|Stacktrace|error (converted to stack trace string)|
+|Stacktrace|error (converted to stack trace lines as []string)|
 |Any|any|
 
 Purpose of this design
@@ -153,7 +143,7 @@ Creation
 lf := logging.NewLogFields(obsCfg, osCfg)
 ```
 
-Accepts `config.ObservabilityConfig` and `config.OperationSystemConfig` to control trace/span field attachment and timezone information.
+Accepts `config.ObservabilityConfig` and `config.OperatingSystemConfig` to control trace/span field attachment and timezone information.
 
 Use cases
 

@@ -24,14 +24,18 @@ The Controller is the **input/output boundary of the application**.
   - Convert to **DTO/VO for input**
   - Convert DTO returned from Usecase → OpenAPI type
 - Errors are returned using unified mapping defined in [apperror](../../apperror/README.md)
-- Paging is normalized using `paging.NewPageFrom1Based()`
+- Page is normalized using `paging.NewPageFrom1Based()`
 - Request ID / logging is handled by middleware (Echo + Zap)
 
 "Business logic", "DB access", and "domain model operations" are delegated to Usecase / Domain / Infra, keeping Controller thin.
 
+A handler delegates to a **single Usecase operation** per action and only shapes its result. Composing multiple Usecase calls (e.g. fetching a list and its total count separately and combining them) is application orchestration and belongs in the Usecase layer — the Usecase exposes one method returning the composed result (e.g. `{ Items, Total }`).
+
 ## What is Presenter
 
 Presenter is the conversion process from `Usecase DTO → OpenAPI response type`.
+
+When the same conversion is reused across handler methods, define it as a private `toXxxResponse(dto …) gen.XxxResponse` helper inside the handler package (e.g. `toUserResponse`). One-off conversions may stay inline in the handler body.
 
 ## Architecture
 
@@ -318,6 +322,8 @@ defer endSpan()
 Point: Controller only knows start/end of span,  
 and does not touch OpenTelemetry SDK details.
 
+Exception: a handler that calls no downstream usecase (e.g. the liveness/health/version probes) has no use for the re-bound `ctx`, so it may write `_, endSpan := s.tracer.Start(ctx)` to avoid an unused-variable error while still recording the span.
+
 #### 2. Tracer DI (observability.LayerTracer)
 
 Controller receives `observability.LayerTracer` as dependency:
@@ -417,6 +423,8 @@ type server struct {
 - Do not instantiate dependencies inside
 - Depend on interface
 
+Exception: operational endpoints that are **not** defined in OpenAPI (e.g. the Prometheus `/metrics` handler) have no generated `ServerInterface`, so they do not follow the `server` struct + `gen.NewStrictHandler` pattern. They register their own `echo.HandlerFunc` (e.g. `echo.WrapHandler(promhttp.Handler())`) directly in `BindHandler`. This carve-out is limited to non-OpenAPI ops endpoints.
+
 ### Why use fx.Invoke
 
 - Automates route registration at startup
@@ -446,9 +454,9 @@ type server struct {
 - **Never** pass `http.Request`, `http.Header`, `http.Status*`
 - Use DTO / VO (e.g., Page) / Context only
 
-#### Paging
+#### Page
 
-- Controller converts `page & per_page` to Paging via `usecase.NewPagingFrom1Based()`
+- Controller converts `page & per_page` to Page via `paging.NewPageFrom1Based()`
 - Usecase manages policy (limits/defaults)
 
 #### Error Mapping
@@ -543,7 +551,7 @@ testassert.AssertEchoRouterMethods(t, expectedMethods, e.Routes())
 ```go
 mockApp := mock_user.NewMockUsecase(ctrl)
 mockApp.EXPECT().
-    ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
+    ListUsersByKeyword(gomock.Any(), expectedParams, mockPage).
     Return(mockDTO, nil)
 ```
 
@@ -700,7 +708,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
 
-    page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+    page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
     if err != nil {
         return nil, err
     }

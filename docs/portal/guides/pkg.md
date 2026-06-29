@@ -13,26 +13,61 @@ English | [日本語](README.ja.md)
 
 Helpers used by only one feature should be placed within that feature's package.
 
+Packages that perform external I/O (e.g. `exec`, `fs`) follow a common
+shape: define an **interface** for the capability, provide a concrete implementation
+(`OS{}` etc.) that wires the real dependency, and add a
+`//go:generate mockgen` directive so callers can inject a mock in tests.
+
+### `pkg/` vs application-wide cross-cutting concerns
+
+"Referenced from multiple locations" alone is **not** sufficient. `pkg/` is for
+**context-independent, generic utilities** — code that could be lifted into any
+project unchanged and carries no knowledge of this application's domain or system
+decisions (e.g. `xerrors`, `uuid`, `ptr`, `stringkit`).
+
+Concerns that are cross-cutting but **specific to this application/system** — the
+application-wide error taxonomy (`internal/apperror`), logging (`internal/logging`),
+observability (`internal/observability`), configuration (`internal/config`) — do
+**not** belong in `pkg/` even though they are used across layers. They encode this
+system's choices (error semantics, frameworks such as zap / otel) and therefore live
+under `internal/` as cross-cutting concerns. The domain layer may depend on
+`internal/apperror` as the one permitted such kernel.
+
 ### Constraints
 
 - Must not contain business logic
 - Must not depend on `internal/` packages
 - Must not depend on infrastructure or framework-specific packages
+- Must not depend on other `pkg/` packages — the sole permitted exception is `pkg/xerrors` (enforced by depguard `independent_pkg` in `.golangci-full.yaml`)
 - Each package must have a single responsibility
 
 ## Package List
 
 |Package|Summary|Wraps|
 |---|---|---|
+|`backoff`|Exponential backoff duration (pure, clock/randomness-free)|None|
 |`datetime`|Date/time parsing|Standard library `time`|
+|`envutil`|Environment variable override (test helper)|Standard library `os`|
+|`exec`|External command execution (interface + mock)|Standard library `os/exec`|
 |`fnmeta`|Function / package name extraction|Standard library `runtime`|
+|`fs`|Filesystem operations (interface + mock)|Standard library `os`|
 |`ptr`|Pointer operations|None|
+|`retry`|Bounded-retry behavior layer (backoff + full jitter, deadline-aware)|None|
 |`safecast`|Type conversion with overflow detection|None|
 |`stringkit`|String length validation|None|
 |`uuid`|UUID value object|`github.com/google/uuid`|
 |`xerrors`|Errors with stack traces|`github.com/cockroachdb/errors`|
 
 ## Package Details
+
+### backoff
+
+Computes exponential backoff wait durations as a pure function of the attempt count, free of clock or randomness (the jitter step lives in `retry`).
+
+|Symbol|Description|
+|---|---|
+|`Exponential` (struct)|`Initial` / `Max` / `Multiplier` configuration|
+|`Duration(attempt)`|Return the base wait duration for the given attempt|
 
 ### datetime
 
@@ -50,7 +85,24 @@ Key functions
 |`ParseDateOnly`|Parse date-only format|
 |`ParseCustomLayout`|Parse with an arbitrary layout|
 
-All functions have `InLocation` variants for parsing with a specified timezone.
+All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for parsing with a specified timezone.
+
+### envutil
+
+Temporarily overrides an environment variable and returns a restore function (mainly for tests / config loading).
+
+|Function|Description|
+|---|---|
+|`Override(key, value)`|Set an env var and return a `func()` that restores the previous state|
+
+### exec
+
+Abstracts external command execution behind an interface so callers can inject a mock in tests. Production wires the `OS{}` implementation.
+
+|Symbol|Description|
+|---|---|
+|`Runner` (interface)|`Output(ctx, dir, env, name, args)` — run a command and return stdout|
+|`OS` (struct)|`os/exec`-based implementation of `Runner`|
 
 ### fnmeta
 
@@ -63,6 +115,15 @@ Primarily used for span name generation in `internal/observability`.
 |`ExtractFunctionName`|Extract method name from full function name|
 |`ExtractPackageName`|Extract package name from full function name|
 
+### fs
+
+Abstracts filesystem operations behind an interface so callers can inject a mock in tests. Production wires the `OS{}` implementation.
+
+|Symbol|Description|
+|---|---|
+|`FS` (interface)|`ReadFile` / `WriteFile` / `Glob`|
+|`OS` (struct)|`os`-based implementation of `FS`|
+
 ### ptr
 
 Pointer manipulation utilities using generics.
@@ -71,6 +132,18 @@ Pointer manipulation utilities using generics.
 |---|---|
 |`To[T]`|Create a pointer from a value|
 |`Copy[T]`|Copy a pointer (nil-safe)|
+|`Deref[T]`|Dereference a pointer, returning a fallback when nil|
+
+### retry
+
+A bounded-retry behavior layer that consumes a failure classification (`classify → bounded attempts → backoff + full jitter → deadline-aware`). Keeps `backoff` pure by confining the randomness (full jitter) here.
+
+|Symbol|Description|
+|---|---|
+|`Do`|Run a function with bounded retries while a classifier marks the error retryable|
+|`Full`|Full jitter — uniform random duration in `[0, d]`|
+|`Policy`|`MaxAttempts` + `Backoff` (`func(attempt int) time.Duration`)|
+|`Sleeper` (interface)|`Sleep(ctx, d)` wait abstraction (satisfied by `clock.Sleeper`)|
 
 ### safecast
 
@@ -95,6 +168,7 @@ A set of validation functions based on string length (rune count).
 |`StrictInRange`|Check if length is within open interval|
 |`LessThanMax`|Check if length < max|
 |`GreaterThanMin`|Check if length > min|
+|`ValidateInRange`|Check closed-interval length and also return the error message|
 
 Each function has a corresponding `ErrorMsg` function for generating validation error messages.
 
@@ -112,6 +186,10 @@ Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valu
 |`String`|Return string representation|
 |`IsNil`|Check if zero value|
 |`Equal`|Compare UUIDs|
+|`EqualPtr`|Compare against a `*UUID` (nil-safe)|
+|`Bytes`|Return the raw `[16]byte`|
+|`ToPtr`|Return a pointer to the value|
+|`ToPrimitive` / `FromPrimitive`|Convert to / from `github.com/google/uuid` (e.g. sqlc integration)|
 |`Scan` / `Value`|DB integration interface implementation|
 
 ### xerrors
@@ -124,6 +202,7 @@ Wraps `github.com/cockroachdb/errors` to provide error operations with stack tra
 |`Wrap`|Wrap an existing error|
 |`Is`|Check error identity|
 |`As`|Type-assert an error|
+|`Join`|Combine multiple errors|
 |`StackTrace`|Get stack trace string|
 
 ## Checklist for Adding a New Package

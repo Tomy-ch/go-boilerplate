@@ -6,9 +6,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestValidateInRange(t *testing.T) {
+	t.Parallel()
+
+	t.Run("範囲内の場合は ok=true・空メッセージ", func(t *testing.T) {
+		t.Parallel()
+		ok, msg := ValidateInRange("こんにちは", 3, 5)
+		assert.True(t, ok)
+		assert.Empty(t, msg)
+	})
+
+	t.Run("範囲外の場合は ok=false・理由メッセージ", func(t *testing.T) {
+		t.Parallel()
+		ok, msg := ValidateInRange("こんにちは", 1, 3)
+		assert.False(t, ok)
+		assert.Equal(t, "length must be between 1 and 3 characters (got 5)", msg)
+	})
+}
+
 func TestErrorMsgInRange(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが範囲外の場合、適切なエラーメッセージを返す", func(t *testing.T) {
+			t.Parallel()
 			lowerBound := 3
 			upperBound := 5
 			input := "こんにちは"
@@ -21,8 +42,11 @@ func TestErrorMsgInRange(t *testing.T) {
 }
 
 func TestErrorMsgMaxOrLess(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが上限を超えた場合、適切なエラーメッセージを返す", func(t *testing.T) {
+			t.Parallel()
 			upperBound := 4
 			input := "こんにちは"
 			expected := "length must be less than or equal to 4 characters (got 5)"
@@ -34,8 +58,11 @@ func TestErrorMsgMaxOrLess(t *testing.T) {
 }
 
 func TestErrorMsgMinOrMore(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが下限を下回った場合、適切なエラーメッセージを返す", func(t *testing.T) {
+			t.Parallel()
 			lowerBound := 6
 			input := "こんにちは"
 			expected := "length must be greater than or equal to 6 characters (got 5)"
@@ -47,8 +74,11 @@ func TestErrorMsgMinOrMore(t *testing.T) {
 }
 
 func TestErrorMsgStrictInRange(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが厳密な範囲外の場合、適切なエラーメッセージを返す", func(t *testing.T) {
+			t.Parallel()
 			lowerBound := 3
 			upperBound := 5
 			input := "こんにちは"
@@ -61,8 +91,11 @@ func TestErrorMsgStrictInRange(t *testing.T) {
 }
 
 func TestErrorMsgLessThanMax(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが上限以上の場合、適切なエラーメッセージを返す", func(t *testing.T) {
+			t.Parallel()
 			upperBound := 4
 			input := "こんにちは"
 			expected := "length must be less than 4 characters (got 5)"
@@ -74,8 +107,11 @@ func TestErrorMsgLessThanMax(t *testing.T) {
 }
 
 func TestErrorMsgGreaterThanMin(t *testing.T) {
+	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 		t.Run("文字列の長さが下限以下の場合、適切なエラーメッセージを返す", func(t *testing.T) {
+			t.Parallel()
 			lowerBound := 6
 			input := "こんにちは"
 			expected := "length must be greater than 6 characters (got 5)"

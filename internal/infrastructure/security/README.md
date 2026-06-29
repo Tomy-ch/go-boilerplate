@@ -9,7 +9,7 @@ English | [日本語](README.ja.md)
 ```mermaid
 flowchart TB
     subgraph "Usecase Layer"
-        IF["security.Encrypter interface"]
+        IF["security.Hasher interface"]
     end
     subgraph "Infrastructure Layer"
         Impl["bcrypter impl"]
@@ -18,21 +18,13 @@ flowchart TB
     Impl -. implements .-> IF
 ```
 
-Implements the `security.Encrypter` interface (`internal/usecase/boundary/security`) in the Infrastructure layer. Usecase / Domain do not depend on bcrypt implementation details.
-
-## Public API
-
-|Function / Method|Description|
-|---|---|
-|`NewBcryptHasher(secCfg)`|Create `security.Encrypter` using `BcryptCost` from `config.SecurityConfig`|
-|`Hash(password)`|Hash a password with bcrypt|
-|`Compare(hash, password)`|Compare hash with plaintext password (mismatch returns `false, nil`)|
+Implements the `security.Hasher` interface (`internal/usecase/boundary/security`) in the Infrastructure layer. Usecase / Domain do not depend on bcrypt implementation details.
 
 ## Design Policy
 
 - bcrypt cost is externalized via `config.SecurityConfig.BcryptCost()`
 - Password mismatch absorbs `bcrypt.ErrMismatchedHashAndPassword` and returns `false, nil` (not treated as an error)
-- Other errors (invalid cost, etc.) are returned as-is
+- Other errors (invalid cost, etc.) are wrapped as `apperror.ErrInternal` (per the Infrastructure layer rule that external errors must be converted into application-wide errors)
 
 ## DI Registration
 

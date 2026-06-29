@@ -7,7 +7,6 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user/search/query"
-	"go-boilerplate/pkg/ptr"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,25 +15,25 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	tf := observability.NewNoopTracerFactory(t)
 	expected := &service{
 		tracer: tf.Infra(),
-		db:     loggingDB,
+		db:     testDB,
 	}
-	actual := New(loggingDB, tf)
+	actual := New(testDB, tf)
 	assert.Equal(t, expected, actual)
 }
 
 func Test_service_FindByFilter(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	repo := &service{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -88,7 +87,7 @@ func Test_service_FindByFilter(t *testing.T) {
 
 				actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
 					Keywords: keywords,
-					Active:   ptr.To(true),
+					Active:   new(true),
 				}, limit, offset)
 				require.NoError(t, err)
 
@@ -113,7 +112,7 @@ func Test_service_FindByFilter(t *testing.T) {
 
 				actual, err := repo.FindByFilter(ctx, &query.UserSearchFilter{
 					Keywords: keywords,
-					Active:   ptr.To(false),
+					Active:   new(false),
 				}, limit, offset)
 				require.NoError(t, err)
 
@@ -190,12 +189,12 @@ func Test_service_FindByFilter(t *testing.T) {
 func Test_service_CountByFilter(t *testing.T) {
 	t.Parallel()
 
-	loggingDB := testkit.NewTestLoggingProvider(t)
+	testDB := testkit.NewTestDB(t)
 	lt := observability.NewMockInfraLayerTracer(t)
 
 	repo := &service{
 		tracer: lt,
-		db:     loggingDB,
+		db:     testDB,
 	}
 
 	t.Run("正常系", func(t *testing.T) {

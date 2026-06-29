@@ -1,0 +1,422 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>worker - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package worker
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/worker&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package worker は、pull-ack クラスのキューを consume する worker の seam（port）と
+broker 非依存のメッセージ封筒を定義します。engine（controller 層）と
+broker adapter（infrastructure 層）の双方が依存する境界です。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+			
+			
+				
+				<dd><a href="#Consumer">type Consumer</a></dd>
+				
+				
+			
+				
+				<dd><a href="#FailureHandler">type FailureHandler</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Handler">type Handler</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Message">type Message</a></dd>
+				
+				
+			
+				
+				<dd><a href="#State">type State</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Worker">type Worker</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/consumer.go.html">consumer.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/failure.go.html">failure.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/handler.go.html">handler.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/message.go.html">message.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/state.go.html">state.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/worker.go.html">worker.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				
+				<pre>const (
+    <span class="comment">// ReservedKeyPrefix は、Attributes のうち engine が解釈せず素通しする</span>
+    <span class="comment">// broker 固有値（lease/handle 等）の予約キーに付ける接頭辞です。</span>
+    <span id="ReservedKeyPrefix">ReservedKeyPrefix</span> = &#34;_&#34;
+
+    <span class="comment">// AttrReceiptHandle は、broker のメッセージ識別子（SQS の receipt handle 等）を</span>
+    <span class="comment">// Attributes に隔離するための予約キーです。adapter が設定し、Ack/Nack/Extend 時に読み戻します。</span>
+    <span id="AttrReceiptHandle">AttrReceiptHandle</span> = <a href="#ReservedKeyPrefix">ReservedKeyPrefix</a> + &#34;receipt_handle&#34;
+)</pre>
+			
+		
+		
+		
+		
+			
+			
+			<h2 id="Consumer">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/consumer.go.html?s=637:1669#L6">Consumer</a>
+				<a class="permalink" href="#Consumer">¶</a>
+				
+				
+			</h2>
+			<p>Consumer は、pull-ack クラスのキューに対する seam です。
+</p><p>per-message の再配送遅延は first-class な port capability です。engine が
+再配送 backoff の policy（ReceiveCount からの指数 + jitter）を決め、adapter は native 機構
+（SQS ChangeMessageVisibility 等）でそれを honor します。これは broker 非依存の
+circuit（poll ループ全体の intake throttle）とは別レイヤで、両者は併存します。
+
+			</p><pre>type Consumer interface {
+    <span class="comment">// Receive は long-poll で最大 limit 件を取得します。ctx 完了 or メッセージ到着までブロックします。</span>
+    Receive(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, limit <a href="../../../../../builtin/#int">int</a>) ([]<a href="#Message">Message</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// Ack は処理成功後にのみ呼びます（process → ack を厳守）。</span>
+    Ack(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>) <a href="../../../../../builtin/#error">error</a>
+    <span class="comment">// Nack はメッセージを即時に再配送へ戻します（遅延なし）。</span>
+    Nack(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>) <a href="../../../../../builtin/#error">error</a>
+    <span class="comment">// NackWithBackoff は、最低 d だけ遅延させてからメッセージを再配送へ戻します。</span>
+    <span class="comment">// adapter は native 機構（SQS ChangeMessageVisibility 等）で遅延を honor します。</span>
+    <span class="comment">// d&lt;=0 は Nack と等価です。delay は best-effort ではなく port が要求する capability です。</span>
+    NackWithBackoff(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>, d <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) <a href="../../../../../builtin/#error">error</a>
+    <span class="comment">// Extend は処理 lease/visibility を延長します（長時間 handler のハートビート）。</span>
+    Extend(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>, d <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>) <a href="../../../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="FailureHandler">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/failure.go.html?s=367:584#L1">FailureHandler</a>
+				<a class="permalink" href="#FailureHandler">¶</a>
+				
+				
+			</h2>
+			<p>FailureHandler は、永久失敗（Permanent）メッセージの退避先 seam（dead-letter）です。
+engine は Permanent と分類したメッセージを Fail へ流してから、source を Ack で除去します。
+
+			</p><pre>type FailureHandler interface {
+    <span class="comment">// Fail は、永久失敗メッセージを退避先へ送ります。cause は分類のもとになったエラーです。</span>
+    Fail(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>, cause <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Handler">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/handler.go.html?s=267:584#L1">Handler</a>
+				<a class="permalink" href="#Handler">¶</a>
+				
+				
+			</h2>
+			<p>Handler は、メッセージに対する業務処理です。冪等であることが契約です（at-least-once 前提）。
+
+			</p><pre>type Handler interface {
+    <span class="comment">// Handle は、1 件のメッセージを処理します。返すエラーの分類は apperror のセンチネルで表明します</span>
+    <span class="comment">// （ErrRetryable / ErrPermanent / ErrFatal。未分類は engine が Retryable 既定で扱います）。</span>
+    Handle(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Message">Message</a>) <a href="../../../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Message">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/message.go.html?s=855:1568#L7">Message</a>
+				<a class="permalink" href="#Message">¶</a>
+				
+				
+			</h2>
+			<p>Message は、broker 非依存のメッセージ封筒です。
+
+			</p><pre>type Message struct {
+<span id="Message.ID"></span>    <span class="comment">// ID は broker のメッセージ ID です（ログ・冪等キーのヒント）。</span>
+    ID <a href="../../../../../builtin/#string">string</a>
+<span id="Message.Body"></span>    <span class="comment">// Body はメッセージ本文です。</span>
+    Body []<a href="../../../../../builtin/#byte">byte</a>
+<span id="Message.Attributes"></span>    <span class="comment">// Attributes は engine が解釈せず素通しする値（traceparent 等）と、</span>
+    <span class="comment">// ReservedKeyPrefix 付きの broker 固有値（handle/lease）を運びます。</span>
+    Attributes map[<a href="../../../../../builtin/#string">string</a>]<a href="../../../../../builtin/#string">string</a>
+<span id="Message.ReceiveCount"></span>    <span class="comment">// ReceiveCount は再配送回数です（poison 検出に使用）。</span>
+    ReceiveCount <a href="../../../../../builtin/#int">int</a>
+<span id="Message.PartitionKey"></span>    <span class="comment">// PartitionKey は同一 key のメッセージを直列化するための正規化キーです（順序不要なら空）。</span>
+    <span class="comment">// adapter が broker 値（SQS の MessageGroupId 等）を正規化して詰めます。</span>
+    PartitionKey <a href="../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="State">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/state.go.html?s=245:709#L1">State</a>
+				<a class="permalink" href="#State">¶</a>
+				
+				
+			</h2>
+			<p>State は、起動対象の worker 名・引数と、engine の実行結果を返す done チャネルを保持します。
+
+			</p><pre>type State interface {
+    <span class="comment">// Set は、起動対象の worker 名・引数と done チャネルを設定します。</span>
+    <span class="comment">// done はバッファ付き（cap≥1）であること。engine 停止時に結果を 1 度送って close します。</span>
+    Set(name <a href="../../../../../builtin/#string">string</a>, args []<a href="../../../../../builtin/#string">string</a>, done chan <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// Snapshot は、現在の起動対象と done チャネルをスナップショットとして取得します。</span>
+    Snapshot() (name <a href="../../../../../builtin/#string">string</a>, args []<a href="../../../../../builtin/#string">string</a>, done chan <a href="../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Worker">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/worker.go.html?s=299:767#L1">Worker</a>
+				<a class="permalink" href="#Worker">¶</a>
+				
+				
+			</h2>
+			<p>Worker は、選択起動の単位です。1 worker type = 1 Worker。
+engine は Name で worker を選択し、その Consumer から引いて Handler で処理します。
+
+			</p><pre>type Worker interface {
+    <span class="comment">// Name は、worker type の名前を返します（サブコマンド引数で選択されます）。</span>
+    Name() <a href="../../../../../builtin/#string">string</a>
+    <span class="comment">// Consumer は、この worker が消費するキューの Consumer を返します。</span>
+    Consumer() <a href="#Consumer">Consumer</a>
+    <span class="comment">// Handler は、業務処理を返します。</span>
+    Handler() <a href="#Handler">Handler</a>
+    <span class="comment">// FailureHandler は、Permanent メッセージの退避先を返します（nil なら engine 既定）。</span>
+    FailureHandler() <a href="#FailureHandler">FailureHandler</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -1,4 +1,4 @@
-name: Application Deployment Workflow
+name: Deploy App
 
 on:
   push:
@@ -7,13 +7,8 @@ on:
       - staging
       - develop
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
-  packages: write
 
 jobs:
   build:
@@ -23,13 +18,24 @@ jobs:
       deployments: write
       packages: write
       id-token: write
+      attestations: write
+    concurrency:
+      group: ${{ github.workflow }}-build-${{ github.ref }}-${{ matrix.target }}
+      cancel-in-progress: true
+    strategy:
+      matrix:
+        include:
+          - target: runtime
+            suffix: ""
 
     steps:
-      - name: Fetch & Checkout repository
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -40,29 +46,24 @@ jobs:
           VERSION=$(git describe --tags --abbrev=0 --first-parent 2>/dev/null || echo "none")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get revision (commit SHA)
-        id: meta_revision
-        run: |
-          echo "revision=${GITHUB_SHA}" >> $GITHUB_OUTPUT
-
       - name: Get build date
         id: meta_date
         run: |
           echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
 
-      - name: Generate image tags
-        id: meta_tags
+      - name: Define build environment
+        id: meta_env
         run: |
-          VERSION="${{ steps.meta_version.outputs.version }}"
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          if [[ "$VERSION" == "none" ]]; then
-            IMAGE_TAG=$SHORT_SHA
+          if [[ "${{ github.ref_name }}" == "production" ]]; then
+            echo "app_env=prd" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
+            echo "app_env=stg" >> $GITHUB_OUTPUT
           else
-            IMAGE_TAG=${VERSION}-${SHORT_SHA}
+            echo "app_env=dev" >> $GITHUB_OUTPUT
           fi
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+      # WARN: 署名 / attestation は後段すべてこの meta_registry を参照する（ghcr.io はハードコードしていない）。
+      #       他レジストリへ移す場合は、この registry 値と下の Login to registry を必ず差し替えること。
       - name: Define registry
         id: meta_registry
         run: |
@@ -70,9 +71,30 @@ jobs:
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "registry=ghcr.io/$OWNER" >> $GITHUB_OUTPUT
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+      - name: Generate image tags
+        id: meta_tags
+        env:
+          VERSION: ${{ steps.meta_version.outputs.version }}
+          REGISTRY: ${{ steps.meta_registry.outputs.registry }}
+          SUFFIX: ${{ matrix.suffix }}
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          DELIM="EOF_$(openssl rand -hex 8)"
+          {
+            echo "tags<<${DELIM}"
+            echo "${REGISTRY}/app:${SHORT_SHA}${SUFFIX}"
+            if [[ "$VERSION" != "none" ]]; then
+              echo "${REGISTRY}/app:${VERSION}-${SHORT_SHA}${SUFFIX}"
+              echo "${REGISTRY}/app:${VERSION}${SUFFIX}"
+            fi
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+
+      # WARN: 他レジストリへ移行する場合はこのステップを差し替えること。
+      #       後段のビルド/署名/attestation はここで確立した認証セッションに依存する。
       - name: Login to registry
         run: |
           echo "Login to container registry here (ECR/GCR/ACR/GHCR)"
@@ -81,75 +103,81 @@ jobs:
 
       - name: Generate vendor
         run: |
-          go mod tidy
           go mod vendor
 
-      - name: Build and push Runtime image
-        uses: docker/build-push-action@v7
+      - name: Build and push image (${{ matrix.target }})
+        id: build
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         with:
           context: .
           file: docker/server/Dockerfile
-          target: runtime
+          target: ${{ matrix.target }}
           push: true
-          tags: |
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_tags.outputs.short_sha }}
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_tags.outputs.image_tag }}
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_version.outputs.version }}
+          tags: ${{ steps.meta_tags.outputs.tags }}
           build-args: |
             VERSION=${{ steps.meta_version.outputs.version }}
-            REVISION=${{ steps.meta_revision.outputs.revision }}
+            REVISION=${{ github.sha }}
             BUILD_DATE=${{ steps.meta_date.outputs.build_date }}
+            APP_ENV=${{ steps.meta_env.outputs.app_env }}
           labels: |
             org.opencontainers.image.version=${{ steps.meta_version.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.meta_revision.outputs.revision }}
+            org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.meta_date.outputs.build_date }}
             org.opencontainers.image.source=${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
           provenance: false
 
-      - name: Build and push Migration image
-        uses: docker/build-push-action@v7
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
-          context: .
-          file: docker/server/Dockerfile
-          target: migration
-          push: true
-          tags: |
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_tags.outputs.short_sha }}-migration
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_tags.outputs.image_tag }}-migration
-            ${{ steps.meta_registry.outputs.registry }}/app:${{ steps.meta_version.outputs.version }}-migration
-          build-args: |
-            VERSION=${{ steps.meta_version.outputs.version }}
-            REVISION=${{ steps.meta_revision.outputs.revision }}
-            BUILD_DATE=${{ steps.meta_date.outputs.build_date }}
-          labels: |
-            org.opencontainers.image.version=${{ steps.meta_version.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.meta_revision.outputs.revision }}
-            org.opencontainers.image.created=${{ steps.meta_date.outputs.build_date }}
-            org.opencontainers.image.source=${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
+          subject-name: ${{ steps.meta_registry.outputs.registry }}/app
+          subject-digest: ${{ steps.build.outputs.digest }}
+          # WARN: push-to-registry は attestation を OCI 1.1 referrer としてレジストリへ添付する。
+          #       GitHub Attestation store への記録はレジストリ非依存で常に行われるが、この referrer 添付は
+          #       対象レジストリが OCI referrer 対応の場合のみ成功する。非対応レジストリでは false にし、
+          #       GitHub 側の記録（+ cosign 署名）のみで検証する構成にフォールバックすること。
+          push-to-registry: true
+
+      - name: Sign image (cosign keyless)
+        env:
+          IMAGE_DIGEST_REF: ${{ steps.meta_registry.outputs.registry }}/app@${{ steps.build.outputs.digest }}
+        run: |
+          cosign sign --yes "${IMAGE_DIGEST_REF}"
+
+      # NOTE: image-scan.yaml の SBOM とは役割が異なる意図的な重複。どちらか一方を消さないこと。
+      #       この SBOM は push 済み digest を対象に attestation へ添付する。
+      - name: Generate SBOM (SPDX) for pushed image
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ steps.meta_registry.outputs.registry }}/app@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.target }}.spdx.json
+          upload-artifact: false
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4
+        with:
+          subject-name: ${{ steps.meta_registry.outputs.registry }}/app
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom-${{ matrix.target }}.spdx.json
+          # WARN: 上記 Attest build provenance と同じく OCI referrer 添付。非対応レジストリでは false にする。
+          push-to-registry: true
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
+    concurrency:
+      group: ${{ github.workflow }}-deploy-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Define environment
-        run: |
-          if [[ "${{ github.ref_name }}" == "production" ]]; then
-            echo "ENV=prd" >> $GITHUB_ENV
-          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
-            echo "ENV=stg" >> $GITHUB_ENV
-          else
-            echo "ENV=dev" >> $GITHUB_ENV
-          fi
-
       - name: Configure cloud credentials
         run: |
           echo "Configure authentication for target cloud environment"
@@ -167,9 +195,9 @@ jobs:
           echo "Note: Please modify this section according to your environment"
           echo "- Must be executed exactly once per deployment"
           echo "- Should be triggered from CI or a job system"
-          echo "- ENV will be passed to the container at runtime"
+          echo "- ENV はブランチ別イメージにビルド時固定済み（実行時注入は不要）"
           echo "Example (local/docker run):"
-          echo "docker run -e ENV=\${ENV} <image>-migration"
+          echo "docker run <image> /app/server migrate-up   # runtime イメージを command override で実行"
           echo "    - AWS: ECS RunTask / EKS (Kubernetes Job)"
           echo "    - GCP: Cloud Run Job/ GKE (Kubernetes Job)"
           echo "    - Azure: Container App Job / AKS(Kubernetes Job)"
@@ -181,10 +209,10 @@ jobs:
           echo "Note: Please modify this section according to your environment"
           echo "- Application must start in 'serve' mode only"
           echo "- Migration must be completed beforehand"
-          echo "- ENV must be passed to the container"
+          echo "- ENV はイメージにビルド時固定済み（実行時注入は不要）"
           echo "Example (local/docker run):"
-          echo "docker run -e ENV=\${ENV} <image>"
+          echo "docker run <image>"
           echo "- Deployment mechanism depends on environment"
-          echo "    - AWS: ECS / EKS / App Runner (set ENV in task definition / pod spec)"
-          echo "    - GCP: Cloud Run / GKE (set ENV in service / pod)"
-          echo "    - Azure: Container Apps / AKS (set ENV in container settings)"
+          echo "    - AWS: ECS / EKS / App Runner"
+          echo "    - GCP: Cloud Run / GKE"
+          echo "    - Azure: Container Apps / AKS"

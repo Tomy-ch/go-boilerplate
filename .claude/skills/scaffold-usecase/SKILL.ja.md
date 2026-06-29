@@ -118,7 +118,7 @@ subagent が観点を返さない場合は最小デフォルトで継続、警�
 実装ファイル convention:
 
 - `package <package>`（lowercase aggregate name）
-- ファイル先頭に `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE`
+- ファイル先頭に `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE`（リポジトリ共通の標準ディレクティブ・全 interface ファイルで同一）
 - `type Usecase interface { ... }` を spec Interface から
 - DTO は `type XxxDTO struct { ... }` を spec DTOs から
 - `type usecase struct { tracer observability.LayerTracer; <deps...> }` を spec Dependencies から
@@ -143,7 +143,7 @@ subagent が観点を返さない場合は最小デフォルトで継続、警�
 make gen-api
 ```
 
-新 usecase ファイルの `//go:generate mockgen` を処理し `internal/usecase/<package>/mock/mock_<package>_usecase.go` を生成。ファイル存在確認。
+新 usecase ファイルの `//go:generate mockgen` を処理し `internal/usecase/<package>/mock/mock_<package>_usecase.go.gen.go` を生成。ファイル存在確認。
 
 ## Step 6. 検証
 
@@ -183,6 +183,7 @@ commit しない。次の scaffold skill を起動しない。
 
 ## 制約事項
 
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。
 - ❌ spec に無いメソッド / DTO / dependency / workflow を発明
 - ❌ business rule の実装（domain entity の責務）
 - ❌ infrastructure への直接アクセス（Repository / Boundary interface 経由のみ）

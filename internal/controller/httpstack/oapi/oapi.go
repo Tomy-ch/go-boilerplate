@@ -12,7 +12,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Middleware は、認証情報を抽出するミドルウェアを返します。
+// Middleware は、OpenAPI スキーマに基づくリクエストバリデーション（認証は authFunc 経由）を行うミドルウェアを返します。
+// バリデーション実行前にリクエストコンテキストへ authn スロット（ctxhelper.WithAuthn）を注入するため、authFunc はそのスロットへ認証結果を書き込めます。
 func Middleware(
 	spec *openapi3.T,
 	skipper echomw.Skipper,
@@ -29,7 +30,7 @@ func Middleware(
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
-			req = req.WithContext(ctxhelper.SetEchoContext(req.Context(), c))
+			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 			c.SetRequest(req)
 
 			return oapiValidator(next)(c)

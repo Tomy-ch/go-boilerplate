@@ -3,8 +3,8 @@ package hook
 import (
 	"context"
 	"testing"
-	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
@@ -19,95 +19,118 @@ import (
 func TestRegisterJobHooks(t *testing.T) {
 	t.Parallel()
 
-	t.Run("ジョブが無い場合はShutdownされログが出力される", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
+		t.Run("start_stopフックが登録されstartでジョブが実行される", func(t *testing.T) {
+			t.Parallel()
 
-		var startFn func(context.Context) error
+			ctrl := gomock.NewController(t)
 
-		reg := mock_lifecycle.NewMockRegistrar(ctrl)
-		sd := mock_shutdowner.NewMockShutdowner(ctrl)
-		runner := mock_job.NewMockRunner(ctrl)
-		logger := mock_logging.NewMockLogger(ctrl)
-		named := mock_logging.NewMockLogger(ctrl)
+			var startFn func(context.Context) error
+			reg := mock_lifecycle.NewMockRegistrar(ctrl)
+			sd := mock_shutdowner.NewMockShutdowner(ctrl)
+			runner := mock_job.NewMockRunner(ctrl)
+			logger := mock_logging.NewMockLogger(ctrl)
 
-		// 登録された start 関数を取得する
-		dummy := func(context.Context) error { return nil }
-		reg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-			startFn = args[0].(func(context.Context) error)
-		}).Times(1)
+			dummy := func(context.Context) error { return nil }
+			reg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
+				fn, ok := args[0].(func(context.Context) error)
+				require.True(t, ok)
+				startFn = fn
+			}).Times(1)
+			// SupervisedRunner 化により OnStop（停止時キャンセル）も登録される。
+			reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Times(1)
 
-		// Snapshot が nil を返す場合：ログ出力と Shutdown を行う経路
-		state := mock_job.NewMockState(ctrl)
-		state.EXPECT().Snapshot().Return("", []string{}, nil).Times(1)
+			doneCh := make(chan error, 1)
+			state := mock_job.NewMockState(ctrl)
+			state.EXPECT().Snapshot().Return("job-x", []string{"a"}, doneCh).Times(1)
+			runner.EXPECT().Run(gomock.Any(), "job-x", []string{"a"}).Return(nil).Times(1)
+			sd.EXPECT().Shutdown().Return(nil).Times(1)
 
-		// ロガーの Named と Info の呼び出しを期待する
-		logger.EXPECT().Named("job.Hooks").Return(named).Times(1)
-		named.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+			osCfg := config.NewOperatingSystemConfig(config.MockConfigForTest(t))
+			RegisterJobHooks(reg, sd, runner, logger, osCfg, state)
 
-		sd.EXPECT().Shutdown().Return(nil).Times(1)
+			require.NotNil(t, startFn)
+			require.NoError(t, startFn(context.Background()))
 
-		// runner は呼ばれないことを期待する
-		runner.EXPECT().Run(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-
-		cfg := config.MockConfigForTest(t)
-		osCfg := config.NewOperationSystemConfig(cfg)
-
-		RegisterJobHooks(reg, sd, runner, logger, osCfg, state)
-
-		// 登録された start フックを呼び出す
-		require.NotNil(t, startFn)
-		require.NoError(t, startFn(context.Background()))
-
-		// ゴルーチンが実行される時間を与える（Shutdown 呼び出しは ctrl.Finish で gomock が検証）
-		time.Sleep(50 * time.Millisecond)
+			// goroutine の完了を done のクローズで待つ（sleep 不要・決定的）。
+			require.NoError(t, <-doneCh)
+			_, ok := <-doneCh
+			require.False(t, ok)
+		})
 	})
+}
 
-	t.Run("ジョブがある場合はrunnerが実行されdoneに結果が送られる", func(t *testing.T) {
+func TestRunJobAndShutdown(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
+		t.Run("ジョブが無い場合はログ出力のみで停止する", func(t *testing.T) {
+			t.Parallel()
 
-		var startFn func(context.Context) error
+			ctrl := gomock.NewController(t)
+			sd := mock_shutdowner.NewMockShutdowner(ctrl)
+			runner := mock_job.NewMockRunner(ctrl)
+			logger := mock_logging.NewMockLogger(ctrl)
+			named := mock_logging.NewMockLogger(ctrl)
 
-		reg := mock_lifecycle.NewMockRegistrar(ctrl)
-		sd := mock_shutdowner.NewMockShutdowner(ctrl)
-		runner := mock_job.NewMockRunner(ctrl)
-		logger := mock_logging.NewMockLogger(ctrl)
+			state := mock_job.NewMockState(ctrl)
+			state.EXPECT().Snapshot().Return("", []string{}, nil).Times(1)
+			logger.EXPECT().Named("job.Hooks").Return(named).Times(1)
+			named.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+			sd.EXPECT().Shutdown().Return(nil).Times(1)
+			runner.EXPECT().Run(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-		dummy := func(context.Context) error { return nil }
-		reg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-			startFn = args[0].(func(context.Context) error)
-		}).Times(1)
+			osCfg := config.NewOperatingSystemConfig(config.MockConfigForTest(t))
+			runJobAndShutdown(context.Background(), sd, runner, logger, osCfg, state)
+		})
 
-		// バッファ付きの done チャネルを持つ state を準備
-		doneCh := make(chan error, 1)
-		state := mock_job.NewMockState(ctrl)
-		state.EXPECT().Snapshot().Return("job-x", []string{"a", "b"}, doneCh).Times(1)
-		runner.EXPECT().Run(gomock.Any(), "job-x", []string{"a", "b"}).DoAndReturn(func(_ context.Context, _ string, _ []string) error {
-			return nil
-		}).Times(1)
+		t.Run("ジョブがある場合はrunnerが実行されdoneに結果が送られる", func(t *testing.T) {
+			t.Parallel()
 
-		sd.EXPECT().Shutdown().Return(nil).Times(1)
+			ctrl := gomock.NewController(t)
+			sd := mock_shutdowner.NewMockShutdowner(ctrl)
+			runner := mock_job.NewMockRunner(ctrl)
+			logger := mock_logging.NewMockLogger(ctrl)
 
-		cfg := config.MockConfigForTest(t)
-		osCfg := config.NewOperationSystemConfig(cfg)
+			doneCh := make(chan error, 1)
+			state := mock_job.NewMockState(ctrl)
+			state.EXPECT().Snapshot().Return("job-x", []string{"a", "b"}, doneCh).Times(1)
+			runner.EXPECT().Run(gomock.Any(), "job-x", []string{"a", "b"}).Return(nil).Times(1)
+			sd.EXPECT().Shutdown().Return(nil).Times(1)
 
-		RegisterJobHooks(reg, sd, runner, logger, osCfg, state)
+			osCfg := config.NewOperatingSystemConfig(config.MockConfigForTest(t))
+			runJobAndShutdown(context.Background(), sd, runner, logger, osCfg, state)
 
-		require.NotNil(t, startFn)
-		require.NoError(t, startFn(context.Background()))
+			require.NoError(t, <-doneCh)
+			_, ok := <-doneCh
+			require.False(t, ok)
+		})
+	})
+}
 
-		// done チャネルから結果を待つ（runner は nil を返す想定）
-		select {
-		case v := <-doneCh:
-			require.NoError(t, v)
-		case <-time.After(200 * time.Millisecond):
-			t.Fatalf("did not receive done value")
-		}
+func TestShutdown(t *testing.T) {
+	t.Parallel()
 
-		// ゴルーチンが実行される時間を与える（Shutdown 呼び出しは ctrl.Finish で gomock が検証）
-		time.Sleep(50 * time.Millisecond)
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Shutdown失敗時はエラーログが出力される", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sd := mock_shutdowner.NewMockShutdowner(ctrl)
+			logger := mock_logging.NewMockLogger(ctrl)
+			named := mock_logging.NewMockLogger(ctrl)
+
+			sd.EXPECT().Shutdown().Return(assert.AnError).Times(1)
+			logger.EXPECT().Named("job.Hooks").Return(named).Times(1)
+			named.EXPECT().Error(gomock.Any(), gomock.Any()).Times(1)
+
+			shutdown(sd, logger)
+		})
 	})
 }

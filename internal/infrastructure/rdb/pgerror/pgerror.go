@@ -1,4 +1,4 @@
-// Package pgerror は、PostgreSQL固有の処理を提供します。
+// Package pgerror は、PostgreSQL エラー（SQLSTATE・接続断・context タイムアウト）をアプリケーションエラー（apperror）へ正規化する関数群と、retryable / lock-timeout / unavailable 判定述語を提供します。
 package pgerror
 
 import (
@@ -14,40 +14,54 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+// sqlstateToAppError は、PostgreSQL の SQLSTATE をアプリケーションエラーへ対応付けます。
+var sqlstateToAppError = map[string]error{
+	"23505": apperror.ErrConflict,
+	"23503": apperror.ErrInvalidArgument,
+	"23502": apperror.ErrInvalidArgument,
+	"23514": apperror.ErrInvalidArgument,
+	"22001": apperror.ErrInvalidArgument,
+	"22P02": apperror.ErrInvalidArgument,
+	"42501": apperror.ErrPermissionDenied,
+	"40001": apperror.ErrUnavailable,
+	"40P01": apperror.ErrUnavailable,
+	"57014": apperror.ErrUnavailable,
+}
+
 // NormalizeError は、PostgreSQLのエラーをアプリケーション固有のエラーに変換します。
-// Infrastructure層から返されるPostgreSQLエラーを一貫した形で処理するために使用します。
+// 既に正規化済みの apperror はそのまま返します。
 func NormalizeError(err error) error {
 	if err == nil {
 		return nil
 	}
 
+	if apperror.IsAppError(err) {
+		return err
+	}
+
 	if errors.Is(err, pgx.ErrNoRows) {
-		return xerrors.Wrap(apperror.ErrNotFound, err.Error())
+		return xerrors.Join(apperror.ErrNotFound, err)
 	}
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
-		switch pgErr.Code {
-		case "23505": // ユニーク制約違反
-			return xerrors.Wrap(apperror.ErrConflict, err.Error())
-		case "23503", "23502", "23514", "22001", "22P02":
-			// 外部キー制約違反 / NOT NULL制約違反 / チェック制約違反 / 文字数超過 / 型変換エラー
-			return xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
-		case "42501": // 権限不足
-			return xerrors.Wrap(apperror.ErrPermissionDenied, err.Error())
-		case "40001", "40P01": // 直列化失敗 / トランザクションのデッドロック(リトライ可能)
-			return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
-		case "57014": // クエリのキャンセル
-			return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+		if appErr, ok := sqlstateToAppError[pgErr.Code]; ok {
+			return xerrors.Join(appErr, err)
 		}
 	}
-	if IsUnavailable(err) { // 接続関連エラー
-		return xerrors.Wrap(apperror.ErrUnavailable, err.Error())
+
+	if errors.Is(err, context.Canceled) {
+		return xerrors.Join(apperror.ErrCanceled, err)
 	}
-	return xerrors.Wrap(apperror.ErrInternal, err.Error())
+
+	if IsUnavailable(err) {
+		return xerrors.Join(apperror.ErrUnavailable, err)
+	}
+
+	return xerrors.Join(apperror.ErrInternal, err)
 }
 
-// NormalizeExecResult は、影響行数を返す書き込み系（sqlc `:execrows`）の結果を正規化します。
+// NormalizeExecResult は、影響行数を返す書き込み系クエリの結果を正規化します。
 // エラーは NormalizeError と同じ規則で変換し、エラーが無くても影響行数が 0 の場合は
 // 対象が存在しないとみなして ErrNotFound を返します（UPDATE / DELETE のサイレント成功を防ぐ）。
 func NormalizeExecResult(affected int64, err error) error {
@@ -60,24 +74,21 @@ func NormalizeExecResult(affected int64, err error) error {
 	return nil
 }
 
-// IsUnavailable は、与えられたエラーがデータベースの接続不可エラーであるかを判定します。
+// IsUnavailable は、DB が利用不可能な状態を示すエラーかを判定します。context.DeadlineExceeded・net.Error・PostgreSQL 接続例外クラス(08xxx) を対象とします。
 func IsUnavailable(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	// context のタイムアウト
 	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 
-	// ネットワーク／ドライバ系
 	var ne net.Error
-	if errors.As(err, &ne) && ne.Timeout() {
+	if errors.As(err, &ne) {
 		return true
 	}
 
-	// PostgreSQL の connection exception (SQLSTATE 08XXX)
 	return isPgConnectionError(err)
 }
 
@@ -88,4 +99,19 @@ func isPgConnectionError(err error) bool {
 		return false
 	}
 	return strings.HasPrefix(pgErr.Code, "08")
+}
+
+// IsLockNotAvailable は、lock_timeout 失効によるエラーであるかを判定します。
+func IsLockNotAvailable(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "55P03"
+}
+
+// IsRetryableTxError は、リトライで解消しうる tx エラーかを判定します。
+// 40001 = serialization_failure, 40P01 = deadlock_detected。
+// 写像後の sentinel（両者は ErrUnavailable へ写像される）ではなく生 SQLSTATE で判定し、
+// 接続断など他の ErrUnavailable をリトライ対象に巻き込まないようにします。
+func IsRetryableTxError(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && (pgErr.Code == "40001" || pgErr.Code == "40P01")
 }

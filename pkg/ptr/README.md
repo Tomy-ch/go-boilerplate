@@ -4,13 +4,9 @@ English | [日本語](README.ja.md)
 
 Pointer manipulation utilities using generics.
 
-## Public API
+## Role
 
-|Function|Description|
-|---|---|
-|`To[T](v T) *T`|Create a pointer from a value|
-|`Copy[T](v *T) *T`|Copy a pointer (returns nil if input is nil)|
-|`Deref[T](p *T, fallback T) T`|Dereference a pointer, or return fallback if nil|
+Centralizes nil-safe conversions between values and pointers and defensive copying of pointer fields, so callers do not repeat manual nil-checks or accidentally share mutable pointer state. These conversions recur wherever optional fields cross the boundary between outer-layer DTOs and domain values, so a single generic helper keeps that boilerplate consistent and framework-agnostic.
 
 ## Notes
 

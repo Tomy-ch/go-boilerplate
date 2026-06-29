@@ -11,38 +11,47 @@ const (
 	errMsgGreaterThanMin = "length must be greater than %d characters (got %d)"
 )
 
-// ErrorMsgInRange は、文字数が lowerBound ～ upperBound の範囲外であった場合に返すエラーメッセージを生成します。
-func ErrorMsgInRange(lowerBound, upperBound int, got string) string {
-	n := RuneCount(got)
-	return fmt.Sprintf(errMsgInRange, lowerBound, upperBound, n)
+// ValidateInRange は 文字数が minLen～maxLen 内かを判定し、範囲外なら理由メッセージを返します。
+func ValidateInRange(s string, minLen, maxLen int) (bool, string) {
+	n := RuneCount(s)
+	if minLen <= n && n <= maxLen {
+		return true, ""
+	}
+	return false, fmt.Sprintf(errMsgInRange, minLen, maxLen, n)
 }
 
-// ErrorMsgMaxOrLess は、文字数が upperBound を超えた場合に返すエラーメッセージを生成します。
-func ErrorMsgMaxOrLess(upperBound int, got string) string {
+// ErrorMsgInRange は、文字数が minLen ～ maxLen の範囲外であった場合に返すエラーメッセージを生成します。
+func ErrorMsgInRange(minLen, maxLen int, got string) string {
 	n := RuneCount(got)
-	return fmt.Sprintf(errMsgMaxOrLess, upperBound, n)
+	return fmt.Sprintf(errMsgInRange, minLen, maxLen, n)
 }
 
-// ErrorMsgMinOrMore は、文字数が lowerBound 未満であった場合に返すエラーメッセージを生成します。
-func ErrorMsgMinOrMore(lowerBound int, got string) string {
+// ErrorMsgMaxOrLess は、文字数が maxLen を超えた場合に返すエラーメッセージを生成します。
+func ErrorMsgMaxOrLess(maxLen int, got string) string {
 	n := RuneCount(got)
-	return fmt.Sprintf(errMsgMinOrMore, lowerBound, n)
+	return fmt.Sprintf(errMsgMaxOrLess, maxLen, n)
 }
 
-// ErrorMsgStrictInRange は、文字数が lowerBound < len < upperBound の範囲に収まらなかった場合に返すエラーメッセージを生成します。
-func ErrorMsgStrictInRange(lowerBound, upperBound int, got string) string {
+// ErrorMsgMinOrMore は、文字数が minLen 未満であった場合に返すエラーメッセージを生成します。
+func ErrorMsgMinOrMore(minLen int, got string) string {
 	n := RuneCount(got)
-	return fmt.Sprintf(errMsgStrictInRange, lowerBound, upperBound, n)
+	return fmt.Sprintf(errMsgMinOrMore, minLen, n)
 }
 
-// ErrorMsgLessThanMax は、文字数が upperBound 以上だった場合に返すエラーメッセージを生成します。
-func ErrorMsgLessThanMax(upperBound int, got string) string {
+// ErrorMsgStrictInRange は、文字数が minLen < 文字数 < maxLen の範囲に収まらなかった場合に返すエラーメッセージを生成します。
+func ErrorMsgStrictInRange(minLen, maxLen int, got string) string {
 	n := RuneCount(got)
-	return fmt.Sprintf(errMsgLessThanMax, upperBound, n)
+	return fmt.Sprintf(errMsgStrictInRange, minLen, maxLen, n)
 }
 
-// ErrorMsgGreaterThanMin は、文字数が lowerBound 以下だった場合に返すエラーメッセージを生成します。
-func ErrorMsgGreaterThanMin(lowerBound int, got string) string {
+// ErrorMsgLessThanMax は、文字数が maxLen 以上だった場合に返すエラーメッセージを生成します。
+func ErrorMsgLessThanMax(maxLen int, got string) string {
 	n := RuneCount(got)
-	return fmt.Sprintf(errMsgGreaterThanMin, lowerBound, n)
+	return fmt.Sprintf(errMsgLessThanMax, maxLen, n)
+}
+
+// ErrorMsgGreaterThanMin は、文字数が minLen 以下だった場合に返すエラーメッセージを生成します。
+func ErrorMsgGreaterThanMin(minLen int, got string) string {
+	n := RuneCount(got)
+	return fmt.Sprintf(errMsgGreaterThanMin, minLen, n)
 }

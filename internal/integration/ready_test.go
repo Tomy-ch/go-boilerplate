@@ -16,16 +16,22 @@ import (
 func TestReady_Integration(t *testing.T) {
 	t.Parallel()
 
-	t.Run("GET /readyのエンドポイントが正常に動作することを確認する", func(t *testing.T) {
-		e := echo.New()
-		ctrl := gomock.NewController(t)
-		tf := observability.NewNoopTracerFactory(t)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-		mockApp := mock_healthcheck.NewMockUsecase(ctrl)
-		mockApp.EXPECT().CheckHealth(gomock.Any()).Return(healthcheck.DTO{}, nil)
+		t.Run("GET /readyがUsecaseのDTOを返す", func(t *testing.T) {
+			t.Parallel()
 
-		ready.BindHandler(e, tf, mockApp)
-		actual := StartServer(t, e).DoJSON(http.MethodGet, "/ready", nil, nil)
-		AssertJSONResponse(t, healthcheck.DTO{}, actual)
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockApp := mock_healthcheck.NewMockUsecase(ctrl)
+			mockApp.EXPECT().CheckHealth(gomock.Any()).Return(&healthcheck.DTO{}, nil)
+
+			ready.BindHandler(e, tf, mockApp)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/ready", nil, nil)
+			AssertJSONResponse(t, healthcheck.DTO{}, actual)
+		})
 	})
 }

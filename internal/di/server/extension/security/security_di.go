@@ -3,7 +3,7 @@ package security
 
 import (
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/controller/httpstack/security"
+	httpsecurity "go-boilerplate/internal/controller/httpstack/security"
 	"go-boilerplate/internal/di/server/extension"
 
 	"go.uber.org/fx"
@@ -26,7 +26,7 @@ func Middleware(secCfg *config.SecurityConfig) extension.UseMiddlewareOut {
 		Middleware: extension.UseMiddleware{
 			Name:       "security",
 			Priority:   securityPriority,
-			Middleware: security.Middleware(secCfg),
+			Middleware: httpsecurity.Middleware(secCfg),
 		},
 	}
 }

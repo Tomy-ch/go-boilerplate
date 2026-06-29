@@ -9,11 +9,39 @@ This package provides a **tracing mechanism based on OpenTelemetry**, and
 
 Primary purposes:
 
-- Initialization and management of OpenTelemetry
+- Initialization and management of OpenTelemetry (tracing + metrics)
 - Span generation per layer
 - Logging of trace / span information
 - Unified observability across Domain / Usecase / Controller
 - Lightweight tracer for testing
+
+## Configuration boundary (env-driven, vendor-neutral)
+
+This package wires only the **vendor-neutral OpenTelemetry plumbing**. The export
+**destination is never modeled in the typed config**; it is read from the standard
+`OTEL_*` environment variables by the SDK:
+
+- `OTEL_TRACES_EXPORTER` / `OTEL_METRICS_EXPORTER` (`otlp` / `console` / `none`)
+- `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_EXPORTER_OTLP_PROTOCOL`
+- `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG`
+
+Export is activated by **selecting an exporter** via `OTEL_TRACES_EXPORTER` /
+`OTEL_METRICS_EXPORTER` (`otlp` / `console`). When neither is set, a no-op fallback is
+used — nothing is sent, no connection is attempted, and no background goroutine runs — so
+local development needs no configuration and no DI swapping.
+
+> **Important:** setting `OTEL_EXPORTER_OTLP_ENDPOINT` **alone does not enable export**.
+> The SDK only reads the endpoint once an OTLP exporter is selected, so staging / prod must
+> set **`OTEL_TRACES_EXPORTER=otlp` / `OTEL_METRICS_EXPORTER=otlp`** in addition to the
+> endpoint pointing at a Collector / Agent sidecar. `OTEL_TRACES_EXPORTER=console` prints
+> spans to stdout locally.
+
+Vendor specifics (Grafana / Datadog / New Relic) live in that Collector, not here.
+
+Service identity (`service.name` / `deployment.environment` / `service.version` /
+`service.revision` / `service.build_date`) comes from the existing app config and the
+build-time `internal/system` build info (ldflags), so no OTel-specific keys leak into
+the typed config.
 
 ## Architecture
 
@@ -37,7 +65,11 @@ Roles of each component:
 
 |Component|Role|
 |---|---|
-|`TracerProvider`|OpenTelemetry tracer provider|
+|`NewResource`|Build the OTel resource (service identity) from app config + build info|
+|`NewTracerProvider`|OpenTelemetry tracer provider + context propagator|
+|`NewMeterProvider`|OpenTelemetry meter provider + Go runtime metrics|
+|`shutdown.go`|`ProviderShutdowner` (otel-agnostic shutdown handle) + `NewProviderShutdowner`, consumed by the DI shutdown hook|
+|`ProvideTracerProvider`|Adapter exposing the concrete `*sdktrace.TracerProvider` as the `trace.TracerProvider` interface (in `provider.go`)|
 |`TracerFactory`|Generate tracers per layer|
 |`LayerTracer`|Span generation + observability logging|
 |`helper.go`|Span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -46,21 +78,45 @@ Roles of each component:
 
 ## Provided Features
 
-### 1. TracerProvider
+### 1. NewTracerProvider
 
 Initializes the OpenTelemetry tracer provider.
 
 ```go
-func TracerProvider(reg lifecycle.Registrar) trace.TracerProvider
+func NewTracerProvider(res *resource.Resource) (*sdktrace.TracerProvider, error)
 ```
 
 Characteristics
 
-- Creates OpenTelemetry TracerProvider
+- Creates OpenTelemetry TracerProvider with the given resource
 - Registers it with `otel.SetTracerProvider`
-- Executes `Shutdown()` when the application exits
+- Registers the W3C `TraceContext` + `Baggage` propagator via `otel.SetTextMapPropagator`
+  (required for cross-service trace continuity)
+- Builds the `SpanExporter` from standard `OTEL_*` env; when no exporter is selected it falls back to no-op and skips the batch processor (no goroutine)
+- Honors `OTEL_TRACES_SAMPLER` for sampling (parent-based always-on by default)
+- Lifecycle-agnostic: returns the concrete `*sdktrace.TracerProvider` (which exposes `Shutdown`)
+  so the DI layer (`hook.RegisterObservabilityShutdownHooks`) owns the shutdown registration.
+  This keeps the `observability` package free of any `di/lifecycle` dependency.
 
 Used during application DI initialization.
+
+### 1.1 NewResource / NewMeterProvider
+
+```go
+func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resource.Resource, error)
+func NewMeterProvider(res *resource.Resource) (*sdkmetric.MeterProvider, error)
+```
+
+- `NewResource` builds the shared OTel resource carrying `service.name` /
+  `deployment.environment` / `service.version` / `service.revision` / `service.build_date`
+  from app config + build info.
+- `NewMeterProvider` mirrors `NewTracerProvider`: it registers the meter provider via
+  `otel.SetMeterProvider` and builds its `MetricReader` from the standard `OTEL_*` env. Go
+  **runtime metrics** instrumentation starts only when a real exporter is selected (the no-op
+  fallback skips it). It is likewise lifecycle-agnostic — it returns the concrete
+  `*sdkmetric.MeterProvider` and the DI hook registers its `Shutdown`. Because the shutdown
+  hook depends on the concrete provider, the DI module no longer needs a separate
+  force-start invoke; constructing the hook forces both providers to be built.
 
 ### 2. TracerFactory
 
@@ -347,6 +403,29 @@ Even if observability fails:
 - business logic
 
 are not affected.
+
+### 5 Span value by layer (why controller spans are the most redundant)
+
+Layer spans are emitted in all three layers (controller / usecase / infra) via
+`LayerTracer.Start`, but their **diagnostic value differs**, which matters when
+deciding where to trim instrumentation.
+
+- **Controller layer span — most redundant.** The `otelecho` middleware already
+  creates a **per-request root span**, so a span added in the controller (handler)
+  layer covers **almost the same boundary and roughly the same interval** as that
+  request span. It largely duplicates the root span.
+- **Usecase / infra layer spans — worth keeping.** These represent the
+  **breakdown within a request** — *which usecase flow* ran, and *which repository /
+  SQL* was executed. That detail is **not visible from the root span alone** and has
+  real diagnostic value.
+
+Design judgment: if instrumentation must be reduced, the **controller-layer span is
+the first candidate** to drop, while the **usecase / infra spans are worth retaining**.
+
+> **Note:** The current code intentionally **keeps the controller-layer span as well**
+> (every layer calls `LayerTracer.Start`) for layer consistency. The point above is
+> about **relative value / the rationale behind the design judgment**, not a statement
+> that the controller span has been removed.
 
 ## Metrics
 

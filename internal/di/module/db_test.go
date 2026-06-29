@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/exaring/otelpgx"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
@@ -17,6 +18,8 @@ import (
 )
 
 func TestDatabaseModule_Composes(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリに DatabaseModule を追加して起動できる", func(t *testing.T) {
 		t.Parallel()
 
@@ -25,7 +28,7 @@ func TestDatabaseModule_Composes(t *testing.T) {
 		mockLogger := mock_logging.NewMockLogger(ctrl)
 		mockLF := mock_logging.NewMockLogFieldBuilder(ctrl)
 
-		mockLogger.EXPECT().Named("db.CloseHook").Return(mockLogger).AnyTimes()
+		mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
 		mockLogger.EXPECT().Info("Closing database connection").AnyTimes()
 
 		app := fx.New(
@@ -34,10 +37,12 @@ func TestDatabaseModule_Composes(t *testing.T) {
 			fx.Provide(func() testing.TB { return t }),
 			fx.Provide(config.MockConfigForTest),
 			fx.Provide(config.NewDatabaseConfig),
-			fx.Provide(config.NewOperationSystemConfig),
+			fx.Provide(config.NewObservabilityConfig),
+			fx.Provide(config.NewOperatingSystemConfig),
 			fx.Provide(config.NewDBConnectionConfig),
 			fx.Provide(func() logging.Logger { return mockLogger }),
 			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+			fx.Provide(func() *otelpgx.Tracer { return otelpgx.NewTracer() }),
 			fx.Provide(observability.NewNoopTracerFactory),
 			fx.NopLogger,
 			fx.Invoke(hook.RegisterDBCloseHooks),

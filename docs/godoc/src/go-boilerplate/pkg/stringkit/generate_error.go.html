@@ -1,0 +1,124 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>stringkit - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/pkg">pkg</a>/<a href="../../../../src/go-boilerplate/pkg/stringkit">stringkit</a>/<span class="text-muted">generate_error.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/pkg/stringkit">go-boilerplate/pkg/stringkit</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package stringkit
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import &#34;fmt&#34;
+<span id="L4" class="ln">     4  </span>
+<span id="L5" class="ln">     5  </span>const (
+<span id="L6" class="ln">     6  </span>	errMsgInRange        = &#34;length must be between %d and %d characters (got %d)&#34;
+<span id="L7" class="ln">     7  </span>	errMsgMaxOrLess      = &#34;length must be less than or equal to %d characters (got %d)&#34;
+<span id="L8" class="ln">     8  </span>	errMsgMinOrMore      = &#34;length must be greater than or equal to %d characters (got %d)&#34;
+<span id="L9" class="ln">     9  </span>	errMsgStrictInRange  = &#34;length must be greater than %d and less than %d characters (got %d)&#34;
+<span id="L10" class="ln">    10  </span>	errMsgLessThanMax    = &#34;length must be less than %d characters (got %d)&#34;
+<span id="L11" class="ln">    11  </span>	errMsgGreaterThanMin = &#34;length must be greater than %d characters (got %d)&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span><span class="comment">// ValidateInRange は 文字数が minLen～maxLen 内かを判定し、範囲外なら理由メッセージを返します。</span>
+<span id="L15" class="ln">    15  </span>func ValidateInRange(s string, minLen, maxLen int) (bool, string) {
+<span id="L16" class="ln">    16  </span>	n := RuneCount(s)
+<span id="L17" class="ln">    17  </span>	if minLen &lt;= n &amp;&amp; n &lt;= maxLen {
+<span id="L18" class="ln">    18  </span>		return true, &#34;&#34;
+<span id="L19" class="ln">    19  </span>	}
+<span id="L20" class="ln">    20  </span>	return false, fmt.Sprintf(errMsgInRange, minLen, maxLen, n)
+<span id="L21" class="ln">    21  </span>}
+<span id="L22" class="ln">    22  </span>
+<span id="L23" class="ln">    23  </span><span class="comment">// ErrorMsgInRange は、文字数が minLen ～ maxLen の範囲外であった場合に返すエラーメッセージを生成します。</span>
+<span id="L24" class="ln">    24  </span>func ErrorMsgInRange(minLen, maxLen int, got string) string {
+<span id="L25" class="ln">    25  </span>	n := RuneCount(got)
+<span id="L26" class="ln">    26  </span>	return fmt.Sprintf(errMsgInRange, minLen, maxLen, n)
+<span id="L27" class="ln">    27  </span>}
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span><span class="comment">// ErrorMsgMaxOrLess は、文字数が maxLen を超えた場合に返すエラーメッセージを生成します。</span>
+<span id="L30" class="ln">    30  </span>func ErrorMsgMaxOrLess(maxLen int, got string) string {
+<span id="L31" class="ln">    31  </span>	n := RuneCount(got)
+<span id="L32" class="ln">    32  </span>	return fmt.Sprintf(errMsgMaxOrLess, maxLen, n)
+<span id="L33" class="ln">    33  </span>}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// ErrorMsgMinOrMore は、文字数が minLen 未満であった場合に返すエラーメッセージを生成します。</span>
+<span id="L36" class="ln">    36  </span>func ErrorMsgMinOrMore(minLen int, got string) string {
+<span id="L37" class="ln">    37  </span>	n := RuneCount(got)
+<span id="L38" class="ln">    38  </span>	return fmt.Sprintf(errMsgMinOrMore, minLen, n)
+<span id="L39" class="ln">    39  </span>}
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span><span class="comment">// ErrorMsgStrictInRange は、文字数が minLen &lt; 文字数 &lt; maxLen の範囲に収まらなかった場合に返すエラーメッセージを生成します。</span>
+<span id="L42" class="ln">    42  </span>func ErrorMsgStrictInRange(minLen, maxLen int, got string) string {
+<span id="L43" class="ln">    43  </span>	n := RuneCount(got)
+<span id="L44" class="ln">    44  </span>	return fmt.Sprintf(errMsgStrictInRange, minLen, maxLen, n)
+<span id="L45" class="ln">    45  </span>}
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span><span class="comment">// ErrorMsgLessThanMax は、文字数が maxLen 以上だった場合に返すエラーメッセージを生成します。</span>
+<span id="L48" class="ln">    48  </span>func ErrorMsgLessThanMax(maxLen int, got string) string {
+<span id="L49" class="ln">    49  </span>	n := RuneCount(got)
+<span id="L50" class="ln">    50  </span>	return fmt.Sprintf(errMsgLessThanMax, maxLen, n)
+<span id="L51" class="ln">    51  </span>}
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span><span class="comment">// ErrorMsgGreaterThanMin は、文字数が minLen 以下だった場合に返すエラーメッセージを生成します。</span>
+<span id="L54" class="ln">    54  </span>func ErrorMsgGreaterThanMin(minLen int, got string) string {
+<span id="L55" class="ln">    55  </span>	n := RuneCount(got)
+<span id="L56" class="ln">    56  </span>	return fmt.Sprintf(errMsgGreaterThanMin, minLen, n)
+<span id="L57" class="ln">    57  </span>}
+<span id="L58" class="ln">    58  </span>
+</pre><p><a href="../../../../src/go-boilerplate/pkg/stringkit/generate_error.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

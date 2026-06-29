@@ -1,47 +1,16 @@
-// Package migrate は、データベースのマイグレーションに関する機能を提供します。
+// Package migrate は、データベースマイグレーションのコアロジック（適用段数の分岐・無変更許容・dirty 復旧）を提供します。
 package migrate
 
-import (
-	"os"
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/infrastructure/rdb/driver"
-
-	"github.com/golang-migrate/migrate/v4"
-)
-
-const (
-	// migrateFilePlace は、マイグレーションファイルの場所を定義します。
-	migrateFilePlace = "database/migrations"
-)
-
-var (
-	// マイグレーションのターゲットバージョン
-	targetVersion int
-	// マイグレーションのターゲットデータベース
-	targetDatabase string
-)
-
-// buildMigrateInstance は、マイグレーションインスタンスを生成します。
-func buildMigrateInstance(tgtDB string) (*migrate.Migrate, error) {
-	// まず通常の設定を読み込み、必要に応じて対象 DB 名だけ CLI 引数で差し替えます。
-	err := config.Load()
-	if err != nil {
-		return nil, err
-	}
-	if tgtDB != "" {
-		err = os.Setenv("DB_NAME", tgtDB)
-		if err != nil {
-			return nil, err
-		}
-	}
-	cfg, err := config.New()
-	if err != nil {
-		return nil, err
-	}
-	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
-
-	// ファイルシステム上の migration 群と、実行先 DB の DSN を結び付けて migrate を生成します。
-	return migrate.New("file://"+migrateFilePlace, driver.DSNWithTimeZoneString(dbCfg, osCfg))
+// Migrator は、golang-migrate のマイグレーション操作（Up / Down / Steps / Version / Force）を抽象化します。
+type Migrator interface {
+	Up() error
+	Down() error
+	Steps(n int) error
+	Version() (version uint, dirty bool, err error)
+	Force(version int) error
 }
+
+// MigratorFactory は、対象 DB 名から Migrator を生成する関数型です。
+type MigratorFactory func(database string) (Migrator, error)

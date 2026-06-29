@@ -1,0 +1,369 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_idempotency
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/idempotency/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_idempotency is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockStore">type MockStore</a></dd>
+				
+					
+					<dd>    <a href="#NewMockStore">func NewMockStore(ctrl *gomock.Controller) *MockStore</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockStore.Claim">func (m *MockStore) Claim(ctx context.Context, p idempotency.ClaimParams) (bool, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockStore.Complete">func (m *MockStore) Complete(ctx context.Context, p idempotency.CompleteParams) error</a></dd>
+				
+					
+					<dd>    <a href="#MockStore.DeleteExpired">func (m *MockStore) DeleteExpired(ctx context.Context, cutoff time.Time, limit int32) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockStore.EXPECT">func (m *MockStore) EXPECT() *MockStoreMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockStore.Get">func (m *MockStore) Get(ctx context.Context, scope, key string) (*idempotency.Record, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockStoreMockRecorder">type MockStoreMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockStoreMockRecorder.Claim">func (mr *MockStoreMockRecorder) Claim(ctx, p any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockStoreMockRecorder.Complete">func (mr *MockStoreMockRecorder) Complete(ctx, p any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockStoreMockRecorder.DeleteExpired">func (mr *MockStoreMockRecorder) DeleteExpired(ctx, cutoff, limit any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockStoreMockRecorder.Get">func (mr *MockStoreMockRecorder) Get(ctx, scope, key any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html">mock_store.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockStore">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=490:596#L12">MockStore</a>
+				<a class="permalink" href="#MockStore">¶</a>
+				
+				
+			</h2>
+			<p>MockStore is a mock of Store interface.
+
+			</p><pre>type MockStore struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockStore">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=760:813#L24">NewMockStore</a>
+					<a class="permalink" href="#NewMockStore">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockStore(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockStore">MockStore</a></pre>
+				<p>NewMockStore creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockStore.Claim">func (*MockStore) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=1091:1178#L36">Claim</a>
+					<a class="permalink" href="#MockStore.Claim">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStore">MockStore</a>) Claim(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, p <a href="../../../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotency</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/idempotency/#ClaimParams">ClaimParams</a>) (<a href="../../../../../../builtin/#bool">bool</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Claim mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStore.Complete">func (*MockStore) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=1599:1684#L51">Complete</a>
+					<a class="permalink" href="#MockStore.Complete">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStore">MockStore</a>) Complete(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, p <a href="../../../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotency</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/idempotency/#CompleteParams">CompleteParams</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>Complete mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStore.DeleteExpired">func (*MockStore) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=2096:2196#L65">DeleteExpired</a>
+					<a class="permalink" href="#MockStore.DeleteExpired">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStore">MockStore</a>) DeleteExpired(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, cutoff <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>, limit <a href="../../../../../../builtin/#int32">int32</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>DeleteExpired mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStore.EXPECT">func (*MockStore) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=987:1038#L31">EXPECT</a>
+					<a class="permalink" href="#MockStore.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStore">MockStore</a>) EXPECT() *<a href="#MockStoreMockRecorder">MockStoreMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStore.Get">func (*MockStore) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=2697:2789#L80">Get</a>
+					<a class="permalink" href="#MockStore.Get">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockStore">MockStore</a>) Get(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, scope, key <a href="../../../../../../builtin/#string">string</a>) (*<a href="../../../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotency</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Record">Record</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Get mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockStoreMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=659:713#L19">MockStoreMockRecorder</a>
+				<a class="permalink" href="#MockStoreMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockStoreMockRecorder is the mock recorder for MockStore.
+
+			</p><pre>type MockStoreMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockStoreMockRecorder.Claim">func (*MockStoreMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=1361:1424#L45">Claim</a>
+					<a class="permalink" href="#MockStoreMockRecorder.Claim">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStoreMockRecorder">MockStoreMockRecorder</a>) Claim(ctx, p <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Claim indicates an expected call of Claim.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStoreMockRecorder.Complete">func (*MockStoreMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=1844:1910#L59">Complete</a>
+					<a class="permalink" href="#MockStoreMockRecorder.Complete">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStoreMockRecorder">MockStoreMockRecorder</a>) Complete(ctx, p <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Complete indicates an expected call of Complete.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStoreMockRecorder.DeleteExpired">func (*MockStoreMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=2416:2499#L74">DeleteExpired</a>
+					<a class="permalink" href="#MockStoreMockRecorder.DeleteExpired">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStoreMockRecorder">MockStoreMockRecorder</a>) DeleteExpired(ctx, cutoff, limit <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>DeleteExpired indicates an expected call of DeleteExpired.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockStoreMockRecorder.Get">func (*MockStoreMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/idempotency/mock/mock_store.go.gen.go.html?s=2990:3060#L89">Get</a>
+					<a class="permalink" href="#MockStoreMockRecorder.Get">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockStoreMockRecorder">MockStoreMockRecorder</a>) Get(ctx, scope, key <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Get indicates an expected call of Get.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

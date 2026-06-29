@@ -1,0 +1,5 @@
+description: サーバーエラーが発生しました。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

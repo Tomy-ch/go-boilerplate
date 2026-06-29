@@ -5,7 +5,7 @@
 
 ## Overview
 
-ユーザー検索ユースケースは、キーワードとアクティブ状態でユーザーを検索する read-only な Query サービス。`UserQueryService`（QueryService boundary）を介して検索結果 DTO を直接返す。CQRS の軽量分離方針に従い、ドメインエンティティへの変換は行わず QueryService の結果（`UserSearchResults`）をそのまま返す。トランザクションは不要。
+ユーザー検索ユースケースは、キーワードとアクティブ状態でユーザーを検索する read-only な Query サービス。`UserSearchQueryService`（QueryService boundary）を介して検索結果 DTO を直接返す。CQRS の軽量分離方針に従い、ドメインエンティティへの変換は行わず QueryService の結果（`UserSearchResults`）をそのまま返す。トランザクションは不要。
 
 キーワードは `tools/search.ParseSearchTokens` でトークン分割してから QueryService に渡す（アプリケーションポリシー）。
 
@@ -16,7 +16,7 @@ package: internal/usecase/user/search
 name: Usecase
 methods:
   - name: ListUsersByKeyword
-    signature: ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Paging) (query.UserSearchResults, error)
+    signature: ListUsersByKeyword(ctx context.Context, filter *SearchParams, page *paging.Page) (query.UserSearchResults, error)
   - name: CountUsersByKeyword
     signature: CountUsersByKeyword(ctx context.Context, filter *SearchParams) (int64, error)
 ```
@@ -70,7 +70,7 @@ methods:
 
 ```yaml
 - tracer              # observability.TracerFactory -> LayerTracer
-- user_query_service  # user/search/query.UserQueryService（キーワード検索の QueryService boundary）
+- user_query_service  # user/search/query.UserSearchQueryService（キーワード検索の QueryService boundary）
 ```
 
 ## Workflow

@@ -178,6 +178,7 @@ When adding, document the following in README:
 | `ErrConflict` | Conflict (unique constraint violation, concurrent update conflict, etc.) | 409 Conflict |
 | `ErrValidation` | Domain / Usecase validation failure | 422 Unprocessable Entity |
 | `ErrTooManyRequests` | Too many requests (request throttling, upstream API throttling propagation, etc.) | 429 Too Many Requests |
+| `ErrCanceled` | Client cancelled / disconnected the request | 499 Client Closed Request |
 | `ErrInternal` | Unexpected internal error | 500 Internal Server Error |
 | `ErrUnimplemented` | Not implemented / unsupported feature | 501 Not Implemented |
 | `ErrUnavailable` | Temporary unavailability (external dependency failure, etc.) | 503 Service Unavailable |

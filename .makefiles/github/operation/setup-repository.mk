@@ -4,11 +4,12 @@
 .PHONY: setup-replace-app-metadata ## node_tool_runnerでAPP_NAMEやOpenAPIタイトルの置換を実行
 .PHONY: setup-replace-repository-reference ## node_tool_runnerでリポジトリ参照の置換を実行
 .PHONY: setup-replace-license-copyright ## node_tool_runnerでLICENSEの著作権表示更新を実行
-.PHONY: setup-remove-debug-handlers ## node_tool_runnerでdebugハンドラ一式の削除を実行
+.PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
 
 setup-repo:
+	@if [ -n "$(DRY_RUN)" ]; then echo "❌ setup-repo は DRY_RUN 未対応です（ローカル/リモートを破壊的に変更します）。DRY_RUN を外して実行してください。"; exit 1; fi
 	@echo "🔧 設定を確認中..."
 
 	@if git rev-parse --verify refs/tags/v0.0.0 >/dev/null 2>&1; then \
@@ -18,7 +19,7 @@ setup-repo:
 	@echo "✅ 初期化を開始します"
 
 	@echo "🔧 ghコマンドのログインを開始します..."
-	@make gh-login
+	@$(MAKE) gh-login
 	@echo "✅ ghコマンドのログインが完了しました。"
 
 	@echo "🔧 タグの初期化を開始します..."
@@ -75,12 +76,12 @@ setup-repo:
 	@echo "✅ デフォルトブランチの設定を終了します。"
 
 	@echo "🔧 ルールセットの適用を開始します..."
-	@make apply-branch-protection
+	@$(MAKE) apply-branch-protection
 	@echo "✅ ルールセットの適用を終了します。"
 
 	@echo "🔧 ラベルの初期化を開始します..."
-	@make delete-all-labels
-	@make create-default-labels
+	@$(MAKE) delete-all-labels
+	@$(MAKE) create-default-labels
 	@echo "✅ ラベルの初期化を終了します。"
 
 	@echo "🔧 リリースノートの初期化を開始します..."
@@ -100,7 +101,7 @@ setup-replace-module:
 		echo "❌ OLD_MODULE と NEW_MODULE を指定してください。例: make setup-replace-module OLD_MODULE=go-boilerplate NEW_MODULE=example-api"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-module.cjs $(OLD_MODULE) $(NEW_MODULE) $(SETUP_DRY_RUN_FLAG)
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-module.mjs $(OLD_MODULE) $(NEW_MODULE) $(SETUP_DRY_RUN_FLAG)
 
 setup-replace-app-metadata:
 	@if [ -z "$(APP_NAME)" ] || [ -z "$(OPENAPI_TITLE)" ] || [ -z "$(COPILOT_TITLE)" ]; then \
@@ -108,7 +109,7 @@ setup-replace-app-metadata:
 		echo "例: make setup-replace-app-metadata APP_NAME='Example API' OPENAPI_TITLE='Example API with Onion Architecture' COPILOT_TITLE='example-api Copilot Instructions'"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-app-metadata.cjs \
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-app-metadata.mjs \
 		--app-name "$(APP_NAME)" \
 		--openapi-title "$(OPENAPI_TITLE)" \
 		--copilot-title "$(COPILOT_TITLE)" \
@@ -119,17 +120,27 @@ setup-replace-repository-reference:
 		echo "❌ REPOSITORY を指定してください。例: make setup-replace-repository-reference REPOSITORY=example-org/example-api"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-repository-reference.cjs $(REPOSITORY) $(SETUP_DRY_RUN_FLAG)
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-repository-reference.mjs $(REPOSITORY) $(SETUP_DRY_RUN_FLAG)
 
 setup-replace-license-copyright:
 	@if [ -z "$(COPYRIGHT_HOLDER)" ]; then \
 		echo "❌ COPYRIGHT_HOLDER を指定してください。例: make setup-replace-license-copyright COPYRIGHT_HOLDER='Example Inc.' COPYRIGHT_YEAR=2026"; \
 		exit 1; \
 	fi
-	@docker compose run --rm node_tool_runner node scripts/setup/replace-license-copyright.cjs \
+	@docker compose run --rm node_tool_runner node scripts/setup/replace-license-copyright.mjs \
 		--holder "$(COPYRIGHT_HOLDER)" \
 		$(if $(COPYRIGHT_YEAR),--year $(COPYRIGHT_YEAR),) \
 		$(SETUP_DRY_RUN_FLAG)
 
-setup-remove-debug-handlers:
-	@docker compose run --rm node_tool_runner node scripts/setup/remove-debug-handlers.cjs $(SETUP_DRY_RUN_FLAG)
+# サンプルAPIの削除はコンテナ内（node_tool_runner）で行い、削除後の再生成・整形・検証は
+# Go ツールチェーンが必要なためホスト側の make ターゲットを連鎖させる。
+# プレビューは DRY_RUN=1 を付ける（削除も再生成も行わない）。
+setup-remove-sample-api:
+	@docker compose run --rm node_tool_runner node scripts/setup/remove-sample-api.mjs $(SETUP_DRY_RUN_FLAG)
+	@if [ -n "$(DRY_RUN)" ]; then \
+		echo "🟡 DRY_RUN のため再生成・整形・検証はスキップしました。"; \
+	else \
+		echo "🔧 再生成・整形・検証を実行します..."; \
+		$(MAKE) gen-api gen-query fix lint; \
+		echo "✅ サンプルAPIの削除と再生成・検証が完了しました。"; \
+	fi

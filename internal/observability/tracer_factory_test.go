@@ -4,105 +4,111 @@ import (
 	"context"
 	"testing"
 
-	"go-boilerplate/internal/logging"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
 )
 
 func TestNewTracerFactory(t *testing.T) {
-	t.Run("TracerProvider と zap.Logger を渡すと TracerFactory を返す", func(t *testing.T) {
-		provided := otel.GetTracerProvider()
-		lf := logging.NewTestLogFieldBuilder(t)
-		log := logging.NewTestLogger(t)
+	t.Parallel()
 
-		expected := &tracerFactory{
-			tp:  provided,
-			log: log,
-			lf:  lf,
-		}
-		actual := NewTracerFactory(provided, log, lf)
-		assert.Equal(t, expected, actual)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("TracerProviderを渡すとTracerFactoryを返す", func(t *testing.T) {
+			t.Parallel()
+
+			provided := otel.GetTracerProvider()
+
+			expected := &tracerFactory{
+				tp: provided,
+			}
+			actual := NewTracerFactory(provided)
+			assert.Equal(t, expected, actual)
+		})
 	})
 }
 
 func Test_tracerFactory_Controller(t *testing.T) {
-	t.Run("TracerProvider を渡すと controller 用 LayerTracer を返す", func(t *testing.T) {
-		provided := otel.GetTracerProvider()
-		lf := logging.NewTestLogFieldBuilder(t)
-		log := logging.NewTestLogger(t)
-		actualTF := &tracerFactory{
-			tp:  provided,
-			log: log,
-			lf:  lf,
-		}
+	t.Parallel()
 
-		actual := actualTF.Controller()
-		require.NotNil(t, actual)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-		ctx, end := actual.Start(context.Background())
-		end()
-		require.NotNil(t, ctx)
+		t.Run("Controllerレイヤ用LayerTracerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actualTF := &tracerFactory{tp: otel.GetTracerProvider()}
+
+			actual := actualTF.Controller()
+			require.NotNil(t, actual)
+
+			ctx, end := actual.Start(context.Background())
+			end()
+			require.NotNil(t, ctx)
+		})
 	})
 }
 
 func Test_tracerFactory_Usecase(t *testing.T) {
-	t.Run("TracerProvider を渡すと usecase 用 LayerTracer を返す", func(t *testing.T) {
-		provided := otel.GetTracerProvider()
-		lf := logging.NewTestLogFieldBuilder(t)
-		log := logging.NewTestLogger(t)
-		actualTF := &tracerFactory{
-			tp:  provided,
-			log: log,
-			lf:  lf,
-		}
+	t.Parallel()
 
-		actual := actualTF.Usecase()
-		require.NotNil(t, actual)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-		ctx, end := actual.Start(context.Background())
-		end()
-		require.NotNil(t, ctx)
+		t.Run("Usecaseレイヤ用LayerTracerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actualTF := &tracerFactory{tp: otel.GetTracerProvider()}
+
+			actual := actualTF.Usecase()
+			require.NotNil(t, actual)
+
+			ctx, end := actual.Start(context.Background())
+			end()
+			require.NotNil(t, ctx)
+		})
 	})
 }
 
 func Test_tracerFactory_Infra(t *testing.T) {
-	t.Run("TracerProvider を渡すと infrastructure 用 LayerTracer を返す", func(t *testing.T) {
-		provided := otel.GetTracerProvider()
-		lf := logging.NewTestLogFieldBuilder(t)
-		log := logging.NewTestLogger(t)
-		actualTF := &tracerFactory{
-			tp:  provided,
-			log: log,
-			lf:  lf,
-		}
+	t.Parallel()
 
-		actual := actualTF.Infra()
-		require.NotNil(t, actual)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-		ctx, end := actual.Start(context.Background())
-		end()
-		require.NotNil(t, ctx)
+		t.Run("Infrastructureレイヤ用LayerTracerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actualTF := &tracerFactory{tp: otel.GetTracerProvider()}
+
+			actual := actualTF.Infra()
+			require.NotNil(t, actual)
+
+			ctx, end := actual.Start(context.Background())
+			end()
+			require.NotNil(t, ctx)
+		})
 	})
 }
 
 func Test_tracerFactory_newLayerTracer(t *testing.T) {
-	t.Run("layer と pkgName を渡すと LayerTracer を返す", func(t *testing.T) {
-		provided := otel.GetTracerProvider()
-		lf := logging.NewTestLogFieldBuilder(t)
-		log := logging.NewTestLogger(t)
-		actualTF := &tracerFactory{
-			tp:  provided,
-			log: log,
-			lf:  lf,
-		}
+	t.Parallel()
 
-		layer := Usecase
-		pkgName := "pkg"
-		actual := actualTF.newLayerTracer(layer, pkgName)
-		require.NotNil(t, actual)
-		assert.Equal(t, layer, actual.layer)
-		assert.Equal(t, pkgName, actual.pkgName)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("layerとpkgNameを渡すとLayerTracerを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actualTF := &tracerFactory{tp: otel.GetTracerProvider()}
+
+			layer := Usecase
+			pkgName := "pkg"
+			actual := actualTF.newLayerTracer(layer, pkgName)
+			require.NotNil(t, actual)
+			assert.Equal(t, layer, actual.layer)
+			assert.Equal(t, pkgName, actual.pkgName)
+		})
 	})
 }

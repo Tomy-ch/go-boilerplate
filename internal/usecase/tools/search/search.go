@@ -13,7 +13,10 @@ const (
 	MaxKeywordLength = 1024
 )
 
-// ParseSearchTokens は、キーワード文字列をトークンに分割し、正規化、重複排除、上限設定を行います。
+// ParseSearchTokens は、キーワード文字列をスペースまたはアンダースコアで分割し、
+// 重複排除・上限（maxTokens 件）適用後のトークン列を返します。
+// keyword が nil または空文字の場合は空スライスを返します。
+// maxTokens が 0 以下の場合は DefaultMaxTokens を使用します。
 func ParseSearchTokens(keyword *string, maxTokens int) []string {
 	if keyword == nil || *keyword == "" {
 		return []string{}
@@ -29,8 +32,7 @@ func ParseSearchTokens(keyword *string, maxTokens int) []string {
 	}
 
 	raw := splitIntoTerms(k)
-	normalized := trimAndDropEmpty(raw)
-	unique := dedupePreserveOrder(normalized)
+	unique := dedupePreserveOrder(raw)
 
 	return limit(unique, maxTokens)
 }
@@ -40,19 +42,6 @@ func splitIntoTerms(keyword string) []string {
 	return strings.FieldsFunc(keyword, func(r rune) bool {
 		return r == '_' || unicode.IsSpace(r)
 	})
-}
-
-// trimAndDropEmpty は、配列の各要素の前後の空白を削除し、空文字列の要素を排除します。
-func trimAndDropEmpty(ss []string) []string {
-	out := make([]string, 0, len(ss))
-	for _, t := range ss {
-		t = strings.TrimSpace(t)
-		if t == "" {
-			continue
-		}
-		out = append(out, t)
-	}
-	return out
 }
 
 // dedupePreserveOrder は、配列の要素の重複を排除し、元の順序を保持します。

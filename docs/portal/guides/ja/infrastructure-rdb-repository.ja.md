@@ -245,46 +245,27 @@ LIKE 検索は Repository で実装して問題ありません。
 - 複雑なフィルタ + ソート + ページング
 - 一覧画面専用の読み取り最適化検索
 
-## LoggingDBProvider
+## DB アクセス（driver）
 
-Repository は通常、`loggingdb.DBProvider` を利用して DB にアクセスします。
-
-```go
-db := gen.New(r.db.NewLoggingDB(ctx))
-```
-
-`loggingdb.DBProvider` は次を提供します。
-
-- SQL ログ出力
-- DB / Tx の透過切り替え
-- Contextベース接続取得
-
-Repository は **DB接続状態を意識しない設計**になります。
-
-## driver の直接利用
-
-ロギングが不要な場合は、ロギングなしの DB アクセスを利用できます。
+Repository は `driver.DatabaseDriver` を通じて DB にアクセスします。
 
 ```go
-db := gen.New(r.db.NewDB(ctx))
+db := gen.New(driver.New(ctx, r.db))
 ```
 
-用途
+`driver.New(ctx, db)` は次を提供します。
 
-- 高頻度処理でログノイズを抑えたい場合
-- ロギング不要な単純処理
-- ベンチマークや最小経路の確認
+- DB / Tx の透過切り替え（context に tx があればそれを採用）
+- Context ベース接続取得
 
-原則
-
-- 通常は `NewLoggingDB(ctx)` を使用する
-- 明確な理由がある場合のみ `NewDB(ctx)` を使用する
+SQL のログ / トレースは driver の接続層に結線した pgx クエリトレーサーが透過的に付与します
+（`driver/README.md` 参照）。そのため Repository は **DB 接続状態を意識しない設計**になります。
 
 ## エラー正規化
 
 PostgreSQL エラーは
 
-`internal/infrastructure/rdb/postgres/pgerror`
+`internal/infrastructure/rdb/pgerror`
 
 で `apperror` に変換します。
 
@@ -296,7 +277,7 @@ return pgerror.NormalizeError(err)
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["ErrNotFound"]
     Unique["unique violation"] --> Conflict["ErrConflict"]
     Conn["connection error"] --> Unavail["ErrUnavailable"]
     Others["others"] --> Internal["ErrInternal"]
@@ -311,7 +292,7 @@ flowchart TB
 クエリ実行は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を利用して行います。
@@ -321,7 +302,7 @@ gen.New(r.db.NewLoggingDB(ctx))
 Repository は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を使用して `Tx / DB` を透過的に利用します。
@@ -401,7 +382,7 @@ func InfrastructureModule() fx.Option {
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -456,24 +437,18 @@ type service struct {
 
 Repository 実装は次の依存を持ちます。
 
-- loggingdb.DBProvider は、Repository が通常利用する DB アクセス入口です。
+- driver.DatabaseDriver は、Repository が通常利用する DB アクセス入口です。
   - SQL ログ出力
   - トレース連携
   - DB / Tx の透過切り替え
   を提供します。
-
-- ロギングが不要な場合は、`r.db.NewDB(ctx)` を利用してロギングなしの DB アクセスを使用できます。
-  - 高頻度処理
-  - ベンチマーク
-  - ログノイズを避けたい処理
-  など、明確な理由がある場合のみ使います。
 
 - observability.TracerFactory は、LayerTracer を生成するためのファクトリです。
   - Repository では Infra レイヤー用 tracer を使用します
 
 ```go
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -482,7 +457,7 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -532,20 +507,19 @@ Repository テストは **Domain ロジックの検証を目的としません**
 Repository テストは `testkit` を使用して DB を初期化します。
 
 ```go
-db, provider := testkit.NewTestDBWithLoggingProvider(t)
+db := testkit.NewTestDB(t)
 ```
 
 この関数は次を提供します。
 
-- テスト用 DB 接続
-- loggingdb.DBProvider
+- `NewTestDB`: 共有テスト用 DB 接続（`driver.DatabaseDriver`）。Repository コンストラクタへ直接渡す
 
 ### トランザクションテスト
 
 各テストは **トランザクション内で実行されます**。
 
 ```go
-txm := testkit.NewTestTransactionManager(t)
+txm := testkit.NewTestTransactionRunner(t)
 
 txm.WithinTx(func(ctx context.Context) {
     // test logic
@@ -573,7 +547,7 @@ flowchart TB
 
 Repository テストでは `t.Parallel()` を使用してテスト自体は並列実行できます。
 
-ただし、`testkit.NewTestTransactionManager(t)` が提供するトランザクションマネージャは
+ただし、`testkit.NewTestTransactionRunner(t)` が提供するトランザクションマネージャは
 内部でトランザクション実行を **直列化**します。
 
 そのため実行モデルは次のようになります。
@@ -634,7 +608,7 @@ DB エラーは `pgerror.NormalizeError` により `apperror` に変換されま
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["ErrNotFound"]
     Unique["unique violation"] --> Conflict["ErrConflict"]
     Conn["connection error"] --> Unavail["ErrUnavailable"]
     Others["others"] --> Internal["ErrInternal"]
@@ -763,7 +737,7 @@ tx, _ := db.Begin()
 Repository は
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 を使用して `Tx / DB` を透過的に利用します。
@@ -822,14 +796,14 @@ Infra は **Domain Interface の実装のみ**を行います。
 package user
 
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New は Repository のコンストラクタです。
 // 依存はすべて外から注入します。
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -844,7 +818,7 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    db := gen.New(r.db.NewLoggingDB(ctx))
+    db := gen.New(driver.New(ctx, r.db))
 
     switch {
     case active == nil:

@@ -1,76 +1,69 @@
-// Package job は、ジョブを管理・実行するためのコマンドを提供するためのパッケージです。
+// Package job は、ジョブ実行のオーケストレーション（タイムアウト分岐・停止処理）のコアロジックを提供します。
 package job
 
 import (
 	"context"
 	"time"
 
-	"go-boilerplate/internal/di"
-
-	"github.com/spf13/cobra"
+	"go-boilerplate/pkg/xerrors"
 )
 
-const stopTimeout = 30 * time.Second
+// StartFunc は、ジョブを起動してエラーチャネルを返す関数の型です。
+type StartFunc func(ctx context.Context, name string, args []string) <-chan error
 
-// timeOut は、ジョブ実行のタイムアウト時間を表します。
-var timeOut time.Duration
+// StopFunc は、ジョブをグレースフルに停止する関数の型です。
+type StopFunc func(ctx context.Context) error
 
-// NewCommand は job コマンドを生成します。
-func NewCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "job",
-		Short: "job <job-name> [args...] コマンドは、指定されたジョブを実行します。",
-		Long: "job <job-name> [args...] コマンドは、指定されたジョブを実行します。ジョブ名と引数を指定して実行してください。\n" +
-			"例: job usercount --timeout 30s",
-		Args: cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			jobName := args[0]
-			jobArgs := args[1:]
-			return runJobExec(cmd.Context(), jobName, jobArgs)
-		},
-	}
-
-	cmd.Flags().DurationVar(&timeOut, "timeout", 0, "job execution timeout duration (e.g., 30s, 1m)")
-
-	return cmd
+// RunJobWith は、provide が返す開始・停止関数でジョブを実行します。
+// grace（APP_SHUTDOWN_TIMEOUT）は停止猶予の単一軸で、停止 context の deadline に用います。
+func RunJobWith(
+	ctx context.Context,
+	name string,
+	args []string,
+	timeout time.Duration,
+	grace time.Duration,
+	provide func() (StartFunc, StopFunc),
+) error {
+	start, stop := provide()
+	return runJob(ctx, name, args, timeout, grace, start, stop)
 }
 
-// runJobExec は、指定されたジョブを実行します。
-func runJobExec(ctx context.Context, name string, args []string) error {
-	// DI 経由でジョブランナーを取得し、開始関数と停止関数を受け取ります。
-	start, stop := di.RunJob()
-
+// runJob は、ジョブ実行のオーケストレーション（タイムアウト分岐と停止処理）を行います。
+func runJob(
+	ctx context.Context,
+	name string,
+	args []string,
+	timeout time.Duration,
+	grace time.Duration,
+	start StartFunc,
+	stop StopFunc,
+) error {
 	done := start(ctx, name, args)
 
-	if timeOut <= 0 {
-		// タイムアウト未指定時は、ジョブ完了を待ってから停止処理だけ確実に流します。
+	if timeout <= 0 {
 		err := <-done
-		stopCtx, cancel := context.WithTimeout(ctx, stopTimeout)
-		defer cancel()
-
-		_ = stop(stopCtx)
-		return err
+		return xerrors.Join(err, gracefulStop(ctx, grace, stop))
 	}
 
-	waitCtx, cancel := context.WithTimeout(ctx, timeOut)
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	select {
 	case err := <-done:
-		// 正常終了時は、停止専用の短い context を作って後始末を行います。
-		stopCtx, timeoutCancel := context.WithTimeout(ctx, stopTimeout)
-		defer timeoutCancel()
-		_ = stop(stopCtx)
-		return err
+		return xerrors.Join(err, gracefulStop(ctx, grace, stop))
 	case <-waitCtx.Done():
-		// タイムアウト時は待機用 context 自体が終了しているため、そのまま停止へ渡します。
-		_ = stop(waitCtx)
-		return waitCtx.Err()
-	case <-ctx.Done():
-		// 親 context のキャンセル時も、停止猶予だけを与えてジョブを終了させます。
-		stopCtx, timeoutCancel := context.WithTimeout(ctx, stopTimeout)
-		defer timeoutCancel()
-		_ = stop(stopCtx)
-		return ctx.Err()
+		// waitCtx は ctx の子。タイムアウト(DeadlineExceeded)・親キャンセル(Canceled)の両方で発火する。
+		// 停止は期限切れの waitCtx ではなく専用 context を作り直して猶予を与える。
+		return xerrors.Join(waitCtx.Err(), gracefulStop(ctx, grace, stop))
 	}
+}
+
+// gracefulStop は、親キャンセルに左右されない grace の猶予を停止処理（app.Stop）に与え、
+// その結果を返します。SIGINT 伝播や親 ctx タイムアウト後でも OTel flush / DB pool close に
+// grace の全猶予が保証されます。停止失敗を呼び出し元のエラーチェーンに含め exit code へ
+// 反映できるよう、エラーは破棄せず返します。
+func gracefulStop(ctx context.Context, grace time.Duration, stop StopFunc) error {
+	stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)
+	defer cancel()
+	return stop(stopCtx)
 }

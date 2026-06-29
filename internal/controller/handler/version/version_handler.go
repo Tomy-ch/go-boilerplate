@@ -19,6 +19,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+var errInvalidBuildDate = xerrors.Wrap(apperror.ErrInternal, "invalid build date")
+
 type server struct {
 	buildInfo system.BuildInfo
 	appCfg    *config.ApplicationConfig
@@ -26,6 +28,7 @@ type server struct {
 	tracer    observability.LayerTracer
 }
 
+// BindHandler は、バージョン情報を返すハンドラを Echo に登録します。
 func BindHandler(
 	e *echo.Echo,
 	tf observability.TracerFactory,
@@ -46,9 +49,9 @@ func (s *server) GetVersion(ctx context.Context, _ gen.GetVersionRequestObject) 
 	_, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	buildDate, err := datetime.ParseRFC3339UTCInLocation(s.buildInfo.BuildDate(), s.loc)
+	buildDate, err := datetime.ParseRFC3339UTCToLocation(s.buildInfo.BuildDate(), s.loc)
 	if err != nil {
-		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, err.Error())
+		return nil, xerrors.Join(errInvalidBuildDate, err)
 	}
 
 	return gen.GetVersion200JSONResponse(gen.VersionResponse{

@@ -2,6 +2,8 @@
 package auth
 
 import (
+	"maps"
+	"slices"
 	"strings"
 
 	"go-boilerplate/pkg/uuid"
@@ -21,6 +23,7 @@ type Authn struct {
 	claims   map[string]any // 任意（監査・UI制御等）
 }
 
+// New は、認証主体や付随情報から認証結果 Authn を生成して返します。
 func New(
 	subject string,
 	provider string,
@@ -29,54 +32,53 @@ func New(
 ) (*Authn, error) {
 	trimmedSubject := strings.TrimSpace(subject)
 	if trimmedSubject == "" {
-		return nil, ErrUnauthorizedSubjectMissing
+		return nil, ErrUnauthenticatedSubjectMissing
 	}
 
-	p := &Authn{
+	a := &Authn{
 		subject:  trimmedSubject,
 		provider: provider,
-		scopes:   scopes,
-		claims:   claims,
+		scopes:   slices.Clone(scopes),
+		claims:   maps.Clone(claims),
 	}
 
-	// subject が UUID なら id を埋める（変換できない場合は nil のまま）
 	if id, err := uuid.Parse(trimmedSubject); err == nil {
-		p.id = &id
+		a.id = &id
 	}
 
-	return p, nil
+	return a, nil
 }
 
 // Subject は token の sub を返します。
-func (p *Authn) Subject() string {
-	return p.subject
+func (a *Authn) Subject() string {
+	return a.subject
 }
 
 // HasID は UUIDとして解釈できたかを返します。
-func (p *Authn) HasID() bool {
-	return p.id != nil
+func (a *Authn) HasID() bool {
+	return a.id != nil
 }
 
 // ID は UUID を返します。
 // UUID として解釈できなかった場合はエラーを返します。
-func (p *Authn) ID() (uuid.UUID, error) {
-	if p.id == nil {
-		return uuid.UUID{}, ErrInvalidIDMissing
+func (a *Authn) ID() (uuid.UUID, error) {
+	if a.id == nil {
+		return uuid.UUID{}, ErrSubjectNotUUID
 	}
-	return *p.id, nil
+	return *a.id, nil
 }
 
 // Provider は認証プロバイダを返します。
-func (p *Authn) Provider() string {
-	return p.provider
+func (a *Authn) Provider() string {
+	return a.provider
 }
 
 // Scopes はスコープ一覧を返します。
-func (p *Authn) Scopes() []string {
-	return p.scopes
+func (a *Authn) Scopes() []string {
+	return slices.Clone(a.scopes)
 }
 
 // Claims はクレーム一覧を返します。
-func (p *Authn) Claims() map[string]any {
-	return p.claims
+func (a *Authn) Claims() map[string]any {
+	return maps.Clone(a.claims)
 }

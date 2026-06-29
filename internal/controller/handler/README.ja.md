@@ -29,9 +29,13 @@ internal/controller/handler は、CLI（Cobra）から起動される **サー�
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
 
+handler は 1 アクションにつき **単一の Usecase 操作へ委譲**し、その結果を整形するだけにします。複数の Usecase 呼び出しを合成する（例: 一覧と総件数を別々に取得して handler で束ねる）のはアプリケーションのオーケストレーションであり Usecase 層の責務です。Usecase は合成済みの結果（例: `{ Items, Total }`）を返す単一メソッドを公開します。
+
 ## Presenter とは
 
 Presenterとは`Usecase DTO → OpenAPIレスポンス型`への変換処理です。
+
+同一の変換を複数のハンドラーメソッドで再利用する場合は、ハンドラーパッケージ内に private な `toXxxResponse(dto …) gen.XxxResponse` ヘルパー（例: `toUserResponse`）として定義します。単発の変換はハンドラー本体にインラインで書いてかまいません。
 
 ## アーキテクチャ
 
@@ -320,6 +324,8 @@ defer endSpan()
 ポイント：Controllerはspanの開始・終了だけを知り、
 OpenTelemetry SDK の詳細には一切触れません。
 
+例外：下流の usecase を呼ばないハンドラー（liveness/health/version 等のプローブ）は再束縛した `ctx` を使わないため、未使用変数エラーを避けつつ span を記録する目的で `_, endSpan := s.tracer.Start(ctx)` と書いてよい。
+
 #### 2. TracerのDI（observability.LayerTracer）
 
 Controllerは以下のようにobservability.LayerTracerを依存として受け取ります。
@@ -422,6 +428,8 @@ type server struct {
 - new を使って内部で依存生成しない
 - interface（Usecase）に依存する
 
+例外：OpenAPI に定義されない運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は生成された `ServerInterface` を持たないため、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外は非 OpenAPI の運用エンドポイントに限ります。
+
 ### なぜ fx.Invoke を使うのか
 
 - ルーティング登録をアプリ起動時に自動化できる
@@ -453,8 +461,8 @@ type server struct {
 
 #### ページング
 
-- Controller: `page & per_page`を受け取り、`usecase.NewPagingFrom1Based()`でhttpを意味（Paging）へ変換。
-- Usecase: `Paging`を受け、方針（上限・既定）を一元管理。
+- Controller: `page & per_page`を受け取り、`paging.NewPageFrom1Based()`でhttpを意味（Page）へ変換。
+- Usecase: `Page`を受け、方針（上限・既定）を一元管理。
 
 #### エラーマッピング
 
@@ -603,7 +611,7 @@ Handler テストでは **Usecase を mock 化**し、Controller の責務のみ
 ```go
 mockApp := mock_user.NewMockUsecase(ctrl)
 mockApp.EXPECT().
-    ListUsersByKeyword(gomock.Any(), expectedParams, mockPaging).
+    ListUsersByKeyword(gomock.Any(), expectedParams, mockPage).
     Return(mockDTO, nil)
 ```
 
@@ -830,7 +838,7 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
 
-    page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+    page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
     if err != nil {
         return nil, err
     }

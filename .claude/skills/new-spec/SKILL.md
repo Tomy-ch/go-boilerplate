@@ -29,7 +29,7 @@ controller / infra layers are not spec-driven — they are derived at scaffold t
 - OpenAPI gen + naming convention → controller
 - domain Repository IF + sqlc gen function names → infra
 
-The convention itself is enforced by `arch-check-controller` / `arch-check-infra` (handler/Repository body purity, name correspondence). See `.claude/scaffold-spec/lifecycle.md` for the full rationale.
+The convention itself is enforced by `arch-check` (controller / infra audit) (handler/Repository body purity, name correspondence). See `.claude/scaffold-spec/lifecycle.md` for the full rationale.
 
 ## What This Skill Reads / Writes
 

@@ -1,4 +1,4 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package job は、ジョブを管理・実行するためのコマンドを提供するためのパッケージです。
 package job
@@ -26,6 +26,8 @@ type Runner interface {
 // State は、ジョブの状態を管理するインターフェースです。
 type State interface {
 	// Set は、ジョブの状態を設定します。
+	// done はバッファ付き（cap≥1）であること。受け手（Snapshot 側）は単一の
+	// 完了通知をブロックせずに送れる前提で done への送信・close を所有する。
 	Set(name string, args []string, done chan error)
 	// Snapshot は、現在のジョブの状態をスナップショットとして取得します。
 	Snapshot() (string, []string, chan error)

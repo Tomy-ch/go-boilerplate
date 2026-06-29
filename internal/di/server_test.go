@@ -20,12 +20,13 @@ func Test_NewApplicationCore_GraphIsValid(t *testing.T) {
 	t.Parallel()
 
 	// ValidateApp は依存グラフの結線（型の充足）を検証する。ハンドラ・ユースケース・
-	// リポジトリを追加した際に結線漏れがあればここで検出される。NopLogger は構成検証時の
-	// config 実行ログを抑制するだけで、検証結果（戻り値）には影響しない。
-	opts := append(applicationCoreOptions(), fx.NopLogger)
+	// リポジトリを追加した際に結線漏れがあればここで検出される。本番と同じ
+	// fx.WithLogger(NewFxEventLogger) を渡し、ロガー構成子の依存解決も併せて検証する。
+	opts := append(applicationCoreOptions(), fx.WithLogger(NewFxEventLogger))
 	require.NoError(t, fx.ValidateApp(opts...))
 }
 
+//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
 func Test_NewApplicationCore_BootsWithMockedDB(t *testing.T) {
 	// 実 DB とポート衝突を避けつつ、全コンストラクタの実行とライフサイクル(OnStart/OnStop)を検証する。
 	// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避し、サーバポートは 0（エフェメラル）にする。

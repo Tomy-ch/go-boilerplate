@@ -34,13 +34,6 @@ flowchart TB
     AddReqID --> Write --> Log
 ```
 
-## 公開 API
-
-|関数|説明|
-|---|---|
-|`New(e, log, lf, obsCfg)`|Echo インスタンスに統一エラーハンドラを設定（`e.HTTPErrorHandler`）|
-|`NewHTTPErrorHandler(logger, lf, obsCfg)`|すべてのエラー型を正規化する `echo.HTTPErrorHandler` を返す|
-
 ## エラー正規化
 
 ハンドラは以下の優先順位でエラーを処理します。
@@ -74,14 +67,14 @@ OpenAPI エラーでない場合は、ステータスコードを使って標準
 
 ```json
 {
-  "Code": "BAD_REQUEST",
-  "Message": "...",
-  "Details": ["..."],
-  "RequestID": "..."
+  "code": "BAD_REQUEST",
+  "message": "...",
+  "details": ["..."],
+  "requestId": "..."
 }
 ```
 
-- `RequestID` は常に付与（`requestid.GetRequestIDFromResponse` で取得）
+- `requestId` は常に付与（`requestid.GetRequestIDFromResponse` で取得）
 - `Details` と `Internal` エラーは利用可能な場合に含まれる
 - `Internal` エラーとスタックトレースはログに出力されるが、**クライアントには返されない**
 
@@ -103,7 +96,11 @@ OpenAPI エラーでない場合は、ステータスコードを使って標準
 
 ## 再入ガード
 
-エラーレスポンス書き込み中にエラーが発生した場合の無限再帰を防ぐため、Echo コンテキストに `errHandlerKey` を設定します。
+初回呼び出し時にハンドラは `ctxhelper.SetErrorHandledToEcho(c, true)` を呼び、以降の呼び出しは `ctxhelper.GetErrorHandledFromEcho(c)` の判定で早期 return します。これによりエラーレスポンス書き込み中に再度エラーが起きても無限再帰しません。フラグは Echo の内部ストアではなく `scripts/genctxkey` が生成する typed sentinel として request の context 側に保持されます。
+
+## リカバリミドルウェアとの連携
+
+上流の `recovery` ミドルウェアが既にパニックをログ済みの場合、同じコンテキストには `ctxhelper.SetRecoveredToEcho(c, true)` で `Recovered` sentinel が立っています。本ハンドラは `logHTTPError` を呼ぶ前に `ctxhelper.GetRecoveredFromEcho(c)` をチェックし、ログ二重出力を抑止します（500 レスポンス自体は返します）。
 
 ## ファイル構成
 

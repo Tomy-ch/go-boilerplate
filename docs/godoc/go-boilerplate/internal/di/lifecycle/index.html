@@ -1,0 +1,306 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>lifecycle - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package lifecycle
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/di/lifecycle&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package lifecycle は、fx.Lifecycle を抽象化するテスト可能な Registrar インターフェースと、バックグラウンドランナーを fx ライフサイクルへ結線する SupervisedRunner プリミティブを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#Module">func Module() fx.Option</a></dd>
+			
+			
+				
+				<dd><a href="#Registrar">type Registrar</a></dd>
+				
+					
+					<dd>    <a href="#NewLifecycleRegistrar">func NewLifecycleRegistrar(lc fx.Lifecycle) Registrar</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SupervisedRunner">type SupervisedRunner</a></dd>
+				
+				
+					
+					<dd>    <a href="#SupervisedRunner.Register">func (s SupervisedRunner) Register(reg Registrar)</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html">lifecycle.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle_di.go.html">lifecycle_di.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html">supervisor.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="Module">func <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle_di.go.html?s=121:144#L1">Module</a>
+				<a class="permalink" href="#Module">¶</a>
+				
+				
+			</h2>
+			<pre>func Module() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>Module は、LifecycleRegistrarを提供するfx.Moduleを返します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Registrar">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=536:896#L3">Registrar</a>
+				<a class="permalink" href="#Registrar">¶</a>
+				
+				
+			</h2>
+			<p>Registrar は、開始およびシャットダウン処理を登録するためのインターフェースです。
+
+			</p><pre>type Registrar interface {
+    <span class="comment">// RegisterStart は、アプリケーションの開始時に実行される関数を登録します。</span>
+    RegisterStart(start func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// RegisterStop は、アプリケーションのシャットダウン時に実行される関数を登録します。</span>
+    RegisterStop(stop func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewLifecycleRegistrar">func <a href="../../../../src/go-boilerplate/internal/di/lifecycle/lifecycle.go.html?s=1180:1233#L16">NewLifecycleRegistrar</a>
+					<a class="permalink" href="#NewLifecycleRegistrar">¶</a>
+					
+					
+				</h3>
+				<pre>func NewLifecycleRegistrar(lc <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Lifecycle">Lifecycle</a>) <a href="#Registrar">Registrar</a></pre>
+				<p>NewLifecycleRegistrar は、fx.Lifecycle を用いて Registrar の実装を提供します。
+
+				
+				
+			
+
+			
+		
+			
+			
+			</p><h2 id="SupervisedRunner">type <a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html?s=1013:1605#L8">SupervisedRunner</a>
+				<a class="permalink" href="#SupervisedRunner">¶</a>
+				
+				
+			</h2>
+			<p>SupervisedRunner は、detached goroutine で常駐する background runner を fx ライフサイクルへ
+結線する共通プリミティブです。job / worker / outbox relay の各 hook が共有します。
+</p><ul>
+<li>OnStart: <a href="#SupervisedRunner.OnStartAux">SupervisedRunner.OnStartAux</a>（任意）を同期実行した後、<a href="#SupervisedRunner.Body">SupervisedRunner.Body</a> を
+goroutine で起動する（OnStart はブロックしない）。
+</li><li>OnStop:  実行 context をキャンセルし、Body の完了を stopCtx（grace）の範囲で待ち、
+その後 <a href="#SupervisedRunner.OnStopAux">SupervisedRunner.OnStopAux</a>（任意）を実行する。
+</li></ul>
+<p>Body に渡される実行 context は startCtx とは独立しており、OnStop でのみキャンセルされます。これにより
+</p><ul>
+<li>OnStart 完了後に fx が startCtx をキャンセルしても Body は巻き込まれず（detached）、
+</li><li>OnStop の cancel でのみ Body の context が切れて中断できる（停止時キャンセル）。
+</li></ul>
+
+			<pre>type SupervisedRunner struct {
+<span id="SupervisedRunner.Body"></span>    <span class="comment">// Body は、background ループ本体です。渡される context は OnStop でキャンセルされます。</span>
+    <span class="comment">// nil の場合は何も起動しません。</span>
+    Body func(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>)
+<span id="SupervisedRunner.OnStartAux"></span>    <span class="comment">// OnStartAux は、Body 起動前に OnStart 内で同期実行される任意の処理です（例: health listener 起動）。</span>
+    OnStartAux func()
+<span id="SupervisedRunner.OnStopAux"></span>    <span class="comment">// OnStopAux は、drain 完了後に実行される任意の処理です（例: health listener 停止）。</span>
+    <span class="comment">// 引数の stopCtx は OnStop の grace context です。</span>
+    OnStopAux func(stopCtx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>)
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="SupervisedRunner.Register">func (SupervisedRunner) <a href="../../../../src/go-boilerplate/internal/di/lifecycle/supervisor.go.html?s=1696:1745#L20">Register</a>
+					<a class="permalink" href="#SupervisedRunner.Register">¶</a>
+					
+					
+				</h3>
+				<pre>func (s <a href="#SupervisedRunner">SupervisedRunner</a>) Register(reg <a href="#Registrar">Registrar</a>)</pre>
+				<p>Register は、SupervisedRunner を reg のライフサイクルへ登録します。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

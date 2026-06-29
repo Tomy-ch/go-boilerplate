@@ -2,12 +2,12 @@
 
 English | [日本語](README.ja.md)
 
-SQL for Aggregate persistence (CRUD operations on domain entities).
+SQL for Aggregate persistence and simple single-Aggregate reads (CRUD, plus simple filter / list / count by the Aggregate's own attributes).
 
 ## Purpose
 
-- Centralize INSERT / UPDATE / DELETE / SELECT queries for persisting and retrieving domain models.
-- Keep SQL simple and free of business logic -- aggregation and complex joins belong in QueryService.
+- Centralize INSERT / UPDATE / DELETE / SELECT queries -- including simple filter / list / count by a single Aggregate's own attributes -- for persisting and retrieving domain models.
+- Keep SQL simple and free of business logic -- cross-Aggregate reads, aggregation, and complex joins belong in QueryService.
 - Provide type-safe repository implementations via sqlc code generation.
 
 ## Infrastructure Mapping

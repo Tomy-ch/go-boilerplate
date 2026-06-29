@@ -1,0 +1,141 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>retry - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/pkg">pkg</a>/<a href="../../../../src/go-boilerplate/pkg/retry">retry</a>/<span class="text-muted">retry.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/pkg/retry">go-boilerplate/pkg/retry</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package retry は、失敗分類を消費する有限リトライの行動層です。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//</span>
+<span id="L3" class="ln">     3  </span><span class="comment">// classify → bounded attempts → backoff + full jitter → deadline-aware という</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// 共通ループを 1 度だけ実装し、tx リトライや外部 HTTP の retry が共有します。</span>
+<span id="L5" class="ln">     5  </span><span class="comment">// バックオフの待機時間は呼び出し側が [Policy.Backoff]（attempt → 基本待機時間）で</span>
+<span id="L6" class="ln">     6  </span><span class="comment">// 与え、本パッケージはそこへ full jitter（[Full]）を重畳します。乱数（math/rand/v2）</span>
+<span id="L7" class="ln">     7  </span><span class="comment">// 依存を本パッケージ側へ閉じることで、待機時間算出を担う純粋な pkg/backoff の</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// 「現在時刻や乱数に依存しない」純粋性を保ちます。</span>
+<span id="L9" class="ln">     9  </span><span class="comment">//</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// pkg は相互独立（pkg→pkg import 禁止）のため、Backoff は pkg/backoff の型ではなく</span>
+<span id="L11" class="ln">    11  </span><span class="comment">// 関数値として受け取ります。</span>
+<span id="L12" class="ln">    12  </span>package retry
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>import (
+<span id="L15" class="ln">    15  </span>	&#34;context&#34;
+<span id="L16" class="ln">    16  </span>	&#34;time&#34;
+<span id="L17" class="ln">    17  </span>)
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span><span class="comment">// Sleeper は、リトライ間の待機を抽象化するインターフェースです。</span>
+<span id="L20" class="ln">    20  </span><span class="comment">// ctx のキャンセル / deadline を尊重し、待機が打ち切られた場合は error を返します。</span>
+<span id="L21" class="ln">    21  </span><span class="comment">//</span>
+<span id="L22" class="ln">    22  </span><span class="comment">// 本パッケージは internal 非依存のため独自に定義します。Sleep(ctx context.Context, d time.Duration) error を持つ任意の型を注入できます。</span>
+<span id="L23" class="ln">    23  </span>type Sleeper interface {
+<span id="L24" class="ln">    24  </span>	<span class="comment">// Sleep は、d 経過まで待機します。ctx 打ち切り時は error を返します。</span>
+<span id="L25" class="ln">    25  </span>	Sleep(ctx context.Context, d time.Duration) error
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// Policy は、有限リトライの設定です。</span>
+<span id="L29" class="ln">    29  </span>type Policy struct {
+<span id="L30" class="ln">    30  </span>	<span class="comment">// MaxAttempts は、fn の最大試行回数です。1 未満は 1 として扱います（最低 1 回試行）。</span>
+<span id="L31" class="ln">    31  </span>	MaxAttempts int
+<span id="L32" class="ln">    32  </span>	<span class="comment">// Backoff は、attempt（0 起算）に対する jitter 適用前の基本待機時間を返します。</span>
+<span id="L33" class="ln">    33  </span>	<span class="comment">// nil の場合は待機 0（即時リトライ）。実待機は本値に [Full] を重畳したものです。</span>
+<span id="L34" class="ln">    34  </span>	<span class="comment">// 呼び出し側は backoff.Exponential.Duration 等をそのまま渡せます。</span>
+<span id="L35" class="ln">    35  </span>	Backoff func(attempt int) time.Duration
+<span id="L36" class="ln">    36  </span>}
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span><span class="comment">// Do は、fn を有限リトライで実行します。</span>
+<span id="L39" class="ln">    39  </span><span class="comment">//</span>
+<span id="L40" class="ln">    40  </span><span class="comment">// fn の返した error が isRetryable を満たす限り、policy.MaxAttempts まで再試行し、</span>
+<span id="L41" class="ln">    41  </span><span class="comment">// 試行間は policy.Backoff（+ full jitter）だけ sleeper で待機します。最後に観測した</span>
+<span id="L42" class="ln">    42  </span><span class="comment">// error（成功時は nil）を返します。</span>
+<span id="L43" class="ln">    43  </span><span class="comment">//</span>
+<span id="L44" class="ln">    44  </span><span class="comment">//   - fn が nil を返した、isRetryable が false、または最終試行に達した場合は即座に返します。</span>
+<span id="L45" class="ln">    45  </span><span class="comment">//   - sleeper.Sleep が error を返した（ctx 打ち切り）場合は、sleep の error ではなく</span>
+<span id="L46" class="ln">    46  </span><span class="comment">//     直前の fn の error を返します（リトライ対象だった元の失敗を呼び出し側へ伝えるため）。</span>
+<span id="L47" class="ln">    47  </span><span class="comment">//</span>
+<span id="L48" class="ln">    48  </span><span class="comment">// isRetryable は fn の返した非 nil error に対してのみ呼ばれます。</span>
+<span id="L49" class="ln">    49  </span>func Do(
+<span id="L50" class="ln">    50  </span>	ctx context.Context,
+<span id="L51" class="ln">    51  </span>	sleeper Sleeper,
+<span id="L52" class="ln">    52  </span>	policy Policy,
+<span id="L53" class="ln">    53  </span>	isRetryable func(error) bool,
+<span id="L54" class="ln">    54  </span>	fn func(context.Context) error,
+<span id="L55" class="ln">    55  </span>) error {
+<span id="L56" class="ln">    56  </span>	attempts := max(1, policy.MaxAttempts)
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>	var err error
+<span id="L59" class="ln">    59  </span>	for attempt := 1; attempt &lt;= attempts; attempt++ {
+<span id="L60" class="ln">    60  </span>		err = fn(ctx)
+<span id="L61" class="ln">    61  </span>		if err == nil || !isRetryable(err) || attempt == attempts {
+<span id="L62" class="ln">    62  </span>			return err
+<span id="L63" class="ln">    63  </span>		}
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>		var base time.Duration
+<span id="L66" class="ln">    66  </span>		if policy.Backoff != nil {
+<span id="L67" class="ln">    67  </span>			base = policy.Backoff(attempt - 1)
+<span id="L68" class="ln">    68  </span>		}
+<span id="L69" class="ln">    69  </span>		if serr := sleeper.Sleep(ctx, Full(base)); serr != nil {
+<span id="L70" class="ln">    70  </span>			return err
+<span id="L71" class="ln">    71  </span>		}
+<span id="L72" class="ln">    72  </span>	}
+<span id="L73" class="ln">    73  </span>	return err
+<span id="L74" class="ln">    74  </span>}
+<span id="L75" class="ln">    75  </span>
+</pre><p><a href="../../../../src/go-boilerplate/pkg/retry/retry.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

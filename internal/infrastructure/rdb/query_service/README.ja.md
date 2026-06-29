@@ -228,44 +228,25 @@ row.Users.Building   // *string
 row.Users.DeletedAt  // *time.Time
 ```
 
-## LoggingDBProvider
+## DB アクセス（driver）
 
-QueryService は通常、`loggingdb.DBProvider` を利用して DB にアクセスします。
-
-```go
-db := gen.New(s.db.NewLoggingDB(ctx))
-```
-
-`loggingdb.DBProvider` は次を提供します。
-
-- SQL ログ出力
-- DB / Tx の透過切り替え
-- Contextベース接続取得
-
-QueryService は **DB接続状態を意識しない設計**になります。
-
-## driver の直接利用
-
-ロギングが不要な場合は、ロギングなしの DB アクセスを利用できます。
+QueryService は `driver.DatabaseDriver` を通じて DB にアクセスします。
 
 ```go
-db := gen.New(s.db.NewDB(ctx))
+db := gen.New(driver.New(ctx, s.db))
 ```
 
-用途
+`driver.New(ctx, db)` は次を提供します。
 
-- 高頻度処理でログノイズを抑えたい場合
-- ロギング不要な単純処理
-- ベンチマークや最小経路の確認
+- DB / Tx の透過切り替え（context に tx があればそれを採用）
+- Context ベース接続取得
 
-原則
-
-- 通常は `NewLoggingDB(ctx)` を使用する
-- 明確な理由がある場合のみ `NewDB(ctx)` を使用する
+SQL のログ / トレースは driver の接続層に結線した pgx クエリトレーサーが透過的に付与します
+（`driver/README.md` 参照）。そのため QueryService は **DB 接続状態を意識しない設計**になります。
 
 ## エラー正規化
 
-PostgreSQL エラーは`internal/infrastructure/rdb/postgres/pgerror`で正規化します。
+PostgreSQL エラーは`internal/infrastructure/rdb/pgerror`で正規化します。
 
 ```go
 return pgerror.NormalizeError(err)
@@ -275,7 +256,7 @@ return pgerror.NormalizeError(err)
 
 ```mermaid
 flowchart TB
-    A["sql.ErrNoRows"] --> B["ErrNotFound"]
+    A["pgx.ErrNoRows"] --> B["ErrNotFound"]
     C["unique violation"] --> D["ErrConflict"]
     E["connection error"] --> F["ErrUnavailable"]
     G["others"] --> H["ErrInternal"]
@@ -353,7 +334,7 @@ func InfrastructureModule() fx.Option {
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -417,7 +398,7 @@ QueryService は次の依存を持ちます。
 
 ```go
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -426,7 +407,7 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -488,14 +469,14 @@ return rows
 // service は QueryService の実装です。
 // DBアクセスとトレーシングを責務として持ちます。
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New は QueryService のコンストラクタです。
 // 依存はすべて外から注入し、内部で new は行いません。
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -520,7 +501,7 @@ func (s *service) FindByFilter(ctx context.Context, filter *query.UserSearchFilt
     }
 
     // loggingDB を利用して DB 接続を取得
-    db := gen.New(s.db.NewLoggingDB(ctx))
+    db := gen.New(driver.New(ctx, s.db))
 
     // 削除状態に応じてクエリを切り替える
     switch {

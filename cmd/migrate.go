@@ -1,0 +1,107 @@
+package main
+
+import (
+	root "go-boilerplate"
+	climigrate "go-boilerplate/internal/cli/migrate"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/envutil"
+	"go-boilerplate/pkg/xerrors"
+
+	"github.com/spf13/cobra"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+
+	// postgres driver for golang-migrate (required for runtime registration)
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+)
+
+// migrateFilePlace は、埋め込み FS 内のマイグレーションディレクトリのパスです。
+const migrateFilePlace = "database/migrations"
+
+// newMigrateUpCommand は、DBのマイグレーションを上げるためのコマンドを生成します。
+func newMigrateUpCommand() *cobra.Command {
+	var (
+		steps    int
+		database string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "migrate-up",
+		Short: "database/migrations のDDLをアップグレードします（--steps / --database指定可）。",
+		Long: `database/migrations ディレクトリに存在するDDLマイグレーションを適用します。
+
+--steps を指定しない場合（0）は、未適用のマイグレーションを全て Up します。
+--steps に正の整数を指定すると、現在位置からその段数だけ Up します。
+--database フラグを指定すると、対象のデータベース（例: local, test）に対して Up を行います。`,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+			return climigrate.MigrateUpRun(steps, database, logger, buildMigrateInstance)
+		},
+	}
+
+	cmd.Flags().IntVar(&steps, "steps", 0, "現在位置から Up する段数（0 で全件、正の整数のみ）")
+	cmd.Flags().StringVar(&database, "database", "", "対象データベース（例: local）")
+
+	return cmd
+}
+
+// newMigrateDownCommand は、DBのマイグレーションを下げるためのコマンドを生成します。
+func newMigrateDownCommand() *cobra.Command {
+	var (
+		steps    int
+		database string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "migrate-down",
+		Short: "database/migrations のDDLをダウングレードします（--steps / --database指定可）。",
+		Long: `database/migrations ディレクトリに存在するDDLマイグレーションを適用します。
+
+--steps を指定しない場合（0）は、適用済みのマイグレーションを全て Down します。
+--steps に正の整数を指定すると、現在位置からその段数だけ Down します。
+--database フラグを指定すると、対象のデータベース（例: local, test）に対して Down を行います。`,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError())
+			return climigrate.MigrateDownRun(steps, database, logger, buildMigrateInstance)
+		},
+	}
+
+	cmd.Flags().IntVar(&steps, "steps", 0, "現在位置から Down する段数（0 で全件、正の整数のみ）")
+	cmd.Flags().StringVar(&database, "database", "", "対象データベース（例: local）")
+
+	return cmd
+}
+
+// buildMigrateInstance は、設定を読み込み golang-migrate のインスタンスを生成します。
+func buildMigrateInstance(database string) (climigrate.Migrator, error) {
+	if err := config.Load(); err != nil {
+		return nil, xerrors.Wrap(err, "failed to load config")
+	}
+	if database != "" {
+		restore, err := envutil.Override("DB_NAME", database)
+		if err != nil {
+			return nil, xerrors.Wrap(err, "failed to override DB_NAME env var")
+		}
+		defer restore()
+	}
+	cfg, err := config.New()
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to build config")
+	}
+	dbCfg := config.NewDatabaseConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
+
+	src, err := iofs.New(root.FS, migrateFilePlace)
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to create migration source")
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", src, driver.DSNWithTimeZoneString(dbCfg, osCfg))
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to create migrate instance")
+	}
+	return m, nil
+}

@@ -6,30 +6,13 @@ English | [日本語](README.ja.md)
 
 ## Role
 
-`RegisterJobHooks` registers a Start hook with `lifecycle.Registrar`:
+`RegisterJobHooks` wires the job into a `lifecycle.SupervisedRunner` (the shared primitive also used by the worker / outbox-relay hooks), which registers both a Start and a Stop hook with `lifecycle.Registrar`:
 
 1. Calls `state.Snapshot()` to get job name, args, and done channel
 2. If `done == nil`: logs and triggers `sd.Shutdown()`
-3. Otherwise: executes `runner.Run(startCtx, name, args)` in a goroutine, sends result to `done`, then calls `sd.Shutdown()`
+3. Otherwise: executes `runner.Run(jobCtx, name, args)` in a goroutine, sends result to `done`, then calls `sd.Shutdown()`
 
-## Public API
-
-```go
-func RegisterJobHooks(
-    reg lifecycle.Registrar,
-    sd shutdowner.Shutdowner,
-    runner job.Runner,
-    logger logging.Logger,
-    osCfg *config.OperationSystemConfig,
-    state job.State,
-)
-```
-
-DI registration:
-
-```go
-fx.Invoke(hook.RegisterJobHooks)
-```
+`jobCtx` is the run context supplied by `SupervisedRunner`: derived from `context.Background()` (so it is not affected by the start context being cancelled after `OnStart`) and **cancelled on `OnStop`**. This is what makes `--timeout` work: when the CLI exceeds the timeout and calls `app.Stop`, `OnStop` cancels `jobCtx`, interrupting the in-flight job (e.g. a long DB query). See `lifecycle/README.md` (SupervisedRunner).
 
 ## Usage Flow
 
@@ -48,3 +31,4 @@ err := <-done
 - Job execution starts asynchronously in a separate goroutine
 - The `done` channel is closed by the hook side (callers should not close it)
 - `shutdowner.Shutdown()` triggers application stop after job completion
+- On `OnStop` the run context is cancelled, so a job still running (e.g. on `--timeout`) is interrupted rather than detached

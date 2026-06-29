@@ -4,8 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"go-boilerplate/pkg/ptr"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +16,7 @@ func TestParseSearchTokens(t *testing.T) {
 
 		t.Run("分割・正規化・重複排除・上限適用", func(t *testing.T) {
 			t.Parallel()
-			input := ptr.To("foo bar_baz  qux foo")
+			input := new("foo bar_baz  qux foo")
 			actual := ParseSearchTokens(input, 10)
 			expected := []string{"foo", "bar", "baz", "qux"}
 			assert.Equal(t, expected, actual)
@@ -26,7 +24,7 @@ func TestParseSearchTokens(t *testing.T) {
 
 		t.Run("maxTokensで切り詰められる", func(t *testing.T) {
 			t.Parallel()
-			input := ptr.To("a b c d e")
+			input := new("a b c d e")
 			actual := ParseSearchTokens(input, 3)
 			expected := []string{"a", "b", "c"}
 			assert.Equal(t, expected, actual)
@@ -35,10 +33,10 @@ func TestParseSearchTokens(t *testing.T) {
 		t.Run("maxTokensが0以下ならデフォルトが使われる", func(t *testing.T) {
 			t.Parallel()
 			parts := make([]string, DefaultMaxTokens+2)
-			for i := 0; i < len(parts); i++ {
+			for i := range parts {
 				parts[i] = "t" + strings.Repeat("x", i)
 			}
-			input := ptr.To(strings.Join(parts, " "))
+			input := new(strings.Join(parts, " "))
 			actual := ParseSearchTokens(input, 0)
 			assert.Len(t, actual, DefaultMaxTokens)
 			assert.Equal(t, parts[:DefaultMaxTokens], actual)
@@ -46,7 +44,7 @@ func TestParseSearchTokens(t *testing.T) {
 
 		t.Run("空文字列は空配列を返す", func(t *testing.T) {
 			t.Parallel()
-			actual := ParseSearchTokens(ptr.To(""), 10)
+			actual := ParseSearchTokens(new(""), 10)
 			require.Empty(t, actual)
 		})
 
@@ -62,7 +60,7 @@ func TestParseSearchTokens(t *testing.T) {
 
 		t.Run("連続する区切り文字は無視される", func(t *testing.T) {
 			t.Parallel()
-			input := ptr.To("foo__  _  bar")
+			input := new("foo__  _  bar")
 			actual := ParseSearchTokens(input, 10)
 			expected := []string{"foo", "bar"}
 			assert.Equal(t, expected, actual)
@@ -73,7 +71,7 @@ func TestParseSearchTokens(t *testing.T) {
 
 			// MaxKeywordLengthより長い単一トークンを作成
 			long := strings.Repeat("a", MaxKeywordLength+10)
-			input := ptr.To(long)
+			input := new(long)
 
 			actual := ParseSearchTokens(input, 10)
 
@@ -104,23 +102,6 @@ func TestSplitIntoTerms(t *testing.T) {
 		t.Parallel()
 		actual := splitIntoTerms("a__  _b")
 		assert.Equal(t, []string{"a", "b"}, actual)
-	})
-}
-
-func TestTrimAndDropEmpty(t *testing.T) {
-	t.Parallel()
-
-	t.Run("前後空白を削除し空要素を排除", func(t *testing.T) {
-		t.Parallel()
-		in := []string{" a ", "", "  ", "b"}
-		actual := trimAndDropEmpty(in)
-		assert.Equal(t, []string{"a", "b"}, actual)
-	})
-
-	t.Run("空入力は空出力", func(t *testing.T) {
-		t.Parallel()
-		actual := trimAndDropEmpty([]string{})
-		require.Empty(t, actual)
 	})
 }
 

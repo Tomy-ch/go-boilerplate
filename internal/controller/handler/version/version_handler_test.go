@@ -12,7 +12,6 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/system"
 	mock_system "go-boilerplate/internal/system/mock"
-	"go-boilerplate/pkg/datetime"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +31,7 @@ func TestBindHandler(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)
@@ -52,14 +51,9 @@ func TestBindHandler(t *testing.T) {
 func TestGetVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	ctrl := gomock.NewController(t)
-	lt := observability.NewMockControllerLayerTracer(t)
-
-	bi := system.NewBuildInfo()
 	cfg := config.MockConfigForTest(t)
 	appCfg := config.NewApplicationConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	loc, err := time.LoadLocation(osCfg.TimeZone())
 	require.NoError(t, err)
@@ -67,47 +61,62 @@ func TestGetVersion(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s := &server{
-			tracer:    lt,
-			buildInfo: bi,
-			appCfg:    appCfg,
-			loc:       loc,
-		}
+		t.Run("バージョン情報を返す", func(t *testing.T) {
+			t.Parallel()
 
-		buildDate, err := datetime.ParseRFC3339UTCInLocation(bi.BuildDate(), loc)
-		require.NoError(t, err)
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
 
-		expectedResponse := gen.VersionResponse{
-			Version:     bi.Version(),
-			Revision:    bi.Revision(),
-			BuildDate:   buildDate,
-			Environment: appCfg.Env(),
-			Service:     appCfg.Name(),
-		}
+			bi := mock_system.NewMockBuildInfo(ctrl)
+			bi.EXPECT().Version().Return("v1.2.3")
+			bi.EXPECT().Revision().Return("abc1234")
+			bi.EXPECT().BuildDate().Return("2024-01-02T03:04:05Z")
 
-		resp, err := s.GetVersion(ctx, gen.GetVersionRequestObject{})
-		require.NoError(t, err)
+			s := &server{
+				tracer:    observability.NewMockControllerLayerTracer(t),
+				buildInfo: bi,
+				appCfg:    appCfg,
+				loc:       loc,
+			}
 
-		actual, ok := resp.(gen.GetVersion200JSONResponse)
-		assert.True(t, ok)
+			resp, err := s.GetVersion(ctx, gen.GetVersionRequestObject{})
+			require.NoError(t, err)
 
-		assert.Equal(t, expectedResponse, gen.VersionResponse(actual))
+			actual, ok := resp.(gen.GetVersion200JSONResponse)
+			require.True(t, ok)
+
+			expectedResponse := gen.VersionResponse{
+				Version:     "v1.2.3",
+				Revision:    "abc1234",
+				BuildDate:   time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC).In(loc),
+				Environment: appCfg.Env(),
+				Service:     appCfg.Name(),
+			}
+			assert.Equal(t, expectedResponse, gen.VersionResponse(actual))
+		})
 	})
 
-	t.Run("異常系: ビルド日時のパースに失敗", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
-		mockBuildInfo.EXPECT().BuildDate().Return("invalid-date-string").AnyTimes()
-		s := &server{
-			tracer:    lt,
-			buildInfo: mockBuildInfo,
-			appCfg:    appCfg,
-			loc:       loc,
-		}
+		t.Run("ビルド日時のパースに失敗するとErrInternalを返す", func(t *testing.T) {
+			t.Parallel()
 
-		actual, err := s.GetVersion(ctx, gen.GetVersionRequestObject{})
-		require.Nil(t, actual)
-		require.Error(t, err)
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+
+			mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
+			mockBuildInfo.EXPECT().BuildDate().Return("invalid-date-string")
+			s := &server{
+				tracer:    observability.NewMockControllerLayerTracer(t),
+				buildInfo: mockBuildInfo,
+				appCfg:    appCfg,
+				loc:       loc,
+			}
+
+			actual, err := s.GetVersion(ctx, gen.GetVersionRequestObject{})
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, errInvalidBuildDate)
+		})
 	})
 }

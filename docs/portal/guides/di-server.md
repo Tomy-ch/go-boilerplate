@@ -15,29 +15,6 @@ internal/di/server/
 └── hook/           # Server lifecycle hooks (HTTP start/stop, DB close)
 ```
 
-## Public API
-
-|Function|Description|
-|---|---|
-|`Module()`|Provide `*echo.Echo` via `server.NewAppServer`|
-|`HookModule()`|Register server lifecycle hooks (HTTP start/stop)|
-|`MiddlewareModule()`|Aggregate all HTTP stack middleware and configurators|
-
-### MiddlewareModule Composition
-
-`MiddlewareModule()` aggregates the following sub-modules:
-
-|Category|Modules|
-|---|---|
-|decoration|`BannerModule`, `DefaultPortModule`|
-|inbound|`IPExtractorModule`, `URIModule`, `OpenAPIModule`|
-|outbound|`ErrorHandlerModule`, `ForceJSONModule`, `RecoveryModule`|
-|security|`Module`, `CORSModule`, `CookieModule`|
-|instrumentation|`RequestIDModule`, `LoggingModule`, `ObservabilityModule`|
-|nonprod|`DebugModeModule`|
-
-Additionally, `extension.ApplyExtends` is provided to apply all collected middleware and configurators to the Echo instance.
-
 ## Application Startup Order
 
 ```mermaid

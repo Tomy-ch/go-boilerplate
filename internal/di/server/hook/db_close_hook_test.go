@@ -2,6 +2,7 @@ package hook
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
@@ -25,7 +26,9 @@ func TestRegisterDBCloseHooks(t *testing.T) {
 	dummy := func(context.Context) error { return nil }
 
 	reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		closeFn = args[0].(func(context.Context) error)
+		fn, ok := args[0].(func(context.Context) error)
+		require.True(t, ok)
+		closeFn = fn
 	}).Times(1)
 
 	RegisterDBCloseHooks(reg, db, logger)
@@ -37,4 +40,35 @@ func TestRegisterDBCloseHooks(t *testing.T) {
 	db.EXPECT().Close()
 
 	require.NoError(t, closeFn(context.Background()))
+}
+
+func TestRegisterDBCloseHooks_CloseError(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+
+	reg := mock_lifecycle.NewMockRegistrar(ctrl)
+	db := mock_driver.NewMockDatabaseDriver(ctrl)
+	logger := mock_logging.NewMockLogger(ctrl)
+
+	var closeFn func(context.Context) error
+	dummy := func(context.Context) error { return nil }
+
+	reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
+		fn, ok := args[0].(func(context.Context) error)
+		require.True(t, ok)
+		closeFn = fn
+	}).Times(1)
+
+	RegisterDBCloseHooks(reg, db, logger)
+	require.NotNil(t, closeFn)
+
+	namedMock := mock_logging.NewMockLogger(ctrl)
+	logger.EXPECT().Named("db.CloseHook").Return(namedMock)
+	namedMock.EXPECT().Info("Closing database connection")
+	wantErr := errors.New("close failed")
+	db.EXPECT().Close().Return(wantErr)
+	namedMock.EXPECT().Error("failed to close database", gomock.Any()).Times(1)
+
+	require.ErrorIs(t, closeFn(context.Background()), wantErr)
 }

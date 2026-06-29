@@ -19,8 +19,9 @@ import (
 func TestSet{{.NameCamel}}(t *testing.T) {
 	t.Parallel()
 
-	base := context.Background()
-	ctx := context.WithValue(base, {{.NameLower}}Key, {{.TestSuccessValue}})
+	// Set{{.NameCamel}} が private な {{.NameLower}}Key で値を書き込むことを直接検証する
+	// （Get{{.NameCamel}} には依存しない / Set/Get のテストを独立にする）。
+	ctx := Set{{.NameCamel}}(context.Background(), {{.TestSuccessValue}})
 
 	val := ctx.Value({{.NameLower}}Key)
 	v, ok := val.({{.Type}})
@@ -31,53 +32,65 @@ func TestSet{{.NameCamel}}(t *testing.T) {
 func TestGet{{.NameCamel}}(t *testing.T) {
 	t.Parallel()
 
-	t.Run("standard context", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		ctx = Set{{.NameCamel}}(ctx, {{.TestSuccessValue}})
+		t.Run("標準コンテキストから取得できる", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			ctx = Set{{.NameCamel}}(ctx, {{.TestSuccessValue}})
 
-		val, ok := Get{{.NameCamel}}(ctx)
-		assert.True(t, ok)
-		assert.Equal(t, {{.TestSuccessValue}}, val)
+			val, ok := Get{{.NameCamel}}(ctx)
+			assert.True(t, ok)
+			assert.Equal(t, {{.TestSuccessValue}}, val)
+		})
 	})
 
-	t.Run("standard context - no value", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		ctx := context.Background()
-		val, ok := Get{{.NameCamel}}(ctx)
-		assert.False(t, ok)
-		assert.Equal(t, {{.TestFailValue}}, val)
+		t.Run("値が無い場合はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			val, ok := Get{{.NameCamel}}(ctx)
+			assert.False(t, ok)
+			assert.Equal(t, {{.TestFailValue}}, val)
+		})
 	})
 }
 
 func TestSet{{.NameCamel}}ToEcho(t *testing.T) {
 	t.Parallel()
 
-	t.Run("echo context", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+		t.Run("echoへ設定し取得できる", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-		Set{{.NameCamel}}ToEcho(c, {{.TestSuccessValue}})
-		val, ok := Get{{.NameCamel}}FromEcho(c)
+			Set{{.NameCamel}}ToEcho(c, {{.TestSuccessValue}})
+			val, ok := Get{{.NameCamel}}FromEcho(c)
 
-		assert.True(t, ok)
-		assert.Equal(t, {{.TestSuccessValue}}, val)
+			assert.True(t, ok)
+			assert.Equal(t, {{.TestSuccessValue}}, val)
+		})
 	})
 
-	t.Run("echo context - no value", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		e := echo.New()
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
+		t.Run("echoに値が無い場合はfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
 
-		val, ok := Get{{.NameCamel}}FromEcho(c)
-		assert.False(t, ok)
-		assert.Equal(t, {{.TestFailValue}}, val)
+			val, ok := Get{{.NameCamel}}FromEcho(c)
+			assert.False(t, ok)
+			assert.Equal(t, {{.TestFailValue}}, val)
+		})
 	})
 }

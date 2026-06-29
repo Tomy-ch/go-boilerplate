@@ -2,9 +2,11 @@
 # -----Dockerコンテナ内で実行するコマンド群-----
 .PHONY: gen-bundle-oapi ## OpenAPIをバンドルしてOpenAPIファイルを一つにまとめます
 .PHONY: gen-api-docs ## OpenAPIに基づき、APIドキュメントを生成します
+.PHONY: lint-oapi ## OpenAPI定義を redocly lint で検証します
 # -----CI用ターゲット-----
 .PHONY: gen-bundle-oapi-ci ## OpenAPIをバンドルしてOpenAPIファイルを一つにまとめます（CI用）
 .PHONY: gen-api-docs-ci ## OpenAPIに基づき、APIドキュメントを生成します（CI用）
+.PHONY: lint-oapi-ci ## OpenAPI定義を redocly lint で検証します（CI用）
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 gen-bundle-oapi:
@@ -13,9 +15,15 @@ gen-bundle-oapi:
 gen-api-docs:
 	@docker compose run --rm node_tool_runner make gen-api-docs-ci
 
+lint-oapi:
+	@docker compose run --rm node_tool_runner make lint-oapi-ci
+
 # -----CI用ターゲット-----
 gen-bundle-oapi-ci:
 	redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml
 
 gen-api-docs-ci:
-	redocly build-docs openapi/openapi.yaml --output /app/docs/openapi/index.html
+	redocly build-docs openapi/openapi.yaml --output docs/openapi/index.html
+
+lint-oapi-ci:
+	redocly lint openapi/openapi.yaml

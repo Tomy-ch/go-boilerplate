@@ -1,7 +1,7 @@
 package logging
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -14,12 +14,19 @@ import (
 func TestNewLogFields(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	lf := NewLogFields(obsCfg, osCfg)
-	require.NotNil(t, lf)
+		t.Run("非nilのLogFieldsを返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := config.MockConfigForTest(t)
+			obsCfg := config.NewObservabilityConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
+
+			lf := NewLogFields(obsCfg, osCfg)
+			require.NotNil(t, lf)
+		})
+	})
 }
 
 func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
@@ -27,7 +34,7 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -47,7 +54,8 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 		URI:      "/api/v1/example?key3=value3&key4=value4a&key4=value4b",
 		RemoteIP: "192.168.1.1",
 
-		EventAt: time.Now(),
+		EventType: EventTypeStart,
+		EventAt:   time.Now(),
 
 		Host:          "example.com",
 		Scheme:        "https",
@@ -60,67 +68,81 @@ func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 		QueryParams: expectedQP,
 	}
 
-	t.Run("trace_idとspan_idが存在しない場合、trace_idとspan_idのフィールドは存在しない", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		expected := []*Field{
-			String(EventTypeKey, EventTypeStart),
-			Time(EventAtKey, exampleInput.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
+		t.Run("trace_idとspan_idが存在しない場合、trace_idとspan_idのフィールドは存在しない", func(t *testing.T) {
+			t.Parallel()
 
-			String(MethodKey, exampleInput.Method),
-			String(PathKey, exampleInput.Path),
-			String(URIKey, exampleInput.URI),
-			String(RemoteIPKey, exampleInput.RemoteIP),
+			expected := []*Field{
+				String(EventTypeKey, EventTypeStart),
+				Time(EventAtKey, exampleInput.EventAt),
+				String(EventTzKey, osCfg.TimeZone()),
 
-			String(HostKey, exampleInput.Host),
-			String(SchemeKey, exampleInput.Scheme),
-			String(ProtoKey, exampleInput.Proto),
-			String(UserAgentKey, exampleInput.UserAgent),
-			String(ContentTypeKey, exampleInput.ContentType),
-			Int64(ContentLengthKey, exampleInput.ContentLength),
+				String(MethodKey, exampleInput.Method),
+				String(PathKey, exampleInput.Path),
+				String(URIKey, exampleInput.URI),
+				String(RemoteIPKey, exampleInput.RemoteIP),
 
-			Any(QueryParamsKey, exampleInput.QueryParams),
-			Any(PathParamsKey, exampleInput.PathParams),
-		}
+				String(HostKey, exampleInput.Host),
+				String(SchemeKey, exampleInput.Scheme),
+				String(ProtoKey, exampleInput.Proto),
+				String(UserAgentKey, exampleInput.UserAgent),
+				String(ContentTypeKey, exampleInput.ContentType),
+				Int64(ContentLengthKey, exampleInput.ContentLength),
 
-		actual := lf.BuildHTTPRequestFields(exampleInput)
-		assert.Equal(t, expected, actual)
-	})
+				Any(QueryParamsKey, exampleInput.QueryParams),
+				Any(PathParamsKey, exampleInput.PathParams),
+			}
 
-	t.Run("trace_idとspan_idが存在する場合、trace_idとspan_idのフィールドが追加される", func(t *testing.T) {
-		t.Parallel()
+			actual := lf.BuildHTTPRequestFields(exampleInput)
+			assert.Equal(t, expected, actual)
+		})
 
-		input := exampleInput
-		input.TraceID = "trace-id-123"
-		input.SpanID = "span-id-456"
+		t.Run("trace_idとspan_idが存在する場合、trace_idとspan_idのフィールドが追加される", func(t *testing.T) {
+			t.Parallel()
 
-		expected := []*Field{
-			String(EventTypeKey, EventTypeStart),
-			Time(EventAtKey, input.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
+			input := exampleInput
+			input.TraceID = "trace-id-123"
+			input.SpanID = "span-id-456"
 
-			String(MethodKey, input.Method),
-			String(PathKey, input.Path),
-			String(URIKey, input.URI),
-			String(RemoteIPKey, input.RemoteIP),
+			expected := []*Field{
+				String(EventTypeKey, EventTypeStart),
+				Time(EventAtKey, input.EventAt),
+				String(EventTzKey, osCfg.TimeZone()),
 
-			String(HostKey, input.Host),
-			String(SchemeKey, input.Scheme),
-			String(ProtoKey, input.Proto),
-			String(UserAgentKey, input.UserAgent),
-			String(ContentTypeKey, input.ContentType),
-			Int64(ContentLengthKey, input.ContentLength),
+				String(MethodKey, input.Method),
+				String(PathKey, input.Path),
+				String(URIKey, input.URI),
+				String(RemoteIPKey, input.RemoteIP),
 
-			Any(QueryParamsKey, input.QueryParams),
-			Any(PathParamsKey, input.PathParams),
+				String(HostKey, input.Host),
+				String(SchemeKey, input.Scheme),
+				String(ProtoKey, input.Proto),
+				String(UserAgentKey, input.UserAgent),
+				String(ContentTypeKey, input.ContentType),
+				Int64(ContentLengthKey, input.ContentLength),
 
-			String(TraceIDKey, input.TraceID),
-			String(SpanIDKey, input.SpanID),
-		}
+				Any(QueryParamsKey, input.QueryParams),
+				Any(PathParamsKey, input.PathParams),
 
-		actual := lf.BuildHTTPRequestFields(input)
-		assert.Equal(t, expected, actual)
+				String(TraceIDKey, input.TraceID),
+				String(SpanIDKey, input.SpanID),
+			}
+
+			actual := lf.BuildHTTPRequestFields(input)
+			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("指定したイベント種別がevent_typeに反映される", func(t *testing.T) {
+			t.Parallel()
+
+			input := exampleInput
+			input.EventType = EventTypePanic
+
+			actual := lf.BuildHTTPRequestFields(input)
+			assert.Contains(t, actual, String(EventTypeKey, EventTypePanic))
+		})
 	})
 }
 
@@ -129,7 +151,7 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
@@ -143,123 +165,61 @@ func TestLogFields_BuildResponseFields(t *testing.T) {
 		RequestID: "req-789",
 	}
 
-	t.Run("trace_idとspan_idが存在しない場合、trace_idとspan_idのフィールドは存在しない", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		latencyMs := float64(exampleInput.Latency) / float64(time.Millisecond)
+		t.Run("trace_idとspan_idが存在しない場合、trace_idとspan_idのフィールドは存在しない", func(t *testing.T) {
+			t.Parallel()
 
-		expected := []*Field{
-			String(EventTypeKey, EventTypeEnd),
-			Time(EventAtKey, exampleInput.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
-			Float64(LatencyKey, latencyMs),
+			latencyMs := float64(exampleInput.Latency) / float64(time.Millisecond)
 
-			Int(StatusKey, exampleInput.Status),
-			String(MethodKey, exampleInput.Method),
-			String(PathKey, exampleInput.Path),
-			String(URIKey, exampleInput.URI),
+			expected := []*Field{
+				String(EventTypeKey, EventTypeEnd),
+				Time(EventAtKey, exampleInput.EventAt),
+				String(EventTzKey, osCfg.TimeZone()),
+				Float64(LatencyKey, latencyMs),
 
-			String(RequestIDKey, exampleInput.RequestID),
-		}
+				Int(StatusKey, exampleInput.Status),
+				String(MethodKey, exampleInput.Method),
+				String(PathKey, exampleInput.Path),
+				String(URIKey, exampleInput.URI),
 
-		actual := lf.BuildHTTPResponseFields(exampleInput)
-		assert.Equal(t, expected, actual)
-	})
+				String(RequestIDKey, exampleInput.RequestID),
+			}
 
-	t.Run("trace_idとspan_idが存在する場合、trace_idとspan_idのフィールドが追加される", func(t *testing.T) {
-		t.Parallel()
+			actual := lf.BuildHTTPResponseFields(exampleInput)
+			assert.Equal(t, expected, actual)
+		})
 
-		input := exampleInput
-		input.TraceID = "trace-id-123"
-		input.SpanID = "span-id-456"
+		t.Run("trace_idとspan_idが存在する場合、trace_idとspan_idのフィールドが追加される", func(t *testing.T) {
+			t.Parallel()
 
-		latencyMs := float64(input.Latency) / float64(time.Millisecond)
+			input := exampleInput
+			input.TraceID = "trace-id-123"
+			input.SpanID = "span-id-456"
 
-		expected := []*Field{
-			String(EventTypeKey, EventTypeEnd),
-			Time(EventAtKey, input.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
-			Float64(LatencyKey, latencyMs),
+			latencyMs := float64(input.Latency) / float64(time.Millisecond)
 
-			Int(StatusKey, input.Status),
-			String(MethodKey, input.Method),
-			String(PathKey, input.Path),
-			String(URIKey, input.URI),
+			expected := []*Field{
+				String(EventTypeKey, EventTypeEnd),
+				Time(EventAtKey, input.EventAt),
+				String(EventTzKey, osCfg.TimeZone()),
+				Float64(LatencyKey, latencyMs),
 
-			String(RequestIDKey, input.RequestID),
+				Int(StatusKey, input.Status),
+				String(MethodKey, input.Method),
+				String(PathKey, input.Path),
+				String(URIKey, input.URI),
 
-			String(TraceIDKey, input.TraceID),
-			String(SpanIDKey, input.SpanID),
-		}
+				String(RequestIDKey, input.RequestID),
 
-		actual := lf.BuildHTTPResponseFields(input)
-		assert.Equal(t, expected, actual)
-	})
-}
+				String(TraceIDKey, input.TraceID),
+				String(SpanIDKey, input.SpanID),
+			}
 
-func TestLogFields_BuildSQLStartFields(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
-
-	lf := NewLogFields(obsCfg, osCfg)
-
-	t.Run("基本項目とレイテンシのみ", func(t *testing.T) {
-		t.Parallel()
-
-		s := SQLFieldsStartInput{
-			EventAt:      time.Now(),
-			Layer:        "layer",
-			PkgName:      "pkg",
-			FuncName:     "fn",
-			SpanName:     "sn",
-			TraceID:      "tx",
-			SpanID:       "sx",
-			ParentSpanID: "px",
-		}
-
-		expected := []*Field{
-			String(EventTypeKey, EventTypeStart),
-			Time(EventAtKey, s.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
-			String(LayerKey, s.Layer),
-			String(PackageKey, s.PkgName),
-			String(FunctionKey, s.FuncName),
-			String(SpanNameKey, s.SpanName),
-			String(TraceIDKey, s.TraceID),
-			String(SpanIDKey, s.SpanID),
-			String(ParentSpanIDKey, s.ParentSpanID),
-		}
-
-		actual := lf.BuildSQLStartFields(s)
-		assert.Equal(t, expected, actual)
-	})
-
-	t.Run("trace/spanが無い場合", func(t *testing.T) {
-		t.Parallel()
-
-		s := SQLFieldsStartInput{
-			EventAt:  time.Now(),
-			Layer:    "layer",
-			PkgName:  "pkg",
-			FuncName: "fn",
-			SpanName: "sn",
-		}
-
-		expected := []*Field{
-			String(EventTypeKey, EventTypeStart),
-			Time(EventAtKey, s.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
-			String(LayerKey, s.Layer),
-			String(PackageKey, s.PkgName),
-			String(FunctionKey, s.FuncName),
-			String(SpanNameKey, s.SpanName),
-		}
-
-		actual := lf.BuildSQLStartFields(s)
-		assert.Equal(t, expected, actual)
+			actual := lf.BuildHTTPResponseFields(input)
+			assert.Equal(t, expected, actual)
+		})
 	})
 }
 
@@ -268,155 +228,82 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
+	osCfg := config.NewOperatingSystemConfig(cfg)
 
 	lf := NewLogFields(obsCfg, osCfg)
 
 	q := "SELECT 1\nFROM tbl"
 
-	t.Run("引数/エラー/trace無しのケース", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s := SQLFieldsEndInput{
-			EventAt:  time.Now(),
-			Layer:    "layer",
-			PkgName:  "pkg",
-			FuncName: "fn",
-			SpanName: "sn",
-			Query:    q,
-			Latency:  12 * time.Millisecond,
-			Args:     nil,
-			Err:      nil,
-			TraceID:  "",
-			SpanID:   "",
-		}
+		t.Run("引数/エラー/trace無しの場合、基本項目のみを返す", func(t *testing.T) {
+			t.Parallel()
 
-		expected := []*Field{
-			String(EventTypeKey, EventTypeEnd),
-			Time(EventAtKey, s.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
-			String(LayerKey, s.Layer),
-			String(PackageKey, s.PkgName),
-			String(FunctionKey, s.FuncName),
-			String(SpanNameKey, s.SpanName),
-			String(RawQueryKey, q),
-			String(QueryCompactKey, "SELECT 1 FROM tbl"),
-			Float64(LatencyKey, float64(12)),
-		}
+			s := SQLFieldsEndInput{
+				EventAt:  time.Now(),
+				Layer:    "layer",
+				PkgName:  "pkg",
+				FuncName: "fn",
+				SpanName: "sn",
+				Query:    q,
+				Latency:  12 * time.Millisecond,
+			}
 
-		actual := lf.BuildSQLEndFields(s)
-		assert.Equal(t, expected, actual)
-	})
+			expected := []*Field{
+				String(EventTypeKey, EventTypeEnd),
+				Time(EventAtKey, s.EventAt),
+				String(EventTzKey, osCfg.TimeZone()),
+				String(LayerKey, s.Layer),
+				String(PackageKey, s.PkgName),
+				String(FunctionKey, s.FuncName),
+				String(SpanNameKey, s.SpanName),
+				String(RawQueryKey, q),
+				String(QueryCompactKey, "SELECT 1 FROM tbl"),
+				Float64(LatencyKey, float64(12)),
+			}
 
-	t.Run("引数/エラー/trace有りのケース", func(t *testing.T) {
-		t.Parallel()
+			assert.Equal(t, expected, lf.BuildSQLEndFields(s))
+		})
 
-		err := fmt.Errorf("boom")
-		args := []any{1, "a"}
-		s := SQLFieldsEndInput{
-			EventAt:  time.Now(),
-			Layer:    "layer",
-			PkgName:  "pkg",
-			FuncName: "fn",
-			SpanName: "sn",
-			Query:    q,
-			Latency:  12 * time.Millisecond,
-			Args:     args,
-			Err:      err,
-			TraceID:  "tx",
-			SpanID:   "sx",
-		}
+		t.Run("引数/エラー/trace有りの場合、内部エラーとtrace/spanが追加される", func(t *testing.T) {
+			t.Parallel()
 
-		expected := []*Field{
-			String(EventTypeKey, EventTypeEnd),
-			Time(EventAtKey, s.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
-			String(LayerKey, s.Layer),
-			String(PackageKey, s.PkgName),
-			String(FunctionKey, s.FuncName),
-			String(SpanNameKey, s.SpanName),
-			String(RawQueryKey, q),
-			String(QueryCompactKey, "SELECT 1 FROM tbl"),
-			Float64(LatencyKey, float64(12)),
-			Int(QueryArgsCountKey, len(args)),
-			Error(InternalErrorKey, err),
-			String(TraceIDKey, "tx"),
-			String(SpanIDKey, "sx"),
-		}
+			err := errors.New("boom")
+			args := []any{1, "a"}
+			s := SQLFieldsEndInput{
+				EventAt:  time.Now(),
+				Layer:    "layer",
+				PkgName:  "pkg",
+				FuncName: "fn",
+				SpanName: "sn",
+				Query:    q,
+				Latency:  12 * time.Millisecond,
+				Args:     args,
+				Err:      err,
+				TraceID:  "tx",
+				SpanID:   "sx",
+			}
 
-		actual := lf.BuildSQLEndFields(s)
-		assert.Equal(t, expected, actual)
-	})
-}
+			expected := []*Field{
+				String(EventTypeKey, EventTypeEnd),
+				Time(EventAtKey, s.EventAt),
+				String(EventTzKey, osCfg.TimeZone()),
+				String(LayerKey, s.Layer),
+				String(PackageKey, s.PkgName),
+				String(FunctionKey, s.FuncName),
+				String(SpanNameKey, s.SpanName),
+				String(RawQueryKey, q),
+				String(QueryCompactKey, "SELECT 1 FROM tbl"),
+				Float64(LatencyKey, float64(12)),
+				Int(QueryArgsCountKey, len(args)),
+				Error(InternalErrorKey, err),
+				String(TraceIDKey, "tx"),
+				String(SpanIDKey, "sx"),
+			}
 
-func TestLogFields_BuildObservabilityFields(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
-
-	lf := NewLogFields(obsCfg, osCfg)
-
-	t.Run("基本項目とレイテンシのみ", func(t *testing.T) {
-		t.Parallel()
-
-		obs := ObservabilityFieldsInput{
-			EventAt:   time.Now(),
-			Layer:     "layer",
-			PkgName:   "pkg",
-			FuncName:  "fn",
-			EventType: "ev",
-			SpanName:  "sn",
-			Latency:   5 * time.Millisecond,
-			TraceID:   "",
-			SpanID:    "",
-		}
-
-		expected := []*Field{
-			String(EventTypeKey, obs.EventType),
-			Time(EventAtKey, obs.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
-			String(SpanNameKey, obs.SpanName),
-			String(LayerKey, obs.Layer),
-			String(PackageKey, obs.PkgName),
-			String(FunctionKey, obs.FuncName),
-			Float64(LatencyKey, float64(5)),
-		}
-
-		actual := lf.BuildObservabilityFields(obs)
-		assert.Equal(t, expected, actual)
-	})
-
-	t.Run("trace/span がある場合は追加される", func(t *testing.T) {
-		t.Parallel()
-
-		obs := ObservabilityFieldsInput{
-			EventAt:   time.Now(),
-			EventType: "ev",
-			SpanName:  "sn",
-			Layer:     "layer",
-			PkgName:   "pkg",
-			FuncName:  "fn",
-			Latency:   0,
-			TraceID:   "tr",
-			SpanID:    "sp",
-		}
-
-		expected := []*Field{
-			String(EventTypeKey, obs.EventType),
-			Time(EventAtKey, obs.EventAt),
-			String(EventTzKey, osCfg.TimeZone()),
-			String(SpanNameKey, obs.SpanName),
-			String(LayerKey, obs.Layer),
-			String(PackageKey, obs.PkgName),
-			String(FunctionKey, obs.FuncName),
-			String(TraceIDKey, obs.TraceID),
-			String(SpanIDKey, obs.SpanID),
-		}
-
-		actual := lf.BuildObservabilityFields(obs)
-		assert.Equal(t, expected, actual)
+			assert.Equal(t, expected, lf.BuildSQLEndFields(s))
+		})
 	})
 }
 
@@ -425,30 +312,29 @@ func Test_appendTraceSpanFields(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
-	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	osCfg := config.NewOperatingSystemConfig(cfg)
+	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	require.True(t, ok)
 
-	t.Run("trace/spanが無い場合", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		t.Run("parentSpanIDも無い場合", func(t *testing.T) {
+
+		t.Run("trace/spanとparentSpanIDが全て無い場合、何も追加しない", func(t *testing.T) {
 			t.Parallel()
 			base := []*Field{String("a", "b")}
 			got := impl.appendTraceSpanFields(base, "", "", "")
 			assert.Equal(t, base, got)
 		})
 
-		t.Run("parentSpanIDのみ有る場合", func(t *testing.T) {
+		t.Run("parentSpanIDのみありtrace/span無しの場合、何も追加しない", func(t *testing.T) {
 			t.Parallel()
 			base := []*Field{String("a", "b")}
 			got := impl.appendTraceSpanFields(base, "", "", "c")
 			assert.Equal(t, base, got)
 		})
-	})
 
-	t.Run("trace/spanがある場合", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("parentSpanIDは無い場合", func(t *testing.T) {
+		t.Run("trace/spanのみありparentSpanID無しの場合、trace_idとspan_idのみ追加する", func(t *testing.T) {
+			t.Parallel()
 			base := []*Field{String("a", "b")}
 			got := impl.appendTraceSpanFields(base, "t-1", "s-1", "")
 			expected := []*Field{
@@ -458,7 +344,9 @@ func Test_appendTraceSpanFields(t *testing.T) {
 			}
 			assert.Equal(t, expected, got)
 		})
-		t.Run("parentSpanIDもある場合", func(t *testing.T) {
+
+		t.Run("trace/spanとparentSpanIDが全てある場合、3つ全て追加する", func(t *testing.T) {
+			t.Parallel()
 			base := []*Field{String("a", "b")}
 			got := impl.appendTraceSpanFields(base, "t-1", "s-1", "p-1")
 			expected := []*Field{
@@ -477,18 +365,23 @@ func Test_buildCompactQuery(t *testing.T) {
 
 	cfg := config.MockConfigForTest(t)
 	obsCfg := config.NewObservabilityConfig(cfg)
-	osCfg := config.NewOperationSystemConfig(cfg)
-	impl := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	osCfg := config.NewOperatingSystemConfig(cfg)
+	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+	require.True(t, ok)
 
-	t.Run("改行/タブ/余白を詰める", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		q := "SELECT  a,\n\t b  FROM\n table\tWHERE  x = 1"
-		got := impl.buildCompactQuery(q)
-		assert.Equal(t, "SELECT a, b FROM table WHERE x = 1", got)
-	})
 
-	t.Run("空文字は空を返す", func(t *testing.T) {
-		t.Parallel()
-		require.Empty(t, impl.buildCompactQuery(""))
+		t.Run("改行/タブ/余白を詰める", func(t *testing.T) {
+			t.Parallel()
+			q := "SELECT  a,\n\t b  FROM\n table\tWHERE  x = 1"
+			got := impl.buildCompactQuery(q)
+			assert.Equal(t, "SELECT a, b FROM table WHERE x = 1", got)
+		})
+
+		t.Run("空文字は空を返す", func(t *testing.T) {
+			t.Parallel()
+			require.Empty(t, impl.buildCompactQuery(""))
+		})
 	})
 }

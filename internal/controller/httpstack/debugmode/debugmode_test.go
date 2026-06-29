@@ -11,23 +11,27 @@ import (
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	t.Run("開発モードの場合、Debugがtrueになること", func(t *testing.T) {
-		t.Parallel()
+
+	exec := func(t *testing.T, mode string) bool {
+		t.Helper()
 		e := echo.New()
 		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetApplicationMode(t, config.DevelopmentMode)
-
+		appCfg.SetApplicationMode(t, mode)
 		New(e, appCfg)
-		assert.True(t, e.Debug)
-	})
+		return e.Debug
+	}
 
-	t.Run("開発モード以外の場合、Debugがfalseになること", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		e := echo.New()
-		appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-		appCfg.SetApplicationMode(t, config.ProductionMode)
 
-		New(e, appCfg)
-		assert.False(t, e.Debug)
+		t.Run("開発モードの場合、Debugがtrueになる", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, exec(t, config.DevelopmentMode))
+		})
+
+		t.Run("開発モード以外の場合、Debugがfalseになる", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, exec(t, config.ProductionMode))
+		})
 	})
 }

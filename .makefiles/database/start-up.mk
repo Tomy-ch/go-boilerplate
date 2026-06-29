@@ -5,20 +5,20 @@
 
 db-init:
 	@echo "🔄 DB初期化関連のコマンドを実行します..."
-	@make db-init-local
-	@make db-init-test
+	@$(MAKE) db-init-local
+	@$(MAKE) db-init-test
 	@echo "✅ DB初期化関連のコマンドが完了しました。"
 
 db-init-local:
 	@echo "🔄 localDBを初期化します..."
-	@make db-local-migrate-down
-	@make db-local-migrate-up
-	@make db-local-seed
+	@$(MAKE) db-local-migrate-down
+	@$(MAKE) db-local-migrate-up
+	@$(MAKE) db-local-seed
 	@echo "✅ localDBの初期化が完了しました。"
 
 db-init-test:
 	@echo "🔄 testDBを初期化します..."
-	@make db-test-migrate-down
-	@make db-test-migrate-up
-	@make db-test-seed
+	@$(MAKE) db-test-migrate-down
+	@$(MAKE) db-test-migrate-up
+	@$(MAKE) db-test-seed
 	@echo "✅ testDBの初期化が完了しました。"

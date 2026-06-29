@@ -56,7 +56,7 @@ The dependencies between layers are as follows:
 flowchart TD
 
 Controller --> Usecase
-Usecase --> Domain Interface
+Usecase --> DomainInterface
 Infrastructure --> DomainInterface
 ```
 

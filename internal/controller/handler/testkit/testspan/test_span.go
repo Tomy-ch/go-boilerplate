@@ -9,8 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// StartTestSpanForEcho は、echo.Context の Request に tracer.Start で開始した
-// context を埋め込み、終了用の endSpan 関数を返します。
+// StartTestSpanForEcho は、テスト用のスタブトレーススパンを echo.Context に設定し、スパン終了関数を返します。
 func StartTestSpanForEcho(
 	t *testing.T,
 	c echo.Context,
@@ -19,9 +18,9 @@ func StartTestSpanForEcho(
 
 	req := c.Request()
 
-	ctx, span := observability.NewStubSpanContext(t)
+	ctx, endSpan := observability.NewStubSpanContext(t)
 	req = req.WithContext(ctx)
 	c.SetRequest(req)
 
-	return c, span
+	return c, endSpan
 }

@@ -4,6 +4,8 @@ package safecast
 import (
 	"fmt"
 	"math"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 // UintToInt は、uintをintに安全に変換します。
@@ -11,9 +13,7 @@ import (
 func UintToInt(x uint) (int, error) {
 	const maxInt = math.MaxInt
 	if x > maxInt {
-		return 0, fmt.Errorf(
-			"overflow: %d > MaxInt(%d): %w", x, maxInt, ErrOverflow,
-		)
+		return 0, xerrors.Wrap(ErrOverflow, fmt.Sprintf("uint %d exceeds MaxInt(%d)", x, maxInt))
 	}
 	return int(x), nil
 }

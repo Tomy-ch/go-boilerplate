@@ -1,3 +1,5 @@
+// Package main は mise.toml の version を各種ファイルに反映する。
+//
 // 不変条件: 全 rule の事前 validate を通してから初めて書き出す。期待マッチ数を
 // 満たさない rule が1つでもあれば一切書かずに非ゼロ終了し、partial state を残さない。
 package main
@@ -11,6 +13,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -33,16 +37,22 @@ var (
 	nodeFromRe   = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
 	pythonFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
 	// バッククォートを capture に含めることで置換後も保持する。
-	golangImageRe = regexp.MustCompile("(`golang:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
-	nodeImageRe   = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
-	pythonImageRe = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	golangImageRe    = regexp.MustCompile("(`golang:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	nodeImageRe      = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	pythonImageRe    = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
+	miseDockerfileRe = regexp.MustCompile(`(MISE_VERSION=v)\d+(?:\.\d+){0,2}()`)
+	miseActionRe     = regexp.MustCompile(`(?m)^([ \t]+version: )\d+(?:\.\d+){0,2}([ \t]*)$`)
+	// docker-compose.yaml の otel-lgtm image タグ。suffix は空 capture でタグ末尾を保持する。
+	otelLgtmImageRe = regexp.MustCompile("(grafana/otel-lgtm:)" + `\d+(?:\.\d+){0,2}` + "()")
 )
 
-// runtimeVersions は mise.toml [tools] から抽出した go / node / python のバージョン文字列。
+// runtimeVersions は mise.toml から抽出したバージョン文字列。
 type runtimeVersions struct {
-	Go     string
-	Node   string
-	Python string
+	Go       string
+	Node     string
+	Python   string
+	Mise     string
+	OtelLgtm string
 }
 
 // rule はファイル内の regex マッチ箇所を 1 つの version で置換する単位。
@@ -100,7 +110,7 @@ func parseMiseTOML(path string) (runtimeVersions, error) {
 	var v runtimeVersions
 	f, err := os.Open(path) //nolint:gosec // path is constructed from cwd + literal filename
 	if err != nil {
-		return v, fmt.Errorf("open: %w", err)
+		return v, xerrors.Wrap(err, "open")
 	}
 	defer func() { _ = f.Close() }()
 
@@ -115,33 +125,47 @@ func parseMiseTOML(path string) (runtimeVersions, error) {
 			currentSection = m[1]
 			continue
 		}
-		if currentSection != "tools" {
-			continue
-		}
-		m := miseKeyRe.FindStringSubmatch(line)
-		if m == nil {
-			continue
-		}
-		switch m[1] {
-		case "go":
-			v.Go = m[2]
-		case "node":
-			v.Node = m[2]
-		case "python":
-			v.Python = m[2]
+		if m := miseKeyRe.FindStringSubmatch(line); m != nil {
+			applyMiseKV(&v, currentSection, m[1], m[2])
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return v, fmt.Errorf("scan: %w", err)
+		return v, xerrors.Wrap(err, "scan")
 	}
 	return v, nil
 }
 
+// applyMiseKV は section / key / value を runtimeVersions の該当フィールドへ反映する。
+// ルートの min_version、[env] の OTEL_LGTM_VERSION、[tools] の go/node/python のみを対象とする。
+func applyMiseKV(v *runtimeVersions, section, key, val string) {
+	switch section {
+	case "":
+		if key == "min_version" {
+			v.Mise = val
+		}
+	case "env":
+		if key == "OTEL_LGTM_VERSION" {
+			v.OtelLgtm = val
+		}
+	case "tools":
+		switch key {
+		case "go":
+			v.Go = val
+		case "node":
+			v.Node = val
+		case "python":
+			v.Python = val
+		}
+	}
+}
+
 func printSource(v runtimeVersions) {
 	log.Println("Source: mise.toml")
-	log.Printf("  go     = %s", emptyAs(v.Go, "(unset)"))
-	log.Printf("  node   = %s", emptyAs(v.Node, "(unset)"))
-	log.Printf("  python = %s", emptyAs(v.Python, "(unset)"))
+	log.Printf("  go          = %s", emptyAs(v.Go))
+	log.Printf("  node        = %s", emptyAs(v.Node))
+	log.Printf("  python      = %s", emptyAs(v.Python))
+	log.Printf("  min_version = %s", emptyAs(v.Mise))
+	log.Printf("  otel-lgtm   = %s", emptyAs(v.OtelLgtm))
 }
 
 func dockerfileRule(file, label string, re *regexp.Regexp, version string, count int) rule {
@@ -212,6 +236,18 @@ func buildRules(v runtimeVersions) []rule {
 			"docker/tools/README.ja.md (node image)", nodeImageRe, v.Node, 1),
 		readmeRule("docker/tools/README.ja.md",
 			"docker/tools/README.ja.md (python image)", pythonImageRe, v.Python, 1),
+		dockerfileRule("docker/tools/Dockerfile",
+			"docker/tools/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
+		dockerfileRule("docker/server/Dockerfile",
+			"docker/server/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
+		dockerfileRule(".github/workflows/go-lint.yaml",
+			"go-lint.yaml (mise-action version)", miseActionRe, v.Mise, 1),
+		dockerfileRule(".github/workflows/gen-db-artifacts-check.yaml",
+			"gen-db-artifacts-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
+		dockerfileRule(".github/workflows/vulnerability-check.yaml",
+			"vulnerability-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
+		dockerfileRule("docker-compose.yaml",
+			"docker-compose.yaml (otel-lgtm image)", otelLgtmImageRe, v.OtelLgtm, 1),
 	}
 }
 
@@ -231,8 +267,7 @@ func validateRules(rules []rule, root string) []string {
 	var errs []string
 	for _, r := range rules {
 		if r.version == "" {
-			errs = append(errs, fmt.Sprintf(
-				"%s: mise.toml [tools] に対応する key が未設定", r.label))
+			errs = append(errs, r.label+": mise.toml に対応する version が未設定")
 		}
 	}
 	for _, r := range rules {
@@ -283,7 +318,7 @@ func writeChanges(states map[string]*fileState, root string) error {
 		if err := os.WriteFile(
 			filepath.Join(root, file), []byte(st.current), filePerm,
 		); err != nil {
-			return fmt.Errorf("write %s: %w", file, err)
+			return xerrors.Wrap(err, "write "+file)
 		}
 		log.Printf("Updated: %s [%s]", file, strings.Join(st.applied, ", "))
 		anyChange = true
@@ -305,9 +340,9 @@ func reportAndExit(title string, errs []string) {
 	os.Exit(1)
 }
 
-func emptyAs(s, fallback string) string {
+func emptyAs(s string) string {
 	if s == "" {
-		return fallback
+		return "(unset)"
 	}
 	return s
 }

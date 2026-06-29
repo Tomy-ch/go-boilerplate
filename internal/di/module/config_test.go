@@ -12,8 +12,9 @@ import (
 	"go-boilerplate/internal/config"
 )
 
+//nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
-	t.Run("ConfigModule を使って各コンポーネントが生成される", func(t *testing.T) {
+	t.Run("ConfigModule を使って各コンポーネントが生成される", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 		// テスト環境の .env を読み込むためリポジトリルートに移動し ENV を設定する
 		config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 
@@ -21,7 +22,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		var (
-			osCfg      *config.OperationSystemConfig
+			osCfg      *config.OperatingSystemConfig
 			appCfg     *config.ApplicationConfig
 			serverCfg  *config.ServerConfig
 			metricsCfg *config.MetricsConfig
@@ -44,7 +45,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 		defer func() { require.NoError(t, app.Stop(context.Background())) }()
 
 		// fx で注入された結果が SetUpConfig を通して得られる値と一致することを確認
-		assert.Equal(t, config.NewOperationSystemConfig(cfg).TimeZone(), osCfg.TimeZone())
+		assert.Equal(t, config.NewOperatingSystemConfig(cfg).TimeZone(), osCfg.TimeZone())
 		assert.Equal(t, config.NewApplicationConfig(cfg).Env(), appCfg.Env())
 		assert.Equal(t, config.NewServerConfig(cfg).Port(), serverCfg.Port())
 		assert.Equal(t, config.NewMetricsConfig(cfg).Port(), metricsCfg.Port())

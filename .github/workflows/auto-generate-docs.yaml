@@ -1,4 +1,4 @@
-name: Auto-generate Docs Pull Request
+name: Auto-generate Docs
 
 on:
   push:
@@ -41,13 +41,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -63,72 +63,92 @@ jobs:
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
+      - name: Stamp OpenAPI version from release branch
+        run: node scripts/stamp-openapi-version.mjs
+
       - name: Generate OpenAPI bundle
         run: make gen-bundle-oapi
 
       - name: Generate OpenAPI docs
         run: make gen-api-docs
 
+      - name: Regenerate embedded spec (Go)
+        run: make gen-go-code
+
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
       - name: Migrate
-        run: go run cmd/main.go migrate-up --database ${{ env.DB }}
+        run: go run ./cmd/ migrate-up --database ${{ env.DB }}
 
       - name: Seed Database
-        run: go run cmd/main.go db-seed --database ${{ env.DB }}
-
-      - name: Generate Test Repo Docs
-        run: make gen-test-repo
+        run: go run ./cmd/ db-seed --database ${{ env.DB }}
 
       - name: Generate ER Diagram
         run: make gen-db-schema-ci
 
-      - name: Generate Portal Docs
+      - name: Generate docs (parallel)
         run: |
-          make gen-portal-docs
-          make gen-docs-json
+          set -uo pipefail
+          LOG="$RUNNER_TEMP/genlogs"
+          mkdir -p "$LOG"
+
+          ( make gen-test-repo )      > "$LOG/test-repo.log" 2>&1 & pid_test=$!
+          ( make gen-portal-docs && make gen-docs-json && make gen-portal-build ) \
+                                      > "$LOG/portal.log"    2>&1 & pid_portal=$!
+          ( make gen-godoc )          > "$LOG/godoc.log"     2>&1 & pid_godoc=$!
+
+          rc=0
+          for pid in $pid_test $pid_portal $pid_godoc; do
+            wait "$pid" || rc=1
+          done
+
+          for f in test-repo portal godoc; do
+            echo "::group::$f"; cat "$LOG/$f.log"; echo "::endgroup::"
+          done
+          exit $rc
 
       - name: Fix permissions
         run: |
-          sudo chown -R $USER:$USER docs
+          sudo chown -R $USER:$USER docs internal openapi
 
-      - name: Detect changes
+      # 材料化した env/.env は生成物ではないため、コミット判定の対象から外す。
+      - name: Restore embedded env
+        run: make restore-env
+
+      - name: Strip nondeterministic noise & detect changes
         id: diff
         env:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
-          # ノイズ（カバレッジカウントの揺れ / SchemaSpy 生成日時）を除外して、
-          # 意味のある生成物に差分があるかをまず判定する。
-          if ! git diff --quiet -- . \
-            ':(exclude)docs/coverage/index.html' \
-            ':(exclude)docs/db-schema/index.html' \
-            ':(exclude)docs/db-schema/info-html.txt'
-          then
+          # この push に .go 変更が含まれるか（意味のあるカバレッジ更新の判定に使う）。
+          go_changed=false
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            go_changed=true
+          elif git diff --name-only "$BEFORE_SHA..$AFTER_SHA" -- '*.go' | grep -q .; then
+            go_changed=true
+          fi
+
+          git checkout -- docs/db-schema/index.html docs/db-schema/info-html.txt 2>/dev/null || true
+          if [ "$go_changed" = "false" ]; then
+            git checkout -- docs/coverage/index.html 2>/dev/null || true
+          fi
+
+          # ノイズ除去後に、コミットすべき差分が残っているかで PR 作成可否を判定する。
+          git add -A
+          if git diff --cached --quiet; then
+            echo "has_diff=false" >> $GITHUB_OUTPUT
+          else
             echo "has_diff=true" >> $GITHUB_OUTPUT
-            exit 0
           fi
-
-          # 上記が無差分でも、coverage に差があり、かつ今回の push に .go の変更が含まれていれば
-          # 意味のあるカバレッジ更新とみなして PR を作成する。
-          if ! git diff --quiet -- docs/coverage/index.html; then
-            if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-              # 新規ブランチ作成等で前回 tip が取得できない場合は安全側で trigger する。
-              echo "has_diff=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-            if git diff --name-only "$BEFORE_SHA..$AFTER_SHA" -- '*.go' | grep -q .; then
-              echo "has_diff=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-          fi
-
-          echo "has_diff=false" >> $GITHUB_OUTPUT
 
       - name: Create PR
         if: steps.diff.outputs.has_diff == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
           commit-message: "chore(docs): auto update docs [skip ci]"
-          branch: auto/docs-update/${{ github.ref_name }}-${{ github.run_id }}
+          branch: auto/docs-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
           title: "chore(docs): sync generated artifacts"
           body: |
@@ -138,15 +158,18 @@ jobs:
 
             ### 🔗 Source of truth
             All changes are derived from already reviewed sources:
-            - OpenAPI definitions
+            - OpenAPI definitions (incl. `info.version` synced from the `release/vX.Y.Z` branch name)
             - SQL / database schema
             - Go code
 
             ### 📦 Included outputs
+            - OpenAPI `info.version` (contract version `X.Y.Z`; no SHA — commit-level traceability lives in the runtime `/version`)
+            - OpenAPI bundle (`openapi.gen.yaml`) + embedded validation spec (`validate.gen.go`)
             - OpenAPI docs
             - ER diagram
             - Test repository docs
             - Portal docs / docs.json
+            - Portal frontend bundle (`docs/portal/dist/`)
 
             ### ⚠️ Notes
             - No manual edits are included

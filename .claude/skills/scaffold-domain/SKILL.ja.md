@@ -126,7 +126,7 @@ spec に**書かれていない**が convention で決まる要素を派生:
 make gen-api
 ```
 
-`<aggregate>_repository.go` の `//go:generate mockgen` を処理し `internal/domain/<aggregate>/mock/mock_<aggregate>_repository.go` を生成。コマンド後にファイル存在確認。
+`<aggregate>_repository.go` の `//go:generate mockgen` を処理し `internal/domain/<aggregate>/mock/mock_<aggregate>_repository.go.gen.go` を生成。コマンド後にファイル存在確認。
 
 ## Step 7. 検証
 
@@ -169,6 +169,7 @@ commit しない。次の scaffold skill を起動しない。
 
 ## 制約事項
 
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。
 - ❌ spec に無いフィールド / メソッド / error / constant を発明
 - ❌ layer 規約をハードコード — 必ず `internal/domain/README.md` + 既存 aggregate を template に
 - ❌ test 観点 subagent (Step 2) をスキップ

@@ -12,14 +12,14 @@ import (
 	"go.uber.org/fx"
 )
 
-// NewApplicationServer は、サーバー関連の依存関係を提供するfx.Moduleです。
+// NewApplicationServer は、組み立て済みの fx.App を受け取り、その起動／停止を行う lifecycle 関数（start, stop）を返します。
 func NewApplicationServer(app *fx.App) (func(context.Context) error, func(context.Context) error) {
 	start := func(ctx context.Context) error {
 		return app.Start(ctx)
 	}
 
-	stop := func(stopCtx context.Context) error {
-		return app.Stop(stopCtx)
+	stop := func(ctx context.Context) error {
+		return app.Stop(ctx)
 	}
 
 	return start, stop
@@ -43,12 +43,12 @@ func applicationCoreOptions() []fx.Option {
 		module.ObservabilityModule(),
 		module.DatabaseModule(),
 		module.SystemModule(),
-		server.MiddlewareModule(),
 		// DDD Modules
 		module.InfrastructureModule(),
 		module.UsecaseModule(),
 		module.ControllerModule(),
 		// Server Module
+		server.MiddlewareModule(),
 		server.Module(),
 		server.HookModule(),
 	}
@@ -57,5 +57,6 @@ func applicationCoreOptions() []fx.Option {
 // NewApplicationCore は、アプリケーションの fx.App インスタンスを作成します。
 // extra はテスト時に依存を差し替える（fx.Replace / fx.Decorate）ための seam で、本番呼び出しでは渡しません。
 func NewApplicationCore(extra ...fx.Option) *fx.App {
-	return fx.New(append(applicationCoreOptions(), extra...)...)
+	opts := append(applicationCoreOptions(), fx.WithLogger(NewFxEventLogger))
+	return fx.New(append(opts, extra...)...)
 }

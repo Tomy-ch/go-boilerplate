@@ -8,6 +8,9 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 )
 
+// corsMaxAgeSeconds は、プリフライト結果のキャッシュ秒数。
+const corsMaxAgeSeconds = 600
+
 // Middleware は、CORSミドルウェアを設定して返します。
 func Middleware(secCfg *config.SecurityConfig) echo.MiddlewareFunc {
 	return middleware.CORSWithConfig(buildCORSConfig(secCfg.AllowedOrigins()))
@@ -38,5 +41,6 @@ func buildCORSConfig(allowedOrigins []string) middleware.CORSConfig {
 			echo.HeaderXRequestID,
 		},
 		AllowCredentials: false,
+		MaxAge:           corsMaxAgeSeconds,
 	}
 }

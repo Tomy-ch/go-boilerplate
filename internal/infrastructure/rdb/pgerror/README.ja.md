@@ -106,8 +106,10 @@ func IsUnavailable(err error) bool
 以下のエラーが接続不可として扱われます。
 
 - context.DeadlineExceeded
-- net.Error (timeout)
+- net.Error（タイムアウト・接続拒否・DNS 失敗など）
 - PostgreSQL SQLSTATE 08XXX（接続例外）
+
+なお context.Canceled（クライアントのキャンセル/切断）は接続不可ではなく、クライアント起因エラー（`apperror.ErrCanceled`、HTTP 499 Client Closed Request）として分類されます。
 
 この判定は
 

@@ -32,6 +32,15 @@
 - GitHub CLI は、GitHub Actions や各種自動化との連携に使用します（任意ですが推奨）。
 - Visual Studio Code は、Go や OpenAPI 関連の拡張機能と組み合わせることで、効率的な開発が可能です。
 
+### サポート対象プラットフォーム
+
+本プロジェクトは **Unix 系の開発環境** を前提としています。ツールチェイン（`make` / `mise` / `lefthook` / Docker のバインドマウント性能など）は POSIX シェルおよび Linux のファイルパス形式に依存しています。
+
+- **macOS / Linux** — 主な開発環境としてサポートします。
+- **Windows** — **WSL2 + VSCode の Remote-WSL 拡張** を利用してください。Windows ネイティブでの動作は**サポート対象外**です。`make` / `mise` の shim 配置 / `lefthook` の POSIX フックがいずれも Unix シェルを前提としており、Docker の I/O 性能も WSL2 のファイルシステムを使わないと大きく低下します。
+
+WSL2 上であれば挙動は Linux と同一で、`.vscode/settings.json` が参照する `~/.local/share/mise/shims/` などのパスもそのまま機能します。
+
 ## Quick Start
 
 以下のコマンドでローカル起動できます。
@@ -77,7 +86,7 @@ curl <http://localhost:8080/health>
 
 開発を開始する前に、必ず以下のセットアップ手順を実行してください。
 
-[セットアップ手順はこちら](./docs/ja/maintenance/setup-repository.ja.md)
+[セットアップ手順はこちら](./docs/ja/get-started/setup-repository.ja.md)
 
 ## この Boilerplate の目的
 

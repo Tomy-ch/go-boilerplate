@@ -1,0 +1,112 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>testassert - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../../src/go-boilerplate/internal/controller">controller</a>/<a href="../../../../../../../src/go-boilerplate/internal/controller/handler">handler</a>/<a href="../../../../../../../src/go-boilerplate/internal/controller/handler/testkit">testkit</a>/<a href="../../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert">testassert</a>/<span class="text-muted">test_assert.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../../go-boilerplate/internal/controller/handler/testkit/testassert">go-boilerplate/internal/controller/handler/testkit/testassert</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package testassert は、テスト用のアサーションヘルパーを提供します。</span>
+<span id="L2" class="ln">     2  </span>package testassert
+<span id="L3" class="ln">     3  </span>
+<span id="L4" class="ln">     4  </span>import (
+<span id="L5" class="ln">     5  </span>	&#34;encoding/json&#34;
+<span id="L6" class="ln">     6  </span>	&#34;net/http/httptest&#34;
+<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L12" class="ln">    12  </span>)
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span><span class="comment">// AssertJSONEqual は、HTTPレスポンスのJSONボディが期待される値と等しいことを検証します。</span>
+<span id="L15" class="ln">    15  </span>func AssertJSONEqual[T any](
+<span id="L16" class="ln">    16  </span>	t *testing.T, expectedCode int, expectedResponse T, actualResponse *httptest.ResponseRecorder,
+<span id="L17" class="ln">    17  </span>) {
+<span id="L18" class="ln">    18  </span>	t.Helper()
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>	assert.Equal(t, expectedCode, actualResponse.Code, &#34;HTTPステータスコードが一致しません&#34;)
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>	var actual T
+<span id="L23" class="ln">    23  </span>	require.NoError(t, json.Unmarshal(actualResponse.Body.Bytes(), &amp;actual), &#34;JSONレスポンスのデシリアライズに失敗しました&#34;)
+<span id="L24" class="ln">    24  </span>	assert.Equal(t, expectedResponse, actual, &#34;JSONレスポンスの内容が一致しません&#34;)
+<span id="L25" class="ln">    25  </span>}
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// AssertEchoRouterMethods は、EchoのルートのHTTPメソッド集合が期待通りであることをアサートします。</span>
+<span id="L28" class="ln">    28  </span>func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute []*echo.Route) {
+<span id="L29" class="ln">    29  </span>	t.Helper()
+<span id="L30" class="ln">    30  </span>	actualMethods := make([]string, len(actualRoute))
+<span id="L31" class="ln">    31  </span>	for i, r := range actualRoute {
+<span id="L32" class="ln">    32  </span>		actualMethods[i] = r.Method
+<span id="L33" class="ln">    33  </span>	}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>	assert.ElementsMatch(t, expectedMethods, actualMethods)
+<span id="L36" class="ln">    36  </span>}
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span><span class="comment">// AssertEchoRouterPath は、Echoのルートのパスが期待通りであることをアサートします。</span>
+<span id="L39" class="ln">    39  </span>func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute []*echo.Route) {
+<span id="L40" class="ln">    40  </span>	t.Helper()
+<span id="L41" class="ln">    41  </span>	require.NotEmpty(t, actualRoute, &#34;ルートが登録されていません&#34;)
+<span id="L42" class="ln">    42  </span>	for _, r := range actualRoute {
+<span id="L43" class="ln">    43  </span>		assert.Equal(t, expectedPath, r.Path)
+<span id="L44" class="ln">    44  </span>	}
+<span id="L45" class="ln">    45  </span>}
+<span id="L46" class="ln">    46  </span>
+</pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testassert/test_assert.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

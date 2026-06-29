@@ -5,7 +5,7 @@ import (
 	"context"
 
 	"go-boilerplate/internal/domain/user"
-	"go-boilerplate/internal/infrastructure/rdb/driver/loggingdb"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
 	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/observability"
@@ -13,12 +13,13 @@ import (
 )
 
 type repository struct {
-	db     loggingdb.DBProvider
+	db     driver.DatabaseDriver
 	tracer observability.LayerTracer
 }
 
+// New は、user.Repository の RDB 実装を生成して返します。
 func New(
-	db loggingdb.DBProvider,
+	db driver.DatabaseDriver,
 	tf observability.TracerFactory,
 ) user.Repository {
 	return &repository{
@@ -32,7 +33,7 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, r.db))
 
 	switch {
 	case active == nil:
@@ -55,6 +56,33 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 	}
 }
 
+// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+// after=nil の場合は先頭ページ、それ以外は after が表す境界より後ろ（より過去）の行を返します。
+func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	if after == nil {
+		rows, err := db.ListUsersFeedFirst(ctx, limit)
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return rowsToUsers(rows, func(r *gen.ListUsersFeedFirstRow) gen.Users { return r.Users })
+	}
+
+	rows, err := db.ListUsersFeedAfter(ctx, &gen.ListUsersFeedAfterParams{
+		AfterCreatedAt: after.CreatedAt(),
+		AfterID:        after.ID(),
+		LimitParam:     limit,
+	})
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+	return rowsToUsers(rows, func(r *gen.ListUsersFeedAfterRow) gen.Users { return r.Users })
+}
+
 // rowToUser は、sqlc が返す Users 行をドメインエンティティへ変換します。
 func rowToUser(u gen.Users) (*user.User, error) {
 	return user.New(
@@ -75,6 +103,19 @@ func rowToUser(u gen.Users) (*user.User, error) {
 	)
 }
 
+// rowsToUsers は、行スライスをドメインエンティティ列へ変換します。
+func rowsToUsers[T any](rows []T, extract func(T) gen.Users) (user.Users, error) {
+	users := make(user.Users, len(rows))
+	for i, row := range rows {
+		u, err := rowToUser(extract(row))
+		if err != nil {
+			return nil, err
+		}
+		users[i] = u
+	}
+	return users, nil
+}
+
 // fetchListUsersRows は、ユーザーの情報を取得します。
 func fetchListUsersRows(
 	ctx context.Context, db *gen.Queries, params *gen.ListUsersParams,
@@ -83,16 +124,7 @@ func fetchListUsersRows(
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
-
-	users := make(user.Users, len(rows))
-	for i, row := range rows {
-		u, err := rowToUser(row.Users)
-		if err != nil {
-			return nil, err
-		}
-		users[i] = u
-	}
-	return users, nil
+	return rowsToUsers(rows, func(r *gen.ListUsersRow) gen.Users { return r.Users })
 }
 
 // fetchListUsersRowsByActive は、アクティブ状態に基づいてユーザーの情報を取得します。
@@ -103,16 +135,7 @@ func fetchListUsersRowsByActive(
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
-
-	users := make(user.Users, len(rows))
-	for i, row := range rows {
-		u, err := rowToUser(row.Users)
-		if err != nil {
-			return nil, err
-		}
-		users[i] = u
-	}
-	return users, nil
+	return rowsToUsers(rows, func(r *gen.ListActiveUsersRow) gen.Users { return r.Users })
 }
 
 // fetchListUsersRowsByDeleted は、削除されたユーザーの情報を取得します。
@@ -123,38 +146,29 @@ func fetchListUsersRowsByDeleted(
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
-
-	users := make(user.Users, len(rows))
-	for i, row := range rows {
-		u, err := rowToUser(row.Users)
-		if err != nil {
-			return nil, err
-		}
-		users[i] = u
-	}
-	return users, nil
+	return rowsToUsers(rows, func(r *gen.ListDeletedUsersRow) gen.Users { return r.Users })
 }
 
 // Create は、ユーザーを作成します。
-func (r *repository) Create(ctx context.Context, user *user.User) error {
+func (r *repository) Create(ctx context.Context, u *user.User) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, r.db))
 	err := db.CreateUser(ctx, &gen.CreateUserParams{
-		ID:           user.ID(),
-		FirstName:    user.FirstName(),
-		LastName:     user.LastName(),
-		PasswordHash: user.PasswordHash(),
-		Email:        user.Email(),
-		Phone:        user.Phone(),
-		PrefectureID: user.PrefectureID(),
-		City:         user.City(),
-		Street:       user.Street(),
-		Building:     user.Building(),
-		PostalCode:   user.PostalCode(),
-		CreatedAt:    user.CreatedAt(),
-		UpdatedAt:    user.UpdatedAt(),
+		ID:           u.ID(),
+		FirstName:    u.FirstName(),
+		LastName:     u.LastName(),
+		PasswordHash: u.PasswordHash(),
+		Email:        u.Email(),
+		Phone:        u.Phone(),
+		PrefectureID: u.PrefectureID(),
+		City:         u.City(),
+		Street:       u.Street(),
+		Building:     u.Building(),
+		PostalCode:   u.PostalCode(),
+		CreatedAt:    u.CreatedAt(),
+		UpdatedAt:    u.UpdatedAt(),
 	})
 	if err != nil {
 		return pgerror.NormalizeError(err)
@@ -167,7 +181,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, er
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, r.db))
 	row, err := db.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
@@ -181,7 +195,7 @@ func (r *repository) Update(ctx context.Context, u *user.User) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, r.db))
 	rows, err := db.UpdateUser(ctx, &gen.UpdateUserParams{
 		FirstName:    u.FirstName(),
 		LastName:     u.LastName(),
@@ -206,7 +220,7 @@ func (r *repository) CountByActive(ctx context.Context, active *bool) (int64, er
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
-	db := gen.New(r.db.NewLoggingDB(ctx))
+	db := gen.New(driver.New(ctx, r.db))
 
 	var (
 		count int64

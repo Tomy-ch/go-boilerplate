@@ -70,6 +70,7 @@ linters:
     # - mirror # 文字列とバイトスライスの変換を最適化するパターンを検出します
     - misspell # スペルミスを検出します
     # - mnd # マジックナンバーの使用を検出します
+    - modernize # モダンなGo言語・標準ライブラリ機能への簡素化を提案します
     # - musttag # Marshal/Unmarshalする際に、エクスポート対象フィールドにタグがついていないことを検出します
     # - nakedret # 名前付き戻り値を持つ関数で、naked return文が使用されていないかを検出します
     # - nestif # ネストされたif文の深さを制限します
@@ -140,6 +141,11 @@ linters:
             - "**/*.go"
             - "!**/pkg/uuid/**.go" # pkg/uuid配下ではアプリケーション全体で使用するuuidライブラリのラッパーを実装するため許可します
             - "!**/internal/infrastructure/rdb/conv/**.go" # conv配下ではORMの型変換のためuuidライブラリの使用を許可します
+          list-mode: lax
+          deny:
+            - pkg: github.com/google/uuid
+              desc: "uuid作成用として導入したライブラリです。
+                代わりに pkg/uuid を使用してください。"
         # DDDの境界侵食を防ぐためのルール
         # 特定のライブラリの禁止設定は、.golangci-full.yamlで行っています。
         # 
@@ -157,6 +163,12 @@ linters:
               desc: "domain層でcontroller層を参照することは禁止です。"
             - pkg: go-boilerplate/internal/infrastructure/
               desc: "domain層でinfrastructure層を参照することは禁止です。"
+            - pkg: go-boilerplate/pkg/fs
+              desc: "domain層でファイルシステム I/O を行わないでください。FS アクセスは外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/exec
+              desc: "domain層で外部プロセス実行を行わないでください。プロセス実行は外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/envutil
+              desc: "環境変数の書き換えは外側の層の責務です。本層からの参照は禁止です。"
         # usecase層では外界とのやり取りのライブラリの使用を禁止します。
         # それ以外のライブラリの利用は許可されます。
         # ただし、外部ライブラリの直接使用は避け、pkg経由での使用を強く推奨します。
@@ -169,6 +181,12 @@ linters:
               desc: "usecase層でcontroller層を参照することは禁止です。"
             - pkg: go-boilerplate/internal/infrastructure/
               desc: "usecase層でinfrastructure層を参照することは禁止です。"
+            - pkg: go-boilerplate/pkg/fs
+              desc: "usecase層でファイルシステム I/O を行わないでください。FS アクセスは外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/exec
+              desc: "usecase層で外部プロセス実行を行わないでください。プロセス実行は外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/envutil
+              desc: "環境変数の書き換えは外側の層の責務です。本層からの参照は禁止です。"
         # controller層では、主にHTTPリクエストを扱うライブラリの使用を許可します。
         # ただし、永続化を行うライブラリの使用は禁止します。(主にdatabase/sqlなど)
         maintain_a_sound_controller:
@@ -206,7 +224,7 @@ linters:
     lll:
       line-length: 150
     misspell:
-      locale: UK
+      locale: US
       ignore-rules:
         - "importas"
     nolintlint:
@@ -214,6 +232,9 @@ linters:
       require-specific: true
     revive:
       rules:
+        - name: exported # exported な宣言にはドキュメントコメントを必須とする
+          arguments:
+            - "disableStutteringCheck" # 命名の stutter 検査は行わない
         - name: var-naming
           arguments:
             - []
@@ -221,8 +242,6 @@ linters:
             - [{ skipPackageNameChecks: true }] # 変数名の命名規則をチェックしますが、パッケージ名のチェックはスキップします。これにより、パッケージ名が変数名と同じ場合でもエラーにならなくなります。
 
   exclusions:
-    presets:
-      - comments
     paths:
       - vendor
     rules:
@@ -265,6 +284,6 @@ formatters:
   exclusions:
     paths:
       - ".*\\.gen\\.go$"
-      - ".*\\.mock\\.go$"
+      - ".*\\.sql\\.go$"
       - ".*mock_.*\\.go$"
       - "vendor/.*"

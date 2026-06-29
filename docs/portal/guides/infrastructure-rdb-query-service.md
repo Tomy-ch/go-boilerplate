@@ -228,44 +228,26 @@ row.Users.Building   // *string
 row.Users.DeletedAt  //*time.Time
 ```
 
-## LoggingDBProvider
+## DB Access (driver)
 
-QueryService typically uses `loggingdb.DBProvider` to access the DB.
+QueryService accesses the DB through `driver.DatabaseDriver`.
 
 ```go
-db := gen.New(s.db.NewLoggingDB(ctx))
+db := gen.New(driver.New(ctx, s.db))
 ```
 
-`loggingdb.DBProvider` provides:
+`driver.New(ctx, db)` provides:
 
-- SQL logging
-- Transparent switching between DB / Tx
+- Transparent switching between DB / Tx (picks the tx in context if present)
 - Context-based connection retrieval
 
-QueryService is designed to **not be aware of DB connection state**.
-
-## Direct driver Usage
-
-If logging is unnecessary, non-logging DB access can be used.
-
-```go
-db := gen.New(s.db.NewDB(ctx))
-```
-
-Use cases:
-
-- Suppress log noise in high-frequency processing
-- Simple processing without logging
-- Benchmarking or minimal path verification
-
-Principles:
-
-- Normally use `NewLoggingDB(ctx)`
-- Use `NewDB(ctx)` only when there is a clear reason
+SQL logging / tracing is applied transparently by the pgx query tracer wired at the driver
+connection level (see `driver/README.md`), so QueryService is designed to **not be aware of DB
+connection state**.
 
 ## Error Normalization
 
-PostgreSQL errors are normalized in `internal/infrastructure/rdb/postgres/pgerror`.
+PostgreSQL errors are normalized in `internal/infrastructure/rdb/pgerror`.
 
 ```go
 return pgerror.NormalizeError(err)
@@ -275,7 +257,7 @@ Main mappings:
 
 ```mermaid
 flowchart TB
-    A["sql.ErrNoRows"] --> B["ErrNotFound"]
+    A["pgx.ErrNoRows"] --> B["ErrNotFound"]
     C["unique violation"] --> D["ErrConflict"]
     E["connection error"] --> F["ErrUnavailable"]
     G["others"] --> H["ErrInternal"]
@@ -349,7 +331,7 @@ func InfrastructureModule() fx.Option {
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -413,7 +395,7 @@ QueryService has the following dependencies.
 
 ```go
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -422,7 +404,7 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -484,14 +466,14 @@ Always convert to Domain.
 // service is the implementation of QueryService.
 // It is responsible for DB access and tracing.
 type service struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New is the constructor for QueryService.
 // All dependencies are injected externally; no new is performed internally.
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) query.UserQueryService {
     return &service{
@@ -516,7 +498,7 @@ func (s *service) FindByFilter(ctx context.Context, filter*query.UserSearchFilte
     }
 
     // Acquire DB connection using loggingDB
-    db := gen.New(s.db.NewLoggingDB(ctx))
+    db := gen.New(driver.New(ctx, s.db))
 
     // Switch queries based on deleted state
     switch {

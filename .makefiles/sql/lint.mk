@@ -5,15 +5,14 @@
 .PHONY: sql-lint-dml ## DML系SQLのLintを実行
 .PHONY: sql-lint-seed ## シードデータSQLのLintを実行
 # -----CI内で実行するコマンド群-----
+.PHONY: sql-lint-ci ## 全カテゴリのSQL Lintを1コンテナで実行(CI用)
 .PHONY: sql-lint-migrations-ci ## マイグレーションのSQLのLintを実行(CI用)
 .PHONY: sql-lint-dml-ci ## DML系SQLのLintを実行(CI用)
 .PHONY: sql-lint-seed-ci ## シードデータSQLのLintを実行(CI用)
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 sql-lint:
-	@make sql-lint-migrations
-	@make sql-lint-dml
-	@make sql-lint-seed
+	@docker compose run --rm python_tool_runner make sql-lint-ci
 
 sql-lint-migrations:
 	@docker compose run --rm python_tool_runner make sql-lint-migrations-ci
@@ -23,6 +22,8 @@ sql-lint-seed:
 	@docker compose run --rm python_tool_runner make sql-lint-seed-ci
 
 # -----CI内で実行するコマンド群-----
+sql-lint-ci: sql-lint-migrations-ci sql-lint-dml-ci sql-lint-seed-ci
+
 sql-lint-migrations-ci:
 	sqlfluff lint database/migrations/ --config docker/database/sqlfluff/.migrations.sqlfluff
 sql-lint-dml-ci:

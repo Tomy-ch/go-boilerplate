@@ -1,16 +1,16 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 package observability
 
 import (
-	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
 )
 
+// TracerFactory は、レイヤー別の LayerTracer を生成するファクトリです。
 type TracerFactory interface {
-	// Controller は、コントローラー層用のトレーサーを返します。pkg はパッケージ名。
+	// Controller は、コントローラー層用のトレーサーを返します。
 	Controller() LayerTracer
 	// Usecase は、ユースケース層用のトレーサーを返します。
 	Usecase() LayerTracer
@@ -19,19 +19,18 @@ type TracerFactory interface {
 }
 
 type tracerFactory struct {
-	tp  trace.TracerProvider
-	log logging.Logger
-	lf  logging.LogFieldBuilder
+	tp trace.TracerProvider
 }
 
 // NewTracerFactory は、TracerFactory を初期化して返します。
-func NewTracerFactory(tp trace.TracerProvider, log logging.Logger, lf logging.LogFieldBuilder) TracerFactory {
+func NewTracerFactory(tp trace.TracerProvider) TracerFactory {
 	return &tracerFactory{
-		tp:  tp,
-		log: log,
-		lf:  lf,
+		tp: tp,
 	}
 }
+
+// Controller/Usecase/Infra は本体をインライン重複させている。getCallerFullName のスキップ段数(2)が
+// 呼び出し階層に依存するため、共通ヘルパへ括り出すと pkg 解決が 1 段ずれて壊れる。
 
 // Controller は Controller 層用のトレーサーを返します。
 func (t *tracerFactory) Controller() LayerTracer {
@@ -60,8 +59,6 @@ func (t *tracerFactory) Infra() LayerTracer {
 // newLayerTracer は LayerTracer を初期化して返します。
 func (t *tracerFactory) newLayerTracer(layer layerName, pkgName string) LayerTracer {
 	return LayerTracer{
-		log:     t.log,
-		lf:      t.lf,
 		tracer:  t.tp.Tracer(string(layer) + delimiter + pkgName),
 		layer:   layer,
 		pkgName: pkgName,

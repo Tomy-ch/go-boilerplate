@@ -21,6 +21,7 @@ type server struct {
 	uc     search.Usecase
 }
 
+// BindHandler は、ユーザー検索エンドポイントのハンドラーをEchoに登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, us search.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),
@@ -33,7 +34,7 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	page, err := paging.NewPagingFrom1Based(request.Params.Page, request.Params.PerPage)
+	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 	if err != nil {
 		return nil, err
 	}
@@ -42,18 +43,13 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 		Keyword: request.Params.Keyword,
 		Active:  request.Params.Active,
 	}
-	dtos, err := s.uc.ListUsersByKeyword(ctx, filter, page)
+	list, err := s.uc.ListUsersByKeywordWithTotal(ctx, filter, page)
 	if err != nil {
 		return nil, err
 	}
 
-	total, err := s.uc.CountUsersByKeyword(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	users := make([]gen.UsersSearchResponseItem, len(dtos))
-	for i, dto := range dtos {
+	users := make([]gen.UsersSearchResponseItem, len(list.Items))
+	for i, dto := range list.Items {
 		users[i] = gen.UsersSearchResponseItem{
 			FirstName:    dto.FirstName,
 			LastName:     dto.LastName,
@@ -71,7 +67,7 @@ func (s *server) GetUsersSearch(ctx context.Context, request gen.GetUsersSearchR
 
 	return gen.GetUsersSearch200JSONResponse(gen.UsersSearchResponse{
 		Users:  users,
-		Total:  total,
+		Total:  list.Total,
 		Limit:  page.Limit(),
 		Offset: page.Offset(),
 	}), nil

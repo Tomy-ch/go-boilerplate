@@ -27,6 +27,7 @@ type server struct {
 	uc     user.Usecase
 }
 
+// BindHandler は、ユーザー詳細のハンドラを Echo に登録します。
 func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc user.Usecase) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),
@@ -39,9 +40,14 @@ func (s *server) GetUsersDetail(ctx context.Context, request gen.GetUsersDetailR
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+
 	id := conv.UUID(request.UserId)
 
-	dto, err := s.uc.GetUser(ctx, id)
+	dto, err := s.uc.GetUser(ctx, &authn, id)
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +60,17 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+
 	id := conv.UUID(request.UserId)
 
-	dto := &user.MutableFields{
+	dto := &user.UpdateProfileParams{
 		FirstName:      request.Body.FirstName,
 		LastName:       request.Body.LastName,
-		Email:          string(request.Body.Email),
+		Email:          conv.Email(request.Body.Email),
 		Phone:          request.Body.Phone,
 		PostalCode:     request.Body.PostalCode,
 		PrefectureName: request.Body.Prefecture,
@@ -68,7 +79,7 @@ func (s *server) PutUsersDetail(ctx context.Context, request gen.PutUsersDetailR
 		Building:       request.Body.Building,
 	}
 
-	res, err := s.uc.UpdateUser(ctx, id, dto)
+	res, err := s.uc.UpdateUser(ctx, &authn, id, dto)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +92,17 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+
 	id := conv.UUID(request.UserId)
 
 	dto := &user.PatchParamsDTO{
 		FirstName:      request.Body.FirstName,
 		LastName:       request.Body.LastName,
-		Email:          emailToStringPtr(request.Body.Email),
+		Email:          conv.EmailPtr(request.Body.Email),
 		Phone:          request.Body.Phone,
 		PostalCode:     request.Body.PostalCode,
 		PrefectureName: request.Body.Prefecture,
@@ -95,7 +111,7 @@ func (s *server) PatchUsersDetail(ctx context.Context, request gen.PatchUsersDet
 		Building:       request.Body.Building,
 	}
 
-	res, err := s.uc.UpdateUserPartially(ctx, id, dto)
+	res, err := s.uc.UpdateUserPartially(ctx, &authn, id, dto)
 	if err != nil {
 		return nil, err
 	}
@@ -129,9 +145,14 @@ func (s *server) DeleteUsersDetail(ctx context.Context, request gen.DeleteUsersD
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
+	authn, ok := ctxhelper.GetAuthn(ctx)
+	if !ok {
+		return nil, ErrUnauthenticatedUser
+	}
+
 	id := conv.UUID(request.UserId)
 
-	if err := s.uc.DeleteUser(ctx, id); err != nil {
+	if err := s.uc.DeleteUser(ctx, &authn, id); err != nil {
 		return nil, err
 	}
 
@@ -139,7 +160,7 @@ func (s *server) DeleteUsersDetail(ctx context.Context, request gen.DeleteUsersD
 }
 
 // toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。
-func toUserResponse(dto user.MutableFields) gen.UserResponse {
+func toUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
@@ -152,13 +173,4 @@ func toUserResponse(dto user.MutableFields) gen.UserResponse {
 		Building:   dto.Building,
 		DeletedAt:  dto.DeletedAt,
 	}
-}
-
-// emailToStringPtr は、PATCH リクエストの任意 Email を文字列ポインタへ変換します。
-func emailToStringPtr(e *types.Email) *string {
-	if e == nil {
-		return nil
-	}
-	s := string(*e)
-	return &s
 }

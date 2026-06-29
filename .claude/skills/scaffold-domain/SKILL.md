@@ -96,9 +96,9 @@ If the subagent returns no viewpoints, fall back to a minimal default set and wa
 
 ## Step 3. Derive Auto-Generated Elements
 
-Apply auto-derivation rules to fill in elements that are NOT in the spec but follow convention:
+Apply auto-derivation rules to fill in elements that are NOT in the spec but follow convention. These rules map spec → generated elements; the canonical *shape* of the resulting Go (error-wrapping pattern, constant naming, getter / `ptr.Copy` style) lives in `internal/domain/README.md` and wins on any drift:
 
-- **Errors**: for every spec field with validation, generate `ErrInvalid<Field>` in `error.go`. For VOs, generate `ErrInvalid<VO>`. Wrap them under a single group root `errInvalid := xerrors.Wrap(apperror.ErrValidation, "invalid <aggregate>")`.
+- **Errors**: for every spec field with validation, generate `ErrInvalid<Field>` in `error.go`. For VOs, generate `ErrInvalid<VO>`. Wrap them under a single group root `errInvalid` (see README `error.go` example for the exact two-level wrapping).
 - **Constants**: for every field with `min_length` / `max_length`, generate `min<Field>Length` / `max<Field>Length` constants. For `min` / `max` numeric fields, generate analogous constants.
 - **Getters**: for every unexported entity field, generate `func (e *Entity) Field() T { return e.field }` on a single line. For pointer types, use `return ptr.Copy(e.field)`.
 - **ID validation**: for `uuid.UUID` fields named `id` or `<x>ID`, add `if id.IsNil() { return nil, xerrors.Wrap(ErrInvalidID, "...") }` in the constructor.
@@ -131,7 +131,7 @@ Each file follows the existing aggregate's style (read in Step 1 #3) for imports
 make gen-api
 ```
 
-This processes the `//go:generate mockgen` directive in `<aggregate>_repository.go` and produces `internal/domain/<aggregate>/mock/mock_<aggregate>_repository.go`. Verify the mock file exists after the command runs.
+This processes the `//go:generate mockgen` directive in `<aggregate>_repository.go` and produces `internal/domain/<aggregate>/mock/mock_<aggregate>_repository.go.gen.go`. Verify the mock file exists after the command runs.
 
 ## Step 7. Verify
 
@@ -174,6 +174,7 @@ Remains protected:
 
 ## Constraints
 
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
 - ❌ Invent fields, methods, errors, or constants not in the spec
 - ❌ Hardcode the layer convention — always read `internal/domain/README.md` + an existing aggregate as template
 - ❌ Skip the test-perspective subagent (Step 2)

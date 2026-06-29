@@ -12,17 +12,17 @@ import (
 )
 
 // MakeAvailableAuthn は、テスト用のコンテキストに認証情報を設定します。
-//
-// この関数は、指定されたユーザーIDを持つ認証情報を作成し、テスト用のコンテキストに設定します。
 func MakeAvailableAuthn(ctx context.Context, t *testing.T, subject string) context.Context {
 	t.Helper()
 	authn, err := auth.New(
 		subject,
 		auth.ProviderMock,
-		nil,
-		nil,
+		[]string{},
+		map[string]any{},
 	)
 	require.NoError(t, err)
 
-	return ctxhelper.SetAuthn(ctx, *authn)
+	ctx = ctxhelper.WithAuthn(ctx)
+	require.True(t, ctxhelper.SetAuthn(ctx, *authn))
+	return ctx
 }

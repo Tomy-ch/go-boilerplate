@@ -5,12 +5,12 @@ description: |
   additionalProperties は指定しない。未知フィールドは生成型のバインドで無視される。
 properties:
   firstName:
-    description: 苗字
+    description: 名前
     type: string
     example: "Alice"
     maxLength: 50
   lastName:
-    description: 名前
+    description: 苗字
     type: string
     example: "Smith"
     maxLength: 50
@@ -18,6 +18,7 @@ properties:
     description: メールアドレス
     type: string
     format: email
+    maxLength: 100
     example: "alice.smith@example.com"
   phone:
     description: 電話番号

@@ -1,7 +1,11 @@
 package module
 
 import (
+	"fmt"
+
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"go.uber.org/fx"
 )
@@ -10,8 +14,26 @@ import (
 func LoggingModule() fx.Option {
 	return fx.Module("logging",
 		fx.Provide(
-			logging.New,
+			provideLogger,
 			logging.NewLogFields,
 		),
 	)
+}
+
+// provideLogger は、アプリケーション設定に応じた Logger を生成します。
+// logCore が非 nil のときは、その core を Tee した Logger を返します。
+func provideLogger(appCfg *config.ApplicationConfig, logCore logging.LogCore) (logging.Logger, error) {
+	level, err := logging.ParseLevel(appCfg.LogLevel())
+	if err != nil {
+		return nil, xerrors.Wrap(err, fmt.Sprintf("invalid APP_LOG_LEVEL %q", appCfg.LogLevel()))
+	}
+
+	switch {
+	case appCfg.IsProductionMode():
+		return logging.WithCore(logging.NewJSONLogger(level, logging.LevelError()), logCore), nil
+	case appCfg.IsDevelopmentMode():
+		return logging.WithCore(logging.NewConsoleLogger(level, logging.LevelWarn()), logCore), nil
+	default:
+		return nil, xerrors.New("unknown app mode: " + appCfg.Mode())
+	}
 }

@@ -1,0 +1,432 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>module - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package module
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/di/module&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package module は、各レイヤの fx.Module（依存関係定義）を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#ConfigModule">func ConfigModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#ControllerModule">func ControllerModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#DatabaseModule">func DatabaseModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#InfrastructureModule">func InfrastructureModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#JobModule">func JobModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#LoggingModule">func LoggingModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#ObservabilityModule">func ObservabilityModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#OutboxRelayModule">func OutboxRelayModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#SystemModule">func SystemModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#UsecaseModule">func UsecaseModule() fx.Option</a></dd>
+			
+				
+				<dd><a href="#WorkerModule">func WorkerModule() fx.Option</a></dd>
+			
+			
+				
+				<dd><a href="#HTTPClientProfilesIn">type HTTPClientProfilesIn</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/authz.go.html">authz.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/clock.go.html">clock.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/config.go.html">config.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/controller.go.html">controller.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/db.go.html">db.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html">httpclient.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html">infrastructure.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/job.go.html">job.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/logging.go.html">logging.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/observability.go.html">observability.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/outboxpublisher.go.html">outboxpublisher.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/outboxrelay.go.html">outboxrelay.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/persistence.go.html">persistence.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/security.go.html">security.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/system.go.html">system.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html">usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/webapi.go.html">webapi.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/di/module/worker.go.html">worker.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="ConfigModule">func <a href="../../../../src/go-boilerplate/internal/di/module/config.go.html?s=273:302#L1">ConfigModule</a>
+				<a class="permalink" href="#ConfigModule">¶</a>
+				
+				
+			</h2>
+			<pre>func ConfigModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>ConfigModule は、アプリケーションの設定をDI用に提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ControllerModule">func <a href="../../../../src/go-boilerplate/internal/di/module/controller.go.html?s=918:951#L9">ControllerModule</a>
+				<a class="permalink" href="#ControllerModule">¶</a>
+				
+				
+			</h2>
+			<pre>func ControllerModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>ControllerModule は、コントローラー層の依存関係を提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="DatabaseModule">func <a href="../../../../src/go-boilerplate/internal/di/module/db.go.html?s=293:324#L2">DatabaseModule</a>
+				<a class="permalink" href="#DatabaseModule">¶</a>
+				
+				
+			</h2>
+			<pre>func DatabaseModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>DatabaseModule は、データベース関連の依存関係を提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="InfrastructureModule">func <a href="../../../../src/go-boilerplate/internal/di/module/infrastructure.go.html?s=393:430#L1">InfrastructureModule</a>
+				<a class="permalink" href="#InfrastructureModule">¶</a>
+				
+				
+			</h2>
+			<pre>func InfrastructureModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>InfrastructureModule は、全プロセス共通のインフラストラクチャ層の依存関係を集約して提供するfx.Moduleです。
+含む concern は永続化 / clock / HTTP client / webapi gateway / security / authz です。
+outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で提供します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="JobModule">func <a href="../../../../src/go-boilerplate/internal/di/module/job.go.html?s=453:479#L5">JobModule</a>
+				<a class="permalink" href="#JobModule">¶</a>
+				
+				
+			</h2>
+			<pre>func JobModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>JobModule は、バックグラウンドジョブ関連の依存関係を提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="LoggingModule">func <a href="../../../../src/go-boilerplate/internal/di/module/logging.go.html?s=244:274#L4">LoggingModule</a>
+				<a class="permalink" href="#LoggingModule">¶</a>
+				
+				
+			</h2>
+			<pre>func LoggingModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>LoggingModule は、ロギング関連の依存関係を提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="ObservabilityModule">func <a href="../../../../src/go-boilerplate/internal/di/module/observability.go.html?s=298:334#L1">ObservabilityModule</a>
+				<a class="permalink" href="#ObservabilityModule">¶</a>
+				
+				
+			</h2>
+			<pre>func ObservabilityModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>ObservabilityModule は、オブザーバビリティ（トレーシング / メトリクス / ロギング）関連の依存関係を提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="OutboxRelayModule">func <a href="../../../../src/go-boilerplate/internal/di/module/outboxrelay.go.html?s=730:764#L7">OutboxRelayModule</a>
+				<a class="permalink" href="#OutboxRelayModule">¶</a>
+				
+				
+			</h2>
+			<pre>func OutboxRelayModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>OutboxRelayModule は、outbox relay engine とそのライフサイクルフックを提供するfx.Moduleです。
+relay 専用プロセス（cmd outbox-relay）でのみ使用します。
+outboxPublisherModule は非標準の httpclient profile（MaxAttempts=1 等）を value group へ寄与するため、
+relay 以外のプロセスへ漏れないよう共有 InfrastructureModule ではなくここに閉じ込めます。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="SystemModule">func <a href="../../../../src/go-boilerplate/internal/di/module/system.go.html?s=176:205#L1">SystemModule</a>
+				<a class="permalink" href="#SystemModule">¶</a>
+				
+				
+			</h2>
+			<pre>func SystemModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>SystemModule は、システム情報関連の依存関係を提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="UsecaseModule">func <a href="../../../../src/go-boilerplate/internal/di/module/usecase.go.html?s=490:520#L5">UsecaseModule</a>
+				<a class="permalink" href="#UsecaseModule">¶</a>
+				
+				
+			</h2>
+			<pre>func UsecaseModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>UsecaseModule は、ユースケース層の依存関係を提供するfx.Moduleです。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="WorkerModule">func <a href="../../../../src/go-boilerplate/internal/di/module/worker.go.html?s=388:417#L4">WorkerModule</a>
+				<a class="permalink" href="#WorkerModule">¶</a>
+				
+				
+			</h2>
+			<pre>func WorkerModule() <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>WorkerModule は、worker engine 関連の依存関係を提供する fx.Module です。
+既定では worker を 1 つも登録しません。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="HTTPClientProfilesIn">type <a href="../../../../src/go-boilerplate/internal/di/module/httpclient.go.html?s=273:388#L1">HTTPClientProfilesIn</a>
+				<a class="permalink" href="#HTTPClientProfilesIn">¶</a>
+				
+				
+			</h2>
+			<p>HTTPClientProfilesIn は、httpclient_profiles グループに集まった各 Downstream の Profile を
+集約する入力です（グループの consumer 側）。
+
+			</p><pre>type HTTPClientProfilesIn struct {
+    <a href="../../../../go.uber.org/fx/">fx</a>.<a href="../../../../go.uber.org/fx/#In">In</a>
+
+<span id="HTTPClientProfilesIn.Profiles"></span>    Profiles []<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../go-boilerplate/internal/infrastructure/httpclient/#DownstreamProfile">DownstreamProfile</a> `group:&#34;httpclient_profiles&#34;`
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

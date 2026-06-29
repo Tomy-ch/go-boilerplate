@@ -8,14 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"go-boilerplate/pkg/ptr"
-
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	// envKey は、環境変数のキー名です。
-	envKey = "ENV"
 	// TestingEnvValue は、テスト用の環境変数の値です。
 	TestingEnvValue = "ci"
 )
@@ -29,6 +25,7 @@ var (
 	expectedApplicationEnv          = "test"
 	expectedApplicationName         = "TestApp"
 	expectedApplicationMode         = DevelopmentMode
+	expectedApplicationLogLevel     = "debug"
 	expectedAppShutdownTimeoutCount = 60
 	expectedAppShutdownTimeoutStr   = fmt.Sprintf("%ds", expectedAppShutdownTimeoutCount)
 	expectedAppShutdownTimeout      = time.Duration(expectedAppShutdownTimeoutCount) * time.Second
@@ -41,19 +38,28 @@ var (
 	expectedServerReadTimeoutCount       = 10
 	expectedServerReadTimeoutStr         = fmt.Sprintf("%ds", expectedServerReadTimeoutCount)
 	expectedServerReadTimeout            = time.Duration(expectedServerReadTimeoutCount) * time.Second
-	expectedServerWriteTimeoutCount      = 15
+	expectedServerWriteTimeoutCount      = 95
 	expectedServerWriteTimeoutStr        = fmt.Sprintf("%ds", expectedServerWriteTimeoutCount)
 	expectedServerWriteTimeout           = time.Duration(expectedServerWriteTimeoutCount) * time.Second
 	expectedServerIdleTimeoutCount       = 60
 	expectedServerIdleTimeoutStr         = fmt.Sprintf("%ds", expectedServerIdleTimeoutCount)
 	expectedServerIdleTimeout            = time.Duration(expectedServerIdleTimeoutCount) * time.Second
+	expectedServerBodyLimitMB            = 7
+	expectedServerBodyLimitMBStr         = strconv.Itoa(expectedServerBodyLimitMB)
+	expectedServerRequestTimeoutCount    = 90
+	expectedServerRequestTimeoutStr      = fmt.Sprintf("%ds", expectedServerRequestTimeoutCount)
+	expectedServerRequestTimeout         = time.Duration(expectedServerRequestTimeoutCount) * time.Second
 	// metrics
 	expectedMetricsHost     = "localhost"
 	expectedMetricsPort     = 6060
 	expectedMetricsUserName = "metrics-user"
 	expectedMetricsPassword = "metrics-password"
 	// observability
-	expectedObservabilityEnabled              = true
+	expectedObservabilityTracesExporter       = "otlp"
+	expectedObservabilityMetricsExporter      = "otlp"
+	expectedObservabilityLogsExporter         = "otlp"
+	expectedObservabilityOTLPEndpoint         = "http://localhost:4318"
+	expectedObservabilityOTLPProtocol         = "http/protobuf"
 	expectedObservabilityMaskedDBQueryArgs    = false
 	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
 	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
@@ -72,6 +78,16 @@ var (
 	expectedDBSlowQueryWarnThresholdCount = 500
 	expectedDBSlowQueryWarnThresholdStr   = fmt.Sprintf("%dms", expectedDBSlowQueryWarnThresholdCount)
 	expectedDBSlowQueryWarnThreshold      = time.Duration(expectedDBSlowQueryWarnThresholdCount) * time.Millisecond
+	expectedDBStatementTimeout            = 30 * time.Second
+	expectedDBLockTimeout                 = 10 * time.Second
+	expectedDBTxMaxRetries                = 3
+	expectedDBTxMaxRetriesStr             = strconv.Itoa(expectedDBTxMaxRetries)
+	expectedDBTxRetryBaseBackoffCount     = 5
+	expectedDBTxRetryBaseBackoffStr       = fmt.Sprintf("%dms", expectedDBTxRetryBaseBackoffCount)
+	expectedDBTxRetryBaseBackoff          = time.Duration(expectedDBTxRetryBaseBackoffCount) * time.Millisecond
+	expectedDBTxRetryMaxBackoffCount      = 100
+	expectedDBTxRetryMaxBackoffStr        = fmt.Sprintf("%dms", expectedDBTxRetryMaxBackoffCount)
+	expectedDBTxRetryMaxBackoff           = time.Duration(expectedDBTxRetryMaxBackoffCount) * time.Millisecond
 	// dbconnection
 	expectedDBMaxConns         = 10
 	expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
@@ -97,26 +113,48 @@ var (
 	expectedReferrerPolicy        = "no-referrer"
 	expectedBcryptCost            = bcrypt.MinCost
 	// secure cookie
-	expectedSecureCookieSecure   = ptr.To(true)
+	expectedSecureCookieSecure   = new(true)
 	expectedSecureCookieSameSite = "Strict"
 	expectedSecureCookieDomain   = "localhost"
 	// auth
 	expectedAuthCookieName          = "auth_token"
 	expectedAuthHeaderName          = "Authorization"
 	expectedAuthAllowedHeaderBearer = true
+	// worker
+	expectedWorkerConcurrency               = 4
+	expectedWorkerMaxInFlight               = 8
+	expectedWorkerBatchSize                 = 4
+	expectedWorkerExtendInterval            = time.Duration(0)
+	expectedWorkerDrainTimeout              = 30 * time.Second
+	expectedWorkerReceiveCountWarnThreshold = 5
+	expectedWorkerCircuitFailureThreshold   = 10
+	expectedWorkerCircuitOpenBackoffInitial = 1 * time.Second
+	expectedWorkerCircuitOpenBackoffMax     = 30 * time.Second
+	expectedWorkerCircuitHalfOpenProbe      = 1
+	expectedWorkerHealthListenAddr          = ":8081"
+	expectedWorkerProgressStaleAfter        = 60 * time.Second
+	expectedWorkerNackBackoffInitial        = 1 * time.Second
+	expectedWorkerNackBackoffMax            = 30 * time.Second
+
+	// outbox
+	expectedOutboxEndpoint     = ""
+	expectedOutboxPollInterval = 1 * time.Second
+	expectedOutboxErrorBackoff = 5 * time.Second
+	expectedOutboxBatchSize    = 100
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
-func MockConfigForTest(t testing.TB) *Config {
-	t.Helper()
+func MockConfigForTest(tb testing.TB) *Config {
+	tb.Helper()
 	return &Config{
-		os: OperationSystemConfig{
+		os: OperatingSystemConfig{
 			timezone: expectedOSTimeZone,
 		},
 		app: ApplicationConfig{
 			env:             expectedApplicationEnv,
 			name:            expectedApplicationName,
 			mode:            expectedApplicationMode,
+			logLevel:        expectedApplicationLogLevel,
 			shutdownTimeout: expectedAppShutdownTimeout,
 		},
 		server: ServerConfig{
@@ -126,6 +164,8 @@ func MockConfigForTest(t testing.TB) *Config {
 			readTimeout:       expectedServerReadTimeout,
 			writeTimeout:      expectedServerWriteTimeout,
 			idleTimeout:       expectedServerIdleTimeout,
+			bodyLimitMB:       expectedServerBodyLimitMB,
+			requestTimeout:    expectedServerRequestTimeout,
 		},
 		metrics: MetricsConfig{
 			host:     expectedMetricsHost,
@@ -134,9 +174,12 @@ func MockConfigForTest(t testing.TB) *Config {
 			password: expectedMetricsPassword,
 		},
 		observability: ObservabilityConfig{
-			enabled:             expectedObservabilityEnabled,
+			tracesExporter:      expectedObservabilityTracesExporter,
+			metricsExporter:     expectedObservabilityMetricsExporter,
+			logsExporter:        expectedObservabilityLogsExporter,
+			otlpEndpoint:        expectedObservabilityOTLPEndpoint,
+			otlpProtocol:        expectedObservabilityOTLPProtocol,
 			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
-			targetStatusCodes:   expectedObservabilityTargetStatusCodes,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
 		},
 		database: DatabaseConfig{
@@ -149,6 +192,11 @@ func MockConfigForTest(t testing.TB) *Config {
 			sslMode:                expectedDBSSLMode,
 			pingTimeout:            expectedDBPingTimeout,
 			slowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+			statementTimeout:       expectedDBStatementTimeout,
+			lockTimeout:            expectedDBLockTimeout,
+			txMaxRetries:           expectedDBTxMaxRetries,
+			txRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+			txRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 		},
 		dbconnection: DBConnectionConfig{
 			maxConns:    expectedDBMaxConnsInt32,
@@ -177,21 +225,44 @@ func MockConfigForTest(t testing.TB) *Config {
 			headerName:          expectedAuthHeaderName,
 			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 		},
+		worker: WorkerConfig{
+			concurrency:               expectedWorkerConcurrency,
+			maxInFlight:               expectedWorkerMaxInFlight,
+			batchSize:                 expectedWorkerBatchSize,
+			extendInterval:            expectedWorkerExtendInterval,
+			drainTimeout:              expectedWorkerDrainTimeout,
+			receiveCountWarnThreshold: expectedWorkerReceiveCountWarnThreshold,
+			circuitFailureThreshold:   expectedWorkerCircuitFailureThreshold,
+			circuitOpenBackoffInitial: expectedWorkerCircuitOpenBackoffInitial,
+			circuitOpenBackoffMax:     expectedWorkerCircuitOpenBackoffMax,
+			circuitHalfOpenProbe:      expectedWorkerCircuitHalfOpenProbe,
+			healthListenAddr:          expectedWorkerHealthListenAddr,
+			progressStaleAfter:        expectedWorkerProgressStaleAfter,
+			nackBackoffInitial:        expectedWorkerNackBackoffInitial,
+			nackBackoffMax:            expectedWorkerNackBackoffMax,
+		},
+		outbox: OutboxConfig{
+			endpoint:     expectedOutboxEndpoint,
+			pollInterval: expectedOutboxPollInterval,
+			errorBackoff: expectedOutboxErrorBackoff,
+			batchSize:    expectedOutboxBatchSize,
+		},
 	}
 }
 
 // mockLoader は、テスト用のLoaderを返します。
-func mockLoader(t testing.TB) Loader {
-	t.Helper()
+func mockLoader(tb testing.TB) Loader {
+	tb.Helper()
 
 	return Loader{
-		OS: OperationSystem{
+		OS: OperatingSystem{
 			Timezone: expectedOSTimeZone,
 		},
 		App: Application{
 			Env:             expectedApplicationEnv,
 			Name:            expectedApplicationName,
 			Mode:            expectedApplicationMode,
+			LogLevel:        expectedApplicationLogLevel,
 			ShutdownTimeout: expectedAppShutdownTimeout,
 		},
 		Metrics: Metrics{
@@ -201,7 +272,11 @@ func mockLoader(t testing.TB) Loader {
 			Password: expectedMetricsPassword,
 		},
 		Observability: Observability{
-			Enabled:           expectedObservabilityEnabled,
+			TracesExporter:    expectedObservabilityTracesExporter,
+			MetricsExporter:   expectedObservabilityMetricsExporter,
+			LogsExporter:      expectedObservabilityLogsExporter,
+			OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
+			OTLPProtocol:      expectedObservabilityOTLPProtocol,
 			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
@@ -212,6 +287,8 @@ func mockLoader(t testing.TB) Loader {
 			ReadTimeout:       expectedServerReadTimeout,
 			WriteTimeout:      expectedServerWriteTimeout,
 			IdleTimeout:       expectedServerIdleTimeout,
+			BodyLimitMB:       expectedServerBodyLimitMB,
+			RequestTimeout:    expectedServerRequestTimeout,
 		},
 		Database: Database{
 			Host:                   expectedDBHost,
@@ -222,6 +299,11 @@ func mockLoader(t testing.TB) Loader {
 			SSLMode:                expectedDBSSLMode,
 			PingTimeout:            expectedDBPingTimeout,
 			SlowQueryWarnThreshold: expectedDBSlowQueryWarnThreshold,
+			StatementTimeout:       expectedDBStatementTimeout,
+			LockTimeout:            expectedDBLockTimeout,
+			TxMaxRetries:           expectedDBTxMaxRetries,
+			TxRetryBaseBackoff:     expectedDBTxRetryBaseBackoff,
+			TxRetryMaxBackoff:      expectedDBTxRetryMaxBackoff,
 		},
 		DBConnection: DBConnection{
 			MaxConns:    expectedDBMaxConnsInt32,
@@ -253,8 +335,7 @@ func mockLoader(t testing.TB) Loader {
 	}
 }
 
-// setEnvVarsForTesting は、テスト用の環境変数を設定します。
-func setEnvVarsForTesting(t *testing.T) {
+func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環境変数設定のため長くなるのは許容する
 	t.Helper()
 	// OS
 	t.Setenv("OS_TZ", expectedOSTimeZone)
@@ -262,6 +343,7 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("APP_ENV", expectedApplicationEnv)
 	t.Setenv("APP_NAME", expectedApplicationName)
 	t.Setenv("APP_MODE", expectedApplicationMode)
+	t.Setenv("APP_LOG_LEVEL", expectedApplicationLogLevel)
 	t.Setenv("APP_SHUTDOWN_TIMEOUT", expectedAppShutdownTimeoutStr)
 	// Server
 	t.Setenv("SERVER_HOST", expectedServerHost)
@@ -270,15 +352,21 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("SERVER_READ_TIMEOUT", expectedServerReadTimeoutStr)
 	t.Setenv("SERVER_WRITE_TIMEOUT", expectedServerWriteTimeoutStr)
 	t.Setenv("SERVER_IDLE_TIMEOUT", expectedServerIdleTimeoutStr)
+	t.Setenv("SERVER_BODY_LIMIT_MB", expectedServerBodyLimitMBStr)
+	t.Setenv("SERVER_REQUEST_TIMEOUT", expectedServerRequestTimeoutStr)
 	// Metrics
 	t.Setenv("METRICS_HOST", expectedMetricsHost)
 	t.Setenv("METRICS_PORT", strconv.Itoa(expectedMetricsPort))
 	t.Setenv("METRICS_USERNAME", expectedMetricsUserName)
 	t.Setenv("METRICS_PASSWORD", expectedMetricsPassword)
 	// Observability
-	t.Setenv("OBSERVABILITY_ENABLED", strconv.FormatBool(expectedObservabilityEnabled))
-	t.Setenv("OBSERVABILITY_MASKED_DB_QUERY_ARGS", strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs))
-	t.Setenv("OBSERVABILITY_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
+	t.Setenv("OBS_TRACES_EXPORTER", expectedObservabilityTracesExporter)
+	t.Setenv("OBS_METRICS_EXPORTER", expectedObservabilityMetricsExporter)
+	t.Setenv("OBS_LOGS_EXPORTER", expectedObservabilityLogsExporter)
+	t.Setenv("OBS_OTLP_ENDPOINT", expectedObservabilityOTLPEndpoint)
+	t.Setenv("OBS_OTLP_PROTOCOL", expectedObservabilityOTLPProtocol)
+	t.Setenv("OBS_MASKED_DB_QUERY_ARGS", strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs))
+	t.Setenv("OBS_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
 	// Database
 	t.Setenv("DB_DRIVER", expectedDBDriver)
 	t.Setenv("DB_HOST", expectedDBHost)
@@ -289,6 +377,11 @@ func setEnvVarsForTesting(t *testing.T) {
 	t.Setenv("DB_SSL_MODE", expectedDBSSLMode)
 	t.Setenv("DB_PING_TIMEOUT", expectedDBPingTimeoutStr)
 	t.Setenv("DB_SLOW_QUERY_WARN_THRESHOLD", expectedDBSlowQueryWarnThresholdStr)
+	t.Setenv("DB_STATEMENT_TIMEOUT", expectedDBStatementTimeout.String())
+	t.Setenv("DB_LOCK_TIMEOUT", expectedDBLockTimeout.String())
+	t.Setenv("DB_TX_MAX_RETRIES", expectedDBTxMaxRetriesStr)
+	t.Setenv("DB_TX_RETRY_BASE_BACKOFF", expectedDBTxRetryBaseBackoffStr)
+	t.Setenv("DB_TX_RETRY_MAX_BACKOFF", expectedDBTxRetryMaxBackoffStr)
 	// DBConnection
 	t.Setenv("DBCONN_MAX_CONNS", strconv.FormatInt(int64(expectedDBMaxConnsInt32), 10))
 	t.Setenv("DBCONN_MIN_CONNS", strconv.FormatInt(int64(expectedDBMinConnsInt32), 10))

@@ -1,4 +1,6 @@
-// Package core は、モジュールのコア機能部分を提供します。
+// Package core は、HTTP ミドルウェア層で使用する Fx モジュール群を提供します。
+// 認証（AuthnModule）・リクエストバリデーション（ValidatorModule）・セキュリティ Cookie
+// （SecurityCookieModule）・スキッパー（SkipperModule）・Basic 認証（BasicAuthModule）を含みます。
 package core
 
 import (

@@ -1,0 +1,337 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_fs
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/pkg/fs/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_fs is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockFS">type MockFS</a></dd>
+				
+					
+					<dd>    <a href="#NewMockFS">func NewMockFS(ctrl *gomock.Controller) *MockFS</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockFS.EXPECT">func (m *MockFS) EXPECT() *MockFSMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockFS.Glob">func (m *MockFS) Glob(pattern string) ([]string, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockFS.ReadFile">func (m *MockFS) ReadFile(name string) ([]byte, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockFS.WriteFile">func (m *MockFS) WriteFile(name string, data []byte, perm os.FileMode) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockFSMockRecorder">type MockFSMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockFSMockRecorder.Glob">func (mr *MockFSMockRecorder) Glob(pattern any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockFSMockRecorder.ReadFile">func (mr *MockFSMockRecorder) ReadFile(name any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockFSMockRecorder.WriteFile">func (mr *MockFSMockRecorder) WriteFile(name, data, perm any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html">mock_fs.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockFS">type <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=357:457#L10">MockFS</a>
+				<a class="permalink" href="#MockFS">¶</a>
+				
+				
+			</h2>
+			<p>MockFS is a mock of FS interface.
+
+			</p><pre>type MockFS struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockFS">func <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=606:653#L22">NewMockFS</a>
+					<a class="permalink" href="#NewMockFS">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockFS(ctrl *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockFS">MockFS</a></pre>
+				<p>NewMockFS creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockFS.EXPECT">func (*MockFS) <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=821:866#L29">EXPECT</a>
+					<a class="permalink" href="#MockFS.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFS">MockFS</a>) EXPECT() *<a href="#MockFSMockRecorder">MockFSMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFS.Glob">func (*MockFS) <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=918:973#L34">Glob</a>
+					<a class="permalink" href="#MockFS.Glob">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFS">MockFS</a>) Glob(pattern <a href="../../../../builtin/#string">string</a>) ([]<a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>Glob mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFS.ReadFile">func (*MockFS) <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=1389:1443#L49">ReadFile</a>
+					<a class="permalink" href="#MockFS.ReadFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFS">MockFS</a>) ReadFile(name <a href="../../../../builtin/#string">string</a>) ([]<a href="../../../../builtin/#byte">byte</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>ReadFile mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFS.WriteFile">func (*MockFS) <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=1873:1949#L64">WriteFile</a>
+					<a class="permalink" href="#MockFS.WriteFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockFS">MockFS</a>) WriteFile(name <a href="../../../../builtin/#string">string</a>, data []<a href="../../../../builtin/#byte">byte</a>, perm <a href="../../../../os/">os</a>.<a href="../../../../os/#FileMode">FileMode</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>WriteFile mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockFSMockRecorder">type <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=514:562#L17">MockFSMockRecorder</a>
+				<a class="permalink" href="#MockFSMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockFSMockRecorder is the mock recorder for MockFS.
+
+			</p><pre>type MockFSMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockFSMockRecorder.Glob">func (*MockFSMockRecorder) <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=1158:1218#L43">Glob</a>
+					<a class="permalink" href="#MockFSMockRecorder.Glob">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFSMockRecorder">MockFSMockRecorder</a>) Glob(pattern <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Glob indicates an expected call of Glob.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFSMockRecorder.ReadFile">func (*MockFSMockRecorder) <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=1635:1696#L58">ReadFile</a>
+					<a class="permalink" href="#MockFSMockRecorder.ReadFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFSMockRecorder">MockFSMockRecorder</a>) ReadFile(name <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ReadFile indicates an expected call of ReadFile.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockFSMockRecorder.WriteFile">func (*MockFSMockRecorder) <a href="../../../../src/go-boilerplate/pkg/fs/mock/mock_fs.go.gen.go.html?s=2122:2196#L72">WriteFile</a>
+					<a class="permalink" href="#MockFSMockRecorder.WriteFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockFSMockRecorder">MockFSMockRecorder</a>) WriteFile(name, data, perm <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>WriteFile indicates an expected call of WriteFile.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

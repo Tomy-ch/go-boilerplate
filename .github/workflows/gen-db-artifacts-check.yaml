@@ -5,7 +5,7 @@ on:
     paths:
       - '.github/workflows/gen-db-artifacts-check.yaml'
       - 'database/**/*.sql'
-      - 'docker/db/**/*.sql'
+      - 'docker/database/**/*.sql'
       - '.makefiles/**/*.mk'
   workflow_dispatch:
 
@@ -45,30 +45,33 @@ jobs:
           --health-start-period=20s
 
     steps:
-      - name: Fetch & Checkout repository
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
+          version: 2026.6.0
           install: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install sqlc
         run: mise install sqlc
-      - name: Setup DB (wait & init)
+      - name: Setup DB
         uses: ./.github/actions/setup-postgres
         with:
           db: ${{ env.DB }}
           user: ${{ env.DB_USER }}
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
+      - name: Materialize ci env for embedding
+        run: make materialize-env
       - name: Initialize Database Table
         run: make db-migrate-ci-up DB=${{ env.DB }}
       - name: Dump schema
@@ -81,12 +84,16 @@ jobs:
         run: make sqlc-generate-ci
       - name: Format generated code
         run: make fmt
+      # 材料化した env/.env は生成物ではないため、ドリフト判定の対象から外す。
+      - name: Restore embedded env
+        run: make restore-env
       - name: Detect generated changes (file list)
         id: gen_diff
         shell: bash
         run: |
           set -euo pipefail
-          files="$(git diff --name-only)"
+          git add -A
+          files="$(git diff --cached --name-only)"
           if [ -n "$files" ]; then
             echo "has_diff=true" >> "$GITHUB_OUTPUT"
             printf "%s\n" "$files" > /tmp/changed_files.txt
@@ -94,7 +101,7 @@ jobs:
             echo "has_diff=false" >> "$GITHUB_OUTPUT"
             : > /tmp/changed_files.txt
           fi
-      # PR の source（database/**/*.sql / docker/db/**/*.sql）が触られているかを判定。
+      # PR の source（database/**/*.sql / docker/database/**/*.sql）が触られているかを判定。
       # 触られていない場合は generator 側（sqlc）のドリフトの可能性が高い。
       - name: Detect source modifications in this PR
         id: source_mod
@@ -106,111 +113,46 @@ jobs:
           head_sha="${{ github.event.pull_request.head.sha }}"
           git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
           changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
-          if echo "$changed" | grep -qE '^(database|docker/db)/.*\.sql$'; then
+          if echo "$changed" | grep -qE '^(database|docker/database)/.*\.sql$'; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
           else
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Comment changed files on PR
+      - name: Build PR comment body
+        id: comment
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/gen-db-comment.md
+          if [ "${{ steps.gen_diff.outputs.has_diff }}" != "true" ]; then
+            echo "title=## ✅ No differences in database output were detected" >> "$GITHUB_OUTPUT"
+            echo "No differences in database output were found." > "$out"
+            exit 0
+          fi
+          if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
+            echo "title=## 🧾 Differences in database output have been detected" >> "$GITHUB_OUTPUT"
+            printf '%s\n' 'データベース生成コマンド（例: `make gen` / `make gen-query`）をローカルで実行し、変更をコミットしてください。' > "$out"
+          else
+            echo "title=## ⚠️ DB 生成物のドリフトを検知（SQL source 未変更）" >> "$GITHUB_OUTPUT"
+            printf '%s\n' '本 PR では SQL source が変更されていないため、generator 側（sqlc バージョン差・base 側の古い生成物 等）のドリフトの可能性があります。`make gen-query` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
+          fi
+          {
+            echo ""
+            while IFS= read -r f; do
+              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
+            done < /tmp/changed_files.txt
+          } >> "$out"
+
+      - name: Comment generated artifacts result on PR
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- generated-artifacts-filelist -->';
-
-            const hasDiff = ('${{ steps.gen_diff.outputs.has_diff }}' === 'true');
-            const sourceModified = '${{ steps.source_mod.outputs.source_modified }}' === 'true';
-
-            let files = [];
-            if (hasDiff) {
-              try {
-                const raw = fs.readFileSync('/tmp/changed_files.txt', 'utf8').trim();
-                files = raw ? raw.split('\n').filter(Boolean) : [];
-              } catch (e) {
-                files = ['(Failed to read changed_files.txt)'];
-              }
-            }
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-            const shortSha = headSha.slice(0, 7);
-
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
-            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
-            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
-
-            const diffTitle = sourceModified
-              ? '## 🧾 Differences in database output have been detected (list of modified files)'
-              : '## ⚠️ DB 生成物のドリフトを検知（本 PR で `database/` / `docker/db/` 配下の `.sql` は触られていません）';
-            const diffAction = sourceModified
-              ? 'Please run the database generation command locally (e.g., `make gen` / `make gen-query`) and commit the changes.'
-              : '本 PR では SQL source が変更されていないため、generator 側（sqlc バージョン差 / base 側の古い生成物 等）のドリフトの可能性があります。`make gen-query` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。';
-            const body = hasDiff
-              ? [
-                  marker,
-                  diffTitle,
-                  '',
-                  commitLine,
-                  '',
-                  ...(files.length ? files.map(f => `- \`${f}\``) : ['(no changed files)']),
-                  '',
-                  diffAction,
-                  '',
-                  updatedLine,
-                ].join('\n')
-              : [
-                  marker,
-                  '## ✅ No differences in database output were detected',
-                  '',
-                  commitLine,
-                  '',
-                  'No differences in database output were found.',
-                  '',
-                  updatedLine,
-                ].join('\n');
-
-            // 既存コメントがあれば更新（スパム防止）
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-
-            const existing = comments.find(c => (c.body || '').includes(marker));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body,
-              });
-            }
+          marker: '<!-- generated-artifacts-filelist -->'
+          title: ${{ steps.comment.outputs.title }}
+          body-file: /tmp/gen-db-comment.md
       - name: Fail if diff exists
         if: steps.gen_diff.outputs.has_diff == 'true'
         run: exit 1

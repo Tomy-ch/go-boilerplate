@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,40 +14,41 @@ import (
 func NewTestLocation(t *testing.T) *time.Location {
 	t.Helper()
 	cfg := MockConfigForTest(t)
-	osCfg := NewOperationSystemConfig(cfg)
+	osCfg := NewOperatingSystemConfig(cfg)
 
-	loc, err := time.LoadLocation(osCfg.TimeZone())
+	loc, err := NewTimeLocation(osCfg)
 	require.NoError(t, err)
 	return loc
 }
 
-// EnsureRepoRootAndEnv moves working directory to repository root (where go.mod exists)
-// if found, registers a cleanup to restore the original working directory, and
-// sets the `ENV` environment variable for the test using `t.Setenv`.
+// EnsureRepoRootAndEnv は、go.mod のあるリポジトリルートへ作業ディレクトリを移動し、
+// env/.env.<env> の各値を t.Setenv で設定します。埋め込み（local）より対象環境の値が優先されます。
+// 作業ディレクトリと環境変数の復元は t.Chdir / t.Setenv が自動で行います。
 func EnsureRepoRootAndEnv(t *testing.T, env string) {
 	t.Helper()
 
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	// Ensure we restore the original working directory even if `t.Chdir` is
-	// not available (older Go) or if an early return occurs.
-	t.Cleanup(func() {
-		_ = os.Chdir(orig)
-	})
+	root := repoRoot(t)
+	t.Chdir(root)
 
-	// find repo root by locating go.mod upwards
-	p := orig
+	kv, err := godotenv.Read(filepath.Join(root, "env", ".env."+env))
+	require.NoError(t, err)
+	for k, v := range kv {
+		t.Setenv(k, v)
+	}
+}
+
+// repoRoot は、go.mod を上方向に探索してリポジトリルートを返します。
+func repoRoot(t *testing.T) string {
+	t.Helper()
+
+	p, err := os.Getwd()
+	require.NoError(t, err)
 	for {
 		if _, err := os.Stat(filepath.Join(p, "go.mod")); err == nil {
-			t.Chdir(p)
-			break
+			return p
 		}
 		parent := filepath.Dir(p)
-		if parent == p {
-			break
-		}
+		require.NotEqual(t, parent, p, "リポジトリルート（go.mod）が見つかりません")
 		p = parent
 	}
-
-	t.Setenv(envKey, env)
 }

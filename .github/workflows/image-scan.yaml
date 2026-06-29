@@ -1,4 +1,4 @@
-name: Docker Image Scan Workflow
+name: Image Scan
 
 on:
   pull_request:
@@ -24,22 +24,21 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Fetch & Checkout repository
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Prepare vendor
         run: |
-          go mod tidy
           go mod vendor
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
       - name: Define image tag
         id: meta
@@ -48,7 +47,7 @@ jobs:
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         with:
           context: .
           file: ./docker/server/Dockerfile
@@ -61,7 +60,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           image: ${{ steps.meta.outputs.image }}
           format: spdx-json
@@ -118,95 +117,23 @@ jobs:
           MD
           echo "Generated sbom-summary.md" && wc -c sbom-summary.md
 
-      - name: Comment SBOM Summary on PR
+      - name: Comment SBOM result on PR
         if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/github-script@v8
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-
-            const marker = '<!-- sbom-summary-spdx -->';
-            const path = 'sbom-summary.md';
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-            const shortSha = headSha.slice(0, 7);
-
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            // 例: 🔖 Commit: [`1a2b3c4`](https://github.com/.../commit/1a2b3c4...)
-            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
-            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
-
-            if (!fs.existsSync(path)) {
-              core.setFailed('sbom-summary.md not found');
-              process.exit(1);
-            }
-
-            const pr = context.payload.pull_request?.number;
-            if (!pr) {
-              core.setFailed('Not a PR context');
-              process.exit(1);
-            }
-
-            // sbom-summary.md を読み込んで、先頭にマーカーを付与（同一コメント検出用）
-            const summary = fs.readFileSync(path, 'utf8').trimEnd();
-            const body = [
-              marker,
-              summary,
-              '',
-              commitLine,
-              '',
-              updatedLine,
-            ].join('\n');
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr,
-              per_page: 100,
-            });
-
-            const existing = comments.find(c => (c.body || '').includes(marker));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr,
-                body,
-              });
-            }
+          marker: '<!-- sbom-summary-spdx -->'
+          body-file: sbom-summary.md
 
       - name: Upload SBOM summary artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: sbom-summary.md
           path: sbom-summary.md
 
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
           scanners: 'vuln'
@@ -217,7 +144,7 @@ jobs:
           output: trivy-image-scan.txt
 
       - name: Trivy image scan (SARIF)
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
           scanners: 'vuln'
@@ -229,113 +156,31 @@ jobs:
 
       - name: Upload Trivy image SARIF to code scanning
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
           sarif_file: trivy-image-scan.sarif
           category: trivy-image
 
       - name: Upload Trivy report artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: trivy-image-scan.txt
           path: trivy-image-scan.txt
 
-      - name: Comment Trivy result on PR
+      - name: Comment Trivy image scan result on PR
         if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/github-script@v8
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-
-            const marker = '<!-- trivy-image-scan -->';
-            const path = 'trivy-image-scan.txt';
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-            const shortSha = headSha.slice(0, 7);
-
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            const pr = context.payload.pull_request?.number;
-            if (!pr) {
-              core.setFailed('Not a PR context');
-              process.exit(1);
-            }
-
-            if (!fs.existsSync(path)) {
-              core.setFailed(`${path} not found`);
-              process.exit(1);
-            }
-
-            const read = fs.readFileSync(path, 'utf8').trimEnd();
-
-            const trimLog = (txt) => {
-              const MAX = 45000; // コメント上限対策（安全側）
-              if (txt.length <= MAX) return txt;
-              return txt.slice(0, MAX) + '\n... (truncated)';
-            };
-
-            const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
-            const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
-
-            const body = [
-              marker,
-              '## Trivy Image Scan (table)',
-              '',
-              commitLine,
-              updatedLine,
-              '',
-              '<details><summary>Image Scan Results</summary>',
-              '',
-              '```',
-              trimLog(read),
-              '```',
-              '',
-              '</details>',
-            ].join('\n');
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr,
-              per_page: 100,
-            });
-
-            const existing = comments.find(c => (c.body || '').includes(marker));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr,
-                body,
-              });
-            }
+          marker: '<!-- trivy-image-scan -->'
+          body-file: trivy-image-scan.txt
+          title: '## Trivy Image Scan (table)'
+          details-summary: 'Image Scan Results'
 
       - name: Trivy image scan (gate - fixable CRITICAL/HIGH)
         if: ${{ github.event_name == 'pull_request' }}
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.image }}
           scanners: 'vuln'

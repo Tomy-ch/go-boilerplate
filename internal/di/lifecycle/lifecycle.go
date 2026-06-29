@@ -1,6 +1,6 @@
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package lifecycle は、アプリケーションのライフサイクル管理に関する機能を提供します。
+// Package lifecycle は、fx.Lifecycle を抽象化するテスト可能な Registrar インターフェースと、バックグラウンドランナーを fx ライフサイクルへ結線する SupervisedRunner プリミティブを提供します。
 package lifecycle
 
 import (
@@ -22,20 +22,19 @@ type lifecycleRegistrar struct {
 	lc fx.Lifecycle
 }
 
-// NewLifecycleRegistrar は、fx.Lifecycleを使用してLifecycleRegistrarを提供します。
+// NewLifecycleRegistrar は、fx.Lifecycle を用いて Registrar の実装を提供します。
 func NewLifecycleRegistrar(lc fx.Lifecycle) Registrar {
 	return lifecycleRegistrar{lc: lc}
 }
 
-func (r lifecycleRegistrar) RegisterStart(fn func(ctx context.Context) error) {
+func (r lifecycleRegistrar) RegisterStart(start func(ctx context.Context) error) {
 	r.lc.Append(fx.Hook{
-		OnStart: fn,
+		OnStart: start,
 	})
 }
 
-// RegisterStop は、fx.Lifecycleにシャットダウンフックを登録します。
-func (r lifecycleRegistrar) RegisterStop(fn func(ctx context.Context) error) {
+func (r lifecycleRegistrar) RegisterStop(stop func(ctx context.Context) error) {
 	r.lc.Append(fx.Hook{
-		OnStop: fn,
+		OnStop: stop,
 	})
 }

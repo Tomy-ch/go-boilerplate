@@ -7,7 +7,6 @@
 主に次の用途で利用します。
 
 - テスト用の `DatabaseDriver` を簡単に生成する
-- LoggingDBProvider を含めた Infrastructure 初期化を行う
 - トランザクション内でテストを実行し、必ずロールバックする
 
 このパッケージは **Repository や Infrastructure のテストを簡単に書くための補助ツール**です。
@@ -23,7 +22,6 @@ RDB を利用するテストでは次の問題が発生します。
 `testkit` はこれらを解決するために次の機能を提供します。
 
 - テスト用 DB 初期化
-- LoggingDBProvider の生成
 - 自動ロールバックトランザクション
 
 ## アーキテクチャ上の位置
@@ -32,7 +30,7 @@ RDB を利用するテストでは次の問題が発生します。
 flowchart TD
     A[Repository Test]
     B[testkit]
-    C[driver / loggingdb]
+    C[driver]
     D[(PostgreSQL)]
 
     A --> B --> C --> D
@@ -48,37 +46,13 @@ flowchart TD
 func NewTestDB(t *testing.T) driver.DatabaseDriver
 ```
 
-テスト用の `DatabaseDriver` を生成します。
+テスト用の `DatabaseDriver`（共有シングルトン）を生成します。Repository / QueryService の
+コンストラクタへ直接渡してください。SQL のログ / トレースは driver の接続層で付与されます。
 
-### NewTestLoggingProvider
-
-```go
-func NewTestLoggingProvider(t *testing.T) loggingdb.DBProvider
-```
-
-LoggingDBProvider を生成します。
-
-主な用途:
-
-- Repository テスト
-- QueryService テスト
-
-内部では次の処理を行います。
-
-```mermaid
-flowchart TD
-    A[MockConfigForTest]
-    B[DatabaseConfig]
-    C[Logging / Tracer 初期化]
-    D[loggingdb.NewLoggingDBProvider]
-
-    A --> B --> C --> D
-```
-
-### NewTestTransactionManager
+### NewTestTransactionRunner
 
 ```go
-func NewTestTransactionManager(t *testing.T) TransactionRunner
+func NewTestTransactionRunner(t *testing.T) TransactionRunner
 ```
 
 テスト用トランザクションマネージャーを生成します。
@@ -118,7 +92,7 @@ func (t *testTxManager) WithinTx(fn func(ctx context.Context))
 ```mermaid
 flowchart TD
     A[Transaction Begin]
-    B[fn(ctx) 実行]
+    B["fn(ctx) 実行"]
     C[rollbackForTestError を返す]
     D[Rollback]
 
@@ -129,7 +103,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Do(fn)]
+    A["Do(fn)"]
     B[error を返すことで rollback]
 
     A --> B
@@ -211,7 +185,7 @@ var (
 ### トランザクションを利用したテスト
 
 ```go
-txm := testkit.NewTestTransactionManager(t)
+txm := testkit.NewTestTransactionRunner(t)
 
 txm.WithinTx(func(ctx context.Context) {
     repo.Create(ctx, ...)
@@ -221,9 +195,9 @@ txm.WithinTx(func(ctx context.Context) {
 ### Repository テスト
 
 ```go
-provider := testkit.NewTestLoggingProvider(t)
+db := testkit.NewTestDB(t)
 
-repo := repository.NewRepository(provider)
+repo := repository.NewRepository(db)
 ```
 
 ## テスト設計ポリシー

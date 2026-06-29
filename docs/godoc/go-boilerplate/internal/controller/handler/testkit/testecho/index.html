@@ -1,0 +1,424 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>testecho - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package testecho
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/controller/handler/testkit/testecho&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package testecho は、Echoフレームワークを使用したハンドラーのテストユーティリティを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#EchoTestClient">type EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#NewEchoTestClient">func NewEchoTestClient(t *testing.T, e *echo.Echo) *EchoTestClient</a></dd>
+				
+				
+					
+					<dd>    <a href="#EchoTestClient.AuthBearer">func (c *EchoTestClient) AuthBearer(token string) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.Build">func (c *EchoTestClient) Build() (*http.Request, *httptest.ResponseRecorder, echo.Context)</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.Header">func (c *EchoTestClient) Header(k, v string) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.JSONBody">func (c *EchoTestClient) JSONBody(v any) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.Method">func (c *EchoTestClient) Method(m string) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.PathParams">func (c *EchoTestClient) PathParams(params []EchoTestParam) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.QueryParams">func (c *EchoTestClient) QueryParams(params []EchoTestParam) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.RawBody">func (c *EchoTestClient) RawBody(r io.Reader, contentType string) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.RequestURL">func (c *EchoTestClient) RequestURL(u string) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.RoutePattern">func (c *EchoTestClient) RoutePattern(p string) *EchoTestClient</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.Serve">func (c *EchoTestClient) Serve() *httptest.ResponseRecorder</a></dd>
+				
+					
+					<dd>    <a href="#EchoTestClient.WithAppErrorHandler">func (c *EchoTestClient) WithAppErrorHandler() *EchoTestClient</a></dd>
+				
+			
+				
+				<dd><a href="#EchoTestParam">type EchoTestParam</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html">test_echo.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="EchoTestClient">type <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=996:1249#L24">EchoTestClient</a>
+				<a class="permalink" href="#EchoTestClient">¶</a>
+				
+				
+			</h2>
+			<p>EchoTestClient は、Echo ハンドラをテストから駆動するためのリクエストビルダ兼クライアントです。
+
+			</p><pre>type EchoTestClient struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewEchoTestClient">func <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=1334:1400#L37">NewEchoTestClient</a>
+					<a class="permalink" href="#NewEchoTestClient">¶</a>
+					
+					
+				</h3>
+				<pre>func NewEchoTestClient(t *<a href="../../../../../../testing/">testing</a>.<a href="../../../../../../testing/#T">T</a>, e *echo.<a href="#Echo">Echo</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>NewEchoTestClient はテスト用のEchoクライアントを生成します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="EchoTestClient.AuthBearer">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3525:3590#L113">AuthBearer</a>
+					<a class="permalink" href="#EchoTestClient.AuthBearer">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) AuthBearer(token <a href="../../../../../../builtin/#string">string</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>AuthBearer はBearerトークンを設定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.Build">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4272:4362#L135">Build</a>
+					<a class="permalink" href="#EchoTestClient.Build">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) Build() (*<a href="../../../../../../net/http/">http</a>.<a href="../../../../../../net/http/#Request">Request</a>, *<a href="../../../../../../net/http/httptest/">httptest</a>.<a href="../../../../../../net/http/httptest/#ResponseRecorder">ResponseRecorder</a>, echo.<a href="#Context">Context</a>)</pre>
+				<p>Build はテスト用のHTTPリクエストとレスポンスレコーダー、echo.Contextを構築します。
+</p><p>requestURL モードではルータ解決により echo.Context のパスが設定されます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.Header">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3357:3417#L106">Header</a>
+					<a class="permalink" href="#EchoTestClient.Header">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) Header(k, v <a href="../../../../../../builtin/#string">string</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>Header はリクエストヘッダーを設定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.JSONBody">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=2731:2787#L84">JSONBody</a>
+					<a class="permalink" href="#EchoTestClient.JSONBody">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) JSONBody(v <a href="../../../../../../builtin/#any">any</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>JSONBody はJSON形式のリクエストボディを設定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.Method">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=2021:2078#L58">Method</a>
+					<a class="permalink" href="#EchoTestClient.Method">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) Method(m <a href="../../../../../../builtin/#string">string</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>Method はHTTPメソッドを設定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.PathParams">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3730:3805#L119">PathParams</a>
+					<a class="permalink" href="#EchoTestClient.PathParams">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) PathParams(params []<a href="#EchoTestParam">EchoTestParam</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>PathParams はパスパラメータを設定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.QueryParams">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3922:3998#L126">QueryParams</a>
+					<a class="permalink" href="#EchoTestClient.QueryParams">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) QueryParams(params []<a href="#EchoTestParam">EchoTestParam</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>QueryParams はクエリパラメータを設定します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.RawBody">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3097:3178#L96">RawBody</a>
+					<a class="permalink" href="#EchoTestClient.RawBody">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) RawBody(r <a href="../../../../../../io/">io</a>.<a href="../../../../../../io/#Reader">Reader</a>, contentType <a href="../../../../../../builtin/#string">string</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>RawBody は生のリクエストボディを設定します。
+</p><p>JSON形式は、 JSONBody() を使用してください。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.RequestURL">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=2548:2609#L77">RequestURL</a>
+					<a class="permalink" href="#EchoTestClient.RequestURL">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) RequestURL(u <a href="../../../../../../builtin/#string">string</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>RequestURL は実際に叩くURLを設定します。
+(パスパラメータやクエリパラメータを含めて指定することができます。)
+</p><p>例: /users/123?limit=10, /products/456?sort=asc
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.RoutePattern">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=2221:2284#L67">RoutePattern</a>
+					<a class="permalink" href="#EchoTestClient.RoutePattern">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) RoutePattern(p <a href="../../../../../../builtin/#string">string</a>) *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>RoutePattern はルートパターンを設定します。
+</p><p>例: /users/:id, /products/:id
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.Serve">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=5006:5065#L161">Serve</a>
+					<a class="permalink" href="#EchoTestClient.Serve">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) Serve() *<a href="../../../../../../net/http/httptest/">httptest</a>.<a href="../../../../../../net/http/httptest/#ResponseRecorder">ResponseRecorder</a></pre>
+				<p>Serve は、結合テスト用に起動したEchoインスタンスに対してリクエストを送信し、レスポンスを取得します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="EchoTestClient.WithAppErrorHandler">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=1688:1750#L48">WithAppErrorHandler</a>
+					<a class="permalink" href="#EchoTestClient.WithAppErrorHandler">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) WithAppErrorHandler() *<a href="#EchoTestClient">EchoTestClient</a></pre>
+				<p>WithAppErrorHandler は、本番相当のエラーハンドラを Echo に設定します。
+渡された Echo の HTTPErrorHandler を上書きする副作用を持ちます。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="EchoTestParam">type <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=802:859#L18">EchoTestParam</a>
+				<a class="permalink" href="#EchoTestParam">¶</a>
+				
+				
+			</h2>
+			<p>EchoTestParam は、テストリクエストに付与するクエリ/パスパラメータの名前と値を表します。
+
+			</p><pre>type EchoTestParam struct {
+<span id="EchoTestParam.Name"></span>    Name  <a href="../../../../../../builtin/#string">string</a>
+<span id="EchoTestParam.Value"></span>    Value <a href="../../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

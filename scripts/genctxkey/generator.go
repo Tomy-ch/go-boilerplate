@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"go/format"
 	"go/token"
@@ -13,6 +14,8 @@ import (
 	"unicode"
 
 	_ "embed"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -37,9 +40,9 @@ type Param struct {
 	TestFailValue    string
 }
 
-func GenerateCtxKey(name, typ, importPath, importAlias, outDir string) error {
+func GenerateCtxKey(name, typ, importPath, importAlias, outDir, testValue string) error {
 	if name == "" || typ == "" {
-		return fmt.Errorf("name and type are required")
+		return errors.New("name and type are required")
 	}
 
 	if outDir == "" {
@@ -66,7 +69,7 @@ func GenerateCtxKey(name, typ, importPath, importAlias, outDir string) error {
 
 	typeExpr := typ
 
-	success, fail := resolveTestValue(typeExpr, lower)
+	success, fail := resolveTestValue(typeExpr, lower, testValue)
 
 	p := Param{
 		NameLower:        lower,
@@ -119,21 +122,22 @@ func writeFile(path, tpl string, p Param) error {
 func toExportedName(s string) (string, error) {
 	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
 
-	var out string
+	var sb strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
 		runes := []rune(p)
-		out += strings.ToUpper(string(runes[0])) + string(runes[1:])
+		sb.WriteString(strings.ToUpper(string(runes[0])) + string(runes[1:]))
 	}
+	out := sb.String()
 
 	if out == "" {
-		return "", fmt.Errorf("invalid name: %s", s)
+		return "", xerrors.New("invalid name: " + s)
 	}
 
 	if !isValidIdentifier(out) {
-		return "", fmt.Errorf("invalid identifier: %s", out)
+		return "", xerrors.New("invalid identifier: " + out)
 	}
 
 	return out, nil
@@ -142,15 +146,16 @@ func toExportedName(s string) (string, error) {
 func toIdentifierLower(s string) (string, error) {
 	// split on non-alnum, join, and lower
 	parts := regexp.MustCompile(`[^\p{L}\p{N}]+`).Split(s, -1)
-	var out string
+	var sb strings.Builder
 	for _, p := range parts {
 		if p == "" {
 			continue
 		}
-		out += strings.ToLower(p)
+		sb.WriteString(strings.ToLower(p))
 	}
+	out := sb.String()
 	if out == "" {
-		return "", fmt.Errorf("invalid name: %s", s)
+		return "", xerrors.New("invalid name: " + s)
 	}
 	// ensure starts with a letter or '_'
 	runes := []rune(out)
@@ -158,7 +163,7 @@ func toIdentifierLower(s string) (string, error) {
 		out = "x" + out
 	}
 	if !isValidIdentifier(out) {
-		return "", fmt.Errorf("invalid identifier: %s", out)
+		return "", xerrors.New("invalid identifier: " + out)
 	}
 	return out, nil
 }
@@ -213,7 +218,7 @@ func resolveImportAlias(typ, importPath, importAlias string) (string, error) {
 
 	// Alias provided: validate against qualifier when present
 	if qualifier != "" && qualifier != importAlias {
-		return "", fmt.Errorf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias)
+		return "", xerrors.New(fmt.Sprintf("type qualifier (%s) does not match alias (%s)", qualifier, importAlias))
 	}
 
 	return importAlias, nil
@@ -235,7 +240,7 @@ func lastSegment(path string) string {
 	return parts[len(parts)-1]
 }
 
-func resolveTestValue(t, nameLower string) (string, string) {
+func resolveTestValue(t, nameLower, override string) (string, string) {
 	switch t {
 	case "string":
 		return `"test-` + nameLower + `"`, `""`
@@ -244,6 +249,12 @@ func resolveTestValue(t, nameLower string) (string, string) {
 	case "bool":
 		return "true", "false"
 	default:
-		return "*new(" + t + ")", "*new(" + t + ")"
+		// 任意型は意味ある success 値を自動合成できない。
+		// 呼び出し側が -test-value を渡せば success に採用し、未指定なら従来通り zero 値にフォールバックする。
+		fail := "*new(" + t + ")"
+		if override != "" {
+			return override, fail
+		}
+		return fail, fail
 	}
 }

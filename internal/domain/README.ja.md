@@ -84,7 +84,7 @@ Repository は **永続化の抽象のみ提供する**。
 許容例：
 
 - `FindByXXX`
-- `FindAll`
+- `FindByActive`
 - `CountByXXX`
 
 ## 実装上の注意点
@@ -138,6 +138,15 @@ validate
 
 これらは DTO / Infra に置く。
 
+### DB のすべてのカラムをエンティティのフィールドにしない
+
+エンティティは**ドメイン上の意味を持つ状態**のみを表現する。永続化や検索インフラのためだけに存在するカラムは、テーブルに存在してもエンティティには意図的に含めない：
+
+- 監査列（`created_at` / `updated_at`）— 必要なら DB を直接参照すればよく、エンティティのフィールドや不変条件にする必要はない。
+- DB 生成列・計算列（例: `GENERATED ALWAYS AS ... STORED` の検索用テキスト列）— インフラの検索最適化であり、ドメインの状態ではない。
+
+したがって entity ↔ カラムの 1 対 1 対応は**必須ではない**。こうしたカラムがエンティティに無いのは意図的な設計判断であり、ドリフトではない。
+
 ### 時刻・ID の扱い
 
 - `time.Now()` は Domain で使わない
@@ -178,6 +187,16 @@ minLength
 maxEmailLength
 ```
 
+#### oapi 側で検証しているのに、なぜここでも検証するのか
+
+OpenAPI のリクエスト検証ミドルウェアとこのレイヤは **冗長ではありません**。オーナーもスコープも異なります。
+
+- **オーナーが違う。** OpenAPI の制約は *ワイヤー契約*（HTTP API が受け入れる形）、domain の定数は *業務ルール*（業務が valid と認める値）。両者は正当に食い違える — [入力境界値のオーナーシップ](../../openapi/boundary-ownership.ja.md) を参照。
+- **唯一の共通チョークポイント — 入力側と永続化側の両方。** すべてのエンティティは `New(...)` を通って構築される。非HTTPの書き込み経路（seed・CLI・バッチ・テスト・将来の入口）がリクエストミドルウェアを完全に迂回するだけでなく、**DB からの再構築も同じ検証付きコンストラクタを通る**（`rowToUser` が全行を `user.New(...)` で組み立てる）。したがって `New(...)` は **infra 側から来る不正データ**も弾く：破損・手動 INSERT・レガシーなど、ドメイン不変条件に違反する行は、valid に見えるエンティティとして上がってくるのではなく再構築時にエラーになる。この読み取り経路はミドルウェアでは一切守れず、domain だけが守れる。
+- **framework-agnostic な自己防衛。** domain は呼び出し元に依存せず常に正しくある必要がある。検証をトランスポート層に委ねると domain の正しさが Echo／ミドルウェアに結合し、レイヤの framework-agnostic 規約に反する。
+
+要するに：ミドルウェアは HTTP 境界を守り、domain は *業務ルールそのもの* を全呼び出し元に対して守る。
+
 #### エラー
 
 エラーは **具体エラー**
@@ -190,8 +209,8 @@ ErrInvalidPostalCode
 抽象エラーは直接返さない。
 
 ```go
-if !stringkit.InRange(email, minLength, maxEmailLength) {
-    return nil, xerrors.Wrap(ErrInvalidEmail, ...)
+if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok {
+    return nil, xerrors.Wrap(ErrInvalidEmail, msg)
 }
 ```
 
@@ -241,7 +260,7 @@ Repository は **Root に対して定義**
 
 ```go
 type Repository interface {
-    CreateUser(ctx context.Context, user *User) error
+    Create(ctx context.Context, user *User) error
 }
 ```
 
@@ -326,9 +345,11 @@ Repository は **永続化抽象**
 
 ```go
 type Repository interface {
-    FindAll(ctx context.Context, limit, offset int32) (Users, error)
-    CreateUser(ctx context.Context, user *User) error
-    CountByActive(ctx context.Context, active*bool) (int64, error)
+    FindByActive(ctx context.Context, active *bool, limit, offset int32) (Users, error)
+    FindByID(ctx context.Context, id uuid.UUID) (*User, error)
+    Create(ctx context.Context, user *User) error
+    Update(ctx context.Context, user *User) error
+    CountByActive(ctx context.Context, active *bool) (int64, error)
 }
 ```
 
@@ -342,9 +363,10 @@ internal/infrastructure/persistence/postgres/
 
 ### Repository に許容するメソッド
 
-- `FindAll`
+- `FindByActive`
 - `FindByXXX`
 - `CountByXXX`
+- `Create` / `Update`（集約の永続化＝write。論理削除は `deletedAt` を更新する `Update`）
 
 想定：
 
@@ -575,16 +597,20 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 package user
 
 const (
-    minLength           = 1
-    maxFirstNameLength  = 100
-    maxLastNameLength   = 100
-    maxPasswordLength   = 255
-    maxEmailLength      = 100
-    maxPhoneLength      = 20
-    maxCityLength       = 100
-    maxStreetLength     = 255
-    maxBuildingLength   = 255
-    maxPostalCodeLength = 8
+    minLength             = 1
+    maxFirstNameLength    = 100
+    maxLastNameLength     = 100
+    maxPasswordHashLength = 255
+    maxEmailLength        = 100
+    maxPhoneLength        = 20
+    maxCityLength         = 100
+    maxStreetLength       = 255
+    maxBuildingLength     = 255
+    maxPostalCodeLength   = 8
+
+    // 値オブジェクト RawPassword の文字数境界
+    MaxRawPasswordLength = 64
+    MinRawPasswordLength = 8
 )
 ```
 
@@ -598,11 +624,12 @@ import (
 )
 
 var (
+    // フィールド検証エラー（errInvalid を基底に分類）
     errInvalid             = xerrors.Wrap(apperror.ErrValidation, "invalid user")
     ErrInvalidID           = xerrors.Wrap(errInvalid, "id failed")
     ErrInvalidFirstName    = xerrors.Wrap(errInvalid, "first name failed")
     ErrInvalidLastName     = xerrors.Wrap(errInvalid, "last name failed")
-    ErrInvalidPassword     = xerrors.Wrap(errInvalid, "password failed")
+    ErrInvalidPasswordHash = xerrors.Wrap(errInvalid, "password hash failed")
     ErrInvalidEmail        = xerrors.Wrap(errInvalid, "email failed")
     ErrInvalidPhone        = xerrors.Wrap(errInvalid, "phone failed")
     ErrInvalidPrefectureID = xerrors.Wrap(errInvalid, "prefecture id failed")
@@ -612,6 +639,13 @@ var (
     ErrInvalidPostalCode   = xerrors.Wrap(errInvalid, "postal code failed")
     ErrInvalidUpdatedAt    = xerrors.Wrap(errInvalid, "updated at failed")
     ErrInvalidDeletedAt    = xerrors.Wrap(errInvalid, "deleted at failed")
+
+    // 値オブジェクト RawPassword 固有の検証エラー（errInvalid を経由しない）
+    ErrInvalidRawPassword = xerrors.Wrap(apperror.ErrValidation, "invalid raw password")
+
+    // ビジネスルール違反
+    ErrAlreadyDeleted          = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
+    ErrCurrentPasswordMismatch = xerrors.Wrap(apperror.ErrValidation, "current password does not match")
 )
 ```
 
@@ -630,6 +664,7 @@ import (
 
 type Users []*User
 
+// エンティティ（集約ルート）
 type User struct {
     id           uuid.UUID
     firstName    string
@@ -647,6 +682,7 @@ type User struct {
     deletedAt    *time.Time
 }
 
+// ファクトリ: 不変条件を満たすときだけ実体を生成
 func New(
     id uuid.UUID,
     firstName string,
@@ -666,108 +702,122 @@ func New(
     if id.IsNil() {
         return nil, xerrors.Wrap(ErrInvalidID, "id is required")
     }
-
-    if !stringkit.InRange(firstName, minLength, maxFirstNameLength) {
-        return nil, xerrors.Wrap(ErrInvalidFirstName, stringkit.ErrorMsgInRange(minLength, maxFirstNameLength, firstName))
+    // フィールド検証（New / UpdateProfile で共有）
+    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+        return nil, err
     }
-
-    if !stringkit.InRange(lastName, minLength, maxLastNameLength) {
-        return nil, xerrors.Wrap(ErrInvalidLastName, stringkit.ErrorMsgInRange(minLength, maxLastNameLength, lastName))
+    if err := validatePasswordHash(passwordHash); err != nil {
+        return nil, err
     }
-
-    if !stringkit.InRange(passwordHash, minLength, maxPasswordLength) {
-        return nil, xerrors.Wrap(ErrInvalidPassword, stringkit.ErrorMsgInRange(minLength, maxPasswordLength, passwordHash))
-    }
-
-    if !stringkit.InRange(email, minLength, maxEmailLength) {
-        return nil, xerrors.Wrap(ErrInvalidEmail, stringkit.ErrorMsgInRange(minLength, maxEmailLength, email))
-    }
-
-    if !stringkit.InRange(phone, minLength, maxPhoneLength) {
-        return nil, xerrors.Wrap(ErrInvalidPhone, stringkit.ErrorMsgInRange(minLength, maxPhoneLength, phone))
-    }
-
-    if prefectureID.IsNil() {
-        return nil, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
-    }
-
-    if !stringkit.InRange(city, minLength, maxCityLength) {
-        return nil, xerrors.Wrap(ErrInvalidCity, stringkit.ErrorMsgInRange(minLength, maxCityLength, city))
-    }
-
-    if !stringkit.InRange(street, minLength, maxStreetLength) {
-        return nil, xerrors.Wrap(ErrInvalidStreet, stringkit.ErrorMsgInRange(minLength, maxStreetLength, street))
-    }
-
-    if building != nil && !stringkit.InRange(*building, minLength, maxBuildingLength) {
-        return nil, xerrors.Wrap(ErrInvalidBuilding, stringkit.ErrorMsgInRange(minLength, maxBuildingLength, *building))
-    }
-
-    if !stringkit.InRange(postalCode, minLength, maxPostalCodeLength) {
-        return nil, xerrors.Wrap(ErrInvalidPostalCode, stringkit.ErrorMsgInRange(minLength, maxPostalCodeLength, postalCode))
-    }
-
     if updatedAt.Before(createdAt) {
         return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
     }
-
-    if deletedAt != nil && deletedAt.Before(createdAt) {
-        return nil, xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to createdAt")
+    if deletedAt != nil {
+        if err := validateDeletedAt(*deletedAt, createdAt, updatedAt); err != nil {
+            return nil, err
+        }
     }
 
-    if deletedAt != nil && deletedAt.Before(updatedAt) {
-        return nil, xerrors.Wrap(ErrInvalidDeletedAt, "deletedAt must be after or equal to updatedAt")
-    }
-
+    // building / deletedAt は防御コピー（不変性）。他フィールドはそのまま設定。
     return &User{
-        id:           id,
-        firstName:    firstName,
-        lastName:     lastName,
-        passwordHash: passwordHash,
-        email:        email,
-        phone:        phone,
-        prefectureID: prefectureID,
-        city:         city,
-        street:       street,
-        building:     ptr.Copy(building),
-        postalCode:   postalCode,
-        createdAt:    createdAt,
-        updatedAt:    updatedAt,
-        deletedAt:    ptr.Copy(deletedAt),
+        id:        id,
+        building:  ptr.Copy(building),
+        deletedAt: ptr.Copy(deletedAt),
+        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も引数から設定（例示のため省略）
     }, nil
 }
 
-func (u *User) ID() uuid.UUID        { return u.id }
-func (u *User) FirstName() string    { return u.firstName }
-func (u *User) LastName() string     { return u.lastName }
-func (u *User) PasswordHash() string { return u.passwordHash }
-func (u *User) Email() string        { return u.email }
-func (u *User) Phone() string        { return u.phone }
-func (u *User) PrefectureID() uuid.UUID { return u.prefectureID }
-func (u *User) City() string         { return u.city }
-func (u *User) Street() string       { return u.street }
-func (u *User) Building() *string    { return ptr.Copy(u.building) }
-func (u *User) PostalCode() string   { return u.postalCode }
-func (u *User) CreatedAt() time.Time { return u.createdAt }
-func (u *User) UpdatedAt() time.Time { return u.updatedAt }
-func (u *User) DeletedAt() *time.Time { return ptr.Copy(u.deletedAt) }
+// アクセサ（building / deletedAt は防御コピーを返す）
+func (u *User) ID() uuid.UUID     { return u.id }
+func (u *User) Email() string     { return u.email }
+func (u *User) Building() *string { return ptr.Copy(u.building) }
+func (u *User) FullName() string  { return u.firstName + " " + u.lastName }
+// 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
 
-func (u *User) FullName() string {
-    return u.firstName + " " + u.lastName
+// ビジネスロジック（振る舞い）: プロフィール一括更新（パスワードは対象外）
+func (u *User) UpdateProfile(
+    firstName, lastName, email, phone string,
+    prefectureID uuid.UUID,
+    city, street string,
+    building *string,
+    postalCode string,
+    updatedAt time.Time,
+) error {
+    if err := u.ensureNotDeleted(); err != nil {
+        return err
+    }
+    if err := validateProfileFields(firstName, lastName, email, phone, prefectureID, city, street, building, postalCode); err != nil {
+        return err
+    }
+    if err := u.ensureUpdatedAt(updatedAt); err != nil {
+        return err
+    }
+
+    // 検証通過後に各フィールドと updatedAt を置換（building は防御コピー）
+    u.updatedAt = updatedAt
+    return nil
 }
+
+// 振る舞いの兄弟（UpdateProfile と同じ ensure → 検証 → 置換 の idiom）。シグネチャのみ示す。
+func (u *User) ChangePassword(passwordHash string, updatedAt time.Time) error // パスワードハッシュ更新
+func (u *User) MarkAsDeleted(deletedAt time.Time) error                       // 論理削除（既に削除済みなら ErrAlreadyDeleted）
+
+// 不変条件ガード（例示）: updatedAt は createdAt 以降かつ単調非減少
+func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
+    if updatedAt.Before(u.createdAt) {
+        return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
+    }
+    if updatedAt.Before(u.updatedAt) {
+        return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to current updatedAt")
+    }
+    return nil
+}
+func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
+
+// バリデーション（例示・New / UpdateProfile で共有）: 各フィールドを stringkit.ValidateInRange で検証
+func validateProfileFields(
+    firstName, lastName, email, phone string,
+    prefectureID uuid.UUID,
+    city, street string,
+    building *string,
+    postalCode string,
+) error {
+    if ok, msg := stringkit.ValidateInRange(firstName, minLength, maxFirstNameLength); !ok {
+        return xerrors.Wrap(ErrInvalidFirstName, msg)
+    }
+    // lastName / email / phone / city / street / postalCode も同様に検証し、対応する ErrInvalidXxx を返す
+    if prefectureID.IsNil() {
+        return xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required")
+    }
+    if building != nil { // building は任意
+        if ok, msg := stringkit.ValidateInRange(*building, minLength, maxBuildingLength); !ok {
+            return xerrors.Wrap(ErrInvalidBuilding, msg)
+        }
+    }
+    return nil
+}
+func validatePasswordHash(passwordHash string) error                   // maxPasswordHashLength で検証
+func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // createdAt / updatedAt 以降
 ```
 
 ```go
 // user_repository.go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 package user
 
-import "context"
+import (
+    "context"
 
+    "go-boilerplate/pkg/uuid"
+)
+
+// Repository: 単一集約の永続化と単純な読み取り（fetch by ID / 自集約属性での filter・list・count）。
+// keyword 検索など集約跨ぎ・複雑クエリは QueryService（CQRS read side）が担う。
 type Repository interface {
-    FindAll(ctx context.Context, limit, offset int32) (Users, error)
-    FindByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (Users, error)
-    CreateUser(ctx context.Context, user *User) error
+    FindByActive(ctx context.Context, active *bool, limit, offset int32) (Users, error)
+    FindByID(ctx context.Context, id uuid.UUID) (*User, error)
+    Create(ctx context.Context, user *User) error
+    Update(ctx context.Context, user *User) error
     CountByActive(ctx context.Context, active *bool) (int64, error)
 }
 ```

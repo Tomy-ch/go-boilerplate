@@ -1,0 +1,224 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>tx - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package tx
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/boundary/tx&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package tx は、トランザクションの管理を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#DoWithResult">func DoWithResult[T any](ctx context.Context, m Manager, fn func(ctx context.Context) (T, error)) (T, error)</a></dd>
+			
+			
+				
+				<dd><a href="#Manager">type Manager</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/tx/tx_manager.go.html">tx_manager.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="DoWithResult">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/tx/tx_manager.go.html?s=1007:1119#L10">DoWithResult</a>
+				<a class="permalink" href="#DoWithResult">¶</a>
+				
+				
+			</h2>
+			<pre>func DoWithResult[T <a href="../../../../../builtin/#any">any</a>](
+    ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, m <a href="#Manager">Manager</a>, fn func(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (T, <a href="../../../../../builtin/#error">error</a>),
+) (T, <a href="../../../../../builtin/#error">error</a>)</pre>
+			<p>DoWithResult は、トランザクション内で値を取得するためのヘルパー関数です。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="Manager">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/tx/tx_manager.go.html?s=311:898#L1">Manager</a>
+				<a class="permalink" href="#Manager">¶</a>
+				
+				
+			</h2>
+			<p>Manager は、トランザクション境界の制御を担うインターフェースです。
+
+			</p><pre>type Manager interface {
+    <span class="comment">// Do は serialization failure / deadlock 検出時に fn を最大 N 回再実行しうります。</span>
+    <span class="comment">// よって fn は DB 副作用以外について冪等であること（呼出側責務）。外部副作用（イベント発行・</span>
+    <span class="comment">// メール送信等）は、同一 tx 内で outbox 行として書き込めば rollback と共に巻き戻り retry-safe に</span>
+    <span class="comment">// なります。nested（既存 tx を再利用する）経路はリトライ対象外で 1 回のみ実行されます。</span>
+    Do(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, fn func(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -31,36 +31,244 @@ header {
 }
 
 .container {
-  max-width: 1150px;
+  max-width: 1280px;
   margin: auto;
-  padding: 60px 24px;
+  padding: 32px 28px;
 }
 
-header .container {
-  padding-bottom: 50px;
+/* hero */
+
+header .container.header-inner {
+  padding: 36px 28px 28px;
 }
 
 header h1 {
-  font-size: 38px;
-  margin: 0 0 8px;
+  font-size: 30px;
+  margin: 0 0 6px;
   letter-spacing: -0.02em;
 }
 
 header p {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--muted);
+  margin: 0;
 }
 
-/* sections */
+/* layout: header + (sidebar | content) */
+
+.layout {
+  min-height: 100vh;
+}
+
+.container.body {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 40px;
+  align-items: start;
+  padding-top: 32px;
+}
+
+/* sidebar */
+
+/* position: sticky + align-self: start でグリッドが
+   サイドバーをコンテンツ高さに引き伸ばさないようにする。
+   max-height を固定すると、ページ先頭で header の高さ分だけ
+   下部が画面外に切れるため、伸ばさずページスクロールに乗せる。
+   コンテンツがビューポートを超えた時のみ overflow-y: auto で
+   サイドバー内スクロールに移行する。 */
+.sidebar {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-group + .sidebar-group {
+  margin-top: 2px;
+}
+
+.sidebar-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.sidebar-item:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.sidebar-item.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: rgba(9,105,218,0.18);
+  font-weight: 600;
+}
+
+.sidebar-sublist {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sidebar-sublist a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-sublist a:hover {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+/* sidebar reference block: persistent quick links to generated docs (godoc / coverage / db schema / openapi html) */
+
+.sidebar-reference {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-reference-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 12px;
+  margin-bottom: 6px;
+}
+
+.sidebar-reference-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sidebar-reference-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  padding: 7px 12px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-reference-link:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.sidebar-reference-arrow {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.sidebar-reference-link:hover .sidebar-reference-arrow {
+  color: var(--primary);
+}
+
+/* content area */
+
+.content {
+  min-width: 0;
+}
+
+.page-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 24px;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.page-body {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* sections: subcategory inside a page (ex. Controller, Infrastructure...) */
 
 .section {
-  margin-top: 60px;
+  margin-top: 0;
+  scroll-margin-top: 24px;
 }
 
-.section h2 {
-  font-size: 22px;
-  margin-bottom: 18px;
+.section-title {
+  font-size: 18px;
+  margin: 0 0 14px;
   font-weight: 600;
+  color: var(--text);
+  border-bottom: none;
+  padding: 0;
+}
+
+/* subgroup: section 内の役割サブグループ (Layer Top / HTTP Stack / RDB ...) */
+
+.subgroup {
+  margin-top: 22px;
+}
+
+.subgroup:first-of-type {
+  margin-top: 6px;
+}
+
+.subgroup-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.empty {
+  padding: 60px 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 15px;
 }
 
 /* cards layout */
@@ -96,14 +304,9 @@ header p {
 /* hover */
 
 .card:hover {
-  background: linear-gradient(
-    180deg,
-    #ffffff,
-    var(--primary-soft)
-  );
+  background: #fff;
   transform: translateY(-3px);
   border-color: var(--primary);
-  background: #fff;
 
   box-shadow:
     0 8px 22px rgba(0,0,0,0.06);
@@ -162,19 +365,6 @@ header p {
   text-align: center;
   color: var(--muted);
   font-size: 15px;
-}
-
-/* section divider */
-
-.section h2 {
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
-}
-
-/* nicer spacing */
-
-.section:first-of-type {
-  margin-top: 40px;
 }
 
 .toolbar {
@@ -273,4 +463,60 @@ header p {
 
 .card:active {
   transform: translateY(-1px) scale(0.99);
+}
+
+/* responsive: narrow viewport collapses sidebar above content */
+
+@media (max-width: 860px) {
+  .container.body {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .sidebar {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sidebar-group {
+    flex: 0 0 auto;
+  }
+
+  .sidebar-item {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  /* mobile では active group のサブナビを横並びの下に折り返す */
+  .sidebar-sublist {
+    flex-basis: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-left: none;
+    border-top: 1px dashed var(--border);
+    padding: 8px 0 0;
+    margin-top: 6px;
+  }
+
+  .sidebar-reference {
+    flex-basis: 100%;
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+
+  .sidebar-reference-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
 }

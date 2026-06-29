@@ -8,19 +8,22 @@ English | [日本語](README.ja.md)
 
 ```text
 scripts/
-├── gen-docs-json.cjs           # Generate docs.json for portal navigation
-├── gen-portal-docs.cjs         # Copy docs to portal based on manifest.yaml
-├── semver.cjs                  # Semantic versioning helper (patch/minor/major)
+├── gen-docs-json.mjs           # Generate docs.json for portal navigation
+├── gen-portal-docs.mjs         # Copy docs to portal based on manifest.yaml
+├── build-portal.mjs            # Bundle the portal frontend (src/main.jsx) with esbuild
+├── semver.mjs                  # Semantic versioning helper (patch/minor/major)
+├── stamp-openapi-version.mjs   # Sync openapi.yaml info.version from the release/vX.Y.Z branch name
 ├── sync-versions/              # Mirror mise.toml go / node / python values to go.mod and Dockerfile FROM (Go)
-├── make_help.sh                # Generate Make target help output
+├── make_help.mjs                # Generate Make target help output
+├── mermaid-lint.mjs            # Validate ```mermaid fences in Markdown with the real mermaid parser
 ├── genctxkey/                  # Context key code generator (Go)
 └── setup/                     # Initial project setup scripts
-    ├── replace-module.cjs
-    ├── replace-app-metadata.cjs
-    ├── replace-license-copyright.cjs
-    ├── replace-repository-reference.cjs
-    ├── remove-debug-handlers.cjs
-    └── lib/                   # Shared utilities for setup scripts
+    ├── replace-module.mjs
+    ├── replace-app-metadata.mjs
+    ├── replace-license-copyright.mjs
+    ├── replace-repository-reference.mjs
+    ├── remove-sample-api.mjs  # Remove the sample API (user/product/order)
+    └── lib/                   # Shared utilities for setup scripts (incl. sample-api.mjs manifest)
 ```
 
 ## Script Categories
@@ -29,14 +32,22 @@ scripts/
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`gen-portal-docs.cjs`|Copy source docs to portal `guides/` based on `manifest.yaml`|`make gen-docs`|
-|`gen-docs-json.cjs`|Generate `docs.json` navigation for the portal app|`make gen-docs`|
+|`gen-portal-docs.mjs`|Copy source docs to portal `guides/` based on `manifest.yaml`|`make gen-docs`|
+|`gen-docs-json.mjs`|Generate `docs.json` navigation for the portal app|`make gen-docs`|
+|`build-portal.mjs`|Bundle the portal frontend (`docs/portal/src/main.jsx`) into `docs/portal/dist/` (`bundle.js` / `bundle.css` + lazy chunks) with esbuild, and copy `mermaid.min.js` there too. Replaces the former CDN + in-browser Babel setup.|`make gen-portal-build`|
+
+### Linting
+
+|Script|Description|Invoked By|
+|---|---|---|
+|`mermaid-lint.mjs`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Exits non-zero on the first broken diagram. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
 
 ### Versioning
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`semver.cjs`|Bump semantic version (patch/minor/major)|Release workflow|
+|`semver.mjs`|Bump semantic version (patch/minor/major)|Release workflow|
+|`stamp-openapi-version.mjs`|Derive `X.Y.Z` from a `release/vX.Y.Z` branch name and write it into `openapi.yaml` `info.version` (first `version:` line only; idempotent; no-op for non-release refs). Contract version only — no SHA / build metadata (commit-level traceability is the runtime `/version`'s job). Dependency-free ESM; runs on the bare runner `node`.|`auto-generate-docs.yaml`|
 |`sync-versions/`|Go-based sync utility. Parses `mise.toml` `[tools]` (table-scoped, no external deps) and propagates `go` / `node` / `python` versions to `go.mod` (`go` directive) + `docker/*/Dockerfile` `FROM golang:` / `FROM node:` / `FROM python:` lines. Pre-validates all rules (version present, file exists, expected match count) and writes per file atomically, so failures never leave a partial state.|`make sync-versions`|
 
 All other tool versions are managed by [`mise.toml`](../mise.toml) as the single source of truth. Each environment (host / docker / CI) installs only what it needs via `mise install <tool>` — no sync script required for those.
@@ -45,7 +56,7 @@ All other tool versions are managed by [`mise.toml`](../mise.toml) as the single
 
 |Script|Description|Invoked By|
 |---|---|---|
-|`make_help.sh`|Parse `.makefiles/*.mk` and display target descriptions|`make help`|
+|`make_help.mjs`|Parse `.makefiles/*.mk` and display target descriptions|`make help`|
 
 ### Code Generation
 
@@ -61,13 +72,15 @@ Scripts for configuring the boilerplate when creating a new project from this te
 
 |Script|Description|
 |---|---|
-|`replace-module.cjs`|Replace Go module name across all `.go`, `go.mod`, etc.|
-|`replace-app-metadata.cjs`|Replace app name/description in env files and OpenAPI spec|
-|`replace-license-copyright.cjs`|Replace LICENSE copyright holder and year|
-|`replace-repository-reference.cjs`|Replace GitHub repository references in READMEs and OpenAPI|
-|`remove-debug-handlers.cjs`|Remove debug endpoints (handler, OpenAPI paths, requests, responses)|
+|`replace-module.mjs`|Replace Go module name across all `.go`, `go.mod`, etc.|
+|`replace-app-metadata.mjs`|Replace app name/description in env files and OpenAPI spec|
+|`replace-license-copyright.mjs`|Replace LICENSE copyright holder and year|
+|`replace-repository-reference.mjs`|Replace GitHub repository references in READMEs and OpenAPI|
+|`remove-sample-api.mjs`|Remove the sample API (`user`/`product`/`order`): deletes paths declared in `lib/sample-api.mjs` and strips `sample-api` marker blocks from the shared DI modules and `openapi.yaml`. Run via `make setup-remove-sample-api` to also regenerate/format/lint.|
 
 All setup scripts support `--dry-run` for preview.
+
+The deletion targets and markers for `remove-sample-api.mjs` are declared in [`lib/sample-api.mjs`](setup/lib/sample-api.mjs). The sample spans three domains (`user` is full-stack; `product`/`order` are DB stubs to be expanded), so expanding the sample only requires appending paths to the matching domain block and wrapping interleaved lines with `// sample-api:begin … :end` (or `// sample-api:line`).
 
 ## Notes
 

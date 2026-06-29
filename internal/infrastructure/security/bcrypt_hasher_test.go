@@ -1,8 +1,10 @@
 package security
 
 import (
+	"strings"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
 
 	"github.com/stretchr/testify/assert"
@@ -22,6 +24,38 @@ func TestBcryptHasher_Hash(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, hash)
 	assert.NotEqual(t, "password", hash)
+}
+
+func TestBcryptHasher_Hash_Error(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.MockConfigForTest(t)
+	secCfg := config.NewSecurityConfig(cfg)
+
+	hasher := NewBcryptHasher(secCfg)
+
+	// bcrypt は72バイト超のパスワードを拒否する。生エラーは apperror.ErrInternal へ変換される。
+	hash, err := hasher.Hash(strings.Repeat("a", 73))
+
+	require.ErrorIs(t, err, apperror.ErrInternal)
+	require.ErrorContains(t, err, "bcrypt hash failed")
+	assert.Empty(t, hash)
+}
+
+func TestBcryptHasher_Compare_Error(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.MockConfigForTest(t)
+	secCfg := config.NewSecurityConfig(cfg)
+
+	hasher := NewBcryptHasher(secCfg)
+
+	// 不一致以外の失敗（不正なハッシュ）は apperror.ErrInternal へ変換されて返る。
+	ok, err := hasher.Compare("not-a-bcrypt-hash", "password")
+
+	require.ErrorIs(t, err, apperror.ErrInternal)
+	require.ErrorContains(t, err, "bcrypt compare failed")
+	assert.False(t, ok)
 }
 
 func TestBcryptHasher_Compare(t *testing.T) {

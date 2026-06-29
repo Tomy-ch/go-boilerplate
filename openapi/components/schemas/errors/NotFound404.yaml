@@ -1,0 +1,5 @@
+description: 指定されたリソースが存在しません。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

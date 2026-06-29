@@ -20,5 +20,7 @@ func TestNewAppServer(t *testing.T) {
 	assert.Equal(t, srvCfg.ReadTimeout(), actual.Server.ReadTimeout)
 	assert.Equal(t, srvCfg.WriteTimeout(), actual.Server.WriteTimeout)
 	assert.Equal(t, srvCfg.IdleTimeout(), actual.Server.IdleTimeout)
+	assert.True(t, actual.HideBanner)
+	assert.True(t, actual.HidePort)
 	require.NotNil(t, actual)
 }

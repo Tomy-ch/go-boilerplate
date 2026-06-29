@@ -17,70 +17,78 @@ import (
 func TestApplyPreMiddlewares(t *testing.T) {
 	t.Parallel()
 
-	t.Run("applies pre middlewares in priority order", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		e := echo.New()
+		t.Run("優先度順にPreミドルウェアが適用される", func(t *testing.T) {
+			t.Parallel()
 
-		mwA := func(next echo.HandlerFunc) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				c.Response().Header().Add("X-Order", "A")
-				return next(c)
+			e := echo.New()
+
+			mwA := func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					c.Response().Header().Add("X-Order", "A")
+					return next(c)
+				}
 			}
-		}
-		mwB := func(next echo.HandlerFunc) echo.HandlerFunc {
-			return func(c echo.Context) error {
-				c.Response().Header().Add("X-Order", "B")
-				return next(c)
+			mwB := func(next echo.HandlerFunc) echo.HandlerFunc {
+				return func(c echo.Context) error {
+					c.Response().Header().Add("X-Order", "B")
+					return next(c)
+				}
 			}
-		}
 
-		// Priority はあえてバラバラにして、ソートされることを確認
-		mws := []PreMiddleware{
-			{Name: "B", Priority: 2, Middleware: mwB},
-			{Name: "A", Priority: 1, Middleware: mwA},
-		}
+			// Priority はあえてバラバラにして、ソートされることを確認
+			mws := []PreMiddleware{
+				{Name: "B", Priority: 2, Middleware: mwB},
+				{Name: "A", Priority: 1, Middleware: mwA},
+			}
 
-		err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
-		require.NoError(t, err)
+			err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
+			require.NoError(t, err)
 
-		// 適当なハンドラを登録して 1 回リクエスト
-		e.GET("/", func(c echo.Context) error {
-			return c.String(http.StatusOK, "ok")
+			// 適当なハンドラを登録して 1 回リクエスト
+			e.GET("/", func(c echo.Context) error {
+				return c.String(http.StatusOK, "ok")
+			})
+
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			// Pre ミドルウェアで積まれたヘッダの順序を確認
+			vals := rec.Header()["X-Order"]
+			assert.Equal(t, []string{"A", "B"}, vals)
 		})
-
-		ctx := context.Background()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		e.ServeHTTP(rec, req)
-
-		// Pre ミドルウェアで積まれたヘッダの順序を確認
-		vals := rec.Header()["X-Order"]
-		assert.Equal(t, []string{"A", "B"}, vals)
 	})
 
-	t.Run("returns error when priorities conflict", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		e := echo.New()
+		t.Run("優先度が重複する場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
 
-		mws := []PreMiddleware{
-			{
-				Name:       "pre1",
-				Priority:   1,
-				Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next },
-			},
-			{
-				Name:       "pre2",
-				Priority:   1, // ★ 敢えて同じ Priority
-				Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next },
-			},
-		}
+			e := echo.New()
 
-		err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
-		require.Error(t, err)
-		// エラーメッセージの一部まで見ておきたい場合
-		assert.Contains(t, err.Error(), "priority")
+			mws := []PreMiddleware{
+				{
+					Name:       "pre1",
+					Priority:   1,
+					Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next },
+				},
+				{
+					Name:       "pre2",
+					Priority:   1, // ★ 敢えて同じ Priority
+					Middleware: func(next echo.HandlerFunc) echo.HandlerFunc { return next },
+				},
+			}
+
+			err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), mws)
+			require.Error(t, err)
+			// エラーメッセージの一部まで見ておきたい場合
+			assert.Contains(t, err.Error(), "priority")
+		})
 	})
 }
 
@@ -340,36 +348,53 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
-func Test_validateUseMiddlewarePriorityConflicts(t *testing.T) {
+func Test_validatePriorityConflicts(t *testing.T) {
 	t.Parallel()
 
 	t.Run("priority がユニークならエラーなし", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []UseMiddleware{
-			{Name: "A", Priority: 10},
-			{Name: "B", Priority: 20},
-			{Name: "C", Priority: 30},
+		mws := []middlewareEntry{
+			{name: "A", priority: 10},
+			{name: "B", priority: 20},
+			{name: "C", priority: 30},
 		}
 
-		err := validateUseMiddlewarePriorityConflicts(mws)
+		err := validatePriorityConflicts("use", mws)
 		require.NoError(t, err)
 	})
 
 	t.Run("同じ priority が複数あればエラー", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []UseMiddleware{
-			{Name: "A", Priority: 10},
-			{Name: "B", Priority: 20},
-			{Name: "C", Priority: 20},
+		mws := []middlewareEntry{
+			{name: "A", priority: 10},
+			{name: "B", priority: 20},
+			{name: "C", priority: 20},
 		}
 
-		err := validateUseMiddlewarePriorityConflicts(mws)
+		err := validatePriorityConflicts("use", mws)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "priority=20")
 		assert.Contains(t, err.Error(), "B")
 		assert.Contains(t, err.Error(), "C")
+	})
+
+	t.Run("kind 種別がエラー文言へ反映されること", func(t *testing.T) {
+		t.Parallel()
+
+		mws := []middlewareEntry{
+			{name: "A", priority: 1},
+			{name: "B", priority: 1},
+		}
+
+		preErr := validatePriorityConflicts("pre", mws)
+		require.Error(t, preErr)
+		assert.Contains(t, preErr.Error(), "duplicate pre middleware priorities")
+
+		useErr := validatePriorityConflicts("use", mws)
+		require.Error(t, useErr)
+		assert.Contains(t, useErr.Error(), "duplicate use middleware priorities")
 	})
 }
 

@@ -10,7 +10,7 @@ const keyValueAttrSep = "="
 type cookieAttrs struct {
 	// 順序をある程度維持するために slice を持つ
 	order []string
-	kv    map[string]string // key(lower) -> value ("" means flag)
+	kv    map[string]*string // key(lower) -> value。nil はフラグ属性、非nil は値あり属性（空文字も保持）
 }
 
 // parseSetCookie は Set-Cookie ヘッダ値を解析します。
@@ -26,56 +26,51 @@ func parseSetCookie(raw string) (string, string, *cookieAttrs, bool) {
 	name := strings.TrimSpace(first[:eq])
 	value := strings.TrimSpace(first[eq+1:]) // value はそのまま（quoted/encoded を壊さない）
 
-	attrs := &cookieAttrs{order: make([]string, 0, len(parts)-1), kv: make(map[string]string, len(parts)-1)}
+	attrs := &cookieAttrs{order: make([]string, 0, len(parts)-1), kv: make(map[string]*string, len(parts)-1)}
 	for _, p := range parts[1:] {
-		p = strings.TrimSpace(p)
-		if p == "" {
+		if strings.TrimSpace(p) == "" {
 			continue
 		}
 		k, v, isKV := splitAttr(p)
-		kl := strings.ToLower(k)
-		if _, exists := attrs.kv[kl]; !exists {
-			attrs.order = append(attrs.order, kl)
-		}
 		if isKV {
-			attrs.kv[kl] = v
+			upsertAttr(attrs, k, new(v))
 		} else {
-			attrs.kv[kl] = ""
+			upsertAttr(attrs, k, nil)
 		}
 	}
 	return name, value, attrs, true
 }
 
-// splitAttr は 属性文字列を key/value に分割します。
+// splitAttr は 属性文字列を key/value に分割します（`=` 前後の空白は除去）。
 func splitAttr(s string) (string, string, bool) {
-	eq := strings.Index(s, keyValueAttrSep)
-	if eq < 0 {
+	before, after, ok := strings.Cut(s, keyValueAttrSep)
+	if !ok {
 		return strings.TrimSpace(s), "", false
 	}
-	return strings.TrimSpace(s[:eq]), strings.TrimSpace(s[eq+1:]), true
+	return strings.TrimSpace(before), strings.TrimSpace(after), true
 }
 
-// setBoolAttr は ブール属性を設定/削除します。
-func setBoolAttr(attrs *cookieAttrs, key string, on bool) {
-	key = strings.ToLower(key)
-	if on {
-		if _, exists := attrs.kv[key]; !exists {
-			attrs.order = append(attrs.order, key)
-		}
-		attrs.kv[key] = ""
-		return
-	}
-	// off
-	delAttr(attrs, key)
-}
-
-// setKVAttr は key/value 属性を設定します。
-func setKVAttr(attrs *cookieAttrs, key, val string) {
+// upsertAttr は 属性を追加/更新します（order と kv のキー集合を一致させる単一経路）。
+func upsertAttr(attrs *cookieAttrs, key string, val *string) {
 	key = strings.ToLower(key)
 	if _, exists := attrs.kv[key]; !exists {
 		attrs.order = append(attrs.order, key)
 	}
 	attrs.kv[key] = val
+}
+
+// setBoolAttr は ブール属性を設定/削除します。
+func setBoolAttr(attrs *cookieAttrs, key string, on bool) {
+	if on {
+		upsertAttr(attrs, key, nil)
+		return
+	}
+	delAttr(attrs, key)
+}
+
+// setKVAttr は key/value 属性を設定します。
+func setKVAttr(attrs *cookieAttrs, key, val string) {
+	upsertAttr(attrs, key, new(val))
 }
 
 // delAttr は 属性を削除します。
@@ -110,17 +105,17 @@ func buildSetCookie(name, value string, attrs *cookieAttrs) string {
 		}
 		b.WriteString("; ")
 		b.WriteString(canonicalAttrKey(k))
-		if v != "" {
+		if v != nil {
 			b.WriteString(keyValueAttrSep)
-			b.WriteString(v)
+			b.WriteString(*v)
 		}
 	}
 	return b.String()
 }
 
-// canonicalAttrKey は 属性キーの正規化を行います。
+// canonicalAttrKey は 属性キーの正規化を行います（order のキーは小文字前提）。
 func canonicalAttrKey(k string) string {
-	switch strings.ToLower(k) {
+	switch k {
 	case "httponly":
 		return "HttpOnly"
 	case "samesite":

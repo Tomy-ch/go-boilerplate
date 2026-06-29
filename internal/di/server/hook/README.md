@@ -10,6 +10,7 @@ English | [日本語](README.ja.md)
 |---|---|---|---|
 |`RegisterHTTPServerHooks`|Start Echo server|Graceful Shutdown|HTTP server lifecycle management|
 |`RegisterDBCloseHooks`|—|Close DB connection|Safely close DB connection on shutdown|
+|`RegisterObservabilityShutdownHooks`|—|Shut down TracerProvider / MeterProvider|Flush and release OpenTelemetry providers on shutdown|
 
 ## Flow
 
@@ -22,10 +23,12 @@ flowchart TB
     subgraph "Stop Hooks"
         Shutdown["e.Shutdown()"]
         DBClose["db.Close()"]
+        O11yShutdown["tp.Shutdown() / mp.Shutdown()"]
     end
 
     HTTP --> Shutdown
     DBClose
+    O11yShutdown
 ```
 
 ## RegisterHTTPServerHooks
@@ -42,12 +45,21 @@ Registers a hook to close the database connection on shutdown.
 
 - **Stop**: Calls `db.Close()` and logs any errors
 
+## RegisterObservabilityShutdownHooks
+
+Registers shutdown hooks for the OpenTelemetry `TracerProvider` / `MeterProvider`.
+
+- **Stop**: Calls `observability.ProviderShutdowner.Shutdown()`, which flushes buffered spans / metrics and releases the `TracerProvider` / `MeterProvider`
+- Construction (`observability.NewTracerProvider` / `NewMeterProvider`) is lifecycle-agnostic; this hook owns the shutdown registration, keeping the `observability` package free of any `di/lifecycle` dependency
+- Receives `observability.ProviderShutdowner` — an otel-agnostic handle that bundles both providers' `Shutdown` — so that otel SDK types do not leak into the DI layer
+
 ## DI Registration Example
 
 ```go
 fx.Invoke(
     hook.RegisterHTTPServerHooks,
     hook.RegisterDBCloseHooks,
+    hook.RegisterObservabilityShutdownHooks,
 )
 ```
 

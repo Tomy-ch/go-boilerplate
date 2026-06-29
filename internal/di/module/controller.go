@@ -1,14 +1,15 @@
 package module
 
 import (
-	"go-boilerplate/internal/controller/handler/debug/cookie"
 	"go-boilerplate/internal/controller/handler/health"
 	"go-boilerplate/internal/controller/handler/healthz"
 	"go-boilerplate/internal/controller/handler/metrics"
 	"go-boilerplate/internal/controller/handler/ready"
-	"go-boilerplate/internal/controller/handler/v1/users"
-	"go-boilerplate/internal/controller/handler/v1/users/detail"
-	"go-boilerplate/internal/controller/handler/v1/users/search"
+	exchangeratehandler "go-boilerplate/internal/controller/handler/v1/exchangerate" // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users"                            // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/detail"                     // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/feed"                       // sample-api:line
+	"go-boilerplate/internal/controller/handler/v1/users/search"                     // sample-api:line
 	"go-boilerplate/internal/controller/handler/version"
 
 	"go.uber.org/fx"
@@ -23,12 +24,14 @@ func ControllerModule() fx.Option {
 			ready.BindHandler,
 			version.BindHandler,
 			metrics.BindHandler,
+			// sample-api:begin
 			// サンプルのハンドラー
 			users.BindHandler,
 			detail.BindHandler,
+			feed.BindHandler,
 			search.BindHandler,
-			// デバッグ用のハンドラー（サービスを作成する際には必ず削除してください）
-			cookie.BindHandler,
+			exchangeratehandler.BindHandler,
+			// sample-api:end
 		),
 	)
 }

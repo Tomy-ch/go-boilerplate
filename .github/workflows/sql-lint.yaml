@@ -24,160 +24,81 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Build python tool container
         run: docker compose build python_tool_runner
 
-      - name: Run SQL lint on migrations
-        id: lint_migrations
+      - name: Run SQL lint
+        id: lint
         shell: bash
         continue-on-error: true
         run: |
           set +e
-          make sql-lint-migrations 2>&1 | tee /tmp/sqlfluff_migrations.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          status=success
+          for cat in migrations dml seed; do
+            make "sql-lint-${cat}" 2>&1 | tee "/tmp/sqlfluff_${cat}.log"
+            code=${PIPESTATUS[0]}
+            echo "exit_code_${cat}=${code}" >> "$GITHUB_OUTPUT"
+            [ "$code" = "0" ] || status=failure
+          done
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
 
-      - name: Run SQL lint on DML
-        id: lint_dml
-        shell: bash
-        continue-on-error: true
-        run: |
-          set +e
-          make sql-lint-dml 2>&1 | tee /tmp/sqlfluff_dml.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-
-      - name: Run SQL lint on seed
-        id: lint_seed
-        shell: bash
-        continue-on-error: true
-        run: |
-          set +e
-          make sql-lint-seed 2>&1 | tee /tmp/sqlfluff_seed.log
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-
-      - name: Summarize result
-        id: summary
+      - name: Build PR comment body
+        id: comment
+        if: github.event_name == 'pull_request'
         shell: bash
         run: |
-          m=${{ steps.lint_migrations.outputs.exit_code }}
-          d=${{ steps.lint_dml.outputs.exit_code }}
-          s=${{ steps.lint_seed.outputs.exit_code }}
-
-          if [ "$m" = "0" ] && [ "$d" = "0" ] && [ "$s" = "0" ]; then
-            echo "status=success" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if [ "${{ steps.lint.outputs.status }}" = "success" ]; then
+            echo "title=## ✅ SQL lint: PASS" >> "$GITHUB_OUTPUT"
           else
-            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ SQL lint: FAIL" >> "$GITHUB_OUTPUT"
           fi
+
+          out=/tmp/sql-lint-comment.md
+          : > "$out"
+
+          category_code() {
+            case "$1" in
+              migrations) echo '${{ steps.lint.outputs.exit_code_migrations }}' ;;
+              dml)        echo '${{ steps.lint.outputs.exit_code_dml }}' ;;
+              seed)       echo '${{ steps.lint.outputs.exit_code_seed }}' ;;
+            esac
+          }
+
+          for cat in migrations dml seed; do
+            if [ "$(category_code "$cat")" = "0" ]; then
+              printf -- '- ✅ %s\n' "$cat" >> "$out"
+            else
+              printf -- '- ❌ %s のディレクトリの SQL をローカルで修正し、差分をコミットしてください。\n' "$cat" >> "$out"
+            fi
+          done
+          echo "" >> "$out"
+
+          for cat in migrations dml seed; do
+            if [ "$(category_code "$cat")" = "0" ]; then icon="✅"; else icon="🚨"; fi
+            {
+              echo "<details><summary>${icon} ${cat} log</summary>"
+              echo ""
+              echo '```text'
+              cat "/tmp/sqlfluff_${cat}.log" 2>/dev/null || echo "(log not found)"
+              echo '```'
+              echo "</details>"
+              echo ""
+            } >> "$out"
+          done
 
       - name: Comment SQL lint result on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
+          marker: '<!-- sql-lint-result -->'
+          title: ${{ steps.comment.outputs.title }}
+          body-file: /tmp/sql-lint-comment.md
 
-            const marker = '<!-- sql-lint-result -->';
-            const status = '${{ steps.summary.outputs.status }}';
-
-            const codeM = '${{ steps.lint_migrations.outputs.exit_code }}';
-            const codeD = '${{ steps.lint_dml.outputs.exit_code }}';
-            const codeS = '${{ steps.lint_seed.outputs.exit_code }}';
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-            const shortSha = headSha.slice(0, 7);
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            const read = (p) => {
-              try { return fs.readFileSync(p, 'utf8').trim(); }
-              catch (e) { return '(log not found)'; }
-            };
-
-            const trimLog = (txt) => {
-              const MAX = 45000; // 1コメント上限対策
-              if (txt.length <= MAX) return txt;
-              return txt.slice(0, MAX) + '\n... (truncated)';
-            };
-
-            const title = status === 'success'
-              ? '✅ SQL lint: PASS'
-              : '❌ SQL lint: FAIL';
-
-            const line = (name, code) => (code === '0' ? `- ✅ ${name}` : `- ❌ ${name}のディレクトリのsqlをローカルで修正して、差分をコミットしてください。`);
-            const icon = (code) => (code === '0' ? '✅' : '🚨');
-
-            const body = [
-              marker,
-              `## ${title}`,
-              '',
-              line('migrations', codeM),
-              line('dml', codeD),
-              line('seed', codeS),
-              '',
-              `- 🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
-              `- 🕒 UpdatedAt: ${updatedAtJST} (JST)`,
-              '',
-              `<details><summary> ${icon(codeM)} migrations log</summary>`,
-              '',
-              '```text',
-              trimLog(read('/tmp/sqlfluff_migrations.log')),
-              '```',
-              '</details>',
-              '',
-              `<details><summary> ${icon(codeD)} dml log</summary>`,
-              '',
-              '```text',
-              trimLog(read('/tmp/sqlfluff_dml.log')),
-              '```',
-              '</details>',
-              '',
-              `<details><summary> ${icon(codeS)} seed log</summary>`,
-              '',
-              '```text',
-              trimLog(read('/tmp/sqlfluff_seed.log')),
-              '```',
-              '</details>',
-            ].join('\n');
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-
-            const existing = comments.find(c => (c.body || '').includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body,
-              });
-            }
-
-      - name: Fail if any lint failed
-        if: steps.summary.outputs.status != 'success'
+      - name: Fail if SQL lint failed
+        if: always() && steps.lint.outputs.status != 'success'
         run: exit 1

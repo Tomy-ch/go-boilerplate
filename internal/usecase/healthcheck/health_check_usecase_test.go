@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/observability"
-	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
+	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/healthcheck/query"
 	mock_query "go-boilerplate/internal/usecase/healthcheck/query/mock"
 	"go-boilerplate/internal/usecase/testkit"
@@ -22,7 +22,7 @@ func TestNew(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tf := observability.NewNoopTracerFactory(t)
 	sysQuery := mock_query.NewMockDBSystemQuery(ctrl)
-	clock := mock_clock.NewMockClock(ctrl)
+	clock := clocktest.NewMockClock(t, time.Time{})
 
 	expected := &usecase{
 		tracer:        tf.Usecase(),
@@ -51,11 +51,10 @@ func Test_usecase_CheckHealth(t *testing.T) {
 			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{
 				Ready:       true,
 				Latency:     1000,
-				ResponsedAt: now,
+				RespondedAt: now,
 			}, nil).Times(1)
 
-			mockClock := mock_clock.NewMockClock(ctrl)
-			mockClock.EXPECT().Now().Return(now).Times(1)
+			mockClock := clocktest.NewMockClockOnce(t, now)
 
 			u := &usecase{
 				tracer:        lt,
@@ -73,30 +72,19 @@ func Test_usecase_CheckHealth(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("DBのヘルスチェックが異常な場合、Unhealthyステータスが返る", func(t *testing.T) {
+		t.Run("DBのヘルスチェックが異常な場合、空のDTOとエラーが返る", func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-			expectedDBHealth := query.DBHealth{
-				Ready:       false,
-				Latency:     0,
-				ResponsedAt: time.Time{},
-			}
-			expectedResult := DTO{
-				Status:          Unhealthy,
-				ApplicationTime: now,
-				DBHealthCheck:   expectedDBHealth,
-			}
-			expectedErr := testkit.ExpectedDBError(t)
+			expectedErr := testkit.ExpectedDBError()
 
 			mockSysQuery := mock_query.NewMockDBSystemQuery(ctrl)
-			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(expectedDBHealth, expectedErr).Times(1)
+			mockSysQuery.EXPECT().CheckDBHealth(gomock.Any()).Return(query.DBHealth{}, expectedErr).Times(1)
 
-			mockClock := mock_clock.NewMockClock(ctrl)
-			mockClock.EXPECT().Now().Return(now).Times(1)
+			mockClock := clocktest.NewMockClockOnce(t, now)
 
 			u := &usecase{
 				tracer:        lt,
@@ -106,9 +94,7 @@ func Test_usecase_CheckHealth(t *testing.T) {
 
 			actualResult, actualErr := u.CheckHealth(ctx)
 			assert.Equal(t, expectedErr, actualErr)
-			assert.Equal(t, expectedResult.Status, actualResult.Status)
-			assert.Equal(t, expectedResult.ApplicationTime, actualResult.ApplicationTime)
-			assert.Equal(t, expectedResult.DBHealthCheck, actualResult.DBHealthCheck)
+			assert.Nil(t, actualResult)
 		})
 	})
 }

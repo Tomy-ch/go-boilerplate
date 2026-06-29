@@ -1,0 +1,625 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_logging
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/logging/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_logging is a generated GoMock package.
+</p><p>Package mock_logging is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockLogFieldBuilder">type MockLogFieldBuilder</a></dd>
+				
+					
+					<dd>    <a href="#NewMockLogFieldBuilder">func NewMockLogFieldBuilder(ctrl *gomock.Controller) *MockLogFieldBuilder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockLogFieldBuilder.BuildHTTPRequestFields">func (m *MockLogFieldBuilder) BuildHTTPRequestFields(req logging.HTTPRequestLogInput) []*logging.Field</a></dd>
+				
+					
+					<dd>    <a href="#MockLogFieldBuilder.BuildHTTPResponseFields">func (m *MockLogFieldBuilder) BuildHTTPResponseFields(resp logging.HTTPResponseLogInput) []*logging.Field</a></dd>
+				
+					
+					<dd>    <a href="#MockLogFieldBuilder.BuildSQLEndFields">func (m *MockLogFieldBuilder) BuildSQLEndFields(sql logging.SQLFieldsEndInput) []*logging.Field</a></dd>
+				
+					
+					<dd>    <a href="#MockLogFieldBuilder.EXPECT">func (m *MockLogFieldBuilder) EXPECT() *MockLogFieldBuilderMockRecorder</a></dd>
+				
+			
+				
+				<dd><a href="#MockLogFieldBuilderMockRecorder">type MockLogFieldBuilderMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockLogFieldBuilderMockRecorder.BuildHTTPRequestFields">func (mr *MockLogFieldBuilderMockRecorder) BuildHTTPRequestFields(req any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockLogFieldBuilderMockRecorder.BuildHTTPResponseFields">func (mr *MockLogFieldBuilderMockRecorder) BuildHTTPResponseFields(resp any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockLogFieldBuilderMockRecorder.BuildSQLEndFields">func (mr *MockLogFieldBuilderMockRecorder) BuildSQLEndFields(sql any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockLogger">type MockLogger</a></dd>
+				
+					
+					<dd>    <a href="#NewMockLogger">func NewMockLogger(ctrl *gomock.Controller) *MockLogger</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockLogger.CallerSkip">func (m *MockLogger) CallerSkip(skip int) logging.Logger</a></dd>
+				
+					
+					<dd>    <a href="#MockLogger.Debug">func (m *MockLogger) Debug(msg string, fields ...*logging.Field)</a></dd>
+				
+					
+					<dd>    <a href="#MockLogger.EXPECT">func (m *MockLogger) EXPECT() *MockLoggerMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockLogger.Error">func (m *MockLogger) Error(msg string, fields ...*logging.Field)</a></dd>
+				
+					
+					<dd>    <a href="#MockLogger.Info">func (m *MockLogger) Info(msg string, fields ...*logging.Field)</a></dd>
+				
+					
+					<dd>    <a href="#MockLogger.Named">func (m *MockLogger) Named(name string) logging.Logger</a></dd>
+				
+					
+					<dd>    <a href="#MockLogger.Warn">func (m *MockLogger) Warn(msg string, fields ...*logging.Field)</a></dd>
+				
+			
+				
+				<dd><a href="#MockLoggerMockRecorder">type MockLoggerMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockLoggerMockRecorder.CallerSkip">func (mr *MockLoggerMockRecorder) CallerSkip(skip any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockLoggerMockRecorder.Debug">func (mr *MockLoggerMockRecorder) Debug(msg any, fields ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockLoggerMockRecorder.Error">func (mr *MockLoggerMockRecorder) Error(msg any, fields ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockLoggerMockRecorder.Info">func (mr *MockLoggerMockRecorder) Info(msg any, fields ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockLoggerMockRecorder.Named">func (mr *MockLoggerMockRecorder) Named(name any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockLoggerMockRecorder.Warn">func (mr *MockLoggerMockRecorder) Warn(msg any, fields ...any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html">mock_field_builder.go.gen.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html">mock_logger.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockLogFieldBuilder">type <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=465:591#L10">MockLogFieldBuilder</a>
+				<a class="permalink" href="#MockLogFieldBuilder">¶</a>
+				
+				
+			</h2>
+			<p>MockLogFieldBuilder is a mock of LogFieldBuilder interface.
+
+			</p><pre>type MockLogFieldBuilder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockLogFieldBuilder">func <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=805:878#L22">NewMockLogFieldBuilder</a>
+					<a class="permalink" href="#NewMockLogFieldBuilder">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockLogFieldBuilder(ctrl *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockLogFieldBuilder">MockLogFieldBuilder</a></pre>
+				<p>NewMockLogFieldBuilder creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockLogFieldBuilder.BuildHTTPRequestFields">func (*MockLogFieldBuilder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=1213:1315#L34">BuildHTTPRequestFields</a>
+					<a class="permalink" href="#MockLogFieldBuilder.BuildHTTPRequestFields">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogFieldBuilder">MockLogFieldBuilder</a>) BuildHTTPRequestFields(req <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#HTTPRequestLogInput">HTTPRequestLogInput</a>) []*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a></pre>
+				<p>BuildHTTPRequestFields mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogFieldBuilder.BuildHTTPResponseFields">func (*MockLogFieldBuilder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=1843:1948#L48">BuildHTTPResponseFields</a>
+					<a class="permalink" href="#MockLogFieldBuilder.BuildHTTPResponseFields">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogFieldBuilder">MockLogFieldBuilder</a>) BuildHTTPResponseFields(resp <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#HTTPResponseLogInput">HTTPResponseLogInput</a>) []*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a></pre>
+				<p>BuildHTTPResponseFields mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogFieldBuilder.BuildSQLEndFields">func (*MockLogFieldBuilder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=2479:2574#L62">BuildSQLEndFields</a>
+					<a class="permalink" href="#MockLogFieldBuilder.BuildSQLEndFields">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogFieldBuilder">MockLogFieldBuilder</a>) BuildSQLEndFields(sql <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#SQLFieldsEndInput">SQLFieldsEndInput</a>) []*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a></pre>
+				<p>BuildSQLEndFields mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogFieldBuilder.EXPECT">func (*MockLogFieldBuilder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=1072:1143#L29">EXPECT</a>
+					<a class="permalink" href="#MockLogFieldBuilder.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogFieldBuilder">MockLogFieldBuilder</a>) EXPECT() *<a href="#MockLogFieldBuilderMockRecorder">MockLogFieldBuilderMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockLogFieldBuilderMockRecorder">type <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=674:748#L17">MockLogFieldBuilderMockRecorder</a>
+				<a class="permalink" href="#MockLogFieldBuilderMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockLogFieldBuilderMockRecorder is the mock recorder for MockLogFieldBuilder.
+
+			</p><pre>type MockLogFieldBuilderMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockLogFieldBuilderMockRecorder.BuildHTTPRequestFields">func (*MockLogFieldBuilderMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=1525:1612#L42">BuildHTTPRequestFields</a>
+					<a class="permalink" href="#MockLogFieldBuilderMockRecorder.BuildHTTPRequestFields">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLogFieldBuilderMockRecorder">MockLogFieldBuilderMockRecorder</a>) BuildHTTPRequestFields(req <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>BuildHTTPRequestFields indicates an expected call of BuildHTTPRequestFields.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogFieldBuilderMockRecorder.BuildHTTPResponseFields">func (*MockLogFieldBuilderMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=2162:2251#L56">BuildHTTPResponseFields</a>
+					<a class="permalink" href="#MockLogFieldBuilderMockRecorder.BuildHTTPResponseFields">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLogFieldBuilderMockRecorder">MockLogFieldBuilderMockRecorder</a>) BuildHTTPResponseFields(resp <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>BuildHTTPResponseFields indicates an expected call of BuildHTTPResponseFields.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogFieldBuilderMockRecorder.BuildSQLEndFields">func (*MockLogFieldBuilderMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_field_builder.go.gen.go.html?s=2769:2851#L70">BuildSQLEndFields</a>
+					<a class="permalink" href="#MockLogFieldBuilderMockRecorder.BuildSQLEndFields">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLogFieldBuilderMockRecorder">MockLogFieldBuilderMockRecorder</a>) BuildSQLEndFields(sql <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>BuildSQLEndFields indicates an expected call of BuildSQLEndFields.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockLogger">type <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=426:534#L10">MockLogger</a>
+				<a class="permalink" href="#MockLogger">¶</a>
+				
+				
+			</h2>
+			<p>MockLogger is a mock of Logger interface.
+
+			</p><pre>type MockLogger struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockLogger">func <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=703:758#L22">NewMockLogger</a>
+					<a class="permalink" href="#NewMockLogger">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockLogger(ctrl *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockLogger">MockLogger</a></pre>
+				<p>NewMockLogger creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockLogger.CallerSkip">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1045:1101#L34">CallerSkip</a>
+					<a class="permalink" href="#MockLogger.CallerSkip">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) CallerSkip(skip <a href="../../../../builtin/#int">int</a>) <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Logger">Logger</a></pre>
+				<p>CallerSkip mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogger.Debug">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1522:1586#L48">Debug</a>
+					<a class="permalink" href="#MockLogger.Debug">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Debug(msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
+				<p>Debug mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogger.EXPECT">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=934:987#L29">EXPECT</a>
+					<a class="permalink" href="#MockLogger.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) EXPECT() *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogger.Error">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2074:2138#L65">Error</a>
+					<a class="permalink" href="#MockLogger.Error">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Error(msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
+				<p>Error mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogger.Info">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2625:2688#L82">Info</a>
+					<a class="permalink" href="#MockLogger.Info">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Info(msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
+				<p>Info mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogger.Named">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3170:3224#L99">Named</a>
+					<a class="permalink" href="#MockLogger.Named">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Named(name <a href="../../../../builtin/#string">string</a>) <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Logger">Logger</a></pre>
+				<p>Named mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLogger.Warn">func (*MockLogger) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3614:3677#L113">Warn</a>
+					<a class="permalink" href="#MockLogger.Warn">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockLogger">MockLogger</a>) Warn(msg <a href="../../../../builtin/#string">string</a>, fields ...*<a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Field">Field</a>)</pre>
+				<p>Warn mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockLoggerMockRecorder">type <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=599:655#L17">MockLoggerMockRecorder</a>
+				<a class="permalink" href="#MockLoggerMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockLoggerMockRecorder is the mock recorder for MockLogger.
+
+			</p><pre>type MockLoggerMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockLoggerMockRecorder.CallerSkip">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1274:1341#L42">CallerSkip</a>
+					<a class="permalink" href="#MockLoggerMockRecorder.CallerSkip">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) CallerSkip(skip <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CallerSkip indicates an expected call of CallerSkip.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLoggerMockRecorder.Debug">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=1779:1855#L58">Debug</a>
+					<a class="permalink" href="#MockLoggerMockRecorder.Debug">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Debug(msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Debug indicates an expected call of Debug.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLoggerMockRecorder.Error">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2331:2407#L75">Error</a>
+					<a class="permalink" href="#MockLoggerMockRecorder.Error">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Error(msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Error indicates an expected call of Error.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLoggerMockRecorder.Info">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=2878:2953#L92">Info</a>
+					<a class="permalink" href="#MockLoggerMockRecorder.Info">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Info(msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Info indicates an expected call of Info.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLoggerMockRecorder.Named">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3382:3444#L107">Named</a>
+					<a class="permalink" href="#MockLoggerMockRecorder.Named">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Named(name <a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Named indicates an expected call of Named.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockLoggerMockRecorder.Warn">func (*MockLoggerMockRecorder) <a href="../../../../src/go-boilerplate/internal/logging/mock/mock_logger.go.gen.go.html?s=3867:3942#L123">Warn</a>
+					<a class="permalink" href="#MockLoggerMockRecorder.Warn">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockLoggerMockRecorder">MockLoggerMockRecorder</a>) Warn(msg <a href="../../../../builtin/#any">any</a>, fields ...<a href="../../../../builtin/#any">any</a>) *<a href="../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Warn indicates an expected call of Warn.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -39,11 +39,16 @@ flowchart TB
 
 ## DB 初期化
 
-`NewDB()` は DB 接続を初期化します。
+DB 接続を初期化するコンストラクタは 2 つあります。
 
 ```go
-func NewDB(...) (DatabaseDriver, error)
+func NewDB(...) (DatabaseDriver, error)                         // クエリトレーサーなし
+func NewTracedDB(..., tracer pgx.QueryTracer) (DatabaseDriver, error) // クエリトレーサーあり
 ```
+
+`NewTracedDB` はアプリ本体（DI）が利用し、pgx クエリトレーサーを `poolCfg.ConnConfig.Tracer`
+に結線します。`NewDB`（トレーサーなし）は、クエリ計装が不要なツール経路（マイグレーション /
+シード等）のために残しています。
 
 処理内容:
 
@@ -53,7 +58,8 @@ func NewDB(...) (DatabaseDriver, error)
     - MinConns
     - ConnMaxLifetime
     - ConnMaxIdleTime
-3. `Ping` による DB 疎通確認
+3. クエリトレーサーを `ConnConfig.Tracer` に結線（指定時のみ）
+4. `Ping` による DB 疎通確認
 
 Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設計です。
 
@@ -241,24 +247,29 @@ DB 接続用の DSN を組み立てるユーティリティです。
 ## NewTransactionManager
 
 ```go
-func NewTransactionManager(cfg *config.Config, db DatabaseDriver, logger logging.Logger) tx.Manager
+func NewTransactionManager(db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper) tx.Manager
 ```
 
 Usecase 層の `tx.Manager`（`internal/usecase/boundary/tx`）を実装するコンストラクタです。
+`Do` は `serialization_failure`(40001) / `deadlock_detected`(40P01) を検出するとトランザクション全体を
+有限回まで再試行します（`sleeper` で指数 backoff + full jitter, `pkg/retry`）。再試行回数と backoff は
+config（`DB_TX_MAX_RETRIES` / `DB_TX_RETRY_BASE_BACKOFF` / `DB_TX_RETRY_MAX_BACKOFF`）から取得し、
+0 以下の場合は組み込み既定値にフォールバックします。`fn` の冪等性契約は `tx` 境界 README を参照してください。
 
-## loggingdb サブディレクトリ
+## クエリトレーサー（query_tracer.go）
 
-`loggingdb/` は **SQL 実行にログ + トレーシングを付加するデコレータ**です。
+`NewQueryTracer` は `ConnConfig.Tracer` に結線する `pgx.QueryTracer` を生成します。OpenTelemetry
+span のために `otelpgx` を埋め込み、クエリログ（正常終了 Info / スロー Warn / 失敗 Error）を上乗せします。
 
 |型 / 関数|説明|
 |---|---|
-|`DBProvider`|ログ付き DBTX を生成するインターフェース|
-|`NewLoggingDBProvider`|`DBProvider` を生成（DB / Config / Logger / Tracer を受け取る）|
-|`NewLoggingDB(ctx)`|`DBTX` をラップし、Exec / Query / QueryRow にログとスパンを付加|
+|`NewQueryTracer`|`pgx.QueryTracer` を生成（DB / Observability 設定、Logger、LogFieldBuilder を受け取る）|
+|`queryTracer`|`*otelpgx.Tracer` を埋め込み、`TraceQueryStart` / `TraceQueryEnd` を上書きしてログを付加|
 
 特徴：
 
-- SQL の開始 / 終了を構造化ログで出力
-- スロークエリ検出（`SlowQueryWarnThreshold` 超過時に Warn レベル）
-- `ObservabilityConfig.MaskedDBQueryArgs()` によるクエリ引数のマスキング
-- 各クエリに OpenTelemetry span を付与
+- `otelpgx` によるクエリごとの OpenTelemetry span（semconv の DB 属性付き、batch / copy も対象）
+- 正常終了時の**Info ログ**（latency 付き）
+- クエリ失敗時の**エラーログ**（`span.RecordError` に加えて）
+- `DB_SLOW_QUERY_WARN_THRESHOLD` 超過時の**スロークエリ Warn ログ**
+- `OBS_MASKED_DB_QUERY_ARGS` によるクエリ引数のマスキング

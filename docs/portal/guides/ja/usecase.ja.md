@@ -57,6 +57,8 @@ Usecaseは以下のみを担当します。
 - Domain / Repository の協調
 - DTO変換
 
+オーケストレーションには、Controller のために **複数の読み取りを1操作へ合成する**ことも含みます。例: ページング一覧のエンドポイントは `{ Items, Total }` を返す単一メソッドを公開し、handler に一覧と件数を別々に呼ばせて束ねさせません。
+
 ## アプリケーションサービス層の設計方針
 
 プロジェクトの Usecase は **Application Service Pattern** を採用しています。
@@ -322,6 +324,7 @@ flowchart TB
 
 - Usecaseは原則 標準ライブラリのみ（context, time, errors, fmt など）。
 - ORM・SQL実行・HTTPクライアント・EchoなどI/O系は一切持ち込まない。
+- 横断的例外: `internal/logging.Logger` は `internal/apperror` と同様、専用 boundary を介さずコンストラクタ DI で直接注入してよい。純粋な mock 可能インターフェースであり、失敗ログが必要なバックグラウンドワーカー（例: outbox relay の dead-message 警告）に限って使用する。それ以外は `metrics`/boundary を優先する。
 - 型定義やDTOもプロジェクト内型で閉じる。sqlc生成型/driver型やOpenAPI生成型は上位/下位の層に隔離。
 - テストも`testify`/`mock`程度に留め、モックはinterfaceベースで注入。
 - どうしても必要な場合は、[pkg/](../../pkg/)で薄いラッパーを作成する。
@@ -372,7 +375,7 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    encrypter security.Encrypter,
+    hasher security.Hasher,
     userRepo user.Repository,
     userQS query.UserQueryService,
 ) Usecase {
@@ -380,7 +383,7 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        encrypter: encrypter,
+        hasher:    hasher,
         userRepo:  userRepo,
         userQS:    userQS,
     }
@@ -469,10 +472,14 @@ flowchart TB
 - 想定外:
   - そのまま or `apperror.ErrInternal` に包む → 500
 
+`apperror.ErrXXX` センチネルでラップする場合は、標準の `fmt.Errorf("%w", ...)` ではなく
+`pkg/xerrors.Wrap(apperror.ErrXXX, "context")` を使う。スタックトレースを保持しつつ
+`xerrors.Is` でセンチネル判定が可能になる。
+
 ### ページング
 
 - NewPageFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
-- Offset 上限（悪意対策）を超えたら `apperror.ErrInvalidArgument` を返す。
+- ページ番号が許容最大を超えたら `apperror.ErrInvalidArgument` を返す（offset は int32 変換時にクランプ）。
 
 ## 呼び出せる層 / 呼び出せない層
 
@@ -541,7 +548,7 @@ ctrl := gomock.NewController(t)
 
 userRepo := mock_user.NewMockRepository(ctrl)
 clock := mock_clock.NewMockClock(ctrl)
-byencrypter := mock_security.NewMockBcrypter(ctrl)
+hasher := mock_security.NewMockHasher(ctrl)
 ```
 
 ### テスト対象
@@ -698,7 +705,7 @@ observability層がtracerの生成ルール（レイヤー名やパッケージ�
 ## 実装例
 
 ```go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE -package=mock_$GOPACKAGE
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 // 唯一性のある名称
 package user
 
@@ -736,7 +743,7 @@ type usecase struct {
     tracer    observability.LayerTracer
     txm       tx.Manager
     clock     clock.Clock
-    encrypter security.Encrypter
+    hasher    security.Hasher
     userRepo  user.Repository
     pftRepo   prefecture.Repository
     userQS    query.UserQueryService
@@ -745,7 +752,7 @@ type usecase struct {
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
     // ListUsersByKeyword は、ユーザー一覧を取得します。
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Paging) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
     // CreateUser は、ユーザーを作成します。
     CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
     // CountUsers は、ユーザーの総件数を返します。
@@ -757,7 +764,7 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    encrypter security.Encrypter,
+    hasher security.Hasher,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
     userQueryService query.UserQueryService,
@@ -766,14 +773,14 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        encrypter: encrypter,
+        hasher:    hasher,
         userRepo:  userRepo,
         pftRepo:   prefectureRepo,
         userQS:    userQueryService,
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Paging) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
@@ -796,12 +803,12 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
     }
 
 
-    // オプション: observability.RunDomainWithSpanでDomain層のspanを作成
+    // オプション: observability.RunWithSpanで処理単位のspanを作成
     // 可観測性を高めるために、Domain層の処理もspanとして切り出すことができます。
     // オプションなのでなくても構いません。
     // 第一引数のctxは、後続で使う場合は返り値を受け取って上書きしてください。
-    ctx, prefectureMap, err := observability.RunDomainWithSpan(
-        ctx, u.tracer, "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
+    ctx, prefectureMap, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "prefectureMap", func(ctx context.Context) (map[uuid.UUID]*prefecture.Entity, error) {
             // ユーザーの都道府県IDを集めて、一括で都道府県エンティティを取得
             pids := make([]uuid.UUID, len(us))
             for i, u := range us {
@@ -828,9 +835,9 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
       return nil, err
     }
 
-    // ctxは、後続でobservability.RunDomainWithSpanを使わない場合は不要
-    _, dtos, err := observability.RunDomainWithSpan(
-        ctx, u.tracer, "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
+    // ctxは、後続でobservability.RunWithSpanを使わない場合は不要
+    _, dtos, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
             // 結果をDTOに詰め替え
             dtos := make([]UserMutableFields, len(us))
             for i, u := range us {
@@ -868,8 +875,8 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
         return MutableFields{}, err
     }
 
-    // パスワードのハッシュ化はセキュリティのルールなので、Boundaryで提供されるencrypterを使う
-    passwordHash, err := u.encrypter.Hash(rawPassword.Value())
+    // パスワードのハッシュ化はセキュリティのルールなので、Boundaryで提供されるhasherを使う
+    passwordHash, err := u.hasher.Hash(rawPassword.Value())
     if err != nil {
         return MutableFields{}, err
     }

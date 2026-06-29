@@ -1,0 +1,305 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>query - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package query
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/user/search/query&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package query は、ユーザー検索のクエリサービスを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#UserSearchFilter">type UserSearchFilter</a></dd>
+				
+				
+			
+				
+				<dd><a href="#UserSearchQueryService">type UserSearchQueryService</a></dd>
+				
+				
+			
+				
+				<dd><a href="#UserSearchResult">type UserSearchResult</a></dd>
+				
+				
+			
+				
+				<dd><a href="#UserSearchResults">type UserSearchResults</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/query/user_search_usecase_query_service.go.html">user_search_usecase_query_service.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="UserSearchFilter">type <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/query/user_search_usecase_query_service.go.html?s=834:901#L10">UserSearchFilter</a>
+				<a class="permalink" href="#UserSearchFilter">¶</a>
+				
+				
+			</h2>
+			<p>UserSearchFilter は、ユーザー検索のフィルタリング条件を表します。
+
+			</p><pre>type UserSearchFilter struct {
+<span id="UserSearchFilter.Active"></span>    Active   *<a href="../../../../../../builtin/#bool">bool</a>
+<span id="UserSearchFilter.Keywords"></span>    Keywords []<a href="../../../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UserSearchQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/query/user_search_usecase_query_service.go.html?s=331:739#L2">UserSearchQueryService</a>
+				<a class="permalink" href="#UserSearchQueryService">¶</a>
+				
+				
+			</h2>
+			<p>UserSearchQueryService は、ユーザー検索のクエリサービスを定義します。
+
+			</p><pre>type UserSearchQueryService interface {
+    <span class="comment">// FindByFilter は、キーワード検索でユーザーの情報を取得します。</span>
+    FindByFilter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, filter *<a href="#UserSearchFilter">UserSearchFilter</a>, limit, offset <a href="../../../../../../builtin/#int32">int32</a>) (<a href="#UserSearchResults">UserSearchResults</a>, <a href="../../../../../../builtin/#error">error</a>)
+    <span class="comment">// CountByFilter は、キーワード検索でユーザーの総件数を返します。</span>
+    CountByFilter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, filter *<a href="#UserSearchFilter">UserSearchFilter</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UserSearchResult">type <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/query/user_search_usecase_query_service.go.html?s=1114:1407#L19">UserSearchResult</a>
+				<a class="permalink" href="#UserSearchResult">¶</a>
+				
+				
+			</h2>
+			<p>UserSearchResult は、ユーザー検索結果1件を表します。
+
+			</p><pre>type UserSearchResult struct {
+<span id="UserSearchResult.FirstName"></span>    FirstName      <a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.LastName"></span>    LastName       <a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.Email"></span>    Email          <a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.Phone"></span>    Phone          <a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.PostalCode"></span>    PostalCode     <a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.PrefectureName"></span>    PrefectureName <a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.City"></span>    City           <a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.Street"></span>    Street         <a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.Building"></span>    Building       *<a href="../../../../../../builtin/#string">string</a>
+<span id="UserSearchResult.RegisteredAt"></span>    RegisteredAt   <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="UserSearchResult.DeletedAt"></span>    DeletedAt      *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="UserSearchResults">type <a href="../../../../../../src/go-boilerplate/internal/usecase/user/search/query/user_search_usecase_query_service.go.html?s=997:1039#L16">UserSearchResults</a>
+				<a class="permalink" href="#UserSearchResults">¶</a>
+				
+				
+			</h2>
+			<p>UserSearchResults は、ユーザー検索結果の一覧（リスト）を表します。
+
+			</p><pre>type UserSearchResults []*<a href="#UserSearchResult">UserSearchResult</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

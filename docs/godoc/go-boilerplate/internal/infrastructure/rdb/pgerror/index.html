@@ -1,0 +1,239 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>pgerror - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package pgerror
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package pgerror は、PostgreSQL エラー（SQLSTATE・接続断・context タイムアウト）をアプリケーションエラー（apperror）へ正規化する関数群と、retryable / lock-timeout / unavailable 判定述語を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+				
+				<dd><a href="#IsLockNotAvailable">func IsLockNotAvailable(err error) bool</a></dd>
+			
+				
+				<dd><a href="#IsRetryableTxError">func IsRetryableTxError(err error) bool</a></dd>
+			
+				
+				<dd><a href="#IsUnavailable">func IsUnavailable(err error) bool</a></dd>
+			
+				
+				<dd><a href="#NormalizeError">func NormalizeError(err error) error</a></dd>
+			
+				
+				<dd><a href="#NormalizeExecResult">func NormalizeExecResult(affected int64, err error) error</a></dd>
+			
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html">pgerror.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+			
+			
+			<h2 id="IsLockNotAvailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3136:3175#L95">IsLockNotAvailable</a>
+				<a class="permalink" href="#IsLockNotAvailable">¶</a>
+				
+				
+			</h2>
+			<pre>func IsLockNotAvailable(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
+			<p>IsLockNotAvailable は、lock_timeout 失効によるエラーであるかを判定します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="IsRetryableTxError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=3641:3680#L104">IsRetryableTxError</a>
+				<a class="permalink" href="#IsRetryableTxError">¶</a>
+				
+				
+			</h2>
+			<pre>func IsRetryableTxError(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
+			<p>IsRetryableTxError は、リトライで解消しうる tx エラーかを判定します。
+40001 = serialization_failure, 40P01 = deadlock_detected。
+写像後の sentinel（両者は ErrUnavailable へ写像される）ではなく生 SQLSTATE で判定し、
+接続断など他の ErrUnavailable をリトライ対象に巻き込まないようにします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="IsUnavailable">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2518:2552#L68">IsUnavailable</a>
+				<a class="permalink" href="#IsUnavailable">¶</a>
+				
+				
+			</h2>
+			<pre>func IsUnavailable(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#bool">bool</a></pre>
+			<p>IsUnavailable は、DB が利用不可能な状態を示すエラーかを判定します。context.DeadlineExceeded・net.Error・PostgreSQL 接続例外クラス(08xxx) を対象とします。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NormalizeError">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=1165:1201#L23">NormalizeError</a>
+				<a class="permalink" href="#NormalizeError">¶</a>
+				
+				
+			</h2>
+			<pre>func NormalizeError(err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a></pre>
+			<p>NormalizeError は、PostgreSQLのエラーをアプリケーション固有のエラーに変換します。
+既に正規化済みの apperror はそのまま返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NormalizeExecResult">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/pgerror/pgerror.go.html?s=2108:2165#L57">NormalizeExecResult</a>
+				<a class="permalink" href="#NormalizeExecResult">¶</a>
+				
+				
+			</h2>
+			<pre>func NormalizeExecResult(affected <a href="../../../../../builtin/#int64">int64</a>, err <a href="../../../../../builtin/#error">error</a>) <a href="../../../../../builtin/#error">error</a></pre>
+			<p>NormalizeExecResult は、影響行数を返す書き込み系クエリの結果を正規化します。
+エラーは NormalizeError と同じ規則で変換し、エラーが無くても影響行数が 0 の場合は
+対象が存在しないとみなして ErrNotFound を返します（UPDATE / DELETE のサイレント成功を防ぐ）。
+
+			
+			
+
+		
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

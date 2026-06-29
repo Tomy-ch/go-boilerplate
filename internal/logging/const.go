@@ -1,7 +1,7 @@
 package logging
 
 const (
-	// HTTPレスポンス系ログのキー
+	// イベント共通系ログのフィールド（キーおよび値。HTTP/Job 等で共用）
 
 	// EventTypeKey は、イベントタイプを表すログフィールドのキーです。
 	EventTypeKey = "event_type"
@@ -9,6 +9,10 @@ const (
 	EventTypeStart = "start"
 	// EventTypeEnd は、終了イベントを表すイベントタイプの値です。
 	EventTypeEnd = "end"
+	// EventTypeError は、エラー応答イベントを表すイベントタイプの値です。
+	EventTypeError = "error"
+	// EventTypePanic は、パニック復旧イベントを表すイベントタイプの値です。
+	EventTypePanic = "panic"
 	// EventAtKey は、イベント発生時刻を表すログフィールドのキーです。
 	EventAtKey = "event_at"
 	// EventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。
@@ -50,12 +54,16 @@ const (
 
 	// エラー系ログのキー
 
+	// ErrorKey は、エラーを表すログフィールドのキーです。
+	ErrorKey = "error"
+	// OriginalErrorKey は、別のエラー処理中に併記する元エラーを表すログフィールドのキーです。
+	OriginalErrorKey = "original_error"
 	// ErrorCodeKey は、エラーコードを表すログフィールドのキーです。
 	ErrorCodeKey = "error_code"
 	// ErrorMessageKey は、エラーメッセージを表すログフィールドのキーです。
 	ErrorMessageKey = "error_message"
-	// ErrorDetails は、エラー詳細を表すログフィールドのキーです。
-	ErrorDetails = "error_details"
+	// ErrorDetailsKey は、エラー詳細を表すログフィールドのキーです。
+	ErrorDetailsKey = "error_details"
 	// InternalErrorKey は、内部エラーを表すログフィールドのキーです。
 	InternalErrorKey = "internal_error"
 	// InternalStackTraceKey は、内部エラーのスタックトレースを表すログフィールドのキーです。
@@ -80,6 +88,19 @@ const (
 	JobErrorKey = "job_error"
 	// JobResultKey は、ジョブ結果を表すログフィールドのキーです。
 	JobResultKey = "job_result"
+	// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。
+	FilterKey = "filter"
+
+	// worker 系ログのキー
+
+	// WorkerNameKey は、worker 名を表すログフィールドのキーです。
+	WorkerNameKey = "worker_name"
+	// MessageIDKey は、メッセージ ID を表すログフィールドのキーです。
+	MessageIDKey = "message_id"
+	// ReceiveCountKey は、メッセージの再配送回数を表すログフィールドのキーです。
+	ReceiveCountKey = "receive_count"
+	// PanicKey は、recover した panic 値を表すログフィールドのキーです。
+	PanicKey = "panic"
 
 	// 可観測系ログのキー
 

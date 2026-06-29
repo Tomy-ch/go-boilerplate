@@ -1,4 +1,4 @@
-name: migration-check
+name: Migration Check
 
 on:
   pull_request:
@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
   pull-requests: write
 
 jobs:
@@ -17,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Run migration checks
         id: migration
@@ -71,100 +71,23 @@ jobs:
 
           if [ $FAIL -ne 0 ]; then
             echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## ❌ Migration check failed" >> "$GITHUB_OUTPUT"
           else
             echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Migration check passed" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Comment migration result on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
+          marker: '<!-- migration-check-result -->'
+          title: ${{ steps.migration.outputs.title }}
+          body-file: /tmp/migration_result.txt
+          details-summary: 'migration check log'
 
-            const marker = '<!-- migration-check-result -->';
-            const status = '${{ steps.migration.outputs.status }}';
-
-            const result = (() => {
-              try { return fs.readFileSync('/tmp/migration_result.txt', 'utf8').trim(); }
-              catch { return '(log not found)'; }
-            })();
-
-            const updatedAtJST = new Date().toLocaleString('ja-JP', {
-              timeZone: 'Asia/Tokyo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            const headSha =
-              (context.payload.pull_request?.head?.sha)
-              || process.env.GITHUB_SHA
-              || context.sha;
-
-            const shortSha = headSha.slice(0, 7);
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const commitUrl = `${repoUrl}/commit/${headSha}`;
-
-            let body;
-
-            if (status === 'success') {
-              body = [
-                marker,
-                '## ✅ Migration checks passed',
-                '',
-                `🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
-                '',
-                'All migration validations passed.',
-                '',
-                `🕒 UpdatedAt: ${updatedAtJST} (JST)`
-              ].join('\n');
-            } else {
-              body = [
-                marker,
-                '## ❌ Migration check failed',
-                '',
-                `🔖 Commit: [\`${shortSha}\`](${commitUrl})`,
-                '',
-                '```',
-                result,
-                '```',
-                '',
-                `🕒 UpdatedAt: ${updatedAtJST} (JST)`
-              ].join('\n');
-            }
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page: 100,
-            });
-
-            const existing = comments
-              .filter(c => (c.body || '').includes(marker))
-              .sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body,
-              });
-            }
-
-      - name: Fail job if migration check failed
+      - name: Fail if migration check failed
         if: steps.migration.outputs.status != 'success'
         run: exit 1

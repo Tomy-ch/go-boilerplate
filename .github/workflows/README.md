@@ -19,38 +19,51 @@ This directory contains GitHub Actions workflow definitions for CI/CD. Workflows
 
 |Workflow|File|Description|
 |---|---|---|
-|Golang Lint|`lint.yaml`|Run golangci-lint on Go code|
-|Golang Test|`test.yaml`|Run Go tests with coverage reporting|
-|Go Module Consistency|`tidy-check.yaml`|Verify go.mod / go.sum are tidied|
+|Go Lint|`go-lint.yaml`|Run golangci-lint on Go code|
+|Go Test|`go-test.yaml`|Run Go tests with coverage reporting|
+|Module Tidy Check|`tidy-check.yaml`|Verify go.mod / go.sum are tidied|
 |SQL Lint|`sql-lint.yaml`|Run sqlfluff on migration / DML / seed SQL files|
+|Actions Lint|`actions-lint.yaml`|Run actionlint on workflow / composite-action definitions (via go_tool_runner)|
 |Migration Check|`migration-check.yaml`|Validate migration files (duplicates, gaps, up/down pairing)|
-|Generated Go Artifacts|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|
-|Generated DB Artifacts|`gen-db-artifacts-check.yaml`|Verify generated sqlc code matches committed artifacts|
-|Generated OpenAPI Artifacts|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
-|Application Boot|`app-di-startup-check.yaml`|Verify application starts successfully with DB|
+|Sync Versions Check|`sync-versions-check.yaml`|Verify mise.toml versions are propagated to go.mod / Dockerfiles / READMEs|
+|Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|
+|Generated Database Artifacts Check|`gen-db-artifacts-check.yaml`|Verify generated sqlc code matches committed artifacts|
+|Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
+|OpenAPI Lint|`oapi-lint.yaml`|`redocly lint` the OpenAPI definition (naming / casing / descriptions / unused components)|
+|App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
+|Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
 
 ### Security
 
 |Workflow|File|Description|
 |---|---|---|
-|Code Security Scan|`code-ql.yaml`|CodeQL analysis for security vulnerabilities|
-|Dependency Vulnerability Scan|`trivy-fs.yaml`|Trivy filesystem scan for library vulnerabilities (developer-facing)|
-|Release Dependency Vulnerability Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
-|Docker Image Scan|`image-scan.yaml`|Build image, generate SBOM, run Trivy scan|
-|Go Vulnerability Analysis|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
+|CodeQL Scan|`code-ql.yaml`|CodeQL analysis for security vulnerabilities|
+|Dependency Scan|`trivy-fs.yaml`|Trivy filesystem scan for library vulnerabilities (developer-facing)|
+|Release Dependency Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
+|Image Scan|`image-scan.yaml`|Build image, generate SBOM, run Trivy scan|
+|Vulnerability Scan|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
 
 ### Deployment (Push)
 
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
-|Application Deployment|`deploy-app.yaml`|push to production/staging/develop|Build and push Docker images, run migration and deploy|
-|Deploy Docs Portal|`deploy-docs.yaml`|push to production (docs changes)|Deploy documentation portal to GitHub Pages|
+|Deploy App|`deploy-app.yaml`|push to production/staging/develop|Build and push Docker images, run migration and deploy|
+|Deploy Docs|`deploy-docs.yaml`|push to production (docs changes)|Deploy documentation portal to GitHub Pages|
 
 ### Documentation (Push)
 
 |Workflow|File|Trigger|Description|
 |---|---|---|---|
-|Auto-generate Docs PR|`auto-generate-docs.yaml`|push to release/* branches|Auto-generate OpenAPI docs, ER diagrams, portal docs|
+|Auto-generate Docs|`auto-generate-docs.yaml`|push to release/* branches|Sync OpenAPI `info.version` from the `release/vX.Y.Z` branch name, then auto-generate the OpenAPI bundle / embedded spec / docs, ER diagrams, portal docs|
+
+## Shared Composite Actions
+
+Reusable composite actions live under [`.github/actions/`](../actions/):
+
+|Action|Purpose|
+|---|---|
+|`setup-postgres`|Wait for and initialize the Postgres service container (used by DB-dependent jobs)|
+|`upsert-pr-comment`|Marker-based PR comment upsert (detect existing → update / create) with a shared Commit / UpdatedAt footer, used by the result-commenting workflows|
 
 ## Notes
 

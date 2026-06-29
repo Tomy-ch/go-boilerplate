@@ -41,8 +41,11 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |パッケージ|interface|説明|実装場所|
 |---|---|---|---|
 |`auth`|`Authenticator`|トークンから認証情報（`Authn`）を取得|`internal/infrastructure/auth/`|
+|`authz`|`Authorizer`|認証主体がリソースに対し操作を実行してよいか判定|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|現在時刻の取得|`internal/infrastructure/system/`|
 |`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
+|`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_query/outbox/`|
+|`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
 |`security`|`Encrypter`|パスワードのハッシュ化・比較|`internal/infrastructure/security/`|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
 
@@ -68,6 +71,25 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`ErrInvalidIDMissing`|subject が UUID として解釈できない|
 |`ErrArgumentTokenMissing`|アクセストークンが空|
 
+### authz
+
+認可に関するインターフェースと値オブジェクトを提供します（`auth` と対になる存在）。強制点（PEP）は Usecase 層であり、`Authorize(...)` を呼び、拒否時に `apperror.ErrPermissionDenied`（403）へ対応づけます。
+
+|型 / 関数|説明|
+|---|---|
+|`Authorizer`|`authn` が `resource` に対し `action` を実行してよいか判定するインターフェース（`Authorize(ctx, *auth.Authn, Action, *Resource) error`）|
+|`Action`|認可対象の操作（例: `ActionUserDelete` = `"user:delete"`）|
+|`Resource`|対象リソース。`Kind()` と任意の `OwnerID()` を持ち、所有権ベース（オブジェクトレベル）の判定を表現可能|
+|`NewResource(kind, ownerID)`|`Resource` を生成|
+
+エラー：
+
+|エラー|説明|
+|---|---|
+|`ErrForbidden`|認可拒否（`apperror.ErrPermissionDenied` をラップ、HTTP 403）|
+
+`auth.Authn`（subject / scopes / claims）と対象 `Resource` を渡すことで、RBAC（claims からロール）と所有権（subject == OwnerID）の双方を表現できます。デフォルト実装は全許可であり、本番以外の環境に限定されます。
+
 ### clock
 
 ```go
@@ -85,6 +107,34 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |`Job`|`Name()` + `Execute(ctx, args)` を持つジョブ定義|
 |`Runner`|`Run(ctx, jobName, args)` + `Names()` でジョブを実行・一覧|
 |`State`|`Set(name, args, done)` + `Snapshot()` でジョブ実行状態を管理|
+
+### outbox
+
+トランザクショナル outbox テーブルの永続化境界。emit usecase と relay engine（controller 層）の双方が依存します。
+
+|型 / 関数|説明|
+|---|---|
+|`Store`|outbox テーブルの永続化境界インターフェース|
+|`Insert(ctx, p)`|業務 tx 内で outbox 行を 1 行 INSERT し、採番された `message_id` を返す|
+|`ClaimPending(ctx, limit)`|pending 行を最大 `limit` 件 claim（`FOR UPDATE SKIP LOCKED`）|
+|`MarkPublished(ctx, id)`|publish 成功行を `published` へ遷移（pending でなければ no-op）|
+|`MarkFailed(ctx, id, lastErr)`|`attempts` を加算し `last_error` を記録、加算後の試行回数を返す|
+|`MarkDead(ctx, id)`|行を `dead` へ遷移（pending でなければ no-op）|
+|`ReplayDead(ctx, messageID)`|`dead` 行を `pending` へ戻す（`messageID` が nil なら全 dead 行）。戻した件数を返す|
+|`DeletePublished(ctx, cutoff, limit)`|`cutoff` より古い published 行を `limit` 件まで削除（GC）。削除件数を返す|
+|`OldestPendingCreatedAt(ctx)`|最古 pending 行の `created_at` を返す（outbox-lag SLI 用、無ければ `ok=false`）|
+
+入出力の値オブジェクト：`EmitParams`（INSERT 入力）、`PendingMessage`（claim した未 publish 行）。
+
+### publisher
+
+ドメインイベントの outbound publish 境界と、publish 先非依存のメッセージ封筒。relay engine（controller 層）と publish adapter（infrastructure 層）の双方が依存します。
+
+|型 / 関数|説明|
+|---|---|
+|`Publisher`|メッセージを publish 先へ送る境界|
+|`Publish(ctx, m)`|`m` を publish 先へ送る。失敗時はエラーを返し relay の次 poll で再送（at-least-once）|
+|`Message`|outbox 行から構築する publish 先非依存のメッセージ封筒（`net/http` 等の型を露出しない）|
 
 ### security
 

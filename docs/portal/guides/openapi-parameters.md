@@ -9,8 +9,10 @@ English | [日本語](README.ja.md)
 ```text
 parameters/
 ├── pagination/         # Pagination parameters (shared across endpoints)
-│   ├── PageParam.yaml
-│   └── PerPageParam.yaml
+│   ├── PageParam.yaml        # offset strategy
+│   ├── PerPageParam.yaml     # offset strategy
+│   ├── CursorFirstParam.yaml # cursor strategy
+│   └── CursorAfterParam.yaml # cursor strategy
 ├── search/             # Search parameters (shared across endpoints)
 │   ├── KeywordParam.yaml
 │   └── ActiveParam.yaml
@@ -24,10 +26,19 @@ parameters/
 
 ### pagination
 
-|File|Parameter|Type|Description|
-|---|---|---|---|
-|`PageParam.yaml`|`page` (query)|integer|Page number (1-based, default: 1)|
-|`PerPageParam.yaml`|`per_page` (query)|integer|Items per page (default: 10, max: 100)|
+This project offers **two pagination strategies**, and each deliberately keeps its own idiomatic parameter names — they are **not** unified on purpose:
+
+- **Offset** (`page` / `per_page`) — REST-style page navigation. Use for finite, page-addressable lists.
+- **Cursor / keyset** (`first` / `after`) — Relay-style forward traversal. Use for large or infinite feeds where offset is too expensive or unstable.
+
+Renaming the cursor params to `per_page` etc. would be non-idiomatic (cursor traversal has no "pages") and an API-breaking change, so the split is intentional.
+
+|File|Parameter|Type|Strategy|Description|
+|---|---|---|---|---|
+|`PageParam.yaml`|`page` (query)|integer|offset|Page number (1-based, default: 1)|
+|`PerPageParam.yaml`|`per_page` (query)|integer|offset|Items per page (default: 10, max: 100)|
+|`CursorFirstParam.yaml`|`first` (query)|integer|cursor|Max items to return (default: 50, max: 200)|
+|`CursorAfterParam.yaml`|`after` (query)|string|cursor|Opaque cursor for the next page; omit for the first page|
 
 ### search
 

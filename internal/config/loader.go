@@ -1,25 +1,35 @@
 package config
 
 import (
-	"fmt"
+	"bytes"
 	"os"
+
+	root "go-boilerplate"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/joho/godotenv"
 )
 
-// Load は、環境変数を読み込む関数です。
+// Load は、埋め込まれた env ファイルから環境変数を設定します。
+// 既に設定済みの環境変数は上書きしません（実行時注入を優先）。
 func Load() error {
-	env := os.Getenv("ENV")
-
-	if env == "" {
-		if err := godotenv.Load("env/.env"); err != nil {
-			return fmt.Errorf("env/.env load failed : %w", err)
-		}
-		env = os.Getenv("ENV")
+	b, err := root.FS.ReadFile("env/.env")
+	if err != nil {
+		return xerrors.Join(ErrFailedToLoadEnvFile, err)
 	}
 
-	if err := godotenv.Load(fmt.Sprintf("env/.env.%s", env)); err != nil {
-		return fmt.Errorf("env/.env.%s load failed : %w", env, err)
+	kv, err := godotenv.Parse(bytes.NewReader(b))
+	if err != nil {
+		return xerrors.Join(ErrFailedToParseConfig, err)
+	}
+
+	for k, v := range kv {
+		if _, ok := os.LookupEnv(k); ok {
+			continue
+		}
+		if err := os.Setenv(k, v); err != nil {
+			return xerrors.Join(ErrFailedToParseConfig, err)
+		}
 	}
 	return nil
 }

@@ -174,7 +174,7 @@ make serve-build-clean
 Tool containers
 
 ```sh
-make tools-build-clean
+make tool-runners-build-clean
 ```
 
 ## 9. Re-run code generation
@@ -214,7 +214,7 @@ make gen
 make test
 make lint
 make serve-build-clean
-make tools-build-clean
+make tool-runners-build-clean
 ```
 
 ## Upgrade Checklist
@@ -228,7 +228,7 @@ When updating the Go version, check the following.
 - [ ] Run `make tidy-lib`
 - [ ] (Optional) Decide whether to update Go module dependencies; if yes, run `go get -u[=patch] ./...` + `make tidy-lib` (keep the `go` directive unchanged)
 - [ ] Run `make install-tools`
-- [ ] Rebuild Docker containers (`make serve-build-clean`, `make tools-build-clean`)
+- [ ] Rebuild Docker containers (`make serve-build-clean`, `make tool-runners-build-clean`)
 - [ ] Re-run code generation
 - [ ] Run test
 - [ ] Run lint

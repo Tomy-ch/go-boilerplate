@@ -6,33 +6,40 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"go-boilerplate/internal/config"
-	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
-	"go-boilerplate/internal/observability"
-
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	appCfg := config.NewApplicationConfig(cfg)
-	mw := Middleware(appCfg)
+	mw := Middleware("test-service")
 	require.NotNil(t, mw)
+}
+
+func TestPassthroughMiddleware(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	e.Use(PassthroughMiddleware())
+	e.GET("/", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
+	ctx := context.Background()
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestMiddleware_Integration(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.MockConfigForTest(t)
-	appCfg := config.NewApplicationConfig(cfg)
-
 	e := echo.New()
-	e.Use(Middleware(appCfg))
+	e.Use(Middleware("test-service"))
 
 	ctx := context.Background()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
@@ -41,23 +48,4 @@ func TestMiddleware_Integration(t *testing.T) {
 
 	require.NotNil(t, rec)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
-func TestTracerProvider(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-
-	mockReg := mock_lifecycle.NewMockRegistrar(ctrl)
-	var shutdownFunc func(context.Context) error
-	dummy := func(context.Context) error { return nil }
-	mockReg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(dummy)).Do(func(args ...any) {
-		shutdownFunc = args[0].(func(context.Context) error)
-	}).Times(1)
-
-	tp := observability.TracerProvider(mockReg)
-	require.NotNil(t, tp)
-	require.NotNil(t, shutdownFunc)
-
-	require.NoError(t, shutdownFunc(context.Background()))
 }

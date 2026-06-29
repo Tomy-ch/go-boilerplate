@@ -2,18 +2,23 @@ package module
 
 import (
 	"go-boilerplate/internal/controller/job"
-	"go-boilerplate/internal/controller/job/usercount"
+	"go-boilerplate/internal/controller/job/idempotencygc"
+	"go-boilerplate/internal/controller/job/outboxgc"
+	"go-boilerplate/internal/controller/job/usercount" // sample-api:line
 	dijob "go-boilerplate/internal/di/job"
 	"go-boilerplate/internal/di/job/hook"
 
 	"go.uber.org/fx"
 )
 
+// JobModule は、バックグラウンドジョブ関連の依存関係を提供するfx.Moduleです。
 func JobModule() fx.Option {
 	return fx.Module("job",
 		provideJobs(
 			// ここにジョブのコンストラクタを追加します。
-			usercount.New,
+			idempotencygc.New,
+			outboxgc.New,
+			usercount.New, // sample-api:line
 		),
 		fx.Provide(
 			dijob.ProvideRunner,

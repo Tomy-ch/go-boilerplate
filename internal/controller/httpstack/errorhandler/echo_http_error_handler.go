@@ -2,7 +2,6 @@ package errorhandler
 
 import (
 	"errors"
-	"fmt"
 
 	"go-boilerplate/internal/controller/error/response"
 	"go-boilerplate/pkg/xerrors"
@@ -17,8 +16,7 @@ func normalizeEchoHTTPError(err error, details ...string) *response.HTTPErrorRes
 		return nil
 	}
 
-	resErr := response.NewHTTPErrorFromStatus(ehe.Code, details...)
-	resErr.Internal = xerrors.Wrap(ehe.Internal, fmt.Sprintf("echo HTTP error: %v", err))
-
-	return resErr
+	// ehe.Internal は nil になり得る（Wrap(nil)=nil で文脈喪失）ため、常に非 nil の err をラップする。
+	internal := xerrors.Wrap(err, "echo HTTP error")
+	return response.NewHTTPErrorFromStatus(ehe.Code, internal, details...)
 }

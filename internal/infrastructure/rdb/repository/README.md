@@ -243,46 +243,28 @@ The following cases are separated into QueryService.
 - Complex filter + sort + paging
 - Read-optimized searches for list screens
 
-## LoggingDBProvider
+## DB Access (driver)
 
-Repository normally uses `loggingdb.DBProvider` to access DB.
+Repository accesses the DB through `driver.DatabaseDriver`.
 
 ```go
-db := gen.New(r.db.NewLoggingDB(ctx))
+db := gen.New(driver.New(ctx, r.db))
 ```
 
-`loggingdb.DBProvider` provides:
+`driver.New(ctx, db)` provides:
 
-- SQL log output
-- Transparent DB / Tx switching
+- Transparent DB / Tx switching (picks the tx in context if present)
 - Context-based connection acquisition
 
-Repository is designed to **not be aware of DB connection state**.
-
-## Direct use of driver
-
-If logging is unnecessary, DB access without logging can be used.
-
-```go
-db := gen.New(r.db.NewDB(ctx))
-```
-
-Use cases
-
-- When reducing log noise in high-frequency processing
-- Simple processing that does not require logging
-- Benchmarking or checking minimal path
-
-Principle
-
-- Normally use `NewLoggingDB(ctx)`
-- Use `NewDB(ctx)` only when there is a clear reason
+SQL logging / tracing is applied transparently by the pgx query tracer wired at the driver
+connection level (see `driver/README.md`), so Repository is designed to **not be aware of DB
+connection state**.
 
 ## Error normalization
 
 PostgreSQL errors are converted into `apperror` in:
 
-`internal/infrastructure/rdb/postgres/pgerror`
+`internal/infrastructure/rdb/pgerror`
 
 ```go
 return pgerror.NormalizeError(err)
@@ -292,7 +274,7 @@ Main conversions
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["ErrNotFound"]
     Unique["unique violation"] --> Conflict["ErrConflict"]
     Conn["connection error"] --> Unavail["ErrUnavailable"]
     Others["others"] --> Internal["ErrInternal"]
@@ -307,7 +289,7 @@ Transaction management is the responsibility of **Usecase**.
 Query execution is performed using:
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 With this,
@@ -315,7 +297,7 @@ With this,
 Repository uses
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 to transparently use `Tx / DB`.
@@ -391,7 +373,7 @@ func InfrastructureModule() fx.Option {
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -446,24 +428,18 @@ is used to receive via interface.
 
 Repository implementation has the following dependencies.
 
-- loggingdb.DBProvider is the DB access entry point normally used by Repository.
+- driver.DatabaseDriver is the DB access entry point normally used by Repository.
   - SQL log output
   - trace integration
   - transparent DB / Tx switching
   are provided.
-
-- If logging is unnecessary, use `r.db.NewDB(ctx)` to access DB without logging.
-  - high-frequency processing
-  - benchmarking
-  - cases where log noise should be avoided
-  use only when there is a clear reason.
 
 - observability.TracerFactory is a factory to generate LayerTracer.
   - Repository uses tracer for Infra layer
 
 ```go
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 ```
@@ -472,7 +448,7 @@ constructor
 
 ```go
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -522,20 +498,19 @@ Repository tests **do not aim to verify Domain logic**.
 Repository tests initialize DB using `testkit`.
 
 ```go
-db, provider := testkit.NewTestDBWithLoggingProvider(t)
+db := testkit.NewTestDB(t)
 ```
 
 This function provides:
 
-- test DB connection
-- loggingdb.DBProvider
+- `NewTestDB`: shared test DB connection (`driver.DatabaseDriver`), passed directly to the Repository constructor
 
 ### Transaction tests
 
 Each test is executed **within a transaction**.
 
 ```go
-txm := testkit.NewTestTransactionManager(t)
+txm := testkit.NewTestTransactionRunner(t)
 
 txm.WithinTx(func(ctx context.Context) {
     // test logic
@@ -563,7 +538,7 @@ This ensures:
 
 Repository tests can use `t.Parallel()` to execute tests in parallel.
 
-However, the transaction manager provided by `testkit.NewTestTransactionManager(t)`  
+However, the transaction manager provided by `testkit.NewTestTransactionRunner(t)`  
 **serializes transaction execution** internally.
 
 Therefore, the execution model is as follows.
@@ -621,7 +596,7 @@ Example
 
 ```mermaid
 flowchart TB
-    NoRows["sql.ErrNoRows"] --> NotFound["ErrNotFound"]
+    NoRows["pgx.ErrNoRows"] --> NotFound["ErrNotFound"]
     Unique["unique violation"] --> Conflict["ErrConflict"]
     Conn["connection error"] --> Unavail["ErrUnavailable"]
     Others["others"] --> Internal["ErrInternal"]
@@ -748,7 +723,7 @@ Transaction management is the responsibility of **Usecase**.
 Repository uses
 
 ```go
-gen.New(r.db.NewLoggingDB(ctx))
+gen.New(driver.New(ctx, r.db))
 ```
 
 to transparently use `Tx / DB`.
@@ -807,14 +782,14 @@ Infra **only implements Domain Interface**.
 package user
 
 type repository struct {
-    db     loggingdb.DBProvider
+    db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
 // New is the constructor of Repository.
 // All dependencies are injected from outside.
 func New(
-    db loggingdb.DBProvider,
+    db driver.DatabaseDriver,
     tf observability.TracerFactory,
 ) user.Repository {
     return &repository{
@@ -829,7 +804,7 @@ func (r *repository) FindByActive(ctx context.Context, active*bool, limit, offse
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
 
-    db := gen.New(r.db.NewLoggingDB(ctx))
+    db := gen.New(driver.New(ctx, r.db))
 
     switch {
     case active == nil:

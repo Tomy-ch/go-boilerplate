@@ -13,7 +13,11 @@ import (
 )
 
 func TestValidatorModule_ProvidesValidator(t *testing.T) {
+	t.Parallel()
+
 	t.Run("fx アプリで Validator が提供される", func(t *testing.T) {
+		t.Parallel()
+
 		var v *openapi3.T
 		app := fx.New(
 			fx.Provide(func() testing.TB { return t }),

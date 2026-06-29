@@ -1,0 +1,292 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>fs - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package fs
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/pkg/fs&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package fs は、ファイルシステム操作の薄いラッパーを提供します。
+os への直接依存を一点に集約し、利用側はインターフェース経由で差し替え可能にします。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#FS">type FS</a></dd>
+				
+				
+			
+				
+				<dd><a href="#OS">type OS</a></dd>
+				
+				
+					
+					<dd>    <a href="#OS.Glob">func (OS) Glob(pattern string) ([]string, error)</a></dd>
+				
+					
+					<dd>    <a href="#OS.ReadFile">func (OS) ReadFile(name string) ([]byte, error)</a></dd>
+				
+					
+					<dd>    <a href="#OS.WriteFile">func (OS) WriteFile(name string, data []byte, perm os.FileMode) error</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../src/go-boilerplate/pkg/fs/fs.go.html">fs.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="FS">type <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=463:624#L3">FS</a>
+				<a class="permalink" href="#FS">¶</a>
+				
+				
+			</h2>
+			<p>FS は、ファイルシステム操作を抽象化するインターフェースです。
+
+			</p><pre>type FS interface {
+    ReadFile(name <a href="../../../builtin/#string">string</a>) ([]<a href="../../../builtin/#byte">byte</a>, <a href="../../../builtin/#error">error</a>)
+    WriteFile(name <a href="../../../builtin/#string">string</a>, data []<a href="../../../builtin/#byte">byte</a>, perm <a href="../../../os/">os</a>.<a href="../../../os/#FileMode">FileMode</a>) <a href="../../../builtin/#error">error</a>
+    Glob(pattern <a href="../../../builtin/#string">string</a>) ([]<a href="../../../builtin/#string">string</a>, <a href="../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="OS">type <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=692:708#L10">OS</a>
+				<a class="permalink" href="#OS">¶</a>
+				
+				
+			</h2>
+			<p>OS は、os / path/filepath を用いた FS の実装です。
+
+			</p><pre>type OS struct{}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="OS.Glob">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=1287:1335#L23">Glob</a>
+					<a class="permalink" href="#OS.Glob">¶</a>
+					
+					
+				</h3>
+				<pre>func (<a href="#OS">OS</a>) Glob(pattern <a href="../../../builtin/#string">string</a>) ([]<a href="../../../builtin/#string">string</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>Glob は、pattern に一致するファイルパスの一覧を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="OS.ReadFile">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=794:841#L13">ReadFile</a>
+					<a class="permalink" href="#OS.ReadFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (<a href="#OS">OS</a>) ReadFile(name <a href="../../../builtin/#string">string</a>) ([]<a href="../../../builtin/#byte">byte</a>, <a href="../../../builtin/#error">error</a>)</pre>
+				<p>ReadFile は、name のファイル内容全体を読み込んで返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="OS.WriteFile">func (OS) <a href="../../../src/go-boilerplate/pkg/fs/fs.go.html?s=1090:1159#L18">WriteFile</a>
+					<a class="permalink" href="#OS.WriteFile">¶</a>
+					
+					
+				</h3>
+				<pre>func (<a href="#OS">OS</a>) WriteFile(name <a href="../../../builtin/#string">string</a>, data []<a href="../../../builtin/#byte">byte</a>, perm <a href="../../../os/">os</a>.<a href="../../../os/#FileMode">FileMode</a>) <a href="../../../builtin/#error">error</a></pre>
+				<p>WriteFile は、data を name のファイルへ書き込みます。ファイルが存在しない場合は perm で新規作成します。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+				<tr>
+				
+					<td class="pkg-name" style="padding-left: 0px;">
+						<a href="mock/">mock</a>
+					</td>
+				
+					<td class="pkg-synopsis">
+						Package mock_fs is a generated GoMock package.
+					</td>
+				</tr>
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

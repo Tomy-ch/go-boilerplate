@@ -1,37 +1,29 @@
-// Package dumpschema は、DBスキーマをダンプして整形する機能を提供します。
+// Package dumpschema は、DBスキーマのダンプと整形のコアロジックを提供します。
 package dumpschema
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/logging"
-
-	"github.com/spf13/cobra"
+	"go-boilerplate/pkg/exec"
+	"go-boilerplate/pkg/fs"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const schemaFilePerm = 0o644 // rw-r--r--
 
 var (
-	// dumpCommand は、スキーマダンプに使用するコマンド名を表します。
 	dumpCommand = "pg_dump"
-	// dumpDatabaseCommand は、スキーマダンプのためのコマンドフォーマット文字列を表します。
 	dumpSubArgs = []string{
 		"--schema-only",
 		"--no-owner",
 		"--no-privileges",
 		"--format=plain",
 	}
-	// workDir は、作業ディレクトリのパスを表します。
-	workDir string
 
-	// trimPrefixes は、スキーマファイルから除去する行の接頭辞を表します。
 	trimPrefixes = []string{
 		`\`,
 		"-- Dumped from database version",
@@ -39,7 +31,8 @@ var (
 	}
 )
 
-type generator struct {
+// Generator は、スキーマダンプと整形に必要な依存と設定を保持します。
+type Generator struct {
 	logger          logging.Logger
 	callerSkipCount int
 	permission      os.FileMode
@@ -49,11 +42,14 @@ type generator struct {
 
 	dumpCommand string
 	dumpArgs    []string
+
+	fs     fs.FS
+	runner exec.Runner
 }
 
-// newGenerator は、gensqlc用のジェネレーターインスタンスを生成します。
-func newGenerator(logger logging.Logger) *generator {
-	return &generator{
+// NewGenerator は、dump-schema 用のジェネレーターインスタンスを生成します。
+func NewGenerator(logger logging.Logger, workDir string) *Generator {
+	return &Generator{
 		logger:          logger,
 		callerSkipCount: 1,
 		permission:      schemaFilePerm,
@@ -61,120 +57,68 @@ func newGenerator(logger logging.Logger) *generator {
 		schemaRelPath:   "database/gen/schema.gen.sql",
 		dumpCommand:     dumpCommand,
 		dumpArgs:        dumpSubArgs,
+		fs:              fs.OS{},
+		runner:          exec.OS{},
 	}
 }
 
-// NewCommand は、sqlc generate コマンドを生成します。
-func NewCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "dump-schema",
-		Short: "databaseに接続してスキーマをダンプして読み込みやすい形に整形します。",
-		Long: "ファイルで定義されたdumpコマンドを実行してDBスキーマをダンプし、\n" +
-			"メタコマンドの行を除去してsqlcで読み込みやすい形に整形します。\n" +
-			"dumpコマンドを変更したい場合は、dumpCommandおよびdumpArgs変数を修正してください。",
-		RunE: generateDumpSchema,
-	}
-
-	cmd.Flags().StringVar(&workDir, "work-dir", "/app", "working directory path")
-
-	return cmd
-}
-
-// generateDumpSchema は、DBスキーマをダンプし整形します。
-//
-// 手順:
-//  1. ダンプコマンド を実行してスキーマをダンプ
-//  2. スキーマファイル内のメタコマンド行を除去
-func generateDumpSchema(_ *cobra.Command, _ []string) error {
-	logger, err := logging.NewProductionLogger()
+// RunDump は、DSN 解決・スキーマダンプ・整形を行い、schema.gen.sql を sqlc が読み込める形で書き出します。
+// loadDSN は (パスワード非含有 DSN, パスワード) を返します。
+func RunDump(ctx context.Context, gen *Generator, loadDSN func() (string, string, error)) error {
+	dbURL, password, err := loadDSN()
 	if err != nil {
-		panic("failed to create logger: " + err.Error())
-	}
-
-	gen := newGenerator(logger)
-
-	// アプリ設定から接続先 DSN を組み立て、ダンプ対象 DB を決定します。
-	cfg, err := config.SetUpConfig()
-	if err != nil {
-		logger.CallerSkip(gen.callerSkipCount).Named("gensqlc.SetUpConfig").Error("failed to load config",
-			logging.Error("config", err),
-		)
 		return err
 	}
 
-	dbCfg := config.NewDatabaseConfig(cfg)
-	dbURL := driver.DSNString(dbCfg)
-
-	ctx := context.Background()
-	// まず生の schema を出力し、その後 sqlc が扱いやすい形に整形します。
-	if err = gen.dumpSchema(ctx, dbURL); err != nil {
+	if err := gen.dumpSchema(ctx, dbURL, password); err != nil {
 		return err
 	}
-	if err := gen.sanitizeSchemaInPlace(); err != nil {
-		return err
-	}
-
-	return nil
+	return gen.sanitizeSchemaInPlace()
 }
 
 // dumpSchema は、ダンプコマンドを実行してスキーマのDDLを取得し、schema.gen.sqlとして保存します。
-func (g *generator) dumpSchema(ctx context.Context, dbURL string) error {
-	schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
-
-	// pg_dump の出力先を先に開いて、標準出力をそのまま schema.gen.sql に流します。
-	f, err := os.Create(schemaAbs) // #nosec G304
-	if err != nil {
-		return fmt.Errorf("failed to create schema file: %w", err)
-	}
-	defer func() {
-		if closeErr := f.Close(); closeErr != nil {
-			g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Warn("failed to close schema file",
-				logging.String("schema", g.schemaRelPath),
-				logging.Error("close", closeErr),
-			)
-		}
-	}()
-
+func (g *Generator) dumpSchema(ctx context.Context, dbURL, password string) error {
 	args := append([]string{dbURL}, g.dumpArgs...)
+	env := []string{"PGPASSWORD=" + password}
 
-	// dump オプションは generator が保持しており、実行時は DB URL だけを先頭に差し込みます。
-	cmd := exec.CommandContext(ctx, g.dumpCommand, args...) // #nosec G204
-	cmd.Dir = g.workDir
-	cmd.Stdout = f
-	cmd.Stderr = os.Stderr
-
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Info("start pg_dump schema",
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("start pg_dump schema",
 		logging.String("out", g.schemaRelPath),
 	)
 
-	if err := cmd.Run(); err != nil {
-		g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Warn("pg_dump failed (schema file may be partial)",
+	out, err := g.runner.Output(ctx, g.workDir, env, g.dumpCommand, args)
+	if err != nil {
+		g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Warn("pg_dump failed",
 			logging.String("out", g.schemaRelPath),
-			logging.Error("pg_dump", err),
+			logging.Error(logging.ErrorKey, err),
 		)
-		return fmt.Errorf("pg_dump failed: %w", err)
+		return xerrors.Wrap(err, "pg_dump failed")
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.dumpSchema").Info("pg_dump schema completed",
+	schemaAbs := filepath.Join(g.workDir, g.schemaRelPath)
+	if err := g.fs.WriteFile(schemaAbs, out, g.permission); err != nil {
+		return xerrors.Wrap(err, "failed to write schema file")
+	}
+
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.dumpSchema").Info("pg_dump schema completed",
 		logging.String("out", g.schemaRelPath),
 	)
 
 	return nil
 }
 
-// sanitizeSchemaInPlace は、schema.sql 内の psqlメタコマンド行を除去します。
-func (g *generator) sanitizeSchemaInPlace() error {
+// sanitizeSchemaInPlace は、schema.sql を sqlc 向けに整形します。
+// trimPrefixes 一致のメタ行に加え、空行（空白のみ・元から空）も除去します（空行除去まで含むのは意図的）。
+func (g *Generator) sanitizeSchemaInPlace() error {
 	srcAbs := filepath.Join(g.workDir, g.schemaRelPath)
 
-	b, err := os.ReadFile(srcAbs) // #nosec G304
+	b, err := g.fs.ReadFile(srcAbs)
 	if err != nil {
-		return fmt.Errorf("read schema: %w", err)
+		return xerrors.Wrap(err, "read schema")
 	}
 
 	lines := strings.Split(string(b), "\n")
 	out := make([]string, 0, len(lines))
 	for _, ln := range lines {
-		// pg_dump 由来のメタ情報や psql メタコマンドは sqlc 不要のため除去します。
 		trim := strings.TrimSpace(ln)
 		for _, prefix := range trimPrefixes {
 			if strings.HasPrefix(trim, prefix) {
@@ -188,12 +132,11 @@ func (g *generator) sanitizeSchemaInPlace() error {
 		out = append(out, ln)
 	}
 
-	//nolint:gosec // safe: path comes from trusted CLI input
-	if err := os.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permission); err != nil {
-		return fmt.Errorf("write sanitized schema: %w", err)
+	if err := g.fs.WriteFile(srcAbs, []byte(strings.Join(out, "\n")), g.permission); err != nil {
+		return xerrors.Wrap(err, "write sanitized schema")
 	}
 
-	g.logger.CallerSkip(g.callerSkipCount).Named("gensqlc.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",
+	g.logger.CallerSkip(g.callerSkipCount).Named("dumpschema.sanitizeSchemaInPlace").Info("schema sanitized for sqlc",
 		logging.String("schema", g.schemaRelPath),
 	)
 	return nil
