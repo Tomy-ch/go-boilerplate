@@ -3,6 +3,7 @@ package module
 import (
 	"go-boilerplate/internal/di/server/hook"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/observability/metrics/buildinfo"
 
 	"go.uber.org/fx"
 )
@@ -24,7 +25,11 @@ func ObservabilityModule() fx.Option {
 			observability.NewTextMapPropagator,
 			observability.NewHTTPClientTransport,
 			observability.NewHTTPClientMetrics,
+			buildinfo.NewCollector,
 		),
-		fx.Invoke(hook.RegisterObservabilityShutdownHooks),
+		fx.Invoke(
+			hook.RegisterObservabilityShutdownHooks,
+			buildinfo.Register,
+		),
 	)
 }

@@ -421,6 +421,16 @@ layer span は controller / usecase / infra の全層で `LayerTracer.Start` に
 > （各層で `LayerTracer.Start` を呼ぶ）。ここでの記述は **相対的な価値・設計判断の根拠**についてであり、
 > 「controller の span を削除した」という意味ではありません。
 
+## メトリクス
+
+トレーシングに加えて、本パッケージはプロセスレベルのメトリクスを公開します。
+
+### ビルド情報 (`app_build_info`)
+
+`internal/observability/metrics/buildinfo` サブパッケージは、アプリケーションのビルド・バージョン・ランタイム情報を Prometheus の info gauge (`app_build_info`、値は常に `1`) として公開します。`/version` エンドポイントと同一の source of truth (`system.BuildInfo`) を用い、全ラベル値を DI 結線時に一度だけ解決します。
+
+詳細は `internal/observability/metrics/buildinfo/README.ja.md` を参照してください。
+
 ## セキュリティ注意点
 
 トレース情報には次を含めないでください。
