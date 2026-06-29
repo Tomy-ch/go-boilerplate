@@ -184,7 +184,16 @@ func isConstraintViolation(err error) bool {
 	return errors.As(err, &pgErr) && strings.HasPrefix(pgErr.Code, "23")
 }
 
-// isTimeout は、タイムアウト系のエラー（context 期限切れ / lock_timeout 失効）であるかを判定します。
+// isTimeout は、タイムアウト系のエラー（context 期限切れ / lock_timeout 失効 / statement_timeout）であるかを判定します。
+// SQLSTATE 57014(query_canceled) は statement_timeout 失効でも発生するため timeout に分類します。
 func isTimeout(err error) bool {
-	return errors.Is(err, context.DeadlineExceeded) || pgerror.IsLockNotAvailable(err)
+	return errors.Is(err, context.DeadlineExceeded) ||
+		pgerror.IsLockNotAvailable(err) ||
+		isStatementTimeout(err)
+}
+
+// isStatementTimeout は、statement_timeout 失効(SQLSTATE 57014 query_canceled)であるかを判定します。
+func isStatementTimeout(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "57014"
 }

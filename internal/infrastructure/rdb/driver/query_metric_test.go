@@ -112,6 +112,7 @@ func TestClassifyErrorClass(t *testing.T) {
 		{name: "ErrNoRowsはnot_found", err: pgx.ErrNoRows, want: errorClassNotFound},
 		{name: "SQLSTATE23xxxはconstraint", err: &pgconn.PgError{Code: "23505"}, want: errorClassConstraint},
 		{name: "lock_timeoutはtimeout", err: &pgconn.PgError{Code: "55P03"}, want: errorClassTimeout},
+		{name: "statement_timeoutはtimeout", err: &pgconn.PgError{Code: "57014"}, want: errorClassTimeout},
 		{name: "DeadlineExceededはtimeout", err: context.DeadlineExceeded, want: errorClassTimeout},
 		{name: "接続例外08xxxはconnection", err: &pgconn.PgError{Code: "08006"}, want: errorClassConnection},
 		{name: "分類不能はunknown", err: xerrors.New("boom"), want: errorClassUnknown},
