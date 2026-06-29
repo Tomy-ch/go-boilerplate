@@ -4,29 +4,13 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	mock_redmetrics "go-boilerplate/internal/controller/httpstack/redmetrics/mock"
 )
-
-// observeCall は、Recorder.Observe の呼び出し引数を保持します。
-type observeCall struct {
-	method      string
-	route       string
-	statusCode  int
-	statusClass string
-	duration    time.Duration
-}
-
-// fakeRecorder は、Observe の呼び出しを記録するテスト用 Recorder です。
-type fakeRecorder struct {
-	mu    sync.Mutex
-	calls []observeCall
-}
 
 // serveCfg は、ミドルウェア経由のリクエスト実行設定です。
 type serveCfg struct {
@@ -35,31 +19,11 @@ type serveCfg struct {
 	handler      echo.HandlerFunc
 }
 
-func (f *fakeRecorder) Observe(method, route string, statusCode int, statusClass string, duration time.Duration) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.calls = append(f.calls, observeCall{
-		method:      method,
-		route:       route,
-		statusCode:  statusCode,
-		statusClass: statusClass,
-		duration:    duration,
-	})
-}
-
-func (f *fakeRecorder) snapshot() []observeCall {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([]observeCall, len(f.calls))
-	copy(out, f.calls)
-	return out
-}
-
-// serve は、redmetrics ミドルウェアを適用した Echo に 1 リクエスト流し、記録された Observe 呼び出しを返します。
-func serve(t *testing.T, cfg serveCfg) []observeCall {
+// serve は、redmetrics ミドルウェアを適用した Echo に rec を計測先として 1 リクエスト流します。
+// 計測の検証は rec（生成 mock）に設定した EXPECT で行います。
+func serve(t *testing.T, rec Recorder, cfg serveCfg) {
 	t.Helper()
 
-	rec := &fakeRecorder{}
 	e := echo.New()
 	e.Use(Middleware(rec))
 	if cfg.registerPath != "" {
@@ -69,8 +33,6 @@ func serve(t *testing.T, cfg serveCfg) []observeCall {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, cfg.requestPath, nil)
 	res := httptest.NewRecorder()
 	e.ServeHTTP(res, req)
-
-	return rec.snapshot()
 }
 
 // okHandler は、After フックを発火させるためボディ付きで応答するハンドラを返します。
@@ -89,52 +51,56 @@ func TestMiddleware(t *testing.T) {
 		t.Run("200応答でrequestが1件記録されstatus_classが2xxになる", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			rec.EXPECT().Observe(http.MethodGet, "/users/:id", http.StatusOK, "2xx", gomock.Any()).Times(1)
+
+			serve(t, rec, serveCfg{
 				registerPath: "/users/:id",
 				requestPath:  "/users/123",
 				handler:      okHandler(),
 			})
-
-			require.Len(t, calls, 1)
-			assert.Equal(t, http.MethodGet, calls[0].method)
-			assert.Equal(t, "/users/:id", calls[0].route)
-			assert.Equal(t, http.StatusOK, calls[0].statusCode)
-			assert.Equal(t, "2xx", calls[0].statusClass)
-			assert.GreaterOrEqual(t, calls[0].duration, time.Duration(0))
 		})
 
 		t.Run("routeにはpath_parameterの実値が入らずroute_patternが使われる", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// route には実値 123 ではなく route pattern が入る。
+			rec.EXPECT().Observe(gomock.Any(), "/users/:id", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+			serve(t, rec, serveCfg{
 				registerPath: "/users/:id",
 				requestPath:  "/users/123",
 				handler:      okHandler(),
 			})
-
-			require.Len(t, calls, 1)
-			assert.NotContains(t, calls[0].route, "123")
 		})
 
 		t.Run("query_stringはroute_labelに含まれない", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// query string（token=secret）は route label に混入しない。
+			rec.EXPECT().Observe(gomock.Any(), "/users/:id", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
+
+			serve(t, rec, serveCfg{
 				registerPath: "/users/:id",
 				requestPath:  "/users/123?token=secret",
 				handler:      okHandler(),
 			})
-
-			require.Len(t, calls, 1)
-			assert.Equal(t, "/users/:id", calls[0].route)
-			assert.NotContains(t, calls[0].route, "token")
-			assert.NotContains(t, calls[0].route, "secret")
 		})
 
 		t.Run("複数回Writeしてもrequestは1件のみ記録される", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// 複数回 Write しても Observe は1件のみ。
+			rec.EXPECT().Observe(gomock.Any(), gomock.Any(), http.StatusOK, gomock.Any(), gomock.Any()).Times(1)
+
+			serve(t, rec, serveCfg{
 				registerPath: "/stream",
 				requestPath:  "/stream",
 				handler: func(c echo.Context) error {
@@ -147,36 +113,34 @@ func TestMiddleware(t *testing.T) {
 					return nil
 				},
 			})
-
-			require.Len(t, calls, 1)
-			assert.Equal(t, http.StatusOK, calls[0].statusCode)
 		})
 
 		t.Run("204応答はAfterフックが発火せず計測されない", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// Observe の EXPECT を設定しない＝呼び出されれば失敗（計測されないことの検証）。
+
+			serve(t, rec, serveCfg{
 				registerPath: "/no-content",
 				requestPath:  "/no-content",
 				handler: func(c echo.Context) error {
 					return c.NoContent(http.StatusNoContent)
 				},
 			})
-
-			assert.Empty(t, calls)
 		})
 
 		t.Run("route未一致の404ではrouteがunknownでstatus_classが4xxになる", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			rec.EXPECT().Observe(gomock.Any(), routeUnknown, http.StatusNotFound, "4xx", gomock.Any()).Times(1)
+
+			serve(t, rec, serveCfg{
 				requestPath: "/no-such-path",
 			})
-
-			require.Len(t, calls, 1)
-			assert.Equal(t, routeUnknown, calls[0].route)
-			assert.Equal(t, http.StatusNotFound, calls[0].statusCode)
-			assert.Equal(t, "4xx", calls[0].statusClass)
 		})
 	})
 
@@ -186,17 +150,17 @@ func TestMiddleware(t *testing.T) {
 		t.Run("500応答でstatus_classが5xxになる", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			rec.EXPECT().Observe(gomock.Any(), gomock.Any(), http.StatusInternalServerError, "5xx", gomock.Any()).Times(1)
+
+			serve(t, rec, serveCfg{
 				registerPath: "/boom",
 				requestPath:  "/boom",
 				handler: func(_ echo.Context) error {
 					return echo.NewHTTPError(http.StatusInternalServerError)
 				},
 			})
-
-			require.Len(t, calls, 1)
-			assert.Equal(t, http.StatusInternalServerError, calls[0].statusCode)
-			assert.Equal(t, "5xx", calls[0].statusClass)
 		})
 	})
 
@@ -206,25 +170,29 @@ func TestMiddleware(t *testing.T) {
 		t.Run("/metricsは計測されない", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+			serve(t, rec, serveCfg{
 				registerPath: "/metrics",
 				requestPath:  "/metrics",
 				handler:      okHandler(),
 			})
-
-			assert.Empty(t, calls)
 		})
 
 		t.Run("/healthは計測されない", func(t *testing.T) {
 			t.Parallel()
 
-			calls := serve(t, serveCfg{
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+			serve(t, rec, serveCfg{
 				registerPath: "/health",
 				requestPath:  "/health",
 				handler:      okHandler(),
 			})
-
-			assert.Empty(t, calls)
 		})
 	})
 }

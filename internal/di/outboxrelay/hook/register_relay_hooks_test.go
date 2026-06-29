@@ -6,6 +6,7 @@ import (
 	"time"
 
 	outboxengine "go-boilerplate/internal/controller/outbox"
+	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	"go-boilerplate/internal/di/outboxrelay/hook"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
@@ -16,15 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
-
-// fakeRegistrar は、登録された start / stop 関数を捕捉するテスト用の lifecycle.Registrar です。
-type fakeRegistrar struct {
-	start func(context.Context) error
-	stop  func(context.Context) error
-}
-
-func (f *fakeRegistrar) RegisterStart(fn func(context.Context) error) { f.start = fn }
-func (f *fakeRegistrar) RegisterStop(fn func(context.Context) error)  { f.stop = fn }
 
 func TestRegisterRelayHooks(t *testing.T) {
 	t.Parallel()
@@ -51,13 +43,20 @@ func TestRegisterRelayHooks(t *testing.T) {
 				observability.NewNoopTracerFactory(t),
 				outboxengine.Settings{BatchSize: 100, PollInterval: time.Second, ErrorBackoff: time.Second})
 
-			reg := &fakeRegistrar{}
-			hook.RegisterRelayHooks(reg, engine)
-			require.NotNil(t, reg.start)
-			require.NotNil(t, reg.stop)
+			// RegisterRelayHooks が登録する start / stop 関数を生成 mock 経由で捕捉する。
+			var start, stop func(context.Context) error
+			reg := mock_lifecycle.NewMockRegistrar(ctrl)
+			reg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(start)).
+				Do(func(fn func(context.Context) error) { start = fn }).Times(1)
+			reg.EXPECT().RegisterStop(gomock.AssignableToTypeOf(stop)).
+				Do(func(fn func(context.Context) error) { stop = fn }).Times(1)
 
-			require.NoError(t, reg.start(context.Background()))
-			require.NoError(t, reg.stop(context.Background()))
+			hook.RegisterRelayHooks(reg, engine)
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
+
+			require.NoError(t, start(context.Background()))
+			require.NoError(t, stop(context.Background()))
 		})
 	})
 }

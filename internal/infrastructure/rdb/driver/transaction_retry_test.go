@@ -3,7 +3,6 @@ package driver_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
@@ -17,11 +16,6 @@ import (
 	"go-boilerplate/internal/logging"
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 )
-
-// recordingSleeper は、Sleep 呼び出し回数を記録し即時に返すテスト用 sleeper です。
-type recordingSleeper struct{ calls int }
-
-func (s *recordingSleeper) Sleep(context.Context, time.Duration) error { s.calls++; return nil }
 
 func TestTxManager_Do_Retry(t *testing.T) {
 	t.Parallel()
@@ -50,7 +44,10 @@ func TestTxManager_Do_Retry(t *testing.T) {
 				require.NoError(t, realDB.Close())
 			})
 
-			sleeper := &recordingSleeper{}
+			ctrl := gomock.NewController(t)
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+			// 試行間の sleep は1回。
+			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			m := driver.NewTransactionManager(realDB, dbCfg, logging.NewTestLogger(t), sleeper)
 
 			attempts := 0
@@ -64,8 +61,6 @@ func TestTxManager_Do_Retry(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, 2, attempts)
-			// 試行間の sleep は1回。
-			assert.Equal(t, 1, sleeper.calls)
 		})
 	})
 
@@ -81,14 +76,14 @@ func TestTxManager_Do_Retry(t *testing.T) {
 			// maxAttempts は config 値（DB_TX_MAX_RETRIES）から導出される。
 			maxAttempts := dbCfg.TxMaxRetries()
 			db.EXPECT().Begin(gomock.Any()).Return(nil, retryablePgErr).Times(maxAttempts)
-			sleeper := &recordingSleeper{}
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+			// 試行間の sleep は maxAttempts-1 回。
+			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Return(nil).Times(maxAttempts - 1)
 
 			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
 			err := m.Do(context.Background(), func(context.Context) error { return nil })
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			// 試行間の sleep は maxAttempts-1 回。
-			assert.Equal(t, maxAttempts-1, sleeper.calls)
 		})
 
 		t.Run("リトライ不可エラーは1回で返し待機しない", func(t *testing.T) {
@@ -97,15 +92,15 @@ func TestTxManager_Do_Retry(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			db := mock_driver.NewMockDatabaseDriver(ctrl)
 			db.EXPECT().Begin(gomock.Any()).Return(nil, nonRetryablePgErr).Times(1)
-			sleeper := &recordingSleeper{}
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+			// リトライしないため待機は発生しない。
+			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Times(0)
 
 			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
 			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
 			err := m.Do(context.Background(), func(context.Context) error { return nil })
 
-			require.Error(t, err)
 			require.ErrorIs(t, err, apperror.ErrConflict)
-			assert.Equal(t, 0, sleeper.calls)
 		})
 
 		t.Run("リトライ待機中にcontextがキャンセルされると直前のエラーを正規化して返す", func(t *testing.T) {
@@ -142,14 +137,15 @@ func TestTxManager_Do_ContextError(t *testing.T) {
 			db := mock_driver.NewMockDatabaseDriver(ctrl)
 			// context.DeadlineExceeded はリトライ対象外のため Begin は1回のみ。
 			db.EXPECT().Begin(gomock.Any()).Return(nil, context.DeadlineExceeded).Times(1)
-			sleeper := &recordingSleeper{}
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+			// リトライ対象外のため待機は発生しない。
+			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Times(0)
 
 			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
 			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
 			err := m.Do(context.Background(), func(context.Context) error { return nil })
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			assert.Equal(t, 0, sleeper.calls)
 		})
 
 		t.Run("Beginがcontext.Canceledを返すとErrCanceledへ正規化される", func(t *testing.T) {
@@ -158,14 +154,15 @@ func TestTxManager_Do_ContextError(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			db := mock_driver.NewMockDatabaseDriver(ctrl)
 			db.EXPECT().Begin(gomock.Any()).Return(nil, context.Canceled).Times(1)
-			sleeper := &recordingSleeper{}
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+			// リトライ対象外のため待機は発生しない。
+			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Times(0)
 
 			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
 			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
 			err := m.Do(context.Background(), func(context.Context) error { return nil })
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
-			assert.Equal(t, 0, sleeper.calls)
 		})
 	})
 }

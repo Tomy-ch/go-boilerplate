@@ -1,3 +1,5 @@
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
+
 // Package redmetrics は、HTTP の RED（Rate / Errors / Duration）メトリクスを
 // Echo ミドルウェアとして計測するための実装を提供します。
 // label は method / route / status_code / status_class のみで、raw path や query
