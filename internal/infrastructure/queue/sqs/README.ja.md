@@ -27,6 +27,19 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 | `Nack` | `ChangeMessageVisibility(0)`（即時再配信、best-effort。遅延はポートの保証ではない） |
 | `Extend` | `ChangeMessageVisibility(d)` |
 | `FailureHandler.Fail` | `failure_reason="permanent"` 属性を付けて DLQ へ `SendMessage`。`cause` の詳細は意図的に**含めない**（PII / 内部詳細の漏洩ガード）。代わりに engine 側でログ出力する。 |
+| `QueueStatsProvider.QueueStats` | source キュー（および `DLQURL` 設定時は DLQ）に対する `GetQueueAttributes`。`ApproximateNumberOfMessages` → `Visible`、`ApproximateNumberOfMessagesNotVisible` → `InFlight`、`ApproximateNumberOfMessagesDelayed` → `Delayed`。属性の欠落 / parse 不能は `0` 扱い。 |
+
+## Queue depth / DLQ（任意 capability）
+
+`NewQueueStatsProvider` は、**queue depth**（滞留量）を観測するための任意 capability
+`worker.QueueStatsProvider` を実装します。これは engine の processed / failed / retry カウンタとは
+別物です。`NewConsumer`（`worker.Consumer` interface を返したまま）とは**別個に** provide するため、
+engine はこの broker 固有 API を知りません。
+
+SQS の属性値は **approximate（近似値）** です。出力される `worker_queue_depth` gauge は厳密な件数では
+なく滞留**傾向**として扱ってください。observability collector
+（`internal/observability/metrics/queue`）がこの capability を scrape し、queue URL / ARN /
+message id を metric label に入れません。
 
 ## Dead-letter / redrive
 
@@ -38,6 +51,8 @@ worker シーム（`internal/usecase/boundary/worker`）に対する AWS SQS の
 
 ## Config
 
-ここでの `Config` はアダプタ固有（`QueueURL` / `MaxMessages` / `WaitTimeSeconds` /
+ここでの `Config` はアダプタ固有（`QueueURL` / `DLQURL` / `MaxMessages` / `WaitTimeSeconds` /
 `VisibilityTimeout`）であり、broker 固有の語彙を持たない engine-core の `config.WorkerConfig`
-とは意図的に分離されています。
+とは意図的に分離されています。`DLQURL` は `QueueStatsProvider` が DLQ の滞留量を読むためだけに使い、
+空にすると DLQ depth の収集をスキップします（engine の dead-letter 経路はこの URL ではなく
+`FailureHandler` / redrive です）。
