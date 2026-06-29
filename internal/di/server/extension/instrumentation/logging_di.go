@@ -9,7 +9,10 @@ import (
 	"go.uber.org/fx"
 )
 
-const loggingPriority = 8
+// loggingPriority は、ロギングミドルウェアの適用順序です。
+// redmetrics(8) より内側（後）に置くことで、redmetrics の After フックが logging の After より
+// 先に発火し、計測した duration に logging の I/O が混入しないようにする。
+const loggingPriority = 9
 
 // LoggingModule は、ロギング制御のミドルウェアを提供するfxモジュールを返します。
 func LoggingModule() fx.Option {
