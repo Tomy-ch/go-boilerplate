@@ -4,15 +4,18 @@ import (
 	"context"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
 
+	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/di/lifecycle"
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	"go-boilerplate/internal/logging"
 	mock_logging "go-boilerplate/internal/logging/mock"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/system"
 )
 
 func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
@@ -28,6 +31,11 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 		// TracerProvider will register a stop hook
 		mockReg.EXPECT().RegisterStop(gomock.Any()).Times(1)
 
+		// buildinfo.Register はデフォルトレジストリへ登録するため、テスト間の汚染を避ける。
+		origReg := prometheus.DefaultRegisterer
+		prometheus.DefaultRegisterer = prometheus.NewRegistry()
+		t.Cleanup(func() { prometheus.DefaultRegisterer = origReg })
+
 		var tf observability.TracerFactory
 
 		app := fx.New(
@@ -36,6 +44,10 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 			fx.Provide(func() lifecycle.Registrar { return mockReg }),
 			fx.Provide(func() logging.Logger { return mockLog }),
 			fx.Provide(func() logging.LogFieldBuilder { return mockLF }),
+			fx.Provide(func() *config.ApplicationConfig {
+				return config.NewApplicationConfig(config.MockConfigForTest(t))
+			}),
+			fx.Provide(system.NewBuildInfo),
 			fx.Populate(&tf),
 			fx.NopLogger,
 		)
