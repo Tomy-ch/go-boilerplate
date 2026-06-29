@@ -7,14 +7,17 @@ import (
 )
 
 // NewDeps は、Run が必要とする依存を束ねて生成します。
+// metrics が nil の場合はカウンタ操作が no-op になります。
 func NewDeps(
 	txm tx.Manager,
 	store idempotencybndry.Store,
 	clk clock.Clock,
+	metrics Metrics,
 ) Deps {
 	return Deps{
-		Txm:   txm,
-		Store: store,
-		Clock: clk,
+		Txm:     txm,
+		Store:   store,
+		Clock:   clk,
+		Metrics: metrics,
 	}
 }

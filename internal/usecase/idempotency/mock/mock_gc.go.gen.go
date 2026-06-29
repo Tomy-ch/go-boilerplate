@@ -16,6 +16,54 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
+// MockGCMetrics is a mock of GCMetrics interface.
+type MockGCMetrics struct {
+	ctrl     *gomock.Controller
+	recorder *MockGCMetricsMockRecorder
+	isgomock struct{}
+}
+
+// MockGCMetricsMockRecorder is the mock recorder for MockGCMetrics.
+type MockGCMetricsMockRecorder struct {
+	mock *MockGCMetrics
+}
+
+// NewMockGCMetrics creates a new mock instance.
+func NewMockGCMetrics(ctrl *gomock.Controller) *MockGCMetrics {
+	mock := &MockGCMetrics{ctrl: ctrl}
+	mock.recorder = &MockGCMetricsMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockGCMetrics) EXPECT() *MockGCMetricsMockRecorder {
+	return m.recorder
+}
+
+// IncExpiredCleanup mocks base method.
+func (m *MockGCMetrics) IncExpiredCleanup(ctx context.Context, count int64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncExpiredCleanup", ctx, count)
+}
+
+// IncExpiredCleanup indicates an expected call of IncExpiredCleanup.
+func (mr *MockGCMetricsMockRecorder) IncExpiredCleanup(ctx, count any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncExpiredCleanup", reflect.TypeOf((*MockGCMetrics)(nil).IncExpiredCleanup), ctx, count)
+}
+
+// IncExpiredCleanupFailure mocks base method.
+func (m *MockGCMetrics) IncExpiredCleanupFailure(ctx context.Context) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncExpiredCleanupFailure", ctx)
+}
+
+// IncExpiredCleanupFailure indicates an expected call of IncExpiredCleanupFailure.
+func (mr *MockGCMetricsMockRecorder) IncExpiredCleanupFailure(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncExpiredCleanupFailure", reflect.TypeOf((*MockGCMetrics)(nil).IncExpiredCleanupFailure), ctx)
+}
+
 // MockGCUsecase is a mock of GCUsecase interface.
 type MockGCUsecase struct {
 	ctrl     *gomock.Controller
