@@ -1,6 +1,7 @@
 package module
 
 import (
+	"go-boilerplate/internal/observability"
 	exchangerateuc "go-boilerplate/internal/usecase/exchangerate" // sample-api:line
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
@@ -16,6 +17,13 @@ func UsecaseModule() fx.Option {
 	return fx.Module("usecase",
 		fx.Provide(
 			healthcheck.New,
+			// 具象 IdempotencyMetrics を usecase 境界の Metrics / GCMetrics の双方として供給する。
+			// fx.As は単一結果を各 interface へ写像するため、interface ごとに annotation を分ける。
+			fx.Annotate(
+				observability.NewIdempotencyMetrics,
+				fx.As(new(idempotency.Metrics)),
+				fx.As(new(idempotency.GCMetrics)),
+			),
 			idempotency.NewDeps,
 			idempotency.NewGC,
 			outbox.NewEmit,
