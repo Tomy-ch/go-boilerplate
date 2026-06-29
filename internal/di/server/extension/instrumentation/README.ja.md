@@ -12,14 +12,14 @@ Tracing / Logging / Metrics の基盤となる **リクエスト識別子の生�
 |---|---|---|---|
 |`RequestIDModule()`|Use|1|リクエスト単位の一意な ID を生成|
 |`ObservabilityModule()`|Use|2|OpenTelemetry トレーシング統合|
-|`LoggingModule()`|Use|8|HTTP リクエスト / レスポンスの構造化ログ|
-|`HTTPRedMetricsModule()`|Use|9|HTTP RED メトリクス（request count / duration / status）を Prometheus recorder で計測|
+|`HTTPRedMetricsModule()`|Use|8|HTTP RED メトリクス（request count / duration / status）を Prometheus recorder で計測|
+|`LoggingModule()`|Use|9|HTTP リクエスト / レスポンスの構造化ログ|
 
 ## Priority 順序
 
 RequestID（Priority 1）→ Observability（Priority 2）の順で、**ID 付与 → トレース開始**となるよう設計されています。
 
-HTTPRedMetrics（Priority 9）は Observability の後に動くためトレースコンテキスト確立後に計測でき、Logging（8）の後・Cookie（10）の前に配置されます。Priority 7 は `outbound` の `forceJSON` が占有済みのため使いません（Use の Priority 重複は適用時にエラー）。
+HTTPRedMetrics（Priority 8）は Observability の後に動くためトレースコンテキスト確立後に計測でき、forceJSON（7）の後・Logging（9）の前・Cookie（10）の前に配置されます。Logging（9）より**外側**に置くのは意図的で、その After フックが Logging の After より先に発火し、計測した duration に Logging の I/O が混入しないようにするためです。Priority 7 は `outbound` の `forceJSON` が占有済みのため使いません（Use の Priority 重複は適用時にエラー）。
 
 ## 注意点
 
