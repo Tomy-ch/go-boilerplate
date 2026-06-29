@@ -238,8 +238,8 @@ queries at Warn, and failures at Error.
 
 |Type / Function|Description|
 |---|---|
-|`NewQueryTracer`|Build a `pgx.QueryTracer` (receives DB / Observability config, Logger, LogFieldBuilder)|
-|`queryTracer`|Embeds `*otelpgx.Tracer`; overrides `TraceQueryStart` / `TraceQueryEnd` to add logging|
+|`NewQueryTracer`|Build a `pgx.QueryTracer` (receives DB / Observability config, otelpgx tracer, `QueryRecorder`, Logger, LogFieldBuilder)|
+|`queryTracer`|Embeds `*otelpgx.Tracer`; overrides `TraceQueryStart` / `TraceQueryEnd` to add logging and query metrics|
 
 Features:
 
@@ -248,3 +248,27 @@ Features:
 - **Error log** on query failure (in addition to `span.RecordError`)
 - **Slow query Warn log** when `DB_SLOW_QUERY_WARN_THRESHOLD` is exceeded
 - Query argument masking via `OBS_MASKED_DB_QUERY_ARGS`
+- **Query metrics** recorded on every `TraceQueryEnd` via an injected `QueryRecorder` (implemented in the `metrics` package)
+
+## Query Metrics (query_metric.go)
+
+`TraceQueryEnd` records DB query duration / errors through a `QueryRecorder`. The interface and
+its `QueryAttrs` value live in this package (the consumer) so the `metrics` package can implement
+it without an import cycle (`metrics` already imports `driver`).
+
+|Type / Function|Description|
+|---|---|
+|`QueryRecorder`|Interface called once per query end with the assembled `QueryAttrs`|
+|`QueryAttrs`|Low-cardinality observation attrs (query name / operation / status / error class / duration) — never SQL text, bind values, or PII|
+|`WithQueryName(ctx, name)`|Attach a stable `query_name` (e.g. `"user.find_by_id"`) for the metric label|
+
+How the attrs are derived:
+
+- `query_name`: from `WithQueryName`; unset / empty → `unknown`
+- `operation`: from the SQL leading token only → `select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other` (leading comments and `WITH` clauses fold to `select` / `other`)
+- `status`: `success` / `error`; `pgx.ErrNoRows` is treated as `success` and is not counted as an error
+- `error_class`: derived via `pgerror` → `not_found` / `constraint` / `connection` / `timeout` / `unknown`
+
+The Prometheus metric definitions (`rdb_query_duration_seconds`, `rdb_query_errors_total`) live in
+`internal/infrastructure/rdb/metrics`. Repository / QueryService set the query name with
+`driver.WithQueryName(ctx, "...")`; everything else is transparent.
