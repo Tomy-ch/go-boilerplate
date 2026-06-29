@@ -131,6 +131,27 @@ func TestMiddleware(t *testing.T) {
 			assert.NotContains(t, calls[0].route, "secret")
 		})
 
+		t.Run("複数回Writeしてもrequestは1件のみ記録される", func(t *testing.T) {
+			t.Parallel()
+
+			calls := serve(t, serveCfg{
+				registerPath: "/stream",
+				requestPath:  "/stream",
+				handler: func(c echo.Context) error {
+					c.Response().WriteHeader(http.StatusOK)
+					for range 3 {
+						if _, err := c.Response().Write([]byte("chunk")); err != nil {
+							return err
+						}
+					}
+					return nil
+				},
+			})
+
+			require.Len(t, calls, 1)
+			assert.Equal(t, http.StatusOK, calls[0].statusCode)
+		})
+
 		t.Run("204応答はAfterフックが発火せず計測されない", func(t *testing.T) {
 			t.Parallel()
 
