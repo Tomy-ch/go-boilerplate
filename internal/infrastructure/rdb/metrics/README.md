@@ -35,7 +35,29 @@ Namespace: `pgxpool`
 |`pgxpool_max_idle_destroy_count_total`|Total connections destroyed due to max idle time|
 |`pgxpool_empty_acquire_wait_time_seconds_total`|Total wait time for acquires on empty pool|
 
+## Query Metrics
+
+While pool stats answer "is the pool saturated?", query metrics answer "which DB operation is slow / failing?". `NewQueryRecorder` returns a `driver.QueryRecorder` that the pgx query tracer (`driver.NewQueryTracer`) calls on every `TraceQueryEnd`, so Repository / QueryService SQL paths are instrumented transparently.
+
+Namespace: `rdb` / Subsystem: `query`
+
+|Metric Name|Type|Labels|Description|
+|---|---|---|---|
+|`rdb_query_duration_seconds`|Histogram|`query_name`, `operation`, `status`|DB query duration in seconds|
+|`rdb_query_errors_total`|Counter|`query_name`, `operation`, `error_class`|Total failed DB queries|
+
+Label semantics (kept low-cardinality, never carrying secrets):
+
+- `query_name`: a stable app-managed name set via `driver.WithQueryName(ctx, "user.find_by_id")`. Unset → `unknown`.
+- `operation`: normalized from the SQL leading token only (`select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other`).
+- `status`: `success` / `error`.
+- `error_class`: `constraint` / `timeout` / `retryable` / `connection` / `unknown`, derived from `pgerror` normalization. `retryable` covers `serialization_failure` (40001) / `deadlock_detected` (40P01) — retryable transaction conflicts.
+
+`pgx.ErrNoRows` is treated as `status=success` and is NOT counted in `rdb_query_errors_total` (it is a normal "not found" outcome decided by the upper layers).
+
+The raw SQL text, bind values, table / column / constraint names, and PII are intentionally never used as labels. Use the query log / OTel trace for that level of detail.
+
 ## Notes
 
 - Obtains `pgxpool.Stat` from `DatabaseDriver.Stats()` and converts to metrics
-- Safely skips duplicate registration by ignoring `prometheus.AlreadyRegisteredError`
+- Safely skips duplicate registration by ignoring `prometheus.AlreadyRegisteredError` (query metrics reuse the already-registered collector on duplicate init)

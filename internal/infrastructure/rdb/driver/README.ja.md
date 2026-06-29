@@ -263,8 +263,8 @@ span のために `otelpgx` を埋め込み、クエリログ（正常終了 Inf
 
 |型 / 関数|説明|
 |---|---|
-|`NewQueryTracer`|`pgx.QueryTracer` を生成（DB / Observability 設定、Logger、LogFieldBuilder を受け取る）|
-|`queryTracer`|`*otelpgx.Tracer` を埋め込み、`TraceQueryStart` / `TraceQueryEnd` を上書きしてログを付加|
+|`NewQueryTracer`|`pgx.QueryTracer` を生成（DB / Observability 設定、otelpgx トレーサー、`QueryRecorder`、Logger、LogFieldBuilder を受け取る）|
+|`queryTracer`|`*otelpgx.Tracer` を埋め込み、`TraceQueryStart` / `TraceQueryEnd` を上書きしてログとクエリメトリクスを付加|
 
 特徴：
 
@@ -273,3 +273,27 @@ span のために `otelpgx` を埋め込み、クエリログ（正常終了 Inf
 - クエリ失敗時の**エラーログ**（`span.RecordError` に加えて）
 - `DB_SLOW_QUERY_WARN_THRESHOLD` 超過時の**スロークエリ Warn ログ**
 - `OBS_MASKED_DB_QUERY_ARGS` によるクエリ引数のマスキング
+- `TraceQueryEnd` ごとに、注入された `QueryRecorder`（実装は `metrics` パッケージ）で**クエリメトリクス**を記録
+
+## クエリメトリクス（query_metric.go）
+
+`TraceQueryEnd` は `QueryRecorder` を通じて DB クエリの duration / error を記録します。interface と
+値 `QueryAttrs` は消費側である本パッケージに置き、`metrics` パッケージが循環 import なしに実装できる
+ようにしています（`metrics` は既に `driver` を import しているため）。
+
+|型 / 関数|説明|
+|---|---|
+|`QueryRecorder`|クエリ終了ごとに、組み立てた `QueryAttrs` を 1 回受け取る interface|
+|`QueryAttrs`|低カーディナリティな観測属性（query name / operation / status / error class / duration）。SQL 本文・bind 値・PII は持たない|
+|`WithQueryName(ctx, name)`|メトリクスラベル用の安定名（例: `"user.find_by_id"`）を付与|
+
+属性の導出方法：
+
+- `query_name`: `WithQueryName` から取得。未設定 / 空文字は `unknown`
+- `operation`: SQL の先頭トークンのみから分類 → `select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other`（先頭コメントや `WITH` 句は `select` / `other` に丸める）
+- `status`: `success` / `error`。`pgx.ErrNoRows` は `success` 扱いで error には数えない
+- `error_class`: `pgerror` を用いて導出 → `constraint` / `timeout` / `retryable` / `connection` / `unknown`（`retryable` は `serialization_failure` (40001) / `deadlock_detected` (40P01)、すなわちリトライ可能なトランザクション競合）。`pgx.ErrNoRows` は `success` 扱いのため、ここには現れない
+
+Prometheus メトリクス定義（`rdb_query_duration_seconds` / `rdb_query_errors_total`）は
+`internal/infrastructure/rdb/metrics` にあります。Repository / QueryService は
+`driver.WithQueryName(ctx, "...")` で query name を設定するだけで、その他は透過的に計装されます。

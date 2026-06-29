@@ -1,0 +1,109 @@
+package driver_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	gomock "go.uber.org/mock/gomock"
+
+	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/infrastructure/rdb/driver"
+	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
+	"go-boilerplate/internal/logging"
+)
+
+// recordingSleeper は、Sleep 呼び出し回数を記録し即時に返すテスト用 sleeper です。
+type recordingSleeper struct{ calls int }
+
+func (s *recordingSleeper) Sleep(context.Context, time.Duration) error { s.calls++; return nil }
+
+func TestTxManager_Do_Retry(t *testing.T) {
+	t.Parallel()
+
+	// Begin 経路で生 SQLSTATE を注入し、pgx.Tx を mock せずにリトライ挙動を検証する。
+	retryablePgErr := &pgconn.PgError{Code: "40001"}    // serialization_failure
+	nonRetryablePgErr := &pgconn.PgError{Code: "23505"} // unique_violation
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("1回目のリトライ可能エラー後に2回目の試行でコミットが成功する", func(t *testing.T) {
+			t.Parallel()
+
+			// pgx.Tx のモックが存在しないため Begin を mock で差し替える方式は採れない。
+			// 実 DB を用い fn 内でカウンタにより1回目のみリトライ可能エラーを返す方式とする。
+			cfg := config.MockConfigForTest(t)
+			dbCfg := config.NewDatabaseConfig(cfg)
+			dbConnCfg := config.NewDBConnectionConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
+			dbCfg.SetDatabaseHost(t, "localhost")
+
+			realDB, err := driver.NewDB(dbCfg, osCfg, dbConnCfg)
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				require.NoError(t, realDB.Close())
+			})
+
+			sleeper := &recordingSleeper{}
+			m := driver.NewTransactionManager(realDB, dbCfg, logging.NewTestLogger(t), sleeper)
+
+			attempts := 0
+			err = m.Do(context.Background(), func(_ context.Context) error {
+				attempts++
+				if attempts == 1 {
+					return retryablePgErr
+				}
+				return nil
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, 2, attempts)
+			// 試行間の sleep は1回。
+			assert.Equal(t, 1, sleeper.calls)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("serialization_failureが続くとmaxAttemptsまで再試行しErrUnavailableを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			db := mock_driver.NewMockDatabaseDriver(ctrl)
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			// maxAttempts は config 値（DB_TX_MAX_RETRIES）から導出される。
+			maxAttempts := dbCfg.TxMaxRetries()
+			db.EXPECT().Begin(gomock.Any()).Return(nil, retryablePgErr).Times(maxAttempts)
+			sleeper := &recordingSleeper{}
+
+			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
+			err := m.Do(context.Background(), func(context.Context) error { return nil })
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			// 試行間の sleep は maxAttempts-1 回。
+			assert.Equal(t, maxAttempts-1, sleeper.calls)
+		})
+
+		t.Run("リトライ不可エラーは1回で返し待機しない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			db := mock_driver.NewMockDatabaseDriver(ctrl)
+			db.EXPECT().Begin(gomock.Any()).Return(nil, nonRetryablePgErr).Times(1)
+			sleeper := &recordingSleeper{}
+
+			dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+			m := driver.NewTransactionManager(db, dbCfg, logging.NewTestLogger(t), sleeper)
+			err := m.Do(context.Background(), func(context.Context) error { return nil })
+
+			require.Error(t, err)
+			assert.Equal(t, 0, sleeper.calls)
+		})
+	})
+}

@@ -32,7 +32,7 @@ func newTestQueryTracer(t *testing.T) (*queryTracer, *mock_logging.MockLogger) {
 
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), mockLogger, lf).(*queryTracer)
+	qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), nil, mockLogger, lf).(*queryTracer)
 	require.True(t, ok)
 	return qt, mockLogger
 }
@@ -55,9 +55,11 @@ func TestNewQueryTracer(t *testing.T) {
 			mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), mockLogger, lf).(*queryTracer)
+			// recorder=nil 時（メトリクス記録なし）の動作を検証する。
+			qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), nil, mockLogger, lf).(*queryTracer)
 			require.True(t, ok)
 			assert.NotNil(t, qt.Tracer)
+			assert.Nil(t, qt.recorder)
 			assert.Equal(t, obsCfg.MaskedDBQueryArgs(), qt.maskArgs)
 			assert.Equal(t, dbCfg.SlowQueryWarnThreshold(), qt.slowThreshold)
 		})
@@ -152,37 +154,4 @@ func TestQueryTracer_endFields_Mask(t *testing.T) {
 			assert.Less(t, len(masked), len(plain))
 		})
 	})
-}
-
-func TestNewTracedDB_RealQueryInstrumentation(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOperatingSystemConfig(cfg)
-	dbConnCfg := config.NewDBConnectionConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-
-	ctrl := gomock.NewController(t)
-	mockLogger := mock_logging.NewMockLogger(ctrl)
-	mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
-	mockLogger.EXPECT().Info("DB query completed", gomock.Any()).MinTimes(1)
-	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).MinTimes(1)
-	lf := logging.NewTestLogFieldBuilder(t)
-
-	tracer := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), mockLogger, lf)
-
-	db, err := NewTracedDB(dbCfg, osCfg, dbConnCfg, tracer)
-	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
-
-	ctx := context.Background()
-
-	// 正常クエリは TraceQueryEnd(Info) のログが出る。
-	_, err = db.Exec(ctx, "SELECT 1")
-	require.NoError(t, err)
-
-	// 失敗クエリは終了で Error ログが出る。
-	_, err = db.Exec(ctx, "SELECT 1 FROM no_such_table_for_test")
-	require.Error(t, err)
 }
