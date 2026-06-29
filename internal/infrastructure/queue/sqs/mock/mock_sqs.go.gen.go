@@ -81,6 +81,26 @@ func (mr *MockAPIMockRecorder) DeleteMessage(ctx, in any, opts ...any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMessage", reflect.TypeOf((*MockAPI)(nil).DeleteMessage), varargs...)
 }
 
+// GetQueueAttributes mocks base method.
+func (m *MockAPI) GetQueueAttributes(ctx context.Context, in *sqs.GetQueueAttributesInput, opts ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetQueueAttributes", varargs...)
+	ret0, _ := ret[0].(*sqs.GetQueueAttributesOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetQueueAttributes indicates an expected call of GetQueueAttributes.
+func (mr *MockAPIMockRecorder) GetQueueAttributes(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQueueAttributes", reflect.TypeOf((*MockAPI)(nil).GetQueueAttributes), varargs...)
+}
+
 // ReceiveMessage mocks base method.
 func (m *MockAPI) ReceiveMessage(ctx context.Context, in *sqs.ReceiveMessageInput, opts ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	m.ctrl.T.Helper()

@@ -27,6 +27,19 @@ Verify isolation: `go version -m <binary>` for a binary built from `./cmd/` must
 | `Nack` | `ChangeMessageVisibility(0)` (immediate redelivery, best-effort; delay is not a port guarantee) |
 | `Extend` | `ChangeMessageVisibility(d)` |
 | `FailureHandler.Fail` | `SendMessage` to the DLQ with a `failure_reason="permanent"` attribute. The `cause` detail is intentionally **not** included (PII/internal-detail leak guard); it is logged engine-side instead. |
+| `QueueStatsProvider.QueueStats` | `GetQueueAttributes` for the source queue (and the DLQ when `DLQURL` is set). `ApproximateNumberOfMessages` → `Visible`, `ApproximateNumberOfMessagesNotVisible` → `InFlight`, `ApproximateNumberOfMessagesDelayed` → `Delayed`. Missing / unparseable attributes are treated as `0`. |
+
+## Queue depth / DLQ (optional capability)
+
+`NewQueueStatsProvider` implements the optional `worker.QueueStatsProvider` capability for
+observing **queue depth** (backlog) — distinct from the engine's processed/failed/retry counters.
+It is provided **separately** from `NewConsumer` (which keeps returning the `worker.Consumer`
+interface), so the engine never learns about this broker-specific API.
+
+SQS attribute values are **approximate**: treat the resulting `worker_queue_depth` gauge as a
+backlog **trend**, not an exact count. The observability collector
+(`internal/observability/metrics/queue`) scrapes this capability and never puts queue URL / ARN /
+message id into metric labels.
 
 ## Dead-letter / redrive
 
@@ -38,6 +51,8 @@ configuration, not application code.
 
 ## Config
 
-`Config` here is adapter-specific (`QueueURL` / `MaxMessages` / `WaitTimeSeconds` /
+`Config` here is adapter-specific (`QueueURL` / `DLQURL` / `MaxMessages` / `WaitTimeSeconds` /
 `VisibilityTimeout`) and is intentionally separate from the engine-core `config.WorkerConfig`,
-which holds no broker-specific vocabulary.
+which holds no broker-specific vocabulary. `DLQURL` is only used by `QueueStatsProvider` to read
+the DLQ backlog; leave it empty to skip DLQ depth collection (the engine's dead-letter path is
+`FailureHandler` / redrive, not this URL).

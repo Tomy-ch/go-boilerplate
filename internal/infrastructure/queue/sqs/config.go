@@ -8,6 +8,8 @@ package sqs
 type Config struct {
 	// QueueURL は、consume 対象キューの URL です。
 	QueueURL string
+	// DLQURL は、DLQ の URL です。空の場合は DLQ の滞留量を取得しません。
+	DLQURL string
 	// MaxMessages は、ReceiveMessage の最大取得件数です（SQS の上限は 10）。
 	MaxMessages int32
 	// WaitTimeSeconds は、long-poll の待機秒数です（0〜20）。

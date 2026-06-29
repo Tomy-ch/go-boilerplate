@@ -32,6 +32,11 @@ type API interface {
 		opts ...func(*sqs.Options),
 	) (*sqs.ChangeMessageVisibilityOutput, error)
 	SendMessage(ctx context.Context, in *sqs.SendMessageInput, opts ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
+	GetQueueAttributes(
+		ctx context.Context,
+		in *sqs.GetQueueAttributesInput,
+		opts ...func(*sqs.Options),
+	) (*sqs.GetQueueAttributesOutput, error)
 }
 
 // consumer は、worker.Consumer の SQS 実装です。
