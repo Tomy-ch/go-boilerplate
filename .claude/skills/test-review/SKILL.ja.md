@@ -104,12 +104,8 @@ Output: `file:line` 付きの違反 finding リスト + 違反したルール。
 層 README の Test Strategy サブセクションと実 test を突き合わせ:
 
 - README の各サブセクション見出し（`### Getter contract test` / `### Immutable guarantee test` / `### Invariant preservation test` 等）に対応する `TestXxx → t.Run(case)` が 1 件以上あるか。
-- README にサブセクションがない場合（`pkg/**`）は sibling test パターンを比較基準にする。
-- 現状 READMEs から派生する具体例（記述的、ハードコードではない — README が変われば reviewer も追従）:
-  - domain: ポインタ不変性 test（`Immutable guarantee test` と `TestImmutableAccessors` 参考）、状態遷移における不変条件保存、VO 境界。
-  - usecase: orchestration の mock 呼び出し順序、トランザクション境界の適用、boundary 呼び出し。
-  - controller: HTTP I/O 変換、validation、apperror → status、middleware が乗せる context（auth principal / request id）。
-  - infra: SQL 実行経路、`pgerror.NormalizeError` 適用、row → entity 変換。
+- 層 README の Test Strategy 節がその層の観点リストの SSOT（Step 1 で読む）。 per-layer 観点リストを本スキルにハードコードしない — README と drift する。 その層の README が宣言するサブセクションをそのまま適用し、reviewer が期待する観点が README に欠けていれば、それ自体を doc ギャップ finding（補遺で surface）として出す。ここに観点を書き戻さない。
+- 層 README に Test Strategy 節が無い場合（`pkg/**`）は sibling test パターンを比較基準にする。
 
 Output: README が宣言しているが test が exercise していない観点リスト（`file:section` で README 該当節を引用）。
 
@@ -138,8 +134,8 @@ subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の�
 - 宣言 / 返却される error sentinel (`ErrInvalid*` / `apperror.*`) が最低 1 件のケースで到達されているか。
 - 境界制約を持つフィールドについて min-1 / min / max / max+1 の境界値が exercise されているか。
 - zero 値 / nil 入力を防御している constructor / factory に reject ケースがあるか。
-- テストの harness が**実行しない** constructor / provider / `fx.Invoke` 本体を通ってしか到達できない分岐は未カバー扱い。特に `fx.ValidateApp` は依存グラフを検証するがコンストラクタやライフサイクルフックを実行しない — グラフ検証テストでは provider / invoke 本体はカバーされず、分岐網羅には直接の単体テスト（関数を実際に呼ぶ）が必要。
-- 「再現できない」と理由付けされた `t.Skip` は受け入れず軸A のギャップとして疑う: 統合スタイルの harness で到達できないか確認する（例: 実 DB のロック競合 / `55P03` は、直列化するテスト用 tx ヘルパでは並行を表現できないため 2 本の独立コネクション + トランザクションが要る）。skip 分岐を具体的な再現経路つきで 追加検討 として surface する。
+- テストの harness が**実行しない** constructor / provider / factory 本体を通ってしか到達できない分岐は未カバー扱い — 依存グラフを構築するだけでコンストラクタを実行しないグラフ / 配線検証 harness はそれらの本体をカバーしないので、直接の単体テスト（関数を実際に呼ぶ）が要る。 適用される harness は層 README の Test Strategy が明示する。
+- 「再現できない」と理由付けされた `t.Skip` は受け入れず軸A のギャップとして疑う: 層 README の Test Strategy に到達できる統合スタイルの harness が無いか確認する（例: 真の並行 / ロック競合は、直列化するテスト用 tx ヘルパでは表現できず独立コネクションが要る）。skip 分岐を具体的な再現経路つきで 追加検討 として surface する。
 
 カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。
 
@@ -148,7 +144,7 @@ subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の�
 - error 分岐は `require.Error` 止まりでなく `require.ErrorIs` で固有 sentinel を assert。
 - 成功分岐は `require.NoError` / `assert.NotNil` 止まりでなく、他分岐と区別される結果値 / state を assert。
 - state mutate メソッドのケースは「呼べた」止まりでなく mutate 後の不変条件 / 変化フィールドを assert。
-- `ptr.Copy` を使うポインタ返却 getter は値等価だけでなく不変性を assert。
+- 層 README が immutable と明示するポインタ / 参照返却 getter は、値等価だけでなく不変性を assert（返り値を変更しても entity に影響しないこと）。
 - 境界ケースは accept 側だけでなく境界の両側（accept vs reject）で異なる outcome を assert。
 
 カバーは**されているが**固有 outcome を区別 assert していない分岐は **分岐カバー済み・意味未検証** finding → severity **再考**（pass して coverage は上がるが何も明らかにしない）。 finding は当該 subject 分岐 + それを名目上カバーしている test ケースに紐付ける。

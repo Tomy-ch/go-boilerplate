@@ -264,3 +264,11 @@ Repository / QueryService tests are executed with:
 real DB + rollback
 
 This is safely implemented using `testkit`.
+
+Each Repository / QueryService test verifies:
+
+- SQL execution paths — every query / branch the method dispatches
+- `pgerror.NormalizeError` application on every sqlc return (raw `pg` / connection errors → `apperror`)
+- row → entity conversion (column → field mapping, NULL handling)
+
+Concurrency / lock contention cannot be reproduced with the default `testkit` helper: its `WithinTx` serializes transactions (a single tx rolled back at the end). A branch that only fires under genuinely concurrent connections — e.g. `Claim`'s `lock_timeout` `55P03` (lock_not_available) — needs a dedicated integration test that runs two independent `TransactionManager.Do` calls (two connections / transactions) so one holds the row lock while the other times out.

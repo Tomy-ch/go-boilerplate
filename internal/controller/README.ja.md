@@ -48,3 +48,14 @@ flowchart TB
 ```
 
 Controller は **Usecase を通してのみ下位層にアクセス**します。
+
+## テスト戦略
+
+ハンドラテストは usecase を mock し、Echo 経由でハンドラを駆動する（`testkit/testecho` + `testkit/testassert`）。ビジネスロジックは usecase 側にありここでは再テストしない。各ハンドラテストが検証する観点:
+
+- HTTP I/O 変換 — リクエストの bind（path / query / body）→ usecase 入力、usecase 出力 → レスポンス DTO / status
+- リクエスト validation 経路（OpenAPI / bind 失敗 → 400 等）
+- `apperror` → HTTP status マッピング（usecase のエラーが適切な status / code として表出する）
+- middleware が乗せる context — ハンドラが context から読む値（auth principal / request id / idempotency）
+
+境界レベルの HTTP 結線（Router → Middleware → Handler → Presenter）は `internal/integration` の HTTP 境界テストで別途カバーする。

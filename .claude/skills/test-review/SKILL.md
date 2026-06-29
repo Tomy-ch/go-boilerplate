@@ -109,12 +109,8 @@ Output: a structured finding list with `file:line` references and the violated r
 Compares the layer README's Test Strategy sub-sections to what the test file actually exercises:
 
 - For each sub-section heading in the README's Test Strategy (`### Getter contract test` / `### Immutable guarantee test` / `### Invariant preservation test` / etc.), is there at least one `TestXxx → t.Run(case)` that maps to it?
-- If a heading is absent from the README (e.g. `pkg/**`), use the sibling-test pattern as the comparison baseline instead.
-- Specific examples to look for, derived from the current READMEs (descriptive, not hardcoded — when READMEs change, the reviewer adapts):
-  - domain: pointer immutability tests (per `Immutable guarantee test` and `TestImmutableAccessors`), invariant preservation across state transitions, VO boundary checks.
-  - usecase: orchestration mock-call order, transaction-boundary application, boundary call usage.
-  - controller: HTTP I/O conversion, validation, apperror → status mapping, middleware-supplied context (auth principal / request id).
-  - infra: SQL execution paths, `pgerror.NormalizeError` application, row → entity conversion.
+- The layer README's Test Strategy section is the SSOT for that layer's per-layer viewpoint list (read in Step 1). Do NOT keep a hardcoded per-layer viewpoint list in this skill — it drifts from the READMEs. Apply whatever sub-sections that layer's README declares; when a README is missing a viewpoint the reviewer would expect, that absence is itself a documentation-gap finding (surfaced in 補遺), not a reason to hardcode the viewpoint here.
+- If a layer README has no Test Strategy section (e.g. `pkg/**`), use the sibling-test pattern as the comparison baseline instead.
 
 Output: a list of viewpoints the README declares but the test file does not exercise, with `file:section` references back into the README.
 
@@ -143,8 +139,8 @@ Reads the subject source file itself and builds, **per function / method**, a tw
 - Every error sentinel (`ErrInvalid*` / `apperror.*`) declared or returned is reached by at least one case.
 - Every boundary value pair (min-1 / min / max / max+1) for a constrained field is exercised if the subject enforces it.
 - Constructor / factory functions that defend against zero-value / nil input have a rejecting case.
-- A branch reached only by *executing* a constructor / provider / `fx.Invoke` body that the test's harness never runs is still uncovered. Notably `fx.ValidateApp` validates the dependency graph WITHOUT executing constructors or lifecycle hooks — so a graph-validation test does NOT cover a provider / invoke body; that needs a direct unit test (call the function) for branch coverage.
-- A `t.Skip` whose reason claims the branch "cannot be reproduced" is itself an Axis-A gap to challenge, not to accept: check whether an integration-style harness reaches it (e.g. real-DB lock contention / `55P03` needs two independent connections + transactions because a serialized test-tx helper cannot represent concurrency). Surface the skipped branch as 追加検討 with the concrete reproduction path.
+- A branch reached only by *executing* a constructor / provider / factory body that the test's harness never runs is still uncovered — a graph- or wiring-validation harness that builds the dependency graph without executing the constructors does NOT cover those bodies; they need a direct unit test (call the function). The layer README's Test Strategy names the harness that applies.
+- A `t.Skip` whose reason claims the branch "cannot be reproduced" is itself an Axis-A gap to challenge, not to accept: check the layer README's Test Strategy for an integration-style harness that reaches it (e.g. true concurrency / lock contention needs independent connections, not a serialized test-tx helper). Surface the skipped branch as 追加検討 with the concrete reproduction path.
 
 A branch with NO covering case is a **分岐未カバー** finding → severity **追加検討** (proactive). Cite the subject `file:line` of the uncovered branch + a proposed `t.Run` case name.
 
@@ -153,7 +149,7 @@ A branch with NO covering case is a **分岐未カバー** finding → severity 
 - An error branch asserts the specific sentinel via `require.ErrorIs` — not just `require.Error`.
 - A success branch asserts the resulting value / state that distinguishes it from the other branches — not just `require.NoError` / `assert.NotNil`.
 - A state-mutating method's case asserts the post-mutation invariant / changed field — not just that the call returned.
-- A pointer-returning getter using `ptr.Copy` has an immutability assertion, not just a value-equality check.
+- A pointer / reference-returning getter that the layer README marks as immutable has an immutability assertion (mutating the returned value must not affect the entity), not just a value-equality check.
 - A boundary case asserts the differing outcome on each side of the boundary (accept vs reject), not just the accept side.
 
 A branch that IS covered but whose case does not distinctly assert its outcome is a **分岐カバー済み・意味未検証** finding → severity **再考** (it passes and lifts coverage but reveals nothing). Tie the finding to the specific subject branch + the test case that nominally covers it.
