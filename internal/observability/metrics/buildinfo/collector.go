@@ -24,10 +24,6 @@ type Collector struct {
 }
 
 // NewCollector は、ラベル値を結線時に一度だけ解決・正規化して Collector を生成します。
-//
-// version / revision / build_date は system.BuildInfo、go_version は runtime.Version()、
-// service / environment は config.ApplicationConfig から取得します。
-// いずれも /version と同一の source を用います。
 func NewCollector(appCfg *config.ApplicationConfig, bi system.BuildInfo) *Collector {
 	return &Collector{
 		desc: prometheus.NewDesc(
@@ -73,8 +69,6 @@ func Register(c *Collector) error {
 
 // register は、指定された Registerer に Collector を登録します。
 //
-// グローバルな DefaultRegisterer への依存を Register から切り離し、テストが任意の
-// レジストリを注入して並列実行できるようにするための内部ヘルパーです。
 // 重複登録は AlreadyRegisteredError を無視して安全にスキップします。
 func register(reg prometheus.Registerer, c *Collector) error {
 	err := reg.Register(c)
