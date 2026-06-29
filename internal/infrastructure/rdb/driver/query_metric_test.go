@@ -14,7 +14,9 @@ import (
 )
 
 // fakeQueryRecorder は、driver パッケージ内テスト用の QueryRecorder 実装です。
-// metrics パッケージを import すると循環参照になるため、テスト専用の最小実装を用意します。
+// QueryRecorder は同一 driver パッケージの QueryAttrs を引数に取るため、生成モックを
+// mock サブパッケージへ置くと mock → driver の import 循環になります。これを避けるため、
+// パッケージ内テスト専用の最小実装を用意します。
 type fakeQueryRecorder struct {
 	mu       sync.Mutex
 	observed []QueryAttrs
@@ -109,7 +111,6 @@ func TestClassifyErrorClass(t *testing.T) {
 		want string
 	}{
 		{name: "nilは空文字", err: nil, want: ""},
-		{name: "ErrNoRowsはnot_found", err: pgx.ErrNoRows, want: errorClassNotFound},
 		{name: "SQLSTATE23xxxはconstraint", err: &pgconn.PgError{Code: "23505"}, want: errorClassConstraint},
 		{name: "lock_timeoutはtimeout", err: &pgconn.PgError{Code: "55P03"}, want: errorClassTimeout},
 		{name: "statement_timeoutはtimeout", err: &pgconn.PgError{Code: "57014"}, want: errorClassTimeout},

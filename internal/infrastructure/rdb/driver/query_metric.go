@@ -29,7 +29,6 @@ const (
 	statusSuccess = "success"
 	statusError   = "error"
 
-	errorClassNotFound   = "not_found"
 	errorClassConstraint = "constraint"
 	errorClassConnection = "connection"
 	errorClassTimeout    = "timeout"
@@ -161,12 +160,11 @@ func stripLeadingSQLComments(sql string) string {
 
 // classifyErrorClass は、pgerror の判定を用いてエラーを固定 enum へ丸めます。
 // raw error message / SQLSTATE 詳細 / 制約名などはラベルに含めません。
+// pgx.ErrNoRows は呼び出し元の buildQueryAttrs で success として除外済みのため、ここでは扱いません。
 func classifyErrorClass(err error) string {
 	switch {
 	case err == nil:
 		return ""
-	case errors.Is(err, pgx.ErrNoRows):
-		return errorClassNotFound
 	case isConstraintViolation(err):
 		return errorClassConstraint
 	case isTimeout(err):
