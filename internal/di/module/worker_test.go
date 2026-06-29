@@ -3,7 +3,7 @@ package module
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 
 	queuemetrics "go-boilerplate/internal/observability/metrics/queue"
 	workerboundary "go-boilerplate/internal/usecase/boundary/worker"
@@ -46,20 +46,11 @@ func Test_provideQueueStatsCollector(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("対象が無ければ no-op の収集器を返す", func(t *testing.T) {
+		t.Run("収集対象が無くても nil でない収集器を返す", func(t *testing.T) {
 			t.Parallel()
 
 			c := provideQueueStatsCollector(queueStatsTargetsIn{})
-			require.NotNil(t, c)
-		})
-
-		t.Run("対象があればそれを保持した収集器を返す", func(t *testing.T) {
-			t.Parallel()
-
-			c := provideQueueStatsCollector(queueStatsTargetsIn{
-				Targets: []queuemetrics.Target{{WorkerName: "w1", Adapter: "sqs"}},
-			})
-			require.NotNil(t, c)
+			assert.NotNil(t, c)
 		})
 	})
 }

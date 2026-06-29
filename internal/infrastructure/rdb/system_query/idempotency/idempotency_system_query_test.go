@@ -252,7 +252,7 @@ func Test_store_errors(t *testing.T) {
 			require.ErrorIs(t, <-holderDone, errHolderRollback)
 		})
 
-		t.Run("キャンセル済みコンテキストでは各操作がエラーを返す", func(t *testing.T) {
+		t.Run("キャンセル済みコンテキストでは各操作がErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -262,19 +262,20 @@ func Test_store_errors(t *testing.T) {
 				Scope: "ctx-cancel", Key: "key-1", Method: "POST", Path: "/v1/users",
 				Fingerprint: newFingerprint(0x03), ExpiresAt: time.Now().Add(time.Hour),
 			}
+			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
 			_, claimErr := s.Claim(ctx, params)
-			require.Error(t, claimErr)
+			require.ErrorIs(t, claimErr, apperror.ErrCanceled)
 
 			_, getErr := s.Get(ctx, "ctx-cancel", "key-1")
-			require.Error(t, getErr)
+			require.ErrorIs(t, getErr, apperror.ErrCanceled)
 
 			completeErr := s.Complete(ctx, idempotencybndry.CompleteParams{
 				Scope: "ctx-cancel", Key: "key-1", ResponseStatus: 201, ResponsePayload: []byte(`{}`),
 			})
-			require.Error(t, completeErr)
+			require.ErrorIs(t, completeErr, apperror.ErrCanceled)
 
 			_, delErr := s.DeleteExpired(ctx, time.Now(), 100)
-			require.Error(t, delErr)
+			require.ErrorIs(t, delErr, apperror.ErrCanceled)
 		})
 	})
 }
