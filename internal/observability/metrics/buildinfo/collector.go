@@ -68,7 +68,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 //
 // 重複登録は AlreadyRegisteredError を無視して安全にスキップします。
 func Register(c *Collector) error {
-	err := prometheus.Register(c)
+	return register(prometheus.DefaultRegisterer, c)
+}
+
+// register は、指定された Registerer に Collector を登録します。
+//
+// グローバルな DefaultRegisterer への依存を Register から切り離し、テストが任意の
+// レジストリを注入して並列実行できるようにするための内部ヘルパーです。
+// 重複登録は AlreadyRegisteredError を無視して安全にスキップします。
+func register(reg prometheus.Registerer, c *Collector) error {
+	err := reg.Register(c)
 	if err != nil {
 		var alreadyRegisteredErr prometheus.AlreadyRegisteredError
 		if xerrors.As(err, &alreadyRegisteredErr) {

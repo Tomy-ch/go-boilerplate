@@ -146,14 +146,15 @@ func TestCollector_Collect(t *testing.T) {
 }
 
 func TestRegister(t *testing.T) {
+	t.Parallel()
+
 	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
 		t.Run("初回登録は成功する", func(t *testing.T) {
+			t.Parallel()
+
 			reg := prometheus.NewRegistry()
-			orig := prometheus.DefaultRegisterer
-			prometheus.DefaultRegisterer = reg
-			t.Cleanup(func() {
-				prometheus.DefaultRegisterer = orig
-			})
 
 			ctrl := gomock.NewController(t)
 			bi := mock_system.NewMockBuildInfo(ctrl)
@@ -163,18 +164,31 @@ func TestRegister(t *testing.T) {
 
 			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 
+			require.NoError(t, register(reg, NewCollector(appCfg, bi)))
+		})
+
+		t.Run("デフォルトレジストリに登録できる", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			bi := mock_system.NewMockBuildInfo(ctrl)
+			bi.EXPECT().Version().Return("v1.5.0").AnyTimes()
+			bi.EXPECT().Revision().Return("abcdef1").AnyTimes()
+			bi.EXPECT().BuildDate().Return("2026-06-28T17:00:00Z").AnyTimes()
+
+			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+
 			require.NoError(t, Register(NewCollector(appCfg, bi)))
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
 		t.Run("重複登録は無視される", func(t *testing.T) {
+			t.Parallel()
+
 			reg := prometheus.NewRegistry()
-			orig := prometheus.DefaultRegisterer
-			prometheus.DefaultRegisterer = reg
-			t.Cleanup(func() {
-				prometheus.DefaultRegisterer = orig
-			})
 
 			ctrl := gomock.NewController(t)
 			bi := mock_system.NewMockBuildInfo(ctrl)
@@ -185,8 +199,8 @@ func TestRegister(t *testing.T) {
 			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 			c := NewCollector(appCfg, bi)
 
-			require.NoError(t, Register(c))
-			require.NoError(t, Register(c))
+			require.NoError(t, register(reg, c))
+			require.NoError(t, register(reg, c))
 		})
 	})
 }
