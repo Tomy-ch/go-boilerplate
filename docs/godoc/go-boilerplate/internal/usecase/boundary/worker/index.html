@@ -131,6 +131,21 @@ broker adapter（infrastructure 層）の双方が依存する境界です。
 				
 			
 				
+				<dd><a href="#QueueDepth">type QueueDepth</a></dd>
+				
+				
+			
+				
+				<dd><a href="#QueueStats">type QueueStats</a></dd>
+				
+				
+			
+				
+				<dd><a href="#QueueStatsProvider">type QueueStatsProvider</a></dd>
+				
+				
+			
+				
 				<dd><a href="#State">type State</a></dd>
 				
 				
@@ -158,6 +173,8 @@ broker adapter（infrastructure 層）の双方が依存する境界です。
 				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/handler.go.html">handler.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/message.go.html">message.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html">queue_stats.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/state.go.html">state.go</a>
 			
@@ -307,6 +324,97 @@ engine は Permanent と分類したメッセージを Fail へ流してから�
     PartitionKey <a href="../../../../../builtin/#string">string</a>
 }
 </pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QueueDepth">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=1403:1713#L18">QueueDepth</a>
+				<a class="permalink" href="#QueueDepth">¶</a>
+				
+				
+			</h2>
+			<p>QueueDepth は、queue 内のメッセージ滞留量を状態別に表します。
+broker 非依存の語彙で表現し、SQS 固有の attribute 名は持ち込みません。
+
+			</p><pre>type QueueDepth struct {
+<span id="QueueDepth.Visible"></span>    <span class="comment">// Visible は、受信可能な（可視）メッセージ数です。</span>
+    Visible <a href="../../../../../builtin/#int64">int64</a>
+<span id="QueueDepth.InFlight"></span>    <span class="comment">// InFlight は、受信済みで未確定（処理中・不可視）のメッセージ数です。</span>
+    InFlight <a href="../../../../../builtin/#int64">int64</a>
+<span id="QueueDepth.Delayed"></span>    <span class="comment">// Delayed は、配送遅延中のメッセージ数です。</span>
+    Delayed <a href="../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QueueStats">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=923:1216#L8">QueueStats</a>
+				<a class="permalink" href="#QueueStats">¶</a>
+				
+				
+			</h2>
+			<p>QueueStats は、1 worker が対象とする queue 群の滞留量スナップショットです。
+
+			</p><pre>type QueueStats struct {
+<span id="QueueStats.Source"></span>    <span class="comment">// Source は、consume 対象の source queue の滞留量です。</span>
+    Source <a href="#QueueDepth">QueueDepth</a>
+<span id="QueueStats.DLQ"></span>    <span class="comment">// DLQ は、DLQ の滞留量です。DLQ を持たない / 取得対象外の場合は nil で、</span>
+    <span class="comment">// 「0 件」と「取得対象外」を区別します。</span>
+    DLQ *<a href="#QueueDepth">QueueDepth</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QueueStatsProvider">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=632:818#L2">QueueStatsProvider</a>
+				<a class="permalink" href="#QueueStatsProvider">¶</a>
+				
+				
+			</h2>
+			<p>QueueStatsProvider は、broker queue の滞留量（depth / DLQ count）を取得する任意 capability seam です。
+</p><p>Consumer の必須 interface には含めません。queue depth は broker ごとに意味・取得方法が異なり、
+SQS の値も approximate（強整合でない）ためです。engine はこの capability を知らないまま動作し、
+observability collector だけがこの capability を実装する adapter から滞留量を収集します。
+
+			</p><pre>type QueueStatsProvider interface {
+    <span class="comment">// QueueStats は、source queue と（あれば）DLQ の現在の滞留量を返します。</span>
+    QueueStats(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (<a href="#QueueStats">QueueStats</a>, <a href="../../../../../builtin/#error">error</a>)
+}</pre>
 
 			
 

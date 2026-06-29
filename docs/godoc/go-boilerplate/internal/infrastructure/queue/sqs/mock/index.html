@@ -121,6 +121,9 @@
 					<dd>    <a href="#MockAPI.EXPECT">func (m *MockAPI) EXPECT() *MockAPIMockRecorder</a></dd>
 				
 					
+					<dd>    <a href="#MockAPI.GetQueueAttributes">func (m *MockAPI) GetQueueAttributes(ctx context.Context, in *sqs.GetQueueAttributesInput, opts ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error)</a></dd>
+				
+					
 					<dd>    <a href="#MockAPI.ReceiveMessage">func (m *MockAPI) ReceiveMessage(ctx context.Context, in *sqs.ReceiveMessageInput, opts ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)</a></dd>
 				
 					
@@ -136,6 +139,9 @@
 				
 					
 					<dd>    <a href="#MockAPIMockRecorder.DeleteMessage">func (mr *MockAPIMockRecorder) DeleteMessage(ctx, in any, opts ...any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockAPIMockRecorder.GetQueueAttributes">func (mr *MockAPIMockRecorder) GetQueueAttributes(ctx, in any, opts ...any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockAPIMockRecorder.ReceiveMessage">func (mr *MockAPIMockRecorder) ReceiveMessage(ctx, in any, opts ...any) *gomock.Call</a></dd>
@@ -246,7 +252,20 @@
 				
 			
 				
-				</p><h3 id="MockAPI.ReceiveMessage">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=2687:2832#L75">ReceiveMessage</a>
+				</p><h3 id="MockAPI.GetQueueAttributes">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=2691:2848#L75">GetQueueAttributes</a>
+					<a class="permalink" href="#MockAPI.GetQueueAttributes">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockAPI">MockAPI</a>) GetQueueAttributes(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, in *<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#GetQueueAttributesInput">GetQueueAttributesInput</a>, opts ...func(*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#Options">Options</a>)) (*<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/">sqs</a>.<a href="../../../../../../github.com/aws/aws-sdk-go-v2/service/sqs/#GetQueueAttributesOutput">GetQueueAttributesOutput</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>GetQueueAttributes mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPI.ReceiveMessage">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=3527:3672#L95">ReceiveMessage</a>
 					<a class="permalink" href="#MockAPI.ReceiveMessage">¶</a>
 					
 					
@@ -259,7 +278,7 @@
 				
 			
 				
-				</p><h3 id="MockAPI.SendMessage">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=3480:3616#L95">SendMessage</a>
+				</p><h3 id="MockAPI.SendMessage">func (*MockAPI) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=4320:4456#L115">SendMessage</a>
 					<a class="permalink" href="#MockAPI.SendMessage">¶</a>
 					
 					
@@ -324,7 +343,20 @@
 				
 			
 				
-				</p><h3 id="MockAPIMockRecorder.ReceiveMessage">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=3154:3238#L88">ReceiveMessage</a>
+				</p><h3 id="MockAPIMockRecorder.GetQueueAttributes">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=3186:3274#L88">GetQueueAttributes</a>
+					<a class="permalink" href="#MockAPIMockRecorder.GetQueueAttributes">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockAPIMockRecorder">MockAPIMockRecorder</a>) GetQueueAttributes(ctx, in <a href="../../../../../../builtin/#any">any</a>, opts ...<a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>GetQueueAttributes indicates an expected call of GetQueueAttributes.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockAPIMockRecorder.ReceiveMessage">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=3994:4078#L108">ReceiveMessage</a>
 					<a class="permalink" href="#MockAPIMockRecorder.ReceiveMessage">¶</a>
 					
 					
@@ -337,7 +369,7 @@
 				
 			
 				
-				</p><h3 id="MockAPIMockRecorder.SendMessage">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=3926:4007#L108">SendMessage</a>
+				</p><h3 id="MockAPIMockRecorder.SendMessage">func (*MockAPIMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/mock/mock_sqs.go.gen.go.html?s=4766:4847#L128">SendMessage</a>
 					<a class="permalink" href="#MockAPIMockRecorder.SendMessage">¶</a>
 					
 					

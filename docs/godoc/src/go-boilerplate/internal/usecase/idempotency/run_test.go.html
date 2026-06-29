@@ -309,7 +309,7 @@
 <span id="L252" class="ln">   252  </span>	<span class="comment">// reqCtx の OperationID（メトリクスのラベル）。</span>
 <span id="L253" class="ln">   253  </span>	const op = &#34;PostResources&#34;
 <span id="L254" class="ln">   254  </span>
-<span id="L255" class="ln">   255  </span>	t.Run(&#34;completed への再送は IncReplay を計上する&#34;, func(t *testing.T) {
+<span id="L255" class="ln">   255  </span>	t.Run(&#34;completed への再送は IncHit を計上する&#34;, func(t *testing.T) {
 <span id="L256" class="ln">   256  </span>		t.Parallel()
 <span id="L257" class="ln">   257  </span>		ctrl := gomock.NewController(t)
 <span id="L258" class="ln">   258  </span>		store := mock_idempotency.NewMockStore(ctrl)
@@ -323,7 +323,7 @@
 <span id="L266" class="ln">   266  </span>			ResponsePayload: stored,
 <span id="L267" class="ln">   267  </span>			Fingerprint:     fp,
 <span id="L268" class="ln">   268  </span>		}, nil)
-<span id="L269" class="ln">   269  </span>		metrics.EXPECT().IncReplay(op)
+<span id="L269" class="ln">   269  </span>		metrics.EXPECT().IncHit(gomock.Any(), op)
 <span id="L270" class="ln">   270  </span>
 <span id="L271" class="ln">   271  </span>		_, replayed, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
 <span id="L272" class="ln">   272  </span>			func(context.Context) (payload, error) { return payload{}, nil })
@@ -332,61 +332,127 @@
 <span id="L275" class="ln">   275  </span>		assert.True(t, replayed)
 <span id="L276" class="ln">   276  </span>	})
 <span id="L277" class="ln">   277  </span>
-<span id="L278" class="ln">   278  </span>	t.Run(&#34;claimed への並行再送は IncConflict を計上する&#34;, func(t *testing.T) {
+<span id="L278" class="ln">   278  </span>	t.Run(&#34;新規 claim は IncMiss を計上する&#34;, func(t *testing.T) {
 <span id="L279" class="ln">   279  </span>		t.Parallel()
 <span id="L280" class="ln">   280  </span>		ctrl := gomock.NewController(t)
 <span id="L281" class="ln">   281  </span>		store := mock_idempotency.NewMockStore(ctrl)
 <span id="L282" class="ln">   282  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
-<span id="L283" class="ln">   283  </span>		fp := []byte(&#34;fp&#34;)
-<span id="L284" class="ln">   284  </span>
-<span id="L285" class="ln">   285  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
-<span id="L286" class="ln">   286  </span>		store.EXPECT().Get(gomock.Any(), &#34;user-1&#34;, &#34;key-1&#34;).Return(&amp;idempotencybndry.Record{
-<span id="L287" class="ln">   287  </span>			Status:      idempotencybndry.StatusClaimed,
-<span id="L288" class="ln">   288  </span>			Fingerprint: fp,
-<span id="L289" class="ln">   289  </span>		}, nil)
-<span id="L290" class="ln">   290  </span>		metrics.EXPECT().IncConflict(op)
-<span id="L291" class="ln">   291  </span>
-<span id="L292" class="ln">   292  </span>		_, _, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
-<span id="L293" class="ln">   293  </span>			func(context.Context) (payload, error) { return payload{}, nil })
+<span id="L283" class="ln">   283  </span>
+<span id="L284" class="ln">   284  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+<span id="L285" class="ln">   285  </span>		store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
+<span id="L286" class="ln">   286  </span>		metrics.EXPECT().IncMiss(gomock.Any(), op)
+<span id="L287" class="ln">   287  </span>
+<span id="L288" class="ln">   288  </span>		_, replayed, err := idempotency.Run(reqCtx([]byte(&#34;fp&#34;)), newDepsWithMetrics(t, store, metrics), statusCreated,
+<span id="L289" class="ln">   289  </span>			func(context.Context) (payload, error) { return payload{V: &#34;created&#34;}, nil })
+<span id="L290" class="ln">   290  </span>
+<span id="L291" class="ln">   291  </span>		require.NoError(t, err)
+<span id="L292" class="ln">   292  </span>		assert.False(t, replayed)
+<span id="L293" class="ln">   293  </span>	})
 <span id="L294" class="ln">   294  </span>
-<span id="L295" class="ln">   295  </span>		require.ErrorIs(t, err, apperror.ErrConflict)
-<span id="L296" class="ln">   296  </span>	})
-<span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span>	t.Run(&#34;ロック待ちタイムアウトは IncConflict を計上する&#34;, func(t *testing.T) {
-<span id="L299" class="ln">   299  </span>		t.Parallel()
-<span id="L300" class="ln">   300  </span>		ctrl := gomock.NewController(t)
-<span id="L301" class="ln">   301  </span>		store := mock_idempotency.NewMockStore(ctrl)
-<span id="L302" class="ln">   302  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
-<span id="L303" class="ln">   303  </span>
-<span id="L304" class="ln">   304  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, idempotencybndry.ErrLockTimeout)
-<span id="L305" class="ln">   305  </span>		metrics.EXPECT().IncConflict(op)
-<span id="L306" class="ln">   306  </span>
-<span id="L307" class="ln">   307  </span>		_, _, err := idempotency.Run(reqCtx([]byte(&#34;fp&#34;)), newDepsWithMetrics(t, store, metrics), statusCreated,
-<span id="L308" class="ln">   308  </span>			func(context.Context) (payload, error) { return payload{}, nil })
-<span id="L309" class="ln">   309  </span>
-<span id="L310" class="ln">   310  </span>		require.ErrorIs(t, err, apperror.ErrConflict)
-<span id="L311" class="ln">   311  </span>	})
-<span id="L312" class="ln">   312  </span>
-<span id="L313" class="ln">   313  </span>	t.Run(&#34;指紋不一致は IncFingerprintMismatch を計上する&#34;, func(t *testing.T) {
-<span id="L314" class="ln">   314  </span>		t.Parallel()
-<span id="L315" class="ln">   315  </span>		ctrl := gomock.NewController(t)
-<span id="L316" class="ln">   316  </span>		store := mock_idempotency.NewMockStore(ctrl)
-<span id="L317" class="ln">   317  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
-<span id="L318" class="ln">   318  </span>
-<span id="L319" class="ln">   319  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
-<span id="L320" class="ln">   320  </span>		store.EXPECT().Get(gomock.Any(), &#34;user-1&#34;, &#34;key-1&#34;).Return(&amp;idempotencybndry.Record{
-<span id="L321" class="ln">   321  </span>			Status:      idempotencybndry.StatusCompleted,
-<span id="L322" class="ln">   322  </span>			Fingerprint: []byte(&#34;stored-fp&#34;),
-<span id="L323" class="ln">   323  </span>		}, nil)
-<span id="L324" class="ln">   324  </span>		metrics.EXPECT().IncFingerprintMismatch(op)
+<span id="L295" class="ln">   295  </span>	t.Run(&#34;claim衝突直後に行が消えたレースは IncConflict を計上する&#34;, func(t *testing.T) {
+<span id="L296" class="ln">   296  </span>		t.Parallel()
+<span id="L297" class="ln">   297  </span>		ctrl := gomock.NewController(t)
+<span id="L298" class="ln">   298  </span>		store := mock_idempotency.NewMockStore(ctrl)
+<span id="L299" class="ln">   299  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+<span id="L300" class="ln">   300  </span>
+<span id="L301" class="ln">   301  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+<span id="L302" class="ln">   302  </span>		store.EXPECT().Get(gomock.Any(), &#34;user-1&#34;, &#34;key-1&#34;).Return(nil, nil)
+<span id="L303" class="ln">   303  </span>		metrics.EXPECT().IncConflict(gomock.Any(), op)
+<span id="L304" class="ln">   304  </span>
+<span id="L305" class="ln">   305  </span>		_, _, err := idempotency.Run(reqCtx([]byte(&#34;fp&#34;)), newDepsWithMetrics(t, store, metrics), statusCreated,
+<span id="L306" class="ln">   306  </span>			func(context.Context) (payload, error) { return payload{}, nil })
+<span id="L307" class="ln">   307  </span>
+<span id="L308" class="ln">   308  </span>		require.ErrorIs(t, err, apperror.ErrConflict)
+<span id="L309" class="ln">   309  </span>	})
+<span id="L310" class="ln">   310  </span>
+<span id="L311" class="ln">   311  </span>	t.Run(&#34;Claim の想定外エラーは IncClaimFailure を計上する&#34;, func(t *testing.T) {
+<span id="L312" class="ln">   312  </span>		t.Parallel()
+<span id="L313" class="ln">   313  </span>		ctrl := gomock.NewController(t)
+<span id="L314" class="ln">   314  </span>		store := mock_idempotency.NewMockStore(ctrl)
+<span id="L315" class="ln">   315  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+<span id="L316" class="ln">   316  </span>
+<span id="L317" class="ln">   317  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, apperror.ErrInternal)
+<span id="L318" class="ln">   318  </span>		metrics.EXPECT().IncClaimFailure(gomock.Any(), op)
+<span id="L319" class="ln">   319  </span>
+<span id="L320" class="ln">   320  </span>		_, _, err := idempotency.Run(reqCtx([]byte(&#34;fp&#34;)), newDepsWithMetrics(t, store, metrics), statusCreated,
+<span id="L321" class="ln">   321  </span>			func(context.Context) (payload, error) { return payload{}, nil })
+<span id="L322" class="ln">   322  </span>
+<span id="L323" class="ln">   323  </span>		require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L324" class="ln">   324  </span>	})
 <span id="L325" class="ln">   325  </span>
-<span id="L326" class="ln">   326  </span>		_, _, err := idempotency.Run(reqCtx([]byte(&#34;request-fp&#34;)), newDepsWithMetrics(t, store, metrics), statusCreated,
-<span id="L327" class="ln">   327  </span>			func(context.Context) (payload, error) { return payload{}, nil })
-<span id="L328" class="ln">   328  </span>
-<span id="L329" class="ln">   329  </span>		require.ErrorIs(t, err, apperror.ErrValidation)
-<span id="L330" class="ln">   330  </span>	})
-<span id="L331" class="ln">   331  </span>}
-<span id="L332" class="ln">   332  </span>
+<span id="L326" class="ln">   326  </span>	t.Run(&#34;Complete の失敗は IncCompleteFailure を計上する&#34;, func(t *testing.T) {
+<span id="L327" class="ln">   327  </span>		t.Parallel()
+<span id="L328" class="ln">   328  </span>		ctrl := gomock.NewController(t)
+<span id="L329" class="ln">   329  </span>		store := mock_idempotency.NewMockStore(ctrl)
+<span id="L330" class="ln">   330  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+<span id="L331" class="ln">   331  </span>
+<span id="L332" class="ln">   332  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+<span id="L333" class="ln">   333  </span>		store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(apperror.ErrInternal)
+<span id="L334" class="ln">   334  </span>		<span class="comment">// 新規 claim 成立で IncMiss、結果保存失敗で IncCompleteFailure の双方を計上する。</span>
+<span id="L335" class="ln">   335  </span>		metrics.EXPECT().IncMiss(gomock.Any(), op)
+<span id="L336" class="ln">   336  </span>		metrics.EXPECT().IncCompleteFailure(gomock.Any(), op)
+<span id="L337" class="ln">   337  </span>
+<span id="L338" class="ln">   338  </span>		_, _, err := idempotency.Run(reqCtx([]byte(&#34;fp&#34;)), newDepsWithMetrics(t, store, metrics), statusCreated,
+<span id="L339" class="ln">   339  </span>			func(context.Context) (payload, error) { return payload{V: &#34;created&#34;}, nil })
+<span id="L340" class="ln">   340  </span>
+<span id="L341" class="ln">   341  </span>		require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L342" class="ln">   342  </span>	})
+<span id="L343" class="ln">   343  </span>
+<span id="L344" class="ln">   344  </span>	t.Run(&#34;claimed への並行再送は IncConflict を計上する&#34;, func(t *testing.T) {
+<span id="L345" class="ln">   345  </span>		t.Parallel()
+<span id="L346" class="ln">   346  </span>		ctrl := gomock.NewController(t)
+<span id="L347" class="ln">   347  </span>		store := mock_idempotency.NewMockStore(ctrl)
+<span id="L348" class="ln">   348  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+<span id="L349" class="ln">   349  </span>		fp := []byte(&#34;fp&#34;)
+<span id="L350" class="ln">   350  </span>
+<span id="L351" class="ln">   351  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+<span id="L352" class="ln">   352  </span>		store.EXPECT().Get(gomock.Any(), &#34;user-1&#34;, &#34;key-1&#34;).Return(&amp;idempotencybndry.Record{
+<span id="L353" class="ln">   353  </span>			Status:      idempotencybndry.StatusClaimed,
+<span id="L354" class="ln">   354  </span>			Fingerprint: fp,
+<span id="L355" class="ln">   355  </span>		}, nil)
+<span id="L356" class="ln">   356  </span>		metrics.EXPECT().IncConflict(gomock.Any(), op)
+<span id="L357" class="ln">   357  </span>
+<span id="L358" class="ln">   358  </span>		_, _, err := idempotency.Run(reqCtx(fp), newDepsWithMetrics(t, store, metrics), statusCreated,
+<span id="L359" class="ln">   359  </span>			func(context.Context) (payload, error) { return payload{}, nil })
+<span id="L360" class="ln">   360  </span>
+<span id="L361" class="ln">   361  </span>		require.ErrorIs(t, err, apperror.ErrConflict)
+<span id="L362" class="ln">   362  </span>	})
+<span id="L363" class="ln">   363  </span>
+<span id="L364" class="ln">   364  </span>	t.Run(&#34;ロック待ちタイムアウトは IncConflict を計上する&#34;, func(t *testing.T) {
+<span id="L365" class="ln">   365  </span>		t.Parallel()
+<span id="L366" class="ln">   366  </span>		ctrl := gomock.NewController(t)
+<span id="L367" class="ln">   367  </span>		store := mock_idempotency.NewMockStore(ctrl)
+<span id="L368" class="ln">   368  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+<span id="L369" class="ln">   369  </span>
+<span id="L370" class="ln">   370  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, idempotencybndry.ErrLockTimeout)
+<span id="L371" class="ln">   371  </span>		metrics.EXPECT().IncConflict(gomock.Any(), op)
+<span id="L372" class="ln">   372  </span>
+<span id="L373" class="ln">   373  </span>		_, _, err := idempotency.Run(reqCtx([]byte(&#34;fp&#34;)), newDepsWithMetrics(t, store, metrics), statusCreated,
+<span id="L374" class="ln">   374  </span>			func(context.Context) (payload, error) { return payload{}, nil })
+<span id="L375" class="ln">   375  </span>
+<span id="L376" class="ln">   376  </span>		require.ErrorIs(t, err, apperror.ErrConflict)
+<span id="L377" class="ln">   377  </span>	})
+<span id="L378" class="ln">   378  </span>
+<span id="L379" class="ln">   379  </span>	t.Run(&#34;指紋不一致は IncFingerprintMismatch を計上する&#34;, func(t *testing.T) {
+<span id="L380" class="ln">   380  </span>		t.Parallel()
+<span id="L381" class="ln">   381  </span>		ctrl := gomock.NewController(t)
+<span id="L382" class="ln">   382  </span>		store := mock_idempotency.NewMockStore(ctrl)
+<span id="L383" class="ln">   383  </span>		metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+<span id="L384" class="ln">   384  </span>
+<span id="L385" class="ln">   385  </span>		store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+<span id="L386" class="ln">   386  </span>		store.EXPECT().Get(gomock.Any(), &#34;user-1&#34;, &#34;key-1&#34;).Return(&amp;idempotencybndry.Record{
+<span id="L387" class="ln">   387  </span>			Status:      idempotencybndry.StatusCompleted,
+<span id="L388" class="ln">   388  </span>			Fingerprint: []byte(&#34;stored-fp&#34;),
+<span id="L389" class="ln">   389  </span>		}, nil)
+<span id="L390" class="ln">   390  </span>		metrics.EXPECT().IncFingerprintMismatch(gomock.Any(), op)
+<span id="L391" class="ln">   391  </span>
+<span id="L392" class="ln">   392  </span>		_, _, err := idempotency.Run(reqCtx([]byte(&#34;request-fp&#34;)), newDepsWithMetrics(t, store, metrics), statusCreated,
+<span id="L393" class="ln">   393  </span>			func(context.Context) (payload, error) { return payload{}, nil })
+<span id="L394" class="ln">   394  </span>
+<span id="L395" class="ln">   395  </span>		require.ErrorIs(t, err, apperror.ErrValidation)
+<span id="L396" class="ln">   396  </span>	})
+<span id="L397" class="ln">   397  </span>}
+<span id="L398" class="ln">   398  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/idempotency/run_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

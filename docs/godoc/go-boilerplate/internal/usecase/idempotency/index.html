@@ -118,7 +118,12 @@
 				<dd><a href="#Deps">type Deps</a></dd>
 				
 					
-					<dd>    <a href="#NewDeps">func NewDeps(txm tx.Manager, store idempotencybndry.Store, clk clock.Clock) Deps</a></dd>
+					<dd>    <a href="#NewDeps">func NewDeps(txm tx.Manager, store idempotencybndry.Store, clk clock.Clock, metrics Metrics) Deps</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GCMetrics">type GCMetrics</a></dd>
 				
 				
 			
@@ -126,7 +131,7 @@
 				<dd><a href="#GCUsecase">type GCUsecase</a></dd>
 				
 					
-					<dd>    <a href="#NewGC">func NewGC(store idempotencybndry.Store, clk clock.Clock) GCUsecase</a></dd>
+					<dd>    <a href="#NewGC">func NewGC(store idempotencybndry.Store, clk clock.Clock, metrics GCMetrics) GCUsecase</a></dd>
 				
 				
 			
@@ -179,7 +184,7 @@
 		
 			
 			
-			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1727:1866#L35">Run</a>
+			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=2623:2762#L45">Run</a>
 				<a class="permalink" href="#Run">¶</a>
 				
 				
@@ -217,7 +222,7 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 		
 			
 			
-			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=817:1020#L19">Deps</a>
+			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1713:1916#L29">Deps</a>
 				<a class="permalink" href="#Deps">¶</a>
 				
 				
@@ -243,7 +248,7 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 
 			
 				
-				<h3 id="NewDeps">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/deps.go.html?s=279:365#L1">NewDeps</a>
+				<h3 id="NewDeps">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/deps.go.html?s=357:461#L1">NewDeps</a>
 					<a class="permalink" href="#NewDeps">¶</a>
 					
 					
@@ -252,8 +257,10 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
     txm <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>,
     store <a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotencybndry</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Store">Store</a>,
     clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
+    metrics <a href="#Metrics">Metrics</a>,
 ) <a href="#Deps">Deps</a></pre>
 				<p>NewDeps は、Run が必要とする依存を束ねて生成します。
+metrics が nil の場合はカウンタ操作が no-op になります。
 
 				
 				
@@ -263,7 +270,37 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 		
 			
 			
-			</p><h2 id="GCUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=492:691#L5">GCUsecase</a>
+			</p><h2 id="GCMetrics">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=679:983#L7">GCMetrics</a>
+				<a class="permalink" href="#GCMetrics">¶</a>
+				
+				
+			</h2>
+			<p>GCMetrics は、GC の o11y カウンタです。GCUsecase は GC 固有カウンタのみ必要なため
+interface を分離しています。
+各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。
+
+			</p><pre>type GCMetrics interface {
+    <span class="comment">// IncExpiredCleanup は、削除に成功した失効キー件数を計上します。</span>
+    IncExpiredCleanup(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, count <a href="../../../../builtin/#int64">int64</a>)
+    <span class="comment">// IncExpiredCleanupFailure は、削除バッチの失敗回数を計上します。</span>
+    IncExpiredCleanupFailure(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GCUsecase">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=1078:1277#L15">GCUsecase</a>
 				<a class="permalink" href="#GCUsecase">¶</a>
 				
 				
@@ -285,13 +322,13 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 
 			
 				
-				<h3 id="NewGC">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=816:883#L16">NewGC</a>
+				<h3 id="NewGC">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/gc.go.html?s=1630:1716#L30">NewGC</a>
 					<a class="permalink" href="#NewGC">¶</a>
 					
 					
 				</h3>
-				<pre>func NewGC(store <a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotencybndry</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Store">Store</a>, clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>) <a href="#GCUsecase">GCUsecase</a></pre>
-				<p>NewGC は、GCUsecase を生成します。
+				<pre>func NewGC(store <a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/">idempotencybndry</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/idempotency/#Store">Store</a>, clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>, metrics <a href="#GCMetrics">GCMetrics</a>) <a href="#GCUsecase">GCUsecase</a></pre>
+				<p>NewGC は、GCUsecase を生成します。metrics が nil の場合はカウンタ操作が no-op になります。
 
 				
 				
@@ -301,17 +338,27 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 		
 			
 			
-			</p><h2 id="Metrics">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=629:763#L12">Metrics</a>
+			</p><h2 id="Metrics">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=771:1659#L13">Metrics</a>
 				<a class="permalink" href="#Metrics">¶</a>
 				
 				
 			</h2>
-			<p>Metrics は、冪等性の o11y カウンタです（operationID ラベルで分解）。
+			<p>Metrics は、冪等性判定結果の o11y カウンタです（operationID ラベルで分解）。
+各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。
 
 			</p><pre>type Metrics interface {
-    IncReplay(operationID <a href="../../../../builtin/#string">string</a>)
-    IncConflict(operationID <a href="../../../../builtin/#string">string</a>)
-    IncFingerprintMismatch(operationID <a href="../../../../builtin/#string">string</a>)
+    <span class="comment">// IncHit は、completed 行の再送（replay）を計上します。</span>
+    IncHit(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, operationID <a href="../../../../builtin/#string">string</a>)
+    <span class="comment">// IncMiss は、新規 claim 成立（businessFn 実行へ進む）を計上します。</span>
+    IncMiss(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, operationID <a href="../../../../builtin/#string">string</a>)
+    <span class="comment">// IncConflict は、処理中キーへの並行再送（409）を計上します。</span>
+    IncConflict(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, operationID <a href="../../../../builtin/#string">string</a>)
+    <span class="comment">// IncFingerprintMismatch は、同一キー別ボディの再利用（422）を計上します。</span>
+    IncFingerprintMismatch(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, operationID <a href="../../../../builtin/#string">string</a>)
+    <span class="comment">// IncClaimFailure は、ErrLockTimeout 以外の Claim 失敗を計上します。</span>
+    IncClaimFailure(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, operationID <a href="../../../../builtin/#string">string</a>)
+    <span class="comment">// IncCompleteFailure は、Complete 失敗（結果保存失敗）を計上します。</span>
+    IncCompleteFailure(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, operationID <a href="../../../../builtin/#string">string</a>)
 }</pre>
 
 			

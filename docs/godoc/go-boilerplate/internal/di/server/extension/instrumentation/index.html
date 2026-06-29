@@ -104,6 +104,12 @@
 			
 			
 				
+				<dd><a href="#HTTPRedMetricsMiddleware">func HTTPRedMetricsMiddleware(rec redmetrics.Recorder) extension.UseMiddlewareOut</a></dd>
+			
+				
+				<dd><a href="#HTTPRedMetricsModule">func HTTPRedMetricsModule() fx.Option</a></dd>
+			
+				
 				<dd><a href="#LoggingMiddleware">func LoggingMiddleware(z logging.Logger, lf logging.LogFieldBuilder) extension.UseMiddlewareOut</a></dd>
 			
 				
@@ -133,6 +139,8 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/http_red_metrics_di.go.html">http_red_metrics_di.go</a>
+			
 				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/logging_di.go.html">logging_di.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/observability_di.go.html">observability_di.go</a>
@@ -152,7 +160,35 @@
 		
 			
 			
-			<h2 id="LoggingMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/logging_di.go.html?s=780:875#L14">LoggingMiddleware</a>
+			<h2 id="HTTPRedMetricsMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/http_red_metrics_di.go.html?s=1444:1525#L27">HTTPRedMetricsMiddleware</a>
+				<a class="permalink" href="#HTTPRedMetricsMiddleware">¶</a>
+				
+				
+			</h2>
+			<pre>func HTTPRedMetricsMiddleware(rec <a href="../../../../../../go-boilerplate/internal/controller/httpstack/redmetrics/">redmetrics</a>.<a href="../../../../../../go-boilerplate/internal/controller/httpstack/redmetrics/#Recorder">Recorder</a>) <a href="../../../../../../go-boilerplate/internal/di/server/extension/">extension</a>.<a href="../../../../../../go-boilerplate/internal/di/server/extension/#UseMiddlewareOut">UseMiddlewareOut</a></pre>
+			<p>HTTPRedMetricsMiddleware は、HTTP RED メトリクスを計測するミドルウェアを提供します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="HTTPRedMetricsModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/http_red_metrics_di.go.html?s=862:899#L8">HTTPRedMetricsModule</a>
+				<a class="permalink" href="#HTTPRedMetricsModule">¶</a>
+				
+				
+			</h2>
+			<pre>func HTTPRedMetricsModule() <a href="../../../../../../go.uber.org/fx/">fx</a>.<a href="../../../../../../go.uber.org/fx/#Option">Option</a></pre>
+			<p>HTTPRedMetricsModule は、HTTP RED（Rate / Errors / Duration）メトリクスのミドルウェアを提供するfxモジュールを返します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="LoggingMiddleware">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/logging_di.go.html?s=1078:1173#L17">LoggingMiddleware</a>
 				<a class="permalink" href="#LoggingMiddleware">¶</a>
 				
 				
@@ -166,7 +202,7 @@
 		
 			
 			
-			</p><h2 id="LoggingModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/logging_di.go.html?s=457:487#L5">LoggingModule</a>
+			</p><h2 id="LoggingModule">func <a href="../../../../../../src/go-boilerplate/internal/di/server/extension/instrumentation/logging_di.go.html?s=755:785#L8">LoggingModule</a>
 				<a class="permalink" href="#LoggingModule">¶</a>
 				
 				

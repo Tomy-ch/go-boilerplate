@@ -104,6 +104,9 @@
 			
 			
 				
+				<dd><a href="#NewQueryRecorder">func NewQueryRecorder(reg prometheus.Registerer) driver.QueryRecorder</a></dd>
+			
+				
 				<dd><a href="#NewRegisterer">func NewRegisterer() prometheus.Registerer</a></dd>
 			
 				
@@ -137,6 +140,8 @@
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html">pool_stats_collector.go</a>
 			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/query_metrics.go.html">query_metrics.go</a>
+			
 			</span>
 			</p>
 		
@@ -150,7 +155,22 @@
 		
 			
 			
-			<h2 id="NewRegisterer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html?s=4491:4533#L87">NewRegisterer</a>
+			<h2 id="NewQueryRecorder">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/query_metrics.go.html?s=736:805#L15">NewQueryRecorder</a>
+				<a class="permalink" href="#NewQueryRecorder">¶</a>
+				
+				
+			</h2>
+			<pre>func NewQueryRecorder(reg <a href="../../../../../github.com/prometheus/client_golang/prometheus/">prometheus</a>.<a href="../../../../../github.com/prometheus/client_golang/prometheus/#Registerer">Registerer</a>) <a href="../../../../../go-boilerplate/internal/infrastructure/rdb/driver/">driver</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/rdb/driver/#QueryRecorder">QueryRecorder</a></pre>
+			<p>NewQueryRecorder は、DB クエリメトリクス(rdb_query_duration_seconds / rdb_query_errors_total)を
+指定レジストリに登録し、recorder を返します。既に登録済みの場合は既存のコレクタを再利用します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="NewRegisterer">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/metrics/pool_stats_collector.go.html?s=4491:4533#L87">NewRegisterer</a>
 				<a class="permalink" href="#NewRegisterer">¶</a>
 				
 				
