@@ -270,6 +270,18 @@ func TestSplitStackLines(t *testing.T) {
 			assert.Equal(t, expected, SplitStackLines(input))
 		})
 
+		t.Run("cockroachdb_errorsのガター（空白・パイプ・タブ）を行頭から除去する", func(t *testing.T) {
+			t.Parallel()
+
+			input := "  | go-boilerplate/pkg/xerrors.Join\n  | \t/app/pkg/xerrors/errors.go:34\n  -- stack trace:"
+			expected := []string{
+				"go-boilerplate/pkg/xerrors.Join",
+				"/app/pkg/xerrors/errors.go:34",
+				"-- stack trace:",
+			}
+			assert.Equal(t, expected, SplitStackLines(input))
+		})
+
 		t.Run("末尾改行は分割結果から除去される", func(t *testing.T) {
 			t.Parallel()
 
