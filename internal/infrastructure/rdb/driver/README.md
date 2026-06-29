@@ -267,7 +267,7 @@ How the attrs are derived:
 - `query_name`: from `WithQueryName`; unset / empty → `unknown`
 - `operation`: from the SQL leading token only → `select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other` (leading comments and `WITH` clauses fold to `select` / `other`)
 - `status`: `success` / `error`; `pgx.ErrNoRows` is treated as `success` and is not counted as an error
-- `error_class`: derived via `pgerror` → `not_found` / `constraint` / `connection` / `timeout` / `unknown`
+- `error_class`: derived via `pgerror` → `constraint` / `timeout` / `retryable` / `connection` / `unknown` (`retryable` = `serialization_failure` (40001) / `deadlock_detected` (40P01), i.e. retryable transaction conflicts). `pgx.ErrNoRows` is `success`, so it never appears here.
 
 The Prometheus metric definitions (`rdb_query_duration_seconds`, `rdb_query_errors_total`) live in
 `internal/infrastructure/rdb/metrics`. Repository / QueryService set the query name with

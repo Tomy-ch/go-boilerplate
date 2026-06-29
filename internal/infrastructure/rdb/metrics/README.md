@@ -51,7 +51,7 @@ Label semantics (kept low-cardinality, never carrying secrets):
 - `query_name`: a stable app-managed name set via `driver.WithQueryName(ctx, "user.find_by_id")`. Unset → `unknown`.
 - `operation`: normalized from the SQL leading token only (`select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other`).
 - `status`: `success` / `error`.
-- `error_class`: `not_found` / `constraint` / `connection` / `timeout` / `unknown`, derived from `pgerror` normalization.
+- `error_class`: `constraint` / `timeout` / `retryable` / `connection` / `unknown`, derived from `pgerror` normalization. `retryable` covers `serialization_failure` (40001) / `deadlock_detected` (40P01) — retryable transaction conflicts.
 
 `pgx.ErrNoRows` is treated as `status=success` and is NOT counted in `rdb_query_errors_total` (it is a normal "not found" outcome decided by the upper layers).
 

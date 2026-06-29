@@ -51,7 +51,7 @@ namespace: `rdb` / subsystem: `query`
 - `query_name`: アプリ側で管理する安定名。`driver.WithQueryName(ctx, "user.find_by_id")` で設定します。未設定は `unknown`。
 - `operation`: SQL 先頭トークンのみから正規化（`select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other`）。
 - `status`: `success` / `error`。
-- `error_class`: `not_found` / `constraint` / `connection` / `timeout` / `unknown`。`pgerror` の正規化を用いて分類します。
+- `error_class`: `constraint` / `timeout` / `retryable` / `connection` / `unknown`。`pgerror` の正規化を用いて分類します。`retryable` は `serialization_failure` (40001) / `deadlock_detected` (40P01)、すなわちリトライ可能なトランザクション競合を表します。
 
 `pgx.ErrNoRows` は `status=success` として扱い、`rdb_query_errors_total` には数えません（上位層が判断する通常系の「not found」のため）。
 

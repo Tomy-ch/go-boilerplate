@@ -292,7 +292,7 @@ span のために `otelpgx` を埋め込み、クエリログ（正常終了 Inf
 - `query_name`: `WithQueryName` から取得。未設定 / 空文字は `unknown`
 - `operation`: SQL の先頭トークンのみから分類 → `select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other`（先頭コメントや `WITH` 句は `select` / `other` に丸める）
 - `status`: `success` / `error`。`pgx.ErrNoRows` は `success` 扱いで error には数えない
-- `error_class`: `pgerror` を用いて導出 → `not_found` / `constraint` / `connection` / `timeout` / `unknown`
+- `error_class`: `pgerror` を用いて導出 → `constraint` / `timeout` / `retryable` / `connection` / `unknown`（`retryable` は `serialization_failure` (40001) / `deadlock_detected` (40P01)、すなわちリトライ可能なトランザクション競合）。`pgx.ErrNoRows` は `success` 扱いのため、ここには現れない
 
 Prometheus メトリクス定義（`rdb_query_duration_seconds` / `rdb_query_errors_total`）は
 `internal/infrastructure/rdb/metrics` にあります。Repository / QueryService は
