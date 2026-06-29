@@ -55,11 +55,12 @@ func TestNewQueryTracer(t *testing.T) {
 			mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			recorder := &fakeQueryRecorder{}
-			qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), recorder, mockLogger, lf).(*queryTracer)
+			// recorder=nil の配線（未設定）を検証する。非 nil recorder 経由の記録は
+			// 外部テストパッケージ（query_metric_external_test.go）で MockQueryRecorder を用いて検証する。
+			qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), nil, mockLogger, lf).(*queryTracer)
 			require.True(t, ok)
 			assert.NotNil(t, qt.Tracer)
-			assert.Same(t, recorder, qt.recorder)
+			assert.Nil(t, qt.recorder)
 			assert.Equal(t, obsCfg.MaskedDBQueryArgs(), qt.maskArgs)
 			assert.Equal(t, dbCfg.SlowQueryWarnThreshold(), qt.slowThreshold)
 		})
@@ -92,31 +93,6 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 				start: time.Now(),
 			})
 			qt.TraceQueryEnd(ctx, nil, pgx.TraceQueryEndData{})
-		})
-
-		t.Run("recorder が設定されている場合はクエリ属性を記録する", func(t *testing.T) {
-			t.Parallel()
-
-			qt, mockLogger := newTestQueryTracer(t)
-			qt.slowThreshold = time.Second
-			mockLogger.EXPECT().Info("DB query completed", gomock.Any()).Times(1)
-
-			recorder := &fakeQueryRecorder{}
-			qt.recorder = recorder
-
-			ctx := WithQueryName(context.Background(), "user.find_by_id")
-			ctx = context.WithValue(ctx, queryLogKey{}, queryLogData{
-				sql:   "SELECT 1",
-				start: time.Now(),
-			})
-			qt.TraceQueryEnd(ctx, nil, pgx.TraceQueryEndData{})
-
-			require.Len(t, recorder.observed, 1)
-			got := recorder.observed[0]
-			assert.Equal(t, "user.find_by_id", got.QueryName)
-			assert.Equal(t, operationSelect, got.Operation)
-			assert.Equal(t, statusSuccess, got.Status)
-			assert.Empty(t, got.ErrorClass)
 		})
 	})
 
@@ -179,48 +155,4 @@ func TestQueryTracer_endFields_Mask(t *testing.T) {
 			assert.Less(t, len(masked), len(plain))
 		})
 	})
-}
-
-func TestNewTracedDB_RealQueryInstrumentation(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.MockConfigForTest(t)
-	dbCfg := config.NewDatabaseConfig(cfg)
-	osCfg := config.NewOperatingSystemConfig(cfg)
-	dbConnCfg := config.NewDBConnectionConfig(cfg)
-	obsCfg := config.NewObservabilityConfig(cfg)
-
-	ctrl := gomock.NewController(t)
-	mockLogger := mock_logging.NewMockLogger(ctrl)
-	mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
-	mockLogger.EXPECT().Info("DB query completed", gomock.Any()).MinTimes(1)
-	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).MinTimes(1)
-	lf := logging.NewTestLogFieldBuilder(t)
-
-	recorder := &fakeQueryRecorder{}
-	tracer := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), recorder, mockLogger, lf)
-
-	db, err := NewTracedDB(dbCfg, osCfg, dbConnCfg, tracer)
-	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
-
-	ctx := WithQueryName(context.Background(), "test.select_one")
-
-	// 正常クエリは TraceQueryEnd(Info) のログが出る。
-	_, err = db.Exec(ctx, "SELECT 1")
-	require.NoError(t, err)
-
-	// 失敗クエリは終了で Error ログが出る。
-	_, err = db.Exec(ctx, "SELECT 1 FROM no_such_table_for_test")
-	require.Error(t, err)
-
-	// recorder にも duration / status が記録され、ラベルに SQL 本文が含まれないことを確認する。
-	observed := recorder.snapshot()
-	require.GreaterOrEqual(t, len(observed), 2)
-	for _, attrs := range observed {
-		assert.Equal(t, "test.select_one", attrs.QueryName)
-		assert.Equal(t, operationSelect, attrs.Operation)
-		assert.NotContains(t, attrs.QueryName, "SELECT")
-		assert.NotContains(t, attrs.Operation, "no_such_table_for_test")
-	}
 }

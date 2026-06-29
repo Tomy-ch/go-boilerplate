@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 
@@ -12,27 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 )
-
-// fakeQueryRecorder は、driver パッケージ内テスト用の QueryRecorder 実装です。
-// QueryRecorder は同一 driver パッケージの QueryAttrs を引数に取るため、生成モックを
-// mock サブパッケージへ置くと mock → driver の import 循環になります。これを避けるため、
-// パッケージ内テスト専用の最小実装を用意します。
-type fakeQueryRecorder struct {
-	mu       sync.Mutex
-	observed []QueryAttrs
-}
-
-func (r *fakeQueryRecorder) Observe(_ context.Context, attrs QueryAttrs) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.observed = append(r.observed, attrs)
-}
-
-func (r *fakeQueryRecorder) snapshot() []QueryAttrs {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return append([]QueryAttrs(nil), r.observed...)
-}
 
 func TestWithQueryName(t *testing.T) {
 	t.Parallel()
