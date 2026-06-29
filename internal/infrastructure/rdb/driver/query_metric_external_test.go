@@ -39,7 +39,6 @@ func TestTracedDB_QueryMetricsInstrumentation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockLogger := mock_logging.NewMockLogger(ctrl)
 	mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
-	// ログ出力（Info/Error/Warn）は white-box テストで検証済みのため、ここでは許容のみ。
 	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLogger.EXPECT().Warn(gomock.Any(), gomock.Any()).AnyTimes()

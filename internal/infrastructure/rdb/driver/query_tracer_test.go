@@ -55,8 +55,7 @@ func TestNewQueryTracer(t *testing.T) {
 			mockLogger.EXPECT().Named(gomock.Any()).Return(mockLogger).AnyTimes()
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			// recorder=nil の配線（未設定）を検証する。非 nil recorder 経由の記録は
-			// 外部テストパッケージ（query_metric_external_test.go）で MockQueryRecorder を用いて検証する。
+			// recorder=nil 時（メトリクス記録なし）の動作を検証する。
 			qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), nil, mockLogger, lf).(*queryTracer)
 			require.True(t, ok)
 			assert.NotNil(t, qt.Tracer)

@@ -89,7 +89,7 @@ func TestNewQueryRecorder(t *testing.T) {
 				names = append(names, l.GetName())
 			}
 			assert.ElementsMatch(t, []string{"query_name", "operation", "status"}, names)
-			// SQL 本文や bind 値がラベル値に混入していないこと。
+			// operation ラベルには分類済みの固定 enum（例: select）が入る。
 			assert.Equal(t, "select", labelValue(duration.GetMetric()[0], "operation"))
 		})
 	})

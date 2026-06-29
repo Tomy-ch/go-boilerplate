@@ -48,7 +48,6 @@ type QueryAttrs struct {
 }
 
 // QueryRecorder は、1 クエリの実行結果をメトリクスとして記録します。
-// 実装は metrics パッケージにあり、driver は Prometheus の実体に依存しません
 // （interface を消費側の driver に置くことで metrics → driver の循環 import を避けます）。
 type QueryRecorder interface {
 	Observe(ctx context.Context, attrs QueryAttrs)
@@ -162,7 +161,7 @@ func stripLeadingSQLComments(sql string) string {
 
 // classifyErrorClass は、pgerror の判定を用いてエラーを固定 enum へ丸めます。
 // raw error message / SQLSTATE 詳細 / 制約名などはラベルに含めません。
-// pgx.ErrNoRows は呼び出し元の buildQueryAttrs で success として除外済みのため、ここでは扱いません。
+// pgx.ErrNoRows は呼び出し前に除外して渡すこと（success として扱うため）。
 func classifyErrorClass(err error) string {
 	switch {
 	case err == nil:
