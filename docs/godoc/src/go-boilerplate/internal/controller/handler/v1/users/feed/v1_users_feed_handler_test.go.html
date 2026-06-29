@@ -113,7 +113,7 @@
 <span id="L56" class="ln">    56  </span>	<span class="comment">// /v1/users/feed (GET) が登録される。</span>
 <span id="L57" class="ln">    57  </span>	routes := e.Routes()
 <span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span>	assert.Len(t, routes, 1)
+<span id="L59" class="ln">    59  </span>	require.Len(t, routes, 1)
 <span id="L60" class="ln">    60  </span>	assert.Equal(t, http.MethodGet, routes[0].Method)
 <span id="L61" class="ln">    61  </span>	assert.Equal(t, targetPath, routes[0].Path)
 <span id="L62" class="ln">    62  </span>}

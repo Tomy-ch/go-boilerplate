@@ -103,7 +103,7 @@
 <span id="L46" class="ln">    46  </span>			<span class="comment">// キーに &#39;=&#39; を含むと os.Setenv は失敗する。</span>
 <span id="L47" class="ln">    47  </span>			restore, err := Override(&#34;BAD=KEY&#34;, &#34;x&#34;)
 <span id="L48" class="ln">    48  </span>			require.Error(t, err)
-<span id="L49" class="ln">    49  </span>			require.NotNil(t, restore) <span class="comment">// 復元関数は no-op でも非 nil を返す</span>
+<span id="L49" class="ln">    49  </span>			assert.NotNil(t, restore) <span class="comment">// 復元関数は no-op でも非 nil を返す</span>
 <span id="L50" class="ln">    50  </span>			_, ok := os.LookupEnv(&#34;BAD=KEY&#34;)
 <span id="L51" class="ln">    51  </span>			assert.False(t, ok)
 <span id="L52" class="ln">    52  </span>		})

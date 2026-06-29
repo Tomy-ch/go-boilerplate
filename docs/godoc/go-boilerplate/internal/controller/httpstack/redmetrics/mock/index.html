@@ -1,0 +1,273 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_redmetrics
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/controller/httpstack/redmetrics/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_redmetrics is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockRecorder">type MockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#NewMockRecorder">func NewMockRecorder(ctrl *gomock.Controller) *MockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRecorder.EXPECT">func (m *MockRecorder) EXPECT() *MockRecorderMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockRecorder.Observe">func (m *MockRecorder) Observe(method, route string, statusCode int, statusClass string, duration time.Duration)</a></dd>
+				
+			
+				
+				<dd><a href="#MockRecorderMockRecorder">type MockRecorderMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRecorderMockRecorder.Observe">func (mr *MockRecorderMockRecorder) Observe(method, route, statusCode, statusClass, duration any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/mock/mock_recorder.go.gen.go.html">mock_recorder.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/mock/mock_recorder.go.gen.go.html?s=415:527#L10">MockRecorder</a>
+				<a class="permalink" href="#MockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockRecorder is a mock of Recorder interface.
+
+			</p><pre>type MockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockRecorder">func <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/mock/mock_recorder.go.gen.go.html?s=706:765#L22">NewMockRecorder</a>
+					<a class="permalink" href="#NewMockRecorder">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockRecorder(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockRecorder">MockRecorder</a></pre>
+				<p>NewMockRecorder creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockRecorder.EXPECT">func (*MockRecorder) <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/mock/mock_recorder.go.gen.go.html?s=945:1002#L29">EXPECT</a>
+					<a class="permalink" href="#MockRecorder.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRecorder">MockRecorder</a>) EXPECT() *<a href="#MockRecorderMockRecorder">MockRecorderMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRecorder.Observe">func (*MockRecorder) <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/mock/mock_recorder.go.gen.go.html?s=1057:1169#L34">Observe</a>
+					<a class="permalink" href="#MockRecorder.Observe">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRecorder">MockRecorder</a>) Observe(method, route <a href="../../../../../../builtin/#string">string</a>, statusCode <a href="../../../../../../builtin/#int">int</a>, statusClass <a href="../../../../../../builtin/#string">string</a>, duration <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Duration">Duration</a>)</pre>
+				<p>Observe mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRecorderMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/mock/mock_recorder.go.gen.go.html?s=596:656#L17">MockRecorderMockRecorder</a>
+				<a class="permalink" href="#MockRecorderMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockRecorderMockRecorder is the mock recorder for MockRecorder.
+
+			</p><pre>type MockRecorderMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockRecorderMockRecorder.Observe">func (*MockRecorderMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/mock/mock_recorder.go.gen.go.html?s=1321:1431#L40">Observe</a>
+					<a class="permalink" href="#MockRecorderMockRecorder.Observe">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRecorderMockRecorder">MockRecorderMockRecorder</a>) Observe(method, route, statusCode, statusClass, duration <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Observe indicates an expected call of Observe.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

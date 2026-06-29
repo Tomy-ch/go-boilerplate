@@ -316,94 +316,122 @@
 <span id="L259" class="ln">   259  </span>			require.ErrorIs(t, err, wantErr)
 <span id="L260" class="ln">   260  </span>		})
 <span id="L261" class="ln">   261  </span>
-<span id="L262" class="ln">   262  </span>		t.Run(&#34;MarkFailed のエラーは tx を巻き戻すエラーとして返す&#34;, func(t *testing.T) {
+<span id="L262" class="ln">   262  </span>		t.Run(&#34;複数メッセージ混在時に2件目が失敗すると tx を巻き戻し結果は破棄される&#34;, func(t *testing.T) {
 <span id="L263" class="ln">   263  </span>			t.Parallel()
 <span id="L264" class="ln">   264  </span>			ctrl := gomock.NewController(t)
 <span id="L265" class="ln">   265  </span>			store := mock_outbox.NewMockStore(ctrl)
 <span id="L266" class="ln">   266  </span>			pub := mock_publisher.NewMockPublisher(ctrl)
-<span id="L267" class="ln">   267  </span>			msg := pendingMessage(t)
-<span id="L268" class="ln">   268  </span>			wantErr := errors.New(&#34;mark failed&#34;)
-<span id="L269" class="ln">   269  </span>
-<span id="L270" class="ln">   270  </span>			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
-<span id="L271" class="ln">   271  </span>			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(errors.New(&#34;publish failed&#34;))
-<span id="L272" class="ln">   272  </span>			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(int32(0), wantErr)
-<span id="L273" class="ln">   273  </span>
-<span id="L274" class="ln">   274  </span>			_, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
-<span id="L275" class="ln">   275  </span>				RelayBatch(context.Background(), 100)
-<span id="L276" class="ln">   276  </span>
-<span id="L277" class="ln">   277  </span>			require.ErrorIs(t, err, wantErr)
-<span id="L278" class="ln">   278  </span>		})
-<span id="L279" class="ln">   279  </span>	})
-<span id="L280" class="ln">   280  </span>}
+<span id="L267" class="ln">   267  </span>			wantErr := errors.New(&#34;mark failed&#34;)
+<span id="L268" class="ln">   268  </span>
+<span id="L269" class="ln">   269  </span>			<span class="comment">// 1件目は publish 成功で MarkPublished も成功するが、2件目の MarkPublished が</span>
+<span id="L270" class="ln">   270  </span>			<span class="comment">// DB エラーになる。deliver の DB マーク失敗は tx を巻き戻すエラーなので、</span>
+<span id="L271" class="ln">   271  </span>			<span class="comment">// 1件目の成功も含めて RelayResult は破棄される（DoWithResult が zero 値を返す）。</span>
+<span id="L272" class="ln">   272  </span>			msg1 := pendingMessage(t)
+<span id="L273" class="ln">   273  </span>			msg2 := pendingMessage(t)
+<span id="L274" class="ln">   274  </span>			msg2.ID = 2
+<span id="L275" class="ln">   275  </span>
+<span id="L276" class="ln">   276  </span>			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).
+<span id="L277" class="ln">   277  </span>				Return([]outboxbndry.PendingMessage{msg1, msg2}, nil)
+<span id="L278" class="ln">   278  </span>			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil).Times(2)
+<span id="L279" class="ln">   279  </span>			store.EXPECT().MarkPublished(gomock.Any(), msg1.ID).Return(nil)
+<span id="L280" class="ln">   280  </span>			store.EXPECT().MarkPublished(gomock.Any(), msg2.ID).Return(wantErr)
 <span id="L281" class="ln">   281  </span>
-<span id="L282" class="ln">   282  </span>func TestRelayUsecase_RecordLag(t *testing.T) {
-<span id="L283" class="ln">   283  </span>	t.Parallel()
+<span id="L282" class="ln">   282  </span>			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
+<span id="L283" class="ln">   283  </span>				RelayBatch(context.Background(), 100)
 <span id="L284" class="ln">   284  </span>
-<span id="L285" class="ln">   285  </span>	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L286" class="ln">   286  </span>
-<span id="L287" class="ln">   287  </span>	build := func(t *testing.T, store outboxbndry.Store, metrics outbox.Metrics) outbox.RelayUsecase {
-<span id="L288" class="ln">   288  </span>		t.Helper()
-<span id="L289" class="ln">   289  </span>		ctrl := gomock.NewController(t)
-<span id="L290" class="ln">   290  </span>		return outbox.NewRelay(
-<span id="L291" class="ln">   291  </span>			mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl),
-<span id="L292" class="ln">   292  </span>			metrics, testkit.NewMockClock(t, now),
-<span id="L293" class="ln">   293  </span>			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
-<span id="L294" class="ln">   294  </span>	}
-<span id="L295" class="ln">   295  </span>
-<span id="L296" class="ln">   296  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L297" class="ln">   297  </span>		t.Parallel()
-<span id="L298" class="ln">   298  </span>
-<span id="L299" class="ln">   299  </span>		t.Run(&#34;pending 行があれば経過秒数を lag として記録し nil を返す&#34;, func(t *testing.T) {
-<span id="L300" class="ln">   300  </span>			t.Parallel()
-<span id="L301" class="ln">   301  </span>			ctrl := gomock.NewController(t)
-<span id="L302" class="ln">   302  </span>			store := mock_outbox.NewMockStore(ctrl)
-<span id="L303" class="ln">   303  </span>			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(-time.Minute), true, nil)
-<span id="L304" class="ln">   304  </span>			metrics := mock_relay.NewMockMetrics(ctrl)
-<span id="L305" class="ln">   305  </span>			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(60)).Times(1)
-<span id="L306" class="ln">   306  </span>
-<span id="L307" class="ln">   307  </span>			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
-<span id="L308" class="ln">   308  </span>		})
+<span id="L285" class="ln">   285  </span>			require.ErrorIs(t, err, wantErr)
+<span id="L286" class="ln">   286  </span>			assert.Equal(t, 0, got.Claimed)
+<span id="L287" class="ln">   287  </span>			assert.Equal(t, 0, got.Published)
+<span id="L288" class="ln">   288  </span>		})
+<span id="L289" class="ln">   289  </span>
+<span id="L290" class="ln">   290  </span>		t.Run(&#34;MarkFailed のエラーは tx を巻き戻すエラーとして返す&#34;, func(t *testing.T) {
+<span id="L291" class="ln">   291  </span>			t.Parallel()
+<span id="L292" class="ln">   292  </span>			ctrl := gomock.NewController(t)
+<span id="L293" class="ln">   293  </span>			store := mock_outbox.NewMockStore(ctrl)
+<span id="L294" class="ln">   294  </span>			pub := mock_publisher.NewMockPublisher(ctrl)
+<span id="L295" class="ln">   295  </span>			msg := pendingMessage(t)
+<span id="L296" class="ln">   296  </span>			wantErr := errors.New(&#34;mark failed&#34;)
+<span id="L297" class="ln">   297  </span>
+<span id="L298" class="ln">   298  </span>			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+<span id="L299" class="ln">   299  </span>			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(errors.New(&#34;publish failed&#34;))
+<span id="L300" class="ln">   300  </span>			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(int32(0), wantErr)
+<span id="L301" class="ln">   301  </span>
+<span id="L302" class="ln">   302  </span>			_, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
+<span id="L303" class="ln">   303  </span>				RelayBatch(context.Background(), 100)
+<span id="L304" class="ln">   304  </span>
+<span id="L305" class="ln">   305  </span>			require.ErrorIs(t, err, wantErr)
+<span id="L306" class="ln">   306  </span>		})
+<span id="L307" class="ln">   307  </span>	})
+<span id="L308" class="ln">   308  </span>}
 <span id="L309" class="ln">   309  </span>
-<span id="L310" class="ln">   310  </span>		t.Run(&#34;pending 行が無ければ 0 を記録して nil を返す&#34;, func(t *testing.T) {
-<span id="L311" class="ln">   311  </span>			t.Parallel()
-<span id="L312" class="ln">   312  </span>			ctrl := gomock.NewController(t)
-<span id="L313" class="ln">   313  </span>			store := mock_outbox.NewMockStore(ctrl)
-<span id="L314" class="ln">   314  </span>			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, nil)
-<span id="L315" class="ln">   315  </span>			metrics := mock_relay.NewMockMetrics(ctrl)
-<span id="L316" class="ln">   316  </span>			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(0)).Times(1)
-<span id="L317" class="ln">   317  </span>
-<span id="L318" class="ln">   318  </span>			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
-<span id="L319" class="ln">   319  </span>		})
-<span id="L320" class="ln">   320  </span>
-<span id="L321" class="ln">   321  </span>		t.Run(&#34;now より未来の created_at は負の lag を 0 にクランプする&#34;, func(t *testing.T) {
-<span id="L322" class="ln">   322  </span>			t.Parallel()
-<span id="L323" class="ln">   323  </span>			ctrl := gomock.NewController(t)
-<span id="L324" class="ln">   324  </span>			store := mock_outbox.NewMockStore(ctrl)
-<span id="L325" class="ln">   325  </span>			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(time.Minute), true, nil)
-<span id="L326" class="ln">   326  </span>			metrics := mock_relay.NewMockMetrics(ctrl)
-<span id="L327" class="ln">   327  </span>			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(0)).Times(1)
-<span id="L328" class="ln">   328  </span>
-<span id="L329" class="ln">   329  </span>			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
-<span id="L330" class="ln">   330  </span>		})
-<span id="L331" class="ln">   331  </span>	})
-<span id="L332" class="ln">   332  </span>
-<span id="L333" class="ln">   333  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L334" class="ln">   334  </span>		t.Parallel()
-<span id="L335" class="ln">   335  </span>
-<span id="L336" class="ln">   336  </span>		t.Run(&#34;OldestPendingCreatedAt のエラーを伝播し lag は記録しない&#34;, func(t *testing.T) {
-<span id="L337" class="ln">   337  </span>			t.Parallel()
-<span id="L338" class="ln">   338  </span>			ctrl := gomock.NewController(t)
-<span id="L339" class="ln">   339  </span>			store := mock_outbox.NewMockStore(ctrl)
-<span id="L340" class="ln">   340  </span>			wantErr := errors.New(&#34;lag query failed&#34;)
-<span id="L341" class="ln">   341  </span>			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, wantErr)
-<span id="L342" class="ln">   342  </span>			<span class="comment">// エラー時は SetLagSeconds を呼ばない（呼べば mock が未期待呼び出しで失敗する）。</span>
+<span id="L310" class="ln">   310  </span>func TestRelayUsecase_RecordLag(t *testing.T) {
+<span id="L311" class="ln">   311  </span>	t.Parallel()
+<span id="L312" class="ln">   312  </span>
+<span id="L313" class="ln">   313  </span>	now := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L314" class="ln">   314  </span>
+<span id="L315" class="ln">   315  </span>	build := func(t *testing.T, store outboxbndry.Store, metrics outbox.Metrics) outbox.RelayUsecase {
+<span id="L316" class="ln">   316  </span>		t.Helper()
+<span id="L317" class="ln">   317  </span>		ctrl := gomock.NewController(t)
+<span id="L318" class="ln">   318  </span>		return outbox.NewRelay(
+<span id="L319" class="ln">   319  </span>			mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl),
+<span id="L320" class="ln">   320  </span>			metrics, testkit.NewMockClock(t, now),
+<span id="L321" class="ln">   321  </span>			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+<span id="L322" class="ln">   322  </span>	}
+<span id="L323" class="ln">   323  </span>
+<span id="L324" class="ln">   324  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L325" class="ln">   325  </span>		t.Parallel()
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>		t.Run(&#34;pending 行があれば経過秒数を lag として記録し nil を返す&#34;, func(t *testing.T) {
+<span id="L328" class="ln">   328  </span>			t.Parallel()
+<span id="L329" class="ln">   329  </span>			ctrl := gomock.NewController(t)
+<span id="L330" class="ln">   330  </span>			store := mock_outbox.NewMockStore(ctrl)
+<span id="L331" class="ln">   331  </span>			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(-time.Minute), true, nil)
+<span id="L332" class="ln">   332  </span>			metrics := mock_relay.NewMockMetrics(ctrl)
+<span id="L333" class="ln">   333  </span>			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(60)).Times(1)
+<span id="L334" class="ln">   334  </span>
+<span id="L335" class="ln">   335  </span>			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
+<span id="L336" class="ln">   336  </span>		})
+<span id="L337" class="ln">   337  </span>
+<span id="L338" class="ln">   338  </span>		t.Run(&#34;pending 行が無ければ 0 を記録して nil を返す&#34;, func(t *testing.T) {
+<span id="L339" class="ln">   339  </span>			t.Parallel()
+<span id="L340" class="ln">   340  </span>			ctrl := gomock.NewController(t)
+<span id="L341" class="ln">   341  </span>			store := mock_outbox.NewMockStore(ctrl)
+<span id="L342" class="ln">   342  </span>			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, nil)
 <span id="L343" class="ln">   343  </span>			metrics := mock_relay.NewMockMetrics(ctrl)
-<span id="L344" class="ln">   344  </span>
-<span id="L345" class="ln">   345  </span>			require.ErrorIs(t, build(t, store, metrics).RecordLag(context.Background()), wantErr)
-<span id="L346" class="ln">   346  </span>		})
-<span id="L347" class="ln">   347  </span>	})
-<span id="L348" class="ln">   348  </span>}
-<span id="L349" class="ln">   349  </span>
+<span id="L344" class="ln">   344  </span>			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(0)).Times(1)
+<span id="L345" class="ln">   345  </span>
+<span id="L346" class="ln">   346  </span>			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
+<span id="L347" class="ln">   347  </span>		})
+<span id="L348" class="ln">   348  </span>
+<span id="L349" class="ln">   349  </span>		t.Run(&#34;now より未来の created_at は負の lag を 0 にクランプする&#34;, func(t *testing.T) {
+<span id="L350" class="ln">   350  </span>			t.Parallel()
+<span id="L351" class="ln">   351  </span>			ctrl := gomock.NewController(t)
+<span id="L352" class="ln">   352  </span>			store := mock_outbox.NewMockStore(ctrl)
+<span id="L353" class="ln">   353  </span>			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(time.Minute), true, nil)
+<span id="L354" class="ln">   354  </span>			metrics := mock_relay.NewMockMetrics(ctrl)
+<span id="L355" class="ln">   355  </span>			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(0)).Times(1)
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
+<span id="L358" class="ln">   358  </span>		})
+<span id="L359" class="ln">   359  </span>	})
+<span id="L360" class="ln">   360  </span>
+<span id="L361" class="ln">   361  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L362" class="ln">   362  </span>		t.Parallel()
+<span id="L363" class="ln">   363  </span>
+<span id="L364" class="ln">   364  </span>		t.Run(&#34;OldestPendingCreatedAt のエラーを伝播し lag は記録しない&#34;, func(t *testing.T) {
+<span id="L365" class="ln">   365  </span>			t.Parallel()
+<span id="L366" class="ln">   366  </span>			ctrl := gomock.NewController(t)
+<span id="L367" class="ln">   367  </span>			store := mock_outbox.NewMockStore(ctrl)
+<span id="L368" class="ln">   368  </span>			wantErr := errors.New(&#34;lag query failed&#34;)
+<span id="L369" class="ln">   369  </span>			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, wantErr)
+<span id="L370" class="ln">   370  </span>			<span class="comment">// エラー時は SetLagSeconds を呼ばない。</span>
+<span id="L371" class="ln">   371  </span>			metrics := mock_relay.NewMockMetrics(ctrl)
+<span id="L372" class="ln">   372  </span>
+<span id="L373" class="ln">   373  </span>			require.ErrorIs(t, build(t, store, metrics).RecordLag(context.Background()), wantErr)
+<span id="L374" class="ln">   374  </span>		})
+<span id="L375" class="ln">   375  </span>	})
+<span id="L376" class="ln">   376  </span>}
+<span id="L377" class="ln">   377  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/outbox/relay_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

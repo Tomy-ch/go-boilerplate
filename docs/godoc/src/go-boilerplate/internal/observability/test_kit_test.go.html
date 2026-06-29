@@ -94,7 +94,7 @@
 <span id="L37" class="ln">    37  </span>			t.Parallel()
 <span id="L38" class="ln">    38  </span>			actual := NewMockControllerLayerTracer(t)
 <span id="L39" class="ln">    39  </span>			assert.Equal(t, Controller, actual.layer)
-<span id="L40" class="ln">    40  </span>			require.NotNil(t, actual.tracer)
+<span id="L40" class="ln">    40  </span>			assert.NotNil(t, actual.tracer)
 <span id="L41" class="ln">    41  </span>		})
 <span id="L42" class="ln">    42  </span>	})
 <span id="L43" class="ln">    43  </span>}
@@ -109,7 +109,7 @@
 <span id="L52" class="ln">    52  </span>			t.Parallel()
 <span id="L53" class="ln">    53  </span>			actual := NewMockUsecaseLayerTracer(t)
 <span id="L54" class="ln">    54  </span>			assert.Equal(t, Usecase, actual.layer)
-<span id="L55" class="ln">    55  </span>			require.NotNil(t, actual.tracer)
+<span id="L55" class="ln">    55  </span>			assert.NotNil(t, actual.tracer)
 <span id="L56" class="ln">    56  </span>		})
 <span id="L57" class="ln">    57  </span>	})
 <span id="L58" class="ln">    58  </span>}
@@ -124,7 +124,7 @@
 <span id="L67" class="ln">    67  </span>			t.Parallel()
 <span id="L68" class="ln">    68  </span>			actual := NewMockInfraLayerTracer(t)
 <span id="L69" class="ln">    69  </span>			assert.Equal(t, Infra, actual.layer)
-<span id="L70" class="ln">    70  </span>			require.NotNil(t, actual.tracer)
+<span id="L70" class="ln">    70  </span>			assert.NotNil(t, actual.tracer)
 <span id="L71" class="ln">    71  </span>		})
 <span id="L72" class="ln">    72  </span>	})
 <span id="L73" class="ln">    73  </span>}
@@ -140,12 +140,12 @@
 <span id="L83" class="ln">    83  </span>			actual := NewNoopLayerTracer(t)
 <span id="L84" class="ln">    84  </span>			assert.Equal(t, layer, actual.layer)
 <span id="L85" class="ln">    85  </span>			assert.Equal(t, pkg, actual.pkgName)
-<span id="L86" class="ln">    86  </span>			require.NotNil(t, actual.tracer)
+<span id="L86" class="ln">    86  </span>			assert.NotNil(t, actual.tracer)
 <span id="L87" class="ln">    87  </span>		})
 <span id="L88" class="ln">    88  </span>	})
 <span id="L89" class="ln">    89  </span>}
 <span id="L90" class="ln">    90  </span>
-<span id="L91" class="ln">    91  </span>func TestNewNoopSpanContext(t *testing.T) {
+<span id="L91" class="ln">    91  </span>func TestNewStubSpanContext(t *testing.T) {
 <span id="L92" class="ln">    92  </span>	t.Parallel()
 <span id="L93" class="ln">    93  </span>
 <span id="L94" class="ln">    94  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {

@@ -197,33 +197,33 @@
 <span id="L140" class="ln">   140  </span>			assert.Equal(t, statusSuccess, got.Status)
 <span id="L141" class="ln">   141  </span>			assert.Empty(t, got.ErrorClass)
 <span id="L142" class="ln">   142  </span>		})
-<span id="L143" class="ln">   143  </span>	})
-<span id="L144" class="ln">   144  </span>
-<span id="L145" class="ln">   145  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L146" class="ln">   146  </span>		t.Parallel()
-<span id="L147" class="ln">   147  </span>
-<span id="L148" class="ln">   148  </span>		t.Run(&#34;失敗時はstatus=errorでerror_classが入る&#34;, func(t *testing.T) {
-<span id="L149" class="ln">   149  </span>			t.Parallel()
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>		t.Run(&#34;ラベルにSQL本文やbind値を含めない&#34;, func(t *testing.T) {
+<span id="L145" class="ln">   145  </span>			t.Parallel()
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>			ctx := WithQueryName(context.Background(), &#34;user.find_by_email&#34;)
+<span id="L148" class="ln">   148  </span>			sql := &#34;SELECT id FROM users WHERE email = $1&#34;
+<span id="L149" class="ln">   149  </span>			got := buildQueryAttrs(ctx, sql, time.Millisecond, nil)
 <span id="L150" class="ln">   150  </span>
-<span id="L151" class="ln">   151  </span>			got := buildQueryAttrs(context.Background(), &#34;INSERT INTO users&#34;, time.Millisecond, &amp;pgconn.PgError{Code: &#34;23505&#34;})
-<span id="L152" class="ln">   152  </span>
-<span id="L153" class="ln">   153  </span>			assert.Equal(t, operationInsert, got.Operation)
-<span id="L154" class="ln">   154  </span>			assert.Equal(t, statusError, got.Status)
-<span id="L155" class="ln">   155  </span>			assert.Equal(t, errorClassConstraint, got.ErrorClass)
+<span id="L151" class="ln">   151  </span>			<span class="comment">// operation / query_name は固定 enum / 明示名のみで、SQL 本文や bind 値は混入しない。</span>
+<span id="L152" class="ln">   152  </span>			assert.NotContains(t, got.Operation, &#34;users&#34;)
+<span id="L153" class="ln">   153  </span>			assert.NotContains(t, got.Operation, &#34;email&#34;)
+<span id="L154" class="ln">   154  </span>			assert.NotContains(t, got.QueryName, &#34;SELECT&#34;)
+<span id="L155" class="ln">   155  </span>			assert.Equal(t, operationSelect, got.Operation)
 <span id="L156" class="ln">   156  </span>		})
-<span id="L157" class="ln">   157  </span>
-<span id="L158" class="ln">   158  </span>		t.Run(&#34;ラベルにSQL本文やbind値を含めない&#34;, func(t *testing.T) {
-<span id="L159" class="ln">   159  </span>			t.Parallel()
-<span id="L160" class="ln">   160  </span>
-<span id="L161" class="ln">   161  </span>			ctx := WithQueryName(context.Background(), &#34;user.find_by_email&#34;)
-<span id="L162" class="ln">   162  </span>			sql := &#34;SELECT id FROM users WHERE email = $1&#34;
-<span id="L163" class="ln">   163  </span>			got := buildQueryAttrs(ctx, sql, time.Millisecond, nil)
+<span id="L157" class="ln">   157  </span>	})
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>		t.Parallel()
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>		t.Run(&#34;失敗時はstatus=errorでerror_classが入る&#34;, func(t *testing.T) {
+<span id="L163" class="ln">   163  </span>			t.Parallel()
 <span id="L164" class="ln">   164  </span>
-<span id="L165" class="ln">   165  </span>			<span class="comment">// operation / query_name は固定 enum / 明示名のみで、SQL 本文や bind 値は混入しない。</span>
-<span id="L166" class="ln">   166  </span>			assert.NotContains(t, got.Operation, &#34;users&#34;)
-<span id="L167" class="ln">   167  </span>			assert.NotContains(t, got.Operation, &#34;email&#34;)
-<span id="L168" class="ln">   168  </span>			assert.NotContains(t, got.QueryName, &#34;SELECT&#34;)
-<span id="L169" class="ln">   169  </span>			assert.Equal(t, operationSelect, got.Operation)
+<span id="L165" class="ln">   165  </span>			got := buildQueryAttrs(context.Background(), &#34;INSERT INTO users&#34;, time.Millisecond, &amp;pgconn.PgError{Code: &#34;23505&#34;})
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span>			assert.Equal(t, operationInsert, got.Operation)
+<span id="L168" class="ln">   168  </span>			assert.Equal(t, statusError, got.Status)
+<span id="L169" class="ln">   169  </span>			assert.Equal(t, errorClassConstraint, got.ErrorClass)
 <span id="L170" class="ln">   170  </span>		})
 <span id="L171" class="ln">   171  </span>	})
 <span id="L172" class="ln">   172  </span>}

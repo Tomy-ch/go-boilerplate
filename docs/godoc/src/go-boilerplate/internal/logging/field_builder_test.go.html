@@ -81,7 +81,7 @@
 <span id="L24" class="ln">    24  </span>			osCfg := config.NewOperatingSystemConfig(cfg)
 <span id="L25" class="ln">    25  </span>
 <span id="L26" class="ln">    26  </span>			lf := NewLogFields(obsCfg, osCfg)
-<span id="L27" class="ln">    27  </span>			require.NotNil(t, lf)
+<span id="L27" class="ln">    27  </span>			assert.NotNil(t, lf)
 <span id="L28" class="ln">    28  </span>		})
 <span id="L29" class="ln">    29  </span>	})
 <span id="L30" class="ln">    30  </span>}
@@ -361,88 +361,149 @@
 <span id="L304" class="ln">   304  </span>
 <span id="L305" class="ln">   305  </span>			assert.Equal(t, expected, lf.BuildSQLEndFields(s))
 <span id="L306" class="ln">   306  </span>		})
-<span id="L307" class="ln">   307  </span>	})
-<span id="L308" class="ln">   308  </span>}
-<span id="L309" class="ln">   309  </span>
-<span id="L310" class="ln">   310  </span>func Test_appendTraceSpanFields(t *testing.T) {
-<span id="L311" class="ln">   311  </span>	t.Parallel()
-<span id="L312" class="ln">   312  </span>
-<span id="L313" class="ln">   313  </span>	cfg := config.MockConfigForTest(t)
-<span id="L314" class="ln">   314  </span>	obsCfg := config.NewObservabilityConfig(cfg)
-<span id="L315" class="ln">   315  </span>	osCfg := config.NewOperatingSystemConfig(cfg)
-<span id="L316" class="ln">   316  </span>	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
-<span id="L317" class="ln">   317  </span>	require.True(t, ok)
-<span id="L318" class="ln">   318  </span>
-<span id="L319" class="ln">   319  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L320" class="ln">   320  </span>		t.Parallel()
+<span id="L307" class="ln">   307  </span>
+<span id="L308" class="ln">   308  </span>		t.Run(&#34;引数のみ有りエラー無しの場合、引数件数のみ追加されエラーは追加されない&#34;, func(t *testing.T) {
+<span id="L309" class="ln">   309  </span>			t.Parallel()
+<span id="L310" class="ln">   310  </span>
+<span id="L311" class="ln">   311  </span>			s := SQLFieldsEndInput{
+<span id="L312" class="ln">   312  </span>				EventAt:  time.Now(),
+<span id="L313" class="ln">   313  </span>				Layer:    &#34;layer&#34;,
+<span id="L314" class="ln">   314  </span>				PkgName:  &#34;pkg&#34;,
+<span id="L315" class="ln">   315  </span>				FuncName: &#34;fn&#34;,
+<span id="L316" class="ln">   316  </span>				SpanName: &#34;sn&#34;,
+<span id="L317" class="ln">   317  </span>				Query:    q,
+<span id="L318" class="ln">   318  </span>				Latency:  12 * time.Millisecond,
+<span id="L319" class="ln">   319  </span>				Args:     []any{1, &#34;a&#34;},
+<span id="L320" class="ln">   320  </span>			}
 <span id="L321" class="ln">   321  </span>
-<span id="L322" class="ln">   322  </span>		t.Run(&#34;trace/spanとparentSpanIDが全て無い場合、何も追加しない&#34;, func(t *testing.T) {
-<span id="L323" class="ln">   323  </span>			t.Parallel()
-<span id="L324" class="ln">   324  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
-<span id="L325" class="ln">   325  </span>			got := impl.appendTraceSpanFields(base, &#34;&#34;, &#34;&#34;, &#34;&#34;)
-<span id="L326" class="ln">   326  </span>			assert.Equal(t, base, got)
-<span id="L327" class="ln">   327  </span>		})
-<span id="L328" class="ln">   328  </span>
-<span id="L329" class="ln">   329  </span>		t.Run(&#34;parentSpanIDのみありtrace/span無しの場合、何も追加しない&#34;, func(t *testing.T) {
-<span id="L330" class="ln">   330  </span>			t.Parallel()
-<span id="L331" class="ln">   331  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
-<span id="L332" class="ln">   332  </span>			got := impl.appendTraceSpanFields(base, &#34;&#34;, &#34;&#34;, &#34;c&#34;)
-<span id="L333" class="ln">   333  </span>			assert.Equal(t, base, got)
-<span id="L334" class="ln">   334  </span>		})
-<span id="L335" class="ln">   335  </span>
-<span id="L336" class="ln">   336  </span>		t.Run(&#34;trace/spanのみありparentSpanID無しの場合、trace_idとspan_idのみ追加する&#34;, func(t *testing.T) {
-<span id="L337" class="ln">   337  </span>			t.Parallel()
-<span id="L338" class="ln">   338  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
-<span id="L339" class="ln">   339  </span>			got := impl.appendTraceSpanFields(base, &#34;t-1&#34;, &#34;s-1&#34;, &#34;&#34;)
-<span id="L340" class="ln">   340  </span>			expected := []*Field{
-<span id="L341" class="ln">   341  </span>				String(&#34;a&#34;, &#34;b&#34;),
-<span id="L342" class="ln">   342  </span>				String(TraceIDKey, &#34;t-1&#34;),
-<span id="L343" class="ln">   343  </span>				String(SpanIDKey, &#34;s-1&#34;),
-<span id="L344" class="ln">   344  </span>			}
-<span id="L345" class="ln">   345  </span>			assert.Equal(t, expected, got)
-<span id="L346" class="ln">   346  </span>		})
+<span id="L322" class="ln">   322  </span>			keys := fieldKeys(lf.BuildSQLEndFields(s))
+<span id="L323" class="ln">   323  </span>			assert.Contains(t, keys, QueryArgsCountKey)
+<span id="L324" class="ln">   324  </span>			assert.NotContains(t, keys, InternalErrorKey)
+<span id="L325" class="ln">   325  </span>		})
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span>		t.Run(&#34;エラーのみ有り引数無しの場合、エラーのみ追加され引数件数は追加されない&#34;, func(t *testing.T) {
+<span id="L328" class="ln">   328  </span>			t.Parallel()
+<span id="L329" class="ln">   329  </span>
+<span id="L330" class="ln">   330  </span>			s := SQLFieldsEndInput{
+<span id="L331" class="ln">   331  </span>				EventAt:  time.Now(),
+<span id="L332" class="ln">   332  </span>				Layer:    &#34;layer&#34;,
+<span id="L333" class="ln">   333  </span>				PkgName:  &#34;pkg&#34;,
+<span id="L334" class="ln">   334  </span>				FuncName: &#34;fn&#34;,
+<span id="L335" class="ln">   335  </span>				SpanName: &#34;sn&#34;,
+<span id="L336" class="ln">   336  </span>				Query:    q,
+<span id="L337" class="ln">   337  </span>				Latency:  12 * time.Millisecond,
+<span id="L338" class="ln">   338  </span>				Err:      errors.New(&#34;boom&#34;),
+<span id="L339" class="ln">   339  </span>			}
+<span id="L340" class="ln">   340  </span>
+<span id="L341" class="ln">   341  </span>			keys := fieldKeys(lf.BuildSQLEndFields(s))
+<span id="L342" class="ln">   342  </span>			assert.Contains(t, keys, InternalErrorKey)
+<span id="L343" class="ln">   343  </span>			assert.NotContains(t, keys, QueryArgsCountKey)
+<span id="L344" class="ln">   344  </span>		})
+<span id="L345" class="ln">   345  </span>	})
+<span id="L346" class="ln">   346  </span>}
 <span id="L347" class="ln">   347  </span>
-<span id="L348" class="ln">   348  </span>		t.Run(&#34;trace/spanとparentSpanIDが全てある場合、3つ全て追加する&#34;, func(t *testing.T) {
-<span id="L349" class="ln">   349  </span>			t.Parallel()
-<span id="L350" class="ln">   350  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
-<span id="L351" class="ln">   351  </span>			got := impl.appendTraceSpanFields(base, &#34;t-1&#34;, &#34;s-1&#34;, &#34;p-1&#34;)
-<span id="L352" class="ln">   352  </span>			expected := []*Field{
-<span id="L353" class="ln">   353  </span>				String(&#34;a&#34;, &#34;b&#34;),
-<span id="L354" class="ln">   354  </span>				String(TraceIDKey, &#34;t-1&#34;),
-<span id="L355" class="ln">   355  </span>				String(SpanIDKey, &#34;s-1&#34;),
-<span id="L356" class="ln">   356  </span>				String(ParentSpanIDKey, &#34;p-1&#34;),
-<span id="L357" class="ln">   357  </span>			}
-<span id="L358" class="ln">   358  </span>			assert.Equal(t, expected, got)
-<span id="L359" class="ln">   359  </span>		})
-<span id="L360" class="ln">   360  </span>	})
-<span id="L361" class="ln">   361  </span>}
-<span id="L362" class="ln">   362  </span>
-<span id="L363" class="ln">   363  </span>func Test_buildCompactQuery(t *testing.T) {
-<span id="L364" class="ln">   364  </span>	t.Parallel()
+<span id="L348" class="ln">   348  </span><span class="comment">// fieldKeys は、Field スライスからキー文字列の一覧を抽出するテストヘルパーです。</span>
+<span id="L349" class="ln">   349  </span>func fieldKeys(fs []*Field) []string {
+<span id="L350" class="ln">   350  </span>	keys := make([]string, 0, len(fs))
+<span id="L351" class="ln">   351  </span>	for _, f := range fs {
+<span id="L352" class="ln">   352  </span>		keys = append(keys, f.key)
+<span id="L353" class="ln">   353  </span>	}
+<span id="L354" class="ln">   354  </span>	return keys
+<span id="L355" class="ln">   355  </span>}
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>func Test_appendTraceSpanFields(t *testing.T) {
+<span id="L358" class="ln">   358  </span>	t.Parallel()
+<span id="L359" class="ln">   359  </span>
+<span id="L360" class="ln">   360  </span>	cfg := config.MockConfigForTest(t)
+<span id="L361" class="ln">   361  </span>	obsCfg := config.NewObservabilityConfig(cfg)
+<span id="L362" class="ln">   362  </span>	osCfg := config.NewOperatingSystemConfig(cfg)
+<span id="L363" class="ln">   363  </span>	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+<span id="L364" class="ln">   364  </span>	require.True(t, ok)
 <span id="L365" class="ln">   365  </span>
-<span id="L366" class="ln">   366  </span>	cfg := config.MockConfigForTest(t)
-<span id="L367" class="ln">   367  </span>	obsCfg := config.NewObservabilityConfig(cfg)
-<span id="L368" class="ln">   368  </span>	osCfg := config.NewOperatingSystemConfig(cfg)
-<span id="L369" class="ln">   369  </span>	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
-<span id="L370" class="ln">   370  </span>	require.True(t, ok)
-<span id="L371" class="ln">   371  </span>
-<span id="L372" class="ln">   372  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L373" class="ln">   373  </span>		t.Parallel()
-<span id="L374" class="ln">   374  </span>
-<span id="L375" class="ln">   375  </span>		t.Run(&#34;改行/タブ/余白を詰める&#34;, func(t *testing.T) {
-<span id="L376" class="ln">   376  </span>			t.Parallel()
-<span id="L377" class="ln">   377  </span>			q := &#34;SELECT  a,\n\t b  FROM\n table\tWHERE  x = 1&#34;
-<span id="L378" class="ln">   378  </span>			got := impl.buildCompactQuery(q)
-<span id="L379" class="ln">   379  </span>			assert.Equal(t, &#34;SELECT a, b FROM table WHERE x = 1&#34;, got)
-<span id="L380" class="ln">   380  </span>		})
-<span id="L381" class="ln">   381  </span>
-<span id="L382" class="ln">   382  </span>		t.Run(&#34;空文字は空を返す&#34;, func(t *testing.T) {
-<span id="L383" class="ln">   383  </span>			t.Parallel()
-<span id="L384" class="ln">   384  </span>			require.Empty(t, impl.buildCompactQuery(&#34;&#34;))
-<span id="L385" class="ln">   385  </span>		})
-<span id="L386" class="ln">   386  </span>	})
-<span id="L387" class="ln">   387  </span>}
-<span id="L388" class="ln">   388  </span>
+<span id="L366" class="ln">   366  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L367" class="ln">   367  </span>		t.Parallel()
+<span id="L368" class="ln">   368  </span>
+<span id="L369" class="ln">   369  </span>		t.Run(&#34;trace/spanとparentSpanIDが全て無い場合、何も追加しない&#34;, func(t *testing.T) {
+<span id="L370" class="ln">   370  </span>			t.Parallel()
+<span id="L371" class="ln">   371  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
+<span id="L372" class="ln">   372  </span>			got := impl.appendTraceSpanFields(base, &#34;&#34;, &#34;&#34;, &#34;&#34;)
+<span id="L373" class="ln">   373  </span>			assert.Equal(t, base, got)
+<span id="L374" class="ln">   374  </span>		})
+<span id="L375" class="ln">   375  </span>
+<span id="L376" class="ln">   376  </span>		t.Run(&#34;parentSpanIDのみありtrace/span無しの場合、何も追加しない&#34;, func(t *testing.T) {
+<span id="L377" class="ln">   377  </span>			t.Parallel()
+<span id="L378" class="ln">   378  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
+<span id="L379" class="ln">   379  </span>			got := impl.appendTraceSpanFields(base, &#34;&#34;, &#34;&#34;, &#34;c&#34;)
+<span id="L380" class="ln">   380  </span>			assert.Equal(t, base, got)
+<span id="L381" class="ln">   381  </span>		})
+<span id="L382" class="ln">   382  </span>
+<span id="L383" class="ln">   383  </span>		t.Run(&#34;traceIDのみありspanID無しの場合、何も追加しない&#34;, func(t *testing.T) {
+<span id="L384" class="ln">   384  </span>			t.Parallel()
+<span id="L385" class="ln">   385  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
+<span id="L386" class="ln">   386  </span>			got := impl.appendTraceSpanFields(base, &#34;t-1&#34;, &#34;&#34;, &#34;&#34;)
+<span id="L387" class="ln">   387  </span>			assert.Equal(t, base, got)
+<span id="L388" class="ln">   388  </span>		})
+<span id="L389" class="ln">   389  </span>
+<span id="L390" class="ln">   390  </span>		t.Run(&#34;spanIDのみありtraceID無しの場合、何も追加しない&#34;, func(t *testing.T) {
+<span id="L391" class="ln">   391  </span>			t.Parallel()
+<span id="L392" class="ln">   392  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
+<span id="L393" class="ln">   393  </span>			got := impl.appendTraceSpanFields(base, &#34;&#34;, &#34;s-1&#34;, &#34;&#34;)
+<span id="L394" class="ln">   394  </span>			assert.Equal(t, base, got)
+<span id="L395" class="ln">   395  </span>		})
+<span id="L396" class="ln">   396  </span>
+<span id="L397" class="ln">   397  </span>		t.Run(&#34;trace/spanのみありparentSpanID無しの場合、trace_idとspan_idのみ追加する&#34;, func(t *testing.T) {
+<span id="L398" class="ln">   398  </span>			t.Parallel()
+<span id="L399" class="ln">   399  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
+<span id="L400" class="ln">   400  </span>			got := impl.appendTraceSpanFields(base, &#34;t-1&#34;, &#34;s-1&#34;, &#34;&#34;)
+<span id="L401" class="ln">   401  </span>			expected := []*Field{
+<span id="L402" class="ln">   402  </span>				String(&#34;a&#34;, &#34;b&#34;),
+<span id="L403" class="ln">   403  </span>				String(TraceIDKey, &#34;t-1&#34;),
+<span id="L404" class="ln">   404  </span>				String(SpanIDKey, &#34;s-1&#34;),
+<span id="L405" class="ln">   405  </span>			}
+<span id="L406" class="ln">   406  </span>			assert.Equal(t, expected, got)
+<span id="L407" class="ln">   407  </span>		})
+<span id="L408" class="ln">   408  </span>
+<span id="L409" class="ln">   409  </span>		t.Run(&#34;trace/spanとparentSpanIDが全てある場合、3つ全て追加する&#34;, func(t *testing.T) {
+<span id="L410" class="ln">   410  </span>			t.Parallel()
+<span id="L411" class="ln">   411  </span>			base := []*Field{String(&#34;a&#34;, &#34;b&#34;)}
+<span id="L412" class="ln">   412  </span>			got := impl.appendTraceSpanFields(base, &#34;t-1&#34;, &#34;s-1&#34;, &#34;p-1&#34;)
+<span id="L413" class="ln">   413  </span>			expected := []*Field{
+<span id="L414" class="ln">   414  </span>				String(&#34;a&#34;, &#34;b&#34;),
+<span id="L415" class="ln">   415  </span>				String(TraceIDKey, &#34;t-1&#34;),
+<span id="L416" class="ln">   416  </span>				String(SpanIDKey, &#34;s-1&#34;),
+<span id="L417" class="ln">   417  </span>				String(ParentSpanIDKey, &#34;p-1&#34;),
+<span id="L418" class="ln">   418  </span>			}
+<span id="L419" class="ln">   419  </span>			assert.Equal(t, expected, got)
+<span id="L420" class="ln">   420  </span>		})
+<span id="L421" class="ln">   421  </span>	})
+<span id="L422" class="ln">   422  </span>}
+<span id="L423" class="ln">   423  </span>
+<span id="L424" class="ln">   424  </span>func Test_buildCompactQuery(t *testing.T) {
+<span id="L425" class="ln">   425  </span>	t.Parallel()
+<span id="L426" class="ln">   426  </span>
+<span id="L427" class="ln">   427  </span>	cfg := config.MockConfigForTest(t)
+<span id="L428" class="ln">   428  </span>	obsCfg := config.NewObservabilityConfig(cfg)
+<span id="L429" class="ln">   429  </span>	osCfg := config.NewOperatingSystemConfig(cfg)
+<span id="L430" class="ln">   430  </span>	impl, ok := NewLogFields(obsCfg, osCfg).(*logFieldBuilder)
+<span id="L431" class="ln">   431  </span>	require.True(t, ok)
+<span id="L432" class="ln">   432  </span>
+<span id="L433" class="ln">   433  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L434" class="ln">   434  </span>		t.Parallel()
+<span id="L435" class="ln">   435  </span>
+<span id="L436" class="ln">   436  </span>		t.Run(&#34;改行/タブ/余白を詰める&#34;, func(t *testing.T) {
+<span id="L437" class="ln">   437  </span>			t.Parallel()
+<span id="L438" class="ln">   438  </span>			q := &#34;SELECT  a,\n\t b  FROM\n table\tWHERE  x = 1&#34;
+<span id="L439" class="ln">   439  </span>			got := impl.buildCompactQuery(q)
+<span id="L440" class="ln">   440  </span>			assert.Equal(t, &#34;SELECT a, b FROM table WHERE x = 1&#34;, got)
+<span id="L441" class="ln">   441  </span>		})
+<span id="L442" class="ln">   442  </span>
+<span id="L443" class="ln">   443  </span>		t.Run(&#34;空文字は空を返す&#34;, func(t *testing.T) {
+<span id="L444" class="ln">   444  </span>			t.Parallel()
+<span id="L445" class="ln">   445  </span>			assert.Empty(t, impl.buildCompactQuery(&#34;&#34;))
+<span id="L446" class="ln">   446  </span>		})
+<span id="L447" class="ln">   447  </span>	})
+<span id="L448" class="ln">   448  </span>}
+<span id="L449" class="ln">   449  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/logging/field_builder_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

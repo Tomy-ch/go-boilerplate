@@ -226,53 +226,112 @@
 <span id="L169" class="ln">   169  </span>`
 <span id="L170" class="ln">   170  </span>			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(expected)))
 <span id="L171" class="ln">   171  </span>		})
-<span id="L172" class="ln">   172  </span>	})
-<span id="L173" class="ln">   173  </span>}
-<span id="L174" class="ln">   174  </span>
-<span id="L175" class="ln">   175  </span>func Test_RegisterStatsCollector(t *testing.T) {
-<span id="L176" class="ln">   176  </span>	t.Parallel()
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L179" class="ln">   179  </span>		t.Parallel()
-<span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span>		t.Run(&#34;収集器を登録できる&#34;, func(t *testing.T) {
-<span id="L182" class="ln">   182  </span>			t.Parallel()
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>		t.Run(&#34;複数 target 混在で 1 つの失敗が他 target の収集を妨げない&#34;, func(t *testing.T) {
+<span id="L174" class="ln">   174  </span>			t.Parallel()
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>			ctrl := gomock.NewController(t)
+<span id="L177" class="ln">   177  </span>			okProvider := mock_worker.NewMockQueueStatsProvider(ctrl)
+<span id="L178" class="ln">   178  </span>			okProvider.EXPECT().QueueStats(gomock.Any()).Return(worker.QueueStats{
+<span id="L179" class="ln">   179  </span>				Source: worker.QueueDepth{Visible: 7},
+<span id="L180" class="ln">   180  </span>			}, nil)
+<span id="L181" class="ln">   181  </span>			ngProvider := mock_worker.NewMockQueueStatsProvider(ctrl)
+<span id="L182" class="ln">   182  </span>			ngProvider.EXPECT().QueueStats(gomock.Any()).Return(worker.QueueStats{}, assert.AnError)
 <span id="L183" class="ln">   183  </span>
-<span id="L184" class="ln">   184  </span>			c := queuemetrics.NewStatsCollector(nil)
-<span id="L185" class="ln">   185  </span>			reg := prometheus.NewRegistry()
-<span id="L186" class="ln">   186  </span>
-<span id="L187" class="ln">   187  </span>			require.NoError(t, queuemetrics.RegisterStatsCollector(reg, c))
-<span id="L188" class="ln">   188  </span>		})
+<span id="L184" class="ln">   184  </span>			<span class="comment">// target A(成功) の後に target B(失敗) を置き、B の失敗が A の depth 出力を妨げないことを確認する。</span>
+<span id="L185" class="ln">   185  </span>			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
+<span id="L186" class="ln">   186  </span>				{WorkerName: &#34;a&#34;, Adapter: &#34;sqs&#34;, Provider: okProvider},
+<span id="L187" class="ln">   187  </span>				{WorkerName: &#34;b&#34;, Adapter: &#34;sqs&#34;, Provider: ngProvider},
+<span id="L188" class="ln">   188  </span>			})
 <span id="L189" class="ln">   189  </span>
-<span id="L190" class="ln">   190  </span>		t.Run(&#34;二重登録はエラーにせず無視する&#34;, func(t *testing.T) {
-<span id="L191" class="ln">   191  </span>			t.Parallel()
-<span id="L192" class="ln">   192  </span>
-<span id="L193" class="ln">   193  </span>			c := queuemetrics.NewStatsCollector(nil)
-<span id="L194" class="ln">   194  </span>			reg := prometheus.NewRegistry()
-<span id="L195" class="ln">   195  </span>
-<span id="L196" class="ln">   196  </span>			require.NoError(t, queuemetrics.RegisterStatsCollector(reg, c))
-<span id="L197" class="ln">   197  </span>			require.NoError(t, queuemetrics.RegisterStatsCollector(reg, c))
-<span id="L198" class="ln">   198  </span>		})
-<span id="L199" class="ln">   199  </span>	})
-<span id="L200" class="ln">   200  </span>
-<span id="L201" class="ln">   201  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L202" class="ln">   202  </span>		t.Parallel()
+<span id="L190" class="ln">   190  </span>			expected := `
+<span id="L191" class="ln">   191  </span># HELP worker_queue_depth Approximate number of messages in the queue by state. SQS values are approximate.
+<span id="L192" class="ln">   192  </span># TYPE worker_queue_depth gauge
+<span id="L193" class="ln">   193  </span>worker_queue_depth{adapter=&#34;sqs&#34;,queue=&#34;source&#34;,state=&#34;visible&#34;,worker=&#34;a&#34;} 7
+<span id="L194" class="ln">   194  </span>worker_queue_depth{adapter=&#34;sqs&#34;,queue=&#34;source&#34;,state=&#34;not_visible&#34;,worker=&#34;a&#34;} 0
+<span id="L195" class="ln">   195  </span>worker_queue_depth{adapter=&#34;sqs&#34;,queue=&#34;source&#34;,state=&#34;delayed&#34;,worker=&#34;a&#34;} 0
+<span id="L196" class="ln">   196  </span># HELP worker_queue_stats_collection_failures_total Total number of queue stats collection failures.
+<span id="L197" class="ln">   197  </span># TYPE worker_queue_stats_collection_failures_total counter
+<span id="L198" class="ln">   198  </span>worker_queue_stats_collection_failures_total{adapter=&#34;sqs&#34;,queue=&#34;unknown&#34;,worker=&#34;b&#34;} 1
+<span id="L199" class="ln">   199  </span>`
+<span id="L200" class="ln">   200  </span>			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(expected),
+<span id="L201" class="ln">   201  </span>				&#34;worker_queue_depth&#34;, &#34;worker_queue_stats_collection_failures_total&#34;))
+<span id="L202" class="ln">   202  </span>		})
 <span id="L203" class="ln">   203  </span>
-<span id="L204" class="ln">   204  </span>		t.Run(&#34;同名で label 構成が異なるメトリクスが登録済みならエラーを返す&#34;, func(t *testing.T) {
+<span id="L204" class="ln">   204  </span>		t.Run(&#34;収集失敗 counter は複数回の Collect で累積する&#34;, func(t *testing.T) {
 <span id="L205" class="ln">   205  </span>			t.Parallel()
 <span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>			reg := prometheus.NewRegistry()
-<span id="L208" class="ln">   208  </span>			<span class="comment">// worker_queue_depth と同名だが label 次元が異なる収集器を先に登録し、衝突させる。</span>
-<span id="L209" class="ln">   209  </span>			require.NoError(t, reg.Register(conflictingCollector{
-<span id="L210" class="ln">   210  </span>				desc: prometheus.NewDesc(&#34;worker_queue_depth&#34;, &#34;conflict&#34;, []string{&#34;different&#34;}, nil),
-<span id="L211" class="ln">   211  </span>			}))
-<span id="L212" class="ln">   212  </span>
-<span id="L213" class="ln">   213  </span>			err := queuemetrics.RegisterStatsCollector(reg, queuemetrics.NewStatsCollector(nil))
-<span id="L214" class="ln">   214  </span>			require.Error(t, err)
-<span id="L215" class="ln">   215  </span>		})
-<span id="L216" class="ln">   216  </span>	})
-<span id="L217" class="ln">   217  </span>}
-<span id="L218" class="ln">   218  </span>
+<span id="L207" class="ln">   207  </span>			ctrl := gomock.NewController(t)
+<span id="L208" class="ln">   208  </span>			provider := mock_worker.NewMockQueueStatsProvider(ctrl)
+<span id="L209" class="ln">   209  </span>			provider.EXPECT().QueueStats(gomock.Any()).Return(worker.QueueStats{}, assert.AnError).Times(2)
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
+<span id="L212" class="ln">   212  </span>				{WorkerName: &#34;w&#34;, Adapter: &#34;sqs&#34;, Provider: provider},
+<span id="L213" class="ln">   213  </span>			})
+<span id="L214" class="ln">   214  </span>
+<span id="L215" class="ln">   215  </span>			<span class="comment">// 1 回目の Collect 後は失敗回数が 1。</span>
+<span id="L216" class="ln">   216  </span>			first := `
+<span id="L217" class="ln">   217  </span># HELP worker_queue_stats_collection_failures_total Total number of queue stats collection failures.
+<span id="L218" class="ln">   218  </span># TYPE worker_queue_stats_collection_failures_total counter
+<span id="L219" class="ln">   219  </span>worker_queue_stats_collection_failures_total{adapter=&#34;sqs&#34;,queue=&#34;unknown&#34;,worker=&#34;w&#34;} 1
+<span id="L220" class="ln">   220  </span>`
+<span id="L221" class="ln">   221  </span>			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(first)))
+<span id="L222" class="ln">   222  </span>
+<span id="L223" class="ln">   223  </span>			<span class="comment">// 2 回目の Collect 後は累積して 2 になる。</span>
+<span id="L224" class="ln">   224  </span>			second := `
+<span id="L225" class="ln">   225  </span># HELP worker_queue_stats_collection_failures_total Total number of queue stats collection failures.
+<span id="L226" class="ln">   226  </span># TYPE worker_queue_stats_collection_failures_total counter
+<span id="L227" class="ln">   227  </span>worker_queue_stats_collection_failures_total{adapter=&#34;sqs&#34;,queue=&#34;unknown&#34;,worker=&#34;w&#34;} 2
+<span id="L228" class="ln">   228  </span>`
+<span id="L229" class="ln">   229  </span>			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(second)))
+<span id="L230" class="ln">   230  </span>		})
+<span id="L231" class="ln">   231  </span>	})
+<span id="L232" class="ln">   232  </span>}
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span>func Test_RegisterStatsCollector(t *testing.T) {
+<span id="L235" class="ln">   235  </span>	t.Parallel()
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L238" class="ln">   238  </span>		t.Parallel()
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span>		t.Run(&#34;収集器を登録できる&#34;, func(t *testing.T) {
+<span id="L241" class="ln">   241  </span>			t.Parallel()
+<span id="L242" class="ln">   242  </span>
+<span id="L243" class="ln">   243  </span>			c := queuemetrics.NewStatsCollector(nil)
+<span id="L244" class="ln">   244  </span>			reg := prometheus.NewRegistry()
+<span id="L245" class="ln">   245  </span>
+<span id="L246" class="ln">   246  </span>			require.NoError(t, queuemetrics.RegisterStatsCollector(reg, c))
+<span id="L247" class="ln">   247  </span>		})
+<span id="L248" class="ln">   248  </span>
+<span id="L249" class="ln">   249  </span>		t.Run(&#34;二重登録はエラーにせず無視する&#34;, func(t *testing.T) {
+<span id="L250" class="ln">   250  </span>			t.Parallel()
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>			c := queuemetrics.NewStatsCollector(nil)
+<span id="L253" class="ln">   253  </span>			reg := prometheus.NewRegistry()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>			require.NoError(t, queuemetrics.RegisterStatsCollector(reg, c))
+<span id="L256" class="ln">   256  </span>			require.NoError(t, queuemetrics.RegisterStatsCollector(reg, c))
+<span id="L257" class="ln">   257  </span>		})
+<span id="L258" class="ln">   258  </span>	})
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L261" class="ln">   261  </span>		t.Parallel()
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span>		t.Run(&#34;同名で label 構成が異なるメトリクスが登録済みならエラーを返す&#34;, func(t *testing.T) {
+<span id="L264" class="ln">   264  </span>			t.Parallel()
+<span id="L265" class="ln">   265  </span>
+<span id="L266" class="ln">   266  </span>			reg := prometheus.NewRegistry()
+<span id="L267" class="ln">   267  </span>			<span class="comment">// worker_queue_depth と同名だが label 次元が異なる収集器を先に登録し、衝突させる。</span>
+<span id="L268" class="ln">   268  </span>			require.NoError(t, reg.Register(conflictingCollector{
+<span id="L269" class="ln">   269  </span>				desc: prometheus.NewDesc(&#34;worker_queue_depth&#34;, &#34;conflict&#34;, []string{&#34;different&#34;}, nil),
+<span id="L270" class="ln">   270  </span>			}))
+<span id="L271" class="ln">   271  </span>
+<span id="L272" class="ln">   272  </span>			err := queuemetrics.RegisterStatsCollector(reg, queuemetrics.NewStatsCollector(nil))
+<span id="L273" class="ln">   273  </span>			require.Error(t, err)
+<span id="L274" class="ln">   274  </span>		})
+<span id="L275" class="ln">   275  </span>	})
+<span id="L276" class="ln">   276  </span>}
+<span id="L277" class="ln">   277  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/observability/metrics/queue/collector_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
