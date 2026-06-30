@@ -59,8 +59,9 @@ func TestIsRetryableOutcome(t *testing.T) {
 			"429は対象":       {resp: &Response{StatusCode: 429}, err: apperror.ErrTooManyRequests, want: true},
 			"404は対象外":      {resp: &Response{StatusCode: 404}, err: apperror.ErrNotFound, want: false},
 			"400は対象外":      {resp: &Response{StatusCode: 400}, err: apperror.ErrInvalidArgument, want: false},
-			"応答未取得のtransport失敗(ErrUnavailable)は対象":  {resp: nil, err: xerrors.Wrap(apperror.ErrUnavailable, "dial error"), want: true},
-			"応答未取得でもErrInvalidArgument(不正URL等)は対象外": {resp: nil, err: xerrors.Wrap(apperror.ErrInvalidArgument, "bad url"), want: false},
+			"応答未取得のtransport失敗(ErrUnavailable)は対象":    {resp: nil, err: xerrors.Wrap(apperror.ErrUnavailable, "dial error"), want: true},
+			"応答未取得でもErrInvalidArgument(不正URL等)は対象外":   {resp: nil, err: xerrors.Wrap(apperror.ErrInvalidArgument, "bad url"), want: false},
+			"応答未取得のcircuit_open(ErrUnavailable内包)は対象": {resp: nil, err: errCircuitOpen, want: true},
 		}
 
 		for name, tc := range cases {
@@ -119,6 +120,8 @@ func TestRetryWait(t *testing.T) {
 		MaxBackoff:  time.Second,
 	}
 
+	now := time.Unix(1000, 0).UTC()
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -127,7 +130,7 @@ func TestRetryWait(t *testing.T) {
 
 			// jitter があるため複数回試行し attempt1 の cap 範囲に収まることを確認する。
 			for range 50 {
-				got := retryWait(1, profile, nil)
+				got := retryWait(1, profile, nil, now)
 				assert.GreaterOrEqual(t, got, time.Duration(0))
 				assert.LessOrEqual(t, got, profile.BaseBackoff)
 			}
@@ -138,7 +141,7 @@ func TestRetryWait(t *testing.T) {
 
 			resp := &Response{StatusCode: 503, Header: Header{}}
 			for range 50 {
-				got := retryWait(1, profile, resp)
+				got := retryWait(1, profile, resp, now)
 				assert.GreaterOrEqual(t, got, time.Duration(0))
 				assert.LessOrEqual(t, got, profile.BaseBackoff)
 			}
@@ -148,8 +151,17 @@ func TestRetryWait(t *testing.T) {
 			t.Parallel()
 
 			resp := &Response{StatusCode: 503, Header: Header{retryAfterHeader: {"5"}}}
-			got := retryWait(1, profile, resp)
+			got := retryWait(1, profile, resp, now)
 			assert.Equal(t, 5*time.Second, got) // バックオフ(<=10ms)ではなく Retry-After(5s)
+		})
+
+		t.Run("HTTP-date形式のRetry-Afterは固定時刻との差分を待機時間とする", func(t *testing.T) {
+			t.Parallel()
+
+			future := now.Add(7 * time.Second).Format(http.TimeFormat)
+			resp := &Response{StatusCode: 503, Header: Header{retryAfterHeader: {future}}}
+			got := retryWait(1, profile, resp, now)
+			assert.Equal(t, 7*time.Second, got) // 渡した now を基準に決定論的に算出する
 		})
 	})
 }

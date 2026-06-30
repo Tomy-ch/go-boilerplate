@@ -58,6 +58,23 @@ func Test_parseEndpoint(t *testing.T) {
 func TestNewEndpoint(t *testing.T) {
 	t.Parallel()
 
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("config の endpoint が有効なら Endpoint を返す", func(t *testing.T) {
+			t.Parallel()
+
+			const raw = "http://localhost:8080/events"
+			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
+			cfg.SetOutboxEndpoint(t, raw)
+
+			got, err := NewEndpoint(cfg)
+
+			require.NoError(t, err)
+			assert.Equal(t, Endpoint(raw), got)
+		})
+	})
+
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 

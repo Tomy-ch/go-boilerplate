@@ -66,6 +66,29 @@ func startEngine(t *testing.T, set Settings, log logging.Logger, w bw.Worker) (c
 func Test_New(t *testing.T) {
 	t.Parallel()
 
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("複数の worker が正常登録され Engine を返す", func(t *testing.T) {
+			t.Parallel()
+
+			noop := handlerFunc(func(context.Context, bw.Message) error { return nil })
+			w1 := testWorker{name: "b", cons: testkit.NewFake(), handler: noop}
+			w2 := testWorker{name: "a", cons: testkit.NewFake(), handler: noop}
+			eng, err := New(
+				[]bw.Worker{w1, w2},
+				baseSettings(),
+				observability.NewNoopTracerFactory(t),
+				observability.NewNoopWorkerMetrics(t),
+				logging.NewTestLogger(t),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, eng)
+			assert.Equal(t, []string{"a", "b"}, eng.Names())
+		})
+	})
+
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -89,6 +112,27 @@ func Test_New(t *testing.T) {
 
 func Test_Engine_Run(t *testing.T) {
 	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ctx が cancel されると nil を返して終了する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			cancel()
+
+			select {
+			case err := <-done:
+				require.NoError(t, err)
+			case <-time.After(eventually):
+				t.Fatal("ctx cancel で engine が終了しなかった")
+			}
+		})
+	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
@@ -181,6 +225,21 @@ func Test_Engine_ExtendHeartbeat(t *testing.T) {
 
 			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
 		})
+
+		t.Run("ExtendInterval が 0 以下の場合は Extend が呼ばれない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			set := baseSettings()
+			set.ExtendInterval = 0
+
+			r := newRun(newTestEngine(t, set, w), w)
+			stop := r.startHeartbeat(context.Background(), bw.Message{ID: "a"})
+			stop()
+
+			assert.Equal(t, 0, f.ExtendCount("a"))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -268,6 +327,7 @@ func Test_Engine_PermanentAndFatal(t *testing.T) {
 				return len(f.Failed()) == 1 && len(f.AckedIDs()) == 1
 			}, eventually, tick)
 			assert.Empty(t, f.NackedIDs())
+			require.ErrorIs(t, f.Failed()[0].Cause, apperror.ErrPermanent)
 		})
 
 		t.Run("Fatal は cancel 無しでも engine を停止させる", func(t *testing.T) {
@@ -316,6 +376,8 @@ func Test_Engine_PanicIsolation(t *testing.T) {
 
 			require.Eventually(t, func() bool { return slices.Contains(f.AckedIDs(), "good") }, eventually, tick)
 			require.Eventually(t, func() bool { return slices.Contains(f.NackedIDs(), "bad") }, eventually, tick)
+			// panic は Retryable に変換され、per-message backoff つき（NackWithBackoff 経由）で再配送される。
+			assert.True(t, f.NackBackoffApplied("bad"), "NackWithBackoff で再配送されること")
 		})
 	})
 }
@@ -534,6 +596,31 @@ func Test_Engine_drain(t *testing.T) {
 				t.Fatal("drain が完了しなかった")
 			}
 			assert.Equal(t, []string{"a"}, f.AckedIDs())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("DrainTimeout を超えて完了しない in-flight は待たずに抜け Ack されない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			set := baseSettings()
+			set.DrainTimeout = 20 * time.Millisecond
+
+			r := newRun(newTestEngine(t, set, w), w)
+			r.wg.Add(1) // 完了しない in-flight を模す
+
+			start := time.Now()
+			r.drain()
+			elapsed := time.Since(start)
+			r.wg.Done() // drain 用 goroutine をリークさせないため後始末
+
+			assert.GreaterOrEqual(t, elapsed, set.DrainTimeout)
+			assert.Less(t, elapsed, eventually)
+			assert.Empty(t, f.AckedIDs())
 		})
 	})
 }

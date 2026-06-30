@@ -298,9 +298,11 @@ func TestClientDoRetry(t *testing.T) {
 			srv, hits := countingServer(t, http.StatusServiceUnavailable)
 			client := newClient(t, retryProfile())
 
-			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotNil(t, resp) // リトライ後 5xx でも resp は非nilで返る契約
+			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 			assert.Equal(t, int32(3), hits.Load())
 		})
 

@@ -72,7 +72,7 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("TracerProviderとMeterProviderをShutdownしエラーを返さない", func(t *testing.T) {
+		t.Run("TracerProvider/MeterProvider/LoggerProviderをShutdownしエラーを返さない", func(t *testing.T) {
 			t.Parallel()
 
 			s := NewProviderShutdowner(
@@ -99,7 +99,7 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 			// tp が失敗しても mp / lp の Shutdown は必ず呼ばれる（Go の引数評価保証）。
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
-			require.ErrorContains(t, err, wantErr.Error())
+			require.ErrorIs(t, err, wantErr)
 		})
 
 		t.Run("MeterProviderのShutdownが失敗した場合は結合エラーとして伝播する", func(t *testing.T) {
@@ -115,7 +115,7 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
-			require.ErrorContains(t, err, wantErr.Error())
+			require.ErrorIs(t, err, wantErr)
 		})
 
 		t.Run("LoggerProviderのShutdownが失敗した場合は結合エラーとして伝播する", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
-			require.ErrorContains(t, err, wantErr.Error())
+			require.ErrorIs(t, err, wantErr)
 		})
 
 		t.Run("全Providerの失敗をerrors.Joinで集約して伝播する", func(t *testing.T) {
@@ -152,9 +152,9 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
 			// errors.Join により tp/mp/lp 全ての Shutdown エラーが 1 つに集約されることを確認する。
-			require.ErrorContains(t, err, tpErr.Error())
-			require.ErrorContains(t, err, mpErr.Error())
-			require.ErrorContains(t, err, lpErr.Error())
+			require.ErrorIs(t, err, tpErr)
+			require.ErrorIs(t, err, mpErr)
+			require.ErrorIs(t, err, lpErr)
 		})
 	})
 }

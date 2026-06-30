@@ -65,6 +65,7 @@ func TestClassifyOperation(t *testing.T) {
 		{name: "不明な先頭トークンはotherに丸める", sql: "EXPLAIN ANALYZE SELECT 1", want: operationOther},
 		{name: "空文字はotherに丸める", sql: "", want: operationOther},
 		{name: "閉じないブロックコメントはotherに丸める", sql: "/* unterminated", want: operationOther},
+		{name: "改行なし行コメントはotherに丸める", sql: "-- only a comment", want: operationOther},
 	}
 
 	t.Run("正常系", func(t *testing.T) {

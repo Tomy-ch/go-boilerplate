@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
@@ -162,6 +163,24 @@ func Test_store_lifecycle(t *testing.T) {
 			})
 		})
 
+		t.Run("DeletePublished は cutoff より新しい published 行が残る場合は0件", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				_, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+				msgs, err := s.ClaimPending(ctx, 10)
+				require.NoError(t, err)
+				require.Len(t, msgs, 1)
+				require.NoError(t, s.MarkPublished(ctx, msgs[0].ID))
+
+				// cutoff を過去に置けば、たった今 published にした行は対象外。
+				deleted, err := s.DeletePublished(ctx, time.Now().Add(-time.Hour), 100)
+				require.NoError(t, err)
+				assert.Equal(t, int64(0), deleted)
+			})
+		})
+
 		t.Run("OldestPendingCreatedAt は pending 有無で ok を返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -195,33 +214,34 @@ func Test_store_lifecycle(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("コンテキストキャンセル時は各操作が DB エラーを返す", func(t *testing.T) {
+		t.Run("キャンセル済みコンテキストでは各操作がErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 
-			_, err := s.Insert(ctx, emitParams())
-			require.Error(t, err)
+			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
+			_, insertErr := s.Insert(ctx, emitParams())
+			require.ErrorIs(t, insertErr, apperror.ErrCanceled)
 
-			_, err = s.ClaimPending(ctx, 10)
-			require.Error(t, err)
+			_, claimErr := s.ClaimPending(ctx, 10)
+			require.ErrorIs(t, claimErr, apperror.ErrCanceled)
 
-			require.Error(t, s.MarkPublished(ctx, 1))
+			require.ErrorIs(t, s.MarkPublished(ctx, 1), apperror.ErrCanceled)
 
-			_, err = s.MarkFailed(ctx, 1, "boom")
-			require.Error(t, err)
+			_, failErr := s.MarkFailed(ctx, 1, "boom")
+			require.ErrorIs(t, failErr, apperror.ErrCanceled)
 
-			require.Error(t, s.MarkDead(ctx, 1))
+			require.ErrorIs(t, s.MarkDead(ctx, 1), apperror.ErrCanceled)
 
-			_, err = s.ReplayDead(ctx, nil)
-			require.Error(t, err)
+			_, replayErr := s.ReplayDead(ctx, nil)
+			require.ErrorIs(t, replayErr, apperror.ErrCanceled)
 
-			_, err = s.DeletePublished(ctx, time.Now(), 1)
-			require.Error(t, err)
+			_, delErr := s.DeletePublished(ctx, time.Now(), 1)
+			require.ErrorIs(t, delErr, apperror.ErrCanceled)
 
-			_, _, err = s.OldestPendingCreatedAt(ctx)
-			require.Error(t, err)
+			_, _, oldestErr := s.OldestPendingCreatedAt(ctx)
+			require.ErrorIs(t, oldestErr, apperror.ErrCanceled)
 		})
 	})
 }

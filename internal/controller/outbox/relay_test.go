@@ -126,7 +126,7 @@ func TestEngine_Run(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
-			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			// エラー時は observeLag に到達しないため lag を記録しない（呼べば未期待呼び出しで失敗する）。
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -137,6 +137,48 @@ func TestEngine_Run(t *testing.T) {
 				})
 
 			// ctx 完了済みのため Sleep は呼ばれない。
+			require.NoError(t, newEngine(t, uc, sleeper).Run(ctx))
+			assert.Equal(t, context.Canceled, ctx.Err())
+		})
+
+		t.Run("RelayBatch 成功後に ctx が完了していれば RecordLag を呼ばず停止する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			// バッチ成功後に ctx 完了済みのため lag は記録しない（呼べば未期待呼び出しで失敗する）。
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).DoAndReturn(
+				func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
+					cancel()
+					return outboxuc.RelayResult{}, nil
+				})
+			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled)
+
+			require.NoError(t, newEngine(t, uc, sleeper).Run(ctx))
+			assert.Equal(t, context.Canceled, ctx.Err())
+		})
+
+		t.Run("待機完了後に次 poll を実行し ctx 完了で停止する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			uc := mock_relay.NewMockRelayUsecase(ctrl)
+			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			sleeper := mock_clock.NewMockSleeper(ctrl)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			gomock.InOrder(
+				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil),
+				// Sleep が nil（待機完了）を返すと待機を抜け、次 poll を実行する。
+				sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(nil),
+				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).DoAndReturn(
+					func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
+						cancel()
+						return outboxuc.RelayResult{}, errors.New("batch failed")
+					}),
+			)
+
 			require.NoError(t, newEngine(t, uc, sleeper).Run(ctx))
 			assert.Equal(t, context.Canceled, ctx.Err())
 		})

@@ -38,10 +38,22 @@ func TestGuardedDialControl(t *testing.T) {
 			// 100.128.0.0 は /10 の外＝グローバル扱いで通ること（過剰ブロック防止）。
 			require.NoError(t, guardedDialControl(deny, "tcp", "100.128.0.1:80", nil))
 		})
+
+		t.Run("IPリテラルでないホスト名は素通しする", func(t *testing.T) {
+			t.Parallel()
+			// ParseIP が nil（未解決ホスト名）なら、実接続先 IP の判定は dial 後に委ねるため素通しする。
+			require.NoError(t, guardedDialControl(deny, "tcp", "example.com:80", nil))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("ポート無しアドレスはSplitHostPortエラーを返す", func(t *testing.T) {
+			t.Parallel()
+			// net.SplitHostPort が失敗するアドレス（ポート区切り無し）はそのままエラーを返す。
+			require.Error(t, guardedDialControl(deny, "tcp", "noport", nil))
+		})
 
 		t.Run("リンクローカル(メタデータ)はフラグに関わらず拒否する", func(t *testing.T) {
 			t.Parallel()

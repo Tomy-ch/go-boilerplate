@@ -34,7 +34,7 @@ func TestNewEndpoint(t *testing.T) {
 
 		t.Run("サンプル既定のEndpointを返す", func(t *testing.T) {
 			t.Parallel()
-			assert.NotEmpty(t, exchangerate.NewEndpoint())
+			assert.Equal(t, exchangerate.Endpoint("https://api.exchangerate.example.com"), exchangerate.NewEndpoint())
 		})
 	})
 }

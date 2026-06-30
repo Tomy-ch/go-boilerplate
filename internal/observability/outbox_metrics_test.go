@@ -6,11 +6,28 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/embedded"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
 	"go-boilerplate/internal/observability"
 )
+
+// failingGaugeMeterProvider は、Int64Gauge 生成に失敗する Meter を返す MeterProvider スタブです。
+// NewOutboxMetrics は最初に Int64Gauge(lag_seconds) を呼ぶため、ここでエラーを注入すれば生成失敗経路を通せます。
+type failingGaugeMeterProvider struct{ embedded.MeterProvider }
+
+// failingGaugeMeter は、Int64Gauge 生成のみエラーを返す Meter スタブです。
+type failingGaugeMeter struct{ metric.Meter }
+
+func (failingGaugeMeterProvider) Meter(string, ...metric.MeterOption) metric.Meter {
+	return failingGaugeMeter{}
+}
+
+func (failingGaugeMeter) Int64Gauge(string, ...metric.Int64GaugeOption) (metric.Int64Gauge, error) {
+	return nil, errMeter
+}
 
 func TestNewOutboxMetrics(t *testing.T) {
 	t.Parallel()
@@ -88,6 +105,19 @@ func TestNewOutboxMetrics(t *testing.T) {
 			require.True(t, ok)
 			require.NotEmpty(t, s.DataPoints)
 			assert.Equal(t, int64(1), s.DataPoints[0].Value)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("計装生成に失敗した場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			om, err := observability.NewOutboxMetrics(failingGaugeMeterProvider{})
+
+			require.ErrorIs(t, err, errMeter)
+			assert.Nil(t, om)
 		})
 	})
 }

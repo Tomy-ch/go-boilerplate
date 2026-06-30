@@ -146,9 +146,10 @@ func TestMiddleware_handle(t *testing.T) {
 			})
 			ec := newEcho("key-abc", true, "user-9")
 
-			_, err := Middleware()(next, "PostUsers")(ec, spyRequest{Name: "alice"})
+			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{Name: "alice"})
 			require.NoError(t, err)
 			require.True(t, called)
+			assert.Equal(t, sentinel, res, "後段の戻り値がそのまま透過されること")
 
 			// middleware は ec.SetRequest で stash 済み。その ctx を Run に渡し Claim の引数を検証する。
 			gotCtx := ec.Request().Context()
@@ -239,6 +240,12 @@ func Test_validateKey(t *testing.T) {
 		t.Run("印字可能ASCIIは通る", func(t *testing.T) {
 			t.Parallel()
 			require.NoError(t, validateKey("Idem-Key_123.~"))
+		})
+
+		t.Run("255文字ちょうどは通る", func(t *testing.T) {
+			t.Parallel()
+			// 上限 maxKeyLength=255 ちょうどは通過する（256 文字の異常系と対の境界）。
+			require.NoError(t, validateKey(strings.Repeat("a", 255)))
 		})
 	})
 

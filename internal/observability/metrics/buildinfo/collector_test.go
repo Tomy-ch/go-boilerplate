@@ -62,7 +62,7 @@ func TestNewCollector(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Collectorが生成される", func(t *testing.T) {
+		t.Run("生成時にビルド情報がラベル値として解決される", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -74,7 +74,14 @@ func TestNewCollector(t *testing.T) {
 			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 
 			c := NewCollector(appCfg, bi)
-			assert.NotNil(t, c)
+			require.NotNil(t, c)
+
+			// 生成時に解決済みのラベル値が emit されることを確認する。
+			labels, value := gatherLabels(t, c)
+			assert.InDelta(t, 1.0, value, 0)
+			assert.Equal(t, "v1.5.0", labels[labelVersion])
+			assert.Equal(t, "abcdef1", labels[labelRevision])
+			assert.Equal(t, "2026-06-28T17:00:00Z", labels[labelBuildDate])
 		})
 	})
 }

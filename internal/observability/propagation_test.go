@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -37,6 +38,34 @@ func Test_extractFromCarrier_D1(t *testing.T) {
 			prop.Inject(trace.ContextWithSpanContext(context.Background(), sc), carrier)
 
 			got := extractFromCarrier(context.Background(), map[string]string(carrier), prop)
+
+			gsc := trace.SpanContextFromContext(got)
+			require.True(t, gsc.HasTraceID())
+			assert.Equal(t, traceID, gsc.TraceID())
+		})
+
+		t.Run("公開関数はグローバル伝播器で attrs の traceparent から trace を復元する", func(t *testing.T) {
+			t.Parallel()
+
+			// 公開関数は otel.GetTextMapPropagator() を参照するため、TraceContext を一時登録する。
+			prev := otel.GetTextMapPropagator()
+			otel.SetTextMapPropagator(propagation.TraceContext{})
+			t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
+
+			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
+			require.NoError(t, err)
+			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
+			require.NoError(t, err)
+			sc := trace.NewSpanContext(trace.SpanContextConfig{
+				TraceID:    traceID,
+				SpanID:     spanID,
+				TraceFlags: trace.FlagsSampled,
+				Remote:     true,
+			})
+			carrier := propagation.MapCarrier{}
+			propagation.TraceContext{}.Inject(trace.ContextWithSpanContext(context.Background(), sc), carrier)
+
+			got := ExtractFromCarrier(context.Background(), map[string]string(carrier))
 
 			gsc := trace.SpanContextFromContext(got)
 			require.True(t, gsc.HasTraceID())
@@ -114,20 +143,34 @@ func Test_injectToCarrier_D1(t *testing.T) {
 			assert.NotPanics(t, func() { InjectTraceContextToCarrier(context.Background(), map[string]string{}) })
 		})
 
-		t.Run("公開関数は baggage を attrs へ転送しない", func(t *testing.T) {
+		t.Run("公開関数は trace context を inject しつつ baggage は転送しない", func(t *testing.T) {
 			t.Parallel()
 
-			// ctx に baggage を載せても、TraceContext 限定の公開関数は baggage を attrs へ書き込まない。
-			// （グローバル伝播器に依存しないため、ここでは global を変更せず関数自身の挙動のみを確認する）。
+			// アクティブ span（traceparent 元）と baggage の両方を載せた ctx を作る。
+			// span が無いと traceparent も書かれず NotContains が常に真になる疑似陽性となるため、
+			// traceparent が実際に書かれた上で baggage だけが落ちることを検証する。
+			traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
+			require.NoError(t, err)
+			spanID, err := trace.SpanIDFromHex("0123456789abcdef")
+			require.NoError(t, err)
+			sc := trace.NewSpanContext(trace.SpanContextConfig{
+				TraceID:    traceID,
+				SpanID:     spanID,
+				TraceFlags: trace.FlagsSampled,
+			})
+			ctx := trace.ContextWithSpanContext(context.Background(), sc)
+
 			member, err := baggage.NewMember("tenant", "acme")
 			require.NoError(t, err)
 			bag, err := baggage.New(member)
 			require.NoError(t, err)
-			ctx := baggage.ContextWithBaggage(context.Background(), bag)
+			ctx = baggage.ContextWithBaggage(ctx, bag)
 
 			attrs := map[string]string{}
 			InjectTraceContextToCarrier(ctx, attrs)
 
+			// traceparent は伝搬され、baggage は TraceContext 限定の公開関数によって転送されない。
+			assert.Contains(t, attrs, "traceparent")
 			assert.NotContains(t, attrs, "baggage")
 		})
 	})

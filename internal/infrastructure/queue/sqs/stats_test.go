@@ -74,7 +74,7 @@ func Test_StatsProvider_QueueStats(t *testing.T) {
 			api.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, in *awssqs.GetQueueAttributesInput, _ ...func(*awssqs.Options)) (*awssqs.GetQueueAttributesOutput, error) {
 					assert.Equal(t, "dlq", aws.ToString(in.QueueUrl))
-					return attrs("5", "0", "0"), nil
+					return attrs("5", "2", "4"), nil
 				},
 			)
 
@@ -83,6 +83,8 @@ func Test_StatsProvider_QueueStats(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, stats.DLQ)
 			assert.Equal(t, int64(5), stats.DLQ.Visible)
+			assert.Equal(t, int64(2), stats.DLQ.InFlight)
+			assert.Equal(t, int64(4), stats.DLQ.Delayed)
 		})
 
 		t.Run("DLQURL が空なら DLQ 取得をスキップする", func(t *testing.T) {

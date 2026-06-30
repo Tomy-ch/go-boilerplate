@@ -61,9 +61,10 @@ func TestGatewayGetRate(t *testing.T) {
 				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "downstream 404"))
 
 			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
-			_, err := gw.GetRate(context.Background(), "USD", "JPY")
+			rate, err := gw.GetRate(context.Background(), "USD", "JPY")
 
 			require.ErrorIs(t, err, apperror.ErrNotFound)
+			assert.Nil(t, rate)
 		})
 
 		t.Run("不正なJSONレスポンスはErrUnavailableを返す", func(t *testing.T) {
@@ -75,9 +76,10 @@ func TestGatewayGetRate(t *testing.T) {
 				Return(&httpclient.Response{StatusCode: 200, Body: []byte(`not-json`)}, nil)
 
 			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
-			_, err := gw.GetRate(context.Background(), "USD", "JPY")
+			rate, err := gw.GetRate(context.Background(), "USD", "JPY")
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, rate)
 		})
 
 		t.Run("rateが0以下のレスポンスはErrUnavailableを返す", func(t *testing.T) {
@@ -89,9 +91,25 @@ func TestGatewayGetRate(t *testing.T) {
 				Return(&httpclient.Response{StatusCode: 200, Body: []byte(`{"rate":0}`)}, nil)
 
 			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
-			_, err := gw.GetRate(context.Background(), "USD", "JPY")
+			rate, err := gw.GetRate(context.Background(), "USD", "JPY")
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, rate)
+		})
+
+		t.Run("rateが負値のレスポンスはErrUnavailableを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+				Return(&httpclient.Response{StatusCode: 200, Body: []byte(`{"rate":-1}`)}, nil)
+
+			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+			rate, err := gw.GetRate(context.Background(), "USD", "JPY")
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Nil(t, rate)
 		})
 	})
 }

@@ -197,6 +197,19 @@ func TestNewIdempotencyMetrics(t *testing.T) {
 			assert.Equal(t, "idempotency_gc", attributeOf(t, rm, "idempotency.expired_cleanup", "job"))
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("計装生成に失敗した場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			im, err := observability.NewIdempotencyMetrics(failingMeterProvider{})
+
+			require.ErrorIs(t, err, errMeter)
+			assert.Nil(t, im)
+		})
+	})
 }
 
 // attributeOf は、指定 counter の最初のデータ点から指定キーの属性値を取り出します。

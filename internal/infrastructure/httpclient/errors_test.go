@@ -24,6 +24,7 @@ func TestStatusToAppError(t *testing.T) {
 			want    error
 			wantNil bool
 		}{
+			"100はエラーなし_1xxはdefault分岐":       {status: http.StatusContinue, wantNil: true},
 			"200はエラーなし":                     {status: http.StatusOK, wantNil: true},
 			"204はエラーなし":                     {status: http.StatusNoContent, wantNil: true},
 			"301はErrUnavailable_非追従リダイレクト":  {status: http.StatusMovedPermanently, want: apperror.ErrUnavailable},
@@ -66,6 +67,21 @@ func TestNormalizeTransportError(t *testing.T) {
 			require.ErrorIs(t, got, apperror.ErrCanceled)
 		})
 
+		t.Run("url_ErrorでラップされたctxキャンセルもErrCanceledに写像しURLをredactする", func(t *testing.T) {
+			t.Parallel()
+
+			urlErr := &url.Error{
+				Op:  "Get",
+				URL: "https://api.example.com/rates?token=secret123",
+				Err: context.Canceled,
+			}
+			got := normalizeTransportError(urlErr)
+
+			require.ErrorIs(t, got, apperror.ErrCanceled)
+			assert.Contains(t, got.Error(), "api.example.com")
+			assert.NotContains(t, got.Error(), "secret123")
+		})
+
 		t.Run("deadline超過はErrUnavailableに写像する", func(t *testing.T) {
 			t.Parallel()
 			got := normalizeTransportError(context.DeadlineExceeded)
@@ -99,6 +115,35 @@ func TestRedactErrMessage(t *testing.T) {
 			assert.Contains(t, msg, "api.example.com")
 			assert.NotContains(t, msg, "secret123")
 			assert.NotContains(t, msg, "token")
+		})
+
+		t.Run("url_Errorのuserinfo_userpass_はredactしホストパスのみ残す", func(t *testing.T) {
+			t.Parallel()
+
+			urlErr := &url.Error{ //nolint:gosec // G101: redact 対象を検証するための擬似 userinfo 付き URL（実認証情報ではない）
+				Op:  "Get",
+				URL: "https://user:pass@api.example.com/rates",
+				Err: errors.New("connection refused"),
+			}
+
+			msg := redactErrMessage(urlErr)
+			assert.Contains(t, msg, "api.example.com/rates")
+			assert.NotContains(t, msg, "user")
+			assert.NotContains(t, msg, "pass")
+		})
+
+		t.Run("url_Errorのfragment_section_はredactする", func(t *testing.T) {
+			t.Parallel()
+
+			urlErr := &url.Error{
+				Op:  "Get",
+				URL: "https://api.example.com/rates#section-secret",
+				Err: errors.New("connection refused"),
+			}
+
+			msg := redactErrMessage(urlErr)
+			assert.Contains(t, msg, "api.example.com/rates")
+			assert.NotContains(t, msg, "section-secret")
 		})
 
 		t.Run("url_Error以外はそのまま返す", func(t *testing.T) {

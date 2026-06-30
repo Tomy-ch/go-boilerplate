@@ -120,6 +120,14 @@ func TestNewQueryRecorder(t *testing.T) {
 			assert.Equal(t, "constraint", labelValue(m, "error_class"))
 			assert.Equal(t, "insert", labelValue(m, "operation"))
 			assert.Equal(t, "user.create", labelValue(m, "query_name"))
+
+			// エラー時でも duration は status=error 付きで 1 件記録される。
+			duration := findMetricFamily(t, reg, "rdb_query_duration_seconds")
+			require.NotNil(t, duration)
+			require.Len(t, duration.GetMetric(), 1)
+			dm := duration.GetMetric()[0]
+			assert.Equal(t, uint64(1), dm.GetHistogram().GetSampleCount())
+			assert.Equal(t, "error", labelValue(dm, "status"))
 		})
 	})
 }
@@ -152,6 +160,27 @@ func TestRegisterOrExisting(t *testing.T) {
 			require.Len(t, duration.GetMetric(), 1)
 			// 別インスタンス経由でも同一メトリクスに 2 回記録される。
 			assert.Equal(t, uint64(2), duration.GetMetric()[0].GetHistogram().GetSampleCount())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("既存コレクタが異なる型なら新規生成したコレクタを返す", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
+			const name = "register_or_existing_type_mismatch"
+
+			// 先に CounterVec を登録しておく。
+			counter := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h"}, []string{"l"})
+			require.NoError(t, reg.Register(counter))
+
+			// 同名・同ラベル・同 Help だが型が異なる HistogramVec を登録すると AlreadyRegistered になり、
+			// ExistingCollector(CounterVec) への型アサーションが失敗するため新規生成した方を返す。
+			hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: name, Help: "h"}, []string{"l"})
+			got := registerOrExisting(reg, hist)
+			assert.Same(t, hist, got)
 		})
 	})
 }

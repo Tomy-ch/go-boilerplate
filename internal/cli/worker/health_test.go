@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// readBody は、レスポンスボディを文字列で読み出すテストヘルパです。
+func readBody(t *testing.T, res *http.Response) string {
+	t.Helper()
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	return string(body)
+}
 
 // httpGet は、context 付きで GET リクエストを実行するテストヘルパです。
 func httpGet(t *testing.T, url string) *http.Response {
@@ -37,6 +46,7 @@ func Test_healthMux(t *testing.T) {
 			res := httpGet(t, srv.URL+"/healthz")
 			defer func() { _ = res.Body.Close() }()
 			assert.Equal(t, http.StatusOK, res.StatusCode)
+			assert.Equal(t, "ok", readBody(t, res))
 		})
 
 		t.Run("readyz は ready が true なら 200 を返す", func(t *testing.T) {
@@ -48,6 +58,7 @@ func Test_healthMux(t *testing.T) {
 			res := httpGet(t, srv.URL+"/readyz")
 			defer func() { _ = res.Body.Close() }()
 			assert.Equal(t, http.StatusOK, res.StatusCode)
+			assert.Equal(t, "ready", readBody(t, res))
 		})
 	})
 
@@ -63,6 +74,7 @@ func Test_healthMux(t *testing.T) {
 			res := httpGet(t, srv.URL+"/readyz")
 			defer func() { _ = res.Body.Close() }()
 			assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+			assert.Equal(t, "not ready", readBody(t, res))
 		})
 	})
 }

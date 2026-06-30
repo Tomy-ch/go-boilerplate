@@ -104,6 +104,18 @@ func TestBreakerAllowAndRecord(t *testing.T) {
 			recordClosedFailures(b, 4, now)
 			assert.Equal(t, breakerOpen, b.currentState())
 		})
+
+		t.Run("open状態でのrecordはno-opで状態がopenのまま不変", func(t *testing.T) {
+			t.Parallel()
+
+			b := newBreaker(testBreakerConfig())
+			recordClosedFailures(b, 4, base)
+			require.Equal(t, breakerOpen, b.currentState())
+
+			// open は allow が遷移を司るため record は無視され、状態は変わらない。
+			b.record(false, base, b.generation)
+			assert.Equal(t, breakerOpen, b.currentState())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -121,6 +133,10 @@ func TestBreakerAllowAndRecord(t *testing.T) {
 			b.record(false, now, gen)
 
 			assert.Equal(t, breakerOpen, b.currentState())
+
+			// 再 open で openedAt がリセットされるため、OpenDuration 未経過の同時刻 allow は通さない。
+			reAllowed, _ := b.allow(now)
+			assert.False(t, reAllowed)
 		})
 
 		t.Run("half-openでHalfOpenProbesを超えるプローブは通さない", func(t *testing.T) {

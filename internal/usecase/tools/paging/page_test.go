@@ -27,6 +27,19 @@ func TestNewPageFrom1Based(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 
+		t.Run("ページ番号が0の場合、1として扱われる", func(t *testing.T) {
+			t.Parallel()
+			page := 0
+			actual, err := NewPageFrom1Based(&page, nil)
+			expected := &Page{
+				limit:  defaultPerPage,
+				offset: 0,
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+
 		t.Run("ページ番号が1未満の場合、1として扱われる", func(t *testing.T) {
 			t.Parallel()
 			page := -1
@@ -134,7 +147,7 @@ func TestNewPageFrom1Based(t *testing.T) {
 			actual, err := NewPageFrom1Based(&page, nil)
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
-			require.Zero(t, actual)
+			assert.Nil(t, actual)
 		})
 	})
 }

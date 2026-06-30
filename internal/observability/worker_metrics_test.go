@@ -47,16 +47,17 @@ func Test_NewWorkerMetrics_D2(t *testing.T) {
 			wm, err := observability.NewWorkerMetrics(provider)
 			require.NoError(t, err)
 
-			// 各計装に 1 度ずつ測定値を入れる（manual reader は測定のある計装のみ出力するため）。
-			wm.Received(ctx, 1)
+			// 各計装に測定値を入れる（manual reader は測定のある計装のみ出力するため）。
+			// 値検証のため、メソッドごとに区別できる測定値を与える。
+			wm.Received(ctx, 5)
 			wm.Processed(ctx)
 			wm.Failed(ctx)
 			wm.Retried(ctx)
 			wm.DLQ(ctx)
 			wm.PollError(ctx)
 			wm.ExtendError(ctx)
-			wm.RecordLatencyMs(ctx, 1)
-			wm.InFlightAdd(ctx, 1)
+			wm.RecordLatencyMs(ctx, 12.5)
+			wm.InFlightAdd(ctx, 3)
 
 			var rm metricdata.ResourceMetrics
 			require.NoError(t, reader.Collect(ctx, &rm))
@@ -75,6 +76,12 @@ func Test_NewWorkerMetrics_D2(t *testing.T) {
 			} {
 				assert.Contains(t, names, want)
 			}
+
+			// 記録値そのものを検証する（名前存在のみの疑似陽性を防ぐ）。
+			assert.Equal(t, int64(5), counterValueOf(t, rm, "worker.received"))
+			assert.Equal(t, int64(1), counterValueOf(t, rm, "worker.processed"))
+			assert.Equal(t, int64(3), counterValueOf(t, rm, "worker.in_flight"))
+			assert.InDelta(t, 12.5, histogramSumOf(t, rm, "worker.processing_latency_ms"), 1e-9)
 		})
 	})
 
@@ -90,4 +97,22 @@ func Test_NewWorkerMetrics_D2(t *testing.T) {
 			assert.Nil(t, wm)
 		})
 	})
+}
+
+// histogramSumOf は、指定 histogram の最初のデータ点の Sum を返します。
+func histogramSumOf(t *testing.T, rm metricdata.ResourceMetrics, name string) float64 {
+	t.Helper()
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != name {
+				continue
+			}
+			h, ok := m.Data.(metricdata.Histogram[float64])
+			require.True(t, ok)
+			require.NotEmpty(t, h.DataPoints)
+			return h.DataPoints[0].Sum
+		}
+	}
+	t.Fatalf("metric %s not found", name)
+	return 0
 }

@@ -83,7 +83,7 @@ func TestRunWorker(t *testing.T) {
 			_, ok := <-done
 			require.False(t, ok)
 
-			_ = stop(context.Background())
+			require.NoError(t, stop(context.Background()))
 		})
 	})
 }

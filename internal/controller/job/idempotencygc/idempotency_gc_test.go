@@ -78,6 +78,12 @@ func Test_parseBatchSize(t *testing.T) {
 			_, err := parseBatchSize([]string{"--batch-size=abc"})
 			require.Error(t, err)
 		})
+
+		t.Run("負数はエラー", func(t *testing.T) {
+			t.Parallel()
+			_, err := parseBatchSize([]string{"--batch-size=-1"})
+			require.Error(t, err)
+		})
 	})
 }
 

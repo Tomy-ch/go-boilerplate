@@ -28,12 +28,32 @@ type payload struct {
 	V string `json:"v"`
 }
 
-// newDeps は、tx.Manager の生成 mock と clock testkit を組んだ Deps を返します。
+// unmarshalable は、json.Marshal が必ず失敗する（func フィールドを持つ）型です。
+type unmarshalable struct {
+	Fn func() `json:"fn"`
+}
+
+// newDeps は、業務 tx を 1 回だけ実行する想定の Deps を返します（Txm.Do は Times(1)）。
+// 冪等処理に入る（Idempotency-Key あり）経路専用で、素通し経路では newDepsNoTx を使います。
 func newDeps(t *testing.T, store idempotencybndry.Store) idempotency.Deps {
 	t.Helper()
 	txm := mock_tx.NewMockManager(gomock.NewController(t))
 	txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }).AnyTimes()
+		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }).Times(1)
+
+	return idempotency.Deps{
+		Txm:   txm,
+		Store: store,
+		Clock: testkit.NewMockClock(t, fixedNow),
+	}
+}
+
+// newDepsNoTx は、素通し経路（Idempotency-Key 無し / Scope 空）で Txm.Do が
+// 一切呼ばれないことを保証する Deps を返します（Txm.Do は Times(0)）。
+func newDepsNoTx(t *testing.T, store idempotencybndry.Store) idempotency.Deps {
+	t.Helper()
+	txm := mock_tx.NewMockManager(gomock.NewController(t))
+	txm.EXPECT().Do(gomock.Any(), gomock.Any()).Times(0)
 
 	return idempotency.Deps{
 		Txm:   txm,
@@ -76,7 +96,28 @@ func TestRun(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
 
-			res, replayed, err := idempotency.Run(context.Background(), newDeps(t, store), statusCreated,
+			res, replayed, err := idempotency.Run(context.Background(), newDepsNoTx(t, store), statusCreated,
+				func(context.Context) (payload, error) { return payload{V: "ok"}, nil })
+
+			require.NoError(t, err)
+			assert.False(t, replayed)
+			assert.Equal(t, "ok", res.V)
+		})
+
+		t.Run("Request はあるが Scope 空なら素通し実行され Store を呼ばない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+
+			ctx := idempotency.WithRequest(context.Background(), idempotency.Request{
+				Key:         "key-1",
+				Fingerprint: []byte("fp"),
+				Method:      "POST",
+				Path:        "/v1/resources",
+				OperationID: "PostResources",
+			})
+
+			res, replayed, err := idempotency.Run(ctx, newDepsNoTx(t, store), statusCreated,
 				func(context.Context) (payload, error) { return payload{V: "ok"}, nil })
 
 			require.NoError(t, err)
@@ -223,6 +264,34 @@ func TestRun(t *testing.T) {
 				func(context.Context) (payload, error) { return payload{}, bizErr })
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("業務処理失敗でも claim 成立済みなら IncMiss を計上する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+			metrics.EXPECT().IncMiss(gomock.Any(), op)
+
+			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDepsWithMetrics(t, store, metrics), statusCreated,
+				func(context.Context) (payload, error) { return payload{}, apperror.ErrInvalidArgument })
+
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("業務処理成功後の結果が JSON 化不能なら 500(Internal) を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_idempotency.NewMockStore(ctrl)
+
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+
+			_, _, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(t, store), statusCreated,
+				func(context.Context) (unmarshalable, error) { return unmarshalable{Fn: func() {}}, nil })
+
+			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
 		t.Run("ロック待ちタイムアウトは 409(Conflict) を返す", func(t *testing.T) {

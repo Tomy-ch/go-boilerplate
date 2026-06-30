@@ -86,6 +86,42 @@ func Test_NewLoggerProvider(t *testing.T) {
 	})
 }
 
+func Test_newLogExporter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("endpoint未設定(http)でも既定値で exporter を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolHTTP)
+			obsCfg.SetObservabilityOTLPEndpoint(t, "")
+
+			exp, err := newLogExporter(context.Background(), obsCfg)
+
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.NoError(t, exp.Shutdown(context.Background()))
+		})
+
+		t.Run("endpoint未設定(grpc)でも既定値で exporter を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
+			obsCfg.SetObservabilityOTLPEndpoint(t, "")
+
+			exp, err := newLogExporter(context.Background(), obsCfg)
+
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.NoError(t, exp.Shutdown(context.Background()))
+		})
+	})
+}
+
 func Test_ensureOTLPPath(t *testing.T) {
 	t.Parallel()
 
