@@ -3,6 +3,7 @@ package retry
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -161,6 +162,23 @@ func TestDo(t *testing.T) {
 			assert.Equal(t, policy.MaxAttempts-1, sleeper.calls)
 		})
 
+		t.Run("isRetryableがnilかつfnがエラーを返す場合パニックせず最初のエラーを即返す", func(t *testing.T) {
+			t.Parallel()
+
+			sleeper := &fakeSleeper{}
+			calls := 0
+			// isRetryable が nil でも「リトライ対象なし」へ正規化されるため、
+			// fn の非 nil error はリトライされず最初の error で即座に返る。
+			err := Do(context.Background(), sleeper, policy, nil, func(context.Context) error {
+				calls++
+				return errFatal
+			})
+
+			require.ErrorIs(t, err, errFatal)
+			assert.Equal(t, 1, calls)
+			assert.Equal(t, 0, sleeper.calls)
+		})
+
 		t.Run("Sleep打ち切り時はsleepエラーではなく直前のfnエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -185,11 +203,24 @@ func TestFull(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("0以下は0を返す", func(t *testing.T) {
+		t.Run("0以下は決定論的に0を返す", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, time.Duration(0), Full(0))
-			assert.Equal(t, time.Duration(0), Full(-time.Second))
+			tests := []struct {
+				name string
+				in   time.Duration
+			}{
+				{name: "0は0", in: 0},
+				{name: "負数は0", in: -time.Second},
+				{name: "最小負数は0", in: time.Duration(math.MinInt64)},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					t.Parallel()
+
+					assert.Equal(t, time.Duration(0), Full(tt.in))
+				})
+			}
 		})
 
 		t.Run("正の値は0からその値の範囲に収まる", func(t *testing.T) {
@@ -200,6 +231,30 @@ func TestFull(t *testing.T) {
 				assert.GreaterOrEqual(t, got, time.Duration(0))
 				assert.LessOrEqual(t, got, 100*time.Millisecond)
 			}
+		})
+
+		t.Run("d=1でも多数回試行で常に0からdの範囲に収まる", func(t *testing.T) {
+			t.Parallel()
+
+			for range 100 {
+				got := Full(time.Duration(1))
+				assert.GreaterOrEqual(t, got, time.Duration(0))
+				assert.LessOrEqual(t, got, time.Duration(1))
+			}
+		})
+
+		t.Run("dがMaxInt64でもオーバーフローでパニックせず範囲に収まる", func(t *testing.T) {
+			t.Parallel()
+
+			// [0, d] 閉区間化の +1 が int64 をオーバーフローする境界。
+			// 本体のガードにより panic せず [0, d) に収まる。
+			assert.NotPanics(t, func() {
+				for range 100 {
+					got := Full(time.Duration(math.MaxInt64))
+					assert.GreaterOrEqual(t, got, time.Duration(0))
+					assert.Less(t, got, time.Duration(math.MaxInt64))
+				}
+			})
 		})
 	})
 }

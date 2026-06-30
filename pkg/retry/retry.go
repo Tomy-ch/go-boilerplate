@@ -46,6 +46,7 @@ type Policy struct {
 //     直前の fn の error を返します（リトライ対象だった元の失敗を呼び出し側へ伝えるため）。
 //
 // isRetryable は fn の返した非 nil error に対してのみ呼ばれます。
+// isRetryable が nil の場合は「リトライ対象なし」として扱い、最初の error で即座に返します。
 func Do(
 	ctx context.Context,
 	sleeper Sleeper,
@@ -53,6 +54,9 @@ func Do(
 	isRetryable func(error) bool,
 	fn func(context.Context) error,
 ) error {
+	if isRetryable == nil {
+		isRetryable = func(error) bool { return false }
+	}
 	attempts := max(1, policy.MaxAttempts)
 
 	var err error
