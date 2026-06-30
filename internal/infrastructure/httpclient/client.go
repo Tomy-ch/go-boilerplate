@@ -122,7 +122,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 			return resp, err
 		}
 
-		wait := retryWait(attempt, profile, resp)
+		wait := retryWait(attempt, profile, resp, time.Now())
 		if !c.canRetryWithin(ctx, wait) {
 			return resp, err
 		}

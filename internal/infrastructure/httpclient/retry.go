@@ -70,9 +70,9 @@ func computeBackoff(attempt int, profile Profile) time.Duration {
 // retryWait は、次の retry までの待機時間を決定します。
 // レスポンスに Retry-After があればそれを優先し、無ければ指数バックオフ + full jitter を用います。
 // Retry-After が過大でも overall deadline 規律（canRetryWithin）が別途打ち切るため、ここでは上限を設けません。
-func retryWait(attempt int, profile Profile, resp *Response) time.Duration {
+func retryWait(attempt int, profile Profile, resp *Response, now time.Time) time.Duration {
 	if resp != nil {
-		if d, ok := retryAfter(resp.Header, time.Now()); ok {
+		if d, ok := retryAfter(resp.Header, now); ok {
 			return d
 		}
 	}
