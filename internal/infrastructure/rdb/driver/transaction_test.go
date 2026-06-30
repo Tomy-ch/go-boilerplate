@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go-boilerplate/internal/config"
@@ -30,7 +31,7 @@ func TestNewTransactionManager(t *testing.T) {
 	})
 
 	manager := NewTransactionManager(db, dbCfg, testLogger, system.NewSleeper())
-	require.NotNil(t, manager)
+	assert.NotNil(t, manager)
 }
 
 func TestTxManager_Do(t *testing.T) {
@@ -104,7 +105,7 @@ func TestTxManager_Do(t *testing.T) {
 			ctx := context.Background()
 			defer func() {
 				r := recover()
-				require.NotNil(t, r)
+				assert.NotNil(t, r)
 			}()
 
 			_ = manager.Do(ctx, func(_ context.Context) error {

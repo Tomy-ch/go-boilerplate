@@ -115,7 +115,6 @@ func TestFindByID(t *testing.T) {
 				)
 				require.NoError(t, err)
 
-				require.NoError(t, err)
 				actual, err := repo.FindByID(ctx, expectedID)
 				require.NoError(t, err)
 				assert.Equal(t, expected, actual)

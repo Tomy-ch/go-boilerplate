@@ -17,29 +17,24 @@ import (
 func TestAuthModule(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系", func(t *testing.T) {
+	t.Run("fx アプリで Authenticator が提供される", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("fx アプリで Authenticator が提供される", func(t *testing.T) {
-			t.Parallel()
+		var a authbd.Authenticator
+		app := fx.New(
+			fx.Provide(func() testing.TB { return t }),
+			fx.Provide(func() *testing.T { return t }),
+			fx.Provide(config.MockConfigForTest),
+			fx.Provide(config.NewApplicationConfig),
+			fx.Provide(config.NewAuthConfig),
+			fx.Provide(logging.NewTestLogger),
+			AuthnModule(),
+			fx.Populate(&a),
+		)
 
-			var a authbd.Authenticator
-			app := fx.New(
-				fx.Provide(func() testing.TB { return t }),
-				fx.Provide(func() *testing.T { return t }),
-				fx.Provide(config.MockConfigForTest),
-				fx.Provide(config.NewApplicationConfig),
-				fx.Provide(config.NewAuthConfig),
-				fx.Provide(logging.NewTestLogger),
-				AuthnModule(),
-				fx.Populate(&a),
-			)
-
-			require.NoError(t, app.Start(context.Background()))
-			require.NotNil(t, a)
-			require.NotPanics(t, func() { _ = a })
-			require.NoError(t, app.Stop(context.Background()))
-		})
+		require.NoError(t, app.Start(context.Background()))
+		t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+		assert.NotNil(t, a)
 	})
 }
 

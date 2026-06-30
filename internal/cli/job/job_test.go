@@ -175,7 +175,7 @@ func TestGracefulStop(t *testing.T) {
 
 			_ = gracefulStop(ctx, testGrace, stop.fn())
 
-			require.True(t, stop.called, "停止処理が呼ばれること")
+			assert.True(t, stop.called, "停止処理が呼ばれること")
 			require.True(t, stop.hasDeadline, "停止用 context に deadline があること")
 			require.NoError(t, stop.ctxErr, "停止用 context が期限切れでないこと")
 			assert.Greater(t, time.Until(stop.deadline), testGrace/2, "grace 相当の猶予が残っていること")

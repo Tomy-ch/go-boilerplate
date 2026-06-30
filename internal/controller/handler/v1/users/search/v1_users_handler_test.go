@@ -139,6 +139,34 @@ func Test_server_GetUsersSearch(t *testing.T) {
 			t.Parallel()
 			exec(t, query.UserSearchResults{}, 0)
 		})
+
+		t.Run("Keyword/Activeが未指定の場合、空のSearchParamsで呼び出される", func(t *testing.T) {
+			t.Parallel()
+
+			noFilterParams := gen.GetUsersSearchRequestObject{
+				Params: gen.GetUsersSearchParams{
+					Page:    new(expectedPage),
+					PerPage: new(expectedPerPage),
+				},
+			}
+
+			var gotFilter *usecase_search.SearchParams
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().ListUsersByKeywordWithTotal(gomock.Any(), gomock.Any(), mockPage).
+				DoAndReturn(func(_ context.Context, f *usecase_search.SearchParams, _ *paging.Page) (*usecase_search.UserSearchListView, error) {
+					gotFilter = f
+					return &usecase_search.UserSearchListView{Items: query.UserSearchResults{}, Total: 0}, nil
+				})
+
+			resp, err := s.GetUsersSearch(context.Background(), noFilterParams)
+			require.NoError(t, err)
+
+			// フィルタ未指定でも nil ではなく Keyword/Active が共に nil の空 SearchParams が渡る。
+			assert.Equal(t, &usecase_search.SearchParams{}, gotFilter)
+
+			_, ok := resp.(gen.GetUsersSearch200JSONResponse)
+			require.True(t, ok)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

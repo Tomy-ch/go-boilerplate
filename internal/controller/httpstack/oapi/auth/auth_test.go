@@ -220,6 +220,18 @@ func Test_extractToken(t *testing.T) {
 			assert.Equal(t, "cookieTok", tok)
 		})
 
+		t.Run("CookieとHeaderが両方ある場合_Cookieが優先されHeaderは無視される", func(t *testing.T) {
+			t.Parallel()
+			ac := newAuthConfig(t)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			//nolint:gosec // G124: テスト用のリクエストクッキー
+			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "cookieTok"})
+			req.Header.Set(ac.HeaderName(), "Bearer headerTok")
+			tok := extractToken(req, ac)
+			assert.Equal(t, "cookieTok", tok)
+		})
+
 		t.Run("Bearer形式のヘッダの場合、トークン部分が抽出される", func(t *testing.T) {
 			t.Parallel()
 			ac := newAuthConfig(t)
@@ -259,7 +271,7 @@ func Test_extractToken(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("CookieNameはあるがHeaderNameが空文字列の場合は空を返す", func(t *testing.T) {
+		t.Run("HeaderNameが空文字列の場合_ヘッダ値があっても空を返す", func(t *testing.T) {
 			t.Parallel()
 			ac := newAuthConfig(t)
 			ac.SetHeaderName(t, "")

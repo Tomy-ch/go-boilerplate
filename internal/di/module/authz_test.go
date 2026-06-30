@@ -40,30 +40,34 @@ func Test_provideAuthorizer(t *testing.T) {
 			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
 		})
 
-		t.Run("CI環境では全許可Authorizerが提供される", func(t *testing.T) {
+		t.Run("CI環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
 			t.Parallel()
 
 			cfg := config.MockConfigForTest(t)
 			appCfg := config.NewApplicationConfig(cfg)
 			appCfg.SetApplicationEnv(t, config.EnvCI)
-			logger := logging.NewTestLogger(t)
+			logger, logs := logging.NewObservedTestLogger(t)
 
 			authorizer, err := provideAuthorizer(appCfg, logger)
 			require.NoError(t, err)
 			assert.Equal(t, allowall.New(), authorizer)
+			// 全許可スタブ配線時に WARN で注意喚起されること。
+			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
 		})
 
-		t.Run("テスト環境では全許可Authorizerが提供される", func(t *testing.T) {
+		t.Run("テスト環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
 			t.Parallel()
 
 			cfg := config.MockConfigForTest(t)
 			appCfg := config.NewApplicationConfig(cfg)
 			appCfg.SetApplicationEnv(t, config.EnvTest)
-			logger := logging.NewTestLogger(t)
+			logger, logs := logging.NewObservedTestLogger(t)
 
 			authorizer, err := provideAuthorizer(appCfg, logger)
 			require.NoError(t, err)
 			assert.Equal(t, allowall.New(), authorizer)
+			// 全許可スタブ配線時に WARN で注意喚起されること。
+			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
 		})
 	})
 
@@ -87,7 +91,7 @@ func Test_provideAuthorizer(t *testing.T) {
 
 				authorizer, err := provideAuthorizer(appCfg, logger)
 				require.Error(t, err)
-				require.Nil(t, authorizer)
+				assert.Nil(t, authorizer)
 			})
 		}
 	})

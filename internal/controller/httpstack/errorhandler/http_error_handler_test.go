@@ -85,11 +85,15 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			var got map[string]any
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 
-			_, ok := got["code"].(string)
-			assert.True(t, ok)
+			code, ok := got["code"].(string)
+			require.True(t, ok)
+			// 一般エラーは内部エラーコードへ正規化される。
+			assert.Equal(t, response.NewHTTPErrorFromAppError(nil).Code, code)
 
-			_, ok = got["requestId"].(string)
-			assert.True(t, ok)
+			requestID, ok := got["requestId"].(string)
+			require.True(t, ok)
+			// リクエストIDミドルウェア未経由のため空だが、文字列フィールドとして必ず出力される。
+			assert.Empty(t, requestID)
 		})
 	})
 }
@@ -306,8 +310,13 @@ func Test_normalizeHTTPError(t *testing.T) {
 			}
 
 			actual := normalizeHTTPError(he, expectedRequestID)
-			he.RequestId = expectedRequestID
-			assert.Equal(t, he, actual)
+
+			// エラー範囲ステータスなら Code/Message/HTTPStatus は維持され、
+			// RequestId は引数の値で確かに上書きされること（"" → expectedRequestID）を検証する。
+			assert.Equal(t, expectedRequestID, actual.RequestId)
+			assert.Equal(t, "E_ERR", actual.Code)
+			assert.Equal(t, "err", actual.Message)
+			assert.Equal(t, http.StatusBadRequest, actual.HTTPStatus)
 		})
 
 		t.Run("echo.HTTPErrorのエラー範囲はステータスに基づくレスポンスを返しInternalに文脈を保持する", func(t *testing.T) {
@@ -534,7 +543,7 @@ func Test_httpErrorField(t *testing.T) {
 
 			fields := httpErrorField(c, lf, he)
 
-			require.GreaterOrEqual(t, len(fields), 4)
+			assert.GreaterOrEqual(t, len(fields), 4)
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, he.HTTPStatus))
 			assert.Contains(t, fields, logging.String(logging.ErrorCodeKey, he.Code))
 			assert.Contains(t, fields, logging.String(logging.ErrorMessageKey, he.Message))

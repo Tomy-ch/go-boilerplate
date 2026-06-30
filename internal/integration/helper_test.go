@@ -114,6 +114,8 @@ func (s *Server) DoJSON(
 }
 
 // AssertJSONResponse は、JSONレスポンスの内容を検証するユーティリティ。
+// TODO(test-review R2-9): expected を実際に値比較する（現状は型デコード確認のみ）。
+// 各 caller の期待値（動的な RegisteredAt 等を含む）を整備したうえで assert.Equal を有効化する。
 func AssertJSONResponse[T any](t *testing.T, _ T, actualResponse *http.Response) {
 	t.Helper()
 
@@ -121,7 +123,7 @@ func AssertJSONResponse[T any](t *testing.T, _ T, actualResponse *http.Response)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, actualResponse.StatusCode)
-	assert.Contains(t, "application/json", actualResponse.Header.Get(echo.HeaderContentType))
+	assert.Contains(t, actualResponse.Header.Get(echo.HeaderContentType), "application/json")
 
 	var actualObj T
 	require.NoError(t, json.Unmarshal(resBody, &actualObj), "返却された型が期待された型と一致しません。第二引数が期待される型であることを確認してください。")

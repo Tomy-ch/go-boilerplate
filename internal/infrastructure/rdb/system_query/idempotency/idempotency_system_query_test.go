@@ -138,7 +138,8 @@ func Test_store_DeleteExpired(t *testing.T) {
 				// cutoff=now で失効行が削除される。
 				deleted, err := s.DeleteExpired(ctx, time.Now(), 100)
 				require.NoError(t, err)
-				assert.GreaterOrEqual(t, deleted, int64(1))
+				// WithinTx は txLock で直列化され tx 単位で隔離されるため、削除対象は本ケースで claim した1件のみ。
+				assert.Equal(t, int64(1), deleted)
 
 				// 削除後は取得できない。
 				rec, err := s.Get(ctx, scope, key)

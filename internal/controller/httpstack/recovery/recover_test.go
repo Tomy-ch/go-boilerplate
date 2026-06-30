@@ -159,6 +159,37 @@ func TestMiddleware_panicReturns500WithSingleLog(t *testing.T) {
 	})
 }
 
+func TestMiddleware_abortHandlerIsRepanicked(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("http.ErrAbortHandlerのパニックはリカバーせず再パニックしログも残さない", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			lf := logging.NewTestLogFieldBuilder(t)
+			obsLogger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			e.Use(Middleware(obsLogger, lf, appCfg))
+			e.GET("/abort", func(_ echo.Context) error { panic(http.ErrAbortHandler) })
+
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/abort", nil)
+
+			// echo の recover は http.ErrAbortHandler を握り潰さず再パニックする。
+			assert.PanicsWithValue(t, http.ErrAbortHandler, func() {
+				e.ServeHTTP(rec, req)
+			})
+			// 再パニックされるため LogErrorFunc は呼ばれず "panic recovered" ログは出力されない。
+			assert.Equal(t, 0, observed.FilterMessage("panic recovered").Len())
+		})
+	})
+}
+
 func Test_newRecoverConfig(t *testing.T) {
 	t.Parallel()
 

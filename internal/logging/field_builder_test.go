@@ -11,24 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewLogFields(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("非nilのLogFieldsを返す", func(t *testing.T) {
-			t.Parallel()
-			cfg := config.MockConfigForTest(t)
-			obsCfg := config.NewObservabilityConfig(cfg)
-			osCfg := config.NewOperatingSystemConfig(cfg)
-
-			lf := NewLogFields(obsCfg, osCfg)
-			assert.NotNil(t, lf)
-		})
-	})
-}
-
 func TestLogFields_BuildHTTPRequestFields(t *testing.T) {
 	t.Parallel()
 
@@ -417,6 +399,24 @@ func Test_appendTraceSpanFields(t *testing.T) {
 				String(ParentSpanIDKey, "p-1"),
 			}
 			assert.Equal(t, expected, got)
+		})
+
+		t.Run("obsが無効な場合、traceID/spanIDが有効でも何も追加しない", func(t *testing.T) {
+			t.Parallel()
+
+			disabledCfg := config.MockConfigForTest(t)
+			disabledObsCfg := config.NewObservabilityConfig(disabledCfg)
+			disabledObsCfg.SetObservabilityTracesExporter(t, "")
+			disabledObsCfg.SetObservabilityMetricsExporter(t, "")
+			disabledObsCfg.SetObservabilityLogsExporter(t, "")
+			require.False(t, disabledObsCfg.Enabled())
+
+			disabledImpl, ok := NewLogFields(disabledObsCfg, osCfg).(*logFieldBuilder)
+			require.True(t, ok)
+
+			base := []*Field{String("a", "b")}
+			got := disabledImpl.appendTraceSpanFields(base, "t-1", "s-1", "p-1")
+			assert.Equal(t, base, got)
 		})
 	})
 }

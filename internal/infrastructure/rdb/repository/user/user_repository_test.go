@@ -174,23 +174,25 @@ func Test_repository_FindByActive(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("limitが負数の場合、エラーになる", func(t *testing.T) {
+		t.Run("limitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				// 負数 LIMIT は PostgreSQL の 2201W（map 未定義）となり ErrInternal へ写像される。
 				actual, err := repo.FindByActive(ctx, nil, -1, 0)
 				require.Nil(t, actual)
-				require.Error(t, err)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
 
-		t.Run("offsetが負数の場合、エラーになる", func(t *testing.T) {
+		t.Run("offsetが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
+				// 負数 OFFSET は PostgreSQL の 2201X（map 未定義）となり ErrInternal へ写像される。
 				actual, err := repo.FindByActive(ctx, nil, 10, -1)
 				require.Nil(t, actual)
-				require.Error(t, err)
+				require.ErrorIs(t, err, apperror.ErrInternal)
 			})
 		})
 

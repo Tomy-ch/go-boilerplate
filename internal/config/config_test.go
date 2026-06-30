@@ -172,7 +172,7 @@ func Test_validateConfig(t *testing.T) {
 			cfg.App.Mode = "invalid_mode" // 無効なアプリケーションモード
 
 			err := validateConfig(cfg)
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrInvalidAppMode)
 		})
 
 		t.Run("サーバー設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
@@ -181,7 +181,7 @@ func Test_validateConfig(t *testing.T) {
 			cfg.Server.ReadHeaderTimeout = 0 // 無効なReadHeaderTimeout
 
 			err := validateConfig(cfg)
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrInvalidReadHeaderTimeout)
 		})
 
 		t.Run("DB設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
@@ -190,7 +190,7 @@ func Test_validateConfig(t *testing.T) {
 			cfg.Database.SlowQueryWarnThreshold = -1 // 無効なスロークエリ警告閾値
 
 			err := validateConfig(cfg)
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrInvalidSlowQueryWarnThreshold)
 		})
 
 		t.Run("DBコネクション設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
@@ -199,7 +199,7 @@ func Test_validateConfig(t *testing.T) {
 			cfg.DBConnection.MinConns = cfg.DBConnection.MaxConns + 1 // MinConnsがMaxConnsを超える
 
 			err := validateConfig(cfg)
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrInvalidExceedMaxConns)
 		})
 
 		t.Run("セキュリティ設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
@@ -208,7 +208,7 @@ func Test_validateConfig(t *testing.T) {
 			cfg.Security.AllowedOrigins = []string{} // 空のAllowedOrigins
 
 			err := validateConfig(cfg)
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrEmptyAllowedOrigins)
 		})
 
 		t.Run("認証設定でエラーが発生する場合、エラーが返されること", func(t *testing.T) {
@@ -433,9 +433,22 @@ func Test_validateSecurityConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		cfg := mockLoader(t)
-		err := validateSecurityConfig(cfg.Security)
-		require.NoError(t, err)
+
+		t.Run("既定の許可オリジンの場合、エラーが返されないこと", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			err := validateSecurityConfig(cfg.Security)
+			require.NoError(t, err)
+		})
+
+		t.Run("127.0.0.1へのHTTPは許可されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Security.AllowedOrigins = []string{"http://127.0.0.1"} // localhost 同等のループバック
+
+			err := validateSecurityConfig(cfg.Security)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -497,9 +510,31 @@ func Test_validateAuthConfig(t *testing.T) {
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		cfg := mockLoader(t)
-		err := validateAuthConfig(cfg.Auth)
-		require.NoError(t, err)
+
+		t.Run("CookieNameとHeaderNameの両方が設定されている場合、エラーが返されないこと", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			err := validateAuthConfig(cfg.Auth)
+			require.NoError(t, err)
+		})
+
+		t.Run("CookieNameのみ設定されている場合、エラーが返されないこと", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Auth.HeaderName = "" // HeaderName のみ空
+
+			err := validateAuthConfig(cfg.Auth)
+			require.NoError(t, err)
+		})
+
+		t.Run("HeaderNameのみ設定されている場合、エラーが返されないこと", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.Auth.CookieName = "" // CookieName のみ空
+
+			err := validateAuthConfig(cfg.Auth)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

@@ -73,6 +73,18 @@ func TestConstructor(t *testing.T) {
 			authCfg := NewAuthConfig(cfg)
 			assert.Same(t, &cfg.auth, authCfg)
 		})
+
+		t.Run("worker設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
+			t.Parallel()
+			workerCfg := NewWorkerConfig(cfg)
+			assert.Same(t, &cfg.worker, workerCfg)
+		})
+
+		t.Run("outbox設定のコンストラクタが内部フィールドへの参照を返す", func(t *testing.T) {
+			t.Parallel()
+			outboxCfg := NewOutboxConfig(cfg)
+			assert.Same(t, &cfg.outbox, outboxCfg)
+		})
 	})
 }
 
@@ -425,6 +437,64 @@ func TestGetterMethods(t *testing.T) {
 				assert.Equal(t, expectedAuthAllowedHeaderBearer, auth.AllowedHeaderBearer())
 			})
 		})
+
+		t.Run("worker設定", func(t *testing.T) {
+			t.Parallel()
+			worker := cfg.worker
+
+			// ゲッター数が多く DB 設定ブロックと構造が重複する（dupl）ため、table-driven で集約する。
+			cases := []struct {
+				name string
+				want any
+				got  any
+			}{
+				{"並行実行数", expectedWorkerConcurrency, worker.Concurrency()},
+				{"最大インフライト数", expectedWorkerMaxInFlight, worker.MaxInFlight()},
+				{"バッチサイズ", expectedWorkerBatchSize, worker.BatchSize()},
+				{"Extend周期", expectedWorkerExtendInterval, worker.ExtendInterval()},
+				{"ドレインタイムアウト", expectedWorkerDrainTimeout, worker.DrainTimeout()},
+				{"再配送回数の警告閾値", expectedWorkerReceiveCountWarnThreshold, worker.ReceiveCountWarnThreshold()},
+				{"サーキット失敗閾値", expectedWorkerCircuitFailureThreshold, worker.CircuitFailureThreshold()},
+				{"サーキットOpen初回backoff", expectedWorkerCircuitOpenBackoffInitial, worker.CircuitOpenBackoffInitial()},
+				{"サーキットOpen backoff上限", expectedWorkerCircuitOpenBackoffMax, worker.CircuitOpenBackoffMax()},
+				{"Half-open試行数", expectedWorkerCircuitHalfOpenProbe, worker.CircuitHalfOpenProbe()},
+				{"health listener待ち受けアドレス", expectedWorkerHealthListenAddr, worker.HealthListenAddr()},
+				{"進捗停滞判定時間", expectedWorkerProgressStaleAfter, worker.ProgressStaleAfter()},
+				{"Nack初回backoff", expectedWorkerNackBackoffInitial, worker.NackBackoffInitial()},
+				{"Nack backoff上限", expectedWorkerNackBackoffMax, worker.NackBackoffMax()},
+			}
+			for _, tc := range cases {
+				t.Run(tc.name+"を取得できる", func(t *testing.T) {
+					t.Parallel()
+					assert.Equal(t, tc.want, tc.got)
+				})
+			}
+		})
+
+		t.Run("outbox設定", func(t *testing.T) {
+			t.Parallel()
+			outbox := cfg.outbox
+
+			t.Run("エンドポイントを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedOutboxEndpoint, outbox.Endpoint())
+			})
+
+			t.Run("ポーリング間隔を取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedOutboxPollInterval, outbox.PollInterval())
+			})
+
+			t.Run("エラーbackoffを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedOutboxErrorBackoff, outbox.ErrorBackoff())
+			})
+
+			t.Run("バッチサイズを取得できる", func(t *testing.T) {
+				t.Parallel()
+				assert.Equal(t, expectedOutboxBatchSize, outbox.BatchSize())
+			})
+		})
 	})
 }
 
@@ -505,23 +575,26 @@ func TestObservabilityConfig_Enabled(t *testing.T) {
 		wantLogs    bool
 		wantEnabled bool
 	}{
-		{"正常系_全部otlpなら全て有効", "otlp", "otlp", "otlp", true, true, true, true},
-		{"正常系_traceのみ有効", "otlp", "", "", true, false, false, true},
-		{"正常系_metricのみ有効", "", "otlp", "", false, true, false, true},
-		{"正常系_logのみ有効", "", "", "otlp", false, false, true, true},
-		{"正常系_全部空なら無効", "", "", "", false, false, false, false},
-		{"正常系_noneは無効として扱う", "none", "none", "none", false, false, false, false},
-		{"正常系_大文字NONEも無効として扱う", "NONE", "None", "nOnE", false, false, false, false},
+		{"全部otlpなら全て有効", "otlp", "otlp", "otlp", true, true, true, true},
+		{"traceのみ有効", "otlp", "", "", true, false, false, true},
+		{"metricのみ有効", "", "otlp", "", false, true, false, true},
+		{"logのみ有効", "", "", "otlp", false, false, true, true},
+		{"全部空なら無効", "", "", "", false, false, false, false},
+		{"noneは無効として扱う", "none", "none", "none", false, false, false, false},
+		{"大文字NONEも無効として扱う", "NONE", "None", "nOnE", false, false, false, false},
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			o := &ObservabilityConfig{tracesExporter: tc.traces, metricsExporter: tc.metrics, logsExporter: tc.logs}
-			assert.Equal(t, tc.wantTraces, o.TracesEnabled())
-			assert.Equal(t, tc.wantMetrics, o.MetricsEnabled())
-			assert.Equal(t, tc.wantLogs, o.LogsEnabled())
-			assert.Equal(t, tc.wantEnabled, o.Enabled())
-		})
-	}
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				o := &ObservabilityConfig{tracesExporter: tc.traces, metricsExporter: tc.metrics, logsExporter: tc.logs}
+				assert.Equal(t, tc.wantTraces, o.TracesEnabled())
+				assert.Equal(t, tc.wantMetrics, o.MetricsEnabled())
+				assert.Equal(t, tc.wantLogs, o.LogsEnabled())
+				assert.Equal(t, tc.wantEnabled, o.Enabled())
+			})
+		}
+	})
 }

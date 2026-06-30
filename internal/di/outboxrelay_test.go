@@ -28,7 +28,6 @@ func TestNewOutboxRelayApp(t *testing.T) {
 
 			app := NewOutboxRelayApp(30 * time.Second)
 
-			require.NotNil(t, app)
 			// fx.New はコンストラクタ（NewEndpoint 等）を実行しエラーを app.Err() に格納する。
 			require.NoError(t, app.Err())
 		})
@@ -40,7 +39,6 @@ func TestNewOutboxRelayApp(t *testing.T) {
 
 			app := NewOutboxRelayApp(30 * time.Second)
 
-			require.NotNil(t, app)
 			require.Error(t, app.Err())
 		})
 	})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
@@ -56,8 +57,8 @@ func TestHTTPClientModule_ProvidesClient(t *testing.T) {
 			)
 
 			require.NoError(t, app.Start(context.Background()))
-			require.NotNil(t, client)
-			require.NoError(t, app.Stop(context.Background()))
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+			assert.NotNil(t, client)
 		})
 	})
 }

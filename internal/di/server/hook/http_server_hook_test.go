@@ -96,7 +96,7 @@ func Test_newStartServerFunc(t *testing.T) {
 			fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
 			err = fn(context.Background())
 			require.NoError(t, err)
-			require.NotNil(t, e.Listener)
+			assert.NotNil(t, e.Listener)
 
 			t.Cleanup(func() {
 				_ = e.Shutdown(context.Background())

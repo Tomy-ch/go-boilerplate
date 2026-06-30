@@ -72,6 +72,23 @@ func TestDoWithResult(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, expected, actual)
 		})
+
+		t.Run("contextの値がfnに伝搬される", func(t *testing.T) {
+			t.Parallel()
+			type ctxKey struct{}
+			const expected = "propagated"
+
+			m := passthroughManager(t)
+			base := context.WithValue(context.Background(), ctxKey{}, expected)
+
+			actual, err := tx.DoWithResult(base, m, func(ctx context.Context) (string, error) {
+				val, _ := ctx.Value(ctxKey{}).(string)
+				return val, nil
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -101,23 +118,6 @@ func TestDoWithResult(t *testing.T) {
 
 			require.Error(t, err)
 			assert.Empty(t, actual)
-		})
-
-		t.Run("正常系: contextの値がfnに伝搬される", func(t *testing.T) {
-			t.Parallel()
-			type ctxKey struct{}
-			const expected = "propagated"
-
-			m := passthroughManager(t)
-			base := context.WithValue(context.Background(), ctxKey{}, expected)
-
-			actual, err := tx.DoWithResult(base, m, func(ctx context.Context) (string, error) {
-				val, _ := ctx.Value(ctxKey{}).(string)
-				return val, nil
-			})
-
-			require.NoError(t, err)
-			assert.Equal(t, expected, actual)
 		})
 
 		t.Run("panicをManagerがrecoverした場合はエラーとゼロ値を返す", func(t *testing.T) {

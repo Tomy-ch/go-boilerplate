@@ -145,6 +145,19 @@ func TestMigrateDownRun(t *testing.T) {
 			require.NoError(t, err)
 		})
 
+		t.Run("ステップ未指定でdirty状態ならForceで整合を取ってから全件Downする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Version().Return(uint(4), true, nil)
+			m.EXPECT().Force(4).Return(nil)
+			m.EXPECT().Down().Return(nil)
+
+			err := MigrateDownRun(0, "", logging.NewTestLogger(t), factoryReturning(m))
+			require.NoError(t, err)
+		})
+
 		t.Run("正のステップ数なら負数へ反転してDownを実行する", func(t *testing.T) {
 			t.Parallel()
 

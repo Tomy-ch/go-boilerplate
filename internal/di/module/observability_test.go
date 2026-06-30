@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 	gomock "go.uber.org/mock/gomock"
@@ -65,8 +66,8 @@ func TestObservabilityModule_ProvidesTracerFactory(t *testing.T) {
 			)
 
 			require.NoError(t, app.Start(context.Background()))
-			require.NotNil(t, tf)
-			require.NoError(t, app.Stop(context.Background()))
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+			assert.NotNil(t, tf)
 		})
 	})
 }
