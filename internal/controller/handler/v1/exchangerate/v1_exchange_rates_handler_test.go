@@ -55,12 +55,16 @@ func Test_server_GetExchangeRates(t *testing.T) {
 			})
 
 			require.NoError(t, err)
+
+			actual, ok := resp.(gen.GetExchangeRates200JSONResponse)
+			require.True(t, ok)
+
 			assert.Equal(t, gen.GetExchangeRates200JSONResponse{
 				Base:      "USD",
 				Quote:     "JPY",
 				Amount:    100,
 				Converted: 15050,
-			}, resp)
+			}, actual)
 		})
 	})
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/user/search/query"
@@ -23,6 +24,38 @@ func TestNew(t *testing.T) {
 	}
 	actual := New(testDB, tf)
 	assert.Equal(t, expected, actual)
+}
+
+func TestBuildLikeTokens(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キーワードが空の場合、全件マッチのトークンを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual := buildLikeTokens(nil)
+			assert.Equal(t, []string{"%"}, actual)
+		})
+
+		t.Run("キーワードを部分一致のLIKEパターンへ変換する", func(t *testing.T) {
+			t.Parallel()
+
+			actual := buildLikeTokens([]string{"Grace", "Lee"})
+			require.Len(t, actual, 2)
+			assert.Equal(t, "%Grace%", actual[0])
+			assert.Equal(t, "%Lee%", actual[1])
+		})
+
+		t.Run("LIKEワイルドカードを含むキーワードはエスケープされる", func(t *testing.T) {
+			t.Parallel()
+
+			actual := buildLikeTokens([]string{"50%_off"})
+			require.Len(t, actual, 1)
+			assert.Equal(t, `%50\%\_off%`, actual[0])
+		})
+	})
 }
 
 func Test_service_FindByFilter(t *testing.T) {
@@ -184,6 +217,30 @@ func Test_service_FindByFilter(t *testing.T) {
 			assert.Len(t, actual, expectedLength)
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			active := true
+			deleted := false
+			keywords := []string{"x"}
+
+			_, allErr := repo.FindByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: nil}, 10, 0)
+			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+
+			_, activeErr := repo.FindByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: &active}, 10, 0)
+			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
+
+			_, deletedErr := repo.FindByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: &deleted}, 10, 0)
+			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
+		})
+	})
 }
 
 func Test_service_CountByFilter(t *testing.T) {
@@ -268,6 +325,30 @@ func Test_service_CountByFilter(t *testing.T) {
 			})
 			require.NoError(t, err)
 			assert.Equal(t, expectedCount, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストでは各Active分岐がErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			active := true
+			deleted := false
+			keywords := []string{"x"}
+
+			_, allErr := repo.CountByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: nil})
+			require.ErrorIs(t, allErr, apperror.ErrCanceled)
+
+			_, activeErr := repo.CountByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: &active})
+			require.ErrorIs(t, activeErr, apperror.ErrCanceled)
+
+			_, deletedErr := repo.CountByFilter(ctx, &query.UserSearchFilter{Keywords: keywords, Active: &deleted})
+			require.ErrorIs(t, deletedErr, apperror.ErrCanceled)
 		})
 	})
 }

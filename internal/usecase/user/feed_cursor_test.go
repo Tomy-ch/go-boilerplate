@@ -31,7 +31,7 @@ func TestDecodeFeedCursor(t *testing.T) {
 			actual, decErr := decodeFeedCursor(cursor)
 			require.NoError(t, decErr)
 			require.NotNil(t, actual)
-			assert.True(t, actual.CreatedAt().Equal(validTime))
+			assert.Equal(t, validTime, actual.CreatedAt())
 			assert.Equal(t, validID, actual.ID())
 		})
 
@@ -111,7 +111,7 @@ func TestEncodeFeedCursor(t *testing.T) {
 			decoded, decErr := decodeFeedCursor(cursor)
 			require.NoError(t, decErr)
 			require.NotNil(t, decoded)
-			assert.True(t, decoded.CreatedAt().Equal(createdAt))
+			assert.Equal(t, createdAt, decoded.CreatedAt())
 			assert.Equal(t, id, decoded.ID())
 		})
 	})

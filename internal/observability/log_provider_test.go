@@ -86,26 +86,64 @@ func Test_NewLoggerProvider(t *testing.T) {
 	})
 }
 
+func Test_newLogExporter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("endpoint未設定(http)でも既定値で exporter を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolHTTP)
+			obsCfg.SetObservabilityOTLPEndpoint(t, "")
+
+			exp, err := newLogExporter(context.Background(), obsCfg)
+
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.NoError(t, exp.Shutdown(context.Background()))
+		})
+
+		t.Run("endpoint未設定(grpc)でも既定値で exporter を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			obsCfg := newTestObsCfg(t)
+			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
+			obsCfg.SetObservabilityOTLPEndpoint(t, "")
+
+			exp, err := newLogExporter(context.Background(), obsCfg)
+
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.NoError(t, exp.Shutdown(context.Background()))
+		})
+	})
+}
+
 func Test_ensureOTLPPath(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name string
-		in   string
-		want string
-	}{
-		{"正常系_path無しなら補う", "http://observability:4318", "http://observability:4318/v1/logs"},
-		{"正常系_末尾スラッシュも補う", "http://observability:4318/", "http://observability:4318/v1/logs"},
-		{"正常系_path有りならそのまま", "http://observability:4318/custom", "http://observability:4318/custom"},
-		{"正常系_パース不能ならそのまま", "://bad", "://bad"},
-	}
+	t.Run("正常系_path無しなら補う", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "http://observability:4318/v1/logs", ensureOTLPPath("http://observability:4318", otlpLogsPath))
+	})
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tc.want, ensureOTLPPath(tc.in, otlpLogsPath))
-		})
-	}
+	t.Run("正常系_末尾スラッシュも補う", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "http://observability:4318/v1/logs", ensureOTLPPath("http://observability:4318/", otlpLogsPath))
+	})
+
+	t.Run("正常系_path有りならそのまま", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "http://observability:4318/custom", ensureOTLPPath("http://observability:4318/custom", otlpLogsPath))
+	})
+
+	t.Run("正常系_パース不能ならそのまま", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "://bad", ensureOTLPPath("://bad", otlpLogsPath))
+	})
 }
 
 func Test_NewLogCore(t *testing.T) {

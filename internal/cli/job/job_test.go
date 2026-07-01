@@ -2,9 +2,10 @@ package job
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
+
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -76,7 +77,7 @@ func TestRunJob(t *testing.T) {
 		t.Run("タイムアウト未指定でジョブがエラーを返すとそのエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			jobErr := errors.New("job failed")
+			jobErr := xerrors.New("job failed")
 			done := make(chan error, 1)
 			done <- jobErr
 			stop := &recordingStop{}
@@ -90,7 +91,7 @@ func TestRunJob(t *testing.T) {
 		t.Run("タイムアウト指定でも期限内にジョブがエラー完了すればそのエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			jobErr := errors.New("job failed")
+			jobErr := xerrors.New("job failed")
 			done := make(chan error, 1)
 			done <- jobErr
 			stop := &recordingStop{}
@@ -135,7 +136,7 @@ func TestRunJob(t *testing.T) {
 		t.Run("本体成功でも停止が失敗すれば停止エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			stopErr := errors.New("stop failed")
+			stopErr := xerrors.New("stop failed")
 			done := make(chan error, 1)
 			done <- nil
 			stop := &recordingStop{err: stopErr}
@@ -148,7 +149,7 @@ func TestRunJob(t *testing.T) {
 		t.Run("タイムアウト発火かつ停止失敗時は両方のエラーが取れる", func(t *testing.T) {
 			t.Parallel()
 
-			stopErr := errors.New("stop failed")
+			stopErr := xerrors.New("stop failed")
 			done := make(chan error) // 送信されない
 			stop := &recordingStop{err: stopErr}
 
@@ -175,7 +176,7 @@ func TestGracefulStop(t *testing.T) {
 
 			_ = gracefulStop(ctx, testGrace, stop.fn())
 
-			require.True(t, stop.called, "停止処理が呼ばれること")
+			assert.True(t, stop.called, "停止処理が呼ばれること")
 			require.True(t, stop.hasDeadline, "停止用 context に deadline があること")
 			require.NoError(t, stop.ctxErr, "停止用 context が期限切れでないこと")
 			assert.Greater(t, time.Until(stop.deadline), testGrace/2, "grace 相当の猶予が残っていること")

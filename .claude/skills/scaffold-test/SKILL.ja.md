@@ -130,9 +130,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
    - 両 group の直後に `t.Parallel()` を呼ぶ。 さらに細分化のためのネストグループ（例: `t.Run("firstNameが範囲外の場合、エラーを返す", ...)`) は可読性が上がるなら推奨で、 正常系 / 異常系 group の **内側に** 置く。
    - 1 つの `TestXxx` には `正常系` group が最大 1 個、 `異常系` group が最大 1 個。 正常系のみで構成されるなら `異常系` group は作らない（逆も同様）。 空のグループは作らない。
 4. **全ての `t.Run` の冒頭で `t.Parallel()` を呼ぶ**。例外: sibling ブロックと共有しているポインタを mutate する場合（`TestImmutableAccessors` の `building` / `deletedAt` ブロック等）は外側の `t.Run` を逐次にする。**ブロック直上にコメント必須**（`-race` で検出される競合を意図的に避けている旨を書く）。内部 case は引き続き `t.Parallel()`。
-5. **table-driven `for` ループは原則生成しない**。 連続した `t.Run` sibling で書く（`user_domain_test.go` のパターン）。観点上 table 形式の方が明らかに可読性が上がる場合（同一本体で `(input, expected)` の組が長く列挙される 等）、`AskUserQuestion`:
-   - 質問: 「`<case>` は table-driven (`for _, tc := range ...`) で書く方が可読性が高そうですが、原則は逐次 `t.Run` です。table 形式にしますか？」
-   - 選択肢: 「逐次 `t.Run` で（推奨）」 / 「table-driven で書く」。
+5. **table-driven `for` ループは禁止 — 常に逐次 `t.Run` sibling で書く**。 各ケースをそれぞれ独立した `t.Run` にする（`user_domain_test.go` のパターン）。`(input, expected)` の構造体スライスを `for _, tc := range cases` で回さない。個別に書き出すことで、失敗時に該当ケース名が出て、各ケースが `t.Parallel()` を呼べ、共有ループ本体でケース同士が結合しない。ゲッター/境界の似たアサーションが長く並ぶ場合でも同様（重複は許容し、table へ畳み込まない）。ケース単位の例外は無い — 尋ねず、逐次 `t.Run` で書く。
 6. **ケース名は日本語。 サブケース名に `正常系_` / `異常系_` プレフィックスは付けない**。 最外殻 group の name はリテラルの `正常系` / `異常系`。 サブケースは入力クラスと期待結果を 1 文で表す自由記述（`「<入力クラス>の場合、<結果>」`）。 そのまま読める文章になるように。サブケースは既に 正常系 / 異常系 group の下にいるため、 名前に `正常系_` / `異常系_` を付けると `正常系 > 正常系_xxx` のような二重ラベルになり冗長 → 禁止。 prefix は剥がす。
 7. **`require` vs `assert`**（`CLAUDE.md` 準拠）:
    - `require.NoError` / `require.Error` / `require.ErrorIs` / `require.ErrorContains` — エラー系アサーション全般（testifylint `require-error` ルールが `assert.ErrorIs` を拒絶）。
@@ -150,7 +148,7 @@ sibling と README が矛盾する場合、**README 優先**（[[feedback-readme
 - 生成予定の各 `TestXxx` と、その配下の 正常系 / 異常系 サブケースのリスト
 - 各 case を生んだ観点との対応理由
 - 提案テストファイル冒頭 ~20 行のプレビュー
-- 承認された例外（複数 subject 束ね / table-driven）と保存された rationale
+- 承認された例外（複数 subject 束ね）と保存された rationale
 
 を提示してから `AskUserQuestion`:
 
@@ -236,14 +234,14 @@ chain モードでは以下をスキップ:
 - Step 2（test-perspective subagent）— `viewpoints` が非空のとき。
 - Step 4 の `AskUserQuestion`（親が feature 単位の承認を既に取得済み）— 監査用に 1 行サマリは表示する。
 
-ただし**複数 subject 束ね例外** と **table-driven 例外** の `AskUserQuestion` は chain モードでも必須（親が知らないルールなので）。
+ただし**複数 subject 束ね例外** の `AskUserQuestion` は chain モードでも必須（親が知らないルールなので）。（table-driven に例外は無い — 禁止であり常に逐次 `t.Run`。）
 
 ## 制約（サマリ）
 
 - ❌ 生成テストにコード言い換え／*なぜ*の説明コメントを足す — テストコメントは最小（振る舞いのみ）。ケースの意図は日本語 `t.Run` 名で表し、インラインコメントに書かない（godoc 以外で必須なのは `-race` 直列ブロック例外の理由コメントのみ）。
 - ❌ 同一関数 / メソッドに対する複数 `TestXxx`。
 - ❌ `AskUserQuestion` 承認なしの複数 subject 束ね（および rationale コメント無し）。
-- ❌ `AskUserQuestion` 承認なしの table-driven `for` ループ。
+- ❌ table-driven `for` ループ（禁止 — 常にケース毎の逐次 `t.Run` sibling で書く）。
 - ❌ 手書き mock（`<package>/mock/*_mock.go` を使う）。
 - ❌ subject ソースファイルの編集。
 - ❌ 生成物の編集（`*.gen.go` / `*_mock.go` / `*.sql.go`）。

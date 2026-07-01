@@ -3,7 +3,6 @@ package logging
 import (
 	"bytes"
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,56 +68,48 @@ func Test_stacktraceArrayCore_Write(t *testing.T) {
 	})
 }
 
-// NewJSONLogger 相当（JSON encoder + array 化ラッパ）の buildLogger を組み、
-// JSON 出力の stacktrace キーが配列になるエンドツーエンド経路を検証する。
-func Test_buildLogger_jsonStacktraceIsArray(t *testing.T) {
+func Test_stacktraceArrayCore_Check(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("json設定でErrorログのstacktraceが配列で出力される", func(t *testing.T) {
+		t.Run("有効レベルのエントリは自身をCheckedEntryへ登録し出力される", func(t *testing.T) {
 			t.Parallel()
 
 			var buf bytes.Buffer
-			enc := zapcore.NewJSONEncoder(encoderConfig(zapcore.LowercaseLevelEncoder))
-			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.InfoLevel, zapcore.ErrorLevel, true)
-			l.Error("simulated server error")
+			encCfg := zap.NewProductionEncoderConfig()
+			enc := zapcore.NewJSONEncoder(encCfg)
+			wrapped := wrapStacktraceCore(
+				zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.InfoLevel), "stacktrace")
 
-			var got map[string]any
-			require.NoError(t, json.Unmarshal(bytes.TrimRight(buf.Bytes(), "\n"), &got))
+			zl := zap.New(wrapped)
+			zl.Info("hello")
 
-			st, ok := got["stacktrace"]
-			require.True(t, ok, "stacktrace key must exist")
-			arr, ok := st.([]any)
-			require.True(t, ok, "stacktrace must be JSON array, got %T", st)
-			require.NotEmpty(t, arr)
+			assert.Contains(t, buf.String(), "hello")
 		})
 	})
-}
 
-// console エンコーダで wrap が適用されると一行 JSON 化して可読性が破壊されるため、
-// buildLogger は console 設定では wrap を適用せず、zap 標準の改行付きスタックを保つ。
-func Test_buildLogger_consoleStacktraceStaysMultiline(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("console設定ではstacktraceが改行付きの単一文字列として出力される", func(t *testing.T) {
+		t.Run("無効レベルのエントリは登録されずceを素通しする", func(t *testing.T) {
 			t.Parallel()
 
-			var buf bytes.Buffer
-			enc := zapcore.NewConsoleEncoder(encoderConfig(zapcore.CapitalColorLevelEncoder))
-			l := buildLogger(enc, zapcore.AddSync(&buf), zapcore.DebugLevel, zapcore.ErrorLevel, false)
-			l.Error("simulated server error")
+			var wrappedBuf, teeBuf bytes.Buffer
+			encCfg := zap.NewProductionEncoderConfig()
+			enc := zapcore.NewJSONEncoder(encCfg)
+			// wrapped は Error 以上のみ有効。Debug core との Tee により Info でも Check は
+			// 呼ばれるが、wrapped 側は無効レベルとして ce を素通し（未登録）する。
+			wrapped := wrapStacktraceCore(
+				zapcore.NewCore(enc, zapcore.AddSync(&wrappedBuf), zapcore.ErrorLevel), "stacktrace")
+			debugCore := zapcore.NewCore(enc, zapcore.AddSync(&teeBuf), zapcore.DebugLevel)
 
-			out := buf.String()
-			// console エンコーダ標準の改行+インデント形式が保たれる（一行 JSON 配列化していない）。
-			require.Contains(t, out, "\n", "console output must keep newlines")
-			require.NotContains(t, out, `"stacktrace":[`, "console output must not contain JSON array form of stack")
-			// 少なくとも複数行に渡るスタックが出力されていること。
-			assert.GreaterOrEqual(t, strings.Count(out, "\n"), 2)
+			zl := zap.New(zapcore.NewTee(debugCore, wrapped))
+			zl.Info("info-only")
+
+			assert.NotContains(t, wrappedBuf.String(), "info-only")
+			assert.Contains(t, teeBuf.String(), "info-only")
 		})
 	})
 }

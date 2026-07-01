@@ -24,8 +24,10 @@ func TestHTTPRedMetricsMiddleware(t *testing.T) {
 func TestNewHTTPRedMetricsRecorder(t *testing.T) {
 	t.Parallel()
 
-	rec := newHTTPRedMetricsRecorder(redmetrics.NewPrometheusRecorder())
-	assert.NotNil(t, rec)
+	pr := redmetrics.NewPrometheusRecorder()
+	rec := newHTTPRedMetricsRecorder(pr)
+	// 渡した *PrometheusRecorder をそのまま Recorder として返す（別インスタンスを生成しない）。
+	assert.Same(t, pr, rec)
 }
 
 func TestHTTPRedMetricsModule_ProvidesUseMiddleware(t *testing.T) {

@@ -2,12 +2,14 @@ package retry
 
 import (
 	"context"
-	"errors"
+	"math"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 // fakeSleeper は、Sleeper のテスト用 fake です。
@@ -33,9 +35,9 @@ func neverRetryable(error) bool  { return false }
 func TestDo(t *testing.T) {
 	t.Parallel()
 
-	errRetryable := errors.New("retryable")
-	errFatal := errors.New("fatal")
-	errSleep := errors.New("ctx canceled")
+	errRetryable := xerrors.New("retryable")
+	errFatal := xerrors.New("fatal")
+	errSleep := xerrors.New("ctx canceled")
 
 	policy := Policy{
 		MaxAttempts: 3,
@@ -161,6 +163,22 @@ func TestDo(t *testing.T) {
 			assert.Equal(t, policy.MaxAttempts-1, sleeper.calls)
 		})
 
+		t.Run("isRetryableがnilかつfnがエラーを返す場合パニックせず最初のエラーを即返す", func(t *testing.T) {
+			t.Parallel()
+
+			sleeper := &fakeSleeper{}
+			calls := 0
+			// isRetryable が nil でも「リトライ対象なし」へ正規化されるため、
+			err := Do(context.Background(), sleeper, policy, nil, func(context.Context) error {
+				calls++
+				return errFatal
+			})
+
+			require.ErrorIs(t, err, errFatal)
+			assert.Equal(t, 1, calls)
+			assert.Equal(t, 0, sleeper.calls)
+		})
+
 		t.Run("Sleep打ち切り時はsleepエラーではなく直前のfnエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -185,11 +203,26 @@ func TestFull(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("0以下は0を返す", func(t *testing.T) {
+		t.Run("0以下は決定論的に0を返す", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, time.Duration(0), Full(0))
-			assert.Equal(t, time.Duration(0), Full(-time.Second))
+			t.Run("0は0", func(t *testing.T) {
+				t.Parallel()
+
+				assert.Equal(t, time.Duration(0), Full(0))
+			})
+
+			t.Run("負数は0", func(t *testing.T) {
+				t.Parallel()
+
+				assert.Equal(t, time.Duration(0), Full(-time.Second))
+			})
+
+			t.Run("最小負数は0", func(t *testing.T) {
+				t.Parallel()
+
+				assert.Equal(t, time.Duration(0), Full(time.Duration(math.MinInt64)))
+			})
 		})
 
 		t.Run("正の値は0からその値の範囲に収まる", func(t *testing.T) {
@@ -200,6 +233,30 @@ func TestFull(t *testing.T) {
 				assert.GreaterOrEqual(t, got, time.Duration(0))
 				assert.LessOrEqual(t, got, 100*time.Millisecond)
 			}
+		})
+
+		t.Run("d=1でも多数回試行で常に0からdの範囲に収まる", func(t *testing.T) {
+			t.Parallel()
+
+			for range 100 {
+				got := Full(time.Duration(1))
+				assert.GreaterOrEqual(t, got, time.Duration(0))
+				assert.LessOrEqual(t, got, time.Duration(1))
+			}
+		})
+
+		t.Run("dがMaxInt64でもオーバーフローでパニックせず範囲に収まる", func(t *testing.T) {
+			t.Parallel()
+
+			// [0, d] 閉区間化の +1 が int64 をオーバーフローする境界。
+			// 本体のガードにより panic せず [0, d) に収まる。
+			assert.NotPanics(t, func() {
+				for range 100 {
+					got := Full(time.Duration(math.MaxInt64))
+					assert.GreaterOrEqual(t, got, time.Duration(0))
+					assert.Less(t, got, time.Duration(math.MaxInt64))
+				}
+			})
 		})
 	})
 }

@@ -9,6 +9,26 @@ import (
 	"go.uber.org/fx"
 )
 
+func TestNewLifecycleRegistrar(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("fx.Lifecycleから非nilなRegistrarを構築する", func(t *testing.T) {
+			t.Parallel()
+
+			var got Registrar
+			app := fx.New(
+				fx.Invoke(func(lc fx.Lifecycle) { got = NewLifecycleRegistrar(lc) }),
+				fx.NopLogger,
+			)
+			require.NoError(t, app.Err())
+			assert.NotNil(t, got)
+		})
+	})
+}
+
 func Test_RegisterStartExecutesOnAppStart(t *testing.T) {
 	t.Parallel()
 
@@ -22,6 +42,7 @@ func Test_RegisterStartExecutesOnAppStart(t *testing.T) {
 				return nil
 			})
 		}),
+		fx.NopLogger,
 	)
 
 	require.NoError(t, app.Start(context.Background()))
@@ -43,6 +64,7 @@ func Test_RegisterShutdownExecutesOnAppStop(t *testing.T) {
 				return nil
 			})
 		}),
+		fx.NopLogger,
 	)
 
 	// start and then stop to trigger OnStop hooks

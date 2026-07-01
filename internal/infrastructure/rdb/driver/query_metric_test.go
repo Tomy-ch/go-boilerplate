@@ -43,72 +43,151 @@ func TestWithQueryName(t *testing.T) {
 func TestClassifyOperation(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		sql  string
-		want string
-	}{
-		{name: "select", sql: "SELECT * FROM users", want: operationSelect},
-		{name: "小文字 select", sql: "select 1", want: operationSelect},
-		{name: "WITH句はselectに丸める", sql: "WITH t AS (SELECT 1) SELECT * FROM t", want: operationSelect},
-		{name: "insert", sql: "INSERT INTO users (id) VALUES ($1)", want: operationInsert},
-		{name: "update", sql: "UPDATE users SET name = $1", want: operationUpdate},
-		{name: "delete", sql: "DELETE FROM users WHERE id = $1", want: operationDelete},
-		{name: "begin", sql: "BEGIN", want: operationBegin},
-		{name: "start transaction", sql: "START TRANSACTION", want: operationBegin},
-		{name: "commit", sql: "COMMIT", want: operationCommit},
-		{name: "rollback", sql: "ROLLBACK", want: operationRollback},
-		{name: "copy", sql: "COPY users FROM STDIN", want: operationCopy},
-		{name: "先頭行コメントを無視する", sql: "-- name: FindUser\nSELECT 1", want: operationSelect},
-		{name: "先頭ブロックコメントを無視する", sql: "/* hint */ UPDATE users SET x = 1", want: operationUpdate},
-		{name: "前後空白と括弧を無視する", sql: "  ( SELECT 1 )", want: operationSelect},
-		{name: "不明な先頭トークンはotherに丸める", sql: "EXPLAIN ANALYZE SELECT 1", want: operationOther},
-		{name: "空文字はotherに丸める", sql: "", want: operationOther},
-		{name: "閉じないブロックコメントはotherに丸める", sql: "/* unterminated", want: operationOther},
-	}
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+		t.Run("select", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationSelect, classifyOperation("SELECT * FROM users")) //nolint:unqueryvet // 分類器のテスト入力であり実行クエリではない
+		})
 
-				assert.Equal(t, tt.want, classifyOperation(tt.sql))
-			})
-		}
+		t.Run("小文字 select", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationSelect, classifyOperation("select 1"))
+		})
+
+		t.Run("WITH句はselectに丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationSelect, classifyOperation("WITH t AS (SELECT 1) SELECT * FROM t")) //nolint:unqueryvet // 分類器のテスト入力であり実行クエリではない
+		})
+
+		t.Run("insert", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationInsert, classifyOperation("INSERT INTO users (id) VALUES ($1)"))
+		})
+
+		t.Run("update", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationUpdate, classifyOperation("UPDATE users SET name = $1"))
+		})
+
+		t.Run("delete", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationDelete, classifyOperation("DELETE FROM users WHERE id = $1"))
+		})
+
+		t.Run("begin", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationBegin, classifyOperation("BEGIN"))
+		})
+
+		t.Run("start transaction", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationBegin, classifyOperation("START TRANSACTION"))
+		})
+
+		t.Run("commit", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationCommit, classifyOperation("COMMIT"))
+		})
+
+		t.Run("rollback", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationRollback, classifyOperation("ROLLBACK"))
+		})
+
+		t.Run("copy", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationCopy, classifyOperation("COPY users FROM STDIN"))
+		})
+
+		t.Run("先頭行コメントを無視する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationSelect, classifyOperation("-- name: FindUser\nSELECT 1"))
+		})
+
+		t.Run("先頭ブロックコメントを無視する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationUpdate, classifyOperation("/* hint */ UPDATE users SET x = 1"))
+		})
+
+		t.Run("前後空白と括弧を無視する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationSelect, classifyOperation("  ( SELECT 1 )"))
+		})
+
+		t.Run("不明な先頭トークンはotherに丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationOther, classifyOperation("EXPLAIN ANALYZE SELECT 1"))
+		})
+
+		t.Run("空文字はotherに丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationOther, classifyOperation(""))
+		})
+
+		t.Run("閉じないブロックコメントはotherに丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationOther, classifyOperation("/* unterminated"))
+		})
+
+		t.Run("改行なし行コメントはotherに丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, operationOther, classifyOperation("-- only a comment"))
+		})
 	})
 }
 
 func TestClassifyErrorClass(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		err  error
-		want string
-	}{
-		{name: "nilは空文字", err: nil, want: ""},
-		{name: "SQLSTATE23xxxはconstraint", err: &pgconn.PgError{Code: "23505"}, want: errorClassConstraint},
-		{name: "lock_timeoutはtimeout", err: &pgconn.PgError{Code: "55P03"}, want: errorClassTimeout},
-		{name: "statement_timeoutはtimeout", err: &pgconn.PgError{Code: "57014"}, want: errorClassTimeout},
-		{name: "DeadlineExceededはtimeout", err: context.DeadlineExceeded, want: errorClassTimeout},
-		{name: "接続例外08xxxはconnection", err: &pgconn.PgError{Code: "08006"}, want: errorClassConnection},
-		{name: "serialization_failure(40001)はretryable", err: &pgconn.PgError{Code: "40001"}, want: errorClassRetryable},
-		{name: "deadlock_detected(40P01)はretryable", err: &pgconn.PgError{Code: "40P01"}, want: errorClassRetryable},
-		{name: "分類不能はunknown", err: xerrors.New("boom"), want: errorClassUnknown},
-	}
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				t.Parallel()
+		t.Run("nilは空文字", func(t *testing.T) {
+			t.Parallel()
+			assert.Empty(t, classifyErrorClass(nil))
+		})
 
-				assert.Equal(t, tt.want, classifyErrorClass(tt.err))
-			})
-		}
+		t.Run("SQLSTATE23xxxはconstraint", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, errorClassConstraint, classifyErrorClass(&pgconn.PgError{Code: "23505"}))
+		})
+
+		t.Run("lock_timeoutはtimeout", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, errorClassTimeout, classifyErrorClass(&pgconn.PgError{Code: "55P03"}))
+		})
+
+		t.Run("statement_timeoutはtimeout", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, errorClassTimeout, classifyErrorClass(&pgconn.PgError{Code: "57014"}))
+		})
+
+		t.Run("DeadlineExceededはtimeout", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, errorClassTimeout, classifyErrorClass(context.DeadlineExceeded))
+		})
+
+		t.Run("接続例外08xxxはconnection", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, errorClassConnection, classifyErrorClass(&pgconn.PgError{Code: "08006"}))
+		})
+
+		t.Run("serialization_failure(40001)はretryable", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, errorClassRetryable, classifyErrorClass(&pgconn.PgError{Code: "40001"}))
+		})
+
+		t.Run("deadlock_detected(40P01)はretryable", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, errorClassRetryable, classifyErrorClass(&pgconn.PgError{Code: "40P01"}))
+		})
+
+		t.Run("分類不能はunknown", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, errorClassUnknown, classifyErrorClass(xerrors.New("boom")))
+		})
 	})
 }
 

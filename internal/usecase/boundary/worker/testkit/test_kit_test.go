@@ -49,6 +49,40 @@ func Test_Fake_Receive(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, got, 1)
 			assert.Equal(t, 0, f.QueueLen())
+			assert.Equal(t, 1, f.InflightLen())
+		})
+
+		t.Run("キューが空の状態で待機中の Receive が Enqueue の起床で取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			f := NewFake()
+
+			type result struct {
+				msgs []worker.Message
+				err  error
+			}
+			// Receive がバグで起床しなくても CI を無期限ハングさせないよう、待機側に
+			// タイムアウト付き context を渡し、結果受信も select でタイムアウト失敗にする。
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			done := make(chan result, 1)
+			go func() {
+				msgs, err := f.Receive(ctx, 1)
+				done <- result{msgs: msgs, err: err}
+			}()
+
+			f.Enqueue(worker.Message{ID: "a"})
+
+			select {
+			case got := <-done:
+				require.NoError(t, got.err)
+				assert.Len(t, got.msgs, 1)
+				assert.Equal(t, "a", got.msgs[0].ID)
+				assert.Equal(t, 1, got.msgs[0].ReceiveCount)
+			case <-time.After(2 * time.Second):
+				t.Fatal("Enqueue の起床で待機中の Receive が返らなかった")
+			}
 		})
 	})
 
@@ -66,6 +100,24 @@ func Test_Fake_Receive(t *testing.T) {
 
 			require.ErrorIs(t, err, injected)
 			assert.Nil(t, got)
+		})
+
+		t.Run("複数注入されたエラーを注入順に返す", func(t *testing.T) {
+			t.Parallel()
+
+			f := NewFake()
+			first := xerrors.New("first")
+			second := xerrors.New("second")
+			f.FailReceiveOnce(first)
+			f.FailReceiveOnce(second)
+
+			got1, err1 := f.Receive(context.Background(), 1)
+			require.ErrorIs(t, err1, first)
+			assert.Nil(t, got1)
+
+			got2, err2 := f.Receive(context.Background(), 1)
+			require.ErrorIs(t, err2, second)
+			assert.Nil(t, got2)
 		})
 
 		t.Run("キューが空で ctx がキャンセルされた場合は ctx エラーを返す", func(t *testing.T) {
@@ -119,6 +171,7 @@ func Test_Fake_Nack(t *testing.T) {
 			first, err := f.Receive(context.Background(), 1)
 			require.NoError(t, err)
 			require.NoError(t, f.Nack(context.Background(), first[0]))
+			assert.Equal(t, 0, f.InflightLen())
 
 			second, err := f.Receive(context.Background(), 1)
 
@@ -180,6 +233,24 @@ func Test_Fake_Extend(t *testing.T) {
 			require.NoError(t, f.Extend(context.Background(), m, 0))
 
 			assert.Equal(t, 2, f.ExtendCount("a"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("SetExtendErr で設定したエラーを返し呼び出し回数は記録される", func(t *testing.T) {
+			t.Parallel()
+
+			f := NewFake()
+			m := worker.Message{ID: "a"}
+			injected := xerrors.New("extend boom")
+			f.SetExtendErr(injected)
+
+			err := f.Extend(context.Background(), m, 0)
+
+			require.ErrorIs(t, err, injected)
+			assert.Equal(t, 1, f.ExtendCount("a"))
 		})
 	})
 }

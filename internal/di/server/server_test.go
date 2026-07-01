@@ -1,8 +1,13 @@
 package server
 
 import (
+	"context"
 	"testing"
 
+	"go-boilerplate/internal/config"
+
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 )
@@ -16,10 +21,20 @@ func Test_Module(t *testing.T) {
 		require.NotNil(t, opt)
 	})
 
-	t.Run("Module を fx.New に渡せること", func(t *testing.T) {
+	t.Run("ServerConfig を供給すると NewAppServer が実行され *echo.Echo が構築されること", func(t *testing.T) {
 		t.Parallel()
-		app := fx.New(Module())
-		require.NotNil(t, app)
+
+		var got *echo.Echo
+		app := fx.New(
+			fx.NopLogger,
+			Module(),
+			fx.Supply(config.NewServerConfig(config.MockConfigForTest(t))),
+			fx.Populate(&got),
+		)
+		require.NoError(t, app.Err())
+		require.NoError(t, app.Start(context.Background()))
+		t.Cleanup(func() { _ = app.Stop(context.Background()) })
+		assert.NotNil(t, got)
 	})
 }
 

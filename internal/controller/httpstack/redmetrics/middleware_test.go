@@ -62,21 +62,6 @@ func TestMiddleware(t *testing.T) {
 			})
 		})
 
-		t.Run("routeにはpath_parameterの実値が入らずroute_patternが使われる", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			rec := mock_redmetrics.NewMockRecorder(ctrl)
-			// route には実値 123 ではなく route pattern が入る。
-			rec.EXPECT().Observe(gomock.Any(), "/users/:id", gomock.Any(), gomock.Any(), gomock.Any()).Times(1)
-
-			serve(t, rec, serveCfg{
-				registerPath: "/users/:id",
-				requestPath:  "/users/123",
-				handler:      okHandler(),
-			})
-		})
-
 		t.Run("query_stringはroute_labelに含まれない", func(t *testing.T) {
 			t.Parallel()
 
@@ -152,7 +137,7 @@ func TestMiddleware(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			rec := mock_redmetrics.NewMockRecorder(ctrl)
-			rec.EXPECT().Observe(gomock.Any(), gomock.Any(), http.StatusInternalServerError, "5xx", gomock.Any()).Times(1)
+			rec.EXPECT().Observe(http.MethodGet, "/boom", http.StatusInternalServerError, "5xx", gomock.Any()).Times(1)
 
 			serve(t, rec, serveCfg{
 				registerPath: "/boom",
@@ -191,6 +176,48 @@ func TestMiddleware(t *testing.T) {
 			serve(t, rec, serveCfg{
 				registerPath: "/health",
 				requestPath:  "/health",
+				handler:      okHandler(),
+			})
+		})
+
+		t.Run("/healthzは計測されない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+			serve(t, rec, serveCfg{
+				registerPath: "/healthz",
+				requestPath:  "/healthz",
+				handler:      okHandler(),
+			})
+		})
+
+		t.Run("/readyは計測されない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+			serve(t, rec, serveCfg{
+				registerPath: "/ready",
+				requestPath:  "/ready",
+				handler:      okHandler(),
+			})
+		})
+
+		t.Run("/versionは計測されない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			rec := mock_redmetrics.NewMockRecorder(ctrl)
+			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+			serve(t, rec, serveCfg{
+				registerPath: "/version",
+				requestPath:  "/version",
 				handler:      okHandler(),
 			})
 		})

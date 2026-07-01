@@ -87,7 +87,7 @@ func Test_BuildHTTPRequestLogInput(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("リクエストの全フィールドが入力構造体に詰め直される", func(t *testing.T) {
+		t.Run("リクエストの主要フィールドが入力構造体に詰め直される", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()

@@ -3,7 +3,6 @@ package seed
 
 import (
 	"context"
-	"errors"
 	"sort"
 
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -56,7 +55,7 @@ func runSeeds(ctx context.Context, fsys fs.FS, db driver.DatabaseDriver, logger 
 	sort.Strings(files)
 	for _, f := range files {
 		if err := execSeedFile(ctx, fsys, db, logger, f); err != nil {
-			seedErr = errors.Join(seedErr, err)
+			seedErr = xerrors.Join(seedErr, err)
 		}
 	}
 	if seedErr != nil {

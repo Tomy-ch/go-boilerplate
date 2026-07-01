@@ -1,9 +1,9 @@
 package outboxgc
 
 import (
-	"errors"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
@@ -78,6 +78,12 @@ func Test_parseBatchSize(t *testing.T) {
 			_, err := parseBatchSize([]string{"--batch-size=abc"})
 			require.Error(t, err)
 		})
+
+		t.Run("負数はエラー", func(t *testing.T) {
+			t.Parallel()
+			_, err := parseBatchSize([]string{"--batch-size=-1"})
+			require.Error(t, err)
+		})
 	})
 }
 
@@ -127,7 +133,7 @@ func Test_jobImpl_Execute(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			gc := mock_outbox.NewMockGCUsecase(ctrl)
-			wantErr := errors.New("sweep failed")
+			wantErr := apperror.ErrUnavailable
 			gc.EXPECT().SweepPublished(gomock.Any(), int32(0)).Return(int64(0), wantErr)
 
 			job := &jobImpl{logging: log, tracer: tf.Controller(), gc: gc}

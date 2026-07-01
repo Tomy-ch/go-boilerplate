@@ -35,7 +35,7 @@ func TestNewCredential(t *testing.T) {
 
 			cred, err := NewCredential("")
 
-			require.Nil(t, cred)
+			assert.Nil(t, cred)
 			require.ErrorIs(t, err, ErrTokenMissing)
 		})
 
@@ -44,7 +44,7 @@ func TestNewCredential(t *testing.T) {
 
 			cred, err := NewCredential("   ")
 
-			require.Nil(t, cred)
+			assert.Nil(t, cred)
 			require.ErrorIs(t, err, ErrTokenMissing)
 		})
 	})
@@ -53,8 +53,14 @@ func TestNewCredential(t *testing.T) {
 func TestCredential_AccessToken(t *testing.T) {
 	t.Parallel()
 
-	cred, err := NewCredential("test-access-token")
-	require.NoError(t, err)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	assert.Equal(t, "test-access-token", cred.AccessToken())
+		t.Run("コンストラクタで与えたtokenを返す", func(t *testing.T) {
+			t.Parallel()
+			cred, err := NewCredential("test-access-token")
+			require.NoError(t, err)
+			assert.Equal(t, "test-access-token", cred.AccessToken())
+		})
+	})
 }

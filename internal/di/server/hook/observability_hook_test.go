@@ -2,11 +2,11 @@ package hook
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	mock_observability "go-boilerplate/internal/observability/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -65,7 +65,7 @@ func TestRegisterObservabilityShutdownHooks(t *testing.T) {
 			RegisterObservabilityShutdownHooks(reg, shutdowner)
 
 			require.NotNil(t, stopFn)
-			wantErr := errors.New("shutdown failed")
+			wantErr := xerrors.New("shutdown failed")
 			shutdowner.EXPECT().Shutdown(gomock.Any()).Return(wantErr).Times(1)
 			require.ErrorIs(t, stopFn(context.Background()), wantErr)
 		})

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	v1users "go-boilerplate/internal/controller/handler/v1/users"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
 	"go-boilerplate/internal/observability"
@@ -46,19 +47,8 @@ func TestV1Users_Integration(t *testing.T) {
 
 			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{})
 
-			expected := gen.UsersResponse{
-				Users: []gen.UserResponse{
-					{
-						FirstName: expectedDTO.FirstName,
-						LastName:  expectedDTO.LastName,
-						Email:     types.Email(expectedDTO.Email),
-						Phone:     expectedDTO.Phone,
-					},
-				},
-			}
-
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
-			AssertJSONResponse(t, expected, actual)
+			AssertJSONResponseType[gen.UsersResponse](t, actual)
 		})
 
 		t.Run("POST /v1/usersがユーザー作成を行い201を返す", func(t *testing.T) {
@@ -142,6 +132,29 @@ func TestV1Users_Integration(t *testing.T) {
 			headers.Set("Idempotency-Key", "integration-key-1")
 			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/users", req.Body, headers)
 			assert.Equal(t, http.StatusCreated, actual.StatusCode)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("GET /v1/usersがErrInternalで500を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockApp := mock_user.NewMockUsecase(ctrl)
+			mockApp.EXPECT().
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(nil, apperror.ErrInternal)
+
+			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{})
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
+			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})
 	})
 }

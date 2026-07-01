@@ -40,7 +40,7 @@ func Test_Engine_StructuredLog(t *testing.T) {
 			entry := observed.FilterMessage("retryable failure, nacked").All()[0]
 			ctxMap := entry.ContextMap()
 			assert.Equal(t, "a", ctxMap[logging.MessageIDKey])
-			assert.Contains(t, ctxMap, logging.ReceiveCountKey)
+			assert.Equal(t, int64(1), ctxMap[logging.ReceiveCountKey])
 		})
 	})
 }

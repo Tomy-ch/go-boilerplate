@@ -23,6 +23,17 @@ func TestRetryBudget(t *testing.T) {
 				consumed++
 			}
 			assert.Equal(t, int(retryBudgetInitialTokens), consumed)
+			assert.False(t, b.tryConsume("d")) // 残量(0.1)はcost(1.0)未満で消費できない
+		})
+
+		t.Run("Downstreamごとにトークンは独立しd1の補充はd2の消費に影響しない", func(t *testing.T) {
+			t.Parallel()
+
+			b := newRetryBudget()
+			b.refill("d1", 1.0) // d1 のみ補充する
+
+			assert.True(t, b.tryConsume("d1"))  // d1 は補充済みで消費できる
+			assert.False(t, b.tryConsume("d2")) // d2 は未補充なので消費できない
 		})
 
 		t.Run("refillを重ねると上限maxTokensまで補充され超過しない", func(t *testing.T) {

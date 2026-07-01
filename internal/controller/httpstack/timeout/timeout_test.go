@@ -60,5 +60,15 @@ func TestMiddleware(t *testing.T) {
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 		})
+
+		t.Run("期限超過前に非タイムアウトエラーを返した場合は元のエラーを保持する", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := exec(t, time.Second, func(echo.Context) error {
+				return apperror.ErrNotFound
+			})
+
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
 	})
 }

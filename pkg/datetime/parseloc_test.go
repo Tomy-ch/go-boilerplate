@@ -95,7 +95,7 @@ func TestParseRFC3339NanoToLocation(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("ナノ秒なしはエラーを返す", func(t *testing.T) {
+		t.Run("タイムゾーン指定なしはエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			empty, err := ParseRFC3339NanoToLocation("2025-12-05T09:30:00", loc)
 			require.Error(t, err)

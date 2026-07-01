@@ -35,6 +35,8 @@ func Test_provideRelaySettings(t *testing.T) {
 			got := provideRelaySettings(cfg)
 
 			assert.Equal(t, outboxuc.DefaultBatchSize, got.BatchSize)
+			assert.Equal(t, cfg.PollInterval(), got.PollInterval)
+			assert.Equal(t, cfg.ErrorBackoff(), got.ErrorBackoff)
 		})
 
 		t.Run("BatchSize が負なら DefaultBatchSize に clamp する", func(t *testing.T) {
@@ -45,6 +47,8 @@ func Test_provideRelaySettings(t *testing.T) {
 			got := provideRelaySettings(cfg)
 
 			assert.Equal(t, outboxuc.DefaultBatchSize, got.BatchSize)
+			assert.Equal(t, cfg.PollInterval(), got.PollInterval)
+			assert.Equal(t, cfg.ErrorBackoff(), got.ErrorBackoff)
 		})
 	})
 }

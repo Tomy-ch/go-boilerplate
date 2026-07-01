@@ -28,17 +28,40 @@ func TestNew(t *testing.T) {
 func TestAuthorizer_Authorize(t *testing.T) {
 	t.Parallel()
 
+	newAuthn := func(t *testing.T) *authbd.Authn {
+		t.Helper()
+		authn, err := authbd.New("11111111-1111-1111-1111-111111111111", authbd.ProviderMock, nil, nil)
+		require.NoError(t, err)
+
+		return authn
+	}
+
+	ownerID := uuid.NewTestFromSalt(t, "owner")
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("action_resourceによらず常に許可してnilを返す", func(t *testing.T) {
+		t.Run("取得操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
 			t.Parallel()
-			authn, err := authbd.New("11111111-1111-1111-1111-111111111111", authbd.ProviderMock, nil, nil)
+			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserGet, authzbd.NewResource("user", &ownerID))
 			require.NoError(t, err)
-			id := uuid.NewTestFromSalt(t, "owner")
+		})
 
-			err = New().Authorize(context.Background(), authn, authzbd.ActionUserDelete, authzbd.NewResource("user", &id))
+		t.Run("更新操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
+			t.Parallel()
+			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserUpdate, authzbd.NewResource("user", &ownerID))
+			require.NoError(t, err)
+		})
 
+		t.Run("削除操作_所有者ありリソースを許可してnilを返す", func(t *testing.T) {
+			t.Parallel()
+			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, authzbd.NewResource("user", &ownerID))
+			require.NoError(t, err)
+		})
+
+		t.Run("resourceがnilでも許可してnilを返す", func(t *testing.T) {
+			t.Parallel()
+			err := New().Authorize(context.Background(), newAuthn(t), authzbd.ActionUserDelete, nil)
 			require.NoError(t, err)
 		})
 	})

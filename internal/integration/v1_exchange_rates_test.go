@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	exchangeratehandler "go-boilerplate/internal/controller/handler/v1/exchangerate"
 	"go-boilerplate/internal/controller/handler/v1/exchangerate/gen"
 	"go-boilerplate/internal/observability"
@@ -36,7 +37,33 @@ func TestV1ExchangeRatesIntegration(t *testing.T) {
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet, "/v1/exchange-rates?base=USD&quote=JPY&amount=100", nil, nil,
 			)
-			AssertJSONResponse(t, gen.ExchangeRateResponse{}, actual)
+			AssertJSONResponseType[gen.ExchangeRateResponse](t, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("GET /v1/exchange-rates が ErrUnavailable で 503 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			// gateway が外部為替サービス不通で ErrUnavailable を返す実挙動を模擬する。
+			mockUC := mock_exchangerate.NewMockUsecase(ctrl)
+			mockUC.EXPECT().
+				Convert(gomock.Any(), "USD", "JPY", 100.0).
+				Return(0.0, apperror.ErrUnavailable)
+
+			exchangeratehandler.BindHandler(e, tf, mockUC)
+
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, "/v1/exchange-rates?base=USD&quote=JPY&amount=100", nil, nil,
+			)
+			AssertErrorResponse(t, actual, http.StatusServiceUnavailable)
 		})
 	})
 }

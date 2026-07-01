@@ -2,7 +2,6 @@ package outbox_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"go-boilerplate/internal/usecase/outbox"
 	mock_relay "go-boilerplate/internal/usecase/outbox/mock"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,6 +54,24 @@ func pendingMessage(t *testing.T) outboxbndry.PendingMessage {
 		EventType: "e.v1",
 		Payload:   []byte(`{"v":1}`),
 	}
+}
+
+func TestNewRelay(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全依存を渡すと非nilのRelayUsecaseを生成する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			got := newRelay(t, mock_tx.NewMockManager(ctrl), mock_outbox.NewMockStore(ctrl),
+				mock_publisher.NewMockPublisher(ctrl))
+
+			assert.NotNil(t, got)
+		})
+	})
 }
 
 func TestRelayUsecase_RelayBatch(t *testing.T) {
@@ -125,7 +143,7 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			msg := pendingMessage(t)
 
 			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(errors.New("publish failed"))
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
 			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(int32(1), nil)
 
 			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
@@ -134,6 +152,34 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, 1, got.Claimed)
 			assert.Equal(t, 0, got.Published)
+		})
+
+		t.Run("非致命な publish 失敗と成功が混在しても tx は巻き戻さず成功分のみ Published に数える", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			pub := mock_publisher.NewMockPublisher(ctrl)
+			msg1 := pendingMessage(t)
+			msg2 := pendingMessage(t)
+			msg2.ID = 2
+
+			// 1件目は publish 失敗だが attempts 上限未満なので MarkFailed のみ（非致命・dead 化しない）。
+			// 2件目は publish 成功で MarkPublished。tx は巻き戻らず Claimed=2 / Published=1 を返す。
+			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).
+				Return([]outboxbndry.PendingMessage{msg1, msg2}, nil)
+			gomock.InOrder(
+				pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed")),
+				store.EXPECT().MarkFailed(gomock.Any(), msg1.ID, gomock.Any()).Return(int32(1), nil),
+				pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil),
+				store.EXPECT().MarkPublished(gomock.Any(), msg2.ID).Return(nil),
+			)
+
+			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
+				RelayBatch(context.Background(), 100)
+
+			require.NoError(t, err)
+			assert.Equal(t, 2, got.Claimed)
+			assert.Equal(t, 1, got.Published)
 		})
 
 		t.Run("保存済みヘッダ JSON を復元して publish へ渡す", func(t *testing.T) {
@@ -188,7 +234,7 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			msg := pendingMessage(t)
 
 			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(errors.New("publish failed"))
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
 			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(outbox.DefaultMaxAttempts, nil)
 			store.EXPECT().MarkDead(gomock.Any(), msg.ID).Return(nil)
 			metrics := mock_relay.NewMockMetrics(ctrl)
@@ -211,7 +257,7 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
-			wantErr := errors.New("claim failed")
+			wantErr := xerrors.New("claim failed")
 
 			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return(nil, wantErr)
 
@@ -220,6 +266,7 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 
 			require.ErrorIs(t, err, wantErr)
 			assert.Equal(t, 0, got.Claimed)
+			assert.Equal(t, 0, got.Published)
 		})
 
 		t.Run("MarkPublished のエラーは tx を巻き戻すエラーとして返す", func(t *testing.T) {
@@ -228,7 +275,7 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
 			msg := pendingMessage(t)
-			wantErr := errors.New("mark failed")
+			wantErr := xerrors.New("mark failed")
 
 			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil)
@@ -246,10 +293,10 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
 			msg := pendingMessage(t)
-			wantErr := errors.New("dead failed")
+			wantErr := xerrors.New("dead failed")
 
 			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(errors.New("publish failed"))
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
 			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(outbox.DefaultMaxAttempts, nil)
 			store.EXPECT().MarkDead(gomock.Any(), msg.ID).Return(wantErr)
 
@@ -259,12 +306,12 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			require.ErrorIs(t, err, wantErr)
 		})
 
-		t.Run("複数メッセージ混在時に2件目が失敗すると tx を巻き戻し結果は破棄される", func(t *testing.T) {
+		t.Run("複数メッセージ混在で2件目の DB マーク失敗時は DoWithResult が零値 RelayResult とエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
-			wantErr := errors.New("mark failed")
+			wantErr := xerrors.New("mark failed")
 
 			// 1件目は publish 成功で MarkPublished も成功するが、2件目の MarkPublished が
 			// DB エラーになる。deliver の DB マーク失敗は tx を巻き戻すエラーなので、
@@ -293,10 +340,10 @@ func TestRelayUsecase_RelayBatch(t *testing.T) {
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
 			msg := pendingMessage(t)
-			wantErr := errors.New("mark failed")
+			wantErr := xerrors.New("mark failed")
 
 			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(errors.New("publish failed"))
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
 			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(int32(0), wantErr)
 
 			_, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
@@ -365,7 +412,7 @@ func TestRelayUsecase_RecordLag(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			wantErr := errors.New("lag query failed")
+			wantErr := xerrors.New("lag query failed")
 			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, wantErr)
 			// エラー時は SetLagSeconds を呼ばない。
 			metrics := mock_relay.NewMockMetrics(ctrl)

@@ -2,7 +2,6 @@ package di
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go.uber.org/fx"
@@ -12,6 +11,7 @@ import (
 	"go-boilerplate/internal/di/module"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // outboxRelayCommonOptions は、relay / replay が共有する共通モジュール群を返します。
@@ -65,5 +65,5 @@ func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 	stopErr := app.Stop(stopCtx) //nolint:contextcheck // 停止用 context は意図的に ctx を継承しない
 
 	// replay 失敗と OnStop 失敗（DB プール Close 等）の双方をオペレータへ可視化する。
-	return result, errors.Join(runErr, stopErr)
+	return result, xerrors.Join(runErr, stopErr)
 }

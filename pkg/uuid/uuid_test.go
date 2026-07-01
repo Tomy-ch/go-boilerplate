@@ -3,15 +3,40 @@ package uuid
 import (
 	"testing"
 
+	googleuuid "github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
+// failingReader は、常に読み取り失敗する乱数源です（NewV7 の失敗分岐検証用）。
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, xerrors.New("rand source failure") }
+
+// グローバルな SetRand を差し替えるため直列実行する（他テストの New 呼び出しとの競合回避）。
+//
+//nolint:paralleltest // SetRand はプロセス共有のグローバル状態のため並列化不可
 func TestNew(t *testing.T) {
-	t.Parallel()
-	uuid, err := New()
-	require.NoError(t, err)
-	require.NotEmpty(t, uuid.String())
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("UUIDv7を生成し文字列表現が空でない", func(t *testing.T) {
+			u, err := New()
+			require.NoError(t, err)
+			assert.NotEmpty(t, u.String())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Run("乱数源が失敗するとエラーを返す", func(t *testing.T) {
+			googleuuid.SetRand(failingReader{})
+			t.Cleanup(func() { googleuuid.SetRand(nil) })
+
+			u, err := New()
+			require.Error(t, err)
+			assert.True(t, u.IsNil())
+		})
+	})
 }
 
 func TestNewTestFromSalt(t *testing.T) {
@@ -20,6 +45,7 @@ func TestNewTestFromSalt(t *testing.T) {
 	uuid1 := NewTestFromSalt(t, salt)
 	uuid2 := NewTestFromSalt(t, salt)
 	assert.Equal(t, uuid1, uuid2)
+	assert.NotEqual(t, uuid1, NewTestFromSalt(t, "other-salt"))
 }
 
 func TestBytes(t *testing.T) {
@@ -61,7 +87,7 @@ func TestString(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
-	require.NotEmpty(t, uuid.String())
+	assert.NotEmpty(t, uuid.String())
 }
 
 func TestEqual(t *testing.T) {
@@ -70,13 +96,17 @@ func TestEqual(t *testing.T) {
 	require.NoError(t, err)
 	uuid2 := uuid1
 	assert.True(t, uuid1.Equal(uuid2))
+
+	uuid3, err := New()
+	require.NoError(t, err)
+	assert.False(t, uuid1.Equal(uuid3))
 }
 
 func TestToPtr(t *testing.T) {
 	t.Parallel()
 	uuid, err := New()
 	require.NoError(t, err)
-	require.NotNil(t, uuid.ToPtr())
+	assert.NotNil(t, uuid.ToPtr())
 }
 
 func TestEqualPtr(t *testing.T) {
@@ -85,6 +115,11 @@ func TestEqualPtr(t *testing.T) {
 	require.NoError(t, err)
 	uuid2 := uuid1.ToPtr()
 	assert.True(t, uuid1.EqualPtr(uuid2))
+	assert.False(t, uuid1.EqualPtr(nil))
+
+	uuid3, err := New()
+	require.NoError(t, err)
+	assert.False(t, uuid1.EqualPtr(uuid3.ToPtr()))
 }
 
 func TestParse(t *testing.T) {
@@ -102,7 +137,7 @@ func TestParse(t *testing.T) {
 	t.Run("異常系/無効な文字列を解析するとエラーが返る", func(t *testing.T) {
 		t.Parallel()
 		actual, err := Parse("invalid-uuid")
-		require.Empty(t, actual)
+		assert.Empty(t, actual)
 		require.Error(t, err)
 	})
 }

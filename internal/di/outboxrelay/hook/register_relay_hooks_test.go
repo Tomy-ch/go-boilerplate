@@ -24,7 +24,7 @@ func TestRegisterRelayHooks(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("OnStart で poll ループを起動し OnStop で停止する", func(t *testing.T) {
+		t.Run("OnStart/OnStop フックが登録され start と stop が正常完了する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)

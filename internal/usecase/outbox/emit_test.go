@@ -3,7 +3,6 @@ package outbox_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"regexp"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +20,24 @@ import (
 
 // traceparentPattern は、W3C traceparent（00-<traceID>-<spanID>-<flags>）の形式を検証する正規表現です。
 var traceparentPattern = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
+
+func TestNewEmit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("依存を渡すと非nilのEmitUsecaseを生成する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+
+			got := outbox.NewEmit(store, observability.NewNoopTracerFactory(t))
+
+			assert.NotNil(t, got)
+		})
+	})
+}
 
 func TestEmitUsecase_Emit(t *testing.T) {
 	t.Parallel()
@@ -158,7 +176,7 @@ func TestEmitUsecase_Emit(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			wantErr := errors.New("insert failed")
+			wantErr := xerrors.New("insert failed")
 
 			store.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, wantErr)
 

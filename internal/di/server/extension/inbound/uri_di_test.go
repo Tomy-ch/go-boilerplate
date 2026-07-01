@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPreMiddleware(t *testing.T) {
@@ -12,5 +11,5 @@ func TestPreMiddleware(t *testing.T) {
 
 	mw := URIPreMiddleware()
 	assert.Equal(t, uriPrePriority, mw.Middleware.Priority)
-	require.NotNil(t, mw.Middleware.Middleware)
+	assert.NotNil(t, mw.Middleware.Middleware)
 }

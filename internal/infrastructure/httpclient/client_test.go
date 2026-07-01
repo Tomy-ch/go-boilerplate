@@ -48,9 +48,32 @@ func newClient(t *testing.T, registry httpclient.Registry) httpclient.Client {
 	return httpclient.New(
 		observability.NewNoopHTTPClientTransport(t),
 		clocktestkit.NewNoopSleeper(t),
+		system.NewClock(),
 		registry,
 		observability.NewNoopHTTPClientMetrics(t),
 	)
+}
+
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("依存を渡して構築すると非nilのClientを返す", func(t *testing.T) {
+			t.Parallel()
+
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				clocktestkit.NewNoopSleeper(t),
+				system.NewClock(),
+				httpclient.NewRegistry(nil),
+				observability.NewNoopHTTPClientMetrics(t),
+			)
+
+			assert.NotNil(t, client)
+		})
+	})
 }
 
 func TestClientDo(t *testing.T) {
@@ -107,35 +130,43 @@ func TestClientDo(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		statusCases := map[string]struct {
-			status int
-			want   error
-		}{
-			"404はErrNotFound":        {status: http.StatusNotFound, want: apperror.ErrNotFound},
-			"400はErrInvalidArgument": {status: http.StatusBadRequest, want: apperror.ErrInvalidArgument},
-			"429はErrTooManyRequests": {status: http.StatusTooManyRequests, want: apperror.ErrTooManyRequests},
-			"500はErrUnavailable":     {status: http.StatusInternalServerError, want: apperror.ErrUnavailable},
+		// ステータスコードごとに、apperror へ正規化しつつレスポンス本体も返すことを確認する。
+		assertStatusMapped := func(t *testing.T, status int, want error) {
+			t.Helper()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(status)
+				_, _ = w.Write([]byte("error-body"))
+			}))
+			t.Cleanup(srv.Close)
+
+			client := newClient(t, httpclient.NewRegistry(nil))
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "sample", srv.URL))
+
+			require.ErrorIs(t, err, want)
+			require.NotNil(t, resp)
+			assert.Equal(t, status, resp.StatusCode)
+			assert.Equal(t, []byte("error-body"), resp.Body)
 		}
 
-		for name, tc := range statusCases {
-			t.Run(name+"_でもレスポンスは返す", func(t *testing.T) {
-				t.Parallel()
+		t.Run("404はErrNotFoundでもレスポンスは返す", func(t *testing.T) {
+			t.Parallel()
+			assertStatusMapped(t, http.StatusNotFound, apperror.ErrNotFound)
+		})
 
-				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-					w.WriteHeader(tc.status)
-					_, _ = w.Write([]byte("error-body"))
-				}))
-				t.Cleanup(srv.Close)
+		t.Run("400はErrInvalidArgumentでもレスポンスは返す", func(t *testing.T) {
+			t.Parallel()
+			assertStatusMapped(t, http.StatusBadRequest, apperror.ErrInvalidArgument)
+		})
 
-				client := newClient(t, httpclient.NewRegistry(nil))
-				resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "sample", srv.URL))
+		t.Run("429はErrTooManyRequestsでもレスポンスは返す", func(t *testing.T) {
+			t.Parallel()
+			assertStatusMapped(t, http.StatusTooManyRequests, apperror.ErrTooManyRequests)
+		})
 
-				require.ErrorIs(t, err, tc.want)
-				require.NotNil(t, resp)
-				assert.Equal(t, tc.status, resp.StatusCode)
-				assert.Equal(t, []byte("error-body"), resp.Body)
-			})
-		}
+		t.Run("500はErrUnavailableでもレスポンスは返す", func(t *testing.T) {
+			t.Parallel()
+			assertStatusMapped(t, http.StatusInternalServerError, apperror.ErrUnavailable)
+		})
 
 		t.Run("transport失敗はErrUnavailableを返しレスポンスはnil", func(t *testing.T) {
 			t.Parallel()
@@ -176,6 +207,36 @@ func TestClientDo(t *testing.T) {
 			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "sample", "://invalid"))
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			assert.Nil(t, resp)
+		})
+
+		t.Run("ボディ読み取り中に接続が切れるとErrUnavailableを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// Content-Length を過大申告しつつ本文を途中で切って接続を閉じ、ボディ読み取りを失敗させる。
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				hj, ok := w.(http.Hijacker)
+				if !ok {
+					return
+				}
+				conn, buf, err := hj.Hijack()
+				if err != nil {
+					return
+				}
+				_, _ = buf.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nhello")
+				_ = buf.Flush()
+				_ = conn.Close()
+			}))
+			t.Cleanup(srv.Close)
+
+			profile := httpclient.DefaultProfile()
+			profile.MaxAttempts = 1 // 再送させず readBody の失敗経路を単独で踏ませる
+			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"body": profile})
+
+			client := newClient(t, registry)
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "body", srv.URL))
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
 		})
 
@@ -298,9 +359,11 @@ func TestClientDoRetry(t *testing.T) {
 			srv, hits := countingServer(t, http.StatusServiceUnavailable)
 			client := newClient(t, retryProfile())
 
-			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotNil(t, resp) // リトライ後 5xx でも resp は非nilで返る契約
+			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 			assert.Equal(t, int32(3), hits.Load())
 		})
 
@@ -359,7 +422,13 @@ func TestClientDoRetry(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).Return(context.Canceled).AnyTimes()
 
-			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, retryProfile(), observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				sleeper,
+				system.NewClock(),
+				retryProfile(),
+				observability.NewNoopHTTPClientMetrics(t),
+			)
 
 			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
@@ -395,7 +464,13 @@ func TestClientDoBackoff(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
-			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				sleeper,
+				system.NewClock(),
+				registry,
+				observability.NewNoopHTTPClientMetrics(t),
+			)
 			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -422,23 +497,37 @@ func TestClientDoDeadline(t *testing.T) {
 
 			profile := httpclient.DefaultProfile()
 			profile.MaxAttempts = 20
-			profile.BaseBackoff = 20 * time.Millisecond
-			profile.MaxBackoff = 20 * time.Millisecond
+			// backoff は極小にして jitter の振れ幅を打ち切り判定に対して無視できるようにし、
+			// 打ち切りは fake clock の固定 step（20ms/サイクル）と overall deadline(60ms) の関係のみで決まる。
+			profile.BaseBackoff = time.Millisecond
+			profile.MaxBackoff = time.Millisecond
 			profile.OverallTimeout = 60 * time.Millisecond
+			// retry budget が deadline より先に打ち切らないよう十分なトークンを与え、
+			// 打ち切り要因を overall deadline に限定する。
+			profile.RetryBudgetRatio = 10
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"retry": profile})
 
-			// 実時間を消費する sleeper を使い、overall デッドラインで打ち切られることを検証する。
+			// Sleep で fake 時刻を 20ms/サイクル進める clock を注入し、deadline 到達での打ち切りを検証する。
+			// context の overall デッドラインは実時間 60ms だが、fake sleep は即時進むためテストは数 ms で
+			// 完了し実タイマーは発火しない。打ち切りは注入 clock 基準の canRetryWithin（overallDeadline 到達）
+			// のみが担う（実時間・jitter 非依存）。開始時刻は実時刻と混同しないよう遠未来に置く。
+			fakeClock := clocktestkit.NewStepClock(time.Now().Add(time.Hour), 20*time.Millisecond)
 			client := httpclient.New(
 				observability.NewNoopHTTPClientTransport(t),
-				system.NewSleeper(),
+				fakeClock,
+				fakeClock,
 				registry,
 				observability.NewNoopHTTPClientMetrics(t),
 			)
-			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
+			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "retry", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			assert.Less(t, hits.Load(), int32(20))
-			assert.GreaterOrEqual(t, hits.Load(), int32(1))
+			// 打ち切りが canRetryWithin（deadline 到達）由来であることを last attempt の resp で区別する。
+			// circuit-open / sleeper error 経路なら resp==nil になるため、非nil であることが弁別になる。
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+			// 20ms/step × 3 backoff で fakeNow がちょうど deadline(60ms)に達し、hits は決定的に 4（実時間・jitter 非依存）。
+			assert.Equal(t, int32(4), hits.Load())
 		})
 	})
 }
@@ -587,7 +676,13 @@ func TestClientDoRetryAfter(t *testing.T) {
 					return nil
 				}).AnyTimes()
 
-			client := httpclient.New(observability.NewNoopHTTPClientTransport(t), sleeper, registry, observability.NewNoopHTTPClientMetrics(t))
+			client := httpclient.New(
+				observability.NewNoopHTTPClientTransport(t),
+				sleeper,
+				system.NewClock(),
+				registry,
+				observability.NewNoopHTTPClientMetrics(t),
+			)
 			_, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "ra", srv.URL))
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -606,22 +701,32 @@ func TestClientDoTimeout(t *testing.T) {
 		t.Run("per-attemptタイムアウト超過はErrUnavailableを返す", func(t *testing.T) {
 			t.Parallel()
 
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				time.Sleep(200 * time.Millisecond)
-				w.WriteHeader(http.StatusOK)
+			// per-attempt タイムアウトでリクエスト context がキャンセルされるまでブロックするサーバ。
+			var hits atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				hits.Add(1)
+				<-r.Context().Done()
 			}))
 			t.Cleanup(srv.Close)
 
 			profile := httpclient.DefaultProfile()
 			profile.PerAttemptTimeout = 20 * time.Millisecond
-			profile.OverallTimeout = 50 * time.Millisecond
+			// overall とリトライを打ち切り要因から外し、per-attempt タイムアウト単独の打ち切りを分離検証する
+			// （overall で打ち切られる構成だと per-attempt を外しても同じ ErrUnavailable が返り区別できない）。
+			profile.OverallTimeout = 2 * time.Second
+			profile.MaxAttempts = 1
 			registry := httpclient.NewRegistry(map[httpclient.Downstream]httpclient.Profile{"slow": profile})
 
 			client := newClient(t, registry)
+			start := time.Now()
 			resp, err := client.Do(context.Background(), httpclient.NewRequest(httpclient.MethodGet(), "slow", srv.URL))
+			elapsed := time.Since(start)
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Nil(t, resp)
+			assert.Equal(t, int32(1), hits.Load())
+			// per-attempt(20ms) が打ち切り要因であることを、overall(2s) より大幅に短い経過時間で確認する。
+			assert.Less(t, elapsed, 500*time.Millisecond)
 		})
 	})
 }

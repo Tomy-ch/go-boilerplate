@@ -25,6 +25,22 @@ type conflictingCollector struct {
 func (c conflictingCollector) Describe(ch chan<- *prometheus.Desc) { ch <- c.desc }
 func (c conflictingCollector) Collect(_ chan<- prometheus.Metric)  {}
 
+func TestNewStatsCollector(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("非nilなStatsCollectorを構築しCollectorとして登録できる", func(t *testing.T) {
+			t.Parallel()
+
+			c := queuemetrics.NewStatsCollector(nil)
+			require.NotNil(t, c)
+			require.NoError(t, prometheus.NewRegistry().Register(c))
+		})
+	})
+}
+
 func Test_StatsCollector_Collect(t *testing.T) {
 	t.Parallel()
 
@@ -95,8 +111,15 @@ worker_queue_depth{adapter="sqs",queue="dlq",state="delayed",worker="w"} 0
 				{WorkerName: "w", Adapter: "sqs", Provider: provider},
 			})
 
-			// dlq の系列が 1 つも無いことを確認する（source の 3 系列のみ）。
-			assert.Equal(t, 3, testutil.CollectAndCount(c, "worker_queue_depth"))
+			// source の3系列のみ出力され dlq 系列が無いことを値・ラベルまで検証する。
+			expected := `
+# HELP worker_queue_depth Approximate number of messages in the queue by state. SQS values are approximate.
+# TYPE worker_queue_depth gauge
+worker_queue_depth{adapter="sqs",queue="source",state="visible",worker="w"} 1
+worker_queue_depth{adapter="sqs",queue="source",state="not_visible",worker="w"} 0
+worker_queue_depth{adapter="sqs",queue="source",state="delayed",worker="w"} 0
+`
+			require.NoError(t, testutil.CollectAndCompare(c, strings.NewReader(expected), "worker_queue_depth"))
 		})
 
 		t.Run("provider に deadline 付きの context を渡す", func(t *testing.T) {

@@ -3,7 +3,6 @@ package outbox
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -12,6 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -105,7 +105,7 @@ func (s *store) MarkFailed(ctx context.Context, id int64, lastErr string) (int32
 		LastError: &lastErr,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if xerrors.Is(err, pgx.ErrNoRows) {
 			return 0, nil
 		}
 		return 0, pgerror.NormalizeError(err)
@@ -162,7 +162,7 @@ func (s *store) OldestPendingCreatedAt(ctx context.Context) (time.Time, bool, er
 	db := gen.New(driver.New(ctx, s.db))
 	createdAt, err := db.OldestPendingOutbox(ctx)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if xerrors.Is(err, pgx.ErrNoRows) {
 			return time.Time{}, false, nil
 		}
 		return time.Time{}, false, pgerror.NormalizeError(err)

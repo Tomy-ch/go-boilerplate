@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/controller/server"
 	mock_lifecycle "go-boilerplate/internal/di/lifecycle/mock"
 	"go-boilerplate/internal/di/server/extension"
+	"go-boilerplate/internal/logging"
 	mock_logging "go-boilerplate/internal/logging/mock"
 
 	"github.com/labstack/echo/v4"
@@ -96,7 +97,7 @@ func Test_newStartServerFunc(t *testing.T) {
 			fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
 			err = fn(context.Background())
 			require.NoError(t, err)
-			require.NotNil(t, e.Listener)
+			assert.NotNil(t, e.Listener)
 
 			t.Cleanup(func() {
 				_ = e.Shutdown(context.Background())
@@ -137,6 +138,46 @@ func Test_newStartServerFunc(t *testing.T) {
 			err = fn(context.Background())
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "failed to listen on port")
+		})
+
+		t.Run("Startがhttp.ErrServerClosed以外で失敗するとErrorログを出す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+
+			mockLogger := mock_logging.NewMockLogger(ctrl)
+			namedMock := mock_logging.NewMockLogger(ctrl)
+
+			mockLogger.EXPECT().Named("server.Start").Return(namedMock).AnyTimes()
+			namedMock.EXPECT().CallerSkip(serverCallerSkip).Return(namedMock).AnyTimes()
+			namedMock.EXPECT().
+				Info("http started", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				AnyTimes()
+			errLogged := make(chan struct{})
+			namedMock.EXPECT().
+				Error("failed to start http server", gomock.Any()).
+				Do(func(string, ...*logging.Field) { close(errLogged) }).
+				Times(1)
+
+			cfg := config.MockConfigForTest(t)
+			appCfg := config.NewApplicationConfig(cfg)
+			secCfg := config.NewSecurityConfig(cfg)
+			srvCfg := config.NewServerConfig(cfg)
+			osCfg := config.NewOperatingSystemConfig(cfg)
+			srvCfg.SetServerPort(t, 0) // OS 割り当ての空きポート
+
+			e := server.NewAppServer(srvCfg)
+			fn := newStartServerFunc(e, mockLogger, appCfg, secCfg, srvCfg, osCfg)
+
+			require.NoError(t, fn(context.Background()))
+			// Shutdown ではなく Listener を直接 Close し、Serve を http.ErrServerClosed 以外で終了させる。
+			require.NoError(t, e.Listener.Close())
+
+			select {
+			case <-errLogged:
+			case <-time.After(2 * time.Second):
+				t.Fatal("Start 失敗時の Error ログが呼ばれなかった")
+			}
 		})
 	})
 }

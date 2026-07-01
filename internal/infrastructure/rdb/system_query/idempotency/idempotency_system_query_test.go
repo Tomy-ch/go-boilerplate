@@ -138,6 +138,9 @@ func Test_store_DeleteExpired(t *testing.T) {
 				// cutoff=now で失効行が削除される。
 				deleted, err := s.DeleteExpired(ctx, time.Now(), 100)
 				require.NoError(t, err)
+				// DeleteExpired は scope 非限定でテーブル全体を対象とするため、共有DB上では他の失効行も
+				// 含まれ得る。厳密件数に依存せず「1件以上削除された」ことのみ検証し、対象行の削除は
+				// 後続の Get==nil で担保する。
 				assert.GreaterOrEqual(t, deleted, int64(1))
 
 				// 削除後は取得できない。
@@ -252,6 +255,21 @@ func Test_store_errors(t *testing.T) {
 			require.ErrorIs(t, <-holderDone, errHolderRollback)
 		})
 
+		t.Run("claim挿入が汎用DBエラーで失敗した場合はErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				// NUL バイトを含む scope は PostgreSQL の TEXT に格納できず、ロック競合でも既存行でもない
+				// 汎用エラーとなるため、Claim の default 分岐（ErrInternal 正規化）へ落ちる。
+				params := idempotencybndry.ClaimParams{
+					Scope: "bad\x00scope", Key: "key-1", Method: "POST", Path: "/v1/users",
+					Fingerprint: newFingerprint(0x05), ExpiresAt: time.Now().Add(time.Hour),
+				}
+				_, err := s.Claim(ctx, params)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+
 		t.Run("キャンセル済みコンテキストでは各操作がErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -262,7 +280,6 @@ func Test_store_errors(t *testing.T) {
 				Scope: "ctx-cancel", Key: "key-1", Method: "POST", Path: "/v1/users",
 				Fingerprint: newFingerprint(0x03), ExpiresAt: time.Now().Add(time.Hour),
 			}
-			// context.Canceled は pgerror.NormalizeError で apperror.ErrCanceled へ写像される。
 			_, claimErr := s.Claim(ctx, params)
 			require.ErrorIs(t, claimErr, apperror.ErrCanceled)
 

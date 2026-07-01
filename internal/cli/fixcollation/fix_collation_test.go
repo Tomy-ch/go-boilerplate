@@ -2,11 +2,11 @@ package fixcollation
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"go-boilerplate/internal/logging"
 	mock_exec "go-boilerplate/pkg/exec/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,7 +81,7 @@ func TestFixCollation(t *testing.T) {
 			// 1 文目で失敗 → 2 文目は実行されない（Times(1)）。
 			runner.EXPECT().
 				Output(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(nil, errors.New("psql failed")).
+				Return(nil, xerrors.New("psql failed")).
 				Times(1)
 
 			err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), "postgres://dsn", "pw", "local")
@@ -98,7 +98,7 @@ func TestFixCollation(t *testing.T) {
 				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).
 					Return(nil, nil),
 				runner.EXPECT().Output(gomock.Any(), workDir, gomock.Any(), psqlCommand, gomock.Any()).
-					Return(nil, errors.New("alter failed")),
+					Return(nil, xerrors.New("alter failed")),
 			)
 
 			err := fixCollation(context.Background(), runner, logging.NewTestLogger(t), "postgres://dsn", "pw", "local")
@@ -148,7 +148,7 @@ func TestRunFix(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			runner := mock_exec.NewMockRunner(ctrl)
 
-			loadDSN := func() (string, string, error) { return "", "", errors.New("config failed") }
+			loadDSN := func() (string, string, error) { return "", "", xerrors.New("config failed") }
 			err := RunFix(context.Background(), runner, logging.NewTestLogger(t), "local", loadDSN)
 			require.Error(t, err)
 		})

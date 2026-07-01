@@ -205,6 +205,19 @@ func TestError(t *testing.T) {
 
 			assert.Equal(t, expected, Error(expectedKey, expectedError))
 		})
+
+		t.Run("nilエラーの場合、errorValueがnilのFieldを生成する", func(t *testing.T) {
+			t.Parallel()
+
+			const expectedKey = "key"
+			expected := &Field{
+				key:        expectedKey,
+				kind:       fieldError,
+				errorValue: nil,
+			}
+
+			assert.Equal(t, expected, Error(expectedKey, nil))
+		})
 	})
 }
 

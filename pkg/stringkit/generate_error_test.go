@@ -22,6 +22,13 @@ func TestValidateInRange(t *testing.T) {
 		assert.False(t, ok)
 		assert.Equal(t, "length must be between 1 and 3 characters (got 5)", msg)
 	})
+
+	t.Run("最小文字数未満の場合は ok=false・理由メッセージ", func(t *testing.T) {
+		t.Parallel()
+		ok, msg := ValidateInRange("あ", 3, 5)
+		assert.False(t, ok)
+		assert.Equal(t, "length must be between 3 and 5 characters (got 1)", msg)
+	})
 }
 
 func TestErrorMsgInRange(t *testing.T) {

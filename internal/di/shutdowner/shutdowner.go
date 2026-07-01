@@ -1,4 +1,5 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
+//go:generate mockgen -destination=mock/mock_fx.gen.go -package=mock_shutdowner -mock_names=Shutdowner=MockFxShutdowner go.uber.org/fx Shutdowner
 
 // Package shutdowner は、fx.Shutdowner を抽象化し、上位層を fx 依存から切り離すための薄いラッパを提供します。
 package shutdowner

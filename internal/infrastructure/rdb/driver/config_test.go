@@ -6,9 +6,36 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go-boilerplate/internal/config"
 )
+
+func TestBuildDSN(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("sslmodeと追加クエリパラメータを含む接続URLが生成される", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.MockConfigForTest(t)
+			dbCfg := config.NewDatabaseConfig(cfg)
+
+			actual := buildDSN(dbCfg, url.Values{"timezone": {"Asia/Tokyo"}})
+			require.NotNil(t, actual)
+
+			assert.Equal(t, "postgres", actual.Scheme)
+			assert.Equal(t, dbCfg.DBName(), actual.Path)
+			assert.Equal(t, fmt.Sprintf("%s:%d", dbCfg.Host(), dbCfg.Port()), actual.Host)
+
+			q := actual.Query()
+			assert.Equal(t, dbCfg.SSLMode(), q.Get("sslmode"))
+			assert.Equal(t, "Asia/Tokyo", q.Get("timezone"))
+		})
+	})
+}
 
 func TestDSN(t *testing.T) {
 	t.Parallel()

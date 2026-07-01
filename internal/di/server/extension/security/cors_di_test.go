@@ -6,7 +6,6 @@ import (
 	"go-boilerplate/internal/config"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCORSMiddleware(t *testing.T) {
@@ -17,5 +16,6 @@ func TestCORSMiddleware(t *testing.T) {
 
 	out := CORSMiddleware(secCfg)
 	assert.Equal(t, corsPriority, out.Middleware.Priority)
-	require.NotNil(t, out.Middleware.Middleware)
+	assert.NotNil(t, out.Middleware.Middleware)
+	assert.Equal(t, "cors", out.Middleware.Name)
 }

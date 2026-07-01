@@ -61,7 +61,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
 
@@ -227,7 +227,7 @@ func Test_usecase_Create(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	mockTxManager := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
 
@@ -457,7 +457,7 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
 	userDomain, err := user.New(
@@ -606,7 +606,7 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
 	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)

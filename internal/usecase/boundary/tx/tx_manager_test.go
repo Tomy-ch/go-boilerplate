@@ -2,7 +2,6 @@ package tx_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -72,38 +71,8 @@ func TestDoWithResult(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, expected, actual)
 		})
-	})
 
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("fnがエラーを返した場合はゼロ値を返す", func(t *testing.T) {
-			t.Parallel()
-			m := passthroughManager(t)
-			ctx := context.Background()
-			expected := 0
-
-			actual, err := tx.DoWithResult(ctx, m, func(_ context.Context) (int, error) {
-				return expected, errors.New("fn failed")
-			})
-
-			require.Error(t, err)
-			assert.Equal(t, expected, actual)
-		})
-
-		t.Run("fnは成功したがManager側でエラー（例: コミット失敗）", func(t *testing.T) {
-			t.Parallel()
-			m := afterErrManager(t, errors.New("commit failed"))
-			ctx := context.Background()
-
-			actual, err := tx.DoWithResult(ctx, m, func(_ context.Context) (string, error) {
-				return "ok", nil
-			})
-
-			require.Error(t, err)
-			assert.Empty(t, actual)
-		})
-
-		t.Run("正常系: contextの値がfnに伝搬される", func(t *testing.T) {
+		t.Run("contextの値がfnに伝搬される", func(t *testing.T) {
 			t.Parallel()
 			type ctxKey struct{}
 			const expected = "propagated"
@@ -118,6 +87,36 @@ func TestDoWithResult(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, expected, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("fnがエラーを返した場合はゼロ値を返す", func(t *testing.T) {
+			t.Parallel()
+			m := passthroughManager(t)
+			ctx := context.Background()
+			expected := 0
+
+			actual, err := tx.DoWithResult(ctx, m, func(_ context.Context) (int, error) {
+				return expected, xerrors.New("fn failed")
+			})
+
+			require.Error(t, err)
+			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("fnは成功したがManager側でエラー（例: コミット失敗）", func(t *testing.T) {
+			t.Parallel()
+			m := afterErrManager(t, xerrors.New("commit failed"))
+			ctx := context.Background()
+
+			actual, err := tx.DoWithResult(ctx, m, func(_ context.Context) (string, error) {
+				return "ok", nil
+			})
+
+			require.Error(t, err)
+			assert.Empty(t, actual)
 		})
 
 		t.Run("panicをManagerがrecoverした場合はエラーとゼロ値を返す", func(t *testing.T) {

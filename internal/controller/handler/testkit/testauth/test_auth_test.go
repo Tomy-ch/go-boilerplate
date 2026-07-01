@@ -8,7 +8,6 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMakeAvailableAuthn(t *testing.T) {
@@ -24,7 +23,7 @@ func TestMakeAvailableAuthn(t *testing.T) {
 			authCtx := MakeAvailableAuthn(context.Background(), t, subject)
 
 			authn, ok := ctxhelper.GetAuthn(authCtx)
-			require.True(t, ok)
+			assert.True(t, ok)
 			assert.Equal(t, subject, authn.Subject())
 			assert.Equal(t, auth.ProviderMock, authn.Provider())
 		})

@@ -38,6 +38,23 @@ func newTestQueryTracer(t *testing.T) (*queryTracer, *mock_logging.MockLogger) {
 	return qt, mockLogger
 }
 
+// newObservedQueryTracer は、与えられた logger を使う queryTracer を返します。
+// 観測ログ自体は呼び出し側で logging.NewObservedTestLogger から受け取り、
+// 終了ログに乗る Field のキー検証に用います（observer 型を本パッケージで直接参照しないため）。
+func newObservedQueryTracer(t *testing.T, logger logging.Logger) *queryTracer {
+	t.Helper()
+
+	cfg := config.MockConfigForTest(t)
+	dbCfg := config.NewDatabaseConfig(cfg)
+	obsCfg := config.NewObservabilityConfig(cfg)
+
+	lf := logging.NewTestLogFieldBuilder(t)
+
+	qt, ok := NewQueryTracer(dbCfg, obsCfg, otelpgx.NewTracer(), nil, logger, lf).(*queryTracer)
+	require.True(t, ok)
+	return qt
+}
+
 func TestNewQueryTracer(t *testing.T) {
 	t.Parallel()
 
@@ -112,6 +129,27 @@ func TestQueryTracer_TraceQueryEnd(t *testing.T) {
 			qt.TraceQueryEnd(ctx, nil, pgx.TraceQueryEndData{Err: errQueryForTest})
 		})
 
+		t.Run("エラーログに internal_error と latency_ms フィールドが乗る", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			qt := newObservedQueryTracer(t, logger)
+
+			ctx := context.WithValue(context.Background(), queryLogKey{}, queryLogData{
+				sql:   "SELECT 1",
+				start: time.Now(),
+			})
+			qt.TraceQueryEnd(ctx, nil, pgx.TraceQueryEndData{Err: errQueryForTest})
+
+			entries := observed.FilterMessage("DB query failed").All()
+			require.Len(t, entries, 1)
+
+			ctxMap := entries[0].ContextMap()
+			assert.NotEmpty(t, ctxMap)
+			assert.Contains(t, ctxMap, logging.InternalErrorKey)
+			assert.Contains(t, ctxMap, logging.LatencyKey)
+		})
+
 		t.Run("スロークエリ時は Warn ログを出す", func(t *testing.T) {
 			t.Parallel()
 
@@ -176,16 +214,28 @@ func TestQueryTracer_endFields_Mask(t *testing.T) {
 				start: time.Now(),
 			}
 
-			qtMasked, _ := newTestQueryTracer(t)
+			maskedLogger, maskedLogs := logging.NewObservedTestLogger(t)
+			qtMasked := newObservedQueryTracer(t, maskedLogger)
 			qtMasked.maskArgs = true
-			masked := qtMasked.endFields(context.Background(), ld, time.Millisecond, nil)
+			qtMasked.slowThreshold = time.Second
+			qtMasked.TraceQueryEnd(
+				context.WithValue(context.Background(), queryLogKey{}, ld), nil, pgx.TraceQueryEndData{})
 
-			qtPlain, _ := newTestQueryTracer(t)
+			plainLogger, plainLogs := logging.NewObservedTestLogger(t)
+			qtPlain := newObservedQueryTracer(t, plainLogger)
 			qtPlain.maskArgs = false
-			plain := qtPlain.endFields(context.Background(), ld, time.Millisecond, nil)
+			qtPlain.slowThreshold = time.Second
+			qtPlain.TraceQueryEnd(
+				context.WithValue(context.Background(), queryLogKey{}, ld), nil, pgx.TraceQueryEndData{})
 
-			// マスク時は args 件数フィールドが付かないぶん、フィールド数が少なくなる。
-			assert.Less(t, len(masked), len(plain))
+			maskedEntries := maskedLogs.FilterMessage("DB query completed").All()
+			require.Len(t, maskedEntries, 1)
+			plainEntries := plainLogs.FilterMessage("DB query completed").All()
+			require.Len(t, plainEntries, 1)
+
+			// マスク時は args 件数キーが付かず、非マスク時は付く。
+			assert.NotContains(t, maskedEntries[0].ContextMap(), logging.QueryArgsCountKey)
+			assert.Contains(t, plainEntries[0].ContextMap(), logging.QueryArgsCountKey)
 		})
 	})
 }

@@ -3,7 +3,6 @@ package errorhandler
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -35,7 +34,7 @@ func (b *badWriter) Header() http.Header {
 	return b.header
 }
 
-func (b *badWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
+func (b *badWriter) Write([]byte) (int, error) { return 0, xerrors.New("write failed") }
 
 func (b *badWriter) WriteHeader(statusCode int) { b.wroteHeader = statusCode }
 
@@ -78,18 +77,22 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler(errors.New("some error"), c)
+			handler(xerrors.New("some error"), c)
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 
-			_, ok := got["code"].(string)
-			assert.True(t, ok)
+			code, ok := got["code"].(string)
+			require.True(t, ok)
+			// 一般エラーは内部エラーコードへ正規化される。
+			assert.Equal(t, response.NewHTTPErrorFromAppError(nil).Code, code)
 
-			_, ok = got["requestId"].(string)
-			assert.True(t, ok)
+			requestID, ok := got["requestId"].(string)
+			require.True(t, ok)
+			// リクエストIDミドルウェア未経由のため空だが、文字列フィールドとして必ず出力される。
+			assert.Empty(t, requestID)
 		})
 	})
 }
@@ -156,7 +159,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, logger, lf, obsCfg, errors.New("boom"))
+			handleHTTPError(c, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 		})
@@ -175,8 +178,8 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
-			handleHTTPError(c, logger, lf, obsCfg, errors.New("boom"))
-			handleHTTPError(c, logger, lf, obsCfg, errors.New("boom"))
+			handleHTTPError(c, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -204,7 +207,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, logger, lf, obsCfg, errors.New("boom2"))
+			handleHTTPError(c, logger, lf, obsCfg, xerrors.New("boom2"))
 
 			assert.Equal(t, http.StatusInternalServerError, bw.wroteHeader)
 		})
@@ -302,12 +305,17 @@ func Test_normalizeHTTPError(t *testing.T) {
 					RequestId: "",
 				},
 				HTTPStatus: http.StatusBadRequest,
-				Internal:   errors.New("inner"),
+				Internal:   xerrors.New("inner"),
 			}
 
 			actual := normalizeHTTPError(he, expectedRequestID)
-			he.RequestId = expectedRequestID
-			assert.Equal(t, he, actual)
+
+			// エラー範囲ステータスなら Code/Message/HTTPStatus は維持され、
+			// RequestId は引数の値で確かに上書きされること（"" → expectedRequestID）を検証する。
+			assert.Equal(t, expectedRequestID, actual.RequestId)
+			assert.Equal(t, "E_ERR", actual.Code)
+			assert.Equal(t, "err", actual.Message)
+			assert.Equal(t, http.StatusBadRequest, actual.HTTPStatus)
 		})
 
 		t.Run("echo.HTTPErrorのエラー範囲はステータスに基づくレスポンスを返しInternalに文脈を保持する", func(t *testing.T) {
@@ -357,7 +365,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		t.Run("ドメイン語彙に該当しない素のエラーは内部サーバーエラー(500)を返す", func(t *testing.T) {
 			t.Parallel()
 
-			rawErr := errors.New("boom")
+			rawErr := xerrors.New("boom")
 
 			actual := normalizeHTTPError(rawErr, expectedRequestID)
 
@@ -368,7 +376,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 		t.Run("echo.HTTPErrorのInternalに通常エラーがある場合_statusベースで返却されInternalは非nilになる", func(t *testing.T) {
 			t.Parallel()
 
-			inner := errors.New("boom")
+			inner := xerrors.New("boom")
 			echoErr := &echo.HTTPError{Code: http.StatusForbidden, Internal: inner}
 
 			actual := normalizeHTTPError(echoErr, expectedRequestID)
@@ -534,7 +542,7 @@ func Test_httpErrorField(t *testing.T) {
 
 			fields := httpErrorField(c, lf, he)
 
-			require.GreaterOrEqual(t, len(fields), 4)
+			assert.GreaterOrEqual(t, len(fields), 4)
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, he.HTTPStatus))
 			assert.Contains(t, fields, logging.String(logging.ErrorCodeKey, he.Code))
 			assert.Contains(t, fields, logging.String(logging.ErrorMessageKey, he.Message))
@@ -546,7 +554,7 @@ func Test_httpErrorField(t *testing.T) {
 
 			c := newEchoCtx(t)
 			details := []string{"d1", "d2"}
-			internalErr := errors.New("internal err")
+			internalErr := xerrors.New("internal err")
 			he := &response.HTTPErrorResponse{
 				ErrorResponse: gen.ErrorResponse{
 					Code:      "E_INT",

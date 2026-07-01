@@ -1,15 +1,16 @@
 package datetime
 
 import (
-	"errors"
 	"time"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 // toLocation は、parse で得た時刻を loc のタイムゾーンへ変換して返す共通ヘルパです。
 // loc が nil の場合、time.Time.In の panic を避けてエラーを返します。
 func toLocation(loc *time.Location, parse func() (time.Time, error)) (time.Time, error) {
 	if loc == nil {
-		return time.Time{}, errors.New("datetime: loc must not be nil")
+		return time.Time{}, xerrors.New("datetime: loc must not be nil")
 	}
 
 	t, err := parse()

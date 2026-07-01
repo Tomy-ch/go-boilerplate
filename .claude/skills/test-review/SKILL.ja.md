@@ -90,7 +90,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 - ケース名は日本語。
 - エラーは `require.*`（testifylint `require-error`）、終端値は `assert.*`。`require.NotNil` / `require.True` 等は、**後続コードをガードする**場合（そのまま使うと panic / 無意味になる。例: `require.NotNil(fn); fn(...)` や `require.NotNil(rec); _ = rec.Field`）のみ正しい。値を以降で使わないなら終端なので `assert.*` にすべき — 終端の `require.NotNil` / `require.True` / `require.Equal` は違反として指摘。
 - 生成 mock を駆動するサブテストは mock controller 経由で assert している扱い: `EXPECT()`（メソッドが呼ばれないことを示す意図的な *no-EXPECT* や `.Times(0)` を含む）がアサーション。`assert.*` / `require.*` 行が無いというだけで「アサーション無し」と指摘しない。
-- `for` ループ / table-driven が出てくる場合は明確な可読性理由が見える、それ以外は逐次 `t.Run` 前提。
+- **table-driven `for` ループは違反**（`scaffold-test/SKILL.md` Rule 5）。`(input, expected)` 構造体スライスを `for _, tc := range cases { t.Run(...) }` で回すブロックは、可読性や `dupl` 回避を理由にしても指摘する。正しい形はケース毎の逐次 `t.Run` sibling（重複は許容）。長いゲッター/境界リストでも同様。
 - **subject 関数 ↔ `TestXxx` の 1:1 対応。** ここでの *subject* はペアになる本番ソース — バイナリにビルドされる非テスト・非生成の `.go` ファイル。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外（手書き `TestXxx` を期待しない）。両方向を確認:
   - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数束ねる `TestXxx` は `scaffold-test/SKILL.md` 通り 1 行 rationale コメント必須。
   - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は網羅ギャップ（その分岐は Lens 4 軸A でも surface する）。

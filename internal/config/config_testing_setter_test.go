@@ -63,6 +63,18 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 			assert.Equal(t, expected, cfg.observability.OTLPProtocol())
 		})
 
+		t.Run("OTLPエンドポイントを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := "http://test-collector:4318"
+			cfg.observability.SetObservabilityOTLPEndpoint(t, expected)
+			assert.Equal(t, expected, cfg.observability.OTLPEndpoint())
+		})
+
+		t.Run("メトリクスポートを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := 16060
+			cfg.metrics.SetMetricsPort(t, expected)
+			assert.Equal(t, expected, cfg.metrics.Port())
+		})
+
 		t.Run("データベースホストを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
 			expected := "test-host"
 			cfg.database.SetDatabaseHost(t, expected)
@@ -104,6 +116,37 @@ func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状
 			expected := 7
 			cfg.outbox.SetOutboxBatchSize(t, expected)
 			assert.Equal(t, expected, cfg.outbox.BatchSize())
+		})
+
+		t.Run("outboxのエンドポイントを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			expected := "http://test-relay:8080"
+			cfg.outbox.SetOutboxEndpoint(t, expected)
+			assert.Equal(t, expected, cfg.outbox.Endpoint())
+		})
+
+		t.Run("クリーンアップ後に元の値へ復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+			t.Run("サーバーポートが復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+				original := cfg.server.Port()
+
+				t.Run("一時的にポートを上書きする", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+					cfg.server.SetServerPort(t, original+1)
+					assert.Equal(t, original+1, cfg.server.Port())
+				})
+
+				// 内側サブテスト終了時に Cleanup が発火し、元値へ戻る。
+				assert.Equal(t, original, cfg.server.Port())
+			})
+
+			t.Run("認証ヘッダー名が復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+				original := cfg.auth.HeaderName()
+
+				t.Run("一時的にヘッダー名を上書きする", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
+					cfg.auth.SetHeaderName(t, "X-OVERRIDE")
+					assert.Equal(t, "X-OVERRIDE", cfg.auth.HeaderName())
+				})
+
+				assert.Equal(t, original, cfg.auth.HeaderName())
+			})
 		})
 	})
 }

@@ -36,7 +36,7 @@ func TestNewTimeLocation(t *testing.T) {
 
 			loc, err := NewTimeLocation(osCfg)
 			require.Error(t, err)
-			require.Nil(t, loc)
+			assert.Nil(t, loc)
 		})
 	})
 }

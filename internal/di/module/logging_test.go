@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
@@ -37,11 +38,11 @@ func TestLoggingModule_ProvidesLoggerAndFields(t *testing.T) {
 			)
 
 			require.NoError(t, app.Start(context.Background()))
-			require.NotNil(t, lg)
-			require.NotNil(t, lf)
+			t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+			assert.NotNil(t, lg)
+			assert.NotNil(t, lf)
 			// basic smoke: calling logger methods should not panic
-			require.NotPanics(t, func() { lg.Info("test") })
-			require.NoError(t, app.Stop(context.Background()))
+			assert.NotPanics(t, func() { lg.Info("test") })
 		})
 	})
 }
@@ -64,21 +65,21 @@ func Test_provideLogger(t *testing.T) {
 			t.Parallel()
 			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "info"), nil)
 			require.NoError(t, err)
-			require.NotNil(t, lg)
+			assert.NotNil(t, lg)
 		})
 
 		t.Run("開発モードかつdebugでLoggerを返す", func(t *testing.T) {
 			t.Parallel()
 			lg, err := provideLogger(newAppCfg(t, config.DevelopmentMode, "debug"), nil)
 			require.NoError(t, err)
-			require.NotNil(t, lg)
+			assert.NotNil(t, lg)
 		})
 
 		t.Run("本番モードでもdebug指定でLoggerを返す", func(t *testing.T) {
 			t.Parallel()
 			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "debug"), nil)
 			require.NoError(t, err)
-			require.NotNil(t, lg)
+			assert.NotNil(t, lg)
 		})
 	})
 
@@ -89,14 +90,14 @@ func Test_provideLogger(t *testing.T) {
 			t.Parallel()
 			lg, err := provideLogger(newAppCfg(t, config.ProductionMode, "invalid"), nil)
 			require.Error(t, err)
-			require.Nil(t, lg)
+			assert.Nil(t, lg)
 		})
 
 		t.Run("未知のモードはエラーを返す", func(t *testing.T) {
 			t.Parallel()
 			lg, err := provideLogger(newAppCfg(t, "unknown", "info"), nil)
 			require.Error(t, err)
-			require.Nil(t, lg)
+			assert.Nil(t, lg)
 		})
 	})
 }

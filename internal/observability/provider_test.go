@@ -84,6 +84,25 @@ func Test_NewResource(t *testing.T) {
 	})
 }
 
+func TestNewTextMapPropagator(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("TraceContextとBaggageの複合伝播器を構築する", func(t *testing.T) {
+			t.Parallel()
+
+			prop := NewTextMapPropagator()
+			require.NotNil(t, prop)
+
+			fields := prop.Fields()
+			assert.Contains(t, fields, "traceparent")
+			assert.Contains(t, fields, "baggage")
+		})
+	})
+}
+
 //nolint:paralleltest // otel グローバル状態(TracerProvider/Propagator)を差し替えるため並列化不可
 func Test_NewTracerProvider(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {

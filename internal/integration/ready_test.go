@@ -31,7 +31,7 @@ func TestReady_Integration(t *testing.T) {
 
 			ready.BindHandler(e, tf, mockApp)
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/ready", nil, nil)
-			AssertJSONResponse(t, healthcheck.DTO{}, actual)
+			AssertJSONResponseType[healthcheck.DTO](t, actual)
 		})
 	})
 }

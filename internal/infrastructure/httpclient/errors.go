@@ -2,7 +2,6 @@ package httpclient
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -56,7 +55,7 @@ func statusToAppError(statusCode int) error {
 // normalizeTransportError は、応答取得前の transport 事象を apperror sentinel に写像します。
 // ctx cancel は ErrCanceled、それ以外（network / DNS / TLS / deadline 超過）は ErrUnavailable です。
 func normalizeTransportError(err error) error {
-	if errors.Is(err, context.Canceled) {
+	if xerrors.Is(err, context.Canceled) {
 		return xerrors.Wrap(apperror.ErrCanceled, redactErrMessage(err))
 	}
 	return xerrors.Wrap(apperror.ErrUnavailable, redactErrMessage(err))
@@ -65,7 +64,8 @@ func normalizeTransportError(err error) error {
 // redactErrMessage は、エラーメッセージから URL のクエリ等の機密になり得る情報を除去します。
 // *url.Error は完全 URL（クエリ込み）を出力するため、クエリ・userinfo・fragment を除去し scheme/host/path を残します。
 func redactErrMessage(err error) string {
-	if urlErr, ok := errors.AsType[*url.Error](err); ok {
+	var urlErr *url.Error
+	if xerrors.As(err, &urlErr) {
 		return fmt.Sprintf("%s %s: %v", urlErr.Op, redactURL(urlErr.URL), urlErr.Err)
 	}
 	return err.Error()

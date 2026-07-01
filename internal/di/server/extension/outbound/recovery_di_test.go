@@ -7,7 +7,6 @@ import (
 	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRecoveryMiddleware(t *testing.T) {
@@ -21,5 +20,6 @@ func TestRecoveryMiddleware(t *testing.T) {
 	mw := RecoveryMiddleware(logger, lf, appCfg)
 
 	assert.Equal(t, recoveryPriority, mw.Middleware.Priority)
-	require.NotNil(t, mw.Middleware.Middleware)
+	assert.NotNil(t, mw.Middleware.Middleware)
+	assert.Equal(t, "recovery", mw.Middleware.Name)
 }

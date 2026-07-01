@@ -28,7 +28,7 @@ func TestMiddleware(t *testing.T) {
 			logger := logging.NewTestLogger(t)
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			require.NotNil(t, Middleware(logger, lf))
+			assert.NotNil(t, Middleware(logger, lf))
 		})
 	})
 }
@@ -39,7 +39,7 @@ func Test_loggingMiddleware(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("非運用系APIではログが出力される", func(t *testing.T) {
+		t.Run("非運用系APIでは2xxをInfoレベルで出力する", func(t *testing.T) {
 			t.Parallel()
 			lf := logging.NewTestLogFieldBuilder(t)
 
@@ -47,7 +47,7 @@ func Test_loggingMiddleware(t *testing.T) {
 				return c.String(http.StatusOK, "ok")
 			}
 
-			logger := logging.NewTestLogger(t)
+			logger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -58,6 +58,10 @@ func Test_loggingMiddleware(t *testing.T) {
 
 			handler := loggingMiddleware(logger, lf)(next)
 			require.NoError(t, handler(c))
+
+			handled := observed.FilterMessage("request handled")
+			require.Equal(t, 1, handled.Len())
+			assert.Equal(t, "info", handled.All()[0].Level.String())
 		})
 
 		t.Run("運用系APIではログが出力されない", func(t *testing.T) {
@@ -68,7 +72,7 @@ func Test_loggingMiddleware(t *testing.T) {
 				return c.String(http.StatusOK, "ok")
 			}
 
-			logger := logging.NewTestLogger(t)
+			logger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -79,6 +83,8 @@ func Test_loggingMiddleware(t *testing.T) {
 
 			handler := loggingMiddleware(logger, lf)(next)
 			require.NoError(t, handler(c))
+
+			assert.Zero(t, observed.Len())
 		})
 
 		t.Run("5xxレスポンスではErrorレベルで出力される", func(t *testing.T) {
@@ -89,7 +95,7 @@ func Test_loggingMiddleware(t *testing.T) {
 				return c.String(http.StatusInternalServerError, "err")
 			}
 
-			logger := logging.NewTestLogger(t)
+			logger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -100,6 +106,10 @@ func Test_loggingMiddleware(t *testing.T) {
 
 			handler := loggingMiddleware(logger, lf)(next)
 			require.NoError(t, handler(c))
+
+			handled := observed.FilterMessage("request handled")
+			require.Equal(t, 1, handled.Len())
+			assert.Equal(t, "error", handled.All()[0].Level.String())
 		})
 	})
 }
@@ -130,7 +140,9 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 			tc := observability.ExtractTraceContext(cWithSpan.Request().Context())
 			l := requestLog{c: cWithSpan, lf: lf, traceCtx: tc}
 			fields := l.buildRequestLogFields(time.Now())
-			require.NotEmpty(t, fields)
+
+			assert.Contains(t, fields, logging.String(logging.TraceIDKey, tc.TraceID()))
+			assert.Contains(t, fields, logging.String(logging.SpanIDKey, tc.SpanID()))
 		})
 	})
 }
@@ -190,6 +202,8 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
 			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
+			assert.Contains(t, fields, logging.String(logging.TraceIDKey, tc.TraceID()))
+			assert.Contains(t, fields, logging.String(logging.SpanIDKey, tc.SpanID()))
 		})
 	})
 }

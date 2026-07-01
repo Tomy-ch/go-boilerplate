@@ -28,29 +28,73 @@ func TestNormalizeStatus(t *testing.T) {
 func TestStatusClass(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name string
-		code int
-		want string
-	}{
-		{name: "1xx境界", code: 100, want: "1xx"},
-		{name: "2xx境界", code: 200, want: "2xx"},
-		{name: "3xx境界", code: 300, want: "3xx"},
-		{name: "4xx境界", code: 404, want: "4xx"},
-		{name: "5xx境界", code: 500, want: "5xx"},
-		{name: "範囲未満はunknown", code: 99, want: statusClassUnknown},
-		{name: "範囲超過はunknown", code: 600, want: statusClassUnknown},
-	}
-
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		for _, tc := range cases {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
-				assert.Equal(t, tc.want, statusClass(tc.code))
-			})
-		}
+		t.Run("1xx下限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "1xx", statusClass(100))
+		})
+
+		t.Run("1xx上限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "1xx", statusClass(199))
+		})
+
+		t.Run("2xx下限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "2xx", statusClass(200))
+		})
+
+		t.Run("2xx上限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "2xx", statusClass(299))
+		})
+
+		t.Run("3xx下限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "3xx", statusClass(300))
+		})
+
+		t.Run("3xx上限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "3xx", statusClass(399))
+		})
+
+		t.Run("4xx下限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "4xx", statusClass(400))
+		})
+
+		t.Run("4xx中間", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "4xx", statusClass(404))
+		})
+
+		t.Run("4xx上限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "4xx", statusClass(499))
+		})
+
+		t.Run("5xx下限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "5xx", statusClass(500))
+		})
+
+		t.Run("5xx上限境界", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "5xx", statusClass(599))
+		})
+
+		t.Run("範囲未満はunknown", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, statusClassUnknown, statusClass(99))
+		})
+
+		t.Run("範囲超過はunknown", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, statusClassUnknown, statusClass(600))
+		})
 	})
 }
 

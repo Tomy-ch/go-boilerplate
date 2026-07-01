@@ -10,7 +10,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestStartTestSpanForEcho(t *testing.T) {
@@ -29,7 +28,7 @@ func TestStartTestSpanForEcho(t *testing.T) {
 			nc, end := StartTestSpanForEcho(t, c)
 			t.Cleanup(end)
 
-			require.NotNil(t, end)
+			assert.NotNil(t, end)
 			assert.Equal(t, c, nc)
 
 			sc := observability.ExtractTraceContext(nc.Request().Context())

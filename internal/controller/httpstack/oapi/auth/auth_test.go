@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	mock_auth "go-boilerplate/internal/usecase/boundary/auth/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/stretchr/testify/assert"
@@ -83,7 +83,7 @@ func TestNewAuthenticator(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
-			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, errors.New("bad"))
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
 
 			fn := NewAuthenticator(ac, m)
 
@@ -183,7 +183,7 @@ func Test_authExtractor(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
-			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, errors.New("bad"))
+			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			//nolint:gosec // G124: テスト用のリクエストクッキー
@@ -216,6 +216,18 @@ func Test_extractToken(t *testing.T) {
 			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			//nolint:gosec // G124: テスト用のリクエストクッキー
 			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "cookieTok"})
+			tok := extractToken(req, ac)
+			assert.Equal(t, "cookieTok", tok)
+		})
+
+		t.Run("CookieとHeaderが両方ある場合_Cookieが優先されHeaderは無視される", func(t *testing.T) {
+			t.Parallel()
+			ac := newAuthConfig(t)
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			//nolint:gosec // G124: テスト用のリクエストクッキー
+			req.AddCookie(&http.Cookie{Name: ac.CookieName(), Value: "cookieTok"})
+			req.Header.Set(ac.HeaderName(), "Bearer headerTok")
 			tok := extractToken(req, ac)
 			assert.Equal(t, "cookieTok", tok)
 		})
@@ -259,7 +271,7 @@ func Test_extractToken(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("CookieNameはあるがHeaderNameが空文字列の場合は空を返す", func(t *testing.T) {
+		t.Run("HeaderNameが空文字列の場合_ヘッダ値があっても空を返す", func(t *testing.T) {
 			t.Parallel()
 			ac := newAuthConfig(t)
 			ac.SetHeaderName(t, "")

@@ -98,23 +98,10 @@ func Test_ensureJSONContentType(t *testing.T) {
 	})
 }
 
-func TestMiddleware(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("非nilのミドルウェアを返す", func(t *testing.T) {
-			t.Parallel()
-			require.NotNil(t, Middleware())
-		})
-	})
-}
-
-// TestMiddleware_overWire は、実 HTTP 経路（commit 済みレスポンス）でも Content-Type が
+// TestMiddleware は、実 HTTP 経路（commit 済みレスポンス）でも Content-Type が
 // 上書きされることを検証する。recorder の生ヘッダマップでは commit 後の挙動を検出できないため
 // httptest.NewServer を用いてワイヤ上の最終ヘッダを確認する。
-func TestMiddleware_overWire(t *testing.T) {
+func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
 	exec := func(t *testing.T, handler echo.HandlerFunc) string {

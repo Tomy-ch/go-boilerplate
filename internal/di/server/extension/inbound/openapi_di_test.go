@@ -7,7 +7,6 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestOpenAPIUseMiddleware(t *testing.T) {
@@ -17,5 +16,5 @@ func TestOpenAPIUseMiddleware(t *testing.T) {
 
 	mw := OpenAPIMiddleware(&openapi3.T{}, nil, noopFn)
 	assert.Equal(t, openapiUsePriority, mw.Middleware.Priority)
-	require.NotNil(t, mw.Middleware.Middleware)
+	assert.NotNil(t, mw.Middleware.Middleware)
 }

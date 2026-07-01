@@ -2,7 +2,6 @@ package sqs
 
 import (
 	"context"
-	"errors"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/xerrors"
@@ -14,7 +13,7 @@ func normalizeError(err error) error {
 	if err == nil {
 		return nil
 	}
-	if errors.Is(err, context.Canceled) {
+	if xerrors.Is(err, context.Canceled) {
 		return xerrors.Join(apperror.ErrCanceled, err)
 	}
 	return xerrors.Join(apperror.ErrUnavailable, err)

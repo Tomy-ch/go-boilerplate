@@ -3,11 +3,11 @@ package driver
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -77,7 +77,7 @@ func queryNameFromContext(ctx context.Context) string {
 func buildQueryAttrs(ctx context.Context, sql string, duration time.Duration, err error) QueryAttrs {
 	status := statusSuccess
 	errorClass := ""
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil && !xerrors.Is(err, pgx.ErrNoRows) {
 		status = statusError
 		errorClass = classifyErrorClass(err)
 	}
@@ -182,13 +182,13 @@ func classifyErrorClass(err error) string {
 // isConstraintViolation は、整合性制約違反(SQLSTATE 23xxx)であるかを判定します。
 func isConstraintViolation(err error) bool {
 	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && strings.HasPrefix(pgErr.Code, "23")
+	return xerrors.As(err, &pgErr) && strings.HasPrefix(pgErr.Code, "23")
 }
 
 // isTimeout は、タイムアウト系のエラー（context 期限切れ / lock_timeout 失効 / statement_timeout）であるかを判定します。
 // SQLSTATE 57014(query_canceled) は statement_timeout 失効でも発生するため timeout に分類します。
 func isTimeout(err error) bool {
-	return errors.Is(err, context.DeadlineExceeded) ||
+	return xerrors.Is(err, context.DeadlineExceeded) ||
 		pgerror.IsLockNotAvailable(err) ||
 		isStatementTimeout(err)
 }
@@ -196,5 +196,5 @@ func isTimeout(err error) bool {
 // isStatementTimeout は、statement_timeout 失効(SQLSTATE 57014 query_canceled)であるかを判定します。
 func isStatementTimeout(err error) bool {
 	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "57014"
+	return xerrors.As(err, &pgErr) && pgErr.Code == "57014"
 }

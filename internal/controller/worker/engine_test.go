@@ -10,11 +10,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	bw "go-boilerplate/internal/usecase/boundary/worker"
+	mock_worker "go-boilerplate/internal/usecase/boundary/worker/mock"
 	"go-boilerplate/internal/usecase/boundary/worker/testkit"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -66,6 +68,29 @@ func startEngine(t *testing.T, set Settings, log logging.Logger, w bw.Worker) (c
 func Test_New(t *testing.T) {
 	t.Parallel()
 
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("複数の worker が正常登録され Engine を返す", func(t *testing.T) {
+			t.Parallel()
+
+			noop := handlerFunc(func(context.Context, bw.Message) error { return nil })
+			w1 := testWorker{name: "b", cons: testkit.NewFake(), handler: noop}
+			w2 := testWorker{name: "a", cons: testkit.NewFake(), handler: noop}
+			eng, err := New(
+				[]bw.Worker{w1, w2},
+				baseSettings(),
+				observability.NewNoopTracerFactory(t),
+				observability.NewNoopWorkerMetrics(t),
+				logging.NewTestLogger(t),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, eng)
+			assert.Equal(t, []string{"a", "b"}, eng.Names())
+		})
+	})
+
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -90,6 +115,27 @@ func Test_New(t *testing.T) {
 func Test_Engine_Run(t *testing.T) {
 	t.Parallel()
 
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ctx が cancel されると nil を返して終了する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			cancel()
+
+			select {
+			case err := <-done:
+				require.NoError(t, err)
+			case <-time.After(eventually):
+				t.Fatal("ctx cancel で engine が終了しなかった")
+			}
+		})
+	})
+
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -109,6 +155,21 @@ func Test_Engine_Run(t *testing.T) {
 			err = eng.Run(context.Background(), "unknown")
 
 			require.ErrorIs(t, err, ErrUnknownWorker)
+		})
+
+		t.Run("Receive が一時的に失敗しても poll を継続し後続メッセージを処理する", func(t *testing.T) {
+			t.Parallel()
+
+			// Receive エラー（ctx 起因でない）はエラーとして記録・CB に計上され、loop は次 poll へ続く。
+			f := testkit.NewFake()
+			f.FailReceiveOnce(xerrors.New("broker unreachable"))
+			f.Enqueue(bw.Message{ID: "a"})
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+
+			cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
+			defer func() { cancel(); <-done }()
+
+			require.Eventually(t, func() bool { return len(f.AckedIDs()) == 1 }, eventually, tick)
 		})
 	})
 }
@@ -151,8 +212,44 @@ func Test_Engine_AckNackDiscipline(t *testing.T) {
 
 			require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 1 }, eventually, tick)
 			assert.Empty(t, f.AckedIDs())
-			// retryable は per-message backoff つきで再配送される（NackWithBackoff 経由）。
+			// retryable は per-message backoff つきで再配送される。
 			assert.True(t, f.NackBackoffApplied("a"), "NackWithBackoff で再配送されること")
+		})
+
+		t.Run("Ack が失敗した場合はエラーログを出力する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			mc := mock_worker.NewMockConsumer(ctrl)
+			mc.EXPECT().Ack(gomock.Any(), gomock.Any()).Return(xerrors.New("ack boom"))
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			w := testWorker{name: "w", cons: mc, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			eng, err := New([]bw.Worker{w}, baseSettings(), observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), logger)
+			require.NoError(t, err)
+			r := newRun(eng, w)
+
+			r.ack(context.Background(), bw.Message{ID: "a"})
+
+			assert.Equal(t, 1, observed.FilterMessage("ack error").Len())
+		})
+
+		t.Run("Nack が失敗した場合はエラーログを出力する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			mc := mock_worker.NewMockConsumer(ctrl)
+			mc.EXPECT().NackWithBackoff(gomock.Any(), gomock.Any(), gomock.Any()).Return(xerrors.New("nack boom"))
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			w := testWorker{name: "w", cons: mc, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			eng, err := New([]bw.Worker{w}, baseSettings(), observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), logger)
+			require.NoError(t, err)
+			r := newRun(eng, w)
+
+			r.nack(context.Background(), bw.Message{ID: "a", ReceiveCount: 1})
+
+			assert.Equal(t, 1, observed.FilterMessage("nack error").Len())
 		})
 	})
 }
@@ -180,6 +277,21 @@ func Test_Engine_ExtendHeartbeat(t *testing.T) {
 			defer func() { close(release); cancel(); <-done }()
 
 			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
+		})
+
+		t.Run("ExtendInterval が 0 以下の場合は Extend が呼ばれない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			set := baseSettings()
+			set.ExtendInterval = 0
+
+			r := newRun(newTestEngine(t, set, w), w)
+			stop := r.startHeartbeat(context.Background(), bw.Message{ID: "a"})
+			stop()
+
+			assert.Equal(t, 0, f.ExtendCount("a"))
 		})
 	})
 
@@ -210,6 +322,37 @@ func Test_Engine_ExtendHeartbeat(t *testing.T) {
 			require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
 			closeRelease()
 			require.Eventually(t, func() bool { return len(f.AckedIDs()) >= 1 }, eventually, tick)
+		})
+
+		t.Run("停止中の Extend 失敗はログ・metric を出さず握り潰す", func(t *testing.T) {
+			t.Parallel()
+
+			// Extend が ctx キャンセル後に失敗した場合は再配送されるため、warn ログや ExtendError metric を出さない。
+			ctrl := gomock.NewController(t)
+			mc := mock_worker.NewMockConsumer(ctrl)
+			entered := make(chan struct{})
+			mc.EXPECT().Extend(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, _ bw.Message, _ time.Duration) error {
+					close(entered)
+					<-ctx.Done() // 停止指示が来るまで待ってから失敗させる
+					return xerrors.New("extend boom")
+				})
+
+			logger, observed := logging.NewObservedTestLogger(t)
+			set := baseSettings()
+			set.ExtendInterval = 2 * time.Millisecond
+			w := testWorker{name: "w", cons: mc, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			eng, err := New([]bw.Worker{w}, set, observability.NewNoopTracerFactory(t), observability.NewNoopWorkerMetrics(t), logger)
+			require.NoError(t, err)
+			r := newRun(eng, w)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			stop := r.startHeartbeat(ctx, bw.Message{ID: "a"})
+			<-entered // ticker 発火で Extend 呼び出し済み・ctx はまだ生存
+			cancel()  // 停止 → Extend が失敗するが ctx.Err() 済みなので握り潰される
+			stop()
+
+			assert.Equal(t, 0, observed.FilterMessage("extend failed").Len())
 		})
 	})
 }
@@ -268,6 +411,7 @@ func Test_Engine_PermanentAndFatal(t *testing.T) {
 				return len(f.Failed()) == 1 && len(f.AckedIDs()) == 1
 			}, eventually, tick)
 			assert.Empty(t, f.NackedIDs())
+			require.ErrorIs(t, f.Failed()[0].Cause, apperror.ErrPermanent)
 		})
 
 		t.Run("Fatal は cancel 無しでも engine を停止させる", func(t *testing.T) {
@@ -316,6 +460,8 @@ func Test_Engine_PanicIsolation(t *testing.T) {
 
 			require.Eventually(t, func() bool { return slices.Contains(f.AckedIDs(), "good") }, eventually, tick)
 			require.Eventually(t, func() bool { return slices.Contains(f.NackedIDs(), "bad") }, eventually, tick)
+			// panic は Retryable に変換され、per-message backoff つきで再配送される。
+			assert.True(t, f.NackBackoffApplied("bad"), "NackWithBackoff で再配送されること")
 		})
 	})
 }
@@ -501,6 +647,33 @@ func Test_Engine_CircuitBreaker(t *testing.T) {
 			require.Eventually(t, func() bool { return len(f.AckedIDs()) >= 1 }, 3*time.Second, tick)
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Open の cooldown 待機中に ctx がキャンセルされると acquire が中断する", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			set := baseSettings()
+			set.CircuitFailureThreshold = 1
+			set.CircuitOpenBackoffInitial = time.Hour // cooldown より先に ctx がキャンセルされるよう十分長くする
+			set.CircuitOpenBackoffMax = time.Hour
+			r := newRun(newTestEngine(t, set, w), w)
+
+			r.cb.onFailure()
+			require.Equal(t, phaseOpen, r.cb.phaseNow())
+
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+			defer cancel()
+
+			n, ok := r.acquire(ctx)
+
+			assert.Equal(t, 0, n)
+			assert.False(t, ok)
+		})
+	})
 }
 
 func Test_Engine_drain(t *testing.T) {
@@ -534,6 +707,31 @@ func Test_Engine_drain(t *testing.T) {
 				t.Fatal("drain が完了しなかった")
 			}
 			assert.Equal(t, []string{"a"}, f.AckedIDs())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("DrainTimeout を超えて完了しない in-flight は待たずに抜け Ack されない", func(t *testing.T) {
+			t.Parallel()
+
+			f := testkit.NewFake()
+			w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
+			set := baseSettings()
+			set.DrainTimeout = 20 * time.Millisecond
+
+			r := newRun(newTestEngine(t, set, w), w)
+			r.wg.Add(1) // 完了しない in-flight を模す
+
+			start := time.Now()
+			r.drain()
+			elapsed := time.Since(start)
+			r.wg.Done() // drain 用 goroutine をリークさせないため後始末
+
+			assert.GreaterOrEqual(t, elapsed, set.DrainTimeout)
+			assert.Less(t, elapsed, eventually)
+			assert.Empty(t, f.AckedIDs())
 		})
 	})
 }

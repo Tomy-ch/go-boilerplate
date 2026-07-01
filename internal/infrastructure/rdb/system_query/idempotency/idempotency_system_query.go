@@ -3,7 +3,6 @@ package idempotency
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go-boilerplate/internal/apperror"
@@ -60,7 +59,7 @@ func (s *store) Claim(ctx context.Context, p idempotencybndry.ClaimParams) (bool
 	switch {
 	case err == nil:
 		return true, nil
-	case errors.Is(err, pgx.ErrNoRows):
+	case xerrors.Is(err, pgx.ErrNoRows):
 		// ON CONFLICT DO NOTHING で 0 行 = 既存キーあり。
 		return false, nil
 	case pgerror.IsLockNotAvailable(err):
@@ -81,7 +80,7 @@ func (s *store) Get(ctx context.Context, scope, key string) (*idempotencybndry.R
 		IdempotencyKey: key,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if xerrors.Is(err, pgx.ErrNoRows) {
 			return nil, nil //nolint:nilnil // 「存在しない」を nil, nil で表す（呼び出し側が分岐）
 		}
 		return nil, pgerror.NormalizeError(err)

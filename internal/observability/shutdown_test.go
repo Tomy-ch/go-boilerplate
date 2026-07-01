@@ -2,8 +2,9 @@ package observability
 
 import (
 	"context"
-	"errors"
 	"testing"
+
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/require"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -72,7 +73,7 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("TracerProviderとMeterProviderをShutdownしエラーを返さない", func(t *testing.T) {
+		t.Run("TracerProvider/MeterProvider/LoggerProviderをShutdownしエラーを返さない", func(t *testing.T) {
 			t.Parallel()
 
 			s := NewProviderShutdowner(
@@ -89,7 +90,7 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 		t.Run("TracerProviderのShutdownが失敗した場合は結合エラーとして伝播する", func(t *testing.T) {
 			t.Parallel()
 
-			wantErr := errors.New("span exporter shutdown failed")
+			wantErr := xerrors.New("span exporter shutdown failed")
 			// バッチャ経由で失敗する exporter を仕込み、tp.Shutdown がエラーを返すようにする。
 			tp := sdktrace.NewTracerProvider(sdktrace.WithBatcher(errSpanExporter{err: wantErr}))
 			mp := sdkmetric.NewMeterProvider()
@@ -99,13 +100,13 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 			// tp が失敗しても mp / lp の Shutdown は必ず呼ばれる（Go の引数評価保証）。
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
-			require.ErrorContains(t, err, wantErr.Error())
+			require.ErrorIs(t, err, wantErr)
 		})
 
 		t.Run("MeterProviderのShutdownが失敗した場合は結合エラーとして伝播する", func(t *testing.T) {
 			t.Parallel()
 
-			wantErr := errors.New("metric exporter shutdown failed")
+			wantErr := xerrors.New("metric exporter shutdown failed")
 			// PeriodicReader 経由で失敗する exporter を仕込み、mp.Shutdown がエラーを返すようにする。
 			mp := sdkmetric.NewMeterProvider(
 				sdkmetric.WithReader(sdkmetric.NewPeriodicReader(errMetricExporter{err: wantErr})),
@@ -115,13 +116,13 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
-			require.ErrorContains(t, err, wantErr.Error())
+			require.ErrorIs(t, err, wantErr)
 		})
 
 		t.Run("LoggerProviderのShutdownが失敗した場合は結合エラーとして伝播する", func(t *testing.T) {
 			t.Parallel()
 
-			wantErr := errors.New("log exporter shutdown failed")
+			wantErr := xerrors.New("log exporter shutdown failed")
 			// BatchProcessor 経由で失敗する exporter を仕込み、lp.Shutdown がエラーを返すようにする。
 			lp := sdklog.NewLoggerProvider(
 				sdklog.WithProcessor(sdklog.NewBatchProcessor(errLogExporter{err: wantErr})),
@@ -131,15 +132,15 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
-			require.ErrorContains(t, err, wantErr.Error())
+			require.ErrorIs(t, err, wantErr)
 		})
 
 		t.Run("全Providerの失敗をerrors.Joinで集約して伝播する", func(t *testing.T) {
 			t.Parallel()
 
-			tpErr := errors.New("span exporter shutdown failed")
-			mpErr := errors.New("metric exporter shutdown failed")
-			lpErr := errors.New("log exporter shutdown failed")
+			tpErr := xerrors.New("span exporter shutdown failed")
+			mpErr := xerrors.New("metric exporter shutdown failed")
+			lpErr := xerrors.New("log exporter shutdown failed")
 
 			tp := sdktrace.NewTracerProvider(sdktrace.WithBatcher(errSpanExporter{err: tpErr}))
 			mp := sdkmetric.NewMeterProvider(
@@ -152,9 +153,9 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
 			// errors.Join により tp/mp/lp 全ての Shutdown エラーが 1 つに集約されることを確認する。
-			require.ErrorContains(t, err, tpErr.Error())
-			require.ErrorContains(t, err, mpErr.Error())
-			require.ErrorContains(t, err, lpErr.Error())
+			require.ErrorIs(t, err, tpErr)
+			require.ErrorIs(t, err, mpErr)
+			require.ErrorIs(t, err, lpErr)
 		})
 	})
 }

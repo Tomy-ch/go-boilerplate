@@ -14,19 +14,23 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSet{{.NameCamel}}(t *testing.T) {
 	t.Parallel()
 
-	// Set{{.NameCamel}} が private な {{.NameLower}}Key で値を書き込むことを直接検証する
-	// （Get{{.NameCamel}} には依存しない / Set/Get のテストを独立にする）。
-	ctx := Set{{.NameCamel}}(context.Background(), {{.TestSuccessValue}})
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("privateキーへ値を書き込む", func(t *testing.T) {
+			t.Parallel()
+			ctx := Set{{.NameCamel}}(context.Background(), {{.TestSuccessValue}})
 
-	val := ctx.Value({{.NameLower}}Key)
-	v, ok := val.({{.Type}})
-	assert.True(t, ok)
-	assert.Equal(t, {{.TestSuccessValue}}, v)
+			v, ok := ctx.Value({{.NameLower}}Key).({{.Type}})
+			require.True(t, ok)
+			assert.Equal(t, {{.TestSuccessValue}}, v)
+		})
+	})
 }
 
 func TestGet{{.NameCamel}}(t *testing.T) {
@@ -42,6 +46,15 @@ func TestGet{{.NameCamel}}(t *testing.T) {
 			val, ok := Get{{.NameCamel}}(ctx)
 			assert.True(t, ok)
 			assert.Equal(t, {{.TestSuccessValue}}, val)
+		})
+
+		t.Run("ゼロ値を設定した場合も未設定と区別してokがtrueになる", func(t *testing.T) {
+			t.Parallel()
+			ctx := Set{{.NameCamel}}(context.Background(), {{.TestFailValue}})
+
+			val, ok := Get{{.NameCamel}}(ctx)
+			assert.True(t, ok)
+			assert.Equal(t, {{.TestFailValue}}, val)
 		})
 	})
 

@@ -17,29 +17,24 @@ import (
 func TestAuthModule(t *testing.T) {
 	t.Parallel()
 
-	t.Run("正常系", func(t *testing.T) {
+	t.Run("fx アプリで Authenticator が提供される", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("fx アプリで Authenticator が提供される", func(t *testing.T) {
-			t.Parallel()
+		var a authbd.Authenticator
+		app := fx.New(
+			fx.Provide(func() testing.TB { return t }),
+			fx.Provide(func() *testing.T { return t }),
+			fx.Provide(config.MockConfigForTest),
+			fx.Provide(config.NewApplicationConfig),
+			fx.Provide(config.NewAuthConfig),
+			fx.Provide(logging.NewTestLogger),
+			AuthnModule(),
+			fx.Populate(&a),
+		)
 
-			var a authbd.Authenticator
-			app := fx.New(
-				fx.Provide(func() testing.TB { return t }),
-				fx.Provide(func() *testing.T { return t }),
-				fx.Provide(config.MockConfigForTest),
-				fx.Provide(config.NewApplicationConfig),
-				fx.Provide(config.NewAuthConfig),
-				fx.Provide(logging.NewTestLogger),
-				AuthnModule(),
-				fx.Populate(&a),
-			)
-
-			require.NoError(t, app.Start(context.Background()))
-			require.NotNil(t, a)
-			require.NotPanics(t, func() { _ = a })
-			require.NoError(t, app.Stop(context.Background()))
-		})
+		require.NoError(t, app.Start(context.Background()))
+		t.Cleanup(func() { require.NoError(t, app.Stop(context.Background())) })
+		assert.NotNil(t, a)
 	})
 }
 
@@ -91,22 +86,29 @@ func Test_provideAuthenticator(t *testing.T) {
 	})
 
 	// local / ci / test 以外（本番相当）はすべて fail-closed でエラーを返すこと。
-	envs := map[string]string{
-		"development環境": config.EnvDevelopment,
-		"staging環境":     config.EnvStaging,
-		"production環境":  config.EnvProduction,
+	assertFailClosed := func(t *testing.T, env string) {
+		t.Helper()
+		cfg := config.MockConfigForTest(t)
+		appCfg := config.NewApplicationConfig(cfg)
+		appCfg.SetApplicationEnv(t, env)
+		logger := logging.NewTestLogger(t)
+		authenticator, err := provideAuthenticator(appCfg, logger)
+		require.Error(t, err)
+		assert.Nil(t, authenticator)
 	}
-	for name, env := range envs {
-		t.Run(name+"では Authenticator を配線せずエラーを返す", func(t *testing.T) {
-			t.Parallel()
 
-			cfg := config.MockConfigForTest(t)
-			appCfg := config.NewApplicationConfig(cfg)
-			appCfg.SetApplicationEnv(t, env)
-			logger := logging.NewTestLogger(t)
-			authenticator, err := provideAuthenticator(appCfg, logger)
-			require.Error(t, err)
-			require.Nil(t, authenticator)
-		})
-	}
+	t.Run("development環境では Authenticator を配線せずエラーを返す", func(t *testing.T) {
+		t.Parallel()
+		assertFailClosed(t, config.EnvDevelopment)
+	})
+
+	t.Run("staging環境では Authenticator を配線せずエラーを返す", func(t *testing.T) {
+		t.Parallel()
+		assertFailClosed(t, config.EnvStaging)
+	})
+
+	t.Run("production環境では Authenticator を配線せずエラーを返す", func(t *testing.T) {
+		t.Parallel()
+		assertFailClosed(t, config.EnvProduction)
+	})
 }

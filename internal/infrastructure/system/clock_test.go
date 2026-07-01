@@ -15,8 +15,11 @@ func TestNewClock(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		c := NewClock()
-		require.NotNil(t, c)
+		t.Run("Clockを生成する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotNil(t, NewClock())
+		})
 	})
 }
 
@@ -26,8 +29,12 @@ func TestClockNow(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		now := NewClock().Now()
-		require.WithinDuration(t, time.Now(), now, time.Second)
+		t.Run("現在時刻を返す", func(t *testing.T) {
+			t.Parallel()
+
+			now := NewClock().Now()
+			require.WithinDuration(t, time.Now(), now, time.Second)
+		})
 	})
 }
 
@@ -37,8 +44,11 @@ func TestNewSleeper(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s := NewSleeper()
-		require.NotNil(t, s)
+		t.Run("Sleeperを生成する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotNil(t, NewSleeper())
+		})
 	})
 }
 

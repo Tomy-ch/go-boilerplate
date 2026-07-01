@@ -1,12 +1,12 @@
 package buildinfo
 
 import (
-	"errors"
 	"runtime"
 	"testing"
 
 	"go-boilerplate/internal/config"
 	mock_system "go-boilerplate/internal/system/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -16,7 +16,7 @@ import (
 )
 
 // errRegisterFailed は、fakeRegisterer が Register で返すテスト用の番兵エラーです。
-var errRegisterFailed = errors.New("register failed")
+var errRegisterFailed = xerrors.New("register failed")
 
 // fakeRegisterer は、Register が常に errRegisterFailed を返す prometheus.Registerer の
 // テスト用スタブです。AlreadyRegisteredError 以外のエラー分岐を到達させるために用います。
@@ -62,7 +62,7 @@ func TestNewCollector(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Collectorが生成される", func(t *testing.T) {
+		t.Run("生成時にビルド情報がラベル値として解決される", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -74,7 +74,14 @@ func TestNewCollector(t *testing.T) {
 			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 
 			c := NewCollector(appCfg, bi)
-			assert.NotNil(t, c)
+			require.NotNil(t, c)
+
+			// 生成時に解決済みのラベル値が emit されることを確認する。
+			labels, value := gatherLabels(t, c)
+			assert.InDelta(t, 1.0, value, 0)
+			assert.Equal(t, "v1.5.0", labels[labelVersion])
+			assert.Equal(t, "abcdef1", labels[labelRevision])
+			assert.Equal(t, "2026-06-28T17:00:00Z", labels[labelBuildDate])
 		})
 	})
 }

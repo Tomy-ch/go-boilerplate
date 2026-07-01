@@ -146,9 +146,10 @@ func TestMiddleware_handle(t *testing.T) {
 			})
 			ec := newEcho("key-abc", true, "user-9")
 
-			_, err := Middleware()(next, "PostUsers")(ec, spyRequest{Name: "alice"})
+			res, err := Middleware()(next, "PostUsers")(ec, spyRequest{Name: "alice"})
 			require.NoError(t, err)
 			require.True(t, called)
+			assert.Equal(t, sentinel, res, "後段の戻り値がそのまま透過されること")
 
 			// middleware は ec.SetRequest で stash 済み。その ctx を Run に渡し Claim の引数を検証する。
 			gotCtx := ec.Request().Context()
@@ -240,24 +241,41 @@ func Test_validateKey(t *testing.T) {
 			t.Parallel()
 			require.NoError(t, validateKey("Idem-Key_123.~"))
 		})
+
+		t.Run("255文字ちょうどは通る", func(t *testing.T) {
+			t.Parallel()
+			// 上限 maxKeyLength=255 ちょうどは通過する（256 文字の異常系と対の境界）。
+			require.NoError(t, validateKey(strings.Repeat("a", 255)))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		cases := map[string]string{
-			"長すぎ":        strings.Repeat("x", 256),
-			"空白(0x20)":   "a b",
-			"制御文字(0x1f)": "a\x1fb",
-			"DEL(0x7f)":  "a\x7fb",
-			"マルチバイト":     "あ",
-		}
-		for name, key := range cases {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-				require.ErrorIs(t, validateKey(key), apperror.ErrInvalidArgument)
-			})
-		}
+		t.Run("長すぎ", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey(strings.Repeat("x", 256)), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("空白(0x20)", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey("a b"), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("制御文字(0x1f)", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey("a\x1fb"), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("DEL(0x7f)", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey("a\x7fb"), apperror.ErrInvalidArgument)
+		})
+
+		t.Run("マルチバイト", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateKey("あ"), apperror.ErrInvalidArgument)
+		})
 	})
 }
 

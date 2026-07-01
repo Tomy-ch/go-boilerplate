@@ -33,6 +33,7 @@ func TestNewCursor(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.False(t, actual.HasCursor())
+			assert.Empty(t, actual.Keys())
 		})
 
 		t.Run("firstが0以下の場合、デフォルト件数が使用される", func(t *testing.T) {

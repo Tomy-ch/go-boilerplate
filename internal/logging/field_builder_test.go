@@ -1,11 +1,11 @@
 package logging
 
 import (
-	"errors"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,14 +17,20 @@ func TestNewLogFields(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("非nilのLogFieldsを返す", func(t *testing.T) {
+		t.Run("生成したLogFieldBuilderが渡した設定を保持する", func(t *testing.T) {
 			t.Parallel()
+
 			cfg := config.MockConfigForTest(t)
 			obsCfg := config.NewObservabilityConfig(cfg)
 			osCfg := config.NewOperatingSystemConfig(cfg)
 
-			lf := NewLogFields(obsCfg, osCfg)
-			assert.NotNil(t, lf)
+			builder := NewLogFields(obsCfg, osCfg)
+			require.NotNil(t, builder)
+
+			impl, ok := builder.(*logFieldBuilder)
+			require.True(t, ok)
+			assert.Same(t, obsCfg, impl.obsCfg)
+			assert.Same(t, osCfg, impl.osCfg)
 		})
 	})
 }
@@ -269,7 +275,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 		t.Run("引数/エラー/trace有りの場合、内部エラーとtrace/spanが追加される", func(t *testing.T) {
 			t.Parallel()
 
-			err := errors.New("boom")
+			err := xerrors.New("boom")
 			args := []any{1, "a"}
 			s := SQLFieldsEndInput{
 				EventAt:  time.Now(),
@@ -335,7 +341,7 @@ func TestLogFields_BuildSQLEndFields(t *testing.T) {
 				SpanName: "sn",
 				Query:    q,
 				Latency:  12 * time.Millisecond,
-				Err:      errors.New("boom"),
+				Err:      xerrors.New("boom"),
 			}
 
 			keys := fieldKeys(lf.BuildSQLEndFields(s))
@@ -417,6 +423,24 @@ func Test_appendTraceSpanFields(t *testing.T) {
 				String(ParentSpanIDKey, "p-1"),
 			}
 			assert.Equal(t, expected, got)
+		})
+
+		t.Run("obsが無効な場合、traceID/spanIDが有効でも何も追加しない", func(t *testing.T) {
+			t.Parallel()
+
+			disabledCfg := config.MockConfigForTest(t)
+			disabledObsCfg := config.NewObservabilityConfig(disabledCfg)
+			disabledObsCfg.SetObservabilityTracesExporter(t, "")
+			disabledObsCfg.SetObservabilityMetricsExporter(t, "")
+			disabledObsCfg.SetObservabilityLogsExporter(t, "")
+			require.False(t, disabledObsCfg.Enabled())
+
+			disabledImpl, ok := NewLogFields(disabledObsCfg, osCfg).(*logFieldBuilder)
+			require.True(t, ok)
+
+			base := []*Field{String("a", "b")}
+			got := disabledImpl.appendTraceSpanFields(base, "t-1", "s-1", "p-1")
+			assert.Equal(t, base, got)
 		})
 	})
 }

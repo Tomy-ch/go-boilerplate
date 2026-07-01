@@ -1,12 +1,12 @@
 package migrate
 
 import (
-	"errors"
 	"math"
 	"testing"
 
 	mock_migrate "go-boilerplate/internal/cli/migrate/mock"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,7 @@ import (
 )
 
 // errBoom は、テスト用の任意の失敗を表すセンチネルエラーです。
-var errBoom = errors.New("boom")
+var errBoom = xerrors.New("boom")
 
 // factoryReturning は、常に与えた Migrator を返す MigratorFactory を生成します。
 func factoryReturning(m Migrator) MigratorFactory {
@@ -139,6 +139,19 @@ func TestMigrateDownRun(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			m := mock_migrate.NewMockMigrator(ctrl)
 			m.EXPECT().Version().Return(uint(3), false, nil)
+			m.EXPECT().Down().Return(nil)
+
+			err := MigrateDownRun(0, "", logging.NewTestLogger(t), factoryReturning(m))
+			require.NoError(t, err)
+		})
+
+		t.Run("ステップ未指定でdirty状態ならForceで整合を取ってから全件Downする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			m := mock_migrate.NewMockMigrator(ctrl)
+			m.EXPECT().Version().Return(uint(4), true, nil)
+			m.EXPECT().Force(4).Return(nil)
 			m.EXPECT().Down().Return(nil)
 
 			err := MigrateDownRun(0, "", logging.NewTestLogger(t), factoryReturning(m))

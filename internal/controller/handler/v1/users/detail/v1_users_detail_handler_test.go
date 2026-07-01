@@ -346,7 +346,7 @@ func Test_server_PutUsersMePassword(t *testing.T) {
 			s, _ := newServer(t)
 			resp, err := s.PutUsersMePassword(ctx, gen.PutUsersMePasswordRequestObject{Body: body})
 			require.Nil(t, resp)
-			require.ErrorContains(t, err, "failed to get user ID from authenticator")
+			require.ErrorIs(t, err, authbd.ErrSubjectNotUUID)
 		})
 
 		t.Run("Usecaseがエラーを返す場合_エラーが返る", func(t *testing.T) {

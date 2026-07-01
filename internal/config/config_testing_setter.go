@@ -97,6 +97,16 @@ func (o *ObservabilityConfig) SetObservabilityOTLPProtocol(tb testing.TB, val st
 	tb.Cleanup(func() { o.otlpProtocol = prev })
 }
 
+// SetObservabilityOTLPEndpoint は、テスト用に OTLP エンドポイント指定を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *ObservabilityConfig) SetObservabilityOTLPEndpoint(tb testing.TB, val string) {
+	tb.Helper()
+	prev := o.otlpEndpoint
+	o.otlpEndpoint = val
+	tb.Cleanup(func() { o.otlpEndpoint = prev })
+}
+
 // SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
@@ -175,4 +185,34 @@ func (o *OutboxConfig) SetOutboxBatchSize(tb testing.TB, batchSize int) {
 	prev := o.batchSize
 	o.batchSize = batchSize
 	tb.Cleanup(func() { o.batchSize = prev })
+}
+
+// SetOutboxEndpoint は、テスト用に outbox relay の送信先エンドポイントを設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *OutboxConfig) SetOutboxEndpoint(tb testing.TB, endpoint string) {
+	tb.Helper()
+	prev := o.endpoint
+	o.endpoint = endpoint
+	tb.Cleanup(func() { o.endpoint = prev })
+}
+
+// SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (s *SecureCookieConfig) SetSameSite(tb testing.TB, sameSite string) {
+	tb.Helper()
+	prev := s.sameSite
+	s.sameSite = sameSite
+	tb.Cleanup(func() { s.sameSite = prev })
+}
+
+// SetDomain は、テスト用にセキュアクッキーの Domain 強制値を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string) {
+	tb.Helper()
+	prev := s.domain
+	s.domain = domain
+	tb.Cleanup(func() { s.domain = prev })
 }
