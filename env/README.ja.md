@@ -134,6 +134,38 @@
 |AUTH_HEADER_NAME|ヘッダ名|string|Authorization||
 |AUTH_ALLOWED_HEADER_BEARER|Bearer許可|bool|true||
 
+### Worker
+
+worker engine の engine-core 設定（broker 非依存）。
+
+|変数名|説明|型|例|備考|
+|---|---|---|---|---|
+|WORKER_CONCURRENCY|同時に Handle を実行する最大数|int|4|Code default `4`|
+|WORKER_MAX_IN_FLIGHT|受信済み・未確定の最大メッセージ数|int|8|Code default `8`|
+|WORKER_BATCH_SIZE|1 回の Receive で取得する最大件数|int|4|Code default `4`|
+|WORKER_EXTEND_INTERVAL|Extend を呼ぶ周期（`0` 以下で無効）|duration|0s|Code default `0s`|
+|WORKER_DRAIN_TIMEOUT|停止時に in-flight の完了を待つ上限|duration|30s|Code default `30s`|
+|WORKER_RECEIVE_COUNT_WARN_THRESHOLD|再配送回数の警告閾値（`0` 以下で無効）|int|5|Code default `5`|
+|WORKER_CIRCUIT_FAILURE_THRESHOLD|サーキットを Open にする連続失敗数（`0` 以下で無効）|int|10|Code default `10`|
+|WORKER_CIRCUIT_OPEN_BACKOFF_INITIAL|Open の初回 cooldown|duration|1s|Code default `1s`|
+|WORKER_CIRCUIT_OPEN_BACKOFF_MAX|Open の cooldown 上限|duration|30s|Code default `30s`|
+|WORKER_CIRCUIT_HALF_OPEN_PROBE|Half-open 時に試行する最大件数|int|1|Code default `1`|
+|WORKER_HEALTH_LISTEN_ADDR|liveness/readiness を公開する health listener の待ち受けアドレス|string|:8081|Code default `:8081`|
+|WORKER_PROGRESS_STALE_AFTER|readiness 判定で「進捗なし」とみなすまでの時間|duration|60s|Code default `60s`|
+|WORKER_NACK_BACKOFF_INITIAL|retryable 失敗時の per-message 再配送 backoff の初回待機|duration|1s|Code default `1s`|
+|WORKER_NACK_BACKOFF_MAX|per-message 再配送 backoff の上限|duration|30s|Code default `30s`|
+
+### Outbox
+
+transactional outbox relay の設定。
+
+|変数名|説明|型|例|備考|
+|---|---|---|---|---|
+|OUTBOX_ENDPOINT|メッセージの送信先エンドポイント URL|string||Code default は空。relay の送信先が固定のプロジェクトで設定する|
+|OUTBOX_POLL_INTERVAL|pending を捌き切った後、次 poll まで待機する時間|duration|1s|Code default `1s`|
+|OUTBOX_ERROR_BACKOFF|relay バッチがエラーを返した後に待機する時間|duration|5s|Code default `5s`|
+|OUTBOX_BATCH_SIZE|1 回の poll で claim する pending 行数|int|100|Code default `100`|
+
 ## 補足
 
 - 例欄の値はローカル開発向け。本番では Secret / CIDR / Cookie ドメイン / origin 等は基本的に別の値になります
