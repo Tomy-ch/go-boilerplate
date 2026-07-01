@@ -250,4 +250,13 @@ Infra --> External["External Systems"]
 
 ## ライセンス
 
-MIT License — [LICENSE](LICENSE) を参照してください。
+本プロジェクト自身のソースコードは **MIT License** で公開しています — [LICENSE](LICENSE) を参照してください。
+
+配布するコンテナイメージには、ベースイメージ由来のサードパーティ OS パッケージが同梱されます。
+たとえば本番用の `runtime` イメージは `alpine:3.23` をベースにしており、その基本パッケージ
+（`busybox` / `apk-tools` / `alpine-baselayout` / `ssl_client` など）は **GPL-2.0-only** です。
+これらは *mere aggregation（単なる同梱）* にあたります。独立したプログラムとして動作し、Go バイナリには
+**リンクされない**ため、コピーレフトの条件が本プロジェクトのコードに波及することはなく、商用利用を
+**制限しません**。義務は Linux ベースイメージを再配布する際の通常の対応（対応するパッケージソースの
+入手手段を提供すること。upstream の Alpine が既に提供済み）のみです。イメージ詳細:
+[docker/README.md](docker/README.md)。
