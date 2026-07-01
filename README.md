@@ -256,4 +256,13 @@ Planned future releases: Frontend / Infrastructure / Observability boilerplates.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+This project's own source code is released under the **MIT License** — see [LICENSE](LICENSE).
+
+The container images the project ships bundle third-party OS packages from their base images —
+for example the production `runtime` image is built on `alpine:3.23`, whose base packages
+(`busybox`, `apk-tools`, `alpine-baselayout`, `ssl_client`, …) are licensed under
+**GPL-2.0-only**. These are included as *mere aggregation*: they run as independent programs and
+are **not** linked into the Go binary, so their copyleft terms do not extend to this project's
+code and do **not** restrict commercial use. The only obligation is the ordinary one for
+redistributing any Linux base image — make the corresponding package sources available, which
+upstream Alpine already does. Image details: [docker/README.md](docker/README.md).
